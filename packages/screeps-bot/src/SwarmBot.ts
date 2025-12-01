@@ -125,14 +125,17 @@ function runCreep(creep: Creep): void {
 
 /**
  * Check if we have CPU budget to continue processing.
- * Uses Math.max to prevent underflow when limit is very low.
+ * Validates that CPU limit is sufficient before allowing processing.
  */
 function hasCpuBudget(): boolean {
   const used = Game.cpu.getUsed();
   const limit = Game.cpu.limit;
-  // Ensure we always have at least MIN_CPU_THRESHOLD available to prevent underflow
-  const targetCpu = Math.max(CPU_CONFIG.MIN_CPU_THRESHOLD, (limit * CPU_CONFIG.TARGET_USAGE) - CPU_CONFIG.RESERVED_CPU);
-  return used < targetCpu;
+  // Only allow processing if limit is sufficient for reserved CPU and minimum threshold
+  if (limit < CPU_CONFIG.RESERVED_CPU + CPU_CONFIG.MIN_CPU_THRESHOLD) {
+    return false;
+  }
+  const availableCpu = limit - used - CPU_CONFIG.RESERVED_CPU;
+  return availableCpu >= CPU_CONFIG.MIN_CPU_THRESHOLD;
 }
 
 /**
@@ -200,7 +203,7 @@ function runCreepsWithBudget(): void {
   for (const creep of creeps) {
     // Check CPU budget before each creep
     if (!hasCpuBudget()) {
-      creepsSkipped = creeps.length - creepsRun;
+      creepsSkipped += (creeps.length - creepsRun - creepsSkipped);
       break;
     }
 
@@ -235,6 +238,8 @@ export function loop(): void {
     // Only run movement finalization to prevent stuck creeps
     initMovement();
     finalizeMovement();
+    clearRoomCaches();
+    profiler.finalizeTick();
     return;
   }
 
