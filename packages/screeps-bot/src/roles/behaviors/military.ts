@@ -222,9 +222,8 @@ export function harasser(ctx: CreepContext): CreepAction {
   }
 
   // Check for dangerous hostiles nearby - flee if present
-  // First filter by range (cheap), then check body parts (more expensive)
-  const nearbyHostiles = ctx.hostiles.filter(h => ctx.creep.pos.getRangeTo(h) < 5);
-  const dangerous = nearbyHostiles.filter(h =>
+  const dangerous = ctx.hostiles.filter(h =>
+    ctx.creep.pos.getRangeTo(h) < 5 &&
     h.body.some(p => p.type === ATTACK || p.type === RANGED_ATTACK)
   );
 

@@ -9,6 +9,24 @@ import type { CreepAction, CreepContext } from "./types";
 import type { SwarmCreepMemory } from "../../memory/schemas";
 
 // =============================================================================
+// Type Guards
+// =============================================================================
+
+/**
+ * Type guard to check if an object is a Deposit.
+ * Deposits have depositType and cooldown properties, but no structureType.
+ */
+function isDeposit(obj: unknown): obj is Deposit {
+  return (
+    obj !== null &&
+    typeof obj === "object" &&
+    "depositType" in obj &&
+    "cooldown" in obj &&
+    !("structureType" in obj)
+  );
+}
+
+// =============================================================================
 // Common Patterns
 // =============================================================================
 
@@ -348,20 +366,23 @@ export function depositHarvester(ctx: CreepContext): CreepAction {
     const deposits = ctx.room.find(FIND_DEPOSITS);
     if (deposits.length > 0) {
       const best = deposits.reduce((a, b) => (a.cooldown < b.cooldown ? a : b));
-      // Store the deposit ID - targetId is typed as Id<_HasId> which is compatible
-      ctx.memory.targetId = best.id;
+      // Store the deposit ID. This is safe because Screeps object IDs are always strings,
+      // and Deposit IDs are compatible with Id<_HasId>. We only use targetId for deposits in this role.
+      ctx.memory.targetId = best.id as Id<Deposit>;
     }
   }
 
   if (!ctx.memory.targetId) return { type: "idle" };
 
   // Attempt to get the deposit - may return null if ID is invalid or object no longer exists
-  const deposit = Game.getObjectById(ctx.memory.targetId as Id<Deposit>);
-  if (!deposit) {
+  // We use a type guard to verify this is actually a Deposit
+  const depositObj = Game.getObjectById(ctx.memory.targetId);
+  if (!depositObj || !isDeposit(depositObj)) {
     // Invalid or missing deposit - clear target and idle
     delete ctx.memory.targetId;
     return { type: "idle" };
   }
+  const deposit = depositObj;
 
   // Check if deposit is on cooldown
   if (deposit.cooldown > 100) {
