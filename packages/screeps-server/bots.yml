@@ -1,0 +1,30 @@
+# Used by screepsmod-bots to preconfigure bots for this private server
+version: 1
+bots:
+  - username: overmind
+    botName: overmind
+    position: 22,13,W2N2
+    cpu: 200
+    gcl: 1
+    log_console: false
+
+  - username: toolangle
+    botName: tooangel
+    position: 34,22,W2N4
+    cpu: 200
+    gcl: 1
+    log_console: false
+
+  - username: choreographer
+    botName: choreographer
+    position: 17,12,W4N2
+    cpu: 200
+    gcl: 1
+    log_console: false
+
+  - username: swarm-bot
+    botName: swarm-bot
+    position: 17,37,W4N4
+    cpu: 200
+    gcl: 1
+    log_console: false

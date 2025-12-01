@@ -23,12 +23,19 @@
     "path": "/season",
     "branch": "main"
   },
-  "pserver": {
-    "email": "username",
-    "password": "Password",
-    "protocol": "http",
-    "hostname": "1.2.3.4",
-    "port": 21025,
+  "screeps.nyphon.de": {
+    "token": "YOUR_TOKEN",
+    "protocol": "https",
+    "hostname": "screeps.nyphon.de",
+    "port": 443,
+    "path": "/",
+    "branch": "main"
+  },
+  "newbieland.net": {
+    "token": "YOUR_TOKEN",
+    "protocol": "https",
+    "hostname": "screeps.newbieland.net",
+    "port": 443,
     "path": "/",
     "branch": "main"
   }
