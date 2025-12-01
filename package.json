@@ -1,5 +1,5 @@
 {
-  "name": "screeps-ant-sawrm",
+  "name": "screeps-ant-swarm",
   "screeps_bot": true,
   "main": "packages/screeps-bot/dist/main.js"
 }
