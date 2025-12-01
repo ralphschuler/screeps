@@ -9,15 +9,16 @@
  * - Strategic decisions
  */
 
-import { memoryManager } from "./memory/manager";
-import { roomManager } from "./core/roomNode";
+import type { RoleFamily, SwarmCreepMemory } from "./memory/schemas";
 import { profiler } from "./core/profiler";
+import { roomManager } from "./core/roomNode";
 import { runSpawnManager } from "./logic/spawn";
+import { memoryManager } from "./memory/manager";
 import { runEconomyRole } from "./roles/economy";
 import { runMilitaryRole } from "./roles/military";
-import { runUtilityRole } from "./roles/utility";
 import { runPowerCreepRole, runPowerRole } from "./roles/power";
-import type { RoleFamily, SwarmCreepMemory } from "./memory/schemas";
+import { runUtilityRole } from "./roles/utility";
+import { finalizeMovement, initMovement } from "./utils/movement";
 
 /**
  * Get role family from creep memory
@@ -80,6 +81,9 @@ function runSpawns(): void {
  * Main loop for SwarmBot
  */
 export function loop(): void {
+  // Initialize movement system (cartographer preTick)
+  initMovement();
+
   // Initialize memory structures
   memoryManager.initialize();
 
@@ -111,6 +115,9 @@ export function loop(): void {
   if (Game.time % 50 === 0) {
     memoryManager.cleanDeadCreeps();
   }
+
+  // Finalize movement system (cartographer reconcileTraffic)
+  finalizeMovement();
 
   // Finalize profiler tick
   profiler.finalizeTick();

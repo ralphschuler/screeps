@@ -5,6 +5,7 @@
  */
 
 import type { SquadMemory, SwarmCreepMemory, SwarmState } from "../../memory/schemas";
+import { fleeFrom, moveCreep, moveToRoom } from "../../utils/movement";
 
 /**
  * Extended creep context with swarm-specific information
@@ -247,7 +248,7 @@ export function executeAction(creep: Creep, action: SwarmAction, ctx: SwarmCreep
     case "harvest": {
       const result = creep.harvest(action.target);
       if (result === ERR_NOT_IN_RANGE) {
-        creep.moveTo(action.target, { visualizePathStyle: { stroke: "#ffaa00" } });
+        moveCreep(creep, action.target, { visualizePathStyle: { stroke: "#ffaa00" } });
       }
       break;
     }
@@ -255,7 +256,7 @@ export function executeAction(creep: Creep, action: SwarmAction, ctx: SwarmCreep
     case "harvestMineral": {
       const result = creep.harvest(action.target);
       if (result === ERR_NOT_IN_RANGE) {
-        creep.moveTo(action.target, { visualizePathStyle: { stroke: "#00ff00" } });
+        moveCreep(creep, action.target, { visualizePathStyle: { stroke: "#00ff00" } });
       }
       break;
     }
@@ -263,7 +264,7 @@ export function executeAction(creep: Creep, action: SwarmAction, ctx: SwarmCreep
     case "harvestDeposit": {
       const result = creep.harvest(action.target);
       if (result === ERR_NOT_IN_RANGE) {
-        creep.moveTo(action.target, { visualizePathStyle: { stroke: "#00ffff" } });
+        moveCreep(creep, action.target, { visualizePathStyle: { stroke: "#00ffff" } });
       }
       break;
     }
@@ -271,7 +272,7 @@ export function executeAction(creep: Creep, action: SwarmAction, ctx: SwarmCreep
     case "pickup": {
       const result = creep.pickup(action.target);
       if (result === ERR_NOT_IN_RANGE) {
-        creep.moveTo(action.target, { visualizePathStyle: { stroke: "#ffaa00" } });
+        moveCreep(creep, action.target, { visualizePathStyle: { stroke: "#ffaa00" } });
       }
       break;
     }
@@ -279,7 +280,7 @@ export function executeAction(creep: Creep, action: SwarmAction, ctx: SwarmCreep
     case "withdraw": {
       const result = creep.withdraw(action.target, action.resourceType);
       if (result === ERR_NOT_IN_RANGE) {
-        creep.moveTo(action.target, { visualizePathStyle: { stroke: "#ffaa00" } });
+        moveCreep(creep, action.target, { visualizePathStyle: { stroke: "#ffaa00" } });
       }
       break;
     }
@@ -287,7 +288,7 @@ export function executeAction(creep: Creep, action: SwarmAction, ctx: SwarmCreep
     case "transfer": {
       const result = creep.transfer(action.target, action.resourceType);
       if (result === ERR_NOT_IN_RANGE) {
-        creep.moveTo(action.target, { visualizePathStyle: { stroke: "#ffffff" } });
+        moveCreep(creep, action.target, { visualizePathStyle: { stroke: "#ffffff" } });
       }
       break;
     }
@@ -295,7 +296,7 @@ export function executeAction(creep: Creep, action: SwarmAction, ctx: SwarmCreep
     case "build": {
       const result = creep.build(action.target);
       if (result === ERR_NOT_IN_RANGE) {
-        creep.moveTo(action.target, { visualizePathStyle: { stroke: "#ffffff" } });
+        moveCreep(creep, action.target, { visualizePathStyle: { stroke: "#ffffff" } });
       }
       break;
     }
@@ -303,7 +304,7 @@ export function executeAction(creep: Creep, action: SwarmAction, ctx: SwarmCreep
     case "repair": {
       const result = creep.repair(action.target);
       if (result === ERR_NOT_IN_RANGE) {
-        creep.moveTo(action.target, { visualizePathStyle: { stroke: "#ffff00" } });
+        moveCreep(creep, action.target, { visualizePathStyle: { stroke: "#ffff00" } });
       }
       break;
     }
@@ -311,7 +312,7 @@ export function executeAction(creep: Creep, action: SwarmAction, ctx: SwarmCreep
     case "upgrade": {
       const result = creep.upgradeController(action.target);
       if (result === ERR_NOT_IN_RANGE) {
-        creep.moveTo(action.target, { visualizePathStyle: { stroke: "#ffffff" } });
+        moveCreep(creep, action.target, { visualizePathStyle: { stroke: "#ffffff" } });
       }
       break;
     }
@@ -319,7 +320,7 @@ export function executeAction(creep: Creep, action: SwarmAction, ctx: SwarmCreep
     case "attack": {
       const result = creep.attack(action.target);
       if (result === ERR_NOT_IN_RANGE) {
-        creep.moveTo(action.target, { visualizePathStyle: { stroke: "#ff0000" } });
+        moveCreep(creep, action.target, { visualizePathStyle: { stroke: "#ff0000" } });
       }
       break;
     }
@@ -327,7 +328,7 @@ export function executeAction(creep: Creep, action: SwarmAction, ctx: SwarmCreep
     case "rangedAttack": {
       const result = creep.rangedAttack(action.target);
       if (result === ERR_NOT_IN_RANGE) {
-        creep.moveTo(action.target, { visualizePathStyle: { stroke: "#ff0000" } });
+        moveCreep(creep, action.target, { visualizePathStyle: { stroke: "#ff0000" } });
       }
       break;
     }
@@ -335,21 +336,21 @@ export function executeAction(creep: Creep, action: SwarmAction, ctx: SwarmCreep
     case "heal": {
       const result = creep.heal(action.target);
       if (result === ERR_NOT_IN_RANGE) {
-        creep.moveTo(action.target, { visualizePathStyle: { stroke: "#00ff00" } });
+        moveCreep(creep, action.target, { visualizePathStyle: { stroke: "#00ff00" } });
       }
       break;
     }
 
     case "rangedHeal": {
       creep.rangedHeal(action.target);
-      creep.moveTo(action.target, { visualizePathStyle: { stroke: "#00ff00" } });
+      moveCreep(creep, action.target, { visualizePathStyle: { stroke: "#00ff00" } });
       break;
     }
 
     case "dismantle": {
       const result = creep.dismantle(action.target);
       if (result === ERR_NOT_IN_RANGE) {
-        creep.moveTo(action.target, { visualizePathStyle: { stroke: "#ff0000" } });
+        moveCreep(creep, action.target, { visualizePathStyle: { stroke: "#ff0000" } });
       }
       break;
     }
@@ -357,7 +358,7 @@ export function executeAction(creep: Creep, action: SwarmAction, ctx: SwarmCreep
     case "claim": {
       const result = creep.claimController(action.target);
       if (result === ERR_NOT_IN_RANGE) {
-        creep.moveTo(action.target, { visualizePathStyle: { stroke: "#00ff00" } });
+        moveCreep(creep, action.target, { visualizePathStyle: { stroke: "#00ff00" } });
       }
       break;
     }
@@ -365,7 +366,7 @@ export function executeAction(creep: Creep, action: SwarmAction, ctx: SwarmCreep
     case "reserve": {
       const result = creep.reserveController(action.target);
       if (result === ERR_NOT_IN_RANGE) {
-        creep.moveTo(action.target, { visualizePathStyle: { stroke: "#00ff00" } });
+        moveCreep(creep, action.target, { visualizePathStyle: { stroke: "#00ff00" } });
       }
       break;
     }
@@ -373,36 +374,23 @@ export function executeAction(creep: Creep, action: SwarmAction, ctx: SwarmCreep
     case "attackController": {
       const result = creep.attackController(action.target);
       if (result === ERR_NOT_IN_RANGE) {
-        creep.moveTo(action.target, { visualizePathStyle: { stroke: "#ff0000" } });
+        moveCreep(creep, action.target, { visualizePathStyle: { stroke: "#ff0000" } });
       }
       break;
     }
 
     case "moveTo": {
-      creep.moveTo(action.target, { visualizePathStyle: { stroke: "#0000ff" } });
+      moveCreep(creep, action.target, { visualizePathStyle: { stroke: "#0000ff" } });
       break;
     }
 
     case "moveToRoom": {
-      const exit = creep.room.findExitTo(action.roomName);
-      if (exit !== ERR_NO_PATH && exit !== ERR_INVALID_ARGS) {
-        const exitPos = creep.pos.findClosestByRange(exit);
-        if (exitPos) {
-          creep.moveTo(exitPos);
-        }
-      }
+      moveToRoom(creep, action.roomName);
       break;
     }
 
     case "flee": {
-      const flee = PathFinder.search(
-        creep.pos,
-        action.from.map(pos => ({ pos, range: 10 })),
-        { flee: true }
-      );
-      if (flee.path.length > 0) {
-        creep.moveByPath(flee.path);
-      }
+      fleeFrom(creep, action.from, 10);
       break;
     }
 
@@ -417,7 +405,7 @@ export function executeAction(creep: Creep, action: SwarmAction, ctx: SwarmCreep
 
     case "wait": {
       if (!creep.pos.isEqualTo(action.position)) {
-        creep.moveTo(action.position);
+        moveCreep(creep, action.position);
       }
       break;
     }

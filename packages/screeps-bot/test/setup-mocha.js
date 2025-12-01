@@ -1,5 +1,47 @@
 //inject mocha globally to allow custom interface refer without direct import - bypass bundle issue
 global._ = require('lodash');
+
+// Mock Game object early - required by libraries like emyrk-screeps-cartographer
+// that access Game globals at module load time
+global.Game = {
+  creeps: {},
+  rooms: {},
+  spawns: {},
+  time: 12345,
+  cpu: {
+    getUsed: () => 0,
+    limit: 20,
+    tickLimit: 500,
+    bucket: 10000,
+    shardLimits: {},
+    unlocked: false,
+    unlockedTime: 0
+  },
+  powerCreeps: {},
+  map: {
+    getRoomLinearDistance: () => 1,
+    getWorldSize: () => 252,
+    describeExits: () => ({}),
+    findRoute: () => [],
+    findExit: () => null,
+    getRoomTerrain: () => ({
+      get: () => 0,
+      getRawBuffer: () => new Uint8Array(2500)
+    }),
+    getRoomStatus: () => ({ status: 'normal', timestamp: null }),
+    visual: {}
+  }
+};
+
+// Mock Memory early as well
+global.Memory = {
+  creeps: {},
+  rooms: {},
+  spawns: {},
+  flags: {},
+  powerCreeps: {}
+};
+
 global.mocha = require('mocha');
 global.chai = require('chai');
 global.sinon = require('sinon');

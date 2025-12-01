@@ -6,6 +6,7 @@
  */
 
 import type { SwarmAction, SwarmCreepContext } from "./context";
+import { moveCreep, moveToRoom } from "../../utils/movement";
 
 // =============================================================================
 // PowerHarvester - Harvest from power banks
@@ -359,31 +360,25 @@ export function executePowerCreepAction(powerCreep: PowerCreep, action: PowerCre
         ? powerCreep.usePower(action.power, action.target)
         : powerCreep.usePower(action.power);
       if (result === ERR_NOT_IN_RANGE && action.target) {
-        powerCreep.moveTo(action.target);
+        moveCreep(powerCreep, action.target);
       }
       break;
     }
 
     case "moveTo": {
-      powerCreep.moveTo(action.target);
+      moveCreep(powerCreep, action.target);
       break;
     }
 
     case "moveToRoom": {
-      const exit = powerCreep.room?.findExitTo(action.roomName);
-      if (exit && exit !== ERR_NO_PATH && exit !== ERR_INVALID_ARGS) {
-        const exitPos = powerCreep.pos.findClosestByRange(exit);
-        if (exitPos) {
-          powerCreep.moveTo(exitPos);
-        }
-      }
+      moveToRoom(powerCreep, action.roomName);
       break;
     }
 
     case "renewSelf": {
       const result = powerCreep.renew(action.spawn);
       if (result === ERR_NOT_IN_RANGE) {
-        powerCreep.moveTo(action.spawn);
+        moveCreep(powerCreep, action.spawn);
       }
       break;
     }
@@ -392,7 +387,7 @@ export function executePowerCreepAction(powerCreep: PowerCreep, action: PowerCre
       if (powerCreep.room?.controller) {
         const result = powerCreep.enableRoom(powerCreep.room.controller);
         if (result === ERR_NOT_IN_RANGE) {
-          powerCreep.moveTo(powerCreep.room.controller);
+          moveCreep(powerCreep, powerCreep.room.controller);
         }
       }
       break;
