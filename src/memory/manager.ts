@@ -65,7 +65,7 @@ export class MemoryManager {
   public getOvermind(): OvermindMemory {
     this.ensureOvermindMemory();
     const mem = Memory as unknown as Record<string, OvermindMemory>;
-    return mem[OVERMIND_KEY] ;
+    return mem[OVERMIND_KEY];
   }
 
   /**
@@ -74,7 +74,7 @@ export class MemoryManager {
   public getClusters(): Record<string, ClusterMemory> {
     this.ensureClustersMemory();
     const mem = Memory as unknown as Record<string, Record<string, ClusterMemory>>;
-    return mem[CLUSTERS_KEY] ;
+    return mem[CLUSTERS_KEY];
   }
 
   /**

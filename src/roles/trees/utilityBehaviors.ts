@@ -255,8 +255,8 @@ export function evaluateEngineer(ctx: SwarmCreepContext): SwarmAction {
 
     // Priority 3: Ramparts (maintain up to 100k hits)
     const rampart = ctx.creep.pos.findClosestByRange(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_RAMPART && (s ).hits < 100000
-    }) ;
+      filter: s => s.structureType === STRUCTURE_RAMPART && (s as StructureRampart).hits < 100000
+    }) as StructureRampart | null;
 
     if (rampart) {
       return { type: "repair", target: rampart };
