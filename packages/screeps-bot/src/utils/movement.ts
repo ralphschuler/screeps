@@ -48,6 +48,8 @@ export function moveCreep(
 
 /**
  * Move a creep to a specific room by finding and moving to an exit.
+ * Uses the room center (25, 25) with a range of 20 to navigate to any accessible
+ * position within the target room - this is the standard approach for cross-room navigation.
  *
  * @param creep - The creep or power creep to move
  * @param roomName - The name of the destination room
@@ -60,24 +62,26 @@ export function moveToRoom(
   opts?: MoveOpts
 ): CreepMoveReturnCode | -2 | -5 | -10 | undefined {
   // Use cartographer's built-in cross-room pathing capability
+  // Target room center (25,25) with range 20 means "anywhere in the target room"
   const targetPos = new RoomPosition(25, 25, roomName);
   return cartographerMoveTo(creep, { pos: targetPos, range: 20 }, opts);
 }
 
 /**
  * Move a creep away from a set of positions (flee behavior).
+ * This function always enables flee mode in the movement options.
  *
  * @param creep - The creep to move
  * @param threats - Array of positions to flee from
  * @param range - How far to stay away from threats (default 10)
- * @param opts - Optional movement options
+ * @param opts - Optional movement options (flee is always set to true)
  * @returns The result of the movement action
  */
 export function fleeFrom(
   creep: Creep | PowerCreep,
   threats: RoomPosition[],
   range: number = 10,
-  opts?: MoveOpts
+  opts?: Omit<MoveOpts, "flee">
 ): CreepMoveReturnCode | -2 | -5 | -10 {
   const fleeTargets = threats.map(pos => ({ pos, range }));
   return cartographerMoveTo(creep, fleeTargets, { ...opts, flee: true });
