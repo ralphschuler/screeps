@@ -12,7 +12,7 @@ jobs:
       contents: write
     defaults:
       run:
-        working-directory: packages/screeeps-bot
+        working-directory: packages/screeps-bot
     env:
       CI: true
     steps:
@@ -22,7 +22,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: packages/screeeps-bot/.nvmrc
+          node-version-file: packages/screeps-bot/.nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -41,8 +41,8 @@ jobs:
           name: Release ${{ github.run_number }}
           generate_release_notes: true
           files: |
-            packages/screeeps-bot/dist/**
-            packages/screeeps-bot/dist.tar.gz
+            packages/screeps-bot/dist/**
+            packages/screeps-bot/dist.tar.gz
           make_latest: true
           draft: false
           prerelease: false

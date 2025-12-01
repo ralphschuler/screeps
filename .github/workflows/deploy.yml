@@ -22,7 +22,7 @@ jobs:
           #- screeps.newbieland.net
     defaults:
       run:
-        working-directory: packages/screeeps-bot
+        working-directory: packages/screeps-bot
     env:
       CI: true
       SCREEPS_TOKEN: ${{ secrets.SCREEPS_TOKEN }}
@@ -38,7 +38,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: packages/screeeps-bot/.nvmrc
+          node-version-file: packages/screeps-bot/.nvmrc
           cache: npm
 
       - name: Install dependencies
