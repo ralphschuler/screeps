@@ -7,12 +7,30 @@ on:
 
 jobs:
   deploy:
+    name: Deploy (${{ matrix.environment }})
     runs-on: ubuntu-latest
+    environment: ${{ matrix.environment }}
+    strategy:
+      fail-fast: false
+      matrix:
+        environment:
+          - sim.screeps.com
+          - season.screeps.com
+          - ptr.screeps.com
+          - screeps.com
+          - screeps.nyphon.de
+          - screeps.newbieland.net
     defaults:
       run:
         working-directory: packages/screeeps-bot
     env:
       CI: true
+      SCREEPS_TOKEN: ${{ secrets.SCREEPS_TOKEN }}
+      SCREEPS_PROTOCOL: ${{ vars.SCREEPS_PROTOCOL }}
+      SCREEPS_HOSTNAME: ${{ vars.SCREEPS_HOSTNAME }}
+      SCREEPS_PORT: ${{ vars.SCREEPS_PORT }}
+      SCREEPS_PATH: ${{ vars.SCREEPS_PATH }}
+      SCREEPS_BRANCH: ${{ vars.SCREEPS_BRANCH }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,7 +47,5 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Deploy
-        run: |
-          echo "Deploying release ${{ github.event.release.tag_name }}"
-          echo "Add deployment commands (e.g., upload to Screeps) here."
+      - name: Push to Screeps
+        run: npm run push

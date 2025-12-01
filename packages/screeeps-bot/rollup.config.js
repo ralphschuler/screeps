@@ -6,13 +6,14 @@ import commonjs from "@rollup/plugin-commonjs";
 import typescript from "rollup-plugin-typescript2";
 import screeps from "rollup-plugin-screeps";
 
-let cfg;
-const dest = process.env.DEST;
-if (!dest) {
-  console.log("No destination specified - code will be compiled but not uploaded");
-} else if ((cfg = require("./screeps.json")[dest]) == null) {
-  throw new Error("Invalid upload destination");
-}
+const cfg = {
+  token: process.env.SCREEPS_TOKEN,
+  protocol: process.env.SCREEPS_PROTOCOL || "https",
+  hostname: process.env.SCREEPS_HOSTNAME || "screeps.com",
+  port: process.env.SCREEPS_PORT || 443,
+  path: process.env.SCREEPS_PATH || "/",
+  branch: process.env.SCREEPS_BRANCH || "main"
+};
 
 export default {
   input: "src/main.ts",
@@ -27,6 +28,6 @@ export default {
     resolve({ rootDir: "src" }),
     commonjs(),
     typescript({ tsconfig: "./tsconfig.json" }),
-    screeps({ config: cfg, dryRun: cfg == null })
+    screeps({ config: { screeps: cfg }, dryRun: cfg == null })
   ]
 };
