@@ -3,15 +3,29 @@ export const Game: {
   rooms: any;
   spawns: any;
   time: any;
+  cpu: any;
+  powerCreeps: any;
 } = {
   creeps: {},
-  rooms: [],
+  rooms: {},
   spawns: {},
-  time: 12345
+  time: 12345,
+  cpu: {
+    getUsed: () => 0,
+    limit: 20,
+    tickLimit: 500,
+    bucket: 10000,
+    shardLimits: {},
+    unlocked: false,
+    unlockedTime: 0
+  },
+  powerCreeps: {}
 };
 
 export const Memory: {
   creeps: { [name: string]: any };
+  rooms?: { [name: string]: any };
 } = {
-  creeps: {}
+  creeps: {},
+  rooms: {}
 };
