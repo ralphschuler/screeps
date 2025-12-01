@@ -16,6 +16,7 @@ services:
     ports:
       - "${SCREEPS_LAUNCHER_HOST:-0.0.0.0}:21025:21025/tcp"
     environment:
+      MAPTOOL_PASS: ${MAPTOOL_PASS:?Maptool password is required}
       STEAM_KEY: ${STEAM_KEY:?Steam API key is required}
       MONGO_HOST: mongo
       REDIS_HOST: redis
