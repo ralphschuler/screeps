@@ -278,3 +278,8 @@ serverConfig:
 launcherOptions:
   autoUpdate: true
   logConsole: true
+
+env:
+  backend:
+    MAPTOOL_USER: admin
+    MAPTOOL_PASS: ${process.env.MAPTOOL_PASS}
