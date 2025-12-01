@@ -1,23 +1,25 @@
 /**
- * Power Role Behaviors
+ * Power Behaviors
  *
- * Behavior functions for power-related creep and Power Creep roles.
- * Includes power harvesting/carrying creeps and PowerCreep management.
+ * Behavior functions for power-related creeps and Power Creeps.
+ * Includes power harvesting (regular creeps) and Power Creep abilities.
  */
 
-import type { SwarmAction, SwarmCreepContext } from "./context";
+import type { CreepAction, CreepContext } from "./types";
+import type { SwarmCreepMemory } from "../../memory/schemas";
 import { moveCreep, moveToRoom } from "../../utils/movement";
 
 // =============================================================================
-// PowerHarvester - Harvest from power banks
+// Regular Creep Power Roles
 // =============================================================================
 
-export function evaluatePowerHarvester(ctx: SwarmCreepContext): SwarmAction {
+/**
+ * PowerHarvester - Attack power banks in highway rooms.
+ */
+export function powerHarvester(ctx: CreepContext): CreepAction {
   const targetRoom = ctx.memory.targetRoom;
 
-  if (!targetRoom) {
-    return { type: "idle" };
-  }
+  if (!targetRoom) return { type: "idle" };
 
   // Move to target room
   if (ctx.room.name !== targetRoom) {
@@ -30,7 +32,7 @@ export function evaluatePowerHarvester(ctx: SwarmCreepContext): SwarmAction {
   })[0] as StructurePowerBank | undefined;
 
   if (!powerBank) {
-    // Power bank destroyed, return home
+    // Power bank destroyed - return home
     delete ctx.memory.targetRoom;
     return { type: "moveToRoom", roomName: ctx.homeRoom };
   }
@@ -44,14 +46,11 @@ export function evaluatePowerHarvester(ctx: SwarmCreepContext): SwarmAction {
   return { type: "idle" };
 }
 
-// =============================================================================
-// PowerCarrier - Carry power from destroyed banks
-// =============================================================================
-
-export function evaluatePowerCarrier(ctx: SwarmCreepContext): SwarmAction {
+/**
+ * PowerCarrier - Collect power from destroyed banks.
+ */
+export function powerCarrier(ctx: CreepContext): CreepAction {
   const targetRoom = ctx.memory.targetRoom;
-
-  // Check if carrying power
   const carryingPower = ctx.creep.store.getUsedCapacity(RESOURCE_POWER) > 0;
 
   if (carryingPower) {
@@ -62,7 +61,6 @@ export function evaluatePowerCarrier(ctx: SwarmCreepContext): SwarmAction {
 
     const homeRoom = Game.rooms[ctx.homeRoom];
     if (homeRoom) {
-      // Deposit in power spawn or storage
       const powerSpawn = homeRoom.find(FIND_MY_STRUCTURES, {
         filter: s => s.structureType === STRUCTURE_POWER_SPAWN
       })[0] as StructurePowerSpawn | undefined;
@@ -79,57 +77,50 @@ export function evaluatePowerCarrier(ctx: SwarmCreepContext): SwarmAction {
     return { type: "idle" };
   }
 
-  if (!targetRoom) {
-    return { type: "idle" };
-  }
+  if (!targetRoom) return { type: "idle" };
 
   // Move to target room
   if (ctx.room.name !== targetRoom) {
     return { type: "moveToRoom", roomName: targetRoom };
   }
 
-  // Look for dropped power
+  // Collect dropped power
   const droppedPower = ctx.room.find(FIND_DROPPED_RESOURCES, {
     filter: r => r.resourceType === RESOURCE_POWER
   })[0];
 
-  if (droppedPower) {
-    return { type: "pickup", target: droppedPower };
-  }
+  if (droppedPower) return { type: "pickup", target: droppedPower };
 
-  // Look for ruins with power
+  // Collect from ruins
   const ruin = ctx.room.find(FIND_RUINS, {
     filter: r => r.store.getUsedCapacity(RESOURCE_POWER) > 0
   })[0];
 
-  if (ruin) {
-    return { type: "withdraw", target: ruin, resourceType: RESOURCE_POWER };
-  }
+  if (ruin) return { type: "withdraw", target: ruin, resourceType: RESOURCE_POWER };
 
-  // Check if power bank still exists - wait nearby
+  // Wait near power bank if it still exists
   const powerBank = ctx.room.find(FIND_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_POWER_BANK
   })[0] as StructurePowerBank | undefined;
 
   if (powerBank) {
-    // Wait near power bank
     if (ctx.creep.pos.getRangeTo(powerBank) > 3) {
       return { type: "moveTo", target: powerBank };
     }
     return { type: "idle" };
   }
 
-  // No power bank and no dropped power - return home
+  // No power bank and no power - return home
   delete ctx.memory.targetRoom;
   return { type: "moveToRoom", roomName: ctx.homeRoom };
 }
 
 // =============================================================================
-// PowerCreep Handling (special handling for PowerCreeps)
+// Power Creep Types and Context
 // =============================================================================
 
 /**
- * Extended context for Power Creep decisions
+ * Context for Power Creep decision making.
  */
 export interface PowerCreepContext {
   powerCreep: PowerCreep;
@@ -143,14 +134,12 @@ export interface PowerCreepContext {
   spawns: StructureSpawn[];
   extensions: StructureExtension[];
   powerSpawn: StructurePowerSpawn | undefined;
-  /** Available power creep abilities */
-  powers: PowerConstant[];
-  /** Current ops resource count */
+  availablePowers: PowerConstant[];
   ops: number;
 }
 
 /**
- * Power Creep action types
+ * Actions a Power Creep can perform.
  */
 export type PowerCreepAction =
   | { type: "usePower"; power: PowerConstant; target?: RoomObject }
@@ -161,7 +150,7 @@ export type PowerCreepAction =
   | { type: "idle" };
 
 /**
- * Create Power Creep context
+ * Create context for a Power Creep.
  */
 export function createPowerCreepContext(powerCreep: PowerCreep): PowerCreepContext | null {
   if (!powerCreep.room) return null;
@@ -188,11 +177,12 @@ export function createPowerCreepContext(powerCreep: PowerCreep): PowerCreepConte
     filter: s => s.structureType === STRUCTURE_POWER_SPAWN
   })[0] as StructurePowerSpawn | undefined;
 
-  const powers: PowerConstant[] = [];
+  // Get available (off-cooldown) powers
+  const availablePowers: PowerConstant[] = [];
   for (const power of Object.keys(powerCreep.powers) as unknown as PowerConstant[]) {
     const powerData = powerCreep.powers[power];
     if (powerData && powerData.cooldown === 0) {
-      powers.push(power);
+      availablePowers.push(power);
     }
   }
 
@@ -208,69 +198,67 @@ export function createPowerCreepContext(powerCreep: PowerCreep): PowerCreepConte
     spawns,
     extensions,
     powerSpawn,
-    powers,
+    availablePowers,
     ops: powerCreep.store.getUsedCapacity(RESOURCE_OPS)
   };
 }
 
+// =============================================================================
+// Power Creep Behaviors
+// =============================================================================
+
 /**
- * Evaluate PowerQueen behavior - Economy-focused Operator
+ * PowerQueen - Economy-focused Operator.
+ * Uses powers to boost spawning, extensions, labs, and factory.
  */
-export function evaluatePowerQueen(ctx: PowerCreepContext): PowerCreepAction {
-  // Check if needs renewal (ticksToLive < 1000)
+export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
+  // Check for renewal
   if (ctx.powerCreep.ticksToLive !== undefined && ctx.powerCreep.ticksToLive < 1000) {
-    if (ctx.powerSpawn) {
-      return { type: "renewSelf", spawn: ctx.powerSpawn };
-    }
+    if (ctx.powerSpawn) return { type: "renewSelf", spawn: ctx.powerSpawn };
   }
 
-  // Check available powers
-  const availablePowers = ctx.powers;
+  const powers = ctx.availablePowers;
 
-  // Priority 1: OPERATE_SPAWN when spawns are active
-  if (availablePowers.includes(PWR_OPERATE_SPAWN) && ctx.ops >= 100) {
+  // Boost spawning
+  if (powers.includes(PWR_OPERATE_SPAWN) && ctx.ops >= 100) {
     const busySpawn = ctx.spawns.find(s => s.spawning !== null);
-    if (busySpawn) {
-      return { type: "usePower", power: PWR_OPERATE_SPAWN, target: busySpawn };
-    }
+    if (busySpawn) return { type: "usePower", power: PWR_OPERATE_SPAWN, target: busySpawn };
   }
 
-  // Priority 2: OPERATE_EXTENSION when low on energy
-  if (availablePowers.includes(PWR_OPERATE_EXTENSION) && ctx.ops >= 2) {
-    const totalFreeCapacity = ctx.extensions.reduce((sum, ext) => sum + ext.store.getFreeCapacity(RESOURCE_ENERGY), 0);
-    if (totalFreeCapacity > 0 && ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 10000) {
+  // Fill extensions
+  if (powers.includes(PWR_OPERATE_EXTENSION) && ctx.ops >= 2) {
+    const freeCapacity = ctx.extensions.reduce((sum, ext) => sum + ext.store.getFreeCapacity(RESOURCE_ENERGY), 0);
+    if (freeCapacity > 0 && ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 10000) {
       return { type: "usePower", power: PWR_OPERATE_EXTENSION, target: ctx.storage };
     }
   }
 
-  // Priority 3: OPERATE_STORAGE for capacity boost
-  if (availablePowers.includes(PWR_OPERATE_STORAGE) && ctx.ops >= 100 && ctx.storage) {
+  // Boost storage capacity
+  if (powers.includes(PWR_OPERATE_STORAGE) && ctx.ops >= 100 && ctx.storage) {
     if (ctx.storage.store.getUsedCapacity() > ctx.storage.store.getCapacity() * 0.9) {
       return { type: "usePower", power: PWR_OPERATE_STORAGE, target: ctx.storage };
     }
   }
 
-  // Priority 4: OPERATE_LAB for reaction speed
-  if (availablePowers.includes(PWR_OPERATE_LAB) && ctx.ops >= 10) {
+  // Boost lab reactions
+  if (powers.includes(PWR_OPERATE_LAB) && ctx.ops >= 10) {
     const activeLab = ctx.labs.find(l => l.cooldown === 0 && l.mineralType);
-    if (activeLab) {
-      return { type: "usePower", power: PWR_OPERATE_LAB, target: activeLab };
-    }
+    if (activeLab) return { type: "usePower", power: PWR_OPERATE_LAB, target: activeLab };
   }
 
-  // Priority 5: OPERATE_FACTORY for commodity production
-  if (availablePowers.includes(PWR_OPERATE_FACTORY) && ctx.ops >= 100 && ctx.factory) {
+  // Boost factory
+  if (powers.includes(PWR_OPERATE_FACTORY) && ctx.ops >= 100 && ctx.factory) {
     if (ctx.factory.cooldown === 0) {
       return { type: "usePower", power: PWR_OPERATE_FACTORY, target: ctx.factory };
     }
   }
 
-  // Priority 6: GENERATE_OPS when low
-  if (availablePowers.includes(PWR_GENERATE_OPS) && ctx.ops < 50) {
+  // Generate ops when low
+  if (powers.includes(PWR_GENERATE_OPS) && ctx.ops < 50) {
     return { type: "usePower", power: PWR_GENERATE_OPS };
   }
 
-  // Move to home room if not there
+  // Move to home room
   if (!ctx.isInHomeRoom) {
     return { type: "moveToRoom", roomName: ctx.homeRoom };
   }
@@ -284,65 +272,56 @@ export function evaluatePowerQueen(ctx: PowerCreepContext): PowerCreepAction {
 }
 
 /**
- * Evaluate PowerWarrior behavior - Combat-support power creep
+ * PowerWarrior - Combat-support Power Creep.
+ * Uses powers for defense and offense.
  */
-export function evaluatePowerWarrior(ctx: PowerCreepContext): PowerCreepAction {
-  // Check if needs renewal
+export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
+  // Check for renewal
   if (ctx.powerCreep.ticksToLive !== undefined && ctx.powerCreep.ticksToLive < 1000) {
-    if (ctx.powerSpawn) {
-      return { type: "renewSelf", spawn: ctx.powerSpawn };
-    }
+    if (ctx.powerSpawn) return { type: "renewSelf", spawn: ctx.powerSpawn };
   }
 
-  const availablePowers = ctx.powers;
+  const powers = ctx.availablePowers;
 
-  // Priority 1: GENERATE_OPS when low
-  if (availablePowers.includes(PWR_GENERATE_OPS) && ctx.ops < 50) {
+  // Generate ops when low
+  if (powers.includes(PWR_GENERATE_OPS) && ctx.ops < 50) {
     return { type: "usePower", power: PWR_GENERATE_OPS };
   }
 
-  // Priority 2: OPERATE_TOWER for defense
-  if (availablePowers.includes(PWR_OPERATE_TOWER) && ctx.ops >= 10) {
+  // Boost towers for defense
+  if (powers.includes(PWR_OPERATE_TOWER) && ctx.ops >= 10) {
     const hostiles = ctx.room.find(FIND_HOSTILE_CREEPS);
     if (hostiles.length > 0) {
       const tower = ctx.room.find(FIND_MY_STRUCTURES, {
         filter: s => s.structureType === STRUCTURE_TOWER
       })[0] as StructureTower | undefined;
-      if (tower) {
-        return { type: "usePower", power: PWR_OPERATE_TOWER, target: tower };
-      }
+      if (tower) return { type: "usePower", power: PWR_OPERATE_TOWER, target: tower };
     }
   }
 
-  // Priority 3: FORTIFY for boosting ramparts/walls
-  if (availablePowers.includes(PWR_FORTIFY) && ctx.ops >= 5) {
+  // Fortify ramparts
+  if (powers.includes(PWR_FORTIFY) && ctx.ops >= 5) {
     const lowRampart = ctx.room.find(FIND_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_RAMPART && s.hits < 1000000
     })[0] as StructureRampart | undefined;
-    if (lowRampart) {
-      return { type: "usePower", power: PWR_FORTIFY, target: lowRampart };
-    }
+    if (lowRampart) return { type: "usePower", power: PWR_FORTIFY, target: lowRampart };
   }
 
-  // Priority 4: DISRUPT_SPAWN on enemy spawns (if in enemy room)
-  if (availablePowers.includes(PWR_DISRUPT_SPAWN) && ctx.ops >= 10) {
+  // Disrupt enemy spawns
+  if (powers.includes(PWR_DISRUPT_SPAWN) && ctx.ops >= 10) {
     const enemySpawn = ctx.room.find(FIND_HOSTILE_SPAWNS)[0];
-    if (enemySpawn) {
-      return { type: "usePower", power: PWR_DISRUPT_SPAWN, target: enemySpawn };
-    }
+    if (enemySpawn) return { type: "usePower", power: PWR_DISRUPT_SPAWN, target: enemySpawn };
   }
 
-  // Priority 5: DISRUPT_TOWER on enemy towers
-  if (availablePowers.includes(PWR_DISRUPT_TOWER) && ctx.ops >= 10) {
+  // Disrupt enemy towers
+  if (powers.includes(PWR_DISRUPT_TOWER) && ctx.ops >= 10) {
     const enemyTower = ctx.room.find(FIND_HOSTILE_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_TOWER
     })[0] as StructureTower | undefined;
-    if (enemyTower) {
-      return { type: "usePower", power: PWR_DISRUPT_TOWER, target: enemyTower };
-    }
+    if (enemyTower) return { type: "usePower", power: PWR_DISRUPT_TOWER, target: enemyTower };
   }
 
-  // Move to home room if not there
+  // Move to home room
   if (!ctx.isInHomeRoom) {
     return { type: "moveToRoom", roomName: ctx.homeRoom };
   }
@@ -351,7 +330,7 @@ export function evaluatePowerWarrior(ctx: PowerCreepContext): PowerCreepAction {
 }
 
 /**
- * Execute Power Creep action
+ * Execute a Power Creep action.
  */
 export function executePowerCreepAction(powerCreep: PowerCreep, action: PowerCreepAction): void {
   switch (action.type) {
@@ -365,15 +344,13 @@ export function executePowerCreepAction(powerCreep: PowerCreep, action: PowerCre
       break;
     }
 
-    case "moveTo": {
+    case "moveTo":
       moveCreep(powerCreep, action.target);
       break;
-    }
 
-    case "moveToRoom": {
+    case "moveToRoom":
       moveToRoom(powerCreep, action.roomName);
       break;
-    }
 
     case "renewSelf": {
       const result = powerCreep.renew(action.spawn);
@@ -383,7 +360,7 @@ export function executePowerCreepAction(powerCreep: PowerCreep, action: PowerCre
       break;
     }
 
-    case "enableRoom": {
+    case "enableRoom":
       if (powerCreep.room?.controller) {
         const result = powerCreep.enableRoom(powerCreep.room.controller);
         if (result === ERR_NOT_IN_RANGE) {
@@ -391,10 +368,9 @@ export function executePowerCreepAction(powerCreep: PowerCreep, action: PowerCre
         }
       }
       break;
-    }
 
     case "idle":
-      // Do nothing
+      // No action
       break;
   }
 }
@@ -403,12 +379,24 @@ export function executePowerCreepAction(powerCreep: PowerCreep, action: PowerCre
 // Dispatcher
 // =============================================================================
 
-const powerEvaluators: Record<string, (ctx: SwarmCreepContext) => SwarmAction> = {
-  powerHarvester: evaluatePowerHarvester,
-  powerCarrier: evaluatePowerCarrier
+const powerBehaviors: Record<string, (ctx: CreepContext) => CreepAction> = {
+  powerHarvester,
+  powerCarrier
 };
 
-export function evaluatePowerRole(ctx: SwarmCreepContext): SwarmAction {
-  const evaluator = powerEvaluators[ctx.memory.role] ?? evaluatePowerHarvester;
-  return evaluator(ctx);
+/**
+ * Evaluate and return an action for a power-related creep.
+ */
+export function evaluatePowerBehavior(ctx: CreepContext): CreepAction {
+  const behavior = powerBehaviors[ctx.memory.role] ?? powerHarvester;
+  return behavior(ctx);
+}
+
+/**
+ * Evaluate and return an action for a Power Creep.
+ */
+export function evaluatePowerCreepBehavior(ctx: PowerCreepContext): PowerCreepAction {
+  const memory = ctx.powerCreep.memory as unknown as SwarmCreepMemory;
+  if (memory.role === "powerWarrior") return powerWarrior(ctx);
+  return powerQueen(ctx);
 }

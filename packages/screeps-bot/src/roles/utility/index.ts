@@ -10,19 +10,13 @@
  * - TerminalManager
  */
 
-import { createSwarmContext, executeAction } from "../trees/context";
-import { evaluateUtilityRole } from "../trees/utilityBehaviors";
+import { createContext, evaluateUtilityBehavior, executeAction } from "../behaviors";
 
 /**
- * Run utility role
+ * Run utility role behavior.
  */
 export function runUtilityRole(creep: Creep): void {
-  // Create context with all room state
-  const ctx = createSwarmContext(creep);
-
-  // Evaluate behavior to get action
-  const action = evaluateUtilityRole(ctx);
-
-  // Execute the action
+  const ctx = createContext(creep);
+  const action = evaluateUtilityBehavior(ctx);
   executeAction(creep, action, ctx);
 }

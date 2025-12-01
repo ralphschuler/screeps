@@ -1,53 +1,37 @@
 /**
- * Military Role Behaviors
+ * Military Behaviors
  *
- * Behavior functions for all military creep roles.
- * Includes home defense and offensive combat roles.
+ * Simple, human-readable behavior functions for military roles.
+ * Includes defense, offense, and squad-based combat.
  */
 
-import type { SwarmAction, SwarmCreepContext } from "./context";
+import type { CreepAction, CreepContext } from "./types";
 import type { SquadMemory, SwarmCreepMemory } from "../../memory/schemas";
 
 // =============================================================================
-// Helper Functions
+// Combat Helpers
 // =============================================================================
 
 /**
- * Find hostile target with priority scoring
+ * Find the highest priority hostile target.
  * Priority: Healers > Ranged > Melee > Claimers > Workers
  */
-function findPriorityTarget(ctx: SwarmCreepContext): Creep | null {
+function findPriorityTarget(ctx: CreepContext): Creep | null {
   if (ctx.hostiles.length === 0) return null;
 
   const scored = ctx.hostiles.map(hostile => {
     let score = 0;
-
     for (const part of hostile.body) {
       if (!part.hits) continue;
-
       switch (part.type) {
-        case HEAL:
-          score += 100;
-          break;
-        case RANGED_ATTACK:
-          score += 50;
-          break;
-        case ATTACK:
-          score += 40;
-          break;
-        case CLAIM:
-          score += 60;
-          break;
-        case WORK:
-          score += 30;
-          break;
+        case HEAL: score += 100; break;
+        case RANGED_ATTACK: score += 50; break;
+        case ATTACK: score += 40; break;
+        case CLAIM: score += 60; break;
+        case WORK: score += 30; break;
       }
-
-      if (part.boost) {
-        score += 20;
-      }
+      if (part.boost) score += 20;
     }
-
     return { hostile, score };
   });
 
@@ -56,14 +40,14 @@ function findPriorityTarget(ctx: SwarmCreepContext): Creep | null {
 }
 
 /**
- * Check if creep has specific body parts
+ * Check if creep has a specific body part.
  */
 function hasBodyPart(creep: Creep, part: BodyPartConstant): boolean {
   return creep.getActiveBodyparts(part) > 0;
 }
 
 /**
- * Get squad memory
+ * Get squad memory by ID.
  */
 function getSquadMemory(squadId: string): SquadMemory | undefined {
   const mem = Memory as unknown as Record<string, Record<string, SquadMemory>>;
@@ -71,10 +55,14 @@ function getSquadMemory(squadId: string): SquadMemory | undefined {
 }
 
 // =============================================================================
-// GuardAnt - Home defense
+// Role Behaviors
 // =============================================================================
 
-export function evaluateGuard(ctx: SwarmCreepContext): SwarmAction {
+/**
+ * Guard - Home defense creep.
+ * Attacks nearby hostiles, patrols near spawn when idle.
+ */
+export function guard(ctx: CreepContext): CreepAction {
   const target = findPriorityTarget(ctx);
 
   if (target) {
@@ -82,38 +70,31 @@ export function evaluateGuard(ctx: SwarmCreepContext): SwarmAction {
     const hasRanged = hasBodyPart(ctx.creep, RANGED_ATTACK);
     const hasMelee = hasBodyPart(ctx.creep, ATTACK);
 
-    // Attack if in range
-    if (hasRanged && range <= 3) {
-      return { type: "rangedAttack", target };
-    }
-
-    if (hasMelee && range <= 1) {
-      return { type: "attack", target };
-    }
-
-    // Move towards target
+    if (hasRanged && range <= 3) return { type: "rangedAttack", target };
+    if (hasMelee && range <= 1) return { type: "attack", target };
     return { type: "moveTo", target };
-  } else {
-    // No hostiles, patrol near spawn
-    const spawn = ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
-    if (spawn && ctx.creep.pos.getRangeTo(spawn) > 5) {
-      return { type: "moveTo", target: spawn };
-    }
-    return { type: "idle" };
   }
+
+  // No hostiles - patrol near spawn
+  const spawn = ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
+  if (spawn && ctx.creep.pos.getRangeTo(spawn) > 5) {
+    return { type: "moveTo", target: spawn };
+  }
+
+  return { type: "idle" };
 }
 
-// =============================================================================
-// HealerAnt
-// =============================================================================
-
-export function evaluateHealer(ctx: SwarmCreepContext): SwarmAction {
-  // Priority 1: Heal self if critically damaged
+/**
+ * Healer - Support creep that heals allies.
+ * Priority: self-heal if critical → heal nearby allies → follow military creeps
+ */
+export function healer(ctx: CreepContext): CreepAction {
+  // Heal self if critically damaged
   if (ctx.creep.hits < ctx.creep.hitsMax * 0.5) {
     return { type: "heal", target: ctx.creep };
   }
 
-  // Priority 2: Heal nearby damaged allies
+  // Heal nearby damaged allies
   const damagedNearby = ctx.creep.pos.findInRange(FIND_MY_CREEPS, 3, {
     filter: c => c.hits < c.hitsMax
   });
@@ -123,14 +104,11 @@ export function evaluateHealer(ctx: SwarmCreepContext): SwarmAction {
     const target = damagedNearby[0]!;
     const range = ctx.creep.pos.getRangeTo(target);
 
-    if (range <= 1) {
-      return { type: "heal", target };
-    } else {
-      return { type: "rangedHeal", target };
-    }
+    if (range <= 1) return { type: "heal", target };
+    return { type: "rangedHeal", target };
   }
 
-  // Priority 3: Follow military creeps
+  // Follow military creeps
   const military = ctx.creep.pos.findClosestByRange(FIND_MY_CREEPS, {
     filter: c => {
       const m = c.memory as unknown as SwarmCreepMemory;
@@ -138,131 +116,103 @@ export function evaluateHealer(ctx: SwarmCreepContext): SwarmAction {
     }
   });
 
-  if (military) {
-    return { type: "moveTo", target: military };
-  }
+  if (military) return { type: "moveTo", target: military };
 
   return { type: "idle" };
 }
 
-// =============================================================================
-// SoldierAnt - Offensive melee/range
-// =============================================================================
-
-export function evaluateSoldier(ctx: SwarmCreepContext): SwarmAction {
-  // Check if in a squad
+/**
+ * Soldier - Offensive combat creep.
+ * Attacks hostiles and hostile structures.
+ */
+export function soldier(ctx: CreepContext): CreepAction {
+  // Check for squad assignment
   if (ctx.memory.squadId) {
     const squad = getSquadMemory(ctx.memory.squadId);
-    if (squad) {
-      return evaluateSquadBehavior(ctx, squad);
-    }
+    if (squad) return squadBehavior(ctx, squad);
   }
 
   // Solo behavior
   const targetRoom = ctx.memory.targetRoom ?? ctx.homeRoom;
 
-  // Move to target room if not there
+  // Move to target room
   if (ctx.room.name !== targetRoom) {
     return { type: "moveToRoom", roomName: targetRoom };
   }
 
-  // In target room - find and attack
+  // Find and attack hostile creeps
   const target = findPriorityTarget(ctx);
-
   if (target) {
     const range = ctx.creep.pos.getRangeTo(target);
     const hasRanged = hasBodyPart(ctx.creep, RANGED_ATTACK);
     const hasMelee = hasBodyPart(ctx.creep, ATTACK);
 
-    if (hasRanged && range <= 3) {
-      return { type: "rangedAttack", target };
-    }
-
-    if (hasMelee && range <= 1) {
-      return { type: "attack", target };
-    }
-
+    if (hasRanged && range <= 3) return { type: "rangedAttack", target };
+    if (hasMelee && range <= 1) return { type: "attack", target };
     return { type: "moveTo", target };
   }
 
-  // Attack structures
+  // Attack hostile structures
   const hostileStructure = ctx.creep.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
     filter: s => s.structureType !== STRUCTURE_CONTROLLER
   });
-
-  if (hostileStructure) {
-    return { type: "attack", target: hostileStructure };
-  }
+  if (hostileStructure) return { type: "attack", target: hostileStructure };
 
   return { type: "idle" };
 }
 
-// =============================================================================
-// SiegeUnit - Dismantler/tough
-// =============================================================================
-
-export function evaluateSiege(ctx: SwarmCreepContext): SwarmAction {
-  // Check if in a squad
+/**
+ * Siege - Dismantler creep for breaking defenses.
+ * Priority: spawns → towers → walls/ramparts → other structures
+ */
+export function siege(ctx: CreepContext): CreepAction {
+  // Check for squad assignment
   if (ctx.memory.squadId) {
     const squad = getSquadMemory(ctx.memory.squadId);
-    if (squad) {
-      return evaluateSquadBehavior(ctx, squad);
-    }
+    if (squad) return squadBehavior(ctx, squad);
   }
 
   const targetRoom = ctx.memory.targetRoom ?? ctx.homeRoom;
 
-  // Move to target room if not there
+  // Move to target room
   if (ctx.room.name !== targetRoom) {
     return { type: "moveToRoom", roomName: targetRoom };
   }
 
-  // Priority 1: Dismantle spawns
+  // Priority targets for dismantling
   const spawn = ctx.creep.pos.findClosestByRange(FIND_HOSTILE_SPAWNS);
-  if (spawn) {
-    return { type: "dismantle", target: spawn };
-  }
+  if (spawn) return { type: "dismantle", target: spawn };
 
-  // Priority 2: Dismantle towers
   const tower = ctx.creep.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_TOWER
   });
-  if (tower) {
-    return { type: "dismantle", target: tower };
-  }
+  if (tower) return { type: "dismantle", target: tower };
 
-  // Priority 3: Dismantle walls/ramparts
   const wall = ctx.creep.pos.findClosestByRange(FIND_STRUCTURES, {
-    filter: s => (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) && s.hits < 100000
+    filter: s =>
+      (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) &&
+      s.hits < 100000
   });
-  if (wall) {
-    return { type: "dismantle", target: wall };
-  }
+  if (wall) return { type: "dismantle", target: wall };
 
-  // Priority 4: Any hostile structure
   const structure = ctx.creep.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
     filter: s => s.structureType !== STRUCTURE_CONTROLLER
   });
-  if (structure) {
-    return { type: "dismantle", target: structure };
-  }
+  if (structure) return { type: "dismantle", target: structure };
 
   return { type: "idle" };
 }
 
-// =============================================================================
-// Harasser - Hit and run
-// =============================================================================
-
-export function evaluateHarasser(ctx: SwarmCreepContext): SwarmAction {
+/**
+ * Harasser - Hit-and-run attacker targeting workers.
+ * Flees from dangerous combat creeps.
+ */
+export function harasser(ctx: CreepContext): CreepAction {
   const targetRoom = ctx.memory.targetRoom;
 
   if (!targetRoom) {
-    // Wait near spawn
     const spawn = ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
-    if (spawn) {
-      return { type: "moveTo", target: spawn };
-    }
+    if (spawn) return { type: "moveTo", target: spawn };
     return { type: "idle" };
   }
 
@@ -271,53 +221,44 @@ export function evaluateHarasser(ctx: SwarmCreepContext): SwarmAction {
     return { type: "moveToRoom", roomName: targetRoom };
   }
 
-  // Check for dangerous hostiles nearby
+  // Check for dangerous hostiles nearby - flee if present
   const dangerous = ctx.hostiles.filter(h => {
     const hasAttack = h.body.some(p => p.type === ATTACK || p.type === RANGED_ATTACK);
     return hasAttack && ctx.creep.pos.getRangeTo(h) < 5;
   });
 
   if (dangerous.length > 0) {
-    // Flee
-    return {
-      type: "flee",
-      from: dangerous.map(d => d.pos)
-    };
+    return { type: "flee", from: dangerous.map(d => d.pos) };
   }
 
   // Target workers
-  const workers = ctx.hostiles.filter(h => {
-    return h.body.some(p => p.type === WORK || p.type === CARRY);
-  });
+  const workers = ctx.hostiles.filter(h =>
+    h.body.some(p => p.type === WORK || p.type === CARRY)
+  );
 
   if (workers.length > 0) {
-    const target = workers.reduce((a, b) => (ctx.creep.pos.getRangeTo(a) < ctx.creep.pos.getRangeTo(b) ? a : b));
+    const target = workers.reduce((a, b) =>
+      ctx.creep.pos.getRangeTo(a) < ctx.creep.pos.getRangeTo(b) ? a : b
+    );
     const range = ctx.creep.pos.getRangeTo(target);
 
-    if (range <= 1) {
-      return { type: "attack", target };
-    }
-
-    if (range <= 3) {
-      return { type: "rangedAttack", target };
-    }
+    if (range <= 1) return { type: "attack", target };
+    if (range <= 3) return { type: "rangedAttack", target };
     return { type: "moveTo", target };
   }
 
   return { type: "idle" };
 }
 
-// =============================================================================
-// Ranger - Ranged kiting
-// =============================================================================
-
-export function evaluateRanger(ctx: SwarmCreepContext): SwarmAction {
-  // Check if in a squad
+/**
+ * Ranger - Ranged kiting creep.
+ * Maintains distance of 3 tiles while attacking.
+ */
+export function ranger(ctx: CreepContext): CreepAction {
+  // Check for squad assignment
   if (ctx.memory.squadId) {
     const squad = getSquadMemory(ctx.memory.squadId);
-    if (squad) {
-      return evaluateSquadBehavior(ctx, squad);
-    }
+    if (squad) return squadBehavior(ctx, squad);
   }
 
   const target = findPriorityTarget(ctx);
@@ -325,21 +266,13 @@ export function evaluateRanger(ctx: SwarmCreepContext): SwarmAction {
   if (target) {
     const range = ctx.creep.pos.getRangeTo(target);
 
-    // Kiting behavior - maintain distance of 3
-    if (range < 3) {
-      // Move away
-      return { type: "flee", from: [target.pos] };
-    }
-
-    if (range <= 3) {
-      return { type: "rangedAttack", target };
-    }
-
-    // Move closer
+    // Kite at range 3
+    if (range < 3) return { type: "flee", from: [target.pos] };
+    if (range <= 3) return { type: "rangedAttack", target };
     return { type: "moveTo", target };
   }
 
-  // No targets, return home
+  // No targets - return home
   const spawn = ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
   if (spawn && ctx.creep.pos.getRangeTo(spawn) > 10) {
     return { type: "moveTo", target: spawn };
@@ -352,17 +285,17 @@ export function evaluateRanger(ctx: SwarmCreepContext): SwarmAction {
 // Squad Behavior
 // =============================================================================
 
-function evaluateSquadBehavior(ctx: SwarmCreepContext, squad: SquadMemory): SwarmAction {
+/**
+ * Execute squad-coordinated behavior.
+ */
+function squadBehavior(ctx: CreepContext, squad: SquadMemory): CreepAction {
   switch (squad.state) {
-    case "gathering": {
+    case "gathering":
       // Move to rally point
       if (ctx.room.name !== squad.rallyRoom) {
         return { type: "moveToRoom", roomName: squad.rallyRoom };
       }
-
-      // In rally room, move to center
       return { type: "moveTo", target: new RoomPosition(25, 25, squad.rallyRoom) };
-    }
 
     case "moving": {
       const targetRoom = squad.targetRooms[0];
@@ -372,39 +305,34 @@ function evaluateSquadBehavior(ctx: SwarmCreepContext, squad: SquadMemory): Swar
       return { type: "idle" };
     }
 
-    case "attacking": {
-      // Execute role-specific attack
+    case "attacking":
+      // Execute role-specific attack behavior
       switch (ctx.memory.role) {
         case "soldier":
         case "guard":
-          return evaluateSoldier(ctx);
+          return soldier(ctx);
         case "healer":
-          return evaluateHealer(ctx);
+          return healer(ctx);
         case "siegeUnit":
-          return evaluateSiege(ctx);
+          return siege(ctx);
         case "ranger":
-          return evaluateRanger(ctx);
+          return ranger(ctx);
         default:
-          return evaluateSoldier(ctx);
+          return soldier(ctx);
       }
-    }
 
-    case "retreating": {
-      // Return to rally room
+    case "retreating":
       if (ctx.room.name !== squad.rallyRoom) {
         return { type: "moveToRoom", roomName: squad.rallyRoom };
       }
       return { type: "moveTo", target: new RoomPosition(25, 25, squad.rallyRoom) };
-    }
 
-    case "dissolving": {
-      // Return home
+    case "dissolving":
       if (ctx.room.name !== ctx.homeRoom) {
         return { type: "moveToRoom", roomName: ctx.homeRoom };
       }
       delete ctx.memory.squadId;
       return { type: "idle" };
-    }
 
     default:
       return { type: "idle" };
@@ -412,19 +340,22 @@ function evaluateSquadBehavior(ctx: SwarmCreepContext, squad: SquadMemory): Swar
 }
 
 // =============================================================================
-// Dispatcher
+// Role Dispatcher
 // =============================================================================
 
-const militaryEvaluators: Record<string, (ctx: SwarmCreepContext) => SwarmAction> = {
-  guard: evaluateGuard,
-  healer: evaluateHealer,
-  soldier: evaluateSoldier,
-  siegeUnit: evaluateSiege,
-  harasser: evaluateHarasser,
-  ranger: evaluateRanger
+const militaryBehaviors: Record<string, (ctx: CreepContext) => CreepAction> = {
+  guard,
+  healer,
+  soldier,
+  siegeUnit: siege,
+  harasser,
+  ranger
 };
 
-export function evaluateMilitaryRole(ctx: SwarmCreepContext): SwarmAction {
-  const evaluator = militaryEvaluators[ctx.memory.role] ?? evaluateGuard;
-  return evaluator(ctx);
+/**
+ * Evaluate and return an action for a military role creep.
+ */
+export function evaluateMilitaryBehavior(ctx: CreepContext): CreepAction {
+  const behavior = militaryBehaviors[ctx.memory.role] ?? guard;
+  return behavior(ctx);
 }

@@ -1,19 +1,19 @@
 /**
- * Utility Role Behaviors
+ * Utility Behaviors
  *
- * Behavior functions for utility and support creep roles.
- * Includes scouting, claiming, engineering, and remote operations.
+ * Behavior functions for utility and support roles.
+ * Includes scouting, claiming, engineering, and logistics.
  */
 
-import type { SwarmAction, SwarmCreepContext } from "./context";
+import type { CreepAction, CreepContext } from "./types";
 import type { RoomIntel } from "../../memory/schemas";
 
 // =============================================================================
-// Helper Functions
+// Overmind / Intel Helpers
 // =============================================================================
 
 /**
- * Get overmind memory
+ * Get or initialize overmind memory.
  */
 function getOvermind(): Record<string, unknown> {
   const mem = Memory as unknown as Record<string, unknown>;
@@ -38,7 +38,7 @@ function getOvermind(): Record<string, unknown> {
 }
 
 /**
- * Record room intel
+ * Record intelligence about a room.
  */
 function recordRoomIntel(room: Room, overmind: Record<string, unknown>): void {
   const roomsSeen = overmind.roomsSeen as Record<string, number>;
@@ -51,7 +51,7 @@ function recordRoomIntel(room: Room, overmind: Record<string, unknown>): void {
   const controller = room.controller;
   const hostiles = room.find(FIND_HOSTILE_CREEPS);
 
-  // Determine terrain type
+  // Classify terrain
   const terrain = room.getTerrain();
   let swampCount = 0;
   let plainCount = 0;
@@ -64,7 +64,7 @@ function recordRoomIntel(room: Room, overmind: Record<string, unknown>): void {
   }
   const terrainType = swampCount > plainCount * 2 ? "swamp" : plainCount > swampCount * 2 ? "plains" : "mixed";
 
-  // Check for highway/SK
+  // Check for highway/source keeper rooms
   const coordMatch = room.name.match(/^[WE](\d+)[NS](\d+)$/);
   const isHighway = coordMatch
     ? parseInt(coordMatch[1]!, 10) % 10 === 0 || parseInt(coordMatch[2]!, 10) % 10 === 0
@@ -83,21 +83,15 @@ function recordRoomIntel(room: Room, overmind: Record<string, unknown>): void {
     isSK
   };
 
-  if (controller?.owner?.username) {
-    intel.owner = controller.owner.username;
-  }
-  if (controller?.reservation?.username) {
-    intel.reserver = controller.reservation.username;
-  }
-  if (mineral?.mineralType) {
-    intel.mineralType = mineral.mineralType;
-  }
+  if (controller?.owner?.username) intel.owner = controller.owner.username;
+  if (controller?.reservation?.username) intel.reserver = controller.reservation.username;
+  if (mineral?.mineralType) intel.mineralType = mineral.mineralType;
 
   roomIntel[room.name] = intel;
 }
 
 /**
- * Find next room to explore
+ * Find the next unexplored adjacent room.
  */
 function findNextExploreTarget(currentRoom: string, overmind: Record<string, unknown>): string | undefined {
   const roomsSeen = overmind.roomsSeen as Record<string, number>;
@@ -118,9 +112,9 @@ function findNextExploreTarget(currentRoom: string, overmind: Record<string, unk
 }
 
 /**
- * Find unexplored position in room
+ * Find a position to explore in a room.
  */
-function findUnexploredPosition(room: Room): RoomPosition | null {
+function findExplorePosition(room: Room): RoomPosition | null {
   const positions = [
     new RoomPosition(5, 5, room.name),
     new RoomPosition(44, 5, room.name),
@@ -140,17 +134,20 @@ function findUnexploredPosition(room: Room): RoomPosition | null {
 }
 
 // =============================================================================
-// ScoutAnt - Room exploration
+// Role Behaviors
 // =============================================================================
 
-export function evaluateScout(ctx: SwarmCreepContext): SwarmAction {
+/**
+ * Scout - Explore and map rooms.
+ */
+export function scout(ctx: CreepContext): CreepAction {
   const overmind = getOvermind();
 
-  // Record current room intel
+  // Record current room
   recordRoomIntel(ctx.room, overmind);
 
-  // Get target room or find next unexplored
-  let targetRoom: string | undefined = ctx.memory.targetRoom;
+  // Find or assign target room
+  let targetRoom = ctx.memory.targetRoom;
 
   if (!targetRoom || ctx.room.name === targetRoom) {
     targetRoom = findNextExploreTarget(ctx.room.name, overmind);
@@ -161,35 +158,31 @@ export function evaluateScout(ctx: SwarmCreepContext): SwarmAction {
     }
   }
 
+  // Move to target room
   if (targetRoom && ctx.room.name !== targetRoom) {
     return { type: "moveToRoom", roomName: targetRoom };
   }
 
+  // Explore current room
   if (targetRoom && ctx.room.name === targetRoom) {
-    // Explore the room
-    const unexplored = findUnexploredPosition(ctx.room);
-    if (unexplored) {
-      return { type: "moveTo", target: unexplored };
-    }
-    // Room fully explored
+    const explorePos = findExplorePosition(ctx.room);
+    if (explorePos) return { type: "moveTo", target: explorePos };
     delete ctx.memory.targetRoom;
   }
 
   return { type: "idle" };
 }
 
-// =============================================================================
-// ClaimAnt - Claiming/reserving rooms
-// =============================================================================
-
-export function evaluateClaimer(ctx: SwarmCreepContext): SwarmAction {
+/**
+ * Claimer - Claim or reserve room controllers.
+ * Task can be: "claim", "reserve", or "attack"
+ */
+export function claimer(ctx: CreepContext): CreepAction {
   const targetRoom = ctx.memory.targetRoom;
 
   if (!targetRoom) {
     const spawn = ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
-    if (spawn) {
-      return { type: "moveTo", target: spawn };
-    }
+    if (spawn) return { type: "moveTo", target: spawn };
     return { type: "idle" };
   }
 
@@ -198,39 +191,27 @@ export function evaluateClaimer(ctx: SwarmCreepContext): SwarmAction {
     return { type: "moveToRoom", roomName: targetRoom };
   }
 
-  // In target room - claim or reserve controller
+  // Act on controller
   const controller = ctx.room.controller;
   if (!controller) return { type: "idle" };
 
   const task = ctx.memory.task;
-
-  if (task === "claim") {
-    return { type: "claim", target: controller };
-  } else if (task === "reserve") {
-    return { type: "reserve", target: controller };
-  } else if (task === "attack") {
-    return { type: "attackController", target: controller };
-  } else {
-    // Default to reserve
-    return { type: "reserve", target: controller };
-  }
+  if (task === "claim") return { type: "claim", target: controller };
+  if (task === "attack") return { type: "attackController", target: controller };
+  return { type: "reserve", target: controller }; // default
 }
 
-// =============================================================================
-// Engineer - Repairs and ramparts
-// =============================================================================
-
-export function evaluateEngineer(ctx: SwarmCreepContext): SwarmAction {
+/**
+ * Engineer - Repairs and fortification specialist.
+ * Priority: critical structures → infrastructure → ramparts → walls → construction
+ */
+export function engineer(ctx: CreepContext): CreepAction {
   // Update working state
-  if (ctx.isEmpty) {
-    ctx.memory.working = false;
-  }
-  if (ctx.isFull) {
-    ctx.memory.working = true;
-  }
+  if (ctx.isEmpty) ctx.memory.working = false;
+  if (ctx.isFull) ctx.memory.working = true;
 
   if (ctx.memory.working) {
-    // Priority 1: Critical structures (low HP)
+    // Critical structures (low HP spawns, towers, storage)
     const critical = ctx.creep.pos.findClosestByRange(FIND_STRUCTURES, {
       filter: s =>
         (s.structureType === STRUCTURE_SPAWN ||
@@ -238,76 +219,58 @@ export function evaluateEngineer(ctx: SwarmCreepContext): SwarmAction {
           s.structureType === STRUCTURE_STORAGE) &&
         s.hits < s.hitsMax * 0.5
     });
+    if (critical) return { type: "repair", target: critical };
 
-    if (critical) {
-      return { type: "repair", target: critical };
-    }
-
-    // Priority 2: Roads and containers
+    // Roads and containers
     const infrastructure = ctx.creep.pos.findClosestByRange(FIND_STRUCTURES, {
       filter: s =>
-        (s.structureType === STRUCTURE_ROAD || s.structureType === STRUCTURE_CONTAINER) && s.hits < s.hitsMax * 0.75
+        (s.structureType === STRUCTURE_ROAD || s.structureType === STRUCTURE_CONTAINER) &&
+        s.hits < s.hitsMax * 0.75
     });
+    if (infrastructure) return { type: "repair", target: infrastructure };
 
-    if (infrastructure) {
-      return { type: "repair", target: infrastructure };
-    }
-
-    // Priority 3: Ramparts (maintain up to 100k hits)
+    // Ramparts (maintain to 100k hits)
     const rampart = ctx.creep.pos.findClosestByRange(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_RAMPART && (s as StructureRampart).hits < 100000
+      filter: s => s.structureType === STRUCTURE_RAMPART && s.hits < 100000
     }) as StructureRampart | null;
+    if (rampart) return { type: "repair", target: rampart };
 
-    if (rampart) {
-      return { type: "repair", target: rampart };
-    }
-
-    // Priority 4: Walls
+    // Walls
     const wall = ctx.creep.pos.findClosestByRange(FIND_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_WALL && s.hits < 100000
     });
+    if (wall) return { type: "repair", target: wall };
 
-    if (wall) {
-      return { type: "repair", target: wall };
-    }
-
-    // Priority 5: Build construction sites
+    // Construction sites
     if (ctx.prioritizedSites.length > 0) {
       return { type: "build", target: ctx.prioritizedSites[0]! };
     }
 
     return { type: "idle" };
-  } else {
-    // Get energy
-    if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
-      return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
-    }
-
-    if (ctx.containers.length > 0) {
-      const closest = ctx.creep.pos.findClosestByRange(ctx.containers);
-      if (closest) {
-        return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
-      }
-    }
-
-    return { type: "idle" };
   }
+
+  // Get energy
+  if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+    return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+  }
+
+  if (ctx.containers.length > 0) {
+    const closest = ctx.creep.pos.findClosestByRange(ctx.containers);
+    if (closest) return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
+  }
+
+  return { type: "idle" };
 }
 
-// =============================================================================
-// RemoteWorker - Remote mining
-// =============================================================================
-
-export function evaluateRemoteWorker(ctx: SwarmCreepContext): SwarmAction {
+/**
+ * RemoteWorker - Harvest in remote rooms.
+ */
+export function remoteWorker(ctx: CreepContext): CreepAction {
   const targetRoom = ctx.memory.targetRoom ?? ctx.homeRoom;
 
   // Update working state
-  if (ctx.isEmpty) {
-    ctx.memory.working = false;
-  }
-  if (ctx.isFull) {
-    ctx.memory.working = true;
-  }
+  if (ctx.isEmpty) ctx.memory.working = false;
+  if (ctx.isFull) ctx.memory.working = true;
 
   if (ctx.memory.working) {
     // Return home to deliver
@@ -315,34 +278,29 @@ export function evaluateRemoteWorker(ctx: SwarmCreepContext): SwarmAction {
       return { type: "moveToRoom", roomName: ctx.homeRoom };
     }
 
-    // Deliver to storage or spawn
     const target = ctx.storage ?? ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
     if (target) {
       return { type: "transfer", target: target as AnyStoreStructure, resourceType: RESOURCE_ENERGY };
     }
 
     return { type: "idle" };
-  } else {
-    // Go to remote room and harvest
-    if (ctx.room.name !== targetRoom) {
-      return { type: "moveToRoom", roomName: targetRoom };
-    }
-
-    // In remote room - harvest
-    const source = ctx.creep.pos.findClosestByRange(FIND_SOURCES_ACTIVE);
-    if (source) {
-      return { type: "harvest", target: source };
-    }
-
-    return { type: "idle" };
   }
+
+  // Go to remote room and harvest
+  if (ctx.room.name !== targetRoom) {
+    return { type: "moveToRoom", roomName: targetRoom };
+  }
+
+  const source = ctx.creep.pos.findClosestByRange(FIND_SOURCES_ACTIVE);
+  if (source) return { type: "harvest", target: source };
+
+  return { type: "idle" };
 }
 
-// =============================================================================
-// LinkManager
-// =============================================================================
-
-export function evaluateLinkManager(ctx: SwarmCreepContext): SwarmAction {
+/**
+ * LinkManager - Transfer energy between links and storage.
+ */
+export function linkManager(ctx: CreepContext): CreepAction {
   const links = ctx.room.find(FIND_MY_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_LINK
   }) as StructureLink[];
@@ -352,12 +310,59 @@ export function evaluateLinkManager(ctx: SwarmCreepContext): SwarmAction {
   const storageLink = links.find(l => l.pos.getRangeTo(ctx.storage!) <= 2);
   if (!storageLink) return { type: "idle" };
 
-  // Check if storageLink needs emptying
+  // Empty storage link when it has energy
   if (storageLink.store.getUsedCapacity(RESOURCE_ENERGY) > 400) {
     if (ctx.creep.store.getFreeCapacity() > 0) {
       return { type: "withdraw", target: storageLink, resourceType: RESOURCE_ENERGY };
-    } else {
+    }
+    return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+  }
+
+  // Wait near storage
+  if (ctx.creep.pos.getRangeTo(ctx.storage) > 2) {
+    return { type: "moveTo", target: ctx.storage };
+  }
+
+  return { type: "idle" };
+}
+
+/**
+ * TerminalManager - Balance resources between storage and terminal.
+ */
+export function terminalManager(ctx: CreepContext): CreepAction {
+  if (!ctx.terminal || !ctx.storage) return { type: "idle" };
+
+  const terminalEnergy = ctx.terminal.store.getUsedCapacity(RESOURCE_ENERGY);
+  const storageEnergy = ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY);
+  const targetTerminalEnergy = 50000;
+
+  // Deliver carried resources
+  if (ctx.creep.store.getUsedCapacity() > 0) {
+    const resourceType = Object.keys(ctx.creep.store)[0] as ResourceConstant;
+
+    if (resourceType === RESOURCE_ENERGY) {
+      if (terminalEnergy < targetTerminalEnergy) {
+        return { type: "transfer", target: ctx.terminal, resourceType: RESOURCE_ENERGY };
+      }
       return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+    }
+
+    // Non-energy goes to terminal for trading
+    return { type: "transfer", target: ctx.terminal, resourceType };
+  }
+
+  // Balance energy between storage and terminal
+  if (terminalEnergy < targetTerminalEnergy - 10000 && storageEnergy > 20000) {
+    return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+  }
+  if (terminalEnergy > targetTerminalEnergy + 10000) {
+    return { type: "withdraw", target: ctx.terminal, resourceType: RESOURCE_ENERGY };
+  }
+
+  // Move excess minerals from storage to terminal
+  for (const resourceType of Object.keys(ctx.storage.store) as ResourceConstant[]) {
+    if (resourceType !== RESOURCE_ENERGY && ctx.storage.store.getUsedCapacity(resourceType) > 5000) {
+      return { type: "withdraw", target: ctx.storage, resourceType };
     }
   }
 
@@ -370,68 +375,22 @@ export function evaluateLinkManager(ctx: SwarmCreepContext): SwarmAction {
 }
 
 // =============================================================================
-// TerminalManager
+// Role Dispatcher
 // =============================================================================
 
-export function evaluateTerminalManager(ctx: SwarmCreepContext): SwarmAction {
-  if (!ctx.terminal || !ctx.storage) return { type: "idle" };
-
-  const terminalEnergy = ctx.terminal.store.getUsedCapacity(RESOURCE_ENERGY);
-  const storageEnergy = ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY);
-  const targetTerminalEnergy = 50000;
-
-  if (ctx.creep.store.getUsedCapacity() > 0) {
-    // Deliver what we're carrying
-    const resourceType = Object.keys(ctx.creep.store)[0] as ResourceConstant;
-
-    if (resourceType === RESOURCE_ENERGY) {
-      if (terminalEnergy < targetTerminalEnergy) {
-        return { type: "transfer", target: ctx.terminal, resourceType: RESOURCE_ENERGY };
-      } else {
-        return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
-      }
-    } else {
-      // Non-energy resources go to terminal for trading
-      return { type: "transfer", target: ctx.terminal, resourceType };
-    }
-  } else {
-    // Balance resources
-    if (terminalEnergy < targetTerminalEnergy - 10000 && storageEnergy > 20000) {
-      return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
-    } else if (terminalEnergy > targetTerminalEnergy + 10000) {
-      return { type: "withdraw", target: ctx.terminal, resourceType: RESOURCE_ENERGY };
-    } else {
-      // Move excess minerals from storage to terminal
-      for (const resourceType of Object.keys(ctx.storage.store) as ResourceConstant[]) {
-        if (resourceType !== RESOURCE_ENERGY && ctx.storage.store.getUsedCapacity(resourceType) > 5000) {
-          return { type: "withdraw", target: ctx.storage, resourceType };
-        }
-      }
-
-      // Wait near storage
-      if (ctx.creep.pos.getRangeTo(ctx.storage) > 2) {
-        return { type: "moveTo", target: ctx.storage };
-      }
-    }
-  }
-
-  return { type: "idle" };
-}
-
-// =============================================================================
-// Dispatcher
-// =============================================================================
-
-const utilityEvaluators: Record<string, (ctx: SwarmCreepContext) => SwarmAction> = {
-  scout: evaluateScout,
-  claimer: evaluateClaimer,
-  engineer: evaluateEngineer,
-  remoteWorker: evaluateRemoteWorker,
-  linkManager: evaluateLinkManager,
-  terminalManager: evaluateTerminalManager
+const utilityBehaviors: Record<string, (ctx: CreepContext) => CreepAction> = {
+  scout,
+  claimer,
+  engineer,
+  remoteWorker,
+  linkManager,
+  terminalManager
 };
 
-export function evaluateUtilityRole(ctx: SwarmCreepContext): SwarmAction {
-  const evaluator = utilityEvaluators[ctx.memory.role] ?? evaluateScout;
-  return evaluator(ctx);
+/**
+ * Evaluate and return an action for a utility role creep.
+ */
+export function evaluateUtilityBehavior(ctx: CreepContext): CreepAction {
+  const behavior = utilityBehaviors[ctx.memory.role] ?? scout;
+  return behavior(ctx);
 }
