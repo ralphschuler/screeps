@@ -7,6 +7,7 @@
 
 import type { CreepAction, CreepContext } from "./types";
 import type { RoomIntel } from "../../memory/schemas";
+import { safeFind } from "../../utils/safeFind";
 
 // =============================================================================
 // Overmind / Intel Helpers
@@ -49,7 +50,8 @@ function recordRoomIntel(room: Room, overmind: Record<string, unknown>): void {
   const sources = room.find(FIND_SOURCES);
   const mineral = room.find(FIND_MINERALS)[0];
   const controller = room.controller;
-  const hostiles = room.find(FIND_HOSTILE_CREEPS);
+  // Use safeFind to handle engine errors with corrupted owner data
+  const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
 
   // Classify terrain
   const terrain = room.getTerrain();

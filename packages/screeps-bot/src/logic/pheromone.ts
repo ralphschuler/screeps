@@ -10,6 +10,7 @@
 
 import type { PheromoneState, SwarmState } from "../memory/schemas";
 import { logger } from "../core/logger";
+import { safeFind } from "../utils/safeFind";
 
 /**
  * Pheromone configuration
@@ -177,8 +178,8 @@ export class PheromoneManager {
       tracker.lastControllerProgress = room.controller.progress;
     }
 
-    // Hostile count
-    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    // Hostile count - use safeFind to handle engine errors with corrupted owner data
+    const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
     tracker.hostileCount.add(hostiles.length);
 
     // Potential damage from hostiles

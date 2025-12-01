@@ -17,6 +17,7 @@ import { pheromoneManager } from "../logic/pheromone";
 import { calculateDangerLevel, evolutionManager, postureManager } from "../logic/evolution";
 import { profiler } from "./profiler";
 import { getBlueprint, placeConstructionSites } from "../layouts/blueprints";
+import { safeFind } from "../utils/safeFind";
 
 /**
  * Room node configuration
@@ -116,8 +117,9 @@ export class RoomNode {
    * Update threat assessment
    */
   private updateThreatAssessment(room: Room, swarm: SwarmState): void {
-    const hostiles = room.find(FIND_HOSTILE_CREEPS);
-    const enemyStructures = room.find(FIND_HOSTILE_STRUCTURES, {
+    // Use safeFind to handle engine errors with corrupted owner data
+    const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
+    const enemyStructures = safeFind(room, FIND_HOSTILE_STRUCTURES, {
       filter: s => s.structureType !== STRUCTURE_CONTROLLER
     });
 
@@ -150,8 +152,8 @@ export class RoomNode {
 
     if (towers.length === 0) return;
 
-    // Find targets
-    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    // Find targets - use safeFind to handle engine errors with corrupted owner data
+    const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
 
     for (const tower of towers) {
       if (tower.store.getUsedCapacity(RESOURCE_ENERGY) < 10) continue;

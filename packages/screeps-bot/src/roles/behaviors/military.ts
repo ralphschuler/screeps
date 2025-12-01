@@ -7,6 +7,7 @@
 
 import type { CreepAction, CreepContext } from "./types";
 import type { SquadMemory, SwarmCreepMemory } from "../../memory/schemas";
+import { safeFindClosestByRange } from "../../utils/safeFind";
 
 // =============================================================================
 // Combat Helpers
@@ -152,8 +153,8 @@ export function soldier(ctx: CreepContext): CreepAction {
     return { type: "moveTo", target };
   }
 
-  // Attack hostile structures
-  const hostileStructure = ctx.creep.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
+  // Attack hostile structures - use safeFindClosestByRange to handle engine errors
+  const hostileStructure = safeFindClosestByRange(ctx.creep.pos, FIND_HOSTILE_STRUCTURES, {
     filter: s => s.structureType !== STRUCTURE_CONTROLLER
   });
   if (hostileStructure) return { type: "attack", target: hostileStructure };
@@ -179,11 +180,11 @@ export function siege(ctx: CreepContext): CreepAction {
     return { type: "moveToRoom", roomName: targetRoom };
   }
 
-  // Priority targets for dismantling
-  const spawn = ctx.creep.pos.findClosestByRange(FIND_HOSTILE_SPAWNS);
+  // Priority targets for dismantling - use safeFindClosestByRange to handle engine errors
+  const spawn = safeFindClosestByRange(ctx.creep.pos, FIND_HOSTILE_SPAWNS);
   if (spawn) return { type: "dismantle", target: spawn };
 
-  const tower = ctx.creep.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
+  const tower = safeFindClosestByRange(ctx.creep.pos, FIND_HOSTILE_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_TOWER
   });
   if (tower) return { type: "dismantle", target: tower };
@@ -195,7 +196,7 @@ export function siege(ctx: CreepContext): CreepAction {
   });
   if (wall) return { type: "dismantle", target: wall };
 
-  const structure = ctx.creep.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
+  const structure = safeFindClosestByRange(ctx.creep.pos, FIND_HOSTILE_STRUCTURES, {
     filter: s => s.structureType !== STRUCTURE_CONTROLLER
   });
   if (structure) return { type: "dismantle", target: structure };

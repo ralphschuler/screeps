@@ -10,6 +10,7 @@
 
 import type { SquadMemory, SwarmCreepMemory, SwarmState } from "../../memory/schemas";
 import type { CreepContext } from "./types";
+import { safeFind } from "../../utils/safeFind";
 
 /**
  * Priority order for construction sites.
@@ -95,9 +96,10 @@ function getRoomCache(room: Room): RoomCache {
   }
 
   // Build new cache - this is the expensive part, but only happens once per room per tick
+  // Use safeFind for hostile creeps to handle engine errors with corrupted owner data
   const myStructures = room.find(FIND_MY_STRUCTURES);
   const allStructures = room.find(FIND_STRUCTURES);
-  const hostiles = room.find(FIND_HOSTILE_CREEPS);
+  const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
 
   const cache: RoomCache = {
     tick: Game.time,
