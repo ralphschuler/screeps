@@ -278,9 +278,14 @@ export function remoteWorker(ctx: CreepContext): CreepAction {
       return { type: "moveToRoom", roomName: ctx.homeRoom };
     }
 
-    const target = ctx.storage ?? ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
-    if (target) {
-      return { type: "transfer", target: target as AnyStoreStructure, resourceType: RESOURCE_ENERGY };
+    // Deliver to storage (preferred) or spawn
+    if (ctx.storage) {
+      return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+    }
+
+    const spawn = ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
+    if (spawn) {
+      return { type: "transfer", target: spawn, resourceType: RESOURCE_ENERGY };
     }
 
     return { type: "idle" };

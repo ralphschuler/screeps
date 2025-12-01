@@ -348,14 +348,23 @@ export function depositHarvester(ctx: CreepContext): CreepAction {
     const deposits = ctx.room.find(FIND_DEPOSITS);
     if (deposits.length > 0) {
       const best = deposits.reduce((a, b) => (a.cooldown < b.cooldown ? a : b));
-      ctx.memory.targetId = best.id as unknown as Id<_HasId>;
+      // Store the deposit ID - targetId is typed as Id<_HasId> which is compatible
+      ctx.memory.targetId = best.id;
     }
   }
 
   if (!ctx.memory.targetId) return { type: "idle" };
 
-  const deposit = Game.getObjectById(ctx.memory.targetId as unknown as Id<Deposit>);
-  if (!deposit || deposit.cooldown > 100) {
+  // Attempt to get the deposit - may return null if ID is invalid or object no longer exists
+  const deposit = Game.getObjectById(ctx.memory.targetId as Id<Deposit>);
+  if (!deposit) {
+    // Invalid or missing deposit - clear target and idle
+    delete ctx.memory.targetId;
+    return { type: "idle" };
+  }
+
+  // Check if deposit is on cooldown
+  if (deposit.cooldown > 100) {
     delete ctx.memory.targetId;
     return { type: "idle" };
   }
