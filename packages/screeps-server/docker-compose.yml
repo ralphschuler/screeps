@@ -1,0 +1,79 @@
+version: "3"
+services:
+  # cloudflared:
+  #   image: cloudflare/cloudflared
+  #   restart: unless-stopped
+  #   command: tunnel run
+  #   environment:
+  #     TUNNEL_TOKEN: ${TUNNEL_TOKEN:?Cloudflare Tunnel token is required}
+
+  screeps:
+    image: screepers/screeps-launcher
+    platform: linux/amd64
+    volumes:
+      - ./config.yml:/screeps/config.yml
+      - screeps-data:/screeps
+    ports:
+      - "${SCREEPS_LAUNCHER_HOST:-0.0.0.0}:21025:21025/tcp"
+    environment:
+      STEAM_KEY: ${STEAM_KEY:?Steam API key is required}
+      MONGO_HOST: mongo
+      REDIS_HOST: redis
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "sh",
+          "-c",
+          "curl --fail --silent http://127.0.0.1:21025/",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      start_interval: 5s
+      retries: 3
+
+  mongo:
+    image: mongo:8
+    platform: linux/amd64
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "sh",
+          "-c",
+          'echo ''db.runCommand("ping").ok'' | mongosh localhost:27017/test --quiet',
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      start_interval: 5s
+      retries: 3
+
+  redis:
+    image: redis:7
+    platform: linux/amd64
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      start_interval: 5s
+      retries: 3
+
+volumes:
+  redis-data:
+  mongo-data:
+  screeps-data:

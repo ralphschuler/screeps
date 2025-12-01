@@ -1,0 +1,34 @@
+name: Formatting
+
+on:
+  pull_request:
+
+jobs:
+  prettier:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/screeeps-bot
+    env:
+      CI: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: packages/screeeps-bot/.nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check formatting
+        run: |
+          npx prettier --check \
+            "src/**/*.{ts,tsx}" \
+            "test/**/*.{ts,tsx}" \
+            rollup.config.js \
+            package.json \
+            tsconfig*.json
