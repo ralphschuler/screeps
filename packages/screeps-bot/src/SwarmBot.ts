@@ -9,16 +9,16 @@
  * - Strategic decisions
  */
 
-import { memoryManager } from "./memory/manager";
-import { roomManager } from "./core/roomNode";
+import type { RoleFamily, SwarmCreepMemory } from "./memory/schemas";
 import { profiler } from "./core/profiler";
+import { roomManager } from "./core/roomNode";
 import { runSpawnManager } from "./logic/spawn";
+import { memoryManager } from "./memory/manager";
 import { runEconomyRole } from "./roles/economy";
 import { runMilitaryRole } from "./roles/military";
-import { runUtilityRole } from "./roles/utility";
 import { runPowerCreepRole, runPowerRole } from "./roles/power";
-import { initMovement, finalizeMovement } from "./utils/movement";
-import type { RoleFamily, SwarmCreepMemory } from "./memory/schemas";
+import { runUtilityRole } from "./roles/utility";
+import { finalizeMovement, initMovement } from "./utils/movement";
 
 /**
  * Get role family from creep memory

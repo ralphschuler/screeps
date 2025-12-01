@@ -36,7 +36,10 @@ global.Game = {
 // Mock Memory early as well
 global.Memory = {
   creeps: {},
-  rooms: {}
+  rooms: {},
+  spawns: {},
+  flags: {},
+  powerCreeps: {}
 };
 
 global.mocha = require('mocha');

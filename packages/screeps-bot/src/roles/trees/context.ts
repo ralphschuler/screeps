@@ -5,7 +5,7 @@
  */
 
 import type { SquadMemory, SwarmCreepMemory, SwarmState } from "../../memory/schemas";
-import { moveCreep, moveToRoom, fleeFrom } from "../../utils/movement";
+import { fleeFrom, moveCreep, moveToRoom } from "../../utils/movement";
 
 /**
  * Extended creep context with swarm-specific information

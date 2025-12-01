@@ -7,10 +7,10 @@
  */
 
 import {
+  type MoveOpts,
   moveTo as cartographerMoveTo,
   preTick as cartographerPreTick,
-  reconcileTraffic as cartographerReconcileTraffic,
-  type MoveOpts
+  reconcileTraffic as cartographerReconcileTraffic
 } from "emyrk-screeps-cartographer";
 
 /**
@@ -42,7 +42,7 @@ export function moveCreep(
   target: RoomPosition | RoomObject,
   opts?: MoveOpts
 ): CreepMoveReturnCode | -2 | -5 | -10 {
-  const targetPos = "pos" in target && !(target instanceof RoomPosition) ? target.pos : target;
+  const targetPos = target instanceof RoomPosition ? target : target.pos;
   return cartographerMoveTo(creep, targetPos, opts);
 }
 
@@ -54,13 +54,13 @@ export function moveCreep(
  * @param creep - The creep or power creep to move
  * @param roomName - The name of the destination room
  * @param opts - Optional movement options
- * @returns The result of the movement action or undefined if no path
+ * @returns The result of the movement action
  */
 export function moveToRoom(
   creep: Creep | PowerCreep,
   roomName: string,
   opts?: MoveOpts
-): CreepMoveReturnCode | -2 | -5 | -10 | undefined {
+): CreepMoveReturnCode | -2 | -5 | -10 {
   // Use cartographer's built-in cross-room pathing capability
   // Target room center (25,25) with range 20 means "anywhere in the target room"
   const targetPos = new RoomPosition(25, 25, roomName);
@@ -80,7 +80,7 @@ export function moveToRoom(
 export function fleeFrom(
   creep: Creep | PowerCreep,
   threats: RoomPosition[],
-  range: number = 10,
+  range = 10,
   opts?: Omit<MoveOpts, "flee">
 ): CreepMoveReturnCode | -2 | -5 | -10 {
   const fleeTargets = threats.map(pos => ({ pos, range }));
