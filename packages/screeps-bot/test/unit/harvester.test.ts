@@ -15,8 +15,8 @@ interface MockPosition {
  * Minimal interface for mock store object
  */
 interface MockStore {
-  getCapacity: () => number;
-  getFreeCapacity: () => number;
+  getCapacity: () => number | null;
+  getFreeCapacity: () => number | null;
   getUsedCapacity: () => number;
 }
 
@@ -32,13 +32,14 @@ interface MockCreep {
 /**
  * Create a mock creep for testing.
  * freeCapacity is automatically calculated from capacity - usedCapacity.
+ * When capacity is null (no CARRY parts), freeCapacity is also null.
  */
 function createMockCreep(options: {
-  capacity: number;
+  capacity: number | null;
   usedCapacity: number;
   isNearToSource: boolean;
 }): Creep {
-  const freeCapacity = options.capacity - options.usedCapacity;
+  const freeCapacity = options.capacity === null ? null : options.capacity - options.usedCapacity;
   const mockCreep: MockCreep = {
     name: "TestHarvester",
     store: {
@@ -133,7 +134,24 @@ function createMockContext(
 
 describe("harvester behavior", () => {
   describe("when creep has no carry capacity (drop miner)", () => {
-    it("should return harvest action when near source", () => {
+    it("should return harvest action when near source with null capacity", () => {
+      const source = createMockSource();
+      const creep = createMockCreep({
+        capacity: null,
+        usedCapacity: 0,
+        isNearToSource: true
+      });
+      const ctx = createMockContext(creep, source);
+
+      const action = harvester(ctx);
+
+      assert.equal(action.type, "harvest");
+      if (action.type === "harvest") {
+        assert.equal(action.target, source);
+      }
+    });
+
+    it("should return harvest action when near source with zero capacity", () => {
       const source = createMockSource();
       const creep = createMockCreep({
         capacity: 0,
@@ -188,7 +206,7 @@ describe("harvester behavior", () => {
     it("should return moveTo action", () => {
       const source = createMockSource();
       const creep = createMockCreep({
-        capacity: 0,
+        capacity: null,
         usedCapacity: 0,
         isNearToSource: false
       });
@@ -206,7 +224,7 @@ describe("harvester behavior", () => {
   describe("when no source assigned", () => {
     it("should return idle when no sources available", () => {
       const creep = createMockCreep({
-        capacity: 0,
+        capacity: null,
         usedCapacity: 0,
         isNearToSource: false
       });
