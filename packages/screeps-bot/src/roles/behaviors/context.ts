@@ -61,12 +61,16 @@ function posKey(x: number, y: number): string {
 }
 
 /**
- * Pre-compute all positions within range of hostiles for efficient lookup
+ * Pre-compute all positions within range of hostiles for efficient lookup.
+ * This trades O(hostiles * range²) setup cost for O(1) per-creep lookup.
+ * For range=10, this creates ~441 positions per hostile, but the Set
+ * provides O(1) lookup which saves significant CPU across all creeps.
+ * This is computed only once per room per tick.
  */
 function computeHostileThreatZones(hostiles: Creep[], range: number): Set<string> {
   const threatPositions = new Set<string>();
   for (const hostile of hostiles) {
-    // Add all positions within range of this hostile
+    // Add all positions within range of this hostile (square area)
     for (let dx = -range; dx <= range; dx++) {
       for (let dy = -range; dy <= range; dy++) {
         const x = hostile.pos.x + dx;

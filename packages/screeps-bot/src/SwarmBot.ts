@@ -40,7 +40,9 @@ const CPU_CONFIG = {
   /** Target CPU usage as fraction of limit */
   TARGET_USAGE: 0.85,
   /** Reserved CPU for finalization (movement reconciliation, etc.) */
-  RESERVED_CPU: 5
+  RESERVED_CPU: 5,
+  /** Minimum CPU threshold to prevent underflow in budget calculations */
+  MIN_CPU_THRESHOLD: 1
 };
 
 /** Role priorities - higher values = run first */
@@ -128,8 +130,8 @@ function runCreep(creep: Creep): void {
 function hasCpuBudget(): boolean {
   const used = Game.cpu.getUsed();
   const limit = Game.cpu.limit;
-  // Ensure we always have at least 1 CPU available to prevent underflow
-  const targetCpu = Math.max(1, (limit * CPU_CONFIG.TARGET_USAGE) - CPU_CONFIG.RESERVED_CPU);
+  // Ensure we always have at least MIN_CPU_THRESHOLD available to prevent underflow
+  const targetCpu = Math.max(CPU_CONFIG.MIN_CPU_THRESHOLD, (limit * CPU_CONFIG.TARGET_USAGE) - CPU_CONFIG.RESERVED_CPU);
   return used < targetCpu;
 }
 
