@@ -1,6 +1,6 @@
 import {assert} from "chai";
 import {loop} from "../../src/main";
-import {Game, Memory} from "./mock"
+import {Game, Memory} from "./mock";
 import {memoryManager} from "../../src/SwarmBot";
 
 describe("main", () => {
