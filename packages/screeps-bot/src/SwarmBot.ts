@@ -17,6 +17,7 @@ import { runEconomyRole } from "./roles/economy";
 import { runMilitaryRole } from "./roles/military";
 import { runUtilityRole } from "./roles/utility";
 import { runPowerCreepRole, runPowerRole } from "./roles/power";
+import { initMovement, finalizeMovement } from "./utils/movement";
 import type { RoleFamily, SwarmCreepMemory } from "./memory/schemas";
 
 /**
@@ -80,6 +81,9 @@ function runSpawns(): void {
  * Main loop for SwarmBot
  */
 export function loop(): void {
+  // Initialize movement system (cartographer preTick)
+  initMovement();
+
   // Initialize memory structures
   memoryManager.initialize();
 
@@ -111,6 +115,9 @@ export function loop(): void {
   if (Game.time % 50 === 0) {
     memoryManager.cleanDeadCreeps();
   }
+
+  // Finalize movement system (cartographer reconcileTraffic)
+  finalizeMovement();
 
   // Finalize profiler tick
   profiler.finalizeTick();
