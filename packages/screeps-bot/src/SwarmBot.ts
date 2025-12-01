@@ -7,6 +7,12 @@
  * - Creep role execution
  * - Spawning
  * - Strategic decisions
+ *
+ * PERFORMANCE OPTIMIZATIONS:
+ * - CPU bucket management with early exit when bucket is low
+ * - Priority-based creep execution (critical roles first)
+ * - CPU budget checks between creeps
+ * - Skips non-essential creeps when CPU is limited
  */
 
 import type { RoleFamily, SwarmCreepMemory } from "./memory/schemas";
@@ -18,7 +24,58 @@ import { runEconomyRole } from "./roles/economy";
 import { runMilitaryRole } from "./roles/military";
 import { runPowerCreepRole, runPowerRole } from "./roles/power";
 import { runUtilityRole } from "./roles/utility";
+import { clearRoomCaches } from "./roles/behaviors/context";
 import { finalizeMovement, initMovement } from "./utils/movement";
+
+// =============================================================================
+// CPU Budget Configuration
+// =============================================================================
+
+/** CPU bucket thresholds */
+const CPU_CONFIG = {
+  /** Below this bucket level, skip non-essential work */
+  CRITICAL_BUCKET: 1000,
+  /** Below this bucket level, reduce workload */
+  LOW_BUCKET: 3000,
+  /** Target CPU usage as fraction of limit */
+  TARGET_USAGE: 0.85,
+  /** Reserved CPU for finalization (movement reconciliation, etc.) */
+  RESERVED_CPU: 5
+};
+
+/** Role priorities - higher values = run first */
+const ROLE_PRIORITY: Record<string, number> = {
+  // Critical economy roles
+  harvester: 100,
+  queenCarrier: 95,
+  hauler: 90,
+
+  // Military (always important)
+  defender: 85,
+  rangedDefender: 84,
+  healer: 83,
+
+  // Standard economy
+  larvaWorker: 70,
+  builder: 60,
+  upgrader: 50,
+
+  // Utility
+  scout: 40,
+  claimer: 35,
+  remoteHarvester: 30,
+  remoteHauler: 25,
+
+  // Low priority
+  mineralHarvester: 20,
+  depositHarvester: 15,
+  labTech: 10,
+  factoryWorker: 5
+};
+
+// =============================================================================
+// Creep Helpers
+// =============================================================================
 
 /**
  * Get role family from creep memory
@@ -26,6 +83,14 @@ import { finalizeMovement, initMovement } from "./utils/movement";
 function getCreepFamily(creep: Creep): RoleFamily {
   const memory = creep.memory as unknown as SwarmCreepMemory;
   return memory.family ?? "economy";
+}
+
+/**
+ * Get role priority for a creep (higher = runs first)
+ */
+function getCreepPriority(creep: Creep): number {
+  const memory = creep.memory as unknown as SwarmCreepMemory;
+  return ROLE_PRIORITY[memory.role] ?? 50;
 }
 
 /**
@@ -51,6 +116,46 @@ function runCreep(creep: Creep): void {
       runEconomyRole(creep);
   }
 }
+
+// =============================================================================
+// CPU Management
+// =============================================================================
+
+/**
+ * Check if we have CPU budget to continue processing
+ */
+function hasCpuBudget(): boolean {
+  const used = Game.cpu.getUsed();
+  const limit = Game.cpu.limit;
+  return used < (limit * CPU_CONFIG.TARGET_USAGE) - CPU_CONFIG.RESERVED_CPU;
+}
+
+/**
+ * Check if we should skip non-essential work due to low bucket
+ */
+function isLowBucket(): boolean {
+  return Game.cpu.bucket < CPU_CONFIG.LOW_BUCKET;
+}
+
+/**
+ * Check if bucket is critically low - skip most work
+ */
+function isCriticalBucket(): boolean {
+  return Game.cpu.bucket < CPU_CONFIG.CRITICAL_BUCKET;
+}
+
+/**
+ * Get creeps sorted by priority
+ */
+function getSortedCreeps(): Creep[] {
+  return Object.values(Game.creeps)
+    .filter(c => !c.spawning)
+    .sort((a, b) => getCreepPriority(b) - getCreepPriority(a));
+}
+
+// =============================================================================
+// Subsystem Runners
+// =============================================================================
 
 /**
  * Run all power creeps
@@ -78,9 +183,58 @@ function runSpawns(): void {
 }
 
 /**
+ * Run creeps with CPU budget management.
+ * Creeps are sorted by priority so critical roles run first.
+ */
+function runCreepsWithBudget(): void {
+  const creeps = getSortedCreeps();
+  const lowBucket = isLowBucket();
+  let creepsRun = 0;
+  let creepsSkipped = 0;
+
+  for (const creep of creeps) {
+    // Check CPU budget before each creep
+    if (!hasCpuBudget()) {
+      creepsSkipped = creeps.length - creepsRun;
+      break;
+    }
+
+    // In low bucket mode, skip low-priority creeps
+    if (lowBucket && getCreepPriority(creep) < 50) {
+      creepsSkipped++;
+      continue;
+    }
+
+    runCreep(creep);
+    creepsRun++;
+  }
+
+  // Log if we skipped creeps (for debugging)
+  if (creepsSkipped > 0 && Game.time % 10 === 0) {
+    console.log(`[SwarmBot] Skipped ${creepsSkipped} creeps due to CPU (bucket: ${Game.cpu.bucket})`);
+  }
+}
+
+// =============================================================================
+// Main Loop
+// =============================================================================
+
+/**
  * Main loop for SwarmBot
  */
 export function loop(): void {
+  // Critical bucket check - minimal processing
+  if (isCriticalBucket()) {
+    console.log(`[SwarmBot] CRITICAL: CPU bucket at ${Game.cpu.bucket}, minimal processing`);
+    // Only run movement finalization to prevent stuck creeps
+    initMovement();
+    finalizeMovement();
+    return;
+  }
+
+  // Clear per-tick caches at the start of each tick
+  clearRoomCaches();
+
   // Initialize movement system (cartographer preTick)
   initMovement();
 
@@ -92,27 +246,25 @@ export function loop(): void {
     roomManager.run();
   });
 
-  // Run spawns
+  // Run spawns (high priority - always runs)
   profiler.measureSubsystem("spawns", () => {
     runSpawns();
   });
 
-  // Run all creeps
+  // Run all creeps with CPU budget management
   profiler.measureSubsystem("creeps", () => {
-    for (const creep of Object.values(Game.creeps)) {
-      if (!creep.spawning) {
-        runCreep(creep);
-      }
-    }
+    runCreepsWithBudget();
   });
 
-  // Run power creeps
-  profiler.measureSubsystem("powerCreeps", () => {
-    runPowerCreeps();
-  });
+  // Run power creeps (if we have budget)
+  if (hasCpuBudget()) {
+    profiler.measureSubsystem("powerCreeps", () => {
+      runPowerCreeps();
+    });
+  }
 
-  // Clean up dead creeps (every 50 ticks)
-  if (Game.time % 50 === 0) {
+  // Clean up dead creeps (every 50 ticks, low priority)
+  if (Game.time % 50 === 0 && hasCpuBudget()) {
     memoryManager.cleanDeadCreeps();
   }
 
