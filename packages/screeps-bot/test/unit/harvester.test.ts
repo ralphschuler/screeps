@@ -4,25 +4,54 @@ import type { CreepContext } from "../../src/roles/behaviors/types";
 import type { SwarmCreepMemory } from "../../src/memory/schemas";
 
 /**
- * Create a mock creep for testing
+ * Minimal interface for mock position object
+ */
+interface MockPosition {
+  isNearTo: () => boolean;
+  findInRange: () => never[];
+}
+
+/**
+ * Minimal interface for mock store object
+ */
+interface MockStore {
+  getCapacity: () => number;
+  getFreeCapacity: () => number;
+  getUsedCapacity: () => number;
+}
+
+/**
+ * Minimal interface for mock creep object
+ */
+interface MockCreep {
+  name: string;
+  store: MockStore;
+  pos: MockPosition;
+}
+
+/**
+ * Create a mock creep for testing.
+ * freeCapacity is automatically calculated from capacity - usedCapacity.
  */
 function createMockCreep(options: {
   capacity: number;
-  freeCapacity: number;
   usedCapacity: number;
   isNearToSource: boolean;
 }): Creep {
-  return {
+  const freeCapacity = options.capacity - options.usedCapacity;
+  const mockCreep: MockCreep = {
     name: "TestHarvester",
     store: {
       getCapacity: () => options.capacity,
-      getFreeCapacity: () => options.freeCapacity,
+      getFreeCapacity: () => freeCapacity,
       getUsedCapacity: () => options.usedCapacity
     },
     pos: {
-      isNearTo: () => options.isNearToSource
+      isNearTo: () => options.isNearToSource,
+      findInRange: () => []
     }
-  } as unknown as Creep;
+  };
+  return mockCreep as unknown as Creep;
 }
 
 /**
@@ -33,6 +62,23 @@ function createMockSource(): Source {
     id: "mockSourceId" as Id<Source>,
     energy: 3000
   } as unknown as Source;
+}
+
+/**
+ * Minimal interface for mock room object
+ */
+interface MockRoom {
+  find: () => never[];
+}
+
+/**
+ * Create a mock room for testing
+ */
+function createMockRoom(): Room {
+  const mockRoom: MockRoom = {
+    find: () => []
+  };
+  return mockRoom as unknown as Room;
 }
 
 /**
@@ -53,7 +99,7 @@ function createMockContext(
 
   return {
     creep,
-    room: {} as Room,
+    room: createMockRoom(),
     memory: fullMemory,
     swarmState: undefined,
     squadMemory: undefined,
@@ -91,7 +137,6 @@ describe("harvester behavior", () => {
       const source = createMockSource();
       const creep = createMockCreep({
         capacity: 0,
-        freeCapacity: 0,
         usedCapacity: 0,
         isNearToSource: true
       });
@@ -111,7 +156,6 @@ describe("harvester behavior", () => {
       const source = createMockSource();
       const creep = createMockCreep({
         capacity: 50,
-        freeCapacity: 50,
         usedCapacity: 0,
         isNearToSource: true
       });
@@ -129,12 +173,9 @@ describe("harvester behavior", () => {
       const source = createMockSource();
       const creep = createMockCreep({
         capacity: 50,
-        freeCapacity: 0,
         usedCapacity: 50,
         isNearToSource: true
       });
-      // Add findInRange mock for container/link search
-      (creep.pos as any).findInRange = () => [];
       const ctx = createMockContext(creep, source);
 
       const action = harvester(ctx);
@@ -148,7 +189,6 @@ describe("harvester behavior", () => {
       const source = createMockSource();
       const creep = createMockCreep({
         capacity: 0,
-        freeCapacity: 0,
         usedCapacity: 0,
         isNearToSource: false
       });
@@ -167,15 +207,10 @@ describe("harvester behavior", () => {
     it("should return idle when no sources available", () => {
       const creep = createMockCreep({
         capacity: 0,
-        freeCapacity: 0,
         usedCapacity: 0,
         isNearToSource: false
       });
-      // Mock room.find to return empty sources
       const ctx = createMockContext(creep, null);
-      ctx.room = {
-        find: () => []
-      } as unknown as Room;
 
       const action = harvester(ctx);
 
