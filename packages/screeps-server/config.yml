@@ -1,5 +1,3 @@
-steamKey: $STEAM_KEY
-
 pinnedPackages:
   ssri: 8.0.1
   cacache: 15.3.0
@@ -37,203 +35,238 @@ bots:
   tooangel: screeps-bot-tooangel
 
 serverConfig:
-  tickRate: 200
-  socketUpdateRate: 200
-  shardName: "test"
+  tickRate: 100
+  socketUpdateRate: 100
+  shardName: "shard0"
   welcomeText: |
-    <div style="
-      width: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      background: radial-gradient(circle at top, #12192f 0, #050810 60%);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      color: #e3f2fd;
-      padding: 24px;
-      text-align: center;
-    ">
-
-      <div style="
-        max-width: 700px;
-        width: 100%;
-        background: linear-gradient(145deg, #0c101b, #050814);
-        border-radius: 18px;
-        border: 1px solid rgba(255,255,255,0.06);
-        padding: 40px 36px;
-        box-shadow: 0 0 40px rgba(0,0,0,0.7), 0 0 40px rgba(53,255,155,0.1);
-        position: relative;
-        overflow: hidden;
-      ">
-
-        <div style="
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 12px;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          color: #78839c;
-          border: 1px solid rgba(255,255,255,0.06);
-          background: rgba(5,8,16,0.9);
-          padding: 4px 12px;
-          border-radius: 999px;
-          margin-bottom: 18px;
-        ">
-          <span style="
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: #35ff9b;
-            box-shadow: 0 0 12px #35ff9b;
-          "></span>
-          Private Screeps Shard
-        </div>
-
-        <h1 style="
-          font-size: clamp(2.1rem, 3vw, 2.6rem);
-          letter-spacing: 0.04em;
-          text-transform: uppercase;
-          margin-bottom: 8px;
-        ">screeps.nyphon.de</h1>
-
-        <p style="
-          font-size: 15px;
-          color: #78839c;
-          margin-bottom: 32px;
-        ">
-          A small, not-so-quiet corner of the Screeps universe. BYO AI.
-        </p>
-
-        <div style="
-          display: grid;
-          grid-template-columns: 2fr 1.4fr;
-          gap: 28px;
-          text-align: left;
-          margin-bottom: 24px;
-        ">
-
-          <div>
-            <div style="
-              font-size: 14px;
-              letter-spacing: 0.14em;
-              text-transform: uppercase;
-              color: #78839c;
-              margin-bottom: 14px;
-            ">Welcome, process</div>
-
-            <p style="
-              font-size: 15px;
-              line-height: 1.5;
-              color: #c8d3f5;
-              margin-bottom: 20px;
-            ">
-              This is a private Screeps server for experiments, weird AIs and
-              the occasional catastrophic refactor. If you ended up here,
-              you probably know what you are doing. Probably.
-            </p>
-
-            <ul style="list-style: none; padding: 0; margin:0; color: #a6b3d9; font-size: 14px;">
-              <li style="margin-bottom: 8px; display: flex; gap: 8px;">
-                <span style="color:#35ff9b;">▸</span>
-                Sandbox for bots, strategies and <em>highly questionable</em> optimizations.
-              </li>
-              <li style="margin-bottom: 8px; display: flex; gap: 8px;">
-                <span style="color:#35ff9b;">▸</span>
-                Perfect for long-running simulations and “just one more rewrite”.
-              </li>
-              <li style="display: flex; gap: 8px;">
-                <span style="color:#35ff9b;">▸</span>
-                No public rankings, only logs that silently judge you.
-              </li>
-            </ul>
-          </div>
-
-          <div style="text-align:center;">
-            <div style="
-              font-size: 14px;
-              letter-spacing: 0.14em;
-              text-transform: uppercase;
-              color: #78839c;
-              margin-bottom: 14px;
-            ">Server status</div>
-
-            <div style="
-              background: radial-gradient(circle at top left, rgba(53,255,155,0.15), #050814);
-              border: 1px solid rgba(53,255,155,0.2);
-              border-radius: 14px;
-              padding: 14px 18px;
-              margin-bottom: 18px;
-              box-shadow: 0 0 16px rgba(53,255,155,0.25);
-            ">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <span style="font-size:12px; letter-spacing:0.16em; text-transform:uppercase; color:#78839c;">Instance</span>
-                <span style="
-                  font-size:15px;
-                  font-weight:500;
-                  color:#35ff9b;
-                  display:flex;
-                  align-items:center;
-                  gap:6px;
-                ">
-                  <span style="
-                    width: 8px;
-                    height: 8px;
-                    background:#35ff9b;
-                    border-radius:50%;
-                    box-shadow: 0 0 12px #35ff9b;
-                    position:relative;
-                  "></span>
-                  Online
-                </span>
-              </div>
-              <div style="font-size:11px; display:flex; justify-content:space-between; gap:8px;">
-                <span>Host: <strong style="color:#d0dcff;">screeps.nyphon.de</strong></span>
-                <span>Protocol: <strong style="color:#d0dcff;">WS / HTTP</strong></span>
-              </div>
+    <div
+        style="
+            width: 360px;
+            max-width: 100%;
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: radial-gradient(circle at top, #12192f 0, #050810 60%);
+            font-family:
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                &quot;Segoe UI&quot;,
+                sans-serif;
+            color: #e3f2fd;
+            padding: 20px;
+            text-align: center;
+        "
+    >
+        <div
+            style="
+                width: 100%;
+                background: linear-gradient(145deg, #0c101b, #050814);
+                border-radius: 16px;
+                border: 1px solid rgba(255, 255, 255, 0.06);
+                padding: 28px 22px;
+                box-shadow:
+                    0 0 24px rgba(0, 0, 0, 0.7),
+                    0 0 24px rgba(53, 255, 155, 0.1);
+                position: relative;
+                overflow: hidden;
+            "
+        >
+            <div
+                style="
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    font-size: 11px;
+                    letter-spacing: 0.1em;
+                    text-transform: uppercase;
+                    color: #78839c;
+                    border: 1px solid rgba(255, 255, 255, 0.06);
+                    background: rgba(5, 8, 16, 0.9);
+                    padding: 4px 10px;
+                    border-radius: 999px;
+                    margin-bottom: 16px;
+                "
+            >
+                <span
+                    style="
+                        width: 6px;
+                        height: 6px;
+                        border-radius: 50%;
+                        background: #35ff9b;
+                        box-shadow: 0 0 10px #35ff9b;
+                    "
+                ></span>
+                Screeps Shard
             </div>
 
-            <div style="
-              font-family:'SF Mono', ui-monospace, Menlo, Monaco, 'Courier New', monospace;
-              font-size:13px;
-              padding:4px 10px;
-              border-radius:999px;
-              background:rgba(3,252,140,0.06);
-              border:1px solid rgba(3,252,140,0.2);
-              color:#35ff9b;
-              display:inline-block;
-              margin:0 auto 14px;
-            ">screeps.nyphon.de</div>
+            <h1
+                style="
+                    font-size: 22px;
+                    letter-spacing: 0.04em;
+                    text-transform: uppercase;
+                    margin-bottom: 6px;
+                "
+            >
+                SCREEPS SERVER
+            </h1>
 
-            <p style="
-              font-size:12px;
-              color:#78839c;
-              opacity:0.8;
-            ">
-              If you do not have credentials yet, contact the admin and
-              promise not to <code style="
-                font-size:12px;
-                padding:2px 6px;
-                border-radius:999px;
-                background:rgba(53,255,155,0.1);
-                border:1px solid rgba(53,255,155,0.3);
-                color:#35ff9b;
-              ">while(true)</code> the CPU.
+            <p
+                style="
+                    font-size: 13px;
+                    color: #78839c;
+                    margin-bottom: 22px;
+                    opacity: 0.85;
+                "
+            >
+                A dedicated corner for AI experiments, simulations, automation, and
+                creative strategy testing.
             </p>
-          </div>
 
+            <div
+                style="
+                    background: radial-gradient(
+                        circle at top left,
+                        rgba(53, 255, 155, 0.15),
+                        #050814
+                    );
+                    border: 1px solid rgba(53, 255, 155, 0.2);
+                    border-radius: 12px;
+                    padding: 12px 16px;
+                    margin-bottom: 18px;
+                    box-shadow: 0 0 14px rgba(53, 255, 155, 0.25);
+                    text-align: left;
+                "
+            >
+                <div
+                    style="
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 5px;
+                    "
+                >
+                    <span
+                        style="
+                            font-size: 10px;
+                            letter-spacing: 0.14em;
+                            text-transform: uppercase;
+                            color: #78839c;
+                        "
+                        >Instance</span
+                    >
+                    <span
+                        style="
+                            font-size: 13px;
+                            font-weight: 500;
+                            color: #35ff9b;
+                            display: flex;
+                            align-items: center;
+                            gap: 5px;
+                        "
+                    >
+                        <span
+                            style="
+                                width: 7px;
+                                height: 7px;
+                                background: #35ff9b;
+                                border-radius: 50%;
+                                box-shadow: 0 0 10px #35ff9b;
+                            "
+                        ></span>
+                        Online
+                    </span>
+                </div>
+                <div
+                    style="
+                        font-size: 10px;
+                        display: flex;
+                        justify-content: space-between;
+                    "
+                >
+                    <span
+                        >Host:
+                        <strong style="color: #d0dcff"
+                            >your.server.domain</strong
+                        ></span
+                    >
+                    <span
+                        >Protocol:
+                        <strong style="color: #d0dcff">WS / HTTP</strong></span
+                    >
+                </div>
+            </div>
+
+            <p
+                style="
+                    font-size: 12px;
+                    color: #78839c;
+                    opacity: 0.8;
+                    line-height: 1.45;
+                    margin-bottom: 16px;
+                "
+            >
+                This server exists to support high-frequency strategy testing,
+                long-running simulations, and modular bot deployments. Users are
+                expected to operate within tick-budget limits and adhere to
+                sustainable CPU usage practices.
+            </p>
+
+            <ul
+                style="
+                    list-style: none;
+                    padding: 0;
+                    margin: 0 0 20px;
+                    text-align: left;
+                    color: #a6b3d9;
+                    font-size: 12px;
+                "
+            >
+                <li style="margin-bottom: 7px; display: flex; gap: 7px">
+                    <span style="color: #35ff9b">▸</span>
+                    Room-based decision making, decentralized bot logic,
+                    memory-driven coordination.
+                </li>
+                <li style="margin-bottom: 7px; display: flex; gap: 7px">
+                    <span style="color: #35ff9b">▸</span>
+                    Designed for AI swarms and emergent automation architectures.
+                </li>
+                <li style="display: flex; gap: 7px">
+                    <span style="color: #35ff9b">▸</span>
+                    No global leaderboard, only logs that capture honest insight.
+                </li>
+            </ul>
+
+            <p
+                style="
+                    font-size: 10px;
+                    background: rgba(53, 255, 155, 0.08);
+                    border: 1px solid rgba(53, 255, 155, 0.2);
+                    border-radius: 999px;
+                    padding: 3px 9px;
+                    color: #35ff9b;
+                    display: inline-block;
+                    margin-bottom: 12px;
+                    letter-spacing: 0.08em;
+                    text-transform: uppercase;
+                "
+            >
+                All rooms operate by local logic
+            </p>
+
+            <p
+                style="
+                    font-size: 10px;
+                    color: #78839c;
+                    opacity: 0.7;
+                    margin-top: 12px;
+                "
+            >
+                Tip: Keep your bots polite. The ramparts remember.
+            </p>
         </div>
-
-        <p style="
-          margin-top:28px;
-          font-size:12px;
-          color:#78839c;
-          opacity:0.75;
-        ">
-          Tip: Keep your bots polite. The ramparts remember.
-        </p>
-
-      </div>
     </div>
 
   constants: {}
@@ -245,8 +278,3 @@ serverConfig:
 launcherOptions:
   autoUpdate: true
   logConsole: true
-
-env:
-  backend:
-    MAPTOOL_USER: admin
-    MAPTOOL_PASS: ${process.env.MAPTOOL_PASS}
