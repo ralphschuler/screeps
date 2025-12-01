@@ -294,14 +294,13 @@ export function evaluateHarasser(ctx: SwarmCreepContext): SwarmAction {
     const target = workers.reduce((a, b) => (ctx.creep.pos.getRangeTo(a) < ctx.creep.pos.getRangeTo(b) ? a : b));
     const range = ctx.creep.pos.getRangeTo(target);
 
-    if (range <= 3) {
-      return { type: "rangedAttack", target };
-    }
-
     if (range <= 1) {
       return { type: "attack", target };
     }
 
+    if (range <= 3) {
+      return { type: "rangedAttack", target };
+    }
     return { type: "moveTo", target };
   }
 
