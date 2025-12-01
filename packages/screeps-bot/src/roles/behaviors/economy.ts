@@ -139,7 +139,11 @@ export function harvester(ctx: CreepContext): CreepAction {
   }
 
   // At source - harvest or transfer
-  if (ctx.creep.store.getFreeCapacity() > 0) {
+  // Check if creep can harvest: either has no carry capacity (drop miner) or has free space
+  const carryCapacity = ctx.creep.store.getCapacity();
+  const hasFreeCapacity = ctx.creep.store.getFreeCapacity() > 0;
+  
+  if (carryCapacity === 0 || hasFreeCapacity) {
     return { type: "harvest", target: source };
   }
 
