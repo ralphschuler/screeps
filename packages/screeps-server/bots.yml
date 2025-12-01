@@ -8,7 +8,7 @@ bots:
     gcl: 1
     log_console: false
 
-  - username: toolangle
+  - username: tooangel
     botName: tooangel
     position: 34,22,W2N4
     cpu: 200

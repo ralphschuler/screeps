@@ -34,7 +34,7 @@ mods:
 bots:
   choreographer: screeps-bot-choreographer
   overmind: screeps-bot-overmind
-  toolangle: screeps-bot-tooangel
+  tooangel: screeps-bot-tooangel
 
 serverConfig:
   tickRate: 200
