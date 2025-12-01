@@ -8,6 +8,7 @@
 import type { CreepAction, CreepContext } from "./types";
 import type { SwarmCreepMemory } from "../../memory/schemas";
 import { moveCreep, moveToRoom } from "../../utils/movement";
+import { safeFind } from "../../utils/safeFind";
 
 // =============================================================================
 // Regular Creep Power Roles
@@ -288,9 +289,9 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
     return { type: "usePower", power: PWR_GENERATE_OPS };
   }
 
-  // Boost towers for defense
+  // Boost towers for defense - use safeFind for hostile creeps
   if (powers.includes(PWR_OPERATE_TOWER) && ctx.ops >= 10) {
-    const hostiles = ctx.room.find(FIND_HOSTILE_CREEPS);
+    const hostiles = safeFind(ctx.room, FIND_HOSTILE_CREEPS);
     if (hostiles.length > 0) {
       const tower = ctx.room.find(FIND_MY_STRUCTURES, {
         filter: s => s.structureType === STRUCTURE_TOWER
@@ -307,15 +308,15 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
     if (lowRampart) return { type: "usePower", power: PWR_FORTIFY, target: lowRampart };
   }
 
-  // Disrupt enemy spawns
+  // Disrupt enemy spawns - use safeFind for hostile spawns
   if (powers.includes(PWR_DISRUPT_SPAWN) && ctx.ops >= 10) {
-    const enemySpawn = ctx.room.find(FIND_HOSTILE_SPAWNS)[0];
+    const enemySpawn = safeFind(ctx.room, FIND_HOSTILE_SPAWNS)[0];
     if (enemySpawn) return { type: "usePower", power: PWR_DISRUPT_SPAWN, target: enemySpawn };
   }
 
-  // Disrupt enemy towers
+  // Disrupt enemy towers - use safeFind for hostile structures
   if (powers.includes(PWR_DISRUPT_TOWER) && ctx.ops >= 10) {
-    const enemyTower = ctx.room.find(FIND_HOSTILE_STRUCTURES, {
+    const enemyTower = safeFind(ctx.room, FIND_HOSTILE_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_TOWER
     })[0] as StructureTower | undefined;
     if (enemyTower) return { type: "usePower", power: PWR_DISRUPT_TOWER, target: enemyTower };
