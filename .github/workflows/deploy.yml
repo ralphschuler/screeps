@@ -26,6 +26,8 @@ jobs:
         working-directory: packages/screeps-bot
     env:
       CI: true
+      SCREEPS_USER: ${{ vars.SCREEPS_USER }}
+      SCREEPS_PASS: ${{ secrets.SCREEPS_PASS }}
       SCREEPS_TOKEN: ${{ secrets.SCREEPS_TOKEN }}
       SCREEPS_PROTOCOL: ${{ vars.SCREEPS_PROTOCOL }}
       SCREEPS_HOSTNAME: ${{ vars.SCREEPS_HOSTNAME }}
