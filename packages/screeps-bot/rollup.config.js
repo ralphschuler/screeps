@@ -7,6 +7,8 @@ import typescript from "rollup-plugin-typescript2";
 import screeps from "rollup-plugin-screeps";
 
 const cfg = {
+  user: process.env.SCREEPS_USERNAME,
+  pass: process.env.SCREEPS_PASS,
   token: process.env.SCREEPS_TOKEN,
   protocol: process.env.SCREEPS_PROTOCOL || "https",
   hostname: process.env.SCREEPS_HOSTNAME || "screeps.com",
