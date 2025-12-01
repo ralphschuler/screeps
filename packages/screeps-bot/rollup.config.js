@@ -28,6 +28,6 @@ export default {
     resolve({ rootDir: "src" }),
     commonjs(),
     typescript({ tsconfig: "./tsconfig.json" }),
-    screeps({ config: { screeps: cfg }, dryRun: cfg == null })
+    screeps({ config: { screeps: cfg }, dryRun: cfg.token == null })
   ]
 };
