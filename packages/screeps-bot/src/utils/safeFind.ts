@@ -12,6 +12,16 @@
  * to continue operating even when encountering corrupted game data.
  */
 
+import { logger } from "../core/logger";
+
+/**
+ * Log a safe find error with consistent formatting.
+ */
+function logSafeFindError(method: string, findType: number, location: string, error: unknown): void {
+  const message = error instanceof Error ? error.message : String(error);
+  logger.warn(`SafeFind error in ${method}(${String(findType)}) at ${location}: ${message}`, { subsystem: "SafeFind" });
+}
+
 /**
  * Safely execute Room.find() with error handling.
  * Returns empty array if the engine throws an error during find.
@@ -24,10 +34,7 @@ export function safeFind<T extends FindConstant>(
   try {
     return room.find(type, opts);
   } catch (error) {
-    // Log the error for debugging but don't crash
-    console.log(
-      `[SafeFind] Error in room.find(${String(type)}) for room ${room.name}: ${error instanceof Error ? error.message : String(error)}`
-    );
+    logSafeFindError("room.find", type, room.name, error);
     return [];
   }
 }
@@ -44,9 +51,7 @@ export function safeFindClosestByRange<T extends FindConstant>(
   try {
     return pos.findClosestByRange(type, opts);
   } catch (error) {
-    console.log(
-      `[SafeFind] Error in pos.findClosestByRange(${String(type)}) at ${pos.roomName}:${String(pos.x)},${String(pos.y)}: ${error instanceof Error ? error.message : String(error)}`
-    );
+    logSafeFindError("pos.findClosestByRange", type, `${pos.roomName}:${String(pos.x)},${String(pos.y)}`, error);
     return null;
   }
 }
@@ -64,9 +69,7 @@ export function safeFindInRange<T extends FindConstant>(
   try {
     return pos.findInRange(type, range, opts);
   } catch (error) {
-    console.log(
-      `[SafeFind] Error in pos.findInRange(${String(type)}, ${String(range)}) at ${pos.roomName}:${String(pos.x)},${String(pos.y)}: ${error instanceof Error ? error.message : String(error)}`
-    );
+    logSafeFindError("pos.findInRange", type, `${pos.roomName}:${String(pos.x)},${String(pos.y)}`, error);
     return [];
   }
 }
@@ -83,9 +86,7 @@ export function safeFindClosestByPath<T extends FindConstant>(
   try {
     return pos.findClosestByPath(type, opts);
   } catch (error) {
-    console.log(
-      `[SafeFind] Error in pos.findClosestByPath(${String(type)}) at ${pos.roomName}:${String(pos.x)},${String(pos.y)}: ${error instanceof Error ? error.message : String(error)}`
-    );
+    logSafeFindError("pos.findClosestByPath", type, `${pos.roomName}:${String(pos.x)},${String(pos.y)}`, error);
     return null;
   }
 }

@@ -316,9 +316,10 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
 
   // Disrupt enemy towers - use safeFind for hostile structures
   if (powers.includes(PWR_DISRUPT_TOWER) && ctx.ops >= 10) {
-    const enemyTower = safeFind(ctx.room, FIND_HOSTILE_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_TOWER
-    })[0] as StructureTower | undefined;
+    const enemyTowers = safeFind(ctx.room, FIND_HOSTILE_STRUCTURES, {
+      filter: (s): s is StructureTower => s.structureType === STRUCTURE_TOWER
+    });
+    const enemyTower = enemyTowers[0];
     if (enemyTower) return { type: "usePower", power: PWR_DISRUPT_TOWER, target: enemyTower };
   }
 
