@@ -122,12 +122,15 @@ function runCreep(creep: Creep): void {
 // =============================================================================
 
 /**
- * Check if we have CPU budget to continue processing
+ * Check if we have CPU budget to continue processing.
+ * Uses Math.max to prevent underflow when limit is very low.
  */
 function hasCpuBudget(): boolean {
   const used = Game.cpu.getUsed();
   const limit = Game.cpu.limit;
-  return used < (limit * CPU_CONFIG.TARGET_USAGE) - CPU_CONFIG.RESERVED_CPU;
+  // Ensure we always have at least 1 CPU available to prevent underflow
+  const targetCpu = Math.max(1, (limit * CPU_CONFIG.TARGET_USAGE) - CPU_CONFIG.RESERVED_CPU);
+  return used < targetCpu;
 }
 
 /**
@@ -209,8 +212,9 @@ function runCreepsWithBudget(): void {
     creepsRun++;
   }
 
-  // Log if we skipped creeps (for debugging)
-  if (creepsSkipped > 0 && Game.time % 10 === 0) {
+  // Log if we skipped creeps - reduce frequency when bucket is low to save CPU
+  const logInterval = lowBucket ? 100 : 50;
+  if (creepsSkipped > 0 && Game.time % logInterval === 0) {
     console.log(`[SwarmBot] Skipped ${creepsSkipped} creeps due to CPU (bucket: ${Game.cpu.bucket})`);
   }
 }

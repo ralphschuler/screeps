@@ -46,10 +46,39 @@ interface RoomCache {
   factory: StructureFactory | undefined;
   minerals: Mineral[];
   activeSources: Source[];
+  /** Pre-computed hostile threat zones for efficient nearbyEnemies checks */
+  hostileThreatPositions: Set<string>;
 }
 
-/** Per-room cache storage */
+/** Per-room cache storage - cleared at the start of each tick via clearRoomCaches() */
 const roomCacheMap = new Map<string, RoomCache>();
+
+/**
+ * Convert position to string key for fast lookup
+ */
+function posKey(x: number, y: number): string {
+  return `${x},${y}`;
+}
+
+/**
+ * Pre-compute all positions within range of hostiles for efficient lookup
+ */
+function computeHostileThreatZones(hostiles: Creep[], range: number): Set<string> {
+  const threatPositions = new Set<string>();
+  for (const hostile of hostiles) {
+    // Add all positions within range of this hostile
+    for (let dx = -range; dx <= range; dx++) {
+      for (let dy = -range; dy <= range; dy++) {
+        const x = hostile.pos.x + dx;
+        const y = hostile.pos.y + dy;
+        if (x >= 0 && x < 50 && y >= 0 && y < 50) {
+          threatPositions.add(posKey(x, y));
+        }
+      }
+    }
+  }
+  return threatPositions;
+}
 
 /**
  * Get or create cached room data.
@@ -64,10 +93,11 @@ function getRoomCache(room: Room): RoomCache {
   // Build new cache - this is the expensive part, but only happens once per room per tick
   const myStructures = room.find(FIND_MY_STRUCTURES);
   const allStructures = room.find(FIND_STRUCTURES);
+  const hostiles = room.find(FIND_HOSTILE_CREEPS);
 
   const cache: RoomCache = {
     tick: Game.time,
-    hostiles: room.find(FIND_HOSTILE_CREEPS),
+    hostiles,
     droppedResources: room.find(FIND_DROPPED_RESOURCES, {
       filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 50
     }),
@@ -92,7 +122,9 @@ function getRoomCache(room: Room): RoomCache {
     labs: myStructures.filter((s): s is StructureLab => s.structureType === STRUCTURE_LAB),
     factory: myStructures.find((s): s is StructureFactory => s.structureType === STRUCTURE_FACTORY),
     minerals: room.find(FIND_MINERALS),
-    activeSources: room.find(FIND_SOURCES_ACTIVE)
+    activeSources: room.find(FIND_SOURCES_ACTIVE),
+    // Pre-compute hostile threat zones for efficient nearbyEnemies checks
+    hostileThreatPositions: hostiles.length > 0 ? computeHostileThreatZones(hostiles, 10) : new Set()
   };
 
   roomCacheMap.set(room.name, cache);
@@ -100,8 +132,8 @@ function getRoomCache(room: Room): RoomCache {
 }
 
 /**
- * Clear all room caches. Call at the start of each tick if needed.
- * Note: Caches auto-invalidate based on tick number, so this is optional.
+ * Clear all room caches. Must be called at the start of each tick
+ * to prevent memory leaks from stale room data.
  */
 export function clearRoomCaches(): void {
   roomCacheMap.clear();
@@ -179,9 +211,9 @@ export function createContext(creep: Creep): CreepContext {
     assignedSource: getAssignedSource(memory),
     assignedMineral: roomCache.minerals[0] ?? null,
 
-    // Room analysis (using cached data)
+    // Room analysis (using cached data with O(1) lookup for nearbyEnemies)
     energyAvailable: roomCache.activeSources.length > 0,
-    nearbyEnemies: roomCache.hostiles.some(h => creep.pos.inRangeTo(h, 10)),
+    nearbyEnemies: roomCache.hostileThreatPositions.has(posKey(creep.pos.x, creep.pos.y)),
     constructionSiteCount: roomCache.prioritizedSites.length,
     damagedStructureCount: roomCache.repairTargets.length,
 
