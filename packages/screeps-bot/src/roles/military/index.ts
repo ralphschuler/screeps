@@ -10,19 +10,13 @@
  * - Ranger (ranged combat)
  */
 
-import { createSwarmContext, executeAction } from "../trees/context";
-import { evaluateMilitaryRole } from "../trees/militaryBehaviors";
+import { createContext, evaluateMilitaryBehavior, executeAction } from "../behaviors";
 
 /**
- * Run military role
+ * Run military role behavior.
  */
 export function runMilitaryRole(creep: Creep): void {
-  // Create context with all room state
-  const ctx = createSwarmContext(creep);
-
-  // Evaluate behavior to get action
-  const action = evaluateMilitaryRole(ctx);
-
-  // Execute the action
+  const ctx = createContext(creep);
+  const action = evaluateMilitaryBehavior(ctx);
   executeAction(creep, action, ctx);
 }
