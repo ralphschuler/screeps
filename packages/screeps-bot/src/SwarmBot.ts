@@ -28,6 +28,10 @@ import { clearRoomCaches } from "./roles/behaviors/context";
 import { finalizeMovement, initMovement } from "./utils/movement";
 import { registerAllTasks } from "./core/taskRegistry";
 import { scheduler } from "./core/scheduler";
+import { roomVisualizer } from "./visuals/roomVisualizer";
+import { memorySegmentStats } from "./core/memorySegmentStats";
+import { getConfig } from "./config";
+import { configureLogger, LogLevel } from "./core/logger";
 
 // =============================================================================
 // CPU Budget Configuration
@@ -232,11 +236,52 @@ function runCreepsWithBudget(): void {
 
 // Initialize tasks on first tick
 let tasksRegistered = false;
+let systemsInitialized = false;
+
+/**
+ * Initialize systems that need first-tick setup
+ */
+function initializeSystems(): void {
+  // Configure logger based on config
+  const config = getConfig();
+  configureLogger({
+    level: config.debug ? LogLevel.DEBUG : LogLevel.INFO,
+    cpuLogging: config.profiling
+  });
+
+  // Initialize memory segment stats
+  memorySegmentStats.initialize();
+
+  systemsInitialized = true;
+}
+
+/**
+ * Run visualizations for all owned rooms
+ */
+function runVisualizations(): void {
+  const config = getConfig();
+  if (!config.visualizations) return;
+
+  const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+  for (const room of ownedRooms) {
+    try {
+      roomVisualizer.draw(room);
+    } catch (err) {
+      // Visualization errors shouldn't crash the main loop
+      console.log(`[SwarmBot] Visualization error in ${room.name}: ${String(err)}`);
+    }
+  }
+}
 
 /**
  * Main loop for SwarmBot
  */
 export function loop(): void {
+  // Initialize systems on first tick
+  if (!systemsInitialized) {
+    initializeSystems();
+  }
+
   // Register scheduled tasks on first tick
   if (!tasksRegistered) {
     registerAllTasks();
@@ -267,7 +312,7 @@ export function loop(): void {
     try {
       roomManager.run();
     } catch (err) {
-      console.log(`[SwarmBot] ERROR in room processing: ${err}`);
+      console.log(`[SwarmBot] ERROR in room processing: ${String(err)}`);
       if (err instanceof Error && err.stack) {
         console.log(err.stack);
       }
@@ -306,6 +351,13 @@ export function loop(): void {
     }
   }
 
+  // Run visualizations (if enabled and budget allows)
+  if (hasCpuBudget()) {
+    profiler.measureSubsystem("visualizations", () => {
+      runVisualizations();
+    });
+  }
+
   // Finalize movement system (cartographer reconcileTraffic)
   finalizeMovement();
 
@@ -321,5 +373,7 @@ export { logger } from "./core/logger";
 export { scheduler } from "./core/scheduler";
 export { pheromoneManager } from "./logic/pheromone";
 export { evolutionManager, postureManager } from "./logic/evolution";
+export { roomVisualizer } from "./visuals/roomVisualizer";
+export { memorySegmentStats } from "./core/memorySegmentStats";
 export * from "./memory/schemas";
 export * from "./config";
