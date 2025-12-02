@@ -23,6 +23,15 @@ const MEMORY_LIMIT_BYTES = 2097152; // 2MB
 const CURRENT_MEMORY_VERSION = 1;
 
 /**
+ * Memory keys used by emyrk-screeps-cartographer library that we want to clean up.
+ * These are created automatically by the cartographer library for caching purposes:
+ * - _cg: Path cache data
+ * - _cge: Path cache expiration timestamps
+ * - _cgp: Portal data cache
+ */
+const CARTOGRAPHER_MEMORY_KEYS = ["_cg", "_cge", "_cgp"] as const;
+
+/**
  * Memory Manager class
  */
 export class MemoryManager {
@@ -228,6 +237,27 @@ export class MemoryManager {
   public isMemoryNearLimit(): boolean {
     const size = this.getMemorySize();
     return size > MEMORY_LIMIT_BYTES * 0.9;
+  }
+
+  /**
+   * Clean up cartographer memory entries.
+   * These entries (_cg, _cge, _cgp) are created by the emyrk-screeps-cartographer
+   * library for path caching. We remove them to reduce memory usage since the
+   * library uses HeapCache by default (paths are regenerated after global reset).
+   * @returns number of memory keys deleted
+   */
+  public cleanCartographerMemory(): number {
+    const mem = Memory as unknown as Record<string, unknown>;
+    let cleaned = 0;
+
+    for (const key of CARTOGRAPHER_MEMORY_KEYS) {
+      if (key in mem) {
+        delete mem[key];
+        cleaned++;
+      }
+    }
+
+    return cleaned;
   }
 }
 

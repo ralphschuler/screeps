@@ -101,6 +101,27 @@ export function registerAllTasks(): void {
     cpuBudget: 0.01
   });
 
+  // Cartographer Memory Cleanup - Remove cartographer library memory entries (every 100 ticks)
+  // The emyrk-screeps-cartographer library uses HeapCache by default but may create
+  // Memory entries (_cg, _cge, _cgp) for path/portal caching that we don't need.
+  scheduler.registerTask({
+    ...createLowFrequencyTask(
+      "cartographerMemoryCleanup",
+      () => {
+        const cleaned = memoryManager.cleanCartographerMemory();
+        if (cleaned > 0) {
+          logger.debug(`Cleaned ${cleaned} cartographer memory entries`, {
+            subsystem: "Memory"
+          });
+        }
+      },
+      15
+    ),
+    interval: 100,
+    minBucket: 1000,
+    cpuBudget: 0.005
+  });
+
   // Memory Size Check - Monitor usage (every 100 ticks)
   scheduler.registerTask({
     ...createLowFrequencyTask(
