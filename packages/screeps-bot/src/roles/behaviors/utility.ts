@@ -206,6 +206,7 @@ export function claimer(ctx: CreepContext): CreepAction {
 /**
  * Engineer - Repairs and fortification specialist.
  * Priority: critical structures → infrastructure → ramparts → walls → construction
+ * Uses danger level to determine repair targets (Issue #29)
  */
 export function engineer(ctx: CreepContext): CreepAction {
   // Update working state
@@ -213,6 +214,10 @@ export function engineer(ctx: CreepContext): CreepAction {
   if (ctx.isFull) ctx.memory.working = true;
 
   if (ctx.memory.working) {
+    // Get danger level from swarm state
+    const dangerLevel = getDangerLevel(ctx.room);
+    const rampartTarget = getRepairTargetByDanger(dangerLevel);
+
     // Critical structures (low HP spawns, towers, storage)
     const critical = ctx.creep.pos.findClosestByRange(FIND_STRUCTURES, {
       filter: s =>
@@ -231,15 +236,15 @@ export function engineer(ctx: CreepContext): CreepAction {
     });
     if (infrastructure) return { type: "repair", target: infrastructure };
 
-    // Ramparts (maintain to 100k hits)
+    // Ramparts (maintain based on danger level)
     const rampart = ctx.creep.pos.findClosestByRange(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_RAMPART && s.hits < 100000
+      filter: s => s.structureType === STRUCTURE_RAMPART && s.hits < rampartTarget
     }) as StructureRampart | null;
     if (rampart) return { type: "repair", target: rampart };
 
-    // Walls
+    // Walls (same target as ramparts)
     const wall = ctx.creep.pos.findClosestByRange(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_WALL && s.hits < 100000
+      filter: s => s.structureType === STRUCTURE_WALL && s.hits < rampartTarget
     });
     if (wall) return { type: "repair", target: wall };
 
@@ -262,6 +267,36 @@ export function engineer(ctx: CreepContext): CreepAction {
   }
 
   return { type: "idle" };
+}
+
+/**
+ * Get danger level from room's swarm state
+ */
+function getDangerLevel(room: Room): 0 | 1 | 2 | 3 {
+  const mem = room.memory as unknown as { swarm?: { danger?: 0 | 1 | 2 | 3 } };
+  return mem.swarm?.danger ?? 0;
+}
+
+/**
+ * Get repair target hits based on danger level (Issue #29)
+ * danger 0: 100k
+ * danger 1: 300k
+ * danger 2: 5M
+ * danger 3: 50M+
+ */
+function getRepairTargetByDanger(danger: 0 | 1 | 2 | 3): number {
+  switch (danger) {
+    case 0:
+      return 100000;
+    case 1:
+      return 300000;
+    case 2:
+      return 5000000;
+    case 3:
+      return 50000000;
+    default:
+      return 100000;
+  }
 }
 
 /**
@@ -381,6 +416,114 @@ export function terminalManager(ctx: CreepContext): CreepAction {
   return { type: "idle" };
 }
 
+/**
+ * Reserver - Reserve controllers in remote rooms.
+ * Keeps reservation ticks high to maintain 3000 energy capacity on sources.
+ */
+export function reserver(ctx: CreepContext): CreepAction {
+  let targetRoom = ctx.memory.targetRoom;
+
+  if (!targetRoom) {
+    // Try to find an assigned remote room from home room's swarm state
+    const homeRoom = Game.rooms[ctx.homeRoom];
+    if (homeRoom?.memory) {
+      const swarm = (homeRoom.memory as unknown as { swarm?: { remoteAssignments?: string[] } }).swarm;
+      if (swarm?.remoteAssignments && swarm.remoteAssignments.length > 0) {
+        ctx.memory.targetRoom = swarm.remoteAssignments[0];
+        targetRoom = ctx.memory.targetRoom;
+      }
+    }
+    if (!targetRoom) {
+      return { type: "idle" };
+    }
+  }
+
+  // Move to target room
+  if (ctx.room.name !== targetRoom) {
+    return { type: "moveToRoom", roomName: targetRoom };
+  }
+
+  // Reserve the controller
+  const controller = ctx.room.controller;
+  if (!controller) return { type: "idle" };
+
+  // Already owned - shouldn't be here
+  if (controller.my) {
+    delete ctx.memory.targetRoom;
+    return { type: "idle" };
+  }
+
+  // Reserve it
+  return { type: "reserve", target: controller };
+}
+
+/**
+ * Defender - Emergency defensive creep.
+ * Attacks hostiles in room, prioritizing healers.
+ */
+export function defender(ctx: CreepContext): CreepAction {
+  // Find hostiles - use safeFind to handle engine errors
+  const hostiles = safeFind(ctx.room, FIND_HOSTILE_CREEPS);
+
+  if (hostiles.length === 0) {
+    // No hostiles - patrol near spawn
+    const spawn = ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
+    if (spawn && ctx.creep.pos.getRangeTo(spawn) > 5) {
+      return { type: "moveTo", target: spawn };
+    }
+    return { type: "idle" };
+  }
+
+  // Prioritize targets: healers > ranged > melee
+  const target = selectDefenderTarget(hostiles);
+  if (target) {
+    return { type: "attack", target };
+  }
+
+  return { type: "idle" };
+}
+
+/**
+ * Select target for defender (prioritize by threat)
+ */
+function selectDefenderTarget(hostiles: Creep[]): Creep | null {
+  const sorted = hostiles.sort((a, b) => {
+    const scoreA = getHostileThreatScore(a);
+    const scoreB = getHostileThreatScore(b);
+    return scoreB - scoreA;
+  });
+  return sorted[0] ?? null;
+}
+
+/**
+ * Get threat score for hostile targeting
+ */
+function getHostileThreatScore(hostile: Creep): number {
+  let score = 0;
+  for (const part of hostile.body) {
+    if (!part.hits) continue;
+    switch (part.type) {
+      case HEAL:
+        score += 100;
+        break;
+      case RANGED_ATTACK:
+        score += 50;
+        break;
+      case ATTACK:
+        score += 40;
+        break;
+      case CLAIM:
+        score += 60;
+        break;
+      case WORK:
+        score += 30;
+        break;
+    }
+    if (part.boost) score += 20;
+  }
+  return score;
+}
+
 // =============================================================================
 // Role Dispatcher
 // =============================================================================
@@ -391,7 +534,9 @@ const utilityBehaviors: Record<string, (ctx: CreepContext) => CreepAction> = {
   engineer,
   remoteWorker,
   linkManager,
-  terminalManager
+  terminalManager,
+  reserver,
+  defender
 };
 
 /**

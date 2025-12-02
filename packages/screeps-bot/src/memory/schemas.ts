@@ -296,17 +296,19 @@ export type EconomyRole =
   | "mineralHarvester"
   | "depositHarvester"
   | "labTech"
-  | "factoryWorker";
+  | "factoryWorker"
+  | "remoteHarvester"
+  | "remoteHauler";
 
 /**
  * Military roles
  */
-export type MilitaryRole = "guard" | "healer" | "soldier" | "siegeUnit" | "harasser" | "ranger";
+export type MilitaryRole = "guard" | "healer" | "soldier" | "siegeUnit" | "harasser" | "ranger" | "defender";
 
 /**
  * Utility roles
  */
-export type UtilityRole = "scout" | "claimer" | "engineer" | "remoteWorker" | "linkManager" | "terminalManager";
+export type UtilityRole = "scout" | "claimer" | "engineer" | "remoteWorker" | "linkManager" | "terminalManager" | "reserver";
 
 /**
  * Power creep roles (for PowerCreeps)

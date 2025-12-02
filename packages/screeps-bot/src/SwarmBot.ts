@@ -15,11 +15,14 @@
  * - Skips non-essential creeps when CPU is limited
  */
 
-import type { RoleFamily, SwarmCreepMemory } from "./memory/schemas";
+import type { RoleFamily, SwarmCreepMemory, SwarmState } from "./memory/schemas";
 import { profiler } from "./core/profiler";
 import { roomManager } from "./core/roomNode";
 import { runSpawnManager } from "./logic/spawn";
 import { memoryManager } from "./memory/manager";
+import { pheromoneManager } from "./logic/pheromone";
+import { empireManager } from "./empire/empireManager";
+import { clusterManager } from "./clusters/clusterManager";
 import { runEconomyRole } from "./roles/economy";
 import { runMilitaryRole } from "./roles/military";
 import { runPowerCreepRole, runPowerRole } from "./roles/power";
@@ -257,6 +260,37 @@ export function loop(): void {
     roomManager.run();
   });
 
+  // Run empire manager (every 30 ticks for strategic decisions)
+  if (hasCpuBudget()) {
+    profiler.measureSubsystem("empire", () => {
+      empireManager.run();
+    });
+  }
+
+  // Run cluster manager (every 20 ticks for inter-room coordination)
+  if (hasCpuBudget()) {
+    profiler.measureSubsystem("clusters", () => {
+      clusterManager.run();
+    });
+  }
+
+  // Run pheromone diffusion (every 10 ticks - Issue #4)
+  if (Game.time % 10 === 0 && hasCpuBudget()) {
+    profiler.measureSubsystem("pheromones", () => {
+      runPheromoneDiffusion();
+    });
+  }
+
+  // Check for safe mode triggers (Issue #21)
+  if (hasCpuBudget()) {
+    checkSafeModeNeeded();
+  }
+
+  // Check for nukes (Issue #11)
+  if (Game.time % 100 === 0 && hasCpuBudget()) {
+    checkForNukes();
+  }
+
   // Run spawns (high priority - always runs)
   profiler.measureSubsystem("spawns", () => {
     runSpawns();
@@ -286,6 +320,98 @@ export function loop(): void {
   profiler.finalizeTick();
 }
 
+/**
+ * Run pheromone diffusion across owned rooms (Issue #4)
+ */
+function runPheromoneDiffusion(): void {
+  const swarmStates = new Map<string, SwarmState>();
+  
+  for (const room of Object.values(Game.rooms)) {
+    if (room.controller?.my) {
+      const swarm = memoryManager.getSwarmState(room.name);
+      if (swarm) {
+        swarmStates.set(room.name, swarm);
+      }
+    }
+  }
+  
+  if (swarmStates.size > 1) {
+    pheromoneManager.applyDiffusion(swarmStates);
+  }
+}
+
+/**
+ * Check if any room needs safe mode activation (Issue #21)
+ */
+function checkSafeModeNeeded(): void {
+  for (const room of Object.values(Game.rooms)) {
+    if (!room.controller?.my) continue;
+    
+    const swarm = memoryManager.getSwarmState(room.name);
+    if (!swarm) continue;
+    
+    // Only trigger in high danger situations
+    if (swarm.danger < 3) continue;
+    
+    // Check if critical structures are being attacked
+    const spawns = room.find(FIND_MY_SPAWNS);
+    const storage = room.storage;
+    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    
+    // Check if spawns are under direct attack
+    for (const spawn of spawns) {
+      if (spawn.hits < spawn.hitsMax * 0.3) {
+        // Spawn is critically damaged
+        const nearbyHostiles = hostiles.filter(h => h.pos.getRangeTo(spawn) <= 3);
+        if (nearbyHostiles.length > 0 && room.controller.safeModeAvailable > 0) {
+          const result = room.controller.activateSafeMode();
+          if (result === OK) {
+            console.log(`[SwarmBot] SAFE MODE ACTIVATED in ${room.name} - spawn under attack!`);
+            memoryManager.addRoomEvent(room.name, "safeMode", "Spawn critically damaged");
+          }
+          return;
+        }
+      }
+    }
+    
+    // Check if storage is under attack
+    if (storage && storage.hits < storage.hitsMax * 0.2) {
+      const nearbyHostiles = hostiles.filter(h => h.pos.getRangeTo(storage) <= 3);
+      if (nearbyHostiles.length > 0 && room.controller.safeModeAvailable > 0) {
+        const result = room.controller.activateSafeMode();
+        if (result === OK) {
+          console.log(`[SwarmBot] SAFE MODE ACTIVATED in ${room.name} - storage under attack!`);
+          memoryManager.addRoomEvent(room.name, "safeMode", "Storage critically damaged");
+        }
+        return;
+      }
+    }
+  }
+}
+
+/**
+ * Check for incoming nukes (Issue #11)
+ */
+function checkForNukes(): void {
+  for (const room of Object.values(Game.rooms)) {
+    if (!room.controller?.my) continue;
+    
+    const nukes = room.find(FIND_NUKES);
+    if (nukes.length > 0) {
+      const swarm = memoryManager.getSwarmState(room.name);
+      if (swarm) {
+        pheromoneManager.onNukeDetected(swarm);
+        
+        for (const nuke of nukes) {
+          const timeToLand = nuke.timeToLand;
+          console.log(`[SwarmBot] NUKE DETECTED in ${room.name}! Landing in ${timeToLand} ticks at (${nuke.pos.x}, ${nuke.pos.y})`);
+          memoryManager.addRoomEvent(room.name, "nukeDetected", `Landing in ${timeToLand} ticks`);
+        }
+      }
+    }
+  }
+}
+
 // Re-export key modules
 export { memoryManager } from "./memory/manager";
 export { roomManager } from "./core/roomNode";
@@ -294,5 +420,7 @@ export { logger } from "./core/logger";
 export { scheduler } from "./core/scheduler";
 export { pheromoneManager } from "./logic/pheromone";
 export { evolutionManager, postureManager } from "./logic/evolution";
+export { empireManager } from "./empire/empireManager";
+export { clusterManager } from "./clusters/clusterManager";
 export * from "./memory/schemas";
 export * from "./config";
