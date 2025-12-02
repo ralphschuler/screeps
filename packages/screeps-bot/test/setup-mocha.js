@@ -13,7 +13,7 @@ global._ = {
   }
 };
 
-// Mock Game object early - required by libraries like emyrk-screeps-cartographer
+// Mock Game object early - required by the custom traffic management module
 // that access Game globals at module load time
 global.Game = {
   creeps: {},
