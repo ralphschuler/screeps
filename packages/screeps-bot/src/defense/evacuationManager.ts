@@ -99,14 +99,14 @@ export class EvacuationManager {
     this.checkEvacuationTriggers();
 
     // Process active evacuations
-    for (const [roomName, state] of this.evacuations) {
+    for (const state of this.evacuations.values()) {
       if (!state.complete) {
         this.processEvacuation(state);
       }
     }
 
     // Clean up completed evacuations after 1000 ticks
-    for (const [roomName, state] of this.evacuations) {
+    for (const [roomName, state] of this.evacuations.entries()) {
       if (state.complete && Game.time - state.startedAt > 1000) {
         this.evacuations.delete(roomName);
       }
