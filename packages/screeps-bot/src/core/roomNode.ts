@@ -151,7 +151,8 @@ export class RoomNode {
     if (nukes.length > 0) {
       if (!swarm.nukeDetected) {
         pheromoneManager.onNukeDetected(swarm);
-        memoryManager.addRoomEvent(this.roomName, "nukeDetected", `${nukes.length} nuke(s) incoming from ${nukes[0].launchRoomName ?? 'unknown'}`);
+        const launchSource = nukes[0]?.launchRoomName ?? 'unidentified source';
+        memoryManager.addRoomEvent(this.roomName, "nukeDetected", `${nukes.length} nuke(s) incoming from ${launchSource}`);
         swarm.nukeDetected = true;
       }
     } else {
