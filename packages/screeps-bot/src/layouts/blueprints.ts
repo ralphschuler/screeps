@@ -506,7 +506,7 @@ const DESTROYABLE_STRUCTURE_TYPES: BuildableStructureConstant[] = [
 ];
 
 /** Set for O(1) lookup of destroyable structure types */
-const DESTROYABLE_STRUCTURE_SET = new Set<string>(DESTROYABLE_STRUCTURE_TYPES);
+const DESTROYABLE_STRUCTURE_SET = new Set<BuildableStructureConstant>(DESTROYABLE_STRUCTURE_TYPES);
 
 /**
  * Result of misplaced structure check
@@ -536,7 +536,7 @@ export function findMisplacedStructures(room: Room, anchor: RoomPosition, bluepr
     const x = anchor.x + s.x;
     const y = anchor.y + s.y;
     
-    // Skip positions that are out of bounds or on walls
+    // Skip positions on room border (1-48 valid range) or on walls
     if (x < 1 || x > 48 || y < 1 || y > 48) continue;
     if (terrain.get(x, y) === TERRAIN_MASK_WALL) continue;
     
@@ -570,8 +570,16 @@ export function findMisplacedStructures(room: Room, anchor: RoomPosition, bluepr
   }
   
   // Find existing structures of destroyable types using Set for O(1) lookup
-  const existingStructures = room.find(FIND_MY_STRUCTURES, {
-    filter: s => DESTROYABLE_STRUCTURE_SET.has(s.structureType)
+  // Use FIND_STRUCTURES to include roads (which are unowned) and filter to our structures
+  const existingStructures = room.find(FIND_STRUCTURES, {
+    filter: s =>
+      DESTROYABLE_STRUCTURE_SET.has(s.structureType as BuildableStructureConstant) &&
+      (
+        // Owned by us
+        (s as OwnedStructure).my === true ||
+        // Roads have no owner, so include them if they exist
+        s.structureType === STRUCTURE_ROAD
+      )
   });
   
   // Check each existing structure against blueprint positions
@@ -580,8 +588,8 @@ export function findMisplacedStructures(room: Room, anchor: RoomPosition, bluepr
     const structType = structure.structureType as BuildableStructureConstant;
     const validPosForType = validPositions.get(structType);
     
-    // If this structure type has blueprint positions and this position is not valid
-    if (validPosForType && !validPosForType.has(posKey)) {
+    // If this structure type is not in the blueprint, or this position is not valid
+    if (!validPosForType || !validPosForType.has(posKey)) {
       misplaced.push({
         structure,
         reason: `${structure.structureType} at ${posKey} is not in blueprint`
