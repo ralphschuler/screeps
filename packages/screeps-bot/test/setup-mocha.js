@@ -1,5 +1,6 @@
 //inject mocha globally to allow custom interface refer without direct import - bypass bundle issue
 // Provide minimal lodash-like utilities for tests without depending on lodash
+// Note: _.clone() is a SHALLOW clone (same as lodash's default behavior, not _.cloneDeep())
 global._ = {
   clone: function(obj) {
     if (obj === null || typeof obj !== 'object') {
