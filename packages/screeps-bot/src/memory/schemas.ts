@@ -238,6 +238,8 @@ export interface SwarmState {
   posture: RoomPosture;
   /** Danger level (0-3) */
   danger: 0 | 1 | 2 | 3;
+  /** Whether nukes have been detected (to prevent spam) */
+  nukeDetected?: boolean;
   /** Pheromone values */
   pheromones: PheromoneState;
   /** Next update tick (to avoid per-tick recompute) */

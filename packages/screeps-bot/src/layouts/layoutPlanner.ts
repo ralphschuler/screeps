@@ -196,7 +196,7 @@ function scorePosition(
  * Check if a position has enough buildable space
  */
 export function hasEnoughSpace(pos: RoomPosition, radius: number = 7): boolean {
-  const terrain = new Room.Terrain(pos.roomName);
+  const terrain = Game.map.getRoomTerrain(pos.roomName);
   let buildable = 0;
   let total = 0;
 
@@ -228,7 +228,7 @@ export function getCachedTerrain(roomName: string): Map<string, number> {
   
   if (!cache) {
     cache = new Map<string, number>();
-    const terrain = new Room.Terrain(roomName);
+    const terrain = Game.map.getRoomTerrain(roomName);
     
     for (let x = 0; x < 50; x++) {
       for (let y = 0; y < 50; y++) {
