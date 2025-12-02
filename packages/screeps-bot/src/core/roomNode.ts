@@ -18,6 +18,7 @@ import { calculateDangerLevel, evolutionManager, postureManager } from "../logic
 import { profiler } from "./profiler";
 import { getBlueprint, placeConstructionSites } from "../layouts/blueprints";
 import { safeFind } from "../utils/safeFind";
+import { safeModeManager } from "../defense/safeModeManager";
 
 /**
  * Room node configuration
@@ -80,6 +81,9 @@ export class RoomNode {
 
     // Update threat assessment
     this.updateThreatAssessment(room, swarm);
+
+    // Check safe mode trigger
+    safeModeManager.checkSafeMode(room, swarm);
 
     // Update evolution stage
     if (this.config.enableEvolution) {

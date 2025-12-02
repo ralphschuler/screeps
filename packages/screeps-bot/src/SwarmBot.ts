@@ -27,6 +27,9 @@ import { runUtilityRole } from "./roles/utility";
 import { clearRoomCaches } from "./roles/behaviors/context";
 import { finalizeMovement, initMovement } from "./utils/movement";
 import { pheromoneManager } from "./logic/pheromone";
+import { empireManager } from "./empire/empireManager";
+import { clusterManager } from "./clusters/clusterManager";
+import { marketManager } from "./empire/marketManager";
 
 // =============================================================================
 // CPU Budget Configuration
@@ -280,6 +283,21 @@ export function loop(): void {
       }
       pheromoneManager.applyDiffusion(ownedRooms);
     });
+  }
+
+  // Run empire manager (periodic strategic decisions)
+  if (hasCpuBudget()) {
+    empireManager.run();
+  }
+
+  // Run cluster manager (inter-room coordination)
+  if (hasCpuBudget()) {
+    clusterManager.run();
+  }
+
+  // Run market manager (trading)
+  if (hasCpuBudget()) {
+    marketManager.run();
   }
 
   // Run spawns (high priority - always runs)

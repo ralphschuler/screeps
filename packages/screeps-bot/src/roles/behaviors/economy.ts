@@ -515,6 +515,108 @@ export function factoryWorker(ctx: CreepContext): CreepAction {
 // Role Dispatcher
 // =============================================================================
 
+/**
+ * RemoteHarvester - Stationary miner in remote room.
+ * Travels to remote room, sits at source, harvests to container.
+ */
+export function remoteHarvester(ctx: CreepContext): CreepAction {
+  // Get target room from memory
+  const targetRoom = ctx.memory.targetRoom ?? ctx.memory.homeRoom;
+
+  // If not in target room, move there
+  if (ctx.room.name !== targetRoom) {
+    return { type: "moveToRoom", roomName: targetRoom };
+  }
+
+  // In target room - find or assign source
+  let source = ctx.assignedSource;
+
+  if (!source) {
+    source = assignSource(ctx);
+  }
+
+  if (!source) return { type: "idle" };
+
+  // Move to source if not nearby
+  if (!ctx.creep.pos.isNearTo(source)) {
+    return { type: "moveTo", target: source };
+  }
+
+  // At source - harvest or transfer to container
+  const carryCapacity = ctx.creep.store.getCapacity();
+  const hasFreeCapacity = ctx.creep.store.getFreeCapacity() > 0;
+
+  if (carryCapacity === null || carryCapacity === 0 || hasFreeCapacity) {
+    return { type: "harvest", target: source };
+  }
+
+  // Full - find nearby container
+  const containers = source.pos.findInRange(FIND_STRUCTURES, 2, {
+    filter: s => s.structureType === STRUCTURE_CONTAINER
+  }) as StructureContainer[];
+
+  if (containers.length > 0) {
+    return { type: "transfer", target: containers[0], resourceType: RESOURCE_ENERGY };
+  }
+
+  // No container - drop energy for haulers
+  return { type: "drop", resourceType: RESOURCE_ENERGY };
+}
+
+/**
+ * RemoteHauler - Transports energy from remote room to home room.
+ * Picks up from remote containers/ground, delivers to home storage.
+ */
+export function remoteHauler(ctx: CreepContext): CreepAction {
+  const isWorking = updateWorkingState(ctx);
+  const targetRoom = ctx.memory.targetRoom ?? ctx.memory.homeRoom;
+  const homeRoom = ctx.memory.homeRoom;
+
+  if (isWorking) {
+    // Has energy - return to home room and deliver
+    if (ctx.room.name !== homeRoom) {
+      return { type: "moveToRoom", roomName: homeRoom };
+    }
+
+    // In home room - deliver to storage or spawn structures
+    if (ctx.storage) {
+      return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+    }
+
+    const deliverAction = deliverEnergy(ctx);
+    if (deliverAction) return deliverAction;
+
+    return { type: "idle" };
+  } else {
+    // Empty - go to remote room and collect
+    if (ctx.room.name !== targetRoom) {
+      return { type: "moveToRoom", roomName: targetRoom };
+    }
+
+    // In remote room - collect from containers or ground
+    const containers = ctx.room.find(FIND_STRUCTURES, {
+      filter: s => s.structureType === STRUCTURE_CONTAINER && s.store.getUsedCapacity(RESOURCE_ENERGY) > 0
+    }) as StructureContainer[];
+
+    if (containers.length > 0) {
+      const closest = ctx.creep.pos.findClosestByRange(containers);
+      if (closest) return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
+    }
+
+    // Check for dropped energy
+    const dropped = ctx.room.find(FIND_DROPPED_RESOURCES, {
+      filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 50
+    });
+
+    if (dropped.length > 0) {
+      const closest = ctx.creep.pos.findClosestByRange(dropped);
+      if (closest) return { type: "pickup", target: closest };
+    }
+
+    return { type: "idle" };
+  }
+}
+
 const economyBehaviors: Record<string, (ctx: CreepContext) => CreepAction> = {
   larvaWorker,
   harvester,
@@ -525,7 +627,9 @@ const economyBehaviors: Record<string, (ctx: CreepContext) => CreepAction> = {
   mineralHarvester,
   depositHarvester,
   labTech,
-  factoryWorker
+  factoryWorker,
+  remoteHarvester,
+  remoteHauler
 };
 
 /**

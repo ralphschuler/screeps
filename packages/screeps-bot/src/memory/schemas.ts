@@ -296,7 +296,9 @@ export type EconomyRole =
   | "mineralHarvester"
   | "depositHarvester"
   | "labTech"
-  | "factoryWorker";
+  | "factoryWorker"
+  | "remoteHarvester"
+  | "remoteHauler";
 
 /**
  * Military roles
@@ -345,6 +347,8 @@ export interface SwarmCreepMemory {
   working?: boolean;
   /** Squad ID (if in a squad) */
   squadId?: string;
+  /** Boosted flag */
+  boosted?: boolean;
   /** Version for memory migration */
   version: number;
 }
