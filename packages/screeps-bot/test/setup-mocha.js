@@ -1,5 +1,17 @@
 //inject mocha globally to allow custom interface refer without direct import - bypass bundle issue
-global._ = require('lodash');
+// Provide minimal lodash-like utilities for tests without depending on lodash
+// Note: _.clone() is a SHALLOW clone (same as lodash's default behavior, not _.cloneDeep())
+global._ = {
+  clone: function(obj) {
+    if (obj === null || typeof obj !== 'object') {
+      return obj;
+    }
+    if (Array.isArray(obj)) {
+      return obj.slice();
+    }
+    return Object.assign({}, obj);
+  }
+};
 
 // Mock Game object early - required by libraries like emyrk-screeps-cartographer
 // that access Game globals at module load time
