@@ -16,7 +16,7 @@ import { memoryManager } from "../memory/manager";
 import { pheromoneManager } from "../logic/pheromone";
 import { calculateDangerLevel, evolutionManager, postureManager } from "../logic/evolution";
 import { profiler } from "./profiler";
-import { getBlueprint, placeConstructionSites } from "../layouts/blueprints";
+import { getBlueprint, placeConstructionSites, destroyMisplacedStructures } from "../layouts/blueprints";
 import { safeFind } from "../utils/safeFind";
 import { safeModeManager } from "../defense/safeModeManager";
 import { chemistryPlanner } from "../labs/chemistryPlanner";
@@ -299,6 +299,16 @@ export class RoomNode {
         }
       }
       return;
+    }
+
+    // Destroy misplaced structures that don't match the blueprint
+    // Only do this every 100 ticks and in non-combat postures to be safe
+    if (Game.time % 100 === 0 && !postureManager.isCombatPosture(swarm.posture)) {
+      const destroyed = destroyMisplacedStructures(room, spawn.pos, blueprint, 1);
+      if (destroyed > 0) {
+        const structureWord = destroyed === 1 ? "structure" : "structures";
+        memoryManager.addRoomEvent(this.roomName, "structureDestroyed", `${destroyed} misplaced ${structureWord} destroyed for blueprint compliance`);
+      }
     }
 
     // Place construction sites using blueprint

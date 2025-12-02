@@ -485,6 +485,158 @@ export function placeConstructionSites(room: Room, anchor: RoomPosition, bluepri
 }
 
 /**
+ * Structure types that can be destroyed for blueprint rearrangement.
+ * Excludes critical structures that should never be automatically destroyed:
+ * - Spawns: Critical for creep production
+ * - Storage/Terminal: May contain valuable resources
+ * - Containers: Player-placed for flexible logistics (not in blueprints)
+ * - Walls/Ramparts: Defensive structures controlled by player
+ */
+const DESTROYABLE_STRUCTURE_TYPES: BuildableStructureConstant[] = [
+  STRUCTURE_EXTENSION,
+  STRUCTURE_ROAD,
+  STRUCTURE_TOWER,
+  STRUCTURE_LAB,
+  STRUCTURE_LINK,
+  STRUCTURE_FACTORY,
+  STRUCTURE_OBSERVER,
+  STRUCTURE_NUKER,
+  STRUCTURE_POWER_SPAWN,
+  STRUCTURE_EXTRACTOR
+];
+
+/** Set for O(1) lookup of destroyable structure types */
+const DESTROYABLE_STRUCTURE_SET = new Set<BuildableStructureConstant>(DESTROYABLE_STRUCTURE_TYPES);
+
+/**
+ * Result of misplaced structure check
+ */
+export interface MisplacedStructure {
+  structure: Structure;
+  reason: string;
+}
+
+/**
+ * Find structures that are at invalid positions according to the blueprint.
+ * This allows the system to destroy structures when blueprints are updated.
+ * 
+ * Only considers structures that are safe to destroy - excludes spawns, storage,
+ * terminal, containers, walls, and ramparts as these are critical or player-controlled.
+ */
+export function findMisplacedStructures(room: Room, anchor: RoomPosition, blueprint: Blueprint): MisplacedStructure[] {
+  const rcl = room.controller?.level ?? 1;
+  const structures = getStructuresForRCL(blueprint, rcl);
+  const terrain = room.getTerrain();
+  const misplaced: MisplacedStructure[] = [];
+  
+  // Build a set of valid blueprint positions for each structure type
+  const validPositions = new Map<BuildableStructureConstant, Set<string>>();
+  
+  for (const s of structures) {
+    const x = anchor.x + s.x;
+    const y = anchor.y + s.y;
+    
+    // Skip positions on room border (1-48 valid range) or on walls
+    if (x < 1 || x > 48 || y < 1 || y > 48) continue;
+    if (terrain.get(x, y) === TERRAIN_MASK_WALL) continue;
+    
+    const posKey = `${x},${y}`;
+    if (!validPositions.has(s.structureType)) {
+      validPositions.set(s.structureType, new Set());
+    }
+    validPositions.get(s.structureType)?.add(posKey);
+  }
+  
+  // Add road positions
+  const roadPositions = new Set<string>();
+  for (const r of blueprint.roads) {
+    const x = anchor.x + r.x;
+    const y = anchor.y + r.y;
+    if (x >= 1 && x <= 48 && y >= 1 && y <= 48 && terrain.get(x, y) !== TERRAIN_MASK_WALL) {
+      roadPositions.add(`${x},${y}`);
+    }
+  }
+  validPositions.set(STRUCTURE_ROAD, roadPositions);
+  
+  // Add extractor position at mineral if RCL 6+
+  if (rcl >= 6) {
+    const minerals = room.find(FIND_MINERALS);
+    if (minerals.length > 0) {
+      const mineral = minerals[0];
+      const extractorPositions = new Set<string>();
+      extractorPositions.add(`${mineral.pos.x},${mineral.pos.y}`);
+      validPositions.set(STRUCTURE_EXTRACTOR, extractorPositions);
+    }
+  }
+  
+  // Find existing structures of destroyable types using Set for O(1) lookup
+  // Use FIND_STRUCTURES to include roads (which are unowned) and filter to our structures
+  const existingStructures = room.find(FIND_STRUCTURES, {
+    filter: s =>
+      DESTROYABLE_STRUCTURE_SET.has(s.structureType as BuildableStructureConstant) &&
+      (
+        // Owned by us
+        (s as OwnedStructure).my === true ||
+        // Roads have no owner, so include them if they exist
+        s.structureType === STRUCTURE_ROAD
+      )
+  });
+  
+  // Check each existing structure against blueprint positions
+  for (const structure of existingStructures) {
+    const posKey = `${structure.pos.x},${structure.pos.y}`;
+    const structType = structure.structureType as BuildableStructureConstant;
+    const validPosForType = validPositions.get(structType);
+    
+    // If this structure type is not in the blueprint, or this position is not valid
+    if (!validPosForType || !validPosForType.has(posKey)) {
+      misplaced.push({
+        structure,
+        reason: `${structure.structureType} at ${posKey} is not in blueprint`
+      });
+    }
+  }
+  
+  return misplaced;
+}
+
+/**
+ * Destroy structures at invalid positions according to the blueprint.
+ * Returns the number of structures destroyed.
+ * 
+ * This is used when blueprints are updated and structures need to be rearranged
+ * to meet the new requirements.
+ * 
+ * @param room The room to check
+ * @param anchor The anchor position (usually the spawn)
+ * @param blueprint The blueprint to validate against
+ * @param maxDestroy Maximum number of structures to destroy per tick (default: 1)
+ */
+export function destroyMisplacedStructures(
+  room: Room,
+  anchor: RoomPosition,
+  blueprint: Blueprint,
+  maxDestroy = 1
+): number {
+  const misplaced = findMisplacedStructures(room, anchor, blueprint);
+  let destroyed = 0;
+  
+  for (const { structure, reason } of misplaced) {
+    if (destroyed >= maxDestroy) break;
+    
+    // Attempt to destroy the structure
+    const result = structure.destroy();
+    if (result === OK) {
+      destroyed++;
+      // Log the destruction for debugging
+      console.log(`[Blueprint] Destroyed misplaced ${reason}`);
+    }
+  }
+  
+  return destroyed;
+}
+
+/**
  * Check if a position is suitable for a spawn
  */
 export function isValidSpawnPosition(room: Room, x: number, y: number): boolean {
