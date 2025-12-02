@@ -32,6 +32,9 @@ import { clusterManager } from "./clusters/clusterManager";
 import { marketManager } from "./empire/marketManager";
 import { nukeManager } from "./empire/nukeManager";
 import { chemistryPlanner } from "./labs/chemistryPlanner";
+import { registerAllTasks } from "./core/taskRegistry";
+import { scheduler } from "./core/scheduler";
+import { cpuBudgetManager } from "./core/cpuBudgetManager";
 
 // =============================================================================
 // CPU Budget Configuration
@@ -234,10 +237,18 @@ function runCreepsWithBudget(): void {
 // Main Loop
 // =============================================================================
 
+// Initialize tasks on first tick
+let tasksRegistered = false;
+
 /**
  * Main loop for SwarmBot
  */
 export function loop(): void {
+  // Register scheduled tasks on first tick
+  if (!tasksRegistered) {
+    registerAllTasks();
+    tasksRegistered = true;
+  }
   // Critical bucket check - minimal processing
   if (isCriticalBucket()) {
     console.log(`[SwarmBot] CRITICAL: CPU bucket at ${Game.cpu.bucket}, minimal processing`);
@@ -287,24 +298,9 @@ export function loop(): void {
     });
   }
 
-  // Run empire manager (periodic strategic decisions)
+  // Run scheduled tasks (empire, cluster, market, nuke, pheromone managers)
   if (hasCpuBudget()) {
-    empireManager.run();
-  }
-
-  // Run cluster manager (inter-room coordination)
-  if (hasCpuBudget()) {
-    clusterManager.run();
-  }
-
-  // Run market manager (trading)
-  if (hasCpuBudget()) {
-    marketManager.run();
-  }
-
-  // Run nuke manager (nuclear warfare)
-  if (hasCpuBudget()) {
-    nukeManager.run();
+    scheduler.run();
   }
 
   // Run spawns (high priority - always runs)

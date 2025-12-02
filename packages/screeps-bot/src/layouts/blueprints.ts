@@ -5,6 +5,7 @@
  */
 
 import type { EvolutionStage } from "../memory/schemas";
+import { addExtensionsToBlueprint } from "./extensionGenerator";
 
 /**
  * Structure placement entry
@@ -272,7 +273,7 @@ export function getStructuresForRCL(blueprint: Blueprint, rcl: number): Structur
   const limits = getStructureLimits(rcl);
   const counts: Record<string, number> = {};
 
-  return blueprint.structures.filter(s => {
+  let structures = blueprint.structures.filter(s => {
     const type = s.structureType;
     const limit = limits[type] ?? 0;
     const current = counts[type] ?? 0;
@@ -282,6 +283,14 @@ export function getStructuresForRCL(blueprint: Blueprint, rcl: number): Structur
     counts[type] = current + 1;
     return true;
   });
+
+  // Add extensions to reach RCL limit
+  const extensionLimit = limits[STRUCTURE_EXTENSION] ?? 0;
+  if (extensionLimit > 0) {
+    structures = addExtensionsToBlueprint(structures, extensionLimit);
+  }
+
+  return structures;
 }
 
 /**
@@ -380,6 +389,23 @@ export function placeConstructionSites(room: Room, anchor: RoomPosition, bluepri
   const structures = getStructuresForRCL(blueprint, rcl);
   const terrain = room.getTerrain();
 
+  // Add extractor at mineral position if RCL 6+
+  const mineralStructures: StructurePlacement[] = [];
+  if (rcl >= 6) {
+    const minerals = room.find(FIND_MINERALS);
+    if (minerals.length > 0) {
+      const mineral = minerals[0];
+      mineralStructures.push({
+        x: mineral.pos.x - anchor.x,
+        y: mineral.pos.y - anchor.y,
+        structureType: STRUCTURE_EXTRACTOR
+      });
+    }
+  }
+
+  // Combine blueprint structures with mineral structures
+  const allStructures = [...structures, ...mineralStructures];
+
   let placed = 0;
   const existingSites = room.find(FIND_MY_CONSTRUCTION_SITES);
   const existingStructures = room.find(FIND_STRUCTURES);
@@ -399,7 +425,7 @@ export function placeConstructionSites(room: Room, anchor: RoomPosition, bluepri
 
   const limits = getStructureLimits(rcl);
 
-  for (const s of structures) {
+  for (const s of allStructures) {
     const currentCount = structureCounts[s.structureType] ?? 0;
     const limit = limits[s.structureType] ?? 0;
     if (currentCount >= limit) continue;

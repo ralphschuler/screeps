@@ -10,6 +10,7 @@
 
 import type { CreepRole, RoleFamily, SwarmCreepMemory, SwarmState } from "../memory/schemas";
 import { type WeightedEntry, weightedSelection } from "../utils/weightedSelection";
+import { getDefenderPriorityBoost } from "../spawning/defenderManager";
 
 /**
  * Body template definition
@@ -431,6 +432,20 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         queenCarrier: 1.0
       };
   }
+}
+
+/**
+ * Get dynamic priority adjustments for roles
+ */
+export function getDynamicPriorityBoost(room: Room, swarm: SwarmState, role: string): number {
+  let boost = 0;
+
+  // Defender priority boost based on threats
+  if (role === "guard" || role === "ranger" || role === "healer") {
+    boost += getDefenderPriorityBoost(room, swarm, role);
+  }
+
+  return boost;
 }
 
 /**
