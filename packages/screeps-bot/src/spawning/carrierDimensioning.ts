@@ -19,7 +19,7 @@ export function calculateOptimalCarrierSize(
   distance: number,
   energyPerTick: number,
   maxEnergy: number,
-  hasRoads: boolean = false
+  hasRoads = false
 ): BodyTemplate {
   // Base movement cost (1 tick per tile without roads, 0.5 with roads)
   const movementCost = hasRoads ? 0.5 : 1.0;
@@ -89,7 +89,7 @@ export function calculateOptimalCarrierSize(
  */
 export function calculateEffectiveDistance(path: RoomPosition[]): { distance: number; hasRoads: boolean } {
   let roadTiles = 0;
-  let totalTiles = path.length;
+  const totalTiles = path.length;
   
   for (const pos of path) {
     const room = Game.rooms[pos.roomName];

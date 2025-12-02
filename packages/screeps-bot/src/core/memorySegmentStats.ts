@@ -136,8 +136,8 @@ export interface StatsData {
 export class MemorySegmentStats {
   private config: StatsConfig;
   private statsData: StatsData | null = null;
-  private segmentRequested: boolean = false;
-  private lastUpdate: number = 0;
+  private segmentRequested = false;
+  private lastUpdate = 0;
 
   public constructor(config: Partial<StatsConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -183,7 +183,8 @@ export class MemorySegmentStats {
       this.statsData = JSON.parse(raw) as StatsData;
       logger.debug("Loaded stats from segment", { subsystem: "Stats" });
     } catch (err) {
-      logger.error(`Failed to parse stats segment: ${err}`, { subsystem: "Stats" });
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.error(`Failed to parse stats segment: ${errorMessage}`, { subsystem: "Stats" });
       this.statsData = this.createDefaultStatsData();
     }
   }
@@ -328,7 +329,8 @@ export class MemorySegmentStats {
 
       RawMemory.segments[this.config.primarySegment] = JSON.stringify(this.statsData);
     } catch (err) {
-      logger.error(`Failed to save stats segment: ${err}`, { subsystem: "Stats" });
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.error(`Failed to save stats segment: ${errorMessage}`, { subsystem: "Stats" });
     }
   }
 

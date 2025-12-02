@@ -49,7 +49,7 @@ interface NukeScore {
  */
 export class NukeManager {
   private config: NukeConfig;
-  private lastRun: number = 0;
+  private lastRun = 0;
 
   public constructor(config: Partial<NukeConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -76,7 +76,8 @@ export class NukeManager {
       // Launch nukes if appropriate
       this.launchNukes();
     } catch (err) {
-      logger.error(`Nuke manager error: ${err}`, { subsystem: "Nuke" });
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.error(`Nuke manager error: ${errorMessage}`, { subsystem: "Nuke" });
     }
   }
 

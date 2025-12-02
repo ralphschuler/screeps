@@ -41,7 +41,8 @@ export class SafeModeManager {
       if (result === OK) {
         logger.warn(`SAFE MODE ACTIVATED in ${room.name}`, { subsystem: "Defense" });
       } else {
-        logger.error(`Failed to activate safe mode in ${room.name}: ${result}`, { subsystem: "Defense" });
+        const resultStr = result !== undefined ? String(result) : 'undefined';
+        logger.error(`Failed to activate safe mode in ${room.name}: ${resultStr}`, { subsystem: "Defense" });
       }
     }
   }
@@ -80,7 +81,8 @@ export class SafeModeManager {
     const hostiles = room.find(FIND_HOSTILE_CREEPS);
     const defenders = room.find(FIND_MY_CREEPS, {
       filter: c => {
-        const role = (c.memory as any).role;
+        const memory = c.memory as unknown as { role?: string };
+        const role = memory.role;
         return role === "guard" || role === "ranger" || role === "soldier";
       }
     });

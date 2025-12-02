@@ -66,9 +66,10 @@ export class LabConfigManager {
     const room = Game.rooms[roomName];
     if (!room || !room.controller?.my) return;
 
-    const labs = room.find(FIND_MY_STRUCTURES, {
+    const foundLabs = room.find(FIND_MY_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_LAB
-    }) as StructureLab[];
+    });
+    const labs = foundLabs as StructureLab[];
 
     if (labs.length === 0) {
       this.configs.delete(roomName);

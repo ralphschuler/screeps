@@ -79,7 +79,7 @@ export interface PowerBankOperation {
 export class PowerBankHarvestingManager {
   private config: PowerBankConfig;
   private operations: Map<string, PowerBankOperation> = new Map();
-  private lastScan: number = 0;
+  private lastScan = 0;
 
   public constructor(config: Partial<PowerBankConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -128,9 +128,10 @@ export class PowerBankHarvestingManager {
       if (!isHighway) continue;
 
       // Find power banks
-      const powerBanks = room.find(FIND_STRUCTURES, {
+      const foundPowerBanks = room.find(FIND_STRUCTURES, {
         filter: s => s.structureType === STRUCTURE_POWER_BANK
-      }) as StructurePowerBank[];
+      });
+      const powerBanks = foundPowerBanks as StructurePowerBank[];
 
       for (const pb of powerBanks) {
         // Check if already tracked

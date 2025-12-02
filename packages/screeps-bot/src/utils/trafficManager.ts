@@ -337,7 +337,7 @@ export function isWalkable(pos: RoomPosition): boolean {
 /**
  * Find open position near target
  */
-export function findOpenPosition(pos: RoomPosition, range: number = 1): RoomPosition | null {
+export function findOpenPosition(pos: RoomPosition, range = 1): RoomPosition | null {
   const room = Game.rooms[pos.roomName];
   if (!room) return null;
 

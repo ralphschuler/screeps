@@ -60,8 +60,9 @@ export function findOptimalAnchor(room: Room): RoomPosition | null {
   candidates.sort((a, b) => b.score - a.score);
 
   const best = candidates[0];
+  const posStr = `${best.pos.x},${best.pos.y}`;
   logger.info(
-    `Optimal anchor for ${room.name}: ${best.pos} (score: ${best.score}) - ${best.reasons.join(", ")}`,
+    `Optimal anchor for ${room.name}: ${posStr} (score: ${best.score}) - ${best.reasons.join(", ")}`,
     { subsystem: "Layout" }
   );
 
@@ -195,7 +196,7 @@ function scorePosition(
 /**
  * Check if a position has enough buildable space
  */
-export function hasEnoughSpace(pos: RoomPosition, radius: number = 7): boolean {
+export function hasEnoughSpace(pos: RoomPosition, radius = 7): boolean {
   const terrain = Game.map.getRoomTerrain(pos.roomName);
   let buildable = 0;
   let total = 0;
