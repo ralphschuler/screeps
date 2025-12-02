@@ -11,7 +11,6 @@
  */
 
 import { logger } from "../core/logger";
-import { memoryManager } from "../memory/manager";
 
 /**
  * Lab role types
