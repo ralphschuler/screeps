@@ -30,6 +30,8 @@ import { pheromoneManager } from "./logic/pheromone";
 import { empireManager } from "./empire/empireManager";
 import { clusterManager } from "./clusters/clusterManager";
 import { marketManager } from "./empire/marketManager";
+import { nukeManager } from "./empire/nukeManager";
+import { chemistryPlanner } from "./labs/chemistryPlanner";
 
 // =============================================================================
 // CPU Budget Configuration
@@ -298,6 +300,11 @@ export function loop(): void {
   // Run market manager (trading)
   if (hasCpuBudget()) {
     marketManager.run();
+  }
+
+  // Run nuke manager (nuclear warfare)
+  if (hasCpuBudget()) {
+    nukeManager.run();
   }
 
   // Run spawns (high priority - always runs)

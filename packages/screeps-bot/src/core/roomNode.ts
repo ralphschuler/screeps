@@ -19,6 +19,7 @@ import { profiler } from "./profiler";
 import { getBlueprint, placeConstructionSites } from "../layouts/blueprints";
 import { safeFind } from "../utils/safeFind";
 import { safeModeManager } from "../defense/safeModeManager";
+import { chemistryPlanner } from "../labs/chemistryPlanner";
 
 /**
  * Room node configuration
@@ -329,26 +330,13 @@ export class RoomNode {
    * Run lab reactions
    */
   private runLabs(room: Room): void {
-    const labs = room.find(FIND_MY_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_LAB
-    }) as StructureLab[];
+    const swarm = memoryManager.getSwarmState(room.name);
+    if (!swarm) return;
 
-    if (labs.length < 3) return;
-
-    // Use first 2 labs as input, rest as output
-    const inputLabs = labs.slice(0, 2);
-    const outputLabs = labs.slice(2);
-
-    const lab1 = inputLabs[0];
-    const lab2 = inputLabs[1];
-
-    if (!lab1 || !lab2) return;
-
-    // Run reactions in output labs
-    for (const lab of outputLabs) {
-      if (lab.cooldown === 0) {
-        lab.runReaction(lab1, lab2);
-      }
+    // Plan reactions using chemistry planner
+    const reaction = chemistryPlanner.planReactions(room, swarm);
+    if (reaction) {
+      chemistryPlanner.executeReaction(room, reaction);
     }
   }
 

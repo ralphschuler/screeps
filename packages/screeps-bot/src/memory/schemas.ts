@@ -40,6 +40,10 @@ export interface RoomIntel {
   isHighway: boolean;
   /** Source keeper room flag */
   isSK: boolean;
+  /** Number of towers (for nuke targeting) */
+  towerCount?: number;
+  /** Number of spawns (for nuke targeting) */
+  spawnCount?: number;
 }
 
 /**
@@ -87,7 +91,7 @@ export interface OvermindMemory {
   /** Active war targets (player usernames or room names) */
   warTargets: string[];
   /** Nuke candidates with scores */
-  nukeCandidates: { roomName: string; score: number; lastEvaluated: number }[];
+  nukeCandidates: { roomName: string; score: number; launched: boolean; launchTick: number }[];
   /** Power bank locations */
   powerBanks: PowerBankEntry[];
   /** Global strategic objectives */
