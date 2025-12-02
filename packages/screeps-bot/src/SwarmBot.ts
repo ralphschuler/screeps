@@ -363,7 +363,7 @@ function checkSafeModeNeeded(): void {
       if (spawn.hits < spawn.hitsMax * 0.3) {
         // Spawn is critically damaged
         const nearbyHostiles = hostiles.filter(h => h.pos.getRangeTo(spawn) <= 3);
-        if (nearbyHostiles.length > 0 && room.controller.safeModeAvailable > 0) {
+        if (nearbyHostiles.length > 0 && room.controller && room.controller.safeModeAvailable > 0) {
           const result = room.controller.activateSafeMode();
           if (result === OK) {
             console.log(`[SwarmBot] SAFE MODE ACTIVATED in ${room.name} - spawn under attack!`);
@@ -377,7 +377,7 @@ function checkSafeModeNeeded(): void {
     // Check if storage is under attack
     if (storage && storage.hits < storage.hitsMax * 0.2) {
       const nearbyHostiles = hostiles.filter(h => h.pos.getRangeTo(storage) <= 3);
-      if (nearbyHostiles.length > 0 && room.controller.safeModeAvailable > 0) {
+      if (nearbyHostiles.length > 0 && room.controller && room.controller.safeModeAvailable > 0) {
         const result = room.controller.activateSafeMode();
         if (result === OK) {
           console.log(`[SwarmBot] SAFE MODE ACTIVATED in ${room.name} - storage under attack!`);

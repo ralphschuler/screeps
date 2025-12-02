@@ -30,6 +30,9 @@ const DEFAULT_CONFIG: ClusterConfig = {
   terminalEnergyTarget: 50000
 };
 
+/** Estimated energy cost per body part per tick for metrics calculations */
+const ENERGY_COST_PER_BODY_PART = 0.5;
+
 /**
  * Cluster Manager class
  */
@@ -183,7 +186,7 @@ export class ClusterManager {
         // Estimate consumption from creeps
         const creeps = room.find(FIND_MY_CREEPS);
         const creepCost = creeps.reduce((sum, c) => {
-          return sum + c.body.length * 0.5; // Rough estimate
+          return sum + c.body.length * ENERGY_COST_PER_BODY_PART;
         }, 0);
         totalEnergyConsumption += creepCost;
 

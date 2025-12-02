@@ -14,6 +14,11 @@ import { createDefaultOvermindMemory } from "../memory/schemas";
 import { logger } from "../core/logger";
 
 /**
+ * Valuable minerals for expansion scoring
+ */
+const VALUABLE_MINERALS: MineralConstant[] = [RESOURCE_CATALYST, RESOURCE_KEANIUM, RESOURCE_UTRIUM];
+
+/**
  * Empire Manager configuration
  */
 export interface EmpireConfig {
@@ -227,8 +232,7 @@ export class EmpireManager {
 
     // Mineral value (some minerals are more valuable)
     if (intel.mineralType) {
-      const valuableMinerals: MineralConstant[] = [RESOURCE_CATALYST, RESOURCE_KEANIUM, RESOURCE_UTRIUM];
-      if (valuableMinerals.includes(intel.mineralType)) {
+      if (VALUABLE_MINERALS.includes(intel.mineralType)) {
         score += 15;
       } else {
         score += 10;
