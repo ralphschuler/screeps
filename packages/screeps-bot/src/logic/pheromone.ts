@@ -357,6 +357,7 @@ export class PheromoneManager {
       target: string;
       type: keyof PheromoneState;
       amount: number;
+      sourceIntensity: number;
     }[] = [];
 
     for (const [roomName, swarm] of rooms) {
@@ -377,7 +378,8 @@ export class PheromoneManager {
               source: roomName,
               target: neighborName,
               type,
-              amount: intensity * rate * 0.5
+              amount: intensity * rate * 0.5,
+              sourceIntensity: intensity
             });
           }
         }
@@ -388,7 +390,10 @@ export class PheromoneManager {
     for (const diff of diffusionQueue) {
       const targetSwarm = rooms.get(diff.target);
       if (targetSwarm) {
-        targetSwarm.pheromones[diff.type] = this.clamp(targetSwarm.pheromones[diff.type] + diff.amount);
+        const newValue = targetSwarm.pheromones[diff.type] + diff.amount;
+        // Cap the target pheromone level to not exceed the source room's level
+        // This prevents rooms from pushing each other higher than their own level
+        targetSwarm.pheromones[diff.type] = this.clamp(Math.min(newValue, diff.sourceIntensity));
       }
     }
   }
