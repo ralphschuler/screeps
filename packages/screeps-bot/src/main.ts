@@ -140,14 +140,21 @@ CPU Logging: ${String(loggerConfig.cpuLogging)}`;
  * Usage: toggleVisualization("showPheromones") | toggleVisualization("showPaths") etc.
  */
 global.toggleVisualization = (key: string): string => {
-  const validKeys = ["showPheromones", "showPaths", "showCombat", "showResourceFlow", "showSpawnQueue", "showRoomStats"];
+  // Get valid toggle keys dynamically from config (only boolean properties that start with 'show')
+  const config = roomVisualizer.getConfig();
+  const validKeys = Object.keys(config).filter(
+    k => k.startsWith("show") && typeof config[k as keyof typeof config] === "boolean"
+  );
+
   if (!validKeys.includes(key)) {
     return `Invalid key: ${key}. Valid keys: ${validKeys.join(", ")}`;
   }
 
-  roomVisualizer.toggle(key as keyof typeof roomVisualizer["config"]);
-  const config = roomVisualizer.getConfig();
-  const value = config[key as keyof typeof config];
+  // Type-safe toggle using validated key
+  const validKey = key as keyof typeof config;
+  roomVisualizer.toggle(validKey);
+  const newConfig = roomVisualizer.getConfig();
+  const value = newConfig[validKey];
   return `Visualization '${key}': ${value ? "ENABLED" : "DISABLED"}`;
 };
 

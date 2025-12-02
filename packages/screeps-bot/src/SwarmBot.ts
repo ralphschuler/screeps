@@ -268,7 +268,8 @@ function runVisualizations(): void {
       roomVisualizer.draw(room);
     } catch (err) {
       // Visualization errors shouldn't crash the main loop
-      console.log(`[SwarmBot] Visualization error in ${room.name}: ${String(err)}`);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.log(`[SwarmBot] Visualization error in ${room.name}: ${errorMessage}`);
     }
   }
 }
@@ -312,7 +313,8 @@ export function loop(): void {
     try {
       roomManager.run();
     } catch (err) {
-      console.log(`[SwarmBot] ERROR in room processing: ${String(err)}`);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.log(`[SwarmBot] ERROR in room processing: ${errorMessage}`);
       if (err instanceof Error && err.stack) {
         console.log(err.stack);
       }
