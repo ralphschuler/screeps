@@ -302,7 +302,7 @@ export function loop(): void {
   // Clear per-tick caches at the start of each tick
   clearRoomCaches();
 
-  // Initialize movement system (cartographer preTick)
+  // Initialize movement system (traffic management preTick)
   initMovement();
 
   // Initialize memory structures
@@ -360,7 +360,7 @@ export function loop(): void {
     });
   }
 
-  // Finalize movement system (cartographer reconcileTraffic)
+  // Finalize movement system (traffic reconciliation)
   finalizeMovement();
 
   // Finalize profiler tick
