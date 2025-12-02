@@ -259,9 +259,9 @@ export class PheromoneManager {
       const towers = room.find(FIND_MY_STRUCTURES, {
         filter: s => s.structureType === STRUCTURE_TOWER
       });
-      // Each tower adds ~1 to baseline, ensuring defense stays stable
-      // With decay factor 0.97, we need ~3% contribution to maintain equilibrium
-      // Base contribution of 3 maintains defense at ~100 when no hostiles
+      // Each tower adds 1 to baseline, ensuring defense stays stable
+      // With decay factor 0.97, we need 3% contribution to maintain equilibrium
+      // Base contribution of 3 maintains defense at 100 when no hostiles
       const baselineContribution = Math.min(3 + towers.length, 6);
       pheromones.defense = this.clamp(pheromones.defense + baselineContribution);
     }
