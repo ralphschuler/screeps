@@ -323,9 +323,10 @@ export class EvacuationManager {
 
     if (!sourceTerminal || !targetTerminal) return;
 
-    // Calculate transfer cost
+    // Calculate transfer cost - energy cost formula from Screeps API
+    const TRANSFER_DISTANCE_DECAY_FACTOR = 30;
     const distance = Game.map.getRoomLinearDistance(sourceRoom.name, state.targetRoom);
-    const transferCost = (amount: number) => Math.ceil(amount * (1 - Math.exp(-distance / 30)));
+    const transferCost = (amount: number) => Math.ceil(amount * (1 - Math.exp(-distance / TRANSFER_DISTANCE_DECAY_FACTOR)));
 
     // Transfer priority resources first
     for (const resourceType of this.config.priorityResources) {

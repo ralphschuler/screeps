@@ -213,9 +213,14 @@ export function tryResolveStuck(creep: Creep): boolean {
   // Third try: random direction
   if (stuckCount >= 9) {
     const directions: DirectionConstant[] = [TOP, TOP_RIGHT, RIGHT, BOTTOM_RIGHT, BOTTOM, BOTTOM_LEFT, LEFT, TOP_LEFT];
-    const randomDir = directions[Math.floor(Math.random() * directions.length)]!;
-    creep.move(randomDir);
-    return true;
+    if (directions.length > 0) {
+      const randomIndex = Math.floor(Math.random() * directions.length);
+      const randomDir = directions[randomIndex];
+      if (randomDir !== undefined) {
+        creep.move(randomDir);
+        return true;
+      }
+    }
   }
 
   return false;

@@ -519,9 +519,11 @@ export class PowerBankHarvestingManager {
     const ticksRemaining = op.decayTick - Game.time;
     const hitsRemaining = 2000000 - op.damageDealt;
 
+    // Safety margin to account for travel time and coordination delays
+    const COMPLETION_SAFETY_MARGIN = 0.8;
     // Assume 600 DPS per attacker pair (attacker + healer)
     // Power bank reflects 50% of damage, so we need ~300 heal/tick per attacker
-    const dpsNeeded = hitsRemaining / (ticksRemaining * 0.8);
+    const dpsNeeded = hitsRemaining / (ticksRemaining * COMPLETION_SAFETY_MARGIN);
     const attackersNeeded = Math.ceil(dpsNeeded / 600);
 
     // Healers at configured ratio

@@ -487,7 +487,7 @@ export class ShardManager {
     const currentShard = Game.shard?.name ?? "shard0";
 
     const task: InterShardTask = {
-      id: `${Game.time}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `${Game.time}-${Math.random().toString(36).substring(2, 11)}`,
       type,
       sourceShard: currentShard,
       targetShard,
