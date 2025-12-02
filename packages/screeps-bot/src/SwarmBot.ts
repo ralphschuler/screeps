@@ -15,7 +15,7 @@
  * - Skips non-essential creeps when CPU is limited
  */
 
-import type { RoleFamily, SwarmCreepMemory } from "./memory/schemas";
+import type { RoleFamily, SwarmCreepMemory, SwarmState } from "./memory/schemas";
 import { profiler } from "./core/profiler";
 import { roomManager } from "./core/roomNode";
 import { runSpawnManager } from "./logic/spawn";
@@ -26,6 +26,7 @@ import { runPowerCreepRole, runPowerRole } from "./roles/power";
 import { runUtilityRole } from "./roles/utility";
 import { clearRoomCaches } from "./roles/behaviors/context";
 import { finalizeMovement, initMovement } from "./utils/movement";
+import { pheromoneManager } from "./logic/pheromone";
 
 // =============================================================================
 // CPU Budget Configuration
@@ -252,10 +253,34 @@ export function loop(): void {
   // Initialize memory structures
   memoryManager.initialize();
 
-  // Run all owned rooms
+  // Run all owned rooms with error recovery
   profiler.measureSubsystem("rooms", () => {
-    roomManager.run();
+    try {
+      roomManager.run();
+    } catch (err) {
+      console.log(`[SwarmBot] ERROR in room processing: ${err}`);
+      if (err instanceof Error && err.stack) {
+        console.log(err.stack);
+      }
+    }
   });
+
+  // Apply pheromone diffusion between rooms (every 10 ticks)
+  if (Game.time % 10 === 0 && hasCpuBudget()) {
+    profiler.measureSubsystem("pheromones", () => {
+      const ownedRooms = new Map<string, SwarmState>();
+      for (const roomName in Game.rooms) {
+        const room = Game.rooms[roomName];
+        if (room.controller?.my) {
+          const swarm = memoryManager.getSwarmState(roomName);
+          if (swarm) {
+            ownedRooms.set(roomName, swarm);
+          }
+        }
+      }
+      pheromoneManager.applyDiffusion(ownedRooms);
+    });
+  }
 
   // Run spawns (high priority - always runs)
   profiler.measureSubsystem("spawns", () => {
@@ -277,6 +302,11 @@ export function loop(): void {
   // Clean up dead creeps (every 50 ticks, low priority)
   if (Game.time % 50 === 0 && hasCpuBudget()) {
     memoryManager.cleanDeadCreeps();
+    
+    // Check memory size and warn if near limit
+    if (memoryManager.isMemoryNearLimit()) {
+      console.log(`[SwarmBot] WARNING: Memory usage near limit (${Math.round(memoryManager.getMemorySize() / 1024)}KB / 2048KB)`);
+    }
   }
 
   // Finalize movement system (cartographer reconcileTraffic)

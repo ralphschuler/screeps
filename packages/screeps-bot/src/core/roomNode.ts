@@ -140,6 +140,13 @@ export class RoomNode {
     }
 
     swarm.danger = newDanger;
+
+    // Check for nukes
+    const nukes = room.find(FIND_NUKES);
+    if (nukes.length > 0) {
+      pheromoneManager.onNukeDetected(swarm);
+      memoryManager.addRoomEvent(this.roomName, "nukeDetected", `${nukes.length} nuke(s) incoming from ${nukes[0].launchRoomName}`);
+    }
   }
 
   /**
@@ -450,9 +457,17 @@ export class RoomManager {
       }
     }
 
-    // Run each node
+    // Run each node with error recovery
     for (const node of this.nodes.values()) {
-      node.run(totalOwned);
+      try {
+        node.run(totalOwned);
+      } catch (err) {
+        console.log(`[RoomManager] ERROR in room ${node.roomName}: ${err}`);
+        if (err instanceof Error && err.stack) {
+          console.log(err.stack);
+        }
+        // Continue processing other rooms
+      }
     }
   }
 
