@@ -70,7 +70,7 @@ export class MemoryManager {
     // Migration to v1: Update all creep memory to include version field
     for (const name in Memory.creeps) {
       const creepMem = Memory.creeps[name] as unknown as SwarmCreepMemory;
-      if (!creepMem.version) {
+      if (creepMem.version === undefined) {
         creepMem.version = 1;
       }
     }

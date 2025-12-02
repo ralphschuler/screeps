@@ -585,12 +585,13 @@ export function determineNextRole(room: Room, swarm: SwarmState): string | null 
     const baseWeight = def.priority;
     const postureWeight = postureWeights[role] ?? 0.5;
     const pheromoneMult = getPheromoneMult(role, swarm.pheromones as unknown as Record<string, number>);
+    const priorityBoost = getDynamicPriorityBoost(room, swarm, role);
 
     // Reduce weight based on current count
     const current = counts.get(role) ?? 0;
     const countFactor = Math.max(0.1, 1 - current / def.maxPerRoom);
 
-    const weight = baseWeight * postureWeight * pheromoneMult * countFactor;
+    const weight = (baseWeight + priorityBoost) * postureWeight * pheromoneMult * countFactor;
 
     entries.push({ key: role, weight });
   }

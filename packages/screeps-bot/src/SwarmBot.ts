@@ -15,7 +15,7 @@
  * - Skips non-essential creeps when CPU is limited
  */
 
-import type { RoleFamily, SwarmCreepMemory, SwarmState } from "./memory/schemas";
+import type { RoleFamily, SwarmCreepMemory } from "./memory/schemas";
 import { profiler } from "./core/profiler";
 import { roomManager } from "./core/roomNode";
 import { runSpawnManager } from "./logic/spawn";
@@ -26,15 +26,8 @@ import { runPowerCreepRole, runPowerRole } from "./roles/power";
 import { runUtilityRole } from "./roles/utility";
 import { clearRoomCaches } from "./roles/behaviors/context";
 import { finalizeMovement, initMovement } from "./utils/movement";
-import { pheromoneManager } from "./logic/pheromone";
-import { empireManager } from "./empire/empireManager";
-import { clusterManager } from "./clusters/clusterManager";
-import { marketManager } from "./empire/marketManager";
-import { nukeManager } from "./empire/nukeManager";
-import { chemistryPlanner } from "./labs/chemistryPlanner";
 import { registerAllTasks } from "./core/taskRegistry";
 import { scheduler } from "./core/scheduler";
-import { cpuBudgetManager } from "./core/cpuBudgetManager";
 
 // =============================================================================
 // CPU Budget Configuration
@@ -280,23 +273,6 @@ export function loop(): void {
       }
     }
   });
-
-  // Apply pheromone diffusion between rooms (every 10 ticks)
-  if (Game.time % 10 === 0 && hasCpuBudget()) {
-    profiler.measureSubsystem("pheromones", () => {
-      const ownedRooms = new Map<string, SwarmState>();
-      for (const roomName in Game.rooms) {
-        const room = Game.rooms[roomName];
-        if (room.controller?.my) {
-          const swarm = memoryManager.getSwarmState(roomName);
-          if (swarm) {
-            ownedRooms.set(roomName, swarm);
-          }
-        }
-      }
-      pheromoneManager.applyDiffusion(ownedRooms);
-    });
-  }
 
   // Run scheduled tasks (empire, cluster, market, nuke, pheromone managers)
   if (hasCpuBudget()) {

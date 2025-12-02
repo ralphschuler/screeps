@@ -230,7 +230,11 @@ export class NukeManager {
         filter: s => s.structureType === STRUCTURE_NUKER
       })[0] as StructureNuker | undefined;
 
-      if (nuker && nuker.store.getFreeCapacity(RESOURCE_ENERGY) === 0 && nuker.store.getFreeCapacity(RESOURCE_GHODIUM) === 0) {
+      if (
+        nuker &&
+        nuker.store.getUsedCapacity(RESOURCE_ENERGY) >= this.config.minEnergy &&
+        nuker.store.getUsedCapacity(RESOURCE_GHODIUM) >= this.config.minGhodium
+      ) {
         nukers.push(nuker);
       }
     }

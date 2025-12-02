@@ -117,7 +117,8 @@ export function getOptimalHaulerBody(
   storagePos: RoomPosition,
   energyCapacity: number
 ): BodyTemplate {
-  // Calculate path distance
+  // Calculate path distance using room-local pathfinder
+  // Note: findPathTo only works within a single room, so sourcePos.roomName is correct
   const path = sourcePos.findPathTo(storagePos, {
     ignoreCreeps: true,
     range: 1

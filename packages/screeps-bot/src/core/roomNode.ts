@@ -146,11 +146,17 @@ export class RoomNode {
 
     swarm.danger = newDanger;
 
-    // Check for nukes
+    // Check for nukes (only trigger once per nuke event)
     const nukes = room.find(FIND_NUKES);
     if (nukes.length > 0) {
-      pheromoneManager.onNukeDetected(swarm);
-      memoryManager.addRoomEvent(this.roomName, "nukeDetected", `${nukes.length} nuke(s) incoming from ${nukes[0].launchRoomName}`);
+      if (!swarm.nukeDetected) {
+        pheromoneManager.onNukeDetected(swarm);
+        memoryManager.addRoomEvent(this.roomName, "nukeDetected", `${nukes.length} nuke(s) incoming from ${nukes[0].launchRoomName ?? 'unknown'}`);
+        swarm.nukeDetected = true;
+      }
+    } else {
+      // Reset flag when nukes are gone
+      swarm.nukeDetected = false;
     }
   }
 
