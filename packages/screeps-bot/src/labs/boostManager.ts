@@ -51,6 +51,28 @@ const BOOST_CONFIGS: BoostConfig[] = [
 ];
 
 /**
+ * Map error codes to readable strings
+ */
+function getBoostErrorMessage(code: ScreepsReturnCode): string {
+  switch (code) {
+    case ERR_NOT_OWNER:
+      return "not owner of lab";
+    case ERR_NOT_FOUND:
+      return "no suitable body parts";
+    case ERR_NOT_ENOUGH_RESOURCES:
+      return "not enough compound";
+    case ERR_INVALID_TARGET:
+      return "invalid creep target";
+    case ERR_NOT_IN_RANGE:
+      return "creep not in range";
+    case ERR_RCL_NOT_ENOUGH:
+      return "RCL too low";
+    default:
+      return `error code ${code}`;
+  }
+}
+
+/**
  * Boost Manager Class
  */
 export class BoostManager {
@@ -116,7 +138,7 @@ export class BoostManager {
           if (result === OK) {
             logger.info(`Boosted ${creep.name} with ${boost}`, { subsystem: "Boost" });
           } else {
-            logger.error(`Failed to boost ${creep.name}: ${String(result)}`, { subsystem: "Boost" });
+            logger.error(`Failed to boost ${creep.name}: ${getBoostErrorMessage(result)}`, { subsystem: "Boost" });
           }
         } else {
           creep.moveTo(lab);
