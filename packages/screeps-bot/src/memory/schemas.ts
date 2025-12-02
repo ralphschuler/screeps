@@ -184,11 +184,11 @@ export interface ClusterMemory {
  * Evolution stage (colony level)
  */
 export type EvolutionStage =
-  | "seedColony" // RCL 1-2
-  | "earlyExpansion" // RCL 3-4
-  | "economicMaturity" // RCL 5-6
-  | "fortification" // RCL 7
-  | "endGame"; // RCL 8
+  | "seedNest" // RCL 1-3
+  | "foragingExpansion" // RCL 3-4
+  | "matureColony" // RCL 4-6
+  | "fortifiedHive" // RCL 7-8
+  | "empireDominance"; // Multi-room/shard endgame
 
 /**
  * Room posture (intent)
@@ -401,7 +401,7 @@ export function createDefaultPheromones(): PheromoneState {
  */
 export function createDefaultSwarmState(): SwarmState {
   return {
-    colonyLevel: "seedColony",
+    colonyLevel: "seedNest",
     posture: "eco",
     danger: 0,
     pheromones: createDefaultPheromones(),

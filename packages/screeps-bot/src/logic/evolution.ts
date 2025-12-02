@@ -18,39 +18,73 @@ export interface EvolutionThresholds {
   rcl: number;
   /** Minimum rooms requirement */
   minRooms?: number;
+  /** Minimum remote rooms serviced */
+  minRemoteRooms?: number;
   /** Minimum GCL requirement */
   minGcl?: number;
   /** Storage required */
   requiresStorage?: boolean;
+  /** Terminal required (when available for the RCL) */
+  requiresTerminal?: boolean;
   /** Labs required */
   requiresLabs?: boolean;
+  /** Minimum number of labs */
+  minLabCount?: number;
+  /** Factory required */
+  requiresFactory?: boolean;
   /** Nuker required */
   requiresNuker?: boolean;
+  /** Power spawn required */
+  requiresPowerSpawn?: boolean;
+  /** Observer required */
+  requiresObserver?: boolean;
+  /** Minimum tower count (for defensive readiness) */
+  minTowerCount?: number;
 }
 
 /**
  * Evolution stage configurations
  */
 export const EVOLUTION_STAGES: Record<EvolutionStage, EvolutionThresholds> = {
-  seedColony: {
+  seedNest: {
     rcl: 1
   },
-  earlyExpansion: {
+  foragingExpansion: {
     rcl: 3,
-    minRooms: 1
+    minRooms: 1,
+    minRemoteRooms: 1,
+    minTowerCount: 1
   },
-  economicMaturity: {
-    rcl: 5,
-    requiresStorage: true
+  matureColony: {
+    rcl: 4,
+    requiresStorage: true,
+    requiresTerminal: true,
+    requiresLabs: true,
+    minLabCount: 3,
+    minTowerCount: 2
   },
-  fortification: {
+  fortifiedHive: {
     rcl: 7,
-    requiresLabs: true
+    requiresTerminal: true,
+    requiresLabs: true,
+    minLabCount: 6,
+    requiresFactory: true,
+    requiresPowerSpawn: true,
+    minTowerCount: 4
   },
-  endGame: {
+  empireDominance: {
     rcl: 8,
     requiresNuker: true,
-    minGcl: 10
+    requiresObserver: true,
+    requiresTerminal: true,
+    requiresLabs: true,
+    minLabCount: 8,
+    requiresFactory: true,
+    requiresPowerSpawn: true,
+    minGcl: 10,
+    minRooms: 3,
+    minRemoteRooms: 2,
+    minTowerCount: 6
   }
 };
 
@@ -112,56 +146,97 @@ export const POSTURE_RESOURCE_PRIORITIES: Record<RoomPosture, ResourcePriorities
  * Evolution Manager
  */
 export class EvolutionManager {
+  /** Structure count cache to avoid repeated expensive room scans */
+  private readonly structureCountsCache: Map<string, { counts: Partial<Record<BuildableStructureConstant, number>>; tick: number }> =
+    new Map();
+
+  /** TTL for cached structure counts (in ticks) */
+  private readonly structureCacheTtl: number = 20;
+
   /**
    * Determine evolution stage for a room
    */
-  public determineEvolutionStage(room: Room, totalOwnedRooms: number): EvolutionStage {
+  public determineEvolutionStage(swarm: SwarmState, room: Room, totalOwnedRooms: number): EvolutionStage {
     const rcl = room.controller?.level ?? 0;
     const gcl = Game.gcl.level;
+    const structureCounts = this.getStructureCounts(room);
+    const remoteCount = swarm.remoteAssignments?.length ?? 0;
 
     // Check from highest to lowest
-    if (this.meetsThreshold("endGame", room, rcl, totalOwnedRooms, gcl)) {
-      return "endGame";
+    if (this.meetsThreshold("empireDominance", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
+      return "empireDominance";
     }
-    if (this.meetsThreshold("fortification", room, rcl, totalOwnedRooms, gcl)) {
-      return "fortification";
+    if (this.meetsThreshold("fortifiedHive", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
+      return "fortifiedHive";
     }
-    if (this.meetsThreshold("economicMaturity", room, rcl, totalOwnedRooms, gcl)) {
-      return "economicMaturity";
+    if (this.meetsThreshold("matureColony", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
+      return "matureColony";
     }
-    if (this.meetsThreshold("earlyExpansion", room, rcl, totalOwnedRooms, gcl)) {
-      return "earlyExpansion";
+    if (this.meetsThreshold("foragingExpansion", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
+      return "foragingExpansion";
     }
-    return "seedColony";
+    return "seedNest";
   }
 
   /**
    * Check if room meets threshold for evolution stage
    */
-  private meetsThreshold(stage: EvolutionStage, room: Room, rcl: number, totalRooms: number, gcl: number): boolean {
+  private meetsThreshold(
+    stage: EvolutionStage,
+    rcl: number,
+    totalRooms: number,
+    gcl: number,
+    structureCounts: Partial<Record<BuildableStructureConstant, number>>,
+    remoteCount: number
+  ): boolean {
     const threshold = EVOLUTION_STAGES[stage];
+    const towers = structureCounts[STRUCTURE_TOWER] ?? 0;
+    const labs = structureCounts[STRUCTURE_LAB] ?? 0;
 
     if (rcl < threshold.rcl) return false;
     if (threshold.minRooms && totalRooms < threshold.minRooms) return false;
     if (threshold.minGcl && gcl < threshold.minGcl) return false;
-    if (threshold.requiresStorage && !room.storage) return false;
-    if (threshold.requiresLabs) {
-      const labs = room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_LAB } });
-      if (labs.length < 3) return false;
-    }
-    if (threshold.requiresNuker) {
-      const nukers = room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_NUKER } });
-      if (nukers.length === 0) return false;
-    }
+    if (threshold.minRemoteRooms && remoteCount < threshold.minRemoteRooms) return false;
+    if (threshold.minTowerCount && towers < threshold.minTowerCount) return false;
+    if (threshold.requiresStorage && !structureCounts[STRUCTURE_STORAGE]) return false;
+    if (threshold.requiresTerminal && rcl >= 6 && !structureCounts[STRUCTURE_TERMINAL]) return false;
+    if (threshold.requiresLabs && labs === 0) return false;
+    if (threshold.minLabCount && rcl >= 6 && labs < threshold.minLabCount) return false;
+    if (threshold.requiresFactory && rcl >= 7 && !structureCounts[STRUCTURE_FACTORY]) return false;
+    if (threshold.requiresPowerSpawn && rcl >= 7 && !structureCounts[STRUCTURE_POWER_SPAWN]) return false;
+    if (threshold.requiresObserver && rcl >= 8 && !structureCounts[STRUCTURE_OBSERVER]) return false;
+    if (threshold.requiresNuker && rcl >= 8 && !structureCounts[STRUCTURE_NUKER]) return false;
 
     return true;
+  }
+
+  /**
+   * Snapshot relevant owned structure counts to avoid repeated lookups.
+   */
+  private getStructureCounts(room: Room): Partial<Record<BuildableStructureConstant, number>> {
+    const cached = this.structureCountsCache.get(room.name);
+    if (cached && Game.time - cached.tick <= this.structureCacheTtl) {
+      return cached.counts;
+    }
+
+    const counts: Partial<Record<BuildableStructureConstant, number>> = {};
+    const structures = room.find(FIND_MY_STRUCTURES);
+
+    for (const structure of structures) {
+      const type = structure.structureType as BuildableStructureConstant;
+      counts[type] = (counts[type] ?? 0) + 1;
+    }
+
+    this.structureCountsCache.set(room.name, { counts, tick: Game.time });
+
+    return counts;
   }
 
   /**
    * Update evolution stage for a room
    */
   public updateEvolutionStage(swarm: SwarmState, room: Room, totalOwnedRooms: number): boolean {
-    const newStage = this.determineEvolutionStage(room, totalOwnedRooms);
+    const newStage = this.determineEvolutionStage(swarm, room, totalOwnedRooms);
 
     if (newStage !== swarm.colonyLevel) {
       logger.info(`Room evolution: ${swarm.colonyLevel} -> ${newStage}`, {
@@ -179,16 +254,30 @@ export class EvolutionManager {
    * Update missing structures flags
    */
   public updateMissingStructures(swarm: SwarmState, room: Room): void {
+    const structureCounts = this.getStructureCounts(room);
+    const rcl = room.controller?.level ?? 0;
+    const thresholds = EVOLUTION_STAGES[swarm.colonyLevel];
+
+    const requiresLabs = thresholds.requiresLabs && rcl >= 6;
+    const minLabCount = requiresLabs ? thresholds.minLabCount ?? 3 : 0;
+
+    const requiresFactory = thresholds.requiresFactory && rcl >= 7;
+    const requiresTerminal = thresholds.requiresTerminal && rcl >= 6;
+    const requiresStorage = thresholds.requiresStorage && rcl >= 4;
+    const requiresPowerSpawn = thresholds.requiresPowerSpawn && rcl >= 7;
+    const requiresObserver = thresholds.requiresObserver && rcl >= 8;
+    const requiresNuker = thresholds.requiresNuker && rcl >= 8;
+
     swarm.missingStructures = {
-      spawn: room.find(FIND_MY_SPAWNS).length === 0,
-      storage: !room.storage,
-      terminal: !room.terminal,
-      labs: room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_LAB } }).length < 3,
-      nuker: room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_NUKER } }).length === 0,
-      factory: room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_FACTORY } }).length === 0,
-      extractor: room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_EXTRACTOR } }).length === 0,
-      powerSpawn: room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_POWER_SPAWN } }).length === 0,
-      observer: room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_OBSERVER } }).length === 0
+      spawn: (structureCounts[STRUCTURE_SPAWN] ?? 0) === 0,
+      storage: requiresStorage ? (structureCounts[STRUCTURE_STORAGE] ?? 0) === 0 : false,
+      terminal: requiresTerminal ? (structureCounts[STRUCTURE_TERMINAL] ?? 0) === 0 : false,
+      labs: requiresLabs ? (structureCounts[STRUCTURE_LAB] ?? 0) < minLabCount : false,
+      nuker: requiresNuker ? (structureCounts[STRUCTURE_NUKER] ?? 0) === 0 : false,
+      factory: requiresFactory ? (structureCounts[STRUCTURE_FACTORY] ?? 0) === 0 : false,
+      extractor: rcl >= 6 ? (structureCounts[STRUCTURE_EXTRACTOR] ?? 0) === 0 : false,
+      powerSpawn: requiresPowerSpawn ? (structureCounts[STRUCTURE_POWER_SPAWN] ?? 0) === 0 : false,
+      observer: requiresObserver ? (structureCounts[STRUCTURE_OBSERVER] ?? 0) === 0 : false
     };
   }
 }
