@@ -28,11 +28,37 @@ mods:
   - screepsmod-map-tool
   - screepsmod-web-client
   - screepsmod-cors
+  - "@admon-dev/screepsmod-decorate"
 
 bots:
   choreographer: screeps-bot-choreographer
   overmind: screeps-bot-overmind
   tooangel: screeps-bot-tooangel
+
+decorateConfig:
+  wall:
+    foregroundColor: "#612020"
+    foregroundBrightness: 1
+    foregroundAlpha: 0.3
+    backgroundColor: "#111"
+    backgroundBrightness: 1
+    strokeColor: "#333"
+    strokeBrightness: 1
+    strokeLighting: 0
+    strokeWidth: 20
+    # foregroundUrl: ''
+  floor:
+    floorBackgroundColor: "#4b4a5e"
+    floorBackgroundBrightness: 1
+    floorForegroundColor: "#696e86"
+    floorForegroundBrightness: 1
+    floorForegroundAlpha: 0.2
+    swampColor: "#ff0022"
+    swampStrokeColor: "#c50e0e"
+    swampStrokeWidth: 20
+    roadsColor: "#7F8CC2"
+    roadsBrightness: 1
+    # floorForegroundUrl: ''
 
 serverConfig:
   tickRate: 100
