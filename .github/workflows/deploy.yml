@@ -15,12 +15,12 @@ jobs:
       fail-fast: false
       matrix:
         environment:
-          #- sim.screeps.com
-          #- season.screeps.com
-          #- ptr.screeps.com
-          #- screeps.com
+          - sim.screeps.com
+          - season.screeps.com
+          - ptr.screeps.com
+          - screeps.com
           - screeps.nyphon.de
-          #- screeps.newbieland.net
+          - screeps.newbieland.net
     defaults:
       run:
         working-directory: packages/screeps-bot
