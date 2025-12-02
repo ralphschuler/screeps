@@ -1,5 +1,4 @@
 const { readFileSync } = require('fs');
-const _ = require('lodash');
 const { ScreepsServer, stdHooks } = require('screeps-server-mockup');
 const DIST_MAIN_JS = 'dist/main.js';
 

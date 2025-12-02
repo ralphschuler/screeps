@@ -1,6 +1,21 @@
 /* eslint-disable */
-import { escape } from "lodash";
 import { SourceMapConsumer } from "source-map";
+
+/**
+ * Converts special HTML characters to their entity equivalents.
+ * Replaces &, <, >, ", and ' with their HTML entity codes.
+ */
+function escapeHtml(str: string | undefined): string {
+  if (str == null) {
+    return "";
+  }
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 export class ErrorMapper {
   // Cache consumer
@@ -79,9 +94,9 @@ export class ErrorMapper {
         if (e instanceof Error) {
           if ("sim" in Game.rooms) {
             const message = `Source maps don't work in the simulator - displaying original error`;
-            console.log(`<span style='color:red'>${message}<br>${escape(e.stack)}</span>`);
+            console.log(`<span style='color:red'>${message}<br>${escapeHtml(e.stack)}</span>`);
           } else {
-            console.log(`<span style='color:red'>${escape(this.sourceMappedStackTrace(e))}</span>`);
+            console.log(`<span style='color:red'>${escapeHtml(this.sourceMappedStackTrace(e))}</span>`);
           }
         } else {
           // can't handle it
