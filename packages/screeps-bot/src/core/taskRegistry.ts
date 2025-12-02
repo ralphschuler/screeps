@@ -13,8 +13,14 @@ import { empireManager } from "../empire/empireManager";
 import { clusterManager } from "../clusters/clusterManager";
 import { marketManager } from "../empire/marketManager";
 import { nukeManager } from "../empire/nukeManager";
+import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
 import { pheromoneManager } from "../logic/pheromone";
 import { memoryManager } from "../memory/manager";
+import { shardManager } from "../intershard/shardManager";
+import { evacuationManager } from "../defense/evacuationManager";
+import { labConfigManager } from "../labs/labConfig";
+import { memorySegmentStats } from "./memorySegmentStats";
+import { globalPathCache } from "../utils/globalPathCache";
 import { logger } from "./logger";
 
 /**
@@ -119,6 +125,72 @@ export function registerAllTasks(): void {
     interval: 100,
     minBucket: 1000,
     cpuBudget: 0.005
+  });
+
+  // Shard Manager - Multi-shard coordination (every 100 ticks)
+  scheduler.registerTask({
+    ...createLowFrequencyTask("shardManager", () => shardManager.run(), 35),
+    interval: 100,
+    minBucket: 5000,
+    cpuBudget: 0.02
+  });
+
+  // Evacuation Manager - Room evacuation (every 5 ticks)
+  scheduler.registerTask({
+    ...createMediumFrequencyTask("evacuationManager", () => evacuationManager.run(), 75),
+    interval: 5,
+    minBucket: 2000,
+    cpuBudget: 0.02
+  });
+
+  // Power Bank Harvesting Manager (every 50 ticks)
+  scheduler.registerTask({
+    ...createLowFrequencyTask("powerBankHarvesting", () => powerBankHarvestingManager.run(), 25),
+    interval: 50,
+    minBucket: 7000,
+    cpuBudget: 0.02
+  });
+
+  // Lab Config Manager - Initialize lab configurations (every 200 ticks)
+  scheduler.registerTask({
+    ...createLowFrequencyTask(
+      "labConfigInit",
+      () => {
+        const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+        for (const room of ownedRooms) {
+          labConfigManager.initialize(room.name);
+        }
+      },
+      15
+    ),
+    interval: 200,
+    minBucket: 3000,
+    cpuBudget: 0.01
+  });
+
+  // Memory Segment Stats - Update stats (every 10 ticks)
+  scheduler.registerTask({
+    ...createMediumFrequencyTask("memorySegmentStats", () => memorySegmentStats.run(), 5),
+    interval: 10,
+    minBucket: 2000,
+    cpuBudget: 0.01
+  });
+
+  // Path Cache Precaching - Pre-cache room paths (every 1000 ticks)
+  scheduler.registerTask({
+    ...createLowFrequencyTask(
+      "pathCachePrecache",
+      () => {
+        const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+        for (const room of ownedRooms) {
+          globalPathCache.precacheRoomPaths(room.name);
+        }
+      },
+      5
+    ),
+    interval: 1000,
+    minBucket: 8000,
+    cpuBudget: 0.03
   });
 
   logger.info(`Registered ${scheduler.getTasks().length} scheduled tasks`, { subsystem: "TaskRegistry" });
