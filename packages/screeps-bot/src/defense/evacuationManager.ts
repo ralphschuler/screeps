@@ -78,8 +78,8 @@ export interface EvacuationState {
 export class EvacuationManager {
   private config: EvacuationConfig;
   private evacuations: Map<string, EvacuationState> = new Map();
-  private lastTransferTick: number = 0;
-  private transfersThisTick: number = 0;
+  private lastTransferTick = 0;
+  private transfersThisTick = 0;
 
   public constructor(config: Partial<EvacuationConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };

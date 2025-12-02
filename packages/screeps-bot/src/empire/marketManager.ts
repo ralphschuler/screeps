@@ -64,7 +64,7 @@ const DEFAULT_CONFIG: MarketConfig = {
  */
 export class MarketManager {
   private config: MarketConfig;
-  private lastRun: number = 0;
+  private lastRun = 0;
 
   public constructor(config: Partial<MarketConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -94,7 +94,8 @@ export class MarketManager {
       // Execute deals
       this.executeDeal();
     } catch (err) {
-      logger.error(`Market manager error: ${err}`, { subsystem: "Market" });
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.error(`Market manager error: ${errorMessage}`, { subsystem: "Market" });
     }
   }
 

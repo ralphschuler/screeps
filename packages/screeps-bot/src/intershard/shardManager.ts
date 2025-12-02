@@ -64,7 +64,7 @@ const ROLE_CPU_WEIGHTS: Record<ShardRole, number> = {
  */
 export class ShardManager {
   private config: ShardManagerConfig;
-  private lastRun: number = 0;
+  private lastRun = 0;
   private interShardMemory: InterShardMemorySchema;
 
   public constructor(config: Partial<ShardManagerConfig> = {}) {
@@ -86,7 +86,8 @@ export class ShardManager {
         }
       }
     } catch (err) {
-      logger.error(`Failed to load InterShardMemory: ${err}`, { subsystem: "Shard" });
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.error(`Failed to load InterShardMemory: ${errorMessage}`, { subsystem: "Shard" });
     }
 
     // Ensure current shard is tracked
@@ -132,7 +133,8 @@ export class ShardManager {
         this.logShardStatus();
       }
     } catch (err) {
-      logger.error(`Shard manager error: ${err}`, { subsystem: "Shard" });
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.error(`Shard manager error: ${errorMessage}`, { subsystem: "Shard" });
     }
   }
 
@@ -238,7 +240,8 @@ export class ShardManager {
   private handleColonizeTask(task: InterShardTask): void {
     // Mark task as active
     task.status = "active";
-    logger.info(`Processing colonize task: ${task.targetRoom} from ${task.sourceShard}`, {
+    const targetRoom = task.targetRoom ?? 'unknown';
+    logger.info(`Processing colonize task: ${targetRoom} from ${task.sourceShard}`, {
       subsystem: "Shard"
     });
   }
@@ -248,7 +251,8 @@ export class ShardManager {
    */
   private handleReinforceTask(task: InterShardTask): void {
     task.status = "active";
-    logger.info(`Processing reinforce task: ${task.targetRoom} from ${task.sourceShard}`, {
+    const targetRoom = task.targetRoom ?? 'unknown';
+    logger.info(`Processing reinforce task: ${targetRoom} from ${task.sourceShard}`, {
       subsystem: "Shard"
     });
   }
@@ -266,7 +270,8 @@ export class ShardManager {
    */
   private handleEvacuateTask(task: InterShardTask): void {
     task.status = "active";
-    logger.info(`Processing evacuate task: ${task.targetRoom} to ${task.targetShard}`, {
+    const targetRoom = task.targetRoom ?? 'unknown';
+    logger.info(`Processing evacuate task: ${targetRoom} to ${task.targetShard}`, {
       subsystem: "Shard"
     });
   }
@@ -281,9 +286,10 @@ export class ShardManager {
 
     for (const roomName in Game.rooms) {
       const room = Game.rooms[roomName];
-      const portals = room.find(FIND_STRUCTURES, {
+      const foundPortals = room.find(FIND_STRUCTURES, {
         filter: s => s.structureType === STRUCTURE_PORTAL
-      }) as StructurePortal[];
+      });
+      const portals = foundPortals as StructurePortal[];
 
       for (const portal of portals) {
         // Check if portal leads to another shard
@@ -410,7 +416,8 @@ export class ShardManager {
       }
     } catch (err) {
       // setShardLimits may not be available in private servers
-      logger.debug(`Could not set shard limits: ${err}`, { subsystem: "Shard" });
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.debug(`Could not set shard limits: ${errorMessage}`, { subsystem: "Shard" });
     }
   }
 
@@ -436,7 +443,8 @@ export class ShardManager {
 
       InterShardMemory.setLocal(serialized);
     } catch (err) {
-      logger.error(`Failed to sync InterShardMemory: ${err}`, { subsystem: "Shard" });
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.error(`Failed to sync InterShardMemory: ${errorMessage}`, { subsystem: "Shard" });
     }
   }
 
@@ -482,7 +490,7 @@ export class ShardManager {
     type: InterShardTask["type"],
     targetShard: string,
     targetRoom?: string,
-    priority: number = 50
+    priority = 50
   ): void {
     const currentShard = Game.shard?.name ?? "shard0";
 

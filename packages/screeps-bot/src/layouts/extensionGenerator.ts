@@ -16,7 +16,7 @@ export function generateExtensions(count: number): StructurePlacement[] {
   const extensions: StructurePlacement[] = [];
   
   // Start with a tight cluster around spawn
-  const pattern: Array<{x: number, y: number}> = [
+  const pattern: {x: number, y: number}[] = [
     // Ring 1 (4 positions)
     { x: -1, y: -1 }, { x: 1, y: -1 },
     { x: -1, y: 1 }, { x: 1, y: 1 },

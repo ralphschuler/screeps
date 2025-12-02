@@ -71,7 +71,8 @@ export class ClusterManager {
         this.runCluster(cluster);
         this.lastRun.set(clusterId, Game.time);
       } catch (err) {
-        logger.error(`Cluster ${clusterId} error: ${err}`, { subsystem: "Cluster" });
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        logger.error(`Cluster ${clusterId} error: ${errorMessage}`, { subsystem: "Cluster" });
       }
     }
   }
@@ -345,7 +346,7 @@ export class ClusterManager {
   /**
    * Add room to cluster
    */
-  public addRoomToCluster(clusterId: string, roomName: string, isRemote: boolean = false): void {
+  public addRoomToCluster(clusterId: string, roomName: string, isRemote = false): void {
     const cluster = memoryManager.getCluster(clusterId);
     if (!cluster) {
       logger.error(`Cluster ${clusterId} not found`, { subsystem: "Cluster" });

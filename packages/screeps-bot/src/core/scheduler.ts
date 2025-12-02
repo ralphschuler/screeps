@@ -223,7 +223,8 @@ export class Scheduler {
         task.execute();
         task.lastRun = Game.time;
       } catch (err) {
-        logger.error(`Task ${task.name} failed: ${err}`, { subsystem: "Scheduler" });
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        logger.error(`Task ${task.name} failed: ${errorMessage}`, { subsystem: "Scheduler" });
       }
 
       const cpuUsed = Game.cpu.getUsed() - cpuBefore;

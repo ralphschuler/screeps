@@ -51,7 +51,7 @@ const DEFAULT_CONFIG: EmpireConfig = {
  */
 export class EmpireManager {
   private config: EmpireConfig;
-  private lastRun: number = 0;
+  private lastRun = 0;
 
   public constructor(config: Partial<EmpireConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -97,7 +97,8 @@ export class EmpireManager {
         logger.info(`Empire tick completed in ${cpuUsed.toFixed(2)} CPU`, { subsystem: "Empire" });
       }
     } catch (err) {
-      logger.error(`Empire manager error: ${err}`, { subsystem: "Empire" });
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.error(`Empire manager error: ${errorMessage}`, { subsystem: "Empire" });
     }
   }
 
@@ -266,9 +267,10 @@ export class EmpireManager {
     // Check visible rooms for power banks
     for (const roomName in Game.rooms) {
       const room = Game.rooms[roomName];
-      const powerBanks = room.find(FIND_STRUCTURES, {
+      const foundPowerBanks = room.find(FIND_STRUCTURES, {
         filter: s => s.structureType === STRUCTURE_POWER_BANK
-      }) as StructurePowerBank[];
+      });
+      const powerBanks = foundPowerBanks as StructurePowerBank[];
 
       for (const pb of powerBanks) {
         // Check if already tracked

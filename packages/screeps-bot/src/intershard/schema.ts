@@ -166,7 +166,9 @@ function calculateChecksum(data: string): number {
   let hash = 0;
   for (let i = 0; i < data.length; i++) {
     const char = data.charCodeAt(i);
+    // eslint-disable-next-line no-bitwise
     hash = (hash << 5) - hash + char;
+    // eslint-disable-next-line no-bitwise
     hash = hash & hash;
   }
   return Math.abs(hash);

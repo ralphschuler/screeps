@@ -112,7 +112,8 @@ export class CpuBudgetManager {
       
       return result;
     } catch (err) {
-      logger.error(`Error in ${subsystem}: ${err}`, { subsystem: "CPUBudget" });
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.error(`Error in ${subsystem}: ${errorMessage}`, { subsystem: "CPUBudget" });
       return null;
     }
   }
@@ -132,9 +133,6 @@ export class CpuBudgetManager {
       fn();
       const cpuUsed = Game.cpu.getUsed() - cpuBefore;
       
-      // Track in profiler
-      profiler.measureSubsystem(`room_${roomName}`, () => {});
-      
       // Check budget
       const withinBudget = this.checkBudget(roomName, type, cpuUsed);
       
@@ -143,7 +141,8 @@ export class CpuBudgetManager {
         logger.warn(`Skipping ${roomName} due to budget violation`, { subsystem: "CPUBudget" });
       }
     } catch (err) {
-      logger.error(`Error in room ${roomName}: ${err}`, { subsystem: "CPUBudget" });
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.error(`Error in room ${roomName}: ${errorMessage}`, { subsystem: "CPUBudget" });
     }
   }
 

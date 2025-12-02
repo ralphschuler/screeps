@@ -167,7 +167,7 @@ export class RoomNode {
    */
   private runTowerControl(room: Room, swarm: SwarmState): void {
     const towers = room.find(FIND_MY_STRUCTURES, {
-      filter: { structureType: STRUCTURE_TOWER }
+      filter: s => s.structureType === STRUCTURE_TOWER
     }) as StructureTower[];
 
     if (towers.length === 0) return;
@@ -413,9 +413,10 @@ export class RoomNode {
    * Run link transfers
    */
   private runLinks(room: Room): void {
-    const links = room.find(FIND_MY_STRUCTURES, {
+    const allLinks = room.find(FIND_MY_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_LINK
-    }) as StructureLink[];
+    });
+    const links = allLinks as StructureLink[];
 
     if (links.length < 2) return;
 
@@ -475,7 +476,8 @@ export class RoomManager {
       try {
         node.run(totalOwned);
       } catch (err) {
-        console.log(`[RoomManager] ERROR in room ${node.roomName}: ${err}`);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        console.log(`[RoomManager] ERROR in room ${node.roomName}: ${errorMessage}`);
         if (err instanceof Error && err.stack) {
           console.log(err.stack);
         }

@@ -60,7 +60,7 @@ export class GlobalPathCache {
   private config: PathCacheConfig;
   private pathCache: Map<string, CachedPath> = new Map();
   private costMatrixCache: Map<string, { matrix: CostMatrix; tick: number }> = new Map();
-  private lastCleanup: number = 0;
+  private lastCleanup = 0;
 
   public constructor(config: Partial<PathCacheConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -70,7 +70,8 @@ export class GlobalPathCache {
    * Generate cache key for a path
    */
   private generateKey(from: RoomPosition, to: RoomPosition, opts?: { ignoreCreeps?: boolean }): string {
-    return `${from.roomName}:${from.x},${from.y}:${to.roomName}:${to.x},${to.y}:${opts?.ignoreCreeps ?? true}`;
+    const ignoreCreeps = opts?.ignoreCreeps ?? true;
+    return `${from.roomName}:${from.x},${from.y}:${to.roomName}:${to.x},${to.y}:${String(ignoreCreeps)}`;
   }
 
   /**
@@ -96,7 +97,9 @@ export class GlobalPathCache {
       plainCost: 2,
       swampCost: 10,
       roomCallback: opts?.roomCallback ?? ((roomName) => this.getCostMatrix(roomName)),
-      ...opts
+      maxRooms: opts?.maxRooms,
+      maxOps: opts?.maxOps,
+      heuristicWeight: opts?.heuristicWeight
     });
 
     if (result.incomplete) {
