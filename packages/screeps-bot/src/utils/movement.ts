@@ -56,11 +56,20 @@ export interface MoveOpts {
 }
 
 /**
+ * Serialized position data
+ */
+interface SerializedPos {
+  x: number;
+  y: number;
+  r: string; // roomName
+}
+
+/**
  * Cached path data stored in creep memory
  */
 interface CachedPath {
-  /** Serialized path string */
-  path: string;
+  /** Serialized path as JSON array of positions */
+  path: SerializedPos[];
   /** Game tick when path was created */
   tick: number;
   /** Target position key for cache invalidation */
@@ -106,56 +115,17 @@ function posKey(pos: RoomPosition): string {
 }
 
 /**
- * Serialize a path to a compact string
+ * Serialize a path to JSON array (handles cross-room paths)
  */
-function serializePath(path: PathStep[]): string {
-  return path.map(step => step.direction.toString()).join("");
+function serializePath(path: RoomPosition[]): SerializedPos[] {
+  return path.map(pos => ({ x: pos.x, y: pos.y, r: pos.roomName }));
 }
 
 /**
- * Deserialize a path from a compact string
+ * Deserialize a path from JSON array to RoomPositions
  */
-function deserializePath(serialized: string, startPos: RoomPosition): RoomPosition[] {
-  const positions: RoomPosition[] = [startPos];
-  let currentPos = startPos;
-
-  for (const char of serialized) {
-    const direction = parseInt(char, 10) as DirectionConstant;
-    const nextPos = getNextPosition(currentPos, direction);
-    if (nextPos) {
-      positions.push(nextPos);
-      currentPos = nextPos;
-    }
-  }
-
-  return positions;
-}
-
-/**
- * Get the next position based on direction
- */
-function getNextPosition(pos: RoomPosition, direction: DirectionConstant): RoomPosition | null {
-  const offsets: Record<DirectionConstant, [number, number]> = {
-    [TOP]: [0, -1],
-    [TOP_RIGHT]: [1, -1],
-    [RIGHT]: [1, 0],
-    [BOTTOM_RIGHT]: [1, 1],
-    [BOTTOM]: [0, 1],
-    [BOTTOM_LEFT]: [-1, 1],
-    [LEFT]: [-1, 0],
-    [TOP_LEFT]: [-1, -1]
-  };
-
-  const [dx, dy] = offsets[direction];
-  const newX = pos.x + dx;
-  const newY = pos.y + dy;
-
-  // Handle room edges - would need cross-room navigation
-  if (newX < 0 || newX > 49 || newY < 0 || newY > 49) {
-    return null;
-  }
-
-  return new RoomPosition(newX, newY, pos.roomName);
+function deserializePath(serialized: SerializedPos[]): RoomPosition[] {
+  return serialized.map(pos => new RoomPosition(pos.x, pos.y, pos.r));
 }
 
 /**
@@ -181,7 +151,7 @@ function getDirection(from: RoomPosition, to: RoomPosition): DirectionConstant {
 /**
  * Generate a cost matrix for a room
  */
-function generateCostMatrix(roomName: string, avoidCreeps: boolean): CostMatrix {
+function generateCostMatrix(roomName: string, avoidCreeps: boolean, roadCost = 1): CostMatrix {
   const costs = new PathFinder.CostMatrix();
   const room = Game.rooms[roomName];
 
@@ -191,7 +161,7 @@ function generateCostMatrix(roomName: string, avoidCreeps: boolean): CostMatrix 
   const structures = room.find(FIND_STRUCTURES);
   for (const structure of structures) {
     if (structure.structureType === STRUCTURE_ROAD) {
-      costs.set(structure.pos.x, structure.pos.y, 1);
+      costs.set(structure.pos.x, structure.pos.y, roadCost);
     } else if (
       structure.structureType !== STRUCTURE_CONTAINER &&
       !(structure.structureType === STRUCTURE_RAMPART && "my" in structure && structure.my)
@@ -233,6 +203,7 @@ function generateCostMatrix(roomName: string, avoidCreeps: boolean): CostMatrix 
 function findPath(origin: RoomPosition, target: RoomPosition | MoveTarget, opts: MoveOpts): PathFinderPath {
   const targetPos = "pos" in target ? target.pos : target;
   const range = "range" in target ? target.range : 1;
+  const roadCost = opts.roadCost ?? 1;
 
   const goals = [{ pos: targetPos, range }];
 
@@ -242,7 +213,7 @@ function findPath(origin: RoomPosition, target: RoomPosition | MoveTarget, opts:
     maxOps: opts.maxOps ?? 2000,
     flee: opts.flee ?? false,
     roomCallback: (roomName: string) => {
-      return generateCostMatrix(roomName, opts.avoidCreeps ?? true);
+      return generateCostMatrix(roomName, opts.avoidCreeps ?? true, roadCost);
     }
   });
 
@@ -254,6 +225,7 @@ function findPath(origin: RoomPosition, target: RoomPosition | MoveTarget, opts:
  */
 function findFleePath(origin: RoomPosition, threats: RoomPosition[], range: number, opts: MoveOpts): PathFinderPath {
   const goals = threats.map(pos => ({ pos, range }));
+  const roadCost = opts.roadCost ?? 1;
 
   return PathFinder.search(origin, goals, {
     plainCost: opts.plainCost ?? 2,
@@ -261,7 +233,7 @@ function findFleePath(origin: RoomPosition, threats: RoomPosition[], range: numb
     maxOps: opts.maxOps ?? 2000,
     flee: true,
     roomCallback: (roomName: string) => {
-      return generateCostMatrix(roomName, opts.avoidCreeps ?? true);
+      return generateCostMatrix(roomName, opts.avoidCreeps ?? true, roadCost);
     }
   });
 }
@@ -291,13 +263,15 @@ function reconcileTraffic(): void {
     // Track occupied positions
     const occupied = new Set<string>();
 
+    // Build a Set of creep names that have movement intents for O(1) lookup
+    const creepsWithIntents = new Set(intents.map(i => i.creep.name));
+
     // First pass: mark all current creep positions not in our intents list
     const room = Game.rooms[roomName];
     if (room) {
       const creeps = room.find(FIND_CREEPS);
       for (const creep of creeps) {
-        const hasIntent = intents.some(i => i.creep.name === creep.name);
-        if (!hasIntent) {
+        if (!creepsWithIntents.has(creep.name)) {
           occupied.add(posKey(creep.pos));
         }
       }
@@ -423,18 +397,9 @@ function internalMoveTo(
       return ERR_NO_PATH;
     }
 
-    // Convert PathFinder path to PathStep array for serialization
-    const pathSteps: PathStep[] = [];
-    let prevPos = creep.pos;
-    for (const pos of pathResult.path) {
-      const direction = getDirection(prevPos, pos);
-      pathSteps.push({ x: pos.x, y: pos.y, dx: pos.x - prevPos.x, dy: pos.y - prevPos.y, direction });
-      prevPos = pos;
-    }
-
-    // Cache the path
+    // Cache the path (store actual positions for cross-room compatibility)
     memory[MEMORY_PATH_KEY] = {
-      path: serializePath(pathSteps),
+      path: serializePath(pathResult.path),
       tick: Game.time,
       targetKey
     } as CachedPath;
@@ -442,7 +407,7 @@ function internalMoveTo(
     path = pathResult.path;
     memory[MEMORY_STUCK_KEY] = 0;
   } else {
-    path = deserializePath(cachedPath.path, creep.pos);
+    path = deserializePath(cachedPath.path);
   }
 
   // Find next position on path
