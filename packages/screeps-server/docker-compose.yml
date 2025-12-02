@@ -11,6 +11,7 @@ services:
     image: screepers/screeps-launcher
     platform: linux/amd64
     volumes:
+      - ./bots.yml:/screeps/bots.yml
       - ./config.yml:/screeps/config.yml
       - screeps-data:/screeps
     ports:
