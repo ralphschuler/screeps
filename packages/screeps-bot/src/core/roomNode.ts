@@ -302,8 +302,8 @@ export class RoomNode {
     }
 
     // Destroy misplaced structures that don't match the blueprint
-    // Only do this every 100 ticks and in non-combat postures to be safe
-    if (Game.time % 100 === 0 && !postureManager.isCombatPosture(swarm.posture)) {
+    // Runs every construction tick (10 ticks) in non-combat postures for faster cleanup
+    if (!postureManager.isCombatPosture(swarm.posture)) {
       const destroyed = destroyMisplacedStructures(room, spawn.pos, blueprint, 1);
       if (destroyed > 0) {
         const structureWord = destroyed === 1 ? "structure" : "structures";
