@@ -133,9 +133,6 @@ export class CpuBudgetManager {
       fn();
       const cpuUsed = Game.cpu.getUsed() - cpuBefore;
       
-      // Track in profiler - empty call intentional for measurement
-      profiler.measureSubsystem(`room_${roomName}`, () => { /* noop */ });
-      
       // Check budget
       const withinBudget = this.checkBudget(roomName, type, cpuUsed);
       
