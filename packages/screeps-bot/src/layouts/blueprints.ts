@@ -486,7 +486,11 @@ export function placeConstructionSites(room: Room, anchor: RoomPosition, bluepri
 
 /**
  * Structure types that can be destroyed for blueprint rearrangement.
- * Excludes critical structures that should never be automatically destroyed.
+ * Excludes critical structures that should never be automatically destroyed:
+ * - Spawns: Critical for creep production
+ * - Storage/Terminal: May contain valuable resources
+ * - Containers: Player-placed for flexible logistics (not in blueprints)
+ * - Walls/Ramparts: Defensive structures controlled by player
  */
 const DESTROYABLE_STRUCTURE_TYPES: BuildableStructureConstant[] = [
   STRUCTURE_EXTENSION,
@@ -500,6 +504,9 @@ const DESTROYABLE_STRUCTURE_TYPES: BuildableStructureConstant[] = [
   STRUCTURE_POWER_SPAWN,
   STRUCTURE_EXTRACTOR
 ];
+
+/** Set for O(1) lookup of destroyable structure types */
+const DESTROYABLE_STRUCTURE_SET = new Set<string>(DESTROYABLE_STRUCTURE_TYPES);
 
 /**
  * Result of misplaced structure check
@@ -562,15 +569,16 @@ export function findMisplacedStructures(room: Room, anchor: RoomPosition, bluepr
     }
   }
   
-  // Find existing structures of destroyable types
+  // Find existing structures of destroyable types using Set for O(1) lookup
   const existingStructures = room.find(FIND_MY_STRUCTURES, {
-    filter: s => DESTROYABLE_STRUCTURE_TYPES.includes(s.structureType as BuildableStructureConstant)
+    filter: s => DESTROYABLE_STRUCTURE_SET.has(s.structureType)
   });
   
   // Check each existing structure against blueprint positions
   for (const structure of existingStructures) {
     const posKey = `${structure.pos.x},${structure.pos.y}`;
-    const validPosForType = validPositions.get(structure.structureType as BuildableStructureConstant);
+    const structType = structure.structureType as BuildableStructureConstant;
+    const validPosForType = validPositions.get(structType);
     
     // If this structure type has blueprint positions and this position is not valid
     if (validPosForType && !validPosForType.has(posKey)) {

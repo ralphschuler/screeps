@@ -306,7 +306,8 @@ export class RoomNode {
     if (Game.time % 100 === 0 && !postureManager.isCombatPosture(swarm.posture)) {
       const destroyed = destroyMisplacedStructures(room, spawn.pos, blueprint, 1);
       if (destroyed > 0) {
-        memoryManager.addRoomEvent(this.roomName, "structureDestroyed", `${destroyed} misplaced structure(s) destroyed for blueprint compliance`);
+        const structureWord = destroyed === 1 ? "structure" : "structures";
+        memoryManager.addRoomEvent(this.roomName, "structureDestroyed", `${destroyed} misplaced ${structureWord} destroyed for blueprint compliance`);
       }
     }
 
