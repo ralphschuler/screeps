@@ -26,6 +26,8 @@ import { runPowerCreepRole, runPowerRole } from "./roles/power";
 import { runUtilityRole } from "./roles/utility";
 import { clearRoomCaches } from "./roles/behaviors/context";
 import { finalizeMovement, initMovement } from "./utils/movement";
+import { registerAllTasks } from "./core/taskRegistry";
+import { scheduler } from "./core/scheduler";
 
 // =============================================================================
 // CPU Budget Configuration
@@ -228,10 +230,18 @@ function runCreepsWithBudget(): void {
 // Main Loop
 // =============================================================================
 
+// Initialize tasks on first tick
+let tasksRegistered = false;
+
 /**
  * Main loop for SwarmBot
  */
 export function loop(): void {
+  // Register scheduled tasks on first tick
+  if (!tasksRegistered) {
+    registerAllTasks();
+    tasksRegistered = true;
+  }
   // Critical bucket check - minimal processing
   if (isCriticalBucket()) {
     console.log(`[SwarmBot] CRITICAL: CPU bucket at ${Game.cpu.bucket}, minimal processing`);
@@ -252,10 +262,22 @@ export function loop(): void {
   // Initialize memory structures
   memoryManager.initialize();
 
-  // Run all owned rooms
+  // Run all owned rooms with error recovery
   profiler.measureSubsystem("rooms", () => {
-    roomManager.run();
+    try {
+      roomManager.run();
+    } catch (err) {
+      console.log(`[SwarmBot] ERROR in room processing: ${err}`);
+      if (err instanceof Error && err.stack) {
+        console.log(err.stack);
+      }
+    }
   });
+
+  // Run scheduled tasks (empire, cluster, market, nuke, pheromone managers)
+  if (hasCpuBudget()) {
+    scheduler.run();
+  }
 
   // Run spawns (high priority - always runs)
   profiler.measureSubsystem("spawns", () => {
@@ -277,6 +299,11 @@ export function loop(): void {
   // Clean up dead creeps (every 50 ticks, low priority)
   if (Game.time % 50 === 0 && hasCpuBudget()) {
     memoryManager.cleanDeadCreeps();
+    
+    // Check memory size and warn if near limit
+    if (memoryManager.isMemoryNearLimit()) {
+      console.log(`[SwarmBot] WARNING: Memory usage near limit (${Math.round(memoryManager.getMemorySize() / 1024)}KB / 2048KB)`);
+    }
   }
 
   // Finalize movement system (cartographer reconcileTraffic)

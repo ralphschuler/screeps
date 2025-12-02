@@ -18,6 +18,8 @@ import { calculateDangerLevel, evolutionManager, postureManager } from "../logic
 import { profiler } from "./profiler";
 import { getBlueprint, placeConstructionSites } from "../layouts/blueprints";
 import { safeFind } from "../utils/safeFind";
+import { safeModeManager } from "../defense/safeModeManager";
+import { chemistryPlanner } from "../labs/chemistryPlanner";
 
 /**
  * Room node configuration
@@ -81,6 +83,9 @@ export class RoomNode {
     // Update threat assessment
     this.updateThreatAssessment(room, swarm);
 
+    // Check safe mode trigger
+    safeModeManager.checkSafeMode(room, swarm);
+
     // Update evolution stage
     if (this.config.enableEvolution) {
       evolutionManager.updateEvolutionStage(swarm, room, totalOwnedRooms);
@@ -140,6 +145,20 @@ export class RoomNode {
     }
 
     swarm.danger = newDanger;
+
+    // Check for nukes (only trigger once per nuke event)
+    const nukes = room.find(FIND_NUKES);
+    if (nukes.length > 0) {
+      if (!swarm.nukeDetected) {
+        pheromoneManager.onNukeDetected(swarm);
+        const launchSource = nukes[0]?.launchRoomName ?? 'unidentified source';
+        memoryManager.addRoomEvent(this.roomName, "nukeDetected", `${nukes.length} nuke(s) incoming from ${launchSource}`);
+        swarm.nukeDetected = true;
+      }
+    } else {
+      // Reset flag when nukes are gone
+      swarm.nukeDetected = false;
+    }
   }
 
   /**
@@ -318,26 +337,13 @@ export class RoomNode {
    * Run lab reactions
    */
   private runLabs(room: Room): void {
-    const labs = room.find(FIND_MY_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_LAB
-    }) as StructureLab[];
+    const swarm = memoryManager.getSwarmState(room.name);
+    if (!swarm) return;
 
-    if (labs.length < 3) return;
-
-    // Use first 2 labs as input, rest as output
-    const inputLabs = labs.slice(0, 2);
-    const outputLabs = labs.slice(2);
-
-    const lab1 = inputLabs[0];
-    const lab2 = inputLabs[1];
-
-    if (!lab1 || !lab2) return;
-
-    // Run reactions in output labs
-    for (const lab of outputLabs) {
-      if (lab.cooldown === 0) {
-        lab.runReaction(lab1, lab2);
-      }
+    // Plan reactions using chemistry planner
+    const reaction = chemistryPlanner.planReactions(room, swarm);
+    if (reaction) {
+      chemistryPlanner.executeReaction(room, reaction);
     }
   }
 
@@ -450,9 +456,17 @@ export class RoomManager {
       }
     }
 
-    // Run each node
+    // Run each node with error recovery
     for (const node of this.nodes.values()) {
-      node.run(totalOwned);
+      try {
+        node.run(totalOwned);
+      } catch (err) {
+        console.log(`[RoomManager] ERROR in room ${node.roomName}: ${err}`);
+        if (err instanceof Error && err.stack) {
+          console.log(err.stack);
+        }
+        // Continue processing other rooms
+      }
     }
   }
 

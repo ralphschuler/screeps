@@ -10,6 +10,7 @@
 
 import type { CreepRole, RoleFamily, SwarmCreepMemory, SwarmState } from "../memory/schemas";
 import { type WeightedEntry, weightedSelection } from "../utils/weightedSelection";
+import { getDefenderPriorityBoost } from "../spawning/defenderManager";
 
 /**
  * Body template definition
@@ -434,6 +435,20 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
 }
 
 /**
+ * Get dynamic priority adjustments for roles
+ */
+export function getDynamicPriorityBoost(room: Room, swarm: SwarmState, role: string): number {
+  let boost = 0;
+
+  // Defender priority boost based on threats
+  if (role === "guard" || role === "ranger" || role === "healer") {
+    boost += getDefenderPriorityBoost(room, swarm, role);
+  }
+
+  return boost;
+}
+
+/**
  * Get pheromone multipliers for roles
  */
 export function getPheromoneMult(role: string, pheromones: Record<string, number>): number {
@@ -570,12 +585,13 @@ export function determineNextRole(room: Room, swarm: SwarmState): string | null 
     const baseWeight = def.priority;
     const postureWeight = postureWeights[role] ?? 0.5;
     const pheromoneMult = getPheromoneMult(role, swarm.pheromones as unknown as Record<string, number>);
+    const priorityBoost = getDynamicPriorityBoost(room, swarm, role);
 
     // Reduce weight based on current count
     const current = counts.get(role) ?? 0;
     const countFactor = Math.max(0.1, 1 - current / def.maxPerRoom);
 
-    const weight = baseWeight * postureWeight * pheromoneMult * countFactor;
+    const weight = (baseWeight + priorityBoost) * postureWeight * pheromoneMult * countFactor;
 
     entries.push({ key: role, weight });
   }

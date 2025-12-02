@@ -40,6 +40,10 @@ export interface RoomIntel {
   isHighway: boolean;
   /** Source keeper room flag */
   isSK: boolean;
+  /** Number of towers (for nuke targeting) */
+  towerCount?: number;
+  /** Number of spawns (for nuke targeting) */
+  spawnCount?: number;
 }
 
 /**
@@ -87,7 +91,7 @@ export interface OvermindMemory {
   /** Active war targets (player usernames or room names) */
   warTargets: string[];
   /** Nuke candidates with scores */
-  nukeCandidates: { roomName: string; score: number; lastEvaluated: number }[];
+  nukeCandidates: { roomName: string; score: number; launched: boolean; launchTick: number }[];
   /** Power bank locations */
   powerBanks: PowerBankEntry[];
   /** Global strategic objectives */
@@ -234,6 +238,8 @@ export interface SwarmState {
   posture: RoomPosture;
   /** Danger level (0-3) */
   danger: 0 | 1 | 2 | 3;
+  /** Whether nukes have been detected (to prevent spam) */
+  nukeDetected?: boolean;
   /** Pheromone values */
   pheromones: PheromoneState;
   /** Next update tick (to avoid per-tick recompute) */
@@ -296,7 +302,9 @@ export type EconomyRole =
   | "mineralHarvester"
   | "depositHarvester"
   | "labTech"
-  | "factoryWorker";
+  | "factoryWorker"
+  | "remoteHarvester"
+  | "remoteHauler";
 
 /**
  * Military roles
@@ -345,6 +353,8 @@ export interface SwarmCreepMemory {
   working?: boolean;
   /** Squad ID (if in a squad) */
   squadId?: string;
+  /** Boosted flag */
+  boosted?: boolean;
   /** Version for memory migration */
   version: number;
 }

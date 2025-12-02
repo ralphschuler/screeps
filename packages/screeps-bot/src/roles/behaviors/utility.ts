@@ -231,15 +231,19 @@ export function engineer(ctx: CreepContext): CreepAction {
     });
     if (infrastructure) return { type: "repair", target: infrastructure };
 
-    // Ramparts (maintain to 100k hits)
+    // Ramparts and walls - target based on danger level
+    // danger 0: 100k, danger 1: 300k, danger 2: 5M, danger 3: 50M
+    const danger = ctx.swarmState?.danger ?? 0;
+    const repairTarget = danger === 0 ? 100000 : danger === 1 ? 300000 : danger === 2 ? 5000000 : 50000000;
+
     const rampart = ctx.creep.pos.findClosestByRange(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_RAMPART && s.hits < 100000
+      filter: s => s.structureType === STRUCTURE_RAMPART && s.hits < repairTarget
     }) as StructureRampart | null;
     if (rampart) return { type: "repair", target: rampart };
 
     // Walls
     const wall = ctx.creep.pos.findClosestByRange(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_WALL && s.hits < 100000
+      filter: s => s.structureType === STRUCTURE_WALL && s.hits < repairTarget
     });
     if (wall) return { type: "repair", target: wall };
 

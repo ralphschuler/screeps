@@ -19,6 +19,8 @@ const OVERMIND_KEY = "overmind";
 const CLUSTERS_KEY = "clusters";
 /** Screeps memory limit in bytes */
 const MEMORY_LIMIT_BYTES = 2097152; // 2MB
+/** Current memory version */
+const CURRENT_MEMORY_VERSION = 1;
 
 /**
  * Memory Manager class
@@ -32,11 +34,46 @@ export class MemoryManager {
   public initialize(): void {
     if (this.initialized) return;
 
+    this.runMemoryMigration();
     this.ensureOvermindMemory();
     this.ensureClustersMemory();
     this.cleanDeadCreeps();
 
     this.initialized = true;
+  }
+
+  /**
+   * Run memory migration if version changed
+   */
+  private runMemoryMigration(): void {
+    const mem = Memory as unknown as Record<string, unknown>;
+    const storedVersion = (mem.memoryVersion as number) ?? 0;
+
+    if (storedVersion < CURRENT_MEMORY_VERSION) {
+      console.log(`[MemoryManager] Migrating memory from version ${storedVersion} to ${CURRENT_MEMORY_VERSION}`);
+      
+      // Run migrations in sequence
+      if (storedVersion < 1) {
+        this.migrateToV1();
+      }
+      
+      // Update version
+      mem.memoryVersion = CURRENT_MEMORY_VERSION;
+      console.log(`[MemoryManager] Memory migration complete`);
+    }
+  }
+
+  /**
+   * Migrate to version 1
+   */
+  private migrateToV1(): void {
+    // Migration to v1: Update all creep memory to include version field
+    for (const name in Memory.creeps) {
+      const creepMem = Memory.creeps[name] as unknown as SwarmCreepMemory;
+      if (creepMem && creepMem.version === undefined) {
+        creepMem.version = 1;
+      }
+    }
   }
 
   /**
