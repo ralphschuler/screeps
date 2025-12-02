@@ -9,7 +9,7 @@
  * Addresses Issue: #23
  */
 
-import type { SwarmState } from "../memory/schemas";
+import type { SwarmState, SwarmCreepMemory } from "../memory/schemas";
 import { logger } from "../core/logger";
 
 /**
@@ -51,6 +51,28 @@ const BOOST_CONFIGS: BoostConfig[] = [
 ];
 
 /**
+ * Map error codes to readable strings
+ */
+function getBoostErrorMessage(code: ScreepsReturnCode): string {
+  switch (code) {
+    case ERR_NOT_OWNER:
+      return "not owner of lab";
+    case ERR_NOT_FOUND:
+      return "no suitable body parts";
+    case ERR_NOT_ENOUGH_RESOURCES:
+      return "not enough compound";
+    case ERR_INVALID_TARGET:
+      return "invalid creep target";
+    case ERR_NOT_IN_RANGE:
+      return "creep not in range";
+    case ERR_RCL_NOT_ENOUGH:
+      return "RCL too low";
+    default:
+      return `error code ${code}`;
+  }
+}
+
+/**
  * Boost Manager Class
  */
 export class BoostManager {
@@ -58,13 +80,15 @@ export class BoostManager {
    * Check if a creep should be boosted
    */
   public shouldBoost(creep: Creep, swarm: SwarmState): boolean {
+    const memory = creep.memory as unknown as SwarmCreepMemory;
+
     // Check if already boosted
-    if (creep.memory.boosted) {
+    if (memory.boosted) {
       return false;
     }
 
     // Get boost config for role
-    const config = BOOST_CONFIGS.find(c => c.role === creep.memory.role);
+    const config = BOOST_CONFIGS.find(c => c.role === memory.role);
     if (!config) {
       return false; // No boost config for this role
     }
@@ -86,8 +110,10 @@ export class BoostManager {
    * Boost a creep
    */
   public boostCreep(creep: Creep, room: Room): boolean {
+    const memory = creep.memory as unknown as SwarmCreepMemory;
+
     // Get boost config
-    const config = BOOST_CONFIGS.find(c => c.role === creep.memory.role);
+    const config = BOOST_CONFIGS.find(c => c.role === memory.role);
     if (!config) return false;
 
     // Find labs with required boosts
@@ -112,7 +138,7 @@ export class BoostManager {
           if (result === OK) {
             logger.info(`Boosted ${creep.name} with ${boost}`, { subsystem: "Boost" });
           } else {
-            logger.error(`Failed to boost ${creep.name}: ${result}`, { subsystem: "Boost" });
+            logger.error(`Failed to boost ${creep.name}: ${getBoostErrorMessage(result)}`, { subsystem: "Boost" });
           }
         } else {
           creep.moveTo(lab);
@@ -122,7 +148,7 @@ export class BoostManager {
     }
 
     // All boosts applied
-    creep.memory.boosted = true;
+    memory.boosted = true;
     logger.info(`${creep.name} fully boosted`, { subsystem: "Boost" });
     return true;
   }

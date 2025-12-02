@@ -1,5 +1,7 @@
 import { ErrorMapper } from "utils/ErrorMapper";
-import { loop as swarmLoop } from "./SwarmBot";
+import { loop as swarmLoop, roomVisualizer, memorySegmentStats, updateConfig, getConfig } from "./SwarmBot";
+import { configureLogger, LogLevel, getLoggerConfig } from "./core/logger";
+import { profiler } from "./core/profiler";
 
 declare global {
   /*
@@ -23,10 +25,138 @@ declare global {
   }
 
 }
+
 // Syntax for adding proprties to `global` (ex "global.log")
 declare const global: {
   log: any;
-}
+  // Console commands for logging and visualization
+  setLogLevel: (level: string) => string;
+  toggleVisualizations: () => string;
+  toggleDebug: () => string;
+  toggleProfiling: () => string;
+  showStats: () => string;
+  showConfig: () => string;
+  toggleVisualization: (key: string) => string;
+};
+
+// =============================================================================
+// Console Commands
+// =============================================================================
+
+/**
+ * Set the log level
+ * Usage: setLogLevel("debug") | setLogLevel("info") | setLogLevel("warn") | setLogLevel("error")
+ */
+global.setLogLevel = (level: string): string => {
+  const levelMap: Record<string, LogLevel> = {
+    debug: LogLevel.DEBUG,
+    info: LogLevel.INFO,
+    warn: LogLevel.WARN,
+    error: LogLevel.ERROR,
+    none: LogLevel.NONE
+  };
+
+  const logLevel = levelMap[level.toLowerCase()];
+  if (logLevel === undefined) {
+    return `Invalid log level: ${level}. Valid levels: debug, info, warn, error, none`;
+  }
+
+  configureLogger({ level: logLevel });
+  return `Log level set to: ${level.toUpperCase()}`;
+};
+
+/**
+ * Toggle visualizations on/off
+ * Usage: toggleVisualizations()
+ */
+global.toggleVisualizations = (): string => {
+  const config = getConfig();
+  const newValue = !config.visualizations;
+  updateConfig({ visualizations: newValue });
+  return `Visualizations: ${newValue ? "ENABLED" : "DISABLED"}`;
+};
+
+/**
+ * Toggle debug mode on/off
+ * Usage: toggleDebug()
+ */
+global.toggleDebug = (): string => {
+  const config = getConfig();
+  const newValue = !config.debug;
+  updateConfig({ debug: newValue });
+  configureLogger({ level: newValue ? LogLevel.DEBUG : LogLevel.INFO });
+  return `Debug mode: ${newValue ? "ENABLED" : "DISABLED"} (Log level: ${newValue ? "DEBUG" : "INFO"})`;
+};
+
+/**
+ * Toggle profiling on/off
+ * Usage: toggleProfiling()
+ */
+global.toggleProfiling = (): string => {
+  const config = getConfig();
+  const newValue = !config.profiling;
+  updateConfig({ profiling: newValue });
+  profiler.setEnabled(newValue);
+  configureLogger({ cpuLogging: newValue });
+  return `Profiling: ${newValue ? "ENABLED" : "DISABLED"}`;
+};
+
+/**
+ * Show current stats from memory segment
+ * Usage: showStats()
+ */
+global.showStats = (): string => {
+  const stats = memorySegmentStats.getLatestStats();
+  if (!stats) {
+    return "No stats available yet. Wait for a few ticks.";
+  }
+
+  return `=== SwarmBot Stats (Tick ${stats.tick}) ===
+CPU: ${stats.cpuUsed.toFixed(2)}/${stats.cpuLimit} (Bucket: ${stats.cpuBucket})
+GCL: ${stats.gclLevel} (${(stats.gclProgress * 100).toFixed(1)}%)
+GPL: ${stats.gplLevel}
+Creeps: ${stats.totalCreeps}
+Rooms: ${stats.totalRooms}
+${stats.rooms.map(r => `  ${r.roomName}: RCL${r.rcl} | ${r.creepCount} creeps | ${r.storageEnergy}E`).join("\n")}`;
+};
+
+/**
+ * Show current configuration
+ * Usage: showConfig()
+ */
+global.showConfig = (): string => {
+  const config = getConfig();
+  const loggerConfig = getLoggerConfig();
+  return `=== SwarmBot Config ===
+Debug: ${String(config.debug)}
+Profiling: ${String(config.profiling)}
+Visualizations: ${String(config.visualizations)}
+Logger Level: ${LogLevel[loggerConfig.level]}
+CPU Logging: ${String(loggerConfig.cpuLogging)}`;
+};
+
+/**
+ * Toggle specific visualization features
+ * Usage: toggleVisualization("showPheromones") | toggleVisualization("showPaths") etc.
+ */
+global.toggleVisualization = (key: string): string => {
+  // Get valid toggle keys dynamically from config (only boolean properties that start with 'show')
+  const config = roomVisualizer.getConfig();
+  const validKeys = Object.keys(config).filter(
+    k => k.startsWith("show") && typeof config[k as keyof typeof config] === "boolean"
+  );
+
+  if (!validKeys.includes(key)) {
+    return `Invalid key: ${key}. Valid keys: ${validKeys.join(", ")}`;
+  }
+
+  // Type-safe toggle using validated key
+  const validKey = key as keyof typeof config;
+  roomVisualizer.toggle(validKey);
+  const newConfig = roomVisualizer.getConfig();
+  const value = newConfig[validKey];
+  return `Visualization '${key}': ${value ? "ENABLED" : "DISABLED"}`;
+};
 
 // When compiling TS to JS and bundling with rollup, the line numbers and file names in error messages change
 // This utility uses source maps to get the line numbers and file names of the original, TS source code

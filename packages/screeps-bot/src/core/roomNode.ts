@@ -20,6 +20,7 @@ import { getBlueprint, placeConstructionSites, destroyMisplacedStructures } from
 import { safeFind } from "../utils/safeFind";
 import { safeModeManager } from "../defense/safeModeManager";
 import { chemistryPlanner } from "../labs/chemistryPlanner";
+import { boostManager } from "../labs/boostManager";
 
 /**
  * Room node configuration
@@ -302,8 +303,8 @@ export class RoomNode {
     }
 
     // Destroy misplaced structures that don't match the blueprint
-    // Only do this every 100 ticks and in non-combat postures to be safe
-    if (Game.time % 100 === 0 && !postureManager.isCombatPosture(swarm.posture)) {
+    // Runs every construction tick (10 ticks) in non-combat postures for faster cleanup
+    if (!postureManager.isCombatPosture(swarm.posture)) {
       const destroyed = destroyMisplacedStructures(room, spawn.pos, blueprint, 1);
       if (destroyed > 0) {
         const structureWord = destroyed === 1 ? "structure" : "structures";
@@ -349,6 +350,9 @@ export class RoomNode {
   private runLabs(room: Room): void {
     const swarm = memoryManager.getSwarmState(room.name);
     if (!swarm) return;
+
+    // Prepare labs for boosting when danger is high
+    boostManager.prepareLabs(room, swarm);
 
     // Plan reactions using chemistry planner
     const reaction = chemistryPlanner.planReactions(room, swarm);
