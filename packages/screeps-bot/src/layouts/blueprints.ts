@@ -37,7 +37,7 @@ export interface Blueprint {
  * RCL 1-2: Early Colony Layout
  */
 export const EARLY_COLONY_BLUEPRINT: Blueprint = {
-  name: "earlyColony",
+  name: "seedNest",
   rcl: 1,
   anchor: { x: 25, y: 25 },
   structures: [
@@ -61,7 +61,7 @@ export const EARLY_COLONY_BLUEPRINT: Blueprint = {
  * RCL 3-4: Core Colony Layout
  */
 export const CORE_COLONY_BLUEPRINT: Blueprint = {
-  name: "coreColony",
+  name: "foragingExpansion",
   rcl: 3,
   anchor: { x: 25, y: 25 },
   structures: [
@@ -107,7 +107,7 @@ export const CORE_COLONY_BLUEPRINT: Blueprint = {
  * RCL 5-6: Economic Maturity Layout
  */
 export const ECONOMIC_MATURITY_BLUEPRINT: Blueprint = {
-  name: "economicMaturity",
+  name: "matureColony",
   rcl: 5,
   anchor: { x: 25, y: 25 },
   structures: [
@@ -174,7 +174,7 @@ export const ECONOMIC_MATURITY_BLUEPRINT: Blueprint = {
  * RCL 7-8: War Ready / End Game Layout
  */
 export const WAR_READY_BLUEPRINT: Blueprint = {
-  name: "warReady",
+  name: "fortifiedHive",
   rcl: 7,
   anchor: { x: 25, y: 25 },
   structures: [
@@ -241,14 +241,14 @@ export const WAR_READY_BLUEPRINT: Blueprint = {
  */
 export function getBlueprintForStage(stage: EvolutionStage): Blueprint {
   switch (stage) {
-    case "seedColony":
+    case "seedNest":
       return EARLY_COLONY_BLUEPRINT;
-    case "earlyExpansion":
+    case "foragingExpansion":
       return CORE_COLONY_BLUEPRINT;
-    case "economicMaturity":
+    case "matureColony":
       return ECONOMIC_MATURITY_BLUEPRINT;
-    case "fortification":
-    case "endGame":
+    case "fortifiedHive":
+    case "empireDominance":
       return WAR_READY_BLUEPRINT;
     default:
       return EARLY_COLONY_BLUEPRINT;
