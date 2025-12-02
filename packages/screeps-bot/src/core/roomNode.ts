@@ -20,6 +20,7 @@ import { getBlueprint, placeConstructionSites, destroyMisplacedStructures } from
 import { safeFind } from "../utils/safeFind";
 import { safeModeManager } from "../defense/safeModeManager";
 import { chemistryPlanner } from "../labs/chemistryPlanner";
+import { boostManager } from "../labs/boostManager";
 
 /**
  * Room node configuration
@@ -349,6 +350,9 @@ export class RoomNode {
   private runLabs(room: Room): void {
     const swarm = memoryManager.getSwarmState(room.name);
     if (!swarm) return;
+
+    // Prepare labs for boosting when danger is high
+    boostManager.prepareLabs(room, swarm);
 
     // Plan reactions using chemistry planner
     const reaction = chemistryPlanner.planReactions(room, swarm);
