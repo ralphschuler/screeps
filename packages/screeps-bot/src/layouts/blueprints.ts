@@ -36,6 +36,17 @@ export interface Blueprint {
 
 /**
  * RCL 1-2: Early Colony Layout
+ * 
+ * Uses a checkerboard pattern to ensure creeps can:
+ * - Spawn and move away in any direction
+ * - Access all extensions without blocking each other
+ * 
+ * Layout (E=Extension, S=Spawn, r=Road):
+ *       E . E
+ *     E r r r E
+ *     . r S r .
+ *     E r r r E
+ *       E . E
  */
 export const EARLY_COLONY_BLUEPRINT: Blueprint = {
   name: "seedNest",
@@ -43,23 +54,37 @@ export const EARLY_COLONY_BLUEPRINT: Blueprint = {
   anchor: { x: 25, y: 25 },
   structures: [
     { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
-    { x: -1, y: -1, structureType: STRUCTURE_EXTENSION },
-    { x: 1, y: -1, structureType: STRUCTURE_EXTENSION },
-    { x: -1, y: 1, structureType: STRUCTURE_EXTENSION },
-    { x: 1, y: 1, structureType: STRUCTURE_EXTENSION },
+    // Extensions placed at distance 2, leaving roads for movement
+    { x: -2, y: -1, structureType: STRUCTURE_EXTENSION },
+    { x: 2, y: -1, structureType: STRUCTURE_EXTENSION },
+    { x: -2, y: 1, structureType: STRUCTURE_EXTENSION },
+    { x: 2, y: 1, structureType: STRUCTURE_EXTENSION },
     { x: 0, y: -2, structureType: STRUCTURE_EXTENSION }
   ],
   roads: [
+    // Core roads around spawn (all 8 adjacent tiles for creep exit)
+    { x: -1, y: -1 },
     { x: 0, y: -1 },
-    { x: 0, y: 1 },
+    { x: 1, y: -1 },
     { x: -1, y: 0 },
-    { x: 1, y: 0 }
+    { x: 1, y: 0 },
+    { x: -1, y: 1 },
+    { x: 0, y: 1 },
+    { x: 1, y: 1 }
   ],
   ramparts: []
 };
 
 /**
  * RCL 3-4: Core Colony Layout
+ * 
+ * Expanded checkerboard pattern with tower for defense.
+ * Extensions are placed in a grid pattern with roads between them.
+ * 
+ * Key features:
+ * - All spawn-adjacent tiles are roads for creep exit
+ * - Extensions are spaced with roads for movement
+ * - Tower placed at safe distance from spawn
  */
 export const CORE_COLONY_BLUEPRINT: Blueprint = {
   name: "foragingExpansion",
@@ -67,173 +92,290 @@ export const CORE_COLONY_BLUEPRINT: Blueprint = {
   anchor: { x: 25, y: 25 },
   structures: [
     { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
-    { x: -1, y: -1, structureType: STRUCTURE_EXTENSION },
-    { x: 1, y: -1, structureType: STRUCTURE_EXTENSION },
-    { x: -1, y: 1, structureType: STRUCTURE_EXTENSION },
-    { x: 1, y: 1, structureType: STRUCTURE_EXTENSION },
-    { x: 0, y: -2, structureType: STRUCTURE_EXTENSION },
-    { x: -2, y: 0, structureType: STRUCTURE_EXTENSION },
-    { x: 2, y: 0, structureType: STRUCTURE_EXTENSION },
-    { x: 0, y: 2, structureType: STRUCTURE_EXTENSION },
+    // Tower at safe distance
+    { x: 0, y: -4, structureType: STRUCTURE_TOWER },
+    // Extensions in checkerboard pattern - placed so they're not adjacent to each other
+    // Ring 1: distance 2 from spawn
     { x: -2, y: -1, structureType: STRUCTURE_EXTENSION },
     { x: 2, y: -1, structureType: STRUCTURE_EXTENSION },
     { x: -2, y: 1, structureType: STRUCTURE_EXTENSION },
     { x: 2, y: 1, structureType: STRUCTURE_EXTENSION },
-    { x: -2, y: -2, structureType: STRUCTURE_EXTENSION },
-    { x: 2, y: -2, structureType: STRUCTURE_EXTENSION },
-    { x: -2, y: 2, structureType: STRUCTURE_EXTENSION },
-    { x: 2, y: 2, structureType: STRUCTURE_EXTENSION },
-    { x: -1, y: -2, structureType: STRUCTURE_EXTENSION },
-    { x: 1, y: -2, structureType: STRUCTURE_EXTENSION },
-    { x: -1, y: 2, structureType: STRUCTURE_EXTENSION },
-    { x: 1, y: 2, structureType: STRUCTURE_EXTENSION },
-    { x: 0, y: -3, structureType: STRUCTURE_TOWER }
+    // Ring 2: distance 2-3 from spawn  
+    { x: 0, y: -2, structureType: STRUCTURE_EXTENSION },
+    { x: -2, y: 0, structureType: STRUCTURE_EXTENSION },
+    { x: 2, y: 0, structureType: STRUCTURE_EXTENSION },
+    { x: 0, y: 2, structureType: STRUCTURE_EXTENSION },
+    { x: -3, y: -2, structureType: STRUCTURE_EXTENSION },
+    { x: 3, y: -2, structureType: STRUCTURE_EXTENSION },
+    // Additional extensions for RCL 4
+    { x: -3, y: 0, structureType: STRUCTURE_EXTENSION },
+    { x: 3, y: 0, structureType: STRUCTURE_EXTENSION },
+    { x: -3, y: 2, structureType: STRUCTURE_EXTENSION },
+    { x: 3, y: 2, structureType: STRUCTURE_EXTENSION },
+    { x: -1, y: -3, structureType: STRUCTURE_EXTENSION },
+    { x: 1, y: -3, structureType: STRUCTURE_EXTENSION },
+    { x: -1, y: 3, structureType: STRUCTURE_EXTENSION },
+    { x: 1, y: 3, structureType: STRUCTURE_EXTENSION },
+    { x: -4, y: -1, structureType: STRUCTURE_EXTENSION },
+    { x: 4, y: -1, structureType: STRUCTURE_EXTENSION }
   ],
   roads: [
+    // Core roads around spawn (all 8 adjacent tiles)
+    { x: -1, y: -1 },
     { x: 0, y: -1 },
-    { x: 0, y: 1 },
+    { x: 1, y: -1 },
     { x: -1, y: 0 },
     { x: 1, y: 0 },
-    { x: -1, y: -2 },
-    { x: 1, y: -2 },
-    { x: -2, y: -1 },
-    { x: -2, y: 1 },
-    { x: 2, y: -1 },
-    { x: 2, y: 1 }
+    { x: -1, y: 1 },
+    { x: 0, y: 1 },
+    { x: 1, y: 1 },
+    // Radial roads for movement to extensions
+    { x: -2, y: -2 },
+    { x: 2, y: -2 },
+    { x: -2, y: 2 },
+    { x: 2, y: 2 },
+    { x: 0, y: -3 },
+    { x: 0, y: 3 },
+    { x: -3, y: -1 },
+    { x: 3, y: -1 },
+    { x: -3, y: 1 },
+    { x: 3, y: 1 }
   ],
   ramparts: []
 };
 
 /**
  * RCL 5-6: Economic Maturity Layout
+ * 
+ * Expanded layout with storage, terminal, and labs.
+ * Uses checkerboard extension pattern with all spawns having walkable adjacent tiles.
+ * 
+ * Key features:
+ * - Second spawn at distance 4 (with its own road ring)
+ * - Storage and terminal placed with road access
+ * - Labs clustered but with road access
+ * - Extensions in checkerboard pattern
  */
 export const ECONOMIC_MATURITY_BLUEPRINT: Blueprint = {
   name: "matureColony",
   rcl: 5,
   anchor: { x: 25, y: 25 },
   structures: [
+    // Primary spawn at center
     { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
-    { x: 3, y: 0, structureType: STRUCTURE_SPAWN },
-    { x: 0, y: 3, structureType: STRUCTURE_STORAGE },
-    { x: 1, y: 3, structureType: STRUCTURE_TERMINAL },
-    { x: 0, y: -3, structureType: STRUCTURE_TOWER },
-    { x: -3, y: 0, structureType: STRUCTURE_TOWER },
-    { x: 3, y: -3, structureType: STRUCTURE_TOWER },
-    { x: -1, y: -1, structureType: STRUCTURE_EXTENSION },
-    { x: 1, y: -1, structureType: STRUCTURE_EXTENSION },
-    { x: -1, y: 1, structureType: STRUCTURE_EXTENSION },
-    { x: 1, y: 1, structureType: STRUCTURE_EXTENSION },
-    { x: 0, y: -2, structureType: STRUCTURE_EXTENSION },
-    { x: -2, y: 0, structureType: STRUCTURE_EXTENSION },
-    { x: 2, y: 0, structureType: STRUCTURE_EXTENSION },
-    { x: 0, y: 2, structureType: STRUCTURE_EXTENSION },
+    // Second spawn at distance 4 with space around it
+    { x: 4, y: 0, structureType: STRUCTURE_SPAWN },
+    // Storage and terminal in accessible location
+    { x: 0, y: 4, structureType: STRUCTURE_STORAGE },
+    { x: 1, y: 4, structureType: STRUCTURE_TERMINAL },
+    // Towers for defense
+    { x: 0, y: -4, structureType: STRUCTURE_TOWER },
+    { x: -4, y: 0, structureType: STRUCTURE_TOWER },
+    { x: 4, y: -4, structureType: STRUCTURE_TOWER },
+    // Extensions in checkerboard pattern (not adjacent to each other)
     { x: -2, y: -1, structureType: STRUCTURE_EXTENSION },
     { x: 2, y: -1, structureType: STRUCTURE_EXTENSION },
     { x: -2, y: 1, structureType: STRUCTURE_EXTENSION },
     { x: 2, y: 1, structureType: STRUCTURE_EXTENSION },
-    { x: -2, y: -2, structureType: STRUCTURE_EXTENSION },
-    { x: 2, y: -2, structureType: STRUCTURE_EXTENSION },
-    { x: -2, y: 2, structureType: STRUCTURE_EXTENSION },
-    { x: 2, y: 2, structureType: STRUCTURE_EXTENSION },
-    { x: -1, y: -2, structureType: STRUCTURE_EXTENSION },
-    { x: 1, y: -2, structureType: STRUCTURE_EXTENSION },
-    { x: -1, y: 2, structureType: STRUCTURE_EXTENSION },
-    { x: 1, y: 2, structureType: STRUCTURE_EXTENSION },
-    { x: -3, y: -1, structureType: STRUCTURE_EXTENSION },
-    { x: -3, y: 1, structureType: STRUCTURE_EXTENSION },
-    { x: 3, y: -1, structureType: STRUCTURE_EXTENSION },
-    { x: 3, y: 1, structureType: STRUCTURE_EXTENSION },
+    { x: 0, y: -2, structureType: STRUCTURE_EXTENSION },
+    { x: -2, y: 0, structureType: STRUCTURE_EXTENSION },
+    { x: 2, y: 0, structureType: STRUCTURE_EXTENSION },
+    { x: 0, y: 2, structureType: STRUCTURE_EXTENSION },
     { x: -3, y: -2, structureType: STRUCTURE_EXTENSION },
     { x: 3, y: -2, structureType: STRUCTURE_EXTENSION },
+    { x: -3, y: 0, structureType: STRUCTURE_EXTENSION },
     { x: -3, y: 2, structureType: STRUCTURE_EXTENSION },
-    { x: 3, y: 2, structureType: STRUCTURE_EXTENSION },
     { x: -1, y: -3, structureType: STRUCTURE_EXTENSION },
     { x: 1, y: -3, structureType: STRUCTURE_EXTENSION },
-    { x: -3, y: 3, structureType: STRUCTURE_LAB },
-    { x: -4, y: 3, structureType: STRUCTURE_LAB },
+    { x: -1, y: 3, structureType: STRUCTURE_EXTENSION },
+    { x: 1, y: 3, structureType: STRUCTURE_EXTENSION },
+    { x: -4, y: -1, structureType: STRUCTURE_EXTENSION },
+    { x: -4, y: 1, structureType: STRUCTURE_EXTENSION },
+    { x: -4, y: -3, structureType: STRUCTURE_EXTENSION },
+    { x: -4, y: 3, structureType: STRUCTURE_EXTENSION },
+    { x: -2, y: -3, structureType: STRUCTURE_EXTENSION },
+    { x: 2, y: -3, structureType: STRUCTURE_EXTENSION },
+    { x: -2, y: 3, structureType: STRUCTURE_EXTENSION },
+    { x: 2, y: 3, structureType: STRUCTURE_EXTENSION },
+    { x: -5, y: -2, structureType: STRUCTURE_EXTENSION },
+    { x: -5, y: 0, structureType: STRUCTURE_EXTENSION },
+    { x: -5, y: 2, structureType: STRUCTURE_EXTENSION },
+    { x: 5, y: -1, structureType: STRUCTURE_EXTENSION },
+    { x: 5, y: 1, structureType: STRUCTURE_EXTENSION },
+    { x: 6, y: 0, structureType: STRUCTURE_EXTENSION },
+    // Labs clustered for reactions
     { x: -3, y: 4, structureType: STRUCTURE_LAB },
-    { x: -1, y: 3, structureType: STRUCTURE_LINK }
+    { x: -4, y: 4, structureType: STRUCTURE_LAB },
+    { x: -3, y: 5, structureType: STRUCTURE_LAB },
+    // Link near storage
+    { x: -1, y: 4, structureType: STRUCTURE_LINK }
   ],
   roads: [
+    // Core roads around primary spawn (all 8 adjacent tiles)
+    { x: -1, y: -1 },
     { x: 0, y: -1 },
-    { x: 0, y: 1 },
+    { x: 1, y: -1 },
     { x: -1, y: 0 },
     { x: 1, y: 0 },
-    { x: 0, y: 2 },
-    { x: -1, y: 3 },
-    { x: 1, y: 3 },
-    { x: 0, y: 4 }
+    { x: -1, y: 1 },
+    { x: 0, y: 1 },
+    { x: 1, y: 1 },
+    // Roads around secondary spawn
+    { x: 3, y: -1 },
+    { x: 3, y: 0 },
+    { x: 3, y: 1 },
+    { x: 4, y: -1 },
+    { x: 4, y: 1 },
+    { x: 5, y: -1 },
+    { x: 5, y: 0 },
+    { x: 5, y: 1 },
+    // Connecting roads
+    { x: 2, y: 0 },
+    { x: -2, y: -2 },
+    { x: 2, y: -2 },
+    { x: -2, y: 2 },
+    { x: 2, y: 2 },
+    { x: 0, y: -3 },
+    { x: 0, y: 3 },
+    { x: -3, y: -1 },
+    { x: -3, y: 1 }
   ],
   ramparts: [
     { x: 0, y: 0 },
-    { x: 0, y: 3 },
-    { x: 1, y: 3 }
+    { x: 4, y: 0 },
+    { x: 0, y: 4 },
+    { x: 1, y: 4 }
   ]
 };
 
 /**
  * RCL 7-8: War Ready / End Game Layout
+ * 
+ * Full end-game layout with 3 spawns, 6 towers, full labs, and all special structures.
+ * Uses extensive road network to ensure creep movement throughout the base.
+ * 
+ * Key features:
+ * - 3 spawns spaced apart, each with full road ring
+ * - Towers positioned for optimal coverage
+ * - Labs clustered for efficient reactions with road access
+ * - Extensions in strict checkerboard pattern
  */
 export const WAR_READY_BLUEPRINT: Blueprint = {
   name: "fortifiedHive",
   rcl: 7,
   anchor: { x: 25, y: 25 },
   structures: [
+    // 3 spawns spaced apart
     { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
-    { x: 3, y: 0, structureType: STRUCTURE_SPAWN },
-    { x: -3, y: 0, structureType: STRUCTURE_SPAWN },
-    { x: 0, y: 3, structureType: STRUCTURE_STORAGE },
-    { x: 1, y: 3, structureType: STRUCTURE_TERMINAL },
-    { x: 0, y: -3, structureType: STRUCTURE_TOWER },
-    { x: -3, y: -3, structureType: STRUCTURE_TOWER },
-    { x: 3, y: -3, structureType: STRUCTURE_TOWER },
-    { x: -4, y: 0, structureType: STRUCTURE_TOWER },
-    { x: 4, y: 0, structureType: STRUCTURE_TOWER },
-    { x: 0, y: 4, structureType: STRUCTURE_TOWER },
-    { x: 2, y: 3, structureType: STRUCTURE_FACTORY },
-    { x: -3, y: 3, structureType: STRUCTURE_LAB },
-    { x: -4, y: 3, structureType: STRUCTURE_LAB },
-    { x: -3, y: 4, structureType: STRUCTURE_LAB },
-    { x: -4, y: 4, structureType: STRUCTURE_LAB },
-    { x: -5, y: 3, structureType: STRUCTURE_LAB },
-    { x: -5, y: 4, structureType: STRUCTURE_LAB },
+    { x: -5, y: 0, structureType: STRUCTURE_SPAWN },
+    { x: 5, y: 0, structureType: STRUCTURE_SPAWN },
+    // Storage and terminal in center south
+    { x: 0, y: 4, structureType: STRUCTURE_STORAGE },
+    { x: 1, y: 4, structureType: STRUCTURE_TERMINAL },
+    // 6 towers for full coverage
+    { x: 0, y: -4, structureType: STRUCTURE_TOWER },
+    { x: -4, y: -2, structureType: STRUCTURE_TOWER },
+    { x: 4, y: -2, structureType: STRUCTURE_TOWER },
+    { x: -4, y: 2, structureType: STRUCTURE_TOWER },
+    { x: 4, y: 2, structureType: STRUCTURE_TOWER },
+    { x: 0, y: 5, structureType: STRUCTURE_TOWER },
+    // Factory near storage
+    { x: 2, y: 4, structureType: STRUCTURE_FACTORY },
+    // Labs clustered in southwest with road access
     { x: -3, y: 5, structureType: STRUCTURE_LAB },
     { x: -4, y: 5, structureType: STRUCTURE_LAB },
+    { x: -3, y: 6, structureType: STRUCTURE_LAB },
+    { x: -4, y: 6, structureType: STRUCTURE_LAB },
     { x: -5, y: 5, structureType: STRUCTURE_LAB },
-    { x: -2, y: 4, structureType: STRUCTURE_LAB },
-    { x: 4, y: 3, structureType: STRUCTURE_NUKER },
-    { x: 5, y: 0, structureType: STRUCTURE_OBSERVER },
-    { x: -2, y: 3, structureType: STRUCTURE_POWER_SPAWN },
-    { x: -1, y: 3, structureType: STRUCTURE_LINK },
-    { x: 4, y: -3, structureType: STRUCTURE_LINK },
-    { x: -4, y: -3, structureType: STRUCTURE_LINK }
+    { x: -5, y: 6, structureType: STRUCTURE_LAB },
+    { x: -2, y: 5, structureType: STRUCTURE_LAB },
+    { x: -2, y: 6, structureType: STRUCTURE_LAB },
+    { x: -6, y: 5, structureType: STRUCTURE_LAB },
+    { x: -6, y: 6, structureType: STRUCTURE_LAB },
+    // Special structures
+    { x: 4, y: 4, structureType: STRUCTURE_NUKER },
+    { x: 6, y: 0, structureType: STRUCTURE_OBSERVER },
+    { x: -1, y: 4, structureType: STRUCTURE_POWER_SPAWN },
+    // Links for logistics
+    { x: -2, y: 4, structureType: STRUCTURE_LINK },
+    { x: 5, y: -4, structureType: STRUCTURE_LINK },
+    { x: -5, y: -4, structureType: STRUCTURE_LINK },
+    // Extensions in checkerboard pattern (more will be added by generator)
+    { x: -2, y: -1, structureType: STRUCTURE_EXTENSION },
+    { x: 2, y: -1, structureType: STRUCTURE_EXTENSION },
+    { x: -2, y: 1, structureType: STRUCTURE_EXTENSION },
+    { x: 2, y: 1, structureType: STRUCTURE_EXTENSION },
+    { x: 0, y: -2, structureType: STRUCTURE_EXTENSION },
+    { x: -3, y: -2, structureType: STRUCTURE_EXTENSION },
+    { x: 3, y: -2, structureType: STRUCTURE_EXTENSION },
+    { x: 0, y: 2, structureType: STRUCTURE_EXTENSION },
+    { x: -3, y: 2, structureType: STRUCTURE_EXTENSION },
+    { x: 3, y: 2, structureType: STRUCTURE_EXTENSION }
   ],
   roads: [
+    // Core roads around primary spawn (all 8 adjacent tiles)
+    { x: -1, y: -1 },
     { x: 0, y: -1 },
-    { x: 0, y: 1 },
+    { x: 1, y: -1 },
     { x: -1, y: 0 },
     { x: 1, y: 0 },
-    { x: 0, y: 2 },
-    { x: -1, y: 3 },
-    { x: 0, y: 4 },
-    { x: -2, y: 3 },
-    { x: -3, y: 2 }
+    { x: -1, y: 1 },
+    { x: 0, y: 1 },
+    { x: 1, y: 1 },
+    // Roads around west spawn (-5, 0)
+    { x: -6, y: -1 },
+    { x: -5, y: -1 },
+    { x: -4, y: -1 },
+    { x: -6, y: 0 },
+    { x: -4, y: 0 },
+    { x: -6, y: 1 },
+    { x: -5, y: 1 },
+    { x: -4, y: 1 },
+    // Roads around east spawn (5, 0)
+    { x: 4, y: -1 },
+    { x: 5, y: -1 },
+    { x: 6, y: -1 },
+    { x: 4, y: 0 },
+    { x: 6, y: 0 },
+    { x: 4, y: 1 },
+    { x: 5, y: 1 },
+    { x: 6, y: 1 },
+    // Horizontal connector roads
+    { x: -2, y: 0 },
+    { x: -3, y: 0 },
+    { x: 2, y: 0 },
+    { x: 3, y: 0 },
+    // Vertical connector roads
+    { x: 0, y: -3 },
+    { x: 0, y: 3 },
+    // Additional movement roads
+    { x: -2, y: -2 },
+    { x: 2, y: -2 },
+    { x: -2, y: 2 },
+    { x: 2, y: 2 },
+    { x: -3, y: -1 },
+    { x: 3, y: -1 },
+    { x: -3, y: 1 },
+    { x: 3, y: 1 }
   ],
   ramparts: [
+    // Protect all spawns
     { x: 0, y: 0 },
-    { x: 3, y: 0 },
-    { x: -3, y: 0 },
-    { x: 0, y: 3 },
-    { x: 1, y: 3 },
-    { x: 2, y: 3 },
-    { x: -2, y: 3 },
-    { x: 4, y: 3 },
-    { x: 0, y: -3 },
-    { x: -3, y: -3 },
-    { x: 3, y: -3 },
-    { x: -4, y: 0 },
-    { x: 4, y: 0 },
-    { x: 0, y: 4 }
+    { x: -5, y: 0 },
+    { x: 5, y: 0 },
+    // Protect storage and terminal
+    { x: 0, y: 4 },
+    { x: 1, y: 4 },
+    // Protect towers
+    { x: 0, y: -4 },
+    { x: -4, y: -2 },
+    { x: 4, y: -2 },
+    { x: -4, y: 2 },
+    { x: 4, y: 2 },
+    { x: 0, y: 5 },
+    // Protect special structures
+    { x: 4, y: 4 },
+    { x: -1, y: 4 }
   ]
 };
 
