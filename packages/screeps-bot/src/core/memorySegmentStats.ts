@@ -313,6 +313,8 @@ export class MemorySegmentStats {
     if (!this.statsData) return;
 
     const SEGMENT_SIZE_LIMIT = 100 * 1024; // 100 KB
+    const MIN_ENTRIES = 10; // Minimum entries to keep during normal trimming
+    const MINIMAL_ENTRIES = 5; // Minimal entries to keep as last resort
 
     try {
       this.statsData.lastUpdate = Game.time;
@@ -324,8 +326,8 @@ export class MemorySegmentStats {
           subsystem: "Stats"
         });
 
-        // Trim history first (keep at least 10 entries)
-        while (json.length > SEGMENT_SIZE_LIMIT && this.statsData.history.length > 10) {
+        // Trim history first (keep at least MIN_ENTRIES)
+        while (json.length > SEGMENT_SIZE_LIMIT && this.statsData.history.length > MIN_ENTRIES) {
           this.statsData.history.shift();
           json = JSON.stringify(this.statsData);
         }
@@ -334,7 +336,7 @@ export class MemorySegmentStats {
         if (json.length > SEGMENT_SIZE_LIMIT) {
           for (const seriesName of Object.keys(this.statsData.series)) {
             const series = this.statsData.series[seriesName];
-            while (series.data.length > 10 && json.length > SEGMENT_SIZE_LIMIT) {
+            while (series.data.length > MIN_ENTRIES && json.length > SEGMENT_SIZE_LIMIT) {
               series.data.shift();
               json = JSON.stringify(this.statsData);
             }
@@ -346,9 +348,9 @@ export class MemorySegmentStats {
           logger.warn(`Stats data still exceeds limit after trimming, clearing history`, {
             subsystem: "Stats"
           });
-          this.statsData.history = this.statsData.history.slice(-5);
+          this.statsData.history = this.statsData.history.slice(-MINIMAL_ENTRIES);
           for (const seriesName of Object.keys(this.statsData.series)) {
-            this.statsData.series[seriesName].data = this.statsData.series[seriesName].data.slice(-5);
+            this.statsData.series[seriesName].data = this.statsData.series[seriesName].data.slice(-MINIMAL_ENTRIES);
           }
           json = JSON.stringify(this.statsData);
         }
