@@ -383,3 +383,75 @@ export function isValidRoadPosition(
   const validPositions = getValidRoadPositions(room, anchor, blueprintRoads, remoteRooms);
   return validPositions.has(`${x},${y}`);
 }
+
+/**
+ * Place road construction sites along the road network
+ * 
+ * This is called during construction to build roads to sources, controller, and mineral.
+ * It's rate-limited to avoid exceeding construction site limits.
+ * 
+ * @param room The room to build roads in
+ * @param anchor The blueprint anchor position (usually spawn)
+ * @param maxSites Maximum number of construction sites to place
+ * @returns Number of construction sites placed
+ */
+export function placeRoadConstructionSites(
+  room: Room,
+  anchor: RoomPosition,
+  maxSites = 3
+): number {
+  const existingSites = room.find(FIND_MY_CONSTRUCTION_SITES);
+  if (existingSites.length >= 10) return 0;
+
+  const roadNetwork = calculateRoadNetwork(room, anchor);
+  const terrain = room.getTerrain();
+  const existingRoads = room.find(FIND_STRUCTURES, {
+    filter: s => s.structureType === STRUCTURE_ROAD
+  });
+
+  const existingRoadSet = new Set(
+    existingRoads.map(r => `${r.pos.x},${r.pos.y}`)
+  );
+  const existingSiteSet = new Set(
+    existingSites
+      .filter(s => s.structureType === STRUCTURE_ROAD)
+      .map(s => `${s.pos.x},${s.pos.y}`)
+  );
+
+  let placed = 0;
+
+  for (const posKey of roadNetwork.positions) {
+    if (placed >= maxSites) break;
+    if (existingSites.length + placed >= 10) break;
+
+    // Skip if road or site already exists
+    if (existingRoadSet.has(posKey)) continue;
+    if (existingSiteSet.has(posKey)) continue;
+
+    // Parse position
+    const [xStr, yStr] = posKey.split(",");
+    const x = parseInt(xStr, 10);
+    const y = parseInt(yStr, 10);
+
+    // Skip walls
+    if (terrain.get(x, y) === TERRAIN_MASK_WALL) continue;
+
+    // Place construction site
+    const result = room.createConstructionSite(x, y, STRUCTURE_ROAD);
+    if (result === OK) {
+      placed++;
+    }
+  }
+
+  return placed;
+}
+
+/**
+ * Get the cached road network for visualization or other purposes
+ * 
+ * @param roomName The room name to get the network for
+ * @returns The road network or undefined if not cached
+ */
+export function getCachedRoadNetwork(roomName: string): RoomRoadNetwork | undefined {
+  return roadNetworkCache.get(roomName);
+}

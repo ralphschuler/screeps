@@ -17,6 +17,7 @@ import { pheromoneManager } from "../logic/pheromone";
 import { calculateDangerLevel, evolutionManager, postureManager } from "../logic/evolution";
 import { profiler } from "./profiler";
 import { getBlueprint, placeConstructionSites, destroyMisplacedStructures } from "../layouts/blueprints";
+import { placeRoadConstructionSites } from "../layouts/roadNetworkPlanner";
 import { safeFind } from "../utils/safeFind";
 import { safeModeManager } from "../defense/safeModeManager";
 import { chemistryPlanner } from "../labs/chemistryPlanner";
@@ -316,8 +317,12 @@ export class RoomNode {
     // Place construction sites using blueprint
     const placed = placeConstructionSites(room, spawn.pos, blueprint);
 
+    // Place road construction sites for infrastructure routes (sources, controller, mineral)
+    // Only place 1-2 road sites per tick to avoid overwhelming builders
+    const roadSitesPlaced = placeRoadConstructionSites(room, spawn.pos, 2);
+
     // Update metrics
-    swarm.metrics.constructionSites = existingSites.length + placed;
+    swarm.metrics.constructionSites = existingSites.length + placed + roadSitesPlaced;
   }
 
   /**
