@@ -770,15 +770,8 @@ export function isBootstrapMode(roomName: string, room: Room): boolean {
     return true;
   }
 
-  // Critical: storage exists but no queen carrier to fill spawns/extensions
-  if (room.storage && (counts.get("queenCarrier") ?? 0) === 0) {
-    // Only critical if we don't have larvaWorkers to compensate
-    if ((counts.get("larvaWorker") ?? 0) === 0) {
-      return true;
-    }
-  }
-
   // Check minimum counts against bootstrap order
+  // This includes queenCarrier (when storage exists) as part of the order
   for (const req of BOOTSTRAP_SPAWN_ORDER) {
     // Skip conditional roles if condition not met
     if (req.condition && !req.condition(room)) {
