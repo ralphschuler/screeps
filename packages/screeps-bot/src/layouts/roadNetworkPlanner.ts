@@ -56,6 +56,17 @@ const DEFAULT_CONFIG: RoadNetworkConfig = {
 };
 
 /**
+ * Construction site limit per room (Screeps game limit)
+ */
+const MAX_CONSTRUCTION_SITES_PER_ROOM = 10;
+
+/**
+ * Default number of road construction sites to place per tick
+ * Kept low to avoid overwhelming builders
+ */
+const DEFAULT_ROAD_SITES_PER_TICK = 3;
+
+/**
  * Cache of calculated road networks per room
  */
 const roadNetworkCache = new Map<string, RoomRoadNetwork>();
@@ -392,16 +403,16 @@ export function isValidRoadPosition(
  * 
  * @param room The room to build roads in
  * @param anchor The blueprint anchor position (usually spawn)
- * @param maxSites Maximum number of construction sites to place
+ * @param maxSites Maximum number of construction sites to place per tick
  * @returns Number of construction sites placed
  */
 export function placeRoadConstructionSites(
   room: Room,
   anchor: RoomPosition,
-  maxSites = 3
+  maxSites = DEFAULT_ROAD_SITES_PER_TICK
 ): number {
   const existingSites = room.find(FIND_MY_CONSTRUCTION_SITES);
-  if (existingSites.length >= 10) return 0;
+  if (existingSites.length >= MAX_CONSTRUCTION_SITES_PER_ROOM) return 0;
 
   const roadNetwork = calculateRoadNetwork(room, anchor);
   const terrain = room.getTerrain();
@@ -422,7 +433,7 @@ export function placeRoadConstructionSites(
 
   for (const posKey of roadNetwork.positions) {
     if (placed >= maxSites) break;
-    if (existingSites.length + placed >= 10) break;
+    if (existingSites.length + placed >= MAX_CONSTRUCTION_SITES_PER_ROOM) break;
 
     // Skip if road or site already exists
     if (existingRoadSet.has(posKey)) continue;
