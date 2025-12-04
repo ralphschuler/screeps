@@ -14,6 +14,13 @@
 import type { StructurePlacement } from "./blueprints";
 
 /**
+ * Maximum number of extension positions to generate.
+ * Set higher than 60 (the RCL 8 limit) to provide flexibility when
+ * some positions are blocked by terrain or other structures.
+ */
+const MAX_GENERATED_EXTENSIONS = 80;
+
+/**
  * Generate extension positions in a checkerboard pattern.
  * 
  * The pattern ensures:
@@ -123,7 +130,7 @@ export function addExtensionsToBlueprint(
   if (needed <= 0) return existingStructures;
   
   // Generate all possible extension positions
-  const allExtensions = generateExtensions(80); // Generate extra to have options
+  const allExtensions = generateExtensions(MAX_GENERATED_EXTENSIONS);
   
   // Filter out positions already used by existing structures
   const usedPositions = new Set(
