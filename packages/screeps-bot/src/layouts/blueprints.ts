@@ -6,6 +6,7 @@
 
 import type { EvolutionStage } from "../memory/schemas";
 import { addExtensionsToBlueprint } from "./extensionGenerator";
+import { getValidRoadPositions } from "./roadNetworkPlanner";
 
 /**
  * Structure placement entry
@@ -675,8 +676,23 @@ export interface MisplacedStructure {
  * 
  * Only considers structures that are safe to destroy - excludes spawns, storage,
  * terminal, containers, walls, and ramparts as these are critical or player-controlled.
+ * 
+ * Roads are special: they are only considered misplaced if they are not part of:
+ * - The blueprint's static road positions
+ * - Calculated roads to sources, controller, and mineral
+ * - Routes to remote mining rooms
+ * 
+ * @param room The room to check
+ * @param anchor The blueprint anchor position (usually spawn)
+ * @param blueprint The blueprint to validate against
+ * @param remoteRooms Optional array of remote room names managed by this room
  */
-export function findMisplacedStructures(room: Room, anchor: RoomPosition, blueprint: Blueprint): MisplacedStructure[] {
+export function findMisplacedStructures(
+  room: Room,
+  anchor: RoomPosition,
+  blueprint: Blueprint,
+  remoteRooms: string[] = []
+): MisplacedStructure[] {
   const rcl = room.controller?.level ?? 1;
   const structures = getStructuresForRCL(blueprint, rcl);
   const terrain = room.getTerrain();
@@ -700,16 +716,13 @@ export function findMisplacedStructures(room: Room, anchor: RoomPosition, bluepr
     validPositions.get(s.structureType)?.add(posKey);
   }
   
-  // Add road positions
-  const roadPositions = new Set<string>();
-  for (const r of blueprint.roads) {
-    const x = anchor.x + r.x;
-    const y = anchor.y + r.y;
-    if (x >= 1 && x <= 48 && y >= 1 && y <= 48 && terrain.get(x, y) !== TERRAIN_MASK_WALL) {
-      roadPositions.add(`${x},${y}`);
-    }
-  }
-  validPositions.set(STRUCTURE_ROAD, roadPositions);
+  // Add road positions using the road network planner
+  // This includes:
+  // - Blueprint roads (static positions around spawn)
+  // - Roads to sources, controller, and mineral
+  // - Roads to remote mining rooms
+  const validRoadPositions = getValidRoadPositions(room, anchor, blueprint.roads, remoteRooms);
+  validPositions.set(STRUCTURE_ROAD, validRoadPositions);
   
   // Add extractor position at mineral if RCL 6+
   if (rcl >= 6) {
@@ -760,18 +773,23 @@ export function findMisplacedStructures(room: Room, anchor: RoomPosition, bluepr
  * This is used when blueprints are updated and structures need to be rearranged
  * to meet the new requirements.
  * 
+ * Roads are preserved if they are part of the road network (routes to sources,
+ * controller, mineral, or remote rooms).
+ * 
  * @param room The room to check
  * @param anchor The anchor position (usually the spawn)
  * @param blueprint The blueprint to validate against
  * @param maxDestroy Maximum number of structures to destroy per tick (default: 1)
+ * @param remoteRooms Optional array of remote room names managed by this room
  */
 export function destroyMisplacedStructures(
   room: Room,
   anchor: RoomPosition,
   blueprint: Blueprint,
-  maxDestroy = 1
+  maxDestroy = 1,
+  remoteRooms: string[] = []
 ): number {
-  const misplaced = findMisplacedStructures(room, anchor, blueprint);
+  const misplaced = findMisplacedStructures(room, anchor, blueprint, remoteRooms);
   let destroyed = 0;
   
   for (const { structure, reason } of misplaced) {

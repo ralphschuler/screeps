@@ -304,8 +304,9 @@ export class RoomNode {
 
     // Destroy misplaced structures that don't match the blueprint
     // Runs every construction tick (10 ticks) in non-combat postures for faster cleanup
+    // Pass remote room assignments to preserve roads leading to remote mining rooms
     if (!postureManager.isCombatPosture(swarm.posture)) {
-      const destroyed = destroyMisplacedStructures(room, spawn.pos, blueprint, 1);
+      const destroyed = destroyMisplacedStructures(room, spawn.pos, blueprint, 1, swarm.remoteAssignments);
       if (destroyed > 0) {
         const structureWord = destroyed === 1 ? "structure" : "structures";
         memoryManager.addRoomEvent(this.roomName, "structureDestroyed", `${destroyed} misplaced ${structureWord} destroyed for blueprint compliance`);
