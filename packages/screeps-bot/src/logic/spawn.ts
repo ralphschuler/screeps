@@ -571,8 +571,7 @@ export function determineNextRole(room: Room, swarm: SwarmState): string | null 
   const counts = countCreepsByRole(room.name);
 
   // Emergency: if no harvesters, spawn larvaWorker
-  const harvesterCount = (counts.get("harvester") ?? 0) + (counts.get("larvaWorker") ?? 0);
-  if (harvesterCount === 0) {
+  if (getEnergyProducerCount(counts) === 0) {
     return "larvaWorker";
   }
 
@@ -609,6 +608,22 @@ export function generateCreepName(role: string): string {
 }
 
 /**
+ * Get count of energy-producing creeps (harvesters + larvaWorkers)
+ */
+export function getEnergyProducerCount(counts: Map<string, number>): number {
+  return (counts.get("harvester") ?? 0) + (counts.get("larvaWorker") ?? 0);
+}
+
+/**
+ * Check if room is in emergency state (no energy-producing creeps)
+ * This happens when all creeps die and extensions are empty
+ */
+export function isEmergencySpawnState(roomName: string): boolean {
+  const counts = countCreepsByRole(roomName);
+  return getEnergyProducerCount(counts) === 0;
+}
+
+/**
  * Spawn manager - run for a room
  */
 export function runSpawnManager(room: Room, swarm: SwarmState): void {
@@ -628,7 +643,13 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
   const energyCapacity = room.energyCapacityAvailable;
   const energyAvailable = room.energyAvailable;
 
-  const body = getBestBody(def, energyCapacity);
+  // Emergency mode: when no energy-producing creeps exist and extensions are empty,
+  // use energyAvailable to select body instead of energyCapacityAvailable.
+  // This prevents deadlock where we wait for extensions to fill but have no creeps to fill them.
+  const isEmergency = isEmergencySpawnState(room.name);
+  const effectiveCapacity = isEmergency ? energyAvailable : energyCapacity;
+
+  const body = getBestBody(def, effectiveCapacity);
   if (!body) return;
 
   // Check if we have enough energy
