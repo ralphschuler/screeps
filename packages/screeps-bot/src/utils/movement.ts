@@ -407,12 +407,16 @@ function internalMoveTo(
 
   let path: RoomPosition[];
 
-  if (needRepath) {
+  /**
+   * Helper to generate a new path and cache it.
+   * Returns the path or null if no path found.
+   */
+  function generateAndCachePath(): RoomPosition[] | null {
     const pathResult = findPath(creep.pos, { pos: targetPos, range }, options);
 
     if (pathResult.incomplete || pathResult.path.length === 0) {
       delete memory[MEMORY_PATH_KEY];
-      return ERR_NO_PATH;
+      return null;
     }
 
     // Cache the path (store actual positions for cross-room compatibility)
@@ -422,8 +426,16 @@ function internalMoveTo(
       targetKey
     } as CachedPath;
 
-    path = pathResult.path;
     memory[MEMORY_STUCK_KEY] = 0;
+    return pathResult.path;
+  }
+
+  if (needRepath) {
+    const newPath = generateAndCachePath();
+    if (!newPath) {
+      return ERR_NO_PATH;
+    }
+    path = newPath;
   } else {
     path = deserializePath(cachedPath.path);
   }
@@ -437,21 +449,11 @@ function internalMoveTo(
   // this could mean the path doesn't include cross-room positions.
   // Force a repath to get a valid path from current position.
   if (currentIdx === -1 && onRoomExit) {
-    const pathResult = findPath(creep.pos, { pos: targetPos, range }, options);
-
-    if (pathResult.incomplete || pathResult.path.length === 0) {
-      delete memory[MEMORY_PATH_KEY];
+    const newPath = generateAndCachePath();
+    if (!newPath) {
       return ERR_NO_PATH;
     }
-
-    memory[MEMORY_PATH_KEY] = {
-      path: serializePath(pathResult.path),
-      tick: Game.time,
-      targetKey
-    } as CachedPath;
-
-    path = pathResult.path;
-    memory[MEMORY_STUCK_KEY] = 0;
+    path = newPath;
     currentIdx = -1; // Will use index 0 below
   }
 
