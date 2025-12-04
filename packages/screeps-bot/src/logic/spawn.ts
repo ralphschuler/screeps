@@ -655,13 +655,20 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState): bo
  * Determine next role to spawn
  */
 export function determineNextRole(room: Room, swarm: SwarmState): string | null {
-  const postureWeights = getPostureSpawnWeights(swarm.posture);
   const counts = countCreepsByRole(room.name);
 
-  // Emergency: if no harvesters, spawn larvaWorker
-  if (getEnergyProducerCount(counts) === 0) {
-    return "larvaWorker";
+  // Bootstrap mode: use deterministic priority spawning for critical roles
+  // This ensures proper recovery from bad states (all creeps dead, missing critical roles)
+  if (isBootstrapMode(room.name, room)) {
+    const bootstrapRole = getBootstrapRole(room.name, room, swarm);
+    if (bootstrapRole) {
+      return bootstrapRole;
+    }
+    // If no bootstrap role needed, fall through to weighted selection
   }
+
+  // Normal mode: weighted selection based on posture, pheromones, and priorities
+  const postureWeights = getPostureSpawnWeights(swarm.posture);
 
   // Build weighted entries
   const entries: WeightedEntry<string>[] = [];
@@ -703,12 +710,112 @@ export function getEnergyProducerCount(counts: Map<string, number>): number {
 }
 
 /**
+ * Get count of transport creeps (haulers + larvaWorkers)
+ */
+export function getTransportCount(counts: Map<string, number>): number {
+  return (counts.get("hauler") ?? 0) + (counts.get("larvaWorker") ?? 0);
+}
+
+/**
  * Check if room is in emergency state (no energy-producing creeps)
  * This happens when all creeps die and extensions are empty
  */
 export function isEmergencySpawnState(roomName: string): boolean {
   const counts = countCreepsByRole(roomName);
   return getEnergyProducerCount(counts) === 0;
+}
+
+/**
+ * Bootstrap spawn order - deterministic priority-based spawning.
+ * This defines the order in which critical roles should be spawned during
+ * recovery from a bad state, ensuring the economy can bootstrap properly.
+ */
+const BOOTSTRAP_SPAWN_ORDER: { role: string; minCount: number; condition?: (room: Room) => boolean }[] = [
+  // 1. Energy production first - can't do anything without energy
+  { role: "larvaWorker", minCount: 2 },
+  // 2. Static harvesters for efficient mining
+  { role: "harvester", minCount: 1 },
+  // 3. Transport to distribute energy
+  { role: "hauler", minCount: 1 },
+  // 4. Second harvester for second source
+  { role: "harvester", minCount: 2 },
+  // 5. Second hauler for throughput
+  { role: "hauler", minCount: 2 },
+  // 6. Queen carrier when storage exists (manages spawns/extensions)
+  { role: "queenCarrier", minCount: 1, condition: (room) => Boolean(room.storage) },
+  // 7. Upgrader for controller progress
+  { role: "upgrader", minCount: 1 }
+];
+
+/**
+ * Determine if the room is in "bootstrap" mode where critical roles are missing.
+ * In bootstrap mode, we use deterministic priority spawning instead of weighted selection.
+ *
+ * Bootstrap mode is active when:
+ * - Zero energy producers exist, OR
+ * - We have energy producers but no transport (energy can't be distributed), OR
+ * - We have fewer than minimum critical roles
+ */
+export function isBootstrapMode(roomName: string, room: Room): boolean {
+  const counts = countCreepsByRole(roomName);
+
+  // Critical: no energy production at all
+  if (getEnergyProducerCount(counts) === 0) {
+    return true;
+  }
+
+  // Critical: we have harvesters but no way to transport energy
+  // (larvaWorkers can self-transport so they count as transport)
+  if (getTransportCount(counts) === 0 && (counts.get("harvester") ?? 0) > 0) {
+    return true;
+  }
+
+  // Check minimum counts against bootstrap order
+  // This includes queenCarrier (when storage exists) as part of the order
+  for (const req of BOOTSTRAP_SPAWN_ORDER) {
+    // Skip conditional roles if condition not met
+    if (req.condition && !req.condition(room)) {
+      continue;
+    }
+
+    const current = counts.get(req.role) ?? 0;
+    if (current < req.minCount) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Get the next role to spawn in bootstrap mode.
+ * Uses deterministic priority order instead of weighted random selection.
+ */
+export function getBootstrapRole(roomName: string, room: Room, swarm: SwarmState): string | null {
+  const counts = countCreepsByRole(roomName);
+
+  // First check emergency: zero energy producers
+  if (getEnergyProducerCount(counts) === 0) {
+    return "larvaWorker";
+  }
+
+  // Follow bootstrap order
+  for (const req of BOOTSTRAP_SPAWN_ORDER) {
+    // Skip conditional roles if condition not met
+    if (req.condition && !req.condition(room)) {
+      continue;
+    }
+
+    const current = counts.get(req.role) ?? 0;
+    if (current < req.minCount) {
+      // Verify we can spawn this role (check needsRole for special conditions)
+      if (needsRole(roomName, req.role, swarm)) {
+        return req.role;
+      }
+    }
+  }
+
+  return null;
 }
 
 /**
