@@ -129,6 +129,14 @@ function deserializePath(serialized: SerializedPos[]): RoomPosition[] {
 }
 
 /**
+ * Check if a position is on a room exit (edge of the room).
+ * Room exits are positions at x=0, x=49, y=0, or y=49.
+ */
+function isOnRoomExit(pos: RoomPosition): boolean {
+  return pos.x === 0 || pos.x === 49 || pos.y === 0 || pos.y === 49;
+}
+
+/**
  * Get direction from one position to an adjacent position
  */
 function getDirection(from: RoomPosition, to: RoomPosition): DirectionConstant {
@@ -378,6 +386,15 @@ function internalMoveTo(
   memory[MEMORY_STUCK_KEY] = newStuckCount;
   memory[MEMORY_LAST_POS_KEY] = currentPosKey;
 
+  // Check if creep is on a room exit - this indicates they just entered a new room
+  // and need to repath to avoid cycling back through the exit
+  const onRoomExit = isOnRoomExit(creep.pos);
+
+  // Check if cached path is from a different room (creep changed rooms)
+  const cachedPathFirstPos = cachedPath?.path[0];
+  const cachedPathInDifferentRoom =
+    cachedPath && cachedPath.path.length > 0 && cachedPathFirstPos && cachedPathFirstPos.r !== creep.pos.roomName;
+
   // Determine if we need to repath
   const repathIfStuck = options.repathIfStuck ?? 3;
   const reusePath = options.reusePath ?? 20;
@@ -385,16 +402,21 @@ function internalMoveTo(
     !cachedPath ||
     cachedPath.targetKey !== targetKey ||
     Game.time - cachedPath.tick > reusePath ||
-    newStuckCount >= repathIfStuck;
+    newStuckCount >= repathIfStuck ||
+    (onRoomExit && cachedPathInDifferentRoom); // Force repath when on exit with stale path
 
   let path: RoomPosition[];
 
-  if (needRepath) {
+  /**
+   * Helper to generate a new path and cache it.
+   * Returns the path or null if no path found.
+   */
+  function generateAndCachePath(): RoomPosition[] | null {
     const pathResult = findPath(creep.pos, { pos: targetPos, range }, options);
 
     if (pathResult.incomplete || pathResult.path.length === 0) {
       delete memory[MEMORY_PATH_KEY];
-      return ERR_NO_PATH;
+      return null;
     }
 
     // Cache the path (store actual positions for cross-room compatibility)
@@ -404,16 +426,37 @@ function internalMoveTo(
       targetKey
     } as CachedPath;
 
-    path = pathResult.path;
     memory[MEMORY_STUCK_KEY] = 0;
+    return pathResult.path;
+  }
+
+  if (needRepath) {
+    const newPath = generateAndCachePath();
+    if (!newPath) {
+      return ERR_NO_PATH;
+    }
+    path = newPath;
   } else {
     path = deserializePath(cachedPath.path);
   }
 
   // Find next position on path
-  const currentIdx = path.findIndex(
+  let currentIdx = path.findIndex(
     p => p.x === creep.pos.x && p.y === creep.pos.y && p.roomName === creep.pos.roomName
   );
+
+  // If current position not found in path and we're on a room exit,
+  // this could mean the path doesn't include cross-room positions.
+  // Force a repath to get a valid path from current position.
+  if (currentIdx === -1 && onRoomExit) {
+    const newPath = generateAndCachePath();
+    if (!newPath) {
+      return ERR_NO_PATH;
+    }
+    path = newPath;
+    currentIdx = -1; // Will use index 0 below
+  }
+
   const nextIdx = currentIdx === -1 ? 0 : currentIdx + 1;
 
   if (nextIdx >= path.length) {
