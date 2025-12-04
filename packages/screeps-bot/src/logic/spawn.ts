@@ -208,6 +208,36 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     maxPerRoom: 1,
     remoteRole: false
   },
+  remoteHarvester: {
+    role: "remoteHarvester",
+    family: "economy",
+    bodies: [
+      createBody([WORK, WORK, CARRY, MOVE, MOVE, MOVE], 400),
+      createBody([WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 750),
+      createBody([WORK, WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 900)
+    ],
+    priority: 75,
+    maxPerRoom: 10, // Higher max since these are distributed across remote rooms
+    remoteRole: true
+  },
+  remoteHauler: {
+    role: "remoteHauler",
+    family: "economy",
+    bodies: [
+      createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
+      createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 800),
+      createBody(
+        [
+          CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY,
+          MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE
+        ],
+        1000
+      )
+    ],
+    priority: 70,
+    maxPerRoom: 10, // Higher max since these are distributed across remote rooms
+    remoteRole: true
+  },
 
   // Military roles
   guard: {
@@ -354,7 +384,9 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         guard: 0.3,
         healer: 0.1,
         scout: 0.5,
-        engineer: 0.8
+        engineer: 0.8,
+        remoteHarvester: 1.2,
+        remoteHauler: 1.2
       };
     case "expand":
       return {
@@ -367,7 +399,9 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         scout: 1.5,
         claimer: 1.5,
         remoteWorker: 1.5,
-        engineer: 0.5
+        engineer: 0.5,
+        remoteHarvester: 1.5,
+        remoteHauler: 1.5
       };
     case "defensive":
       return {
@@ -379,7 +413,9 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         guard: 2.0,
         healer: 1.5,
         ranger: 1.0,
-        engineer: 1.2
+        engineer: 1.2,
+        remoteHarvester: 0.5,
+        remoteHauler: 0.5
       };
     case "war":
       return {
@@ -392,7 +428,9 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         healer: 2.0,
         soldier: 2.0,
         ranger: 1.5,
-        engineer: 0.5
+        engineer: 0.5,
+        remoteHarvester: 0.3,
+        remoteHauler: 0.3
       };
     case "siege":
       return {
@@ -406,7 +444,9 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         soldier: 2.5,
         siegeUnit: 2.0,
         ranger: 1.0,
-        engineer: 0.2
+        engineer: 0.2,
+        remoteHarvester: 0.1,
+        remoteHauler: 0.1
       };
     case "evacuate":
       return {
@@ -421,7 +461,9 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         builder: 0.5,
         queenCarrier: 1.0,
         guard: 1.5,
-        engineer: 2.0
+        engineer: 2.0,
+        remoteHarvester: 0.5,
+        remoteHauler: 0.5
       };
     default:
       return {
@@ -429,7 +471,9 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         hauler: 1.0,
         upgrader: 1.0,
         builder: 1.0,
-        queenCarrier: 1.0
+        queenCarrier: 1.0,
+        remoteHarvester: 1.0,
+        remoteHauler: 1.0
       };
   }
 }
@@ -465,7 +509,9 @@ export function getPheromoneMult(role: string, pheromones: Record<string, number
     scout: "expand",
     claimer: "expand",
     remoteWorker: "expand",
-    engineer: "build"
+    engineer: "build",
+    remoteHarvester: "harvest",
+    remoteHauler: "logistics"
   };
 
   const pheromoneKey = map[role];
@@ -512,11 +558,53 @@ export function getBestBody(def: RoleSpawnDef, energyCapacity: number): BodyTemp
 }
 
 /**
+ * Count remote creeps assigned to a specific target room
+ */
+export function countRemoteCreepsByTargetRoom(homeRoom: string, role: string, targetRoom: string): number {
+  let count = 0;
+  for (const creep of Object.values(Game.creeps)) {
+    const memory = creep.memory as unknown as SwarmCreepMemory;
+    if (memory.homeRoom === homeRoom && memory.role === role && memory.targetRoom === targetRoom) {
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * Get the remote room that needs workers of a given role.
+ * Returns the room name if workers are needed, null otherwise.
+ */
+export function getRemoteRoomNeedingWorkers(homeRoom: string, role: string, swarm: SwarmState): string | null {
+  const remoteAssignments = swarm.remoteAssignments ?? [];
+  if (remoteAssignments.length === 0) return null;
+
+  // Define max workers per remote room based on role
+  const maxPerRemote = role === "remoteHarvester" ? 2 : 2; // 2 harvesters and 2 haulers per remote
+
+  // Find a remote room that needs workers
+  for (const remoteRoom of remoteAssignments) {
+    const currentCount = countRemoteCreepsByTargetRoom(homeRoom, role, remoteRoom);
+    if (currentCount < maxPerRemote) {
+      return remoteRoom;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Check if room needs role
  */
-export function needsRole(roomName: string, role: string, _swarm: SwarmState): boolean {
+export function needsRole(roomName: string, role: string, swarm: SwarmState): boolean {
   const def = ROLE_DEFINITIONS[role];
   if (!def) return false;
+
+  // Special handling for remote roles
+  if (role === "remoteHarvester" || role === "remoteHauler") {
+    // Check if there's a remote room that needs workers
+    return getRemoteRoomNeedingWorkers(roomName, role, swarm) !== null;
+  }
 
   const counts = countCreepsByRole(roomName);
   const current = counts.get(role) ?? 0;
@@ -663,6 +751,14 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
     homeRoom: room.name,
     version: 1
   };
+
+  // For remote roles, set the targetRoom to the remote room that needs workers
+  if (role === "remoteHarvester" || role === "remoteHauler") {
+    const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
+    if (targetRoom) {
+      memory.targetRoom = targetRoom;
+    }
+  }
 
   availableSpawn.spawnCreep(body.parts, name, {
     memory: memory as unknown as CreepMemory
