@@ -312,22 +312,49 @@ export class MemorySegmentStats {
   private saveToSegment(): void {
     if (!this.statsData) return;
 
+    const SEGMENT_SIZE_LIMIT = 100 * 1024; // 100 KB
+
     try {
       this.statsData.lastUpdate = Game.time;
-      const json = JSON.stringify(this.statsData);
+      let json = JSON.stringify(this.statsData);
 
       // Check size limit (100KB per segment)
-      if (json.length > 100 * 1024) {
-        logger.warn(`Stats data exceeds segment limit: ${json.length} bytes`, {
+      if (json.length > SEGMENT_SIZE_LIMIT) {
+        logger.warn(`Stats data exceeds segment limit: ${json.length} bytes, trimming...`, {
           subsystem: "Stats"
         });
-        // Trim history to fit
-        while (json.length > 100 * 1024 && this.statsData.history.length > 10) {
+
+        // Trim history first (keep at least 10 entries)
+        while (json.length > SEGMENT_SIZE_LIMIT && this.statsData.history.length > 10) {
           this.statsData.history.shift();
+          json = JSON.stringify(this.statsData);
+        }
+
+        // If still too large, trim metric series data
+        if (json.length > SEGMENT_SIZE_LIMIT) {
+          for (const seriesName of Object.keys(this.statsData.series)) {
+            const series = this.statsData.series[seriesName];
+            while (series.data.length > 10 && json.length > SEGMENT_SIZE_LIMIT) {
+              series.data.shift();
+              json = JSON.stringify(this.statsData);
+            }
+          }
+        }
+
+        // If still too large, reduce to minimal data
+        if (json.length > SEGMENT_SIZE_LIMIT) {
+          logger.warn(`Stats data still exceeds limit after trimming, clearing history`, {
+            subsystem: "Stats"
+          });
+          this.statsData.history = this.statsData.history.slice(-5);
+          for (const seriesName of Object.keys(this.statsData.series)) {
+            this.statsData.series[seriesName].data = this.statsData.series[seriesName].data.slice(-5);
+          }
+          json = JSON.stringify(this.statsData);
         }
       }
 
-      RawMemory.segments[this.config.primarySegment] = JSON.stringify(this.statsData);
+      RawMemory.segments[this.config.primarySegment] = json;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       logger.error(`Failed to save stats segment: ${errorMessage}`, { subsystem: "Stats" });
