@@ -17,6 +17,7 @@ import { pheromoneManager } from "../logic/pheromone";
 import { calculateDangerLevel, evolutionManager, postureManager } from "../logic/evolution";
 import { profiler } from "./profiler";
 import { getBlueprint, placeConstructionSites, destroyMisplacedStructures } from "../layouts/blueprints";
+import { placeRoadConstructionSites } from "../layouts/roadNetworkPlanner";
 import { safeFind } from "../utils/safeFind";
 import { safeModeManager } from "../defense/safeModeManager";
 import { chemistryPlanner } from "../labs/chemistryPlanner";
@@ -304,8 +305,9 @@ export class RoomNode {
 
     // Destroy misplaced structures that don't match the blueprint
     // Runs every construction tick (10 ticks) in non-combat postures for faster cleanup
+    // Pass remote room assignments to preserve roads leading to remote mining rooms
     if (!postureManager.isCombatPosture(swarm.posture)) {
-      const destroyed = destroyMisplacedStructures(room, spawn.pos, blueprint, 1);
+      const destroyed = destroyMisplacedStructures(room, spawn.pos, blueprint, 1, swarm.remoteAssignments);
       if (destroyed > 0) {
         const structureWord = destroyed === 1 ? "structure" : "structures";
         memoryManager.addRoomEvent(this.roomName, "structureDestroyed", `${destroyed} misplaced ${structureWord} destroyed for blueprint compliance`);
@@ -315,8 +317,12 @@ export class RoomNode {
     // Place construction sites using blueprint
     const placed = placeConstructionSites(room, spawn.pos, blueprint);
 
+    // Place road construction sites for infrastructure routes (sources, controller, mineral)
+    // Only place 1-2 road sites per tick to avoid overwhelming builders
+    const roadSitesPlaced = placeRoadConstructionSites(room, spawn.pos, 2);
+
     // Update metrics
-    swarm.metrics.constructionSites = existingSites.length + placed;
+    swarm.metrics.constructionSites = existingSites.length + placed + roadSitesPlaced;
   }
 
   /**
