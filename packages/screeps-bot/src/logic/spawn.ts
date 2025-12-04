@@ -571,8 +571,7 @@ export function determineNextRole(room: Room, swarm: SwarmState): string | null 
   const counts = countCreepsByRole(room.name);
 
   // Emergency: if no harvesters, spawn larvaWorker
-  const harvesterCount = (counts.get("harvester") ?? 0) + (counts.get("larvaWorker") ?? 0);
-  if (harvesterCount === 0) {
+  if (getEnergyProducerCount(counts) === 0) {
     return "larvaWorker";
   }
 
@@ -609,13 +608,19 @@ export function generateCreepName(role: string): string {
 }
 
 /**
+ * Get count of energy-producing creeps (harvesters + larvaWorkers)
+ */
+export function getEnergyProducerCount(counts: Map<string, number>): number {
+  return (counts.get("harvester") ?? 0) + (counts.get("larvaWorker") ?? 0);
+}
+
+/**
  * Check if room is in emergency state (no energy-producing creeps)
  * This happens when all creeps die and extensions are empty
  */
 export function isEmergencySpawnState(roomName: string): boolean {
   const counts = countCreepsByRole(roomName);
-  const harvesterCount = (counts.get("harvester") ?? 0) + (counts.get("larvaWorker") ?? 0);
-  return harvesterCount === 0;
+  return getEnergyProducerCount(counts) === 0;
 }
 
 /**
