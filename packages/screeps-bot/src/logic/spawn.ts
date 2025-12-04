@@ -509,7 +509,9 @@ export function getPheromoneMult(role: string, pheromones: Record<string, number
     scout: "expand",
     claimer: "expand",
     remoteWorker: "expand",
-    engineer: "build"
+    engineer: "build",
+    remoteHarvester: "harvest",
+    remoteHauler: "logistics"
   };
 
   const pheromoneKey = map[role];
