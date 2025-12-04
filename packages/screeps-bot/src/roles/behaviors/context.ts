@@ -38,6 +38,8 @@ interface RoomCache {
   hostiles: Creep[];
   droppedResources: Resource[];
   containers: StructureContainer[];
+  /** Containers with free capacity for depositing energy */
+  depositContainers: StructureContainer[];
   spawnStructures: (StructureSpawn | StructureExtension)[];
   towers: StructureTower[];
   prioritizedSites: ConstructionSite[];
@@ -101,15 +103,19 @@ function getRoomCache(room: Room): RoomCache {
   const allStructures = room.find(FIND_STRUCTURES);
   const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
 
+  // Filter containers once, then use for both purposes
+  const allContainers = allStructures.filter(
+    (s): s is StructureContainer => s.structureType === STRUCTURE_CONTAINER
+  );
+
   const cache: RoomCache = {
     tick: Game.time,
     hostiles,
     droppedResources: room.find(FIND_DROPPED_RESOURCES, {
       filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 50
     }),
-    containers: allStructures.filter(
-      (s): s is StructureContainer => s.structureType === STRUCTURE_CONTAINER && s.store.getUsedCapacity(RESOURCE_ENERGY) > 100
-    ),
+    containers: allContainers.filter(c => c.store.getUsedCapacity(RESOURCE_ENERGY) > 100),
+    depositContainers: allContainers.filter(c => c.store.getFreeCapacity(RESOURCE_ENERGY) > 0),
     spawnStructures: myStructures.filter(
       (s): s is StructureSpawn | StructureExtension =>
         (s.structureType === STRUCTURE_SPAWN || s.structureType === STRUCTURE_EXTENSION) &&
@@ -226,6 +232,7 @@ export function createContext(creep: Creep): CreepContext {
     // Cached room objects (all from cache)
     droppedResources: roomCache.droppedResources,
     containers: roomCache.containers,
+    depositContainers: roomCache.depositContainers,
     spawnStructures: roomCache.spawnStructures,
     towers: roomCache.towers,
     storage: room.storage,

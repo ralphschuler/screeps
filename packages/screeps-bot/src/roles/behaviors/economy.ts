@@ -225,8 +225,14 @@ export function hauler(ctx: CreepContext): CreepAction {
     if (deliverAction) return deliverAction;
 
     // Deliver to storage
-    if (ctx.storage) {
+    if (ctx.storage && ctx.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
       return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+    }
+
+    // Deliver to containers (for early game or when storage is full/unavailable)
+    if (ctx.depositContainers.length > 0) {
+      const closest = ctx.creep.pos.findClosestByRange(ctx.depositContainers);
+      if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
     }
 
     return { type: "idle" };
@@ -579,12 +585,18 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     }
 
     // In home room - deliver to storage or spawn structures
-    if (ctx.storage) {
+    if (ctx.storage && ctx.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
       return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
     }
 
     const deliverAction = deliverEnergy(ctx);
     if (deliverAction) return deliverAction;
+
+    // Deliver to containers (for early game or when storage is full/unavailable)
+    if (ctx.depositContainers.length > 0) {
+      const closest = ctx.creep.pos.findClosestByRange(ctx.depositContainers);
+      if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+    }
 
     return { type: "idle" };
   } else {
