@@ -94,10 +94,13 @@ export function generateExtensions(count: number): StructurePlacement[] {
 /**
  * Check if a position is valid for an extension in a checkerboard pattern.
  * Exported for use in validating layout positions.
+ * 
+ * The rule is: |x| + |y| must be even (0, 2, 4, etc.)
+ * This ensures no two extensions share an edge (only potentially corners).
  */
 export function isCheckerboardPosition(x: number, y: number): boolean {
-  // In our checkerboard, we want positions where (x + y) is even
-  // This ensures no two extensions are directly adjacent
+  // Positions where (|x| + |y|) is even form a valid checkerboard pattern
+  // This ensures no two extensions are directly adjacent (share an edge)
   return (Math.abs(x) + Math.abs(y)) % 2 === 0;
 }
 
