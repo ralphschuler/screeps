@@ -6,7 +6,7 @@
  */
 
 import type { CreepAction, CreepContext } from "./types";
-import { fleeFrom, moveCreep, moveToRoom } from "../../utils/movement";
+import { fleeFrom, moveCreep, moveOffRoomExit, moveToRoom } from "../../utils/movement";
 
 /**
  * Path visualization colors for different action types.
@@ -132,13 +132,18 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
       break;
 
     case "wait":
+      // If on a room exit, move off first before waiting
+      if (moveOffRoomExit(creep)) {
+        break;
+      }
       if (!creep.pos.isEqualTo(action.position)) {
         moveCreep(creep, action.position);
       }
       break;
 
     case "idle":
-      // No action needed
+      // When idle, move off room exit tiles to prevent endless cycling between rooms
+      moveOffRoomExit(creep);
       break;
   }
 
