@@ -119,6 +119,7 @@ function createMockContext(
     damagedStructureCount: 0,
     droppedResources: [],
     containers: [],
+    depositContainers: [],
     spawnStructures: [],
     towers: [],
     storage: undefined,

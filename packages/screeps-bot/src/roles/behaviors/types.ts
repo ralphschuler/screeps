@@ -87,6 +87,8 @@ export interface CreepContext {
   // Cached room objects
   droppedResources: Resource[];
   containers: StructureContainer[];
+  /** Containers with free capacity for depositing energy */
+  depositContainers: StructureContainer[];
   spawnStructures: (StructureSpawn | StructureExtension)[];
   towers: StructureTower[];
   storage: StructureStorage | undefined;
