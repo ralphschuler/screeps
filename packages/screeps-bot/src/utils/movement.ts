@@ -137,6 +137,61 @@ function isOnRoomExit(pos: RoomPosition): boolean {
 }
 
 /**
+ * Find a walkable position adjacent to the creep that is NOT on a room exit.
+ * Returns null if no valid position is found.
+ */
+function findPositionOffExit(creep: Creep | PowerCreep): RoomPosition | null {
+  const pos = creep.pos;
+  const room = Game.rooms[pos.roomName];
+  if (!room) return null;
+
+  const terrain = room.getTerrain();
+
+  // Get all 8 adjacent positions, prioritizing positions further from the edge
+  const adjacentOffsets = [
+    { dx: 0, dy: -1 }, // TOP
+    { dx: 1, dy: -1 }, // TOP_RIGHT
+    { dx: 1, dy: 0 }, // RIGHT
+    { dx: 1, dy: 1 }, // BOTTOM_RIGHT
+    { dx: 0, dy: 1 }, // BOTTOM
+    { dx: -1, dy: 1 }, // BOTTOM_LEFT
+    { dx: -1, dy: 0 }, // LEFT
+    { dx: -1, dy: -1 } // TOP_LEFT
+  ];
+
+  // Sort to prefer positions that are more "inward" (further from all edges)
+  const candidates: { pos: RoomPosition; edgeDistance: number }[] = [];
+
+  for (const offset of adjacentOffsets) {
+    const newX = pos.x + offset.dx;
+    const newY = pos.y + offset.dy;
+
+    // Skip positions outside the room
+    if (newX < 0 || newX > 49 || newY < 0 || newY > 49) continue;
+
+    // Skip positions that are still on an exit
+    if (newX === 0 || newX === 49 || newY === 0 || newY === 49) continue;
+
+    // Skip walls
+    if (terrain.get(newX, newY) === TERRAIN_MASK_WALL) continue;
+
+    // Calculate distance from nearest edge (higher is better, more "inside" the room)
+    const edgeDistance = Math.min(newX, 49 - newX, newY, 49 - newY);
+
+    candidates.push({
+      pos: new RoomPosition(newX, newY, pos.roomName),
+      edgeDistance
+    });
+  }
+
+  // Sort by edge distance descending (prefer positions further from edges)
+  candidates.sort((a, b) => b.edgeDistance - a.edgeDistance);
+
+  // Return the best candidate, or null if none found
+  return candidates.length > 0 ? candidates[0].pos : null;
+}
+
+/**
  * Get direction from one position to an adjacent position
  */
 function getDirection(from: RoomPosition, to: RoomPosition): DirectionConstant {
@@ -647,4 +702,71 @@ export function fleeFrom(
   opts?: Omit<MoveOpts, "flee">
 ): CreepMoveReturnCode | -2 | -5 | -7 | -10 {
   return internalFlee(creep, threats, range, opts);
+}
+
+/**
+ * Check if a creep is on a room exit tile (edge of the room).
+ *
+ * @param creep - The creep or power creep to check
+ * @returns true if the creep is on a room exit tile
+ */
+export function isCreepOnRoomExit(creep: Creep | PowerCreep): boolean {
+  return isOnRoomExit(creep.pos);
+}
+
+/**
+ * Move a creep off a room exit tile to prevent endless cycling between rooms.
+ * This should be called when a creep is about to idle or has no immediate task,
+ * to ensure they don't get stuck on exit tiles causing oscillation between rooms.
+ *
+ * @param creep - The creep or power creep to move
+ * @param opts - Optional movement options
+ * @returns true if the creep was on an exit and a move was issued, false otherwise
+ */
+export function moveOffRoomExit(creep: Creep | PowerCreep, opts?: MoveOpts): boolean {
+  // Check if creep is on a room exit
+  if (!isOnRoomExit(creep.pos)) {
+    return false;
+  }
+
+  // Handle spawning creeps
+  if ("spawning" in creep && creep.spawning) {
+    return false;
+  }
+
+  // Handle fatigue (only applies to Creeps, not PowerCreeps)
+  if ("fatigue" in creep && creep.fatigue > 0) {
+    return false;
+  }
+
+  // Find a position off the exit
+  const targetPos = findPositionOffExit(creep);
+  if (!targetPos) {
+    return false;
+  }
+
+  // Move to the target position
+  const priority = opts?.priority ?? 2; // Higher priority than normal movement
+  const roomName = creep.pos.roomName;
+
+  // Register movement intent for traffic management
+  if (lastPreTickTime === Game.time) {
+    if (!moveIntents.has(roomName)) {
+      moveIntents.set(roomName, []);
+    }
+    const intents = moveIntents.get(roomName);
+    if (intents) {
+      intents.push({
+        creep,
+        priority,
+        targetPos
+      });
+    }
+    return true;
+  } else {
+    // Traffic management not active, move directly
+    const direction = getDirection(creep.pos, targetPos);
+    creep.move(direction);
+    return true;
+  }
 }

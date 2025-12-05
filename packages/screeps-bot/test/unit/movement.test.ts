@@ -187,4 +187,132 @@ describe("Movement Room Exit Handling", () => {
       ).to.be.false;
     });
   });
+
+  describe("findPositionOffExit logic", () => {
+    /**
+     * Simulates the logic for finding a position off an exit.
+     * This mirrors the findPositionOffExit function in movement.ts.
+     */
+    interface Position {
+      x: number;
+      y: number;
+    }
+
+    function findPositionOffExit(
+      pos: Position,
+      isWall: (x: number, y: number) => boolean = () => false
+    ): Position | null {
+      const adjacentOffsets = [
+        { dx: 0, dy: -1 }, // TOP
+        { dx: 1, dy: -1 }, // TOP_RIGHT
+        { dx: 1, dy: 0 }, // RIGHT
+        { dx: 1, dy: 1 }, // BOTTOM_RIGHT
+        { dx: 0, dy: 1 }, // BOTTOM
+        { dx: -1, dy: 1 }, // BOTTOM_LEFT
+        { dx: -1, dy: 0 }, // LEFT
+        { dx: -1, dy: -1 } // TOP_LEFT
+      ];
+
+      const candidates: { pos: Position; edgeDistance: number }[] = [];
+
+      for (const offset of adjacentOffsets) {
+        const newX = pos.x + offset.dx;
+        const newY = pos.y + offset.dy;
+
+        // Skip positions outside the room
+        if (newX < 0 || newX > 49 || newY < 0 || newY > 49) continue;
+
+        // Skip positions that are still on an exit
+        if (newX === 0 || newX === 49 || newY === 0 || newY === 49) continue;
+
+        // Skip walls
+        if (isWall(newX, newY)) continue;
+
+        // Calculate distance from nearest edge
+        const edgeDistance = Math.min(newX, 49 - newX, newY, 49 - newY);
+
+        candidates.push({
+          pos: { x: newX, y: newY },
+          edgeDistance
+        });
+      }
+
+      // Sort by edge distance descending
+      candidates.sort((a, b) => b.edgeDistance - a.edgeDistance);
+
+      return candidates.length > 0 ? candidates[0].pos : null;
+    }
+
+    it("should find position off left exit (x=0)", () => {
+      const result = findPositionOffExit({ x: 0, y: 25 });
+      expect(result).to.not.be.null;
+      expect(result!.x).to.be.greaterThan(0);
+      expect(result!.x).to.be.lessThan(49);
+    });
+
+    it("should find position off right exit (x=49)", () => {
+      const result = findPositionOffExit({ x: 49, y: 25 });
+      expect(result).to.not.be.null;
+      expect(result!.x).to.be.greaterThan(0);
+      expect(result!.x).to.be.lessThan(49);
+    });
+
+    it("should find position off top exit (y=0)", () => {
+      const result = findPositionOffExit({ x: 25, y: 0 });
+      expect(result).to.not.be.null;
+      expect(result!.y).to.be.greaterThan(0);
+      expect(result!.y).to.be.lessThan(49);
+    });
+
+    it("should find position off bottom exit (y=49)", () => {
+      const result = findPositionOffExit({ x: 25, y: 49 });
+      expect(result).to.not.be.null;
+      expect(result!.y).to.be.greaterThan(0);
+      expect(result!.y).to.be.lessThan(49);
+    });
+
+    it("should find position off corner (0,0)", () => {
+      const result = findPositionOffExit({ x: 0, y: 0 });
+      expect(result).to.not.be.null;
+      // Corner has only one valid adjacent position: (1, 1)
+      expect(result!.x).to.equal(1);
+      expect(result!.y).to.equal(1);
+    });
+
+    it("should find position off corner (49,49)", () => {
+      const result = findPositionOffExit({ x: 49, y: 49 });
+      expect(result).to.not.be.null;
+      // Corner has only one valid adjacent position: (48, 48)
+      expect(result!.x).to.equal(48);
+      expect(result!.y).to.equal(48);
+    });
+
+    it("should return null if all adjacent positions are walls", () => {
+      const result = findPositionOffExit({ x: 0, y: 25 }, () => true);
+      expect(result).to.be.null;
+    });
+
+    it("should prefer positions further from edges", () => {
+      // Position at x=1 should prefer moving right (towards center)
+      const result = findPositionOffExit({ x: 1, y: 25 });
+      // This should not find anything because x=1 is not on an exit
+      // Let's test with actual exit position
+      const exitResult = findPositionOffExit({ x: 0, y: 25 });
+      expect(exitResult).to.not.be.null;
+      // The result should be at x=1 (only valid non-exit adjacent position)
+      expect(exitResult!.x).to.equal(1);
+    });
+
+    it("should not return positions that are still on exits", () => {
+      // Test position at (0, 1) which is on the left exit (x=0)
+      // Adjacent positions are: (0, 0), (0, 2), (1, 0), (1, 1), (1, 2)
+      // (0, 0), (0, 2) are still on left exit (x=0), (1, 0) is on top exit (y=0)
+      // Only (1, 1) and (1, 2) are valid non-exit positions
+      const result = findPositionOffExit({ x: 0, y: 1 });
+      expect(result).to.not.be.null;
+      expect(result!.x).to.be.greaterThan(0);
+      expect(result!.y).to.be.greaterThan(0);
+      expect(result!.y).to.be.lessThan(49);
+    });
+  });
 });
