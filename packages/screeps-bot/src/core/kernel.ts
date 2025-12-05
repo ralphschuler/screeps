@@ -250,9 +250,11 @@ export class Kernel {
   }
 
   /**
-   * Get current bucket mode
+   * Get current bucket mode.
+   * Ensures the bucket mode is up-to-date before returning.
    */
   public getBucketMode(): BucketMode {
+    this.updateBucketMode();
     return this.bucketMode;
   }
 
@@ -305,13 +307,15 @@ export class Kernel {
       return false;
     }
 
-    // In critical/low bucket mode, only run high-frequency tasks
+    // In critical bucket mode, only run CRITICAL priority processes
     if (this.bucketMode === "critical") {
       return process.priority >= ProcessPriority.CRITICAL;
     }
 
-    if (this.bucketMode === "low" && process.frequency !== "high") {
-      return false;
+    // In low bucket mode, only run HIGH priority or higher processes
+    // (This includes CRITICAL and HIGH, regardless of frequency)
+    if (this.bucketMode === "low") {
+      return process.priority >= ProcessPriority.HIGH;
     }
 
     // Check if suspended

@@ -1,5 +1,5 @@
 import { ErrorMapper } from "utils/ErrorMapper";
-import { loop as swarmLoop, roomVisualizer, memorySegmentStats, updateConfig, getConfig } from "./SwarmBot";
+import { loop as swarmLoop, roomVisualizer, memorySegmentStats, updateConfig, getConfig, kernel } from "./SwarmBot";
 import { configureLogger, LogLevel, getLoggerConfig } from "./core/logger";
 import { profiler } from "./core/profiler";
 
@@ -37,6 +37,12 @@ declare const global: {
   showStats: () => string;
   showConfig: () => string;
   toggleVisualization: (key: string) => string;
+  // Kernel commands
+  showKernelStats: () => string;
+  listProcesses: () => string;
+  suspendProcess: (processId: string) => string;
+  resumeProcess: (processId: string) => string;
+  resetKernelStats: () => string;
 };
 
 // =============================================================================
@@ -156,6 +162,97 @@ global.toggleVisualization = (key: string): string => {
   const newConfig = roomVisualizer.getConfig();
   const value = newConfig[validKey];
   return `Visualization '${key}': ${value ? "ENABLED" : "DISABLED"}`;
+};
+
+// =============================================================================
+// Kernel Console Commands
+// =============================================================================
+
+/**
+ * Show kernel statistics
+ * Usage: showKernelStats()
+ */
+global.showKernelStats = (): string => {
+  const stats = kernel.getStatsSummary();
+  const config = kernel.getConfig();
+  const bucketMode = kernel.getBucketMode();
+
+  let output = `=== Kernel Stats ===
+Bucket Mode: ${bucketMode.toUpperCase()}
+CPU Bucket: ${Game.cpu.bucket}
+CPU Limit: ${kernel.getCpuLimit().toFixed(2)} (${(config.targetCpuUsage * 100).toFixed(0)}% of ${Game.cpu.limit})
+Remaining CPU: ${kernel.getRemainingCpu().toFixed(2)}
+
+Processes: ${stats.totalProcesses} total (${stats.activeProcesses} active, ${stats.suspendedProcesses} suspended)
+Total CPU Used: ${stats.totalCpuUsed.toFixed(3)}
+Avg CPU/Process: ${stats.avgCpuPerProcess.toFixed(4)}
+
+Top CPU Consumers:`;
+
+  for (const proc of stats.topCpuProcesses) {
+    output += `\n  ${proc.name}: ${proc.avgCpu.toFixed(4)} avg CPU`;
+  }
+
+  return output;
+};
+
+/**
+ * List all registered processes
+ * Usage: listProcesses()
+ */
+global.listProcesses = (): string => {
+  const processes = kernel.getProcesses();
+
+  if (processes.length === 0) {
+    return "No processes registered with kernel.";
+  }
+
+  let output = "=== Registered Processes ===\n";
+  output += "ID | Name | Priority | Frequency | State | Runs | Avg CPU | Skipped | Errors\n";
+  output += "-".repeat(90) + "\n";
+
+  // Sort by priority
+  const sorted = [...processes].sort((a, b) => b.priority - a.priority);
+
+  for (const p of sorted) {
+    const avgCpu = p.stats.avgCpu.toFixed(4);
+    output += `${p.id} | ${p.name} | ${p.priority} | ${p.frequency} | ${p.state} | ${p.stats.runCount} | ${avgCpu} | ${p.stats.skippedCount} | ${p.stats.errorCount}\n`;
+  }
+
+  return output;
+};
+
+/**
+ * Suspend a process
+ * Usage: suspendProcess("empire:manager")
+ */
+global.suspendProcess = (processId: string): string => {
+  const success = kernel.suspendProcess(processId);
+  if (success) {
+    return `Process "${processId}" suspended.`;
+  }
+  return `Process "${processId}" not found.`;
+};
+
+/**
+ * Resume a suspended process
+ * Usage: resumeProcess("empire:manager")
+ */
+global.resumeProcess = (processId: string): string => {
+  const success = kernel.resumeProcess(processId);
+  if (success) {
+    return `Process "${processId}" resumed.`;
+  }
+  return `Process "${processId}" not found or not suspended.`;
+};
+
+/**
+ * Reset kernel statistics
+ * Usage: resetKernelStats()
+ */
+global.resetKernelStats = (): string => {
+  kernel.resetStats();
+  return "Kernel statistics reset.";
 };
 
 // When compiling TS to JS and bundling with rollup, the line numbers and file names in error messages change

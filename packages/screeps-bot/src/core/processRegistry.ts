@@ -41,7 +41,9 @@ import { logger } from "./logger";
 export function registerCoreProcesses(): void {
   logger.info("Registering core processes...", { subsystem: "ProcessRegistry" });
 
-  // Memory Cleanup - Remove dead creeps (every 50 ticks)
+  // Memory Cleanup - Remove dead creeps
+  // Note: Uses createLowFrequencyProcess as base but overrides interval to 50 ticks
+  // (instead of default 20) since memory cleanup doesn't need to run as frequently
   kernel.registerProcess({
     ...createLowFrequencyProcess(
       "core:memoryCleanup",
@@ -55,12 +57,13 @@ export function registerCoreProcesses(): void {
       },
       ProcessPriority.LOW
     ),
-    interval: 50,
-    minBucket: 1000,
-    cpuBudget: 0.01
+    interval: 50,     // Override: runs every 50 ticks
+    minBucket: 1000,  // Override: can run even at low bucket
+    cpuBudget: 0.01   // Override: very low CPU budget
   });
 
-  // Memory Size Check - Monitor usage (every 100 ticks)
+  // Memory Size Check - Monitor usage
+  // Note: Runs every 100 ticks to monitor memory usage and warn if near limit
   kernel.registerProcess({
     ...createLowFrequencyProcess(
       "core:memorySizeCheck",
