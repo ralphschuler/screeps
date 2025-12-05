@@ -304,8 +304,10 @@ describe("Movement Room Exit Handling", () => {
     });
 
     it("should not return positions that are still on exits", () => {
-      // Test corner position at (0, 1) - adjacent positions include (0, 0), (0, 2), (1, 0), (1, 1), (1, 2)
-      // Only (1, 1) and (1, 2) are valid (not on exit)
+      // Test position at (0, 1) which is on the left exit (x=0)
+      // Adjacent positions are: (0, 0), (0, 2), (1, 0), (1, 1), (1, 2)
+      // (0, 0), (0, 2) are still on left exit (x=0), (1, 0) is on top exit (y=0)
+      // Only (1, 1) and (1, 2) are valid non-exit positions
       const result = findPositionOffExit({ x: 0, y: 1 });
       expect(result).to.not.be.null;
       expect(result!.x).to.be.greaterThan(0);
