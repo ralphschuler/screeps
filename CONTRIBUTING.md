@@ -307,7 +307,7 @@ When creating a PR, include:
 - [Screeps Documentation](https://docs.screeps.com/)
 - [Screeps API Reference](https://docs.screeps.com/api/)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
-- [Project Guidelines](https://github.com/elsewhen/project-guidelines)
+- [Project Guidelines](https://github.com/ralphschuler/project-guidelines)
 
 ---
 

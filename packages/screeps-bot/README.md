@@ -167,7 +167,7 @@ Bot behavior can be tuned via configuration files in `src/config/`:
 
 ## Type Definitions
 
-The type definitions for Screeps come from [@types/screeps](https://www.npmjs.com/package/@types/screeps). If you find a problem or have a suggestion, please open an issue in the [typed-screeps](https://github.com/screepers/typed-screeps) repository.
+The type definitions for Screeps come from [@types/screeps](https://www.npmjs.com/package/@types/screeps), which are maintained in the [typed-screeps](https://github.com/screepers/typed-screeps) repository. If you find a problem or have a suggestion, please open an issue there.
 
 ## Contributing
 

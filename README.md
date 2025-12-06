@@ -201,4 +201,4 @@ This project is licensed under the Unlicense - see the [LICENSE](./LICENSE) file
 
 - Built using [screeps-typescript-starter](https://github.com/screepers/screeps-typescript-starter)
 - Architecture inspired by the [Screeps community](https://screeps.com/)
-- Development guidelines based on [elsewhen project guidelines](https://github.com/elsewhen/project-guidelines)
+- Development guidelines based on [project guidelines](https://github.com/ralphschuler/project-guidelines)

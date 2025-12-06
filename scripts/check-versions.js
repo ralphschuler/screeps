@@ -1,8 +1,14 @@
 #!/usr/bin/env node
 
 /**
- * Script to check if the current Node.js and npm versions meet the minimum requirements
- * This runs as a preinstall script to ensure compatibility before installing dependencies
+ * Script to check if the current Node.js and npm versions meet the minimum requirements.
+ * 
+ * This is an optional helper script. The primary version enforcement comes from:
+ * - package.json "engines" field (enforced by npm with --engine-strict)
+ * - .nvmrc file (used by nvm for automatic version switching)
+ * 
+ * Note: This uses basic version comparison logic suitable for simple ranges.
+ * For complex version requirements, npm's built-in engine checking is recommended.
  */
 
 const { engines } = require('../package.json');
