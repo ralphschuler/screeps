@@ -5,9 +5,9 @@
  * Each function evaluates the situation and returns an action.
  */
 
-import type { CreepAction, CreepContext } from "./types";
 import type { SwarmCreepMemory } from "../../memory/schemas";
-import { findCachedClosest, clearCacheOnStateChange } from "../../utils/cachedClosest";
+import { clearCacheOnStateChange, findCachedClosest } from "../../utils/cachedClosest";
+import type { CreepAction, CreepContext } from "./types";
 
 // =============================================================================
 // Type Guards
@@ -430,7 +430,7 @@ export function depositHarvester(ctx: CreepContext): CreepAction {
       const best = deposits.reduce((a, b) => (a.cooldown < b.cooldown ? a : b));
       // Store the deposit ID. This is safe because Screeps object IDs are always strings,
       // and Deposit IDs are compatible with Id<_HasId>. We only use targetId for deposits in this role.
-      ctx.memory.targetId = best.id as Id<Deposit>;
+      ctx.memory.targetId = best.id ;
     }
   }
 
@@ -610,7 +610,7 @@ export function remoteHarvester(ctx: CreepContext): CreepAction {
   // Full - find nearby container
   const containers = source.pos.findInRange(FIND_STRUCTURES, 2, {
     filter: s => s.structureType === STRUCTURE_CONTAINER
-  }) as StructureContainer[];
+  }) ;
 
   if (containers.length > 0) {
     return { type: "transfer", target: containers[0], resourceType: RESOURCE_ENERGY };
@@ -682,7 +682,7 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     // In remote room - collect from containers or ground
     const containers = ctx.room.find(FIND_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_CONTAINER && s.store.getUsedCapacity(RESOURCE_ENERGY) > 0
-    }) as StructureContainer[];
+    }) ;
 
     if (containers.length > 0) {
       const closest = ctx.creep.pos.findClosestByRange(containers);

@@ -16,7 +16,7 @@ import { memoryManager } from "../memory/manager";
 import { pheromoneManager } from "../logic/pheromone";
 import { calculateDangerLevel, evolutionManager, postureManager } from "../logic/evolution";
 import { profiler } from "./profiler";
-import { getBlueprint, placeConstructionSites, destroyMisplacedStructures } from "../layouts/blueprints";
+import { destroyMisplacedStructures, getBlueprint, placeConstructionSites } from "../layouts/blueprints";
 import { placeRoadConstructionSites } from "../layouts/roadNetworkPlanner";
 import { safeFind } from "../utils/safeFind";
 import { safeModeManager } from "../defense/safeModeManager";
@@ -208,7 +208,7 @@ export class RoomNode {
   private runTowerControl(room: Room, swarm: SwarmState): void {
     const towers = room.find(FIND_MY_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_TOWER
-    }) as StructureTower[];
+    }) ;
 
     if (towers.length === 0) return;
 

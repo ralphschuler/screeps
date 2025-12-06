@@ -9,7 +9,7 @@
  * Addresses Issue: #23
  */
 
-import type { SwarmState, SwarmCreepMemory } from "../memory/schemas";
+import type { SwarmCreepMemory, SwarmState } from "../memory/schemas";
 import { logger } from "../core/logger";
 
 /**
@@ -119,7 +119,7 @@ export class BoostManager {
     // Find labs with required boosts
     const labs = room.find(FIND_MY_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_LAB
-    }) as StructureLab[];
+    }) ;
 
     for (const boost of config.boosts) {
       // Check if creep already has this boost
@@ -164,7 +164,7 @@ export class BoostManager {
 
     const labs = room.find(FIND_MY_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_LAB
-    }) as StructureLab[];
+    }) ;
 
     if (labs.length < 3) {
       return; // Need at least 3 labs
