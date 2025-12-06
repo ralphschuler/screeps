@@ -8,6 +8,7 @@ Exports Screeps stats to InfluxDB from either `Memory.stats` or console log outp
 - Uses InfluxDB v2 line protocol via the official client library.
 - Supports nested stats objects with automatic flattening.
 - Extracts room and subsystem information from metric keys for better tagging.
+- Optional full-memory export for deep debugging/visualization use-cases.
 
 ## Configuration
 All configuration is provided via environment variables. Authentication requires either `SCREEPS_TOKEN` or the combination of `SCREEPS_USERNAME` and `SCREEPS_PASSWORD`.
@@ -17,6 +18,7 @@ All configuration is provided via environment variables. Authentication requires
 | `EXPORTER_MODE` | `memory` | Set to `memory` or `console`. |
 | `EXPORTER_POLL_INTERVAL_MS` | `15000` | Poll interval for memory mode. |
 | `EXPORTER_MEMORY_PATH` | `stats` | Memory path to read stats from. |
+| `EXPORTER_MEMORY_FULL` | `false` | When `true`, flatten the entire Memory payload instead of only `Memory.stats`. |
 | `EXPORTER_SHARD` | `shard0` | Shard to read from when polling memory. |
 | `INFLUXDB_URL` | `http://localhost:8086` | InfluxDB server URL. |
 | `INFLUXDB_TOKEN` | _none_ | InfluxDB authentication token (required). |
