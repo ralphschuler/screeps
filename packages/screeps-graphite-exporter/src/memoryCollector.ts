@@ -61,6 +61,9 @@ export async function startMemoryCollector(
       logger.error('Failed to poll stats from Memory', error);
       metrics.markScrapeSuccess('memory', false);
     }
+
+    // Flush metrics to Graphite after each poll
+    metrics.flush();
   };
 
   await poll();

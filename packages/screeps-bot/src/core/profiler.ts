@@ -120,7 +120,7 @@ export class Profiler {
   }
 
   /**
-   * Publish flattened stats that the Prometheus exporter can scrape.
+   * Publish flattened stats that the Graphite exporter can scrape.
    */
   private publishStats(memory: ProfilerMemory): void {
     const statsRoot = this.getStatsRoot();

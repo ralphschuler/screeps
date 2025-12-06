@@ -2,8 +2,6 @@ export type ExporterMode = 'memory' | 'console';
 
 export interface ExporterConfig {
   mode: ExporterMode;
-  listenPort: number;
-  metricsPath: string;
   pollIntervalMs: number;
   memoryPath: string;
   shard: string;
@@ -14,6 +12,9 @@ export interface ExporterConfig {
   token?: string;
   username?: string;
   password?: string;
+  graphiteHost: string;
+  graphitePort: number;
+  graphitePrefix: string;
 }
 
 function parseNumber(envValue: string | undefined, fallback: number): number {
@@ -38,8 +39,6 @@ export function loadConfig(): ExporterConfig {
 
   return {
     mode,
-    listenPort: parseNumber(process.env.EXPORTER_PORT, 9100),
-    metricsPath: process.env.EXPORTER_METRICS_PATH ?? '/metrics',
     pollIntervalMs: parseNumber(process.env.EXPORTER_POLL_INTERVAL_MS, 15000),
     memoryPath: process.env.EXPORTER_MEMORY_PATH ?? 'stats',
     shard: process.env.EXPORTER_SHARD ?? 'shard0',
@@ -49,6 +48,9 @@ export function loadConfig(): ExporterConfig {
     apiPath: process.env.SCREEPS_PATH ?? '/',
     token,
     username,
-    password
+    password,
+    graphiteHost: process.env.GRAPHITE_HOST ?? 'localhost',
+    graphitePort: parseNumber(process.env.GRAPHITE_PORT, 2003),
+    graphitePrefix: process.env.GRAPHITE_PREFIX ?? 'screeps'
   };
 }
