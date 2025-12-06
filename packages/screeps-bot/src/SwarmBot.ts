@@ -342,6 +342,7 @@ export { profiler } from "./core/profiler";
 export { logger } from "./core/logger";
 export { kernel } from "./core/kernel";
 export { scheduler } from "./core/scheduler";
+export { coreProcessManager } from "./core/coreProcessManager";
 export { pheromoneManager } from "./logic/pheromone";
 export { evolutionManager, postureManager } from "./logic/evolution";
 export { roomVisualizer } from "./visuals/roomVisualizer";
