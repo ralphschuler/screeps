@@ -297,6 +297,9 @@ export function loop(): void {
     initializeSystems();
   }
 
+  // Sync kernel CPU configuration with runtime config
+  kernel.updateFromCpuConfig(getConfig().cpu);
+
   // Initialize kernel and register processes on first tick
   if (!kernelInitialized) {
     registerAllProcesses();
