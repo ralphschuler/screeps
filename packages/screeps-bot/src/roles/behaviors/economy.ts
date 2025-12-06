@@ -41,19 +41,19 @@ function updateWorkingState(ctx: CreepContext): boolean {
   if (ctx.isEmpty) ctx.memory.working = false;
   if (ctx.isFull) ctx.memory.working = true;
   const isWorking = ctx.memory.working ?? false;
-  
+
   // Clear cached targets when working state changes
   if (wasWorking !== isWorking) {
     clearCacheOnStateChange(ctx.creep);
   }
-  
+
   return isWorking;
 }
 
 /**
  * Find energy to collect (common pattern for many roles).
  * Uses cached target finding to reduce CPU usage.
- * 
+ *
  * OPTIMIZATION: Prioritize dropped resources and containers over room.find() calls.
  * Most rooms have containers set up, so we rarely need to fall back to harvesting.
  */
@@ -162,7 +162,7 @@ export function harvester(ctx: CreepContext): CreepAction {
   // Note: store.getCapacity() returns null for creeps without CARRY parts
   const carryCapacity = ctx.creep.store.getCapacity();
   const hasFreeCapacity = ctx.creep.store.getFreeCapacity() > 0;
-  
+
   if (carryCapacity === null || carryCapacity === 0 || hasFreeCapacity) {
     return { type: "harvest", target: source };
   }
@@ -180,22 +180,40 @@ export function harvester(ctx: CreepContext): CreepAction {
 
 /**
  * Assign a source to a harvester, trying to balance load.
+ * OPTIMIZATION: Cache source assignment counts per room per tick to avoid iterating all creeps
  */
 function assignSource(ctx: CreepContext): Source | null {
   const sources = ctx.room.find(FIND_SOURCES);
   if (sources.length === 0) return null;
 
-  // Count creeps assigned to each source
-  const sourceCounts = new Map<string, number>();
-  for (const s of sources) {
-    sourceCounts.set(s.id, 0);
-  }
+  // Cache source counts per room per tick
+  const cacheKey = `sourceCounts_${ctx.room.name}`;
+  const cacheTickKey = `sourceCounts_tick_${ctx.room.name}`;
+  const globalCache = global as unknown as Record<string, Map<string, number> | number | undefined>;
+  const cachedCounts = globalCache[cacheKey] as Map<string, number> | undefined;
+  const cachedTick = globalCache[cacheTickKey] as number | undefined;
 
-  for (const c of Object.values(Game.creeps)) {
-    const m = c.memory as unknown as SwarmCreepMemory;
-    if (m.role === "harvester" && m.sourceId) {
-      sourceCounts.set(m.sourceId, (sourceCounts.get(m.sourceId) ?? 0) + 1);
+  let sourceCounts: Map<string, number>;
+  if (cachedCounts && cachedTick === Game.time) {
+    sourceCounts = cachedCounts;
+  } else {
+    // Count creeps assigned to each source
+    sourceCounts = new Map<string, number>();
+    for (const s of sources) {
+      sourceCounts.set(s.id, 0);
     }
+
+    // OPTIMIZATION: Use for-in loop instead of Object.values() to avoid creating temporary array
+    for (const name in Game.creeps) {
+      const c = Game.creeps[name];
+      const m = c.memory as unknown as SwarmCreepMemory;
+      if (m.role === "harvester" && m.sourceId && c.room.name === ctx.room.name) {
+        sourceCounts.set(m.sourceId, (sourceCounts.get(m.sourceId) ?? 0) + 1);
+      }
+    }
+
+    globalCache[cacheKey] = sourceCounts;
+    globalCache[cacheTickKey] = Game.time;
   }
 
   // Find least assigned source
@@ -637,27 +655,27 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
 
     // In home room - deliver with priority: spawn > extensions > towers > storage > containers
 
-    // 1. Spawns first (highest priority)
+    // 1. Spawns first (highest priority, cache 5 ticks)
     const spawns = ctx.spawnStructures.filter(
       (s): s is StructureSpawn => s.structureType === STRUCTURE_SPAWN
     );
     if (spawns.length > 0) {
-      const closest = ctx.creep.pos.findClosestByRange(spawns);
+      const closest = findCachedClosest(ctx.creep, spawns, "remoteHauler_spawn", 5);
       if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
     }
 
-    // 2. Extensions second
+    // 2. Extensions second (cache 5 ticks)
     const extensions = ctx.spawnStructures.filter(
       (s): s is StructureExtension => s.structureType === STRUCTURE_EXTENSION
     );
     if (extensions.length > 0) {
-      const closest = ctx.creep.pos.findClosestByRange(extensions);
+      const closest = findCachedClosest(ctx.creep, extensions, "remoteHauler_ext", 5);
       if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
     }
 
-    // 3. Towers third
+    // 3. Towers third (cache 10 ticks)
     if (ctx.towers.length > 0) {
-      const closest = ctx.creep.pos.findClosestByRange(ctx.towers);
+      const closest = findCachedClosest(ctx.creep, ctx.towers, "remoteHauler_tower", 10);
       if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
     }
 
@@ -666,9 +684,9 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
       return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
     }
 
-    // 5. Containers last (for early game or when storage is full/unavailable)
+    // 5. Containers last (for early game or when storage is full/unavailable, cache 10 ticks)
     if (ctx.depositContainers.length > 0) {
-      const closest = ctx.creep.pos.findClosestByRange(ctx.depositContainers);
+      const closest = findCachedClosest(ctx.creep, ctx.depositContainers, "remoteHauler_cont", 10);
       if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
     }
 
@@ -685,17 +703,17 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     }) as StructureContainer[];
 
     if (containers.length > 0) {
-      const closest = ctx.creep.pos.findClosestByRange(containers);
+      const closest = findCachedClosest(ctx.creep, containers, "remoteHauler_remoteCont", 10);
       if (closest) return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
     }
 
-    // Check for dropped energy
+    // Check for dropped energy (cache 3 ticks - they disappear quickly)
     const dropped = ctx.room.find(FIND_DROPPED_RESOURCES, {
       filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 50
     });
 
     if (dropped.length > 0) {
-      const closest = ctx.creep.pos.findClosestByRange(dropped);
+      const closest = findCachedClosest(ctx.creep, dropped, "remoteHauler_remoteDrop", 3);
       if (closest) return { type: "pickup", target: closest };
     }
 

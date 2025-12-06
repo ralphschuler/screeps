@@ -96,7 +96,7 @@ function isInHostileThreatRange(pos: RoomPosition, hostiles: Creep[]): boolean {
  * Get or create cached room data.
  * Only runs find() calls once per room per tick.
  * Uses lazy evaluation for expensive derived fields.
- * 
+ *
  * OPTIMIZATION: Minimize initial cache cost by only loading essential data.
  * allStructures is expensive (~0.1 CPU) and often not needed by many creeps.
  * We load it lazily when first accessed instead of upfront.

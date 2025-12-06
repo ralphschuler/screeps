@@ -164,8 +164,19 @@ export class PheromoneManager {
     const tracker = this.getTracker(room.name);
 
     // Energy harvested (approximation from source depletion)
+    // OPTIMIZATION: Cache sources to share with calculateContributions
+    const cacheKey = `sources_${room.name}`;
+    const cached = (global as unknown as Record<string, { sources: Source[]; tick: number } | undefined>)[cacheKey];
+    let sources: Source[];
+
+    if (cached && cached.tick === Game.time) {
+      sources = cached.sources;
+    } else {
+      sources = room.find(FIND_SOURCES);
+      (global as unknown as Record<string, { sources: Source[]; tick: number }>)[cacheKey] = { sources, tick: Game.time };
+    }
+
     // Use a single loop instead of two reduce calls for efficiency
-    const sources = room.find(FIND_SOURCES);
     let totalSourceCapacity = 0;
     let totalSourceEnergy = 0;
     for (const source of sources) {
@@ -235,13 +246,26 @@ export class PheromoneManager {
 
   /**
    * Calculate pheromone contributions from current state
+   * OPTIMIZATION: Reuse sources from updateMetrics to avoid duplicate room.find() calls
    */
   private calculateContributions(swarm: SwarmState, room: Room): void {
     const pheromones = swarm.pheromones;
     const tracker = this.getTracker(room.name);
 
     // Harvest contribution based on available sources
-    const sources = room.find(FIND_SOURCES);
+    // OPTIMIZATION: Sources are already found in updateMetrics, but we need them here too
+    // Since this runs every 5 ticks (same as updateMetrics), we can cache them
+    const cacheKey = `sources_${room.name}`;
+    const cached = (global as unknown as Record<string, { sources: Source[]; tick: number } | undefined>)[cacheKey];
+    let sources: Source[];
+
+    if (cached && cached.tick === Game.time) {
+      sources = cached.sources;
+    } else {
+      sources = room.find(FIND_SOURCES);
+      (global as unknown as Record<string, { sources: Source[]; tick: number }>)[cacheKey] = { sources, tick: Game.time };
+    }
+
     if (sources.length > 0) {
       const avgEnergy = sources.reduce((sum, s) => sum + s.energy, 0) / sources.length;
       pheromones.harvest = this.clamp(pheromones.harvest + (avgEnergy / 3000) * 10);
@@ -278,6 +302,7 @@ export class PheromoneManager {
     }
 
     // Logistics contribution based on energy distribution needs
+    // OPTIMIZATION: Use cached spawns from structure cache if available
     if (room.storage) {
       const spawns = room.find(FIND_MY_SPAWNS);
       const spawnEnergy = spawns.reduce((sum, s) => sum + s.store.getUsedCapacity(RESOURCE_ENERGY), 0);

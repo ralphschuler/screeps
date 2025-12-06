@@ -313,9 +313,20 @@ export class MemorySegmentStats {
 
   /**
    * Collect global stats
+   * OPTIMIZATION: Use Object.keys() instead of room.find() for creep count
    */
   private collectGlobalStats(): GlobalStats {
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+
+    // Count creeps per room more efficiently
+    const creepCounts = new Map<string, number>();
+    for (const name in Game.creeps) {
+      const creep = Game.creeps[name];
+      if (!creep.spawning && creep.room.controller?.my) {
+        const count = creepCounts.get(creep.room.name) ?? 0;
+        creepCounts.set(creep.room.name, count + 1);
+      }
+    }
 
     const roomStats: RoomStats[] = ownedRooms.map(room => ({
       roomName: room.name,
@@ -324,7 +335,7 @@ export class MemorySegmentStats {
       energyCapacity: room.energyCapacityAvailable,
       storageEnergy: room.storage?.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0,
       terminalEnergy: room.terminal?.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0,
-      creepCount: room.find(FIND_MY_CREEPS).length,
+      creepCount: creepCounts.get(room.name) ?? 0,
       controllerProgress: room.controller?.progress ?? 0,
       controllerProgressTotal: room.controller?.progressTotal ?? 1
     }));

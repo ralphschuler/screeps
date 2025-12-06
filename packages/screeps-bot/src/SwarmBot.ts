@@ -161,7 +161,7 @@ function isLowBucket(): boolean {
  * Get creeps sorted by priority without per-tick sorting cost.
  * Uses fixed priority buckets (counting sort) so scaling to thousands
  * of creeps is linear instead of O(n log n).
- * 
+ *
  * OPTIMIZATION: Pre-allocate bucket arrays to avoid repeated allocations.
  */
 function getPrioritizedCreeps(skipLowPriority: boolean): {
@@ -233,11 +233,11 @@ function runSpawns(): void {
  * Run creeps with CPU budget management.
  * Creeps are sorted by priority so critical roles run first.
  * Uses kernel for CPU budget checking with micro-batching.
- * 
+ *
  * OPTIMIZATION: CPU checks are expensive (~0.01 CPU each).
  * With 1000+ creeps, checking every creep adds 10+ CPU overhead.
  * We use micro-batching to check every N creeps instead of every creep.
- * 
+ *
  * OPTIMIZATION: Idle detection skips expensive behavior evaluation for
  * stationary workers that are actively working (harvesters at source, etc.).
  */
@@ -298,12 +298,21 @@ function initializeSystems(): void {
 
 /**
  * Run visualizations for all owned rooms
+ * OPTIMIZATION: Use cached owned rooms list
  */
 function runVisualizations(): void {
   const config = getConfig();
   if (!config.visualizations) return;
 
-  const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+  const cacheKey = "_ownedRooms";
+  const cacheTickKey = "_ownedRoomsTick";
+  const globalCache = global as unknown as Record<string, Room[] | number | undefined>;
+  const cachedRooms = globalCache[cacheKey] as Room[] | undefined;
+  const cachedTick = globalCache[cacheTickKey] as number | undefined;
+  const ownedRooms = (cachedRooms && cachedTick === Game.time)
+    ? cachedRooms
+    : Object.values(Game.rooms).filter(r => r.controller?.my);
+
   for (const room of ownedRooms) {
     try {
       roomVisualizer.draw(room);
@@ -354,6 +363,23 @@ export function loop(): void {
 
   // Clear per-tick caches at the start of each tick
   clearRoomCaches();
+
+  // Cache owned rooms list (used frequently, expensive to compute)
+  // This cache is shared across all subsystems in the same tick
+  const cacheKey = "_ownedRooms";
+  const cacheTickKey = "_ownedRoomsTick";
+  const globalCache = global as unknown as Record<string, Room[] | number | undefined>;
+  const cachedRooms = globalCache[cacheKey] as Room[] | undefined;
+  const cachedTick = globalCache[cacheTickKey] as number | undefined;
+
+  let ownedRooms: Room[];
+  if (cachedRooms && cachedTick === Game.time) {
+    ownedRooms = cachedRooms;
+  } else {
+    ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+    globalCache[cacheKey] = ownedRooms;
+    globalCache[cacheTickKey] = Game.time;
+  }
 
   // Initialize movement system (traffic management preTick)
   initMovement();
