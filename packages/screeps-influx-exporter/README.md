@@ -6,6 +6,8 @@ Exports Screeps stats to InfluxDB from either `Memory.stats` or console log outp
 - **Memory mode**: periodically fetches `Memory.stats` and sends metrics to InfluxDB.
 - **Console mode**: subscribes to Screeps console logs and parses lines formatted as `stats:<key> <value> <range>`.
 - Uses InfluxDB v2 line protocol via the official client library.
+- Supports nested stats objects with automatic flattening.
+- Extracts room and subsystem information from metric keys for better tagging.
 
 ## Configuration
 All configuration is provided via environment variables. Authentication requires either `SCREEPS_TOKEN` or the combination of `SCREEPS_USERNAME` and `SCREEPS_PASSWORD`.
@@ -29,6 +31,42 @@ All configuration is provided via environment variables. Authentication requires
 | `SCREEPS_USERNAME` | _none_ | Username (if not using a token). |
 | `SCREEPS_PASSWORD` | _none_ | Password (if not using a token). |
 
+## Memory Stats Format
+
+The exporter expects stats in `Memory.stats` to be in a flat or nested format. Nested objects are automatically flattened using dot-separated keys.
+
+### Supported Key Formats
+
+```javascript
+// Flat format (recommended)
+Memory.stats = {
+  "cpu.used": 15.5,
+  "cpu.bucket": 9500,
+  "room.W1N1.energy.storage": 500000,
+  "profiler.subsystem.kernel.avg_cpu": 2.3
+};
+
+// Nested format (automatically flattened)
+Memory.stats = {
+  cpu: {
+    used: 15.5,
+    bucket: 9500
+  },
+  room: {
+    W1N1: {
+      energy: { storage: 500000 }
+    }
+  }
+};
+```
+
+### Auto-generated Tags
+
+The exporter automatically extracts meaningful tags from metric keys:
+- `category`: First part of the key (e.g., `cpu`, `room`, `profiler`)
+- `sub_category`: Room name or subsystem name when applicable
+- `range`: Used for grouping related metrics
+
 ### Console log format
 Console mode expects log lines like:
 
@@ -43,8 +81,10 @@ The exporter treats the first token as the stat name, the second as a numeric va
 Metrics are written to InfluxDB with the following structure:
 - Measurement: `{INFLUXDB_MEASUREMENT}` (default: `screeps`)
 - Tags:
-  - `stat`: The stat name (e.g., `cpu`, `bucket`)
-  - `range`: The range label (e.g., `memory`, `tick`, `10s`)
+  - `stat`: The full stat name (e.g., `cpu.used`, `room.W1N1.energy.storage`)
+  - `range`: The range label or extracted room/subsystem name
+  - `category`: The category of the stat (e.g., `cpu`, `room`, `profiler`)
+  - `sub_category`: Sub-category when present (e.g., room name, subsystem name)
   - `source`: Always `exporter`
 - Field: `value` (numeric value of the stat)
 
@@ -52,7 +92,18 @@ For scrape success metrics:
 - Tags:
   - `type`: `scrape_success`
   - `mode`: `memory` or `console`
+  - `category`: `system`
 - Field: `value` (1 for success, 0 for failure)
+
+## Grafana Dashboard
+
+A pre-built Grafana dashboard is included in the `screeps-server` package at `grafana/provisioning/dashboards/screeps-ant-swarm.json`. It visualizes:
+- CPU usage and bucket status
+- Profiler subsystem performance (stacked view)
+- Per-room CPU usage
+- Empire statistics (creeps, rooms, GCL, GPL)
+- Energy storage across rooms
+- Controller progress tracking
 
 ## Development
 
@@ -63,6 +114,7 @@ npm start
 ```
 
 ## Docker
+
 Build a local image:
 
 ```bash
@@ -74,3 +126,7 @@ Run the exporter:
 ```bash
 docker run -e SCREEPS_TOKEN=yourToken -e INFLUXDB_URL=http://influxdb:8086 -e INFLUXDB_TOKEN=yourInfluxToken screeps-influx-exporter
 ```
+
+## Using with Docker Compose
+
+The `screeps-server` package includes a complete docker-compose setup with InfluxDB, Grafana, and the exporter pre-configured. See `packages/screeps-server/docker-compose.yml` for details.

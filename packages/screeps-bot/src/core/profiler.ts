@@ -120,11 +120,43 @@ export class Profiler {
   }
 
   /**
-   * Publish flattened stats that the Graphite exporter can scrape.
+   * Publish flattened stats that the Influx exporter can scrape.
+   * Stats are published in a flat format with dot-separated keys for easy ingestion.
    */
   private publishStats(memory: ProfilerMemory): void {
     const statsRoot = this.getStatsRoot();
 
+    // Publish global profiler metrics
+    statsRoot["profiler.tick_count"] = memory.tickCount;
+    statsRoot["profiler.last_update"] = memory.lastUpdate;
+
+    // Publish per-room CPU metrics with room name as part of the key
+    let totalRoomAvgCpu = 0;
+    let totalRoomPeakCpu = 0;
+    for (const [room, data] of Object.entries(memory.rooms)) {
+      statsRoot[`profiler.room.${room}.avg_cpu`] = data.avgCpu;
+      statsRoot[`profiler.room.${room}.peak_cpu`] = data.peakCpu;
+      statsRoot[`profiler.room.${room}.samples`] = data.samples;
+      totalRoomAvgCpu += data.avgCpu;
+      totalRoomPeakCpu = Math.max(totalRoomPeakCpu, data.peakCpu);
+    }
+    statsRoot["profiler.rooms.total_avg_cpu"] = totalRoomAvgCpu;
+    statsRoot["profiler.rooms.total_peak_cpu"] = totalRoomPeakCpu;
+    statsRoot["profiler.rooms.count"] = Object.keys(memory.rooms).length;
+
+    // Publish per-subsystem CPU metrics with subsystem name as part of the key
+    let totalSubsystemAvgCpu = 0;
+    for (const [name, data] of Object.entries(memory.subsystems)) {
+      statsRoot[`profiler.subsystem.${name}.avg_cpu`] = data.avgCpu;
+      statsRoot[`profiler.subsystem.${name}.peak_cpu`] = data.peakCpu;
+      statsRoot[`profiler.subsystem.${name}.samples`] = data.samples;
+      statsRoot[`profiler.subsystem.${name}.calls`] = data.callsThisTick;
+      totalSubsystemAvgCpu += data.avgCpu;
+    }
+    statsRoot["profiler.subsystems.total_avg_cpu"] = totalSubsystemAvgCpu;
+    statsRoot["profiler.subsystems.count"] = Object.keys(memory.subsystems).length;
+
+    // Legacy format for backward compatibility (nested objects)
     const roomAvgCpu: Record<string, number> = {};
     const roomPeakCpu: Record<string, number> = {};
     for (const [room, data] of Object.entries(memory.rooms)) {
@@ -141,14 +173,16 @@ export class Profiler {
       subsystemCalls[name] = data.callsThisTick;
     }
 
+    /* eslint-disable dot-notation */
     statsRoot["profiler_tick_count"] = memory.tickCount;
     statsRoot["profiler_last_update"] = memory.lastUpdate;
     statsRoot["profiler_room_avg_cpu"] = roomAvgCpu;
     statsRoot["profiler_room_peak_cpu"] = roomPeakCpu;
-    statsRoot["profiler_total_room_avg_cpu"] = Object.values(roomAvgCpu).reduce((sum, value) => sum + value, 0);
+    statsRoot["profiler_total_room_avg_cpu"] = totalRoomAvgCpu;
     statsRoot["profiler_subsystem_avg_cpu"] = subsystemAvgCpu;
     statsRoot["profiler_subsystem_peak_cpu"] = subsystemPeakCpu;
     statsRoot["profiler_subsystem_calls"] = subsystemCalls;
+    /* eslint-enable dot-notation */
   }
 
   /**

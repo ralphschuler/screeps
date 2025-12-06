@@ -230,8 +230,75 @@ export class MemorySegmentStats {
     this.updateMetricSeries("creeps", globalStats.totalCreeps);
     this.updateMetricSeries("rooms", globalStats.totalRooms);
 
+    // Publish stats to Memory.stats for the Influx exporter
+    this.publishStatsToMemory(globalStats);
+
     // Save to segment
     this.saveToSegment();
+  }
+
+  /**
+   * Publish stats to Memory.stats for the Influx exporter.
+   * Uses a flat key structure with dot-separated names for easy ingestion.
+   */
+  private publishStatsToMemory(stats: GlobalStats): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mem = Memory as unknown as Record<string, Record<string, number>>;
+    if (!mem.stats || typeof mem.stats !== "object") {
+      mem.stats = {} as Record<string, number>;
+    }
+    const statsRoot = mem.stats;
+
+    // Global CPU metrics
+    statsRoot["cpu.used"] = stats.cpuUsed;
+    statsRoot["cpu.limit"] = stats.cpuLimit;
+    statsRoot["cpu.bucket"] = stats.cpuBucket;
+    statsRoot["cpu.percent"] = (stats.cpuUsed / stats.cpuLimit) * 100;
+
+    // GCL/GPL metrics
+    statsRoot["gcl.level"] = stats.gclLevel;
+    statsRoot["gcl.progress"] = stats.gclProgress;
+    statsRoot["gpl.level"] = stats.gplLevel;
+
+    // Empire metrics
+    statsRoot["empire.creeps"] = stats.totalCreeps;
+    statsRoot["empire.rooms"] = stats.totalRooms;
+
+    // Per-room metrics
+    let totalStorageEnergy = 0;
+    let totalTerminalEnergy = 0;
+    let totalEnergyAvailable = 0;
+    let totalEnergyCapacity = 0;
+
+    for (const room of stats.rooms) {
+      statsRoot[`room.${room.roomName}.rcl`] = room.rcl;
+      statsRoot[`room.${room.roomName}.energy.available`] = room.energyAvailable;
+      statsRoot[`room.${room.roomName}.energy.capacity`] = room.energyCapacity;
+      statsRoot[`room.${room.roomName}.storage.energy`] = room.storageEnergy;
+      statsRoot[`room.${room.roomName}.terminal.energy`] = room.terminalEnergy;
+      statsRoot[`room.${room.roomName}.creeps`] = room.creepCount;
+      statsRoot[`room.${room.roomName}.controller.progress`] = room.controllerProgress;
+      statsRoot[`room.${room.roomName}.controller.progressTotal`] = room.controllerProgressTotal;
+      statsRoot[`room.${room.roomName}.controller.progressPercent`] =
+        room.controllerProgressTotal > 0
+          ? (room.controllerProgress / room.controllerProgressTotal) * 100
+          : 0;
+
+      totalStorageEnergy += room.storageEnergy;
+      totalTerminalEnergy += room.terminalEnergy;
+      totalEnergyAvailable += room.energyAvailable;
+      totalEnergyCapacity += room.energyCapacity;
+    }
+
+    // Aggregated empire energy metrics
+    statsRoot["empire.energy.storage"] = totalStorageEnergy;
+    statsRoot["empire.energy.terminal"] = totalTerminalEnergy;
+    statsRoot["empire.energy.available"] = totalEnergyAvailable;
+    statsRoot["empire.energy.capacity"] = totalEnergyCapacity;
+
+    // Tick info
+    statsRoot.tick = stats.tick;
+    statsRoot.timestamp = Date.now();
   }
 
   /**
