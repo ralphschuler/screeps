@@ -2,6 +2,7 @@
  * Core Process Manager
  *
  * Manages core bot processes that don't belong to a specific subsystem:
+ * - Pixel generation (when bucket is full)
  * - Memory cleanup (removing dead creeps)
  * - Memory size monitoring
  * - Memory segment statistics
@@ -12,7 +13,7 @@
  * All processes use decorators for declarative registration with the kernel.
  */
 
-import { ProcessClass, LowFrequencyProcess, MediumFrequencyProcess, IdleProcess } from "./processDecorators";
+import { HighFrequencyProcess, IdleProcess, LowFrequencyProcess, MediumFrequencyProcess, ProcessClass } from "./processDecorators";
 import { ProcessPriority } from "./kernel";
 import type { SwarmState } from "../memory/schemas";
 import { memoryManager } from "../memory/manager";
@@ -22,11 +23,33 @@ import { memorySegmentStats } from "./memorySegmentStats";
 import { globalPathCache } from "../utils/globalPathCache";
 import { logger } from "./logger";
 
+/** Maximum CPU bucket value in Screeps */
+const MAX_BUCKET = 10000;
+
 /**
  * Core Process Manager Class
  */
 @ProcessClass()
 export class CoreProcessManager {
+  /**
+   * Pixel Generation - Generate pixels when bucket is full
+   * Runs every tick to check if bucket is at max (10,000) and generate a pixel.
+   * Generating a pixel consumes 10,000 bucket (emptying it).
+   */
+  @HighFrequencyProcess("core:pixelGeneration", "Pixel Generation", {
+    priority: ProcessPriority.LOW,
+    minBucket: MAX_BUCKET,
+    cpuBudget: 0.001
+  })
+  public generatePixel(): void {
+    if (Game.cpu.bucket >= MAX_BUCKET) {
+      const result = Game.cpu.generatePixel?.();
+      if (result === OK) {
+        logger.info("Generated pixel from full CPU bucket", { subsystem: "Pixel" });
+      }
+    }
+  }
+
   /**
    * Memory Cleanup - Remove dead creeps from Memory
    * Runs every 50 ticks to clean up memory for creeps that no longer exist
