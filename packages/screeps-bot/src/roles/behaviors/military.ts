@@ -40,13 +40,18 @@ function getPatrolWaypoints(room: Room): RoomPosition[] {
   // Right exit
   waypoints.push(new RoomPosition(44, 25, roomName));
 
-  // Filter out invalid positions (walls/obstacles) and clamp to valid room bounds
-  return waypoints.filter(pos => {
-    const x = Math.max(2, Math.min(47, pos.x));
-    const y = Math.max(2, Math.min(47, pos.y));
-    const terrain = room.getTerrain().get(x, y);
-    return terrain !== TERRAIN_MASK_WALL;
-  }).map(pos => new RoomPosition(Math.max(2, Math.min(47, pos.x)), Math.max(2, Math.min(47, pos.y)), roomName));
+  // Clamp positions to valid room bounds and filter out walls
+  return waypoints
+    .map(pos => {
+      const x = Math.max(2, Math.min(47, pos.x));
+      const y = Math.max(2, Math.min(47, pos.y));
+      return { x, y, roomName };
+    })
+    .filter(pos => {
+      const terrain = room.getTerrain().get(pos.x, pos.y);
+      return terrain !== TERRAIN_MASK_WALL;
+    })
+    .map(pos => new RoomPosition(pos.x, pos.y, pos.roomName));
 }
 
 /**
@@ -56,7 +61,7 @@ function getPatrolWaypoints(room: Room): RoomPosition[] {
 function getNextPatrolWaypoint(creep: Creep, waypoints: RoomPosition[]): RoomPosition | null {
   if (waypoints.length === 0) return null;
 
-  const mem = creep.memory as unknown as SwarmCreepMemory & { patrolIndex?: number };
+  const mem = creep.memory as unknown as SwarmCreepMemory;
 
   // Initialize patrol index if not set
   if (mem.patrolIndex === undefined) {
@@ -65,7 +70,7 @@ function getNextPatrolWaypoint(creep: Creep, waypoints: RoomPosition[]): RoomPos
 
   const currentWaypoint = waypoints[mem.patrolIndex % waypoints.length];
 
-  // Check if we've reached the current waypoint (within 2 tiles)
+  // Check if we've reached the current waypoint (within 2 tiles using Chebyshev distance)
   if (currentWaypoint && creep.pos.getRangeTo(currentWaypoint) <= 2) {
     // Move to next waypoint
     mem.patrolIndex = (mem.patrolIndex + 1) % waypoints.length;

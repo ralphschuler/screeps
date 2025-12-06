@@ -272,9 +272,13 @@ describe("Defense Unit Patrol Functionality", () => {
 
       // Simulate a full patrol cycle
       for (let i = 0; i < waypoints.length; i++) {
+        const currentIndex = memory.patrolIndex ?? 0;
+        const currentWaypoint = waypoints[currentIndex];
+        if (!currentWaypoint) break; // Guard clause for null safety
+
         const result = getNextPatrolWaypoint(
           { patrolIndex: memory.patrolIndex },
-          waypoints[memory.patrolIndex ?? 0]!, // Simulate being at current waypoint
+          currentWaypoint, // Simulate being at current waypoint
           waypoints
         );
         visitedOrder.push(result.newIndex);

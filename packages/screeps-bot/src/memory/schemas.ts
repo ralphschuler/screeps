@@ -355,6 +355,8 @@ export interface SwarmCreepMemory {
   squadId?: string;
   /** Boosted flag */
   boosted?: boolean;
+  /** Patrol waypoint index (for defense units) */
+  patrolIndex?: number;
   /** Version for memory migration */
   version: number;
 }
