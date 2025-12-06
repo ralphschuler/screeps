@@ -350,3 +350,4 @@ export { memorySegmentStats } from "./core/memorySegmentStats";
 export * from "./memory/schemas";
 export * from "./config";
 export * from "./core/processDecorators";
+export * from "./core/commandRegistry";
