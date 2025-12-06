@@ -138,8 +138,9 @@ export function filterWithMemoization<T, K>(
   const cache = new Map<K, boolean>();
   return array.filter(item => {
     const key = keyFn(item);
-    if (cache.has(key)) {
-      return cache.get(key);
+    const cached = cache.get(key);
+    if (cached !== undefined) {
+      return cached;
     }
     const result = predicate(item);
     cache.set(key, result);
