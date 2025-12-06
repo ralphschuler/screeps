@@ -11,6 +11,8 @@
  */
 
 import { logger } from "../core/logger";
+import { memoryManager } from "../memory/manager";
+import { EvolutionStage, PheromoneState, RoomPosture } from "../memory/schemas";
 
 /**
  * Stats segment configuration
@@ -34,6 +36,24 @@ const DEFAULT_CONFIG: StatsConfig = {
   retentionPeriod: 10000,
   updateInterval: 10,
   maxDataPoints: 1000
+};
+
+const POSTURE_CODES: Record<RoomPosture, number> = {
+  eco: 0,
+  expand: 1,
+  defensive: 2,
+  war: 3,
+  siege: 4,
+  evacuate: 5,
+  nukePrep: 6
+};
+
+const COLONY_LEVEL_CODES: Record<EvolutionStage, number> = {
+  seedNest: 1,
+  foragingExpansion: 2,
+  matureColony: 3,
+  fortifiedHive: 4,
+  empireDominance: 5
 };
 
 /**
@@ -249,6 +269,10 @@ export class MemorySegmentStats {
     }
     const statsRoot = mem.stats;
 
+    // Remove deprecated keys to keep naming consistent
+    delete (statsRoot as Record<string, number | undefined>).tick;
+    delete (statsRoot as Record<string, number | undefined>).timestamp;
+
     // Global CPU metrics
     statsRoot["cpu.used"] = stats.cpuUsed;
     statsRoot["cpu.limit"] = stats.cpuLimit;
@@ -271,18 +295,45 @@ export class MemorySegmentStats {
     let totalEnergyCapacity = 0;
 
     for (const room of stats.rooms) {
-      statsRoot[`room.${room.roomName}.rcl`] = room.rcl;
-      statsRoot[`room.${room.roomName}.energy.available`] = room.energyAvailable;
-      statsRoot[`room.${room.roomName}.energy.capacity`] = room.energyCapacity;
-      statsRoot[`room.${room.roomName}.storage.energy`] = room.storageEnergy;
-      statsRoot[`room.${room.roomName}.terminal.energy`] = room.terminalEnergy;
-      statsRoot[`room.${room.roomName}.creeps`] = room.creepCount;
-      statsRoot[`room.${room.roomName}.controller.progress`] = room.controllerProgress;
-      statsRoot[`room.${room.roomName}.controller.progressTotal`] = room.controllerProgressTotal;
-      statsRoot[`room.${room.roomName}.controller.progressPercent`] =
+      const roomPrefix = `room.${room.roomName}`;
+
+      delete (statsRoot as Record<string, number | undefined>)[`${roomPrefix}.controller.progressPercent`];
+      delete (statsRoot as Record<string, number | undefined>)[`${roomPrefix}.controller.progressTotal`];
+
+      statsRoot[`${roomPrefix}.rcl`] = room.rcl;
+      statsRoot[`${roomPrefix}.energy.available`] = room.energyAvailable;
+      statsRoot[`${roomPrefix}.energy.capacity`] = room.energyCapacity;
+      statsRoot[`${roomPrefix}.storage.energy`] = room.storageEnergy;
+      statsRoot[`${roomPrefix}.terminal.energy`] = room.terminalEnergy;
+      statsRoot[`${roomPrefix}.creeps`] = room.creepCount;
+      statsRoot[`${roomPrefix}.controller.progress`] = room.controllerProgress;
+      statsRoot[`${roomPrefix}.controller.progress_total`] = room.controllerProgressTotal;
+      statsRoot[`${roomPrefix}.controller.progress_percent`] =
         room.controllerProgressTotal > 0
           ? (room.controllerProgress / room.controllerProgressTotal) * 100
           : 0;
+
+      const swarm = memoryManager.getSwarmState(room.roomName);
+      if (swarm) {
+        statsRoot[`${roomPrefix}.brain.danger`] = swarm.danger;
+        statsRoot[`${roomPrefix}.brain.posture_code`] = POSTURE_CODES[swarm.posture];
+        statsRoot[`${roomPrefix}.brain.colony_level_code`] = COLONY_LEVEL_CODES[swarm.colonyLevel];
+
+        for (const [pheromone, value] of Object.entries(swarm.pheromones as PheromoneState)) {
+          statsRoot[`${roomPrefix}.pheromone.${pheromone}`] = value;
+        }
+
+        const metrics = swarm.metrics;
+        statsRoot[`${roomPrefix}.metrics.energy.harvested`] = metrics.energyHarvested;
+        statsRoot[`${roomPrefix}.metrics.energy.spawning`] = metrics.energySpawning;
+        statsRoot[`${roomPrefix}.metrics.energy.construction`] = metrics.energyConstruction;
+        statsRoot[`${roomPrefix}.metrics.energy.repair`] = metrics.energyRepair;
+        statsRoot[`${roomPrefix}.metrics.energy.tower`] = metrics.energyTower;
+        statsRoot[`${roomPrefix}.metrics.controller_progress`] = metrics.controllerProgress;
+        statsRoot[`${roomPrefix}.metrics.hostile_count`] = metrics.hostileCount;
+        statsRoot[`${roomPrefix}.metrics.damage_received`] = metrics.damageReceived;
+        statsRoot[`${roomPrefix}.metrics.construction_sites`] = metrics.constructionSites;
+      }
 
       totalStorageEnergy += room.storageEnergy;
       totalTerminalEnergy += room.terminalEnergy;
@@ -297,8 +348,8 @@ export class MemorySegmentStats {
     statsRoot["empire.energy.capacity"] = totalEnergyCapacity;
 
     // Tick info
-    statsRoot.tick = stats.tick;
-    statsRoot.timestamp = Date.now();
+    statsRoot["system.tick"] = stats.tick;
+    statsRoot["system.timestamp"] = Date.now();
   }
 
   /**

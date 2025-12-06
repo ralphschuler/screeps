@@ -118,7 +118,7 @@ export async function startMemoryCollector(
     try {
       const rawMemory = await api.memory.get(config.memoryPath, config.shard);
       const decoded = decodeMemory(rawMemory, logger);
-      const stats = decoded?.stats ?? decoded;
+      const stats = config.exportFullMemory ? decoded : decoded?.stats ?? decoded;
 
       if (stats && typeof stats === 'object') {
         // Flatten the entire stats object and ingest all metrics

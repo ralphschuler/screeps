@@ -4,6 +4,7 @@ export interface ExporterConfig {
   mode: ExporterMode;
   pollIntervalMs: number;
   memoryPath: string;
+  exportFullMemory: boolean;
   shard: string;
   protocol: string;
   hostname: string;
@@ -48,6 +49,7 @@ export function loadConfig(): ExporterConfig {
     mode,
     pollIntervalMs: parseNumber(process.env.EXPORTER_POLL_INTERVAL_MS, 15000),
     memoryPath: process.env.EXPORTER_MEMORY_PATH ?? 'stats',
+    exportFullMemory: (process.env.EXPORTER_MEMORY_FULL ?? 'false').toLowerCase() === 'true',
     shard: process.env.EXPORTER_SHARD ?? 'shard0',
     protocol: process.env.SCREEPS_PROTOCOL ?? 'https',
     hostname: process.env.SCREEPS_HOST ?? 'screeps.com',
