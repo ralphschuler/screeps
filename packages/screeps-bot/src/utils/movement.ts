@@ -436,6 +436,8 @@ function internalMoveTo(
 
   if (onRoomExit && targetInDifferentRoom) {
     // Find a walkable position off the exit that's more toward the room center
+    // Note: findPositionOffExit only returns adjacent positions (within 1 tile),
+    // so getDirection will always receive a valid adjacent position.
     const exitOffPosition = findPositionOffExit(creep);
     if (exitOffPosition) {
       // Move to the off-exit position first, then next tick will continue pathing
@@ -536,9 +538,10 @@ function internalMoveTo(
     p => p.x === creep.pos.x && p.y === creep.pos.y && p.roomName === creep.pos.roomName
   );
 
-  // If current position not found in path, this could mean the path is stale
-  // or doesn't include the creep's current position. Force a repath.
-  if (currentIdx === -1 && isOnRoomExit(creep.pos)) {
+  // If current position not found in path and we're on a room exit,
+  // this could mean the path is stale or doesn't include the creep's current position.
+  // Force a repath to get a valid path from current position.
+  if (currentIdx === -1 && onRoomExit) {
     const newPath = generateAndCachePath();
     if (!newPath) {
       return ERR_NO_PATH;
