@@ -599,4 +599,214 @@ describe("Movement Room Exit Handling", () => {
       expect(getTargetPosition({ x: 25, y: 49 }, 5)).to.be.null;
     });
   });
+
+  describe("Move Request System", () => {
+    /**
+     * Simulates the move request data structure.
+     */
+    interface MoveRequest {
+      requesterName: string;
+      targetPos: { x: number; y: number; roomName: string };
+      priority: number;
+      tick: number;
+    }
+
+    /**
+     * Simple move request storage for testing.
+     */
+    class MoveRequestManager {
+      private requests: Map<string, MoveRequest[]> = new Map();
+      private currentTick = 0;
+
+      positionKey(pos: { x: number; y: number; roomName: string }): string {
+        return `${pos.roomName}:${pos.x},${pos.y}`;
+      }
+
+      clear(): void {
+        this.requests.clear();
+      }
+
+      setTick(tick: number): void {
+        this.currentTick = tick;
+      }
+
+      requestMove(requesterName: string, targetPos: { x: number; y: number; roomName: string }, priority: number): void {
+        const key = this.positionKey(targetPos);
+        const request: MoveRequest = {
+          requesterName,
+          targetPos,
+          priority,
+          tick: this.currentTick
+        };
+
+        const existing = this.requests.get(key);
+        if (existing) {
+          existing.push(request);
+        } else {
+          this.requests.set(key, [request]);
+        }
+      }
+
+      hasHigherPriorityRequest(pos: { x: number; y: number; roomName: string }, myPriority: number, myName: string): boolean {
+        const key = this.positionKey(pos);
+        const requests = this.requests.get(key);
+        if (!requests || requests.length === 0) return false;
+        return requests.some(req => req.priority > myPriority && req.requesterName !== myName);
+      }
+
+      getRequestCount(pos: { x: number; y: number; roomName: string }): number {
+        const key = this.positionKey(pos);
+        const requests = this.requests.get(key);
+        return requests?.length ?? 0;
+      }
+
+      getHighestPriorityRequest(pos: { x: number; y: number; roomName: string }): MoveRequest | null {
+        const key = this.positionKey(pos);
+        const requests = this.requests.get(key);
+        if (!requests || requests.length === 0) return null;
+        return requests.reduce((a, b) => a.priority > b.priority ? a : b);
+      }
+    }
+
+    let manager: MoveRequestManager;
+
+    beforeEach(() => {
+      manager = new MoveRequestManager();
+      manager.setTick(100);
+    });
+
+    it("should register a move request", () => {
+      const pos = { x: 25, y: 25, roomName: "E1N1" };
+      manager.requestMove("creep1", pos, 50);
+      expect(manager.getRequestCount(pos)).to.equal(1);
+    });
+
+    it("should allow multiple requests for the same position", () => {
+      const pos = { x: 25, y: 25, roomName: "E1N1" };
+      manager.requestMove("creep1", pos, 50);
+      manager.requestMove("creep2", pos, 75);
+      expect(manager.getRequestCount(pos)).to.equal(2);
+    });
+
+    it("should detect higher priority requests", () => {
+      const pos = { x: 25, y: 25, roomName: "E1N1" };
+      manager.requestMove("creep1", pos, 75);
+
+      // Lower priority creep should see higher priority request
+      expect(manager.hasHigherPriorityRequest(pos, 50, "creep2")).to.be.true;
+      // Higher priority creep should not see lower priority request
+      expect(manager.hasHigherPriorityRequest(pos, 100, "creep2")).to.be.false;
+    });
+
+    it("should not detect own requests as higher priority", () => {
+      const pos = { x: 25, y: 25, roomName: "E1N1" };
+      manager.requestMove("creep1", pos, 75);
+
+      // Same creep should not see own request
+      expect(manager.hasHigherPriorityRequest(pos, 50, "creep1")).to.be.false;
+    });
+
+    it("should return highest priority request", () => {
+      const pos = { x: 25, y: 25, roomName: "E1N1" };
+      manager.requestMove("creep1", pos, 50);
+      manager.requestMove("creep2", pos, 100);
+      manager.requestMove("creep3", pos, 75);
+
+      const highest = manager.getHighestPriorityRequest(pos);
+      expect(highest).to.not.be.null;
+      expect(highest!.requesterName).to.equal("creep2");
+      expect(highest!.priority).to.equal(100);
+    });
+
+    it("should clear all requests", () => {
+      const pos1 = { x: 25, y: 25, roomName: "E1N1" };
+      const pos2 = { x: 26, y: 25, roomName: "E1N1" };
+
+      manager.requestMove("creep1", pos1, 50);
+      manager.requestMove("creep2", pos2, 75);
+
+      manager.clear();
+
+      expect(manager.getRequestCount(pos1)).to.equal(0);
+      expect(manager.getRequestCount(pos2)).to.equal(0);
+    });
+
+    it("should return null for positions with no requests", () => {
+      const pos = { x: 25, y: 25, roomName: "E1N1" };
+      expect(manager.getHighestPriorityRequest(pos)).to.be.null;
+      expect(manager.hasHigherPriorityRequest(pos, 50, "creep1")).to.be.false;
+    });
+
+    it("should handle requests across different rooms", () => {
+      const pos1 = { x: 25, y: 25, roomName: "E1N1" };
+      const pos2 = { x: 25, y: 25, roomName: "E2N1" }; // Same coords, different room
+
+      manager.requestMove("creep1", pos1, 50);
+      manager.requestMove("creep2", pos2, 75);
+
+      expect(manager.getRequestCount(pos1)).to.equal(1);
+      expect(manager.getRequestCount(pos2)).to.equal(1);
+    });
+  });
+
+  describe("Yield Decision Logic", () => {
+    /**
+     * Simulates the shouldYieldTo logic.
+     */
+    function shouldYieldTo(
+      blockerPriority: number,
+      blockerTicksToLive: number | undefined,
+      blockerCarryLoad: number,
+      blockerRole: string,
+      requesterPriority: number,
+      requesterTicksToLive: number | undefined,
+      requesterCarryLoad: number,
+      requesterRole: string
+    ): boolean {
+      // Higher priority always wins
+      if (requesterPriority > blockerPriority) return true;
+      if (requesterPriority < blockerPriority) return false;
+
+      // Equal priority - yield to creep carrying more resources (if both haulers)
+      if (blockerRole === "hauler" && requesterRole === "hauler") {
+        if (requesterCarryLoad > blockerCarryLoad) return true;
+      }
+
+      // Equal priority - yield to older creep (lower ticksToLive)
+      if (requesterTicksToLive !== undefined && blockerTicksToLive !== undefined) {
+        return requesterTicksToLive < blockerTicksToLive;
+      }
+
+      return false;
+    }
+
+    it("should yield to higher priority creep", () => {
+      expect(shouldYieldTo(50, 1000, 0, "builder", 75, 1000, 0, "harvester")).to.be.true;
+    });
+
+    it("should not yield to lower priority creep", () => {
+      expect(shouldYieldTo(75, 1000, 0, "harvester", 50, 1000, 0, "builder")).to.be.false;
+    });
+
+    it("should yield to hauler with more cargo when both are haulers with equal priority", () => {
+      expect(shouldYieldTo(50, 1000, 100, "hauler", 50, 1000, 500, "hauler")).to.be.true;
+    });
+
+    it("should not yield to hauler with less cargo when both are haulers with equal priority", () => {
+      expect(shouldYieldTo(50, 1000, 500, "hauler", 50, 1000, 100, "hauler")).to.be.false;
+    });
+
+    it("should yield to older creep (lower ticksToLive) when equal priority", () => {
+      expect(shouldYieldTo(50, 1000, 0, "builder", 50, 500, 0, "builder")).to.be.true;
+    });
+
+    it("should not yield to younger creep (higher ticksToLive) when equal priority", () => {
+      expect(shouldYieldTo(50, 500, 0, "builder", 50, 1000, 0, "builder")).to.be.false;
+    });
+
+    it("should handle undefined ticksToLive gracefully", () => {
+      expect(shouldYieldTo(50, undefined, 0, "builder", 50, 500, 0, "builder")).to.be.false;
+      expect(shouldYieldTo(50, 500, 0, "builder", 50, undefined, 0, "builder")).to.be.false;
+    });
+  });
 });
