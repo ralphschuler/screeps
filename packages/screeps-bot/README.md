@@ -1,55 +1,183 @@
-# Screeps Typescript Starter
+# Screeps Ant Swarm Bot
 
-Screeps Typescript Starter is a starting point for a Screeps AI written in Typescript. It provides everything you need to start writing your AI whilst leaving `main.ts` as empty as possible.
+An advanced Screeps AI implementation using swarm intelligence, pheromone-based coordination, and distributed colony management. Built with TypeScript for type safety and maintainability.
 
-## Basic Usage
+## Features
 
-You will need:
+- **Swarm-Based Architecture**: Decentralized decision-making with emergent behavior
+- **Pheromone System**: Stigmergic communication for efficient coordination
+- **Multi-Shard Support**: Cross-shard empire management
+- **CPU Efficient**: Optimized for managing 100+ rooms and 5000+ creeps
+- **Full Automation**: Complete lifecycle from RCL1 to RCL8
+- **Advanced Combat**: Defensive and offensive capabilities with boost system
+- **Market Integration**: Automated trading and resource management
 
-- [Node.JS](https://nodejs.org/en/download) (10.x || 12.x)
-- A Package Manager ([Yarn](https://yarnpkg.com/en/docs/getting-started) or [npm](https://docs.npmjs.com/getting-started/installing-node))
-- Rollup CLI (Optional, install via `npm install -g rollup`)
+## Prerequisites
 
-Download the latest source [here](https://github.com/screepers/screeps-typescript-starter/archive/master.zip) and extract it to a folder.
+- [Node.js](https://nodejs.org/en/download) (v16.x or v18.x recommended)
+- Package Manager: [npm](https://docs.npmjs.com/getting-started/installing-node) or [Yarn](https://yarnpkg.com/en/docs/getting-started)
+- A Screeps account (official server or private server)
 
-Open the folder in your terminal and run your package manager to install the required packages and TypeScript declaration files:
+## Quick Start
+
+### Installation
 
 ```bash
-# npm
+# Install dependencies
 npm install
-
-# yarn
-yarn
 ```
 
-Fire up your preferred editor with typescript installed and you are good to go!
+### Configuration
 
-### Rollup and code upload
+1. **Set up environment variables**: Copy the example file and configure your Screeps credentials
 
-Screeps Typescript Starter uses rollup to compile your typescript and upload it to a screeps server.
+```bash
+cp .env.example .env
+# Edit .env with your Screeps credentials
+```
 
-Move or copy `screeps.sample.json` to `screeps.json` and edit it, changing the credentials and optionally adding or removing some of the destinations.
+Alternatively, you can set environment variables directly:
 
-Running `rollup -c` will compile your code and do a "dry run", preparing the code for upload but not actually pushing it. Running `rollup -c --environment DEST:main` will compile your code, and then upload it to a screeps server using the `main` config from `screeps.json`.
+```bash
+export SCREEPS_TOKEN=your_token_here
+# or
+export SCREEPS_USERNAME=your_username
+export SCREEPS_PASS=your_password
+```
 
-You can use `-cw` instead of `-c` to automatically re-run when your source code changes - for example, `rollup -cw --environment DEST:main` will automatically upload your code to the `main` configuration every time your code is changed.
+2. **Choose your deployment target** (optional):
 
-Finally, there are also NPM scripts that serve as aliases for these commands in `package.json` for IDE integration. Running `npm run push-main` is equivalent to `rollup -c --environment DEST:main`, and `npm run watch-sim` is equivalent to `rollup -cw --dest sim`.
+```bash
+export SCREEPS_BRANCH=main  # default branch name
+export SCREEPS_HOSTNAME=screeps.com  # or your private server
+```
 
-#### Important! To upload code to a private server, you must have [screepsmod-auth](https://github.com/ScreepsMods/screepsmod-auth) installed and configured!
+### Build and Deploy
 
-## Typings
+```bash
+# Build the code (dry run - no upload)
+npm run build
 
-The type definitions for Screeps come from [typed-screeps](https://github.com/screepers/typed-screeps). If you find a problem or have a suggestion, please open an issue there.
+# Build and deploy to Screeps
+npm run push
+
+# Watch mode - auto-build and deploy on file changes
+npm run watch
+```
+
+### Development Workflow
+
+1. **Run linter** to check code quality:
+   ```bash
+   npm run lint
+   ```
+
+2. **Run tests** to verify functionality:
+   ```bash
+   npm test
+   ```
+
+3. **Build the project**:
+   ```bash
+   npm run build
+   ```
+
+4. **Deploy to Screeps**:
+   ```bash
+   npm run push
+   ```
+
+#### Important Notes
+
+- To upload code to a **private server**, you must have [screepsmod-auth](https://github.com/ScreepsMods/screepsmod-auth) installed and configured
+- The bot uses environment variables for configuration (no `screeps.json` file needed)
+- Configuration is handled via `rollup.config.js` reading from environment variables
+
+## Architecture
+
+The bot implements a layered architecture:
+
+1. **Global Meta-Layer**: Multi-shard empire coordination
+2. **Shard-Strategic Layer**: Per-shard CPU allocation and strategy
+3. **Cluster/Colony Layer**: Regional coordination between adjacent rooms
+4. **Room Layer**: Individual room management (economy, defense, construction)
+5. **Creep/Squad Layer**: Unit-level behavior and coordination
+
+For detailed architecture documentation, see the root [ROADMAP.md](../../ROADMAP.md).
+
+## Project Structure
+
+```
+src/
+├── core/           # Core systems (main loop, scheduler, logger)
+├── memory/         # Memory management and schemas
+├── rooms/          # Room-level logic
+├── creeps/         # Creep roles and behaviors
+├── clusters/       # Colony cluster management
+├── empire/         # Empire-wide coordination
+├── labs/           # Lab and boost systems
+├── defense/        # Defense and combat systems
+├── planning/       # Base planning and blueprints
+├── config/         # Configuration and tuning
+└── visuals/        # Debug visualizations
+```
+
+## Testing
+
+```bash
+# Run all tests
+npm test
+
+# Run unit tests only
+npm run test-unit
+
+# Run integration tests
+npm run test-integration
+```
+
+Tests are located in the `test/` directory and use Mocha with Chai assertions.
+
+## Code Style
+
+This project uses:
+- **ESLint** for code quality (`.eslintrc.js`)
+- **Prettier** for code formatting (`.prettierrc`)
+- **TypeScript strict mode** for type safety
+
+Run linting:
+```bash
+npm run lint
+```
+
+## Configuration
+
+Bot behavior can be tuned via configuration files in `src/config/`:
+- CPU budgets and thresholds
+- Spawn priorities
+- Combat behavior
+- Market strategy
+- Pheromone system parameters
 
 ## Documentation
 
-We've also spent some time reworking the documentation from the ground-up, which is now generated through [Gitbooks](https://www.gitbook.com/). Includes all the essentials to get you up and running with Screeps AI development in TypeScript, as well as various other tips and tricks to further improve your development workflow.
+- [State Machine Documentation](docs/STATE_MACHINE.md)
+- [Main Repository README](../../README.md)
+- [Development Roadmap](../../ROADMAP.md)
+- [Contributing Guidelines](../../CONTRIBUTING.md)
 
-Maintaining the docs will also become a more community-focused effort, which means you too, can take part in improving the docs for this starter kit.
+## Type Definitions
 
-To visit the docs, [click here](https://screepers.gitbook.io/screeps-typescript-starter/).
+The type definitions for Screeps come from [@types/screeps](https://www.npmjs.com/package/@types/screeps), which are maintained in the [typed-screeps](https://github.com/screepers/typed-screeps) repository. If you find a problem or have a suggestion, please open an issue there.
 
 ## Contributing
 
-Issues, Pull Requests, and contribution to the docs are welcome! See our [Contributing Guidelines](CONTRIBUTING.md) for more details.
+Issues, Pull Requests, and contributions are welcome! See our [Contributing Guidelines](../../CONTRIBUTING.md) for more details.
+
+## License
+
+This project is licensed under the Unlicense - see the [LICENSE](../../LICENSE) file for details.
+
+## Acknowledgments
+
+- Based on [screeps-typescript-starter](https://github.com/screepers/screeps-typescript-starter)
+- Inspired by the Screeps community and various open-source bots

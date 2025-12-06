@@ -1,5 +1,39 @@
 {
   "name": "screeps-ant-swarm",
+  "version": "1.0.0",
+  "description": "Advanced Screeps AI using swarm intelligence and distributed colony management",
+  "main": "packages/screeps-bot/dist/main.js",
   "screeps_bot": true,
-  "main": "packages/screeps-bot/dist/main.js"
+  "private": true,
+  "engines": {
+    "node": ">=16.0.0 <=20.x",
+    "npm": ">=8.0.0"
+  },
+  "scripts": {
+    "check-versions": "node scripts/check-versions.js",
+    "install:all": "npm install && cd packages/screeps-bot && npm install && cd ../screeps-influx-exporter && npm install",
+    "build": "cd packages/screeps-bot && npm run build",
+    "test": "cd packages/screeps-bot && npm test",
+    "lint": "cd packages/screeps-bot && npm run lint",
+    "push": "cd packages/screeps-bot && npm run push",
+    "watch": "cd packages/screeps-bot && npm run watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ralphschuler/screeps.git"
+  },
+  "keywords": [
+    "screeps",
+    "ai",
+    "bot",
+    "swarm",
+    "typescript",
+    "game"
+  ],
+  "author": "",
+  "license": "Unlicense",
+  "bugs": {
+    "url": "https://github.com/ralphschuler/screeps/issues"
+  },
+  "homepage": "https://github.com/ralphschuler/screeps#readme"
 }
