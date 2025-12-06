@@ -1,14 +1,15 @@
 {
-  "name": "screeps-graphite-exporter",
+  "name": "screeps-influx-exporter",
   "version": "0.1.0",
   "private": true,
-  "description": "Graphite exporter for Screeps stats via memory or console logs",
+  "description": "InfluxDB exporter for Screeps stats via memory or console logs",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc -b",
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@influxdata/influxdb-client": "^1.35.0",
     "screeps-api": "^1.13.0"
   },
   "devDependencies": {
