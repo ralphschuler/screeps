@@ -1,0 +1,42 @@
+name: Screeps Prometheus Exporter CI
+
+on:
+  push:
+    paths:
+      - 'packages/screeps-prometheus-exporter/**'
+  pull_request:
+    paths:
+      - 'packages/screeps-prometheus-exporter/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/screeps-prometheus-exporter
+    env:
+      CI: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: packages/screeps-prometheus-exporter/.nvmrc
+          cache: npm
+          cache-dependency-path: packages/screeps-prometheus-exporter/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Validate Docker build
+        uses: docker/build-push-action@v5
+        with:
+          context: packages/screeps-prometheus-exporter
+          push: false
+          load: true
+          tags: screeps-prometheus-exporter:ci
