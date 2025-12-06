@@ -63,12 +63,12 @@ screeps/
 
 ### Setting up Dev Environment
 
-1. **Configure credentials**: Copy the example config and add your Screeps credentials
+1. **Configure credentials**: Copy the example environment file and add your Screeps credentials
 
 ```shell
 cd packages/screeps-bot
-cp screeps.sample.json screeps.json
-# Edit screeps.json with your credentials
+cp .env.example .env
+# Edit .env with your credentials (SCREEPS_TOKEN or SCREEPS_USERNAME/SCREEPS_PASS)
 ```
 
 2. **Build the project**:
@@ -129,9 +129,9 @@ The bot follows a layered architecture as defined in [ROADMAP.md](./ROADMAP.md):
 
 1. **Global Meta-Layer**: Multi-shard empire coordination
 2. **Shard-Strategic Layer**: Per-shard resource allocation
-3. **Cluster-Kolonie-Ebene**: Regional colony coordination
-4. **Raum-Ebene**: Individual room management
-5. **Creep/Squad-Ebene**: Unit-level behavior
+3. **Cluster/Colony Layer**: Regional colony coordination
+4. **Room Layer**: Individual room management
+5. **Creep/Squad Layer**: Unit-level behavior
 
 Key design principles:
 - **Decentralization**: Each room has autonomous control logic

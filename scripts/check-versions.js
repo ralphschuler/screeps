@@ -97,10 +97,13 @@ function main() {
 ❌ Version requirements not met!
 
 Please update your Node.js and/or npm to compatible versions.
+Supported Node.js versions: ${engines.node}
+Supported npm versions: ${engines.npm}
+
 You can use nvm (Node Version Manager) to easily switch versions:
 
-  nvm install 18
-  nvm use 18
+  nvm install  # Uses .nvmrc file
+  nvm use
 
 Or download Node.js from: https://nodejs.org/
 ${colors.reset}`);
