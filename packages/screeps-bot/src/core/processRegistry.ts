@@ -8,6 +8,7 @@
  * - CoreProcessManager (core:memoryCleanup, core:memorySizeCheck, core:memorySegmentStats,
  *                       cluster:pheromoneDiffusion, room:labConfig, room:pathCachePrecache)
  * - EmpireManager (empire:manager)
+ * - ExpansionManager (expansion:manager)
  * - ClusterManager (cluster:manager)
  * - MarketManager (empire:market)
  * - NukeManager (empire:nuke)
@@ -18,17 +19,18 @@
  * Addresses Issues: #5, #30
  */
 
-import { kernel } from "./kernel";
-import { registerAllDecoratedProcesses } from "./processDecorators";
-import { coreProcessManager } from "./coreProcessManager";
-import { empireManager } from "../empire/empireManager";
 import { clusterManager } from "../clusters/clusterManager";
+import { evacuationManager } from "../defense/evacuationManager";
+import { empireManager } from "../empire/empireManager";
+import { expansionManager } from "../empire/expansionManager";
 import { marketManager } from "../empire/marketManager";
 import { nukeManager } from "../empire/nukeManager";
 import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
 import { shardManager } from "../intershard/shardManager";
-import { evacuationManager } from "../defense/evacuationManager";
+import { coreProcessManager } from "./coreProcessManager";
+import { kernel } from "./kernel";
 import { logger } from "./logger";
+import { registerAllDecoratedProcesses } from "./processDecorators";
 
 /**
  * Register all processes with the kernel using decorators
@@ -42,6 +44,7 @@ export function registerAllProcesses(): void {
     coreProcessManager,
     // Empire processes
     empireManager,
+    expansionManager,
     marketManager,
     nukeManager,
     powerBankHarvestingManager,

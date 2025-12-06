@@ -11,6 +11,7 @@
 import type { CreepRole, RoleFamily, SwarmCreepMemory, SwarmState } from "../memory/schemas";
 import { type WeightedEntry, weightedSelection } from "../utils/weightedSelection";
 import { getDefenderPriorityBoost } from "../spawning/defenderManager";
+import { memoryManager } from "../memory/manager";
 
 /**
  * Body template definition
@@ -342,7 +343,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     family: "utility",
     bodies: [createBody([CLAIM, MOVE], 650), createBody([CLAIM, CLAIM, MOVE, MOVE], 1300)],
     priority: 50,
-    maxPerRoom: 1,
+    maxPerRoom: 3, // Increased to handle multiple remote rooms and expansion
     remoteRole: true
   },
   engineer: {
@@ -383,7 +384,8 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         queenCarrier: 1.0,
         guard: 0.3,
         healer: 0.1,
-        scout: 0.5,
+        scout: 1.0,
+        claimer: 0.8,
         engineer: 0.8,
         remoteHarvester: 1.2,
         remoteHauler: 1.2
@@ -616,6 +618,37 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState): bo
   const room = Game.rooms[roomName];
   if (!room) return false;
 
+  // Scout: Spawn if we have remote rooms without full intel
+  // or if we're in expand posture and need more room data
+  if (role === "scout") {
+    // Always allow scouts if we don't have one (up to max per room)
+    if (current === 0) return true;
+    
+    // In expand posture, allow more scouts
+    if (swarm.posture === "expand" && current < def.maxPerRoom) return true;
+    
+    return false;
+  }
+
+  // Claimer: Only spawn if we have expansion targets or remote rooms that need reserving
+  if (role === "claimer") {
+    const overmind = memoryManager.getOvermind();
+    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+    
+    // Check if we have unclaimed expansion targets and can expand
+    const canExpand = ownedRooms.length < Game.gcl.level;
+    const hasExpansionTarget = overmind.claimQueue.some(c => !c.claimed);
+    
+    // Check if we have remote rooms that need reserving (no reserver assigned)
+    const hasUnreservedRemote = needsReserver(roomName, swarm);
+    
+    // Only spawn claimer if there's work to do
+    if (canExpand && hasExpansionTarget) return true;
+    if (hasUnreservedRemote) return true;
+    
+    return false;
+  }
+
   // Mineral harvester needs extractor
   if (role === "mineralHarvester") {
     const mineral = room.find(FIND_MINERALS)[0];
@@ -649,6 +682,33 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState): bo
   }
 
   return true;
+}
+
+/**
+ * Check if room needs a reserver for any of its remote rooms
+ */
+function needsReserver(_homeRoom: string, swarm: SwarmState): boolean {
+  const remotes = swarm.remoteAssignments ?? [];
+  if (remotes.length === 0) return false;
+  
+  // Check each remote room
+  for (const remoteName of remotes) {
+    // Check if any claimer is already targeting this room for reservation
+    let hasReserver = false;
+    for (const creep of Object.values(Game.creeps)) {
+      const memory = creep.memory as unknown as SwarmCreepMemory;
+      if (memory.role === "claimer" && memory.targetRoom === remoteName) {
+        hasReserver = true;
+        break;
+      }
+    }
+    
+    if (!hasReserver) {
+      return true; // Found a remote that needs a reserver
+    }
+  }
+  
+  return false;
 }
 
 /**
