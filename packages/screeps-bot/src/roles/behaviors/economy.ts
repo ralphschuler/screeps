@@ -7,6 +7,7 @@
 
 import type { CreepAction, CreepContext } from "./types";
 import type { SwarmCreepMemory } from "../../memory/schemas";
+import { findCachedClosest, clearCacheOnStateChange } from "../../utils/cachedClosest";
 
 // =============================================================================
 // Type Guards
@@ -33,26 +34,36 @@ function isDeposit(obj: unknown): obj is Deposit {
 /**
  * Update working state based on energy levels.
  * Returns true if creep should be working (has energy to spend).
+ * Clears cached targets when state changes to ensure fresh target selection.
  */
 function updateWorkingState(ctx: CreepContext): boolean {
+  const wasWorking = ctx.memory.working ?? false;
   if (ctx.isEmpty) ctx.memory.working = false;
   if (ctx.isFull) ctx.memory.working = true;
-  return ctx.memory.working ?? false;
+  const isWorking = ctx.memory.working ?? false;
+  
+  // Clear cached targets when working state changes
+  if (wasWorking !== isWorking) {
+    clearCacheOnStateChange(ctx.creep);
+  }
+  
+  return isWorking;
 }
 
 /**
  * Find energy to collect (common pattern for many roles).
+ * Uses cached target finding to reduce CPU usage.
  */
 function findEnergy(ctx: CreepContext): CreepAction {
   // 1. Dropped resources
   if (ctx.droppedResources.length > 0) {
-    const closest = ctx.creep.pos.findClosestByRange(ctx.droppedResources);
+    const closest = findCachedClosest(ctx.creep, ctx.droppedResources, "energy_drop", 5);
     if (closest) return { type: "pickup", target: closest };
   }
 
   // 2. Containers
   if (ctx.containers.length > 0) {
-    const closest = ctx.creep.pos.findClosestByRange(ctx.containers);
+    const closest = findCachedClosest(ctx.creep, ctx.containers, "energy_container", 10);
     if (closest) return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
   }
 
@@ -61,26 +72,30 @@ function findEnergy(ctx: CreepContext): CreepAction {
     return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
   }
 
-  // 4. Harvest directly
-  const source = ctx.creep.pos.findClosestByRange(FIND_SOURCES_ACTIVE);
-  if (source) return { type: "harvest", target: source };
+  // 4. Harvest directly (sources don't change often, longer cache)
+  const sources = ctx.room.find(FIND_SOURCES_ACTIVE);
+  if (sources.length > 0) {
+    const source = findCachedClosest(ctx.creep, sources, "energy_source", 20);
+    if (source) return { type: "harvest", target: source };
+  }
 
   return { type: "idle" };
 }
 
 /**
  * Deliver energy to spawn structures and towers.
+ * Uses cached target finding to reduce CPU usage.
  */
 function deliverEnergy(ctx: CreepContext): CreepAction | null {
-  // Spawns and extensions first
+  // Spawns and extensions first (cache for 5 ticks - they fill quickly)
   if (ctx.spawnStructures.length > 0) {
-    const closest = ctx.creep.pos.findClosestByRange(ctx.spawnStructures);
+    const closest = findCachedClosest(ctx.creep, ctx.spawnStructures, "deliver_spawn", 5);
     if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
   }
 
-  // Then towers
+  // Then towers (cache for 10 ticks - they drain slower)
   if (ctx.towers.length > 0) {
-    const closest = ctx.creep.pos.findClosestByRange(ctx.towers);
+    const closest = findCachedClosest(ctx.creep, ctx.towers, "deliver_tower", 10);
     if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
   }
 
@@ -215,6 +230,7 @@ function findNearbyLink(creep: Creep): StructureLink | undefined {
 
 /**
  * Hauler - Transport energy from harvesters to structures.
+ * Uses cached target finding to reduce CPU usage.
  */
 export function hauler(ctx: CreepContext): CreepAction {
   const isWorking = updateWorkingState(ctx);
@@ -222,27 +238,27 @@ export function hauler(ctx: CreepContext): CreepAction {
   if (isWorking) {
     // Deliver energy with priority: spawn > extensions > towers > storage > containers
 
-    // 1. Spawns first (highest priority)
+    // 1. Spawns first (highest priority, cache 5 ticks)
     const spawns = ctx.spawnStructures.filter(
       (s): s is StructureSpawn => s.structureType === STRUCTURE_SPAWN
     );
     if (spawns.length > 0) {
-      const closest = ctx.creep.pos.findClosestByRange(spawns);
+      const closest = findCachedClosest(ctx.creep, spawns, "hauler_spawn", 5);
       if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
     }
 
-    // 2. Extensions second
+    // 2. Extensions second (cache 5 ticks)
     const extensions = ctx.spawnStructures.filter(
       (s): s is StructureExtension => s.structureType === STRUCTURE_EXTENSION
     );
     if (extensions.length > 0) {
-      const closest = ctx.creep.pos.findClosestByRange(extensions);
+      const closest = findCachedClosest(ctx.creep, extensions, "hauler_ext", 5);
       if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
     }
 
-    // 3. Towers third
+    // 3. Towers third (cache 10 ticks)
     if (ctx.towers.length > 0) {
-      const closest = ctx.creep.pos.findClosestByRange(ctx.towers);
+      const closest = findCachedClosest(ctx.creep, ctx.towers, "hauler_tower", 10);
       if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
     }
 
@@ -251,9 +267,9 @@ export function hauler(ctx: CreepContext): CreepAction {
       return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
     }
 
-    // 5. Containers last (for early game or when storage is full/unavailable)
+    // 5. Containers last (cache 10 ticks)
     if (ctx.depositContainers.length > 0) {
-      const closest = ctx.creep.pos.findClosestByRange(ctx.depositContainers);
+      const closest = findCachedClosest(ctx.creep, ctx.depositContainers, "hauler_cont", 10);
       if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
     }
 
@@ -261,21 +277,24 @@ export function hauler(ctx: CreepContext): CreepAction {
   }
 
   // Collect energy - priority order
-  // 1. Dropped resources
+  // 1. Dropped resources (cache 3 ticks - they disappear quickly)
   if (ctx.droppedResources.length > 0) {
-    const closest = ctx.creep.pos.findClosestByRange(ctx.droppedResources);
+    const closest = findCachedClosest(ctx.creep, ctx.droppedResources, "hauler_drop", 3);
     if (closest) return { type: "pickup", target: closest };
   }
 
-  // 2. Tombstones
-  const tombstone = ctx.creep.pos.findClosestByRange(FIND_TOMBSTONES, {
+  // 2. Tombstones (cache 5 ticks)
+  const tombstones = ctx.room.find(FIND_TOMBSTONES, {
     filter: t => t.store.getUsedCapacity(RESOURCE_ENERGY) > 0
   });
-  if (tombstone) return { type: "withdraw", target: tombstone, resourceType: RESOURCE_ENERGY };
+  if (tombstones.length > 0) {
+    const tombstone = findCachedClosest(ctx.creep, tombstones, "hauler_tomb", 5);
+    if (tombstone) return { type: "withdraw", target: tombstone, resourceType: RESOURCE_ENERGY };
+  }
 
-  // 3. Containers
+  // 3. Containers (cache 10 ticks)
   if (ctx.containers.length > 0) {
-    const closest = ctx.creep.pos.findClosestByRange(ctx.containers);
+    const closest = findCachedClosest(ctx.creep, ctx.containers, "hauler_source", 10);
     if (closest) return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
   }
 
@@ -307,6 +326,7 @@ export function builder(ctx: CreepContext): CreepAction {
 
 /**
  * Upgrader - Upgrade the room controller.
+ * Uses cached target finding to reduce CPU usage.
  */
 export function upgrader(ctx: CreepContext): CreepAction {
   const isWorking = updateWorkingState(ctx);
@@ -323,13 +343,18 @@ export function upgrader(ctx: CreepContext): CreepAction {
     return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
   }
 
+  // Cache container lookups for 15 ticks - upgraders are stationary
   if (ctx.containers.length > 0) {
-    const closest = ctx.creep.pos.findClosestByRange(ctx.containers);
+    const closest = findCachedClosest(ctx.creep, ctx.containers, "upgrader_cont", 15);
     if (closest) return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
   }
 
-  const source = ctx.creep.pos.findClosestByRange(FIND_SOURCES_ACTIVE);
-  if (source) return { type: "harvest", target: source };
+  // Cache source lookups for 20 ticks - sources don't move
+  const sources = ctx.room.find(FIND_SOURCES_ACTIVE);
+  if (sources.length > 0) {
+    const source = findCachedClosest(ctx.creep, sources, "upgrader_source", 20);
+    if (source) return { type: "harvest", target: source };
+  }
 
   return { type: "idle" };
 }
