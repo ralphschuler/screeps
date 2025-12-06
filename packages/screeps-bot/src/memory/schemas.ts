@@ -79,6 +79,46 @@ export interface PowerBankEntry {
 }
 
 /**
+ * Historical price data point for a resource
+ */
+export interface PriceDataPoint {
+  /** Game tick when price was recorded */
+  tick: number;
+  /** Average price at this time */
+  avgPrice: number;
+  /** Lowest price at this time */
+  lowPrice: number;
+  /** Highest price at this time */
+  highPrice: number;
+}
+
+/**
+ * Market intelligence for a specific resource
+ */
+export interface ResourceMarketData {
+  /** Resource type */
+  resource: ResourceConstant;
+  /** Historical prices (max 30 entries, oldest entries removed) */
+  priceHistory: PriceDataPoint[];
+  /** Rolling average price (last 10 data points) */
+  avgPrice: number;
+  /** Current trend: -1 (falling), 0 (stable), 1 (rising) */
+  trend: -1 | 0 | 1;
+  /** Last update tick */
+  lastUpdate: number;
+}
+
+/**
+ * Market memory containing all market intelligence
+ */
+export interface MarketMemory {
+  /** Market data per resource */
+  resources: Record<string, ResourceMarketData>;
+  /** Last full market scan tick */
+  lastScan: number;
+}
+
+/**
  * Global overmind memory
  */
 export interface OvermindMemory {
@@ -94,6 +134,8 @@ export interface OvermindMemory {
   nukeCandidates: { roomName: string; score: number; launched: boolean; launchTick: number }[];
   /** Power bank locations */
   powerBanks: PowerBankEntry[];
+  /** Market intelligence data */
+  market?: MarketMemory;
   /** Global strategic objectives */
   objectives: {
     targetPowerLevel: number;
@@ -469,6 +511,16 @@ export function createDefaultSwarmState(): SwarmState {
 }
 
 /**
+ * Create default market memory
+ */
+export function createDefaultMarketMemory(): MarketMemory {
+  return {
+    resources: {},
+    lastScan: 0
+  };
+}
+
+/**
  * Create default overmind memory
  */
 export function createDefaultOvermindMemory(): OvermindMemory {
@@ -479,6 +531,7 @@ export function createDefaultOvermindMemory(): OvermindMemory {
     warTargets: [],
     nukeCandidates: [],
     powerBanks: [],
+    market: createDefaultMarketMemory(),
     objectives: {
       targetPowerLevel: 0,
       targetRoomCount: 1,
