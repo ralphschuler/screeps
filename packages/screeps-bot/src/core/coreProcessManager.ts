@@ -23,9 +23,6 @@ import { memorySegmentStats } from "./memorySegmentStats";
 import { globalPathCache } from "../utils/globalPathCache";
 import { logger } from "./logger";
 
-/** Maximum CPU bucket value in Screeps */
-const MAX_BUCKET = 10000;
-
 /**
  * Core Process Manager Class
  */
@@ -38,14 +35,16 @@ export class CoreProcessManager {
    */
   @HighFrequencyProcess("core:pixelGeneration", "Pixel Generation", {
     priority: ProcessPriority.LOW,
-    minBucket: MAX_BUCKET,
+    minBucket: PIXEL_CPU_COST,
     cpuBudget: 0.001
   })
   public generatePixel(): void {
-    if (Game.cpu.bucket >= MAX_BUCKET) {
+    if (Game.cpu.bucket >= PIXEL_CPU_COST) {
       const result = Game.cpu.generatePixel?.();
       if (result === OK) {
         logger.info("Generated pixel from full CPU bucket", { subsystem: "Pixel" });
+      } else if (result === ERR_NOT_ENOUGH_RESOURCES) {
+        logger.debug("Could not generate pixel: not enough CPU bucket", { subsystem: "Pixel" });
       }
     }
   }
