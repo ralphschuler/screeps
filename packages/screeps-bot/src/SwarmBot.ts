@@ -150,6 +150,8 @@ function isLowBucket(): boolean {
  * Get creeps sorted by priority without per-tick sorting cost.
  * Uses fixed priority buckets (counting sort) so scaling to thousands
  * of creeps is linear instead of O(n log n).
+ * 
+ * OPTIMIZATION: Pre-allocate bucket arrays to avoid repeated allocations.
  */
 function getPrioritizedCreeps(skipLowPriority: boolean): {
   creeps: Creep[];
@@ -158,7 +160,10 @@ function getPrioritizedCreeps(skipLowPriority: boolean): {
   const buckets = PRIORITY_ORDER.map(() => [] as Creep[]);
   let skippedLow = 0;
 
-  for (const creep of Object.values(Game.creeps)) {
+  // Use for-in loop instead of Object.values() to avoid creating temporary array
+  // More memory efficient with large creep counts (1000+)
+  for (const name in Game.creeps) {
+    const creep = Game.creeps[name];
     if (creep.spawning) continue;
 
     const priority = getCreepPriority(creep);
@@ -171,10 +176,13 @@ function getPrioritizedCreeps(skipLowPriority: boolean): {
     buckets[bucketIndex].push(creep);
   }
 
+  // Flatten buckets into single array (avoid spread operator for large arrays)
   const ordered: Creep[] = [];
   for (const bucket of buckets) {
     if (bucket.length > 0) {
-      ordered.push(...bucket);
+      for (const creep of bucket) {
+        ordered.push(creep);
+      }
     }
   }
 
@@ -213,7 +221,11 @@ function runSpawns(): void {
 /**
  * Run creeps with CPU budget management.
  * Creeps are sorted by priority so critical roles run first.
- * Uses kernel for CPU budget checking.
+ * Uses kernel for CPU budget checking with micro-batching.
+ * 
+ * OPTIMIZATION: CPU checks are expensive (~0.01 CPU each).
+ * With 1000+ creeps, checking every creep adds 10+ CPU overhead.
+ * We use micro-batching to check every N creeps instead of every creep.
  */
 function runCreepsWithBudget(): void {
   const lowBucket = isLowBucket();
@@ -221,14 +233,18 @@ function runCreepsWithBudget(): void {
   let creepsRun = 0;
   let creepsSkipped = skippedLow;
 
-  for (const creep of creeps) {
-    // Check CPU budget before each creep using kernel
-    if (!kernel.hasCpuBudget()) {
+  // Micro-batch size: check CPU every N creeps
+  // Smaller batches when bucket is low for tighter control
+  const batchSize = lowBucket ? 5 : 10;
+
+  for (let i = 0; i < creeps.length; i++) {
+    // Check CPU budget at the start of each batch
+    if (i % batchSize === 0 && !kernel.hasCpuBudget()) {
       creepsSkipped += creeps.length - creepsRun;
       break;
     }
 
-    runCreep(creep);
+    runCreep(creeps[i]);
     creepsRun++;
   }
 

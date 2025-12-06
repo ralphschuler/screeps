@@ -8,6 +8,7 @@
 import type { CreepAction, CreepContext } from "./types";
 import type { SquadMemory, SwarmCreepMemory } from "../../memory/schemas";
 import { safeFindClosestByRange } from "../../utils/safeFind";
+import { findCachedClosest } from "../../utils/cachedClosest";
 
 // =============================================================================
 // Patrol System
@@ -86,6 +87,17 @@ function getNextPatrolWaypoint(creep: Creep, waypoints: RoomPosition[]): RoomPos
 /**
  * Find the highest priority hostile target.
  * Priority: Healers > Ranged > Melee > Claimers > Workers
+ * 
+ * Note: We intentionally do NOT use caching here because:
+ * 1. Priority scoring is complex and position-independent
+ * 2. Cache would only store the closest target, not the highest priority
+ * 3. Combat is dynamic - priorities change frequently as creeps take damage
+ * 4. This function is only called when hostiles are present (not every tick)
+ * 
+ * The CPU cost is acceptable because:
+ * - Only runs when hostiles are detected (rare in peaceful times)
+ * - Hostile count is typically low (< 10 creeps)
+ * - Body part iteration is O(n*m) where n=hostiles, m=parts (~50 max)
  */
 function findPriorityTarget(ctx: CreepContext): Creep | null {
   if (ctx.hostiles.length === 0) return null;
@@ -187,15 +199,18 @@ export function healer(ctx: CreepContext): CreepAction {
     return { type: "rangedHeal", target };
   }
 
-  // Follow military creeps
-  const military = ctx.creep.pos.findClosestByRange(FIND_MY_CREEPS, {
+  // Follow military creeps (cache for 5 ticks)
+  const militaryCreeps = ctx.room.find(FIND_MY_CREEPS, {
     filter: c => {
       const m = c.memory as unknown as SwarmCreepMemory;
       return m.family === "military" && m.role !== "healer";
     }
   });
 
-  if (military) return { type: "moveTo", target: military };
+  if (militaryCreeps.length > 0) {
+    const military = findCachedClosest(ctx.creep, militaryCreeps, "healer_follow", 5);
+    if (military) return { type: "moveTo", target: military };
+  }
 
   return { type: "idle" };
 }
