@@ -12,9 +12,7 @@
     "dist",
     "README.md"
   ],
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
+  "private": true,
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build",
