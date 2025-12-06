@@ -11,12 +11,14 @@
  */
 
 import { createContext, evaluateUtilityBehavior, executeAction } from "../behaviors";
+import { evaluateWithStateMachine } from "../behaviors/stateMachine";
 
 /**
- * Run utility role behavior.
+ * Run utility role behavior with state machine.
+ * Creeps commit to actions until completion, preventing sudden direction changes.
  */
 export function runUtilityRole(creep: Creep): void {
   const ctx = createContext(creep);
-  const action = evaluateUtilityBehavior(ctx);
+  const action = evaluateWithStateMachine(ctx, evaluateUtilityBehavior);
   executeAction(creep, action, ctx);
 }
