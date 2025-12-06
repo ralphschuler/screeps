@@ -75,7 +75,88 @@ services:
       start_interval: 5s
       retries: 3
 
+  # InfluxDB for metrics storage
+  influxdb:
+    image: influxdb:2.7
+    platform: linux/amd64
+    ports:
+      - "${INFLUXDB_HOST:-0.0.0.0}:8086:8086"
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUXDB_USERNAME:-admin}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_PASSWORD:-screeps-password}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORG:-screeps}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET:-screeps}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN:-screeps-influxdb-token}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:10.0.0
+    platform: linux/amd64
+    ports:
+      - "${GRAFANA_HOST:-0.0.0.0}:3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-screeps-influxdb-token}
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+  # Screeps to InfluxDB exporter
+  screeps-exporter:
+    build:
+      context: ../screeps-influx-exporter
+      dockerfile: Dockerfile
+    environment:
+      EXPORTER_MODE: ${EXPORTER_MODE:-memory}
+      EXPORTER_POLL_INTERVAL_MS: ${EXPORTER_POLL_INTERVAL_MS:-15000}
+      EXPORTER_MEMORY_PATH: ${EXPORTER_MEMORY_PATH:-stats}
+      EXPORTER_SHARD: ${EXPORTER_SHARD:-shard0}
+      SCREEPS_PROTOCOL: http
+      SCREEPS_HOST: screeps
+      SCREEPS_PORT: 21025
+      SCREEPS_PATH: /
+      SCREEPS_USERNAME: ${SCREEPS_BOT_USERNAME:-}
+      SCREEPS_PASSWORD: ${SCREEPS_BOT_PASSWORD:-}
+      SCREEPS_TOKEN: ${SCREEPS_TOKEN:-}
+      INFLUXDB_URL: http://influxdb:8086
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-screeps-influxdb-token}
+      INFLUXDB_ORG: ${INFLUXDB_ORG:-screeps}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET:-screeps}
+      INFLUXDB_MEASUREMENT: ${INFLUXDB_MEASUREMENT:-screeps}
+    depends_on:
+      screeps:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   redis-data:
   mongo-data:
   screeps-data:
+  influxdb-data:
+  influxdb-config:
+  grafana-data:
