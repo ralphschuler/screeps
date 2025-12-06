@@ -12,6 +12,8 @@
  * - Target validated each tick (exists and still in range)
  * - Automatic cache invalidation when target becomes invalid
  * - TTL (time-to-live) to periodically refresh targets
+ * - Uses direct findClosestByRange (not safeFindClosestByRange) since we're 
+ *   passing filtered arrays, not FIND_* constants that could have engine issues
  */
 
 // =============================================================================
@@ -99,6 +101,9 @@ export function findCachedClosest<T extends RoomObject & _HasId>(
   }
 
   // Cache miss or invalid - find new closest target
+  // Note: Using direct findClosestByRange here is safe because we're passing
+  // a pre-filtered array of targets, not a FIND_* constant. Engine errors only
+  // occur with FIND_* constants when there's corrupted owner data.
   const closest = creep.pos.findClosestByRange(targets);
   if (closest) {
     // Update cache

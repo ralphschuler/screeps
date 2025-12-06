@@ -87,17 +87,21 @@ function getNextPatrolWaypoint(creep: Creep, waypoints: RoomPosition[]): RoomPos
 /**
  * Find the highest priority hostile target.
  * Priority: Healers > Ranged > Melee > Claimers > Workers
- * Uses cached result since combat targets change less frequently.
+ * 
+ * Note: We intentionally do NOT use caching here because:
+ * 1. Priority scoring is complex and position-independent
+ * 2. Cache would only store the closest target, not the highest priority
+ * 3. Combat is dynamic - priorities change frequently as creeps take damage
+ * 4. This function is only called when hostiles are present (not every tick)
+ * 
+ * The CPU cost is acceptable because:
+ * - Only runs when hostiles are detected (rare in peaceful times)
+ * - Hostile count is typically low (< 10 creeps)
+ * - Body part iteration is O(n*m) where n=hostiles, m=parts (~50 max)
  */
 function findPriorityTarget(ctx: CreepContext): Creep | null {
   if (ctx.hostiles.length === 0) return null;
 
-  // For combat, we want to cache the target for a few ticks (2-3) to reduce CPU
-  // but not too long since combat is dynamic
-  const cached = findCachedClosest(ctx.creep, ctx.hostiles, "combat_target", 2);
-  if (cached) return cached;
-
-  // Fallback to scoring-based selection (only when cache misses)
   const scored = ctx.hostiles.map(hostile => {
     let score = 0;
     for (const part of hostile.body) {

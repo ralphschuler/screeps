@@ -160,7 +160,8 @@ function getPrioritizedCreeps(skipLowPriority: boolean): {
   const buckets = PRIORITY_ORDER.map(() => [] as Creep[]);
   let skippedLow = 0;
 
-  // Get creeps from Game.creeps (already an object iteration)
+  // Use for-in loop instead of Object.values() to avoid creating temporary array
+  // More memory efficient with large creep counts (1000+)
   for (const name in Game.creeps) {
     const creep = Game.creeps[name];
     if (creep.spawning) continue;
