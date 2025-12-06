@@ -38,16 +38,6 @@ function isStateValid(state: CreepState | undefined, ctx: CreepContext): boolean
     if (!target) {
       return false;
     }
-
-    // For structures/creeps, check if they still exist in the room
-    if ("room" in target && target.room) {
-      // Target is in a different room than we expected - might be ok for remote operations
-      // but we should validate based on action type
-      if (state.action === "moveToRoom" && ctx.room.name === state.targetRoom) {
-        // Reached target room, state is complete
-        return false;
-      }
-    }
   }
 
   return true;
