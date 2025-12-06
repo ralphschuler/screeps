@@ -318,20 +318,6 @@ export function createContext(creep: Creep): CreepContext {
   const targetRoom = memory.targetRoom ?? memory.homeRoom;
   const homeRoom = memory.homeRoom ?? room.name;
 
-  // Get lazy-evaluated data only when needed
-  const droppedResources = getDroppedResources(roomCache);
-  const containers = getContainers(roomCache);
-  const depositContainers = getDepositContainers(roomCache);
-  const spawnStructures = getSpawnStructures(roomCache);
-  const towers = getTowers(roomCache);
-  const prioritizedSites = getPrioritizedSites(roomCache);
-  const repairTargets = getRepairTargets(roomCache);
-  const damagedAllies = getDamagedAllies(roomCache);
-  const labs = getLabs(roomCache);
-  const factory = getFactory(roomCache);
-  const minerals = getMinerals(roomCache);
-  const activeSources = getActiveSources(roomCache);
-
   return {
     // Core references
     creep,
@@ -339,8 +325,12 @@ export function createContext(creep: Creep): CreepContext {
     memory,
 
     // Room state
-    swarmState: getSwarmState(room.name),
-    squadMemory: getSquadMemory(memory.squadId),
+    get swarmState() {
+      return getSwarmState(room.name);
+    },
+    get squadMemory() {
+      return getSquadMemory(memory.squadId);
+    },
 
     // Location info
     homeRoom,
@@ -354,28 +344,61 @@ export function createContext(creep: Creep): CreepContext {
     isWorking: memory.working ?? false,
 
     // Assigned targets
-    assignedSource: getAssignedSource(memory),
-    assignedMineral: minerals[0] ?? null,
+    get assignedSource() {
+      return getAssignedSource(memory);
+    },
+    get assignedMineral() {
+      const minerals = getMinerals(roomCache);
+      return minerals[0] ?? null;
+    },
 
     // Room analysis - uses efficient Chebyshev distance check for hostiles
-    energyAvailable: activeSources.length > 0,
-    nearbyEnemies: roomCache.hostiles.length > 0 && isInHostileThreatRange(creep.pos, roomCache.hostiles),
-    constructionSiteCount: prioritizedSites.length,
-    damagedStructureCount: repairTargets.length,
+    get energyAvailable() {
+      return getActiveSources(roomCache).length > 0;
+    },
+    get nearbyEnemies() {
+      return roomCache.hostiles.length > 0 && isInHostileThreatRange(creep.pos, roomCache.hostiles);
+    },
+    get constructionSiteCount() {
+      return getPrioritizedSites(roomCache).length;
+    },
+    get damagedStructureCount() {
+      return getRepairTargets(roomCache).length;
+    },
 
     // Cached room objects (all from cache with lazy evaluation)
-    droppedResources,
-    containers,
-    depositContainers,
-    spawnStructures,
-    towers,
+    get droppedResources() {
+      return getDroppedResources(roomCache);
+    },
+    get containers() {
+      return getContainers(roomCache);
+    },
+    get depositContainers() {
+      return getDepositContainers(roomCache);
+    },
+    get spawnStructures() {
+      return getSpawnStructures(roomCache);
+    },
+    get towers() {
+      return getTowers(roomCache);
+    },
     storage: room.storage,
     terminal: room.terminal,
     hostiles: roomCache.hostiles,
-    damagedAllies,
-    prioritizedSites,
-    repairTargets,
-    labs,
-    factory
+    get damagedAllies() {
+      return getDamagedAllies(roomCache);
+    },
+    get prioritizedSites() {
+      return getPrioritizedSites(roomCache);
+    },
+    get repairTargets() {
+      return getRepairTargets(roomCache);
+    },
+    get labs() {
+      return getLabs(roomCache);
+    },
+    get factory() {
+      return getFactory(roomCache);
+    }
   };
 }

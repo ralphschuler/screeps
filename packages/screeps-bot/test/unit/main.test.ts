@@ -14,9 +14,11 @@ describe("main", () => {
     global.Game = _.clone(Game);
     // @ts-ignore : allow adding Memory to global
     global.Memory = _.clone(Memory);
-    // Reset the memory manager's initialized state
-    // @ts-ignore: Accessing private property for testing
-    memoryManager["initialized"] = false;
+    // Reset the memory manager's per-tick state
+    // @ts-ignore: Accessing private properties for testing
+    memoryManager["lastInitializeTick"] = null;
+    // @ts-ignore: Accessing private properties for testing
+    memoryManager["lastCleanupTick"] = 0;
   });
 
   it("should export a loop function", () => {

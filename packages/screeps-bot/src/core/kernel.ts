@@ -22,6 +22,8 @@ import {
   EventPayload,
   eventBus
 } from "./events";
+import type { CPUConfig } from "../config";
+import { getConfig } from "../config";
 import { logger } from "./logger";
 
 /**
@@ -109,6 +111,12 @@ export interface KernelConfig {
   enableStats: boolean;
   /** Log interval for stats (ticks) */
   statsLogInterval: number;
+  /** Default intervals for process frequencies */
+  frequencyIntervals: Record<ProcessFrequency, number>;
+  /** Default min bucket per frequency */
+  frequencyMinBucket: Record<ProcessFrequency, number>;
+  /** Default CPU budgets per frequency */
+  frequencyCpuBudgets: Record<ProcessFrequency, number>;
   /**
    * Whether pixel generation is enabled.
    * When true, bucket thresholds account for the bucket being emptied
@@ -128,10 +136,8 @@ export interface KernelConfig {
  */
 export type BucketMode = "critical" | "low" | "normal" | "high";
 
-const DEFAULT_CONFIG: KernelConfig = {
-  lowBucketThreshold: 2000,
-  highBucketThreshold: 9000,
-  criticalBucketThreshold: 1000,
+const BASE_CONFIG: Omit<KernelConfig, "lowBucketThreshold" | "highBucketThreshold" | "criticalBucketThreshold" | "frequencyIntervals" |
+  "frequencyMinBucket" | "frequencyCpuBudgets"> = {
   targetCpuUsage: 0.85,
   reservedCpu: 5,
   enableStats: true,
@@ -140,23 +146,57 @@ const DEFAULT_CONFIG: KernelConfig = {
   pixelRecoveryTicks: 100
 };
 
-/**
- * Default frequency intervals
- */
-const FREQUENCY_INTERVALS: Record<ProcessFrequency, number> = {
-  high: 1,
-  medium: 5,
-  low: 20
-};
+const DEFAULT_CRITICAL_DIVISOR = 2;
 
-/**
- * Default min bucket per frequency
- */
-const FREQUENCY_MIN_BUCKET: Record<ProcessFrequency, number> = {
-  high: 500,
-  medium: 2000,
-  low: 5000
-};
+function deriveCriticalThreshold(lowBucketThreshold: number): number {
+  return Math.max(0, Math.floor(lowBucketThreshold / DEFAULT_CRITICAL_DIVISOR));
+}
+
+function deriveFrequencyIntervals(taskFrequencies: CPUConfig["taskFrequencies"]): Record<ProcessFrequency, number> {
+  return {
+    high: 1,
+    medium: Math.max(1, Math.min(taskFrequencies.clusterLogic, taskFrequencies.pheromoneUpdate)),
+    low: Math.max(taskFrequencies.marketScan, taskFrequencies.nukeEvaluation, taskFrequencies.memoryCleanup)
+  };
+}
+
+function deriveFrequencyMinBucket(bucketThresholds: CPUConfig["bucketThresholds"], highBucketThreshold: number): Record<ProcessFrequency, number> {
+  return {
+    high: Math.max(0, Math.floor(bucketThresholds.lowMode * 0.25)),
+    medium: bucketThresholds.lowMode,
+    low: Math.max(bucketThresholds.lowMode, Math.floor((bucketThresholds.lowMode + highBucketThreshold) / 2))
+  };
+}
+
+function deriveFrequencyBudgets(budgets: CPUConfig["budgets"]): Record<ProcessFrequency, number> {
+  return {
+    high: budgets.rooms,
+    medium: budgets.strategic,
+    low: Math.max(budgets.market, budgets.visualization)
+  };
+}
+
+export function buildKernelConfigFromCpu(cpuConfig: CPUConfig): KernelConfig {
+  const highBucketThreshold = cpuConfig.bucketThresholds.highMode;
+  const lowBucketThreshold = cpuConfig.bucketThresholds.lowMode;
+  const criticalBucketThreshold = deriveCriticalThreshold(lowBucketThreshold);
+
+  const frequencyIntervals = deriveFrequencyIntervals(cpuConfig.taskFrequencies);
+  const frequencyMinBucket = deriveFrequencyMinBucket(cpuConfig.bucketThresholds, highBucketThreshold);
+  const frequencyCpuBudgets = deriveFrequencyBudgets(cpuConfig.budgets);
+
+  return {
+    ...BASE_CONFIG,
+    lowBucketThreshold,
+    highBucketThreshold,
+    criticalBucketThreshold,
+    frequencyIntervals,
+    frequencyMinBucket,
+    frequencyCpuBudgets
+  };
+}
+
+type FrequencyDefaults = { interval: number; minBucket: number; cpuBudget: number };
 
 /**
  * Kernel - Central Process Manager
@@ -169,9 +209,12 @@ export class Kernel {
   private initialized = false;
   /** Tick when a pixel was last generated (0 if none tracked) */
   private lastPixelGenerationTick = 0;
+  private frequencyDefaults: Record<ProcessFrequency, FrequencyDefaults>;
 
-  public constructor(config: Partial<KernelConfig> = {}) {
-    this.config = { ...DEFAULT_CONFIG, ...config };
+  public constructor(config: KernelConfig) {
+    this.config = { ...config };
+    this.validateConfig();
+    this.frequencyDefaults = this.buildFrequencyDefaults();
   }
 
   /**
@@ -188,15 +231,16 @@ export class Kernel {
     execute: () => void;
   }): void {
     const frequency = options.frequency ?? "medium";
-    
+    const defaults = this.frequencyDefaults[frequency];
+
     const process: Process = {
       id: options.id,
       name: options.name,
       priority: options.priority ?? ProcessPriority.MEDIUM,
       frequency,
-      minBucket: options.minBucket ?? FREQUENCY_MIN_BUCKET[frequency],
-      cpuBudget: options.cpuBudget ?? 0.1,
-      interval: options.interval ?? FREQUENCY_INTERVALS[frequency],
+      minBucket: options.minBucket ?? defaults.minBucket,
+      cpuBudget: options.cpuBudget ?? defaults.cpuBudget,
+      interval: options.interval ?? defaults.interval,
       execute: options.execute,
       state: "idle",
       stats: {
@@ -279,6 +323,44 @@ export class Kernel {
       });
       this.bucketMode = newMode;
     }
+  }
+
+  private validateConfig(): void {
+    if (this.config.criticalBucketThreshold >= this.config.lowBucketThreshold) {
+      logger.warn(
+        `Kernel: Adjusting critical bucket threshold ${this.config.criticalBucketThreshold} to stay below low threshold ${this.config.lowBucketThreshold}`,
+        { subsystem: "Kernel" }
+      );
+      this.config.criticalBucketThreshold = Math.max(0, this.config.lowBucketThreshold - 1);
+    }
+
+    if (this.config.lowBucketThreshold >= this.config.highBucketThreshold) {
+      logger.warn(
+        `Kernel: Adjusting high bucket threshold ${this.config.highBucketThreshold} to stay above low threshold ${this.config.lowBucketThreshold}`,
+        { subsystem: "Kernel" }
+      );
+      this.config.highBucketThreshold = this.config.lowBucketThreshold + 1;
+    }
+  }
+
+  private buildFrequencyDefaults(): Record<ProcessFrequency, FrequencyDefaults> {
+    return {
+      high: {
+        interval: this.config.frequencyIntervals.high,
+        minBucket: this.config.frequencyMinBucket.high,
+        cpuBudget: this.config.frequencyCpuBudgets.high
+      },
+      medium: {
+        interval: this.config.frequencyIntervals.medium,
+        minBucket: this.config.frequencyMinBucket.medium,
+        cpuBudget: this.config.frequencyCpuBudgets.medium
+      },
+      low: {
+        interval: this.config.frequencyIntervals.low,
+        minBucket: this.config.frequencyMinBucket.low,
+        cpuBudget: this.config.frequencyCpuBudgets.low
+      }
+    };
   }
 
   /**
@@ -577,10 +659,26 @@ export class Kernel {
   }
 
   /**
+   * Get frequency defaults for a process frequency
+   */
+  public getFrequencyDefaults(frequency: ProcessFrequency): FrequencyDefaults {
+    return { ...this.frequencyDefaults[frequency] };
+  }
+
+  /**
    * Update kernel configuration
    */
   public updateConfig(config: Partial<KernelConfig>): void {
     this.config = { ...this.config, ...config };
+    this.validateConfig();
+    this.frequencyDefaults = this.buildFrequencyDefaults();
+  }
+
+  /**
+   * Update kernel configuration from CPU config
+   */
+  public updateFromCpuConfig(cpuConfig: CPUConfig): void {
+    this.updateConfig(buildKernelConfigFromCpu(cpuConfig));
   }
 
   // ===========================================================================
@@ -718,7 +816,7 @@ export class Kernel {
 /**
  * Global kernel instance
  */
-export const kernel = new Kernel();
+export const kernel = new Kernel(buildKernelConfigFromCpu(getConfig().cpu));
 
 // =============================================================================
 // Helper functions for process registration
@@ -733,15 +831,16 @@ export function createHighFrequencyProcess(
   execute: () => void,
   priority = ProcessPriority.HIGH
 ): Parameters<Kernel["registerProcess"]>[0] {
+  const defaults = kernel.getFrequencyDefaults("high");
   return {
     id,
     name,
     execute,
     priority,
     frequency: "high",
-    minBucket: 500,
-    cpuBudget: 0.3,
-    interval: 1
+    minBucket: defaults.minBucket,
+    cpuBudget: defaults.cpuBudget,
+    interval: defaults.interval
   };
 }
 
@@ -754,15 +853,16 @@ export function createMediumFrequencyProcess(
   execute: () => void,
   priority = ProcessPriority.MEDIUM
 ): Parameters<Kernel["registerProcess"]>[0] {
+  const defaults = kernel.getFrequencyDefaults("medium");
   return {
     id,
     name,
     execute,
     priority,
     frequency: "medium",
-    minBucket: 2000,
-    cpuBudget: 0.15,
-    interval: 5
+    minBucket: defaults.minBucket,
+    cpuBudget: defaults.cpuBudget,
+    interval: defaults.interval
   };
 }
 
@@ -775,14 +875,15 @@ export function createLowFrequencyProcess(
   execute: () => void,
   priority = ProcessPriority.LOW
 ): Parameters<Kernel["registerProcess"]>[0] {
+  const defaults = kernel.getFrequencyDefaults("low");
   return {
     id,
     name,
     execute,
     priority,
     frequency: "low",
-    minBucket: 5000,
-    cpuBudget: 0.1,
-    interval: 20
+    minBucket: defaults.minBucket,
+    cpuBudget: defaults.cpuBudget,
+    interval: defaults.interval
   };
 }

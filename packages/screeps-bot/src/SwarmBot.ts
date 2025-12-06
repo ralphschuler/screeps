@@ -38,7 +38,7 @@ import { registerAllProcesses } from "./core/processRegistry";
 import { roomVisualizer } from "./visuals/roomVisualizer";
 import { memorySegmentStats } from "./core/memorySegmentStats";
 import { getConfig } from "./config";
-import { LogLevel, configureLogger } from "./core/logger";
+import { configureLogger, LogLevel, logger } from "./core/logger";
 
 // =============================================================================
 // Role Priority Configuration
@@ -74,6 +74,21 @@ const ROLE_PRIORITY: Record<string, number> = {
   factoryWorker: 5
 };
 
+const DEFAULT_PRIORITY = 50;
+const LOW_PRIORITY_THRESHOLD = 50;
+
+const PRIORITY_ORDER = Array.from(
+  new Set([...Object.values(ROLE_PRIORITY), DEFAULT_PRIORITY])
+).sort((a, b) => b - a);
+
+const PRIORITY_INDEX: Record<number, number> = PRIORITY_ORDER.reduce(
+  (acc, priority, index) => {
+    acc[priority] = index;
+    return acc;
+  },
+  {} as Record<number, number>
+);
+
 // =============================================================================
 // Creep Helpers
 // =============================================================================
@@ -91,7 +106,7 @@ function getCreepFamily(creep: Creep): RoleFamily {
  */
 function getCreepPriority(creep: Creep): number {
   const memory = creep.memory as unknown as SwarmCreepMemory;
-  return ROLE_PRIORITY[memory.role] ?? 50;
+  return ROLE_PRIORITY[memory.role] ?? DEFAULT_PRIORITY;
 }
 
 /**
@@ -132,12 +147,38 @@ function isLowBucket(): boolean {
 }
 
 /**
- * Get creeps sorted by priority
+ * Get creeps sorted by priority without per-tick sorting cost.
+ * Uses fixed priority buckets (counting sort) so scaling to thousands
+ * of creeps is linear instead of O(n log n).
  */
-function getSortedCreeps(): Creep[] {
-  return Object.values(Game.creeps)
-    .filter(c => !c.spawning)
-    .sort((a, b) => getCreepPriority(b) - getCreepPriority(a));
+function getPrioritizedCreeps(skipLowPriority: boolean): {
+  creeps: Creep[];
+  skippedLow: number;
+} {
+  const buckets = PRIORITY_ORDER.map(() => [] as Creep[]);
+  let skippedLow = 0;
+
+  for (const creep of Object.values(Game.creeps)) {
+    if (creep.spawning) continue;
+
+    const priority = getCreepPriority(creep);
+    if (skipLowPriority && priority < LOW_PRIORITY_THRESHOLD) {
+      skippedLow++;
+      continue;
+    }
+
+    const bucketIndex = PRIORITY_INDEX[priority] ?? PRIORITY_INDEX[DEFAULT_PRIORITY];
+    buckets[bucketIndex].push(creep);
+  }
+
+  const ordered: Creep[] = [];
+  for (const bucket of buckets) {
+    if (bucket.length > 0) {
+      ordered.push(...bucket);
+    }
+  }
+
+  return { creeps: ordered, skippedLow };
 }
 
 // =============================================================================
@@ -175,22 +216,16 @@ function runSpawns(): void {
  * Uses kernel for CPU budget checking.
  */
 function runCreepsWithBudget(): void {
-  const creeps = getSortedCreeps();
   const lowBucket = isLowBucket();
+  const { creeps, skippedLow } = getPrioritizedCreeps(lowBucket);
   let creepsRun = 0;
-  let creepsSkipped = 0;
+  let creepsSkipped = skippedLow;
 
   for (const creep of creeps) {
     // Check CPU budget before each creep using kernel
     if (!kernel.hasCpuBudget()) {
-      creepsSkipped += (creeps.length - creepsRun - creepsSkipped);
+      creepsSkipped += creeps.length - creepsRun;
       break;
-    }
-
-    // In low bucket mode, skip low-priority creeps
-    if (lowBucket && getCreepPriority(creep) < 50) {
-      creepsSkipped++;
-      continue;
     }
 
     runCreep(creep);
@@ -200,7 +235,9 @@ function runCreepsWithBudget(): void {
   // Log if we skipped creeps - reduce frequency when bucket is low to save CPU
   const logInterval = lowBucket ? 100 : 50;
   if (creepsSkipped > 0 && Game.time % logInterval === 0) {
-    console.log(`[SwarmBot] Skipped ${creepsSkipped} creeps due to CPU (bucket: ${Game.cpu.bucket})`);
+    logger.warn(`Skipped ${creepsSkipped} creeps due to CPU (bucket: ${Game.cpu.bucket})`, {
+      subsystem: "SwarmBot"
+    });
   }
 }
 
@@ -243,7 +280,10 @@ function runVisualizations(): void {
     } catch (err) {
       // Visualization errors shouldn't crash the main loop
       const errorMessage = err instanceof Error ? err.message : String(err);
-      console.log(`[SwarmBot] Visualization error in ${room.name}: ${errorMessage}`);
+      logger.error(`Visualization error in ${room.name}: ${errorMessage}`, {
+        subsystem: "visualizations",
+        room: room.name
+      });
     }
   }
 }
@@ -257,6 +297,9 @@ export function loop(): void {
     initializeSystems();
   }
 
+  // Sync kernel CPU configuration with runtime config
+  kernel.updateFromCpuConfig(getConfig().cpu);
+
   // Initialize kernel and register processes on first tick
   if (!kernelInitialized) {
     registerAllProcesses();
@@ -267,7 +310,9 @@ export function loop(): void {
   // Critical bucket check - use kernel's bucket mode
   const bucketMode = kernel.getBucketMode();
   if (bucketMode === "critical") {
-    console.log(`[SwarmBot] CRITICAL: CPU bucket at ${Game.cpu.bucket}, minimal processing`);
+    logger.warn(`CRITICAL: CPU bucket at ${Game.cpu.bucket}, minimal processing`, {
+      subsystem: "SwarmBot"
+    });
     // Only run movement finalization to prevent stuck creeps
     initMovement();
     clearMoveRequests();
@@ -295,9 +340,9 @@ export function loop(): void {
       roomManager.run();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      console.log(`[SwarmBot] ERROR in room processing: ${errorMessage}`);
+      logger.error(`ERROR in room processing: ${errorMessage}`, { subsystem: "SwarmBot" });
       if (err instanceof Error && err.stack) {
-        console.log(err.stack);
+        logger.error(err.stack, { subsystem: "SwarmBot" });
       }
     }
   });
@@ -363,4 +408,9 @@ export * from "./memory/schemas";
 export * from "./config";
 export * from "./core/processDecorators";
 export * from "./core/commandRegistry";
-export * from "./core/events";
+
+// Testing hooks
+export const __testing = {
+  getPrioritizedCreeps,
+  getCreepPriority
+};
