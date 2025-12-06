@@ -13,6 +13,8 @@
 
 import { memoryManager } from "../memory/manager";
 import { logger } from "../core/logger";
+import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import { ProcessPriority } from "../core/kernel";
 
 /**
  * Nuke Manager Configuration
@@ -47,6 +49,7 @@ interface NukeScore {
 /**
  * Nuke Manager Class
  */
+@ProcessClass()
 export class NukeManager {
   private config: NukeConfig;
   private lastRun = 0;
@@ -57,36 +60,25 @@ export class NukeManager {
 
   /**
    * Main nuke tick
+   * Registered as kernel process via decorator
    */
+  @LowFrequencyProcess("empire:nuke", "Nuke Manager", {
+    priority: ProcessPriority.LOW,
+    interval: 500,
+    minBucket: 8000,
+    cpuBudget: 0.01
+  })
   public run(): void {
-    // Check if we should run
-    if (!this.shouldRun()) {
-      return;
-    }
-
     this.lastRun = Game.time;
 
-    try {
-      // Load nukers with resources
-      this.loadNukers();
+    // Load nukers with resources
+    this.loadNukers();
 
-      // Evaluate nuke candidates
-      this.evaluateNukeCandidates();
+    // Evaluate nuke candidates
+    this.evaluateNukeCandidates();
 
-      // Launch nukes if appropriate
-      this.launchNukes();
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      logger.error(`Nuke manager error: ${errorMessage}`, { subsystem: "Nuke" });
-    }
-  }
-
-  /**
-   * Check if nuke manager should run this tick
-   */
-  private shouldRun(): boolean {
-    const ticksSinceRun = Game.time - this.lastRun;
-    return ticksSinceRun >= this.config.updateInterval;
+    // Launch nukes if appropriate
+    this.launchNukes();
   }
 
   /**

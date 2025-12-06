@@ -13,6 +13,8 @@
 
 import { memoryManager } from "../memory/manager";
 import { logger } from "../core/logger";
+import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import { ProcessPriority } from "../core/kernel";
 
 /**
  * Market Manager Configuration
@@ -62,6 +64,7 @@ const DEFAULT_CONFIG: MarketConfig = {
 /**
  * Market Manager Class
  */
+@ProcessClass()
 export class MarketManager {
   private config: MarketConfig;
   private lastRun = 0;
@@ -72,45 +75,28 @@ export class MarketManager {
 
   /**
    * Main market tick
+   * Registered as kernel process via decorator
    */
+  @LowFrequencyProcess("empire:market", "Market Manager", {
+    priority: ProcessPriority.LOW,
+    interval: 100,
+    minBucket: 7000,
+    cpuBudget: 0.02
+  })
   public run(): void {
-    // Check if we should run
-    if (!this.shouldRun()) {
-      return;
-    }
-
     this.lastRun = Game.time;
 
-    try {
-      // Cancel old orders
-      this.cancelOldOrders();
+    // Cancel old orders
+    this.cancelOldOrders();
 
-      // Update buy orders
-      this.updateBuyOrders();
+    // Update buy orders
+    this.updateBuyOrders();
 
-      // Update sell orders
-      this.updateSellOrders();
+    // Update sell orders
+    this.updateSellOrders();
 
-      // Execute deals
-      this.executeDeal();
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      logger.error(`Market manager error: ${errorMessage}`, { subsystem: "Market" });
-    }
-  }
-
-  /**
-   * Check if market should run this tick
-   */
-  private shouldRun(): boolean {
-    // Check bucket
-    if (Game.cpu.bucket < this.config.minBucket) {
-      return false;
-    }
-
-    // Check interval
-    const ticksSinceRun = Game.time - this.lastRun;
-    return ticksSinceRun >= this.config.updateInterval;
+    // Execute deals
+    this.executeDeal();
   }
 
   /**

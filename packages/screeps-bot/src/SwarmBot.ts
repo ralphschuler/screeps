@@ -8,6 +8,12 @@
  * - Spawning
  * - Strategic decisions
  *
+ * ARCHITECTURE:
+ * The bot uses a central Kernel for process management:
+ * - Process registration with priority and CPU budget
+ * - CPU bucket-based scheduling
+ * - Lifecycle management (init, run, cleanup)
+ *
  * PERFORMANCE OPTIMIZATIONS:
  * - CPU bucket management with early exit when bucket is low
  * - Priority-based creep execution (critical roles first)
@@ -26,30 +32,16 @@ import { runPowerCreepRole, runPowerRole } from "./roles/power";
 import { runUtilityRole } from "./roles/utility";
 import { clearRoomCaches } from "./roles/behaviors/context";
 import { finalizeMovement, initMovement } from "./utils/movement";
-import { registerAllTasks } from "./core/taskRegistry";
-import { scheduler } from "./core/scheduler";
+import { kernel } from "./core/kernel";
+import { registerAllProcesses } from "./core/processRegistry";
 import { roomVisualizer } from "./visuals/roomVisualizer";
 import { memorySegmentStats } from "./core/memorySegmentStats";
 import { getConfig } from "./config";
 import { configureLogger, LogLevel } from "./core/logger";
 
 // =============================================================================
-// CPU Budget Configuration
+// Role Priority Configuration
 // =============================================================================
-
-/** CPU bucket thresholds */
-const CPU_CONFIG = {
-  /** Below this bucket level, skip non-essential work */
-  CRITICAL_BUCKET: 1000,
-  /** Below this bucket level, reduce workload */
-  LOW_BUCKET: 3000,
-  /** Target CPU usage as fraction of limit */
-  TARGET_USAGE: 0.85,
-  /** Reserved CPU for finalization (movement reconciliation, etc.) */
-  RESERVED_CPU: 5,
-  /** Minimum CPU threshold to prevent underflow in budget calculations */
-  MIN_CPU_THRESHOLD: 1
-};
 
 /** Role priorities - higher values = run first */
 const ROLE_PRIORITY: Record<string, number> = {
@@ -126,36 +118,16 @@ function runCreep(creep: Creep): void {
 }
 
 // =============================================================================
-// CPU Management
+// CPU Management (Delegated to Kernel)
 // =============================================================================
 
 /**
- * Check if we have CPU budget to continue processing.
- * Validates that CPU limit is sufficient before allowing processing.
- */
-function hasCpuBudget(): boolean {
-  const used = Game.cpu.getUsed();
-  const limit = Game.cpu.limit;
-  // Only allow processing if limit is sufficient for reserved CPU and minimum threshold
-  if (limit < CPU_CONFIG.RESERVED_CPU + CPU_CONFIG.MIN_CPU_THRESHOLD) {
-    return false;
-  }
-  const availableCpu = limit - used - CPU_CONFIG.RESERVED_CPU;
-  return availableCpu >= CPU_CONFIG.MIN_CPU_THRESHOLD;
-}
-
-/**
  * Check if we should skip non-essential work due to low bucket
+ * Uses kernel's bucket mode for consistency
  */
 function isLowBucket(): boolean {
-  return Game.cpu.bucket < CPU_CONFIG.LOW_BUCKET;
-}
-
-/**
- * Check if bucket is critically low - skip most work
- */
-function isCriticalBucket(): boolean {
-  return Game.cpu.bucket < CPU_CONFIG.CRITICAL_BUCKET;
+  const mode = kernel.getBucketMode();
+  return mode === "low" || mode === "critical";
 }
 
 /**
@@ -199,6 +171,7 @@ function runSpawns(): void {
 /**
  * Run creeps with CPU budget management.
  * Creeps are sorted by priority so critical roles run first.
+ * Uses kernel for CPU budget checking.
  */
 function runCreepsWithBudget(): void {
   const creeps = getSortedCreeps();
@@ -207,8 +180,8 @@ function runCreepsWithBudget(): void {
   let creepsSkipped = 0;
 
   for (const creep of creeps) {
-    // Check CPU budget before each creep
-    if (!hasCpuBudget()) {
+    // Check CPU budget before each creep using kernel
+    if (!kernel.hasCpuBudget()) {
       creepsSkipped += (creeps.length - creepsRun - creepsSkipped);
       break;
     }
@@ -234,8 +207,8 @@ function runCreepsWithBudget(): void {
 // Main Loop
 // =============================================================================
 
-// Initialize tasks on first tick
-let tasksRegistered = false;
+// Initialize kernel and processes on first tick
+let kernelInitialized = false;
 let systemsInitialized = false;
 
 /**
@@ -283,13 +256,16 @@ export function loop(): void {
     initializeSystems();
   }
 
-  // Register scheduled tasks on first tick
-  if (!tasksRegistered) {
-    registerAllTasks();
-    tasksRegistered = true;
+  // Initialize kernel and register processes on first tick
+  if (!kernelInitialized) {
+    registerAllProcesses();
+    kernel.initialize();
+    kernelInitialized = true;
   }
-  // Critical bucket check - minimal processing
-  if (isCriticalBucket()) {
+
+  // Critical bucket check - use kernel's bucket mode
+  const bucketMode = kernel.getBucketMode();
+  if (bucketMode === "critical") {
     console.log(`[SwarmBot] CRITICAL: CPU bucket at ${Game.cpu.bucket}, minimal processing`);
     // Only run movement finalization to prevent stuck creeps
     initMovement();
@@ -321,9 +297,11 @@ export function loop(): void {
     }
   });
 
-  // Run scheduled tasks (empire, cluster, market, nuke, pheromone managers)
-  if (hasCpuBudget()) {
-    scheduler.run();
+  // Run kernel processes (empire, cluster, market, nuke, pheromone managers)
+  if (kernel.hasCpuBudget()) {
+    profiler.measureSubsystem("kernel", () => {
+      kernel.run();
+    });
   }
 
   // Run spawns (high priority - always runs)
@@ -337,24 +315,14 @@ export function loop(): void {
   });
 
   // Run power creeps (if we have budget)
-  if (hasCpuBudget()) {
+  if (kernel.hasCpuBudget()) {
     profiler.measureSubsystem("powerCreeps", () => {
       runPowerCreeps();
     });
   }
 
-  // Clean up dead creeps (every 50 ticks, low priority)
-  if (Game.time % 50 === 0 && hasCpuBudget()) {
-    memoryManager.cleanDeadCreeps();
-    
-    // Check memory size and warn if near limit
-    if (memoryManager.isMemoryNearLimit()) {
-      console.log(`[SwarmBot] WARNING: Memory usage near limit (${Math.round(memoryManager.getMemorySize() / 1024)}KB / 2048KB)`);
-    }
-  }
-
   // Run visualizations (if enabled and budget allows)
-  if (hasCpuBudget()) {
+  if (kernel.hasCpuBudget()) {
     profiler.measureSubsystem("visualizations", () => {
       runVisualizations();
     });
@@ -372,10 +340,13 @@ export { memoryManager } from "./memory/manager";
 export { roomManager } from "./core/roomNode";
 export { profiler } from "./core/profiler";
 export { logger } from "./core/logger";
+export { kernel } from "./core/kernel";
 export { scheduler } from "./core/scheduler";
+export { coreProcessManager } from "./core/coreProcessManager";
 export { pheromoneManager } from "./logic/pheromone";
 export { evolutionManager, postureManager } from "./logic/evolution";
 export { roomVisualizer } from "./visuals/roomVisualizer";
 export { memorySegmentStats } from "./core/memorySegmentStats";
 export * from "./memory/schemas";
 export * from "./config";
+export * from "./core/processDecorators";

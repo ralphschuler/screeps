@@ -13,6 +13,8 @@
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
 import type { PowerBankEntry } from "../memory/schemas";
+import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import { ProcessPriority } from "../core/kernel";
 
 /**
  * Power bank harvesting configuration
@@ -76,6 +78,7 @@ export interface PowerBankOperation {
 /**
  * Power Bank Harvesting Manager
  */
+@ProcessClass()
 export class PowerBankHarvestingManager {
   private config: PowerBankConfig;
   private operations: Map<string, PowerBankOperation> = new Map();
@@ -87,7 +90,14 @@ export class PowerBankHarvestingManager {
 
   /**
    * Main tick - scan for power banks and manage operations
+   * Registered as kernel process via decorator
    */
+  @LowFrequencyProcess("empire:powerBank", "Power Bank Harvesting", {
+    priority: ProcessPriority.LOW,
+    interval: 50,
+    minBucket: 7000,
+    cpuBudget: 0.02
+  })
   public run(): void {
     // Scan for new power banks every 50 ticks
     if (Game.time - this.lastScan >= 50) {
@@ -99,9 +109,7 @@ export class PowerBankHarvestingManager {
     this.updateOperations();
 
     // Evaluate new opportunities
-    if (Game.cpu.bucket >= this.config.minBucket) {
-      this.evaluateOpportunities();
-    }
+    this.evaluateOpportunities();
 
     // Log status periodically
     if (Game.time % 100 === 0 && this.operations.size > 0) {
