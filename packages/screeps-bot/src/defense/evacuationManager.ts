@@ -12,7 +12,8 @@
 
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
-import type { SwarmState } from "../memory/schemas";
+import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import { ProcessPriority } from "../core/kernel";
 
 /**
  * Evacuation configuration
@@ -75,6 +76,7 @@ export interface EvacuationState {
 /**
  * Evacuation Manager
  */
+@ProcessClass()
 export class EvacuationManager {
   private config: EvacuationConfig;
   private evacuations: Map<string, EvacuationState> = new Map();
@@ -87,7 +89,14 @@ export class EvacuationManager {
 
   /**
    * Main tick - check for evacuation triggers and process active evacuations
+   * Registered as kernel process via decorator
    */
+  @MediumFrequencyProcess("cluster:evacuation", "Evacuation Manager", {
+    priority: ProcessPriority.HIGH,
+    interval: 5,
+    minBucket: 2000,
+    cpuBudget: 0.02
+  })
   public run(): void {
     // Reset transfer counter
     if (Game.time !== this.lastTransferTick) {

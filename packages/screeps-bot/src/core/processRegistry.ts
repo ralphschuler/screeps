@@ -2,13 +2,19 @@
  * Process Registry
  *
  * Centralizes registration of all processes with the kernel.
- * Replaces the previous taskRegistry with kernel-based process management.
+ * Uses process decorators for declarative process definition on manager classes.
  *
- * Processes are organized by subsystem:
- * - Core processes (memory, cleanup)
- * - Room processes (per-room logic)
- * - Empire processes (global coordination)
- * - Cluster processes (multi-room coordination)
+ * Process classes with @ProcessClass() and @Process decorators are:
+ * - EmpireManager (empire:manager)
+ * - ClusterManager (cluster:manager)
+ * - MarketManager (empire:market)
+ * - NukeManager (empire:nuke)
+ * - PowerBankHarvestingManager (empire:powerBank)
+ * - ShardManager (empire:shard)
+ * - EvacuationManager (cluster:evacuation)
+ *
+ * Core processes and utility processes without a dedicated class are
+ * registered manually below.
  *
  * Addresses Issues: #5, #30
  */
@@ -16,10 +22,10 @@
 import {
   kernel,
   ProcessPriority,
-  createHighFrequencyProcess,
   createMediumFrequencyProcess,
   createLowFrequencyProcess
 } from "./kernel";
+import { registerDecoratedProcesses, registerAllDecoratedProcesses } from "./processDecorators";
 import type { SwarmState } from "../memory/schemas";
 import { empireManager } from "../empire/empireManager";
 import { clusterManager } from "../clusters/clusterManager";
@@ -36,14 +42,12 @@ import { globalPathCache } from "../utils/globalPathCache";
 import { logger } from "./logger";
 
 /**
- * Register all core processes with the kernel
+ * Register core processes that don't belong to a dedicated manager class
  */
 export function registerCoreProcesses(): void {
   logger.info("Registering core processes...", { subsystem: "ProcessRegistry" });
 
   // Memory Cleanup - Remove dead creeps
-  // Note: Uses createLowFrequencyProcess as base but overrides interval to 50 ticks
-  // (instead of default 20) since memory cleanup doesn't need to run as frequently
   kernel.registerProcess({
     ...createLowFrequencyProcess(
       "core:memoryCleanup",
@@ -57,13 +61,12 @@ export function registerCoreProcesses(): void {
       },
       ProcessPriority.LOW
     ),
-    interval: 50,     // Override: runs every 50 ticks
-    minBucket: 1000,  // Override: can run even at low bucket
-    cpuBudget: 0.01   // Override: very low CPU budget
+    interval: 50,
+    minBucket: 1000,
+    cpuBudget: 0.01
   });
 
   // Memory Size Check - Monitor usage
-  // Note: Runs every 100 ticks to monitor memory usage and warn if near limit
   kernel.registerProcess({
     ...createLowFrequencyProcess(
       "core:memorySizeCheck",
@@ -90,7 +93,7 @@ export function registerCoreProcesses(): void {
     cpuBudget: 0.005
   });
 
-  // Memory Segment Stats - Update stats (every 10 ticks)
+  // Memory Segment Stats - Update stats
   kernel.registerProcess({
     ...createMediumFrequencyProcess(
       "core:memorySegmentStats",
@@ -103,103 +106,7 @@ export function registerCoreProcesses(): void {
     cpuBudget: 0.01
   });
 
-  logger.debug("Core processes registered", { subsystem: "ProcessRegistry" });
-}
-
-/**
- * Register all empire processes with the kernel
- */
-export function registerEmpireProcesses(): void {
-  logger.info("Registering empire processes...", { subsystem: "ProcessRegistry" });
-
-  // Empire Manager - Global strategic coordination (every 30 ticks)
-  kernel.registerProcess({
-    ...createLowFrequencyProcess(
-      "empire:manager",
-      "Empire Manager",
-      () => empireManager.run(),
-      ProcessPriority.MEDIUM
-    ),
-    interval: 30,
-    minBucket: 5000,
-    cpuBudget: 0.05
-  });
-
-  // Market Manager - Trading automation (every 100 ticks)
-  kernel.registerProcess({
-    ...createLowFrequencyProcess(
-      "empire:market",
-      "Market Manager",
-      () => marketManager.run(),
-      ProcessPriority.LOW
-    ),
-    interval: 100,
-    minBucket: 7000,
-    cpuBudget: 0.02
-  });
-
-  // Nuke Manager - Nuclear warfare (every 500 ticks)
-  kernel.registerProcess({
-    ...createLowFrequencyProcess(
-      "empire:nuke",
-      "Nuke Manager",
-      () => nukeManager.run(),
-      ProcessPriority.LOW
-    ),
-    interval: 500,
-    minBucket: 8000,
-    cpuBudget: 0.01
-  });
-
-  // Shard Manager - Multi-shard coordination (every 100 ticks)
-  kernel.registerProcess({
-    ...createLowFrequencyProcess(
-      "empire:shard",
-      "Shard Manager",
-      () => shardManager.run(),
-      ProcessPriority.LOW
-    ),
-    interval: 100,
-    minBucket: 5000,
-    cpuBudget: 0.02
-  });
-
-  // Power Bank Harvesting Manager (every 50 ticks)
-  kernel.registerProcess({
-    ...createLowFrequencyProcess(
-      "empire:powerBank",
-      "Power Bank Harvesting",
-      () => powerBankHarvestingManager.run(),
-      ProcessPriority.LOW
-    ),
-    interval: 50,
-    minBucket: 7000,
-    cpuBudget: 0.02
-  });
-
-  logger.debug("Empire processes registered", { subsystem: "ProcessRegistry" });
-}
-
-/**
- * Register all cluster processes with the kernel
- */
-export function registerClusterProcesses(): void {
-  logger.info("Registering cluster processes...", { subsystem: "ProcessRegistry" });
-
-  // Cluster Manager - Multi-room coordination (every 10 ticks)
-  kernel.registerProcess({
-    ...createMediumFrequencyProcess(
-      "cluster:manager",
-      "Cluster Manager",
-      () => clusterManager.run(),
-      ProcessPriority.MEDIUM
-    ),
-    interval: 10,
-    minBucket: 3000,
-    cpuBudget: 0.03
-  });
-
-  // Pheromone Diffusion - Inter-room communication (every 10 ticks)
+  // Pheromone Diffusion - Inter-room communication
   kernel.registerProcess({
     ...createMediumFrequencyProcess(
       "cluster:pheromoneDiffusion",
@@ -222,29 +129,7 @@ export function registerClusterProcesses(): void {
     cpuBudget: 0.02
   });
 
-  // Evacuation Manager - Room evacuation (every 5 ticks)
-  kernel.registerProcess({
-    ...createMediumFrequencyProcess(
-      "cluster:evacuation",
-      "Evacuation Manager",
-      () => evacuationManager.run(),
-      ProcessPriority.HIGH
-    ),
-    interval: 5,
-    minBucket: 2000,
-    cpuBudget: 0.02
-  });
-
-  logger.debug("Cluster processes registered", { subsystem: "ProcessRegistry" });
-}
-
-/**
- * Register all room processes with the kernel
- */
-export function registerRoomProcesses(): void {
-  logger.info("Registering room processes...", { subsystem: "ProcessRegistry" });
-
-  // Lab Config Manager - Initialize lab configurations (every 200 ticks)
+  // Lab Config Manager - Initialize lab configurations
   kernel.registerProcess({
     ...createLowFrequencyProcess(
       "room:labConfig",
@@ -262,7 +147,7 @@ export function registerRoomProcesses(): void {
     cpuBudget: 0.01
   });
 
-  // Path Cache Precaching - Pre-cache room paths (every 1000 ticks)
+  // Path Cache Precaching - Pre-cache room paths
   kernel.registerProcess({
     ...createLowFrequencyProcess(
       "room:pathCachePrecache",
@@ -280,7 +165,27 @@ export function registerRoomProcesses(): void {
     cpuBudget: 0.03
   });
 
-  logger.debug("Room processes registered", { subsystem: "ProcessRegistry" });
+  logger.debug("Core processes registered", { subsystem: "ProcessRegistry" });
+}
+
+/**
+ * Register all decorator-based manager processes
+ */
+export function registerDecoratorProcesses(): void {
+  logger.info("Registering decorator-based processes...", { subsystem: "ProcessRegistry" });
+
+  // Register all manager instances with their decorated methods
+  registerAllDecoratedProcesses(
+    empireManager,
+    clusterManager,
+    marketManager,
+    nukeManager,
+    powerBankHarvestingManager,
+    shardManager,
+    evacuationManager
+  );
+
+  logger.debug("Decorator-based processes registered", { subsystem: "ProcessRegistry" });
 }
 
 /**
@@ -289,10 +194,11 @@ export function registerRoomProcesses(): void {
 export function registerAllProcesses(): void {
   logger.info("Registering all processes with kernel...", { subsystem: "ProcessRegistry" });
 
+  // Register core processes (without dedicated manager classes)
   registerCoreProcesses();
-  registerEmpireProcesses();
-  registerClusterProcesses();
-  registerRoomProcesses();
+
+  // Register decorator-based manager processes
+  registerDecoratorProcesses();
 
   logger.info(`Registered ${kernel.getProcesses().length} processes with kernel`, {
     subsystem: "ProcessRegistry"

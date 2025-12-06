@@ -15,6 +15,8 @@ import type { ClusterMemory, SquadDefinition } from "../memory/schemas";
 import { memoryManager } from "../memory/manager";
 import { logger } from "../core/logger";
 import { profiler } from "../core/profiler";
+import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import { ProcessPriority } from "../core/kernel";
 
 /**
  * Cluster Manager Configuration
@@ -40,6 +42,7 @@ const DEFAULT_CONFIG: ClusterConfig = {
 /**
  * Cluster Manager Class
  */
+@ProcessClass()
 export class ClusterManager {
   private config: ClusterConfig;
   private lastRun: Map<string, number> = new Map();
@@ -50,13 +53,15 @@ export class ClusterManager {
 
   /**
    * Run all clusters
+   * Registered as kernel process via decorator
    */
+  @MediumFrequencyProcess("cluster:manager", "Cluster Manager", {
+    priority: ProcessPriority.MEDIUM,
+    interval: 10,
+    minBucket: 3000,
+    cpuBudget: 0.03
+  })
   public run(): void {
-    // Check bucket
-    if (Game.cpu.bucket < this.config.minBucket) {
-      return;
-    }
-
     const clusters = memoryManager.getClusters();
 
     for (const clusterId in clusters) {

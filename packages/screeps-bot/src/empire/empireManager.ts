@@ -14,10 +14,12 @@
  * Addresses Issues: #6, #20, #36
  */
 
-import type { ExpansionCandidate, OvermindMemory, PowerBankEntry, RoomIntel } from "../memory/schemas";
+import type { ExpansionCandidate, OvermindMemory, RoomIntel } from "../memory/schemas";
 import { memoryManager } from "../memory/manager";
 import { logger } from "../core/logger";
 import { profiler } from "../core/profiler";
+import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import { ProcessPriority } from "../core/kernel";
 
 /**
  * Empire Manager Configuration
@@ -49,6 +51,7 @@ const DEFAULT_CONFIG: EmpireConfig = {
 /**
  * Empire Manager Class
  */
+@ProcessClass()
 export class EmpireManager {
   private config: EmpireConfig;
   private lastRun = 0;
@@ -59,71 +62,44 @@ export class EmpireManager {
 
   /**
    * Main empire tick - runs periodically
+   * Registered as kernel process via decorator
    */
+  @LowFrequencyProcess("empire:manager", "Empire Manager", {
+    priority: ProcessPriority.MEDIUM,
+    interval: 30,
+    minBucket: 5000,
+    cpuBudget: 0.05
+  })
   public run(): void {
-    // Check if we should run this tick
-    if (!this.shouldRun()) {
-      return;
-    }
-
     const cpuStart = Game.cpu.getUsed();
     const overmind = memoryManager.getOvermind();
 
-    try {
-      // Update last run time
-      this.lastRun = Game.time;
-      overmind.lastRun = Game.time;
+    // Update last run time
+    this.lastRun = Game.time;
+    overmind.lastRun = Game.time;
 
-      // Run empire subsystems
-      profiler.measureSubsystem("empire:expansion", () => {
-        this.updateExpansionQueue(overmind);
-      });
+    // Run empire subsystems
+    profiler.measureSubsystem("empire:expansion", () => {
+      this.updateExpansionQueue(overmind);
+    });
 
-      profiler.measureSubsystem("empire:powerBanks", () => {
-        this.updatePowerBanks(overmind);
-      });
+    profiler.measureSubsystem("empire:powerBanks", () => {
+      this.updatePowerBanks(overmind);
+    });
 
-      profiler.measureSubsystem("empire:warTargets", () => {
-        this.updateWarTargets(overmind);
-      });
+    profiler.measureSubsystem("empire:warTargets", () => {
+      this.updateWarTargets(overmind);
+    });
 
-      profiler.measureSubsystem("empire:objectives", () => {
-        this.updateObjectives(overmind);
-      });
+    profiler.measureSubsystem("empire:objectives", () => {
+      this.updateObjectives(overmind);
+    });
 
-      // Log CPU usage
-      const cpuUsed = Game.cpu.getUsed() - cpuStart;
-      if (Game.time % 100 === 0) {
-        logger.info(`Empire tick completed in ${cpuUsed.toFixed(2)} CPU`, { subsystem: "Empire" });
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      logger.error(`Empire manager error: ${errorMessage}`, { subsystem: "Empire" });
+    // Log CPU usage
+    const cpuUsed = Game.cpu.getUsed() - cpuStart;
+    if (Game.time % 100 === 0) {
+      logger.info(`Empire tick completed in ${cpuUsed.toFixed(2)} CPU`, { subsystem: "Empire" });
     }
-  }
-
-  /**
-   * Check if empire should run this tick
-   */
-  private shouldRun(): boolean {
-    // Check bucket
-    if (Game.cpu.bucket < this.config.minBucket) {
-      return false;
-    }
-
-    // Check interval
-    const ticksSinceRun = Game.time - this.lastRun;
-    if (ticksSinceRun < this.config.updateInterval) {
-      return false;
-    }
-
-    // Check CPU budget
-    const cpuUsed = Game.cpu.getUsed();
-    const cpuLimit = Game.cpu.limit;
-    const availableCpu = cpuLimit - cpuUsed;
-    const budgetCpu = cpuLimit * this.config.maxCpuBudget;
-
-    return availableCpu >= budgetCpu;
   }
 
   /**

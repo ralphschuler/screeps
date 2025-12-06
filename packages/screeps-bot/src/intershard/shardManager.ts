@@ -26,6 +26,8 @@ import {
   INTERSHARD_MEMORY_LIMIT
 } from "./schema";
 import { logger } from "../core/logger";
+import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import { ProcessPriority } from "../core/kernel";
 
 /**
  * Shard Manager Configuration
@@ -62,6 +64,7 @@ const ROLE_CPU_WEIGHTS: Record<ShardRole, number> = {
 /**
  * Shard Manager Class
  */
+@ProcessClass()
 export class ShardManager {
   private config: ShardManagerConfig;
   private lastRun = 0;
@@ -99,55 +102,41 @@ export class ShardManager {
 
   /**
    * Main shard tick - runs periodically
+   * Registered as kernel process via decorator
    */
+  @LowFrequencyProcess("empire:shard", "Shard Manager", {
+    priority: ProcessPriority.LOW,
+    interval: 100,
+    minBucket: 5000,
+    cpuBudget: 0.02
+  })
   public run(): void {
-    if (!this.shouldRun()) {
-      return;
-    }
-
     this.lastRun = Game.time;
 
-    try {
-      // Update current shard health
-      this.updateCurrentShardHealth();
+    // Update current shard health
+    this.updateCurrentShardHealth();
 
-      // Check and process inter-shard tasks
-      this.processInterShardTasks();
+    // Check and process inter-shard tasks
+    this.processInterShardTasks();
 
-      // Scan for portals
-      this.scanForPortals();
+    // Scan for portals
+    this.scanForPortals();
 
-      // Auto-assign shard role if needed
-      this.autoAssignShardRole();
+    // Auto-assign shard role if needed
+    this.autoAssignShardRole();
 
-      // Distribute CPU limits if on multi-shard
-      if (Object.keys(this.interShardMemory.shards).length > 1) {
-        this.distributeCpuLimits();
-      }
-
-      // Sync with other shards
-      this.syncInterShardMemory();
-
-      // Log status periodically
-      if (Game.time % 500 === 0) {
-        this.logShardStatus();
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      logger.error(`Shard manager error: ${errorMessage}`, { subsystem: "Shard" });
-    }
-  }
-
-  /**
-   * Check if shard manager should run this tick
-   */
-  private shouldRun(): boolean {
-    if (Game.cpu.bucket < this.config.minBucket) {
-      return false;
+    // Distribute CPU limits if on multi-shard
+    if (Object.keys(this.interShardMemory.shards).length > 1) {
+      this.distributeCpuLimits();
     }
 
-    const ticksSinceRun = Game.time - this.lastRun;
-    return ticksSinceRun >= this.config.updateInterval;
+    // Sync with other shards
+    this.syncInterShardMemory();
+
+    // Log status periodically
+    if (Game.time % 500 === 0) {
+      this.logShardStatus();
+    }
   }
 
   /**
