@@ -829,7 +829,7 @@ function findPositionAwayFromSpawn(creep: Creep | PowerCreep, range: number): Ro
       s =>
         s.structureType !== STRUCTURE_ROAD &&
         s.structureType !== STRUCTURE_CONTAINER &&
-        (s.structureType !== STRUCTURE_RAMPART || !(s as OwnedStructure).my)
+        !(s.structureType === STRUCTURE_RAMPART && (s as StructureRampart).my)
     );
     if (blocked) continue;
 
@@ -859,7 +859,7 @@ function findPositionAwayFromSpawn(creep: Creep | PowerCreep, range: number): Ro
  *
  * @param creep - The creep or power creep to move
  * @param range - Range from spawn to consider as "blocking" (default 1)
- * @param opts - Optional movement options
+ * @param opts - Optional movement options (only priority is used)
  * @returns true if the creep was near a spawn and a move was issued, false otherwise
  */
 export function moveAwayFromSpawn(creep: Creep | PowerCreep, range = 1, opts?: MoveOpts): boolean {
@@ -880,7 +880,8 @@ export function moveAwayFromSpawn(creep: Creep | PowerCreep, range = 1, opts?: M
   }
 
   // Move to the target position
-  const priority = opts?.priority ?? 1; // Normal priority for idle movement
+  // Use priority 2 to match moveOffRoomExit - clearing blockades is important
+  const priority = opts?.priority ?? 2;
   const roomName = creep.pos.roomName;
 
   // Register movement intent for traffic management
