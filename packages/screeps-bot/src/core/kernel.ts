@@ -100,6 +100,18 @@ export interface KernelConfig {
   enableStats: boolean;
   /** Log interval for stats (ticks) */
   statsLogInterval: number;
+  /**
+   * Whether pixel generation is enabled.
+   * When true, bucket thresholds account for the bucket being emptied
+   * when pixels are generated (bucket goes from 10000 to 0).
+   */
+  pixelGenerationEnabled: boolean;
+  /**
+   * Number of ticks after pixel generation during which low bucket is expected.
+   * Based on typical CPU limit and usage, bucket refills at ~(limit - usage) per tick.
+   * Default assumes it takes ~100 ticks to reach a stable bucket level.
+   */
+  pixelRecoveryTicks: number;
 }
 
 /**
@@ -114,7 +126,9 @@ const DEFAULT_CONFIG: KernelConfig = {
   targetCpuUsage: 0.85,
   reservedCpu: 5,
   enableStats: true,
-  statsLogInterval: 100
+  statsLogInterval: 100,
+  pixelGenerationEnabled: true,
+  pixelRecoveryTicks: 100
 };
 
 /**
@@ -144,6 +158,8 @@ export class Kernel {
   private bucketMode: BucketMode = "normal";
   private tickCpuUsed = 0;
   private initialized = false;
+  /** Tick when a pixel was last generated (0 if none tracked) */
+  private lastPixelGenerationTick = 0;
 
   public constructor(config: Partial<KernelConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -225,15 +241,22 @@ export class Kernel {
   }
 
   /**
-   * Determine current bucket mode
+   * Determine current bucket mode.
+   * When pixel generation is enabled, accounts for the recovery period
+   * after a pixel is generated (bucket drops from 10000 to 0).
    */
   private updateBucketMode(): void {
     const bucket = Game.cpu.bucket;
     let newMode: BucketMode;
 
-    if (bucket < this.config.criticalBucketThreshold) {
+    // Check if we're in the pixel recovery period
+    const inPixelRecovery = this.isInPixelRecoveryPeriod();
+
+    if (bucket < this.config.criticalBucketThreshold && !inPixelRecovery) {
+      // Only enter critical mode if we're NOT recovering from pixel generation
       newMode = "critical";
-    } else if (bucket < this.config.lowBucketThreshold) {
+    } else if (bucket < this.config.lowBucketThreshold && !inPixelRecovery) {
+      // Only enter low mode if we're NOT recovering from pixel generation
       newMode = "low";
     } else if (bucket > this.config.highBucketThreshold) {
       newMode = "high";
@@ -242,11 +265,43 @@ export class Kernel {
     }
 
     if (newMode !== this.bucketMode) {
-      logger.info(`Kernel: Bucket mode changed from ${this.bucketMode} to ${newMode} (bucket: ${bucket})`, {
+      logger.info(`Kernel: Bucket mode changed from ${this.bucketMode} to ${newMode} (bucket: ${bucket}${inPixelRecovery ? ", recovering from pixel" : ""})`, {
         subsystem: "Kernel"
       });
       this.bucketMode = newMode;
     }
+  }
+
+  /**
+   * Check if we're in the recovery period after pixel generation.
+   * During this period, low bucket is expected and shouldn't trigger
+   * conservation modes.
+   */
+  private isInPixelRecoveryPeriod(): boolean {
+    if (!this.config.pixelGenerationEnabled) {
+      return false;
+    }
+    
+    // If no pixel generation tracked yet, check if bucket is very low
+    // which might indicate a recent pixel generation before we started tracking
+    if (this.lastPixelGenerationTick === 0) {
+      // On first tick or when tracking wasn't active, 
+      // assume recovery if bucket is low but we have pixel generation enabled
+      return Game.cpu.bucket < this.config.lowBucketThreshold;
+    }
+    
+    const ticksSincePixel = Game.time - this.lastPixelGenerationTick;
+    return ticksSincePixel < this.config.pixelRecoveryTicks;
+  }
+
+  /**
+   * Notify the kernel that a pixel was generated.
+   * This helps the kernel understand that low bucket is expected
+   * and shouldn't trigger conservation modes.
+   */
+  public notifyPixelGenerated(): void {
+    this.lastPixelGenerationTick = Game.time;
+    logger.debug(`Kernel: Pixel generated at tick ${Game.time}, recovery period started`, { subsystem: "Kernel" });
   }
 
   /**

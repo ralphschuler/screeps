@@ -6,9 +6,14 @@
  * - Medium-frequency tasks (every 5-10 ticks)
  * - Low-frequency tasks (every 20-50 ticks)
  * - Bucket modes (normal, low, high)
+ *
+ * NOTE: The kernel is the primary source of truth for bucket modes.
+ * The scheduler delegates to kernel for bucket mode decisions to ensure
+ * consistent behavior, especially during pixel generation recovery periods.
  */
 
 import { logger } from "./logger";
+import { kernel } from "./kernel";
 
 /**
  * Bucket mode enum
@@ -100,15 +105,20 @@ export class Scheduler {
   }
 
   /**
-   * Determine current bucket mode
+   * Determine current bucket mode.
+   * Delegates to the kernel for consistent bucket mode decisions,
+   * especially during pixel generation recovery periods.
    */
   public getBucketMode(): BucketMode {
-    const bucket = Game.cpu.bucket;
-
-    if (bucket < this.config.lowBucketThreshold) {
+    // Delegate to kernel for consistent bucket mode decisions
+    const kernelMode = kernel.getBucketMode();
+    
+    // Map kernel's BucketMode to scheduler's BucketMode
+    // Kernel has "critical" which scheduler treats as "low"
+    if (kernelMode === "critical" || kernelMode === "low") {
       return "low";
     }
-    if (bucket > this.config.highBucketThreshold) {
+    if (kernelMode === "high") {
       return "high";
     }
     return "normal";
