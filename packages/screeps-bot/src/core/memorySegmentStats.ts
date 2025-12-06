@@ -108,6 +108,8 @@ export interface GlobalStats {
   gclLevel: number;
   /** GCL progress */
   gclProgress: number;
+  /** GCL progress total */
+  gclProgressTotal: number;
   /** GPL level */
   gplLevel: number;
   /** Total creeps */
@@ -263,7 +265,7 @@ export class MemorySegmentStats {
     // GCL/GPL metrics - raw values only
     statsRoot["gcl.level"] = stats.gclLevel;
     statsRoot["gcl.progress"] = stats.gclProgress;
-    statsRoot["gcl.progress_total"] = 1; // Progress is already normalized (0-1)
+    statsRoot["gcl.progress_total"] = stats.gclProgressTotal;
     statsRoot["gpl.level"] = stats.gplLevel;
 
     // Empire metrics - raw values only
@@ -333,7 +335,8 @@ export class MemorySegmentStats {
       cpuLimit: Game.cpu.limit,
       cpuBucket: Game.cpu.bucket,
       gclLevel: Game.gcl.level,
-      gclProgress: Game.gcl.progress / Game.gcl.progressTotal,
+      gclProgress: Game.gcl.progress,
+      gclProgressTotal: Game.gcl.progressTotal,
       gplLevel: Game.gpl?.level ?? 0,
       totalCreeps: Object.keys(Game.creeps).length,
       totalRooms: ownedRooms.length,
@@ -498,19 +501,19 @@ export class MemorySegmentStats {
     const stats = this.getLatestStats();
     if (!stats) return "{}";
 
-    // Format for Grafana/Prometheus
+    // Format for Grafana/Prometheus - raw values only
     const output: Record<string, unknown> = {
       timestamp: new Date().toISOString(),
       tick: stats.tick,
       cpu: {
         used: stats.cpuUsed,
         limit: stats.cpuLimit,
-        bucket: stats.cpuBucket,
-        percentUsed: (stats.cpuUsed / stats.cpuLimit) * 100
+        bucket: stats.cpuBucket
       },
       gcl: {
         level: stats.gclLevel,
-        progress: stats.gclProgress
+        progress: stats.gclProgress,
+        progressTotal: stats.gclProgressTotal
       },
       gpl: {
         level: stats.gplLevel
@@ -530,7 +533,8 @@ export class MemorySegmentStats {
         storageEnergy: room.storageEnergy,
         terminalEnergy: room.terminalEnergy,
         creepCount: room.creepCount,
-        controllerProgress: room.controllerProgress / room.controllerProgressTotal
+        controllerProgress: room.controllerProgress,
+        controllerProgressTotal: room.controllerProgressTotal
       };
     }
 
