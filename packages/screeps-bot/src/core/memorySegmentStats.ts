@@ -38,23 +38,7 @@ const DEFAULT_CONFIG: StatsConfig = {
   maxDataPoints: 1000
 };
 
-const POSTURE_CODES: Record<RoomPosture, number> = {
-  eco: 0,
-  expand: 1,
-  defensive: 2,
-  war: 3,
-  siege: 4,
-  evacuate: 5,
-  nukePrep: 6
-};
 
-const COLONY_LEVEL_CODES: Record<EvolutionStage, number> = {
-  seedNest: 1,
-  foragingExpansion: 2,
-  matureColony: 3,
-  fortifiedHive: 4,
-  empireDominance: 5
-};
 
 /**
  * Single metric data point
@@ -124,6 +108,8 @@ export interface GlobalStats {
   gclLevel: number;
   /** GCL progress */
   gclProgress: number;
+  /** GCL progress total */
+  gclProgressTotal: number;
   /** GPL level */
   gplLevel: number;
   /** Total creeps */
@@ -260,6 +246,8 @@ export class MemorySegmentStats {
   /**
    * Publish stats to Memory.stats for the Influx exporter.
    * Uses a flat key structure with dot-separated names for easy ingestion.
+   * All preprocessing and aggregation is now handled by the exporter.
+   * Only numeric values are published as the exporter expects time-series data.
    */
   private publishStatsToMemory(stats: GlobalStats): void {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -269,36 +257,24 @@ export class MemorySegmentStats {
     }
     const statsRoot = mem.stats;
 
-    // Remove deprecated keys to keep naming consistent
-    delete (statsRoot as Record<string, number | undefined>).tick;
-    delete (statsRoot as Record<string, number | undefined>).timestamp;
-
-    // Global CPU metrics
+    // Global CPU metrics - raw values only
     statsRoot["cpu.used"] = stats.cpuUsed;
     statsRoot["cpu.limit"] = stats.cpuLimit;
     statsRoot["cpu.bucket"] = stats.cpuBucket;
-    statsRoot["cpu.percent"] = (stats.cpuUsed / stats.cpuLimit) * 100;
 
-    // GCL/GPL metrics
+    // GCL/GPL metrics - raw values only
     statsRoot["gcl.level"] = stats.gclLevel;
     statsRoot["gcl.progress"] = stats.gclProgress;
+    statsRoot["gcl.progress_total"] = stats.gclProgressTotal;
     statsRoot["gpl.level"] = stats.gplLevel;
 
-    // Empire metrics
+    // Empire metrics - raw values only
     statsRoot["empire.creeps"] = stats.totalCreeps;
     statsRoot["empire.rooms"] = stats.totalRooms;
 
-    // Per-room metrics
-    let totalStorageEnergy = 0;
-    let totalTerminalEnergy = 0;
-    let totalEnergyAvailable = 0;
-    let totalEnergyCapacity = 0;
-
+    // Per-room metrics - raw values only
     for (const room of stats.rooms) {
       const roomPrefix = `room.${room.roomName}`;
-
-      delete (statsRoot as Record<string, number | undefined>)[`${roomPrefix}.controller.progressPercent`];
-      delete (statsRoot as Record<string, number | undefined>)[`${roomPrefix}.controller.progressTotal`];
 
       statsRoot[`${roomPrefix}.rcl`] = room.rcl;
       statsRoot[`${roomPrefix}.energy.available`] = room.energyAvailable;
@@ -308,18 +284,12 @@ export class MemorySegmentStats {
       statsRoot[`${roomPrefix}.creeps`] = room.creepCount;
       statsRoot[`${roomPrefix}.controller.progress`] = room.controllerProgress;
       statsRoot[`${roomPrefix}.controller.progress_total`] = room.controllerProgressTotal;
-      statsRoot[`${roomPrefix}.controller.progress_percent`] =
-        room.controllerProgressTotal > 0
-          ? (room.controllerProgress / room.controllerProgressTotal) * 100
-          : 0;
 
       const swarm = memoryManager.getSwarmState(room.roomName);
       if (swarm) {
         statsRoot[`${roomPrefix}.brain.danger`] = swarm.danger;
-        statsRoot[`${roomPrefix}.brain.posture_code`] = POSTURE_CODES[swarm.posture];
-        statsRoot[`${roomPrefix}.brain.colony_level_code`] = COLONY_LEVEL_CODES[swarm.colonyLevel];
 
-        for (const [pheromone, value] of Object.entries(swarm.pheromones )) {
+        for (const [pheromone, value] of Object.entries(swarm.pheromones)) {
           statsRoot[`${roomPrefix}.pheromone.${pheromone}`] = value;
         }
 
@@ -334,20 +304,9 @@ export class MemorySegmentStats {
         statsRoot[`${roomPrefix}.metrics.damage_received`] = metrics.damageReceived;
         statsRoot[`${roomPrefix}.metrics.construction_sites`] = metrics.constructionSites;
       }
-
-      totalStorageEnergy += room.storageEnergy;
-      totalTerminalEnergy += room.terminalEnergy;
-      totalEnergyAvailable += room.energyAvailable;
-      totalEnergyCapacity += room.energyCapacity;
     }
 
-    // Aggregated empire energy metrics
-    statsRoot["empire.energy.storage"] = totalStorageEnergy;
-    statsRoot["empire.energy.terminal"] = totalTerminalEnergy;
-    statsRoot["empire.energy.available"] = totalEnergyAvailable;
-    statsRoot["empire.energy.capacity"] = totalEnergyCapacity;
-
-    // Tick info
+    // System tick info
     statsRoot["system.tick"] = stats.tick;
     statsRoot["system.timestamp"] = Date.now();
   }
@@ -376,7 +335,8 @@ export class MemorySegmentStats {
       cpuLimit: Game.cpu.limit,
       cpuBucket: Game.cpu.bucket,
       gclLevel: Game.gcl.level,
-      gclProgress: Game.gcl.progress / Game.gcl.progressTotal,
+      gclProgress: Game.gcl.progress,
+      gclProgressTotal: Game.gcl.progressTotal,
       gplLevel: Game.gpl?.level ?? 0,
       totalCreeps: Object.keys(Game.creeps).length,
       totalRooms: ownedRooms.length,
@@ -541,19 +501,19 @@ export class MemorySegmentStats {
     const stats = this.getLatestStats();
     if (!stats) return "{}";
 
-    // Format for Grafana/Prometheus
+    // Format for Grafana/Prometheus - raw values only
     const output: Record<string, unknown> = {
       timestamp: new Date().toISOString(),
       tick: stats.tick,
       cpu: {
         used: stats.cpuUsed,
         limit: stats.cpuLimit,
-        bucket: stats.cpuBucket,
-        percentUsed: (stats.cpuUsed / stats.cpuLimit) * 100
+        bucket: stats.cpuBucket
       },
       gcl: {
         level: stats.gclLevel,
-        progress: stats.gclProgress
+        progress: stats.gclProgress,
+        progressTotal: stats.gclProgressTotal
       },
       gpl: {
         level: stats.gplLevel
@@ -573,7 +533,8 @@ export class MemorySegmentStats {
         storageEnergy: room.storageEnergy,
         terminalEnergy: room.terminalEnergy,
         creepCount: room.creepCount,
-        controllerProgress: room.controllerProgress / room.controllerProgressTotal
+        controllerProgress: room.controllerProgress,
+        controllerProgressTotal: room.controllerProgressTotal
       };
     }
 
