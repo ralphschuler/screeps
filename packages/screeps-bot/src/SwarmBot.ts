@@ -38,7 +38,7 @@ import { registerAllProcesses } from "./core/processRegistry";
 import { roomVisualizer } from "./visuals/roomVisualizer";
 import { memorySegmentStats } from "./core/memorySegmentStats";
 import { getConfig } from "./config";
-import { configureLogger, LogLevel } from "./core/logger";
+import { LogLevel, configureLogger } from "./core/logger";
 
 // =============================================================================
 // Role Priority Configuration
@@ -358,7 +358,9 @@ export { pheromoneManager } from "./logic/pheromone";
 export { evolutionManager, postureManager } from "./logic/evolution";
 export { roomVisualizer } from "./visuals/roomVisualizer";
 export { memorySegmentStats } from "./core/memorySegmentStats";
+export { eventBus } from "./core/events";
 export * from "./memory/schemas";
 export * from "./config";
 export * from "./core/processDecorators";
 export * from "./core/commandRegistry";
+export * from "./core/events";
