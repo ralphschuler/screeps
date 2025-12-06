@@ -157,15 +157,21 @@ export class PheromoneManager {
   }
 
   /**
-   * Update metrics from a room
+   * Update metrics from a room.
+   * Uses optimized iteration patterns for better CPU efficiency.
    */
   public updateMetrics(room: Room, swarm: SwarmState): void {
     const tracker = this.getTracker(room.name);
 
     // Energy harvested (approximation from source depletion)
+    // Use a single loop instead of two reduce calls for efficiency
     const sources = room.find(FIND_SOURCES);
-    const totalSourceCapacity = sources.reduce((sum, s) => sum + s.energyCapacity, 0);
-    const totalSourceEnergy = sources.reduce((sum, s) => sum + s.energy, 0);
+    let totalSourceCapacity = 0;
+    let totalSourceEnergy = 0;
+    for (const source of sources) {
+      totalSourceCapacity += source.energyCapacity;
+      totalSourceEnergy += source.energy;
+    }
     const harvested = totalSourceCapacity - totalSourceEnergy;
     tracker.energyHarvested.add(harvested);
 
@@ -178,16 +184,23 @@ export class PheromoneManager {
       tracker.lastControllerProgress = room.controller.progress;
     }
 
-    // Hostile count - use safeFind to handle engine errors with corrupted owner data
+    // Hostile count and damage - use safeFind to handle engine errors with corrupted owner data
+    // Calculate damage in a single loop instead of multiple filter calls
     const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
     tracker.hostileCount.add(hostiles.length);
 
-    // Potential damage from hostiles
     let potentialDamage = 0;
     for (const hostile of hostiles) {
-      const attackParts = hostile.body.filter(p => p.type === ATTACK && p.hits > 0).length;
-      const rangedParts = hostile.body.filter(p => p.type === RANGED_ATTACK && p.hits > 0).length;
-      potentialDamage += attackParts * 30 + rangedParts * 10;
+      // Iterate body parts once, counting both attack types in the same loop
+      for (const part of hostile.body) {
+        if (part.hits > 0) {
+          if (part.type === ATTACK) {
+            potentialDamage += 30;
+          } else if (part.type === RANGED_ATTACK) {
+            potentialDamage += 10;
+          }
+        }
+      }
     }
     tracker.damageReceived.add(potentialDamage);
 

@@ -121,7 +121,8 @@ export class RoomNode {
   }
 
   /**
-   * Update threat assessment
+   * Update threat assessment.
+   * Uses optimized iteration for better CPU efficiency.
    */
   private updateThreatAssessment(room: Room, swarm: SwarmState): void {
     // Use safeFind to handle engine errors with corrupted owner data
@@ -130,12 +131,18 @@ export class RoomNode {
       filter: s => s.structureType !== STRUCTURE_CONTROLLER
     });
 
-    // Calculate potential damage
+    // Calculate potential damage with efficient single-loop iteration
     let potentialDamage = 0;
     for (const hostile of hostiles) {
-      const attackParts = hostile.body.filter(p => p.type === ATTACK && p.hits > 0).length;
-      const rangedParts = hostile.body.filter(p => p.type === RANGED_ATTACK && p.hits > 0).length;
-      potentialDamage += attackParts * 30 + rangedParts * 10;
+      for (const part of hostile.body) {
+        if (part.hits > 0) {
+          if (part.type === ATTACK) {
+            potentialDamage += 30;
+          } else if (part.type === RANGED_ATTACK) {
+            potentialDamage += 10;
+          }
+        }
+      }
     }
 
     const newDanger = calculateDangerLevel(hostiles.length, potentialDamage, enemyStructures.length > 0);
