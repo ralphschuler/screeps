@@ -229,16 +229,19 @@ class CommandRegistry {
 
   /**
    * Expose all registered commands to the global scope
+   * This allows commands to be called directly from the Screeps console
    */
   public exposeToGlobal(): void {
-    // Cast global to unknown first, then to Record to satisfy TypeScript
+    // TypeScript's global type doesn't have an index signature, so we cast
+    // through unknown to Record<string, unknown> to allow dynamic property assignment.
+    // This is safe because we're only adding command handler functions.
     const g = global as unknown as Record<string, unknown>;
 
     for (const [name, command] of this.commands) {
       g[name] = command.handler;
     }
 
-    // Add the help command
+    // Add the help command directly to global for convenient access
     g.help = (commandName?: string): string => {
       if (commandName) {
         return this.generateCommandHelp(commandName);
@@ -292,6 +295,15 @@ class CommandRegistry {
    */
   public isInitialized(): boolean {
     return this.initialized;
+  }
+
+  /**
+   * Reset the registry (for testing purposes)
+   * Clears all commands and resets initialized state
+   */
+  public reset(): void {
+    this.commands.clear();
+    this.initialized = false;
   }
 }
 
@@ -356,11 +368,8 @@ export function registerDecoratedCommands(instance: object): void {
 
   for (const decoratorMeta of commandDecoratorStore) {
     // Check if this metadata belongs to the instance's prototype chain
-    if (
-      decoratorMeta.target === instancePrototype ||
-      Object.getPrototypeOf(decoratorMeta.target) === instancePrototype ||
-      decoratorMeta.target === Object.getPrototypeOf(instancePrototype)
-    ) {
+    // This handles cases where decorators are applied at different levels of the prototype chain
+    if (isDecoratorForInstance(decoratorMeta.target, instancePrototype)) {
       const method = (instance as Record<string, unknown>)[decoratorMeta.methodName];
 
       if (typeof method === "function") {
@@ -374,6 +383,21 @@ export function registerDecoratedCommands(instance: object): void {
       }
     }
   }
+}
+
+/**
+ * Check if a decorator target belongs to an instance's prototype chain
+ * @param decoratorTarget - The target object where the decorator was applied
+ * @param instancePrototype - The prototype of the instance being registered
+ */
+function isDecoratorForInstance(decoratorTarget: object, instancePrototype: object | null): boolean {
+  if (instancePrototype === null) return false;
+
+  return (
+    decoratorTarget === instancePrototype ||
+    Object.getPrototypeOf(decoratorTarget) === instancePrototype ||
+    decoratorTarget === Object.getPrototypeOf(instancePrototype)
+  );
 }
 
 /**

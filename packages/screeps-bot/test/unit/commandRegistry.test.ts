@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
 import {
   commandRegistry,
   Command,
@@ -12,10 +11,8 @@ import {
 describe("CommandRegistry", () => {
   beforeEach(() => {
     // Clear any previously registered commands and decorator metadata
-    // Access private commands map to clear it for testing
-    const registry = commandRegistry as unknown as { commands: Map<string, unknown>; initialized: boolean };
-    registry.commands.clear();
-    registry.initialized = false;
+    // using the public reset() method
+    commandRegistry.reset();
     clearCommandDecoratorMetadata();
   });
 
@@ -261,12 +258,9 @@ describe("CommandRegistry", () => {
 
 describe("@Command decorator", () => {
   beforeEach(() => {
-    // Clear decorator metadata
+    // Clear decorator metadata and commands using public methods
     clearCommandDecoratorMetadata();
-    // Clear commands
-    const registry = commandRegistry as unknown as { commands: Map<string, unknown>; initialized: boolean };
-    registry.commands.clear();
-    registry.initialized = false;
+    commandRegistry.reset();
   });
 
   it("should store metadata for decorated methods", () => {
