@@ -1,19 +1,19 @@
-name: Screeps Prometheus Exporter CI
+name: Screeps Graphite Exporter CI
 
 on:
   push:
     paths:
-      - 'packages/screeps-prometheus-exporter/**'
+      - 'packages/screeps-graphite-exporter/**'
   pull_request:
     paths:
-      - 'packages/screeps-prometheus-exporter/**'
+      - 'packages/screeps-graphite-exporter/**'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: packages/screeps-prometheus-exporter
+        working-directory: packages/screeps-graphite-exporter
     env:
       CI: true
     steps:
@@ -23,9 +23,9 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: packages/screeps-prometheus-exporter/.nvmrc
+          node-version-file: packages/screeps-graphite-exporter/.nvmrc
           cache: npm
-          cache-dependency-path: packages/screeps-prometheus-exporter/package-lock.json
+          cache-dependency-path: packages/screeps-graphite-exporter/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -36,7 +36,7 @@ jobs:
       - name: Validate Docker build
         uses: docker/build-push-action@v5
         with:
-          context: packages/screeps-prometheus-exporter
+          context: packages/screeps-graphite-exporter
           push: false
           load: true
-          tags: screeps-prometheus-exporter:ci
+          tags: screeps-graphite-exporter:ci
