@@ -58,7 +58,7 @@ export function createMetrics(config: ExporterConfig, logger: Logger): Metrics {
       const point = new Point(config.influxMeasurement)
         .tag('type', 'scrape_success')
         .tag('mode', sanitizedMode)
-        .intField('value', success ? 1 : 0)
+        .floatField('value', success ? 1 : 0)
         .timestamp(new Date());
       pendingPoints.push(point);
     },
