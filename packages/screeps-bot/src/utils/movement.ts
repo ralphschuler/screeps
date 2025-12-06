@@ -943,3 +943,254 @@ export function moveAwayFromSpawn(creep: Creep | PowerCreep, range = 1, opts?: M
     return true;
   }
 }
+
+/**
+ * Find a walkable position away from a source position.
+ * Returns null if no valid position is found.
+ */
+function findPositionAwayFromSource(
+  creep: Creep | PowerCreep,
+  sourcePos: RoomPosition
+): RoomPosition | null {
+  const room = Game.rooms[creep.pos.roomName];
+  if (!room) return null;
+
+  const terrain = room.getTerrain();
+
+  // Get all 8 adjacent positions
+  const adjacentOffsets = [
+    { dx: 0, dy: -1 }, // TOP
+    { dx: 1, dy: -1 }, // TOP_RIGHT
+    { dx: 1, dy: 0 }, // RIGHT
+    { dx: 1, dy: 1 }, // BOTTOM_RIGHT
+    { dx: 0, dy: 1 }, // BOTTOM
+    { dx: -1, dy: 1 }, // BOTTOM_LEFT
+    { dx: -1, dy: 0 }, // LEFT
+    { dx: -1, dy: -1 } // TOP_LEFT
+  ];
+
+  // Sort to prefer positions further from source
+  const candidates: { pos: RoomPosition; sourceDistance: number }[] = [];
+
+  for (const offset of adjacentOffsets) {
+    const newX = creep.pos.x + offset.dx;
+    const newY = creep.pos.y + offset.dy;
+
+    // Skip positions outside the room or on exits
+    if (newX <= 0 || newX >= 49 || newY <= 0 || newY >= 49) continue;
+
+    // Skip walls
+    if (terrain.get(newX, newY) === TERRAIN_MASK_WALL) continue;
+
+    const newPos = new RoomPosition(newX, newY, creep.pos.roomName);
+
+    // Check for blocking structures
+    const structures = room.lookForAt(LOOK_STRUCTURES, newX, newY);
+    const blocked = structures.some(
+      s =>
+        s.structureType !== STRUCTURE_ROAD &&
+        s.structureType !== STRUCTURE_CONTAINER &&
+        !(s.structureType === STRUCTURE_RAMPART && (s as StructureRampart).my)
+    );
+    if (blocked) continue;
+
+    // Check for other creeps
+    const creeps = room.lookForAt(LOOK_CREEPS, newX, newY);
+    if (creeps.length > 0) continue;
+
+    // Calculate distance from source (higher is better, further from source)
+    const sourceDistance = newPos.getRangeTo(sourcePos);
+
+    candidates.push({
+      pos: newPos,
+      sourceDistance
+    });
+  }
+
+  // Sort by source distance descending (prefer positions further from source)
+  candidates.sort((a, b) => b.sourceDistance - a.sourceDistance);
+
+  // Return the best candidate, or null if none found
+  return candidates.length > 0 ? candidates[0].pos : null;
+}
+
+/**
+ * Push a creep away from a source position.
+ * This function forces the target creep to move to an adjacent position
+ * that is further away from the source position.
+ *
+ * @param creep - The creep to push
+ * @param sourcePos - The position to push away from
+ * @param opts - Optional movement options (only priority is used)
+ * @returns true if the creep was pushed, false if push failed
+ */
+export function pushCreep(creep: Creep | PowerCreep, sourcePos: RoomPosition, opts?: MoveOpts): boolean {
+  // Handle spawning creeps
+  if ("spawning" in creep && creep.spawning) {
+    return false;
+  }
+
+  // Handle fatigue (only applies to Creeps, not PowerCreeps)
+  if ("fatigue" in creep && creep.fatigue > 0) {
+    return false;
+  }
+
+  // Find a position away from source
+  const targetPos = findPositionAwayFromSource(creep, sourcePos);
+  if (!targetPos) {
+    return false;
+  }
+
+  // Move to the target position
+  // Use priority 3 for push operations - higher than normal movement
+  const priority = opts?.priority ?? 3;
+  const roomName = creep.pos.roomName;
+
+  // Register movement intent for traffic management
+  if (lastPreTickTime === Game.time) {
+    if (!moveIntents.has(roomName)) {
+      moveIntents.set(roomName, []);
+    }
+    const intents = moveIntents.get(roomName);
+    if (intents) {
+      intents.push({
+        creep,
+        priority,
+        targetPos
+      });
+    }
+    return true;
+  } else {
+    // Traffic management not active, move directly
+    const direction = getDirection(creep.pos, targetPos);
+    creep.move(direction);
+    return true;
+  }
+}
+
+/**
+ * Push all creeps away from a position within a specified range.
+ * This is useful for clearing an area around a source, spawn, or other important location.
+ *
+ * @param sourcePos - The center position to push creeps away from
+ * @param range - The range within which to push creeps (default 1)
+ * @param opts - Optional movement options
+ * @returns The number of creeps that were successfully pushed
+ */
+export function pushCreepsAway(sourcePos: RoomPosition, range = 1, opts?: MoveOpts): number {
+  const room = Game.rooms[sourcePos.roomName];
+  if (!room) return 0;
+
+  // Find all creeps within range
+  const creepsInRange = room.find(FIND_MY_CREEPS).filter(c => c.pos.inRangeTo(sourcePos, range));
+
+  let pushedCount = 0;
+
+  for (const creep of creepsInRange) {
+    // Skip creeps that are exactly at the source position
+    // (they might be intentionally there, like a harvester at a source)
+    if (creep.pos.isEqualTo(sourcePos)) {
+      continue;
+    }
+
+    if (pushCreep(creep, sourcePos, opts)) {
+      pushedCount++;
+    }
+  }
+
+  return pushedCount;
+}
+
+/**
+ * Push a creep in a specific direction.
+ * This function forces the target creep to move in the specified direction.
+ *
+ * @param creep - The creep to push
+ * @param direction - The direction to push the creep
+ * @param opts - Optional movement options (only priority is used)
+ * @returns true if the creep was pushed, false if push failed
+ */
+export function pushCreepInDirection(
+  creep: Creep | PowerCreep,
+  direction: DirectionConstant,
+  opts?: MoveOpts
+): boolean {
+  // Handle spawning creeps
+  if ("spawning" in creep && creep.spawning) {
+    return false;
+  }
+
+  // Handle fatigue (only applies to Creeps, not PowerCreeps)
+  if ("fatigue" in creep && creep.fatigue > 0) {
+    return false;
+  }
+
+  // Calculate the target position based on direction
+  const offsets: Record<DirectionConstant, { dx: number; dy: number }> = {
+    [TOP]: { dx: 0, dy: -1 },
+    [TOP_RIGHT]: { dx: 1, dy: -1 },
+    [RIGHT]: { dx: 1, dy: 0 },
+    [BOTTOM_RIGHT]: { dx: 1, dy: 1 },
+    [BOTTOM]: { dx: 0, dy: 1 },
+    [BOTTOM_LEFT]: { dx: -1, dy: 1 },
+    [LEFT]: { dx: -1, dy: 0 },
+    [TOP_LEFT]: { dx: -1, dy: -1 }
+  };
+
+  const offset = offsets[direction];
+  if (!offset) return false;
+
+  const newX = creep.pos.x + offset.dx;
+  const newY = creep.pos.y + offset.dy;
+
+  // Check bounds
+  if (newX < 0 || newX > 49 || newY < 0 || newY > 49) return false;
+
+  const room = Game.rooms[creep.pos.roomName];
+  if (!room) return false;
+
+  // Check terrain
+  const terrain = room.getTerrain();
+  if (terrain.get(newX, newY) === TERRAIN_MASK_WALL) return false;
+
+  // Check for blocking structures
+  const structures = room.lookForAt(LOOK_STRUCTURES, newX, newY);
+  const blocked = structures.some(
+    s =>
+      s.structureType !== STRUCTURE_ROAD &&
+      s.structureType !== STRUCTURE_CONTAINER &&
+      !(s.structureType === STRUCTURE_RAMPART && (s as StructureRampart).my)
+  );
+  if (blocked) return false;
+
+  // Check for other creeps
+  const creeps = room.lookForAt(LOOK_CREEPS, newX, newY);
+  if (creeps.length > 0) return false;
+
+  const targetPos = new RoomPosition(newX, newY, creep.pos.roomName);
+
+  // Move to the target position
+  // Use priority 3 for push operations - higher than normal movement
+  const priority = opts?.priority ?? 3;
+  const roomName = creep.pos.roomName;
+
+  // Register movement intent for traffic management
+  if (lastPreTickTime === Game.time) {
+    if (!moveIntents.has(roomName)) {
+      moveIntents.set(roomName, []);
+    }
+    const intents = moveIntents.get(roomName);
+    if (intents) {
+      intents.push({
+        creep,
+        priority,
+        targetPos
+      });
+    }
+    return true;
+  } else {
+    // Traffic management not active, move directly
+    creep.move(direction);
+    return true;
+  }
+}

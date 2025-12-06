@@ -388,4 +388,217 @@ describe("Movement Room Exit Handling", () => {
       ).to.be.true;
     });
   });
+
+  describe("Push creep functionality", () => {
+    /**
+     * Simulates the logic for finding a position away from a source.
+     * This mirrors the findPositionAwayFromSource function in movement.ts.
+     */
+    interface Position {
+      x: number;
+      y: number;
+    }
+
+    function findPositionAwayFromSource(
+      creepPos: Position,
+      sourcePos: Position,
+      isWall: (x: number, y: number) => boolean = () => false,
+      isOccupied: (x: number, y: number) => boolean = () => false
+    ): Position | null {
+      const adjacentOffsets = [
+        { dx: 0, dy: -1 }, // TOP
+        { dx: 1, dy: -1 }, // TOP_RIGHT
+        { dx: 1, dy: 0 }, // RIGHT
+        { dx: 1, dy: 1 }, // BOTTOM_RIGHT
+        { dx: 0, dy: 1 }, // BOTTOM
+        { dx: -1, dy: 1 }, // BOTTOM_LEFT
+        { dx: -1, dy: 0 }, // LEFT
+        { dx: -1, dy: -1 } // TOP_LEFT
+      ];
+
+      const candidates: { pos: Position; sourceDistance: number }[] = [];
+
+      for (const offset of adjacentOffsets) {
+        const newX = creepPos.x + offset.dx;
+        const newY = creepPos.y + offset.dy;
+
+        // Skip positions outside the room or on exits
+        if (newX <= 0 || newX >= 49 || newY <= 0 || newY >= 49) continue;
+
+        // Skip walls
+        if (isWall(newX, newY)) continue;
+
+        // Skip occupied positions
+        if (isOccupied(newX, newY)) continue;
+
+        // Calculate distance from source (higher is better, further from source)
+        const dx = newX - sourcePos.x;
+        const dy = newY - sourcePos.y;
+        const sourceDistance = Math.max(Math.abs(dx), Math.abs(dy));
+
+        candidates.push({
+          pos: { x: newX, y: newY },
+          sourceDistance
+        });
+      }
+
+      // Sort by source distance descending (prefer positions further from source)
+      candidates.sort((a, b) => b.sourceDistance - a.sourceDistance);
+
+      // Return the best candidate, or null if none found
+      return candidates.length > 0 ? candidates[0].pos : null;
+    }
+
+    it("should find position away from source when pushing", () => {
+      // Creep at (25, 25), source at (24, 25)
+      // The creep should move to a position further from the source
+      const result = findPositionAwayFromSource(
+        { x: 25, y: 25 },
+        { x: 24, y: 25 }
+      );
+      expect(result).to.not.be.null;
+      // The new position should be further from the source (x=24)
+      expect(result!.x).to.be.greaterThan(25);
+    });
+
+    it("should prefer diagonal positions when they are further", () => {
+      // Creep at (25, 25), source at (25, 24) (above)
+      // The creep should prefer positions further from the source
+      const result = findPositionAwayFromSource(
+        { x: 25, y: 25 },
+        { x: 25, y: 24 }
+      );
+      expect(result).to.not.be.null;
+      // The new position should be below the creep (y > 25)
+      expect(result!.y).to.be.greaterThan(25);
+    });
+
+    it("should avoid walls when finding position", () => {
+      // Creep at (25, 25), source at (24, 25)
+      // All positions to the right are walls
+      const isWall = (x: number, _y: number) => x > 25;
+      const result = findPositionAwayFromSource(
+        { x: 25, y: 25 },
+        { x: 24, y: 25 },
+        isWall
+      );
+      // Should find a position that's not a wall
+      if (result !== null) {
+        expect(result.x).to.be.at.most(25);
+      }
+    });
+
+    it("should avoid occupied positions", () => {
+      // Creep at (25, 25), source at (24, 25)
+      // Position (26, 25) is occupied
+      const isOccupied = (x: number, y: number) => x === 26 && y === 25;
+      const result = findPositionAwayFromSource(
+        { x: 25, y: 25 },
+        { x: 24, y: 25 },
+        () => false,
+        isOccupied
+      );
+      // Should find a position that's not occupied
+      if (result !== null) {
+        expect(result.x !== 26 || result.y !== 25).to.be.true;
+      }
+    });
+
+    it("should return null when no valid position exists", () => {
+      // Creep at (25, 25), all adjacent positions are walls
+      const isWall = (_x: number, _y: number) => true;
+      const result = findPositionAwayFromSource(
+        { x: 25, y: 25 },
+        { x: 24, y: 25 },
+        isWall
+      );
+      expect(result).to.be.null;
+    });
+
+    it("should not return positions on room exits", () => {
+      // Creep at (1, 25) near left edge, source at (2, 25)
+      // Should not push towards the exit
+      const result = findPositionAwayFromSource(
+        { x: 1, y: 25 },
+        { x: 2, y: 25 }
+      );
+      // Result should either be null or not at x=0 (which is an exit)
+      if (result !== null) {
+        expect(result.x).to.be.greaterThan(0);
+        expect(result.x).to.be.lessThan(49);
+      }
+    });
+  });
+
+  describe("Push creep in direction", () => {
+    /**
+     * Simulates calculating a target position based on direction.
+     */
+    interface Position {
+      x: number;
+      y: number;
+    }
+
+    function getTargetPosition(creepPos: Position, direction: number): Position | null {
+      const offsets: Record<number, { dx: number; dy: number }> = {
+        1: { dx: 0, dy: -1 }, // TOP
+        2: { dx: 1, dy: -1 }, // TOP_RIGHT
+        3: { dx: 1, dy: 0 }, // RIGHT
+        4: { dx: 1, dy: 1 }, // BOTTOM_RIGHT
+        5: { dx: 0, dy: 1 }, // BOTTOM
+        6: { dx: -1, dy: 1 }, // BOTTOM_LEFT
+        7: { dx: -1, dy: 0 }, // LEFT
+        8: { dx: -1, dy: -1 } // TOP_LEFT
+      };
+
+      const offset = offsets[direction];
+      if (!offset) return null;
+
+      const newX = creepPos.x + offset.dx;
+      const newY = creepPos.y + offset.dy;
+
+      // Check bounds
+      if (newX < 0 || newX > 49 || newY < 0 || newY > 49) return null;
+
+      return { x: newX, y: newY };
+    }
+
+    it("should calculate correct position for TOP direction", () => {
+      const result = getTargetPosition({ x: 25, y: 25 }, 1);
+      expect(result).to.deep.equal({ x: 25, y: 24 });
+    });
+
+    it("should calculate correct position for RIGHT direction", () => {
+      const result = getTargetPosition({ x: 25, y: 25 }, 3);
+      expect(result).to.deep.equal({ x: 26, y: 25 });
+    });
+
+    it("should calculate correct position for BOTTOM direction", () => {
+      const result = getTargetPosition({ x: 25, y: 25 }, 5);
+      expect(result).to.deep.equal({ x: 25, y: 26 });
+    });
+
+    it("should calculate correct position for LEFT direction", () => {
+      const result = getTargetPosition({ x: 25, y: 25 }, 7);
+      expect(result).to.deep.equal({ x: 24, y: 25 });
+    });
+
+    it("should calculate correct position for diagonal directions", () => {
+      expect(getTargetPosition({ x: 25, y: 25 }, 2)).to.deep.equal({ x: 26, y: 24 }); // TOP_RIGHT
+      expect(getTargetPosition({ x: 25, y: 25 }, 4)).to.deep.equal({ x: 26, y: 26 }); // BOTTOM_RIGHT
+      expect(getTargetPosition({ x: 25, y: 25 }, 6)).to.deep.equal({ x: 24, y: 26 }); // BOTTOM_LEFT
+      expect(getTargetPosition({ x: 25, y: 25 }, 8)).to.deep.equal({ x: 24, y: 24 }); // TOP_LEFT
+    });
+
+    it("should return null for out-of-bounds positions", () => {
+      // Trying to push left from x=0
+      expect(getTargetPosition({ x: 0, y: 25 }, 7)).to.be.null;
+      // Trying to push right from x=49
+      expect(getTargetPosition({ x: 49, y: 25 }, 3)).to.be.null;
+      // Trying to push up from y=0
+      expect(getTargetPosition({ x: 25, y: 0 }, 1)).to.be.null;
+      // Trying to push down from y=49
+      expect(getTargetPosition({ x: 25, y: 49 }, 5)).to.be.null;
+    });
+  });
 });
