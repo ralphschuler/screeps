@@ -335,8 +335,8 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     role: "scout",
     family: "utility",
     bodies: [createBody([MOVE], 50)],
-    priority: 40,
-    maxPerRoom: 1,
+    priority: 65, // Increased from 40 - scouts are important for expansion and intel gathering
+    maxPerRoom: 2, // Allow 2 scouts per room for better coverage
     remoteRole: true
   },
   claimer: {
@@ -416,6 +416,7 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         guard: 2.0,
         healer: 1.5,
         ranger: 1.0,
+        scout: 0.8, // Added: scouts help monitor threats
         engineer: 1.2,
         remoteHarvester: 0.5,
         remoteHauler: 0.5
@@ -431,6 +432,7 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         healer: 2.0,
         soldier: 2.0,
         ranger: 1.5,
+        scout: 0.8, // Added: scouts help with reconnaissance
         engineer: 0.5,
         remoteHarvester: 0.3,
         remoteHauler: 0.3
@@ -447,6 +449,7 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         soldier: 2.5,
         siegeUnit: 2.0,
         ranger: 1.0,
+        scout: 0.5, // Added: scouts help monitor siege targets
         engineer: 0.2,
         remoteHarvester: 0.1,
         remoteHauler: 0.1
@@ -464,6 +467,7 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         builder: 0.5,
         queenCarrier: 1.0,
         guard: 1.5,
+        scout: 0.5, // Added: scouts can monitor incoming threats
         engineer: 2.0,
         remoteHarvester: 0.5,
         remoteHauler: 0.5
@@ -475,6 +479,7 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         upgrader: 1.0,
         builder: 1.0,
         queenCarrier: 1.0,
+        scout: 1.0, // Added: scouts should spawn in any posture
         remoteHarvester: 1.0,
         remoteHauler: 1.0
       };

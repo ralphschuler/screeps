@@ -8,6 +8,7 @@
 import type { CreepAction, CreepContext } from "./types";
 import type { RoomIntel } from "../../memory/schemas";
 import { safeFind } from "../../utils/safeFind";
+import { isCreepOnRoomExit } from "../../utils/movement";
 
 // =============================================================================
 // Overmind / Intel Helpers
@@ -141,12 +142,26 @@ function findExplorePosition(room: Room): RoomPosition | null {
 
 /**
  * Scout - Explore and map rooms.
+ *
+ * Movement strategy to prevent exit cycling:
+ * 1. When on a room exit tile, ALWAYS move off first before deciding next action
+ * 2. This prevents PathFinder from routing back through the exit
+ * 3. Only after moving off exit do we find the next exploration target
  */
 export function scout(ctx: CreepContext): CreepAction {
   const overmind = getOvermind();
 
   // Record current room
   recordRoomIntel(ctx.room, overmind);
+
+  // CRITICAL: If on a room exit tile, move off FIRST before any other logic.
+  // This prevents the cycling behavior where the scout enters a room but immediately
+  // gets routed back out because PathFinder sees the exit as the shortest path.
+  if (isCreepOnRoomExit(ctx.creep)) {
+    // Find a position toward the room center (away from the exit)
+    const centerPos = new RoomPosition(25, 25, ctx.room.name);
+    return { type: "moveTo", target: centerPos };
+  }
 
   // Find or assign target room
   let targetRoom = ctx.memory.targetRoom;
@@ -165,7 +180,7 @@ export function scout(ctx: CreepContext): CreepAction {
     return { type: "moveToRoom", roomName: targetRoom };
   }
 
-  // Explore current room
+  // Explore current room - move toward center to gather intel
   if (targetRoom && ctx.room.name === targetRoom) {
     const explorePos = findExplorePosition(ctx.room);
     if (explorePos) return { type: "moveTo", target: explorePos };
