@@ -18,8 +18,9 @@ A sophisticated Screeps bot built with TypeScript that implements swarm-based co
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/en/download) (v16.x or v18.x recommended)
-- Package Manager: [npm](https://docs.npmjs.com/getting-started/installing-node) or [Yarn](https://yarnpkg.com/en/docs/getting-started)
+- [Node.js](https://nodejs.org/en/download) (v16.x - v20.x, v18.x recommended)
+  - Use [nvm](https://github.com/nvm-sh/nvm) for easy version management: `nvm use`
+- Package Manager: [npm](https://docs.npmjs.com/getting-started/installing-node) >=8.0.0
 - A Screeps account (official server or private server)
 
 ### Quick Setup
@@ -28,6 +29,9 @@ A sophisticated Screeps bot built with TypeScript that implements swarm-based co
 # Clone the repository
 git clone https://github.com/ralphschuler/screeps.git
 cd screeps
+
+# Optional: Check your Node.js and npm versions
+npm run check-versions
 
 # Install dependencies
 npm install
