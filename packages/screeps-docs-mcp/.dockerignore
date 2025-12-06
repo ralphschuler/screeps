@@ -1,0 +1,22 @@
+# Dependencies
+node_modules
+
+# Build outputs (rebuilt in Docker)
+dist
+
+# Test files
+tests
+*.test.ts
+coverage
+tsconfig.test.json
+
+# Development files
+.git
+.gitignore
+
+# Documentation (not needed in image)
+*.md
+
+# Editor files
+.vscode
+.idea

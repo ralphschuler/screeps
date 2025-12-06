@@ -1,0 +1,47 @@
+{
+  "name": "@ralphschuler/screeps-docs-mcp",
+  "version": "0.1.0",
+  "description": "Model Context Protocol (MCP) server for browsing and querying Screeps API documentation",
+  "license": "MIT",
+  "author": "OpenAI Automations",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": "./dist/server.js",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "scripts": {
+    "build": "tsc",
+    "postinstall": "npm run build",
+    "prepublishOnly": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:inspector": "vitest run tests/inspector",
+    "inspect": "npx @modelcontextprotocol/inspector node dist/server.js",
+    "inspect:cli": "npx @modelcontextprotocol/inspector --cli node dist/server.js",
+    "docker:build": "docker build -t screeps-docs-mcp:latest .",
+    "docker:run": "docker run --rm -i -e DOCS_CACHE_TTL screeps-docs-mcp:latest",
+    "docker:push": "docker tag screeps-docs-mcp:latest ghcr.io/ralphschuler/screeps-docs-mcp:latest && docker push ghcr.io/ralphschuler/screeps-docs-mcp:latest"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.23.0",
+    "cheerio": "^1.0.0",
+    "node-fetch": "^3.3.2",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/inspector": "^0.17.2",
+    "@types/node": "^24.9.1",
+    "typescript": "^5.4.3",
+    "vitest": "^4.0.14"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
