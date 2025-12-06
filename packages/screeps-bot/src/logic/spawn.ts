@@ -687,7 +687,7 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState): bo
 /**
  * Check if room needs a reserver for any of its remote rooms
  */
-function needsReserver(homeRoom: string, swarm: SwarmState): boolean {
+function needsReserver(_homeRoom: string, swarm: SwarmState): boolean {
   const remotes = swarm.remoteAssignments ?? [];
   if (remotes.length === 0) return false;
   

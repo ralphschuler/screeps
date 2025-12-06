@@ -49,6 +49,8 @@ const DEFAULT_CONFIG: ExpansionManagerConfig = {
 export class ExpansionManager {
   private config: ExpansionManagerConfig;
   private lastRun = 0;
+  private cachedUsername = "";
+  private usernameLastTick = 0;
 
   public constructor(config: Partial<ExpansionManagerConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -203,9 +205,9 @@ export class ExpansionManager {
       // Skip if too dangerous
       if (intel.threatLevel >= 2) continue;
 
-      // Check distance
+      // Check distance (skip same room with distance 0, and rooms too far)
       const distance = Game.map.getRoomLinearDistance(homeRoom, roomName);
-      if (distance > this.config.maxRemoteDistance || distance === 0) continue;
+      if (distance < 1 || distance > this.config.maxRemoteDistance) continue;
 
       // Calculate score (higher = better)
       const score = this.scoreRemoteCandidate(intel, distance);
@@ -365,14 +367,18 @@ export class ExpansionManager {
   }
 
   /**
-   * Get my username
+   * Get my username (cached per tick)
    */
   private getMyUsername(): string {
-    const spawns = Object.values(Game.spawns);
-    if (spawns.length > 0) {
-      return spawns[0].owner.username;
+    // Cache username per tick to avoid repeated lookups
+    if (this.usernameLastTick !== Game.time || !this.cachedUsername) {
+      const spawns = Object.values(Game.spawns);
+      if (spawns.length > 0) {
+        this.cachedUsername = spawns[0].owner.username;
+      }
+      this.usernameLastTick = Game.time;
     }
-    return "";
+    return this.cachedUsername;
   }
 
   /**
