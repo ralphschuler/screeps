@@ -2,6 +2,8 @@
 
 Model Context Protocol (MCP) server integration for Screeps bot development.
 
+> Part of the [ralphschuler/screeps](https://github.com/ralphschuler/screeps) monorepo.
+
 ## Overview
 
 This package provides a standardized MCP server that exposes Screeps game data, memory, and operations via the Model Context Protocol. It enables AI-assisted development workflows, advanced automation, and seamless integration with modern AI tools like Claude, ChatGPT, and Cursor.
@@ -446,6 +448,12 @@ Contributions are welcome! Please follow these guidelines:
 ## License
 
 MIT © OpenAI Automations
+
+## Related Packages
+
+- [screeps-docs-mcp](../screeps-docs-mcp) - MCP server for official Screeps documentation
+- [screeps-wiki-mcp](../screeps-wiki-mcp) - MCP server for accessing the Screeps community wiki
+- [screeps-bot](../screeps-bot) - Advanced Screeps AI using swarm intelligence
 
 ## Related Projects
 

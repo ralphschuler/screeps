@@ -13,6 +13,10 @@ A sophisticated Screeps bot built with TypeScript that implements swarm-based co
 - **Complete Automation**: Full lifecycle management from RCL1 to RCL8
 - **Advanced Combat**: Defensive and offensive capabilities with boost system
 - **Market Integration**: Automated trading and resource management
+- **MCP Integration**: Model Context Protocol servers for AI-assisted development
+  - **screeps-docs-mcp**: Access Screeps API documentation
+  - **screeps-mcp**: Live game state and console integration
+  - **screeps-wiki-mcp**: Community wiki search and retrieval
 
 ## Installing / Getting Started
 
@@ -59,10 +63,13 @@ npm install
 screeps/
 ├── packages/
 │   ├── screeps-bot/          # Main bot implementation
-│   ├── screeps-server/        # Docker setup for private server
+│   ├── screeps-docs-mcp/     # MCP server for Screeps API documentation
+│   ├── screeps-mcp/          # MCP server for live Screeps game integration
+│   ├── screeps-wiki-mcp/     # MCP server for Screeps community wiki
+│   ├── screeps-server/       # Docker setup for private server
 │   └── screeps-influx-exporter/ # Metrics exporter
-├── ROADMAP.md                 # Development roadmap
-└── package.json               # Root package configuration
+├── ROADMAP.md                # Development roadmap
+└── package.json              # Root package configuration
 ```
 
 ### Setting up Dev Environment
@@ -142,6 +149,52 @@ Key design principles:
 - **Event-driven**: Efficient reactive behavior
 - **Aggressive caching**: Minimize CPU with TTL-based caching
 - **CPU bucket management**: Adaptive behavior based on CPU availability
+
+## MCP Servers
+
+The repository includes three Model Context Protocol (MCP) servers for AI-assisted development:
+
+### screeps-docs-mcp
+
+Browse and query Screeps API documentation and game mechanics via MCP.
+
+```shell
+cd packages/screeps-docs-mcp
+npm install
+npm run build
+npm run inspect  # Launch MCP Inspector (requires Node.js 22.7.5+)
+```
+
+[Read more →](./packages/screeps-docs-mcp/README.md)
+
+### screeps-mcp
+
+Live Screeps game API integration with console commands, memory operations, and stats.
+
+```shell
+cd packages/screeps-mcp
+npm install
+npm run build
+# Configure with environment variables:
+export SCREEPS_TOKEN="your-token"
+export SCREEPS_HOST="screeps.com"
+export SCREEPS_SHARD="shard3"
+```
+
+[Read more →](./packages/screeps-mcp/README.md)
+
+### screeps-wiki-mcp
+
+Access the Screeps community wiki with search, article retrieval, and table extraction.
+
+```shell
+cd packages/screeps-wiki-mcp
+npm install
+npm run build
+npm run inspect  # Launch MCP Inspector (requires Node.js 22.7.5+)
+```
+
+[Read more →](./packages/screeps-wiki-mcp/README.md)
 
 ## Documentation
 

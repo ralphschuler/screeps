@@ -2,6 +2,8 @@
 
 Model Context Protocol (MCP) server for browsing and querying [Screeps](https://screeps.com/) API documentation and game mechanics.
 
+> Part of the [ralphschuler/screeps](https://github.com/ralphschuler/screeps) monorepo.
+
 ## Features
 
 - **📚 API Reference**: Browse complete Screeps API documentation for Game, Room, Creep, Structures, and more
@@ -237,5 +239,6 @@ MIT
 
 ## Related Packages
 
-- [@ralphschuler/screeps-mcp](https://github.com/ralphschuler/.screeps-gpt/tree/main/packages/screeps-mcp) - MCP server for live Screeps game API integration
-- [@ralphschuler/screeps-agent](https://github.com/ralphschuler/.screeps-gpt/tree/main/packages/screeps-agent) - Autonomous Screeps AI development agent
+- [screeps-mcp](../screeps-mcp) - MCP server for live Screeps game API integration
+- [screeps-wiki-mcp](../screeps-wiki-mcp) - MCP server for accessing the Screeps community wiki
+- [screeps-bot](../screeps-bot) - Advanced Screeps AI using swarm intelligence
