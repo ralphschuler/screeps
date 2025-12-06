@@ -246,7 +246,6 @@ function runCreepsWithBudget(): void {
   const { creeps, skippedLow } = getPrioritizedCreeps(lowBucket);
   let creepsRun = 0;
   let creepsSkipped = skippedLow;
-  let idleOptimized = 0;
 
   // Micro-batch size: check CPU every N creeps
   // Smaller batches when bucket is low for tighter control
@@ -259,30 +258,16 @@ function runCreepsWithBudget(): void {
       break;
     }
 
-    // Track if creep used idle optimization
-    const wasIdle = canSkipBehaviorEvaluation(creeps[i]);
-    if (wasIdle) {
-      idleOptimized++;
-    }
-
     runCreep(creeps[i]);
     creepsRun++;
   }
 
   // Log statistics periodically
   const logInterval = lowBucket ? 100 : 50;
-  if (Game.time % logInterval === 0) {
-    if (creepsSkipped > 0) {
-      logger.warn(`Skipped ${creepsSkipped} creeps due to CPU (bucket: ${Game.cpu.bucket})`, {
-        subsystem: "SwarmBot"
-      });
-    }
-    if (idleOptimized > 0) {
-      logger.debug(
-        `Idle optimization: ${idleOptimized}/${creepsRun} creeps (${Math.round((idleOptimized / creepsRun) * 100)}%)`,
-        { subsystem: "SwarmBot" }
-      );
-    }
+  if (Game.time % logInterval === 0 && creepsSkipped > 0) {
+    logger.warn(`Skipped ${creepsSkipped} creeps due to CPU (bucket: ${Game.cpu.bucket})`, {
+      subsystem: "SwarmBot"
+    });
   }
 }
 

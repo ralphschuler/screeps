@@ -19,6 +19,25 @@
 import type { SwarmCreepMemory } from "../memory/schemas";
 
 // =============================================================================
+// Type Guards
+// =============================================================================
+
+/**
+ * Type guard to check if an object is a RoomObject.
+ * RoomObjects have pos and room properties.
+ */
+function isRoomObject(obj: unknown): obj is RoomObject {
+  return (
+    obj !== null &&
+    typeof obj === "object" &&
+    "pos" in obj &&
+    obj.pos instanceof RoomPosition &&
+    "room" in obj &&
+    obj.room instanceof Room
+  );
+}
+
+// =============================================================================
 // Constants
 // =============================================================================
 
@@ -128,17 +147,12 @@ function isHarvesterIdle(creep: Creep, state: NonNullable<SwarmCreepMemory["stat
   }
   
   const target = Game.getObjectById(state.targetId);
-  if (!target) {
-    return false;
-  }
-  
-  // Type guard: ensure target is a RoomObject with a pos property
-  if (!("pos" in target) || !("room" in target)) {
+  if (!target || !isRoomObject(target)) {
     return false;
   }
   
   // Must be adjacent to target
-  if (!creep.pos.isNearTo((target as unknown as RoomObject).pos)) {
+  if (!creep.pos.isNearTo(target.pos)) {
     return false;
   }
   
@@ -184,17 +198,12 @@ function isUpgraderIdle(creep: Creep, state: NonNullable<SwarmCreepMemory["state
   }
   
   const target = Game.getObjectById(state.targetId);
-  if (!target) {
-    return false;
-  }
-  
-  // Type guard: ensure target is a RoomObject with a pos property
-  if (!("pos" in target) || !("room" in target)) {
+  if (!target || !isRoomObject(target)) {
     return false;
   }
   
   // Must be in range
-  const inRange = creep.pos.inRangeTo((target as unknown as RoomObject).pos, 3);
+  const inRange = creep.pos.inRangeTo(target.pos, 3);
   if (!inRange) {
     return false;
   }
@@ -232,17 +241,12 @@ function isMineralHarvesterIdle(creep: Creep, state: NonNullable<SwarmCreepMemor
   }
   
   const target = Game.getObjectById(state.targetId);
-  if (!target) {
-    return false;
-  }
-  
-  // Type guard: ensure target is a RoomObject with a pos property
-  if (!("pos" in target) || !("room" in target)) {
+  if (!target || !isRoomObject(target)) {
     return false;
   }
   
   // Must be adjacent
-  if (!creep.pos.isNearTo((target as unknown as RoomObject).pos)) {
+  if (!creep.pos.isNearTo(target.pos)) {
     return false;
   }
   
@@ -270,26 +274,46 @@ export function executeIdleAction(creep: Creep): boolean {
   }
   
   const target = Game.getObjectById(state.targetId);
-  if (!target) {
+  if (!target || !isRoomObject(target)) {
     return false;
   }
   
-  // Execute the action based on state
+  // Execute the action based on state with proper type validation
   switch (state.action) {
     case "harvest":
-      return creep.harvest(target as Source) === OK;
+      // Validate target is a Source
+      if ("energy" in target && "energyCapacity" in target && "ticksToRegeneration" in target) {
+        return creep.harvest(target as Source) === OK;
+      }
+      return false;
     
     case "harvestMineral":
-      return creep.harvest(target as Mineral) === OK;
+      // Validate target is a Mineral
+      if ("mineralType" in target && "mineralAmount" in target && "ticksToRegeneration" in target) {
+        return creep.harvest(target as Mineral) === OK;
+      }
+      return false;
     
     case "transfer":
-      return creep.transfer(target as AnyStoreStructure, RESOURCE_ENERGY) === OK;
+      // Validate target has store property (structures with storage)
+      if ("store" in target && target.store && typeof target.store === "object") {
+        return creep.transfer(target as AnyStoreStructure, RESOURCE_ENERGY) === OK;
+      }
+      return false;
     
     case "withdraw":
-      return creep.withdraw(target as AnyStoreStructure, RESOURCE_ENERGY) === OK;
+      // Validate target has store property (structures with storage)
+      if ("store" in target && target.store && typeof target.store === "object") {
+        return creep.withdraw(target as AnyStoreStructure, RESOURCE_ENERGY) === OK;
+      }
+      return false;
     
     case "upgrade":
-      return creep.upgradeController(target as StructureController) === OK;
+      // Validate target is a Controller
+      if ("level" in target && "progress" in target && "my" in target) {
+        return creep.upgradeController(target as StructureController) === OK;
+      }
+      return false;
     
     default:
       return false;
