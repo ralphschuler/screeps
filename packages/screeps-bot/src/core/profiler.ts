@@ -67,7 +67,9 @@ const DEFAULT_CONFIG: ProfilerConfig = {
   logInterval: 100
 };
 
-const MEMORY_KEY = "swarmProfiler";
+const STATS_ROOT_KEY = "stats";
+const PROFILER_MEMORY_KEY = "profiler";
+const LEGACY_MEMORY_KEY = "swarmProfiler";
 
 /**
  * Performance Profiler
@@ -82,19 +84,71 @@ export class Profiler {
   }
 
   /**
+   * Get or initialize the shared stats root in Memory
+   */
+  private getStatsRoot(): Record<string, any> {
+    const mem = Memory as unknown as Record<string, any>;
+    if (!mem[STATS_ROOT_KEY] || typeof mem[STATS_ROOT_KEY] !== "object") {
+      mem[STATS_ROOT_KEY] = {};
+    }
+    return mem[STATS_ROOT_KEY] as Record<string, any>;
+  }
+
+  /**
    * Get or initialize profiler memory
    */
   private getMemory(): ProfilerMemory {
     const mem = Memory as unknown as Record<string, unknown>;
-    if (!mem[MEMORY_KEY]) {
-      mem[MEMORY_KEY] = {
+    const statsRoot = this.getStatsRoot();
+
+    // Migrate legacy location if present
+    if (!statsRoot[PROFILER_MEMORY_KEY] && mem[LEGACY_MEMORY_KEY]) {
+      statsRoot[PROFILER_MEMORY_KEY] = mem[LEGACY_MEMORY_KEY] as ProfilerMemory;
+      delete mem[LEGACY_MEMORY_KEY];
+    }
+
+    if (!statsRoot[PROFILER_MEMORY_KEY]) {
+      statsRoot[PROFILER_MEMORY_KEY] = {
         rooms: {},
         subsystems: {},
         tickCount: 0,
         lastUpdate: 0
       } as ProfilerMemory;
     }
-    return mem[MEMORY_KEY] as ProfilerMemory;
+
+    return statsRoot[PROFILER_MEMORY_KEY] as ProfilerMemory;
+  }
+
+  /**
+   * Publish flattened stats that the Prometheus exporter can scrape.
+   */
+  private publishStats(memory: ProfilerMemory): void {
+    const statsRoot = this.getStatsRoot();
+
+    const roomAvgCpu: Record<string, number> = {};
+    const roomPeakCpu: Record<string, number> = {};
+    for (const [room, data] of Object.entries(memory.rooms)) {
+      roomAvgCpu[room] = data.avgCpu;
+      roomPeakCpu[room] = data.peakCpu;
+    }
+
+    const subsystemAvgCpu: Record<string, number> = {};
+    const subsystemPeakCpu: Record<string, number> = {};
+    const subsystemCalls: Record<string, number> = {};
+    for (const [name, data] of Object.entries(memory.subsystems)) {
+      subsystemAvgCpu[name] = data.avgCpu;
+      subsystemPeakCpu[name] = data.peakCpu;
+      subsystemCalls[name] = data.callsThisTick;
+    }
+
+    statsRoot["profiler_tick_count"] = memory.tickCount;
+    statsRoot["profiler_last_update"] = memory.lastUpdate;
+    statsRoot["profiler_room_avg_cpu"] = roomAvgCpu;
+    statsRoot["profiler_room_peak_cpu"] = roomPeakCpu;
+    statsRoot["profiler_total_room_avg_cpu"] = Object.values(roomAvgCpu).reduce((sum, value) => sum + value, 0);
+    statsRoot["profiler_subsystem_avg_cpu"] = subsystemAvgCpu;
+    statsRoot["profiler_subsystem_peak_cpu"] = subsystemPeakCpu;
+    statsRoot["profiler_subsystem_calls"] = subsystemCalls;
   }
 
   /**
@@ -185,6 +239,9 @@ export class Profiler {
     this.tickMeasurements.clear();
     this.subsystemMeasurements.clear();
 
+    // Publish exporter-friendly stats
+    this.publishStats(memory);
+
     // Log summary if interval reached
     if (this.config.logInterval > 0 && Game.time % this.config.logInterval === 0) {
       this.logSummary();
@@ -245,13 +302,15 @@ export class Profiler {
    * Reset profiler data
    */
   public reset(): void {
-    const mem = Memory as unknown as Record<string, unknown>;
-    mem[MEMORY_KEY] = {
+    const statsRoot = this.getStatsRoot();
+    statsRoot[PROFILER_MEMORY_KEY] = {
       rooms: {},
       subsystems: {},
       tickCount: 0,
       lastUpdate: 0
     } as ProfilerMemory;
+
+    this.publishStats(statsRoot[PROFILER_MEMORY_KEY] as ProfilerMemory);
   }
 
   /**
