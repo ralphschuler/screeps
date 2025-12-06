@@ -403,6 +403,7 @@ export { pheromoneManager } from "./logic/pheromone";
 export { evolutionManager, postureManager } from "./logic/evolution";
 export { roomVisualizer } from "./visuals/roomVisualizer";
 export { memorySegmentStats } from "./core/memorySegmentStats";
+export { eventBus } from "./core/events";
 export * from "./memory/schemas";
 export * from "./config";
 export * from "./core/processDecorators";

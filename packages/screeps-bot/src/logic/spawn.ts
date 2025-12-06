@@ -12,6 +12,7 @@ import type { CreepRole, RoleFamily, SwarmCreepMemory, SwarmState } from "../mem
 import { type WeightedEntry, weightedSelection } from "../utils/weightedSelection";
 import { getDefenderPriorityBoost } from "../spawning/defenderManager";
 import { memoryManager } from "../memory/manager";
+import { kernel } from "../core/kernel";
 
 /**
  * Body template definition
@@ -927,9 +928,20 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
     }
   }
 
-  availableSpawn.spawnCreep(body.parts, name, {
+  const result = availableSpawn.spawnCreep(body.parts, name, {
     memory: memory as unknown as CreepMemory
   });
+
+  // Emit spawn completed event on successful spawn
+  if (result === OK) {
+    kernel.emit("spawn.completed", {
+      roomName: room.name,
+      creepName: name,
+      role,
+      cost: body.cost,
+      source: "SpawnManager"
+    });
+  }
 }
 
 /**

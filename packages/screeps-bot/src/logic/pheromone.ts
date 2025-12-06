@@ -10,6 +10,7 @@
 
 import type { PheromoneState, SwarmState } from "../memory/schemas";
 import { logger } from "../core/logger";
+import { kernel } from "../core/kernel";
 import { safeFind } from "../utils/safeFind";
 
 /**

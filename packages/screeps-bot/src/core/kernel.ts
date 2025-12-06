@@ -6,13 +6,22 @@
  * - CPU budget allocation and enforcement per process
  * - Priority-based process scheduling
  * - Process statistics tracking
+ * - Centralized event system for inter-process communication
  *
  * Design Principles (from ROADMAP.md):
  * - Striktes Tick-Budget: Eco rooms ≤ 0.1 CPU, War rooms ≤ 0.25 CPU, Global overmind ≤ 1 CPU
  * - CPU-Bucket-gesteuertes Verhalten: High bucket enables expensive operations, low bucket restricts to core logic
  * - Frequenzebenen: High frequency (every tick), Medium (5-20 ticks), Low (≥100 ticks)
+ * - Ereignisgetriebene Logik: Critical events trigger immediate updates
  */
 
+import {
+  EventBus,
+  EventHandler,
+  EventName,
+  EventPayload,
+  eventBus
+} from "./events";
 import type { CPUConfig } from "../config";
 import { getConfig } from "../config";
 import { logger } from "./logger";
@@ -513,6 +522,9 @@ export class Kernel {
     this.updateBucketMode();
     this.tickCpuUsed = 0;
 
+    // Process queued events from previous ticks
+    eventBus.processQueue();
+
     // Sort processes by priority (highest first)
     const sortedProcesses = Array.from(this.processes.values())
       .sort((a, b) => b.priority - a.priority);
@@ -541,6 +553,7 @@ export class Kernel {
     // Log stats periodically
     if (this.config.enableStats && Game.time % this.config.statsLogInterval === 0) {
       this.logStats(processesRun, processesSkipped);
+      eventBus.logStats();
     }
   }
 
@@ -666,6 +679,137 @@ export class Kernel {
    */
   public updateFromCpuConfig(cpuConfig: CPUConfig): void {
     this.updateConfig(buildKernelConfigFromCpu(cpuConfig));
+  }
+
+  // ===========================================================================
+  // Event System Methods
+  // ===========================================================================
+
+  /**
+   * Subscribe to an event
+   *
+   * Provides type-safe event subscription through the kernel.
+   * Events are processed according to bucket status and priority.
+   *
+   * @param eventName - Name of the event to subscribe to
+   * @param handler - Handler function called when event is emitted
+   * @param options - Subscription options
+   * @returns Unsubscribe function
+   *
+   * @example
+   * ```typescript
+   * kernel.on('hostile.detected', (event) => {
+   *   console.log(`Hostile in ${event.roomName}!`);
+   * });
+   * ```
+   */
+  public on<T extends EventName>(
+    eventName: T,
+    handler: EventHandler<T>,
+    options: {
+      priority?: number;
+      minBucket?: number;
+      once?: boolean;
+    } = {}
+  ): () => void {
+    return eventBus.on(eventName, handler, options);
+  }
+
+  /**
+   * Subscribe to an event (one-time)
+   *
+   * Handler is automatically unsubscribed after first invocation.
+   *
+   * @param eventName - Name of the event to subscribe to
+   * @param handler - Handler function called once when event is emitted
+   * @param options - Subscription options
+   * @returns Unsubscribe function
+   */
+  public once<T extends EventName>(
+    eventName: T,
+    handler: EventHandler<T>,
+    options: { priority?: number; minBucket?: number } = {}
+  ): () => void {
+    return eventBus.once(eventName, handler, options);
+  }
+
+  /**
+   * Emit an event
+   *
+   * Emits a type-safe event that will be processed by all registered handlers.
+   * Events are bucket-aware:
+   * - Critical events are always processed immediately
+   * - High-priority events are queued in low bucket
+   * - Low-priority events may be dropped in critical bucket
+   *
+   * @param eventName - Name of the event to emit
+   * @param payload - Event payload (tick is added automatically)
+   * @param options - Emission options
+   *
+   * @example
+   * ```typescript
+   * kernel.emit('hostile.detected', {
+   *   roomName: 'W1N1',
+   *   hostileId: creep.id,
+   *   hostileOwner: creep.owner.username,
+   *   bodyParts: creep.body.length,
+   *   threatLevel: 2
+   * });
+   * ```
+   */
+  public emit<T extends EventName>(
+    eventName: T,
+    payload: Omit<EventPayload<T>, "tick">,
+    options: {
+      immediate?: boolean;
+      priority?: number;
+    } = {}
+  ): void {
+    eventBus.emit(eventName, payload, options);
+  }
+
+  /**
+   * Remove all handlers for an event
+   *
+   * @param eventName - Name of the event to clear handlers for
+   */
+  public offAll(eventName: EventName): void {
+    eventBus.offAll(eventName);
+  }
+
+  /**
+   * Process queued events
+   *
+   * Should be called each tick to process events that were deferred
+   * due to low bucket status. This is automatically called by run().
+   */
+  public processEvents(): void {
+    eventBus.processQueue();
+  }
+
+  /**
+   * Get event bus statistics
+   */
+  public getEventStats(): ReturnType<EventBus["getStats"]> {
+    return eventBus.getStats();
+  }
+
+  /**
+   * Check if there are handlers for an event
+   *
+   * @param eventName - Name of the event to check
+   */
+  public hasEventHandlers(eventName: EventName): boolean {
+    return eventBus.hasHandlers(eventName);
+  }
+
+  /**
+   * Get the event bus instance for advanced usage
+   *
+   * Prefer using kernel.on() and kernel.emit() for standard usage.
+   */
+  public getEventBus(): EventBus {
+    return eventBus;
   }
 }
 
