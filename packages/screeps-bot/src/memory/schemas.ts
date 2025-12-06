@@ -332,6 +332,25 @@ export type PowerBankRole = "powerHarvester" | "powerCarrier";
 export type CreepRole = EconomyRole | MilitaryRole | UtilityRole | PowerRole | PowerBankRole;
 
 /**
+ * Creep state for state machine
+ * Tracks the current committed action until completion
+ */
+export interface CreepState {
+  /** The action type the creep is committed to */
+  action: string;
+  /** Target object ID for the action */
+  targetId?: Id<_HasId>;
+  /** Room name target (for moveToRoom actions) */
+  targetRoom?: string;
+  /** Tick when this state was entered */
+  startTick: number;
+  /** Max ticks before state expires (timeout) */
+  timeout: number;
+  /** Custom data for this state */
+  data?: Record<string, unknown>;
+}
+
+/**
  * Swarm creep memory
  */
 export interface SwarmCreepMemory {
@@ -357,6 +376,8 @@ export interface SwarmCreepMemory {
   boosted?: boolean;
   /** Patrol waypoint index (for defense units) */
   patrolIndex?: number;
+  /** Current state (for state machine) */
+  state?: CreepState;
   /** Version for memory migration */
   version: number;
 }

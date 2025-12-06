@@ -15,12 +15,14 @@
  */
 
 import { createContext, evaluateEconomyBehavior, executeAction } from "../behaviors";
+import { evaluateWithStateMachine } from "../behaviors/stateMachine";
 
 /**
- * Run economy role behavior.
+ * Run economy role behavior with state machine.
+ * Creeps commit to actions until completion, preventing sudden direction changes.
  */
 export function runEconomyRole(creep: Creep): void {
   const ctx = createContext(creep);
-  const action = evaluateEconomyBehavior(ctx);
+  const action = evaluateWithStateMachine(ctx, evaluateEconomyBehavior);
   executeAction(creep, action, ctx);
 }

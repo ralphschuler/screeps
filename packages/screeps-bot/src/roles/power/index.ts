@@ -16,13 +16,15 @@ import {
   executeAction,
   executePowerCreepAction
 } from "../behaviors";
+import { evaluateWithStateMachine } from "../behaviors/stateMachine";
 
 /**
- * Run power-related creep role (PowerHarvester, PowerCarrier).
+ * Run power-related creep role (PowerHarvester, PowerCarrier) with state machine.
+ * Creeps commit to actions until completion, preventing sudden direction changes.
  */
 export function runPowerCreepRole(creep: Creep): void {
   const ctx = createContext(creep);
-  const action = evaluatePowerBehavior(ctx);
+  const action = evaluateWithStateMachine(ctx, evaluatePowerBehavior);
   executeAction(creep, action, ctx);
 }
 
