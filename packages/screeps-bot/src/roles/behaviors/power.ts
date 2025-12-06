@@ -162,13 +162,13 @@ export function createPowerCreepContext(powerCreep: PowerCreep): PowerCreepConte
 
   const labs = room.find(FIND_MY_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_LAB
-  }) ;
+  }) as StructureLab[];
 
   const spawns = room.find(FIND_MY_SPAWNS);
 
   const extensions = room.find(FIND_MY_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_EXTENSION
-  }) ;
+  }) as StructureExtension[];
 
   const factory = room.find(FIND_MY_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_FACTORY

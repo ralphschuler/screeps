@@ -329,7 +329,7 @@ export function remoteWorker(ctx: CreepContext): CreepAction {
 export function linkManager(ctx: CreepContext): CreepAction {
   const links = ctx.room.find(FIND_MY_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_LINK
-  }) ;
+  }) as StructureLink[];
 
   if (links.length < 2 || !ctx.storage) return { type: "idle" };
 

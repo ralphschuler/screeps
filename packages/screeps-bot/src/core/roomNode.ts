@@ -208,7 +208,7 @@ export class RoomNode {
   private runTowerControl(room: Room, swarm: SwarmState): void {
     const towers = room.find(FIND_MY_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_TOWER
-    }) ;
+    }) as StructureTower[];
 
     if (towers.length === 0) return;
 

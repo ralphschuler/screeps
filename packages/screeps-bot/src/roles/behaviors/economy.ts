@@ -610,7 +610,7 @@ export function remoteHarvester(ctx: CreepContext): CreepAction {
   // Full - find nearby container
   const containers = source.pos.findInRange(FIND_STRUCTURES, 2, {
     filter: s => s.structureType === STRUCTURE_CONTAINER
-  }) ;
+  }) as StructureContainer[];
 
   if (containers.length > 0) {
     return { type: "transfer", target: containers[0], resourceType: RESOURCE_ENERGY };
@@ -682,7 +682,7 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     // In remote room - collect from containers or ground
     const containers = ctx.room.find(FIND_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_CONTAINER && s.store.getUsedCapacity(RESOURCE_ENERGY) > 0
-    }) ;
+    }) as StructureContainer[];
 
     if (containers.length > 0) {
       const closest = ctx.creep.pos.findClosestByRange(containers);
