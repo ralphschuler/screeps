@@ -38,7 +38,7 @@ import { registerAllProcesses } from "./core/processRegistry";
 import { roomVisualizer } from "./visuals/roomVisualizer";
 import { memorySegmentStats } from "./core/memorySegmentStats";
 import { getConfig } from "./config";
-import { configureLogger, LogLevel } from "./core/logger";
+import { configureLogger, LogLevel, logger } from "./core/logger";
 
 // =============================================================================
 // Role Priority Configuration
@@ -200,7 +200,9 @@ function runCreepsWithBudget(): void {
   // Log if we skipped creeps - reduce frequency when bucket is low to save CPU
   const logInterval = lowBucket ? 100 : 50;
   if (creepsSkipped > 0 && Game.time % logInterval === 0) {
-    console.log(`[SwarmBot] Skipped ${creepsSkipped} creeps due to CPU (bucket: ${Game.cpu.bucket})`);
+    logger.warn(`Skipped ${creepsSkipped} creeps due to CPU (bucket: ${Game.cpu.bucket})`, {
+      subsystem: "SwarmBot"
+    });
   }
 }
 
@@ -243,7 +245,10 @@ function runVisualizations(): void {
     } catch (err) {
       // Visualization errors shouldn't crash the main loop
       const errorMessage = err instanceof Error ? err.message : String(err);
-      console.log(`[SwarmBot] Visualization error in ${room.name}: ${errorMessage}`);
+      logger.error(`Visualization error in ${room.name}: ${errorMessage}`, {
+        subsystem: "visualizations",
+        room: room.name
+      });
     }
   }
 }
@@ -267,7 +272,9 @@ export function loop(): void {
   // Critical bucket check - use kernel's bucket mode
   const bucketMode = kernel.getBucketMode();
   if (bucketMode === "critical") {
-    console.log(`[SwarmBot] CRITICAL: CPU bucket at ${Game.cpu.bucket}, minimal processing`);
+    logger.warn(`CRITICAL: CPU bucket at ${Game.cpu.bucket}, minimal processing`, {
+      subsystem: "SwarmBot"
+    });
     // Only run movement finalization to prevent stuck creeps
     initMovement();
     clearMoveRequests();
@@ -295,9 +302,9 @@ export function loop(): void {
       roomManager.run();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      console.log(`[SwarmBot] ERROR in room processing: ${errorMessage}`);
+      logger.error(`ERROR in room processing: ${errorMessage}`, { subsystem: "SwarmBot" });
       if (err instanceof Error && err.stack) {
-        console.log(err.stack);
+        logger.error(err.stack, { subsystem: "SwarmBot" });
       }
     }
   });
