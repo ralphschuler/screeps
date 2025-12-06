@@ -19,21 +19,21 @@ describe("Perimeter Defense Logic", () => {
   /**
    * Test helper to get inner position from exit
    */
-  function getInnerPosition(x: number, y: number, direction: number): { x: number; y: number } {
+  function getInnerPosition(x: number, y: number, direction: string): { x: number; y: number } {
     let innerX = x;
     let innerY = y;
 
     switch (direction) {
-      case FIND_EXIT_TOP:
+      case "top":
         innerY = 1;
         break;
-      case FIND_EXIT_BOTTOM:
+      case "bottom":
         innerY = 48;
         break;
-      case FIND_EXIT_LEFT:
+      case "left":
         innerX = 1;
         break;
-      case FIND_EXIT_RIGHT:
+      case "right":
         innerX = 48;
         break;
     }
@@ -67,25 +67,25 @@ describe("Perimeter Defense Logic", () => {
 
   describe("Inner Position Calculation", () => {
     it("should place walls one tile inside from top exits", () => {
-      const inner = getInnerPosition(25, 0, FIND_EXIT_TOP);
+      const inner = getInnerPosition(25, 0, "top");
       assert.equal(inner.x, 25, "X should stay same");
       assert.equal(inner.y, 1, "Y should be one inside");
     });
 
     it("should place walls one tile inside from bottom exits", () => {
-      const inner = getInnerPosition(25, 49, FIND_EXIT_BOTTOM);
+      const inner = getInnerPosition(25, 49, "bottom");
       assert.equal(inner.x, 25, "X should stay same");
       assert.equal(inner.y, 48, "Y should be one inside");
     });
 
     it("should place walls one tile inside from left exits", () => {
-      const inner = getInnerPosition(0, 25, FIND_EXIT_LEFT);
+      const inner = getInnerPosition(0, 25, "left");
       assert.equal(inner.x, 1, "X should be one inside");
       assert.equal(inner.y, 25, "Y should stay same");
     });
 
     it("should place walls one tile inside from right exits", () => {
-      const inner = getInnerPosition(49, 25, FIND_EXIT_RIGHT);
+      const inner = getInnerPosition(49, 25, "right");
       assert.equal(inner.x, 48, "X should be one inside");
       assert.equal(inner.y, 25, "Y should stay same");
     });

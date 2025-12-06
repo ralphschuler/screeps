@@ -12,12 +12,17 @@
 import { logger } from "../core/logger";
 
 /**
+ * Exit direction type
+ */
+export type ExitDirection = "top" | "bottom" | "left" | "right";
+
+/**
  * Exit position with metadata
  */
 export interface ExitPosition {
   x: number;
   y: number;
-  exitDirection: ExitConstant;
+  exitDirection: ExitDirection;
   isChokePoint: boolean;
 }
 
@@ -41,28 +46,28 @@ export function findRoomExits(roomName: string): ExitPosition[] {
   // Top edge (y=0)
   for (let x = 0; x < 50; x++) {
     if (terrain.get(x, 0) !== TERRAIN_MASK_WALL) {
-      exits.push({ x, y: 0, exitDirection: FIND_EXIT_TOP, isChokePoint: false });
+      exits.push({ x, y: 0, exitDirection: "top", isChokePoint: false });
     }
   }
 
   // Bottom edge (y=49)
   for (let x = 0; x < 50; x++) {
     if (terrain.get(x, 49) !== TERRAIN_MASK_WALL) {
-      exits.push({ x, y: 49, exitDirection: FIND_EXIT_BOTTOM, isChokePoint: false });
+      exits.push({ x, y: 49, exitDirection: "bottom", isChokePoint: false });
     }
   }
 
   // Left edge (x=0)
   for (let y = 1; y < 49; y++) {
     if (terrain.get(0, y) !== TERRAIN_MASK_WALL) {
-      exits.push({ x: 0, y, exitDirection: FIND_EXIT_LEFT, isChokePoint: false });
+      exits.push({ x: 0, y, exitDirection: "left", isChokePoint: false });
     }
   }
 
   // Right edge (x=49)
   for (let y = 1; y < 49; y++) {
     if (terrain.get(49, y) !== TERRAIN_MASK_WALL) {
-      exits.push({ x: 49, y, exitDirection: FIND_EXIT_RIGHT, isChokePoint: false });
+      exits.push({ x: 49, y, exitDirection: "right", isChokePoint: false });
     }
   }
 
@@ -78,7 +83,7 @@ export function identifyChokePoints(roomName: string, exits: ExitPosition[]): Ex
   const chokePoints: ExitPosition[] = [];
 
   // Group exits by direction
-  const exitsByDirection = new Map<ExitConstant, ExitPosition[]>();
+  const exitsByDirection = new Map<ExitDirection, ExitPosition[]>();
   for (const exit of exits) {
     const group = exitsByDirection.get(exit.exitDirection) ?? [];
     group.push(exit);
@@ -143,16 +148,16 @@ export function calculatePerimeterPositions(roomName: string): PerimeterPlan {
     let innerY = exit.y;
 
     switch (exit.exitDirection) {
-      case FIND_EXIT_TOP:
+      case "top":
         innerY = 1;
         break;
-      case FIND_EXIT_BOTTOM:
+      case "bottom":
         innerY = 48;
         break;
-      case FIND_EXIT_LEFT:
+      case "left":
         innerX = 1;
         break;
-      case FIND_EXIT_RIGHT:
+      case "right":
         innerX = 48;
         break;
     }
@@ -169,13 +174,8 @@ export function calculatePerimeterPositions(roomName: string): PerimeterPlan {
       isChokePoint: exit.isChokePoint
     };
 
-    // Prioritize choke points for early defense
-    if (exit.isChokePoint) {
-      walls.push(innerExit);
-    } else {
-      // Regular exits get walls later (when resources allow)
-      walls.push(innerExit);
-    }
+    // Add all exits to walls array; priority is handled during placement
+    walls.push(innerExit);
   }
 
   return { walls, ramparts };
