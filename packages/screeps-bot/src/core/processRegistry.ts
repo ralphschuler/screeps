@@ -5,8 +5,9 @@
  * All processes use decorators for declarative process definition.
  *
  * Process classes with @ProcessClass() and @Process decorators are:
- * - CoreProcessManager (core:memoryCleanup, core:memorySizeCheck, core:memorySegmentStats,
- *                       cluster:pheromoneDiffusion, room:labConfig, room:pathCachePrecache)
+ * - CoreProcessManager (core:pixelGeneration, core:memoryCleanup, core:memorySizeCheck,
+ *                       core:memorySegmentStats, cluster:pheromoneDiffusion, room:labConfig,
+ *                       room:pathCachePrecache)
  * - EmpireManager (empire:manager)
  * - ExpansionManager (expansion:manager)
  * - ClusterManager (cluster:manager)
