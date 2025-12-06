@@ -70,11 +70,9 @@ function ingestStat(metrics: Metrics, logger: Logger, key: string, value: unknow
     // For nested objects, flatten and ingest each value
     const flattened = flattenObject({ [key]: value });
     for (const [flatKey, flatValue] of Object.entries(flattened)) {
-      // Remove the redundant prefix
-      const cleanKey = flatKey.startsWith(`${key}.`) ? flatKey : flatKey;
       let range = 'memory';
-      const roomName = extractRoomFromKey(cleanKey);
-      const subsystemName = extractSubsystemFromKey(cleanKey);
+      const roomName = extractRoomFromKey(flatKey);
+      const subsystemName = extractSubsystemFromKey(flatKey);
 
       if (roomName) {
         range = roomName;
@@ -82,13 +80,13 @@ function ingestStat(metrics: Metrics, logger: Logger, key: string, value: unknow
         range = subsystemName;
       } else {
         // For nested objects, use the first level key as range
-        const parts = cleanKey.split('.');
+        const parts = flatKey.split('.');
         if (parts.length > 1) {
           range = parts[0];
         }
       }
 
-      metrics.recordStat(cleanKey, range, flatValue);
+      metrics.recordStat(flatKey, range, flatValue);
     }
     return;
   }
@@ -123,22 +121,12 @@ export async function startMemoryCollector(
       const stats = decoded?.stats ?? decoded;
 
       if (stats && typeof stats === 'object') {
-        // First, flatten the entire stats object
+        // Flatten the entire stats object and ingest all metrics
         const flatStats = flattenObject(stats as Record<string, unknown>);
 
         // Ingest all flattened stats
         for (const [key, value] of Object.entries(flatStats)) {
           ingestStat(metrics, logger, key, value);
-        }
-
-        // Also process any remaining nested objects that weren't fully flattened
-        for (const [key, value] of Object.entries(stats as Record<string, unknown>)) {
-          if (typeof value === 'number') {
-            // Already processed in flatStats, but we record again for backward compatibility
-            // with non-nested keys
-          } else if (value && typeof value === 'object') {
-            ingestStat(metrics, logger, key, value);
-          }
         }
 
         metrics.markScrapeSuccess('memory', true);
