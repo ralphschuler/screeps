@@ -8,6 +8,7 @@
 import type { CreepAction, CreepContext } from "./types";
 import type { SquadMemory, SwarmCreepMemory } from "../../memory/schemas";
 import { safeFindClosestByRange } from "../../utils/safeFind";
+import { findCachedClosest } from "../../utils/cachedClosest";
 
 // =============================================================================
 // Patrol System
@@ -86,10 +87,17 @@ function getNextPatrolWaypoint(creep: Creep, waypoints: RoomPosition[]): RoomPos
 /**
  * Find the highest priority hostile target.
  * Priority: Healers > Ranged > Melee > Claimers > Workers
+ * Uses cached result since combat targets change less frequently.
  */
 function findPriorityTarget(ctx: CreepContext): Creep | null {
   if (ctx.hostiles.length === 0) return null;
 
+  // For combat, we want to cache the target for a few ticks (2-3) to reduce CPU
+  // but not too long since combat is dynamic
+  const cached = findCachedClosest(ctx.creep, ctx.hostiles, "combat_target", 2);
+  if (cached) return cached;
+
+  // Fallback to scoring-based selection (only when cache misses)
   const scored = ctx.hostiles.map(hostile => {
     let score = 0;
     for (const part of hostile.body) {
@@ -187,15 +195,18 @@ export function healer(ctx: CreepContext): CreepAction {
     return { type: "rangedHeal", target };
   }
 
-  // Follow military creeps
-  const military = ctx.creep.pos.findClosestByRange(FIND_MY_CREEPS, {
+  // Follow military creeps (cache for 5 ticks)
+  const militaryCreeps = ctx.room.find(FIND_MY_CREEPS, {
     filter: c => {
       const m = c.memory as unknown as SwarmCreepMemory;
       return m.family === "military" && m.role !== "healer";
     }
   });
 
-  if (military) return { type: "moveTo", target: military };
+  if (militaryCreeps.length > 0) {
+    const military = findCachedClosest(ctx.creep, militaryCreeps, "healer_follow", 5);
+    if (military) return { type: "moveTo", target: military };
+  }
 
   return { type: "idle" };
 }
