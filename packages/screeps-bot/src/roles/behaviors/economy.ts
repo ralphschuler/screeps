@@ -220,16 +220,38 @@ export function hauler(ctx: CreepContext): CreepAction {
   const isWorking = updateWorkingState(ctx);
 
   if (isWorking) {
-    // Deliver energy
-    const deliverAction = deliverEnergy(ctx);
-    if (deliverAction) return deliverAction;
+    // Deliver energy with priority: spawn > extensions > towers > storage > containers
 
-    // Deliver to storage
+    // 1. Spawns first (highest priority)
+    const spawns = ctx.spawnStructures.filter(
+      (s): s is StructureSpawn => s.structureType === STRUCTURE_SPAWN
+    );
+    if (spawns.length > 0) {
+      const closest = ctx.creep.pos.findClosestByRange(spawns);
+      if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+    }
+
+    // 2. Extensions second
+    const extensions = ctx.spawnStructures.filter(
+      (s): s is StructureExtension => s.structureType === STRUCTURE_EXTENSION
+    );
+    if (extensions.length > 0) {
+      const closest = ctx.creep.pos.findClosestByRange(extensions);
+      if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+    }
+
+    // 3. Towers third
+    if (ctx.towers.length > 0) {
+      const closest = ctx.creep.pos.findClosestByRange(ctx.towers);
+      if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+    }
+
+    // 4. Storage fourth
     if (ctx.storage && ctx.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
       return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
     }
 
-    // Deliver to containers (for early game or when storage is full/unavailable)
+    // 5. Containers last (for early game or when storage is full/unavailable)
     if (ctx.depositContainers.length > 0) {
       const closest = ctx.creep.pos.findClosestByRange(ctx.depositContainers);
       if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
@@ -584,15 +606,38 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
       return { type: "moveToRoom", roomName: homeRoom };
     }
 
-    // In home room - deliver to storage or spawn structures
+    // In home room - deliver with priority: spawn > extensions > towers > storage > containers
+
+    // 1. Spawns first (highest priority)
+    const spawns = ctx.spawnStructures.filter(
+      (s): s is StructureSpawn => s.structureType === STRUCTURE_SPAWN
+    );
+    if (spawns.length > 0) {
+      const closest = ctx.creep.pos.findClosestByRange(spawns);
+      if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+    }
+
+    // 2. Extensions second
+    const extensions = ctx.spawnStructures.filter(
+      (s): s is StructureExtension => s.structureType === STRUCTURE_EXTENSION
+    );
+    if (extensions.length > 0) {
+      const closest = ctx.creep.pos.findClosestByRange(extensions);
+      if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+    }
+
+    // 3. Towers third
+    if (ctx.towers.length > 0) {
+      const closest = ctx.creep.pos.findClosestByRange(ctx.towers);
+      if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+    }
+
+    // 4. Storage fourth
     if (ctx.storage && ctx.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
       return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
     }
 
-    const deliverAction = deliverEnergy(ctx);
-    if (deliverAction) return deliverAction;
-
-    // Deliver to containers (for early game or when storage is full/unavailable)
+    // 5. Containers last (for early game or when storage is full/unavailable)
     if (ctx.depositContainers.length > 0) {
       const closest = ctx.creep.pos.findClosestByRange(ctx.depositContainers);
       if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
