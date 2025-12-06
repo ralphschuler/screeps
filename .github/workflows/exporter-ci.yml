@@ -1,19 +1,19 @@
-name: Screeps Graphite Exporter CI
+name: Screeps InfluxDB Exporter CI
 
 on:
   push:
     paths:
-      - 'packages/screeps-graphite-exporter/**'
+      - 'packages/screeps-influx-exporter/**'
   pull_request:
     paths:
-      - 'packages/screeps-graphite-exporter/**'
+      - 'packages/screeps-influx-exporter/**'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: packages/screeps-graphite-exporter
+        working-directory: packages/screeps-influx-exporter
     env:
       CI: true
     steps:
@@ -23,9 +23,9 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: packages/screeps-graphite-exporter/.nvmrc
+          node-version-file: packages/screeps-influx-exporter/.nvmrc
           cache: npm
-          cache-dependency-path: packages/screeps-graphite-exporter/package-lock.json
+          cache-dependency-path: packages/screeps-influx-exporter/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -36,7 +36,7 @@ jobs:
       - name: Validate Docker build
         uses: docker/build-push-action@v5
         with:
-          context: packages/screeps-graphite-exporter
+          context: packages/screeps-influx-exporter
           push: false
           load: true
-          tags: screeps-graphite-exporter:ci
+          tags: screeps-influx-exporter:ci

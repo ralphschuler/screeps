@@ -11,9 +11,9 @@ async function main() {
   const metrics = createMetrics(config, logger);
   const api = await createApi(config);
 
-  logger.info(`Starting Screeps Graphite exporter in ${config.mode} mode`);
-  logger.info(`Graphite target: ${config.graphiteHost}:${config.graphitePort}`);
-  logger.info(`Metric prefix: ${config.graphitePrefix}`);
+  logger.info(`Starting Screeps InfluxDB exporter in ${config.mode} mode`);
+  logger.info(`InfluxDB target: ${config.influxUrl}`);
+  logger.info(`InfluxDB bucket: ${config.influxBucket}`);
 
   if (config.mode === 'memory') {
     await startMemoryCollector(api, config, metrics, logger);

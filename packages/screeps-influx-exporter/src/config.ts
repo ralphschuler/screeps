@@ -12,9 +12,11 @@ export interface ExporterConfig {
   token?: string;
   username?: string;
   password?: string;
-  graphiteHost: string;
-  graphitePort: number;
-  graphitePrefix: string;
+  influxUrl: string;
+  influxToken: string;
+  influxOrg: string;
+  influxBucket: string;
+  influxMeasurement: string;
 }
 
 function parseNumber(envValue: string | undefined, fallback: number): number {
@@ -29,12 +31,17 @@ export function loadConfig(): ExporterConfig {
     throw new Error(`Unsupported EXPORTER_MODE '${mode}'. Use 'memory' or 'console'.`);
   }
 
-  const token = process.env.SCREEPS_TOKEN;
+  const screepsToken = process.env.SCREEPS_TOKEN;
   const username = process.env.SCREEPS_USERNAME;
   const password = process.env.SCREEPS_PASSWORD;
 
-  if (!token && !(username && password)) {
+  if (!screepsToken && !(username && password)) {
     throw new Error('Set SCREEPS_TOKEN or SCREEPS_USERNAME + SCREEPS_PASSWORD for authentication.');
+  }
+
+  const influxToken = process.env.INFLUXDB_TOKEN;
+  if (!influxToken) {
+    throw new Error('Set INFLUXDB_TOKEN for InfluxDB authentication.');
   }
 
   return {
@@ -46,11 +53,13 @@ export function loadConfig(): ExporterConfig {
     hostname: process.env.SCREEPS_HOST ?? 'screeps.com',
     apiPort: process.env.SCREEPS_PORT ? Number(process.env.SCREEPS_PORT) : undefined,
     apiPath: process.env.SCREEPS_PATH ?? '/',
-    token,
+    token: screepsToken,
     username,
     password,
-    graphiteHost: process.env.GRAPHITE_HOST ?? 'localhost',
-    graphitePort: parseNumber(process.env.GRAPHITE_PORT, 2003),
-    graphitePrefix: process.env.GRAPHITE_PREFIX ?? 'screeps'
+    influxUrl: process.env.INFLUXDB_URL ?? 'http://localhost:8086',
+    influxToken,
+    influxOrg: process.env.INFLUXDB_ORG ?? 'screeps',
+    influxBucket: process.env.INFLUXDB_BUCKET ?? 'screeps',
+    influxMeasurement: process.env.INFLUXDB_MEASUREMENT ?? 'screeps'
   };
 }
