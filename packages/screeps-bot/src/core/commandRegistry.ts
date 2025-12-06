@@ -1,0 +1,406 @@
+/**
+ * Command Registry - Centralized console command management
+ *
+ * Provides decorator-based command registration for kernel console commands.
+ * Commands are registered using the @Command decorator and automatically
+ * exposed to the global scope for console access.
+ *
+ * Features:
+ * - @Command decorator for declarative command registration
+ * - Automatic help() command generation
+ * - Command metadata storage (description, usage, examples)
+ * - Global scope integration for console access
+ *
+ * Usage:
+ * ```typescript
+ * class MyCommands {
+ *   @Command({
+ *     name: "myCommand",
+ *     description: "Does something useful",
+ *     usage: "myCommand(arg1, arg2)",
+ *     examples: ["myCommand('test', 123)"]
+ *   })
+ *   myCommand(arg1: string, arg2: number): string {
+ *     return `Result: ${arg1} ${arg2}`;
+ *   }
+ * }
+ * ```
+ */
+
+import { logger } from "./logger";
+
+/**
+ * Command metadata for registration and help display
+ */
+export interface CommandMetadata {
+  /** Command name (will be used as global function name) */
+  name: string;
+  /** Brief description of what the command does */
+  description: string;
+  /** Usage syntax (e.g., "myCommand(arg1, arg2)") */
+  usage?: string;
+  /** Example invocations */
+  examples?: string[];
+  /** Category for grouping in help output */
+  category?: string;
+}
+
+/**
+ * Internal storage for command with its handler
+ */
+interface RegisteredCommand {
+  metadata: CommandMetadata;
+  handler: (...args: unknown[]) => unknown;
+}
+
+/**
+ * Metadata storage for decorated commands before registration
+ */
+interface CommandDecoratorMetadata {
+  metadata: CommandMetadata;
+  methodName: string;
+  target: object;
+}
+
+/**
+ * Storage for command decorator metadata
+ */
+const commandDecoratorStore: CommandDecoratorMetadata[] = [];
+
+/**
+ * Command Registry - Manages console commands
+ */
+class CommandRegistry {
+  private commands: Map<string, RegisteredCommand> = new Map();
+  private initialized = false;
+
+  /**
+   * Register a command with the registry
+   */
+  public register(metadata: CommandMetadata, handler: (...args: unknown[]) => unknown): void {
+    if (this.commands.has(metadata.name)) {
+      logger.warn(`Command "${metadata.name}" is already registered, overwriting`, {
+        subsystem: "CommandRegistry"
+      });
+    }
+
+    this.commands.set(metadata.name, {
+      metadata: {
+        ...metadata,
+        category: metadata.category ?? "General"
+      },
+      handler
+    });
+
+    logger.debug(`Registered command "${metadata.name}"`, { subsystem: "CommandRegistry" });
+  }
+
+  /**
+   * Unregister a command
+   */
+  public unregister(name: string): boolean {
+    const deleted = this.commands.delete(name);
+    if (deleted) {
+      logger.debug(`Unregistered command "${name}"`, { subsystem: "CommandRegistry" });
+    }
+    return deleted;
+  }
+
+  /**
+   * Get a registered command
+   */
+  public getCommand(name: string): RegisteredCommand | undefined {
+    return this.commands.get(name);
+  }
+
+  /**
+   * Get all registered commands
+   */
+  public getCommands(): RegisteredCommand[] {
+    return Array.from(this.commands.values());
+  }
+
+  /**
+   * Get command names grouped by category
+   */
+  public getCommandsByCategory(): Map<string, RegisteredCommand[]> {
+    const categories = new Map<string, RegisteredCommand[]>();
+
+    for (const cmd of this.commands.values()) {
+      const category = cmd.metadata.category ?? "General";
+      const existing = categories.get(category) ?? [];
+      existing.push(cmd);
+      categories.set(category, existing);
+    }
+
+    // Sort commands within each category
+    for (const [category, cmds] of categories) {
+      categories.set(category, cmds.sort((a, b) => a.metadata.name.localeCompare(b.metadata.name)));
+    }
+
+    return categories;
+  }
+
+  /**
+   * Execute a command by name
+   */
+  public execute(name: string, ...args: unknown[]): unknown {
+    const command = this.commands.get(name);
+    if (!command) {
+      return `Command "${name}" not found. Use help() to see available commands.`;
+    }
+
+    try {
+      return command.handler(...args);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.error(`Error executing command "${name}": ${errorMessage}`, {
+        subsystem: "CommandRegistry"
+      });
+      return `Error: ${errorMessage}`;
+    }
+  }
+
+  /**
+   * Generate help output for all commands
+   */
+  public generateHelp(): string {
+    const categories = this.getCommandsByCategory();
+    const lines: string[] = ["=== Available Console Commands ===", ""];
+
+    // Sort categories, putting "General" first
+    const sortedCategories = Array.from(categories.keys()).sort((a, b) => {
+      if (a === "General") return -1;
+      if (b === "General") return 1;
+      return a.localeCompare(b);
+    });
+
+    for (const category of sortedCategories) {
+      const cmds = categories.get(category);
+      if (!cmds || cmds.length === 0) continue;
+
+      lines.push(`--- ${category} ---`);
+
+      for (const cmd of cmds) {
+        const usage = cmd.metadata.usage ?? `${cmd.metadata.name}()`;
+        lines.push(`  ${usage}`);
+        lines.push(`    ${cmd.metadata.description}`);
+
+        if (cmd.metadata.examples && cmd.metadata.examples.length > 0) {
+          lines.push(`    Examples:`);
+          for (const example of cmd.metadata.examples) {
+            lines.push(`      ${example}`);
+          }
+        }
+        lines.push("");
+      }
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * Generate help output for a specific command
+   */
+  public generateCommandHelp(name: string): string {
+    const command = this.commands.get(name);
+    if (!command) {
+      return `Command "${name}" not found. Use help() to see available commands.`;
+    }
+
+    const lines: string[] = [
+      `=== ${command.metadata.name} ===`,
+      "",
+      `Description: ${command.metadata.description}`,
+      `Usage: ${command.metadata.usage ?? `${command.metadata.name}()`}`,
+      `Category: ${command.metadata.category ?? "General"}`
+    ];
+
+    if (command.metadata.examples && command.metadata.examples.length > 0) {
+      lines.push("");
+      lines.push("Examples:");
+      for (const example of command.metadata.examples) {
+        lines.push(`  ${example}`);
+      }
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * Expose all registered commands to the global scope
+   */
+  public exposeToGlobal(): void {
+    // Cast global to unknown first, then to Record to satisfy TypeScript
+    const g = global as unknown as Record<string, unknown>;
+
+    for (const [name, command] of this.commands) {
+      g[name] = command.handler;
+    }
+
+    // Add the help command
+    g.help = (commandName?: string): string => {
+      if (commandName) {
+        return this.generateCommandHelp(commandName);
+      }
+      return this.generateHelp();
+    };
+
+    logger.debug(`Exposed ${this.commands.size} commands to global scope`, {
+      subsystem: "CommandRegistry"
+    });
+  }
+
+  /**
+   * Initialize the command registry
+   * Should be called once at bot startup
+   */
+  public initialize(): void {
+    if (this.initialized) return;
+
+    // Register the help command
+    this.register(
+      {
+        name: "help",
+        description: "Show available commands and their descriptions",
+        usage: "help() or help('commandName')",
+        examples: ["help()", "help('setLogLevel')"],
+        category: "System"
+      },
+      (...args: unknown[]): string => {
+        const commandName = args[0];
+        if (commandName !== undefined) {
+          return this.generateCommandHelp(String(commandName));
+        }
+        return this.generateHelp();
+      }
+    );
+
+    this.initialized = true;
+    logger.info("Command registry initialized", { subsystem: "CommandRegistry" });
+  }
+
+  /**
+   * Get count of registered commands
+   */
+  public getCommandCount(): number {
+    return this.commands.size;
+  }
+
+  /**
+   * Check if registry is initialized
+   */
+  public isInitialized(): boolean {
+    return this.initialized;
+  }
+}
+
+/**
+ * Global command registry instance
+ */
+export const commandRegistry = new CommandRegistry();
+
+// =============================================================================
+// Decorators
+// =============================================================================
+
+/**
+ * Command decorator - marks a method as a console command
+ *
+ * @param metadata - Command metadata including name, description, etc.
+ * @returns Method decorator
+ *
+ * @example
+ * ```typescript
+ * class MyCommands {
+ *   @Command({
+ *     name: "sayHello",
+ *     description: "Prints a greeting",
+ *     usage: "sayHello(name)",
+ *     examples: ["sayHello('World')"]
+ *   })
+ *   sayHello(name: string): string {
+ *     return `Hello, ${name}!`;
+ *   }
+ * }
+ * ```
+ */
+export function Command(metadata: CommandMetadata) {
+  return function <T>(
+    target: object,
+    propertyKey: string | symbol,
+    _descriptor: TypedPropertyDescriptor<T>
+  ): void {
+    commandDecoratorStore.push({
+      metadata,
+      methodName: String(propertyKey),
+      target
+    });
+  };
+}
+
+/**
+ * Register all decorated commands from an instance
+ * Call this after creating an instance of a class with @Command decorated methods
+ *
+ * @param instance - Instance of a class with decorated command methods
+ *
+ * @example
+ * ```typescript
+ * const myCommands = new MyCommands();
+ * registerDecoratedCommands(myCommands);
+ * ```
+ */
+export function registerDecoratedCommands(instance: object): void {
+  const instancePrototype = Object.getPrototypeOf(instance) as object | null;
+
+  for (const decoratorMeta of commandDecoratorStore) {
+    // Check if this metadata belongs to the instance's prototype chain
+    if (
+      decoratorMeta.target === instancePrototype ||
+      Object.getPrototypeOf(decoratorMeta.target) === instancePrototype ||
+      decoratorMeta.target === Object.getPrototypeOf(instancePrototype)
+    ) {
+      const method = (instance as Record<string, unknown>)[decoratorMeta.methodName];
+
+      if (typeof method === "function") {
+        const boundMethod = (method as (...args: unknown[]) => unknown).bind(instance);
+
+        commandRegistry.register(decoratorMeta.metadata, boundMethod);
+
+        logger.debug(`Registered decorated command "${decoratorMeta.metadata.name}"`, {
+          subsystem: "CommandRegistry"
+        });
+      }
+    }
+  }
+}
+
+/**
+ * Register commands from multiple instances
+ *
+ * @param instances - Array of instances with decorated command methods
+ */
+export function registerAllDecoratedCommands(...instances: object[]): void {
+  for (const instance of instances) {
+    registerDecoratedCommands(instance);
+  }
+
+  logger.info(`Registered decorated commands from ${instances.length} instance(s)`, {
+    subsystem: "CommandRegistry"
+  });
+}
+
+/**
+ * Get all stored command decorator metadata (for debugging)
+ */
+export function getCommandDecoratorMetadata(): CommandDecoratorMetadata[] {
+  return [...commandDecoratorStore];
+}
+
+/**
+ * Clear all stored command decorator metadata (for testing)
+ */
+export function clearCommandDecoratorMetadata(): void {
+  commandDecoratorStore.length = 0;
+}
