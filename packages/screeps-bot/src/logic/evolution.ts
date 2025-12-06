@@ -9,6 +9,7 @@
 
 import type { EvolutionStage, RoomPosture, SwarmState } from "../memory/schemas";
 import { logger } from "../core/logger";
+import { kernel } from "../core/kernel";
 
 /**
  * Evolution stage thresholds
@@ -332,16 +333,32 @@ export class PostureManager {
 
   /**
    * Update posture for a room
+   * Emits posture.change event through the kernel when posture changes.
+   * @param swarm - The swarm state to update
+   * @param strategicOverride - Optional strategic override for posture
+   * @param roomName - Room name for event emission (falls back to swarm.role if not provided)
    */
-  public updatePosture(swarm: SwarmState, strategicOverride?: RoomPosture): boolean {
+  public updatePosture(swarm: SwarmState, strategicOverride?: RoomPosture, roomName?: string): boolean {
     const newPosture = this.determinePosture(swarm, strategicOverride);
 
     if (newPosture !== swarm.posture) {
-      logger.info(`Posture change: ${swarm.posture} -> ${newPosture}`, {
-        room: swarm.role,
+      const oldPosture = swarm.posture;
+      const eventRoomName = roomName ?? swarm.role;
+      
+      logger.info(`Posture change: ${oldPosture} -> ${newPosture}`, {
+        room: eventRoomName,
         subsystem: "Posture"
       });
       swarm.posture = newPosture;
+
+      // Emit posture change event through the kernel event system
+      kernel.emit("posture.change", {
+        roomName: eventRoomName,
+        oldPosture,
+        newPosture,
+        source: "PostureManager"
+      });
+
       return true;
     }
 
