@@ -14,7 +14,7 @@
  */
 
 import { HighFrequencyProcess, IdleProcess, LowFrequencyProcess, MediumFrequencyProcess, ProcessClass } from "./processDecorators";
-import { ProcessPriority } from "./kernel";
+import { ProcessPriority, kernel } from "./kernel";
 import type { SwarmState } from "../memory/schemas";
 import { memoryManager } from "../memory/manager";
 import { pheromoneManager } from "../logic/pheromone";
@@ -32,6 +32,7 @@ export class CoreProcessManager {
    * Pixel Generation - Generate pixels when bucket is full
    * Runs every tick to check if bucket is at max (10,000) and generate a pixel.
    * Generating a pixel consumes 10,000 bucket (emptying it).
+   * Notifies the kernel so it knows low bucket is expected during recovery.
    */
   @HighFrequencyProcess("core:pixelGeneration", "Pixel Generation", {
     priority: ProcessPriority.LOW,
@@ -42,6 +43,8 @@ export class CoreProcessManager {
     if (Game.cpu.bucket >= PIXEL_CPU_COST) {
       const result = Game.cpu.generatePixel?.();
       if (result === OK) {
+        // Notify kernel that a pixel was generated so it expects low bucket
+        kernel.notifyPixelGenerated();
         logger.info("Generated pixel from full CPU bucket", { subsystem: "Pixel" });
       } else if (result === ERR_NOT_ENOUGH_RESOURCES) {
         logger.debug("Could not generate pixel: not enough CPU bucket", { subsystem: "Pixel" });
