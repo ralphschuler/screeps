@@ -10,6 +10,7 @@
     "npm": ">=8.0.0"
   },
   "scripts": {
+    "preinstall": "node scripts/check-versions.js",
     "install:all": "npm install && cd packages/screeps-bot && npm install && cd ../screeps-influx-exporter && npm install",
     "build": "cd packages/screeps-bot && npm run build",
     "test": "cd packages/screeps-bot && npm test",

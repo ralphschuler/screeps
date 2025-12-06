@@ -1,27 +1,61 @@
-# Contributing guidelines
+# Contributing to Screeps Ant Swarm Bot
 
-This document outlines guides to get started on developing the starter kit.
+Thank you for your interest in contributing to this project!
 
-## Contributing to the docs
+Please see the main [Contributing Guidelines](../../CONTRIBUTING.md) in the root of the repository for detailed information on:
 
-Contributions to the docs are also welcome! We've documented the steps to do so [here](./docs/in-depth/contributing.md).
+- Code of Conduct
+- Development workflow
+- Git workflow and branching strategy
+- Commit message guidelines
+- Code style and formatting
+- Testing requirements
+- Pull request process
 
-## The Five Golden Rules
+## Bot-Specific Guidelines
 
-The simple steps of contributing to any GitHub project are as follows:
+When contributing to the bot code specifically:
 
-1. [Fork the repository](https://github.com/screepers/screeps-typescript-starter/fork)
-2. Create your feature branch: `git checkout -b my-new-feature`
-3. Commit your changes: `git commit -am 'Add some feature'`
-4. Push to the branch: `git push -u origin my-new-feature`
-5. Create a [Pull Request](https://github.com/screepers/screeps-typescript-starter/pulls)!
+1. **Follow the architecture** defined in [ROADMAP.md](../../ROADMAP.md)
+2. **Write tests** for new functionality (see `test/` directory)
+3. **Run linter** before submitting: `npm run lint`
+4. **Document complex logic** with clear comments
+5. **Consider CPU performance** - this bot is optimized for efficiency
+6. **Test your changes** both in simulation and on a test server
 
-To keep your fork of in sync with this repository, [follow this guide](https://help.github.com/articles/syncing-a-fork/).
+## Quick Start for Contributors
 
-## Submitting a pull request
+```bash
+# Install dependencies
+npm install
 
-We accept almost all pull requests, as long as the following criterias are met:
+# Run linter
+npm run lint
 
-* Your code must pass all of the linter checks (`npm run lint`)
-* When adding a new feature, make sure it doesn't increase the complexity of the tooling. We want this starter kit to be approachable to folks who have little to no knowledge of TypeScript, or even JavaScript.
-* When making changes that are potentially breaking, careful discussion must be done with the community at large. Generally we do this either on the [#typescript](https://screeps.slack.com/messages/typecript/) channel on the Screeps Slack, or on the corresponding pull request discussion thread.
+# Run tests
+npm test
+
+# Build the code
+npm run build
+```
+
+## Architecture Overview
+
+The bot follows a layered architecture with these key principles:
+- **Decentralization**: Each room manages itself autonomously
+- **Pheromone-based coordination**: Stigmergic communication between components
+- **CPU efficiency**: Aggressive caching and event-driven logic
+- **Modularity**: Clear separation of concerns
+
+See [ROADMAP.md](../../ROADMAP.md) for complete architecture documentation.
+
+## Additional Resources
+
+- [Main README](../../README.md)
+- [Project Roadmap](../../ROADMAP.md)
+- [State Machine Documentation](docs/STATE_MACHINE.md)
+- [Screeps Documentation](https://docs.screeps.com/)
+
+---
+
+For any questions, please open an issue or refer to the main [Contributing Guidelines](../../CONTRIBUTING.md).
