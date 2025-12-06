@@ -37,6 +37,20 @@ export interface MarketConfig {
   buyPriceThreshold: number;
   /** Sell threshold: % above average to trigger sell (e.g., 1.15 = 15% above avg) */
   sellPriceThreshold: number;
+  /** Maximum number of historical price points to keep per resource */
+  maxPriceHistory: number;
+  /** Number of recent prices to use for rolling average calculation */
+  rollingAverageWindow: number;
+  /** Multiplier for estimating low price from average (e.g., 0.9 = 10% below) */
+  lowPriceMultiplier: number;
+  /** Multiplier for estimating high price from average (e.g., 1.1 = 10% above) */
+  highPriceMultiplier: number;
+  /** Threshold for detecting price trend changes (e.g., 0.05 = 5% change) */
+  trendChangeThreshold: number;
+  /** Price adjustment when buying at opportunity (e.g., 1.02 = 2% above current) */
+  buyOpportunityAdjustment: number;
+  /** Price adjustment when selling at opportunity (e.g., 0.98 = 2% below current) */
+  sellOpportunityAdjustment: number;
   /** Resource thresholds for selling */
   sellThresholds: Record<string, number>;
   /** Resource thresholds for buying */
@@ -53,6 +67,13 @@ const DEFAULT_CONFIG: MarketConfig = {
   warPriceMultiplier: 2.0,
   buyPriceThreshold: 0.85, // Buy when price is 15% below average
   sellPriceThreshold: 1.15, // Sell when price is 15% above average
+  maxPriceHistory: 30, // Keep last 30 price points per resource
+  rollingAverageWindow: 10, // Use last 10 points for rolling average
+  lowPriceMultiplier: 0.9, // Estimate low price as 10% below average
+  highPriceMultiplier: 1.1, // Estimate high price as 10% above average
+  trendChangeThreshold: 0.05, // Detect trend change at 5% price movement
+  buyOpportunityAdjustment: 1.02, // Buy at 2% above current low price
+  sellOpportunityAdjustment: 0.98, // Sell at 2% below current high price
   sellThresholds: {
     [RESOURCE_ENERGY]: 500000,
     [RESOURCE_HYDROGEN]: 20000,
@@ -190,19 +211,19 @@ export class MarketManager {
     const pricePoint: PriceDataPoint = {
       tick: Game.time,
       avgPrice: latest.avgPrice,
-      lowPrice: latest.avgPrice * 0.9, // Estimate low/high from average
-      highPrice: latest.avgPrice * 1.1
+      lowPrice: latest.avgPrice * this.config.lowPriceMultiplier,
+      highPrice: latest.avgPrice * this.config.highPriceMultiplier
     };
 
     marketData.priceHistory.push(pricePoint);
 
-    // Keep only last 30 price points (to avoid memory bloat)
-    if (marketData.priceHistory.length > 30) {
+    // Keep only configured number of price points (to avoid memory bloat)
+    if (marketData.priceHistory.length > this.config.maxPriceHistory) {
       marketData.priceHistory.shift();
     }
 
-    // Calculate rolling average (last 10 points)
-    const recentPrices = marketData.priceHistory.slice(-10);
+    // Calculate rolling average using configured window
+    const recentPrices = marketData.priceHistory.slice(-this.config.rollingAverageWindow);
     marketData.avgPrice = recentPrices.reduce((sum, p) => sum + p.avgPrice, 0) / recentPrices.length;
 
     // Calculate trend
@@ -211,9 +232,9 @@ export class MarketManager {
       const newAvg = marketData.priceHistory.slice(-3).reduce((sum, p) => sum + p.avgPrice, 0) / 3;
 
       const change = (newAvg - oldAvg) / oldAvg;
-      if (change > 0.05) {
+      if (change > this.config.trendChangeThreshold) {
         marketData.trend = 1; // Rising
-      } else if (change < -0.05) {
+      } else if (change < -this.config.trendChangeThreshold) {
         marketData.trend = -1; // Falling
       } else {
         marketData.trend = 0; // Stable
@@ -354,10 +375,10 @@ export class MarketManager {
       maxPrice = currentPrice * this.config.warPriceMultiplier;
     } else if (isBuyOpportunity && marketData) {
       // It's a good deal - buy at slightly above current to ensure order fulfillment
-      maxPrice = currentPrice * 1.02;
+      maxPrice = currentPrice * this.config.buyOpportunityAdjustment;
     } else {
       // Normal case - buy at average
-      maxPrice = marketData?.avgPrice ?? currentPrice * 1.1;
+      maxPrice = marketData?.avgPrice ?? currentPrice * this.config.highPriceMultiplier;
     }
 
     // Check if we have enough credits
@@ -444,10 +465,10 @@ export class MarketManager {
     let sellPrice: number;
     if (isSellOpportunity && marketData) {
       // High price opportunity - sell at slightly below current to ensure sale
-      sellPrice = currentPrice * 0.98;
+      sellPrice = currentPrice * this.config.sellOpportunityAdjustment;
     } else {
       // Normal case - sell at average or slightly below current
-      sellPrice = marketData?.avgPrice ?? currentPrice * 0.9;
+      sellPrice = marketData?.avgPrice ?? currentPrice * this.config.lowPriceMultiplier;
     }
 
     // Find a room with terminal and this resource
