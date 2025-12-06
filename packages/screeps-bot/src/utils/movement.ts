@@ -550,7 +550,9 @@ function internalMoveTo(
 
   // Determine if we need to repath
   const repathIfStuck = options.repathIfStuck ?? 3;
-  const reusePath = options.reusePath ?? 20;
+  // OPTIMIZATION: Increased reusePath from 20 to 40 ticks for better CPU efficiency
+  // Paths are valid longer, reducing expensive PathFinder.search calls
+  const reusePath = options.reusePath ?? 40;
   const needRepath =
     !cachedPath ||
     cachedPath.targetKey !== targetKey ||

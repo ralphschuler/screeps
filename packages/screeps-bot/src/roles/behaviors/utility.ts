@@ -6,6 +6,7 @@
  */
 
 import type { RoomIntel } from "../../memory/schemas";
+import { findCachedClosest } from "../../utils/cachedClosest";
 import { isCreepOnRoomExit } from "../../utils/movement";
 import { safeFind } from "../../utils/safeFind";
 import type { CreepAction, CreepContext } from "./types";
@@ -198,8 +199,11 @@ export function claimer(ctx: CreepContext): CreepAction {
   const targetRoom = ctx.memory.targetRoom;
 
   if (!targetRoom) {
-    const spawn = ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
-    if (spawn) return { type: "moveTo", target: spawn };
+    const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+    if (spawns.length > 0) {
+      const spawn = findCachedClosest(ctx.creep, spawns, "claimer_spawn", 20);
+      if (spawn) return { type: "moveTo", target: spawn };
+    }
     return { type: "idle" };
   }
 
@@ -229,38 +233,52 @@ export function engineer(ctx: CreepContext): CreepAction {
 
   if (ctx.memory.working) {
     // Critical structures (low HP spawns, towers, storage)
-    const critical = ctx.creep.pos.findClosestByRange(FIND_STRUCTURES, {
-      filter: s =>
+    // OPTIMIZATION: Use cached repair targets from context if available, otherwise filter from allStructures
+    // Note: repairTargets in context are already filtered, but we need specific types here
+    const criticalStructures = ctx.repairTargets.filter(
+      s =>
         (s.structureType === STRUCTURE_SPAWN ||
           s.structureType === STRUCTURE_TOWER ||
           s.structureType === STRUCTURE_STORAGE) &&
         s.hits < s.hitsMax * 0.5
-    });
-    if (critical) return { type: "repair", target: critical };
+    );
+    if (criticalStructures.length > 0) {
+      const critical = findCachedClosest(ctx.creep, criticalStructures, "engineer_critical", 5);
+      if (critical) return { type: "repair", target: critical };
+    }
 
     // Roads and containers
-    const infrastructure = ctx.creep.pos.findClosestByRange(FIND_STRUCTURES, {
-      filter: s =>
+    const infrastructure = ctx.repairTargets.filter(
+      s =>
         (s.structureType === STRUCTURE_ROAD || s.structureType === STRUCTURE_CONTAINER) &&
         s.hits < s.hitsMax * 0.75
-    });
-    if (infrastructure) return { type: "repair", target: infrastructure };
+    );
+    if (infrastructure.length > 0) {
+      const infra = findCachedClosest(ctx.creep, infrastructure, "engineer_infra", 5);
+      if (infra) return { type: "repair", target: infra };
+    }
 
     // Ramparts and walls - target based on danger level
     // danger 0: 100k, danger 1: 300k, danger 2: 5M, danger 3: 50M
     const danger = ctx.swarmState?.danger ?? 0;
     const repairTarget = danger === 0 ? 100000 : danger === 1 ? 300000 : danger === 2 ? 5000000 : 50000000;
 
-    const rampart = ctx.creep.pos.findClosestByRange(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_RAMPART && s.hits < repairTarget
-    }) ;
-    if (rampart) return { type: "repair", target: rampart };
+    const ramparts = ctx.repairTargets.filter(
+      s => s.structureType === STRUCTURE_RAMPART && s.hits < repairTarget
+    );
+    if (ramparts.length > 0) {
+      const rampart = findCachedClosest(ctx.creep, ramparts, "engineer_rampart", 5);
+      if (rampart) return { type: "repair", target: rampart };
+    }
 
     // Walls
-    const wall = ctx.creep.pos.findClosestByRange(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_WALL && s.hits < repairTarget
-    });
-    if (wall) return { type: "repair", target: wall };
+    const walls = ctx.repairTargets.filter(
+      s => s.structureType === STRUCTURE_WALL && s.hits < repairTarget
+    );
+    if (walls.length > 0) {
+      const wall = findCachedClosest(ctx.creep, walls, "engineer_wall", 5);
+      if (wall) return { type: "repair", target: wall };
+    }
 
     // Construction sites
     if (ctx.prioritizedSites.length > 0) {
@@ -275,8 +293,9 @@ export function engineer(ctx: CreepContext): CreepAction {
     return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
   }
 
+  // OPTIMIZATION: Use cached closest for containers (cache 15 ticks - stable targets)
   if (ctx.containers.length > 0) {
-    const closest = ctx.creep.pos.findClosestByRange(ctx.containers);
+    const closest = findCachedClosest(ctx.creep, ctx.containers, "engineer_cont", 15);
     if (closest) return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
   }
 
@@ -304,9 +323,12 @@ export function remoteWorker(ctx: CreepContext): CreepAction {
       return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
     }
 
-    const spawn = ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
-    if (spawn) {
-      return { type: "transfer", target: spawn, resourceType: RESOURCE_ENERGY };
+    const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+    if (spawns.length > 0) {
+      const spawn = findCachedClosest(ctx.creep, spawns, "remoteWorker_spawn", 5);
+      if (spawn) {
+        return { type: "transfer", target: spawn, resourceType: RESOURCE_ENERGY };
+      }
     }
 
     return { type: "idle" };

@@ -87,13 +87,13 @@ function getNextPatrolWaypoint(creep: Creep, waypoints: RoomPosition[]): RoomPos
 /**
  * Find the highest priority hostile target.
  * Priority: Healers > Ranged > Melee > Claimers > Workers
- * 
+ *
  * Note: We intentionally do NOT use caching here because:
  * 1. Priority scoring is complex and position-independent
  * 2. Cache would only store the closest target, not the highest priority
  * 3. Combat is dynamic - priorities change frequently as creeps take damage
  * 4. This function is only called when hostiles are present (not every tick)
- * 
+ *
  * The CPU cost is acceptable because:
  * - Only runs when hostiles are detected (rare in peaceful times)
  * - Hostile count is typically low (< 10 creeps)
@@ -260,10 +260,13 @@ export function soldier(ctx: CreepContext): CreepAction {
     return { type: "moveTo", target: nextWaypoint };
   }
 
-  // Fallback: move near spawn if no waypoints available
-  const spawn = ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
-  if (spawn && ctx.creep.pos.getRangeTo(spawn) > 5) {
-    return { type: "moveTo", target: spawn };
+  // Fallback: move near spawn if no waypoints available (cache 20 ticks - spawns don't move)
+  const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+  if (spawns.length > 0) {
+    const spawn = findCachedClosest(ctx.creep, spawns, "soldier_spawn", 20);
+    if (spawn && ctx.creep.pos.getRangeTo(spawn) > 5) {
+      return { type: "moveTo", target: spawn };
+    }
   }
 
   return { type: "idle" };
@@ -296,12 +299,17 @@ export function siege(ctx: CreepContext): CreepAction {
   });
   if (tower) return { type: "dismantle", target: tower };
 
-  const wall = ctx.creep.pos.findClosestByRange(FIND_STRUCTURES, {
+  // OPTIMIZATION: Use room.find() once and filter, then cache the result
+  // Walls/ramparts don't change often, cache for 10 ticks
+  const walls = ctx.room.find(FIND_STRUCTURES, {
     filter: s =>
       (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) &&
       s.hits < 100000
   });
-  if (wall) return { type: "dismantle", target: wall };
+  if (walls.length > 0) {
+    const wall = findCachedClosest(ctx.creep, walls, "siege_wall", 10);
+    if (wall) return { type: "dismantle", target: wall };
+  }
 
   const structure = safeFindClosestByRange(ctx.creep.pos, FIND_HOSTILE_STRUCTURES, {
     filter: s => s.structureType !== STRUCTURE_CONTROLLER
@@ -316,10 +324,13 @@ export function siege(ctx: CreepContext): CreepAction {
     return { type: "moveTo", target: nextWaypoint };
   }
 
-  // Fallback: move near spawn if no waypoints available
-  const mySpawn = ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
-  if (mySpawn && ctx.creep.pos.getRangeTo(mySpawn) > 5) {
-    return { type: "moveTo", target: mySpawn };
+  // Fallback: move near spawn if no waypoints available (cache 20 ticks - spawns don't move)
+  const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+  if (spawns.length > 0) {
+    const mySpawn = findCachedClosest(ctx.creep, spawns, "siege_spawn", 20);
+    if (mySpawn && ctx.creep.pos.getRangeTo(mySpawn) > 5) {
+      return { type: "moveTo", target: mySpawn };
+    }
   }
 
   return { type: "idle" };
@@ -333,8 +344,11 @@ export function harasser(ctx: CreepContext): CreepAction {
   const targetRoom = ctx.memory.targetRoom;
 
   if (!targetRoom) {
-    const spawn = ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
-    if (spawn) return { type: "moveTo", target: spawn };
+    const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+    if (spawns.length > 0) {
+      const spawn = findCachedClosest(ctx.creep, spawns, "harasser_spawn", 20);
+      if (spawn) return { type: "moveTo", target: spawn };
+    }
     return { type: "idle" };
   }
 
@@ -402,10 +416,13 @@ export function ranger(ctx: CreepContext): CreepAction {
     return { type: "moveTo", target: nextWaypoint };
   }
 
-  // Fallback: return home if no waypoints available
-  const spawn = ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
-  if (spawn && ctx.creep.pos.getRangeTo(spawn) > 10) {
-    return { type: "moveTo", target: spawn };
+  // Fallback: return home if no waypoints available (cache 20 ticks - spawns don't move)
+  const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+  if (spawns.length > 0) {
+    const spawn = findCachedClosest(ctx.creep, spawns, "harasser_home_spawn", 20);
+    if (spawn && ctx.creep.pos.getRangeTo(spawn) > 10) {
+      return { type: "moveTo", target: spawn };
+    }
   }
 
   return { type: "idle" };

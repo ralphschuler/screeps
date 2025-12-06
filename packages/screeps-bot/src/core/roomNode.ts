@@ -53,6 +53,47 @@ const DEFAULT_CONFIG: RoomNodeConfig = {
 };
 
 /**
+ * Per-tick cache for room structures to avoid repeated find() calls
+ */
+interface RoomStructureCache {
+  tick: number;
+  towers: StructureTower[];
+  spawns: StructureSpawn[];
+  links: StructureLink[];
+  factory: StructureFactory | undefined;
+  powerSpawn: StructurePowerSpawn | undefined;
+  sources: Source[];
+  constructionSites: ConstructionSite[];
+}
+
+const structureCache = new Map<string, RoomStructureCache>();
+
+/**
+ * Get or create structure cache for a room
+ */
+function getStructureCache(room: Room): RoomStructureCache {
+  const existing = structureCache.get(room.name);
+  if (existing && existing.tick === Game.time) {
+    return existing;
+  }
+
+  const myStructures = room.find(FIND_MY_STRUCTURES);
+  const cache: RoomStructureCache = {
+    tick: Game.time,
+    towers: myStructures.filter((s): s is StructureTower => s.structureType === STRUCTURE_TOWER),
+    spawns: myStructures.filter((s): s is StructureSpawn => s.structureType === STRUCTURE_SPAWN),
+    links: myStructures.filter((s): s is StructureLink => s.structureType === STRUCTURE_LINK),
+    factory: myStructures.find((s): s is StructureFactory => s.structureType === STRUCTURE_FACTORY),
+    powerSpawn: myStructures.find((s): s is StructurePowerSpawn => s.structureType === STRUCTURE_POWER_SPAWN),
+    sources: room.find(FIND_SOURCES),
+    constructionSites: room.find(FIND_MY_CONSTRUCTION_SITES)
+  };
+
+  structureCache.set(room.name, cache);
+  return cache;
+}
+
+/**
  * Room Node class - manages a single room
  */
 export class RoomNode {
@@ -79,8 +120,9 @@ export class RoomNode {
     // Get or initialize swarm state
     const swarm = memoryManager.getOrInitSwarmState(this.roomName);
 
-    // Update metrics
-    if (this.config.enablePheromones) {
+    // Update metrics (only every 5 ticks to match pheromone update interval)
+    // This avoids expensive room.find() calls every tick
+    if (this.config.enablePheromones && Game.time % 5 === 0) {
       pheromoneManager.updateMetrics(room, swarm);
     }
 
@@ -126,13 +168,19 @@ export class RoomNode {
    * Update threat assessment.
    * Uses optimized iteration for better CPU efficiency.
    * Emits events through the kernel event system for centralized handling.
+   * OPTIMIZATION: Only check enemy structures if hostiles are present or danger > 0
    */
   private updateThreatAssessment(room: Room, swarm: SwarmState): void {
     // Use safeFind to handle engine errors with corrupted owner data
     const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
-    const enemyStructures = safeFind(room, FIND_HOSTILE_STRUCTURES, {
-      filter: s => s.structureType !== STRUCTURE_CONTROLLER
-    });
+
+    // Only check enemy structures if we have hostiles or existing danger
+    // This avoids expensive find() calls when room is peaceful
+    const enemyStructures = (hostiles.length > 0 || swarm.danger > 0)
+      ? safeFind(room, FIND_HOSTILE_STRUCTURES, {
+          filter: s => s.structureType !== STRUCTURE_CONTROLLER
+        })
+      : [];
 
     // Calculate potential damage with efficient single-loop iteration
     let potentialDamage = 0;
@@ -176,39 +224,42 @@ export class RoomNode {
 
     swarm.danger = newDanger;
 
-    // Check for nukes (only trigger once per nuke event)
-    const nukes = room.find(FIND_NUKES);
-    if (nukes.length > 0) {
-      if (!swarm.nukeDetected) {
-        pheromoneManager.onNukeDetected(swarm);
-        const launchSource = nukes[0]?.launchRoomName ?? 'unidentified source';
-        memoryManager.addRoomEvent(this.roomName, "nukeDetected", `${nukes.length} nuke(s) incoming from ${launchSource}`);
-        swarm.nukeDetected = true;
+    // Check for nukes (only every 10 ticks to reduce CPU cost)
+    // Nukes have a long flight time (~50k ticks), so checking every 10 ticks is sufficient
+    if (Game.time % 10 === 0) {
+      const nukes = room.find(FIND_NUKES);
+      if (nukes.length > 0) {
+        if (!swarm.nukeDetected) {
+          pheromoneManager.onNukeDetected(swarm);
+          const launchSource = nukes[0]?.launchRoomName ?? 'unidentified source';
+          memoryManager.addRoomEvent(this.roomName, "nukeDetected", `${nukes.length} nuke(s) incoming from ${launchSource}`);
+          swarm.nukeDetected = true;
 
-        // Emit nuke detected events through kernel event system
-        for (const nuke of nukes) {
-          kernel.emit("nuke.detected", {
-            roomName: this.roomName,
-            nukeId: nuke.id,
-            landingTick: Game.time + nuke.timeToLand,
-            launchRoomName: nuke.launchRoomName,
-            source: this.roomName
-          });
+          // Emit nuke detected events through kernel event system
+          for (const nuke of nukes) {
+            kernel.emit("nuke.detected", {
+              roomName: this.roomName,
+              nukeId: nuke.id,
+              landingTick: Game.time + nuke.timeToLand,
+              launchRoomName: nuke.launchRoomName,
+              source: this.roomName
+            });
+          }
         }
+      } else {
+        // Reset flag when nukes are gone
+        swarm.nukeDetected = false;
       }
-    } else {
-      // Reset flag when nukes are gone
-      swarm.nukeDetected = false;
     }
   }
 
   /**
    * Run tower control
+   * OPTIMIZATION: Use cached structures to avoid repeated room.find() calls
    */
   private runTowerControl(room: Room, swarm: SwarmState): void {
-    const towers = room.find(FIND_MY_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_TOWER
-    }) as StructureTower[];
+    const cache = getStructureCache(room);
+    const towers = cache.towers;
 
     if (towers.length === 0) return;
 
@@ -306,8 +357,9 @@ export class RoomNode {
    * Run construction logic using blueprints
    */
   private runConstruction(room: Room, swarm: SwarmState): void {
-    // Check global construction site limit
-    const existingSites = room.find(FIND_MY_CONSTRUCTION_SITES);
+    // Check global construction site limit (use cached structures)
+    const cache = getStructureCache(room);
+    const existingSites = cache.constructionSites;
     if (existingSites.length >= 10) return;
 
     // Get blueprint for current RCL
@@ -315,15 +367,17 @@ export class RoomNode {
     const blueprint = getBlueprint(rcl);
     if (!blueprint) return;
 
-    // Find spawn to use as anchor
-    const spawn = room.find(FIND_MY_SPAWNS)[0];
+    // Find spawn to use as anchor (use cached structures)
+    const cache = getStructureCache(room);
+    const spawn = cache.spawns[0];
     if (!spawn) {
       // No spawn, place one if we're a new colony
       if (rcl === 1 && existingSites.length === 0) {
-        // Find a suitable position for first spawn
+        // Find a suitable position for first spawn (use cached sources)
         const controller = room.controller;
         if (controller) {
-          const sources = room.find(FIND_SOURCES);
+          const cache = getStructureCache(room);
+          const sources = cache.sources;
           // Find position between controller and sources
           const avgX = Math.round(
             (controller.pos.x + sources.reduce((sum, s) => sum + s.pos.x, 0)) / (sources.length + 1)
@@ -416,11 +470,11 @@ export class RoomNode {
 
   /**
    * Run factory production
+   * OPTIMIZATION: Use cached structures
    */
   private runFactory(room: Room): void {
-    const factory = room.find(FIND_MY_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_FACTORY
-    })[0] as StructureFactory | undefined;
+    const cache = getStructureCache(room);
+    const factory = cache.factory;
 
     if (!factory || factory.cooldown > 0) return;
 
@@ -445,11 +499,11 @@ export class RoomNode {
 
   /**
    * Run power spawn
+   * OPTIMIZATION: Use cached structures
    */
   private runPowerSpawn(room: Room): void {
-    const powerSpawn = room.find(FIND_MY_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_POWER_SPAWN
-    })[0] as StructurePowerSpawn | undefined;
+    const cache = getStructureCache(room);
+    const powerSpawn = cache.powerSpawn;
 
     if (!powerSpawn) return;
 
@@ -464,12 +518,11 @@ export class RoomNode {
 
   /**
    * Run link transfers
+   * OPTIMIZATION: Use cached structures
    */
   private runLinks(room: Room): void {
-    const allLinks = room.find(FIND_MY_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_LINK
-    });
-    const links = allLinks as StructureLink[];
+    const cache = getStructureCache(room);
+    const links = cache.links;
 
     if (links.length < 2) return;
 
@@ -480,8 +533,9 @@ export class RoomNode {
     const storageLink = links.find(l => l.pos.getRangeTo(storage) <= 2);
     if (!storageLink) return;
 
-    // Find source links (links near sources)
-    const sources = room.find(FIND_SOURCES);
+    // Find source links (links near sources) - use cached sources
+    const cache = getStructureCache(room);
+    const sources = cache.sources;
     const sourceLinks = links.filter(l => sources.some(s => l.pos.getRangeTo(s) <= 2));
 
     // Transfer from source links to storage link
@@ -504,9 +558,23 @@ export class RoomManager {
 
   /**
    * Run all owned rooms
+   * OPTIMIZATION: Use cached owned rooms list from global to avoid repeated filter
    */
   public run(): void {
-    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+    // Use cached owned rooms from global (set in main loop)
+    const cacheKey = "_ownedRooms";
+    const cacheTickKey = "_ownedRoomsTick";
+    const globalCache = global as unknown as Record<string, Room[] | number | undefined>;
+    const cachedRooms = globalCache[cacheKey] as Room[] | undefined;
+    const cachedTick = globalCache[cacheTickKey] as number | undefined;
+
+    let ownedRooms: Room[];
+    if (cachedRooms && cachedTick === Game.time) {
+      ownedRooms = cachedRooms;
+    } else {
+      // Fallback if cache not set (shouldn't happen, but safe)
+      ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+    }
     const totalOwned = ownedRooms.length;
 
     // Ensure nodes exist for all owned rooms
