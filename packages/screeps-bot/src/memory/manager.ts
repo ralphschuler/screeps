@@ -31,26 +31,26 @@ const DEAD_CREEP_CLEANUP_INTERVAL = 10;
  * Memory Manager class
  */
 export class MemoryManager {
-  private initialized = false;
+  private lastInitializeTick: number | null = null;
   private lastCleanupTick = 0;
 
   /**
    * Initialize all memory structures
    */
   public initialize(): void {
-    if (this.initialized) return;
+    if (this.lastInitializeTick === Game.time) return;
+
+    this.lastInitializeTick = Game.time;
 
     this.runMemoryMigration();
     this.ensureOvermindMemory();
     this.ensureClustersMemory();
-    
+
     // Only clean dead creeps periodically to save CPU
     if (Game.time - this.lastCleanupTick >= DEAD_CREEP_CLEANUP_INTERVAL) {
       this.cleanDeadCreeps();
       this.lastCleanupTick = Game.time;
     }
-
-    this.initialized = true;
   }
 
   /**
