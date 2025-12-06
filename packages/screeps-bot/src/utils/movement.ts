@@ -770,3 +770,138 @@ export function moveOffRoomExit(creep: Creep | PowerCreep, opts?: MoveOpts): boo
     return true;
   }
 }
+
+/**
+ * Find a walkable position away from spawns.
+ * Returns null if no valid position is found or creep is not near a spawn.
+ */
+function findPositionAwayFromSpawn(creep: Creep | PowerCreep, range: number): RoomPosition | null {
+  const room = Game.rooms[creep.pos.roomName];
+  if (!room) return null;
+
+  // Find nearby spawns
+  const spawns = room.find(FIND_MY_SPAWNS);
+  if (spawns.length === 0) return null;
+
+  // Check if creep is within range of any spawn
+  let nearbySpawn: StructureSpawn | null = null;
+  for (const spawn of spawns) {
+    if (creep.pos.inRangeTo(spawn.pos, range)) {
+      nearbySpawn = spawn;
+      break;
+    }
+  }
+
+  if (!nearbySpawn) return null;
+
+  const terrain = room.getTerrain();
+
+  // Get all 8 adjacent positions
+  const adjacentOffsets = [
+    { dx: 0, dy: -1 }, // TOP
+    { dx: 1, dy: -1 }, // TOP_RIGHT
+    { dx: 1, dy: 0 }, // RIGHT
+    { dx: 1, dy: 1 }, // BOTTOM_RIGHT
+    { dx: 0, dy: 1 }, // BOTTOM
+    { dx: -1, dy: 1 }, // BOTTOM_LEFT
+    { dx: -1, dy: 0 }, // LEFT
+    { dx: -1, dy: -1 } // TOP_LEFT
+  ];
+
+  // Sort to prefer positions further from spawn
+  const candidates: { pos: RoomPosition; spawnDistance: number }[] = [];
+
+  for (const offset of adjacentOffsets) {
+    const newX = creep.pos.x + offset.dx;
+    const newY = creep.pos.y + offset.dy;
+
+    // Skip positions outside the room or on exits
+    if (newX <= 0 || newX >= 49 || newY <= 0 || newY >= 49) continue;
+
+    // Skip walls
+    if (terrain.get(newX, newY) === TERRAIN_MASK_WALL) continue;
+
+    const newPos = new RoomPosition(newX, newY, creep.pos.roomName);
+
+    // Check for blocking structures
+    const structures = room.lookForAt(LOOK_STRUCTURES, newX, newY);
+    const blocked = structures.some(
+      s =>
+        s.structureType !== STRUCTURE_ROAD &&
+        s.structureType !== STRUCTURE_CONTAINER &&
+        !(s.structureType === STRUCTURE_RAMPART && (s as StructureRampart).my)
+    );
+    if (blocked) continue;
+
+    // Check for other creeps
+    const creeps = room.lookForAt(LOOK_CREEPS, newX, newY);
+    if (creeps.length > 0) continue;
+
+    // Calculate distance from spawn (higher is better, further from spawn)
+    const spawnDistance = newPos.getRangeTo(nearbySpawn.pos);
+
+    candidates.push({
+      pos: newPos,
+      spawnDistance
+    });
+  }
+
+  // Sort by spawn distance descending (prefer positions further from spawn)
+  candidates.sort((a, b) => b.spawnDistance - a.spawnDistance);
+
+  // Return the best candidate, or null if none found
+  return candidates.length > 0 ? candidates[0].pos : null;
+}
+
+/**
+ * Move a creep away from spawn if it's blocking or near a spawn.
+ * This should be called when a creep is idle to prevent spawn blockades.
+ *
+ * @param creep - The creep or power creep to move
+ * @param range - Range from spawn to consider as "blocking" (default 1)
+ * @param opts - Optional movement options (only priority is used)
+ * @returns true if the creep was near a spawn and a move was issued, false otherwise
+ */
+export function moveAwayFromSpawn(creep: Creep | PowerCreep, range = 1, opts?: MoveOpts): boolean {
+  // Handle spawning creeps
+  if ("spawning" in creep && creep.spawning) {
+    return false;
+  }
+
+  // Handle fatigue (only applies to Creeps, not PowerCreeps)
+  if ("fatigue" in creep && creep.fatigue > 0) {
+    return false;
+  }
+
+  // Find a position away from spawn
+  const targetPos = findPositionAwayFromSpawn(creep, range);
+  if (!targetPos) {
+    return false;
+  }
+
+  // Move to the target position
+  // Use priority 2 to match moveOffRoomExit - clearing blockades is important
+  const priority = opts?.priority ?? 2;
+  const roomName = creep.pos.roomName;
+
+  // Register movement intent for traffic management
+  if (lastPreTickTime === Game.time) {
+    if (!moveIntents.has(roomName)) {
+      moveIntents.set(roomName, []);
+    }
+    const intents = moveIntents.get(roomName);
+    if (intents) {
+      intents.push({
+        creep,
+        priority,
+        targetPos
+      });
+    }
+    return true;
+  } else {
+    // Traffic management not active, move directly
+    const direction = getDirection(creep.pos, targetPos);
+    creep.move(direction);
+    return true;
+  }
+}
