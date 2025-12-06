@@ -10,6 +10,76 @@ import type { SquadMemory, SwarmCreepMemory } from "../../memory/schemas";
 import { safeFindClosestByRange } from "../../utils/safeFind";
 
 // =============================================================================
+// Patrol System
+// =============================================================================
+
+/**
+ * Get patrol waypoints for a room covering exits and spawn areas.
+ * Uses a cached approach to avoid repeated computation.
+ */
+function getPatrolWaypoints(room: Room): RoomPosition[] {
+  const roomName = room.name;
+  const spawns = room.find(FIND_MY_SPAWNS);
+
+  // Generate patrol points covering key defensive positions
+  const waypoints: RoomPosition[] = [];
+
+  // Add spawn area positions (offset from spawns)
+  for (const spawn of spawns) {
+    waypoints.push(new RoomPosition(spawn.pos.x + 3, spawn.pos.y + 3, roomName));
+    waypoints.push(new RoomPosition(spawn.pos.x - 3, spawn.pos.y - 3, roomName));
+  }
+
+  // Add exit patrol positions (center of each exit side)
+  // Top exit
+  waypoints.push(new RoomPosition(25, 5, roomName));
+  // Bottom exit
+  waypoints.push(new RoomPosition(25, 44, roomName));
+  // Left exit
+  waypoints.push(new RoomPosition(5, 25, roomName));
+  // Right exit
+  waypoints.push(new RoomPosition(44, 25, roomName));
+
+  // Clamp positions to valid room bounds and filter out walls
+  return waypoints
+    .map(pos => {
+      const x = Math.max(2, Math.min(47, pos.x));
+      const y = Math.max(2, Math.min(47, pos.y));
+      return { x, y, roomName };
+    })
+    .filter(pos => {
+      const terrain = room.getTerrain().get(pos.x, pos.y);
+      return terrain !== TERRAIN_MASK_WALL;
+    })
+    .map(pos => new RoomPosition(pos.x, pos.y, pos.roomName));
+}
+
+/**
+ * Get the next patrol waypoint for a creep.
+ * Cycles through waypoints in order.
+ */
+function getNextPatrolWaypoint(creep: Creep, waypoints: RoomPosition[]): RoomPosition | null {
+  if (waypoints.length === 0) return null;
+
+  const mem = creep.memory as unknown as SwarmCreepMemory;
+
+  // Initialize patrol index if not set
+  if (mem.patrolIndex === undefined) {
+    mem.patrolIndex = 0;
+  }
+
+  const currentWaypoint = waypoints[mem.patrolIndex % waypoints.length];
+
+  // Check if we've reached the current waypoint (within 2 tiles using Chebyshev distance)
+  if (currentWaypoint && creep.pos.getRangeTo(currentWaypoint) <= 2) {
+    // Move to next waypoint
+    mem.patrolIndex = (mem.patrolIndex + 1) % waypoints.length;
+  }
+
+  return waypoints[mem.patrolIndex % waypoints.length] ?? null;
+}
+
+// =============================================================================
 // Combat Helpers
 // =============================================================================
 
@@ -61,7 +131,7 @@ function getSquadMemory(squadId: string): SquadMemory | undefined {
 
 /**
  * Guard - Home defense creep.
- * Attacks nearby hostiles, patrols near spawn when idle.
+ * Attacks nearby hostiles, patrols the room when idle.
  */
 export function guard(ctx: CreepContext): CreepAction {
   const target = findPriorityTarget(ctx);
@@ -76,7 +146,15 @@ export function guard(ctx: CreepContext): CreepAction {
     return { type: "moveTo", target };
   }
 
-  // No hostiles - patrol near spawn
+  // No hostiles - patrol the room
+  const waypoints = getPatrolWaypoints(ctx.room);
+  const nextWaypoint = getNextPatrolWaypoint(ctx.creep, waypoints);
+
+  if (nextWaypoint) {
+    return { type: "moveTo", target: nextWaypoint };
+  }
+
+  // Fallback: move near spawn if no waypoints available
   const spawn = ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
   if (spawn && ctx.creep.pos.getRangeTo(spawn) > 5) {
     return { type: "moveTo", target: spawn };
@@ -273,7 +351,15 @@ export function ranger(ctx: CreepContext): CreepAction {
     return { type: "moveTo", target };
   }
 
-  // No targets - return home
+  // No targets - patrol the room
+  const waypoints = getPatrolWaypoints(ctx.room);
+  const nextWaypoint = getNextPatrolWaypoint(ctx.creep, waypoints);
+
+  if (nextWaypoint) {
+    return { type: "moveTo", target: nextWaypoint };
+  }
+
+  // Fallback: return home if no waypoints available
   const spawn = ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
   if (spawn && ctx.creep.pos.getRangeTo(spawn) > 10) {
     return { type: "moveTo", target: spawn };
