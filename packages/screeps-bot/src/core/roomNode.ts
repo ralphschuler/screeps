@@ -20,6 +20,7 @@ import { getBlueprint, placeConstructionSites, destroyMisplacedStructures } from
 import { placeRoadConstructionSites } from "../layouts/roadNetworkPlanner";
 import { safeFind } from "../utils/safeFind";
 import { safeModeManager } from "../defense/safeModeManager";
+import { placePerimeterDefense } from "../defense/perimeterDefense";
 import { chemistryPlanner } from "../labs/chemistryPlanner";
 import { boostManager } from "../labs/boostManager";
 import { kernel } from "./kernel";
@@ -352,15 +353,23 @@ export class RoomNode {
       }
     }
 
-    // Place construction sites using blueprint
+    // Priority 1: Place perimeter defense (RCL 2+)
+    // Early defense is critical for room security
+    let perimeterPlaced = 0;
+    if (rcl >= 2 && existingSites.length < 8) {
+      // Prioritize choke points at RCL 2, full perimeter at RCL 3+
+      perimeterPlaced = placePerimeterDefense(room, rcl, 2, true);
+    }
+
+    // Priority 2: Place construction sites using blueprint
     const placed = placeConstructionSites(room, spawn.pos, blueprint);
 
-    // Place road construction sites for infrastructure routes (sources, controller, mineral)
+    // Priority 3: Place road construction sites for infrastructure routes (sources, controller, mineral)
     // Only place 1-2 road sites per tick to avoid overwhelming builders
     const roadSitesPlaced = placeRoadConstructionSites(room, spawn.pos, 2);
 
     // Update metrics
-    swarm.metrics.constructionSites = existingSites.length + placed + roadSitesPlaced;
+    swarm.metrics.constructionSites = existingSites.length + placed + roadSitesPlaced + perimeterPlaced;
   }
 
   /**
