@@ -23,6 +23,11 @@ function recordConsoleLine(metrics: Metrics, logger: Logger, line: string) {
 export async function startConsoleListener(api: ScreepsAPI, metrics: Metrics, logger: Logger): Promise<void> {
   const socket = api.socket;
 
+  // Flush metrics every 15 seconds for console mode
+  setInterval(() => {
+    metrics.flush();
+  }, 15000);
+
   socket.on('connected', () => {
     logger.info('Connected to Screeps console');
     socket.subscribe('console', () => logger.info('Subscribed to console events'));
@@ -31,16 +36,22 @@ export async function startConsoleListener(api: ScreepsAPI, metrics: Metrics, lo
   socket.on('disconnected', () => {
     logger.warn('Disconnected from Screeps console, reconnecting');
     metrics.markScrapeSuccess('console', false);
+    metrics.flush();
   });
 
   socket.on('error', (error: unknown) => {
     logger.error('Socket error', error);
     metrics.markScrapeSuccess('console', false);
+    metrics.flush();
   });
 
   socket.on('console', (payload: { messages?: { log?: string[] } }) => {
     const lines = payload?.messages?.log ?? [];
     lines.forEach((line) => recordConsoleLine(metrics, logger, line));
+    // Flush after each batch of console messages
+    if (lines.length > 0) {
+      metrics.flush();
+    }
   });
 
   if (typeof socket.connect === 'function') {

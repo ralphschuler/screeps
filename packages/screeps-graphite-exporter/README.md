@@ -1,11 +1,11 @@
-# Screeps Prometheus Exporter
+# Screeps Graphite Exporter
 
-Exports Screeps stats as Prometheus metrics from either `Memory.stats` or console log output.
+Exports Screeps stats to Graphite from either `Memory.stats` or console log output.
 
 ## Features
-- **Memory mode**: periodically fetches `Memory.stats` and emits gauges.
+- **Memory mode**: periodically fetches `Memory.stats` and sends metrics to Graphite.
 - **Console mode**: subscribes to Screeps console logs and parses lines formatted as `stats:<key> <value> <range>`.
-- Exposes `/metrics` (Prometheus format) and a small JSON info endpoint on `/`.
+- Uses Graphite plaintext protocol for pushing metrics.
 
 ## Configuration
 All configuration is provided via environment variables. Authentication requires either `SCREEPS_TOKEN` or the combination of `SCREEPS_USERNAME` and `SCREEPS_PASSWORD`.
@@ -13,11 +13,12 @@ All configuration is provided via environment variables. Authentication requires
 | Variable | Default | Description |
 | --- | --- | --- |
 | `EXPORTER_MODE` | `memory` | Set to `memory` or `console`. |
-| `EXPORTER_PORT` | `9100` | Port for the HTTP server. |
-| `EXPORTER_METRICS_PATH` | `/metrics` | HTTP path for Prometheus metrics. |
 | `EXPORTER_POLL_INTERVAL_MS` | `15000` | Poll interval for memory mode. |
 | `EXPORTER_MEMORY_PATH` | `stats` | Memory path to read stats from. |
 | `EXPORTER_SHARD` | `shard0` | Shard to read from when polling memory. |
+| `GRAPHITE_HOST` | `localhost` | Graphite Carbon host. |
+| `GRAPHITE_PORT` | `2003` | Graphite Carbon plaintext port. |
+| `GRAPHITE_PREFIX` | `screeps` | Metric name prefix. |
 | `SCREEPS_PROTOCOL` | `https` | Protocol for Screeps API connections. |
 | `SCREEPS_HOST` | `screeps.com` | Host for Screeps API connections. |
 | `SCREEPS_PORT` | _unset_ | Optional Screeps API port override. |
@@ -36,6 +37,16 @@ stats:bucket 9500 tick
 
 The exporter treats the first token as the stat name, the second as a numeric value, and the optional third token as the range label.
 
+### Metric naming
+Metrics are sent to Graphite with the following naming convention:
+- Stats: `{prefix}.stat.{stat_name}.{range}`
+- Scrape success: `{prefix}.exporter.scrape_success.{mode}`
+
+For example, with the default prefix `screeps`:
+- `screeps.stat.cpu.memory`
+- `screeps.stat.bucket.tick`
+- `screeps.exporter.scrape_success.memory`
+
 ## Development
 
 ```bash
@@ -48,11 +59,11 @@ npm start
 Build a local image:
 
 ```bash
-docker build -t screeps-prometheus-exporter .
+docker build -t screeps-graphite-exporter .
 ```
 
 Run the exporter:
 
 ```bash
-docker run -e SCREEPS_TOKEN=yourToken -p 9100:9100 screeps-prometheus-exporter
+docker run -e SCREEPS_TOKEN=yourToken -e GRAPHITE_HOST=graphite screeps-graphite-exporter
 ```
