@@ -44,7 +44,10 @@ function isStateValid(state: CreepState | undefined, ctx: CreepContext): boolean
 }
 
 /**
- * Check if the current state represents a completed action
+ * Check if the current state represents a completed action.
+ * 
+ * OPTIMIZATION: Fast-path checks to avoid expensive Game.getObjectById calls.
+ * We check capacity/position conditions first before validating targets.
  */
 function isStateComplete(state: CreepState | undefined, ctx: CreepContext): boolean {
   if (!state) return true;
@@ -74,6 +77,8 @@ function isStateComplete(state: CreepState | undefined, ctx: CreepContext): bool
 
     case "moveTo":
       // Movement complete when adjacent to or at target
+      // OPTIMIZATION: Only validate target if we have a targetId
+      // This avoids unnecessary Game.getObjectById calls
       if (state.targetId) {
         const target = Game.getObjectById(state.targetId);
         if (target && typeof target === "object" && "pos" in target) {
