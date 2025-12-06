@@ -998,8 +998,9 @@ function findPositionAwayFromSource(
     const creeps = room.lookForAt(LOOK_CREEPS, newX, newY);
     if (creeps.length > 0) continue;
 
-    // Calculate distance from source (higher is better, further from source)
-    const sourceDistance = newPos.getRangeTo(sourcePos);
+    // Calculate distance from source using Chebyshev distance (higher is better, further from source)
+    // This is equivalent to getRangeTo() but faster since we avoid the function call overhead
+    const sourceDistance = Math.max(Math.abs(newX - sourcePos.x), Math.abs(newY - sourcePos.y));
 
     candidates.push({
       pos: newPos,

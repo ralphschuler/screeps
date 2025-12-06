@@ -4,12 +4,20 @@ import sinon from "sinon";
 // We can't easily unit test the full movement module due to global dependencies,
 // but we can test the key logic concepts for room exit handling.
 
+/**
+ * Common Position interface used across test cases
+ */
+interface Position {
+  x: number;
+  y: number;
+}
+
 describe("Movement Room Exit Handling", () => {
   /**
    * Helper to check if a position is on a room exit.
    * This mirrors the logic in the movement module.
    */
-  function isOnRoomExit(pos: { x: number; y: number }): boolean {
+  function isOnRoomExit(pos: Position): boolean {
     return pos.x === 0 || pos.x === 49 || pos.y === 0 || pos.y === 49;
   }
 
@@ -394,11 +402,6 @@ describe("Movement Room Exit Handling", () => {
      * Simulates the logic for finding a position away from a source.
      * This mirrors the findPositionAwayFromSource function in movement.ts.
      */
-    interface Position {
-      x: number;
-      y: number;
-    }
-
     function findPositionAwayFromSource(
       creepPos: Position,
       sourcePos: Position,
@@ -534,11 +537,6 @@ describe("Movement Room Exit Handling", () => {
     /**
      * Simulates calculating a target position based on direction.
      */
-    interface Position {
-      x: number;
-      y: number;
-    }
-
     function getTargetPosition(creepPos: Position, direction: number): Position | null {
       const offsets: Record<number, { dx: number; dy: number }> = {
         1: { dx: 0, dy: -1 }, // TOP
