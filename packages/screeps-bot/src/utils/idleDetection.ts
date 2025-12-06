@@ -1,0 +1,297 @@
+/**
+ * Idle Creep Detection
+ *
+ * Detects creeps that are truly idle and can skip expensive behavior evaluation.
+ * This is a significant CPU optimization for large swarms (1000+ creeps).
+ *
+ * A creep is considered idle when:
+ * 1. It's at its work position (e.g., harvester at source, upgrader at controller)
+ * 2. It has an ongoing state that's still valid
+ * 3. It doesn't need to make new decisions
+ *
+ * Design Principles (from ROADMAP.md Section 18):
+ * - "Idle creep detection: Skip behavior evaluation for truly idle creeps"
+ * - CPU savings: ~0.1-0.2 CPU per skipped creep
+ * - With 142 creeps, ~20-40% may be in idle working state
+ * - Potential savings: 3-8 CPU
+ */
+
+import type { SwarmCreepMemory } from "../memory/schemas";
+
+// =============================================================================
+// Constants
+// =============================================================================
+
+/**
+ * Roles that can benefit from idle detection (stationary workers).
+ * Mobile roles like haulers and military units are excluded.
+ */
+const IDLE_ELIGIBLE_ROLES = new Set([
+  "harvester", // Stationary at source
+  "upgrader", // Often stationary at controller
+  "mineralHarvester", // Stationary at mineral
+  "depositHarvester", // Stationary at deposit
+  "factoryWorker", // Stationary at factory
+  "labTech" // Stationary at labs
+]);
+
+/**
+ * Energy threshold for harvesters.
+ * If harvester is at source and has less than this in store, it's actively working.
+ */
+const HARVESTER_WORKING_THRESHOLD = 40;
+
+/**
+ * Minimum ticks a creep must have a valid state to be considered idle.
+ * This prevents false positives for creeps that just started a task.
+ */
+const MIN_STATE_AGE_FOR_IDLE = 3;
+
+// =============================================================================
+// Public API
+// =============================================================================
+
+/**
+ * Check if a creep can skip behavior evaluation this tick.
+ * Returns true if the creep is:
+ * - In an idle-eligible role
+ * - Has a valid ongoing state
+ * - Is actively working (not just standing around)
+ * - Doesn't need to make new decisions
+ *
+ * @param creep - The creep to check
+ * @returns true if creep can skip behavior evaluation
+ */
+export function canSkipBehaviorEvaluation(creep: Creep): boolean {
+  const memory = creep.memory as unknown as SwarmCreepMemory;
+  
+  // Only certain roles are eligible
+  if (!IDLE_ELIGIBLE_ROLES.has(memory.role)) {
+    return false;
+  }
+  
+  // Must have a valid state that's been active for a few ticks
+  const state = memory.state;
+  if (!state || !state.startTick) {
+    return false;
+  }
+  
+  const stateAge = Game.time - state.startTick;
+  if (stateAge < MIN_STATE_AGE_FOR_IDLE) {
+    return false;
+  }
+  
+  // Role-specific checks
+  switch (memory.role) {
+    case "harvester":
+      return isHarvesterIdle(creep, state);
+    
+    case "upgrader":
+      return isUpgraderIdle(creep, state);
+    
+    case "mineralHarvester":
+      return isMineralHarvesterIdle(creep, state);
+    
+    case "depositHarvester":
+    case "factoryWorker":
+    case "labTech":
+      // These roles can be idle if they have a valid state
+      // The state machine will handle checking if state is still valid
+      return true;
+    
+    default:
+      return false;
+  }
+}
+
+// =============================================================================
+// Role-Specific Idle Checks
+// =============================================================================
+
+/**
+ * Check if a harvester is idle (actively harvesting at source).
+ * Harvester is idle when:
+ * - State is "harvest" or "transfer"
+ * - Has valid target (source or container/link)
+ * - Is next to target
+ * - Has space to continue harvesting (not full)
+ */
+function isHarvesterIdle(creep: Creep, state: NonNullable<SwarmCreepMemory["state"]>): boolean {
+  // Must be harvesting or transferring to nearby container/link
+  if (state.action !== "harvest" && state.action !== "transfer") {
+    return false;
+  }
+  
+  // Validate target still exists
+  if (!state.targetId) {
+    return false;
+  }
+  
+  const target = Game.getObjectById(state.targetId);
+  if (!target) {
+    return false;
+  }
+  
+  // Type guard: ensure target is a RoomObject with a pos property
+  if (!("pos" in target) || !("room" in target)) {
+    return false;
+  }
+  
+  // Must be adjacent to target
+  if (!creep.pos.isNearTo((target as unknown as RoomObject).pos)) {
+    return false;
+  }
+  
+  // If harvesting, must not be full
+  if (state.action === "harvest") {
+    const carryCapacity = creep.store.getCapacity();
+    if (carryCapacity !== null && carryCapacity > 0) {
+      // Has carry capacity - check if full
+      if (creep.store.getFreeCapacity() === 0) {
+        return false; // Full, needs to transfer
+      }
+    }
+    // Drop miners (no carry) are always idle when harvesting
+  }
+  
+  // If transferring, must have energy to transfer
+  if (state.action === "transfer") {
+    if (creep.store.getUsedCapacity(RESOURCE_ENERGY) < HARVESTER_WORKING_THRESHOLD) {
+      return false; // Not enough energy, needs to harvest
+    }
+  }
+  
+  return true;
+}
+
+/**
+ * Check if an upgrader is idle (actively upgrading controller).
+ * Upgrader is idle when:
+ * - State is "upgrade" or "withdraw" (getting energy from nearby container)
+ * - Has valid target
+ * - Is in range of target
+ * - Has energy to upgrade (for upgrade state) or space to withdraw (for withdraw state)
+ */
+function isUpgraderIdle(creep: Creep, state: NonNullable<SwarmCreepMemory["state"]>): boolean {
+  // Must be upgrading or withdrawing
+  if (state.action !== "upgrade" && state.action !== "withdraw") {
+    return false;
+  }
+  
+  // Validate target
+  if (!state.targetId) {
+    return false;
+  }
+  
+  const target = Game.getObjectById(state.targetId);
+  if (!target) {
+    return false;
+  }
+  
+  // Type guard: ensure target is a RoomObject with a pos property
+  if (!("pos" in target) || !("room" in target)) {
+    return false;
+  }
+  
+  // Must be in range
+  const inRange = creep.pos.inRangeTo((target as unknown as RoomObject).pos, 3);
+  if (!inRange) {
+    return false;
+  }
+  
+  // If upgrading, must have energy
+  if (state.action === "upgrade") {
+    if (creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0) {
+      return false;
+    }
+  }
+  
+  // If withdrawing, must have space
+  if (state.action === "withdraw") {
+    if (creep.store.getFreeCapacity(RESOURCE_ENERGY) === 0) {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+/**
+ * Check if a mineral harvester is idle (actively mining mineral).
+ * Similar to regular harvester but for minerals.
+ */
+function isMineralHarvesterIdle(creep: Creep, state: NonNullable<SwarmCreepMemory["state"]>): boolean {
+  // Must be harvesting mineral
+  if (state.action !== "harvestMineral") {
+    return false;
+  }
+  
+  // Validate target
+  if (!state.targetId) {
+    return false;
+  }
+  
+  const target = Game.getObjectById(state.targetId);
+  if (!target) {
+    return false;
+  }
+  
+  // Type guard: ensure target is a RoomObject with a pos property
+  if (!("pos" in target) || !("room" in target)) {
+    return false;
+  }
+  
+  // Must be adjacent
+  if (!creep.pos.isNearTo((target as unknown as RoomObject).pos)) {
+    return false;
+  }
+  
+  // Must not be full
+  if (creep.store.getFreeCapacity() === 0) {
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * Execute the creep's current action without re-evaluating behavior.
+ * This is called for idle creeps that can skip behavior evaluation.
+ * 
+ * @param creep - The creep to execute action for
+ * @returns true if action was executed successfully
+ */
+export function executeIdleAction(creep: Creep): boolean {
+  const memory = creep.memory as unknown as SwarmCreepMemory;
+  const state = memory.state;
+  
+  if (!state || !state.targetId) {
+    return false;
+  }
+  
+  const target = Game.getObjectById(state.targetId);
+  if (!target) {
+    return false;
+  }
+  
+  // Execute the action based on state
+  switch (state.action) {
+    case "harvest":
+      return creep.harvest(target as Source) === OK;
+    
+    case "harvestMineral":
+      return creep.harvest(target as Mineral) === OK;
+    
+    case "transfer":
+      return creep.transfer(target as AnyStoreStructure, RESOURCE_ENERGY) === OK;
+    
+    case "withdraw":
+      return creep.withdraw(target as AnyStoreStructure, RESOURCE_ENERGY) === OK;
+    
+    case "upgrade":
+      return creep.upgradeController(target as StructureController) === OK;
+    
+    default:
+      return false;
+  }
+}

@@ -39,6 +39,7 @@ import { roomVisualizer } from "./visuals/roomVisualizer";
 import { memorySegmentStats } from "./core/memorySegmentStats";
 import { getConfig } from "./config";
 import { configureLogger, LogLevel, logger } from "./core/logger";
+import { canSkipBehaviorEvaluation, executeIdleAction } from "./utils/idleDetection";
 
 // =============================================================================
 // Role Priority Configuration
@@ -110,9 +111,19 @@ function getCreepPriority(creep: Creep): number {
 }
 
 /**
- * Run creep based on its role family
+ * Run creep based on its role family.
+ * Uses idle detection to skip expensive behavior evaluation for stationary workers.
  */
 function runCreep(creep: Creep): void {
+  // OPTIMIZATION: Skip behavior evaluation for idle creeps
+  // Idle creeps are stationary workers (harvesters, upgraders) that are actively
+  // working at their station and don't need to make new decisions.
+  // This saves ~0.1-0.2 CPU per skipped creep.
+  if (canSkipBehaviorEvaluation(creep)) {
+    executeIdleAction(creep);
+    return;
+  }
+
   const family = getCreepFamily(creep);
 
   switch (family) {
@@ -226,12 +237,16 @@ function runSpawns(): void {
  * OPTIMIZATION: CPU checks are expensive (~0.01 CPU each).
  * With 1000+ creeps, checking every creep adds 10+ CPU overhead.
  * We use micro-batching to check every N creeps instead of every creep.
+ * 
+ * OPTIMIZATION: Idle detection skips expensive behavior evaluation for
+ * stationary workers that are actively working (harvesters at source, etc.).
  */
 function runCreepsWithBudget(): void {
   const lowBucket = isLowBucket();
   const { creeps, skippedLow } = getPrioritizedCreeps(lowBucket);
   let creepsRun = 0;
   let creepsSkipped = skippedLow;
+  let idleOptimized = 0;
 
   // Micro-batch size: check CPU every N creeps
   // Smaller batches when bucket is low for tighter control
@@ -244,16 +259,30 @@ function runCreepsWithBudget(): void {
       break;
     }
 
+    // Track if creep used idle optimization
+    const wasIdle = canSkipBehaviorEvaluation(creeps[i]);
+    if (wasIdle) {
+      idleOptimized++;
+    }
+
     runCreep(creeps[i]);
     creepsRun++;
   }
 
-  // Log if we skipped creeps - reduce frequency when bucket is low to save CPU
+  // Log statistics periodically
   const logInterval = lowBucket ? 100 : 50;
-  if (creepsSkipped > 0 && Game.time % logInterval === 0) {
-    logger.warn(`Skipped ${creepsSkipped} creeps due to CPU (bucket: ${Game.cpu.bucket})`, {
-      subsystem: "SwarmBot"
-    });
+  if (Game.time % logInterval === 0) {
+    if (creepsSkipped > 0) {
+      logger.warn(`Skipped ${creepsSkipped} creeps due to CPU (bucket: ${Game.cpu.bucket})`, {
+        subsystem: "SwarmBot"
+      });
+    }
+    if (idleOptimized > 0) {
+      logger.debug(
+        `Idle optimization: ${idleOptimized}/${creepsRun} creeps (${Math.round((idleOptimized / creepsRun) * 100)}%)`,
+        { subsystem: "SwarmBot" }
+      );
+    }
   }
 }
 

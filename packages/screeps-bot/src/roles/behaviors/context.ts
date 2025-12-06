@@ -50,7 +50,10 @@ interface RoomCache {
   // Core cached data (always computed)
   hostiles: Creep[];
   myStructures: OwnedStructure[];
+  // OPTIMIZATION: allStructures is expensive and not always needed
+  // We load it lazily to reduce initial cache cost
   allStructures: Structure[];
+  _allStructuresLoaded?: boolean;
 
   // Lazy-evaluated fields (computed on first access)
   _droppedResources?: Resource[];
@@ -93,6 +96,10 @@ function isInHostileThreatRange(pos: RoomPosition, hostiles: Creep[]): boolean {
  * Get or create cached room data.
  * Only runs find() calls once per room per tick.
  * Uses lazy evaluation for expensive derived fields.
+ * 
+ * OPTIMIZATION: Minimize initial cache cost by only loading essential data.
+ * allStructures is expensive (~0.1 CPU) and often not needed by many creeps.
+ * We load it lazily when first accessed instead of upfront.
  */
 function getRoomCache(room: Room): RoomCache {
   const existing = roomCacheMap.get(room.name);
@@ -100,14 +107,17 @@ function getRoomCache(room: Room): RoomCache {
     return existing;
   }
 
-  // Build core cache - this is the expensive part, but only happens once per room per tick
+  // Build minimal core cache - only load what's always needed
   // Use safeFind for hostile creeps to handle engine errors with corrupted owner data
   const cache: RoomCache = {
     tick: Game.time,
     room,
     hostiles: safeFind(room, FIND_HOSTILE_CREEPS),
+    // OPTIMIZATION: Load myStructures instead of allStructures initially.
+    // Most creeps only need myStructures. allStructures will be loaded lazily if needed.
     myStructures: room.find(FIND_MY_STRUCTURES),
-    allStructures: room.find(FIND_STRUCTURES)
+    // Set empty array for now - will be populated lazily when accessed
+    allStructures: []
   };
 
   roomCacheMap.set(room.name, cache);
@@ -127,10 +137,22 @@ function getDroppedResources(cache: RoomCache): Resource[] {
 }
 
 /**
+ * Ensure allStructures is loaded in cache (lazy load optimization).
+ * Only called when a function actually needs allStructures.
+ */
+function ensureAllStructuresLoaded(cache: RoomCache): void {
+  if (!cache._allStructuresLoaded) {
+    cache.allStructures = cache.room.find(FIND_STRUCTURES);
+    cache._allStructuresLoaded = true;
+  }
+}
+
+/**
  * Get containers with energy from cache (lazy evaluation)
  */
 function getContainers(cache: RoomCache): StructureContainer[] {
   if (cache._containers === undefined) {
+    ensureAllStructuresLoaded(cache);
     cache._containers = cache.allStructures.filter(
       (s): s is StructureContainer =>
         s.structureType === STRUCTURE_CONTAINER &&
@@ -145,6 +167,7 @@ function getContainers(cache: RoomCache): StructureContainer[] {
  */
 function getDepositContainers(cache: RoomCache): StructureContainer[] {
   if (cache._depositContainers === undefined) {
+    ensureAllStructuresLoaded(cache);
     cache._depositContainers = cache.allStructures.filter(
       (s): s is StructureContainer =>
         s.structureType === STRUCTURE_CONTAINER &&
@@ -201,6 +224,7 @@ function getPrioritizedSites(cache: RoomCache): ConstructionSite[] {
  */
 function getRepairTargets(cache: RoomCache): Structure[] {
   if (cache._repairTargets === undefined) {
+    ensureAllStructuresLoaded(cache);
     cache._repairTargets = cache.allStructures.filter(
       s => s.hits < s.hitsMax * 0.75 && s.structureType !== STRUCTURE_WALL
     );

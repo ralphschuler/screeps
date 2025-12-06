@@ -53,26 +53,30 @@ function updateWorkingState(ctx: CreepContext): boolean {
 /**
  * Find energy to collect (common pattern for many roles).
  * Uses cached target finding to reduce CPU usage.
+ * 
+ * OPTIMIZATION: Prioritize dropped resources and containers over room.find() calls.
+ * Most rooms have containers set up, so we rarely need to fall back to harvesting.
  */
 function findEnergy(ctx: CreepContext): CreepAction {
-  // 1. Dropped resources
+  // 1. Dropped resources (cache 5 ticks - they appear/disappear quickly)
   if (ctx.droppedResources.length > 0) {
     const closest = findCachedClosest(ctx.creep, ctx.droppedResources, "energy_drop", 5);
     if (closest) return { type: "pickup", target: closest };
   }
 
-  // 2. Containers
+  // 2. Containers (cache 10 ticks - stable targets)
   if (ctx.containers.length > 0) {
     const closest = findCachedClosest(ctx.creep, ctx.containers, "energy_container", 10);
     if (closest) return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
   }
 
-  // 3. Storage
+  // 3. Storage (single target, no caching needed)
   if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
     return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
   }
 
-  // 4. Harvest directly (sources don't change often, longer cache)
+  // 4. Harvest directly (sources don't change, cache 20 ticks)
+  // This is the most expensive option due to room.find(), but rarely used
   const sources = ctx.room.find(FIND_SOURCES_ACTIVE);
   if (sources.length > 0) {
     const source = findCachedClosest(ctx.creep, sources, "energy_source", 20);
