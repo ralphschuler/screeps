@@ -22,6 +22,7 @@ import { safeFind } from "../utils/safeFind";
 import { safeModeManager } from "../defense/safeModeManager";
 import { chemistryPlanner } from "../labs/chemistryPlanner";
 import { boostManager } from "../labs/boostManager";
+import { kernel } from "./kernel";
 
 /**
  * Room node configuration
@@ -123,6 +124,7 @@ export class RoomNode {
   /**
    * Update threat assessment.
    * Uses optimized iteration for better CPU efficiency.
+   * Emits events through the kernel event system for centralized handling.
    */
   private updateThreatAssessment(room: Room, swarm: SwarmState): void {
     // Use safeFind to handle engine errors with corrupted owner data
@@ -147,10 +149,28 @@ export class RoomNode {
 
     const newDanger = calculateDangerLevel(hostiles.length, potentialDamage, enemyStructures.length > 0);
 
-    // Update danger and emit pheromone event if increased
+    // Update danger and emit events if increased
     if (newDanger > swarm.danger) {
       pheromoneManager.onHostileDetected(swarm, hostiles.length, newDanger);
       memoryManager.addRoomEvent(this.roomName, "hostileDetected", `${hostiles.length} hostiles, danger=${newDanger}`);
+
+      // Emit hostile detected events for each hostile through the kernel event system
+      for (const hostile of hostiles) {
+        kernel.emit("hostile.detected", {
+          roomName: this.roomName,
+          hostileId: hostile.id,
+          hostileOwner: hostile.owner.username,
+          bodyParts: hostile.body.length,
+          threatLevel: newDanger,
+          source: this.roomName
+        });
+      }
+    } else if (hostiles.length === 0 && swarm.danger > 0) {
+      // Emit hostile cleared event when danger level drops to 0
+      kernel.emit("hostile.cleared", {
+        roomName: this.roomName,
+        source: this.roomName
+      });
     }
 
     swarm.danger = newDanger;
@@ -163,6 +183,17 @@ export class RoomNode {
         const launchSource = nukes[0]?.launchRoomName ?? 'unidentified source';
         memoryManager.addRoomEvent(this.roomName, "nukeDetected", `${nukes.length} nuke(s) incoming from ${launchSource}`);
         swarm.nukeDetected = true;
+
+        // Emit nuke detected events through kernel event system
+        for (const nuke of nukes) {
+          kernel.emit("nuke.detected", {
+            roomName: this.roomName,
+            nukeId: nuke.id,
+            landingTick: Game.time + nuke.timeToLand,
+            launchRoomName: nuke.launchRoomName,
+            source: this.roomName
+          });
+        }
       }
     } else {
       // Reset flag when nukes are gone
