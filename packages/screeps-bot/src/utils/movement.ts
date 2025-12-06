@@ -24,6 +24,22 @@ import {
 } from "./trafficManager";
 
 // =============================================================================
+// Type Guards
+// =============================================================================
+
+/**
+ * Type guard to check if an entity is a Creep (not a PowerCreep).
+ * Creeps have a memory property while PowerCreeps do not have standard memory.
+ * Additionally, Creeps have spawning and ticksToLive properties with specific types.
+ */
+function isCreep(entity: Creep | PowerCreep): entity is Creep {
+  // Creeps have a memory property that is directly writable
+  // PowerCreeps have memory too, but we can distinguish by other properties
+  // Creeps always have 'body' property which is an array of body parts
+  return "body" in entity && Array.isArray(entity.body);
+}
+
+// =============================================================================
 // Types & Interfaces
 // =============================================================================
 
@@ -364,10 +380,9 @@ function reconcileTraffic(): void {
 
           if (blockingCreep) {
             // Only ask to move if the blocking creep should yield (based on priority)
-            // We need to check if it's a Creep (not PowerCreep) for shouldYieldTo
-            if ("my" in intent.creep && intent.creep.my) {
-              const requesterCreep = intent.creep as Creep;
-              if (shouldYieldTo(blockingCreep, requesterCreep)) {
+            // Use type guard to ensure intent.creep is a Creep (not PowerCreep)
+            if (isCreep(intent.creep)) {
+              if (shouldYieldTo(blockingCreep, intent.creep)) {
                 // Try to find a side-step position for the blocking creep
                 const sideStep = findSideStepPosition(blockingCreep);
                 if (sideStep) {
@@ -387,9 +402,9 @@ function reconcileTraffic(): void {
         // Re-check if still occupied after attempting to resolve
         if (occupied.has(targetKey)) {
           // Register a move request for next tick so the blocking creep knows
-          // Only do this for Creeps, not PowerCreeps
-          if ("memory" in intent.creep) {
-            requestMoveToPosition(intent.creep as Creep, intent.targetPos);
+          // Only do this for Creeps, not PowerCreeps - use type guard
+          if (isCreep(intent.creep)) {
+            requestMoveToPosition(intent.creep, intent.targetPos);
           }
           continue;
         }
