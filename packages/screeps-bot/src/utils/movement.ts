@@ -427,6 +427,42 @@ function internalMoveTo(
     return OK;
   }
 
+  // CRITICAL: Handle creeps on room exits that need to move to a different room.
+  // When a creep is on an exit tile and their target is in a DIFFERENT room,
+  // they must FIRST move off the exit tile toward the room center before continuing.
+  // This prevents cycling behavior where PathFinder would route them back through the exit.
+  const onRoomExit = isOnRoomExit(creep.pos);
+  const targetInDifferentRoom = targetPos.roomName !== creep.pos.roomName;
+
+  if (onRoomExit && targetInDifferentRoom) {
+    // Find a walkable position off the exit that's more toward the room center
+    const exitOffPosition = findPositionOffExit(creep);
+    if (exitOffPosition) {
+      // Move to the off-exit position first, then next tick will continue pathing
+      const direction = getDirection(creep.pos, exitOffPosition);
+      const currentRoomName = creep.pos.roomName;
+
+      // Register movement intent for traffic management
+      if (lastPreTickTime === Game.time) {
+        if (!moveIntents.has(currentRoomName)) {
+          moveIntents.set(currentRoomName, []);
+        }
+        const intents = moveIntents.get(currentRoomName);
+        if (intents) {
+          intents.push({
+            creep,
+            priority: priority + 1, // Slightly higher priority to clear exit
+            targetPos: exitOffPosition
+          });
+        }
+        return OK;
+      } else {
+        return creep.move(direction);
+      }
+    }
+    // If no off-exit position found, continue with normal pathing
+  }
+
   // Get cached path or generate new one
   const memory = creep.memory as { [key: string]: unknown };
   const cachedPath = memory[MEMORY_PATH_KEY] as CachedPath | undefined;
@@ -441,9 +477,9 @@ function internalMoveTo(
   memory[MEMORY_STUCK_KEY] = newStuckCount;
   memory[MEMORY_LAST_POS_KEY] = currentPosKey;
 
-  // Check if creep is on a room exit - this indicates they just entered a new room
-  // and need to repath to avoid cycling back through the exit
-  const onRoomExit = isOnRoomExit(creep.pos);
+  // Check if creep needs to repath for cross-room movement
+  // Note: The critical exit-handling is done above; this additional check ensures
+  // stale paths from different rooms are invalidated
 
   // Check if cached path is from a different room (creep changed rooms)
   const cachedPathFirstPos = cachedPath?.path[0];
@@ -458,7 +494,7 @@ function internalMoveTo(
     cachedPath.targetKey !== targetKey ||
     Game.time - cachedPath.tick > reusePath ||
     newStuckCount >= repathIfStuck ||
-    (onRoomExit && cachedPathInDifferentRoom); // Force repath when on exit with stale path
+    cachedPathInDifferentRoom; // Force repath when path is from a different room
 
   let path: RoomPosition[];
 
@@ -500,10 +536,9 @@ function internalMoveTo(
     p => p.x === creep.pos.x && p.y === creep.pos.y && p.roomName === creep.pos.roomName
   );
 
-  // If current position not found in path and we're on a room exit,
-  // this could mean the path doesn't include cross-room positions.
-  // Force a repath to get a valid path from current position.
-  if (currentIdx === -1 && onRoomExit) {
+  // If current position not found in path, this could mean the path is stale
+  // or doesn't include the creep's current position. Force a repath.
+  if (currentIdx === -1 && isOnRoomExit(creep.pos)) {
     const newPath = generateAndCachePath();
     if (!newPath) {
       return ERR_NO_PATH;

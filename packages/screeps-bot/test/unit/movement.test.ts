@@ -315,4 +315,77 @@ describe("Movement Room Exit Handling", () => {
       expect(result!.y).to.be.lessThan(49);
     });
   });
+
+  describe("Cross-room exit handling", () => {
+    /**
+     * Simulates checking if a creep needs to move off exit before continuing to different room.
+     * This mirrors the new logic in the movement module for handling cross-room navigation.
+     */
+    function needsMoveOffExitFirst(
+      creepPos: { x: number; y: number; roomName: string },
+      targetRoomName: string
+    ): boolean {
+      const onRoomExit =
+        creepPos.x === 0 || creepPos.x === 49 || creepPos.y === 0 || creepPos.y === 49;
+      const targetInDifferentRoom = targetRoomName !== creepPos.roomName;
+      return onRoomExit && targetInDifferentRoom;
+    }
+
+    it("should require move-off-exit when on exit AND target in different room", () => {
+      // Creep at left exit (x=0) in E1N1, target in E2N1
+      expect(
+        needsMoveOffExitFirst({ x: 0, y: 25, roomName: "E1N1" }, "E2N1")
+      ).to.be.true;
+    });
+
+    it("should require move-off-exit when on corner AND target in different room", () => {
+      // Creep at corner (0,0) in E1N1, target in W1N1
+      expect(
+        needsMoveOffExitFirst({ x: 0, y: 0, roomName: "E1N1" }, "W1N1")
+      ).to.be.true;
+    });
+
+    it("should NOT require move-off-exit when on exit but target in same room", () => {
+      // Creep at left exit (x=0) in E1N1, target also in E1N1
+      expect(
+        needsMoveOffExitFirst({ x: 0, y: 25, roomName: "E1N1" }, "E1N1")
+      ).to.be.false;
+    });
+
+    it("should NOT require move-off-exit when not on exit even if target in different room", () => {
+      // Creep in center of E1N1, target in E2N1
+      expect(
+        needsMoveOffExitFirst({ x: 25, y: 25, roomName: "E1N1" }, "E2N1")
+      ).to.be.false;
+    });
+
+    it("should NOT require move-off-exit when not on exit and target in same room", () => {
+      // Creep in center of E1N1, target also in E1N1
+      expect(
+        needsMoveOffExitFirst({ x: 25, y: 25, roomName: "E1N1" }, "E1N1")
+      ).to.be.false;
+    });
+
+    it("should handle all four edges correctly", () => {
+      // Left edge (x=0)
+      expect(
+        needsMoveOffExitFirst({ x: 0, y: 25, roomName: "E1N1" }, "E2N1")
+      ).to.be.true;
+
+      // Right edge (x=49)
+      expect(
+        needsMoveOffExitFirst({ x: 49, y: 25, roomName: "E1N1" }, "E2N1")
+      ).to.be.true;
+
+      // Top edge (y=0)
+      expect(
+        needsMoveOffExitFirst({ x: 25, y: 0, roomName: "E1N1" }, "E2N1")
+      ).to.be.true;
+
+      // Bottom edge (y=49)
+      expect(
+        needsMoveOffExitFirst({ x: 25, y: 49, roomName: "E1N1" }, "E2N1")
+      ).to.be.true;
+    });
+  });
 });
