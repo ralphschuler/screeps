@@ -6,11 +6,170 @@
  * - Stuck detection and resolution
  * - Yield rules based on role importance
  * - Side-step behaviors
+ * - Move request system for proactive creep communication
  *
- * Addresses Issue: #33
+ * Addresses Issue: #33 and creep blocking issue
  */
 
 import type { SwarmCreepMemory } from "../memory/schemas";
+
+// =============================================================================
+// Move Request System
+// =============================================================================
+
+/**
+ * A move request from one creep asking another to move.
+ * This allows creeps to proactively communicate their intent to occupy a position.
+ */
+interface MoveRequest {
+  /** The creep requesting the position */
+  requester: Creep;
+  /** The position being requested */
+  targetPos: RoomPosition;
+  /** Priority of the requesting creep (higher = more urgent) */
+  priority: number;
+  /** Game tick when request was made */
+  tick: number;
+}
+
+/**
+ * Per-tick storage of move requests, keyed by position string "roomName:x,y"
+ */
+const moveRequests = new Map<string, MoveRequest[]>();
+
+/**
+ * Last tick when move requests were processed
+ */
+let lastMoveRequestTick = -1;
+
+/**
+ * Create a position key for the move request map
+ */
+function positionKey(pos: RoomPosition | { x: number; y: number; roomName: string }): string {
+  return `${pos.roomName}:${pos.x},${pos.y}`;
+}
+
+/**
+ * Clear move requests at the start of each tick.
+ * Should be called at the beginning of the main loop.
+ */
+export function clearMoveRequests(): void {
+  moveRequests.clear();
+  lastMoveRequestTick = Game.time;
+}
+
+/**
+ * Register a move request for a position.
+ * This tells the system that a creep intends to move to this position
+ * and any blocking creep should be asked to move out of the way.
+ *
+ * @param creep - The creep that wants the position
+ * @param targetPos - The position the creep wants to move to
+ * @returns true if the request was registered
+ */
+export function requestMoveToPosition(creep: Creep, targetPos: RoomPosition): boolean {
+  // Ensure we're on the right tick
+  if (lastMoveRequestTick !== Game.time) {
+    clearMoveRequests();
+  }
+
+  const key = positionKey(targetPos);
+  const priority = getCreepPriority(creep);
+
+  const request: MoveRequest = {
+    requester: creep,
+    targetPos,
+    priority,
+    tick: Game.time
+  };
+
+  const existingRequests = moveRequests.get(key);
+  if (existingRequests) {
+    existingRequests.push(request);
+  } else {
+    moveRequests.set(key, [request]);
+  }
+
+  return true;
+}
+
+/**
+ * Process all move requests and ask blocking creeps to move.
+ * Should be called after all creeps have registered their intents
+ * but before movement reconciliation.
+ *
+ * @returns Number of creeps that were asked to move
+ */
+export function processMoveRequests(): number {
+  let movedCount = 0;
+
+  for (const [posKey, requests] of moveRequests) {
+    if (requests.length === 0) continue;
+
+    // Sort requests by priority (highest first)
+    requests.sort((a, b) => b.priority - a.priority);
+
+    // Get the highest priority request
+    const topRequest = requests[0];
+    if (!topRequest) continue;
+
+    // Find if there's a creep blocking this position
+    const room = Game.rooms[topRequest.targetPos.roomName];
+    if (!room) continue;
+
+    const blockingCreeps = room.lookForAt(LOOK_CREEPS, topRequest.targetPos.x, topRequest.targetPos.y);
+    const blockingCreep = blockingCreeps.find(c => c.my && c.name !== topRequest.requester.name);
+
+    if (!blockingCreep) continue;
+
+    // Check if the blocking creep should yield
+    if (shouldYieldTo(blockingCreep, topRequest.requester)) {
+      // Try to make the blocking creep move
+      const sideStep = findSideStepPosition(blockingCreep);
+      if (sideStep) {
+        const result = blockingCreep.move(blockingCreep.pos.getDirectionTo(sideStep));
+        if (result === OK) {
+          movedCount++;
+        }
+      }
+    }
+  }
+
+  return movedCount;
+}
+
+/**
+ * Check if a position has any pending move requests from higher priority creeps.
+ *
+ * @param pos - Position to check
+ * @param creep - Optional creep to compare priority against
+ * @returns true if there's a higher priority request for this position
+ */
+export function hasHigherPriorityRequest(pos: RoomPosition, creep?: Creep): boolean {
+  const key = positionKey(pos);
+  const requests = moveRequests.get(key);
+
+  if (!requests || requests.length === 0) return false;
+
+  if (!creep) {
+    // Any request counts
+    return true;
+  }
+
+  const myPriority = getCreepPriority(creep);
+  return requests.some(req => req.priority > myPriority && req.requester.name !== creep.name);
+}
+
+/**
+ * Get all move requests for a position.
+ *
+ * @param pos - Position to check
+ * @returns Array of move requests, or empty array if none
+ */
+export function getMoveRequests(pos: RoomPosition): MoveRequest[] {
+  const key = positionKey(pos);
+  return moveRequests.get(key) ?? [];
+}
 
 /**
  * Role priority weights (higher = more important)

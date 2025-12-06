@@ -46,6 +46,9 @@ export type CreepAction =
   | { type: "flee"; from: RoomPosition[] }
   | { type: "wait"; position: RoomPosition }
 
+  // Traffic/Yield action - request blocking creeps to move
+  | { type: "requestMove"; target: RoomPosition }
+
   // No-op action
   | { type: "idle" };
 

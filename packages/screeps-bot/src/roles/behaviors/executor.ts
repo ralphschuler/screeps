@@ -7,6 +7,7 @@
 
 import type { CreepAction, CreepContext } from "./types";
 import { fleeFrom, moveAwayFromSpawn, moveCreep, moveOffRoomExit, moveToRoom } from "../../utils/movement";
+import { requestMoveToPosition } from "../../utils/trafficManager";
 
 /**
  * Path visualization colors for different action types.
@@ -139,6 +140,14 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
       if (!creep.pos.isEqualTo(action.position)) {
         moveCreep(creep, action.position);
       }
+      break;
+
+    case "requestMove":
+      // Register a move request for the target position
+      // This tells blocking creeps that this creep wants to move there
+      requestMoveToPosition(creep, action.target);
+      // Also move toward the target position
+      moveCreep(creep, action.target, { visualizePathStyle: { stroke: PATH_COLORS.move } });
       break;
 
     case "idle":

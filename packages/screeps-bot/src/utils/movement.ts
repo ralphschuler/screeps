@@ -7,6 +7,7 @@
  * - Path caching for CPU efficiency
  * - Stuck detection and recovery
  * - Priority-based movement resolution
+ * - Move request integration for proactive blocking resolution
  *
  * Design Principles (from ROADMAP.md):
  * - Pathfinding is one of the most expensive CPU operations
@@ -14,6 +15,13 @@
  * - Stuck detection with repath or side-step recovery
  * - Yield rules for priority-based movement
  */
+
+import {
+  getCreepPriority,
+  shouldYieldTo,
+  findSideStepPosition,
+  requestMoveToPosition
+} from "./trafficManager";
 
 // =============================================================================
 // Types & Interfaces
@@ -315,6 +323,7 @@ function preTick(): void {
 
 /**
  * Internal reconcileTraffic - Resolve traffic at the end of each tick.
+ * Now integrates with the move request system to ask blocking creeps to move.
  */
 function reconcileTraffic(): void {
   for (const [roomName, intents] of moveIntents) {
@@ -340,13 +349,50 @@ function reconcileTraffic(): void {
       }
     }
 
-    // Second pass: resolve movements in priority order
+    // Second pass: resolve movements in priority order with blocking resolution
     for (const intent of intents) {
       const targetKey = posKey(intent.targetPos);
 
       // Check if target is occupied
       if (occupied.has(targetKey)) {
-        continue;
+        // Try to resolve the blockage by asking the blocking creep to move
+        if (room) {
+          const blockingCreeps = room.lookForAt(LOOK_CREEPS, intent.targetPos.x, intent.targetPos.y);
+          const blockingCreep = blockingCreeps.find(
+            c => c.my && c.name !== intent.creep.name
+          );
+
+          if (blockingCreep) {
+            // Only ask to move if the blocking creep should yield (based on priority)
+            // We need to check if it's a Creep (not PowerCreep) for shouldYieldTo
+            if ("my" in intent.creep && intent.creep.my) {
+              const requesterCreep = intent.creep as Creep;
+              if (shouldYieldTo(blockingCreep, requesterCreep)) {
+                // Try to find a side-step position for the blocking creep
+                const sideStep = findSideStepPosition(blockingCreep);
+                if (sideStep) {
+                  const moveResult = blockingCreep.move(blockingCreep.pos.getDirectionTo(sideStep));
+                  if (moveResult === OK) {
+                    // Blocking creep will move, so we can now occupy this position
+                    occupied.delete(targetKey);
+                    // Also mark the side-step position as occupied
+                    occupied.add(posKey(sideStep));
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Re-check if still occupied after attempting to resolve
+        if (occupied.has(targetKey)) {
+          // Register a move request for next tick so the blocking creep knows
+          // Only do this for Creeps, not PowerCreeps
+          if ("memory" in intent.creep) {
+            requestMoveToPosition(intent.creep as Creep, intent.targetPos);
+          }
+          continue;
+        }
       }
 
       // Execute the move

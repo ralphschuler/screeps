@@ -32,6 +32,7 @@ import { runPowerCreepRole, runPowerRole } from "./roles/power";
 import { runUtilityRole } from "./roles/utility";
 import { clearRoomCaches } from "./roles/behaviors/context";
 import { finalizeMovement, initMovement } from "./utils/movement";
+import { clearMoveRequests, processMoveRequests } from "./utils/trafficManager";
 import { kernel } from "./core/kernel";
 import { registerAllProcesses } from "./core/processRegistry";
 import { roomVisualizer } from "./visuals/roomVisualizer";
@@ -269,6 +270,7 @@ export function loop(): void {
     console.log(`[SwarmBot] CRITICAL: CPU bucket at ${Game.cpu.bucket}, minimal processing`);
     // Only run movement finalization to prevent stuck creeps
     initMovement();
+    clearMoveRequests();
     finalizeMovement();
     clearRoomCaches();
     profiler.finalizeTick();
@@ -280,6 +282,9 @@ export function loop(): void {
 
   // Initialize movement system (traffic management preTick)
   initMovement();
+
+  // Clear move requests from previous tick
+  clearMoveRequests();
 
   // Initialize memory structures
   memoryManager.initialize();
@@ -312,6 +317,12 @@ export function loop(): void {
   // Run all creeps with CPU budget management
   profiler.measureSubsystem("creeps", () => {
     runCreepsWithBudget();
+  });
+
+  // Process move requests - ask blocking creeps to move out of the way
+  // This runs after creeps have registered their movement intentions
+  profiler.measureSubsystem("moveRequests", () => {
+    processMoveRequests();
   });
 
   // Run power creeps (if we have budget)
