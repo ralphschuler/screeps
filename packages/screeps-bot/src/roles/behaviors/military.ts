@@ -237,6 +237,20 @@ export function soldier(ctx: CreepContext): CreepAction {
   });
   if (hostileStructure) return { type: "attack", target: hostileStructure };
 
+  // No targets - patrol the room
+  const waypoints = getPatrolWaypoints(ctx.room);
+  const nextWaypoint = getNextPatrolWaypoint(ctx.creep, waypoints);
+
+  if (nextWaypoint) {
+    return { type: "moveTo", target: nextWaypoint };
+  }
+
+  // Fallback: move near spawn if no waypoints available
+  const spawn = ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
+  if (spawn && ctx.creep.pos.getRangeTo(spawn) > 5) {
+    return { type: "moveTo", target: spawn };
+  }
+
   return { type: "idle" };
 }
 
@@ -278,6 +292,20 @@ export function siege(ctx: CreepContext): CreepAction {
     filter: s => s.structureType !== STRUCTURE_CONTROLLER
   });
   if (structure) return { type: "dismantle", target: structure };
+
+  // No targets - patrol the room
+  const waypoints = getPatrolWaypoints(ctx.room);
+  const nextWaypoint = getNextPatrolWaypoint(ctx.creep, waypoints);
+
+  if (nextWaypoint) {
+    return { type: "moveTo", target: nextWaypoint };
+  }
+
+  // Fallback: move near spawn if no waypoints available
+  const mySpawn = ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
+  if (mySpawn && ctx.creep.pos.getRangeTo(mySpawn) > 5) {
+    return { type: "moveTo", target: mySpawn };
+  }
 
   return { type: "idle" };
 }
