@@ -46,7 +46,7 @@ export function loadConfig(): ExporterConfig {
     protocol: process.env.SCREEPS_PROTOCOL ?? 'https',
     hostname: process.env.SCREEPS_HOST ?? 'screeps.com',
     apiPort: process.env.SCREEPS_PORT ? Number(process.env.SCREEPS_PORT) : undefined,
-    apiPath: process.env.SCREEPS_PATH ?? '/api/',
+    apiPath: process.env.SCREEPS_PATH ?? '/',
     token,
     username,
     password
