@@ -282,12 +282,12 @@ export class Kernel {
       return false;
     }
     
-    // If no pixel generation tracked yet, check if bucket is very low
-    // which might indicate a recent pixel generation before we started tracking
+    // If no pixel generation has been tracked yet (lastPixelGenerationTick === 0),
+    // we don't assume recovery mode. This is conservative: the bot may enter
+    // low/critical mode briefly until the first pixel is generated and tracked.
+    // This is safer than assuming all low bucket states are due to pixel generation.
     if (this.lastPixelGenerationTick === 0) {
-      // On first tick or when tracking wasn't active, 
-      // assume recovery if bucket is low but we have pixel generation enabled
-      return Game.cpu.bucket < this.config.lowBucketThreshold;
+      return false;
     }
     
     const ticksSincePixel = Game.time - this.lastPixelGenerationTick;

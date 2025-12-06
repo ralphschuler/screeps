@@ -108,13 +108,17 @@ export class Scheduler {
    * Determine current bucket mode.
    * Delegates to the kernel for consistent bucket mode decisions,
    * especially during pixel generation recovery periods.
+   * 
+   * Note: The kernel has a more granular BucketMode ("critical" | "low" | "normal" | "high")
+   * while the scheduler uses a simpler set ("low" | "normal" | "high") for backward compatibility.
+   * The kernel's "critical" mode is mapped to "low" for scheduler consumers.
    */
   public getBucketMode(): BucketMode {
     // Delegate to kernel for consistent bucket mode decisions
     const kernelMode = kernel.getBucketMode();
     
     // Map kernel's BucketMode to scheduler's BucketMode
-    // Kernel has "critical" which scheduler treats as "low"
+    // Kernel has "critical" which scheduler treats as "low" for backward compatibility
     if (kernelMode === "critical" || kernelMode === "low") {
       return "low";
     }
