@@ -21,12 +21,18 @@ const CLUSTERS_KEY = "clusters";
 const MEMORY_LIMIT_BYTES = 2097152; // 2MB
 /** Current memory version */
 const CURRENT_MEMORY_VERSION = 1;
+/**
+ * Interval for dead creep memory cleanup.
+ * Running every tick is wasteful since creeps don't die that often.
+ */
+const DEAD_CREEP_CLEANUP_INTERVAL = 10;
 
 /**
  * Memory Manager class
  */
 export class MemoryManager {
   private initialized = false;
+  private lastCleanupTick = 0;
 
   /**
    * Initialize all memory structures
@@ -37,7 +43,12 @@ export class MemoryManager {
     this.runMemoryMigration();
     this.ensureOvermindMemory();
     this.ensureClustersMemory();
-    this.cleanDeadCreeps();
+    
+    // Only clean dead creeps periodically to save CPU
+    if (Game.time - this.lastCleanupTick >= DEAD_CREEP_CLEANUP_INTERVAL) {
+      this.cleanDeadCreeps();
+      this.lastCleanupTick = Game.time;
+    }
 
     this.initialized = true;
   }

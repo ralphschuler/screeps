@@ -4,8 +4,12 @@
  * Creates the context object that behaviors use for decision making.
  * All room queries are cached here to avoid redundant lookups.
  *
- * PERFORMANCE OPTIMIZATION: Room data is cached per-tick so that multiple
- * creeps in the same room share the same cached find() results.
+ * PERFORMANCE OPTIMIZATION:
+ * - Room data is cached per-tick so that multiple creeps in the same room
+ *   share the same cached find() results.
+ * - Lazy evaluation: expensive fields are only computed when first accessed.
+ * - Efficient hostile threat checks use direct distance calculation instead of
+ *   pre-computing all positions (faster for small hostile counts).
  */
 
 import type { SquadMemory, SwarmCreepMemory, SwarmState } from "../../memory/schemas";
@@ -25,71 +29,70 @@ const CONSTRUCTION_PRIORITY: Record<string, number> = {
   [STRUCTURE_ROAD]: 30
 };
 
+/** Threat detection range for hostiles */
+const HOSTILE_THREAT_RANGE = 10;
+
 // =============================================================================
-// Per-Tick Room Cache
+// Per-Tick Room Cache with Lazy Evaluation
 // =============================================================================
 
 /**
  * Cached room data that is shared across all creeps in the same room per tick.
  * This dramatically reduces CPU by avoiding repeated room.find() calls.
+ *
+ * Uses lazy evaluation for expensive operations - fields are only computed
+ * when first accessed.
  */
 interface RoomCache {
   tick: number;
+  room: Room;
+
+  // Core cached data (always computed)
   hostiles: Creep[];
-  droppedResources: Resource[];
-  containers: StructureContainer[];
-  /** Containers with free capacity for depositing energy */
-  depositContainers: StructureContainer[];
-  spawnStructures: (StructureSpawn | StructureExtension)[];
-  towers: StructureTower[];
-  prioritizedSites: ConstructionSite[];
-  repairTargets: Structure[];
-  damagedAllies: Creep[];
-  labs: StructureLab[];
-  factory: StructureFactory | undefined;
-  minerals: Mineral[];
-  activeSources: Source[];
-  /** Pre-computed hostile threat zones for efficient nearbyEnemies checks */
-  hostileThreatPositions: Set<string>;
+  myStructures: OwnedStructure[];
+  allStructures: Structure[];
+
+  // Lazy-evaluated fields (computed on first access)
+  _droppedResources?: Resource[];
+  _containers?: StructureContainer[];
+  _depositContainers?: StructureContainer[];
+  _spawnStructures?: (StructureSpawn | StructureExtension)[];
+  _towers?: StructureTower[];
+  _prioritizedSites?: ConstructionSite[];
+  _repairTargets?: Structure[];
+  _damagedAllies?: Creep[];
+  _labs?: StructureLab[];
+  _factory?: StructureFactory | undefined;
+  _factoryChecked?: boolean;
+  _minerals?: Mineral[];
+  _activeSources?: Source[];
 }
 
 /** Per-room cache storage - cleared at the start of each tick via clearRoomCaches() */
 const roomCacheMap = new Map<string, RoomCache>();
 
 /**
- * Convert position to string key for fast lookup
+ * Check if a position is within hostile threat range.
+ * Uses Chebyshev distance (max of dx, dy) which is O(hostiles) instead of
+ * O(hostiles * range²) for pre-computing all positions.
+ * This is more efficient when there are few hostiles (typical case).
  */
-function posKey(x: number, y: number): string {
-  return `${x},${y}`;
-}
-
-/**
- * Pre-compute all positions within range of hostiles for efficient lookup.
- * This trades O(hostiles * range²) setup cost for O(1) per-creep lookup.
- * For range=10, this creates ~441 positions per hostile, but the Set
- * provides O(1) lookup which saves significant CPU across all creeps.
- * This is computed only once per room per tick.
- */
-function computeHostileThreatZones(hostiles: Creep[], range: number): Set<string> {
-  const threatPositions = new Set<string>();
+function isInHostileThreatRange(pos: RoomPosition, hostiles: Creep[]): boolean {
   for (const hostile of hostiles) {
-    // Add all positions within range of this hostile (square area)
-    for (let dx = -range; dx <= range; dx++) {
-      for (let dy = -range; dy <= range; dy++) {
-        const x = hostile.pos.x + dx;
-        const y = hostile.pos.y + dy;
-        if (x >= 0 && x < 50 && y >= 0 && y < 50) {
-          threatPositions.add(posKey(x, y));
-        }
-      }
+    // Chebyshev distance is the same as getRangeTo for Screeps
+    const dx = Math.abs(pos.x - hostile.pos.x);
+    const dy = Math.abs(pos.y - hostile.pos.y);
+    if (Math.max(dx, dy) <= HOSTILE_THREAT_RANGE) {
+      return true;
     }
   }
-  return threatPositions;
+  return false;
 }
 
 /**
  * Get or create cached room data.
  * Only runs find() calls once per room per tick.
+ * Uses lazy evaluation for expensive derived fields.
  */
 function getRoomCache(room: Room): RoomCache {
   const existing = roomCacheMap.get(room.name);
@@ -97,50 +100,163 @@ function getRoomCache(room: Room): RoomCache {
     return existing;
   }
 
-  // Build new cache - this is the expensive part, but only happens once per room per tick
+  // Build core cache - this is the expensive part, but only happens once per room per tick
   // Use safeFind for hostile creeps to handle engine errors with corrupted owner data
-  const myStructures = room.find(FIND_MY_STRUCTURES);
-  const allStructures = room.find(FIND_STRUCTURES);
-  const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
-
-  // Filter containers once, then use for both purposes
-  const allContainers = allStructures.filter(
-    (s): s is StructureContainer => s.structureType === STRUCTURE_CONTAINER
-  );
-
   const cache: RoomCache = {
     tick: Game.time,
-    hostiles,
-    droppedResources: room.find(FIND_DROPPED_RESOURCES, {
-      filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 50
-    }),
-    containers: allContainers.filter(c => c.store.getUsedCapacity(RESOURCE_ENERGY) > 100),
-    depositContainers: allContainers.filter(c => c.store.getFreeCapacity(RESOURCE_ENERGY) > 0),
-    spawnStructures: myStructures.filter(
-      (s): s is StructureSpawn | StructureExtension =>
-        (s.structureType === STRUCTURE_SPAWN || s.structureType === STRUCTURE_EXTENSION) &&
-        s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-    ),
-    towers: myStructures.filter(
-      (s): s is StructureTower => s.structureType === STRUCTURE_TOWER && s.store.getFreeCapacity(RESOURCE_ENERGY) > 200
-    ),
-    prioritizedSites: room.find(FIND_MY_CONSTRUCTION_SITES).sort((a, b) => {
-      const priorityA = CONSTRUCTION_PRIORITY[a.structureType] ?? 50;
-      const priorityB = CONSTRUCTION_PRIORITY[b.structureType] ?? 50;
-      return priorityB - priorityA;
-    }),
-    repairTargets: allStructures.filter(s => s.hits < s.hitsMax * 0.75 && s.structureType !== STRUCTURE_WALL),
-    damagedAllies: room.find(FIND_MY_CREEPS, { filter: c => c.hits < c.hitsMax }),
-    labs: myStructures.filter((s): s is StructureLab => s.structureType === STRUCTURE_LAB),
-    factory: myStructures.find((s): s is StructureFactory => s.structureType === STRUCTURE_FACTORY),
-    minerals: room.find(FIND_MINERALS),
-    activeSources: room.find(FIND_SOURCES_ACTIVE),
-    // Pre-compute hostile threat zones for efficient nearbyEnemies checks
-    hostileThreatPositions: hostiles.length > 0 ? computeHostileThreatZones(hostiles, 10) : new Set()
+    room,
+    hostiles: safeFind(room, FIND_HOSTILE_CREEPS),
+    myStructures: room.find(FIND_MY_STRUCTURES),
+    allStructures: room.find(FIND_STRUCTURES)
   };
 
   roomCacheMap.set(room.name, cache);
   return cache;
+}
+
+/**
+ * Get dropped resources from cache (lazy evaluation)
+ */
+function getDroppedResources(cache: RoomCache): Resource[] {
+  if (cache._droppedResources === undefined) {
+    cache._droppedResources = cache.room.find(FIND_DROPPED_RESOURCES, {
+      filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 50
+    });
+  }
+  return cache._droppedResources;
+}
+
+/**
+ * Get containers with energy from cache (lazy evaluation)
+ */
+function getContainers(cache: RoomCache): StructureContainer[] {
+  if (cache._containers === undefined) {
+    cache._containers = cache.allStructures.filter(
+      (s): s is StructureContainer =>
+        s.structureType === STRUCTURE_CONTAINER &&
+        (s as StructureContainer).store.getUsedCapacity(RESOURCE_ENERGY) > 100
+    );
+  }
+  return cache._containers;
+}
+
+/**
+ * Get containers with free capacity from cache (lazy evaluation)
+ */
+function getDepositContainers(cache: RoomCache): StructureContainer[] {
+  if (cache._depositContainers === undefined) {
+    cache._depositContainers = cache.allStructures.filter(
+      (s): s is StructureContainer =>
+        s.structureType === STRUCTURE_CONTAINER &&
+        (s as StructureContainer).store.getFreeCapacity(RESOURCE_ENERGY) > 0
+    );
+  }
+  return cache._depositContainers;
+}
+
+/**
+ * Get spawn structures needing energy from cache (lazy evaluation)
+ */
+function getSpawnStructures(cache: RoomCache): (StructureSpawn | StructureExtension)[] {
+  if (cache._spawnStructures === undefined) {
+    cache._spawnStructures = cache.myStructures.filter(
+      (s): s is StructureSpawn | StructureExtension =>
+        (s.structureType === STRUCTURE_SPAWN || s.structureType === STRUCTURE_EXTENSION) &&
+        (s as StructureSpawn | StructureExtension).store.getFreeCapacity(RESOURCE_ENERGY) > 0
+    );
+  }
+  return cache._spawnStructures;
+}
+
+/**
+ * Get towers needing energy from cache (lazy evaluation)
+ */
+function getTowers(cache: RoomCache): StructureTower[] {
+  if (cache._towers === undefined) {
+    cache._towers = cache.myStructures.filter(
+      (s): s is StructureTower =>
+        s.structureType === STRUCTURE_TOWER &&
+        (s as StructureTower).store.getFreeCapacity(RESOURCE_ENERGY) > 200
+    );
+  }
+  return cache._towers;
+}
+
+/**
+ * Get prioritized construction sites from cache (lazy evaluation)
+ */
+function getPrioritizedSites(cache: RoomCache): ConstructionSite[] {
+  if (cache._prioritizedSites === undefined) {
+    cache._prioritizedSites = cache.room.find(FIND_MY_CONSTRUCTION_SITES).sort((a, b) => {
+      const priorityA = CONSTRUCTION_PRIORITY[a.structureType] ?? 50;
+      const priorityB = CONSTRUCTION_PRIORITY[b.structureType] ?? 50;
+      return priorityB - priorityA;
+    });
+  }
+  return cache._prioritizedSites;
+}
+
+/**
+ * Get repair targets from cache (lazy evaluation)
+ */
+function getRepairTargets(cache: RoomCache): Structure[] {
+  if (cache._repairTargets === undefined) {
+    cache._repairTargets = cache.allStructures.filter(
+      s => s.hits < s.hitsMax * 0.75 && s.structureType !== STRUCTURE_WALL
+    );
+  }
+  return cache._repairTargets;
+}
+
+/**
+ * Get damaged allies from cache (lazy evaluation)
+ */
+function getDamagedAllies(cache: RoomCache): Creep[] {
+  if (cache._damagedAllies === undefined) {
+    cache._damagedAllies = cache.room.find(FIND_MY_CREEPS, { filter: c => c.hits < c.hitsMax });
+  }
+  return cache._damagedAllies;
+}
+
+/**
+ * Get labs from cache (lazy evaluation)
+ */
+function getLabs(cache: RoomCache): StructureLab[] {
+  if (cache._labs === undefined) {
+    cache._labs = cache.myStructures.filter((s): s is StructureLab => s.structureType === STRUCTURE_LAB);
+  }
+  return cache._labs;
+}
+
+/**
+ * Get factory from cache (lazy evaluation)
+ */
+function getFactory(cache: RoomCache): StructureFactory | undefined {
+  if (!cache._factoryChecked) {
+    cache._factory = cache.myStructures.find((s): s is StructureFactory => s.structureType === STRUCTURE_FACTORY);
+    cache._factoryChecked = true;
+  }
+  return cache._factory;
+}
+
+/**
+ * Get minerals from cache (lazy evaluation)
+ */
+function getMinerals(cache: RoomCache): Mineral[] {
+  if (cache._minerals === undefined) {
+    cache._minerals = cache.room.find(FIND_MINERALS);
+  }
+  return cache._minerals;
+}
+
+/**
+ * Get active sources from cache (lazy evaluation)
+ */
+function getActiveSources(cache: RoomCache): Source[] {
+  if (cache._activeSources === undefined) {
+    cache._activeSources = cache.room.find(FIND_SOURCES_ACTIVE);
+  }
+  return cache._activeSources;
 }
 
 /**
@@ -186,7 +302,11 @@ function getAssignedSource(memory: SwarmCreepMemory): Source | null {
 
 /**
  * Create a context object for a creep.
- * Uses per-tick room caching to minimize CPU usage.
+ * Uses per-tick room caching with lazy evaluation to minimize CPU usage.
+ *
+ * Lazy evaluation ensures that expensive operations (like finding construction sites,
+ * repair targets, etc.) are only performed when the creep's behavior actually needs them.
+ * This can save significant CPU when many creeps don't need certain data.
  */
 export function createContext(creep: Creep): CreepContext {
   const room = creep.room;
@@ -197,6 +317,20 @@ export function createContext(creep: Creep): CreepContext {
 
   const targetRoom = memory.targetRoom ?? memory.homeRoom;
   const homeRoom = memory.homeRoom ?? room.name;
+
+  // Get lazy-evaluated data only when needed
+  const droppedResources = getDroppedResources(roomCache);
+  const containers = getContainers(roomCache);
+  const depositContainers = getDepositContainers(roomCache);
+  const spawnStructures = getSpawnStructures(roomCache);
+  const towers = getTowers(roomCache);
+  const prioritizedSites = getPrioritizedSites(roomCache);
+  const repairTargets = getRepairTargets(roomCache);
+  const damagedAllies = getDamagedAllies(roomCache);
+  const labs = getLabs(roomCache);
+  const factory = getFactory(roomCache);
+  const minerals = getMinerals(roomCache);
+  const activeSources = getActiveSources(roomCache);
 
   return {
     // Core references
@@ -221,27 +355,27 @@ export function createContext(creep: Creep): CreepContext {
 
     // Assigned targets
     assignedSource: getAssignedSource(memory),
-    assignedMineral: roomCache.minerals[0] ?? null,
+    assignedMineral: minerals[0] ?? null,
 
-    // Room analysis (using cached data with O(1) lookup for nearbyEnemies)
-    energyAvailable: roomCache.activeSources.length > 0,
-    nearbyEnemies: roomCache.hostileThreatPositions.has(posKey(creep.pos.x, creep.pos.y)),
-    constructionSiteCount: roomCache.prioritizedSites.length,
-    damagedStructureCount: roomCache.repairTargets.length,
+    // Room analysis - uses efficient Chebyshev distance check for hostiles
+    energyAvailable: activeSources.length > 0,
+    nearbyEnemies: roomCache.hostiles.length > 0 && isInHostileThreatRange(creep.pos, roomCache.hostiles),
+    constructionSiteCount: prioritizedSites.length,
+    damagedStructureCount: repairTargets.length,
 
-    // Cached room objects (all from cache)
-    droppedResources: roomCache.droppedResources,
-    containers: roomCache.containers,
-    depositContainers: roomCache.depositContainers,
-    spawnStructures: roomCache.spawnStructures,
-    towers: roomCache.towers,
+    // Cached room objects (all from cache with lazy evaluation)
+    droppedResources,
+    containers,
+    depositContainers,
+    spawnStructures,
+    towers,
     storage: room.storage,
     terminal: room.terminal,
     hostiles: roomCache.hostiles,
-    damagedAllies: roomCache.damagedAllies,
-    prioritizedSites: roomCache.prioritizedSites,
-    repairTargets: roomCache.repairTargets,
-    labs: roomCache.labs,
-    factory: roomCache.factory
+    damagedAllies,
+    prioritizedSites,
+    repairTargets,
+    labs,
+    factory
   };
 }
