@@ -5,6 +5,11 @@
 
 FROM node:20.19-alpine
 
+# Add OCI labels for GitHub Container Registry
+LABEL org.opencontainers.image.source=https://github.com/ralphschuler/screeps
+LABEL org.opencontainers.image.description="Screeps Wiki MCP Server"
+LABEL org.opencontainers.image.licenses=MIT
+
 # Set working directory
 WORKDIR /app
 
