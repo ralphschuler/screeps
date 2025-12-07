@@ -14,7 +14,13 @@ This package provides a standardized MCP server that exposes Screeps game data, 
 - **Screeps API Integration**: Secure connection to Screeps servers with token or email/password authentication
 - **WebSocket Console Support**: Automatically retrieves console command responses via WebSocket subscription
 - **Resource Providers**: Expose Screeps game objects, memory, and stats via MCP resources
-- **Tool Definitions**: Define MCP tools for console commands, memory operations, and stats queries
+- **Comprehensive Tool Set**: 14 MCP tools covering:
+  - Console commands with live response
+  - Memory and segment operations
+  - Room data (terrain, objects, status)
+  - Market orders and trading
+  - User and shard information
+  - Game state queries
 - **Comprehensive Testing**: 100% test coverage with unit, integration, and e2e tests
 - **Type Safety**: Full TypeScript support with strict type checking
 
@@ -378,6 +384,238 @@ Query performance metrics from Screeps.
     {
       "type": "text",
       "text": "{\"cpu\": {...}, \"gcl\": {...}, \"rooms\": 1, \"creeps\": 5}"
+    }
+  ]
+}
+```
+
+### `screeps.segment.get`
+
+Read a memory segment from Screeps.
+
+**Input:**
+
+```json
+{
+  "segment": 0
+}
+```
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"data\": \"segment content...\"}"
+    }
+  ]
+}
+```
+
+### `screeps.segment.set`
+
+Write a memory segment to Screeps (max 100KB).
+
+**Input:**
+
+```json
+{
+  "segment": 0,
+  "data": "segment content..."
+}
+```
+
+### `screeps.game.time`
+
+Get the current game time/tick.
+
+**Input:**
+
+```json
+{}
+```
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"time\": 12345678}"
+    }
+  ]
+}
+```
+
+### `screeps.room.terrain`
+
+Get room terrain data.
+
+**Input:**
+
+```json
+{
+  "room": "W1N1"
+}
+```
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"terrain\": \"encoded terrain string\"}"
+    }
+  ]
+}
+```
+
+### `screeps.room.objects`
+
+Get all objects in a room.
+
+**Input:**
+
+```json
+{
+  "room": "W1N1"
+}
+```
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"objects\": [...]}"
+    }
+  ]
+}
+```
+
+### `screeps.room.status`
+
+Get room status (owner, reservation, sign, etc.).
+
+**Input:**
+
+```json
+{
+  "room": "W1N1"
+}
+```
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"data\": {\"status\": \"normal\", \"owner\": \"username\"}}"
+    }
+  ]
+}
+```
+
+### `screeps.market.orders`
+
+Get market orders, optionally filtered by resource type.
+
+**Input:**
+
+```json
+{
+  "resourceType": "energy"
+}
+```
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"orders\": [...]}"
+    }
+  ]
+}
+```
+
+### `screeps.my.market.orders`
+
+Get your own market orders.
+
+**Input:**
+
+```json
+{}
+```
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"orders\": [...]}"
+    }
+  ]
+}
+```
+
+### `screeps.user.info`
+
+Get user information by username.
+
+**Input:**
+
+```json
+{
+  "username": "someUser"
+}
+```
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"data\": {\"username\": \"someUser\", \"gcl\": {...}}}"
+    }
+  ]
+}
+```
+
+### `screeps.shard.info`
+
+Get information about all shards.
+
+**Input:**
+
+```json
+{}
+```
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"data\": [{\"name\": \"shard0\", ...}, {...}]}"
     }
   ]
 }

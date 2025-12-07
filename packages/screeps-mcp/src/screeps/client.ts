@@ -209,16 +209,17 @@ export class ScreepsClient {
     // Wait for new message
     return new Promise((resolve) => {
       let isResolved = false;
+      let timeoutHandle: NodeJS.Timeout;
 
       const waiter = (msg: ConsoleMessage) => {
         if (!isResolved) {
           isResolved = true;
-          clearTimeout(timeout);
+          clearTimeout(timeoutHandle);
           resolve(msg);
         }
       };
 
-      const timeout = setTimeout(() => {
+      timeoutHandle = setTimeout(() => {
         if (!isResolved) {
           isResolved = true;
           // Remove waiter from queue if timeout occurs
