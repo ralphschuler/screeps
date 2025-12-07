@@ -528,4 +528,247 @@ export class ScreepsClient {
     this.consoleMessageQueue = [];
     this.consoleWaiters = [];
   }
+
+  /**
+   * Get memory segment
+   */
+  public async getSegment(segment: number): Promise<import("../types.js").SegmentResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const shard = this.config.shard ?? "shard3";
+      const response = await this.api.segment.get(segment, shard);
+
+      return {
+        success: true,
+        data: response?.data
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Set memory segment
+   */
+  public async setSegment(segment: number, data: string): Promise<import("../types.js").SegmentResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const shard = this.config.shard ?? "shard3";
+      await this.api.segment.set(segment, data, shard);
+
+      return {
+        success: true,
+        data
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get game time
+   */
+  public async getGameTime(): Promise<import("../types.js").GameTimeResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const shard = this.config.shard ?? "shard3";
+      const response = await this.api.raw.game.time(shard);
+
+      return {
+        success: true,
+        time: response?.time
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get room terrain
+   */
+  public async getRoomTerrain(room: string): Promise<import("../types.js").RoomTerrainResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const shard = this.config.shard ?? "shard3";
+      const response = await this.api.raw.game.roomTerrain(room, 1, shard);
+
+      return {
+        success: true,
+        terrain: response?.terrain?.[0]?.terrain
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get room objects
+   */
+  public async getRoomObjects(room: string): Promise<import("../types.js").RoomObjectsResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const shard = this.config.shard ?? "shard3";
+      const response = await this.api.raw.game.roomObjects(room, shard);
+
+      return {
+        success: true,
+        objects: response?.objects
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get room status
+   */
+  public async getRoomStatus(room: string): Promise<import("../types.js").ApiResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const shard = this.config.shard ?? "shard3";
+      const response = await this.api.raw.game.roomStatus(room, shard);
+
+      return {
+        success: true,
+        data: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get market orders
+   */
+  public async getMarketOrders(resourceType?: string): Promise<import("../types.js").MarketOrdersResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const shard = this.config.shard ?? "shard3";
+      let response;
+
+      if (resourceType) {
+        response = await this.api.market.orders(resourceType, shard);
+      } else {
+        response = await this.api.market.ordersIndex(shard);
+      }
+
+      return {
+        success: true,
+        orders: response?.list || response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get my market orders
+   */
+  public async getMyMarketOrders(): Promise<import("../types.js").MarketOrdersResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const response = await this.api.market.myOrders();
+
+      return {
+        success: true,
+        orders: response?.list
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get user info by username
+   */
+  public async getUserInfo(username: string): Promise<import("../types.js").ApiResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const response = await this.api.raw.user.find(username);
+
+      return {
+        success: true,
+        data: response?.user
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get shard info
+   */
+  public async getShardInfo(): Promise<import("../types.js").ApiResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const response = await this.api.raw.game.shards.info();
+
+      return {
+        success: true,
+        data: response?.shards
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
 }
