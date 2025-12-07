@@ -93,13 +93,13 @@ function createMockTower(freeCapacity: number): StructureTower {
 /**
  * Create a mock storage for testing
  */
-function createMockStorage(freeCapacity: number): StructureStorage {
+function createMockStorage(freeCapacity: number, usedCapacity: number = 10000): StructureStorage {
   return {
     id: "mockStorageId" as Id<StructureStorage>,
     structureType: STRUCTURE_STORAGE,
     store: {
       getFreeCapacity: () => freeCapacity,
-      getUsedCapacity: () => 10000
+      getUsedCapacity: () => usedCapacity
     }
   } as unknown as StructureStorage;
 }
