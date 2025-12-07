@@ -328,4 +328,123 @@ describe("ScreepsClient", () => {
       expect(result.error).toBe("Console error");
     });
   });
+
+  describe("Console WebSocket response", () => {
+    let client: ScreepsClient;
+    let mockApi: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    let mockSocket: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+    beforeEach(() => {
+      client = new ScreepsClient(config);
+      mockSocket = {
+        connect: vi.fn().mockResolvedValue(undefined),
+        subscribe: vi.fn().mockResolvedValue(undefined),
+        on: vi.fn(),
+        disconnect: vi.fn().mockResolvedValue(undefined)
+      };
+      mockApi = {
+        auth: vi.fn(),
+        console: vi.fn().mockResolvedValue({ data: "" }),
+        socket: mockSocket,
+        userID: vi.fn().mockResolvedValue("test-user-id")
+      };
+      // @ts-expect-error - accessing private property for testing
+      client.api = mockApi;
+      // @ts-expect-error - accessing private property for testing
+      client.socket = mockSocket;
+    });
+
+    it("should return console response from WebSocket", async () => {
+      mockApi.console.mockResolvedValue({ data: "" });
+
+      // Simulate console message being received
+      const executePromise = client.executeConsole("Game.time");
+
+      // Immediately trigger the console message handler
+      // @ts-expect-error - accessing private method for testing
+      client.handleConsoleMessage({
+        messages: {
+          log: [],
+          results: ["12345"]
+        }
+      });
+
+      const result = await executePromise;
+
+      expect(result.success).toBe(true);
+      expect(result.output).toBe("12345");
+    });
+
+    it("should format multiple log messages and results", async () => {
+      mockApi.console.mockResolvedValue({ data: "" });
+
+      const executePromise = client.executeConsole("console.log('test')");
+
+      // @ts-expect-error - accessing private method for testing
+      client.handleConsoleMessage({
+        messages: {
+          log: ["test", "another log"],
+          results: ["undefined"]
+        }
+      });
+
+      const result = await executePromise;
+
+      expect(result.success).toBe(true);
+      expect(result.output).toContain("test");
+      expect(result.output).toContain("another log");
+      expect(result.output).toContain("undefined");
+    });
+
+    it("should handle console errors from WebSocket", async () => {
+      mockApi.console.mockResolvedValue({ data: "" });
+
+      const executePromise = client.executeConsole("invalid.command");
+
+      // @ts-expect-error - accessing private method for testing
+      client.handleConsoleMessage({
+        messages: { log: [], results: [] },
+        error: "ReferenceError: invalid is not defined"
+      });
+
+      const result = await executePromise;
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("ReferenceError: invalid is not defined");
+    });
+
+    it(
+      "should timeout if no console response received",
+      async () => {
+        mockApi.console.mockResolvedValue({ data: "" });
+
+        // Don't trigger any console message
+        const result = await client.executeConsole("Game.time");
+
+        expect(result.success).toBe(true);
+        expect(result.output).toContain("no response received within timeout");
+      },
+      10000
+    ); // 10 second timeout for this test
+
+    it("should fall back to old behavior without WebSocket", async () => {
+      // Remove socket
+      // @ts-expect-error - accessing private property for testing
+      client.socket = null;
+      mockApi.console.mockResolvedValue({ data: "" });
+
+      const result = await client.executeConsole("Game.time");
+
+      expect(result.success).toBe(true);
+      expect(result.output).toContain("output appears in the Screeps in-game console");
+    });
+
+    it("should cleanup on disconnect", async () => {
+      await client.disconnect();
+
+      expect(mockSocket.disconnect).toHaveBeenCalled();
+      // @ts-expect-error - accessing private property for testing
+      expect(client.socket).toBeNull();
+    });
+  });
 });

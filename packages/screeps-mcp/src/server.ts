@@ -19,7 +19,23 @@ import {
   getStatsResource,
   listResources
 } from "./handlers/resources.js";
-import { handleConsole, handleMemoryGet, handleMemorySet, handleStats, toolSchemas } from "./handlers/tools.js";
+import {
+  handleConsole,
+  handleMemoryGet,
+  handleMemorySet,
+  handleStats,
+  handleSegmentGet,
+  handleSegmentSet,
+  handleGameTime,
+  handleRoomTerrain,
+  handleRoomObjects,
+  handleRoomStatus,
+  handleMarketOrders,
+  handleMyMarketOrders,
+  handleUserInfo,
+  handleShardInfo,
+  toolSchemas
+} from "./handlers/tools.js";
 
 /**
  * Create and configure the MCP server for Screeps integration.
@@ -182,6 +198,143 @@ export function createMCPServer(config: MCPServerConfig) {
     async () => {
       await ensureConnected();
       return await handleStats(client);
+    }
+  );
+
+  server.registerTool(
+    "screeps_segment_get",
+    {
+      title: "screeps_segment_get",
+      description: "Read memory segment from Screeps (0-99)",
+      inputSchema: toolSchemas.segmentGet as unknown as any
+    },
+    async (args: unknown) => {
+      await ensureConnected();
+      const validated = toolSchemas.segmentGet.parse(args);
+      return await handleSegmentGet(client, validated);
+    }
+  );
+
+  server.registerTool(
+    "screeps_segment_set",
+    {
+      title: "screeps_segment_set",
+      description: "Write memory segment to Screeps (max 100KB)",
+      inputSchema: toolSchemas.segmentSet as unknown as any
+    },
+    async (args: unknown) => {
+      await ensureConnected();
+      const validated = toolSchemas.segmentSet.parse(args);
+      return await handleSegmentSet(client, validated);
+    }
+  );
+
+  server.registerTool(
+    "screeps_game_time",
+    {
+      title: "screeps_game_time",
+      description: "Get current game time/tick",
+      inputSchema: toolSchemas.gameTime as unknown as any
+    },
+    async () => {
+      await ensureConnected();
+      return await handleGameTime(client);
+    }
+  );
+
+  server.registerTool(
+    "screeps_room_terrain",
+    {
+      title: "screeps_room_terrain",
+      description: "Get room terrain data",
+      inputSchema: toolSchemas.roomTerrain as unknown as any
+    },
+    async (args: unknown) => {
+      await ensureConnected();
+      const validated = toolSchemas.roomTerrain.parse(args);
+      return await handleRoomTerrain(client, validated);
+    }
+  );
+
+  server.registerTool(
+    "screeps_room_objects",
+    {
+      title: "screeps_room_objects",
+      description: "Get all objects in a room",
+      inputSchema: toolSchemas.roomObjects as unknown as any
+    },
+    async (args: unknown) => {
+      await ensureConnected();
+      const validated = toolSchemas.roomObjects.parse(args);
+      return await handleRoomObjects(client, validated);
+    }
+  );
+
+  server.registerTool(
+    "screeps_room_status",
+    {
+      title: "screeps_room_status",
+      description: "Get room status (owner, reservation, etc.)",
+      inputSchema: toolSchemas.roomStatus as unknown as any
+    },
+    async (args: unknown) => {
+      await ensureConnected();
+      const validated = toolSchemas.roomStatus.parse(args);
+      return await handleRoomStatus(client, validated);
+    }
+  );
+
+  server.registerTool(
+    "screeps_market_orders",
+    {
+      title: "screeps_market_orders",
+      description: "Get market orders, optionally filtered by resource type",
+      inputSchema: toolSchemas.marketOrders as unknown as any
+    },
+    async (args: unknown) => {
+      await ensureConnected();
+      const validated = toolSchemas.marketOrders.parse(args);
+      return await handleMarketOrders(client, validated);
+    }
+  );
+
+  server.registerTool(
+    "screeps_my_market_orders",
+    {
+      title: "screeps_my_market_orders",
+      description: "Get your own market orders",
+      inputSchema: toolSchemas.myMarketOrders as unknown as any
+    },
+    async () => {
+      await ensureConnected();
+      return await handleMyMarketOrders(client);
+    }
+  );
+
+  server.registerTool(
+    "screeps_user_info",
+    {
+      title: "screeps_user_info",
+      description: "Get user information by username",
+      inputSchema: toolSchemas.userInfo as unknown as any
+    },
+    async (args: unknown) => {
+      await ensureConnected();
+      const validated = toolSchemas.userInfo.parse(args);
+      return await handleUserInfo(client, validated);
+    }
+  );
+
+  server.registerTool(
+    "screeps_shard_info",
+    {
+      title: "screeps_shard_info",
+      description: "Get information about all shards",
+      inputSchema: toolSchemas.shardInfo as unknown as any
+    },
+    async () => {
+      await ensureConnected();
+      return await handleShardInfo(client);
     }
   );
 

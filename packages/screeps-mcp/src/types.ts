@@ -110,3 +110,57 @@ export interface DeployResult {
   message: string;
   timestamp: string;
 }
+
+/**
+ * Generic API result
+ */
+export interface ApiResult<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+/**
+ * Room terrain result
+ */
+export interface RoomTerrainResult {
+  success: boolean;
+  terrain?: string; // encoded terrain string
+  error?: string;
+}
+
+/**
+ * Room objects result
+ */
+export interface RoomObjectsResult {
+  success: boolean;
+  objects?: unknown;
+  error?: string;
+}
+
+/**
+ * Game time result
+ */
+export interface GameTimeResult {
+  success: boolean;
+  time?: number;
+  error?: string;
+}
+
+/**
+ * Market orders result
+ */
+export interface MarketOrdersResult {
+  success: boolean;
+  orders?: unknown[];
+  error?: string;
+}
+
+/**
+ * Segment result
+ */
+export interface SegmentResult {
+  success: boolean;
+  data?: string;
+  error?: string;
+}

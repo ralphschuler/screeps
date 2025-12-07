@@ -141,10 +141,21 @@ describe("MCP Protocol Compliance", () => {
       // No deployment tool in initial version (mentioned in spec as future)
       expect(toolNames).not.toContain("screeps.deploy");
 
-      // Only safe operations exposed
+      // Only safe operations exposed - reading game state, memory, and basic operations
       expect(
         toolNames.every(
-          name => name.includes("get") || name.includes("set") || name.includes("console") || name.includes("stats")
+          name =>
+            name.includes("get") ||
+            name.includes("set") ||
+            name.includes("console") ||
+            name.includes("stats") ||
+            name.includes("game_time") ||
+            name.includes("room_") ||
+            name.includes("market") ||
+            name.includes("my_") ||
+            name.includes("user_info") ||
+            name.includes("shard_info") ||
+            name.includes("segment")
         )
       ).toBe(true);
     });

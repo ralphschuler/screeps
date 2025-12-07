@@ -164,11 +164,21 @@ describe("Tool Handlers", () => {
     it("should return all available tools", () => {
       const tools = listTools();
 
-      expect(tools).toHaveLength(4);
+      expect(tools).toHaveLength(14);
       expect(tools.some(t => t.name === "screeps_console")).toBe(true);
       expect(tools.some(t => t.name === "screeps_memory_get")).toBe(true);
       expect(tools.some(t => t.name === "screeps_memory_set")).toBe(true);
       expect(tools.some(t => t.name === "screeps_stats")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_segment_get")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_segment_set")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_game_time")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_room_terrain")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_room_objects")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_room_status")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_market_orders")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_my_market_orders")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_user_info")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_shard_info")).toBe(true);
     });
 
     it("should include input schemas for all tools", () => {
