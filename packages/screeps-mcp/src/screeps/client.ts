@@ -208,19 +208,27 @@ export class ScreepsClient {
 
     // Wait for new message
     return new Promise((resolve) => {
-      const timeout = setTimeout(() => {
-        // Remove waiter from queue if timeout occurs
-        const index = this.consoleWaiters.indexOf(waiter);
-        if (index >= 0) {
-          this.consoleWaiters.splice(index, 1);
-        }
-        resolve(null);
-      }, timeoutMs);
+      let isResolved = false;
 
       const waiter = (msg: ConsoleMessage) => {
-        clearTimeout(timeout);
-        resolve(msg);
+        if (!isResolved) {
+          isResolved = true;
+          clearTimeout(timeout);
+          resolve(msg);
+        }
       };
+
+      const timeout = setTimeout(() => {
+        if (!isResolved) {
+          isResolved = true;
+          // Remove waiter from queue if timeout occurs
+          const index = this.consoleWaiters.indexOf(waiter);
+          if (index >= 0) {
+            this.consoleWaiters.splice(index, 1);
+          }
+          resolve(null);
+        }
+      }, timeoutMs);
 
       this.consoleWaiters.push(waiter);
     });

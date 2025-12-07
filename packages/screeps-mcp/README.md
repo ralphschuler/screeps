@@ -12,6 +12,7 @@ This package provides a standardized MCP server that exposes Screeps game data, 
 
 - **MCP Protocol Compliance**: Full implementation of Model Context Protocol server interface
 - **Screeps API Integration**: Secure connection to Screeps servers with token or email/password authentication
+- **WebSocket Console Support**: Automatically retrieves console command responses via WebSocket subscription
 - **Resource Providers**: Expose Screeps game objects, memory, and stats via MCP resources
 - **Tool Definitions**: Define MCP tools for console commands, memory operations, and stats queries
 - **Comprehensive Testing**: 100% test coverage with unit, integration, and e2e tests
@@ -260,7 +261,14 @@ The server provides the following tools for Screeps operations:
 
 ### `screeps.console`
 
-Execute console commands in Screeps.
+Execute console commands in Screeps and automatically receive the response via WebSocket.
+
+**Features:**
+- Sends console command to Screeps server
+- Waits for and returns the console response (5 second timeout)
+- Returns both log messages and results
+- Handles console errors gracefully
+- Falls back to old behavior if WebSocket is unavailable
 
 **Input:**
 
@@ -282,6 +290,22 @@ Execute console commands in Screeps.
   ]
 }
 ```
+
+**Error Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": ""
+    }
+  ],
+  "isError": true
+}
+```
+
+**Note:** The console response is retrieved via WebSocket subscription. If the WebSocket connection is unavailable or times out, the tool will indicate this in the response.
 
 ### `screeps.memory.get`
 
