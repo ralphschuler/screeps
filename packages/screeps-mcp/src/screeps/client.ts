@@ -73,11 +73,25 @@ function normalizeHost(host?: string): string {
 }
 
 /**
+ * Console message structure from WebSocket
+ */
+interface ConsoleMessage {
+  messages?: {
+    log?: string[];
+    results?: string[];
+  };
+  error?: string;
+}
+
+/**
  * Screeps API client for MCP server integration
  */
 export class ScreepsClient {
   private config: ScreepsConfig;
   private api: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  private socket: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  private consoleMessageQueue: ConsoleMessage[] = [];
+  private consoleWaiters: Array<(msg: ConsoleMessage) => void> = [];
 
   public constructor(config: ScreepsConfig) {
     const hostParts = parseHostParts(config.host);
@@ -133,6 +147,83 @@ export class ScreepsClient {
     if (!this.config.token && this.config.email && this.config.password) {
       await this.api.auth(this.config.email, this.config.password);
     }
+
+    // Initialize WebSocket connection for console messages
+    await this.initializeSocket();
+  }
+
+  /**
+   * Initialize WebSocket connection and subscribe to console
+   */
+  private async initializeSocket(): Promise<void> {
+    if (!this.api.socket) {
+      return; // Socket not available (e.g., during tests)
+    }
+
+    try {
+      // Connect to WebSocket
+      this.socket = this.api.socket;
+      await this.socket.connect();
+
+      // Subscribe to console messages
+      const userID = await this.api.userID();
+      await this.socket.subscribe(`user:${userID}/console`);
+
+      // Set up console message handler
+      this.socket.on(`user:${userID}/console`, (msg: [string, ConsoleMessage]) => {
+        const [, data] = msg;
+        this.handleConsoleMessage(data);
+      });
+    } catch (error) {
+      console.error("Failed to initialize WebSocket:", error);
+      // Don't throw - allow operation without WebSocket
+    }
+  }
+
+  /**
+   * Handle incoming console messages
+   */
+  private handleConsoleMessage(data: ConsoleMessage): void {
+    // If there are waiters, deliver to the first one
+    if (this.consoleWaiters.length > 0) {
+      const waiter = this.consoleWaiters.shift();
+      if (waiter) {
+        waiter(data);
+        return;
+      }
+    }
+
+    // Otherwise, queue for later
+    this.consoleMessageQueue.push(data);
+  }
+
+  /**
+   * Wait for next console message with timeout
+   */
+  private async waitForConsoleMessage(timeoutMs: number = 5000): Promise<ConsoleMessage | null> {
+    // Check if message already in queue
+    if (this.consoleMessageQueue.length > 0) {
+      return this.consoleMessageQueue.shift() || null;
+    }
+
+    // Wait for new message
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        // Remove waiter from queue if timeout occurs
+        const index = this.consoleWaiters.indexOf(waiter);
+        if (index >= 0) {
+          this.consoleWaiters.splice(index, 1);
+        }
+        resolve(null);
+      }, timeoutMs);
+
+      const waiter = (msg: ConsoleMessage) => {
+        clearTimeout(timeout);
+        resolve(msg);
+      };
+
+      this.consoleWaiters.push(waiter);
+    });
   }
 
   /**
@@ -337,7 +428,7 @@ export class ScreepsClient {
   }
 
   /**
-   * Execute console command
+   * Execute console command and wait for response
    */
   public async executeConsole(command: string): Promise<ConsoleResult> {
     if (!this.api) {
@@ -346,11 +437,54 @@ export class ScreepsClient {
 
     try {
       const shard = this.config.shard ?? "shard3";
-      const response = await this.api.console(command, shard);
 
+      // Send the console command
+      await this.api.console(command, shard);
+
+      // Wait for console response via WebSocket
+      if (this.socket) {
+        const consoleMsg = await this.waitForConsoleMessage(5000);
+
+        if (consoleMsg) {
+          // Format the console output
+          const outputParts: string[] = [];
+
+          // Add log messages
+          if (consoleMsg.messages?.log && consoleMsg.messages.log.length > 0) {
+            outputParts.push(...consoleMsg.messages.log);
+          }
+
+          // Add results
+          if (consoleMsg.messages?.results && consoleMsg.messages.results.length > 0) {
+            outputParts.push(...consoleMsg.messages.results);
+          }
+
+          // Check for errors
+          if (consoleMsg.error) {
+            return {
+              success: false,
+              output: outputParts.join("\n"),
+              error: consoleMsg.error
+            };
+          }
+
+          return {
+            success: true,
+            output: outputParts.join("\n") || "Command executed successfully (no output)"
+          };
+        }
+
+        // Timeout waiting for response
+        return {
+          success: true,
+          output: "Command sent; no response received within timeout (5 seconds)"
+        };
+      }
+
+      // No WebSocket, fallback to old behavior
       return {
         success: true,
-        output: response?.data ?? ""
+        output: "Command sent; output appears in the Screeps in-game console."
       };
     } catch (error) {
       console.error(`❌ Failed to execute console command: ${command.substring(0, 50)}...`);
@@ -369,5 +503,21 @@ export class ScreepsClient {
         error: error instanceof Error ? error.message : String(error)
       };
     }
+  }
+
+  /**
+   * Disconnect WebSocket and cleanup
+   */
+  public async disconnect(): Promise<void> {
+    if (this.socket) {
+      try {
+        await this.socket.disconnect();
+      } catch (error) {
+        console.error("Error disconnecting socket:", error);
+      }
+      this.socket = null;
+    }
+    this.consoleMessageQueue = [];
+    this.consoleWaiters = [];
   }
 }
