@@ -26,6 +26,24 @@ import { boostManager } from "../labs/boostManager";
 import { kernel } from "./kernel";
 
 /**
+ * Perimeter defense configuration constants
+ * These values control how aggressively rooms build defensive walls
+ */
+const EARLY_GAME_RCL_MIN = 2;
+const EARLY_GAME_RCL_MAX = 3;
+const MAX_EARLY_PERIMETER_SITES = 5; // RCL 2-3: Aggressive defense buildup
+const MAX_REGULAR_PERIMETER_SITES = 3; // RCL 4+: Maintenance rate
+const EARLY_GAME_CONSTRUCTION_INTERVAL = 5; // Ticks between construction checks
+const REGULAR_CONSTRUCTION_INTERVAL = 10; // Ticks between construction checks
+
+/**
+ * Check if a room is in early game and needs aggressive defense
+ */
+function isEarlyGameDefense(rcl: number): boolean {
+  return rcl >= EARLY_GAME_RCL_MIN && rcl <= EARLY_GAME_RCL_MAX;
+}
+
+/**
  * Room node configuration
  */
 export interface RoomNodeConfig {
@@ -151,9 +169,19 @@ export class RoomNode {
       this.runTowerControl(room, swarm);
     }
 
-    // Run construction (every 10 ticks)
-    if (this.config.enableConstruction && Game.time % 10 === 0 && postureManager.allowsBuilding(swarm.posture)) {
-      this.runConstruction(room, swarm);
+    // Run construction
+    // Perimeter defense runs more frequently in early game (RCL 2-3) for faster fortification
+    // Regular construction runs at standard interval to balance CPU usage
+    if (this.config.enableConstruction && postureManager.allowsBuilding(swarm.posture)) {
+      const rcl = room.controller?.level ?? 1;
+      const isEarlyDefense = isEarlyGameDefense(rcl);
+      const constructionInterval = isEarlyDefense 
+        ? EARLY_GAME_CONSTRUCTION_INTERVAL
+        : REGULAR_CONSTRUCTION_INTERVAL;
+      
+      if (Game.time % constructionInterval === 0) {
+        this.runConstruction(room, swarm);
+      }
     }
 
     // Run resource processing (every 5 ticks)
@@ -408,9 +436,13 @@ export class RoomNode {
     // Priority 1: Place perimeter defense (RCL 2+)
     // Early defense is critical for room security
     let perimeterPlaced = 0;
-    if (rcl >= 2 && existingSites.length < 8) {
+    if (rcl >= EARLY_GAME_RCL_MIN && existingSites.length < 8) {
+      // Place more sites in early game for faster fortification
+      const maxPerimeterSites = isEarlyGameDefense(rcl)
+        ? MAX_EARLY_PERIMETER_SITES
+        : MAX_REGULAR_PERIMETER_SITES;
       // Prioritize choke points at RCL 2, full perimeter at RCL 3+
-      perimeterPlaced = placePerimeterDefense(room, rcl, 2, true);
+      perimeterPlaced = placePerimeterDefense(room, rcl, maxPerimeterSites, true);
     }
 
     // Priority 2: Place construction sites using blueprint
