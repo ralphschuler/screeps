@@ -355,6 +355,25 @@ describe("hauler behavior - delivery priority", () => {
 
       assert.equal(action.type, "withdraw");
     });
+
+    it("should collect from storage when no dropped resources or containers", () => {
+      const creep = createMockCreep({ freeCapacity: 50, usedCapacity: 0 });
+      const storage = createMockStorage(5000);
+
+      const ctx = createMockContext(creep, {
+        isWorking: false,
+        droppedResources: [],
+        containers: [],
+        storage: storage
+      });
+
+      const action = hauler(ctx);
+
+      assert.equal(action.type, "withdraw");
+      if (action.type === "withdraw") {
+        assert.equal(action.target, storage, "Should collect from storage when containers are empty");
+      }
+    });
   });
 });
 
