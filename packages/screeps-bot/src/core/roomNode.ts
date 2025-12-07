@@ -368,7 +368,6 @@ export class RoomNode {
     if (!blueprint) return;
 
     // Find spawn to use as anchor (use cached structures)
-    const cache = getStructureCache(room);
     const spawn = cache.spawns[0];
     if (!spawn) {
       // No spawn, place one if we're a new colony
@@ -376,7 +375,6 @@ export class RoomNode {
         // Find a suitable position for first spawn (use cached sources)
         const controller = room.controller;
         if (controller) {
-          const cache = getStructureCache(room);
           const sources = cache.sources;
           // Find position between controller and sources
           const avgX = Math.round(
@@ -534,7 +532,6 @@ export class RoomNode {
     if (!storageLink) return;
 
     // Find source links (links near sources) - use cached sources
-    const cache = getStructureCache(room);
     const sources = cache.sources;
     const sourceLinks = links.filter(l => sources.some(s => l.pos.getRangeTo(s) <= 2));
 
