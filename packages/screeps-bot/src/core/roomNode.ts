@@ -151,9 +151,19 @@ export class RoomNode {
       this.runTowerControl(room, swarm);
     }
 
-    // Run construction (every 10 ticks)
-    if (this.config.enableConstruction && Game.time % 10 === 0 && postureManager.allowsBuilding(swarm.posture)) {
-      this.runConstruction(room, swarm);
+    // Run construction
+    // Perimeter defense runs every 5 ticks for faster fortification (RCL 2-3)
+    // Other construction runs every 10 ticks to balance CPU usage
+    if (this.config.enableConstruction && postureManager.allowsBuilding(swarm.posture)) {
+      const rcl = room.controller?.level ?? 1;
+      const isEarlyDefense = rcl >= 2 && rcl <= 3;
+      const shouldRunConstruction = isEarlyDefense 
+        ? Game.time % 5 === 0 
+        : Game.time % 10 === 0;
+      
+      if (shouldRunConstruction) {
+        this.runConstruction(room, swarm);
+      }
     }
 
     // Run resource processing (every 5 ticks)
@@ -409,8 +419,12 @@ export class RoomNode {
     // Early defense is critical for room security
     let perimeterPlaced = 0;
     if (rcl >= 2 && existingSites.length < 8) {
+      // Place more sites in early game (RCL 2-3) for faster fortification
+      // RCL 2-3: Place up to 5 sites per tick for aggressive defense buildup
+      // RCL 4+: Place up to 3 sites per tick for maintenance
+      const maxPerimeterSites = (rcl >= 2 && rcl <= 3) ? 5 : 3;
       // Prioritize choke points at RCL 2, full perimeter at RCL 3+
-      perimeterPlaced = placePerimeterDefense(room, rcl, 2, true);
+      perimeterPlaced = placePerimeterDefense(room, rcl, maxPerimeterSites, true);
     }
 
     // Priority 2: Place construction sites using blueprint
