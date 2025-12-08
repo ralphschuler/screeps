@@ -21,6 +21,7 @@ import { placeRoadConstructionSites } from "../layouts/roadNetworkPlanner";
 import { safeFind } from "../utils/safeFind";
 import { safeModeManager } from "../defense/safeModeManager";
 import { placePerimeterDefense } from "../defense/perimeterDefense";
+import { calculateWallRepairTarget } from "../defense/wallRepairTargets";
 import { chemistryPlanner } from "../labs/chemistryPlanner";
 import { boostManager } from "../labs/boostManager";
 import { kernel } from "./kernel";
@@ -332,6 +333,22 @@ export class RoomNode {
         });
         if (damaged) {
           tower.repair(damaged);
+          continue;
+        }
+      }
+
+      // Priority 4: Repair walls and ramparts based on RCL and danger level
+      // Only repair in peaceful conditions (no hostiles, non-combat posture)
+      if (!postureManager.isCombatPosture(swarm.posture) && hostiles.length === 0) {
+        const rcl = room.controller?.level ?? 1;
+        const repairTarget = calculateWallRepairTarget(rcl, swarm.danger);
+        const wallOrRampart = tower.pos.findClosestByRange(FIND_STRUCTURES, {
+          filter: s =>
+            (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) &&
+            s.hits < repairTarget
+        });
+        if (wallOrRampart) {
+          tower.repair(wallOrRampart);
         }
       }
     }
