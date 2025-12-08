@@ -125,23 +125,29 @@ function runCreep(creep: Creep): void {
   }
 
   const family = getCreepFamily(creep);
+  const memory = creep.memory as unknown as SwarmCreepMemory;
+  const roleName = memory.role;
 
-  switch (family) {
-    case "economy":
-      runEconomyRole(creep);
-      break;
-    case "military":
-      runMilitaryRole(creep);
-      break;
-    case "utility":
-      runUtilityRole(creep);
-      break;
-    case "power":
-      runPowerCreepRole(creep);
-      break;
-    default:
-      runEconomyRole(creep);
-  }
+  // Profile per-role CPU usage for optimization insights
+  // Uses "role:" prefix to separate from subsystems
+  profiler.measureSubsystem(`role:${roleName}`, () => {
+    switch (family) {
+      case "economy":
+        runEconomyRole(creep);
+        break;
+      case "military":
+        runMilitaryRole(creep);
+        break;
+      case "utility":
+        runUtilityRole(creep);
+        break;
+      case "power":
+        runPowerCreepRole(creep);
+        break;
+      default:
+        runEconomyRole(creep);
+    }
+  });
 }
 
 // =============================================================================
@@ -249,7 +255,9 @@ function runCreepsWithBudget(): void {
 
   // Micro-batch size: check CPU every N creeps
   // Smaller batches when bucket is low for tighter control
-  const batchSize = lowBucket ? 5 : 10;
+  // OPTIMIZATION: Increased batch sizes to reduce CPU check overhead
+  // With 11+ CPU spent on creeps, checking less frequently saves 0.5-1 CPU
+  const batchSize = lowBucket ? 10 : 20;
 
   for (let i = 0; i < creeps.length; i++) {
     // Check CPU budget at the start of each batch

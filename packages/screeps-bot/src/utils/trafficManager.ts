@@ -452,8 +452,9 @@ export function moveWithPriority(
   }
 
   // Try to move normally
+  // OPTIMIZATION: Increased reusePath to match movement.ts (50 ticks)
   const result = creep.moveTo(targetPos, {
-    reusePath: opts?.reusePath ?? 20,
+    reusePath: opts?.reusePath ?? 50,
     maxRooms: opts?.maxRooms ?? 16,
     ...opts
   });

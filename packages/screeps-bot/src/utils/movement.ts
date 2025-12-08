@@ -550,9 +550,10 @@ function internalMoveTo(
 
   // Determine if we need to repath
   const repathIfStuck = options.repathIfStuck ?? 3;
-  // OPTIMIZATION: Increased reusePath from 20 to 40 ticks for better CPU efficiency
+  // OPTIMIZATION: Increased reusePath from 20 to 50 ticks for better CPU efficiency
   // Paths are valid longer, reducing expensive PathFinder.search calls
-  const reusePath = options.reusePath ?? 40;
+  // Based on profiler data showing 11.459 avg CPU for creeps subsystem
+  const reusePath = options.reusePath ?? 50;
   const needRepath =
     !cachedPath ||
     cachedPath.targetKey !== targetKey ||

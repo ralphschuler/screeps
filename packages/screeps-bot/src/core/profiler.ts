@@ -15,6 +15,8 @@ export interface ProfilerMemory {
   rooms: Record<string, RoomProfileData>;
   /** Global subsystem CPU averages */
   subsystems: Record<string, SubsystemProfileData>;
+  /** Per-role CPU averages (for identifying expensive roles) */
+  roles?: Record<string, SubsystemProfileData>;
   /** Total tick count since reset */
   tickCount: number;
   /** Last profile update tick */
@@ -111,6 +113,7 @@ export class Profiler {
       statsRoot[PROFILER_MEMORY_KEY] = {
         rooms: {},
         subsystems: {},
+        roles: {},
         tickCount: 0,
         lastUpdate: 0
       } as ProfilerMemory;
@@ -156,6 +159,18 @@ export class Profiler {
     statsRoot["profiler.subsystems.total_avg_cpu"] = totalSubsystemAvgCpu;
     statsRoot["profiler.subsystems.count"] = Object.keys(memory.subsystems).length;
 
+    // Publish per-role CPU metrics with role name as part of the key
+    let totalRoleAvgCpu = 0;
+    for (const [role, data] of Object.entries(memory.roles || {})) {
+      statsRoot[`profiler.role.${role}.avg_cpu`] = data.avgCpu;
+      statsRoot[`profiler.role.${role}.peak_cpu`] = data.peakCpu;
+      statsRoot[`profiler.role.${role}.samples`] = data.samples;
+      statsRoot[`profiler.role.${role}.calls`] = data.callsThisTick;
+      totalRoleAvgCpu += data.avgCpu;
+    }
+    statsRoot["profiler.roles.total_avg_cpu"] = totalRoleAvgCpu;
+    statsRoot["profiler.roles.count"] = Object.keys(memory.roles || {}).length;
+
     // Legacy format for backward compatibility (nested objects)
     const roomAvgCpu: Record<string, number> = {};
     const roomPeakCpu: Record<string, number> = {};
@@ -173,6 +188,15 @@ export class Profiler {
       subsystemCalls[name] = data.callsThisTick;
     }
 
+    const roleAvgCpu: Record<string, number> = {};
+    const rolePeakCpu: Record<string, number> = {};
+    const roleCalls: Record<string, number> = {};
+    for (const [role, data] of Object.entries(memory.roles || {})) {
+      roleAvgCpu[role] = data.avgCpu;
+      rolePeakCpu[role] = data.peakCpu;
+      roleCalls[role] = data.callsThisTick;
+    }
+
     /* eslint-disable dot-notation */
     statsRoot["profiler_tick_count"] = memory.tickCount;
     statsRoot["profiler_last_update"] = memory.lastUpdate;
@@ -182,6 +206,9 @@ export class Profiler {
     statsRoot["profiler_subsystem_avg_cpu"] = subsystemAvgCpu;
     statsRoot["profiler_subsystem_peak_cpu"] = subsystemPeakCpu;
     statsRoot["profiler_subsystem_calls"] = subsystemCalls;
+    statsRoot["profiler_role_avg_cpu"] = roleAvgCpu;
+    statsRoot["profiler_role_peak_cpu"] = rolePeakCpu;
+    statsRoot["profiler_role_calls"] = roleCalls;
     /* eslint-enable dot-notation */
   }
 
@@ -249,19 +276,29 @@ export class Profiler {
     memory.tickCount++;
     memory.lastUpdate = Game.time;
 
+    // Ensure roles map exists
+    if (!memory.roles) {
+      memory.roles = {};
+    }
+
     // Update subsystem averages
     for (const [name, measurements] of this.subsystemMeasurements) {
       const totalCpu = measurements.reduce((sum, m) => sum + m, 0);
 
-      if (!memory.subsystems[name]) {
-        memory.subsystems[name] = {
+      // Check if this is a role measurement (prefixed with "role:")
+      const isRole = name.startsWith("role:");
+      const targetMap = isRole ? memory.roles : memory.subsystems;
+      const cleanName = isRole ? name.substring(5) : name;
+
+      if (!targetMap[cleanName]) {
+        targetMap[cleanName] = {
           avgCpu: totalCpu,
           peakCpu: totalCpu,
           samples: 1,
           callsThisTick: measurements.length
         };
       } else {
-        const data = memory.subsystems[name];
+        const data = targetMap[cleanName];
         data.avgCpu = data.avgCpu * (1 - this.config.smoothingFactor) + totalCpu * this.config.smoothingFactor;
         data.peakCpu = Math.max(data.peakCpu, totalCpu);
         data.samples++;
@@ -308,6 +345,19 @@ export class Profiler {
         logger.info(`  ${name}: ${data.avgCpu.toFixed(3)} / ${data.peakCpu.toFixed(3)}`);
       }
     }
+
+    // Top 10 most expensive roles by average CPU
+    const roleEntries = Object.entries(memory.roles || {});
+    if (roleEntries.length > 0) {
+      const topRoles = roleEntries
+        .sort((a, b) => b[1].avgCpu - a[1].avgCpu)
+        .slice(0, 10);
+      
+      logger.info("Top Roles by CPU (avg/peak):");
+      for (const [role, data] of topRoles) {
+        logger.info(`  ${role}: ${data.avgCpu.toFixed(3)} / ${data.peakCpu.toFixed(3)} (${data.callsThisTick} creeps)`);
+      }
+    }
   }
 
   /**
@@ -340,6 +390,7 @@ export class Profiler {
     statsRoot[PROFILER_MEMORY_KEY] = {
       rooms: {},
       subsystems: {},
+      roles: {},
       tickCount: 0,
       lastUpdate: 0
     } as ProfilerMemory;
