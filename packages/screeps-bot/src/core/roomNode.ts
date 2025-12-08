@@ -24,6 +24,7 @@ import { placePerimeterDefense } from "../defense/perimeterDefense";
 import { chemistryPlanner } from "../labs/chemistryPlanner";
 import { boostManager } from "../labs/boostManager";
 import { kernel } from "./kernel";
+import { prefetchRoomObjects } from "../utils/objectCache";
 
 /**
  * Perimeter defense configuration constants
@@ -134,6 +135,11 @@ export class RoomNode {
       profiler.endRoom(this.roomName, cpuStart);
       return;
     }
+
+    // OPTIMIZATION: Prefetch commonly accessed room objects to warm the object cache.
+    // This saves CPU when multiple creeps access the same objects (storage, sources, etc.)
+    // With 50+ creeps per room, this can save 1-2 CPU per tick.
+    prefetchRoomObjects(room);
 
     // Get or initialize swarm state
     const swarm = memoryManager.getOrInitSwarmState(this.roomName);

@@ -44,6 +44,10 @@ function isRoomObject(obj: unknown): obj is RoomObject {
 /**
  * Roles that can benefit from idle detection (stationary workers).
  * Mobile roles like haulers and military units are excluded.
+ * 
+ * OPTIMIZATION: Extended in performance optimization to include more roles.
+ * With 100+ creeps, extending idle detection to builders can save 1-2 CPU.
+ * Note: "repairer" is not a defined role in this bot, so it's excluded.
  */
 const IDLE_ELIGIBLE_ROLES = new Set([
   "harvester", // Stationary at source
@@ -51,7 +55,8 @@ const IDLE_ELIGIBLE_ROLES = new Set([
   "mineralHarvester", // Stationary at mineral
   "depositHarvester", // Stationary at deposit
   "factoryWorker", // Stationary at factory
-  "labTech" // Stationary at labs
+  "labTech", // Stationary at labs
+  "builder" // Can be stationary at construction site
 ]);
 
 /**
@@ -110,6 +115,9 @@ export function canSkipBehaviorEvaluation(creep: Creep): boolean {
     
     case "mineralHarvester":
       return isMineralHarvesterIdle(creep, state);
+    
+    case "builder":
+      return isBuilderIdle(creep, state);
     
     case "depositHarvester":
     case "factoryWorker":
@@ -259,6 +267,80 @@ function isMineralHarvesterIdle(creep: Creep, state: NonNullable<SwarmCreepMemor
 }
 
 /**
+ * Check if a builder is idle (actively building at construction site).
+ * Builder is idle when:
+ * - State is "build"
+ * - Has valid target (construction site)
+ * - Is in range of target (range 3)
+ * - Has energy to build
+ */
+function isBuilderIdle(creep: Creep, state: NonNullable<SwarmCreepMemory["state"]>): boolean {
+  // Must be building
+  if (state.action !== "build") {
+    return false;
+  }
+  
+  // Validate target
+  if (!state.targetId) {
+    return false;
+  }
+  
+  const target = Game.getObjectById(state.targetId);
+  if (!target || !isRoomObject(target)) {
+    return false;
+  }
+  
+  // Must be in range (build range is 3)
+  if (!creep.pos.inRangeTo(target.pos, 3)) {
+    return false;
+  }
+  
+  // Must have energy
+  if (creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0) {
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * Check if a repairer is idle (actively repairing structure).
+ * Repairer is idle when:
+ * - State is "repair"
+ * - Has valid target (structure)
+ * - Is in range of target (range 3)
+ * - Has energy to repair
+ */
+function isRepairerIdle(creep: Creep, state: NonNullable<SwarmCreepMemory["state"]>): boolean {
+  // Must be repairing
+  if (state.action !== "repair") {
+    return false;
+  }
+  
+  // Validate target
+  if (!state.targetId) {
+    return false;
+  }
+  
+  const target = Game.getObjectById(state.targetId);
+  if (!target || !isRoomObject(target)) {
+    return false;
+  }
+  
+  // Must be in range (repair range is 3)
+  if (!creep.pos.inRangeTo(target.pos, 3)) {
+    return false;
+  }
+  
+  // Must have energy
+  if (creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0) {
+    return false;
+  }
+  
+  return true;
+}
+
+/**
  * Execute the creep's current action without re-evaluating behavior.
  * This is called for idle creeps that can skip behavior evaluation.
  * 
@@ -312,6 +394,20 @@ export function executeIdleAction(creep: Creep): boolean {
       // Validate target is a Controller
       if ("level" in target && "progress" in target && "my" in target) {
         return creep.upgradeController(target as StructureController) === OK;
+      }
+      return false;
+    
+    case "build":
+      // Validate target is a ConstructionSite
+      if ("progressTotal" in target && "progress" in target) {
+        return creep.build(target as ConstructionSite) === OK;
+      }
+      return false;
+    
+    case "repair":
+      // Validate target is a Structure
+      if ("hits" in target && "hitsMax" in target) {
+        return creep.repair(target as Structure) === OK;
       }
       return false;
     

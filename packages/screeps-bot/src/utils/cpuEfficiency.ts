@@ -50,75 +50,65 @@ export function throttleWithDefault<T>(
   return defaultValue;
 }
 
+// NOTE: These functions are now deprecated in favor of the cached versions
+// in bodyPartCache.ts. They are kept here for backward compatibility,
+// but new code should use getCachedDamagePotential, getCachedHealPotential,
+// getCachedBodyPartCount, and hasCachedBodyPart instead.
+// The cached versions provide the same functionality with better performance.
+
+import {
+  getCachedDamagePotential,
+  getCachedHealPotential,
+  getCachedBodyPartCount,
+  hasCachedBodyPart
+} from "./bodyPartCache";
+
 /**
  * Calculate total body part damage potential efficiently.
  * Uses a single-pass iteration instead of multiple filter calls.
- *
+ * 
+ * @deprecated Use getCachedDamagePotential from bodyPartCache instead for better performance
  * @param creep - Creep to analyze
  * @returns Total potential damage per tick from ATTACK and RANGED_ATTACK parts
  */
 export function calculateCreepDamagePotential(creep: Creep): number {
-  let damage = 0;
-  for (const part of creep.body) {
-    if (part.hits > 0) {
-      if (part.type === ATTACK) {
-        damage += 30; // ATTACK_POWER
-      } else if (part.type === RANGED_ATTACK) {
-        damage += 10; // RANGED_ATTACK_POWER
-      }
-    }
-  }
-  return damage;
+  return getCachedDamagePotential(creep);
 }
 
 /**
  * Calculate total heal potential efficiently.
- *
+ * 
+ * @deprecated Use getCachedHealPotential from bodyPartCache instead for better performance
  * @param creep - Creep to analyze
  * @returns Total potential healing per tick from HEAL parts
  */
 export function calculateCreepHealPotential(creep: Creep): number {
-  let heal = 0;
-  for (const part of creep.body) {
-    if (part.hits > 0 && part.type === HEAL) {
-      heal += 12; // HEAL_POWER
-    }
-  }
-  return heal;
+  return getCachedHealPotential(creep);
 }
 
 /**
  * Count active body parts of a specific type efficiently.
- *
+ * 
+ * @deprecated Use getCachedBodyPartCount from bodyPartCache instead for better performance
  * @param creep - Creep to analyze
  * @param partType - Type of body part to count
  * @returns Number of active (hits > 0) parts of the specified type
  */
 export function countActiveBodyParts(creep: Creep, partType: BodyPartConstant): number {
-  let count = 0;
-  for (const part of creep.body) {
-    if (part.hits > 0 && part.type === partType) {
-      count++;
-    }
-  }
-  return count;
+  return getCachedBodyPartCount(creep, partType, true);
 }
 
 /**
  * Check if a creep has any active parts of a specific type.
  * More efficient than counting when you only need to know presence.
- *
+ * 
+ * @deprecated Use hasCachedBodyPart from bodyPartCache instead for better performance
  * @param creep - Creep to check
  * @param partType - Type of body part to check for
  * @returns true if creep has at least one active part of the specified type
  */
 export function hasActiveBodyPart(creep: Creep, partType: BodyPartConstant): boolean {
-  for (const part of creep.body) {
-    if (part.hits > 0 && part.type === partType) {
-      return true;
-    }
-  }
-  return false;
+  return hasCachedBodyPart(creep, partType, true);
 }
 
 /**
