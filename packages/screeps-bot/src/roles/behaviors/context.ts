@@ -363,7 +363,6 @@ export function createContext(creep: Creep): CreepContext {
   // Get cached room data - only runs find() once per room per tick
   const roomCache = getRoomCache(room);
 
-  const targetRoom = memory.targetRoom ?? memory.homeRoom;
   const homeRoom = memory.homeRoom ?? room.name;
 
   return {
@@ -382,9 +381,7 @@ export function createContext(creep: Creep): CreepContext {
 
     // Location info
     homeRoom,
-    targetRoom,
     isInHomeRoom: room.name === homeRoom,
-    isInTargetRoom: room.name === targetRoom,
 
     // Creep state
     isFull: creep.store.getFreeCapacity() === 0,

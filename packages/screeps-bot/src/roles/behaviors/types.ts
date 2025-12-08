@@ -68,9 +68,7 @@ export interface CreepContext {
 
   // Location info
   homeRoom: string;
-  targetRoom: string | undefined;
   isInHomeRoom: boolean;
-  isInTargetRoom: boolean;
 
   // Creep state
   isFull: boolean;

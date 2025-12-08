@@ -73,6 +73,9 @@ function isStateComplete(state: CreepState | undefined, ctx: CreepContext): bool
 
     case "moveToRoom":
       // Movement complete when in target room
+      // Uses state.targetRoom which is the temporary movement destination.
+      // For remote creeps, memory.targetRoom is the permanent assignment (e.g., remote room)
+      // while state.targetRoom might be different (e.g., home room when delivering resources).
       return state.targetRoom !== undefined && ctx.room.name === state.targetRoom;
 
     case "moveTo":
