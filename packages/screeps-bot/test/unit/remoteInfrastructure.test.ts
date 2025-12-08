@@ -24,7 +24,7 @@ describe("remote infrastructure planning", () => {
 
   describe("container placement near sources", () => {
     it("should identify positions adjacent to sources as valid for containers", () => {
-      // A source at position (25, 25) should have up to 8 adjacent positions
+      // A source at position (25, 25) should have exactly 8 adjacent positions
       // for container placement (if not blocked by walls or structures)
       const sourcePos = { x: 25, y: 25 };
       const adjacentPositions: { x: number; y: number }[] = [];

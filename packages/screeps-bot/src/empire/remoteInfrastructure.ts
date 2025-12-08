@@ -16,6 +16,16 @@ import { ProcessPriority } from "../core/kernel";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
 
 /**
+ * Construction site limit per room (Screeps game limit is 100, but we use lower limit for remote rooms)
+ */
+const MAX_CONSTRUCTION_SITES_PER_REMOTE_ROOM = 5;
+
+/**
+ * Maximum number of road construction sites to place per room per tick
+ */
+const MAX_ROAD_SITES_PER_TICK = 3;
+
+/**
  * Remote Infrastructure Manager Configuration
  */
 export interface RemoteInfrastructureConfig {
@@ -148,7 +158,7 @@ export class RemoteInfrastructureManager {
 
     // Check construction site limit
     const sites = room.find(FIND_CONSTRUCTION_SITES);
-    if (sites.length >= 5) {
+    if (sites.length >= MAX_CONSTRUCTION_SITES_PER_REMOTE_ROOM) {
       // Too many construction sites in this room already
       return false;
     }
@@ -258,7 +268,7 @@ export class RemoteInfrastructureManager {
     });
 
     // Check construction site limit
-    if (existingSites.length >= 5) return;
+    if (existingSites.length >= MAX_CONSTRUCTION_SITES_PER_REMOTE_ROOM) return;
 
     const existingRoadSet = new Set(existingRoads.map(r => `${r.pos.x},${r.pos.y}`));
     const existingSiteSet = new Set(
@@ -267,11 +277,10 @@ export class RemoteInfrastructureManager {
 
     const terrain = room.getTerrain();
     let placed = 0;
-    const maxToPlace = 3; // Rate limit to avoid overwhelming builders
 
     for (const posKey of roadPositions) {
-      if (placed >= maxToPlace) break;
-      if (existingSites.length + placed >= 5) break;
+      if (placed >= MAX_ROAD_SITES_PER_TICK) break;
+      if (existingSites.length + placed >= MAX_CONSTRUCTION_SITES_PER_REMOTE_ROOM) break;
 
       // Skip if road or site already exists
       if (existingRoadSet.has(posKey)) continue;
