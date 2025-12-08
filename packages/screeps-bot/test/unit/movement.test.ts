@@ -324,6 +324,95 @@ describe("Movement Room Exit Handling", () => {
     });
   });
 
+  describe("Multi-room pathfinding", () => {
+    /**
+     * Simulates path validation across multiple rooms
+     * A valid path must have:
+     * - At least 2 positions
+     * - Room transitions must occur at exits
+     * - All rooms in the path should be reachable
+     */
+    function validateMultiRoomPath(
+      path: { x: number; y: number; roomName: string }[]
+    ): { valid: boolean; reason?: string } {
+      if (path.length === 0) {
+        return { valid: false, reason: "Empty path" };
+      }
+
+      if (path.length === 1) {
+        return { valid: true }; // Single position is valid
+      }
+
+      // Check room transitions
+      let currentRoom = path[0]!.roomName;
+      for (let i = 1; i < path.length; i++) {
+        const pos = path[i];
+        if (!pos) continue;
+
+        if (pos.roomName !== currentRoom) {
+          // Room changed - previous position must be at an exit
+          const prevPos = path[i - 1];
+          if (!prevPos) continue;
+
+          const prevAtExit = prevPos.x === 0 || prevPos.x === 49 || prevPos.y === 0 || prevPos.y === 49;
+          const currAtExit = pos.x === 0 || pos.x === 49 || pos.y === 0 || pos.y === 49;
+
+          if (!prevAtExit || !currAtExit) {
+            return { valid: false, reason: `Room transition not at exit at index ${i}` };
+          }
+
+          currentRoom = pos.roomName;
+        }
+      }
+
+      return { valid: true };
+    }
+
+    it("should validate multi-room path with proper exits", () => {
+      const path = [
+        { x: 25, y: 25, roomName: "E1N1" },
+        { x: 49, y: 25, roomName: "E1N1" }, // Exit
+        { x: 0, y: 25, roomName: "E2N1" }, // Enter next room
+        { x: 25, y: 25, roomName: "E2N1" }
+      ];
+
+      const result = validateMultiRoomPath(path);
+      expect(result.valid).to.be.true;
+    });
+
+    it("should validate path with multiple room transitions", () => {
+      const path = [
+        { x: 25, y: 25, roomName: "E1N1" },
+        { x: 49, y: 25, roomName: "E1N1" }, // Exit to E2N1
+        { x: 0, y: 25, roomName: "E2N1" },
+        { x: 25, y: 25, roomName: "E2N1" },
+        { x: 49, y: 25, roomName: "E2N1" }, // Exit to E3N1
+        { x: 0, y: 25, roomName: "E3N1" },
+        { x: 25, y: 25, roomName: "E3N1" }
+      ];
+
+      const result = validateMultiRoomPath(path);
+      expect(result.valid).to.be.true;
+    });
+
+    it("should detect invalid room transitions", () => {
+      const path = [
+        { x: 25, y: 25, roomName: "E1N1" }, // Not at exit
+        { x: 25, y: 25, roomName: "E2N1" } // Teleported to different room
+      ];
+
+      const result = validateMultiRoomPath(path);
+      expect(result.valid).to.be.false;
+      expect(result.reason).to.include("Room transition not at exit");
+    });
+
+    it("should handle empty path", () => {
+      const result = validateMultiRoomPath([]);
+      expect(result.valid).to.be.false;
+      expect(result.reason).to.equal("Empty path");
+    });
+  });
+
   describe("Cross-room exit handling", () => {
     /**
      * Simulates checking if a creep needs to move off exit before continuing to different room.
@@ -394,6 +483,176 @@ describe("Movement Room Exit Handling", () => {
       expect(
         needsMoveOffExitFirst({ x: 25, y: 49, roomName: "E1N1" }, "E2N1")
       ).to.be.true;
+    });
+  });
+
+  describe("Hostile room avoidance", () => {
+    /**
+     * Simulates checking if a room should be avoided during pathfinding
+     */
+    interface RoomStatus {
+      name: string;
+      hasHostileTowers: boolean;
+      hasHostileAttackers: boolean;
+      allowHostileRooms: boolean;
+    }
+
+    function shouldAvoidRoom(status: RoomStatus): boolean {
+      if (status.allowHostileRooms) return false;
+      return status.hasHostileTowers || status.hasHostileAttackers;
+    }
+
+    it("should avoid rooms with hostile towers", () => {
+      expect(shouldAvoidRoom({
+        name: "E1N1",
+        hasHostileTowers: true,
+        hasHostileAttackers: false,
+        allowHostileRooms: false
+      })).to.be.true;
+    });
+
+    it("should avoid rooms with hostile attackers", () => {
+      expect(shouldAvoidRoom({
+        name: "E1N1",
+        hasHostileTowers: false,
+        hasHostileAttackers: true,
+        allowHostileRooms: false
+      })).to.be.true;
+    });
+
+    it("should NOT avoid hostile rooms when explicitly allowed", () => {
+      expect(shouldAvoidRoom({
+        name: "E1N1",
+        hasHostileTowers: true,
+        hasHostileAttackers: true,
+        allowHostileRooms: true
+      })).to.be.false;
+    });
+
+    it("should NOT avoid safe rooms", () => {
+      expect(shouldAvoidRoom({
+        name: "E1N1",
+        hasHostileTowers: false,
+        hasHostileAttackers: false,
+        allowHostileRooms: false
+      })).to.be.false;
+    });
+  });
+
+  describe("Portal navigation", () => {
+    /**
+     * Simulates portal detection and filtering
+     */
+    interface MockPortal {
+      pos: { x: number; y: number; roomName: string };
+      destination?: {
+        shard?: string;
+        room?: string;
+      };
+    }
+
+    function findPortalsToShard(portals: MockPortal[], targetShard: string): MockPortal[] {
+      return portals.filter(portal => {
+        if (!portal.destination) return false;
+        return portal.destination.shard === targetShard;
+      });
+    }
+
+    it("should find portals to specific shard", () => {
+      const portals: MockPortal[] = [
+        { pos: { x: 10, y: 10, roomName: "E1N1" }, destination: { shard: "shard0", room: "E10N10" } },
+        { pos: { x: 20, y: 20, roomName: "E1N1" }, destination: { shard: "shard1", room: "E20N20" } },
+        { pos: { x: 30, y: 30, roomName: "E1N1" }, destination: { shard: "shard2", room: "E30N30" } }
+      ];
+
+      const result = findPortalsToShard(portals, "shard1");
+      expect(result).to.have.lengthOf(1);
+      expect(result[0].destination?.shard).to.equal("shard1");
+    });
+
+    it("should return empty array when no portals to target shard", () => {
+      const portals: MockPortal[] = [
+        { pos: { x: 10, y: 10, roomName: "E1N1" }, destination: { shard: "shard0", room: "E10N10" } },
+        { pos: { x: 20, y: 20, roomName: "E1N1" }, destination: { shard: "shard1", room: "E20N20" } }
+      ];
+
+      const result = findPortalsToShard(portals, "shard2");
+      expect(result).to.have.lengthOf(0);
+    });
+
+    it("should handle portals without destinations", () => {
+      const portals: MockPortal[] = [
+        { pos: { x: 10, y: 10, roomName: "E1N1" } }, // No destination
+        { pos: { x: 20, y: 20, roomName: "E1N1" }, destination: { shard: "shard1", room: "E20N20" } }
+      ];
+
+      const result = findPortalsToShard(portals, "shard1");
+      expect(result).to.have.lengthOf(1);
+    });
+
+    it("should find multiple portals to same shard", () => {
+      const portals: MockPortal[] = [
+        { pos: { x: 10, y: 10, roomName: "E1N1" }, destination: { shard: "shard1", room: "E10N10" } },
+        { pos: { x: 20, y: 20, roomName: "E1N1" }, destination: { shard: "shard1", room: "E20N20" } },
+        { pos: { x: 30, y: 30, roomName: "E1N1" }, destination: { shard: "shard2", room: "E30N30" } }
+      ];
+
+      const result = findPortalsToShard(portals, "shard1");
+      expect(result).to.have.lengthOf(2);
+    });
+  });
+
+  describe("Path invalidation on room change", () => {
+    /**
+     * Simulates checking if a cached path should be invalidated when creep changes rooms
+     */
+    function shouldInvalidatePath(
+      cachedPathRooms: string[],
+      currentRoom: string,
+      targetRoom: string
+    ): boolean {
+      if (cachedPathRooms.length === 0) return true;
+
+      // Path is invalid if current room is not in the path
+      if (!cachedPathRooms.includes(currentRoom)) return true;
+
+      // Path is invalid if target room changed
+      const lastRoom = cachedPathRooms[cachedPathRooms.length - 1];
+      if (lastRoom !== targetRoom) return true;
+
+      return false;
+    }
+
+    it("should invalidate path when creep enters unexpected room", () => {
+      const cachedPathRooms = ["E1N1", "E2N1"];
+      const currentRoom = "E3N1"; // Unexpected room
+      const targetRoom = "E2N1";
+
+      expect(shouldInvalidatePath(cachedPathRooms, currentRoom, targetRoom)).to.be.true;
+    });
+
+    it("should invalidate path when target room changes", () => {
+      const cachedPathRooms = ["E1N1", "E2N1"];
+      const currentRoom = "E1N1";
+      const targetRoom = "E3N1"; // New target
+
+      expect(shouldInvalidatePath(cachedPathRooms, currentRoom, targetRoom)).to.be.true;
+    });
+
+    it("should NOT invalidate path when creep is on expected path", () => {
+      const cachedPathRooms = ["E1N1", "E2N1", "E3N1"];
+      const currentRoom = "E2N1"; // On path
+      const targetRoom = "E3N1"; // Same target
+
+      expect(shouldInvalidatePath(cachedPathRooms, currentRoom, targetRoom)).to.be.false;
+    });
+
+    it("should invalidate empty path", () => {
+      const cachedPathRooms: string[] = [];
+      const currentRoom = "E1N1";
+      const targetRoom = "E2N1";
+
+      expect(shouldInvalidatePath(cachedPathRooms, currentRoom, targetRoom)).to.be.true;
     });
   });
 

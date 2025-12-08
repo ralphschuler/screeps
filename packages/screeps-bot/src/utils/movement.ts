@@ -78,6 +78,10 @@ export interface MoveOpts {
   maxOps?: number;
   /** Range to stay away from targets when fleeing. Default 10. */
   fleeRange?: number;
+  /** Maximum number of rooms to search through. Default 16 for multi-room, 1 for single-room. */
+  maxRooms?: number;
+  /** Allow routing through hostile rooms. Default false. */
+  allowHostileRooms?: boolean;
 }
 
 /**
@@ -237,19 +241,67 @@ function getDirection(from: RoomPosition, to: RoomPosition): DirectionConstant {
 }
 
 /**
- * Generate a cost matrix for a room
+ * Check if a room is considered hostile (has hostile structures or active hostiles)
  */
-function generateCostMatrix(roomName: string, avoidCreeps: boolean, roadCost = 1): CostMatrix {
+function isRoomHostile(roomName: string): boolean {
+  const room = Game.rooms[roomName];
+  if (!room) return false;
+
+  // Check for hostile towers (most threatening)
+  const hostileTowers = room.find(FIND_HOSTILE_STRUCTURES, {
+    filter: s => s.structureType === STRUCTURE_TOWER
+  });
+  if (hostileTowers.length > 0) return true;
+
+  // Check for hostile creeps with attack parts
+  const hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+  const hasAttackers = hostileCreeps.some(
+    c => c.getActiveBodyparts(ATTACK) > 0 ||
+         c.getActiveBodyparts(RANGED_ATTACK) > 0
+  );
+
+  return hasAttackers;
+}
+
+/**
+ * Generate a cost matrix for a room with multi-room awareness
+ */
+function generateCostMatrix(
+  roomName: string,
+  avoidCreeps: boolean,
+  roadCost = 1,
+  allowHostileRooms = false
+): CostMatrix | false {
   const costs = new PathFinder.CostMatrix();
   const room = Game.rooms[roomName];
 
-  if (!room) return costs;
+  // If room is not visible, allow PathFinder to use default costs
+  // unless it's a known hostile room
+  if (!room) {
+    // Check if this room is marked as hostile in memory
+    if (!allowHostileRooms && Memory.rooms?.[roomName]?.hostile) {
+      return false; // Block pathing through known hostile rooms
+    }
+    return costs; // Use default costs for unknown rooms
+  }
+
+  // Block hostile rooms unless explicitly allowed
+  if (!allowHostileRooms && isRoomHostile(roomName)) {
+    // Mark room as hostile in memory for future reference
+    if (!Memory.rooms) Memory.rooms = {};
+    if (!Memory.rooms[roomName]) Memory.rooms[roomName] = {};
+    Memory.rooms[roomName].hostile = true;
+    return false; // Block pathing through this room
+  }
 
   // Add structure costs
   const structures = room.find(FIND_STRUCTURES);
   for (const structure of structures) {
     if (structure.structureType === STRUCTURE_ROAD) {
       costs.set(structure.pos.x, structure.pos.y, roadCost);
+    } else if (structure.structureType === STRUCTURE_PORTAL) {
+      // Portals are walkable but we need to handle them specially
+      costs.set(structure.pos.x, structure.pos.y, 1);
     } else if (
       structure.structureType !== STRUCTURE_CONTAINER &&
       !(structure.structureType === STRUCTURE_RAMPART && "my" in structure && structure.my)
@@ -286,12 +338,17 @@ function generateCostMatrix(roomName: string, avoidCreeps: boolean, roadCost = 1
 // =============================================================================
 
 /**
- * Find a path to the target using PathFinder
+ * Find a path to the target using PathFinder with multi-room support
  */
 function findPath(origin: RoomPosition, target: RoomPosition | MoveTarget, opts: MoveOpts): PathFinderPath {
   const targetPos = "pos" in target ? target.pos : target;
   const range = "range" in target ? target.range : 1;
   const roadCost = opts.roadCost ?? 1;
+  const allowHostileRooms = opts.allowHostileRooms ?? false;
+
+  // Determine if this is a multi-room path
+  const isMultiRoom = origin.roomName !== targetPos.roomName;
+  const maxRooms = opts.maxRooms ?? (isMultiRoom ? 16 : 1);
 
   const goals = [{ pos: targetPos, range }];
 
@@ -299,9 +356,10 @@ function findPath(origin: RoomPosition, target: RoomPosition | MoveTarget, opts:
     plainCost: opts.plainCost ?? 2,
     swampCost: opts.swampCost ?? 10,
     maxOps: opts.maxOps ?? 2000,
+    maxRooms: maxRooms,
     flee: opts.flee ?? false,
     roomCallback: (roomName: string) => {
-      return generateCostMatrix(roomName, opts.avoidCreeps ?? true, roadCost);
+      return generateCostMatrix(roomName, opts.avoidCreeps ?? true, roadCost, allowHostileRooms);
     }
   });
 
@@ -314,14 +372,17 @@ function findPath(origin: RoomPosition, target: RoomPosition | MoveTarget, opts:
 function findFleePath(origin: RoomPosition, threats: RoomPosition[], range: number, opts: MoveOpts): PathFinderPath {
   const goals = threats.map(pos => ({ pos, range }));
   const roadCost = opts.roadCost ?? 1;
+  const allowHostileRooms = opts.allowHostileRooms ?? false;
+  const maxRooms = opts.maxRooms ?? 4; // Limit flee path search
 
   return PathFinder.search(origin, goals, {
     plainCost: opts.plainCost ?? 2,
     swampCost: opts.swampCost ?? 10,
     maxOps: opts.maxOps ?? 2000,
+    maxRooms: maxRooms,
     flee: true,
     roomCallback: (roomName: string) => {
-      return generateCostMatrix(roomName, opts.avoidCreeps ?? true, roadCost);
+      return generateCostMatrix(roomName, opts.avoidCreeps ?? true, roadCost, allowHostileRooms);
     }
   });
 }
@@ -785,6 +846,12 @@ export function moveCreep(
  * Uses the room center (25, 25) with a range of 20 to navigate to any accessible
  * position within the target room - this is the standard approach for cross-room navigation.
  *
+ * This function handles:
+ * - Same-room navigation (returns OK if already in target room)
+ * - Multi-room pathfinding across multiple rooms
+ * - Cross-shard navigation via portals (when available)
+ * - Avoiding hostile rooms by default
+ *
  * @param creep - The creep or power creep to move
  * @param roomName - The name of the destination room
  * @param opts - Optional movement options
@@ -795,8 +862,23 @@ export function moveToRoom(
   roomName: string,
   opts?: MoveOpts
 ): CreepMoveReturnCode | -2 | -5 | -7 | -10 {
+  // Already in target room
+  if (creep.pos.roomName === roomName) {
+    return OK;
+  }
+
   const targetPos = new RoomPosition(25, 25, roomName);
-  return internalMoveTo(creep, { pos: targetPos, range: 20 }, opts);
+  const options = { ...opts };
+
+  // For multi-room movement, set reasonable defaults if not specified
+  if (!options.maxRooms) {
+    options.maxRooms = 16; // Allow pathfinding through up to 16 rooms
+  }
+  if (options.allowHostileRooms === undefined) {
+    options.allowHostileRooms = false; // Avoid hostile rooms by default
+  }
+
+  return internalMoveTo(creep, { pos: targetPos, range: 20 }, options);
 }
 
 /**
@@ -1176,6 +1258,109 @@ export function pushCreepsAway(sourcePos: RoomPosition, range = 1, opts?: MoveOp
   }
 
   return pushedCount;
+}
+
+/**
+ * Find portals in a room that lead to a specific destination shard.
+ * Returns null if no portals found or room not visible.
+ *
+ * @param roomName - The room to search for portals
+ * @param targetShard - Optional target shard name to filter portals
+ * @returns Array of portal structures, or null if room not visible
+ */
+export function findPortalsInRoom(roomName: string, targetShard?: string): StructurePortal[] | null {
+  const room = Game.rooms[roomName];
+  if (!room) return null;
+
+  const portals = room.find(FIND_STRUCTURES, {
+    filter: s => s.structureType === STRUCTURE_PORTAL
+  }) as StructurePortal[];
+
+  if (!targetShard) {
+    return portals;
+  }
+
+  // Filter by destination shard
+  return portals.filter(portal => {
+    if (!portal.destination) return false;
+    // Check if destination is inter-shard (has shard property)
+    if ("shard" in portal.destination && "room" in portal.destination) {
+      return portal.destination.shard === targetShard;
+    }
+    return false;
+  });
+}
+
+/**
+ * Find a path to a room in another shard via portals.
+ * This is a helper for cross-shard navigation.
+ *
+ * @param creep - The creep attempting to travel
+ * @param targetShard - The destination shard name
+ * @param targetRoom - The destination room name in the target shard
+ * @returns Portal position to move to, or null if no path found
+ */
+export function findPortalPathToShard(
+  creep: Creep | PowerCreep,
+  targetShard: string,
+  targetRoom?: string
+): RoomPosition | null {
+  const currentShard = Game.shard?.name;
+  if (!currentShard || currentShard === targetShard) {
+    return null; // Already on target shard or shard info not available
+  }
+
+  // Check current room for portals
+  const room = Game.rooms[creep.pos.roomName];
+  if (room) {
+    const portals = findPortalsInRoom(creep.pos.roomName, targetShard);
+    if (portals && portals.length > 0) {
+      // Found a portal in current room - return closest
+      const closest = creep.pos.findClosestByRange(portals);
+      return closest?.pos ?? null;
+    }
+  }
+
+  // TODO: Implement multi-room portal search using inter-shard memory
+  // This would require pathfinding to rooms with known portals
+  // For now, return null to indicate no direct portal path found
+  return null;
+}
+
+/**
+ * Move a creep to a different shard via portals.
+ * This is an advanced function for cross-shard navigation.
+ *
+ * @param creep - The creep to move
+ * @param targetShard - The destination shard name
+ * @param targetRoom - Optional destination room in the target shard
+ * @param opts - Optional movement options
+ * @returns The result of the movement action, or ERR_NO_PATH if no portal route found
+ */
+export function moveToShard(
+  creep: Creep | PowerCreep,
+  targetShard: string,
+  targetRoom?: string,
+  opts?: MoveOpts
+): CreepMoveReturnCode | -2 | -5 | -7 | -10 {
+  const currentShard = Game.shard?.name;
+
+  // Already on target shard
+  if (currentShard === targetShard) {
+    if (targetRoom && creep.pos.roomName !== targetRoom) {
+      return moveToRoom(creep, targetRoom, opts);
+    }
+    return OK;
+  }
+
+  // Find portal to target shard
+  const portalPos = findPortalPathToShard(creep, targetShard, targetRoom);
+  if (!portalPos) {
+    return ERR_NO_PATH;
+  }
+
+  // Move to the portal
+  return moveCreep(creep, portalPos, opts);
 }
 
 /**

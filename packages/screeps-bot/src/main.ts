@@ -23,6 +23,11 @@ declare global {
     working: boolean;
   }
 
+  interface RoomMemory {
+    /** Flag indicating room is hostile (has enemy towers or attackers) */
+    hostile?: boolean;
+  }
+
 }
 
 // =============================================================================
