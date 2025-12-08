@@ -90,9 +90,9 @@ npm run build
 
 3. **Deploy to Screeps**:
 
-```shell
-npm run push
-```
+You can deploy using either:
+- **GitHub Sync**: Connect your Screeps account to this repository (build files are tracked in git)
+- **API Push**: Use `npm run push` to deploy directly via Screeps API
 
 ### Development Workflow
 
