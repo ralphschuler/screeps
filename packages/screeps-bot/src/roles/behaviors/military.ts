@@ -188,46 +188,22 @@ function getSquadMemory(squadId: string): SquadMemory | undefined {
 /**
  * Guard - Home defense creep.
  * Attacks nearby hostiles, patrols the room when idle.
- * Can also assist neighboring rooms when requested.
+ * Guards stay in their home room and do not chase hostiles outside.
  */
 export function guard(ctx: CreepContext): CreepAction {
   const mem = ctx.creep.memory as unknown as SwarmCreepMemory & { assistTarget?: string };
 
-  // Check if assigned to assist another room
+  // Guards should not leave their home room - clear any assist assignments
   if (mem.assistTarget) {
-    // Check if still needed in assist room
-    const assistRoom = Game.rooms[mem.assistTarget];
-    if (assistRoom) {
-      const hostiles = assistRoom.find(FIND_HOSTILE_CREEPS);
-      if (hostiles.length === 0) {
-        // Threat resolved, clear assignment
-        delete mem.assistTarget;
-        return { type: "idle" };
-      }
-
-      // Move to assist room if not there yet
-      if (ctx.creep.room.name !== mem.assistTarget) {
-        return { type: "moveToRoom", roomName: mem.assistTarget };
-      }
-
-      // In assist room - engage hostiles
-      const assistTarget = findPriorityTarget(ctx);
-      if (assistTarget) {
-        const range = ctx.creep.pos.getRangeTo(assistTarget);
-        const hasRanged = hasBodyPart(ctx.creep, RANGED_ATTACK);
-        const hasMelee = hasBodyPart(ctx.creep, ATTACK);
-
-        if (hasRanged && range <= 3) return { type: "rangedAttack", target: assistTarget };
-        if (hasMelee && range <= 1) return { type: "attack", target: assistTarget };
-        return { type: "moveTo", target: assistTarget };
-      }
-    } else {
-      // Can't see assist room - move towards it
-      return { type: "moveToRoom", roomName: mem.assistTarget };
-    }
+    delete mem.assistTarget;
   }
 
-  // Normal home defense behavior
+  // Return to home room if not there
+  if (ctx.creep.room.name !== ctx.homeRoom) {
+    return { type: "moveToRoom", roomName: ctx.homeRoom };
+  }
+
+  // Normal home defense behavior - only engage hostiles in home room
   const target = findPriorityTarget(ctx);
 
   if (target) {
