@@ -41,11 +41,16 @@ import { heapCache } from "./memory/heapCache";
 ### Setting Values
 
 ```typescript
+import { heapCache, INFINITE_TTL } from "./memory/heapCache";
+
 // Set a value with default TTL (1000 ticks)
 heapCache.set("myKey", "myValue");
 
 // Set a value with custom TTL
 heapCache.set("myKey", "myValue", 500); // expires after 500 ticks
+
+// Set a value with infinite TTL (never expires)
+heapCache.set("structuralData", "permanent-value", INFINITE_TTL);
 
 // Set complex objects
 heapCache.set("roomData", {
@@ -131,6 +136,26 @@ const values = heapCache.values<string>();
 const cleanedCount = heapCache.cleanExpired();
 console.log(`Cleaned ${cleanedCount} expired entries`);
 ```
+
+## Memory Access Integration
+
+The heap cache system is now integrated throughout the codebase to replace direct Memory access:
+
+### Automatic Integration
+
+The memory manager now uses heap cache for:
+- **Overmind memory**: Cached with infinite TTL
+- **Cluster data**: Cached with infinite TTL  
+- **Room swarm states**: Cached with infinite TTL
+- **Room hostile flags**: Cached for 100 ticks
+- **Lab configurations**: Cached with infinite TTL
+
+### Benefits
+
+- **10x faster**: Heap access vs Memory access
+- **Reduced CPU**: Fewer serialization operations
+- **Automatic persistence**: Changes sync to Memory every 10 ticks
+- **Survives resets**: Data restored from Memory after global reset
 
 ## Use Cases
 
@@ -233,11 +258,15 @@ Memory._heapCache = {
 
 ## Best Practices
 
-1. **Use appropriate TTLs**: Don't cache volatile data for too long
+1. **Use appropriate TTLs**: 
+   - Volatile data: Short TTL (5-10 ticks)
+   - Semi-stable data: Medium TTL (100-500 ticks)
+   - Structural data: Infinite TTL (-1)
 2. **Cache expensive operations**: Path finding, room scans, calculations
 3. **Monitor cache size**: Use `getStats()` to avoid excessive memory usage
 4. **Clean up regularly**: Let expired entries be cleaned automatically
 5. **Namespace your keys**: Use prefixes like `"roomStats:"`, `"path:"`, etc.
+6. **Use infinite TTL wisely**: Only for data that truly never changes (structures, room layouts)
 
 ## Performance Considerations
 

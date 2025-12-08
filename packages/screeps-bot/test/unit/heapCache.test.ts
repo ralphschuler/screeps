@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import { HeapCacheManager } from "../../src/memory/heapCache";
+import { HeapCacheManager, INFINITE_TTL } from "../../src/memory/heapCache";
 
 describe("HeapCache", function () {
   let cache: HeapCacheManager;
@@ -187,6 +187,46 @@ describe("HeapCache", function () {
       assert.isUndefined(cache.get("expire1"));
       assert.isUndefined(cache.get("expire2"));
       assert.equal(cache.get("keep"), "value-keep");
+    });
+
+    it("should support infinite TTL (-1)", function () {
+      cache.initialize();
+      cache.set("infinite-key", "infinite-value", INFINITE_TTL);
+      
+      // Simulate time passing (way beyond normal TTL)
+      const heap = (global as any)._heapCache;
+      if (heap && heap.entries) {
+        const entry = heap.entries.get("infinite-key");
+        if (entry) {
+          entry.lastModified = Game.time - 10000; // Very old
+        }
+      }
+      
+      // Value should still be available (infinite TTL)
+      const value = cache.get("infinite-key");
+      assert.equal(value, "infinite-value");
+    });
+
+    it("should not clean entries with infinite TTL", function () {
+      cache.initialize();
+      cache.set("infinite1", "value1", INFINITE_TTL);
+      cache.set("infinite2", "value2", INFINITE_TTL);
+      cache.set("expire", "expire-value", 5);
+      
+      // Make all entries old
+      const heap = (global as any)._heapCache;
+      if (heap && heap.entries) {
+        for (const [key, entry] of heap.entries) {
+          entry.lastModified = Game.time - 10000;
+        }
+      }
+      
+      const cleaned = cache.cleanExpired();
+      // Should only clean the one with TTL=5, not the infinite ones
+      assert.equal(cleaned, 1);
+      assert.equal(cache.get("infinite1"), "value1");
+      assert.equal(cache.get("infinite2"), "value2");
+      assert.isUndefined(cache.get("expire"));
     });
   });
 

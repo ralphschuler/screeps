@@ -7,7 +7,7 @@ This document provides practical examples of using the heap cache system in your
 Cache room intelligence data that's expensive to compute:
 
 ```typescript
-import { heapCache } from "./memory/heapCache";
+import { heapCache, INFINITE_TTL } from "./memory/heapCache";
 
 interface RoomIntel {
   sources: number;
@@ -331,11 +331,13 @@ if (energyPrice && energyPrice.sellPrice < 0.1) {
 ### 1. Choose Appropriate TTLs
 
 ```typescript
+import { INFINITE_TTL } from "./memory/heapCache";
+
 // Frequently changing data: short TTL
 heapCache.set("threat:W1N1", threatData, 5);
 
-// Stable data: long TTL
-heapCache.set("terrain:W1N1", terrainData, 10000);
+// Permanent structural data: infinite TTL
+heapCache.set("terrain:W1N1", terrainData, INFINITE_TTL);
 
 // Semi-stable data: medium TTL
 heapCache.set("intel:W1N1", intelData, 100);
@@ -411,14 +413,19 @@ heapCache.set("creep", Game.creeps["Worker1"]);
 heapCache.set("creepId", Game.creeps["Worker1"].id);
 ```
 
-### ❌ Don't use very long TTLs for dynamic data
+### ❌ Don't use infinite TTL for dynamic data
 
 ```typescript
+import { INFINITE_TTL } from "./memory/heapCache";
+
 // Bad: hostiles change frequently
-heapCache.set("hostiles:W1N1", hostiles, 1000);
+heapCache.set("hostiles:W1N1", hostiles, INFINITE_TTL);
 
 // Good: short TTL for dynamic data
 heapCache.set("hostiles:W1N1", hostiles, 5);
+
+// Good: infinite TTL for structural data
+heapCache.set("roomLayout:W1N1", layoutData, INFINITE_TTL);
 ```
 
 ### ❌ Don't forget to handle undefined

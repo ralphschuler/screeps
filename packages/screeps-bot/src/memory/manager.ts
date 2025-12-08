@@ -14,7 +14,7 @@ import {
   createDefaultOvermindMemory,
   createDefaultSwarmState
 } from "./schemas";
-import { heapCache } from "./heapCache";
+import { heapCache, INFINITE_TTL } from "./heapCache";
 
 const OVERMIND_KEY = "overmind";
 const CLUSTERS_KEY = "clusters";
@@ -112,21 +112,37 @@ export class MemoryManager {
   }
 
   /**
-   * Get overmind memory
+   * Get overmind memory (cached with infinite TTL)
    */
   public getOvermind(): OvermindMemory {
-    this.ensureOvermindMemory();
-    const mem = Memory as unknown as Record<string, OvermindMemory>;
-    return mem[OVERMIND_KEY];
+    const cacheKey = `memory:${OVERMIND_KEY}`;
+    let overmind = heapCache.get<OvermindMemory>(cacheKey);
+    
+    if (!overmind) {
+      this.ensureOvermindMemory();
+      const mem = Memory as unknown as Record<string, OvermindMemory>;
+      overmind = mem[OVERMIND_KEY];
+      heapCache.set(cacheKey, overmind, INFINITE_TTL);
+    }
+    
+    return overmind;
   }
 
   /**
-   * Get all clusters
+   * Get all clusters (cached with infinite TTL)
    */
   public getClusters(): Record<string, ClusterMemory> {
-    this.ensureClustersMemory();
-    const mem = Memory as unknown as Record<string, Record<string, ClusterMemory>>;
-    return mem[CLUSTERS_KEY];
+    const cacheKey = `memory:${CLUSTERS_KEY}`;
+    let clusters = heapCache.get<Record<string, ClusterMemory>>(cacheKey);
+    
+    if (!clusters) {
+      this.ensureClustersMemory();
+      const mem = Memory as unknown as Record<string, Record<string, ClusterMemory>>;
+      clusters = mem[CLUSTERS_KEY];
+      heapCache.set(cacheKey, clusters, INFINITE_TTL);
+    }
+    
+    return clusters;
   }
 
   /**
@@ -141,18 +157,30 @@ export class MemoryManager {
   }
 
   /**
-   * Get swarm state for a room
+   * Get swarm state for a room (cached with infinite TTL)
    */
   public getSwarmState(roomName: string): SwarmState | undefined {
-    const roomMemory = Memory.rooms?.[roomName];
-    if (!roomMemory) return undefined;
-    return (roomMemory as unknown as { swarm?: SwarmState }).swarm;
+    const cacheKey = `memory:room:${roomName}:swarm`;
+    let swarmState = heapCache.get<SwarmState>(cacheKey);
+    
+    if (!swarmState) {
+      const roomMemory = Memory.rooms?.[roomName];
+      if (!roomMemory) return undefined;
+      swarmState = (roomMemory as unknown as { swarm?: SwarmState }).swarm;
+      if (swarmState) {
+        heapCache.set(cacheKey, swarmState, INFINITE_TTL);
+      }
+    }
+    
+    return swarmState;
   }
 
   /**
-   * Initialize swarm state for a room
+   * Initialize swarm state for a room (cached with infinite TTL)
    */
   public initSwarmState(roomName: string): SwarmState {
+    const cacheKey = `memory:room:${roomName}:swarm`;
+    
     if (!Memory.rooms) {
       Memory.rooms = {};
     }
@@ -165,6 +193,9 @@ export class MemoryManager {
       roomMem.swarm = createDefaultSwarmState();
     }
 
+    // Cache the swarm state with infinite TTL
+    heapCache.set(cacheKey, roomMem.swarm, INFINITE_TTL);
+    
     return roomMem.swarm;
   }
 
@@ -207,6 +238,10 @@ export class MemoryManager {
   public recordRoomSeen(roomName: string): void {
     const overmind = this.getOvermind();
     overmind.roomsSeen[roomName] = Game.time;
+    
+    // Invalidate cache to ensure changes are persisted
+    const cacheKey = `memory:${OVERMIND_KEY}`;
+    heapCache.set(cacheKey, overmind, INFINITE_TTL);
   }
 
   /**
@@ -262,6 +297,33 @@ export class MemoryManager {
    */
   public getHeapCache(): typeof heapCache {
     return heapCache;
+  }
+
+  /**
+   * Check if a room is marked as hostile (cached)
+   */
+  public isRoomHostile(roomName: string): boolean {
+    const cacheKey = `memory:room:${roomName}:hostile`;
+    let hostile = heapCache.get<boolean>(cacheKey);
+    
+    if (hostile === undefined) {
+      hostile = Memory.rooms?.[roomName]?.hostile ?? false;
+      heapCache.set(cacheKey, hostile, 100); // Cache for 100 ticks
+    }
+    
+    return hostile;
+  }
+
+  /**
+   * Mark a room as hostile (cached)
+   */
+  public setRoomHostile(roomName: string, hostile: boolean): void {
+    if (!Memory.rooms) Memory.rooms = {};
+    if (!Memory.rooms[roomName]) Memory.rooms[roomName] = {};
+    Memory.rooms[roomName].hostile = hostile;
+    
+    const cacheKey = `memory:room:${roomName}:hostile`;
+    heapCache.set(cacheKey, hostile, 100); // Cache for 100 ticks
   }
 }
 

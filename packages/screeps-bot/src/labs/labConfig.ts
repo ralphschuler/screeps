@@ -11,6 +11,7 @@
  */
 
 import { logger } from "../core/logger";
+import { heapCache, INFINITE_TTL } from "../memory/heapCache";
 
 /**
  * Lab role types
@@ -396,12 +397,16 @@ export class LabConfigManager {
   }
 
   /**
-   * Save lab config to memory
+   * Save lab config to memory (cached with infinite TTL)
    */
   public saveToMemory(roomName: string): void {
     const config = this.configs.get(roomName);
     if (!config) return;
 
+    const cacheKey = `memory:room:${roomName}:labConfig`;
+    heapCache.set(cacheKey, config, INFINITE_TTL);
+
+    // Also update Memory for persistence
     const roomMem = Memory.rooms[roomName];
     if (roomMem) {
       (roomMem as unknown as { labConfig: RoomLabConfig }).labConfig = config;
@@ -409,12 +414,22 @@ export class LabConfigManager {
   }
 
   /**
-   * Load lab config from memory
+   * Load lab config from memory (cached with infinite TTL)
    */
   public loadFromMemory(roomName: string): void {
-    const roomMem = Memory.rooms[roomName] as unknown as { labConfig?: RoomLabConfig };
-    if (roomMem?.labConfig) {
-      this.configs.set(roomName, roomMem.labConfig);
+    const cacheKey = `memory:room:${roomName}:labConfig`;
+    let config = heapCache.get<RoomLabConfig>(cacheKey);
+    
+    if (!config) {
+      const roomMem = Memory.rooms[roomName] as unknown as { labConfig?: RoomLabConfig };
+      config = roomMem?.labConfig;
+      if (config) {
+        heapCache.set(cacheKey, config, INFINITE_TTL);
+      }
+    }
+    
+    if (config) {
+      this.configs.set(roomName, config);
     }
   }
 
