@@ -30,8 +30,11 @@ describe("SwarmBot logging", () => {
     sandbox.restore();
   });
 
-  it("logs skipped creeps through the logger", () => {
-    // Set up spies/stubs before reloading modules to ensure they're properly intercepted
+  it("logs critical bucket mode through the logger", () => {
+    // With kernel-based process management, creeps are now managed as processes
+    // and skipping is handled by the kernel. Instead, test that critical bucket
+    // mode is properly logged when it occurs.
+    
     const loggerModule = require("../../src/core/logger");
     const warnSpy = sandbox.spy(loggerModule.logger, "warn");
 
@@ -41,23 +44,21 @@ describe("SwarmBot logging", () => {
     const bot = reloadSwarmBot();
 
     sandbox.stub(bot.kernel, "initialize");
-    sandbox.stub(bot.kernel, "getBucketMode").returns("low");
+    sandbox.stub(bot.kernel, "getBucketMode").returns("critical");
     sandbox.stub(bot.kernel, "hasCpuBudget").returns(false);
     sandbox.stub(bot.roomManager, "run");
     sandbox.stub(bot.profiler, "measureSubsystem").callsFake((_, fn: () => void) => fn());
 
     // @ts-ignore: test setup for Game globals
-    global.Game.creeps = {
-      alpha: { memory: { role: "builder", room: "W1N1", working: false } as any, spawning: false } as any,
-      beta: { memory: { role: "hauler", room: "W1N1", working: false } as any, spawning: false } as any
-    };
+    global.Game.creeps = {};
     // @ts-ignore: test setup for Game globals
-    global.Game.time = 12300; // divisible by 100 to satisfy logging interval when lowBucket is true
+    global.Game.time = 12300;
 
     bot.loop();
 
+    // Verify critical bucket warning is logged
     expect(warnSpy).to.have.been.calledWithMatch(
-      sinon.match(/Skipped .* creeps due to CPU/),
+      sinon.match(/CRITICAL.*CPU bucket/),
       sinon.match({ subsystem: "SwarmBot" })
     );
   });
