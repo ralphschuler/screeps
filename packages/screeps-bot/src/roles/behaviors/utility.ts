@@ -153,6 +153,12 @@ function findNextExploreTarget(
 }
 
 /**
+ * Room center coordinates for scout navigation
+ */
+const ROOM_CENTER_X = 25;
+const ROOM_CENTER_Y = 25;
+
+/**
  * Find a position to explore in a room.
  */
 function findExplorePosition(room: Room): RoomPosition | null {
@@ -161,7 +167,7 @@ function findExplorePosition(room: Room): RoomPosition | null {
     new RoomPosition(44, 5, room.name),
     new RoomPosition(5, 44, room.name),
     new RoomPosition(44, 44, room.name),
-    new RoomPosition(25, 25, room.name)
+    new RoomPosition(ROOM_CENTER_X, ROOM_CENTER_Y, room.name)
   ];
 
   const terrain = room.getTerrain();
@@ -228,7 +234,7 @@ export function scout(ctx: CreepContext): CreepAction {
   
   if (onExit && !travelingToOtherRoom) {
     // We're on an exit but not traveling - move toward room center
-    const centerPos = new RoomPosition(25, 25, ctx.room.name);
+    const centerPos = new RoomPosition(ROOM_CENTER_X, ROOM_CENTER_Y, ctx.room.name);
     return { type: "moveTo", target: centerPos };
   }
 
@@ -244,7 +250,7 @@ export function scout(ctx: CreepContext): CreepAction {
     // This prevents the scout from clearing targetRoom while still on the exit,
     // which causes it to pick the previous room as the next target and cycle back
     if (onExit) {
-      const centerPos = new RoomPosition(25, 25, ctx.room.name);
+      const centerPos = new RoomPosition(ROOM_CENTER_X, ROOM_CENTER_Y, ctx.room.name);
       return { type: "moveTo", target: centerPos };
     }
 
