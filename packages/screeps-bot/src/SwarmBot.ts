@@ -36,6 +36,7 @@ import { clearMoveRequests, processMoveRequests } from "./utils/trafficManager";
 import { kernel } from "./core/kernel";
 import { registerAllProcesses } from "./core/processRegistry";
 import { roomVisualizer } from "./visuals/roomVisualizer";
+import { mapVisualizer } from "./visuals/mapVisualizer";
 import { memorySegmentStats } from "./core/memorySegmentStats";
 import { getConfig } from "./config";
 import { LogLevel, configureLogger, logger } from "./core/logger";
@@ -337,7 +338,7 @@ function initializeSystems(): void {
 }
 
 /**
- * Run visualizations for all owned rooms
+ * Run visualizations for all owned rooms and map-level visuals
  * OPTIMIZATION: Use cached owned rooms list
  */
 function runVisualizations(): void {
@@ -353,6 +354,7 @@ function runVisualizations(): void {
     ? cachedRooms
     : Object.values(Game.rooms).filter(r => r.controller?.my);
 
+  // Draw room-level visualizations
   for (const room of ownedRooms) {
     try {
       roomVisualizer.draw(room);
@@ -364,6 +366,17 @@ function runVisualizations(): void {
         room: room.name
       });
     }
+  }
+
+  // Draw map-level visualizations
+  try {
+    mapVisualizer.draw();
+  } catch (err) {
+    // Visualization errors shouldn't crash the main loop
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    logger.error(`Map visualization error: ${errorMessage}`, {
+      subsystem: "visualizations"
+    });
   }
 }
 
@@ -510,6 +523,7 @@ export { coreProcessManager } from "./core/coreProcessManager";
 export { pheromoneManager } from "./logic/pheromone";
 export { evolutionManager, postureManager } from "./logic/evolution";
 export { roomVisualizer } from "./visuals/roomVisualizer";
+export { mapVisualizer } from "./visuals/mapVisualizer";
 export { memorySegmentStats } from "./core/memorySegmentStats";
 export { eventBus } from "./core/events";
 export * from "./memory/schemas";
