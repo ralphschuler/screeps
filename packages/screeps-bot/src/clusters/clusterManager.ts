@@ -390,9 +390,9 @@ export class ClusterManager {
       }
       
       // If focus room no longer exists or not in cluster, clear it
-      if (!focusRoom || (cluster.focusRoom && !cluster.memberRooms.includes(cluster.focusRoom))) {
+      if (!focusRoom) {
         logger.warn(
-          `Focus room ${cluster.focusRoom ?? 'unknown'} no longer valid, selecting new focus`,
+          `Focus room ${cluster.focusRoom} no longer valid, selecting new focus`,
           { subsystem: "Cluster" }
         );
         cluster.focusRoom = undefined;

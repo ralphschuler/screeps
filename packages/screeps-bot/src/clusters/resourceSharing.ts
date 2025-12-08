@@ -37,6 +37,10 @@ export interface ResourceSharingConfig {
   maxRequestsPerRoom: number;
   /** Request timeout in ticks */
   requestTimeout: number;
+  /** Focus room medium energy threshold (prioritize upgrading) */
+  focusRoomMediumThreshold: number;
+  /** Focus room low energy threshold (accumulate for upgrading) */
+  focusRoomLowThreshold: number;
 }
 
 const DEFAULT_CONFIG: ResourceSharingConfig = {
@@ -47,7 +51,9 @@ const DEFAULT_CONFIG: ResourceSharingConfig = {
   surplusEnergyThreshold: 10000, // Has plenty to share
   minTransferAmount: 500,
   maxRequestsPerRoom: 3,
-  requestTimeout: 500
+  requestTimeout: 500,
+  focusRoomMediumThreshold: 5000, // Focus room accumulates more for upgrading
+  focusRoomLowThreshold: 15000 // Focus room satisfied with higher reserves
 };
 
 /**
@@ -250,12 +256,12 @@ export class ResourceSharingManager {
 
     // Focus room has higher thresholds to accumulate more energy for upgrading
     if (isFocusRoom) {
-      // Focus room considers itself "medium need" up to 5000 energy
-      if (energyAvailable < 5000) {
+      // Focus room considers itself "medium need" up to configured threshold
+      if (energyAvailable < this.config.focusRoomMediumThreshold) {
         return 2;
       }
-      // Focus room considers itself "low need" up to 15000 energy
-      if (energyAvailable < 15000) {
+      // Focus room considers itself "low need" up to configured threshold
+      if (energyAvailable < this.config.focusRoomLowThreshold) {
         return 1;
       }
       // Focus room is satisfied once it has significant reserves

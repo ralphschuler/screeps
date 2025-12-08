@@ -15,6 +15,22 @@ import { getDefenderPriorityBoost } from "../spawning/defenderManager";
 import { type WeightedEntry, weightedSelection } from "../utils/weightedSelection";
 
 /**
+ * Focus room upgrader scaling configuration
+ * Defines how many upgraders a focus room should spawn based on RCL
+ */
+const FOCUS_ROOM_UPGRADER_LIMITS = {
+  /** RCL 1-3: Early game, limited energy */
+  EARLY: 2,
+  /** RCL 4-6: Mid game, stable economy */
+  MID: 4,
+  /** RCL 7: Late game, push to RCL 8 */
+  LATE: 6
+} as const;
+
+/** Priority boost for upgraders in focus rooms */
+const FOCUS_ROOM_UPGRADER_PRIORITY_BOOST = 40;
+
+/**
  * Body template definition
  */
 export interface BodyTemplate {
@@ -498,7 +514,7 @@ export function getDynamicPriorityBoost(room: Room, swarm: SwarmState, role: str
     const cluster = memoryManager.getCluster(swarm.clusterId);
     if (cluster?.focusRoom === room.name) {
       // Significant boost to prioritize upgrading in focus room
-      boost += 40;
+      boost += FOCUS_ROOM_UPGRADER_PRIORITY_BOOST;
     }
   }
 
@@ -660,13 +676,13 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState): bo
       // Allow more upgraders in focus room to accelerate upgrading
       const room = Game.rooms[roomName];
       if (room?.controller) {
-        // Scale upgraders based on RCL: RCL1-3: 2, RCL4-6: 4, RCL7: 6
+        // Scale upgraders based on RCL
         if (room.controller.level <= 3) {
-          maxForRoom = 2;
+          maxForRoom = FOCUS_ROOM_UPGRADER_LIMITS.EARLY;
         } else if (room.controller.level <= 6) {
-          maxForRoom = 4;
+          maxForRoom = FOCUS_ROOM_UPGRADER_LIMITS.MID;
         } else {
-          maxForRoom = 6;
+          maxForRoom = FOCUS_ROOM_UPGRADER_LIMITS.LATE;
         }
       }
     }
