@@ -448,6 +448,16 @@ export interface CreepState {
 }
 
 /**
+ * Transfer request assignment for inter-room carriers
+ */
+export interface TransferRequestAssignment {
+  fromRoom: string;
+  toRoom: string;
+  resourceType: ResourceConstant;
+  amount: number;
+}
+
+/**
  * Swarm creep memory
  */
 export interface SwarmCreepMemory {
@@ -477,6 +487,8 @@ export interface SwarmCreepMemory {
   patrolIndex?: number;
   /** Current state (for state machine) */
   state?: CreepState;
+  /** Transfer request assignment (for interRoomCarrier role) */
+  transferRequest?: TransferRequestAssignment;
   /** Version for memory migration */
   version: number;
 }

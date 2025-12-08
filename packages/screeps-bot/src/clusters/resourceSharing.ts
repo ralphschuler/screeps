@@ -212,13 +212,11 @@ export class ResourceSharingManager {
     // Include containers (but not link containers)
     const containers = room.find(FIND_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_CONTAINER
-    });
+    }) as StructureContainer[];
 
     for (const container of containers) {
-      if (container.structureType === STRUCTURE_CONTAINER) {
-        energyAvailable += container.store.getUsedCapacity(RESOURCE_ENERGY);
-        energyCapacity += container.store.getCapacity();
-      }
+      energyAvailable += container.store.getUsedCapacity(RESOURCE_ENERGY);
+      energyCapacity += container.store.getCapacity();
     }
 
     return { energyAvailable, energyCapacity };

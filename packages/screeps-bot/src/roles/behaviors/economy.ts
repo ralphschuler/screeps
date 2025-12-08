@@ -782,14 +782,7 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
  * Used for pre-terminal resource sharing to help stabilize room economies.
  */
 export function interRoomCarrier(ctx: CreepContext): CreepAction {
-  const mem = ctx.memory as SwarmCreepMemory & {
-    transferRequest?: {
-      fromRoom: string;
-      toRoom: string;
-      resourceType: ResourceConstant;
-      amount: number;
-    };
-  };
+  const mem = ctx.memory;
 
   // If no transfer request, go idle (should be assigned by spawn logic)
   if (!mem.transferRequest) {
@@ -818,14 +811,10 @@ export function interRoomCarrier(ctx: CreepContext): CreepAction {
     const containers = room.find(FIND_STRUCTURES, {
       filter: s =>
         s.structureType === STRUCTURE_CONTAINER && s.store.getFreeCapacity(resourceType) > 0
-    });
+    }) as StructureContainer[];
 
-    const containerTargets = containers.filter((s): s is StructureContainer => 
-      s.structureType === STRUCTURE_CONTAINER
-    );
-
-    if (containerTargets.length > 0) {
-      const closest = findCachedClosest(ctx.creep, containerTargets, "interRoomCarrier_targetCont", 10);
+    if (containers.length > 0) {
+      const closest = findCachedClosest(ctx.creep, containers, "interRoomCarrier_targetCont", 10);
       if (closest) return { type: "transfer", target: closest, resourceType };
     }
 
@@ -858,14 +847,10 @@ export function interRoomCarrier(ctx: CreepContext): CreepAction {
     const containers = room.find(FIND_STRUCTURES, {
       filter: s =>
         s.structureType === STRUCTURE_CONTAINER && s.store.getUsedCapacity(resourceType) > 0
-    });
+    }) as StructureContainer[];
 
-    const containerSources = containers.filter((s): s is StructureContainer => 
-      s.structureType === STRUCTURE_CONTAINER
-    );
-
-    if (containerSources.length > 0) {
-      const closest = findCachedClosest(ctx.creep, containerSources, "interRoomCarrier_sourceCont", 10);
+    if (containers.length > 0) {
+      const closest = findCachedClosest(ctx.creep, containers, "interRoomCarrier_sourceCont", 10);
       if (closest) return { type: "withdraw", target: closest, resourceType };
     }
 

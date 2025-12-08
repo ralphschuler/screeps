@@ -1088,7 +1088,7 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
         });
 
         if (request) {
-          (memory as SwarmCreepMemory & { transferRequest?: unknown }).transferRequest = {
+          memory.transferRequest = {
             fromRoom: request.fromRoom,
             toRoom: request.toRoom,
             resourceType: request.resourceType,
