@@ -30,6 +30,8 @@ bower_components/
 # Build generated
 dist/
 **/dist/
+# Exception: Keep screeps-bot dist/ for Screeps sync
+!packages/screeps-bot/dist/
 build/
 *.tsbuildinfo
 

@@ -55,15 +55,17 @@ export SCREEPS_HOSTNAME=screeps.com  # or your private server
 ### Build and Deploy
 
 ```bash
-# Build the code (dry run - no upload)
+# Build the code (generates dist/main.js and dist/main.js.map.js)
 npm run build
 
-# Build and deploy to Screeps
+# Build and deploy to Screeps API
 npm run push
 
 # Watch mode - auto-build and deploy on file changes
 npm run watch
 ```
+
+**Note**: The `dist/` folder is tracked in git to support Screeps GitHub integration. After building, commit the updated dist files if you want Screeps to sync from GitHub.
 
 ### Development Workflow
 
@@ -92,6 +94,7 @@ npm run watch
 - To upload code to a **private server**, you must have [screepsmod-auth](https://github.com/ScreepsMods/screepsmod-auth) installed and configured
 - The bot uses environment variables for configuration (no `screeps.json` file needed)
 - Configuration is handled via `rollup.config.js` reading from environment variables
+- **GitHub Sync**: The `dist/` folder is tracked in git to enable Screeps GitHub integration. When you connect your Screeps account to this repository, it will automatically sync the built JavaScript files
 
 ## Architecture
 

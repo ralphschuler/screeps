@@ -2,7 +2,7 @@
 /yarn.lock
 
 # Ignore basic folders
-/dist
+# Note: /dist is now tracked for Screeps sync (see root .gitignore)
 /.rpt2_cache
 /tsc-out
 /node_modules
