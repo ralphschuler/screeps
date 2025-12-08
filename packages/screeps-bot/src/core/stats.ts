@@ -531,6 +531,18 @@ export class StatsManager {
       mem[`stats.room.${roomName}.danger`] = data.danger;
     }
 
+    // Intent/posture to numeric mapping for efficient storage
+    const INTENT_VALUES: Record<string, number> = {
+      eco: 0,
+      expand: 1,
+      defensive: 2,
+      defense: 2, // alias
+      war: 3,
+      siege: 4,
+      evacuate: 5,
+      nukePrep: 6
+    };
+
     // Publish pheromone stats
     for (const [roomName, data] of Object.entries(stats.pheromones)) {
       mem[`stats.pheromone.${roomName}.expand`] = data.expand;
@@ -541,11 +553,7 @@ export class StatsManager {
       mem[`stats.pheromone.${roomName}.war`] = data.war;
       mem[`stats.pheromone.${roomName}.siege`] = data.siege;
       mem[`stats.pheromone.${roomName}.logistics`] = data.logistics;
-      mem[`stats.pheromone.${roomName}.intent`] = data.intent === "eco" ? 0 : 
-                                                     data.intent === "expand" ? 1 :
-                                                     data.intent === "defense" ? 2 :
-                                                     data.intent === "war" ? 3 :
-                                                     data.intent === "siege" ? 4 : 0;
+      mem[`stats.pheromone.${roomName}.intent`] = INTENT_VALUES[data.intent] ?? 0;
     }
 
     // Publish native calls stats

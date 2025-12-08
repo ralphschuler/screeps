@@ -32,6 +32,11 @@ export function isNativeCallsTrackingEnabled(): boolean {
 
 /**
  * Wrap PathFinder.search to track calls
+ * 
+ * Note: Uses 'any' types to handle the complex overloaded signature of PathFinder.search.
+ * The TypeScript definitions for PathFinder.search have multiple overloads that are
+ * difficult to preserve when wrapping. Using 'any' here allows the wrapper to work
+ * correctly while maintaining runtime type safety through the original method.
  */
 export function wrapPathFinderSearch(): void {
   if (!PathFinder.search) return;
@@ -47,6 +52,12 @@ export function wrapPathFinderSearch(): void {
 
 /**
  * Wrap Creep.prototype methods to track calls
+ * 
+ * Note: Uses 'any' types to handle the various overloaded method signatures on Creep.prototype.
+ * Many Creep methods have multiple overloads (e.g., moveTo has 2-3 different signatures).
+ * Using 'any' allows the wrappers to work correctly with all overloads while maintaining
+ * runtime type safety through the original methods. This is a common pattern for method
+ * wrapping in JavaScript/TypeScript.
  */
 export function wrapCreepMethods(): void {
   const creepProto = Creep.prototype as any;
