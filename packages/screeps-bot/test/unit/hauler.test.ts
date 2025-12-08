@@ -167,9 +167,7 @@ function createMockContext(
     swarmState: undefined,
     squadMemory: undefined,
     homeRoom: "E1N1",
-    targetRoom: undefined,
     isInHomeRoom: true,
-    isInTargetRoom: true,
     isFull: creep.store.getFreeCapacity() === 0,
     isEmpty: creep.store.getUsedCapacity() === 0,
     isWorking: options.isWorking ?? false,
@@ -390,7 +388,7 @@ describe("remoteHauler behavior - delivery priority", () => {
         role: "remoteHauler",
         family: "economy",
         homeRoom: "E1N1",
-        targetRoom: "E2N1",
+        targetRoom: "E2N1", // Remote room assignment
         version: 1,
         working: true
       };
@@ -403,9 +401,7 @@ describe("remoteHauler behavior - delivery priority", () => {
         swarmState: undefined,
         squadMemory: undefined,
         homeRoom: "E1N1",
-        targetRoom: "E2N1",
         isInHomeRoom: true,
-        isInTargetRoom: false,
         isFull: true,
         isEmpty: false,
         isWorking: true,
@@ -446,7 +442,7 @@ describe("remoteHauler behavior - delivery priority", () => {
         role: "remoteHauler",
         family: "economy",
         homeRoom: "E1N1",
-        targetRoom: "E2N1",
+        targetRoom: "E2N1", // Remote room assignment
         version: 1,
         working: true
       };
@@ -459,9 +455,7 @@ describe("remoteHauler behavior - delivery priority", () => {
         swarmState: undefined,
         squadMemory: undefined,
         homeRoom: "E1N1",
-        targetRoom: "E2N1",
         isInHomeRoom: true,
-        isInTargetRoom: false,
         isFull: true,
         isEmpty: false,
         isWorking: true,
@@ -516,9 +510,7 @@ describe("remoteHauler behavior - delivery priority", () => {
         swarmState: undefined,
         squadMemory: undefined,
         homeRoom: "E1N1",
-        targetRoom: undefined,
         isInHomeRoom: true,
-        isInTargetRoom: false,
         isFull: false,
         isEmpty: true,
         isWorking: false,
@@ -568,9 +560,7 @@ describe("remoteHauler behavior - delivery priority", () => {
         swarmState: undefined,
         squadMemory: undefined,
         homeRoom: "E1N1",
-        targetRoom: "E1N1", // Same as homeRoom
         isInHomeRoom: true,
-        isInTargetRoom: true, // Since targetRoom == homeRoom
         isFull: false,
         isEmpty: true,
         isWorking: false,
@@ -620,9 +610,7 @@ describe("remoteHauler behavior - delivery priority", () => {
         swarmState: undefined,
         squadMemory: undefined,
         homeRoom: "E1N1",
-        targetRoom: undefined,
         isInHomeRoom: true,
-        isInTargetRoom: false,
         isFull: true,
         isEmpty: false,
         isWorking: true,
