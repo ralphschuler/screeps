@@ -307,6 +307,11 @@ export function placePerimeterDefense(
             `Removed wall at gap position (${rampart.x},${rampart.y}) to allow friendly passage`,
             { subsystem: "Defense" }
           );
+        } else {
+          logger.warn(
+            `Failed to destroy wall at gap position (${rampart.x},${rampart.y}): ${result}`,
+            { subsystem: "Defense" }
+          );
         }
       }
     }
@@ -352,24 +357,25 @@ export function placePerimeterDefense(
  * Get perimeter defense statistics for a room
  */
 export interface PerimeterStats {
-  totalExits: number;
-  chokePoints: number;
+  totalWallPositions: number;
+  totalGapPositions: number;
   wallsBuilt: number;
   rampartsBuilt: number;
-  coveragePercent: number;
+  wallCoveragePercent: number;
+  gapCoveragePercent: number;
 }
 
 export function getPerimeterStats(room: Room): PerimeterStats {
   const plan = calculatePerimeterPositions(room.name);
   const structures = room.find(FIND_STRUCTURES);
 
-  const totalExits = plan.walls.length;
-  const chokePoints = plan.walls.filter(w => w.isChokePoint).length;
+  const totalWallPositions = plan.walls.length;
+  const totalGapPositions = plan.ramparts.length;
 
   const walls = structures.filter(s => s.structureType === STRUCTURE_WALL);
   const ramparts = structures.filter(s => s.structureType === STRUCTURE_RAMPART);
 
-  // Count perimeter walls (at exit positions)
+  // Count perimeter walls (at planned wall positions)
   let wallsBuilt = 0;
   for (const wall of walls) {
     const isPerimeter = plan.walls.some(
@@ -378,24 +384,29 @@ export function getPerimeterStats(room: Room): PerimeterStats {
     if (isPerimeter) wallsBuilt++;
   }
 
-  // Count perimeter ramparts
+  // Count perimeter ramparts (at planned gap positions)
   let rampartsBuilt = 0;
   for (const rampart of ramparts) {
-    const isPerimeter = plan.walls.some(
+    const isPerimeterGap = plan.ramparts.some(
       p => p.x === rampart.pos.x && p.y === rampart.pos.y
     );
-    if (isPerimeter) rampartsBuilt++;
+    if (isPerimeterGap) rampartsBuilt++;
   }
 
-  const coveragePercent = totalExits > 0 
-    ? Math.round((wallsBuilt / totalExits) * 100) 
+  const wallCoveragePercent = totalWallPositions > 0 
+    ? Math.round((wallsBuilt / totalWallPositions) * 100) 
+    : 0;
+  
+  const gapCoveragePercent = totalGapPositions > 0
+    ? Math.round((rampartsBuilt / totalGapPositions) * 100)
     : 0;
 
   return {
-    totalExits,
-    chokePoints,
+    totalWallPositions,
+    totalGapPositions,
     wallsBuilt,
     rampartsBuilt,
-    coveragePercent
+    wallCoveragePercent,
+    gapCoveragePercent
   };
 }
