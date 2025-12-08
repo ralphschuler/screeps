@@ -189,6 +189,10 @@ export function calculatePerimeterPositions(roomName: string): PerimeterPlan {
 /**
  * Place perimeter defense construction sites
  * 
+ * Places walls and ramparts at exit positions to defend the room.
+ * Ramparts are placed on top of walls to allow friendly creeps to pass
+ * while blocking enemies (per ROADMAP Section 17).
+ * 
  * @param room The room to defend
  * @param rcl Current room control level
  * @param maxSites Maximum construction sites to place
@@ -203,7 +207,7 @@ export function placePerimeterDefense(
 ): number {
   // RCL requirements
   // RCL 2: Start placing walls at choke points
-  // RCL 3+: Place walls at all exits, add ramparts
+  // RCL 3+: Place walls at all exits, add ramparts to all walls for friendly passage
   if (rcl < 2) return 0;
 
   const plan = calculatePerimeterPositions(room.name);
@@ -294,12 +298,12 @@ export function placePerimeterDefense(
     }
   }
 
-  // Priority 3: Ramparts at key positions (RCL 3+, after walls)
+  // Priority 3: Ramparts at ALL exit walls (RCL 3+, after walls)
+  // This allows friendly creeps to pass through while blocking enemies
   if (rcl >= 3 && placed < maxToPlace && rampartCount < rampartLimit) {
-    // Place ramparts at choke points to allow friendly passage
-    const chokeWalls = plan.walls.filter(w => w.isChokePoint);
-    
-    for (const pos of chokeWalls) {
+    // Place ramparts at ALL wall positions to allow friendly passage
+    // Per ROADMAP Section 17: Ramparts allow friendly creeps to pass but block enemies
+    for (const pos of plan.walls) {
       if (placed >= maxToPlace) break;
       if (rampartCount + placed >= rampartLimit) break;
 
@@ -317,12 +321,12 @@ export function placePerimeterDefense(
         );
 
         if (!hasRampart && !hasRampartSite) {
-          // Place rampart on the same tile as wall for protection
+          // Place rampart on the same tile as wall to allow friendly passage
           const result = room.createConstructionSite(pos.x, pos.y, STRUCTURE_RAMPART);
           if (result === OK) {
             placed++;
             logger.debug(
-              `Placed perimeter rampart at (${pos.x},${pos.y})`,
+              `Placed perimeter rampart at exit wall (${pos.x},${pos.y})`,
               { subsystem: "Defense" }
             );
           }

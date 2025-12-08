@@ -155,6 +155,12 @@ describe("Perimeter Defense Logic", () => {
       assert.isTrue(shouldBuildPerimeter(8), "Walls at RCL 8");
       assert.isTrue(shouldBuildRamparts(8), "Ramparts at RCL 8");
     });
+
+    it("should place ramparts on all exit walls to allow friendly passage", () => {
+      // At RCL 3+, ramparts should be placed on ALL walls, not just choke points
+      // This allows friendly creeps to pass through while blocking enemies
+      assert.isTrue(shouldBuildRamparts(3), "Ramparts on all walls at RCL 3+");
+    });
   });
 
   describe("Priority System", () => {
