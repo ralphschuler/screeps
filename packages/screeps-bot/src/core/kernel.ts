@@ -4,9 +4,17 @@
  * The kernel is the central coordinator for all processes in the bot:
  * - Process registration and lifecycle management
  * - CPU budget allocation and enforcement per process
- * - Priority-based process scheduling
+ * - Priority-based process scheduling with wrap-around queue
  * - Process statistics tracking
  * - Centralized event system for inter-process communication
+ *
+ * Wrap-Around Queue:
+ * When processes are skipped due to CPU budget exhaustion, the kernel tracks
+ * which process was last executed. In the next tick, execution continues from
+ * the next process after the last executed one, wrapping around to the beginning
+ * when reaching the end of the queue. This ensures all processes eventually run
+ * even under CPU pressure, providing fair execution across ticks while maintaining
+ * priority order within the queue.
  *
  * Design Principles (from ROADMAP.md):
  * - Striktes Tick-Budget: Eco rooms ≤ 0.1 CPU, War rooms ≤ 0.25 CPU, Global overmind ≤ 1 CPU

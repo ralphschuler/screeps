@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { Kernel, buildKernelConfigFromCpu, ProcessPriority } from "../../src/core/kernel";
+import { Kernel, ProcessPriority, buildKernelConfigFromCpu } from "../../src/core/kernel";
 import { getConfig, resetConfig } from "../../src/config";
 
 describe("Kernel wrap-around process queue", () => {
@@ -10,6 +10,7 @@ describe("Kernel wrap-around process queue", () => {
     resetConfig();
     executionLog = [];
     
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore: Allow setting test values
     global.Game = {
       ...global.Game,
