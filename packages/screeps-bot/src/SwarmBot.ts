@@ -227,10 +227,8 @@ function runPowerCreeps(): void {
 function runSpawns(): void {
   for (const room of Object.values(Game.rooms)) {
     if (room.controller?.my) {
-      const swarm = memoryManager.getSwarmState(room.name);
-      if (swarm) {
-        runSpawnManager(room, swarm);
-      }
+      const swarm = memoryManager.getOrInitSwarmState(room.name);
+      runSpawnManager(room, swarm);
     }
   }
 }

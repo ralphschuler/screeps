@@ -75,7 +75,7 @@ export class RoomVisualizer {
    */
   public draw(room: Room): void {
     const visual = new RoomVisual(room.name);
-    const swarm = memoryManager.getSwarmState(room.name);
+    const swarm = memoryManager.getOrInitSwarmState(room.name);
 
     if (this.config.showRoomStats) {
       this.drawRoomStats(visual, room, swarm);
