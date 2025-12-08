@@ -4325,9 +4325,17 @@ function updateConfig(partial) {
  * The kernel is the central coordinator for all processes in the bot:
  * - Process registration and lifecycle management
  * - CPU budget allocation and enforcement per process
- * - Priority-based process scheduling
+ * - Priority-based process scheduling with wrap-around queue
  * - Process statistics tracking
  * - Centralized event system for inter-process communication
+ *
+ * Wrap-Around Queue:
+ * When processes are skipped due to CPU budget exhaustion, the kernel tracks
+ * which process was last executed. In the next tick, execution continues from
+ * the next process after the last executed one, wrapping around to the beginning
+ * when reaching the end of the queue. This ensures all processes eventually run
+ * even under CPU pressure, providing fair execution across ticks while maintaining
+ * priority order within the queue.
  *
  * Design Principles (from ROADMAP.md):
  * - Striktes Tick-Budget: Eco rooms ≤ 0.1 CPU, War rooms ≤ 0.25 CPU, Global overmind ≤ 1 CPU
@@ -4407,6 +4415,12 @@ class Kernel {
         this.initialized = false;
         /** Tick when a pixel was last generated (0 if none tracked) */
         this.lastPixelGenerationTick = 0;
+        /** Index of the last process executed in the queue (for wrap-around) */
+        this.lastExecutedIndex = -1;
+        /** Cached sorted process queue */
+        this.processQueue = [];
+        /** Flag indicating if process queue needs rebuild */
+        this.queueDirty = true;
         this.config = { ...config };
         this.validateConfig();
         this.frequencyDefaults = this.buildFrequencyDefaults();
@@ -4439,6 +4453,7 @@ class Kernel {
             }
         };
         this.processes.set(options.id, process);
+        this.queueDirty = true; // Mark queue for rebuild
         logger.debug(`Kernel: Registered process "${process.name}" (${process.id})`, { subsystem: "Kernel" });
     }
     /**
@@ -4447,6 +4462,7 @@ class Kernel {
     unregisterProcess(id) {
         const deleted = this.processes.delete(id);
         if (deleted) {
+            this.queueDirty = true; // Mark queue for rebuild
             logger.debug(`Kernel: Unregistered process ${id}`, { subsystem: "Kernel" });
         }
         return deleted;
@@ -4599,6 +4615,16 @@ class Kernel {
         return Math.max(0, this.getCpuLimit() - Game.cpu.getUsed() - this.config.reservedCpu);
     }
     /**
+     * Rebuild the process queue sorted by priority
+     */
+    rebuildProcessQueue() {
+        this.processQueue = Array.from(this.processes.values())
+            .sort((a, b) => b.priority - a.priority);
+        this.queueDirty = false;
+        // Reset last executed index when queue is rebuilt
+        this.lastExecutedIndex = -1;
+    }
+    /**
      * Check if process should run this tick
      */
     shouldRunProcess(process) {
@@ -4606,10 +4632,12 @@ class Kernel {
         if (Game.cpu.bucket < process.minBucket) {
             return false;
         }
-        // Check interval
-        const ticksSinceRun = Game.time - process.stats.lastRunTick;
-        if (ticksSinceRun < process.interval) {
-            return false;
+        // Check interval (skip check if process has never run - runCount will be 0)
+        if (process.stats.runCount > 0) {
+            const ticksSinceRun = Game.time - process.stats.lastRunTick;
+            if (ticksSinceRun < process.interval) {
+                return false;
+            }
         }
         // In critical bucket mode, only run CRITICAL priority processes
         if (this.bucketMode === "critical") {
@@ -4662,32 +4690,56 @@ class Kernel {
         }
     }
     /**
-     * Run all scheduled processes for this tick
+     * Run all scheduled processes for this tick using a wrap-around queue.
+     *
+     * When processes are skipped due to CPU budget, they are guaranteed to be
+     * considered first in the next tick by continuing from where we left off.
+     * This ensures fair process execution across ticks while maintaining priority order.
      */
     run() {
         this.updateBucketMode();
         this.tickCpuUsed = 0;
         // Process queued events from previous ticks
         eventBus.processQueue();
-        // Sort processes by priority (highest first)
-        const sortedProcesses = Array.from(this.processes.values())
-            .sort((a, b) => b.priority - a.priority);
+        // Rebuild queue if needed (processes added/removed)
+        if (this.queueDirty) {
+            this.rebuildProcessQueue();
+        }
+        // If no processes, nothing to do
+        if (this.processQueue.length === 0) {
+            return;
+        }
         let processesRun = 0;
         let processesSkipped = 0;
-        for (const process of sortedProcesses) {
+        let lastExecutedIndexThisTick = -1;
+        // Start from the next process after the last one executed
+        // This creates a wrap-around effect: if we stopped at index 5 last tick,
+        // we start at index 6 this tick, wrapping to 0 when we reach the end
+        const startIndex = (this.lastExecutedIndex + 1) % this.processQueue.length;
+        // Iterate through all processes exactly once, starting from startIndex
+        for (let i = 0; i < this.processQueue.length; i++) {
+            const index = (startIndex + i) % this.processQueue.length;
+            const process = this.processQueue[index];
             // Check if we should run this process
             if (!this.shouldRunProcess(process)) {
                 continue;
             }
             // Check overall CPU budget
             if (!this.hasCpuBudget()) {
-                processesSkipped++;
-                process.stats.skippedCount++;
-                continue;
+                // CPU budget exhausted - stop processing and save state for next tick
+                // Next tick will continue from the process after the last one we executed
+                // Note: We don't increment skippedCount for this process because we'll
+                // attempt to run it first thing next tick (it's not really "skipped")
+                break;
             }
             // Execute the process
             this.executeProcess(process);
             processesRun++;
+            lastExecutedIndexThisTick = index;
+        }
+        // Update the last executed index for next tick
+        if (lastExecutedIndexThisTick !== -1) {
+            this.lastExecutedIndex = lastExecutedIndexThisTick;
         }
         // Log stats periodically
         if (this.config.enableStats && Game.time % this.config.statsLogInterval === 0) {
@@ -22177,6 +22229,160 @@ function executeIdleAction(creep) {
 }
 
 /**
+ * Native Calls Tracker
+ *
+ * Wraps Screeps native methods to track usage statistics:
+ * - PathFinder.search calls
+ * - Creep movement calls (moveTo, move)
+ * - Creep action calls (harvest, transfer, build, etc.)
+ *
+ * This helps identify performance bottlenecks and optimize native call usage.
+ */
+/**
+ * Wrap PathFinder.search to track calls
+ *
+ * Note: Uses 'any' types to handle the complex overloaded signature of PathFinder.search.
+ * The TypeScript definitions for PathFinder.search have multiple overloads that are
+ * difficult to preserve when wrapping. Using 'any' here allows the wrapper to work
+ * correctly while maintaining runtime type safety through the original method.
+ */
+function wrapPathFinderSearch() {
+    if (!PathFinder.search)
+        return;
+    const originalSearch = PathFinder.search;
+    PathFinder.search = function (...args) {
+        {
+            statsManager.recordNativeCall("pathfinderSearch");
+        }
+        return originalSearch.apply(PathFinder, args);
+    };
+}
+/**
+ * Wrap Creep.prototype methods to track calls
+ *
+ * Note: Uses 'any' types to handle the various overloaded method signatures on Creep.prototype.
+ * Many Creep methods have multiple overloads (e.g., moveTo has 2-3 different signatures).
+ * Using 'any' allows the wrappers to work correctly with all overloads while maintaining
+ * runtime type safety through the original methods. This is a common pattern for method
+ * wrapping in JavaScript/TypeScript.
+ */
+function wrapCreepMethods() {
+    const creepProto = Creep.prototype;
+    // Wrap moveTo
+    const originalMoveTo = creepProto.moveTo;
+    creepProto.moveTo = function (...args) {
+        {
+            statsManager.recordNativeCall("moveTo");
+        }
+        return originalMoveTo.apply(this, args);
+    };
+    // Wrap move
+    const originalMove = creepProto.move;
+    creepProto.move = function (...args) {
+        {
+            statsManager.recordNativeCall("move");
+        }
+        return originalMove.apply(this, args);
+    };
+    // Wrap harvest
+    const originalHarvest = creepProto.harvest;
+    creepProto.harvest = function (...args) {
+        {
+            statsManager.recordNativeCall("harvest");
+        }
+        return originalHarvest.apply(this, args);
+    };
+    // Wrap transfer
+    const originalTransfer = creepProto.transfer;
+    creepProto.transfer = function (...args) {
+        {
+            statsManager.recordNativeCall("transfer");
+        }
+        return originalTransfer.apply(this, args);
+    };
+    // Wrap withdraw
+    const originalWithdraw = creepProto.withdraw;
+    creepProto.withdraw = function (...args) {
+        {
+            statsManager.recordNativeCall("withdraw");
+        }
+        return originalWithdraw.apply(this, args);
+    };
+    // Wrap build
+    const originalBuild = creepProto.build;
+    creepProto.build = function (...args) {
+        {
+            statsManager.recordNativeCall("build");
+        }
+        return originalBuild.apply(this, args);
+    };
+    // Wrap repair
+    const originalRepair = creepProto.repair;
+    creepProto.repair = function (...args) {
+        {
+            statsManager.recordNativeCall("repair");
+        }
+        return originalRepair.apply(this, args);
+    };
+    // Wrap upgradeController
+    const originalUpgradeController = creepProto.upgradeController;
+    creepProto.upgradeController = function (...args) {
+        {
+            statsManager.recordNativeCall("upgradeController");
+        }
+        return originalUpgradeController.apply(this, args);
+    };
+    // Wrap attack
+    const originalAttack = creepProto.attack;
+    creepProto.attack = function (...args) {
+        {
+            statsManager.recordNativeCall("attack");
+        }
+        return originalAttack.apply(this, args);
+    };
+    // Wrap rangedAttack
+    const originalRangedAttack = creepProto.rangedAttack;
+    creepProto.rangedAttack = function (...args) {
+        {
+            statsManager.recordNativeCall("rangedAttack");
+        }
+        return originalRangedAttack.apply(this, args);
+    };
+    // Wrap heal
+    const originalHeal = creepProto.heal;
+    creepProto.heal = function (...args) {
+        {
+            statsManager.recordNativeCall("heal");
+        }
+        return originalHeal.apply(this, args);
+    };
+    // Wrap dismantle
+    const originalDismantle = creepProto.dismantle;
+    creepProto.dismantle = function (...args) {
+        {
+            statsManager.recordNativeCall("dismantle");
+        }
+        return originalDismantle.apply(this, args);
+    };
+    // Wrap say
+    const originalSay = creepProto.say;
+    creepProto.say = function (...args) {
+        {
+            statsManager.recordNativeCall("say");
+        }
+        return originalSay.apply(this, args);
+    };
+}
+/**
+ * Initialize native calls tracking
+ * Should be called once at bot startup
+ */
+function initializeNativeCallsTracking() {
+    wrapPathFinderSearch();
+    wrapCreepMethods();
+}
+
+/**
  * CPU Scheduler - Phase 6
  *
  * Implements bucket-based CPU management and task scheduling:
@@ -22646,7 +22852,6 @@ function initializeSystems() {
     memorySegmentStats.initialize();
     // Initialize native calls tracking if enabled
     if (config.profiling) {
-        const { initializeNativeCallsTracking } = require("./core/nativeCallsTracker");
         initializeNativeCallsTracking();
     }
     systemsInitialized = true;
@@ -22798,9 +23003,8 @@ function loop$1() {
     memoryManager.persistHeapCache();
     // Update empire stats
     profiler.measureSubsystem("stats", () => {
-        const { statsManager: stats } = require("./core/stats");
-        stats.updateEmpireStats();
-        stats.finalizeTick();
+        statsManager.updateEmpireStats();
+        statsManager.finalizeTick();
     });
     // Finalize profiler tick (which will also update stats)
     profiler.finalizeTick();
