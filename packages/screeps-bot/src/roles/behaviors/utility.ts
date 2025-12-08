@@ -240,9 +240,17 @@ export function scout(ctx: CreepContext): CreepAction {
   // Explore current room - move toward center to gather intel
   // OPTIMIZATION: Only record intel once when we're at the center position, not every tick
   if (targetRoom && ctx.room.name === targetRoom) {
+    // CRITICAL FIX: If on exit, move off it first before exploring
+    // This prevents the scout from clearing targetRoom while still on the exit,
+    // which causes it to pick the previous room as the next target and cycle back
+    if (onExit) {
+      const centerPos = new RoomPosition(25, 25, ctx.room.name);
+      return { type: "moveTo", target: centerPos };
+    }
+
     const explorePos = findExplorePosition(ctx.room);
     if (explorePos) {
-      // Only record intel if we're at the explore position
+      // Only record intel if we're at the explore position AND not on an exit
       // Range 3 chosen to ensure full room visibility (controller and sources are scanned)
       // without requiring the scout to reach exact center tile
       const INTEL_GATHER_RANGE = 3;
