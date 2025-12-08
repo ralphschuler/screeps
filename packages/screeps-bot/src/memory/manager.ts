@@ -14,6 +14,7 @@ import {
   createDefaultOvermindMemory,
   createDefaultSwarmState
 } from "./schemas";
+import { heapCache } from "./heapCache";
 
 const OVERMIND_KEY = "overmind";
 const CLUSTERS_KEY = "clusters";
@@ -41,6 +42,9 @@ export class MemoryManager {
     if (this.lastInitializeTick === Game.time) return;
 
     this.lastInitializeTick = Game.time;
+
+    // Initialize heap cache first (rehydrates from Memory if needed)
+    heapCache.initialize();
 
     this.runMemoryMigration();
     this.ensureOvermindMemory();
@@ -242,6 +246,22 @@ export class MemoryManager {
   public isMemoryNearLimit(): boolean {
     const size = this.getMemorySize();
     return size > MEMORY_LIMIT_BYTES * 0.9;
+  }
+
+  /**
+   * Persist heap cache to Memory.
+   * Should be called periodically to save cache state.
+   */
+  public persistHeapCache(): void {
+    heapCache.persist();
+  }
+
+  /**
+   * Get heap cache manager instance.
+   * Provides access to the cache for external use.
+   */
+  public getHeapCache() {
+    return heapCache;
   }
 }
 
