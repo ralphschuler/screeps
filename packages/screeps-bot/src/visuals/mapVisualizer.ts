@@ -107,8 +107,9 @@ export class MapVisualizer {
       const swarm = memoryManager.getOrInitSwarmState(room.name);
       const rcl = room.controller.level;
       
-      // Color based on danger level
-      const color = DANGER_COLORS[swarm.danger] ?? "#ffffff";
+      // Color based on danger level (bounds-checked)
+      const dangerIndex = Math.min(Math.max(swarm.danger, 0), 3);
+      const color = DANGER_COLORS[dangerIndex] ?? "#ffffff";
       
       // Draw circle indicator
       const circleStyle: CircleStyle = {
@@ -155,8 +156,7 @@ export class MapVisualizer {
           const lineStyle: LineStyle = {
             color: "#00ffff",
             opacity: this.config.opacity * 0.8,
-            width: 0.5,
-            lineStyle: "dashed"
+            width: 0.5
           };
           visual.line(
             new RoomPosition(25, 25, room.name),
@@ -184,15 +184,15 @@ export class MapVisualizer {
         );
 
         for (const hostileRoom of hostileRooms) {
+          const militaryLineStyle: LineStyle = {
+            color: "#ff0000",
+            opacity: this.config.opacity,
+            width: 1
+          };
           visual.line(
             new RoomPosition(25, 25, room.name),
             new RoomPosition(25, 25, hostileRoom.name),
-            {
-              color: "#ff0000",
-              opacity: this.config.opacity,
-              width: 1,
-              lineStyle: "solid"
-            }
+            militaryLineStyle
           );
         }
       }
@@ -384,12 +384,14 @@ export class MapVisualizer {
   }
 
   /**
-   * Toggle a specific visualization
+   * Toggle a specific boolean visualization option
    */
   public toggle(key: keyof MapVisualizerConfig): void {
-    if (typeof this.config[key] === "boolean") {
-      (this.config[key] as boolean) = !this.config[key];
+    const value = this.config[key];
+    if (typeof value === "boolean") {
+      (this.config[key] as boolean) = !value;
     }
+    // Note: opacity is a number and cannot be toggled, use setConfig() instead
   }
 }
 
