@@ -327,6 +327,12 @@ function initializeSystems(): void {
   // Initialize memory segment stats
   memorySegmentStats.initialize();
 
+  // Initialize native calls tracking if enabled
+  if (config.profiling) {
+    const { initializeNativeCallsTracking } = require("./core/nativeCallsTracker");
+    initializeNativeCallsTracking();
+  }
+
   systemsInitialized = true;
 }
 
@@ -481,7 +487,14 @@ export function loop(): void {
   // This happens automatically based on the cache's internal interval
   memoryManager.persistHeapCache();
 
-  // Finalize profiler tick
+  // Update empire stats
+  profiler.measureSubsystem("stats", () => {
+    const { statsManager: stats } = require("./core/stats");
+    stats.updateEmpireStats();
+    stats.finalizeTick();
+  });
+
+  // Finalize profiler tick (which will also update stats)
   profiler.finalizeTick();
 }
 
@@ -489,6 +502,7 @@ export function loop(): void {
 export { memoryManager } from "./memory/manager";
 export { roomManager } from "./core/roomNode";
 export { profiler } from "./core/profiler";
+export { statsManager } from "./core/stats";
 export { logger } from "./core/logger";
 export { kernel } from "./core/kernel";
 export { scheduler } from "./core/scheduler";

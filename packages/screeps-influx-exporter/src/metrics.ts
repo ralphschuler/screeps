@@ -18,7 +18,8 @@ function sanitizeTagValue(name: string): string {
 
 /**
  * Parse a stat key to extract category information.
- * Keys like "cpu.used", "room.W1N1.energy", "profiler.subsystem.kernel.avg_cpu"
+ * Keys like "cpu.used", "room.W1N1.energy", "profiler.subsystem.kernel.avg_cpu",
+ * "stats.empire.owned_rooms", "stats.room.W1N1.rcl", "stats.pheromone.W1N1.expand"
  * are parsed to extract meaningful tags.
  */
 function parseStatKey(key: string): { measurement: string; category: string; subCategory: string } {
@@ -28,7 +29,30 @@ function parseStatKey(key: string): { measurement: string; category: string; sub
     return { measurement: key, category: 'general', subCategory: '' };
   }
 
-  // Handle profiler keys
+  // Handle new unified stats keys
+  if (parts[0] === 'stats') {
+    if (parts[1] === 'empire') {
+      return { measurement: key, category: 'stats_empire', subCategory: parts[2] || '' };
+    }
+    if (parts[1] === 'room' && parts.length >= 3) {
+      return { measurement: key, category: 'stats_room', subCategory: parts[2] };
+    }
+    if (parts[1] === 'subsystem' && parts.length >= 3) {
+      return { measurement: key, category: 'stats_subsystem', subCategory: parts[2] };
+    }
+    if (parts[1] === 'role' && parts.length >= 3) {
+      return { measurement: key, category: 'stats_role', subCategory: parts[2] };
+    }
+    if (parts[1] === 'pheromone' && parts.length >= 3) {
+      return { measurement: key, category: 'stats_pheromone', subCategory: parts[2] };
+    }
+    if (parts[1] === 'native_calls') {
+      return { measurement: key, category: 'stats_native_calls', subCategory: parts[2] || '' };
+    }
+    return { measurement: key, category: 'stats', subCategory: parts[1] || '' };
+  }
+
+  // Handle profiler keys (legacy)
   if (parts[0] === 'profiler') {
     if (parts[1] === 'room' && parts.length >= 3) {
       return { measurement: key, category: 'profiler_room', subCategory: parts[2] };
