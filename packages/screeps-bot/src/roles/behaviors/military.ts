@@ -8,6 +8,7 @@
 import type { SquadMemory, SwarmCreepMemory } from "../../memory/schemas";
 import { findCachedClosest } from "../../utils/cachedClosest";
 import { safeFindClosestByRange } from "../../utils/safeFind";
+import { registerMilitaryCacheClear } from "./context";
 import type { CreepAction, CreepContext } from "./types";
 
 // =============================================================================
@@ -15,10 +16,21 @@ import type { CreepAction, CreepContext } from "./types";
 // =============================================================================
 
 /**
+ * Global cache for patrol waypoints (per room).
+ * Cleared each tick to avoid stale data when spawns change.
+ */
+const patrolWaypointCache: Map<string, RoomPosition[]> = new Map();
+
+/**
  * Get patrol waypoints for a room covering exits and spawn areas.
- * Uses a cached approach to avoid repeated computation.
+ * OPTIMIZATION: Cache waypoints per room to avoid recalculating every tick.
+ * Waypoints are stable unless spawns change (rare).
  */
 function getPatrolWaypoints(room: Room): RoomPosition[] {
+  // Check cache first
+  const cached = patrolWaypointCache.get(room.name);
+  if (cached) return cached;
+
   const roomName = room.name;
   const spawns = room.find(FIND_MY_SPAWNS);
 
@@ -42,7 +54,7 @@ function getPatrolWaypoints(room: Room): RoomPosition[] {
   waypoints.push(new RoomPosition(44, 25, roomName));
 
   // Clamp positions to valid room bounds and filter out walls
-  return waypoints
+  const filtered = waypoints
     .map(pos => {
       const x = Math.max(2, Math.min(47, pos.x));
       const y = Math.max(2, Math.min(47, pos.y));
@@ -53,6 +65,11 @@ function getPatrolWaypoints(room: Room): RoomPosition[] {
       return terrain !== TERRAIN_MASK_WALL;
     })
     .map(pos => new RoomPosition(pos.x, pos.y, pos.roomName));
+
+  // Cache for this tick
+  patrolWaypointCache.set(room.name, filtered);
+  
+  return filtered;
 }
 
 /**
@@ -506,3 +523,18 @@ export function evaluateMilitaryBehavior(ctx: CreepContext): CreepAction {
   const behavior = militaryBehaviors[ctx.memory.role] ?? guard;
   return behavior(ctx);
 }
+
+// =============================================================================
+// Cache Management
+// =============================================================================
+
+/**
+ * Clear military behavior caches.
+ * Called by context.ts at the start of each tick.
+ */
+function clearMilitaryCaches(): void {
+  patrolWaypointCache.clear();
+}
+
+// Register cache clearing with context system
+registerMilitaryCacheClear(clearMilitaryCaches);
