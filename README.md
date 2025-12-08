@@ -11,6 +11,7 @@ A sophisticated Screeps bot built with TypeScript that implements swarm-based co
 - **Multi-Shard Support**: Cross-shard coordination and expansion
 - **Resource Efficient**: Optimized for CPU performance with aggressive caching
 - **Complete Automation**: Full lifecycle management from RCL1 to RCL8
+- **Auto-Respawn System**: Automatic respawn detection and optimal shard selection
 - **Advanced Combat**: Defensive and offensive capabilities with boost system
 - **Market Integration**: Automated trading and resource management
 - **MCP Integration**: Model Context Protocol servers for AI-assisted development
@@ -196,10 +197,36 @@ npm run inspect  # Launch MCP Inspector (requires Node.js 22.7.5+)
 
 [Read more →](./packages/screeps-wiki-mcp/README.md)
 
+## Auto-Respawn System
+
+The repository includes an automatic respawn system that detects when your account has lost all spawns and automatically respawns you in the optimal location.
+
+### Features
+
+- **Automatic Detection**: Checks world status every 6 hours and after each deployment
+- **Smart Shard Selection**: Evaluates available shards based on room availability, competition, and age
+- **Optimal Placement**: Searches for the best spawn location near starting rooms
+- **Multi-Environment Support**: Works with official servers and private servers
+
+### Setup
+
+1. Configure your environment in GitHub repository settings:
+   - Go to **Settings** → **Environments** → `screeps.com`
+   - Add secret: `SCREEPS_TOKEN` (your Screeps API token)
+   - Optionally add variable: `SCREEPS_HOSTNAME` for custom servers
+
+2. The respawner runs automatically via GitHub Actions:
+   - After successful deployments
+   - Every 6 hours (scheduled)
+   - On-demand via workflow dispatch
+
+For detailed documentation, see [utils/README.md](./utils/README.md).
+
 ## Documentation
 
 - [ROADMAP.md](./ROADMAP.md) - Comprehensive development roadmap and architecture
 - [CONTRIBUTING.md](./CONTRIBUTING.md) - Contribution guidelines
+- [utils/README.md](./utils/README.md) - Auto-respawn system and utilities
 - [packages/screeps-bot/docs/](./packages/screeps-bot/docs/) - Detailed technical documentation
 
 ## Private Server Setup

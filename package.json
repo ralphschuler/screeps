@@ -20,7 +20,8 @@
     "test:all": "npm run test && npm run test:mcp",
     "lint": "cd packages/screeps-bot && npm run lint",
     "push": "cd packages/screeps-bot && npm run push",
-    "watch": "cd packages/screeps-bot && npm run watch"
+    "watch": "cd packages/screeps-bot && npm run watch",
+    "respawn": "node utils/respawner.js"
   },
   "repository": {
     "type": "git",

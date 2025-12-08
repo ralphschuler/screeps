@@ -1,0 +1,46 @@
+name: Auto Respawn
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Deploy"]
+    types:
+      - completed
+
+jobs:
+  respawn:
+    name: Check and Respawn (${{ matrix.environment }})
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        environment:
+          - sim.screeps.com
+          - season.screeps.com
+          - ptr.screeps.com
+          - screeps.com
+          - screeps.nyphon.de
+          - screeps.newbieland.net
+    environment: ${{ matrix.environment }}
+    env:
+      # When using SCREEPS_TOKEN, it serves as both authentication and username
+      SCREEPS_TOKEN: ${{ secrets.SCREEPS_TOKEN }}
+      SCREEPS_USER: ${{ vars.SCREEPS_USER }}
+      SCREEPS_PASS: ${{ secrets.SCREEPS_PASS }}
+      SCREEPS_HOSTNAME: ${{ vars.SCREEPS_HOSTNAME }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Run Respawner
+        run: node utils/respawner.js
+        continue-on-error: true
