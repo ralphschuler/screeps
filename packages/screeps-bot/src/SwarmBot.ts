@@ -256,8 +256,23 @@ function runCreepsWithBudget(): void {
   // Micro-batch size: check CPU every N creeps
   // Smaller batches when bucket is low for tighter control
   // OPTIMIZATION: Increased batch sizes to reduce CPU check overhead
-  // With 11+ CPU spent on creeps, checking less frequently saves 0.5-1 CPU
-  const batchSize = lowBucket ? 10 : 20;
+  // With 22+ CPU spent on creeps, checking less frequently saves 0.5-1 CPU
+  // Scale batch size with bucket level for optimal performance
+  const BUCKET_LOW_THRESHOLD = 2000;
+  const BUCKET_MEDIUM_THRESHOLD = 5000;
+  const BATCH_SIZE_LOW = 10;    // Tight control when bucket is low
+  const BATCH_SIZE_MEDIUM = 20; // Balanced when bucket is medium
+  const BATCH_SIZE_HIGH = 30;   // Minimize overhead when bucket is high
+  
+  const bucketLevel = Game.cpu.bucket;
+  let batchSize: number;
+  if (bucketLevel < BUCKET_LOW_THRESHOLD) {
+    batchSize = BATCH_SIZE_LOW;
+  } else if (bucketLevel < BUCKET_MEDIUM_THRESHOLD) {
+    batchSize = BATCH_SIZE_MEDIUM;
+  } else {
+    batchSize = BATCH_SIZE_HIGH;
+  }
 
   for (let i = 0; i < creeps.length; i++) {
     // Check CPU budget at the start of each batch

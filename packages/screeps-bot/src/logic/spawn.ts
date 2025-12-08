@@ -510,12 +510,39 @@ export function getPheromoneMult(role: string, pheromones: Record<string, number
 }
 
 /**
- * Count creeps by role in a room
+ * Cache for creep counts per room, cleared each tick.
+ * OPTIMIZATION: Avoid iterating all creeps multiple times per tick when multiple spawns exist.
+ */
+const creepCountCache = new Map<string, Map<string, number>>();
+let creepCountCacheTick = -1;
+let creepCountCacheRef: Record<string, Creep> | null = null;
+
+/**
+ * Count creeps by role in a room.
+ * OPTIMIZATION: Cache results per tick to avoid iterating all creeps multiple times.
+ * With multiple spawns in a room, this function could be called multiple times per tick.
  */
 export function countCreepsByRole(roomName: string): Map<string, number> {
+  // Clear cache if new tick or Game.creeps reference changed
+  // Checking reference equality handles both production (new tick) and tests (creeps reassigned)
+  if (creepCountCacheTick !== Game.time || creepCountCacheRef !== Game.creeps) {
+    creepCountCache.clear();
+    creepCountCacheTick = Game.time;
+    creepCountCacheRef = Game.creeps;
+  }
+
+  // Check cache
+  const cached = creepCountCache.get(roomName);
+  if (cached) {
+    return cached;
+  }
+
+  // Build counts
   const counts = new Map<string, number>();
 
-  for (const creep of Object.values(Game.creeps)) {
+  // OPTIMIZATION: Use for-in loop instead of Object.values() to avoid creating temporary array
+  for (const name in Game.creeps) {
+    const creep = Game.creeps[name];
     const memory = creep.memory as unknown as SwarmCreepMemory;
     if (memory.homeRoom === roomName) {
       const role = memory.role ?? "unknown";
@@ -523,6 +550,8 @@ export function countCreepsByRole(roomName: string): Map<string, number> {
     }
   }
 
+  // Cache for this tick
+  creepCountCache.set(roomName, counts);
   return counts;
 }
 

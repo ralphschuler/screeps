@@ -286,9 +286,28 @@ function getActiveSources(cache: RoomCache): Source[] {
 /**
  * Clear all room caches. Must be called at the start of each tick
  * to prevent memory leaks from stale room data.
+ * Also clears military behavior caches.
  */
 export function clearRoomCaches(): void {
   roomCacheMap.clear();
+  // Clear military patrol waypoint cache
+  clearMilitaryBehaviorCaches();
+}
+
+/**
+ * Callback for clearing military behavior caches.
+ * Set by military.ts module.
+ */
+let clearMilitaryBehaviorCaches: () => void = () => {
+  // Default no-op, overridden by military.ts
+};
+
+/**
+ * Register a callback to clear military behavior caches.
+ * Called by military.ts to register its cache clearing function.
+ */
+export function registerMilitaryCacheClear(fn: () => void): void {
+  clearMilitaryBehaviorCaches = fn;
 }
 
 // =============================================================================

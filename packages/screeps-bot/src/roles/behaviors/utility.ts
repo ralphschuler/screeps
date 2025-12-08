@@ -42,20 +42,47 @@ function getOvermind(): Record<string, unknown> {
 
 /**
  * Record intelligence about a room.
+ * OPTIMIZATION: Only do full scan if room hasn't been scouted recently (500 ticks).
+ * This reduces expensive terrain scanning and room.find() calls.
  */
 function recordRoomIntel(room: Room, overmind: Record<string, unknown>): void {
   const roomsSeen = overmind.roomsSeen as Record<string, number>;
   const roomIntel = overmind.roomIntel as Record<string, RoomIntel>;
 
+  const existingIntel = roomIntel[room.name];
+  const lastSeen = existingIntel?.lastSeen ?? 0;
+  const ticksSinceLastScan = Game.time - lastSeen;
+
+  // Update last seen timestamp
   roomsSeen[room.name] = Game.time;
 
+  // If room was recently scanned (within 500 ticks), only update dynamic data
+  if (existingIntel && ticksSinceLastScan < 500) {
+    existingIntel.lastSeen = Game.time;
+    
+    // Only update threat level (dynamic data)
+    // Use safeFind to handle engine errors with corrupted owner data
+    const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
+    existingIntel.threatLevel = hostiles.length > 5 ? 3 : hostiles.length > 2 ? 2 : hostiles.length > 0 ? 1 : 0;
+    
+    // Update controller level if it changed
+    if (room.controller) {
+      existingIntel.controllerLevel = room.controller.level ?? 0;
+      if (room.controller.owner?.username) existingIntel.owner = room.controller.owner.username;
+      if (room.controller.reservation?.username) existingIntel.reserver = room.controller.reservation.username;
+    }
+    
+    return;
+  }
+
+  // Full scan for new rooms or rooms not scanned in 500+ ticks
   const sources = room.find(FIND_SOURCES);
   const mineral = room.find(FIND_MINERALS)[0];
   const controller = room.controller;
   // Use safeFind to handle engine errors with corrupted owner data
   const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
 
-  // Classify terrain
+  // Classify terrain (expensive operation, only do once per 500 ticks)
   const terrain = room.getTerrain();
   let swampCount = 0;
   let plainCount = 0;
@@ -148,12 +175,14 @@ function findExplorePosition(room: Room): RoomPosition | null {
  * 1. When on a room exit tile, ALWAYS move off first before deciding next action
  * 2. This prevents PathFinder from routing back through the exit
  * 3. Only after moving off exit do we find the next exploration target
+ * 
+ * OPTIMIZATION: Only record intel when:
+ * - Entering a new room (not seen before)
+ * - At target room and exploring (stationary)
+ * This reduces expensive recordRoomIntel() calls from every tick to only when needed.
  */
 export function scout(ctx: CreepContext): CreepAction {
   const overmind = getOvermind();
-
-  // Record current room
-  recordRoomIntel(ctx.room, overmind);
 
   // CRITICAL: If on a room exit tile, move off FIRST before any other logic.
   // This prevents the cycling behavior where the scout enters a room but immediately
@@ -182,7 +211,10 @@ export function scout(ctx: CreepContext): CreepAction {
   }
 
   // Explore current room - move toward center to gather intel
+  // Only record intel when we're actively exploring (at target room)
   if (targetRoom && ctx.room.name === targetRoom) {
+    recordRoomIntel(ctx.room, overmind);
+    
     const explorePos = findExplorePosition(ctx.room);
     if (explorePos) return { type: "moveTo", target: explorePos };
     delete ctx.memory.targetRoom;
