@@ -290,7 +290,29 @@ export function placePerimeterDefense(
     }
   }
 
-  // Priority 2: Place ramparts at gap positions (RCL 3+)
+  // Priority 2: Remove walls at gap positions (RCL 3+)
+  // These positions should only have ramparts for friendly passage
+  if (rcl >= 3) {
+    for (const rampart of plan.ramparts) {
+      // Check if there's a wall at this gap position
+      const wallAtGap = existingStructures.find(
+        s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_WALL
+      ) as StructureWall | undefined;
+      
+      if (wallAtGap) {
+        // Destroy wall at gap position to allow rampart placement
+        const result = wallAtGap.destroy();
+        if (result === OK) {
+          logger.info(
+            `Removed wall at gap position (${rampart.x},${rampart.y}) to allow friendly passage`,
+            { subsystem: "Defense" }
+          );
+        }
+      }
+    }
+  }
+
+  // Priority 3: Place ramparts at gap positions (RCL 3+)
   // These are rampart-only positions (no wall underneath) to allow friendly passage
   if (rcl >= 3 && placed < maxToPlace && rampartCount < rampartLimit) {
     for (const rampart of plan.ramparts) {
