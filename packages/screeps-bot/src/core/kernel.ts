@@ -591,14 +591,9 @@ export class Kernel {
       if (!this.hasCpuBudget()) {
         processesSkipped++;
         process.stats.skippedCount++;
-        // Store the last successfully executed index for next tick
-        // If we haven't executed anything this tick, keep the previous value
-        if (lastExecutedIndexThisTick !== -1) {
-          this.lastExecutedIndex = lastExecutedIndexThisTick;
-        }
-        // Continue checking other processes - they might be eligible to run
-        // even if this one was skipped (e.g., different minBucket requirements)
-        continue;
+        // CPU budget exhausted - stop processing and save state for next tick
+        // Next tick will continue from the process after the last one we executed
+        break;
       }
 
       // Execute the process
