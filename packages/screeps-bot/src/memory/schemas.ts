@@ -208,6 +208,28 @@ export interface DefenseAssistanceRequest {
 }
 
 /**
+ * Resource transfer request for inter-room resource sharing
+ */
+export interface ResourceTransferRequest {
+  /** Room requesting resources */
+  toRoom: string;
+  /** Room providing resources */
+  fromRoom: string;
+  /** Resource type to transfer */
+  resourceType: ResourceConstant;
+  /** Amount needed */
+  amount: number;
+  /** Priority (1-5, higher = more urgent) */
+  priority: number;
+  /** Game tick when request was created */
+  createdAt: number;
+  /** Creeps assigned to fulfill this request */
+  assignedCreeps: string[];
+  /** Amount already delivered */
+  delivered: number;
+}
+
+/**
  * Cluster memory
  */
 export interface ClusterMemory {
@@ -242,6 +264,8 @@ export interface ClusterMemory {
   rallyPoints: { roomName: string; x: number; y: number; purpose: string }[];
   /** Defense assistance requests from member rooms */
   defenseRequests: DefenseAssistanceRequest[];
+  /** Resource transfer requests for inter-room resource sharing */
+  resourceRequests: ResourceTransferRequest[];
   /** Last update tick */
   lastUpdate: number;
 }
@@ -341,6 +365,12 @@ export interface SwarmState {
     hostileCount: number;
     damageReceived: number;
     constructionSites: number;
+    /** Available energy for sharing (storage + containers - reserved) */
+    energyAvailable: number;
+    /** Energy capacity (storage + containers total) */
+    energyCapacity: number;
+    /** Energy need level (0-3): 0=no need, 1=low, 2=medium, 3=critical */
+    energyNeed: 0 | 1 | 2 | 3;
   };
   /** Last full update tick */
   lastUpdate: number;
@@ -370,7 +400,8 @@ export type EconomyRole =
   | "labTech"
   | "factoryWorker"
   | "remoteHarvester"
-  | "remoteHauler";
+  | "remoteHauler"
+  | "interRoomCarrier";
 
 /**
  * Military roles
@@ -530,7 +561,10 @@ export function createDefaultSwarmState(): SwarmState {
       controllerProgress: 0,
       hostileCount: 0,
       damageReceived: 0,
-      constructionSites: 0
+      constructionSites: 0,
+      energyAvailable: 0,
+      energyCapacity: 0,
+      energyNeed: 0
     },
     lastUpdate: 0
   };
@@ -589,6 +623,7 @@ export function createDefaultClusterMemory(id: string, coreRoom: string): Cluste
     squads: [],
     rallyPoints: [],
     defenseRequests: [],
+    resourceRequests: [],
     lastUpdate: 0
   };
 }
