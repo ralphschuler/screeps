@@ -210,6 +210,12 @@ export class Kernel {
   /** Tick when a pixel was last generated (0 if none tracked) */
   private lastPixelGenerationTick = 0;
   private frequencyDefaults: Record<ProcessFrequency, FrequencyDefaults>;
+  /** Index of the last process executed in the queue (for wrap-around) */
+  private lastExecutedIndex = -1;
+  /** Cached sorted process queue */
+  private processQueue: Process[] = [];
+  /** Flag indicating if process queue needs rebuild */
+  private queueDirty = true;
 
   public constructor(config: KernelConfig) {
     this.config = { ...config };
@@ -255,6 +261,7 @@ export class Kernel {
     };
 
     this.processes.set(options.id, process);
+    this.queueDirty = true; // Mark queue for rebuild
     logger.debug(`Kernel: Registered process "${process.name}" (${process.id})`, { subsystem: "Kernel" });
   }
 
@@ -264,6 +271,7 @@ export class Kernel {
   public unregisterProcess(id: string): boolean {
     const deleted = this.processes.delete(id);
     if (deleted) {
+      this.queueDirty = true; // Mark queue for rebuild
       logger.debug(`Kernel: Unregistered process ${id}`, { subsystem: "Kernel" });
     }
     return deleted;
@@ -439,6 +447,17 @@ export class Kernel {
   }
 
   /**
+   * Rebuild the process queue sorted by priority
+   */
+  private rebuildProcessQueue(): void {
+    this.processQueue = Array.from(this.processes.values())
+      .sort((a, b) => b.priority - a.priority);
+    this.queueDirty = false;
+    // Reset last executed index when queue is rebuilt
+    this.lastExecutedIndex = -1;
+  }
+
+  /**
    * Check if process should run this tick
    */
   private shouldRunProcess(process: Process): boolean {
@@ -447,10 +466,12 @@ export class Kernel {
       return false;
     }
 
-    // Check interval
-    const ticksSinceRun = Game.time - process.stats.lastRunTick;
-    if (ticksSinceRun < process.interval) {
-      return false;
+    // Check interval (skip check if process has never run - runCount will be 0)
+    if (process.stats.runCount > 0) {
+      const ticksSinceRun = Game.time - process.stats.lastRunTick;
+      if (ticksSinceRun < process.interval) {
+        return false;
+      }
     }
 
     // In critical bucket mode, only run CRITICAL priority processes
@@ -516,7 +537,11 @@ export class Kernel {
   }
 
   /**
-   * Run all scheduled processes for this tick
+   * Run all scheduled processes for this tick using a wrap-around queue.
+   * 
+   * When processes are skipped due to CPU budget, they are guaranteed to be
+   * considered first in the next tick by continuing from where we left off.
+   * This ensures fair process execution across ticks while maintaining priority order.
    */
   public run(): void {
     this.updateBucketMode();
@@ -525,14 +550,30 @@ export class Kernel {
     // Process queued events from previous ticks
     eventBus.processQueue();
 
-    // Sort processes by priority (highest first)
-    const sortedProcesses = Array.from(this.processes.values())
-      .sort((a, b) => b.priority - a.priority);
+    // Rebuild queue if needed (processes added/removed)
+    if (this.queueDirty) {
+      this.rebuildProcessQueue();
+    }
+
+    // If no processes, nothing to do
+    if (this.processQueue.length === 0) {
+      return;
+    }
 
     let processesRun = 0;
     let processesSkipped = 0;
+    let lastExecutedIndexThisTick = -1;
 
-    for (const process of sortedProcesses) {
+    // Start from the next process after the last one executed
+    // This creates a wrap-around effect: if we stopped at index 5 last tick,
+    // we start at index 6 this tick, wrapping to 0 when we reach the end
+    const startIndex = (this.lastExecutedIndex + 1) % this.processQueue.length;
+    
+    // Iterate through all processes exactly once, starting from startIndex
+    for (let i = 0; i < this.processQueue.length; i++) {
+      const index = (startIndex + i) % this.processQueue.length;
+      const process = this.processQueue[index];
+
       // Check if we should run this process
       if (!this.shouldRunProcess(process)) {
         continue;
@@ -542,12 +583,25 @@ export class Kernel {
       if (!this.hasCpuBudget()) {
         processesSkipped++;
         process.stats.skippedCount++;
+        // Store the last successfully executed index for next tick
+        // If we haven't executed anything this tick, keep the previous value
+        if (lastExecutedIndexThisTick !== -1) {
+          this.lastExecutedIndex = lastExecutedIndexThisTick;
+        }
+        // Continue checking other processes - they might be eligible to run
+        // even if this one was skipped (e.g., different minBucket requirements)
         continue;
       }
 
       // Execute the process
       this.executeProcess(process);
       processesRun++;
+      lastExecutedIndexThisTick = index;
+    }
+
+    // Update the last executed index for next tick
+    if (lastExecutedIndexThisTick !== -1) {
+      this.lastExecutedIndex = lastExecutedIndexThisTick;
     }
 
     // Log stats periodically
