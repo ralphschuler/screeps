@@ -22253,23 +22253,65 @@ function executeIdleAction(creep) {
  * This helps identify performance bottlenecks and optimize native call usage.
  */
 /**
+ * Whether native calls tracking is enabled
+ */
+let trackingEnabled = true;
+/**
  * Wrap PathFinder.search to track calls
  *
  * Note: Uses 'any' types to handle the complex overloaded signature of PathFinder.search.
  * The TypeScript definitions for PathFinder.search have multiple overloads that are
  * difficult to preserve when wrapping. Using 'any' here allows the wrapper to work
  * correctly while maintaining runtime type safety through the original method.
+ *
+ * Uses Object.defineProperty to override read-only properties that may exist in some
+ * Screeps environments (e.g., private servers with strict property descriptors).
  */
 function wrapPathFinderSearch() {
     if (!PathFinder.search)
         return;
     const originalSearch = PathFinder.search;
-    PathFinder.search = function (...args) {
-        {
-            statsManager.recordNativeCall("pathfinderSearch");
-        }
-        return originalSearch.apply(PathFinder, args);
-    };
+    try {
+        Object.defineProperty(PathFinder, "search", {
+            value: function (...args) {
+                if (trackingEnabled) {
+                    statsManager.recordNativeCall("pathfinderSearch");
+                }
+                return originalSearch.apply(PathFinder, args);
+            },
+            writable: true,
+            enumerable: true,
+            configurable: true
+        });
+    }
+    catch (error) {
+        console.log(`[NativeCallsTracker] Warning: Failed to wrap PathFinder.search: ${error}`);
+    }
+}
+/**
+ * Helper function to safely wrap a method on a prototype
+ * Uses Object.defineProperty to handle read-only properties
+ */
+function wrapMethod(prototype, methodName, statName) {
+    const original = prototype[methodName];
+    if (!original)
+        return;
+    try {
+        Object.defineProperty(prototype, methodName, {
+            value: function (...args) {
+                if (trackingEnabled) {
+                    statsManager.recordNativeCall(statName);
+                }
+                return original.apply(this, args);
+            },
+            writable: true,
+            enumerable: true,
+            configurable: true
+        });
+    }
+    catch (error) {
+        console.log(`[NativeCallsTracker] Warning: Failed to wrap ${methodName}: ${error}`);
+    }
 }
 /**
  * Wrap Creep.prototype methods to track calls
@@ -22279,113 +22321,29 @@ function wrapPathFinderSearch() {
  * Using 'any' allows the wrappers to work correctly with all overloads while maintaining
  * runtime type safety through the original methods. This is a common pattern for method
  * wrapping in JavaScript/TypeScript.
+ *
+ * Uses Object.defineProperty to override read-only properties that may exist in some
+ * Screeps environments (e.g., private servers with strict property descriptors).
  */
 function wrapCreepMethods() {
     const creepProto = Creep.prototype;
-    // Wrap moveTo
-    const originalMoveTo = creepProto.moveTo;
-    creepProto.moveTo = function (...args) {
-        {
-            statsManager.recordNativeCall("moveTo");
-        }
-        return originalMoveTo.apply(this, args);
-    };
-    // Wrap move
-    const originalMove = creepProto.move;
-    creepProto.move = function (...args) {
-        {
-            statsManager.recordNativeCall("move");
-        }
-        return originalMove.apply(this, args);
-    };
-    // Wrap harvest
-    const originalHarvest = creepProto.harvest;
-    creepProto.harvest = function (...args) {
-        {
-            statsManager.recordNativeCall("harvest");
-        }
-        return originalHarvest.apply(this, args);
-    };
-    // Wrap transfer
-    const originalTransfer = creepProto.transfer;
-    creepProto.transfer = function (...args) {
-        {
-            statsManager.recordNativeCall("transfer");
-        }
-        return originalTransfer.apply(this, args);
-    };
-    // Wrap withdraw
-    const originalWithdraw = creepProto.withdraw;
-    creepProto.withdraw = function (...args) {
-        {
-            statsManager.recordNativeCall("withdraw");
-        }
-        return originalWithdraw.apply(this, args);
-    };
-    // Wrap build
-    const originalBuild = creepProto.build;
-    creepProto.build = function (...args) {
-        {
-            statsManager.recordNativeCall("build");
-        }
-        return originalBuild.apply(this, args);
-    };
-    // Wrap repair
-    const originalRepair = creepProto.repair;
-    creepProto.repair = function (...args) {
-        {
-            statsManager.recordNativeCall("repair");
-        }
-        return originalRepair.apply(this, args);
-    };
-    // Wrap upgradeController
-    const originalUpgradeController = creepProto.upgradeController;
-    creepProto.upgradeController = function (...args) {
-        {
-            statsManager.recordNativeCall("upgradeController");
-        }
-        return originalUpgradeController.apply(this, args);
-    };
-    // Wrap attack
-    const originalAttack = creepProto.attack;
-    creepProto.attack = function (...args) {
-        {
-            statsManager.recordNativeCall("attack");
-        }
-        return originalAttack.apply(this, args);
-    };
-    // Wrap rangedAttack
-    const originalRangedAttack = creepProto.rangedAttack;
-    creepProto.rangedAttack = function (...args) {
-        {
-            statsManager.recordNativeCall("rangedAttack");
-        }
-        return originalRangedAttack.apply(this, args);
-    };
-    // Wrap heal
-    const originalHeal = creepProto.heal;
-    creepProto.heal = function (...args) {
-        {
-            statsManager.recordNativeCall("heal");
-        }
-        return originalHeal.apply(this, args);
-    };
-    // Wrap dismantle
-    const originalDismantle = creepProto.dismantle;
-    creepProto.dismantle = function (...args) {
-        {
-            statsManager.recordNativeCall("dismantle");
-        }
-        return originalDismantle.apply(this, args);
-    };
-    // Wrap say
-    const originalSay = creepProto.say;
-    creepProto.say = function (...args) {
-        {
-            statsManager.recordNativeCall("say");
-        }
-        return originalSay.apply(this, args);
-    };
+    // Wrap movement methods
+    wrapMethod(creepProto, "moveTo", "moveTo");
+    wrapMethod(creepProto, "move", "move");
+    // Wrap economy methods
+    wrapMethod(creepProto, "harvest", "harvest");
+    wrapMethod(creepProto, "transfer", "transfer");
+    wrapMethod(creepProto, "withdraw", "withdraw");
+    wrapMethod(creepProto, "build", "build");
+    wrapMethod(creepProto, "repair", "repair");
+    wrapMethod(creepProto, "upgradeController", "upgradeController");
+    // Wrap combat methods
+    wrapMethod(creepProto, "attack", "attack");
+    wrapMethod(creepProto, "rangedAttack", "rangedAttack");
+    wrapMethod(creepProto, "heal", "heal");
+    wrapMethod(creepProto, "dismantle", "dismantle");
+    // Wrap utility methods
+    wrapMethod(creepProto, "say", "say");
 }
 /**
  * Initialize native calls tracking
