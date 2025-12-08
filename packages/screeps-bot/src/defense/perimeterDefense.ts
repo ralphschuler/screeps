@@ -191,7 +191,7 @@ export function calculatePerimeterPositions(roomName: string): PerimeterPlan {
  * 
  * Places walls and ramparts at exit positions to defend the room.
  * Ramparts are placed on top of walls to allow friendly creeps to pass
- * while blocking enemies (per ROADMAP Section 17).
+ * while blocking enemies (per ROADMAP Section 17 - Mauern & Ramparts).
  * 
  * @param room The room to defend
  * @param rcl Current room control level
@@ -302,7 +302,7 @@ export function placePerimeterDefense(
   // This allows friendly creeps to pass through while blocking enemies
   if (rcl >= 3 && placed < maxToPlace && rampartCount < rampartLimit) {
     // Place ramparts at ALL wall positions to allow friendly passage
-    // Per ROADMAP Section 17: Ramparts allow friendly creeps to pass but block enemies
+    // Per ROADMAP Section 17 - Mauern & Ramparts: Ramparts allow friendly creeps to pass but block enemies
     for (const pos of plan.walls) {
       if (placed >= maxToPlace) break;
       if (rampartCount + placed >= rampartLimit) break;
