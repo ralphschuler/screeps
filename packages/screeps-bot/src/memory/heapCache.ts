@@ -23,6 +23,17 @@
  * - Survives resets: data restored from Memory after global reset
  */
 
+// Augment Memory interface with cache property
+declare global {
+  interface Memory {
+    _heapCache?: {
+      version: number;
+      lastSync: number;
+      data: Record<string, { value: any; lastModified: number; ttl?: number }>;
+    };
+  }
+}
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -110,15 +121,14 @@ function getHeapStore(): HeapCacheStore {
  * Get cache memory storage
  */
 function getCacheMemory(): CacheMemoryStore {
-  const mem = Memory as unknown as Record<string, CacheMemoryStore>;
-  if (!mem[CACHE_MEMORY_KEY]) {
-    mem[CACHE_MEMORY_KEY] = {
+  if (!Memory._heapCache) {
+    Memory._heapCache = {
       version: CACHE_VERSION,
       lastSync: Game.time,
       data: {}
     };
   }
-  return mem[CACHE_MEMORY_KEY];
+  return Memory._heapCache;
 }
 
 // =============================================================================
@@ -176,7 +186,8 @@ export class HeapCacheManager {
       rehydratedCount++;
     }
 
-    if (rehydratedCount > 0) {
+    if (rehydratedCount > 0 && Game.time % 100 === 0) {
+      // Only log periodically to reduce console spam
       console.log(`[HeapCache] Rehydrated ${rehydratedCount} entries from Memory (${expiredCount} expired)`);
     }
   }

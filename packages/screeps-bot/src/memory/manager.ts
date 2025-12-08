@@ -260,7 +260,7 @@ export class MemoryManager {
    * Get heap cache manager instance.
    * Provides access to the cache for external use.
    */
-  public getHeapCache() {
+  public getHeapCache(): typeof heapCache {
     return heapCache;
   }
 }
