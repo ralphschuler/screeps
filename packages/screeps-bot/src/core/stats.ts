@@ -329,7 +329,7 @@ export class StatsManager {
   /**
    * Record a subsystem measurement
    */
-  public recordSubsystem(name: string, cpu: number, calls: number = 1): void {
+  public recordSubsystem(name: string, cpu: number, calls = 1): void {
     if (!this.config.enabled) return;
 
     const stats = this.getStatsRoot();
@@ -353,7 +353,7 @@ export class StatsManager {
   /**
    * Record a role measurement
    */
-  public recordRole(role: string, count: number, cpu: number, calls: number = 1): void {
+  public recordRole(role: string, count: number, cpu: number, calls = 1): void {
     if (!this.config.enabled) return;
 
     const stats = this.getStatsRoot();
@@ -636,7 +636,8 @@ export function getRoomByMetric(
   if (rooms.length === 0) return null;
   
   const sorted = rooms.sort((a, b) => {
-    let valueA = 0, valueB = 0;
+    let valueA = 0;
+    let valueB = 0;
     
     switch (metric) {
       case "energy":

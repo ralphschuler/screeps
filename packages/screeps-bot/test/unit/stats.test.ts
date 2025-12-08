@@ -276,9 +276,9 @@ describe("StatsManager", function () {
       statsManager.finalizeTick();
 
       const stats = statsManager.getStats();
-      // Previous tick's harvest call should still be in memory
+      // Previous tick's harvest calls are reset to 0 after finalizeTick
       assert.equal(stats.nativeCalls.harvest, 0);
-      // New call should be recorded
+      // Current tick's build call should be recorded
       assert.equal(stats.nativeCalls.build, 1);
     });
   });
