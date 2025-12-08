@@ -159,6 +159,17 @@ const ROOM_CENTER_X = 25;
 const ROOM_CENTER_Y = 25;
 
 /**
+ * Create a moveTo action targeting the center of a room.
+ * Used to move scouts off room exits.
+ */
+function moveToRoomCenter(roomName: string): CreepAction {
+  return {
+    type: "moveTo",
+    target: new RoomPosition(ROOM_CENTER_X, ROOM_CENTER_Y, roomName)
+  };
+}
+
+/**
  * Find a position to explore in a room.
  */
 function findExplorePosition(room: Room): RoomPosition | null {
@@ -234,8 +245,7 @@ export function scout(ctx: CreepContext): CreepAction {
   
   if (onExit && !travelingToOtherRoom) {
     // We're on an exit but not traveling - move toward room center
-    const centerPos = new RoomPosition(ROOM_CENTER_X, ROOM_CENTER_Y, ctx.room.name);
-    return { type: "moveTo", target: centerPos };
+    return moveToRoomCenter(ctx.room.name);
   }
 
   // Move to target room (movement.ts will handle exit clearing if needed)
@@ -250,8 +260,7 @@ export function scout(ctx: CreepContext): CreepAction {
     // This prevents the scout from clearing targetRoom while still on the exit,
     // which causes it to pick the previous room as the next target and cycle back
     if (onExit) {
-      const centerPos = new RoomPosition(ROOM_CENTER_X, ROOM_CENTER_Y, ctx.room.name);
-      return { type: "moveTo", target: centerPos };
+      return moveToRoomCenter(ctx.room.name);
     }
 
     const explorePos = findExplorePosition(ctx.room);
