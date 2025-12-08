@@ -114,7 +114,6 @@ export async function startMemoryCollector(
   metrics: Metrics,
   logger: Logger
 ): Promise<void> {
-  let currentIntervalMs = config.pollIntervalMs;
   let timeoutHandle: NodeJS.Timeout | null = null;
 
   const scheduleNextPoll = (delayMs: number) => {
@@ -125,6 +124,8 @@ export async function startMemoryCollector(
   };
 
   const poll = async () => {
+    let nextPollDelayMs = config.pollIntervalMs;
+
     try {
       const rawMemory = await api.memory.get(config.memoryPath, config.shard);
       const decoded = decodeMemory(rawMemory, logger);
@@ -141,9 +142,6 @@ export async function startMemoryCollector(
 
         metrics.markScrapeSuccess('memory', true);
         logger.info(`Processed ${Object.keys(flatStats).length} flat metrics from Memory.stats`);
-        
-        // Reset to normal polling interval on success
-        currentIntervalMs = config.pollIntervalMs;
       } else {
         logger.warn('No stats found in memory path', { path: config.memoryPath, shard: config.shard });
         metrics.markScrapeSuccess('memory', false);
@@ -151,12 +149,12 @@ export async function startMemoryCollector(
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       
-      // Check if this is a rate limit error
-      const rateLimitMatch = errorMessage.match(/retry after (\d+)ms/i);
+      // Check if this is a rate limit error with specific pattern
+      const rateLimitMatch = errorMessage.match(/Rate limit exceeded, retry after (\d+)ms/i);
       if (rateLimitMatch) {
         const retryAfterMs = parseInt(rateLimitMatch[1], 10);
         logger.warn(`Rate limit exceeded. Waiting ${retryAfterMs}ms before next poll.`);
-        currentIntervalMs = retryAfterMs;
+        nextPollDelayMs = retryAfterMs;
       } else {
         logger.error('Failed to poll stats from Memory', error);
       }
@@ -168,7 +166,7 @@ export async function startMemoryCollector(
     metrics.flush();
     
     // Schedule next poll
-    scheduleNextPoll(currentIntervalMs);
+    scheduleNextPoll(nextPollDelayMs);
   };
 
   await poll();
