@@ -1,0 +1,22831 @@
+'use strict';
+
+Object.defineProperty(exports, '__esModule', { value: true });
+
+var sourceMapGenerator = {};
+
+var base64Vlq = {};
+
+var base64$1 = {};
+
+/* -*- Mode: js; js-indent-level: 2; -*- */
+
+/*
+ * Copyright 2011 Mozilla Foundation and contributors
+ * Licensed under the New BSD license. See LICENSE or:
+ * http://opensource.org/licenses/BSD-3-Clause
+ */
+
+var intToCharMap = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.split('');
+
+/**
+ * Encode an integer in the range of 0 to 63 to a single base 64 digit.
+ */
+base64$1.encode = function (number) {
+  if (0 <= number && number < intToCharMap.length) {
+    return intToCharMap[number];
+  }
+  throw new TypeError("Must be between 0 and 63: " + number);
+};
+
+/**
+ * Decode a single base 64 character code digit to an integer. Returns -1 on
+ * failure.
+ */
+base64$1.decode = function (charCode) {
+  var bigA = 65;     // 'A'
+  var bigZ = 90;     // 'Z'
+
+  var littleA = 97;  // 'a'
+  var littleZ = 122; // 'z'
+
+  var zero = 48;     // '0'
+  var nine = 57;     // '9'
+
+  var plus = 43;     // '+'
+  var slash = 47;    // '/'
+
+  var littleOffset = 26;
+  var numberOffset = 52;
+
+  // 0 - 25: ABCDEFGHIJKLMNOPQRSTUVWXYZ
+  if (bigA <= charCode && charCode <= bigZ) {
+    return (charCode - bigA);
+  }
+
+  // 26 - 51: abcdefghijklmnopqrstuvwxyz
+  if (littleA <= charCode && charCode <= littleZ) {
+    return (charCode - littleA + littleOffset);
+  }
+
+  // 52 - 61: 0123456789
+  if (zero <= charCode && charCode <= nine) {
+    return (charCode - zero + numberOffset);
+  }
+
+  // 62: +
+  if (charCode == plus) {
+    return 62;
+  }
+
+  // 63: /
+  if (charCode == slash) {
+    return 63;
+  }
+
+  // Invalid base64 digit.
+  return -1;
+};
+
+/* -*- Mode: js; js-indent-level: 2; -*- */
+
+/*
+ * Copyright 2011 Mozilla Foundation and contributors
+ * Licensed under the New BSD license. See LICENSE or:
+ * http://opensource.org/licenses/BSD-3-Clause
+ *
+ * Based on the Base 64 VLQ implementation in Closure Compiler:
+ * https://code.google.com/p/closure-compiler/source/browse/trunk/src/com/google/debugging/sourcemap/Base64VLQ.java
+ *
+ * Copyright 2011 The Closure Compiler Authors. All rights reserved.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above
+ *    copyright notice, this list of conditions and the following
+ *    disclaimer in the documentation and/or other materials provided
+ *    with the distribution.
+ *  * Neither the name of Google Inc. nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+var base64 = base64$1;
+
+// A single base 64 digit can contain 6 bits of data. For the base 64 variable
+// length quantities we use in the source map spec, the first bit is the sign,
+// the next four bits are the actual value, and the 6th bit is the
+// continuation bit. The continuation bit tells us whether there are more
+// digits in this value following this digit.
+//
+//   Continuation
+//   |    Sign
+//   |    |
+//   V    V
+//   101011
+
+var VLQ_BASE_SHIFT = 5;
+
+// binary: 100000
+var VLQ_BASE = 1 << VLQ_BASE_SHIFT;
+
+// binary: 011111
+var VLQ_BASE_MASK = VLQ_BASE - 1;
+
+// binary: 100000
+var VLQ_CONTINUATION_BIT = VLQ_BASE;
+
+/**
+ * Converts from a two-complement value to a value where the sign bit is
+ * placed in the least significant bit.  For example, as decimals:
+ *   1 becomes 2 (10 binary), -1 becomes 3 (11 binary)
+ *   2 becomes 4 (100 binary), -2 becomes 5 (101 binary)
+ */
+function toVLQSigned(aValue) {
+  return aValue < 0
+    ? ((-aValue) << 1) + 1
+    : (aValue << 1) + 0;
+}
+
+/**
+ * Converts to a two-complement value from a value where the sign bit is
+ * placed in the least significant bit.  For example, as decimals:
+ *   2 (10 binary) becomes 1, 3 (11 binary) becomes -1
+ *   4 (100 binary) becomes 2, 5 (101 binary) becomes -2
+ */
+function fromVLQSigned(aValue) {
+  var isNegative = (aValue & 1) === 1;
+  var shifted = aValue >> 1;
+  return isNegative
+    ? -shifted
+    : shifted;
+}
+
+/**
+ * Returns the base 64 VLQ encoded value.
+ */
+base64Vlq.encode = function base64VLQ_encode(aValue) {
+  var encoded = "";
+  var digit;
+
+  var vlq = toVLQSigned(aValue);
+
+  do {
+    digit = vlq & VLQ_BASE_MASK;
+    vlq >>>= VLQ_BASE_SHIFT;
+    if (vlq > 0) {
+      // There are still more digits in this value, so we must make sure the
+      // continuation bit is marked.
+      digit |= VLQ_CONTINUATION_BIT;
+    }
+    encoded += base64.encode(digit);
+  } while (vlq > 0);
+
+  return encoded;
+};
+
+/**
+ * Decodes the next base 64 VLQ value from the given string and returns the
+ * value and the rest of the string via the out parameter.
+ */
+base64Vlq.decode = function base64VLQ_decode(aStr, aIndex, aOutParam) {
+  var strLen = aStr.length;
+  var result = 0;
+  var shift = 0;
+  var continuation, digit;
+
+  do {
+    if (aIndex >= strLen) {
+      throw new Error("Expected more digits in base 64 VLQ value.");
+    }
+
+    digit = base64.decode(aStr.charCodeAt(aIndex++));
+    if (digit === -1) {
+      throw new Error("Invalid base64 digit: " + aStr.charAt(aIndex - 1));
+    }
+
+    continuation = !!(digit & VLQ_CONTINUATION_BIT);
+    digit &= VLQ_BASE_MASK;
+    result = result + (digit << shift);
+    shift += VLQ_BASE_SHIFT;
+  } while (continuation);
+
+  aOutParam.value = fromVLQSigned(result);
+  aOutParam.rest = aIndex;
+};
+
+var util$5 = {};
+
+/* -*- Mode: js; js-indent-level: 2; -*- */
+
+(function (exports) {
+/*
+ * Copyright 2011 Mozilla Foundation and contributors
+ * Licensed under the New BSD license. See LICENSE or:
+ * http://opensource.org/licenses/BSD-3-Clause
+ */
+
+/**
+ * This is a helper function for getting values from parameter/options
+ * objects.
+ *
+ * @param args The object we are extracting values from
+ * @param name The name of the property we are getting.
+ * @param defaultValue An optional value to return if the property is missing
+ * from the object. If this is not specified and the property is missing, an
+ * error will be thrown.
+ */
+function getArg(aArgs, aName, aDefaultValue) {
+  if (aName in aArgs) {
+    return aArgs[aName];
+  } else if (arguments.length === 3) {
+    return aDefaultValue;
+  } else {
+    throw new Error('"' + aName + '" is a required argument.');
+  }
+}
+exports.getArg = getArg;
+
+var urlRegexp = /^(?:([\w+\-.]+):)?\/\/(?:(\w+:\w+)@)?([\w.-]*)(?::(\d+))?(.*)$/;
+var dataUrlRegexp = /^data:.+\,.+$/;
+
+function urlParse(aUrl) {
+  var match = aUrl.match(urlRegexp);
+  if (!match) {
+    return null;
+  }
+  return {
+    scheme: match[1],
+    auth: match[2],
+    host: match[3],
+    port: match[4],
+    path: match[5]
+  };
+}
+exports.urlParse = urlParse;
+
+function urlGenerate(aParsedUrl) {
+  var url = '';
+  if (aParsedUrl.scheme) {
+    url += aParsedUrl.scheme + ':';
+  }
+  url += '//';
+  if (aParsedUrl.auth) {
+    url += aParsedUrl.auth + '@';
+  }
+  if (aParsedUrl.host) {
+    url += aParsedUrl.host;
+  }
+  if (aParsedUrl.port) {
+    url += ":" + aParsedUrl.port;
+  }
+  if (aParsedUrl.path) {
+    url += aParsedUrl.path;
+  }
+  return url;
+}
+exports.urlGenerate = urlGenerate;
+
+/**
+ * Normalizes a path, or the path portion of a URL:
+ *
+ * - Replaces consecutive slashes with one slash.
+ * - Removes unnecessary '.' parts.
+ * - Removes unnecessary '<dir>/..' parts.
+ *
+ * Based on code in the Node.js 'path' core module.
+ *
+ * @param aPath The path or url to normalize.
+ */
+function normalize(aPath) {
+  var path = aPath;
+  var url = urlParse(aPath);
+  if (url) {
+    if (!url.path) {
+      return aPath;
+    }
+    path = url.path;
+  }
+  var isAbsolute = exports.isAbsolute(path);
+
+  var parts = path.split(/\/+/);
+  for (var part, up = 0, i = parts.length - 1; i >= 0; i--) {
+    part = parts[i];
+    if (part === '.') {
+      parts.splice(i, 1);
+    } else if (part === '..') {
+      up++;
+    } else if (up > 0) {
+      if (part === '') {
+        // The first part is blank if the path is absolute. Trying to go
+        // above the root is a no-op. Therefore we can remove all '..' parts
+        // directly after the root.
+        parts.splice(i + 1, up);
+        up = 0;
+      } else {
+        parts.splice(i, 2);
+        up--;
+      }
+    }
+  }
+  path = parts.join('/');
+
+  if (path === '') {
+    path = isAbsolute ? '/' : '.';
+  }
+
+  if (url) {
+    url.path = path;
+    return urlGenerate(url);
+  }
+  return path;
+}
+exports.normalize = normalize;
+
+/**
+ * Joins two paths/URLs.
+ *
+ * @param aRoot The root path or URL.
+ * @param aPath The path or URL to be joined with the root.
+ *
+ * - If aPath is a URL or a data URI, aPath is returned, unless aPath is a
+ *   scheme-relative URL: Then the scheme of aRoot, if any, is prepended
+ *   first.
+ * - Otherwise aPath is a path. If aRoot is a URL, then its path portion
+ *   is updated with the result and aRoot is returned. Otherwise the result
+ *   is returned.
+ *   - If aPath is absolute, the result is aPath.
+ *   - Otherwise the two paths are joined with a slash.
+ * - Joining for example 'http://' and 'www.example.com' is also supported.
+ */
+function join(aRoot, aPath) {
+  if (aRoot === "") {
+    aRoot = ".";
+  }
+  if (aPath === "") {
+    aPath = ".";
+  }
+  var aPathUrl = urlParse(aPath);
+  var aRootUrl = urlParse(aRoot);
+  if (aRootUrl) {
+    aRoot = aRootUrl.path || '/';
+  }
+
+  // `join(foo, '//www.example.org')`
+  if (aPathUrl && !aPathUrl.scheme) {
+    if (aRootUrl) {
+      aPathUrl.scheme = aRootUrl.scheme;
+    }
+    return urlGenerate(aPathUrl);
+  }
+
+  if (aPathUrl || aPath.match(dataUrlRegexp)) {
+    return aPath;
+  }
+
+  // `join('http://', 'www.example.com')`
+  if (aRootUrl && !aRootUrl.host && !aRootUrl.path) {
+    aRootUrl.host = aPath;
+    return urlGenerate(aRootUrl);
+  }
+
+  var joined = aPath.charAt(0) === '/'
+    ? aPath
+    : normalize(aRoot.replace(/\/+$/, '') + '/' + aPath);
+
+  if (aRootUrl) {
+    aRootUrl.path = joined;
+    return urlGenerate(aRootUrl);
+  }
+  return joined;
+}
+exports.join = join;
+
+exports.isAbsolute = function (aPath) {
+  return aPath.charAt(0) === '/' || urlRegexp.test(aPath);
+};
+
+/**
+ * Make a path relative to a URL or another path.
+ *
+ * @param aRoot The root path or URL.
+ * @param aPath The path or URL to be made relative to aRoot.
+ */
+function relative(aRoot, aPath) {
+  if (aRoot === "") {
+    aRoot = ".";
+  }
+
+  aRoot = aRoot.replace(/\/$/, '');
+
+  // It is possible for the path to be above the root. In this case, simply
+  // checking whether the root is a prefix of the path won't work. Instead, we
+  // need to remove components from the root one by one, until either we find
+  // a prefix that fits, or we run out of components to remove.
+  var level = 0;
+  while (aPath.indexOf(aRoot + '/') !== 0) {
+    var index = aRoot.lastIndexOf("/");
+    if (index < 0) {
+      return aPath;
+    }
+
+    // If the only part of the root that is left is the scheme (i.e. http://,
+    // file:///, etc.), one or more slashes (/), or simply nothing at all, we
+    // have exhausted all components, so the path is not relative to the root.
+    aRoot = aRoot.slice(0, index);
+    if (aRoot.match(/^([^\/]+:\/)?\/*$/)) {
+      return aPath;
+    }
+
+    ++level;
+  }
+
+  // Make sure we add a "../" for each component we removed from the root.
+  return Array(level + 1).join("../") + aPath.substr(aRoot.length + 1);
+}
+exports.relative = relative;
+
+var supportsNullProto = (function () {
+  var obj = Object.create(null);
+  return !('__proto__' in obj);
+}());
+
+function identity (s) {
+  return s;
+}
+
+/**
+ * Because behavior goes wacky when you set `__proto__` on objects, we
+ * have to prefix all the strings in our set with an arbitrary character.
+ *
+ * See https://github.com/mozilla/source-map/pull/31 and
+ * https://github.com/mozilla/source-map/issues/30
+ *
+ * @param String aStr
+ */
+function toSetString(aStr) {
+  if (isProtoString(aStr)) {
+    return '$' + aStr;
+  }
+
+  return aStr;
+}
+exports.toSetString = supportsNullProto ? identity : toSetString;
+
+function fromSetString(aStr) {
+  if (isProtoString(aStr)) {
+    return aStr.slice(1);
+  }
+
+  return aStr;
+}
+exports.fromSetString = supportsNullProto ? identity : fromSetString;
+
+function isProtoString(s) {
+  if (!s) {
+    return false;
+  }
+
+  var length = s.length;
+
+  if (length < 9 /* "__proto__".length */) {
+    return false;
+  }
+
+  if (s.charCodeAt(length - 1) !== 95  /* '_' */ ||
+      s.charCodeAt(length - 2) !== 95  /* '_' */ ||
+      s.charCodeAt(length - 3) !== 111 /* 'o' */ ||
+      s.charCodeAt(length - 4) !== 116 /* 't' */ ||
+      s.charCodeAt(length - 5) !== 111 /* 'o' */ ||
+      s.charCodeAt(length - 6) !== 114 /* 'r' */ ||
+      s.charCodeAt(length - 7) !== 112 /* 'p' */ ||
+      s.charCodeAt(length - 8) !== 95  /* '_' */ ||
+      s.charCodeAt(length - 9) !== 95  /* '_' */) {
+    return false;
+  }
+
+  for (var i = length - 10; i >= 0; i--) {
+    if (s.charCodeAt(i) !== 36 /* '$' */) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Comparator between two mappings where the original positions are compared.
+ *
+ * Optionally pass in `true` as `onlyCompareGenerated` to consider two
+ * mappings with the same original source/line/column, but different generated
+ * line and column the same. Useful when searching for a mapping with a
+ * stubbed out mapping.
+ */
+function compareByOriginalPositions(mappingA, mappingB, onlyCompareOriginal) {
+  var cmp = strcmp(mappingA.source, mappingB.source);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = mappingA.originalLine - mappingB.originalLine;
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = mappingA.originalColumn - mappingB.originalColumn;
+  if (cmp !== 0 || onlyCompareOriginal) {
+    return cmp;
+  }
+
+  cmp = mappingA.generatedColumn - mappingB.generatedColumn;
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = mappingA.generatedLine - mappingB.generatedLine;
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  return strcmp(mappingA.name, mappingB.name);
+}
+exports.compareByOriginalPositions = compareByOriginalPositions;
+
+/**
+ * Comparator between two mappings with deflated source and name indices where
+ * the generated positions are compared.
+ *
+ * Optionally pass in `true` as `onlyCompareGenerated` to consider two
+ * mappings with the same generated line and column, but different
+ * source/name/original line and column the same. Useful when searching for a
+ * mapping with a stubbed out mapping.
+ */
+function compareByGeneratedPositionsDeflated(mappingA, mappingB, onlyCompareGenerated) {
+  var cmp = mappingA.generatedLine - mappingB.generatedLine;
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = mappingA.generatedColumn - mappingB.generatedColumn;
+  if (cmp !== 0 || onlyCompareGenerated) {
+    return cmp;
+  }
+
+  cmp = strcmp(mappingA.source, mappingB.source);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = mappingA.originalLine - mappingB.originalLine;
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = mappingA.originalColumn - mappingB.originalColumn;
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  return strcmp(mappingA.name, mappingB.name);
+}
+exports.compareByGeneratedPositionsDeflated = compareByGeneratedPositionsDeflated;
+
+function strcmp(aStr1, aStr2) {
+  if (aStr1 === aStr2) {
+    return 0;
+  }
+
+  if (aStr1 === null) {
+    return 1; // aStr2 !== null
+  }
+
+  if (aStr2 === null) {
+    return -1; // aStr1 !== null
+  }
+
+  if (aStr1 > aStr2) {
+    return 1;
+  }
+
+  return -1;
+}
+
+/**
+ * Comparator between two mappings with inflated source and name strings where
+ * the generated positions are compared.
+ */
+function compareByGeneratedPositionsInflated(mappingA, mappingB) {
+  var cmp = mappingA.generatedLine - mappingB.generatedLine;
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = mappingA.generatedColumn - mappingB.generatedColumn;
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = strcmp(mappingA.source, mappingB.source);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = mappingA.originalLine - mappingB.originalLine;
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = mappingA.originalColumn - mappingB.originalColumn;
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  return strcmp(mappingA.name, mappingB.name);
+}
+exports.compareByGeneratedPositionsInflated = compareByGeneratedPositionsInflated;
+
+/**
+ * Strip any JSON XSSI avoidance prefix from the string (as documented
+ * in the source maps specification), and then parse the string as
+ * JSON.
+ */
+function parseSourceMapInput(str) {
+  return JSON.parse(str.replace(/^\)]}'[^\n]*\n/, ''));
+}
+exports.parseSourceMapInput = parseSourceMapInput;
+
+/**
+ * Compute the URL of a source given the the source root, the source's
+ * URL, and the source map's URL.
+ */
+function computeSourceURL(sourceRoot, sourceURL, sourceMapURL) {
+  sourceURL = sourceURL || '';
+
+  if (sourceRoot) {
+    // This follows what Chrome does.
+    if (sourceRoot[sourceRoot.length - 1] !== '/' && sourceURL[0] !== '/') {
+      sourceRoot += '/';
+    }
+    // The spec says:
+    //   Line 4: An optional source root, useful for relocating source
+    //   files on a server or removing repeated values in the
+    //   “sources” entry.  This value is prepended to the individual
+    //   entries in the “source” field.
+    sourceURL = sourceRoot + sourceURL;
+  }
+
+  // Historically, SourceMapConsumer did not take the sourceMapURL as
+  // a parameter.  This mode is still somewhat supported, which is why
+  // this code block is conditional.  However, it's preferable to pass
+  // the source map URL to SourceMapConsumer, so that this function
+  // can implement the source URL resolution algorithm as outlined in
+  // the spec.  This block is basically the equivalent of:
+  //    new URL(sourceURL, sourceMapURL).toString()
+  // ... except it avoids using URL, which wasn't available in the
+  // older releases of node still supported by this library.
+  //
+  // The spec says:
+  //   If the sources are not absolute URLs after prepending of the
+  //   “sourceRoot”, the sources are resolved relative to the
+  //   SourceMap (like resolving script src in a html document).
+  if (sourceMapURL) {
+    var parsed = urlParse(sourceMapURL);
+    if (!parsed) {
+      throw new Error("sourceMapURL could not be parsed");
+    }
+    if (parsed.path) {
+      // Strip the last path component, but keep the "/".
+      var index = parsed.path.lastIndexOf('/');
+      if (index >= 0) {
+        parsed.path = parsed.path.substring(0, index + 1);
+      }
+    }
+    sourceURL = join(urlGenerate(parsed), sourceURL);
+  }
+
+  return normalize(sourceURL);
+}
+exports.computeSourceURL = computeSourceURL;
+}(util$5));
+
+var arraySet = {};
+
+/* -*- Mode: js; js-indent-level: 2; -*- */
+
+/*
+ * Copyright 2011 Mozilla Foundation and contributors
+ * Licensed under the New BSD license. See LICENSE or:
+ * http://opensource.org/licenses/BSD-3-Clause
+ */
+
+var util$4 = util$5;
+var has = Object.prototype.hasOwnProperty;
+var hasNativeMap = typeof Map !== "undefined";
+
+/**
+ * A data structure which is a combination of an array and a set. Adding a new
+ * member is O(1), testing for membership is O(1), and finding the index of an
+ * element is O(1). Removing elements from the set is not supported. Only
+ * strings are supported for membership.
+ */
+function ArraySet$2() {
+  this._array = [];
+  this._set = hasNativeMap ? new Map() : Object.create(null);
+}
+
+/**
+ * Static method for creating ArraySet instances from an existing array.
+ */
+ArraySet$2.fromArray = function ArraySet_fromArray(aArray, aAllowDuplicates) {
+  var set = new ArraySet$2();
+  for (var i = 0, len = aArray.length; i < len; i++) {
+    set.add(aArray[i], aAllowDuplicates);
+  }
+  return set;
+};
+
+/**
+ * Return how many unique items are in this ArraySet. If duplicates have been
+ * added, than those do not count towards the size.
+ *
+ * @returns Number
+ */
+ArraySet$2.prototype.size = function ArraySet_size() {
+  return hasNativeMap ? this._set.size : Object.getOwnPropertyNames(this._set).length;
+};
+
+/**
+ * Add the given string to this set.
+ *
+ * @param String aStr
+ */
+ArraySet$2.prototype.add = function ArraySet_add(aStr, aAllowDuplicates) {
+  var sStr = hasNativeMap ? aStr : util$4.toSetString(aStr);
+  var isDuplicate = hasNativeMap ? this.has(aStr) : has.call(this._set, sStr);
+  var idx = this._array.length;
+  if (!isDuplicate || aAllowDuplicates) {
+    this._array.push(aStr);
+  }
+  if (!isDuplicate) {
+    if (hasNativeMap) {
+      this._set.set(aStr, idx);
+    } else {
+      this._set[sStr] = idx;
+    }
+  }
+};
+
+/**
+ * Is the given string a member of this set?
+ *
+ * @param String aStr
+ */
+ArraySet$2.prototype.has = function ArraySet_has(aStr) {
+  if (hasNativeMap) {
+    return this._set.has(aStr);
+  } else {
+    var sStr = util$4.toSetString(aStr);
+    return has.call(this._set, sStr);
+  }
+};
+
+/**
+ * What is the index of the given string in the array?
+ *
+ * @param String aStr
+ */
+ArraySet$2.prototype.indexOf = function ArraySet_indexOf(aStr) {
+  if (hasNativeMap) {
+    var idx = this._set.get(aStr);
+    if (idx >= 0) {
+        return idx;
+    }
+  } else {
+    var sStr = util$4.toSetString(aStr);
+    if (has.call(this._set, sStr)) {
+      return this._set[sStr];
+    }
+  }
+
+  throw new Error('"' + aStr + '" is not in the set.');
+};
+
+/**
+ * What is the element at the given index?
+ *
+ * @param Number aIdx
+ */
+ArraySet$2.prototype.at = function ArraySet_at(aIdx) {
+  if (aIdx >= 0 && aIdx < this._array.length) {
+    return this._array[aIdx];
+  }
+  throw new Error('No element indexed by ' + aIdx);
+};
+
+/**
+ * Returns the array representation of this set (which has the proper indices
+ * indicated by indexOf). Note that this is a copy of the internal array used
+ * for storing the members so that no one can mess with internal state.
+ */
+ArraySet$2.prototype.toArray = function ArraySet_toArray() {
+  return this._array.slice();
+};
+
+arraySet.ArraySet = ArraySet$2;
+
+var mappingList = {};
+
+/* -*- Mode: js; js-indent-level: 2; -*- */
+
+/*
+ * Copyright 2014 Mozilla Foundation and contributors
+ * Licensed under the New BSD license. See LICENSE or:
+ * http://opensource.org/licenses/BSD-3-Clause
+ */
+
+var util$3 = util$5;
+
+/**
+ * Determine whether mappingB is after mappingA with respect to generated
+ * position.
+ */
+function generatedPositionAfter(mappingA, mappingB) {
+  // Optimized for most common case
+  var lineA = mappingA.generatedLine;
+  var lineB = mappingB.generatedLine;
+  var columnA = mappingA.generatedColumn;
+  var columnB = mappingB.generatedColumn;
+  return lineB > lineA || lineB == lineA && columnB >= columnA ||
+         util$3.compareByGeneratedPositionsInflated(mappingA, mappingB) <= 0;
+}
+
+/**
+ * A data structure to provide a sorted view of accumulated mappings in a
+ * performance conscious manner. It trades a neglibable overhead in general
+ * case for a large speedup in case of mappings being added in order.
+ */
+function MappingList$1() {
+  this._array = [];
+  this._sorted = true;
+  // Serves as infimum
+  this._last = {generatedLine: -1, generatedColumn: 0};
+}
+
+/**
+ * Iterate through internal items. This method takes the same arguments that
+ * `Array.prototype.forEach` takes.
+ *
+ * NOTE: The order of the mappings is NOT guaranteed.
+ */
+MappingList$1.prototype.unsortedForEach =
+  function MappingList_forEach(aCallback, aThisArg) {
+    this._array.forEach(aCallback, aThisArg);
+  };
+
+/**
+ * Add the given source mapping.
+ *
+ * @param Object aMapping
+ */
+MappingList$1.prototype.add = function MappingList_add(aMapping) {
+  if (generatedPositionAfter(this._last, aMapping)) {
+    this._last = aMapping;
+    this._array.push(aMapping);
+  } else {
+    this._sorted = false;
+    this._array.push(aMapping);
+  }
+};
+
+/**
+ * Returns the flat, sorted array of mappings. The mappings are sorted by
+ * generated position.
+ *
+ * WARNING: This method returns internal data without copying, for
+ * performance. The return value must NOT be mutated, and should be treated as
+ * an immutable borrow. If you want to take ownership, you must make your own
+ * copy.
+ */
+MappingList$1.prototype.toArray = function MappingList_toArray() {
+  if (!this._sorted) {
+    this._array.sort(util$3.compareByGeneratedPositionsInflated);
+    this._sorted = true;
+  }
+  return this._array;
+};
+
+mappingList.MappingList = MappingList$1;
+
+/* -*- Mode: js; js-indent-level: 2; -*- */
+
+/*
+ * Copyright 2011 Mozilla Foundation and contributors
+ * Licensed under the New BSD license. See LICENSE or:
+ * http://opensource.org/licenses/BSD-3-Clause
+ */
+
+var base64VLQ$1 = base64Vlq;
+var util$2 = util$5;
+var ArraySet$1 = arraySet.ArraySet;
+var MappingList = mappingList.MappingList;
+
+/**
+ * An instance of the SourceMapGenerator represents a source map which is
+ * being built incrementally. You may pass an object with the following
+ * properties:
+ *
+ *   - file: The filename of the generated source.
+ *   - sourceRoot: A root for all relative URLs in this source map.
+ */
+function SourceMapGenerator$1(aArgs) {
+  if (!aArgs) {
+    aArgs = {};
+  }
+  this._file = util$2.getArg(aArgs, 'file', null);
+  this._sourceRoot = util$2.getArg(aArgs, 'sourceRoot', null);
+  this._skipValidation = util$2.getArg(aArgs, 'skipValidation', false);
+  this._sources = new ArraySet$1();
+  this._names = new ArraySet$1();
+  this._mappings = new MappingList();
+  this._sourcesContents = null;
+}
+
+SourceMapGenerator$1.prototype._version = 3;
+
+/**
+ * Creates a new SourceMapGenerator based on a SourceMapConsumer
+ *
+ * @param aSourceMapConsumer The SourceMap.
+ */
+SourceMapGenerator$1.fromSourceMap =
+  function SourceMapGenerator_fromSourceMap(aSourceMapConsumer) {
+    var sourceRoot = aSourceMapConsumer.sourceRoot;
+    var generator = new SourceMapGenerator$1({
+      file: aSourceMapConsumer.file,
+      sourceRoot: sourceRoot
+    });
+    aSourceMapConsumer.eachMapping(function (mapping) {
+      var newMapping = {
+        generated: {
+          line: mapping.generatedLine,
+          column: mapping.generatedColumn
+        }
+      };
+
+      if (mapping.source != null) {
+        newMapping.source = mapping.source;
+        if (sourceRoot != null) {
+          newMapping.source = util$2.relative(sourceRoot, newMapping.source);
+        }
+
+        newMapping.original = {
+          line: mapping.originalLine,
+          column: mapping.originalColumn
+        };
+
+        if (mapping.name != null) {
+          newMapping.name = mapping.name;
+        }
+      }
+
+      generator.addMapping(newMapping);
+    });
+    aSourceMapConsumer.sources.forEach(function (sourceFile) {
+      var sourceRelative = sourceFile;
+      if (sourceRoot !== null) {
+        sourceRelative = util$2.relative(sourceRoot, sourceFile);
+      }
+
+      if (!generator._sources.has(sourceRelative)) {
+        generator._sources.add(sourceRelative);
+      }
+
+      var content = aSourceMapConsumer.sourceContentFor(sourceFile);
+      if (content != null) {
+        generator.setSourceContent(sourceFile, content);
+      }
+    });
+    return generator;
+  };
+
+/**
+ * Add a single mapping from original source line and column to the generated
+ * source's line and column for this source map being created. The mapping
+ * object should have the following properties:
+ *
+ *   - generated: An object with the generated line and column positions.
+ *   - original: An object with the original line and column positions.
+ *   - source: The original source file (relative to the sourceRoot).
+ *   - name: An optional original token name for this mapping.
+ */
+SourceMapGenerator$1.prototype.addMapping =
+  function SourceMapGenerator_addMapping(aArgs) {
+    var generated = util$2.getArg(aArgs, 'generated');
+    var original = util$2.getArg(aArgs, 'original', null);
+    var source = util$2.getArg(aArgs, 'source', null);
+    var name = util$2.getArg(aArgs, 'name', null);
+
+    if (!this._skipValidation) {
+      this._validateMapping(generated, original, source, name);
+    }
+
+    if (source != null) {
+      source = String(source);
+      if (!this._sources.has(source)) {
+        this._sources.add(source);
+      }
+    }
+
+    if (name != null) {
+      name = String(name);
+      if (!this._names.has(name)) {
+        this._names.add(name);
+      }
+    }
+
+    this._mappings.add({
+      generatedLine: generated.line,
+      generatedColumn: generated.column,
+      originalLine: original != null && original.line,
+      originalColumn: original != null && original.column,
+      source: source,
+      name: name
+    });
+  };
+
+/**
+ * Set the source content for a source file.
+ */
+SourceMapGenerator$1.prototype.setSourceContent =
+  function SourceMapGenerator_setSourceContent(aSourceFile, aSourceContent) {
+    var source = aSourceFile;
+    if (this._sourceRoot != null) {
+      source = util$2.relative(this._sourceRoot, source);
+    }
+
+    if (aSourceContent != null) {
+      // Add the source content to the _sourcesContents map.
+      // Create a new _sourcesContents map if the property is null.
+      if (!this._sourcesContents) {
+        this._sourcesContents = Object.create(null);
+      }
+      this._sourcesContents[util$2.toSetString(source)] = aSourceContent;
+    } else if (this._sourcesContents) {
+      // Remove the source file from the _sourcesContents map.
+      // If the _sourcesContents map is empty, set the property to null.
+      delete this._sourcesContents[util$2.toSetString(source)];
+      if (Object.keys(this._sourcesContents).length === 0) {
+        this._sourcesContents = null;
+      }
+    }
+  };
+
+/**
+ * Applies the mappings of a sub-source-map for a specific source file to the
+ * source map being generated. Each mapping to the supplied source file is
+ * rewritten using the supplied source map. Note: The resolution for the
+ * resulting mappings is the minimium of this map and the supplied map.
+ *
+ * @param aSourceMapConsumer The source map to be applied.
+ * @param aSourceFile Optional. The filename of the source file.
+ *        If omitted, SourceMapConsumer's file property will be used.
+ * @param aSourceMapPath Optional. The dirname of the path to the source map
+ *        to be applied. If relative, it is relative to the SourceMapConsumer.
+ *        This parameter is needed when the two source maps aren't in the same
+ *        directory, and the source map to be applied contains relative source
+ *        paths. If so, those relative source paths need to be rewritten
+ *        relative to the SourceMapGenerator.
+ */
+SourceMapGenerator$1.prototype.applySourceMap =
+  function SourceMapGenerator_applySourceMap(aSourceMapConsumer, aSourceFile, aSourceMapPath) {
+    var sourceFile = aSourceFile;
+    // If aSourceFile is omitted, we will use the file property of the SourceMap
+    if (aSourceFile == null) {
+      if (aSourceMapConsumer.file == null) {
+        throw new Error(
+          'SourceMapGenerator.prototype.applySourceMap requires either an explicit source file, ' +
+          'or the source map\'s "file" property. Both were omitted.'
+        );
+      }
+      sourceFile = aSourceMapConsumer.file;
+    }
+    var sourceRoot = this._sourceRoot;
+    // Make "sourceFile" relative if an absolute Url is passed.
+    if (sourceRoot != null) {
+      sourceFile = util$2.relative(sourceRoot, sourceFile);
+    }
+    // Applying the SourceMap can add and remove items from the sources and
+    // the names array.
+    var newSources = new ArraySet$1();
+    var newNames = new ArraySet$1();
+
+    // Find mappings for the "sourceFile"
+    this._mappings.unsortedForEach(function (mapping) {
+      if (mapping.source === sourceFile && mapping.originalLine != null) {
+        // Check if it can be mapped by the source map, then update the mapping.
+        var original = aSourceMapConsumer.originalPositionFor({
+          line: mapping.originalLine,
+          column: mapping.originalColumn
+        });
+        if (original.source != null) {
+          // Copy mapping
+          mapping.source = original.source;
+          if (aSourceMapPath != null) {
+            mapping.source = util$2.join(aSourceMapPath, mapping.source);
+          }
+          if (sourceRoot != null) {
+            mapping.source = util$2.relative(sourceRoot, mapping.source);
+          }
+          mapping.originalLine = original.line;
+          mapping.originalColumn = original.column;
+          if (original.name != null) {
+            mapping.name = original.name;
+          }
+        }
+      }
+
+      var source = mapping.source;
+      if (source != null && !newSources.has(source)) {
+        newSources.add(source);
+      }
+
+      var name = mapping.name;
+      if (name != null && !newNames.has(name)) {
+        newNames.add(name);
+      }
+
+    }, this);
+    this._sources = newSources;
+    this._names = newNames;
+
+    // Copy sourcesContents of applied map.
+    aSourceMapConsumer.sources.forEach(function (sourceFile) {
+      var content = aSourceMapConsumer.sourceContentFor(sourceFile);
+      if (content != null) {
+        if (aSourceMapPath != null) {
+          sourceFile = util$2.join(aSourceMapPath, sourceFile);
+        }
+        if (sourceRoot != null) {
+          sourceFile = util$2.relative(sourceRoot, sourceFile);
+        }
+        this.setSourceContent(sourceFile, content);
+      }
+    }, this);
+  };
+
+/**
+ * A mapping can have one of the three levels of data:
+ *
+ *   1. Just the generated position.
+ *   2. The Generated position, original position, and original source.
+ *   3. Generated and original position, original source, as well as a name
+ *      token.
+ *
+ * To maintain consistency, we validate that any new mapping being added falls
+ * in to one of these categories.
+ */
+SourceMapGenerator$1.prototype._validateMapping =
+  function SourceMapGenerator_validateMapping(aGenerated, aOriginal, aSource,
+                                              aName) {
+    // When aOriginal is truthy but has empty values for .line and .column,
+    // it is most likely a programmer error. In this case we throw a very
+    // specific error message to try to guide them the right way.
+    // For example: https://github.com/Polymer/polymer-bundler/pull/519
+    if (aOriginal && typeof aOriginal.line !== 'number' && typeof aOriginal.column !== 'number') {
+        throw new Error(
+            'original.line and original.column are not numbers -- you probably meant to omit ' +
+            'the original mapping entirely and only map the generated position. If so, pass ' +
+            'null for the original mapping instead of an object with empty or null values.'
+        );
+    }
+
+    if (aGenerated && 'line' in aGenerated && 'column' in aGenerated
+        && aGenerated.line > 0 && aGenerated.column >= 0
+        && !aOriginal && !aSource && !aName) {
+      // Case 1.
+      return;
+    }
+    else if (aGenerated && 'line' in aGenerated && 'column' in aGenerated
+             && aOriginal && 'line' in aOriginal && 'column' in aOriginal
+             && aGenerated.line > 0 && aGenerated.column >= 0
+             && aOriginal.line > 0 && aOriginal.column >= 0
+             && aSource) {
+      // Cases 2 and 3.
+      return;
+    }
+    else {
+      throw new Error('Invalid mapping: ' + JSON.stringify({
+        generated: aGenerated,
+        source: aSource,
+        original: aOriginal,
+        name: aName
+      }));
+    }
+  };
+
+/**
+ * Serialize the accumulated mappings in to the stream of base 64 VLQs
+ * specified by the source map format.
+ */
+SourceMapGenerator$1.prototype._serializeMappings =
+  function SourceMapGenerator_serializeMappings() {
+    var previousGeneratedColumn = 0;
+    var previousGeneratedLine = 1;
+    var previousOriginalColumn = 0;
+    var previousOriginalLine = 0;
+    var previousName = 0;
+    var previousSource = 0;
+    var result = '';
+    var next;
+    var mapping;
+    var nameIdx;
+    var sourceIdx;
+
+    var mappings = this._mappings.toArray();
+    for (var i = 0, len = mappings.length; i < len; i++) {
+      mapping = mappings[i];
+      next = '';
+
+      if (mapping.generatedLine !== previousGeneratedLine) {
+        previousGeneratedColumn = 0;
+        while (mapping.generatedLine !== previousGeneratedLine) {
+          next += ';';
+          previousGeneratedLine++;
+        }
+      }
+      else {
+        if (i > 0) {
+          if (!util$2.compareByGeneratedPositionsInflated(mapping, mappings[i - 1])) {
+            continue;
+          }
+          next += ',';
+        }
+      }
+
+      next += base64VLQ$1.encode(mapping.generatedColumn
+                                 - previousGeneratedColumn);
+      previousGeneratedColumn = mapping.generatedColumn;
+
+      if (mapping.source != null) {
+        sourceIdx = this._sources.indexOf(mapping.source);
+        next += base64VLQ$1.encode(sourceIdx - previousSource);
+        previousSource = sourceIdx;
+
+        // lines are stored 0-based in SourceMap spec version 3
+        next += base64VLQ$1.encode(mapping.originalLine - 1
+                                   - previousOriginalLine);
+        previousOriginalLine = mapping.originalLine - 1;
+
+        next += base64VLQ$1.encode(mapping.originalColumn
+                                   - previousOriginalColumn);
+        previousOriginalColumn = mapping.originalColumn;
+
+        if (mapping.name != null) {
+          nameIdx = this._names.indexOf(mapping.name);
+          next += base64VLQ$1.encode(nameIdx - previousName);
+          previousName = nameIdx;
+        }
+      }
+
+      result += next;
+    }
+
+    return result;
+  };
+
+SourceMapGenerator$1.prototype._generateSourcesContent =
+  function SourceMapGenerator_generateSourcesContent(aSources, aSourceRoot) {
+    return aSources.map(function (source) {
+      if (!this._sourcesContents) {
+        return null;
+      }
+      if (aSourceRoot != null) {
+        source = util$2.relative(aSourceRoot, source);
+      }
+      var key = util$2.toSetString(source);
+      return Object.prototype.hasOwnProperty.call(this._sourcesContents, key)
+        ? this._sourcesContents[key]
+        : null;
+    }, this);
+  };
+
+/**
+ * Externalize the source map.
+ */
+SourceMapGenerator$1.prototype.toJSON =
+  function SourceMapGenerator_toJSON() {
+    var map = {
+      version: this._version,
+      sources: this._sources.toArray(),
+      names: this._names.toArray(),
+      mappings: this._serializeMappings()
+    };
+    if (this._file != null) {
+      map.file = this._file;
+    }
+    if (this._sourceRoot != null) {
+      map.sourceRoot = this._sourceRoot;
+    }
+    if (this._sourcesContents) {
+      map.sourcesContent = this._generateSourcesContent(map.sources, map.sourceRoot);
+    }
+
+    return map;
+  };
+
+/**
+ * Render the source map being generated to a string.
+ */
+SourceMapGenerator$1.prototype.toString =
+  function SourceMapGenerator_toString() {
+    return JSON.stringify(this.toJSON());
+  };
+
+sourceMapGenerator.SourceMapGenerator = SourceMapGenerator$1;
+
+var sourceMapConsumer = {};
+
+var binarySearch$1 = {};
+
+/* -*- Mode: js; js-indent-level: 2; -*- */
+
+(function (exports) {
+/*
+ * Copyright 2011 Mozilla Foundation and contributors
+ * Licensed under the New BSD license. See LICENSE or:
+ * http://opensource.org/licenses/BSD-3-Clause
+ */
+
+exports.GREATEST_LOWER_BOUND = 1;
+exports.LEAST_UPPER_BOUND = 2;
+
+/**
+ * Recursive implementation of binary search.
+ *
+ * @param aLow Indices here and lower do not contain the needle.
+ * @param aHigh Indices here and higher do not contain the needle.
+ * @param aNeedle The element being searched for.
+ * @param aHaystack The non-empty array being searched.
+ * @param aCompare Function which takes two elements and returns -1, 0, or 1.
+ * @param aBias Either 'binarySearch.GREATEST_LOWER_BOUND' or
+ *     'binarySearch.LEAST_UPPER_BOUND'. Specifies whether to return the
+ *     closest element that is smaller than or greater than the one we are
+ *     searching for, respectively, if the exact element cannot be found.
+ */
+function recursiveSearch(aLow, aHigh, aNeedle, aHaystack, aCompare, aBias) {
+  // This function terminates when one of the following is true:
+  //
+  //   1. We find the exact element we are looking for.
+  //
+  //   2. We did not find the exact element, but we can return the index of
+  //      the next-closest element.
+  //
+  //   3. We did not find the exact element, and there is no next-closest
+  //      element than the one we are searching for, so we return -1.
+  var mid = Math.floor((aHigh - aLow) / 2) + aLow;
+  var cmp = aCompare(aNeedle, aHaystack[mid], true);
+  if (cmp === 0) {
+    // Found the element we are looking for.
+    return mid;
+  }
+  else if (cmp > 0) {
+    // Our needle is greater than aHaystack[mid].
+    if (aHigh - mid > 1) {
+      // The element is in the upper half.
+      return recursiveSearch(mid, aHigh, aNeedle, aHaystack, aCompare, aBias);
+    }
+
+    // The exact needle element was not found in this haystack. Determine if
+    // we are in termination case (3) or (2) and return the appropriate thing.
+    if (aBias == exports.LEAST_UPPER_BOUND) {
+      return aHigh < aHaystack.length ? aHigh : -1;
+    } else {
+      return mid;
+    }
+  }
+  else {
+    // Our needle is less than aHaystack[mid].
+    if (mid - aLow > 1) {
+      // The element is in the lower half.
+      return recursiveSearch(aLow, mid, aNeedle, aHaystack, aCompare, aBias);
+    }
+
+    // we are in termination case (3) or (2) and return the appropriate thing.
+    if (aBias == exports.LEAST_UPPER_BOUND) {
+      return mid;
+    } else {
+      return aLow < 0 ? -1 : aLow;
+    }
+  }
+}
+
+/**
+ * This is an implementation of binary search which will always try and return
+ * the index of the closest element if there is no exact hit. This is because
+ * mappings between original and generated line/col pairs are single points,
+ * and there is an implicit region between each of them, so a miss just means
+ * that you aren't on the very start of a region.
+ *
+ * @param aNeedle The element you are looking for.
+ * @param aHaystack The array that is being searched.
+ * @param aCompare A function which takes the needle and an element in the
+ *     array and returns -1, 0, or 1 depending on whether the needle is less
+ *     than, equal to, or greater than the element, respectively.
+ * @param aBias Either 'binarySearch.GREATEST_LOWER_BOUND' or
+ *     'binarySearch.LEAST_UPPER_BOUND'. Specifies whether to return the
+ *     closest element that is smaller than or greater than the one we are
+ *     searching for, respectively, if the exact element cannot be found.
+ *     Defaults to 'binarySearch.GREATEST_LOWER_BOUND'.
+ */
+exports.search = function search(aNeedle, aHaystack, aCompare, aBias) {
+  if (aHaystack.length === 0) {
+    return -1;
+  }
+
+  var index = recursiveSearch(-1, aHaystack.length, aNeedle, aHaystack,
+                              aCompare, aBias || exports.GREATEST_LOWER_BOUND);
+  if (index < 0) {
+    return -1;
+  }
+
+  // We have found either the exact element, or the next-closest element than
+  // the one we are searching for. However, there may be more than one such
+  // element. Make sure we always return the smallest of these.
+  while (index - 1 >= 0) {
+    if (aCompare(aHaystack[index], aHaystack[index - 1], true) !== 0) {
+      break;
+    }
+    --index;
+  }
+
+  return index;
+};
+}(binarySearch$1));
+
+var quickSort$1 = {};
+
+/* -*- Mode: js; js-indent-level: 2; -*- */
+
+/*
+ * Copyright 2011 Mozilla Foundation and contributors
+ * Licensed under the New BSD license. See LICENSE or:
+ * http://opensource.org/licenses/BSD-3-Clause
+ */
+
+// It turns out that some (most?) JavaScript engines don't self-host
+// `Array.prototype.sort`. This makes sense because C++ will likely remain
+// faster than JS when doing raw CPU-intensive sorting. However, when using a
+// custom comparator function, calling back and forth between the VM's C++ and
+// JIT'd JS is rather slow *and* loses JIT type information, resulting in
+// worse generated code for the comparator function than would be optimal. In
+// fact, when sorting with a comparator, these costs outweigh the benefits of
+// sorting in C++. By using our own JS-implemented Quick Sort (below), we get
+// a ~3500ms mean speed-up in `bench/bench.html`.
+
+/**
+ * Swap the elements indexed by `x` and `y` in the array `ary`.
+ *
+ * @param {Array} ary
+ *        The array.
+ * @param {Number} x
+ *        The index of the first item.
+ * @param {Number} y
+ *        The index of the second item.
+ */
+function swap(ary, x, y) {
+  var temp = ary[x];
+  ary[x] = ary[y];
+  ary[y] = temp;
+}
+
+/**
+ * Returns a random integer within the range `low .. high` inclusive.
+ *
+ * @param {Number} low
+ *        The lower bound on the range.
+ * @param {Number} high
+ *        The upper bound on the range.
+ */
+function randomIntInRange(low, high) {
+  return Math.round(low + (Math.random() * (high - low)));
+}
+
+/**
+ * The Quick Sort algorithm.
+ *
+ * @param {Array} ary
+ *        An array to sort.
+ * @param {function} comparator
+ *        Function to use to compare two items.
+ * @param {Number} p
+ *        Start index of the array
+ * @param {Number} r
+ *        End index of the array
+ */
+function doQuickSort(ary, comparator, p, r) {
+  // If our lower bound is less than our upper bound, we (1) partition the
+  // array into two pieces and (2) recurse on each half. If it is not, this is
+  // the empty array and our base case.
+
+  if (p < r) {
+    // (1) Partitioning.
+    //
+    // The partitioning chooses a pivot between `p` and `r` and moves all
+    // elements that are less than or equal to the pivot to the before it, and
+    // all the elements that are greater than it after it. The effect is that
+    // once partition is done, the pivot is in the exact place it will be when
+    // the array is put in sorted order, and it will not need to be moved
+    // again. This runs in O(n) time.
+
+    // Always choose a random pivot so that an input array which is reverse
+    // sorted does not cause O(n^2) running time.
+    var pivotIndex = randomIntInRange(p, r);
+    var i = p - 1;
+
+    swap(ary, pivotIndex, r);
+    var pivot = ary[r];
+
+    // Immediately after `j` is incremented in this loop, the following hold
+    // true:
+    //
+    //   * Every element in `ary[p .. i]` is less than or equal to the pivot.
+    //
+    //   * Every element in `ary[i+1 .. j-1]` is greater than the pivot.
+    for (var j = p; j < r; j++) {
+      if (comparator(ary[j], pivot) <= 0) {
+        i += 1;
+        swap(ary, i, j);
+      }
+    }
+
+    swap(ary, i + 1, j);
+    var q = i + 1;
+
+    // (2) Recurse on each half.
+
+    doQuickSort(ary, comparator, p, q - 1);
+    doQuickSort(ary, comparator, q + 1, r);
+  }
+}
+
+/**
+ * Sort the given array in-place with the given comparator function.
+ *
+ * @param {Array} ary
+ *        An array to sort.
+ * @param {function} comparator
+ *        Function to use to compare two items.
+ */
+quickSort$1.quickSort = function (ary, comparator) {
+  doQuickSort(ary, comparator, 0, ary.length - 1);
+};
+
+/* -*- Mode: js; js-indent-level: 2; -*- */
+
+/*
+ * Copyright 2011 Mozilla Foundation and contributors
+ * Licensed under the New BSD license. See LICENSE or:
+ * http://opensource.org/licenses/BSD-3-Clause
+ */
+
+var util$1 = util$5;
+var binarySearch = binarySearch$1;
+var ArraySet = arraySet.ArraySet;
+var base64VLQ = base64Vlq;
+var quickSort = quickSort$1.quickSort;
+
+function SourceMapConsumer$1(aSourceMap, aSourceMapURL) {
+  var sourceMap = aSourceMap;
+  if (typeof aSourceMap === 'string') {
+    sourceMap = util$1.parseSourceMapInput(aSourceMap);
+  }
+
+  return sourceMap.sections != null
+    ? new IndexedSourceMapConsumer(sourceMap, aSourceMapURL)
+    : new BasicSourceMapConsumer(sourceMap, aSourceMapURL);
+}
+
+SourceMapConsumer$1.fromSourceMap = function(aSourceMap, aSourceMapURL) {
+  return BasicSourceMapConsumer.fromSourceMap(aSourceMap, aSourceMapURL);
+};
+
+/**
+ * The version of the source mapping spec that we are consuming.
+ */
+SourceMapConsumer$1.prototype._version = 3;
+
+// `__generatedMappings` and `__originalMappings` are arrays that hold the
+// parsed mapping coordinates from the source map's "mappings" attribute. They
+// are lazily instantiated, accessed via the `_generatedMappings` and
+// `_originalMappings` getters respectively, and we only parse the mappings
+// and create these arrays once queried for a source location. We jump through
+// these hoops because there can be many thousands of mappings, and parsing
+// them is expensive, so we only want to do it if we must.
+//
+// Each object in the arrays is of the form:
+//
+//     {
+//       generatedLine: The line number in the generated code,
+//       generatedColumn: The column number in the generated code,
+//       source: The path to the original source file that generated this
+//               chunk of code,
+//       originalLine: The line number in the original source that
+//                     corresponds to this chunk of generated code,
+//       originalColumn: The column number in the original source that
+//                       corresponds to this chunk of generated code,
+//       name: The name of the original symbol which generated this chunk of
+//             code.
+//     }
+//
+// All properties except for `generatedLine` and `generatedColumn` can be
+// `null`.
+//
+// `_generatedMappings` is ordered by the generated positions.
+//
+// `_originalMappings` is ordered by the original positions.
+
+SourceMapConsumer$1.prototype.__generatedMappings = null;
+Object.defineProperty(SourceMapConsumer$1.prototype, '_generatedMappings', {
+  configurable: true,
+  enumerable: true,
+  get: function () {
+    if (!this.__generatedMappings) {
+      this._parseMappings(this._mappings, this.sourceRoot);
+    }
+
+    return this.__generatedMappings;
+  }
+});
+
+SourceMapConsumer$1.prototype.__originalMappings = null;
+Object.defineProperty(SourceMapConsumer$1.prototype, '_originalMappings', {
+  configurable: true,
+  enumerable: true,
+  get: function () {
+    if (!this.__originalMappings) {
+      this._parseMappings(this._mappings, this.sourceRoot);
+    }
+
+    return this.__originalMappings;
+  }
+});
+
+SourceMapConsumer$1.prototype._charIsMappingSeparator =
+  function SourceMapConsumer_charIsMappingSeparator(aStr, index) {
+    var c = aStr.charAt(index);
+    return c === ";" || c === ",";
+  };
+
+/**
+ * Parse the mappings in a string in to a data structure which we can easily
+ * query (the ordered arrays in the `this.__generatedMappings` and
+ * `this.__originalMappings` properties).
+ */
+SourceMapConsumer$1.prototype._parseMappings =
+  function SourceMapConsumer_parseMappings(aStr, aSourceRoot) {
+    throw new Error("Subclasses must implement _parseMappings");
+  };
+
+SourceMapConsumer$1.GENERATED_ORDER = 1;
+SourceMapConsumer$1.ORIGINAL_ORDER = 2;
+
+SourceMapConsumer$1.GREATEST_LOWER_BOUND = 1;
+SourceMapConsumer$1.LEAST_UPPER_BOUND = 2;
+
+/**
+ * Iterate over each mapping between an original source/line/column and a
+ * generated line/column in this source map.
+ *
+ * @param Function aCallback
+ *        The function that is called with each mapping.
+ * @param Object aContext
+ *        Optional. If specified, this object will be the value of `this` every
+ *        time that `aCallback` is called.
+ * @param aOrder
+ *        Either `SourceMapConsumer.GENERATED_ORDER` or
+ *        `SourceMapConsumer.ORIGINAL_ORDER`. Specifies whether you want to
+ *        iterate over the mappings sorted by the generated file's line/column
+ *        order or the original's source/line/column order, respectively. Defaults to
+ *        `SourceMapConsumer.GENERATED_ORDER`.
+ */
+SourceMapConsumer$1.prototype.eachMapping =
+  function SourceMapConsumer_eachMapping(aCallback, aContext, aOrder) {
+    var context = aContext || null;
+    var order = aOrder || SourceMapConsumer$1.GENERATED_ORDER;
+
+    var mappings;
+    switch (order) {
+    case SourceMapConsumer$1.GENERATED_ORDER:
+      mappings = this._generatedMappings;
+      break;
+    case SourceMapConsumer$1.ORIGINAL_ORDER:
+      mappings = this._originalMappings;
+      break;
+    default:
+      throw new Error("Unknown order of iteration.");
+    }
+
+    var sourceRoot = this.sourceRoot;
+    mappings.map(function (mapping) {
+      var source = mapping.source === null ? null : this._sources.at(mapping.source);
+      source = util$1.computeSourceURL(sourceRoot, source, this._sourceMapURL);
+      return {
+        source: source,
+        generatedLine: mapping.generatedLine,
+        generatedColumn: mapping.generatedColumn,
+        originalLine: mapping.originalLine,
+        originalColumn: mapping.originalColumn,
+        name: mapping.name === null ? null : this._names.at(mapping.name)
+      };
+    }, this).forEach(aCallback, context);
+  };
+
+/**
+ * Returns all generated line and column information for the original source,
+ * line, and column provided. If no column is provided, returns all mappings
+ * corresponding to a either the line we are searching for or the next
+ * closest line that has any mappings. Otherwise, returns all mappings
+ * corresponding to the given line and either the column we are searching for
+ * or the next closest column that has any offsets.
+ *
+ * The only argument is an object with the following properties:
+ *
+ *   - source: The filename of the original source.
+ *   - line: The line number in the original source.  The line number is 1-based.
+ *   - column: Optional. the column number in the original source.
+ *    The column number is 0-based.
+ *
+ * and an array of objects is returned, each with the following properties:
+ *
+ *   - line: The line number in the generated source, or null.  The
+ *    line number is 1-based.
+ *   - column: The column number in the generated source, or null.
+ *    The column number is 0-based.
+ */
+SourceMapConsumer$1.prototype.allGeneratedPositionsFor =
+  function SourceMapConsumer_allGeneratedPositionsFor(aArgs) {
+    var line = util$1.getArg(aArgs, 'line');
+
+    // When there is no exact match, BasicSourceMapConsumer.prototype._findMapping
+    // returns the index of the closest mapping less than the needle. By
+    // setting needle.originalColumn to 0, we thus find the last mapping for
+    // the given line, provided such a mapping exists.
+    var needle = {
+      source: util$1.getArg(aArgs, 'source'),
+      originalLine: line,
+      originalColumn: util$1.getArg(aArgs, 'column', 0)
+    };
+
+    needle.source = this._findSourceIndex(needle.source);
+    if (needle.source < 0) {
+      return [];
+    }
+
+    var mappings = [];
+
+    var index = this._findMapping(needle,
+                                  this._originalMappings,
+                                  "originalLine",
+                                  "originalColumn",
+                                  util$1.compareByOriginalPositions,
+                                  binarySearch.LEAST_UPPER_BOUND);
+    if (index >= 0) {
+      var mapping = this._originalMappings[index];
+
+      if (aArgs.column === undefined) {
+        var originalLine = mapping.originalLine;
+
+        // Iterate until either we run out of mappings, or we run into
+        // a mapping for a different line than the one we found. Since
+        // mappings are sorted, this is guaranteed to find all mappings for
+        // the line we found.
+        while (mapping && mapping.originalLine === originalLine) {
+          mappings.push({
+            line: util$1.getArg(mapping, 'generatedLine', null),
+            column: util$1.getArg(mapping, 'generatedColumn', null),
+            lastColumn: util$1.getArg(mapping, 'lastGeneratedColumn', null)
+          });
+
+          mapping = this._originalMappings[++index];
+        }
+      } else {
+        var originalColumn = mapping.originalColumn;
+
+        // Iterate until either we run out of mappings, or we run into
+        // a mapping for a different line than the one we were searching for.
+        // Since mappings are sorted, this is guaranteed to find all mappings for
+        // the line we are searching for.
+        while (mapping &&
+               mapping.originalLine === line &&
+               mapping.originalColumn == originalColumn) {
+          mappings.push({
+            line: util$1.getArg(mapping, 'generatedLine', null),
+            column: util$1.getArg(mapping, 'generatedColumn', null),
+            lastColumn: util$1.getArg(mapping, 'lastGeneratedColumn', null)
+          });
+
+          mapping = this._originalMappings[++index];
+        }
+      }
+    }
+
+    return mappings;
+  };
+
+sourceMapConsumer.SourceMapConsumer = SourceMapConsumer$1;
+
+/**
+ * A BasicSourceMapConsumer instance represents a parsed source map which we can
+ * query for information about the original file positions by giving it a file
+ * position in the generated source.
+ *
+ * The first parameter is the raw source map (either as a JSON string, or
+ * already parsed to an object). According to the spec, source maps have the
+ * following attributes:
+ *
+ *   - version: Which version of the source map spec this map is following.
+ *   - sources: An array of URLs to the original source files.
+ *   - names: An array of identifiers which can be referrenced by individual mappings.
+ *   - sourceRoot: Optional. The URL root from which all sources are relative.
+ *   - sourcesContent: Optional. An array of contents of the original source files.
+ *   - mappings: A string of base64 VLQs which contain the actual mappings.
+ *   - file: Optional. The generated file this source map is associated with.
+ *
+ * Here is an example source map, taken from the source map spec[0]:
+ *
+ *     {
+ *       version : 3,
+ *       file: "out.js",
+ *       sourceRoot : "",
+ *       sources: ["foo.js", "bar.js"],
+ *       names: ["src", "maps", "are", "fun"],
+ *       mappings: "AA,AB;;ABCDE;"
+ *     }
+ *
+ * The second parameter, if given, is a string whose value is the URL
+ * at which the source map was found.  This URL is used to compute the
+ * sources array.
+ *
+ * [0]: https://docs.google.com/document/d/1U1RGAehQwRypUTovF1KRlpiOFze0b-_2gc6fAH0KY0k/edit?pli=1#
+ */
+function BasicSourceMapConsumer(aSourceMap, aSourceMapURL) {
+  var sourceMap = aSourceMap;
+  if (typeof aSourceMap === 'string') {
+    sourceMap = util$1.parseSourceMapInput(aSourceMap);
+  }
+
+  var version = util$1.getArg(sourceMap, 'version');
+  var sources = util$1.getArg(sourceMap, 'sources');
+  // Sass 3.3 leaves out the 'names' array, so we deviate from the spec (which
+  // requires the array) to play nice here.
+  var names = util$1.getArg(sourceMap, 'names', []);
+  var sourceRoot = util$1.getArg(sourceMap, 'sourceRoot', null);
+  var sourcesContent = util$1.getArg(sourceMap, 'sourcesContent', null);
+  var mappings = util$1.getArg(sourceMap, 'mappings');
+  var file = util$1.getArg(sourceMap, 'file', null);
+
+  // Once again, Sass deviates from the spec and supplies the version as a
+  // string rather than a number, so we use loose equality checking here.
+  if (version != this._version) {
+    throw new Error('Unsupported version: ' + version);
+  }
+
+  if (sourceRoot) {
+    sourceRoot = util$1.normalize(sourceRoot);
+  }
+
+  sources = sources
+    .map(String)
+    // Some source maps produce relative source paths like "./foo.js" instead of
+    // "foo.js".  Normalize these first so that future comparisons will succeed.
+    // See bugzil.la/1090768.
+    .map(util$1.normalize)
+    // Always ensure that absolute sources are internally stored relative to
+    // the source root, if the source root is absolute. Not doing this would
+    // be particularly problematic when the source root is a prefix of the
+    // source (valid, but why??). See github issue #199 and bugzil.la/1188982.
+    .map(function (source) {
+      return sourceRoot && util$1.isAbsolute(sourceRoot) && util$1.isAbsolute(source)
+        ? util$1.relative(sourceRoot, source)
+        : source;
+    });
+
+  // Pass `true` below to allow duplicate names and sources. While source maps
+  // are intended to be compressed and deduplicated, the TypeScript compiler
+  // sometimes generates source maps with duplicates in them. See Github issue
+  // #72 and bugzil.la/889492.
+  this._names = ArraySet.fromArray(names.map(String), true);
+  this._sources = ArraySet.fromArray(sources, true);
+
+  this._absoluteSources = this._sources.toArray().map(function (s) {
+    return util$1.computeSourceURL(sourceRoot, s, aSourceMapURL);
+  });
+
+  this.sourceRoot = sourceRoot;
+  this.sourcesContent = sourcesContent;
+  this._mappings = mappings;
+  this._sourceMapURL = aSourceMapURL;
+  this.file = file;
+}
+
+BasicSourceMapConsumer.prototype = Object.create(SourceMapConsumer$1.prototype);
+BasicSourceMapConsumer.prototype.consumer = SourceMapConsumer$1;
+
+/**
+ * Utility function to find the index of a source.  Returns -1 if not
+ * found.
+ */
+BasicSourceMapConsumer.prototype._findSourceIndex = function(aSource) {
+  var relativeSource = aSource;
+  if (this.sourceRoot != null) {
+    relativeSource = util$1.relative(this.sourceRoot, relativeSource);
+  }
+
+  if (this._sources.has(relativeSource)) {
+    return this._sources.indexOf(relativeSource);
+  }
+
+  // Maybe aSource is an absolute URL as returned by |sources|.  In
+  // this case we can't simply undo the transform.
+  var i;
+  for (i = 0; i < this._absoluteSources.length; ++i) {
+    if (this._absoluteSources[i] == aSource) {
+      return i;
+    }
+  }
+
+  return -1;
+};
+
+/**
+ * Create a BasicSourceMapConsumer from a SourceMapGenerator.
+ *
+ * @param SourceMapGenerator aSourceMap
+ *        The source map that will be consumed.
+ * @param String aSourceMapURL
+ *        The URL at which the source map can be found (optional)
+ * @returns BasicSourceMapConsumer
+ */
+BasicSourceMapConsumer.fromSourceMap =
+  function SourceMapConsumer_fromSourceMap(aSourceMap, aSourceMapURL) {
+    var smc = Object.create(BasicSourceMapConsumer.prototype);
+
+    var names = smc._names = ArraySet.fromArray(aSourceMap._names.toArray(), true);
+    var sources = smc._sources = ArraySet.fromArray(aSourceMap._sources.toArray(), true);
+    smc.sourceRoot = aSourceMap._sourceRoot;
+    smc.sourcesContent = aSourceMap._generateSourcesContent(smc._sources.toArray(),
+                                                            smc.sourceRoot);
+    smc.file = aSourceMap._file;
+    smc._sourceMapURL = aSourceMapURL;
+    smc._absoluteSources = smc._sources.toArray().map(function (s) {
+      return util$1.computeSourceURL(smc.sourceRoot, s, aSourceMapURL);
+    });
+
+    // Because we are modifying the entries (by converting string sources and
+    // names to indices into the sources and names ArraySets), we have to make
+    // a copy of the entry or else bad things happen. Shared mutable state
+    // strikes again! See github issue #191.
+
+    var generatedMappings = aSourceMap._mappings.toArray().slice();
+    var destGeneratedMappings = smc.__generatedMappings = [];
+    var destOriginalMappings = smc.__originalMappings = [];
+
+    for (var i = 0, length = generatedMappings.length; i < length; i++) {
+      var srcMapping = generatedMappings[i];
+      var destMapping = new Mapping;
+      destMapping.generatedLine = srcMapping.generatedLine;
+      destMapping.generatedColumn = srcMapping.generatedColumn;
+
+      if (srcMapping.source) {
+        destMapping.source = sources.indexOf(srcMapping.source);
+        destMapping.originalLine = srcMapping.originalLine;
+        destMapping.originalColumn = srcMapping.originalColumn;
+
+        if (srcMapping.name) {
+          destMapping.name = names.indexOf(srcMapping.name);
+        }
+
+        destOriginalMappings.push(destMapping);
+      }
+
+      destGeneratedMappings.push(destMapping);
+    }
+
+    quickSort(smc.__originalMappings, util$1.compareByOriginalPositions);
+
+    return smc;
+  };
+
+/**
+ * The version of the source mapping spec that we are consuming.
+ */
+BasicSourceMapConsumer.prototype._version = 3;
+
+/**
+ * The list of original sources.
+ */
+Object.defineProperty(BasicSourceMapConsumer.prototype, 'sources', {
+  get: function () {
+    return this._absoluteSources.slice();
+  }
+});
+
+/**
+ * Provide the JIT with a nice shape / hidden class.
+ */
+function Mapping() {
+  this.generatedLine = 0;
+  this.generatedColumn = 0;
+  this.source = null;
+  this.originalLine = null;
+  this.originalColumn = null;
+  this.name = null;
+}
+
+/**
+ * Parse the mappings in a string in to a data structure which we can easily
+ * query (the ordered arrays in the `this.__generatedMappings` and
+ * `this.__originalMappings` properties).
+ */
+BasicSourceMapConsumer.prototype._parseMappings =
+  function SourceMapConsumer_parseMappings(aStr, aSourceRoot) {
+    var generatedLine = 1;
+    var previousGeneratedColumn = 0;
+    var previousOriginalLine = 0;
+    var previousOriginalColumn = 0;
+    var previousSource = 0;
+    var previousName = 0;
+    var length = aStr.length;
+    var index = 0;
+    var cachedSegments = {};
+    var temp = {};
+    var originalMappings = [];
+    var generatedMappings = [];
+    var mapping, str, segment, end, value;
+
+    while (index < length) {
+      if (aStr.charAt(index) === ';') {
+        generatedLine++;
+        index++;
+        previousGeneratedColumn = 0;
+      }
+      else if (aStr.charAt(index) === ',') {
+        index++;
+      }
+      else {
+        mapping = new Mapping();
+        mapping.generatedLine = generatedLine;
+
+        // Because each offset is encoded relative to the previous one,
+        // many segments often have the same encoding. We can exploit this
+        // fact by caching the parsed variable length fields of each segment,
+        // allowing us to avoid a second parse if we encounter the same
+        // segment again.
+        for (end = index; end < length; end++) {
+          if (this._charIsMappingSeparator(aStr, end)) {
+            break;
+          }
+        }
+        str = aStr.slice(index, end);
+
+        segment = cachedSegments[str];
+        if (segment) {
+          index += str.length;
+        } else {
+          segment = [];
+          while (index < end) {
+            base64VLQ.decode(aStr, index, temp);
+            value = temp.value;
+            index = temp.rest;
+            segment.push(value);
+          }
+
+          if (segment.length === 2) {
+            throw new Error('Found a source, but no line and column');
+          }
+
+          if (segment.length === 3) {
+            throw new Error('Found a source and line, but no column');
+          }
+
+          cachedSegments[str] = segment;
+        }
+
+        // Generated column.
+        mapping.generatedColumn = previousGeneratedColumn + segment[0];
+        previousGeneratedColumn = mapping.generatedColumn;
+
+        if (segment.length > 1) {
+          // Original source.
+          mapping.source = previousSource + segment[1];
+          previousSource += segment[1];
+
+          // Original line.
+          mapping.originalLine = previousOriginalLine + segment[2];
+          previousOriginalLine = mapping.originalLine;
+          // Lines are stored 0-based
+          mapping.originalLine += 1;
+
+          // Original column.
+          mapping.originalColumn = previousOriginalColumn + segment[3];
+          previousOriginalColumn = mapping.originalColumn;
+
+          if (segment.length > 4) {
+            // Original name.
+            mapping.name = previousName + segment[4];
+            previousName += segment[4];
+          }
+        }
+
+        generatedMappings.push(mapping);
+        if (typeof mapping.originalLine === 'number') {
+          originalMappings.push(mapping);
+        }
+      }
+    }
+
+    quickSort(generatedMappings, util$1.compareByGeneratedPositionsDeflated);
+    this.__generatedMappings = generatedMappings;
+
+    quickSort(originalMappings, util$1.compareByOriginalPositions);
+    this.__originalMappings = originalMappings;
+  };
+
+/**
+ * Find the mapping that best matches the hypothetical "needle" mapping that
+ * we are searching for in the given "haystack" of mappings.
+ */
+BasicSourceMapConsumer.prototype._findMapping =
+  function SourceMapConsumer_findMapping(aNeedle, aMappings, aLineName,
+                                         aColumnName, aComparator, aBias) {
+    // To return the position we are searching for, we must first find the
+    // mapping for the given position and then return the opposite position it
+    // points to. Because the mappings are sorted, we can use binary search to
+    // find the best mapping.
+
+    if (aNeedle[aLineName] <= 0) {
+      throw new TypeError('Line must be greater than or equal to 1, got '
+                          + aNeedle[aLineName]);
+    }
+    if (aNeedle[aColumnName] < 0) {
+      throw new TypeError('Column must be greater than or equal to 0, got '
+                          + aNeedle[aColumnName]);
+    }
+
+    return binarySearch.search(aNeedle, aMappings, aComparator, aBias);
+  };
+
+/**
+ * Compute the last column for each generated mapping. The last column is
+ * inclusive.
+ */
+BasicSourceMapConsumer.prototype.computeColumnSpans =
+  function SourceMapConsumer_computeColumnSpans() {
+    for (var index = 0; index < this._generatedMappings.length; ++index) {
+      var mapping = this._generatedMappings[index];
+
+      // Mappings do not contain a field for the last generated columnt. We
+      // can come up with an optimistic estimate, however, by assuming that
+      // mappings are contiguous (i.e. given two consecutive mappings, the
+      // first mapping ends where the second one starts).
+      if (index + 1 < this._generatedMappings.length) {
+        var nextMapping = this._generatedMappings[index + 1];
+
+        if (mapping.generatedLine === nextMapping.generatedLine) {
+          mapping.lastGeneratedColumn = nextMapping.generatedColumn - 1;
+          continue;
+        }
+      }
+
+      // The last mapping for each line spans the entire line.
+      mapping.lastGeneratedColumn = Infinity;
+    }
+  };
+
+/**
+ * Returns the original source, line, and column information for the generated
+ * source's line and column positions provided. The only argument is an object
+ * with the following properties:
+ *
+ *   - line: The line number in the generated source.  The line number
+ *     is 1-based.
+ *   - column: The column number in the generated source.  The column
+ *     number is 0-based.
+ *   - bias: Either 'SourceMapConsumer.GREATEST_LOWER_BOUND' or
+ *     'SourceMapConsumer.LEAST_UPPER_BOUND'. Specifies whether to return the
+ *     closest element that is smaller than or greater than the one we are
+ *     searching for, respectively, if the exact element cannot be found.
+ *     Defaults to 'SourceMapConsumer.GREATEST_LOWER_BOUND'.
+ *
+ * and an object is returned with the following properties:
+ *
+ *   - source: The original source file, or null.
+ *   - line: The line number in the original source, or null.  The
+ *     line number is 1-based.
+ *   - column: The column number in the original source, or null.  The
+ *     column number is 0-based.
+ *   - name: The original identifier, or null.
+ */
+BasicSourceMapConsumer.prototype.originalPositionFor =
+  function SourceMapConsumer_originalPositionFor(aArgs) {
+    var needle = {
+      generatedLine: util$1.getArg(aArgs, 'line'),
+      generatedColumn: util$1.getArg(aArgs, 'column')
+    };
+
+    var index = this._findMapping(
+      needle,
+      this._generatedMappings,
+      "generatedLine",
+      "generatedColumn",
+      util$1.compareByGeneratedPositionsDeflated,
+      util$1.getArg(aArgs, 'bias', SourceMapConsumer$1.GREATEST_LOWER_BOUND)
+    );
+
+    if (index >= 0) {
+      var mapping = this._generatedMappings[index];
+
+      if (mapping.generatedLine === needle.generatedLine) {
+        var source = util$1.getArg(mapping, 'source', null);
+        if (source !== null) {
+          source = this._sources.at(source);
+          source = util$1.computeSourceURL(this.sourceRoot, source, this._sourceMapURL);
+        }
+        var name = util$1.getArg(mapping, 'name', null);
+        if (name !== null) {
+          name = this._names.at(name);
+        }
+        return {
+          source: source,
+          line: util$1.getArg(mapping, 'originalLine', null),
+          column: util$1.getArg(mapping, 'originalColumn', null),
+          name: name
+        };
+      }
+    }
+
+    return {
+      source: null,
+      line: null,
+      column: null,
+      name: null
+    };
+  };
+
+/**
+ * Return true if we have the source content for every source in the source
+ * map, false otherwise.
+ */
+BasicSourceMapConsumer.prototype.hasContentsOfAllSources =
+  function BasicSourceMapConsumer_hasContentsOfAllSources() {
+    if (!this.sourcesContent) {
+      return false;
+    }
+    return this.sourcesContent.length >= this._sources.size() &&
+      !this.sourcesContent.some(function (sc) { return sc == null; });
+  };
+
+/**
+ * Returns the original source content. The only argument is the url of the
+ * original source file. Returns null if no original source content is
+ * available.
+ */
+BasicSourceMapConsumer.prototype.sourceContentFor =
+  function SourceMapConsumer_sourceContentFor(aSource, nullOnMissing) {
+    if (!this.sourcesContent) {
+      return null;
+    }
+
+    var index = this._findSourceIndex(aSource);
+    if (index >= 0) {
+      return this.sourcesContent[index];
+    }
+
+    var relativeSource = aSource;
+    if (this.sourceRoot != null) {
+      relativeSource = util$1.relative(this.sourceRoot, relativeSource);
+    }
+
+    var url;
+    if (this.sourceRoot != null
+        && (url = util$1.urlParse(this.sourceRoot))) {
+      // XXX: file:// URIs and absolute paths lead to unexpected behavior for
+      // many users. We can help them out when they expect file:// URIs to
+      // behave like it would if they were running a local HTTP server. See
+      // https://bugzilla.mozilla.org/show_bug.cgi?id=885597.
+      var fileUriAbsPath = relativeSource.replace(/^file:\/\//, "");
+      if (url.scheme == "file"
+          && this._sources.has(fileUriAbsPath)) {
+        return this.sourcesContent[this._sources.indexOf(fileUriAbsPath)]
+      }
+
+      if ((!url.path || url.path == "/")
+          && this._sources.has("/" + relativeSource)) {
+        return this.sourcesContent[this._sources.indexOf("/" + relativeSource)];
+      }
+    }
+
+    // This function is used recursively from
+    // IndexedSourceMapConsumer.prototype.sourceContentFor. In that case, we
+    // don't want to throw if we can't find the source - we just want to
+    // return null, so we provide a flag to exit gracefully.
+    if (nullOnMissing) {
+      return null;
+    }
+    else {
+      throw new Error('"' + relativeSource + '" is not in the SourceMap.');
+    }
+  };
+
+/**
+ * Returns the generated line and column information for the original source,
+ * line, and column positions provided. The only argument is an object with
+ * the following properties:
+ *
+ *   - source: The filename of the original source.
+ *   - line: The line number in the original source.  The line number
+ *     is 1-based.
+ *   - column: The column number in the original source.  The column
+ *     number is 0-based.
+ *   - bias: Either 'SourceMapConsumer.GREATEST_LOWER_BOUND' or
+ *     'SourceMapConsumer.LEAST_UPPER_BOUND'. Specifies whether to return the
+ *     closest element that is smaller than or greater than the one we are
+ *     searching for, respectively, if the exact element cannot be found.
+ *     Defaults to 'SourceMapConsumer.GREATEST_LOWER_BOUND'.
+ *
+ * and an object is returned with the following properties:
+ *
+ *   - line: The line number in the generated source, or null.  The
+ *     line number is 1-based.
+ *   - column: The column number in the generated source, or null.
+ *     The column number is 0-based.
+ */
+BasicSourceMapConsumer.prototype.generatedPositionFor =
+  function SourceMapConsumer_generatedPositionFor(aArgs) {
+    var source = util$1.getArg(aArgs, 'source');
+    source = this._findSourceIndex(source);
+    if (source < 0) {
+      return {
+        line: null,
+        column: null,
+        lastColumn: null
+      };
+    }
+
+    var needle = {
+      source: source,
+      originalLine: util$1.getArg(aArgs, 'line'),
+      originalColumn: util$1.getArg(aArgs, 'column')
+    };
+
+    var index = this._findMapping(
+      needle,
+      this._originalMappings,
+      "originalLine",
+      "originalColumn",
+      util$1.compareByOriginalPositions,
+      util$1.getArg(aArgs, 'bias', SourceMapConsumer$1.GREATEST_LOWER_BOUND)
+    );
+
+    if (index >= 0) {
+      var mapping = this._originalMappings[index];
+
+      if (mapping.source === needle.source) {
+        return {
+          line: util$1.getArg(mapping, 'generatedLine', null),
+          column: util$1.getArg(mapping, 'generatedColumn', null),
+          lastColumn: util$1.getArg(mapping, 'lastGeneratedColumn', null)
+        };
+      }
+    }
+
+    return {
+      line: null,
+      column: null,
+      lastColumn: null
+    };
+  };
+
+sourceMapConsumer.BasicSourceMapConsumer = BasicSourceMapConsumer;
+
+/**
+ * An IndexedSourceMapConsumer instance represents a parsed source map which
+ * we can query for information. It differs from BasicSourceMapConsumer in
+ * that it takes "indexed" source maps (i.e. ones with a "sections" field) as
+ * input.
+ *
+ * The first parameter is a raw source map (either as a JSON string, or already
+ * parsed to an object). According to the spec for indexed source maps, they
+ * have the following attributes:
+ *
+ *   - version: Which version of the source map spec this map is following.
+ *   - file: Optional. The generated file this source map is associated with.
+ *   - sections: A list of section definitions.
+ *
+ * Each value under the "sections" field has two fields:
+ *   - offset: The offset into the original specified at which this section
+ *       begins to apply, defined as an object with a "line" and "column"
+ *       field.
+ *   - map: A source map definition. This source map could also be indexed,
+ *       but doesn't have to be.
+ *
+ * Instead of the "map" field, it's also possible to have a "url" field
+ * specifying a URL to retrieve a source map from, but that's currently
+ * unsupported.
+ *
+ * Here's an example source map, taken from the source map spec[0], but
+ * modified to omit a section which uses the "url" field.
+ *
+ *  {
+ *    version : 3,
+ *    file: "app.js",
+ *    sections: [{
+ *      offset: {line:100, column:10},
+ *      map: {
+ *        version : 3,
+ *        file: "section.js",
+ *        sources: ["foo.js", "bar.js"],
+ *        names: ["src", "maps", "are", "fun"],
+ *        mappings: "AAAA,E;;ABCDE;"
+ *      }
+ *    }],
+ *  }
+ *
+ * The second parameter, if given, is a string whose value is the URL
+ * at which the source map was found.  This URL is used to compute the
+ * sources array.
+ *
+ * [0]: https://docs.google.com/document/d/1U1RGAehQwRypUTovF1KRlpiOFze0b-_2gc6fAH0KY0k/edit#heading=h.535es3xeprgt
+ */
+function IndexedSourceMapConsumer(aSourceMap, aSourceMapURL) {
+  var sourceMap = aSourceMap;
+  if (typeof aSourceMap === 'string') {
+    sourceMap = util$1.parseSourceMapInput(aSourceMap);
+  }
+
+  var version = util$1.getArg(sourceMap, 'version');
+  var sections = util$1.getArg(sourceMap, 'sections');
+
+  if (version != this._version) {
+    throw new Error('Unsupported version: ' + version);
+  }
+
+  this._sources = new ArraySet();
+  this._names = new ArraySet();
+
+  var lastOffset = {
+    line: -1,
+    column: 0
+  };
+  this._sections = sections.map(function (s) {
+    if (s.url) {
+      // The url field will require support for asynchronicity.
+      // See https://github.com/mozilla/source-map/issues/16
+      throw new Error('Support for url field in sections not implemented.');
+    }
+    var offset = util$1.getArg(s, 'offset');
+    var offsetLine = util$1.getArg(offset, 'line');
+    var offsetColumn = util$1.getArg(offset, 'column');
+
+    if (offsetLine < lastOffset.line ||
+        (offsetLine === lastOffset.line && offsetColumn < lastOffset.column)) {
+      throw new Error('Section offsets must be ordered and non-overlapping.');
+    }
+    lastOffset = offset;
+
+    return {
+      generatedOffset: {
+        // The offset fields are 0-based, but we use 1-based indices when
+        // encoding/decoding from VLQ.
+        generatedLine: offsetLine + 1,
+        generatedColumn: offsetColumn + 1
+      },
+      consumer: new SourceMapConsumer$1(util$1.getArg(s, 'map'), aSourceMapURL)
+    }
+  });
+}
+
+IndexedSourceMapConsumer.prototype = Object.create(SourceMapConsumer$1.prototype);
+IndexedSourceMapConsumer.prototype.constructor = SourceMapConsumer$1;
+
+/**
+ * The version of the source mapping spec that we are consuming.
+ */
+IndexedSourceMapConsumer.prototype._version = 3;
+
+/**
+ * The list of original sources.
+ */
+Object.defineProperty(IndexedSourceMapConsumer.prototype, 'sources', {
+  get: function () {
+    var sources = [];
+    for (var i = 0; i < this._sections.length; i++) {
+      for (var j = 0; j < this._sections[i].consumer.sources.length; j++) {
+        sources.push(this._sections[i].consumer.sources[j]);
+      }
+    }
+    return sources;
+  }
+});
+
+/**
+ * Returns the original source, line, and column information for the generated
+ * source's line and column positions provided. The only argument is an object
+ * with the following properties:
+ *
+ *   - line: The line number in the generated source.  The line number
+ *     is 1-based.
+ *   - column: The column number in the generated source.  The column
+ *     number is 0-based.
+ *
+ * and an object is returned with the following properties:
+ *
+ *   - source: The original source file, or null.
+ *   - line: The line number in the original source, or null.  The
+ *     line number is 1-based.
+ *   - column: The column number in the original source, or null.  The
+ *     column number is 0-based.
+ *   - name: The original identifier, or null.
+ */
+IndexedSourceMapConsumer.prototype.originalPositionFor =
+  function IndexedSourceMapConsumer_originalPositionFor(aArgs) {
+    var needle = {
+      generatedLine: util$1.getArg(aArgs, 'line'),
+      generatedColumn: util$1.getArg(aArgs, 'column')
+    };
+
+    // Find the section containing the generated position we're trying to map
+    // to an original position.
+    var sectionIndex = binarySearch.search(needle, this._sections,
+      function(needle, section) {
+        var cmp = needle.generatedLine - section.generatedOffset.generatedLine;
+        if (cmp) {
+          return cmp;
+        }
+
+        return (needle.generatedColumn -
+                section.generatedOffset.generatedColumn);
+      });
+    var section = this._sections[sectionIndex];
+
+    if (!section) {
+      return {
+        source: null,
+        line: null,
+        column: null,
+        name: null
+      };
+    }
+
+    return section.consumer.originalPositionFor({
+      line: needle.generatedLine -
+        (section.generatedOffset.generatedLine - 1),
+      column: needle.generatedColumn -
+        (section.generatedOffset.generatedLine === needle.generatedLine
+         ? section.generatedOffset.generatedColumn - 1
+         : 0),
+      bias: aArgs.bias
+    });
+  };
+
+/**
+ * Return true if we have the source content for every source in the source
+ * map, false otherwise.
+ */
+IndexedSourceMapConsumer.prototype.hasContentsOfAllSources =
+  function IndexedSourceMapConsumer_hasContentsOfAllSources() {
+    return this._sections.every(function (s) {
+      return s.consumer.hasContentsOfAllSources();
+    });
+  };
+
+/**
+ * Returns the original source content. The only argument is the url of the
+ * original source file. Returns null if no original source content is
+ * available.
+ */
+IndexedSourceMapConsumer.prototype.sourceContentFor =
+  function IndexedSourceMapConsumer_sourceContentFor(aSource, nullOnMissing) {
+    for (var i = 0; i < this._sections.length; i++) {
+      var section = this._sections[i];
+
+      var content = section.consumer.sourceContentFor(aSource, true);
+      if (content) {
+        return content;
+      }
+    }
+    if (nullOnMissing) {
+      return null;
+    }
+    else {
+      throw new Error('"' + aSource + '" is not in the SourceMap.');
+    }
+  };
+
+/**
+ * Returns the generated line and column information for the original source,
+ * line, and column positions provided. The only argument is an object with
+ * the following properties:
+ *
+ *   - source: The filename of the original source.
+ *   - line: The line number in the original source.  The line number
+ *     is 1-based.
+ *   - column: The column number in the original source.  The column
+ *     number is 0-based.
+ *
+ * and an object is returned with the following properties:
+ *
+ *   - line: The line number in the generated source, or null.  The
+ *     line number is 1-based. 
+ *   - column: The column number in the generated source, or null.
+ *     The column number is 0-based.
+ */
+IndexedSourceMapConsumer.prototype.generatedPositionFor =
+  function IndexedSourceMapConsumer_generatedPositionFor(aArgs) {
+    for (var i = 0; i < this._sections.length; i++) {
+      var section = this._sections[i];
+
+      // Only consider this section if the requested source is in the list of
+      // sources of the consumer.
+      if (section.consumer._findSourceIndex(util$1.getArg(aArgs, 'source')) === -1) {
+        continue;
+      }
+      var generatedPosition = section.consumer.generatedPositionFor(aArgs);
+      if (generatedPosition) {
+        var ret = {
+          line: generatedPosition.line +
+            (section.generatedOffset.generatedLine - 1),
+          column: generatedPosition.column +
+            (section.generatedOffset.generatedLine === generatedPosition.line
+             ? section.generatedOffset.generatedColumn - 1
+             : 0)
+        };
+        return ret;
+      }
+    }
+
+    return {
+      line: null,
+      column: null
+    };
+  };
+
+/**
+ * Parse the mappings in a string in to a data structure which we can easily
+ * query (the ordered arrays in the `this.__generatedMappings` and
+ * `this.__originalMappings` properties).
+ */
+IndexedSourceMapConsumer.prototype._parseMappings =
+  function IndexedSourceMapConsumer_parseMappings(aStr, aSourceRoot) {
+    this.__generatedMappings = [];
+    this.__originalMappings = [];
+    for (var i = 0; i < this._sections.length; i++) {
+      var section = this._sections[i];
+      var sectionMappings = section.consumer._generatedMappings;
+      for (var j = 0; j < sectionMappings.length; j++) {
+        var mapping = sectionMappings[j];
+
+        var source = section.consumer._sources.at(mapping.source);
+        source = util$1.computeSourceURL(section.consumer.sourceRoot, source, this._sourceMapURL);
+        this._sources.add(source);
+        source = this._sources.indexOf(source);
+
+        var name = null;
+        if (mapping.name) {
+          name = section.consumer._names.at(mapping.name);
+          this._names.add(name);
+          name = this._names.indexOf(name);
+        }
+
+        // The mappings coming from the consumer for the section have
+        // generated positions relative to the start of the section, so we
+        // need to offset them to be relative to the start of the concatenated
+        // generated file.
+        var adjustedMapping = {
+          source: source,
+          generatedLine: mapping.generatedLine +
+            (section.generatedOffset.generatedLine - 1),
+          generatedColumn: mapping.generatedColumn +
+            (section.generatedOffset.generatedLine === mapping.generatedLine
+            ? section.generatedOffset.generatedColumn - 1
+            : 0),
+          originalLine: mapping.originalLine,
+          originalColumn: mapping.originalColumn,
+          name: name
+        };
+
+        this.__generatedMappings.push(adjustedMapping);
+        if (typeof adjustedMapping.originalLine === 'number') {
+          this.__originalMappings.push(adjustedMapping);
+        }
+      }
+    }
+
+    quickSort(this.__generatedMappings, util$1.compareByGeneratedPositionsDeflated);
+    quickSort(this.__originalMappings, util$1.compareByOriginalPositions);
+  };
+
+sourceMapConsumer.IndexedSourceMapConsumer = IndexedSourceMapConsumer;
+
+/* -*- Mode: js; js-indent-level: 2; -*- */
+
+/*
+ * Copyright 2011 Mozilla Foundation and contributors
+ * Licensed under the New BSD license. See LICENSE or:
+ * http://opensource.org/licenses/BSD-3-Clause
+ */
+
+var SourceMapGenerator = sourceMapGenerator.SourceMapGenerator;
+var util = util$5;
+
+// Matches a Windows-style `\r\n` newline or a `\n` newline used by all other
+// operating systems these days (capturing the result).
+var REGEX_NEWLINE = /(\r?\n)/;
+
+// Newline character code for charCodeAt() comparisons
+var NEWLINE_CODE = 10;
+
+// Private symbol for identifying `SourceNode`s when multiple versions of
+// the source-map library are loaded. This MUST NOT CHANGE across
+// versions!
+var isSourceNode = "$$$isSourceNode$$$";
+
+/**
+ * SourceNodes provide a way to abstract over interpolating/concatenating
+ * snippets of generated JavaScript source code while maintaining the line and
+ * column information associated with the original source code.
+ *
+ * @param aLine The original line number.
+ * @param aColumn The original column number.
+ * @param aSource The original source's filename.
+ * @param aChunks Optional. An array of strings which are snippets of
+ *        generated JS, or other SourceNodes.
+ * @param aName The original identifier.
+ */
+function SourceNode(aLine, aColumn, aSource, aChunks, aName) {
+  this.children = [];
+  this.sourceContents = {};
+  this.line = aLine == null ? null : aLine;
+  this.column = aColumn == null ? null : aColumn;
+  this.source = aSource == null ? null : aSource;
+  this.name = aName == null ? null : aName;
+  this[isSourceNode] = true;
+  if (aChunks != null) this.add(aChunks);
+}
+
+/**
+ * Creates a SourceNode from generated code and a SourceMapConsumer.
+ *
+ * @param aGeneratedCode The generated code
+ * @param aSourceMapConsumer The SourceMap for the generated code
+ * @param aRelativePath Optional. The path that relative sources in the
+ *        SourceMapConsumer should be relative to.
+ */
+SourceNode.fromStringWithSourceMap =
+  function SourceNode_fromStringWithSourceMap(aGeneratedCode, aSourceMapConsumer, aRelativePath) {
+    // The SourceNode we want to fill with the generated code
+    // and the SourceMap
+    var node = new SourceNode();
+
+    // All even indices of this array are one line of the generated code,
+    // while all odd indices are the newlines between two adjacent lines
+    // (since `REGEX_NEWLINE` captures its match).
+    // Processed fragments are accessed by calling `shiftNextLine`.
+    var remainingLines = aGeneratedCode.split(REGEX_NEWLINE);
+    var remainingLinesIndex = 0;
+    var shiftNextLine = function() {
+      var lineContents = getNextLine();
+      // The last line of a file might not have a newline.
+      var newLine = getNextLine() || "";
+      return lineContents + newLine;
+
+      function getNextLine() {
+        return remainingLinesIndex < remainingLines.length ?
+            remainingLines[remainingLinesIndex++] : undefined;
+      }
+    };
+
+    // We need to remember the position of "remainingLines"
+    var lastGeneratedLine = 1, lastGeneratedColumn = 0;
+
+    // The generate SourceNodes we need a code range.
+    // To extract it current and last mapping is used.
+    // Here we store the last mapping.
+    var lastMapping = null;
+
+    aSourceMapConsumer.eachMapping(function (mapping) {
+      if (lastMapping !== null) {
+        // We add the code from "lastMapping" to "mapping":
+        // First check if there is a new line in between.
+        if (lastGeneratedLine < mapping.generatedLine) {
+          // Associate first line with "lastMapping"
+          addMappingWithCode(lastMapping, shiftNextLine());
+          lastGeneratedLine++;
+          lastGeneratedColumn = 0;
+          // The remaining code is added without mapping
+        } else {
+          // There is no new line in between.
+          // Associate the code between "lastGeneratedColumn" and
+          // "mapping.generatedColumn" with "lastMapping"
+          var nextLine = remainingLines[remainingLinesIndex] || '';
+          var code = nextLine.substr(0, mapping.generatedColumn -
+                                        lastGeneratedColumn);
+          remainingLines[remainingLinesIndex] = nextLine.substr(mapping.generatedColumn -
+                                              lastGeneratedColumn);
+          lastGeneratedColumn = mapping.generatedColumn;
+          addMappingWithCode(lastMapping, code);
+          // No more remaining code, continue
+          lastMapping = mapping;
+          return;
+        }
+      }
+      // We add the generated code until the first mapping
+      // to the SourceNode without any mapping.
+      // Each line is added as separate string.
+      while (lastGeneratedLine < mapping.generatedLine) {
+        node.add(shiftNextLine());
+        lastGeneratedLine++;
+      }
+      if (lastGeneratedColumn < mapping.generatedColumn) {
+        var nextLine = remainingLines[remainingLinesIndex] || '';
+        node.add(nextLine.substr(0, mapping.generatedColumn));
+        remainingLines[remainingLinesIndex] = nextLine.substr(mapping.generatedColumn);
+        lastGeneratedColumn = mapping.generatedColumn;
+      }
+      lastMapping = mapping;
+    }, this);
+    // We have processed all mappings.
+    if (remainingLinesIndex < remainingLines.length) {
+      if (lastMapping) {
+        // Associate the remaining code in the current line with "lastMapping"
+        addMappingWithCode(lastMapping, shiftNextLine());
+      }
+      // and add the remaining lines without any mapping
+      node.add(remainingLines.splice(remainingLinesIndex).join(""));
+    }
+
+    // Copy sourcesContent into SourceNode
+    aSourceMapConsumer.sources.forEach(function (sourceFile) {
+      var content = aSourceMapConsumer.sourceContentFor(sourceFile);
+      if (content != null) {
+        if (aRelativePath != null) {
+          sourceFile = util.join(aRelativePath, sourceFile);
+        }
+        node.setSourceContent(sourceFile, content);
+      }
+    });
+
+    return node;
+
+    function addMappingWithCode(mapping, code) {
+      if (mapping === null || mapping.source === undefined) {
+        node.add(code);
+      } else {
+        var source = aRelativePath
+          ? util.join(aRelativePath, mapping.source)
+          : mapping.source;
+        node.add(new SourceNode(mapping.originalLine,
+                                mapping.originalColumn,
+                                source,
+                                code,
+                                mapping.name));
+      }
+    }
+  };
+
+/**
+ * Add a chunk of generated JS to this source node.
+ *
+ * @param aChunk A string snippet of generated JS code, another instance of
+ *        SourceNode, or an array where each member is one of those things.
+ */
+SourceNode.prototype.add = function SourceNode_add(aChunk) {
+  if (Array.isArray(aChunk)) {
+    aChunk.forEach(function (chunk) {
+      this.add(chunk);
+    }, this);
+  }
+  else if (aChunk[isSourceNode] || typeof aChunk === "string") {
+    if (aChunk) {
+      this.children.push(aChunk);
+    }
+  }
+  else {
+    throw new TypeError(
+      "Expected a SourceNode, string, or an array of SourceNodes and strings. Got " + aChunk
+    );
+  }
+  return this;
+};
+
+/**
+ * Add a chunk of generated JS to the beginning of this source node.
+ *
+ * @param aChunk A string snippet of generated JS code, another instance of
+ *        SourceNode, or an array where each member is one of those things.
+ */
+SourceNode.prototype.prepend = function SourceNode_prepend(aChunk) {
+  if (Array.isArray(aChunk)) {
+    for (var i = aChunk.length-1; i >= 0; i--) {
+      this.prepend(aChunk[i]);
+    }
+  }
+  else if (aChunk[isSourceNode] || typeof aChunk === "string") {
+    this.children.unshift(aChunk);
+  }
+  else {
+    throw new TypeError(
+      "Expected a SourceNode, string, or an array of SourceNodes and strings. Got " + aChunk
+    );
+  }
+  return this;
+};
+
+/**
+ * Walk over the tree of JS snippets in this node and its children. The
+ * walking function is called once for each snippet of JS and is passed that
+ * snippet and the its original associated source's line/column location.
+ *
+ * @param aFn The traversal function.
+ */
+SourceNode.prototype.walk = function SourceNode_walk(aFn) {
+  var chunk;
+  for (var i = 0, len = this.children.length; i < len; i++) {
+    chunk = this.children[i];
+    if (chunk[isSourceNode]) {
+      chunk.walk(aFn);
+    }
+    else {
+      if (chunk !== '') {
+        aFn(chunk, { source: this.source,
+                     line: this.line,
+                     column: this.column,
+                     name: this.name });
+      }
+    }
+  }
+};
+
+/**
+ * Like `String.prototype.join` except for SourceNodes. Inserts `aStr` between
+ * each of `this.children`.
+ *
+ * @param aSep The separator.
+ */
+SourceNode.prototype.join = function SourceNode_join(aSep) {
+  var newChildren;
+  var i;
+  var len = this.children.length;
+  if (len > 0) {
+    newChildren = [];
+    for (i = 0; i < len-1; i++) {
+      newChildren.push(this.children[i]);
+      newChildren.push(aSep);
+    }
+    newChildren.push(this.children[i]);
+    this.children = newChildren;
+  }
+  return this;
+};
+
+/**
+ * Call String.prototype.replace on the very right-most source snippet. Useful
+ * for trimming whitespace from the end of a source node, etc.
+ *
+ * @param aPattern The pattern to replace.
+ * @param aReplacement The thing to replace the pattern with.
+ */
+SourceNode.prototype.replaceRight = function SourceNode_replaceRight(aPattern, aReplacement) {
+  var lastChild = this.children[this.children.length - 1];
+  if (lastChild[isSourceNode]) {
+    lastChild.replaceRight(aPattern, aReplacement);
+  }
+  else if (typeof lastChild === 'string') {
+    this.children[this.children.length - 1] = lastChild.replace(aPattern, aReplacement);
+  }
+  else {
+    this.children.push(''.replace(aPattern, aReplacement));
+  }
+  return this;
+};
+
+/**
+ * Set the source content for a source file. This will be added to the SourceMapGenerator
+ * in the sourcesContent field.
+ *
+ * @param aSourceFile The filename of the source file
+ * @param aSourceContent The content of the source file
+ */
+SourceNode.prototype.setSourceContent =
+  function SourceNode_setSourceContent(aSourceFile, aSourceContent) {
+    this.sourceContents[util.toSetString(aSourceFile)] = aSourceContent;
+  };
+
+/**
+ * Walk over the tree of SourceNodes. The walking function is called for each
+ * source file content and is passed the filename and source content.
+ *
+ * @param aFn The traversal function.
+ */
+SourceNode.prototype.walkSourceContents =
+  function SourceNode_walkSourceContents(aFn) {
+    for (var i = 0, len = this.children.length; i < len; i++) {
+      if (this.children[i][isSourceNode]) {
+        this.children[i].walkSourceContents(aFn);
+      }
+    }
+
+    var sources = Object.keys(this.sourceContents);
+    for (var i = 0, len = sources.length; i < len; i++) {
+      aFn(util.fromSetString(sources[i]), this.sourceContents[sources[i]]);
+    }
+  };
+
+/**
+ * Return the string representation of this source node. Walks over the tree
+ * and concatenates all the various snippets together to one string.
+ */
+SourceNode.prototype.toString = function SourceNode_toString() {
+  var str = "";
+  this.walk(function (chunk) {
+    str += chunk;
+  });
+  return str;
+};
+
+/**
+ * Returns the string representation of this source node along with a source
+ * map.
+ */
+SourceNode.prototype.toStringWithSourceMap = function SourceNode_toStringWithSourceMap(aArgs) {
+  var generated = {
+    code: "",
+    line: 1,
+    column: 0
+  };
+  var map = new SourceMapGenerator(aArgs);
+  var sourceMappingActive = false;
+  var lastOriginalSource = null;
+  var lastOriginalLine = null;
+  var lastOriginalColumn = null;
+  var lastOriginalName = null;
+  this.walk(function (chunk, original) {
+    generated.code += chunk;
+    if (original.source !== null
+        && original.line !== null
+        && original.column !== null) {
+      if(lastOriginalSource !== original.source
+         || lastOriginalLine !== original.line
+         || lastOriginalColumn !== original.column
+         || lastOriginalName !== original.name) {
+        map.addMapping({
+          source: original.source,
+          original: {
+            line: original.line,
+            column: original.column
+          },
+          generated: {
+            line: generated.line,
+            column: generated.column
+          },
+          name: original.name
+        });
+      }
+      lastOriginalSource = original.source;
+      lastOriginalLine = original.line;
+      lastOriginalColumn = original.column;
+      lastOriginalName = original.name;
+      sourceMappingActive = true;
+    } else if (sourceMappingActive) {
+      map.addMapping({
+        generated: {
+          line: generated.line,
+          column: generated.column
+        }
+      });
+      lastOriginalSource = null;
+      sourceMappingActive = false;
+    }
+    for (var idx = 0, length = chunk.length; idx < length; idx++) {
+      if (chunk.charCodeAt(idx) === NEWLINE_CODE) {
+        generated.line++;
+        generated.column = 0;
+        // Mappings end at eol
+        if (idx + 1 === length) {
+          lastOriginalSource = null;
+          sourceMappingActive = false;
+        } else if (sourceMappingActive) {
+          map.addMapping({
+            source: original.source,
+            original: {
+              line: original.line,
+              column: original.column
+            },
+            generated: {
+              line: generated.line,
+              column: generated.column
+            },
+            name: original.name
+          });
+        }
+      } else {
+        generated.column++;
+      }
+    }
+  });
+  this.walkSourceContents(function (sourceFile, sourceContent) {
+    map.setSourceContent(sourceFile, sourceContent);
+  });
+
+  return { code: generated.code, map: map };
+};
+
+/*
+ * Copyright 2009-2011 Mozilla Foundation and contributors
+ * Licensed under the New BSD license. See LICENSE.txt or:
+ * http://opensource.org/licenses/BSD-3-Clause
+ */
+var SourceMapConsumer = sourceMapConsumer.SourceMapConsumer;
+
+/* eslint-disable */
+/**
+ * Converts special HTML characters to their entity equivalents.
+ * Replaces &, <, >, ", and ' with their HTML entity codes.
+ */
+function escapeHtml(str) {
+    if (str == null) {
+        return "";
+    }
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+class ErrorMapper {
+    static get consumer() {
+        if (this._consumer == null) {
+            // @ts-check
+            this._consumer = new SourceMapConsumer(require("main.js.map"));
+        }
+        return this._consumer;
+    }
+    /**
+     * Generates a stack trace using a source map generate original symbol names.
+     *
+     * WARNING - EXTREMELY high CPU cost for first call after reset - >30 CPU! Use sparingly!
+     * (Consecutive calls after a reset are more reasonable, ~0.1 CPU/ea)
+     *
+     * @param {Error | string} error The error or original stack trace
+     * @returns {string} The source-mapped stack trace
+     */
+    static sourceMappedStackTrace(error) {
+        const stack = error instanceof Error ? error.stack : error;
+        if (Object.prototype.hasOwnProperty.call(this.cache, stack)) {
+            return this.cache[stack];
+        }
+        // eslint-disable-next-line no-useless-escape
+        const re = /^\s+at\s+(.+?\s+)?\(?([0-z._\-\\\/]+):(\d+):(\d+)\)?$/gm;
+        let match;
+        let outStack = error.toString();
+        while ((match = re.exec(stack))) {
+            if (match[2] === "main") {
+                const pos = this.consumer.originalPositionFor({
+                    column: parseInt(match[4], 10),
+                    line: parseInt(match[3], 10)
+                });
+                if (pos.line != null) {
+                    if (pos.name) {
+                        outStack += `\n    at ${pos.name} (${pos.source}:${pos.line}:${pos.column})`;
+                    }
+                    else {
+                        if (match[1]) {
+                            // no original source file name known - use file name from given trace
+                            outStack += `\n    at ${match[1]} (${pos.source}:${pos.line}:${pos.column})`;
+                        }
+                        else {
+                            // no original source file name known or in given trace - omit name
+                            outStack += `\n    at ${pos.source}:${pos.line}:${pos.column}`;
+                        }
+                    }
+                }
+                else {
+                    // no known position
+                    break;
+                }
+            }
+            else {
+                // no more parseable lines
+                break;
+            }
+        }
+        this.cache[stack] = outStack;
+        return outStack;
+    }
+    static wrapLoop(loop) {
+        return () => {
+            try {
+                loop();
+            }
+            catch (e) {
+                if (e instanceof Error) {
+                    if ("sim" in Game.rooms) {
+                        const message = `Source maps don't work in the simulator - displaying original error`;
+                        console.log(`<span style='color:red'>${message}<br>${escapeHtml(e.stack)}</span>`);
+                    }
+                    else {
+                        console.log(`<span style='color:red'>${escapeHtml(this.sourceMappedStackTrace(e))}</span>`);
+                    }
+                }
+                else {
+                    // can't handle it
+                    throw e;
+                }
+            }
+        };
+    }
+}
+// Cache previously mapped traces to improve performance
+ErrorMapper.cache = {};
+
+/******************************************************************************
+Copyright (c) Microsoft Corporation.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+***************************************************************************** */
+
+function __decorate(decorators, target, key, desc) {
+  var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+  if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+  else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+  return c > 3 && r && Object.defineProperty(target, key, r), r;
+}
+
+typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
+  var e = new Error(message);
+  return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
+};
+
+/**
+ * Logger Module
+ *
+ * Provides structured logging with levels (debug/info/warn/error).
+ * Includes optional CPU logging wrapper for per-room/per-subsystem profiling.
+ */
+/**
+ * Log levels
+ */
+var LogLevel;
+(function (LogLevel) {
+    LogLevel[LogLevel["DEBUG"] = 0] = "DEBUG";
+    LogLevel[LogLevel["INFO"] = 1] = "INFO";
+    LogLevel[LogLevel["WARN"] = 2] = "WARN";
+    LogLevel[LogLevel["ERROR"] = 3] = "ERROR";
+    LogLevel[LogLevel["NONE"] = 4] = "NONE";
+})(LogLevel || (LogLevel = {}));
+const DEFAULT_CONFIG$l = {
+    level: LogLevel.INFO,
+    showTimestamp: true,
+    showRoom: true,
+    cpuLogging: false
+};
+/**
+ * Global logger configuration
+ */
+let globalConfig = { ...DEFAULT_CONFIG$l };
+/**
+ * Set global logger configuration
+ */
+function configureLogger(config) {
+    globalConfig = { ...globalConfig, ...config };
+}
+/**
+ * Get current logger configuration
+ */
+function getLoggerConfig() {
+    return { ...globalConfig };
+}
+/**
+ * Format log message with optional context
+ */
+function formatMessage(level, message, context) {
+    const parts = [];
+    if (globalConfig.showTimestamp) {
+        parts.push(`[${Game.time}]`);
+    }
+    parts.push(`[${level}]`);
+    if (context === null || context === void 0 ? void 0 : context.subsystem) {
+        parts.push(`[${context.subsystem}]`);
+    }
+    if (globalConfig.showRoom && (context === null || context === void 0 ? void 0 : context.room)) {
+        parts.push(`[${context.room}]`);
+    }
+    parts.push(message);
+    return parts.join(" ");
+}
+/**
+ * Log a debug message
+ */
+function debug(message, context) {
+    if (globalConfig.level <= LogLevel.DEBUG) {
+        console.log(formatMessage("DEBUG", message, context));
+    }
+}
+/**
+ * Log an info message
+ */
+function info(message, context) {
+    if (globalConfig.level <= LogLevel.INFO) {
+        console.log(formatMessage("INFO", message, context));
+    }
+}
+/**
+ * Log a warning message
+ */
+function warn(message, context) {
+    if (globalConfig.level <= LogLevel.WARN) {
+        console.log(formatMessage("WARN", message, context));
+    }
+}
+/**
+ * Log an error message
+ */
+function error(message, context) {
+    if (globalConfig.level <= LogLevel.ERROR) {
+        console.log(formatMessage("ERROR", message, context));
+    }
+}
+/**
+ * Measure CPU usage of a function
+ */
+function measureCpu(name, fn, context) {
+    if (!globalConfig.cpuLogging) {
+        return fn();
+    }
+    const startCpu = Game.cpu.getUsed();
+    const result = fn();
+    const endCpu = Game.cpu.getUsed();
+    const cpuUsed = endCpu - startCpu;
+    debug(`${name}: ${cpuUsed.toFixed(3)} CPU`, context);
+    return result;
+}
+/**
+ * Create a scoped logger for a specific subsystem
+ */
+function createLogger(subsystem) {
+    return {
+        debug: (message, room) => debug(message, { subsystem, room }),
+        info: (message, room) => info(message, { subsystem, room }),
+        warn: (message, room) => warn(message, { subsystem, room }),
+        error: (message, room) => error(message, { subsystem, room }),
+        measureCpu: (name, fn, room) => measureCpu(name, fn, { subsystem, room })
+    };
+}
+/**
+ * Default logger instance
+ */
+const logger = {
+    debug,
+    info,
+    warn,
+    error,
+    measureCpu,
+    configure: configureLogger,
+    getConfig: getLoggerConfig,
+    createLogger
+};
+
+/**
+ * Command Registry - Centralized console command management
+ *
+ * Provides decorator-based command registration for kernel console commands.
+ * Commands are registered using the @Command decorator and automatically
+ * exposed to the global scope for console access.
+ *
+ * Features:
+ * - @Command decorator for declarative command registration
+ * - Automatic help() command generation
+ * - Command metadata storage (description, usage, examples)
+ * - Global scope integration for console access
+ *
+ * Usage:
+ * ```typescript
+ * class MyCommands {
+ *   @Command({
+ *     name: "myCommand",
+ *     description: "Does something useful",
+ *     usage: "myCommand(arg1, arg2)",
+ *     examples: ["myCommand('test', 123)"]
+ *   })
+ *   myCommand(arg1: string, arg2: number): string {
+ *     return `Result: ${arg1} ${arg2}`;
+ *   }
+ * }
+ * ```
+ */
+/**
+ * Storage for command decorator metadata
+ */
+const commandDecoratorStore = [];
+/**
+ * Command Registry - Manages console commands
+ */
+class CommandRegistry {
+    constructor() {
+        this.commands = new Map();
+        this.initialized = false;
+    }
+    /**
+     * Register a command with the registry
+     */
+    register(metadata, handler) {
+        var _a;
+        if (this.commands.has(metadata.name)) {
+            logger.warn(`Command "${metadata.name}" is already registered, overwriting`, {
+                subsystem: "CommandRegistry"
+            });
+        }
+        this.commands.set(metadata.name, {
+            metadata: {
+                ...metadata,
+                category: (_a = metadata.category) !== null && _a !== void 0 ? _a : "General"
+            },
+            handler
+        });
+        logger.debug(`Registered command "${metadata.name}"`, { subsystem: "CommandRegistry" });
+    }
+    /**
+     * Unregister a command
+     */
+    unregister(name) {
+        const deleted = this.commands.delete(name);
+        if (deleted) {
+            logger.debug(`Unregistered command "${name}"`, { subsystem: "CommandRegistry" });
+        }
+        return deleted;
+    }
+    /**
+     * Get a registered command
+     */
+    getCommand(name) {
+        return this.commands.get(name);
+    }
+    /**
+     * Get all registered commands
+     */
+    getCommands() {
+        return Array.from(this.commands.values());
+    }
+    /**
+     * Get command names grouped by category
+     */
+    getCommandsByCategory() {
+        var _a, _b;
+        const categories = new Map();
+        for (const cmd of this.commands.values()) {
+            const category = (_a = cmd.metadata.category) !== null && _a !== void 0 ? _a : "General";
+            const existing = (_b = categories.get(category)) !== null && _b !== void 0 ? _b : [];
+            existing.push(cmd);
+            categories.set(category, existing);
+        }
+        // Sort commands within each category
+        for (const [category, cmds] of categories) {
+            categories.set(category, cmds.sort((a, b) => a.metadata.name.localeCompare(b.metadata.name)));
+        }
+        return categories;
+    }
+    /**
+     * Execute a command by name
+     */
+    execute(name, ...args) {
+        const command = this.commands.get(name);
+        if (!command) {
+            return `Command "${name}" not found. Use help() to see available commands.`;
+        }
+        try {
+            return command.handler(...args);
+        }
+        catch (err) {
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            logger.error(`Error executing command "${name}": ${errorMessage}`, {
+                subsystem: "CommandRegistry"
+            });
+            return `Error: ${errorMessage}`;
+        }
+    }
+    /**
+     * Generate help output for all commands
+     */
+    generateHelp() {
+        var _a;
+        const categories = this.getCommandsByCategory();
+        const lines = ["=== Available Console Commands ===", ""];
+        // Sort categories, putting "General" first
+        const sortedCategories = Array.from(categories.keys()).sort((a, b) => {
+            if (a === "General")
+                return -1;
+            if (b === "General")
+                return 1;
+            return a.localeCompare(b);
+        });
+        for (const category of sortedCategories) {
+            const cmds = categories.get(category);
+            if (!cmds || cmds.length === 0)
+                continue;
+            lines.push(`--- ${category} ---`);
+            for (const cmd of cmds) {
+                const usage = (_a = cmd.metadata.usage) !== null && _a !== void 0 ? _a : `${cmd.metadata.name}()`;
+                lines.push(`  ${usage}`);
+                lines.push(`    ${cmd.metadata.description}`);
+                if (cmd.metadata.examples && cmd.metadata.examples.length > 0) {
+                    lines.push(`    Examples:`);
+                    for (const example of cmd.metadata.examples) {
+                        lines.push(`      ${example}`);
+                    }
+                }
+                lines.push("");
+            }
+        }
+        return lines.join("\n");
+    }
+    /**
+     * Generate help output for a specific command
+     */
+    generateCommandHelp(name) {
+        var _a, _b;
+        const command = this.commands.get(name);
+        if (!command) {
+            return `Command "${name}" not found. Use help() to see available commands.`;
+        }
+        const lines = [
+            `=== ${command.metadata.name} ===`,
+            "",
+            `Description: ${command.metadata.description}`,
+            `Usage: ${(_a = command.metadata.usage) !== null && _a !== void 0 ? _a : `${command.metadata.name}()`}`,
+            `Category: ${(_b = command.metadata.category) !== null && _b !== void 0 ? _b : "General"}`
+        ];
+        if (command.metadata.examples && command.metadata.examples.length > 0) {
+            lines.push("");
+            lines.push("Examples:");
+            for (const example of command.metadata.examples) {
+                lines.push(`  ${example}`);
+            }
+        }
+        return lines.join("\n");
+    }
+    /**
+     * Expose all registered commands to the global scope
+     * This allows commands to be called directly from the Screeps console
+     */
+    exposeToGlobal() {
+        // TypeScript's global type doesn't have an index signature, so we cast
+        // through unknown to Record<string, unknown> to allow dynamic property assignment.
+        // This is safe because we're only adding command handler functions.
+        const g = global;
+        for (const [name, command] of this.commands) {
+            g[name] = command.handler;
+        }
+        // Add the help command directly to global for convenient access
+        g.help = (commandName) => {
+            if (commandName) {
+                return this.generateCommandHelp(commandName);
+            }
+            return this.generateHelp();
+        };
+        logger.debug(`Exposed ${this.commands.size} commands to global scope`, {
+            subsystem: "CommandRegistry"
+        });
+    }
+    /**
+     * Initialize the command registry
+     * Should be called once at bot startup
+     */
+    initialize() {
+        if (this.initialized)
+            return;
+        // Register the help command
+        this.register({
+            name: "help",
+            description: "Show available commands and their descriptions",
+            usage: "help() or help('commandName')",
+            examples: ["help()", "help('setLogLevel')"],
+            category: "System"
+        }, (...args) => {
+            const commandName = args[0];
+            if (commandName !== undefined) {
+                return this.generateCommandHelp(String(commandName));
+            }
+            return this.generateHelp();
+        });
+        this.initialized = true;
+        logger.info("Command registry initialized", { subsystem: "CommandRegistry" });
+    }
+    /**
+     * Get count of registered commands
+     */
+    getCommandCount() {
+        return this.commands.size;
+    }
+    /**
+     * Check if registry is initialized
+     */
+    isInitialized() {
+        return this.initialized;
+    }
+    /**
+     * Reset the registry (for testing purposes)
+     * Clears all commands and resets initialized state
+     */
+    reset() {
+        this.commands.clear();
+        this.initialized = false;
+    }
+}
+/**
+ * Global command registry instance
+ */
+const commandRegistry = new CommandRegistry();
+// =============================================================================
+// Decorators
+// =============================================================================
+/**
+ * Command decorator - marks a method as a console command
+ *
+ * @param metadata - Command metadata including name, description, etc.
+ * @returns Method decorator
+ *
+ * @example
+ * ```typescript
+ * class MyCommands {
+ *   @Command({
+ *     name: "sayHello",
+ *     description: "Prints a greeting",
+ *     usage: "sayHello(name)",
+ *     examples: ["sayHello('World')"]
+ *   })
+ *   sayHello(name: string): string {
+ *     return `Hello, ${name}!`;
+ *   }
+ * }
+ * ```
+ */
+function Command(metadata) {
+    return function (target, propertyKey, _descriptor) {
+        commandDecoratorStore.push({
+            metadata,
+            methodName: String(propertyKey),
+            target
+        });
+    };
+}
+/**
+ * Register all decorated commands from an instance
+ * Call this after creating an instance of a class with @Command decorated methods
+ *
+ * @param instance - Instance of a class with decorated command methods
+ *
+ * @example
+ * ```typescript
+ * const myCommands = new MyCommands();
+ * registerDecoratedCommands(myCommands);
+ * ```
+ */
+function registerDecoratedCommands(instance) {
+    const instancePrototype = Object.getPrototypeOf(instance);
+    for (const decoratorMeta of commandDecoratorStore) {
+        // Check if this metadata belongs to the instance's prototype chain
+        // This handles cases where decorators are applied at different levels of the prototype chain
+        if (isDecoratorForInstance(decoratorMeta.target, instancePrototype)) {
+            const method = instance[decoratorMeta.methodName];
+            if (typeof method === "function") {
+                const boundMethod = method.bind(instance);
+                commandRegistry.register(decoratorMeta.metadata, boundMethod);
+                logger.debug(`Registered decorated command "${decoratorMeta.metadata.name}"`, {
+                    subsystem: "CommandRegistry"
+                });
+            }
+        }
+    }
+}
+/**
+ * Check if a decorator target belongs to an instance's prototype chain
+ * @param decoratorTarget - The target object where the decorator was applied
+ * @param instancePrototype - The prototype of the instance being registered
+ */
+function isDecoratorForInstance(decoratorTarget, instancePrototype) {
+    if (instancePrototype === null)
+        return false;
+    return (decoratorTarget === instancePrototype ||
+        Object.getPrototypeOf(decoratorTarget) === instancePrototype ||
+        decoratorTarget === Object.getPrototypeOf(instancePrototype));
+}
+
+/**
+ * Event System - Bucket-Aware, Type-Safe Event Bus
+ *
+ * This module provides a centralized event system for the bot:
+ * - Type-safe event definitions with typed payloads
+ * - Bucket-aware event processing (deferred execution in low bucket)
+ * - Priority-based event handling
+ * - Event queuing for deferred processing
+ *
+ * Design Principles (from ROADMAP.md):
+ * - Ereignisgetriebene Logik: Critical events update flags immediately
+ * - CPU-Bucket-gesteuertes Verhalten: High bucket enables expensive operations
+ * - Stigmergische Kommunikation: Simple, efficient communication
+ *
+ * Usage:
+ * ```typescript
+ * // Subscribe to events
+ * eventBus.on('hostile.detected', (event) => {
+ *   console.log(`Hostile in ${event.roomName}!`);
+ * });
+ *
+ * // Emit events
+ * eventBus.emit('hostile.detected', { roomName: 'W1N1', creepId: '...' });
+ * ```
+ */
+// ============================================================================
+// Event Priority Levels
+// ============================================================================
+/**
+ * Event priority levels
+ */
+var EventPriority;
+(function (EventPriority) {
+    /** Critical events (combat, nukes) - always process immediately */
+    EventPriority[EventPriority["CRITICAL"] = 100] = "CRITICAL";
+    /** High priority (spawns, deaths) */
+    EventPriority[EventPriority["HIGH"] = 75] = "HIGH";
+    /** Normal priority (economy, construction) */
+    EventPriority[EventPriority["NORMAL"] = 50] = "NORMAL";
+    /** Low priority (stats, metrics) */
+    EventPriority[EventPriority["LOW"] = 25] = "LOW";
+    /** Background events (can be deferred) */
+    EventPriority[EventPriority["BACKGROUND"] = 10] = "BACKGROUND";
+})(EventPriority || (EventPriority = {}));
+/**
+ * Default priorities for event types
+ */
+const DEFAULT_EVENT_PRIORITIES = {
+    // Critical
+    "hostile.detected": EventPriority.CRITICAL,
+    "nuke.detected": EventPriority.CRITICAL,
+    "safemode.activated": EventPriority.CRITICAL,
+    // High
+    "structure.destroyed": EventPriority.HIGH,
+    "hostile.cleared": EventPriority.HIGH,
+    "creep.died": EventPriority.HIGH,
+    "energy.critical": EventPriority.HIGH,
+    "posture.change": EventPriority.HIGH,
+    // Normal
+    "spawn.completed": EventPriority.NORMAL,
+    "rcl.upgrade": EventPriority.NORMAL,
+    "construction.complete": EventPriority.NORMAL,
+    "remote.lost": EventPriority.NORMAL,
+    "squad.formed": EventPriority.NORMAL,
+    "squad.dissolved": EventPriority.NORMAL,
+    // Low
+    "market.transaction": EventPriority.LOW,
+    "pheromone.update": EventPriority.LOW,
+    "cluster.update": EventPriority.LOW,
+    "expansion.candidate": EventPriority.LOW,
+    "powerbank.discovered": EventPriority.LOW,
+    // Background
+    "cpu.spike": EventPriority.BACKGROUND,
+    "bucket.modeChange": EventPriority.BACKGROUND
+};
+const DEFAULT_CONFIG$k = {
+    maxEventsPerTick: 50,
+    maxQueueSize: 200,
+    lowBucketThreshold: 2000,
+    criticalBucketThreshold: 1000,
+    maxEventAge: 100,
+    enableLogging: false,
+    statsLogInterval: 100
+};
+// ============================================================================
+// Event Bus Implementation
+// ============================================================================
+/**
+ * Event Bus - Central event management system
+ *
+ * Features:
+ * - Type-safe event emission and subscription
+ * - Priority-based event processing
+ * - Bucket-aware event deferral
+ * - Event queuing for deferred processing
+ */
+class EventBus {
+    constructor(config = {}) {
+        this.handlers = new Map();
+        this.eventQueue = [];
+        this.handlerIdCounter = 0;
+        this.stats = {
+            eventsEmitted: 0,
+            eventsProcessed: 0,
+            eventsDeferred: 0,
+            eventsDropped: 0,
+            handlersInvoked: 0
+        };
+        this.config = { ...DEFAULT_CONFIG$k, ...config };
+    }
+    /**
+     * Subscribe to an event
+     *
+     * @param eventName - Name of the event to subscribe to
+     * @param handler - Handler function to call when event is emitted
+     * @param options - Subscription options
+     * @returns Unsubscribe function
+     */
+    on(eventName, handler, options = {}) {
+        var _a, _b, _c, _d;
+        const registration = {
+            handler,
+            priority: (_a = options.priority) !== null && _a !== void 0 ? _a : EventPriority.NORMAL,
+            minBucket: (_b = options.minBucket) !== null && _b !== void 0 ? _b : 0,
+            once: (_c = options.once) !== null && _c !== void 0 ? _c : false,
+            id: `handler_${++this.handlerIdCounter}`
+        };
+        const handlers = (_d = this.handlers.get(eventName)) !== null && _d !== void 0 ? _d : [];
+        handlers.push(registration);
+        // Sort by priority (highest first)
+        handlers.sort((a, b) => b.priority - a.priority);
+        this.handlers.set(eventName, handlers);
+        if (this.config.enableLogging) {
+            logger.debug(`EventBus: Registered handler for "${eventName}" (id: ${registration.id})`, {
+                subsystem: "EventBus"
+            });
+        }
+        // Return unsubscribe function
+        return () => this.off(eventName, registration.id);
+    }
+    /**
+     * Subscribe to an event (one-time)
+     */
+    once(eventName, handler, options = {}) {
+        return this.on(eventName, handler, { ...options, once: true });
+    }
+    /**
+     * Unsubscribe from an event by handler ID
+     */
+    off(eventName, handlerId) {
+        const handlers = this.handlers.get(eventName);
+        if (handlers) {
+            const index = handlers.findIndex(h => h.id === handlerId);
+            if (index !== -1) {
+                handlers.splice(index, 1);
+                if (this.config.enableLogging) {
+                    logger.debug(`EventBus: Unregistered handler "${handlerId}" from "${eventName}"`, {
+                        subsystem: "EventBus"
+                    });
+                }
+            }
+        }
+    }
+    /**
+     * Unsubscribe all handlers for an event
+     */
+    offAll(eventName) {
+        this.handlers.delete(eventName);
+        if (this.config.enableLogging) {
+            logger.debug(`EventBus: Removed all handlers for "${eventName}"`, {
+                subsystem: "EventBus"
+            });
+        }
+    }
+    /**
+     * Emit an event
+     *
+     * @param eventName - Name of the event to emit
+     * @param payload - Event payload (without tick, which is added automatically)
+     * @param options - Emission options
+     */
+    emit(eventName, payload, options = {}) {
+        var _a, _b, _c;
+        const fullPayload = {
+            ...payload,
+            tick: Game.time
+        };
+        const priority = (_b = (_a = options.priority) !== null && _a !== void 0 ? _a : DEFAULT_EVENT_PRIORITIES[eventName]) !== null && _b !== void 0 ? _b : EventPriority.NORMAL;
+        const immediate = (_c = options.immediate) !== null && _c !== void 0 ? _c : priority >= EventPriority.CRITICAL;
+        this.stats.eventsEmitted++;
+        if (this.config.enableLogging) {
+            logger.debug(`EventBus: Emitting "${eventName}" (priority: ${priority}, immediate: ${String(immediate)})`, {
+                subsystem: "EventBus"
+            });
+        }
+        // Check bucket status for non-immediate events
+        const bucket = Game.cpu.bucket;
+        if (immediate || bucket >= this.config.lowBucketThreshold) {
+            // Process immediately
+            this.processEvent(eventName, fullPayload);
+        }
+        else if (bucket >= this.config.criticalBucketThreshold) {
+            // Queue for later processing
+            this.queueEvent(eventName, fullPayload, priority);
+        }
+        else {
+            // Critical bucket - only process critical events
+            if (priority >= EventPriority.CRITICAL) {
+                this.processEvent(eventName, fullPayload);
+            }
+            else {
+                this.stats.eventsDropped++;
+                if (this.config.enableLogging) {
+                    logger.warn(`EventBus: Dropped event "${eventName}" due to critical bucket`, {
+                        subsystem: "EventBus"
+                    });
+                }
+            }
+        }
+    }
+    /**
+     * Process an event immediately
+     */
+    processEvent(eventName, payload) {
+        const handlers = this.handlers.get(eventName);
+        if (!handlers || handlers.length === 0) {
+            return;
+        }
+        const bucket = Game.cpu.bucket;
+        const handlersToRemove = [];
+        for (const registration of handlers) {
+            // Check bucket requirement
+            if (bucket < registration.minBucket) {
+                continue;
+            }
+            try {
+                registration.handler(payload);
+                this.stats.handlersInvoked++;
+                // Mark one-time handlers for removal
+                if (registration.once) {
+                    handlersToRemove.push(registration.id);
+                }
+            }
+            catch (err) {
+                const errorMessage = err instanceof Error ? err.message : String(err);
+                logger.error(`EventBus: Handler error for "${eventName}": ${errorMessage}`, {
+                    subsystem: "EventBus"
+                });
+            }
+        }
+        // Remove one-time handlers
+        for (const handlerId of handlersToRemove) {
+            this.off(eventName, handlerId);
+        }
+        this.stats.eventsProcessed++;
+    }
+    /**
+     * Queue an event for deferred processing
+     */
+    queueEvent(eventName, payload, priority) {
+        // Check queue size
+        if (this.eventQueue.length >= this.config.maxQueueSize) {
+            // Remove oldest low-priority event
+            const oldestLowPriority = this.eventQueue
+                .map((e, i) => ({ event: e, index: i }))
+                .filter(({ event }) => event.priority < EventPriority.HIGH)
+                .sort((a, b) => a.event.queuedAt - b.event.queuedAt)[0];
+            if (oldestLowPriority && oldestLowPriority.event.priority < priority) {
+                this.eventQueue.splice(oldestLowPriority.index, 1);
+                this.stats.eventsDropped++;
+            }
+            else {
+                // Can't make room, drop this event
+                this.stats.eventsDropped++;
+                return;
+            }
+        }
+        const queuedEvent = {
+            name: eventName,
+            payload,
+            priority,
+            queuedAt: Game.time
+        };
+        this.eventQueue.push(queuedEvent);
+        // Sort by priority (highest first), then by age (oldest first)
+        this.eventQueue.sort((a, b) => {
+            if (b.priority !== a.priority) {
+                return b.priority - a.priority;
+            }
+            return a.queuedAt - b.queuedAt;
+        });
+        this.stats.eventsDeferred++;
+    }
+    /**
+     * Process queued events
+     * Call this each tick to process deferred events
+     */
+    processQueue() {
+        const bucket = Game.cpu.bucket;
+        // Skip if bucket is too low
+        if (bucket < this.config.criticalBucketThreshold) {
+            return;
+        }
+        // Determine how many events to process
+        let maxEvents = this.config.maxEventsPerTick;
+        if (bucket < this.config.lowBucketThreshold) {
+            // Reduce processing in low bucket
+            maxEvents = Math.floor(maxEvents / 2);
+        }
+        // Clean up old events
+        const now = Game.time;
+        this.eventQueue = this.eventQueue.filter(event => {
+            if (now - event.queuedAt > this.config.maxEventAge) {
+                this.stats.eventsDropped++;
+                return false;
+            }
+            return true;
+        });
+        // Process events
+        let processed = 0;
+        while (this.eventQueue.length > 0 && processed < maxEvents) {
+            const event = this.eventQueue.shift();
+            if (event) {
+                this.processEvent(event.name, event.payload);
+                processed++;
+            }
+        }
+    }
+    /**
+     * Get event bus statistics
+     */
+    getStats() {
+        let handlerCount = 0;
+        for (const handlers of this.handlers.values()) {
+            handlerCount += handlers.length;
+        }
+        return {
+            ...this.stats,
+            queueSize: this.eventQueue.length,
+            handlerCount
+        };
+    }
+    /**
+     * Reset statistics
+     */
+    resetStats() {
+        this.stats = {
+            eventsEmitted: 0,
+            eventsProcessed: 0,
+            eventsDeferred: 0,
+            eventsDropped: 0,
+            handlersInvoked: 0
+        };
+    }
+    /**
+     * Get current configuration
+     */
+    getConfig() {
+        return { ...this.config };
+    }
+    /**
+     * Update configuration
+     */
+    updateConfig(config) {
+        this.config = { ...this.config, ...config };
+    }
+    /**
+     * Clear all handlers and queued events
+     */
+    clear() {
+        this.handlers.clear();
+        this.eventQueue = [];
+        this.resetStats();
+    }
+    /**
+     * Get registered handler count for an event
+     */
+    getHandlerCount(eventName) {
+        var _a, _b;
+        return (_b = (_a = this.handlers.get(eventName)) === null || _a === void 0 ? void 0 : _a.length) !== null && _b !== void 0 ? _b : 0;
+    }
+    /**
+     * Check if there are any handlers for an event
+     */
+    hasHandlers(eventName) {
+        return this.getHandlerCount(eventName) > 0;
+    }
+    /**
+     * Log statistics (call periodically)
+     */
+    logStats() {
+        if (Game.time % this.config.statsLogInterval === 0) {
+            const stats = this.getStats();
+            logger.debug(`EventBus stats: ${stats.eventsEmitted} emitted, ${stats.eventsProcessed} processed, ` +
+                `${stats.eventsDeferred} deferred, ${stats.eventsDropped} dropped, ` +
+                `${stats.queueSize} queued, ${stats.handlerCount} handlers`, { subsystem: "EventBus" });
+        }
+    }
+}
+/**
+ * Global event bus instance
+ */
+const eventBus = new EventBus();
+
+/**
+ * Configuration Module - Phase 17
+ *
+ * Central configuration for all bot parameters.
+ * Single source of truth for tunable constants.
+ */
+/**
+ * Default configuration
+ */
+const DEFAULT_CONFIG$j = {
+    pheromone: {
+        updateInterval: 5,
+        decayFactors: {
+            expand: 0.95,
+            harvest: 0.9,
+            build: 0.92,
+            upgrade: 0.93,
+            defense: 0.97,
+            war: 0.98,
+            siege: 0.99,
+            logistics: 0.91,
+            nukeTarget: 0.99
+        },
+        diffusionRates: {
+            expand: 0.3,
+            harvest: 0.1,
+            build: 0.15,
+            upgrade: 0.1,
+            defense: 0.4,
+            war: 0.5,
+            siege: 0.6,
+            logistics: 0.2,
+            nukeTarget: 0.1
+        },
+        maxValue: 100,
+        minValue: 0
+    },
+    war: {
+        dangerThresholds: {
+            level1HostileCount: 1,
+            level2HostileCount: 3,
+            level2DamageThreshold: 100,
+            level3DamageThreshold: 500
+        },
+        postureThresholds: {
+            defensivePosture: 30,
+            warPosture: 50,
+            expandPosture: 40
+        },
+        economyStabilityRatio: 1.2,
+        warSustainedTicks: 100
+    },
+    nuke: {
+        minEnemyRCL: 5,
+        minThreatLevel: 2,
+        minNukeScore: 35,
+        scoring: {
+            enemyRCLWeight: 2,
+            hostileStructuresWeight: 3,
+            warPheromoneWeight: 1.5,
+            distancePenalty: 0.5
+        },
+        evaluationInterval: 200
+    },
+    expansion: {
+        minEnergySurplus: 1000,
+        minBucketForClaim: 8000,
+        maxRemoteDistance: 2,
+        maxClaimDistance: 5,
+        scoring: {
+            sourcesWeight: 20,
+            mineralWeight: 10,
+            distancePenalty: 5,
+            hostilePenalty: 30,
+            terrainPenalty: 2,
+            highwayBonus: 15
+        }
+    },
+    cpu: {
+        bucketThresholds: {
+            lowMode: 2000,
+            highMode: 9000
+        },
+        budgets: {
+            rooms: 0.4,
+            creeps: 0.3,
+            strategic: 0.1,
+            market: 0.1,
+            visualization: 0.1
+        },
+        taskFrequencies: {
+            pheromoneUpdate: 5,
+            clusterLogic: 10,
+            strategicDecisions: 20,
+            marketScan: 100,
+            nukeEvaluation: 200,
+            memoryCleanup: 50
+        }
+    },
+    market: {
+        maxCreditsPerTick: 100000,
+        minCreditReserve: 50000,
+        safetyBuffer: {
+            energy: 50000,
+            baseMinerals: 5000
+        },
+        priceTolerance: {
+            buy: 0.1,
+            sell: 0.1,
+            emergency: 0.5
+        },
+        scanInterval: 100,
+        tradeCooldown: 10
+    },
+    spawn: {
+        bodyCosts: {
+            [MOVE]: 50,
+            [WORK]: 100,
+            [CARRY]: 50,
+            [ATTACK]: 80,
+            [RANGED_ATTACK]: 150,
+            [HEAL]: 250,
+            [CLAIM]: 600,
+            [TOUGH]: 10
+        },
+        minCreepCounts: {
+            harvester: 2,
+            hauler: 2,
+            upgrader: 1,
+            builder: 1
+        },
+        rolePriorities: {
+            harvester: 100,
+            hauler: 90,
+            queenCarrier: 85,
+            builder: 70,
+            upgrader: 60,
+            guard: 80,
+            healer: 75,
+            scout: 40,
+            claimer: 50
+        }
+    },
+    boost: {
+        roleBoosts: {
+            harvester: ["UO"],
+            upgrader: ["GH", "GH2O", "XGH2O"],
+            guard: ["UH", "LO"],
+            healer: ["LO", "LHO2", "XLHO2"],
+            soldier: ["UH", "KO", "XZHO2"]
+        },
+        boostPriority: [
+            "XLHO2",
+            "XUH2O",
+            "XZHO2",
+            "XGH2O"
+        ],
+        minBoostAmount: 30
+    },
+    debug: false,
+    profiling: true,
+    visualizations: true
+};
+/**
+ * Runtime configuration instance
+ */
+let currentConfig = { ...DEFAULT_CONFIG$j };
+/**
+ * Get current configuration
+ */
+function getConfig() {
+    return currentConfig;
+}
+/**
+ * Update configuration
+ */
+function updateConfig(partial) {
+    currentConfig = { ...currentConfig, ...partial };
+}
+
+/**
+ * Kernel - Central Process Management
+ *
+ * The kernel is the central coordinator for all processes in the bot:
+ * - Process registration and lifecycle management
+ * - CPU budget allocation and enforcement per process
+ * - Priority-based process scheduling
+ * - Process statistics tracking
+ * - Centralized event system for inter-process communication
+ *
+ * Design Principles (from ROADMAP.md):
+ * - Striktes Tick-Budget: Eco rooms ≤ 0.1 CPU, War rooms ≤ 0.25 CPU, Global overmind ≤ 1 CPU
+ * - CPU-Bucket-gesteuertes Verhalten: High bucket enables expensive operations, low bucket restricts to core logic
+ * - Frequenzebenen: High frequency (every tick), Medium (5-20 ticks), Low (≥100 ticks)
+ * - Ereignisgetriebene Logik: Critical events trigger immediate updates
+ */
+/**
+ * Process priority levels
+ */
+var ProcessPriority;
+(function (ProcessPriority) {
+    ProcessPriority[ProcessPriority["CRITICAL"] = 100] = "CRITICAL";
+    ProcessPriority[ProcessPriority["HIGH"] = 75] = "HIGH";
+    ProcessPriority[ProcessPriority["MEDIUM"] = 50] = "MEDIUM";
+    ProcessPriority[ProcessPriority["LOW"] = 25] = "LOW";
+    ProcessPriority[ProcessPriority["IDLE"] = 10] = "IDLE"; // Very low priority (visualizations, stats)
+})(ProcessPriority || (ProcessPriority = {}));
+const BASE_CONFIG = {
+    targetCpuUsage: 0.85,
+    reservedCpu: 5,
+    enableStats: true,
+    statsLogInterval: 100,
+    pixelGenerationEnabled: true,
+    pixelRecoveryTicks: 100
+};
+const DEFAULT_CRITICAL_DIVISOR = 2;
+function deriveCriticalThreshold(lowBucketThreshold) {
+    return Math.max(0, Math.floor(lowBucketThreshold / DEFAULT_CRITICAL_DIVISOR));
+}
+function deriveFrequencyIntervals(taskFrequencies) {
+    return {
+        high: 1,
+        medium: Math.max(1, Math.min(taskFrequencies.clusterLogic, taskFrequencies.pheromoneUpdate)),
+        low: Math.max(taskFrequencies.marketScan, taskFrequencies.nukeEvaluation, taskFrequencies.memoryCleanup)
+    };
+}
+function deriveFrequencyMinBucket(bucketThresholds, highBucketThreshold) {
+    return {
+        high: Math.max(0, Math.floor(bucketThresholds.lowMode * 0.25)),
+        medium: bucketThresholds.lowMode,
+        low: Math.max(bucketThresholds.lowMode, Math.floor((bucketThresholds.lowMode + highBucketThreshold) / 2))
+    };
+}
+function deriveFrequencyBudgets(budgets) {
+    return {
+        high: budgets.rooms,
+        medium: budgets.strategic,
+        low: Math.max(budgets.market, budgets.visualization)
+    };
+}
+function buildKernelConfigFromCpu(cpuConfig) {
+    const highBucketThreshold = cpuConfig.bucketThresholds.highMode;
+    const lowBucketThreshold = cpuConfig.bucketThresholds.lowMode;
+    const criticalBucketThreshold = deriveCriticalThreshold(lowBucketThreshold);
+    const frequencyIntervals = deriveFrequencyIntervals(cpuConfig.taskFrequencies);
+    const frequencyMinBucket = deriveFrequencyMinBucket(cpuConfig.bucketThresholds, highBucketThreshold);
+    const frequencyCpuBudgets = deriveFrequencyBudgets(cpuConfig.budgets);
+    return {
+        ...BASE_CONFIG,
+        lowBucketThreshold,
+        highBucketThreshold,
+        criticalBucketThreshold,
+        frequencyIntervals,
+        frequencyMinBucket,
+        frequencyCpuBudgets
+    };
+}
+/**
+ * Kernel - Central Process Manager
+ */
+class Kernel {
+    constructor(config) {
+        this.processes = new Map();
+        this.bucketMode = "normal";
+        this.tickCpuUsed = 0;
+        this.initialized = false;
+        /** Tick when a pixel was last generated (0 if none tracked) */
+        this.lastPixelGenerationTick = 0;
+        this.config = { ...config };
+        this.validateConfig();
+        this.frequencyDefaults = this.buildFrequencyDefaults();
+    }
+    /**
+     * Register a process with the kernel
+     */
+    registerProcess(options) {
+        var _a, _b, _c, _d, _e;
+        const frequency = (_a = options.frequency) !== null && _a !== void 0 ? _a : "medium";
+        const defaults = this.frequencyDefaults[frequency];
+        const process = {
+            id: options.id,
+            name: options.name,
+            priority: (_b = options.priority) !== null && _b !== void 0 ? _b : ProcessPriority.MEDIUM,
+            frequency,
+            minBucket: (_c = options.minBucket) !== null && _c !== void 0 ? _c : defaults.minBucket,
+            cpuBudget: (_d = options.cpuBudget) !== null && _d !== void 0 ? _d : defaults.cpuBudget,
+            interval: (_e = options.interval) !== null && _e !== void 0 ? _e : defaults.interval,
+            execute: options.execute,
+            state: "idle",
+            stats: {
+                totalCpu: 0,
+                runCount: 0,
+                avgCpu: 0,
+                maxCpu: 0,
+                lastRunTick: 0,
+                skippedCount: 0,
+                errorCount: 0
+            }
+        };
+        this.processes.set(options.id, process);
+        logger.debug(`Kernel: Registered process "${process.name}" (${process.id})`, { subsystem: "Kernel" });
+    }
+    /**
+     * Unregister a process
+     */
+    unregisterProcess(id) {
+        const deleted = this.processes.delete(id);
+        if (deleted) {
+            logger.debug(`Kernel: Unregistered process ${id}`, { subsystem: "Kernel" });
+        }
+        return deleted;
+    }
+    /**
+     * Get a registered process
+     */
+    getProcess(id) {
+        return this.processes.get(id);
+    }
+    /**
+     * Get all registered processes
+     */
+    getProcesses() {
+        return Array.from(this.processes.values());
+    }
+    /**
+     * Initialize the kernel (call once at start of first tick)
+     */
+    initialize() {
+        if (this.initialized)
+            return;
+        logger.info(`Kernel initialized with ${this.processes.size} processes`, { subsystem: "Kernel" });
+        this.initialized = true;
+    }
+    /**
+     * Determine current bucket mode.
+     * When pixel generation is enabled, accounts for the recovery period
+     * after a pixel is generated (bucket drops from 10000 to 0).
+     */
+    updateBucketMode() {
+        const bucket = Game.cpu.bucket;
+        let newMode;
+        // Check if we're in the pixel recovery period
+        const inPixelRecovery = this.isInPixelRecoveryPeriod();
+        if (bucket < this.config.criticalBucketThreshold && !inPixelRecovery) {
+            // Only enter critical mode if we're NOT recovering from pixel generation
+            newMode = "critical";
+        }
+        else if (bucket < this.config.lowBucketThreshold && !inPixelRecovery) {
+            // Only enter low mode if we're NOT recovering from pixel generation
+            newMode = "low";
+        }
+        else if (bucket > this.config.highBucketThreshold) {
+            newMode = "high";
+        }
+        else {
+            newMode = "normal";
+        }
+        if (newMode !== this.bucketMode) {
+            logger.info(`Kernel: Bucket mode changed from ${this.bucketMode} to ${newMode} (bucket: ${bucket}${inPixelRecovery ? ", recovering from pixel" : ""})`, {
+                subsystem: "Kernel"
+            });
+            this.bucketMode = newMode;
+        }
+    }
+    validateConfig() {
+        if (this.config.criticalBucketThreshold >= this.config.lowBucketThreshold) {
+            logger.warn(`Kernel: Adjusting critical bucket threshold ${this.config.criticalBucketThreshold} to stay below low threshold ${this.config.lowBucketThreshold}`, { subsystem: "Kernel" });
+            this.config.criticalBucketThreshold = Math.max(0, this.config.lowBucketThreshold - 1);
+        }
+        if (this.config.lowBucketThreshold >= this.config.highBucketThreshold) {
+            logger.warn(`Kernel: Adjusting high bucket threshold ${this.config.highBucketThreshold} to stay above low threshold ${this.config.lowBucketThreshold}`, { subsystem: "Kernel" });
+            this.config.highBucketThreshold = this.config.lowBucketThreshold + 1;
+        }
+    }
+    buildFrequencyDefaults() {
+        return {
+            high: {
+                interval: this.config.frequencyIntervals.high,
+                minBucket: this.config.frequencyMinBucket.high,
+                cpuBudget: this.config.frequencyCpuBudgets.high
+            },
+            medium: {
+                interval: this.config.frequencyIntervals.medium,
+                minBucket: this.config.frequencyMinBucket.medium,
+                cpuBudget: this.config.frequencyCpuBudgets.medium
+            },
+            low: {
+                interval: this.config.frequencyIntervals.low,
+                minBucket: this.config.frequencyMinBucket.low,
+                cpuBudget: this.config.frequencyCpuBudgets.low
+            }
+        };
+    }
+    /**
+     * Check if we're in the recovery period after pixel generation.
+     * During this period, low bucket is expected and shouldn't trigger
+     * conservation modes.
+     */
+    isInPixelRecoveryPeriod() {
+        if (!this.config.pixelGenerationEnabled) {
+            return false;
+        }
+        // If no pixel generation has been tracked yet (lastPixelGenerationTick === 0),
+        // we don't assume recovery mode. This is conservative: the bot may enter
+        // low/critical mode briefly until the first pixel is generated and tracked.
+        // This is safer than assuming all low bucket states are due to pixel generation.
+        if (this.lastPixelGenerationTick === 0) {
+            return false;
+        }
+        const ticksSincePixel = Game.time - this.lastPixelGenerationTick;
+        return ticksSincePixel < this.config.pixelRecoveryTicks;
+    }
+    /**
+     * Notify the kernel that a pixel was generated.
+     * This helps the kernel understand that low bucket is expected
+     * and shouldn't trigger conservation modes.
+     */
+    notifyPixelGenerated() {
+        this.lastPixelGenerationTick = Game.time;
+        logger.debug(`Kernel: Pixel generated at tick ${Game.time}, recovery period started`, { subsystem: "Kernel" });
+    }
+    /**
+     * Get current bucket mode.
+     * Ensures the bucket mode is up-to-date before returning.
+     */
+    getBucketMode() {
+        this.updateBucketMode();
+        return this.bucketMode;
+    }
+    /**
+     * Get CPU limit for current tick
+     */
+    getCpuLimit() {
+        const baseLimit = Game.cpu.limit;
+        switch (this.bucketMode) {
+            case "critical":
+                return baseLimit * 0.3;
+            case "low":
+                return baseLimit * 0.5;
+            case "high":
+                return baseLimit * this.config.targetCpuUsage;
+            default:
+                return baseLimit * this.config.targetCpuUsage;
+        }
+    }
+    /**
+     * Check if CPU budget is available
+     */
+    hasCpuBudget() {
+        const used = Game.cpu.getUsed();
+        const limit = this.getCpuLimit();
+        return (limit - used) > this.config.reservedCpu;
+    }
+    /**
+     * Get remaining CPU budget
+     */
+    getRemainingCpu() {
+        return Math.max(0, this.getCpuLimit() - Game.cpu.getUsed() - this.config.reservedCpu);
+    }
+    /**
+     * Check if process should run this tick
+     */
+    shouldRunProcess(process) {
+        // Check bucket requirement
+        if (Game.cpu.bucket < process.minBucket) {
+            return false;
+        }
+        // Check interval
+        const ticksSinceRun = Game.time - process.stats.lastRunTick;
+        if (ticksSinceRun < process.interval) {
+            return false;
+        }
+        // In critical bucket mode, only run CRITICAL priority processes
+        if (this.bucketMode === "critical") {
+            return process.priority >= ProcessPriority.CRITICAL;
+        }
+        // In low bucket mode, only run HIGH priority or higher processes
+        // (This includes CRITICAL and HIGH, regardless of frequency)
+        if (this.bucketMode === "low") {
+            return process.priority >= ProcessPriority.HIGH;
+        }
+        // Check if suspended
+        if (process.state === "suspended") {
+            return false;
+        }
+        return true;
+    }
+    /**
+     * Execute a single process with CPU tracking
+     */
+    executeProcess(process) {
+        const cpuBefore = Game.cpu.getUsed();
+        process.state = "running";
+        try {
+            process.execute();
+            process.state = "idle";
+        }
+        catch (err) {
+            process.state = "error";
+            process.stats.errorCount++;
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            logger.error(`Kernel: Process "${process.name}" error: ${errorMessage}`, { subsystem: "Kernel" });
+            if (err instanceof Error && err.stack) {
+                logger.error(err.stack, { subsystem: "Kernel" });
+            }
+        }
+        const cpuUsed = Game.cpu.getUsed() - cpuBefore;
+        // Update statistics
+        if (this.config.enableStats) {
+            process.stats.totalCpu += cpuUsed;
+            process.stats.runCount++;
+            process.stats.avgCpu = process.stats.totalCpu / process.stats.runCount;
+            process.stats.maxCpu = Math.max(process.stats.maxCpu, cpuUsed);
+            process.stats.lastRunTick = Game.time;
+        }
+        this.tickCpuUsed += cpuUsed;
+        // Check CPU budget violation
+        const budgetLimit = this.getCpuLimit() * process.cpuBudget;
+        if (cpuUsed > budgetLimit && Game.time % 50 === 0) {
+            logger.warn(`Kernel: Process "${process.name}" exceeded CPU budget: ${cpuUsed.toFixed(3)} > ${budgetLimit.toFixed(3)}`, { subsystem: "Kernel" });
+        }
+    }
+    /**
+     * Run all scheduled processes for this tick
+     */
+    run() {
+        this.updateBucketMode();
+        this.tickCpuUsed = 0;
+        // Process queued events from previous ticks
+        eventBus.processQueue();
+        // Sort processes by priority (highest first)
+        const sortedProcesses = Array.from(this.processes.values())
+            .sort((a, b) => b.priority - a.priority);
+        let processesRun = 0;
+        let processesSkipped = 0;
+        for (const process of sortedProcesses) {
+            // Check if we should run this process
+            if (!this.shouldRunProcess(process)) {
+                continue;
+            }
+            // Check overall CPU budget
+            if (!this.hasCpuBudget()) {
+                processesSkipped++;
+                process.stats.skippedCount++;
+                continue;
+            }
+            // Execute the process
+            this.executeProcess(process);
+            processesRun++;
+        }
+        // Log stats periodically
+        if (this.config.enableStats && Game.time % this.config.statsLogInterval === 0) {
+            this.logStats(processesRun, processesSkipped);
+            eventBus.logStats();
+        }
+    }
+    /**
+     * Log kernel statistics
+     */
+    logStats(processesRun, processesSkipped) {
+        logger.debug(`Kernel stats: ${processesRun} ran, ${processesSkipped} skipped, ${this.tickCpuUsed.toFixed(2)} CPU, mode: ${this.bucketMode}`, { subsystem: "Kernel" });
+    }
+    /**
+     * Get tick CPU used by kernel
+     */
+    getTickCpuUsed() {
+        return this.tickCpuUsed;
+    }
+    /**
+     * Suspend a process
+     */
+    suspendProcess(id) {
+        const process = this.processes.get(id);
+        if (process) {
+            process.state = "suspended";
+            logger.info(`Kernel: Suspended process "${process.name}"`, { subsystem: "Kernel" });
+            return true;
+        }
+        return false;
+    }
+    /**
+     * Resume a suspended process
+     */
+    resumeProcess(id) {
+        const process = this.processes.get(id);
+        if (process && process.state === "suspended") {
+            process.state = "idle";
+            logger.info(`Kernel: Resumed process "${process.name}"`, { subsystem: "Kernel" });
+            return true;
+        }
+        return false;
+    }
+    /**
+     * Get process statistics summary
+     */
+    getStatsSummary() {
+        const processes = Array.from(this.processes.values());
+        const active = processes.filter(p => p.state !== "suspended");
+        const suspended = processes.filter(p => p.state === "suspended");
+        const totalCpu = processes.reduce((sum, p) => sum + p.stats.totalCpu, 0);
+        const avgCpu = processes.length > 0 ? totalCpu / processes.length : 0;
+        const topCpu = [...processes]
+            .sort((a, b) => b.stats.avgCpu - a.stats.avgCpu)
+            .slice(0, 5)
+            .map(p => ({ name: p.name, avgCpu: p.stats.avgCpu }));
+        return {
+            totalProcesses: processes.length,
+            activeProcesses: active.length,
+            suspendedProcesses: suspended.length,
+            totalCpuUsed: totalCpu,
+            avgCpuPerProcess: avgCpu,
+            topCpuProcesses: topCpu
+        };
+    }
+    /**
+     * Reset all process statistics
+     */
+    resetStats() {
+        for (const process of this.processes.values()) {
+            process.stats = {
+                totalCpu: 0,
+                runCount: 0,
+                avgCpu: 0,
+                maxCpu: 0,
+                lastRunTick: 0,
+                skippedCount: 0,
+                errorCount: 0
+            };
+        }
+        logger.info("Kernel: Reset all process statistics", { subsystem: "Kernel" });
+    }
+    /**
+     * Get kernel configuration
+     */
+    getConfig() {
+        return { ...this.config };
+    }
+    /**
+     * Get frequency defaults for a process frequency
+     */
+    getFrequencyDefaults(frequency) {
+        return { ...this.frequencyDefaults[frequency] };
+    }
+    /**
+     * Update kernel configuration
+     */
+    updateConfig(config) {
+        this.config = { ...this.config, ...config };
+        this.validateConfig();
+        this.frequencyDefaults = this.buildFrequencyDefaults();
+    }
+    /**
+     * Update kernel configuration from CPU config
+     */
+    updateFromCpuConfig(cpuConfig) {
+        this.updateConfig(buildKernelConfigFromCpu(cpuConfig));
+    }
+    // ===========================================================================
+    // Event System Methods
+    // ===========================================================================
+    /**
+     * Subscribe to an event
+     *
+     * Provides type-safe event subscription through the kernel.
+     * Events are processed according to bucket status and priority.
+     *
+     * @param eventName - Name of the event to subscribe to
+     * @param handler - Handler function called when event is emitted
+     * @param options - Subscription options
+     * @returns Unsubscribe function
+     *
+     * @example
+     * ```typescript
+     * kernel.on('hostile.detected', (event) => {
+     *   console.log(`Hostile in ${event.roomName}!`);
+     * });
+     * ```
+     */
+    on(eventName, handler, options = {}) {
+        return eventBus.on(eventName, handler, options);
+    }
+    /**
+     * Subscribe to an event (one-time)
+     *
+     * Handler is automatically unsubscribed after first invocation.
+     *
+     * @param eventName - Name of the event to subscribe to
+     * @param handler - Handler function called once when event is emitted
+     * @param options - Subscription options
+     * @returns Unsubscribe function
+     */
+    once(eventName, handler, options = {}) {
+        return eventBus.once(eventName, handler, options);
+    }
+    /**
+     * Emit an event
+     *
+     * Emits a type-safe event that will be processed by all registered handlers.
+     * Events are bucket-aware:
+     * - Critical events are always processed immediately
+     * - High-priority events are queued in low bucket
+     * - Low-priority events may be dropped in critical bucket
+     *
+     * @param eventName - Name of the event to emit
+     * @param payload - Event payload (tick is added automatically)
+     * @param options - Emission options
+     *
+     * @example
+     * ```typescript
+     * kernel.emit('hostile.detected', {
+     *   roomName: 'W1N1',
+     *   hostileId: creep.id,
+     *   hostileOwner: creep.owner.username,
+     *   bodyParts: creep.body.length,
+     *   threatLevel: 2
+     * });
+     * ```
+     */
+    emit(eventName, payload, options = {}) {
+        eventBus.emit(eventName, payload, options);
+    }
+    /**
+     * Remove all handlers for an event
+     *
+     * @param eventName - Name of the event to clear handlers for
+     */
+    offAll(eventName) {
+        eventBus.offAll(eventName);
+    }
+    /**
+     * Process queued events
+     *
+     * Should be called each tick to process events that were deferred
+     * due to low bucket status. This is automatically called by run().
+     */
+    processEvents() {
+        eventBus.processQueue();
+    }
+    /**
+     * Get event bus statistics
+     */
+    getEventStats() {
+        return eventBus.getStats();
+    }
+    /**
+     * Check if there are handlers for an event
+     *
+     * @param eventName - Name of the event to check
+     */
+    hasEventHandlers(eventName) {
+        return eventBus.hasHandlers(eventName);
+    }
+    /**
+     * Get the event bus instance for advanced usage
+     *
+     * Prefer using kernel.on() and kernel.emit() for standard usage.
+     */
+    getEventBus() {
+        return eventBus;
+    }
+}
+/**
+ * Global kernel instance
+ */
+const kernel = new Kernel(buildKernelConfigFromCpu(getConfig().cpu));
+
+/**
+ * Memory Schemas - Phase 1
+ *
+ * TypeScript interfaces for all memory structures:
+ * - Global/Empire memory
+ * - Cluster/Colony state
+ * - Room/Swarm state
+ * - Creep/Squad state
+ */
+// ============================================================================
+// Default Factories
+// ============================================================================
+/**
+ * Create default pheromone state
+ */
+function createDefaultPheromones() {
+    return {
+        expand: 0,
+        harvest: 10,
+        build: 5,
+        upgrade: 5,
+        defense: 0,
+        war: 0,
+        siege: 0,
+        logistics: 5,
+        nukeTarget: 0
+    };
+}
+/**
+ * Create default swarm state
+ */
+function createDefaultSwarmState() {
+    return {
+        colonyLevel: "seedNest",
+        posture: "eco",
+        danger: 0,
+        pheromones: createDefaultPheromones(),
+        nextUpdateTick: 0,
+        eventLog: [],
+        missingStructures: {
+            spawn: true,
+            storage: true,
+            terminal: true,
+            labs: true,
+            nuker: true,
+            factory: true,
+            extractor: true,
+            powerSpawn: true,
+            observer: true
+        },
+        role: "secondaryCore",
+        remoteAssignments: [],
+        metrics: {
+            energyHarvested: 0,
+            energySpawning: 0,
+            energyConstruction: 0,
+            energyRepair: 0,
+            energyTower: 0,
+            controllerProgress: 0,
+            hostileCount: 0,
+            damageReceived: 0,
+            constructionSites: 0,
+            energyAvailable: 0,
+            energyCapacity: 0,
+            energyNeed: 0
+        },
+        lastUpdate: 0
+    };
+}
+/**
+ * Create default market memory
+ */
+function createDefaultMarketMemory() {
+    return {
+        resources: {},
+        lastScan: 0
+    };
+}
+/**
+ * Create default overmind memory
+ */
+function createDefaultOvermindMemory() {
+    return {
+        roomsSeen: {},
+        roomIntel: {},
+        claimQueue: [],
+        warTargets: [],
+        nukeCandidates: [],
+        powerBanks: [],
+        market: createDefaultMarketMemory(),
+        objectives: {
+            targetPowerLevel: 0,
+            targetRoomCount: 1,
+            warMode: false,
+            expansionPaused: false
+        },
+        lastRun: 0
+    };
+}
+/**
+ * Create default cluster memory
+ */
+function createDefaultClusterMemory(id, coreRoom) {
+    return {
+        id,
+        coreRoom,
+        memberRooms: [coreRoom],
+        remoteRooms: [],
+        forwardBases: [],
+        role: "economic",
+        metrics: {
+            energyIncome: 0,
+            energyConsumption: 0,
+            energyBalance: 0,
+            warIndex: 0,
+            economyIndex: 50
+        },
+        squads: [],
+        rallyPoints: [],
+        defenseRequests: [],
+        resourceRequests: [],
+        lastUpdate: 0
+    };
+}
+
+/**
+ * Heap Cache Manager
+ *
+ * Implements a write-ahead cache system where:
+ * - Heap (global object) serves as a fast cache layer
+ * - Memory serves as persistence layer for surviving resets
+ * - On init after a reset, we rehydrate the heap with Memory data
+ * - Write operations go to heap first (fast), then persist to Memory periodically
+ *
+ * This is similar to a DB cache system:
+ * 1. Check heap cache first (fast O(1) lookup)
+ * 2. If not in heap, check Memory (slower, requires serialization)
+ * 3. Write to heap immediately, persist to Memory on schedule
+ *
+ * Design Principles (from ROADMAP.md Section 2):
+ * - Aggressive Caching + TTL
+ * - Event-driven logic with periodic sync
+ * - CPU-efficient: minimize Memory serialization overhead
+ *
+ * Performance Benefits:
+ * - Fast reads: heap access is ~10x faster than Memory access
+ * - Reduced serialization: only persist changed data periodically
+ * - Survives resets: data restored from Memory after global reset
+ */
+/** How often to persist dirty cache entries to Memory (ticks) */
+const PERSISTENCE_INTERVAL = 10;
+/** Default TTL for cache entries (ticks) */
+const DEFAULT_TTL$1 = 1000;
+/** Infinite TTL constant */
+const INFINITE_TTL = -1;
+/** Current cache memory version */
+const CACHE_VERSION = 1;
+// =============================================================================
+// Heap Cache Storage
+// =============================================================================
+/**
+ * Get or initialize the heap cache store.
+ * Cache persists across ticks within the same session.
+ */
+function getHeapStore() {
+    const g = global;
+    if (!g._heapCache || g._heapCache.tick !== Game.time) {
+        // Update tick but preserve entries across ticks
+        if (g._heapCache) {
+            g._heapCache.tick = Game.time;
+        }
+        else {
+            g._heapCache = {
+                tick: Game.time,
+                entries: new Map(),
+                rehydrated: false
+            };
+        }
+    }
+    return g._heapCache;
+}
+/**
+ * Get cache memory storage
+ */
+function getCacheMemory() {
+    if (!Memory._heapCache) {
+        Memory._heapCache = {
+            version: CACHE_VERSION,
+            lastSync: Game.time,
+            data: {}
+        };
+    }
+    return Memory._heapCache;
+}
+// =============================================================================
+// Public API
+// =============================================================================
+/**
+ * Heap Cache Manager class
+ */
+class HeapCacheManager {
+    constructor() {
+        this.lastPersistenceTick = 0;
+    }
+    /**
+     * Initialize the heap cache system.
+     * Should be called once on startup.
+     */
+    initialize() {
+        const heap = getHeapStore();
+        // Rehydrate from Memory if this is a new session (after global reset)
+        if (!heap.rehydrated) {
+            this.rehydrateFromMemory();
+            heap.rehydrated = true;
+        }
+    }
+    /**
+     * Rehydrate heap cache from Memory after a reset.
+     * This restores all cached data from the persistence layer.
+     */
+    rehydrateFromMemory() {
+        const heap = getHeapStore();
+        const memory = getCacheMemory();
+        let rehydratedCount = 0;
+        let expiredCount = 0;
+        // Restore all entries from Memory to heap
+        for (const [key, memEntry] of Object.entries(memory.data)) {
+            // Check if entry has expired based on TTL (-1 means infinite)
+            if (memEntry.ttl !== undefined && memEntry.ttl !== INFINITE_TTL) {
+                const age = Game.time - memEntry.lastModified;
+                if (age > memEntry.ttl) {
+                    expiredCount++;
+                    continue; // Skip expired entries
+                }
+            }
+            heap.entries.set(key, {
+                value: memEntry.value,
+                lastModified: memEntry.lastModified,
+                dirty: false,
+                ttl: memEntry.ttl
+            });
+            rehydratedCount++;
+        }
+        if (rehydratedCount > 0 && Game.time % 100 === 0) {
+            // Only log periodically to reduce console spam
+            console.log(`[HeapCache] Rehydrated ${rehydratedCount} entries from Memory (${expiredCount} expired)`);
+        }
+    }
+    /**
+     * Get a value from the cache.
+     * Checks heap first, falls back to Memory if not found.
+     *
+     * @param key - Cache key
+     * @returns Cached value or undefined
+     */
+    get(key) {
+        const heap = getHeapStore();
+        // Try heap first (fast path)
+        const entry = heap.entries.get(key);
+        if (entry) {
+            // Check TTL (-1 means infinite, never expires)
+            if (entry.ttl !== undefined && entry.ttl !== INFINITE_TTL) {
+                const age = Game.time - entry.lastModified;
+                if (age > entry.ttl) {
+                    // Expired, remove from cache
+                    heap.entries.delete(key);
+                    return undefined;
+                }
+            }
+            return entry.value;
+        }
+        // Fall back to Memory (slow path, only happens if entry wasn't rehydrated)
+        const memory = getCacheMemory();
+        const memEntry = memory.data[key];
+        if (memEntry) {
+            // Check TTL (-1 means infinite, never expires)
+            if (memEntry.ttl !== undefined && memEntry.ttl !== INFINITE_TTL) {
+                const age = Game.time - memEntry.lastModified;
+                if (age > memEntry.ttl) {
+                    // Expired, clean up
+                    delete memory.data[key];
+                    return undefined;
+                }
+            }
+            // Load into heap for future fast access
+            heap.entries.set(key, {
+                value: memEntry.value,
+                lastModified: memEntry.lastModified,
+                dirty: false,
+                ttl: memEntry.ttl
+            });
+            return memEntry.value;
+        }
+        return undefined;
+    }
+    /**
+     * Set a value in the cache.
+     * Writes to heap immediately, marks for persistence.
+     *
+     * @param key - Cache key
+     * @param value - Value to cache
+     * @param ttl - Optional time-to-live in ticks (-1 for infinite)
+     */
+    set(key, value, ttl) {
+        const heap = getHeapStore();
+        heap.entries.set(key, {
+            value,
+            lastModified: Game.time,
+            dirty: true,
+            ttl: ttl !== null && ttl !== void 0 ? ttl : DEFAULT_TTL$1
+        });
+    }
+    /**
+     * Delete a value from the cache.
+     * Removes from both heap and Memory.
+     *
+     * @param key - Cache key
+     */
+    delete(key) {
+        const heap = getHeapStore();
+        heap.entries.delete(key);
+        // Also remove from Memory
+        const memory = getCacheMemory();
+        delete memory.data[key];
+    }
+    /**
+     * Check if a key exists in the cache.
+     *
+     * @param key - Cache key
+     * @returns True if key exists and is not expired
+     */
+    has(key) {
+        return this.get(key) !== undefined;
+    }
+    /**
+     * Clear all cached data from both heap and Memory.
+     */
+    clear() {
+        const heap = getHeapStore();
+        heap.entries.clear();
+        const memory = getCacheMemory();
+        memory.data = {};
+    }
+    /**
+     * Persist dirty cache entries to Memory.
+     * Should be called periodically to sync changes.
+     *
+     * @param force - Force persistence even if interval hasn't elapsed
+     * @returns Number of entries persisted
+     */
+    persist(force = false) {
+        // Check if persistence interval has elapsed
+        if (!force && Game.time - this.lastPersistenceTick < PERSISTENCE_INTERVAL) {
+            return 0;
+        }
+        const heap = getHeapStore();
+        const memory = getCacheMemory();
+        let persistedCount = 0;
+        // Persist only dirty entries
+        for (const [key, entry] of heap.entries) {
+            if (entry.dirty) {
+                memory.data[key] = {
+                    value: entry.value,
+                    lastModified: entry.lastModified,
+                    ttl: entry.ttl
+                };
+                entry.dirty = false;
+                persistedCount++;
+            }
+        }
+        memory.lastSync = Game.time;
+        this.lastPersistenceTick = Game.time;
+        return persistedCount;
+    }
+    /**
+     * Get cache statistics.
+     *
+     * @returns Cache stats
+     */
+    getStats() {
+        const heap = getHeapStore();
+        const memory = getCacheMemory();
+        let dirtyCount = 0;
+        for (const entry of heap.entries.values()) {
+            if (entry.dirty)
+                dirtyCount++;
+        }
+        return {
+            heapSize: heap.entries.size,
+            memorySize: Object.keys(memory.data).length,
+            dirtyEntries: dirtyCount,
+            lastSync: memory.lastSync
+        };
+    }
+    /**
+     * Get all keys in the cache.
+     *
+     * @returns Array of cache keys
+     */
+    keys() {
+        const heap = getHeapStore();
+        return Array.from(heap.entries.keys());
+    }
+    /**
+     * Get all values in the cache.
+     *
+     * @returns Array of cache values
+     */
+    values() {
+        const heap = getHeapStore();
+        return Array.from(heap.entries.values()).map(entry => entry.value);
+    }
+    /**
+     * Clean up expired entries from the cache.
+     *
+     * @returns Number of entries cleaned
+     */
+    cleanExpired() {
+        const heap = getHeapStore();
+        const memory = getCacheMemory();
+        let cleanedCount = 0;
+        // Clean heap (skip entries with infinite TTL)
+        for (const [key, entry] of heap.entries) {
+            if (entry.ttl !== undefined && entry.ttl !== INFINITE_TTL) {
+                const age = Game.time - entry.lastModified;
+                if (age > entry.ttl) {
+                    heap.entries.delete(key);
+                    cleanedCount++;
+                }
+            }
+        }
+        // Clean Memory (skip entries with infinite TTL)
+        for (const [key, memEntry] of Object.entries(memory.data)) {
+            if (memEntry.ttl !== undefined && memEntry.ttl !== INFINITE_TTL) {
+                const age = Game.time - memEntry.lastModified;
+                if (age > memEntry.ttl) {
+                    delete memory.data[key];
+                    cleanedCount++;
+                }
+            }
+        }
+        return cleanedCount;
+    }
+}
+/**
+ * Global heap cache manager instance
+ */
+const heapCache = new HeapCacheManager();
+
+/**
+ * Memory Manager
+ *
+ * Handles initialization, validation, and access to all memory structures.
+ */
+const OVERMIND_KEY = "overmind";
+const CLUSTERS_KEY = "clusters";
+/** Screeps memory limit in bytes */
+const MEMORY_LIMIT_BYTES = 2097152; // 2MB
+/** Current memory version */
+const CURRENT_MEMORY_VERSION = 1;
+/**
+ * Interval for dead creep memory cleanup.
+ * Running every tick is wasteful since creeps don't die that often.
+ */
+const DEAD_CREEP_CLEANUP_INTERVAL = 10;
+/**
+ * Memory Manager class
+ */
+class MemoryManager {
+    constructor() {
+        this.lastInitializeTick = null;
+        this.lastCleanupTick = 0;
+    }
+    /**
+     * Initialize all memory structures
+     */
+    initialize() {
+        if (this.lastInitializeTick === Game.time)
+            return;
+        this.lastInitializeTick = Game.time;
+        // Initialize heap cache first (rehydrates from Memory if needed)
+        heapCache.initialize();
+        this.runMemoryMigration();
+        this.ensureOvermindMemory();
+        this.ensureClustersMemory();
+        // Only clean dead creeps periodically to save CPU
+        if (Game.time - this.lastCleanupTick >= DEAD_CREEP_CLEANUP_INTERVAL) {
+            this.cleanDeadCreeps();
+            this.lastCleanupTick = Game.time;
+        }
+    }
+    /**
+     * Run memory migration if version changed
+     */
+    runMemoryMigration() {
+        var _a;
+        const mem = Memory;
+        const storedVersion = (_a = mem.memoryVersion) !== null && _a !== void 0 ? _a : 0;
+        if (storedVersion < CURRENT_MEMORY_VERSION) {
+            console.log(`[MemoryManager] Migrating memory from version ${storedVersion} to ${CURRENT_MEMORY_VERSION}`);
+            // Run migrations in sequence
+            if (storedVersion < 1) {
+                this.migrateToV1();
+            }
+            // Update version
+            mem.memoryVersion = CURRENT_MEMORY_VERSION;
+            console.log(`[MemoryManager] Memory migration complete`);
+        }
+    }
+    /**
+     * Migrate to version 1
+     */
+    migrateToV1() {
+        // Migration to v1: Update all creep memory to include version field
+        for (const name in Memory.creeps) {
+            const creepMem = Memory.creeps[name];
+            if (creepMem && creepMem.version === undefined) {
+                creepMem.version = 1;
+            }
+        }
+    }
+    /**
+     * Ensure overmind memory exists
+     */
+    ensureOvermindMemory() {
+        const mem = Memory;
+        if (!mem[OVERMIND_KEY]) {
+            mem[OVERMIND_KEY] = createDefaultOvermindMemory();
+        }
+    }
+    /**
+     * Ensure clusters memory exists
+     */
+    ensureClustersMemory() {
+        const mem = Memory;
+        if (!mem[CLUSTERS_KEY]) {
+            mem[CLUSTERS_KEY] = {};
+        }
+    }
+    /**
+     * Get overmind memory (cached with infinite TTL)
+     * Note: Returns a reference to the cached object. Modifications will be tracked.
+     */
+    getOvermind() {
+        const cacheKey = `memory:${OVERMIND_KEY}`;
+        let overmind = heapCache.get(cacheKey);
+        if (!overmind) {
+            this.ensureOvermindMemory();
+            const mem = Memory;
+            // Cache a reference to the Memory object for fast access
+            // Changes to this object will need to be re-cached to persist
+            heapCache.set(cacheKey, mem[OVERMIND_KEY], INFINITE_TTL);
+            overmind = mem[OVERMIND_KEY];
+        }
+        return overmind;
+    }
+    /**
+     * Get all clusters (cached with infinite TTL)
+     * Note: Returns a reference to the cached object. Modifications will be tracked.
+     */
+    getClusters() {
+        const cacheKey = `memory:${CLUSTERS_KEY}`;
+        let clusters = heapCache.get(cacheKey);
+        if (!clusters) {
+            this.ensureClustersMemory();
+            const mem = Memory;
+            // Cache a reference to the Memory object for fast access
+            heapCache.set(cacheKey, mem[CLUSTERS_KEY], INFINITE_TTL);
+            clusters = mem[CLUSTERS_KEY];
+        }
+        return clusters;
+    }
+    /**
+     * Get or create cluster
+     */
+    getCluster(clusterId, coreRoom) {
+        const clusters = this.getClusters();
+        if (!clusters[clusterId] && coreRoom) {
+            clusters[clusterId] = createDefaultClusterMemory(clusterId, coreRoom);
+        }
+        return clusters[clusterId];
+    }
+    /**
+     * Get swarm state for a room (cached with infinite TTL)
+     * Note: Returns a reference to the cached object. Modifications will be tracked.
+     */
+    getSwarmState(roomName) {
+        var _a;
+        const cacheKey = `memory:room:${roomName}:swarm`;
+        let swarmState = heapCache.get(cacheKey);
+        if (!swarmState) {
+            const roomMemory = (_a = Memory.rooms) === null || _a === void 0 ? void 0 : _a[roomName];
+            if (!roomMemory)
+                return undefined;
+            const roomSwarm = roomMemory.swarm;
+            if (roomSwarm) {
+                // Cache a reference to the Memory object for fast access
+                heapCache.set(cacheKey, roomSwarm, INFINITE_TTL);
+                swarmState = roomSwarm;
+            }
+        }
+        return swarmState;
+    }
+    /**
+     * Initialize swarm state for a room (cached with infinite TTL)
+     * Note: Returns a reference to the cached object. Modifications will be tracked.
+     */
+    initSwarmState(roomName) {
+        const cacheKey = `memory:room:${roomName}:swarm`;
+        if (!Memory.rooms) {
+            Memory.rooms = {};
+        }
+        if (!Memory.rooms[roomName]) {
+            Memory.rooms[roomName] = {};
+        }
+        const roomMem = Memory.rooms[roomName];
+        if (!roomMem.swarm) {
+            roomMem.swarm = createDefaultSwarmState();
+        }
+        // Cache a reference to the Memory object for fast access
+        heapCache.set(cacheKey, roomMem.swarm, INFINITE_TTL);
+        return roomMem.swarm;
+    }
+    /**
+     * Get or init swarm state
+     */
+    getOrInitSwarmState(roomName) {
+        var _a;
+        return (_a = this.getSwarmState(roomName)) !== null && _a !== void 0 ? _a : this.initSwarmState(roomName);
+    }
+    /**
+     * Get creep memory with type safety
+     */
+    getCreepMemory(creepName) {
+        const creep = Game.creeps[creepName];
+        if (!creep)
+            return undefined;
+        return creep.memory;
+    }
+    /**
+     * Clean up dead creep memory
+     * OPTIMIZATION: Use for-in loop instead of Object.keys() to avoid creating temporary array.
+     * With 100+ creeps, this saves ~0.1 CPU per cleanup cycle.
+     */
+    cleanDeadCreeps() {
+        let cleaned = 0;
+        // Use for-in loop instead of Object.keys() - more memory efficient
+        for (const name in Memory.creeps) {
+            if (!(name in Game.creeps)) {
+                delete Memory.creeps[name];
+                cleaned++;
+            }
+        }
+        return cleaned;
+    }
+    /**
+     * Record room as seen
+     * Note: Modifies the cached object in-place. Changes persist via Memory reference.
+     */
+    recordRoomSeen(roomName) {
+        const overmind = this.getOvermind();
+        overmind.roomsSeen[roomName] = Game.time;
+        // No need to re-cache: overmind is a reference to Memory object
+    }
+    /**
+     * Add event to room log
+     */
+    addRoomEvent(roomName, type, details) {
+        const swarm = this.getSwarmState(roomName);
+        if (!swarm)
+            return;
+        const entry = {
+            type,
+            time: Game.time
+        };
+        if (details !== undefined) {
+            entry.details = details;
+        }
+        swarm.eventLog.push(entry);
+        // Keep only last 20 events
+        while (swarm.eventLog.length > 20) {
+            swarm.eventLog.shift();
+        }
+    }
+    /**
+     * Get memory size estimate
+     */
+    getMemorySize() {
+        return JSON.stringify(Memory).length;
+    }
+    /**
+     * Check if memory is near limit
+     */
+    isMemoryNearLimit() {
+        const size = this.getMemorySize();
+        return size > MEMORY_LIMIT_BYTES * 0.9;
+    }
+    /**
+     * Persist heap cache to Memory.
+     * Should be called periodically to save cache state.
+     */
+    persistHeapCache() {
+        heapCache.persist();
+    }
+    /**
+     * Get heap cache manager instance.
+     * Provides access to the cache for external use.
+     */
+    getHeapCache() {
+        return heapCache;
+    }
+    /**
+     * Check if a room is marked as hostile (cached for 100 ticks)
+     */
+    isRoomHostile(roomName) {
+        var _a, _b, _c;
+        const cacheKey = `memory:room:${roomName}:hostile`;
+        const cached = heapCache.get(cacheKey);
+        // Check if value is cached (null means "not hostile" was cached)
+        if (cached !== undefined) {
+            return cached === true;
+        }
+        // Not cached, fetch from Memory
+        const hostile = (_c = (_b = (_a = Memory.rooms) === null || _a === void 0 ? void 0 : _a[roomName]) === null || _b === void 0 ? void 0 : _b.hostile) !== null && _c !== void 0 ? _c : false;
+        heapCache.set(cacheKey, hostile ? true : null, 100); // Cache for 100 ticks
+        return hostile;
+    }
+    /**
+     * Mark a room as hostile (cached for 100 ticks)
+     */
+    setRoomHostile(roomName, hostile) {
+        if (!Memory.rooms)
+            Memory.rooms = {};
+        if (!Memory.rooms[roomName])
+            Memory.rooms[roomName] = {};
+        Memory.rooms[roomName].hostile = hostile;
+        const cacheKey = `memory:room:${roomName}:hostile`;
+        heapCache.set(cacheKey, hostile ? true : null, 100); // Cache for 100 ticks
+    }
+}
+/**
+ * Global memory manager instance
+ */
+const memoryManager = new MemoryManager();
+
+/**
+ * Memory Segment Stats Manager
+ *
+ * Manages statistics persistence using Memory Segments:
+ * - Aggregated stats storage
+ * - Performance metrics
+ * - Historical data tracking
+ * - External monitoring integration
+ *
+ * Addresses Issue: #35
+ */
+const DEFAULT_CONFIG$i = {
+    primarySegment: 90,
+    backupSegment: 91,
+    retentionPeriod: 10000,
+    updateInterval: 10,
+    maxDataPoints: 1000
+};
+/**
+ * Memory Segment Stats Manager
+ */
+class MemorySegmentStats {
+    constructor(config = {}) {
+        this.statsData = null;
+        this.segmentRequested = false;
+        this.lastUpdate = 0;
+        this.config = { ...DEFAULT_CONFIG$i, ...config };
+    }
+    /**
+     * Initialize stats manager
+     */
+    initialize() {
+        // Request the segment
+        RawMemory.setActiveSegments([this.config.primarySegment]);
+        this.segmentRequested = true;
+    }
+    /**
+     * Main tick - update stats
+     */
+    run() {
+        // Check if segment is available
+        if (this.segmentRequested && RawMemory.segments[this.config.primarySegment] !== undefined) {
+            this.loadFromSegment();
+            this.segmentRequested = false;
+        }
+        // Update stats periodically
+        if (Game.time - this.lastUpdate >= this.config.updateInterval) {
+            this.updateStats();
+            this.lastUpdate = Game.time;
+        }
+    }
+    /**
+     * Load stats from segment
+     */
+    loadFromSegment() {
+        const raw = RawMemory.segments[this.config.primarySegment];
+        if (!raw || raw.length === 0) {
+            this.statsData = this.createDefaultStatsData();
+            return;
+        }
+        try {
+            this.statsData = JSON.parse(raw);
+            logger.debug("Loaded stats from segment", { subsystem: "Stats" });
+        }
+        catch (err) {
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            logger.error(`Failed to parse stats segment: ${errorMessage}`, { subsystem: "Stats" });
+            this.statsData = this.createDefaultStatsData();
+        }
+    }
+    /**
+     * Create default stats data
+     */
+    createDefaultStatsData() {
+        return {
+            version: 1,
+            lastUpdate: Game.time,
+            history: [],
+            series: {}
+        };
+    }
+    /**
+     * Update stats
+     */
+    updateStats() {
+        if (!this.statsData) {
+            this.statsData = this.createDefaultStatsData();
+        }
+        // Collect global stats
+        const globalStats = this.collectGlobalStats();
+        // Add to history
+        this.statsData.history.push(globalStats);
+        // Trim old history
+        while (this.statsData.history.length > this.config.maxDataPoints) {
+            this.statsData.history.shift();
+        }
+        // Remove expired entries
+        const cutoff = Game.time - this.config.retentionPeriod;
+        this.statsData.history = this.statsData.history.filter(h => h.tick >= cutoff);
+        // Update metric series
+        this.updateMetricSeries("cpu", globalStats.cpuUsed);
+        this.updateMetricSeries("bucket", globalStats.cpuBucket);
+        this.updateMetricSeries("creeps", globalStats.totalCreeps);
+        this.updateMetricSeries("rooms", globalStats.totalRooms);
+        // Publish stats to Memory.stats for the Influx exporter
+        this.publishStatsToMemory(globalStats);
+        // Save to segment
+        this.saveToSegment();
+    }
+    /**
+     * Publish stats to Memory.stats for the Influx exporter.
+     * Uses a flat key structure with dot-separated names for easy ingestion.
+     * All preprocessing and aggregation is now handled by the exporter.
+     * Only numeric values are published as the exporter expects time-series data.
+     */
+    publishStatsToMemory(stats) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mem = Memory;
+        if (!mem.stats || typeof mem.stats !== "object") {
+            mem.stats = {};
+        }
+        const statsRoot = mem.stats;
+        // Global CPU metrics - raw values only
+        statsRoot["cpu.used"] = stats.cpuUsed;
+        statsRoot["cpu.limit"] = stats.cpuLimit;
+        statsRoot["cpu.bucket"] = stats.cpuBucket;
+        // GCL/GPL metrics - raw values only
+        statsRoot["gcl.level"] = stats.gclLevel;
+        statsRoot["gcl.progress"] = stats.gclProgress;
+        statsRoot["gcl.progress_total"] = stats.gclProgressTotal;
+        statsRoot["gpl.level"] = stats.gplLevel;
+        // Empire metrics - raw values only
+        statsRoot["empire.creeps"] = stats.totalCreeps;
+        statsRoot["empire.rooms"] = stats.totalRooms;
+        // Per-room metrics - raw values only
+        for (const room of stats.rooms) {
+            const roomPrefix = `room.${room.roomName}`;
+            statsRoot[`${roomPrefix}.rcl`] = room.rcl;
+            statsRoot[`${roomPrefix}.energy.available`] = room.energyAvailable;
+            statsRoot[`${roomPrefix}.energy.capacity`] = room.energyCapacity;
+            statsRoot[`${roomPrefix}.storage.energy`] = room.storageEnergy;
+            statsRoot[`${roomPrefix}.terminal.energy`] = room.terminalEnergy;
+            statsRoot[`${roomPrefix}.creeps`] = room.creepCount;
+            statsRoot[`${roomPrefix}.controller.progress`] = room.controllerProgress;
+            statsRoot[`${roomPrefix}.controller.progress_total`] = room.controllerProgressTotal;
+            const swarm = memoryManager.getSwarmState(room.roomName);
+            if (swarm) {
+                statsRoot[`${roomPrefix}.brain.danger`] = swarm.danger;
+                for (const [pheromone, value] of Object.entries(swarm.pheromones)) {
+                    statsRoot[`${roomPrefix}.pheromone.${pheromone}`] = value;
+                }
+                const metrics = swarm.metrics;
+                statsRoot[`${roomPrefix}.metrics.energy.harvested`] = metrics.energyHarvested;
+                statsRoot[`${roomPrefix}.metrics.energy.spawning`] = metrics.energySpawning;
+                statsRoot[`${roomPrefix}.metrics.energy.construction`] = metrics.energyConstruction;
+                statsRoot[`${roomPrefix}.metrics.energy.repair`] = metrics.energyRepair;
+                statsRoot[`${roomPrefix}.metrics.energy.tower`] = metrics.energyTower;
+                // Energy available for inter-room sharing (storage + containers - reserved)
+                statsRoot[`${roomPrefix}.metrics.energy.available_for_sharing`] = metrics.energyAvailable;
+                // Total energy capacity (storage + containers)
+                statsRoot[`${roomPrefix}.metrics.energy.capacity_total`] = metrics.energyCapacity;
+                // Energy need level: 0=no need, 1=low, 2=medium, 3=critical
+                statsRoot[`${roomPrefix}.metrics.energy.need`] = metrics.energyNeed;
+                statsRoot[`${roomPrefix}.metrics.controller_progress`] = metrics.controllerProgress;
+                statsRoot[`${roomPrefix}.metrics.hostile_count`] = metrics.hostileCount;
+                statsRoot[`${roomPrefix}.metrics.damage_received`] = metrics.damageReceived;
+                statsRoot[`${roomPrefix}.metrics.construction_sites`] = metrics.constructionSites;
+            }
+        }
+        // System tick info
+        statsRoot["system.tick"] = stats.tick;
+        statsRoot["system.timestamp"] = Date.now();
+    }
+    /**
+     * Collect global stats
+     * OPTIMIZATION: Use Object.keys() instead of room.find() for creep count
+     */
+    collectGlobalStats() {
+        var _a, _b, _c, _d;
+        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        // Count creeps per room more efficiently
+        const creepCounts = new Map();
+        for (const name in Game.creeps) {
+            const creep = Game.creeps[name];
+            if (!creep.spawning && ((_a = creep.room.controller) === null || _a === void 0 ? void 0 : _a.my)) {
+                const count = (_b = creepCounts.get(creep.room.name)) !== null && _b !== void 0 ? _b : 0;
+                creepCounts.set(creep.room.name, count + 1);
+            }
+        }
+        const roomStats = ownedRooms.map(room => {
+            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
+            return ({
+                roomName: room.name,
+                rcl: (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0,
+                energyAvailable: room.energyAvailable,
+                energyCapacity: room.energyCapacityAvailable,
+                storageEnergy: (_d = (_c = room.storage) === null || _c === void 0 ? void 0 : _c.store.getUsedCapacity(RESOURCE_ENERGY)) !== null && _d !== void 0 ? _d : 0,
+                terminalEnergy: (_f = (_e = room.terminal) === null || _e === void 0 ? void 0 : _e.store.getUsedCapacity(RESOURCE_ENERGY)) !== null && _f !== void 0 ? _f : 0,
+                creepCount: (_g = creepCounts.get(room.name)) !== null && _g !== void 0 ? _g : 0,
+                controllerProgress: (_j = (_h = room.controller) === null || _h === void 0 ? void 0 : _h.progress) !== null && _j !== void 0 ? _j : 0,
+                controllerProgressTotal: (_l = (_k = room.controller) === null || _k === void 0 ? void 0 : _k.progressTotal) !== null && _l !== void 0 ? _l : 1
+            });
+        });
+        return {
+            tick: Game.time,
+            cpuUsed: Game.cpu.getUsed(),
+            cpuLimit: Game.cpu.limit,
+            cpuBucket: Game.cpu.bucket,
+            gclLevel: Game.gcl.level,
+            gclProgress: Game.gcl.progress,
+            gclProgressTotal: Game.gcl.progressTotal,
+            gplLevel: (_d = (_c = Game.gpl) === null || _c === void 0 ? void 0 : _c.level) !== null && _d !== void 0 ? _d : 0,
+            totalCreeps: Object.keys(Game.creeps).length,
+            totalRooms: ownedRooms.length,
+            rooms: roomStats,
+            metrics: {}
+        };
+    }
+    /**
+     * Update a metric series
+     */
+    updateMetricSeries(name, value) {
+        if (!this.statsData)
+            return;
+        let series = this.statsData.series[name];
+        if (!series) {
+            series = {
+                name,
+                data: [],
+                lastUpdate: Game.time,
+                min: value,
+                max: value,
+                avg: value
+            };
+            this.statsData.series[name] = series;
+        }
+        // Add data point
+        series.data.push({ tick: Game.time, value });
+        series.lastUpdate = Game.time;
+        // Trim old data
+        const cutoff = Game.time - this.config.retentionPeriod;
+        series.data = series.data.filter(d => d.tick >= cutoff);
+        while (series.data.length > this.config.maxDataPoints) {
+            series.data.shift();
+        }
+        // Update stats
+        if (series.data.length > 0) {
+            series.min = Math.min(...series.data.map(d => d.value));
+            series.max = Math.max(...series.data.map(d => d.value));
+            series.avg = series.data.reduce((sum, d) => sum + d.value, 0) / series.data.length;
+        }
+    }
+    /**
+     * Save stats to segment
+     */
+    saveToSegment() {
+        if (!this.statsData)
+            return;
+        const SEGMENT_SIZE_LIMIT = 100 * 1024; // 100 KB
+        const MIN_ENTRIES = 10; // Minimum entries to keep during normal trimming
+        const MINIMAL_ENTRIES = 5; // Minimal entries to keep as last resort
+        try {
+            this.statsData.lastUpdate = Game.time;
+            let json = JSON.stringify(this.statsData);
+            // Check size limit (100KB per segment)
+            if (json.length > SEGMENT_SIZE_LIMIT) {
+                logger.warn(`Stats data exceeds segment limit: ${json.length} bytes, trimming...`, {
+                    subsystem: "Stats"
+                });
+                // Trim history first (keep at least MIN_ENTRIES)
+                while (json.length > SEGMENT_SIZE_LIMIT && this.statsData.history.length > MIN_ENTRIES) {
+                    this.statsData.history.shift();
+                    json = JSON.stringify(this.statsData);
+                }
+                // If still too large, trim metric series data
+                if (json.length > SEGMENT_SIZE_LIMIT) {
+                    for (const seriesName of Object.keys(this.statsData.series)) {
+                        const series = this.statsData.series[seriesName];
+                        while (series.data.length > MIN_ENTRIES && json.length > SEGMENT_SIZE_LIMIT) {
+                            series.data.shift();
+                            json = JSON.stringify(this.statsData);
+                        }
+                    }
+                }
+                // If still too large, reduce to minimal data
+                if (json.length > SEGMENT_SIZE_LIMIT) {
+                    logger.warn(`Stats data still exceeds limit after trimming, clearing history`, {
+                        subsystem: "Stats"
+                    });
+                    this.statsData.history = this.statsData.history.slice(-MINIMAL_ENTRIES);
+                    for (const seriesName of Object.keys(this.statsData.series)) {
+                        this.statsData.series[seriesName].data = this.statsData.series[seriesName].data.slice(-MINIMAL_ENTRIES);
+                    }
+                    json = JSON.stringify(this.statsData);
+                }
+            }
+            RawMemory.segments[this.config.primarySegment] = json;
+        }
+        catch (err) {
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            logger.error(`Failed to save stats segment: ${errorMessage}`, { subsystem: "Stats" });
+        }
+    }
+    /**
+     * Record a custom metric
+     */
+    recordMetric(name, value) {
+        this.updateMetricSeries(name, value);
+    }
+    /**
+     * Get latest global stats
+     */
+    getLatestStats() {
+        var _a;
+        if (!this.statsData || this.statsData.history.length === 0) {
+            return null;
+        }
+        return (_a = this.statsData.history[this.statsData.history.length - 1]) !== null && _a !== void 0 ? _a : null;
+    }
+    /**
+     * Get metric series
+     */
+    getMetricSeries(name) {
+        var _a, _b;
+        return (_b = (_a = this.statsData) === null || _a === void 0 ? void 0 : _a.series[name]) !== null && _b !== void 0 ? _b : null;
+    }
+    /**
+     * Get all metric series names
+     */
+    getMetricNames() {
+        var _a, _b;
+        return Object.keys((_b = (_a = this.statsData) === null || _a === void 0 ? void 0 : _a.series) !== null && _b !== void 0 ? _b : {});
+    }
+    /**
+     * Get stats history
+     */
+    getHistory(limit) {
+        if (!this.statsData)
+            return [];
+        const history = this.statsData.history;
+        return limit ? history.slice(-limit) : history;
+    }
+    /**
+     * Get room-specific history
+     */
+    getRoomHistory(roomName, limit) {
+        if (!this.statsData)
+            return [];
+        const roomHistory = this.statsData.history
+            .map(h => h.rooms.find(r => r.roomName === roomName))
+            .filter((r) => r !== undefined);
+        return limit ? roomHistory.slice(-limit) : roomHistory;
+    }
+    /**
+     * Export stats for external monitoring
+     */
+    exportForGraphana() {
+        const stats = this.getLatestStats();
+        if (!stats)
+            return "{}";
+        // Format for Grafana/Prometheus - raw values only
+        const output = {
+            timestamp: new Date().toISOString(),
+            tick: stats.tick,
+            cpu: {
+                used: stats.cpuUsed,
+                limit: stats.cpuLimit,
+                bucket: stats.cpuBucket
+            },
+            gcl: {
+                level: stats.gclLevel,
+                progress: stats.gclProgress,
+                progressTotal: stats.gclProgressTotal
+            },
+            gpl: {
+                level: stats.gplLevel
+            },
+            empire: {
+                totalCreeps: stats.totalCreeps,
+                totalRooms: stats.totalRooms
+            },
+            rooms: {}
+        };
+        for (const room of stats.rooms) {
+            output.rooms[room.roomName] = {
+                rcl: room.rcl,
+                energyAvailable: room.energyAvailable,
+                energyCapacity: room.energyCapacity,
+                storageEnergy: room.storageEnergy,
+                terminalEnergy: room.terminalEnergy,
+                creepCount: room.creepCount,
+                controllerProgress: room.controllerProgress,
+                controllerProgressTotal: room.controllerProgressTotal
+            };
+        }
+        return JSON.stringify(output, null, 2);
+    }
+    /**
+     * Clear all stats data
+     */
+    clear() {
+        this.statsData = this.createDefaultStatsData();
+        this.saveToSegment();
+    }
+}
+/**
+ * Global memory segment stats instance
+ */
+const memorySegmentStats = new MemorySegmentStats();
+
+/**
+ * Unified Statistics System
+ *
+ * Collects and manages all bot statistics:
+ * - Per-subsystem statistics
+ * - Per-creep role statistics
+ * - Per-room statistics
+ * - Overall/empire statistics
+ * - Pheromone statistics
+ * - Native calls statistics (pathfinding, creep actions)
+ *
+ * All stats are published to Memory.stats for consumption by external tools
+ * like the Influx exporter and Grafana dashboards.
+ */
+const DEFAULT_CONFIG$h = {
+    enabled: true,
+    smoothingFactor: 0.1,
+    trackNativeCalls: true,
+    logInterval: 100
+};
+/**
+ * Unified Statistics Manager
+ */
+class StatsManager {
+    constructor(config = {}) {
+        this.config = { ...DEFAULT_CONFIG$h, ...config };
+        this.nativeCallsThisTick = this.createEmptyNativeCalls();
+    }
+    /**
+     * Get or initialize the stats root in Memory
+     */
+    getStatsRoot() {
+        const mem = Memory;
+        if (!mem.stats || typeof mem.stats !== "object") {
+            mem.stats = this.createEmptyStatsRoot();
+        }
+        return mem.stats;
+    }
+    /**
+     * Create empty stats root
+     */
+    createEmptyStatsRoot() {
+        return {
+            tick: Game.time,
+            subsystems: {},
+            roles: {},
+            rooms: {},
+            empire: this.createEmptyEmpireStats(),
+            pheromones: {},
+            nativeCalls: this.createEmptyNativeCalls()
+        };
+    }
+    /**
+     * Create empty empire stats
+     */
+    createEmptyEmpireStats() {
+        return {
+            ownedRooms: 0,
+            totalCreeps: 0,
+            totalStorageEnergy: 0,
+            gclProgress: 0,
+            gcl: 0,
+            gpl: 0,
+            cpuUsed: 0,
+            cpuLimit: 0,
+            cpuBucket: 0,
+            heapUsed: 0,
+            credits: 0,
+            rooms: []
+        };
+    }
+    /**
+     * Create empty native calls stats
+     */
+    createEmptyNativeCalls() {
+        return {
+            pathfinderSearch: 0,
+            moveTo: 0,
+            move: 0,
+            harvest: 0,
+            transfer: 0,
+            withdraw: 0,
+            build: 0,
+            repair: 0,
+            upgradeController: 0,
+            attack: 0,
+            rangedAttack: 0,
+            heal: 0,
+            dismantle: 0,
+            say: 0,
+            total: 0
+        };
+    }
+    /**
+     * Record a subsystem measurement
+     */
+    recordSubsystem(name, cpu, calls = 1) {
+        if (!this.config.enabled)
+            return;
+        const stats = this.getStatsRoot();
+        const existing = stats.subsystems[name];
+        if (!existing) {
+            stats.subsystems[name] = {
+                avgCpu: cpu,
+                peakCpu: cpu,
+                calls,
+                samples: 1
+            };
+        }
+        else {
+            existing.avgCpu = existing.avgCpu * (1 - this.config.smoothingFactor) + cpu * this.config.smoothingFactor;
+            existing.peakCpu = Math.max(existing.peakCpu, cpu);
+            existing.calls = calls;
+            existing.samples++;
+        }
+    }
+    /**
+     * Record a role measurement
+     */
+    recordRole(role, count, cpu, calls = 1) {
+        if (!this.config.enabled)
+            return;
+        const stats = this.getStatsRoot();
+        const existing = stats.roles[role];
+        if (!existing) {
+            stats.roles[role] = {
+                count,
+                avgCpu: cpu,
+                peakCpu: cpu,
+                calls,
+                samples: 1
+            };
+        }
+        else {
+            existing.count = count;
+            existing.avgCpu = existing.avgCpu * (1 - this.config.smoothingFactor) + cpu * this.config.smoothingFactor;
+            existing.peakCpu = Math.max(existing.peakCpu, cpu);
+            existing.calls = calls;
+            existing.samples++;
+        }
+    }
+    /**
+     * Record room statistics
+     */
+    recordRoom(room, avgCpu, peakCpu, metrics = {}) {
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
+        if (!this.config.enabled)
+            return;
+        const stats = this.getStatsRoot();
+        const creepsInRoom = Object.values(Game.creeps).filter(c => c.room.name === room.name).length;
+        const hostiles = room.find(FIND_HOSTILE_CREEPS);
+        stats.rooms[room.name] = {
+            name: room.name,
+            rcl: (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0,
+            energyAvailable: room.energyAvailable,
+            energyCapacity: room.energyCapacityAvailable,
+            storageEnergy: (_d = (_c = room.storage) === null || _c === void 0 ? void 0 : _c.store.getUsedCapacity(RESOURCE_ENERGY)) !== null && _d !== void 0 ? _d : 0,
+            creepCount: creepsInRoom,
+            hostileCount: hostiles.length,
+            avgCpu,
+            peakCpu,
+            controllerProgress: (_f = (_e = room.controller) === null || _e === void 0 ? void 0 : _e.progress) !== null && _f !== void 0 ? _f : 0,
+            controllerProgressTotal: (_h = (_g = room.controller) === null || _g === void 0 ? void 0 : _g.progressTotal) !== null && _h !== void 0 ? _h : 1,
+            energyHarvested: (_j = metrics.energyHarvested) !== null && _j !== void 0 ? _j : 0,
+            damageReceived: (_k = metrics.damageReceived) !== null && _k !== void 0 ? _k : 0,
+            danger: (_l = metrics.danger) !== null && _l !== void 0 ? _l : 0
+        };
+    }
+    /**
+     * Record pheromone statistics
+     */
+    recordPheromones(roomName, pheromones, intent, dominant) {
+        if (!this.config.enabled)
+            return;
+        const stats = this.getStatsRoot();
+        stats.pheromones[roomName] = {
+            room: roomName,
+            expand: pheromones.expand,
+            harvest: pheromones.harvest,
+            build: pheromones.build,
+            upgrade: pheromones.upgrade,
+            defense: pheromones.defense,
+            war: pheromones.war,
+            siege: pheromones.siege,
+            logistics: pheromones.logistics,
+            dominant,
+            intent
+        };
+    }
+    /**
+     * Record a native call
+     */
+    recordNativeCall(type) {
+        if (!this.config.enabled || !this.config.trackNativeCalls)
+            return;
+        this.nativeCallsThisTick[type]++;
+        this.nativeCallsThisTick.total++;
+    }
+    /**
+     * Update empire statistics
+     */
+    updateEmpireStats() {
+        var _a, _b, _c, _d, _e, _f;
+        if (!this.config.enabled)
+            return;
+        const stats = this.getStatsRoot();
+        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        const totalCreeps = Object.keys(Game.creeps).length;
+        const totalStorageEnergy = ownedRooms.reduce((sum, r) => { var _a, _b; return sum + ((_b = (_a = r.storage) === null || _a === void 0 ? void 0 : _a.store.getUsedCapacity(RESOURCE_ENERGY)) !== null && _b !== void 0 ? _b : 0); }, 0);
+        stats.empire = {
+            ownedRooms: ownedRooms.length,
+            totalCreeps,
+            totalStorageEnergy,
+            gclProgress: Game.gcl.progress,
+            gcl: Game.gcl.level,
+            gpl: (_b = (_a = Game.gpl) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0,
+            cpuUsed: Game.cpu.getUsed(),
+            cpuLimit: Game.cpu.limit,
+            cpuBucket: Game.cpu.bucket,
+            heapUsed: ((_f = (_e = (_d = (_c = Game.cpu).getHeapStatistics) === null || _d === void 0 ? void 0 : _d.call(_c)) === null || _e === void 0 ? void 0 : _e.used_heap_size) !== null && _f !== void 0 ? _f : 0) / 1024 / 1024,
+            credits: Game.market.credits,
+            rooms: ownedRooms.map(r => r.name)
+        };
+    }
+    /**
+     * Finalize tick - update tick number and native calls
+     */
+    finalizeTick() {
+        if (!this.config.enabled)
+            return;
+        const stats = this.getStatsRoot();
+        stats.tick = Game.time;
+        stats.nativeCalls = { ...this.nativeCallsThisTick };
+        // Reset native calls for next tick
+        this.nativeCallsThisTick = this.createEmptyNativeCalls();
+        // Publish flattened stats for external consumption
+        this.publishFlattenedStats();
+        // Log summary periodically
+        if (this.config.logInterval > 0 && Game.time % this.config.logInterval === 0) {
+            this.logSummary();
+        }
+    }
+    /**
+     * Publish flattened stats for Influx exporter
+     */
+    publishFlattenedStats() {
+        var _a;
+        const stats = this.getStatsRoot();
+        const mem = Memory;
+        // Publish empire stats
+        mem["stats.empire.owned_rooms"] = stats.empire.ownedRooms;
+        mem["stats.empire.total_creeps"] = stats.empire.totalCreeps;
+        mem["stats.empire.total_storage_energy"] = stats.empire.totalStorageEnergy;
+        mem["stats.empire.gcl_progress"] = stats.empire.gclProgress;
+        mem["stats.empire.gcl"] = stats.empire.gcl;
+        mem["stats.empire.gpl"] = stats.empire.gpl;
+        mem["stats.empire.cpu_used"] = stats.empire.cpuUsed;
+        mem["stats.empire.cpu_limit"] = stats.empire.cpuLimit;
+        mem["stats.empire.cpu_bucket"] = stats.empire.cpuBucket;
+        mem["stats.empire.heap_used"] = stats.empire.heapUsed;
+        mem["stats.empire.credits"] = stats.empire.credits;
+        // Publish subsystem stats
+        for (const [name, data] of Object.entries(stats.subsystems)) {
+            mem[`stats.subsystem.${name}.avg_cpu`] = data.avgCpu;
+            mem[`stats.subsystem.${name}.peak_cpu`] = data.peakCpu;
+            mem[`stats.subsystem.${name}.calls`] = data.calls;
+            mem[`stats.subsystem.${name}.samples`] = data.samples;
+        }
+        // Publish role stats
+        for (const [role, data] of Object.entries(stats.roles)) {
+            mem[`stats.role.${role}.count`] = data.count;
+            mem[`stats.role.${role}.avg_cpu`] = data.avgCpu;
+            mem[`stats.role.${role}.peak_cpu`] = data.peakCpu;
+            mem[`stats.role.${role}.calls`] = data.calls;
+        }
+        // Publish room stats
+        for (const [roomName, data] of Object.entries(stats.rooms)) {
+            mem[`stats.room.${roomName}.rcl`] = data.rcl;
+            mem[`stats.room.${roomName}.energy_available`] = data.energyAvailable;
+            mem[`stats.room.${roomName}.energy_capacity`] = data.energyCapacity;
+            mem[`stats.room.${roomName}.storage_energy`] = data.storageEnergy;
+            mem[`stats.room.${roomName}.creep_count`] = data.creepCount;
+            mem[`stats.room.${roomName}.hostile_count`] = data.hostileCount;
+            mem[`stats.room.${roomName}.avg_cpu`] = data.avgCpu;
+            mem[`stats.room.${roomName}.peak_cpu`] = data.peakCpu;
+            mem[`stats.room.${roomName}.controller_progress`] = data.controllerProgress;
+            mem[`stats.room.${roomName}.energy_harvested`] = data.energyHarvested;
+            mem[`stats.room.${roomName}.damage_received`] = data.damageReceived;
+            mem[`stats.room.${roomName}.danger`] = data.danger;
+        }
+        // Intent/posture to numeric mapping for efficient storage
+        const INTENT_VALUES = {
+            eco: 0,
+            expand: 1,
+            defensive: 2,
+            defense: 2,
+            war: 3,
+            siege: 4,
+            evacuate: 5,
+            nukePrep: 6
+        };
+        // Publish pheromone stats
+        for (const [roomName, data] of Object.entries(stats.pheromones)) {
+            mem[`stats.pheromone.${roomName}.expand`] = data.expand;
+            mem[`stats.pheromone.${roomName}.harvest`] = data.harvest;
+            mem[`stats.pheromone.${roomName}.build`] = data.build;
+            mem[`stats.pheromone.${roomName}.upgrade`] = data.upgrade;
+            mem[`stats.pheromone.${roomName}.defense`] = data.defense;
+            mem[`stats.pheromone.${roomName}.war`] = data.war;
+            mem[`stats.pheromone.${roomName}.siege`] = data.siege;
+            mem[`stats.pheromone.${roomName}.logistics`] = data.logistics;
+            mem[`stats.pheromone.${roomName}.intent`] = (_a = INTENT_VALUES[data.intent]) !== null && _a !== void 0 ? _a : 0;
+        }
+        // Publish native calls stats
+        mem["stats.native_calls.pathfinder_search"] = stats.nativeCalls.pathfinderSearch;
+        mem["stats.native_calls.move_to"] = stats.nativeCalls.moveTo;
+        mem["stats.native_calls.move"] = stats.nativeCalls.move;
+        mem["stats.native_calls.harvest"] = stats.nativeCalls.harvest;
+        mem["stats.native_calls.transfer"] = stats.nativeCalls.transfer;
+        mem["stats.native_calls.withdraw"] = stats.nativeCalls.withdraw;
+        mem["stats.native_calls.build"] = stats.nativeCalls.build;
+        mem["stats.native_calls.repair"] = stats.nativeCalls.repair;
+        mem["stats.native_calls.upgrade_controller"] = stats.nativeCalls.upgradeController;
+        mem["stats.native_calls.attack"] = stats.nativeCalls.attack;
+        mem["stats.native_calls.ranged_attack"] = stats.nativeCalls.rangedAttack;
+        mem["stats.native_calls.heal"] = stats.nativeCalls.heal;
+        mem["stats.native_calls.dismantle"] = stats.nativeCalls.dismantle;
+        mem["stats.native_calls.say"] = stats.nativeCalls.say;
+        mem["stats.native_calls.total"] = stats.nativeCalls.total;
+    }
+    /**
+     * Log a summary of statistics
+     */
+    logSummary() {
+        const stats = this.getStatsRoot();
+        logger.info("=== Stats Summary ===");
+        logger.info(`Empire: ${stats.empire.ownedRooms} rooms, ${stats.empire.totalCreeps} creeps, ${stats.empire.cpuUsed.toFixed(2)}/${stats.empire.cpuLimit} CPU`);
+        // Top 5 subsystems by CPU
+        const topSubsystems = Object.entries(stats.subsystems)
+            .sort((a, b) => b[1].avgCpu - a[1].avgCpu)
+            .slice(0, 5);
+        if (topSubsystems.length > 0) {
+            logger.info("Top Subsystems:");
+            for (const [name, data] of topSubsystems) {
+                logger.info(`  ${name}: ${data.avgCpu.toFixed(3)} CPU avg`);
+            }
+        }
+        // Top 5 roles by CPU
+        const topRoles = Object.entries(stats.roles)
+            .sort((a, b) => b[1].avgCpu - a[1].avgCpu)
+            .slice(0, 5);
+        if (topRoles.length > 0) {
+            logger.info("Top Roles:");
+            for (const [role, data] of topRoles) {
+                logger.info(`  ${role}: ${data.count} creeps, ${data.avgCpu.toFixed(3)} CPU avg`);
+            }
+        }
+        // Native calls summary
+        if (this.config.trackNativeCalls) {
+            logger.info(`Native calls: ${stats.nativeCalls.total} total`);
+        }
+    }
+    /**
+     * Get the current stats root
+     */
+    getStats() {
+        return this.getStatsRoot();
+    }
+    /**
+     * Reset all statistics
+     */
+    reset() {
+        const mem = Memory;
+        mem.stats = this.createEmptyStatsRoot();
+    }
+    /**
+     * Enable/disable stats collection
+     */
+    setEnabled(enabled) {
+        this.config.enabled = enabled;
+    }
+    /**
+     * Check if stats collection is enabled
+     */
+    isEnabled() {
+        return this.config.enabled;
+    }
+}
+/**
+ * Global stats manager instance
+ */
+const statsManager = new StatsManager();
+
+/**
+ * Performance Profiler Module
+ *
+ * Measures per-room loop cost, global/strategic loop cost,
+ * and stores rolling averages in Memory for tuning.
+ */
+const DEFAULT_CONFIG$g = {
+    smoothingFactor: 0.1,
+    enabled: true,
+    logInterval: 100
+};
+const STATS_ROOT_KEY = "stats";
+const PROFILER_MEMORY_KEY = "profiler";
+const LEGACY_MEMORY_KEY = "swarmProfiler";
+/**
+ * Performance Profiler
+ */
+class Profiler {
+    constructor(config = {}) {
+        this.tickMeasurements = new Map();
+        this.subsystemMeasurements = new Map();
+        this.config = { ...DEFAULT_CONFIG$g, ...config };
+    }
+    /**
+     * Get or initialize the shared stats root in Memory
+     */
+    getStatsRoot() {
+        const mem = Memory;
+        if (!mem[STATS_ROOT_KEY] || typeof mem[STATS_ROOT_KEY] !== "object") {
+            mem[STATS_ROOT_KEY] = {};
+        }
+        return mem[STATS_ROOT_KEY];
+    }
+    /**
+     * Get or initialize profiler memory
+     */
+    getMemory() {
+        const mem = Memory;
+        const statsRoot = this.getStatsRoot();
+        // Migrate legacy location if present
+        if (!statsRoot[PROFILER_MEMORY_KEY] && mem[LEGACY_MEMORY_KEY]) {
+            statsRoot[PROFILER_MEMORY_KEY] = mem[LEGACY_MEMORY_KEY];
+            delete mem[LEGACY_MEMORY_KEY];
+        }
+        if (!statsRoot[PROFILER_MEMORY_KEY]) {
+            statsRoot[PROFILER_MEMORY_KEY] = {
+                rooms: {},
+                subsystems: {},
+                roles: {},
+                tickCount: 0,
+                lastUpdate: 0
+            };
+        }
+        return statsRoot[PROFILER_MEMORY_KEY];
+    }
+    /**
+     * Publish flattened stats that the Influx exporter can scrape.
+     * Stats are published in a flat format with dot-separated keys for easy ingestion.
+     */
+    publishStats(memory) {
+        const statsRoot = this.getStatsRoot();
+        // Publish global profiler metrics
+        statsRoot["profiler.tick_count"] = memory.tickCount;
+        statsRoot["profiler.last_update"] = memory.lastUpdate;
+        // Publish per-room CPU metrics with room name as part of the key
+        let totalRoomAvgCpu = 0;
+        let totalRoomPeakCpu = 0;
+        for (const [room, data] of Object.entries(memory.rooms)) {
+            statsRoot[`profiler.room.${room}.avg_cpu`] = data.avgCpu;
+            statsRoot[`profiler.room.${room}.peak_cpu`] = data.peakCpu;
+            statsRoot[`profiler.room.${room}.samples`] = data.samples;
+            totalRoomAvgCpu += data.avgCpu;
+            totalRoomPeakCpu = Math.max(totalRoomPeakCpu, data.peakCpu);
+        }
+        statsRoot["profiler.rooms.total_avg_cpu"] = totalRoomAvgCpu;
+        statsRoot["profiler.rooms.total_peak_cpu"] = totalRoomPeakCpu;
+        statsRoot["profiler.rooms.count"] = Object.keys(memory.rooms).length;
+        // Publish per-subsystem CPU metrics with subsystem name as part of the key
+        let totalSubsystemAvgCpu = 0;
+        for (const [name, data] of Object.entries(memory.subsystems)) {
+            statsRoot[`profiler.subsystem.${name}.avg_cpu`] = data.avgCpu;
+            statsRoot[`profiler.subsystem.${name}.peak_cpu`] = data.peakCpu;
+            statsRoot[`profiler.subsystem.${name}.samples`] = data.samples;
+            statsRoot[`profiler.subsystem.${name}.calls`] = data.callsThisTick;
+            totalSubsystemAvgCpu += data.avgCpu;
+        }
+        statsRoot["profiler.subsystems.total_avg_cpu"] = totalSubsystemAvgCpu;
+        statsRoot["profiler.subsystems.count"] = Object.keys(memory.subsystems).length;
+        // Publish per-role CPU metrics with role name as part of the key
+        let totalRoleAvgCpu = 0;
+        for (const [role, data] of Object.entries(memory.roles || {})) {
+            statsRoot[`profiler.role.${role}.avg_cpu`] = data.avgCpu;
+            statsRoot[`profiler.role.${role}.peak_cpu`] = data.peakCpu;
+            statsRoot[`profiler.role.${role}.samples`] = data.samples;
+            statsRoot[`profiler.role.${role}.calls`] = data.callsThisTick;
+            totalRoleAvgCpu += data.avgCpu;
+        }
+        statsRoot["profiler.roles.total_avg_cpu"] = totalRoleAvgCpu;
+        statsRoot["profiler.roles.count"] = Object.keys(memory.roles || {}).length;
+    }
+    /**
+     * Start measuring a room's loop
+     */
+    startRoom(_roomName) {
+        if (!this.config.enabled)
+            return 0;
+        return Game.cpu.getUsed();
+    }
+    /**
+     * End measuring a room's loop
+     */
+    endRoom(roomName, startCpu) {
+        if (!this.config.enabled)
+            return;
+        const cpuUsed = Game.cpu.getUsed() - startCpu;
+        this.tickMeasurements.set(roomName, cpuUsed);
+        const memory = this.getMemory();
+        if (!memory.rooms[roomName]) {
+            memory.rooms[roomName] = {
+                avgCpu: cpuUsed,
+                peakCpu: cpuUsed,
+                samples: 1,
+                lastTick: Game.time
+            };
+        }
+        else {
+            const data = memory.rooms[roomName];
+            data.avgCpu = data.avgCpu * (1 - this.config.smoothingFactor) + cpuUsed * this.config.smoothingFactor;
+            data.peakCpu = Math.max(data.peakCpu, cpuUsed);
+            data.samples++;
+            data.lastTick = Game.time;
+        }
+    }
+    /**
+     * Measure a subsystem function
+     */
+    measureSubsystem(name, fn) {
+        var _a;
+        if (!this.config.enabled) {
+            return fn();
+        }
+        const startCpu = Game.cpu.getUsed();
+        const result = fn();
+        const cpuUsed = Game.cpu.getUsed() - startCpu;
+        // Track this tick's measurements
+        const existing = (_a = this.subsystemMeasurements.get(name)) !== null && _a !== void 0 ? _a : [];
+        existing.push(cpuUsed);
+        this.subsystemMeasurements.set(name, existing);
+        return result;
+    }
+    /**
+     * Finalize tick and update subsystem averages
+     */
+    finalizeTick() {
+        if (!this.config.enabled)
+            return;
+        const memory = this.getMemory();
+        memory.tickCount++;
+        memory.lastUpdate = Game.time;
+        // Ensure roles map exists
+        if (!memory.roles) {
+            memory.roles = {};
+        }
+        // Update subsystem averages and record to unified stats
+        for (const [name, measurements] of this.subsystemMeasurements) {
+            const totalCpu = measurements.reduce((sum, m) => sum + m, 0);
+            // Check if this is a role measurement (prefixed with "role:")
+            const isRole = name.startsWith("role:");
+            const targetMap = isRole ? memory.roles : memory.subsystems;
+            const cleanName = isRole ? name.substring(5) : name;
+            if (!targetMap[cleanName]) {
+                targetMap[cleanName] = {
+                    avgCpu: totalCpu,
+                    peakCpu: totalCpu,
+                    samples: 1,
+                    callsThisTick: measurements.length
+                };
+            }
+            else {
+                const data = targetMap[cleanName];
+                data.avgCpu = data.avgCpu * (1 - this.config.smoothingFactor) + totalCpu * this.config.smoothingFactor;
+                data.peakCpu = Math.max(data.peakCpu, totalCpu);
+                data.samples++;
+                data.callsThisTick = measurements.length;
+            }
+            // Record to unified stats system
+            if (isRole) {
+                // Count creeps with this role
+                const roleCount = Object.values(Game.creeps).filter(c => {
+                    const mem = c.memory;
+                    return mem.role === cleanName;
+                }).length;
+                statsManager.recordRole(cleanName, roleCount, totalCpu, measurements.length);
+            }
+            else {
+                statsManager.recordSubsystem(cleanName, totalCpu, measurements.length);
+            }
+        }
+        // Clear tick measurements
+        this.tickMeasurements.clear();
+        this.subsystemMeasurements.clear();
+        // Publish exporter-friendly stats
+        this.publishStats(memory);
+        // Log summary if interval reached
+        if (this.config.logInterval > 0 && Game.time % this.config.logInterval === 0) {
+            this.logSummary();
+        }
+    }
+    /**
+     * Log a summary of profiler data
+     */
+    logSummary() {
+        const memory = this.getMemory();
+        logger.info("=== Profiler Summary ===");
+        logger.info(`Total ticks: ${memory.tickCount}`);
+        // Room summaries
+        const roomEntries = Object.entries(memory.rooms);
+        if (roomEntries.length > 0) {
+            logger.info("Room CPU (avg/peak):");
+            for (const [room, data] of roomEntries) {
+                logger.info(`  ${room}: ${data.avgCpu.toFixed(3)} / ${data.peakCpu.toFixed(3)}`);
+            }
+        }
+        // Subsystem summaries
+        const subsystemEntries = Object.entries(memory.subsystems);
+        if (subsystemEntries.length > 0) {
+            logger.info("Subsystem CPU (avg/peak):");
+            for (const [name, data] of subsystemEntries) {
+                logger.info(`  ${name}: ${data.avgCpu.toFixed(3)} / ${data.peakCpu.toFixed(3)}`);
+            }
+        }
+        // Top 10 most expensive roles by average CPU
+        const roleEntries = Object.entries(memory.roles || {});
+        if (roleEntries.length > 0) {
+            const topRoles = roleEntries
+                .sort((a, b) => b[1].avgCpu - a[1].avgCpu)
+                .slice(0, 10);
+            logger.info("Top Roles by CPU (avg/peak):");
+            for (const [role, data] of topRoles) {
+                logger.info(`  ${role}: ${data.avgCpu.toFixed(3)} / ${data.peakCpu.toFixed(3)} (${data.callsThisTick} creeps)`);
+            }
+        }
+    }
+    /**
+     * Get room profile data
+     */
+    getRoomData(roomName) {
+        return this.getMemory().rooms[roomName];
+    }
+    /**
+     * Get subsystem profile data
+     */
+    getSubsystemData(name) {
+        return this.getMemory().subsystems[name];
+    }
+    /**
+     * Get total CPU average across all rooms
+     */
+    getTotalRoomCpu() {
+        const memory = this.getMemory();
+        return Object.values(memory.rooms).reduce((sum, data) => sum + data.avgCpu, 0);
+    }
+    /**
+     * Reset profiler data
+     */
+    reset() {
+        const statsRoot = this.getStatsRoot();
+        statsRoot[PROFILER_MEMORY_KEY] = {
+            rooms: {},
+            subsystems: {},
+            roles: {},
+            tickCount: 0,
+            lastUpdate: 0
+        };
+        this.publishStats(statsRoot[PROFILER_MEMORY_KEY]);
+    }
+    /**
+     * Enable/disable profiling
+     */
+    setEnabled(enabled) {
+        this.config.enabled = enabled;
+    }
+    /**
+     * Check if profiling is enabled
+     */
+    isEnabled() {
+        return this.config.enabled;
+    }
+}
+/**
+ * Global profiler instance
+ */
+const profiler = new Profiler();
+
+/**
+ * Room Visualizer
+ *
+ * Provides in-game visualization using RoomVisual:
+ * - Pheromone heatmaps
+ * - Path and traffic visualization
+ * - Blueprint overlay
+ * - Combat information
+ * - Spawn queue visualization
+ * - Resource flow visualization
+ *
+ * Addresses Issue: #34
+ */
+const DEFAULT_CONFIG$f = {
+    showPheromones: true,
+    showPaths: false,
+    showCombat: true,
+    showResourceFlow: false,
+    showSpawnQueue: true,
+    showRoomStats: true,
+    opacity: 0.5
+};
+/**
+ * Color schemes for pheromones
+ */
+const PHEROMONE_COLORS = {
+    expand: "#00ff00",
+    harvest: "#ffff00",
+    build: "#ff8800",
+    upgrade: "#0088ff",
+    defense: "#ff0000",
+    war: "#ff00ff",
+    siege: "#880000",
+    logistics: "#00ffff",
+    nukeTarget: "#ff0088" // Pink
+};
+/**
+ * Room Visualizer Class
+ */
+class RoomVisualizer {
+    constructor(config = {}) {
+        this.config = { ...DEFAULT_CONFIG$f, ...config };
+    }
+    /**
+     * Draw all visualizations for a room
+     */
+    draw(room) {
+        const visual = new RoomVisual(room.name);
+        const swarm = memoryManager.getOrInitSwarmState(room.name);
+        if (this.config.showRoomStats) {
+            this.drawRoomStats(visual, room, swarm);
+        }
+        if (this.config.showPheromones && swarm) {
+            this.drawPheromoneBars(visual, swarm);
+        }
+        if (this.config.showCombat) {
+            this.drawCombatInfo(visual, room);
+        }
+        if (this.config.showSpawnQueue) {
+            this.drawSpawnQueue(visual, room);
+        }
+        if (this.config.showResourceFlow) {
+            this.drawResourceFlow(visual, room);
+        }
+        if (this.config.showPaths) {
+            this.drawTrafficPaths(visual, room);
+        }
+    }
+    /**
+     * Draw room statistics panel
+     */
+    drawRoomStats(visual, room, swarm) {
+        var _a, _b, _c;
+        const x = 0.5;
+        let y = 0.5;
+        const lineHeight = 0.6;
+        // Background
+        visual.rect(0, 0, 8, 6.5, {
+            fill: "#000000",
+            opacity: 0.7,
+            stroke: "#ffffff",
+            strokeWidth: 0.05
+        });
+        // Room name and RCL
+        const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0;
+        const progress = room.controller
+            ? `${Math.round((room.controller.progress / room.controller.progressTotal) * 100)}%`
+            : "N/A";
+        visual.text(`${room.name} | RCL ${rcl} (${progress})`, x, y, {
+            align: "left",
+            font: "0.5 monospace",
+            color: "#ffffff"
+        });
+        y += lineHeight;
+        // Energy
+        const energy = room.energyAvailable;
+        const energyMax = room.energyCapacityAvailable;
+        const energyPercent = energyMax > 0 ? Math.round((energy / energyMax) * 100) : 0;
+        visual.text(`Energy: ${energy}/${energyMax} (${energyPercent}%)`, x, y, {
+            align: "left",
+            font: "0.4 monospace",
+            color: "#ffff00"
+        });
+        y += lineHeight;
+        // Storage
+        if (room.storage) {
+            const storageEnergy = room.storage.store.getUsedCapacity(RESOURCE_ENERGY);
+            visual.text(`Storage: ${Math.round(storageEnergy / 1000)}k energy`, x, y, {
+                align: "left",
+                font: "0.4 monospace",
+                color: "#00ff00"
+            });
+            y += lineHeight;
+        }
+        // Swarm state
+        if (swarm) {
+            visual.text(`Stage: ${swarm.colonyLevel}`, x, y, {
+                align: "left",
+                font: "0.4 monospace",
+                color: "#00ffff"
+            });
+            y += lineHeight;
+            const dangerColors = ["#00ff00", "#ffff00", "#ff8800", "#ff0000"];
+            visual.text(`Posture: ${swarm.posture} | Danger: ${swarm.danger}`, x, y, {
+                align: "left",
+                font: "0.4 monospace",
+                color: (_c = dangerColors[swarm.danger]) !== null && _c !== void 0 ? _c : "#ffffff"
+            });
+            y += lineHeight;
+        }
+        // Creep count
+        const creeps = room.find(FIND_MY_CREEPS).length;
+        const hostiles = room.find(FIND_HOSTILE_CREEPS).length;
+        visual.text(`Creeps: ${creeps} | Hostiles: ${hostiles}`, x, y, {
+            align: "left",
+            font: "0.4 monospace",
+            color: hostiles > 0 ? "#ff0000" : "#ffffff"
+        });
+        y += lineHeight;
+        // CPU
+        const cpu = Game.cpu.getUsed().toFixed(1);
+        const bucket = Game.cpu.bucket;
+        visual.text(`CPU: ${cpu} | Bucket: ${bucket}`, x, y, {
+            align: "left",
+            font: "0.4 monospace",
+            color: bucket < 3000 ? "#ff8800" : "#ffffff"
+        });
+    }
+    /**
+     * Draw pheromone bars
+     */
+    drawPheromoneBars(visual, swarm) {
+        const x = 42;
+        let y = 0.5;
+        const barWidth = 6;
+        const barHeight = 0.4;
+        // Background
+        visual.rect(41.5, 0, 8, 5.5, {
+            fill: "#000000",
+            opacity: 0.7,
+            stroke: "#ffffff",
+            strokeWidth: 0.05
+        });
+        visual.text("Pheromones", x + 3, y, {
+            align: "center",
+            font: "0.5 monospace",
+            color: "#ffffff"
+        });
+        y += 0.6;
+        const maxValue = 100;
+        for (const [key, value] of Object.entries(swarm.pheromones)) {
+            const color = PHEROMONE_COLORS[key];
+            const fillWidth = Math.min(1, value / maxValue) * barWidth;
+            // Background bar
+            visual.rect(x, y, barWidth, barHeight, {
+                fill: "#333333",
+                opacity: 0.8
+            });
+            // Fill bar
+            if (fillWidth > 0) {
+                visual.rect(x, y, fillWidth, barHeight, {
+                    fill: color,
+                    opacity: this.config.opacity
+                });
+            }
+            // Label
+            visual.text(`${key}: ${Math.round(value)}`, x - 0.2, y + 0.35, {
+                align: "right",
+                font: "0.35 monospace",
+                color
+            });
+            y += 0.5;
+        }
+    }
+    /**
+     * Draw combat information
+     */
+    drawCombatInfo(visual, room) {
+        const hostiles = room.find(FIND_HOSTILE_CREEPS);
+        // Draw circles around hostiles with threat level
+        for (const hostile of hostiles) {
+            const threat = this.calculateCreepThreat(hostile);
+            const color = threat > 30 ? "#ff0000" : threat > 10 ? "#ff8800" : "#ffff00";
+            visual.circle(hostile.pos, {
+                radius: 0.6,
+                fill: color,
+                opacity: 0.3,
+                stroke: color,
+                strokeWidth: 0.1
+            });
+            visual.text(`T:${threat}`, hostile.pos.x, hostile.pos.y - 0.8, {
+                font: "0.4 monospace",
+                color
+            });
+        }
+        // Draw tower ranges if under attack
+        if (hostiles.length > 0) {
+            const towers = room.find(FIND_MY_STRUCTURES, {
+                filter: s => s.structureType === STRUCTURE_TOWER
+            });
+            for (const tower of towers) {
+                // Optimal range (full damage)
+                visual.circle(tower.pos, {
+                    radius: 5,
+                    fill: "#00ff00",
+                    opacity: 0.1,
+                    stroke: "#00ff00",
+                    strokeWidth: 0.05
+                });
+                // Medium range
+                visual.circle(tower.pos, {
+                    radius: 10,
+                    fill: "#ffff00",
+                    opacity: 0.05,
+                    stroke: "#ffff00",
+                    strokeWidth: 0.05
+                });
+            }
+        }
+    }
+    /**
+     * Calculate threat level of a creep
+     */
+    calculateCreepThreat(creep) {
+        let threat = 0;
+        for (const part of creep.body) {
+            if (!part.hits)
+                continue;
+            switch (part.type) {
+                case ATTACK:
+                    threat += 5 * (part.boost ? 4 : 1);
+                    break;
+                case RANGED_ATTACK:
+                    threat += 4 * (part.boost ? 4 : 1);
+                    break;
+                case HEAL:
+                    threat += 6 * (part.boost ? 4 : 1);
+                    break;
+                case TOUGH:
+                    threat += 1 * (part.boost ? 4 : 1);
+                    break;
+                case WORK:
+                    threat += 2 * (part.boost ? 4 : 1);
+                    break;
+            }
+        }
+        return threat;
+    }
+    /**
+     * Draw spawn queue visualization
+     */
+    drawSpawnQueue(visual, room) {
+        var _a;
+        const spawns = room.find(FIND_MY_SPAWNS);
+        for (const spawn of spawns) {
+            if (spawn.spawning) {
+                const creep = Game.creeps[spawn.spawning.name];
+                const progress = 1 - spawn.spawning.remainingTime / spawn.spawning.needTime;
+                // Progress bar above spawn
+                const barWidth = 2;
+                const barHeight = 0.3;
+                const barX = spawn.pos.x - 1;
+                const barY = spawn.pos.y - 1.5;
+                visual.rect(barX, barY, barWidth, barHeight, {
+                    fill: "#333333",
+                    opacity: 0.8
+                });
+                visual.rect(barX, barY, barWidth * progress, barHeight, {
+                    fill: "#00ff00",
+                    opacity: 0.8
+                });
+                // Spawning creep name/role
+                const memory = creep === null || creep === void 0 ? void 0 : creep.memory;
+                const role = (_a = memory === null || memory === void 0 ? void 0 : memory.role) !== null && _a !== void 0 ? _a : spawn.spawning.name;
+                visual.text(role, spawn.pos.x, spawn.pos.y - 1.9, {
+                    font: "0.35 monospace",
+                    color: "#ffffff"
+                });
+            }
+        }
+    }
+    /**
+     * Draw resource flow arrows
+     */
+    drawResourceFlow(visual, room) {
+        const storage = room.storage;
+        if (!storage)
+            return;
+        // Draw arrows from sources to storage
+        const sources = room.find(FIND_SOURCES);
+        for (const source of sources) {
+            this.drawArrow(visual, source.pos, storage.pos, "#ffff00", 0.2);
+        }
+        // Draw arrows from storage to spawns
+        const spawns = room.find(FIND_MY_SPAWNS);
+        for (const spawn of spawns) {
+            if (spawn.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+                this.drawArrow(visual, storage.pos, spawn.pos, "#00ff00", 0.2);
+            }
+        }
+        // Draw arrows from storage to controller
+        const controller = room.controller;
+        if (controller) {
+            this.drawArrow(visual, storage.pos, controller.pos, "#00ffff", 0.2);
+        }
+    }
+    /**
+     * Draw an arrow between two positions
+     */
+    drawArrow(visual, from, to, color, opacity) {
+        visual.line(from, to, {
+            color,
+            opacity,
+            width: 0.1,
+            lineStyle: "dashed"
+        });
+    }
+    /**
+     * Draw traffic paths
+     */
+    drawTrafficPaths(visual, room) {
+        // Draw roads with usage intensity
+        const roads = room.find(FIND_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_ROAD
+        });
+        for (const road of roads) {
+            // Color based on hits (more traffic = more damage)
+            const hitsPercent = road.hits / road.hitsMax;
+            const intensity = 1 - hitsPercent;
+            const color = `hsl(${120 - intensity * 120}, 100%, 50%)`;
+            visual.circle(road.pos, {
+                radius: 0.2,
+                fill: color,
+                opacity: 0.5
+            });
+        }
+    }
+    /**
+     * Draw blueprint overlay for planned structures
+     */
+    drawBlueprint(visual, blueprint) {
+        var _a;
+        const structureColors = {
+            spawn: "#ff8800",
+            extension: "#ffff00",
+            tower: "#ff0000",
+            storage: "#00ff00",
+            terminal: "#00ffff",
+            lab: "#ff00ff",
+            factory: "#8800ff",
+            link: "#0088ff",
+            observer: "#888888",
+            nuker: "#ff0088",
+            powerSpawn: "#ff4400",
+            container: "#884400",
+            road: "#444444",
+            rampart: "#008800",
+            constructedWall: "#666666",
+            extractor: "#ff8888"
+        };
+        for (const item of blueprint) {
+            const color = (_a = structureColors[item.type]) !== null && _a !== void 0 ? _a : "#ffffff";
+            visual.rect(item.pos.x - 0.4, item.pos.y - 0.4, 0.8, 0.8, {
+                fill: color,
+                opacity: 0.3,
+                stroke: color,
+                strokeWidth: 0.05
+            });
+            visual.text(item.type.charAt(0).toUpperCase(), item.pos.x, item.pos.y + 0.15, {
+                font: "0.5 monospace",
+                color
+            });
+        }
+    }
+    /**
+     * Update configuration
+     */
+    setConfig(config) {
+        this.config = { ...this.config, ...config };
+    }
+    /**
+     * Get current configuration
+     */
+    getConfig() {
+        return { ...this.config };
+    }
+    /**
+     * Toggle a specific visualization
+     */
+    toggle(key) {
+        if (typeof this.config[key] === "boolean") {
+            this.config[key] = !this.config[key];
+        }
+    }
+}
+/**
+ * Global room visualizer instance
+ */
+const roomVisualizer = new RoomVisualizer();
+
+/**
+ * Map Visualizer
+ *
+ * Provides map-level visualization using Game.map.visual:
+ * - Room status indicators (RCL, danger level, colony type)
+ * - Inter-room connections (remotes, highways, portals)
+ * - Resource flow visualization
+ * - Threat and expansion indicators
+ * - Multi-room strategic overlays
+ *
+ * Complements RoomVisualizer which handles room-specific details.
+ */
+const DEFAULT_CONFIG$e = {
+    showRoomStatus: true,
+    showConnections: true,
+    showThreats: true,
+    showExpansion: false,
+    showResourceFlow: false,
+    showHighways: false,
+    opacity: 0.6
+};
+/**
+ * Color schemes for room status
+ */
+const DANGER_COLORS = ["#00ff00", "#ffff00", "#ff8800", "#ff0000"];
+const POSTURE_COLORS = {
+    eco: "#00ff00",
+    expand: "#00ffff",
+    defense: "#ffff00",
+    war: "#ff8800",
+    siege: "#ff0000",
+    evacuate: "#ff00ff"
+};
+/**
+ * Map Visualizer Class
+ */
+class MapVisualizer {
+    constructor(config = {}) {
+        this.config = { ...DEFAULT_CONFIG$e, ...config };
+    }
+    /**
+     * Draw all map visualizations
+     */
+    draw() {
+        const visual = Game.map.visual;
+        if (this.config.showRoomStatus) {
+            this.drawRoomStatus(visual);
+        }
+        if (this.config.showConnections) {
+            this.drawConnections(visual);
+        }
+        if (this.config.showThreats) {
+            this.drawThreats(visual);
+        }
+        if (this.config.showExpansion) {
+            this.drawExpansionCandidates(visual);
+        }
+        if (this.config.showResourceFlow) {
+            this.drawResourceFlow(visual);
+        }
+        if (this.config.showHighways) {
+            this.drawHighways(visual);
+        }
+    }
+    /**
+     * Draw room status indicators
+     */
+    drawRoomStatus(visual) {
+        var _a, _b, _c;
+        for (const room of Object.values(Game.rooms)) {
+            if (!((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my))
+                continue;
+            const swarm = memoryManager.getOrInitSwarmState(room.name);
+            const rcl = room.controller.level;
+            // Color based on danger level (bounds-checked)
+            const dangerIndex = Math.min(Math.max(swarm.danger, 0), 3);
+            const color = (_b = DANGER_COLORS[dangerIndex]) !== null && _b !== void 0 ? _b : "#ffffff";
+            // Draw circle indicator
+            const circleStyle = {
+                radius: 10,
+                fill: color,
+                opacity: this.config.opacity * 0.5,
+                stroke: color,
+                strokeWidth: 1
+            };
+            visual.circle(new RoomPosition(25, 25, room.name), circleStyle);
+            // Draw RCL text
+            visual.text(`RCL${rcl}`, new RoomPosition(25, 25, room.name), {
+                color: "#ffffff",
+                fontSize: 8,
+                align: "center"
+            });
+            // Draw posture indicator
+            if (swarm.posture !== "eco") {
+                const postureColor = (_c = POSTURE_COLORS[swarm.posture]) !== null && _c !== void 0 ? _c : "#ffffff";
+                visual.text(swarm.posture.toUpperCase(), new RoomPosition(25, 30, room.name), {
+                    color: postureColor,
+                    fontSize: 6,
+                    align: "center"
+                });
+            }
+        }
+    }
+    /**
+     * Draw inter-room connections (remotes, military routes)
+     */
+    drawConnections(visual) {
+        var _a;
+        for (const room of Object.values(Game.rooms)) {
+            if (!((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my))
+                continue;
+            const swarm = memoryManager.getOrInitSwarmState(room.name);
+            // Draw connections to remote rooms
+            if (swarm.remoteAssignments && swarm.remoteAssignments.length > 0) {
+                for (const remoteName of swarm.remoteAssignments) {
+                    // Draw line from home to remote
+                    const lineStyle = {
+                        color: "#00ffff",
+                        opacity: this.config.opacity * 0.8,
+                        width: 0.5
+                    };
+                    visual.line(new RoomPosition(25, 25, room.name), new RoomPosition(25, 25, remoteName), lineStyle);
+                    // Draw remote indicator
+                    const remoteCircleStyle = {
+                        radius: 5,
+                        fill: "#00ffff",
+                        opacity: this.config.opacity * 0.3
+                    };
+                    visual.circle(new RoomPosition(25, 25, remoteName), remoteCircleStyle);
+                }
+            }
+            // Draw military connections (war targets)
+            if (swarm.posture === "war" || swarm.posture === "siege") {
+                // Note: In a full implementation, we'd track war targets in memory
+                // For now, we just show rooms with hostiles
+                const hostileRooms = Object.values(Game.rooms).filter(r => r.find(FIND_HOSTILE_CREEPS).length > 0 &&
+                    Game.map.getRoomLinearDistance(room.name, r.name) <= 5);
+                for (const hostileRoom of hostileRooms) {
+                    const militaryLineStyle = {
+                        color: "#ff0000",
+                        opacity: this.config.opacity,
+                        width: 1
+                    };
+                    visual.line(new RoomPosition(25, 25, room.name), new RoomPosition(25, 25, hostileRoom.name), militaryLineStyle);
+                }
+            }
+        }
+    }
+    /**
+     * Draw threat indicators
+     */
+    drawThreats(visual) {
+        for (const room of Object.values(Game.rooms)) {
+            const hostiles = room.find(FIND_HOSTILE_CREEPS);
+            const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES);
+            if (hostiles.length > 0 || hostileStructures.length > 0) {
+                const threatLevel = hostiles.length + hostileStructures.length * 2;
+                const color = threatLevel > 10 ? "#ff0000" : "#ff8800";
+                // Draw threat indicator
+                visual.rect(new RoomPosition(20, 20, room.name), 10, 10, {
+                    fill: color,
+                    opacity: this.config.opacity * 0.5,
+                    stroke: color,
+                    strokeWidth: 1
+                });
+                // Draw threat count
+                visual.text(`⚠${threatLevel}`, new RoomPosition(25, 25, room.name), {
+                    color: "#ffffff",
+                    fontSize: 8,
+                    align: "center"
+                });
+            }
+            // Draw incoming nukes
+            if (room.find(FIND_NUKES).length > 0) {
+                const nukes = room.find(FIND_NUKES);
+                visual.circle(new RoomPosition(25, 25, room.name), {
+                    radius: 15,
+                    fill: "#ff00ff",
+                    opacity: this.config.opacity * 0.7,
+                    stroke: "#ff00ff",
+                    strokeWidth: 2
+                });
+                visual.text(`☢${nukes.length}`, new RoomPosition(25, 25, room.name), {
+                    color: "#ffffff",
+                    fontSize: 10,
+                    align: "center",
+                    backgroundColor: "#ff00ff",
+                    backgroundPadding: 2
+                });
+            }
+        }
+    }
+    /**
+     * Draw expansion candidates
+     */
+    drawExpansionCandidates(visual) {
+        // In a full implementation, this would query expansion manager
+        // For now, we show rooms with neutral controllers near our rooms
+        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        for (const room of Object.values(Game.rooms)) {
+            if (!room.controller || room.controller.my || room.controller.owner)
+                continue;
+            // Check if near any owned room
+            const nearOwnedRoom = ownedRooms.some(owned => Game.map.getRoomLinearDistance(owned.name, room.name) <= 3);
+            if (nearOwnedRoom) {
+                visual.circle(new RoomPosition(25, 25, room.name), {
+                    radius: 8,
+                    fill: "#00ff00",
+                    opacity: this.config.opacity * 0.3,
+                    stroke: "#00ff00",
+                    strokeWidth: 0.5,
+                    lineStyle: "dashed"
+                });
+                visual.text("EXP", new RoomPosition(25, 25, room.name), {
+                    color: "#00ff00",
+                    fontSize: 6,
+                    align: "center"
+                });
+            }
+        }
+    }
+    /**
+     * Draw resource flow between rooms
+     */
+    drawResourceFlow(visual) {
+        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        for (const room of ownedRooms) {
+            if (!room.terminal)
+                continue;
+            // Show terminal activity (orders being filled)
+            const orders = Game.market.orders;
+            for (const orderId in orders) {
+                const order = orders[orderId];
+                if (order.roomName === room.name && order.remainingAmount < order.amount) {
+                    // Active order
+                    visual.circle(new RoomPosition(25, 25, room.name), {
+                        radius: 12,
+                        fill: "#ffff00",
+                        opacity: this.config.opacity * 0.2,
+                        stroke: "#ffff00",
+                        strokeWidth: 0.5
+                    });
+                }
+            }
+        }
+    }
+    /**
+     * Draw highway rooms
+     */
+    drawHighways(visual) {
+        for (const room of Object.values(Game.rooms)) {
+            // Check if room is a highway (rooms with 0 in coordinates)
+            const match = room.name.match(/[WE](\d+)[NS](\d+)/);
+            if (!match)
+                continue;
+            const x = parseInt(match[1], 10);
+            const y = parseInt(match[2], 10);
+            if (x % 10 === 0 || y % 10 === 0) {
+                // This is a highway room
+                visual.rect(new RoomPosition(0, 0, room.name), 50, 50, {
+                    fill: "#444444",
+                    opacity: this.config.opacity * 0.2
+                });
+                // Mark SK rooms (highways with both coords divisible by 10)
+                if (x % 10 === 0 && y % 10 === 0) {
+                    visual.text("SK", new RoomPosition(25, 25, room.name), {
+                        color: "#ff8800",
+                        fontSize: 12,
+                        align: "center"
+                    });
+                }
+            }
+        }
+    }
+    /**
+     * Draw a specific room with detailed overlay
+     */
+    drawRoomOverlay(roomName) {
+        const visual = Game.map.visual;
+        const room = Game.rooms[roomName];
+        if (!room)
+            return;
+        // Draw detailed border
+        visual.rect(new RoomPosition(0, 0, roomName), 50, 50, {
+            fill: "transparent",
+            opacity: 1,
+            stroke: "#00ffff",
+            strokeWidth: 2
+        });
+        // Add room name label
+        visual.text(roomName, new RoomPosition(25, 5, roomName), {
+            color: "#00ffff",
+            fontSize: 10,
+            align: "center",
+            backgroundColor: "#000000",
+            backgroundPadding: 2
+        });
+    }
+    /**
+     * Update configuration
+     */
+    setConfig(config) {
+        this.config = { ...this.config, ...config };
+    }
+    /**
+     * Get current configuration
+     */
+    getConfig() {
+        return { ...this.config };
+    }
+    /**
+     * Toggle a specific boolean visualization option
+     */
+    toggle(key) {
+        const value = this.config[key];
+        if (typeof value === "boolean") {
+            this.config[key] = !value;
+        }
+        // Note: opacity is a number and cannot be toggled, use setConfig() instead
+    }
+}
+/**
+ * Global map visualizer instance
+ */
+const mapVisualizer = new MapVisualizer();
+
+/**
+ * Console Commands
+ *
+ * All console commands available in the game using @Command decorators.
+ * Commands are automatically registered and exposed to global scope.
+ *
+ * Categories:
+ * - Logging: Commands for controlling log output
+ * - Visualization: Commands for toggling visual overlays
+ * - Statistics: Commands for viewing bot statistics
+ * - Kernel: Commands for managing kernel processes
+ * - Configuration: Commands for viewing/modifying bot configuration
+ */
+/**
+ * Logging commands
+ */
+class LoggingCommands {
+    setLogLevel(level) {
+        const levelMap = {
+            debug: LogLevel.DEBUG,
+            info: LogLevel.INFO,
+            warn: LogLevel.WARN,
+            error: LogLevel.ERROR,
+            none: LogLevel.NONE
+        };
+        const logLevel = levelMap[level.toLowerCase()];
+        if (logLevel === undefined) {
+            return `Invalid log level: ${level}. Valid levels: debug, info, warn, error, none`;
+        }
+        configureLogger({ level: logLevel });
+        return `Log level set to: ${level.toUpperCase()}`;
+    }
+    toggleDebug() {
+        const config = getConfig();
+        const newValue = !config.debug;
+        updateConfig({ debug: newValue });
+        configureLogger({ level: newValue ? LogLevel.DEBUG : LogLevel.INFO });
+        return `Debug mode: ${newValue ? "ENABLED" : "DISABLED"} (Log level: ${newValue ? "DEBUG" : "INFO"})`;
+    }
+}
+__decorate([
+    Command({
+        name: "setLogLevel",
+        description: "Set the log level for the bot",
+        usage: "setLogLevel(level)",
+        examples: [
+            "setLogLevel('debug')",
+            "setLogLevel('info')",
+            "setLogLevel('warn')",
+            "setLogLevel('error')",
+            "setLogLevel('none')"
+        ],
+        category: "Logging"
+    })
+], LoggingCommands.prototype, "setLogLevel", null);
+__decorate([
+    Command({
+        name: "toggleDebug",
+        description: "Toggle debug mode on/off (affects log level and debug features)",
+        usage: "toggleDebug()",
+        examples: ["toggleDebug()"],
+        category: "Logging"
+    })
+], LoggingCommands.prototype, "toggleDebug", null);
+/**
+ * Visualization commands
+ */
+class VisualizationCommands {
+    toggleVisualizations() {
+        const config = getConfig();
+        const newValue = !config.visualizations;
+        updateConfig({ visualizations: newValue });
+        return `Visualizations: ${newValue ? "ENABLED" : "DISABLED"}`;
+    }
+    toggleVisualization(key) {
+        const config = roomVisualizer.getConfig();
+        const validKeys = Object.keys(config).filter(k => k.startsWith("show") && typeof config[k] === "boolean");
+        if (!validKeys.includes(key)) {
+            return `Invalid key: ${key}. Valid keys: ${validKeys.join(", ")}`;
+        }
+        const validKey = key;
+        roomVisualizer.toggle(validKey);
+        const newConfig = roomVisualizer.getConfig();
+        const value = newConfig[validKey];
+        return `Room visualization '${key}': ${value ? "ENABLED" : "DISABLED"}`;
+    }
+    toggleMapVisualization(key) {
+        const config = mapVisualizer.getConfig();
+        const validKeys = Object.keys(config).filter(k => k.startsWith("show") && typeof config[k] === "boolean");
+        if (!validKeys.includes(key)) {
+            return `Invalid key: ${key}. Valid keys: ${validKeys.join(", ")}`;
+        }
+        const validKey = key;
+        mapVisualizer.toggle(validKey);
+        const newConfig = mapVisualizer.getConfig();
+        const value = newConfig[validKey];
+        return `Map visualization '${key}': ${value ? "ENABLED" : "DISABLED"}`;
+    }
+    showMapConfig() {
+        const config = mapVisualizer.getConfig();
+        return Object.entries(config)
+            .map(([key, value]) => `${key}: ${String(value)}`)
+            .join("\n");
+    }
+}
+__decorate([
+    Command({
+        name: "toggleVisualizations",
+        description: "Toggle all visualizations on/off",
+        usage: "toggleVisualizations()",
+        examples: ["toggleVisualizations()"],
+        category: "Visualization"
+    })
+], VisualizationCommands.prototype, "toggleVisualizations", null);
+__decorate([
+    Command({
+        name: "toggleVisualization",
+        description: "Toggle a specific room visualization feature",
+        usage: "toggleVisualization(key)",
+        examples: [
+            "toggleVisualization('showPheromones')",
+            "toggleVisualization('showPaths')",
+            "toggleVisualization('showCombat')"
+        ],
+        category: "Visualization"
+    })
+], VisualizationCommands.prototype, "toggleVisualization", null);
+__decorate([
+    Command({
+        name: "toggleMapVisualization",
+        description: "Toggle a specific map visualization feature",
+        usage: "toggleMapVisualization(key)",
+        examples: [
+            "toggleMapVisualization('showRoomStatus')",
+            "toggleMapVisualization('showConnections')",
+            "toggleMapVisualization('showThreats')",
+            "toggleMapVisualization('showExpansion')"
+        ],
+        category: "Visualization"
+    })
+], VisualizationCommands.prototype, "toggleMapVisualization", null);
+__decorate([
+    Command({
+        name: "showMapConfig",
+        description: "Show current map visualization configuration",
+        usage: "showMapConfig()",
+        examples: ["showMapConfig()"],
+        category: "Visualization"
+    })
+], VisualizationCommands.prototype, "showMapConfig", null);
+/**
+ * Statistics commands
+ */
+class StatisticsCommands {
+    showStats() {
+        const stats = memorySegmentStats.getLatestStats();
+        if (!stats) {
+            return "No stats available yet. Wait for a few ticks.";
+        }
+        return `=== SwarmBot Stats (Tick ${stats.tick}) ===
+CPU: ${stats.cpuUsed.toFixed(2)}/${stats.cpuLimit} (Bucket: ${stats.cpuBucket})
+GCL: ${stats.gclLevel} (${(stats.gclProgress * 100).toFixed(1)}%)
+GPL: ${stats.gplLevel}
+Creeps: ${stats.totalCreeps}
+Rooms: ${stats.totalRooms}
+${stats.rooms.map(r => `  ${r.roomName}: RCL${r.rcl} | ${r.creepCount} creeps | ${r.storageEnergy}E`).join("\n")}`;
+    }
+    toggleProfiling() {
+        const config = getConfig();
+        const newValue = !config.profiling;
+        updateConfig({ profiling: newValue });
+        profiler.setEnabled(newValue);
+        configureLogger({ cpuLogging: newValue });
+        return `Profiling: ${newValue ? "ENABLED" : "DISABLED"}`;
+    }
+}
+__decorate([
+    Command({
+        name: "showStats",
+        description: "Show current bot statistics from memory segment",
+        usage: "showStats()",
+        examples: ["showStats()"],
+        category: "Statistics"
+    })
+], StatisticsCommands.prototype, "showStats", null);
+__decorate([
+    Command({
+        name: "toggleProfiling",
+        description: "Toggle CPU profiling on/off",
+        usage: "toggleProfiling()",
+        examples: ["toggleProfiling()"],
+        category: "Statistics"
+    })
+], StatisticsCommands.prototype, "toggleProfiling", null);
+/**
+ * Configuration commands
+ */
+class ConfigurationCommands {
+    showConfig() {
+        const config = getConfig();
+        const loggerConfig = getLoggerConfig();
+        return `=== SwarmBot Config ===
+Debug: ${String(config.debug)}
+Profiling: ${String(config.profiling)}
+Visualizations: ${String(config.visualizations)}
+Logger Level: ${LogLevel[loggerConfig.level]}
+CPU Logging: ${String(loggerConfig.cpuLogging)}`;
+    }
+}
+__decorate([
+    Command({
+        name: "showConfig",
+        description: "Show current bot configuration",
+        usage: "showConfig()",
+        examples: ["showConfig()"],
+        category: "Configuration"
+    })
+], ConfigurationCommands.prototype, "showConfig", null);
+/**
+ * Kernel commands
+ */
+class KernelCommands {
+    showKernelStats() {
+        const stats = kernel.getStatsSummary();
+        const config = kernel.getConfig();
+        const bucketMode = kernel.getBucketMode();
+        let output = `=== Kernel Stats ===
+Bucket Mode: ${bucketMode.toUpperCase()}
+CPU Bucket: ${Game.cpu.bucket}
+CPU Limit: ${kernel.getCpuLimit().toFixed(2)} (${(config.targetCpuUsage * 100).toFixed(0)}% of ${Game.cpu.limit})
+Remaining CPU: ${kernel.getRemainingCpu().toFixed(2)}
+
+Processes: ${stats.totalProcesses} total (${stats.activeProcesses} active, ${stats.suspendedProcesses} suspended)
+Total CPU Used: ${stats.totalCpuUsed.toFixed(3)}
+Avg CPU/Process: ${stats.avgCpuPerProcess.toFixed(4)}
+
+Top CPU Consumers:`;
+        for (const proc of stats.topCpuProcesses) {
+            output += `\n  ${proc.name}: ${proc.avgCpu.toFixed(4)} avg CPU`;
+        }
+        return output;
+    }
+    listProcesses() {
+        const processes = kernel.getProcesses();
+        if (processes.length === 0) {
+            return "No processes registered with kernel.";
+        }
+        let output = "=== Registered Processes ===\n";
+        output += "ID | Name | Priority | Frequency | State | Runs | Avg CPU | Skipped | Errors\n";
+        output += "-".repeat(90) + "\n";
+        const sorted = [...processes].sort((a, b) => b.priority - a.priority);
+        for (const p of sorted) {
+            const avgCpu = p.stats.avgCpu.toFixed(4);
+            output += `${p.id} | ${p.name} | ${p.priority} | ${p.frequency} | ${p.state} | ${p.stats.runCount} | ${avgCpu} | ${p.stats.skippedCount} | ${p.stats.errorCount}\n`;
+        }
+        return output;
+    }
+    suspendProcess(processId) {
+        const success = kernel.suspendProcess(processId);
+        if (success) {
+            return `Process "${processId}" suspended.`;
+        }
+        return `Process "${processId}" not found.`;
+    }
+    resumeProcess(processId) {
+        const success = kernel.resumeProcess(processId);
+        if (success) {
+            return `Process "${processId}" resumed.`;
+        }
+        return `Process "${processId}" not found or not suspended.`;
+    }
+    resetKernelStats() {
+        kernel.resetStats();
+        return "Kernel statistics reset.";
+    }
+}
+__decorate([
+    Command({
+        name: "showKernelStats",
+        description: "Show kernel statistics including CPU usage and process info",
+        usage: "showKernelStats()",
+        examples: ["showKernelStats()"],
+        category: "Kernel"
+    })
+], KernelCommands.prototype, "showKernelStats", null);
+__decorate([
+    Command({
+        name: "listProcesses",
+        description: "List all registered kernel processes",
+        usage: "listProcesses()",
+        examples: ["listProcesses()"],
+        category: "Kernel"
+    })
+], KernelCommands.prototype, "listProcesses", null);
+__decorate([
+    Command({
+        name: "suspendProcess",
+        description: "Suspend a kernel process by ID",
+        usage: "suspendProcess(processId)",
+        examples: ["suspendProcess('empire:manager')", "suspendProcess('cluster:manager')"],
+        category: "Kernel"
+    })
+], KernelCommands.prototype, "suspendProcess", null);
+__decorate([
+    Command({
+        name: "resumeProcess",
+        description: "Resume a suspended kernel process",
+        usage: "resumeProcess(processId)",
+        examples: ["resumeProcess('empire:manager')"],
+        category: "Kernel"
+    })
+], KernelCommands.prototype, "resumeProcess", null);
+__decorate([
+    Command({
+        name: "resetKernelStats",
+        description: "Reset all kernel process statistics",
+        usage: "resetKernelStats()",
+        examples: ["resetKernelStats()"],
+        category: "Kernel"
+    })
+], KernelCommands.prototype, "resetKernelStats", null);
+/**
+ * System commands
+ */
+class SystemCommands {
+    listCommands() {
+        return commandRegistry.generateHelp();
+    }
+    commandHelp(commandName) {
+        return commandRegistry.generateCommandHelp(commandName);
+    }
+}
+__decorate([
+    Command({
+        name: "listCommands",
+        description: "List all available commands (alias for help)",
+        usage: "listCommands()",
+        examples: ["listCommands()"],
+        category: "System"
+    })
+], SystemCommands.prototype, "listCommands", null);
+__decorate([
+    Command({
+        name: "commandHelp",
+        description: "Get detailed help for a specific command",
+        usage: "commandHelp(commandName)",
+        examples: ["commandHelp('setLogLevel')", "commandHelp('suspendProcess')"],
+        category: "System"
+    })
+], SystemCommands.prototype, "commandHelp", null);
+// =============================================================================
+// Command instances (singletons)
+// =============================================================================
+const loggingCommands = new LoggingCommands();
+const visualizationCommands = new VisualizationCommands();
+const statisticsCommands = new StatisticsCommands();
+const configurationCommands = new ConfigurationCommands();
+const kernelCommands = new KernelCommands();
+const systemCommands = new SystemCommands();
+/**
+ * Register all console commands with the command registry
+ */
+function registerAllConsoleCommands() {
+    // Initialize command registry first
+    commandRegistry.initialize();
+    // Register decorated commands from all command class instances
+    registerDecoratedCommands(loggingCommands);
+    registerDecoratedCommands(visualizationCommands);
+    registerDecoratedCommands(statisticsCommands);
+    registerDecoratedCommands(configurationCommands);
+    registerDecoratedCommands(kernelCommands);
+    registerDecoratedCommands(systemCommands);
+    // Expose all commands to global scope
+    commandRegistry.exposeToGlobal();
+}
+
+/**
+ * Safe Find Utilities
+ *
+ * Provides wrapper functions for Room.find() and RoomPosition.find*() methods
+ * that gracefully handle engine errors caused by corrupted game objects.
+ *
+ * The Screeps engine can throw "TypeError: Cannot read property 'username' of undefined"
+ * when constructing OwnedStructure objects with corrupted owner data (e.g., some
+ * invader cores or structures on private servers with database issues).
+ *
+ * These utilities catch such errors and return empty results, allowing the bot
+ * to continue operating even when encountering corrupted game data.
+ */
+/**
+ * Log a safe find error with consistent formatting.
+ */
+function logSafeFindError(method, findType, location, error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.warn(`SafeFind error in ${method}(${String(findType)}) at ${location}: ${message}`, { subsystem: "SafeFind" });
+}
+/**
+ * Safely execute Room.find() with error handling.
+ * Returns empty array if the engine throws an error during find.
+ */
+function safeFind(room, type, opts) {
+    try {
+        return room.find(type, opts);
+    }
+    catch (error) {
+        logSafeFindError("room.find", type, room.name, error);
+        return [];
+    }
+}
+/**
+ * Safely execute RoomPosition.findClosestByRange() with error handling.
+ * Returns null if the engine throws an error during find.
+ */
+function safeFindClosestByRange(pos, type, opts) {
+    try {
+        return pos.findClosestByRange(type, opts);
+    }
+    catch (error) {
+        logSafeFindError("pos.findClosestByRange", type, `${pos.roomName}:${String(pos.x)},${String(pos.y)}`, error);
+        return null;
+    }
+}
+
+/**
+ * Pheromone System - Phase 2
+ *
+ * Implements the pheromone-based coordination system:
+ * - Metrics collection (rolling averages)
+ * - Periodic pheromone updates
+ * - Event-driven updates
+ * - Pheromone diffusion
+ */
+/**
+ * Default pheromone configuration
+ */
+const DEFAULT_PHEROMONE_CONFIG = {
+    updateInterval: 5,
+    decayFactors: {
+        expand: 0.95,
+        harvest: 0.9,
+        build: 0.92,
+        upgrade: 0.93,
+        defense: 0.97,
+        war: 0.98,
+        siege: 0.99,
+        logistics: 0.91,
+        nukeTarget: 0.99
+    },
+    diffusionRates: {
+        expand: 0.3,
+        harvest: 0.1,
+        build: 0.15,
+        upgrade: 0.1,
+        defense: 0.4,
+        war: 0.5,
+        siege: 0.6,
+        logistics: 0.2,
+        nukeTarget: 0.1
+    },
+    maxValue: 100,
+    minValue: 0
+};
+/**
+ * Rolling average tracker for metrics
+ */
+class RollingAverage {
+    constructor(maxSamples = 10) {
+        this.maxSamples = maxSamples;
+        this.values = [];
+        this.sum = 0;
+    }
+    /**
+     * Add a value
+     */
+    add(value) {
+        this.values.push(value);
+        this.sum += value;
+        if (this.values.length > this.maxSamples) {
+            const removed = this.values.shift();
+            this.sum -= removed !== null && removed !== void 0 ? removed : 0;
+        }
+        return this.get();
+    }
+    /**
+     * Get current average
+     */
+    get() {
+        return this.values.length > 0 ? this.sum / this.values.length : 0;
+    }
+    /**
+     * Reset
+     */
+    reset() {
+        this.values = [];
+        this.sum = 0;
+    }
+}
+/**
+ * Create a new metrics tracker
+ */
+function createMetricsTracker() {
+    return {
+        energyHarvested: new RollingAverage(10),
+        energySpawning: new RollingAverage(10),
+        energyConstruction: new RollingAverage(10),
+        energyRepair: new RollingAverage(10),
+        energyTower: new RollingAverage(10),
+        controllerProgress: new RollingAverage(10),
+        hostileCount: new RollingAverage(5),
+        damageReceived: new RollingAverage(5),
+        idleWorkers: new RollingAverage(10),
+        lastControllerProgress: 0
+    };
+}
+/**
+ * Pheromone Manager
+ */
+class PheromoneManager {
+    constructor(config = {}) {
+        this.trackers = new Map();
+        this.config = { ...DEFAULT_PHEROMONE_CONFIG, ...config };
+    }
+    /**
+     * Get or create metrics tracker for a room
+     */
+    getTracker(roomName) {
+        let tracker = this.trackers.get(roomName);
+        if (!tracker) {
+            tracker = createMetricsTracker();
+            this.trackers.set(roomName, tracker);
+        }
+        return tracker;
+    }
+    /**
+     * Update metrics from a room.
+     * Uses optimized iteration patterns for better CPU efficiency.
+     */
+    updateMetrics(room, swarm) {
+        var _a;
+        const tracker = this.getTracker(room.name);
+        // Energy harvested (approximation from source depletion)
+        // OPTIMIZATION: Cache sources to share with calculateContributions
+        const cacheKey = `sources_${room.name}`;
+        const cached = global[cacheKey];
+        let sources;
+        if (cached && cached.tick === Game.time) {
+            sources = cached.sources;
+        }
+        else {
+            sources = room.find(FIND_SOURCES);
+            global[cacheKey] = { sources, tick: Game.time };
+        }
+        // Use a single loop instead of two reduce calls for efficiency
+        let totalSourceCapacity = 0;
+        let totalSourceEnergy = 0;
+        for (const source of sources) {
+            totalSourceCapacity += source.energyCapacity;
+            totalSourceEnergy += source.energy;
+        }
+        const harvested = totalSourceCapacity - totalSourceEnergy;
+        tracker.energyHarvested.add(harvested);
+        // Controller progress
+        if ((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my) {
+            const progressDelta = room.controller.progress - tracker.lastControllerProgress;
+            if (progressDelta > 0 && progressDelta < 100000) {
+                tracker.controllerProgress.add(progressDelta);
+            }
+            tracker.lastControllerProgress = room.controller.progress;
+        }
+        // Hostile count and damage - use safeFind to handle engine errors with corrupted owner data
+        // Calculate damage in a single loop instead of multiple filter calls
+        const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
+        tracker.hostileCount.add(hostiles.length);
+        let potentialDamage = 0;
+        for (const hostile of hostiles) {
+            // Iterate body parts once, counting both attack types in the same loop
+            for (const part of hostile.body) {
+                if (part.hits > 0) {
+                    if (part.type === ATTACK) {
+                        potentialDamage += 30;
+                    }
+                    else if (part.type === RANGED_ATTACK) {
+                        potentialDamage += 10;
+                    }
+                }
+            }
+        }
+        tracker.damageReceived.add(potentialDamage);
+        // Update swarm metrics
+        swarm.metrics.energyHarvested = tracker.energyHarvested.get();
+        swarm.metrics.controllerProgress = tracker.controllerProgress.get();
+        swarm.metrics.hostileCount = Math.round(tracker.hostileCount.get());
+        swarm.metrics.damageReceived = tracker.damageReceived.get();
+    }
+    /**
+     * Periodic pheromone update
+     */
+    updatePheromones(swarm, room) {
+        if (Game.time < swarm.nextUpdateTick)
+            return;
+        const pheromones = swarm.pheromones;
+        // Apply decay
+        for (const key of Object.keys(pheromones)) {
+            const decayFactor = this.config.decayFactors[key];
+            pheromones[key] = this.clamp(pheromones[key] * decayFactor);
+        }
+        // Calculate contributions
+        this.calculateContributions(swarm, room);
+        // Set next update tick
+        swarm.nextUpdateTick = Game.time + this.config.updateInterval;
+        swarm.lastUpdate = Game.time;
+    }
+    /**
+     * Calculate pheromone contributions from current state
+     * OPTIMIZATION: Reuse sources from updateMetrics to avoid duplicate room.find() calls
+     */
+    calculateContributions(swarm, room) {
+        var _a;
+        const pheromones = swarm.pheromones;
+        const tracker = this.getTracker(room.name);
+        // Harvest contribution based on available sources
+        // OPTIMIZATION: Sources are already found in updateMetrics, but we need them here too
+        // Since this runs every 5 ticks (same as updateMetrics), we can cache them
+        const cacheKey = `sources_${room.name}`;
+        const cached = global[cacheKey];
+        let sources;
+        if (cached && cached.tick === Game.time) {
+            sources = cached.sources;
+        }
+        else {
+            sources = room.find(FIND_SOURCES);
+            global[cacheKey] = { sources, tick: Game.time };
+        }
+        if (sources.length > 0) {
+            const avgEnergy = sources.reduce((sum, s) => sum + s.energy, 0) / sources.length;
+            pheromones.harvest = this.clamp(pheromones.harvest + (avgEnergy / 3000) * 10);
+        }
+        // Build contribution based on construction sites
+        const sites = room.find(FIND_MY_CONSTRUCTION_SITES);
+        if (sites.length > 0) {
+            pheromones.build = this.clamp(pheromones.build + Math.min(sites.length * 2, 20));
+        }
+        // Upgrade contribution based on controller progress
+        if ((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my) {
+            const progressPercent = room.controller.progress / room.controller.progressTotal;
+            if (progressPercent < 0.5) {
+                pheromones.upgrade = this.clamp(pheromones.upgrade + (1 - progressPercent) * 15);
+            }
+        }
+        // Defense contribution based on hostiles
+        const hostileAvg = tracker.hostileCount.get();
+        if (hostileAvg > 0) {
+            pheromones.defense = this.clamp(pheromones.defense + hostileAvg * 10);
+        }
+        // War contribution if threat is sustained
+        if (swarm.danger >= 2) {
+            pheromones.war = this.clamp(pheromones.war + swarm.danger * 10);
+        }
+        // Siege if critical threat
+        if (swarm.danger >= 3) {
+            pheromones.siege = this.clamp(pheromones.siege + 20);
+        }
+        // Logistics contribution based on energy distribution needs
+        // OPTIMIZATION: Use cached spawns from structure cache if available
+        if (room.storage) {
+            const spawns = room.find(FIND_MY_SPAWNS);
+            const spawnEnergy = spawns.reduce((sum, s) => sum + s.store.getUsedCapacity(RESOURCE_ENERGY), 0);
+            const maxSpawnEnergy = spawns.length * 300;
+            if (spawnEnergy < maxSpawnEnergy * 0.5) {
+                pheromones.logistics = this.clamp(pheromones.logistics + 10);
+            }
+        }
+        // Expand contribution if economy is stable
+        const energyBalance = tracker.energyHarvested.get() - swarm.metrics.energySpawning;
+        if (energyBalance > 0 && swarm.danger === 0) {
+            pheromones.expand = this.clamp(pheromones.expand + Math.min(energyBalance / 100, 10));
+        }
+    }
+    /**
+     * Clamp pheromone value to valid range
+     */
+    clamp(value) {
+        return Math.max(this.config.minValue, Math.min(this.config.maxValue, value));
+    }
+    // ============================================================================
+    // Event-Driven Updates
+    // ============================================================================
+    /**
+     * Handle hostile detection
+     */
+    onHostileDetected(swarm, hostileCount, danger) {
+        swarm.danger = danger;
+        swarm.pheromones.defense = this.clamp(swarm.pheromones.defense + hostileCount * 5);
+        if (danger >= 2) {
+            swarm.pheromones.war = this.clamp(swarm.pheromones.war + danger * 10);
+        }
+        if (danger >= 3) {
+            swarm.pheromones.siege = this.clamp(swarm.pheromones.siege + 20);
+        }
+        logger.info(`Hostile detected: ${hostileCount} hostiles, danger=${danger}`, {
+            room: swarm.role,
+            subsystem: "Pheromone"
+        });
+    }
+    /**
+     * Handle structure destroyed
+     */
+    onStructureDestroyed(swarm, structureType) {
+        swarm.pheromones.defense = this.clamp(swarm.pheromones.defense + 5);
+        swarm.pheromones.build = this.clamp(swarm.pheromones.build + 10);
+        // Critical structures increase danger
+        if (structureType === STRUCTURE_SPAWN || structureType === STRUCTURE_STORAGE || structureType === STRUCTURE_TOWER) {
+            swarm.danger = Math.min(3, swarm.danger + 1);
+            swarm.pheromones.siege = this.clamp(swarm.pheromones.siege + 15);
+        }
+    }
+    /**
+     * Handle nuke detection
+     */
+    onNukeDetected(swarm) {
+        swarm.danger = 3;
+        swarm.pheromones.siege = this.clamp(swarm.pheromones.siege + 50);
+        swarm.pheromones.defense = this.clamp(swarm.pheromones.defense + 30);
+    }
+    /**
+     * Handle remote source lost
+     */
+    onRemoteSourceLost(swarm) {
+        swarm.pheromones.expand = this.clamp(swarm.pheromones.expand - 10);
+        swarm.pheromones.defense = this.clamp(swarm.pheromones.defense + 5);
+    }
+    // ============================================================================
+    // Pheromone Diffusion
+    // ============================================================================
+    /**
+     * Apply diffusion to neighboring rooms
+     */
+    applyDiffusion(rooms) {
+        const diffusionQueue = [];
+        for (const [roomName, swarm] of rooms) {
+            const neighbors = this.getNeighborRoomNames(roomName);
+            for (const neighborName of neighbors) {
+                const neighborSwarm = rooms.get(neighborName);
+                if (!neighborSwarm)
+                    continue;
+                // Diffuse defense, war, expand, and siege
+                const diffusibleTypes = ["defense", "war", "expand", "siege"];
+                for (const type of diffusibleTypes) {
+                    const intensity = swarm.pheromones[type];
+                    if (intensity > 1) {
+                        const rate = this.config.diffusionRates[type];
+                        diffusionQueue.push({
+                            source: roomName,
+                            target: neighborName,
+                            type,
+                            amount: intensity * rate * 0.5,
+                            sourceIntensity: intensity
+                        });
+                    }
+                }
+            }
+        }
+        // Apply diffusion
+        for (const diff of diffusionQueue) {
+            const targetSwarm = rooms.get(diff.target);
+            if (targetSwarm) {
+                const newValue = targetSwarm.pheromones[diff.type] + diff.amount;
+                // Cap the target pheromone level to not exceed the source room's level
+                // This prevents rooms from pushing each other higher than their own level
+                targetSwarm.pheromones[diff.type] = this.clamp(Math.min(newValue, diff.sourceIntensity));
+            }
+        }
+    }
+    /**
+     * Get neighboring room names
+     */
+    getNeighborRoomNames(roomName) {
+        const match = roomName.match(/^([WE])(\d+)([NS])(\d+)$/);
+        if (!match)
+            return [];
+        const [, wx, xStr, wy, yStr] = match;
+        if (!wx || !xStr || !wy || !yStr)
+            return [];
+        const x = parseInt(xStr, 10);
+        const y = parseInt(yStr, 10);
+        const neighbors = [];
+        // Cardinal directions
+        if (wy === "N") {
+            neighbors.push(`${wx}${x}N${y + 1}`);
+        }
+        else {
+            if (y > 0) {
+                neighbors.push(`${wx}${x}S${y - 1}`);
+            }
+            else {
+                neighbors.push(`${wx}${x}N0`);
+            }
+        }
+        if (wy === "S") {
+            neighbors.push(`${wx}${x}S${y + 1}`);
+        }
+        else {
+            if (y > 0) {
+                neighbors.push(`${wx}${x}N${y - 1}`);
+            }
+            else {
+                neighbors.push(`${wx}${x}S0`);
+            }
+        }
+        if (wx === "E") {
+            neighbors.push(`E${x + 1}${wy}${y}`);
+        }
+        else {
+            if (x > 0) {
+                neighbors.push(`W${x - 1}${wy}${y}`);
+            }
+            else {
+                neighbors.push(`E0${wy}${y}`);
+            }
+        }
+        if (wx === "W") {
+            neighbors.push(`W${x + 1}${wy}${y}`);
+        }
+        else {
+            if (x > 0) {
+                neighbors.push(`E${x - 1}${wy}${y}`);
+            }
+            else {
+                neighbors.push(`W0${wy}${y}`);
+            }
+        }
+        return neighbors;
+    }
+    /**
+     * Get dominant pheromone for a room
+     */
+    getDominantPheromone(pheromones) {
+        let maxKey = null;
+        let maxValue = 1; // Minimum threshold
+        for (const key of Object.keys(pheromones)) {
+            if (pheromones[key] > maxValue) {
+                maxValue = pheromones[key];
+                maxKey = key;
+            }
+        }
+        return maxKey;
+    }
+}
+/**
+ * Global pheromone manager instance
+ */
+const pheromoneManager = new PheromoneManager();
+
+/**
+ * Evolution & Posture System - Phase 3
+ *
+ * Manages room lifecycle:
+ * - Evolution stages (colony levels)
+ * - Posture states
+ * - State transitions
+ */
+/**
+ * Evolution stage configurations
+ */
+const EVOLUTION_STAGES = {
+    seedNest: {
+        rcl: 1
+    },
+    foragingExpansion: {
+        rcl: 3,
+        minRooms: 1,
+        minRemoteRooms: 1,
+        minTowerCount: 1
+    },
+    matureColony: {
+        rcl: 4,
+        requiresStorage: true,
+        requiresTerminal: true,
+        requiresLabs: true,
+        minLabCount: 3,
+        minTowerCount: 2
+    },
+    fortifiedHive: {
+        rcl: 7,
+        requiresTerminal: true,
+        requiresLabs: true,
+        minLabCount: 6,
+        requiresFactory: true,
+        requiresPowerSpawn: true,
+        minTowerCount: 4
+    },
+    empireDominance: {
+        rcl: 8,
+        requiresNuker: true,
+        requiresObserver: true,
+        requiresTerminal: true,
+        requiresLabs: true,
+        minLabCount: 8,
+        requiresFactory: true,
+        requiresPowerSpawn: true,
+        minGcl: 10,
+        minRooms: 3,
+        minRemoteRooms: 2,
+        minTowerCount: 6
+    }
+};
+/**
+ * Posture configurations
+ */
+const POSTURE_PROFILES = {
+    eco: { economy: 0.75, military: 0.05, utility: 0.15, power: 0.05 },
+    expand: { economy: 0.55, military: 0.15, utility: 0.25, power: 0.05 },
+    defensive: { economy: 0.45, military: 0.35, utility: 0.15, power: 0.05 },
+    war: { economy: 0.3, military: 0.5, utility: 0.1, power: 0.1 },
+    siege: { economy: 0.2, military: 0.6, utility: 0.1, power: 0.1 },
+    evacuate: { economy: 0.1, military: 0.1, utility: 0.8, power: 0.0 },
+    nukePrep: { economy: 0.4, military: 0.3, utility: 0.2, power: 0.1 }
+};
+/**
+ * Resource priorities per posture
+ */
+const POSTURE_RESOURCE_PRIORITIES = {
+    eco: { upgrade: 80, build: 60, repair: 40, spawn: 70, terminal: 50, labs: 30 },
+    expand: { upgrade: 60, build: 80, repair: 50, spawn: 75, terminal: 60, labs: 40 },
+    defensive: { upgrade: 30, build: 50, repair: 80, spawn: 90, terminal: 40, labs: 60 },
+    war: { upgrade: 10, build: 30, repair: 70, spawn: 95, terminal: 70, labs: 80 },
+    siege: { upgrade: 5, build: 20, repair: 90, spawn: 100, terminal: 50, labs: 90 },
+    evacuate: { upgrade: 0, build: 5, repair: 10, spawn: 50, terminal: 80, labs: 10 },
+    nukePrep: { upgrade: 20, build: 40, repair: 95, spawn: 80, terminal: 30, labs: 70 }
+};
+/**
+ * Evolution Manager
+ */
+class EvolutionManager {
+    constructor() {
+        /** Structure count cache to avoid repeated expensive room scans */
+        this.structureCountsCache = new Map();
+        /** TTL for cached structure counts (in ticks) */
+        this.structureCacheTtl = 20;
+    }
+    /**
+     * Determine evolution stage for a room
+     */
+    determineEvolutionStage(swarm, room, totalOwnedRooms) {
+        var _a, _b, _c, _d;
+        const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0;
+        const gcl = Game.gcl.level;
+        const structureCounts = this.getStructureCounts(room);
+        const remoteCount = (_d = (_c = swarm.remoteAssignments) === null || _c === void 0 ? void 0 : _c.length) !== null && _d !== void 0 ? _d : 0;
+        // Check from highest to lowest
+        if (this.meetsThreshold("empireDominance", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
+            return "empireDominance";
+        }
+        if (this.meetsThreshold("fortifiedHive", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
+            return "fortifiedHive";
+        }
+        if (this.meetsThreshold("matureColony", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
+            return "matureColony";
+        }
+        if (this.meetsThreshold("foragingExpansion", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
+            return "foragingExpansion";
+        }
+        return "seedNest";
+    }
+    /**
+     * Check if room meets threshold for evolution stage
+     */
+    meetsThreshold(stage, rcl, totalRooms, gcl, structureCounts, remoteCount) {
+        var _a, _b;
+        const threshold = EVOLUTION_STAGES[stage];
+        const towers = (_a = structureCounts[STRUCTURE_TOWER]) !== null && _a !== void 0 ? _a : 0;
+        const labs = (_b = structureCounts[STRUCTURE_LAB]) !== null && _b !== void 0 ? _b : 0;
+        if (rcl < threshold.rcl)
+            return false;
+        if (threshold.minRooms && totalRooms < threshold.minRooms)
+            return false;
+        if (threshold.minGcl && gcl < threshold.minGcl)
+            return false;
+        if (threshold.minRemoteRooms && remoteCount < threshold.minRemoteRooms)
+            return false;
+        if (threshold.minTowerCount && towers < threshold.minTowerCount)
+            return false;
+        if (threshold.requiresStorage && !structureCounts[STRUCTURE_STORAGE])
+            return false;
+        if (threshold.requiresTerminal && rcl >= 6 && !structureCounts[STRUCTURE_TERMINAL])
+            return false;
+        if (threshold.requiresLabs && labs === 0)
+            return false;
+        if (threshold.minLabCount && rcl >= 6 && labs < threshold.minLabCount)
+            return false;
+        if (threshold.requiresFactory && rcl >= 7 && !structureCounts[STRUCTURE_FACTORY])
+            return false;
+        if (threshold.requiresPowerSpawn && rcl >= 7 && !structureCounts[STRUCTURE_POWER_SPAWN])
+            return false;
+        if (threshold.requiresObserver && rcl >= 8 && !structureCounts[STRUCTURE_OBSERVER])
+            return false;
+        if (threshold.requiresNuker && rcl >= 8 && !structureCounts[STRUCTURE_NUKER])
+            return false;
+        return true;
+    }
+    /**
+     * Snapshot relevant owned structure counts to avoid repeated lookups.
+     */
+    getStructureCounts(room) {
+        var _a;
+        const cached = this.structureCountsCache.get(room.name);
+        if (cached && Game.time - cached.tick <= this.structureCacheTtl) {
+            return cached.counts;
+        }
+        const counts = {};
+        const structures = room.find(FIND_MY_STRUCTURES);
+        for (const structure of structures) {
+            const type = structure.structureType;
+            counts[type] = ((_a = counts[type]) !== null && _a !== void 0 ? _a : 0) + 1;
+        }
+        this.structureCountsCache.set(room.name, { counts, tick: Game.time });
+        return counts;
+    }
+    /**
+     * Update evolution stage for a room
+     */
+    updateEvolutionStage(swarm, room, totalOwnedRooms) {
+        const newStage = this.determineEvolutionStage(swarm, room, totalOwnedRooms);
+        if (newStage !== swarm.colonyLevel) {
+            logger.info(`Room evolution: ${swarm.colonyLevel} -> ${newStage}`, {
+                room: room.name,
+                subsystem: "Evolution"
+            });
+            swarm.colonyLevel = newStage;
+            return true;
+        }
+        return false;
+    }
+    /**
+     * Update missing structures flags
+     */
+    updateMissingStructures(swarm, room) {
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+        const structureCounts = this.getStructureCounts(room);
+        const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0;
+        const thresholds = EVOLUTION_STAGES[swarm.colonyLevel];
+        const requiresLabs = thresholds.requiresLabs && rcl >= 6;
+        const minLabCount = requiresLabs ? (_c = thresholds.minLabCount) !== null && _c !== void 0 ? _c : 3 : 0;
+        const requiresFactory = thresholds.requiresFactory && rcl >= 7;
+        const requiresTerminal = thresholds.requiresTerminal && rcl >= 6;
+        const requiresStorage = thresholds.requiresStorage && rcl >= 4;
+        const requiresPowerSpawn = thresholds.requiresPowerSpawn && rcl >= 7;
+        const requiresObserver = thresholds.requiresObserver && rcl >= 8;
+        const requiresNuker = thresholds.requiresNuker && rcl >= 8;
+        swarm.missingStructures = {
+            spawn: ((_d = structureCounts[STRUCTURE_SPAWN]) !== null && _d !== void 0 ? _d : 0) === 0,
+            storage: requiresStorage ? ((_e = structureCounts[STRUCTURE_STORAGE]) !== null && _e !== void 0 ? _e : 0) === 0 : false,
+            terminal: requiresTerminal ? ((_f = structureCounts[STRUCTURE_TERMINAL]) !== null && _f !== void 0 ? _f : 0) === 0 : false,
+            labs: requiresLabs ? ((_g = structureCounts[STRUCTURE_LAB]) !== null && _g !== void 0 ? _g : 0) < minLabCount : false,
+            nuker: requiresNuker ? ((_h = structureCounts[STRUCTURE_NUKER]) !== null && _h !== void 0 ? _h : 0) === 0 : false,
+            factory: requiresFactory ? ((_j = structureCounts[STRUCTURE_FACTORY]) !== null && _j !== void 0 ? _j : 0) === 0 : false,
+            extractor: rcl >= 6 ? ((_k = structureCounts[STRUCTURE_EXTRACTOR]) !== null && _k !== void 0 ? _k : 0) === 0 : false,
+            powerSpawn: requiresPowerSpawn ? ((_l = structureCounts[STRUCTURE_POWER_SPAWN]) !== null && _l !== void 0 ? _l : 0) === 0 : false,
+            observer: requiresObserver ? ((_m = structureCounts[STRUCTURE_OBSERVER]) !== null && _m !== void 0 ? _m : 0) === 0 : false
+        };
+    }
+}
+/**
+ * Posture Manager
+ */
+class PostureManager {
+    /**
+     * Determine posture for a room based on pheromones and danger
+     */
+    determinePosture(swarm, strategicOverride) {
+        // Strategic override takes precedence
+        if (strategicOverride) {
+            return strategicOverride;
+        }
+        const { pheromones, danger } = swarm;
+        // Danger-based posture
+        if (danger >= 3) {
+            return "siege";
+        }
+        if (danger >= 2) {
+            return "war";
+        }
+        // Pheromone-based posture
+        if (pheromones.siege > 30) {
+            return "siege";
+        }
+        if (pheromones.war > 25) {
+            return "war";
+        }
+        if (pheromones.defense > 20) {
+            return "defensive";
+        }
+        if (pheromones.nukeTarget > 40) {
+            return "nukePrep";
+        }
+        if (pheromones.expand > 30 && danger === 0) {
+            return "expand";
+        }
+        // Default based on danger level
+        if (danger >= 1) {
+            return "defensive";
+        }
+        return "eco";
+    }
+    /**
+     * Update posture for a room
+     * Emits posture.change event through the kernel when posture changes.
+     * @param swarm - The swarm state to update
+     * @param strategicOverride - Optional strategic override for posture
+     * @param roomName - Room name for event emission (falls back to swarm.role if not provided)
+     */
+    updatePosture(swarm, strategicOverride, roomName) {
+        const newPosture = this.determinePosture(swarm, strategicOverride);
+        if (newPosture !== swarm.posture) {
+            const oldPosture = swarm.posture;
+            const eventRoomName = roomName !== null && roomName !== void 0 ? roomName : swarm.role;
+            logger.info(`Posture change: ${oldPosture} -> ${newPosture}`, {
+                room: eventRoomName,
+                subsystem: "Posture"
+            });
+            swarm.posture = newPosture;
+            // Emit posture change event through the kernel event system
+            kernel.emit("posture.change", {
+                roomName: eventRoomName,
+                oldPosture,
+                newPosture,
+                source: "PostureManager"
+            });
+            return true;
+        }
+        return false;
+    }
+    /**
+     * Get spawn profile for current posture
+     */
+    getSpawnProfile(posture) {
+        return POSTURE_PROFILES[posture];
+    }
+    /**
+     * Get resource priorities for current posture
+     */
+    getResourcePriorities(posture) {
+        return POSTURE_RESOURCE_PRIORITIES[posture];
+    }
+    /**
+     * Check if posture allows building
+     */
+    allowsBuilding(posture) {
+        return posture !== "evacuate" && posture !== "siege";
+    }
+    /**
+     * Check if posture allows upgrading
+     */
+    allowsUpgrading(posture) {
+        return posture !== "evacuate" && posture !== "siege" && posture !== "war";
+    }
+    /**
+     * Check if posture is combat-oriented
+     */
+    isCombatPosture(posture) {
+        return posture === "defensive" || posture === "war" || posture === "siege";
+    }
+    /**
+     * Check if posture allows expansion
+     */
+    allowsExpansion(posture) {
+        return posture === "eco" || posture === "expand";
+    }
+}
+/**
+ * Calculate danger level from threat metrics
+ */
+function calculateDangerLevel(hostileCount, damagePerTick, enemyStructures) {
+    // Critical threat
+    if (hostileCount >= 10 || damagePerTick >= 2000) {
+        return 3;
+    }
+    // High threat
+    if (hostileCount >= 5 || damagePerTick >= 1000) {
+        return 2;
+    }
+    // Medium threat
+    if (hostileCount >= 2 || damagePerTick >= 300 || enemyStructures) {
+        return 1;
+    }
+    return 0;
+}
+/**
+ * Global evolution manager instance
+ */
+const evolutionManager = new EvolutionManager();
+/**
+ * Global posture manager instance
+ */
+const postureManager = new PostureManager();
+
+/**
+ * Extension Generator
+ *
+ * Generates extension positions in a checkerboard pattern around the spawn
+ * to fill out the full 60 extensions allowed at RCL 8.
+ *
+ * Key design: Extensions are placed in a checkerboard pattern where no two
+ * extensions are directly adjacent (share an edge). This ensures creeps
+ * can always move between extensions without blocking each other.
+ *
+ * Addresses Issue: #17
+ */
+/**
+ * Maximum number of extension positions to generate.
+ * Set higher than 60 (the RCL 8 limit) to provide flexibility when
+ * some positions are blocked by terrain or other structures.
+ */
+const MAX_GENERATED_EXTENSIONS = 80;
+/**
+ * Generate extension positions in a checkerboard pattern.
+ *
+ * The pattern ensures:
+ * - No extension is directly adjacent to another extension
+ * - Every extension is reachable via roads/empty spaces
+ * - Extensions are placed in expanding rings from the spawn
+ *
+ * Positions where (|x| + |y|) % 2 == 0 form a checkerboard pattern
+ * that leaves space for roads between extensions.
+ */
+function generateExtensions(count) {
+    const extensions = [];
+    // Checkerboard pattern - positions are arranged so no extensions
+    // share an edge (only potentially corners)
+    // Pattern: place extensions where (x + y) is even to create checkerboard
+    const pattern = [
+        // Ring 1 (distance 2 from spawn) - 4 positions
+        { x: -2, y: 0 }, { x: 2, y: 0 },
+        { x: 0, y: -2 }, { x: 0, y: 2 },
+        // Ring 2 (distance 2-3) - extensions at odd distances with even sum
+        { x: -2, y: -2 }, { x: 2, y: -2 },
+        { x: -2, y: 2 }, { x: 2, y: 2 },
+        { x: -1, y: -3 }, { x: 1, y: -3 },
+        { x: -1, y: 3 }, { x: 1, y: 3 },
+        { x: -3, y: -1 }, { x: 3, y: -1 },
+        { x: -3, y: 1 }, { x: 3, y: 1 },
+        // Ring 3 (distance 3-4) - extending the checkerboard
+        { x: -4, y: 0 }, { x: 4, y: 0 },
+        { x: 0, y: -4 }, { x: 0, y: 4 },
+        { x: -3, y: -3 }, { x: 3, y: -3 },
+        { x: -3, y: 3 }, { x: 3, y: 3 },
+        { x: -4, y: -2 }, { x: 4, y: -2 },
+        { x: -4, y: 2 }, { x: 4, y: 2 },
+        { x: -2, y: -4 }, { x: 2, y: -4 },
+        { x: -2, y: 4 }, { x: 2, y: 4 },
+        // Ring 4 (distance 4-5)
+        { x: -1, y: -5 }, { x: 1, y: -5 },
+        { x: -1, y: 5 }, { x: 1, y: 5 },
+        { x: -5, y: -1 }, { x: 5, y: -1 },
+        { x: -5, y: 1 }, { x: 5, y: 1 },
+        { x: -4, y: -4 }, { x: 4, y: -4 },
+        { x: -4, y: 4 }, { x: 4, y: 4 },
+        { x: -3, y: -5 }, { x: 3, y: -5 },
+        { x: -3, y: 5 }, { x: 3, y: 5 },
+        { x: -5, y: -3 }, { x: 5, y: -3 },
+        { x: -5, y: 3 }, { x: 5, y: 3 },
+        // Ring 5 (distance 5-6) - outer ring for max extensions
+        { x: -6, y: 0 }, { x: 6, y: 0 },
+        { x: 0, y: -6 }, { x: 0, y: 6 },
+        { x: -6, y: -2 }, { x: 6, y: -2 },
+        { x: -6, y: 2 }, { x: 6, y: 2 },
+        { x: -2, y: -6 }, { x: 2, y: -6 },
+        { x: -2, y: 6 }, { x: 2, y: 6 },
+        { x: -5, y: -5 }, { x: 5, y: -5 },
+        { x: -5, y: 5 }, { x: 5, y: 5 },
+        { x: -4, y: -6 }, { x: 4, y: -6 },
+        { x: -4, y: 6 }, { x: 4, y: 6 },
+        { x: -6, y: -4 }, { x: 6, y: -4 },
+        { x: -6, y: 4 }, { x: 6, y: 4 }
+    ];
+    for (let i = 0; i < Math.min(count, pattern.length); i++) {
+        extensions.push({
+            x: pattern[i].x,
+            y: pattern[i].y,
+            structureType: STRUCTURE_EXTENSION
+        });
+    }
+    return extensions;
+}
+/**
+ * Add extensions to a blueprint to reach target count.
+ *
+ * Uses checkerboard pattern validation to ensure new extensions
+ * maintain proper spacing for creep movement.
+ */
+function addExtensionsToBlueprint(existingStructures, targetCount) {
+    // Count existing extensions
+    const existingExtensions = existingStructures.filter(s => s.structureType === STRUCTURE_EXTENSION);
+    const needed = targetCount - existingExtensions.length;
+    if (needed <= 0)
+        return existingStructures;
+    // Generate all possible extension positions
+    const allExtensions = generateExtensions(MAX_GENERATED_EXTENSIONS);
+    // Filter out positions already used by existing structures
+    const usedPositions = new Set(existingStructures.map(s => `${s.x},${s.y}`));
+    const newExtensions = allExtensions
+        .filter(ext => !usedPositions.has(`${ext.x},${ext.y}`))
+        .slice(0, needed);
+    return [...existingStructures, ...newExtensions];
+}
+
+/**
+ * Road Network Planner
+ *
+ * Calculates optimal road positions for:
+ * - Base infrastructure (spawn/storage to sources, controller, mineral)
+ * - Remote mining routes
+ * - Multi-room highways
+ *
+ * These calculated road positions are used by the blueprint system to determine
+ * which roads are valid and should NOT be destroyed during blueprint enforcement.
+ *
+ * Addresses Issue: Layout planner should incorporate roads so destruction routing
+ * does not destroy all roads.
+ */
+const DEFAULT_CONFIG$d = {
+    recalculateInterval: 1000,
+    maxPathOps: 2000,
+    includeRemoteRoads: true
+};
+/**
+ * Construction site limit per room (Screeps game limit)
+ */
+const MAX_CONSTRUCTION_SITES_PER_ROOM = 10;
+/**
+ * Default number of road construction sites to place per tick
+ * Kept low to avoid overwhelming builders
+ */
+const DEFAULT_ROAD_SITES_PER_TICK = 3;
+/**
+ * Cache of calculated road networks per room
+ */
+const roadNetworkCache = new Map();
+/**
+ * Calculate road network for a room
+ *
+ * This includes roads to:
+ * - All sources from spawn/storage
+ * - Controller from spawn/storage
+ * - Mineral from spawn/storage (if RCL >= 6)
+ */
+function calculateRoadNetwork(room, anchor, config = {}) {
+    var _a, _b, _c;
+    const cfg = { ...DEFAULT_CONFIG$d, ...config };
+    // Check cache
+    const cached = roadNetworkCache.get(room.name);
+    if (cached && Game.time - cached.lastCalculated < cfg.recalculateInterval) {
+        return cached;
+    }
+    const positions = new Set();
+    const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0;
+    // Find key positions
+    const sources = room.find(FIND_SOURCES);
+    const controller = room.controller;
+    const storage = room.storage;
+    const mineral = room.find(FIND_MINERALS)[0];
+    // Primary hub position (storage if available, otherwise anchor/spawn position)
+    const hubPos = (_c = storage === null || storage === void 0 ? void 0 : storage.pos) !== null && _c !== void 0 ? _c : anchor;
+    // Add roads to all sources
+    for (const source of sources) {
+        const path = findRoadPath(hubPos, source.pos, room.name, cfg.maxPathOps);
+        for (const pos of path) {
+            positions.add(`${pos.x},${pos.y}`);
+        }
+    }
+    // Add roads to controller
+    if (controller) {
+        const path = findRoadPath(hubPos, controller.pos, room.name, cfg.maxPathOps);
+        for (const pos of path) {
+            positions.add(`${pos.x},${pos.y}`);
+        }
+    }
+    // Add roads to mineral (RCL 6+)
+    if (mineral && rcl >= 6) {
+        const path = findRoadPath(hubPos, mineral.pos, room.name, cfg.maxPathOps);
+        for (const pos of path) {
+            positions.add(`${pos.x},${pos.y}`);
+        }
+    }
+    // If anchor is different from hub (no storage yet), add roads from anchor to sources/controller
+    if (!storage) {
+        for (const source of sources) {
+            const path = findRoadPath(anchor, source.pos, room.name, cfg.maxPathOps);
+            for (const pos of path) {
+                positions.add(`${pos.x},${pos.y}`);
+            }
+        }
+        if (controller) {
+            const path = findRoadPath(anchor, controller.pos, room.name, cfg.maxPathOps);
+            for (const pos of path) {
+                positions.add(`${pos.x},${pos.y}`);
+            }
+        }
+    }
+    const network = {
+        roomName: room.name,
+        positions,
+        lastCalculated: Game.time
+    };
+    roadNetworkCache.set(room.name, network);
+    logger.debug(`Calculated road network for ${room.name}: ${positions.size} positions`, { subsystem: "RoadNetwork" });
+    return network;
+}
+/**
+ * Calculate roads for remote mining routes
+ *
+ * @param homeRoom The home room with spawn/storage
+ * @param remoteRoomNames Array of remote room names to connect
+ * @returns Map of room name to road positions
+ */
+function calculateRemoteRoads(homeRoom, remoteRoomNames, config = {}) {
+    var _a, _b;
+    const cfg = { ...DEFAULT_CONFIG$d, ...config };
+    const result = new Map();
+    if (!cfg.includeRemoteRoads) {
+        return result;
+    }
+    const storage = homeRoom.storage;
+    const spawn = homeRoom.find(FIND_MY_SPAWNS)[0];
+    const hubPos = (_a = storage === null || storage === void 0 ? void 0 : storage.pos) !== null && _a !== void 0 ? _a : spawn === null || spawn === void 0 ? void 0 : spawn.pos;
+    if (!hubPos) {
+        return result;
+    }
+    for (const remoteRoomName of remoteRoomNames) {
+        // Calculate multi-room path to remote room center
+        const remoteTarget = new RoomPosition(25, 25, remoteRoomName);
+        try {
+            const pathResult = PathFinder.search(hubPos, { pos: remoteTarget, range: 20 }, {
+                plainCost: 2,
+                swampCost: 10,
+                maxOps: cfg.maxPathOps,
+                roomCallback: (roomName) => {
+                    return generateRoadCostMatrix(roomName);
+                }
+            });
+            if (!pathResult.incomplete) {
+                // Group positions by room
+                for (const pos of pathResult.path) {
+                    if (!result.has(pos.roomName)) {
+                        result.set(pos.roomName, new Set());
+                    }
+                    (_b = result.get(pos.roomName)) === null || _b === void 0 ? void 0 : _b.add(`${pos.x},${pos.y}`);
+                }
+            }
+        }
+        catch (err) {
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            logger.warn(`Failed to calculate remote road to ${remoteRoomName}: ${errorMessage}`, { subsystem: "RoadNetwork" });
+        }
+    }
+    return result;
+}
+/**
+ * Find a road path between two positions in the same room
+ */
+function findRoadPath(from, to, roomName, maxOps) {
+    const result = [];
+    const pathResult = PathFinder.search(from, { pos: to, range: 1 }, {
+        plainCost: 2,
+        swampCost: 10,
+        maxOps,
+        roomCallback: (rn) => {
+            // Only path within the specified room for local roads
+            if (rn !== roomName) {
+                return false;
+            }
+            return generateRoadCostMatrix(rn);
+        }
+    });
+    if (!pathResult.incomplete) {
+        for (const pos of pathResult.path) {
+            // Only include positions in the target room
+            if (pos.roomName === roomName) {
+                result.push({ x: pos.x, y: pos.y });
+            }
+        }
+    }
+    return result;
+}
+/**
+ * Generate a cost matrix for road pathfinding
+ */
+function generateRoadCostMatrix(roomName) {
+    const room = Game.rooms[roomName];
+    const costs = new PathFinder.CostMatrix();
+    // If we don't have vision of the room, use default costs
+    if (!room) {
+        return costs;
+    }
+    // Add structure costs
+    const structures = room.find(FIND_STRUCTURES);
+    for (const structure of structures) {
+        if (structure.structureType === STRUCTURE_ROAD) {
+            // Prefer existing roads
+            costs.set(structure.pos.x, structure.pos.y, 1);
+        }
+        else if (structure.structureType !== STRUCTURE_CONTAINER &&
+            !(structure.structureType === STRUCTURE_RAMPART && "my" in structure && structure.my)) {
+            // Block impassable structures
+            costs.set(structure.pos.x, structure.pos.y, 255);
+        }
+    }
+    // Add construction site costs
+    const sites = room.find(FIND_MY_CONSTRUCTION_SITES);
+    for (const site of sites) {
+        if (site.structureType === STRUCTURE_ROAD) {
+            // Prefer planned roads
+            costs.set(site.pos.x, site.pos.y, 1);
+        }
+        else if (site.structureType !== STRUCTURE_CONTAINER) {
+            costs.set(site.pos.x, site.pos.y, 255);
+        }
+    }
+    return costs;
+}
+/**
+ * Get all valid road positions for a room
+ *
+ * Combines:
+ * - Blueprint roads
+ * - Calculated infrastructure roads (to sources, controller, mineral)
+ * - Remote mining roads (if applicable)
+ *
+ * @param room The room to get road positions for
+ * @param anchor The blueprint anchor position (usually spawn)
+ * @param blueprintRoads Road positions from the blueprint (relative to anchor)
+ * @param remoteRooms Optional array of remote room names managed by this room
+ */
+function getValidRoadPositions(room, anchor, blueprintRoads, remoteRooms = []) {
+    const validPositions = new Set();
+    const terrain = room.getTerrain();
+    // Add blueprint roads (converted from relative to absolute positions)
+    for (const r of blueprintRoads) {
+        const x = anchor.x + r.x;
+        const y = anchor.y + r.y;
+        if (x >= 1 && x <= 48 && y >= 1 && y <= 48 && terrain.get(x, y) !== TERRAIN_MASK_WALL) {
+            validPositions.add(`${x},${y}`);
+        }
+    }
+    // Add calculated road network (sources, controller, mineral)
+    const roadNetwork = calculateRoadNetwork(room, anchor);
+    for (const posKey of roadNetwork.positions) {
+        validPositions.add(posKey);
+    }
+    // Add remote mining roads (roads in this room that lead to remote rooms)
+    if (remoteRooms.length > 0) {
+        const remoteRoads = calculateRemoteRoads(room, remoteRooms);
+        const homeRoomRoads = remoteRoads.get(room.name);
+        if (homeRoomRoads) {
+            for (const posKey of homeRoomRoads) {
+                validPositions.add(posKey);
+            }
+        }
+    }
+    return validPositions;
+}
+/**
+ * Place road construction sites along the road network
+ *
+ * This is called during construction to build roads to sources, controller, and mineral.
+ * It's rate-limited to avoid exceeding construction site limits.
+ *
+ * @param room The room to build roads in
+ * @param anchor The blueprint anchor position (usually spawn)
+ * @param maxSites Maximum number of construction sites to place per tick
+ * @returns Number of construction sites placed
+ */
+function placeRoadConstructionSites(room, anchor, maxSites = DEFAULT_ROAD_SITES_PER_TICK) {
+    const existingSites = room.find(FIND_MY_CONSTRUCTION_SITES);
+    if (existingSites.length >= MAX_CONSTRUCTION_SITES_PER_ROOM)
+        return 0;
+    const roadNetwork = calculateRoadNetwork(room, anchor);
+    const terrain = room.getTerrain();
+    const existingRoads = room.find(FIND_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_ROAD
+    });
+    const existingRoadSet = new Set(existingRoads.map(r => `${r.pos.x},${r.pos.y}`));
+    const existingSiteSet = new Set(existingSites
+        .filter(s => s.structureType === STRUCTURE_ROAD)
+        .map(s => `${s.pos.x},${s.pos.y}`));
+    let placed = 0;
+    for (const posKey of roadNetwork.positions) {
+        if (placed >= maxSites)
+            break;
+        if (existingSites.length + placed >= MAX_CONSTRUCTION_SITES_PER_ROOM)
+            break;
+        // Skip if road or site already exists
+        if (existingRoadSet.has(posKey))
+            continue;
+        if (existingSiteSet.has(posKey))
+            continue;
+        // Parse position
+        const [xStr, yStr] = posKey.split(",");
+        const x = parseInt(xStr, 10);
+        const y = parseInt(yStr, 10);
+        // Skip walls
+        if (terrain.get(x, y) === TERRAIN_MASK_WALL)
+            continue;
+        // Place construction site
+        const result = room.createConstructionSite(x, y, STRUCTURE_ROAD);
+        if (result === OK) {
+            placed++;
+        }
+    }
+    return placed;
+}
+
+/**
+ * Base Blueprints - Phase 5
+ *
+ * Pre-computed coordinate arrays for base layouts at different RCL stages.
+ */
+/**
+ * RCL 1-2: Early Colony Layout
+ *
+ * Uses a checkerboard pattern to ensure creeps can:
+ * - Spawn and move away in any direction
+ * - Access all extensions without blocking each other
+ *
+ * All extension positions satisfy |x|+|y| % 2 == 0 (even sum)
+ * to ensure no two extensions are directly adjacent.
+ *
+ * Layout (E=Extension, S=Spawn, r=Road):
+ *       . E .
+ *     E r r r E
+ *     r r S r r
+ *     E r r r E
+ *       . E .
+ */
+const EARLY_COLONY_BLUEPRINT = {
+    name: "seedNest",
+    rcl: 1,
+    anchor: { x: 25, y: 25 },
+    structures: [
+        { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
+        // Extensions at even-sum positions |x|+|y| % 2 == 0
+        { x: -2, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 0, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 0, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: -2, y: -2, structureType: STRUCTURE_EXTENSION }
+    ],
+    roads: [
+        // Core roads around spawn (all 8 adjacent tiles for creep exit)
+        { x: -1, y: -1 },
+        { x: 0, y: -1 },
+        { x: 1, y: -1 },
+        { x: -1, y: 0 },
+        { x: 1, y: 0 },
+        { x: -1, y: 1 },
+        { x: 0, y: 1 },
+        { x: 1, y: 1 }
+    ],
+    ramparts: []
+};
+/**
+ * RCL 3-4: Core Colony Layout
+ *
+ * Expanded checkerboard pattern with tower for defense.
+ * All extension positions satisfy |x|+|y| % 2 == 0 (even sum)
+ * to ensure no two extensions are directly adjacent.
+ *
+ * Key features:
+ * - All spawn-adjacent tiles are roads for creep exit
+ * - Extensions are spaced with roads for movement
+ * - Tower placed at safe distance from spawn
+ */
+const CORE_COLONY_BLUEPRINT = {
+    name: "foragingExpansion",
+    rcl: 3,
+    anchor: { x: 25, y: 25 },
+    structures: [
+        { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
+        // Tower at safe distance
+        { x: 0, y: -4, structureType: STRUCTURE_TOWER },
+        // Extensions in checkerboard pattern - all positions have |x|+|y| % 2 == 0
+        // Ring 1: distance 2 from spawn
+        { x: -2, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 0, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 0, y: 2, structureType: STRUCTURE_EXTENSION },
+        // Ring 2: distance 4 (diagonals)
+        { x: -2, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: -2, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: 2, structureType: STRUCTURE_EXTENSION },
+        // Ring 3: distance 4 from spawn
+        { x: -4, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 4, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 0, y: 4, structureType: STRUCTURE_EXTENSION },
+        // Ring 4: diagonal positions
+        { x: -1, y: -3, structureType: STRUCTURE_EXTENSION },
+        { x: 1, y: -3, structureType: STRUCTURE_EXTENSION },
+        { x: -3, y: -1, structureType: STRUCTURE_EXTENSION },
+        { x: 3, y: -1, structureType: STRUCTURE_EXTENSION },
+        { x: -3, y: 1, structureType: STRUCTURE_EXTENSION },
+        { x: 3, y: 1, structureType: STRUCTURE_EXTENSION },
+        { x: -1, y: 3, structureType: STRUCTURE_EXTENSION },
+        { x: 1, y: 3, structureType: STRUCTURE_EXTENSION },
+        { x: -3, y: -3, structureType: STRUCTURE_EXTENSION }
+    ],
+    roads: [
+        // Core roads around spawn (all 8 adjacent tiles)
+        { x: -1, y: -1 },
+        { x: 0, y: -1 },
+        { x: 1, y: -1 },
+        { x: -1, y: 0 },
+        { x: 1, y: 0 },
+        { x: -1, y: 1 },
+        { x: 0, y: 1 },
+        { x: 1, y: 1 },
+        // Radial roads for movement to extensions
+        { x: -2, y: -1 },
+        { x: 2, y: -1 },
+        { x: -2, y: 1 },
+        { x: 2, y: 1 },
+        { x: -1, y: -2 },
+        { x: 1, y: -2 },
+        { x: -1, y: 2 },
+        { x: 1, y: 2 },
+        { x: 0, y: -3 },
+        { x: 0, y: 3 },
+        { x: -3, y: 0 },
+        { x: 3, y: 0 }
+    ],
+    ramparts: []
+};
+/**
+ * RCL 5-6: Economic Maturity Layout
+ *
+ * Expanded layout with storage, terminal, and labs.
+ * All extension positions satisfy |x|+|y| % 2 == 0 (even sum)
+ * to ensure no two extensions are directly adjacent.
+ *
+ * Key features:
+ * - Second spawn at distance 4 (with its own road ring)
+ * - Storage and terminal placed with road access
+ * - Labs clustered but with road access
+ * - Extensions in strict checkerboard pattern
+ */
+const ECONOMIC_MATURITY_BLUEPRINT = {
+    name: "matureColony",
+    rcl: 5,
+    anchor: { x: 25, y: 25 },
+    structures: [
+        // Primary spawn at center
+        { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
+        // Second spawn at distance 4 with space around it
+        { x: 4, y: 0, structureType: STRUCTURE_SPAWN },
+        // Storage and terminal in accessible location
+        { x: 0, y: 4, structureType: STRUCTURE_STORAGE },
+        { x: 2, y: 4, structureType: STRUCTURE_TERMINAL },
+        // Towers for defense
+        { x: 0, y: -4, structureType: STRUCTURE_TOWER },
+        { x: -4, y: 0, structureType: STRUCTURE_TOWER },
+        { x: 4, y: -4, structureType: STRUCTURE_TOWER },
+        // Extensions in checkerboard pattern - all positions have |x|+|y| % 2 == 0
+        { x: -2, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 0, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 0, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: -2, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: -2, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: -1, y: -3, structureType: STRUCTURE_EXTENSION },
+        { x: 1, y: -3, structureType: STRUCTURE_EXTENSION },
+        { x: -3, y: -1, structureType: STRUCTURE_EXTENSION },
+        { x: 3, y: -1, structureType: STRUCTURE_EXTENSION },
+        { x: -3, y: 1, structureType: STRUCTURE_EXTENSION },
+        { x: 3, y: 1, structureType: STRUCTURE_EXTENSION },
+        { x: -1, y: 3, structureType: STRUCTURE_EXTENSION },
+        { x: 1, y: 3, structureType: STRUCTURE_EXTENSION },
+        { x: -4, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: -4, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: -2, y: -4, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: -4, structureType: STRUCTURE_EXTENSION },
+        { x: -3, y: -3, structureType: STRUCTURE_EXTENSION },
+        { x: 3, y: -3, structureType: STRUCTURE_EXTENSION },
+        { x: -3, y: 3, structureType: STRUCTURE_EXTENSION },
+        // Use positions that don't conflict with other blueprint spawns
+        { x: -6, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: -6, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 6, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 6, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: -4, y: -4, structureType: STRUCTURE_EXTENSION },
+        { x: 4, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: 6, y: 0, structureType: STRUCTURE_EXTENSION },
+        // Labs clustered for reactions
+        { x: -3, y: 5, structureType: STRUCTURE_LAB },
+        { x: -4, y: 4, structureType: STRUCTURE_LAB },
+        { x: -5, y: 5, structureType: STRUCTURE_LAB },
+        // Link near storage
+        { x: -2, y: 4, structureType: STRUCTURE_LINK }
+    ],
+    roads: [
+        // Core roads around primary spawn (all 8 adjacent tiles)
+        { x: -1, y: -1 },
+        { x: 0, y: -1 },
+        { x: 1, y: -1 },
+        { x: -1, y: 0 },
+        { x: 1, y: 0 },
+        { x: -1, y: 1 },
+        { x: 0, y: 1 },
+        { x: 1, y: 1 },
+        // Roads around secondary spawn
+        { x: 3, y: -1 },
+        { x: 3, y: 0 },
+        { x: 3, y: 1 },
+        { x: 4, y: -1 },
+        { x: 4, y: 1 },
+        { x: 5, y: -1 },
+        { x: 5, y: 0 },
+        { x: 5, y: 1 },
+        // Connecting roads between extensions
+        { x: -2, y: -1 },
+        { x: 2, y: -1 },
+        { x: -2, y: 1 },
+        { x: 2, y: 1 },
+        { x: -1, y: -2 },
+        { x: 1, y: -2 },
+        { x: -1, y: 2 },
+        { x: 1, y: 2 },
+        { x: 0, y: -3 },
+        { x: 0, y: 3 },
+        { x: -3, y: 0 },
+        { x: 3, y: 0 }
+    ],
+    ramparts: [
+        { x: 0, y: 0 },
+        { x: 4, y: 0 },
+        { x: 0, y: 4 },
+        { x: 1, y: 4 }
+    ]
+};
+/**
+ * RCL 7-8: War Ready / End Game Layout
+ *
+ * Full end-game layout with 3 spawns, 6 towers, full labs, and all special structures.
+ * All extension positions satisfy |x|+|y| % 2 == 0 (even sum)
+ * to ensure no two extensions are directly adjacent.
+ *
+ * Key features:
+ * - 3 spawns spaced apart, each with full road ring
+ * - Towers positioned for optimal coverage
+ * - Labs clustered for efficient reactions with road access
+ * - Extensions in strict checkerboard pattern
+ */
+const WAR_READY_BLUEPRINT = {
+    name: "fortifiedHive",
+    rcl: 7,
+    anchor: { x: 25, y: 25 },
+    structures: [
+        // 3 spawns spaced apart
+        { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
+        { x: -5, y: -1, structureType: STRUCTURE_SPAWN },
+        { x: 5, y: -1, structureType: STRUCTURE_SPAWN },
+        // Storage and terminal in center south
+        { x: 0, y: 4, structureType: STRUCTURE_STORAGE },
+        { x: 2, y: 4, structureType: STRUCTURE_TERMINAL },
+        // 6 towers for full coverage
+        { x: 0, y: -4, structureType: STRUCTURE_TOWER },
+        { x: -4, y: -2, structureType: STRUCTURE_TOWER },
+        { x: 4, y: -2, structureType: STRUCTURE_TOWER },
+        { x: -4, y: 2, structureType: STRUCTURE_TOWER },
+        { x: 4, y: 2, structureType: STRUCTURE_TOWER },
+        { x: 0, y: 6, structureType: STRUCTURE_TOWER },
+        // Factory near storage
+        { x: -2, y: 4, structureType: STRUCTURE_FACTORY },
+        // Labs clustered in southwest with road access
+        { x: -4, y: 4, structureType: STRUCTURE_LAB },
+        { x: -3, y: 5, structureType: STRUCTURE_LAB },
+        { x: -4, y: 6, structureType: STRUCTURE_LAB },
+        { x: -5, y: 5, structureType: STRUCTURE_LAB },
+        { x: -6, y: 4, structureType: STRUCTURE_LAB },
+        { x: -6, y: 6, structureType: STRUCTURE_LAB },
+        { x: -2, y: 6, structureType: STRUCTURE_LAB },
+        { x: -5, y: 3, structureType: STRUCTURE_LAB },
+        { x: -7, y: 5, structureType: STRUCTURE_LAB },
+        { x: -3, y: 7, structureType: STRUCTURE_LAB },
+        // Special structures
+        { x: 4, y: 4, structureType: STRUCTURE_NUKER },
+        { x: 6, y: 0, structureType: STRUCTURE_OBSERVER },
+        { x: -1, y: 5, structureType: STRUCTURE_POWER_SPAWN },
+        // Links for logistics
+        { x: 1, y: 5, structureType: STRUCTURE_LINK },
+        { x: 5, y: -3, structureType: STRUCTURE_LINK },
+        { x: -5, y: -3, structureType: STRUCTURE_LINK },
+        // Extensions in checkerboard pattern - all positions have |x|+|y| % 2 == 0
+        { x: -2, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 0, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 0, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: -2, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: -2, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: -3, y: -1, structureType: STRUCTURE_EXTENSION },
+        { x: 3, y: -1, structureType: STRUCTURE_EXTENSION }
+    ],
+    roads: [
+        // Core roads around primary spawn (all 8 adjacent tiles)
+        { x: -1, y: -1 },
+        { x: 0, y: -1 },
+        { x: 1, y: -1 },
+        { x: -1, y: 0 },
+        { x: 1, y: 0 },
+        { x: -1, y: 1 },
+        { x: 0, y: 1 },
+        { x: 1, y: 1 },
+        // Roads around west spawn (-5, -1)
+        { x: -6, y: -2 },
+        { x: -5, y: -2 },
+        { x: -4, y: -2 },
+        { x: -6, y: -1 },
+        { x: -4, y: -1 },
+        { x: -6, y: 0 },
+        { x: -5, y: 0 },
+        { x: -4, y: 0 },
+        // Roads around east spawn (5, -1)
+        { x: 4, y: -2 },
+        { x: 5, y: -2 },
+        { x: 6, y: -2 },
+        { x: 4, y: -1 },
+        { x: 6, y: -1 },
+        { x: 4, y: 0 },
+        { x: 5, y: 0 },
+        { x: 6, y: 0 },
+        // Horizontal connector roads
+        { x: -3, y: 0 },
+        { x: 3, y: 0 },
+        // Vertical connector roads
+        { x: 0, y: -3 },
+        { x: 0, y: 3 },
+        // Additional movement roads between extensions
+        { x: -2, y: -1 },
+        { x: 2, y: -1 },
+        { x: -2, y: 1 },
+        { x: 2, y: 1 },
+        { x: -1, y: -2 },
+        { x: 1, y: -2 },
+        { x: -1, y: 2 },
+        { x: 1, y: 2 }
+    ],
+    ramparts: [
+        // Protect all spawns
+        { x: 0, y: 0 },
+        { x: -5, y: -1 },
+        { x: 5, y: -1 },
+        // Protect storage and terminal
+        { x: 0, y: 4 },
+        { x: 2, y: 4 },
+        // Protect towers
+        { x: 0, y: -4 },
+        { x: -4, y: -2 },
+        { x: 4, y: -2 },
+        { x: -4, y: 2 },
+        { x: 4, y: 2 },
+        { x: 0, y: 6 },
+        // Protect special structures
+        { x: 4, y: 4 },
+        { x: -1, y: 5 }
+    ]
+};
+/**
+ * Get blueprint for RCL
+ */
+function getBlueprintForRCL(rcl) {
+    if (rcl >= 7)
+        return WAR_READY_BLUEPRINT;
+    if (rcl >= 5)
+        return ECONOMIC_MATURITY_BLUEPRINT;
+    if (rcl >= 3)
+        return CORE_COLONY_BLUEPRINT;
+    return EARLY_COLONY_BLUEPRINT;
+}
+/**
+ * Filter structures for a specific RCL
+ */
+function getStructuresForRCL(blueprint, rcl) {
+    var _a;
+    const limits = getStructureLimits(rcl);
+    const counts = {};
+    let structures = blueprint.structures.filter(s => {
+        var _a, _b;
+        const type = s.structureType;
+        const limit = (_a = limits[type]) !== null && _a !== void 0 ? _a : 0;
+        const current = (_b = counts[type]) !== null && _b !== void 0 ? _b : 0;
+        if (current >= limit)
+            return false;
+        counts[type] = current + 1;
+        return true;
+    });
+    // Add extensions to reach RCL limit
+    const extensionLimit = (_a = limits[STRUCTURE_EXTENSION]) !== null && _a !== void 0 ? _a : 0;
+    if (extensionLimit > 0) {
+        structures = addExtensionsToBlueprint(structures, extensionLimit);
+    }
+    return structures;
+}
+/**
+ * Get structure limits per RCL
+ */
+function getStructureLimits(rcl) {
+    var _a;
+    const limits = {
+        1: { spawn: 1, extension: 0, road: 2500, constructedWall: 0 },
+        2: { spawn: 1, extension: 5, road: 2500, constructedWall: 2500, rampart: 2500, container: 5 },
+        3: { spawn: 1, extension: 10, road: 2500, constructedWall: 2500, rampart: 2500, container: 5, tower: 1 },
+        4: {
+            spawn: 1,
+            extension: 20,
+            road: 2500,
+            constructedWall: 2500,
+            rampart: 2500,
+            container: 5,
+            tower: 1,
+            storage: 1
+        },
+        5: {
+            spawn: 1,
+            extension: 30,
+            road: 2500,
+            constructedWall: 2500,
+            rampart: 2500,
+            container: 5,
+            tower: 2,
+            storage: 1,
+            link: 2
+        },
+        6: {
+            spawn: 1,
+            extension: 40,
+            road: 2500,
+            constructedWall: 2500,
+            rampart: 2500,
+            container: 5,
+            tower: 2,
+            storage: 1,
+            link: 3,
+            terminal: 1,
+            extractor: 1,
+            lab: 3
+        },
+        7: {
+            spawn: 2,
+            extension: 50,
+            road: 2500,
+            constructedWall: 2500,
+            rampart: 2500,
+            container: 5,
+            tower: 3,
+            storage: 1,
+            link: 4,
+            terminal: 1,
+            extractor: 1,
+            lab: 6,
+            factory: 1
+        },
+        8: {
+            spawn: 3,
+            extension: 60,
+            road: 2500,
+            constructedWall: 2500,
+            rampart: 2500,
+            container: 5,
+            tower: 6,
+            storage: 1,
+            link: 6,
+            terminal: 1,
+            extractor: 1,
+            lab: 10,
+            factory: 1,
+            nuker: 1,
+            observer: 1,
+            powerSpawn: 1
+        }
+    };
+    return ((_a = limits[rcl]) !== null && _a !== void 0 ? _a : limits[1]);
+}
+/**
+ * Get blueprint for a specific RCL (alias for getBlueprintForRCL)
+ */
+function getBlueprint(rcl) {
+    return getBlueprintForRCL(rcl);
+}
+/**
+ * Place construction sites from a blueprint
+ */
+function placeConstructionSites(room, anchor, blueprint) {
+    var _a, _b, _c, _d, _e, _f;
+    const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 1;
+    const structures = getStructuresForRCL(blueprint, rcl);
+    const terrain = room.getTerrain();
+    // Add extractor at mineral position if RCL 6+
+    const mineralStructures = [];
+    if (rcl >= 6) {
+        const minerals = room.find(FIND_MINERALS);
+        if (minerals.length > 0) {
+            const mineral = minerals[0];
+            mineralStructures.push({
+                x: mineral.pos.x - anchor.x,
+                y: mineral.pos.y - anchor.y,
+                structureType: STRUCTURE_EXTRACTOR
+            });
+        }
+    }
+    // Combine blueprint structures with mineral structures
+    const allStructures = [...structures, ...mineralStructures];
+    let placed = 0;
+    const existingSites = room.find(FIND_MY_CONSTRUCTION_SITES);
+    const existingStructures = room.find(FIND_STRUCTURES);
+    if (existingSites.length >= 10)
+        return 0;
+    const structureCounts = {};
+    for (const structure of existingStructures) {
+        const type = structure.structureType;
+        structureCounts[type] = ((_c = structureCounts[type]) !== null && _c !== void 0 ? _c : 0) + 1;
+    }
+    for (const site of existingSites) {
+        const type = site.structureType;
+        structureCounts[type] = ((_d = structureCounts[type]) !== null && _d !== void 0 ? _d : 0) + 1;
+    }
+    const limits = getStructureLimits(rcl);
+    for (const s of allStructures) {
+        const currentCount = (_e = structureCounts[s.structureType]) !== null && _e !== void 0 ? _e : 0;
+        const limit = (_f = limits[s.structureType]) !== null && _f !== void 0 ? _f : 0;
+        if (currentCount >= limit)
+            continue;
+        const x = anchor.x + s.x;
+        const y = anchor.y + s.y;
+        if (x < 1 || x > 48 || y < 1 || y > 48)
+            continue;
+        if (terrain.get(x, y) === TERRAIN_MASK_WALL)
+            continue;
+        const existingAtPos = existingStructures.some(str => str.pos.x === x && str.pos.y === y && str.structureType === s.structureType);
+        if (existingAtPos)
+            continue;
+        const existingSiteAtPos = existingSites.some(site => site.pos.x === x && site.pos.y === y && site.structureType === s.structureType);
+        if (existingSiteAtPos)
+            continue;
+        const result = room.createConstructionSite(x, y, s.structureType);
+        if (result === OK) {
+            placed++;
+            structureCounts[s.structureType] = currentCount + 1;
+            if (placed >= 3 || existingSites.length + placed >= 10)
+                break;
+        }
+    }
+    if (placed < 3 && existingSites.length + placed < 10) {
+        for (const r of blueprint.roads) {
+            const x = anchor.x + r.x;
+            const y = anchor.y + r.y;
+            if (x < 1 || x > 48 || y < 1 || y > 48)
+                continue;
+            if (terrain.get(x, y) === TERRAIN_MASK_WALL)
+                continue;
+            const existingRoad = existingStructures.some(str => str.pos.x === x && str.pos.y === y && str.structureType === STRUCTURE_ROAD);
+            if (existingRoad)
+                continue;
+            const existingRoadSite = existingSites.some(site => site.pos.x === x && site.pos.y === y && site.structureType === STRUCTURE_ROAD);
+            if (existingRoadSite)
+                continue;
+            const result = room.createConstructionSite(x, y, STRUCTURE_ROAD);
+            if (result === OK) {
+                placed++;
+                if (placed >= 3 || existingSites.length + placed >= 10)
+                    break;
+            }
+        }
+    }
+    return placed;
+}
+/**
+ * Structure types that can be destroyed for blueprint rearrangement.
+ * Excludes critical structures that should never be automatically destroyed:
+ * - Spawns: Critical for creep production
+ * - Storage/Terminal: May contain valuable resources
+ * - Containers: Player-placed for flexible logistics (not in blueprints)
+ * - Walls/Ramparts: Defensive structures controlled by player
+ */
+const DESTROYABLE_STRUCTURE_TYPES = [
+    STRUCTURE_EXTENSION,
+    STRUCTURE_ROAD,
+    STRUCTURE_TOWER,
+    STRUCTURE_LAB,
+    STRUCTURE_LINK,
+    STRUCTURE_FACTORY,
+    STRUCTURE_OBSERVER,
+    STRUCTURE_NUKER,
+    STRUCTURE_POWER_SPAWN,
+    STRUCTURE_EXTRACTOR
+];
+/** Set for O(1) lookup of destroyable structure types */
+const DESTROYABLE_STRUCTURE_SET = new Set(DESTROYABLE_STRUCTURE_TYPES);
+/**
+ * Find structures that are at invalid positions according to the blueprint.
+ * This allows the system to destroy structures when blueprints are updated.
+ *
+ * Only considers structures that are safe to destroy - excludes spawns, storage,
+ * terminal, containers, walls, and ramparts as these are critical or player-controlled.
+ *
+ * Roads are special: they are only considered misplaced if they are not part of:
+ * - The blueprint's static road positions
+ * - Calculated roads to sources, controller, and mineral
+ * - Routes to remote mining rooms
+ *
+ * @param room The room to check
+ * @param anchor The blueprint anchor position (usually spawn)
+ * @param blueprint The blueprint to validate against
+ * @param remoteRooms Optional array of remote room names managed by this room
+ */
+function findMisplacedStructures(room, anchor, blueprint, remoteRooms = []) {
+    var _a, _b, _c;
+    const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 1;
+    const structures = getStructuresForRCL(blueprint, rcl);
+    const terrain = room.getTerrain();
+    const misplaced = [];
+    // Build a set of valid blueprint positions for each structure type
+    const validPositions = new Map();
+    for (const s of structures) {
+        const x = anchor.x + s.x;
+        const y = anchor.y + s.y;
+        // Skip positions on room border (1-48 valid range) or on walls
+        if (x < 1 || x > 48 || y < 1 || y > 48)
+            continue;
+        if (terrain.get(x, y) === TERRAIN_MASK_WALL)
+            continue;
+        const posKey = `${x},${y}`;
+        if (!validPositions.has(s.structureType)) {
+            validPositions.set(s.structureType, new Set());
+        }
+        (_c = validPositions.get(s.structureType)) === null || _c === void 0 ? void 0 : _c.add(posKey);
+    }
+    // Add road positions using the road network planner
+    // This includes:
+    // - Blueprint roads (static positions around spawn)
+    // - Roads to sources, controller, and mineral
+    // - Roads to remote mining rooms
+    const validRoadPositions = getValidRoadPositions(room, anchor, blueprint.roads, remoteRooms);
+    validPositions.set(STRUCTURE_ROAD, validRoadPositions);
+    // Add extractor position at mineral if RCL 6+
+    if (rcl >= 6) {
+        const minerals = room.find(FIND_MINERALS);
+        if (minerals.length > 0) {
+            const mineral = minerals[0];
+            const extractorPositions = new Set();
+            extractorPositions.add(`${mineral.pos.x},${mineral.pos.y}`);
+            validPositions.set(STRUCTURE_EXTRACTOR, extractorPositions);
+        }
+    }
+    // Find existing structures of destroyable types using Set for O(1) lookup
+    // Use FIND_STRUCTURES to include roads (which are unowned) and filter to our structures
+    const existingStructures = room.find(FIND_STRUCTURES, {
+        filter: s => DESTROYABLE_STRUCTURE_SET.has(s.structureType) &&
+            (
+            // Owned by us
+            s.my === true ||
+                // Roads have no owner, so include them if they exist
+                s.structureType === STRUCTURE_ROAD)
+    });
+    // Check each existing structure against blueprint positions
+    for (const structure of existingStructures) {
+        const posKey = `${structure.pos.x},${structure.pos.y}`;
+        const structType = structure.structureType;
+        const validPosForType = validPositions.get(structType);
+        // If this structure type is not in the blueprint, or this position is not valid
+        if (!validPosForType || !validPosForType.has(posKey)) {
+            misplaced.push({
+                structure,
+                reason: `${structure.structureType} at ${posKey} is not in blueprint`
+            });
+        }
+    }
+    return misplaced;
+}
+/**
+ * Destroy structures at invalid positions according to the blueprint.
+ * Returns the number of structures destroyed.
+ *
+ * This is used when blueprints are updated and structures need to be rearranged
+ * to meet the new requirements.
+ *
+ * Roads are preserved if they are part of the road network (routes to sources,
+ * controller, mineral, or remote rooms).
+ *
+ * @param room The room to check
+ * @param anchor The anchor position (usually the spawn)
+ * @param blueprint The blueprint to validate against
+ * @param maxDestroy Maximum number of structures to destroy per tick (default: 1)
+ * @param remoteRooms Optional array of remote room names managed by this room
+ */
+function destroyMisplacedStructures(room, anchor, blueprint, maxDestroy = 1, remoteRooms = []) {
+    const misplaced = findMisplacedStructures(room, anchor, blueprint, remoteRooms);
+    let destroyed = 0;
+    for (const { structure, reason } of misplaced) {
+        if (destroyed >= maxDestroy)
+            break;
+        // Attempt to destroy the structure
+        const result = structure.destroy();
+        if (result === OK) {
+            destroyed++;
+            // Log the destruction for debugging
+            console.log(`[Blueprint] Destroyed misplaced ${reason}`);
+        }
+    }
+    return destroyed;
+}
+
+/**
+ * Safe Mode Manager - Emergency Defense
+ *
+ * Triggers safe mode when defense fails:
+ * - Critical structures under attack
+ * - Spawn/Storage about to be destroyed
+ * - Cooldown tracking
+ *
+ * Addresses Issue: #21
+ */
+/**
+ * Safe Mode Manager Class
+ */
+class SafeModeManager {
+    /**
+     * Check if safe mode should be triggered
+     */
+    checkSafeMode(room, swarm) {
+        var _a, _b, _c, _d, _e;
+        // Don't trigger if already in safe mode
+        if ((_a = room.controller) === null || _a === void 0 ? void 0 : _a.safeMode) {
+            return;
+        }
+        // Don't trigger if on cooldown
+        if ((_b = room.controller) === null || _b === void 0 ? void 0 : _b.safeModeCooldown) {
+            return;
+        }
+        // Don't trigger if no safe modes available
+        if (((_d = (_c = room.controller) === null || _c === void 0 ? void 0 : _c.safeModeAvailable) !== null && _d !== void 0 ? _d : 0) === 0) {
+            return;
+        }
+        // Check if we should trigger safe mode
+        if (this.shouldTriggerSafeMode(room, swarm)) {
+            const result = (_e = room.controller) === null || _e === void 0 ? void 0 : _e.activateSafeMode();
+            if (result === OK) {
+                logger.warn(`SAFE MODE ACTIVATED in ${room.name}`, { subsystem: "Defense" });
+            }
+            else {
+                const resultStr = result !== undefined ? String(result) : 'undefined';
+                logger.error(`Failed to activate safe mode in ${room.name}: ${resultStr}`, { subsystem: "Defense" });
+            }
+        }
+    }
+    /**
+     * Determine if safe mode should be triggered
+     */
+    shouldTriggerSafeMode(room, swarm) {
+        // Only trigger if danger is high
+        if (swarm.danger < 2) {
+            return false;
+        }
+        // Check spawn health
+        const spawns = room.find(FIND_MY_SPAWNS);
+        for (const spawn of spawns) {
+            if (spawn.hits < spawn.hitsMax * 0.2) {
+                logger.warn(`Spawn ${spawn.name} critical: ${spawn.hits}/${spawn.hitsMax}`, { subsystem: "Defense" });
+                return true;
+            }
+        }
+        // Check storage health
+        if (room.storage && room.storage.hits < room.storage.hitsMax * 0.2) {
+            logger.warn(`Storage critical: ${room.storage.hits}/${room.storage.hitsMax}`, { subsystem: "Defense" });
+            return true;
+        }
+        // Check terminal health
+        if (room.terminal && room.terminal.hits < room.terminal.hitsMax * 0.2) {
+            logger.warn(`Terminal critical: ${room.terminal.hits}/${room.terminal.hitsMax}`, { subsystem: "Defense" });
+            return true;
+        }
+        // Check if we have enough defenders
+        const hostiles = room.find(FIND_HOSTILE_CREEPS);
+        const defenders = room.find(FIND_MY_CREEPS, {
+            filter: c => {
+                const memory = c.memory;
+                const role = memory.role;
+                return role === "guard" || role === "ranger" || role === "soldier";
+            }
+        });
+        // Trigger if overwhelmed (3:1 ratio)
+        if (hostiles.length > defenders.length * 3) {
+            logger.warn(`Overwhelmed: ${hostiles.length} hostiles vs ${defenders.length} defenders`, {
+                subsystem: "Defense"
+            });
+            return true;
+        }
+        // Check if hostiles are boosted
+        const boostedHostiles = hostiles.filter(h => h.body.some(p => p.boost));
+        if (boostedHostiles.length > 0 && defenders.length < boostedHostiles.length * 2) {
+            logger.warn(`Boosted hostiles detected: ${boostedHostiles.length}`, { subsystem: "Defense" });
+            return true;
+        }
+        return false;
+    }
+}
+/**
+ * Global safe mode manager instance
+ */
+const safeModeManager = new SafeModeManager();
+
+/**
+ * Perimeter Defense System
+ *
+ * Implements early room security by identifying and fortifying room exits
+ * and choke points with walls and ramparts.
+ *
+ * ROADMAP Reference: Section 17 - Mauern & Ramparts
+ * - Perimeter: Walls/Ramparts at Exits and Engpässen
+ * - Core-Shell & Perimeter protection strategy
+ */
+/**
+ * Minimum size of an exit group to warrant a rampart gap for friendly passage.
+ * Groups smaller than this will have walls only (no gaps).
+ */
+const MIN_GROUP_SIZE_FOR_GAP = 4;
+/**
+ * Find all exit tiles in a room
+ *
+ * Identifies positions at room edges that are actual exits (not blocked by terrain or structures).
+ * If there's a barrier structure (wall or rampart) at the room edge, it's not considered an exit (already blocked).
+ */
+function findRoomExits(roomName) {
+    const exits = [];
+    const terrain = Game.map.getRoomTerrain(roomName);
+    // Get the room to check for existing barrier structures (walls and ramparts)
+    const room = Game.rooms[roomName];
+    // Build a set of positions with barrier structures for fast lookup
+    const barrierPositions = new Set();
+    if (room) {
+        const barriers = room.find(FIND_STRUCTURES, {
+            filter: (s) => s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART
+        });
+        for (const barrier of barriers) {
+            barrierPositions.add(`${barrier.pos.x},${barrier.pos.y}`);
+        }
+    }
+    // Top edge (y=0)
+    for (let x = 0; x < 50; x++) {
+        // Skip if terrain is wall or if there's already a barrier structure
+        if (terrain.get(x, 0) !== TERRAIN_MASK_WALL && !barrierPositions.has(`${x},0`)) {
+            exits.push({ x, y: 0, exitDirection: "top", isChokePoint: false });
+        }
+    }
+    // Bottom edge (y=49)
+    for (let x = 0; x < 50; x++) {
+        // Skip if terrain is wall or if there's already a barrier structure
+        if (terrain.get(x, 49) !== TERRAIN_MASK_WALL && !barrierPositions.has(`${x},49`)) {
+            exits.push({ x, y: 49, exitDirection: "bottom", isChokePoint: false });
+        }
+    }
+    // Left edge (x=0)
+    for (let y = 1; y < 49; y++) {
+        // Skip if terrain is wall or if there's already a barrier structure
+        if (terrain.get(0, y) !== TERRAIN_MASK_WALL && !barrierPositions.has(`0,${y}`)) {
+            exits.push({ x: 0, y, exitDirection: "left", isChokePoint: false });
+        }
+    }
+    // Right edge (x=49)
+    for (let y = 1; y < 49; y++) {
+        // Skip if terrain is wall or if there's already a barrier structure
+        if (terrain.get(49, y) !== TERRAIN_MASK_WALL && !barrierPositions.has(`49,${y}`)) {
+            exits.push({ x: 49, y, exitDirection: "right", isChokePoint: false });
+        }
+    }
+    return exits;
+}
+/**
+ * Calculate optimal perimeter defense positions
+ * Places walls at exit points only (not a complete square).
+ *
+ * Screeps requires walls/ramparts to be placed at least 2 tiles from room exits.
+ * Exit tiles are at coordinates 0 and 49, so walls must be at 2 and 47.
+ *
+ * Strategy (per ROADMAP Section 17 - Mauern & Ramparts):
+ * - Identify actual exit tiles (non-wall terrain at x=0, x=49, y=0, y=49)
+ * - Place walls 2 tiles inside from each exit tile
+ * - Create gaps (rampart-only positions) at the center of each exit group for friendly passage
+ * - This creates walls only at exits, not a complete square perimeter
+ */
+function calculatePerimeterPositions(roomName) {
+    var _a;
+    const terrain = Game.map.getRoomTerrain(roomName);
+    const walls = [];
+    const ramparts = [];
+    // Find all exit tiles (actual room exits)
+    const exits = findRoomExits(roomName);
+    // Group exits by direction to identify continuous exit sections
+    const exitsByDirection = new Map();
+    for (const exit of exits) {
+        const group = (_a = exitsByDirection.get(exit.exitDirection)) !== null && _a !== void 0 ? _a : [];
+        group.push(exit);
+        exitsByDirection.set(exit.exitDirection, group);
+    }
+    // For each exit direction, identify continuous exit groups and place walls
+    for (const [direction, directionExits] of exitsByDirection) {
+        // Sort exits by coordinate (x for top/bottom, y for left/right)
+        const sorted = [...directionExits].sort((a, b) => {
+            if (a.x === b.x)
+                return a.y - b.y;
+            return a.x - b.x;
+        });
+        // Group continuous exits (gaps in terrain create separate groups)
+        const groups = [];
+        let currentGroup = [];
+        for (let i = 0; i < sorted.length; i++) {
+            const exit = sorted[i];
+            const prev = sorted[i - 1];
+            // Check if this exit is continuous with the previous one
+            const isContinuous = prev &&
+                (Math.abs(exit.x - prev.x) <= 1 && Math.abs(exit.y - prev.y) <= 1);
+            if (!isContinuous && currentGroup.length > 0) {
+                // Start a new group
+                groups.push(currentGroup);
+                currentGroup = [];
+            }
+            currentGroup.push(exit);
+        }
+        // Don't forget the last group
+        if (currentGroup.length > 0) {
+            groups.push(currentGroup);
+        }
+        // For each group of continuous exits, place walls 2 tiles inside with a gap in the center
+        for (const group of groups) {
+            // Determine the center of the group for gap placement
+            const centerIndex = Math.floor(group.length / 2);
+            for (let i = 0; i < group.length; i++) {
+                const exit = group[i];
+                // Calculate wall position (2 tiles inside from exit)
+                let wallX = exit.x;
+                let wallY = exit.y;
+                switch (direction) {
+                    case "top":
+                        wallY = 2;
+                        break;
+                    case "bottom":
+                        wallY = 47;
+                        break;
+                    case "left":
+                        wallX = 2;
+                        break;
+                    case "right":
+                        wallX = 47;
+                        break;
+                }
+                // Skip if terrain is wall at wall position
+                if (terrain.get(wallX, wallY) === TERRAIN_MASK_WALL)
+                    continue;
+                // Create a 2-tile wide gap in the center of each exit group
+                // Gap is placed at center ± 1 for groups large enough to warrant friendly passage
+                const isGap = group.length >= MIN_GROUP_SIZE_FOR_GAP && (i === centerIndex || i === centerIndex - 1);
+                if (isGap) {
+                    ramparts.push({ x: wallX, y: wallY, exitDirection: direction, isChokePoint: false });
+                }
+                else {
+                    walls.push({ x: wallX, y: wallY, exitDirection: direction, isChokePoint: false });
+                }
+            }
+        }
+    }
+    return { walls, ramparts };
+}
+/**
+ * Place perimeter defense construction sites
+ *
+ * Builds walls at room exits only (not a complete square perimeter).
+ * For each exit group, walls are placed 2 tiles inside with strategic gaps (ramparts only)
+ * in the center to allow friendly creeps to pass while blocking enemies.
+ *
+ * Strategy (per ROADMAP Section 17 - Mauern & Ramparts):
+ * - Walls block all creeps
+ * - Ramparts (without walls underneath) allow friendly creeps but block enemies
+ * - Build walls at exits only (where creeps can actually enter the room)
+ * - Walls are placed 2 tiles inside from exit tiles (at x=2, x=47, y=2, y=47)
+ * - Create 2-tile wide gaps at center of each exit group with ramparts only
+ * - This avoids creating a complete square, only fortifying actual entry points
+ *
+ * @param room The room to defend
+ * @param rcl Current room control level
+ * @param maxSites Maximum construction sites to place
+ * @param prioritizeChokePoints Whether to prioritize choke points (not used in new strategy)
+ * @returns Number of sites placed
+ */
+function placePerimeterDefense(room, rcl, maxSites = 3, _prioritizeChokePoints = true) {
+    // RCL requirements
+    // RCL 2: Start placing perimeter walls
+    // RCL 3+: Complete perimeter walls and add ramparts at gap positions
+    if (rcl < 2)
+        return 0;
+    const plan = calculatePerimeterPositions(room.name);
+    const existingSites = room.find(FIND_MY_CONSTRUCTION_SITES);
+    const existingStructures = room.find(FIND_STRUCTURES);
+    // Check site limit
+    if (existingSites.length >= 10)
+        return 0;
+    let placed = 0;
+    const maxToPlace = Math.min(maxSites, 10 - existingSites.length);
+    // Get structure counts
+    const wallCount = existingStructures.filter(s => s.structureType === STRUCTURE_WALL).length + existingSites.filter(s => s.structureType === STRUCTURE_WALL).length;
+    const rampartCount = existingStructures.filter(s => s.structureType === STRUCTURE_RAMPART).length + existingSites.filter(s => s.structureType === STRUCTURE_RAMPART).length;
+    // RCL structure limits (from ROADMAP)
+    const wallLimit = rcl >= 2 ? 2500 : 0;
+    const rampartLimit = rcl >= 2 ? 2500 : 0;
+    // Priority 1: Place walls along perimeter (RCL 2+)
+    if (rcl >= 2 && placed < maxToPlace && wallCount < wallLimit) {
+        for (const wall of plan.walls) {
+            if (placed >= maxToPlace)
+                break;
+            if (wallCount + placed >= wallLimit)
+                break;
+            // Check if position already has a structure or site
+            const hasStructure = existingStructures.some(s => s.pos.x === wall.x && s.pos.y === wall.y &&
+                (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART));
+            const hasSite = existingSites.some(s => s.pos.x === wall.x && s.pos.y === wall.y &&
+                (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART));
+            if (!hasStructure && !hasSite) {
+                const result = room.createConstructionSite(wall.x, wall.y, STRUCTURE_WALL);
+                if (result === OK) {
+                    placed++;
+                    logger.debug(`Placed perimeter wall at (${wall.x},${wall.y})`, { subsystem: "Defense" });
+                }
+            }
+        }
+    }
+    // Priority 2: Remove walls at gap positions (RCL 3+)
+    // These positions should only have ramparts for friendly passage
+    // Only remove walls if there's no rampart yet (to avoid destroying walls unnecessarily)
+    if (rcl >= 3) {
+        for (const rampart of plan.ramparts) {
+            // Check if there's already a rampart at this position
+            const hasRampart = existingStructures.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART);
+            const hasRampartSite = existingSites.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART);
+            // Only destroy wall if there's no rampart yet
+            if (!hasRampart && !hasRampartSite) {
+                const wallAtGap = existingStructures.find(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_WALL);
+                if (wallAtGap) {
+                    // Destroy wall at gap position to allow rampart placement
+                    const result = wallAtGap.destroy();
+                    if (result === OK) {
+                        logger.info(`Removed wall at gap position (${rampart.x},${rampart.y}) to allow friendly passage`, { subsystem: "Defense" });
+                    }
+                    else {
+                        logger.warn(`Failed to destroy wall at gap position (${rampart.x},${rampart.y}): ${result}`, { subsystem: "Defense" });
+                    }
+                }
+            }
+        }
+    }
+    // Priority 3: Place ramparts at gap positions (RCL 3+)
+    // These are rampart-only positions (no wall underneath) to allow friendly passage
+    if (rcl >= 3 && placed < maxToPlace && rampartCount < rampartLimit) {
+        for (const rampart of plan.ramparts) {
+            if (placed >= maxToPlace)
+                break;
+            if (rampartCount + placed >= rampartLimit)
+                break;
+            // Check if position already has a rampart
+            const hasRampart = existingStructures.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART);
+            const hasRampartSite = existingSites.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART);
+            // Don't place if there's a wall here (walls should not be at rampart-only positions)
+            const hasWall = existingStructures.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_WALL);
+            if (!hasRampart && !hasRampartSite && !hasWall) {
+                const result = room.createConstructionSite(rampart.x, rampart.y, STRUCTURE_RAMPART);
+                if (result === OK) {
+                    placed++;
+                    logger.debug(`Placed perimeter rampart gap at (${rampart.x},${rampart.y})`, { subsystem: "Defense" });
+                }
+            }
+        }
+    }
+    return placed;
+}
+
+/**
+ * Wall and Rampart Repair Target Calculator
+ *
+ * Calculates repair thresholds for walls and ramparts based on RCL and danger level.
+ * Used by both tower control and engineer creeps for consistent repair behavior.
+ *
+ * ROADMAP Reference: Section 17 - Mauern & Ramparts
+ */
+/**
+ * Calculate wall/rampart repair target based on RCL and danger level
+ *
+ * Uses RCL-based thresholds aligned with Screeps rampart max hits limits:
+ * - RCL 2: 300K max
+ * - RCL 3: 1M max
+ * - RCL 4: 3M max
+ * - RCL 5: 10M max
+ * - RCL 6: 30M max
+ * - RCL 7: 100M max
+ * - RCL 8: 300M max
+ *
+ * Danger level modifies the target:
+ * - danger 0: 30% of max (peaceful maintenance)
+ * - danger 1: 50% of max (threat detected)
+ * - danger 2: 80% of max (active attack)
+ * - danger 3+: 100% of max (siege/nuke)
+ *
+ * @param rcl Room Controller Level (1-8)
+ * @param danger Danger level (0-3+)
+ * @returns Target repair hits threshold
+ */
+function calculateWallRepairTarget(rcl, danger) {
+    var _a, _b;
+    // RCL-based max hits (Screeps rampart limits)
+    const maxHitsByRCL = {
+        1: 0,
+        2: 300000,
+        3: 1000000,
+        4: 3000000,
+        5: 10000000,
+        6: 30000000,
+        7: 100000000,
+        8: 300000000 // 300M
+    };
+    const maxHits = (_a = maxHitsByRCL[rcl]) !== null && _a !== void 0 ? _a : 0;
+    if (maxHits === 0)
+        return 0;
+    // Danger level multipliers
+    const dangerMultipliers = {
+        0: 0.3,
+        1: 0.5,
+        2: 0.8,
+        3: 1.0 // Siege/nuke (default for 3+)
+    };
+    const dangerMultiplier = (_b = dangerMultipliers[danger]) !== null && _b !== void 0 ? _b : 1.0;
+    return Math.floor(maxHits * dangerMultiplier);
+}
+
+/**
+ * Chemistry Planner - Reaction Chain Planning
+ *
+ * Plans and executes lab reactions:
+ * - Target compound configuration
+ * - Reaction chain calculation
+ * - Intermediate product tracking
+ * - Boost stockpile management
+ *
+ * Addresses Issue: #28
+ */
+/**
+ * Reaction chains for all compounds
+ */
+const REACTIONS = {
+    // Tier 1 compounds
+    [RESOURCE_HYDROXIDE]: {
+        product: RESOURCE_HYDROXIDE,
+        input1: RESOURCE_HYDROGEN,
+        input2: RESOURCE_OXYGEN,
+        priority: 10
+    },
+    [RESOURCE_ZYNTHIUM_KEANITE]: {
+        product: RESOURCE_ZYNTHIUM_KEANITE,
+        input1: RESOURCE_ZYNTHIUM,
+        input2: RESOURCE_KEANIUM,
+        priority: 10
+    },
+    [RESOURCE_UTRIUM_LEMERGITE]: {
+        product: RESOURCE_UTRIUM_LEMERGITE,
+        input1: RESOURCE_UTRIUM,
+        input2: RESOURCE_LEMERGIUM,
+        priority: 10
+    },
+    [RESOURCE_GHODIUM]: {
+        product: RESOURCE_GHODIUM,
+        input1: RESOURCE_ZYNTHIUM_KEANITE,
+        input2: RESOURCE_UTRIUM_LEMERGITE,
+        priority: 15
+    },
+    // Tier 2 compounds (boosts)
+    [RESOURCE_UTRIUM_HYDRIDE]: {
+        product: RESOURCE_UTRIUM_HYDRIDE,
+        input1: RESOURCE_UTRIUM,
+        input2: RESOURCE_HYDROGEN,
+        priority: 20
+    },
+    [RESOURCE_UTRIUM_OXIDE]: {
+        product: RESOURCE_UTRIUM_OXIDE,
+        input1: RESOURCE_UTRIUM,
+        input2: RESOURCE_OXYGEN,
+        priority: 20
+    },
+    [RESOURCE_KEANIUM_HYDRIDE]: {
+        product: RESOURCE_KEANIUM_HYDRIDE,
+        input1: RESOURCE_KEANIUM,
+        input2: RESOURCE_HYDROGEN,
+        priority: 20
+    },
+    [RESOURCE_KEANIUM_OXIDE]: {
+        product: RESOURCE_KEANIUM_OXIDE,
+        input1: RESOURCE_KEANIUM,
+        input2: RESOURCE_OXYGEN,
+        priority: 20
+    },
+    [RESOURCE_LEMERGIUM_HYDRIDE]: {
+        product: RESOURCE_LEMERGIUM_HYDRIDE,
+        input1: RESOURCE_LEMERGIUM,
+        input2: RESOURCE_HYDROGEN,
+        priority: 20
+    },
+    [RESOURCE_LEMERGIUM_OXIDE]: {
+        product: RESOURCE_LEMERGIUM_OXIDE,
+        input1: RESOURCE_LEMERGIUM,
+        input2: RESOURCE_OXYGEN,
+        priority: 20
+    },
+    [RESOURCE_ZYNTHIUM_HYDRIDE]: {
+        product: RESOURCE_ZYNTHIUM_HYDRIDE,
+        input1: RESOURCE_ZYNTHIUM,
+        input2: RESOURCE_HYDROGEN,
+        priority: 20
+    },
+    [RESOURCE_ZYNTHIUM_OXIDE]: {
+        product: RESOURCE_ZYNTHIUM_OXIDE,
+        input1: RESOURCE_ZYNTHIUM,
+        input2: RESOURCE_OXYGEN,
+        priority: 20
+    },
+    [RESOURCE_GHODIUM_HYDRIDE]: {
+        product: RESOURCE_GHODIUM_HYDRIDE,
+        input1: RESOURCE_GHODIUM,
+        input2: RESOURCE_HYDROGEN,
+        priority: 20
+    },
+    [RESOURCE_GHODIUM_OXIDE]: {
+        product: RESOURCE_GHODIUM_OXIDE,
+        input1: RESOURCE_GHODIUM,
+        input2: RESOURCE_OXYGEN,
+        priority: 20
+    },
+    // Tier 3 compounds (advanced boosts)
+    [RESOURCE_UTRIUM_ACID]: {
+        product: RESOURCE_UTRIUM_ACID,
+        input1: RESOURCE_UTRIUM_HYDRIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    [RESOURCE_UTRIUM_ALKALIDE]: {
+        product: RESOURCE_UTRIUM_ALKALIDE,
+        input1: RESOURCE_UTRIUM_OXIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    [RESOURCE_KEANIUM_ACID]: {
+        product: RESOURCE_KEANIUM_ACID,
+        input1: RESOURCE_KEANIUM_HYDRIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    [RESOURCE_KEANIUM_ALKALIDE]: {
+        product: RESOURCE_KEANIUM_ALKALIDE,
+        input1: RESOURCE_KEANIUM_OXIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    [RESOURCE_LEMERGIUM_ACID]: {
+        product: RESOURCE_LEMERGIUM_ACID,
+        input1: RESOURCE_LEMERGIUM_HYDRIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    [RESOURCE_LEMERGIUM_ALKALIDE]: {
+        product: RESOURCE_LEMERGIUM_ALKALIDE,
+        input1: RESOURCE_LEMERGIUM_OXIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    [RESOURCE_ZYNTHIUM_ACID]: {
+        product: RESOURCE_ZYNTHIUM_ACID,
+        input1: RESOURCE_ZYNTHIUM_HYDRIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    [RESOURCE_ZYNTHIUM_ALKALIDE]: {
+        product: RESOURCE_ZYNTHIUM_ALKALIDE,
+        input1: RESOURCE_ZYNTHIUM_OXIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    [RESOURCE_GHODIUM_ACID]: {
+        product: RESOURCE_GHODIUM_ACID,
+        input1: RESOURCE_GHODIUM_HYDRIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    [RESOURCE_GHODIUM_ALKALIDE]: {
+        product: RESOURCE_GHODIUM_ALKALIDE,
+        input1: RESOURCE_GHODIUM_OXIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    // Tier 4 compounds (catalyzed boosts)
+    [RESOURCE_CATALYZED_UTRIUM_ACID]: {
+        product: RESOURCE_CATALYZED_UTRIUM_ACID,
+        input1: RESOURCE_UTRIUM_ACID,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    },
+    [RESOURCE_CATALYZED_UTRIUM_ALKALIDE]: {
+        product: RESOURCE_CATALYZED_UTRIUM_ALKALIDE,
+        input1: RESOURCE_UTRIUM_ALKALIDE,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    },
+    [RESOURCE_CATALYZED_KEANIUM_ACID]: {
+        product: RESOURCE_CATALYZED_KEANIUM_ACID,
+        input1: RESOURCE_KEANIUM_ACID,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    },
+    [RESOURCE_CATALYZED_KEANIUM_ALKALIDE]: {
+        product: RESOURCE_CATALYZED_KEANIUM_ALKALIDE,
+        input1: RESOURCE_KEANIUM_ALKALIDE,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    },
+    [RESOURCE_CATALYZED_LEMERGIUM_ACID]: {
+        product: RESOURCE_CATALYZED_LEMERGIUM_ACID,
+        input1: RESOURCE_LEMERGIUM_ACID,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    },
+    [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE]: {
+        product: RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE,
+        input1: RESOURCE_LEMERGIUM_ALKALIDE,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    },
+    [RESOURCE_CATALYZED_ZYNTHIUM_ACID]: {
+        product: RESOURCE_CATALYZED_ZYNTHIUM_ACID,
+        input1: RESOURCE_ZYNTHIUM_ACID,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    },
+    [RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE]: {
+        product: RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE,
+        input1: RESOURCE_ZYNTHIUM_ALKALIDE,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    },
+    [RESOURCE_CATALYZED_GHODIUM_ACID]: {
+        product: RESOURCE_CATALYZED_GHODIUM_ACID,
+        input1: RESOURCE_GHODIUM_ACID,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    },
+    [RESOURCE_CATALYZED_GHODIUM_ALKALIDE]: {
+        product: RESOURCE_CATALYZED_GHODIUM_ALKALIDE,
+        input1: RESOURCE_GHODIUM_ALKALIDE,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    }
+};
+/**
+ * Target stockpile amounts
+ */
+const STOCKPILE_TARGETS = {
+    // War mode boosts
+    [RESOURCE_CATALYZED_UTRIUM_ACID]: 3000,
+    [RESOURCE_CATALYZED_KEANIUM_ALKALIDE]: 3000,
+    [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE]: 3000,
+    [RESOURCE_CATALYZED_GHODIUM_ACID]: 3000,
+    // Eco mode boosts
+    [RESOURCE_CATALYZED_GHODIUM_ALKALIDE]: 2000,
+    [RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE]: 2000,
+    // Intermediates
+    [RESOURCE_GHODIUM]: 5000,
+    [RESOURCE_HYDROXIDE]: 5000
+};
+/**
+ * Chemistry Planner Class
+ */
+class ChemistryPlanner {
+    /**
+     * Plan reactions for a room
+     */
+    planReactions(room, swarm) {
+        var _a, _b;
+        // Get available labs
+        const labs = room.find(FIND_MY_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_LAB
+        });
+        if (labs.length < 3) {
+            return null; // Need at least 3 labs for reactions
+        }
+        // Get terminal resources
+        const terminal = room.terminal;
+        if (!terminal) {
+            return null; // Need terminal for resource management
+        }
+        // Determine target compounds based on posture
+        const targets = this.getTargetCompounds(swarm);
+        // Find reactions we need to run
+        for (const target of targets) {
+            const reaction = REACTIONS[target];
+            if (!reaction)
+                continue;
+            // Check if we have enough of this compound
+            const current = (_a = terminal.store[target]) !== null && _a !== void 0 ? _a : 0;
+            const targetAmount = (_b = STOCKPILE_TARGETS[target]) !== null && _b !== void 0 ? _b : 1000;
+            if (current < targetAmount) {
+                // Check if we have inputs
+                if (this.hasInputs(terminal, reaction)) {
+                    return reaction;
+                }
+                else {
+                    // Need to produce intermediates first
+                    const intermediate = this.findIntermediateReaction(terminal, reaction);
+                    if (intermediate) {
+                        return intermediate;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+    /**
+     * Get target compounds based on swarm state
+     */
+    getTargetCompounds(swarm) {
+        const targets = [];
+        // Always produce ghodium and hydroxide
+        targets.push(RESOURCE_GHODIUM, RESOURCE_HYDROXIDE);
+        // War mode: prioritize combat boosts
+        if (swarm.posture === "war" || swarm.posture === "siege" || swarm.danger >= 2) {
+            targets.push(RESOURCE_CATALYZED_UTRIUM_ACID, // Attack
+            RESOURCE_CATALYZED_KEANIUM_ALKALIDE, // Ranged attack
+            RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE, // Heal
+            RESOURCE_CATALYZED_GHODIUM_ACID // Dismantle
+            );
+        }
+        else {
+            // Eco mode: prioritize economy boosts
+            targets.push(RESOURCE_CATALYZED_GHODIUM_ALKALIDE, // Upgrade controller
+            RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE, // Move
+            RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE // Heal (always useful)
+            );
+        }
+        return targets;
+    }
+    /**
+     * Check if terminal has inputs for reaction
+     */
+    hasInputs(terminal, reaction) {
+        var _a, _b;
+        const input1Amount = (_a = terminal.store[reaction.input1]) !== null && _a !== void 0 ? _a : 0;
+        const input2Amount = (_b = terminal.store[reaction.input2]) !== null && _b !== void 0 ? _b : 0;
+        return input1Amount >= 1000 && input2Amount >= 1000;
+    }
+    /**
+     * Find intermediate reaction needed to produce target
+     */
+    findIntermediateReaction(terminal, target) {
+        var _a, _b;
+        // Check if we need to produce input1
+        if (((_a = terminal.store[target.input1]) !== null && _a !== void 0 ? _a : 0) < 1000) {
+            const intermediate = REACTIONS[target.input1];
+            if (intermediate && this.hasInputs(terminal, intermediate)) {
+                return intermediate;
+            }
+        }
+        // Check if we need to produce input2
+        if (((_b = terminal.store[target.input2]) !== null && _b !== void 0 ? _b : 0) < 1000) {
+            const intermediate = REACTIONS[target.input2];
+            if (intermediate && this.hasInputs(terminal, intermediate)) {
+                return intermediate;
+            }
+        }
+        return null;
+    }
+    /**
+     * Execute reaction in labs
+     */
+    executeReaction(room, reaction) {
+        const labs = room.find(FIND_MY_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_LAB
+        });
+        if (labs.length < 3)
+            return;
+        // Use first 2 labs as input labs, rest as output labs
+        const inputLab1 = labs[0];
+        const inputLab2 = labs[1];
+        const outputLabs = labs.slice(2);
+        // Ensure input labs have correct resources
+        if (inputLab1.mineralType !== reaction.input1 || inputLab1.store[reaction.input1] < 500) {
+            // Need to load input1
+            logger.debug(`Lab ${inputLab1.id} needs ${reaction.input1}`, { subsystem: "Chemistry" });
+        }
+        if (inputLab2.mineralType !== reaction.input2 || inputLab2.store[reaction.input2] < 500) {
+            // Need to load input2
+            logger.debug(`Lab ${inputLab2.id} needs ${reaction.input2}`, { subsystem: "Chemistry" });
+        }
+        // Run reactions in output labs
+        for (const outputLab of outputLabs) {
+            if (outputLab.cooldown > 0)
+                continue;
+            // Check if lab is full
+            const freeCapacity = outputLab.store.getFreeCapacity();
+            if (freeCapacity !== null && freeCapacity < 100) {
+                logger.debug(`Lab ${outputLab.id} is full, needs unloading`, { subsystem: "Chemistry" });
+                continue;
+            }
+            const result = outputLab.runReaction(inputLab1, inputLab2);
+            if (result === OK) {
+                logger.debug(`Produced ${reaction.product} in lab ${outputLab.id}`, { subsystem: "Chemistry" });
+            }
+        }
+    }
+}
+/**
+ * Global chemistry planner instance
+ */
+const chemistryPlanner = new ChemistryPlanner();
+
+/**
+ * Boost Manager - Creep Boosting System
+ *
+ * Manages creep boosting:
+ * - Lab pre-loading with boost compounds
+ * - Creep boosting before role execution
+ * - Boost decisions based on posture/danger
+ *
+ * Addresses Issue: #23
+ */
+/**
+ * Default boost configurations
+ */
+const BOOST_CONFIGS = [
+    {
+        role: "soldier",
+        boosts: [RESOURCE_CATALYZED_UTRIUM_ACID, RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE],
+        minDanger: 2
+    },
+    {
+        role: "ranger",
+        boosts: [RESOURCE_CATALYZED_KEANIUM_ALKALIDE, RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE],
+        minDanger: 2
+    },
+    {
+        role: "healer",
+        boosts: [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE, RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE],
+        minDanger: 2
+    },
+    {
+        role: "siegeUnit",
+        boosts: [RESOURCE_CATALYZED_GHODIUM_ACID, RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE],
+        minDanger: 1
+    }
+];
+/**
+ * Map error codes to readable strings
+ */
+function getBoostErrorMessage(code) {
+    switch (code) {
+        case ERR_NOT_OWNER:
+            return "not owner of lab";
+        case ERR_NOT_FOUND:
+            return "no suitable body parts";
+        case ERR_NOT_ENOUGH_RESOURCES:
+            return "not enough compound";
+        case ERR_INVALID_TARGET:
+            return "invalid creep target";
+        case ERR_NOT_IN_RANGE:
+            return "creep not in range";
+        case ERR_RCL_NOT_ENOUGH:
+            return "RCL too low";
+        default:
+            return `error code ${code}`;
+    }
+}
+/**
+ * Boost Manager Class
+ */
+class BoostManager {
+    /**
+     * Check if a creep should be boosted
+     */
+    shouldBoost(creep, swarm) {
+        const memory = creep.memory;
+        // Check if already boosted
+        if (memory.boosted) {
+            return false;
+        }
+        // Get boost config for role
+        const config = BOOST_CONFIGS.find(c => c.role === memory.role);
+        if (!config) {
+            return false; // No boost config for this role
+        }
+        // Check danger level
+        if (swarm.danger < config.minDanger) {
+            return false; // Not dangerous enough to warrant boosting
+        }
+        // Check if room has labs
+        if (swarm.missingStructures.labs) {
+            return false; // No labs available
+        }
+        return true;
+    }
+    /**
+     * Boost a creep
+     */
+    boostCreep(creep, room) {
+        const memory = creep.memory;
+        // Get boost config
+        const config = BOOST_CONFIGS.find(c => c.role === memory.role);
+        if (!config)
+            return false;
+        // Find labs with required boosts
+        const labs = room.find(FIND_MY_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_LAB
+        });
+        for (const boost of config.boosts) {
+            // Check if creep already has this boost
+            const bodyParts = creep.body.filter(p => p.boost === boost);
+            if (bodyParts.length > 0) {
+                continue; // Already has this boost
+            }
+            // Find lab with this boost
+            const lab = labs.find(l => l.mineralType === boost && l.store[boost] >= 30);
+            if (lab) {
+                // Move to lab and boost
+                if (creep.pos.isNearTo(lab)) {
+                    const result = lab.boostCreep(creep);
+                    if (result === OK) {
+                        logger.info(`Boosted ${creep.name} with ${boost}`, { subsystem: "Boost" });
+                    }
+                    else {
+                        logger.error(`Failed to boost ${creep.name}: ${getBoostErrorMessage(result)}`, { subsystem: "Boost" });
+                    }
+                }
+                else {
+                    creep.moveTo(lab);
+                }
+                return false; // Still boosting
+            }
+        }
+        // All boosts applied
+        memory.boosted = true;
+        logger.info(`${creep.name} fully boosted`, { subsystem: "Boost" });
+        return true;
+    }
+    /**
+     * Prepare labs for boosting
+     */
+    prepareLabs(room, swarm) {
+        // Only prepare if danger is high
+        if (swarm.danger < 2) {
+            return;
+        }
+        const labs = room.find(FIND_MY_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_LAB
+        });
+        if (labs.length < 3) {
+            return; // Need at least 3 labs
+        }
+        // Use first 2 labs for reactions, rest for boosting
+        const boostLabs = labs.slice(2);
+        // Load boost compounds into labs
+        const requiredBoosts = new Set();
+        for (const config of BOOST_CONFIGS) {
+            if (swarm.danger >= config.minDanger) {
+                for (const boost of config.boosts) {
+                    requiredBoosts.add(boost);
+                }
+            }
+        }
+        // Assign boosts to labs
+        let labIndex = 0;
+        for (const boost of requiredBoosts) {
+            if (labIndex >= boostLabs.length)
+                break;
+            const lab = boostLabs[labIndex];
+            if (lab.mineralType !== boost || lab.store[boost] < 1000) {
+                // Lab needs this boost
+                // Terminal should transfer it (handled by terminal manager)
+                logger.debug(`Lab ${lab.id} needs ${boost} for boosting`, { subsystem: "Boost" });
+            }
+            labIndex++;
+        }
+    }
+}
+/**
+ * Global boost manager instance
+ */
+const boostManager = new BoostManager();
+
+/**
+ * Object Cache - Performance Optimization
+ *
+ * Caches frequently accessed game objects to avoid repeated lookups.
+ * Game.getObjectById() is relatively expensive (~0.01-0.02 CPU per call).
+ * For objects accessed multiple times per tick, caching provides significant savings.
+ *
+ * Design Principles (from ROADMAP.md Section 2):
+ * - Aggressive Caching + TTL
+ * - Cache stored in global object, not Memory (no serialization cost)
+ * - Per-tick validity (cleared automatically each tick)
+ *
+ * Use Cases:
+ * - Room storage (accessed by many creeps)
+ * - Room controller (accessed by upgraders, builders)
+ * - Sources (accessed by harvesters, carriers)
+ * - Frequently accessed structures
+ *
+ * CPU Savings:
+ * - With 100+ creeps accessing storage: ~1-2 CPU per tick
+ * - With multiple creeps per source: ~0.5-1 CPU per tick
+ */
+// =============================================================================
+// Cache Storage
+// =============================================================================
+/**
+ * Get or initialize the cache store.
+ * Cache is cleared automatically at the start of each tick.
+ */
+function getCacheStore() {
+    const g = global;
+    if (!g._objectCache || g._objectCache.tick !== Game.time) {
+        g._objectCache = {
+            tick: Game.time,
+            objects: new Map()
+        };
+    }
+    return g._objectCache;
+}
+/**
+ * Prefetch commonly accessed objects for a room.
+ * Call this once per room per tick to warm the cache.
+ *
+ * @param room - Room to prefetch objects for
+ */
+function prefetchRoomObjects(room) {
+    var _a;
+    if (!((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my))
+        return;
+    const cache = getCacheStore();
+    // Prefetch storage
+    if (room.storage && !cache.objects.has(room.storage.id)) {
+        cache.objects.set(room.storage.id, room.storage);
+    }
+    // Prefetch terminal
+    if (room.terminal && !cache.objects.has(room.terminal.id)) {
+        cache.objects.set(room.terminal.id, room.terminal);
+    }
+    // Prefetch controller
+    if (room.controller && !cache.objects.has(room.controller.id)) {
+        cache.objects.set(room.controller.id, room.controller);
+    }
+    // Prefetch sources
+    const sources = room.find(FIND_SOURCES);
+    for (const source of sources) {
+        if (!cache.objects.has(source.id)) {
+            cache.objects.set(source.id, source);
+        }
+    }
+}
+
+/**
+ * Room Node - Per-room main loop
+ *
+ * Handles all per-room operations:
+ * - Initialize/read RoomMemory.swarm
+ * - Update metrics and pheromones
+ * - Determine evolution stage and posture
+ * - Run spawn logic
+ * - Run creep role logic
+ * - Run towers & structure control
+ * - Run base construction
+ */
+/**
+ * Perimeter defense configuration constants
+ * These values control how aggressively rooms build defensive walls
+ */
+const EARLY_GAME_RCL_MIN = 2;
+const EARLY_GAME_RCL_MAX = 3;
+const MAX_EARLY_PERIMETER_SITES = 5; // RCL 2-3: Aggressive defense buildup
+const MAX_REGULAR_PERIMETER_SITES = 3; // RCL 4+: Maintenance rate
+const EARLY_GAME_CONSTRUCTION_INTERVAL = 5; // Ticks between construction checks
+const REGULAR_CONSTRUCTION_INTERVAL = 10; // Ticks between construction checks
+/**
+ * Check if a room is in early game and needs aggressive defense
+ */
+function isEarlyGameDefense(rcl) {
+    return rcl >= EARLY_GAME_RCL_MIN && rcl <= EARLY_GAME_RCL_MAX;
+}
+const DEFAULT_CONFIG$c = {
+    enablePheromones: true,
+    enableEvolution: true,
+    enableSpawning: true,
+    enableConstruction: true,
+    enableTowers: true,
+    enableProcessing: true
+};
+const structureCache = new Map();
+/**
+ * Get or create structure cache for a room
+ */
+function getStructureCache(room) {
+    const existing = structureCache.get(room.name);
+    if (existing && existing.tick === Game.time) {
+        return existing;
+    }
+    const myStructures = room.find(FIND_MY_STRUCTURES);
+    const cache = {
+        tick: Game.time,
+        towers: myStructures.filter((s) => s.structureType === STRUCTURE_TOWER),
+        spawns: myStructures.filter((s) => s.structureType === STRUCTURE_SPAWN),
+        links: myStructures.filter((s) => s.structureType === STRUCTURE_LINK),
+        factory: myStructures.find((s) => s.structureType === STRUCTURE_FACTORY),
+        powerSpawn: myStructures.find((s) => s.structureType === STRUCTURE_POWER_SPAWN),
+        sources: room.find(FIND_SOURCES),
+        constructionSites: room.find(FIND_MY_CONSTRUCTION_SITES)
+    };
+    structureCache.set(room.name, cache);
+    return cache;
+}
+/**
+ * Room Node class - manages a single room
+ */
+class RoomNode {
+    constructor(roomName, config = {}) {
+        this.roomName = roomName;
+        this.config = { ...DEFAULT_CONFIG$c, ...config };
+    }
+    /**
+     * Main room tick
+     */
+    run(totalOwnedRooms) {
+        var _a, _b, _c, _d, _e;
+        const cpuStart = profiler.startRoom(this.roomName);
+        const room = Game.rooms[this.roomName];
+        if (!room || !((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my)) {
+            profiler.endRoom(this.roomName, cpuStart);
+            return;
+        }
+        // OPTIMIZATION: Prefetch commonly accessed room objects to warm the object cache.
+        // This saves CPU when multiple creeps access the same objects (storage, sources, etc.)
+        // With 50+ creeps per room, this can save 1-2 CPU per tick.
+        prefetchRoomObjects(room);
+        // Get or initialize swarm state
+        const swarm = memoryManager.getOrInitSwarmState(this.roomName);
+        // Update metrics (only every 5 ticks to match pheromone update interval)
+        // This avoids expensive room.find() calls every tick
+        if (this.config.enablePheromones && Game.time % 5 === 0) {
+            pheromoneManager.updateMetrics(room, swarm);
+        }
+        // Update threat assessment
+        this.updateThreatAssessment(room, swarm);
+        // Check safe mode trigger
+        safeModeManager.checkSafeMode(room, swarm);
+        // Update evolution stage
+        if (this.config.enableEvolution) {
+            evolutionManager.updateEvolutionStage(swarm, room, totalOwnedRooms);
+            evolutionManager.updateMissingStructures(swarm, room);
+        }
+        // Update posture
+        postureManager.updatePosture(swarm);
+        // Update pheromones
+        if (this.config.enablePheromones) {
+            pheromoneManager.updatePheromones(swarm, room);
+        }
+        // Run tower control
+        if (this.config.enableTowers) {
+            this.runTowerControl(room, swarm);
+        }
+        // Run construction
+        // Perimeter defense runs more frequently in early game (RCL 2-3) for faster fortification
+        // Regular construction runs at standard interval to balance CPU usage
+        if (this.config.enableConstruction && postureManager.allowsBuilding(swarm.posture)) {
+            const rcl = (_c = (_b = room.controller) === null || _b === void 0 ? void 0 : _b.level) !== null && _c !== void 0 ? _c : 1;
+            const isEarlyDefense = isEarlyGameDefense(rcl);
+            const constructionInterval = isEarlyDefense
+                ? EARLY_GAME_CONSTRUCTION_INTERVAL
+                : REGULAR_CONSTRUCTION_INTERVAL;
+            if (Game.time % constructionInterval === 0) {
+                this.runConstruction(room, swarm);
+            }
+        }
+        // Run resource processing (every 5 ticks)
+        if (this.config.enableProcessing && Game.time % 5 === 0) {
+            this.runResourceProcessing(room, swarm);
+        }
+        // Record room stats
+        const cpuUsed = Game.cpu.getUsed() - cpuStart;
+        const roomData = profiler.getRoomData(this.roomName);
+        statsManager.recordRoom(room, (_d = roomData === null || roomData === void 0 ? void 0 : roomData.avgCpu) !== null && _d !== void 0 ? _d : cpuUsed, (_e = roomData === null || roomData === void 0 ? void 0 : roomData.peakCpu) !== null && _e !== void 0 ? _e : cpuUsed, {
+            energyHarvested: swarm.metrics.energyHarvested,
+            damageReceived: swarm.metrics.damageReceived,
+            danger: swarm.danger
+        });
+        // Record pheromone stats
+        statsManager.recordPheromones(this.roomName, swarm.pheromones, swarm.posture, pheromoneManager.getDominantPheromone(swarm.pheromones));
+        profiler.endRoom(this.roomName, cpuStart);
+    }
+    /**
+     * Update threat assessment.
+     * Uses optimized iteration for better CPU efficiency.
+     * Emits events through the kernel event system for centralized handling.
+     * OPTIMIZATION: Only check enemy structures if hostiles are present or danger > 0
+     */
+    updateThreatAssessment(room, swarm) {
+        var _a, _b;
+        // Use safeFind to handle engine errors with corrupted owner data
+        const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
+        // Only check enemy structures if we have hostiles or existing danger
+        // This avoids expensive find() calls when room is peaceful
+        const enemyStructures = (hostiles.length > 0 || swarm.danger > 0)
+            ? safeFind(room, FIND_HOSTILE_STRUCTURES, {
+                filter: s => s.structureType !== STRUCTURE_CONTROLLER
+            })
+            : [];
+        // Calculate potential damage with efficient single-loop iteration
+        let potentialDamage = 0;
+        for (const hostile of hostiles) {
+            for (const part of hostile.body) {
+                if (part.hits > 0) {
+                    if (part.type === ATTACK) {
+                        potentialDamage += 30;
+                    }
+                    else if (part.type === RANGED_ATTACK) {
+                        potentialDamage += 10;
+                    }
+                }
+            }
+        }
+        const newDanger = calculateDangerLevel(hostiles.length, potentialDamage, enemyStructures.length > 0);
+        // Update danger and emit events if increased
+        if (newDanger > swarm.danger) {
+            pheromoneManager.onHostileDetected(swarm, hostiles.length, newDanger);
+            memoryManager.addRoomEvent(this.roomName, "hostileDetected", `${hostiles.length} hostiles, danger=${newDanger}`);
+            // Emit hostile detected events for each hostile through the kernel event system
+            for (const hostile of hostiles) {
+                kernel.emit("hostile.detected", {
+                    roomName: this.roomName,
+                    hostileId: hostile.id,
+                    hostileOwner: hostile.owner.username,
+                    bodyParts: hostile.body.length,
+                    threatLevel: newDanger,
+                    source: this.roomName
+                });
+            }
+        }
+        else if (hostiles.length === 0 && swarm.danger > 0) {
+            // Emit hostile cleared event when danger level drops to 0
+            kernel.emit("hostile.cleared", {
+                roomName: this.roomName,
+                source: this.roomName
+            });
+        }
+        swarm.danger = newDanger;
+        // Check for nukes (only every 10 ticks to reduce CPU cost)
+        // Nukes have a long flight time (~50k ticks), so checking every 10 ticks is sufficient
+        if (Game.time % 10 === 0) {
+            const nukes = room.find(FIND_NUKES);
+            if (nukes.length > 0) {
+                if (!swarm.nukeDetected) {
+                    pheromoneManager.onNukeDetected(swarm);
+                    const launchSource = (_b = (_a = nukes[0]) === null || _a === void 0 ? void 0 : _a.launchRoomName) !== null && _b !== void 0 ? _b : 'unidentified source';
+                    memoryManager.addRoomEvent(this.roomName, "nukeDetected", `${nukes.length} nuke(s) incoming from ${launchSource}`);
+                    swarm.nukeDetected = true;
+                    // Emit nuke detected events through kernel event system
+                    for (const nuke of nukes) {
+                        kernel.emit("nuke.detected", {
+                            roomName: this.roomName,
+                            nukeId: nuke.id,
+                            landingTick: Game.time + nuke.timeToLand,
+                            launchRoomName: nuke.launchRoomName,
+                            source: this.roomName
+                        });
+                    }
+                }
+            }
+            else {
+                // Reset flag when nukes are gone
+                swarm.nukeDetected = false;
+            }
+        }
+    }
+    /**
+     * Run tower control
+     * OPTIMIZATION: Use cached structures to avoid repeated room.find() calls
+     */
+    runTowerControl(room, swarm) {
+        var _a, _b;
+        const cache = getStructureCache(room);
+        const towers = cache.towers;
+        if (towers.length === 0)
+            return;
+        // Find targets - use safeFind to handle engine errors with corrupted owner data
+        const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
+        for (const tower of towers) {
+            if (tower.store.getUsedCapacity(RESOURCE_ENERGY) < 10)
+                continue;
+            // Priority 1: Attack hostiles
+            if (hostiles.length > 0) {
+                // Target priority: healers > ranged > melee > others
+                const target = this.selectTowerTarget(hostiles);
+                if (target) {
+                    tower.attack(target);
+                    continue;
+                }
+            }
+            // Priority 2: Heal damaged creeps (only in non-siege)
+            if (swarm.posture !== "siege") {
+                const damaged = tower.pos.findClosestByRange(FIND_MY_CREEPS, {
+                    filter: c => c.hits < c.hitsMax
+                });
+                if (damaged) {
+                    tower.heal(damaged);
+                    continue;
+                }
+            }
+            // Priority 3: Repair structures (only in non-war postures)
+            if (!postureManager.isCombatPosture(swarm.posture)) {
+                const damaged = tower.pos.findClosestByRange(FIND_STRUCTURES, {
+                    filter: s => s.hits < s.hitsMax * 0.8 && s.structureType !== STRUCTURE_WALL && s.structureType !== STRUCTURE_RAMPART
+                });
+                if (damaged) {
+                    tower.repair(damaged);
+                    continue;
+                }
+            }
+            // Priority 4: Repair walls and ramparts based on RCL and danger level
+            // Only repair in peaceful conditions (no hostiles, non-combat posture)
+            if (!postureManager.isCombatPosture(swarm.posture) && hostiles.length === 0) {
+                const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 1;
+                const repairTarget = calculateWallRepairTarget(rcl, swarm.danger);
+                const wallOrRampart = tower.pos.findClosestByRange(FIND_STRUCTURES, {
+                    filter: s => (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) &&
+                        s.hits < repairTarget
+                });
+                if (wallOrRampart) {
+                    tower.repair(wallOrRampart);
+                }
+            }
+        }
+    }
+    /**
+     * Select tower attack target
+     */
+    selectTowerTarget(hostiles) {
+        var _a;
+        // Sort by priority: healers > boosted > ranged > melee > others
+        const sorted = hostiles.sort((a, b) => {
+            const scoreA = this.getHostilePriority(a);
+            const scoreB = this.getHostilePriority(b);
+            return scoreB - scoreA;
+        });
+        return (_a = sorted[0]) !== null && _a !== void 0 ? _a : null;
+    }
+    /**
+     * Get priority score for hostile targeting
+     */
+    getHostilePriority(hostile) {
+        let score = 0;
+        for (const part of hostile.body) {
+            if (!part.hits)
+                continue;
+            switch (part.type) {
+                case HEAL:
+                    score += 100;
+                    break;
+                case RANGED_ATTACK:
+                    score += 50;
+                    break;
+                case ATTACK:
+                    score += 40;
+                    break;
+                case CLAIM:
+                    score += 60;
+                    break;
+                case WORK:
+                    score += 30;
+                    break;
+            }
+            // Boosted parts are higher priority
+            if (part.boost) {
+                score += 20;
+            }
+        }
+        return score;
+    }
+    /**
+     * Run construction logic using blueprints
+     */
+    runConstruction(room, swarm) {
+        var _a, _b;
+        // Check global construction site limit (use cached structures)
+        const cache = getStructureCache(room);
+        const existingSites = cache.constructionSites;
+        if (existingSites.length >= 10)
+            return;
+        // Get blueprint for current RCL
+        const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 1;
+        const blueprint = getBlueprint(rcl);
+        if (!blueprint)
+            return;
+        // Find spawn to use as anchor (use cached structures)
+        const spawn = cache.spawns[0];
+        if (!spawn) {
+            // No spawn, place one if we're a new colony
+            if (rcl === 1 && existingSites.length === 0) {
+                // Find a suitable position for first spawn (use cached sources)
+                const controller = room.controller;
+                if (controller) {
+                    const sources = cache.sources;
+                    // Find position between controller and sources
+                    const avgX = Math.round((controller.pos.x + sources.reduce((sum, s) => sum + s.pos.x, 0)) / (sources.length + 1));
+                    const avgY = Math.round((controller.pos.y + sources.reduce((sum, s) => sum + s.pos.y, 0)) / (sources.length + 1));
+                    // Check if position is buildable
+                    const terrain = room.getTerrain();
+                    if (terrain.get(avgX, avgY) !== TERRAIN_MASK_WALL) {
+                        room.createConstructionSite(avgX, avgY, STRUCTURE_SPAWN);
+                    }
+                }
+            }
+            return;
+        }
+        // Destroy misplaced structures that don't match the blueprint
+        // Runs every construction tick (10 ticks) in non-combat postures for faster cleanup
+        // Pass remote room assignments to preserve roads leading to remote mining rooms
+        if (!postureManager.isCombatPosture(swarm.posture)) {
+            const destroyed = destroyMisplacedStructures(room, spawn.pos, blueprint, 1, swarm.remoteAssignments);
+            if (destroyed > 0) {
+                const structureWord = destroyed === 1 ? "structure" : "structures";
+                memoryManager.addRoomEvent(this.roomName, "structureDestroyed", `${destroyed} misplaced ${structureWord} destroyed for blueprint compliance`);
+            }
+        }
+        // Priority 1: Place perimeter defense (RCL 2+)
+        // Early defense is critical for room security
+        let perimeterPlaced = 0;
+        if (rcl >= EARLY_GAME_RCL_MIN && existingSites.length < 8) {
+            // Place more sites in early game for faster fortification
+            const maxPerimeterSites = isEarlyGameDefense(rcl)
+                ? MAX_EARLY_PERIMETER_SITES
+                : MAX_REGULAR_PERIMETER_SITES;
+            // Prioritize choke points at RCL 2, full perimeter at RCL 3+
+            perimeterPlaced = placePerimeterDefense(room, rcl, maxPerimeterSites, true);
+        }
+        // Priority 2: Place construction sites using blueprint
+        const placed = placeConstructionSites(room, spawn.pos, blueprint);
+        // Priority 3: Place road construction sites for infrastructure routes (sources, controller, mineral)
+        // Only place 1-2 road sites per tick to avoid overwhelming builders
+        const roadSitesPlaced = placeRoadConstructionSites(room, spawn.pos, 2);
+        // Update metrics
+        swarm.metrics.constructionSites = existingSites.length + placed + roadSitesPlaced + perimeterPlaced;
+    }
+    /**
+     * Run resource processing (labs, factory, power spawn)
+     */
+    runResourceProcessing(room, _swarm) {
+        var _a, _b;
+        const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0;
+        // Run labs (RCL 6+)
+        if (rcl >= 6) {
+            this.runLabs(room);
+        }
+        // Run factory (RCL 7+)
+        if (rcl >= 7) {
+            this.runFactory(room);
+        }
+        // Run power spawn (RCL 8)
+        if (rcl >= 8) {
+            this.runPowerSpawn(room);
+        }
+        // Run links
+        this.runLinks(room);
+    }
+    /**
+     * Run lab reactions
+     */
+    runLabs(room) {
+        const swarm = memoryManager.getSwarmState(room.name);
+        if (!swarm)
+            return;
+        // Prepare labs for boosting when danger is high
+        boostManager.prepareLabs(room, swarm);
+        // Plan reactions using chemistry planner
+        const reaction = chemistryPlanner.planReactions(room, swarm);
+        if (reaction) {
+            chemistryPlanner.executeReaction(room, reaction);
+        }
+    }
+    /**
+     * Run factory production
+     * OPTIMIZATION: Use cached structures
+     */
+    runFactory(room) {
+        const cache = getStructureCache(room);
+        const factory = cache.factory;
+        if (!factory || factory.cooldown > 0)
+            return;
+        // Simple commodity production - compress minerals
+        const minerals = [
+            RESOURCE_UTRIUM,
+            RESOURCE_LEMERGIUM,
+            RESOURCE_KEANIUM,
+            RESOURCE_ZYNTHIUM,
+            RESOURCE_HYDROGEN,
+            RESOURCE_OXYGEN
+        ];
+        for (const mineral of minerals) {
+            if (factory.store.getUsedCapacity(mineral) >= 500 && factory.store.getUsedCapacity(RESOURCE_ENERGY) >= 200) {
+                // Try to produce compressed bar
+                const result = factory.produce(RESOURCE_UTRIUM_BAR); // Note: This is simplified
+                if (result === OK)
+                    break;
+            }
+        }
+    }
+    /**
+     * Run power spawn
+     * OPTIMIZATION: Use cached structures
+     */
+    runPowerSpawn(room) {
+        const cache = getStructureCache(room);
+        const powerSpawn = cache.powerSpawn;
+        if (!powerSpawn)
+            return;
+        // Process power if we have resources
+        if (powerSpawn.store.getUsedCapacity(RESOURCE_POWER) >= 1 &&
+            powerSpawn.store.getUsedCapacity(RESOURCE_ENERGY) >= 50) {
+            powerSpawn.processPower();
+        }
+    }
+    /**
+     * Run link transfers
+     * OPTIMIZATION: Use cached structures
+     */
+    runLinks(room) {
+        const cache = getStructureCache(room);
+        const links = cache.links;
+        if (links.length < 2)
+            return;
+        const storage = room.storage;
+        if (!storage)
+            return;
+        // Find storage link (within 2 of storage)
+        const storageLink = links.find(l => l.pos.getRangeTo(storage) <= 2);
+        if (!storageLink)
+            return;
+        // Find source links (links near sources) - use cached sources
+        const sources = cache.sources;
+        const sourceLinks = links.filter(l => sources.some(s => l.pos.getRangeTo(s) <= 2));
+        // Transfer from source links to storage link
+        for (const sourceLink of sourceLinks) {
+            if (sourceLink.store.getUsedCapacity(RESOURCE_ENERGY) >= 400 && sourceLink.cooldown === 0) {
+                if (storageLink.store.getFreeCapacity(RESOURCE_ENERGY) >= 400) {
+                    sourceLink.transferEnergy(storageLink);
+                    break;
+                }
+            }
+        }
+    }
+}
+/**
+ * Room manager - orchestrates all room nodes
+ */
+class RoomManager {
+    constructor() {
+        this.nodes = new Map();
+    }
+    /**
+     * Run all owned rooms
+     * OPTIMIZATION: Use cached owned rooms list from global to avoid repeated filter
+     */
+    run() {
+        var _a;
+        // Use cached owned rooms from global (set in main loop)
+        const cacheKey = "_ownedRooms";
+        const cacheTickKey = "_ownedRoomsTick";
+        const globalCache = global;
+        const cachedRooms = globalCache[cacheKey];
+        const cachedTick = globalCache[cacheTickKey];
+        let ownedRooms;
+        if (cachedRooms && cachedTick === Game.time) {
+            ownedRooms = cachedRooms;
+        }
+        else {
+            // Fallback if cache not set (shouldn't happen, but safe)
+            ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        }
+        const totalOwned = ownedRooms.length;
+        // Ensure nodes exist for all owned rooms
+        for (const room of ownedRooms) {
+            if (!this.nodes.has(room.name)) {
+                this.nodes.set(room.name, new RoomNode(room.name));
+            }
+        }
+        // Clean up nodes for rooms we no longer own
+        for (const [name] of this.nodes) {
+            const room = Game.rooms[name];
+            if (!room || !((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my)) {
+                this.nodes.delete(name);
+            }
+        }
+        // Run each node with error recovery
+        for (const node of this.nodes.values()) {
+            try {
+                node.run(totalOwned);
+            }
+            catch (err) {
+                const errorMessage = err instanceof Error ? err.message : String(err);
+                console.log(`[RoomManager] ERROR in room ${node.roomName}: ${errorMessage}`);
+                if (err instanceof Error && err.stack) {
+                    console.log(err.stack);
+                }
+                // Continue processing other rooms
+            }
+        }
+    }
+    /**
+     * Get node for a room
+     */
+    getNode(roomName) {
+        return this.nodes.get(roomName);
+    }
+    /**
+     * Get all nodes
+     */
+    getAllNodes() {
+        return Array.from(this.nodes.values());
+    }
+}
+/**
+ * Global room manager instance
+ */
+const roomManager = new RoomManager();
+
+/**
+ * Dynamic Defender Spawning
+ *
+ * Automatically spawns defenders based on threat assessment:
+ * - Analyzes hostile creeps in room
+ * - Calculates required defender count
+ * - Prioritizes defender spawning during attacks
+ * - Scales defender strength based on enemy composition
+ *
+ * Addresses Issue: #22
+ */
+/**
+ * Analyze room threats and determine defender requirements
+ */
+function analyzeDefenderNeeds(room) {
+    const result = {
+        guards: 0,
+        rangers: 0,
+        healers: 0,
+        urgency: 1.0,
+        reasons: []
+    };
+    // Find all hostile creeps
+    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    if (hostiles.length === 0) {
+        return result; // No threats
+    }
+    // Analyze hostile composition
+    let meleeCount = 0;
+    let rangedCount = 0;
+    let healerCount = 0;
+    let dismantlerCount = 0;
+    let boostedCount = 0;
+    for (const hostile of hostiles) {
+        const body = hostile.body;
+        // Check for boosted parts
+        const isBoosted = body.some(part => part.boost !== undefined);
+        if (isBoosted)
+            boostedCount++;
+        // Count part types
+        for (const part of body) {
+            if (part.type === ATTACK)
+                meleeCount++;
+            if (part.type === RANGED_ATTACK)
+                rangedCount++;
+            if (part.type === HEAL)
+                healerCount++;
+            if (part.type === WORK)
+                dismantlerCount++;
+        }
+    }
+    // Calculate defender requirements
+    // Guards for melee attackers (1:1 ratio, min 1 if any melee)
+    if (meleeCount > 0) {
+        result.guards = Math.max(1, Math.ceil(meleeCount / 4));
+        result.reasons.push(`${meleeCount} melee parts detected`);
+    }
+    // Rangers for ranged attackers (1:1.5 ratio)
+    if (rangedCount > 0) {
+        result.rangers = Math.max(1, Math.ceil(rangedCount / 6));
+        result.reasons.push(`${rangedCount} ranged parts detected`);
+    }
+    // Healers if enemies have healers (1:2 ratio)
+    if (healerCount > 0) {
+        result.healers = Math.max(1, Math.ceil(healerCount / 8));
+        result.reasons.push(`${healerCount} heal parts detected`);
+    }
+    // Extra defenders for dismantlers (they're dangerous)
+    if (dismantlerCount > 0) {
+        result.guards += Math.ceil(dismantlerCount / 5);
+        result.reasons.push(`${dismantlerCount} work parts (dismantlers)`);
+    }
+    // Boosted enemies require more defenders
+    if (boostedCount > 0) {
+        result.guards = Math.ceil(result.guards * 1.5);
+        result.rangers = Math.ceil(result.rangers * 1.5);
+        result.healers = Math.ceil(result.healers * 1.5);
+        result.urgency = 2.0;
+        result.reasons.push(`${boostedCount} boosted enemies (high threat)`);
+    }
+    // Minimum composition for any attack
+    if (hostiles.length > 0) {
+        result.guards = Math.max(result.guards, 1);
+        result.rangers = Math.max(result.rangers, 1);
+    }
+    // Large attacks require healers
+    if (hostiles.length >= 3) {
+        result.healers = Math.max(result.healers, 1);
+    }
+    // Urgency based on hostile count
+    if (hostiles.length >= 5) {
+        result.urgency = Math.max(result.urgency, 1.5);
+        result.reasons.push(`${hostiles.length} hostiles (large attack)`);
+    }
+    // Check for critical structures under attack
+    const damagedCritical = room.find(FIND_MY_STRUCTURES, {
+        filter: s => (s.structureType === STRUCTURE_SPAWN ||
+            s.structureType === STRUCTURE_STORAGE ||
+            s.structureType === STRUCTURE_TERMINAL) &&
+            s.hits < s.hitsMax * 0.8
+    });
+    if (damagedCritical.length > 0) {
+        result.urgency = 3.0;
+        result.reasons.push(`Critical structures under attack!`);
+    }
+    logger.info(`Defender analysis for ${room.name}: ${result.guards} guards, ${result.rangers} rangers, ${result.healers} healers (urgency: ${result.urgency}x) - ${result.reasons.join(", ")}`, { subsystem: "Defense" });
+    return result;
+}
+/**
+ * Get current defender count in room
+ */
+function getCurrentDefenders(room) {
+    const creeps = room.find(FIND_MY_CREEPS);
+    return {
+        guards: creeps.filter(c => c.memory.role === "guard").length,
+        rangers: creeps.filter(c => c.memory.role === "ranger").length,
+        healers: creeps.filter(c => c.memory.role === "healer").length
+    };
+}
+/**
+ * Calculate defender spawn priority boost
+ */
+function getDefenderPriorityBoost(room, swarm, role) {
+    const needs = analyzeDefenderNeeds(room);
+    const current = getCurrentDefenders(room);
+    // No boost if no threats
+    if (needs.guards === 0 && needs.rangers === 0 && needs.healers === 0) {
+        return 0;
+    }
+    let boost = 0;
+    // Boost priority for needed defenders
+    if (role === "guard" && current.guards < needs.guards) {
+        boost = 100 * needs.urgency;
+    }
+    else if (role === "ranger" && current.rangers < needs.rangers) {
+        boost = 100 * needs.urgency;
+    }
+    else if (role === "healer" && current.healers < needs.healers) {
+        boost = 100 * needs.urgency;
+    }
+    return boost;
+}
+/**
+ * Check if room needs external defense assistance
+ * A room needs help when:
+ * - It has significant threats (danger >= 2)
+ * - It cannot produce enough defenders (low energy, no spawns, or spawn queue full)
+ * - The threat is urgent (urgency >= 1.5)
+ */
+function needsDefenseAssistance(room, swarm) {
+    // No assistance needed if no significant threats
+    if (swarm.danger < 2) {
+        return false;
+    }
+    const needs = analyzeDefenderNeeds(room);
+    const current = getCurrentDefenders(room);
+    // Check if room lacks the defenders it needs
+    const defenderDeficit = (needs.guards - current.guards) + (needs.rangers - current.rangers);
+    if (defenderDeficit <= 0) {
+        return false; // Room has enough defenders
+    }
+    // Check if room can spawn defenders
+    const spawns = room.find(FIND_MY_SPAWNS);
+    if (spawns.length === 0) {
+        return true; // No spawns = definitely needs help
+    }
+    // Check if any spawn is available
+    const availableSpawns = spawns.filter(s => !s.spawning);
+    if (availableSpawns.length === 0) {
+        return true; // All spawns busy = needs help
+    }
+    // Check energy availability for spawning defenders
+    const energyAvailable = room.energyAvailable;
+    const minDefenderCost = 250; // Minimum cost for a basic defender
+    if (energyAvailable < minDefenderCost) {
+        return true; // Not enough energy = needs help
+    }
+    // Check urgency - high urgency threats need immediate help even if room can eventually spawn
+    if (needs.urgency >= 2.0 && defenderDeficit >= 2) {
+        return true; // Critical threat with multiple defender deficit = needs help
+    }
+    // Critical danger (level 3) with any defender deficit should request help
+    if (swarm.danger >= 3 && defenderDeficit >= 1) {
+        return true; // Critical danger always needs help
+    }
+    return false;
+}
+/**
+ * Create a defense request for a room that needs assistance
+ */
+function createDefenseRequest(room, swarm) {
+    if (!needsDefenseAssistance(room, swarm)) {
+        return null;
+    }
+    const needs = analyzeDefenderNeeds(room);
+    const current = getCurrentDefenders(room);
+    const request = {
+        roomName: room.name,
+        guardsNeeded: Math.max(0, needs.guards - current.guards),
+        rangersNeeded: Math.max(0, needs.rangers - current.rangers),
+        healersNeeded: Math.max(0, needs.healers - current.healers),
+        urgency: needs.urgency,
+        createdAt: Game.time,
+        threat: needs.reasons.join("; ")
+    };
+    logger.warn(`Defense assistance requested for ${room.name}: ${request.guardsNeeded} guards, ${request.rangersNeeded} rangers, ${request.healersNeeded} healers - ${request.threat}`, { subsystem: "Defense" });
+    return request;
+}
+
+/**
+ * Spawn Logic - Phase 8
+ *
+ * Central spawn manager per room:
+ * - Derives role weights from evolution stage, posture, pheromones
+ * - Uses weighted selection for next role
+ * - Defines body templates per role
+ * - Task assignment heuristics
+ */
+/**
+ * Focus room upgrader scaling configuration
+ * Defines how many upgraders a focus room should spawn based on RCL
+ */
+const FOCUS_ROOM_UPGRADER_LIMITS = {
+    /** RCL 1-3: Early game, limited energy */
+    EARLY: 2,
+    /** RCL 4-6: Mid game, stable economy */
+    MID: 4,
+    /** RCL 7: Late game, push to RCL 8 */
+    LATE: 6
+};
+/** Priority boost for upgraders in focus rooms */
+const FOCUS_ROOM_UPGRADER_PRIORITY_BOOST = 40;
+/**
+ * Calculate body cost
+ */
+function calculateBodyCost(parts) {
+    const costs = {
+        [MOVE]: 50,
+        [WORK]: 100,
+        [CARRY]: 50,
+        [ATTACK]: 80,
+        [RANGED_ATTACK]: 150,
+        [HEAL]: 250,
+        [CLAIM]: 600,
+        [TOUGH]: 10
+    };
+    return parts.reduce((sum, part) => sum + costs[part], 0);
+}
+/**
+ * Create body template
+ */
+function createBody(parts, minCapacity = 0) {
+    return {
+        parts,
+        cost: calculateBodyCost(parts),
+        minCapacity: minCapacity || calculateBodyCost(parts)
+    };
+}
+/**
+ * Role definitions
+ */
+const ROLE_DEFINITIONS = {
+    // Economy roles
+    larvaWorker: {
+        role: "larvaWorker",
+        family: "economy",
+        bodies: [
+            createBody([WORK, CARRY, MOVE], 200),
+            createBody([WORK, WORK, CARRY, CARRY, MOVE, MOVE], 400),
+            createBody([WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE], 600),
+            createBody([WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 800)
+        ],
+        priority: 100,
+        maxPerRoom: 3,
+        remoteRole: false
+    },
+    harvester: {
+        role: "harvester",
+        family: "economy",
+        bodies: [
+            createBody([WORK, WORK, MOVE], 250),
+            createBody([WORK, WORK, WORK, WORK, MOVE, MOVE], 500),
+            createBody([WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE], 700),
+            createBody([WORK, WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE], 800),
+            createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE], 1000)
+        ],
+        priority: 95,
+        maxPerRoom: 2,
+        remoteRole: false
+    },
+    hauler: {
+        role: "hauler",
+        family: "economy",
+        bodies: [
+            createBody([CARRY, CARRY, MOVE, MOVE], 200),
+            createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
+            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 800),
+            createBody([...Array(16).fill(CARRY), ...Array(16).fill(MOVE)], 1600)
+        ],
+        priority: 90,
+        maxPerRoom: 2,
+        remoteRole: true
+    },
+    upgrader: {
+        role: "upgrader",
+        family: "economy",
+        bodies: [
+            createBody([WORK, CARRY, MOVE], 200),
+            createBody([WORK, WORK, WORK, CARRY, MOVE, MOVE], 450),
+            createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 1000),
+            createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1700)
+        ],
+        priority: 60,
+        maxPerRoom: 2,
+        remoteRole: false
+    },
+    builder: {
+        role: "builder",
+        family: "economy",
+        bodies: [
+            createBody([WORK, CARRY, MOVE, MOVE], 250),
+            createBody([WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 650),
+            createBody([WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1400)
+        ],
+        priority: 70,
+        maxPerRoom: 2,
+        remoteRole: false
+    },
+    queenCarrier: {
+        role: "queenCarrier",
+        family: "economy",
+        bodies: [
+            createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE], 300),
+            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE], 450),
+            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 600)
+        ],
+        priority: 85,
+        maxPerRoom: 1,
+        remoteRole: false
+    },
+    mineralHarvester: {
+        role: "mineralHarvester",
+        family: "economy",
+        bodies: [
+            createBody([WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE], 550),
+            createBody([WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE], 850)
+        ],
+        priority: 40,
+        maxPerRoom: 1,
+        remoteRole: false
+    },
+    labTech: {
+        role: "labTech",
+        family: "economy",
+        bodies: [
+            createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
+            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 600)
+        ],
+        priority: 35,
+        maxPerRoom: 1,
+        remoteRole: false
+    },
+    factoryWorker: {
+        role: "factoryWorker",
+        family: "economy",
+        bodies: [
+            createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
+            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 600)
+        ],
+        priority: 35,
+        maxPerRoom: 1,
+        remoteRole: false
+    },
+    remoteHarvester: {
+        role: "remoteHarvester",
+        family: "economy",
+        bodies: [
+            createBody([WORK, WORK, CARRY, MOVE, MOVE, MOVE], 400),
+            createBody([WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 750),
+            createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1050),
+            createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1600)
+        ],
+        priority: 75,
+        maxPerRoom: 6,
+        remoteRole: true
+    },
+    remoteHauler: {
+        role: "remoteHauler",
+        family: "economy",
+        bodies: [
+            createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
+            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 800),
+            createBody([...Array(16).fill(CARRY), ...Array(16).fill(MOVE)], 1600)
+        ],
+        priority: 70,
+        maxPerRoom: 6,
+        remoteRole: true
+    },
+    interRoomCarrier: {
+        role: "interRoomCarrier",
+        family: "economy",
+        bodies: [
+            createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
+            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 600),
+            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 800)
+        ],
+        priority: 90,
+        maxPerRoom: 4,
+        remoteRole: false
+    },
+    // Military roles
+    guard: {
+        role: "guard",
+        family: "military",
+        bodies: [
+            createBody([TOUGH, ATTACK, MOVE, MOVE], 190),
+            createBody([TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE], 500),
+            createBody([TOUGH, TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1070)
+        ],
+        priority: 80,
+        maxPerRoom: 2,
+        remoteRole: false
+    },
+    healer: {
+        role: "healer",
+        family: "military",
+        bodies: [
+            createBody([HEAL, MOVE], 300),
+            createBody([HEAL, HEAL, MOVE, MOVE], 600),
+            createBody([HEAL, HEAL, HEAL, HEAL, MOVE, MOVE, MOVE, MOVE], 1200)
+        ],
+        priority: 75,
+        maxPerRoom: 1,
+        remoteRole: false
+    },
+    soldier: {
+        role: "soldier",
+        family: "military",
+        bodies: [
+            createBody([ATTACK, ATTACK, MOVE, MOVE], 260),
+            createBody([ATTACK, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE], 520),
+            createBody([TOUGH, TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1340)
+        ],
+        priority: 70,
+        maxPerRoom: 2,
+        remoteRole: false
+    },
+    siegeUnit: {
+        role: "siegeUnit",
+        family: "military",
+        bodies: [
+            createBody([WORK, WORK, MOVE, MOVE], 300),
+            createBody([TOUGH, TOUGH, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 620),
+            createBody([
+                TOUGH,
+                TOUGH,
+                TOUGH,
+                TOUGH,
+                WORK,
+                WORK,
+                WORK,
+                WORK,
+                WORK,
+                WORK,
+                MOVE,
+                MOVE,
+                MOVE,
+                MOVE,
+                MOVE,
+                MOVE,
+                MOVE,
+                MOVE,
+                MOVE,
+                MOVE
+            ], 1040)
+        ],
+        priority: 50,
+        maxPerRoom: 2,
+        remoteRole: false
+    },
+    ranger: {
+        role: "ranger",
+        family: "military",
+        bodies: [
+            createBody([RANGED_ATTACK, MOVE], 200),
+            createBody([RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE], 400),
+            createBody([RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE], 800)
+        ],
+        priority: 65,
+        maxPerRoom: 2,
+        remoteRole: false
+    },
+    // Utility roles
+    scout: {
+        role: "scout",
+        family: "utility",
+        bodies: [createBody([MOVE], 50)],
+        priority: 65,
+        maxPerRoom: 2,
+        remoteRole: true
+    },
+    claimer: {
+        role: "claimer",
+        family: "utility",
+        bodies: [createBody([CLAIM, MOVE], 650), createBody([CLAIM, CLAIM, MOVE, MOVE], 1300)],
+        priority: 50,
+        maxPerRoom: 3,
+        remoteRole: true
+    },
+    engineer: {
+        role: "engineer",
+        family: "utility",
+        bodies: [
+            createBody([WORK, CARRY, MOVE, MOVE], 250),
+            createBody([WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 500)
+        ],
+        priority: 55,
+        maxPerRoom: 2,
+        remoteRole: false
+    },
+    remoteWorker: {
+        role: "remoteWorker",
+        family: "utility",
+        bodies: [
+            createBody([WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 500),
+            createBody([WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 750)
+        ],
+        priority: 45,
+        maxPerRoom: 4,
+        remoteRole: true
+    }
+};
+/**
+ * Get spawn profile weights based on posture
+ */
+function getPostureSpawnWeights(posture) {
+    switch (posture) {
+        case "eco":
+            return {
+                harvester: 1.5,
+                hauler: 1.2,
+                upgrader: 1.3,
+                builder: 1.0,
+                queenCarrier: 1.0,
+                guard: 0.3,
+                healer: 0.1,
+                scout: 1.0,
+                claimer: 0.8,
+                engineer: 0.8,
+                remoteHarvester: 1.2,
+                remoteHauler: 1.2,
+                interRoomCarrier: 1.0
+            };
+        case "expand":
+            return {
+                harvester: 1.2,
+                hauler: 1.0,
+                upgrader: 0.8,
+                builder: 1.0,
+                queenCarrier: 0.8,
+                guard: 0.3,
+                scout: 1.5,
+                claimer: 1.5,
+                remoteWorker: 1.5,
+                engineer: 0.5,
+                remoteHarvester: 1.5,
+                remoteHauler: 1.5,
+                interRoomCarrier: 1.2
+            };
+        case "defensive":
+            return {
+                harvester: 1.0,
+                hauler: 1.0,
+                upgrader: 0.5,
+                builder: 0.5,
+                queenCarrier: 1.0,
+                guard: 2.0,
+                healer: 1.5,
+                ranger: 1.0,
+                scout: 0.8,
+                engineer: 1.2,
+                remoteHarvester: 0.5,
+                remoteHauler: 0.5,
+                interRoomCarrier: 1.5
+            };
+        case "war":
+            return {
+                harvester: 0.8,
+                hauler: 0.8,
+                upgrader: 0.3,
+                builder: 0.3,
+                queenCarrier: 1.0,
+                guard: 2.5,
+                healer: 2.0,
+                soldier: 2.0,
+                ranger: 1.5,
+                scout: 0.8,
+                engineer: 0.5,
+                remoteHarvester: 0.3,
+                remoteHauler: 0.3,
+                interRoomCarrier: 0.5
+            };
+        case "siege":
+            return {
+                harvester: 0.5,
+                hauler: 0.5,
+                upgrader: 0.1,
+                builder: 0.1,
+                queenCarrier: 1.0,
+                guard: 3.0,
+                healer: 2.5,
+                soldier: 2.5,
+                siegeUnit: 2.0,
+                ranger: 1.0,
+                scout: 0.5,
+                engineer: 0.2,
+                remoteHarvester: 0.1,
+                remoteHauler: 0.1
+            };
+        case "evacuate":
+            return {
+                hauler: 2.0,
+                queenCarrier: 1.5
+            };
+        case "nukePrep":
+            return {
+                harvester: 1.0,
+                hauler: 1.0,
+                upgrader: 0.5,
+                builder: 0.5,
+                queenCarrier: 1.0,
+                guard: 1.5,
+                scout: 0.5,
+                engineer: 2.0,
+                remoteHarvester: 0.5,
+                remoteHauler: 0.5
+            };
+        default:
+            return {
+                harvester: 1.0,
+                hauler: 1.0,
+                upgrader: 1.0,
+                builder: 1.0,
+                queenCarrier: 1.0,
+                scout: 1.0,
+                remoteHarvester: 1.0,
+                remoteHauler: 1.0
+            };
+    }
+}
+/**
+ * Get dynamic priority adjustments for roles
+ */
+function getDynamicPriorityBoost(room, swarm, role) {
+    let boost = 0;
+    // Defender priority boost based on threats
+    if (role === "guard" || role === "ranger" || role === "healer") {
+        boost += getDefenderPriorityBoost(room, swarm, role);
+    }
+    // Upgrader priority boost for focus room
+    if (role === "upgrader" && swarm.clusterId) {
+        const cluster = memoryManager.getCluster(swarm.clusterId);
+        if ((cluster === null || cluster === void 0 ? void 0 : cluster.focusRoom) === room.name) {
+            // Significant boost to prioritize upgrading in focus room
+            boost += FOCUS_ROOM_UPGRADER_PRIORITY_BOOST;
+        }
+    }
+    return boost;
+}
+/**
+ * Get pheromone multipliers for roles
+ */
+function getPheromoneMult(role, pheromones) {
+    var _a;
+    const map = {
+        harvester: "harvest",
+        hauler: "logistics",
+        upgrader: "upgrade",
+        builder: "build",
+        guard: "defense",
+        healer: "defense",
+        soldier: "war",
+        siegeUnit: "siege",
+        ranger: "war",
+        scout: "expand",
+        claimer: "expand",
+        remoteWorker: "expand",
+        engineer: "build",
+        remoteHarvester: "harvest",
+        remoteHauler: "logistics",
+        interRoomCarrier: "logistics"
+    };
+    const pheromoneKey = map[role];
+    if (!pheromoneKey)
+        return 1.0;
+    const value = (_a = pheromones[pheromoneKey]) !== null && _a !== void 0 ? _a : 0;
+    // Scale: 0-100 pheromone maps to 0.5-2.0 multiplier
+    return 0.5 + (value / 100) * 1.5;
+}
+/**
+ * Cache for creep counts per room, cleared each tick.
+ * OPTIMIZATION: Avoid iterating all creeps multiple times per tick when multiple spawns exist.
+ */
+const creepCountCache = new Map();
+let creepCountCacheTick = -1;
+let creepCountCacheRef = null;
+/**
+ * Count creeps by role in a room.
+ * OPTIMIZATION: Cache results per tick to avoid iterating all creeps multiple times.
+ * With multiple spawns in a room, this function could be called multiple times per tick.
+ */
+function countCreepsByRole(roomName) {
+    var _a, _b;
+    // Clear cache if new tick or Game.creeps reference changed
+    // Checking reference equality handles both production (new tick) and tests (creeps reassigned)
+    if (creepCountCacheTick !== Game.time || creepCountCacheRef !== Game.creeps) {
+        creepCountCache.clear();
+        creepCountCacheTick = Game.time;
+        creepCountCacheRef = Game.creeps;
+    }
+    // Check cache
+    const cached = creepCountCache.get(roomName);
+    if (cached) {
+        return cached;
+    }
+    // Build counts
+    const counts = new Map();
+    // OPTIMIZATION: Use for-in loop instead of Object.values() to avoid creating temporary array
+    for (const name in Game.creeps) {
+        const creep = Game.creeps[name];
+        const memory = creep.memory;
+        if (memory.homeRoom === roomName) {
+            const role = (_a = memory.role) !== null && _a !== void 0 ? _a : "unknown";
+            counts.set(role, ((_b = counts.get(role)) !== null && _b !== void 0 ? _b : 0) + 1);
+        }
+    }
+    // Cache for this tick
+    creepCountCache.set(roomName, counts);
+    return counts;
+}
+/**
+ * Get best body for energy capacity
+ */
+function getBestBody(def, energyCapacity) {
+    // Find best body that fits capacity
+    let best = null;
+    for (const body of def.bodies) {
+        if (body.cost <= energyCapacity) {
+            if (!best || body.cost > best.cost) {
+                best = body;
+            }
+        }
+    }
+    return best;
+}
+/**
+ * Count remote creeps assigned to a specific target room
+ */
+function countRemoteCreepsByTargetRoom(homeRoom, role, targetRoom) {
+    let count = 0;
+    for (const creep of Object.values(Game.creeps)) {
+        const memory = creep.memory;
+        if (memory.homeRoom === homeRoom && memory.role === role && memory.targetRoom === targetRoom) {
+            count++;
+        }
+    }
+    return count;
+}
+/**
+ * Get the remote room that needs workers of a given role.
+ * Returns the room name if workers are needed, null otherwise.
+ */
+function getRemoteRoomNeedingWorkers(homeRoom, role, swarm) {
+    var _a;
+    const remoteAssignments = (_a = swarm.remoteAssignments) !== null && _a !== void 0 ? _a : [];
+    if (remoteAssignments.length === 0)
+        return null;
+    // Define max workers per remote room based on role
+    const maxPerRemote = role === "remoteHarvester" ? 2 : 2; // 2 harvesters and 2 haulers per remote
+    // Find a remote room that needs workers
+    for (const remoteRoom of remoteAssignments) {
+        const currentCount = countRemoteCreepsByTargetRoom(homeRoom, role, remoteRoom);
+        if (currentCount < maxPerRemote) {
+            return remoteRoom;
+        }
+    }
+    return null;
+}
+/**
+ * Check if room needs role
+ */
+function needsRole(roomName, role, swarm) {
+    var _a;
+    const def = ROLE_DEFINITIONS[role];
+    if (!def)
+        return false;
+    // Special handling for remote roles
+    if (role === "remoteHarvester" || role === "remoteHauler") {
+        // Check if there's a remote room that needs workers
+        return getRemoteRoomNeedingWorkers(roomName, role, swarm) !== null;
+    }
+    const counts = countCreepsByRole(roomName);
+    const current = (_a = counts.get(role)) !== null && _a !== void 0 ? _a : 0;
+    // Check max per room (with special handling for upgraders in focus room)
+    let maxForRoom = def.maxPerRoom;
+    if (role === "upgrader" && swarm.clusterId) {
+        const cluster = memoryManager.getCluster(swarm.clusterId);
+        if ((cluster === null || cluster === void 0 ? void 0 : cluster.focusRoom) === roomName) {
+            // Allow more upgraders in focus room to accelerate upgrading
+            const room = Game.rooms[roomName];
+            if (room === null || room === void 0 ? void 0 : room.controller) {
+                // Scale upgraders based on RCL
+                if (room.controller.level <= 3) {
+                    maxForRoom = FOCUS_ROOM_UPGRADER_LIMITS.EARLY;
+                }
+                else if (room.controller.level <= 6) {
+                    maxForRoom = FOCUS_ROOM_UPGRADER_LIMITS.MID;
+                }
+                else {
+                    maxForRoom = FOCUS_ROOM_UPGRADER_LIMITS.LATE;
+                }
+            }
+        }
+    }
+    if (current >= maxForRoom)
+        return false;
+    // Special conditions
+    const room = Game.rooms[roomName];
+    if (!room)
+        return false;
+    // Scout: Spawn if we have remote rooms without full intel
+    // or if we're in expand posture and need more room data
+    if (role === "scout") {
+        // Always allow scouts if we don't have one (up to max per room)
+        if (current === 0)
+            return true;
+        // In expand posture, allow more scouts
+        if (swarm.posture === "expand" && current < def.maxPerRoom)
+            return true;
+        return false;
+    }
+    // Claimer: Only spawn if we have expansion targets or remote rooms that need reserving
+    if (role === "claimer") {
+        const overmind = memoryManager.getOvermind();
+        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        // Check if we have unclaimed expansion targets and can expand
+        const canExpand = ownedRooms.length < Game.gcl.level;
+        const hasExpansionTarget = overmind.claimQueue.some(c => !c.claimed);
+        // Check if we have remote rooms that need reserving (no reserver assigned)
+        const hasUnreservedRemote = needsReserver(roomName, swarm);
+        // Only spawn claimer if there's work to do
+        if (canExpand && hasExpansionTarget)
+            return true;
+        if (hasUnreservedRemote)
+            return true;
+        return false;
+    }
+    // Mineral harvester needs extractor
+    if (role === "mineralHarvester") {
+        const mineral = room.find(FIND_MINERALS)[0];
+        if (!mineral)
+            return false;
+        const extractor = mineral.pos.lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_EXTRACTOR);
+        if (!extractor)
+            return false;
+        if (mineral.mineralAmount === 0)
+            return false;
+    }
+    // Lab tech needs labs
+    if (role === "labTech") {
+        const labs = room.find(FIND_MY_STRUCTURES, { filter: s => s.structureType === STRUCTURE_LAB });
+        if (labs.length < 3)
+            return false;
+    }
+    // Factory worker needs factory
+    if (role === "factoryWorker") {
+        const factory = room.find(FIND_MY_STRUCTURES, { filter: s => s.structureType === STRUCTURE_FACTORY });
+        if (factory.length === 0)
+            return false;
+    }
+    // Queen carrier needs storage
+    if (role === "queenCarrier") {
+        if (!room.storage)
+            return false;
+    }
+    // Builder needs construction sites
+    if (role === "builder") {
+        const sites = room.find(FIND_MY_CONSTRUCTION_SITES);
+        if (sites.length === 0 && current > 0)
+            return false;
+    }
+    // Inter-room carrier needs active resource requests
+    if (role === "interRoomCarrier") {
+        // Check if room's cluster has any active resource transfer requests
+        if (!swarm.clusterId)
+            return false;
+        const cluster = memoryManager.getCluster(swarm.clusterId);
+        if (!cluster || !cluster.resourceRequests || cluster.resourceRequests.length === 0) {
+            return false;
+        }
+        // Check if there are requests that need more carriers
+        const needsCarriers = cluster.resourceRequests.some(req => {
+            // Only spawn for requests from this room
+            if (req.fromRoom !== room.name)
+                return false;
+            // Check if request needs more carriers
+            const assignedCount = req.assignedCreeps.filter(name => Game.creeps[name]).length;
+            const remaining = req.amount - req.delivered;
+            // Need carriers if we have significant remaining amount and not enough assigned
+            return remaining > 500 && assignedCount < 2;
+        });
+        if (!needsCarriers)
+            return false;
+    }
+    return true;
+}
+/**
+ * Check if room needs a reserver for any of its remote rooms
+ */
+function needsReserver(_homeRoom, swarm) {
+    var _a;
+    const remotes = (_a = swarm.remoteAssignments) !== null && _a !== void 0 ? _a : [];
+    if (remotes.length === 0)
+        return false;
+    // Check each remote room
+    for (const remoteName of remotes) {
+        // Check if any claimer is already targeting this room for reservation
+        let hasReserver = false;
+        for (const creep of Object.values(Game.creeps)) {
+            const memory = creep.memory;
+            if (memory.role === "claimer" && memory.targetRoom === remoteName) {
+                hasReserver = true;
+                break;
+            }
+        }
+        if (!hasReserver) {
+            return true; // Found a remote that needs a reserver
+        }
+    }
+    return false;
+}
+/**
+ * Generate creep name
+ */
+function generateCreepName(role) {
+    return `${role}_${Game.time}_${Math.floor(Math.random() * 1000)}`;
+}
+/**
+ * Get count of energy-producing creeps (harvesters + larvaWorkers)
+ */
+function getEnergyProducerCount(counts) {
+    var _a, _b;
+    return ((_a = counts.get("harvester")) !== null && _a !== void 0 ? _a : 0) + ((_b = counts.get("larvaWorker")) !== null && _b !== void 0 ? _b : 0);
+}
+/**
+ * Get count of transport creeps (haulers + larvaWorkers)
+ */
+function getTransportCount(counts) {
+    var _a, _b;
+    return ((_a = counts.get("hauler")) !== null && _a !== void 0 ? _a : 0) + ((_b = counts.get("larvaWorker")) !== null && _b !== void 0 ? _b : 0);
+}
+/**
+ * Check if room is in emergency state (no energy-producing creeps)
+ * This happens when all creeps die and extensions are empty
+ */
+function isEmergencySpawnState(roomName) {
+    const counts = countCreepsByRole(roomName);
+    return getEnergyProducerCount(counts) === 0;
+}
+/**
+ * Bootstrap spawn order - deterministic priority-based spawning.
+ * This defines the order in which critical roles should be spawned during
+ * recovery from a bad state, ensuring the economy can bootstrap properly.
+ */
+const BOOTSTRAP_SPAWN_ORDER = [
+    // 1. Energy production first - can't do anything without energy
+    { role: "larvaWorker", minCount: 1 },
+    // 2. Static harvesters for efficient mining (1 per source is enough with bigger bodies)
+    { role: "harvester", minCount: 1 },
+    // 3. Transport to distribute energy (1 is enough with bigger bodies)
+    { role: "hauler", minCount: 1 },
+    // 4. Second harvester for second source
+    { role: "harvester", minCount: 2 },
+    // 5. Queen carrier when storage exists (manages spawns/extensions)
+    { role: "queenCarrier", minCount: 1, condition: (room) => Boolean(room.storage) },
+    // 6. Upgrader for controller progress
+    { role: "upgrader", minCount: 1 }
+];
+/**
+ * Determine if the room is in "bootstrap" mode where critical roles are missing.
+ * In bootstrap mode, we use deterministic priority spawning instead of weighted selection.
+ *
+ * Bootstrap mode is active when:
+ * - Zero energy producers exist, OR
+ * - We have energy producers but no transport (energy can't be distributed), OR
+ * - We have fewer than minimum critical roles
+ */
+function isBootstrapMode(roomName, room) {
+    var _a, _b;
+    const counts = countCreepsByRole(roomName);
+    // Critical: no energy production at all
+    if (getEnergyProducerCount(counts) === 0) {
+        return true;
+    }
+    // Critical: we have harvesters but no way to transport energy
+    // (larvaWorkers can self-transport so they count as transport)
+    if (getTransportCount(counts) === 0 && ((_a = counts.get("harvester")) !== null && _a !== void 0 ? _a : 0) > 0) {
+        return true;
+    }
+    // Check minimum counts against bootstrap order
+    // This includes queenCarrier (when storage exists) as part of the order
+    for (const req of BOOTSTRAP_SPAWN_ORDER) {
+        // Skip conditional roles if condition not met
+        if (req.condition && !req.condition(room)) {
+            continue;
+        }
+        const current = (_b = counts.get(req.role)) !== null && _b !== void 0 ? _b : 0;
+        if (current < req.minCount) {
+            return true;
+        }
+    }
+    return false;
+}
+/**
+ * Get the next role to spawn in bootstrap mode.
+ * Uses deterministic priority order instead of weighted random selection.
+ */
+function getBootstrapRole(roomName, room, swarm) {
+    var _a;
+    const counts = countCreepsByRole(roomName);
+    // First check emergency: zero energy producers
+    if (getEnergyProducerCount(counts) === 0) {
+        return "larvaWorker";
+    }
+    // Follow bootstrap order
+    for (const req of BOOTSTRAP_SPAWN_ORDER) {
+        // Skip conditional roles if condition not met
+        if (req.condition && !req.condition(room)) {
+            continue;
+        }
+        const current = (_a = counts.get(req.role)) !== null && _a !== void 0 ? _a : 0;
+        if (current < req.minCount) {
+            // Verify we can spawn this role (check needsRole for special conditions)
+            if (needsRole(roomName, req.role, swarm)) {
+                return req.role;
+            }
+        }
+    }
+    return null;
+}
+/**
+ * Get all roles that need spawning, sorted by priority
+ */
+function getAllSpawnableRoles(room, swarm) {
+    var _a, _b;
+    const counts = countCreepsByRole(room.name);
+    const postureWeights = getPostureSpawnWeights(swarm.posture);
+    // Collect all roles that need spawning with their calculated priorities
+    const roleScores = [];
+    for (const [role, def] of Object.entries(ROLE_DEFINITIONS)) {
+        if (!needsRole(room.name, role, swarm))
+            continue;
+        const baseWeight = def.priority;
+        const postureWeight = (_a = postureWeights[role]) !== null && _a !== void 0 ? _a : 0.5;
+        const pheromoneMult = getPheromoneMult(role, swarm.pheromones);
+        const priorityBoost = getDynamicPriorityBoost(room, swarm, role);
+        // Reduce weight based on current count
+        const current = (_b = counts.get(role)) !== null && _b !== void 0 ? _b : 0;
+        const countFactor = Math.max(0.1, 1 - current / def.maxPerRoom);
+        const score = (baseWeight + priorityBoost) * postureWeight * pheromoneMult * countFactor;
+        roleScores.push({ role, score });
+    }
+    // Sort by score descending (highest priority first)
+    roleScores.sort((a, b) => b.score - a.score);
+    return roleScores.map(rs => rs.role);
+}
+/**
+ * Spawn manager - run for a room
+ */
+function runSpawnManager(room, swarm) {
+    const spawns = room.find(FIND_MY_SPAWNS);
+    const availableSpawn = spawns.find(s => !s.spawning);
+    if (!availableSpawn)
+        return;
+    const energyCapacity = room.energyCapacityAvailable;
+    const energyAvailable = room.energyAvailable;
+    // Emergency mode: when no energy-producing creeps exist and extensions are empty,
+    // use energyAvailable to select body instead of energyCapacityAvailable.
+    // This prevents deadlock where we wait for extensions to fill but have no creeps to fill them.
+    const isEmergency = isEmergencySpawnState(room.name);
+    const effectiveCapacity = isEmergency ? energyAvailable : energyCapacity;
+    // SPAWN FIX: Try roles in priority order until we find one we can afford
+    // This prevents the spawn system from stalling when high-priority roles
+    // are too expensive for current energy levels.
+    // In bootstrap mode, use deterministic bootstrap order
+    if (isBootstrapMode(room.name, room)) {
+        const role = getBootstrapRole(room.name, room, swarm);
+        if (!role)
+            return;
+        const def = ROLE_DEFINITIONS[role];
+        if (!def)
+            return;
+        const body = getBestBody(def, effectiveCapacity);
+        if (!body)
+            return;
+        // Check if we have enough energy
+        if (energyAvailable < body.cost)
+            return;
+        // Spawn creep
+        const name = generateCreepName(role);
+        const memory = {
+            role: def.role,
+            family: def.family,
+            homeRoom: room.name,
+            version: 1
+        };
+        // For remote roles, set the targetRoom to the remote room that needs workers
+        if (role === "remoteHarvester" || role === "remoteHauler") {
+            const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
+            if (targetRoom) {
+                memory.targetRoom = targetRoom;
+            }
+        }
+        const result = availableSpawn.spawnCreep(body.parts, name, {
+            memory: memory
+        });
+        if (result === OK) {
+            kernel.emit("spawn.completed", {
+                roomName: room.name,
+                creepName: name,
+                role,
+                cost: body.cost,
+                source: "SpawnManager"
+            });
+        }
+        return;
+    }
+    // Normal mode: Get all spawnable roles sorted by priority
+    // Try each one until we find an affordable option
+    const spawnableRoles = getAllSpawnableRoles(room, swarm);
+    for (const role of spawnableRoles) {
+        const def = ROLE_DEFINITIONS[role];
+        if (!def)
+            continue;
+        // SPAWN FIX: Try optimal body first (based on capacity), then fallback to smaller body
+        // 1. Try to spawn optimal body for capacity
+        let body = getBestBody(def, effectiveCapacity);
+        if (body && energyAvailable >= body.cost) ;
+        else {
+            // Can't afford optimal body, try smaller body based on available energy
+            body = getBestBody(def, energyAvailable);
+            if (!body || energyAvailable < body.cost) {
+                // Can't afford any body for this role, try next role
+                continue;
+            }
+        }
+        // We found an affordable role, spawn it
+        const name = generateCreepName(role);
+        const memory = {
+            role: def.role,
+            family: def.family,
+            homeRoom: room.name,
+            version: 1
+        };
+        // For remote roles, set the targetRoom to the remote room that needs workers
+        if (role === "remoteHarvester" || role === "remoteHauler") {
+            const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
+            if (targetRoom) {
+                memory.targetRoom = targetRoom;
+            }
+        }
+        // For inter-room carrier, assign a transfer request
+        if (role === "interRoomCarrier" && swarm.clusterId) {
+            const cluster = memoryManager.getCluster(swarm.clusterId);
+            if (cluster) {
+                // Find request from this room that needs carriers
+                const request = cluster.resourceRequests.find(req => {
+                    if (req.fromRoom !== room.name)
+                        return false;
+                    const assignedCount = req.assignedCreeps.filter(n => Game.creeps[n]).length;
+                    const remaining = req.amount - req.delivered;
+                    return remaining > 500 && assignedCount < 2;
+                });
+                if (request) {
+                    memory.transferRequest = {
+                        fromRoom: request.fromRoom,
+                        toRoom: request.toRoom,
+                        resourceType: request.resourceType,
+                        amount: request.amount
+                    };
+                    request.assignedCreeps.push(name);
+                }
+            }
+        }
+        const result = availableSpawn.spawnCreep(body.parts, name, {
+            memory: memory
+        });
+        // Emit spawn completed event on successful spawn
+        if (result === OK) {
+            kernel.emit("spawn.completed", {
+                roomName: room.name,
+                creepName: name,
+                role,
+                cost: body.cost,
+                source: "SpawnManager"
+            });
+            return; // Successfully spawned, exit
+        }
+        // If spawn failed for a reason other than insufficient energy, give up
+        if (result !== ERR_NOT_ENOUGH_ENERGY) {
+            return;
+        }
+    }
+}
+
+/**
+ * Creep Context Factory
+ *
+ * Creates the context object that behaviors use for decision making.
+ * All room queries are cached here to avoid redundant lookups.
+ *
+ * PERFORMANCE OPTIMIZATION:
+ * - Room data is cached per-tick so that multiple creeps in the same room
+ *   share the same cached find() results.
+ * - Lazy evaluation: expensive fields are only computed when first accessed.
+ * - Efficient hostile threat checks use direct distance calculation instead of
+ *   pre-computing all positions (faster for small hostile counts).
+ */
+/**
+ * Priority order for construction sites.
+ * Higher values = higher priority.
+ *
+ * Defense structures (walls, ramparts) have high priority to ensure
+ * room security is established early, especially at RCL 2-3.
+ */
+const CONSTRUCTION_PRIORITY = {
+    [STRUCTURE_SPAWN]: 100,
+    [STRUCTURE_EXTENSION]: 90,
+    [STRUCTURE_TOWER]: 80,
+    [STRUCTURE_RAMPART]: 75,
+    [STRUCTURE_WALL]: 70,
+    [STRUCTURE_STORAGE]: 70,
+    [STRUCTURE_CONTAINER]: 60,
+    [STRUCTURE_ROAD]: 30
+};
+/** Threat detection range for hostiles */
+const HOSTILE_THREAT_RANGE = 10;
+/** Per-room cache storage - cleared at the start of each tick via clearRoomCaches() */
+const roomCacheMap = new Map();
+/**
+ * Check if a position is within hostile threat range.
+ * Uses Chebyshev distance (max of dx, dy) which is O(hostiles) instead of
+ * O(hostiles * range²) for pre-computing all positions.
+ * This is more efficient when there are few hostiles (typical case).
+ */
+function isInHostileThreatRange(pos, hostiles) {
+    for (const hostile of hostiles) {
+        // Chebyshev distance is the same as getRangeTo for Screeps
+        const dx = Math.abs(pos.x - hostile.pos.x);
+        const dy = Math.abs(pos.y - hostile.pos.y);
+        if (Math.max(dx, dy) <= HOSTILE_THREAT_RANGE) {
+            return true;
+        }
+    }
+    return false;
+}
+/**
+ * Get or create cached room data.
+ * Only runs find() calls once per room per tick.
+ * Uses lazy evaluation for expensive derived fields.
+ *
+ * OPTIMIZATION: Minimize initial cache cost by only loading essential data.
+ * allStructures is expensive (~0.1 CPU) and often not needed by many creeps.
+ * We load it lazily when first accessed instead of upfront.
+ */
+function getRoomCache(room) {
+    const existing = roomCacheMap.get(room.name);
+    if (existing && existing.tick === Game.time) {
+        return existing;
+    }
+    // Build minimal core cache - only load what's always needed
+    // Use safeFind for hostile creeps to handle engine errors with corrupted owner data
+    const cache = {
+        tick: Game.time,
+        room,
+        hostiles: safeFind(room, FIND_HOSTILE_CREEPS),
+        // OPTIMIZATION: Load myStructures instead of allStructures initially.
+        // Most creeps only need myStructures. allStructures will be loaded lazily if needed.
+        myStructures: room.find(FIND_MY_STRUCTURES),
+        // Set empty array for now - will be populated lazily when accessed
+        allStructures: []
+    };
+    roomCacheMap.set(room.name, cache);
+    return cache;
+}
+/**
+ * Get dropped resources from cache (lazy evaluation)
+ */
+function getDroppedResources(cache) {
+    if (cache._droppedResources === undefined) {
+        cache._droppedResources = cache.room.find(FIND_DROPPED_RESOURCES, {
+            filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 50
+        });
+    }
+    return cache._droppedResources;
+}
+/**
+ * Ensure allStructures is loaded in cache (lazy load optimization).
+ * Only called when a function actually needs allStructures.
+ */
+function ensureAllStructuresLoaded(cache) {
+    if (!cache._allStructuresLoaded) {
+        cache.allStructures = cache.room.find(FIND_STRUCTURES);
+        cache._allStructuresLoaded = true;
+    }
+}
+/**
+ * Get containers with energy from cache (lazy evaluation)
+ */
+function getContainers(cache) {
+    if (cache._containers === undefined) {
+        ensureAllStructuresLoaded(cache);
+        cache._containers = cache.allStructures.filter((s) => s.structureType === STRUCTURE_CONTAINER &&
+            s.store.getUsedCapacity(RESOURCE_ENERGY) > 100);
+    }
+    return cache._containers;
+}
+/**
+ * Get containers with free capacity from cache (lazy evaluation)
+ */
+function getDepositContainers(cache) {
+    if (cache._depositContainers === undefined) {
+        ensureAllStructuresLoaded(cache);
+        cache._depositContainers = cache.allStructures.filter((s) => s.structureType === STRUCTURE_CONTAINER &&
+            s.store.getFreeCapacity(RESOURCE_ENERGY) > 0);
+    }
+    return cache._depositContainers;
+}
+/**
+ * Get spawn structures needing energy from cache (lazy evaluation)
+ */
+function getSpawnStructures(cache) {
+    if (cache._spawnStructures === undefined) {
+        cache._spawnStructures = cache.myStructures.filter((s) => (s.structureType === STRUCTURE_SPAWN || s.structureType === STRUCTURE_EXTENSION) &&
+            s.store.getFreeCapacity(RESOURCE_ENERGY) > 0);
+    }
+    return cache._spawnStructures;
+}
+/**
+ * Get towers needing energy from cache (lazy evaluation)
+ */
+function getTowers(cache) {
+    if (cache._towers === undefined) {
+        cache._towers = cache.myStructures.filter((s) => s.structureType === STRUCTURE_TOWER &&
+            s.store.getFreeCapacity(RESOURCE_ENERGY) > 200);
+    }
+    return cache._towers;
+}
+/**
+ * Get prioritized construction sites from cache (lazy evaluation)
+ */
+function getPrioritizedSites(cache) {
+    if (cache._prioritizedSites === undefined) {
+        cache._prioritizedSites = cache.room.find(FIND_MY_CONSTRUCTION_SITES).sort((a, b) => {
+            var _a, _b;
+            const priorityA = (_a = CONSTRUCTION_PRIORITY[a.structureType]) !== null && _a !== void 0 ? _a : 50;
+            const priorityB = (_b = CONSTRUCTION_PRIORITY[b.structureType]) !== null && _b !== void 0 ? _b : 50;
+            return priorityB - priorityA;
+        });
+    }
+    return cache._prioritizedSites;
+}
+/**
+ * Get repair targets from cache (lazy evaluation)
+ */
+function getRepairTargets(cache) {
+    if (cache._repairTargets === undefined) {
+        ensureAllStructuresLoaded(cache);
+        cache._repairTargets = cache.allStructures.filter(s => s.hits < s.hitsMax * 0.75 && s.structureType !== STRUCTURE_WALL);
+    }
+    return cache._repairTargets;
+}
+/**
+ * Get damaged allies from cache (lazy evaluation)
+ */
+function getDamagedAllies(cache) {
+    if (cache._damagedAllies === undefined) {
+        cache._damagedAllies = cache.room.find(FIND_MY_CREEPS, { filter: c => c.hits < c.hitsMax });
+    }
+    return cache._damagedAllies;
+}
+/**
+ * Get labs from cache (lazy evaluation)
+ */
+function getLabs(cache) {
+    if (cache._labs === undefined) {
+        cache._labs = cache.myStructures.filter((s) => s.structureType === STRUCTURE_LAB);
+    }
+    return cache._labs;
+}
+/**
+ * Get factory from cache (lazy evaluation)
+ */
+function getFactory(cache) {
+    if (!cache._factoryChecked) {
+        cache._factory = cache.myStructures.find((s) => s.structureType === STRUCTURE_FACTORY);
+        cache._factoryChecked = true;
+    }
+    return cache._factory;
+}
+/**
+ * Get minerals from cache (lazy evaluation)
+ */
+function getMinerals(cache) {
+    if (cache._minerals === undefined) {
+        cache._minerals = cache.room.find(FIND_MINERALS);
+    }
+    return cache._minerals;
+}
+/**
+ * Get active sources from cache (lazy evaluation)
+ */
+function getActiveSources(cache) {
+    if (cache._activeSources === undefined) {
+        cache._activeSources = cache.room.find(FIND_SOURCES_ACTIVE);
+    }
+    return cache._activeSources;
+}
+/**
+ * Clear all room caches. Must be called at the start of each tick
+ * to prevent memory leaks from stale room data.
+ * Also clears military behavior caches.
+ */
+function clearRoomCaches() {
+    roomCacheMap.clear();
+    // Clear military patrol waypoint cache
+    clearMilitaryBehaviorCaches();
+}
+/**
+ * Callback for clearing military behavior caches.
+ * Set by military.ts module.
+ */
+let clearMilitaryBehaviorCaches = () => {
+    // Default no-op, overridden by military.ts
+};
+/**
+ * Register a callback to clear military behavior caches.
+ * Called by military.ts to register its cache clearing function.
+ */
+function registerMilitaryCacheClear(fn) {
+    clearMilitaryBehaviorCaches = fn;
+}
+// =============================================================================
+// Memory Helpers
+// =============================================================================
+/**
+ * Get swarm state from room memory.
+ */
+function getSwarmState(roomName) {
+    var _a;
+    const roomMem = (_a = Memory.rooms) === null || _a === void 0 ? void 0 : _a[roomName];
+    return roomMem === null || roomMem === void 0 ? void 0 : roomMem.swarm;
+}
+/**
+ * Get squad memory if creep is in a squad.
+ */
+function getSquadMemory$1(squadId) {
+    if (!squadId)
+        return undefined;
+    const squads = Memory.squads;
+    return squads === null || squads === void 0 ? void 0 : squads[squadId];
+}
+/**
+ * Get the assigned source for a harvester.
+ */
+function getAssignedSource(memory) {
+    if (!memory.sourceId)
+        return null;
+    return Game.getObjectById(memory.sourceId);
+}
+// =============================================================================
+// Context Factory
+// =============================================================================
+/**
+ * Create a context object for a creep.
+ * Uses per-tick room caching with lazy evaluation to minimize CPU usage.
+ *
+ * Lazy evaluation ensures that expensive operations (like finding construction sites,
+ * repair targets, etc.) are only performed when the creep's behavior actually needs them.
+ * This can save significant CPU when many creeps don't need certain data.
+ */
+function createContext(creep) {
+    var _a, _b;
+    const room = creep.room;
+    const memory = creep.memory;
+    // Get cached room data - only runs find() once per room per tick
+    const roomCache = getRoomCache(room);
+    const homeRoom = (_a = memory.homeRoom) !== null && _a !== void 0 ? _a : room.name;
+    return {
+        // Core references
+        creep,
+        room,
+        memory,
+        // Room state
+        get swarmState() {
+            return getSwarmState(room.name);
+        },
+        get squadMemory() {
+            return getSquadMemory$1(memory.squadId);
+        },
+        // Location info
+        homeRoom,
+        isInHomeRoom: room.name === homeRoom,
+        // Creep state
+        isFull: creep.store.getFreeCapacity() === 0,
+        isEmpty: creep.store.getUsedCapacity() === 0,
+        isWorking: (_b = memory.working) !== null && _b !== void 0 ? _b : false,
+        // Assigned targets
+        get assignedSource() {
+            return getAssignedSource(memory);
+        },
+        get assignedMineral() {
+            var _a;
+            const minerals = getMinerals(roomCache);
+            return (_a = minerals[0]) !== null && _a !== void 0 ? _a : null;
+        },
+        // Room analysis - uses efficient Chebyshev distance check for hostiles
+        get energyAvailable() {
+            return getActiveSources(roomCache).length > 0;
+        },
+        get nearbyEnemies() {
+            return roomCache.hostiles.length > 0 && isInHostileThreatRange(creep.pos, roomCache.hostiles);
+        },
+        get constructionSiteCount() {
+            return getPrioritizedSites(roomCache).length;
+        },
+        get damagedStructureCount() {
+            return getRepairTargets(roomCache).length;
+        },
+        // Cached room objects (all from cache with lazy evaluation)
+        get droppedResources() {
+            return getDroppedResources(roomCache);
+        },
+        get containers() {
+            return getContainers(roomCache);
+        },
+        get depositContainers() {
+            return getDepositContainers(roomCache);
+        },
+        get spawnStructures() {
+            return getSpawnStructures(roomCache);
+        },
+        get towers() {
+            return getTowers(roomCache);
+        },
+        storage: room.storage,
+        terminal: room.terminal,
+        hostiles: roomCache.hostiles,
+        get damagedAllies() {
+            return getDamagedAllies(roomCache);
+        },
+        get prioritizedSites() {
+            return getPrioritizedSites(roomCache);
+        },
+        get repairTargets() {
+            return getRepairTargets(roomCache);
+        },
+        get labs() {
+            return getLabs(roomCache);
+        },
+        get factory() {
+            return getFactory(roomCache);
+        }
+    };
+}
+
+/**
+ * Traffic Management - Yield/Priority Rules
+ *
+ * Implements yield and priority rules for creep movement:
+ * - Priority-based movement
+ * - Stuck detection and resolution
+ * - Yield rules based on role importance
+ * - Side-step behaviors
+ * - Move request system for proactive creep communication
+ *
+ * Addresses Issue: #33 and creep blocking issue
+ */
+/**
+ * Per-tick storage of move requests, keyed by position string "roomName:x,y"
+ */
+const moveRequests = new Map();
+/**
+ * Last tick when move requests were processed
+ */
+let lastMoveRequestTick = -1;
+/**
+ * Create a position key for the move request map
+ */
+function positionKey(pos) {
+    return `${pos.roomName}:${pos.x},${pos.y}`;
+}
+/**
+ * Clear move requests at the start of each tick.
+ * Should be called at the beginning of the main loop.
+ */
+function clearMoveRequests() {
+    moveRequests.clear();
+    lastMoveRequestTick = Game.time;
+}
+/**
+ * Register a move request for a position.
+ * This tells the system that a creep intends to move to this position
+ * and any blocking creep should be asked to move out of the way.
+ *
+ * @param creep - The creep that wants the position
+ * @param targetPos - The position the creep wants to move to
+ * @returns true if the request was registered
+ */
+function requestMoveToPosition(creep, targetPos) {
+    // Ensure we're on the right tick
+    if (lastMoveRequestTick !== Game.time) {
+        clearMoveRequests();
+    }
+    const key = positionKey(targetPos);
+    const priority = getCreepPriority$1(creep);
+    const request = {
+        requester: creep,
+        targetPos,
+        priority,
+        tick: Game.time
+    };
+    const existingRequests = moveRequests.get(key);
+    if (existingRequests) {
+        existingRequests.push(request);
+    }
+    else {
+        moveRequests.set(key, [request]);
+    }
+    return true;
+}
+/**
+ * Process all move requests and ask blocking creeps to move.
+ * Should be called after all creeps have registered their intents
+ * but before movement reconciliation.
+ *
+ * @returns Number of creeps that were asked to move
+ */
+function processMoveRequests() {
+    let movedCount = 0;
+    for (const [_posKey, requests] of moveRequests) {
+        if (requests.length === 0)
+            continue;
+        // Sort requests by priority (highest first)
+        requests.sort((a, b) => b.priority - a.priority);
+        // Get the highest priority request
+        const topRequest = requests[0];
+        if (!topRequest)
+            continue;
+        // Find if there's a creep blocking this position
+        const room = Game.rooms[topRequest.targetPos.roomName];
+        if (!room)
+            continue;
+        const blockingCreeps = room.lookForAt(LOOK_CREEPS, topRequest.targetPos.x, topRequest.targetPos.y);
+        const blockingCreep = blockingCreeps.find(c => c.my && c.name !== topRequest.requester.name);
+        if (!blockingCreep)
+            continue;
+        // Check if the blocking creep should yield
+        if (shouldYieldTo(blockingCreep, topRequest.requester)) {
+            // Try to make the blocking creep move
+            const sideStep = findSideStepPosition(blockingCreep);
+            if (sideStep) {
+                const result = blockingCreep.move(blockingCreep.pos.getDirectionTo(sideStep));
+                if (result === OK) {
+                    movedCount++;
+                }
+            }
+        }
+    }
+    return movedCount;
+}
+/**
+ * Role priority weights (higher = more important)
+ */
+const ROLE_PRIORITIES = {
+    // Military - highest priority
+    guard: 100,
+    healer: 95,
+    soldier: 90,
+    ranger: 88,
+    siegeUnit: 85,
+    harasser: 82,
+    // Critical economy
+    harvester: 75,
+    queenCarrier: 70,
+    hauler: 65,
+    remoteHarvester: 60,
+    remoteHauler: 55,
+    // Standard economy
+    upgrader: 50,
+    builder: 45,
+    larvaWorker: 40,
+    interRoomCarrier: 38,
+    // Utility
+    scout: 35,
+    claimer: 30,
+    engineer: 28,
+    remoteWorker: 26,
+    linkManager: 24,
+    terminalManager: 22,
+    // Power roles
+    powerQueen: 80,
+    powerWarrior: 78,
+    powerHarvester: 27,
+    powerCarrier: 25,
+    // Low priority
+    mineralHarvester: 20,
+    labTech: 10,
+    factoryWorker: 5
+};
+/**
+ * Get creep priority
+ */
+function getCreepPriority$1(creep) {
+    var _a;
+    const memory = creep.memory;
+    return (_a = ROLE_PRIORITIES[memory.role]) !== null && _a !== void 0 ? _a : 50;
+}
+/**
+ * Check if creep should yield to another
+ */
+function shouldYieldTo(creep, other) {
+    const myPriority = getCreepPriority$1(creep);
+    const otherPriority = getCreepPriority$1(other);
+    // Higher priority always wins
+    if (otherPriority > myPriority)
+        return true;
+    if (otherPriority < myPriority)
+        return false;
+    // Equal priority - yield to creep carrying resources (if hauler)
+    const memory = creep.memory;
+    const otherMemory = other.memory;
+    if (memory.role === "hauler" && otherMemory.role === "hauler") {
+        const myLoad = creep.store.getUsedCapacity();
+        const otherLoad = other.store.getUsedCapacity();
+        if (otherLoad > myLoad)
+            return true;
+    }
+    // Equal priority - yield to older creep
+    if (other.ticksToLive && creep.ticksToLive) {
+        return other.ticksToLive < creep.ticksToLive;
+    }
+    return false;
+}
+// =============================================================================
+// Constants
+// =============================================================================
+/** Minimum valid room coordinate (avoiding exits) */
+const ROOM_MIN_COORD = 1;
+/** Maximum valid room coordinate (avoiding exits) */
+const ROOM_MAX_COORD = 48;
+/**
+ * Check if a position is in a narrow passage (1-tile wide corridor).
+ * A narrow passage has walkable tiles only in a straight line (no adjacent walkable tiles perpendicular).
+ */
+function isInNarrowPassage(pos, room) {
+    const terrain = room.getTerrain();
+    // Helper to check if a position is walkable
+    const isWalkableAt = (x, y) => {
+        if (x < ROOM_MIN_COORD || x > ROOM_MAX_COORD || y < ROOM_MIN_COORD || y > ROOM_MAX_COORD)
+            return false;
+        if (terrain.get(x, y) === TERRAIN_MASK_WALL)
+            return false;
+        const structures = room.lookForAt(LOOK_STRUCTURES, x, y);
+        return !structures.some(s => s.structureType !== STRUCTURE_ROAD &&
+            s.structureType !== STRUCTURE_CONTAINER &&
+            (s.structureType !== STRUCTURE_RAMPART || !s.my));
+    };
+    // Check if we're in a horizontal corridor (walls/unwalkable above and below)
+    const hasVerticalSpace = isWalkableAt(pos.x, pos.y - 1) || isWalkableAt(pos.x, pos.y + 1);
+    // Check if we're in a vertical corridor (walls/unwalkable left and right)
+    const hasHorizontalSpace = isWalkableAt(pos.x - 1, pos.y) || isWalkableAt(pos.x + 1, pos.y);
+    // In a narrow passage if we only have space in one direction (horizontal OR vertical, not both)
+    return hasVerticalSpace !== hasHorizontalSpace;
+}
+/**
+ * Find a position to back up to (opposite direction from target).
+ * Used when creep needs to yield in a narrow passage.
+ */
+function findBackupPosition(creep, targetDirection) {
+    const terrain = creep.room.getTerrain();
+    // Get the opposite direction to back up
+    const oppositeDir = getOppositeDirection(targetDirection);
+    const offset = getDirectionOffset(oppositeDir);
+    if (!offset)
+        return null;
+    const x = creep.pos.x + offset.dx;
+    const y = creep.pos.y + offset.dy;
+    // Check bounds (avoid exits)
+    if (x < ROOM_MIN_COORD || x > ROOM_MAX_COORD || y < ROOM_MIN_COORD || y > ROOM_MAX_COORD)
+        return null;
+    // Check terrain
+    if (terrain.get(x, y) === TERRAIN_MASK_WALL)
+        return null;
+    // Check for structures
+    const structures = creep.room.lookForAt(LOOK_STRUCTURES, x, y);
+    const blocked = structures.some(s => s.structureType !== STRUCTURE_ROAD &&
+        s.structureType !== STRUCTURE_CONTAINER &&
+        (s.structureType !== STRUCTURE_RAMPART || !s.my));
+    if (blocked)
+        return null;
+    // Check for other creeps
+    const creeps = creep.room.lookForAt(LOOK_CREEPS, x, y);
+    if (creeps.length > 0)
+        return null;
+    return new RoomPosition(x, y, creep.room.name);
+}
+/**
+ * Get the opposite direction
+ */
+function getOppositeDirection(direction) {
+    const opposites = {
+        [TOP]: BOTTOM,
+        [TOP_RIGHT]: BOTTOM_LEFT,
+        [RIGHT]: LEFT,
+        [BOTTOM_RIGHT]: TOP_LEFT,
+        [BOTTOM]: TOP,
+        [BOTTOM_LEFT]: TOP_RIGHT,
+        [LEFT]: RIGHT,
+        [TOP_LEFT]: BOTTOM_RIGHT
+    };
+    return opposites[direction];
+}
+/**
+ * Get offset for a direction
+ */
+function getDirectionOffset(direction) {
+    var _a;
+    const offsets = {
+        [TOP]: { dx: 0, dy: -1 },
+        [TOP_RIGHT]: { dx: 1, dy: -1 },
+        [RIGHT]: { dx: 1, dy: 0 },
+        [BOTTOM_RIGHT]: { dx: 1, dy: 1 },
+        [BOTTOM]: { dx: 0, dy: 1 },
+        [BOTTOM_LEFT]: { dx: -1, dy: 1 },
+        [LEFT]: { dx: -1, dy: 0 },
+        [TOP_LEFT]: { dx: -1, dy: -1 }
+    };
+    return (_a = offsets[direction]) !== null && _a !== void 0 ? _a : null;
+}
+/**
+ * Find a valid side-step position
+ */
+function findSideStepPosition(creep) {
+    var _a;
+    const terrain = creep.room.getTerrain();
+    const positions = [];
+    // Check all adjacent positions
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            if (dx === 0 && dy === 0)
+                continue;
+            const x = creep.pos.x + dx;
+            const y = creep.pos.y + dy;
+            // Check bounds (avoid exits)
+            if (x < ROOM_MIN_COORD || x > ROOM_MAX_COORD || y < ROOM_MIN_COORD || y > ROOM_MAX_COORD)
+                continue;
+            // Check terrain
+            if (terrain.get(x, y) === TERRAIN_MASK_WALL)
+                continue;
+            // Check for structures
+            const structures = creep.room.lookForAt(LOOK_STRUCTURES, x, y);
+            const blocked = structures.some(s => s.structureType !== STRUCTURE_ROAD &&
+                s.structureType !== STRUCTURE_CONTAINER &&
+                (s.structureType !== STRUCTURE_RAMPART || !s.my));
+            if (blocked)
+                continue;
+            // Check for other creeps
+            const creeps = creep.room.lookForAt(LOOK_CREEPS, x, y);
+            if (creeps.length > 0)
+                continue;
+            positions.push(new RoomPosition(x, y, creep.room.name));
+        }
+    }
+    if (positions.length === 0)
+        return null;
+    // Prefer road positions
+    const roadPosition = positions.find(pos => {
+        const structures = creep.room.lookForAt(LOOK_STRUCTURES, pos);
+        return structures.some(s => s.structureType === STRUCTURE_ROAD);
+    });
+    return (_a = roadPosition !== null && roadPosition !== void 0 ? roadPosition : positions[0]) !== null && _a !== void 0 ? _a : null;
+}
+
+/**
+ * Movement Utilities
+ *
+ * Custom minimal traffic management and movement module for the ant swarm.
+ * Provides:
+ * - Coordinated movement to prevent creep collisions
+ * - Path caching for CPU efficiency
+ * - Stuck detection and recovery
+ * - Priority-based movement resolution
+ * - Move request integration for proactive blocking resolution
+ *
+ * Design Principles (from ROADMAP.md):
+ * - Pathfinding is one of the most expensive CPU operations
+ * - Use reusePath, moveByPath, cached paths, and CostMatrices
+ * - Stuck detection with repath or side-step recovery
+ * - Yield rules for priority-based movement
+ */
+// =============================================================================
+// Type Guards
+// =============================================================================
+/**
+ * Type guard to check if an entity is a Creep (not a PowerCreep).
+ * Creeps have a memory property while PowerCreeps do not have standard memory.
+ * Additionally, Creeps have spawning and ticksToLive properties with specific types.
+ */
+function isCreep(entity) {
+    // Creeps have a memory property that is directly writable
+    // PowerCreeps have memory too, but we can distinguish by other properties
+    // Creeps always have 'body' property which is an array of body parts
+    return "body" in entity && Array.isArray(entity.body);
+}
+// =============================================================================
+// Module State
+// =============================================================================
+/** Current tick's movement intents, keyed by room name */
+let moveIntents = new Map();
+/** Last tick when preTick was called */
+let lastPreTickTime = -1;
+// =============================================================================
+// Memory Keys (using underscores to minimize memory footprint)
+// =============================================================================
+const MEMORY_PATH_KEY = "_tp";
+const MEMORY_STUCK_KEY = "_ts";
+const MEMORY_LAST_POS_KEY = "_tl";
+// =============================================================================
+// Utility Functions
+// =============================================================================
+/**
+ * Create a position key for caching
+ */
+function posKey(pos) {
+    return `${pos.roomName}:${pos.x},${pos.y}`;
+}
+/**
+ * Serialize a path to JSON array (handles cross-room paths)
+ */
+function serializePath(path) {
+    return path.map(pos => ({ x: pos.x, y: pos.y, r: pos.roomName }));
+}
+/**
+ * Deserialize a path from JSON array to RoomPositions
+ */
+function deserializePath(serialized) {
+    return serialized.map(pos => new RoomPosition(pos.x, pos.y, pos.r));
+}
+/**
+ * Check if a position is on a room exit (edge of the room).
+ * Room exits are positions at x=0, x=49, y=0, or y=49.
+ */
+function isOnRoomExit(pos) {
+    return pos.x === 0 || pos.x === 49 || pos.y === 0 || pos.y === 49;
+}
+/**
+ * Find a walkable position adjacent to the creep that is NOT on a room exit.
+ * Returns null if no valid position is found.
+ */
+function findPositionOffExit(creep) {
+    const pos = creep.pos;
+    const room = Game.rooms[pos.roomName];
+    if (!room)
+        return null;
+    const terrain = room.getTerrain();
+    // Get all 8 adjacent positions, prioritizing positions further from the edge
+    const adjacentOffsets = [
+        { dx: 0, dy: -1 },
+        { dx: 1, dy: -1 },
+        { dx: 1, dy: 0 },
+        { dx: 1, dy: 1 },
+        { dx: 0, dy: 1 },
+        { dx: -1, dy: 1 },
+        { dx: -1, dy: 0 },
+        { dx: -1, dy: -1 } // TOP_LEFT
+    ];
+    // Sort to prefer positions that are more "inward" (further from all edges)
+    const candidates = [];
+    for (const offset of adjacentOffsets) {
+        const newX = pos.x + offset.dx;
+        const newY = pos.y + offset.dy;
+        // Skip positions outside the room
+        if (newX < 0 || newX > 49 || newY < 0 || newY > 49)
+            continue;
+        // Skip positions that are still on an exit
+        if (newX === 0 || newX === 49 || newY === 0 || newY === 49)
+            continue;
+        // Skip walls
+        if (terrain.get(newX, newY) === TERRAIN_MASK_WALL)
+            continue;
+        // Calculate distance from nearest edge (higher is better, more "inside" the room)
+        const edgeDistance = Math.min(newX, 49 - newX, newY, 49 - newY);
+        candidates.push({
+            pos: new RoomPosition(newX, newY, pos.roomName),
+            edgeDistance
+        });
+    }
+    // Sort by edge distance descending (prefer positions further from edges)
+    candidates.sort((a, b) => b.edgeDistance - a.edgeDistance);
+    // Return the best candidate, or null if none found
+    return candidates.length > 0 ? candidates[0].pos : null;
+}
+/**
+ * Get direction from one position to an adjacent position
+ */
+function getDirection(from, to) {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    if (dx === 0 && dy === -1)
+        return TOP;
+    if (dx === 1 && dy === -1)
+        return TOP_RIGHT;
+    if (dx === 1 && dy === 0)
+        return RIGHT;
+    if (dx === 1 && dy === 1)
+        return BOTTOM_RIGHT;
+    if (dx === 0 && dy === 1)
+        return BOTTOM;
+    if (dx === -1 && dy === 1)
+        return BOTTOM_LEFT;
+    if (dx === -1 && dy === 0)
+        return LEFT;
+    if (dx === -1 && dy === -1)
+        return TOP_LEFT;
+    // Default to RIGHT if positions aren't adjacent
+    return RIGHT;
+}
+/**
+ * Check if a room is considered hostile (has hostile structures or active hostiles)
+ */
+function isRoomHostile(roomName) {
+    const room = Game.rooms[roomName];
+    if (!room)
+        return false;
+    // Check for hostile towers (most threatening)
+    const hostileTowers = room.find(FIND_HOSTILE_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_TOWER
+    });
+    if (hostileTowers.length > 0)
+        return true;
+    // Check for hostile creeps with attack parts
+    const hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+    const hasAttackers = hostileCreeps.some(c => c.getActiveBodyparts(ATTACK) > 0 ||
+        c.getActiveBodyparts(RANGED_ATTACK) > 0);
+    return hasAttackers;
+}
+/**
+ * Generate a cost matrix for a room with multi-room awareness
+ */
+function generateCostMatrix(roomName, avoidCreeps, roadCost = 1, allowHostileRooms = false) {
+    const costs = new PathFinder.CostMatrix();
+    const room = Game.rooms[roomName];
+    // If room is not visible, allow PathFinder to use default costs
+    // unless it's a known hostile room
+    if (!room) {
+        // Check if this room is marked as hostile in cache
+        if (!allowHostileRooms && memoryManager.isRoomHostile(roomName)) {
+            return false; // Block pathing through known hostile rooms
+        }
+        return costs; // Use default costs for unknown rooms
+    }
+    // Block hostile rooms unless explicitly allowed
+    if (!allowHostileRooms && isRoomHostile(roomName)) {
+        // Mark room as hostile in cache for future reference
+        memoryManager.setRoomHostile(roomName, true);
+        return false; // Block pathing through this room
+    }
+    // Add structure costs
+    const structures = room.find(FIND_STRUCTURES);
+    for (const structure of structures) {
+        if (structure.structureType === STRUCTURE_ROAD) {
+            costs.set(structure.pos.x, structure.pos.y, roadCost);
+        }
+        else if (structure.structureType === STRUCTURE_PORTAL) {
+            // Portals are walkable but we need to handle them specially
+            costs.set(structure.pos.x, structure.pos.y, 1);
+        }
+        else if (structure.structureType !== STRUCTURE_CONTAINER &&
+            !(structure.structureType === STRUCTURE_RAMPART && "my" in structure && structure.my)) {
+            costs.set(structure.pos.x, structure.pos.y, 255);
+        }
+    }
+    // Add construction site costs
+    const sites = room.find(FIND_MY_CONSTRUCTION_SITES);
+    for (const site of sites) {
+        if (site.structureType !== STRUCTURE_ROAD && site.structureType !== STRUCTURE_CONTAINER) {
+            costs.set(site.pos.x, site.pos.y, 255);
+        }
+    }
+    // Add creep costs if avoiding creeps
+    if (avoidCreeps) {
+        const creeps = room.find(FIND_CREEPS);
+        for (const creep of creeps) {
+            costs.set(creep.pos.x, creep.pos.y, 255);
+        }
+        const powerCreeps = room.find(FIND_POWER_CREEPS);
+        for (const pc of powerCreeps) {
+            costs.set(pc.pos.x, pc.pos.y, 255);
+        }
+    }
+    return costs;
+}
+// =============================================================================
+// Path Finding
+// =============================================================================
+/**
+ * Find a path to the target using PathFinder with multi-room support
+ */
+function findPath(origin, target, opts) {
+    var _a, _b, _c, _d, _e, _f, _g;
+    const targetPos = "pos" in target ? target.pos : target;
+    const range = "range" in target ? target.range : 1;
+    const roadCost = (_a = opts.roadCost) !== null && _a !== void 0 ? _a : 1;
+    const allowHostileRooms = (_b = opts.allowHostileRooms) !== null && _b !== void 0 ? _b : false;
+    // Determine if this is a multi-room path
+    const isMultiRoom = origin.roomName !== targetPos.roomName;
+    const maxRooms = (_c = opts.maxRooms) !== null && _c !== void 0 ? _c : (isMultiRoom ? 16 : 1);
+    const goals = [{ pos: targetPos, range }];
+    const result = PathFinder.search(origin, goals, {
+        plainCost: (_d = opts.plainCost) !== null && _d !== void 0 ? _d : 2,
+        swampCost: (_e = opts.swampCost) !== null && _e !== void 0 ? _e : 10,
+        maxOps: (_f = opts.maxOps) !== null && _f !== void 0 ? _f : 2000,
+        maxRooms,
+        flee: (_g = opts.flee) !== null && _g !== void 0 ? _g : false,
+        roomCallback: (roomName) => {
+            var _a;
+            return generateCostMatrix(roomName, (_a = opts.avoidCreeps) !== null && _a !== void 0 ? _a : true, roadCost, allowHostileRooms);
+        }
+    });
+    return result;
+}
+/**
+ * Find a path to flee from multiple targets
+ */
+function findFleePath(origin, threats, range, opts) {
+    var _a, _b, _c, _d, _e, _f;
+    const goals = threats.map(pos => ({ pos, range }));
+    const roadCost = (_a = opts.roadCost) !== null && _a !== void 0 ? _a : 1;
+    const allowHostileRooms = (_b = opts.allowHostileRooms) !== null && _b !== void 0 ? _b : false;
+    const maxRooms = (_c = opts.maxRooms) !== null && _c !== void 0 ? _c : 4; // Limit flee path search
+    return PathFinder.search(origin, goals, {
+        plainCost: (_d = opts.plainCost) !== null && _d !== void 0 ? _d : 2,
+        swampCost: (_e = opts.swampCost) !== null && _e !== void 0 ? _e : 10,
+        maxOps: (_f = opts.maxOps) !== null && _f !== void 0 ? _f : 2000,
+        maxRooms,
+        flee: true,
+        roomCallback: (roomName) => {
+            var _a;
+            return generateCostMatrix(roomName, (_a = opts.avoidCreeps) !== null && _a !== void 0 ? _a : true, roadCost, allowHostileRooms);
+        }
+    });
+}
+// =============================================================================
+// Internal Core API
+// =============================================================================
+/**
+ * Internal preTick - Initialize movement system at the start of each tick.
+ */
+function preTick() {
+    moveIntents = new Map();
+    lastPreTickTime = Game.time;
+}
+/**
+ * Internal reconcileTraffic - Resolve traffic at the end of each tick.
+ * Now integrates with the move request system to ask blocking creeps to move.
+ */
+function reconcileTraffic() {
+    for (const [roomName, intents] of moveIntents) {
+        if (intents.length === 0)
+            continue;
+        // Sort by priority (highest first)
+        intents.sort((a, b) => b.priority - a.priority);
+        // Track occupied positions
+        const occupied = new Set();
+        // Build a Set of creep names that have movement intents for O(1) lookup
+        const creepsWithIntents = new Set(intents.map(i => i.creep.name));
+        // First pass: mark all current creep positions not in our intents list
+        const room = Game.rooms[roomName];
+        if (room) {
+            const creeps = room.find(FIND_CREEPS);
+            for (const creep of creeps) {
+                if (!creepsWithIntents.has(creep.name)) {
+                    occupied.add(posKey(creep.pos));
+                }
+            }
+        }
+        // Second pass: resolve movements in priority order with blocking resolution
+        for (const intent of intents) {
+            const targetKey = posKey(intent.targetPos);
+            // Check if target is occupied
+            if (occupied.has(targetKey)) {
+                // Try to resolve the blockage by asking the blocking creep to move
+                if (room) {
+                    const blockingCreeps = room.lookForAt(LOOK_CREEPS, intent.targetPos.x, intent.targetPos.y);
+                    const blockingCreep = blockingCreeps.find(c => c.my && c.name !== intent.creep.name);
+                    if (blockingCreep) {
+                        // Only ask to move if the blocking creep should yield (based on priority)
+                        // Use type guard to ensure intent.creep is a Creep (not PowerCreep)
+                        if (isCreep(intent.creep)) {
+                            if (shouldYieldTo(blockingCreep, intent.creep)) {
+                                // Check if blocking creep is in a narrow passage
+                                const inNarrowPassage = isInNarrowPassage(blockingCreep.pos, room);
+                                let movePosition = null;
+                                if (inNarrowPassage) {
+                                    // In narrow passage: ask blocker to back up
+                                    const directionToRequester = blockingCreep.pos.getDirectionTo(intent.creep.pos);
+                                    movePosition = findBackupPosition(blockingCreep, directionToRequester);
+                                }
+                                else {
+                                    // Normal situation: find a side-step position
+                                    movePosition = findSideStepPosition(blockingCreep);
+                                }
+                                if (movePosition) {
+                                    const moveResult = blockingCreep.move(blockingCreep.pos.getDirectionTo(movePosition));
+                                    if (moveResult === OK) {
+                                        // Blocking creep will move, so we can now occupy this position
+                                        occupied.delete(targetKey);
+                                        // Also mark the new position as occupied
+                                        occupied.add(posKey(movePosition));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                // Re-check if still occupied after attempting to resolve
+                if (occupied.has(targetKey)) {
+                    // Register a move request for next tick so the blocking creep knows
+                    // Only do this for Creeps, not PowerCreeps - use type guard
+                    if (isCreep(intent.creep)) {
+                        requestMoveToPosition(intent.creep, intent.targetPos);
+                    }
+                    continue;
+                }
+            }
+            // Execute the move
+            const direction = getDirection(intent.creep.pos, intent.targetPos);
+            const result = intent.creep.move(direction);
+            if (result === OK) {
+                occupied.add(targetKey);
+            }
+        }
+    }
+}
+/**
+ * Internal moveTo - Move a creep toward a target position.
+ */
+function internalMoveTo(creep, targets, opts) {
+    var _a, _b, _c, _d;
+    // Handle spawning creeps
+    if ("spawning" in creep && creep.spawning) {
+        return ERR_BUSY;
+    }
+    // Handle fatigue (only applies to Creeps, not PowerCreeps)
+    if ("fatigue" in creep && creep.fatigue > 0) {
+        return ERR_TIRED;
+    }
+    // Normalize target to RoomPosition
+    let targetPos;
+    let range = 1;
+    if (Array.isArray(targets)) {
+        const firstTarget = targets[0];
+        if (!firstTarget) {
+            return ERR_INVALID_TARGET;
+        }
+        // Check type at runtime
+        if (firstTarget instanceof RoomPosition) {
+            targetPos = firstTarget;
+        }
+        else if (typeof firstTarget === "object" &&
+            firstTarget !== null &&
+            "pos" in firstTarget &&
+            firstTarget.pos instanceof RoomPosition) {
+            targetPos = firstTarget.pos;
+            if ("range" in firstTarget && typeof firstTarget.range === "number") {
+                range = firstTarget.range;
+            }
+        }
+        else {
+            return ERR_INVALID_TARGET;
+        }
+    }
+    else if (targets instanceof RoomPosition) {
+        targetPos = targets;
+    }
+    else if (typeof targets === "object" &&
+        targets !== null &&
+        "pos" in targets &&
+        targets.pos instanceof RoomPosition) {
+        targetPos = targets.pos;
+        if ("range" in targets && typeof targets.range === "number") {
+            range = targets.range;
+        }
+    }
+    else {
+        return ERR_INVALID_TARGET;
+    }
+    const options = opts !== null && opts !== void 0 ? opts : {};
+    const priority = (_a = options.priority) !== null && _a !== void 0 ? _a : 1;
+    // Check if already at target
+    if (creep.pos.inRangeTo(targetPos, range)) {
+        return OK;
+    }
+    // CRITICAL: Handle creeps on room exits that need to move to a different room.
+    // When a creep is on an exit tile and their target is in a DIFFERENT room,
+    // they must FIRST move off the exit tile toward the room center before continuing.
+    // This prevents cycling behavior where PathFinder would route them back through the exit.
+    const onRoomExit = isOnRoomExit(creep.pos);
+    const targetInDifferentRoom = targetPos.roomName !== creep.pos.roomName;
+    if (onRoomExit && targetInDifferentRoom) {
+        // Find a walkable position off the exit that's more toward the room center
+        // Note: findPositionOffExit only returns adjacent positions (within 1 tile),
+        // so getDirection will always receive a valid adjacent position.
+        const exitOffPosition = findPositionOffExit(creep);
+        if (exitOffPosition) {
+            // Move to the off-exit position first, then next tick will continue pathing
+            const direction = getDirection(creep.pos, exitOffPosition);
+            const currentRoomName = creep.pos.roomName;
+            // Register movement intent for traffic management
+            if (lastPreTickTime === Game.time) {
+                if (!moveIntents.has(currentRoomName)) {
+                    moveIntents.set(currentRoomName, []);
+                }
+                const intents = moveIntents.get(currentRoomName);
+                if (intents) {
+                    intents.push({
+                        creep,
+                        priority: priority + 1,
+                        targetPos: exitOffPosition
+                    });
+                }
+                return OK;
+            }
+            else {
+                return creep.move(direction);
+            }
+        }
+        // If no off-exit position found, continue with normal pathing
+    }
+    // Get cached path or generate new one
+    const memory = creep.memory;
+    const cachedPath = memory[MEMORY_PATH_KEY];
+    const stuckCount = (_b = memory[MEMORY_STUCK_KEY]) !== null && _b !== void 0 ? _b : 0;
+    const lastPos = memory[MEMORY_LAST_POS_KEY];
+    const currentPosKey = posKey(creep.pos);
+    const targetKey = posKey(targetPos);
+    // Check if stuck
+    const isStuck = lastPos === currentPosKey;
+    const newStuckCount = isStuck ? stuckCount + 1 : 0;
+    memory[MEMORY_STUCK_KEY] = newStuckCount;
+    memory[MEMORY_LAST_POS_KEY] = currentPosKey;
+    // Check if creep needs to repath for cross-room movement
+    // Note: The critical exit-handling is done above; this additional check ensures
+    // stale paths from different rooms are invalidated
+    // Check if cached path is from a different room (creep changed rooms)
+    const cachedPathFirstPos = cachedPath === null || cachedPath === void 0 ? void 0 : cachedPath.path[0];
+    const cachedPathInDifferentRoom = cachedPath && cachedPath.path.length > 0 && cachedPathFirstPos && cachedPathFirstPos.r !== creep.pos.roomName;
+    // Determine if we need to repath
+    const repathIfStuck = (_c = options.repathIfStuck) !== null && _c !== void 0 ? _c : 3;
+    // OPTIMIZATION: Using 30 ticks for reusePath to balance CPU efficiency with responsiveness
+    // Longer values reduce expensive PathFinder.search calls while still adapting to changes
+    const reusePath = (_d = options.reusePath) !== null && _d !== void 0 ? _d : 30;
+    const needRepath = !cachedPath ||
+        cachedPath.targetKey !== targetKey ||
+        Game.time - cachedPath.tick > reusePath ||
+        newStuckCount >= repathIfStuck ||
+        cachedPathInDifferentRoom; // Force repath when path is from a different room
+    let path;
+    /**
+     * Helper to generate a new path and cache it.
+     * Returns the path or null if no path found.
+     */
+    function generateAndCachePath() {
+        const pathResult = findPath(creep.pos, { pos: targetPos, range }, options);
+        if (pathResult.incomplete || pathResult.path.length === 0) {
+            delete memory[MEMORY_PATH_KEY];
+            return null;
+        }
+        // Cache the path (store actual positions for cross-room compatibility)
+        memory[MEMORY_PATH_KEY] = {
+            path: serializePath(pathResult.path),
+            tick: Game.time,
+            targetKey
+        };
+        memory[MEMORY_STUCK_KEY] = 0;
+        return pathResult.path;
+    }
+    if (needRepath) {
+        const newPath = generateAndCachePath();
+        if (!newPath) {
+            return ERR_NO_PATH;
+        }
+        path = newPath;
+    }
+    else {
+        path = deserializePath(cachedPath.path);
+    }
+    // Find next position on path
+    let currentIdx = path.findIndex(p => p.x === creep.pos.x && p.y === creep.pos.y && p.roomName === creep.pos.roomName);
+    // If current position not found in path and we're on a room exit,
+    // this could mean the path is stale or doesn't include the creep's current position.
+    // Force a repath to get a valid path from current position.
+    if (currentIdx === -1 && onRoomExit) {
+        const newPath = generateAndCachePath();
+        if (!newPath) {
+            return ERR_NO_PATH;
+        }
+        path = newPath;
+        currentIdx = -1; // Will use index 0 below
+    }
+    const nextIdx = currentIdx === -1 ? 0 : currentIdx + 1;
+    if (nextIdx >= path.length) {
+        delete memory[MEMORY_PATH_KEY];
+        return OK;
+    }
+    const nextPos = path[nextIdx];
+    // Get room name from creep position (works for both Creep and PowerCreep)
+    const roomName = creep.pos.roomName;
+    // Register movement intent for traffic management
+    if (lastPreTickTime === Game.time) {
+        if (!moveIntents.has(roomName)) {
+            moveIntents.set(roomName, []);
+        }
+        const intents = moveIntents.get(roomName);
+        if (intents) {
+            intents.push({
+                creep,
+                priority,
+                targetPos: nextPos
+            });
+        }
+        // Visualize path if requested
+        if (options.visualizePathStyle) {
+            const visual = new RoomVisual(roomName);
+            const visualPath = path.slice(nextIdx);
+            if (visualPath.length > 0) {
+                visual.poly(visualPath.map(p => [p.x, p.y]), { ...options.visualizePathStyle, opacity: 0.5 });
+            }
+        }
+        return OK;
+    }
+    else {
+        // Traffic management not active, move directly
+        const direction = getDirection(creep.pos, nextPos);
+        // Visualize path if requested
+        if (options.visualizePathStyle) {
+            const visual = new RoomVisual(roomName);
+            const visualPath = path.slice(nextIdx);
+            if (visualPath.length > 0) {
+                visual.poly(visualPath.map(p => [p.x, p.y]), { ...options.visualizePathStyle, opacity: 0.5 });
+            }
+        }
+        return creep.move(direction);
+    }
+}
+/**
+ * Internal flee - Move a creep away from specified positions.
+ */
+function internalFlee(creep, threats, range = 10, opts) {
+    var _a;
+    if (threats.length === 0) {
+        return OK;
+    }
+    // Handle spawning creeps
+    if ("spawning" in creep && creep.spawning) {
+        return ERR_BUSY;
+    }
+    // Handle fatigue (only applies to Creeps, not PowerCreeps)
+    if ("fatigue" in creep && creep.fatigue > 0) {
+        return ERR_TIRED;
+    }
+    const options = { ...opts, flee: true };
+    const priority = (_a = options.priority) !== null && _a !== void 0 ? _a : 1;
+    const pathResult = findFleePath(creep.pos, threats, range, options);
+    if (pathResult.incomplete || pathResult.path.length === 0) {
+        return ERR_NO_PATH;
+    }
+    const nextPos = pathResult.path[0];
+    // Get room name from creep position (works for both Creep and PowerCreep)
+    const roomName = creep.pos.roomName;
+    // Register movement intent
+    if (lastPreTickTime === Game.time) {
+        if (!moveIntents.has(roomName)) {
+            moveIntents.set(roomName, []);
+        }
+        const intents = moveIntents.get(roomName);
+        if (intents) {
+            intents.push({
+                creep,
+                priority,
+                targetPos: nextPos
+            });
+        }
+        return OK;
+    }
+    else {
+        const direction = getDirection(creep.pos, nextPos);
+        return creep.move(direction);
+    }
+}
+// =============================================================================
+// Public API (Exported Functions)
+// =============================================================================
+/**
+ * Initialize movement system at the start of each tick.
+ * Must be called at the beginning of the main loop.
+ */
+function initMovement() {
+    preTick();
+}
+/**
+ * Reconcile traffic at the end of each tick.
+ * Must be called at the end of the main loop after all creep movement.
+ */
+function finalizeMovement() {
+    reconcileTraffic();
+}
+/**
+ * Move a creep or power creep to a target position or object.
+ *
+ * @param creep - The creep or power creep to move
+ * @param target - Target position or object with pos property
+ * @param opts - Optional movement options including visualizePathStyle
+ * @returns The result of the movement action
+ */
+function moveCreep(creep, target, opts) {
+    const targetPos = target instanceof RoomPosition ? target : target.pos;
+    return internalMoveTo(creep, targetPos, opts);
+}
+/**
+ * Move a creep to a specific room by finding and moving to an exit.
+ * Uses the room center (25, 25) with a range of 20 to navigate to any accessible
+ * position within the target room - this is the standard approach for cross-room navigation.
+ *
+ * This function handles:
+ * - Same-room navigation (returns OK if already in target room)
+ * - Multi-room pathfinding across multiple rooms
+ * - Cross-shard navigation via portals (when available)
+ * - Avoiding hostile rooms by default
+ *
+ * @param creep - The creep or power creep to move
+ * @param roomName - The name of the destination room
+ * @param opts - Optional movement options
+ * @returns The result of the movement action
+ */
+function moveToRoom(creep, roomName, opts) {
+    // Already in target room
+    if (creep.pos.roomName === roomName) {
+        return OK;
+    }
+    const targetPos = new RoomPosition(25, 25, roomName);
+    const options = { ...opts };
+    // For multi-room movement, set reasonable defaults if not specified
+    if (!options.maxRooms) {
+        options.maxRooms = 16; // Allow pathfinding through up to 16 rooms
+    }
+    if (options.allowHostileRooms === undefined) {
+        options.allowHostileRooms = false; // Avoid hostile rooms by default
+    }
+    return internalMoveTo(creep, { pos: targetPos, range: 20 }, options);
+}
+/**
+ * Move a creep away from a set of positions (flee behavior).
+ * This function always enables flee mode in the movement options.
+ *
+ * @param creep - The creep to move
+ * @param threats - Array of positions to flee from
+ * @param range - How far to stay away from threats (default 10)
+ * @param opts - Optional movement options (flee is always set to true)
+ * @returns The result of the movement action
+ */
+function fleeFrom(creep, threats, range = 10, opts) {
+    return internalFlee(creep, threats, range, opts);
+}
+/**
+ * Check if a creep is on a room exit tile (edge of the room).
+ *
+ * @param creep - The creep or power creep to check
+ * @returns true if the creep is on a room exit tile
+ */
+function isCreepOnRoomExit(creep) {
+    return isOnRoomExit(creep.pos);
+}
+/**
+ * Move a creep off a room exit tile to prevent endless cycling between rooms.
+ * This should be called when a creep is about to idle or has no immediate task,
+ * to ensure they don't get stuck on exit tiles causing oscillation between rooms.
+ *
+ * @param creep - The creep or power creep to move
+ * @param opts - Optional movement options
+ * @returns true if the creep was on an exit and a move was issued, false otherwise
+ */
+function moveOffRoomExit(creep, opts) {
+    var _a;
+    // Check if creep is on a room exit
+    if (!isOnRoomExit(creep.pos)) {
+        return false;
+    }
+    // Handle spawning creeps
+    if ("spawning" in creep && creep.spawning) {
+        return false;
+    }
+    // Handle fatigue (only applies to Creeps, not PowerCreeps)
+    if ("fatigue" in creep && creep.fatigue > 0) {
+        return false;
+    }
+    // Find a position off the exit
+    const targetPos = findPositionOffExit(creep);
+    if (!targetPos) {
+        return false;
+    }
+    // Move to the target position
+    const priority = (_a = opts === null || opts === void 0 ? void 0 : opts.priority) !== null && _a !== void 0 ? _a : 2; // Higher priority than normal movement
+    const roomName = creep.pos.roomName;
+    // Register movement intent for traffic management
+    if (lastPreTickTime === Game.time) {
+        if (!moveIntents.has(roomName)) {
+            moveIntents.set(roomName, []);
+        }
+        const intents = moveIntents.get(roomName);
+        if (intents) {
+            intents.push({
+                creep,
+                priority,
+                targetPos
+            });
+        }
+        return true;
+    }
+    else {
+        // Traffic management not active, move directly
+        const direction = getDirection(creep.pos, targetPos);
+        creep.move(direction);
+        return true;
+    }
+}
+/**
+ * Find a walkable position away from spawns.
+ * Returns null if no valid position is found or creep is not near a spawn.
+ */
+function findPositionAwayFromSpawn(creep, range) {
+    const room = Game.rooms[creep.pos.roomName];
+    if (!room)
+        return null;
+    // Find nearby spawns
+    const spawns = room.find(FIND_MY_SPAWNS);
+    if (spawns.length === 0)
+        return null;
+    // Check if creep is within range of any spawn
+    let nearbySpawn = null;
+    for (const spawn of spawns) {
+        if (creep.pos.inRangeTo(spawn.pos, range)) {
+            nearbySpawn = spawn;
+            break;
+        }
+    }
+    if (!nearbySpawn)
+        return null;
+    const terrain = room.getTerrain();
+    // Get all 8 adjacent positions
+    const adjacentOffsets = [
+        { dx: 0, dy: -1 },
+        { dx: 1, dy: -1 },
+        { dx: 1, dy: 0 },
+        { dx: 1, dy: 1 },
+        { dx: 0, dy: 1 },
+        { dx: -1, dy: 1 },
+        { dx: -1, dy: 0 },
+        { dx: -1, dy: -1 } // TOP_LEFT
+    ];
+    // Sort to prefer positions further from spawn
+    const candidates = [];
+    for (const offset of adjacentOffsets) {
+        const newX = creep.pos.x + offset.dx;
+        const newY = creep.pos.y + offset.dy;
+        // Skip positions outside the room or on exits
+        if (newX <= 0 || newX >= 49 || newY <= 0 || newY >= 49)
+            continue;
+        // Skip walls
+        if (terrain.get(newX, newY) === TERRAIN_MASK_WALL)
+            continue;
+        const newPos = new RoomPosition(newX, newY, creep.pos.roomName);
+        // Check for blocking structures
+        const structures = room.lookForAt(LOOK_STRUCTURES, newX, newY);
+        const blocked = structures.some(s => s.structureType !== STRUCTURE_ROAD &&
+            s.structureType !== STRUCTURE_CONTAINER &&
+            !(s.structureType === STRUCTURE_RAMPART && s.my));
+        if (blocked)
+            continue;
+        // Check for other creeps
+        const creeps = room.lookForAt(LOOK_CREEPS, newX, newY);
+        if (creeps.length > 0)
+            continue;
+        // Calculate distance from spawn (higher is better, further from spawn)
+        const spawnDistance = newPos.getRangeTo(nearbySpawn.pos);
+        candidates.push({
+            pos: newPos,
+            spawnDistance
+        });
+    }
+    // Sort by spawn distance descending (prefer positions further from spawn)
+    candidates.sort((a, b) => b.spawnDistance - a.spawnDistance);
+    // Return the best candidate, or null if none found
+    return candidates.length > 0 ? candidates[0].pos : null;
+}
+/**
+ * Move a creep away from spawn if it's blocking or near a spawn.
+ * This should be called when a creep is idle to prevent spawn blockades.
+ *
+ * @param creep - The creep or power creep to move
+ * @param range - Range from spawn to consider as "blocking" (default 1)
+ * @param opts - Optional movement options (only priority is used)
+ * @returns true if the creep was near a spawn and a move was issued, false otherwise
+ */
+function moveAwayFromSpawn(creep, range = 1, opts) {
+    var _a;
+    // Handle spawning creeps
+    if ("spawning" in creep && creep.spawning) {
+        return false;
+    }
+    // Handle fatigue (only applies to Creeps, not PowerCreeps)
+    if ("fatigue" in creep && creep.fatigue > 0) {
+        return false;
+    }
+    // Find a position away from spawn
+    const targetPos = findPositionAwayFromSpawn(creep, range);
+    if (!targetPos) {
+        return false;
+    }
+    // Move to the target position
+    // Use priority 2 to match moveOffRoomExit - clearing blockades is important
+    const priority = (_a = opts === null || opts === void 0 ? void 0 : opts.priority) !== null && _a !== void 0 ? _a : 2;
+    const roomName = creep.pos.roomName;
+    // Register movement intent for traffic management
+    if (lastPreTickTime === Game.time) {
+        if (!moveIntents.has(roomName)) {
+            moveIntents.set(roomName, []);
+        }
+        const intents = moveIntents.get(roomName);
+        if (intents) {
+            intents.push({
+                creep,
+                priority,
+                targetPos
+            });
+        }
+        return true;
+    }
+    else {
+        // Traffic management not active, move directly
+        const direction = getDirection(creep.pos, targetPos);
+        creep.move(direction);
+        return true;
+    }
+}
+
+/**
+ * Action Executor
+ *
+ * Executes creep actions returned by behavior functions.
+ * Handles all action types and movement when targets are out of range.
+ */
+/**
+ * Path visualization colors for different action types.
+ */
+const PATH_COLORS = {
+    harvest: "#ffaa00",
+    mineral: "#00ff00",
+    deposit: "#00ffff",
+    transfer: "#ffffff",
+    build: "#ffffff",
+    repair: "#ffff00",
+    attack: "#ff0000",
+    heal: "#00ff00",
+    move: "#0000ff"
+};
+/**
+ * Execute a creep action.
+ * Handles all action types including automatic movement when out of range.
+ */
+function executeAction(creep, action, ctx) {
+    switch (action.type) {
+        // Resource gathering
+        case "harvest":
+            executeWithRange(creep, () => creep.harvest(action.target), action.target, PATH_COLORS.harvest);
+            break;
+        case "harvestMineral":
+            executeWithRange(creep, () => creep.harvest(action.target), action.target, PATH_COLORS.mineral);
+            break;
+        case "harvestDeposit":
+            executeWithRange(creep, () => creep.harvest(action.target), action.target, PATH_COLORS.deposit);
+            break;
+        case "pickup":
+            executeWithRange(creep, () => creep.pickup(action.target), action.target, PATH_COLORS.harvest);
+            break;
+        case "withdraw":
+            executeWithRange(creep, () => creep.withdraw(action.target, action.resourceType), action.target, PATH_COLORS.harvest);
+            break;
+        // Resource delivery
+        case "transfer":
+            executeWithRange(creep, () => creep.transfer(action.target, action.resourceType), action.target, PATH_COLORS.transfer);
+            break;
+        case "drop":
+            creep.drop(action.resourceType);
+            break;
+        // Construction and maintenance
+        case "build":
+            executeWithRange(creep, () => creep.build(action.target), action.target, PATH_COLORS.build);
+            break;
+        case "repair":
+            executeWithRange(creep, () => creep.repair(action.target), action.target, PATH_COLORS.repair);
+            break;
+        case "upgrade":
+            executeWithRange(creep, () => creep.upgradeController(action.target), action.target, PATH_COLORS.transfer);
+            break;
+        case "dismantle":
+            executeWithRange(creep, () => creep.dismantle(action.target), action.target, PATH_COLORS.attack);
+            break;
+        // Combat
+        case "attack":
+            executeWithRange(creep, () => creep.attack(action.target), action.target, PATH_COLORS.attack);
+            break;
+        case "rangedAttack":
+            executeWithRange(creep, () => creep.rangedAttack(action.target), action.target, PATH_COLORS.attack);
+            break;
+        case "heal":
+            executeWithRange(creep, () => creep.heal(action.target), action.target, PATH_COLORS.heal);
+            break;
+        case "rangedHeal":
+            // Ranged heal always involves movement toward the target
+            creep.rangedHeal(action.target);
+            moveCreep(creep, action.target, { visualizePathStyle: { stroke: PATH_COLORS.heal } });
+            break;
+        // Controller actions
+        case "claim":
+            executeWithRange(creep, () => creep.claimController(action.target), action.target, PATH_COLORS.heal);
+            break;
+        case "reserve":
+            executeWithRange(creep, () => creep.reserveController(action.target), action.target, PATH_COLORS.heal);
+            break;
+        case "attackController":
+            executeWithRange(creep, () => creep.attackController(action.target), action.target, PATH_COLORS.attack);
+            break;
+        // Movement
+        case "moveTo":
+            moveCreep(creep, action.target, { visualizePathStyle: { stroke: PATH_COLORS.move } });
+            break;
+        case "moveToRoom":
+            moveToRoom(creep, action.roomName);
+            break;
+        case "flee":
+            fleeFrom(creep, action.from, 10);
+            break;
+        case "wait":
+            // If on a room exit, move off first before waiting
+            if (moveOffRoomExit(creep)) {
+                break;
+            }
+            if (!creep.pos.isEqualTo(action.position)) {
+                moveCreep(creep, action.position);
+            }
+            break;
+        case "requestMove":
+            // Register a move request for the target position
+            // This tells blocking creeps that this creep wants to move there
+            requestMoveToPosition(creep, action.target);
+            // Also move toward the target position
+            moveCreep(creep, action.target, { visualizePathStyle: { stroke: PATH_COLORS.move } });
+            break;
+        case "idle":
+            // When idle, first move off room exit tiles to prevent endless cycling between rooms
+            if (moveOffRoomExit(creep)) {
+                break;
+            }
+            // Then move away from spawns to prevent blocking new creeps
+            moveAwayFromSpawn(creep);
+            break;
+    }
+    // Update working state based on carry capacity
+    updateWorkingState$1(ctx);
+}
+/**
+ * Execute an action that requires being in range.
+ * Automatically moves toward target if out of range.
+ */
+function executeWithRange(creep, action, target, pathColor) {
+    const result = action();
+    if (result === ERR_NOT_IN_RANGE) {
+        moveCreep(creep, target, { visualizePathStyle: { stroke: pathColor } });
+    }
+}
+/**
+ * Update the working state based on creep's store capacity.
+ * Working = true when full (should deliver), false when empty (should collect).
+ */
+function updateWorkingState$1(ctx) {
+    if (ctx.isEmpty) {
+        ctx.memory.working = false;
+    }
+    if (ctx.isFull) {
+        ctx.memory.working = true;
+    }
+}
+
+/**
+ * Cached Closest Target Utility
+ *
+ * Provides CPU-efficient target finding by caching the closest target
+ * for a creep and reusing it for multiple ticks.
+ *
+ * This dramatically reduces CPU usage from repeated findClosestByRange calls
+ * which can consume 0.1-0.5 CPU per call depending on the number of targets.
+ *
+ * Design:
+ * - Cache stored in creep memory with compact key names
+ * - Target validated each tick (exists and still in range)
+ * - Automatic cache invalidation when target becomes invalid
+ * - TTL (time-to-live) to periodically refresh targets
+ * - Uses direct findClosestByRange (not safeFindClosestByRange) since we're
+ *   passing filtered arrays, not FIND_* constants that could have engine issues
+ */
+// =============================================================================
+// Memory Keys (compact for minimal footprint)
+// =============================================================================
+const CACHE_KEY = "_ct";
+// =============================================================================
+// Constants
+// =============================================================================
+/** Default TTL for cached targets (in ticks) */
+const DEFAULT_TTL = 10;
+/** Maximum range to validate cached target is still reasonable */
+const MAX_VALID_RANGE = 20;
+// =============================================================================
+// Public API
+// =============================================================================
+/**
+ * Find the closest object from an array, using cache when possible.
+ * Falls back to findClosestByRange when cache is invalid or expired.
+ *
+ * @param creep - The creep looking for a target
+ * @param targets - Array of potential targets
+ * @param typeKey - Unique key identifying the type of target (e.g., "energy", "spawn", "site")
+ * @param ttl - How many ticks to cache the target (default: 10)
+ * @returns The closest target, or null if none found
+ */
+function findCachedClosest(creep, targets, typeKey, ttl = DEFAULT_TTL) {
+    // Fast path: no targets
+    if (targets.length === 0) {
+        clearCache(creep, typeKey);
+        return null;
+    }
+    // Fast path: only one target
+    if (targets.length === 1) {
+        return targets[0];
+    }
+    const memory = creep.memory;
+    const cacheData = memory[CACHE_KEY];
+    const cached = cacheData === null || cacheData === void 0 ? void 0 : cacheData[typeKey];
+    // Check if we have a valid cache
+    if (cached && Game.time - cached.t < ttl && cached.k === typeKey) {
+        // Validate cached target still exists and is in the targets array
+        const cachedTarget = Game.getObjectById(cached.i);
+        if (cachedTarget) {
+            // Check if cached target is in the targets array
+            const stillValid = targets.some(t => t.id === cachedTarget.id);
+            if (stillValid) {
+                // Extra validation: target shouldn't be too far (prevents stale cache)
+                const range = creep.pos.getRangeTo(cachedTarget.pos);
+                if (range <= MAX_VALID_RANGE) {
+                    return cachedTarget;
+                }
+            }
+        }
+    }
+    // Cache miss or invalid - find new closest target
+    // Note: Using direct findClosestByRange here is safe because we're passing
+    // a pre-filtered array of targets, not a FIND_* constant. Engine errors only
+    // occur with FIND_* constants when there's corrupted owner data.
+    const closest = creep.pos.findClosestByRange(targets);
+    if (closest) {
+        // Update cache
+        if (!memory[CACHE_KEY]) {
+            memory[CACHE_KEY] = {};
+        }
+        memory[CACHE_KEY][typeKey] = {
+            i: closest.id,
+            t: Game.time,
+            k: typeKey
+        };
+    }
+    else {
+        // No target found, clear cache for this type
+        clearCache(creep, typeKey);
+    }
+    return closest;
+}
+/**
+ * Clear cached target for a specific type.
+ *
+ * @param creep - The creep to clear cache for
+ * @param typeKey - The type key to clear (or undefined to clear all)
+ */
+function clearCache(creep, typeKey) {
+    const memory = creep.memory;
+    const cacheData = memory[CACHE_KEY];
+    if (!cacheData)
+        return;
+    if (typeKey) {
+        delete cacheData[typeKey];
+    }
+    else {
+        delete memory[CACHE_KEY];
+    }
+}
+/**
+ * Clear all cached targets when creep's working state changes.
+ * This ensures creeps get fresh targets when switching between gathering and delivering.
+ *
+ * @param creep - The creep to clear cache for
+ */
+function clearCacheOnStateChange(creep) {
+    clearCache(creep);
+}
+
+/**
+ * Economy Behaviors
+ *
+ * Simple, human-readable behavior functions for economy roles.
+ * Each function evaluates the situation and returns an action.
+ */
+// =============================================================================
+// Type Guards
+// =============================================================================
+/**
+ * Type guard to check if an object is a Deposit.
+ * Deposits have depositType and cooldown properties, but no structureType.
+ */
+function isDeposit(obj) {
+    return (obj !== null &&
+        typeof obj === "object" &&
+        "depositType" in obj &&
+        "cooldown" in obj &&
+        !("structureType" in obj));
+}
+// =============================================================================
+// Common Patterns
+// =============================================================================
+/**
+ * Update working state based on energy levels.
+ * Returns true if creep should be working (has energy to spend).
+ * Clears cached targets when state changes to ensure fresh target selection.
+ */
+function updateWorkingState(ctx) {
+    var _a, _b;
+    const wasWorking = (_a = ctx.memory.working) !== null && _a !== void 0 ? _a : false;
+    if (ctx.isEmpty)
+        ctx.memory.working = false;
+    if (ctx.isFull)
+        ctx.memory.working = true;
+    const isWorking = (_b = ctx.memory.working) !== null && _b !== void 0 ? _b : false;
+    // Clear cached targets when working state changes
+    if (wasWorking !== isWorking) {
+        clearCacheOnStateChange(ctx.creep);
+    }
+    return isWorking;
+}
+/**
+ * Find energy to collect (common pattern for many roles).
+ * Uses cached target finding to reduce CPU usage.
+ *
+ * OPTIMIZATION: Prioritize dropped resources and containers over room.find() calls.
+ * Most rooms have containers set up, so we rarely need to fall back to harvesting.
+ */
+function findEnergy(ctx) {
+    // 1. Dropped resources (cache 5 ticks - they appear/disappear quickly)
+    if (ctx.droppedResources.length > 0) {
+        const closest = findCachedClosest(ctx.creep, ctx.droppedResources, "energy_drop", 5);
+        if (closest)
+            return { type: "pickup", target: closest };
+    }
+    // 2. Containers (cache 10 ticks - stable targets)
+    if (ctx.containers.length > 0) {
+        const closest = findCachedClosest(ctx.creep, ctx.containers, "energy_container", 10);
+        if (closest)
+            return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
+    }
+    // 3. Storage (single target, no caching needed)
+    if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+        return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+    }
+    // 4. Harvest directly (sources don't change, cache 20 ticks)
+    // This is the most expensive option due to room.find(), but rarely used
+    const sources = ctx.room.find(FIND_SOURCES_ACTIVE);
+    if (sources.length > 0) {
+        const source = findCachedClosest(ctx.creep, sources, "energy_source", 20);
+        if (source)
+            return { type: "harvest", target: source };
+    }
+    return { type: "idle" };
+}
+/**
+ * Deliver energy to spawn structures and towers.
+ * Uses cached target finding to reduce CPU usage.
+ */
+function deliverEnergy(ctx) {
+    // Spawns and extensions first (cache for 5 ticks - they fill quickly)
+    if (ctx.spawnStructures.length > 0) {
+        const closest = findCachedClosest(ctx.creep, ctx.spawnStructures, "deliver_spawn", 5);
+        if (closest)
+            return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+    }
+    // Then towers (cache for 10 ticks - they drain slower)
+    if (ctx.towers.length > 0) {
+        const closest = findCachedClosest(ctx.creep, ctx.towers, "deliver_tower", 10);
+        if (closest)
+            return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+    }
+    return null;
+}
+// =============================================================================
+// Role Behaviors
+// =============================================================================
+/**
+ * LarvaWorker - General purpose starter creep.
+ * Priority: deliver energy → haul to storage → build → upgrade
+ */
+function larvaWorker(ctx) {
+    const isWorking = updateWorkingState(ctx);
+    if (isWorking) {
+        // Try to deliver energy
+        const deliverAction = deliverEnergy(ctx);
+        if (deliverAction)
+            return deliverAction;
+        // Haul to storage when spawns/extensions/towers are full
+        if (ctx.storage && ctx.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+            return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+        }
+        // Build construction sites
+        if (ctx.prioritizedSites.length > 0) {
+            return { type: "build", target: ctx.prioritizedSites[0] };
+        }
+        // Upgrade controller
+        if (ctx.room.controller) {
+            return { type: "upgrade", target: ctx.room.controller };
+        }
+        return { type: "idle" };
+    }
+    return findEnergy(ctx);
+}
+/**
+ * Harvester - Stationary miner at a source.
+ * Sits at source, harvests, and transfers to nearby container/link.
+ */
+function harvester(ctx) {
+    let source = ctx.assignedSource;
+    // Assign a source if not already assigned
+    if (!source) {
+        source = assignSource(ctx);
+    }
+    if (!source)
+        return { type: "idle" };
+    // Move to source if not nearby
+    if (!ctx.creep.pos.isNearTo(source)) {
+        return { type: "moveTo", target: source };
+    }
+    // At source - harvest or transfer
+    // Check if creep can harvest: either has no carry capacity (drop miner) or has free space
+    // Note: store.getCapacity() returns null for creeps without CARRY parts
+    const carryCapacity = ctx.creep.store.getCapacity();
+    const hasFreeCapacity = ctx.creep.store.getFreeCapacity() > 0;
+    if (carryCapacity === null || carryCapacity === 0 || hasFreeCapacity) {
+        return { type: "harvest", target: source };
+    }
+    // Full - find nearby container or link
+    const container = findNearbyContainer(ctx.creep);
+    if (container)
+        return { type: "transfer", target: container, resourceType: RESOURCE_ENERGY };
+    const link = findNearbyLink(ctx.creep);
+    if (link)
+        return { type: "transfer", target: link, resourceType: RESOURCE_ENERGY };
+    // Drop on ground for haulers
+    return { type: "drop", resourceType: RESOURCE_ENERGY };
+}
+/**
+ * Assign a source to a harvester, trying to balance load.
+ * OPTIMIZATION: Cache source assignment counts per room per tick to avoid iterating all creeps
+ */
+function assignSource(ctx) {
+    var _a, _b;
+    const sources = ctx.room.find(FIND_SOURCES);
+    if (sources.length === 0)
+        return null;
+    // Cache source counts per room per tick
+    const cacheKey = `sourceCounts_${ctx.room.name}`;
+    const cacheTickKey = `sourceCounts_tick_${ctx.room.name}`;
+    const globalCache = global;
+    const cachedCounts = globalCache[cacheKey];
+    const cachedTick = globalCache[cacheTickKey];
+    let sourceCounts;
+    if (cachedCounts && cachedTick === Game.time) {
+        sourceCounts = cachedCounts;
+    }
+    else {
+        // Count creeps assigned to each source
+        sourceCounts = new Map();
+        for (const s of sources) {
+            sourceCounts.set(s.id, 0);
+        }
+        // OPTIMIZATION: Use for-in loop instead of Object.values() to avoid creating temporary array
+        for (const name in Game.creeps) {
+            const c = Game.creeps[name];
+            const m = c.memory;
+            if (m.role === "harvester" && m.sourceId && c.room.name === ctx.room.name) {
+                sourceCounts.set(m.sourceId, ((_a = sourceCounts.get(m.sourceId)) !== null && _a !== void 0 ? _a : 0) + 1);
+            }
+        }
+        globalCache[cacheKey] = sourceCounts;
+        globalCache[cacheTickKey] = Game.time;
+    }
+    // Find least assigned source
+    let bestSource = null;
+    let minCount = Infinity;
+    for (const s of sources) {
+        const count = (_b = sourceCounts.get(s.id)) !== null && _b !== void 0 ? _b : 0;
+        if (count < minCount) {
+            minCount = count;
+            bestSource = s;
+        }
+    }
+    if (bestSource) {
+        ctx.memory.sourceId = bestSource.id;
+    }
+    return bestSource;
+}
+function findNearbyContainer(creep) {
+    return creep.pos.findInRange(FIND_STRUCTURES, 1, {
+        filter: s => s.structureType === STRUCTURE_CONTAINER &&
+            s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+    })[0];
+}
+function findNearbyLink(creep) {
+    return creep.pos.findInRange(FIND_MY_STRUCTURES, 1, {
+        filter: s => s.structureType === STRUCTURE_LINK &&
+            s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+    })[0];
+}
+/**
+ * Hauler - Transport energy from harvesters to structures.
+ * Uses cached target finding to reduce CPU usage.
+ */
+function hauler(ctx) {
+    const isWorking = updateWorkingState(ctx);
+    if (isWorking) {
+        // Deliver energy with priority: spawn > extensions > towers > storage > containers
+        // OPTIMIZATION: Increased cache times to reduce pathfinding overhead
+        // 1. Spawns first (highest priority, cache 10 ticks - increased from 5)
+        const spawns = ctx.spawnStructures.filter((s) => s.structureType === STRUCTURE_SPAWN);
+        if (spawns.length > 0) {
+            const closest = findCachedClosest(ctx.creep, spawns, "hauler_spawn", 10);
+            if (closest)
+                return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+        }
+        // 2. Extensions second (cache 10 ticks - increased from 5)
+        const extensions = ctx.spawnStructures.filter((s) => s.structureType === STRUCTURE_EXTENSION);
+        if (extensions.length > 0) {
+            const closest = findCachedClosest(ctx.creep, extensions, "hauler_ext", 10);
+            if (closest)
+                return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+        }
+        // 3. Towers third (cache 15 ticks - increased from 10)
+        if (ctx.towers.length > 0) {
+            const closest = findCachedClosest(ctx.creep, ctx.towers, "hauler_tower", 15);
+            if (closest)
+                return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+        }
+        // 4. Storage fourth
+        if (ctx.storage && ctx.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+            return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+        }
+        // 5. Containers last (cache 15 ticks - increased from 10)
+        if (ctx.depositContainers.length > 0) {
+            const closest = findCachedClosest(ctx.creep, ctx.depositContainers, "hauler_cont", 15);
+            if (closest)
+                return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+        }
+        return { type: "idle" };
+    }
+    // Collect energy - priority order
+    // OPTIMIZATION: Increased cache times for haulers to reduce pathfinding overhead
+    // 1. Dropped resources (cache 5 ticks - increased from 3)
+    if (ctx.droppedResources.length > 0) {
+        const closest = findCachedClosest(ctx.creep, ctx.droppedResources, "hauler_drop", 5);
+        if (closest)
+            return { type: "pickup", target: closest };
+    }
+    // 2. Tombstones (cache 10 ticks - increased from 5)
+    const tombstones = ctx.room.find(FIND_TOMBSTONES, {
+        filter: t => t.store.getUsedCapacity(RESOURCE_ENERGY) > 0
+    });
+    if (tombstones.length > 0) {
+        const tombstone = findCachedClosest(ctx.creep, tombstones, "hauler_tomb", 10);
+        if (tombstone)
+            return { type: "withdraw", target: tombstone, resourceType: RESOURCE_ENERGY };
+    }
+    // 3. Containers (cache 15 ticks - increased from 10)
+    if (ctx.containers.length > 0) {
+        const closest = findCachedClosest(ctx.creep, ctx.containers, "hauler_source", 15);
+        if (closest)
+            return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
+    }
+    // 4. Storage (single target, no caching needed)
+    if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+        return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+    }
+    return { type: "idle" };
+}
+/**
+ * Builder - Construct and repair structures.
+ */
+function builder(ctx) {
+    const isWorking = updateWorkingState(ctx);
+    if (isWorking) {
+        // Build construction sites
+        if (ctx.prioritizedSites.length > 0) {
+            return { type: "build", target: ctx.prioritizedSites[0] };
+        }
+        // No sites - help upgrade
+        if (ctx.room.controller) {
+            return { type: "upgrade", target: ctx.room.controller };
+        }
+        return { type: "idle" };
+    }
+    return findEnergy(ctx);
+}
+/**
+ * Upgrader - Upgrade the room controller.
+ * OPTIMIZATION: Upgraders are stationary workers that benefit from long cache times
+ * and stable behavior to maximize idle detection efficiency.
+ */
+function upgrader(ctx) {
+    const isWorking = updateWorkingState(ctx);
+    if (isWorking) {
+        if (ctx.room.controller) {
+            return { type: "upgrade", target: ctx.room.controller };
+        }
+        return { type: "idle" };
+    }
+    // OPTIMIZATION: Find closest energy source ONCE and cache for long time (30 ticks)
+    // Upgraders are stationary, so their energy source rarely changes
+    // Priority: storage > containers near controller > any container
+    // OPTIMIZATION: Cache nearby container search per creep
+    // Upgraders are stationary so this rarely changes (30 tick cache)
+    const nearbyContainersCacheKey = "upgrader_nearby_containers";
+    const memory = ctx.creep.memory;
+    const cachedNearby = memory[nearbyContainersCacheKey];
+    let nearbyContainers = [];
+    if (cachedNearby && Game.time - cachedNearby.tick < 30) {
+        // Use cached IDs
+        nearbyContainers = cachedNearby.ids
+            .map(id => Game.getObjectById(id))
+            .filter((c) => c !== null);
+    }
+    else {
+        // Find nearby containers (within range 3 of upgrader position)
+        // This allows upgraders to position near a container and controller for maximum efficiency
+        nearbyContainers = ctx.creep.pos.findInRange(FIND_STRUCTURES, 3, {
+            filter: s => s.structureType === STRUCTURE_CONTAINER &&
+                s.store.getUsedCapacity(RESOURCE_ENERGY) > 50
+        });
+        // Cache the IDs
+        memory[nearbyContainersCacheKey] = {
+            ids: nearbyContainers.map(c => c.id),
+            tick: Game.time
+        };
+    }
+    if (nearbyContainers.length > 0) {
+        // Use the closest nearby container - this should be stable for idle detection
+        const closest = findCachedClosest(ctx.creep, nearbyContainers, "upgrader_nearby", 30);
+        if (closest)
+            return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
+    }
+    // Fallback to storage if available and has enough energy
+    if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 1000) {
+        return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+    }
+    // Fallback to any container with energy
+    if (ctx.containers.length > 0) {
+        const closest = findCachedClosest(ctx.creep, ctx.containers, "upgrader_cont", 30);
+        if (closest)
+            return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
+    }
+    // Last resort: harvest from source (cache for 30 ticks)
+    const sources = ctx.room.find(FIND_SOURCES_ACTIVE);
+    if (sources.length > 0) {
+        const source = findCachedClosest(ctx.creep, sources, "upgrader_source", 30);
+        if (source)
+            return { type: "harvest", target: source };
+    }
+    return { type: "idle" };
+}
+/**
+ * QueenCarrier - Energy distributor for spawn structures.
+ */
+function queenCarrier(ctx) {
+    const isWorking = updateWorkingState(ctx);
+    if (isWorking) {
+        // Fill spawns and extensions
+        const deliverAction = deliverEnergy(ctx);
+        if (deliverAction)
+            return deliverAction;
+        // Wait near storage
+        if (ctx.storage)
+            return { type: "moveTo", target: ctx.storage };
+        return { type: "idle" };
+    }
+    // Get energy from storage or terminal
+    if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+        return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+    }
+    if (ctx.terminal && ctx.terminal.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+        return { type: "withdraw", target: ctx.terminal, resourceType: RESOURCE_ENERGY };
+    }
+    return { type: "idle" };
+}
+/**
+ * MineralHarvester - Harvest minerals from extractors.
+ */
+function mineralHarvester(ctx) {
+    var _a;
+    const mineral = ctx.room.find(FIND_MINERALS)[0];
+    if (!mineral)
+        return { type: "idle" };
+    const extractor = mineral.pos.lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_EXTRACTOR);
+    if (!extractor)
+        return { type: "idle" };
+    if (mineral.mineralAmount === 0) {
+        // Mineral depleted - wait near storage
+        if (ctx.storage)
+            return { type: "moveTo", target: ctx.storage };
+        return { type: "idle" };
+    }
+    if (ctx.isFull) {
+        const target = (_a = ctx.terminal) !== null && _a !== void 0 ? _a : ctx.storage;
+        if (target) {
+            const mineralType = Object.keys(ctx.creep.store)[0];
+            return { type: "transfer", target, resourceType: mineralType };
+        }
+    }
+    return { type: "harvestMineral", target: mineral };
+}
+/**
+ * DepositHarvester - Harvest from highway deposits.
+ */
+function depositHarvester(ctx) {
+    var _a;
+    // Find or assign target deposit
+    if (!ctx.memory.targetId) {
+        const deposits = ctx.room.find(FIND_DEPOSITS);
+        if (deposits.length > 0) {
+            const best = deposits.reduce((a, b) => (a.cooldown < b.cooldown ? a : b));
+            // Store the deposit ID. This is safe because Screeps object IDs are always strings,
+            // and Deposit IDs are compatible with Id<_HasId>. We only use targetId for deposits in this role.
+            ctx.memory.targetId = best.id;
+        }
+    }
+    if (!ctx.memory.targetId)
+        return { type: "idle" };
+    // Attempt to get the deposit - may return null if ID is invalid or object no longer exists
+    // We use a type guard to verify this is actually a Deposit
+    const depositObj = Game.getObjectById(ctx.memory.targetId);
+    if (!depositObj || !isDeposit(depositObj)) {
+        // Invalid or missing deposit - clear target and idle
+        delete ctx.memory.targetId;
+        return { type: "idle" };
+    }
+    const deposit = depositObj;
+    // Check if deposit is on cooldown
+    if (deposit.cooldown > 100) {
+        delete ctx.memory.targetId;
+        return { type: "idle" };
+    }
+    if (ctx.isFull) {
+        // Return home
+        const homeRoom = Game.rooms[ctx.homeRoom];
+        if (homeRoom) {
+            const target = (_a = homeRoom.terminal) !== null && _a !== void 0 ? _a : homeRoom.storage;
+            if (target) {
+                const resourceType = Object.keys(ctx.creep.store)[0];
+                return { type: "transfer", target, resourceType };
+            }
+        }
+        return { type: "moveToRoom", roomName: ctx.homeRoom };
+    }
+    return { type: "harvestDeposit", target: deposit };
+}
+/**
+ * LabTech - Manage lab reactions and compounds.
+ */
+function labTech(ctx) {
+    var _a, _b;
+    if (ctx.labs.length === 0)
+        return { type: "idle" };
+    const inputLabs = ctx.labs.slice(0, 2);
+    const outputLabs = ctx.labs.slice(2);
+    // If carrying resources, deliver them
+    if (ctx.creep.store.getUsedCapacity() > 0) {
+        const resourceType = Object.keys(ctx.creep.store)[0];
+        // Base minerals go to input labs, compounds go to storage/terminal
+        const baseMinerals = [
+            RESOURCE_HYDROGEN, RESOURCE_OXYGEN, RESOURCE_UTRIUM,
+            RESOURCE_LEMERGIUM, RESOURCE_KEANIUM, RESOURCE_ZYNTHIUM, RESOURCE_CATALYST
+        ];
+        if (resourceType !== RESOURCE_ENERGY && !baseMinerals.includes(resourceType)) {
+            const target = (_a = ctx.terminal) !== null && _a !== void 0 ? _a : ctx.storage;
+            if (target)
+                return { type: "transfer", target, resourceType };
+        }
+        // Put base minerals in input labs
+        for (const lab of inputLabs) {
+            const capacity = lab.store.getFreeCapacity(resourceType);
+            if (capacity !== null && capacity > 0) {
+                return { type: "transfer", target: lab, resourceType };
+            }
+        }
+    }
+    // Collect products from output labs
+    for (const lab of outputLabs) {
+        const mineralType = lab.mineralType;
+        if (mineralType && lab.store.getUsedCapacity(mineralType) > 100) {
+            return { type: "withdraw", target: lab, resourceType: mineralType };
+        }
+    }
+    // Fill input labs from terminal/storage
+    const source = (_b = ctx.terminal) !== null && _b !== void 0 ? _b : ctx.storage;
+    if (source) {
+        const minerals = [
+            RESOURCE_HYDROGEN, RESOURCE_OXYGEN, RESOURCE_UTRIUM,
+            RESOURCE_LEMERGIUM, RESOURCE_KEANIUM, RESOURCE_ZYNTHIUM, RESOURCE_CATALYST
+        ];
+        for (const lab of inputLabs) {
+            for (const mineral of minerals) {
+                if (source.store.getUsedCapacity(mineral) > 0 && lab.store.getFreeCapacity(mineral) > 0) {
+                    return { type: "withdraw", target: source, resourceType: mineral };
+                }
+            }
+        }
+    }
+    return { type: "idle" };
+}
+/**
+ * FactoryWorker - Supply factory with materials.
+ */
+function factoryWorker(ctx) {
+    var _a;
+    if (!ctx.factory)
+        return { type: "idle" };
+    const isWorking = updateWorkingState(ctx);
+    if (isWorking) {
+        const resourceType = Object.keys(ctx.creep.store)[0];
+        return { type: "transfer", target: ctx.factory, resourceType };
+    }
+    const source = (_a = ctx.terminal) !== null && _a !== void 0 ? _a : ctx.storage;
+    if (!source)
+        return { type: "idle" };
+    // Supply energy first
+    if (ctx.factory.store.getUsedCapacity(RESOURCE_ENERGY) < 5000 &&
+        source.store.getUsedCapacity(RESOURCE_ENERGY) > 10000) {
+        return { type: "withdraw", target: source, resourceType: RESOURCE_ENERGY };
+    }
+    // Supply bars/materials
+    const bars = [
+        RESOURCE_UTRIUM_BAR, RESOURCE_LEMERGIUM_BAR, RESOURCE_KEANIUM_BAR,
+        RESOURCE_ZYNTHIUM_BAR, RESOURCE_OXIDANT, RESOURCE_REDUCTANT
+    ];
+    for (const bar of bars) {
+        if (ctx.factory.store.getUsedCapacity(bar) < 500 && source.store.getUsedCapacity(bar) > 0) {
+            return { type: "withdraw", target: source, resourceType: bar };
+        }
+    }
+    return { type: "idle" };
+}
+// =============================================================================
+// Role Dispatcher
+// =============================================================================
+/**
+ * RemoteHarvester - Stationary miner in remote room.
+ * Travels to remote room, sits at source, harvests to container.
+ */
+function remoteHarvester(ctx) {
+    var _a;
+    // Get target room from memory
+    const targetRoom = (_a = ctx.memory.targetRoom) !== null && _a !== void 0 ? _a : ctx.memory.homeRoom;
+    // If not in target room, move there
+    if (ctx.room.name !== targetRoom) {
+        return { type: "moveToRoom", roomName: targetRoom };
+    }
+    // In target room - find or assign source
+    let source = ctx.assignedSource;
+    if (!source) {
+        source = assignSource(ctx);
+    }
+    if (!source)
+        return { type: "idle" };
+    // Move to source if not nearby
+    if (!ctx.creep.pos.isNearTo(source)) {
+        return { type: "moveTo", target: source };
+    }
+    // At source - harvest or transfer to container
+    const carryCapacity = ctx.creep.store.getCapacity();
+    const hasFreeCapacity = ctx.creep.store.getFreeCapacity() > 0;
+    if (carryCapacity === null || carryCapacity === 0 || hasFreeCapacity) {
+        return { type: "harvest", target: source };
+    }
+    // Full - find nearby container
+    const containers = source.pos.findInRange(FIND_STRUCTURES, 2, {
+        filter: s => s.structureType === STRUCTURE_CONTAINER
+    });
+    if (containers.length > 0) {
+        return { type: "transfer", target: containers[0], resourceType: RESOURCE_ENERGY };
+    }
+    // No container - drop energy for haulers
+    return { type: "drop", resourceType: RESOURCE_ENERGY };
+}
+/**
+ * RemoteHauler - Transports energy from remote room to home room.
+ * Picks up from remote containers/ground, delivers to home storage.
+ */
+function remoteHauler(ctx) {
+    const isWorking = updateWorkingState(ctx);
+    const targetRoom = ctx.memory.targetRoom;
+    const homeRoom = ctx.memory.homeRoom;
+    // If no targetRoom is set or targetRoom equals homeRoom, this remote hauler has no valid assignment
+    // It should idle until it gets reassigned or dies
+    if (!targetRoom || targetRoom === homeRoom) {
+        return { type: "idle" };
+    }
+    if (isWorking) {
+        // Has energy - return to home room and deliver
+        if (ctx.room.name !== homeRoom) {
+            return { type: "moveToRoom", roomName: homeRoom };
+        }
+        // In home room - deliver with priority: spawn > extensions > towers > storage > containers
+        // 1. Spawns first (highest priority, cache 5 ticks)
+        const spawns = ctx.spawnStructures.filter((s) => s.structureType === STRUCTURE_SPAWN);
+        if (spawns.length > 0) {
+            const closest = findCachedClosest(ctx.creep, spawns, "remoteHauler_spawn", 5);
+            if (closest)
+                return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+        }
+        // 2. Extensions second (cache 5 ticks)
+        const extensions = ctx.spawnStructures.filter((s) => s.structureType === STRUCTURE_EXTENSION);
+        if (extensions.length > 0) {
+            const closest = findCachedClosest(ctx.creep, extensions, "remoteHauler_ext", 5);
+            if (closest)
+                return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+        }
+        // 3. Towers third (cache 10 ticks)
+        if (ctx.towers.length > 0) {
+            const closest = findCachedClosest(ctx.creep, ctx.towers, "remoteHauler_tower", 10);
+            if (closest)
+                return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+        }
+        // 4. Storage fourth
+        if (ctx.storage && ctx.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+            return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+        }
+        // 5. Containers last (for early game or when storage is full/unavailable, cache 10 ticks)
+        if (ctx.depositContainers.length > 0) {
+            const closest = findCachedClosest(ctx.creep, ctx.depositContainers, "remoteHauler_cont", 10);
+            if (closest)
+                return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+        }
+        return { type: "idle" };
+    }
+    else {
+        // Empty - go to remote room and collect
+        if (ctx.room.name !== targetRoom) {
+            return { type: "moveToRoom", roomName: targetRoom };
+        }
+        // In remote room - collect from containers or ground
+        const containers = ctx.room.find(FIND_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_CONTAINER && s.store.getUsedCapacity(RESOURCE_ENERGY) > 0
+        });
+        if (containers.length > 0) {
+            const closest = findCachedClosest(ctx.creep, containers, "remoteHauler_remoteCont", 10);
+            if (closest)
+                return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
+        }
+        // Check for dropped energy (cache 3 ticks - they disappear quickly)
+        const dropped = ctx.room.find(FIND_DROPPED_RESOURCES, {
+            filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 50
+        });
+        if (dropped.length > 0) {
+            const closest = findCachedClosest(ctx.creep, dropped, "remoteHauler_remoteDrop", 3);
+            if (closest)
+                return { type: "pickup", target: closest };
+        }
+        return { type: "idle" };
+    }
+}
+/**
+ * InterRoomCarrier - Transfer resources between rooms in a cluster.
+ * Used for pre-terminal resource sharing to help stabilize room economies.
+ */
+function interRoomCarrier(ctx) {
+    const mem = ctx.memory;
+    // If no transfer request, go idle (should be assigned by spawn logic)
+    if (!mem.transferRequest) {
+        return { type: "idle" };
+    }
+    const { fromRoom, toRoom, resourceType } = mem.transferRequest;
+    const isCarrying = ctx.creep.store.getUsedCapacity(resourceType) > 0;
+    if (isCarrying) {
+        // Carrying resources - deliver to target room
+        if (ctx.room.name !== toRoom) {
+            return { type: "moveToRoom", roomName: toRoom };
+        }
+        // In target room - find delivery target
+        const room = Game.rooms[toRoom];
+        if (!room)
+            return { type: "moveToRoom", roomName: toRoom };
+        // Try storage first, then containers
+        if (room.storage) {
+            return { type: "transfer", target: room.storage, resourceType };
+        }
+        // Find containers with space
+        const containers = room.find(FIND_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_CONTAINER && s.store.getFreeCapacity(resourceType) > 0
+        });
+        if (containers.length > 0) {
+            const closest = findCachedClosest(ctx.creep, containers, "interRoomCarrier_targetCont", 10);
+            if (closest)
+                return { type: "transfer", target: closest, resourceType };
+        }
+        // If nowhere to deliver, drop it near spawn
+        const spawns = room.find(FIND_MY_SPAWNS);
+        if (spawns.length > 0) {
+            if (ctx.creep.pos.isNearTo(spawns[0])) {
+                return { type: "drop", resourceType };
+            }
+            return { type: "moveTo", target: spawns[0].pos };
+        }
+        return { type: "idle" };
+    }
+    else {
+        // Empty - collect from source room
+        if (ctx.room.name !== fromRoom) {
+            return { type: "moveToRoom", roomName: fromRoom };
+        }
+        // In source room - find resource to collect
+        const room = Game.rooms[fromRoom];
+        if (!room)
+            return { type: "moveToRoom", roomName: fromRoom };
+        // Try storage first
+        if (room.storage && room.storage.store.getUsedCapacity(resourceType) > 0) {
+            return { type: "withdraw", target: room.storage, resourceType };
+        }
+        // Try containers
+        const containers = room.find(FIND_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_CONTAINER && s.store.getUsedCapacity(resourceType) > 0
+        });
+        if (containers.length > 0) {
+            const closest = findCachedClosest(ctx.creep, containers, "interRoomCarrier_sourceCont", 10);
+            if (closest)
+                return { type: "withdraw", target: closest, resourceType };
+        }
+        return { type: "idle" };
+    }
+}
+const economyBehaviors = {
+    larvaWorker,
+    harvester,
+    hauler,
+    builder,
+    upgrader,
+    queenCarrier,
+    mineralHarvester,
+    depositHarvester,
+    labTech,
+    factoryWorker,
+    remoteHarvester,
+    remoteHauler,
+    interRoomCarrier
+};
+/**
+ * Evaluate and return an action for an economy role creep.
+ */
+function evaluateEconomyBehavior(ctx) {
+    var _a;
+    const behavior = (_a = economyBehaviors[ctx.memory.role]) !== null && _a !== void 0 ? _a : larvaWorker;
+    return behavior(ctx);
+}
+
+/**
+ * Military Behaviors
+ *
+ * Simple, human-readable behavior functions for military roles.
+ * Includes defense, offense, and squad-based combat.
+ */
+const patrolWaypointCache = new Map();
+/**
+ * Get patrol waypoints for a room covering exits and spawn areas.
+ * OPTIMIZATION: Cache waypoints per room and only regenerate if spawns change.
+ * This saves CPU by avoiding repeated room.find() and terrain checks.
+ */
+function getPatrolWaypoints(room) {
+    const spawns = room.find(FIND_MY_SPAWNS);
+    const spawnCount = spawns.length;
+    // Check cache first
+    const cached = patrolWaypointCache.get(room.name);
+    if (cached && cached.spawnCount === spawnCount && Game.time - cached.tick < 1000) {
+        return cached.waypoints;
+    }
+    const roomName = room.name;
+    // Generate patrol points covering key defensive positions
+    const waypoints = [];
+    // Add spawn area positions (offset from spawns)
+    for (const spawn of spawns) {
+        waypoints.push(new RoomPosition(spawn.pos.x + 3, spawn.pos.y + 3, roomName));
+        waypoints.push(new RoomPosition(spawn.pos.x - 3, spawn.pos.y - 3, roomName));
+    }
+    // Add exit patrol positions (center of each exit side)
+    // Top exit
+    waypoints.push(new RoomPosition(25, 5, roomName));
+    // Bottom exit
+    waypoints.push(new RoomPosition(25, 44, roomName));
+    // Left exit
+    waypoints.push(new RoomPosition(5, 25, roomName));
+    // Right exit
+    waypoints.push(new RoomPosition(44, 25, roomName));
+    // Clamp positions to valid room bounds and filter out walls
+    const filtered = waypoints
+        .map(pos => {
+        const x = Math.max(2, Math.min(47, pos.x));
+        const y = Math.max(2, Math.min(47, pos.y));
+        return { x, y, roomName };
+    })
+        .filter(pos => {
+        const terrain = room.getTerrain().get(pos.x, pos.y);
+        return terrain !== TERRAIN_MASK_WALL;
+    })
+        .map(pos => new RoomPosition(pos.x, pos.y, pos.roomName));
+    // Cache with spawn count for invalidation
+    patrolWaypointCache.set(room.name, {
+        waypoints: filtered,
+        spawnCount,
+        tick: Game.time
+    });
+    return filtered;
+}
+/**
+ * Get the next patrol waypoint for a creep.
+ * Cycles through waypoints in order.
+ */
+function getNextPatrolWaypoint(creep, waypoints) {
+    var _a;
+    if (waypoints.length === 0)
+        return null;
+    const mem = creep.memory;
+    // Initialize patrol index if not set
+    if (mem.patrolIndex === undefined) {
+        mem.patrolIndex = 0;
+    }
+    const currentWaypoint = waypoints[mem.patrolIndex % waypoints.length];
+    // Check if we've reached the current waypoint (within 2 tiles using Chebyshev distance)
+    if (currentWaypoint && creep.pos.getRangeTo(currentWaypoint) <= 2) {
+        // Move to next waypoint
+        mem.patrolIndex = (mem.patrolIndex + 1) % waypoints.length;
+    }
+    return (_a = waypoints[mem.patrolIndex % waypoints.length]) !== null && _a !== void 0 ? _a : null;
+}
+// =============================================================================
+// Combat Helpers
+// =============================================================================
+/**
+ * Find the highest priority hostile target.
+ * Priority: Healers > Ranged > Melee > Claimers > Workers
+ *
+ * Note: We intentionally do NOT use caching here because:
+ * 1. Priority scoring is complex and position-independent
+ * 2. Cache would only store the closest target, not the highest priority
+ * 3. Combat is dynamic - priorities change frequently as creeps take damage
+ * 4. This function is only called when hostiles are present (not every tick)
+ *
+ * OPTIMIZATION: Use getActiveBodyparts() instead of iterating all body parts.
+ * This is much faster as it's a native engine call and only counts active parts.
+ */
+function findPriorityTarget(ctx) {
+    var _a, _b;
+    if (ctx.hostiles.length === 0)
+        return null;
+    const scored = ctx.hostiles.map(hostile => {
+        let score = 0;
+        // Use getActiveBodyparts() for faster body part counting
+        // OPTIMIZATION: This is O(1) per body part type vs O(n) for iterating all parts
+        const healParts = hostile.getActiveBodyparts(HEAL);
+        const rangedParts = hostile.getActiveBodyparts(RANGED_ATTACK);
+        const attackParts = hostile.getActiveBodyparts(ATTACK);
+        const claimParts = hostile.getActiveBodyparts(CLAIM);
+        const workParts = hostile.getActiveBodyparts(WORK);
+        // Calculate score based on body composition
+        score += healParts * 100;
+        score += rangedParts * 50;
+        score += attackParts * 40;
+        score += claimParts * 60;
+        score += workParts * 30;
+        // Check for any boosted parts (rare, so only check if score is high)
+        if (score > 0) {
+            for (const part of hostile.body) {
+                if (part.boost) {
+                    score += 20;
+                    break; // Only add boost bonus once
+                }
+            }
+        }
+        return { hostile, score };
+    });
+    scored.sort((a, b) => b.score - a.score);
+    return (_b = (_a = scored[0]) === null || _a === void 0 ? void 0 : _a.hostile) !== null && _b !== void 0 ? _b : null;
+}
+/**
+ * Check if creep has a specific body part.
+ */
+function hasBodyPart(creep, part) {
+    return creep.getActiveBodyparts(part) > 0;
+}
+/**
+ * Get squad memory by ID.
+ */
+function getSquadMemory(squadId) {
+    var _a;
+    const mem = Memory;
+    return (_a = mem.squads) === null || _a === void 0 ? void 0 : _a[squadId];
+}
+// =============================================================================
+// Role Behaviors
+// =============================================================================
+/**
+ * Guard - Home defense creep.
+ * Attacks nearby hostiles, patrols the room when idle.
+ * Guards stay in their home room and do not chase hostiles outside.
+ */
+function guard(ctx) {
+    const mem = ctx.creep.memory;
+    // Guards should not leave their home room - clear any assist assignments
+    if (mem.assistTarget) {
+        delete mem.assistTarget;
+    }
+    // Return to home room if not there
+    if (ctx.creep.room.name !== ctx.homeRoom) {
+        return { type: "moveToRoom", roomName: ctx.homeRoom };
+    }
+    // Normal home defense behavior - only engage hostiles in home room
+    const target = findPriorityTarget(ctx);
+    if (target) {
+        const range = ctx.creep.pos.getRangeTo(target);
+        const hasRanged = hasBodyPart(ctx.creep, RANGED_ATTACK);
+        const hasMelee = hasBodyPart(ctx.creep, ATTACK);
+        if (hasRanged && range <= 3)
+            return { type: "rangedAttack", target };
+        if (hasMelee && range <= 1)
+            return { type: "attack", target };
+        return { type: "moveTo", target };
+    }
+    // No hostiles - patrol the room
+    const waypoints = getPatrolWaypoints(ctx.room);
+    const nextWaypoint = getNextPatrolWaypoint(ctx.creep, waypoints);
+    if (nextWaypoint) {
+        return { type: "moveTo", target: nextWaypoint };
+    }
+    // Fallback: move near spawn if no waypoints available
+    const spawn = ctx.creep.pos.findClosestByRange(FIND_MY_SPAWNS);
+    if (spawn && ctx.creep.pos.getRangeTo(spawn) > 5) {
+        return { type: "moveTo", target: spawn };
+    }
+    return { type: "idle" };
+}
+/**
+ * Healer - Support creep that heals allies.
+ * Priority: self-heal if critical → heal nearby allies → follow military creeps
+ * Can assist neighboring rooms when requested.
+ */
+function healer(ctx) {
+    const mem = ctx.creep.memory;
+    // Always heal self if critically damaged
+    if (ctx.creep.hits < ctx.creep.hitsMax * 0.5) {
+        return { type: "heal", target: ctx.creep };
+    }
+    // Check if assigned to assist another room
+    if (mem.assistTarget) {
+        const assistRoom = Game.rooms[mem.assistTarget];
+        if (assistRoom) {
+            const hostiles = assistRoom.find(FIND_HOSTILE_CREEPS);
+            if (hostiles.length === 0) {
+                // Threat resolved, clear assignment
+                delete mem.assistTarget;
+                return { type: "idle" };
+            }
+            // Move to assist room if not there yet
+            if (ctx.creep.room.name !== mem.assistTarget) {
+                return { type: "moveToRoom", roomName: mem.assistTarget };
+            }
+        }
+        else {
+            // Can't see assist room - move towards it
+            return { type: "moveToRoom", roomName: mem.assistTarget };
+        }
+    }
+    // Heal nearby damaged allies
+    const damagedNearby = ctx.creep.pos.findInRange(FIND_MY_CREEPS, 3, {
+        filter: c => c.hits < c.hitsMax
+    });
+    if (damagedNearby.length > 0) {
+        damagedNearby.sort((a, b) => a.hits / a.hitsMax - b.hits / b.hitsMax);
+        const target = damagedNearby[0];
+        const range = ctx.creep.pos.getRangeTo(target);
+        if (range <= 1)
+            return { type: "heal", target };
+        return { type: "rangedHeal", target };
+    }
+    // Follow military creeps (cache for 5 ticks)
+    const militaryCreeps = ctx.room.find(FIND_MY_CREEPS, {
+        filter: c => {
+            const m = c.memory;
+            return m.family === "military" && m.role !== "healer";
+        }
+    });
+    if (militaryCreeps.length > 0) {
+        const military = findCachedClosest(ctx.creep, militaryCreeps, "healer_follow", 5);
+        if (military)
+            return { type: "moveTo", target: military };
+    }
+    return { type: "idle" };
+}
+/**
+ * Soldier - Offensive combat creep.
+ * Attacks hostiles and hostile structures.
+ */
+function soldier(ctx) {
+    var _a;
+    // Check for squad assignment
+    if (ctx.memory.squadId) {
+        const squad = getSquadMemory(ctx.memory.squadId);
+        if (squad)
+            return squadBehavior(ctx, squad);
+    }
+    // Solo behavior
+    const targetRoom = (_a = ctx.memory.targetRoom) !== null && _a !== void 0 ? _a : ctx.homeRoom;
+    // Move to target room
+    if (ctx.room.name !== targetRoom) {
+        return { type: "moveToRoom", roomName: targetRoom };
+    }
+    // Find and attack hostile creeps
+    const target = findPriorityTarget(ctx);
+    if (target) {
+        const range = ctx.creep.pos.getRangeTo(target);
+        const hasRanged = hasBodyPart(ctx.creep, RANGED_ATTACK);
+        const hasMelee = hasBodyPart(ctx.creep, ATTACK);
+        if (hasRanged && range <= 3)
+            return { type: "rangedAttack", target };
+        if (hasMelee && range <= 1)
+            return { type: "attack", target };
+        return { type: "moveTo", target };
+    }
+    // Attack hostile structures - use safeFindClosestByRange to handle engine errors
+    const hostileStructure = safeFindClosestByRange(ctx.creep.pos, FIND_HOSTILE_STRUCTURES, {
+        filter: s => s.structureType !== STRUCTURE_CONTROLLER
+    });
+    if (hostileStructure)
+        return { type: "attack", target: hostileStructure };
+    // No targets - patrol the room
+    const waypoints = getPatrolWaypoints(ctx.room);
+    const nextWaypoint = getNextPatrolWaypoint(ctx.creep, waypoints);
+    if (nextWaypoint) {
+        return { type: "moveTo", target: nextWaypoint };
+    }
+    // Fallback: move near spawn if no waypoints available (cache 20 ticks - spawns don't move)
+    const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+    if (spawns.length > 0) {
+        const spawn = findCachedClosest(ctx.creep, spawns, "soldier_spawn", 20);
+        if (spawn && ctx.creep.pos.getRangeTo(spawn) > 5) {
+            return { type: "moveTo", target: spawn };
+        }
+    }
+    return { type: "idle" };
+}
+/**
+ * Siege - Dismantler creep for breaking defenses.
+ * Priority: spawns → towers → walls/ramparts → other structures
+ */
+function siege(ctx) {
+    var _a;
+    // Check for squad assignment
+    if (ctx.memory.squadId) {
+        const squad = getSquadMemory(ctx.memory.squadId);
+        if (squad)
+            return squadBehavior(ctx, squad);
+    }
+    const targetRoom = (_a = ctx.memory.targetRoom) !== null && _a !== void 0 ? _a : ctx.homeRoom;
+    // Move to target room
+    if (ctx.room.name !== targetRoom) {
+        return { type: "moveToRoom", roomName: targetRoom };
+    }
+    // Priority targets for dismantling - use safeFindClosestByRange to handle engine errors
+    const spawn = safeFindClosestByRange(ctx.creep.pos, FIND_HOSTILE_SPAWNS);
+    if (spawn)
+        return { type: "dismantle", target: spawn };
+    const tower = safeFindClosestByRange(ctx.creep.pos, FIND_HOSTILE_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_TOWER
+    });
+    if (tower)
+        return { type: "dismantle", target: tower };
+    // OPTIMIZATION: Use room.find() once and filter, then cache the result
+    // Walls/ramparts don't change often, cache for 10 ticks
+    // IMPORTANT: Only target enemy walls/ramparts, not our own
+    // Walls are neutral structures, ramparts have ownership
+    const walls = ctx.room.find(FIND_STRUCTURES, {
+        filter: s => {
+            var _a;
+            if (s.structureType === STRUCTURE_WALL) {
+                // Walls are neutral, only dismantle if in hostile room
+                return s.hits < 100000 && !((_a = ctx.room.controller) === null || _a === void 0 ? void 0 : _a.my);
+            }
+            if (s.structureType === STRUCTURE_RAMPART) {
+                // Ramparts have ownership - only dismantle enemy ramparts
+                return s.hits < 100000 && !s.my;
+            }
+            return false;
+        }
+    });
+    if (walls.length > 0) {
+        const wall = findCachedClosest(ctx.creep, walls, "siege_wall", 10);
+        if (wall)
+            return { type: "dismantle", target: wall };
+    }
+    const structure = safeFindClosestByRange(ctx.creep.pos, FIND_HOSTILE_STRUCTURES, {
+        filter: s => s.structureType !== STRUCTURE_CONTROLLER
+    });
+    if (structure)
+        return { type: "dismantle", target: structure };
+    // No targets - patrol the room
+    const waypoints = getPatrolWaypoints(ctx.room);
+    const nextWaypoint = getNextPatrolWaypoint(ctx.creep, waypoints);
+    if (nextWaypoint) {
+        return { type: "moveTo", target: nextWaypoint };
+    }
+    // Fallback: move near spawn if no waypoints available (cache 20 ticks - spawns don't move)
+    const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+    if (spawns.length > 0) {
+        const mySpawn = findCachedClosest(ctx.creep, spawns, "siege_spawn", 20);
+        if (mySpawn && ctx.creep.pos.getRangeTo(mySpawn) > 5) {
+            return { type: "moveTo", target: mySpawn };
+        }
+    }
+    return { type: "idle" };
+}
+/**
+ * Harasser - Hit-and-run attacker targeting workers.
+ * Flees from dangerous combat creeps.
+ */
+function harasser(ctx) {
+    const targetRoom = ctx.memory.targetRoom;
+    if (!targetRoom) {
+        const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+        if (spawns.length > 0) {
+            const spawn = findCachedClosest(ctx.creep, spawns, "harasser_spawn", 20);
+            if (spawn)
+                return { type: "moveTo", target: spawn };
+        }
+        return { type: "idle" };
+    }
+    // Move to target room
+    if (ctx.room.name !== targetRoom) {
+        return { type: "moveToRoom", roomName: targetRoom };
+    }
+    // Check for dangerous hostiles nearby - flee if present
+    const dangerous = ctx.hostiles.filter(h => ctx.creep.pos.getRangeTo(h) < 5 &&
+        h.body.some(p => p.type === ATTACK || p.type === RANGED_ATTACK));
+    if (dangerous.length > 0) {
+        return { type: "flee", from: dangerous.map(d => d.pos) };
+    }
+    // Target workers
+    const workers = ctx.hostiles.filter(h => h.body.some(p => p.type === WORK || p.type === CARRY));
+    if (workers.length > 0) {
+        const target = workers.reduce((a, b) => ctx.creep.pos.getRangeTo(a) < ctx.creep.pos.getRangeTo(b) ? a : b);
+        const range = ctx.creep.pos.getRangeTo(target);
+        if (range <= 1)
+            return { type: "attack", target };
+        if (range <= 3)
+            return { type: "rangedAttack", target };
+        return { type: "moveTo", target };
+    }
+    return { type: "idle" };
+}
+/**
+ * Ranger - Ranged kiting creep.
+ * Maintains distance of 3 tiles while attacking.
+ */
+function ranger(ctx) {
+    const mem = ctx.creep.memory;
+    // Check if assigned to assist another room
+    if (mem.assistTarget) {
+        const assistRoom = Game.rooms[mem.assistTarget];
+        if (assistRoom) {
+            const hostiles = assistRoom.find(FIND_HOSTILE_CREEPS);
+            if (hostiles.length === 0) {
+                // Threat resolved, clear assignment
+                delete mem.assistTarget;
+                return { type: "idle" };
+            }
+            // Move to assist room if not there yet
+            if (ctx.creep.room.name !== mem.assistTarget) {
+                return { type: "moveToRoom", roomName: mem.assistTarget };
+            }
+            // In assist room - engage hostiles
+            const assistTarget = findPriorityTarget(ctx);
+            if (assistTarget) {
+                const range = ctx.creep.pos.getRangeTo(assistTarget);
+                if (range < 3)
+                    return { type: "flee", from: [assistTarget.pos] };
+                if (range <= 3)
+                    return { type: "rangedAttack", target: assistTarget };
+                return { type: "moveTo", target: assistTarget };
+            }
+        }
+        else {
+            // Can't see assist room - move towards it
+            return { type: "moveToRoom", roomName: mem.assistTarget };
+        }
+    }
+    // Check for squad assignment
+    if (ctx.memory.squadId) {
+        const squad = getSquadMemory(ctx.memory.squadId);
+        if (squad)
+            return squadBehavior(ctx, squad);
+    }
+    const target = findPriorityTarget(ctx);
+    if (target) {
+        const range = ctx.creep.pos.getRangeTo(target);
+        // Kite at range 3
+        if (range < 3)
+            return { type: "flee", from: [target.pos] };
+        if (range <= 3)
+            return { type: "rangedAttack", target };
+        return { type: "moveTo", target };
+    }
+    // No targets - patrol the room
+    const waypoints = getPatrolWaypoints(ctx.room);
+    const nextWaypoint = getNextPatrolWaypoint(ctx.creep, waypoints);
+    if (nextWaypoint) {
+        return { type: "moveTo", target: nextWaypoint };
+    }
+    // Fallback: return home if no waypoints available (cache 20 ticks - spawns don't move)
+    const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+    if (spawns.length > 0) {
+        const spawn = findCachedClosest(ctx.creep, spawns, "harasser_home_spawn", 20);
+        if (spawn && ctx.creep.pos.getRangeTo(spawn) > 10) {
+            return { type: "moveTo", target: spawn };
+        }
+    }
+    return { type: "idle" };
+}
+// =============================================================================
+// Squad Behavior
+// =============================================================================
+/**
+ * Execute squad-coordinated behavior.
+ */
+function squadBehavior(ctx, squad) {
+    switch (squad.state) {
+        case "gathering":
+            // Move to rally point
+            if (ctx.room.name !== squad.rallyRoom) {
+                return { type: "moveToRoom", roomName: squad.rallyRoom };
+            }
+            return { type: "moveTo", target: new RoomPosition(25, 25, squad.rallyRoom) };
+        case "moving": {
+            const targetRoom = squad.targetRooms[0];
+            if (targetRoom && ctx.room.name !== targetRoom) {
+                return { type: "moveToRoom", roomName: targetRoom };
+            }
+            return { type: "idle" };
+        }
+        case "attacking":
+            // Execute role-specific attack behavior
+            switch (ctx.memory.role) {
+                case "soldier":
+                case "guard":
+                    return soldier(ctx);
+                case "healer":
+                    return healer(ctx);
+                case "siegeUnit":
+                    return siege(ctx);
+                case "ranger":
+                    return ranger(ctx);
+                default:
+                    return soldier(ctx);
+            }
+        case "retreating":
+            if (ctx.room.name !== squad.rallyRoom) {
+                return { type: "moveToRoom", roomName: squad.rallyRoom };
+            }
+            return { type: "moveTo", target: new RoomPosition(25, 25, squad.rallyRoom) };
+        case "dissolving":
+            if (ctx.room.name !== ctx.homeRoom) {
+                return { type: "moveToRoom", roomName: ctx.homeRoom };
+            }
+            delete ctx.memory.squadId;
+            return { type: "idle" };
+        default:
+            return { type: "idle" };
+    }
+}
+// =============================================================================
+// Role Dispatcher
+// =============================================================================
+const militaryBehaviors = {
+    guard,
+    healer,
+    soldier,
+    siegeUnit: siege,
+    harasser,
+    ranger
+};
+/**
+ * Evaluate and return an action for a military role creep.
+ */
+function evaluateMilitaryBehavior(ctx) {
+    var _a;
+    const behavior = (_a = militaryBehaviors[ctx.memory.role]) !== null && _a !== void 0 ? _a : guard;
+    return behavior(ctx);
+}
+// =============================================================================
+// Cache Management
+// =============================================================================
+/**
+ * Clear military behavior caches.
+ * Called by context.ts at the start of each tick.
+ *
+ * OPTIMIZATION: We no longer clear patrol waypoint cache every tick.
+ * It's cached long-term and invalidated based on spawn count changes.
+ *
+ * Note: This function is kept as a no-op placeholder for future military
+ * caches that may need per-tick clearing. The registration is maintained
+ * for consistency with the context system architecture.
+ */
+function clearMilitaryCaches() {
+    // Patrol waypoint cache is now persistent across ticks
+    // Future per-tick caches can be cleared here if needed
+}
+// Register with context system for architectural consistency
+registerMilitaryCacheClear(clearMilitaryCaches);
+
+/**
+ * Utility Behaviors
+ *
+ * Behavior functions for utility and support roles.
+ * Includes scouting, claiming, engineering, and logistics.
+ */
+// =============================================================================
+// Overmind / Intel Helpers
+// =============================================================================
+/**
+ * Get or initialize overmind memory.
+ */
+function getOvermind() {
+    const mem = Memory;
+    if (!mem.overmind) {
+        mem.overmind = {
+            roomsSeen: {},
+            roomIntel: {},
+            claimQueue: [],
+            warTargets: [],
+            nukeCandidates: [],
+            powerBanks: [],
+            objectives: {
+                targetPowerLevel: 0,
+                targetRoomCount: 1,
+                warMode: false,
+                expansionPaused: false
+            },
+            lastRun: 0
+        };
+    }
+    return mem.overmind;
+}
+/**
+ * Record intelligence about a room.
+ * OPTIMIZATION: Only do full scan if room hasn't been scouted recently (500 ticks).
+ * This reduces expensive terrain scanning and room.find() calls.
+ */
+function recordRoomIntel(room, overmind) {
+    var _a, _b, _c, _d, _e, _f, _g;
+    const roomsSeen = overmind.roomsSeen;
+    const roomIntel = overmind.roomIntel;
+    const existingIntel = roomIntel[room.name];
+    const lastSeen = (_a = existingIntel === null || existingIntel === void 0 ? void 0 : existingIntel.lastSeen) !== null && _a !== void 0 ? _a : 0;
+    const ticksSinceLastScan = Game.time - lastSeen;
+    // Update last seen timestamp
+    roomsSeen[room.name] = Game.time;
+    // If room was recently scanned (within 1000 ticks), only update dynamic data
+    // OPTIMIZATION: Increased from 500 to 1000 ticks to reduce CPU on frequent rescans
+    if (existingIntel && ticksSinceLastScan < 1000) {
+        existingIntel.lastSeen = Game.time;
+        // Only update threat level (dynamic data)
+        // Use safeFind to handle engine errors with corrupted owner data
+        const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
+        existingIntel.threatLevel = hostiles.length > 5 ? 3 : hostiles.length > 2 ? 2 : hostiles.length > 0 ? 1 : 0;
+        // Update controller level if it changed
+        if (room.controller) {
+            existingIntel.controllerLevel = (_b = room.controller.level) !== null && _b !== void 0 ? _b : 0;
+            if ((_c = room.controller.owner) === null || _c === void 0 ? void 0 : _c.username)
+                existingIntel.owner = room.controller.owner.username;
+            if ((_d = room.controller.reservation) === null || _d === void 0 ? void 0 : _d.username)
+                existingIntel.reserver = room.controller.reservation.username;
+        }
+        return;
+    }
+    // Full scan for new rooms or rooms not scanned in 500+ ticks
+    const sources = room.find(FIND_SOURCES);
+    const mineral = room.find(FIND_MINERALS)[0];
+    const controller = room.controller;
+    // Use safeFind to handle engine errors with corrupted owner data
+    const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
+    // Classify terrain (expensive operation, only do once per 1000 ticks)
+    // OPTIMIZATION: Sample fewer tiles (every 10 instead of every 5) to reduce CPU cost
+    const terrain = room.getTerrain();
+    let swampCount = 0;
+    let plainCount = 0;
+    for (let x = 5; x < 50; x += 10) {
+        for (let y = 5; y < 50; y += 10) {
+            const t = terrain.get(x, y);
+            if (t === TERRAIN_MASK_SWAMP)
+                swampCount++;
+            else if (t === 0)
+                plainCount++;
+        }
+    }
+    const terrainType = swampCount > plainCount * 2 ? "swamp" : plainCount > swampCount * 2 ? "plains" : "mixed";
+    // Check for highway/source keeper rooms
+    const coordMatch = room.name.match(/^[WE](\d+)[NS](\d+)$/);
+    const isHighway = coordMatch
+        ? parseInt(coordMatch[1], 10) % 10 === 0 || parseInt(coordMatch[2], 10) % 10 === 0
+        : false;
+    const isSK = room.find(FIND_STRUCTURES, { filter: s => s.structureType === STRUCTURE_KEEPER_LAIR }).length > 0;
+    const intel = {
+        name: room.name,
+        lastSeen: Game.time,
+        sources: sources.length,
+        controllerLevel: (_e = controller === null || controller === void 0 ? void 0 : controller.level) !== null && _e !== void 0 ? _e : 0,
+        threatLevel: hostiles.length > 5 ? 3 : hostiles.length > 2 ? 2 : hostiles.length > 0 ? 1 : 0,
+        scouted: true,
+        terrain: terrainType,
+        isHighway,
+        isSK
+    };
+    if ((_f = controller === null || controller === void 0 ? void 0 : controller.owner) === null || _f === void 0 ? void 0 : _f.username)
+        intel.owner = controller.owner.username;
+    if ((_g = controller === null || controller === void 0 ? void 0 : controller.reservation) === null || _g === void 0 ? void 0 : _g.username)
+        intel.reserver = controller.reservation.username;
+    if (mineral === null || mineral === void 0 ? void 0 : mineral.mineralType)
+        intel.mineralType = mineral.mineralType;
+    roomIntel[room.name] = intel;
+}
+/**
+ * Find the next unexplored adjacent room.
+ * Avoids the previous room to prevent cycling between two rooms.
+ */
+function findNextExploreTarget(currentRoom, overmind, previousRoom) {
+    var _a, _b;
+    const roomsSeen = overmind.roomsSeen;
+    const exits = Game.map.describeExits(currentRoom);
+    if (!exits)
+        return undefined;
+    const candidates = [];
+    for (const [, roomName] of Object.entries(exits)) {
+        // Skip the previous room to prevent cycling
+        if (previousRoom && roomName === previousRoom)
+            continue;
+        const lastSeen = (_a = roomsSeen[roomName]) !== null && _a !== void 0 ? _a : 0;
+        if (Game.time - lastSeen > 1000) {
+            candidates.push({ room: roomName, lastSeen });
+        }
+    }
+    candidates.sort((a, b) => a.lastSeen - b.lastSeen);
+    return (_b = candidates[0]) === null || _b === void 0 ? void 0 : _b.room;
+}
+/**
+ * Room center coordinates for scout navigation
+ */
+const ROOM_CENTER_X = 25;
+const ROOM_CENTER_Y = 25;
+/**
+ * Create a moveTo action targeting the center of a room.
+ * Used to move scouts off room exits.
+ */
+function moveToRoomCenter(roomName) {
+    return {
+        type: "moveTo",
+        target: new RoomPosition(ROOM_CENTER_X, ROOM_CENTER_Y, roomName)
+    };
+}
+/**
+ * Find a position to explore in a room.
+ */
+function findExplorePosition(room) {
+    const positions = [
+        new RoomPosition(5, 5, room.name),
+        new RoomPosition(44, 5, room.name),
+        new RoomPosition(5, 44, room.name),
+        new RoomPosition(44, 44, room.name),
+        new RoomPosition(ROOM_CENTER_X, ROOM_CENTER_Y, room.name)
+    ];
+    const terrain = room.getTerrain();
+    for (const pos of positions) {
+        if (terrain.get(pos.x, pos.y) !== TERRAIN_MASK_WALL) {
+            return pos;
+        }
+    }
+    return null;
+}
+// =============================================================================
+// Role Behaviors
+// =============================================================================
+/**
+ * Scout - Explore and map rooms.
+ *
+ * Movement strategy to prevent exit cycling:
+ * 1. When on a room exit and actively traveling to a different target room,
+ *    let the movement system handle the exit (don't interrupt)
+ * 2. When on an exit with no target or at the target room, move off the exit
+ * 3. Track last explored room to avoid immediately cycling back
+ *
+ * OPTIMIZATION: Only record intel when:
+ * - Entering a new room (not seen before)
+ * - At target room and exploring (stationary)
+ * - Only once when reaching the center position (not every tick)
+ * This reduces expensive recordRoomIntel() calls from every tick to only when needed.
+ */
+function scout(ctx) {
+    const overmind = getOvermind();
+    // Track the last room we fully explored (not just passed through)
+    const lastExploredRoom = ctx.memory.lastExploredRoom;
+    // Find or assign target room
+    let targetRoom = ctx.memory.targetRoom;
+    // CRITICAL FIX: Don't pick a new target if we just arrived at target room and are still on exit.
+    // This prevents the cycling behavior where scout enters room, is on exit, picks previous room as new target.
+    // We must first move off the exit and explore before picking next target.
+    const onExit = isCreepOnRoomExit(ctx.creep);
+    targetRoom && ctx.room.name === targetRoom && onExit;
+    if (!targetRoom) {
+        // Pass lastExploredRoom to avoid cycling back to the room we just explored
+        targetRoom = findNextExploreTarget(ctx.room.name, overmind, lastExploredRoom);
+        if (targetRoom) {
+            ctx.memory.targetRoom = targetRoom;
+        }
+        else {
+            delete ctx.memory.targetRoom;
+            // If no valid target found, clear lastExploredRoom to expand search
+            delete ctx.memory.lastExploredRoom;
+        }
+    }
+    // CRITICAL: Only handle exits when we're NOT traveling to a different room.
+    // If we have a target room that's different from current room, the movement system
+    // in movement.ts (lines 565-601) already handles exit clearing properly.
+    // Interrupting that process causes the cycling behavior.
+    const travelingToOtherRoom = targetRoom && ctx.room.name !== targetRoom;
+    if (onExit && !travelingToOtherRoom) {
+        // We're on an exit but not traveling - move toward room center
+        return moveToRoomCenter(ctx.room.name);
+    }
+    // Move to target room (movement.ts will handle exit clearing if needed)
+    if (targetRoom && ctx.room.name !== targetRoom) {
+        return { type: "moveToRoom", roomName: targetRoom };
+    }
+    // Explore current room - move toward center to gather intel
+    // OPTIMIZATION: Only record intel once when we're at the center position, not every tick
+    if (targetRoom && ctx.room.name === targetRoom) {
+        // CRITICAL FIX: If on exit, move off it first before exploring
+        // This prevents the scout from clearing targetRoom while still on the exit,
+        // which causes it to pick the previous room as the next target and cycle back
+        if (onExit) {
+            return moveToRoomCenter(ctx.room.name);
+        }
+        const explorePos = findExplorePosition(ctx.room);
+        if (explorePos) {
+            // Only record intel if we're at the explore position AND not on an exit
+            // Range 3 chosen to ensure full room visibility (controller and sources are scanned)
+            // without requiring the scout to reach exact center tile
+            const INTEL_GATHER_RANGE = 3;
+            if (ctx.creep.pos.getRangeTo(explorePos) <= INTEL_GATHER_RANGE) {
+                recordRoomIntel(ctx.room, overmind);
+                // Mark this room as last explored so we don't immediately return to it
+                ctx.memory.lastExploredRoom = ctx.room.name;
+                delete ctx.memory.targetRoom; // Done exploring, move to next room
+            }
+            else {
+                // Still moving to explore position
+                return { type: "moveTo", target: explorePos };
+            }
+        }
+        else {
+            // No valid explore position, record intel and move on
+            recordRoomIntel(ctx.room, overmind);
+            // Mark this room as last explored so we don't immediately return to it
+            ctx.memory.lastExploredRoom = ctx.room.name;
+            delete ctx.memory.targetRoom;
+        }
+    }
+    return { type: "idle" };
+}
+/**
+ * Claimer - Claim or reserve room controllers.
+ * Task can be: "claim", "reserve", or "attack"
+ */
+function claimer(ctx) {
+    const targetRoom = ctx.memory.targetRoom;
+    if (!targetRoom) {
+        const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+        if (spawns.length > 0) {
+            const spawn = findCachedClosest(ctx.creep, spawns, "claimer_spawn", 20);
+            if (spawn)
+                return { type: "moveTo", target: spawn };
+        }
+        return { type: "idle" };
+    }
+    // Move to target room
+    if (ctx.room.name !== targetRoom) {
+        return { type: "moveToRoom", roomName: targetRoom };
+    }
+    // Act on controller
+    const controller = ctx.room.controller;
+    if (!controller)
+        return { type: "idle" };
+    const task = ctx.memory.task;
+    if (task === "claim")
+        return { type: "claim", target: controller };
+    if (task === "attack")
+        return { type: "attackController", target: controller };
+    return { type: "reserve", target: controller }; // default
+}
+/**
+ * Engineer - Repairs and fortification specialist.
+ * Priority: critical structures → infrastructure → ramparts → walls → construction
+ */
+function engineer(ctx) {
+    var _a, _b;
+    // Update working state
+    if (ctx.isEmpty)
+        ctx.memory.working = false;
+    if (ctx.isFull)
+        ctx.memory.working = true;
+    if (ctx.memory.working) {
+        // Critical structures (low HP spawns, towers, storage)
+        // OPTIMIZATION: Use cached repair targets from context if available, otherwise filter from allStructures
+        // Note: repairTargets in context are already filtered, but we need specific types here
+        const criticalStructures = ctx.repairTargets.filter(s => (s.structureType === STRUCTURE_SPAWN ||
+            s.structureType === STRUCTURE_TOWER ||
+            s.structureType === STRUCTURE_STORAGE) &&
+            s.hits < s.hitsMax * 0.5);
+        if (criticalStructures.length > 0) {
+            const critical = findCachedClosest(ctx.creep, criticalStructures, "engineer_critical", 5);
+            if (critical)
+                return { type: "repair", target: critical };
+        }
+        // Roads and containers
+        const infrastructure = ctx.repairTargets.filter(s => (s.structureType === STRUCTURE_ROAD || s.structureType === STRUCTURE_CONTAINER) &&
+            s.hits < s.hitsMax * 0.75);
+        if (infrastructure.length > 0) {
+            const infra = findCachedClosest(ctx.creep, infrastructure, "engineer_infra", 5);
+            if (infra)
+                return { type: "repair", target: infra };
+        }
+        // Ramparts and walls - target based on danger level
+        // danger 0: 100k, danger 1: 300k, danger 2: 5M, danger 3: 50M
+        const danger = (_b = (_a = ctx.swarmState) === null || _a === void 0 ? void 0 : _a.danger) !== null && _b !== void 0 ? _b : 0;
+        const repairTarget = danger === 0 ? 100000 : danger === 1 ? 300000 : danger === 2 ? 5000000 : 50000000;
+        const ramparts = ctx.repairTargets.filter(s => s.structureType === STRUCTURE_RAMPART && s.hits < repairTarget);
+        if (ramparts.length > 0) {
+            const rampart = findCachedClosest(ctx.creep, ramparts, "engineer_rampart", 5);
+            if (rampart)
+                return { type: "repair", target: rampart };
+        }
+        // Walls
+        const walls = ctx.repairTargets.filter(s => s.structureType === STRUCTURE_WALL && s.hits < repairTarget);
+        if (walls.length > 0) {
+            const wall = findCachedClosest(ctx.creep, walls, "engineer_wall", 5);
+            if (wall)
+                return { type: "repair", target: wall };
+        }
+        // Construction sites
+        if (ctx.prioritizedSites.length > 0) {
+            return { type: "build", target: ctx.prioritizedSites[0] };
+        }
+        return { type: "idle" };
+    }
+    // Get energy
+    if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+        return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+    }
+    // OPTIMIZATION: Use cached closest for containers (cache 15 ticks - stable targets)
+    if (ctx.containers.length > 0) {
+        const closest = findCachedClosest(ctx.creep, ctx.containers, "engineer_cont", 15);
+        if (closest)
+            return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
+    }
+    return { type: "idle" };
+}
+/**
+ * RemoteWorker - Harvest in remote rooms.
+ */
+function remoteWorker(ctx) {
+    var _a;
+    const targetRoom = (_a = ctx.memory.targetRoom) !== null && _a !== void 0 ? _a : ctx.homeRoom;
+    // Update working state
+    if (ctx.isEmpty)
+        ctx.memory.working = false;
+    if (ctx.isFull)
+        ctx.memory.working = true;
+    if (ctx.memory.working) {
+        // Return home to deliver
+        if (ctx.room.name !== ctx.homeRoom) {
+            return { type: "moveToRoom", roomName: ctx.homeRoom };
+        }
+        // Deliver to storage (preferred) or spawn
+        if (ctx.storage) {
+            return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+        }
+        const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+        if (spawns.length > 0) {
+            const spawn = findCachedClosest(ctx.creep, spawns, "remoteWorker_spawn", 5);
+            if (spawn) {
+                return { type: "transfer", target: spawn, resourceType: RESOURCE_ENERGY };
+            }
+        }
+        return { type: "idle" };
+    }
+    // Go to remote room and harvest
+    if (ctx.room.name !== targetRoom) {
+        return { type: "moveToRoom", roomName: targetRoom };
+    }
+    const source = ctx.creep.pos.findClosestByRange(FIND_SOURCES_ACTIVE);
+    if (source)
+        return { type: "harvest", target: source };
+    return { type: "idle" };
+}
+/**
+ * LinkManager - Transfer energy between links and storage.
+ */
+function linkManager(ctx) {
+    const links = ctx.room.find(FIND_MY_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_LINK
+    });
+    if (links.length < 2 || !ctx.storage)
+        return { type: "idle" };
+    const storageLink = links.find(l => l.pos.getRangeTo(ctx.storage) <= 2);
+    if (!storageLink)
+        return { type: "idle" };
+    // Empty storage link when it has energy
+    if (storageLink.store.getUsedCapacity(RESOURCE_ENERGY) > 400) {
+        if (ctx.creep.store.getFreeCapacity() > 0) {
+            return { type: "withdraw", target: storageLink, resourceType: RESOURCE_ENERGY };
+        }
+        return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+    }
+    // Wait near storage
+    if (ctx.creep.pos.getRangeTo(ctx.storage) > 2) {
+        return { type: "moveTo", target: ctx.storage };
+    }
+    return { type: "idle" };
+}
+/**
+ * TerminalManager - Balance resources between storage and terminal.
+ */
+function terminalManager(ctx) {
+    if (!ctx.terminal || !ctx.storage)
+        return { type: "idle" };
+    const terminalEnergy = ctx.terminal.store.getUsedCapacity(RESOURCE_ENERGY);
+    const storageEnergy = ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY);
+    const targetTerminalEnergy = 50000;
+    // Deliver carried resources
+    if (ctx.creep.store.getUsedCapacity() > 0) {
+        const resourceType = Object.keys(ctx.creep.store)[0];
+        if (resourceType === RESOURCE_ENERGY) {
+            if (terminalEnergy < targetTerminalEnergy) {
+                return { type: "transfer", target: ctx.terminal, resourceType: RESOURCE_ENERGY };
+            }
+            return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+        }
+        // Non-energy goes to terminal for trading
+        return { type: "transfer", target: ctx.terminal, resourceType };
+    }
+    // Balance energy between storage and terminal
+    if (terminalEnergy < targetTerminalEnergy - 10000 && storageEnergy > 20000) {
+        return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+    }
+    if (terminalEnergy > targetTerminalEnergy + 10000) {
+        return { type: "withdraw", target: ctx.terminal, resourceType: RESOURCE_ENERGY };
+    }
+    // Move excess minerals from storage to terminal
+    for (const resourceType of Object.keys(ctx.storage.store)) {
+        if (resourceType !== RESOURCE_ENERGY && ctx.storage.store.getUsedCapacity(resourceType) > 5000) {
+            return { type: "withdraw", target: ctx.storage, resourceType };
+        }
+    }
+    // Wait near storage
+    if (ctx.creep.pos.getRangeTo(ctx.storage) > 2) {
+        return { type: "moveTo", target: ctx.storage };
+    }
+    return { type: "idle" };
+}
+// =============================================================================
+// Role Dispatcher
+// =============================================================================
+const utilityBehaviors = {
+    scout,
+    claimer,
+    engineer,
+    remoteWorker,
+    linkManager,
+    terminalManager
+};
+/**
+ * Evaluate and return an action for a utility role creep.
+ */
+function evaluateUtilityBehavior(ctx) {
+    var _a;
+    const behavior = (_a = utilityBehaviors[ctx.memory.role]) !== null && _a !== void 0 ? _a : scout;
+    return behavior(ctx);
+}
+
+/**
+ * Power Behaviors
+ *
+ * Behavior functions for power-related creeps and Power Creeps.
+ * Includes power harvesting (regular creeps) and Power Creep abilities.
+ */
+// =============================================================================
+// Regular Creep Power Roles
+// =============================================================================
+/**
+ * PowerHarvester - Attack power banks in highway rooms.
+ */
+function powerHarvester(ctx) {
+    const targetRoom = ctx.memory.targetRoom;
+    if (!targetRoom)
+        return { type: "idle" };
+    // Move to target room
+    if (ctx.room.name !== targetRoom) {
+        return { type: "moveToRoom", roomName: targetRoom };
+    }
+    // Find power bank
+    const powerBank = ctx.room.find(FIND_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_POWER_BANK
+    })[0];
+    if (!powerBank) {
+        // Power bank destroyed - return home
+        delete ctx.memory.targetRoom;
+        return { type: "moveToRoom", roomName: ctx.homeRoom };
+    }
+    // Attack power bank
+    const result = ctx.creep.attack(powerBank);
+    if (result === ERR_NOT_IN_RANGE) {
+        return { type: "moveTo", target: powerBank };
+    }
+    return { type: "idle" };
+}
+/**
+ * PowerCarrier - Collect power from destroyed banks.
+ */
+function powerCarrier(ctx) {
+    const targetRoom = ctx.memory.targetRoom;
+    const carryingPower = ctx.creep.store.getUsedCapacity(RESOURCE_POWER) > 0;
+    if (carryingPower) {
+        // Return home and deposit
+        if (ctx.room.name !== ctx.homeRoom) {
+            return { type: "moveToRoom", roomName: ctx.homeRoom };
+        }
+        const homeRoom = Game.rooms[ctx.homeRoom];
+        if (homeRoom) {
+            const powerSpawn = homeRoom.find(FIND_MY_STRUCTURES, {
+                filter: s => s.structureType === STRUCTURE_POWER_SPAWN
+            })[0];
+            if (powerSpawn && powerSpawn.store.getFreeCapacity(RESOURCE_POWER) > 0) {
+                return { type: "transfer", target: powerSpawn, resourceType: RESOURCE_POWER };
+            }
+            if (ctx.storage) {
+                return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_POWER };
+            }
+        }
+        return { type: "idle" };
+    }
+    if (!targetRoom)
+        return { type: "idle" };
+    // Move to target room
+    if (ctx.room.name !== targetRoom) {
+        return { type: "moveToRoom", roomName: targetRoom };
+    }
+    // Collect dropped power
+    const droppedPower = ctx.room.find(FIND_DROPPED_RESOURCES, {
+        filter: r => r.resourceType === RESOURCE_POWER
+    })[0];
+    if (droppedPower)
+        return { type: "pickup", target: droppedPower };
+    // Collect from ruins
+    const ruin = ctx.room.find(FIND_RUINS, {
+        filter: r => r.store.getUsedCapacity(RESOURCE_POWER) > 0
+    })[0];
+    if (ruin)
+        return { type: "withdraw", target: ruin, resourceType: RESOURCE_POWER };
+    // Wait near power bank if it still exists
+    const powerBank = ctx.room.find(FIND_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_POWER_BANK
+    })[0];
+    if (powerBank) {
+        if (ctx.creep.pos.getRangeTo(powerBank) > 3) {
+            return { type: "moveTo", target: powerBank };
+        }
+        return { type: "idle" };
+    }
+    // No power bank and no power - return home
+    delete ctx.memory.targetRoom;
+    return { type: "moveToRoom", roomName: ctx.homeRoom };
+}
+/**
+ * Create context for a Power Creep.
+ */
+function createPowerCreepContext(powerCreep) {
+    var _a;
+    if (!powerCreep.room)
+        return null;
+    const room = powerCreep.room;
+    const memory = powerCreep.memory;
+    const homeRoom = (_a = memory.homeRoom) !== null && _a !== void 0 ? _a : room.name;
+    const labs = room.find(FIND_MY_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_LAB
+    });
+    const spawns = room.find(FIND_MY_SPAWNS);
+    const extensions = room.find(FIND_MY_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_EXTENSION
+    });
+    const factory = room.find(FIND_MY_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_FACTORY
+    })[0];
+    const powerSpawn = room.find(FIND_MY_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_POWER_SPAWN
+    })[0];
+    // Get available (off-cooldown) powers
+    const availablePowers = [];
+    for (const power of Object.keys(powerCreep.powers)) {
+        const powerData = powerCreep.powers[power];
+        if (powerData && powerData.cooldown === 0) {
+            availablePowers.push(power);
+        }
+    }
+    return {
+        powerCreep,
+        room,
+        homeRoom,
+        isInHomeRoom: room.name === homeRoom,
+        storage: room.storage,
+        terminal: room.terminal,
+        factory,
+        labs,
+        spawns,
+        extensions,
+        powerSpawn,
+        availablePowers,
+        ops: powerCreep.store.getUsedCapacity(RESOURCE_OPS)
+    };
+}
+// =============================================================================
+// Power Creep Behaviors
+// =============================================================================
+/**
+ * PowerQueen - Economy-focused Operator.
+ * Uses powers to boost spawning, extensions, labs, and factory.
+ */
+function powerQueen(ctx) {
+    // Check for renewal
+    if (ctx.powerCreep.ticksToLive !== undefined && ctx.powerCreep.ticksToLive < 1000) {
+        if (ctx.powerSpawn)
+            return { type: "renewSelf", spawn: ctx.powerSpawn };
+    }
+    const powers = ctx.availablePowers;
+    // Boost spawning
+    if (powers.includes(PWR_OPERATE_SPAWN) && ctx.ops >= 100) {
+        const busySpawn = ctx.spawns.find(s => s.spawning !== null);
+        if (busySpawn)
+            return { type: "usePower", power: PWR_OPERATE_SPAWN, target: busySpawn };
+    }
+    // Fill extensions
+    if (powers.includes(PWR_OPERATE_EXTENSION) && ctx.ops >= 2) {
+        const freeCapacity = ctx.extensions.reduce((sum, ext) => sum + ext.store.getFreeCapacity(RESOURCE_ENERGY), 0);
+        if (freeCapacity > 0 && ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 10000) {
+            return { type: "usePower", power: PWR_OPERATE_EXTENSION, target: ctx.storage };
+        }
+    }
+    // Boost storage capacity
+    if (powers.includes(PWR_OPERATE_STORAGE) && ctx.ops >= 100 && ctx.storage) {
+        if (ctx.storage.store.getUsedCapacity() > ctx.storage.store.getCapacity() * 0.9) {
+            return { type: "usePower", power: PWR_OPERATE_STORAGE, target: ctx.storage };
+        }
+    }
+    // Boost lab reactions
+    if (powers.includes(PWR_OPERATE_LAB) && ctx.ops >= 10) {
+        const activeLab = ctx.labs.find(l => l.cooldown === 0 && l.mineralType);
+        if (activeLab)
+            return { type: "usePower", power: PWR_OPERATE_LAB, target: activeLab };
+    }
+    // Boost factory
+    if (powers.includes(PWR_OPERATE_FACTORY) && ctx.ops >= 100 && ctx.factory) {
+        if (ctx.factory.cooldown === 0) {
+            return { type: "usePower", power: PWR_OPERATE_FACTORY, target: ctx.factory };
+        }
+    }
+    // Generate ops when low
+    if (powers.includes(PWR_GENERATE_OPS) && ctx.ops < 50) {
+        return { type: "usePower", power: PWR_GENERATE_OPS };
+    }
+    // Move to home room
+    if (!ctx.isInHomeRoom) {
+        return { type: "moveToRoom", roomName: ctx.homeRoom };
+    }
+    // Stay near storage
+    if (ctx.storage && ctx.powerCreep.pos.getRangeTo(ctx.storage) > 3) {
+        return { type: "moveTo", target: ctx.storage };
+    }
+    return { type: "idle" };
+}
+/**
+ * PowerWarrior - Combat-support Power Creep.
+ * Uses powers for defense and offense.
+ */
+function powerWarrior(ctx) {
+    // Check for renewal
+    if (ctx.powerCreep.ticksToLive !== undefined && ctx.powerCreep.ticksToLive < 1000) {
+        if (ctx.powerSpawn)
+            return { type: "renewSelf", spawn: ctx.powerSpawn };
+    }
+    const powers = ctx.availablePowers;
+    // Generate ops when low
+    if (powers.includes(PWR_GENERATE_OPS) && ctx.ops < 50) {
+        return { type: "usePower", power: PWR_GENERATE_OPS };
+    }
+    // Boost towers for defense - use safeFind for hostile creeps
+    if (powers.includes(PWR_OPERATE_TOWER) && ctx.ops >= 10) {
+        const hostiles = safeFind(ctx.room, FIND_HOSTILE_CREEPS);
+        if (hostiles.length > 0) {
+            const tower = ctx.room.find(FIND_MY_STRUCTURES, {
+                filter: s => s.structureType === STRUCTURE_TOWER
+            })[0];
+            if (tower)
+                return { type: "usePower", power: PWR_OPERATE_TOWER, target: tower };
+        }
+    }
+    // Fortify ramparts
+    if (powers.includes(PWR_FORTIFY) && ctx.ops >= 5) {
+        const lowRampart = ctx.room.find(FIND_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_RAMPART && s.hits < 1000000
+        })[0];
+        if (lowRampart)
+            return { type: "usePower", power: PWR_FORTIFY, target: lowRampart };
+    }
+    // Disrupt enemy spawns - use safeFind for hostile spawns
+    if (powers.includes(PWR_DISRUPT_SPAWN) && ctx.ops >= 10) {
+        const enemySpawn = safeFind(ctx.room, FIND_HOSTILE_SPAWNS)[0];
+        if (enemySpawn)
+            return { type: "usePower", power: PWR_DISRUPT_SPAWN, target: enemySpawn };
+    }
+    // Disrupt enemy towers - use safeFind for hostile structures
+    if (powers.includes(PWR_DISRUPT_TOWER) && ctx.ops >= 10) {
+        const enemyTowers = safeFind(ctx.room, FIND_HOSTILE_STRUCTURES, {
+            filter: (s) => s.structureType === STRUCTURE_TOWER
+        });
+        const enemyTower = enemyTowers[0];
+        if (enemyTower)
+            return { type: "usePower", power: PWR_DISRUPT_TOWER, target: enemyTower };
+    }
+    // Move to home room
+    if (!ctx.isInHomeRoom) {
+        return { type: "moveToRoom", roomName: ctx.homeRoom };
+    }
+    return { type: "idle" };
+}
+/**
+ * Execute a Power Creep action.
+ */
+function executePowerCreepAction(powerCreep, action) {
+    var _a;
+    switch (action.type) {
+        case "usePower": {
+            const result = action.target
+                ? powerCreep.usePower(action.power, action.target)
+                : powerCreep.usePower(action.power);
+            if (result === ERR_NOT_IN_RANGE && action.target) {
+                moveCreep(powerCreep, action.target);
+            }
+            break;
+        }
+        case "moveTo":
+            moveCreep(powerCreep, action.target);
+            break;
+        case "moveToRoom":
+            moveToRoom(powerCreep, action.roomName);
+            break;
+        case "renewSelf": {
+            const result = powerCreep.renew(action.spawn);
+            if (result === ERR_NOT_IN_RANGE) {
+                moveCreep(powerCreep, action.spawn);
+            }
+            break;
+        }
+        case "enableRoom":
+            if ((_a = powerCreep.room) === null || _a === void 0 ? void 0 : _a.controller) {
+                const result = powerCreep.enableRoom(powerCreep.room.controller);
+                if (result === ERR_NOT_IN_RANGE) {
+                    moveCreep(powerCreep, powerCreep.room.controller);
+                }
+            }
+            break;
+    }
+}
+// =============================================================================
+// Dispatcher
+// =============================================================================
+const powerBehaviors = {
+    powerHarvester,
+    powerCarrier
+};
+/**
+ * Evaluate and return an action for a power-related creep.
+ */
+function evaluatePowerBehavior(ctx) {
+    var _a;
+    const behavior = (_a = powerBehaviors[ctx.memory.role]) !== null && _a !== void 0 ? _a : powerHarvester;
+    return behavior(ctx);
+}
+/**
+ * Evaluate and return an action for a Power Creep.
+ */
+function evaluatePowerCreepBehavior(ctx) {
+    const memory = ctx.powerCreep.memory;
+    if (memory.role === "powerWarrior")
+        return powerWarrior(ctx);
+    return powerQueen(ctx);
+}
+
+/**
+ * Creep State Machine
+ *
+ * Provides persistent state management for creeps to prevent sudden direction changes.
+ * Creeps commit to an action and continue it until completion or failure.
+ *
+ * Architecture:
+ * 1. Check if current state is valid and incomplete
+ * 2. If valid, continue executing current state action
+ * 3. If invalid/complete/expired, evaluate new action and commit to it
+ * 4. Store state in creep memory for next tick
+ */
+/**
+ * Default timeout for states (in ticks)
+ * After this many ticks, state is considered expired and will be re-evaluated
+ */
+const DEFAULT_STATE_TIMEOUT = 50;
+/**
+ * Check if a state is still valid (target exists, not expired, etc.)
+ */
+function isStateValid(state, _ctx) {
+    if (!state)
+        return false;
+    // Check timeout
+    const age = Game.time - state.startTick;
+    if (age > state.timeout) {
+        return false;
+    }
+    // Validate target if present
+    if (state.targetId) {
+        const target = Game.getObjectById(state.targetId);
+        if (!target) {
+            return false;
+        }
+    }
+    return true;
+}
+/**
+ * Check if the current state represents a completed action.
+ *
+ * OPTIMIZATION: Fast-path checks to avoid expensive Game.getObjectById calls.
+ * We check capacity/position conditions first before validating targets.
+ */
+function isStateComplete(state, ctx) {
+    if (!state)
+        return true;
+    switch (state.action) {
+        case "harvest":
+        case "harvestMineral":
+        case "harvestDeposit":
+            // Harvesting complete when full or no energy left
+            return ctx.isFull;
+        case "pickup":
+        case "withdraw":
+            // Collection complete when full
+            return ctx.isFull;
+        case "transfer":
+        case "build":
+        case "repair":
+        case "upgrade":
+            // Delivery/work complete when empty
+            return ctx.isEmpty;
+        case "moveToRoom":
+            // Movement complete when in target room
+            // Uses state.targetRoom which is the temporary movement destination.
+            // For remote creeps, memory.targetRoom is the permanent assignment (e.g., remote room)
+            // while state.targetRoom might be different (e.g., home room when delivering resources).
+            return state.targetRoom !== undefined && ctx.room.name === state.targetRoom;
+        case "moveTo":
+            // Movement complete when adjacent to or at target
+            // OPTIMIZATION: Only validate target if we have a targetId
+            // This avoids unnecessary Game.getObjectById calls
+            if (state.targetId) {
+                const target = Game.getObjectById(state.targetId);
+                if (target && typeof target === "object" && "pos" in target) {
+                    const targetWithPos = target;
+                    return ctx.creep.pos.inRangeTo(targetWithPos.pos, 1);
+                }
+            }
+            return false;
+        case "idle":
+            // Idle is always complete (single tick action)
+            return true;
+        default:
+            // Unknown action types are considered incomplete
+            return false;
+    }
+}
+/**
+ * Convert an action to a state
+ */
+function actionToState(action, _ctx) {
+    const state = {
+        action: action.type,
+        startTick: Game.time,
+        timeout: DEFAULT_STATE_TIMEOUT
+    };
+    // Extract target ID if present
+    if ("target" in action && action.target && "id" in action.target) {
+        state.targetId = action.target.id;
+    }
+    // Extract room name for room movement
+    if (action.type === "moveToRoom") {
+        state.targetRoom = action.roomName;
+    }
+    // Store additional data based on action type
+    if (action.type === "withdraw" || action.type === "transfer") {
+        state.data = { resourceType: action.resourceType };
+    }
+    return state;
+}
+/**
+ * Reconstruct an action from a stored state
+ */
+function stateToAction(state) {
+    var _a, _b;
+    // Get target if present
+    let target = null;
+    if (state.targetId) {
+        const obj = Game.getObjectById(state.targetId);
+        if (!obj) {
+            // Target no longer exists
+            return null;
+        }
+        // Ensure the object is a RoomObject (has pos and room properties)
+        if (typeof obj === "object" && "pos" in obj && "room" in obj) {
+            target = obj;
+        }
+        else {
+            return null;
+        }
+    }
+    // Reconstruct action based on type
+    switch (state.action) {
+        case "harvest":
+            return target ? { type: "harvest", target: target } : null;
+        case "harvestMineral":
+            return target ? { type: "harvestMineral", target: target } : null;
+        case "harvestDeposit":
+            return target ? { type: "harvestDeposit", target: target } : null;
+        case "pickup":
+            return target ? { type: "pickup", target: target } : null;
+        case "withdraw":
+            if (target && ((_a = state.data) === null || _a === void 0 ? void 0 : _a.resourceType)) {
+                return {
+                    type: "withdraw",
+                    target: target,
+                    resourceType: state.data.resourceType
+                };
+            }
+            return null;
+        case "transfer":
+            if (target && ((_b = state.data) === null || _b === void 0 ? void 0 : _b.resourceType)) {
+                return {
+                    type: "transfer",
+                    target: target,
+                    resourceType: state.data.resourceType
+                };
+            }
+            return null;
+        case "build":
+            return target ? { type: "build", target: target } : null;
+        case "repair":
+            return target ? { type: "repair", target: target } : null;
+        case "upgrade":
+            return target ? { type: "upgrade", target: target } : null;
+        case "moveTo":
+            return target ? { type: "moveTo", target } : null;
+        case "moveToRoom":
+            return state.targetRoom ? { type: "moveToRoom", roomName: state.targetRoom } : null;
+        case "idle":
+            return { type: "idle" };
+        default:
+            // Unknown action type
+            return null;
+    }
+}
+/**
+ * Evaluate behavior with state machine logic.
+ *
+ * If creep has a valid ongoing state, continue that action.
+ * Otherwise, evaluate new behavior and commit to it.
+ *
+ * @param ctx Creep context
+ * @param behaviorFn Behavior function to call when evaluating new action
+ * @returns Action to execute
+ */
+function evaluateWithStateMachine(ctx, behaviorFn) {
+    const currentState = ctx.memory.state;
+    // Check if we have a valid ongoing state
+    if (currentState && isStateValid(currentState)) {
+        // Check if state is complete
+        if (isStateComplete(currentState, ctx)) {
+            // State complete - clear it and evaluate new action
+            delete ctx.memory.state;
+        }
+        else {
+            // State still ongoing - try to reconstruct and continue action
+            const action = stateToAction(currentState);
+            if (action) {
+                return action;
+            }
+            // Failed to reconstruct - clear state and evaluate new
+            delete ctx.memory.state;
+        }
+    }
+    else {
+        // State invalid or expired - clear it
+        delete ctx.memory.state;
+    }
+    // No valid state - evaluate new action
+    const newAction = behaviorFn(ctx);
+    // Don't store state for idle actions (they complete immediately)
+    if (newAction.type !== "idle") {
+        // Commit to this new action
+        ctx.memory.state = actionToState(newAction);
+    }
+    return newAction;
+}
+
+/**
+ * Economy Roles
+ *
+ * All economy-focused creep roles:
+ * - LarvaWorker (unified starter)
+ * - Harvester (stationary miner)
+ * - Hauler (transport)
+ * - Builder
+ * - Upgrader
+ * - QueenCarrier (distributor)
+ * - MineralHarvester
+ * - DepositHarvester
+ * - LabTech
+ * - FactoryWorker
+ */
+/**
+ * Run economy role behavior with state machine.
+ * Creeps commit to actions until completion, preventing sudden direction changes.
+ */
+function runEconomyRole(creep) {
+    const ctx = createContext(creep);
+    const action = evaluateWithStateMachine(ctx, evaluateEconomyBehavior);
+    executeAction(creep, action, ctx);
+}
+
+/**
+ * Military Roles
+ *
+ * Defense and offensive roles:
+ * - GuardAnt (melee/ranged defenders)
+ * - HealerAnt
+ * - SoldierAnt (melee/range offense)
+ * - SiegeUnit (dismantler/tough)
+ * - Harasser (early aggression)
+ * - Ranger (ranged combat)
+ */
+/**
+ * Run military role behavior with state machine.
+ * Creeps commit to actions until completion, preventing sudden direction changes.
+ */
+function runMilitaryRole(creep) {
+    const ctx = createContext(creep);
+    const action = evaluateWithStateMachine(ctx, evaluateMilitaryBehavior);
+    executeAction(creep, action, ctx);
+}
+
+/**
+ * Power Roles
+ *
+ * Power creep roles:
+ * - PowerQueen (economy-focused Operator)
+ * - PowerWarrior (combat-support)
+ * - PowerHarvester (regular creep for power banks)
+ * - PowerCarrier (regular creep for carrying power)
+ */
+/**
+ * Run power-related creep role (PowerHarvester, PowerCarrier) with state machine.
+ * Creeps commit to actions until completion, preventing sudden direction changes.
+ */
+function runPowerCreepRole(creep) {
+    const ctx = createContext(creep);
+    const action = evaluateWithStateMachine(ctx, evaluatePowerBehavior);
+    executeAction(creep, action, ctx);
+}
+/**
+ * Run Power Creep role (PowerQueen, PowerWarrior).
+ */
+function runPowerRole(powerCreep) {
+    const ctx = createPowerCreepContext(powerCreep);
+    if (!ctx)
+        return;
+    const action = evaluatePowerCreepBehavior(ctx);
+    executePowerCreepAction(powerCreep, action);
+}
+
+/**
+ * Utility Roles
+ *
+ * Utility and support roles:
+ * - ScoutAnt (exploration)
+ * - ClaimAnt (claiming/reserving)
+ * - Engineer (repairs, ramparts)
+ * - RemoteWorker (remote mining)
+ * - LinkManager
+ * - TerminalManager
+ */
+/**
+ * Run utility role behavior with state machine.
+ * Creeps commit to actions until completion, preventing sudden direction changes.
+ */
+function runUtilityRole(creep) {
+    const ctx = createContext(creep);
+    const action = evaluateWithStateMachine(ctx, evaluateUtilityBehavior);
+    executeAction(creep, action, ctx);
+}
+
+/**
+ * Process Decorators
+ *
+ * TypeScript decorators for registering kernel processes declaratively.
+ * Allows classes to define processes using method decorators instead of
+ * manual registration calls.
+ *
+ * Usage:
+ * ```typescript
+ * class MyManager {
+ *   @Process({
+ *     id: "my:process",
+ *     name: "My Process",
+ *     priority: ProcessPriority.MEDIUM,
+ *     frequency: "medium",
+ *     interval: 10
+ *   })
+ *   run(): void {
+ *     // Process logic
+ *   }
+ * }
+ * ```
+ */
+/**
+ * Storage for process metadata before registration
+ */
+const processMetadataStore = [];
+/**
+ * Registered process classes for automatic discovery
+ */
+const registeredClasses = new Set();
+/**
+ * Process decorator - marks a method as a kernel process
+ *
+ * @param options - Process configuration options
+ * @returns Method decorator
+ *
+ * @example
+ * ```typescript
+ * class EmpireController {
+ *   @Process({
+ *     id: "empire:scan",
+ *     name: "Empire Scanner",
+ *     priority: ProcessPriority.LOW,
+ *     frequency: "low",
+ *     interval: 50
+ *   })
+ *   scanEmpire(): void {
+ *     // Scan logic
+ *   }
+ * }
+ * ```
+ */
+function Process(options) {
+    return function (target, propertyKey, _descriptor) {
+        processMetadataStore.push({
+            options,
+            methodName: String(propertyKey),
+            target
+        });
+    };
+}
+/**
+ * High frequency process decorator (runs every tick)
+ * Shorthand for @Process with frequency: "high"
+ */
+function HighFrequencyProcess(id, name, options) {
+    return Process({
+        id,
+        name,
+        priority: ProcessPriority.HIGH,
+        frequency: "high",
+        minBucket: 500,
+        cpuBudget: 0.3,
+        interval: 1,
+        ...options
+    });
+}
+/**
+ * Medium frequency process decorator (runs every 5-10 ticks)
+ * Shorthand for @Process with frequency: "medium"
+ */
+function MediumFrequencyProcess(id, name, options) {
+    return Process({
+        id,
+        name,
+        priority: ProcessPriority.MEDIUM,
+        frequency: "medium",
+        minBucket: 2000,
+        cpuBudget: 0.15,
+        interval: 5,
+        ...options
+    });
+}
+/**
+ * Low frequency process decorator (runs every 20+ ticks)
+ * Shorthand for @Process with frequency: "low"
+ */
+function LowFrequencyProcess(id, name, options) {
+    return Process({
+        id,
+        name,
+        priority: ProcessPriority.LOW,
+        frequency: "low",
+        minBucket: 5000,
+        cpuBudget: 0.1,
+        interval: 20,
+        ...options
+    });
+}
+/**
+ * Idle process decorator (very low priority background tasks)
+ * Shorthand for @Process with priority: IDLE
+ */
+function IdleProcess(id, name, options) {
+    return Process({
+        id,
+        name,
+        priority: ProcessPriority.IDLE,
+        frequency: "low",
+        minBucket: 8000,
+        cpuBudget: 0.05,
+        interval: 100,
+        ...options
+    });
+}
+/**
+ * Class decorator to mark a class as containing process methods
+ * This enables automatic discovery and registration of decorated methods
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function ProcessClass() {
+    return function (constructor) {
+        registeredClasses.add(constructor);
+        return constructor;
+    };
+}
+/**
+ * Register all decorated processes from an instance
+ * Call this after creating an instance of a class with @Process decorated methods
+ *
+ * @param instance - Instance of a class with decorated process methods
+ *
+ * @example
+ * ```typescript
+ * const manager = new EmpireController();
+ * registerDecoratedProcesses(manager);
+ * ```
+ */
+function registerDecoratedProcesses(instance) {
+    var _a, _b;
+    const instancePrototype = Object.getPrototypeOf(instance);
+    for (const metadata of processMetadataStore) {
+        // Check if this metadata belongs to the instance's prototype chain
+        if (metadata.target === instancePrototype ||
+            Object.getPrototypeOf(metadata.target) === instancePrototype ||
+            metadata.target === Object.getPrototypeOf(instancePrototype)) {
+            const method = instance[metadata.methodName];
+            if (typeof method === "function") {
+                const boundMethod = method.bind(instance);
+                kernel.registerProcess({
+                    id: metadata.options.id,
+                    name: metadata.options.name,
+                    priority: (_a = metadata.options.priority) !== null && _a !== void 0 ? _a : ProcessPriority.MEDIUM,
+                    frequency: (_b = metadata.options.frequency) !== null && _b !== void 0 ? _b : "medium",
+                    minBucket: metadata.options.minBucket,
+                    cpuBudget: metadata.options.cpuBudget,
+                    interval: metadata.options.interval,
+                    execute: boundMethod
+                });
+                logger.debug(`Registered decorated process "${metadata.options.name}" (${metadata.options.id})`, { subsystem: "ProcessDecorators" });
+            }
+        }
+    }
+}
+/**
+ * Register processes from multiple instances
+ *
+ * @param instances - Array of instances with decorated process methods
+ */
+function registerAllDecoratedProcesses(...instances) {
+    for (const instance of instances) {
+        registerDecoratedProcesses(instance);
+    }
+    logger.info(`Registered decorated processes from ${instances.length} instance(s)`, { subsystem: "ProcessDecorators" });
+}
+
+/**
+ * Resource Sharing Module
+ *
+ * Handles inter-room resource sharing for rooms without terminals (RCL 1-5).
+ * Uses carrier creeps to transfer energy between rooms to stabilize economies.
+ *
+ * Key Features:
+ * - Calculates resource needs and surplus for each room
+ * - Creates resource transfer requests based on urgency
+ * - Coordinates carrier creep spawning and routing
+ * - Prioritizes critical energy needs for spawn survival
+ *
+ * Addresses Issue: Allow rooms to share resources between each other
+ */
+const DEFAULT_CONFIG$b = {
+    minBucket: 2000,
+    criticalEnergyThreshold: 300,
+    mediumEnergyThreshold: 1000,
+    lowEnergyThreshold: 3000,
+    surplusEnergyThreshold: 10000,
+    minTransferAmount: 500,
+    maxRequestsPerRoom: 3,
+    requestTimeout: 500,
+    focusRoomMediumThreshold: 5000,
+    focusRoomLowThreshold: 15000 // Focus room satisfied with higher reserves
+};
+/**
+ * Resource Sharing Manager
+ */
+class ResourceSharingManager {
+    constructor(config = {}) {
+        this.config = { ...DEFAULT_CONFIG$b, ...config };
+    }
+    /**
+     * Process resource sharing for a cluster
+     */
+    processCluster(cluster) {
+        if (Game.cpu.bucket < this.config.minBucket) {
+            return; // Skip if CPU is low
+        }
+        // Clean up old/completed requests
+        this.cleanupRequests(cluster);
+        // Get resource status for all rooms
+        const roomStatuses = this.getRoomStatuses(cluster);
+        // Find rooms without terminals that need help or can help
+        const preTerminalRooms = roomStatuses.filter(r => !r.hasTerminal);
+        if (preTerminalRooms.length < 2) {
+            return; // Need at least 2 rooms to share
+        }
+        // Create resource transfer requests
+        this.createTransferRequests(cluster, preTerminalRooms);
+    }
+    /**
+     * Clean up old or completed requests
+     */
+    cleanupRequests(cluster) {
+        cluster.resourceRequests = cluster.resourceRequests.filter(req => {
+            // Remove if too old
+            if (Game.time - req.createdAt > this.config.requestTimeout) {
+                logger.debug(`Resource request from ${req.fromRoom} to ${req.toRoom} expired`, {
+                    subsystem: "ResourceSharing"
+                });
+                return false;
+            }
+            // Remove if completed
+            if (req.delivered >= req.amount) {
+                logger.info(`Resource transfer completed: ${req.delivered} ${req.resourceType} from ${req.fromRoom} to ${req.toRoom}`, { subsystem: "ResourceSharing" });
+                return false;
+            }
+            // Remove if either room no longer exists in cluster
+            if (!cluster.memberRooms.includes(req.toRoom) || !cluster.memberRooms.includes(req.fromRoom)) {
+                return false;
+            }
+            // Check if need is still valid
+            const toRoom = Game.rooms[req.toRoom];
+            if (toRoom) {
+                const swarm = memoryManager.getSwarmState(req.toRoom);
+                if (swarm && swarm.metrics.energyNeed === 0) {
+                    logger.debug(`Resource request from ${req.fromRoom} to ${req.toRoom} no longer needed`, {
+                        subsystem: "ResourceSharing"
+                    });
+                    return false;
+                }
+            }
+            return true;
+        });
+    }
+    /**
+     * Get resource status for all rooms in cluster
+     */
+    getRoomStatuses(cluster) {
+        var _a;
+        const statuses = [];
+        for (const roomName of cluster.memberRooms) {
+            const room = Game.rooms[roomName];
+            if (!room || !((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my))
+                continue;
+            const swarm = memoryManager.getSwarmState(roomName);
+            if (!swarm)
+                continue;
+            const isFocusRoom = cluster.focusRoom === roomName;
+            // Calculate available energy and capacity
+            const { energyAvailable, energyCapacity } = this.calculateRoomEnergy(room);
+            // Determine energy need level
+            const energyNeed = this.calculateEnergyNeed(room, energyAvailable, swarm, isFocusRoom);
+            // Calculate how much can be provided
+            let canProvide = 0;
+            if (isFocusRoom) {
+                // Focus room should not provide resources to others
+                canProvide = 0;
+            }
+            else if (energyAvailable > this.config.surplusEnergyThreshold) {
+                canProvide = energyAvailable - this.config.mediumEnergyThreshold;
+            }
+            // Calculate how much is needed
+            let needsAmount = 0;
+            if (energyNeed === 3) {
+                needsAmount = this.config.criticalEnergyThreshold - energyAvailable;
+            }
+            else if (energyNeed === 2) {
+                needsAmount = this.config.mediumEnergyThreshold - energyAvailable;
+            }
+            else if (energyNeed === 1) {
+                needsAmount = this.config.lowEnergyThreshold - energyAvailable;
+            }
+            // Focus room gets more aggressive about requesting resources
+            if (isFocusRoom && energyNeed > 0) {
+                needsAmount = Math.max(needsAmount, this.config.minTransferAmount * 2);
+            }
+            else {
+                needsAmount = Math.max(needsAmount, this.config.minTransferAmount);
+            }
+            statuses.push({
+                roomName,
+                hasTerminal: room.terminal !== undefined && room.terminal.my,
+                energyAvailable,
+                energyCapacity,
+                energyNeed,
+                canProvide,
+                needsAmount
+            });
+            // Update swarm metrics
+            swarm.metrics.energyAvailable = energyAvailable;
+            swarm.metrics.energyCapacity = energyCapacity;
+            swarm.metrics.energyNeed = energyNeed;
+        }
+        return statuses;
+    }
+    /**
+     * Calculate available energy and capacity for a room
+     */
+    calculateRoomEnergy(room) {
+        let energyAvailable = 0;
+        let energyCapacity = 0;
+        // Include storage
+        if (room.storage) {
+            energyAvailable += room.storage.store.getUsedCapacity(RESOURCE_ENERGY);
+            energyCapacity += room.storage.store.getCapacity();
+        }
+        // Include containers (but not link containers)
+        const containers = room.find(FIND_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_CONTAINER
+        });
+        for (const container of containers) {
+            energyAvailable += container.store.getUsedCapacity(RESOURCE_ENERGY);
+            energyCapacity += container.store.getCapacity();
+        }
+        return { energyAvailable, energyCapacity };
+    }
+    /**
+     * Calculate energy need level for a room
+     * Focus rooms have higher thresholds to ensure they get priority for upgrading
+     */
+    calculateEnergyNeed(room, energyAvailable, _swarm, isFocusRoom = false) {
+        // Critical: spawn in danger of not being able to spawn
+        if (energyAvailable < this.config.criticalEnergyThreshold) {
+            // Extra critical if spawn is low on energy and can't spawn
+            const spawns = room.find(FIND_MY_SPAWNS);
+            if (spawns.length > 0 && room.energyAvailable < 200) {
+                return 3;
+            }
+            return 3;
+        }
+        // Focus room has higher thresholds to accumulate more energy for upgrading
+        if (isFocusRoom) {
+            // Focus room considers itself "medium need" up to configured threshold
+            if (energyAvailable < this.config.focusRoomMediumThreshold) {
+                return 2;
+            }
+            // Focus room considers itself "low need" up to configured threshold
+            if (energyAvailable < this.config.focusRoomLowThreshold) {
+                return 1;
+            }
+            // Focus room is satisfied once it has significant reserves
+            return 0;
+        }
+        // Non-focus rooms use standard thresholds
+        // Medium: running low on energy
+        if (energyAvailable < this.config.mediumEnergyThreshold) {
+            return 2;
+        }
+        // Low: could use some help
+        if (energyAvailable < this.config.lowEnergyThreshold) {
+            return 1;
+        }
+        // No need
+        return 0;
+    }
+    /**
+     * Create resource transfer requests
+     */
+    createTransferRequests(cluster, rooms) {
+        // Sort by need (highest first)
+        const needyRooms = rooms.filter(r => r.energyNeed > 0).sort((a, b) => b.energyNeed - a.energyNeed);
+        // Sort providers by surplus (highest first)
+        const providerRooms = rooms.filter(r => r.canProvide > 0).sort((a, b) => b.canProvide - a.canProvide);
+        if (needyRooms.length === 0 || providerRooms.length === 0) {
+            return; // No matches possible
+        }
+        // Match needy rooms with providers
+        for (const needyRoom of needyRooms) {
+            // Check if room already has too many active requests
+            const existingRequests = cluster.resourceRequests.filter(r => r.toRoom === needyRoom.roomName);
+            if (existingRequests.length >= this.config.maxRequestsPerRoom) {
+                continue;
+            }
+            // Find best provider (closest with surplus)
+            let bestProvider = null;
+            let bestDistance = Infinity;
+            for (const provider of providerRooms) {
+                if (provider.roomName === needyRoom.roomName)
+                    continue;
+                // Check if already providing to this room
+                const alreadyProviding = cluster.resourceRequests.some(r => r.fromRoom === provider.roomName && r.toRoom === needyRoom.roomName);
+                if (alreadyProviding)
+                    continue;
+                const distance = Game.map.getRoomLinearDistance(provider.roomName, needyRoom.roomName);
+                if (distance < bestDistance && provider.canProvide >= this.config.minTransferAmount) {
+                    bestDistance = distance;
+                    bestProvider = provider;
+                }
+            }
+            if (bestProvider && bestDistance <= 3) {
+                // Only transfer between nearby rooms
+                // Create transfer request
+                const amount = Math.min(needyRoom.needsAmount, bestProvider.canProvide);
+                const request = {
+                    toRoom: needyRoom.roomName,
+                    fromRoom: bestProvider.roomName,
+                    resourceType: RESOURCE_ENERGY,
+                    amount,
+                    priority: needyRoom.energyNeed,
+                    createdAt: Game.time,
+                    assignedCreeps: [],
+                    delivered: 0
+                };
+                cluster.resourceRequests.push(request);
+                logger.info(`Created resource transfer: ${amount} energy from ${bestProvider.roomName} to ${needyRoom.roomName} (priority ${request.priority}, distance ${bestDistance})`, { subsystem: "ResourceSharing" });
+                // Reduce provider's available amount
+                bestProvider.canProvide -= amount;
+            }
+        }
+    }
+    /**
+     * Get active transfer requests for a room
+     */
+    getRequestsForRoom(cluster, roomName) {
+        return cluster.resourceRequests.filter(r => r.toRoom === roomName || r.fromRoom === roomName);
+    }
+    /**
+     * Update request progress
+     */
+    updateRequestProgress(cluster, requestIndex, amount) {
+        if (requestIndex >= 0 && requestIndex < cluster.resourceRequests.length) {
+            const request = cluster.resourceRequests[requestIndex];
+            request.delivered += amount;
+            logger.debug(`Updated transfer progress: ${request.delivered}/${request.amount} from ${request.fromRoom} to ${request.toRoom}`, {
+                subsystem: "ResourceSharing"
+            });
+        }
+    }
+}
+/**
+ * Global resource sharing manager instance
+ */
+const resourceSharingManager = new ResourceSharingManager();
+
+/**
+ * Cluster Manager - Multi-Room Coordination
+ *
+ * Coordinates operations across rooms in a cluster:
+ * - Terminal resource balancing (RCL 6+)
+ * - Pre-terminal resource sharing (RCL 1-5)
+ * - Squad formation and coordination
+ * - Rally point management
+ * - Inter-room logistics
+ * - Cluster-wide metrics
+ *
+ * Addresses Issues: #8, #20, #36
+ */
+const DEFAULT_CONFIG$a = {
+    updateInterval: 10,
+    minBucket: 3000,
+    resourceBalanceThreshold: 10000,
+    minTerminalEnergy: 50000
+};
+/**
+ * Cluster Manager Class
+ */
+let ClusterManager = class ClusterManager {
+    constructor(config = {}) {
+        this.lastRun = new Map();
+        this.config = { ...DEFAULT_CONFIG$a, ...config };
+    }
+    /**
+     * Run all clusters
+     * Registered as kernel process via decorator
+     */
+    run() {
+        const clusters = memoryManager.getClusters();
+        for (const clusterId in clusters) {
+            const cluster = clusters[clusterId];
+            // Check if we should run this cluster
+            if (!this.shouldRunCluster(clusterId)) {
+                continue;
+            }
+            try {
+                this.runCluster(cluster);
+                this.lastRun.set(clusterId, Game.time);
+            }
+            catch (err) {
+                const errorMessage = err instanceof Error ? err.message : String(err);
+                logger.error(`Cluster ${clusterId} error: ${errorMessage}`, { subsystem: "Cluster" });
+            }
+        }
+    }
+    /**
+     * Check if cluster should run this tick
+     */
+    shouldRunCluster(clusterId) {
+        var _a;
+        const lastRun = (_a = this.lastRun.get(clusterId)) !== null && _a !== void 0 ? _a : 0;
+        return Game.time - lastRun >= this.config.updateInterval;
+    }
+    /**
+     * Run a single cluster
+     */
+    runCluster(cluster) {
+        const cpuStart = Game.cpu.getUsed();
+        // Update cluster metrics
+        profiler.measureSubsystem(`cluster:${cluster.id}:metrics`, () => {
+            this.updateClusterMetrics(cluster);
+        });
+        // Handle defense requests
+        profiler.measureSubsystem(`cluster:${cluster.id}:defense`, () => {
+            this.processDefenseRequests(cluster);
+        });
+        // Balance terminal resources (RCL 6+ rooms)
+        profiler.measureSubsystem(`cluster:${cluster.id}:terminals`, () => {
+            this.balanceTerminalResources(cluster);
+        });
+        // Process resource sharing for pre-terminal rooms (RCL 1-5)
+        profiler.measureSubsystem(`cluster:${cluster.id}:resourceSharing`, () => {
+            resourceSharingManager.processCluster(cluster);
+        });
+        // Update squads
+        profiler.measureSubsystem(`cluster:${cluster.id}:squads`, () => {
+            this.updateSquads(cluster);
+        });
+        // Update cluster role
+        profiler.measureSubsystem(`cluster:${cluster.id}:role`, () => {
+            this.updateClusterRole(cluster);
+        });
+        // Update focus room for sequential upgrading
+        profiler.measureSubsystem(`cluster:${cluster.id}:focusRoom`, () => {
+            this.updateFocusRoom(cluster);
+        });
+        cluster.lastUpdate = Game.time;
+        const cpuUsed = Game.cpu.getUsed() - cpuStart;
+        if (cpuUsed > 1 && Game.time % 50 === 0) {
+            logger.debug(`Cluster ${cluster.id} tick: ${cpuUsed.toFixed(2)} CPU`, { subsystem: "Cluster" });
+        }
+    }
+    /**
+     * Update cluster-wide metrics
+     */
+    updateClusterMetrics(cluster) {
+        let totalEnergyIncome = 0;
+        let totalEnergyConsumption = 0;
+        let totalWarIndex = 0;
+        let totalEconomyIndex = 0;
+        let roomCount = 0;
+        for (const roomName of cluster.memberRooms) {
+            const swarm = memoryManager.getSwarmState(roomName);
+            if (!swarm)
+                continue;
+            totalEnergyIncome += swarm.metrics.energyHarvested;
+            totalEnergyConsumption += swarm.metrics.energySpawning + swarm.metrics.energyConstruction + swarm.metrics.energyRepair;
+            totalWarIndex += swarm.danger * 25; // Convert danger (0-3) to index (0-75)
+            // Economy index based on storage and energy income
+            const room = Game.rooms[roomName];
+            if (room === null || room === void 0 ? void 0 : room.storage) {
+                const storageRatio = room.storage.store.getUsedCapacity(RESOURCE_ENERGY) / room.storage.store.getCapacity();
+                totalEconomyIndex += storageRatio * 100;
+            }
+            else {
+                totalEconomyIndex += swarm.metrics.energyHarvested > 0 ? 50 : 0;
+            }
+            roomCount++;
+        }
+        if (roomCount > 0) {
+            cluster.metrics.energyIncome = totalEnergyIncome / roomCount;
+            cluster.metrics.energyConsumption = totalEnergyConsumption / roomCount;
+            cluster.metrics.energyBalance = cluster.metrics.energyIncome - cluster.metrics.energyConsumption;
+            cluster.metrics.warIndex = Math.min(100, totalWarIndex / roomCount);
+            cluster.metrics.economyIndex = Math.min(100, totalEconomyIndex / roomCount);
+        }
+    }
+    /**
+     * Balance terminal resources across cluster
+     */
+    balanceTerminalResources(cluster) {
+        // Get all terminals in cluster
+        const terminals = [];
+        for (const roomName of cluster.memberRooms) {
+            const room = Game.rooms[roomName];
+            if ((room === null || room === void 0 ? void 0 : room.terminal) && room.terminal.my) {
+                terminals.push({ room, terminal: room.terminal });
+            }
+        }
+        if (terminals.length < 2) {
+            return; // Need at least 2 terminals to balance
+        }
+        // Balance energy
+        this.balanceResource(terminals, RESOURCE_ENERGY);
+        // Balance minerals (every 50 ticks)
+        if (Game.time % 50 === 0) {
+            const minerals = [
+                RESOURCE_HYDROGEN,
+                RESOURCE_OXYGEN,
+                RESOURCE_UTRIUM,
+                RESOURCE_LEMERGIUM,
+                RESOURCE_KEANIUM,
+                RESOURCE_ZYNTHIUM,
+                RESOURCE_CATALYST
+            ];
+            for (const mineral of minerals) {
+                this.balanceResource(terminals, mineral);
+            }
+        }
+    }
+    /**
+     * Balance a specific resource across terminals
+     */
+    balanceResource(terminals, resource) {
+        // Calculate average
+        let total = 0;
+        for (const { terminal } of terminals) {
+            total += terminal.store.getUsedCapacity(resource);
+        }
+        const average = total / terminals.length;
+        // Find surplus and deficit terminals
+        const surplus = terminals.filter(t => t.terminal.store.getUsedCapacity(resource) > average + this.config.resourceBalanceThreshold);
+        const deficit = terminals.filter(t => t.terminal.store.getUsedCapacity(resource) < average - this.config.resourceBalanceThreshold);
+        if (surplus.length === 0 || deficit.length === 0) {
+            return;
+        }
+        // Transfer from surplus to deficit
+        for (const source of surplus) {
+            if (source.terminal.cooldown > 0)
+                continue;
+            // Don't send if it would drop below minimum energy
+            if (resource === RESOURCE_ENERGY) {
+                if (source.terminal.store.getUsedCapacity(RESOURCE_ENERGY) < this.config.minTerminalEnergy + this.config.resourceBalanceThreshold) {
+                    continue;
+                }
+            }
+            for (const target of deficit) {
+                const amount = Math.min(source.terminal.store.getUsedCapacity(resource) - average, average - target.terminal.store.getUsedCapacity(resource), 10000 // Max transfer per tick
+                );
+                if (amount > 1000) {
+                    const result = source.terminal.send(resource, amount, target.room.name);
+                    if (result === OK) {
+                        logger.debug(`Transferred ${amount} ${resource} from ${source.room.name} to ${target.room.name}`, { subsystem: "Cluster" });
+                        break; // One transfer per terminal per tick
+                    }
+                }
+            }
+        }
+    }
+    /**
+     * Update squad status
+     */
+    updateSquads(cluster) {
+        // Remove dissolved squads
+        cluster.squads = cluster.squads.filter(squad => squad.state !== "dissolving");
+        // Update existing squads
+        for (const squad of cluster.squads) {
+            this.updateSquad(squad);
+        }
+    }
+    /**
+     * Update a single squad
+     */
+    updateSquad(squad) {
+        // Remove dead members
+        squad.members = squad.members.filter(name => Game.creeps[name]);
+        // Check if squad should dissolve
+        if (squad.members.length === 0) {
+            squad.state = "dissolving";
+            logger.info(`Squad ${squad.id} dissolved - no members remaining`, { subsystem: "Cluster" });
+            return;
+        }
+        // Update squad state based on member positions
+        const members = squad.members.map(name => Game.creeps[name]).filter(c => c);
+        if (members.length === 0) {
+            squad.state = "dissolving";
+            return;
+        }
+        // Check if all members are in rally room
+        const inRally = members.every(c => c.room.name === squad.rallyRoom);
+        if (squad.state === "gathering" && inRally) {
+            squad.state = "moving";
+            logger.info(`Squad ${squad.id} gathered, moving to target`, { subsystem: "Cluster" });
+        }
+        // Check if all members are in target room
+        const inTarget = members.some(c => squad.targetRooms.includes(c.room.name));
+        if (squad.state === "moving" && inTarget) {
+            squad.state = "attacking";
+            logger.info(`Squad ${squad.id} reached target, engaging`, { subsystem: "Cluster" });
+        }
+        // Check if squad should retreat (>50% casualties)
+        const originalSize = squad.members.length;
+        if (squad.state === "attacking" && members.length < originalSize * 0.5) {
+            squad.state = "retreating";
+            logger.warn(`Squad ${squad.id} retreating - heavy casualties`, { subsystem: "Cluster" });
+        }
+    }
+    /**
+     * Update cluster role based on metrics
+     */
+    updateClusterRole(cluster) {
+        const { warIndex, economyIndex } = cluster.metrics;
+        // Determine role based on metrics
+        if (warIndex > 50) {
+            cluster.role = "war";
+        }
+        else if (economyIndex > 70 && warIndex < 20) {
+            cluster.role = "economic";
+        }
+        else if (economyIndex < 40) {
+            cluster.role = "frontier";
+        }
+        else {
+            cluster.role = "mixed";
+        }
+    }
+    /**
+     * Update focus room for sequential upgrading strategy.
+     * Prioritizes one room to upgrade to RCL 8, then moves to the next room.
+     * This stabilizes one room before moving on, ensuring efficient resource use.
+     */
+    updateFocusRoom(cluster) {
+        var _a, _b;
+        // Get all member rooms with their RCL
+        const roomsWithRcl = [];
+        for (const roomName of cluster.memberRooms) {
+            const room = Game.rooms[roomName];
+            if (!room || !((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my))
+                continue;
+            roomsWithRcl.push({
+                roomName,
+                rcl: room.controller.level
+            });
+        }
+        if (roomsWithRcl.length === 0)
+            return;
+        // Check if current focus room still valid
+        if (cluster.focusRoom) {
+            const focusRoom = Game.rooms[cluster.focusRoom];
+            // If focus room reached RCL 8, clear it
+            if (((_b = focusRoom === null || focusRoom === void 0 ? void 0 : focusRoom.controller) === null || _b === void 0 ? void 0 : _b.level) === 8) {
+                logger.info(`Focus room ${cluster.focusRoom} reached RCL 8, selecting next room`, { subsystem: "Cluster" });
+                cluster.focusRoom = undefined;
+            }
+            // If focus room no longer exists or not in cluster, clear it
+            if (!focusRoom) {
+                logger.warn(`Focus room ${cluster.focusRoom} no longer valid, selecting new focus`, { subsystem: "Cluster" });
+                cluster.focusRoom = undefined;
+            }
+        }
+        // Select new focus room if needed
+        if (!cluster.focusRoom) {
+            // Find room with lowest RCL that's not yet 8
+            const eligibleRooms = roomsWithRcl.filter(r => r.rcl < 8);
+            if (eligibleRooms.length === 0) {
+                // All rooms are RCL 8, no focus needed
+                return;
+            }
+            // Sort by RCL (lowest first), then by room name for determinism
+            eligibleRooms.sort((a, b) => {
+                if (a.rcl !== b.rcl)
+                    return a.rcl - b.rcl;
+                return a.roomName.localeCompare(b.roomName);
+            });
+            cluster.focusRoom = eligibleRooms[0].roomName;
+            logger.info(`Selected ${cluster.focusRoom} (RCL ${eligibleRooms[0].rcl}) as focus room for upgrading`, { subsystem: "Cluster" });
+        }
+    }
+    /**
+     * Create a new cluster for a room
+     */
+    createCluster(coreRoom) {
+        const clusterId = `cluster_${coreRoom}`;
+        const cluster = memoryManager.getCluster(clusterId, coreRoom);
+        if (!cluster) {
+            throw new Error(`Failed to create cluster for ${coreRoom}`);
+        }
+        logger.info(`Created cluster ${clusterId} with core room ${coreRoom}`, { subsystem: "Cluster" });
+        return cluster;
+    }
+    /**
+     * Add room to cluster
+     */
+    addRoomToCluster(clusterId, roomName, isRemote = false) {
+        const cluster = memoryManager.getCluster(clusterId);
+        if (!cluster) {
+            logger.error(`Cluster ${clusterId} not found`, { subsystem: "Cluster" });
+            return;
+        }
+        if (isRemote) {
+            if (!cluster.remoteRooms.includes(roomName)) {
+                cluster.remoteRooms.push(roomName);
+                logger.info(`Added remote room ${roomName} to cluster ${clusterId}`, { subsystem: "Cluster" });
+            }
+        }
+        else {
+            if (!cluster.memberRooms.includes(roomName)) {
+                cluster.memberRooms.push(roomName);
+                logger.info(`Added member room ${roomName} to cluster ${clusterId}`, { subsystem: "Cluster" });
+            }
+        }
+    }
+    /**
+     * Process defense requests within the cluster
+     * Coordinates assistance to rooms that need defense help
+     */
+    processDefenseRequests(cluster) {
+        var _a;
+        // Clean up old/expired requests (older than 500 ticks)
+        cluster.defenseRequests = cluster.defenseRequests.filter(req => {
+            const age = Game.time - req.createdAt;
+            // Remove if too old or if no longer needed
+            if (age > 500) {
+                logger.debug(`Defense request for ${req.roomName} expired (${age} ticks old)`, { subsystem: "Cluster" });
+                return false;
+            }
+            // Check if threat is still present
+            const room = Game.rooms[req.roomName];
+            if (!room)
+                return false;
+            const hostiles = room.find(FIND_HOSTILE_CREEPS);
+            if (hostiles.length === 0) {
+                logger.info(`Defense request for ${req.roomName} resolved - no more hostiles`, { subsystem: "Cluster" });
+                return false;
+            }
+            return true;
+        });
+        // Check each member room for new defense needs
+        for (const roomName of cluster.memberRooms) {
+            const room = Game.rooms[roomName];
+            if (!room || !((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my))
+                continue;
+            const swarm = memoryManager.getSwarmState(roomName);
+            if (!swarm)
+                continue;
+            // Check if room needs assistance
+            if (needsDefenseAssistance(room, swarm)) {
+                // Check if we already have a request for this room
+                const existingRequest = cluster.defenseRequests.find(req => req.roomName === roomName);
+                if (existingRequest) {
+                    // Update existing request if needed
+                    const newRequest = createDefenseRequest(room, swarm);
+                    if (newRequest && newRequest.urgency > existingRequest.urgency) {
+                        existingRequest.urgency = newRequest.urgency;
+                        existingRequest.guardsNeeded = newRequest.guardsNeeded;
+                        existingRequest.rangersNeeded = newRequest.rangersNeeded;
+                        existingRequest.healersNeeded = newRequest.healersNeeded;
+                        existingRequest.threat = newRequest.threat;
+                    }
+                }
+                else {
+                    // Create new defense request
+                    const request = createDefenseRequest(room, swarm);
+                    if (request) {
+                        cluster.defenseRequests.push({
+                            ...request,
+                            assignedCreeps: []
+                        });
+                    }
+                }
+            }
+        }
+        // Assign available defenders to pending requests
+        this.assignDefendersToRequests(cluster);
+    }
+    /**
+     * Assign available military creeps to defense requests
+     */
+    assignDefendersToRequests(cluster) {
+        if (cluster.defenseRequests.length === 0)
+            return;
+        // Sort requests by urgency (highest first)
+        const sortedRequests = [...cluster.defenseRequests].sort((a, b) => b.urgency - a.urgency);
+        // Find available military creeps in cluster rooms
+        const availableDefenders = [];
+        for (const request of sortedRequests) {
+            const targetRoom = Game.rooms[request.roomName];
+            if (!targetRoom)
+                continue;
+            // Find available defenders in cluster
+            for (const roomName of cluster.memberRooms) {
+                if (roomName === request.roomName)
+                    continue; // Don't use defenders from the room under attack
+                const room = Game.rooms[roomName];
+                if (!room)
+                    continue;
+                const creeps = room.find(FIND_MY_CREEPS);
+                for (const creep of creeps) {
+                    const mem = creep.memory;
+                    // Check if creep is a military role and not already assigned
+                    if (mem.family !== "military")
+                        continue;
+                    if (mem.assistTarget)
+                        continue; // Already assigned
+                    if (request.assignedCreeps.includes(creep.name))
+                        continue;
+                    // Check if creep matches needed role
+                    const needsGuards = request.guardsNeeded > 0;
+                    const needsRangers = request.rangersNeeded > 0;
+                    const needsHealers = request.healersNeeded > 0;
+                    const isGuard = mem.role === "guard";
+                    const isRanger = mem.role === "ranger";
+                    const isHealer = mem.role === "healer";
+                    if ((needsGuards && isGuard) || (needsRangers && isRanger) || (needsHealers && isHealer)) {
+                        // Calculate distance (rough estimate)
+                        const distance = Game.map.getRoomLinearDistance(roomName, request.roomName);
+                        availableDefenders.push({
+                            creep,
+                            room,
+                            distance,
+                            targetRoom: request.roomName
+                        });
+                    }
+                }
+            }
+            // Assign closest defenders to this request
+            availableDefenders.sort((a, b) => a.distance - b.distance);
+            const needed = request.guardsNeeded + request.rangersNeeded + request.healersNeeded;
+            const toAssign = Math.min(needed, availableDefenders.length);
+            for (let i = 0; i < toAssign; i++) {
+                const defender = availableDefenders[i];
+                if (!defender)
+                    continue;
+                const creepMem = defender.creep.memory;
+                creepMem.assistTarget = request.roomName;
+                request.assignedCreeps.push(defender.creep.name);
+                logger.info(`Assigned ${defender.creep.name} (${defender.creep.memory.role}) from ${defender.room.name} to assist ${request.roomName} (distance: ${defender.distance})`, { subsystem: "Cluster" });
+                // Decrement needed count
+                if (defender.creep.memory.role === "guard")
+                    request.guardsNeeded--;
+                if (defender.creep.memory.role === "ranger")
+                    request.rangersNeeded--;
+                if (defender.creep.memory.role === "healer")
+                    request.healersNeeded--;
+            }
+            // Clear assigned defenders from available pool
+            for (let i = availableDefenders.length - 1; i >= 0; i--) {
+                if (request.assignedCreeps.includes(availableDefenders[i].creep.name)) {
+                    availableDefenders.splice(i, 1);
+                }
+            }
+        }
+    }
+};
+__decorate([
+    MediumFrequencyProcess("cluster:manager", "Cluster Manager", {
+        priority: ProcessPriority.MEDIUM,
+        interval: 10,
+        minBucket: 3000,
+        cpuBudget: 0.03
+    })
+], ClusterManager.prototype, "run", null);
+ClusterManager = __decorate([
+    ProcessClass()
+], ClusterManager);
+/**
+ * Global cluster manager instance
+ */
+const clusterManager = new ClusterManager();
+
+/**
+ * Evacuation Manager
+ *
+ * Manages room evacuation logic:
+ * - Evacuation trigger detection
+ * - Resource priority system
+ * - Terminal transfer coordination
+ * - Creep recall mechanism
+ *
+ * Addresses Issue: #31
+ */
+const DEFAULT_CONFIG$9 = {
+    triggerDangerLevel: 3,
+    nukeEvacuationLeadTime: 5000,
+    minStorageEnergy: 50000,
+    priorityResources: [
+        RESOURCE_ENERGY,
+        RESOURCE_POWER,
+        RESOURCE_GHODIUM,
+        RESOURCE_CATALYZED_GHODIUM_ACID,
+        RESOURCE_CATALYZED_UTRIUM_ACID,
+        RESOURCE_CATALYZED_LEMERGIUM_ACID,
+        RESOURCE_CATALYZED_KEANIUM_ACID,
+        RESOURCE_CATALYZED_ZYNTHIUM_ACID,
+        RESOURCE_OPS
+    ],
+    maxTransfersPerTick: 2
+};
+/**
+ * Evacuation Manager
+ */
+let EvacuationManager = class EvacuationManager {
+    constructor(config = {}) {
+        this.evacuations = new Map();
+        this.lastTransferTick = 0;
+        this.transfersThisTick = 0;
+        this.config = { ...DEFAULT_CONFIG$9, ...config };
+    }
+    /**
+     * Main tick - check for evacuation triggers and process active evacuations
+     * Registered as kernel process via decorator
+     */
+    run() {
+        // Reset transfer counter
+        if (Game.time !== this.lastTransferTick) {
+            this.transfersThisTick = 0;
+            this.lastTransferTick = Game.time;
+        }
+        // Check for evacuation triggers in owned rooms
+        this.checkEvacuationTriggers();
+        // Process active evacuations
+        for (const state of this.evacuations.values()) {
+            if (!state.complete) {
+                this.processEvacuation(state);
+            }
+        }
+        // Clean up completed evacuations after 1000 ticks
+        for (const [roomName, state] of this.evacuations.entries()) {
+            if (state.complete && Game.time - state.startedAt > 1000) {
+                this.evacuations.delete(roomName);
+            }
+        }
+    }
+    /**
+     * Check for evacuation triggers
+     */
+    checkEvacuationTriggers() {
+        var _a, _b, _c;
+        for (const roomName in Game.rooms) {
+            const room = Game.rooms[roomName];
+            if (!((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my))
+                continue;
+            // Skip if already evacuating
+            if (this.evacuations.has(roomName))
+                continue;
+            const swarm = memoryManager.getSwarmState(roomName);
+            if (!swarm)
+                continue;
+            // Check for nuke
+            const nukes = room.find(FIND_NUKES);
+            if (nukes.length > 0) {
+                const nearestNuke = nukes.reduce((a, b) => { var _a, _b; return ((_a = a.timeToLand) !== null && _a !== void 0 ? _a : Infinity) < ((_b = b.timeToLand) !== null && _b !== void 0 ? _b : Infinity) ? a : b; });
+                if (((_b = nearestNuke.timeToLand) !== null && _b !== void 0 ? _b : Infinity) <= this.config.nukeEvacuationLeadTime) {
+                    this.startEvacuation(roomName, "nuke", Game.time + ((_c = nearestNuke.timeToLand) !== null && _c !== void 0 ? _c : 0));
+                    continue;
+                }
+            }
+            // Check for siege (danger level 3)
+            if (swarm.danger >= this.config.triggerDangerLevel && swarm.posture === "siege") {
+                // Only evacuate if we're clearly losing
+                const hostiles = room.find(FIND_HOSTILE_CREEPS);
+                const defenders = room.find(FIND_MY_CREEPS, {
+                    filter: c => {
+                        const body = c.body.map(p => p.type);
+                        return body.includes(ATTACK) || body.includes(RANGED_ATTACK);
+                    }
+                });
+                if (hostiles.length > defenders.length * 3) {
+                    this.startEvacuation(roomName, "siege");
+                    continue;
+                }
+            }
+        }
+    }
+    /**
+     * Start evacuation for a room
+     */
+    startEvacuation(roomName, reason, deadline) {
+        var _a;
+        if (this.evacuations.has(roomName)) {
+            return false; // Already evacuating
+        }
+        const room = Game.rooms[roomName];
+        if (!room || !((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my))
+            return false;
+        // Find target room for evacuation
+        const targetRoom = this.findEvacuationTarget(roomName);
+        if (!targetRoom) {
+            logger.error(`Cannot evacuate ${roomName}: no valid target room found`, {
+                subsystem: "Evacuation"
+            });
+            return false;
+        }
+        const state = {
+            roomName,
+            reason,
+            startedAt: Game.time,
+            targetRoom,
+            resourcesEvacuated: [],
+            creepsRecalled: [],
+            progress: 0,
+            complete: false,
+            deadline
+        };
+        this.evacuations.set(roomName, state);
+        // Update room posture
+        const swarm = memoryManager.getSwarmState(roomName);
+        if (swarm) {
+            swarm.posture = "evacuate";
+        }
+        logger.warn(`Starting evacuation of ${roomName} (${reason}), target: ${targetRoom}` +
+            (deadline ? `, deadline: ${deadline - Game.time} ticks` : ""), { subsystem: "Evacuation" });
+        return true;
+    }
+    /**
+     * Find best target room for evacuation
+     */
+    findEvacuationTarget(fromRoom) {
+        var _a, _b;
+        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return ((_a = r.controller) === null || _a === void 0 ? void 0 : _a.my) && r.name !== fromRoom; });
+        if (ownedRooms.length === 0)
+            return null;
+        // Score target rooms
+        const candidates = ownedRooms
+            .map(room => {
+            var _a, _b;
+            let score = 0;
+            // Terminal required for transfers
+            if (!room.terminal)
+                return { room, score: -1000 };
+            // Prefer closer rooms
+            const distance = Game.map.getRoomLinearDistance(fromRoom, room.name);
+            score -= distance * 10;
+            // Prefer rooms with free terminal capacity
+            const freeCapacity = room.terminal.store.getFreeCapacity();
+            score += Math.min(100, freeCapacity / 10000) * 10;
+            // Prefer higher RCL rooms
+            score += ((_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0) * 5;
+            // Prefer rooms with storage
+            if (room.storage) {
+                score += 50;
+                // Prefer rooms with free storage capacity
+                const storageFree = room.storage.store.getFreeCapacity();
+                score += Math.min(100, storageFree / 50000) * 5;
+            }
+            // Avoid rooms under attack
+            const hostiles = room.find(FIND_HOSTILE_CREEPS);
+            if (hostiles.length > 0) {
+                score -= hostiles.length * 20;
+            }
+            return { room, score };
+        })
+            .filter(c => c.score > -500)
+            .sort((a, b) => b.score - a.score);
+        return candidates.length > 0 ? ((_b = (_a = candidates[0]) === null || _a === void 0 ? void 0 : _a.room.name) !== null && _b !== void 0 ? _b : null) : null;
+    }
+    /**
+     * Process an active evacuation
+     */
+    processEvacuation(state) {
+        const room = Game.rooms[state.roomName];
+        const targetRoom = Game.rooms[state.targetRoom];
+        if (!room) {
+            // Lost room - evacuation failed
+            state.complete = true;
+            logger.error(`Lost room ${state.roomName} during evacuation`, {
+                subsystem: "Evacuation"
+            });
+            return;
+        }
+        // Transfer resources via terminal
+        if (this.transfersThisTick < this.config.maxTransfersPerTick) {
+            this.transferResources(state, room, targetRoom);
+        }
+        // Recall creeps
+        this.recallCreeps(state, room);
+        // Update progress
+        state.progress = this.calculateProgress(state, room);
+        // Check if complete
+        if (state.progress >= 100) {
+            state.complete = true;
+            logger.info(`Evacuation of ${state.roomName} complete: ` +
+                `${state.resourcesEvacuated.reduce((sum, r) => sum + r.amount, 0)} resources, ` +
+                `${state.creepsRecalled.length} creeps`, { subsystem: "Evacuation" });
+        }
+        // Check deadline
+        if (state.deadline && Game.time >= state.deadline) {
+            state.complete = true;
+            logger.warn(`Evacuation of ${state.roomName} reached deadline`, {
+                subsystem: "Evacuation"
+            });
+        }
+    }
+    /**
+     * Transfer resources to target room
+     */
+    transferResources(state, sourceRoom, targetRoom) {
+        const sourceTerminal = sourceRoom.terminal;
+        const targetTerminal = targetRoom === null || targetRoom === void 0 ? void 0 : targetRoom.terminal;
+        if (!sourceTerminal || !targetTerminal)
+            return;
+        // Calculate transfer cost - energy cost formula from Screeps API
+        const TRANSFER_DISTANCE_DECAY_FACTOR = 30;
+        const distance = Game.map.getRoomLinearDistance(sourceRoom.name, state.targetRoom);
+        const transferCost = (amount) => Math.ceil(amount * (1 - Math.exp(-distance / TRANSFER_DISTANCE_DECAY_FACTOR)));
+        // Transfer priority resources first
+        for (const resourceType of this.config.priorityResources) {
+            const amount = sourceTerminal.store.getUsedCapacity(resourceType);
+            if (amount <= 0)
+                continue;
+            // Check target capacity
+            const targetFree = targetTerminal.store.getFreeCapacity(resourceType);
+            if (targetFree <= 0)
+                continue;
+            // Calculate transfer amount
+            const cost = transferCost(amount);
+            const energyAvailable = sourceTerminal.store.getUsedCapacity(RESOURCE_ENERGY);
+            if (resourceType !== RESOURCE_ENERGY && cost > energyAvailable) {
+                continue; // Not enough energy for transfer
+            }
+            const transferAmount = Math.min(amount, targetFree, 50000);
+            if (transferAmount <= 0)
+                continue;
+            const result = sourceTerminal.send(resourceType, transferAmount, state.targetRoom);
+            if (result === OK) {
+                state.resourcesEvacuated.push({ resourceType, amount: transferAmount });
+                this.transfersThisTick++;
+                logger.debug(`Evacuated ${transferAmount} ${resourceType} from ${sourceRoom.name} to ${state.targetRoom}`, { subsystem: "Evacuation" });
+                return; // One transfer at a time
+            }
+        }
+        // Transfer other resources
+        for (const resourceType of Object.keys(sourceTerminal.store)) {
+            if (this.config.priorityResources.includes(resourceType))
+                continue;
+            const amount = sourceTerminal.store.getUsedCapacity(resourceType);
+            if (amount <= 0)
+                continue;
+            const targetFree = targetTerminal.store.getFreeCapacity(resourceType);
+            if (targetFree <= 0)
+                continue;
+            const cost = transferCost(amount);
+            const energyAvailable = sourceTerminal.store.getUsedCapacity(RESOURCE_ENERGY);
+            if (resourceType !== RESOURCE_ENERGY && cost > energyAvailable) {
+                continue;
+            }
+            const transferAmount = Math.min(amount, targetFree, 50000);
+            if (transferAmount <= 0)
+                continue;
+            const result = sourceTerminal.send(resourceType, transferAmount, state.targetRoom);
+            if (result === OK) {
+                state.resourcesEvacuated.push({ resourceType, amount: transferAmount });
+                this.transfersThisTick++;
+                return;
+            }
+        }
+    }
+    /**
+     * Recall creeps from the evacuating room
+     */
+    recallCreeps(state, room) {
+        // Mark creeps for recall
+        for (const creep of room.find(FIND_MY_CREEPS)) {
+            const memory = creep.memory;
+            if (!memory.evacuating) {
+                memory.evacuating = true;
+                memory.evacuationTarget = state.targetRoom;
+                state.creepsRecalled.push(creep.name);
+            }
+        }
+    }
+    /**
+     * Calculate evacuation progress
+     */
+    calculateProgress(state, room) {
+        // Resources progress (50%)
+        const terminal = room.terminal;
+        const storage = room.storage;
+        let totalResources = 0;
+        let remainingResources = 0;
+        if (terminal) {
+            totalResources += 100000; // Assume max terminal
+            remainingResources += terminal.store.getUsedCapacity();
+        }
+        if (storage) {
+            totalResources += storage.store.getCapacity();
+            remainingResources += storage.store.getUsedCapacity();
+        }
+        const resourceProgress = totalResources > 0
+            ? Math.min(100, ((totalResources - remainingResources) / totalResources) * 100)
+            : 100;
+        // Creep progress (50%)
+        const creepsInRoom = room.find(FIND_MY_CREEPS).length;
+        const creepProgress = state.creepsRecalled.length > 0
+            ? Math.min(100, ((state.creepsRecalled.length - creepsInRoom) / state.creepsRecalled.length) * 100)
+            : 100;
+        return Math.round((resourceProgress + creepProgress) / 2);
+    }
+    /**
+     * Cancel an evacuation
+     */
+    cancelEvacuation(roomName) {
+        const state = this.evacuations.get(roomName);
+        if (!state)
+            return;
+        this.evacuations.delete(roomName);
+        // Reset creep memory
+        for (const creepName of state.creepsRecalled) {
+            const creep = Game.creeps[creepName];
+            if (creep) {
+                const memory = creep.memory;
+                delete memory.evacuating;
+                delete memory.evacuationTarget;
+            }
+        }
+        // Reset room posture
+        const swarm = memoryManager.getSwarmState(roomName);
+        if (swarm) {
+            swarm.posture = "eco";
+        }
+        logger.info(`Evacuation of ${roomName} cancelled`, { subsystem: "Evacuation" });
+    }
+    /**
+     * Get evacuation state for a room
+     */
+    getEvacuationState(roomName) {
+        return this.evacuations.get(roomName);
+    }
+    /**
+     * Check if a room is being evacuated
+     */
+    isEvacuating(roomName) {
+        const state = this.evacuations.get(roomName);
+        return state !== undefined && !state.complete;
+    }
+    /**
+     * Get all active evacuations
+     */
+    getActiveEvacuations() {
+        return Array.from(this.evacuations.values()).filter(s => !s.complete);
+    }
+};
+__decorate([
+    MediumFrequencyProcess("cluster:evacuation", "Evacuation Manager", {
+        priority: ProcessPriority.HIGH,
+        interval: 5,
+        minBucket: 2000,
+        cpuBudget: 0.02
+    })
+], EvacuationManager.prototype, "run", null);
+EvacuationManager = __decorate([
+    ProcessClass()
+], EvacuationManager);
+/**
+ * Global evacuation manager instance
+ */
+const evacuationManager = new EvacuationManager();
+
+/**
+ * Empire Manager - Global Meta-Layer
+ *
+ * Coordinates empire-wide strategic decisions:
+ * - War target management
+ * - Expansion decisions
+ * - Power bank tracking
+ * - Nuke candidate evaluation
+ * - Global resource allocation
+ * - Inter-shard coordination
+ *
+ * Runs every 20-50 ticks depending on CPU availability.
+ *
+ * Addresses Issues: #6, #20, #36
+ */
+const DEFAULT_CONFIG$8 = {
+    updateInterval: 30,
+    minBucket: 5000,
+    maxCpuBudget: 0.05,
+    minGclForExpansion: 2,
+    maxExpansionDistance: 10,
+    minExpansionScore: 50
+};
+/**
+ * Empire Manager Class
+ */
+let EmpireManager = class EmpireManager {
+    constructor(config = {}) {
+        this.lastRun = 0;
+        this.config = { ...DEFAULT_CONFIG$8, ...config };
+    }
+    /**
+     * Main empire tick - runs periodically
+     * Registered as kernel process via decorator
+     */
+    run() {
+        const cpuStart = Game.cpu.getUsed();
+        const overmind = memoryManager.getOvermind();
+        // Update last run time
+        this.lastRun = Game.time;
+        overmind.lastRun = Game.time;
+        // Run empire subsystems
+        profiler.measureSubsystem("empire:expansion", () => {
+            this.updateExpansionQueue(overmind);
+        });
+        profiler.measureSubsystem("empire:powerBanks", () => {
+            this.updatePowerBanks(overmind);
+        });
+        profiler.measureSubsystem("empire:warTargets", () => {
+            this.updateWarTargets(overmind);
+        });
+        profiler.measureSubsystem("empire:objectives", () => {
+            this.updateObjectives(overmind);
+        });
+        // Log CPU usage
+        const cpuUsed = Game.cpu.getUsed() - cpuStart;
+        if (Game.time % 100 === 0) {
+            logger.info(`Empire tick completed in ${cpuUsed.toFixed(2)} CPU`, { subsystem: "Empire" });
+        }
+    }
+    /**
+     * Remove owned rooms from claim queue
+     */
+    cleanupClaimQueue(overmind, ownedRoomNames) {
+        const initialQueueLength = overmind.claimQueue.length;
+        overmind.claimQueue = overmind.claimQueue.filter(candidate => {
+            const isNowOwned = ownedRoomNames.has(candidate.roomName);
+            if (isNowOwned) {
+                logger.info(`Removing ${candidate.roomName} from claim queue - now owned`, { subsystem: "Empire" });
+                return false;
+            }
+            return true;
+        });
+        if (overmind.claimQueue.length < initialQueueLength) {
+            logger.info(`Cleaned up claim queue: removed ${initialQueueLength - overmind.claimQueue.length} owned room(s)`, {
+                subsystem: "Empire"
+            });
+        }
+    }
+    /**
+     * Update expansion queue with scored candidates
+     */
+    updateExpansionQueue(overmind) {
+        // Check if we can expand
+        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        const ownedRoomNames = new Set(ownedRooms.map(r => r.name));
+        const gclLevel = Game.gcl.level;
+        // Update room intel for newly owned rooms to ensure intel.owner is current
+        // This ensures the expansion queue filtering works correctly
+        const spawns = Object.values(Game.spawns);
+        if (spawns.length > 0 && spawns[0].owner) {
+            const myUsername = spawns[0].owner.username;
+            for (const room of ownedRooms) {
+                const intel = overmind.roomIntel[room.name];
+                if (intel && intel.owner !== myUsername) {
+                    intel.owner = myUsername;
+                    logger.info(`Updated room intel for ${room.name} - now owned by ${myUsername}`, { subsystem: "Empire" });
+                }
+            }
+        }
+        // Always cleanup the claim queue to remove owned rooms
+        this.cleanupClaimQueue(overmind, ownedRoomNames);
+        if (ownedRooms.length >= gclLevel) {
+            // At GCL limit, don't evaluate expansion
+            return;
+        }
+        if (gclLevel < this.config.minGclForExpansion) {
+            // Too early to expand
+            return;
+        }
+        if (overmind.objectives.expansionPaused) {
+            // Expansion manually paused
+            return;
+        }
+        // Score all scouted rooms
+        const candidates = [];
+        for (const roomName in overmind.roomIntel) {
+            const intel = overmind.roomIntel[roomName];
+            // Skip if already owned or claimed
+            if (intel.owner || intel.reserver) {
+                continue;
+            }
+            // Skip if not scouted
+            if (!intel.scouted) {
+                continue;
+            }
+            // Calculate score
+            const score = this.scoreExpansionCandidate(intel, ownedRooms);
+            if (score >= this.config.minExpansionScore) {
+                candidates.push({
+                    roomName: intel.name,
+                    score,
+                    distance: this.getMinDistanceToOwned(intel.name, ownedRooms),
+                    claimed: false,
+                    lastEvaluated: Game.time
+                });
+            }
+        }
+        // Sort by score (highest first)
+        candidates.sort((a, b) => b.score - a.score);
+        // Update claim queue (keep top 10)
+        overmind.claimQueue = candidates.slice(0, 10);
+        if (candidates.length > 0 && Game.time % 100 === 0) {
+            logger.info(`Expansion queue updated: ${candidates.length} candidates, top score: ${candidates[0].score}`, {
+                subsystem: "Empire"
+            });
+        }
+    }
+    /**
+     * Score an expansion candidate
+     */
+    scoreExpansionCandidate(intel, ownedRooms) {
+        let score = 0;
+        // Source count (most important)
+        score += intel.sources * 40;
+        // Distance penalty (prefer closer rooms)
+        const distance = this.getMinDistanceToOwned(intel.name, ownedRooms);
+        if (distance > this.config.maxExpansionDistance) {
+            return 0; // Too far
+        }
+        score -= distance * 3;
+        // Mineral bonus (strategic minerals worth more)
+        if (intel.mineralType) {
+            const strategicMinerals = [RESOURCE_CATALYST, RESOURCE_ZYNTHIUM, RESOURCE_KEANIUM];
+            if (strategicMinerals.includes(intel.mineralType)) {
+                score += 15;
+            }
+            else {
+                score += 10;
+            }
+        }
+        // Terrain bonus (plains preferred over swamp)
+        if (intel.terrain === "plains") {
+            score += 10;
+        }
+        else if (intel.terrain === "swamp") {
+            score -= 5;
+        }
+        // Threat penalty
+        score -= intel.threatLevel * 20;
+        // Highway rooms are not good for expansion
+        if (intel.isHighway) {
+            return 0;
+        }
+        // SK rooms are not good for early expansion
+        if (intel.isSK) {
+            score -= 30;
+        }
+        return Math.max(0, score);
+    }
+    /**
+     * Get minimum distance from room to any owned room
+     */
+    getMinDistanceToOwned(roomName, ownedRooms) {
+        let minDistance = Infinity;
+        for (const room of ownedRooms) {
+            const distance = Game.map.getRoomLinearDistance(roomName, room.name);
+            if (distance < minDistance) {
+                minDistance = distance;
+            }
+        }
+        return minDistance;
+    }
+    /**
+     * Update power bank tracking
+     */
+    updatePowerBanks(overmind) {
+        var _a;
+        // Remove expired power banks
+        overmind.powerBanks = overmind.powerBanks.filter(pb => pb.decayTick > Game.time);
+        // Check visible rooms for power banks
+        for (const roomName in Game.rooms) {
+            const room = Game.rooms[roomName];
+            const foundPowerBanks = room.find(FIND_STRUCTURES, {
+                filter: s => s.structureType === STRUCTURE_POWER_BANK
+            });
+            const powerBanks = foundPowerBanks;
+            for (const pb of powerBanks) {
+                // Check if already tracked
+                const existing = overmind.powerBanks.find(entry => entry.roomName === roomName && entry.pos.x === pb.pos.x && entry.pos.y === pb.pos.y);
+                if (!existing) {
+                    // Add new power bank
+                    overmind.powerBanks.push({
+                        roomName,
+                        pos: { x: pb.pos.x, y: pb.pos.y },
+                        power: pb.power,
+                        decayTick: Game.time + ((_a = pb.ticksToDecay) !== null && _a !== void 0 ? _a : 5000),
+                        active: false
+                    });
+                    logger.info(`Power bank discovered in ${roomName}: ${pb.power} power`, { subsystem: "Empire" });
+                }
+            }
+        }
+    }
+    /**
+     * Update war targets
+     */
+    updateWarTargets(overmind) {
+        // Remove war targets that are no longer valid
+        overmind.warTargets = overmind.warTargets.filter(target => {
+            var _a, _b;
+            // Check if target still exists and is hostile
+            const intel = overmind.roomIntel[target];
+            if (!intel)
+                return false;
+            // Remove if room is now owned by us
+            if (intel.owner === ((_b = (_a = Object.values(Game.spawns)[0]) === null || _a === void 0 ? void 0 : _a.owner.username) !== null && _b !== void 0 ? _b : "")) {
+                return false;
+            }
+            return true;
+        });
+        // Auto-add war targets based on threat
+        if (overmind.objectives.warMode) {
+            for (const roomName in overmind.roomIntel) {
+                const intel = overmind.roomIntel[roomName];
+                // Add high-threat rooms as war targets
+                if (intel.threatLevel >= 2 && !overmind.warTargets.includes(roomName)) {
+                    overmind.warTargets.push(roomName);
+                    logger.warn(`Added war target: ${roomName} (threat level ${intel.threatLevel})`, { subsystem: "Empire" });
+                }
+            }
+        }
+    }
+    /**
+     * Update global objectives
+     */
+    updateObjectives(overmind) {
+        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        // Update target room count (GCL level)
+        overmind.objectives.targetRoomCount = Game.gcl.level;
+        // Update target power level (based on owned rooms)
+        overmind.objectives.targetPowerLevel = Math.min(25, ownedRooms.length * 3);
+        // Auto-enable war mode if we have war targets
+        if (overmind.warTargets.length > 0 && !overmind.objectives.warMode) {
+            overmind.objectives.warMode = true;
+            logger.warn("War mode enabled due to active war targets", { subsystem: "Empire" });
+        }
+        // Auto-disable war mode if no war targets for 1000 ticks
+        if (overmind.warTargets.length === 0 && overmind.objectives.warMode) {
+            overmind.objectives.warMode = false;
+            logger.info("War mode disabled - no active war targets", { subsystem: "Empire" });
+        }
+    }
+    /**
+     * Get next expansion target
+     */
+    getNextExpansionTarget() {
+        const overmind = memoryManager.getOvermind();
+        const unclaimed = overmind.claimQueue.filter(c => !c.claimed);
+        return unclaimed.length > 0 ? unclaimed[0] : null;
+    }
+    /**
+     * Mark expansion target as claimed
+     */
+    markExpansionClaimed(roomName) {
+        const overmind = memoryManager.getOvermind();
+        const candidate = overmind.claimQueue.find(c => c.roomName === roomName);
+        if (candidate) {
+            candidate.claimed = true;
+            logger.info(`Marked expansion target as claimed: ${roomName}`, { subsystem: "Empire" });
+        }
+    }
+};
+__decorate([
+    LowFrequencyProcess("empire:manager", "Empire Manager", {
+        priority: ProcessPriority.MEDIUM,
+        interval: 30,
+        minBucket: 5000,
+        cpuBudget: 0.05
+    })
+], EmpireManager.prototype, "run", null);
+EmpireManager = __decorate([
+    ProcessClass()
+], EmpireManager);
+/**
+ * Global empire manager instance
+ */
+const empireManager = new EmpireManager();
+
+/**
+ * Expansion Manager - Remote Mining and Room Claiming Coordinator
+ *
+ * Coordinates expansion activities:
+ * - Identifies and assigns remote mining rooms
+ * - Assigns claim targets to claimers from expansion queue
+ * - Assigns reserve targets to reservers for remote rooms
+ *
+ * Addresses Issue: Bot not expanding into other rooms
+ */
+const DEFAULT_CONFIG$7 = {
+    updateInterval: 20,
+    minBucket: 4000,
+    maxRemoteDistance: 2,
+    maxRemotesPerRoom: 3,
+    minRemoteSources: 1,
+    minRclForRemotes: 3
+};
+/**
+ * Expansion Manager Class
+ */
+let ExpansionManager = class ExpansionManager {
+    constructor(config = {}) {
+        this.lastRun = 0;
+        this.cachedUsername = "";
+        this.usernameLastTick = 0;
+        this.config = { ...DEFAULT_CONFIG$7, ...config };
+    }
+    /**
+     * Main expansion tick - runs periodically
+     * Registered as kernel process via decorator
+     */
+    run() {
+        const overmind = memoryManager.getOvermind();
+        // Update last run time
+        this.lastRun = Game.time;
+        // Update remote room assignments for all owned rooms
+        this.updateRemoteAssignments(overmind);
+        // Assign targets to claimers from expansion queue
+        this.assignClaimerTargets(overmind);
+        // Assign targets to reservers for remote rooms
+        this.assignReserverTargets();
+    }
+    /**
+     * Update remote room assignments for all owned rooms
+     */
+    updateRemoteAssignments(overmind) {
+        var _a, _b, _c;
+        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        for (const room of ownedRooms) {
+            const swarm = memoryManager.getSwarmState(room.name);
+            if (!swarm)
+                continue;
+            // Check RCL requirement
+            const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0;
+            if (rcl < this.config.minRclForRemotes) {
+                continue;
+            }
+            // Get current remote assignments
+            const currentRemotes = (_c = swarm.remoteAssignments) !== null && _c !== void 0 ? _c : [];
+            // Validate current assignments (remove invalid ones)
+            const validRemotes = this.validateRemoteAssignments(currentRemotes, overmind, room.name);
+            // Find new remote candidates if we need more
+            if (validRemotes.length < this.config.maxRemotesPerRoom) {
+                const candidates = this.findRemoteCandidates(room.name, overmind, validRemotes);
+                const slotsAvailable = this.config.maxRemotesPerRoom - validRemotes.length;
+                const newRemotes = candidates.slice(0, slotsAvailable);
+                for (const remoteName of newRemotes) {
+                    if (!validRemotes.includes(remoteName)) {
+                        validRemotes.push(remoteName);
+                        logger.info(`Assigned remote room ${remoteName} to ${room.name}`, { subsystem: "Expansion" });
+                    }
+                }
+            }
+            // Update swarm state if changed
+            if (JSON.stringify(validRemotes) !== JSON.stringify(swarm.remoteAssignments)) {
+                swarm.remoteAssignments = validRemotes;
+            }
+        }
+    }
+    /**
+     * Validate existing remote assignments (remove invalid ones)
+     */
+    validateRemoteAssignments(remotes, overmind, homeRoom) {
+        return remotes.filter(remoteName => {
+            const intel = overmind.roomIntel[remoteName];
+            // Remove if no intel (not scouted yet - keep it for now)
+            if (!intel)
+                return true;
+            // Remove if now owned by someone else
+            if (intel.owner) {
+                logger.info(`Removing remote ${remoteName} - now owned by ${intel.owner}`, { subsystem: "Expansion" });
+                return false;
+            }
+            // Remove if reserved by hostile
+            const myUsername = this.getMyUsername();
+            if (intel.reserver && intel.reserver !== myUsername) {
+                logger.info(`Removing remote ${remoteName} - reserved by ${intel.reserver}`, { subsystem: "Expansion" });
+                return false;
+            }
+            // Remove if too dangerous
+            if (intel.threatLevel >= 3) {
+                logger.info(`Removing remote ${remoteName} - threat level ${intel.threatLevel}`, { subsystem: "Expansion" });
+                return false;
+            }
+            // Remove if too far (in case config changed)
+            const distance = Game.map.getRoomLinearDistance(homeRoom, remoteName);
+            if (distance > this.config.maxRemoteDistance) {
+                logger.info(`Removing remote ${remoteName} - too far (${distance})`, { subsystem: "Expansion" });
+                return false;
+            }
+            return true;
+        });
+    }
+    /**
+     * Find remote mining candidates for a room
+     */
+    findRemoteCandidates(homeRoom, overmind, currentRemotes) {
+        const candidates = [];
+        const myUsername = this.getMyUsername();
+        for (const roomName in overmind.roomIntel) {
+            // Skip if already assigned
+            if (currentRemotes.includes(roomName))
+                continue;
+            // Skip if already assigned to another room
+            if (this.isRemoteAssignedElsewhere(roomName, homeRoom))
+                continue;
+            const intel = overmind.roomIntel[roomName];
+            // Skip if not scouted
+            if (!intel.scouted)
+                continue;
+            // Skip if owned or reserved by someone else
+            if (intel.owner)
+                continue;
+            if (intel.reserver && intel.reserver !== myUsername)
+                continue;
+            // Skip if it's a highway or SK room
+            if (intel.isHighway || intel.isSK)
+                continue;
+            // Skip if too few sources
+            if (intel.sources < this.config.minRemoteSources)
+                continue;
+            // Skip if too dangerous
+            if (intel.threatLevel >= 2)
+                continue;
+            // Check distance (skip same room with distance 0, and rooms too far)
+            const distance = Game.map.getRoomLinearDistance(homeRoom, roomName);
+            if (distance < 1 || distance > this.config.maxRemoteDistance)
+                continue;
+            // Calculate score (higher = better)
+            const score = this.scoreRemoteCandidate(intel, distance);
+            candidates.push({ roomName, score });
+        }
+        // Sort by score (highest first)
+        candidates.sort((a, b) => b.score - a.score);
+        return candidates.map(c => c.roomName);
+    }
+    /**
+     * Score a remote mining candidate
+     */
+    scoreRemoteCandidate(intel, distance) {
+        let score = 0;
+        // Sources (most important)
+        score += intel.sources * 50;
+        // Distance penalty (closer is better)
+        score -= distance * 20;
+        // Threat penalty
+        score -= intel.threatLevel * 30;
+        // Terrain bonus
+        if (intel.terrain === "plains") {
+            score += 10;
+        }
+        else if (intel.terrain === "swamp") {
+            score -= 10;
+        }
+        return score;
+    }
+    /**
+     * Check if a remote is already assigned to another owned room
+     */
+    isRemoteAssignedElsewhere(remoteName, excludeRoom) {
+        var _a;
+        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        for (const room of ownedRooms) {
+            if (room.name === excludeRoom)
+                continue;
+            const swarm = memoryManager.getSwarmState(room.name);
+            if ((_a = swarm === null || swarm === void 0 ? void 0 : swarm.remoteAssignments) === null || _a === void 0 ? void 0 : _a.includes(remoteName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    /**
+     * Assign targets to claimers from expansion queue
+     */
+    assignClaimerTargets(overmind) {
+        // Get next expansion target
+        const nextTarget = this.getNextExpansionTarget(overmind);
+        if (!nextTarget)
+            return;
+        // Find claimers without targets
+        for (const creep of Object.values(Game.creeps)) {
+            const memory = creep.memory;
+            if (memory.role === "claimer" && !memory.targetRoom) {
+                // Assign the expansion target
+                memory.targetRoom = nextTarget.roomName;
+                memory.task = "claim";
+                logger.info(`Assigned claim target ${nextTarget.roomName} to ${creep.name}`, { subsystem: "Expansion" });
+                // Mark as claimed in queue
+                nextTarget.claimed = true;
+                break; // Only assign one claimer per tick
+            }
+        }
+    }
+    /**
+     * Assign targets to reservers for remote rooms
+     */
+    assignReserverTargets() {
+        var _a;
+        // Find claimers without targets that should reserve
+        for (const creep of Object.values(Game.creeps)) {
+            const memory = creep.memory;
+            // Skip if not a claimer or already has target
+            if (memory.role !== "claimer" || memory.targetRoom)
+                continue;
+            // Find a remote room that needs reservation
+            const homeRoom = memory.homeRoom;
+            if (!homeRoom)
+                continue;
+            const swarm = memoryManager.getSwarmState(homeRoom);
+            if (!((_a = swarm === null || swarm === void 0 ? void 0 : swarm.remoteAssignments) === null || _a === void 0 ? void 0 : _a.length))
+                continue;
+            // Find remote that needs reservation
+            for (const remoteName of swarm.remoteAssignments) {
+                // Check if room already has a reserver assigned
+                if (this.hasReserverAssigned(remoteName))
+                    continue;
+                // Assign this claimer as a reserver
+                memory.targetRoom = remoteName;
+                memory.task = "reserve";
+                logger.info(`Assigned reserve target ${remoteName} to ${creep.name}`, { subsystem: "Expansion" });
+                break;
+            }
+        }
+    }
+    /**
+     * Check if a room already has a reserver assigned
+     */
+    hasReserverAssigned(roomName) {
+        for (const creep of Object.values(Game.creeps)) {
+            const memory = creep.memory;
+            if (memory.role === "claimer" && memory.targetRoom === roomName && memory.task === "reserve") {
+                return true;
+            }
+        }
+        return false;
+    }
+    /**
+     * Get next expansion target from queue
+     */
+    getNextExpansionTarget(overmind) {
+        // Check if we can expand (GCL limit)
+        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        if (ownedRooms.length >= Game.gcl.level) {
+            return null;
+        }
+        // Find unclaimed target from queue
+        const unclaimed = overmind.claimQueue.filter(c => !c.claimed);
+        if (unclaimed.length === 0)
+            return null;
+        return unclaimed[0];
+    }
+    /**
+     * Get my username (cached per tick)
+     */
+    getMyUsername() {
+        // Cache username per tick to avoid repeated lookups
+        if (this.usernameLastTick !== Game.time || !this.cachedUsername) {
+            const spawns = Object.values(Game.spawns);
+            if (spawns.length > 0) {
+                this.cachedUsername = spawns[0].owner.username;
+            }
+            this.usernameLastTick = Game.time;
+        }
+        return this.cachedUsername;
+    }
+    /**
+     * Manual: Add remote room assignment
+     */
+    addRemoteRoom(homeRoom, remoteRoom) {
+        const swarm = memoryManager.getSwarmState(homeRoom);
+        if (!swarm) {
+            logger.error(`Cannot add remote: ${homeRoom} not found`, { subsystem: "Expansion" });
+            return false;
+        }
+        if (!swarm.remoteAssignments) {
+            swarm.remoteAssignments = [];
+        }
+        if (swarm.remoteAssignments.includes(remoteRoom)) {
+            logger.warn(`Remote ${remoteRoom} already assigned to ${homeRoom}`, { subsystem: "Expansion" });
+            return false;
+        }
+        swarm.remoteAssignments.push(remoteRoom);
+        logger.info(`Manually added remote ${remoteRoom} to ${homeRoom}`, { subsystem: "Expansion" });
+        return true;
+    }
+    /**
+     * Manual: Remove remote room assignment
+     */
+    removeRemoteRoom(homeRoom, remoteRoom) {
+        const swarm = memoryManager.getSwarmState(homeRoom);
+        if (!(swarm === null || swarm === void 0 ? void 0 : swarm.remoteAssignments)) {
+            return false;
+        }
+        const idx = swarm.remoteAssignments.indexOf(remoteRoom);
+        if (idx === -1) {
+            return false;
+        }
+        swarm.remoteAssignments.splice(idx, 1);
+        logger.info(`Manually removed remote ${remoteRoom} from ${homeRoom}`, { subsystem: "Expansion" });
+        return true;
+    }
+};
+__decorate([
+    MediumFrequencyProcess("expansion:manager", "Expansion Manager", {
+        priority: ProcessPriority.LOW,
+        interval: 20,
+        minBucket: 4000,
+        cpuBudget: 0.02
+    })
+], ExpansionManager.prototype, "run", null);
+ExpansionManager = __decorate([
+    ProcessClass()
+], ExpansionManager);
+/**
+ * Global expansion manager instance
+ */
+const expansionManager = new ExpansionManager();
+
+/**
+ * Market Manager - Trading AI with Price Tracking
+ *
+ * Manages market operations:
+ * - Historical price tracking and trend analysis
+ * - Buy low / sell high strategy
+ * - Order creation and management
+ * - Buy/sell logic based on resource needs and price signals
+ * - War-mode aggressive purchasing
+ * - Terminal transfer logistics
+ *
+ * Addresses Issues: #3, #27, #36
+ */
+const DEFAULT_CONFIG$6 = {
+    updateInterval: 100,
+    priceUpdateInterval: 500,
+    minBucket: 7000,
+    minCredits: 10000,
+    warPriceMultiplier: 2.0,
+    buyPriceThreshold: 0.85,
+    sellPriceThreshold: 1.15,
+    maxPriceHistory: 30,
+    rollingAverageWindow: 10,
+    lowPriceMultiplier: 0.9,
+    highPriceMultiplier: 1.1,
+    trendChangeThreshold: 0.05,
+    buyOpportunityAdjustment: 1.02,
+    sellOpportunityAdjustment: 0.98,
+    sellThresholds: {
+        [RESOURCE_ENERGY]: 500000,
+        [RESOURCE_HYDROGEN]: 20000,
+        [RESOURCE_OXYGEN]: 20000,
+        [RESOURCE_UTRIUM]: 20000,
+        [RESOURCE_LEMERGIUM]: 20000,
+        [RESOURCE_KEANIUM]: 20000,
+        [RESOURCE_ZYNTHIUM]: 20000,
+        [RESOURCE_CATALYST]: 20000
+    },
+    buyThresholds: {
+        [RESOURCE_ENERGY]: 100000,
+        [RESOURCE_HYDROGEN]: 5000,
+        [RESOURCE_OXYGEN]: 5000,
+        [RESOURCE_UTRIUM]: 5000,
+        [RESOURCE_LEMERGIUM]: 5000,
+        [RESOURCE_KEANIUM]: 5000,
+        [RESOURCE_ZYNTHIUM]: 5000,
+        [RESOURCE_CATALYST]: 5000
+    },
+    trackedResources: [
+        RESOURCE_ENERGY,
+        RESOURCE_HYDROGEN,
+        RESOURCE_OXYGEN,
+        RESOURCE_UTRIUM,
+        RESOURCE_LEMERGIUM,
+        RESOURCE_KEANIUM,
+        RESOURCE_ZYNTHIUM,
+        RESOURCE_CATALYST,
+        RESOURCE_GHODIUM,
+        RESOURCE_POWER
+    ]
+};
+/**
+ * Market Manager Class
+ */
+let MarketManager = class MarketManager {
+    constructor(config = {}) {
+        this.lastRun = 0;
+        this.config = { ...DEFAULT_CONFIG$6, ...config };
+    }
+    /**
+     * Main market tick
+     * Registered as kernel process via decorator
+     */
+    run() {
+        this.lastRun = Game.time;
+        // Ensure market memory exists
+        this.ensureMarketMemory();
+        // Update price tracking
+        if (Game.time % this.config.priceUpdateInterval === 0) {
+            this.updatePriceTracking();
+        }
+        // Cancel old orders
+        this.cancelOldOrders();
+        // Update buy orders (with price-aware logic)
+        this.updateBuyOrders();
+        // Update sell orders (with price-aware logic)
+        this.updateSellOrders();
+        // Execute deals
+        this.executeDeal();
+    }
+    /**
+     * Ensure market memory exists and is initialized
+     */
+    ensureMarketMemory() {
+        const overmind = memoryManager.getOvermind();
+        if (!overmind.market) {
+            overmind.market = createDefaultMarketMemory();
+        }
+    }
+    /**
+     * Update price tracking for all tracked resources
+     */
+    updatePriceTracking() {
+        const overmind = memoryManager.getOvermind();
+        if (!overmind.market)
+            return;
+        for (const resource of this.config.trackedResources) {
+            this.updateResourcePrice(resource);
+        }
+        overmind.market.lastScan = Game.time;
+        logger.debug(`Updated market prices for ${this.config.trackedResources.length} resources`, {
+            subsystem: "Market"
+        });
+    }
+    /**
+     * Update price data for a specific resource
+     */
+    updateResourcePrice(resource) {
+        const overmind = memoryManager.getOvermind();
+        if (!overmind.market)
+            return;
+        const history = Game.market.getHistory(resource);
+        if (history.length === 0)
+            return;
+        // Get latest price data from game
+        const latest = history[history.length - 1];
+        // Get or create market data for this resource
+        let marketData = overmind.market.resources[resource];
+        if (!marketData) {
+            marketData = {
+                resource,
+                priceHistory: [],
+                avgPrice: latest.avgPrice,
+                trend: 0,
+                lastUpdate: Game.time
+            };
+            overmind.market.resources[resource] = marketData;
+        }
+        // Add new price point
+        const pricePoint = {
+            tick: Game.time,
+            avgPrice: latest.avgPrice,
+            lowPrice: latest.avgPrice * this.config.lowPriceMultiplier,
+            highPrice: latest.avgPrice * this.config.highPriceMultiplier
+        };
+        marketData.priceHistory.push(pricePoint);
+        // Keep only configured number of price points (to avoid memory bloat)
+        if (marketData.priceHistory.length > this.config.maxPriceHistory) {
+            marketData.priceHistory.shift();
+        }
+        // Calculate rolling average using configured window
+        const recentPrices = marketData.priceHistory.slice(-this.config.rollingAverageWindow);
+        marketData.avgPrice = recentPrices.reduce((sum, p) => sum + p.avgPrice, 0) / recentPrices.length;
+        // Calculate trend
+        if (marketData.priceHistory.length >= 5) {
+            const oldAvg = marketData.priceHistory.slice(-5, -2).reduce((sum, p) => sum + p.avgPrice, 0) / 3;
+            const newAvg = marketData.priceHistory.slice(-3).reduce((sum, p) => sum + p.avgPrice, 0) / 3;
+            const change = (newAvg - oldAvg) / oldAvg;
+            if (change > this.config.trendChangeThreshold) {
+                marketData.trend = 1; // Rising
+            }
+            else if (change < -this.config.trendChangeThreshold) {
+                marketData.trend = -1; // Falling
+            }
+            else {
+                marketData.trend = 0; // Stable
+            }
+        }
+        marketData.lastUpdate = Game.time;
+    }
+    /**
+     * Get market data for a resource
+     */
+    getMarketData(resource) {
+        var _a;
+        const overmind = memoryManager.getOvermind();
+        return (_a = overmind.market) === null || _a === void 0 ? void 0 : _a.resources[resource];
+    }
+    /**
+     * Check if current price is favorable for buying (below average)
+     */
+    isBuyOpportunity(resource) {
+        const marketData = this.getMarketData(resource);
+        if (!marketData)
+            return false;
+        const history = Game.market.getHistory(resource);
+        if (history.length === 0)
+            return false;
+        const currentPrice = history[history.length - 1].avgPrice;
+        const threshold = marketData.avgPrice * this.config.buyPriceThreshold;
+        return currentPrice <= threshold;
+    }
+    /**
+     * Check if current price is favorable for selling (above average)
+     */
+    isSellOpportunity(resource) {
+        const marketData = this.getMarketData(resource);
+        if (!marketData)
+            return false;
+        const history = Game.market.getHistory(resource);
+        if (history.length === 0)
+            return false;
+        const currentPrice = history[history.length - 1].avgPrice;
+        const threshold = marketData.avgPrice * this.config.sellPriceThreshold;
+        return currentPrice >= threshold;
+    }
+    /**
+     * Cancel old or invalid orders
+     */
+    cancelOldOrders() {
+        const myOrders = Game.market.orders;
+        for (const orderId in myOrders) {
+            const order = myOrders[orderId];
+            // Cancel orders older than 10000 ticks
+            if (Game.time - order.created > 10000) {
+                Game.market.cancelOrder(orderId);
+                logger.info(`Cancelled old order: ${order.type} ${order.resourceType}`, { subsystem: "Market" });
+            }
+            // Cancel orders with very low remaining amount
+            if (order.remainingAmount < 100) {
+                Game.market.cancelOrder(orderId);
+            }
+        }
+    }
+    /**
+     * Update buy orders based on resource needs and price signals
+     */
+    updateBuyOrders() {
+        var _a, _b, _c;
+        const overmind = memoryManager.getOvermind();
+        const isWarMode = overmind.objectives.warMode;
+        // Get total resources across all terminals
+        const totalResources = {};
+        for (const roomName in Game.rooms) {
+            const room = Game.rooms[roomName];
+            if (room.terminal && ((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my)) {
+                for (const resource in room.terminal.store) {
+                    totalResources[resource] = ((_b = totalResources[resource]) !== null && _b !== void 0 ? _b : 0) + room.terminal.store[resource];
+                }
+            }
+        }
+        // Check if we need to buy resources
+        for (const resource in this.config.buyThresholds) {
+            const threshold = this.config.buyThresholds[resource];
+            const current = (_c = totalResources[resource]) !== null && _c !== void 0 ? _c : 0;
+            if (current < threshold) {
+                // In war mode OR when it's a buy opportunity, create buy order
+                const isBuyOpp = this.isBuyOpportunity(resource);
+                if (isWarMode || isBuyOpp) {
+                    this.createBuyOrder(resource, threshold - current, isWarMode, isBuyOpp);
+                }
+                else {
+                    logger.debug(`Skipping buy for ${resource}: waiting for better price`, { subsystem: "Market" });
+                }
+            }
+        }
+    }
+    /**
+     * Create a buy order with price-aware logic
+     */
+    createBuyOrder(resource, amount, isWarMode, isBuyOpportunity) {
+        var _a;
+        // Check if we already have a buy order for this resource
+        const existingOrders = Object.values(Game.market.orders).filter(o => o.type === ORDER_BUY && o.resourceType === resource);
+        if (existingOrders.length > 0) {
+            return; // Already have a buy order
+        }
+        // Get market price
+        const history = Game.market.getHistory(resource);
+        if (history.length === 0)
+            return;
+        const currentPrice = history[history.length - 1].avgPrice;
+        const marketData = this.getMarketData(resource);
+        // Calculate buy price based on context
+        let maxPrice;
+        if (isWarMode) {
+            // In war mode, willing to pay more
+            maxPrice = currentPrice * this.config.warPriceMultiplier;
+        }
+        else if (isBuyOpportunity && marketData) {
+            // It's a good deal - buy at slightly above current to ensure order fulfillment
+            maxPrice = currentPrice * this.config.buyOpportunityAdjustment;
+        }
+        else {
+            // Normal case - buy at average
+            maxPrice = (_a = marketData === null || marketData === void 0 ? void 0 : marketData.avgPrice) !== null && _a !== void 0 ? _a : currentPrice * this.config.highPriceMultiplier;
+        }
+        // Check if we have enough credits
+        if (Game.market.credits < this.config.minCredits) {
+            return;
+        }
+        // Find a room with terminal to place order
+        const roomWithTerminal = Object.values(Game.rooms).find(r => { var _a; return r.terminal && ((_a = r.controller) === null || _a === void 0 ? void 0 : _a.my); });
+        if (!(roomWithTerminal === null || roomWithTerminal === void 0 ? void 0 : roomWithTerminal.terminal))
+            return;
+        // Create order
+        const result = Game.market.createOrder({
+            type: ORDER_BUY,
+            resourceType: resource,
+            price: maxPrice,
+            totalAmount: Math.min(amount, 10000),
+            roomName: roomWithTerminal.name
+        });
+        if (result === OK) {
+            const priceContext = isBuyOpportunity ? " (LOW PRICE!)" : isWarMode ? " (WAR MODE)" : "";
+            logger.info(`Created buy order: ${amount} ${resource} at ${maxPrice.toFixed(3)} credits${priceContext}`, {
+                subsystem: "Market"
+            });
+        }
+    }
+    /**
+     * Update sell orders based on resource surplus and price signals
+     */
+    updateSellOrders() {
+        var _a, _b, _c;
+        // Get total resources across all terminals
+        const totalResources = {};
+        for (const roomName in Game.rooms) {
+            const room = Game.rooms[roomName];
+            if (room.terminal && ((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my)) {
+                for (const resource in room.terminal.store) {
+                    totalResources[resource] = ((_b = totalResources[resource]) !== null && _b !== void 0 ? _b : 0) + room.terminal.store[resource];
+                }
+            }
+        }
+        // Check if we have surplus to sell
+        for (const resource in this.config.sellThresholds) {
+            const threshold = this.config.sellThresholds[resource];
+            const current = (_c = totalResources[resource]) !== null && _c !== void 0 ? _c : 0;
+            if (current > threshold) {
+                // Only sell when it's a good opportunity (high price)
+                const isSellOpp = this.isSellOpportunity(resource);
+                if (isSellOpp) {
+                    this.createSellOrder(resource, current - threshold, isSellOpp);
+                }
+                else {
+                    logger.debug(`Holding ${resource} surplus: waiting for better price`, { subsystem: "Market" });
+                }
+            }
+        }
+    }
+    /**
+     * Create a sell order with price-aware logic
+     */
+    createSellOrder(resource, amount, isSellOpportunity) {
+        var _a;
+        // Check if we already have a sell order for this resource
+        const existingOrders = Object.values(Game.market.orders).filter(o => o.type === ORDER_SELL && o.resourceType === resource);
+        if (existingOrders.length > 0) {
+            return; // Already have a sell order
+        }
+        // Get market price
+        const history = Game.market.getHistory(resource);
+        if (history.length === 0)
+            return;
+        const currentPrice = history[history.length - 1].avgPrice;
+        const marketData = this.getMarketData(resource);
+        // Calculate sell price based on context
+        let sellPrice;
+        if (isSellOpportunity && marketData) {
+            // High price opportunity - sell at slightly below current to ensure sale
+            sellPrice = currentPrice * this.config.sellOpportunityAdjustment;
+        }
+        else {
+            // Normal case - sell at average or slightly below current
+            sellPrice = (_a = marketData === null || marketData === void 0 ? void 0 : marketData.avgPrice) !== null && _a !== void 0 ? _a : currentPrice * this.config.lowPriceMultiplier;
+        }
+        // Find a room with terminal and this resource
+        const roomWithResource = Object.values(Game.rooms).find(r => { var _a; return r.terminal && ((_a = r.controller) === null || _a === void 0 ? void 0 : _a.my) && r.terminal.store[resource] > 1000; });
+        if (!(roomWithResource === null || roomWithResource === void 0 ? void 0 : roomWithResource.terminal))
+            return;
+        // Create order
+        const result = Game.market.createOrder({
+            type: ORDER_SELL,
+            resourceType: resource,
+            price: sellPrice,
+            totalAmount: Math.min(amount, 10000),
+            roomName: roomWithResource.name
+        });
+        if (result === OK) {
+            const priceContext = isSellOpportunity ? " (HIGH PRICE!)" : "";
+            logger.info(`Created sell order: ${amount} ${resource} at ${sellPrice.toFixed(3)} credits${priceContext}`, {
+                subsystem: "Market"
+            });
+        }
+    }
+    /**
+     * Execute a deal if profitable
+     */
+    executeDeal() {
+        // Find best deals (every 50 ticks to save CPU)
+        if (Game.time % 50 !== 0)
+            return;
+        const overmind = memoryManager.getOvermind();
+        const isWarMode = overmind.objectives.warMode;
+        // In war mode, prioritize buying boosts
+        if (isWarMode) {
+            const boostResources = [
+                RESOURCE_CATALYZED_GHODIUM_ACID,
+                RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE,
+                RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE,
+                RESOURCE_CATALYZED_KEANIUM_ALKALIDE
+            ];
+            for (const resource of boostResources) {
+                const orders = Game.market.getAllOrders({ type: ORDER_SELL, resourceType: resource });
+                if (orders.length > 0) {
+                    // Sort by price
+                    orders.sort((a, b) => a.price - b.price);
+                    const bestOrder = orders[0];
+                    const roomWithTerminal = Object.values(Game.rooms).find(r => { var _a; return r.terminal && ((_a = r.controller) === null || _a === void 0 ? void 0 : _a.my); });
+                    if (roomWithTerminal && bestOrder.price < 10) {
+                        // Buy if price is reasonable
+                        const amount = Math.min(bestOrder.amount, 1000);
+                        const result = Game.market.deal(bestOrder.id, amount, roomWithTerminal.name);
+                        if (result === OK) {
+                            logger.info(`Bought ${amount} ${resource} for ${bestOrder.price.toFixed(3)} credits/unit`, {
+                                subsystem: "Market"
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+__decorate([
+    LowFrequencyProcess("empire:market", "Market Manager", {
+        priority: ProcessPriority.LOW,
+        interval: 100,
+        minBucket: 7000,
+        cpuBudget: 0.02
+    })
+], MarketManager.prototype, "run", null);
+MarketManager = __decorate([
+    ProcessClass()
+], MarketManager);
+/**
+ * Global market manager instance
+ */
+const marketManager = new MarketManager();
+
+/**
+ * Nuke Manager - Nuclear Warfare
+ *
+ * Manages nuke operations:
+ * - Nuke candidate scoring
+ * - Ghodium accumulation
+ * - Nuker resource loading
+ * - Nuke launch decisions
+ * - Coordination with siege timing
+ *
+ * Addresses Issue: #24
+ */
+const DEFAULT_CONFIG$5 = {
+    updateInterval: 500,
+    minGhodium: 5000,
+    minEnergy: 300000,
+    minScore: 50
+};
+/**
+ * Nuke Manager Class
+ */
+let NukeManager = class NukeManager {
+    constructor(config = {}) {
+        this.lastRun = 0;
+        this.config = { ...DEFAULT_CONFIG$5, ...config };
+    }
+    /**
+     * Main nuke tick
+     * Registered as kernel process via decorator
+     */
+    run() {
+        this.lastRun = Game.time;
+        // Load nukers with resources
+        this.loadNukers();
+        // Evaluate nuke candidates
+        this.evaluateNukeCandidates();
+        // Launch nukes if appropriate
+        this.launchNukes();
+    }
+    /**
+     * Load nukers with energy and ghodium
+     */
+    loadNukers() {
+        var _a;
+        for (const roomName in Game.rooms) {
+            const room = Game.rooms[roomName];
+            if (!((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my))
+                continue;
+            const nuker = room.find(FIND_MY_STRUCTURES, {
+                filter: s => s.structureType === STRUCTURE_NUKER
+            })[0];
+            if (!nuker)
+                continue;
+            // Check if nuker needs resources
+            const energyNeeded = nuker.store.getFreeCapacity(RESOURCE_ENERGY);
+            const ghodiumNeeded = nuker.store.getFreeCapacity(RESOURCE_GHODIUM);
+            if (energyNeeded > 0 || ghodiumNeeded > 0) {
+                logger.debug(`Nuker in ${roomName} needs ${energyNeeded} energy, ${ghodiumNeeded} ghodium`, {
+                    subsystem: "Nuke"
+                });
+                // Terminal manager should handle transfers
+            }
+        }
+    }
+    /**
+     * Evaluate nuke candidates
+     */
+    evaluateNukeCandidates() {
+        const overmind = memoryManager.getOvermind();
+        // Clear old candidates
+        overmind.nukeCandidates = [];
+        // Only evaluate if in war mode
+        if (!overmind.objectives.warMode) {
+            return;
+        }
+        // Score all war targets
+        for (const roomName of overmind.warTargets) {
+            const score = this.scoreNukeCandidate(roomName);
+            if (score.score >= this.config.minScore) {
+                overmind.nukeCandidates.push({
+                    roomName,
+                    score: score.score,
+                    launched: false,
+                    launchTick: 0
+                });
+                logger.info(`Nuke candidate: ${roomName} (score: ${score.score}) - ${score.reasons.join(", ")}`, {
+                    subsystem: "Nuke"
+                });
+            }
+        }
+        // Sort by score
+        overmind.nukeCandidates.sort((a, b) => b.score - a.score);
+    }
+    /**
+     * Score a nuke candidate
+     */
+    scoreNukeCandidate(roomName) {
+        let score = 0;
+        const reasons = [];
+        const intel = memoryManager.getOvermind().roomIntel[roomName];
+        if (!intel) {
+            return { roomName, score: 0, reasons: ["No intel"] };
+        }
+        // Owned room bonus
+        if (intel.owner && intel.owner !== "") {
+            score += 30;
+            reasons.push("Owned room");
+        }
+        // High threat bonus
+        if (intel.threatLevel >= 2) {
+            score += 20;
+            reasons.push("High threat");
+        }
+        // Tower count bonus (more towers = better target)
+        if (intel.towerCount) {
+            score += intel.towerCount * 5;
+            reasons.push(`${intel.towerCount} towers`);
+        }
+        // Spawn count bonus
+        if (intel.spawnCount) {
+            score += intel.spawnCount * 10;
+            reasons.push(`${intel.spawnCount} spawns`);
+        }
+        // Controller level bonus
+        if (intel.controllerLevel) {
+            score += intel.controllerLevel * 3;
+            reasons.push(`RCL ${intel.controllerLevel}`);
+        }
+        // Distance penalty (prefer closer targets)
+        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        if (ownedRooms.length > 0) {
+            const minDistance = Math.min(...ownedRooms.map(r => Game.map.getRoomLinearDistance(roomName, r.name)));
+            score -= minDistance * 2;
+            reasons.push(`${minDistance} rooms away`);
+        }
+        // War target bonus
+        if (memoryManager.getOvermind().warTargets.includes(roomName)) {
+            score += 15;
+            reasons.push("War target");
+        }
+        return { roomName, score, reasons };
+    }
+    /**
+     * Launch nukes at top candidates
+     */
+    launchNukes() {
+        var _a;
+        const overmind = memoryManager.getOvermind();
+        // Only launch if in war mode
+        if (!overmind.objectives.warMode) {
+            return;
+        }
+        // Get all nukers
+        const nukers = [];
+        for (const roomName in Game.rooms) {
+            const room = Game.rooms[roomName];
+            if (!((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my))
+                continue;
+            const nuker = room.find(FIND_MY_STRUCTURES, {
+                filter: s => s.structureType === STRUCTURE_NUKER
+            })[0];
+            if (nuker &&
+                nuker.store.getUsedCapacity(RESOURCE_ENERGY) >= this.config.minEnergy &&
+                nuker.store.getUsedCapacity(RESOURCE_GHODIUM) >= this.config.minGhodium) {
+                nukers.push(nuker);
+            }
+        }
+        if (nukers.length === 0) {
+            return; // No ready nukers
+        }
+        // Launch at top candidates
+        for (const candidate of overmind.nukeCandidates) {
+            if (candidate.launched)
+                continue;
+            // Find a nuker in range
+            for (const nuker of nukers) {
+                const distance = Game.map.getRoomLinearDistance(nuker.room.name, candidate.roomName);
+                if (distance > 10)
+                    continue; // Out of range
+                // Get target position (center of room)
+                const targetPos = new RoomPosition(25, 25, candidate.roomName);
+                const result = nuker.launchNuke(targetPos);
+                if (result === OK) {
+                    candidate.launched = true;
+                    candidate.launchTick = Game.time;
+                    logger.warn(`NUKE LAUNCHED from ${nuker.room.name} to ${candidate.roomName}!`, { subsystem: "Nuke" });
+                    // Remove this nuker from available list
+                    const index = nukers.indexOf(nuker);
+                    if (index > -1) {
+                        nukers.splice(index, 1);
+                    }
+                    break;
+                }
+                else {
+                    logger.error(`Failed to launch nuke: ${result}`, { subsystem: "Nuke" });
+                }
+            }
+            if (nukers.length === 0) {
+                break; // No more nukers available
+            }
+        }
+    }
+};
+__decorate([
+    LowFrequencyProcess("empire:nuke", "Nuke Manager", {
+        priority: ProcessPriority.LOW,
+        interval: 500,
+        minBucket: 8000,
+        cpuBudget: 0.01
+    })
+], NukeManager.prototype, "run", null);
+NukeManager = __decorate([
+    ProcessClass()
+], NukeManager);
+/**
+ * Global nuke manager instance
+ */
+const nukeManager = new NukeManager();
+
+/**
+ * Power Bank Harvesting Manager
+ *
+ * Manages power bank discovery and harvesting:
+ * - Power bank discovery across highway rooms
+ * - Profitability calculation
+ * - Attack/heal squad coordination
+ * - Power transport logistics
+ *
+ * Addresses Issue: #26
+ */
+const DEFAULT_CONFIG$4 = {
+    minPower: 1000,
+    maxDistance: 5,
+    minTicksRemaining: 3000,
+    healerRatio: 0.5,
+    minBucket: 7000,
+    maxConcurrentOps: 2
+};
+/**
+ * Power Bank Harvesting Manager
+ */
+let PowerBankHarvestingManager = class PowerBankHarvestingManager {
+    constructor(config = {}) {
+        this.operations = new Map();
+        this.lastScan = 0;
+        this.config = { ...DEFAULT_CONFIG$4, ...config };
+    }
+    /**
+     * Main tick - scan for power banks and manage operations
+     * Registered as kernel process via decorator
+     */
+    run() {
+        // Scan for new power banks every 50 ticks
+        if (Game.time - this.lastScan >= 50) {
+            this.scanForPowerBanks();
+            this.lastScan = Game.time;
+        }
+        // Update active operations
+        this.updateOperations();
+        // Evaluate new opportunities
+        this.evaluateOpportunities();
+        // Log status periodically
+        if (Game.time % 100 === 0 && this.operations.size > 0) {
+            this.logStatus();
+        }
+    }
+    /**
+     * Scan visible rooms for power banks
+     */
+    scanForPowerBanks() {
+        var _a, _b;
+        const overmind = memoryManager.getOvermind();
+        for (const roomName in Game.rooms) {
+            const room = Game.rooms[roomName];
+            // Only scan highway rooms
+            const coordMatch = roomName.match(/^[WE](\d+)[NS](\d+)$/);
+            if (!coordMatch)
+                continue;
+            const x = parseInt(coordMatch[1], 10);
+            const y = parseInt(coordMatch[2], 10);
+            const isHighway = x % 10 === 0 || y % 10 === 0;
+            if (!isHighway)
+                continue;
+            // Find power banks
+            const foundPowerBanks = room.find(FIND_STRUCTURES, {
+                filter: s => s.structureType === STRUCTURE_POWER_BANK
+            });
+            const powerBanks = foundPowerBanks;
+            for (const pb of powerBanks) {
+                // Check if already tracked
+                const existing = overmind.powerBanks.find(entry => entry.roomName === roomName && entry.pos.x === pb.pos.x && entry.pos.y === pb.pos.y);
+                if (!existing) {
+                    const entry = {
+                        roomName,
+                        pos: { x: pb.pos.x, y: pb.pos.y },
+                        power: pb.power,
+                        decayTick: Game.time + ((_a = pb.ticksToDecay) !== null && _a !== void 0 ? _a : 5000),
+                        active: false
+                    };
+                    overmind.powerBanks.push(entry);
+                    if (pb.power >= this.config.minPower) {
+                        logger.info(`Power bank discovered in ${roomName}: ${pb.power} power`, {
+                            subsystem: "PowerBank"
+                        });
+                    }
+                }
+                else {
+                    // Update existing entry
+                    existing.power = pb.power;
+                    existing.decayTick = Game.time + ((_b = pb.ticksToDecay) !== null && _b !== void 0 ? _b : 5000);
+                }
+            }
+        }
+        // Clean up decayed power banks
+        overmind.powerBanks = overmind.powerBanks.filter(pb => pb.decayTick > Game.time);
+    }
+    /**
+     * Update active operations
+     */
+    updateOperations() {
+        for (const [opId, op] of this.operations) {
+            switch (op.state) {
+                case "scouting":
+                    this.updateScoutingOp(op);
+                    break;
+                case "attacking":
+                    this.updateAttackingOp(op);
+                    break;
+                case "collecting":
+                    this.updateCollectingOp(op);
+                    break;
+                case "complete":
+                case "failed":
+                    // Remove completed/failed operations after some time
+                    if (Game.time - op.startedAt > 10000) {
+                        this.operations.delete(opId);
+                    }
+                    break;
+            }
+        }
+    }
+    /**
+     * Update scouting operation
+     */
+    updateScoutingOp(op) {
+        var _a;
+        const room = Game.rooms[op.roomName];
+        if (!room)
+            return;
+        // Check if power bank still exists
+        const powerBank = room.find(FIND_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_POWER_BANK &&
+                s.pos.x === op.pos.x &&
+                s.pos.y === op.pos.y
+        })[0];
+        if (!powerBank) {
+            op.state = "failed";
+            logger.warn(`Power bank in ${op.roomName} disappeared`, { subsystem: "PowerBank" });
+            return;
+        }
+        // Update power amount
+        op.power = powerBank.power;
+        op.decayTick = Game.time + ((_a = powerBank.ticksToDecay) !== null && _a !== void 0 ? _a : 0);
+        // Transition to attacking once we have creeps
+        if (op.assignedCreeps.attackers.length > 0) {
+            op.state = "attacking";
+            logger.info(`Starting attack on power bank in ${op.roomName}`, {
+                subsystem: "PowerBank"
+            });
+        }
+    }
+    /**
+     * Update attacking operation
+     */
+    updateAttackingOp(op) {
+        var _a;
+        const room = Game.rooms[op.roomName];
+        // Check if attackers are still alive
+        op.assignedCreeps.attackers = op.assignedCreeps.attackers.filter(name => Game.creeps[name]);
+        op.assignedCreeps.healers = op.assignedCreeps.healers.filter(name => Game.creeps[name]);
+        if (!room) {
+            // Lost visibility - check if we still have creeps en route
+            if (op.assignedCreeps.attackers.length === 0 && op.assignedCreeps.healers.length === 0) {
+                op.state = "failed";
+            }
+            return;
+        }
+        // Check if power bank is destroyed
+        const powerBank = room.find(FIND_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_POWER_BANK &&
+                s.pos.x === op.pos.x &&
+                s.pos.y === op.pos.y
+        })[0];
+        if (!powerBank) {
+            // Power bank destroyed - transition to collecting
+            op.state = "collecting";
+            logger.info(`Power bank destroyed in ${op.roomName}, collecting power`, {
+                subsystem: "PowerBank"
+            });
+            return;
+        }
+        // Track damage
+        const previousHits = (_a = op.lastHits) !== null && _a !== void 0 ? _a : 2000000;
+        op.lastHits = powerBank.hits;
+        if (previousHits > powerBank.hits) {
+            op.damageDealt += previousHits - powerBank.hits;
+        }
+        // Check if we'll finish in time
+        const ticksRemaining = op.decayTick - Game.time;
+        const dpsEstimate = op.damageDealt / Math.max(1, Game.time - op.startedAt);
+        const ticksToDestroy = powerBank.hits / Math.max(1, dpsEstimate);
+        if (ticksToDestroy > ticksRemaining * 0.9) {
+            // We won't make it - consider adding more attackers
+            logger.warn(`Power bank in ${op.roomName} may decay before completion (${Math.round(ticksToDestroy)} > ${ticksRemaining})`, { subsystem: "PowerBank" });
+        }
+        op.estimatedCompletion = Game.time + Math.round(ticksToDestroy);
+    }
+    /**
+     * Update collecting operation
+     */
+    updateCollectingOp(op) {
+        const room = Game.rooms[op.roomName];
+        // Check if carriers are still alive
+        op.assignedCreeps.carriers = op.assignedCreeps.carriers.filter(name => Game.creeps[name]);
+        if (!room) {
+            if (op.assignedCreeps.carriers.length === 0) {
+                // No carriers and no visibility - operation failed
+                op.state = "failed";
+            }
+            return;
+        }
+        // Check for dropped power
+        const droppedPower = room.find(FIND_DROPPED_RESOURCES, {
+            filter: r => r.resourceType === RESOURCE_POWER
+        });
+        // Check for power in ruins
+        const ruins = room.find(FIND_RUINS, {
+            filter: r => r.store.getUsedCapacity(RESOURCE_POWER) > 0
+        });
+        if (droppedPower.length === 0 && ruins.length === 0) {
+            // All power collected
+            op.state = "complete";
+            logger.info(`Power bank operation complete in ${op.roomName}: ${op.powerCollected} power collected`, { subsystem: "PowerBank" });
+        }
+    }
+    /**
+     * Evaluate opportunities for new operations
+     */
+    evaluateOpportunities() {
+        var _a, _b;
+        // Check if we can start more operations
+        const activeOps = Array.from(this.operations.values()).filter(op => op.state !== "complete" && op.state !== "failed");
+        if (activeOps.length >= this.config.maxConcurrentOps) {
+            return;
+        }
+        const overmind = memoryManager.getOvermind();
+        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return ((_a = r.controller) === null || _a === void 0 ? void 0 : _a.my) && r.controller.level >= 7; });
+        if (ownedRooms.length === 0)
+            return;
+        // Find best power bank opportunity
+        const candidates = overmind.powerBanks
+            .filter(pb => {
+            // Not already active
+            if (pb.active || this.operations.has(pb.roomName))
+                return false;
+            // Minimum power
+            if (pb.power < this.config.minPower)
+                return false;
+            // Minimum time remaining
+            const ticksRemaining = pb.decayTick - Game.time;
+            if (ticksRemaining < this.config.minTicksRemaining)
+                return false;
+            // Check distance
+            const minDistance = this.getMinDistanceToOwned(pb.roomName, ownedRooms);
+            if (minDistance > this.config.maxDistance)
+                return false;
+            return true;
+        })
+            .map(pb => ({
+            entry: pb,
+            score: this.scorePowerBank(pb, ownedRooms)
+        }))
+            .sort((a, b) => b.score - a.score);
+        if (candidates.length > 0 && ((_b = (_a = candidates[0]) === null || _a === void 0 ? void 0 : _a.score) !== null && _b !== void 0 ? _b : 0) > 0) {
+            const best = candidates[0];
+            this.startOperation(best.entry, ownedRooms);
+        }
+    }
+    /**
+     * Score a power bank opportunity
+     */
+    scorePowerBank(pb, ownedRooms) {
+        let score = 0;
+        // Base score from power amount
+        score += pb.power * 0.01;
+        // Time remaining bonus
+        const ticksRemaining = pb.decayTick - Game.time;
+        if (ticksRemaining > 4000)
+            score += 50;
+        if (ticksRemaining > 5000)
+            score += 30;
+        // Distance penalty
+        const distance = this.getMinDistanceToOwned(pb.roomName, ownedRooms);
+        score -= distance * 20;
+        // Power threshold bonus
+        if (pb.power >= 3000)
+            score += 50;
+        if (pb.power >= 5000)
+            score += 50;
+        return score;
+    }
+    /**
+     * Get minimum distance to owned rooms
+     */
+    getMinDistanceToOwned(roomName, ownedRooms) {
+        let minDistance = Infinity;
+        for (const room of ownedRooms) {
+            const distance = Game.map.getRoomLinearDistance(roomName, room.name);
+            if (distance < minDistance) {
+                minDistance = distance;
+            }
+        }
+        return minDistance;
+    }
+    /**
+     * Start a new power bank operation
+     */
+    startOperation(pb, ownedRooms) {
+        // Find best home room
+        let bestRoom = null;
+        let bestDistance = Infinity;
+        for (const room of ownedRooms) {
+            const distance = Game.map.getRoomLinearDistance(pb.roomName, room.name);
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                bestRoom = room;
+            }
+        }
+        if (!bestRoom)
+            return;
+        const op = {
+            roomName: pb.roomName,
+            pos: pb.pos,
+            power: pb.power,
+            decayTick: pb.decayTick,
+            homeRoom: bestRoom.name,
+            state: "scouting",
+            assignedCreeps: {
+                attackers: [],
+                healers: [],
+                carriers: []
+            },
+            damageDealt: 0,
+            powerCollected: 0,
+            startedAt: Game.time,
+            estimatedCompletion: 0
+        };
+        this.operations.set(pb.roomName, op);
+        pb.active = true;
+        logger.info(`Started power bank operation in ${pb.roomName} (${pb.power} power, home: ${bestRoom.name})`, { subsystem: "PowerBank" });
+    }
+    /**
+     * Assign a creep to an operation
+     */
+    assignCreep(creepName, opRoomName, role) {
+        const op = this.operations.get(opRoomName);
+        if (!op)
+            return false;
+        switch (role) {
+            case "attacker":
+                if (!op.assignedCreeps.attackers.includes(creepName)) {
+                    op.assignedCreeps.attackers.push(creepName);
+                }
+                break;
+            case "healer":
+                if (!op.assignedCreeps.healers.includes(creepName)) {
+                    op.assignedCreeps.healers.push(creepName);
+                }
+                break;
+            case "carrier":
+                if (!op.assignedCreeps.carriers.includes(creepName)) {
+                    op.assignedCreeps.carriers.push(creepName);
+                }
+                break;
+        }
+        return true;
+    }
+    /**
+     * Record power collected
+     */
+    recordPowerCollected(opRoomName, amount) {
+        const op = this.operations.get(opRoomName);
+        if (op) {
+            op.powerCollected += amount;
+        }
+    }
+    /**
+     * Get active operations
+     */
+    getActiveOperations() {
+        return Array.from(this.operations.values()).filter(op => op.state !== "complete" && op.state !== "failed");
+    }
+    /**
+     * Get operation for a room
+     */
+    getOperation(roomName) {
+        return this.operations.get(roomName);
+    }
+    /**
+     * Calculate required creeps for an operation
+     */
+    getRequiredCreeps(op) {
+        const ticksRemaining = op.decayTick - Game.time;
+        const hitsRemaining = 2000000 - op.damageDealt;
+        // Safety margin to account for travel time and coordination delays
+        const COMPLETION_SAFETY_MARGIN = 0.8;
+        // Assume 600 DPS per attacker pair (attacker + healer)
+        // Power bank reflects 50% of damage, so we need ~300 heal/tick per attacker
+        const dpsNeeded = hitsRemaining / (ticksRemaining * COMPLETION_SAFETY_MARGIN);
+        const attackersNeeded = Math.ceil(dpsNeeded / 600);
+        // Healers at configured ratio
+        const healersNeeded = Math.ceil(attackersNeeded * this.config.healerRatio);
+        // Carriers based on power amount (assume 2000 carry capacity each)
+        const carriersNeeded = Math.ceil(op.power / 2000);
+        return {
+            attackers: Math.max(1, attackersNeeded),
+            healers: Math.max(1, healersNeeded),
+            carriers: Math.max(1, carriersNeeded)
+        };
+    }
+    /**
+     * Log current status
+     */
+    logStatus() {
+        const activeOps = Array.from(this.operations.values()).filter(op => op.state !== "complete" && op.state !== "failed");
+        for (const op of activeOps) {
+            logger.info(`Power bank op ${op.roomName}: ${op.state}, ` +
+                `${op.assignedCreeps.attackers.length}A/${op.assignedCreeps.healers.length}H/${op.assignedCreeps.carriers.length}C, ` +
+                `${Math.round(op.damageDealt / 1000)}k damage, ${op.powerCollected} collected`, { subsystem: "PowerBank" });
+        }
+    }
+};
+__decorate([
+    LowFrequencyProcess("empire:powerBank", "Power Bank Harvesting", {
+        priority: ProcessPriority.LOW,
+        interval: 50,
+        minBucket: 7000,
+        cpuBudget: 0.02
+    })
+], PowerBankHarvestingManager.prototype, "run", null);
+PowerBankHarvestingManager = __decorate([
+    ProcessClass()
+], PowerBankHarvestingManager);
+/**
+ * Global power bank harvesting manager instance
+ */
+const powerBankHarvestingManager = new PowerBankHarvestingManager();
+
+/**
+ * Remote Infrastructure Manager
+ *
+ * Manages infrastructure in remote mining rooms:
+ * - Places containers at sources in remote rooms
+ * - Plans roads from home room to remote sources
+ * - Coordinates with roadNetworkPlanner for multi-room paths
+ *
+ * Addresses Issue: Ensure that we remote harvest where possible
+ */
+/**
+ * Construction site limit per room (Screeps game limit is 100, but we use lower limit for remote rooms)
+ */
+const MAX_CONSTRUCTION_SITES_PER_REMOTE_ROOM = 5;
+/**
+ * Maximum number of road construction sites to place per room per tick
+ */
+const MAX_ROAD_SITES_PER_TICK = 3;
+const DEFAULT_CONFIG$3 = {
+    updateInterval: 50,
+    minBucket: 3000,
+    maxSitesPerRemotePerTick: 2
+};
+/**
+ * Remote Infrastructure Manager Class
+ */
+let RemoteInfrastructureManager = class RemoteInfrastructureManager {
+    constructor(config = {}) {
+        this.config = { ...DEFAULT_CONFIG$3, ...config };
+    }
+    /**
+     * Main infrastructure tick - runs periodically
+     * Registered as kernel process via decorator
+     */
+    run() {
+        var _a;
+        // Process all owned rooms with remote assignments
+        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        for (const room of ownedRooms) {
+            const swarm = memoryManager.getSwarmState(room.name);
+            if (!swarm)
+                continue;
+            const remoteAssignments = (_a = swarm.remoteAssignments) !== null && _a !== void 0 ? _a : [];
+            if (remoteAssignments.length === 0)
+                continue;
+            // Plan infrastructure for each remote room
+            for (const remoteName of remoteAssignments) {
+                this.planRemoteInfrastructure(room, remoteName);
+            }
+            // Place roads to remote rooms (in home room and along the path)
+            this.placeRemoteRoads(room, remoteAssignments);
+        }
+    }
+    /**
+     * Plan and build infrastructure in a remote room
+     */
+    planRemoteInfrastructure(homeRoom, remoteName) {
+        const remoteRoom = Game.rooms[remoteName];
+        if (!remoteRoom) {
+            // Can't see the remote room yet - scouts need to explore it
+            return;
+        }
+        // Check if we have controller reservation to avoid conflicts
+        const controller = remoteRoom.controller;
+        const myUsername = this.getMyUsername();
+        // Only build in neutral rooms or rooms reserved by us
+        if (controller) {
+            if (controller.owner && controller.owner.username !== myUsername) {
+                // Room is owned by someone else
+                return;
+            }
+            if (controller.reservation && controller.reservation.username !== myUsername) {
+                // Room is reserved by someone else
+                return;
+            }
+        }
+        // Find sources and place containers
+        const sources = remoteRoom.find(FIND_SOURCES);
+        let sitesPlaced = 0;
+        for (const source of sources) {
+            if (sitesPlaced >= this.config.maxSitesPerRemotePerTick)
+                break;
+            const placed = this.placeSourceContainer(remoteRoom, source);
+            if (placed)
+                sitesPlaced++;
+        }
+    }
+    /**
+     * Place a container at a source if it doesn't exist
+     */
+    placeSourceContainer(room, source) {
+        // Check if container already exists
+        const existingStructures = source.pos.findInRange(FIND_STRUCTURES, 1, {
+            filter: s => s.structureType === STRUCTURE_CONTAINER
+        });
+        if (existingStructures.length > 0) {
+            // Container already exists
+            return false;
+        }
+        // Check if construction site already exists
+        const existingSites = source.pos.findInRange(FIND_CONSTRUCTION_SITES, 1, {
+            filter: s => s.structureType === STRUCTURE_CONTAINER
+        });
+        if (existingSites.length > 0) {
+            // Construction site already exists
+            return false;
+        }
+        // Find best position for container (adjacent to source)
+        const containerPos = this.findBestContainerPosition(source);
+        if (!containerPos) {
+            logger.warn(`Could not find valid position for container at source ${source.id} in ${room.name}`, {
+                subsystem: "RemoteInfra"
+            });
+            return false;
+        }
+        // Check construction site limit
+        const sites = room.find(FIND_CONSTRUCTION_SITES);
+        if (sites.length >= MAX_CONSTRUCTION_SITES_PER_REMOTE_ROOM) {
+            // Too many construction sites in this room already
+            return false;
+        }
+        // Place construction site
+        const result = room.createConstructionSite(containerPos.x, containerPos.y, STRUCTURE_CONTAINER);
+        if (result === OK) {
+            logger.info(`Placed container construction site at source ${source.id} in ${room.name}`, {
+                subsystem: "RemoteInfra"
+            });
+            return true;
+        }
+        else {
+            logger.debug(`Failed to place container at source ${source.id} in ${room.name}: ${result}`, {
+                subsystem: "RemoteInfra"
+            });
+            return false;
+        }
+    }
+    /**
+     * Find the best position for a container adjacent to a source
+     */
+    findBestContainerPosition(source) {
+        const room = source.room;
+        const terrain = room.getTerrain();
+        // Check all positions adjacent to source
+        const candidates = [];
+        for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+                if (dx === 0 && dy === 0)
+                    continue; // Skip source itself
+                const x = source.pos.x + dx;
+                const y = source.pos.y + dy;
+                // Check bounds
+                if (x < 1 || x > 48 || y < 1 || y > 48)
+                    continue;
+                // Check terrain
+                if (terrain.get(x, y) === TERRAIN_MASK_WALL)
+                    continue;
+                // Check for existing structures
+                const pos = new RoomPosition(x, y, room.name);
+                const structures = pos.lookFor(LOOK_STRUCTURES);
+                if (structures.length > 0)
+                    continue;
+                // Count walkable neighbors (better positions have more access)
+                let walkableNeighbors = 0;
+                for (let dx2 = -1; dx2 <= 1; dx2++) {
+                    for (let dy2 = -1; dy2 <= 1; dy2++) {
+                        if (dx2 === 0 && dy2 === 0)
+                            continue;
+                        const nx = x + dx2;
+                        const ny = y + dy2;
+                        if (nx >= 1 && nx <= 48 && ny >= 1 && ny <= 48) {
+                            if (terrain.get(nx, ny) !== TERRAIN_MASK_WALL) {
+                                walkableNeighbors++;
+                            }
+                        }
+                    }
+                }
+                candidates.push({ x, y, score: walkableNeighbors });
+            }
+        }
+        if (candidates.length === 0)
+            return null;
+        // Sort by score (most walkable neighbors first)
+        candidates.sort((a, b) => b.score - a.score);
+        return candidates[0];
+    }
+    /**
+     * Place roads to remote rooms using the road network planner
+     */
+    placeRemoteRoads(homeRoom, remoteRooms) {
+        // Calculate remote roads (this returns roads grouped by room)
+        const remoteRoadsByRoom = calculateRemoteRoads(homeRoom, remoteRooms);
+        // Place roads in home room
+        const homeRoads = remoteRoadsByRoom.get(homeRoom.name);
+        if (homeRoads) {
+            this.placeRoadsInRoom(homeRoom, homeRoads);
+        }
+        // Place roads in remote rooms (if we have vision)
+        for (const remoteName of remoteRooms) {
+            const remoteRoom = Game.rooms[remoteName];
+            if (!remoteRoom)
+                continue;
+            const remoteRoads = remoteRoadsByRoom.get(remoteName);
+            if (remoteRoads) {
+                this.placeRoadsInRoom(remoteRoom, remoteRoads);
+            }
+        }
+    }
+    /**
+     * Place road construction sites in a room from a set of positions
+     */
+    placeRoadsInRoom(room, roadPositions) {
+        const existingSites = room.find(FIND_CONSTRUCTION_SITES);
+        const existingRoads = room.find(FIND_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_ROAD
+        });
+        // Check construction site limit
+        if (existingSites.length >= MAX_CONSTRUCTION_SITES_PER_REMOTE_ROOM)
+            return;
+        const existingRoadSet = new Set(existingRoads.map(r => `${r.pos.x},${r.pos.y}`));
+        const existingSiteSet = new Set(existingSites.filter(s => s.structureType === STRUCTURE_ROAD).map(s => `${s.pos.x},${s.pos.y}`));
+        const terrain = room.getTerrain();
+        let placed = 0;
+        for (const posKey of roadPositions) {
+            if (placed >= MAX_ROAD_SITES_PER_TICK)
+                break;
+            if (existingSites.length + placed >= MAX_CONSTRUCTION_SITES_PER_REMOTE_ROOM)
+                break;
+            // Skip if road or site already exists
+            if (existingRoadSet.has(posKey))
+                continue;
+            if (existingSiteSet.has(posKey))
+                continue;
+            // Parse position
+            const [xStr, yStr] = posKey.split(",");
+            const x = parseInt(xStr, 10);
+            const y = parseInt(yStr, 10);
+            // Skip walls
+            if (terrain.get(x, y) === TERRAIN_MASK_WALL)
+                continue;
+            // Place construction site
+            const result = room.createConstructionSite(x, y, STRUCTURE_ROAD);
+            if (result === OK) {
+                placed++;
+            }
+        }
+        if (placed > 0) {
+            logger.debug(`Placed ${placed} remote road construction sites in ${room.name}`, {
+                subsystem: "RemoteInfra"
+            });
+        }
+    }
+    /**
+     * Get my username (cached)
+     */
+    getMyUsername() {
+        const spawns = Object.values(Game.spawns);
+        if (spawns.length > 0) {
+            return spawns[0].owner.username;
+        }
+        return "";
+    }
+};
+__decorate([
+    MediumFrequencyProcess("remote:infrastructure", "Remote Infrastructure Manager", {
+        priority: ProcessPriority.LOW,
+        interval: 50,
+        minBucket: 3000,
+        cpuBudget: 0.05
+    })
+], RemoteInfrastructureManager.prototype, "run", null);
+RemoteInfrastructureManager = __decorate([
+    ProcessClass()
+], RemoteInfrastructureManager);
+/**
+ * Global remote infrastructure manager instance
+ */
+const remoteInfrastructureManager = new RemoteInfrastructureManager();
+
+/**
+ * InterShardMemory Schema - Phase 15
+ *
+ * Multi-shard meta layer schema and serialization.
+ */
+/**
+ * Create default InterShardMemory
+ */
+function createDefaultInterShardMemory() {
+    return {
+        version: 1,
+        shards: {},
+        globalTargets: {
+            targetPowerLevel: 0
+        },
+        tasks: [],
+        lastSync: 0,
+        checksum: 0
+    };
+}
+/**
+ * Create default shard state
+ */
+function createDefaultShardState(name) {
+    return {
+        name,
+        role: "core",
+        health: {
+            cpuCategory: "low",
+            economyIndex: 50,
+            warIndex: 0,
+            commodityIndex: 0,
+            roomCount: 0,
+            avgRCL: 0,
+            creepCount: 0,
+            lastUpdate: 0
+        },
+        activeTasks: [],
+        portals: []
+    };
+}
+/**
+ * Calculate checksum for validation
+ */
+function calculateChecksum(data) {
+    let hash = 0;
+    for (let i = 0; i < data.length; i++) {
+        const char = data.charCodeAt(i);
+        // eslint-disable-next-line no-bitwise
+        hash = (hash << 5) - hash + char;
+        // eslint-disable-next-line no-bitwise
+        hash = hash & hash;
+    }
+    return Math.abs(hash);
+}
+/**
+ * Serialize InterShardMemory to compact string
+ */
+function serializeInterShardMemory(memory) {
+    // Create compact representation
+    const compact = {
+        v: memory.version,
+        s: Object.entries(memory.shards).map(([name, state]) => ({
+            n: name,
+            r: state.role[0],
+            h: {
+                c: state.health.cpuCategory[0],
+                e: Math.round(state.health.economyIndex),
+                w: Math.round(state.health.warIndex),
+                m: Math.round(state.health.commodityIndex),
+                rc: state.health.roomCount,
+                rl: Math.round(state.health.avgRCL * 10) / 10,
+                cc: state.health.creepCount,
+                u: state.health.lastUpdate
+            },
+            t: state.activeTasks,
+            p: state.portals.map(p => ({
+                sr: p.sourceRoom,
+                sp: `${p.sourcePos.x},${p.sourcePos.y}`,
+                ts: p.targetShard,
+                tr: p.targetRoom,
+                th: p.threatRating
+            }))
+        })),
+        g: {
+            pl: memory.globalTargets.targetPowerLevel,
+            ws: memory.globalTargets.mainWarShard,
+            es: memory.globalTargets.primaryEcoShard,
+            ct: memory.globalTargets.colonizationTarget
+        },
+        k: memory.tasks.map(t => ({
+            i: t.id,
+            y: t.type[0],
+            ss: t.sourceShard,
+            ts: t.targetShard,
+            tr: t.targetRoom,
+            p: t.priority,
+            st: t.status[0]
+        })),
+        ls: memory.lastSync
+    };
+    const serialized = JSON.stringify(compact);
+    const checksum = calculateChecksum(serialized);
+    return JSON.stringify({ d: compact, c: checksum });
+}
+/**
+ * Deserialize InterShardMemory from string
+ */
+function deserializeInterShardMemory(data) {
+    var _a, _b;
+    try {
+        const parsed = JSON.parse(data);
+        // Validate checksum
+        const dataStr = JSON.stringify(parsed.d);
+        const expectedChecksum = calculateChecksum(dataStr);
+        if (parsed.c !== expectedChecksum) {
+            console.log("InterShardMemory checksum mismatch");
+            return null;
+        }
+        const compact = parsed.d;
+        // Role map
+        const roleMap = {
+            c: "core",
+            f: "frontier",
+            r: "resource",
+            b: "backup",
+            w: "war"
+        };
+        // CPU category map
+        const cpuMap = {
+            l: "low",
+            m: "medium",
+            h: "high",
+            c: "critical"
+        };
+        // Task type map
+        const taskTypeMap = {
+            c: "colonize",
+            r: "reinforce",
+            t: "transfer",
+            e: "evacuate"
+        };
+        // Task status map
+        const statusMap = {
+            p: "pending",
+            a: "active",
+            c: "complete",
+            f: "failed"
+        };
+        // Reconstruct memory
+        const shards = {};
+        const shardsData = compact.s;
+        for (const s of shardsData) {
+            shards[s.n] = {
+                name: s.n,
+                role: (_a = roleMap[s.r]) !== null && _a !== void 0 ? _a : "core",
+                health: {
+                    cpuCategory: (_b = cpuMap[s.h.c]) !== null && _b !== void 0 ? _b : "low",
+                    economyIndex: s.h.e,
+                    warIndex: s.h.w,
+                    commodityIndex: s.h.m,
+                    roomCount: s.h.rc,
+                    avgRCL: s.h.rl,
+                    creepCount: s.h.cc,
+                    lastUpdate: s.h.u
+                },
+                activeTasks: s.t,
+                portals: s.p.map(p => {
+                    const [x, y] = p.sp.split(",");
+                    return {
+                        sourceRoom: p.sr,
+                        sourcePos: { x: parseInt(x !== null && x !== void 0 ? x : "0", 10), y: parseInt(y !== null && y !== void 0 ? y : "0", 10) },
+                        targetShard: p.ts,
+                        targetRoom: p.tr,
+                        threatRating: p.th,
+                        lastScouted: 0
+                    };
+                })
+            };
+        }
+        const globalData = compact.g;
+        const tasksData = compact.k;
+        const globalTargets = {
+            targetPowerLevel: globalData.pl
+        };
+        if (globalData.ws) {
+            globalTargets.mainWarShard = globalData.ws;
+        }
+        if (globalData.es) {
+            globalTargets.primaryEcoShard = globalData.es;
+        }
+        if (globalData.ct) {
+            globalTargets.colonizationTarget = globalData.ct;
+        }
+        return {
+            version: compact.v,
+            shards,
+            globalTargets,
+            tasks: tasksData.map(t => {
+                var _a, _b;
+                const task = {
+                    id: t.i,
+                    type: (_a = taskTypeMap[t.y]) !== null && _a !== void 0 ? _a : "colonize",
+                    sourceShard: t.ss,
+                    targetShard: t.ts,
+                    priority: t.p,
+                    status: (_b = statusMap[t.st]) !== null && _b !== void 0 ? _b : "pending",
+                    createdAt: 0
+                };
+                if (t.tr) {
+                    task.targetRoom = t.tr;
+                }
+                return task;
+            }),
+            lastSync: compact.ls,
+            checksum: parsed.c
+        };
+    }
+    catch (_c) {
+        console.log("Failed to deserialize InterShardMemory");
+        return null;
+    }
+}
+/**
+ * InterShardMemory size limit (100KB)
+ */
+const INTERSHARD_MEMORY_LIMIT = 102400;
+
+/**
+ * Shard Manager - Multi-Shard Coordination
+ *
+ * Manages shard-specific strategies:
+ * - Shard role assignment (core, frontier, resource, backup, war)
+ * - CPU limit distribution via Game.cpu.setShardLimits
+ * - Shard health monitoring
+ * - Inter-shard communication strategy
+ *
+ * Addresses Issue: #7
+ */
+const DEFAULT_CONFIG$2 = {
+    updateInterval: 100,
+    minBucket: 5000,
+    maxCpuBudget: 0.02,
+    defaultCpuLimit: 20
+};
+/**
+ * CPU distribution based on shard role
+ */
+const ROLE_CPU_WEIGHTS = {
+    core: 1.5,
+    frontier: 0.8,
+    resource: 1.0,
+    backup: 0.5,
+    war: 1.2 // War shards get above average
+};
+/**
+ * Shard Manager Class
+ */
+let ShardManager = class ShardManager {
+    constructor(config = {}) {
+        this.lastRun = 0;
+        this.config = { ...DEFAULT_CONFIG$2, ...config };
+        this.interShardMemory = createDefaultInterShardMemory();
+    }
+    /**
+     * Initialize shard manager - load from InterShardMemory
+     */
+    initialize() {
+        var _a, _b;
+        try {
+            const rawData = InterShardMemory.getLocal();
+            if (rawData) {
+                const parsed = deserializeInterShardMemory(rawData);
+                if (parsed) {
+                    this.interShardMemory = parsed;
+                    logger.debug("Loaded InterShardMemory", { subsystem: "Shard" });
+                }
+            }
+        }
+        catch (err) {
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            logger.error(`Failed to load InterShardMemory: ${errorMessage}`, { subsystem: "Shard" });
+        }
+        // Ensure current shard is tracked
+        const currentShard = (_b = (_a = Game.shard) === null || _a === void 0 ? void 0 : _a.name) !== null && _b !== void 0 ? _b : "shard0";
+        if (!this.interShardMemory.shards[currentShard]) {
+            this.interShardMemory.shards[currentShard] = createDefaultShardState(currentShard);
+        }
+    }
+    /**
+     * Main shard tick - runs periodically
+     * Registered as kernel process via decorator
+     */
+    run() {
+        this.lastRun = Game.time;
+        // Update current shard health
+        this.updateCurrentShardHealth();
+        // Check and process inter-shard tasks
+        this.processInterShardTasks();
+        // Scan for portals
+        this.scanForPortals();
+        // Auto-assign shard role if needed
+        this.autoAssignShardRole();
+        // Distribute CPU limits if on multi-shard
+        if (Object.keys(this.interShardMemory.shards).length > 1) {
+            this.distributeCpuLimits();
+        }
+        // Sync with other shards
+        this.syncInterShardMemory();
+        // Log status periodically
+        if (Game.time % 500 === 0) {
+            this.logShardStatus();
+        }
+    }
+    /**
+     * Update current shard's health metrics
+     */
+    updateCurrentShardHealth() {
+        var _a, _b;
+        const currentShard = (_b = (_a = Game.shard) === null || _a === void 0 ? void 0 : _a.name) !== null && _b !== void 0 ? _b : "shard0";
+        const shardState = this.interShardMemory.shards[currentShard];
+        if (!shardState)
+            return;
+        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        // Calculate health metrics
+        const cpuUsage = Game.cpu.getUsed() / Game.cpu.limit;
+        const cpuCategory = cpuUsage < 0.5 ? "low" : cpuUsage < 0.75 ? "medium" : cpuUsage < 0.9 ? "high" : "critical";
+        const avgRCL = ownedRooms.length > 0
+            ? ownedRooms.reduce((sum, r) => { var _a, _b; return sum + ((_b = (_a = r.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0); }, 0) / ownedRooms.length
+            : 0;
+        // Calculate economy index (0-100)
+        let economyIndex = 0;
+        for (const room of ownedRooms) {
+            const storage = room.storage;
+            if (storage) {
+                const energy = storage.store.getUsedCapacity(RESOURCE_ENERGY);
+                economyIndex += Math.min(100, energy / 5000);
+            }
+        }
+        economyIndex = ownedRooms.length > 0 ? economyIndex / ownedRooms.length : 0;
+        // Calculate war index based on danger levels
+        let warIndex = 0;
+        for (const room of ownedRooms) {
+            const hostiles = room.find(FIND_HOSTILE_CREEPS).length;
+            warIndex += Math.min(100, hostiles * 10);
+        }
+        warIndex = ownedRooms.length > 0 ? warIndex / ownedRooms.length : 0;
+        // Update health metrics
+        shardState.health = {
+            cpuCategory,
+            economyIndex: Math.round(economyIndex),
+            warIndex: Math.round(warIndex),
+            commodityIndex: 0,
+            roomCount: ownedRooms.length,
+            avgRCL: Math.round(avgRCL * 10) / 10,
+            creepCount: Object.keys(Game.creeps).length,
+            lastUpdate: Game.time
+        };
+    }
+    /**
+     * Process inter-shard tasks
+     */
+    processInterShardTasks() {
+        var _a, _b;
+        const currentShard = (_b = (_a = Game.shard) === null || _a === void 0 ? void 0 : _a.name) !== null && _b !== void 0 ? _b : "shard0";
+        const tasks = this.interShardMemory.tasks.filter(t => t.targetShard === currentShard && t.status === "pending");
+        for (const task of tasks) {
+            switch (task.type) {
+                case "colonize":
+                    this.handleColonizeTask(task);
+                    break;
+                case "reinforce":
+                    this.handleReinforceTask(task);
+                    break;
+                case "transfer":
+                    this.handleTransferTask(task);
+                    break;
+                case "evacuate":
+                    this.handleEvacuateTask(task);
+                    break;
+            }
+        }
+        // Clean up completed/failed tasks older than 5000 ticks
+        this.interShardMemory.tasks = this.interShardMemory.tasks.filter(t => t.status === "pending" || t.status === "active" || Game.time - t.createdAt < 5000);
+    }
+    /**
+     * Handle colonize task
+     */
+    handleColonizeTask(task) {
+        var _a;
+        // Mark task as active
+        task.status = "active";
+        const targetRoom = (_a = task.targetRoom) !== null && _a !== void 0 ? _a : 'unknown';
+        logger.info(`Processing colonize task: ${targetRoom} from ${task.sourceShard}`, {
+            subsystem: "Shard"
+        });
+    }
+    /**
+     * Handle reinforce task
+     */
+    handleReinforceTask(task) {
+        var _a;
+        task.status = "active";
+        const targetRoom = (_a = task.targetRoom) !== null && _a !== void 0 ? _a : 'unknown';
+        logger.info(`Processing reinforce task: ${targetRoom} from ${task.sourceShard}`, {
+            subsystem: "Shard"
+        });
+    }
+    /**
+     * Handle transfer task
+     */
+    handleTransferTask(task) {
+        task.status = "active";
+        logger.info(`Processing transfer task from ${task.sourceShard}`, { subsystem: "Shard" });
+    }
+    /**
+     * Handle evacuate task
+     */
+    handleEvacuateTask(task) {
+        var _a;
+        task.status = "active";
+        const targetRoom = (_a = task.targetRoom) !== null && _a !== void 0 ? _a : 'unknown';
+        logger.info(`Processing evacuate task: ${targetRoom} to ${task.targetShard}`, {
+            subsystem: "Shard"
+        });
+    }
+    /**
+     * Scan for portals in visible rooms
+     */
+    scanForPortals() {
+        var _a, _b;
+        const currentShard = (_b = (_a = Game.shard) === null || _a === void 0 ? void 0 : _a.name) !== null && _b !== void 0 ? _b : "shard0";
+        const shardState = this.interShardMemory.shards[currentShard];
+        if (!shardState)
+            return;
+        for (const roomName in Game.rooms) {
+            const room = Game.rooms[roomName];
+            const foundPortals = room.find(FIND_STRUCTURES, {
+                filter: s => s.structureType === STRUCTURE_PORTAL
+            });
+            const portals = foundPortals;
+            for (const portal of portals) {
+                // Check if portal leads to another shard
+                const destination = portal.destination;
+                if (!destination)
+                    continue;
+                // Check if it's an inter-shard portal (destination is RoomPosition on different shard)
+                if ("shard" in destination) {
+                    const targetShard = destination.shard;
+                    const targetRoom = destination.room;
+                    // Check if already tracked
+                    const existing = shardState.portals.find(p => p.sourceRoom === roomName && p.targetShard === targetShard);
+                    if (!existing) {
+                        const portalInfo = {
+                            sourceRoom: roomName,
+                            sourcePos: { x: portal.pos.x, y: portal.pos.y },
+                            targetShard,
+                            targetRoom,
+                            threatRating: 0,
+                            lastScouted: Game.time
+                        };
+                        // Check for decay tick on unstable portals
+                        if (portal.ticksToDecay !== undefined) {
+                            portalInfo.decayTick = Game.time + portal.ticksToDecay;
+                        }
+                        shardState.portals.push(portalInfo);
+                        logger.info(`Discovered portal in ${roomName} to ${targetShard}/${targetRoom}`, {
+                            subsystem: "Shard"
+                        });
+                    }
+                }
+            }
+        }
+        // Clean up expired portals
+        shardState.portals = shardState.portals.filter(p => !p.decayTick || p.decayTick > Game.time);
+    }
+    /**
+     * Auto-assign shard role based on metrics
+     */
+    autoAssignShardRole() {
+        var _a, _b;
+        const currentShard = (_b = (_a = Game.shard) === null || _a === void 0 ? void 0 : _a.name) !== null && _b !== void 0 ? _b : "shard0";
+        const shardState = this.interShardMemory.shards[currentShard];
+        if (!shardState)
+            return;
+        // Only auto-assign if role is default "core"
+        if (shardState.role !== "core")
+            return;
+        const health = shardState.health;
+        // Determine role based on metrics
+        let newRole = "core";
+        if (health.warIndex > 50) {
+            newRole = "war";
+        }
+        else if (health.roomCount < 3 && health.avgRCL < 4) {
+            newRole = "frontier";
+        }
+        else if (health.economyIndex > 70 && health.roomCount >= 3) {
+            newRole = "resource";
+        }
+        else if (Object.keys(this.interShardMemory.shards).length > 1 && health.roomCount < 2) {
+            newRole = "backup";
+        }
+        if (newRole !== shardState.role) {
+            shardState.role = newRole;
+            logger.info(`Auto-assigned shard role: ${newRole}`, { subsystem: "Shard" });
+        }
+    }
+    /**
+     * Distribute CPU limits across shards based on roles
+     */
+    distributeCpuLimits() {
+        try {
+            const shards = this.interShardMemory.shards;
+            const shardNames = Object.keys(shards);
+            const totalCpu = Game.cpu.shardLimits
+                ? Object.values(Game.cpu.shardLimits).reduce((sum, cpu) => sum + cpu, 0)
+                : this.config.defaultCpuLimit * shardNames.length;
+            // Calculate weighted distribution
+            let totalWeight = 0;
+            for (const name of shardNames) {
+                const shard = shards[name];
+                if (shard) {
+                    totalWeight += ROLE_CPU_WEIGHTS[shard.role];
+                }
+            }
+            // Build new limits
+            const newLimits = {};
+            for (const name of shardNames) {
+                const shard = shards[name];
+                if (shard) {
+                    const weight = ROLE_CPU_WEIGHTS[shard.role];
+                    newLimits[name] = Math.max(5, Math.round((weight / totalWeight) * totalCpu));
+                }
+            }
+            // Only update if different from current
+            if (Game.cpu.shardLimits) {
+                const currentLimits = Game.cpu.shardLimits;
+                const needsUpdate = shardNames.some(name => { var _a, _b; return ((_a = currentLimits[name]) !== null && _a !== void 0 ? _a : 0) !== ((_b = newLimits[name]) !== null && _b !== void 0 ? _b : 0); });
+                if (needsUpdate) {
+                    const result = Game.cpu.setShardLimits(newLimits);
+                    if (result === OK) {
+                        logger.info(`Updated shard CPU limits: ${JSON.stringify(newLimits)}`, {
+                            subsystem: "Shard"
+                        });
+                    }
+                }
+            }
+        }
+        catch (err) {
+            // setShardLimits may not be available in private servers
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            logger.debug(`Could not set shard limits: ${errorMessage}`, { subsystem: "Shard" });
+        }
+    }
+    /**
+     * Sync InterShardMemory with other shards
+     */
+    syncInterShardMemory() {
+        try {
+            this.interShardMemory.lastSync = Game.time;
+            const serialized = serializeInterShardMemory(this.interShardMemory);
+            // Check size limit
+            if (serialized.length > INTERSHARD_MEMORY_LIMIT) {
+                logger.warn(`InterShardMemory size exceeds limit: ${serialized.length}/${INTERSHARD_MEMORY_LIMIT}`, { subsystem: "Shard" });
+                // Trim old data if needed
+                this.trimInterShardMemory();
+                return;
+            }
+            InterShardMemory.setLocal(serialized);
+        }
+        catch (err) {
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            logger.error(`Failed to sync InterShardMemory: ${errorMessage}`, { subsystem: "Shard" });
+        }
+    }
+    /**
+     * Trim old data from InterShardMemory to stay under size limit
+     */
+    trimInterShardMemory() {
+        // Remove completed/failed tasks older than 1000 ticks
+        this.interShardMemory.tasks = this.interShardMemory.tasks.filter(t => t.status === "pending" || t.status === "active" || Game.time - t.createdAt < 1000);
+        // Remove old portal entries that haven't been scouted recently
+        for (const shardName in this.interShardMemory.shards) {
+            const shard = this.interShardMemory.shards[shardName];
+            if (shard) {
+                shard.portals = shard.portals.filter(p => Game.time - p.lastScouted < 10000);
+            }
+        }
+    }
+    /**
+     * Log shard status
+     */
+    logShardStatus() {
+        var _a, _b;
+        const currentShard = (_b = (_a = Game.shard) === null || _a === void 0 ? void 0 : _a.name) !== null && _b !== void 0 ? _b : "shard0";
+        const shardState = this.interShardMemory.shards[currentShard];
+        if (!shardState)
+            return;
+        const health = shardState.health;
+        logger.info(`Shard ${currentShard} (${shardState.role}): ` +
+            `${health.roomCount} rooms, RCL ${health.avgRCL}, ` +
+            `CPU: ${health.cpuCategory}, Eco: ${health.economyIndex}%, War: ${health.warIndex}%`, { subsystem: "Shard" });
+    }
+    /**
+     * Create a new inter-shard task
+     */
+    createTask(type, targetShard, targetRoom, priority = 50) {
+        var _a, _b;
+        const currentShard = (_b = (_a = Game.shard) === null || _a === void 0 ? void 0 : _a.name) !== null && _b !== void 0 ? _b : "shard0";
+        const task = {
+            id: `${Game.time}-${Math.random().toString(36).substring(2, 11)}`,
+            type,
+            sourceShard: currentShard,
+            targetShard,
+            priority,
+            status: "pending",
+            createdAt: Game.time
+        };
+        if (targetRoom) {
+            task.targetRoom = targetRoom;
+        }
+        this.interShardMemory.tasks.push(task);
+        logger.info(`Created inter-shard task: ${type} to ${targetShard}`, { subsystem: "Shard" });
+    }
+    /**
+     * Get current shard state
+     */
+    getCurrentShardState() {
+        var _a, _b;
+        const currentShard = (_b = (_a = Game.shard) === null || _a === void 0 ? void 0 : _a.name) !== null && _b !== void 0 ? _b : "shard0";
+        return this.interShardMemory.shards[currentShard];
+    }
+    /**
+     * Get all known shards
+     */
+    getAllShards() {
+        return Object.values(this.interShardMemory.shards);
+    }
+    /**
+     * Get portals to a specific shard
+     */
+    getPortalsToShard(targetShard) {
+        var _a, _b;
+        const currentShard = (_b = (_a = Game.shard) === null || _a === void 0 ? void 0 : _a.name) !== null && _b !== void 0 ? _b : "shard0";
+        const shardState = this.interShardMemory.shards[currentShard];
+        if (!shardState)
+            return [];
+        return shardState.portals.filter(p => p.targetShard === targetShard);
+    }
+    /**
+     * Set shard role manually
+     */
+    setShardRole(role) {
+        var _a, _b;
+        const currentShard = (_b = (_a = Game.shard) === null || _a === void 0 ? void 0 : _a.name) !== null && _b !== void 0 ? _b : "shard0";
+        const shardState = this.interShardMemory.shards[currentShard];
+        if (shardState) {
+            shardState.role = role;
+            logger.info(`Set shard role to: ${role}`, { subsystem: "Shard" });
+        }
+    }
+};
+__decorate([
+    LowFrequencyProcess("empire:shard", "Shard Manager", {
+        priority: ProcessPriority.LOW,
+        interval: 100,
+        minBucket: 5000,
+        cpuBudget: 0.02
+    })
+], ShardManager.prototype, "run", null);
+ShardManager = __decorate([
+    ProcessClass()
+], ShardManager);
+/**
+ * Global shard manager instance
+ */
+const shardManager = new ShardManager();
+
+/**
+ * Lab Configuration Manager
+ *
+ * Manages lab role assignments and configuration in memory:
+ * - Lab role assignment (input1, input2, output)
+ * - Memory storage for lab configuration
+ * - Configuration validation
+ * - Optimal lab layout detection
+ *
+ * Addresses Issue: #10
+ */
+/**
+ * Lab Configuration Manager
+ */
+class LabConfigManager {
+    constructor() {
+        this.configs = new Map();
+    }
+    /**
+     * Initialize lab config for a room
+     */
+    initialize(roomName) {
+        var _a;
+        const room = Game.rooms[roomName];
+        if (!room || !((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my))
+            return;
+        const foundLabs = room.find(FIND_MY_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_LAB
+        });
+        const labs = foundLabs;
+        if (labs.length === 0) {
+            this.configs.delete(roomName);
+            return;
+        }
+        // Get or create config
+        let config = this.configs.get(roomName);
+        if (!config) {
+            config = {
+                roomName,
+                labs: [],
+                lastUpdate: Game.time,
+                isValid: false
+            };
+            this.configs.set(roomName, config);
+        }
+        // Update lab entries
+        this.updateLabEntries(config, labs);
+        // Auto-assign roles if not configured
+        if (!config.isValid) {
+            this.autoAssignRoles(config, labs);
+        }
+    }
+    /**
+     * Update lab entries in config
+     */
+    updateLabEntries(config, labs) {
+        // Remove entries for destroyed labs
+        config.labs = config.labs.filter(entry => labs.some(lab => lab.id === entry.labId));
+        // Add new labs
+        for (const lab of labs) {
+            const existing = config.labs.find(entry => entry.labId === lab.id);
+            if (!existing) {
+                config.labs.push({
+                    labId: lab.id,
+                    role: "unassigned",
+                    pos: { x: lab.pos.x, y: lab.pos.y },
+                    lastConfigured: Game.time
+                });
+            }
+        }
+        config.lastUpdate = Game.time;
+    }
+    /**
+     * Auto-assign lab roles based on position
+     */
+    autoAssignRoles(config, labs) {
+        var _a, _b, _c, _d;
+        if (labs.length < 3) {
+            // Need at least 3 labs for reactions
+            config.isValid = false;
+            return;
+        }
+        // Find labs that are within range 2 of at least 2 other labs
+        const labDistances = new Map();
+        for (const lab of labs) {
+            const inRangeLabs = [];
+            for (const other of labs) {
+                if (lab.id !== other.id && lab.pos.getRangeTo(other) <= 2) {
+                    inRangeLabs.push(other.id);
+                }
+            }
+            labDistances.set(lab.id, inRangeLabs);
+        }
+        // Find the two labs that have the most labs in range (best input candidates)
+        const labsByReach = labs
+            .map(lab => {
+            var _a, _b;
+            return ({
+                lab,
+                reach: (_b = (_a = labDistances.get(lab.id)) === null || _a === void 0 ? void 0 : _a.length) !== null && _b !== void 0 ? _b : 0
+            });
+        })
+            .sort((a, b) => b.reach - a.reach);
+        if (labsByReach.length < 3 || ((_b = (_a = labsByReach[0]) === null || _a === void 0 ? void 0 : _a.reach) !== null && _b !== void 0 ? _b : 0) < 2) {
+            // Labs are not in valid positions for reactions
+            config.isValid = false;
+            logger.warn(`Lab layout in ${config.roomName} is not optimal for reactions`, {
+                subsystem: "Labs"
+            });
+            return;
+        }
+        // Assign input labs (the two with most reach)
+        const input1Lab = (_c = labsByReach[0]) === null || _c === void 0 ? void 0 : _c.lab;
+        const input2Lab = (_d = labsByReach[1]) === null || _d === void 0 ? void 0 : _d.lab;
+        if (!input1Lab || !input2Lab) {
+            config.isValid = false;
+            return;
+        }
+        // Update config
+        for (const entry of config.labs) {
+            if (entry.labId === input1Lab.id) {
+                entry.role = "input1";
+                entry.lastConfigured = Game.time;
+            }
+            else if (entry.labId === input2Lab.id) {
+                entry.role = "input2";
+                entry.lastConfigured = Game.time;
+            }
+            else {
+                // Check if this lab is in range of both inputs
+                const inRangeOf1 = input1Lab.pos.getRangeTo(Game.getObjectById(entry.labId)) <= 2;
+                const inRangeOf2 = input2Lab.pos.getRangeTo(Game.getObjectById(entry.labId)) <= 2;
+                if (inRangeOf1 && inRangeOf2) {
+                    entry.role = "output";
+                }
+                else {
+                    entry.role = "boost";
+                }
+                entry.lastConfigured = Game.time;
+            }
+        }
+        config.isValid = true;
+        config.lastUpdate = Game.time;
+        logger.info(`Auto-assigned lab roles in ${config.roomName}: ` +
+            `${config.labs.filter(l => l.role === "input1").length} input1, ` +
+            `${config.labs.filter(l => l.role === "input2").length} input2, ` +
+            `${config.labs.filter(l => l.role === "output").length} output, ` +
+            `${config.labs.filter(l => l.role === "boost").length} boost`, { subsystem: "Labs" });
+    }
+    /**
+     * Get lab config for a room
+     */
+    getConfig(roomName) {
+        return this.configs.get(roomName);
+    }
+    /**
+     * Get labs by role
+     */
+    getLabsByRole(roomName, role) {
+        const config = this.configs.get(roomName);
+        if (!config)
+            return [];
+        return config.labs
+            .filter(entry => entry.role === role)
+            .map(entry => Game.getObjectById(entry.labId))
+            .filter((lab) => lab !== null);
+    }
+    /**
+     * Get input labs
+     */
+    getInputLabs(roomName) {
+        var _a, _b;
+        const config = this.configs.get(roomName);
+        if (!config)
+            return {};
+        const input1Entry = config.labs.find(l => l.role === "input1");
+        const input2Entry = config.labs.find(l => l.role === "input2");
+        return {
+            input1: input1Entry ? (_a = Game.getObjectById(input1Entry.labId)) !== null && _a !== void 0 ? _a : undefined : undefined,
+            input2: input2Entry ? (_b = Game.getObjectById(input2Entry.labId)) !== null && _b !== void 0 ? _b : undefined : undefined
+        };
+    }
+    /**
+     * Get output labs
+     */
+    getOutputLabs(roomName) {
+        return this.getLabsByRole(roomName, "output");
+    }
+    /**
+     * Get boost labs
+     */
+    getBoostLabs(roomName) {
+        return this.getLabsByRole(roomName, "boost");
+    }
+    /**
+     * Set active reaction
+     */
+    setActiveReaction(roomName, input1, input2, output) {
+        const config = this.configs.get(roomName);
+        if (!config || !config.isValid)
+            return false;
+        config.activeReaction = { input1, input2, output };
+        // Update resource assignments
+        const input1Entry = config.labs.find(l => l.role === "input1");
+        const input2Entry = config.labs.find(l => l.role === "input2");
+        if (input1Entry)
+            input1Entry.resourceType = input1;
+        if (input2Entry)
+            input2Entry.resourceType = input2;
+        for (const entry of config.labs.filter(l => l.role === "output")) {
+            entry.resourceType = output;
+        }
+        config.lastUpdate = Game.time;
+        logger.info(`Set active reaction in ${roomName}: ${input1} + ${input2} -> ${output}`, {
+            subsystem: "Labs"
+        });
+        return true;
+    }
+    /**
+     * Clear active reaction
+     */
+    clearActiveReaction(roomName) {
+        const config = this.configs.get(roomName);
+        if (!config)
+            return;
+        delete config.activeReaction;
+        for (const entry of config.labs) {
+            delete entry.resourceType;
+        }
+        config.lastUpdate = Game.time;
+    }
+    /**
+     * Manually set lab role
+     */
+    setLabRole(roomName, labId, role, resourceType) {
+        const config = this.configs.get(roomName);
+        if (!config)
+            return false;
+        const entry = config.labs.find(l => l.labId === labId);
+        if (!entry)
+            return false;
+        entry.role = role;
+        entry.resourceType = resourceType;
+        entry.lastConfigured = Game.time;
+        // Revalidate config
+        this.validateConfig(config);
+        return true;
+    }
+    /**
+     * Validate lab configuration
+     */
+    validateConfig(config) {
+        const hasInput1 = config.labs.some(l => l.role === "input1");
+        const hasInput2 = config.labs.some(l => l.role === "input2");
+        const hasOutput = config.labs.some(l => l.role === "output");
+        config.isValid = hasInput1 && hasInput2 && hasOutput;
+        // Verify input labs are in range of output labs
+        if (config.isValid) {
+            const input1Entry = config.labs.find(l => l.role === "input1");
+            const input2Entry = config.labs.find(l => l.role === "input2");
+            const outputEntries = config.labs.filter(l => l.role === "output");
+            if (input1Entry && input2Entry && outputEntries.length > 0) {
+                const input1Lab = Game.getObjectById(input1Entry.labId);
+                const input2Lab = Game.getObjectById(input2Entry.labId);
+                if (input1Lab && input2Lab) {
+                    // Check at least one output lab is in range of both inputs
+                    const validOutput = outputEntries.some(entry => {
+                        const outputLab = Game.getObjectById(entry.labId);
+                        return (outputLab &&
+                            input1Lab.pos.getRangeTo(outputLab) <= 2 &&
+                            input2Lab.pos.getRangeTo(outputLab) <= 2);
+                    });
+                    config.isValid = validOutput;
+                }
+                else {
+                    config.isValid = false;
+                }
+            }
+        }
+    }
+    /**
+     * Run lab reactions using configured labs
+     */
+    runReactions(roomName) {
+        const config = this.configs.get(roomName);
+        if (!config || !config.isValid || !config.activeReaction)
+            return 0;
+        const { input1, input2 } = this.getInputLabs(roomName);
+        if (!input1 || !input2)
+            return 0;
+        const outputLabs = this.getOutputLabs(roomName);
+        let reactionsRun = 0;
+        for (const outputLab of outputLabs) {
+            if (outputLab.cooldown === 0) {
+                const result = outputLab.runReaction(input1, input2);
+                if (result === OK) {
+                    reactionsRun++;
+                }
+            }
+        }
+        return reactionsRun;
+    }
+    /**
+     * Save lab config to memory (cached with infinite TTL)
+     * Note: Caches a reference to the Memory object for performance.
+     */
+    saveToMemory(roomName) {
+        const config = this.configs.get(roomName);
+        if (!config)
+            return;
+        // Update Memory first
+        const roomMem = Memory.rooms[roomName];
+        if (roomMem) {
+            roomMem.labConfig = config;
+            // Cache a reference to the Memory object
+            const cacheKey = `memory:room:${roomName}:labConfig`;
+            heapCache.set(cacheKey, config, INFINITE_TTL);
+        }
+    }
+    /**
+     * Load lab config from memory (cached with infinite TTL)
+     * Note: Returns a reference to the cached object for performance.
+     */
+    loadFromMemory(roomName) {
+        const cacheKey = `memory:room:${roomName}:labConfig`;
+        let config = heapCache.get(cacheKey);
+        if (!config) {
+            const roomMem = Memory.rooms[roomName];
+            const memConfig = roomMem === null || roomMem === void 0 ? void 0 : roomMem.labConfig;
+            if (memConfig) {
+                // Cache a reference to the Memory object
+                heapCache.set(cacheKey, memConfig, INFINITE_TTL);
+                config = memConfig;
+            }
+        }
+        if (config) {
+            this.configs.set(roomName, config);
+        }
+    }
+    /**
+     * Get all configured rooms
+     */
+    getConfiguredRooms() {
+        return Array.from(this.configs.keys());
+    }
+    /**
+     * Check if a room has valid lab config
+     */
+    hasValidConfig(roomName) {
+        var _a;
+        const config = this.configs.get(roomName);
+        return (_a = config === null || config === void 0 ? void 0 : config.isValid) !== null && _a !== void 0 ? _a : false;
+    }
+}
+/**
+ * Global lab config manager instance
+ */
+const labConfigManager = new LabConfigManager();
+
+/**
+ * Global Path Cache Manager
+ *
+ * Provides cached pathfinding for common routes:
+ * - Storage to sources
+ * - Storage to controller
+ * - Storage to remote entrances
+ * - CostMatrix caching
+ *
+ * Addresses Issue: #32
+ */
+const DEFAULT_CONFIG$1 = {
+    defaultTtl: 1000,
+    maxPathsPerRoom: 20,
+    maxTotalPaths: 200,
+    cleanupInterval: 100
+};
+/**
+ * Global Path Cache Manager
+ */
+class GlobalPathCache {
+    constructor(config = {}) {
+        this.pathCache = new Map();
+        this.costMatrixCache = new Map();
+        this.lastCleanup = 0;
+        this.config = { ...DEFAULT_CONFIG$1, ...config };
+    }
+    /**
+     * Generate cache key for a path
+     */
+    generateKey(from, to, opts) {
+        var _a;
+        const ignoreCreeps = (_a = opts === null || opts === void 0 ? void 0 : opts.ignoreCreeps) !== null && _a !== void 0 ? _a : true;
+        return `${from.roomName}:${from.x},${from.y}:${to.roomName}:${to.x},${to.y}:${String(ignoreCreeps)}`;
+    }
+    /**
+     * Get cached path or compute and cache
+     */
+    getPath(from, to, opts) {
+        var _a, _b;
+        const key = this.generateKey(from, to, { ignoreCreeps: (opts === null || opts === void 0 ? void 0 : opts.roomCallback) === undefined });
+        const cached = this.pathCache.get(key);
+        // Return cached path if valid
+        if (cached && Game.time - cached.createdAt < cached.ttl) {
+            cached.lastUsed = Game.time;
+            cached.useCount++;
+            return cached.path;
+        }
+        // Compute new path
+        const self = this;
+        const result = PathFinder.search(from, { pos: to, range: 1 }, {
+            plainCost: 2,
+            swampCost: 10,
+            roomCallback: (_a = opts === null || opts === void 0 ? void 0 : opts.roomCallback) !== null && _a !== void 0 ? _a : ((roomName) => self.getCostMatrix(roomName)),
+            maxRooms: opts === null || opts === void 0 ? void 0 : opts.maxRooms,
+            maxOps: opts === null || opts === void 0 ? void 0 : opts.maxOps,
+            heuristicWeight: opts === null || opts === void 0 ? void 0 : opts.heuristicWeight
+        });
+        if (result.incomplete) {
+            return null;
+        }
+        // Cache the path
+        this.cachePath(key, result.path, (_b = opts === null || opts === void 0 ? void 0 : opts.ttl) !== null && _b !== void 0 ? _b : this.config.defaultTtl);
+        // Run cleanup periodically
+        if (Game.time - this.lastCleanup > this.config.cleanupInterval) {
+            this.cleanup();
+            this.lastCleanup = Game.time;
+        }
+        return result.path;
+    }
+    /**
+     * Cache a path
+     */
+    cachePath(key, path, ttl) {
+        // Check if we need to evict entries
+        if (this.pathCache.size >= this.config.maxTotalPaths) {
+            this.evictLeastUsed();
+        }
+        const serialized = this.serializePath(path);
+        this.pathCache.set(key, {
+            serialized,
+            path,
+            length: path.length,
+            createdAt: Game.time,
+            lastUsed: Game.time,
+            useCount: 1,
+            ttl
+        });
+    }
+    /**
+     * Serialize a path for compact storage
+     */
+    serializePath(path) {
+        if (path.length === 0)
+            return "";
+        const parts = [];
+        let currentRoom = path[0].roomName;
+        let positions = [];
+        for (const pos of path) {
+            if (pos.roomName !== currentRoom) {
+                parts.push(`${currentRoom}:${positions.join(",")}`);
+                currentRoom = pos.roomName;
+                positions = [];
+            }
+            positions.push(`${pos.x}.${pos.y}`);
+        }
+        parts.push(`${currentRoom}:${positions.join(",")}`);
+        return parts.join("|");
+    }
+    /**
+     * Deserialize a path
+     */
+    deserializePath(serialized) {
+        if (!serialized)
+            return [];
+        const path = [];
+        const parts = serialized.split("|");
+        for (const part of parts) {
+            const [roomName, positionsStr] = part.split(":");
+            if (!roomName || !positionsStr)
+                continue;
+            const positions = positionsStr.split(",");
+            for (const posStr of positions) {
+                const [x, y] = posStr.split(".");
+                if (x && y) {
+                    path.push(new RoomPosition(parseInt(x, 10), parseInt(y, 10), roomName));
+                }
+            }
+        }
+        return path;
+    }
+    /**
+     * Get or compute cost matrix for a room
+     */
+    getCostMatrix(roomName) {
+        const cached = this.costMatrixCache.get(roomName);
+        // Return cached matrix if recent (valid for 50 ticks)
+        if (cached && Game.time - cached.tick < 50) {
+            return cached.matrix;
+        }
+        const room = Game.rooms[roomName];
+        if (!room) {
+            return false; // Use default costs
+        }
+        const matrix = new PathFinder.CostMatrix();
+        // Add structures
+        const structures = room.find(FIND_STRUCTURES);
+        for (const struct of structures) {
+            if (struct.structureType === STRUCTURE_ROAD) {
+                matrix.set(struct.pos.x, struct.pos.y, 1);
+            }
+            else if (struct.structureType !== STRUCTURE_CONTAINER &&
+                (struct.structureType !== STRUCTURE_RAMPART || !struct.my)) {
+                matrix.set(struct.pos.x, struct.pos.y, 255);
+            }
+        }
+        // Add construction sites
+        const sites = room.find(FIND_CONSTRUCTION_SITES);
+        for (const site of sites) {
+            if (site.structureType !== STRUCTURE_ROAD && site.structureType !== STRUCTURE_CONTAINER) {
+                matrix.set(site.pos.x, site.pos.y, 255);
+            }
+        }
+        // Cache the matrix
+        this.costMatrixCache.set(roomName, { matrix, tick: Game.time });
+        return matrix;
+    }
+    /**
+     * Invalidate cost matrix for a room
+     */
+    invalidateCostMatrix(roomName) {
+        this.costMatrixCache.delete(roomName);
+    }
+    /**
+     * Invalidate paths involving a room
+     */
+    invalidateRoomPaths(roomName) {
+        for (const [key] of this.pathCache) {
+            if (key.includes(roomName)) {
+                this.pathCache.delete(key);
+            }
+        }
+    }
+    /**
+     * Evict least recently used paths
+     */
+    evictLeastUsed() {
+        // Sort by last used (oldest first)
+        const entries = Array.from(this.pathCache.entries())
+            .sort((a, b) => a[1].lastUsed - b[1].lastUsed);
+        // Remove oldest 10%
+        const toRemove = Math.max(1, Math.floor(entries.length * 0.1));
+        for (let i = 0; i < toRemove; i++) {
+            const entry = entries[i];
+            if (entry) {
+                this.pathCache.delete(entry[0]);
+            }
+        }
+    }
+    /**
+     * Cleanup expired paths
+     */
+    cleanup() {
+        for (const [key, cached] of this.pathCache) {
+            if (Game.time - cached.createdAt > cached.ttl) {
+                this.pathCache.delete(key);
+            }
+        }
+        // Also clean up old cost matrices
+        for (const [roomName, cached] of this.costMatrixCache) {
+            if (Game.time - cached.tick > 500) {
+                this.costMatrixCache.delete(roomName);
+            }
+        }
+    }
+    /**
+     * Pre-cache common paths for a room
+     */
+    precacheRoomPaths(roomName) {
+        var _a, _b;
+        const room = Game.rooms[roomName];
+        if (!room || !((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my))
+            return;
+        const storage = room.storage;
+        const spawn = room.find(FIND_MY_SPAWNS)[0];
+        const anchor = (_b = storage === null || storage === void 0 ? void 0 : storage.pos) !== null && _b !== void 0 ? _b : spawn === null || spawn === void 0 ? void 0 : spawn.pos;
+        if (!anchor)
+            return;
+        // Cache paths to sources
+        const sources = room.find(FIND_SOURCES);
+        for (const source of sources) {
+            this.getPath(anchor, source.pos, { ttl: 5000 });
+        }
+        // Cache path to controller
+        if (room.controller) {
+            this.getPath(anchor, room.controller.pos, { ttl: 5000 });
+        }
+        // Cache paths to exits for remote mining
+        const exits = room.find(FIND_EXIT);
+        const uniqueExits = new Map();
+        for (const exit of exits) {
+            const key = `${Math.floor(exit.x / 10)},${Math.floor(exit.y / 10)}`;
+            if (!uniqueExits.has(key)) {
+                uniqueExits.set(key, exit);
+            }
+        }
+        for (const exit of uniqueExits.values()) {
+            this.getPath(anchor, exit, { ttl: 5000 });
+        }
+        logger.debug(`Pre-cached ${sources.length + 1 + uniqueExits.size} paths for ${roomName}`, {
+            subsystem: "PathCache"
+        });
+    }
+    /**
+     * Get cache statistics
+     */
+    getStats() {
+        let totalUses = 0;
+        for (const cached of this.pathCache.values()) {
+            totalUses += cached.useCount;
+        }
+        return {
+            pathCount: this.pathCache.size,
+            matrixCount: this.costMatrixCache.size,
+            avgUseCount: this.pathCache.size > 0 ? totalUses / this.pathCache.size : 0,
+            hitRate: 0 // Would need to track hits/misses
+        };
+    }
+    /**
+     * Clear all caches
+     */
+    clear() {
+        this.pathCache.clear();
+        this.costMatrixCache.clear();
+    }
+}
+/**
+ * Global path cache instance
+ */
+const globalPathCache = new GlobalPathCache();
+
+/**
+ * Core Process Manager
+ *
+ * Manages core bot processes that don't belong to a specific subsystem:
+ * - Pixel generation (when bucket is full)
+ * - Memory cleanup (removing dead creeps)
+ * - Memory size monitoring
+ * - Memory segment statistics
+ * - Pheromone diffusion
+ * - Lab configuration initialization
+ * - Path cache precaching
+ *
+ * All processes use decorators for declarative registration with the kernel.
+ */
+/**
+ * Core Process Manager Class
+ */
+let CoreProcessManager = class CoreProcessManager {
+    /**
+     * Pixel Generation - Generate pixels when bucket is full
+     * Runs every tick to check if bucket is at max (10,000) and generate a pixel.
+     * Generating a pixel consumes 10,000 bucket (emptying it).
+     * Notifies the kernel so it knows low bucket is expected during recovery.
+     */
+    generatePixel() {
+        var _a, _b;
+        if (Game.cpu.bucket >= PIXEL_CPU_COST) {
+            const result = (_b = (_a = Game.cpu).generatePixel) === null || _b === void 0 ? void 0 : _b.call(_a);
+            if (result === OK) {
+                // Notify kernel that a pixel was generated so it expects low bucket
+                kernel.notifyPixelGenerated();
+                logger.info("Generated pixel from full CPU bucket", { subsystem: "Pixel" });
+            }
+            else if (result === ERR_NOT_ENOUGH_RESOURCES) {
+                logger.debug("Could not generate pixel: not enough CPU bucket", { subsystem: "Pixel" });
+            }
+        }
+    }
+    /**
+     * Memory Cleanup - Remove dead creeps from Memory
+     * Runs every 50 ticks to clean up memory for creeps that no longer exist
+     */
+    cleanupMemory() {
+        for (const name in Memory.creeps) {
+            if (!Game.creeps[name]) {
+                delete Memory.creeps[name];
+            }
+        }
+    }
+    /**
+     * Memory Size Check - Monitor memory usage
+     * Runs every 100 ticks to warn about high memory usage
+     */
+    checkMemorySize() {
+        const used = RawMemory.get().length;
+        const limit = 2 * 1024 * 1024; // 2MB
+        const percentage = (used / limit) * 100;
+        if (percentage > 90) {
+            logger.error(`Memory usage critical: ${percentage.toFixed(1)}% (${used}/${limit} bytes)`, {
+                subsystem: "Memory"
+            });
+        }
+        else if (percentage > 75) {
+            logger.warn(`Memory usage high: ${percentage.toFixed(1)}% (${used}/${limit} bytes)`, {
+                subsystem: "Memory"
+            });
+        }
+    }
+    /**
+     * Memory Segment Stats - Update segment statistics
+     * Runs every 10 ticks to track memory segment usage
+     */
+    updateMemorySegmentStats() {
+        memorySegmentStats.run();
+    }
+    /**
+     * Pheromone Diffusion - Inter-room communication
+     * Runs every 10 ticks to diffuse pheromone signals between rooms
+     */
+    runPheromoneDiffusion() {
+        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        const swarmStates = new Map();
+        for (const room of ownedRooms) {
+            const state = memoryManager.getSwarmState(room.name);
+            if (state) {
+                swarmStates.set(room.name, state);
+            }
+        }
+        pheromoneManager.applyDiffusion(swarmStates);
+    }
+    /**
+     * Lab Config Manager - Initialize lab configurations
+     * Runs every 200 ticks to set up lab configurations for rooms
+     */
+    initializeLabConfigs() {
+        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        for (const room of ownedRooms) {
+            labConfigManager.initialize(room.name);
+        }
+    }
+    /**
+     * Path Cache Precaching - Pre-cache room paths
+     * Runs every 1000 ticks to precache frequently used paths
+     */
+    precacheRoomPaths() {
+        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        for (const room of ownedRooms) {
+            globalPathCache.precacheRoomPaths(room.name);
+        }
+    }
+};
+__decorate([
+    HighFrequencyProcess("core:pixelGeneration", "Pixel Generation", {
+        priority: ProcessPriority.LOW,
+        minBucket: PIXEL_CPU_COST,
+        cpuBudget: 0.001
+    })
+], CoreProcessManager.prototype, "generatePixel", null);
+__decorate([
+    LowFrequencyProcess("core:memoryCleanup", "Memory Cleanup", {
+        priority: ProcessPriority.LOW,
+        interval: 50,
+        minBucket: 1000,
+        cpuBudget: 0.01
+    })
+], CoreProcessManager.prototype, "cleanupMemory", null);
+__decorate([
+    IdleProcess("core:memorySizeCheck", "Memory Size Check", {
+        interval: 100,
+        minBucket: 1000,
+        cpuBudget: 0.005
+    })
+], CoreProcessManager.prototype, "checkMemorySize", null);
+__decorate([
+    MediumFrequencyProcess("core:memorySegmentStats", "Memory Segment Stats", {
+        priority: ProcessPriority.IDLE,
+        interval: 10,
+        minBucket: 2000,
+        cpuBudget: 0.01
+    })
+], CoreProcessManager.prototype, "updateMemorySegmentStats", null);
+__decorate([
+    MediumFrequencyProcess("cluster:pheromoneDiffusion", "Pheromone Diffusion", {
+        priority: ProcessPriority.MEDIUM,
+        interval: 10,
+        minBucket: 2000,
+        cpuBudget: 0.02
+    })
+], CoreProcessManager.prototype, "runPheromoneDiffusion", null);
+__decorate([
+    LowFrequencyProcess("room:labConfig", "Lab Config Manager", {
+        priority: ProcessPriority.LOW,
+        interval: 200,
+        minBucket: 3000,
+        cpuBudget: 0.01
+    })
+], CoreProcessManager.prototype, "initializeLabConfigs", null);
+__decorate([
+    IdleProcess("room:pathCachePrecache", "Path Cache Precache", {
+        interval: 1000,
+        minBucket: 8000,
+        cpuBudget: 0.03
+    })
+], CoreProcessManager.prototype, "precacheRoomPaths", null);
+CoreProcessManager = __decorate([
+    ProcessClass()
+], CoreProcessManager);
+/**
+ * Global core process manager instance
+ */
+const coreProcessManager = new CoreProcessManager();
+
+/**
+ * Process Registry
+ *
+ * Centralizes registration of all processes with the kernel.
+ * All processes use decorators for declarative process definition.
+ *
+ * Process classes with @ProcessClass() and @Process decorators are:
+ * - CoreProcessManager (core:pixelGeneration, core:memoryCleanup, core:memorySizeCheck,
+ *                       core:memorySegmentStats, cluster:pheromoneDiffusion, room:labConfig,
+ *                       room:pathCachePrecache)
+ * - EmpireManager (empire:manager)
+ * - ExpansionManager (expansion:manager)
+ * - RemoteInfrastructureManager (remote:infrastructure)
+ * - ClusterManager (cluster:manager)
+ * - MarketManager (empire:market)
+ * - NukeManager (empire:nuke)
+ * - PowerBankHarvestingManager (empire:powerBank)
+ * - ShardManager (empire:shard)
+ * - EvacuationManager (cluster:evacuation)
+ *
+ * Addresses Issues: #5, #30
+ */
+/**
+ * Register all processes with the kernel using decorators
+ */
+function registerAllProcesses() {
+    logger.info("Registering all processes with kernel...", { subsystem: "ProcessRegistry" });
+    // Register all manager instances with their decorated methods
+    registerAllDecoratedProcesses(
+    // Core processes
+    coreProcessManager, 
+    // Empire processes
+    empireManager, expansionManager, remoteInfrastructureManager, marketManager, nukeManager, powerBankHarvestingManager, shardManager, 
+    // Cluster processes
+    clusterManager, evacuationManager);
+    logger.info(`Registered ${kernel.getProcesses().length} processes with kernel`, {
+        subsystem: "ProcessRegistry"
+    });
+}
+
+/**
+ * Idle Creep Detection
+ *
+ * Detects creeps that are truly idle and can skip expensive behavior evaluation.
+ * This is a significant CPU optimization for large swarms (1000+ creeps).
+ *
+ * A creep is considered idle when:
+ * 1. It's at its work position (e.g., harvester at source, upgrader at controller)
+ * 2. It has an ongoing state that's still valid
+ * 3. It doesn't need to make new decisions
+ *
+ * Design Principles (from ROADMAP.md Section 18):
+ * - "Idle creep detection: Skip behavior evaluation for truly idle creeps"
+ * - CPU savings: ~0.1-0.2 CPU per skipped creep
+ * - With 142 creeps, ~20-40% may be in idle working state
+ * - Potential savings: 3-8 CPU
+ */
+// =============================================================================
+// Type Guards
+// =============================================================================
+/**
+ * Type guard to check if an object is a RoomObject.
+ * RoomObjects have pos and room properties.
+ */
+function isRoomObject(obj) {
+    return (obj !== null &&
+        typeof obj === "object" &&
+        "pos" in obj &&
+        obj.pos instanceof RoomPosition &&
+        "room" in obj &&
+        obj.room instanceof Room);
+}
+// =============================================================================
+// Constants
+// =============================================================================
+/**
+ * Roles that can benefit from idle detection (stationary workers).
+ * Mobile roles like haulers and military units are excluded.
+ *
+ * OPTIMIZATION: Extended in performance optimization to include more roles.
+ * With 100+ creeps, extending idle detection to builders can save 1-2 CPU.
+ * Note: "repairer" is not a defined role in this bot, so it's excluded.
+ */
+const IDLE_ELIGIBLE_ROLES = new Set([
+    "harvester",
+    "upgrader",
+    "mineralHarvester",
+    "depositHarvester",
+    "factoryWorker",
+    "labTech",
+    "builder" // Can be stationary at construction site
+]);
+/**
+ * Energy threshold for harvesters.
+ * If harvester is at source and has less than this in store, it's actively working.
+ */
+const HARVESTER_WORKING_THRESHOLD = 40;
+/**
+ * Minimum ticks a creep must have a valid state to be considered idle.
+ * This prevents false positives for creeps that just started a task.
+ * OPTIMIZATION: Reduced from 3 to 2 to allow idle detection to kick in sooner
+ */
+const MIN_STATE_AGE_FOR_IDLE = 2;
+// =============================================================================
+// Public API
+// =============================================================================
+/**
+ * Check if a creep can skip behavior evaluation this tick.
+ * Returns true if the creep is:
+ * - In an idle-eligible role
+ * - Has a valid ongoing state
+ * - Is actively working (not just standing around)
+ * - Doesn't need to make new decisions
+ *
+ * @param creep - The creep to check
+ * @returns true if creep can skip behavior evaluation
+ */
+function canSkipBehaviorEvaluation(creep) {
+    const memory = creep.memory;
+    // Only certain roles are eligible
+    if (!IDLE_ELIGIBLE_ROLES.has(memory.role)) {
+        return false;
+    }
+    // Must have a valid state that's been active for a few ticks
+    const state = memory.state;
+    if (!state || !state.startTick) {
+        return false;
+    }
+    const stateAge = Game.time - state.startTick;
+    if (stateAge < MIN_STATE_AGE_FOR_IDLE) {
+        return false;
+    }
+    // Role-specific checks
+    switch (memory.role) {
+        case "harvester":
+            return isHarvesterIdle(creep, state);
+        case "upgrader":
+            return isUpgraderIdle(creep, state);
+        case "mineralHarvester":
+            return isMineralHarvesterIdle(creep, state);
+        case "builder":
+            return isBuilderIdle(creep, state);
+        case "depositHarvester":
+        case "factoryWorker":
+        case "labTech":
+            // These roles can be idle if they have a valid state
+            // The state machine will handle checking if state is still valid
+            return true;
+        default:
+            return false;
+    }
+}
+// =============================================================================
+// Role-Specific Idle Checks
+// =============================================================================
+/**
+ * Check if a harvester is idle (actively harvesting at source).
+ * Harvester is idle when:
+ * - State is "harvest" or "transfer"
+ * - Has valid target (source or container/link)
+ * - Is next to target
+ * - Has space to continue harvesting (not full)
+ */
+function isHarvesterIdle(creep, state) {
+    // Must be harvesting or transferring to nearby container/link
+    if (state.action !== "harvest" && state.action !== "transfer") {
+        return false;
+    }
+    // Validate target still exists
+    if (!state.targetId) {
+        return false;
+    }
+    const target = Game.getObjectById(state.targetId);
+    if (!target || !isRoomObject(target)) {
+        return false;
+    }
+    // Must be adjacent to target
+    if (!creep.pos.isNearTo(target.pos)) {
+        return false;
+    }
+    // If harvesting, must not be full
+    if (state.action === "harvest") {
+        const carryCapacity = creep.store.getCapacity();
+        if (carryCapacity !== null && carryCapacity > 0) {
+            // Has carry capacity - check if full
+            if (creep.store.getFreeCapacity() === 0) {
+                return false; // Full, needs to transfer
+            }
+        }
+        // Drop miners (no carry) are always idle when harvesting
+    }
+    // If transferring, must have energy to transfer
+    if (state.action === "transfer") {
+        if (creep.store.getUsedCapacity(RESOURCE_ENERGY) < HARVESTER_WORKING_THRESHOLD) {
+            return false; // Not enough energy, needs to harvest
+        }
+    }
+    return true;
+}
+/**
+ * Check if an upgrader is idle (actively upgrading controller).
+ * Upgrader is idle when:
+ * - State is "upgrade" or "withdraw" (getting energy from nearby container)
+ * - Has valid target
+ * - Is in range of target
+ * - Has energy to upgrade (for upgrade state) or space to withdraw (for withdraw state)
+ */
+function isUpgraderIdle(creep, state) {
+    // Must be upgrading or withdrawing
+    if (state.action !== "upgrade" && state.action !== "withdraw") {
+        return false;
+    }
+    // Validate target
+    if (!state.targetId) {
+        return false;
+    }
+    const target = Game.getObjectById(state.targetId);
+    if (!target || !isRoomObject(target)) {
+        return false;
+    }
+    // Must be in range
+    const inRange = creep.pos.inRangeTo(target.pos, 3);
+    if (!inRange) {
+        return false;
+    }
+    // If upgrading, must have energy
+    if (state.action === "upgrade") {
+        if (creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0) {
+            return false;
+        }
+    }
+    // If withdrawing, must have space
+    if (state.action === "withdraw") {
+        if (creep.store.getFreeCapacity(RESOURCE_ENERGY) === 0) {
+            return false;
+        }
+    }
+    return true;
+}
+/**
+ * Check if a mineral harvester is idle (actively mining mineral).
+ * Similar to regular harvester but for minerals.
+ */
+function isMineralHarvesterIdle(creep, state) {
+    // Must be harvesting mineral
+    if (state.action !== "harvestMineral") {
+        return false;
+    }
+    // Validate target
+    if (!state.targetId) {
+        return false;
+    }
+    const target = Game.getObjectById(state.targetId);
+    if (!target || !isRoomObject(target)) {
+        return false;
+    }
+    // Must be adjacent
+    if (!creep.pos.isNearTo(target.pos)) {
+        return false;
+    }
+    // Must not be full
+    if (creep.store.getFreeCapacity() === 0) {
+        return false;
+    }
+    return true;
+}
+/**
+ * Check if a builder is idle (actively building at construction site).
+ * Builder is idle when:
+ * - State is "build"
+ * - Has valid target (construction site)
+ * - Is in range of target (range 3)
+ * - Has energy to build
+ */
+function isBuilderIdle(creep, state) {
+    // Must be building
+    if (state.action !== "build") {
+        return false;
+    }
+    // Validate target
+    if (!state.targetId) {
+        return false;
+    }
+    const target = Game.getObjectById(state.targetId);
+    if (!target || !isRoomObject(target)) {
+        return false;
+    }
+    // Must be in range (build range is 3)
+    if (!creep.pos.inRangeTo(target.pos, 3)) {
+        return false;
+    }
+    // Must have energy
+    if (creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0) {
+        return false;
+    }
+    return true;
+}
+/**
+ * Execute the creep's current action without re-evaluating behavior.
+ * This is called for idle creeps that can skip behavior evaluation.
+ *
+ * @param creep - The creep to execute action for
+ * @returns true if action was executed successfully
+ */
+function executeIdleAction(creep) {
+    const memory = creep.memory;
+    const state = memory.state;
+    if (!state || !state.targetId) {
+        return false;
+    }
+    const target = Game.getObjectById(state.targetId);
+    if (!target || !isRoomObject(target)) {
+        return false;
+    }
+    // Execute the action based on state with proper type validation
+    switch (state.action) {
+        case "harvest":
+            // Validate target is a Source
+            if ("energy" in target && "energyCapacity" in target && "ticksToRegeneration" in target) {
+                return creep.harvest(target) === OK;
+            }
+            return false;
+        case "harvestMineral":
+            // Validate target is a Mineral
+            if ("mineralType" in target && "mineralAmount" in target && "ticksToRegeneration" in target) {
+                return creep.harvest(target) === OK;
+            }
+            return false;
+        case "transfer":
+            // Validate target has store property (structures with storage)
+            if ("store" in target && target.store && typeof target.store === "object") {
+                return creep.transfer(target, RESOURCE_ENERGY) === OK;
+            }
+            return false;
+        case "withdraw":
+            // Validate target has store property (structures with storage)
+            if ("store" in target && target.store && typeof target.store === "object") {
+                return creep.withdraw(target, RESOURCE_ENERGY) === OK;
+            }
+            return false;
+        case "upgrade":
+            // Validate target is a Controller
+            if ("level" in target && "progress" in target && "my" in target) {
+                return creep.upgradeController(target) === OK;
+            }
+            return false;
+        case "build":
+            // Validate target is a ConstructionSite
+            if ("progressTotal" in target && "progress" in target) {
+                return creep.build(target) === OK;
+            }
+            return false;
+        case "repair":
+            // Validate target is a Structure
+            if ("hits" in target && "hitsMax" in target) {
+                return creep.repair(target) === OK;
+            }
+            return false;
+        default:
+            return false;
+    }
+}
+
+/**
+ * CPU Scheduler - Phase 6
+ *
+ * Implements bucket-based CPU management and task scheduling:
+ * - High-frequency tasks (every tick)
+ * - Medium-frequency tasks (every 5-10 ticks)
+ * - Low-frequency tasks (every 20-50 ticks)
+ * - Bucket modes (normal, low, high)
+ *
+ * NOTE: The kernel is the primary source of truth for bucket modes.
+ * The scheduler delegates to kernel for bucket mode decisions to ensure
+ * consistent behavior, especially during pixel generation recovery periods.
+ */
+const DEFAULT_CONFIG = {
+    lowBucketThreshold: 2000,
+    highBucketThreshold: 9000,
+    targetCpuUsage: 0.8,
+    highFrequencyInterval: 1,
+    mediumFrequencyInterval: 5,
+    lowFrequencyInterval: 20
+};
+/**
+ * CPU Scheduler
+ */
+class Scheduler {
+    constructor(config = {}) {
+        this.tasks = new Map();
+        this.currentMode = "normal";
+        this.tickCpuUsed = 0;
+        this.config = { ...DEFAULT_CONFIG, ...config };
+    }
+    /**
+     * Register a task
+     */
+    registerTask(task) {
+        this.tasks.set(task.name, {
+            ...task,
+            lastRun: 0
+        });
+    }
+    /**
+     * Unregister a task
+     */
+    unregisterTask(name) {
+        this.tasks.delete(name);
+    }
+    /**
+     * Determine current bucket mode.
+     * Delegates to the kernel for consistent bucket mode decisions,
+     * especially during pixel generation recovery periods.
+     *
+     * Note: The kernel has a more granular BucketMode ("critical" | "low" | "normal" | "high")
+     * while the scheduler uses a simpler set ("low" | "normal" | "high") for backward compatibility.
+     * The kernel's "critical" mode is mapped to "low" for scheduler consumers.
+     */
+    getBucketMode() {
+        // Delegate to kernel for consistent bucket mode decisions
+        const kernelMode = kernel.getBucketMode();
+        // Map kernel's BucketMode to scheduler's BucketMode
+        // Kernel has "critical" which scheduler treats as "low" for backward compatibility
+        if (kernelMode === "critical" || kernelMode === "low") {
+            return "low";
+        }
+        if (kernelMode === "high") {
+            return "high";
+        }
+        return "normal";
+    }
+    /**
+     * Update bucket mode
+     */
+    updateBucketMode() {
+        const newMode = this.getBucketMode();
+        if (newMode !== this.currentMode) {
+            logger.info(`Bucket mode changed: ${this.currentMode} -> ${newMode}`, {
+                subsystem: "Scheduler"
+            });
+            this.currentMode = newMode;
+        }
+    }
+    /**
+     * Get CPU limit for current tick
+     */
+    getCpuLimit() {
+        const baseLimit = Game.cpu.limit;
+        switch (this.currentMode) {
+            case "low":
+                return baseLimit * 0.5;
+            case "high":
+                return baseLimit * this.config.targetCpuUsage;
+            default:
+                return baseLimit * this.config.targetCpuUsage;
+        }
+    }
+    /**
+     * Check if we have CPU budget remaining
+     */
+    hasCpuBudget() {
+        return Game.cpu.getUsed() < this.getCpuLimit();
+    }
+    /**
+     * Get remaining CPU budget
+     */
+    getRemainingCpu() {
+        return Math.max(0, this.getCpuLimit() - Game.cpu.getUsed());
+    }
+    /**
+     * Check if task should run this tick
+     */
+    shouldRunTask(task) {
+        // Check bucket requirement
+        if (Game.cpu.bucket < task.minBucket) {
+            return false;
+        }
+        // Check frequency
+        const ticksSinceRun = Game.time - task.lastRun;
+        const interval = this.getIntervalForFrequency(task.frequency);
+        if (ticksSinceRun < interval) {
+            return false;
+        }
+        // In low bucket mode, skip non-essential tasks
+        if (this.currentMode === "low" && task.frequency !== "high") {
+            return false;
+        }
+        return true;
+    }
+    /**
+     * Get interval for frequency
+     */
+    getIntervalForFrequency(frequency) {
+        switch (frequency) {
+            case "high":
+                return this.config.highFrequencyInterval;
+            case "medium":
+                return this.config.mediumFrequencyInterval;
+            case "low":
+                return this.config.lowFrequencyInterval;
+        }
+    }
+    /**
+     * Run scheduled tasks
+     */
+    run() {
+        this.updateBucketMode();
+        this.tickCpuUsed = 0;
+        // Sort tasks by priority
+        const sortedTasks = Array.from(this.tasks.values()).sort((a, b) => b.priority - a.priority);
+        for (const task of sortedTasks) {
+            if (!this.shouldRunTask(task)) {
+                continue;
+            }
+            // Check CPU budget
+            const cpuBefore = Game.cpu.getUsed();
+            const taskCpuBudget = this.getCpuLimit() * task.cpuBudget;
+            if (cpuBefore + taskCpuBudget > this.getCpuLimit() && task.frequency !== "high") {
+                continue;
+            }
+            try {
+                task.execute();
+                task.lastRun = Game.time;
+            }
+            catch (err) {
+                const errorMessage = err instanceof Error ? err.message : String(err);
+                logger.error(`Task ${task.name} failed: ${errorMessage}`, { subsystem: "Scheduler" });
+            }
+            const cpuUsed = Game.cpu.getUsed() - cpuBefore;
+            this.tickCpuUsed += cpuUsed;
+            // Stop if over budget
+            if (!this.hasCpuBudget()) {
+                logger.warn("CPU budget exhausted, skipping remaining tasks", { subsystem: "Scheduler" });
+                break;
+            }
+        }
+    }
+    /**
+     * Get CPU used this tick by scheduler
+     */
+    getTickCpuUsed() {
+        return this.tickCpuUsed;
+    }
+    /**
+     * Get current bucket mode
+     */
+    getCurrentMode() {
+        return this.currentMode;
+    }
+    /**
+     * Get task list
+     */
+    getTasks() {
+        return Array.from(this.tasks.values());
+    }
+}
+/**
+ * Global scheduler instance
+ */
+new Scheduler();
+
+/**
+ * SwarmBot - Main Bot Entry Point
+ *
+ * Coordinates all swarm bot subsystems:
+ * - Memory initialization
+ * - Room management
+ * - Creep role execution
+ * - Spawning
+ * - Strategic decisions
+ *
+ * ARCHITECTURE:
+ * The bot uses a central Kernel for process management:
+ * - Process registration with priority and CPU budget
+ * - CPU bucket-based scheduling
+ * - Lifecycle management (init, run, cleanup)
+ *
+ * PERFORMANCE OPTIMIZATIONS:
+ * - CPU bucket management with early exit when bucket is low
+ * - Priority-based creep execution (critical roles first)
+ * - CPU budget checks between creeps
+ * - Skips non-essential creeps when CPU is limited
+ */
+// =============================================================================
+// Role Priority Configuration
+// =============================================================================
+/** Role priorities - higher values = run first */
+const ROLE_PRIORITY = {
+    // Critical economy roles
+    harvester: 100,
+    queenCarrier: 95,
+    hauler: 90,
+    // Military (always important)
+    guard: 85,
+    healer: 84,
+    soldier: 83,
+    ranger: 82,
+    siegeUnit: 81,
+    harasser: 80,
+    // Standard economy
+    larvaWorker: 70,
+    builder: 60,
+    upgrader: 50,
+    interRoomCarrier: 45,
+    // Utility
+    scout: 40,
+    claimer: 35,
+    engineer: 33,
+    remoteHarvester: 30,
+    remoteHauler: 25,
+    remoteWorker: 23,
+    linkManager: 22,
+    terminalManager: 21,
+    // Low priority
+    mineralHarvester: 20,
+    labTech: 10,
+    factoryWorker: 5,
+    // Power roles
+    powerQueen: 75,
+    powerWarrior: 75,
+    powerHarvester: 30,
+    powerCarrier: 25
+};
+const DEFAULT_PRIORITY = 50;
+const LOW_PRIORITY_THRESHOLD = 50;
+const PRIORITY_ORDER = Array.from(new Set([...Object.values(ROLE_PRIORITY), DEFAULT_PRIORITY])).sort((a, b) => b - a);
+const PRIORITY_INDEX = PRIORITY_ORDER.reduce((acc, priority, index) => {
+    acc[priority] = index;
+    return acc;
+}, {});
+// =============================================================================
+// Creep Helpers
+// =============================================================================
+/**
+ * Get role family from creep memory
+ */
+function getCreepFamily(creep) {
+    var _a;
+    const memory = creep.memory;
+    return (_a = memory.family) !== null && _a !== void 0 ? _a : "economy";
+}
+/**
+ * Get role priority for a creep (higher = runs first)
+ */
+function getCreepPriority(creep) {
+    var _a;
+    const memory = creep.memory;
+    return (_a = ROLE_PRIORITY[memory.role]) !== null && _a !== void 0 ? _a : DEFAULT_PRIORITY;
+}
+/**
+ * Run creep based on its role family.
+ * Uses idle detection to skip expensive behavior evaluation for stationary workers.
+ */
+function runCreep(creep) {
+    // OPTIMIZATION: Skip behavior evaluation for idle creeps
+    // Idle creeps are stationary workers (harvesters, upgraders) that are actively
+    // working at their station and don't need to make new decisions.
+    // This saves ~0.1-0.2 CPU per skipped creep.
+    if (canSkipBehaviorEvaluation(creep)) {
+        executeIdleAction(creep);
+        return;
+    }
+    const family = getCreepFamily(creep);
+    const memory = creep.memory;
+    const roleName = memory.role;
+    // Profile per-role CPU usage for optimization insights
+    // Uses "role:" prefix to separate from subsystems
+    profiler.measureSubsystem(`role:${roleName}`, () => {
+        switch (family) {
+            case "economy":
+                runEconomyRole(creep);
+                break;
+            case "military":
+                runMilitaryRole(creep);
+                break;
+            case "utility":
+                runUtilityRole(creep);
+                break;
+            case "power":
+                runPowerCreepRole(creep);
+                break;
+            default:
+                runEconomyRole(creep);
+        }
+    });
+}
+// =============================================================================
+// CPU Management (Delegated to Kernel)
+// =============================================================================
+/**
+ * Check if we should skip non-essential work due to low bucket
+ * Uses kernel's bucket mode for consistency
+ */
+function isLowBucket() {
+    const mode = kernel.getBucketMode();
+    return mode === "low" || mode === "critical";
+}
+/**
+ * Get creeps sorted by priority without per-tick sorting cost.
+ * Uses fixed priority buckets (counting sort) so scaling to thousands
+ * of creeps is linear instead of O(n log n).
+ *
+ * OPTIMIZATION: Pre-allocate bucket arrays to avoid repeated allocations.
+ */
+function getPrioritizedCreeps(skipLowPriority) {
+    var _a;
+    const buckets = PRIORITY_ORDER.map(() => []);
+    let skippedLow = 0;
+    // Use for-in loop instead of Object.values() to avoid creating temporary array
+    // More memory efficient with large creep counts (1000+)
+    for (const name in Game.creeps) {
+        const creep = Game.creeps[name];
+        if (creep.spawning)
+            continue;
+        const priority = getCreepPriority(creep);
+        if (skipLowPriority && priority < LOW_PRIORITY_THRESHOLD) {
+            skippedLow++;
+            continue;
+        }
+        const bucketIndex = (_a = PRIORITY_INDEX[priority]) !== null && _a !== void 0 ? _a : PRIORITY_INDEX[DEFAULT_PRIORITY];
+        buckets[bucketIndex].push(creep);
+    }
+    // Flatten buckets into single array (avoid spread operator for large arrays)
+    const ordered = [];
+    for (const bucket of buckets) {
+        if (bucket.length > 0) {
+            for (const creep of bucket) {
+                ordered.push(creep);
+            }
+        }
+    }
+    return { creeps: ordered, skippedLow };
+}
+// =============================================================================
+// Subsystem Runners
+// =============================================================================
+/**
+ * Run all power creeps
+ */
+function runPowerCreeps() {
+    for (const powerCreep of Object.values(Game.powerCreeps)) {
+        if (powerCreep.ticksToLive !== undefined) {
+            runPowerRole(powerCreep);
+        }
+    }
+}
+/**
+ * Run spawn logic for all owned rooms
+ */
+function runSpawns() {
+    var _a;
+    for (const room of Object.values(Game.rooms)) {
+        if ((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my) {
+            const swarm = memoryManager.getOrInitSwarmState(room.name);
+            runSpawnManager(room, swarm);
+        }
+    }
+}
+/**
+ * Run creeps with CPU budget management.
+ * Creeps are sorted by priority so critical roles run first.
+ * Uses kernel for CPU budget checking with micro-batching.
+ *
+ * OPTIMIZATION: CPU checks are expensive (~0.01 CPU each).
+ * With 1000+ creeps, checking every creep adds 10+ CPU overhead.
+ * We use micro-batching to check every N creeps instead of every creep.
+ *
+ * OPTIMIZATION: Idle detection skips expensive behavior evaluation for
+ * stationary workers that are actively working (harvesters at source, etc.).
+ */
+function runCreepsWithBudget() {
+    const lowBucket = isLowBucket();
+    const { creeps, skippedLow } = getPrioritizedCreeps(lowBucket);
+    let creepsRun = 0;
+    let creepsSkipped = skippedLow;
+    // Micro-batch size: check CPU every N creeps
+    // Smaller batches when bucket is low for tighter control
+    // OPTIMIZATION: Increased batch sizes to reduce CPU check overhead
+    // With 22+ CPU spent on creeps, checking less frequently saves 0.5-1 CPU
+    // Scale batch size with bucket level for optimal performance
+    const BUCKET_LOW_THRESHOLD = 2000;
+    const BUCKET_MEDIUM_THRESHOLD = 5000;
+    const BATCH_SIZE_LOW = 10; // Tight control when bucket is low
+    const BATCH_SIZE_MEDIUM = 20; // Balanced when bucket is medium
+    const BATCH_SIZE_HIGH = 30; // Minimize overhead when bucket is high
+    const bucketLevel = Game.cpu.bucket;
+    let batchSize;
+    if (bucketLevel < BUCKET_LOW_THRESHOLD) {
+        batchSize = BATCH_SIZE_LOW;
+    }
+    else if (bucketLevel < BUCKET_MEDIUM_THRESHOLD) {
+        batchSize = BATCH_SIZE_MEDIUM;
+    }
+    else {
+        batchSize = BATCH_SIZE_HIGH;
+    }
+    for (let i = 0; i < creeps.length; i++) {
+        // Check CPU budget at the start of each batch
+        if (i % batchSize === 0 && !kernel.hasCpuBudget()) {
+            creepsSkipped += creeps.length - creepsRun;
+            break;
+        }
+        runCreep(creeps[i]);
+        creepsRun++;
+    }
+    // Log statistics periodically
+    const logInterval = lowBucket ? 100 : 50;
+    if (Game.time % logInterval === 0 && creepsSkipped > 0) {
+        logger.warn(`Skipped ${creepsSkipped} creeps due to CPU (bucket: ${Game.cpu.bucket})`, {
+            subsystem: "SwarmBot"
+        });
+    }
+}
+// =============================================================================
+// Main Loop
+// =============================================================================
+// Initialize kernel and processes on first tick
+let kernelInitialized = false;
+let systemsInitialized = false;
+/**
+ * Initialize systems that need first-tick setup
+ */
+function initializeSystems() {
+    // Configure logger based on config
+    const config = getConfig();
+    configureLogger({
+        level: config.debug ? LogLevel.DEBUG : LogLevel.INFO,
+        cpuLogging: config.profiling
+    });
+    // Initialize memory segment stats
+    memorySegmentStats.initialize();
+    // Initialize native calls tracking if enabled
+    if (config.profiling) {
+        const { initializeNativeCallsTracking } = require("./core/nativeCallsTracker");
+        initializeNativeCallsTracking();
+    }
+    systemsInitialized = true;
+}
+/**
+ * Run visualizations for all owned rooms and map-level visuals
+ * OPTIMIZATION: Use cached owned rooms list
+ */
+function runVisualizations() {
+    const config = getConfig();
+    if (!config.visualizations)
+        return;
+    const cacheKey = "_ownedRooms";
+    const cacheTickKey = "_ownedRoomsTick";
+    const globalCache = global;
+    const cachedRooms = globalCache[cacheKey];
+    const cachedTick = globalCache[cacheTickKey];
+    const ownedRooms = (cachedRooms && cachedTick === Game.time)
+        ? cachedRooms
+        : Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+    // Draw room-level visualizations
+    for (const room of ownedRooms) {
+        try {
+            roomVisualizer.draw(room);
+        }
+        catch (err) {
+            // Visualization errors shouldn't crash the main loop
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            logger.error(`Visualization error in ${room.name}: ${errorMessage}`, {
+                subsystem: "visualizations",
+                room: room.name
+            });
+        }
+    }
+    // Draw map-level visualizations
+    try {
+        mapVisualizer.draw();
+    }
+    catch (err) {
+        // Visualization errors shouldn't crash the main loop
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        logger.error(`Map visualization error: ${errorMessage}`, {
+            subsystem: "visualizations"
+        });
+    }
+}
+/**
+ * Main loop for SwarmBot
+ */
+function loop$1() {
+    // Initialize systems on first tick
+    if (!systemsInitialized) {
+        initializeSystems();
+    }
+    // Sync kernel CPU configuration with runtime config
+    kernel.updateFromCpuConfig(getConfig().cpu);
+    // Initialize kernel and register processes on first tick
+    if (!kernelInitialized) {
+        registerAllProcesses();
+        kernel.initialize();
+        kernelInitialized = true;
+    }
+    // Critical bucket check - use kernel's bucket mode
+    const bucketMode = kernel.getBucketMode();
+    if (bucketMode === "critical") {
+        logger.warn(`CRITICAL: CPU bucket at ${Game.cpu.bucket}, minimal processing`, {
+            subsystem: "SwarmBot"
+        });
+        // Only run movement finalization to prevent stuck creeps
+        initMovement();
+        clearMoveRequests();
+        finalizeMovement();
+        clearRoomCaches();
+        profiler.finalizeTick();
+        return;
+    }
+    // Clear per-tick caches at the start of each tick
+    clearRoomCaches();
+    // Cache owned rooms list (used frequently, expensive to compute)
+    // This cache is shared across all subsystems in the same tick
+    const cacheKey = "_ownedRooms";
+    const cacheTickKey = "_ownedRoomsTick";
+    const globalCache = global;
+    const cachedRooms = globalCache[cacheKey];
+    const cachedTick = globalCache[cacheTickKey];
+    let ownedRooms;
+    if (cachedRooms && cachedTick === Game.time) {
+        ownedRooms = cachedRooms;
+    }
+    else {
+        ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        globalCache[cacheKey] = ownedRooms;
+        globalCache[cacheTickKey] = Game.time;
+    }
+    // Initialize movement system (traffic management preTick)
+    initMovement();
+    // Clear move requests from previous tick
+    clearMoveRequests();
+    // Initialize memory structures
+    memoryManager.initialize();
+    // Run all owned rooms with error recovery
+    profiler.measureSubsystem("rooms", () => {
+        try {
+            roomManager.run();
+        }
+        catch (err) {
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            logger.error(`ERROR in room processing: ${errorMessage}`, { subsystem: "SwarmBot" });
+            if (err instanceof Error && err.stack) {
+                logger.error(err.stack, { subsystem: "SwarmBot" });
+            }
+        }
+    });
+    // Run kernel processes (empire, cluster, market, nuke, pheromone managers)
+    if (kernel.hasCpuBudget()) {
+        profiler.measureSubsystem("kernel", () => {
+            kernel.run();
+        });
+    }
+    // Run spawns (high priority - always runs)
+    profiler.measureSubsystem("spawns", () => {
+        runSpawns();
+    });
+    // Run all creeps with CPU budget management
+    profiler.measureSubsystem("creeps", () => {
+        runCreepsWithBudget();
+    });
+    // Process move requests - ask blocking creeps to move out of the way
+    // This runs after creeps have registered their movement intentions
+    profiler.measureSubsystem("moveRequests", () => {
+        processMoveRequests();
+    });
+    // Run power creeps (if we have budget)
+    if (kernel.hasCpuBudget()) {
+        profiler.measureSubsystem("powerCreeps", () => {
+            runPowerCreeps();
+        });
+    }
+    // Run visualizations (if enabled and budget allows)
+    if (kernel.hasCpuBudget()) {
+        profiler.measureSubsystem("visualizations", () => {
+            runVisualizations();
+        });
+    }
+    // Finalize movement system (traffic reconciliation)
+    finalizeMovement();
+    // Persist heap cache to Memory periodically
+    // This happens automatically based on the cache's internal interval
+    memoryManager.persistHeapCache();
+    // Update empire stats
+    profiler.measureSubsystem("stats", () => {
+        const { statsManager: stats } = require("./core/stats");
+        stats.updateEmpireStats();
+        stats.finalizeTick();
+    });
+    // Finalize profiler tick (which will also update stats)
+    profiler.finalizeTick();
+}
+
+// =============================================================================
+// Console Commands Registration
+// =============================================================================
+// All console commands are now registered using the @Command decorator in
+// src/core/consoleCommands.ts. This provides:
+// - Automatic help() command with all registered commands
+// - Consistent command metadata (description, usage, examples)
+// - Centralized command management via CommandRegistry
+//
+// To add new commands, create a class with @Command decorated methods
+// and register it in registerAllConsoleCommands()
+// =============================================================================
+// Register all console commands (must be done before game loop starts)
+registerAllConsoleCommands();
+// When compiling TS to JS and bundling with rollup, the line numbers and file names in error messages change
+// This utility uses source maps to get the line numbers and file names of the original, TS source code
+const loop = ErrorMapper.wrapLoop(() => {
+    // Run the SwarmBot main loop
+    loop$1();
+});
+
+exports.loop = loop;
+//# sourceMappingURL=main.js.map
