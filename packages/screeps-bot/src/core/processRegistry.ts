@@ -10,6 +10,7 @@
  *                       room:pathCachePrecache)
  * - EmpireManager (empire:manager)
  * - ExpansionManager (expansion:manager)
+ * - RemoteInfrastructureManager (remote:infrastructure)
  * - ClusterManager (cluster:manager)
  * - MarketManager (empire:market)
  * - NukeManager (empire:nuke)
@@ -27,6 +28,7 @@ import { expansionManager } from "../empire/expansionManager";
 import { marketManager } from "../empire/marketManager";
 import { nukeManager } from "../empire/nukeManager";
 import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
+import { remoteInfrastructureManager } from "../empire/remoteInfrastructure";
 import { shardManager } from "../intershard/shardManager";
 import { coreProcessManager } from "./coreProcessManager";
 import { kernel } from "./kernel";
@@ -46,6 +48,7 @@ export function registerAllProcesses(): void {
     // Empire processes
     empireManager,
     expansionManager,
+    remoteInfrastructureManager,
     marketManager,
     nukeManager,
     powerBankHarvestingManager,
