@@ -68,8 +68,9 @@ const HARVESTER_WORKING_THRESHOLD = 40;
 /**
  * Minimum ticks a creep must have a valid state to be considered idle.
  * This prevents false positives for creeps that just started a task.
+ * OPTIMIZATION: Reduced from 3 to 2 to allow idle detection to kick in sooner
  */
-const MIN_STATE_AGE_FOR_IDLE = 3;
+const MIN_STATE_AGE_FOR_IDLE = 2;
 
 // =============================================================================
 // Public API
@@ -310,7 +311,11 @@ function isBuilderIdle(creep: Creep, state: NonNullable<SwarmCreepMemory["state"
  * - Has valid target (structure)
  * - Is in range of target (range 3)
  * - Has energy to repair
+ * 
+ * NOTE: Currently unused as "repairer" is not a defined role in this bot.
+ * Kept for future use when repairer role is added.
  */
+/* eslint-disable-next-line @typescript-eslint/no-unused-vars */
 function isRepairerIdle(creep: Creep, state: NonNullable<SwarmCreepMemory["state"]>): boolean {
   // Must be repairing
   if (state.action !== "repair") {
