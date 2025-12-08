@@ -186,6 +186,28 @@ export interface SquadDefinition {
 }
 
 /**
+ * Defense assistance request for cluster coordination
+ */
+export interface DefenseAssistanceRequest {
+  /** Room requesting assistance */
+  roomName: string;
+  /** Number of guards needed */
+  guardsNeeded: number;
+  /** Number of rangers needed */
+  rangersNeeded: number;
+  /** Number of healers needed */
+  healersNeeded: number;
+  /** Urgency level (1-3) */
+  urgency: number;
+  /** Game tick when request was created */
+  createdAt: number;
+  /** Brief description of the threat */
+  threat: string;
+  /** Creeps assigned to assist (creep names) */
+  assignedCreeps: string[];
+}
+
+/**
  * Cluster memory
  */
 export interface ClusterMemory {
@@ -218,6 +240,8 @@ export interface ClusterMemory {
   squads: SquadDefinition[];
   /** Rally points for defense/offense */
   rallyPoints: { roomName: string; x: number; y: number; purpose: string }[];
+  /** Defense assistance requests from member rooms */
+  defenseRequests: DefenseAssistanceRequest[];
   /** Last update tick */
   lastUpdate: number;
 }
@@ -564,6 +588,7 @@ export function createDefaultClusterMemory(id: string, coreRoom: string): Cluste
     },
     squads: [],
     rallyPoints: [],
+    defenseRequests: [],
     lastUpdate: 0
   };
 }
