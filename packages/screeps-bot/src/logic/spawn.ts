@@ -891,6 +891,39 @@ export function getBootstrapRole(roomName: string, room: Room, swarm: SwarmState
 }
 
 /**
+ * Get all roles that need spawning, sorted by priority
+ */
+export function getAllSpawnableRoles(room: Room, swarm: SwarmState): string[] {
+  const counts = countCreepsByRole(room.name);
+  const postureWeights = getPostureSpawnWeights(swarm.posture);
+
+  // Collect all roles that need spawning with their calculated priorities
+  const roleScores: { role: string; score: number }[] = [];
+
+  for (const [role, def] of Object.entries(ROLE_DEFINITIONS)) {
+    if (!needsRole(room.name, role, swarm)) continue;
+
+    const baseWeight = def.priority;
+    const postureWeight = postureWeights[role] ?? 0.5;
+    const pheromoneMult = getPheromoneMult(role, swarm.pheromones as unknown as Record<string, number>);
+    const priorityBoost = getDynamicPriorityBoost(room, swarm, role);
+
+    // Reduce weight based on current count
+    const current = counts.get(role) ?? 0;
+    const countFactor = Math.max(0.1, 1 - current / def.maxPerRoom);
+
+    const score = (baseWeight + priorityBoost) * postureWeight * pheromoneMult * countFactor;
+
+    roleScores.push({ role, score });
+  }
+
+  // Sort by score descending (highest priority first)
+  roleScores.sort((a, b) => b.score - a.score);
+
+  return roleScores.map(rs => rs.role);
+}
+
+/**
  * Spawn manager - run for a room
  */
 export function runSpawnManager(room: Room, swarm: SwarmState): void {
@@ -899,14 +932,6 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
 
   if (!availableSpawn) return;
 
-  // Determine what to spawn
-  const role = determineNextRole(room, swarm);
-  if (!role) return;
-
-  const def = ROLE_DEFINITIONS[role];
-  if (!def) return;
-
-  // Get best body for current energy
   const energyCapacity = room.energyCapacityAvailable;
   const energyAvailable = room.energyAvailable;
 
@@ -916,42 +941,116 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
   const isEmergency = isEmergencySpawnState(room.name);
   const effectiveCapacity = isEmergency ? energyAvailable : energyCapacity;
 
-  const body = getBestBody(def, effectiveCapacity);
-  if (!body) return;
+  // SPAWN FIX: Try roles in priority order until we find one we can afford
+  // This prevents the spawn system from stalling when high-priority roles
+  // are too expensive for current energy levels.
+  
+  // In bootstrap mode, use deterministic bootstrap order
+  if (isBootstrapMode(room.name, room)) {
+    const role = getBootstrapRole(room.name, room, swarm);
+    if (!role) return;
 
-  // Check if we have enough energy
-  if (energyAvailable < body.cost) return;
+    const def = ROLE_DEFINITIONS[role];
+    if (!def) return;
 
-  // Spawn creep
-  const name = generateCreepName(role);
-  const memory: SwarmCreepMemory = {
-    role: def.role,
-    family: def.family,
-    homeRoom: room.name,
-    version: 1
-  };
+    const body = getBestBody(def, effectiveCapacity);
+    if (!body) return;
 
-  // For remote roles, set the targetRoom to the remote room that needs workers
-  if (role === "remoteHarvester" || role === "remoteHauler") {
-    const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
-    if (targetRoom) {
-      memory.targetRoom = targetRoom;
+    // Check if we have enough energy
+    if (energyAvailable < body.cost) return;
+
+    // Spawn creep
+    const name = generateCreepName(role);
+    const memory: SwarmCreepMemory = {
+      role: def.role,
+      family: def.family,
+      homeRoom: room.name,
+      version: 1
+    };
+
+    // For remote roles, set the targetRoom to the remote room that needs workers
+    if (role === "remoteHarvester" || role === "remoteHauler") {
+      const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
+      if (targetRoom) {
+        memory.targetRoom = targetRoom;
+      }
     }
+
+    const result = availableSpawn.spawnCreep(body.parts, name, {
+      memory: memory as unknown as CreepMemory
+    });
+
+    if (result === OK) {
+      kernel.emit("spawn.completed", {
+        roomName: room.name,
+        creepName: name,
+        role,
+        cost: body.cost,
+        source: "SpawnManager"
+      });
+    }
+    return;
   }
 
-  const result = availableSpawn.spawnCreep(body.parts, name, {
-    memory: memory as unknown as CreepMemory
-  });
+  // Normal mode: Get all spawnable roles sorted by priority
+  // Try each one until we find an affordable option
+  const spawnableRoles = getAllSpawnableRoles(room, swarm);
 
-  // Emit spawn completed event on successful spawn
-  if (result === OK) {
-    kernel.emit("spawn.completed", {
-      roomName: room.name,
-      creepName: name,
-      role,
-      cost: body.cost,
-      source: "SpawnManager"
+  for (const role of spawnableRoles) {
+    const def = ROLE_DEFINITIONS[role];
+    if (!def) continue;
+
+    // SPAWN FIX: Try optimal body first (based on capacity), then fallback to smaller body
+    // 1. Try to spawn optimal body for capacity
+    let body = getBestBody(def, effectiveCapacity);
+    if (body && energyAvailable >= body.cost) {
+      // Can afford optimal body, use it
+    } else {
+      // Can't afford optimal body, try smaller body based on available energy
+      body = getBestBody(def, energyAvailable);
+      if (!body || energyAvailable < body.cost) {
+        // Can't afford any body for this role, try next role
+        continue;
+      }
+    }
+
+    // We found an affordable role, spawn it
+    const name = generateCreepName(role);
+    const memory: SwarmCreepMemory = {
+      role: def.role,
+      family: def.family,
+      homeRoom: room.name,
+      version: 1
+    };
+
+    // For remote roles, set the targetRoom to the remote room that needs workers
+    if (role === "remoteHarvester" || role === "remoteHauler") {
+      const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
+      if (targetRoom) {
+        memory.targetRoom = targetRoom;
+      }
+    }
+
+    const result = availableSpawn.spawnCreep(body.parts, name, {
+      memory: memory as unknown as CreepMemory
     });
+
+    // Emit spawn completed event on successful spawn
+    if (result === OK) {
+      kernel.emit("spawn.completed", {
+        roomName: room.name,
+        creepName: name,
+        role,
+        cost: body.cost,
+        source: "SpawnManager"
+      });
+      return; // Successfully spawned, exit
+    }
+
+    // If spawn failed for a reason other than insufficient energy, give up
+    if (result !== ERR_NOT_ENOUGH_ENERGY) {
+      return;
+    }
   }
 }
 
