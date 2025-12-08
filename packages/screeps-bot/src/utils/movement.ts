@@ -17,11 +17,11 @@
  */
 
 import {
+  findBackupPosition,
   findSideStepPosition,
-  requestMoveToPosition,
-  shouldYieldTo,
   isInNarrowPassage,
-  findBackupPosition
+  requestMoveToPosition,
+  shouldYieldTo
 } from "./trafficManager";
 
 // =============================================================================
@@ -356,7 +356,7 @@ function findPath(origin: RoomPosition, target: RoomPosition | MoveTarget, opts:
     plainCost: opts.plainCost ?? 2,
     swampCost: opts.swampCost ?? 10,
     maxOps: opts.maxOps ?? 2000,
-    maxRooms: maxRooms,
+    maxRooms,
     flee: opts.flee ?? false,
     roomCallback: (roomName: string) => {
       return generateCostMatrix(roomName, opts.avoidCreeps ?? true, roadCost, allowHostileRooms);
@@ -379,7 +379,7 @@ function findFleePath(origin: RoomPosition, threats: RoomPosition[], range: numb
     plainCost: opts.plainCost ?? 2,
     swampCost: opts.swampCost ?? 10,
     maxOps: opts.maxOps ?? 2000,
-    maxRooms: maxRooms,
+    maxRooms,
     flee: true,
     roomCallback: (roomName: string) => {
       return generateCostMatrix(roomName, opts.avoidCreeps ?? true, roadCost, allowHostileRooms);
@@ -1272,6 +1272,7 @@ export function findPortalsInRoom(roomName: string, targetShard?: string): Struc
   const room = Game.rooms[roomName];
   if (!room) return null;
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
   const portals = room.find(FIND_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_PORTAL
   }) as StructurePortal[];
@@ -1297,13 +1298,14 @@ export function findPortalsInRoom(roomName: string, targetShard?: string): Struc
  *
  * @param creep - The creep attempting to travel
  * @param targetShard - The destination shard name
- * @param targetRoom - The destination room name in the target shard
+ * @param _targetRoom - The destination room name in the target shard (currently unused, reserved for future use)
  * @returns Portal position to move to, or null if no path found
  */
 export function findPortalPathToShard(
   creep: Creep | PowerCreep,
   targetShard: string,
-  targetRoom?: string
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _targetRoom?: string
 ): RoomPosition | null {
   const currentShard = Game.shard?.name;
   if (!currentShard || currentShard === targetShard) {
@@ -1333,28 +1335,28 @@ export function findPortalPathToShard(
  *
  * @param creep - The creep to move
  * @param targetShard - The destination shard name
- * @param targetRoom - Optional destination room in the target shard
+ * @param _targetRoom - Optional destination room in the target shard (currently unused, reserved for future use)
  * @param opts - Optional movement options
  * @returns The result of the movement action, or ERR_NO_PATH if no portal route found
  */
 export function moveToShard(
   creep: Creep | PowerCreep,
   targetShard: string,
-  targetRoom?: string,
+  _targetRoom?: string,
   opts?: MoveOpts
 ): CreepMoveReturnCode | -2 | -5 | -7 | -10 {
   const currentShard = Game.shard?.name;
 
   // Already on target shard
   if (currentShard === targetShard) {
-    if (targetRoom && creep.pos.roomName !== targetRoom) {
-      return moveToRoom(creep, targetRoom, opts);
+    if (_targetRoom && creep.pos.roomName !== _targetRoom) {
+      return moveToRoom(creep, _targetRoom, opts);
     }
     return OK;
   }
 
   // Find portal to target shard
-  const portalPos = findPortalPathToShard(creep, targetShard, targetRoom);
+  const portalPos = findPortalPathToShard(creep, targetShard, _targetRoom);
   if (!portalPos) {
     return ERR_NO_PATH;
   }
