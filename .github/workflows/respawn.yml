@@ -14,6 +14,8 @@ jobs:
   respawn:
     name: Check and Respawn (${{ matrix.environment }})
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     strategy:
       fail-fast: false
