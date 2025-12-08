@@ -112,7 +112,7 @@ function deliverEnergy(ctx: CreepContext): CreepAction | null {
 
 /**
  * LarvaWorker - General purpose starter creep.
- * Priority: deliver energy → build → upgrade
+ * Priority: deliver energy → haul to storage → build → upgrade
  */
 export function larvaWorker(ctx: CreepContext): CreepAction {
   const isWorking = updateWorkingState(ctx);
@@ -121,6 +121,11 @@ export function larvaWorker(ctx: CreepContext): CreepAction {
     // Try to deliver energy
     const deliverAction = deliverEnergy(ctx);
     if (deliverAction) return deliverAction;
+
+    // Haul to storage when spawns/extensions/towers are full
+    if (ctx.storage && ctx.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+      return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+    }
 
     // Build construction sites
     if (ctx.prioritizedSites.length > 0) {
