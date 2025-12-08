@@ -108,7 +108,25 @@ export class EmpireManager {
   private updateExpansionQueue(overmind: OvermindMemory): void {
     // Check if we can expand
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+    const ownedRoomNames = new Set(ownedRooms.map(r => r.name));
     const gclLevel = Game.gcl.level;
+
+    // Cleanup: Remove rooms from claim queue that we now own
+    const initialQueueLength = overmind.claimQueue.length;
+    overmind.claimQueue = overmind.claimQueue.filter(candidate => {
+      const isNowOwned = ownedRoomNames.has(candidate.roomName);
+      if (isNowOwned) {
+        logger.info(`Removing ${candidate.roomName} from claim queue - now owned`, { subsystem: "Empire" });
+        return false;
+      }
+      return true;
+    });
+    
+    if (overmind.claimQueue.length < initialQueueLength) {
+      logger.info(`Cleaned up claim queue: removed ${initialQueueLength - overmind.claimQueue.length} owned room(s)`, {
+        subsystem: "Empire"
+      });
+    }
 
     if (ownedRooms.length >= gclLevel) {
       // At GCL limit, don't evaluate expansion
