@@ -332,9 +332,67 @@ export class RoomNode {
         });
         if (damaged) {
           tower.repair(damaged);
+          continue;
+        }
+      }
+
+      // Priority 4: Repair walls and ramparts based on RCL and danger level
+      // Only repair in peaceful conditions (no hostiles, non-combat posture)
+      if (!postureManager.isCombatPosture(swarm.posture) && hostiles.length === 0) {
+        const repairTarget = this.getWallRepairTarget(room, swarm);
+        const wallOrRampart = tower.pos.findClosestByRange(FIND_STRUCTURES, {
+          filter: s =>
+            (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) &&
+            s.hits < repairTarget
+        });
+        if (wallOrRampart) {
+          tower.repair(wallOrRampart);
         }
       }
     }
+  }
+
+  /**
+   * Calculate wall/rampart repair target based on RCL and danger level
+   * 
+   * Uses RCL-based thresholds aligned with rampart max hits:
+   * - RCL 2: 300K max
+   * - RCL 3: 1M max
+   * - RCL 4: 3M max
+   * - RCL 5: 10M max
+   * - RCL 6: 30M max
+   * - RCL 7: 100M max
+   * - RCL 8: 300M max
+   * 
+   * Danger level modifies the target:
+   * - danger 0: 30% of max (peaceful maintenance)
+   * - danger 1: 50% of max (threat detected)
+   * - danger 2: 80% of max (active attack)
+   * - danger 3: 100% of max (siege/nuke)
+   */
+  private getWallRepairTarget(room: Room, swarm: SwarmState): number {
+    const rcl = room.controller?.level ?? 1;
+    const danger = swarm.danger;
+
+    // RCL-based max hits (Screeps rampart limits)
+    const maxHitsByRCL: Record<number, number> = {
+      1: 0,        // No ramparts at RCL 1
+      2: 300000,   // 300K
+      3: 1000000,  // 1M
+      4: 3000000,  // 3M
+      5: 10000000, // 10M
+      6: 30000000, // 30M
+      7: 100000000, // 100M
+      8: 300000000  // 300M
+    };
+
+    const maxHits = maxHitsByRCL[rcl] ?? 0;
+    if (maxHits === 0) return 0;
+
+    // Danger level multipliers
+    const dangerMultiplier = danger === 0 ? 0.3 : danger === 1 ? 0.5 : danger === 2 ? 0.8 : 1.0;
+
+    return Math.floor(maxHits * dangerMultiplier);
   }
 
   /**
