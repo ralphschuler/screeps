@@ -134,12 +134,15 @@ export class EmpireManager {
 
     // Update room intel for newly owned rooms to ensure intel.owner is current
     // This ensures the expansion queue filtering works correctly
-    const myUsername = Object.values(Game.spawns)[0]?.owner.username ?? "";
-    for (const room of ownedRooms) {
-      const intel = overmind.roomIntel[room.name];
-      if (intel && intel.owner !== myUsername) {
-        intel.owner = myUsername;
-        logger.info(`Updated room intel for ${room.name} - now owned by ${myUsername}`, { subsystem: "Empire" });
+    const spawns = Object.values(Game.spawns);
+    if (spawns.length > 0) {
+      const myUsername = spawns[0].owner.username;
+      for (const room of ownedRooms) {
+        const intel = overmind.roomIntel[room.name];
+        if (intel && intel.owner !== myUsername) {
+          intel.owner = myUsername;
+          logger.info(`Updated room intel for ${room.name} - now owned by ${myUsername}`, { subsystem: "Empire" });
+        }
       }
     }
 
