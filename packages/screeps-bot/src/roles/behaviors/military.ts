@@ -345,10 +345,20 @@ export function siege(ctx: CreepContext): CreepAction {
 
   // OPTIMIZATION: Use room.find() once and filter, then cache the result
   // Walls/ramparts don't change often, cache for 10 ticks
+  // IMPORTANT: Only target enemy walls/ramparts, not our own
+  // Walls are neutral structures, ramparts have ownership
   const walls = ctx.room.find(FIND_STRUCTURES, {
-    filter: s =>
-      (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) &&
-      s.hits < 100000
+    filter: s => {
+      if (s.structureType === STRUCTURE_WALL) {
+        // Walls are neutral, only dismantle if in hostile room
+        return s.hits < 100000 && !ctx.room.controller?.my;
+      }
+      if (s.structureType === STRUCTURE_RAMPART) {
+        // Ramparts have ownership - only dismantle enemy ramparts
+        return s.hits < 100000 && !(s as StructureRampart).my;
+      }
+      return false;
+    }
   });
   if (walls.length > 0) {
     const wall = findCachedClosest(ctx.creep, walls, "siege_wall", 10);
