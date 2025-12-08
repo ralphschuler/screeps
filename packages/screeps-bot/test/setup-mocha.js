@@ -42,6 +42,22 @@ global.Game = {
     }),
     getRoomStatus: () => ({ status: 'normal', timestamp: null }),
     visual: {}
+  },
+  gcl: {
+    level: 1,
+    progress: 0,
+    progressTotal: 1000000
+  },
+  gpl: {
+    level: 0,
+    progress: 0,
+    progressTotal: 1000000
+  },
+  market: {
+    credits: 0,
+    incomingTransactions: [],
+    outgoingTransactions: [],
+    orders: {}
   }
 };
 
@@ -485,4 +501,28 @@ global.RoomPosition = class RoomPosition {
   lookFor() { return []; }
   createFlag() { return ''; }
   createConstructionSite() { return OK; }
+};
+
+// Mock Creep class
+global.Creep = class Creep {
+  constructor() {
+    this.memory = {};
+    this.spawning = false;
+  }
+  moveTo() { return OK; }
+  move() { return OK; }
+  harvest() { return OK; }
+  transfer() { return OK; }
+  withdraw() { return OK; }
+  pickup() { return OK; }
+  drop() { return OK; }
+  build() { return OK; }
+  repair() { return OK; }
+  attack() { return OK; }
+  rangedAttack() { return OK; }
+  heal() { return OK; }
+  upgradeController() { return OK; }
+  dismantle() { return OK; }
+  say() { return OK; }
+  suicide() { return OK; }
 };
