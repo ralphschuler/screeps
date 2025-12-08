@@ -19,11 +19,16 @@ import { safeFind } from "../../utils/safeFind";
 /**
  * Priority order for construction sites.
  * Higher values = higher priority.
+ * 
+ * Defense structures (walls, ramparts) have high priority to ensure
+ * room security is established early, especially at RCL 2-3.
  */
 const CONSTRUCTION_PRIORITY: Record<string, number> = {
   [STRUCTURE_SPAWN]: 100,
   [STRUCTURE_EXTENSION]: 90,
   [STRUCTURE_TOWER]: 80,
+  [STRUCTURE_RAMPART]: 75,
+  [STRUCTURE_WALL]: 70,
   [STRUCTURE_STORAGE]: 70,
   [STRUCTURE_CONTAINER]: 60,
   [STRUCTURE_ROAD]: 30
