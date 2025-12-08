@@ -44,35 +44,56 @@ export interface PerimeterPlan {
 
 /**
  * Find all exit tiles in a room
+ * 
+ * Identifies positions at room edges that are actual exits (not blocked by terrain or structures).
+ * If there's a barrier structure (wall or rampart) at the room edge, it's not considered an exit (already blocked).
  */
 export function findRoomExits(roomName: string): ExitPosition[] {
   const exits: ExitPosition[] = [];
   const terrain = Game.map.getRoomTerrain(roomName);
+  
+  // Get the room to check for existing barrier structures (walls and ramparts)
+  const room = Game.rooms[roomName];
+  
+  // Build a set of positions with barrier structures for fast lookup
+  const barrierPositions = new Set<string>();
+  if (room) {
+    const barriers = room.find(FIND_STRUCTURES, {
+      filter: (s) => s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART
+    });
+    for (const barrier of barriers) {
+      barrierPositions.add(`${barrier.pos.x},${barrier.pos.y}`);
+    }
+  }
 
   // Top edge (y=0)
   for (let x = 0; x < 50; x++) {
-    if (terrain.get(x, 0) !== TERRAIN_MASK_WALL) {
+    // Skip if terrain is wall or if there's already a barrier structure
+    if (terrain.get(x, 0) !== TERRAIN_MASK_WALL && !barrierPositions.has(`${x},0`)) {
       exits.push({ x, y: 0, exitDirection: "top", isChokePoint: false });
     }
   }
 
   // Bottom edge (y=49)
   for (let x = 0; x < 50; x++) {
-    if (terrain.get(x, 49) !== TERRAIN_MASK_WALL) {
+    // Skip if terrain is wall or if there's already a barrier structure
+    if (terrain.get(x, 49) !== TERRAIN_MASK_WALL && !barrierPositions.has(`${x},49`)) {
       exits.push({ x, y: 49, exitDirection: "bottom", isChokePoint: false });
     }
   }
 
   // Left edge (x=0)
   for (let y = 1; y < 49; y++) {
-    if (terrain.get(0, y) !== TERRAIN_MASK_WALL) {
+    // Skip if terrain is wall or if there's already a barrier structure
+    if (terrain.get(0, y) !== TERRAIN_MASK_WALL && !barrierPositions.has(`0,${y}`)) {
       exits.push({ x: 0, y, exitDirection: "left", isChokePoint: false });
     }
   }
 
   // Right edge (x=49)
   for (let y = 1; y < 49; y++) {
-    if (terrain.get(49, y) !== TERRAIN_MASK_WALL) {
+    // Skip if terrain is wall or if there's already a barrier structure
+    if (terrain.get(49, y) !== TERRAIN_MASK_WALL && !barrierPositions.has(`49,${y}`)) {
       exits.push({ x: 49, y, exitDirection: "right", isChokePoint: false });
     }
   }
