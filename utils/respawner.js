@@ -1,5 +1,9 @@
 const https = require('https');
 
+// Configuration constants
+const SPAWN_SEARCH_RADIUS = 3; // Rooms to search in each direction from starting room
+const SHARD_SCORE_TICK_DIVISOR = 1000; // Divisor for normalizing tick count in shard scoring
+
 /**
  * Get authentication headers for Screeps API
  * When using a token, it serves as both X-Token and X-Username
@@ -217,8 +221,8 @@ function placeSpawn(room, shard) {
 /**
  * findRoomAndSpawn
  *
- * @param {list} shardsReduced
- * @return {void}
+ * @param {Array} shardsReduced
+ * @return {Promise<boolean>}
  */
 async function findRoomAndSpawn(shardsReduced) {
   for (const shard of shardsReduced) {
@@ -231,8 +235,8 @@ async function findRoomAndSpawn(shardsReduced) {
         console.log(`✗ Failed to parse room name: ${roomCenter}`);
         continue;
       }
-      for (let x = -3; x < 3; x++) {
-        for (let y = -3; y < 3; y++) {
+      for (let x = -SPAWN_SEARCH_RADIUS; x < SPAWN_SEARCH_RADIUS; x++) {
+        for (let y = -SPAWN_SEARCH_RADIUS; y < SPAWN_SEARCH_RADIUS; y++) {
           const xValue = x + parseInt(result[2], 10);
           const yValue = y + parseInt(result[4], 10);
           const room = `${result[1]}${xValue}${result[3]}${yValue}`;
@@ -298,7 +302,8 @@ async function main() {
         rooms: shard.rooms,
         user: shard.users,
         tick: shard.tick,
-        value: shard.rooms / shard.users / (shard.tick / 1000),
+        // Score calculation: higher score = more rooms, fewer users, older shard (more established)
+        value: shard.rooms / shard.users / (shard.tick / SHARD_SCORE_TICK_DIVISOR),
       };
     });
     shardsReduced.sort((a, b) => b.value - a.value);
