@@ -15,6 +15,12 @@ declare global {
   interface Memory {
     uuid: number;
     log: any;
+    /** Heap cache persistence storage */
+    _heapCache?: {
+      version: number;
+      lastSync: number;
+      data: Record<string, { value: any; lastModified: number; ttl?: number }>;
+    };
   }
 
   interface CreepMemory {

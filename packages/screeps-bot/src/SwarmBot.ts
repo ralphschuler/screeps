@@ -477,6 +477,10 @@ export function loop(): void {
   // Finalize movement system (traffic reconciliation)
   finalizeMovement();
 
+  // Persist heap cache to Memory periodically
+  // This happens automatically based on the cache's internal interval
+  memoryManager.persistHeapCache();
+
   // Finalize profiler tick
   profiler.finalizeTick();
 }

@@ -48,6 +48,7 @@ global.Game = {
 // Mock Memory early as well
 global.Memory = {
   creeps: {},
+  _heapCache: undefined,
   rooms: {},
   spawns: {},
   flags: {},

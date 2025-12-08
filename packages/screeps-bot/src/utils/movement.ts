@@ -23,6 +23,7 @@ import {
   requestMoveToPosition,
   shouldYieldTo
 } from "./trafficManager";
+import { memoryManager } from "../memory/manager";
 
 // =============================================================================
 // Type Guards
@@ -278,8 +279,8 @@ function generateCostMatrix(
   // If room is not visible, allow PathFinder to use default costs
   // unless it's a known hostile room
   if (!room) {
-    // Check if this room is marked as hostile in memory
-    if (!allowHostileRooms && Memory.rooms?.[roomName]?.hostile) {
+    // Check if this room is marked as hostile in cache
+    if (!allowHostileRooms && memoryManager.isRoomHostile(roomName)) {
       return false; // Block pathing through known hostile rooms
     }
     return costs; // Use default costs for unknown rooms
@@ -287,10 +288,8 @@ function generateCostMatrix(
 
   // Block hostile rooms unless explicitly allowed
   if (!allowHostileRooms && isRoomHostile(roomName)) {
-    // Mark room as hostile in memory for future reference
-    if (!Memory.rooms) Memory.rooms = {};
-    if (!Memory.rooms[roomName]) Memory.rooms[roomName] = {};
-    Memory.rooms[roomName].hostile = true;
+    // Mark room as hostile in cache for future reference
+    memoryManager.setRoomHostile(roomName, true);
     return false; // Block pathing through this room
   }
 
