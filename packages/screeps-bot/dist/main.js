@@ -6137,8 +6137,9 @@ const memorySegmentStats = new MemorySegmentStats();
  * - Pheromone statistics
  * - Native calls statistics (pathfinding, creep actions)
  *
- * All stats are published to Memory.stats for consumption by external tools
- * like the Influx exporter and Grafana dashboards.
+ * All stats are stored as a clean object structure in Memory.stats.
+ * No flattening or processing is done here - the Influx exporter
+ * handles all processing and formatting for Grafana dashboards.
  */
 const DEFAULT_CONFIG$h = {
     enabled: true,
@@ -6162,7 +6163,27 @@ class StatsManager {
         if (!mem.stats || typeof mem.stats !== "object") {
             mem.stats = this.createEmptyStatsRoot();
         }
-        return mem.stats;
+        // Ensure all required properties exist, even if Memory.stats was corrupted
+        const stats = mem.stats;
+        if (!stats.subsystems || typeof stats.subsystems !== "object") {
+            stats.subsystems = {};
+        }
+        if (!stats.roles || typeof stats.roles !== "object") {
+            stats.roles = {};
+        }
+        if (!stats.rooms || typeof stats.rooms !== "object") {
+            stats.rooms = {};
+        }
+        if (!stats.pheromones || typeof stats.pheromones !== "object") {
+            stats.pheromones = {};
+        }
+        if (!stats.empire || typeof stats.empire !== "object") {
+            stats.empire = this.createEmptyEmpireStats();
+        }
+        if (!stats.nativeCalls || typeof stats.nativeCalls !== "object") {
+            stats.nativeCalls = this.createEmptyNativeCalls();
+        }
+        return stats;
     }
     /**
      * Create empty stats root
@@ -6361,100 +6382,10 @@ class StatsManager {
         stats.nativeCalls = { ...this.nativeCallsThisTick };
         // Reset native calls for next tick
         this.nativeCallsThisTick = this.createEmptyNativeCalls();
-        // Publish flattened stats for external consumption
-        this.publishFlattenedStats();
         // Log summary periodically
         if (this.config.logInterval > 0 && Game.time % this.config.logInterval === 0) {
             this.logSummary();
         }
-    }
-    /**
-     * Publish flattened stats for Influx exporter
-     */
-    publishFlattenedStats() {
-        var _a;
-        const stats = this.getStatsRoot();
-        const mem = Memory;
-        // Publish empire stats
-        mem["stats.empire.owned_rooms"] = stats.empire.ownedRooms;
-        mem["stats.empire.total_creeps"] = stats.empire.totalCreeps;
-        mem["stats.empire.total_storage_energy"] = stats.empire.totalStorageEnergy;
-        mem["stats.empire.gcl_progress"] = stats.empire.gclProgress;
-        mem["stats.empire.gcl"] = stats.empire.gcl;
-        mem["stats.empire.gpl"] = stats.empire.gpl;
-        mem["stats.empire.cpu_used"] = stats.empire.cpuUsed;
-        mem["stats.empire.cpu_limit"] = stats.empire.cpuLimit;
-        mem["stats.empire.cpu_bucket"] = stats.empire.cpuBucket;
-        mem["stats.empire.heap_used"] = stats.empire.heapUsed;
-        mem["stats.empire.credits"] = stats.empire.credits;
-        // Publish subsystem stats
-        for (const [name, data] of Object.entries(stats.subsystems)) {
-            mem[`stats.subsystem.${name}.avg_cpu`] = data.avgCpu;
-            mem[`stats.subsystem.${name}.peak_cpu`] = data.peakCpu;
-            mem[`stats.subsystem.${name}.calls`] = data.calls;
-            mem[`stats.subsystem.${name}.samples`] = data.samples;
-        }
-        // Publish role stats
-        for (const [role, data] of Object.entries(stats.roles)) {
-            mem[`stats.role.${role}.count`] = data.count;
-            mem[`stats.role.${role}.avg_cpu`] = data.avgCpu;
-            mem[`stats.role.${role}.peak_cpu`] = data.peakCpu;
-            mem[`stats.role.${role}.calls`] = data.calls;
-        }
-        // Publish room stats
-        for (const [roomName, data] of Object.entries(stats.rooms)) {
-            mem[`stats.room.${roomName}.rcl`] = data.rcl;
-            mem[`stats.room.${roomName}.energy_available`] = data.energyAvailable;
-            mem[`stats.room.${roomName}.energy_capacity`] = data.energyCapacity;
-            mem[`stats.room.${roomName}.storage_energy`] = data.storageEnergy;
-            mem[`stats.room.${roomName}.creep_count`] = data.creepCount;
-            mem[`stats.room.${roomName}.hostile_count`] = data.hostileCount;
-            mem[`stats.room.${roomName}.avg_cpu`] = data.avgCpu;
-            mem[`stats.room.${roomName}.peak_cpu`] = data.peakCpu;
-            mem[`stats.room.${roomName}.controller_progress`] = data.controllerProgress;
-            mem[`stats.room.${roomName}.energy_harvested`] = data.energyHarvested;
-            mem[`stats.room.${roomName}.damage_received`] = data.damageReceived;
-            mem[`stats.room.${roomName}.danger`] = data.danger;
-        }
-        // Intent/posture to numeric mapping for efficient storage
-        const INTENT_VALUES = {
-            eco: 0,
-            expand: 1,
-            defensive: 2,
-            defense: 2,
-            war: 3,
-            siege: 4,
-            evacuate: 5,
-            nukePrep: 6
-        };
-        // Publish pheromone stats
-        for (const [roomName, data] of Object.entries(stats.pheromones)) {
-            mem[`stats.pheromone.${roomName}.expand`] = data.expand;
-            mem[`stats.pheromone.${roomName}.harvest`] = data.harvest;
-            mem[`stats.pheromone.${roomName}.build`] = data.build;
-            mem[`stats.pheromone.${roomName}.upgrade`] = data.upgrade;
-            mem[`stats.pheromone.${roomName}.defense`] = data.defense;
-            mem[`stats.pheromone.${roomName}.war`] = data.war;
-            mem[`stats.pheromone.${roomName}.siege`] = data.siege;
-            mem[`stats.pheromone.${roomName}.logistics`] = data.logistics;
-            mem[`stats.pheromone.${roomName}.intent`] = (_a = INTENT_VALUES[data.intent]) !== null && _a !== void 0 ? _a : 0;
-        }
-        // Publish native calls stats
-        mem["stats.native_calls.pathfinder_search"] = stats.nativeCalls.pathfinderSearch;
-        mem["stats.native_calls.move_to"] = stats.nativeCalls.moveTo;
-        mem["stats.native_calls.move"] = stats.nativeCalls.move;
-        mem["stats.native_calls.harvest"] = stats.nativeCalls.harvest;
-        mem["stats.native_calls.transfer"] = stats.nativeCalls.transfer;
-        mem["stats.native_calls.withdraw"] = stats.nativeCalls.withdraw;
-        mem["stats.native_calls.build"] = stats.nativeCalls.build;
-        mem["stats.native_calls.repair"] = stats.nativeCalls.repair;
-        mem["stats.native_calls.upgrade_controller"] = stats.nativeCalls.upgradeController;
-        mem["stats.native_calls.attack"] = stats.nativeCalls.attack;
-        mem["stats.native_calls.ranged_attack"] = stats.nativeCalls.rangedAttack;
-        mem["stats.native_calls.heal"] = stats.nativeCalls.heal;
-        mem["stats.native_calls.dismantle"] = stats.nativeCalls.dismantle;
-        mem["stats.native_calls.say"] = stats.nativeCalls.say;
-        mem["stats.native_calls.total"] = stats.nativeCalls.total;
     }
     /**
      * Log a summary of statistics
@@ -22899,23 +22830,65 @@ function registerAllProcesses() {
  * This helps identify performance bottlenecks and optimize native call usage.
  */
 /**
+ * Whether native calls tracking is enabled
+ */
+let trackingEnabled = true;
+/**
  * Wrap PathFinder.search to track calls
  *
  * Note: Uses 'any' types to handle the complex overloaded signature of PathFinder.search.
  * The TypeScript definitions for PathFinder.search have multiple overloads that are
  * difficult to preserve when wrapping. Using 'any' here allows the wrapper to work
  * correctly while maintaining runtime type safety through the original method.
+ *
+ * Uses Object.defineProperty to override read-only properties that may exist in some
+ * Screeps environments (e.g., private servers with strict property descriptors).
  */
 function wrapPathFinderSearch() {
     if (!PathFinder.search)
         return;
     const originalSearch = PathFinder.search;
-    PathFinder.search = function (...args) {
-        {
-            statsManager.recordNativeCall("pathfinderSearch");
-        }
-        return originalSearch.apply(PathFinder, args);
-    };
+    try {
+        Object.defineProperty(PathFinder, "search", {
+            value: function (...args) {
+                if (trackingEnabled) {
+                    statsManager.recordNativeCall("pathfinderSearch");
+                }
+                return originalSearch.apply(PathFinder, args);
+            },
+            writable: true,
+            enumerable: true,
+            configurable: true
+        });
+    }
+    catch (error) {
+        console.log(`[NativeCallsTracker] Warning: Failed to wrap PathFinder.search: ${error}`);
+    }
+}
+/**
+ * Helper function to safely wrap a method on a prototype
+ * Uses Object.defineProperty to handle read-only properties
+ */
+function wrapMethod(prototype, methodName, statName) {
+    const original = prototype[methodName];
+    if (!original)
+        return;
+    try {
+        Object.defineProperty(prototype, methodName, {
+            value: function (...args) {
+                if (trackingEnabled) {
+                    statsManager.recordNativeCall(statName);
+                }
+                return original.apply(this, args);
+            },
+            writable: true,
+            enumerable: true,
+            configurable: true
+        });
+    }
+    catch (error) {
+        console.log(`[NativeCallsTracker] Warning: Failed to wrap ${methodName}: ${error}`);
+    }
 }
 /**
  * Wrap Creep.prototype methods to track calls
@@ -22925,113 +22898,29 @@ function wrapPathFinderSearch() {
  * Using 'any' allows the wrappers to work correctly with all overloads while maintaining
  * runtime type safety through the original methods. This is a common pattern for method
  * wrapping in JavaScript/TypeScript.
+ *
+ * Uses Object.defineProperty to override read-only properties that may exist in some
+ * Screeps environments (e.g., private servers with strict property descriptors).
  */
 function wrapCreepMethods() {
     const creepProto = Creep.prototype;
-    // Wrap moveTo
-    const originalMoveTo = creepProto.moveTo;
-    creepProto.moveTo = function (...args) {
-        {
-            statsManager.recordNativeCall("moveTo");
-        }
-        return originalMoveTo.apply(this, args);
-    };
-    // Wrap move
-    const originalMove = creepProto.move;
-    creepProto.move = function (...args) {
-        {
-            statsManager.recordNativeCall("move");
-        }
-        return originalMove.apply(this, args);
-    };
-    // Wrap harvest
-    const originalHarvest = creepProto.harvest;
-    creepProto.harvest = function (...args) {
-        {
-            statsManager.recordNativeCall("harvest");
-        }
-        return originalHarvest.apply(this, args);
-    };
-    // Wrap transfer
-    const originalTransfer = creepProto.transfer;
-    creepProto.transfer = function (...args) {
-        {
-            statsManager.recordNativeCall("transfer");
-        }
-        return originalTransfer.apply(this, args);
-    };
-    // Wrap withdraw
-    const originalWithdraw = creepProto.withdraw;
-    creepProto.withdraw = function (...args) {
-        {
-            statsManager.recordNativeCall("withdraw");
-        }
-        return originalWithdraw.apply(this, args);
-    };
-    // Wrap build
-    const originalBuild = creepProto.build;
-    creepProto.build = function (...args) {
-        {
-            statsManager.recordNativeCall("build");
-        }
-        return originalBuild.apply(this, args);
-    };
-    // Wrap repair
-    const originalRepair = creepProto.repair;
-    creepProto.repair = function (...args) {
-        {
-            statsManager.recordNativeCall("repair");
-        }
-        return originalRepair.apply(this, args);
-    };
-    // Wrap upgradeController
-    const originalUpgradeController = creepProto.upgradeController;
-    creepProto.upgradeController = function (...args) {
-        {
-            statsManager.recordNativeCall("upgradeController");
-        }
-        return originalUpgradeController.apply(this, args);
-    };
-    // Wrap attack
-    const originalAttack = creepProto.attack;
-    creepProto.attack = function (...args) {
-        {
-            statsManager.recordNativeCall("attack");
-        }
-        return originalAttack.apply(this, args);
-    };
-    // Wrap rangedAttack
-    const originalRangedAttack = creepProto.rangedAttack;
-    creepProto.rangedAttack = function (...args) {
-        {
-            statsManager.recordNativeCall("rangedAttack");
-        }
-        return originalRangedAttack.apply(this, args);
-    };
-    // Wrap heal
-    const originalHeal = creepProto.heal;
-    creepProto.heal = function (...args) {
-        {
-            statsManager.recordNativeCall("heal");
-        }
-        return originalHeal.apply(this, args);
-    };
-    // Wrap dismantle
-    const originalDismantle = creepProto.dismantle;
-    creepProto.dismantle = function (...args) {
-        {
-            statsManager.recordNativeCall("dismantle");
-        }
-        return originalDismantle.apply(this, args);
-    };
-    // Wrap say
-    const originalSay = creepProto.say;
-    creepProto.say = function (...args) {
-        {
-            statsManager.recordNativeCall("say");
-        }
-        return originalSay.apply(this, args);
-    };
+    // Wrap movement methods
+    wrapMethod(creepProto, "moveTo", "moveTo");
+    wrapMethod(creepProto, "move", "move");
+    // Wrap economy methods
+    wrapMethod(creepProto, "harvest", "harvest");
+    wrapMethod(creepProto, "transfer", "transfer");
+    wrapMethod(creepProto, "withdraw", "withdraw");
+    wrapMethod(creepProto, "build", "build");
+    wrapMethod(creepProto, "repair", "repair");
+    wrapMethod(creepProto, "upgradeController", "upgradeController");
+    // Wrap combat methods
+    wrapMethod(creepProto, "attack", "attack");
+    wrapMethod(creepProto, "rangedAttack", "rangedAttack");
+    wrapMethod(creepProto, "heal", "heal");
+    wrapMethod(creepProto, "dismantle", "dismantle");
+    // Wrap utility methods
+    wrapMethod(creepProto, "say", "say");
 }
 /**
  * Initialize native calls tracking
