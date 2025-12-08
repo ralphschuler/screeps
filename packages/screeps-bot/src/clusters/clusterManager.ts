@@ -133,6 +133,11 @@ export class ClusterManager {
       this.updateClusterRole(cluster);
     });
 
+    // Update focus room for sequential upgrading
+    profiler.measureSubsystem(`cluster:${cluster.id}:focusRoom`, () => {
+      this.updateFocusRoom(cluster);
+    });
+
     cluster.lastUpdate = Game.time;
 
     const cpuUsed = Game.cpu.getUsed() - cpuStart;
@@ -347,6 +352,74 @@ export class ClusterManager {
       cluster.role = "frontier";
     } else {
       cluster.role = "mixed";
+    }
+  }
+
+  /**
+   * Update focus room for sequential upgrading strategy.
+   * Prioritizes one room to upgrade to RCL 8, then moves to the next room.
+   * This stabilizes one room before moving on, ensuring efficient resource use.
+   */
+  private updateFocusRoom(cluster: ClusterMemory): void {
+    // Get all member rooms with their RCL
+    const roomsWithRcl: { roomName: string; rcl: number }[] = [];
+    
+    for (const roomName of cluster.memberRooms) {
+      const room = Game.rooms[roomName];
+      if (!room || !room.controller?.my) continue;
+      
+      roomsWithRcl.push({
+        roomName,
+        rcl: room.controller.level
+      });
+    }
+
+    if (roomsWithRcl.length === 0) return;
+
+    // Check if current focus room still valid
+    if (cluster.focusRoom) {
+      const focusRoom = Game.rooms[cluster.focusRoom];
+      
+      // If focus room reached RCL 8, clear it
+      if (focusRoom?.controller?.level === 8) {
+        logger.info(
+          `Focus room ${cluster.focusRoom} reached RCL 8, selecting next room`,
+          { subsystem: "Cluster" }
+        );
+        cluster.focusRoom = undefined;
+      }
+      
+      // If focus room no longer exists or not in cluster, clear it
+      if (!focusRoom || (cluster.focusRoom && !cluster.memberRooms.includes(cluster.focusRoom))) {
+        logger.warn(
+          `Focus room ${cluster.focusRoom ?? 'unknown'} no longer valid, selecting new focus`,
+          { subsystem: "Cluster" }
+        );
+        cluster.focusRoom = undefined;
+      }
+    }
+
+    // Select new focus room if needed
+    if (!cluster.focusRoom) {
+      // Find room with lowest RCL that's not yet 8
+      const eligibleRooms = roomsWithRcl.filter(r => r.rcl < 8);
+      
+      if (eligibleRooms.length === 0) {
+        // All rooms are RCL 8, no focus needed
+        return;
+      }
+
+      // Sort by RCL (lowest first), then by room name for determinism
+      eligibleRooms.sort((a, b) => {
+        if (a.rcl !== b.rcl) return a.rcl - b.rcl;
+        return a.roomName.localeCompare(b.roomName);
+      });
+
+      cluster.focusRoom = eligibleRooms[0].roomName;
+      logger.info(
+        `Selected ${cluster.focusRoom} (RCL ${eligibleRooms[0].rcl}) as focus room for upgrading`,
+        { subsystem: "Cluster" }
+      );
     }
   }
 

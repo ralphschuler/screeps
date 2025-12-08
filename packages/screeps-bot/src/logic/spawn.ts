@@ -493,6 +493,15 @@ export function getDynamicPriorityBoost(room: Room, swarm: SwarmState, role: str
     boost += getDefenderPriorityBoost(room, swarm, role);
   }
 
+  // Upgrader priority boost for focus room
+  if (role === "upgrader" && swarm.clusterId) {
+    const cluster = memoryManager.getCluster(swarm.clusterId);
+    if (cluster?.focusRoom === room.name) {
+      // Significant boost to prioritize upgrading in focus room
+      boost += 40;
+    }
+  }
+
   return boost;
 }
 
@@ -643,8 +652,27 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState): bo
   const counts = countCreepsByRole(roomName);
   const current = counts.get(role) ?? 0;
 
-  // Check max per room
-  if (current >= def.maxPerRoom) return false;
+  // Check max per room (with special handling for upgraders in focus room)
+  let maxForRoom = def.maxPerRoom;
+  if (role === "upgrader" && swarm.clusterId) {
+    const cluster = memoryManager.getCluster(swarm.clusterId);
+    if (cluster?.focusRoom === roomName) {
+      // Allow more upgraders in focus room to accelerate upgrading
+      const room = Game.rooms[roomName];
+      if (room?.controller) {
+        // Scale upgraders based on RCL: RCL1-3: 2, RCL4-6: 4, RCL7: 6
+        if (room.controller.level <= 3) {
+          maxForRoom = 2;
+        } else if (room.controller.level <= 6) {
+          maxForRoom = 4;
+        } else {
+          maxForRoom = 6;
+        }
+      }
+    }
+  }
+
+  if (current >= maxForRoom) return false;
 
   // Special conditions
   const room = Game.rooms[roomName];
