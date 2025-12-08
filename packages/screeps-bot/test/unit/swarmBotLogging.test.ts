@@ -6,8 +6,7 @@ declare const sinon: typeof import("sinon");
 
 function reloadSwarmBot() {
   delete require.cache[require.resolve("../../src/core/kernel")];
-  // Don't delete logger cache - we want to spy on the same instance
-  // delete require.cache[require.resolve("../../src/core/logger")];
+  // Note: We intentionally don't delete logger cache here so spies can work correctly
   delete require.cache[require.resolve("../../src/core/processRegistry")];
   delete require.cache[require.resolve("../../src/SwarmBot")];
 
