@@ -56,8 +56,9 @@ function recordRoomIntel(room: Room, overmind: Record<string, unknown>): void {
   // Update last seen timestamp
   roomsSeen[room.name] = Game.time;
 
-  // If room was recently scanned (within 500 ticks), only update dynamic data
-  if (existingIntel && ticksSinceLastScan < 500) {
+  // If room was recently scanned (within 1000 ticks), only update dynamic data
+  // OPTIMIZATION: Increased from 500 to 1000 ticks to reduce CPU on frequent rescans
+  if (existingIntel && ticksSinceLastScan < 1000) {
     existingIntel.lastSeen = Game.time;
     
     // Only update threat level (dynamic data)
@@ -82,12 +83,13 @@ function recordRoomIntel(room: Room, overmind: Record<string, unknown>): void {
   // Use safeFind to handle engine errors with corrupted owner data
   const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
 
-  // Classify terrain (expensive operation, only do once per 500 ticks)
+  // Classify terrain (expensive operation, only do once per 1000 ticks)
+  // OPTIMIZATION: Sample fewer tiles (every 10 instead of every 5) to reduce CPU cost
   const terrain = room.getTerrain();
   let swampCount = 0;
   let plainCount = 0;
-  for (let x = 0; x < 50; x += 5) {
-    for (let y = 0; y < 50; y += 5) {
+  for (let x = 5; x < 50; x += 10) {
+    for (let y = 5; y < 50; y += 10) {
       const t = terrain.get(x, y);
       if (t === TERRAIN_MASK_SWAMP) swampCount++;
       else if (t === 0) plainCount++;
@@ -179,6 +181,7 @@ function findExplorePosition(room: Room): RoomPosition | null {
  * OPTIMIZATION: Only record intel when:
  * - Entering a new room (not seen before)
  * - At target room and exploring (stationary)
+ * - Only once when reaching the center position (not every tick)
  * This reduces expensive recordRoomIntel() calls from every tick to only when needed.
  */
 export function scout(ctx: CreepContext): CreepAction {
@@ -211,13 +214,23 @@ export function scout(ctx: CreepContext): CreepAction {
   }
 
   // Explore current room - move toward center to gather intel
-  // Only record intel when we're actively exploring (at target room)
+  // OPTIMIZATION: Only record intel once when we're at the center position, not every tick
   if (targetRoom && ctx.room.name === targetRoom) {
-    recordRoomIntel(ctx.room, overmind);
-    
     const explorePos = findExplorePosition(ctx.room);
-    if (explorePos) return { type: "moveTo", target: explorePos };
-    delete ctx.memory.targetRoom;
+    if (explorePos) {
+      // Only record intel if we're at the explore position (within range 3)
+      if (ctx.creep.pos.getRangeTo(explorePos) <= 3) {
+        recordRoomIntel(ctx.room, overmind);
+        delete ctx.memory.targetRoom; // Done exploring, move to next room
+      } else {
+        // Still moving to explore position
+        return { type: "moveTo", target: explorePos };
+      }
+    } else {
+      // No valid explore position, record intel and move on
+      recordRoomIntel(ctx.room, overmind);
+      delete ctx.memory.targetRoom;
+    }
   }
 
   return { type: "idle" };

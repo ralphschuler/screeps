@@ -54,7 +54,7 @@ export interface MoveTarget {
  * Movement options for the moveTo function
  */
 export interface MoveOpts {
-  /** Number of ticks to reuse a cached path before repathing. Default 20. */
+  /** Number of ticks to reuse a cached path before repathing. Default 30. */
   reusePath?: number;
   /** Number of ticks stuck before repathing. Default 3. */
   repathIfStuck?: number;
@@ -550,10 +550,9 @@ function internalMoveTo(
 
   // Determine if we need to repath
   const repathIfStuck = options.repathIfStuck ?? 3;
-  // OPTIMIZATION: Increased reusePath from 20 to 50 ticks for better CPU efficiency
-  // Paths are valid longer, reducing expensive PathFinder.search calls
-  // Based on profiler data showing 11.459 avg CPU for creeps subsystem
-  const reusePath = options.reusePath ?? 50;
+  // OPTIMIZATION: Using 30 ticks for reusePath to balance CPU efficiency with responsiveness
+  // Longer values reduce expensive PathFinder.search calls while still adapting to changes
+  const reusePath = options.reusePath ?? 30;
   const needRepath =
     !cachedPath ||
     cachedPath.targetKey !== targetKey ||
