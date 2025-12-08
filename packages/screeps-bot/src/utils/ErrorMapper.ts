@@ -26,7 +26,16 @@ export class ErrorMapper {
       // @ts-check
       const rawSourceMap = require("main.js.map");
       // Parse the source map if it's a string, otherwise use it directly
-      const sourceMapData = typeof rawSourceMap === "string" ? JSON.parse(rawSourceMap) : rawSourceMap;
+      let sourceMapData;
+      if (typeof rawSourceMap === "string") {
+        try {
+          sourceMapData = JSON.parse(rawSourceMap);
+        } catch (e) {
+          throw new Error(`Failed to parse source map: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      } else {
+        sourceMapData = rawSourceMap;
+      }
       this._consumer = new SourceMapConsumer(sourceMapData);
     }
 
