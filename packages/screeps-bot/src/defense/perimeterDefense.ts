@@ -130,6 +130,14 @@ export function identifyChokePoints(roomName: string, exits: ExitPosition[]): Ex
 }
 
 /**
+ * Check if a coordinate is in the gap position (center of wall line)
+ * Gap positions are where ramparts are placed for friendly passage
+ */
+function isGapPosition(coord: number): boolean {
+  return coord >= 24 && coord <= 25;
+}
+
+/**
  * Calculate optimal perimeter defense positions
  * Creates continuous wall lines with strategic gaps (ramparts) for friendly passage.
  * 
@@ -153,8 +161,7 @@ export function calculatePerimeterPositions(roomName: string): PerimeterPlan {
   for (let x = 2; x <= 47; x++) {
     if (terrain.get(x, 2) === TERRAIN_MASK_WALL) continue;
     
-    // Create gap at center for friendly passage
-    if (x >= 24 && x <= 25) {
+    if (isGapPosition(x)) {
       ramparts.push({ x, y: 2, exitDirection: "top", isChokePoint: false });
     } else {
       walls.push({ x, y: 2, exitDirection: "top", isChokePoint: false });
@@ -165,8 +172,7 @@ export function calculatePerimeterPositions(roomName: string): PerimeterPlan {
   for (let x = 2; x <= 47; x++) {
     if (terrain.get(x, 47) === TERRAIN_MASK_WALL) continue;
     
-    // Create gap at center for friendly passage
-    if (x >= 24 && x <= 25) {
+    if (isGapPosition(x)) {
       ramparts.push({ x, y: 47, exitDirection: "bottom", isChokePoint: false });
     } else {
       walls.push({ x, y: 47, exitDirection: "bottom", isChokePoint: false });
@@ -177,8 +183,7 @@ export function calculatePerimeterPositions(roomName: string): PerimeterPlan {
   for (let y = 2; y <= 47; y++) {
     if (terrain.get(2, y) === TERRAIN_MASK_WALL) continue;
     
-    // Create gap at center for friendly passage
-    if (y >= 24 && y <= 25) {
+    if (isGapPosition(y)) {
       ramparts.push({ x: 2, y, exitDirection: "left", isChokePoint: false });
     } else {
       walls.push({ x: 2, y, exitDirection: "left", isChokePoint: false });
@@ -189,8 +194,7 @@ export function calculatePerimeterPositions(roomName: string): PerimeterPlan {
   for (let y = 2; y <= 47; y++) {
     if (terrain.get(47, y) === TERRAIN_MASK_WALL) continue;
     
-    // Create gap at center for friendly passage
-    if (y >= 24 && y <= 25) {
+    if (isGapPosition(y)) {
       ramparts.push({ x: 47, y, exitDirection: "right", isChokePoint: false });
     } else {
       walls.push({ x: 47, y, exitDirection: "right", isChokePoint: false });
