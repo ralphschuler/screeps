@@ -212,11 +212,13 @@ export class ResourceSharingManager {
     // Include containers (but not link containers)
     const containers = room.find(FIND_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_CONTAINER
-    }) as StructureContainer[];
+    });
 
     for (const container of containers) {
-      energyAvailable += container.store.getUsedCapacity(RESOURCE_ENERGY);
-      energyCapacity += container.store.getCapacity();
+      if (container.structureType === STRUCTURE_CONTAINER) {
+        energyAvailable += container.store.getUsedCapacity(RESOURCE_ENERGY);
+        energyCapacity += container.store.getCapacity();
+      }
     }
 
     return { energyAvailable, energyCapacity };
@@ -225,7 +227,7 @@ export class ResourceSharingManager {
   /**
    * Calculate energy need level for a room
    */
-  private calculateEnergyNeed(room: Room, energyAvailable: number, swarm: SwarmState): 0 | 1 | 2 | 3 {
+  private calculateEnergyNeed(room: Room, energyAvailable: number, _swarm: SwarmState): 0 | 1 | 2 | 3 {
     // Critical: spawn in danger of not being able to spawn
     if (energyAvailable < this.config.criticalEnergyThreshold) {
       // Extra critical if spawn is low on energy and can't spawn

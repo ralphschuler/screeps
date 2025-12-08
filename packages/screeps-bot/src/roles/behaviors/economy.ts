@@ -818,10 +818,14 @@ export function interRoomCarrier(ctx: CreepContext): CreepAction {
     const containers = room.find(FIND_STRUCTURES, {
       filter: s =>
         s.structureType === STRUCTURE_CONTAINER && s.store.getFreeCapacity(resourceType) > 0
-    }) as StructureContainer[];
+    });
 
-    if (containers.length > 0) {
-      const closest = findCachedClosest(ctx.creep, containers, "interRoomCarrier_targetCont", 10);
+    const containerTargets = containers.filter((s): s is StructureContainer => 
+      s.structureType === STRUCTURE_CONTAINER
+    );
+
+    if (containerTargets.length > 0) {
+      const closest = findCachedClosest(ctx.creep, containerTargets, "interRoomCarrier_targetCont", 10);
       if (closest) return { type: "transfer", target: closest, resourceType };
     }
 
@@ -854,10 +858,14 @@ export function interRoomCarrier(ctx: CreepContext): CreepAction {
     const containers = room.find(FIND_STRUCTURES, {
       filter: s =>
         s.structureType === STRUCTURE_CONTAINER && s.store.getUsedCapacity(resourceType) > 0
-    }) as StructureContainer[];
+    });
 
-    if (containers.length > 0) {
-      const closest = findCachedClosest(ctx.creep, containers, "interRoomCarrier_sourceCont", 10);
+    const containerSources = containers.filter((s): s is StructureContainer => 
+      s.structureType === STRUCTURE_CONTAINER
+    );
+
+    if (containerSources.length > 0) {
+      const closest = findCachedClosest(ctx.creep, containerSources, "interRoomCarrier_sourceCont", 10);
       if (closest) return { type: "withdraw", target: closest, resourceType };
     }
 
