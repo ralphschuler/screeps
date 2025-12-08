@@ -266,6 +266,8 @@ export interface ClusterMemory {
   defenseRequests: DefenseAssistanceRequest[];
   /** Resource transfer requests for inter-room resource sharing */
   resourceRequests: ResourceTransferRequest[];
+  /** Room currently being prioritized for upgrading to RCL 8 */
+  focusRoom?: string;
   /** Last update tick */
   lastUpdate: number;
 }
