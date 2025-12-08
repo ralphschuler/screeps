@@ -1,10 +1,13 @@
 import { expect } from "chai";
-import sinon from "sinon";
 import { Game as MockGame, Memory as MockMemory } from "./mock";
+
+// Use global sinon from test setup (setup-mocha.js)
+declare const sinon: typeof import("sinon");
 
 function reloadSwarmBot() {
   delete require.cache[require.resolve("../../src/core/kernel")];
-  delete require.cache[require.resolve("../../src/core/logger")];
+  // Don't delete logger cache - we want to spy on the same instance
+  // delete require.cache[require.resolve("../../src/core/logger")];
   delete require.cache[require.resolve("../../src/core/processRegistry")];
   delete require.cache[require.resolve("../../src/SwarmBot")];
 
@@ -29,13 +32,14 @@ describe("SwarmBot logging", () => {
   });
 
   it("logs skipped creeps through the logger", () => {
-    const bot = reloadSwarmBot();
-
+    // Set up spies/stubs before reloading modules to ensure they're properly intercepted
     const loggerModule = require("../../src/core/logger");
-    const warnSpy = sandbox.spy(loggerModule, "warn");
+    const warnSpy = sandbox.spy(loggerModule.logger, "warn");
 
     const processRegistry = require("../../src/core/processRegistry");
     sandbox.stub(processRegistry, "registerAllProcesses");
+
+    const bot = reloadSwarmBot();
 
     sandbox.stub(bot.kernel, "initialize");
     sandbox.stub(bot.kernel, "getBucketMode").returns("low");
@@ -49,7 +53,7 @@ describe("SwarmBot logging", () => {
       beta: { memory: { role: "hauler", room: "W1N1", working: false } as any, spawning: false } as any
     };
     // @ts-ignore: test setup for Game globals
-    global.Game.time = 12350; // divisible by 50 to satisfy logging interval
+    global.Game.time = 12300; // divisible by 100 to satisfy logging interval when lowBucket is true
 
     bot.loop();
 
@@ -60,13 +64,14 @@ describe("SwarmBot logging", () => {
   });
 
   it("logs visualization errors through the logger", () => {
-    const bot = reloadSwarmBot();
-
+    // Set up spies/stubs before reloading modules to ensure they're properly intercepted
     const loggerModule = require("../../src/core/logger");
-    const errorSpy = sandbox.spy(loggerModule, "error");
+    const errorSpy = sandbox.spy(loggerModule.logger, "error");
 
     const processRegistry = require("../../src/core/processRegistry");
     sandbox.stub(processRegistry, "registerAllProcesses");
+
+    const bot = reloadSwarmBot();
 
     sandbox.stub(bot.kernel, "initialize");
     sandbox.stub(bot.kernel, "getBucketMode").returns("normal");
@@ -78,7 +83,11 @@ describe("SwarmBot logging", () => {
 
     // @ts-ignore: test setup for Game globals
     global.Game.rooms = {
-      W1N1: { name: "W1N1", controller: { my: true } as any } as any
+      W1N1: { 
+        name: "W1N1", 
+        controller: { my: true } as any,
+        find: () => [] // Mock find method to return empty array
+      } as any
     };
 
     bot.loop();

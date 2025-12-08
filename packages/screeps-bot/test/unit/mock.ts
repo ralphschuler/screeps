@@ -5,6 +5,9 @@ export const Game: {
   time: any;
   cpu: any;
   powerCreeps: any;
+  gcl: any;
+  gpl: any;
+  market: any;
 } = {
   creeps: {},
   rooms: {},
@@ -19,7 +22,23 @@ export const Game: {
     unlocked: false,
     unlockedTime: 0
   },
-  powerCreeps: {}
+  powerCreeps: {},
+  gcl: {
+    level: 1,
+    progress: 0,
+    progressTotal: 1000000
+  },
+  gpl: {
+    level: 0,
+    progress: 0,
+    progressTotal: 1000000
+  },
+  market: {
+    credits: 0,
+    incomingTransactions: [],
+    outgoingTransactions: [],
+    orders: {}
+  }
 };
 
 export const Memory: {
