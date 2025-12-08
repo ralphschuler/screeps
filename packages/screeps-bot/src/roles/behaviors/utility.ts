@@ -153,6 +153,23 @@ function findNextExploreTarget(
 }
 
 /**
+ * Room center coordinates for scout navigation
+ */
+const ROOM_CENTER_X = 25;
+const ROOM_CENTER_Y = 25;
+
+/**
+ * Create a moveTo action targeting the center of a room.
+ * Used to move scouts off room exits.
+ */
+function moveToRoomCenter(roomName: string): CreepAction {
+  return {
+    type: "moveTo",
+    target: new RoomPosition(ROOM_CENTER_X, ROOM_CENTER_Y, roomName)
+  };
+}
+
+/**
  * Find a position to explore in a room.
  */
 function findExplorePosition(room: Room): RoomPosition | null {
@@ -161,7 +178,7 @@ function findExplorePosition(room: Room): RoomPosition | null {
     new RoomPosition(44, 5, room.name),
     new RoomPosition(5, 44, room.name),
     new RoomPosition(44, 44, room.name),
-    new RoomPosition(25, 25, room.name)
+    new RoomPosition(ROOM_CENTER_X, ROOM_CENTER_Y, room.name)
   ];
 
   const terrain = room.getTerrain();
@@ -228,8 +245,7 @@ export function scout(ctx: CreepContext): CreepAction {
   
   if (onExit && !travelingToOtherRoom) {
     // We're on an exit but not traveling - move toward room center
-    const centerPos = new RoomPosition(25, 25, ctx.room.name);
-    return { type: "moveTo", target: centerPos };
+    return moveToRoomCenter(ctx.room.name);
   }
 
   // Move to target room (movement.ts will handle exit clearing if needed)
@@ -240,9 +256,16 @@ export function scout(ctx: CreepContext): CreepAction {
   // Explore current room - move toward center to gather intel
   // OPTIMIZATION: Only record intel once when we're at the center position, not every tick
   if (targetRoom && ctx.room.name === targetRoom) {
+    // CRITICAL FIX: If on exit, move off it first before exploring
+    // This prevents the scout from clearing targetRoom while still on the exit,
+    // which causes it to pick the previous room as the next target and cycle back
+    if (onExit) {
+      return moveToRoomCenter(ctx.room.name);
+    }
+
     const explorePos = findExplorePosition(ctx.room);
     if (explorePos) {
-      // Only record intel if we're at the explore position
+      // Only record intel if we're at the explore position AND not on an exit
       // Range 3 chosen to ensure full room visibility (controller and sources are scanned)
       // without requiring the scout to reach exact center tile
       const INTEL_GATHER_RANGE = 3;
