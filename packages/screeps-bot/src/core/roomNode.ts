@@ -16,6 +16,7 @@ import { memoryManager } from "../memory/manager";
 import { pheromoneManager } from "../logic/pheromone";
 import { calculateDangerLevel, evolutionManager, postureManager } from "../logic/evolution";
 import { profiler } from "./profiler";
+import { statsManager } from "./stats";
 import { destroyMisplacedStructures, getBlueprint, placeConstructionSites } from "../layouts/blueprints";
 import { placeRoadConstructionSites } from "../layouts/roadNetworkPlanner";
 import { safeFind } from "../utils/safeFind";
@@ -195,6 +196,23 @@ export class RoomNode {
     if (this.config.enableProcessing && Game.time % 5 === 0) {
       this.runResourceProcessing(room, swarm);
     }
+
+    // Record room stats
+    const cpuUsed = Game.cpu.getUsed() - cpuStart;
+    const roomData = profiler.getRoomData(this.roomName);
+    statsManager.recordRoom(room, roomData?.avgCpu ?? cpuUsed, roomData?.peakCpu ?? cpuUsed, {
+      energyHarvested: swarm.metrics.energyHarvested,
+      damageReceived: swarm.metrics.damageReceived,
+      danger: swarm.danger
+    });
+
+    // Record pheromone stats
+    statsManager.recordPheromones(
+      this.roomName,
+      swarm.pheromones,
+      swarm.posture,
+      pheromoneManager.getDominantPheromone(swarm.pheromones)
+    );
 
     profiler.endRoom(this.roomName, cpuStart);
   }
