@@ -694,8 +694,14 @@ export function remoteHarvester(ctx: CreepContext): CreepAction {
  */
 export function remoteHauler(ctx: CreepContext): CreepAction {
   const isWorking = updateWorkingState(ctx);
-  const targetRoom = ctx.memory.targetRoom ?? ctx.memory.homeRoom;
+  const targetRoom = ctx.memory.targetRoom;
   const homeRoom = ctx.memory.homeRoom;
+
+  // If no targetRoom is set or targetRoom equals homeRoom, this remote hauler has no valid assignment
+  // It should idle until it gets reassigned or dies
+  if (!targetRoom || targetRoom === homeRoom) {
+    return { type: "idle" };
+  }
 
   if (isWorking) {
     // Has energy - return to home room and deliver

@@ -390,6 +390,7 @@ describe("remoteHauler behavior - delivery priority", () => {
         role: "remoteHauler",
         family: "economy",
         homeRoom: "E1N1",
+        targetRoom: "E2N1",
         version: 1,
         working: true
       };
@@ -445,6 +446,7 @@ describe("remoteHauler behavior - delivery priority", () => {
         role: "remoteHauler",
         family: "economy",
         homeRoom: "E1N1",
+        targetRoom: "E2N1",
         version: 1,
         working: true
       };
@@ -490,6 +492,164 @@ describe("remoteHauler behavior - delivery priority", () => {
       if (action.type === "transfer") {
         assert.equal(action.target, storage, "Remote hauler should deliver to storage when higher priority targets full");
       }
+    });
+  });
+
+  describe("when remote hauler has no valid targetRoom", () => {
+    it("should idle when targetRoom is undefined", () => {
+      const creep = createMockCreep({ freeCapacity: 50, usedCapacity: 0 });
+
+      const fullMemory: SwarmCreepMemory = {
+        role: "remoteHauler",
+        family: "economy",
+        homeRoom: "E1N1",
+        version: 1,
+        working: false
+        // Note: targetRoom is intentionally undefined
+      };
+
+      const mockRoom = createMockRoom();
+      const ctx: CreepContext = {
+        creep,
+        room: mockRoom,
+        memory: fullMemory,
+        swarmState: undefined,
+        squadMemory: undefined,
+        homeRoom: "E1N1",
+        targetRoom: undefined,
+        isInHomeRoom: true,
+        isInTargetRoom: false,
+        isFull: false,
+        isEmpty: true,
+        isWorking: false,
+        assignedSource: null,
+        assignedMineral: null,
+        energyAvailable: true,
+        nearbyEnemies: false,
+        constructionSiteCount: 0,
+        damagedStructureCount: 0,
+        droppedResources: [],
+        containers: [],
+        depositContainers: [],
+        spawnStructures: [],
+        towers: [],
+        storage: undefined,
+        terminal: undefined,
+        hostiles: [],
+        damagedAllies: [],
+        prioritizedSites: [],
+        repairTargets: [],
+        labs: [],
+        factory: undefined
+      };
+
+      const action = remoteHauler(ctx);
+
+      assert.equal(action.type, "idle", "Remote hauler without targetRoom should idle");
+    });
+
+    it("should idle when targetRoom equals homeRoom", () => {
+      const creep = createMockCreep({ freeCapacity: 50, usedCapacity: 0 });
+
+      const fullMemory: SwarmCreepMemory = {
+        role: "remoteHauler",
+        family: "economy",
+        homeRoom: "E1N1",
+        targetRoom: "E1N1", // Same as homeRoom - invalid assignment
+        version: 1,
+        working: false
+      };
+
+      const mockRoom = createMockRoom();
+      const ctx: CreepContext = {
+        creep,
+        room: mockRoom,
+        memory: fullMemory,
+        swarmState: undefined,
+        squadMemory: undefined,
+        homeRoom: "E1N1",
+        targetRoom: "E1N1", // Same as homeRoom
+        isInHomeRoom: true,
+        isInTargetRoom: true, // Since targetRoom == homeRoom
+        isFull: false,
+        isEmpty: true,
+        isWorking: false,
+        assignedSource: null,
+        assignedMineral: null,
+        energyAvailable: true,
+        nearbyEnemies: false,
+        constructionSiteCount: 0,
+        damagedStructureCount: 0,
+        droppedResources: [],
+        containers: [],
+        depositContainers: [],
+        spawnStructures: [],
+        towers: [],
+        storage: undefined,
+        terminal: undefined,
+        hostiles: [],
+        damagedAllies: [],
+        prioritizedSites: [],
+        repairTargets: [],
+        labs: [],
+        factory: undefined
+      };
+
+      const action = remoteHauler(ctx);
+
+      assert.equal(action.type, "idle", "Remote hauler with targetRoom same as homeRoom should idle");
+    });
+
+    it("should idle when full but has no valid targetRoom", () => {
+      const creep = createMockCreep({ freeCapacity: 0, usedCapacity: 50 });
+
+      const fullMemory: SwarmCreepMemory = {
+        role: "remoteHauler",
+        family: "economy",
+        homeRoom: "E1N1",
+        version: 1,
+        working: true
+        // Note: targetRoom is intentionally undefined
+      };
+
+      const mockRoom = createMockRoom();
+      const ctx: CreepContext = {
+        creep,
+        room: mockRoom,
+        memory: fullMemory,
+        swarmState: undefined,
+        squadMemory: undefined,
+        homeRoom: "E1N1",
+        targetRoom: undefined,
+        isInHomeRoom: true,
+        isInTargetRoom: false,
+        isFull: true,
+        isEmpty: false,
+        isWorking: true,
+        assignedSource: null,
+        assignedMineral: null,
+        energyAvailable: true,
+        nearbyEnemies: false,
+        constructionSiteCount: 0,
+        damagedStructureCount: 0,
+        droppedResources: [],
+        containers: [],
+        depositContainers: [],
+        spawnStructures: [],
+        towers: [],
+        storage: undefined,
+        terminal: undefined,
+        hostiles: [],
+        damagedAllies: [],
+        prioritizedSites: [],
+        repairTargets: [],
+        labs: [],
+        factory: undefined
+      };
+
+      const action = remoteHauler(ctx);
+
+      assert.equal(action.type, "idle", "Remote hauler with energy but no targetRoom should idle instead of delivering locally");
     });
   });
 });
