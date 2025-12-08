@@ -21,6 +21,7 @@ import { memorySegmentStats } from "./memorySegmentStats";
 import { profiler } from "./profiler";
 import { getConfig, updateConfig } from "../config";
 import { roomVisualizer } from "../visuals/roomVisualizer";
+import { mapVisualizer } from "../visuals/mapVisualizer";
 
 /**
  * Logging commands
@@ -93,12 +94,12 @@ class VisualizationCommands {
 
   @Command({
     name: "toggleVisualization",
-    description: "Toggle a specific visualization feature",
+    description: "Toggle a specific room visualization feature",
     usage: "toggleVisualization(key)",
     examples: [
       "toggleVisualization('showPheromones')",
       "toggleVisualization('showPaths')",
-      "toggleVisualization('showRoles')"
+      "toggleVisualization('showCombat')"
     ],
     category: "Visualization"
   })
@@ -116,7 +117,50 @@ class VisualizationCommands {
     roomVisualizer.toggle(validKey);
     const newConfig = roomVisualizer.getConfig();
     const value = newConfig[validKey];
-    return `Visualization '${key}': ${value ? "ENABLED" : "DISABLED"}`;
+    return `Room visualization '${key}': ${value ? "ENABLED" : "DISABLED"}`;
+  }
+
+  @Command({
+    name: "toggleMapVisualization",
+    description: "Toggle a specific map visualization feature",
+    usage: "toggleMapVisualization(key)",
+    examples: [
+      "toggleMapVisualization('showRoomStatus')",
+      "toggleMapVisualization('showConnections')",
+      "toggleMapVisualization('showThreats')",
+      "toggleMapVisualization('showExpansion')"
+    ],
+    category: "Visualization"
+  })
+  public toggleMapVisualization(key: string): string {
+    const config = mapVisualizer.getConfig();
+    const validKeys = Object.keys(config).filter(
+      k => k.startsWith("show") && typeof config[k as keyof typeof config] === "boolean"
+    );
+
+    if (!validKeys.includes(key)) {
+      return `Invalid key: ${key}. Valid keys: ${validKeys.join(", ")}`;
+    }
+
+    const validKey = key as keyof typeof config;
+    mapVisualizer.toggle(validKey);
+    const newConfig = mapVisualizer.getConfig();
+    const value = newConfig[validKey];
+    return `Map visualization '${key}': ${value ? "ENABLED" : "DISABLED"}`;
+  }
+
+  @Command({
+    name: "showMapConfig",
+    description: "Show current map visualization configuration",
+    usage: "showMapConfig()",
+    examples: ["showMapConfig()"],
+    category: "Visualization"
+  })
+  public showMapConfig(): string {
+    const config = mapVisualizer.getConfig();
+    return Object.entries(config)
+      .map(([key, value]) => `${key}: ${String(value)}`)
+      .join("\n");
   }
 }
 
