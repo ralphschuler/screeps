@@ -182,9 +182,10 @@ function findExplorePosition(room: Room): RoomPosition | null {
  * Scout - Explore and map rooms.
  *
  * Movement strategy to prevent exit cycling:
- * 1. When on a room exit tile, ALWAYS move off first before deciding next action
- * 2. This prevents PathFinder from routing back through the exit
- * 3. Only after moving off exit do we find the next exploration target
+ * 1. When on a room exit and actively traveling to a different target room, 
+ *    let the movement system handle the exit (don't interrupt)
+ * 2. When on an exit with no target or at the target room, move off the exit
+ * 3. Track last explored room to avoid immediately cycling back
  * 
  * OPTIMIZATION: Only record intel when:
  * - Entering a new room (not seen before)
@@ -194,15 +195,6 @@ function findExplorePosition(room: Room): RoomPosition | null {
  */
 export function scout(ctx: CreepContext): CreepAction {
   const overmind = getOvermind();
-
-  // CRITICAL: If on a room exit tile, move off FIRST before any other logic.
-  // This prevents the cycling behavior where the scout enters a room but immediately
-  // gets routed back out because PathFinder sees the exit as the shortest path.
-  if (isCreepOnRoomExit(ctx.creep)) {
-    // Find a position toward the room center (away from the exit)
-    const centerPos = new RoomPosition(25, 25, ctx.room.name);
-    return { type: "moveTo", target: centerPos };
-  }
 
   // Track the last room we fully explored (not just passed through)
   const lastExploredRoom = ctx.memory.lastExploredRoom as string | undefined;
@@ -222,7 +214,19 @@ export function scout(ctx: CreepContext): CreepAction {
     }
   }
 
-  // Move to target room
+  // CRITICAL: Only handle exits when we're NOT traveling to a different room.
+  // If we have a target room that's different from current room, the movement system
+  // in movement.ts (lines 505-540) already handles exit clearing properly.
+  // Interrupting that process causes the cycling behavior.
+  const travelingToOtherRoom = targetRoom && ctx.room.name !== targetRoom;
+  
+  if (isCreepOnRoomExit(ctx.creep) && !travelingToOtherRoom) {
+    // We're on an exit but not traveling - move toward room center
+    const centerPos = new RoomPosition(25, 25, ctx.room.name);
+    return { type: "moveTo", target: centerPos };
+  }
+
+  // Move to target room (movement.ts will handle exit clearing if needed)
   if (targetRoom && ctx.room.name !== targetRoom) {
     return { type: "moveToRoom", roomName: targetRoom };
   }
