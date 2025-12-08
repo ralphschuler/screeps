@@ -31,6 +31,23 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Configure Git
+        working-directory: .
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit build files to main
+        working-directory: .
+        run: |
+          git add packages/screeps-bot/dist/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update build files [skip ci]"
+            git push origin main
+          fi
+
       - name: Archive build output
         run: tar -czf dist.tar.gz dist
 
