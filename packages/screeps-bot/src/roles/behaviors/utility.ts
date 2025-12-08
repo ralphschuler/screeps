@@ -125,8 +125,13 @@ function recordRoomIntel(room: Room, overmind: Record<string, unknown>): void {
 
 /**
  * Find the next unexplored adjacent room.
+ * Avoids the previous room to prevent cycling between two rooms.
  */
-function findNextExploreTarget(currentRoom: string, overmind: Record<string, unknown>): string | undefined {
+function findNextExploreTarget(
+  currentRoom: string,
+  overmind: Record<string, unknown>,
+  previousRoom?: string
+): string | undefined {
   const roomsSeen = overmind.roomsSeen as Record<string, number>;
   const exits = Game.map.describeExits(currentRoom);
   if (!exits) return undefined;
@@ -134,6 +139,9 @@ function findNextExploreTarget(currentRoom: string, overmind: Record<string, unk
   const candidates: { room: string; lastSeen: number }[] = [];
 
   for (const [, roomName] of Object.entries(exits)) {
+    // Skip the previous room to prevent cycling
+    if (previousRoom && roomName === previousRoom) continue;
+
     const lastSeen = roomsSeen[roomName] ?? 0;
     if (Game.time - lastSeen > 1000) {
       candidates.push({ room: roomName, lastSeen });
@@ -196,15 +204,21 @@ export function scout(ctx: CreepContext): CreepAction {
     return { type: "moveTo", target: centerPos };
   }
 
+  // Track the last room we fully explored (not just passed through)
+  const lastExploredRoom = ctx.memory.lastExploredRoom as string | undefined;
+
   // Find or assign target room
   let targetRoom = ctx.memory.targetRoom;
 
   if (!targetRoom || ctx.room.name === targetRoom) {
-    targetRoom = findNextExploreTarget(ctx.room.name, overmind);
+    // Pass lastExploredRoom to avoid cycling back to the room we just explored
+    targetRoom = findNextExploreTarget(ctx.room.name, overmind, lastExploredRoom);
     if (targetRoom) {
       ctx.memory.targetRoom = targetRoom;
     } else {
       delete ctx.memory.targetRoom;
+      // If no valid target found, clear lastExploredRoom to expand search
+      delete ctx.memory.lastExploredRoom;
     }
   }
 
@@ -224,6 +238,8 @@ export function scout(ctx: CreepContext): CreepAction {
       const INTEL_GATHER_RANGE = 3;
       if (ctx.creep.pos.getRangeTo(explorePos) <= INTEL_GATHER_RANGE) {
         recordRoomIntel(ctx.room, overmind);
+        // Mark this room as last explored so we don't immediately return to it
+        ctx.memory.lastExploredRoom = ctx.room.name;
         delete ctx.memory.targetRoom; // Done exploring, move to next room
       } else {
         // Still moving to explore position
@@ -232,6 +248,8 @@ export function scout(ctx: CreepContext): CreepAction {
     } else {
       // No valid explore position, record intel and move on
       recordRoomIntel(ctx.room, overmind);
+      // Mark this room as last explored so we don't immediately return to it
+      ctx.memory.lastExploredRoom = ctx.room.name;
       delete ctx.memory.targetRoom;
     }
   }

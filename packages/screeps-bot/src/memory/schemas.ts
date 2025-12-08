@@ -404,6 +404,8 @@ export interface SwarmCreepMemory {
   homeRoom: string;
   /** Target room (if different from home) */
   targetRoom?: string;
+  /** Last explored room (for scouts to avoid cycling) */
+  lastExploredRoom?: string;
   /** Current task */
   task?: string;
   /** Source ID (for harvesters) */
