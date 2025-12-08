@@ -176,11 +176,12 @@ export function getMoveRequests(pos: RoomPosition): MoveRequest[] {
  */
 const ROLE_PRIORITIES: Record<string, number> = {
   // Military - highest priority
-  defender: 100,
-  rangedDefender: 95,
-  healer: 90,
-  soldier: 85,
-  siegeUnit: 80,
+  guard: 100,
+  healer: 95,
+  soldier: 90,
+  ranger: 88,
+  siegeUnit: 85,
+  harasser: 82,
 
   // Critical economy
   harvester: 75,
@@ -193,15 +194,24 @@ const ROLE_PRIORITIES: Record<string, number> = {
   upgrader: 50,
   builder: 45,
   larvaWorker: 40,
+  interRoomCarrier: 38,
 
   // Utility
   scout: 35,
   claimer: 30,
-  engineer: 25,
+  engineer: 28,
+  remoteWorker: 26,
+  linkManager: 24,
+  terminalManager: 22,
+
+  // Power roles
+  powerQueen: 80,
+  powerWarrior: 78,
+  powerHarvester: 27,
+  powerCarrier: 25,
 
   // Low priority
   mineralHarvester: 20,
-  depositHarvester: 15,
   labTech: 10,
   factoryWorker: 5
 };

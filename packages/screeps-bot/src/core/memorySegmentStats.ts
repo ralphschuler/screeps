@@ -299,6 +299,12 @@ export class MemorySegmentStats {
         statsRoot[`${roomPrefix}.metrics.energy.construction`] = metrics.energyConstruction;
         statsRoot[`${roomPrefix}.metrics.energy.repair`] = metrics.energyRepair;
         statsRoot[`${roomPrefix}.metrics.energy.tower`] = metrics.energyTower;
+        // Energy available for inter-room sharing (storage + containers - reserved)
+        statsRoot[`${roomPrefix}.metrics.energy.available_for_sharing`] = metrics.energyAvailable;
+        // Total energy capacity (storage + containers)
+        statsRoot[`${roomPrefix}.metrics.energy.capacity_total`] = metrics.energyCapacity;
+        // Energy need level: 0=no need, 1=low, 2=medium, 3=critical
+        statsRoot[`${roomPrefix}.metrics.energy.need`] = metrics.energyNeed;
         statsRoot[`${roomPrefix}.metrics.controller_progress`] = metrics.controllerProgress;
         statsRoot[`${roomPrefix}.metrics.hostile_count`] = metrics.hostileCount;
         statsRoot[`${roomPrefix}.metrics.damage_received`] = metrics.damageReceived;
