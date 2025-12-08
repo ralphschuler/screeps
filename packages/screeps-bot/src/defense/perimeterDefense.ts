@@ -131,56 +131,70 @@ export function identifyChokePoints(roomName: string, exits: ExitPosition[]): Ex
 
 /**
  * Calculate optimal perimeter defense positions
- * Returns positions two tiles inside the room from exits to allow construction
+ * Creates continuous wall lines with strategic gaps (ramparts) for friendly passage.
  * 
  * Screeps requires walls/ramparts to be placed at least 2 tiles from room exits.
  * Exit tiles are at coordinates 0 and 49, so walls must be at 2 and 47.
+ * 
+ * Strategy:
+ * - Build continuous walls along x=2, x=47, y=2, y=47
+ * - Create gaps (rampart-only positions) at strategic locations for friendly passage
+ * - Gaps are placed at the center of each exit line for easy access
  */
 export function calculatePerimeterPositions(roomName: string): PerimeterPlan {
-  const exits = findRoomExits(roomName);
-  const chokePoints = identifyChokePoints(roomName, exits);
   const terrain = Game.map.getRoomTerrain(roomName);
-
   const walls: ExitPosition[] = [];
   const ramparts: ExitPosition[] = [];
 
-  // For each exit, place a wall two tiles inside the room
-  // This ensures compliance with Screeps' requirement that walls/ramparts
-  // must be at least 2 tiles away from exits
-  for (const exit of exits) {
-    // Calculate position two tiles inside the room
-    let innerX = exit.x;
-    let innerY = exit.y;
-
-    switch (exit.exitDirection) {
-      case "top":
-        innerY = 2;
-        break;
-      case "bottom":
-        innerY = 47;
-        break;
-      case "left":
-        innerX = 2;
-        break;
-      case "right":
-        innerX = 47;
-        break;
+  // Build continuous perimeter walls at 2 tiles from edges
+  // with gaps for ramparts at center positions
+  
+  // Top wall (y=2): x from 2 to 47, gap at center (x=24-25)
+  for (let x = 2; x <= 47; x++) {
+    if (terrain.get(x, 2) === TERRAIN_MASK_WALL) continue;
+    
+    // Create gap at center for friendly passage
+    if (x >= 24 && x <= 25) {
+      ramparts.push({ x, y: 2, exitDirection: "top", isChokePoint: false });
+    } else {
+      walls.push({ x, y: 2, exitDirection: "top", isChokePoint: false });
     }
+  }
 
-    // Skip if position is a wall
-    if (terrain.get(innerX, innerY) === TERRAIN_MASK_WALL) {
-      continue;
+  // Bottom wall (y=47): x from 2 to 47, gap at center (x=24-25)
+  for (let x = 2; x <= 47; x++) {
+    if (terrain.get(x, 47) === TERRAIN_MASK_WALL) continue;
+    
+    // Create gap at center for friendly passage
+    if (x >= 24 && x <= 25) {
+      ramparts.push({ x, y: 47, exitDirection: "bottom", isChokePoint: false });
+    } else {
+      walls.push({ x, y: 47, exitDirection: "bottom", isChokePoint: false });
     }
+  }
 
-    const innerExit: ExitPosition = {
-      x: innerX,
-      y: innerY,
-      exitDirection: exit.exitDirection,
-      isChokePoint: exit.isChokePoint
-    };
+  // Left wall (x=2): y from 2 to 47, gap at center (y=24-25)
+  for (let y = 2; y <= 47; y++) {
+    if (terrain.get(2, y) === TERRAIN_MASK_WALL) continue;
+    
+    // Create gap at center for friendly passage
+    if (y >= 24 && y <= 25) {
+      ramparts.push({ x: 2, y, exitDirection: "left", isChokePoint: false });
+    } else {
+      walls.push({ x: 2, y, exitDirection: "left", isChokePoint: false });
+    }
+  }
 
-    // Add all exits to walls array; priority is handled during placement
-    walls.push(innerExit);
+  // Right wall (x=47): y from 2 to 47, gap at center (y=24-25)
+  for (let y = 2; y <= 47; y++) {
+    if (terrain.get(47, y) === TERRAIN_MASK_WALL) continue;
+    
+    // Create gap at center for friendly passage
+    if (y >= 24 && y <= 25) {
+      ramparts.push({ x: 47, y, exitDirection: "right", isChokePoint: false });
+    } else {
+      walls.push({ x: 47, y, exitDirection: "right", isChokePoint: false });
+    }
   }
 
   return { walls, ramparts };
@@ -189,14 +203,20 @@ export function calculatePerimeterPositions(roomName: string): PerimeterPlan {
 /**
  * Place perimeter defense construction sites
  * 
- * Places walls and ramparts at exit positions to defend the room.
- * Ramparts are placed on top of walls to allow friendly creeps to pass
- * while blocking enemies (per ROADMAP Section 17 - Mauern & Ramparts).
+ * Builds continuous perimeter walls with strategic gaps (ramparts only) for friendly passage.
+ * Walls form a complete barrier around the room, with rampart-only gaps at central positions
+ * on each side to allow friendly creeps to pass while blocking enemies.
+ * 
+ * Strategy (per ROADMAP Section 17 - Mauern & Ramparts):
+ * - Walls block all creeps
+ * - Ramparts (without walls underneath) allow friendly creeps but block enemies
+ * - Build continuous walls along perimeter (x=2, x=47, y=2, y=47)
+ * - Create 2-tile wide gaps at center of each side with ramparts only
  * 
  * @param room The room to defend
  * @param rcl Current room control level
  * @param maxSites Maximum construction sites to place
- * @param prioritizeChokePoints Whether to prioritize choke points
+ * @param prioritizeChokePoints Whether to prioritize choke points (not used in new strategy)
  * @returns Number of sites placed
  */
 export function placePerimeterDefense(
@@ -206,8 +226,8 @@ export function placePerimeterDefense(
   prioritizeChokePoints = true
 ): number {
   // RCL requirements
-  // RCL 2: Start placing walls at choke points
-  // RCL 3+: Place walls at all exits, add ramparts to all walls for friendly passage
+  // RCL 2: Start placing perimeter walls
+  // RCL 3+: Complete perimeter walls and add ramparts at gap positions
   if (rcl < 2) return 0;
 
   const plan = calculatePerimeterPositions(room.name);
@@ -237,15 +257,13 @@ export function placePerimeterDefense(
   const wallLimit = rcl >= 2 ? 2500 : 0;
   const rampartLimit = rcl >= 2 ? 2500 : 0;
 
-  // Priority 1: Choke points with walls (RCL 2+)
-  if (prioritizeChokePoints && rcl >= 2 && wallCount < wallLimit) {
-    const chokeWalls = plan.walls.filter(w => w.isChokePoint);
-    
-    for (const wall of chokeWalls) {
+  // Priority 1: Place walls along perimeter (RCL 2+)
+  if (rcl >= 2 && placed < maxToPlace && wallCount < wallLimit) {
+    for (const wall of plan.walls) {
       if (placed >= maxToPlace) break;
       if (wallCount + placed >= wallLimit) break;
 
-      // Check if already exists
+      // Check if position already has a structure or site
       const hasStructure = existingStructures.some(
         s => s.pos.x === wall.x && s.pos.y === wall.y && 
         (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART)
@@ -260,7 +278,7 @@ export function placePerimeterDefense(
         if (result === OK) {
           placed++;
           logger.debug(
-            `Placed perimeter wall at choke point (${wall.x},${wall.y})`,
+            `Placed perimeter wall at (${wall.x},${wall.y})`,
             { subsystem: "Defense" }
           );
         }
@@ -268,68 +286,34 @@ export function placePerimeterDefense(
     }
   }
 
-  // Priority 2: Regular exit walls (RCL 3+)
-  if (rcl >= 3 && placed < maxToPlace && wallCount < wallLimit) {
-    const regularWalls = plan.walls.filter(w => !w.isChokePoint);
-    
-    for (const wall of regularWalls) {
-      if (placed >= maxToPlace) break;
-      if (wallCount + placed >= wallLimit) break;
-
-      const hasStructure = existingStructures.some(
-        s => s.pos.x === wall.x && s.pos.y === wall.y &&
-        (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART)
-      );
-      const hasSite = existingSites.some(
-        s => s.pos.x === wall.x && s.pos.y === wall.y &&
-        (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART)
-      );
-
-      if (!hasStructure && !hasSite) {
-        const result = room.createConstructionSite(wall.x, wall.y, STRUCTURE_WALL);
-        if (result === OK) {
-          placed++;
-          logger.debug(
-            `Placed perimeter wall at exit (${wall.x},${wall.y})`,
-            { subsystem: "Defense" }
-          );
-        }
-      }
-    }
-  }
-
-  // Priority 3: Ramparts at ALL exit walls (RCL 3+, after walls)
-  // This allows friendly creeps to pass through while blocking enemies
+  // Priority 2: Place ramparts at gap positions (RCL 3+)
+  // These are rampart-only positions (no wall underneath) to allow friendly passage
   if (rcl >= 3 && placed < maxToPlace && rampartCount < rampartLimit) {
-    // Place ramparts at ALL wall positions to allow friendly passage
-    // Per ROADMAP Section 17 - Mauern & Ramparts: Ramparts allow friendly creeps to pass but block enemies
-    for (const pos of plan.walls) {
+    for (const rampart of plan.ramparts) {
       if (placed >= maxToPlace) break;
       if (rampartCount + placed >= rampartLimit) break;
 
-      // Only place rampart if there's already a wall here
-      const hasWall = existingStructures.some(
-        s => s.pos.x === pos.x && s.pos.y === pos.y && s.structureType === STRUCTURE_WALL
+      // Check if position already has a rampart
+      const hasRampart = existingStructures.some(
+        s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART
       );
-      
-      if (hasWall) {
-        const hasRampart = existingStructures.some(
-          s => s.pos.x === pos.x && s.pos.y === pos.y && s.structureType === STRUCTURE_RAMPART
-        );
-        const hasRampartSite = existingSites.some(
-          s => s.pos.x === pos.x && s.pos.y === pos.y && s.structureType === STRUCTURE_RAMPART
-        );
+      const hasRampartSite = existingSites.some(
+        s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART
+      );
 
-        if (!hasRampart && !hasRampartSite) {
-          // Place rampart on the same tile as wall to allow friendly passage
-          const result = room.createConstructionSite(pos.x, pos.y, STRUCTURE_RAMPART);
-          if (result === OK) {
-            placed++;
-            logger.debug(
-              `Placed perimeter rampart at exit wall (${pos.x},${pos.y})`,
-              { subsystem: "Defense" }
-            );
-          }
+      // Don't place if there's a wall here (walls should not be at rampart-only positions)
+      const hasWall = existingStructures.some(
+        s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_WALL
+      );
+
+      if (!hasRampart && !hasRampartSite && !hasWall) {
+        const result = room.createConstructionSite(rampart.x, rampart.y, STRUCTURE_RAMPART);
+        if (result === OK) {
+          placed++;
+          logger.debug(
+            `Placed perimeter rampart gap at (${rampart.x},${rampart.y})`,
+            { subsystem: "Defense" }
+          );
         }
       }
     }
