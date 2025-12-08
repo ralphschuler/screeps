@@ -213,7 +213,6 @@ export function scout(ctx: CreepContext): CreepAction {
   // Explore current room - move toward center to gather intel
   // Only record intel when we're actively exploring (at target room)
   if (targetRoom && ctx.room.name === targetRoom) {
-    // Record intel when exploring target room
     recordRoomIntel(ctx.room, overmind);
     
     const explorePos = findExplorePosition(ctx.room);
