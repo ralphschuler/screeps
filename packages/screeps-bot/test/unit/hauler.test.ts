@@ -93,13 +93,13 @@ function createMockTower(freeCapacity: number): StructureTower {
 /**
  * Create a mock storage for testing
  */
-function createMockStorage(freeCapacity: number): StructureStorage {
+function createMockStorage(freeCapacity: number, usedCapacity: number = 10000): StructureStorage {
   return {
     id: "mockStorageId" as Id<StructureStorage>,
     structureType: STRUCTURE_STORAGE,
     store: {
       getFreeCapacity: () => freeCapacity,
-      getUsedCapacity: () => 10000
+      getUsedCapacity: () => usedCapacity
     }
   } as unknown as StructureStorage;
 }
@@ -354,6 +354,25 @@ describe("hauler behavior - delivery priority", () => {
       const action = hauler(ctx);
 
       assert.equal(action.type, "withdraw");
+    });
+
+    it("should collect from storage when no dropped resources or containers", () => {
+      const creep = createMockCreep({ freeCapacity: 50, usedCapacity: 0 });
+      const storage = createMockStorage(5000);
+
+      const ctx = createMockContext(creep, {
+        isWorking: false,
+        droppedResources: [],
+        containers: [],
+        storage: storage
+      });
+
+      const action = hauler(ctx);
+
+      assert.equal(action.type, "withdraw");
+      if (action.type === "withdraw") {
+        assert.equal(action.target, storage, "Should collect from storage when containers are empty");
+      }
     });
   });
 });

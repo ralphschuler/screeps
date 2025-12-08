@@ -320,6 +320,11 @@ export function hauler(ctx: CreepContext): CreepAction {
     if (closest) return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
   }
 
+  // 4. Storage (single target, no caching needed)
+  if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+    return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+  }
+
   return { type: "idle" };
 }
 
