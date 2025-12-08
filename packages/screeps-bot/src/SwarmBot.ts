@@ -41,6 +41,8 @@ import { memorySegmentStats } from "./core/memorySegmentStats";
 import { getConfig } from "./config";
 import { LogLevel, configureLogger, logger } from "./core/logger";
 import { canSkipBehaviorEvaluation, executeIdleAction } from "./utils/idleDetection";
+import { initializeNativeCallsTracking } from "./core/nativeCallsTracker";
+import { statsManager } from "./core/stats";
 
 // =============================================================================
 // Role Priority Configuration
@@ -330,7 +332,6 @@ function initializeSystems(): void {
 
   // Initialize native calls tracking if enabled
   if (config.profiling) {
-    const { initializeNativeCallsTracking } = require("./core/nativeCallsTracker");
     initializeNativeCallsTracking();
   }
 
@@ -502,9 +503,8 @@ export function loop(): void {
 
   // Update empire stats
   profiler.measureSubsystem("stats", () => {
-    const { statsManager: stats } = require("./core/stats");
-    stats.updateEmpireStats();
-    stats.finalizeTick();
+    statsManager.updateEmpireStats();
+    statsManager.finalizeTick();
   });
 
   // Finalize profiler tick (which will also update stats)
