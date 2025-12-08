@@ -690,6 +690,48 @@ export class RoomManager {
   public getAllNodes(): RoomNode[] {
     return Array.from(this.nodes.values());
   }
+
+  /**
+   * Run a specific room (for kernel process integration)
+   * Creates or gets the node for the room and runs it
+   */
+  public runRoom(room: Room): void {
+    if (!room.controller?.my) {
+      return;
+    }
+
+    // Ensure node exists for this room
+    if (!this.nodes.has(room.name)) {
+      this.nodes.set(room.name, new RoomNode(room.name));
+    }
+
+    // Get total owned rooms count (cached in global)
+    const cacheKey = "_ownedRooms";
+    const cacheTickKey = "_ownedRoomsTick";
+    const globalCache = global as unknown as Record<string, Room[] | number | undefined>;
+    const cachedRooms = globalCache[cacheKey] as Room[] | undefined;
+    const cachedTick = globalCache[cacheTickKey] as number | undefined;
+
+    let totalOwned: number;
+    if (cachedRooms && cachedTick === Game.time) {
+      totalOwned = cachedRooms.length;
+    } else {
+      // Fallback: count owned rooms
+      totalOwned = Object.values(Game.rooms).filter(r => r.controller?.my).length;
+    }
+
+    // Run the node
+    const node = this.nodes.get(room.name)!;
+    try {
+      node.run(totalOwned);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.log(`[RoomManager] ERROR in room ${room.name}: ${errorMessage}`);
+      if (err instanceof Error && err.stack) {
+        console.log(err.stack);
+      }
+    }
+  }
 }
 
 /**

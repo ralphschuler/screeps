@@ -7491,382 +7491,6 @@ class MapVisualizer {
 const mapVisualizer = new MapVisualizer();
 
 /**
- * Console Commands
- *
- * All console commands available in the game using @Command decorators.
- * Commands are automatically registered and exposed to global scope.
- *
- * Categories:
- * - Logging: Commands for controlling log output
- * - Visualization: Commands for toggling visual overlays
- * - Statistics: Commands for viewing bot statistics
- * - Kernel: Commands for managing kernel processes
- * - Configuration: Commands for viewing/modifying bot configuration
- */
-/**
- * Logging commands
- */
-class LoggingCommands {
-    setLogLevel(level) {
-        const levelMap = {
-            debug: LogLevel.DEBUG,
-            info: LogLevel.INFO,
-            warn: LogLevel.WARN,
-            error: LogLevel.ERROR,
-            none: LogLevel.NONE
-        };
-        const logLevel = levelMap[level.toLowerCase()];
-        if (logLevel === undefined) {
-            return `Invalid log level: ${level}. Valid levels: debug, info, warn, error, none`;
-        }
-        configureLogger({ level: logLevel });
-        return `Log level set to: ${level.toUpperCase()}`;
-    }
-    toggleDebug() {
-        const config = getConfig();
-        const newValue = !config.debug;
-        updateConfig({ debug: newValue });
-        configureLogger({ level: newValue ? LogLevel.DEBUG : LogLevel.INFO });
-        return `Debug mode: ${newValue ? "ENABLED" : "DISABLED"} (Log level: ${newValue ? "DEBUG" : "INFO"})`;
-    }
-}
-__decorate([
-    Command({
-        name: "setLogLevel",
-        description: "Set the log level for the bot",
-        usage: "setLogLevel(level)",
-        examples: [
-            "setLogLevel('debug')",
-            "setLogLevel('info')",
-            "setLogLevel('warn')",
-            "setLogLevel('error')",
-            "setLogLevel('none')"
-        ],
-        category: "Logging"
-    })
-], LoggingCommands.prototype, "setLogLevel", null);
-__decorate([
-    Command({
-        name: "toggleDebug",
-        description: "Toggle debug mode on/off (affects log level and debug features)",
-        usage: "toggleDebug()",
-        examples: ["toggleDebug()"],
-        category: "Logging"
-    })
-], LoggingCommands.prototype, "toggleDebug", null);
-/**
- * Visualization commands
- */
-class VisualizationCommands {
-    toggleVisualizations() {
-        const config = getConfig();
-        const newValue = !config.visualizations;
-        updateConfig({ visualizations: newValue });
-        return `Visualizations: ${newValue ? "ENABLED" : "DISABLED"}`;
-    }
-    toggleVisualization(key) {
-        const config = roomVisualizer.getConfig();
-        const validKeys = Object.keys(config).filter(k => k.startsWith("show") && typeof config[k] === "boolean");
-        if (!validKeys.includes(key)) {
-            return `Invalid key: ${key}. Valid keys: ${validKeys.join(", ")}`;
-        }
-        const validKey = key;
-        roomVisualizer.toggle(validKey);
-        const newConfig = roomVisualizer.getConfig();
-        const value = newConfig[validKey];
-        return `Room visualization '${key}': ${value ? "ENABLED" : "DISABLED"}`;
-    }
-    toggleMapVisualization(key) {
-        const config = mapVisualizer.getConfig();
-        const validKeys = Object.keys(config).filter(k => k.startsWith("show") && typeof config[k] === "boolean");
-        if (!validKeys.includes(key)) {
-            return `Invalid key: ${key}. Valid keys: ${validKeys.join(", ")}`;
-        }
-        const validKey = key;
-        mapVisualizer.toggle(validKey);
-        const newConfig = mapVisualizer.getConfig();
-        const value = newConfig[validKey];
-        return `Map visualization '${key}': ${value ? "ENABLED" : "DISABLED"}`;
-    }
-    showMapConfig() {
-        const config = mapVisualizer.getConfig();
-        return Object.entries(config)
-            .map(([key, value]) => `${key}: ${String(value)}`)
-            .join("\n");
-    }
-}
-__decorate([
-    Command({
-        name: "toggleVisualizations",
-        description: "Toggle all visualizations on/off",
-        usage: "toggleVisualizations()",
-        examples: ["toggleVisualizations()"],
-        category: "Visualization"
-    })
-], VisualizationCommands.prototype, "toggleVisualizations", null);
-__decorate([
-    Command({
-        name: "toggleVisualization",
-        description: "Toggle a specific room visualization feature",
-        usage: "toggleVisualization(key)",
-        examples: [
-            "toggleVisualization('showPheromones')",
-            "toggleVisualization('showPaths')",
-            "toggleVisualization('showCombat')"
-        ],
-        category: "Visualization"
-    })
-], VisualizationCommands.prototype, "toggleVisualization", null);
-__decorate([
-    Command({
-        name: "toggleMapVisualization",
-        description: "Toggle a specific map visualization feature",
-        usage: "toggleMapVisualization(key)",
-        examples: [
-            "toggleMapVisualization('showRoomStatus')",
-            "toggleMapVisualization('showConnections')",
-            "toggleMapVisualization('showThreats')",
-            "toggleMapVisualization('showExpansion')"
-        ],
-        category: "Visualization"
-    })
-], VisualizationCommands.prototype, "toggleMapVisualization", null);
-__decorate([
-    Command({
-        name: "showMapConfig",
-        description: "Show current map visualization configuration",
-        usage: "showMapConfig()",
-        examples: ["showMapConfig()"],
-        category: "Visualization"
-    })
-], VisualizationCommands.prototype, "showMapConfig", null);
-/**
- * Statistics commands
- */
-class StatisticsCommands {
-    showStats() {
-        const stats = memorySegmentStats.getLatestStats();
-        if (!stats) {
-            return "No stats available yet. Wait for a few ticks.";
-        }
-        return `=== SwarmBot Stats (Tick ${stats.tick}) ===
-CPU: ${stats.cpuUsed.toFixed(2)}/${stats.cpuLimit} (Bucket: ${stats.cpuBucket})
-GCL: ${stats.gclLevel} (${(stats.gclProgress * 100).toFixed(1)}%)
-GPL: ${stats.gplLevel}
-Creeps: ${stats.totalCreeps}
-Rooms: ${stats.totalRooms}
-${stats.rooms.map(r => `  ${r.roomName}: RCL${r.rcl} | ${r.creepCount} creeps | ${r.storageEnergy}E`).join("\n")}`;
-    }
-    toggleProfiling() {
-        const config = getConfig();
-        const newValue = !config.profiling;
-        updateConfig({ profiling: newValue });
-        profiler.setEnabled(newValue);
-        configureLogger({ cpuLogging: newValue });
-        return `Profiling: ${newValue ? "ENABLED" : "DISABLED"}`;
-    }
-}
-__decorate([
-    Command({
-        name: "showStats",
-        description: "Show current bot statistics from memory segment",
-        usage: "showStats()",
-        examples: ["showStats()"],
-        category: "Statistics"
-    })
-], StatisticsCommands.prototype, "showStats", null);
-__decorate([
-    Command({
-        name: "toggleProfiling",
-        description: "Toggle CPU profiling on/off",
-        usage: "toggleProfiling()",
-        examples: ["toggleProfiling()"],
-        category: "Statistics"
-    })
-], StatisticsCommands.prototype, "toggleProfiling", null);
-/**
- * Configuration commands
- */
-class ConfigurationCommands {
-    showConfig() {
-        const config = getConfig();
-        const loggerConfig = getLoggerConfig();
-        return `=== SwarmBot Config ===
-Debug: ${String(config.debug)}
-Profiling: ${String(config.profiling)}
-Visualizations: ${String(config.visualizations)}
-Logger Level: ${LogLevel[loggerConfig.level]}
-CPU Logging: ${String(loggerConfig.cpuLogging)}`;
-    }
-}
-__decorate([
-    Command({
-        name: "showConfig",
-        description: "Show current bot configuration",
-        usage: "showConfig()",
-        examples: ["showConfig()"],
-        category: "Configuration"
-    })
-], ConfigurationCommands.prototype, "showConfig", null);
-/**
- * Kernel commands
- */
-class KernelCommands {
-    showKernelStats() {
-        const stats = kernel.getStatsSummary();
-        const config = kernel.getConfig();
-        const bucketMode = kernel.getBucketMode();
-        let output = `=== Kernel Stats ===
-Bucket Mode: ${bucketMode.toUpperCase()}
-CPU Bucket: ${Game.cpu.bucket}
-CPU Limit: ${kernel.getCpuLimit().toFixed(2)} (${(config.targetCpuUsage * 100).toFixed(0)}% of ${Game.cpu.limit})
-Remaining CPU: ${kernel.getRemainingCpu().toFixed(2)}
-
-Processes: ${stats.totalProcesses} total (${stats.activeProcesses} active, ${stats.suspendedProcesses} suspended)
-Total CPU Used: ${stats.totalCpuUsed.toFixed(3)}
-Avg CPU/Process: ${stats.avgCpuPerProcess.toFixed(4)}
-
-Top CPU Consumers:`;
-        for (const proc of stats.topCpuProcesses) {
-            output += `\n  ${proc.name}: ${proc.avgCpu.toFixed(4)} avg CPU`;
-        }
-        return output;
-    }
-    listProcesses() {
-        const processes = kernel.getProcesses();
-        if (processes.length === 0) {
-            return "No processes registered with kernel.";
-        }
-        let output = "=== Registered Processes ===\n";
-        output += "ID | Name | Priority | Frequency | State | Runs | Avg CPU | Skipped | Errors\n";
-        output += "-".repeat(90) + "\n";
-        const sorted = [...processes].sort((a, b) => b.priority - a.priority);
-        for (const p of sorted) {
-            const avgCpu = p.stats.avgCpu.toFixed(4);
-            output += `${p.id} | ${p.name} | ${p.priority} | ${p.frequency} | ${p.state} | ${p.stats.runCount} | ${avgCpu} | ${p.stats.skippedCount} | ${p.stats.errorCount}\n`;
-        }
-        return output;
-    }
-    suspendProcess(processId) {
-        const success = kernel.suspendProcess(processId);
-        if (success) {
-            return `Process "${processId}" suspended.`;
-        }
-        return `Process "${processId}" not found.`;
-    }
-    resumeProcess(processId) {
-        const success = kernel.resumeProcess(processId);
-        if (success) {
-            return `Process "${processId}" resumed.`;
-        }
-        return `Process "${processId}" not found or not suspended.`;
-    }
-    resetKernelStats() {
-        kernel.resetStats();
-        return "Kernel statistics reset.";
-    }
-}
-__decorate([
-    Command({
-        name: "showKernelStats",
-        description: "Show kernel statistics including CPU usage and process info",
-        usage: "showKernelStats()",
-        examples: ["showKernelStats()"],
-        category: "Kernel"
-    })
-], KernelCommands.prototype, "showKernelStats", null);
-__decorate([
-    Command({
-        name: "listProcesses",
-        description: "List all registered kernel processes",
-        usage: "listProcesses()",
-        examples: ["listProcesses()"],
-        category: "Kernel"
-    })
-], KernelCommands.prototype, "listProcesses", null);
-__decorate([
-    Command({
-        name: "suspendProcess",
-        description: "Suspend a kernel process by ID",
-        usage: "suspendProcess(processId)",
-        examples: ["suspendProcess('empire:manager')", "suspendProcess('cluster:manager')"],
-        category: "Kernel"
-    })
-], KernelCommands.prototype, "suspendProcess", null);
-__decorate([
-    Command({
-        name: "resumeProcess",
-        description: "Resume a suspended kernel process",
-        usage: "resumeProcess(processId)",
-        examples: ["resumeProcess('empire:manager')"],
-        category: "Kernel"
-    })
-], KernelCommands.prototype, "resumeProcess", null);
-__decorate([
-    Command({
-        name: "resetKernelStats",
-        description: "Reset all kernel process statistics",
-        usage: "resetKernelStats()",
-        examples: ["resetKernelStats()"],
-        category: "Kernel"
-    })
-], KernelCommands.prototype, "resetKernelStats", null);
-/**
- * System commands
- */
-class SystemCommands {
-    listCommands() {
-        return commandRegistry.generateHelp();
-    }
-    commandHelp(commandName) {
-        return commandRegistry.generateCommandHelp(commandName);
-    }
-}
-__decorate([
-    Command({
-        name: "listCommands",
-        description: "List all available commands (alias for help)",
-        usage: "listCommands()",
-        examples: ["listCommands()"],
-        category: "System"
-    })
-], SystemCommands.prototype, "listCommands", null);
-__decorate([
-    Command({
-        name: "commandHelp",
-        description: "Get detailed help for a specific command",
-        usage: "commandHelp(commandName)",
-        examples: ["commandHelp('setLogLevel')", "commandHelp('suspendProcess')"],
-        category: "System"
-    })
-], SystemCommands.prototype, "commandHelp", null);
-// =============================================================================
-// Command instances (singletons)
-// =============================================================================
-const loggingCommands = new LoggingCommands();
-const visualizationCommands = new VisualizationCommands();
-const statisticsCommands = new StatisticsCommands();
-const configurationCommands = new ConfigurationCommands();
-const kernelCommands = new KernelCommands();
-const systemCommands = new SystemCommands();
-/**
- * Register all console commands with the command registry
- */
-function registerAllConsoleCommands() {
-    // Initialize command registry first
-    commandRegistry.initialize();
-    // Register decorated commands from all command class instances
-    registerDecoratedCommands(loggingCommands);
-    registerDecoratedCommands(visualizationCommands);
-    registerDecoratedCommands(statisticsCommands);
-    registerDecoratedCommands(configurationCommands);
-    registerDecoratedCommands(kernelCommands);
-    registerDecoratedCommands(systemCommands);
-    // Expose all commands to global scope
-    commandRegistry.exposeToGlobal();
-}
-
-/**
  * Safe Find Utilities
  *
  * Provides wrapper functions for Room.find() and RoomPosition.find*() methods
@@ -7910,4740 +7534,6 @@ function safeFindClosestByRange(pos, type, opts) {
     catch (error) {
         logSafeFindError("pos.findClosestByRange", type, `${pos.roomName}:${String(pos.x)},${String(pos.y)}`, error);
         return null;
-    }
-}
-
-/**
- * Pheromone System - Phase 2
- *
- * Implements the pheromone-based coordination system:
- * - Metrics collection (rolling averages)
- * - Periodic pheromone updates
- * - Event-driven updates
- * - Pheromone diffusion
- */
-/**
- * Default pheromone configuration
- */
-const DEFAULT_PHEROMONE_CONFIG = {
-    updateInterval: 5,
-    decayFactors: {
-        expand: 0.95,
-        harvest: 0.9,
-        build: 0.92,
-        upgrade: 0.93,
-        defense: 0.97,
-        war: 0.98,
-        siege: 0.99,
-        logistics: 0.91,
-        nukeTarget: 0.99
-    },
-    diffusionRates: {
-        expand: 0.3,
-        harvest: 0.1,
-        build: 0.15,
-        upgrade: 0.1,
-        defense: 0.4,
-        war: 0.5,
-        siege: 0.6,
-        logistics: 0.2,
-        nukeTarget: 0.1
-    },
-    maxValue: 100,
-    minValue: 0
-};
-/**
- * Rolling average tracker for metrics
- */
-class RollingAverage {
-    constructor(maxSamples = 10) {
-        this.maxSamples = maxSamples;
-        this.values = [];
-        this.sum = 0;
-    }
-    /**
-     * Add a value
-     */
-    add(value) {
-        this.values.push(value);
-        this.sum += value;
-        if (this.values.length > this.maxSamples) {
-            const removed = this.values.shift();
-            this.sum -= removed !== null && removed !== void 0 ? removed : 0;
-        }
-        return this.get();
-    }
-    /**
-     * Get current average
-     */
-    get() {
-        return this.values.length > 0 ? this.sum / this.values.length : 0;
-    }
-    /**
-     * Reset
-     */
-    reset() {
-        this.values = [];
-        this.sum = 0;
-    }
-}
-/**
- * Create a new metrics tracker
- */
-function createMetricsTracker() {
-    return {
-        energyHarvested: new RollingAverage(10),
-        energySpawning: new RollingAverage(10),
-        energyConstruction: new RollingAverage(10),
-        energyRepair: new RollingAverage(10),
-        energyTower: new RollingAverage(10),
-        controllerProgress: new RollingAverage(10),
-        hostileCount: new RollingAverage(5),
-        damageReceived: new RollingAverage(5),
-        idleWorkers: new RollingAverage(10),
-        lastControllerProgress: 0
-    };
-}
-/**
- * Pheromone Manager
- */
-class PheromoneManager {
-    constructor(config = {}) {
-        this.trackers = new Map();
-        this.config = { ...DEFAULT_PHEROMONE_CONFIG, ...config };
-    }
-    /**
-     * Get or create metrics tracker for a room
-     */
-    getTracker(roomName) {
-        let tracker = this.trackers.get(roomName);
-        if (!tracker) {
-            tracker = createMetricsTracker();
-            this.trackers.set(roomName, tracker);
-        }
-        return tracker;
-    }
-    /**
-     * Update metrics from a room.
-     * Uses optimized iteration patterns for better CPU efficiency.
-     */
-    updateMetrics(room, swarm) {
-        var _a;
-        const tracker = this.getTracker(room.name);
-        // Energy harvested (approximation from source depletion)
-        // OPTIMIZATION: Cache sources to share with calculateContributions
-        const cacheKey = `sources_${room.name}`;
-        const cached = global[cacheKey];
-        let sources;
-        if (cached && cached.tick === Game.time) {
-            sources = cached.sources;
-        }
-        else {
-            sources = room.find(FIND_SOURCES);
-            global[cacheKey] = { sources, tick: Game.time };
-        }
-        // Use a single loop instead of two reduce calls for efficiency
-        let totalSourceCapacity = 0;
-        let totalSourceEnergy = 0;
-        for (const source of sources) {
-            totalSourceCapacity += source.energyCapacity;
-            totalSourceEnergy += source.energy;
-        }
-        const harvested = totalSourceCapacity - totalSourceEnergy;
-        tracker.energyHarvested.add(harvested);
-        // Controller progress
-        if ((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my) {
-            const progressDelta = room.controller.progress - tracker.lastControllerProgress;
-            if (progressDelta > 0 && progressDelta < 100000) {
-                tracker.controllerProgress.add(progressDelta);
-            }
-            tracker.lastControllerProgress = room.controller.progress;
-        }
-        // Hostile count and damage - use safeFind to handle engine errors with corrupted owner data
-        // Calculate damage in a single loop instead of multiple filter calls
-        const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
-        tracker.hostileCount.add(hostiles.length);
-        let potentialDamage = 0;
-        for (const hostile of hostiles) {
-            // Iterate body parts once, counting both attack types in the same loop
-            for (const part of hostile.body) {
-                if (part.hits > 0) {
-                    if (part.type === ATTACK) {
-                        potentialDamage += 30;
-                    }
-                    else if (part.type === RANGED_ATTACK) {
-                        potentialDamage += 10;
-                    }
-                }
-            }
-        }
-        tracker.damageReceived.add(potentialDamage);
-        // Update swarm metrics
-        swarm.metrics.energyHarvested = tracker.energyHarvested.get();
-        swarm.metrics.controllerProgress = tracker.controllerProgress.get();
-        swarm.metrics.hostileCount = Math.round(tracker.hostileCount.get());
-        swarm.metrics.damageReceived = tracker.damageReceived.get();
-    }
-    /**
-     * Periodic pheromone update
-     */
-    updatePheromones(swarm, room) {
-        if (Game.time < swarm.nextUpdateTick)
-            return;
-        const pheromones = swarm.pheromones;
-        // Apply decay
-        for (const key of Object.keys(pheromones)) {
-            const decayFactor = this.config.decayFactors[key];
-            pheromones[key] = this.clamp(pheromones[key] * decayFactor);
-        }
-        // Calculate contributions
-        this.calculateContributions(swarm, room);
-        // Set next update tick
-        swarm.nextUpdateTick = Game.time + this.config.updateInterval;
-        swarm.lastUpdate = Game.time;
-    }
-    /**
-     * Calculate pheromone contributions from current state
-     * OPTIMIZATION: Reuse sources from updateMetrics to avoid duplicate room.find() calls
-     */
-    calculateContributions(swarm, room) {
-        var _a;
-        const pheromones = swarm.pheromones;
-        const tracker = this.getTracker(room.name);
-        // Harvest contribution based on available sources
-        // OPTIMIZATION: Sources are already found in updateMetrics, but we need them here too
-        // Since this runs every 5 ticks (same as updateMetrics), we can cache them
-        const cacheKey = `sources_${room.name}`;
-        const cached = global[cacheKey];
-        let sources;
-        if (cached && cached.tick === Game.time) {
-            sources = cached.sources;
-        }
-        else {
-            sources = room.find(FIND_SOURCES);
-            global[cacheKey] = { sources, tick: Game.time };
-        }
-        if (sources.length > 0) {
-            const avgEnergy = sources.reduce((sum, s) => sum + s.energy, 0) / sources.length;
-            pheromones.harvest = this.clamp(pheromones.harvest + (avgEnergy / 3000) * 10);
-        }
-        // Build contribution based on construction sites
-        const sites = room.find(FIND_MY_CONSTRUCTION_SITES);
-        if (sites.length > 0) {
-            pheromones.build = this.clamp(pheromones.build + Math.min(sites.length * 2, 20));
-        }
-        // Upgrade contribution based on controller progress
-        if ((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my) {
-            const progressPercent = room.controller.progress / room.controller.progressTotal;
-            if (progressPercent < 0.5) {
-                pheromones.upgrade = this.clamp(pheromones.upgrade + (1 - progressPercent) * 15);
-            }
-        }
-        // Defense contribution based on hostiles
-        const hostileAvg = tracker.hostileCount.get();
-        if (hostileAvg > 0) {
-            pheromones.defense = this.clamp(pheromones.defense + hostileAvg * 10);
-        }
-        // War contribution if threat is sustained
-        if (swarm.danger >= 2) {
-            pheromones.war = this.clamp(pheromones.war + swarm.danger * 10);
-        }
-        // Siege if critical threat
-        if (swarm.danger >= 3) {
-            pheromones.siege = this.clamp(pheromones.siege + 20);
-        }
-        // Logistics contribution based on energy distribution needs
-        // OPTIMIZATION: Use cached spawns from structure cache if available
-        if (room.storage) {
-            const spawns = room.find(FIND_MY_SPAWNS);
-            const spawnEnergy = spawns.reduce((sum, s) => sum + s.store.getUsedCapacity(RESOURCE_ENERGY), 0);
-            const maxSpawnEnergy = spawns.length * 300;
-            if (spawnEnergy < maxSpawnEnergy * 0.5) {
-                pheromones.logistics = this.clamp(pheromones.logistics + 10);
-            }
-        }
-        // Expand contribution if economy is stable
-        const energyBalance = tracker.energyHarvested.get() - swarm.metrics.energySpawning;
-        if (energyBalance > 0 && swarm.danger === 0) {
-            pheromones.expand = this.clamp(pheromones.expand + Math.min(energyBalance / 100, 10));
-        }
-    }
-    /**
-     * Clamp pheromone value to valid range
-     */
-    clamp(value) {
-        return Math.max(this.config.minValue, Math.min(this.config.maxValue, value));
-    }
-    // ============================================================================
-    // Event-Driven Updates
-    // ============================================================================
-    /**
-     * Handle hostile detection
-     */
-    onHostileDetected(swarm, hostileCount, danger) {
-        swarm.danger = danger;
-        swarm.pheromones.defense = this.clamp(swarm.pheromones.defense + hostileCount * 5);
-        if (danger >= 2) {
-            swarm.pheromones.war = this.clamp(swarm.pheromones.war + danger * 10);
-        }
-        if (danger >= 3) {
-            swarm.pheromones.siege = this.clamp(swarm.pheromones.siege + 20);
-        }
-        logger.info(`Hostile detected: ${hostileCount} hostiles, danger=${danger}`, {
-            room: swarm.role,
-            subsystem: "Pheromone"
-        });
-    }
-    /**
-     * Handle structure destroyed
-     */
-    onStructureDestroyed(swarm, structureType) {
-        swarm.pheromones.defense = this.clamp(swarm.pheromones.defense + 5);
-        swarm.pheromones.build = this.clamp(swarm.pheromones.build + 10);
-        // Critical structures increase danger
-        if (structureType === STRUCTURE_SPAWN || structureType === STRUCTURE_STORAGE || structureType === STRUCTURE_TOWER) {
-            swarm.danger = Math.min(3, swarm.danger + 1);
-            swarm.pheromones.siege = this.clamp(swarm.pheromones.siege + 15);
-        }
-    }
-    /**
-     * Handle nuke detection
-     */
-    onNukeDetected(swarm) {
-        swarm.danger = 3;
-        swarm.pheromones.siege = this.clamp(swarm.pheromones.siege + 50);
-        swarm.pheromones.defense = this.clamp(swarm.pheromones.defense + 30);
-    }
-    /**
-     * Handle remote source lost
-     */
-    onRemoteSourceLost(swarm) {
-        swarm.pheromones.expand = this.clamp(swarm.pheromones.expand - 10);
-        swarm.pheromones.defense = this.clamp(swarm.pheromones.defense + 5);
-    }
-    // ============================================================================
-    // Pheromone Diffusion
-    // ============================================================================
-    /**
-     * Apply diffusion to neighboring rooms
-     */
-    applyDiffusion(rooms) {
-        const diffusionQueue = [];
-        for (const [roomName, swarm] of rooms) {
-            const neighbors = this.getNeighborRoomNames(roomName);
-            for (const neighborName of neighbors) {
-                const neighborSwarm = rooms.get(neighborName);
-                if (!neighborSwarm)
-                    continue;
-                // Diffuse defense, war, expand, and siege
-                const diffusibleTypes = ["defense", "war", "expand", "siege"];
-                for (const type of diffusibleTypes) {
-                    const intensity = swarm.pheromones[type];
-                    if (intensity > 1) {
-                        const rate = this.config.diffusionRates[type];
-                        diffusionQueue.push({
-                            source: roomName,
-                            target: neighborName,
-                            type,
-                            amount: intensity * rate * 0.5,
-                            sourceIntensity: intensity
-                        });
-                    }
-                }
-            }
-        }
-        // Apply diffusion
-        for (const diff of diffusionQueue) {
-            const targetSwarm = rooms.get(diff.target);
-            if (targetSwarm) {
-                const newValue = targetSwarm.pheromones[diff.type] + diff.amount;
-                // Cap the target pheromone level to not exceed the source room's level
-                // This prevents rooms from pushing each other higher than their own level
-                targetSwarm.pheromones[diff.type] = this.clamp(Math.min(newValue, diff.sourceIntensity));
-            }
-        }
-    }
-    /**
-     * Get neighboring room names
-     */
-    getNeighborRoomNames(roomName) {
-        const match = roomName.match(/^([WE])(\d+)([NS])(\d+)$/);
-        if (!match)
-            return [];
-        const [, wx, xStr, wy, yStr] = match;
-        if (!wx || !xStr || !wy || !yStr)
-            return [];
-        const x = parseInt(xStr, 10);
-        const y = parseInt(yStr, 10);
-        const neighbors = [];
-        // Cardinal directions
-        if (wy === "N") {
-            neighbors.push(`${wx}${x}N${y + 1}`);
-        }
-        else {
-            if (y > 0) {
-                neighbors.push(`${wx}${x}S${y - 1}`);
-            }
-            else {
-                neighbors.push(`${wx}${x}N0`);
-            }
-        }
-        if (wy === "S") {
-            neighbors.push(`${wx}${x}S${y + 1}`);
-        }
-        else {
-            if (y > 0) {
-                neighbors.push(`${wx}${x}N${y - 1}`);
-            }
-            else {
-                neighbors.push(`${wx}${x}S0`);
-            }
-        }
-        if (wx === "E") {
-            neighbors.push(`E${x + 1}${wy}${y}`);
-        }
-        else {
-            if (x > 0) {
-                neighbors.push(`W${x - 1}${wy}${y}`);
-            }
-            else {
-                neighbors.push(`E0${wy}${y}`);
-            }
-        }
-        if (wx === "W") {
-            neighbors.push(`W${x + 1}${wy}${y}`);
-        }
-        else {
-            if (x > 0) {
-                neighbors.push(`E${x - 1}${wy}${y}`);
-            }
-            else {
-                neighbors.push(`W0${wy}${y}`);
-            }
-        }
-        return neighbors;
-    }
-    /**
-     * Get dominant pheromone for a room
-     */
-    getDominantPheromone(pheromones) {
-        let maxKey = null;
-        let maxValue = 1; // Minimum threshold
-        for (const key of Object.keys(pheromones)) {
-            if (pheromones[key] > maxValue) {
-                maxValue = pheromones[key];
-                maxKey = key;
-            }
-        }
-        return maxKey;
-    }
-}
-/**
- * Global pheromone manager instance
- */
-const pheromoneManager = new PheromoneManager();
-
-/**
- * Evolution & Posture System - Phase 3
- *
- * Manages room lifecycle:
- * - Evolution stages (colony levels)
- * - Posture states
- * - State transitions
- */
-/**
- * Evolution stage configurations
- */
-const EVOLUTION_STAGES = {
-    seedNest: {
-        rcl: 1
-    },
-    foragingExpansion: {
-        rcl: 3,
-        minRooms: 1,
-        minRemoteRooms: 1,
-        minTowerCount: 1
-    },
-    matureColony: {
-        rcl: 4,
-        requiresStorage: true,
-        requiresTerminal: true,
-        requiresLabs: true,
-        minLabCount: 3,
-        minTowerCount: 2
-    },
-    fortifiedHive: {
-        rcl: 7,
-        requiresTerminal: true,
-        requiresLabs: true,
-        minLabCount: 6,
-        requiresFactory: true,
-        requiresPowerSpawn: true,
-        minTowerCount: 4
-    },
-    empireDominance: {
-        rcl: 8,
-        requiresNuker: true,
-        requiresObserver: true,
-        requiresTerminal: true,
-        requiresLabs: true,
-        minLabCount: 8,
-        requiresFactory: true,
-        requiresPowerSpawn: true,
-        minGcl: 10,
-        minRooms: 3,
-        minRemoteRooms: 2,
-        minTowerCount: 6
-    }
-};
-/**
- * Posture configurations
- */
-const POSTURE_PROFILES = {
-    eco: { economy: 0.75, military: 0.05, utility: 0.15, power: 0.05 },
-    expand: { economy: 0.55, military: 0.15, utility: 0.25, power: 0.05 },
-    defensive: { economy: 0.45, military: 0.35, utility: 0.15, power: 0.05 },
-    war: { economy: 0.3, military: 0.5, utility: 0.1, power: 0.1 },
-    siege: { economy: 0.2, military: 0.6, utility: 0.1, power: 0.1 },
-    evacuate: { economy: 0.1, military: 0.1, utility: 0.8, power: 0.0 },
-    nukePrep: { economy: 0.4, military: 0.3, utility: 0.2, power: 0.1 }
-};
-/**
- * Resource priorities per posture
- */
-const POSTURE_RESOURCE_PRIORITIES = {
-    eco: { upgrade: 80, build: 60, repair: 40, spawn: 70, terminal: 50, labs: 30 },
-    expand: { upgrade: 60, build: 80, repair: 50, spawn: 75, terminal: 60, labs: 40 },
-    defensive: { upgrade: 30, build: 50, repair: 80, spawn: 90, terminal: 40, labs: 60 },
-    war: { upgrade: 10, build: 30, repair: 70, spawn: 95, terminal: 70, labs: 80 },
-    siege: { upgrade: 5, build: 20, repair: 90, spawn: 100, terminal: 50, labs: 90 },
-    evacuate: { upgrade: 0, build: 5, repair: 10, spawn: 50, terminal: 80, labs: 10 },
-    nukePrep: { upgrade: 20, build: 40, repair: 95, spawn: 80, terminal: 30, labs: 70 }
-};
-/**
- * Evolution Manager
- */
-class EvolutionManager {
-    constructor() {
-        /** Structure count cache to avoid repeated expensive room scans */
-        this.structureCountsCache = new Map();
-        /** TTL for cached structure counts (in ticks) */
-        this.structureCacheTtl = 20;
-    }
-    /**
-     * Determine evolution stage for a room
-     */
-    determineEvolutionStage(swarm, room, totalOwnedRooms) {
-        var _a, _b, _c, _d;
-        const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0;
-        const gcl = Game.gcl.level;
-        const structureCounts = this.getStructureCounts(room);
-        const remoteCount = (_d = (_c = swarm.remoteAssignments) === null || _c === void 0 ? void 0 : _c.length) !== null && _d !== void 0 ? _d : 0;
-        // Check from highest to lowest
-        if (this.meetsThreshold("empireDominance", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
-            return "empireDominance";
-        }
-        if (this.meetsThreshold("fortifiedHive", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
-            return "fortifiedHive";
-        }
-        if (this.meetsThreshold("matureColony", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
-            return "matureColony";
-        }
-        if (this.meetsThreshold("foragingExpansion", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
-            return "foragingExpansion";
-        }
-        return "seedNest";
-    }
-    /**
-     * Check if room meets threshold for evolution stage
-     */
-    meetsThreshold(stage, rcl, totalRooms, gcl, structureCounts, remoteCount) {
-        var _a, _b;
-        const threshold = EVOLUTION_STAGES[stage];
-        const towers = (_a = structureCounts[STRUCTURE_TOWER]) !== null && _a !== void 0 ? _a : 0;
-        const labs = (_b = structureCounts[STRUCTURE_LAB]) !== null && _b !== void 0 ? _b : 0;
-        if (rcl < threshold.rcl)
-            return false;
-        if (threshold.minRooms && totalRooms < threshold.minRooms)
-            return false;
-        if (threshold.minGcl && gcl < threshold.minGcl)
-            return false;
-        if (threshold.minRemoteRooms && remoteCount < threshold.minRemoteRooms)
-            return false;
-        if (threshold.minTowerCount && towers < threshold.minTowerCount)
-            return false;
-        if (threshold.requiresStorage && !structureCounts[STRUCTURE_STORAGE])
-            return false;
-        if (threshold.requiresTerminal && rcl >= 6 && !structureCounts[STRUCTURE_TERMINAL])
-            return false;
-        if (threshold.requiresLabs && labs === 0)
-            return false;
-        if (threshold.minLabCount && rcl >= 6 && labs < threshold.minLabCount)
-            return false;
-        if (threshold.requiresFactory && rcl >= 7 && !structureCounts[STRUCTURE_FACTORY])
-            return false;
-        if (threshold.requiresPowerSpawn && rcl >= 7 && !structureCounts[STRUCTURE_POWER_SPAWN])
-            return false;
-        if (threshold.requiresObserver && rcl >= 8 && !structureCounts[STRUCTURE_OBSERVER])
-            return false;
-        if (threshold.requiresNuker && rcl >= 8 && !structureCounts[STRUCTURE_NUKER])
-            return false;
-        return true;
-    }
-    /**
-     * Snapshot relevant owned structure counts to avoid repeated lookups.
-     */
-    getStructureCounts(room) {
-        var _a;
-        const cached = this.structureCountsCache.get(room.name);
-        if (cached && Game.time - cached.tick <= this.structureCacheTtl) {
-            return cached.counts;
-        }
-        const counts = {};
-        const structures = room.find(FIND_MY_STRUCTURES);
-        for (const structure of structures) {
-            const type = structure.structureType;
-            counts[type] = ((_a = counts[type]) !== null && _a !== void 0 ? _a : 0) + 1;
-        }
-        this.structureCountsCache.set(room.name, { counts, tick: Game.time });
-        return counts;
-    }
-    /**
-     * Update evolution stage for a room
-     */
-    updateEvolutionStage(swarm, room, totalOwnedRooms) {
-        const newStage = this.determineEvolutionStage(swarm, room, totalOwnedRooms);
-        if (newStage !== swarm.colonyLevel) {
-            logger.info(`Room evolution: ${swarm.colonyLevel} -> ${newStage}`, {
-                room: room.name,
-                subsystem: "Evolution"
-            });
-            swarm.colonyLevel = newStage;
-            return true;
-        }
-        return false;
-    }
-    /**
-     * Update missing structures flags
-     */
-    updateMissingStructures(swarm, room) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
-        const structureCounts = this.getStructureCounts(room);
-        const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0;
-        const thresholds = EVOLUTION_STAGES[swarm.colonyLevel];
-        const requiresLabs = thresholds.requiresLabs && rcl >= 6;
-        const minLabCount = requiresLabs ? (_c = thresholds.minLabCount) !== null && _c !== void 0 ? _c : 3 : 0;
-        const requiresFactory = thresholds.requiresFactory && rcl >= 7;
-        const requiresTerminal = thresholds.requiresTerminal && rcl >= 6;
-        const requiresStorage = thresholds.requiresStorage && rcl >= 4;
-        const requiresPowerSpawn = thresholds.requiresPowerSpawn && rcl >= 7;
-        const requiresObserver = thresholds.requiresObserver && rcl >= 8;
-        const requiresNuker = thresholds.requiresNuker && rcl >= 8;
-        swarm.missingStructures = {
-            spawn: ((_d = structureCounts[STRUCTURE_SPAWN]) !== null && _d !== void 0 ? _d : 0) === 0,
-            storage: requiresStorage ? ((_e = structureCounts[STRUCTURE_STORAGE]) !== null && _e !== void 0 ? _e : 0) === 0 : false,
-            terminal: requiresTerminal ? ((_f = structureCounts[STRUCTURE_TERMINAL]) !== null && _f !== void 0 ? _f : 0) === 0 : false,
-            labs: requiresLabs ? ((_g = structureCounts[STRUCTURE_LAB]) !== null && _g !== void 0 ? _g : 0) < minLabCount : false,
-            nuker: requiresNuker ? ((_h = structureCounts[STRUCTURE_NUKER]) !== null && _h !== void 0 ? _h : 0) === 0 : false,
-            factory: requiresFactory ? ((_j = structureCounts[STRUCTURE_FACTORY]) !== null && _j !== void 0 ? _j : 0) === 0 : false,
-            extractor: rcl >= 6 ? ((_k = structureCounts[STRUCTURE_EXTRACTOR]) !== null && _k !== void 0 ? _k : 0) === 0 : false,
-            powerSpawn: requiresPowerSpawn ? ((_l = structureCounts[STRUCTURE_POWER_SPAWN]) !== null && _l !== void 0 ? _l : 0) === 0 : false,
-            observer: requiresObserver ? ((_m = structureCounts[STRUCTURE_OBSERVER]) !== null && _m !== void 0 ? _m : 0) === 0 : false
-        };
-    }
-}
-/**
- * Posture Manager
- */
-class PostureManager {
-    /**
-     * Determine posture for a room based on pheromones and danger
-     */
-    determinePosture(swarm, strategicOverride) {
-        // Strategic override takes precedence
-        if (strategicOverride) {
-            return strategicOverride;
-        }
-        const { pheromones, danger } = swarm;
-        // Danger-based posture
-        if (danger >= 3) {
-            return "siege";
-        }
-        if (danger >= 2) {
-            return "war";
-        }
-        // Pheromone-based posture
-        if (pheromones.siege > 30) {
-            return "siege";
-        }
-        if (pheromones.war > 25) {
-            return "war";
-        }
-        if (pheromones.defense > 20) {
-            return "defensive";
-        }
-        if (pheromones.nukeTarget > 40) {
-            return "nukePrep";
-        }
-        if (pheromones.expand > 30 && danger === 0) {
-            return "expand";
-        }
-        // Default based on danger level
-        if (danger >= 1) {
-            return "defensive";
-        }
-        return "eco";
-    }
-    /**
-     * Update posture for a room
-     * Emits posture.change event through the kernel when posture changes.
-     * @param swarm - The swarm state to update
-     * @param strategicOverride - Optional strategic override for posture
-     * @param roomName - Room name for event emission (falls back to swarm.role if not provided)
-     */
-    updatePosture(swarm, strategicOverride, roomName) {
-        const newPosture = this.determinePosture(swarm, strategicOverride);
-        if (newPosture !== swarm.posture) {
-            const oldPosture = swarm.posture;
-            const eventRoomName = roomName !== null && roomName !== void 0 ? roomName : swarm.role;
-            logger.info(`Posture change: ${oldPosture} -> ${newPosture}`, {
-                room: eventRoomName,
-                subsystem: "Posture"
-            });
-            swarm.posture = newPosture;
-            // Emit posture change event through the kernel event system
-            kernel.emit("posture.change", {
-                roomName: eventRoomName,
-                oldPosture,
-                newPosture,
-                source: "PostureManager"
-            });
-            return true;
-        }
-        return false;
-    }
-    /**
-     * Get spawn profile for current posture
-     */
-    getSpawnProfile(posture) {
-        return POSTURE_PROFILES[posture];
-    }
-    /**
-     * Get resource priorities for current posture
-     */
-    getResourcePriorities(posture) {
-        return POSTURE_RESOURCE_PRIORITIES[posture];
-    }
-    /**
-     * Check if posture allows building
-     */
-    allowsBuilding(posture) {
-        return posture !== "evacuate" && posture !== "siege";
-    }
-    /**
-     * Check if posture allows upgrading
-     */
-    allowsUpgrading(posture) {
-        return posture !== "evacuate" && posture !== "siege" && posture !== "war";
-    }
-    /**
-     * Check if posture is combat-oriented
-     */
-    isCombatPosture(posture) {
-        return posture === "defensive" || posture === "war" || posture === "siege";
-    }
-    /**
-     * Check if posture allows expansion
-     */
-    allowsExpansion(posture) {
-        return posture === "eco" || posture === "expand";
-    }
-}
-/**
- * Calculate danger level from threat metrics
- */
-function calculateDangerLevel(hostileCount, damagePerTick, enemyStructures) {
-    // Critical threat
-    if (hostileCount >= 10 || damagePerTick >= 2000) {
-        return 3;
-    }
-    // High threat
-    if (hostileCount >= 5 || damagePerTick >= 1000) {
-        return 2;
-    }
-    // Medium threat
-    if (hostileCount >= 2 || damagePerTick >= 300 || enemyStructures) {
-        return 1;
-    }
-    return 0;
-}
-/**
- * Global evolution manager instance
- */
-const evolutionManager = new EvolutionManager();
-/**
- * Global posture manager instance
- */
-const postureManager = new PostureManager();
-
-/**
- * Extension Generator
- *
- * Generates extension positions in a checkerboard pattern around the spawn
- * to fill out the full 60 extensions allowed at RCL 8.
- *
- * Key design: Extensions are placed in a checkerboard pattern where no two
- * extensions are directly adjacent (share an edge). This ensures creeps
- * can always move between extensions without blocking each other.
- *
- * Addresses Issue: #17
- */
-/**
- * Maximum number of extension positions to generate.
- * Set higher than 60 (the RCL 8 limit) to provide flexibility when
- * some positions are blocked by terrain or other structures.
- */
-const MAX_GENERATED_EXTENSIONS = 80;
-/**
- * Generate extension positions in a checkerboard pattern.
- *
- * The pattern ensures:
- * - No extension is directly adjacent to another extension
- * - Every extension is reachable via roads/empty spaces
- * - Extensions are placed in expanding rings from the spawn
- *
- * Positions where (|x| + |y|) % 2 == 0 form a checkerboard pattern
- * that leaves space for roads between extensions.
- */
-function generateExtensions(count) {
-    const extensions = [];
-    // Checkerboard pattern - positions are arranged so no extensions
-    // share an edge (only potentially corners)
-    // Pattern: place extensions where (x + y) is even to create checkerboard
-    const pattern = [
-        // Ring 1 (distance 2 from spawn) - 4 positions
-        { x: -2, y: 0 }, { x: 2, y: 0 },
-        { x: 0, y: -2 }, { x: 0, y: 2 },
-        // Ring 2 (distance 2-3) - extensions at odd distances with even sum
-        { x: -2, y: -2 }, { x: 2, y: -2 },
-        { x: -2, y: 2 }, { x: 2, y: 2 },
-        { x: -1, y: -3 }, { x: 1, y: -3 },
-        { x: -1, y: 3 }, { x: 1, y: 3 },
-        { x: -3, y: -1 }, { x: 3, y: -1 },
-        { x: -3, y: 1 }, { x: 3, y: 1 },
-        // Ring 3 (distance 3-4) - extending the checkerboard
-        { x: -4, y: 0 }, { x: 4, y: 0 },
-        { x: 0, y: -4 }, { x: 0, y: 4 },
-        { x: -3, y: -3 }, { x: 3, y: -3 },
-        { x: -3, y: 3 }, { x: 3, y: 3 },
-        { x: -4, y: -2 }, { x: 4, y: -2 },
-        { x: -4, y: 2 }, { x: 4, y: 2 },
-        { x: -2, y: -4 }, { x: 2, y: -4 },
-        { x: -2, y: 4 }, { x: 2, y: 4 },
-        // Ring 4 (distance 4-5)
-        { x: -1, y: -5 }, { x: 1, y: -5 },
-        { x: -1, y: 5 }, { x: 1, y: 5 },
-        { x: -5, y: -1 }, { x: 5, y: -1 },
-        { x: -5, y: 1 }, { x: 5, y: 1 },
-        { x: -4, y: -4 }, { x: 4, y: -4 },
-        { x: -4, y: 4 }, { x: 4, y: 4 },
-        { x: -3, y: -5 }, { x: 3, y: -5 },
-        { x: -3, y: 5 }, { x: 3, y: 5 },
-        { x: -5, y: -3 }, { x: 5, y: -3 },
-        { x: -5, y: 3 }, { x: 5, y: 3 },
-        // Ring 5 (distance 5-6) - outer ring for max extensions
-        { x: -6, y: 0 }, { x: 6, y: 0 },
-        { x: 0, y: -6 }, { x: 0, y: 6 },
-        { x: -6, y: -2 }, { x: 6, y: -2 },
-        { x: -6, y: 2 }, { x: 6, y: 2 },
-        { x: -2, y: -6 }, { x: 2, y: -6 },
-        { x: -2, y: 6 }, { x: 2, y: 6 },
-        { x: -5, y: -5 }, { x: 5, y: -5 },
-        { x: -5, y: 5 }, { x: 5, y: 5 },
-        { x: -4, y: -6 }, { x: 4, y: -6 },
-        { x: -4, y: 6 }, { x: 4, y: 6 },
-        { x: -6, y: -4 }, { x: 6, y: -4 },
-        { x: -6, y: 4 }, { x: 6, y: 4 }
-    ];
-    for (let i = 0; i < Math.min(count, pattern.length); i++) {
-        extensions.push({
-            x: pattern[i].x,
-            y: pattern[i].y,
-            structureType: STRUCTURE_EXTENSION
-        });
-    }
-    return extensions;
-}
-/**
- * Add extensions to a blueprint to reach target count.
- *
- * Uses checkerboard pattern validation to ensure new extensions
- * maintain proper spacing for creep movement.
- */
-function addExtensionsToBlueprint(existingStructures, targetCount) {
-    // Count existing extensions
-    const existingExtensions = existingStructures.filter(s => s.structureType === STRUCTURE_EXTENSION);
-    const needed = targetCount - existingExtensions.length;
-    if (needed <= 0)
-        return existingStructures;
-    // Generate all possible extension positions
-    const allExtensions = generateExtensions(MAX_GENERATED_EXTENSIONS);
-    // Filter out positions already used by existing structures
-    const usedPositions = new Set(existingStructures.map(s => `${s.x},${s.y}`));
-    const newExtensions = allExtensions
-        .filter(ext => !usedPositions.has(`${ext.x},${ext.y}`))
-        .slice(0, needed);
-    return [...existingStructures, ...newExtensions];
-}
-
-/**
- * Road Network Planner
- *
- * Calculates optimal road positions for:
- * - Base infrastructure (spawn/storage to sources, controller, mineral)
- * - Remote mining routes
- * - Multi-room highways
- *
- * These calculated road positions are used by the blueprint system to determine
- * which roads are valid and should NOT be destroyed during blueprint enforcement.
- *
- * Addresses Issue: Layout planner should incorporate roads so destruction routing
- * does not destroy all roads.
- */
-const DEFAULT_CONFIG$d = {
-    recalculateInterval: 1000,
-    maxPathOps: 2000,
-    includeRemoteRoads: true
-};
-/**
- * Construction site limit per room (Screeps game limit)
- */
-const MAX_CONSTRUCTION_SITES_PER_ROOM = 10;
-/**
- * Default number of road construction sites to place per tick
- * Kept low to avoid overwhelming builders
- */
-const DEFAULT_ROAD_SITES_PER_TICK = 3;
-/**
- * Cache of calculated road networks per room
- */
-const roadNetworkCache = new Map();
-/**
- * Calculate road network for a room
- *
- * This includes roads to:
- * - All sources from spawn/storage
- * - Controller from spawn/storage
- * - Mineral from spawn/storage (if RCL >= 6)
- */
-function calculateRoadNetwork(room, anchor, config = {}) {
-    var _a, _b, _c;
-    const cfg = { ...DEFAULT_CONFIG$d, ...config };
-    // Check cache
-    const cached = roadNetworkCache.get(room.name);
-    if (cached && Game.time - cached.lastCalculated < cfg.recalculateInterval) {
-        return cached;
-    }
-    const positions = new Set();
-    const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0;
-    // Find key positions
-    const sources = room.find(FIND_SOURCES);
-    const controller = room.controller;
-    const storage = room.storage;
-    const mineral = room.find(FIND_MINERALS)[0];
-    // Primary hub position (storage if available, otherwise anchor/spawn position)
-    const hubPos = (_c = storage === null || storage === void 0 ? void 0 : storage.pos) !== null && _c !== void 0 ? _c : anchor;
-    // Add roads to all sources
-    for (const source of sources) {
-        const path = findRoadPath(hubPos, source.pos, room.name, cfg.maxPathOps);
-        for (const pos of path) {
-            positions.add(`${pos.x},${pos.y}`);
-        }
-    }
-    // Add roads to controller
-    if (controller) {
-        const path = findRoadPath(hubPos, controller.pos, room.name, cfg.maxPathOps);
-        for (const pos of path) {
-            positions.add(`${pos.x},${pos.y}`);
-        }
-    }
-    // Add roads to mineral (RCL 6+)
-    if (mineral && rcl >= 6) {
-        const path = findRoadPath(hubPos, mineral.pos, room.name, cfg.maxPathOps);
-        for (const pos of path) {
-            positions.add(`${pos.x},${pos.y}`);
-        }
-    }
-    // If anchor is different from hub (no storage yet), add roads from anchor to sources/controller
-    if (!storage) {
-        for (const source of sources) {
-            const path = findRoadPath(anchor, source.pos, room.name, cfg.maxPathOps);
-            for (const pos of path) {
-                positions.add(`${pos.x},${pos.y}`);
-            }
-        }
-        if (controller) {
-            const path = findRoadPath(anchor, controller.pos, room.name, cfg.maxPathOps);
-            for (const pos of path) {
-                positions.add(`${pos.x},${pos.y}`);
-            }
-        }
-    }
-    const network = {
-        roomName: room.name,
-        positions,
-        lastCalculated: Game.time
-    };
-    roadNetworkCache.set(room.name, network);
-    logger.debug(`Calculated road network for ${room.name}: ${positions.size} positions`, { subsystem: "RoadNetwork" });
-    return network;
-}
-/**
- * Calculate roads for remote mining routes
- *
- * @param homeRoom The home room with spawn/storage
- * @param remoteRoomNames Array of remote room names to connect
- * @returns Map of room name to road positions
- */
-function calculateRemoteRoads(homeRoom, remoteRoomNames, config = {}) {
-    var _a, _b;
-    const cfg = { ...DEFAULT_CONFIG$d, ...config };
-    const result = new Map();
-    if (!cfg.includeRemoteRoads) {
-        return result;
-    }
-    const storage = homeRoom.storage;
-    const spawn = homeRoom.find(FIND_MY_SPAWNS)[0];
-    const hubPos = (_a = storage === null || storage === void 0 ? void 0 : storage.pos) !== null && _a !== void 0 ? _a : spawn === null || spawn === void 0 ? void 0 : spawn.pos;
-    if (!hubPos) {
-        return result;
-    }
-    for (const remoteRoomName of remoteRoomNames) {
-        // Calculate multi-room path to remote room center
-        const remoteTarget = new RoomPosition(25, 25, remoteRoomName);
-        try {
-            const pathResult = PathFinder.search(hubPos, { pos: remoteTarget, range: 20 }, {
-                plainCost: 2,
-                swampCost: 10,
-                maxOps: cfg.maxPathOps,
-                roomCallback: (roomName) => {
-                    return generateRoadCostMatrix(roomName);
-                }
-            });
-            if (!pathResult.incomplete) {
-                // Group positions by room
-                for (const pos of pathResult.path) {
-                    if (!result.has(pos.roomName)) {
-                        result.set(pos.roomName, new Set());
-                    }
-                    (_b = result.get(pos.roomName)) === null || _b === void 0 ? void 0 : _b.add(`${pos.x},${pos.y}`);
-                }
-            }
-        }
-        catch (err) {
-            const errorMessage = err instanceof Error ? err.message : String(err);
-            logger.warn(`Failed to calculate remote road to ${remoteRoomName}: ${errorMessage}`, { subsystem: "RoadNetwork" });
-        }
-    }
-    return result;
-}
-/**
- * Find a road path between two positions in the same room
- */
-function findRoadPath(from, to, roomName, maxOps) {
-    const result = [];
-    const pathResult = PathFinder.search(from, { pos: to, range: 1 }, {
-        plainCost: 2,
-        swampCost: 10,
-        maxOps,
-        roomCallback: (rn) => {
-            // Only path within the specified room for local roads
-            if (rn !== roomName) {
-                return false;
-            }
-            return generateRoadCostMatrix(rn);
-        }
-    });
-    if (!pathResult.incomplete) {
-        for (const pos of pathResult.path) {
-            // Only include positions in the target room
-            if (pos.roomName === roomName) {
-                result.push({ x: pos.x, y: pos.y });
-            }
-        }
-    }
-    return result;
-}
-/**
- * Generate a cost matrix for road pathfinding
- */
-function generateRoadCostMatrix(roomName) {
-    const room = Game.rooms[roomName];
-    const costs = new PathFinder.CostMatrix();
-    // If we don't have vision of the room, use default costs
-    if (!room) {
-        return costs;
-    }
-    // Add structure costs
-    const structures = room.find(FIND_STRUCTURES);
-    for (const structure of structures) {
-        if (structure.structureType === STRUCTURE_ROAD) {
-            // Prefer existing roads
-            costs.set(structure.pos.x, structure.pos.y, 1);
-        }
-        else if (structure.structureType !== STRUCTURE_CONTAINER &&
-            !(structure.structureType === STRUCTURE_RAMPART && "my" in structure && structure.my)) {
-            // Block impassable structures
-            costs.set(structure.pos.x, structure.pos.y, 255);
-        }
-    }
-    // Add construction site costs
-    const sites = room.find(FIND_MY_CONSTRUCTION_SITES);
-    for (const site of sites) {
-        if (site.structureType === STRUCTURE_ROAD) {
-            // Prefer planned roads
-            costs.set(site.pos.x, site.pos.y, 1);
-        }
-        else if (site.structureType !== STRUCTURE_CONTAINER) {
-            costs.set(site.pos.x, site.pos.y, 255);
-        }
-    }
-    return costs;
-}
-/**
- * Get all valid road positions for a room
- *
- * Combines:
- * - Blueprint roads
- * - Calculated infrastructure roads (to sources, controller, mineral)
- * - Remote mining roads (if applicable)
- *
- * @param room The room to get road positions for
- * @param anchor The blueprint anchor position (usually spawn)
- * @param blueprintRoads Road positions from the blueprint (relative to anchor)
- * @param remoteRooms Optional array of remote room names managed by this room
- */
-function getValidRoadPositions(room, anchor, blueprintRoads, remoteRooms = []) {
-    const validPositions = new Set();
-    const terrain = room.getTerrain();
-    // Add blueprint roads (converted from relative to absolute positions)
-    for (const r of blueprintRoads) {
-        const x = anchor.x + r.x;
-        const y = anchor.y + r.y;
-        if (x >= 1 && x <= 48 && y >= 1 && y <= 48 && terrain.get(x, y) !== TERRAIN_MASK_WALL) {
-            validPositions.add(`${x},${y}`);
-        }
-    }
-    // Add calculated road network (sources, controller, mineral)
-    const roadNetwork = calculateRoadNetwork(room, anchor);
-    for (const posKey of roadNetwork.positions) {
-        validPositions.add(posKey);
-    }
-    // Add remote mining roads (roads in this room that lead to remote rooms)
-    if (remoteRooms.length > 0) {
-        const remoteRoads = calculateRemoteRoads(room, remoteRooms);
-        const homeRoomRoads = remoteRoads.get(room.name);
-        if (homeRoomRoads) {
-            for (const posKey of homeRoomRoads) {
-                validPositions.add(posKey);
-            }
-        }
-    }
-    return validPositions;
-}
-/**
- * Place road construction sites along the road network
- *
- * This is called during construction to build roads to sources, controller, and mineral.
- * It's rate-limited to avoid exceeding construction site limits.
- *
- * @param room The room to build roads in
- * @param anchor The blueprint anchor position (usually spawn)
- * @param maxSites Maximum number of construction sites to place per tick
- * @returns Number of construction sites placed
- */
-function placeRoadConstructionSites(room, anchor, maxSites = DEFAULT_ROAD_SITES_PER_TICK) {
-    const existingSites = room.find(FIND_MY_CONSTRUCTION_SITES);
-    if (existingSites.length >= MAX_CONSTRUCTION_SITES_PER_ROOM)
-        return 0;
-    const roadNetwork = calculateRoadNetwork(room, anchor);
-    const terrain = room.getTerrain();
-    const existingRoads = room.find(FIND_STRUCTURES, {
-        filter: s => s.structureType === STRUCTURE_ROAD
-    });
-    const existingRoadSet = new Set(existingRoads.map(r => `${r.pos.x},${r.pos.y}`));
-    const existingSiteSet = new Set(existingSites
-        .filter(s => s.structureType === STRUCTURE_ROAD)
-        .map(s => `${s.pos.x},${s.pos.y}`));
-    let placed = 0;
-    for (const posKey of roadNetwork.positions) {
-        if (placed >= maxSites)
-            break;
-        if (existingSites.length + placed >= MAX_CONSTRUCTION_SITES_PER_ROOM)
-            break;
-        // Skip if road or site already exists
-        if (existingRoadSet.has(posKey))
-            continue;
-        if (existingSiteSet.has(posKey))
-            continue;
-        // Parse position
-        const [xStr, yStr] = posKey.split(",");
-        const x = parseInt(xStr, 10);
-        const y = parseInt(yStr, 10);
-        // Skip walls
-        if (terrain.get(x, y) === TERRAIN_MASK_WALL)
-            continue;
-        // Place construction site
-        const result = room.createConstructionSite(x, y, STRUCTURE_ROAD);
-        if (result === OK) {
-            placed++;
-        }
-    }
-    return placed;
-}
-
-/**
- * Base Blueprints - Phase 5
- *
- * Pre-computed coordinate arrays for base layouts at different RCL stages.
- */
-/**
- * RCL 1-2: Early Colony Layout
- *
- * Uses a checkerboard pattern to ensure creeps can:
- * - Spawn and move away in any direction
- * - Access all extensions without blocking each other
- *
- * All extension positions satisfy |x|+|y| % 2 == 0 (even sum)
- * to ensure no two extensions are directly adjacent.
- *
- * Layout (E=Extension, S=Spawn, r=Road):
- *       . E .
- *     E r r r E
- *     r r S r r
- *     E r r r E
- *       . E .
- */
-const EARLY_COLONY_BLUEPRINT = {
-    name: "seedNest",
-    rcl: 1,
-    anchor: { x: 25, y: 25 },
-    structures: [
-        { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
-        // Extensions at even-sum positions |x|+|y| % 2 == 0
-        { x: -2, y: 0, structureType: STRUCTURE_EXTENSION },
-        { x: 2, y: 0, structureType: STRUCTURE_EXTENSION },
-        { x: 0, y: -2, structureType: STRUCTURE_EXTENSION },
-        { x: 0, y: 2, structureType: STRUCTURE_EXTENSION },
-        { x: -2, y: -2, structureType: STRUCTURE_EXTENSION }
-    ],
-    roads: [
-        // Core roads around spawn (all 8 adjacent tiles for creep exit)
-        { x: -1, y: -1 },
-        { x: 0, y: -1 },
-        { x: 1, y: -1 },
-        { x: -1, y: 0 },
-        { x: 1, y: 0 },
-        { x: -1, y: 1 },
-        { x: 0, y: 1 },
-        { x: 1, y: 1 }
-    ],
-    ramparts: []
-};
-/**
- * RCL 3-4: Core Colony Layout
- *
- * Expanded checkerboard pattern with tower for defense.
- * All extension positions satisfy |x|+|y| % 2 == 0 (even sum)
- * to ensure no two extensions are directly adjacent.
- *
- * Key features:
- * - All spawn-adjacent tiles are roads for creep exit
- * - Extensions are spaced with roads for movement
- * - Tower placed at safe distance from spawn
- */
-const CORE_COLONY_BLUEPRINT = {
-    name: "foragingExpansion",
-    rcl: 3,
-    anchor: { x: 25, y: 25 },
-    structures: [
-        { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
-        // Tower at safe distance
-        { x: 0, y: -4, structureType: STRUCTURE_TOWER },
-        // Extensions in checkerboard pattern - all positions have |x|+|y| % 2 == 0
-        // Ring 1: distance 2 from spawn
-        { x: -2, y: 0, structureType: STRUCTURE_EXTENSION },
-        { x: 2, y: 0, structureType: STRUCTURE_EXTENSION },
-        { x: 0, y: -2, structureType: STRUCTURE_EXTENSION },
-        { x: 0, y: 2, structureType: STRUCTURE_EXTENSION },
-        // Ring 2: distance 4 (diagonals)
-        { x: -2, y: -2, structureType: STRUCTURE_EXTENSION },
-        { x: 2, y: -2, structureType: STRUCTURE_EXTENSION },
-        { x: -2, y: 2, structureType: STRUCTURE_EXTENSION },
-        { x: 2, y: 2, structureType: STRUCTURE_EXTENSION },
-        // Ring 3: distance 4 from spawn
-        { x: -4, y: 0, structureType: STRUCTURE_EXTENSION },
-        { x: 4, y: 0, structureType: STRUCTURE_EXTENSION },
-        { x: 0, y: 4, structureType: STRUCTURE_EXTENSION },
-        // Ring 4: diagonal positions
-        { x: -1, y: -3, structureType: STRUCTURE_EXTENSION },
-        { x: 1, y: -3, structureType: STRUCTURE_EXTENSION },
-        { x: -3, y: -1, structureType: STRUCTURE_EXTENSION },
-        { x: 3, y: -1, structureType: STRUCTURE_EXTENSION },
-        { x: -3, y: 1, structureType: STRUCTURE_EXTENSION },
-        { x: 3, y: 1, structureType: STRUCTURE_EXTENSION },
-        { x: -1, y: 3, structureType: STRUCTURE_EXTENSION },
-        { x: 1, y: 3, structureType: STRUCTURE_EXTENSION },
-        { x: -3, y: -3, structureType: STRUCTURE_EXTENSION }
-    ],
-    roads: [
-        // Core roads around spawn (all 8 adjacent tiles)
-        { x: -1, y: -1 },
-        { x: 0, y: -1 },
-        { x: 1, y: -1 },
-        { x: -1, y: 0 },
-        { x: 1, y: 0 },
-        { x: -1, y: 1 },
-        { x: 0, y: 1 },
-        { x: 1, y: 1 },
-        // Radial roads for movement to extensions
-        { x: -2, y: -1 },
-        { x: 2, y: -1 },
-        { x: -2, y: 1 },
-        { x: 2, y: 1 },
-        { x: -1, y: -2 },
-        { x: 1, y: -2 },
-        { x: -1, y: 2 },
-        { x: 1, y: 2 },
-        { x: 0, y: -3 },
-        { x: 0, y: 3 },
-        { x: -3, y: 0 },
-        { x: 3, y: 0 }
-    ],
-    ramparts: []
-};
-/**
- * RCL 5-6: Economic Maturity Layout
- *
- * Expanded layout with storage, terminal, and labs.
- * All extension positions satisfy |x|+|y| % 2 == 0 (even sum)
- * to ensure no two extensions are directly adjacent.
- *
- * Key features:
- * - Second spawn at distance 4 (with its own road ring)
- * - Storage and terminal placed with road access
- * - Labs clustered but with road access
- * - Extensions in strict checkerboard pattern
- */
-const ECONOMIC_MATURITY_BLUEPRINT = {
-    name: "matureColony",
-    rcl: 5,
-    anchor: { x: 25, y: 25 },
-    structures: [
-        // Primary spawn at center
-        { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
-        // Second spawn at distance 4 with space around it
-        { x: 4, y: 0, structureType: STRUCTURE_SPAWN },
-        // Storage and terminal in accessible location
-        { x: 0, y: 4, structureType: STRUCTURE_STORAGE },
-        { x: 2, y: 4, structureType: STRUCTURE_TERMINAL },
-        // Towers for defense
-        { x: 0, y: -4, structureType: STRUCTURE_TOWER },
-        { x: -4, y: 0, structureType: STRUCTURE_TOWER },
-        { x: 4, y: -4, structureType: STRUCTURE_TOWER },
-        // Extensions in checkerboard pattern - all positions have |x|+|y| % 2 == 0
-        { x: -2, y: 0, structureType: STRUCTURE_EXTENSION },
-        { x: 2, y: 0, structureType: STRUCTURE_EXTENSION },
-        { x: 0, y: -2, structureType: STRUCTURE_EXTENSION },
-        { x: 0, y: 2, structureType: STRUCTURE_EXTENSION },
-        { x: -2, y: -2, structureType: STRUCTURE_EXTENSION },
-        { x: 2, y: -2, structureType: STRUCTURE_EXTENSION },
-        { x: -2, y: 2, structureType: STRUCTURE_EXTENSION },
-        { x: 2, y: 2, structureType: STRUCTURE_EXTENSION },
-        { x: -1, y: -3, structureType: STRUCTURE_EXTENSION },
-        { x: 1, y: -3, structureType: STRUCTURE_EXTENSION },
-        { x: -3, y: -1, structureType: STRUCTURE_EXTENSION },
-        { x: 3, y: -1, structureType: STRUCTURE_EXTENSION },
-        { x: -3, y: 1, structureType: STRUCTURE_EXTENSION },
-        { x: 3, y: 1, structureType: STRUCTURE_EXTENSION },
-        { x: -1, y: 3, structureType: STRUCTURE_EXTENSION },
-        { x: 1, y: 3, structureType: STRUCTURE_EXTENSION },
-        { x: -4, y: -2, structureType: STRUCTURE_EXTENSION },
-        { x: -4, y: 2, structureType: STRUCTURE_EXTENSION },
-        { x: -2, y: -4, structureType: STRUCTURE_EXTENSION },
-        { x: 2, y: -4, structureType: STRUCTURE_EXTENSION },
-        { x: -3, y: -3, structureType: STRUCTURE_EXTENSION },
-        { x: 3, y: -3, structureType: STRUCTURE_EXTENSION },
-        { x: -3, y: 3, structureType: STRUCTURE_EXTENSION },
-        // Use positions that don't conflict with other blueprint spawns
-        { x: -6, y: 0, structureType: STRUCTURE_EXTENSION },
-        { x: -6, y: -2, structureType: STRUCTURE_EXTENSION },
-        { x: 6, y: -2, structureType: STRUCTURE_EXTENSION },
-        { x: 6, y: 2, structureType: STRUCTURE_EXTENSION },
-        { x: -4, y: -4, structureType: STRUCTURE_EXTENSION },
-        { x: 4, y: 2, structureType: STRUCTURE_EXTENSION },
-        { x: 6, y: 0, structureType: STRUCTURE_EXTENSION },
-        // Labs clustered for reactions
-        { x: -3, y: 5, structureType: STRUCTURE_LAB },
-        { x: -4, y: 4, structureType: STRUCTURE_LAB },
-        { x: -5, y: 5, structureType: STRUCTURE_LAB },
-        // Link near storage
-        { x: -2, y: 4, structureType: STRUCTURE_LINK }
-    ],
-    roads: [
-        // Core roads around primary spawn (all 8 adjacent tiles)
-        { x: -1, y: -1 },
-        { x: 0, y: -1 },
-        { x: 1, y: -1 },
-        { x: -1, y: 0 },
-        { x: 1, y: 0 },
-        { x: -1, y: 1 },
-        { x: 0, y: 1 },
-        { x: 1, y: 1 },
-        // Roads around secondary spawn
-        { x: 3, y: -1 },
-        { x: 3, y: 0 },
-        { x: 3, y: 1 },
-        { x: 4, y: -1 },
-        { x: 4, y: 1 },
-        { x: 5, y: -1 },
-        { x: 5, y: 0 },
-        { x: 5, y: 1 },
-        // Connecting roads between extensions
-        { x: -2, y: -1 },
-        { x: 2, y: -1 },
-        { x: -2, y: 1 },
-        { x: 2, y: 1 },
-        { x: -1, y: -2 },
-        { x: 1, y: -2 },
-        { x: -1, y: 2 },
-        { x: 1, y: 2 },
-        { x: 0, y: -3 },
-        { x: 0, y: 3 },
-        { x: -3, y: 0 },
-        { x: 3, y: 0 }
-    ],
-    ramparts: [
-        { x: 0, y: 0 },
-        { x: 4, y: 0 },
-        { x: 0, y: 4 },
-        { x: 1, y: 4 }
-    ]
-};
-/**
- * RCL 7-8: War Ready / End Game Layout
- *
- * Full end-game layout with 3 spawns, 6 towers, full labs, and all special structures.
- * All extension positions satisfy |x|+|y| % 2 == 0 (even sum)
- * to ensure no two extensions are directly adjacent.
- *
- * Key features:
- * - 3 spawns spaced apart, each with full road ring
- * - Towers positioned for optimal coverage
- * - Labs clustered for efficient reactions with road access
- * - Extensions in strict checkerboard pattern
- */
-const WAR_READY_BLUEPRINT = {
-    name: "fortifiedHive",
-    rcl: 7,
-    anchor: { x: 25, y: 25 },
-    structures: [
-        // 3 spawns spaced apart
-        { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
-        { x: -5, y: -1, structureType: STRUCTURE_SPAWN },
-        { x: 5, y: -1, structureType: STRUCTURE_SPAWN },
-        // Storage and terminal in center south
-        { x: 0, y: 4, structureType: STRUCTURE_STORAGE },
-        { x: 2, y: 4, structureType: STRUCTURE_TERMINAL },
-        // 6 towers for full coverage
-        { x: 0, y: -4, structureType: STRUCTURE_TOWER },
-        { x: -4, y: -2, structureType: STRUCTURE_TOWER },
-        { x: 4, y: -2, structureType: STRUCTURE_TOWER },
-        { x: -4, y: 2, structureType: STRUCTURE_TOWER },
-        { x: 4, y: 2, structureType: STRUCTURE_TOWER },
-        { x: 0, y: 6, structureType: STRUCTURE_TOWER },
-        // Factory near storage
-        { x: -2, y: 4, structureType: STRUCTURE_FACTORY },
-        // Labs clustered in southwest with road access
-        { x: -4, y: 4, structureType: STRUCTURE_LAB },
-        { x: -3, y: 5, structureType: STRUCTURE_LAB },
-        { x: -4, y: 6, structureType: STRUCTURE_LAB },
-        { x: -5, y: 5, structureType: STRUCTURE_LAB },
-        { x: -6, y: 4, structureType: STRUCTURE_LAB },
-        { x: -6, y: 6, structureType: STRUCTURE_LAB },
-        { x: -2, y: 6, structureType: STRUCTURE_LAB },
-        { x: -5, y: 3, structureType: STRUCTURE_LAB },
-        { x: -7, y: 5, structureType: STRUCTURE_LAB },
-        { x: -3, y: 7, structureType: STRUCTURE_LAB },
-        // Special structures
-        { x: 4, y: 4, structureType: STRUCTURE_NUKER },
-        { x: 6, y: 0, structureType: STRUCTURE_OBSERVER },
-        { x: -1, y: 5, structureType: STRUCTURE_POWER_SPAWN },
-        // Links for logistics
-        { x: 1, y: 5, structureType: STRUCTURE_LINK },
-        { x: 5, y: -3, structureType: STRUCTURE_LINK },
-        { x: -5, y: -3, structureType: STRUCTURE_LINK },
-        // Extensions in checkerboard pattern - all positions have |x|+|y| % 2 == 0
-        { x: -2, y: 0, structureType: STRUCTURE_EXTENSION },
-        { x: 2, y: 0, structureType: STRUCTURE_EXTENSION },
-        { x: 0, y: -2, structureType: STRUCTURE_EXTENSION },
-        { x: 0, y: 2, structureType: STRUCTURE_EXTENSION },
-        { x: -2, y: -2, structureType: STRUCTURE_EXTENSION },
-        { x: 2, y: -2, structureType: STRUCTURE_EXTENSION },
-        { x: -2, y: 2, structureType: STRUCTURE_EXTENSION },
-        { x: 2, y: 2, structureType: STRUCTURE_EXTENSION },
-        { x: -3, y: -1, structureType: STRUCTURE_EXTENSION },
-        { x: 3, y: -1, structureType: STRUCTURE_EXTENSION }
-    ],
-    roads: [
-        // Core roads around primary spawn (all 8 adjacent tiles)
-        { x: -1, y: -1 },
-        { x: 0, y: -1 },
-        { x: 1, y: -1 },
-        { x: -1, y: 0 },
-        { x: 1, y: 0 },
-        { x: -1, y: 1 },
-        { x: 0, y: 1 },
-        { x: 1, y: 1 },
-        // Roads around west spawn (-5, -1)
-        { x: -6, y: -2 },
-        { x: -5, y: -2 },
-        { x: -4, y: -2 },
-        { x: -6, y: -1 },
-        { x: -4, y: -1 },
-        { x: -6, y: 0 },
-        { x: -5, y: 0 },
-        { x: -4, y: 0 },
-        // Roads around east spawn (5, -1)
-        { x: 4, y: -2 },
-        { x: 5, y: -2 },
-        { x: 6, y: -2 },
-        { x: 4, y: -1 },
-        { x: 6, y: -1 },
-        { x: 4, y: 0 },
-        { x: 5, y: 0 },
-        { x: 6, y: 0 },
-        // Horizontal connector roads
-        { x: -3, y: 0 },
-        { x: 3, y: 0 },
-        // Vertical connector roads
-        { x: 0, y: -3 },
-        { x: 0, y: 3 },
-        // Additional movement roads between extensions
-        { x: -2, y: -1 },
-        { x: 2, y: -1 },
-        { x: -2, y: 1 },
-        { x: 2, y: 1 },
-        { x: -1, y: -2 },
-        { x: 1, y: -2 },
-        { x: -1, y: 2 },
-        { x: 1, y: 2 }
-    ],
-    ramparts: [
-        // Protect all spawns
-        { x: 0, y: 0 },
-        { x: -5, y: -1 },
-        { x: 5, y: -1 },
-        // Protect storage and terminal
-        { x: 0, y: 4 },
-        { x: 2, y: 4 },
-        // Protect towers
-        { x: 0, y: -4 },
-        { x: -4, y: -2 },
-        { x: 4, y: -2 },
-        { x: -4, y: 2 },
-        { x: 4, y: 2 },
-        { x: 0, y: 6 },
-        // Protect special structures
-        { x: 4, y: 4 },
-        { x: -1, y: 5 }
-    ]
-};
-/**
- * Get blueprint for RCL
- */
-function getBlueprintForRCL(rcl) {
-    if (rcl >= 7)
-        return WAR_READY_BLUEPRINT;
-    if (rcl >= 5)
-        return ECONOMIC_MATURITY_BLUEPRINT;
-    if (rcl >= 3)
-        return CORE_COLONY_BLUEPRINT;
-    return EARLY_COLONY_BLUEPRINT;
-}
-/**
- * Filter structures for a specific RCL
- */
-function getStructuresForRCL(blueprint, rcl) {
-    var _a;
-    const limits = getStructureLimits(rcl);
-    const counts = {};
-    let structures = blueprint.structures.filter(s => {
-        var _a, _b;
-        const type = s.structureType;
-        const limit = (_a = limits[type]) !== null && _a !== void 0 ? _a : 0;
-        const current = (_b = counts[type]) !== null && _b !== void 0 ? _b : 0;
-        if (current >= limit)
-            return false;
-        counts[type] = current + 1;
-        return true;
-    });
-    // Add extensions to reach RCL limit
-    const extensionLimit = (_a = limits[STRUCTURE_EXTENSION]) !== null && _a !== void 0 ? _a : 0;
-    if (extensionLimit > 0) {
-        structures = addExtensionsToBlueprint(structures, extensionLimit);
-    }
-    return structures;
-}
-/**
- * Get structure limits per RCL
- */
-function getStructureLimits(rcl) {
-    var _a;
-    const limits = {
-        1: { spawn: 1, extension: 0, road: 2500, constructedWall: 0 },
-        2: { spawn: 1, extension: 5, road: 2500, constructedWall: 2500, rampart: 2500, container: 5 },
-        3: { spawn: 1, extension: 10, road: 2500, constructedWall: 2500, rampart: 2500, container: 5, tower: 1 },
-        4: {
-            spawn: 1,
-            extension: 20,
-            road: 2500,
-            constructedWall: 2500,
-            rampart: 2500,
-            container: 5,
-            tower: 1,
-            storage: 1
-        },
-        5: {
-            spawn: 1,
-            extension: 30,
-            road: 2500,
-            constructedWall: 2500,
-            rampart: 2500,
-            container: 5,
-            tower: 2,
-            storage: 1,
-            link: 2
-        },
-        6: {
-            spawn: 1,
-            extension: 40,
-            road: 2500,
-            constructedWall: 2500,
-            rampart: 2500,
-            container: 5,
-            tower: 2,
-            storage: 1,
-            link: 3,
-            terminal: 1,
-            extractor: 1,
-            lab: 3
-        },
-        7: {
-            spawn: 2,
-            extension: 50,
-            road: 2500,
-            constructedWall: 2500,
-            rampart: 2500,
-            container: 5,
-            tower: 3,
-            storage: 1,
-            link: 4,
-            terminal: 1,
-            extractor: 1,
-            lab: 6,
-            factory: 1
-        },
-        8: {
-            spawn: 3,
-            extension: 60,
-            road: 2500,
-            constructedWall: 2500,
-            rampart: 2500,
-            container: 5,
-            tower: 6,
-            storage: 1,
-            link: 6,
-            terminal: 1,
-            extractor: 1,
-            lab: 10,
-            factory: 1,
-            nuker: 1,
-            observer: 1,
-            powerSpawn: 1
-        }
-    };
-    return ((_a = limits[rcl]) !== null && _a !== void 0 ? _a : limits[1]);
-}
-/**
- * Get blueprint for a specific RCL (alias for getBlueprintForRCL)
- */
-function getBlueprint(rcl) {
-    return getBlueprintForRCL(rcl);
-}
-/**
- * Place construction sites from a blueprint
- */
-function placeConstructionSites(room, anchor, blueprint) {
-    var _a, _b, _c, _d, _e, _f;
-    const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 1;
-    const structures = getStructuresForRCL(blueprint, rcl);
-    const terrain = room.getTerrain();
-    // Add extractor at mineral position if RCL 6+
-    const mineralStructures = [];
-    if (rcl >= 6) {
-        const minerals = room.find(FIND_MINERALS);
-        if (minerals.length > 0) {
-            const mineral = minerals[0];
-            mineralStructures.push({
-                x: mineral.pos.x - anchor.x,
-                y: mineral.pos.y - anchor.y,
-                structureType: STRUCTURE_EXTRACTOR
-            });
-        }
-    }
-    // Combine blueprint structures with mineral structures
-    const allStructures = [...structures, ...mineralStructures];
-    let placed = 0;
-    const existingSites = room.find(FIND_MY_CONSTRUCTION_SITES);
-    const existingStructures = room.find(FIND_STRUCTURES);
-    if (existingSites.length >= 10)
-        return 0;
-    const structureCounts = {};
-    for (const structure of existingStructures) {
-        const type = structure.structureType;
-        structureCounts[type] = ((_c = structureCounts[type]) !== null && _c !== void 0 ? _c : 0) + 1;
-    }
-    for (const site of existingSites) {
-        const type = site.structureType;
-        structureCounts[type] = ((_d = structureCounts[type]) !== null && _d !== void 0 ? _d : 0) + 1;
-    }
-    const limits = getStructureLimits(rcl);
-    for (const s of allStructures) {
-        const currentCount = (_e = structureCounts[s.structureType]) !== null && _e !== void 0 ? _e : 0;
-        const limit = (_f = limits[s.structureType]) !== null && _f !== void 0 ? _f : 0;
-        if (currentCount >= limit)
-            continue;
-        const x = anchor.x + s.x;
-        const y = anchor.y + s.y;
-        if (x < 1 || x > 48 || y < 1 || y > 48)
-            continue;
-        if (terrain.get(x, y) === TERRAIN_MASK_WALL)
-            continue;
-        const existingAtPos = existingStructures.some(str => str.pos.x === x && str.pos.y === y && str.structureType === s.structureType);
-        if (existingAtPos)
-            continue;
-        const existingSiteAtPos = existingSites.some(site => site.pos.x === x && site.pos.y === y && site.structureType === s.structureType);
-        if (existingSiteAtPos)
-            continue;
-        const result = room.createConstructionSite(x, y, s.structureType);
-        if (result === OK) {
-            placed++;
-            structureCounts[s.structureType] = currentCount + 1;
-            if (placed >= 3 || existingSites.length + placed >= 10)
-                break;
-        }
-    }
-    if (placed < 3 && existingSites.length + placed < 10) {
-        for (const r of blueprint.roads) {
-            const x = anchor.x + r.x;
-            const y = anchor.y + r.y;
-            if (x < 1 || x > 48 || y < 1 || y > 48)
-                continue;
-            if (terrain.get(x, y) === TERRAIN_MASK_WALL)
-                continue;
-            const existingRoad = existingStructures.some(str => str.pos.x === x && str.pos.y === y && str.structureType === STRUCTURE_ROAD);
-            if (existingRoad)
-                continue;
-            const existingRoadSite = existingSites.some(site => site.pos.x === x && site.pos.y === y && site.structureType === STRUCTURE_ROAD);
-            if (existingRoadSite)
-                continue;
-            const result = room.createConstructionSite(x, y, STRUCTURE_ROAD);
-            if (result === OK) {
-                placed++;
-                if (placed >= 3 || existingSites.length + placed >= 10)
-                    break;
-            }
-        }
-    }
-    return placed;
-}
-/**
- * Structure types that can be destroyed for blueprint rearrangement.
- * Excludes critical structures that should never be automatically destroyed:
- * - Spawns: Critical for creep production
- * - Storage/Terminal: May contain valuable resources
- * - Containers: Player-placed for flexible logistics (not in blueprints)
- * - Walls/Ramparts: Defensive structures controlled by player
- */
-const DESTROYABLE_STRUCTURE_TYPES = [
-    STRUCTURE_EXTENSION,
-    STRUCTURE_ROAD,
-    STRUCTURE_TOWER,
-    STRUCTURE_LAB,
-    STRUCTURE_LINK,
-    STRUCTURE_FACTORY,
-    STRUCTURE_OBSERVER,
-    STRUCTURE_NUKER,
-    STRUCTURE_POWER_SPAWN,
-    STRUCTURE_EXTRACTOR
-];
-/** Set for O(1) lookup of destroyable structure types */
-const DESTROYABLE_STRUCTURE_SET = new Set(DESTROYABLE_STRUCTURE_TYPES);
-/**
- * Find structures that are at invalid positions according to the blueprint.
- * This allows the system to destroy structures when blueprints are updated.
- *
- * Only considers structures that are safe to destroy - excludes spawns, storage,
- * terminal, containers, walls, and ramparts as these are critical or player-controlled.
- *
- * Roads are special: they are only considered misplaced if they are not part of:
- * - The blueprint's static road positions
- * - Calculated roads to sources, controller, and mineral
- * - Routes to remote mining rooms
- *
- * @param room The room to check
- * @param anchor The blueprint anchor position (usually spawn)
- * @param blueprint The blueprint to validate against
- * @param remoteRooms Optional array of remote room names managed by this room
- */
-function findMisplacedStructures(room, anchor, blueprint, remoteRooms = []) {
-    var _a, _b, _c;
-    const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 1;
-    const structures = getStructuresForRCL(blueprint, rcl);
-    const terrain = room.getTerrain();
-    const misplaced = [];
-    // Build a set of valid blueprint positions for each structure type
-    const validPositions = new Map();
-    for (const s of structures) {
-        const x = anchor.x + s.x;
-        const y = anchor.y + s.y;
-        // Skip positions on room border (1-48 valid range) or on walls
-        if (x < 1 || x > 48 || y < 1 || y > 48)
-            continue;
-        if (terrain.get(x, y) === TERRAIN_MASK_WALL)
-            continue;
-        const posKey = `${x},${y}`;
-        if (!validPositions.has(s.structureType)) {
-            validPositions.set(s.structureType, new Set());
-        }
-        (_c = validPositions.get(s.structureType)) === null || _c === void 0 ? void 0 : _c.add(posKey);
-    }
-    // Add road positions using the road network planner
-    // This includes:
-    // - Blueprint roads (static positions around spawn)
-    // - Roads to sources, controller, and mineral
-    // - Roads to remote mining rooms
-    const validRoadPositions = getValidRoadPositions(room, anchor, blueprint.roads, remoteRooms);
-    validPositions.set(STRUCTURE_ROAD, validRoadPositions);
-    // Add extractor position at mineral if RCL 6+
-    if (rcl >= 6) {
-        const minerals = room.find(FIND_MINERALS);
-        if (minerals.length > 0) {
-            const mineral = minerals[0];
-            const extractorPositions = new Set();
-            extractorPositions.add(`${mineral.pos.x},${mineral.pos.y}`);
-            validPositions.set(STRUCTURE_EXTRACTOR, extractorPositions);
-        }
-    }
-    // Find existing structures of destroyable types using Set for O(1) lookup
-    // Use FIND_STRUCTURES to include roads (which are unowned) and filter to our structures
-    const existingStructures = room.find(FIND_STRUCTURES, {
-        filter: s => DESTROYABLE_STRUCTURE_SET.has(s.structureType) &&
-            (
-            // Owned by us
-            s.my === true ||
-                // Roads have no owner, so include them if they exist
-                s.structureType === STRUCTURE_ROAD)
-    });
-    // Check each existing structure against blueprint positions
-    for (const structure of existingStructures) {
-        const posKey = `${structure.pos.x},${structure.pos.y}`;
-        const structType = structure.structureType;
-        const validPosForType = validPositions.get(structType);
-        // If this structure type is not in the blueprint, or this position is not valid
-        if (!validPosForType || !validPosForType.has(posKey)) {
-            misplaced.push({
-                structure,
-                reason: `${structure.structureType} at ${posKey} is not in blueprint`
-            });
-        }
-    }
-    return misplaced;
-}
-/**
- * Destroy structures at invalid positions according to the blueprint.
- * Returns the number of structures destroyed.
- *
- * This is used when blueprints are updated and structures need to be rearranged
- * to meet the new requirements.
- *
- * Roads are preserved if they are part of the road network (routes to sources,
- * controller, mineral, or remote rooms).
- *
- * @param room The room to check
- * @param anchor The anchor position (usually the spawn)
- * @param blueprint The blueprint to validate against
- * @param maxDestroy Maximum number of structures to destroy per tick (default: 1)
- * @param remoteRooms Optional array of remote room names managed by this room
- */
-function destroyMisplacedStructures(room, anchor, blueprint, maxDestroy = 1, remoteRooms = []) {
-    const misplaced = findMisplacedStructures(room, anchor, blueprint, remoteRooms);
-    let destroyed = 0;
-    for (const { structure, reason } of misplaced) {
-        if (destroyed >= maxDestroy)
-            break;
-        // Attempt to destroy the structure
-        const result = structure.destroy();
-        if (result === OK) {
-            destroyed++;
-            // Log the destruction for debugging
-            console.log(`[Blueprint] Destroyed misplaced ${reason}`);
-        }
-    }
-    return destroyed;
-}
-
-/**
- * Safe Mode Manager - Emergency Defense
- *
- * Triggers safe mode when defense fails:
- * - Critical structures under attack
- * - Spawn/Storage about to be destroyed
- * - Cooldown tracking
- *
- * Addresses Issue: #21
- */
-/**
- * Safe Mode Manager Class
- */
-class SafeModeManager {
-    /**
-     * Check if safe mode should be triggered
-     */
-    checkSafeMode(room, swarm) {
-        var _a, _b, _c, _d, _e;
-        // Don't trigger if already in safe mode
-        if ((_a = room.controller) === null || _a === void 0 ? void 0 : _a.safeMode) {
-            return;
-        }
-        // Don't trigger if on cooldown
-        if ((_b = room.controller) === null || _b === void 0 ? void 0 : _b.safeModeCooldown) {
-            return;
-        }
-        // Don't trigger if no safe modes available
-        if (((_d = (_c = room.controller) === null || _c === void 0 ? void 0 : _c.safeModeAvailable) !== null && _d !== void 0 ? _d : 0) === 0) {
-            return;
-        }
-        // Check if we should trigger safe mode
-        if (this.shouldTriggerSafeMode(room, swarm)) {
-            const result = (_e = room.controller) === null || _e === void 0 ? void 0 : _e.activateSafeMode();
-            if (result === OK) {
-                logger.warn(`SAFE MODE ACTIVATED in ${room.name}`, { subsystem: "Defense" });
-            }
-            else {
-                const resultStr = result !== undefined ? String(result) : 'undefined';
-                logger.error(`Failed to activate safe mode in ${room.name}: ${resultStr}`, { subsystem: "Defense" });
-            }
-        }
-    }
-    /**
-     * Determine if safe mode should be triggered
-     */
-    shouldTriggerSafeMode(room, swarm) {
-        // Only trigger if danger is high
-        if (swarm.danger < 2) {
-            return false;
-        }
-        // Check spawn health
-        const spawns = room.find(FIND_MY_SPAWNS);
-        for (const spawn of spawns) {
-            if (spawn.hits < spawn.hitsMax * 0.2) {
-                logger.warn(`Spawn ${spawn.name} critical: ${spawn.hits}/${spawn.hitsMax}`, { subsystem: "Defense" });
-                return true;
-            }
-        }
-        // Check storage health
-        if (room.storage && room.storage.hits < room.storage.hitsMax * 0.2) {
-            logger.warn(`Storage critical: ${room.storage.hits}/${room.storage.hitsMax}`, { subsystem: "Defense" });
-            return true;
-        }
-        // Check terminal health
-        if (room.terminal && room.terminal.hits < room.terminal.hitsMax * 0.2) {
-            logger.warn(`Terminal critical: ${room.terminal.hits}/${room.terminal.hitsMax}`, { subsystem: "Defense" });
-            return true;
-        }
-        // Check if we have enough defenders
-        const hostiles = room.find(FIND_HOSTILE_CREEPS);
-        const defenders = room.find(FIND_MY_CREEPS, {
-            filter: c => {
-                const memory = c.memory;
-                const role = memory.role;
-                return role === "guard" || role === "ranger" || role === "soldier";
-            }
-        });
-        // Trigger if overwhelmed (3:1 ratio)
-        if (hostiles.length > defenders.length * 3) {
-            logger.warn(`Overwhelmed: ${hostiles.length} hostiles vs ${defenders.length} defenders`, {
-                subsystem: "Defense"
-            });
-            return true;
-        }
-        // Check if hostiles are boosted
-        const boostedHostiles = hostiles.filter(h => h.body.some(p => p.boost));
-        if (boostedHostiles.length > 0 && defenders.length < boostedHostiles.length * 2) {
-            logger.warn(`Boosted hostiles detected: ${boostedHostiles.length}`, { subsystem: "Defense" });
-            return true;
-        }
-        return false;
-    }
-}
-/**
- * Global safe mode manager instance
- */
-const safeModeManager = new SafeModeManager();
-
-/**
- * Perimeter Defense System
- *
- * Implements early room security by identifying and fortifying room exits
- * and choke points with walls and ramparts.
- *
- * ROADMAP Reference: Section 17 - Mauern & Ramparts
- * - Perimeter: Walls/Ramparts at Exits and Engpässen
- * - Core-Shell & Perimeter protection strategy
- */
-/**
- * Minimum size of an exit group to warrant a rampart gap for friendly passage.
- * Groups smaller than this will have walls only (no gaps).
- */
-const MIN_GROUP_SIZE_FOR_GAP = 4;
-/**
- * Find all exit tiles in a room
- *
- * Identifies positions at room edges that are actual exits (not blocked by terrain or structures).
- * If there's a barrier structure (wall or rampart) at the room edge, it's not considered an exit (already blocked).
- */
-function findRoomExits(roomName) {
-    const exits = [];
-    const terrain = Game.map.getRoomTerrain(roomName);
-    // Get the room to check for existing barrier structures (walls and ramparts)
-    const room = Game.rooms[roomName];
-    // Build a set of positions with barrier structures for fast lookup
-    const barrierPositions = new Set();
-    if (room) {
-        const barriers = room.find(FIND_STRUCTURES, {
-            filter: (s) => s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART
-        });
-        for (const barrier of barriers) {
-            barrierPositions.add(`${barrier.pos.x},${barrier.pos.y}`);
-        }
-    }
-    // Top edge (y=0)
-    for (let x = 0; x < 50; x++) {
-        // Skip if terrain is wall or if there's already a barrier structure
-        if (terrain.get(x, 0) !== TERRAIN_MASK_WALL && !barrierPositions.has(`${x},0`)) {
-            exits.push({ x, y: 0, exitDirection: "top", isChokePoint: false });
-        }
-    }
-    // Bottom edge (y=49)
-    for (let x = 0; x < 50; x++) {
-        // Skip if terrain is wall or if there's already a barrier structure
-        if (terrain.get(x, 49) !== TERRAIN_MASK_WALL && !barrierPositions.has(`${x},49`)) {
-            exits.push({ x, y: 49, exitDirection: "bottom", isChokePoint: false });
-        }
-    }
-    // Left edge (x=0)
-    for (let y = 1; y < 49; y++) {
-        // Skip if terrain is wall or if there's already a barrier structure
-        if (terrain.get(0, y) !== TERRAIN_MASK_WALL && !barrierPositions.has(`0,${y}`)) {
-            exits.push({ x: 0, y, exitDirection: "left", isChokePoint: false });
-        }
-    }
-    // Right edge (x=49)
-    for (let y = 1; y < 49; y++) {
-        // Skip if terrain is wall or if there's already a barrier structure
-        if (terrain.get(49, y) !== TERRAIN_MASK_WALL && !barrierPositions.has(`49,${y}`)) {
-            exits.push({ x: 49, y, exitDirection: "right", isChokePoint: false });
-        }
-    }
-    return exits;
-}
-/**
- * Calculate optimal perimeter defense positions
- * Places walls at exit points only (not a complete square).
- *
- * Screeps requires walls/ramparts to be placed at least 2 tiles from room exits.
- * Exit tiles are at coordinates 0 and 49, so walls must be at 2 and 47.
- *
- * Strategy (per ROADMAP Section 17 - Mauern & Ramparts):
- * - Identify actual exit tiles (non-wall terrain at x=0, x=49, y=0, y=49)
- * - Place walls 2 tiles inside from each exit tile
- * - Create gaps (rampart-only positions) at the center of each exit group for friendly passage
- * - This creates walls only at exits, not a complete square perimeter
- */
-function calculatePerimeterPositions(roomName) {
-    var _a;
-    const terrain = Game.map.getRoomTerrain(roomName);
-    const walls = [];
-    const ramparts = [];
-    // Find all exit tiles (actual room exits)
-    const exits = findRoomExits(roomName);
-    // Group exits by direction to identify continuous exit sections
-    const exitsByDirection = new Map();
-    for (const exit of exits) {
-        const group = (_a = exitsByDirection.get(exit.exitDirection)) !== null && _a !== void 0 ? _a : [];
-        group.push(exit);
-        exitsByDirection.set(exit.exitDirection, group);
-    }
-    // For each exit direction, identify continuous exit groups and place walls
-    for (const [direction, directionExits] of exitsByDirection) {
-        // Sort exits by coordinate (x for top/bottom, y for left/right)
-        const sorted = [...directionExits].sort((a, b) => {
-            if (a.x === b.x)
-                return a.y - b.y;
-            return a.x - b.x;
-        });
-        // Group continuous exits (gaps in terrain create separate groups)
-        const groups = [];
-        let currentGroup = [];
-        for (let i = 0; i < sorted.length; i++) {
-            const exit = sorted[i];
-            const prev = sorted[i - 1];
-            // Check if this exit is continuous with the previous one
-            const isContinuous = prev &&
-                (Math.abs(exit.x - prev.x) <= 1 && Math.abs(exit.y - prev.y) <= 1);
-            if (!isContinuous && currentGroup.length > 0) {
-                // Start a new group
-                groups.push(currentGroup);
-                currentGroup = [];
-            }
-            currentGroup.push(exit);
-        }
-        // Don't forget the last group
-        if (currentGroup.length > 0) {
-            groups.push(currentGroup);
-        }
-        // For each group of continuous exits, place walls 2 tiles inside with a gap in the center
-        for (const group of groups) {
-            // Determine the center of the group for gap placement
-            const centerIndex = Math.floor(group.length / 2);
-            for (let i = 0; i < group.length; i++) {
-                const exit = group[i];
-                // Calculate wall position (2 tiles inside from exit)
-                let wallX = exit.x;
-                let wallY = exit.y;
-                switch (direction) {
-                    case "top":
-                        wallY = 2;
-                        break;
-                    case "bottom":
-                        wallY = 47;
-                        break;
-                    case "left":
-                        wallX = 2;
-                        break;
-                    case "right":
-                        wallX = 47;
-                        break;
-                }
-                // Skip if terrain is wall at wall position
-                if (terrain.get(wallX, wallY) === TERRAIN_MASK_WALL)
-                    continue;
-                // Create a 2-tile wide gap in the center of each exit group
-                // Gap is placed at center ± 1 for groups large enough to warrant friendly passage
-                const isGap = group.length >= MIN_GROUP_SIZE_FOR_GAP && (i === centerIndex || i === centerIndex - 1);
-                if (isGap) {
-                    ramparts.push({ x: wallX, y: wallY, exitDirection: direction, isChokePoint: false });
-                }
-                else {
-                    walls.push({ x: wallX, y: wallY, exitDirection: direction, isChokePoint: false });
-                }
-            }
-        }
-    }
-    return { walls, ramparts };
-}
-/**
- * Place perimeter defense construction sites
- *
- * Builds walls at room exits only (not a complete square perimeter).
- * For each exit group, walls are placed 2 tiles inside with strategic gaps (ramparts only)
- * in the center to allow friendly creeps to pass while blocking enemies.
- *
- * Strategy (per ROADMAP Section 17 - Mauern & Ramparts):
- * - Walls block all creeps
- * - Ramparts (without walls underneath) allow friendly creeps but block enemies
- * - Build walls at exits only (where creeps can actually enter the room)
- * - Walls are placed 2 tiles inside from exit tiles (at x=2, x=47, y=2, y=47)
- * - Create 2-tile wide gaps at center of each exit group with ramparts only
- * - This avoids creating a complete square, only fortifying actual entry points
- *
- * @param room The room to defend
- * @param rcl Current room control level
- * @param maxSites Maximum construction sites to place
- * @param prioritizeChokePoints Whether to prioritize choke points (not used in new strategy)
- * @returns Number of sites placed
- */
-function placePerimeterDefense(room, rcl, maxSites = 3, _prioritizeChokePoints = true) {
-    // RCL requirements
-    // RCL 2: Start placing perimeter walls
-    // RCL 3+: Complete perimeter walls and add ramparts at gap positions
-    if (rcl < 2)
-        return 0;
-    const plan = calculatePerimeterPositions(room.name);
-    const existingSites = room.find(FIND_MY_CONSTRUCTION_SITES);
-    const existingStructures = room.find(FIND_STRUCTURES);
-    // Check site limit
-    if (existingSites.length >= 10)
-        return 0;
-    let placed = 0;
-    const maxToPlace = Math.min(maxSites, 10 - existingSites.length);
-    // Get structure counts
-    const wallCount = existingStructures.filter(s => s.structureType === STRUCTURE_WALL).length + existingSites.filter(s => s.structureType === STRUCTURE_WALL).length;
-    const rampartCount = existingStructures.filter(s => s.structureType === STRUCTURE_RAMPART).length + existingSites.filter(s => s.structureType === STRUCTURE_RAMPART).length;
-    // RCL structure limits (from ROADMAP)
-    const wallLimit = rcl >= 2 ? 2500 : 0;
-    const rampartLimit = rcl >= 2 ? 2500 : 0;
-    // Priority 1: Place walls along perimeter (RCL 2+)
-    if (rcl >= 2 && placed < maxToPlace && wallCount < wallLimit) {
-        for (const wall of plan.walls) {
-            if (placed >= maxToPlace)
-                break;
-            if (wallCount + placed >= wallLimit)
-                break;
-            // Check if position already has a structure or site
-            const hasStructure = existingStructures.some(s => s.pos.x === wall.x && s.pos.y === wall.y &&
-                (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART));
-            const hasSite = existingSites.some(s => s.pos.x === wall.x && s.pos.y === wall.y &&
-                (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART));
-            if (!hasStructure && !hasSite) {
-                const result = room.createConstructionSite(wall.x, wall.y, STRUCTURE_WALL);
-                if (result === OK) {
-                    placed++;
-                    logger.debug(`Placed perimeter wall at (${wall.x},${wall.y})`, { subsystem: "Defense" });
-                }
-            }
-        }
-    }
-    // Priority 2: Remove walls at gap positions (RCL 3+)
-    // These positions should only have ramparts for friendly passage
-    // Only remove walls if there's no rampart yet (to avoid destroying walls unnecessarily)
-    if (rcl >= 3) {
-        for (const rampart of plan.ramparts) {
-            // Check if there's already a rampart at this position
-            const hasRampart = existingStructures.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART);
-            const hasRampartSite = existingSites.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART);
-            // Only destroy wall if there's no rampart yet
-            if (!hasRampart && !hasRampartSite) {
-                const wallAtGap = existingStructures.find(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_WALL);
-                if (wallAtGap) {
-                    // Destroy wall at gap position to allow rampart placement
-                    const result = wallAtGap.destroy();
-                    if (result === OK) {
-                        logger.info(`Removed wall at gap position (${rampart.x},${rampart.y}) to allow friendly passage`, { subsystem: "Defense" });
-                    }
-                    else {
-                        logger.warn(`Failed to destroy wall at gap position (${rampart.x},${rampart.y}): ${result}`, { subsystem: "Defense" });
-                    }
-                }
-            }
-        }
-    }
-    // Priority 3: Place ramparts at gap positions (RCL 3+)
-    // These are rampart-only positions (no wall underneath) to allow friendly passage
-    if (rcl >= 3 && placed < maxToPlace && rampartCount < rampartLimit) {
-        for (const rampart of plan.ramparts) {
-            if (placed >= maxToPlace)
-                break;
-            if (rampartCount + placed >= rampartLimit)
-                break;
-            // Check if position already has a rampart
-            const hasRampart = existingStructures.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART);
-            const hasRampartSite = existingSites.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART);
-            // Don't place if there's a wall here (walls should not be at rampart-only positions)
-            const hasWall = existingStructures.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_WALL);
-            if (!hasRampart && !hasRampartSite && !hasWall) {
-                const result = room.createConstructionSite(rampart.x, rampart.y, STRUCTURE_RAMPART);
-                if (result === OK) {
-                    placed++;
-                    logger.debug(`Placed perimeter rampart gap at (${rampart.x},${rampart.y})`, { subsystem: "Defense" });
-                }
-            }
-        }
-    }
-    return placed;
-}
-
-/**
- * Wall and Rampart Repair Target Calculator
- *
- * Calculates repair thresholds for walls and ramparts based on RCL and danger level.
- * Used by both tower control and engineer creeps for consistent repair behavior.
- *
- * ROADMAP Reference: Section 17 - Mauern & Ramparts
- */
-/**
- * Calculate wall/rampart repair target based on RCL and danger level
- *
- * Uses RCL-based thresholds aligned with Screeps rampart max hits limits:
- * - RCL 2: 300K max
- * - RCL 3: 1M max
- * - RCL 4: 3M max
- * - RCL 5: 10M max
- * - RCL 6: 30M max
- * - RCL 7: 100M max
- * - RCL 8: 300M max
- *
- * Danger level modifies the target:
- * - danger 0: 30% of max (peaceful maintenance)
- * - danger 1: 50% of max (threat detected)
- * - danger 2: 80% of max (active attack)
- * - danger 3+: 100% of max (siege/nuke)
- *
- * @param rcl Room Controller Level (1-8)
- * @param danger Danger level (0-3+)
- * @returns Target repair hits threshold
- */
-function calculateWallRepairTarget(rcl, danger) {
-    var _a, _b;
-    // RCL-based max hits (Screeps rampart limits)
-    const maxHitsByRCL = {
-        1: 0,
-        2: 300000,
-        3: 1000000,
-        4: 3000000,
-        5: 10000000,
-        6: 30000000,
-        7: 100000000,
-        8: 300000000 // 300M
-    };
-    const maxHits = (_a = maxHitsByRCL[rcl]) !== null && _a !== void 0 ? _a : 0;
-    if (maxHits === 0)
-        return 0;
-    // Danger level multipliers
-    const dangerMultipliers = {
-        0: 0.3,
-        1: 0.5,
-        2: 0.8,
-        3: 1.0 // Siege/nuke (default for 3+)
-    };
-    const dangerMultiplier = (_b = dangerMultipliers[danger]) !== null && _b !== void 0 ? _b : 1.0;
-    return Math.floor(maxHits * dangerMultiplier);
-}
-
-/**
- * Chemistry Planner - Reaction Chain Planning
- *
- * Plans and executes lab reactions:
- * - Target compound configuration
- * - Reaction chain calculation
- * - Intermediate product tracking
- * - Boost stockpile management
- *
- * Addresses Issue: #28
- */
-/**
- * Reaction chains for all compounds
- */
-const REACTIONS = {
-    // Tier 1 compounds
-    [RESOURCE_HYDROXIDE]: {
-        product: RESOURCE_HYDROXIDE,
-        input1: RESOURCE_HYDROGEN,
-        input2: RESOURCE_OXYGEN,
-        priority: 10
-    },
-    [RESOURCE_ZYNTHIUM_KEANITE]: {
-        product: RESOURCE_ZYNTHIUM_KEANITE,
-        input1: RESOURCE_ZYNTHIUM,
-        input2: RESOURCE_KEANIUM,
-        priority: 10
-    },
-    [RESOURCE_UTRIUM_LEMERGITE]: {
-        product: RESOURCE_UTRIUM_LEMERGITE,
-        input1: RESOURCE_UTRIUM,
-        input2: RESOURCE_LEMERGIUM,
-        priority: 10
-    },
-    [RESOURCE_GHODIUM]: {
-        product: RESOURCE_GHODIUM,
-        input1: RESOURCE_ZYNTHIUM_KEANITE,
-        input2: RESOURCE_UTRIUM_LEMERGITE,
-        priority: 15
-    },
-    // Tier 2 compounds (boosts)
-    [RESOURCE_UTRIUM_HYDRIDE]: {
-        product: RESOURCE_UTRIUM_HYDRIDE,
-        input1: RESOURCE_UTRIUM,
-        input2: RESOURCE_HYDROGEN,
-        priority: 20
-    },
-    [RESOURCE_UTRIUM_OXIDE]: {
-        product: RESOURCE_UTRIUM_OXIDE,
-        input1: RESOURCE_UTRIUM,
-        input2: RESOURCE_OXYGEN,
-        priority: 20
-    },
-    [RESOURCE_KEANIUM_HYDRIDE]: {
-        product: RESOURCE_KEANIUM_HYDRIDE,
-        input1: RESOURCE_KEANIUM,
-        input2: RESOURCE_HYDROGEN,
-        priority: 20
-    },
-    [RESOURCE_KEANIUM_OXIDE]: {
-        product: RESOURCE_KEANIUM_OXIDE,
-        input1: RESOURCE_KEANIUM,
-        input2: RESOURCE_OXYGEN,
-        priority: 20
-    },
-    [RESOURCE_LEMERGIUM_HYDRIDE]: {
-        product: RESOURCE_LEMERGIUM_HYDRIDE,
-        input1: RESOURCE_LEMERGIUM,
-        input2: RESOURCE_HYDROGEN,
-        priority: 20
-    },
-    [RESOURCE_LEMERGIUM_OXIDE]: {
-        product: RESOURCE_LEMERGIUM_OXIDE,
-        input1: RESOURCE_LEMERGIUM,
-        input2: RESOURCE_OXYGEN,
-        priority: 20
-    },
-    [RESOURCE_ZYNTHIUM_HYDRIDE]: {
-        product: RESOURCE_ZYNTHIUM_HYDRIDE,
-        input1: RESOURCE_ZYNTHIUM,
-        input2: RESOURCE_HYDROGEN,
-        priority: 20
-    },
-    [RESOURCE_ZYNTHIUM_OXIDE]: {
-        product: RESOURCE_ZYNTHIUM_OXIDE,
-        input1: RESOURCE_ZYNTHIUM,
-        input2: RESOURCE_OXYGEN,
-        priority: 20
-    },
-    [RESOURCE_GHODIUM_HYDRIDE]: {
-        product: RESOURCE_GHODIUM_HYDRIDE,
-        input1: RESOURCE_GHODIUM,
-        input2: RESOURCE_HYDROGEN,
-        priority: 20
-    },
-    [RESOURCE_GHODIUM_OXIDE]: {
-        product: RESOURCE_GHODIUM_OXIDE,
-        input1: RESOURCE_GHODIUM,
-        input2: RESOURCE_OXYGEN,
-        priority: 20
-    },
-    // Tier 3 compounds (advanced boosts)
-    [RESOURCE_UTRIUM_ACID]: {
-        product: RESOURCE_UTRIUM_ACID,
-        input1: RESOURCE_UTRIUM_HYDRIDE,
-        input2: RESOURCE_HYDROXIDE,
-        priority: 30
-    },
-    [RESOURCE_UTRIUM_ALKALIDE]: {
-        product: RESOURCE_UTRIUM_ALKALIDE,
-        input1: RESOURCE_UTRIUM_OXIDE,
-        input2: RESOURCE_HYDROXIDE,
-        priority: 30
-    },
-    [RESOURCE_KEANIUM_ACID]: {
-        product: RESOURCE_KEANIUM_ACID,
-        input1: RESOURCE_KEANIUM_HYDRIDE,
-        input2: RESOURCE_HYDROXIDE,
-        priority: 30
-    },
-    [RESOURCE_KEANIUM_ALKALIDE]: {
-        product: RESOURCE_KEANIUM_ALKALIDE,
-        input1: RESOURCE_KEANIUM_OXIDE,
-        input2: RESOURCE_HYDROXIDE,
-        priority: 30
-    },
-    [RESOURCE_LEMERGIUM_ACID]: {
-        product: RESOURCE_LEMERGIUM_ACID,
-        input1: RESOURCE_LEMERGIUM_HYDRIDE,
-        input2: RESOURCE_HYDROXIDE,
-        priority: 30
-    },
-    [RESOURCE_LEMERGIUM_ALKALIDE]: {
-        product: RESOURCE_LEMERGIUM_ALKALIDE,
-        input1: RESOURCE_LEMERGIUM_OXIDE,
-        input2: RESOURCE_HYDROXIDE,
-        priority: 30
-    },
-    [RESOURCE_ZYNTHIUM_ACID]: {
-        product: RESOURCE_ZYNTHIUM_ACID,
-        input1: RESOURCE_ZYNTHIUM_HYDRIDE,
-        input2: RESOURCE_HYDROXIDE,
-        priority: 30
-    },
-    [RESOURCE_ZYNTHIUM_ALKALIDE]: {
-        product: RESOURCE_ZYNTHIUM_ALKALIDE,
-        input1: RESOURCE_ZYNTHIUM_OXIDE,
-        input2: RESOURCE_HYDROXIDE,
-        priority: 30
-    },
-    [RESOURCE_GHODIUM_ACID]: {
-        product: RESOURCE_GHODIUM_ACID,
-        input1: RESOURCE_GHODIUM_HYDRIDE,
-        input2: RESOURCE_HYDROXIDE,
-        priority: 30
-    },
-    [RESOURCE_GHODIUM_ALKALIDE]: {
-        product: RESOURCE_GHODIUM_ALKALIDE,
-        input1: RESOURCE_GHODIUM_OXIDE,
-        input2: RESOURCE_HYDROXIDE,
-        priority: 30
-    },
-    // Tier 4 compounds (catalyzed boosts)
-    [RESOURCE_CATALYZED_UTRIUM_ACID]: {
-        product: RESOURCE_CATALYZED_UTRIUM_ACID,
-        input1: RESOURCE_UTRIUM_ACID,
-        input2: RESOURCE_CATALYST,
-        priority: 40
-    },
-    [RESOURCE_CATALYZED_UTRIUM_ALKALIDE]: {
-        product: RESOURCE_CATALYZED_UTRIUM_ALKALIDE,
-        input1: RESOURCE_UTRIUM_ALKALIDE,
-        input2: RESOURCE_CATALYST,
-        priority: 40
-    },
-    [RESOURCE_CATALYZED_KEANIUM_ACID]: {
-        product: RESOURCE_CATALYZED_KEANIUM_ACID,
-        input1: RESOURCE_KEANIUM_ACID,
-        input2: RESOURCE_CATALYST,
-        priority: 40
-    },
-    [RESOURCE_CATALYZED_KEANIUM_ALKALIDE]: {
-        product: RESOURCE_CATALYZED_KEANIUM_ALKALIDE,
-        input1: RESOURCE_KEANIUM_ALKALIDE,
-        input2: RESOURCE_CATALYST,
-        priority: 40
-    },
-    [RESOURCE_CATALYZED_LEMERGIUM_ACID]: {
-        product: RESOURCE_CATALYZED_LEMERGIUM_ACID,
-        input1: RESOURCE_LEMERGIUM_ACID,
-        input2: RESOURCE_CATALYST,
-        priority: 40
-    },
-    [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE]: {
-        product: RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE,
-        input1: RESOURCE_LEMERGIUM_ALKALIDE,
-        input2: RESOURCE_CATALYST,
-        priority: 40
-    },
-    [RESOURCE_CATALYZED_ZYNTHIUM_ACID]: {
-        product: RESOURCE_CATALYZED_ZYNTHIUM_ACID,
-        input1: RESOURCE_ZYNTHIUM_ACID,
-        input2: RESOURCE_CATALYST,
-        priority: 40
-    },
-    [RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE]: {
-        product: RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE,
-        input1: RESOURCE_ZYNTHIUM_ALKALIDE,
-        input2: RESOURCE_CATALYST,
-        priority: 40
-    },
-    [RESOURCE_CATALYZED_GHODIUM_ACID]: {
-        product: RESOURCE_CATALYZED_GHODIUM_ACID,
-        input1: RESOURCE_GHODIUM_ACID,
-        input2: RESOURCE_CATALYST,
-        priority: 40
-    },
-    [RESOURCE_CATALYZED_GHODIUM_ALKALIDE]: {
-        product: RESOURCE_CATALYZED_GHODIUM_ALKALIDE,
-        input1: RESOURCE_GHODIUM_ALKALIDE,
-        input2: RESOURCE_CATALYST,
-        priority: 40
-    }
-};
-/**
- * Target stockpile amounts
- */
-const STOCKPILE_TARGETS = {
-    // War mode boosts
-    [RESOURCE_CATALYZED_UTRIUM_ACID]: 3000,
-    [RESOURCE_CATALYZED_KEANIUM_ALKALIDE]: 3000,
-    [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE]: 3000,
-    [RESOURCE_CATALYZED_GHODIUM_ACID]: 3000,
-    // Eco mode boosts
-    [RESOURCE_CATALYZED_GHODIUM_ALKALIDE]: 2000,
-    [RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE]: 2000,
-    // Intermediates
-    [RESOURCE_GHODIUM]: 5000,
-    [RESOURCE_HYDROXIDE]: 5000
-};
-/**
- * Chemistry Planner Class
- */
-class ChemistryPlanner {
-    /**
-     * Plan reactions for a room
-     */
-    planReactions(room, swarm) {
-        var _a, _b;
-        // Get available labs
-        const labs = room.find(FIND_MY_STRUCTURES, {
-            filter: s => s.structureType === STRUCTURE_LAB
-        });
-        if (labs.length < 3) {
-            return null; // Need at least 3 labs for reactions
-        }
-        // Get terminal resources
-        const terminal = room.terminal;
-        if (!terminal) {
-            return null; // Need terminal for resource management
-        }
-        // Determine target compounds based on posture
-        const targets = this.getTargetCompounds(swarm);
-        // Find reactions we need to run
-        for (const target of targets) {
-            const reaction = REACTIONS[target];
-            if (!reaction)
-                continue;
-            // Check if we have enough of this compound
-            const current = (_a = terminal.store[target]) !== null && _a !== void 0 ? _a : 0;
-            const targetAmount = (_b = STOCKPILE_TARGETS[target]) !== null && _b !== void 0 ? _b : 1000;
-            if (current < targetAmount) {
-                // Check if we have inputs
-                if (this.hasInputs(terminal, reaction)) {
-                    return reaction;
-                }
-                else {
-                    // Need to produce intermediates first
-                    const intermediate = this.findIntermediateReaction(terminal, reaction);
-                    if (intermediate) {
-                        return intermediate;
-                    }
-                }
-            }
-        }
-        return null;
-    }
-    /**
-     * Get target compounds based on swarm state
-     */
-    getTargetCompounds(swarm) {
-        const targets = [];
-        // Always produce ghodium and hydroxide
-        targets.push(RESOURCE_GHODIUM, RESOURCE_HYDROXIDE);
-        // War mode: prioritize combat boosts
-        if (swarm.posture === "war" || swarm.posture === "siege" || swarm.danger >= 2) {
-            targets.push(RESOURCE_CATALYZED_UTRIUM_ACID, // Attack
-            RESOURCE_CATALYZED_KEANIUM_ALKALIDE, // Ranged attack
-            RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE, // Heal
-            RESOURCE_CATALYZED_GHODIUM_ACID // Dismantle
-            );
-        }
-        else {
-            // Eco mode: prioritize economy boosts
-            targets.push(RESOURCE_CATALYZED_GHODIUM_ALKALIDE, // Upgrade controller
-            RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE, // Move
-            RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE // Heal (always useful)
-            );
-        }
-        return targets;
-    }
-    /**
-     * Check if terminal has inputs for reaction
-     */
-    hasInputs(terminal, reaction) {
-        var _a, _b;
-        const input1Amount = (_a = terminal.store[reaction.input1]) !== null && _a !== void 0 ? _a : 0;
-        const input2Amount = (_b = terminal.store[reaction.input2]) !== null && _b !== void 0 ? _b : 0;
-        return input1Amount >= 1000 && input2Amount >= 1000;
-    }
-    /**
-     * Find intermediate reaction needed to produce target
-     */
-    findIntermediateReaction(terminal, target) {
-        var _a, _b;
-        // Check if we need to produce input1
-        if (((_a = terminal.store[target.input1]) !== null && _a !== void 0 ? _a : 0) < 1000) {
-            const intermediate = REACTIONS[target.input1];
-            if (intermediate && this.hasInputs(terminal, intermediate)) {
-                return intermediate;
-            }
-        }
-        // Check if we need to produce input2
-        if (((_b = terminal.store[target.input2]) !== null && _b !== void 0 ? _b : 0) < 1000) {
-            const intermediate = REACTIONS[target.input2];
-            if (intermediate && this.hasInputs(terminal, intermediate)) {
-                return intermediate;
-            }
-        }
-        return null;
-    }
-    /**
-     * Execute reaction in labs
-     */
-    executeReaction(room, reaction) {
-        const labs = room.find(FIND_MY_STRUCTURES, {
-            filter: s => s.structureType === STRUCTURE_LAB
-        });
-        if (labs.length < 3)
-            return;
-        // Use first 2 labs as input labs, rest as output labs
-        const inputLab1 = labs[0];
-        const inputLab2 = labs[1];
-        const outputLabs = labs.slice(2);
-        // Ensure input labs have correct resources
-        if (inputLab1.mineralType !== reaction.input1 || inputLab1.store[reaction.input1] < 500) {
-            // Need to load input1
-            logger.debug(`Lab ${inputLab1.id} needs ${reaction.input1}`, { subsystem: "Chemistry" });
-        }
-        if (inputLab2.mineralType !== reaction.input2 || inputLab2.store[reaction.input2] < 500) {
-            // Need to load input2
-            logger.debug(`Lab ${inputLab2.id} needs ${reaction.input2}`, { subsystem: "Chemistry" });
-        }
-        // Run reactions in output labs
-        for (const outputLab of outputLabs) {
-            if (outputLab.cooldown > 0)
-                continue;
-            // Check if lab is full
-            const freeCapacity = outputLab.store.getFreeCapacity();
-            if (freeCapacity !== null && freeCapacity < 100) {
-                logger.debug(`Lab ${outputLab.id} is full, needs unloading`, { subsystem: "Chemistry" });
-                continue;
-            }
-            const result = outputLab.runReaction(inputLab1, inputLab2);
-            if (result === OK) {
-                logger.debug(`Produced ${reaction.product} in lab ${outputLab.id}`, { subsystem: "Chemistry" });
-            }
-        }
-    }
-}
-/**
- * Global chemistry planner instance
- */
-const chemistryPlanner = new ChemistryPlanner();
-
-/**
- * Boost Manager - Creep Boosting System
- *
- * Manages creep boosting:
- * - Lab pre-loading with boost compounds
- * - Creep boosting before role execution
- * - Boost decisions based on posture/danger
- *
- * Addresses Issue: #23
- */
-/**
- * Default boost configurations
- */
-const BOOST_CONFIGS = [
-    {
-        role: "soldier",
-        boosts: [RESOURCE_CATALYZED_UTRIUM_ACID, RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE],
-        minDanger: 2
-    },
-    {
-        role: "ranger",
-        boosts: [RESOURCE_CATALYZED_KEANIUM_ALKALIDE, RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE],
-        minDanger: 2
-    },
-    {
-        role: "healer",
-        boosts: [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE, RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE],
-        minDanger: 2
-    },
-    {
-        role: "siegeUnit",
-        boosts: [RESOURCE_CATALYZED_GHODIUM_ACID, RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE],
-        minDanger: 1
-    }
-];
-/**
- * Map error codes to readable strings
- */
-function getBoostErrorMessage(code) {
-    switch (code) {
-        case ERR_NOT_OWNER:
-            return "not owner of lab";
-        case ERR_NOT_FOUND:
-            return "no suitable body parts";
-        case ERR_NOT_ENOUGH_RESOURCES:
-            return "not enough compound";
-        case ERR_INVALID_TARGET:
-            return "invalid creep target";
-        case ERR_NOT_IN_RANGE:
-            return "creep not in range";
-        case ERR_RCL_NOT_ENOUGH:
-            return "RCL too low";
-        default:
-            return `error code ${code}`;
-    }
-}
-/**
- * Boost Manager Class
- */
-class BoostManager {
-    /**
-     * Check if a creep should be boosted
-     */
-    shouldBoost(creep, swarm) {
-        const memory = creep.memory;
-        // Check if already boosted
-        if (memory.boosted) {
-            return false;
-        }
-        // Get boost config for role
-        const config = BOOST_CONFIGS.find(c => c.role === memory.role);
-        if (!config) {
-            return false; // No boost config for this role
-        }
-        // Check danger level
-        if (swarm.danger < config.minDanger) {
-            return false; // Not dangerous enough to warrant boosting
-        }
-        // Check if room has labs
-        if (swarm.missingStructures.labs) {
-            return false; // No labs available
-        }
-        return true;
-    }
-    /**
-     * Boost a creep
-     */
-    boostCreep(creep, room) {
-        const memory = creep.memory;
-        // Get boost config
-        const config = BOOST_CONFIGS.find(c => c.role === memory.role);
-        if (!config)
-            return false;
-        // Find labs with required boosts
-        const labs = room.find(FIND_MY_STRUCTURES, {
-            filter: s => s.structureType === STRUCTURE_LAB
-        });
-        for (const boost of config.boosts) {
-            // Check if creep already has this boost
-            const bodyParts = creep.body.filter(p => p.boost === boost);
-            if (bodyParts.length > 0) {
-                continue; // Already has this boost
-            }
-            // Find lab with this boost
-            const lab = labs.find(l => l.mineralType === boost && l.store[boost] >= 30);
-            if (lab) {
-                // Move to lab and boost
-                if (creep.pos.isNearTo(lab)) {
-                    const result = lab.boostCreep(creep);
-                    if (result === OK) {
-                        logger.info(`Boosted ${creep.name} with ${boost}`, { subsystem: "Boost" });
-                    }
-                    else {
-                        logger.error(`Failed to boost ${creep.name}: ${getBoostErrorMessage(result)}`, { subsystem: "Boost" });
-                    }
-                }
-                else {
-                    creep.moveTo(lab);
-                }
-                return false; // Still boosting
-            }
-        }
-        // All boosts applied
-        memory.boosted = true;
-        logger.info(`${creep.name} fully boosted`, { subsystem: "Boost" });
-        return true;
-    }
-    /**
-     * Prepare labs for boosting
-     */
-    prepareLabs(room, swarm) {
-        // Only prepare if danger is high
-        if (swarm.danger < 2) {
-            return;
-        }
-        const labs = room.find(FIND_MY_STRUCTURES, {
-            filter: s => s.structureType === STRUCTURE_LAB
-        });
-        if (labs.length < 3) {
-            return; // Need at least 3 labs
-        }
-        // Use first 2 labs for reactions, rest for boosting
-        const boostLabs = labs.slice(2);
-        // Load boost compounds into labs
-        const requiredBoosts = new Set();
-        for (const config of BOOST_CONFIGS) {
-            if (swarm.danger >= config.minDanger) {
-                for (const boost of config.boosts) {
-                    requiredBoosts.add(boost);
-                }
-            }
-        }
-        // Assign boosts to labs
-        let labIndex = 0;
-        for (const boost of requiredBoosts) {
-            if (labIndex >= boostLabs.length)
-                break;
-            const lab = boostLabs[labIndex];
-            if (lab.mineralType !== boost || lab.store[boost] < 1000) {
-                // Lab needs this boost
-                // Terminal should transfer it (handled by terminal manager)
-                logger.debug(`Lab ${lab.id} needs ${boost} for boosting`, { subsystem: "Boost" });
-            }
-            labIndex++;
-        }
-    }
-}
-/**
- * Global boost manager instance
- */
-const boostManager = new BoostManager();
-
-/**
- * Object Cache - Performance Optimization
- *
- * Caches frequently accessed game objects to avoid repeated lookups.
- * Game.getObjectById() is relatively expensive (~0.01-0.02 CPU per call).
- * For objects accessed multiple times per tick, caching provides significant savings.
- *
- * Design Principles (from ROADMAP.md Section 2):
- * - Aggressive Caching + TTL
- * - Cache stored in global object, not Memory (no serialization cost)
- * - Per-tick validity (cleared automatically each tick)
- *
- * Use Cases:
- * - Room storage (accessed by many creeps)
- * - Room controller (accessed by upgraders, builders)
- * - Sources (accessed by harvesters, carriers)
- * - Frequently accessed structures
- *
- * CPU Savings:
- * - With 100+ creeps accessing storage: ~1-2 CPU per tick
- * - With multiple creeps per source: ~0.5-1 CPU per tick
- */
-// =============================================================================
-// Cache Storage
-// =============================================================================
-/**
- * Get or initialize the cache store.
- * Cache is cleared automatically at the start of each tick.
- */
-function getCacheStore() {
-    const g = global;
-    if (!g._objectCache || g._objectCache.tick !== Game.time) {
-        g._objectCache = {
-            tick: Game.time,
-            objects: new Map()
-        };
-    }
-    return g._objectCache;
-}
-/**
- * Prefetch commonly accessed objects for a room.
- * Call this once per room per tick to warm the cache.
- *
- * @param room - Room to prefetch objects for
- */
-function prefetchRoomObjects(room) {
-    var _a;
-    if (!((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my))
-        return;
-    const cache = getCacheStore();
-    // Prefetch storage
-    if (room.storage && !cache.objects.has(room.storage.id)) {
-        cache.objects.set(room.storage.id, room.storage);
-    }
-    // Prefetch terminal
-    if (room.terminal && !cache.objects.has(room.terminal.id)) {
-        cache.objects.set(room.terminal.id, room.terminal);
-    }
-    // Prefetch controller
-    if (room.controller && !cache.objects.has(room.controller.id)) {
-        cache.objects.set(room.controller.id, room.controller);
-    }
-    // Prefetch sources
-    const sources = room.find(FIND_SOURCES);
-    for (const source of sources) {
-        if (!cache.objects.has(source.id)) {
-            cache.objects.set(source.id, source);
-        }
-    }
-}
-
-/**
- * Room Node - Per-room main loop
- *
- * Handles all per-room operations:
- * - Initialize/read RoomMemory.swarm
- * - Update metrics and pheromones
- * - Determine evolution stage and posture
- * - Run spawn logic
- * - Run creep role logic
- * - Run towers & structure control
- * - Run base construction
- */
-/**
- * Perimeter defense configuration constants
- * These values control how aggressively rooms build defensive walls
- */
-const EARLY_GAME_RCL_MIN = 2;
-const EARLY_GAME_RCL_MAX = 3;
-const MAX_EARLY_PERIMETER_SITES = 5; // RCL 2-3: Aggressive defense buildup
-const MAX_REGULAR_PERIMETER_SITES = 3; // RCL 4+: Maintenance rate
-const EARLY_GAME_CONSTRUCTION_INTERVAL = 5; // Ticks between construction checks
-const REGULAR_CONSTRUCTION_INTERVAL = 10; // Ticks between construction checks
-/**
- * Check if a room is in early game and needs aggressive defense
- */
-function isEarlyGameDefense(rcl) {
-    return rcl >= EARLY_GAME_RCL_MIN && rcl <= EARLY_GAME_RCL_MAX;
-}
-const DEFAULT_CONFIG$c = {
-    enablePheromones: true,
-    enableEvolution: true,
-    enableSpawning: true,
-    enableConstruction: true,
-    enableTowers: true,
-    enableProcessing: true
-};
-const structureCache = new Map();
-/**
- * Get or create structure cache for a room
- */
-function getStructureCache(room) {
-    const existing = structureCache.get(room.name);
-    if (existing && existing.tick === Game.time) {
-        return existing;
-    }
-    const myStructures = room.find(FIND_MY_STRUCTURES);
-    const cache = {
-        tick: Game.time,
-        towers: myStructures.filter((s) => s.structureType === STRUCTURE_TOWER),
-        spawns: myStructures.filter((s) => s.structureType === STRUCTURE_SPAWN),
-        links: myStructures.filter((s) => s.structureType === STRUCTURE_LINK),
-        factory: myStructures.find((s) => s.structureType === STRUCTURE_FACTORY),
-        powerSpawn: myStructures.find((s) => s.structureType === STRUCTURE_POWER_SPAWN),
-        sources: room.find(FIND_SOURCES),
-        constructionSites: room.find(FIND_MY_CONSTRUCTION_SITES)
-    };
-    structureCache.set(room.name, cache);
-    return cache;
-}
-/**
- * Room Node class - manages a single room
- */
-class RoomNode {
-    constructor(roomName, config = {}) {
-        this.roomName = roomName;
-        this.config = { ...DEFAULT_CONFIG$c, ...config };
-    }
-    /**
-     * Main room tick
-     */
-    run(totalOwnedRooms) {
-        var _a, _b, _c, _d, _e;
-        const cpuStart = profiler.startRoom(this.roomName);
-        const room = Game.rooms[this.roomName];
-        if (!room || !((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my)) {
-            profiler.endRoom(this.roomName, cpuStart);
-            return;
-        }
-        // OPTIMIZATION: Prefetch commonly accessed room objects to warm the object cache.
-        // This saves CPU when multiple creeps access the same objects (storage, sources, etc.)
-        // With 50+ creeps per room, this can save 1-2 CPU per tick.
-        prefetchRoomObjects(room);
-        // Get or initialize swarm state
-        const swarm = memoryManager.getOrInitSwarmState(this.roomName);
-        // Update metrics (only every 5 ticks to match pheromone update interval)
-        // This avoids expensive room.find() calls every tick
-        if (this.config.enablePheromones && Game.time % 5 === 0) {
-            pheromoneManager.updateMetrics(room, swarm);
-        }
-        // Update threat assessment
-        this.updateThreatAssessment(room, swarm);
-        // Check safe mode trigger
-        safeModeManager.checkSafeMode(room, swarm);
-        // Update evolution stage
-        if (this.config.enableEvolution) {
-            evolutionManager.updateEvolutionStage(swarm, room, totalOwnedRooms);
-            evolutionManager.updateMissingStructures(swarm, room);
-        }
-        // Update posture
-        postureManager.updatePosture(swarm);
-        // Update pheromones
-        if (this.config.enablePheromones) {
-            pheromoneManager.updatePheromones(swarm, room);
-        }
-        // Run tower control
-        if (this.config.enableTowers) {
-            this.runTowerControl(room, swarm);
-        }
-        // Run construction
-        // Perimeter defense runs more frequently in early game (RCL 2-3) for faster fortification
-        // Regular construction runs at standard interval to balance CPU usage
-        if (this.config.enableConstruction && postureManager.allowsBuilding(swarm.posture)) {
-            const rcl = (_c = (_b = room.controller) === null || _b === void 0 ? void 0 : _b.level) !== null && _c !== void 0 ? _c : 1;
-            const isEarlyDefense = isEarlyGameDefense(rcl);
-            const constructionInterval = isEarlyDefense
-                ? EARLY_GAME_CONSTRUCTION_INTERVAL
-                : REGULAR_CONSTRUCTION_INTERVAL;
-            if (Game.time % constructionInterval === 0) {
-                this.runConstruction(room, swarm);
-            }
-        }
-        // Run resource processing (every 5 ticks)
-        if (this.config.enableProcessing && Game.time % 5 === 0) {
-            this.runResourceProcessing(room, swarm);
-        }
-        // Record room stats
-        const cpuUsed = Game.cpu.getUsed() - cpuStart;
-        const roomData = profiler.getRoomData(this.roomName);
-        statsManager.recordRoom(room, (_d = roomData === null || roomData === void 0 ? void 0 : roomData.avgCpu) !== null && _d !== void 0 ? _d : cpuUsed, (_e = roomData === null || roomData === void 0 ? void 0 : roomData.peakCpu) !== null && _e !== void 0 ? _e : cpuUsed, {
-            energyHarvested: swarm.metrics.energyHarvested,
-            damageReceived: swarm.metrics.damageReceived,
-            danger: swarm.danger
-        });
-        // Record pheromone stats
-        statsManager.recordPheromones(this.roomName, swarm.pheromones, swarm.posture, pheromoneManager.getDominantPheromone(swarm.pheromones));
-        profiler.endRoom(this.roomName, cpuStart);
-    }
-    /**
-     * Update threat assessment.
-     * Uses optimized iteration for better CPU efficiency.
-     * Emits events through the kernel event system for centralized handling.
-     * OPTIMIZATION: Only check enemy structures if hostiles are present or danger > 0
-     */
-    updateThreatAssessment(room, swarm) {
-        var _a, _b;
-        // Use safeFind to handle engine errors with corrupted owner data
-        const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
-        // Only check enemy structures if we have hostiles or existing danger
-        // This avoids expensive find() calls when room is peaceful
-        const enemyStructures = (hostiles.length > 0 || swarm.danger > 0)
-            ? safeFind(room, FIND_HOSTILE_STRUCTURES, {
-                filter: s => s.structureType !== STRUCTURE_CONTROLLER
-            })
-            : [];
-        // Calculate potential damage with efficient single-loop iteration
-        let potentialDamage = 0;
-        for (const hostile of hostiles) {
-            for (const part of hostile.body) {
-                if (part.hits > 0) {
-                    if (part.type === ATTACK) {
-                        potentialDamage += 30;
-                    }
-                    else if (part.type === RANGED_ATTACK) {
-                        potentialDamage += 10;
-                    }
-                }
-            }
-        }
-        const newDanger = calculateDangerLevel(hostiles.length, potentialDamage, enemyStructures.length > 0);
-        // Update danger and emit events if increased
-        if (newDanger > swarm.danger) {
-            pheromoneManager.onHostileDetected(swarm, hostiles.length, newDanger);
-            memoryManager.addRoomEvent(this.roomName, "hostileDetected", `${hostiles.length} hostiles, danger=${newDanger}`);
-            // Emit hostile detected events for each hostile through the kernel event system
-            for (const hostile of hostiles) {
-                kernel.emit("hostile.detected", {
-                    roomName: this.roomName,
-                    hostileId: hostile.id,
-                    hostileOwner: hostile.owner.username,
-                    bodyParts: hostile.body.length,
-                    threatLevel: newDanger,
-                    source: this.roomName
-                });
-            }
-        }
-        else if (hostiles.length === 0 && swarm.danger > 0) {
-            // Emit hostile cleared event when danger level drops to 0
-            kernel.emit("hostile.cleared", {
-                roomName: this.roomName,
-                source: this.roomName
-            });
-        }
-        swarm.danger = newDanger;
-        // Check for nukes (only every 10 ticks to reduce CPU cost)
-        // Nukes have a long flight time (~50k ticks), so checking every 10 ticks is sufficient
-        if (Game.time % 10 === 0) {
-            const nukes = room.find(FIND_NUKES);
-            if (nukes.length > 0) {
-                if (!swarm.nukeDetected) {
-                    pheromoneManager.onNukeDetected(swarm);
-                    const launchSource = (_b = (_a = nukes[0]) === null || _a === void 0 ? void 0 : _a.launchRoomName) !== null && _b !== void 0 ? _b : 'unidentified source';
-                    memoryManager.addRoomEvent(this.roomName, "nukeDetected", `${nukes.length} nuke(s) incoming from ${launchSource}`);
-                    swarm.nukeDetected = true;
-                    // Emit nuke detected events through kernel event system
-                    for (const nuke of nukes) {
-                        kernel.emit("nuke.detected", {
-                            roomName: this.roomName,
-                            nukeId: nuke.id,
-                            landingTick: Game.time + nuke.timeToLand,
-                            launchRoomName: nuke.launchRoomName,
-                            source: this.roomName
-                        });
-                    }
-                }
-            }
-            else {
-                // Reset flag when nukes are gone
-                swarm.nukeDetected = false;
-            }
-        }
-    }
-    /**
-     * Run tower control
-     * OPTIMIZATION: Use cached structures to avoid repeated room.find() calls
-     */
-    runTowerControl(room, swarm) {
-        var _a, _b;
-        const cache = getStructureCache(room);
-        const towers = cache.towers;
-        if (towers.length === 0)
-            return;
-        // Find targets - use safeFind to handle engine errors with corrupted owner data
-        const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
-        for (const tower of towers) {
-            if (tower.store.getUsedCapacity(RESOURCE_ENERGY) < 10)
-                continue;
-            // Priority 1: Attack hostiles
-            if (hostiles.length > 0) {
-                // Target priority: healers > ranged > melee > others
-                const target = this.selectTowerTarget(hostiles);
-                if (target) {
-                    tower.attack(target);
-                    continue;
-                }
-            }
-            // Priority 2: Heal damaged creeps (only in non-siege)
-            if (swarm.posture !== "siege") {
-                const damaged = tower.pos.findClosestByRange(FIND_MY_CREEPS, {
-                    filter: c => c.hits < c.hitsMax
-                });
-                if (damaged) {
-                    tower.heal(damaged);
-                    continue;
-                }
-            }
-            // Priority 3: Repair structures (only in non-war postures)
-            if (!postureManager.isCombatPosture(swarm.posture)) {
-                const damaged = tower.pos.findClosestByRange(FIND_STRUCTURES, {
-                    filter: s => s.hits < s.hitsMax * 0.8 && s.structureType !== STRUCTURE_WALL && s.structureType !== STRUCTURE_RAMPART
-                });
-                if (damaged) {
-                    tower.repair(damaged);
-                    continue;
-                }
-            }
-            // Priority 4: Repair walls and ramparts based on RCL and danger level
-            // Only repair in peaceful conditions (no hostiles, non-combat posture)
-            if (!postureManager.isCombatPosture(swarm.posture) && hostiles.length === 0) {
-                const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 1;
-                const repairTarget = calculateWallRepairTarget(rcl, swarm.danger);
-                const wallOrRampart = tower.pos.findClosestByRange(FIND_STRUCTURES, {
-                    filter: s => (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) &&
-                        s.hits < repairTarget
-                });
-                if (wallOrRampart) {
-                    tower.repair(wallOrRampart);
-                }
-            }
-        }
-    }
-    /**
-     * Select tower attack target
-     */
-    selectTowerTarget(hostiles) {
-        var _a;
-        // Sort by priority: healers > boosted > ranged > melee > others
-        const sorted = hostiles.sort((a, b) => {
-            const scoreA = this.getHostilePriority(a);
-            const scoreB = this.getHostilePriority(b);
-            return scoreB - scoreA;
-        });
-        return (_a = sorted[0]) !== null && _a !== void 0 ? _a : null;
-    }
-    /**
-     * Get priority score for hostile targeting
-     */
-    getHostilePriority(hostile) {
-        let score = 0;
-        for (const part of hostile.body) {
-            if (!part.hits)
-                continue;
-            switch (part.type) {
-                case HEAL:
-                    score += 100;
-                    break;
-                case RANGED_ATTACK:
-                    score += 50;
-                    break;
-                case ATTACK:
-                    score += 40;
-                    break;
-                case CLAIM:
-                    score += 60;
-                    break;
-                case WORK:
-                    score += 30;
-                    break;
-            }
-            // Boosted parts are higher priority
-            if (part.boost) {
-                score += 20;
-            }
-        }
-        return score;
-    }
-    /**
-     * Run construction logic using blueprints
-     */
-    runConstruction(room, swarm) {
-        var _a, _b;
-        // Check global construction site limit (use cached structures)
-        const cache = getStructureCache(room);
-        const existingSites = cache.constructionSites;
-        if (existingSites.length >= 10)
-            return;
-        // Get blueprint for current RCL
-        const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 1;
-        const blueprint = getBlueprint(rcl);
-        if (!blueprint)
-            return;
-        // Find spawn to use as anchor (use cached structures)
-        const spawn = cache.spawns[0];
-        if (!spawn) {
-            // No spawn, place one if we're a new colony
-            if (rcl === 1 && existingSites.length === 0) {
-                // Find a suitable position for first spawn (use cached sources)
-                const controller = room.controller;
-                if (controller) {
-                    const sources = cache.sources;
-                    // Find position between controller and sources
-                    const avgX = Math.round((controller.pos.x + sources.reduce((sum, s) => sum + s.pos.x, 0)) / (sources.length + 1));
-                    const avgY = Math.round((controller.pos.y + sources.reduce((sum, s) => sum + s.pos.y, 0)) / (sources.length + 1));
-                    // Check if position is buildable
-                    const terrain = room.getTerrain();
-                    if (terrain.get(avgX, avgY) !== TERRAIN_MASK_WALL) {
-                        room.createConstructionSite(avgX, avgY, STRUCTURE_SPAWN);
-                    }
-                }
-            }
-            return;
-        }
-        // Destroy misplaced structures that don't match the blueprint
-        // Runs every construction tick (10 ticks) in non-combat postures for faster cleanup
-        // Pass remote room assignments to preserve roads leading to remote mining rooms
-        if (!postureManager.isCombatPosture(swarm.posture)) {
-            const destroyed = destroyMisplacedStructures(room, spawn.pos, blueprint, 1, swarm.remoteAssignments);
-            if (destroyed > 0) {
-                const structureWord = destroyed === 1 ? "structure" : "structures";
-                memoryManager.addRoomEvent(this.roomName, "structureDestroyed", `${destroyed} misplaced ${structureWord} destroyed for blueprint compliance`);
-            }
-        }
-        // Priority 1: Place perimeter defense (RCL 2+)
-        // Early defense is critical for room security
-        let perimeterPlaced = 0;
-        if (rcl >= EARLY_GAME_RCL_MIN && existingSites.length < 8) {
-            // Place more sites in early game for faster fortification
-            const maxPerimeterSites = isEarlyGameDefense(rcl)
-                ? MAX_EARLY_PERIMETER_SITES
-                : MAX_REGULAR_PERIMETER_SITES;
-            // Prioritize choke points at RCL 2, full perimeter at RCL 3+
-            perimeterPlaced = placePerimeterDefense(room, rcl, maxPerimeterSites, true);
-        }
-        // Priority 2: Place construction sites using blueprint
-        const placed = placeConstructionSites(room, spawn.pos, blueprint);
-        // Priority 3: Place road construction sites for infrastructure routes (sources, controller, mineral)
-        // Only place 1-2 road sites per tick to avoid overwhelming builders
-        const roadSitesPlaced = placeRoadConstructionSites(room, spawn.pos, 2);
-        // Update metrics
-        swarm.metrics.constructionSites = existingSites.length + placed + roadSitesPlaced + perimeterPlaced;
-    }
-    /**
-     * Run resource processing (labs, factory, power spawn)
-     */
-    runResourceProcessing(room, _swarm) {
-        var _a, _b;
-        const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0;
-        // Run labs (RCL 6+)
-        if (rcl >= 6) {
-            this.runLabs(room);
-        }
-        // Run factory (RCL 7+)
-        if (rcl >= 7) {
-            this.runFactory(room);
-        }
-        // Run power spawn (RCL 8)
-        if (rcl >= 8) {
-            this.runPowerSpawn(room);
-        }
-        // Run links
-        this.runLinks(room);
-    }
-    /**
-     * Run lab reactions
-     */
-    runLabs(room) {
-        const swarm = memoryManager.getSwarmState(room.name);
-        if (!swarm)
-            return;
-        // Prepare labs for boosting when danger is high
-        boostManager.prepareLabs(room, swarm);
-        // Plan reactions using chemistry planner
-        const reaction = chemistryPlanner.planReactions(room, swarm);
-        if (reaction) {
-            chemistryPlanner.executeReaction(room, reaction);
-        }
-    }
-    /**
-     * Run factory production
-     * OPTIMIZATION: Use cached structures
-     */
-    runFactory(room) {
-        const cache = getStructureCache(room);
-        const factory = cache.factory;
-        if (!factory || factory.cooldown > 0)
-            return;
-        // Simple commodity production - compress minerals
-        const minerals = [
-            RESOURCE_UTRIUM,
-            RESOURCE_LEMERGIUM,
-            RESOURCE_KEANIUM,
-            RESOURCE_ZYNTHIUM,
-            RESOURCE_HYDROGEN,
-            RESOURCE_OXYGEN
-        ];
-        for (const mineral of minerals) {
-            if (factory.store.getUsedCapacity(mineral) >= 500 && factory.store.getUsedCapacity(RESOURCE_ENERGY) >= 200) {
-                // Try to produce compressed bar
-                const result = factory.produce(RESOURCE_UTRIUM_BAR); // Note: This is simplified
-                if (result === OK)
-                    break;
-            }
-        }
-    }
-    /**
-     * Run power spawn
-     * OPTIMIZATION: Use cached structures
-     */
-    runPowerSpawn(room) {
-        const cache = getStructureCache(room);
-        const powerSpawn = cache.powerSpawn;
-        if (!powerSpawn)
-            return;
-        // Process power if we have resources
-        if (powerSpawn.store.getUsedCapacity(RESOURCE_POWER) >= 1 &&
-            powerSpawn.store.getUsedCapacity(RESOURCE_ENERGY) >= 50) {
-            powerSpawn.processPower();
-        }
-    }
-    /**
-     * Run link transfers
-     * OPTIMIZATION: Use cached structures
-     */
-    runLinks(room) {
-        const cache = getStructureCache(room);
-        const links = cache.links;
-        if (links.length < 2)
-            return;
-        const storage = room.storage;
-        if (!storage)
-            return;
-        // Find storage link (within 2 of storage)
-        const storageLink = links.find(l => l.pos.getRangeTo(storage) <= 2);
-        if (!storageLink)
-            return;
-        // Find source links (links near sources) - use cached sources
-        const sources = cache.sources;
-        const sourceLinks = links.filter(l => sources.some(s => l.pos.getRangeTo(s) <= 2));
-        // Transfer from source links to storage link
-        for (const sourceLink of sourceLinks) {
-            if (sourceLink.store.getUsedCapacity(RESOURCE_ENERGY) >= 400 && sourceLink.cooldown === 0) {
-                if (storageLink.store.getFreeCapacity(RESOURCE_ENERGY) >= 400) {
-                    sourceLink.transferEnergy(storageLink);
-                    break;
-                }
-            }
-        }
-    }
-}
-/**
- * Room manager - orchestrates all room nodes
- */
-class RoomManager {
-    constructor() {
-        this.nodes = new Map();
-    }
-    /**
-     * Run all owned rooms
-     * OPTIMIZATION: Use cached owned rooms list from global to avoid repeated filter
-     */
-    run() {
-        var _a;
-        // Use cached owned rooms from global (set in main loop)
-        const cacheKey = "_ownedRooms";
-        const cacheTickKey = "_ownedRoomsTick";
-        const globalCache = global;
-        const cachedRooms = globalCache[cacheKey];
-        const cachedTick = globalCache[cacheTickKey];
-        let ownedRooms;
-        if (cachedRooms && cachedTick === Game.time) {
-            ownedRooms = cachedRooms;
-        }
-        else {
-            // Fallback if cache not set (shouldn't happen, but safe)
-            ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
-        }
-        const totalOwned = ownedRooms.length;
-        // Ensure nodes exist for all owned rooms
-        for (const room of ownedRooms) {
-            if (!this.nodes.has(room.name)) {
-                this.nodes.set(room.name, new RoomNode(room.name));
-            }
-        }
-        // Clean up nodes for rooms we no longer own
-        for (const [name] of this.nodes) {
-            const room = Game.rooms[name];
-            if (!room || !((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my)) {
-                this.nodes.delete(name);
-            }
-        }
-        // Run each node with error recovery
-        for (const node of this.nodes.values()) {
-            try {
-                node.run(totalOwned);
-            }
-            catch (err) {
-                const errorMessage = err instanceof Error ? err.message : String(err);
-                console.log(`[RoomManager] ERROR in room ${node.roomName}: ${errorMessage}`);
-                if (err instanceof Error && err.stack) {
-                    console.log(err.stack);
-                }
-                // Continue processing other rooms
-            }
-        }
-    }
-    /**
-     * Get node for a room
-     */
-    getNode(roomName) {
-        return this.nodes.get(roomName);
-    }
-    /**
-     * Get all nodes
-     */
-    getAllNodes() {
-        return Array.from(this.nodes.values());
-    }
-}
-/**
- * Global room manager instance
- */
-const roomManager = new RoomManager();
-
-/**
- * Dynamic Defender Spawning
- *
- * Automatically spawns defenders based on threat assessment:
- * - Analyzes hostile creeps in room
- * - Calculates required defender count
- * - Prioritizes defender spawning during attacks
- * - Scales defender strength based on enemy composition
- *
- * Addresses Issue: #22
- */
-/**
- * Analyze room threats and determine defender requirements
- */
-function analyzeDefenderNeeds(room) {
-    const result = {
-        guards: 0,
-        rangers: 0,
-        healers: 0,
-        urgency: 1.0,
-        reasons: []
-    };
-    // Find all hostile creeps
-    const hostiles = room.find(FIND_HOSTILE_CREEPS);
-    if (hostiles.length === 0) {
-        return result; // No threats
-    }
-    // Analyze hostile composition
-    let meleeCount = 0;
-    let rangedCount = 0;
-    let healerCount = 0;
-    let dismantlerCount = 0;
-    let boostedCount = 0;
-    for (const hostile of hostiles) {
-        const body = hostile.body;
-        // Check for boosted parts
-        const isBoosted = body.some(part => part.boost !== undefined);
-        if (isBoosted)
-            boostedCount++;
-        // Count part types
-        for (const part of body) {
-            if (part.type === ATTACK)
-                meleeCount++;
-            if (part.type === RANGED_ATTACK)
-                rangedCount++;
-            if (part.type === HEAL)
-                healerCount++;
-            if (part.type === WORK)
-                dismantlerCount++;
-        }
-    }
-    // Calculate defender requirements
-    // Guards for melee attackers (1:1 ratio, min 1 if any melee)
-    if (meleeCount > 0) {
-        result.guards = Math.max(1, Math.ceil(meleeCount / 4));
-        result.reasons.push(`${meleeCount} melee parts detected`);
-    }
-    // Rangers for ranged attackers (1:1.5 ratio)
-    if (rangedCount > 0) {
-        result.rangers = Math.max(1, Math.ceil(rangedCount / 6));
-        result.reasons.push(`${rangedCount} ranged parts detected`);
-    }
-    // Healers if enemies have healers (1:2 ratio)
-    if (healerCount > 0) {
-        result.healers = Math.max(1, Math.ceil(healerCount / 8));
-        result.reasons.push(`${healerCount} heal parts detected`);
-    }
-    // Extra defenders for dismantlers (they're dangerous)
-    if (dismantlerCount > 0) {
-        result.guards += Math.ceil(dismantlerCount / 5);
-        result.reasons.push(`${dismantlerCount} work parts (dismantlers)`);
-    }
-    // Boosted enemies require more defenders
-    if (boostedCount > 0) {
-        result.guards = Math.ceil(result.guards * 1.5);
-        result.rangers = Math.ceil(result.rangers * 1.5);
-        result.healers = Math.ceil(result.healers * 1.5);
-        result.urgency = 2.0;
-        result.reasons.push(`${boostedCount} boosted enemies (high threat)`);
-    }
-    // Minimum composition for any attack
-    if (hostiles.length > 0) {
-        result.guards = Math.max(result.guards, 1);
-        result.rangers = Math.max(result.rangers, 1);
-    }
-    // Large attacks require healers
-    if (hostiles.length >= 3) {
-        result.healers = Math.max(result.healers, 1);
-    }
-    // Urgency based on hostile count
-    if (hostiles.length >= 5) {
-        result.urgency = Math.max(result.urgency, 1.5);
-        result.reasons.push(`${hostiles.length} hostiles (large attack)`);
-    }
-    // Check for critical structures under attack
-    const damagedCritical = room.find(FIND_MY_STRUCTURES, {
-        filter: s => (s.structureType === STRUCTURE_SPAWN ||
-            s.structureType === STRUCTURE_STORAGE ||
-            s.structureType === STRUCTURE_TERMINAL) &&
-            s.hits < s.hitsMax * 0.8
-    });
-    if (damagedCritical.length > 0) {
-        result.urgency = 3.0;
-        result.reasons.push(`Critical structures under attack!`);
-    }
-    logger.info(`Defender analysis for ${room.name}: ${result.guards} guards, ${result.rangers} rangers, ${result.healers} healers (urgency: ${result.urgency}x) - ${result.reasons.join(", ")}`, { subsystem: "Defense" });
-    return result;
-}
-/**
- * Get current defender count in room
- */
-function getCurrentDefenders(room) {
-    const creeps = room.find(FIND_MY_CREEPS);
-    return {
-        guards: creeps.filter(c => c.memory.role === "guard").length,
-        rangers: creeps.filter(c => c.memory.role === "ranger").length,
-        healers: creeps.filter(c => c.memory.role === "healer").length
-    };
-}
-/**
- * Calculate defender spawn priority boost
- */
-function getDefenderPriorityBoost(room, swarm, role) {
-    const needs = analyzeDefenderNeeds(room);
-    const current = getCurrentDefenders(room);
-    // No boost if no threats
-    if (needs.guards === 0 && needs.rangers === 0 && needs.healers === 0) {
-        return 0;
-    }
-    let boost = 0;
-    // Boost priority for needed defenders
-    if (role === "guard" && current.guards < needs.guards) {
-        boost = 100 * needs.urgency;
-    }
-    else if (role === "ranger" && current.rangers < needs.rangers) {
-        boost = 100 * needs.urgency;
-    }
-    else if (role === "healer" && current.healers < needs.healers) {
-        boost = 100 * needs.urgency;
-    }
-    return boost;
-}
-/**
- * Check if room needs external defense assistance
- * A room needs help when:
- * - It has significant threats (danger >= 2)
- * - It cannot produce enough defenders (low energy, no spawns, or spawn queue full)
- * - The threat is urgent (urgency >= 1.5)
- */
-function needsDefenseAssistance(room, swarm) {
-    // No assistance needed if no significant threats
-    if (swarm.danger < 2) {
-        return false;
-    }
-    const needs = analyzeDefenderNeeds(room);
-    const current = getCurrentDefenders(room);
-    // Check if room lacks the defenders it needs
-    const defenderDeficit = (needs.guards - current.guards) + (needs.rangers - current.rangers);
-    if (defenderDeficit <= 0) {
-        return false; // Room has enough defenders
-    }
-    // Check if room can spawn defenders
-    const spawns = room.find(FIND_MY_SPAWNS);
-    if (spawns.length === 0) {
-        return true; // No spawns = definitely needs help
-    }
-    // Check if any spawn is available
-    const availableSpawns = spawns.filter(s => !s.spawning);
-    if (availableSpawns.length === 0) {
-        return true; // All spawns busy = needs help
-    }
-    // Check energy availability for spawning defenders
-    const energyAvailable = room.energyAvailable;
-    const minDefenderCost = 250; // Minimum cost for a basic defender
-    if (energyAvailable < minDefenderCost) {
-        return true; // Not enough energy = needs help
-    }
-    // Check urgency - high urgency threats need immediate help even if room can eventually spawn
-    if (needs.urgency >= 2.0 && defenderDeficit >= 2) {
-        return true; // Critical threat with multiple defender deficit = needs help
-    }
-    // Critical danger (level 3) with any defender deficit should request help
-    if (swarm.danger >= 3 && defenderDeficit >= 1) {
-        return true; // Critical danger always needs help
-    }
-    return false;
-}
-/**
- * Create a defense request for a room that needs assistance
- */
-function createDefenseRequest(room, swarm) {
-    if (!needsDefenseAssistance(room, swarm)) {
-        return null;
-    }
-    const needs = analyzeDefenderNeeds(room);
-    const current = getCurrentDefenders(room);
-    const request = {
-        roomName: room.name,
-        guardsNeeded: Math.max(0, needs.guards - current.guards),
-        rangersNeeded: Math.max(0, needs.rangers - current.rangers),
-        healersNeeded: Math.max(0, needs.healers - current.healers),
-        urgency: needs.urgency,
-        createdAt: Game.time,
-        threat: needs.reasons.join("; ")
-    };
-    logger.warn(`Defense assistance requested for ${room.name}: ${request.guardsNeeded} guards, ${request.rangersNeeded} rangers, ${request.healersNeeded} healers - ${request.threat}`, { subsystem: "Defense" });
-    return request;
-}
-
-/**
- * Spawn Logic - Phase 8
- *
- * Central spawn manager per room:
- * - Derives role weights from evolution stage, posture, pheromones
- * - Uses weighted selection for next role
- * - Defines body templates per role
- * - Task assignment heuristics
- */
-/**
- * Focus room upgrader scaling configuration
- * Defines how many upgraders a focus room should spawn based on RCL
- */
-const FOCUS_ROOM_UPGRADER_LIMITS = {
-    /** RCL 1-3: Early game, limited energy */
-    EARLY: 2,
-    /** RCL 4-6: Mid game, stable economy */
-    MID: 4,
-    /** RCL 7: Late game, push to RCL 8 */
-    LATE: 6
-};
-/** Priority boost for upgraders in focus rooms */
-const FOCUS_ROOM_UPGRADER_PRIORITY_BOOST = 40;
-/**
- * Calculate body cost
- */
-function calculateBodyCost(parts) {
-    const costs = {
-        [MOVE]: 50,
-        [WORK]: 100,
-        [CARRY]: 50,
-        [ATTACK]: 80,
-        [RANGED_ATTACK]: 150,
-        [HEAL]: 250,
-        [CLAIM]: 600,
-        [TOUGH]: 10
-    };
-    return parts.reduce((sum, part) => sum + costs[part], 0);
-}
-/**
- * Create body template
- */
-function createBody(parts, minCapacity = 0) {
-    return {
-        parts,
-        cost: calculateBodyCost(parts),
-        minCapacity: minCapacity || calculateBodyCost(parts)
-    };
-}
-/**
- * Role definitions
- */
-const ROLE_DEFINITIONS = {
-    // Economy roles
-    larvaWorker: {
-        role: "larvaWorker",
-        family: "economy",
-        bodies: [
-            createBody([WORK, CARRY, MOVE], 200),
-            createBody([WORK, WORK, CARRY, CARRY, MOVE, MOVE], 400),
-            createBody([WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE], 600),
-            createBody([WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 800)
-        ],
-        priority: 100,
-        maxPerRoom: 3,
-        remoteRole: false
-    },
-    harvester: {
-        role: "harvester",
-        family: "economy",
-        bodies: [
-            createBody([WORK, WORK, MOVE], 250),
-            createBody([WORK, WORK, WORK, WORK, MOVE, MOVE], 500),
-            createBody([WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE], 700),
-            createBody([WORK, WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE], 800),
-            createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE], 1000)
-        ],
-        priority: 95,
-        maxPerRoom: 2,
-        remoteRole: false
-    },
-    hauler: {
-        role: "hauler",
-        family: "economy",
-        bodies: [
-            createBody([CARRY, CARRY, MOVE, MOVE], 200),
-            createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
-            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 800),
-            createBody([...Array(16).fill(CARRY), ...Array(16).fill(MOVE)], 1600)
-        ],
-        priority: 90,
-        maxPerRoom: 2,
-        remoteRole: true
-    },
-    upgrader: {
-        role: "upgrader",
-        family: "economy",
-        bodies: [
-            createBody([WORK, CARRY, MOVE], 200),
-            createBody([WORK, WORK, WORK, CARRY, MOVE, MOVE], 450),
-            createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 1000),
-            createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1700)
-        ],
-        priority: 60,
-        maxPerRoom: 2,
-        remoteRole: false
-    },
-    builder: {
-        role: "builder",
-        family: "economy",
-        bodies: [
-            createBody([WORK, CARRY, MOVE, MOVE], 250),
-            createBody([WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 650),
-            createBody([WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1400)
-        ],
-        priority: 70,
-        maxPerRoom: 2,
-        remoteRole: false
-    },
-    queenCarrier: {
-        role: "queenCarrier",
-        family: "economy",
-        bodies: [
-            createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE], 300),
-            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE], 450),
-            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 600)
-        ],
-        priority: 85,
-        maxPerRoom: 1,
-        remoteRole: false
-    },
-    mineralHarvester: {
-        role: "mineralHarvester",
-        family: "economy",
-        bodies: [
-            createBody([WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE], 550),
-            createBody([WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE], 850)
-        ],
-        priority: 40,
-        maxPerRoom: 1,
-        remoteRole: false
-    },
-    labTech: {
-        role: "labTech",
-        family: "economy",
-        bodies: [
-            createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
-            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 600)
-        ],
-        priority: 35,
-        maxPerRoom: 1,
-        remoteRole: false
-    },
-    factoryWorker: {
-        role: "factoryWorker",
-        family: "economy",
-        bodies: [
-            createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
-            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 600)
-        ],
-        priority: 35,
-        maxPerRoom: 1,
-        remoteRole: false
-    },
-    remoteHarvester: {
-        role: "remoteHarvester",
-        family: "economy",
-        bodies: [
-            createBody([WORK, WORK, CARRY, MOVE, MOVE, MOVE], 400),
-            createBody([WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 750),
-            createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1050),
-            createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1600)
-        ],
-        priority: 75,
-        maxPerRoom: 6,
-        remoteRole: true
-    },
-    remoteHauler: {
-        role: "remoteHauler",
-        family: "economy",
-        bodies: [
-            createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
-            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 800),
-            createBody([...Array(16).fill(CARRY), ...Array(16).fill(MOVE)], 1600)
-        ],
-        priority: 70,
-        maxPerRoom: 6,
-        remoteRole: true
-    },
-    interRoomCarrier: {
-        role: "interRoomCarrier",
-        family: "economy",
-        bodies: [
-            createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
-            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 600),
-            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 800)
-        ],
-        priority: 90,
-        maxPerRoom: 4,
-        remoteRole: false
-    },
-    // Military roles
-    guard: {
-        role: "guard",
-        family: "military",
-        bodies: [
-            createBody([TOUGH, ATTACK, MOVE, MOVE], 190),
-            createBody([TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE], 500),
-            createBody([TOUGH, TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1070)
-        ],
-        priority: 80,
-        maxPerRoom: 2,
-        remoteRole: false
-    },
-    healer: {
-        role: "healer",
-        family: "military",
-        bodies: [
-            createBody([HEAL, MOVE], 300),
-            createBody([HEAL, HEAL, MOVE, MOVE], 600),
-            createBody([HEAL, HEAL, HEAL, HEAL, MOVE, MOVE, MOVE, MOVE], 1200)
-        ],
-        priority: 75,
-        maxPerRoom: 1,
-        remoteRole: false
-    },
-    soldier: {
-        role: "soldier",
-        family: "military",
-        bodies: [
-            createBody([ATTACK, ATTACK, MOVE, MOVE], 260),
-            createBody([ATTACK, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE], 520),
-            createBody([TOUGH, TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1340)
-        ],
-        priority: 70,
-        maxPerRoom: 2,
-        remoteRole: false
-    },
-    siegeUnit: {
-        role: "siegeUnit",
-        family: "military",
-        bodies: [
-            createBody([WORK, WORK, MOVE, MOVE], 300),
-            createBody([TOUGH, TOUGH, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 620),
-            createBody([
-                TOUGH,
-                TOUGH,
-                TOUGH,
-                TOUGH,
-                WORK,
-                WORK,
-                WORK,
-                WORK,
-                WORK,
-                WORK,
-                MOVE,
-                MOVE,
-                MOVE,
-                MOVE,
-                MOVE,
-                MOVE,
-                MOVE,
-                MOVE,
-                MOVE,
-                MOVE
-            ], 1040)
-        ],
-        priority: 50,
-        maxPerRoom: 2,
-        remoteRole: false
-    },
-    ranger: {
-        role: "ranger",
-        family: "military",
-        bodies: [
-            createBody([RANGED_ATTACK, MOVE], 200),
-            createBody([RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE], 400),
-            createBody([RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE], 800)
-        ],
-        priority: 65,
-        maxPerRoom: 2,
-        remoteRole: false
-    },
-    // Utility roles
-    scout: {
-        role: "scout",
-        family: "utility",
-        bodies: [createBody([MOVE], 50)],
-        priority: 65,
-        maxPerRoom: 2,
-        remoteRole: true
-    },
-    claimer: {
-        role: "claimer",
-        family: "utility",
-        bodies: [createBody([CLAIM, MOVE], 650), createBody([CLAIM, CLAIM, MOVE, MOVE], 1300)],
-        priority: 50,
-        maxPerRoom: 3,
-        remoteRole: true
-    },
-    engineer: {
-        role: "engineer",
-        family: "utility",
-        bodies: [
-            createBody([WORK, CARRY, MOVE, MOVE], 250),
-            createBody([WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 500)
-        ],
-        priority: 55,
-        maxPerRoom: 2,
-        remoteRole: false
-    },
-    remoteWorker: {
-        role: "remoteWorker",
-        family: "utility",
-        bodies: [
-            createBody([WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 500),
-            createBody([WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 750)
-        ],
-        priority: 45,
-        maxPerRoom: 4,
-        remoteRole: true
-    }
-};
-/**
- * Get spawn profile weights based on posture
- */
-function getPostureSpawnWeights(posture) {
-    switch (posture) {
-        case "eco":
-            return {
-                harvester: 1.5,
-                hauler: 1.2,
-                upgrader: 1.3,
-                builder: 1.0,
-                queenCarrier: 1.0,
-                guard: 0.3,
-                healer: 0.1,
-                scout: 1.0,
-                claimer: 0.8,
-                engineer: 0.8,
-                remoteHarvester: 1.2,
-                remoteHauler: 1.2,
-                interRoomCarrier: 1.0
-            };
-        case "expand":
-            return {
-                harvester: 1.2,
-                hauler: 1.0,
-                upgrader: 0.8,
-                builder: 1.0,
-                queenCarrier: 0.8,
-                guard: 0.3,
-                scout: 1.5,
-                claimer: 1.5,
-                remoteWorker: 1.5,
-                engineer: 0.5,
-                remoteHarvester: 1.5,
-                remoteHauler: 1.5,
-                interRoomCarrier: 1.2
-            };
-        case "defensive":
-            return {
-                harvester: 1.0,
-                hauler: 1.0,
-                upgrader: 0.5,
-                builder: 0.5,
-                queenCarrier: 1.0,
-                guard: 2.0,
-                healer: 1.5,
-                ranger: 1.0,
-                scout: 0.8,
-                engineer: 1.2,
-                remoteHarvester: 0.5,
-                remoteHauler: 0.5,
-                interRoomCarrier: 1.5
-            };
-        case "war":
-            return {
-                harvester: 0.8,
-                hauler: 0.8,
-                upgrader: 0.3,
-                builder: 0.3,
-                queenCarrier: 1.0,
-                guard: 2.5,
-                healer: 2.0,
-                soldier: 2.0,
-                ranger: 1.5,
-                scout: 0.8,
-                engineer: 0.5,
-                remoteHarvester: 0.3,
-                remoteHauler: 0.3,
-                interRoomCarrier: 0.5
-            };
-        case "siege":
-            return {
-                harvester: 0.5,
-                hauler: 0.5,
-                upgrader: 0.1,
-                builder: 0.1,
-                queenCarrier: 1.0,
-                guard: 3.0,
-                healer: 2.5,
-                soldier: 2.5,
-                siegeUnit: 2.0,
-                ranger: 1.0,
-                scout: 0.5,
-                engineer: 0.2,
-                remoteHarvester: 0.1,
-                remoteHauler: 0.1
-            };
-        case "evacuate":
-            return {
-                hauler: 2.0,
-                queenCarrier: 1.5
-            };
-        case "nukePrep":
-            return {
-                harvester: 1.0,
-                hauler: 1.0,
-                upgrader: 0.5,
-                builder: 0.5,
-                queenCarrier: 1.0,
-                guard: 1.5,
-                scout: 0.5,
-                engineer: 2.0,
-                remoteHarvester: 0.5,
-                remoteHauler: 0.5
-            };
-        default:
-            return {
-                harvester: 1.0,
-                hauler: 1.0,
-                upgrader: 1.0,
-                builder: 1.0,
-                queenCarrier: 1.0,
-                scout: 1.0,
-                remoteHarvester: 1.0,
-                remoteHauler: 1.0
-            };
-    }
-}
-/**
- * Get dynamic priority adjustments for roles
- */
-function getDynamicPriorityBoost(room, swarm, role) {
-    let boost = 0;
-    // Defender priority boost based on threats
-    if (role === "guard" || role === "ranger" || role === "healer") {
-        boost += getDefenderPriorityBoost(room, swarm, role);
-    }
-    // Upgrader priority boost for focus room
-    if (role === "upgrader" && swarm.clusterId) {
-        const cluster = memoryManager.getCluster(swarm.clusterId);
-        if ((cluster === null || cluster === void 0 ? void 0 : cluster.focusRoom) === room.name) {
-            // Significant boost to prioritize upgrading in focus room
-            boost += FOCUS_ROOM_UPGRADER_PRIORITY_BOOST;
-        }
-    }
-    return boost;
-}
-/**
- * Get pheromone multipliers for roles
- */
-function getPheromoneMult(role, pheromones) {
-    var _a;
-    const map = {
-        harvester: "harvest",
-        hauler: "logistics",
-        upgrader: "upgrade",
-        builder: "build",
-        guard: "defense",
-        healer: "defense",
-        soldier: "war",
-        siegeUnit: "siege",
-        ranger: "war",
-        scout: "expand",
-        claimer: "expand",
-        remoteWorker: "expand",
-        engineer: "build",
-        remoteHarvester: "harvest",
-        remoteHauler: "logistics",
-        interRoomCarrier: "logistics"
-    };
-    const pheromoneKey = map[role];
-    if (!pheromoneKey)
-        return 1.0;
-    const value = (_a = pheromones[pheromoneKey]) !== null && _a !== void 0 ? _a : 0;
-    // Scale: 0-100 pheromone maps to 0.5-2.0 multiplier
-    return 0.5 + (value / 100) * 1.5;
-}
-/**
- * Cache for creep counts per room, cleared each tick.
- * OPTIMIZATION: Avoid iterating all creeps multiple times per tick when multiple spawns exist.
- */
-const creepCountCache = new Map();
-let creepCountCacheTick = -1;
-let creepCountCacheRef = null;
-/**
- * Count creeps by role in a room.
- * OPTIMIZATION: Cache results per tick to avoid iterating all creeps multiple times.
- * With multiple spawns in a room, this function could be called multiple times per tick.
- */
-function countCreepsByRole(roomName) {
-    var _a, _b;
-    // Clear cache if new tick or Game.creeps reference changed
-    // Checking reference equality handles both production (new tick) and tests (creeps reassigned)
-    if (creepCountCacheTick !== Game.time || creepCountCacheRef !== Game.creeps) {
-        creepCountCache.clear();
-        creepCountCacheTick = Game.time;
-        creepCountCacheRef = Game.creeps;
-    }
-    // Check cache
-    const cached = creepCountCache.get(roomName);
-    if (cached) {
-        return cached;
-    }
-    // Build counts
-    const counts = new Map();
-    // OPTIMIZATION: Use for-in loop instead of Object.values() to avoid creating temporary array
-    for (const name in Game.creeps) {
-        const creep = Game.creeps[name];
-        const memory = creep.memory;
-        if (memory.homeRoom === roomName) {
-            const role = (_a = memory.role) !== null && _a !== void 0 ? _a : "unknown";
-            counts.set(role, ((_b = counts.get(role)) !== null && _b !== void 0 ? _b : 0) + 1);
-        }
-    }
-    // Cache for this tick
-    creepCountCache.set(roomName, counts);
-    return counts;
-}
-/**
- * Get best body for energy capacity
- */
-function getBestBody(def, energyCapacity) {
-    // Find best body that fits capacity
-    let best = null;
-    for (const body of def.bodies) {
-        if (body.cost <= energyCapacity) {
-            if (!best || body.cost > best.cost) {
-                best = body;
-            }
-        }
-    }
-    return best;
-}
-/**
- * Count remote creeps assigned to a specific target room
- */
-function countRemoteCreepsByTargetRoom(homeRoom, role, targetRoom) {
-    let count = 0;
-    for (const creep of Object.values(Game.creeps)) {
-        const memory = creep.memory;
-        if (memory.homeRoom === homeRoom && memory.role === role && memory.targetRoom === targetRoom) {
-            count++;
-        }
-    }
-    return count;
-}
-/**
- * Get the remote room that needs workers of a given role.
- * Returns the room name if workers are needed, null otherwise.
- */
-function getRemoteRoomNeedingWorkers(homeRoom, role, swarm) {
-    var _a;
-    const remoteAssignments = (_a = swarm.remoteAssignments) !== null && _a !== void 0 ? _a : [];
-    if (remoteAssignments.length === 0)
-        return null;
-    // Define max workers per remote room based on role
-    const maxPerRemote = role === "remoteHarvester" ? 2 : 2; // 2 harvesters and 2 haulers per remote
-    // Find a remote room that needs workers
-    for (const remoteRoom of remoteAssignments) {
-        const currentCount = countRemoteCreepsByTargetRoom(homeRoom, role, remoteRoom);
-        if (currentCount < maxPerRemote) {
-            return remoteRoom;
-        }
-    }
-    return null;
-}
-/**
- * Check if room needs role
- */
-function needsRole(roomName, role, swarm) {
-    var _a;
-    const def = ROLE_DEFINITIONS[role];
-    if (!def)
-        return false;
-    // Special handling for remote roles
-    if (role === "remoteHarvester" || role === "remoteHauler") {
-        // Check if there's a remote room that needs workers
-        return getRemoteRoomNeedingWorkers(roomName, role, swarm) !== null;
-    }
-    const counts = countCreepsByRole(roomName);
-    const current = (_a = counts.get(role)) !== null && _a !== void 0 ? _a : 0;
-    // Check max per room (with special handling for upgraders in focus room)
-    let maxForRoom = def.maxPerRoom;
-    if (role === "upgrader" && swarm.clusterId) {
-        const cluster = memoryManager.getCluster(swarm.clusterId);
-        if ((cluster === null || cluster === void 0 ? void 0 : cluster.focusRoom) === roomName) {
-            // Allow more upgraders in focus room to accelerate upgrading
-            const room = Game.rooms[roomName];
-            if (room === null || room === void 0 ? void 0 : room.controller) {
-                // Scale upgraders based on RCL
-                if (room.controller.level <= 3) {
-                    maxForRoom = FOCUS_ROOM_UPGRADER_LIMITS.EARLY;
-                }
-                else if (room.controller.level <= 6) {
-                    maxForRoom = FOCUS_ROOM_UPGRADER_LIMITS.MID;
-                }
-                else {
-                    maxForRoom = FOCUS_ROOM_UPGRADER_LIMITS.LATE;
-                }
-            }
-        }
-    }
-    if (current >= maxForRoom)
-        return false;
-    // Special conditions
-    const room = Game.rooms[roomName];
-    if (!room)
-        return false;
-    // Scout: Spawn if we have remote rooms without full intel
-    // or if we're in expand posture and need more room data
-    if (role === "scout") {
-        // Always allow scouts if we don't have one (up to max per room)
-        if (current === 0)
-            return true;
-        // In expand posture, allow more scouts
-        if (swarm.posture === "expand" && current < def.maxPerRoom)
-            return true;
-        return false;
-    }
-    // Claimer: Only spawn if we have expansion targets or remote rooms that need reserving
-    if (role === "claimer") {
-        const overmind = memoryManager.getOvermind();
-        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
-        // Check if we have unclaimed expansion targets and can expand
-        const canExpand = ownedRooms.length < Game.gcl.level;
-        const hasExpansionTarget = overmind.claimQueue.some(c => !c.claimed);
-        // Check if we have remote rooms that need reserving (no reserver assigned)
-        const hasUnreservedRemote = needsReserver(roomName, swarm);
-        // Only spawn claimer if there's work to do
-        if (canExpand && hasExpansionTarget)
-            return true;
-        if (hasUnreservedRemote)
-            return true;
-        return false;
-    }
-    // Mineral harvester needs extractor
-    if (role === "mineralHarvester") {
-        const mineral = room.find(FIND_MINERALS)[0];
-        if (!mineral)
-            return false;
-        const extractor = mineral.pos.lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_EXTRACTOR);
-        if (!extractor)
-            return false;
-        if (mineral.mineralAmount === 0)
-            return false;
-    }
-    // Lab tech needs labs
-    if (role === "labTech") {
-        const labs = room.find(FIND_MY_STRUCTURES, { filter: s => s.structureType === STRUCTURE_LAB });
-        if (labs.length < 3)
-            return false;
-    }
-    // Factory worker needs factory
-    if (role === "factoryWorker") {
-        const factory = room.find(FIND_MY_STRUCTURES, { filter: s => s.structureType === STRUCTURE_FACTORY });
-        if (factory.length === 0)
-            return false;
-    }
-    // Queen carrier needs storage
-    if (role === "queenCarrier") {
-        if (!room.storage)
-            return false;
-    }
-    // Builder needs construction sites
-    if (role === "builder") {
-        const sites = room.find(FIND_MY_CONSTRUCTION_SITES);
-        if (sites.length === 0 && current > 0)
-            return false;
-    }
-    // Inter-room carrier needs active resource requests
-    if (role === "interRoomCarrier") {
-        // Check if room's cluster has any active resource transfer requests
-        if (!swarm.clusterId)
-            return false;
-        const cluster = memoryManager.getCluster(swarm.clusterId);
-        if (!cluster || !cluster.resourceRequests || cluster.resourceRequests.length === 0) {
-            return false;
-        }
-        // Check if there are requests that need more carriers
-        const needsCarriers = cluster.resourceRequests.some(req => {
-            // Only spawn for requests from this room
-            if (req.fromRoom !== room.name)
-                return false;
-            // Check if request needs more carriers
-            const assignedCount = req.assignedCreeps.filter(name => Game.creeps[name]).length;
-            const remaining = req.amount - req.delivered;
-            // Need carriers if we have significant remaining amount and not enough assigned
-            return remaining > 500 && assignedCount < 2;
-        });
-        if (!needsCarriers)
-            return false;
-    }
-    return true;
-}
-/**
- * Check if room needs a reserver for any of its remote rooms
- */
-function needsReserver(_homeRoom, swarm) {
-    var _a;
-    const remotes = (_a = swarm.remoteAssignments) !== null && _a !== void 0 ? _a : [];
-    if (remotes.length === 0)
-        return false;
-    // Check each remote room
-    for (const remoteName of remotes) {
-        // Check if any claimer is already targeting this room for reservation
-        let hasReserver = false;
-        for (const creep of Object.values(Game.creeps)) {
-            const memory = creep.memory;
-            if (memory.role === "claimer" && memory.targetRoom === remoteName) {
-                hasReserver = true;
-                break;
-            }
-        }
-        if (!hasReserver) {
-            return true; // Found a remote that needs a reserver
-        }
-    }
-    return false;
-}
-/**
- * Generate creep name
- */
-function generateCreepName(role) {
-    return `${role}_${Game.time}_${Math.floor(Math.random() * 1000)}`;
-}
-/**
- * Get count of energy-producing creeps (harvesters + larvaWorkers)
- */
-function getEnergyProducerCount(counts) {
-    var _a, _b;
-    return ((_a = counts.get("harvester")) !== null && _a !== void 0 ? _a : 0) + ((_b = counts.get("larvaWorker")) !== null && _b !== void 0 ? _b : 0);
-}
-/**
- * Get count of transport creeps (haulers + larvaWorkers)
- */
-function getTransportCount(counts) {
-    var _a, _b;
-    return ((_a = counts.get("hauler")) !== null && _a !== void 0 ? _a : 0) + ((_b = counts.get("larvaWorker")) !== null && _b !== void 0 ? _b : 0);
-}
-/**
- * Check if room is in emergency state (no energy-producing creeps)
- * This happens when all creeps die and extensions are empty
- */
-function isEmergencySpawnState(roomName) {
-    const counts = countCreepsByRole(roomName);
-    return getEnergyProducerCount(counts) === 0;
-}
-/**
- * Bootstrap spawn order - deterministic priority-based spawning.
- * This defines the order in which critical roles should be spawned during
- * recovery from a bad state, ensuring the economy can bootstrap properly.
- */
-const BOOTSTRAP_SPAWN_ORDER = [
-    // 1. Energy production first - can't do anything without energy
-    { role: "larvaWorker", minCount: 1 },
-    // 2. Static harvesters for efficient mining (1 per source is enough with bigger bodies)
-    { role: "harvester", minCount: 1 },
-    // 3. Transport to distribute energy (1 is enough with bigger bodies)
-    { role: "hauler", minCount: 1 },
-    // 4. Second harvester for second source
-    { role: "harvester", minCount: 2 },
-    // 5. Queen carrier when storage exists (manages spawns/extensions)
-    { role: "queenCarrier", minCount: 1, condition: (room) => Boolean(room.storage) },
-    // 6. Upgrader for controller progress
-    { role: "upgrader", minCount: 1 }
-];
-/**
- * Determine if the room is in "bootstrap" mode where critical roles are missing.
- * In bootstrap mode, we use deterministic priority spawning instead of weighted selection.
- *
- * Bootstrap mode is active when:
- * - Zero energy producers exist, OR
- * - We have energy producers but no transport (energy can't be distributed), OR
- * - We have fewer than minimum critical roles
- */
-function isBootstrapMode(roomName, room) {
-    var _a, _b;
-    const counts = countCreepsByRole(roomName);
-    // Critical: no energy production at all
-    if (getEnergyProducerCount(counts) === 0) {
-        return true;
-    }
-    // Critical: we have harvesters but no way to transport energy
-    // (larvaWorkers can self-transport so they count as transport)
-    if (getTransportCount(counts) === 0 && ((_a = counts.get("harvester")) !== null && _a !== void 0 ? _a : 0) > 0) {
-        return true;
-    }
-    // Check minimum counts against bootstrap order
-    // This includes queenCarrier (when storage exists) as part of the order
-    for (const req of BOOTSTRAP_SPAWN_ORDER) {
-        // Skip conditional roles if condition not met
-        if (req.condition && !req.condition(room)) {
-            continue;
-        }
-        const current = (_b = counts.get(req.role)) !== null && _b !== void 0 ? _b : 0;
-        if (current < req.minCount) {
-            return true;
-        }
-    }
-    return false;
-}
-/**
- * Get the next role to spawn in bootstrap mode.
- * Uses deterministic priority order instead of weighted random selection.
- */
-function getBootstrapRole(roomName, room, swarm) {
-    var _a;
-    const counts = countCreepsByRole(roomName);
-    // First check emergency: zero energy producers
-    if (getEnergyProducerCount(counts) === 0) {
-        return "larvaWorker";
-    }
-    // Follow bootstrap order
-    for (const req of BOOTSTRAP_SPAWN_ORDER) {
-        // Skip conditional roles if condition not met
-        if (req.condition && !req.condition(room)) {
-            continue;
-        }
-        const current = (_a = counts.get(req.role)) !== null && _a !== void 0 ? _a : 0;
-        if (current < req.minCount) {
-            // Verify we can spawn this role (check needsRole for special conditions)
-            if (needsRole(roomName, req.role, swarm)) {
-                return req.role;
-            }
-        }
-    }
-    return null;
-}
-/**
- * Get all roles that need spawning, sorted by priority
- */
-function getAllSpawnableRoles(room, swarm) {
-    var _a, _b;
-    const counts = countCreepsByRole(room.name);
-    const postureWeights = getPostureSpawnWeights(swarm.posture);
-    // Collect all roles that need spawning with their calculated priorities
-    const roleScores = [];
-    for (const [role, def] of Object.entries(ROLE_DEFINITIONS)) {
-        if (!needsRole(room.name, role, swarm))
-            continue;
-        const baseWeight = def.priority;
-        const postureWeight = (_a = postureWeights[role]) !== null && _a !== void 0 ? _a : 0.5;
-        const pheromoneMult = getPheromoneMult(role, swarm.pheromones);
-        const priorityBoost = getDynamicPriorityBoost(room, swarm, role);
-        // Reduce weight based on current count
-        const current = (_b = counts.get(role)) !== null && _b !== void 0 ? _b : 0;
-        const countFactor = Math.max(0.1, 1 - current / def.maxPerRoom);
-        const score = (baseWeight + priorityBoost) * postureWeight * pheromoneMult * countFactor;
-        roleScores.push({ role, score });
-    }
-    // Sort by score descending (highest priority first)
-    roleScores.sort((a, b) => b.score - a.score);
-    return roleScores.map(rs => rs.role);
-}
-/**
- * Spawn manager - run for a room
- */
-function runSpawnManager(room, swarm) {
-    const spawns = room.find(FIND_MY_SPAWNS);
-    const availableSpawn = spawns.find(s => !s.spawning);
-    if (!availableSpawn)
-        return;
-    const energyCapacity = room.energyCapacityAvailable;
-    const energyAvailable = room.energyAvailable;
-    // Emergency mode: when no energy-producing creeps exist and extensions are empty,
-    // use energyAvailable to select body instead of energyCapacityAvailable.
-    // This prevents deadlock where we wait for extensions to fill but have no creeps to fill them.
-    const isEmergency = isEmergencySpawnState(room.name);
-    const effectiveCapacity = isEmergency ? energyAvailable : energyCapacity;
-    // SPAWN FIX: Try roles in priority order until we find one we can afford
-    // This prevents the spawn system from stalling when high-priority roles
-    // are too expensive for current energy levels.
-    // In bootstrap mode, use deterministic bootstrap order
-    if (isBootstrapMode(room.name, room)) {
-        const role = getBootstrapRole(room.name, room, swarm);
-        if (!role)
-            return;
-        const def = ROLE_DEFINITIONS[role];
-        if (!def)
-            return;
-        const body = getBestBody(def, effectiveCapacity);
-        if (!body)
-            return;
-        // Check if we have enough energy
-        if (energyAvailable < body.cost)
-            return;
-        // Spawn creep
-        const name = generateCreepName(role);
-        const memory = {
-            role: def.role,
-            family: def.family,
-            homeRoom: room.name,
-            version: 1
-        };
-        // For remote roles, set the targetRoom to the remote room that needs workers
-        if (role === "remoteHarvester" || role === "remoteHauler") {
-            const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
-            if (targetRoom) {
-                memory.targetRoom = targetRoom;
-            }
-        }
-        const result = availableSpawn.spawnCreep(body.parts, name, {
-            memory: memory
-        });
-        if (result === OK) {
-            kernel.emit("spawn.completed", {
-                roomName: room.name,
-                creepName: name,
-                role,
-                cost: body.cost,
-                source: "SpawnManager"
-            });
-        }
-        return;
-    }
-    // Normal mode: Get all spawnable roles sorted by priority
-    // Try each one until we find an affordable option
-    const spawnableRoles = getAllSpawnableRoles(room, swarm);
-    for (const role of spawnableRoles) {
-        const def = ROLE_DEFINITIONS[role];
-        if (!def)
-            continue;
-        // SPAWN FIX: Try optimal body first (based on capacity), then fallback to smaller body
-        // 1. Try to spawn optimal body for capacity
-        let body = getBestBody(def, effectiveCapacity);
-        if (body && energyAvailable >= body.cost) ;
-        else {
-            // Can't afford optimal body, try smaller body based on available energy
-            body = getBestBody(def, energyAvailable);
-            if (!body || energyAvailable < body.cost) {
-                // Can't afford any body for this role, try next role
-                continue;
-            }
-        }
-        // We found an affordable role, spawn it
-        const name = generateCreepName(role);
-        const memory = {
-            role: def.role,
-            family: def.family,
-            homeRoom: room.name,
-            version: 1
-        };
-        // For remote roles, set the targetRoom to the remote room that needs workers
-        if (role === "remoteHarvester" || role === "remoteHauler") {
-            const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
-            if (targetRoom) {
-                memory.targetRoom = targetRoom;
-            }
-        }
-        // For inter-room carrier, assign a transfer request
-        if (role === "interRoomCarrier" && swarm.clusterId) {
-            const cluster = memoryManager.getCluster(swarm.clusterId);
-            if (cluster) {
-                // Find request from this room that needs carriers
-                const request = cluster.resourceRequests.find(req => {
-                    if (req.fromRoom !== room.name)
-                        return false;
-                    const assignedCount = req.assignedCreeps.filter(n => Game.creeps[n]).length;
-                    const remaining = req.amount - req.delivered;
-                    return remaining > 500 && assignedCount < 2;
-                });
-                if (request) {
-                    memory.transferRequest = {
-                        fromRoom: request.fromRoom,
-                        toRoom: request.toRoom,
-                        resourceType: request.resourceType,
-                        amount: request.amount
-                    };
-                    request.assignedCreeps.push(name);
-                }
-            }
-        }
-        const result = availableSpawn.spawnCreep(body.parts, name, {
-            memory: memory
-        });
-        // Emit spawn completed event on successful spawn
-        if (result === OK) {
-            kernel.emit("spawn.completed", {
-                roomName: room.name,
-                creepName: name,
-                role,
-                cost: body.cost,
-                source: "SpawnManager"
-            });
-            return; // Successfully spawned, exit
-        }
-        // If spawn failed for a reason other than insufficient energy, give up
-        if (result !== ERR_NOT_ENOUGH_ENERGY) {
-            return;
-        }
     }
 }
 
@@ -13057,7 +7947,7 @@ function requestMoveToPosition(creep, targetPos) {
         clearMoveRequests();
     }
     const key = positionKey(targetPos);
-    const priority = getCreepPriority$1(creep);
+    const priority = getCreepPriority(creep);
     const request = {
         requester: creep,
         targetPos,
@@ -13155,7 +8045,7 @@ const ROLE_PRIORITIES = {
 /**
  * Get creep priority
  */
-function getCreepPriority$1(creep) {
+function getCreepPriority(creep) {
     var _a;
     const memory = creep.memory;
     return (_a = ROLE_PRIORITIES[memory.role]) !== null && _a !== void 0 ? _a : 50;
@@ -13164,8 +8054,8 @@ function getCreepPriority$1(creep) {
  * Check if creep should yield to another
  */
 function shouldYieldTo(creep, other) {
-    const myPriority = getCreepPriority$1(creep);
-    const otherPriority = getCreepPriority$1(other);
+    const myPriority = getCreepPriority(creep);
+    const otherPriority = getCreepPriority(other);
     // Higher priority always wins
     if (otherPriority > myPriority)
         return true;
@@ -16905,6 +11795,6085 @@ function runUtilityRole(creep) {
     const ctx = createContext(creep);
     const action = evaluateWithStateMachine(ctx, evaluateUtilityBehavior);
     executeAction(creep, action, ctx);
+}
+
+/**
+ * Idle Creep Detection
+ *
+ * Detects creeps that are truly idle and can skip expensive behavior evaluation.
+ * This is a significant CPU optimization for large swarms (1000+ creeps).
+ *
+ * A creep is considered idle when:
+ * 1. It's at its work position (e.g., harvester at source, upgrader at controller)
+ * 2. It has an ongoing state that's still valid
+ * 3. It doesn't need to make new decisions
+ *
+ * Design Principles (from ROADMAP.md Section 18):
+ * - "Idle creep detection: Skip behavior evaluation for truly idle creeps"
+ * - CPU savings: ~0.1-0.2 CPU per skipped creep
+ * - With 142 creeps, ~20-40% may be in idle working state
+ * - Potential savings: 3-8 CPU
+ */
+// =============================================================================
+// Type Guards
+// =============================================================================
+/**
+ * Type guard to check if an object is a RoomObject.
+ * RoomObjects have pos and room properties.
+ */
+function isRoomObject(obj) {
+    return (obj !== null &&
+        typeof obj === "object" &&
+        "pos" in obj &&
+        obj.pos instanceof RoomPosition &&
+        "room" in obj &&
+        obj.room instanceof Room);
+}
+// =============================================================================
+// Constants
+// =============================================================================
+/**
+ * Roles that can benefit from idle detection (stationary workers).
+ * Mobile roles like haulers and military units are excluded.
+ *
+ * OPTIMIZATION: Extended in performance optimization to include more roles.
+ * With 100+ creeps, extending idle detection to builders can save 1-2 CPU.
+ * Note: "repairer" is not a defined role in this bot, so it's excluded.
+ */
+const IDLE_ELIGIBLE_ROLES = new Set([
+    "harvester",
+    "upgrader",
+    "mineralHarvester",
+    "depositHarvester",
+    "factoryWorker",
+    "labTech",
+    "builder" // Can be stationary at construction site
+]);
+/**
+ * Energy threshold for harvesters.
+ * If harvester is at source and has less than this in store, it's actively working.
+ */
+const HARVESTER_WORKING_THRESHOLD = 40;
+/**
+ * Minimum ticks a creep must have a valid state to be considered idle.
+ * This prevents false positives for creeps that just started a task.
+ * OPTIMIZATION: Reduced from 3 to 2 to allow idle detection to kick in sooner
+ */
+const MIN_STATE_AGE_FOR_IDLE = 2;
+// =============================================================================
+// Public API
+// =============================================================================
+/**
+ * Check if a creep can skip behavior evaluation this tick.
+ * Returns true if the creep is:
+ * - In an idle-eligible role
+ * - Has a valid ongoing state
+ * - Is actively working (not just standing around)
+ * - Doesn't need to make new decisions
+ *
+ * @param creep - The creep to check
+ * @returns true if creep can skip behavior evaluation
+ */
+function canSkipBehaviorEvaluation(creep) {
+    const memory = creep.memory;
+    // Only certain roles are eligible
+    if (!IDLE_ELIGIBLE_ROLES.has(memory.role)) {
+        return false;
+    }
+    // Must have a valid state that's been active for a few ticks
+    const state = memory.state;
+    if (!state || !state.startTick) {
+        return false;
+    }
+    const stateAge = Game.time - state.startTick;
+    if (stateAge < MIN_STATE_AGE_FOR_IDLE) {
+        return false;
+    }
+    // Role-specific checks
+    switch (memory.role) {
+        case "harvester":
+            return isHarvesterIdle(creep, state);
+        case "upgrader":
+            return isUpgraderIdle(creep, state);
+        case "mineralHarvester":
+            return isMineralHarvesterIdle(creep, state);
+        case "builder":
+            return isBuilderIdle(creep, state);
+        case "depositHarvester":
+        case "factoryWorker":
+        case "labTech":
+            // These roles can be idle if they have a valid state
+            // The state machine will handle checking if state is still valid
+            return true;
+        default:
+            return false;
+    }
+}
+// =============================================================================
+// Role-Specific Idle Checks
+// =============================================================================
+/**
+ * Check if a harvester is idle (actively harvesting at source).
+ * Harvester is idle when:
+ * - State is "harvest" or "transfer"
+ * - Has valid target (source or container/link)
+ * - Is next to target
+ * - Has space to continue harvesting (not full)
+ */
+function isHarvesterIdle(creep, state) {
+    // Must be harvesting or transferring to nearby container/link
+    if (state.action !== "harvest" && state.action !== "transfer") {
+        return false;
+    }
+    // Validate target still exists
+    if (!state.targetId) {
+        return false;
+    }
+    const target = Game.getObjectById(state.targetId);
+    if (!target || !isRoomObject(target)) {
+        return false;
+    }
+    // Must be adjacent to target
+    if (!creep.pos.isNearTo(target.pos)) {
+        return false;
+    }
+    // If harvesting, must not be full
+    if (state.action === "harvest") {
+        const carryCapacity = creep.store.getCapacity();
+        if (carryCapacity !== null && carryCapacity > 0) {
+            // Has carry capacity - check if full
+            if (creep.store.getFreeCapacity() === 0) {
+                return false; // Full, needs to transfer
+            }
+        }
+        // Drop miners (no carry) are always idle when harvesting
+    }
+    // If transferring, must have energy to transfer
+    if (state.action === "transfer") {
+        if (creep.store.getUsedCapacity(RESOURCE_ENERGY) < HARVESTER_WORKING_THRESHOLD) {
+            return false; // Not enough energy, needs to harvest
+        }
+    }
+    return true;
+}
+/**
+ * Check if an upgrader is idle (actively upgrading controller).
+ * Upgrader is idle when:
+ * - State is "upgrade" or "withdraw" (getting energy from nearby container)
+ * - Has valid target
+ * - Is in range of target
+ * - Has energy to upgrade (for upgrade state) or space to withdraw (for withdraw state)
+ */
+function isUpgraderIdle(creep, state) {
+    // Must be upgrading or withdrawing
+    if (state.action !== "upgrade" && state.action !== "withdraw") {
+        return false;
+    }
+    // Validate target
+    if (!state.targetId) {
+        return false;
+    }
+    const target = Game.getObjectById(state.targetId);
+    if (!target || !isRoomObject(target)) {
+        return false;
+    }
+    // Must be in range
+    const inRange = creep.pos.inRangeTo(target.pos, 3);
+    if (!inRange) {
+        return false;
+    }
+    // If upgrading, must have energy
+    if (state.action === "upgrade") {
+        if (creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0) {
+            return false;
+        }
+    }
+    // If withdrawing, must have space
+    if (state.action === "withdraw") {
+        if (creep.store.getFreeCapacity(RESOURCE_ENERGY) === 0) {
+            return false;
+        }
+    }
+    return true;
+}
+/**
+ * Check if a mineral harvester is idle (actively mining mineral).
+ * Similar to regular harvester but for minerals.
+ */
+function isMineralHarvesterIdle(creep, state) {
+    // Must be harvesting mineral
+    if (state.action !== "harvestMineral") {
+        return false;
+    }
+    // Validate target
+    if (!state.targetId) {
+        return false;
+    }
+    const target = Game.getObjectById(state.targetId);
+    if (!target || !isRoomObject(target)) {
+        return false;
+    }
+    // Must be adjacent
+    if (!creep.pos.isNearTo(target.pos)) {
+        return false;
+    }
+    // Must not be full
+    if (creep.store.getFreeCapacity() === 0) {
+        return false;
+    }
+    return true;
+}
+/**
+ * Check if a builder is idle (actively building at construction site).
+ * Builder is idle when:
+ * - State is "build"
+ * - Has valid target (construction site)
+ * - Is in range of target (range 3)
+ * - Has energy to build
+ */
+function isBuilderIdle(creep, state) {
+    // Must be building
+    if (state.action !== "build") {
+        return false;
+    }
+    // Validate target
+    if (!state.targetId) {
+        return false;
+    }
+    const target = Game.getObjectById(state.targetId);
+    if (!target || !isRoomObject(target)) {
+        return false;
+    }
+    // Must be in range (build range is 3)
+    if (!creep.pos.inRangeTo(target.pos, 3)) {
+        return false;
+    }
+    // Must have energy
+    if (creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0) {
+        return false;
+    }
+    return true;
+}
+/**
+ * Execute the creep's current action without re-evaluating behavior.
+ * This is called for idle creeps that can skip behavior evaluation.
+ *
+ * @param creep - The creep to execute action for
+ * @returns true if action was executed successfully
+ */
+function executeIdleAction(creep) {
+    const memory = creep.memory;
+    const state = memory.state;
+    if (!state || !state.targetId) {
+        return false;
+    }
+    const target = Game.getObjectById(state.targetId);
+    if (!target || !isRoomObject(target)) {
+        return false;
+    }
+    // Execute the action based on state with proper type validation
+    switch (state.action) {
+        case "harvest":
+            // Validate target is a Source
+            if ("energy" in target && "energyCapacity" in target && "ticksToRegeneration" in target) {
+                return creep.harvest(target) === OK;
+            }
+            return false;
+        case "harvestMineral":
+            // Validate target is a Mineral
+            if ("mineralType" in target && "mineralAmount" in target && "ticksToRegeneration" in target) {
+                return creep.harvest(target) === OK;
+            }
+            return false;
+        case "transfer":
+            // Validate target has store property (structures with storage)
+            if ("store" in target && target.store && typeof target.store === "object") {
+                return creep.transfer(target, RESOURCE_ENERGY) === OK;
+            }
+            return false;
+        case "withdraw":
+            // Validate target has store property (structures with storage)
+            if ("store" in target && target.store && typeof target.store === "object") {
+                return creep.withdraw(target, RESOURCE_ENERGY) === OK;
+            }
+            return false;
+        case "upgrade":
+            // Validate target is a Controller
+            if ("level" in target && "progress" in target && "my" in target) {
+                return creep.upgradeController(target) === OK;
+            }
+            return false;
+        case "build":
+            // Validate target is a ConstructionSite
+            if ("progressTotal" in target && "progress" in target) {
+                return creep.build(target) === OK;
+            }
+            return false;
+        case "repair":
+            // Validate target is a Structure
+            if ("hits" in target && "hitsMax" in target) {
+                return creep.repair(target) === OK;
+            }
+            return false;
+        default:
+            return false;
+    }
+}
+
+/**
+ * Creep Process Manager
+ *
+ * Manages individual creeps as kernel processes, ensuring every creep
+ * gets run eventually through the kernel's wrap-around queue system.
+ *
+ * Each creep becomes a process with priority based on its role, allowing
+ * the kernel to handle CPU budgeting and fair execution scheduling.
+ *
+ * Design Principles (from ROADMAP.md):
+ * - Decentralization: Each creep is an independent process
+ * - Event-driven logic: Creeps respond to events and pheromones
+ * - Strict tick budget: CPU allocation per creep is managed by kernel
+ */
+/**
+ * Role priorities - higher values = run first
+ * These map to kernel ProcessPriority levels
+ */
+const ROLE_PRIORITY_MAP = {
+    // Critical economy roles (CRITICAL = 100)
+    harvester: ProcessPriority.CRITICAL,
+    queenCarrier: ProcessPriority.CRITICAL,
+    // High priority roles (HIGH = 75)
+    hauler: ProcessPriority.HIGH,
+    guard: ProcessPriority.HIGH,
+    healer: ProcessPriority.HIGH,
+    soldier: ProcessPriority.HIGH,
+    ranger: ProcessPriority.HIGH,
+    siegeUnit: ProcessPriority.HIGH,
+    harasser: ProcessPriority.HIGH,
+    powerQueen: ProcessPriority.HIGH,
+    powerWarrior: ProcessPriority.HIGH,
+    larvaWorker: ProcessPriority.HIGH,
+    // Medium priority roles (MEDIUM = 50)
+    builder: ProcessPriority.MEDIUM,
+    upgrader: ProcessPriority.MEDIUM,
+    interRoomCarrier: ProcessPriority.MEDIUM,
+    scout: ProcessPriority.MEDIUM,
+    claimer: ProcessPriority.MEDIUM,
+    engineer: ProcessPriority.MEDIUM,
+    remoteHarvester: ProcessPriority.MEDIUM,
+    powerHarvester: ProcessPriority.MEDIUM,
+    powerCarrier: ProcessPriority.MEDIUM,
+    // Low priority roles (LOW = 25)
+    remoteHauler: ProcessPriority.LOW,
+    remoteWorker: ProcessPriority.LOW,
+    linkManager: ProcessPriority.LOW,
+    terminalManager: ProcessPriority.LOW,
+    mineralHarvester: ProcessPriority.LOW,
+    // Idle priority roles (IDLE = 10)
+    labTech: ProcessPriority.IDLE,
+    factoryWorker: ProcessPriority.IDLE
+};
+/**
+ * Get role family from creep memory
+ */
+function getCreepFamily(creep) {
+    var _a;
+    const memory = creep.memory;
+    return (_a = memory.family) !== null && _a !== void 0 ? _a : "economy";
+}
+/**
+ * Get process priority for a creep role
+ */
+function getCreepProcessPriority(role) {
+    var _a;
+    return (_a = ROLE_PRIORITY_MAP[role]) !== null && _a !== void 0 ? _a : ProcessPriority.MEDIUM;
+}
+/**
+ * Execute a creep's role behavior
+ */
+function executeCreepRole(creep) {
+    // OPTIMIZATION: Skip behavior evaluation for idle creeps
+    // Idle creeps are stationary workers (harvesters, upgraders) that are actively
+    // working at their station and don't need to make new decisions.
+    // This saves ~0.1-0.2 CPU per skipped creep.
+    if (canSkipBehaviorEvaluation(creep)) {
+        executeIdleAction(creep);
+        return;
+    }
+    const family = getCreepFamily(creep);
+    const memory = creep.memory;
+    const roleName = memory.role;
+    // Profile per-role CPU usage for optimization insights
+    profiler.measureSubsystem(`role:${roleName}`, () => {
+        switch (family) {
+            case "economy":
+                runEconomyRole(creep);
+                break;
+            case "military":
+                runMilitaryRole(creep);
+                break;
+            case "utility":
+                runUtilityRole(creep);
+                break;
+            case "power":
+                runPowerCreepRole(creep);
+                break;
+            default:
+                runEconomyRole(creep);
+        }
+    });
+}
+/**
+ * Creep Process Manager
+ *
+ * Manages registration and lifecycle of creep processes with the kernel.
+ * Each living creep is registered as a high-frequency process that runs
+ * every tick (when CPU budget allows).
+ */
+class CreepProcessManager {
+    constructor() {
+        this.registeredCreeps = new Set();
+        this.lastSyncTick = -1;
+    }
+    /**
+     * Synchronize creep processes with kernel.
+     * Registers new creeps and unregisters dead ones.
+     * Should be called once per tick before kernel.run()
+     */
+    syncCreepProcesses() {
+        // Only sync once per tick
+        if (this.lastSyncTick === Game.time) {
+            return;
+        }
+        this.lastSyncTick = Game.time;
+        const currentCreeps = new Set();
+        // Register all living creeps as processes
+        for (const name in Game.creeps) {
+            const creep = Game.creeps[name];
+            // Skip spawning creeps
+            if (creep.spawning) {
+                continue;
+            }
+            currentCreeps.add(name);
+            // Register if not already registered
+            if (!this.registeredCreeps.has(name)) {
+                this.registerCreepProcess(creep);
+            }
+        }
+        // Unregister dead creeps
+        for (const name of this.registeredCreeps) {
+            if (!currentCreeps.has(name)) {
+                this.unregisterCreepProcess(name);
+            }
+        }
+    }
+    /**
+     * Register a creep as a kernel process
+     */
+    registerCreepProcess(creep) {
+        const memory = creep.memory;
+        const role = memory.role;
+        const priority = getCreepProcessPriority(role);
+        const processId = `creep:${creep.name}`;
+        kernel.registerProcess({
+            id: processId,
+            name: `Creep ${creep.name} (${role})`,
+            priority,
+            frequency: "high",
+            interval: 1,
+            minBucket: this.getMinBucketForPriority(priority),
+            cpuBudget: this.getCpuBudgetForPriority(priority),
+            execute: () => {
+                // Check if creep still exists
+                const currentCreep = Game.creeps[creep.name];
+                if (currentCreep && !currentCreep.spawning) {
+                    executeCreepRole(currentCreep);
+                }
+            }
+        });
+        this.registeredCreeps.add(creep.name);
+        logger.debug(`Registered creep process: ${creep.name} (${role}) with priority ${priority}`, {
+            subsystem: "CreepProcessManager"
+        });
+    }
+    /**
+     * Unregister a dead creep from the kernel
+     */
+    unregisterCreepProcess(name) {
+        const processId = `creep:${name}`;
+        kernel.unregisterProcess(processId);
+        this.registeredCreeps.delete(name);
+        logger.debug(`Unregistered creep process: ${name}`, {
+            subsystem: "CreepProcessManager"
+        });
+    }
+    /**
+     * Get minimum bucket requirement based on priority
+     */
+    getMinBucketForPriority(priority) {
+        if (priority >= ProcessPriority.CRITICAL) {
+            return 100; // Critical creeps run even at low bucket
+        }
+        if (priority >= ProcessPriority.HIGH) {
+            return 500;
+        }
+        if (priority >= ProcessPriority.MEDIUM) {
+            return 2000;
+        }
+        return 5000; // Low priority needs healthy bucket
+    }
+    /**
+     * Get CPU budget based on priority
+     */
+    getCpuBudgetForPriority(priority) {
+        if (priority >= ProcessPriority.CRITICAL) {
+            return 0.002; // ~0.1 CPU per critical creep (50 creeps = 5 CPU)
+        }
+        if (priority >= ProcessPriority.HIGH) {
+            return 0.0015; // ~0.075 CPU per high priority creep
+        }
+        if (priority >= ProcessPriority.MEDIUM) {
+            return 0.001; // ~0.05 CPU per medium priority creep
+        }
+        return 0.0005; // ~0.025 CPU per low priority creep
+    }
+    /**
+     * Get statistics about registered creeps
+     */
+    getStats() {
+        var _a, _b;
+        const creepsByPriority = {};
+        for (const name of this.registeredCreeps) {
+            const creep = Game.creeps[name];
+            if (creep) {
+                const memory = creep.memory;
+                const role = memory.role;
+                const priority = getCreepProcessPriority(role);
+                const priorityName = (_a = ProcessPriority[priority]) !== null && _a !== void 0 ? _a : "UNKNOWN";
+                creepsByPriority[priorityName] = ((_b = creepsByPriority[priorityName]) !== null && _b !== void 0 ? _b : 0) + 1;
+            }
+        }
+        return {
+            totalCreeps: Object.keys(Game.creeps).length,
+            registeredCreeps: this.registeredCreeps.size,
+            creepsByPriority
+        };
+    }
+    /**
+     * Force resync of all creep processes
+     */
+    forceResync() {
+        this.lastSyncTick = -1;
+        this.syncCreepProcesses();
+    }
+    /**
+     * Clear all internal state (for testing)
+     */
+    reset() {
+        this.registeredCreeps.clear();
+        this.lastSyncTick = -1;
+    }
+}
+/**
+ * Global creep process manager instance
+ */
+const creepProcessManager = new CreepProcessManager();
+
+/**
+ * Pheromone System - Phase 2
+ *
+ * Implements the pheromone-based coordination system:
+ * - Metrics collection (rolling averages)
+ * - Periodic pheromone updates
+ * - Event-driven updates
+ * - Pheromone diffusion
+ */
+/**
+ * Default pheromone configuration
+ */
+const DEFAULT_PHEROMONE_CONFIG = {
+    updateInterval: 5,
+    decayFactors: {
+        expand: 0.95,
+        harvest: 0.9,
+        build: 0.92,
+        upgrade: 0.93,
+        defense: 0.97,
+        war: 0.98,
+        siege: 0.99,
+        logistics: 0.91,
+        nukeTarget: 0.99
+    },
+    diffusionRates: {
+        expand: 0.3,
+        harvest: 0.1,
+        build: 0.15,
+        upgrade: 0.1,
+        defense: 0.4,
+        war: 0.5,
+        siege: 0.6,
+        logistics: 0.2,
+        nukeTarget: 0.1
+    },
+    maxValue: 100,
+    minValue: 0
+};
+/**
+ * Rolling average tracker for metrics
+ */
+class RollingAverage {
+    constructor(maxSamples = 10) {
+        this.maxSamples = maxSamples;
+        this.values = [];
+        this.sum = 0;
+    }
+    /**
+     * Add a value
+     */
+    add(value) {
+        this.values.push(value);
+        this.sum += value;
+        if (this.values.length > this.maxSamples) {
+            const removed = this.values.shift();
+            this.sum -= removed !== null && removed !== void 0 ? removed : 0;
+        }
+        return this.get();
+    }
+    /**
+     * Get current average
+     */
+    get() {
+        return this.values.length > 0 ? this.sum / this.values.length : 0;
+    }
+    /**
+     * Reset
+     */
+    reset() {
+        this.values = [];
+        this.sum = 0;
+    }
+}
+/**
+ * Create a new metrics tracker
+ */
+function createMetricsTracker() {
+    return {
+        energyHarvested: new RollingAverage(10),
+        energySpawning: new RollingAverage(10),
+        energyConstruction: new RollingAverage(10),
+        energyRepair: new RollingAverage(10),
+        energyTower: new RollingAverage(10),
+        controllerProgress: new RollingAverage(10),
+        hostileCount: new RollingAverage(5),
+        damageReceived: new RollingAverage(5),
+        idleWorkers: new RollingAverage(10),
+        lastControllerProgress: 0
+    };
+}
+/**
+ * Pheromone Manager
+ */
+class PheromoneManager {
+    constructor(config = {}) {
+        this.trackers = new Map();
+        this.config = { ...DEFAULT_PHEROMONE_CONFIG, ...config };
+    }
+    /**
+     * Get or create metrics tracker for a room
+     */
+    getTracker(roomName) {
+        let tracker = this.trackers.get(roomName);
+        if (!tracker) {
+            tracker = createMetricsTracker();
+            this.trackers.set(roomName, tracker);
+        }
+        return tracker;
+    }
+    /**
+     * Update metrics from a room.
+     * Uses optimized iteration patterns for better CPU efficiency.
+     */
+    updateMetrics(room, swarm) {
+        var _a;
+        const tracker = this.getTracker(room.name);
+        // Energy harvested (approximation from source depletion)
+        // OPTIMIZATION: Cache sources to share with calculateContributions
+        const cacheKey = `sources_${room.name}`;
+        const cached = global[cacheKey];
+        let sources;
+        if (cached && cached.tick === Game.time) {
+            sources = cached.sources;
+        }
+        else {
+            sources = room.find(FIND_SOURCES);
+            global[cacheKey] = { sources, tick: Game.time };
+        }
+        // Use a single loop instead of two reduce calls for efficiency
+        let totalSourceCapacity = 0;
+        let totalSourceEnergy = 0;
+        for (const source of sources) {
+            totalSourceCapacity += source.energyCapacity;
+            totalSourceEnergy += source.energy;
+        }
+        const harvested = totalSourceCapacity - totalSourceEnergy;
+        tracker.energyHarvested.add(harvested);
+        // Controller progress
+        if ((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my) {
+            const progressDelta = room.controller.progress - tracker.lastControllerProgress;
+            if (progressDelta > 0 && progressDelta < 100000) {
+                tracker.controllerProgress.add(progressDelta);
+            }
+            tracker.lastControllerProgress = room.controller.progress;
+        }
+        // Hostile count and damage - use safeFind to handle engine errors with corrupted owner data
+        // Calculate damage in a single loop instead of multiple filter calls
+        const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
+        tracker.hostileCount.add(hostiles.length);
+        let potentialDamage = 0;
+        for (const hostile of hostiles) {
+            // Iterate body parts once, counting both attack types in the same loop
+            for (const part of hostile.body) {
+                if (part.hits > 0) {
+                    if (part.type === ATTACK) {
+                        potentialDamage += 30;
+                    }
+                    else if (part.type === RANGED_ATTACK) {
+                        potentialDamage += 10;
+                    }
+                }
+            }
+        }
+        tracker.damageReceived.add(potentialDamage);
+        // Update swarm metrics
+        swarm.metrics.energyHarvested = tracker.energyHarvested.get();
+        swarm.metrics.controllerProgress = tracker.controllerProgress.get();
+        swarm.metrics.hostileCount = Math.round(tracker.hostileCount.get());
+        swarm.metrics.damageReceived = tracker.damageReceived.get();
+    }
+    /**
+     * Periodic pheromone update
+     */
+    updatePheromones(swarm, room) {
+        if (Game.time < swarm.nextUpdateTick)
+            return;
+        const pheromones = swarm.pheromones;
+        // Apply decay
+        for (const key of Object.keys(pheromones)) {
+            const decayFactor = this.config.decayFactors[key];
+            pheromones[key] = this.clamp(pheromones[key] * decayFactor);
+        }
+        // Calculate contributions
+        this.calculateContributions(swarm, room);
+        // Set next update tick
+        swarm.nextUpdateTick = Game.time + this.config.updateInterval;
+        swarm.lastUpdate = Game.time;
+    }
+    /**
+     * Calculate pheromone contributions from current state
+     * OPTIMIZATION: Reuse sources from updateMetrics to avoid duplicate room.find() calls
+     */
+    calculateContributions(swarm, room) {
+        var _a;
+        const pheromones = swarm.pheromones;
+        const tracker = this.getTracker(room.name);
+        // Harvest contribution based on available sources
+        // OPTIMIZATION: Sources are already found in updateMetrics, but we need them here too
+        // Since this runs every 5 ticks (same as updateMetrics), we can cache them
+        const cacheKey = `sources_${room.name}`;
+        const cached = global[cacheKey];
+        let sources;
+        if (cached && cached.tick === Game.time) {
+            sources = cached.sources;
+        }
+        else {
+            sources = room.find(FIND_SOURCES);
+            global[cacheKey] = { sources, tick: Game.time };
+        }
+        if (sources.length > 0) {
+            const avgEnergy = sources.reduce((sum, s) => sum + s.energy, 0) / sources.length;
+            pheromones.harvest = this.clamp(pheromones.harvest + (avgEnergy / 3000) * 10);
+        }
+        // Build contribution based on construction sites
+        const sites = room.find(FIND_MY_CONSTRUCTION_SITES);
+        if (sites.length > 0) {
+            pheromones.build = this.clamp(pheromones.build + Math.min(sites.length * 2, 20));
+        }
+        // Upgrade contribution based on controller progress
+        if ((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my) {
+            const progressPercent = room.controller.progress / room.controller.progressTotal;
+            if (progressPercent < 0.5) {
+                pheromones.upgrade = this.clamp(pheromones.upgrade + (1 - progressPercent) * 15);
+            }
+        }
+        // Defense contribution based on hostiles
+        const hostileAvg = tracker.hostileCount.get();
+        if (hostileAvg > 0) {
+            pheromones.defense = this.clamp(pheromones.defense + hostileAvg * 10);
+        }
+        // War contribution if threat is sustained
+        if (swarm.danger >= 2) {
+            pheromones.war = this.clamp(pheromones.war + swarm.danger * 10);
+        }
+        // Siege if critical threat
+        if (swarm.danger >= 3) {
+            pheromones.siege = this.clamp(pheromones.siege + 20);
+        }
+        // Logistics contribution based on energy distribution needs
+        // OPTIMIZATION: Use cached spawns from structure cache if available
+        if (room.storage) {
+            const spawns = room.find(FIND_MY_SPAWNS);
+            const spawnEnergy = spawns.reduce((sum, s) => sum + s.store.getUsedCapacity(RESOURCE_ENERGY), 0);
+            const maxSpawnEnergy = spawns.length * 300;
+            if (spawnEnergy < maxSpawnEnergy * 0.5) {
+                pheromones.logistics = this.clamp(pheromones.logistics + 10);
+            }
+        }
+        // Expand contribution if economy is stable
+        const energyBalance = tracker.energyHarvested.get() - swarm.metrics.energySpawning;
+        if (energyBalance > 0 && swarm.danger === 0) {
+            pheromones.expand = this.clamp(pheromones.expand + Math.min(energyBalance / 100, 10));
+        }
+    }
+    /**
+     * Clamp pheromone value to valid range
+     */
+    clamp(value) {
+        return Math.max(this.config.minValue, Math.min(this.config.maxValue, value));
+    }
+    // ============================================================================
+    // Event-Driven Updates
+    // ============================================================================
+    /**
+     * Handle hostile detection
+     */
+    onHostileDetected(swarm, hostileCount, danger) {
+        swarm.danger = danger;
+        swarm.pheromones.defense = this.clamp(swarm.pheromones.defense + hostileCount * 5);
+        if (danger >= 2) {
+            swarm.pheromones.war = this.clamp(swarm.pheromones.war + danger * 10);
+        }
+        if (danger >= 3) {
+            swarm.pheromones.siege = this.clamp(swarm.pheromones.siege + 20);
+        }
+        logger.info(`Hostile detected: ${hostileCount} hostiles, danger=${danger}`, {
+            room: swarm.role,
+            subsystem: "Pheromone"
+        });
+    }
+    /**
+     * Handle structure destroyed
+     */
+    onStructureDestroyed(swarm, structureType) {
+        swarm.pheromones.defense = this.clamp(swarm.pheromones.defense + 5);
+        swarm.pheromones.build = this.clamp(swarm.pheromones.build + 10);
+        // Critical structures increase danger
+        if (structureType === STRUCTURE_SPAWN || structureType === STRUCTURE_STORAGE || structureType === STRUCTURE_TOWER) {
+            swarm.danger = Math.min(3, swarm.danger + 1);
+            swarm.pheromones.siege = this.clamp(swarm.pheromones.siege + 15);
+        }
+    }
+    /**
+     * Handle nuke detection
+     */
+    onNukeDetected(swarm) {
+        swarm.danger = 3;
+        swarm.pheromones.siege = this.clamp(swarm.pheromones.siege + 50);
+        swarm.pheromones.defense = this.clamp(swarm.pheromones.defense + 30);
+    }
+    /**
+     * Handle remote source lost
+     */
+    onRemoteSourceLost(swarm) {
+        swarm.pheromones.expand = this.clamp(swarm.pheromones.expand - 10);
+        swarm.pheromones.defense = this.clamp(swarm.pheromones.defense + 5);
+    }
+    // ============================================================================
+    // Pheromone Diffusion
+    // ============================================================================
+    /**
+     * Apply diffusion to neighboring rooms
+     */
+    applyDiffusion(rooms) {
+        const diffusionQueue = [];
+        for (const [roomName, swarm] of rooms) {
+            const neighbors = this.getNeighborRoomNames(roomName);
+            for (const neighborName of neighbors) {
+                const neighborSwarm = rooms.get(neighborName);
+                if (!neighborSwarm)
+                    continue;
+                // Diffuse defense, war, expand, and siege
+                const diffusibleTypes = ["defense", "war", "expand", "siege"];
+                for (const type of diffusibleTypes) {
+                    const intensity = swarm.pheromones[type];
+                    if (intensity > 1) {
+                        const rate = this.config.diffusionRates[type];
+                        diffusionQueue.push({
+                            source: roomName,
+                            target: neighborName,
+                            type,
+                            amount: intensity * rate * 0.5,
+                            sourceIntensity: intensity
+                        });
+                    }
+                }
+            }
+        }
+        // Apply diffusion
+        for (const diff of diffusionQueue) {
+            const targetSwarm = rooms.get(diff.target);
+            if (targetSwarm) {
+                const newValue = targetSwarm.pheromones[diff.type] + diff.amount;
+                // Cap the target pheromone level to not exceed the source room's level
+                // This prevents rooms from pushing each other higher than their own level
+                targetSwarm.pheromones[diff.type] = this.clamp(Math.min(newValue, diff.sourceIntensity));
+            }
+        }
+    }
+    /**
+     * Get neighboring room names
+     */
+    getNeighborRoomNames(roomName) {
+        const match = roomName.match(/^([WE])(\d+)([NS])(\d+)$/);
+        if (!match)
+            return [];
+        const [, wx, xStr, wy, yStr] = match;
+        if (!wx || !xStr || !wy || !yStr)
+            return [];
+        const x = parseInt(xStr, 10);
+        const y = parseInt(yStr, 10);
+        const neighbors = [];
+        // Cardinal directions
+        if (wy === "N") {
+            neighbors.push(`${wx}${x}N${y + 1}`);
+        }
+        else {
+            if (y > 0) {
+                neighbors.push(`${wx}${x}S${y - 1}`);
+            }
+            else {
+                neighbors.push(`${wx}${x}N0`);
+            }
+        }
+        if (wy === "S") {
+            neighbors.push(`${wx}${x}S${y + 1}`);
+        }
+        else {
+            if (y > 0) {
+                neighbors.push(`${wx}${x}N${y - 1}`);
+            }
+            else {
+                neighbors.push(`${wx}${x}S0`);
+            }
+        }
+        if (wx === "E") {
+            neighbors.push(`E${x + 1}${wy}${y}`);
+        }
+        else {
+            if (x > 0) {
+                neighbors.push(`W${x - 1}${wy}${y}`);
+            }
+            else {
+                neighbors.push(`E0${wy}${y}`);
+            }
+        }
+        if (wx === "W") {
+            neighbors.push(`W${x + 1}${wy}${y}`);
+        }
+        else {
+            if (x > 0) {
+                neighbors.push(`E${x - 1}${wy}${y}`);
+            }
+            else {
+                neighbors.push(`W0${wy}${y}`);
+            }
+        }
+        return neighbors;
+    }
+    /**
+     * Get dominant pheromone for a room
+     */
+    getDominantPheromone(pheromones) {
+        let maxKey = null;
+        let maxValue = 1; // Minimum threshold
+        for (const key of Object.keys(pheromones)) {
+            if (pheromones[key] > maxValue) {
+                maxValue = pheromones[key];
+                maxKey = key;
+            }
+        }
+        return maxKey;
+    }
+}
+/**
+ * Global pheromone manager instance
+ */
+const pheromoneManager = new PheromoneManager();
+
+/**
+ * Evolution & Posture System - Phase 3
+ *
+ * Manages room lifecycle:
+ * - Evolution stages (colony levels)
+ * - Posture states
+ * - State transitions
+ */
+/**
+ * Evolution stage configurations
+ */
+const EVOLUTION_STAGES = {
+    seedNest: {
+        rcl: 1
+    },
+    foragingExpansion: {
+        rcl: 3,
+        minRooms: 1,
+        minRemoteRooms: 1,
+        minTowerCount: 1
+    },
+    matureColony: {
+        rcl: 4,
+        requiresStorage: true,
+        requiresTerminal: true,
+        requiresLabs: true,
+        minLabCount: 3,
+        minTowerCount: 2
+    },
+    fortifiedHive: {
+        rcl: 7,
+        requiresTerminal: true,
+        requiresLabs: true,
+        minLabCount: 6,
+        requiresFactory: true,
+        requiresPowerSpawn: true,
+        minTowerCount: 4
+    },
+    empireDominance: {
+        rcl: 8,
+        requiresNuker: true,
+        requiresObserver: true,
+        requiresTerminal: true,
+        requiresLabs: true,
+        minLabCount: 8,
+        requiresFactory: true,
+        requiresPowerSpawn: true,
+        minGcl: 10,
+        minRooms: 3,
+        minRemoteRooms: 2,
+        minTowerCount: 6
+    }
+};
+/**
+ * Posture configurations
+ */
+const POSTURE_PROFILES = {
+    eco: { economy: 0.75, military: 0.05, utility: 0.15, power: 0.05 },
+    expand: { economy: 0.55, military: 0.15, utility: 0.25, power: 0.05 },
+    defensive: { economy: 0.45, military: 0.35, utility: 0.15, power: 0.05 },
+    war: { economy: 0.3, military: 0.5, utility: 0.1, power: 0.1 },
+    siege: { economy: 0.2, military: 0.6, utility: 0.1, power: 0.1 },
+    evacuate: { economy: 0.1, military: 0.1, utility: 0.8, power: 0.0 },
+    nukePrep: { economy: 0.4, military: 0.3, utility: 0.2, power: 0.1 }
+};
+/**
+ * Resource priorities per posture
+ */
+const POSTURE_RESOURCE_PRIORITIES = {
+    eco: { upgrade: 80, build: 60, repair: 40, spawn: 70, terminal: 50, labs: 30 },
+    expand: { upgrade: 60, build: 80, repair: 50, spawn: 75, terminal: 60, labs: 40 },
+    defensive: { upgrade: 30, build: 50, repair: 80, spawn: 90, terminal: 40, labs: 60 },
+    war: { upgrade: 10, build: 30, repair: 70, spawn: 95, terminal: 70, labs: 80 },
+    siege: { upgrade: 5, build: 20, repair: 90, spawn: 100, terminal: 50, labs: 90 },
+    evacuate: { upgrade: 0, build: 5, repair: 10, spawn: 50, terminal: 80, labs: 10 },
+    nukePrep: { upgrade: 20, build: 40, repair: 95, spawn: 80, terminal: 30, labs: 70 }
+};
+/**
+ * Evolution Manager
+ */
+class EvolutionManager {
+    constructor() {
+        /** Structure count cache to avoid repeated expensive room scans */
+        this.structureCountsCache = new Map();
+        /** TTL for cached structure counts (in ticks) */
+        this.structureCacheTtl = 20;
+    }
+    /**
+     * Determine evolution stage for a room
+     */
+    determineEvolutionStage(swarm, room, totalOwnedRooms) {
+        var _a, _b, _c, _d;
+        const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0;
+        const gcl = Game.gcl.level;
+        const structureCounts = this.getStructureCounts(room);
+        const remoteCount = (_d = (_c = swarm.remoteAssignments) === null || _c === void 0 ? void 0 : _c.length) !== null && _d !== void 0 ? _d : 0;
+        // Check from highest to lowest
+        if (this.meetsThreshold("empireDominance", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
+            return "empireDominance";
+        }
+        if (this.meetsThreshold("fortifiedHive", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
+            return "fortifiedHive";
+        }
+        if (this.meetsThreshold("matureColony", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
+            return "matureColony";
+        }
+        if (this.meetsThreshold("foragingExpansion", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
+            return "foragingExpansion";
+        }
+        return "seedNest";
+    }
+    /**
+     * Check if room meets threshold for evolution stage
+     */
+    meetsThreshold(stage, rcl, totalRooms, gcl, structureCounts, remoteCount) {
+        var _a, _b;
+        const threshold = EVOLUTION_STAGES[stage];
+        const towers = (_a = structureCounts[STRUCTURE_TOWER]) !== null && _a !== void 0 ? _a : 0;
+        const labs = (_b = structureCounts[STRUCTURE_LAB]) !== null && _b !== void 0 ? _b : 0;
+        if (rcl < threshold.rcl)
+            return false;
+        if (threshold.minRooms && totalRooms < threshold.minRooms)
+            return false;
+        if (threshold.minGcl && gcl < threshold.minGcl)
+            return false;
+        if (threshold.minRemoteRooms && remoteCount < threshold.minRemoteRooms)
+            return false;
+        if (threshold.minTowerCount && towers < threshold.minTowerCount)
+            return false;
+        if (threshold.requiresStorage && !structureCounts[STRUCTURE_STORAGE])
+            return false;
+        if (threshold.requiresTerminal && rcl >= 6 && !structureCounts[STRUCTURE_TERMINAL])
+            return false;
+        if (threshold.requiresLabs && labs === 0)
+            return false;
+        if (threshold.minLabCount && rcl >= 6 && labs < threshold.minLabCount)
+            return false;
+        if (threshold.requiresFactory && rcl >= 7 && !structureCounts[STRUCTURE_FACTORY])
+            return false;
+        if (threshold.requiresPowerSpawn && rcl >= 7 && !structureCounts[STRUCTURE_POWER_SPAWN])
+            return false;
+        if (threshold.requiresObserver && rcl >= 8 && !structureCounts[STRUCTURE_OBSERVER])
+            return false;
+        if (threshold.requiresNuker && rcl >= 8 && !structureCounts[STRUCTURE_NUKER])
+            return false;
+        return true;
+    }
+    /**
+     * Snapshot relevant owned structure counts to avoid repeated lookups.
+     */
+    getStructureCounts(room) {
+        var _a;
+        const cached = this.structureCountsCache.get(room.name);
+        if (cached && Game.time - cached.tick <= this.structureCacheTtl) {
+            return cached.counts;
+        }
+        const counts = {};
+        const structures = room.find(FIND_MY_STRUCTURES);
+        for (const structure of structures) {
+            const type = structure.structureType;
+            counts[type] = ((_a = counts[type]) !== null && _a !== void 0 ? _a : 0) + 1;
+        }
+        this.structureCountsCache.set(room.name, { counts, tick: Game.time });
+        return counts;
+    }
+    /**
+     * Update evolution stage for a room
+     */
+    updateEvolutionStage(swarm, room, totalOwnedRooms) {
+        const newStage = this.determineEvolutionStage(swarm, room, totalOwnedRooms);
+        if (newStage !== swarm.colonyLevel) {
+            logger.info(`Room evolution: ${swarm.colonyLevel} -> ${newStage}`, {
+                room: room.name,
+                subsystem: "Evolution"
+            });
+            swarm.colonyLevel = newStage;
+            return true;
+        }
+        return false;
+    }
+    /**
+     * Update missing structures flags
+     */
+    updateMissingStructures(swarm, room) {
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+        const structureCounts = this.getStructureCounts(room);
+        const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0;
+        const thresholds = EVOLUTION_STAGES[swarm.colonyLevel];
+        const requiresLabs = thresholds.requiresLabs && rcl >= 6;
+        const minLabCount = requiresLabs ? (_c = thresholds.minLabCount) !== null && _c !== void 0 ? _c : 3 : 0;
+        const requiresFactory = thresholds.requiresFactory && rcl >= 7;
+        const requiresTerminal = thresholds.requiresTerminal && rcl >= 6;
+        const requiresStorage = thresholds.requiresStorage && rcl >= 4;
+        const requiresPowerSpawn = thresholds.requiresPowerSpawn && rcl >= 7;
+        const requiresObserver = thresholds.requiresObserver && rcl >= 8;
+        const requiresNuker = thresholds.requiresNuker && rcl >= 8;
+        swarm.missingStructures = {
+            spawn: ((_d = structureCounts[STRUCTURE_SPAWN]) !== null && _d !== void 0 ? _d : 0) === 0,
+            storage: requiresStorage ? ((_e = structureCounts[STRUCTURE_STORAGE]) !== null && _e !== void 0 ? _e : 0) === 0 : false,
+            terminal: requiresTerminal ? ((_f = structureCounts[STRUCTURE_TERMINAL]) !== null && _f !== void 0 ? _f : 0) === 0 : false,
+            labs: requiresLabs ? ((_g = structureCounts[STRUCTURE_LAB]) !== null && _g !== void 0 ? _g : 0) < minLabCount : false,
+            nuker: requiresNuker ? ((_h = structureCounts[STRUCTURE_NUKER]) !== null && _h !== void 0 ? _h : 0) === 0 : false,
+            factory: requiresFactory ? ((_j = structureCounts[STRUCTURE_FACTORY]) !== null && _j !== void 0 ? _j : 0) === 0 : false,
+            extractor: rcl >= 6 ? ((_k = structureCounts[STRUCTURE_EXTRACTOR]) !== null && _k !== void 0 ? _k : 0) === 0 : false,
+            powerSpawn: requiresPowerSpawn ? ((_l = structureCounts[STRUCTURE_POWER_SPAWN]) !== null && _l !== void 0 ? _l : 0) === 0 : false,
+            observer: requiresObserver ? ((_m = structureCounts[STRUCTURE_OBSERVER]) !== null && _m !== void 0 ? _m : 0) === 0 : false
+        };
+    }
+}
+/**
+ * Posture Manager
+ */
+class PostureManager {
+    /**
+     * Determine posture for a room based on pheromones and danger
+     */
+    determinePosture(swarm, strategicOverride) {
+        // Strategic override takes precedence
+        if (strategicOverride) {
+            return strategicOverride;
+        }
+        const { pheromones, danger } = swarm;
+        // Danger-based posture
+        if (danger >= 3) {
+            return "siege";
+        }
+        if (danger >= 2) {
+            return "war";
+        }
+        // Pheromone-based posture
+        if (pheromones.siege > 30) {
+            return "siege";
+        }
+        if (pheromones.war > 25) {
+            return "war";
+        }
+        if (pheromones.defense > 20) {
+            return "defensive";
+        }
+        if (pheromones.nukeTarget > 40) {
+            return "nukePrep";
+        }
+        if (pheromones.expand > 30 && danger === 0) {
+            return "expand";
+        }
+        // Default based on danger level
+        if (danger >= 1) {
+            return "defensive";
+        }
+        return "eco";
+    }
+    /**
+     * Update posture for a room
+     * Emits posture.change event through the kernel when posture changes.
+     * @param swarm - The swarm state to update
+     * @param strategicOverride - Optional strategic override for posture
+     * @param roomName - Room name for event emission (falls back to swarm.role if not provided)
+     */
+    updatePosture(swarm, strategicOverride, roomName) {
+        const newPosture = this.determinePosture(swarm, strategicOverride);
+        if (newPosture !== swarm.posture) {
+            const oldPosture = swarm.posture;
+            const eventRoomName = roomName !== null && roomName !== void 0 ? roomName : swarm.role;
+            logger.info(`Posture change: ${oldPosture} -> ${newPosture}`, {
+                room: eventRoomName,
+                subsystem: "Posture"
+            });
+            swarm.posture = newPosture;
+            // Emit posture change event through the kernel event system
+            kernel.emit("posture.change", {
+                roomName: eventRoomName,
+                oldPosture,
+                newPosture,
+                source: "PostureManager"
+            });
+            return true;
+        }
+        return false;
+    }
+    /**
+     * Get spawn profile for current posture
+     */
+    getSpawnProfile(posture) {
+        return POSTURE_PROFILES[posture];
+    }
+    /**
+     * Get resource priorities for current posture
+     */
+    getResourcePriorities(posture) {
+        return POSTURE_RESOURCE_PRIORITIES[posture];
+    }
+    /**
+     * Check if posture allows building
+     */
+    allowsBuilding(posture) {
+        return posture !== "evacuate" && posture !== "siege";
+    }
+    /**
+     * Check if posture allows upgrading
+     */
+    allowsUpgrading(posture) {
+        return posture !== "evacuate" && posture !== "siege" && posture !== "war";
+    }
+    /**
+     * Check if posture is combat-oriented
+     */
+    isCombatPosture(posture) {
+        return posture === "defensive" || posture === "war" || posture === "siege";
+    }
+    /**
+     * Check if posture allows expansion
+     */
+    allowsExpansion(posture) {
+        return posture === "eco" || posture === "expand";
+    }
+}
+/**
+ * Calculate danger level from threat metrics
+ */
+function calculateDangerLevel(hostileCount, damagePerTick, enemyStructures) {
+    // Critical threat
+    if (hostileCount >= 10 || damagePerTick >= 2000) {
+        return 3;
+    }
+    // High threat
+    if (hostileCount >= 5 || damagePerTick >= 1000) {
+        return 2;
+    }
+    // Medium threat
+    if (hostileCount >= 2 || damagePerTick >= 300 || enemyStructures) {
+        return 1;
+    }
+    return 0;
+}
+/**
+ * Global evolution manager instance
+ */
+const evolutionManager = new EvolutionManager();
+/**
+ * Global posture manager instance
+ */
+const postureManager = new PostureManager();
+
+/**
+ * Extension Generator
+ *
+ * Generates extension positions in a checkerboard pattern around the spawn
+ * to fill out the full 60 extensions allowed at RCL 8.
+ *
+ * Key design: Extensions are placed in a checkerboard pattern where no two
+ * extensions are directly adjacent (share an edge). This ensures creeps
+ * can always move between extensions without blocking each other.
+ *
+ * Addresses Issue: #17
+ */
+/**
+ * Maximum number of extension positions to generate.
+ * Set higher than 60 (the RCL 8 limit) to provide flexibility when
+ * some positions are blocked by terrain or other structures.
+ */
+const MAX_GENERATED_EXTENSIONS = 80;
+/**
+ * Generate extension positions in a checkerboard pattern.
+ *
+ * The pattern ensures:
+ * - No extension is directly adjacent to another extension
+ * - Every extension is reachable via roads/empty spaces
+ * - Extensions are placed in expanding rings from the spawn
+ *
+ * Positions where (|x| + |y|) % 2 == 0 form a checkerboard pattern
+ * that leaves space for roads between extensions.
+ */
+function generateExtensions(count) {
+    const extensions = [];
+    // Checkerboard pattern - positions are arranged so no extensions
+    // share an edge (only potentially corners)
+    // Pattern: place extensions where (x + y) is even to create checkerboard
+    const pattern = [
+        // Ring 1 (distance 2 from spawn) - 4 positions
+        { x: -2, y: 0 }, { x: 2, y: 0 },
+        { x: 0, y: -2 }, { x: 0, y: 2 },
+        // Ring 2 (distance 2-3) - extensions at odd distances with even sum
+        { x: -2, y: -2 }, { x: 2, y: -2 },
+        { x: -2, y: 2 }, { x: 2, y: 2 },
+        { x: -1, y: -3 }, { x: 1, y: -3 },
+        { x: -1, y: 3 }, { x: 1, y: 3 },
+        { x: -3, y: -1 }, { x: 3, y: -1 },
+        { x: -3, y: 1 }, { x: 3, y: 1 },
+        // Ring 3 (distance 3-4) - extending the checkerboard
+        { x: -4, y: 0 }, { x: 4, y: 0 },
+        { x: 0, y: -4 }, { x: 0, y: 4 },
+        { x: -3, y: -3 }, { x: 3, y: -3 },
+        { x: -3, y: 3 }, { x: 3, y: 3 },
+        { x: -4, y: -2 }, { x: 4, y: -2 },
+        { x: -4, y: 2 }, { x: 4, y: 2 },
+        { x: -2, y: -4 }, { x: 2, y: -4 },
+        { x: -2, y: 4 }, { x: 2, y: 4 },
+        // Ring 4 (distance 4-5)
+        { x: -1, y: -5 }, { x: 1, y: -5 },
+        { x: -1, y: 5 }, { x: 1, y: 5 },
+        { x: -5, y: -1 }, { x: 5, y: -1 },
+        { x: -5, y: 1 }, { x: 5, y: 1 },
+        { x: -4, y: -4 }, { x: 4, y: -4 },
+        { x: -4, y: 4 }, { x: 4, y: 4 },
+        { x: -3, y: -5 }, { x: 3, y: -5 },
+        { x: -3, y: 5 }, { x: 3, y: 5 },
+        { x: -5, y: -3 }, { x: 5, y: -3 },
+        { x: -5, y: 3 }, { x: 5, y: 3 },
+        // Ring 5 (distance 5-6) - outer ring for max extensions
+        { x: -6, y: 0 }, { x: 6, y: 0 },
+        { x: 0, y: -6 }, { x: 0, y: 6 },
+        { x: -6, y: -2 }, { x: 6, y: -2 },
+        { x: -6, y: 2 }, { x: 6, y: 2 },
+        { x: -2, y: -6 }, { x: 2, y: -6 },
+        { x: -2, y: 6 }, { x: 2, y: 6 },
+        { x: -5, y: -5 }, { x: 5, y: -5 },
+        { x: -5, y: 5 }, { x: 5, y: 5 },
+        { x: -4, y: -6 }, { x: 4, y: -6 },
+        { x: -4, y: 6 }, { x: 4, y: 6 },
+        { x: -6, y: -4 }, { x: 6, y: -4 },
+        { x: -6, y: 4 }, { x: 6, y: 4 }
+    ];
+    for (let i = 0; i < Math.min(count, pattern.length); i++) {
+        extensions.push({
+            x: pattern[i].x,
+            y: pattern[i].y,
+            structureType: STRUCTURE_EXTENSION
+        });
+    }
+    return extensions;
+}
+/**
+ * Add extensions to a blueprint to reach target count.
+ *
+ * Uses checkerboard pattern validation to ensure new extensions
+ * maintain proper spacing for creep movement.
+ */
+function addExtensionsToBlueprint(existingStructures, targetCount) {
+    // Count existing extensions
+    const existingExtensions = existingStructures.filter(s => s.structureType === STRUCTURE_EXTENSION);
+    const needed = targetCount - existingExtensions.length;
+    if (needed <= 0)
+        return existingStructures;
+    // Generate all possible extension positions
+    const allExtensions = generateExtensions(MAX_GENERATED_EXTENSIONS);
+    // Filter out positions already used by existing structures
+    const usedPositions = new Set(existingStructures.map(s => `${s.x},${s.y}`));
+    const newExtensions = allExtensions
+        .filter(ext => !usedPositions.has(`${ext.x},${ext.y}`))
+        .slice(0, needed);
+    return [...existingStructures, ...newExtensions];
+}
+
+/**
+ * Road Network Planner
+ *
+ * Calculates optimal road positions for:
+ * - Base infrastructure (spawn/storage to sources, controller, mineral)
+ * - Remote mining routes
+ * - Multi-room highways
+ *
+ * These calculated road positions are used by the blueprint system to determine
+ * which roads are valid and should NOT be destroyed during blueprint enforcement.
+ *
+ * Addresses Issue: Layout planner should incorporate roads so destruction routing
+ * does not destroy all roads.
+ */
+const DEFAULT_CONFIG$d = {
+    recalculateInterval: 1000,
+    maxPathOps: 2000,
+    includeRemoteRoads: true
+};
+/**
+ * Construction site limit per room (Screeps game limit)
+ */
+const MAX_CONSTRUCTION_SITES_PER_ROOM = 10;
+/**
+ * Default number of road construction sites to place per tick
+ * Kept low to avoid overwhelming builders
+ */
+const DEFAULT_ROAD_SITES_PER_TICK = 3;
+/**
+ * Cache of calculated road networks per room
+ */
+const roadNetworkCache = new Map();
+/**
+ * Calculate road network for a room
+ *
+ * This includes roads to:
+ * - All sources from spawn/storage
+ * - Controller from spawn/storage
+ * - Mineral from spawn/storage (if RCL >= 6)
+ */
+function calculateRoadNetwork(room, anchor, config = {}) {
+    var _a, _b, _c;
+    const cfg = { ...DEFAULT_CONFIG$d, ...config };
+    // Check cache
+    const cached = roadNetworkCache.get(room.name);
+    if (cached && Game.time - cached.lastCalculated < cfg.recalculateInterval) {
+        return cached;
+    }
+    const positions = new Set();
+    const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0;
+    // Find key positions
+    const sources = room.find(FIND_SOURCES);
+    const controller = room.controller;
+    const storage = room.storage;
+    const mineral = room.find(FIND_MINERALS)[0];
+    // Primary hub position (storage if available, otherwise anchor/spawn position)
+    const hubPos = (_c = storage === null || storage === void 0 ? void 0 : storage.pos) !== null && _c !== void 0 ? _c : anchor;
+    // Add roads to all sources
+    for (const source of sources) {
+        const path = findRoadPath(hubPos, source.pos, room.name, cfg.maxPathOps);
+        for (const pos of path) {
+            positions.add(`${pos.x},${pos.y}`);
+        }
+    }
+    // Add roads to controller
+    if (controller) {
+        const path = findRoadPath(hubPos, controller.pos, room.name, cfg.maxPathOps);
+        for (const pos of path) {
+            positions.add(`${pos.x},${pos.y}`);
+        }
+    }
+    // Add roads to mineral (RCL 6+)
+    if (mineral && rcl >= 6) {
+        const path = findRoadPath(hubPos, mineral.pos, room.name, cfg.maxPathOps);
+        for (const pos of path) {
+            positions.add(`${pos.x},${pos.y}`);
+        }
+    }
+    // If anchor is different from hub (no storage yet), add roads from anchor to sources/controller
+    if (!storage) {
+        for (const source of sources) {
+            const path = findRoadPath(anchor, source.pos, room.name, cfg.maxPathOps);
+            for (const pos of path) {
+                positions.add(`${pos.x},${pos.y}`);
+            }
+        }
+        if (controller) {
+            const path = findRoadPath(anchor, controller.pos, room.name, cfg.maxPathOps);
+            for (const pos of path) {
+                positions.add(`${pos.x},${pos.y}`);
+            }
+        }
+    }
+    const network = {
+        roomName: room.name,
+        positions,
+        lastCalculated: Game.time
+    };
+    roadNetworkCache.set(room.name, network);
+    logger.debug(`Calculated road network for ${room.name}: ${positions.size} positions`, { subsystem: "RoadNetwork" });
+    return network;
+}
+/**
+ * Calculate roads for remote mining routes
+ *
+ * @param homeRoom The home room with spawn/storage
+ * @param remoteRoomNames Array of remote room names to connect
+ * @returns Map of room name to road positions
+ */
+function calculateRemoteRoads(homeRoom, remoteRoomNames, config = {}) {
+    var _a, _b;
+    const cfg = { ...DEFAULT_CONFIG$d, ...config };
+    const result = new Map();
+    if (!cfg.includeRemoteRoads) {
+        return result;
+    }
+    const storage = homeRoom.storage;
+    const spawn = homeRoom.find(FIND_MY_SPAWNS)[0];
+    const hubPos = (_a = storage === null || storage === void 0 ? void 0 : storage.pos) !== null && _a !== void 0 ? _a : spawn === null || spawn === void 0 ? void 0 : spawn.pos;
+    if (!hubPos) {
+        return result;
+    }
+    for (const remoteRoomName of remoteRoomNames) {
+        // Calculate multi-room path to remote room center
+        const remoteTarget = new RoomPosition(25, 25, remoteRoomName);
+        try {
+            const pathResult = PathFinder.search(hubPos, { pos: remoteTarget, range: 20 }, {
+                plainCost: 2,
+                swampCost: 10,
+                maxOps: cfg.maxPathOps,
+                roomCallback: (roomName) => {
+                    return generateRoadCostMatrix(roomName);
+                }
+            });
+            if (!pathResult.incomplete) {
+                // Group positions by room
+                for (const pos of pathResult.path) {
+                    if (!result.has(pos.roomName)) {
+                        result.set(pos.roomName, new Set());
+                    }
+                    (_b = result.get(pos.roomName)) === null || _b === void 0 ? void 0 : _b.add(`${pos.x},${pos.y}`);
+                }
+            }
+        }
+        catch (err) {
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            logger.warn(`Failed to calculate remote road to ${remoteRoomName}: ${errorMessage}`, { subsystem: "RoadNetwork" });
+        }
+    }
+    return result;
+}
+/**
+ * Find a road path between two positions in the same room
+ */
+function findRoadPath(from, to, roomName, maxOps) {
+    const result = [];
+    const pathResult = PathFinder.search(from, { pos: to, range: 1 }, {
+        plainCost: 2,
+        swampCost: 10,
+        maxOps,
+        roomCallback: (rn) => {
+            // Only path within the specified room for local roads
+            if (rn !== roomName) {
+                return false;
+            }
+            return generateRoadCostMatrix(rn);
+        }
+    });
+    if (!pathResult.incomplete) {
+        for (const pos of pathResult.path) {
+            // Only include positions in the target room
+            if (pos.roomName === roomName) {
+                result.push({ x: pos.x, y: pos.y });
+            }
+        }
+    }
+    return result;
+}
+/**
+ * Generate a cost matrix for road pathfinding
+ */
+function generateRoadCostMatrix(roomName) {
+    const room = Game.rooms[roomName];
+    const costs = new PathFinder.CostMatrix();
+    // If we don't have vision of the room, use default costs
+    if (!room) {
+        return costs;
+    }
+    // Add structure costs
+    const structures = room.find(FIND_STRUCTURES);
+    for (const structure of structures) {
+        if (structure.structureType === STRUCTURE_ROAD) {
+            // Prefer existing roads
+            costs.set(structure.pos.x, structure.pos.y, 1);
+        }
+        else if (structure.structureType !== STRUCTURE_CONTAINER &&
+            !(structure.structureType === STRUCTURE_RAMPART && "my" in structure && structure.my)) {
+            // Block impassable structures
+            costs.set(structure.pos.x, structure.pos.y, 255);
+        }
+    }
+    // Add construction site costs
+    const sites = room.find(FIND_MY_CONSTRUCTION_SITES);
+    for (const site of sites) {
+        if (site.structureType === STRUCTURE_ROAD) {
+            // Prefer planned roads
+            costs.set(site.pos.x, site.pos.y, 1);
+        }
+        else if (site.structureType !== STRUCTURE_CONTAINER) {
+            costs.set(site.pos.x, site.pos.y, 255);
+        }
+    }
+    return costs;
+}
+/**
+ * Get all valid road positions for a room
+ *
+ * Combines:
+ * - Blueprint roads
+ * - Calculated infrastructure roads (to sources, controller, mineral)
+ * - Remote mining roads (if applicable)
+ *
+ * @param room The room to get road positions for
+ * @param anchor The blueprint anchor position (usually spawn)
+ * @param blueprintRoads Road positions from the blueprint (relative to anchor)
+ * @param remoteRooms Optional array of remote room names managed by this room
+ */
+function getValidRoadPositions(room, anchor, blueprintRoads, remoteRooms = []) {
+    const validPositions = new Set();
+    const terrain = room.getTerrain();
+    // Add blueprint roads (converted from relative to absolute positions)
+    for (const r of blueprintRoads) {
+        const x = anchor.x + r.x;
+        const y = anchor.y + r.y;
+        if (x >= 1 && x <= 48 && y >= 1 && y <= 48 && terrain.get(x, y) !== TERRAIN_MASK_WALL) {
+            validPositions.add(`${x},${y}`);
+        }
+    }
+    // Add calculated road network (sources, controller, mineral)
+    const roadNetwork = calculateRoadNetwork(room, anchor);
+    for (const posKey of roadNetwork.positions) {
+        validPositions.add(posKey);
+    }
+    // Add remote mining roads (roads in this room that lead to remote rooms)
+    if (remoteRooms.length > 0) {
+        const remoteRoads = calculateRemoteRoads(room, remoteRooms);
+        const homeRoomRoads = remoteRoads.get(room.name);
+        if (homeRoomRoads) {
+            for (const posKey of homeRoomRoads) {
+                validPositions.add(posKey);
+            }
+        }
+    }
+    return validPositions;
+}
+/**
+ * Place road construction sites along the road network
+ *
+ * This is called during construction to build roads to sources, controller, and mineral.
+ * It's rate-limited to avoid exceeding construction site limits.
+ *
+ * @param room The room to build roads in
+ * @param anchor The blueprint anchor position (usually spawn)
+ * @param maxSites Maximum number of construction sites to place per tick
+ * @returns Number of construction sites placed
+ */
+function placeRoadConstructionSites(room, anchor, maxSites = DEFAULT_ROAD_SITES_PER_TICK) {
+    const existingSites = room.find(FIND_MY_CONSTRUCTION_SITES);
+    if (existingSites.length >= MAX_CONSTRUCTION_SITES_PER_ROOM)
+        return 0;
+    const roadNetwork = calculateRoadNetwork(room, anchor);
+    const terrain = room.getTerrain();
+    const existingRoads = room.find(FIND_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_ROAD
+    });
+    const existingRoadSet = new Set(existingRoads.map(r => `${r.pos.x},${r.pos.y}`));
+    const existingSiteSet = new Set(existingSites
+        .filter(s => s.structureType === STRUCTURE_ROAD)
+        .map(s => `${s.pos.x},${s.pos.y}`));
+    let placed = 0;
+    for (const posKey of roadNetwork.positions) {
+        if (placed >= maxSites)
+            break;
+        if (existingSites.length + placed >= MAX_CONSTRUCTION_SITES_PER_ROOM)
+            break;
+        // Skip if road or site already exists
+        if (existingRoadSet.has(posKey))
+            continue;
+        if (existingSiteSet.has(posKey))
+            continue;
+        // Parse position
+        const [xStr, yStr] = posKey.split(",");
+        const x = parseInt(xStr, 10);
+        const y = parseInt(yStr, 10);
+        // Skip walls
+        if (terrain.get(x, y) === TERRAIN_MASK_WALL)
+            continue;
+        // Place construction site
+        const result = room.createConstructionSite(x, y, STRUCTURE_ROAD);
+        if (result === OK) {
+            placed++;
+        }
+    }
+    return placed;
+}
+
+/**
+ * Base Blueprints - Phase 5
+ *
+ * Pre-computed coordinate arrays for base layouts at different RCL stages.
+ */
+/**
+ * RCL 1-2: Early Colony Layout
+ *
+ * Uses a checkerboard pattern to ensure creeps can:
+ * - Spawn and move away in any direction
+ * - Access all extensions without blocking each other
+ *
+ * All extension positions satisfy |x|+|y| % 2 == 0 (even sum)
+ * to ensure no two extensions are directly adjacent.
+ *
+ * Layout (E=Extension, S=Spawn, r=Road):
+ *       . E .
+ *     E r r r E
+ *     r r S r r
+ *     E r r r E
+ *       . E .
+ */
+const EARLY_COLONY_BLUEPRINT = {
+    name: "seedNest",
+    rcl: 1,
+    anchor: { x: 25, y: 25 },
+    structures: [
+        { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
+        // Extensions at even-sum positions |x|+|y| % 2 == 0
+        { x: -2, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 0, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 0, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: -2, y: -2, structureType: STRUCTURE_EXTENSION }
+    ],
+    roads: [
+        // Core roads around spawn (all 8 adjacent tiles for creep exit)
+        { x: -1, y: -1 },
+        { x: 0, y: -1 },
+        { x: 1, y: -1 },
+        { x: -1, y: 0 },
+        { x: 1, y: 0 },
+        { x: -1, y: 1 },
+        { x: 0, y: 1 },
+        { x: 1, y: 1 }
+    ],
+    ramparts: []
+};
+/**
+ * RCL 3-4: Core Colony Layout
+ *
+ * Expanded checkerboard pattern with tower for defense.
+ * All extension positions satisfy |x|+|y| % 2 == 0 (even sum)
+ * to ensure no two extensions are directly adjacent.
+ *
+ * Key features:
+ * - All spawn-adjacent tiles are roads for creep exit
+ * - Extensions are spaced with roads for movement
+ * - Tower placed at safe distance from spawn
+ */
+const CORE_COLONY_BLUEPRINT = {
+    name: "foragingExpansion",
+    rcl: 3,
+    anchor: { x: 25, y: 25 },
+    structures: [
+        { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
+        // Tower at safe distance
+        { x: 0, y: -4, structureType: STRUCTURE_TOWER },
+        // Extensions in checkerboard pattern - all positions have |x|+|y| % 2 == 0
+        // Ring 1: distance 2 from spawn
+        { x: -2, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 0, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 0, y: 2, structureType: STRUCTURE_EXTENSION },
+        // Ring 2: distance 4 (diagonals)
+        { x: -2, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: -2, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: 2, structureType: STRUCTURE_EXTENSION },
+        // Ring 3: distance 4 from spawn
+        { x: -4, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 4, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 0, y: 4, structureType: STRUCTURE_EXTENSION },
+        // Ring 4: diagonal positions
+        { x: -1, y: -3, structureType: STRUCTURE_EXTENSION },
+        { x: 1, y: -3, structureType: STRUCTURE_EXTENSION },
+        { x: -3, y: -1, structureType: STRUCTURE_EXTENSION },
+        { x: 3, y: -1, structureType: STRUCTURE_EXTENSION },
+        { x: -3, y: 1, structureType: STRUCTURE_EXTENSION },
+        { x: 3, y: 1, structureType: STRUCTURE_EXTENSION },
+        { x: -1, y: 3, structureType: STRUCTURE_EXTENSION },
+        { x: 1, y: 3, structureType: STRUCTURE_EXTENSION },
+        { x: -3, y: -3, structureType: STRUCTURE_EXTENSION }
+    ],
+    roads: [
+        // Core roads around spawn (all 8 adjacent tiles)
+        { x: -1, y: -1 },
+        { x: 0, y: -1 },
+        { x: 1, y: -1 },
+        { x: -1, y: 0 },
+        { x: 1, y: 0 },
+        { x: -1, y: 1 },
+        { x: 0, y: 1 },
+        { x: 1, y: 1 },
+        // Radial roads for movement to extensions
+        { x: -2, y: -1 },
+        { x: 2, y: -1 },
+        { x: -2, y: 1 },
+        { x: 2, y: 1 },
+        { x: -1, y: -2 },
+        { x: 1, y: -2 },
+        { x: -1, y: 2 },
+        { x: 1, y: 2 },
+        { x: 0, y: -3 },
+        { x: 0, y: 3 },
+        { x: -3, y: 0 },
+        { x: 3, y: 0 }
+    ],
+    ramparts: []
+};
+/**
+ * RCL 5-6: Economic Maturity Layout
+ *
+ * Expanded layout with storage, terminal, and labs.
+ * All extension positions satisfy |x|+|y| % 2 == 0 (even sum)
+ * to ensure no two extensions are directly adjacent.
+ *
+ * Key features:
+ * - Second spawn at distance 4 (with its own road ring)
+ * - Storage and terminal placed with road access
+ * - Labs clustered but with road access
+ * - Extensions in strict checkerboard pattern
+ */
+const ECONOMIC_MATURITY_BLUEPRINT = {
+    name: "matureColony",
+    rcl: 5,
+    anchor: { x: 25, y: 25 },
+    structures: [
+        // Primary spawn at center
+        { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
+        // Second spawn at distance 4 with space around it
+        { x: 4, y: 0, structureType: STRUCTURE_SPAWN },
+        // Storage and terminal in accessible location
+        { x: 0, y: 4, structureType: STRUCTURE_STORAGE },
+        { x: 2, y: 4, structureType: STRUCTURE_TERMINAL },
+        // Towers for defense
+        { x: 0, y: -4, structureType: STRUCTURE_TOWER },
+        { x: -4, y: 0, structureType: STRUCTURE_TOWER },
+        { x: 4, y: -4, structureType: STRUCTURE_TOWER },
+        // Extensions in checkerboard pattern - all positions have |x|+|y| % 2 == 0
+        { x: -2, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 0, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 0, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: -2, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: -2, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: -1, y: -3, structureType: STRUCTURE_EXTENSION },
+        { x: 1, y: -3, structureType: STRUCTURE_EXTENSION },
+        { x: -3, y: -1, structureType: STRUCTURE_EXTENSION },
+        { x: 3, y: -1, structureType: STRUCTURE_EXTENSION },
+        { x: -3, y: 1, structureType: STRUCTURE_EXTENSION },
+        { x: 3, y: 1, structureType: STRUCTURE_EXTENSION },
+        { x: -1, y: 3, structureType: STRUCTURE_EXTENSION },
+        { x: 1, y: 3, structureType: STRUCTURE_EXTENSION },
+        { x: -4, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: -4, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: -2, y: -4, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: -4, structureType: STRUCTURE_EXTENSION },
+        { x: -3, y: -3, structureType: STRUCTURE_EXTENSION },
+        { x: 3, y: -3, structureType: STRUCTURE_EXTENSION },
+        { x: -3, y: 3, structureType: STRUCTURE_EXTENSION },
+        // Use positions that don't conflict with other blueprint spawns
+        { x: -6, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: -6, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 6, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 6, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: -4, y: -4, structureType: STRUCTURE_EXTENSION },
+        { x: 4, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: 6, y: 0, structureType: STRUCTURE_EXTENSION },
+        // Labs clustered for reactions
+        { x: -3, y: 5, structureType: STRUCTURE_LAB },
+        { x: -4, y: 4, structureType: STRUCTURE_LAB },
+        { x: -5, y: 5, structureType: STRUCTURE_LAB },
+        // Link near storage
+        { x: -2, y: 4, structureType: STRUCTURE_LINK }
+    ],
+    roads: [
+        // Core roads around primary spawn (all 8 adjacent tiles)
+        { x: -1, y: -1 },
+        { x: 0, y: -1 },
+        { x: 1, y: -1 },
+        { x: -1, y: 0 },
+        { x: 1, y: 0 },
+        { x: -1, y: 1 },
+        { x: 0, y: 1 },
+        { x: 1, y: 1 },
+        // Roads around secondary spawn
+        { x: 3, y: -1 },
+        { x: 3, y: 0 },
+        { x: 3, y: 1 },
+        { x: 4, y: -1 },
+        { x: 4, y: 1 },
+        { x: 5, y: -1 },
+        { x: 5, y: 0 },
+        { x: 5, y: 1 },
+        // Connecting roads between extensions
+        { x: -2, y: -1 },
+        { x: 2, y: -1 },
+        { x: -2, y: 1 },
+        { x: 2, y: 1 },
+        { x: -1, y: -2 },
+        { x: 1, y: -2 },
+        { x: -1, y: 2 },
+        { x: 1, y: 2 },
+        { x: 0, y: -3 },
+        { x: 0, y: 3 },
+        { x: -3, y: 0 },
+        { x: 3, y: 0 }
+    ],
+    ramparts: [
+        { x: 0, y: 0 },
+        { x: 4, y: 0 },
+        { x: 0, y: 4 },
+        { x: 1, y: 4 }
+    ]
+};
+/**
+ * RCL 7-8: War Ready / End Game Layout
+ *
+ * Full end-game layout with 3 spawns, 6 towers, full labs, and all special structures.
+ * All extension positions satisfy |x|+|y| % 2 == 0 (even sum)
+ * to ensure no two extensions are directly adjacent.
+ *
+ * Key features:
+ * - 3 spawns spaced apart, each with full road ring
+ * - Towers positioned for optimal coverage
+ * - Labs clustered for efficient reactions with road access
+ * - Extensions in strict checkerboard pattern
+ */
+const WAR_READY_BLUEPRINT = {
+    name: "fortifiedHive",
+    rcl: 7,
+    anchor: { x: 25, y: 25 },
+    structures: [
+        // 3 spawns spaced apart
+        { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
+        { x: -5, y: -1, structureType: STRUCTURE_SPAWN },
+        { x: 5, y: -1, structureType: STRUCTURE_SPAWN },
+        // Storage and terminal in center south
+        { x: 0, y: 4, structureType: STRUCTURE_STORAGE },
+        { x: 2, y: 4, structureType: STRUCTURE_TERMINAL },
+        // 6 towers for full coverage
+        { x: 0, y: -4, structureType: STRUCTURE_TOWER },
+        { x: -4, y: -2, structureType: STRUCTURE_TOWER },
+        { x: 4, y: -2, structureType: STRUCTURE_TOWER },
+        { x: -4, y: 2, structureType: STRUCTURE_TOWER },
+        { x: 4, y: 2, structureType: STRUCTURE_TOWER },
+        { x: 0, y: 6, structureType: STRUCTURE_TOWER },
+        // Factory near storage
+        { x: -2, y: 4, structureType: STRUCTURE_FACTORY },
+        // Labs clustered in southwest with road access
+        { x: -4, y: 4, structureType: STRUCTURE_LAB },
+        { x: -3, y: 5, structureType: STRUCTURE_LAB },
+        { x: -4, y: 6, structureType: STRUCTURE_LAB },
+        { x: -5, y: 5, structureType: STRUCTURE_LAB },
+        { x: -6, y: 4, structureType: STRUCTURE_LAB },
+        { x: -6, y: 6, structureType: STRUCTURE_LAB },
+        { x: -2, y: 6, structureType: STRUCTURE_LAB },
+        { x: -5, y: 3, structureType: STRUCTURE_LAB },
+        { x: -7, y: 5, structureType: STRUCTURE_LAB },
+        { x: -3, y: 7, structureType: STRUCTURE_LAB },
+        // Special structures
+        { x: 4, y: 4, structureType: STRUCTURE_NUKER },
+        { x: 6, y: 0, structureType: STRUCTURE_OBSERVER },
+        { x: -1, y: 5, structureType: STRUCTURE_POWER_SPAWN },
+        // Links for logistics
+        { x: 1, y: 5, structureType: STRUCTURE_LINK },
+        { x: 5, y: -3, structureType: STRUCTURE_LINK },
+        { x: -5, y: -3, structureType: STRUCTURE_LINK },
+        // Extensions in checkerboard pattern - all positions have |x|+|y| % 2 == 0
+        { x: -2, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 0, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 0, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: -2, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: -2, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: -3, y: -1, structureType: STRUCTURE_EXTENSION },
+        { x: 3, y: -1, structureType: STRUCTURE_EXTENSION }
+    ],
+    roads: [
+        // Core roads around primary spawn (all 8 adjacent tiles)
+        { x: -1, y: -1 },
+        { x: 0, y: -1 },
+        { x: 1, y: -1 },
+        { x: -1, y: 0 },
+        { x: 1, y: 0 },
+        { x: -1, y: 1 },
+        { x: 0, y: 1 },
+        { x: 1, y: 1 },
+        // Roads around west spawn (-5, -1)
+        { x: -6, y: -2 },
+        { x: -5, y: -2 },
+        { x: -4, y: -2 },
+        { x: -6, y: -1 },
+        { x: -4, y: -1 },
+        { x: -6, y: 0 },
+        { x: -5, y: 0 },
+        { x: -4, y: 0 },
+        // Roads around east spawn (5, -1)
+        { x: 4, y: -2 },
+        { x: 5, y: -2 },
+        { x: 6, y: -2 },
+        { x: 4, y: -1 },
+        { x: 6, y: -1 },
+        { x: 4, y: 0 },
+        { x: 5, y: 0 },
+        { x: 6, y: 0 },
+        // Horizontal connector roads
+        { x: -3, y: 0 },
+        { x: 3, y: 0 },
+        // Vertical connector roads
+        { x: 0, y: -3 },
+        { x: 0, y: 3 },
+        // Additional movement roads between extensions
+        { x: -2, y: -1 },
+        { x: 2, y: -1 },
+        { x: -2, y: 1 },
+        { x: 2, y: 1 },
+        { x: -1, y: -2 },
+        { x: 1, y: -2 },
+        { x: -1, y: 2 },
+        { x: 1, y: 2 }
+    ],
+    ramparts: [
+        // Protect all spawns
+        { x: 0, y: 0 },
+        { x: -5, y: -1 },
+        { x: 5, y: -1 },
+        // Protect storage and terminal
+        { x: 0, y: 4 },
+        { x: 2, y: 4 },
+        // Protect towers
+        { x: 0, y: -4 },
+        { x: -4, y: -2 },
+        { x: 4, y: -2 },
+        { x: -4, y: 2 },
+        { x: 4, y: 2 },
+        { x: 0, y: 6 },
+        // Protect special structures
+        { x: 4, y: 4 },
+        { x: -1, y: 5 }
+    ]
+};
+/**
+ * Get blueprint for RCL
+ */
+function getBlueprintForRCL(rcl) {
+    if (rcl >= 7)
+        return WAR_READY_BLUEPRINT;
+    if (rcl >= 5)
+        return ECONOMIC_MATURITY_BLUEPRINT;
+    if (rcl >= 3)
+        return CORE_COLONY_BLUEPRINT;
+    return EARLY_COLONY_BLUEPRINT;
+}
+/**
+ * Filter structures for a specific RCL
+ */
+function getStructuresForRCL(blueprint, rcl) {
+    var _a;
+    const limits = getStructureLimits(rcl);
+    const counts = {};
+    let structures = blueprint.structures.filter(s => {
+        var _a, _b;
+        const type = s.structureType;
+        const limit = (_a = limits[type]) !== null && _a !== void 0 ? _a : 0;
+        const current = (_b = counts[type]) !== null && _b !== void 0 ? _b : 0;
+        if (current >= limit)
+            return false;
+        counts[type] = current + 1;
+        return true;
+    });
+    // Add extensions to reach RCL limit
+    const extensionLimit = (_a = limits[STRUCTURE_EXTENSION]) !== null && _a !== void 0 ? _a : 0;
+    if (extensionLimit > 0) {
+        structures = addExtensionsToBlueprint(structures, extensionLimit);
+    }
+    return structures;
+}
+/**
+ * Get structure limits per RCL
+ */
+function getStructureLimits(rcl) {
+    var _a;
+    const limits = {
+        1: { spawn: 1, extension: 0, road: 2500, constructedWall: 0 },
+        2: { spawn: 1, extension: 5, road: 2500, constructedWall: 2500, rampart: 2500, container: 5 },
+        3: { spawn: 1, extension: 10, road: 2500, constructedWall: 2500, rampart: 2500, container: 5, tower: 1 },
+        4: {
+            spawn: 1,
+            extension: 20,
+            road: 2500,
+            constructedWall: 2500,
+            rampart: 2500,
+            container: 5,
+            tower: 1,
+            storage: 1
+        },
+        5: {
+            spawn: 1,
+            extension: 30,
+            road: 2500,
+            constructedWall: 2500,
+            rampart: 2500,
+            container: 5,
+            tower: 2,
+            storage: 1,
+            link: 2
+        },
+        6: {
+            spawn: 1,
+            extension: 40,
+            road: 2500,
+            constructedWall: 2500,
+            rampart: 2500,
+            container: 5,
+            tower: 2,
+            storage: 1,
+            link: 3,
+            terminal: 1,
+            extractor: 1,
+            lab: 3
+        },
+        7: {
+            spawn: 2,
+            extension: 50,
+            road: 2500,
+            constructedWall: 2500,
+            rampart: 2500,
+            container: 5,
+            tower: 3,
+            storage: 1,
+            link: 4,
+            terminal: 1,
+            extractor: 1,
+            lab: 6,
+            factory: 1
+        },
+        8: {
+            spawn: 3,
+            extension: 60,
+            road: 2500,
+            constructedWall: 2500,
+            rampart: 2500,
+            container: 5,
+            tower: 6,
+            storage: 1,
+            link: 6,
+            terminal: 1,
+            extractor: 1,
+            lab: 10,
+            factory: 1,
+            nuker: 1,
+            observer: 1,
+            powerSpawn: 1
+        }
+    };
+    return ((_a = limits[rcl]) !== null && _a !== void 0 ? _a : limits[1]);
+}
+/**
+ * Get blueprint for a specific RCL (alias for getBlueprintForRCL)
+ */
+function getBlueprint(rcl) {
+    return getBlueprintForRCL(rcl);
+}
+/**
+ * Place construction sites from a blueprint
+ */
+function placeConstructionSites(room, anchor, blueprint) {
+    var _a, _b, _c, _d, _e, _f;
+    const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 1;
+    const structures = getStructuresForRCL(blueprint, rcl);
+    const terrain = room.getTerrain();
+    // Add extractor at mineral position if RCL 6+
+    const mineralStructures = [];
+    if (rcl >= 6) {
+        const minerals = room.find(FIND_MINERALS);
+        if (minerals.length > 0) {
+            const mineral = minerals[0];
+            mineralStructures.push({
+                x: mineral.pos.x - anchor.x,
+                y: mineral.pos.y - anchor.y,
+                structureType: STRUCTURE_EXTRACTOR
+            });
+        }
+    }
+    // Combine blueprint structures with mineral structures
+    const allStructures = [...structures, ...mineralStructures];
+    let placed = 0;
+    const existingSites = room.find(FIND_MY_CONSTRUCTION_SITES);
+    const existingStructures = room.find(FIND_STRUCTURES);
+    if (existingSites.length >= 10)
+        return 0;
+    const structureCounts = {};
+    for (const structure of existingStructures) {
+        const type = structure.structureType;
+        structureCounts[type] = ((_c = structureCounts[type]) !== null && _c !== void 0 ? _c : 0) + 1;
+    }
+    for (const site of existingSites) {
+        const type = site.structureType;
+        structureCounts[type] = ((_d = structureCounts[type]) !== null && _d !== void 0 ? _d : 0) + 1;
+    }
+    const limits = getStructureLimits(rcl);
+    for (const s of allStructures) {
+        const currentCount = (_e = structureCounts[s.structureType]) !== null && _e !== void 0 ? _e : 0;
+        const limit = (_f = limits[s.structureType]) !== null && _f !== void 0 ? _f : 0;
+        if (currentCount >= limit)
+            continue;
+        const x = anchor.x + s.x;
+        const y = anchor.y + s.y;
+        if (x < 1 || x > 48 || y < 1 || y > 48)
+            continue;
+        if (terrain.get(x, y) === TERRAIN_MASK_WALL)
+            continue;
+        const existingAtPos = existingStructures.some(str => str.pos.x === x && str.pos.y === y && str.structureType === s.structureType);
+        if (existingAtPos)
+            continue;
+        const existingSiteAtPos = existingSites.some(site => site.pos.x === x && site.pos.y === y && site.structureType === s.structureType);
+        if (existingSiteAtPos)
+            continue;
+        const result = room.createConstructionSite(x, y, s.structureType);
+        if (result === OK) {
+            placed++;
+            structureCounts[s.structureType] = currentCount + 1;
+            if (placed >= 3 || existingSites.length + placed >= 10)
+                break;
+        }
+    }
+    if (placed < 3 && existingSites.length + placed < 10) {
+        for (const r of blueprint.roads) {
+            const x = anchor.x + r.x;
+            const y = anchor.y + r.y;
+            if (x < 1 || x > 48 || y < 1 || y > 48)
+                continue;
+            if (terrain.get(x, y) === TERRAIN_MASK_WALL)
+                continue;
+            const existingRoad = existingStructures.some(str => str.pos.x === x && str.pos.y === y && str.structureType === STRUCTURE_ROAD);
+            if (existingRoad)
+                continue;
+            const existingRoadSite = existingSites.some(site => site.pos.x === x && site.pos.y === y && site.structureType === STRUCTURE_ROAD);
+            if (existingRoadSite)
+                continue;
+            const result = room.createConstructionSite(x, y, STRUCTURE_ROAD);
+            if (result === OK) {
+                placed++;
+                if (placed >= 3 || existingSites.length + placed >= 10)
+                    break;
+            }
+        }
+    }
+    return placed;
+}
+/**
+ * Structure types that can be destroyed for blueprint rearrangement.
+ * Excludes critical structures that should never be automatically destroyed:
+ * - Spawns: Critical for creep production
+ * - Storage/Terminal: May contain valuable resources
+ * - Containers: Player-placed for flexible logistics (not in blueprints)
+ * - Walls/Ramparts: Defensive structures controlled by player
+ */
+const DESTROYABLE_STRUCTURE_TYPES = [
+    STRUCTURE_EXTENSION,
+    STRUCTURE_ROAD,
+    STRUCTURE_TOWER,
+    STRUCTURE_LAB,
+    STRUCTURE_LINK,
+    STRUCTURE_FACTORY,
+    STRUCTURE_OBSERVER,
+    STRUCTURE_NUKER,
+    STRUCTURE_POWER_SPAWN,
+    STRUCTURE_EXTRACTOR
+];
+/** Set for O(1) lookup of destroyable structure types */
+const DESTROYABLE_STRUCTURE_SET = new Set(DESTROYABLE_STRUCTURE_TYPES);
+/**
+ * Find structures that are at invalid positions according to the blueprint.
+ * This allows the system to destroy structures when blueprints are updated.
+ *
+ * Only considers structures that are safe to destroy - excludes spawns, storage,
+ * terminal, containers, walls, and ramparts as these are critical or player-controlled.
+ *
+ * Roads are special: they are only considered misplaced if they are not part of:
+ * - The blueprint's static road positions
+ * - Calculated roads to sources, controller, and mineral
+ * - Routes to remote mining rooms
+ *
+ * @param room The room to check
+ * @param anchor The blueprint anchor position (usually spawn)
+ * @param blueprint The blueprint to validate against
+ * @param remoteRooms Optional array of remote room names managed by this room
+ */
+function findMisplacedStructures(room, anchor, blueprint, remoteRooms = []) {
+    var _a, _b, _c;
+    const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 1;
+    const structures = getStructuresForRCL(blueprint, rcl);
+    const terrain = room.getTerrain();
+    const misplaced = [];
+    // Build a set of valid blueprint positions for each structure type
+    const validPositions = new Map();
+    for (const s of structures) {
+        const x = anchor.x + s.x;
+        const y = anchor.y + s.y;
+        // Skip positions on room border (1-48 valid range) or on walls
+        if (x < 1 || x > 48 || y < 1 || y > 48)
+            continue;
+        if (terrain.get(x, y) === TERRAIN_MASK_WALL)
+            continue;
+        const posKey = `${x},${y}`;
+        if (!validPositions.has(s.structureType)) {
+            validPositions.set(s.structureType, new Set());
+        }
+        (_c = validPositions.get(s.structureType)) === null || _c === void 0 ? void 0 : _c.add(posKey);
+    }
+    // Add road positions using the road network planner
+    // This includes:
+    // - Blueprint roads (static positions around spawn)
+    // - Roads to sources, controller, and mineral
+    // - Roads to remote mining rooms
+    const validRoadPositions = getValidRoadPositions(room, anchor, blueprint.roads, remoteRooms);
+    validPositions.set(STRUCTURE_ROAD, validRoadPositions);
+    // Add extractor position at mineral if RCL 6+
+    if (rcl >= 6) {
+        const minerals = room.find(FIND_MINERALS);
+        if (minerals.length > 0) {
+            const mineral = minerals[0];
+            const extractorPositions = new Set();
+            extractorPositions.add(`${mineral.pos.x},${mineral.pos.y}`);
+            validPositions.set(STRUCTURE_EXTRACTOR, extractorPositions);
+        }
+    }
+    // Find existing structures of destroyable types using Set for O(1) lookup
+    // Use FIND_STRUCTURES to include roads (which are unowned) and filter to our structures
+    const existingStructures = room.find(FIND_STRUCTURES, {
+        filter: s => DESTROYABLE_STRUCTURE_SET.has(s.structureType) &&
+            (
+            // Owned by us
+            s.my === true ||
+                // Roads have no owner, so include them if they exist
+                s.structureType === STRUCTURE_ROAD)
+    });
+    // Check each existing structure against blueprint positions
+    for (const structure of existingStructures) {
+        const posKey = `${structure.pos.x},${structure.pos.y}`;
+        const structType = structure.structureType;
+        const validPosForType = validPositions.get(structType);
+        // If this structure type is not in the blueprint, or this position is not valid
+        if (!validPosForType || !validPosForType.has(posKey)) {
+            misplaced.push({
+                structure,
+                reason: `${structure.structureType} at ${posKey} is not in blueprint`
+            });
+        }
+    }
+    return misplaced;
+}
+/**
+ * Destroy structures at invalid positions according to the blueprint.
+ * Returns the number of structures destroyed.
+ *
+ * This is used when blueprints are updated and structures need to be rearranged
+ * to meet the new requirements.
+ *
+ * Roads are preserved if they are part of the road network (routes to sources,
+ * controller, mineral, or remote rooms).
+ *
+ * @param room The room to check
+ * @param anchor The anchor position (usually the spawn)
+ * @param blueprint The blueprint to validate against
+ * @param maxDestroy Maximum number of structures to destroy per tick (default: 1)
+ * @param remoteRooms Optional array of remote room names managed by this room
+ */
+function destroyMisplacedStructures(room, anchor, blueprint, maxDestroy = 1, remoteRooms = []) {
+    const misplaced = findMisplacedStructures(room, anchor, blueprint, remoteRooms);
+    let destroyed = 0;
+    for (const { structure, reason } of misplaced) {
+        if (destroyed >= maxDestroy)
+            break;
+        // Attempt to destroy the structure
+        const result = structure.destroy();
+        if (result === OK) {
+            destroyed++;
+            // Log the destruction for debugging
+            console.log(`[Blueprint] Destroyed misplaced ${reason}`);
+        }
+    }
+    return destroyed;
+}
+
+/**
+ * Safe Mode Manager - Emergency Defense
+ *
+ * Triggers safe mode when defense fails:
+ * - Critical structures under attack
+ * - Spawn/Storage about to be destroyed
+ * - Cooldown tracking
+ *
+ * Addresses Issue: #21
+ */
+/**
+ * Safe Mode Manager Class
+ */
+class SafeModeManager {
+    /**
+     * Check if safe mode should be triggered
+     */
+    checkSafeMode(room, swarm) {
+        var _a, _b, _c, _d, _e;
+        // Don't trigger if already in safe mode
+        if ((_a = room.controller) === null || _a === void 0 ? void 0 : _a.safeMode) {
+            return;
+        }
+        // Don't trigger if on cooldown
+        if ((_b = room.controller) === null || _b === void 0 ? void 0 : _b.safeModeCooldown) {
+            return;
+        }
+        // Don't trigger if no safe modes available
+        if (((_d = (_c = room.controller) === null || _c === void 0 ? void 0 : _c.safeModeAvailable) !== null && _d !== void 0 ? _d : 0) === 0) {
+            return;
+        }
+        // Check if we should trigger safe mode
+        if (this.shouldTriggerSafeMode(room, swarm)) {
+            const result = (_e = room.controller) === null || _e === void 0 ? void 0 : _e.activateSafeMode();
+            if (result === OK) {
+                logger.warn(`SAFE MODE ACTIVATED in ${room.name}`, { subsystem: "Defense" });
+            }
+            else {
+                const resultStr = result !== undefined ? String(result) : 'undefined';
+                logger.error(`Failed to activate safe mode in ${room.name}: ${resultStr}`, { subsystem: "Defense" });
+            }
+        }
+    }
+    /**
+     * Determine if safe mode should be triggered
+     */
+    shouldTriggerSafeMode(room, swarm) {
+        // Only trigger if danger is high
+        if (swarm.danger < 2) {
+            return false;
+        }
+        // Check spawn health
+        const spawns = room.find(FIND_MY_SPAWNS);
+        for (const spawn of spawns) {
+            if (spawn.hits < spawn.hitsMax * 0.2) {
+                logger.warn(`Spawn ${spawn.name} critical: ${spawn.hits}/${spawn.hitsMax}`, { subsystem: "Defense" });
+                return true;
+            }
+        }
+        // Check storage health
+        if (room.storage && room.storage.hits < room.storage.hitsMax * 0.2) {
+            logger.warn(`Storage critical: ${room.storage.hits}/${room.storage.hitsMax}`, { subsystem: "Defense" });
+            return true;
+        }
+        // Check terminal health
+        if (room.terminal && room.terminal.hits < room.terminal.hitsMax * 0.2) {
+            logger.warn(`Terminal critical: ${room.terminal.hits}/${room.terminal.hitsMax}`, { subsystem: "Defense" });
+            return true;
+        }
+        // Check if we have enough defenders
+        const hostiles = room.find(FIND_HOSTILE_CREEPS);
+        const defenders = room.find(FIND_MY_CREEPS, {
+            filter: c => {
+                const memory = c.memory;
+                const role = memory.role;
+                return role === "guard" || role === "ranger" || role === "soldier";
+            }
+        });
+        // Trigger if overwhelmed (3:1 ratio)
+        if (hostiles.length > defenders.length * 3) {
+            logger.warn(`Overwhelmed: ${hostiles.length} hostiles vs ${defenders.length} defenders`, {
+                subsystem: "Defense"
+            });
+            return true;
+        }
+        // Check if hostiles are boosted
+        const boostedHostiles = hostiles.filter(h => h.body.some(p => p.boost));
+        if (boostedHostiles.length > 0 && defenders.length < boostedHostiles.length * 2) {
+            logger.warn(`Boosted hostiles detected: ${boostedHostiles.length}`, { subsystem: "Defense" });
+            return true;
+        }
+        return false;
+    }
+}
+/**
+ * Global safe mode manager instance
+ */
+const safeModeManager = new SafeModeManager();
+
+/**
+ * Perimeter Defense System
+ *
+ * Implements early room security by identifying and fortifying room exits
+ * and choke points with walls and ramparts.
+ *
+ * ROADMAP Reference: Section 17 - Mauern & Ramparts
+ * - Perimeter: Walls/Ramparts at Exits and Engpässen
+ * - Core-Shell & Perimeter protection strategy
+ */
+/**
+ * Minimum size of an exit group to warrant a rampart gap for friendly passage.
+ * Groups smaller than this will have walls only (no gaps).
+ */
+const MIN_GROUP_SIZE_FOR_GAP = 4;
+/**
+ * Find all exit tiles in a room
+ *
+ * Identifies positions at room edges that are actual exits (not blocked by terrain or structures).
+ * If there's a barrier structure (wall or rampart) at the room edge, it's not considered an exit (already blocked).
+ */
+function findRoomExits(roomName) {
+    const exits = [];
+    const terrain = Game.map.getRoomTerrain(roomName);
+    // Get the room to check for existing barrier structures (walls and ramparts)
+    const room = Game.rooms[roomName];
+    // Build a set of positions with barrier structures for fast lookup
+    const barrierPositions = new Set();
+    if (room) {
+        const barriers = room.find(FIND_STRUCTURES, {
+            filter: (s) => s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART
+        });
+        for (const barrier of barriers) {
+            barrierPositions.add(`${barrier.pos.x},${barrier.pos.y}`);
+        }
+    }
+    // Top edge (y=0)
+    for (let x = 0; x < 50; x++) {
+        // Skip if terrain is wall or if there's already a barrier structure
+        if (terrain.get(x, 0) !== TERRAIN_MASK_WALL && !barrierPositions.has(`${x},0`)) {
+            exits.push({ x, y: 0, exitDirection: "top", isChokePoint: false });
+        }
+    }
+    // Bottom edge (y=49)
+    for (let x = 0; x < 50; x++) {
+        // Skip if terrain is wall or if there's already a barrier structure
+        if (terrain.get(x, 49) !== TERRAIN_MASK_WALL && !barrierPositions.has(`${x},49`)) {
+            exits.push({ x, y: 49, exitDirection: "bottom", isChokePoint: false });
+        }
+    }
+    // Left edge (x=0)
+    for (let y = 1; y < 49; y++) {
+        // Skip if terrain is wall or if there's already a barrier structure
+        if (terrain.get(0, y) !== TERRAIN_MASK_WALL && !barrierPositions.has(`0,${y}`)) {
+            exits.push({ x: 0, y, exitDirection: "left", isChokePoint: false });
+        }
+    }
+    // Right edge (x=49)
+    for (let y = 1; y < 49; y++) {
+        // Skip if terrain is wall or if there's already a barrier structure
+        if (terrain.get(49, y) !== TERRAIN_MASK_WALL && !barrierPositions.has(`49,${y}`)) {
+            exits.push({ x: 49, y, exitDirection: "right", isChokePoint: false });
+        }
+    }
+    return exits;
+}
+/**
+ * Calculate optimal perimeter defense positions
+ * Places walls at exit points only (not a complete square).
+ *
+ * Screeps requires walls/ramparts to be placed at least 2 tiles from room exits.
+ * Exit tiles are at coordinates 0 and 49, so walls must be at 2 and 47.
+ *
+ * Strategy (per ROADMAP Section 17 - Mauern & Ramparts):
+ * - Identify actual exit tiles (non-wall terrain at x=0, x=49, y=0, y=49)
+ * - Place walls 2 tiles inside from each exit tile
+ * - Create gaps (rampart-only positions) at the center of each exit group for friendly passage
+ * - This creates walls only at exits, not a complete square perimeter
+ */
+function calculatePerimeterPositions(roomName) {
+    var _a;
+    const terrain = Game.map.getRoomTerrain(roomName);
+    const walls = [];
+    const ramparts = [];
+    // Find all exit tiles (actual room exits)
+    const exits = findRoomExits(roomName);
+    // Group exits by direction to identify continuous exit sections
+    const exitsByDirection = new Map();
+    for (const exit of exits) {
+        const group = (_a = exitsByDirection.get(exit.exitDirection)) !== null && _a !== void 0 ? _a : [];
+        group.push(exit);
+        exitsByDirection.set(exit.exitDirection, group);
+    }
+    // For each exit direction, identify continuous exit groups and place walls
+    for (const [direction, directionExits] of exitsByDirection) {
+        // Sort exits by coordinate (x for top/bottom, y for left/right)
+        const sorted = [...directionExits].sort((a, b) => {
+            if (a.x === b.x)
+                return a.y - b.y;
+            return a.x - b.x;
+        });
+        // Group continuous exits (gaps in terrain create separate groups)
+        const groups = [];
+        let currentGroup = [];
+        for (let i = 0; i < sorted.length; i++) {
+            const exit = sorted[i];
+            const prev = sorted[i - 1];
+            // Check if this exit is continuous with the previous one
+            const isContinuous = prev &&
+                (Math.abs(exit.x - prev.x) <= 1 && Math.abs(exit.y - prev.y) <= 1);
+            if (!isContinuous && currentGroup.length > 0) {
+                // Start a new group
+                groups.push(currentGroup);
+                currentGroup = [];
+            }
+            currentGroup.push(exit);
+        }
+        // Don't forget the last group
+        if (currentGroup.length > 0) {
+            groups.push(currentGroup);
+        }
+        // For each group of continuous exits, place walls 2 tiles inside with a gap in the center
+        for (const group of groups) {
+            // Determine the center of the group for gap placement
+            const centerIndex = Math.floor(group.length / 2);
+            for (let i = 0; i < group.length; i++) {
+                const exit = group[i];
+                // Calculate wall position (2 tiles inside from exit)
+                let wallX = exit.x;
+                let wallY = exit.y;
+                switch (direction) {
+                    case "top":
+                        wallY = 2;
+                        break;
+                    case "bottom":
+                        wallY = 47;
+                        break;
+                    case "left":
+                        wallX = 2;
+                        break;
+                    case "right":
+                        wallX = 47;
+                        break;
+                }
+                // Skip if terrain is wall at wall position
+                if (terrain.get(wallX, wallY) === TERRAIN_MASK_WALL)
+                    continue;
+                // Create a 2-tile wide gap in the center of each exit group
+                // Gap is placed at center ± 1 for groups large enough to warrant friendly passage
+                const isGap = group.length >= MIN_GROUP_SIZE_FOR_GAP && (i === centerIndex || i === centerIndex - 1);
+                if (isGap) {
+                    ramparts.push({ x: wallX, y: wallY, exitDirection: direction, isChokePoint: false });
+                }
+                else {
+                    walls.push({ x: wallX, y: wallY, exitDirection: direction, isChokePoint: false });
+                }
+            }
+        }
+    }
+    return { walls, ramparts };
+}
+/**
+ * Place perimeter defense construction sites
+ *
+ * Builds walls at room exits only (not a complete square perimeter).
+ * For each exit group, walls are placed 2 tiles inside with strategic gaps (ramparts only)
+ * in the center to allow friendly creeps to pass while blocking enemies.
+ *
+ * Strategy (per ROADMAP Section 17 - Mauern & Ramparts):
+ * - Walls block all creeps
+ * - Ramparts (without walls underneath) allow friendly creeps but block enemies
+ * - Build walls at exits only (where creeps can actually enter the room)
+ * - Walls are placed 2 tiles inside from exit tiles (at x=2, x=47, y=2, y=47)
+ * - Create 2-tile wide gaps at center of each exit group with ramparts only
+ * - This avoids creating a complete square, only fortifying actual entry points
+ *
+ * @param room The room to defend
+ * @param rcl Current room control level
+ * @param maxSites Maximum construction sites to place
+ * @param prioritizeChokePoints Whether to prioritize choke points (not used in new strategy)
+ * @returns Number of sites placed
+ */
+function placePerimeterDefense(room, rcl, maxSites = 3, _prioritizeChokePoints = true) {
+    // RCL requirements
+    // RCL 2: Start placing perimeter walls
+    // RCL 3+: Complete perimeter walls and add ramparts at gap positions
+    if (rcl < 2)
+        return 0;
+    const plan = calculatePerimeterPositions(room.name);
+    const existingSites = room.find(FIND_MY_CONSTRUCTION_SITES);
+    const existingStructures = room.find(FIND_STRUCTURES);
+    // Check site limit
+    if (existingSites.length >= 10)
+        return 0;
+    let placed = 0;
+    const maxToPlace = Math.min(maxSites, 10 - existingSites.length);
+    // Get structure counts
+    const wallCount = existingStructures.filter(s => s.structureType === STRUCTURE_WALL).length + existingSites.filter(s => s.structureType === STRUCTURE_WALL).length;
+    const rampartCount = existingStructures.filter(s => s.structureType === STRUCTURE_RAMPART).length + existingSites.filter(s => s.structureType === STRUCTURE_RAMPART).length;
+    // RCL structure limits (from ROADMAP)
+    const wallLimit = rcl >= 2 ? 2500 : 0;
+    const rampartLimit = rcl >= 2 ? 2500 : 0;
+    // Priority 1: Place walls along perimeter (RCL 2+)
+    if (rcl >= 2 && placed < maxToPlace && wallCount < wallLimit) {
+        for (const wall of plan.walls) {
+            if (placed >= maxToPlace)
+                break;
+            if (wallCount + placed >= wallLimit)
+                break;
+            // Check if position already has a structure or site
+            const hasStructure = existingStructures.some(s => s.pos.x === wall.x && s.pos.y === wall.y &&
+                (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART));
+            const hasSite = existingSites.some(s => s.pos.x === wall.x && s.pos.y === wall.y &&
+                (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART));
+            if (!hasStructure && !hasSite) {
+                const result = room.createConstructionSite(wall.x, wall.y, STRUCTURE_WALL);
+                if (result === OK) {
+                    placed++;
+                    logger.debug(`Placed perimeter wall at (${wall.x},${wall.y})`, { subsystem: "Defense" });
+                }
+            }
+        }
+    }
+    // Priority 2: Remove walls at gap positions (RCL 3+)
+    // These positions should only have ramparts for friendly passage
+    // Only remove walls if there's no rampart yet (to avoid destroying walls unnecessarily)
+    if (rcl >= 3) {
+        for (const rampart of plan.ramparts) {
+            // Check if there's already a rampart at this position
+            const hasRampart = existingStructures.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART);
+            const hasRampartSite = existingSites.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART);
+            // Only destroy wall if there's no rampart yet
+            if (!hasRampart && !hasRampartSite) {
+                const wallAtGap = existingStructures.find(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_WALL);
+                if (wallAtGap) {
+                    // Destroy wall at gap position to allow rampart placement
+                    const result = wallAtGap.destroy();
+                    if (result === OK) {
+                        logger.info(`Removed wall at gap position (${rampart.x},${rampart.y}) to allow friendly passage`, { subsystem: "Defense" });
+                    }
+                    else {
+                        logger.warn(`Failed to destroy wall at gap position (${rampart.x},${rampart.y}): ${result}`, { subsystem: "Defense" });
+                    }
+                }
+            }
+        }
+    }
+    // Priority 3: Place ramparts at gap positions (RCL 3+)
+    // These are rampart-only positions (no wall underneath) to allow friendly passage
+    if (rcl >= 3 && placed < maxToPlace && rampartCount < rampartLimit) {
+        for (const rampart of plan.ramparts) {
+            if (placed >= maxToPlace)
+                break;
+            if (rampartCount + placed >= rampartLimit)
+                break;
+            // Check if position already has a rampart
+            const hasRampart = existingStructures.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART);
+            const hasRampartSite = existingSites.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART);
+            // Don't place if there's a wall here (walls should not be at rampart-only positions)
+            const hasWall = existingStructures.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_WALL);
+            if (!hasRampart && !hasRampartSite && !hasWall) {
+                const result = room.createConstructionSite(rampart.x, rampart.y, STRUCTURE_RAMPART);
+                if (result === OK) {
+                    placed++;
+                    logger.debug(`Placed perimeter rampart gap at (${rampart.x},${rampart.y})`, { subsystem: "Defense" });
+                }
+            }
+        }
+    }
+    return placed;
+}
+
+/**
+ * Wall and Rampart Repair Target Calculator
+ *
+ * Calculates repair thresholds for walls and ramparts based on RCL and danger level.
+ * Used by both tower control and engineer creeps for consistent repair behavior.
+ *
+ * ROADMAP Reference: Section 17 - Mauern & Ramparts
+ */
+/**
+ * Calculate wall/rampart repair target based on RCL and danger level
+ *
+ * Uses RCL-based thresholds aligned with Screeps rampart max hits limits:
+ * - RCL 2: 300K max
+ * - RCL 3: 1M max
+ * - RCL 4: 3M max
+ * - RCL 5: 10M max
+ * - RCL 6: 30M max
+ * - RCL 7: 100M max
+ * - RCL 8: 300M max
+ *
+ * Danger level modifies the target:
+ * - danger 0: 30% of max (peaceful maintenance)
+ * - danger 1: 50% of max (threat detected)
+ * - danger 2: 80% of max (active attack)
+ * - danger 3+: 100% of max (siege/nuke)
+ *
+ * @param rcl Room Controller Level (1-8)
+ * @param danger Danger level (0-3+)
+ * @returns Target repair hits threshold
+ */
+function calculateWallRepairTarget(rcl, danger) {
+    var _a, _b;
+    // RCL-based max hits (Screeps rampart limits)
+    const maxHitsByRCL = {
+        1: 0,
+        2: 300000,
+        3: 1000000,
+        4: 3000000,
+        5: 10000000,
+        6: 30000000,
+        7: 100000000,
+        8: 300000000 // 300M
+    };
+    const maxHits = (_a = maxHitsByRCL[rcl]) !== null && _a !== void 0 ? _a : 0;
+    if (maxHits === 0)
+        return 0;
+    // Danger level multipliers
+    const dangerMultipliers = {
+        0: 0.3,
+        1: 0.5,
+        2: 0.8,
+        3: 1.0 // Siege/nuke (default for 3+)
+    };
+    const dangerMultiplier = (_b = dangerMultipliers[danger]) !== null && _b !== void 0 ? _b : 1.0;
+    return Math.floor(maxHits * dangerMultiplier);
+}
+
+/**
+ * Chemistry Planner - Reaction Chain Planning
+ *
+ * Plans and executes lab reactions:
+ * - Target compound configuration
+ * - Reaction chain calculation
+ * - Intermediate product tracking
+ * - Boost stockpile management
+ *
+ * Addresses Issue: #28
+ */
+/**
+ * Reaction chains for all compounds
+ */
+const REACTIONS = {
+    // Tier 1 compounds
+    [RESOURCE_HYDROXIDE]: {
+        product: RESOURCE_HYDROXIDE,
+        input1: RESOURCE_HYDROGEN,
+        input2: RESOURCE_OXYGEN,
+        priority: 10
+    },
+    [RESOURCE_ZYNTHIUM_KEANITE]: {
+        product: RESOURCE_ZYNTHIUM_KEANITE,
+        input1: RESOURCE_ZYNTHIUM,
+        input2: RESOURCE_KEANIUM,
+        priority: 10
+    },
+    [RESOURCE_UTRIUM_LEMERGITE]: {
+        product: RESOURCE_UTRIUM_LEMERGITE,
+        input1: RESOURCE_UTRIUM,
+        input2: RESOURCE_LEMERGIUM,
+        priority: 10
+    },
+    [RESOURCE_GHODIUM]: {
+        product: RESOURCE_GHODIUM,
+        input1: RESOURCE_ZYNTHIUM_KEANITE,
+        input2: RESOURCE_UTRIUM_LEMERGITE,
+        priority: 15
+    },
+    // Tier 2 compounds (boosts)
+    [RESOURCE_UTRIUM_HYDRIDE]: {
+        product: RESOURCE_UTRIUM_HYDRIDE,
+        input1: RESOURCE_UTRIUM,
+        input2: RESOURCE_HYDROGEN,
+        priority: 20
+    },
+    [RESOURCE_UTRIUM_OXIDE]: {
+        product: RESOURCE_UTRIUM_OXIDE,
+        input1: RESOURCE_UTRIUM,
+        input2: RESOURCE_OXYGEN,
+        priority: 20
+    },
+    [RESOURCE_KEANIUM_HYDRIDE]: {
+        product: RESOURCE_KEANIUM_HYDRIDE,
+        input1: RESOURCE_KEANIUM,
+        input2: RESOURCE_HYDROGEN,
+        priority: 20
+    },
+    [RESOURCE_KEANIUM_OXIDE]: {
+        product: RESOURCE_KEANIUM_OXIDE,
+        input1: RESOURCE_KEANIUM,
+        input2: RESOURCE_OXYGEN,
+        priority: 20
+    },
+    [RESOURCE_LEMERGIUM_HYDRIDE]: {
+        product: RESOURCE_LEMERGIUM_HYDRIDE,
+        input1: RESOURCE_LEMERGIUM,
+        input2: RESOURCE_HYDROGEN,
+        priority: 20
+    },
+    [RESOURCE_LEMERGIUM_OXIDE]: {
+        product: RESOURCE_LEMERGIUM_OXIDE,
+        input1: RESOURCE_LEMERGIUM,
+        input2: RESOURCE_OXYGEN,
+        priority: 20
+    },
+    [RESOURCE_ZYNTHIUM_HYDRIDE]: {
+        product: RESOURCE_ZYNTHIUM_HYDRIDE,
+        input1: RESOURCE_ZYNTHIUM,
+        input2: RESOURCE_HYDROGEN,
+        priority: 20
+    },
+    [RESOURCE_ZYNTHIUM_OXIDE]: {
+        product: RESOURCE_ZYNTHIUM_OXIDE,
+        input1: RESOURCE_ZYNTHIUM,
+        input2: RESOURCE_OXYGEN,
+        priority: 20
+    },
+    [RESOURCE_GHODIUM_HYDRIDE]: {
+        product: RESOURCE_GHODIUM_HYDRIDE,
+        input1: RESOURCE_GHODIUM,
+        input2: RESOURCE_HYDROGEN,
+        priority: 20
+    },
+    [RESOURCE_GHODIUM_OXIDE]: {
+        product: RESOURCE_GHODIUM_OXIDE,
+        input1: RESOURCE_GHODIUM,
+        input2: RESOURCE_OXYGEN,
+        priority: 20
+    },
+    // Tier 3 compounds (advanced boosts)
+    [RESOURCE_UTRIUM_ACID]: {
+        product: RESOURCE_UTRIUM_ACID,
+        input1: RESOURCE_UTRIUM_HYDRIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    [RESOURCE_UTRIUM_ALKALIDE]: {
+        product: RESOURCE_UTRIUM_ALKALIDE,
+        input1: RESOURCE_UTRIUM_OXIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    [RESOURCE_KEANIUM_ACID]: {
+        product: RESOURCE_KEANIUM_ACID,
+        input1: RESOURCE_KEANIUM_HYDRIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    [RESOURCE_KEANIUM_ALKALIDE]: {
+        product: RESOURCE_KEANIUM_ALKALIDE,
+        input1: RESOURCE_KEANIUM_OXIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    [RESOURCE_LEMERGIUM_ACID]: {
+        product: RESOURCE_LEMERGIUM_ACID,
+        input1: RESOURCE_LEMERGIUM_HYDRIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    [RESOURCE_LEMERGIUM_ALKALIDE]: {
+        product: RESOURCE_LEMERGIUM_ALKALIDE,
+        input1: RESOURCE_LEMERGIUM_OXIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    [RESOURCE_ZYNTHIUM_ACID]: {
+        product: RESOURCE_ZYNTHIUM_ACID,
+        input1: RESOURCE_ZYNTHIUM_HYDRIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    [RESOURCE_ZYNTHIUM_ALKALIDE]: {
+        product: RESOURCE_ZYNTHIUM_ALKALIDE,
+        input1: RESOURCE_ZYNTHIUM_OXIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    [RESOURCE_GHODIUM_ACID]: {
+        product: RESOURCE_GHODIUM_ACID,
+        input1: RESOURCE_GHODIUM_HYDRIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    [RESOURCE_GHODIUM_ALKALIDE]: {
+        product: RESOURCE_GHODIUM_ALKALIDE,
+        input1: RESOURCE_GHODIUM_OXIDE,
+        input2: RESOURCE_HYDROXIDE,
+        priority: 30
+    },
+    // Tier 4 compounds (catalyzed boosts)
+    [RESOURCE_CATALYZED_UTRIUM_ACID]: {
+        product: RESOURCE_CATALYZED_UTRIUM_ACID,
+        input1: RESOURCE_UTRIUM_ACID,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    },
+    [RESOURCE_CATALYZED_UTRIUM_ALKALIDE]: {
+        product: RESOURCE_CATALYZED_UTRIUM_ALKALIDE,
+        input1: RESOURCE_UTRIUM_ALKALIDE,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    },
+    [RESOURCE_CATALYZED_KEANIUM_ACID]: {
+        product: RESOURCE_CATALYZED_KEANIUM_ACID,
+        input1: RESOURCE_KEANIUM_ACID,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    },
+    [RESOURCE_CATALYZED_KEANIUM_ALKALIDE]: {
+        product: RESOURCE_CATALYZED_KEANIUM_ALKALIDE,
+        input1: RESOURCE_KEANIUM_ALKALIDE,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    },
+    [RESOURCE_CATALYZED_LEMERGIUM_ACID]: {
+        product: RESOURCE_CATALYZED_LEMERGIUM_ACID,
+        input1: RESOURCE_LEMERGIUM_ACID,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    },
+    [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE]: {
+        product: RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE,
+        input1: RESOURCE_LEMERGIUM_ALKALIDE,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    },
+    [RESOURCE_CATALYZED_ZYNTHIUM_ACID]: {
+        product: RESOURCE_CATALYZED_ZYNTHIUM_ACID,
+        input1: RESOURCE_ZYNTHIUM_ACID,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    },
+    [RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE]: {
+        product: RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE,
+        input1: RESOURCE_ZYNTHIUM_ALKALIDE,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    },
+    [RESOURCE_CATALYZED_GHODIUM_ACID]: {
+        product: RESOURCE_CATALYZED_GHODIUM_ACID,
+        input1: RESOURCE_GHODIUM_ACID,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    },
+    [RESOURCE_CATALYZED_GHODIUM_ALKALIDE]: {
+        product: RESOURCE_CATALYZED_GHODIUM_ALKALIDE,
+        input1: RESOURCE_GHODIUM_ALKALIDE,
+        input2: RESOURCE_CATALYST,
+        priority: 40
+    }
+};
+/**
+ * Target stockpile amounts
+ */
+const STOCKPILE_TARGETS = {
+    // War mode boosts
+    [RESOURCE_CATALYZED_UTRIUM_ACID]: 3000,
+    [RESOURCE_CATALYZED_KEANIUM_ALKALIDE]: 3000,
+    [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE]: 3000,
+    [RESOURCE_CATALYZED_GHODIUM_ACID]: 3000,
+    // Eco mode boosts
+    [RESOURCE_CATALYZED_GHODIUM_ALKALIDE]: 2000,
+    [RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE]: 2000,
+    // Intermediates
+    [RESOURCE_GHODIUM]: 5000,
+    [RESOURCE_HYDROXIDE]: 5000
+};
+/**
+ * Chemistry Planner Class
+ */
+class ChemistryPlanner {
+    /**
+     * Plan reactions for a room
+     */
+    planReactions(room, swarm) {
+        var _a, _b;
+        // Get available labs
+        const labs = room.find(FIND_MY_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_LAB
+        });
+        if (labs.length < 3) {
+            return null; // Need at least 3 labs for reactions
+        }
+        // Get terminal resources
+        const terminal = room.terminal;
+        if (!terminal) {
+            return null; // Need terminal for resource management
+        }
+        // Determine target compounds based on posture
+        const targets = this.getTargetCompounds(swarm);
+        // Find reactions we need to run
+        for (const target of targets) {
+            const reaction = REACTIONS[target];
+            if (!reaction)
+                continue;
+            // Check if we have enough of this compound
+            const current = (_a = terminal.store[target]) !== null && _a !== void 0 ? _a : 0;
+            const targetAmount = (_b = STOCKPILE_TARGETS[target]) !== null && _b !== void 0 ? _b : 1000;
+            if (current < targetAmount) {
+                // Check if we have inputs
+                if (this.hasInputs(terminal, reaction)) {
+                    return reaction;
+                }
+                else {
+                    // Need to produce intermediates first
+                    const intermediate = this.findIntermediateReaction(terminal, reaction);
+                    if (intermediate) {
+                        return intermediate;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+    /**
+     * Get target compounds based on swarm state
+     */
+    getTargetCompounds(swarm) {
+        const targets = [];
+        // Always produce ghodium and hydroxide
+        targets.push(RESOURCE_GHODIUM, RESOURCE_HYDROXIDE);
+        // War mode: prioritize combat boosts
+        if (swarm.posture === "war" || swarm.posture === "siege" || swarm.danger >= 2) {
+            targets.push(RESOURCE_CATALYZED_UTRIUM_ACID, // Attack
+            RESOURCE_CATALYZED_KEANIUM_ALKALIDE, // Ranged attack
+            RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE, // Heal
+            RESOURCE_CATALYZED_GHODIUM_ACID // Dismantle
+            );
+        }
+        else {
+            // Eco mode: prioritize economy boosts
+            targets.push(RESOURCE_CATALYZED_GHODIUM_ALKALIDE, // Upgrade controller
+            RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE, // Move
+            RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE // Heal (always useful)
+            );
+        }
+        return targets;
+    }
+    /**
+     * Check if terminal has inputs for reaction
+     */
+    hasInputs(terminal, reaction) {
+        var _a, _b;
+        const input1Amount = (_a = terminal.store[reaction.input1]) !== null && _a !== void 0 ? _a : 0;
+        const input2Amount = (_b = terminal.store[reaction.input2]) !== null && _b !== void 0 ? _b : 0;
+        return input1Amount >= 1000 && input2Amount >= 1000;
+    }
+    /**
+     * Find intermediate reaction needed to produce target
+     */
+    findIntermediateReaction(terminal, target) {
+        var _a, _b;
+        // Check if we need to produce input1
+        if (((_a = terminal.store[target.input1]) !== null && _a !== void 0 ? _a : 0) < 1000) {
+            const intermediate = REACTIONS[target.input1];
+            if (intermediate && this.hasInputs(terminal, intermediate)) {
+                return intermediate;
+            }
+        }
+        // Check if we need to produce input2
+        if (((_b = terminal.store[target.input2]) !== null && _b !== void 0 ? _b : 0) < 1000) {
+            const intermediate = REACTIONS[target.input2];
+            if (intermediate && this.hasInputs(terminal, intermediate)) {
+                return intermediate;
+            }
+        }
+        return null;
+    }
+    /**
+     * Execute reaction in labs
+     */
+    executeReaction(room, reaction) {
+        const labs = room.find(FIND_MY_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_LAB
+        });
+        if (labs.length < 3)
+            return;
+        // Use first 2 labs as input labs, rest as output labs
+        const inputLab1 = labs[0];
+        const inputLab2 = labs[1];
+        const outputLabs = labs.slice(2);
+        // Ensure input labs have correct resources
+        if (inputLab1.mineralType !== reaction.input1 || inputLab1.store[reaction.input1] < 500) {
+            // Need to load input1
+            logger.debug(`Lab ${inputLab1.id} needs ${reaction.input1}`, { subsystem: "Chemistry" });
+        }
+        if (inputLab2.mineralType !== reaction.input2 || inputLab2.store[reaction.input2] < 500) {
+            // Need to load input2
+            logger.debug(`Lab ${inputLab2.id} needs ${reaction.input2}`, { subsystem: "Chemistry" });
+        }
+        // Run reactions in output labs
+        for (const outputLab of outputLabs) {
+            if (outputLab.cooldown > 0)
+                continue;
+            // Check if lab is full
+            const freeCapacity = outputLab.store.getFreeCapacity();
+            if (freeCapacity !== null && freeCapacity < 100) {
+                logger.debug(`Lab ${outputLab.id} is full, needs unloading`, { subsystem: "Chemistry" });
+                continue;
+            }
+            const result = outputLab.runReaction(inputLab1, inputLab2);
+            if (result === OK) {
+                logger.debug(`Produced ${reaction.product} in lab ${outputLab.id}`, { subsystem: "Chemistry" });
+            }
+        }
+    }
+}
+/**
+ * Global chemistry planner instance
+ */
+const chemistryPlanner = new ChemistryPlanner();
+
+/**
+ * Boost Manager - Creep Boosting System
+ *
+ * Manages creep boosting:
+ * - Lab pre-loading with boost compounds
+ * - Creep boosting before role execution
+ * - Boost decisions based on posture/danger
+ *
+ * Addresses Issue: #23
+ */
+/**
+ * Default boost configurations
+ */
+const BOOST_CONFIGS = [
+    {
+        role: "soldier",
+        boosts: [RESOURCE_CATALYZED_UTRIUM_ACID, RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE],
+        minDanger: 2
+    },
+    {
+        role: "ranger",
+        boosts: [RESOURCE_CATALYZED_KEANIUM_ALKALIDE, RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE],
+        minDanger: 2
+    },
+    {
+        role: "healer",
+        boosts: [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE, RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE],
+        minDanger: 2
+    },
+    {
+        role: "siegeUnit",
+        boosts: [RESOURCE_CATALYZED_GHODIUM_ACID, RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE],
+        minDanger: 1
+    }
+];
+/**
+ * Map error codes to readable strings
+ */
+function getBoostErrorMessage(code) {
+    switch (code) {
+        case ERR_NOT_OWNER:
+            return "not owner of lab";
+        case ERR_NOT_FOUND:
+            return "no suitable body parts";
+        case ERR_NOT_ENOUGH_RESOURCES:
+            return "not enough compound";
+        case ERR_INVALID_TARGET:
+            return "invalid creep target";
+        case ERR_NOT_IN_RANGE:
+            return "creep not in range";
+        case ERR_RCL_NOT_ENOUGH:
+            return "RCL too low";
+        default:
+            return `error code ${code}`;
+    }
+}
+/**
+ * Boost Manager Class
+ */
+class BoostManager {
+    /**
+     * Check if a creep should be boosted
+     */
+    shouldBoost(creep, swarm) {
+        const memory = creep.memory;
+        // Check if already boosted
+        if (memory.boosted) {
+            return false;
+        }
+        // Get boost config for role
+        const config = BOOST_CONFIGS.find(c => c.role === memory.role);
+        if (!config) {
+            return false; // No boost config for this role
+        }
+        // Check danger level
+        if (swarm.danger < config.minDanger) {
+            return false; // Not dangerous enough to warrant boosting
+        }
+        // Check if room has labs
+        if (swarm.missingStructures.labs) {
+            return false; // No labs available
+        }
+        return true;
+    }
+    /**
+     * Boost a creep
+     */
+    boostCreep(creep, room) {
+        const memory = creep.memory;
+        // Get boost config
+        const config = BOOST_CONFIGS.find(c => c.role === memory.role);
+        if (!config)
+            return false;
+        // Find labs with required boosts
+        const labs = room.find(FIND_MY_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_LAB
+        });
+        for (const boost of config.boosts) {
+            // Check if creep already has this boost
+            const bodyParts = creep.body.filter(p => p.boost === boost);
+            if (bodyParts.length > 0) {
+                continue; // Already has this boost
+            }
+            // Find lab with this boost
+            const lab = labs.find(l => l.mineralType === boost && l.store[boost] >= 30);
+            if (lab) {
+                // Move to lab and boost
+                if (creep.pos.isNearTo(lab)) {
+                    const result = lab.boostCreep(creep);
+                    if (result === OK) {
+                        logger.info(`Boosted ${creep.name} with ${boost}`, { subsystem: "Boost" });
+                    }
+                    else {
+                        logger.error(`Failed to boost ${creep.name}: ${getBoostErrorMessage(result)}`, { subsystem: "Boost" });
+                    }
+                }
+                else {
+                    creep.moveTo(lab);
+                }
+                return false; // Still boosting
+            }
+        }
+        // All boosts applied
+        memory.boosted = true;
+        logger.info(`${creep.name} fully boosted`, { subsystem: "Boost" });
+        return true;
+    }
+    /**
+     * Prepare labs for boosting
+     */
+    prepareLabs(room, swarm) {
+        // Only prepare if danger is high
+        if (swarm.danger < 2) {
+            return;
+        }
+        const labs = room.find(FIND_MY_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_LAB
+        });
+        if (labs.length < 3) {
+            return; // Need at least 3 labs
+        }
+        // Use first 2 labs for reactions, rest for boosting
+        const boostLabs = labs.slice(2);
+        // Load boost compounds into labs
+        const requiredBoosts = new Set();
+        for (const config of BOOST_CONFIGS) {
+            if (swarm.danger >= config.minDanger) {
+                for (const boost of config.boosts) {
+                    requiredBoosts.add(boost);
+                }
+            }
+        }
+        // Assign boosts to labs
+        let labIndex = 0;
+        for (const boost of requiredBoosts) {
+            if (labIndex >= boostLabs.length)
+                break;
+            const lab = boostLabs[labIndex];
+            if (lab.mineralType !== boost || lab.store[boost] < 1000) {
+                // Lab needs this boost
+                // Terminal should transfer it (handled by terminal manager)
+                logger.debug(`Lab ${lab.id} needs ${boost} for boosting`, { subsystem: "Boost" });
+            }
+            labIndex++;
+        }
+    }
+}
+/**
+ * Global boost manager instance
+ */
+const boostManager = new BoostManager();
+
+/**
+ * Object Cache - Performance Optimization
+ *
+ * Caches frequently accessed game objects to avoid repeated lookups.
+ * Game.getObjectById() is relatively expensive (~0.01-0.02 CPU per call).
+ * For objects accessed multiple times per tick, caching provides significant savings.
+ *
+ * Design Principles (from ROADMAP.md Section 2):
+ * - Aggressive Caching + TTL
+ * - Cache stored in global object, not Memory (no serialization cost)
+ * - Per-tick validity (cleared automatically each tick)
+ *
+ * Use Cases:
+ * - Room storage (accessed by many creeps)
+ * - Room controller (accessed by upgraders, builders)
+ * - Sources (accessed by harvesters, carriers)
+ * - Frequently accessed structures
+ *
+ * CPU Savings:
+ * - With 100+ creeps accessing storage: ~1-2 CPU per tick
+ * - With multiple creeps per source: ~0.5-1 CPU per tick
+ */
+// =============================================================================
+// Cache Storage
+// =============================================================================
+/**
+ * Get or initialize the cache store.
+ * Cache is cleared automatically at the start of each tick.
+ */
+function getCacheStore() {
+    const g = global;
+    if (!g._objectCache || g._objectCache.tick !== Game.time) {
+        g._objectCache = {
+            tick: Game.time,
+            objects: new Map()
+        };
+    }
+    return g._objectCache;
+}
+/**
+ * Prefetch commonly accessed objects for a room.
+ * Call this once per room per tick to warm the cache.
+ *
+ * @param room - Room to prefetch objects for
+ */
+function prefetchRoomObjects(room) {
+    var _a;
+    if (!((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my))
+        return;
+    const cache = getCacheStore();
+    // Prefetch storage
+    if (room.storage && !cache.objects.has(room.storage.id)) {
+        cache.objects.set(room.storage.id, room.storage);
+    }
+    // Prefetch terminal
+    if (room.terminal && !cache.objects.has(room.terminal.id)) {
+        cache.objects.set(room.terminal.id, room.terminal);
+    }
+    // Prefetch controller
+    if (room.controller && !cache.objects.has(room.controller.id)) {
+        cache.objects.set(room.controller.id, room.controller);
+    }
+    // Prefetch sources
+    const sources = room.find(FIND_SOURCES);
+    for (const source of sources) {
+        if (!cache.objects.has(source.id)) {
+            cache.objects.set(source.id, source);
+        }
+    }
+}
+
+/**
+ * Room Node - Per-room main loop
+ *
+ * Handles all per-room operations:
+ * - Initialize/read RoomMemory.swarm
+ * - Update metrics and pheromones
+ * - Determine evolution stage and posture
+ * - Run spawn logic
+ * - Run creep role logic
+ * - Run towers & structure control
+ * - Run base construction
+ */
+/**
+ * Perimeter defense configuration constants
+ * These values control how aggressively rooms build defensive walls
+ */
+const EARLY_GAME_RCL_MIN = 2;
+const EARLY_GAME_RCL_MAX = 3;
+const MAX_EARLY_PERIMETER_SITES = 5; // RCL 2-3: Aggressive defense buildup
+const MAX_REGULAR_PERIMETER_SITES = 3; // RCL 4+: Maintenance rate
+const EARLY_GAME_CONSTRUCTION_INTERVAL = 5; // Ticks between construction checks
+const REGULAR_CONSTRUCTION_INTERVAL = 10; // Ticks between construction checks
+/**
+ * Check if a room is in early game and needs aggressive defense
+ */
+function isEarlyGameDefense(rcl) {
+    return rcl >= EARLY_GAME_RCL_MIN && rcl <= EARLY_GAME_RCL_MAX;
+}
+const DEFAULT_CONFIG$c = {
+    enablePheromones: true,
+    enableEvolution: true,
+    enableSpawning: true,
+    enableConstruction: true,
+    enableTowers: true,
+    enableProcessing: true
+};
+const structureCache = new Map();
+/**
+ * Get or create structure cache for a room
+ */
+function getStructureCache(room) {
+    const existing = structureCache.get(room.name);
+    if (existing && existing.tick === Game.time) {
+        return existing;
+    }
+    const myStructures = room.find(FIND_MY_STRUCTURES);
+    const cache = {
+        tick: Game.time,
+        towers: myStructures.filter((s) => s.structureType === STRUCTURE_TOWER),
+        spawns: myStructures.filter((s) => s.structureType === STRUCTURE_SPAWN),
+        links: myStructures.filter((s) => s.structureType === STRUCTURE_LINK),
+        factory: myStructures.find((s) => s.structureType === STRUCTURE_FACTORY),
+        powerSpawn: myStructures.find((s) => s.structureType === STRUCTURE_POWER_SPAWN),
+        sources: room.find(FIND_SOURCES),
+        constructionSites: room.find(FIND_MY_CONSTRUCTION_SITES)
+    };
+    structureCache.set(room.name, cache);
+    return cache;
+}
+/**
+ * Room Node class - manages a single room
+ */
+class RoomNode {
+    constructor(roomName, config = {}) {
+        this.roomName = roomName;
+        this.config = { ...DEFAULT_CONFIG$c, ...config };
+    }
+    /**
+     * Main room tick
+     */
+    run(totalOwnedRooms) {
+        var _a, _b, _c, _d, _e;
+        const cpuStart = profiler.startRoom(this.roomName);
+        const room = Game.rooms[this.roomName];
+        if (!room || !((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my)) {
+            profiler.endRoom(this.roomName, cpuStart);
+            return;
+        }
+        // OPTIMIZATION: Prefetch commonly accessed room objects to warm the object cache.
+        // This saves CPU when multiple creeps access the same objects (storage, sources, etc.)
+        // With 50+ creeps per room, this can save 1-2 CPU per tick.
+        prefetchRoomObjects(room);
+        // Get or initialize swarm state
+        const swarm = memoryManager.getOrInitSwarmState(this.roomName);
+        // Update metrics (only every 5 ticks to match pheromone update interval)
+        // This avoids expensive room.find() calls every tick
+        if (this.config.enablePheromones && Game.time % 5 === 0) {
+            pheromoneManager.updateMetrics(room, swarm);
+        }
+        // Update threat assessment
+        this.updateThreatAssessment(room, swarm);
+        // Check safe mode trigger
+        safeModeManager.checkSafeMode(room, swarm);
+        // Update evolution stage
+        if (this.config.enableEvolution) {
+            evolutionManager.updateEvolutionStage(swarm, room, totalOwnedRooms);
+            evolutionManager.updateMissingStructures(swarm, room);
+        }
+        // Update posture
+        postureManager.updatePosture(swarm);
+        // Update pheromones
+        if (this.config.enablePheromones) {
+            pheromoneManager.updatePheromones(swarm, room);
+        }
+        // Run tower control
+        if (this.config.enableTowers) {
+            this.runTowerControl(room, swarm);
+        }
+        // Run construction
+        // Perimeter defense runs more frequently in early game (RCL 2-3) for faster fortification
+        // Regular construction runs at standard interval to balance CPU usage
+        if (this.config.enableConstruction && postureManager.allowsBuilding(swarm.posture)) {
+            const rcl = (_c = (_b = room.controller) === null || _b === void 0 ? void 0 : _b.level) !== null && _c !== void 0 ? _c : 1;
+            const isEarlyDefense = isEarlyGameDefense(rcl);
+            const constructionInterval = isEarlyDefense
+                ? EARLY_GAME_CONSTRUCTION_INTERVAL
+                : REGULAR_CONSTRUCTION_INTERVAL;
+            if (Game.time % constructionInterval === 0) {
+                this.runConstruction(room, swarm);
+            }
+        }
+        // Run resource processing (every 5 ticks)
+        if (this.config.enableProcessing && Game.time % 5 === 0) {
+            this.runResourceProcessing(room, swarm);
+        }
+        // Record room stats
+        const cpuUsed = Game.cpu.getUsed() - cpuStart;
+        const roomData = profiler.getRoomData(this.roomName);
+        statsManager.recordRoom(room, (_d = roomData === null || roomData === void 0 ? void 0 : roomData.avgCpu) !== null && _d !== void 0 ? _d : cpuUsed, (_e = roomData === null || roomData === void 0 ? void 0 : roomData.peakCpu) !== null && _e !== void 0 ? _e : cpuUsed, {
+            energyHarvested: swarm.metrics.energyHarvested,
+            damageReceived: swarm.metrics.damageReceived,
+            danger: swarm.danger
+        });
+        // Record pheromone stats
+        statsManager.recordPheromones(this.roomName, swarm.pheromones, swarm.posture, pheromoneManager.getDominantPheromone(swarm.pheromones));
+        profiler.endRoom(this.roomName, cpuStart);
+    }
+    /**
+     * Update threat assessment.
+     * Uses optimized iteration for better CPU efficiency.
+     * Emits events through the kernel event system for centralized handling.
+     * OPTIMIZATION: Only check enemy structures if hostiles are present or danger > 0
+     */
+    updateThreatAssessment(room, swarm) {
+        var _a, _b;
+        // Use safeFind to handle engine errors with corrupted owner data
+        const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
+        // Only check enemy structures if we have hostiles or existing danger
+        // This avoids expensive find() calls when room is peaceful
+        const enemyStructures = (hostiles.length > 0 || swarm.danger > 0)
+            ? safeFind(room, FIND_HOSTILE_STRUCTURES, {
+                filter: s => s.structureType !== STRUCTURE_CONTROLLER
+            })
+            : [];
+        // Calculate potential damage with efficient single-loop iteration
+        let potentialDamage = 0;
+        for (const hostile of hostiles) {
+            for (const part of hostile.body) {
+                if (part.hits > 0) {
+                    if (part.type === ATTACK) {
+                        potentialDamage += 30;
+                    }
+                    else if (part.type === RANGED_ATTACK) {
+                        potentialDamage += 10;
+                    }
+                }
+            }
+        }
+        const newDanger = calculateDangerLevel(hostiles.length, potentialDamage, enemyStructures.length > 0);
+        // Update danger and emit events if increased
+        if (newDanger > swarm.danger) {
+            pheromoneManager.onHostileDetected(swarm, hostiles.length, newDanger);
+            memoryManager.addRoomEvent(this.roomName, "hostileDetected", `${hostiles.length} hostiles, danger=${newDanger}`);
+            // Emit hostile detected events for each hostile through the kernel event system
+            for (const hostile of hostiles) {
+                kernel.emit("hostile.detected", {
+                    roomName: this.roomName,
+                    hostileId: hostile.id,
+                    hostileOwner: hostile.owner.username,
+                    bodyParts: hostile.body.length,
+                    threatLevel: newDanger,
+                    source: this.roomName
+                });
+            }
+        }
+        else if (hostiles.length === 0 && swarm.danger > 0) {
+            // Emit hostile cleared event when danger level drops to 0
+            kernel.emit("hostile.cleared", {
+                roomName: this.roomName,
+                source: this.roomName
+            });
+        }
+        swarm.danger = newDanger;
+        // Check for nukes (only every 10 ticks to reduce CPU cost)
+        // Nukes have a long flight time (~50k ticks), so checking every 10 ticks is sufficient
+        if (Game.time % 10 === 0) {
+            const nukes = room.find(FIND_NUKES);
+            if (nukes.length > 0) {
+                if (!swarm.nukeDetected) {
+                    pheromoneManager.onNukeDetected(swarm);
+                    const launchSource = (_b = (_a = nukes[0]) === null || _a === void 0 ? void 0 : _a.launchRoomName) !== null && _b !== void 0 ? _b : 'unidentified source';
+                    memoryManager.addRoomEvent(this.roomName, "nukeDetected", `${nukes.length} nuke(s) incoming from ${launchSource}`);
+                    swarm.nukeDetected = true;
+                    // Emit nuke detected events through kernel event system
+                    for (const nuke of nukes) {
+                        kernel.emit("nuke.detected", {
+                            roomName: this.roomName,
+                            nukeId: nuke.id,
+                            landingTick: Game.time + nuke.timeToLand,
+                            launchRoomName: nuke.launchRoomName,
+                            source: this.roomName
+                        });
+                    }
+                }
+            }
+            else {
+                // Reset flag when nukes are gone
+                swarm.nukeDetected = false;
+            }
+        }
+    }
+    /**
+     * Run tower control
+     * OPTIMIZATION: Use cached structures to avoid repeated room.find() calls
+     */
+    runTowerControl(room, swarm) {
+        var _a, _b;
+        const cache = getStructureCache(room);
+        const towers = cache.towers;
+        if (towers.length === 0)
+            return;
+        // Find targets - use safeFind to handle engine errors with corrupted owner data
+        const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
+        for (const tower of towers) {
+            if (tower.store.getUsedCapacity(RESOURCE_ENERGY) < 10)
+                continue;
+            // Priority 1: Attack hostiles
+            if (hostiles.length > 0) {
+                // Target priority: healers > ranged > melee > others
+                const target = this.selectTowerTarget(hostiles);
+                if (target) {
+                    tower.attack(target);
+                    continue;
+                }
+            }
+            // Priority 2: Heal damaged creeps (only in non-siege)
+            if (swarm.posture !== "siege") {
+                const damaged = tower.pos.findClosestByRange(FIND_MY_CREEPS, {
+                    filter: c => c.hits < c.hitsMax
+                });
+                if (damaged) {
+                    tower.heal(damaged);
+                    continue;
+                }
+            }
+            // Priority 3: Repair structures (only in non-war postures)
+            if (!postureManager.isCombatPosture(swarm.posture)) {
+                const damaged = tower.pos.findClosestByRange(FIND_STRUCTURES, {
+                    filter: s => s.hits < s.hitsMax * 0.8 && s.structureType !== STRUCTURE_WALL && s.structureType !== STRUCTURE_RAMPART
+                });
+                if (damaged) {
+                    tower.repair(damaged);
+                    continue;
+                }
+            }
+            // Priority 4: Repair walls and ramparts based on RCL and danger level
+            // Only repair in peaceful conditions (no hostiles, non-combat posture)
+            if (!postureManager.isCombatPosture(swarm.posture) && hostiles.length === 0) {
+                const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 1;
+                const repairTarget = calculateWallRepairTarget(rcl, swarm.danger);
+                const wallOrRampart = tower.pos.findClosestByRange(FIND_STRUCTURES, {
+                    filter: s => (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) &&
+                        s.hits < repairTarget
+                });
+                if (wallOrRampart) {
+                    tower.repair(wallOrRampart);
+                }
+            }
+        }
+    }
+    /**
+     * Select tower attack target
+     */
+    selectTowerTarget(hostiles) {
+        var _a;
+        // Sort by priority: healers > boosted > ranged > melee > others
+        const sorted = hostiles.sort((a, b) => {
+            const scoreA = this.getHostilePriority(a);
+            const scoreB = this.getHostilePriority(b);
+            return scoreB - scoreA;
+        });
+        return (_a = sorted[0]) !== null && _a !== void 0 ? _a : null;
+    }
+    /**
+     * Get priority score for hostile targeting
+     */
+    getHostilePriority(hostile) {
+        let score = 0;
+        for (const part of hostile.body) {
+            if (!part.hits)
+                continue;
+            switch (part.type) {
+                case HEAL:
+                    score += 100;
+                    break;
+                case RANGED_ATTACK:
+                    score += 50;
+                    break;
+                case ATTACK:
+                    score += 40;
+                    break;
+                case CLAIM:
+                    score += 60;
+                    break;
+                case WORK:
+                    score += 30;
+                    break;
+            }
+            // Boosted parts are higher priority
+            if (part.boost) {
+                score += 20;
+            }
+        }
+        return score;
+    }
+    /**
+     * Run construction logic using blueprints
+     */
+    runConstruction(room, swarm) {
+        var _a, _b;
+        // Check global construction site limit (use cached structures)
+        const cache = getStructureCache(room);
+        const existingSites = cache.constructionSites;
+        if (existingSites.length >= 10)
+            return;
+        // Get blueprint for current RCL
+        const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 1;
+        const blueprint = getBlueprint(rcl);
+        if (!blueprint)
+            return;
+        // Find spawn to use as anchor (use cached structures)
+        const spawn = cache.spawns[0];
+        if (!spawn) {
+            // No spawn, place one if we're a new colony
+            if (rcl === 1 && existingSites.length === 0) {
+                // Find a suitable position for first spawn (use cached sources)
+                const controller = room.controller;
+                if (controller) {
+                    const sources = cache.sources;
+                    // Find position between controller and sources
+                    const avgX = Math.round((controller.pos.x + sources.reduce((sum, s) => sum + s.pos.x, 0)) / (sources.length + 1));
+                    const avgY = Math.round((controller.pos.y + sources.reduce((sum, s) => sum + s.pos.y, 0)) / (sources.length + 1));
+                    // Check if position is buildable
+                    const terrain = room.getTerrain();
+                    if (terrain.get(avgX, avgY) !== TERRAIN_MASK_WALL) {
+                        room.createConstructionSite(avgX, avgY, STRUCTURE_SPAWN);
+                    }
+                }
+            }
+            return;
+        }
+        // Destroy misplaced structures that don't match the blueprint
+        // Runs every construction tick (10 ticks) in non-combat postures for faster cleanup
+        // Pass remote room assignments to preserve roads leading to remote mining rooms
+        if (!postureManager.isCombatPosture(swarm.posture)) {
+            const destroyed = destroyMisplacedStructures(room, spawn.pos, blueprint, 1, swarm.remoteAssignments);
+            if (destroyed > 0) {
+                const structureWord = destroyed === 1 ? "structure" : "structures";
+                memoryManager.addRoomEvent(this.roomName, "structureDestroyed", `${destroyed} misplaced ${structureWord} destroyed for blueprint compliance`);
+            }
+        }
+        // Priority 1: Place perimeter defense (RCL 2+)
+        // Early defense is critical for room security
+        let perimeterPlaced = 0;
+        if (rcl >= EARLY_GAME_RCL_MIN && existingSites.length < 8) {
+            // Place more sites in early game for faster fortification
+            const maxPerimeterSites = isEarlyGameDefense(rcl)
+                ? MAX_EARLY_PERIMETER_SITES
+                : MAX_REGULAR_PERIMETER_SITES;
+            // Prioritize choke points at RCL 2, full perimeter at RCL 3+
+            perimeterPlaced = placePerimeterDefense(room, rcl, maxPerimeterSites, true);
+        }
+        // Priority 2: Place construction sites using blueprint
+        const placed = placeConstructionSites(room, spawn.pos, blueprint);
+        // Priority 3: Place road construction sites for infrastructure routes (sources, controller, mineral)
+        // Only place 1-2 road sites per tick to avoid overwhelming builders
+        const roadSitesPlaced = placeRoadConstructionSites(room, spawn.pos, 2);
+        // Update metrics
+        swarm.metrics.constructionSites = existingSites.length + placed + roadSitesPlaced + perimeterPlaced;
+    }
+    /**
+     * Run resource processing (labs, factory, power spawn)
+     */
+    runResourceProcessing(room, _swarm) {
+        var _a, _b;
+        const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0;
+        // Run labs (RCL 6+)
+        if (rcl >= 6) {
+            this.runLabs(room);
+        }
+        // Run factory (RCL 7+)
+        if (rcl >= 7) {
+            this.runFactory(room);
+        }
+        // Run power spawn (RCL 8)
+        if (rcl >= 8) {
+            this.runPowerSpawn(room);
+        }
+        // Run links
+        this.runLinks(room);
+    }
+    /**
+     * Run lab reactions
+     */
+    runLabs(room) {
+        const swarm = memoryManager.getSwarmState(room.name);
+        if (!swarm)
+            return;
+        // Prepare labs for boosting when danger is high
+        boostManager.prepareLabs(room, swarm);
+        // Plan reactions using chemistry planner
+        const reaction = chemistryPlanner.planReactions(room, swarm);
+        if (reaction) {
+            chemistryPlanner.executeReaction(room, reaction);
+        }
+    }
+    /**
+     * Run factory production
+     * OPTIMIZATION: Use cached structures
+     */
+    runFactory(room) {
+        const cache = getStructureCache(room);
+        const factory = cache.factory;
+        if (!factory || factory.cooldown > 0)
+            return;
+        // Simple commodity production - compress minerals
+        const minerals = [
+            RESOURCE_UTRIUM,
+            RESOURCE_LEMERGIUM,
+            RESOURCE_KEANIUM,
+            RESOURCE_ZYNTHIUM,
+            RESOURCE_HYDROGEN,
+            RESOURCE_OXYGEN
+        ];
+        for (const mineral of minerals) {
+            if (factory.store.getUsedCapacity(mineral) >= 500 && factory.store.getUsedCapacity(RESOURCE_ENERGY) >= 200) {
+                // Try to produce compressed bar
+                const result = factory.produce(RESOURCE_UTRIUM_BAR); // Note: This is simplified
+                if (result === OK)
+                    break;
+            }
+        }
+    }
+    /**
+     * Run power spawn
+     * OPTIMIZATION: Use cached structures
+     */
+    runPowerSpawn(room) {
+        const cache = getStructureCache(room);
+        const powerSpawn = cache.powerSpawn;
+        if (!powerSpawn)
+            return;
+        // Process power if we have resources
+        if (powerSpawn.store.getUsedCapacity(RESOURCE_POWER) >= 1 &&
+            powerSpawn.store.getUsedCapacity(RESOURCE_ENERGY) >= 50) {
+            powerSpawn.processPower();
+        }
+    }
+    /**
+     * Run link transfers
+     * OPTIMIZATION: Use cached structures
+     */
+    runLinks(room) {
+        const cache = getStructureCache(room);
+        const links = cache.links;
+        if (links.length < 2)
+            return;
+        const storage = room.storage;
+        if (!storage)
+            return;
+        // Find storage link (within 2 of storage)
+        const storageLink = links.find(l => l.pos.getRangeTo(storage) <= 2);
+        if (!storageLink)
+            return;
+        // Find source links (links near sources) - use cached sources
+        const sources = cache.sources;
+        const sourceLinks = links.filter(l => sources.some(s => l.pos.getRangeTo(s) <= 2));
+        // Transfer from source links to storage link
+        for (const sourceLink of sourceLinks) {
+            if (sourceLink.store.getUsedCapacity(RESOURCE_ENERGY) >= 400 && sourceLink.cooldown === 0) {
+                if (storageLink.store.getFreeCapacity(RESOURCE_ENERGY) >= 400) {
+                    sourceLink.transferEnergy(storageLink);
+                    break;
+                }
+            }
+        }
+    }
+}
+/**
+ * Room manager - orchestrates all room nodes
+ */
+class RoomManager {
+    constructor() {
+        this.nodes = new Map();
+    }
+    /**
+     * Run all owned rooms
+     * OPTIMIZATION: Use cached owned rooms list from global to avoid repeated filter
+     */
+    run() {
+        var _a;
+        // Use cached owned rooms from global (set in main loop)
+        const cacheKey = "_ownedRooms";
+        const cacheTickKey = "_ownedRoomsTick";
+        const globalCache = global;
+        const cachedRooms = globalCache[cacheKey];
+        const cachedTick = globalCache[cacheTickKey];
+        let ownedRooms;
+        if (cachedRooms && cachedTick === Game.time) {
+            ownedRooms = cachedRooms;
+        }
+        else {
+            // Fallback if cache not set (shouldn't happen, but safe)
+            ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        }
+        const totalOwned = ownedRooms.length;
+        // Ensure nodes exist for all owned rooms
+        for (const room of ownedRooms) {
+            if (!this.nodes.has(room.name)) {
+                this.nodes.set(room.name, new RoomNode(room.name));
+            }
+        }
+        // Clean up nodes for rooms we no longer own
+        for (const [name] of this.nodes) {
+            const room = Game.rooms[name];
+            if (!room || !((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my)) {
+                this.nodes.delete(name);
+            }
+        }
+        // Run each node with error recovery
+        for (const node of this.nodes.values()) {
+            try {
+                node.run(totalOwned);
+            }
+            catch (err) {
+                const errorMessage = err instanceof Error ? err.message : String(err);
+                console.log(`[RoomManager] ERROR in room ${node.roomName}: ${errorMessage}`);
+                if (err instanceof Error && err.stack) {
+                    console.log(err.stack);
+                }
+                // Continue processing other rooms
+            }
+        }
+    }
+    /**
+     * Get node for a room
+     */
+    getNode(roomName) {
+        return this.nodes.get(roomName);
+    }
+    /**
+     * Get all nodes
+     */
+    getAllNodes() {
+        return Array.from(this.nodes.values());
+    }
+    /**
+     * Run a specific room (for kernel process integration)
+     * Creates or gets the node for the room and runs it
+     */
+    runRoom(room) {
+        var _a;
+        if (!((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my)) {
+            return;
+        }
+        // Ensure node exists for this room
+        if (!this.nodes.has(room.name)) {
+            this.nodes.set(room.name, new RoomNode(room.name));
+        }
+        // Get total owned rooms count (cached in global)
+        const cacheKey = "_ownedRooms";
+        const cacheTickKey = "_ownedRoomsTick";
+        const globalCache = global;
+        const cachedRooms = globalCache[cacheKey];
+        const cachedTick = globalCache[cacheTickKey];
+        let totalOwned;
+        if (cachedRooms && cachedTick === Game.time) {
+            totalOwned = cachedRooms.length;
+        }
+        else {
+            // Fallback: count owned rooms
+            totalOwned = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; }).length;
+        }
+        // Run the node
+        const node = this.nodes.get(room.name);
+        try {
+            node.run(totalOwned);
+        }
+        catch (err) {
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            console.log(`[RoomManager] ERROR in room ${room.name}: ${errorMessage}`);
+            if (err instanceof Error && err.stack) {
+                console.log(err.stack);
+            }
+        }
+    }
+}
+/**
+ * Global room manager instance
+ */
+const roomManager = new RoomManager();
+
+/**
+ * Room Process Manager
+ *
+ * Manages room operations as kernel processes, ensuring every room
+ * gets processed eventually through the kernel's wrap-around queue system.
+ *
+ * Each owned room becomes a process with high priority, allowing
+ * the kernel to handle CPU budgeting and fair execution scheduling.
+ *
+ * Design Principles (from ROADMAP.md):
+ * - Decentralization: Each room has local control logic
+ * - Event-driven logic: Rooms respond to threats and pheromones
+ * - Strict tick budget: Eco rooms ≤ 0.1 CPU, War rooms ≤ 0.25 CPU
+ */
+/**
+ * Get process priority for a room based on its state
+ */
+function getRoomProcessPriority(room) {
+    var _a, _b, _c;
+    // Rooms under attack get critical priority
+    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    if (hostiles.length > 0) {
+        return ProcessPriority.CRITICAL;
+    }
+    // Owned rooms with controller get high priority
+    if ((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my) {
+        return ProcessPriority.HIGH;
+    }
+    // Reserved rooms get medium priority
+    if (((_c = (_b = room.controller) === null || _b === void 0 ? void 0 : _b.reservation) === null || _c === void 0 ? void 0 : _c.username) === "ralphschuler") {
+        return ProcessPriority.MEDIUM;
+    }
+    // Other visible rooms get low priority
+    return ProcessPriority.LOW;
+}
+/**
+ * Get CPU budget for a room based on its state and RCL
+ */
+function getRoomCpuBudget(room) {
+    var _a;
+    if (!((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my)) {
+        return 0.01; // 1% for non-owned rooms
+    }
+    const rcl = room.controller.level;
+    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    // War mode: higher budget
+    if (hostiles.length > 0) {
+        return 0.005; // 0.5% per room (war mode, up to 0.25 CPU for RCL8)
+    }
+    // Eco mode: lower budget based on RCL
+    // RCL 1-3: 0.05% (0.025 CPU)
+    // RCL 4-6: 0.1% (0.05 CPU)
+    // RCL 7-8: 0.2% (0.1 CPU)
+    if (rcl <= 3) {
+        return 0.0005;
+    }
+    else if (rcl <= 6) {
+        return 0.001;
+    }
+    else {
+        return 0.002;
+    }
+}
+/**
+ * Room Process Manager
+ *
+ * Manages registration and lifecycle of room processes with the kernel.
+ * Each visible room is registered as a high-frequency process that runs
+ * every tick (when CPU budget allows).
+ *
+ * Owned rooms are prioritized higher and can run more frequently even
+ * under CPU pressure.
+ */
+class RoomProcessManager {
+    constructor() {
+        this.registeredRooms = new Set();
+        this.lastSyncTick = -1;
+    }
+    /**
+     * Synchronize room processes with kernel.
+     * Registers new rooms and unregisters rooms that are no longer visible.
+     * Should be called once per tick before kernel.run()
+     */
+    syncRoomProcesses() {
+        // Only sync once per tick
+        if (this.lastSyncTick === Game.time) {
+            return;
+        }
+        this.lastSyncTick = Game.time;
+        const currentRooms = new Set();
+        // Register all visible rooms as processes
+        for (const roomName in Game.rooms) {
+            const room = Game.rooms[roomName];
+            currentRooms.add(roomName);
+            // Update priority if room state changed
+            const processId = `room:${roomName}`;
+            const existingProcess = kernel.getProcess(processId);
+            const newPriority = getRoomProcessPriority(room);
+            const newCpuBudget = getRoomCpuBudget(room);
+            if (!this.registeredRooms.has(roomName)) {
+                // Register new room
+                this.registerRoomProcess(room);
+            }
+            else if (existingProcess &&
+                (existingProcess.priority !== newPriority ||
+                    Math.abs(existingProcess.cpuBudget - newCpuBudget) > 0.0001)) {
+                // Update priority/budget if changed significantly
+                this.updateRoomProcess(room, newPriority, newCpuBudget);
+            }
+        }
+        // Unregister rooms that are no longer visible
+        for (const roomName of this.registeredRooms) {
+            if (!currentRooms.has(roomName)) {
+                this.unregisterRoomProcess(roomName);
+            }
+        }
+    }
+    /**
+     * Register a room as a kernel process
+     */
+    registerRoomProcess(room) {
+        var _a;
+        const priority = getRoomProcessPriority(room);
+        const cpuBudget = getRoomCpuBudget(room);
+        const processId = `room:${room.name}`;
+        kernel.registerProcess({
+            id: processId,
+            name: `Room ${room.name}${((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my) ? " (owned)" : ""}`,
+            priority,
+            frequency: "high",
+            interval: 1,
+            minBucket: this.getMinBucketForPriority(priority),
+            cpuBudget,
+            execute: () => {
+                // Check if room is still visible
+                const currentRoom = Game.rooms[room.name];
+                if (currentRoom) {
+                    // Delegate to existing room manager for room logic
+                    roomManager.runRoom(currentRoom);
+                }
+            }
+        });
+        this.registeredRooms.add(room.name);
+        logger.debug(`Registered room process: ${room.name} with priority ${priority}`, {
+            subsystem: "RoomProcessManager"
+        });
+    }
+    /**
+     * Update a room process with new priority and budget
+     */
+    updateRoomProcess(room, priority, cpuBudget) {
+        var _a;
+        const processId = `room:${room.name}`;
+        // Unregister and re-register with new parameters
+        kernel.unregisterProcess(processId);
+        kernel.registerProcess({
+            id: processId,
+            name: `Room ${room.name}${((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my) ? " (owned)" : ""}`,
+            priority,
+            frequency: "high",
+            interval: 1,
+            minBucket: this.getMinBucketForPriority(priority),
+            cpuBudget,
+            execute: () => {
+                const currentRoom = Game.rooms[room.name];
+                if (currentRoom) {
+                    roomManager.runRoom(currentRoom);
+                }
+            }
+        });
+        logger.debug(`Updated room process: ${room.name} priority=${priority} budget=${cpuBudget}`, {
+            subsystem: "RoomProcessManager"
+        });
+    }
+    /**
+     * Unregister a room from the kernel
+     */
+    unregisterRoomProcess(roomName) {
+        const processId = `room:${roomName}`;
+        kernel.unregisterProcess(processId);
+        this.registeredRooms.delete(roomName);
+        logger.debug(`Unregistered room process: ${roomName}`, {
+            subsystem: "RoomProcessManager"
+        });
+    }
+    /**
+     * Get minimum bucket requirement based on priority
+     */
+    getMinBucketForPriority(priority) {
+        if (priority >= ProcessPriority.CRITICAL) {
+            return 100; // Critical rooms run even at low bucket
+        }
+        if (priority >= ProcessPriority.HIGH) {
+            return 500;
+        }
+        if (priority >= ProcessPriority.MEDIUM) {
+            return 2000;
+        }
+        return 5000; // Low priority needs healthy bucket
+    }
+    /**
+     * Get statistics about registered rooms
+     */
+    getStats() {
+        var _a, _b, _c;
+        const roomsByPriority = {};
+        let ownedRooms = 0;
+        for (const roomName of this.registeredRooms) {
+            const room = Game.rooms[roomName];
+            if (room) {
+                const priority = getRoomProcessPriority(room);
+                const priorityName = (_a = ProcessPriority[priority]) !== null && _a !== void 0 ? _a : "UNKNOWN";
+                roomsByPriority[priorityName] = ((_b = roomsByPriority[priorityName]) !== null && _b !== void 0 ? _b : 0) + 1;
+                if ((_c = room.controller) === null || _c === void 0 ? void 0 : _c.my) {
+                    ownedRooms++;
+                }
+            }
+        }
+        return {
+            totalRooms: Object.keys(Game.rooms).length,
+            registeredRooms: this.registeredRooms.size,
+            roomsByPriority,
+            ownedRooms
+        };
+    }
+    /**
+     * Force resync of all room processes
+     */
+    forceResync() {
+        this.lastSyncTick = -1;
+        this.syncRoomProcesses();
+    }
+    /**
+     * Clear all internal state (for testing)
+     */
+    reset() {
+        this.registeredRooms.clear();
+        this.lastSyncTick = -1;
+    }
+}
+/**
+ * Global room process manager instance
+ */
+const roomProcessManager = new RoomProcessManager();
+
+/**
+ * Console Commands
+ *
+ * All console commands available in the game using @Command decorators.
+ * Commands are automatically registered and exposed to global scope.
+ *
+ * Categories:
+ * - Logging: Commands for controlling log output
+ * - Visualization: Commands for toggling visual overlays
+ * - Statistics: Commands for viewing bot statistics
+ * - Kernel: Commands for managing kernel processes
+ * - Configuration: Commands for viewing/modifying bot configuration
+ */
+/**
+ * Logging commands
+ */
+class LoggingCommands {
+    setLogLevel(level) {
+        const levelMap = {
+            debug: LogLevel.DEBUG,
+            info: LogLevel.INFO,
+            warn: LogLevel.WARN,
+            error: LogLevel.ERROR,
+            none: LogLevel.NONE
+        };
+        const logLevel = levelMap[level.toLowerCase()];
+        if (logLevel === undefined) {
+            return `Invalid log level: ${level}. Valid levels: debug, info, warn, error, none`;
+        }
+        configureLogger({ level: logLevel });
+        return `Log level set to: ${level.toUpperCase()}`;
+    }
+    toggleDebug() {
+        const config = getConfig();
+        const newValue = !config.debug;
+        updateConfig({ debug: newValue });
+        configureLogger({ level: newValue ? LogLevel.DEBUG : LogLevel.INFO });
+        return `Debug mode: ${newValue ? "ENABLED" : "DISABLED"} (Log level: ${newValue ? "DEBUG" : "INFO"})`;
+    }
+}
+__decorate([
+    Command({
+        name: "setLogLevel",
+        description: "Set the log level for the bot",
+        usage: "setLogLevel(level)",
+        examples: [
+            "setLogLevel('debug')",
+            "setLogLevel('info')",
+            "setLogLevel('warn')",
+            "setLogLevel('error')",
+            "setLogLevel('none')"
+        ],
+        category: "Logging"
+    })
+], LoggingCommands.prototype, "setLogLevel", null);
+__decorate([
+    Command({
+        name: "toggleDebug",
+        description: "Toggle debug mode on/off (affects log level and debug features)",
+        usage: "toggleDebug()",
+        examples: ["toggleDebug()"],
+        category: "Logging"
+    })
+], LoggingCommands.prototype, "toggleDebug", null);
+/**
+ * Visualization commands
+ */
+class VisualizationCommands {
+    toggleVisualizations() {
+        const config = getConfig();
+        const newValue = !config.visualizations;
+        updateConfig({ visualizations: newValue });
+        return `Visualizations: ${newValue ? "ENABLED" : "DISABLED"}`;
+    }
+    toggleVisualization(key) {
+        const config = roomVisualizer.getConfig();
+        const validKeys = Object.keys(config).filter(k => k.startsWith("show") && typeof config[k] === "boolean");
+        if (!validKeys.includes(key)) {
+            return `Invalid key: ${key}. Valid keys: ${validKeys.join(", ")}`;
+        }
+        const validKey = key;
+        roomVisualizer.toggle(validKey);
+        const newConfig = roomVisualizer.getConfig();
+        const value = newConfig[validKey];
+        return `Room visualization '${key}': ${value ? "ENABLED" : "DISABLED"}`;
+    }
+    toggleMapVisualization(key) {
+        const config = mapVisualizer.getConfig();
+        const validKeys = Object.keys(config).filter(k => k.startsWith("show") && typeof config[k] === "boolean");
+        if (!validKeys.includes(key)) {
+            return `Invalid key: ${key}. Valid keys: ${validKeys.join(", ")}`;
+        }
+        const validKey = key;
+        mapVisualizer.toggle(validKey);
+        const newConfig = mapVisualizer.getConfig();
+        const value = newConfig[validKey];
+        return `Map visualization '${key}': ${value ? "ENABLED" : "DISABLED"}`;
+    }
+    showMapConfig() {
+        const config = mapVisualizer.getConfig();
+        return Object.entries(config)
+            .map(([key, value]) => `${key}: ${String(value)}`)
+            .join("\n");
+    }
+}
+__decorate([
+    Command({
+        name: "toggleVisualizations",
+        description: "Toggle all visualizations on/off",
+        usage: "toggleVisualizations()",
+        examples: ["toggleVisualizations()"],
+        category: "Visualization"
+    })
+], VisualizationCommands.prototype, "toggleVisualizations", null);
+__decorate([
+    Command({
+        name: "toggleVisualization",
+        description: "Toggle a specific room visualization feature",
+        usage: "toggleVisualization(key)",
+        examples: [
+            "toggleVisualization('showPheromones')",
+            "toggleVisualization('showPaths')",
+            "toggleVisualization('showCombat')"
+        ],
+        category: "Visualization"
+    })
+], VisualizationCommands.prototype, "toggleVisualization", null);
+__decorate([
+    Command({
+        name: "toggleMapVisualization",
+        description: "Toggle a specific map visualization feature",
+        usage: "toggleMapVisualization(key)",
+        examples: [
+            "toggleMapVisualization('showRoomStatus')",
+            "toggleMapVisualization('showConnections')",
+            "toggleMapVisualization('showThreats')",
+            "toggleMapVisualization('showExpansion')"
+        ],
+        category: "Visualization"
+    })
+], VisualizationCommands.prototype, "toggleMapVisualization", null);
+__decorate([
+    Command({
+        name: "showMapConfig",
+        description: "Show current map visualization configuration",
+        usage: "showMapConfig()",
+        examples: ["showMapConfig()"],
+        category: "Visualization"
+    })
+], VisualizationCommands.prototype, "showMapConfig", null);
+/**
+ * Statistics commands
+ */
+class StatisticsCommands {
+    showStats() {
+        const stats = memorySegmentStats.getLatestStats();
+        if (!stats) {
+            return "No stats available yet. Wait for a few ticks.";
+        }
+        return `=== SwarmBot Stats (Tick ${stats.tick}) ===
+CPU: ${stats.cpuUsed.toFixed(2)}/${stats.cpuLimit} (Bucket: ${stats.cpuBucket})
+GCL: ${stats.gclLevel} (${(stats.gclProgress * 100).toFixed(1)}%)
+GPL: ${stats.gplLevel}
+Creeps: ${stats.totalCreeps}
+Rooms: ${stats.totalRooms}
+${stats.rooms.map(r => `  ${r.roomName}: RCL${r.rcl} | ${r.creepCount} creeps | ${r.storageEnergy}E`).join("\n")}`;
+    }
+    toggleProfiling() {
+        const config = getConfig();
+        const newValue = !config.profiling;
+        updateConfig({ profiling: newValue });
+        profiler.setEnabled(newValue);
+        configureLogger({ cpuLogging: newValue });
+        return `Profiling: ${newValue ? "ENABLED" : "DISABLED"}`;
+    }
+}
+__decorate([
+    Command({
+        name: "showStats",
+        description: "Show current bot statistics from memory segment",
+        usage: "showStats()",
+        examples: ["showStats()"],
+        category: "Statistics"
+    })
+], StatisticsCommands.prototype, "showStats", null);
+__decorate([
+    Command({
+        name: "toggleProfiling",
+        description: "Toggle CPU profiling on/off",
+        usage: "toggleProfiling()",
+        examples: ["toggleProfiling()"],
+        category: "Statistics"
+    })
+], StatisticsCommands.prototype, "toggleProfiling", null);
+/**
+ * Configuration commands
+ */
+class ConfigurationCommands {
+    showConfig() {
+        const config = getConfig();
+        const loggerConfig = getLoggerConfig();
+        return `=== SwarmBot Config ===
+Debug: ${String(config.debug)}
+Profiling: ${String(config.profiling)}
+Visualizations: ${String(config.visualizations)}
+Logger Level: ${LogLevel[loggerConfig.level]}
+CPU Logging: ${String(loggerConfig.cpuLogging)}`;
+    }
+}
+__decorate([
+    Command({
+        name: "showConfig",
+        description: "Show current bot configuration",
+        usage: "showConfig()",
+        examples: ["showConfig()"],
+        category: "Configuration"
+    })
+], ConfigurationCommands.prototype, "showConfig", null);
+/**
+ * Kernel commands
+ */
+class KernelCommands {
+    showKernelStats() {
+        const stats = kernel.getStatsSummary();
+        const config = kernel.getConfig();
+        const bucketMode = kernel.getBucketMode();
+        let output = `=== Kernel Stats ===
+Bucket Mode: ${bucketMode.toUpperCase()}
+CPU Bucket: ${Game.cpu.bucket}
+CPU Limit: ${kernel.getCpuLimit().toFixed(2)} (${(config.targetCpuUsage * 100).toFixed(0)}% of ${Game.cpu.limit})
+Remaining CPU: ${kernel.getRemainingCpu().toFixed(2)}
+
+Processes: ${stats.totalProcesses} total (${stats.activeProcesses} active, ${stats.suspendedProcesses} suspended)
+Total CPU Used: ${stats.totalCpuUsed.toFixed(3)}
+Avg CPU/Process: ${stats.avgCpuPerProcess.toFixed(4)}
+
+Top CPU Consumers:`;
+        for (const proc of stats.topCpuProcesses) {
+            output += `\n  ${proc.name}: ${proc.avgCpu.toFixed(4)} avg CPU`;
+        }
+        return output;
+    }
+    listProcesses() {
+        const processes = kernel.getProcesses();
+        if (processes.length === 0) {
+            return "No processes registered with kernel.";
+        }
+        let output = "=== Registered Processes ===\n";
+        output += "ID | Name | Priority | Frequency | State | Runs | Avg CPU | Skipped | Errors\n";
+        output += "-".repeat(90) + "\n";
+        const sorted = [...processes].sort((a, b) => b.priority - a.priority);
+        for (const p of sorted) {
+            const avgCpu = p.stats.avgCpu.toFixed(4);
+            output += `${p.id} | ${p.name} | ${p.priority} | ${p.frequency} | ${p.state} | ${p.stats.runCount} | ${avgCpu} | ${p.stats.skippedCount} | ${p.stats.errorCount}\n`;
+        }
+        return output;
+    }
+    suspendProcess(processId) {
+        const success = kernel.suspendProcess(processId);
+        if (success) {
+            return `Process "${processId}" suspended.`;
+        }
+        return `Process "${processId}" not found.`;
+    }
+    resumeProcess(processId) {
+        const success = kernel.resumeProcess(processId);
+        if (success) {
+            return `Process "${processId}" resumed.`;
+        }
+        return `Process "${processId}" not found or not suspended.`;
+    }
+    resetKernelStats() {
+        kernel.resetStats();
+        return "Kernel statistics reset.";
+    }
+    showCreepStats() {
+        const stats = creepProcessManager.getStats();
+        let output = `=== Creep Process Stats ===
+Total Creeps: ${stats.totalCreeps}
+Registered Processes: ${stats.registeredCreeps}
+
+Creeps by Priority:`;
+        for (const [priority, count] of Object.entries(stats.creepsByPriority)) {
+            output += `\n  ${priority}: ${count}`;
+        }
+        return output;
+    }
+    showRoomStats() {
+        const stats = roomProcessManager.getStats();
+        let output = `=== Room Process Stats ===
+Total Rooms: ${stats.totalRooms}
+Registered Processes: ${stats.registeredRooms}
+Owned Rooms: ${stats.ownedRooms}
+
+Rooms by Priority:`;
+        for (const [priority, count] of Object.entries(stats.roomsByPriority)) {
+            output += `\n  ${priority}: ${count}`;
+        }
+        return output;
+    }
+    listCreepProcesses(role) {
+        const allProcesses = kernel.getProcesses();
+        let creepProcesses = allProcesses.filter(p => p.id.startsWith("creep:"));
+        if (role) {
+            creepProcesses = creepProcesses.filter(p => p.name.includes(`(${role})`));
+        }
+        if (creepProcesses.length === 0) {
+            return role
+                ? `No creep processes found with role: ${role}`
+                : "No creep processes registered.";
+        }
+        let output = role
+            ? `=== Creep Processes (Role: ${role}) ===\n`
+            : "=== All Creep Processes ===\n";
+        output += "Name | Priority | Runs | Avg CPU | Errors\n";
+        output += "-".repeat(70) + "\n";
+        const sorted = [...creepProcesses].sort((a, b) => b.priority - a.priority);
+        for (const p of sorted) {
+            const avgCpu = p.stats.avgCpu.toFixed(4);
+            output += `${p.name} | ${p.priority} | ${p.stats.runCount} | ${avgCpu} | ${p.stats.errorCount}\n`;
+        }
+        output += `\nTotal: ${creepProcesses.length} creep processes`;
+        return output;
+    }
+    listRoomProcesses() {
+        const allProcesses = kernel.getProcesses();
+        const roomProcesses = allProcesses.filter(p => p.id.startsWith("room:"));
+        if (roomProcesses.length === 0) {
+            return "No room processes registered.";
+        }
+        let output = "=== Room Processes ===\n";
+        output += "Name | Priority | Runs | Avg CPU | Errors\n";
+        output += "-".repeat(70) + "\n";
+        const sorted = [...roomProcesses].sort((a, b) => b.priority - a.priority);
+        for (const p of sorted) {
+            const avgCpu = p.stats.avgCpu.toFixed(4);
+            output += `${p.name} | ${p.priority} | ${p.stats.runCount} | ${avgCpu} | ${p.stats.errorCount}\n`;
+        }
+        output += `\nTotal: ${roomProcesses.length} room processes`;
+        return output;
+    }
+}
+__decorate([
+    Command({
+        name: "showKernelStats",
+        description: "Show kernel statistics including CPU usage and process info",
+        usage: "showKernelStats()",
+        examples: ["showKernelStats()"],
+        category: "Kernel"
+    })
+], KernelCommands.prototype, "showKernelStats", null);
+__decorate([
+    Command({
+        name: "listProcesses",
+        description: "List all registered kernel processes",
+        usage: "listProcesses()",
+        examples: ["listProcesses()"],
+        category: "Kernel"
+    })
+], KernelCommands.prototype, "listProcesses", null);
+__decorate([
+    Command({
+        name: "suspendProcess",
+        description: "Suspend a kernel process by ID",
+        usage: "suspendProcess(processId)",
+        examples: ["suspendProcess('empire:manager')", "suspendProcess('cluster:manager')"],
+        category: "Kernel"
+    })
+], KernelCommands.prototype, "suspendProcess", null);
+__decorate([
+    Command({
+        name: "resumeProcess",
+        description: "Resume a suspended kernel process",
+        usage: "resumeProcess(processId)",
+        examples: ["resumeProcess('empire:manager')"],
+        category: "Kernel"
+    })
+], KernelCommands.prototype, "resumeProcess", null);
+__decorate([
+    Command({
+        name: "resetKernelStats",
+        description: "Reset all kernel process statistics",
+        usage: "resetKernelStats()",
+        examples: ["resetKernelStats()"],
+        category: "Kernel"
+    })
+], KernelCommands.prototype, "resetKernelStats", null);
+__decorate([
+    Command({
+        name: "showCreepStats",
+        description: "Show statistics about creep processes managed by the kernel",
+        usage: "showCreepStats()",
+        examples: ["showCreepStats()"],
+        category: "Kernel"
+    })
+], KernelCommands.prototype, "showCreepStats", null);
+__decorate([
+    Command({
+        name: "showRoomStats",
+        description: "Show statistics about room processes managed by the kernel",
+        usage: "showRoomStats()",
+        examples: ["showRoomStats()"],
+        category: "Kernel"
+    })
+], KernelCommands.prototype, "showRoomStats", null);
+__decorate([
+    Command({
+        name: "listCreepProcesses",
+        description: "List all creep processes with their details",
+        usage: "listCreepProcesses(role?)",
+        examples: ["listCreepProcesses()", "listCreepProcesses('harvester')"],
+        category: "Kernel"
+    })
+], KernelCommands.prototype, "listCreepProcesses", null);
+__decorate([
+    Command({
+        name: "listRoomProcesses",
+        description: "List all room processes with their details",
+        usage: "listRoomProcesses()",
+        examples: ["listRoomProcesses()"],
+        category: "Kernel"
+    })
+], KernelCommands.prototype, "listRoomProcesses", null);
+/**
+ * System commands
+ */
+class SystemCommands {
+    listCommands() {
+        return commandRegistry.generateHelp();
+    }
+    commandHelp(commandName) {
+        return commandRegistry.generateCommandHelp(commandName);
+    }
+}
+__decorate([
+    Command({
+        name: "listCommands",
+        description: "List all available commands (alias for help)",
+        usage: "listCommands()",
+        examples: ["listCommands()"],
+        category: "System"
+    })
+], SystemCommands.prototype, "listCommands", null);
+__decorate([
+    Command({
+        name: "commandHelp",
+        description: "Get detailed help for a specific command",
+        usage: "commandHelp(commandName)",
+        examples: ["commandHelp('setLogLevel')", "commandHelp('suspendProcess')"],
+        category: "System"
+    })
+], SystemCommands.prototype, "commandHelp", null);
+// =============================================================================
+// Command instances (singletons)
+// =============================================================================
+const loggingCommands = new LoggingCommands();
+const visualizationCommands = new VisualizationCommands();
+const statisticsCommands = new StatisticsCommands();
+const configurationCommands = new ConfigurationCommands();
+const kernelCommands = new KernelCommands();
+const systemCommands = new SystemCommands();
+/**
+ * Register all console commands with the command registry
+ */
+function registerAllConsoleCommands() {
+    // Initialize command registry first
+    commandRegistry.initialize();
+    // Register decorated commands from all command class instances
+    registerDecoratedCommands(loggingCommands);
+    registerDecoratedCommands(visualizationCommands);
+    registerDecoratedCommands(statisticsCommands);
+    registerDecoratedCommands(configurationCommands);
+    registerDecoratedCommands(kernelCommands);
+    registerDecoratedCommands(systemCommands);
+    // Expose all commands to global scope
+    commandRegistry.exposeToGlobal();
+}
+
+/**
+ * Dynamic Defender Spawning
+ *
+ * Automatically spawns defenders based on threat assessment:
+ * - Analyzes hostile creeps in room
+ * - Calculates required defender count
+ * - Prioritizes defender spawning during attacks
+ * - Scales defender strength based on enemy composition
+ *
+ * Addresses Issue: #22
+ */
+/**
+ * Analyze room threats and determine defender requirements
+ */
+function analyzeDefenderNeeds(room) {
+    const result = {
+        guards: 0,
+        rangers: 0,
+        healers: 0,
+        urgency: 1.0,
+        reasons: []
+    };
+    // Find all hostile creeps
+    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    if (hostiles.length === 0) {
+        return result; // No threats
+    }
+    // Analyze hostile composition
+    let meleeCount = 0;
+    let rangedCount = 0;
+    let healerCount = 0;
+    let dismantlerCount = 0;
+    let boostedCount = 0;
+    for (const hostile of hostiles) {
+        const body = hostile.body;
+        // Check for boosted parts
+        const isBoosted = body.some(part => part.boost !== undefined);
+        if (isBoosted)
+            boostedCount++;
+        // Count part types
+        for (const part of body) {
+            if (part.type === ATTACK)
+                meleeCount++;
+            if (part.type === RANGED_ATTACK)
+                rangedCount++;
+            if (part.type === HEAL)
+                healerCount++;
+            if (part.type === WORK)
+                dismantlerCount++;
+        }
+    }
+    // Calculate defender requirements
+    // Guards for melee attackers (1:1 ratio, min 1 if any melee)
+    if (meleeCount > 0) {
+        result.guards = Math.max(1, Math.ceil(meleeCount / 4));
+        result.reasons.push(`${meleeCount} melee parts detected`);
+    }
+    // Rangers for ranged attackers (1:1.5 ratio)
+    if (rangedCount > 0) {
+        result.rangers = Math.max(1, Math.ceil(rangedCount / 6));
+        result.reasons.push(`${rangedCount} ranged parts detected`);
+    }
+    // Healers if enemies have healers (1:2 ratio)
+    if (healerCount > 0) {
+        result.healers = Math.max(1, Math.ceil(healerCount / 8));
+        result.reasons.push(`${healerCount} heal parts detected`);
+    }
+    // Extra defenders for dismantlers (they're dangerous)
+    if (dismantlerCount > 0) {
+        result.guards += Math.ceil(dismantlerCount / 5);
+        result.reasons.push(`${dismantlerCount} work parts (dismantlers)`);
+    }
+    // Boosted enemies require more defenders
+    if (boostedCount > 0) {
+        result.guards = Math.ceil(result.guards * 1.5);
+        result.rangers = Math.ceil(result.rangers * 1.5);
+        result.healers = Math.ceil(result.healers * 1.5);
+        result.urgency = 2.0;
+        result.reasons.push(`${boostedCount} boosted enemies (high threat)`);
+    }
+    // Minimum composition for any attack
+    if (hostiles.length > 0) {
+        result.guards = Math.max(result.guards, 1);
+        result.rangers = Math.max(result.rangers, 1);
+    }
+    // Large attacks require healers
+    if (hostiles.length >= 3) {
+        result.healers = Math.max(result.healers, 1);
+    }
+    // Urgency based on hostile count
+    if (hostiles.length >= 5) {
+        result.urgency = Math.max(result.urgency, 1.5);
+        result.reasons.push(`${hostiles.length} hostiles (large attack)`);
+    }
+    // Check for critical structures under attack
+    const damagedCritical = room.find(FIND_MY_STRUCTURES, {
+        filter: s => (s.structureType === STRUCTURE_SPAWN ||
+            s.structureType === STRUCTURE_STORAGE ||
+            s.structureType === STRUCTURE_TERMINAL) &&
+            s.hits < s.hitsMax * 0.8
+    });
+    if (damagedCritical.length > 0) {
+        result.urgency = 3.0;
+        result.reasons.push(`Critical structures under attack!`);
+    }
+    logger.info(`Defender analysis for ${room.name}: ${result.guards} guards, ${result.rangers} rangers, ${result.healers} healers (urgency: ${result.urgency}x) - ${result.reasons.join(", ")}`, { subsystem: "Defense" });
+    return result;
+}
+/**
+ * Get current defender count in room
+ */
+function getCurrentDefenders(room) {
+    const creeps = room.find(FIND_MY_CREEPS);
+    return {
+        guards: creeps.filter(c => c.memory.role === "guard").length,
+        rangers: creeps.filter(c => c.memory.role === "ranger").length,
+        healers: creeps.filter(c => c.memory.role === "healer").length
+    };
+}
+/**
+ * Calculate defender spawn priority boost
+ */
+function getDefenderPriorityBoost(room, swarm, role) {
+    const needs = analyzeDefenderNeeds(room);
+    const current = getCurrentDefenders(room);
+    // No boost if no threats
+    if (needs.guards === 0 && needs.rangers === 0 && needs.healers === 0) {
+        return 0;
+    }
+    let boost = 0;
+    // Boost priority for needed defenders
+    if (role === "guard" && current.guards < needs.guards) {
+        boost = 100 * needs.urgency;
+    }
+    else if (role === "ranger" && current.rangers < needs.rangers) {
+        boost = 100 * needs.urgency;
+    }
+    else if (role === "healer" && current.healers < needs.healers) {
+        boost = 100 * needs.urgency;
+    }
+    return boost;
+}
+/**
+ * Check if room needs external defense assistance
+ * A room needs help when:
+ * - It has significant threats (danger >= 2)
+ * - It cannot produce enough defenders (low energy, no spawns, or spawn queue full)
+ * - The threat is urgent (urgency >= 1.5)
+ */
+function needsDefenseAssistance(room, swarm) {
+    // No assistance needed if no significant threats
+    if (swarm.danger < 2) {
+        return false;
+    }
+    const needs = analyzeDefenderNeeds(room);
+    const current = getCurrentDefenders(room);
+    // Check if room lacks the defenders it needs
+    const defenderDeficit = (needs.guards - current.guards) + (needs.rangers - current.rangers);
+    if (defenderDeficit <= 0) {
+        return false; // Room has enough defenders
+    }
+    // Check if room can spawn defenders
+    const spawns = room.find(FIND_MY_SPAWNS);
+    if (spawns.length === 0) {
+        return true; // No spawns = definitely needs help
+    }
+    // Check if any spawn is available
+    const availableSpawns = spawns.filter(s => !s.spawning);
+    if (availableSpawns.length === 0) {
+        return true; // All spawns busy = needs help
+    }
+    // Check energy availability for spawning defenders
+    const energyAvailable = room.energyAvailable;
+    const minDefenderCost = 250; // Minimum cost for a basic defender
+    if (energyAvailable < minDefenderCost) {
+        return true; // Not enough energy = needs help
+    }
+    // Check urgency - high urgency threats need immediate help even if room can eventually spawn
+    if (needs.urgency >= 2.0 && defenderDeficit >= 2) {
+        return true; // Critical threat with multiple defender deficit = needs help
+    }
+    // Critical danger (level 3) with any defender deficit should request help
+    if (swarm.danger >= 3 && defenderDeficit >= 1) {
+        return true; // Critical danger always needs help
+    }
+    return false;
+}
+/**
+ * Create a defense request for a room that needs assistance
+ */
+function createDefenseRequest(room, swarm) {
+    if (!needsDefenseAssistance(room, swarm)) {
+        return null;
+    }
+    const needs = analyzeDefenderNeeds(room);
+    const current = getCurrentDefenders(room);
+    const request = {
+        roomName: room.name,
+        guardsNeeded: Math.max(0, needs.guards - current.guards),
+        rangersNeeded: Math.max(0, needs.rangers - current.rangers),
+        healersNeeded: Math.max(0, needs.healers - current.healers),
+        urgency: needs.urgency,
+        createdAt: Game.time,
+        threat: needs.reasons.join("; ")
+    };
+    logger.warn(`Defense assistance requested for ${room.name}: ${request.guardsNeeded} guards, ${request.rangersNeeded} rangers, ${request.healersNeeded} healers - ${request.threat}`, { subsystem: "Defense" });
+    return request;
+}
+
+/**
+ * Spawn Logic - Phase 8
+ *
+ * Central spawn manager per room:
+ * - Derives role weights from evolution stage, posture, pheromones
+ * - Uses weighted selection for next role
+ * - Defines body templates per role
+ * - Task assignment heuristics
+ */
+/**
+ * Focus room upgrader scaling configuration
+ * Defines how many upgraders a focus room should spawn based on RCL
+ */
+const FOCUS_ROOM_UPGRADER_LIMITS = {
+    /** RCL 1-3: Early game, limited energy */
+    EARLY: 2,
+    /** RCL 4-6: Mid game, stable economy */
+    MID: 4,
+    /** RCL 7: Late game, push to RCL 8 */
+    LATE: 6
+};
+/** Priority boost for upgraders in focus rooms */
+const FOCUS_ROOM_UPGRADER_PRIORITY_BOOST = 40;
+/**
+ * Calculate body cost
+ */
+function calculateBodyCost(parts) {
+    const costs = {
+        [MOVE]: 50,
+        [WORK]: 100,
+        [CARRY]: 50,
+        [ATTACK]: 80,
+        [RANGED_ATTACK]: 150,
+        [HEAL]: 250,
+        [CLAIM]: 600,
+        [TOUGH]: 10
+    };
+    return parts.reduce((sum, part) => sum + costs[part], 0);
+}
+/**
+ * Create body template
+ */
+function createBody(parts, minCapacity = 0) {
+    return {
+        parts,
+        cost: calculateBodyCost(parts),
+        minCapacity: minCapacity || calculateBodyCost(parts)
+    };
+}
+/**
+ * Role definitions
+ */
+const ROLE_DEFINITIONS = {
+    // Economy roles
+    larvaWorker: {
+        role: "larvaWorker",
+        family: "economy",
+        bodies: [
+            createBody([WORK, CARRY, MOVE], 200),
+            createBody([WORK, WORK, CARRY, CARRY, MOVE, MOVE], 400),
+            createBody([WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE], 600),
+            createBody([WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 800)
+        ],
+        priority: 100,
+        maxPerRoom: 3,
+        remoteRole: false
+    },
+    harvester: {
+        role: "harvester",
+        family: "economy",
+        bodies: [
+            createBody([WORK, WORK, MOVE], 250),
+            createBody([WORK, WORK, WORK, WORK, MOVE, MOVE], 500),
+            createBody([WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE], 700),
+            createBody([WORK, WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE], 800),
+            createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE], 1000)
+        ],
+        priority: 95,
+        maxPerRoom: 2,
+        remoteRole: false
+    },
+    hauler: {
+        role: "hauler",
+        family: "economy",
+        bodies: [
+            createBody([CARRY, CARRY, MOVE, MOVE], 200),
+            createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
+            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 800),
+            createBody([...Array(16).fill(CARRY), ...Array(16).fill(MOVE)], 1600)
+        ],
+        priority: 90,
+        maxPerRoom: 2,
+        remoteRole: true
+    },
+    upgrader: {
+        role: "upgrader",
+        family: "economy",
+        bodies: [
+            createBody([WORK, CARRY, MOVE], 200),
+            createBody([WORK, WORK, WORK, CARRY, MOVE, MOVE], 450),
+            createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 1000),
+            createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1700)
+        ],
+        priority: 60,
+        maxPerRoom: 2,
+        remoteRole: false
+    },
+    builder: {
+        role: "builder",
+        family: "economy",
+        bodies: [
+            createBody([WORK, CARRY, MOVE, MOVE], 250),
+            createBody([WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 650),
+            createBody([WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1400)
+        ],
+        priority: 70,
+        maxPerRoom: 2,
+        remoteRole: false
+    },
+    queenCarrier: {
+        role: "queenCarrier",
+        family: "economy",
+        bodies: [
+            createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE], 300),
+            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE], 450),
+            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 600)
+        ],
+        priority: 85,
+        maxPerRoom: 1,
+        remoteRole: false
+    },
+    mineralHarvester: {
+        role: "mineralHarvester",
+        family: "economy",
+        bodies: [
+            createBody([WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE], 550),
+            createBody([WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE], 850)
+        ],
+        priority: 40,
+        maxPerRoom: 1,
+        remoteRole: false
+    },
+    labTech: {
+        role: "labTech",
+        family: "economy",
+        bodies: [
+            createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
+            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 600)
+        ],
+        priority: 35,
+        maxPerRoom: 1,
+        remoteRole: false
+    },
+    factoryWorker: {
+        role: "factoryWorker",
+        family: "economy",
+        bodies: [
+            createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
+            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 600)
+        ],
+        priority: 35,
+        maxPerRoom: 1,
+        remoteRole: false
+    },
+    remoteHarvester: {
+        role: "remoteHarvester",
+        family: "economy",
+        bodies: [
+            createBody([WORK, WORK, CARRY, MOVE, MOVE, MOVE], 400),
+            createBody([WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 750),
+            createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1050),
+            createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1600)
+        ],
+        priority: 75,
+        maxPerRoom: 6,
+        remoteRole: true
+    },
+    remoteHauler: {
+        role: "remoteHauler",
+        family: "economy",
+        bodies: [
+            createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
+            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 800),
+            createBody([...Array(16).fill(CARRY), ...Array(16).fill(MOVE)], 1600)
+        ],
+        priority: 70,
+        maxPerRoom: 6,
+        remoteRole: true
+    },
+    interRoomCarrier: {
+        role: "interRoomCarrier",
+        family: "economy",
+        bodies: [
+            createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
+            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 600),
+            createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 800)
+        ],
+        priority: 90,
+        maxPerRoom: 4,
+        remoteRole: false
+    },
+    // Military roles
+    guard: {
+        role: "guard",
+        family: "military",
+        bodies: [
+            createBody([TOUGH, ATTACK, MOVE, MOVE], 190),
+            createBody([TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE], 500),
+            createBody([TOUGH, TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1070)
+        ],
+        priority: 80,
+        maxPerRoom: 2,
+        remoteRole: false
+    },
+    healer: {
+        role: "healer",
+        family: "military",
+        bodies: [
+            createBody([HEAL, MOVE], 300),
+            createBody([HEAL, HEAL, MOVE, MOVE], 600),
+            createBody([HEAL, HEAL, HEAL, HEAL, MOVE, MOVE, MOVE, MOVE], 1200)
+        ],
+        priority: 75,
+        maxPerRoom: 1,
+        remoteRole: false
+    },
+    soldier: {
+        role: "soldier",
+        family: "military",
+        bodies: [
+            createBody([ATTACK, ATTACK, MOVE, MOVE], 260),
+            createBody([ATTACK, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE], 520),
+            createBody([TOUGH, TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1340)
+        ],
+        priority: 70,
+        maxPerRoom: 2,
+        remoteRole: false
+    },
+    siegeUnit: {
+        role: "siegeUnit",
+        family: "military",
+        bodies: [
+            createBody([WORK, WORK, MOVE, MOVE], 300),
+            createBody([TOUGH, TOUGH, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 620),
+            createBody([
+                TOUGH,
+                TOUGH,
+                TOUGH,
+                TOUGH,
+                WORK,
+                WORK,
+                WORK,
+                WORK,
+                WORK,
+                WORK,
+                MOVE,
+                MOVE,
+                MOVE,
+                MOVE,
+                MOVE,
+                MOVE,
+                MOVE,
+                MOVE,
+                MOVE,
+                MOVE
+            ], 1040)
+        ],
+        priority: 50,
+        maxPerRoom: 2,
+        remoteRole: false
+    },
+    ranger: {
+        role: "ranger",
+        family: "military",
+        bodies: [
+            createBody([RANGED_ATTACK, MOVE], 200),
+            createBody([RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE], 400),
+            createBody([RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE], 800)
+        ],
+        priority: 65,
+        maxPerRoom: 2,
+        remoteRole: false
+    },
+    // Utility roles
+    scout: {
+        role: "scout",
+        family: "utility",
+        bodies: [createBody([MOVE], 50)],
+        priority: 65,
+        maxPerRoom: 2,
+        remoteRole: true
+    },
+    claimer: {
+        role: "claimer",
+        family: "utility",
+        bodies: [createBody([CLAIM, MOVE], 650), createBody([CLAIM, CLAIM, MOVE, MOVE], 1300)],
+        priority: 50,
+        maxPerRoom: 3,
+        remoteRole: true
+    },
+    engineer: {
+        role: "engineer",
+        family: "utility",
+        bodies: [
+            createBody([WORK, CARRY, MOVE, MOVE], 250),
+            createBody([WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 500)
+        ],
+        priority: 55,
+        maxPerRoom: 2,
+        remoteRole: false
+    },
+    remoteWorker: {
+        role: "remoteWorker",
+        family: "utility",
+        bodies: [
+            createBody([WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 500),
+            createBody([WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 750)
+        ],
+        priority: 45,
+        maxPerRoom: 4,
+        remoteRole: true
+    }
+};
+/**
+ * Get spawn profile weights based on posture
+ */
+function getPostureSpawnWeights(posture) {
+    switch (posture) {
+        case "eco":
+            return {
+                harvester: 1.5,
+                hauler: 1.2,
+                upgrader: 1.3,
+                builder: 1.0,
+                queenCarrier: 1.0,
+                guard: 0.3,
+                healer: 0.1,
+                scout: 1.0,
+                claimer: 0.8,
+                engineer: 0.8,
+                remoteHarvester: 1.2,
+                remoteHauler: 1.2,
+                interRoomCarrier: 1.0
+            };
+        case "expand":
+            return {
+                harvester: 1.2,
+                hauler: 1.0,
+                upgrader: 0.8,
+                builder: 1.0,
+                queenCarrier: 0.8,
+                guard: 0.3,
+                scout: 1.5,
+                claimer: 1.5,
+                remoteWorker: 1.5,
+                engineer: 0.5,
+                remoteHarvester: 1.5,
+                remoteHauler: 1.5,
+                interRoomCarrier: 1.2
+            };
+        case "defensive":
+            return {
+                harvester: 1.0,
+                hauler: 1.0,
+                upgrader: 0.5,
+                builder: 0.5,
+                queenCarrier: 1.0,
+                guard: 2.0,
+                healer: 1.5,
+                ranger: 1.0,
+                scout: 0.8,
+                engineer: 1.2,
+                remoteHarvester: 0.5,
+                remoteHauler: 0.5,
+                interRoomCarrier: 1.5
+            };
+        case "war":
+            return {
+                harvester: 0.8,
+                hauler: 0.8,
+                upgrader: 0.3,
+                builder: 0.3,
+                queenCarrier: 1.0,
+                guard: 2.5,
+                healer: 2.0,
+                soldier: 2.0,
+                ranger: 1.5,
+                scout: 0.8,
+                engineer: 0.5,
+                remoteHarvester: 0.3,
+                remoteHauler: 0.3,
+                interRoomCarrier: 0.5
+            };
+        case "siege":
+            return {
+                harvester: 0.5,
+                hauler: 0.5,
+                upgrader: 0.1,
+                builder: 0.1,
+                queenCarrier: 1.0,
+                guard: 3.0,
+                healer: 2.5,
+                soldier: 2.5,
+                siegeUnit: 2.0,
+                ranger: 1.0,
+                scout: 0.5,
+                engineer: 0.2,
+                remoteHarvester: 0.1,
+                remoteHauler: 0.1
+            };
+        case "evacuate":
+            return {
+                hauler: 2.0,
+                queenCarrier: 1.5
+            };
+        case "nukePrep":
+            return {
+                harvester: 1.0,
+                hauler: 1.0,
+                upgrader: 0.5,
+                builder: 0.5,
+                queenCarrier: 1.0,
+                guard: 1.5,
+                scout: 0.5,
+                engineer: 2.0,
+                remoteHarvester: 0.5,
+                remoteHauler: 0.5
+            };
+        default:
+            return {
+                harvester: 1.0,
+                hauler: 1.0,
+                upgrader: 1.0,
+                builder: 1.0,
+                queenCarrier: 1.0,
+                scout: 1.0,
+                remoteHarvester: 1.0,
+                remoteHauler: 1.0
+            };
+    }
+}
+/**
+ * Get dynamic priority adjustments for roles
+ */
+function getDynamicPriorityBoost(room, swarm, role) {
+    let boost = 0;
+    // Defender priority boost based on threats
+    if (role === "guard" || role === "ranger" || role === "healer") {
+        boost += getDefenderPriorityBoost(room, swarm, role);
+    }
+    // Upgrader priority boost for focus room
+    if (role === "upgrader" && swarm.clusterId) {
+        const cluster = memoryManager.getCluster(swarm.clusterId);
+        if ((cluster === null || cluster === void 0 ? void 0 : cluster.focusRoom) === room.name) {
+            // Significant boost to prioritize upgrading in focus room
+            boost += FOCUS_ROOM_UPGRADER_PRIORITY_BOOST;
+        }
+    }
+    return boost;
+}
+/**
+ * Get pheromone multipliers for roles
+ */
+function getPheromoneMult(role, pheromones) {
+    var _a;
+    const map = {
+        harvester: "harvest",
+        hauler: "logistics",
+        upgrader: "upgrade",
+        builder: "build",
+        guard: "defense",
+        healer: "defense",
+        soldier: "war",
+        siegeUnit: "siege",
+        ranger: "war",
+        scout: "expand",
+        claimer: "expand",
+        remoteWorker: "expand",
+        engineer: "build",
+        remoteHarvester: "harvest",
+        remoteHauler: "logistics",
+        interRoomCarrier: "logistics"
+    };
+    const pheromoneKey = map[role];
+    if (!pheromoneKey)
+        return 1.0;
+    const value = (_a = pheromones[pheromoneKey]) !== null && _a !== void 0 ? _a : 0;
+    // Scale: 0-100 pheromone maps to 0.5-2.0 multiplier
+    return 0.5 + (value / 100) * 1.5;
+}
+/**
+ * Cache for creep counts per room, cleared each tick.
+ * OPTIMIZATION: Avoid iterating all creeps multiple times per tick when multiple spawns exist.
+ */
+const creepCountCache = new Map();
+let creepCountCacheTick = -1;
+let creepCountCacheRef = null;
+/**
+ * Count creeps by role in a room.
+ * OPTIMIZATION: Cache results per tick to avoid iterating all creeps multiple times.
+ * With multiple spawns in a room, this function could be called multiple times per tick.
+ */
+function countCreepsByRole(roomName) {
+    var _a, _b;
+    // Clear cache if new tick or Game.creeps reference changed
+    // Checking reference equality handles both production (new tick) and tests (creeps reassigned)
+    if (creepCountCacheTick !== Game.time || creepCountCacheRef !== Game.creeps) {
+        creepCountCache.clear();
+        creepCountCacheTick = Game.time;
+        creepCountCacheRef = Game.creeps;
+    }
+    // Check cache
+    const cached = creepCountCache.get(roomName);
+    if (cached) {
+        return cached;
+    }
+    // Build counts
+    const counts = new Map();
+    // OPTIMIZATION: Use for-in loop instead of Object.values() to avoid creating temporary array
+    for (const name in Game.creeps) {
+        const creep = Game.creeps[name];
+        const memory = creep.memory;
+        if (memory.homeRoom === roomName) {
+            const role = (_a = memory.role) !== null && _a !== void 0 ? _a : "unknown";
+            counts.set(role, ((_b = counts.get(role)) !== null && _b !== void 0 ? _b : 0) + 1);
+        }
+    }
+    // Cache for this tick
+    creepCountCache.set(roomName, counts);
+    return counts;
+}
+/**
+ * Get best body for energy capacity
+ */
+function getBestBody(def, energyCapacity) {
+    // Find best body that fits capacity
+    let best = null;
+    for (const body of def.bodies) {
+        if (body.cost <= energyCapacity) {
+            if (!best || body.cost > best.cost) {
+                best = body;
+            }
+        }
+    }
+    return best;
+}
+/**
+ * Count remote creeps assigned to a specific target room
+ */
+function countRemoteCreepsByTargetRoom(homeRoom, role, targetRoom) {
+    let count = 0;
+    for (const creep of Object.values(Game.creeps)) {
+        const memory = creep.memory;
+        if (memory.homeRoom === homeRoom && memory.role === role && memory.targetRoom === targetRoom) {
+            count++;
+        }
+    }
+    return count;
+}
+/**
+ * Get the remote room that needs workers of a given role.
+ * Returns the room name if workers are needed, null otherwise.
+ */
+function getRemoteRoomNeedingWorkers(homeRoom, role, swarm) {
+    var _a;
+    const remoteAssignments = (_a = swarm.remoteAssignments) !== null && _a !== void 0 ? _a : [];
+    if (remoteAssignments.length === 0)
+        return null;
+    // Define max workers per remote room based on role
+    const maxPerRemote = role === "remoteHarvester" ? 2 : 2; // 2 harvesters and 2 haulers per remote
+    // Find a remote room that needs workers
+    for (const remoteRoom of remoteAssignments) {
+        const currentCount = countRemoteCreepsByTargetRoom(homeRoom, role, remoteRoom);
+        if (currentCount < maxPerRemote) {
+            return remoteRoom;
+        }
+    }
+    return null;
+}
+/**
+ * Check if room needs role
+ */
+function needsRole(roomName, role, swarm) {
+    var _a;
+    const def = ROLE_DEFINITIONS[role];
+    if (!def)
+        return false;
+    // Special handling for remote roles
+    if (role === "remoteHarvester" || role === "remoteHauler") {
+        // Check if there's a remote room that needs workers
+        return getRemoteRoomNeedingWorkers(roomName, role, swarm) !== null;
+    }
+    const counts = countCreepsByRole(roomName);
+    const current = (_a = counts.get(role)) !== null && _a !== void 0 ? _a : 0;
+    // Check max per room (with special handling for upgraders in focus room)
+    let maxForRoom = def.maxPerRoom;
+    if (role === "upgrader" && swarm.clusterId) {
+        const cluster = memoryManager.getCluster(swarm.clusterId);
+        if ((cluster === null || cluster === void 0 ? void 0 : cluster.focusRoom) === roomName) {
+            // Allow more upgraders in focus room to accelerate upgrading
+            const room = Game.rooms[roomName];
+            if (room === null || room === void 0 ? void 0 : room.controller) {
+                // Scale upgraders based on RCL
+                if (room.controller.level <= 3) {
+                    maxForRoom = FOCUS_ROOM_UPGRADER_LIMITS.EARLY;
+                }
+                else if (room.controller.level <= 6) {
+                    maxForRoom = FOCUS_ROOM_UPGRADER_LIMITS.MID;
+                }
+                else {
+                    maxForRoom = FOCUS_ROOM_UPGRADER_LIMITS.LATE;
+                }
+            }
+        }
+    }
+    if (current >= maxForRoom)
+        return false;
+    // Special conditions
+    const room = Game.rooms[roomName];
+    if (!room)
+        return false;
+    // Scout: Spawn if we have remote rooms without full intel
+    // or if we're in expand posture and need more room data
+    if (role === "scout") {
+        // Always allow scouts if we don't have one (up to max per room)
+        if (current === 0)
+            return true;
+        // In expand posture, allow more scouts
+        if (swarm.posture === "expand" && current < def.maxPerRoom)
+            return true;
+        return false;
+    }
+    // Claimer: Only spawn if we have expansion targets or remote rooms that need reserving
+    if (role === "claimer") {
+        const overmind = memoryManager.getOvermind();
+        const ownedRooms = Object.values(Game.rooms).filter(r => { var _a; return (_a = r.controller) === null || _a === void 0 ? void 0 : _a.my; });
+        // Check if we have unclaimed expansion targets and can expand
+        const canExpand = ownedRooms.length < Game.gcl.level;
+        const hasExpansionTarget = overmind.claimQueue.some(c => !c.claimed);
+        // Check if we have remote rooms that need reserving (no reserver assigned)
+        const hasUnreservedRemote = needsReserver(roomName, swarm);
+        // Only spawn claimer if there's work to do
+        if (canExpand && hasExpansionTarget)
+            return true;
+        if (hasUnreservedRemote)
+            return true;
+        return false;
+    }
+    // Mineral harvester needs extractor
+    if (role === "mineralHarvester") {
+        const mineral = room.find(FIND_MINERALS)[0];
+        if (!mineral)
+            return false;
+        const extractor = mineral.pos.lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_EXTRACTOR);
+        if (!extractor)
+            return false;
+        if (mineral.mineralAmount === 0)
+            return false;
+    }
+    // Lab tech needs labs
+    if (role === "labTech") {
+        const labs = room.find(FIND_MY_STRUCTURES, { filter: s => s.structureType === STRUCTURE_LAB });
+        if (labs.length < 3)
+            return false;
+    }
+    // Factory worker needs factory
+    if (role === "factoryWorker") {
+        const factory = room.find(FIND_MY_STRUCTURES, { filter: s => s.structureType === STRUCTURE_FACTORY });
+        if (factory.length === 0)
+            return false;
+    }
+    // Queen carrier needs storage
+    if (role === "queenCarrier") {
+        if (!room.storage)
+            return false;
+    }
+    // Builder needs construction sites
+    if (role === "builder") {
+        const sites = room.find(FIND_MY_CONSTRUCTION_SITES);
+        if (sites.length === 0 && current > 0)
+            return false;
+    }
+    // Inter-room carrier needs active resource requests
+    if (role === "interRoomCarrier") {
+        // Check if room's cluster has any active resource transfer requests
+        if (!swarm.clusterId)
+            return false;
+        const cluster = memoryManager.getCluster(swarm.clusterId);
+        if (!cluster || !cluster.resourceRequests || cluster.resourceRequests.length === 0) {
+            return false;
+        }
+        // Check if there are requests that need more carriers
+        const needsCarriers = cluster.resourceRequests.some(req => {
+            // Only spawn for requests from this room
+            if (req.fromRoom !== room.name)
+                return false;
+            // Check if request needs more carriers
+            const assignedCount = req.assignedCreeps.filter(name => Game.creeps[name]).length;
+            const remaining = req.amount - req.delivered;
+            // Need carriers if we have significant remaining amount and not enough assigned
+            return remaining > 500 && assignedCount < 2;
+        });
+        if (!needsCarriers)
+            return false;
+    }
+    return true;
+}
+/**
+ * Check if room needs a reserver for any of its remote rooms
+ */
+function needsReserver(_homeRoom, swarm) {
+    var _a;
+    const remotes = (_a = swarm.remoteAssignments) !== null && _a !== void 0 ? _a : [];
+    if (remotes.length === 0)
+        return false;
+    // Check each remote room
+    for (const remoteName of remotes) {
+        // Check if any claimer is already targeting this room for reservation
+        let hasReserver = false;
+        for (const creep of Object.values(Game.creeps)) {
+            const memory = creep.memory;
+            if (memory.role === "claimer" && memory.targetRoom === remoteName) {
+                hasReserver = true;
+                break;
+            }
+        }
+        if (!hasReserver) {
+            return true; // Found a remote that needs a reserver
+        }
+    }
+    return false;
+}
+/**
+ * Generate creep name
+ */
+function generateCreepName(role) {
+    return `${role}_${Game.time}_${Math.floor(Math.random() * 1000)}`;
+}
+/**
+ * Get count of energy-producing creeps (harvesters + larvaWorkers)
+ */
+function getEnergyProducerCount(counts) {
+    var _a, _b;
+    return ((_a = counts.get("harvester")) !== null && _a !== void 0 ? _a : 0) + ((_b = counts.get("larvaWorker")) !== null && _b !== void 0 ? _b : 0);
+}
+/**
+ * Get count of transport creeps (haulers + larvaWorkers)
+ */
+function getTransportCount(counts) {
+    var _a, _b;
+    return ((_a = counts.get("hauler")) !== null && _a !== void 0 ? _a : 0) + ((_b = counts.get("larvaWorker")) !== null && _b !== void 0 ? _b : 0);
+}
+/**
+ * Check if room is in emergency state (no energy-producing creeps)
+ * This happens when all creeps die and extensions are empty
+ */
+function isEmergencySpawnState(roomName) {
+    const counts = countCreepsByRole(roomName);
+    return getEnergyProducerCount(counts) === 0;
+}
+/**
+ * Bootstrap spawn order - deterministic priority-based spawning.
+ * This defines the order in which critical roles should be spawned during
+ * recovery from a bad state, ensuring the economy can bootstrap properly.
+ */
+const BOOTSTRAP_SPAWN_ORDER = [
+    // 1. Energy production first - can't do anything without energy
+    { role: "larvaWorker", minCount: 1 },
+    // 2. Static harvesters for efficient mining (1 per source is enough with bigger bodies)
+    { role: "harvester", minCount: 1 },
+    // 3. Transport to distribute energy (1 is enough with bigger bodies)
+    { role: "hauler", minCount: 1 },
+    // 4. Second harvester for second source
+    { role: "harvester", minCount: 2 },
+    // 5. Queen carrier when storage exists (manages spawns/extensions)
+    { role: "queenCarrier", minCount: 1, condition: (room) => Boolean(room.storage) },
+    // 6. Upgrader for controller progress
+    { role: "upgrader", minCount: 1 }
+];
+/**
+ * Determine if the room is in "bootstrap" mode where critical roles are missing.
+ * In bootstrap mode, we use deterministic priority spawning instead of weighted selection.
+ *
+ * Bootstrap mode is active when:
+ * - Zero energy producers exist, OR
+ * - We have energy producers but no transport (energy can't be distributed), OR
+ * - We have fewer than minimum critical roles
+ */
+function isBootstrapMode(roomName, room) {
+    var _a, _b;
+    const counts = countCreepsByRole(roomName);
+    // Critical: no energy production at all
+    if (getEnergyProducerCount(counts) === 0) {
+        return true;
+    }
+    // Critical: we have harvesters but no way to transport energy
+    // (larvaWorkers can self-transport so they count as transport)
+    if (getTransportCount(counts) === 0 && ((_a = counts.get("harvester")) !== null && _a !== void 0 ? _a : 0) > 0) {
+        return true;
+    }
+    // Check minimum counts against bootstrap order
+    // This includes queenCarrier (when storage exists) as part of the order
+    for (const req of BOOTSTRAP_SPAWN_ORDER) {
+        // Skip conditional roles if condition not met
+        if (req.condition && !req.condition(room)) {
+            continue;
+        }
+        const current = (_b = counts.get(req.role)) !== null && _b !== void 0 ? _b : 0;
+        if (current < req.minCount) {
+            return true;
+        }
+    }
+    return false;
+}
+/**
+ * Get the next role to spawn in bootstrap mode.
+ * Uses deterministic priority order instead of weighted random selection.
+ */
+function getBootstrapRole(roomName, room, swarm) {
+    var _a;
+    const counts = countCreepsByRole(roomName);
+    // First check emergency: zero energy producers
+    if (getEnergyProducerCount(counts) === 0) {
+        return "larvaWorker";
+    }
+    // Follow bootstrap order
+    for (const req of BOOTSTRAP_SPAWN_ORDER) {
+        // Skip conditional roles if condition not met
+        if (req.condition && !req.condition(room)) {
+            continue;
+        }
+        const current = (_a = counts.get(req.role)) !== null && _a !== void 0 ? _a : 0;
+        if (current < req.minCount) {
+            // Verify we can spawn this role (check needsRole for special conditions)
+            if (needsRole(roomName, req.role, swarm)) {
+                return req.role;
+            }
+        }
+    }
+    return null;
+}
+/**
+ * Get all roles that need spawning, sorted by priority
+ */
+function getAllSpawnableRoles(room, swarm) {
+    var _a, _b;
+    const counts = countCreepsByRole(room.name);
+    const postureWeights = getPostureSpawnWeights(swarm.posture);
+    // Collect all roles that need spawning with their calculated priorities
+    const roleScores = [];
+    for (const [role, def] of Object.entries(ROLE_DEFINITIONS)) {
+        if (!needsRole(room.name, role, swarm))
+            continue;
+        const baseWeight = def.priority;
+        const postureWeight = (_a = postureWeights[role]) !== null && _a !== void 0 ? _a : 0.5;
+        const pheromoneMult = getPheromoneMult(role, swarm.pheromones);
+        const priorityBoost = getDynamicPriorityBoost(room, swarm, role);
+        // Reduce weight based on current count
+        const current = (_b = counts.get(role)) !== null && _b !== void 0 ? _b : 0;
+        const countFactor = Math.max(0.1, 1 - current / def.maxPerRoom);
+        const score = (baseWeight + priorityBoost) * postureWeight * pheromoneMult * countFactor;
+        roleScores.push({ role, score });
+    }
+    // Sort by score descending (highest priority first)
+    roleScores.sort((a, b) => b.score - a.score);
+    return roleScores.map(rs => rs.role);
+}
+/**
+ * Spawn manager - run for a room
+ */
+function runSpawnManager(room, swarm) {
+    const spawns = room.find(FIND_MY_SPAWNS);
+    const availableSpawn = spawns.find(s => !s.spawning);
+    if (!availableSpawn)
+        return;
+    const energyCapacity = room.energyCapacityAvailable;
+    const energyAvailable = room.energyAvailable;
+    // Emergency mode: when no energy-producing creeps exist and extensions are empty,
+    // use energyAvailable to select body instead of energyCapacityAvailable.
+    // This prevents deadlock where we wait for extensions to fill but have no creeps to fill them.
+    const isEmergency = isEmergencySpawnState(room.name);
+    const effectiveCapacity = isEmergency ? energyAvailable : energyCapacity;
+    // SPAWN FIX: Try roles in priority order until we find one we can afford
+    // This prevents the spawn system from stalling when high-priority roles
+    // are too expensive for current energy levels.
+    // In bootstrap mode, use deterministic bootstrap order
+    if (isBootstrapMode(room.name, room)) {
+        const role = getBootstrapRole(room.name, room, swarm);
+        if (!role)
+            return;
+        const def = ROLE_DEFINITIONS[role];
+        if (!def)
+            return;
+        const body = getBestBody(def, effectiveCapacity);
+        if (!body)
+            return;
+        // Check if we have enough energy
+        if (energyAvailable < body.cost)
+            return;
+        // Spawn creep
+        const name = generateCreepName(role);
+        const memory = {
+            role: def.role,
+            family: def.family,
+            homeRoom: room.name,
+            version: 1
+        };
+        // For remote roles, set the targetRoom to the remote room that needs workers
+        if (role === "remoteHarvester" || role === "remoteHauler") {
+            const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
+            if (targetRoom) {
+                memory.targetRoom = targetRoom;
+            }
+        }
+        const result = availableSpawn.spawnCreep(body.parts, name, {
+            memory: memory
+        });
+        if (result === OK) {
+            kernel.emit("spawn.completed", {
+                roomName: room.name,
+                creepName: name,
+                role,
+                cost: body.cost,
+                source: "SpawnManager"
+            });
+        }
+        return;
+    }
+    // Normal mode: Get all spawnable roles sorted by priority
+    // Try each one until we find an affordable option
+    const spawnableRoles = getAllSpawnableRoles(room, swarm);
+    for (const role of spawnableRoles) {
+        const def = ROLE_DEFINITIONS[role];
+        if (!def)
+            continue;
+        // SPAWN FIX: Try optimal body first (based on capacity), then fallback to smaller body
+        // 1. Try to spawn optimal body for capacity
+        let body = getBestBody(def, effectiveCapacity);
+        if (body && energyAvailable >= body.cost) ;
+        else {
+            // Can't afford optimal body, try smaller body based on available energy
+            body = getBestBody(def, energyAvailable);
+            if (!body || energyAvailable < body.cost) {
+                // Can't afford any body for this role, try next role
+                continue;
+            }
+        }
+        // We found an affordable role, spawn it
+        const name = generateCreepName(role);
+        const memory = {
+            role: def.role,
+            family: def.family,
+            homeRoom: room.name,
+            version: 1
+        };
+        // For remote roles, set the targetRoom to the remote room that needs workers
+        if (role === "remoteHarvester" || role === "remoteHauler") {
+            const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
+            if (targetRoom) {
+                memory.targetRoom = targetRoom;
+            }
+        }
+        // For inter-room carrier, assign a transfer request
+        if (role === "interRoomCarrier" && swarm.clusterId) {
+            const cluster = memoryManager.getCluster(swarm.clusterId);
+            if (cluster) {
+                // Find request from this room that needs carriers
+                const request = cluster.resourceRequests.find(req => {
+                    if (req.fromRoom !== room.name)
+                        return false;
+                    const assignedCount = req.assignedCreeps.filter(n => Game.creeps[n]).length;
+                    const remaining = req.amount - req.delivered;
+                    return remaining > 500 && assignedCount < 2;
+                });
+                if (request) {
+                    memory.transferRequest = {
+                        fromRoom: request.fromRoom,
+                        toRoom: request.toRoom,
+                        resourceType: request.resourceType,
+                        amount: request.amount
+                    };
+                    request.assignedCreeps.push(name);
+                }
+            }
+        }
+        const result = availableSpawn.spawnCreep(body.parts, name, {
+            memory: memory
+        });
+        // Emit spawn completed event on successful spawn
+        if (result === OK) {
+            kernel.emit("spawn.completed", {
+                roomName: room.name,
+                creepName: name,
+                role,
+                cost: body.cost,
+                source: "SpawnManager"
+            });
+            return; // Successfully spawned, exit
+        }
+        // If spawn failed for a reason other than insufficient energy, give up
+        if (result !== ERR_NOT_ENOUGH_ENERGY) {
+            return;
+        }
+    }
 }
 
 /**
@@ -21851,329 +22820,6 @@ function registerAllProcesses() {
 }
 
 /**
- * Idle Creep Detection
- *
- * Detects creeps that are truly idle and can skip expensive behavior evaluation.
- * This is a significant CPU optimization for large swarms (1000+ creeps).
- *
- * A creep is considered idle when:
- * 1. It's at its work position (e.g., harvester at source, upgrader at controller)
- * 2. It has an ongoing state that's still valid
- * 3. It doesn't need to make new decisions
- *
- * Design Principles (from ROADMAP.md Section 18):
- * - "Idle creep detection: Skip behavior evaluation for truly idle creeps"
- * - CPU savings: ~0.1-0.2 CPU per skipped creep
- * - With 142 creeps, ~20-40% may be in idle working state
- * - Potential savings: 3-8 CPU
- */
-// =============================================================================
-// Type Guards
-// =============================================================================
-/**
- * Type guard to check if an object is a RoomObject.
- * RoomObjects have pos and room properties.
- */
-function isRoomObject(obj) {
-    return (obj !== null &&
-        typeof obj === "object" &&
-        "pos" in obj &&
-        obj.pos instanceof RoomPosition &&
-        "room" in obj &&
-        obj.room instanceof Room);
-}
-// =============================================================================
-// Constants
-// =============================================================================
-/**
- * Roles that can benefit from idle detection (stationary workers).
- * Mobile roles like haulers and military units are excluded.
- *
- * OPTIMIZATION: Extended in performance optimization to include more roles.
- * With 100+ creeps, extending idle detection to builders can save 1-2 CPU.
- * Note: "repairer" is not a defined role in this bot, so it's excluded.
- */
-const IDLE_ELIGIBLE_ROLES = new Set([
-    "harvester",
-    "upgrader",
-    "mineralHarvester",
-    "depositHarvester",
-    "factoryWorker",
-    "labTech",
-    "builder" // Can be stationary at construction site
-]);
-/**
- * Energy threshold for harvesters.
- * If harvester is at source and has less than this in store, it's actively working.
- */
-const HARVESTER_WORKING_THRESHOLD = 40;
-/**
- * Minimum ticks a creep must have a valid state to be considered idle.
- * This prevents false positives for creeps that just started a task.
- * OPTIMIZATION: Reduced from 3 to 2 to allow idle detection to kick in sooner
- */
-const MIN_STATE_AGE_FOR_IDLE = 2;
-// =============================================================================
-// Public API
-// =============================================================================
-/**
- * Check if a creep can skip behavior evaluation this tick.
- * Returns true if the creep is:
- * - In an idle-eligible role
- * - Has a valid ongoing state
- * - Is actively working (not just standing around)
- * - Doesn't need to make new decisions
- *
- * @param creep - The creep to check
- * @returns true if creep can skip behavior evaluation
- */
-function canSkipBehaviorEvaluation(creep) {
-    const memory = creep.memory;
-    // Only certain roles are eligible
-    if (!IDLE_ELIGIBLE_ROLES.has(memory.role)) {
-        return false;
-    }
-    // Must have a valid state that's been active for a few ticks
-    const state = memory.state;
-    if (!state || !state.startTick) {
-        return false;
-    }
-    const stateAge = Game.time - state.startTick;
-    if (stateAge < MIN_STATE_AGE_FOR_IDLE) {
-        return false;
-    }
-    // Role-specific checks
-    switch (memory.role) {
-        case "harvester":
-            return isHarvesterIdle(creep, state);
-        case "upgrader":
-            return isUpgraderIdle(creep, state);
-        case "mineralHarvester":
-            return isMineralHarvesterIdle(creep, state);
-        case "builder":
-            return isBuilderIdle(creep, state);
-        case "depositHarvester":
-        case "factoryWorker":
-        case "labTech":
-            // These roles can be idle if they have a valid state
-            // The state machine will handle checking if state is still valid
-            return true;
-        default:
-            return false;
-    }
-}
-// =============================================================================
-// Role-Specific Idle Checks
-// =============================================================================
-/**
- * Check if a harvester is idle (actively harvesting at source).
- * Harvester is idle when:
- * - State is "harvest" or "transfer"
- * - Has valid target (source or container/link)
- * - Is next to target
- * - Has space to continue harvesting (not full)
- */
-function isHarvesterIdle(creep, state) {
-    // Must be harvesting or transferring to nearby container/link
-    if (state.action !== "harvest" && state.action !== "transfer") {
-        return false;
-    }
-    // Validate target still exists
-    if (!state.targetId) {
-        return false;
-    }
-    const target = Game.getObjectById(state.targetId);
-    if (!target || !isRoomObject(target)) {
-        return false;
-    }
-    // Must be adjacent to target
-    if (!creep.pos.isNearTo(target.pos)) {
-        return false;
-    }
-    // If harvesting, must not be full
-    if (state.action === "harvest") {
-        const carryCapacity = creep.store.getCapacity();
-        if (carryCapacity !== null && carryCapacity > 0) {
-            // Has carry capacity - check if full
-            if (creep.store.getFreeCapacity() === 0) {
-                return false; // Full, needs to transfer
-            }
-        }
-        // Drop miners (no carry) are always idle when harvesting
-    }
-    // If transferring, must have energy to transfer
-    if (state.action === "transfer") {
-        if (creep.store.getUsedCapacity(RESOURCE_ENERGY) < HARVESTER_WORKING_THRESHOLD) {
-            return false; // Not enough energy, needs to harvest
-        }
-    }
-    return true;
-}
-/**
- * Check if an upgrader is idle (actively upgrading controller).
- * Upgrader is idle when:
- * - State is "upgrade" or "withdraw" (getting energy from nearby container)
- * - Has valid target
- * - Is in range of target
- * - Has energy to upgrade (for upgrade state) or space to withdraw (for withdraw state)
- */
-function isUpgraderIdle(creep, state) {
-    // Must be upgrading or withdrawing
-    if (state.action !== "upgrade" && state.action !== "withdraw") {
-        return false;
-    }
-    // Validate target
-    if (!state.targetId) {
-        return false;
-    }
-    const target = Game.getObjectById(state.targetId);
-    if (!target || !isRoomObject(target)) {
-        return false;
-    }
-    // Must be in range
-    const inRange = creep.pos.inRangeTo(target.pos, 3);
-    if (!inRange) {
-        return false;
-    }
-    // If upgrading, must have energy
-    if (state.action === "upgrade") {
-        if (creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0) {
-            return false;
-        }
-    }
-    // If withdrawing, must have space
-    if (state.action === "withdraw") {
-        if (creep.store.getFreeCapacity(RESOURCE_ENERGY) === 0) {
-            return false;
-        }
-    }
-    return true;
-}
-/**
- * Check if a mineral harvester is idle (actively mining mineral).
- * Similar to regular harvester but for minerals.
- */
-function isMineralHarvesterIdle(creep, state) {
-    // Must be harvesting mineral
-    if (state.action !== "harvestMineral") {
-        return false;
-    }
-    // Validate target
-    if (!state.targetId) {
-        return false;
-    }
-    const target = Game.getObjectById(state.targetId);
-    if (!target || !isRoomObject(target)) {
-        return false;
-    }
-    // Must be adjacent
-    if (!creep.pos.isNearTo(target.pos)) {
-        return false;
-    }
-    // Must not be full
-    if (creep.store.getFreeCapacity() === 0) {
-        return false;
-    }
-    return true;
-}
-/**
- * Check if a builder is idle (actively building at construction site).
- * Builder is idle when:
- * - State is "build"
- * - Has valid target (construction site)
- * - Is in range of target (range 3)
- * - Has energy to build
- */
-function isBuilderIdle(creep, state) {
-    // Must be building
-    if (state.action !== "build") {
-        return false;
-    }
-    // Validate target
-    if (!state.targetId) {
-        return false;
-    }
-    const target = Game.getObjectById(state.targetId);
-    if (!target || !isRoomObject(target)) {
-        return false;
-    }
-    // Must be in range (build range is 3)
-    if (!creep.pos.inRangeTo(target.pos, 3)) {
-        return false;
-    }
-    // Must have energy
-    if (creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0) {
-        return false;
-    }
-    return true;
-}
-/**
- * Execute the creep's current action without re-evaluating behavior.
- * This is called for idle creeps that can skip behavior evaluation.
- *
- * @param creep - The creep to execute action for
- * @returns true if action was executed successfully
- */
-function executeIdleAction(creep) {
-    const memory = creep.memory;
-    const state = memory.state;
-    if (!state || !state.targetId) {
-        return false;
-    }
-    const target = Game.getObjectById(state.targetId);
-    if (!target || !isRoomObject(target)) {
-        return false;
-    }
-    // Execute the action based on state with proper type validation
-    switch (state.action) {
-        case "harvest":
-            // Validate target is a Source
-            if ("energy" in target && "energyCapacity" in target && "ticksToRegeneration" in target) {
-                return creep.harvest(target) === OK;
-            }
-            return false;
-        case "harvestMineral":
-            // Validate target is a Mineral
-            if ("mineralType" in target && "mineralAmount" in target && "ticksToRegeneration" in target) {
-                return creep.harvest(target) === OK;
-            }
-            return false;
-        case "transfer":
-            // Validate target has store property (structures with storage)
-            if ("store" in target && target.store && typeof target.store === "object") {
-                return creep.transfer(target, RESOURCE_ENERGY) === OK;
-            }
-            return false;
-        case "withdraw":
-            // Validate target has store property (structures with storage)
-            if ("store" in target && target.store && typeof target.store === "object") {
-                return creep.withdraw(target, RESOURCE_ENERGY) === OK;
-            }
-            return false;
-        case "upgrade":
-            // Validate target is a Controller
-            if ("level" in target && "progress" in target && "my" in target) {
-                return creep.upgradeController(target) === OK;
-            }
-            return false;
-        case "build":
-            // Validate target is a ConstructionSite
-            if ("progressTotal" in target && "progress" in target) {
-                return creep.build(target) === OK;
-            }
-            return false;
-        case "repair":
-            // Validate target is a Structure
-            if ("hits" in target && "hitsMax" in target) {
-                return creep.repair(target) === OK;
-            }
-            return false;
-        default:
-            return false;
-    }
-}
-
-/**
  * Native Calls Tracker
  *
  * Wraps Screeps native methods to track usage statistics:
@@ -22506,155 +23152,9 @@ new Scheduler();
  * - Skips non-essential creeps when CPU is limited
  */
 // =============================================================================
-// Role Priority Configuration
+// Note: Creep and room management has been migrated to kernel processes
+// See creepProcessManager and roomProcessManager for the new implementation
 // =============================================================================
-/** Role priorities - higher values = run first */
-const ROLE_PRIORITY = {
-    // Critical economy roles
-    harvester: 100,
-    queenCarrier: 95,
-    hauler: 90,
-    // Military (always important)
-    guard: 85,
-    healer: 84,
-    soldier: 83,
-    ranger: 82,
-    siegeUnit: 81,
-    harasser: 80,
-    // Standard economy
-    larvaWorker: 70,
-    builder: 60,
-    upgrader: 50,
-    interRoomCarrier: 45,
-    // Utility
-    scout: 40,
-    claimer: 35,
-    engineer: 33,
-    remoteHarvester: 30,
-    remoteHauler: 25,
-    remoteWorker: 23,
-    linkManager: 22,
-    terminalManager: 21,
-    // Low priority
-    mineralHarvester: 20,
-    labTech: 10,
-    factoryWorker: 5,
-    // Power roles
-    powerQueen: 75,
-    powerWarrior: 75,
-    powerHarvester: 30,
-    powerCarrier: 25
-};
-const DEFAULT_PRIORITY = 50;
-const LOW_PRIORITY_THRESHOLD = 50;
-const PRIORITY_ORDER = Array.from(new Set([...Object.values(ROLE_PRIORITY), DEFAULT_PRIORITY])).sort((a, b) => b - a);
-const PRIORITY_INDEX = PRIORITY_ORDER.reduce((acc, priority, index) => {
-    acc[priority] = index;
-    return acc;
-}, {});
-// =============================================================================
-// Creep Helpers
-// =============================================================================
-/**
- * Get role family from creep memory
- */
-function getCreepFamily(creep) {
-    var _a;
-    const memory = creep.memory;
-    return (_a = memory.family) !== null && _a !== void 0 ? _a : "economy";
-}
-/**
- * Get role priority for a creep (higher = runs first)
- */
-function getCreepPriority(creep) {
-    var _a;
-    const memory = creep.memory;
-    return (_a = ROLE_PRIORITY[memory.role]) !== null && _a !== void 0 ? _a : DEFAULT_PRIORITY;
-}
-/**
- * Run creep based on its role family.
- * Uses idle detection to skip expensive behavior evaluation for stationary workers.
- */
-function runCreep(creep) {
-    // OPTIMIZATION: Skip behavior evaluation for idle creeps
-    // Idle creeps are stationary workers (harvesters, upgraders) that are actively
-    // working at their station and don't need to make new decisions.
-    // This saves ~0.1-0.2 CPU per skipped creep.
-    if (canSkipBehaviorEvaluation(creep)) {
-        executeIdleAction(creep);
-        return;
-    }
-    const family = getCreepFamily(creep);
-    const memory = creep.memory;
-    const roleName = memory.role;
-    // Profile per-role CPU usage for optimization insights
-    // Uses "role:" prefix to separate from subsystems
-    profiler.measureSubsystem(`role:${roleName}`, () => {
-        switch (family) {
-            case "economy":
-                runEconomyRole(creep);
-                break;
-            case "military":
-                runMilitaryRole(creep);
-                break;
-            case "utility":
-                runUtilityRole(creep);
-                break;
-            case "power":
-                runPowerCreepRole(creep);
-                break;
-            default:
-                runEconomyRole(creep);
-        }
-    });
-}
-// =============================================================================
-// CPU Management (Delegated to Kernel)
-// =============================================================================
-/**
- * Check if we should skip non-essential work due to low bucket
- * Uses kernel's bucket mode for consistency
- */
-function isLowBucket() {
-    const mode = kernel.getBucketMode();
-    return mode === "low" || mode === "critical";
-}
-/**
- * Get creeps sorted by priority without per-tick sorting cost.
- * Uses fixed priority buckets (counting sort) so scaling to thousands
- * of creeps is linear instead of O(n log n).
- *
- * OPTIMIZATION: Pre-allocate bucket arrays to avoid repeated allocations.
- */
-function getPrioritizedCreeps(skipLowPriority) {
-    var _a;
-    const buckets = PRIORITY_ORDER.map(() => []);
-    let skippedLow = 0;
-    // Use for-in loop instead of Object.values() to avoid creating temporary array
-    // More memory efficient with large creep counts (1000+)
-    for (const name in Game.creeps) {
-        const creep = Game.creeps[name];
-        if (creep.spawning)
-            continue;
-        const priority = getCreepPriority(creep);
-        if (skipLowPriority && priority < LOW_PRIORITY_THRESHOLD) {
-            skippedLow++;
-            continue;
-        }
-        const bucketIndex = (_a = PRIORITY_INDEX[priority]) !== null && _a !== void 0 ? _a : PRIORITY_INDEX[DEFAULT_PRIORITY];
-        buckets[bucketIndex].push(creep);
-    }
-    // Flatten buckets into single array (avoid spread operator for large arrays)
-    const ordered = [];
-    for (const bucket of buckets) {
-        if (bucket.length > 0) {
-            for (const creep of bucket) {
-                ordered.push(creep);
-            }
-        }
-    }
-    return { creeps: ordered, skippedLow };
-}
 // =============================================================================
 // Subsystem Runners
 // =============================================================================
@@ -22681,59 +23181,12 @@ function runSpawns() {
     }
 }
 /**
- * Run creeps with CPU budget management.
- * Creeps are sorted by priority so critical roles run first.
- * Uses kernel for CPU budget checking with micro-batching.
- *
- * OPTIMIZATION: CPU checks are expensive (~0.01 CPU each).
- * With 1000+ creeps, checking every creep adds 10+ CPU overhead.
- * We use micro-batching to check every N creeps instead of every creep.
- *
- * OPTIMIZATION: Idle detection skips expensive behavior evaluation for
- * stationary workers that are actively working (harvesters at source, etc.).
+ * Synchronize creep and room processes with the kernel.
+ * This registers/unregisters processes as creeps spawn/die and rooms are claimed/lost.
  */
-function runCreepsWithBudget() {
-    const lowBucket = isLowBucket();
-    const { creeps, skippedLow } = getPrioritizedCreeps(lowBucket);
-    let creepsRun = 0;
-    let creepsSkipped = skippedLow;
-    // Micro-batch size: check CPU every N creeps
-    // Smaller batches when bucket is low for tighter control
-    // OPTIMIZATION: Increased batch sizes to reduce CPU check overhead
-    // With 22+ CPU spent on creeps, checking less frequently saves 0.5-1 CPU
-    // Scale batch size with bucket level for optimal performance
-    const BUCKET_LOW_THRESHOLD = 2000;
-    const BUCKET_MEDIUM_THRESHOLD = 5000;
-    const BATCH_SIZE_LOW = 10; // Tight control when bucket is low
-    const BATCH_SIZE_MEDIUM = 20; // Balanced when bucket is medium
-    const BATCH_SIZE_HIGH = 30; // Minimize overhead when bucket is high
-    const bucketLevel = Game.cpu.bucket;
-    let batchSize;
-    if (bucketLevel < BUCKET_LOW_THRESHOLD) {
-        batchSize = BATCH_SIZE_LOW;
-    }
-    else if (bucketLevel < BUCKET_MEDIUM_THRESHOLD) {
-        batchSize = BATCH_SIZE_MEDIUM;
-    }
-    else {
-        batchSize = BATCH_SIZE_HIGH;
-    }
-    for (let i = 0; i < creeps.length; i++) {
-        // Check CPU budget at the start of each batch
-        if (i % batchSize === 0 && !kernel.hasCpuBudget()) {
-            creepsSkipped += creeps.length - creepsRun;
-            break;
-        }
-        runCreep(creeps[i]);
-        creepsRun++;
-    }
-    // Log statistics periodically
-    const logInterval = lowBucket ? 100 : 50;
-    if (Game.time % logInterval === 0 && creepsSkipped > 0) {
-        logger.warn(`Skipped ${creepsSkipped} creeps due to CPU (bucket: ${Game.cpu.bucket})`, {
-            subsystem: "SwarmBot"
-        });
-    }
+function syncKernelProcesses() {
+    creepProcessManager.syncCreepProcesses();
+    roomProcessManager.syncRoomProcesses();
 }
 // =============================================================================
 // Main Loop
@@ -22855,32 +23308,22 @@ function loop$1() {
     clearMoveRequests();
     // Initialize memory structures
     memoryManager.initialize();
-    // Run all owned rooms with error recovery
-    profiler.measureSubsystem("rooms", () => {
-        try {
-            roomManager.run();
-        }
-        catch (err) {
-            const errorMessage = err instanceof Error ? err.message : String(err);
-            logger.error(`ERROR in room processing: ${errorMessage}`, { subsystem: "SwarmBot" });
-            if (err instanceof Error && err.stack) {
-                logger.error(err.stack, { subsystem: "SwarmBot" });
-            }
-        }
+    // Synchronize creep and room processes with kernel
+    // This must happen before kernel.run() to ensure all processes are registered
+    profiler.measureSubsystem("processSync", () => {
+        syncKernelProcesses();
     });
-    // Run kernel processes (empire, cluster, market, nuke, pheromone managers)
-    if (kernel.hasCpuBudget()) {
-        profiler.measureSubsystem("kernel", () => {
-            kernel.run();
-        });
-    }
+    // Run kernel processes - this now includes:
+    // - All creep processes (registered by creepProcessManager)
+    // - All room processes (registered by roomProcessManager)
+    // - Empire, cluster, market, nuke, pheromone managers (registered by processRegistry)
+    // The kernel's wrap-around queue ensures fair execution of all processes
+    profiler.measureSubsystem("kernel", () => {
+        kernel.run();
+    });
     // Run spawns (high priority - always runs)
     profiler.measureSubsystem("spawns", () => {
         runSpawns();
-    });
-    // Run all creeps with CPU budget management
-    profiler.measureSubsystem("creeps", () => {
-        runCreepsWithBudget();
     });
     // Process move requests - ask blocking creeps to move out of the way
     // This runs after creeps have registered their movement intentions

@@ -98,13 +98,31 @@ npm run watch
 
 ## Architecture
 
-The bot implements a layered architecture:
+The bot implements a layered architecture with a central **kernel-based process management system**:
+
+### Process Management
+All bot operations run as kernel processes with priority-based scheduling:
+- **Kernel**: Central process scheduler with wrap-around queue ensuring fair CPU allocation
+- **Process Types**: Creeps, rooms, empire managers, market, labs, etc.
+- **CPU Budgeting**: Each process has allocated CPU budget and minimum bucket requirements
+- **Fair Execution**: Wrap-around queue guarantees all processes eventually run, even under CPU pressure
+
+### Layered Architecture
 
 1. **Global Meta-Layer**: Multi-shard empire coordination
 2. **Shard-Strategic Layer**: Per-shard CPU allocation and strategy
 3. **Cluster/Colony Layer**: Regional coordination between adjacent rooms
-4. **Room Layer**: Individual room management (economy, defense, construction)
-5. **Creep/Squad Layer**: Unit-level behavior and coordination
+4. **Room Layer**: Individual room management (economy, defense, construction) - runs as kernel processes
+5. **Creep/Squad Layer**: Unit-level behavior and coordination - each creep is a kernel process
+
+### Console Commands
+
+Inspect process management with these commands:
+- `showKernelStats()` - View kernel statistics and CPU usage
+- `showCreepStats()` - View creep process statistics by priority
+- `showRoomStats()` - View room process statistics
+- `listCreepProcesses(role?)` - List creep processes with optional role filter
+- `listProcesses()` - List all kernel processes
 
 For detailed architecture documentation, see the root [ROADMAP.md](../../ROADMAP.md).
 
@@ -112,15 +130,20 @@ For detailed architecture documentation, see the root [ROADMAP.md](../../ROADMAP
 
 ```
 src/
-├── core/           # Core systems (main loop, scheduler, logger)
+├── core/           # Core systems
+│   ├── kernel.ts               # Central process scheduler
+│   ├── creepProcessManager.ts  # Creep process registration
+│   ├── roomProcessManager.ts   # Room process registration
+│   ├── scheduler.ts            # Task scheduling
+│   ├── logger.ts               # Logging system
+│   └── ...
 ├── memory/         # Memory management and schemas
-├── rooms/          # Room-level logic
-├── creeps/         # Creep roles and behaviors
+├── roles/          # Creep role behaviors
 ├── clusters/       # Colony cluster management
 ├── empire/         # Empire-wide coordination
 ├── labs/           # Lab and boost systems
 ├── defense/        # Defense and combat systems
-├── planning/       # Base planning and blueprints
+├── layouts/        # Base planning and blueprints
 ├── config/         # Configuration and tuning
 └── visuals/        # Debug visualizations
 ```
