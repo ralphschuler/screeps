@@ -2,7 +2,8 @@
  * Cluster Manager - Multi-Room Coordination
  *
  * Coordinates operations across rooms in a cluster:
- * - Terminal resource balancing
+ * - Terminal resource balancing (RCL 6+)
+ * - Pre-terminal resource sharing (RCL 1-5)
  * - Squad formation and coordination
  * - Rally point management
  * - Inter-room logistics
@@ -22,6 +23,7 @@ import {
   needsDefenseAssistance,
   type DefenseRequest
 } from "../spawning/defenderManager";
+import { resourceSharingManager } from "./resourceSharing";
 
 /**
  * Cluster Manager Configuration
@@ -111,9 +113,14 @@ export class ClusterManager {
       this.processDefenseRequests(cluster);
     });
 
-    // Balance terminal resources
+    // Balance terminal resources (RCL 6+ rooms)
     profiler.measureSubsystem(`cluster:${cluster.id}:terminals`, () => {
       this.balanceTerminalResources(cluster);
+    });
+
+    // Process resource sharing for pre-terminal rooms (RCL 1-5)
+    profiler.measureSubsystem(`cluster:${cluster.id}:resourceSharing`, () => {
+      resourceSharingManager.processCluster(cluster);
     });
 
     // Update squads

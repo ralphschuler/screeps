@@ -220,6 +220,19 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     remoteRole: true
   },
 
+  interRoomCarrier: {
+    role: "interRoomCarrier",
+    family: "economy",
+    bodies: [
+      createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
+      createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 600),
+      createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 800)
+    ],
+    priority: 90, // High priority to help struggling rooms
+    maxPerRoom: 4, // Multiple carriers can be spawned per cluster
+    remoteRole: false
+  },
+
   // Military roles
   guard: {
     role: "guard",
@@ -368,7 +381,8 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         claimer: 0.8,
         engineer: 0.8,
         remoteHarvester: 1.2,
-        remoteHauler: 1.2
+        remoteHauler: 1.2,
+        interRoomCarrier: 1.0
       };
     case "expand":
       return {
@@ -383,7 +397,8 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         remoteWorker: 1.5,
         engineer: 0.5,
         remoteHarvester: 1.5,
-        remoteHauler: 1.5
+        remoteHauler: 1.5,
+        interRoomCarrier: 1.2
       };
     case "defensive":
       return {
@@ -398,7 +413,8 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         scout: 0.8, // Added: scouts help monitor threats
         engineer: 1.2,
         remoteHarvester: 0.5,
-        remoteHauler: 0.5
+        remoteHauler: 0.5,
+        interRoomCarrier: 1.5
       };
     case "war":
       return {
@@ -414,7 +430,8 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         scout: 0.8, // Added: scouts help with reconnaissance
         engineer: 0.5,
         remoteHarvester: 0.3,
-        remoteHauler: 0.3
+        remoteHauler: 0.3,
+        interRoomCarrier: 0.5
       };
     case "siege":
       return {
@@ -498,7 +515,8 @@ export function getPheromoneMult(role: string, pheromones: Record<string, number
     remoteWorker: "expand",
     engineer: "build",
     remoteHarvester: "harvest",
-    remoteHauler: "logistics"
+    remoteHauler: "logistics",
+    interRoomCarrier: "logistics"
   };
 
   const pheromoneKey = map[role];
@@ -693,6 +711,32 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState): bo
   if (role === "builder") {
     const sites = room.find(FIND_MY_CONSTRUCTION_SITES);
     if (sites.length === 0 && current > 0) return false;
+  }
+
+  // Inter-room carrier needs active resource requests
+  if (role === "interRoomCarrier") {
+    // Check if room's cluster has any active resource transfer requests
+    if (!swarm.clusterId) return false;
+    
+    const cluster = memoryManager.getCluster(swarm.clusterId);
+    if (!cluster || !cluster.resourceRequests || cluster.resourceRequests.length === 0) {
+      return false;
+    }
+    
+    // Check if there are requests that need more carriers
+    const needsCarriers = cluster.resourceRequests.some(req => {
+      // Only spawn for requests from this room
+      if (req.fromRoom !== room.name) return false;
+      
+      // Check if request needs more carriers
+      const assignedCount = req.assignedCreeps.filter(name => Game.creeps[name]).length;
+      const remaining = req.amount - req.delivered;
+      
+      // Need carriers if we have significant remaining amount and not enough assigned
+      return remaining > 500 && assignedCount < 2;
+    });
+    
+    if (!needsCarriers) return false;
   }
 
   return true;
@@ -1028,6 +1072,30 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
       const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
       if (targetRoom) {
         memory.targetRoom = targetRoom;
+      }
+    }
+
+    // For inter-room carrier, assign a transfer request
+    if (role === "interRoomCarrier" && swarm.clusterId) {
+      const cluster = memoryManager.getCluster(swarm.clusterId);
+      if (cluster) {
+        // Find request from this room that needs carriers
+        const request = cluster.resourceRequests.find(req => {
+          if (req.fromRoom !== room.name) return false;
+          const assignedCount = req.assignedCreeps.filter(n => Game.creeps[n]).length;
+          const remaining = req.amount - req.delivered;
+          return remaining > 500 && assignedCount < 2;
+        });
+
+        if (request) {
+          memory.transferRequest = {
+            fromRoom: request.fromRoom,
+            toRoom: request.toRoom,
+            resourceType: request.resourceType,
+            amount: request.amount
+          };
+          request.assignedCreeps.push(name);
+        }
       }
     }
 

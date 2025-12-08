@@ -53,7 +53,10 @@ function createMockSwarmState(remoteAssignments: string[] = []): SwarmState {
       controllerProgress: 0,
       hostileCount: 0,
       damageReceived: 0,
-      constructionSites: 0
+      constructionSites: 0,
+      energyAvailable: 0,
+      energyCapacity: 0,
+      energyNeed: 0
     },
     lastUpdate: 0
   };
