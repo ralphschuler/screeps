@@ -103,12 +103,51 @@ export class EmpireManager {
   }
 
   /**
+   * Remove owned rooms from claim queue
+   */
+  private cleanupClaimQueue(overmind: OvermindMemory, ownedRoomNames: Set<string>): void {
+    const initialQueueLength = overmind.claimQueue.length;
+    overmind.claimQueue = overmind.claimQueue.filter(candidate => {
+      const isNowOwned = ownedRoomNames.has(candidate.roomName);
+      if (isNowOwned) {
+        logger.info(`Removing ${candidate.roomName} from claim queue - now owned`, { subsystem: "Empire" });
+        return false;
+      }
+      return true;
+    });
+    
+    if (overmind.claimQueue.length < initialQueueLength) {
+      logger.info(`Cleaned up claim queue: removed ${initialQueueLength - overmind.claimQueue.length} owned room(s)`, {
+        subsystem: "Empire"
+      });
+    }
+  }
+
+  /**
    * Update expansion queue with scored candidates
    */
   private updateExpansionQueue(overmind: OvermindMemory): void {
     // Check if we can expand
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+    const ownedRoomNames = new Set(ownedRooms.map(r => r.name));
     const gclLevel = Game.gcl.level;
+
+    // Update room intel for newly owned rooms to ensure intel.owner is current
+    // This ensures the expansion queue filtering works correctly
+    const spawns = Object.values(Game.spawns);
+    if (spawns.length > 0 && spawns[0].owner) {
+      const myUsername = spawns[0].owner.username;
+      for (const room of ownedRooms) {
+        const intel = overmind.roomIntel[room.name];
+        if (intel && intel.owner !== myUsername) {
+          intel.owner = myUsername;
+          logger.info(`Updated room intel for ${room.name} - now owned by ${myUsername}`, { subsystem: "Empire" });
+        }
+      }
+    }
+
+    // Always cleanup the claim queue to remove owned rooms
+    this.cleanupClaimQueue(overmind, ownedRoomNames);
 
     if (ownedRooms.length >= gclLevel) {
       // At GCL limit, don't evaluate expansion

@@ -194,6 +194,45 @@ describe("expansion manager concepts", () => {
       assert.lengthOf(unclaimed, 1, "Should have 1 unclaimed candidate");
       assert.equal(unclaimed[0].roomName, "E4N4");
     });
+
+    it("should remove claimed rooms from claim queue when they are now owned", () => {
+      const overmind = createMockOvermindMemory();
+      overmind.claimQueue = [
+        { roomName: "E1N1", score: 90, distance: 1, claimed: true, lastEvaluated: 1000 },
+        { roomName: "E4N4", score: 80, distance: 2, claimed: false, lastEvaluated: 1000 },
+        { roomName: "E5N5", score: 70, distance: 3, claimed: true, lastEvaluated: 1000 }
+      ];
+
+      // Mock that E1N1 is now owned
+      global.Game.rooms = {
+        E1N1: {
+          name: "E1N1",
+          controller: { my: true, level: 1 }
+        } as unknown as Room
+      };
+
+      const ownedRooms = Object.values(global.Game.rooms).filter(r => r.controller?.my);
+      const ownedRoomNames = new Set(ownedRooms.map(r => r.name));
+
+      // Simulate the cleanup logic that should be in EmpireManager.updateExpansionQueue
+      const initialLength = overmind.claimQueue.length;
+      overmind.claimQueue = overmind.claimQueue.filter(candidate => !ownedRoomNames.has(candidate.roomName));
+
+      // E1N1 should be removed from the queue since it's now owned
+      assert.lengthOf(overmind.claimQueue, initialLength - 1, "Should have removed 1 room from claim queue");
+      assert.isFalse(
+        overmind.claimQueue.some(c => c.roomName === "E1N1"),
+        "E1N1 should not be in claim queue anymore"
+      );
+      assert.isTrue(
+        overmind.claimQueue.some(c => c.roomName === "E4N4"),
+        "E4N4 should still be in claim queue"
+      );
+      assert.isTrue(
+        overmind.claimQueue.some(c => c.roomName === "E5N5"),
+        "E5N5 should still be in claim queue"
+      );
+    });
   });
 
   describe("claimer assignment", () => {
