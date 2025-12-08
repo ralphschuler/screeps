@@ -809,4 +809,182 @@ describe("Movement Room Exit Handling", () => {
       expect(shouldYieldTo(50, 500, 0, "builder", 50, undefined, 0, "builder")).to.be.false;
     });
   });
+
+  describe("Narrow Passage Detection", () => {
+    /**
+     * Simulates the narrow passage detection logic.
+     * A narrow passage is a 1-tile wide corridor where creeps can only move forward/backward.
+     */
+    function isInNarrowPassage(
+      pos: Position,
+      isWalkable: (x: number, y: number) => boolean
+    ): boolean {
+      // Check if we have walkable tiles above/below (vertical space)
+      const hasVerticalSpace = isWalkable(pos.x, pos.y - 1) || isWalkable(pos.x, pos.y + 1);
+
+      // Check if we have walkable tiles left/right (horizontal space)
+      const hasHorizontalSpace = isWalkable(pos.x - 1, pos.y) || isWalkable(pos.x + 1, pos.y);
+
+      // In a narrow passage if we only have space in one direction (not both)
+      return hasVerticalSpace !== hasHorizontalSpace;
+    }
+
+    it("should detect horizontal narrow passage (walls above and below)", () => {
+      // Position at (25, 25) with walls above and below, open left and right
+      const isWalkable = (x: number, y: number) => {
+        if (y === 24 || y === 26) return false; // walls above and below
+        if (x === 24 || x === 26) return true; // open left and right
+        return false;
+      };
+
+      expect(isInNarrowPassage({ x: 25, y: 25 }, isWalkable)).to.be.true;
+    });
+
+    it("should detect vertical narrow passage (walls left and right)", () => {
+      // Position at (25, 25) with walls left and right, open above and below
+      const isWalkable = (x: number, y: number) => {
+        if (x === 24 || x === 26) return false; // walls left and right
+        if (y === 24 || y === 26) return true; // open above and below
+        return false;
+      };
+
+      expect(isInNarrowPassage({ x: 25, y: 25 }, isWalkable)).to.be.true;
+    });
+
+    it("should NOT detect narrow passage when space in both directions", () => {
+      // Position at (25, 25) with open space in all cardinal directions
+      const isWalkable = (x: number, y: number) => {
+        if (x === 24 || x === 26) return true; // open left and right
+        if (y === 24 || y === 26) return true; // open above and below
+        return false;
+      };
+
+      expect(isInNarrowPassage({ x: 25, y: 25 }, isWalkable)).to.be.false;
+    });
+
+    it("should NOT detect narrow passage when completely surrounded by walls", () => {
+      // Position at (25, 25) with walls in all directions
+      const isWalkable = (_x: number, _y: number) => false;
+
+      expect(isInNarrowPassage({ x: 25, y: 25 }, isWalkable)).to.be.false;
+    });
+
+    it("should handle diagonal narrow passages", () => {
+      // Position at (25, 25) with only diagonal openings
+      const isWalkable = (x: number, y: number) => {
+        // Only diagonal positions are walkable
+        if ((x === 24 || x === 26) && (y === 24 || y === 26)) return true;
+        return false;
+      };
+
+      // Should NOT be considered narrow passage (cardinal directions are blocked)
+      expect(isInNarrowPassage({ x: 25, y: 25 }, isWalkable)).to.be.false;
+    });
+  });
+
+  describe("Backup Position Finding", () => {
+    /**
+     * Simulates finding a position to back up to (opposite of target direction).
+     */
+    function findBackupPosition(
+      pos: Position,
+      targetDirection: number,
+      isWalkable: (x: number, y: number) => boolean
+    ): Position | null {
+      // Direction mappings (1=TOP, 3=RIGHT, 5=BOTTOM, 7=LEFT)
+      const opposites: Record<number, number> = {
+        1: 5, // TOP -> BOTTOM
+        2: 6, // TOP_RIGHT -> BOTTOM_LEFT
+        3: 7, // RIGHT -> LEFT
+        4: 8, // BOTTOM_RIGHT -> TOP_LEFT
+        5: 1, // BOTTOM -> TOP
+        6: 2, // BOTTOM_LEFT -> TOP_RIGHT
+        7: 3, // LEFT -> RIGHT
+        8: 4 // TOP_LEFT -> BOTTOM_RIGHT
+      };
+
+      const offsets: Record<number, { dx: number; dy: number }> = {
+        1: { dx: 0, dy: -1 }, // TOP
+        2: { dx: 1, dy: -1 }, // TOP_RIGHT
+        3: { dx: 1, dy: 0 }, // RIGHT
+        4: { dx: 1, dy: 1 }, // BOTTOM_RIGHT
+        5: { dx: 0, dy: 1 }, // BOTTOM
+        6: { dx: -1, dy: 1 }, // BOTTOM_LEFT
+        7: { dx: -1, dy: 0 }, // LEFT
+        8: { dx: -1, dy: -1 } // TOP_LEFT
+      };
+
+      const oppositeDir = opposites[targetDirection];
+      if (!oppositeDir) return null;
+
+      const offset = offsets[oppositeDir];
+      if (!offset) return null;
+
+      const newX = pos.x + offset.dx;
+      const newY = pos.y + offset.dy;
+
+      // Check bounds (avoid exits)
+      if (newX <= 0 || newX >= 49 || newY <= 0 || newY >= 49) return null;
+
+      // Check if walkable
+      if (!isWalkable(newX, newY)) return null;
+
+      return { x: newX, y: newY };
+    }
+
+    it("should find backup position opposite to target direction (TOP)", () => {
+      // Target direction is TOP (1), should back up to BOTTOM (5)
+      const isWalkable = (x: number, y: number) => {
+        // Position below (26) is walkable
+        return x === 25 && y === 26;
+      };
+
+      const result = findBackupPosition({ x: 25, y: 25 }, 1, isWalkable);
+      expect(result).to.not.be.null;
+      expect(result!.x).to.equal(25);
+      expect(result!.y).to.equal(26);
+    });
+
+    it("should find backup position opposite to target direction (RIGHT)", () => {
+      // Target direction is RIGHT (3), should back up to LEFT (7)
+      const isWalkable = (x: number, y: number) => {
+        // Position to the left (24) is walkable
+        return x === 24 && y === 25;
+      };
+
+      const result = findBackupPosition({ x: 25, y: 25 }, 3, isWalkable);
+      expect(result).to.not.be.null;
+      expect(result!.x).to.equal(24);
+      expect(result!.y).to.equal(25);
+    });
+
+    it("should return null if backup position is blocked", () => {
+      // Target direction is TOP (1), backup would be BOTTOM (5) but it's blocked
+      const isWalkable = (_x: number, _y: number) => false;
+
+      const result = findBackupPosition({ x: 25, y: 25 }, 1, isWalkable);
+      expect(result).to.be.null;
+    });
+
+    it("should return null if backup position is at room exit", () => {
+      // Position at (1, 25), backing up LEFT would go to x=0 (exit)
+      const isWalkable = (x: number, _y: number) => x >= 0; // technically walkable but should be rejected
+
+      const result = findBackupPosition({ x: 1, y: 25 }, 3, isWalkable);
+      expect(result).to.be.null;
+    });
+
+    it("should handle diagonal directions correctly", () => {
+      // Target direction is TOP_RIGHT (2), should back up to BOTTOM_LEFT (6)
+      const isWalkable = (x: number, y: number) => {
+        // Position at bottom-left (24, 26) is walkable
+        return x === 24 && y === 26;
+      };
+
+      const result = findBackupPosition({ x: 25, y: 25 }, 2, isWalkable);
+      expect(result).to.not.be.null;
+      expect(result!.x).to.equal(24);
+      expect(result!.y).to.equal(26);
+    });
+  });
 });
