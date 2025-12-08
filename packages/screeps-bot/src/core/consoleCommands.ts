@@ -22,6 +22,8 @@ import { profiler } from "./profiler";
 import { getConfig, updateConfig } from "../config";
 import { roomVisualizer } from "../visuals/roomVisualizer";
 import { mapVisualizer } from "../visuals/mapVisualizer";
+import { creepProcessManager } from "./creepProcessManager";
+import { roomProcessManager } from "./roomProcessManager";
 
 /**
  * Logging commands
@@ -333,6 +335,123 @@ Top CPU Consumers:`;
   public resetKernelStats(): string {
     kernel.resetStats();
     return "Kernel statistics reset.";
+  }
+
+  @Command({
+    name: "showCreepStats",
+    description: "Show statistics about creep processes managed by the kernel",
+    usage: "showCreepStats()",
+    examples: ["showCreepStats()"],
+    category: "Kernel"
+  })
+  public showCreepStats(): string {
+    const stats = creepProcessManager.getStats();
+    
+    let output = `=== Creep Process Stats ===
+Total Creeps: ${stats.totalCreeps}
+Registered Processes: ${stats.registeredCreeps}
+
+Creeps by Priority:`;
+
+    for (const [priority, count] of Object.entries(stats.creepsByPriority)) {
+      output += `\n  ${priority}: ${count}`;
+    }
+
+    return output;
+  }
+
+  @Command({
+    name: "showRoomStats",
+    description: "Show statistics about room processes managed by the kernel",
+    usage: "showRoomStats()",
+    examples: ["showRoomStats()"],
+    category: "Kernel"
+  })
+  public showRoomStats(): string {
+    const stats = roomProcessManager.getStats();
+    
+    let output = `=== Room Process Stats ===
+Total Rooms: ${stats.totalRooms}
+Registered Processes: ${stats.registeredRooms}
+Owned Rooms: ${stats.ownedRooms}
+
+Rooms by Priority:`;
+
+    for (const [priority, count] of Object.entries(stats.roomsByPriority)) {
+      output += `\n  ${priority}: ${count}`;
+    }
+
+    return output;
+  }
+
+  @Command({
+    name: "listCreepProcesses",
+    description: "List all creep processes with their details",
+    usage: "listCreepProcesses(role?)",
+    examples: ["listCreepProcesses()", "listCreepProcesses('harvester')"],
+    category: "Kernel"
+  })
+  public listCreepProcesses(role?: string): string {
+    const allProcesses = kernel.getProcesses();
+    let creepProcesses = allProcesses.filter(p => p.id.startsWith("creep:"));
+    
+    if (role) {
+      creepProcesses = creepProcesses.filter(p => p.name.includes(`(${role})`));
+    }
+
+    if (creepProcesses.length === 0) {
+      return role 
+        ? `No creep processes found with role: ${role}`
+        : "No creep processes registered.";
+    }
+
+    let output = role 
+      ? `=== Creep Processes (Role: ${role}) ===\n`
+      : "=== All Creep Processes ===\n";
+    output += "Name | Priority | Runs | Avg CPU | Errors\n";
+    output += "-".repeat(70) + "\n";
+
+    const sorted = [...creepProcesses].sort((a, b) => b.priority - a.priority);
+
+    for (const p of sorted) {
+      const avgCpu = p.stats.avgCpu.toFixed(4);
+      output += `${p.name} | ${p.priority} | ${p.stats.runCount} | ${avgCpu} | ${p.stats.errorCount}\n`;
+    }
+
+    output += `\nTotal: ${creepProcesses.length} creep processes`;
+
+    return output;
+  }
+
+  @Command({
+    name: "listRoomProcesses",
+    description: "List all room processes with their details",
+    usage: "listRoomProcesses()",
+    examples: ["listRoomProcesses()"],
+    category: "Kernel"
+  })
+  public listRoomProcesses(): string {
+    const allProcesses = kernel.getProcesses();
+    const roomProcesses = allProcesses.filter(p => p.id.startsWith("room:"));
+
+    if (roomProcesses.length === 0) {
+      return "No room processes registered.";
+    }
+
+    let output = "=== Room Processes ===\n";
+    output += "Name | Priority | Runs | Avg CPU | Errors\n";
+    output += "-".repeat(70) + "\n";
+
+    const sorted = [...roomProcesses].sort((a, b) => b.priority - a.priority);
+
+    for (const p of sorted) {
+      const avgCpu = p.stats.avgCpu.toFixed(4);
+      output += `${p.name} | ${p.priority} | ${p.stats.runCount} | ${avgCpu} | ${p.stats.errorCount}\n`;
+    }
+
+    output += `\nTotal: ${roomProcesses.length} room processes`;
+
+    return output;
   }
 }
 
