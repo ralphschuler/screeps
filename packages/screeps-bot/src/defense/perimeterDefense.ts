@@ -292,26 +292,37 @@ export function placePerimeterDefense(
 
   // Priority 2: Remove walls at gap positions (RCL 3+)
   // These positions should only have ramparts for friendly passage
+  // Only remove walls if there's no rampart yet (to avoid destroying walls unnecessarily)
   if (rcl >= 3) {
     for (const rampart of plan.ramparts) {
-      // Check if there's a wall at this gap position
-      const wallAtGap = existingStructures.find(
-        s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_WALL
-      ) as StructureWall | undefined;
+      // Check if there's already a rampart at this position
+      const hasRampart = existingStructures.some(
+        s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART
+      );
+      const hasRampartSite = existingSites.some(
+        s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART
+      );
       
-      if (wallAtGap) {
-        // Destroy wall at gap position to allow rampart placement
-        const result = wallAtGap.destroy();
-        if (result === OK) {
-          logger.info(
-            `Removed wall at gap position (${rampart.x},${rampart.y}) to allow friendly passage`,
-            { subsystem: "Defense" }
-          );
-        } else {
-          logger.warn(
-            `Failed to destroy wall at gap position (${rampart.x},${rampart.y}): ${result}`,
-            { subsystem: "Defense" }
-          );
+      // Only destroy wall if there's no rampart yet
+      if (!hasRampart && !hasRampartSite) {
+        const wallAtGap = existingStructures.find(
+          s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_WALL
+        ) as StructureWall | undefined;
+        
+        if (wallAtGap) {
+          // Destroy wall at gap position to allow rampart placement
+          const result = wallAtGap.destroy();
+          if (result === OK) {
+            logger.info(
+              `Removed wall at gap position (${rampart.x},${rampart.y}) to allow friendly passage`,
+              { subsystem: "Defense" }
+            );
+          } else {
+            logger.warn(
+              `Failed to destroy wall at gap position (${rampart.x},${rampart.y}): ${result}`,
+              { subsystem: "Defense" }
+            );
+          }
         }
       }
     }
