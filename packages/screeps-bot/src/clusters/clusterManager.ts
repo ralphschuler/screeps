@@ -101,6 +101,11 @@ export class ClusterManager {
       this.updateClusterMetrics(cluster);
     });
 
+    // Handle defense requests
+    profiler.measureSubsystem(`cluster:${cluster.id}:defense`, () => {
+      this.processDefenseRequests(cluster);
+    });
+
     // Balance terminal resources
     profiler.measureSubsystem(`cluster:${cluster.id}:terminals`, () => {
       this.balanceTerminalResources(cluster);
@@ -367,6 +372,164 @@ export class ClusterManager {
       if (!cluster.memberRooms.includes(roomName)) {
         cluster.memberRooms.push(roomName);
         logger.info(`Added member room ${roomName} to cluster ${clusterId}`, { subsystem: "Cluster" });
+      }
+    }
+  }
+
+  /**
+   * Process defense requests within the cluster
+   * Coordinates assistance to rooms that need defense help
+   */
+  private processDefenseRequests(cluster: ClusterMemory): void {
+    // Import here to avoid circular dependency
+    const { needsDefenseAssistance, createDefenseRequest } = require("../spawning/defenderManager");
+
+    // Clean up old/expired requests (older than 500 ticks)
+    cluster.defenseRequests = cluster.defenseRequests.filter(req => {
+      const age = Game.time - req.createdAt;
+      // Remove if too old or if no longer needed
+      if (age > 500) {
+        logger.debug(`Defense request for ${req.roomName} expired (${age} ticks old)`, { subsystem: "Cluster" });
+        return false;
+      }
+      
+      // Check if threat is still present
+      const room = Game.rooms[req.roomName];
+      if (!room) return false;
+      
+      const hostiles = room.find(FIND_HOSTILE_CREEPS);
+      if (hostiles.length === 0) {
+        logger.info(`Defense request for ${req.roomName} resolved - no more hostiles`, { subsystem: "Cluster" });
+        return false;
+      }
+      
+      return true;
+    });
+
+    // Check each member room for new defense needs
+    for (const roomName of cluster.memberRooms) {
+      const room = Game.rooms[roomName];
+      if (!room || !room.controller?.my) continue;
+
+      const swarm = memoryManager.getSwarmState(roomName);
+      if (!swarm) continue;
+
+      // Check if room needs assistance
+      if (needsDefenseAssistance(room, swarm)) {
+        // Check if we already have a request for this room
+        const existingRequest = cluster.defenseRequests.find(req => req.roomName === roomName);
+        if (existingRequest) {
+          // Update existing request if needed
+          const newRequest = createDefenseRequest(room, swarm);
+          if (newRequest && newRequest.urgency > existingRequest.urgency) {
+            existingRequest.urgency = newRequest.urgency;
+            existingRequest.guardsNeeded = newRequest.guardsNeeded;
+            existingRequest.rangersNeeded = newRequest.rangersNeeded;
+            existingRequest.healersNeeded = newRequest.healersNeeded;
+            existingRequest.threat = newRequest.threat;
+          }
+        } else {
+          // Create new defense request
+          const request = createDefenseRequest(room, swarm);
+          if (request) {
+            cluster.defenseRequests.push({
+              ...request,
+              assignedCreeps: []
+            });
+          }
+        }
+      }
+    }
+
+    // Assign available defenders to pending requests
+    this.assignDefendersToRequests(cluster);
+  }
+
+  /**
+   * Assign available military creeps to defense requests
+   */
+  private assignDefendersToRequests(cluster: ClusterMemory): void {
+    if (cluster.defenseRequests.length === 0) return;
+
+    // Sort requests by urgency (highest first)
+    const sortedRequests = [...cluster.defenseRequests].sort((a, b) => b.urgency - a.urgency);
+
+    // Find available military creeps in cluster rooms
+    const availableDefenders: { creep: Creep; room: Room; distance: number; targetRoom: string }[] = [];
+
+    for (const request of sortedRequests) {
+      const targetRoom = Game.rooms[request.roomName];
+      if (!targetRoom) continue;
+
+      // Find available defenders in cluster
+      for (const roomName of cluster.memberRooms) {
+        if (roomName === request.roomName) continue; // Don't use defenders from the room under attack
+        
+        const room = Game.rooms[roomName];
+        if (!room) continue;
+
+        const creeps = room.find(FIND_MY_CREEPS);
+        for (const creep of creeps) {
+          const mem = creep.memory as { role?: string; family?: string; assistTarget?: string };
+          
+          // Check if creep is a military role and not already assigned
+          if (mem.family !== "military") continue;
+          if (mem.assistTarget) continue; // Already assigned
+          if (request.assignedCreeps.includes(creep.name)) continue;
+
+          // Check if creep matches needed role
+          const needsGuards = request.guardsNeeded > 0;
+          const needsRangers = request.rangersNeeded > 0;
+          const needsHealers = request.healersNeeded > 0;
+
+          const isGuard = mem.role === "guard";
+          const isRanger = mem.role === "ranger";
+          const isHealer = mem.role === "healer";
+
+          if ((needsGuards && isGuard) || (needsRangers && isRanger) || (needsHealers && isHealer)) {
+            // Calculate distance (rough estimate)
+            const distance = Game.map.getRoomLinearDistance(roomName, request.roomName);
+            
+            availableDefenders.push({
+              creep,
+              room,
+              distance,
+              targetRoom: request.roomName
+            });
+          }
+        }
+      }
+
+      // Assign closest defenders to this request
+      availableDefenders.sort((a, b) => a.distance - b.distance);
+
+      const needed = request.guardsNeeded + request.rangersNeeded + request.healersNeeded;
+      const toAssign = Math.min(needed, availableDefenders.length);
+
+      for (let i = 0; i < toAssign; i++) {
+        const defender = availableDefenders[i];
+        if (!defender) continue;
+
+        const creepMem = defender.creep.memory as { assistTarget?: string };
+        creepMem.assistTarget = request.roomName;
+        request.assignedCreeps.push(defender.creep.name);
+
+        logger.info(
+          `Assigned ${defender.creep.name} (${defender.creep.memory.role}) from ${defender.room.name} to assist ${request.roomName} (distance: ${defender.distance})`,
+          { subsystem: "Cluster" }
+        );
+
+        // Decrement needed count
+        if (defender.creep.memory.role === "guard") request.guardsNeeded--;
+        if (defender.creep.memory.role === "ranger") request.rangersNeeded--;
+        if (defender.creep.memory.role === "healer") request.healersNeeded--;
+      }
+
+      // Clear assigned defenders from available pool
+      for (let i = availableDefenders.length - 1; i >= 0; i--) {
+        if (request.assignedCreeps.includes(availableDefenders[i]!.creep.name)) {
+          availableDefenders.splice(i, 1);
+        }
       }
     }
   }

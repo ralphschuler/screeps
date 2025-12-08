@@ -188,8 +188,46 @@ function getSquadMemory(squadId: string): SquadMemory | undefined {
 /**
  * Guard - Home defense creep.
  * Attacks nearby hostiles, patrols the room when idle.
+ * Can also assist neighboring rooms when requested.
  */
 export function guard(ctx: CreepContext): CreepAction {
+  const mem = ctx.creep.memory as unknown as SwarmCreepMemory & { assistTarget?: string };
+
+  // Check if assigned to assist another room
+  if (mem.assistTarget) {
+    // Check if still needed in assist room
+    const assistRoom = Game.rooms[mem.assistTarget];
+    if (assistRoom) {
+      const hostiles = assistRoom.find(FIND_HOSTILE_CREEPS);
+      if (hostiles.length === 0) {
+        // Threat resolved, clear assignment
+        delete mem.assistTarget;
+        return { type: "idle" };
+      }
+
+      // Move to assist room if not there yet
+      if (ctx.creep.room.name !== mem.assistTarget) {
+        return { type: "moveToRoom", roomName: mem.assistTarget };
+      }
+
+      // In assist room - engage hostiles
+      const target = findPriorityTarget(ctx);
+      if (target) {
+        const range = ctx.creep.pos.getRangeTo(target);
+        const hasRanged = hasBodyPart(ctx.creep, RANGED_ATTACK);
+        const hasMelee = hasBodyPart(ctx.creep, ATTACK);
+
+        if (hasRanged && range <= 3) return { type: "rangedAttack", target };
+        if (hasMelee && range <= 1) return { type: "attack", target };
+        return { type: "moveTo", target };
+      }
+    } else {
+      // Can't see assist room - move towards it
+      return { type: "moveToRoom", roomName: mem.assistTarget };
+    }
+  }
+
+  // Normal home defense behavior
   const target = findPriorityTarget(ctx);
 
   if (target) {
@@ -222,11 +260,35 @@ export function guard(ctx: CreepContext): CreepAction {
 /**
  * Healer - Support creep that heals allies.
  * Priority: self-heal if critical → heal nearby allies → follow military creeps
+ * Can assist neighboring rooms when requested.
  */
 export function healer(ctx: CreepContext): CreepAction {
-  // Heal self if critically damaged
+  const mem = ctx.creep.memory as unknown as SwarmCreepMemory & { assistTarget?: string };
+
+  // Always heal self if critically damaged
   if (ctx.creep.hits < ctx.creep.hitsMax * 0.5) {
     return { type: "heal", target: ctx.creep };
+  }
+
+  // Check if assigned to assist another room
+  if (mem.assistTarget) {
+    const assistRoom = Game.rooms[mem.assistTarget];
+    if (assistRoom) {
+      const hostiles = assistRoom.find(FIND_HOSTILE_CREEPS);
+      if (hostiles.length === 0) {
+        // Threat resolved, clear assignment
+        delete mem.assistTarget;
+        return { type: "idle" };
+      }
+
+      // Move to assist room if not there yet
+      if (ctx.creep.room.name !== mem.assistTarget) {
+        return { type: "moveToRoom", roomName: mem.assistTarget };
+      }
+    } else {
+      // Can't see assist room - move towards it
+      return { type: "moveToRoom", roomName: mem.assistTarget };
+    }
   }
 
   // Heal nearby damaged allies
@@ -445,6 +507,38 @@ export function harasser(ctx: CreepContext): CreepAction {
  * Maintains distance of 3 tiles while attacking.
  */
 export function ranger(ctx: CreepContext): CreepAction {
+  const mem = ctx.creep.memory as unknown as SwarmCreepMemory & { assistTarget?: string };
+
+  // Check if assigned to assist another room
+  if (mem.assistTarget) {
+    const assistRoom = Game.rooms[mem.assistTarget];
+    if (assistRoom) {
+      const hostiles = assistRoom.find(FIND_HOSTILE_CREEPS);
+      if (hostiles.length === 0) {
+        // Threat resolved, clear assignment
+        delete mem.assistTarget;
+        return { type: "idle" };
+      }
+
+      // Move to assist room if not there yet
+      if (ctx.creep.room.name !== mem.assistTarget) {
+        return { type: "moveToRoom", roomName: mem.assistTarget };
+      }
+
+      // In assist room - engage hostiles
+      const target = findPriorityTarget(ctx);
+      if (target) {
+        const range = ctx.creep.pos.getRangeTo(target);
+        if (range < 3) return { type: "flee", from: [target.pos] };
+        if (range <= 3) return { type: "rangedAttack", target };
+        return { type: "moveTo", target };
+      }
+    } else {
+      // Can't see assist room - move towards it
+      return { type: "moveToRoom", roomName: mem.assistTarget };
+    }
+  }
+
   // Check for squad assignment
   if (ctx.memory.squadId) {
     const squad = getSquadMemory(ctx.memory.squadId);
