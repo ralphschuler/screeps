@@ -82,6 +82,9 @@ describe("SwarmBot logging", () => {
     sandbox.stub(bot.roomVisualizer, "draw").throws(new Error("boom"));
 
     // @ts-ignore: test setup for Game globals
+    global.Game.creeps = {}; // No creeps for this test
+    
+    // @ts-ignore: test setup for Game globals
     global.Game.rooms = {
       W1N1: { 
         name: "W1N1", 
