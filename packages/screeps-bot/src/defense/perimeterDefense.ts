@@ -12,6 +12,12 @@
 import { logger } from "../core/logger";
 
 /**
+ * Minimum size of an exit group to warrant a rampart gap for friendly passage.
+ * Groups smaller than this will have walls only (no gaps).
+ */
+const MIN_GROUP_SIZE_FOR_GAP = 4;
+
+/**
  * Exit direction type
  */
 export type ExitDirection = "top" | "bottom" | "left" | "right";
@@ -222,8 +228,8 @@ export function calculatePerimeterPositions(roomName: string): PerimeterPlan {
         if (terrain.get(wallX, wallY) === TERRAIN_MASK_WALL) continue;
         
         // Create a 2-tile wide gap in the center of each exit group
-        // Gap is placed at center ± 1 for groups of 4+ tiles
-        const isGap = group.length >= 4 && (i === centerIndex || i === centerIndex - 1);
+        // Gap is placed at center ± 1 for groups large enough to warrant friendly passage
+        const isGap = group.length >= MIN_GROUP_SIZE_FOR_GAP && (i === centerIndex || i === centerIndex - 1);
         
         if (isGap) {
           ramparts.push({ x: wallX, y: wallY, exitDirection: direction, isChokePoint: false });
