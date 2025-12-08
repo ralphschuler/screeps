@@ -218,8 +218,11 @@ export function scout(ctx: CreepContext): CreepAction {
   if (targetRoom && ctx.room.name === targetRoom) {
     const explorePos = findExplorePosition(ctx.room);
     if (explorePos) {
-      // Only record intel if we're at the explore position (within range 3)
-      if (ctx.creep.pos.getRangeTo(explorePos) <= 3) {
+      // Only record intel if we're at the explore position
+      // Range 3 chosen to ensure full room visibility (controller and sources are scanned)
+      // without requiring the scout to reach exact center tile
+      const INTEL_GATHER_RANGE = 3;
+      if (ctx.creep.pos.getRangeTo(explorePos) <= INTEL_GATHER_RANGE) {
         recordRoomIntel(ctx.room, overmind);
         delete ctx.memory.targetRoom; // Done exploring, move to next room
       } else {

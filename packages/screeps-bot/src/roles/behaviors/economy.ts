@@ -372,12 +372,32 @@ export function upgrader(ctx: CreepContext): CreepAction {
   // Upgraders are stationary, so their energy source rarely changes
   // Priority: storage > containers near controller > any container
   
-  // Check for nearby containers first (within range 3 of upgrader position)
-  // This allows upgraders to position near a container and controller for maximum efficiency
-  const nearbyContainers = ctx.creep.pos.findInRange(FIND_STRUCTURES, 3, {
-    filter: s => s.structureType === STRUCTURE_CONTAINER &&
-                 (s as StructureContainer).store.getUsedCapacity(RESOURCE_ENERGY) > 50
-  }) as StructureContainer[];
+  // OPTIMIZATION: Cache nearby container search per creep
+  // Upgraders are stationary so this rarely changes (30 tick cache)
+  const nearbyContainersCacheKey = "upgrader_nearby_containers";
+  const memory = ctx.creep.memory as unknown as { [key: string]: unknown };
+  const cachedNearby = memory[nearbyContainersCacheKey] as { ids: Id<StructureContainer>[]; tick: number } | undefined;
+  
+  let nearbyContainers: StructureContainer[] = [];
+  if (cachedNearby && Game.time - cachedNearby.tick < 30) {
+    // Use cached IDs
+    nearbyContainers = cachedNearby.ids
+      .map(id => Game.getObjectById(id))
+      .filter((c): c is StructureContainer => c !== null);
+  } else {
+    // Find nearby containers (within range 3 of upgrader position)
+    // This allows upgraders to position near a container and controller for maximum efficiency
+    nearbyContainers = ctx.creep.pos.findInRange(FIND_STRUCTURES, 3, {
+      filter: s => s.structureType === STRUCTURE_CONTAINER &&
+                   (s as StructureContainer).store.getUsedCapacity(RESOURCE_ENERGY) > 50
+    }) as StructureContainer[];
+    
+    // Cache the IDs
+    memory[nearbyContainersCacheKey] = {
+      ids: nearbyContainers.map(c => c.id),
+      tick: Game.time
+    };
+  }
   
   if (nearbyContainers.length > 0) {
     // Use the closest nearby container - this should be stable for idle detection

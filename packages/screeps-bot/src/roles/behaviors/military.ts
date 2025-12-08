@@ -561,11 +561,15 @@ export function evaluateMilitaryBehavior(ctx: CreepContext): CreepAction {
  * 
  * OPTIMIZATION: We no longer clear patrol waypoint cache every tick.
  * It's cached long-term and invalidated based on spawn count changes.
+ * 
+ * Note: This function is kept as a no-op placeholder for future military
+ * caches that may need per-tick clearing. The registration is maintained
+ * for consistency with the context system architecture.
  */
 function clearMilitaryCaches(): void {
   // Patrol waypoint cache is now persistent across ticks
-  // No need to clear it every tick
+  // Future per-tick caches can be cleared here if needed
 }
 
-// Register cache clearing with context system (currently a no-op)
+// Register with context system for architectural consistency
 registerMilitaryCacheClear(clearMilitaryCaches);
