@@ -515,6 +515,7 @@ export function getPheromoneMult(role: string, pheromones: Record<string, number
  */
 const creepCountCache = new Map<string, Map<string, number>>();
 let creepCountCacheTick = -1;
+let creepCountCacheRef: Record<string, Creep> | null = null;
 
 /**
  * Count creeps by role in a room.
@@ -522,10 +523,12 @@ let creepCountCacheTick = -1;
  * With multiple spawns in a room, this function could be called multiple times per tick.
  */
 export function countCreepsByRole(roomName: string): Map<string, number> {
-  // Clear cache if new tick
-  if (creepCountCacheTick !== Game.time) {
+  // Clear cache if new tick or Game.creeps reference changed
+  // Checking reference equality handles both production (new tick) and tests (creeps reassigned)
+  if (creepCountCacheTick !== Game.time || creepCountCacheRef !== Game.creeps) {
     creepCountCache.clear();
     creepCountCacheTick = Game.time;
+    creepCountCacheRef = Game.creeps;
   }
 
   // Check cache
