@@ -5,7 +5,7 @@
  * Iterating over creep.body repeatedly is expensive when done for many creeps.
  *
  * Design Principles (from ROADMAP.md Section 2):
- * - Aggressives Caching + TTL
+ * - Aggressive Caching + TTL
  * - Cache stored in global object (not Memory)
  * - Per-tick validity
  *

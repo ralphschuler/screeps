@@ -118,7 +118,7 @@ export function hasMovedThisTick(creep: Creep): boolean {
  */
 export function markAsMoved(creep: Creep): void {
   const store = getMoveIntentStore();
-  store.movedCreeps.set(creep.name);
+  store.movedCreeps.add(creep.name);
 }
 
 /**

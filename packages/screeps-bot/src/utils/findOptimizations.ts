@@ -6,7 +6,7 @@
  * significant CPU savings.
  *
  * Design Principles (from ROADMAP.md Section 2):
- * - Aggressives Caching + TTL
+ * - Aggressive Caching + TTL
  * - Early exit optimization
  * - Efficient filtering patterns
  *

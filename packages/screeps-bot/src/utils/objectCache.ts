@@ -6,7 +6,7 @@
  * For objects accessed multiple times per tick, caching provides significant savings.
  *
  * Design Principles (from ROADMAP.md Section 2):
- * - Aggressives Caching + TTL
+ * - Aggressive Caching + TTL
  * - Cache stored in global object, not Memory (no serialization cost)
  * - Per-tick validity (cleared automatically each tick)
  *
