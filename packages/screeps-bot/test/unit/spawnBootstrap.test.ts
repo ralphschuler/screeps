@@ -8,6 +8,7 @@ import {
   countCreepsByRole
 } from "../../src/logic/spawn";
 import type { SwarmState } from "../../src/memory/schemas";
+import { memoryManager } from "../../src/memory/manager";
 
 // Mock the global Game object
 declare const global: { Game: typeof Game };
@@ -104,8 +105,18 @@ describe("spawn bootstrap system", () => {
       rooms: {
         E1N1: createMockRoom("E1N1")
       },
-      time: 1000
+      time: 1000,
+      gcl: {
+        level: 1,
+        progress: 0,
+        progressTotal: 1000000
+      }
     } as unknown as typeof Game;
+
+    // Mock memoryManager.getOvermind() for claimer tests
+    (memoryManager as any).getOvermind = () => ({
+      claimQueue: []
+    });
   });
 
   describe("getEnergyProducerCount", () => {
@@ -177,9 +188,9 @@ describe("spawn bootstrap system", () => {
 
     it("should return false when minimum critical roles exist", () => {
       createMockCreeps({
-        larvaWorker: 2,
+        larvaWorker: 1,
         harvester: 2,
-        hauler: 2,
+        hauler: 1,
         upgrader: 1
       });
       const room = createMockRoom("E1N1");
@@ -190,7 +201,7 @@ describe("spawn bootstrap system", () => {
     it("should return true when storage exists but no queenCarrier", () => {
       createMockCreeps({
         harvester: 2,
-        hauler: 2
+        hauler: 1
       });
       const room = createMockRoom("E1N1", true); // Has storage
       const result = isBootstrapMode("E1N1", room);
@@ -200,8 +211,8 @@ describe("spawn bootstrap system", () => {
     it("should handle storage case requiring queenCarrier", () => {
       createMockCreeps({
         harvester: 2,
-        hauler: 2,
-        larvaWorker: 2,
+        hauler: 1,
+        larvaWorker: 1,
         upgrader: 1
       });
       const room = createMockRoom("E1N1", true); // Has storage
@@ -221,51 +232,53 @@ describe("spawn bootstrap system", () => {
       assert.equal(result, "larvaWorker");
     });
 
-    it("should return larvaWorker until minCount (2) is reached", () => {
+    it("should return harvester after first larvaWorker is spawned", () => {
       createMockCreeps({ larvaWorker: 1 });
-      const room = createMockRoom("E1N1");
-      const swarm = createMockSwarmState();
-      const result = getBootstrapRole("E1N1", room, swarm);
-      assert.equal(result, "larvaWorker");
-    });
-
-    it("should return harvester after larvaWorkers are spawned", () => {
-      createMockCreeps({ larvaWorker: 2 });
       const room = createMockRoom("E1N1");
       const swarm = createMockSwarmState();
       const result = getBootstrapRole("E1N1", room, swarm);
       assert.equal(result, "harvester");
     });
 
-    it("should return hauler after first harvester", () => {
-      createMockCreeps({ larvaWorker: 2, harvester: 1 });
+    it("should return hauler after first harvester is spawned", () => {
+      createMockCreeps({ larvaWorker: 1, harvester: 1 });
       const room = createMockRoom("E1N1");
       const swarm = createMockSwarmState();
       const result = getBootstrapRole("E1N1", room, swarm);
       assert.equal(result, "hauler");
     });
 
+    it("should return second harvester after first hauler", () => {
+      createMockCreeps({ larvaWorker: 1, harvester: 1, hauler: 1 });
+      const room = createMockRoom("E1N1");
+      const swarm = createMockSwarmState();
+      const result = getBootstrapRole("E1N1", room, swarm);
+      assert.equal(result, "harvester");
+    });
+
     it("should follow bootstrap order correctly", () => {
       createMockCreeps({
-        larvaWorker: 2,
+        larvaWorker: 1,
         harvester: 2,
-        hauler: 2
+        hauler: 1
       });
       const room = createMockRoom("E1N1");
       const swarm = createMockSwarmState();
       const result = getBootstrapRole("E1N1", room, swarm);
-      // Next in order after harvesters (2) and haulers (2) is queenCarrier (if storage)
+      // Next in order after harvesters (2) and haulers (1) is queenCarrier (if storage)
       // or upgrader if no storage
       assert.equal(result, "upgrader");
     });
 
     it("should request queenCarrier when storage exists", () => {
       createMockCreeps({
-        larvaWorker: 2,
+        larvaWorker: 1,
         harvester: 2,
-        hauler: 2
+        hauler: 1
       });
       const room = createMockRoom("E1N1", true); // Has storage
+      // Update global Game.rooms to use room with storage
+      global.Game.rooms["E1N1"] = room;
       const swarm = createMockSwarmState();
       const result = getBootstrapRole("E1N1", room, swarm);
       assert.equal(result, "queenCarrier");
@@ -273,9 +286,9 @@ describe("spawn bootstrap system", () => {
 
     it("should return null when all bootstrap roles are satisfied", () => {
       createMockCreeps({
-        larvaWorker: 2,
+        larvaWorker: 1,
         harvester: 2,
-        hauler: 2,
+        hauler: 1,
         upgrader: 1
       });
       const room = createMockRoom("E1N1");
@@ -297,9 +310,9 @@ describe("spawn bootstrap system", () => {
 
     it("should exit bootstrap mode when critical roles are filled", () => {
       createMockCreeps({
-        larvaWorker: 2,
+        larvaWorker: 1,
         harvester: 2,
-        hauler: 2,
+        hauler: 1,
         upgrader: 1
       });
       const room = createMockRoom("E1N1");

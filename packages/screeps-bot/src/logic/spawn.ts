@@ -84,10 +84,11 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     bodies: [
       createBody([WORK, CARRY, MOVE], 200),
       createBody([WORK, WORK, CARRY, CARRY, MOVE, MOVE], 400),
-      createBody([WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE], 600)
+      createBody([WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE], 600),
+      createBody([WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 800)
     ],
     priority: 100,
-    maxPerRoom: 6,
+    maxPerRoom: 3,
     remoteRole: false
   },
   harvester: {
@@ -97,7 +98,8 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
       createBody([WORK, WORK, MOVE], 250),
       createBody([WORK, WORK, WORK, WORK, MOVE, MOVE], 500),
       createBody([WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE], 700),
-      createBody([WORK, WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE], 800)
+      createBody([WORK, WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE], 800),
+      createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE], 1000)
     ],
     priority: 95,
     maxPerRoom: 2,
@@ -109,35 +111,14 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     bodies: [
       createBody([CARRY, CARRY, MOVE, MOVE], 200),
       createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
-      createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 600),
+      createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 800),
       createBody(
-        [
-          CARRY,
-          CARRY,
-          CARRY,
-          CARRY,
-          CARRY,
-          CARRY,
-          CARRY,
-          CARRY,
-          CARRY,
-          CARRY,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE
-        ],
-        1000
+        [...Array(16).fill(CARRY), ...Array(16).fill(MOVE)],
+        1600
       )
     ],
     priority: 90,
-    maxPerRoom: 4,
+    maxPerRoom: 2,
     remoteRole: true
   },
   upgrader: {
@@ -146,11 +127,11 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     bodies: [
       createBody([WORK, CARRY, MOVE], 200),
       createBody([WORK, WORK, WORK, CARRY, MOVE, MOVE], 450),
-      createBody([WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE], 750),
-      createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE], 1150)
+      createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 1000),
+      createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1700)
     ],
     priority: 60,
-    maxPerRoom: 4,
+    maxPerRoom: 2,
     remoteRole: false
   },
   builder: {
@@ -158,11 +139,11 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     family: "economy",
     bodies: [
       createBody([WORK, CARRY, MOVE, MOVE], 250),
-      createBody([WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 500),
-      createBody([WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 750)
+      createBody([WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 650),
+      createBody([WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1400)
     ],
     priority: 70,
-    maxPerRoom: 3,
+    maxPerRoom: 2,
     remoteRole: false
   },
   queenCarrier: {
@@ -216,10 +197,11 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     bodies: [
       createBody([WORK, WORK, CARRY, MOVE, MOVE, MOVE], 400),
       createBody([WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 750),
-      createBody([WORK, WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 900)
+      createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1050),
+      createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1600)
     ],
     priority: 75,
-    maxPerRoom: 10, // Higher max since these are distributed across remote rooms
+    maxPerRoom: 6, // Higher max since these are distributed across remote rooms
     remoteRole: true
   },
   remoteHauler: {
@@ -229,15 +211,12 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
       createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
       createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 800),
       createBody(
-        [
-          CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY,
-          MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE
-        ],
-        1000
+        [...Array(16).fill(CARRY), ...Array(16).fill(MOVE)],
+        1600
       )
     ],
     priority: 70,
-    maxPerRoom: 10, // Higher max since these are distributed across remote rooms
+    maxPerRoom: 6, // Higher max since these are distributed across remote rooms
     remoteRole: true
   },
 
@@ -247,8 +226,8 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     family: "military",
     bodies: [
       createBody([TOUGH, ATTACK, MOVE, MOVE], 190),
-      createBody([TOUGH, TOUGH, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE], 380),
-      createBody([TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 680)
+      createBody([TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE], 500),
+      createBody([TOUGH, TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1070)
     ],
     priority: 80,
     maxPerRoom: 2,
@@ -273,12 +252,12 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
       createBody([ATTACK, ATTACK, MOVE, MOVE], 260),
       createBody([ATTACK, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE], 520),
       createBody(
-        [TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
-        850
+        [TOUGH, TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
+        1340
       )
     ],
     priority: 70,
-    maxPerRoom: 4,
+    maxPerRoom: 2,
     remoteRole: false
   },
   siegeUnit: {
@@ -798,18 +777,16 @@ export function isEmergencySpawnState(roomName: string): boolean {
  */
 const BOOTSTRAP_SPAWN_ORDER: { role: string; minCount: number; condition?: (room: Room) => boolean }[] = [
   // 1. Energy production first - can't do anything without energy
-  { role: "larvaWorker", minCount: 2 },
-  // 2. Static harvesters for efficient mining
+  { role: "larvaWorker", minCount: 1 },
+  // 2. Static harvesters for efficient mining (1 per source is enough with bigger bodies)
   { role: "harvester", minCount: 1 },
-  // 3. Transport to distribute energy
+  // 3. Transport to distribute energy (1 is enough with bigger bodies)
   { role: "hauler", minCount: 1 },
   // 4. Second harvester for second source
   { role: "harvester", minCount: 2 },
-  // 5. Second hauler for throughput
-  { role: "hauler", minCount: 2 },
-  // 6. Queen carrier when storage exists (manages spawns/extensions)
+  // 5. Queen carrier when storage exists (manages spawns/extensions)
   { role: "queenCarrier", minCount: 1, condition: (room) => Boolean(room.storage) },
-  // 7. Upgrader for controller progress
+  // 6. Upgrader for controller progress
   { role: "upgrader", minCount: 1 }
 ];
 
