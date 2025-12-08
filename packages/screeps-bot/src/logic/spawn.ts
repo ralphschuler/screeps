@@ -1000,15 +1000,18 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
     const def = ROLE_DEFINITIONS[role];
     if (!def) continue;
 
-    // SPAWN FIX: Use energyAvailable to select body size, not capacity
-    // This ensures we pick bodies we can actually afford right now
-    const body = getBestBody(def, energyAvailable);
-    if (!body) continue;
-
-    // Double-check we have enough energy (should always be true now)
-    if (energyAvailable < body.cost) {
-      // This role is too expensive, try next one
-      continue;
+    // SPAWN FIX: Try optimal body first (based on capacity), then fallback to smaller body
+    // 1. Try to spawn optimal body for capacity
+    let body = getBestBody(def, effectiveCapacity);
+    if (body && energyAvailable >= body.cost) {
+      // Can afford optimal body, use it
+    } else {
+      // Can't afford optimal body, try smaller body based on available energy
+      body = getBestBody(def, energyAvailable);
+      if (!body || energyAvailable < body.cost) {
+        // Can't afford any body for this role, try next role
+        continue;
+      }
     }
 
     // We found an affordable role, spawn it

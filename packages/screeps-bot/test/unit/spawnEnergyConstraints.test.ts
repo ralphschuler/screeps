@@ -180,7 +180,8 @@ describe("spawn energy constraints", () => {
 
     // Mock kernel.emit to prevent errors
     if (!kernel.emit) {
-      (kernel as any).emit = () => {};
+      const mockEmit: typeof kernel.emit = () => {};
+      Object.assign(kernel, { emit: mockEmit });
     }
   });
 
