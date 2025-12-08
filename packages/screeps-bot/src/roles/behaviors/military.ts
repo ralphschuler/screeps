@@ -17,22 +17,32 @@ import type { CreepAction, CreepContext } from "./types";
 
 /**
  * Global cache for patrol waypoints (per room).
- * Cleared each tick to avoid stale data when spawns change.
+ * OPTIMIZATION: Cache waypoints indefinitely since spawns rarely change.
+ * Waypoints are recalculated only when spawns count changes.
  */
-const patrolWaypointCache: Map<string, RoomPosition[]> = new Map();
+interface PatrolWaypointCache {
+  waypoints: RoomPosition[];
+  spawnCount: number;
+  tick: number;
+}
+const patrolWaypointCache: Map<string, PatrolWaypointCache> = new Map();
 
 /**
  * Get patrol waypoints for a room covering exits and spawn areas.
- * OPTIMIZATION: Cache waypoints per room to avoid recalculating every tick.
- * Waypoints are stable unless spawns change (rare).
+ * OPTIMIZATION: Cache waypoints per room and only regenerate if spawns change.
+ * This saves CPU by avoiding repeated room.find() and terrain checks.
  */
 function getPatrolWaypoints(room: Room): RoomPosition[] {
+  const spawns = room.find(FIND_MY_SPAWNS);
+  const spawnCount = spawns.length;
+  
   // Check cache first
   const cached = patrolWaypointCache.get(room.name);
-  if (cached) return cached;
+  if (cached && cached.spawnCount === spawnCount && Game.time - cached.tick < 1000) {
+    return cached.waypoints;
+  }
 
   const roomName = room.name;
-  const spawns = room.find(FIND_MY_SPAWNS);
 
   // Generate patrol points covering key defensive positions
   const waypoints: RoomPosition[] = [];
@@ -66,8 +76,12 @@ function getPatrolWaypoints(room: Room): RoomPosition[] {
     })
     .map(pos => new RoomPosition(pos.x, pos.y, pos.roomName));
 
-  // Cache for this tick
-  patrolWaypointCache.set(room.name, filtered);
+  // Cache with spawn count for invalidation
+  patrolWaypointCache.set(room.name, {
+    waypoints: filtered,
+    spawnCount,
+    tick: Game.time
+  });
   
   return filtered;
 }
@@ -111,27 +125,40 @@ function getNextPatrolWaypoint(creep: Creep, waypoints: RoomPosition[]): RoomPos
  * 3. Combat is dynamic - priorities change frequently as creeps take damage
  * 4. This function is only called when hostiles are present (not every tick)
  *
- * The CPU cost is acceptable because:
- * - Only runs when hostiles are detected (rare in peaceful times)
- * - Hostile count is typically low (< 10 creeps)
- * - Body part iteration is O(n*m) where n=hostiles, m=parts (~50 max)
+ * OPTIMIZATION: Use getActiveBodyparts() instead of iterating all body parts.
+ * This is much faster as it's a native engine call and only counts active parts.
  */
 function findPriorityTarget(ctx: CreepContext): Creep | null {
   if (ctx.hostiles.length === 0) return null;
 
   const scored = ctx.hostiles.map(hostile => {
     let score = 0;
-    for (const part of hostile.body) {
-      if (!part.hits) continue;
-      switch (part.type) {
-        case HEAL: score += 100; break;
-        case RANGED_ATTACK: score += 50; break;
-        case ATTACK: score += 40; break;
-        case CLAIM: score += 60; break;
-        case WORK: score += 30; break;
+    
+    // Use getActiveBodyparts() for faster body part counting
+    // OPTIMIZATION: This is O(1) per body part type vs O(n) for iterating all parts
+    const healParts = hostile.getActiveBodyparts(HEAL);
+    const rangedParts = hostile.getActiveBodyparts(RANGED_ATTACK);
+    const attackParts = hostile.getActiveBodyparts(ATTACK);
+    const claimParts = hostile.getActiveBodyparts(CLAIM);
+    const workParts = hostile.getActiveBodyparts(WORK);
+    
+    // Calculate score based on body composition
+    score += healParts * 100;
+    score += rangedParts * 50;
+    score += attackParts * 40;
+    score += claimParts * 60;
+    score += workParts * 30;
+    
+    // Check for any boosted parts (rare, so only check if score is high)
+    if (score > 0) {
+      for (const part of hostile.body) {
+        if (part.boost) {
+          score += 20;
+          break; // Only add boost bonus once
+        }
       }
-      if (part.boost) score += 20;
     }
+    
     return { hostile, score };
   });
 
@@ -531,10 +558,18 @@ export function evaluateMilitaryBehavior(ctx: CreepContext): CreepAction {
 /**
  * Clear military behavior caches.
  * Called by context.ts at the start of each tick.
+ * 
+ * OPTIMIZATION: We no longer clear patrol waypoint cache every tick.
+ * It's cached long-term and invalidated based on spawn count changes.
+ * 
+ * Note: This function is kept as a no-op placeholder for future military
+ * caches that may need per-tick clearing. The registration is maintained
+ * for consistency with the context system architecture.
  */
 function clearMilitaryCaches(): void {
-  patrolWaypointCache.clear();
+  // Patrol waypoint cache is now persistent across ticks
+  // Future per-tick caches can be cleared here if needed
 }
 
-// Register cache clearing with context system
+// Register with context system for architectural consistency
 registerMilitaryCacheClear(clearMilitaryCaches);
