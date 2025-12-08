@@ -114,7 +114,18 @@ export async function startMemoryCollector(
   metrics: Metrics,
   logger: Logger
 ): Promise<void> {
+  let timeoutHandle: NodeJS.Timeout | null = null;
+
+  const scheduleNextPoll = (delayMs: number) => {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+    timeoutHandle = setTimeout(() => poll(), delayMs);
+  };
+
   const poll = async () => {
+    let nextPollDelayMs = config.pollIntervalMs;
+
     try {
       const rawMemory = await api.memory.get(config.memoryPath, config.shard);
       const decoded = decodeMemory(rawMemory, logger);
@@ -136,14 +147,27 @@ export async function startMemoryCollector(
         metrics.markScrapeSuccess('memory', false);
       }
     } catch (error) {
-      logger.error('Failed to poll stats from Memory', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Check if this is a rate limit error with specific pattern
+      const rateLimitMatch = errorMessage.match(/Rate limit exceeded, retry after (\d+)ms/i);
+      if (rateLimitMatch) {
+        const retryAfterMs = parseInt(rateLimitMatch[1], 10);
+        logger.warn(`Rate limit exceeded. Waiting ${retryAfterMs}ms before next poll.`);
+        nextPollDelayMs = retryAfterMs;
+      } else {
+        logger.error('Failed to poll stats from Memory', error);
+      }
+      
       metrics.markScrapeSuccess('memory', false);
     }
 
     // Flush metrics to InfluxDB after each poll
     metrics.flush();
+    
+    // Schedule next poll
+    scheduleNextPoll(nextPollDelayMs);
   };
 
   await poll();
-  setInterval(poll, config.pollIntervalMs);
 }
