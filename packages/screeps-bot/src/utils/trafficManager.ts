@@ -183,10 +183,6 @@ const ROLE_PRIORITIES: Record<string, number> = {
   siegeUnit: 85,
   harasser: 82,
 
-  // Power roles
-  powerQueen: 80,
-  powerWarrior: 78,
-
   // Critical economy
   harvester: 75,
   queenCarrier: 70,
@@ -207,6 +203,10 @@ const ROLE_PRIORITIES: Record<string, number> = {
   remoteWorker: 26,
   linkManager: 24,
   terminalManager: 22,
+
+  // Power roles
+  powerQueen: 80,
+  powerWarrior: 78,
   powerHarvester: 27,
   powerCarrier: 25,
 
