@@ -290,6 +290,114 @@ export function getStuckCount(creep: Creep): number {
 }
 
 /**
+ * Check if a position is in a narrow passage (1-tile wide corridor).
+ * A narrow passage has walkable tiles only in a straight line (no adjacent walkable tiles perpendicular).
+ */
+export function isInNarrowPassage(pos: RoomPosition, room: Room): boolean {
+  const terrain = room.getTerrain();
+
+  // Helper to check if a position is walkable
+  const isWalkableAt = (x: number, y: number): boolean => {
+    if (x <= 0 || x >= 49 || y <= 0 || y >= 49) return false;
+    if (terrain.get(x, y) === TERRAIN_MASK_WALL) return false;
+
+    const structures = room.lookForAt(LOOK_STRUCTURES, x, y);
+    return !structures.some(
+      s =>
+        s.structureType !== STRUCTURE_ROAD &&
+        s.structureType !== STRUCTURE_CONTAINER &&
+        (s.structureType !== STRUCTURE_RAMPART || !(s as OwnedStructure).my)
+    );
+  };
+
+  // Check if we're in a horizontal corridor (walls/unwalkable above and below)
+  const hasVerticalSpace =
+    isWalkableAt(pos.x, pos.y - 1) || isWalkableAt(pos.x, pos.y + 1);
+
+  // Check if we're in a vertical corridor (walls/unwalkable left and right)
+  const hasHorizontalSpace =
+    isWalkableAt(pos.x - 1, pos.y) || isWalkableAt(pos.x + 1, pos.y);
+
+  // In a narrow passage if we only have space in one direction (horizontal OR vertical, not both)
+  return hasVerticalSpace !== hasHorizontalSpace;
+}
+
+/**
+ * Find a position to back up to (opposite direction from target).
+ * Used when creep needs to yield in a narrow passage.
+ */
+export function findBackupPosition(
+  creep: Creep,
+  targetDirection: DirectionConstant
+): RoomPosition | null {
+  const terrain = creep.room.getTerrain();
+
+  // Get the opposite direction to back up
+  const oppositeDir = getOppositeDirection(targetDirection);
+  const offset = getDirectionOffset(oppositeDir);
+  if (!offset) return null;
+
+  const x = creep.pos.x + offset.dx;
+  const y = creep.pos.y + offset.dy;
+
+  // Check bounds (avoid exits)
+  if (x <= 0 || x >= 49 || y <= 0 || y >= 49) return null;
+
+  // Check terrain
+  if (terrain.get(x, y) === TERRAIN_MASK_WALL) return null;
+
+  // Check for structures
+  const structures = creep.room.lookForAt(LOOK_STRUCTURES, x, y);
+  const blocked = structures.some(
+    s =>
+      s.structureType !== STRUCTURE_ROAD &&
+      s.structureType !== STRUCTURE_CONTAINER &&
+      (s.structureType !== STRUCTURE_RAMPART || !(s as OwnedStructure).my)
+  );
+  if (blocked) return null;
+
+  // Check for other creeps
+  const creeps = creep.room.lookForAt(LOOK_CREEPS, x, y);
+  if (creeps.length > 0) return null;
+
+  return new RoomPosition(x, y, creep.room.name);
+}
+
+/**
+ * Get the opposite direction
+ */
+function getOppositeDirection(direction: DirectionConstant): DirectionConstant {
+  const opposites: Record<DirectionConstant, DirectionConstant> = {
+    [TOP]: BOTTOM,
+    [TOP_RIGHT]: BOTTOM_LEFT,
+    [RIGHT]: LEFT,
+    [BOTTOM_RIGHT]: TOP_LEFT,
+    [BOTTOM]: TOP,
+    [BOTTOM_LEFT]: TOP_RIGHT,
+    [LEFT]: RIGHT,
+    [TOP_LEFT]: BOTTOM_RIGHT
+  };
+  return opposites[direction];
+}
+
+/**
+ * Get offset for a direction
+ */
+function getDirectionOffset(direction: DirectionConstant): { dx: number; dy: number } | null {
+  const offsets: Record<DirectionConstant, { dx: number; dy: number }> = {
+    [TOP]: { dx: 0, dy: -1 },
+    [TOP_RIGHT]: { dx: 1, dy: -1 },
+    [RIGHT]: { dx: 1, dy: 0 },
+    [BOTTOM_RIGHT]: { dx: 1, dy: 1 },
+    [BOTTOM]: { dx: 0, dy: 1 },
+    [BOTTOM_LEFT]: { dx: -1, dy: 1 },
+    [LEFT]: { dx: -1, dy: 0 },
+    [TOP_LEFT]: { dx: -1, dy: -1 }
+  };
+  return offsets[direction] ?? null;
+}
+
+/**
  * Find a valid side-step position
  */
 export function findSideStepPosition(creep: Creep): RoomPosition | null {
@@ -345,8 +453,11 @@ export function findSideStepPosition(creep: Creep): RoomPosition | null {
 export function tryResolveStuck(creep: Creep): boolean {
   const stuckCount = getStuckCount(creep);
 
-  // First try: find side-step position
-  if (stuckCount >= 3 && stuckCount < 6) {
+  // Check if we're in a narrow passage - use different strategy
+  const inNarrowPassage = isInNarrowPassage(creep.pos, creep.room);
+
+  // First try: find side-step position (only works if not in narrow passage)
+  if (stuckCount >= 3 && stuckCount < 6 && !inNarrowPassage) {
     const sideStep = findSideStepPosition(creep);
     if (sideStep) {
       creep.move(creep.pos.getDirectionTo(sideStep));
@@ -354,8 +465,30 @@ export function tryResolveStuck(creep: Creep): boolean {
     }
   }
 
-  // Second try: push blocking creep
-  if (stuckCount >= 6) {
+  // Narrow passage handling: back up if lower priority
+  if (stuckCount >= 3 && inNarrowPassage) {
+    // Find adjacent creeps
+    const adjacent = creep.pos.findInRange(FIND_MY_CREEPS, 1).filter(c => c.name !== creep.name);
+
+    if (adjacent.length > 0) {
+      // Check if any adjacent creep has higher priority
+      const higherPriorityCreep = adjacent.find(c => !shouldYieldTo(c, creep));
+
+      if (higherPriorityCreep) {
+        // This creep should back up - find direction away from higher priority creep
+        const directionToOther = creep.pos.getDirectionTo(higherPriorityCreep.pos);
+        const backupPos = findBackupPosition(creep, directionToOther);
+
+        if (backupPos) {
+          creep.move(creep.pos.getDirectionTo(backupPos));
+          return true;
+        }
+      }
+    }
+  }
+
+  // Second try: push blocking creep (non-narrow passages)
+  if (stuckCount >= 6 && !inNarrowPassage) {
     const blockers = creep.pos.findInRange(FIND_MY_CREEPS, 1);
     for (const blocker of blockers) {
       if (shouldYieldTo(blocker, creep)) {
@@ -364,6 +497,26 @@ export function tryResolveStuck(creep: Creep): boolean {
         if (blockerSideStep) {
           blocker.move(blocker.pos.getDirectionTo(blockerSideStep));
           return true;
+        }
+      }
+    }
+  }
+
+  // Narrow passage deadlock: higher priority creep should push forward
+  if (stuckCount >= 6 && inNarrowPassage) {
+    const adjacent = creep.pos.findInRange(FIND_MY_CREEPS, 1).filter(c => c.name !== creep.name);
+
+    if (adjacent.length > 0) {
+      for (const other of adjacent) {
+        if (shouldYieldTo(other, creep)) {
+          // Ask the other creep to back up
+          const directionToMe = other.pos.getDirectionTo(creep.pos);
+          const otherBackupPos = findBackupPosition(other, directionToMe);
+
+          if (otherBackupPos) {
+            other.move(other.pos.getDirectionTo(otherBackupPos));
+            return true;
+          }
         }
       }
     }

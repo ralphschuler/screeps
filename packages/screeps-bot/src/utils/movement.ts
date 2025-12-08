@@ -19,7 +19,9 @@
 import {
   findSideStepPosition,
   requestMoveToPosition,
-  shouldYieldTo
+  shouldYieldTo,
+  isInNarrowPassage,
+  findBackupPosition
 } from "./trafficManager";
 
 // =============================================================================
@@ -382,15 +384,27 @@ function reconcileTraffic(): void {
             // Use type guard to ensure intent.creep is a Creep (not PowerCreep)
             if (isCreep(intent.creep)) {
               if (shouldYieldTo(blockingCreep, intent.creep)) {
-                // Try to find a side-step position for the blocking creep
-                const sideStep = findSideStepPosition(blockingCreep);
-                if (sideStep) {
-                  const moveResult = blockingCreep.move(blockingCreep.pos.getDirectionTo(sideStep));
+                // Check if blocking creep is in a narrow passage
+                const inNarrowPassage = isInNarrowPassage(blockingCreep.pos, room);
+
+                let movePosition: RoomPosition | null = null;
+
+                if (inNarrowPassage) {
+                  // In narrow passage: ask blocker to back up
+                  const directionToRequester = blockingCreep.pos.getDirectionTo(intent.creep.pos);
+                  movePosition = findBackupPosition(blockingCreep, directionToRequester);
+                } else {
+                  // Normal situation: find a side-step position
+                  movePosition = findSideStepPosition(blockingCreep);
+                }
+
+                if (movePosition) {
+                  const moveResult = blockingCreep.move(blockingCreep.pos.getDirectionTo(movePosition));
                   if (moveResult === OK) {
                     // Blocking creep will move, so we can now occupy this position
                     occupied.delete(targetKey);
-                    // Also mark the side-step position as occupied
-                    occupied.add(posKey(sideStep));
+                    // Also mark the new position as occupied
+                    occupied.add(posKey(movePosition));
                   }
                 }
               }
