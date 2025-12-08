@@ -289,6 +289,16 @@ export function getStuckCount(creep: Creep): number {
   return memory.stuckCount ?? 0;
 }
 
+// =============================================================================
+// Constants
+// =============================================================================
+
+/** Minimum valid room coordinate (avoiding exits) */
+const ROOM_MIN_COORD = 1;
+
+/** Maximum valid room coordinate (avoiding exits) */
+const ROOM_MAX_COORD = 48;
+
 /**
  * Check if a position is in a narrow passage (1-tile wide corridor).
  * A narrow passage has walkable tiles only in a straight line (no adjacent walkable tiles perpendicular).
@@ -298,7 +308,7 @@ export function isInNarrowPassage(pos: RoomPosition, room: Room): boolean {
 
   // Helper to check if a position is walkable
   const isWalkableAt = (x: number, y: number): boolean => {
-    if (x <= 0 || x >= 49 || y <= 0 || y >= 49) return false;
+    if (x < ROOM_MIN_COORD || x > ROOM_MAX_COORD || y < ROOM_MIN_COORD || y > ROOM_MAX_COORD) return false;
     if (terrain.get(x, y) === TERRAIN_MASK_WALL) return false;
 
     const structures = room.lookForAt(LOOK_STRUCTURES, x, y);
@@ -341,7 +351,7 @@ export function findBackupPosition(
   const y = creep.pos.y + offset.dy;
 
   // Check bounds (avoid exits)
-  if (x <= 0 || x >= 49 || y <= 0 || y >= 49) return null;
+  if (x < ROOM_MIN_COORD || x > ROOM_MAX_COORD || y < ROOM_MIN_COORD || y > ROOM_MAX_COORD) return null;
 
   // Check terrain
   if (terrain.get(x, y) === TERRAIN_MASK_WALL) return null;
@@ -412,8 +422,8 @@ export function findSideStepPosition(creep: Creep): RoomPosition | null {
       const x = creep.pos.x + dx;
       const y = creep.pos.y + dy;
 
-      // Check bounds
-      if (x < 1 || x > 48 || y < 1 || y > 48) continue;
+      // Check bounds (avoid exits)
+      if (x < ROOM_MIN_COORD || x > ROOM_MAX_COORD || y < ROOM_MIN_COORD || y > ROOM_MAX_COORD) continue;
 
       // Check terrain
       if (terrain.get(x, y) === TERRAIN_MASK_WALL) continue;
@@ -662,7 +672,7 @@ export function findOpenPosition(pos: RoomPosition, range = 1): RoomPosition | n
         const x = pos.x + dx;
         const y = pos.y + dy;
 
-        if (x < 1 || x > 48 || y < 1 || y > 48) continue;
+        if (x < ROOM_MIN_COORD || x > ROOM_MAX_COORD || y < ROOM_MIN_COORD || y > ROOM_MAX_COORD) continue;
 
         const testPos = new RoomPosition(x, y, pos.roomName);
         if (isWalkable(testPos)) {
