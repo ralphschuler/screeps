@@ -589,10 +589,10 @@ export class Kernel {
 
       // Check overall CPU budget
       if (!this.hasCpuBudget()) {
-        processesSkipped++;
-        process.stats.skippedCount++;
         // CPU budget exhausted - stop processing and save state for next tick
         // Next tick will continue from the process after the last one we executed
+        // Note: We don't increment skippedCount for this process because we'll
+        // attempt to run it first thing next tick (it's not really "skipped")
         break;
       }
 

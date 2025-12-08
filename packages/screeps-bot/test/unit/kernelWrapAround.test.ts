@@ -6,6 +6,10 @@ describe("Kernel wrap-around process queue", () => {
   let kernel: Kernel;
   let executionLog: string[];
 
+  // Test constants
+  const CPU_EXHAUSTED = 100; // Simulate CPU exhaustion
+  const MAX_PROCESSES_PER_TICK = 2; // For partial execution tests
+
   beforeEach(() => {
     resetConfig();
     executionLog = [];
@@ -139,9 +143,9 @@ describe("Kernel wrap-around process queue", () => {
       });
     }
 
-    // Simulate CPU exhaustion after 2 processes per tick
+    // Simulate CPU exhaustion after MAX_PROCESSES_PER_TICK processes per tick
     Game.cpu.getUsed = () => {
-      return currentExecutions >= 2 ? 100 : 1;
+      return currentExecutions >= MAX_PROCESSES_PER_TICK ? CPU_EXHAUSTED : 1;
     };
 
     // Tick 1: Run first 2 processes
@@ -405,7 +409,7 @@ describe("Kernel wrap-around process queue", () => {
 
     // Allow p1 but block p2 due to CPU
     Game.cpu.getUsed = () => {
-      return p1Executed ? 100 : 1;
+      return p1Executed ? CPU_EXHAUSTED : 1;
     };
 
     kernel.run();
@@ -416,6 +420,8 @@ describe("Kernel wrap-around process queue", () => {
     expect(p1Stats?.runCount).to.equal(1);
     expect(p1Stats?.skippedCount).to.equal(0);
     expect(p2Stats?.runCount).to.equal(0);
-    expect(p2Stats?.skippedCount).to.equal(1);
+    // p2 is not marked as skipped because we break immediately when CPU exhausted
+    // It will be the first process checked in the next tick
+    expect(p2Stats?.skippedCount).to.equal(0);
   });
 });
