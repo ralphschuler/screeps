@@ -12,11 +12,16 @@
  */
 
 import type { ClusterMemory, SquadDefinition } from "../memory/schemas";
-import { memoryManager } from "../memory/manager";
+import { ProcessPriority } from "../core/kernel";
 import { logger } from "../core/logger";
 import { profiler } from "../core/profiler";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { ProcessPriority } from "../core/kernel";
+import { memoryManager } from "../memory/manager";
+import {
+  createDefenseRequest,
+  needsDefenseAssistance,
+  type DefenseRequest
+} from "../spawning/defenderManager";
 
 /**
  * Cluster Manager Configuration
@@ -381,8 +386,6 @@ export class ClusterManager {
    * Coordinates assistance to rooms that need defense help
    */
   private processDefenseRequests(cluster: ClusterMemory): void {
-    // Import here to avoid circular dependency
-    const { needsDefenseAssistance, createDefenseRequest } = require("../spawning/defenderManager");
 
     // Clean up old/expired requests (older than 500 ticks)
     cluster.defenseRequests = cluster.defenseRequests.filter(req => {
@@ -420,7 +423,7 @@ export class ClusterManager {
         const existingRequest = cluster.defenseRequests.find(req => req.roomName === roomName);
         if (existingRequest) {
           // Update existing request if needed
-          const newRequest = createDefenseRequest(room, swarm);
+          const newRequest: DefenseRequest | null = createDefenseRequest(room, swarm);
           if (newRequest && newRequest.urgency > existingRequest.urgency) {
             existingRequest.urgency = newRequest.urgency;
             existingRequest.guardsNeeded = newRequest.guardsNeeded;
@@ -430,7 +433,7 @@ export class ClusterManager {
           }
         } else {
           // Create new defense request
-          const request = createDefenseRequest(room, swarm);
+          const request: DefenseRequest | null = createDefenseRequest(room, swarm);
           if (request) {
             cluster.defenseRequests.push({
               ...request,

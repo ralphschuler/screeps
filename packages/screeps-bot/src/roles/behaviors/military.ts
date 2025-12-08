@@ -211,15 +211,15 @@ export function guard(ctx: CreepContext): CreepAction {
       }
 
       // In assist room - engage hostiles
-      const target = findPriorityTarget(ctx);
-      if (target) {
-        const range = ctx.creep.pos.getRangeTo(target);
+      const assistTarget = findPriorityTarget(ctx);
+      if (assistTarget) {
+        const range = ctx.creep.pos.getRangeTo(assistTarget);
         const hasRanged = hasBodyPart(ctx.creep, RANGED_ATTACK);
         const hasMelee = hasBodyPart(ctx.creep, ATTACK);
 
-        if (hasRanged && range <= 3) return { type: "rangedAttack", target };
-        if (hasMelee && range <= 1) return { type: "attack", target };
-        return { type: "moveTo", target };
+        if (hasRanged && range <= 3) return { type: "rangedAttack", target: assistTarget };
+        if (hasMelee && range <= 1) return { type: "attack", target: assistTarget };
+        return { type: "moveTo", target: assistTarget };
       }
     } else {
       // Can't see assist room - move towards it
@@ -526,12 +526,12 @@ export function ranger(ctx: CreepContext): CreepAction {
       }
 
       // In assist room - engage hostiles
-      const target = findPriorityTarget(ctx);
-      if (target) {
-        const range = ctx.creep.pos.getRangeTo(target);
-        if (range < 3) return { type: "flee", from: [target.pos] };
-        if (range <= 3) return { type: "rangedAttack", target };
-        return { type: "moveTo", target };
+      const assistTarget = findPriorityTarget(ctx);
+      if (assistTarget) {
+        const range = ctx.creep.pos.getRangeTo(assistTarget);
+        if (range < 3) return { type: "flee", from: [assistTarget.pos] };
+        if (range <= 3) return { type: "rangedAttack", target: assistTarget };
+        return { type: "moveTo", target: assistTarget };
       }
     } else {
       // Can't see assist room - move towards it

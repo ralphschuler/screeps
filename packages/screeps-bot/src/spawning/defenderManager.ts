@@ -32,7 +32,7 @@ export interface DefenderRequirement {
 /**
  * Analyze room threats and determine defender requirements
  */
-export function analyzeDefenderNeeds(room: Room, _swarm: SwarmState): DefenderRequirement {
+export function analyzeDefenderNeeds(room: Room): DefenderRequirement {
   const result: DefenderRequirement = {
     guards: 0,
     rangers: 0,
@@ -151,9 +151,9 @@ export function getCurrentDefenders(room: Room): { guards: number; rangers: numb
   const creeps = room.find(FIND_MY_CREEPS);
 
   return {
-    guards: creeps.filter(c => c.memory.role === "guard").length,
-    rangers: creeps.filter(c => c.memory.role === "ranger").length,
-    healers: creeps.filter(c => c.memory.role === "healer").length
+    guards: creeps.filter(c => (c.memory as { role?: string }).role === "guard").length,
+    rangers: creeps.filter(c => (c.memory as { role?: string }).role === "ranger").length,
+    healers: creeps.filter(c => (c.memory as { role?: string }).role === "healer").length
   };
 }
 
@@ -161,7 +161,7 @@ export function getCurrentDefenders(room: Room): { guards: number; rangers: numb
  * Calculate defender spawn priority boost
  */
 export function getDefenderPriorityBoost(room: Room, swarm: SwarmState, role: string): number {
-  const needs = analyzeDefenderNeeds(room, swarm);
+  const needs = analyzeDefenderNeeds(room);
   const current = getCurrentDefenders(room);
 
   // No boost if no threats
@@ -187,7 +187,7 @@ export function getDefenderPriorityBoost(room: Room, swarm: SwarmState, role: st
  * Check if emergency defender spawning is needed
  */
 export function needsEmergencyDefenders(room: Room, swarm: SwarmState): boolean {
-  const needs = analyzeDefenderNeeds(room, swarm);
+  const needs = analyzeDefenderNeeds(room);
   const current = getCurrentDefenders(room);
 
   // Emergency if we need defenders but have none
@@ -213,7 +213,7 @@ export function needsDefenseAssistance(room: Room, swarm: SwarmState): boolean {
     return false;
   }
 
-  const needs = analyzeDefenderNeeds(room, swarm);
+  const needs = analyzeDefenderNeeds(room);
   const current = getCurrentDefenders(room);
 
   // Check if room lacks the defenders it needs
@@ -244,6 +244,11 @@ export function needsDefenseAssistance(room: Room, swarm: SwarmState): boolean {
   // Check urgency - high urgency threats need immediate help even if room can eventually spawn
   if (needs.urgency >= 2.0 && defenderDeficit >= 2) {
     return true; // Critical threat with multiple defender deficit = needs help
+  }
+
+  // Critical danger (level 3) with any defender deficit should request help
+  if (swarm.danger >= 3 && defenderDeficit >= 1) {
+    return true; // Critical danger always needs help
   }
 
   return false;
@@ -277,7 +282,7 @@ export function createDefenseRequest(room: Room, swarm: SwarmState): DefenseRequ
     return null;
   }
 
-  const needs = analyzeDefenderNeeds(room, swarm);
+  const needs = analyzeDefenderNeeds(room);
   const current = getCurrentDefenders(room);
 
   const request: DefenseRequest = {
