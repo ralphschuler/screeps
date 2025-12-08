@@ -3172,7 +3172,21 @@ class ErrorMapper {
     static get consumer() {
         if (this._consumer == null) {
             // @ts-check
-            this._consumer = new SourceMapConsumer(require("main.js.map"));
+            const rawSourceMap = require("main.js.map");
+            // Parse the source map if it's a string, otherwise use it directly
+            let sourceMapData;
+            if (typeof rawSourceMap === "string") {
+                try {
+                    sourceMapData = JSON.parse(rawSourceMap);
+                }
+                catch (e) {
+                    throw new Error(`Failed to parse source map JSON: ${e instanceof Error ? e.message : String(e)}`);
+                }
+            }
+            else {
+                sourceMapData = rawSourceMap;
+            }
+            this._consumer = new SourceMapConsumer(sourceMapData);
         }
         return this._consumer;
     }
