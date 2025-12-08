@@ -6137,8 +6137,9 @@ const memorySegmentStats = new MemorySegmentStats();
  * - Pheromone statistics
  * - Native calls statistics (pathfinding, creep actions)
  *
- * All stats are published to Memory.stats for consumption by external tools
- * like the Influx exporter and Grafana dashboards.
+ * All stats are stored as a clean object structure in Memory.stats.
+ * No flattening or processing is done here - the Influx exporter
+ * handles all processing and formatting for Grafana dashboards.
  */
 const DEFAULT_CONFIG$h = {
     enabled: true,
@@ -6162,7 +6163,27 @@ class StatsManager {
         if (!mem.stats || typeof mem.stats !== "object") {
             mem.stats = this.createEmptyStatsRoot();
         }
-        return mem.stats;
+        // Ensure all required properties exist, even if Memory.stats was corrupted
+        const stats = mem.stats;
+        if (!stats.subsystems || typeof stats.subsystems !== "object") {
+            stats.subsystems = {};
+        }
+        if (!stats.roles || typeof stats.roles !== "object") {
+            stats.roles = {};
+        }
+        if (!stats.rooms || typeof stats.rooms !== "object") {
+            stats.rooms = {};
+        }
+        if (!stats.pheromones || typeof stats.pheromones !== "object") {
+            stats.pheromones = {};
+        }
+        if (!stats.empire || typeof stats.empire !== "object") {
+            stats.empire = this.createEmptyEmpireStats();
+        }
+        if (!stats.nativeCalls || typeof stats.nativeCalls !== "object") {
+            stats.nativeCalls = this.createEmptyNativeCalls();
+        }
+        return stats;
     }
     /**
      * Create empty stats root
@@ -6361,100 +6382,10 @@ class StatsManager {
         stats.nativeCalls = { ...this.nativeCallsThisTick };
         // Reset native calls for next tick
         this.nativeCallsThisTick = this.createEmptyNativeCalls();
-        // Publish flattened stats for external consumption
-        this.publishFlattenedStats();
         // Log summary periodically
         if (this.config.logInterval > 0 && Game.time % this.config.logInterval === 0) {
             this.logSummary();
         }
-    }
-    /**
-     * Publish flattened stats for Influx exporter
-     */
-    publishFlattenedStats() {
-        var _a;
-        const stats = this.getStatsRoot();
-        const mem = Memory;
-        // Publish empire stats
-        mem["stats.empire.owned_rooms"] = stats.empire.ownedRooms;
-        mem["stats.empire.total_creeps"] = stats.empire.totalCreeps;
-        mem["stats.empire.total_storage_energy"] = stats.empire.totalStorageEnergy;
-        mem["stats.empire.gcl_progress"] = stats.empire.gclProgress;
-        mem["stats.empire.gcl"] = stats.empire.gcl;
-        mem["stats.empire.gpl"] = stats.empire.gpl;
-        mem["stats.empire.cpu_used"] = stats.empire.cpuUsed;
-        mem["stats.empire.cpu_limit"] = stats.empire.cpuLimit;
-        mem["stats.empire.cpu_bucket"] = stats.empire.cpuBucket;
-        mem["stats.empire.heap_used"] = stats.empire.heapUsed;
-        mem["stats.empire.credits"] = stats.empire.credits;
-        // Publish subsystem stats
-        for (const [name, data] of Object.entries(stats.subsystems)) {
-            mem[`stats.subsystem.${name}.avg_cpu`] = data.avgCpu;
-            mem[`stats.subsystem.${name}.peak_cpu`] = data.peakCpu;
-            mem[`stats.subsystem.${name}.calls`] = data.calls;
-            mem[`stats.subsystem.${name}.samples`] = data.samples;
-        }
-        // Publish role stats
-        for (const [role, data] of Object.entries(stats.roles)) {
-            mem[`stats.role.${role}.count`] = data.count;
-            mem[`stats.role.${role}.avg_cpu`] = data.avgCpu;
-            mem[`stats.role.${role}.peak_cpu`] = data.peakCpu;
-            mem[`stats.role.${role}.calls`] = data.calls;
-        }
-        // Publish room stats
-        for (const [roomName, data] of Object.entries(stats.rooms)) {
-            mem[`stats.room.${roomName}.rcl`] = data.rcl;
-            mem[`stats.room.${roomName}.energy_available`] = data.energyAvailable;
-            mem[`stats.room.${roomName}.energy_capacity`] = data.energyCapacity;
-            mem[`stats.room.${roomName}.storage_energy`] = data.storageEnergy;
-            mem[`stats.room.${roomName}.creep_count`] = data.creepCount;
-            mem[`stats.room.${roomName}.hostile_count`] = data.hostileCount;
-            mem[`stats.room.${roomName}.avg_cpu`] = data.avgCpu;
-            mem[`stats.room.${roomName}.peak_cpu`] = data.peakCpu;
-            mem[`stats.room.${roomName}.controller_progress`] = data.controllerProgress;
-            mem[`stats.room.${roomName}.energy_harvested`] = data.energyHarvested;
-            mem[`stats.room.${roomName}.damage_received`] = data.damageReceived;
-            mem[`stats.room.${roomName}.danger`] = data.danger;
-        }
-        // Intent/posture to numeric mapping for efficient storage
-        const INTENT_VALUES = {
-            eco: 0,
-            expand: 1,
-            defensive: 2,
-            defense: 2,
-            war: 3,
-            siege: 4,
-            evacuate: 5,
-            nukePrep: 6
-        };
-        // Publish pheromone stats
-        for (const [roomName, data] of Object.entries(stats.pheromones)) {
-            mem[`stats.pheromone.${roomName}.expand`] = data.expand;
-            mem[`stats.pheromone.${roomName}.harvest`] = data.harvest;
-            mem[`stats.pheromone.${roomName}.build`] = data.build;
-            mem[`stats.pheromone.${roomName}.upgrade`] = data.upgrade;
-            mem[`stats.pheromone.${roomName}.defense`] = data.defense;
-            mem[`stats.pheromone.${roomName}.war`] = data.war;
-            mem[`stats.pheromone.${roomName}.siege`] = data.siege;
-            mem[`stats.pheromone.${roomName}.logistics`] = data.logistics;
-            mem[`stats.pheromone.${roomName}.intent`] = (_a = INTENT_VALUES[data.intent]) !== null && _a !== void 0 ? _a : 0;
-        }
-        // Publish native calls stats
-        mem["stats.native_calls.pathfinder_search"] = stats.nativeCalls.pathfinderSearch;
-        mem["stats.native_calls.move_to"] = stats.nativeCalls.moveTo;
-        mem["stats.native_calls.move"] = stats.nativeCalls.move;
-        mem["stats.native_calls.harvest"] = stats.nativeCalls.harvest;
-        mem["stats.native_calls.transfer"] = stats.nativeCalls.transfer;
-        mem["stats.native_calls.withdraw"] = stats.nativeCalls.withdraw;
-        mem["stats.native_calls.build"] = stats.nativeCalls.build;
-        mem["stats.native_calls.repair"] = stats.nativeCalls.repair;
-        mem["stats.native_calls.upgrade_controller"] = stats.nativeCalls.upgradeController;
-        mem["stats.native_calls.attack"] = stats.nativeCalls.attack;
-        mem["stats.native_calls.ranged_attack"] = stats.nativeCalls.rangedAttack;
-        mem["stats.native_calls.heal"] = stats.nativeCalls.heal;
-        mem["stats.native_calls.dismantle"] = stats.nativeCalls.dismantle;
-        mem["stats.native_calls.say"] = stats.nativeCalls.say;
-        mem["stats.native_calls.total"] = stats.nativeCalls.total;
     }
     /**
      * Log a summary of statistics
