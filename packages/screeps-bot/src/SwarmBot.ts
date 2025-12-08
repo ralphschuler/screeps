@@ -53,26 +53,39 @@ const ROLE_PRIORITY: Record<string, number> = {
   hauler: 90,
 
   // Military (always important)
-  defender: 85,
-  rangedDefender: 84,
-  healer: 83,
+  guard: 85,
+  healer: 84,
+  soldier: 83,
+  ranger: 82,
+  siegeUnit: 81,
+  harasser: 80,
 
   // Standard economy
   larvaWorker: 70,
   builder: 60,
   upgrader: 50,
+  interRoomCarrier: 45,
 
   // Utility
   scout: 40,
   claimer: 35,
+  engineer: 33,
   remoteHarvester: 30,
   remoteHauler: 25,
+  remoteWorker: 23,
+  linkManager: 22,
+  terminalManager: 21,
 
   // Low priority
   mineralHarvester: 20,
-  depositHarvester: 15,
   labTech: 10,
-  factoryWorker: 5
+  factoryWorker: 5,
+
+  // Power roles
+  powerQueen: 75,
+  powerWarrior: 75,
+  powerHarvester: 30,
+  powerCarrier: 25
 };
 
 const DEFAULT_PRIORITY = 50;

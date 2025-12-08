@@ -170,46 +170,6 @@ export class Profiler {
     }
     statsRoot["profiler.roles.total_avg_cpu"] = totalRoleAvgCpu;
     statsRoot["profiler.roles.count"] = Object.keys(memory.roles || {}).length;
-
-    // Legacy format for backward compatibility (nested objects)
-    const roomAvgCpu: Record<string, number> = {};
-    const roomPeakCpu: Record<string, number> = {};
-    for (const [room, data] of Object.entries(memory.rooms)) {
-      roomAvgCpu[room] = data.avgCpu;
-      roomPeakCpu[room] = data.peakCpu;
-    }
-
-    const subsystemAvgCpu: Record<string, number> = {};
-    const subsystemPeakCpu: Record<string, number> = {};
-    const subsystemCalls: Record<string, number> = {};
-    for (const [name, data] of Object.entries(memory.subsystems)) {
-      subsystemAvgCpu[name] = data.avgCpu;
-      subsystemPeakCpu[name] = data.peakCpu;
-      subsystemCalls[name] = data.callsThisTick;
-    }
-
-    const roleAvgCpu: Record<string, number> = {};
-    const rolePeakCpu: Record<string, number> = {};
-    const roleCalls: Record<string, number> = {};
-    for (const [role, data] of Object.entries(memory.roles || {})) {
-      roleAvgCpu[role] = data.avgCpu;
-      rolePeakCpu[role] = data.peakCpu;
-      roleCalls[role] = data.callsThisTick;
-    }
-
-    /* eslint-disable dot-notation */
-    statsRoot["profiler_tick_count"] = memory.tickCount;
-    statsRoot["profiler_last_update"] = memory.lastUpdate;
-    statsRoot["profiler_room_avg_cpu"] = roomAvgCpu;
-    statsRoot["profiler_room_peak_cpu"] = roomPeakCpu;
-    statsRoot["profiler_total_room_avg_cpu"] = totalRoomAvgCpu;
-    statsRoot["profiler_subsystem_avg_cpu"] = subsystemAvgCpu;
-    statsRoot["profiler_subsystem_peak_cpu"] = subsystemPeakCpu;
-    statsRoot["profiler_subsystem_calls"] = subsystemCalls;
-    statsRoot["profiler_role_avg_cpu"] = roleAvgCpu;
-    statsRoot["profiler_role_peak_cpu"] = rolePeakCpu;
-    statsRoot["profiler_role_calls"] = roleCalls;
-    /* eslint-enable dot-notation */
   }
 
   /**
