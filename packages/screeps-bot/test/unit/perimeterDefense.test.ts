@@ -17,7 +17,7 @@ describe("Perimeter Defense Logic", () => {
   }
 
   /**
-   * Test helper to get inner position from exit
+   * Test helper to get inner position from exit (2 tiles inside)
    */
   function getInnerPosition(x: number, y: number, direction: string): { x: number; y: number } {
     let innerX = x;
@@ -25,16 +25,16 @@ describe("Perimeter Defense Logic", () => {
 
     switch (direction) {
       case "top":
-        innerY = 1;
+        innerY = 2;
         break;
       case "bottom":
-        innerY = 48;
+        innerY = 47;
         break;
       case "left":
-        innerX = 1;
+        innerX = 2;
         break;
       case "right":
-        innerX = 48;
+        innerX = 47;
         break;
     }
 
@@ -66,27 +66,27 @@ describe("Perimeter Defense Logic", () => {
   });
 
   describe("Inner Position Calculation", () => {
-    it("should place walls one tile inside from top exits", () => {
+    it("should place walls two tiles inside from top exits", () => {
       const inner = getInnerPosition(25, 0, "top");
       assert.equal(inner.x, 25, "X should stay same");
-      assert.equal(inner.y, 1, "Y should be one inside");
+      assert.equal(inner.y, 2, "Y should be two tiles inside");
     });
 
-    it("should place walls one tile inside from bottom exits", () => {
+    it("should place walls two tiles inside from bottom exits", () => {
       const inner = getInnerPosition(25, 49, "bottom");
       assert.equal(inner.x, 25, "X should stay same");
-      assert.equal(inner.y, 48, "Y should be one inside");
+      assert.equal(inner.y, 47, "Y should be two tiles inside");
     });
 
-    it("should place walls one tile inside from left exits", () => {
+    it("should place walls two tiles inside from left exits", () => {
       const inner = getInnerPosition(0, 25, "left");
-      assert.equal(inner.x, 1, "X should be one inside");
+      assert.equal(inner.x, 2, "X should be two tiles inside");
       assert.equal(inner.y, 25, "Y should stay same");
     });
 
-    it("should place walls one tile inside from right exits", () => {
+    it("should place walls two tiles inside from right exits", () => {
       const inner = getInnerPosition(49, 25, "right");
-      assert.equal(inner.x, 48, "X should be one inside");
+      assert.equal(inner.x, 47, "X should be two tiles inside");
       assert.equal(inner.y, 25, "Y should stay same");
     });
   });

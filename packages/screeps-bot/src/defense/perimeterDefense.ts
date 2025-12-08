@@ -131,7 +131,10 @@ export function identifyChokePoints(roomName: string, exits: ExitPosition[]): Ex
 
 /**
  * Calculate optimal perimeter defense positions
- * Returns positions one tile inside the room from exits to allow construction
+ * Returns positions two tiles inside the room from exits to allow construction
+ * 
+ * Screeps requires walls/ramparts to be placed at least 2 tiles from room exits.
+ * Exit tiles are at coordinates 0 and 49, so walls must be at 2 and 47.
  */
 export function calculatePerimeterPositions(roomName: string): PerimeterPlan {
   const exits = findRoomExits(roomName);
@@ -141,24 +144,26 @@ export function calculatePerimeterPositions(roomName: string): PerimeterPlan {
   const walls: ExitPosition[] = [];
   const ramparts: ExitPosition[] = [];
 
-  // For each exit, place a wall one tile inside the room
+  // For each exit, place a wall two tiles inside the room
+  // This ensures compliance with Screeps' requirement that walls/ramparts
+  // must be at least 2 tiles away from exits
   for (const exit of exits) {
-    // Calculate position one tile inside the room
+    // Calculate position two tiles inside the room
     let innerX = exit.x;
     let innerY = exit.y;
 
     switch (exit.exitDirection) {
       case "top":
-        innerY = 1;
+        innerY = 2;
         break;
       case "bottom":
-        innerY = 48;
+        innerY = 47;
         break;
       case "left":
-        innerX = 1;
+        innerX = 2;
         break;
       case "right":
-        innerX = 48;
+        innerX = 47;
         break;
     }
 
