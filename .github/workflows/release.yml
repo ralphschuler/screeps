@@ -40,12 +40,23 @@ jobs:
       - name: Commit build files to main
         working-directory: .
         run: |
+          # Verify we're on the main branch
+          CURRENT_BRANCH=$(git symbolic-ref --short HEAD)
+          if [ "$CURRENT_BRANCH" != "main" ]; then
+            echo "Error: Not on main branch (current: $CURRENT_BRANCH)"
+            exit 1
+          fi
+          
           git add packages/screeps-bot/dist/
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
             git commit -m "chore: update build files [skip ci]"
-            git push origin main
+            if ! git push origin main; then
+              echo "Error: Failed to push to main. There may be conflicts or permission issues."
+              exit 1
+            fi
+            echo "Successfully pushed build files to main"
           fi
 
       - name: Archive build output
