@@ -1,6 +1,6 @@
-import { loop as swarmLoop } from "./SwarmBot";
-import { registerAllConsoleCommands } from "./core/consoleCommands";
 import { ErrorMapper } from "utils/ErrorMapper";
+import { registerAllConsoleCommands } from "./core/consoleCommands";
+import { loop as swarmLoop } from "./SwarmBot";
 
 declare global {
   /*
@@ -21,6 +21,11 @@ declare global {
     role: string;
     room: string;
     working: boolean;
+  }
+
+  interface RoomMemory {
+    /** Flag indicating room is hostile (has enemy towers or attackers) */
+    hostile?: boolean;
   }
 
 }
