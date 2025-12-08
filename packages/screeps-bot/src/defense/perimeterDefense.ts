@@ -79,7 +79,6 @@ export function findRoomExits(roomName: string): ExitPosition[] {
  * A choke point is an exit tile where the passage is narrow (2-4 tiles wide)
  */
 export function identifyChokePoints(roomName: string, exits: ExitPosition[]): ExitPosition[] {
-  const terrain = Game.map.getRoomTerrain(roomName);
   const chokePoints: ExitPosition[] = [];
 
   // Group exits by direction
@@ -91,7 +90,7 @@ export function identifyChokePoints(roomName: string, exits: ExitPosition[]): Ex
   }
 
   // For each direction, find narrow passages
-  for (const [_direction, directionExits] of exitsByDirection) {
+  for (const directionExits of exitsByDirection.values()) {
     // Sort by x or y depending on direction
     const sorted = [...directionExits].sort((a, b) => {
       if (a.x === b.x) return a.y - b.y;
@@ -130,74 +129,108 @@ export function identifyChokePoints(roomName: string, exits: ExitPosition[]): Ex
 }
 
 /**
- * Check if a coordinate is in the gap position (center of wall line)
- * Gap positions are where ramparts are placed for friendly passage
- */
-function isGapPosition(coord: number): boolean {
-  return coord >= 24 && coord <= 25;
-}
-
-/**
  * Calculate optimal perimeter defense positions
- * Creates continuous wall lines with strategic gaps (ramparts) for friendly passage.
+ * Places walls at exit points only (not a complete square).
  * 
  * Screeps requires walls/ramparts to be placed at least 2 tiles from room exits.
  * Exit tiles are at coordinates 0 and 49, so walls must be at 2 and 47.
  * 
- * Strategy:
- * - Build continuous walls along x=2, x=47, y=2, y=47
- * - Create gaps (rampart-only positions) at strategic locations for friendly passage
- * - Gaps are placed at the center of each exit line for easy access
+ * Strategy (per ROADMAP Section 17 - Mauern & Ramparts):
+ * - Identify actual exit tiles (non-wall terrain at x=0, x=49, y=0, y=49)
+ * - Place walls 2 tiles inside from each exit tile
+ * - Create gaps (rampart-only positions) at the center of each exit group for friendly passage
+ * - This creates walls only at exits, not a complete square perimeter
  */
 export function calculatePerimeterPositions(roomName: string): PerimeterPlan {
   const terrain = Game.map.getRoomTerrain(roomName);
   const walls: ExitPosition[] = [];
   const ramparts: ExitPosition[] = [];
 
-  // Build continuous perimeter walls at 2 tiles from edges
-  // with gaps for ramparts at center positions
+  // Find all exit tiles (actual room exits)
+  const exits = findRoomExits(roomName);
   
-  // Top wall (y=2): x from 2 to 47, gap at center (x=24-25)
-  for (let x = 2; x <= 47; x++) {
-    if (terrain.get(x, 2) === TERRAIN_MASK_WALL) continue;
-    
-    if (isGapPosition(x)) {
-      ramparts.push({ x, y: 2, exitDirection: "top", isChokePoint: false });
-    } else {
-      walls.push({ x, y: 2, exitDirection: "top", isChokePoint: false });
-    }
+  // Group exits by direction to identify continuous exit sections
+  const exitsByDirection = new Map<ExitDirection, ExitPosition[]>();
+  for (const exit of exits) {
+    const group = exitsByDirection.get(exit.exitDirection) ?? [];
+    group.push(exit);
+    exitsByDirection.set(exit.exitDirection, group);
   }
-
-  // Bottom wall (y=47): x from 2 to 47, gap at center (x=24-25)
-  for (let x = 2; x <= 47; x++) {
-    if (terrain.get(x, 47) === TERRAIN_MASK_WALL) continue;
+  
+  // For each exit direction, identify continuous exit groups and place walls
+  for (const [direction, directionExits] of exitsByDirection) {
+    // Sort exits by coordinate (x for top/bottom, y for left/right)
+    const sorted = [...directionExits].sort((a, b) => {
+      if (a.x === b.x) return a.y - b.y;
+      return a.x - b.x;
+    });
     
-    if (isGapPosition(x)) {
-      ramparts.push({ x, y: 47, exitDirection: "bottom", isChokePoint: false });
-    } else {
-      walls.push({ x, y: 47, exitDirection: "bottom", isChokePoint: false });
+    // Group continuous exits (gaps in terrain create separate groups)
+    const groups: ExitPosition[][] = [];
+    let currentGroup: ExitPosition[] = [];
+    
+    for (let i = 0; i < sorted.length; i++) {
+      const exit = sorted[i];
+      const prev = sorted[i - 1];
+      
+      // Check if this exit is continuous with the previous one
+      const isContinuous = prev && 
+        (Math.abs(exit.x - prev.x) <= 1 && Math.abs(exit.y - prev.y) <= 1);
+      
+      if (!isContinuous && currentGroup.length > 0) {
+        // Start a new group
+        groups.push(currentGroup);
+        currentGroup = [];
+      }
+      
+      currentGroup.push(exit);
     }
-  }
-
-  // Left wall (x=2): y from 2 to 47, gap at center (y=24-25)
-  for (let y = 2; y <= 47; y++) {
-    if (terrain.get(2, y) === TERRAIN_MASK_WALL) continue;
     
-    if (isGapPosition(y)) {
-      ramparts.push({ x: 2, y, exitDirection: "left", isChokePoint: false });
-    } else {
-      walls.push({ x: 2, y, exitDirection: "left", isChokePoint: false });
+    // Don't forget the last group
+    if (currentGroup.length > 0) {
+      groups.push(currentGroup);
     }
-  }
-
-  // Right wall (x=47): y from 2 to 47, gap at center (y=24-25)
-  for (let y = 2; y <= 47; y++) {
-    if (terrain.get(47, y) === TERRAIN_MASK_WALL) continue;
     
-    if (isGapPosition(y)) {
-      ramparts.push({ x: 47, y, exitDirection: "right", isChokePoint: false });
-    } else {
-      walls.push({ x: 47, y, exitDirection: "right", isChokePoint: false });
+    // For each group of continuous exits, place walls 2 tiles inside with a gap in the center
+    for (const group of groups) {
+      // Determine the center of the group for gap placement
+      const centerIndex = Math.floor(group.length / 2);
+      
+      for (let i = 0; i < group.length; i++) {
+        const exit = group[i];
+        
+        // Calculate wall position (2 tiles inside from exit)
+        let wallX = exit.x;
+        let wallY = exit.y;
+        
+        switch (direction) {
+          case "top":
+            wallY = 2;
+            break;
+          case "bottom":
+            wallY = 47;
+            break;
+          case "left":
+            wallX = 2;
+            break;
+          case "right":
+            wallX = 47;
+            break;
+        }
+        
+        // Skip if terrain is wall at wall position
+        if (terrain.get(wallX, wallY) === TERRAIN_MASK_WALL) continue;
+        
+        // Create a 2-tile wide gap in the center of each exit group
+        // Gap is placed at center ± 1 for groups of 4+ tiles
+        const isGap = group.length >= 4 && (i === centerIndex || i === centerIndex - 1);
+        
+        if (isGap) {
+          ramparts.push({ x: wallX, y: wallY, exitDirection: direction, isChokePoint: false });
+        } else {
+          walls.push({ x: wallX, y: wallY, exitDirection: direction, isChokePoint: false });
+        }
+      }
     }
   }
 
@@ -207,15 +240,17 @@ export function calculatePerimeterPositions(roomName: string): PerimeterPlan {
 /**
  * Place perimeter defense construction sites
  * 
- * Builds continuous perimeter walls with strategic gaps (ramparts only) for friendly passage.
- * Walls form a complete barrier around the room, with rampart-only gaps at central positions
- * on each side to allow friendly creeps to pass while blocking enemies.
+ * Builds walls at room exits only (not a complete square perimeter).
+ * For each exit group, walls are placed 2 tiles inside with strategic gaps (ramparts only)
+ * in the center to allow friendly creeps to pass while blocking enemies.
  * 
  * Strategy (per ROADMAP Section 17 - Mauern & Ramparts):
  * - Walls block all creeps
  * - Ramparts (without walls underneath) allow friendly creeps but block enemies
- * - Build continuous walls along perimeter (x=2, x=47, y=2, y=47)
- * - Create 2-tile wide gaps at center of each side with ramparts only
+ * - Build walls at exits only (where creeps can actually enter the room)
+ * - Walls are placed 2 tiles inside from exit tiles (at x=2, x=47, y=2, y=47)
+ * - Create 2-tile wide gaps at center of each exit group with ramparts only
+ * - This avoids creating a complete square, only fortifying actual entry points
  * 
  * @param room The room to defend
  * @param rcl Current room control level
@@ -227,7 +262,7 @@ export function placePerimeterDefense(
   room: Room,
   rcl: number,
   maxSites = 3,
-  prioritizeChokePoints = true
+  _prioritizeChokePoints = true
 ): number {
   // RCL requirements
   // RCL 2: Start placing perimeter walls
