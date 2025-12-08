@@ -208,7 +208,7 @@ export function scout(ctx: CreepContext): CreepAction {
   const onExit = isCreepOnRoomExit(ctx.creep);
   const justArrivedAtTarget = targetRoom && ctx.room.name === targetRoom && onExit;
 
-  if (!targetRoom || (ctx.room.name === targetRoom && !justArrivedAtTarget)) {
+  if (!targetRoom) {
     // Pass lastExploredRoom to avoid cycling back to the room we just explored
     targetRoom = findNextExploreTarget(ctx.room.name, overmind, lastExploredRoom);
     if (targetRoom) {
