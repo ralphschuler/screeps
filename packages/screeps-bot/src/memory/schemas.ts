@@ -257,6 +257,8 @@ export interface ClusterMemory {
     warIndex: number;
     /** Economy health index (0-100) */
     economyIndex: number;
+    /** Military readiness (0-100): availability of military creeps */
+    militaryReadiness?: number;
   };
   /** Active squads */
   squads: SquadDefinition[];

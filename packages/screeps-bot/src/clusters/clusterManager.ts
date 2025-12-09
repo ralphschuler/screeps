@@ -24,6 +24,11 @@ import {
   type DefenseRequest
 } from "../spawning/defenderManager";
 import { resourceSharingManager } from "./resourceSharing";
+import {
+  createDefenseSquad,
+  shouldDissolveSquad,
+  validateSquadState
+} from "./squadCoordinator";
 
 /**
  * Cluster Manager Configuration
@@ -128,6 +133,11 @@ export class ClusterManager {
       this.updateSquads(cluster);
     });
 
+    // Update rally points
+    profiler.measureSubsystem(`cluster:${cluster.id}:rallyPoints`, () => {
+      this.updateRallyPoints(cluster);
+    });
+
     // Update cluster role
     profiler.measureSubsystem(`cluster:${cluster.id}:role`, () => {
       this.updateClusterRole(cluster);
@@ -183,6 +193,40 @@ export class ClusterManager {
       cluster.metrics.warIndex = Math.min(100, totalWarIndex / roomCount);
       cluster.metrics.economyIndex = Math.min(100, totalEconomyIndex / roomCount);
     }
+
+    // Calculate military readiness
+    cluster.metrics.militaryReadiness = this.calculateMilitaryReadiness(cluster);
+  }
+
+  /**
+   * Calculate military readiness based on available military creeps
+   */
+  private calculateMilitaryReadiness(cluster: ClusterMemory): number {
+    let militaryCreeps = 0;
+    let totalRoomCapacity = 0;
+
+    for (const roomName of cluster.memberRooms) {
+      const room = Game.rooms[roomName];
+      if (!room || !room.controller?.my) continue;
+
+      // Count military creeps in this room
+      const creeps = room.find(FIND_MY_CREEPS, {
+        filter: c => {
+          const mem = c.memory as { family?: string };
+          return mem.family === "military";
+        }
+      });
+      militaryCreeps += creeps.length;
+
+      // Expected military capacity based on RCL
+      const rcl = room.controller.level;
+      const expectedMilitary = Math.max(2, Math.floor(rcl / 2));
+      totalRoomCapacity += expectedMilitary;
+    }
+
+    // Calculate readiness as percentage of expected capacity
+    if (totalRoomCapacity === 0) return 0;
+    return Math.min(100, Math.round((militaryCreeps / totalRoomCapacity) * 100));
   }
 
   /**
@@ -282,58 +326,41 @@ export class ClusterManager {
    * Update squad status
    */
   private updateSquads(cluster: ClusterMemory): void {
+    // Validate and update all squads
+    for (const squad of cluster.squads) {
+      // Validate squad state transitions
+      validateSquadState(squad);
+
+      // Check if squad should be dissolved
+      if (shouldDissolveSquad(squad)) {
+        squad.state = "dissolving";
+      }
+    }
+
     // Remove dissolved squads
     cluster.squads = cluster.squads.filter(squad => squad.state !== "dissolving");
 
-    // Update existing squads
-    for (const squad of cluster.squads) {
-      this.updateSquad(squad);
-    }
+    // Auto-create defense squads for high-priority requests without assigned squads
+    this.autoCreateDefenseSquads(cluster);
   }
 
   /**
-   * Update a single squad
+   * Auto-create defense squads for high-priority unassigned defense requests
    */
-  private updateSquad(squad: SquadDefinition): void {
-    // Remove dead members
-    squad.members = squad.members.filter(name => Game.creeps[name]);
+  private autoCreateDefenseSquads(cluster: ClusterMemory): void {
+    // Find high-priority defense requests without a dedicated squad
+    const unassignedRequests = cluster.defenseRequests.filter(req => {
+      // Check if there's already a squad for this room
+      const hasSquad = cluster.squads.some(
+        squad => squad.type === "defense" && squad.targetRooms.includes(req.roomName)
+      );
+      return !hasSquad && req.urgency >= 2; // Only high urgency
+    });
 
-    // Check if squad should dissolve
-    if (squad.members.length === 0) {
-      squad.state = "dissolving";
-      logger.info(`Squad ${squad.id} dissolved - no members remaining`, { subsystem: "Cluster" });
-      return;
-    }
-
-    // Update squad state based on member positions
-    const members = squad.members.map(name => Game.creeps[name]).filter(c => c);
-
-    if (members.length === 0) {
-      squad.state = "dissolving";
-      return;
-    }
-
-    // Check if all members are in rally room
-    const inRally = members.every(c => c.room.name === squad.rallyRoom);
-
-    if (squad.state === "gathering" && inRally) {
-      squad.state = "moving";
-      logger.info(`Squad ${squad.id} gathered, moving to target`, { subsystem: "Cluster" });
-    }
-
-    // Check if all members are in target room
-    const inTarget = members.some(c => squad.targetRooms.includes(c.room.name));
-
-    if (squad.state === "moving" && inTarget) {
-      squad.state = "attacking";
-      logger.info(`Squad ${squad.id} reached target, engaging`, { subsystem: "Cluster" });
-    }
-
-    // Check if squad should retreat (>50% casualties)
-    const originalSize = squad.members.length;
-    if (squad.state === "attacking" && members.length < originalSize * 0.5) {
-      squad.state = "retreating";
-      logger.warn(`Squad ${squad.id} retreating - heavy casualties`, { subsystem: "Cluster" });
+    for (const request of unassignedRequests) {
+      // Create a defense squad
+      const squad = createDefenseSquad(cluster, request);
+      cluster.squads.push(squad);
     }
   }
 
@@ -352,6 +379,42 @@ export class ClusterManager {
       cluster.role = "frontier";
     } else {
       cluster.role = "mixed";
+    }
+  }
+
+  /**
+   * Update rally points based on current threats and operations
+   */
+  private updateRallyPoints(cluster: ClusterMemory): void {
+    // Clear old rally points (older than 1000 ticks)
+    const validRallyPoints = cluster.rallyPoints.filter(rp => {
+      // Keep defensive rally points
+      if (rp.purpose === "defense") return true;
+      
+      // Keep rally points for active squads
+      const hasActiveSquad = cluster.squads.some(
+        squad => squad.rallyRoom === rp.roomName && squad.state !== "dissolving"
+      );
+      return hasActiveSquad;
+    });
+
+    cluster.rallyPoints = validRallyPoints;
+
+    // Add rally points for each member room (defense purposes)
+    for (const roomName of cluster.memberRooms) {
+      const existingDefense = cluster.rallyPoints.find(
+        rp => rp.roomName === roomName && rp.purpose === "defense"
+      );
+
+      if (!existingDefense) {
+        // Add a central rally point for the room
+        cluster.rallyPoints.push({
+          roomName,
+          x: 25,
+          y: 25,
+          purpose: "defense"
+        });
+      }
     }
   }
 
