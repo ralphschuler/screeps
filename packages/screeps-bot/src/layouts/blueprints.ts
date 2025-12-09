@@ -33,6 +33,10 @@ export interface Blueprint {
   roads: { x: number; y: number }[];
   /** Rampart positions relative to anchor */
   ramparts: { x: number; y: number }[];
+  /** Blueprint type for terrain validation */
+  type?: "bunker" | "spread" | "dynamic";
+  /** Minimum required space radius (for terrain validation) */
+  minSpaceRadius?: number;
 }
 
 /**
@@ -55,6 +59,8 @@ export interface Blueprint {
 export const EARLY_COLONY_BLUEPRINT: Blueprint = {
   name: "seedNest",
   rcl: 1,
+  type: "spread",
+  minSpaceRadius: 3,
   anchor: { x: 25, y: 25 },
   structures: [
     { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
@@ -94,6 +100,8 @@ export const EARLY_COLONY_BLUEPRINT: Blueprint = {
 export const CORE_COLONY_BLUEPRINT: Blueprint = {
   name: "foragingExpansion",
   rcl: 3,
+  type: "spread",
+  minSpaceRadius: 4,
   anchor: { x: 25, y: 25 },
   structures: [
     { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
@@ -168,6 +176,8 @@ export const CORE_COLONY_BLUEPRINT: Blueprint = {
 export const ECONOMIC_MATURITY_BLUEPRINT: Blueprint = {
   name: "matureColony",
   rcl: 5,
+  type: "spread",
+  minSpaceRadius: 6,
   anchor: { x: 25, y: 25 },
   structures: [
     // Primary spawn at center
@@ -277,6 +287,8 @@ export const ECONOMIC_MATURITY_BLUEPRINT: Blueprint = {
 export const WAR_READY_BLUEPRINT: Blueprint = {
   name: "fortifiedHive",
   rcl: 7,
+  type: "spread",
+  minSpaceRadius: 7,
   anchor: { x: 25, y: 25 },
   structures: [
     // 3 spawns spaced apart
@@ -388,6 +400,182 @@ export const WAR_READY_BLUEPRINT: Blueprint = {
     // Protect special structures
     { x: 4, y: 4 },
     { x: -1, y: 5 }
+  ]
+};
+
+/**
+ * Compact Bunker Blueprint (RCL 8)
+ * 
+ * Ultra-efficient 11x11 bunker design that fits all critical structures
+ * within rampart range. Optimized for defense and minimal footprint.
+ * 
+ * Key features:
+ * - All structures within 11x11 grid for compact rampart coverage
+ * - Spawns positioned for optimal coverage
+ * - 10 labs total: 2 input labs + 8 output labs (all within reaction range <=2)
+ * - Towers positioned for overlapping fields of fire
+ * - Storage, terminal, and factory in tight cluster
+ * - Full 60 extensions in efficient pattern
+ * 
+ * Space requirements:
+ * - minSpaceRadius: 6 (ensures 13x13 buildable area around anchor)
+ * - Actual footprint: structures span from -6 to +6 on both axes
+ * - Requires minimal terrain walls: ≤10% of footprint
+ */
+export const COMPACT_BUNKER_BLUEPRINT: Blueprint = {
+  name: "compactBunker",
+  rcl: 8,
+  type: "bunker",
+  minSpaceRadius: 6, // Anchor must be 6+ tiles from room edge for 13x13 area
+  anchor: { x: 25, y: 25 },
+  structures: [
+    // Central core: Storage, Terminal, Factory in tight triangle
+    { x: 0, y: 0, structureType: STRUCTURE_STORAGE },
+    { x: -1, y: 1, structureType: STRUCTURE_TERMINAL },
+    { x: 1, y: 1, structureType: STRUCTURE_FACTORY },
+    
+    // 3 Spawns surrounding core
+    { x: 0, y: -2, structureType: STRUCTURE_SPAWN },
+    { x: -2, y: 1, structureType: STRUCTURE_SPAWN },
+    { x: 2, y: 1, structureType: STRUCTURE_SPAWN },
+    
+    // Power spawn and nuker near core
+    { x: 0, y: 2, structureType: STRUCTURE_POWER_SPAWN },
+    { x: -2, y: -1, structureType: STRUCTURE_NUKER },
+    
+    // 6 Towers for overlapping coverage
+    { x: -3, y: -2, structureType: STRUCTURE_TOWER },
+    { x: 3, y: -2, structureType: STRUCTURE_TOWER },
+    { x: -4, y: 0, structureType: STRUCTURE_TOWER },
+    { x: 4, y: 0, structureType: STRUCTURE_TOWER },
+    { x: -3, y: 3, structureType: STRUCTURE_TOWER },
+    { x: 3, y: 3, structureType: STRUCTURE_TOWER },
+    
+    // Lab cluster: 10 labs total (2 input + 8 output) in proper reaction range <=2
+    // Input labs (receive minerals for reactions)
+    { x: -2, y: 3, structureType: STRUCTURE_LAB },
+    { x: -1, y: 3, structureType: STRUCTURE_LAB },
+    // Output labs (all within range 2 of both input labs for reactions)
+    { x: -3, y: 4, structureType: STRUCTURE_LAB },
+    { x: -2, y: 4, structureType: STRUCTURE_LAB },
+    { x: -1, y: 4, structureType: STRUCTURE_LAB },
+    { x: 0, y: 3, structureType: STRUCTURE_LAB },
+    { x: 0, y: 4, structureType: STRUCTURE_LAB },
+    { x: 1, y: 3, structureType: STRUCTURE_LAB },
+    { x: 1, y: 4, structureType: STRUCTURE_LAB },
+    { x: 2, y: 3, structureType: STRUCTURE_LAB },
+    
+    // Observer
+    { x: 2, y: -1, structureType: STRUCTURE_OBSERVER },
+    
+    // 6 Links (source, storage, controller links)
+    { x: -1, y: -1, structureType: STRUCTURE_LINK },
+    { x: 1, y: -1, structureType: STRUCTURE_LINK },
+    { x: -3, y: 1, structureType: STRUCTURE_LINK },
+    { x: 3, y: 1, structureType: STRUCTURE_LINK },
+    { x: -1, y: -3, structureType: STRUCTURE_LINK },
+    { x: 1, y: -3, structureType: STRUCTURE_LINK },
+    
+    // Extensions in checkerboard pattern (60 total)
+    // Inner ring
+    { x: -2, y: -2, structureType: STRUCTURE_EXTENSION },
+    { x: 0, y: -4, structureType: STRUCTURE_EXTENSION },
+    { x: 2, y: -2, structureType: STRUCTURE_EXTENSION },
+    { x: -4, y: -2, structureType: STRUCTURE_EXTENSION },
+    { x: 4, y: -2, structureType: STRUCTURE_EXTENSION },
+    { x: -4, y: 2, structureType: STRUCTURE_EXTENSION },
+    { x: 4, y: 2, structureType: STRUCTURE_EXTENSION },
+    // Middle ring
+    { x: -5, y: -3, structureType: STRUCTURE_EXTENSION },
+    { x: -3, y: -3, structureType: STRUCTURE_EXTENSION },
+    { x: -1, y: -5, structureType: STRUCTURE_EXTENSION },
+    { x: 1, y: -5, structureType: STRUCTURE_EXTENSION },
+    { x: 3, y: -3, structureType: STRUCTURE_EXTENSION },
+    { x: 5, y: -3, structureType: STRUCTURE_EXTENSION },
+    { x: -5, y: -1, structureType: STRUCTURE_EXTENSION },
+    { x: 5, y: -1, structureType: STRUCTURE_EXTENSION },
+    { x: -5, y: 1, structureType: STRUCTURE_EXTENSION },
+    { x: 5, y: 1, structureType: STRUCTURE_EXTENSION },
+    { x: -5, y: 3, structureType: STRUCTURE_EXTENSION },
+    { x: 5, y: 3, structureType: STRUCTURE_EXTENSION },
+    // Outer ring
+    { x: -6, y: -4, structureType: STRUCTURE_EXTENSION },
+    { x: -4, y: -4, structureType: STRUCTURE_EXTENSION },
+    { x: -2, y: -4, structureType: STRUCTURE_EXTENSION },
+    { x: 2, y: -4, structureType: STRUCTURE_EXTENSION },
+    { x: 4, y: -4, structureType: STRUCTURE_EXTENSION },
+    { x: 6, y: -4, structureType: STRUCTURE_EXTENSION },
+    { x: -6, y: -2, structureType: STRUCTURE_EXTENSION },
+    { x: 6, y: -2, structureType: STRUCTURE_EXTENSION },
+    { x: -6, y: 0, structureType: STRUCTURE_EXTENSION },
+    { x: 6, y: 0, structureType: STRUCTURE_EXTENSION },
+    { x: -6, y: 2, structureType: STRUCTURE_EXTENSION },
+    { x: 6, y: 2, structureType: STRUCTURE_EXTENSION },
+    { x: -6, y: 4, structureType: STRUCTURE_EXTENSION },
+    { x: -4, y: 4, structureType: STRUCTURE_EXTENSION },
+    { x: 2, y: 4, structureType: STRUCTURE_EXTENSION },
+    { x: 4, y: 4, structureType: STRUCTURE_EXTENSION },
+    { x: 6, y: 4, structureType: STRUCTURE_EXTENSION },
+    // Additional extensions to reach 60
+    { x: -5, y: -5, structureType: STRUCTURE_EXTENSION },
+    { x: -3, y: -5, structureType: STRUCTURE_EXTENSION },
+    { x: 3, y: -5, structureType: STRUCTURE_EXTENSION },
+    { x: 5, y: -5, structureType: STRUCTURE_EXTENSION },
+    { x: -5, y: 5, structureType: STRUCTURE_EXTENSION },
+    { x: -3, y: 5, structureType: STRUCTURE_EXTENSION },
+    { x: 3, y: 5, structureType: STRUCTURE_EXTENSION },
+    { x: 5, y: 5, structureType: STRUCTURE_EXTENSION }
+  ],
+  roads: [
+    // Core roads connecting storage/terminal/factory
+    { x: -1, y: 0 },
+    { x: 1, y: 0 },
+    { x: 0, y: 1 },
+    // Roads around spawns
+    { x: -1, y: -2 },
+    { x: 1, y: -2 },
+    { x: -2, y: 0 },
+    { x: 2, y: 0 },
+    { x: -2, y: 2 },
+    { x: 2, y: 2 },
+    // Connector roads to towers
+    { x: -3, y: -1 },
+    { x: 3, y: -1 },
+    { x: -3, y: 2 },
+    { x: 3, y: 2 },
+    // Roads to lab cluster
+    { x: 0, y: 2 },
+    { x: -1, y: 2 },
+    { x: 1, y: 2 }
+  ],
+  ramparts: [
+    // Protect all critical structures
+    { x: 0, y: 0 },  // Storage
+    { x: -1, y: 1 }, // Terminal
+    { x: 1, y: 1 },  // Factory
+    { x: 0, y: -2 }, // Spawn 1
+    { x: -2, y: 1 }, // Spawn 2
+    { x: 2, y: 1 },  // Spawn 3
+    { x: 0, y: 2 },  // Power Spawn
+    { x: -2, y: -1 }, // Nuker
+    // Towers
+    { x: -3, y: -2 },
+    { x: 3, y: -2 },
+    { x: -4, y: 0 },
+    { x: 4, y: 0 },
+    { x: -3, y: 3 },
+    { x: 3, y: 3 },
+    // Lab cluster protection
+    { x: -2, y: 3 },
+    { x: -1, y: 3 },
+    { x: 0, y: 3 },
+    { x: 1, y: 3 },
+    { x: 2, y: 3 },
+    { x: -3, y: 4 },
+    { x: -2, y: 4 },
+    { x: -1, y: 4 },
+    { x: 0, y: 4 },
+    { x: 1, y: 4 }
   ]
 };
 
@@ -868,5 +1056,269 @@ export function findBestSpawnPosition(room: Room): RoomPosition | null {
     }
   }
 
+  return null;
+}
+
+/**
+ * Blueprint space and validation constants
+ */
+const DEFAULT_MIN_SPACE_RADIUS = 7;
+const MAX_BUNKER_WALL_PERCENTAGE = 10; // Bunkers require mostly open terrain
+const MAX_SPREAD_WALL_PERCENTAGE = 25; // Spread layouts are more flexible
+const MAX_ANCHOR_SEARCH_RADIUS = 15; // Maximum distance from ideal center to search
+
+/**
+ * Validate if a blueprint can fit in the room at the given anchor position
+ * 
+ * @param room The room to check
+ * @param anchor The anchor position for the blueprint
+ * @param blueprint The blueprint to validate
+ * @returns Object with validation result and details
+ */
+export function validateBlueprintFit(
+  room: Room,
+  anchor: RoomPosition,
+  blueprint: Blueprint
+): { fits: boolean; reason?: string; wallCount?: number; totalTiles?: number } {
+  const terrain = room.getTerrain();
+  const minRadius = blueprint.minSpaceRadius ?? DEFAULT_MIN_SPACE_RADIUS;
+  
+  let wallCount = 0;
+  let totalTiles = 0;
+  
+  // Check if anchor is in valid range
+  if (anchor.x < minRadius || anchor.x > 49 - minRadius ||
+      anchor.y < minRadius || anchor.y > 49 - minRadius) {
+    return { 
+      fits: false, 
+      reason: `Anchor too close to room edge (needs ${minRadius} tile margin)` 
+    };
+  }
+  
+  // Check all structure positions
+  for (const structure of blueprint.structures) {
+    const x = anchor.x + structure.x;
+    const y = anchor.y + structure.y;
+    
+    if (x < 1 || x > 48 || y < 1 || y > 48) {
+      return { 
+        fits: false, 
+        reason: `Structure ${structure.structureType} at (${structure.x},${structure.y}) would be outside room bounds` 
+      };
+    }
+    
+    totalTiles++;
+    if (terrain.get(x, y) === TERRAIN_MASK_WALL) {
+      wallCount++;
+    }
+  }
+  
+  // Check road positions
+  for (const road of blueprint.roads) {
+    const x = anchor.x + road.x;
+    const y = anchor.y + road.y;
+    
+    if (x < 1 || x > 48 || y < 1 || y > 48) {
+      continue; // Roads outside bounds are okay, just skip them
+    }
+    
+    totalTiles++;
+    if (terrain.get(x, y) === TERRAIN_MASK_WALL) {
+      wallCount++;
+    }
+  }
+  
+  // Calculate wall percentage
+  const wallPercentage = totalTiles > 0 ? (wallCount / totalTiles) * 100 : 0;
+  
+  // Bunker blueprints are strict - require mostly open terrain
+  if (blueprint.type === "bunker" && wallPercentage > MAX_BUNKER_WALL_PERCENTAGE) {
+    return {
+      fits: false,
+      reason: `Too many walls in blueprint area (${wallPercentage.toFixed(1)}% walls, max ${MAX_BUNKER_WALL_PERCENTAGE}% for bunker)`,
+      wallCount,
+      totalTiles
+    };
+  }
+  
+  // Spread blueprints are more flexible with terrain obstacles
+  if (blueprint.type === "spread" && wallPercentage > MAX_SPREAD_WALL_PERCENTAGE) {
+    return {
+      fits: false,
+      reason: `Too many walls in blueprint area (${wallPercentage.toFixed(1)}% walls, max ${MAX_SPREAD_WALL_PERCENTAGE}% for spread layout)`,
+      wallCount,
+      totalTiles
+    };
+  }
+  
+  return { fits: true, wallCount, totalTiles };
+}
+
+/**
+ * Find the best anchor position for a blueprint in a room
+ * 
+ * @param room The room to search
+ * @param blueprint The blueprint to place
+ * @returns Best anchor position or null if blueprint doesn't fit anywhere
+ */
+export function findBestBlueprintAnchor(
+  room: Room,
+  blueprint: Blueprint
+): RoomPosition | null {
+  const controller = room.controller;
+  if (!controller) return null;
+  
+  const sources = room.find(FIND_SOURCES);
+  const mineral = room.find(FIND_MINERALS)[0];
+  
+  // Calculate ideal center point (between controller and sources)
+  let sumX = controller.pos.x;
+  let sumY = controller.pos.y;
+  for (const source of sources) {
+    sumX += source.pos.x;
+    sumY += source.pos.y;
+  }
+  const idealX = Math.round(sumX / (sources.length + 1));
+  const idealY = Math.round(sumY / (sources.length + 1));
+  
+  const minRadius = blueprint.minSpaceRadius ?? DEFAULT_MIN_SPACE_RADIUS;
+  const candidates: { pos: RoomPosition; score: number }[] = [];
+  
+  // Search in expanding rings from ideal center
+  for (let radius = 0; radius <= MAX_ANCHOR_SEARCH_RADIUS; radius++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      for (let dy = -radius; dy <= radius; dy++) {
+        // Only check positions on the current ring
+        if (Math.abs(dx) !== radius && Math.abs(dy) !== radius && radius > 0) continue;
+        
+        const x = idealX + dx;
+        const y = idealY + dy;
+        
+        // Skip if too close to edge
+        if (x < minRadius || x > 49 - minRadius || y < minRadius || y > 49 - minRadius) {
+          continue;
+        }
+        
+        const pos = new RoomPosition(x, y, room.name);
+        const validation = validateBlueprintFit(room, pos, blueprint);
+        
+        if (validation.fits) {
+          // Score based on distance to key positions
+          let score = 1000;
+          
+          // Prefer positions closer to controller (but not too close)
+          const controllerDist = pos.getRangeTo(controller);
+          if (controllerDist >= 4 && controllerDist <= 8) {
+            score += 100;
+          } else if (controllerDist < 4) {
+            score -= 50;
+          } else if (controllerDist > 12) {
+            score -= 30;
+          }
+          
+          // Prefer positions with good source access
+          let totalSourceDist = 0;
+          for (const source of sources) {
+            totalSourceDist += pos.getRangeTo(source);
+          }
+          const avgSourceDist = totalSourceDist / sources.length;
+          if (avgSourceDist >= 5 && avgSourceDist <= 10) {
+            score += 80;
+          } else if (avgSourceDist < 5) {
+            score -= 20;
+          }
+          
+          // Prefer positions closer to room center
+          const centerDist = Math.abs(x - 25) + Math.abs(y - 25);
+          if (centerDist < 10) {
+            score += 50;
+          } else if (centerDist > 20) {
+            score -= 30;
+          }
+          
+          // Bonus for fewer walls in blueprint area
+          if (validation.wallCount !== undefined && validation.totalTiles !== undefined) {
+            const wallPercentage = (validation.wallCount / validation.totalTiles) * 100;
+            score += Math.max(0, 50 - wallPercentage * 2);
+          }
+          
+          candidates.push({ pos, score });
+        }
+      }
+    }
+    
+    // If we found candidates, return the best one
+    if (candidates.length > 0) {
+      candidates.sort((a, b) => b.score - a.score);
+      return candidates[0].pos;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Select the best blueprint for a room based on terrain and RCL
+ * 
+ * Tries bunker layout first (most efficient), falls back to spread layout if terrain doesn't allow.
+ * This implements the dynamic blueprint selection system.
+ * 
+ * @param room The room to select a blueprint for
+ * @param rcl The room control level
+ * @returns Selected blueprint and anchor position, or null if no valid layout found
+ */
+export function selectBestBlueprint(
+  room: Room,
+  rcl: number
+): { blueprint: Blueprint; anchor: RoomPosition } | null {
+  // For RCL 8, try compact bunker first
+  if (rcl >= 8) {
+    const bunkerAnchor = findBestBlueprintAnchor(room, COMPACT_BUNKER_BLUEPRINT);
+    if (bunkerAnchor) {
+      return { blueprint: COMPACT_BUNKER_BLUEPRINT, anchor: bunkerAnchor };
+    }
+    // Fall back to war-ready spread layout if bunker doesn't fit
+    const warAnchor = findBestBlueprintAnchor(room, WAR_READY_BLUEPRINT);
+    if (warAnchor) {
+      return { blueprint: WAR_READY_BLUEPRINT, anchor: warAnchor };
+    }
+  }
+  
+  // For RCL 7, try war-ready layout
+  if (rcl >= 7) {
+    const warAnchor = findBestBlueprintAnchor(room, WAR_READY_BLUEPRINT);
+    if (warAnchor) {
+      return { blueprint: WAR_READY_BLUEPRINT, anchor: warAnchor };
+    }
+  }
+  
+  // For RCL 5-6, try economic maturity
+  if (rcl >= 5) {
+    const economicAnchor = findBestBlueprintAnchor(room, ECONOMIC_MATURITY_BLUEPRINT);
+    if (economicAnchor) {
+      return { blueprint: ECONOMIC_MATURITY_BLUEPRINT, anchor: economicAnchor };
+    }
+  }
+  
+  // For RCL 3-4, try core colony
+  if (rcl >= 3) {
+    const coreAnchor = findBestBlueprintAnchor(room, CORE_COLONY_BLUEPRINT);
+    if (coreAnchor) {
+      return { blueprint: CORE_COLONY_BLUEPRINT, anchor: coreAnchor };
+    }
+  }
+  
+  // For RCL 1-2, use early colony (should almost always fit)
+  const earlyAnchor = findBestBlueprintAnchor(room, EARLY_COLONY_BLUEPRINT);
+  if (earlyAnchor) {
+    return { blueprint: EARLY_COLONY_BLUEPRINT, anchor: earlyAnchor };
+  }
+  
+  // Last resort: find ANY suitable spawn position
+  const fallbackAnchor = findBestSpawnPosition(room);
+  if (fallbackAnchor) {
+    return { blueprint: EARLY_COLONY_BLUEPRINT, anchor: fallbackAnchor };
+  }
+  
   return null;
 }

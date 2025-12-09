@@ -16,11 +16,12 @@ import { memoryManager } from "../memory/manager";
 import { pheromoneManager } from "../logic/pheromone";
 import { calculateDangerLevel, evolutionManager, postureManager } from "../logic/evolution";
 import { unifiedStats } from "./unifiedStats";
-import { destroyMisplacedStructures, getBlueprint, placeConstructionSites } from "../layouts/blueprints";
+import { destroyMisplacedStructures, getBlueprint, placeConstructionSites, selectBestBlueprint } from "../layouts/blueprints";
 import { placeRoadConstructionSites } from "../layouts/roadNetworkPlanner";
 import { safeFind } from "../utils/safeFind";
 import { safeModeManager } from "../defense/safeModeManager";
 import { placePerimeterDefense } from "../defense/perimeterDefense";
+import { placeRoadAwarePerimeterDefense } from "../defense/roadAwareDefense";
 import { calculateWallRepairTarget } from "../defense/wallRepairTargets";
 import { chemistryPlanner } from "../labs/chemistryPlanner";
 import { boostManager } from "../labs/boostManager";
@@ -463,7 +464,7 @@ export class RoomNode {
   }
 
   /**
-   * Run construction logic using blueprints
+   * Run construction logic using blueprints with dynamic selection and road-aware defense
    */
   private runConstruction(room: Room, swarm: SwarmState): void {
     // Check global construction site limit (use cached structures)
@@ -471,70 +472,95 @@ export class RoomNode {
     const existingSites = cache.constructionSites;
     if (existingSites.length >= 10) return;
 
-    // Get blueprint for current RCL
     const rcl = room.controller?.level ?? 1;
-    const blueprint = getBlueprint(rcl);
-    if (!blueprint) return;
 
     // Find spawn to use as anchor (use cached structures)
-    const spawn = cache.spawns[0];
+    let spawn = cache.spawns[0];
+    let anchor: RoomPosition | undefined = spawn?.pos;
+
     if (!spawn) {
       // No spawn, place one if we're a new colony
       if (rcl === 1 && existingSites.length === 0) {
-        // Find a suitable position for first spawn (use cached sources)
-        const controller = room.controller;
-        if (controller) {
-          const sources = cache.sources;
-          // Find position between controller and sources
-          const avgX = Math.round(
-            (controller.pos.x + sources.reduce((sum, s) => sum + s.pos.x, 0)) / (sources.length + 1)
+        // Use dynamic blueprint selection to find best spawn position
+        const blueprintSelection = selectBestBlueprint(room, rcl);
+        if (blueprintSelection) {
+          room.createConstructionSite(
+            blueprintSelection.anchor.x,
+            blueprintSelection.anchor.y,
+            STRUCTURE_SPAWN
           );
-          const avgY = Math.round(
-            (controller.pos.y + sources.reduce((sum, s) => sum + s.pos.y, 0)) / (sources.length + 1)
-          );
-
-          // Check if position is buildable
-          const terrain = room.getTerrain();
-          if (terrain.get(avgX, avgY) !== TERRAIN_MASK_WALL) {
-            room.createConstructionSite(avgX, avgY, STRUCTURE_SPAWN);
-          }
         }
       }
       return;
     }
 
+    // Get blueprint for current RCL using dynamic selection
+    // This will try bunker layout first, fall back to spread layout if terrain doesn't allow
+    const blueprintSelection = selectBestBlueprint(room, rcl);
+    if (!blueprintSelection) {
+      // Fallback to traditional method if dynamic selection fails
+      const blueprint = getBlueprint(rcl);
+      if (!blueprint) return;
+      anchor = spawn.pos;
+    } else {
+      // Use dynamically selected blueprint and anchor
+      // Update anchor if the dynamic selection found a better position
+      anchor = blueprintSelection.anchor;
+    }
+
+    const blueprint = blueprintSelection?.blueprint ?? getBlueprint(rcl);
+    if (!blueprint || !anchor) return;
+
     // Destroy misplaced structures that don't match the blueprint
     // Runs every construction tick (10 ticks) in non-combat postures for faster cleanup
     // Pass remote room assignments to preserve roads leading to remote mining rooms
     if (!postureManager.isCombatPosture(swarm.posture)) {
-      const destroyed = destroyMisplacedStructures(room, spawn.pos, blueprint, 1, swarm.remoteAssignments);
+      const destroyed = destroyMisplacedStructures(room, anchor, blueprint, 1, swarm.remoteAssignments);
       if (destroyed > 0) {
         const structureWord = destroyed === 1 ? "structure" : "structures";
         memoryManager.addRoomEvent(this.roomName, "structureDestroyed", `${destroyed} misplaced ${structureWord} destroyed for blueprint compliance`);
       }
     }
 
-    // Priority 1: Place perimeter defense (RCL 2+)
-    // Early defense is critical for room security
-    let perimeterPlaced = 0;
+    // Priority 1: Place road-aware perimeter defense (RCL 2+)
+    // Road-aware system ensures roads aren't blocked by walls
+    // Roads are calculated BEFORE walls are placed, and ramparts are used at road crossings
+    let perimeterResult = { sitesPlaced: 0, wallsRemoved: 0 };
     if (rcl >= EARLY_GAME_RCL_MIN && existingSites.length < 8) {
       // Place more sites in early game for faster fortification
       const maxPerimeterSites = isEarlyGameDefense(rcl)
         ? MAX_EARLY_PERIMETER_SITES
         : MAX_REGULAR_PERIMETER_SITES;
-      // Prioritize choke points at RCL 2, full perimeter at RCL 3+
-      perimeterPlaced = placePerimeterDefense(room, rcl, maxPerimeterSites, true);
+      
+      // Use road-aware defense system that plans roads first
+      perimeterResult = placeRoadAwarePerimeterDefense(
+        room,
+        anchor,
+        blueprint.roads,
+        rcl,
+        maxPerimeterSites,
+        swarm.remoteAssignments
+      );
+      
+      // Log wall removals for road access
+      if (perimeterResult.wallsRemoved > 0) {
+        memoryManager.addRoomEvent(
+          this.roomName,
+          "wallRemoved",
+          `${perimeterResult.wallsRemoved} wall(s) removed to allow road passage`
+        );
+      }
     }
 
     // Priority 2: Place construction sites using blueprint
-    const placed = placeConstructionSites(room, spawn.pos, blueprint);
+    const placed = placeConstructionSites(room, anchor, blueprint);
 
     // Priority 3: Place road construction sites for infrastructure routes (sources, controller, mineral)
     // Only place 1-2 road sites per tick to avoid overwhelming builders
-    const roadSitesPlaced = placeRoadConstructionSites(room, spawn.pos, 2);
+    const roadSitesPlaced = placeRoadConstructionSites(room, anchor, 2);
 
     // Update metrics
-    swarm.metrics.constructionSites = existingSites.length + placed + roadSitesPlaced + perimeterPlaced;
+    swarm.metrics.constructionSites = existingSites.length + placed + roadSitesPlaced + perimeterResult.sitesPlaced;
   }
 
   /**
