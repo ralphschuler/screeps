@@ -15018,6 +15018,8 @@ function placeRoadConstructionSites(room, anchor, maxSites = DEFAULT_ROAD_SITES_
 const EARLY_COLONY_BLUEPRINT = {
     name: "seedNest",
     rcl: 1,
+    type: "spread",
+    minSpaceRadius: 3,
     anchor: { x: 25, y: 25 },
     structures: [
         { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
@@ -15056,6 +15058,8 @@ const EARLY_COLONY_BLUEPRINT = {
 const CORE_COLONY_BLUEPRINT = {
     name: "foragingExpansion",
     rcl: 3,
+    type: "spread",
+    minSpaceRadius: 4,
     anchor: { x: 25, y: 25 },
     structures: [
         { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
@@ -15129,6 +15133,8 @@ const CORE_COLONY_BLUEPRINT = {
 const ECONOMIC_MATURITY_BLUEPRINT = {
     name: "matureColony",
     rcl: 5,
+    type: "spread",
+    minSpaceRadius: 6,
     anchor: { x: 25, y: 25 },
     structures: [
         // Primary spawn at center
@@ -15237,6 +15243,8 @@ const ECONOMIC_MATURITY_BLUEPRINT = {
 const WAR_READY_BLUEPRINT = {
     name: "fortifiedHive",
     rcl: 7,
+    type: "spread",
+    minSpaceRadius: 7,
     anchor: { x: 25, y: 25 },
     structures: [
         // 3 spawns spaced apart
@@ -15348,6 +15356,174 @@ const WAR_READY_BLUEPRINT = {
         // Protect special structures
         { x: 4, y: 4 },
         { x: -1, y: 5 }
+    ]
+};
+/**
+ * Compact Bunker Blueprint (RCL 8)
+ *
+ * Ultra-efficient 11x11 bunker design that fits all critical structures
+ * within rampart range. Optimized for defense and minimal footprint.
+ *
+ * Key features:
+ * - All structures within 11x11 grid for compact rampart coverage
+ * - Spawns positioned for optimal coverage
+ * - 10 labs total: 2 input labs + 8 output labs (all within reaction range <=2)
+ * - Towers positioned for overlapping fields of fire
+ * - Storage, terminal, and factory in tight cluster
+ * - Full 60 extensions in efficient pattern
+ *
+ * Space requirements:
+ * - minSpaceRadius: 6 (ensures 13x13 buildable area around anchor)
+ * - Actual footprint: structures span from -6 to +6 on both axes
+ * - Requires minimal terrain walls: ≤10% of footprint
+ */
+const COMPACT_BUNKER_BLUEPRINT = {
+    name: "compactBunker",
+    rcl: 8,
+    type: "bunker",
+    minSpaceRadius: 6,
+    anchor: { x: 25, y: 25 },
+    structures: [
+        // Central core: Storage, Terminal, Factory in tight triangle
+        { x: 0, y: 0, structureType: STRUCTURE_STORAGE },
+        { x: -1, y: 1, structureType: STRUCTURE_TERMINAL },
+        { x: 1, y: 1, structureType: STRUCTURE_FACTORY },
+        // 3 Spawns surrounding core
+        { x: 0, y: -2, structureType: STRUCTURE_SPAWN },
+        { x: -2, y: 1, structureType: STRUCTURE_SPAWN },
+        { x: 2, y: 1, structureType: STRUCTURE_SPAWN },
+        // Power spawn and nuker near core
+        { x: 0, y: 2, structureType: STRUCTURE_POWER_SPAWN },
+        { x: -2, y: -1, structureType: STRUCTURE_NUKER },
+        // 6 Towers for overlapping coverage
+        { x: -3, y: -2, structureType: STRUCTURE_TOWER },
+        { x: 3, y: -2, structureType: STRUCTURE_TOWER },
+        { x: -4, y: 0, structureType: STRUCTURE_TOWER },
+        { x: 4, y: 0, structureType: STRUCTURE_TOWER },
+        { x: -3, y: 3, structureType: STRUCTURE_TOWER },
+        { x: 3, y: 3, structureType: STRUCTURE_TOWER },
+        // Lab cluster: 10 labs total (2 input + 8 output) in proper reaction range <=2
+        // Input labs (receive minerals for reactions)
+        { x: -2, y: 3, structureType: STRUCTURE_LAB },
+        { x: -1, y: 3, structureType: STRUCTURE_LAB },
+        // Output labs (all within range 2 of both input labs for reactions)
+        { x: -3, y: 4, structureType: STRUCTURE_LAB },
+        { x: -2, y: 4, structureType: STRUCTURE_LAB },
+        { x: -1, y: 4, structureType: STRUCTURE_LAB },
+        { x: 0, y: 3, structureType: STRUCTURE_LAB },
+        { x: 0, y: 4, structureType: STRUCTURE_LAB },
+        { x: 1, y: 3, structureType: STRUCTURE_LAB },
+        { x: 1, y: 4, structureType: STRUCTURE_LAB },
+        { x: 2, y: 3, structureType: STRUCTURE_LAB },
+        // Observer
+        { x: 2, y: -1, structureType: STRUCTURE_OBSERVER },
+        // 6 Links (source, storage, controller links)
+        { x: -1, y: -1, structureType: STRUCTURE_LINK },
+        { x: 1, y: -1, structureType: STRUCTURE_LINK },
+        { x: -3, y: 1, structureType: STRUCTURE_LINK },
+        { x: 3, y: 1, structureType: STRUCTURE_LINK },
+        { x: -1, y: -3, structureType: STRUCTURE_LINK },
+        { x: 1, y: -3, structureType: STRUCTURE_LINK },
+        // Extensions in checkerboard pattern (60 total)
+        // Inner ring
+        { x: -2, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 0, y: -4, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: -4, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 4, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: -4, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: 4, y: 2, structureType: STRUCTURE_EXTENSION },
+        // Middle ring
+        { x: -5, y: -3, structureType: STRUCTURE_EXTENSION },
+        { x: -3, y: -3, structureType: STRUCTURE_EXTENSION },
+        { x: -1, y: -5, structureType: STRUCTURE_EXTENSION },
+        { x: 1, y: -5, structureType: STRUCTURE_EXTENSION },
+        { x: 3, y: -3, structureType: STRUCTURE_EXTENSION },
+        { x: 5, y: -3, structureType: STRUCTURE_EXTENSION },
+        { x: -5, y: -1, structureType: STRUCTURE_EXTENSION },
+        { x: 5, y: -1, structureType: STRUCTURE_EXTENSION },
+        { x: -5, y: 1, structureType: STRUCTURE_EXTENSION },
+        { x: 5, y: 1, structureType: STRUCTURE_EXTENSION },
+        { x: -5, y: 3, structureType: STRUCTURE_EXTENSION },
+        { x: 5, y: 3, structureType: STRUCTURE_EXTENSION },
+        // Outer ring
+        { x: -6, y: -4, structureType: STRUCTURE_EXTENSION },
+        { x: -4, y: -4, structureType: STRUCTURE_EXTENSION },
+        { x: -2, y: -4, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: -4, structureType: STRUCTURE_EXTENSION },
+        { x: 4, y: -4, structureType: STRUCTURE_EXTENSION },
+        { x: 6, y: -4, structureType: STRUCTURE_EXTENSION },
+        { x: -6, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: 6, y: -2, structureType: STRUCTURE_EXTENSION },
+        { x: -6, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: 6, y: 0, structureType: STRUCTURE_EXTENSION },
+        { x: -6, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: 6, y: 2, structureType: STRUCTURE_EXTENSION },
+        { x: -6, y: 4, structureType: STRUCTURE_EXTENSION },
+        { x: -4, y: 4, structureType: STRUCTURE_EXTENSION },
+        { x: 2, y: 4, structureType: STRUCTURE_EXTENSION },
+        { x: 4, y: 4, structureType: STRUCTURE_EXTENSION },
+        { x: 6, y: 4, structureType: STRUCTURE_EXTENSION },
+        // Additional extensions to reach 60
+        { x: -5, y: -5, structureType: STRUCTURE_EXTENSION },
+        { x: -3, y: -5, structureType: STRUCTURE_EXTENSION },
+        { x: 3, y: -5, structureType: STRUCTURE_EXTENSION },
+        { x: 5, y: -5, structureType: STRUCTURE_EXTENSION },
+        { x: -5, y: 5, structureType: STRUCTURE_EXTENSION },
+        { x: -3, y: 5, structureType: STRUCTURE_EXTENSION },
+        { x: 3, y: 5, structureType: STRUCTURE_EXTENSION },
+        { x: 5, y: 5, structureType: STRUCTURE_EXTENSION }
+    ],
+    roads: [
+        // Core roads connecting storage/terminal/factory
+        { x: -1, y: 0 },
+        { x: 1, y: 0 },
+        { x: 0, y: 1 },
+        // Roads around spawns
+        { x: -1, y: -2 },
+        { x: 1, y: -2 },
+        { x: -2, y: 0 },
+        { x: 2, y: 0 },
+        { x: -2, y: 2 },
+        { x: 2, y: 2 },
+        // Connector roads to towers
+        { x: -3, y: -1 },
+        { x: 3, y: -1 },
+        { x: -3, y: 2 },
+        { x: 3, y: 2 },
+        // Roads to lab cluster
+        { x: 0, y: 2 },
+        { x: -1, y: 2 },
+        { x: 1, y: 2 }
+    ],
+    ramparts: [
+        // Protect all critical structures
+        { x: 0, y: 0 },
+        { x: -1, y: 1 },
+        { x: 1, y: 1 },
+        { x: 0, y: -2 },
+        { x: -2, y: 1 },
+        { x: 2, y: 1 },
+        { x: 0, y: 2 },
+        { x: -2, y: -1 },
+        // Towers
+        { x: -3, y: -2 },
+        { x: 3, y: -2 },
+        { x: -4, y: 0 },
+        { x: 4, y: 0 },
+        { x: -3, y: 3 },
+        { x: 3, y: 3 },
+        // Lab cluster protection
+        { x: -2, y: 3 },
+        { x: -1, y: 3 },
+        { x: 0, y: 3 },
+        { x: 1, y: 3 },
+        { x: 2, y: 3 },
+        { x: -3, y: 4 },
+        { x: -2, y: 4 },
+        { x: -1, y: 4 },
+        { x: 0, y: 4 },
+        { x: 1, y: 4 }
     ]
 };
 /**
@@ -15694,6 +15870,287 @@ function destroyMisplacedStructures(room, anchor, blueprint, maxDestroy = 1, rem
     }
     return destroyed;
 }
+/**
+ * Check if a position is suitable for a spawn
+ */
+function isValidSpawnPosition(room, x, y) {
+    const terrain = room.getTerrain();
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            const px = x + dx;
+            const py = y + dy;
+            if (px < 1 || px > 48 || py < 1 || py > 48)
+                return false;
+            if (terrain.get(px, py) === TERRAIN_MASK_WALL)
+                return false;
+        }
+    }
+    return true;
+}
+/**
+ * Find best spawn position for a new colony
+ */
+function findBestSpawnPosition(room) {
+    const controller = room.controller;
+    if (!controller)
+        return null;
+    const sources = room.find(FIND_SOURCES);
+    const terrain = room.getTerrain();
+    let sumX = controller.pos.x;
+    let sumY = controller.pos.y;
+    for (const source of sources) {
+        sumX += source.pos.x;
+        sumY += source.pos.y;
+    }
+    const centerX = Math.round(sumX / (sources.length + 1));
+    const centerY = Math.round(sumY / (sources.length + 1));
+    for (let radius = 0; radius < 15; radius++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                if (Math.abs(dx) !== radius && Math.abs(dy) !== radius)
+                    continue;
+                const x = centerX + dx;
+                const y = centerY + dy;
+                if (x < 3 || x > 46 || y < 3 || y > 46)
+                    continue;
+                if (isValidSpawnPosition(room, x, y)) {
+                    const distToController = Math.max(Math.abs(x - controller.pos.x), Math.abs(y - controller.pos.y));
+                    if (distToController > 20)
+                        continue;
+                    if (terrain.get(x, y) === TERRAIN_MASK_WALL)
+                        continue;
+                    return new RoomPosition(x, y, room.name);
+                }
+            }
+        }
+    }
+    return null;
+}
+/**
+ * Blueprint space and validation constants
+ */
+const DEFAULT_MIN_SPACE_RADIUS = 7;
+const MAX_BUNKER_WALL_PERCENTAGE = 10; // Bunkers require mostly open terrain
+const MAX_SPREAD_WALL_PERCENTAGE = 25; // Spread layouts are more flexible
+const MAX_ANCHOR_SEARCH_RADIUS = 15; // Maximum distance from ideal center to search
+/**
+ * Validate if a blueprint can fit in the room at the given anchor position
+ *
+ * @param room The room to check
+ * @param anchor The anchor position for the blueprint
+ * @param blueprint The blueprint to validate
+ * @returns Object with validation result and details
+ */
+function validateBlueprintFit(room, anchor, blueprint) {
+    var _a;
+    const terrain = room.getTerrain();
+    const minRadius = (_a = blueprint.minSpaceRadius) !== null && _a !== void 0 ? _a : DEFAULT_MIN_SPACE_RADIUS;
+    let wallCount = 0;
+    let totalTiles = 0;
+    // Check if anchor is in valid range
+    if (anchor.x < minRadius || anchor.x > 49 - minRadius ||
+        anchor.y < minRadius || anchor.y > 49 - minRadius) {
+        return {
+            fits: false,
+            reason: `Anchor too close to room edge (needs ${minRadius} tile margin)`
+        };
+    }
+    // Check all structure positions
+    for (const structure of blueprint.structures) {
+        const x = anchor.x + structure.x;
+        const y = anchor.y + structure.y;
+        if (x < 1 || x > 48 || y < 1 || y > 48) {
+            return {
+                fits: false,
+                reason: `Structure ${structure.structureType} at (${structure.x},${structure.y}) would be outside room bounds`
+            };
+        }
+        totalTiles++;
+        if (terrain.get(x, y) === TERRAIN_MASK_WALL) {
+            wallCount++;
+        }
+    }
+    // Check road positions
+    for (const road of blueprint.roads) {
+        const x = anchor.x + road.x;
+        const y = anchor.y + road.y;
+        if (x < 1 || x > 48 || y < 1 || y > 48) {
+            continue; // Roads outside bounds are okay, just skip them
+        }
+        totalTiles++;
+        if (terrain.get(x, y) === TERRAIN_MASK_WALL) {
+            wallCount++;
+        }
+    }
+    // Calculate wall percentage
+    const wallPercentage = totalTiles > 0 ? (wallCount / totalTiles) * 100 : 0;
+    // Bunker blueprints are strict - require mostly open terrain
+    if (blueprint.type === "bunker" && wallPercentage > MAX_BUNKER_WALL_PERCENTAGE) {
+        return {
+            fits: false,
+            reason: `Too many walls in blueprint area (${wallPercentage.toFixed(1)}% walls, max ${MAX_BUNKER_WALL_PERCENTAGE}% for bunker)`,
+            wallCount,
+            totalTiles
+        };
+    }
+    // Spread blueprints are more flexible with terrain obstacles
+    if (blueprint.type === "spread" && wallPercentage > MAX_SPREAD_WALL_PERCENTAGE) {
+        return {
+            fits: false,
+            reason: `Too many walls in blueprint area (${wallPercentage.toFixed(1)}% walls, max ${MAX_SPREAD_WALL_PERCENTAGE}% for spread layout)`,
+            wallCount,
+            totalTiles
+        };
+    }
+    return { fits: true, wallCount, totalTiles };
+}
+/**
+ * Find the best anchor position for a blueprint in a room
+ *
+ * @param room The room to search
+ * @param blueprint The blueprint to place
+ * @returns Best anchor position or null if blueprint doesn't fit anywhere
+ */
+function findBestBlueprintAnchor(room, blueprint) {
+    var _a;
+    const controller = room.controller;
+    if (!controller)
+        return null;
+    const sources = room.find(FIND_SOURCES);
+    room.find(FIND_MINERALS)[0];
+    // Calculate ideal center point (between controller and sources)
+    let sumX = controller.pos.x;
+    let sumY = controller.pos.y;
+    for (const source of sources) {
+        sumX += source.pos.x;
+        sumY += source.pos.y;
+    }
+    const idealX = Math.round(sumX / (sources.length + 1));
+    const idealY = Math.round(sumY / (sources.length + 1));
+    const minRadius = (_a = blueprint.minSpaceRadius) !== null && _a !== void 0 ? _a : DEFAULT_MIN_SPACE_RADIUS;
+    const candidates = [];
+    // Search in expanding rings from ideal center
+    for (let radius = 0; radius <= MAX_ANCHOR_SEARCH_RADIUS; radius++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                // Only check positions on the current ring
+                if (Math.abs(dx) !== radius && Math.abs(dy) !== radius && radius > 0)
+                    continue;
+                const x = idealX + dx;
+                const y = idealY + dy;
+                // Skip if too close to edge
+                if (x < minRadius || x > 49 - minRadius || y < minRadius || y > 49 - minRadius) {
+                    continue;
+                }
+                const pos = new RoomPosition(x, y, room.name);
+                const validation = validateBlueprintFit(room, pos, blueprint);
+                if (validation.fits) {
+                    // Score based on distance to key positions
+                    let score = 1000;
+                    // Prefer positions closer to controller (but not too close)
+                    const controllerDist = pos.getRangeTo(controller);
+                    if (controllerDist >= 4 && controllerDist <= 8) {
+                        score += 100;
+                    }
+                    else if (controllerDist < 4) {
+                        score -= 50;
+                    }
+                    else if (controllerDist > 12) {
+                        score -= 30;
+                    }
+                    // Prefer positions with good source access
+                    let totalSourceDist = 0;
+                    for (const source of sources) {
+                        totalSourceDist += pos.getRangeTo(source);
+                    }
+                    const avgSourceDist = totalSourceDist / sources.length;
+                    if (avgSourceDist >= 5 && avgSourceDist <= 10) {
+                        score += 80;
+                    }
+                    else if (avgSourceDist < 5) {
+                        score -= 20;
+                    }
+                    // Prefer positions closer to room center
+                    const centerDist = Math.abs(x - 25) + Math.abs(y - 25);
+                    if (centerDist < 10) {
+                        score += 50;
+                    }
+                    else if (centerDist > 20) {
+                        score -= 30;
+                    }
+                    // Bonus for fewer walls in blueprint area
+                    if (validation.wallCount !== undefined && validation.totalTiles !== undefined) {
+                        const wallPercentage = (validation.wallCount / validation.totalTiles) * 100;
+                        score += Math.max(0, 50 - wallPercentage * 2);
+                    }
+                    candidates.push({ pos, score });
+                }
+            }
+        }
+        // If we found candidates, return the best one
+        if (candidates.length > 0) {
+            candidates.sort((a, b) => b.score - a.score);
+            return candidates[0].pos;
+        }
+    }
+    return null;
+}
+/**
+ * Select the best blueprint for a room based on terrain and RCL
+ *
+ * Tries bunker layout first (most efficient), falls back to spread layout if terrain doesn't allow.
+ * This implements the dynamic blueprint selection system.
+ *
+ * @param room The room to select a blueprint for
+ * @param rcl The room control level
+ * @returns Selected blueprint and anchor position, or null if no valid layout found
+ */
+function selectBestBlueprint(room, rcl) {
+    // For RCL 8, try compact bunker first
+    if (rcl >= 8) {
+        const bunkerAnchor = findBestBlueprintAnchor(room, COMPACT_BUNKER_BLUEPRINT);
+        if (bunkerAnchor) {
+            return { blueprint: COMPACT_BUNKER_BLUEPRINT, anchor: bunkerAnchor };
+        }
+        // Fall back to war-ready spread layout if bunker doesn't fit
+        const warAnchor = findBestBlueprintAnchor(room, WAR_READY_BLUEPRINT);
+        if (warAnchor) {
+            return { blueprint: WAR_READY_BLUEPRINT, anchor: warAnchor };
+        }
+    }
+    // For RCL 7, try war-ready layout
+    if (rcl >= 7) {
+        const warAnchor = findBestBlueprintAnchor(room, WAR_READY_BLUEPRINT);
+        if (warAnchor) {
+            return { blueprint: WAR_READY_BLUEPRINT, anchor: warAnchor };
+        }
+    }
+    // For RCL 5-6, try economic maturity
+    if (rcl >= 5) {
+        const economicAnchor = findBestBlueprintAnchor(room, ECONOMIC_MATURITY_BLUEPRINT);
+        if (economicAnchor) {
+            return { blueprint: ECONOMIC_MATURITY_BLUEPRINT, anchor: economicAnchor };
+        }
+    }
+    // For RCL 3-4, try core colony
+    if (rcl >= 3) {
+        const coreAnchor = findBestBlueprintAnchor(room, CORE_COLONY_BLUEPRINT);
+        if (coreAnchor) {
+            return { blueprint: CORE_COLONY_BLUEPRINT, anchor: coreAnchor };
+        }
+    }
+    // For RCL 1-2, use early colony (should almost always fit)
+    const earlyAnchor = findBestBlueprintAnchor(room, EARLY_COLONY_BLUEPRINT);
+    if (earlyAnchor) {
+        return { blueprint: EARLY_COLONY_BLUEPRINT, anchor: earlyAnchor };
+    }
+    // Last resort: find ANY suitable spawn position
+    const fallbackAnchor = findBestSpawnPosition(room);
+    if (fallbackAnchor) {
+        return { blueprint: EARLY_COLONY_BLUEPRINT, anchor: fallbackAnchor };
+    }
+    return null;
+}
 
 /**
  * Safe Mode Manager - Emergency Defense
@@ -15955,53 +16412,155 @@ function calculatePerimeterPositions(roomName) {
     }
     return { walls, ramparts };
 }
+
 /**
- * Place perimeter defense construction sites
+ * Road-Aware Defense System
  *
- * Builds walls at room exits only (not a complete square perimeter).
- * For each exit group, walls are placed 2 tiles inside with strategic gaps (ramparts only)
- * in the center to allow friendly creeps to pass while blocking enemies.
+ * Integrates road network planning with perimeter defense to ensure:
+ * 1. Road network is calculated BEFORE walls are placed
+ * 2. Roads that intersect with perimeter walls get ramparts instead of walls
+ * 3. Existing walls blocking roads can be removed and replaced with ramparts
+ * 4. Critical paths (to sources, controller, remotes) are never blocked
  *
- * Strategy (per ROADMAP Section 17 - Mauern & Ramparts):
- * - Walls block all creeps
- * - Ramparts (without walls underneath) allow friendly creeps but block enemies
- * - Build walls at exits only (where creeps can actually enter the room)
- * - Walls are placed 2 tiles inside from exit tiles (at x=2, x=47, y=2, y=47)
- * - Create 2-tile wide gaps at center of each exit group with ramparts only
- * - This avoids creating a complete square, only fortifying actual entry points
+ * ROADMAP Reference:
+ * - Section 17: Mauern & Ramparts (defensive structures)
+ * - Section 20: Bewegung, Pathfinding & Traffic-Management (road networks)
+ *
+ * NEW REQUIREMENTS:
+ * - Plan road network before placing walls
+ * - Use ramparts instead of walls where roads cross perimeter
+ * - Remove walls at strategic positions to extend road network
+ */
+/**
+ * Constants for road-aware defense system
+ */
+const MAX_CONSTRUCTION_SITES = 10; // Screeps game limit
+const MAX_DEFENSIVE_STRUCTURES_PER_RCL = 2500; // Walls and ramparts limit per RCL
+/**
+ * Calculate road-aware perimeter defense positions
+ *
+ * This function:
+ * 1. Calculates the road network (to sources, controller, mineral, remotes)
+ * 2. Identifies where roads cross the perimeter
+ * 3. Ensures those crossings get ramparts (not walls) for friendly passage
+ * 4. Identifies existing walls that block roads and should be removed
+ *
+ * @param room The room to plan defense for
+ * @param anchor The base anchor position (spawn location)
+ * @param blueprintRoads Blueprint road positions (relative to anchor)
+ * @param remoteRooms Remote room names for road calculation
+ * @returns Road-aware perimeter plan
+ */
+function calculateRoadAwarePerimeter(room, anchor, blueprintRoads, remoteRooms = []) {
+    // Step 1: Calculate the complete road network
+    const validRoads = getValidRoadPositions(room, anchor, blueprintRoads, remoteRooms);
+    // Step 2: Get standard perimeter plan (walls and rampart gaps)
+    const basePlan = calculatePerimeterPositions(room.name);
+    // Step 3: Identify road crossings at perimeter
+    const roadCrossings = [];
+    const walls = [];
+    const ramparts = [...basePlan.ramparts]; // Start with existing gaps
+    // Check each wall position to see if it intersects with a road
+    for (const wallPos of basePlan.walls) {
+        const posKey = `${wallPos.x},${wallPos.y}`;
+        if (validRoads.has(posKey)) {
+            // This wall position is on a road - convert to rampart
+            roadCrossings.push(wallPos);
+            ramparts.push(wallPos);
+        }
+        else {
+            // Not on a road - keep as wall
+            walls.push(wallPos);
+        }
+    }
+    // Step 4: Find existing walls that block roads and should be removed
+    const wallsToRemove = [];
+    const existingStructures = room.find(FIND_STRUCTURES);
+    for (const structure of existingStructures) {
+        if (structure.structureType === STRUCTURE_WALL) {
+            const posKey = `${structure.pos.x},${structure.pos.y}`;
+            // If there's a wall on a road position, mark it for removal
+            if (validRoads.has(posKey)) {
+                wallsToRemove.push({ x: structure.pos.x, y: structure.pos.y });
+            }
+        }
+    }
+    return {
+        walls,
+        ramparts,
+        roadCrossings,
+        wallsToRemove
+    };
+}
+/**
+ * Place road-aware perimeter defense
+ *
+ * This is an enhanced version of placePerimeterDefense that:
+ * 1. Plans roads BEFORE placing walls
+ * 2. Uses ramparts instead of walls where roads cross perimeter
+ * 3. Removes walls that block critical roads
+ * 4. Ensures friendly creeps can always reach sources, controller, and remotes
  *
  * @param room The room to defend
+ * @param anchor The base anchor position (spawn location)
+ * @param blueprintRoads Blueprint road positions
  * @param rcl Current room control level
  * @param maxSites Maximum construction sites to place
- * @param prioritizeChokePoints Whether to prioritize choke points (not used in new strategy)
- * @returns Number of sites placed
+ * @param remoteRooms Remote room names
+ * @returns Number of sites placed and walls removed
  */
-function placePerimeterDefense(room, rcl, maxSites = 3, _prioritizeChokePoints = true) {
-    // RCL requirements
-    // RCL 2: Start placing perimeter walls
-    // RCL 3+: Complete perimeter walls and add ramparts at gap positions
+function placeRoadAwarePerimeterDefense(room, anchor, blueprintRoads, rcl, maxSites = 3, remoteRooms = []) {
     if (rcl < 2)
-        return 0;
-    const plan = calculatePerimeterPositions(room.name);
+        return { sitesPlaced: 0, wallsRemoved: 0 };
+    // Calculate road-aware perimeter plan
+    const plan = calculateRoadAwarePerimeter(room, anchor, blueprintRoads, remoteRooms);
     const existingSites = room.find(FIND_MY_CONSTRUCTION_SITES);
     const existingStructures = room.find(FIND_STRUCTURES);
     // Check site limit
-    if (existingSites.length >= 10)
-        return 0;
-    let placed = 0;
-    const maxToPlace = Math.min(maxSites, 10 - existingSites.length);
+    if (existingSites.length >= MAX_CONSTRUCTION_SITES) {
+        return { sitesPlaced: 0, wallsRemoved: 0 };
+    }
+    let sitesPlaced = 0;
+    let wallsRemoved = 0;
+    const maxToPlace = Math.min(maxSites, MAX_CONSTRUCTION_SITES - existingSites.length);
     // Get structure counts
     const wallCount = existingStructures.filter(s => s.structureType === STRUCTURE_WALL).length + existingSites.filter(s => s.structureType === STRUCTURE_WALL).length;
     const rampartCount = existingStructures.filter(s => s.structureType === STRUCTURE_RAMPART).length + existingSites.filter(s => s.structureType === STRUCTURE_RAMPART).length;
-    // RCL structure limits (from ROADMAP)
-    const wallLimit = rcl >= 2 ? 2500 : 0;
-    const rampartLimit = rcl >= 2 ? 2500 : 0;
-    // Priority 1: Place walls along perimeter (RCL 2+)
-    if (rcl >= 2 && placed < maxToPlace && wallCount < wallLimit) {
+    // RCL structure limits
+    const wallLimit = rcl >= 2 ? MAX_DEFENSIVE_STRUCTURES_PER_RCL : 0;
+    const rampartLimit = rcl >= 2 ? MAX_DEFENSIVE_STRUCTURES_PER_RCL : 0;
+    // Priority 1: Remove walls that block roads (RCL 3+)
+    // This is highest priority to ensure creeps can move efficiently
+    if (rcl >= 3 && plan.wallsToRemove.length > 0) {
+        for (const wallPos of plan.wallsToRemove) {
+            // Find the wall structure
+            const wall = existingStructures.find(s => s.structureType === STRUCTURE_WALL &&
+                s.pos.x === wallPos.x &&
+                s.pos.y === wallPos.y);
+            if (wall) {
+                // Check if there's already a rampart here (no need to remove wall then)
+                const hasRampart = existingStructures.some(s => s.structureType === STRUCTURE_RAMPART &&
+                    s.pos.x === wallPos.x &&
+                    s.pos.y === wallPos.y);
+                if (!hasRampart) {
+                    const result = wall.destroy();
+                    if (result === OK) {
+                        wallsRemoved++;
+                        logger.info(`Removed wall at (${wallPos.x},${wallPos.y}) to allow road passage`, { subsystem: "Defense" });
+                    }
+                    else {
+                        logger.warn(`Failed to remove wall at (${wallPos.x},${wallPos.y}): ${result}`, { subsystem: "Defense" });
+                    }
+                }
+            }
+        }
+    }
+    // Priority 2: Place walls at non-road perimeter positions (RCL 2+)
+    if (rcl >= 2 && sitesPlaced < maxToPlace && wallCount < wallLimit) {
         for (const wall of plan.walls) {
-            if (placed >= maxToPlace)
+            if (sitesPlaced >= maxToPlace)
                 break;
-            if (wallCount + placed >= wallLimit)
+            if (wallCount + sitesPlaced >= wallLimit)
                 break;
             // Check if position already has a structure or site
             const hasStructure = existingStructures.some(s => s.pos.x === wall.x && s.pos.y === wall.y &&
@@ -16011,59 +16570,44 @@ function placePerimeterDefense(room, rcl, maxSites = 3, _prioritizeChokePoints =
             if (!hasStructure && !hasSite) {
                 const result = room.createConstructionSite(wall.x, wall.y, STRUCTURE_WALL);
                 if (result === OK) {
-                    placed++;
+                    sitesPlaced++;
                     logger.debug(`Placed perimeter wall at (${wall.x},${wall.y})`, { subsystem: "Defense" });
                 }
             }
         }
     }
-    // Priority 2: Remove walls at gap positions (RCL 3+)
-    // These positions should only have ramparts for friendly passage
-    // Only remove walls if there's no rampart yet (to avoid destroying walls unnecessarily)
-    if (rcl >= 3) {
+    // Priority 3: Place ramparts at gaps AND road crossings (RCL 3+)
+    if (rcl >= 3 && sitesPlaced < maxToPlace && rampartCount < rampartLimit) {
         for (const rampart of plan.ramparts) {
-            // Check if there's already a rampart at this position
-            const hasRampart = existingStructures.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART);
-            const hasRampartSite = existingSites.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART);
-            // Only destroy wall if there's no rampart yet
-            if (!hasRampart && !hasRampartSite) {
-                const wallAtGap = existingStructures.find(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_WALL);
-                if (wallAtGap) {
-                    // Destroy wall at gap position to allow rampart placement
-                    const result = wallAtGap.destroy();
-                    if (result === OK) {
-                        logger.info(`Removed wall at gap position (${rampart.x},${rampart.y}) to allow friendly passage`, { subsystem: "Defense" });
-                    }
-                    else {
-                        logger.warn(`Failed to destroy wall at gap position (${rampart.x},${rampart.y}): ${result}`, { subsystem: "Defense" });
-                    }
-                }
-            }
-        }
-    }
-    // Priority 3: Place ramparts at gap positions (RCL 3+)
-    // These are rampart-only positions (no wall underneath) to allow friendly passage
-    if (rcl >= 3 && placed < maxToPlace && rampartCount < rampartLimit) {
-        for (const rampart of plan.ramparts) {
-            if (placed >= maxToPlace)
+            if (sitesPlaced >= maxToPlace)
                 break;
-            if (rampartCount + placed >= rampartLimit)
+            if (rampartCount + sitesPlaced >= rampartLimit)
                 break;
             // Check if position already has a rampart
-            const hasRampart = existingStructures.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART);
-            const hasRampartSite = existingSites.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_RAMPART);
-            // Don't place if there's a wall here (walls should not be at rampart-only positions)
-            const hasWall = existingStructures.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y && s.structureType === STRUCTURE_WALL);
+            const hasRampart = existingStructures.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y &&
+                s.structureType === STRUCTURE_RAMPART);
+            const hasRampartSite = existingSites.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y &&
+                s.structureType === STRUCTURE_RAMPART);
+            // Don't place if there's a wall here (should have been removed already)
+            const hasWall = existingStructures.some(s => s.pos.x === rampart.x && s.pos.y === rampart.y &&
+                s.structureType === STRUCTURE_WALL);
             if (!hasRampart && !hasRampartSite && !hasWall) {
                 const result = room.createConstructionSite(rampart.x, rampart.y, STRUCTURE_RAMPART);
                 if (result === OK) {
-                    placed++;
-                    logger.debug(`Placed perimeter rampart gap at (${rampart.x},${rampart.y})`, { subsystem: "Defense" });
+                    sitesPlaced++;
+                    // Check if this is a road crossing
+                    const isRoadCrossing = plan.roadCrossings.some(rc => rc.x === rampart.x && rc.y === rampart.y);
+                    if (isRoadCrossing) {
+                        logger.debug(`Placed rampart at road crossing (${rampart.x},${rampart.y})`, { subsystem: "Defense" });
+                    }
+                    else {
+                        logger.debug(`Placed rampart gap at (${rampart.x},${rampart.y})`, { subsystem: "Defense" });
+                    }
                 }
             }
         }
     }
-    return placed;
+    return { sitesPlaced, wallsRemoved };
 }
 
 /**
@@ -17109,69 +17653,81 @@ class RoomNode {
         return score;
     }
     /**
-     * Run construction logic using blueprints
+     * Run construction logic using blueprints with dynamic selection and road-aware defense
      */
     runConstruction(room, swarm) {
-        var _a, _b;
+        var _a, _b, _c;
         // Check global construction site limit (use cached structures)
         const cache = getStructureCache(room);
         const existingSites = cache.constructionSites;
         if (existingSites.length >= 10)
             return;
-        // Get blueprint for current RCL
         const rcl = (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 1;
-        const blueprint = getBlueprint(rcl);
-        if (!blueprint)
-            return;
         // Find spawn to use as anchor (use cached structures)
-        const spawn = cache.spawns[0];
+        let spawn = cache.spawns[0];
+        let anchor = spawn === null || spawn === void 0 ? void 0 : spawn.pos;
         if (!spawn) {
             // No spawn, place one if we're a new colony
             if (rcl === 1 && existingSites.length === 0) {
-                // Find a suitable position for first spawn (use cached sources)
-                const controller = room.controller;
-                if (controller) {
-                    const sources = cache.sources;
-                    // Find position between controller and sources
-                    const avgX = Math.round((controller.pos.x + sources.reduce((sum, s) => sum + s.pos.x, 0)) / (sources.length + 1));
-                    const avgY = Math.round((controller.pos.y + sources.reduce((sum, s) => sum + s.pos.y, 0)) / (sources.length + 1));
-                    // Check if position is buildable
-                    const terrain = room.getTerrain();
-                    if (terrain.get(avgX, avgY) !== TERRAIN_MASK_WALL) {
-                        room.createConstructionSite(avgX, avgY, STRUCTURE_SPAWN);
-                    }
+                // Use dynamic blueprint selection to find best spawn position
+                const blueprintSelection = selectBestBlueprint(room, rcl);
+                if (blueprintSelection) {
+                    room.createConstructionSite(blueprintSelection.anchor.x, blueprintSelection.anchor.y, STRUCTURE_SPAWN);
                 }
             }
             return;
         }
+        // Get blueprint for current RCL using dynamic selection
+        // This will try bunker layout first, fall back to spread layout if terrain doesn't allow
+        const blueprintSelection = selectBestBlueprint(room, rcl);
+        if (!blueprintSelection) {
+            // Fallback to traditional method if dynamic selection fails
+            const blueprint = getBlueprint(rcl);
+            if (!blueprint)
+                return;
+            anchor = spawn.pos;
+        }
+        else {
+            // Use dynamically selected blueprint and anchor
+            // Update anchor if the dynamic selection found a better position
+            anchor = blueprintSelection.anchor;
+        }
+        const blueprint = (_c = blueprintSelection === null || blueprintSelection === void 0 ? void 0 : blueprintSelection.blueprint) !== null && _c !== void 0 ? _c : getBlueprint(rcl);
+        if (!blueprint || !anchor)
+            return;
         // Destroy misplaced structures that don't match the blueprint
         // Runs every construction tick (10 ticks) in non-combat postures for faster cleanup
         // Pass remote room assignments to preserve roads leading to remote mining rooms
         if (!postureManager.isCombatPosture(swarm.posture)) {
-            const destroyed = destroyMisplacedStructures(room, spawn.pos, blueprint, 1, swarm.remoteAssignments);
+            const destroyed = destroyMisplacedStructures(room, anchor, blueprint, 1, swarm.remoteAssignments);
             if (destroyed > 0) {
                 const structureWord = destroyed === 1 ? "structure" : "structures";
                 memoryManager.addRoomEvent(this.roomName, "structureDestroyed", `${destroyed} misplaced ${structureWord} destroyed for blueprint compliance`);
             }
         }
-        // Priority 1: Place perimeter defense (RCL 2+)
-        // Early defense is critical for room security
-        let perimeterPlaced = 0;
+        // Priority 1: Place road-aware perimeter defense (RCL 2+)
+        // Road-aware system ensures roads aren't blocked by walls
+        // Roads are calculated BEFORE walls are placed, and ramparts are used at road crossings
+        let perimeterResult = { sitesPlaced: 0, wallsRemoved: 0 };
         if (rcl >= EARLY_GAME_RCL_MIN && existingSites.length < 8) {
             // Place more sites in early game for faster fortification
             const maxPerimeterSites = isEarlyGameDefense(rcl)
                 ? MAX_EARLY_PERIMETER_SITES
                 : MAX_REGULAR_PERIMETER_SITES;
-            // Prioritize choke points at RCL 2, full perimeter at RCL 3+
-            perimeterPlaced = placePerimeterDefense(room, rcl, maxPerimeterSites, true);
+            // Use road-aware defense system that plans roads first
+            perimeterResult = placeRoadAwarePerimeterDefense(room, anchor, blueprint.roads, rcl, maxPerimeterSites, swarm.remoteAssignments);
+            // Log wall removals for road access
+            if (perimeterResult.wallsRemoved > 0) {
+                memoryManager.addRoomEvent(this.roomName, "wallRemoved", `${perimeterResult.wallsRemoved} wall(s) removed to allow road passage`);
+            }
         }
         // Priority 2: Place construction sites using blueprint
-        const placed = placeConstructionSites(room, spawn.pos, blueprint);
+        const placed = placeConstructionSites(room, anchor, blueprint);
         // Priority 3: Place road construction sites for infrastructure routes (sources, controller, mineral)
         // Only place 1-2 road sites per tick to avoid overwhelming builders
-        const roadSitesPlaced = placeRoadConstructionSites(room, spawn.pos, 2);
+        const roadSitesPlaced = placeRoadConstructionSites(room, anchor, 2);
         // Update metrics
-        swarm.metrics.constructionSites = existingSites.length + placed + roadSitesPlaced + perimeterPlaced;
+        swarm.metrics.constructionSites = existingSites.length + placed + roadSitesPlaced + perimeterResult.sitesPlaced;
     }
     /**
      * Run resource processing (labs, factory, power spawn)
