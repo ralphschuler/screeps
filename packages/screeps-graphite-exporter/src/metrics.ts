@@ -16,6 +16,17 @@ interface GraphiteMetric {
 }
 
 /**
+ * JSON format for Grafana Cloud Graphite HTTP API
+ */
+interface GraphiteJsonMetric {
+  name: string;
+  interval: number;
+  value: number;
+  time: number;
+  tags: string[];
+}
+
+/**
  * Sanitize a tag value for Graphite (replace invalid characters with underscores)
  */
 function sanitizeTagValue(name: string): string {
@@ -23,15 +34,19 @@ function sanitizeTagValue(name: string): string {
 }
 
 /**
- * Convert a metric name to Graphite format with tags
+ * Convert a metric to Grafana Cloud Graphite JSON format
  */
-function formatGraphiteMetric(metric: GraphiteMetric): string {
+function formatGraphiteMetricJson(metric: GraphiteMetric): GraphiteJsonMetric {
   const tags = Object.entries(metric.tags)
-    .map(([key, value]) => `${sanitizeTagValue(key)}=${sanitizeTagValue(value)}`)
-    .join(';');
+    .map(([key, value]) => `${sanitizeTagValue(key)}=${sanitizeTagValue(value)}`);
   
-  const metricName = tags ? `${metric.name};${tags}` : metric.name;
-  return `${metricName} ${metric.value} ${metric.time}`;
+  return {
+    name: metric.name,
+    interval: 10, // 10 seconds resolution (can be adjusted based on polling interval)
+    value: metric.value,
+    time: metric.time,
+    tags: tags
+  };
 }
 
 /**
@@ -96,17 +111,17 @@ export function createMetrics(config: ExporterConfig, logger: Logger): Metrics {
   const flush = async () => {
     if (pendingMetrics.length === 0) return;
 
-    // Format metrics in Graphite plaintext format
-    const metricsData = pendingMetrics.map(formatGraphiteMetric).join('\n');
+    // Format metrics in Grafana Cloud Graphite JSON format
+    const metricsData = pendingMetrics.map(formatGraphiteMetricJson);
 
     try {
       const response = await fetch(config.graphiteUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'text/plain',
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${config.graphiteApiKey}`
         },
-        body: metricsData
+        body: JSON.stringify(metricsData)
       });
 
       if (!response.ok) {
