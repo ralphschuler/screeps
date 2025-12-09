@@ -4726,7 +4726,6 @@ class Kernel {
             return;
         }
         let processesRun = 0;
-        const processesSkipped = 0;
         let lastExecutedIndexThisTick = -1;
         // Start from the next process after the last one executed
         // This creates a wrap-around effect: if we stopped at index 5 last tick,
@@ -4759,15 +4758,15 @@ class Kernel {
         }
         // Log stats periodically
         if (this.config.enableStats && Game.time % this.config.statsLogInterval === 0) {
-            this.logStats(processesRun, processesSkipped);
+            this.logStats(processesRun);
             eventBus.logStats();
         }
     }
     /**
      * Log kernel statistics
      */
-    logStats(processesRun, processesSkipped) {
-        logger.debug(`Kernel stats: ${processesRun} ran, ${processesSkipped} skipped, ${this.tickCpuUsed.toFixed(2)} CPU, mode: ${this.bucketMode}`, { subsystem: "Kernel" });
+    logStats(processesRun) {
+        logger.debug(`Kernel stats: ${processesRun} processes ran, ${this.tickCpuUsed.toFixed(2)} CPU, mode: ${this.bucketMode}`, { subsystem: "Kernel" });
     }
     /**
      * Get tick CPU used by kernel
@@ -15996,10 +15995,10 @@ function getRoomCpuBudget(room) {
         return 0.12; // 12% per room (6 CPU for 50 CPU limit)
     }
     // Eco mode: budget based on RCL
-    // Typical eco room usage: 0.5-2 CPU for small rooms, 2-8 CPU for large rooms
-    // RCL 1-3: 0.05 CPU target (0.1% of 50 CPU)
-    // RCL 4-6: 0.1 CPU target (0.2% of 50 CPU)  
-    // RCL 7-8: 0.15 CPU target (0.3% of 50 CPU)
+    // Typical eco room usage: 0.5-2 CPU for small rooms, 2-6 CPU for large rooms
+    // RCL 1-3: Allow up to 2 CPU (4% of 50 CPU limit)
+    // RCL 4-6: Allow up to 3 CPU (6% of 50 CPU limit)  
+    // RCL 7-8: Allow up to 4 CPU (8% of 50 CPU limit)
     if (rcl <= 3) {
         return 0.04; // 4% (2 CPU for 50 CPU limit)
     }

@@ -571,7 +571,6 @@ export class Kernel {
     }
 
     let processesRun = 0;
-    const processesSkipped = 0;
     let lastExecutedIndexThisTick = -1;
 
     // Start from the next process after the last one executed
@@ -611,7 +610,7 @@ export class Kernel {
 
     // Log stats periodically
     if (this.config.enableStats && Game.time % this.config.statsLogInterval === 0) {
-      this.logStats(processesRun, processesSkipped);
+      this.logStats(processesRun);
       eventBus.logStats();
     }
   }
@@ -619,9 +618,9 @@ export class Kernel {
   /**
    * Log kernel statistics
    */
-  private logStats(processesRun: number, processesSkipped: number): void {
+  private logStats(processesRun: number): void {
     logger.debug(
-      `Kernel stats: ${processesRun} ran, ${processesSkipped} skipped, ${this.tickCpuUsed.toFixed(2)} CPU, mode: ${this.bucketMode}`,
+      `Kernel stats: ${processesRun} processes ran, ${this.tickCpuUsed.toFixed(2)} CPU, mode: ${this.bucketMode}`,
       { subsystem: "Kernel" }
     );
   }

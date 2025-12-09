@@ -59,10 +59,10 @@ function getRoomCpuBudget(room: Room): number {
   }
 
   // Eco mode: budget based on RCL
-  // Typical eco room usage: 0.5-2 CPU for small rooms, 2-8 CPU for large rooms
-  // RCL 1-3: 0.05 CPU target (0.1% of 50 CPU)
-  // RCL 4-6: 0.1 CPU target (0.2% of 50 CPU)  
-  // RCL 7-8: 0.15 CPU target (0.3% of 50 CPU)
+  // Typical eco room usage: 0.5-2 CPU for small rooms, 2-6 CPU for large rooms
+  // RCL 1-3: Allow up to 2 CPU (4% of 50 CPU limit)
+  // RCL 4-6: Allow up to 3 CPU (6% of 50 CPU limit)  
+  // RCL 7-8: Allow up to 4 CPU (8% of 50 CPU limit)
   if (rcl <= 3) {
     return 0.04; // 4% (2 CPU for 50 CPU limit)
   } else if (rcl <= 6) {
