@@ -1136,10 +1136,14 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
     };
 
     // For remote roles, set the targetRoom to the remote room that needs workers
+    // Skip spawning if no valid target room is available (prevents spawn blocking)
     if (role === "remoteHarvester" || role === "remoteHauler") {
       const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
       if (targetRoom) {
         memory.targetRoom = targetRoom;
+      } else {
+        // No valid target room - don't spawn this remote role
+        return;
       }
     }
 
@@ -1199,10 +1203,14 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
     };
 
     // For remote roles, set the targetRoom to the remote room that needs workers
+    // Skip spawning if no valid target room is available (prevents spawn blocking)
     if (role === "remoteHarvester" || role === "remoteHauler") {
       const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
       if (targetRoom) {
         memory.targetRoom = targetRoom;
+      } else {
+        // No valid target room - skip this role and try next
+        continue;
       }
     }
 
