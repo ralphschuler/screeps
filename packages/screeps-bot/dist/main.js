@@ -9573,17 +9573,26 @@ function executeAction(creep, action, ctx) {
                 break;
             }
             if (!creep.pos.isEqualTo(action.position)) {
-                moveCreep(creep, action.position);
+                const waitMoveResult = moveCreep(creep, action.position);
+                // Clear state if pathfinding fails
+                if (waitMoveResult === ERR_NO_PATH) {
+                    shouldClearState = true;
+                }
             }
             break;
-        case "requestMove":
+        case "requestMove": {
             // Register a move request for the target position
             // This tells blocking creeps that this creep wants to move there
             requestMoveToPosition(creep, action.target);
             // Also move toward the target position
-            moveCreep(creep, action.target, { visualizePathStyle: { stroke: PATH_COLORS.move } });
+            const requestMoveResult = moveCreep(creep, action.target, { visualizePathStyle: { stroke: PATH_COLORS.move } });
+            // Clear state if pathfinding fails
+            if (requestMoveResult === ERR_NO_PATH) {
+                shouldClearState = true;
+            }
             break;
-        case "idle":
+        }
+        case "idle": {
             // When idle, first move off room exit tiles to prevent endless cycling between rooms
             if (moveOffRoomExit(creep)) {
                 break;
@@ -9597,10 +9606,14 @@ function executeAction(creep, action, ctx) {
                     // Move to collection point if not already there
                     if (!creep.pos.isEqualTo(collectionPoint)) {
                         // Use priority 2 to match moveAwayFromSpawn - clearing blockades is important
-                        moveCreep(creep, collectionPoint, {
+                        const idleMoveResult = moveCreep(creep, collectionPoint, {
                             visualizePathStyle: { stroke: "#888888" },
                             priority: 2
                         });
+                        // Clear state if pathfinding fails
+                        if (idleMoveResult === ERR_NO_PATH) {
+                            shouldClearState = true;
+                        }
                         break;
                     }
                 }
@@ -9608,6 +9621,7 @@ function executeAction(creep, action, ctx) {
             // Fallback: move away from spawns to prevent blocking new creeps
             moveAwayFromSpawn(creep);
             break;
+        }
     }
     // Clear state if action failed due to invalid target
     // This allows the creep to immediately re-evaluate and find a new target
