@@ -732,10 +732,10 @@ export function remoteHarvester(ctx: CreepContext): CreepAction {
   // Get target room from memory
   const targetRoom = ctx.memory.targetRoom;
   
-  // SAFETY: If no valid target room, move away from spawn to prevent blocking
+  // SAFETY: If no valid target room, idle (executor will move away from spawn)
   // This should not happen with proper spawn logic, but provides a failsafe
   if (!targetRoom || targetRoom === ctx.memory.homeRoom) {
-    // Move away from spawn and idle
+    // Idle action triggers move-away-from-spawn logic in executor
     return { type: "idle" };
   }
 
@@ -815,10 +815,10 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
   const targetRoom = ctx.memory.targetRoom;
   const homeRoom = ctx.memory.homeRoom;
 
-  // SAFETY: If no valid target room, move away from spawn to prevent blocking
+  // SAFETY: If no valid target room, idle (executor will move away from spawn)
   // This should not happen with proper spawn logic, but provides a failsafe
   if (!targetRoom || targetRoom === homeRoom) {
-    // Move away from spawn and idle
+    // Idle action triggers move-away-from-spawn logic in executor
     return { type: "idle" };
   }
 
