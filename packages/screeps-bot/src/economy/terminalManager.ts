@@ -71,6 +71,60 @@ export class TerminalManager {
   }
 
   /**
+   * Request a resource transfer between rooms
+   * Public method for other systems (e.g., nuke manager) to request transfers
+   */
+  public requestTransfer(
+    fromRoom: string,
+    toRoom: string,
+    resourceType: ResourceConstant,
+    amount: number,
+    priority: number = 3
+  ): boolean {
+    // Check if transfer is already queued
+    const alreadyQueued = this.transferQueue.some(
+      req =>
+        req.fromRoom === fromRoom &&
+        req.toRoom === toRoom &&
+        req.resourceType === resourceType
+    );
+    if (alreadyQueued) {
+      logger.debug(
+        `Transfer already queued: ${amount} ${resourceType} from ${fromRoom} to ${toRoom}`,
+        { subsystem: "Terminal" }
+      );
+      return false;
+    }
+
+    // Validate rooms exist and have terminals
+    const source = Game.rooms[fromRoom];
+    const target = Game.rooms[toRoom];
+    if (!source || !target || !source.terminal || !target.terminal) {
+      logger.warn(
+        `Cannot queue transfer: rooms or terminals not available`,
+        { subsystem: "Terminal" }
+      );
+      return false;
+    }
+
+    // Queue the transfer
+    this.transferQueue.push({
+      fromRoom,
+      toRoom,
+      resourceType,
+      amount,
+      priority
+    });
+
+    logger.info(
+      `Queued transfer request: ${amount} ${resourceType} from ${fromRoom} to ${toRoom} (priority: ${priority})`,
+      { subsystem: "Terminal" }
+    );
+
+    return true;
+  }
+
+  /**
    * Main terminal tick - runs periodically
    * Registered as kernel process via decorator
    */

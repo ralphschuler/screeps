@@ -388,18 +388,69 @@ export class NukeManager {
   }
 
   /**
-   * Request resource transfer via terminal (placeholder for integration)
+   * Request resource transfer via terminal
    */
   private requestResourceTransfer(roomName: string, resourceType: ResourceConstant, amount: number): void {
-    // This would integrate with terminal manager to request inter-room transfers
-    // For now, just log the need
-    logger.debug(`Room ${roomName} needs ${amount} ${resourceType} for nuker`, {
-      subsystem: "Nuke"
-    });
+    // Find a donor room with this resource
+    const donorRoom = this.findDonorRoom(roomName, resourceType, amount);
+    if (!donorRoom) {
+      logger.debug(
+        `No donor room found for ${amount} ${resourceType} to ${roomName}`,
+        { subsystem: "Nuke" }
+      );
+      return;
+    }
 
-    // Could add to a global transfer request queue:
-    // Memory.terminalRequests = Memory.terminalRequests || [];
-    // Memory.terminalRequests.push({ toRoom: roomName, resourceType, amount, priority: this.config.terminalPriority });
+    // Import terminal manager (avoiding circular dependencies)
+    try {
+      const { terminalManager } = require("../economy/terminalManager");
+      const success = terminalManager.requestTransfer(
+        donorRoom,
+        roomName,
+        resourceType,
+        amount,
+        this.config.terminalPriority
+      );
+
+      if (success) {
+        logger.info(
+          `Requested ${amount} ${resourceType} transfer from ${donorRoom} to ${roomName} for nuker`,
+          { subsystem: "Nuke" }
+        );
+      }
+    } catch (error) {
+      logger.error(`Failed to request terminal transfer: ${error}`, { subsystem: "Nuke" });
+    }
+  }
+
+  /**
+   * Find a room that can donate the requested resource
+   */
+  private findDonorRoom(targetRoom: string, resourceType: ResourceConstant, amount: number): string | null {
+    const candidates: { room: string; amount: number; distance: number }[] = [];
+
+    for (const roomName in Game.rooms) {
+      const room = Game.rooms[roomName];
+      if (!room.controller?.my || roomName === targetRoom) continue;
+
+      const terminal = room.terminal;
+      if (!terminal || !terminal.my) continue;
+
+      const available = terminal.store.getUsedCapacity(resourceType) ?? 0;
+      
+      // Must have at least the requested amount + buffer
+      if (available < amount + 1000) continue;
+
+      const distance = Game.map.getRoomLinearDistance(roomName, targetRoom);
+      candidates.push({ room: roomName, amount: available, distance });
+    }
+
+    if (candidates.length === 0) return null;
+
+    // Sort by distance (prefer closer rooms)
+    candidates.sort((a, b) => a.distance - b.distance);
+
+    return candidates[0]?.room ?? null;
   }
 
   /**

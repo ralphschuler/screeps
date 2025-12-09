@@ -138,12 +138,19 @@ export class EvacuationManager {
 
       // Check for nuke
       const nukes = room.find(FIND_NUKES);
-      if (nukes.length > 0) {
+      if (nukes.length > 0 && swarm.nukeDetected) {
         const nearestNuke = nukes.reduce((a, b) =>
           (a.timeToLand ?? Infinity) < (b.timeToLand ?? Infinity) ? a : b
         );
 
         if ((nearestNuke.timeToLand ?? Infinity) <= this.config.nukeEvacuationLeadTime) {
+          // Increase urgency based on number of nukes
+          const nukeCount = nukes.length;
+          logger.warn(
+            `Triggering evacuation for ${roomName}: ${nukeCount} nuke(s) detected, impact in ${nearestNuke.timeToLand ?? 0} ticks`,
+            { subsystem: "Evacuation" }
+          );
+          
           this.startEvacuation(roomName, "nuke", Game.time + (nearestNuke.timeToLand ?? 0));
           continue;
         }
