@@ -11,14 +11,27 @@
  * 4. Store state in creep memory for next tick
  *
  * State Completion Detection:
- * - States are considered complete when the action succeeds OR the target becomes invalid
- * - Transfer: complete when creep is empty OR target is full/destroyed
- * - Withdraw: complete when creep is full OR source is empty/destroyed
- * - Harvest: complete when creep is full OR source is depleted/destroyed
- * - Build/Repair: complete when creep is empty OR target is finished/destroyed
+ * States are considered complete based on creep inventory state:
+ * - Transfer/Build/Repair/Upgrade: complete when creep is empty
+ * - Withdraw/Pickup/Harvest: complete when creep is full
+ * - Target destroyed: always triggers completion
  *
- * This prevents creeps from getting stuck in loops trying invalid actions
- * (e.g., transferring to a full spawn, withdrawing from an empty container).
+ * Invalid Target Handling:
+ * The executor (executeAction) detects when actions fail due to invalid targets
+ * and immediately clears the state, allowing the creep to find a new target:
+ * - ERR_FULL: Target is full (e.g., spawn filled by another creep)
+ * - ERR_NOT_ENOUGH_RESOURCES: Source is empty (e.g., container depleted)
+ * - ERR_INVALID_TARGET: Target doesn't exist or wrong type
+ *
+ * This two-layer approach prevents:
+ * 1. Creeps getting stuck trying invalid actions (executor catches errors)
+ * 2. Premature state transitions after partial transfers (state machine only checks inventory)
+ * 
+ * Example: Creep with 200 energy transferring to extensions with 50 capacity each:
+ * - Tick 1: Transfer 50 to extension A (fills it), creep has 150 left, state continues
+ * - Tick 2: Try transfer to extension A → ERR_FULL → executor clears state
+ * - Tick 2: Behavior evaluates, finds extension B, transfers 50, state continues
+ * - This allows smooth multi-target operations without appearing "idle"
  */
 
 import type { CreepAction, CreepContext } from "./types";
@@ -64,34 +77,24 @@ function isStateComplete(state: CreepState | undefined, ctx: CreepContext): bool
 
   switch (state.action) {
     case "harvest":
-      // Harvest complete when full OR source is depleted/invalid
+      // Harvest complete when full (executor handles depleted sources via ERR_NOT_ENOUGH_RESOURCES)
       if (ctx.isFull) return true;
       
-      // Check if source still has energy
+      // Only check if target was destroyed
       if (state.targetId) {
         const target = Game.getObjectById(state.targetId);
         if (!target) return true; // Source destroyed
-        
-        // Type guard for Source
-        if (typeof target === "object" && "energy" in target) {
-          if ((target as Source).energy === 0) return true; // Source depleted
-        }
       }
       return false;
 
     case "harvestMineral":
-      // Mineral harvest complete when full OR mineral depleted
+      // Mineral harvest complete when full (executor handles depleted minerals)
       if (ctx.isFull) return true;
       
-      // Check if mineral still available
+      // Only check if target was destroyed
       if (state.targetId) {
         const target = Game.getObjectById(state.targetId);
         if (!target) return true; // Mineral destroyed
-        
-        // Type guard for Mineral
-        if (typeof target === "object" && "mineralAmount" in target) {
-          if ((target as Mineral).mineralAmount === 0) return true; // Mineral depleted
-        }
       }
       return false;
 
@@ -124,44 +127,26 @@ function isStateComplete(state: CreepState | undefined, ctx: CreepContext): bool
       return false;
 
     case "withdraw":
-      // Withdraw complete when full OR source is empty/invalid
+      // Withdraw complete when full (executor handles empty sources via ERR_NOT_ENOUGH_RESOURCES)
       if (ctx.isFull) return true;
       
-      // Check if source still has resources to withdraw
+      // Only check if target was destroyed
       if (state.targetId) {
         const target = Game.getObjectById(state.targetId);
         if (!target) return true; // Target destroyed
-        
-        // Type guard for structures/tombstones with store
-        if (typeof target === "object" && "store" in target && target.store) {
-          const resourceType = state.data?.resourceType as ResourceConstant | undefined;
-          if (resourceType) {
-            // Check if source still has resources
-            const usedCapacity = (target as AnyStoreStructure).store.getUsedCapacity(resourceType);
-            if (usedCapacity === 0) return true; // Source empty, abandon withdraw
-          }
-        }
       }
       return false;
 
     case "transfer":
-      // Transfer complete when empty OR target is full/invalid
+      // Transfer complete when empty (executor handles invalid targets via ERR_FULL)
+      // Don't check if target is full here - that causes state to clear after each
+      // partial transfer, making creeps appear to "idle" between targets
       if (ctx.isEmpty) return true;
       
-      // Check if target is still valid and can accept resources
+      // Only check if target was destroyed
       if (state.targetId) {
         const target = Game.getObjectById(state.targetId);
         if (!target) return true; // Target destroyed
-        
-        // Type guard for structures with store
-        if (typeof target === "object" && "store" in target && target.store) {
-          const resourceType = state.data?.resourceType as ResourceConstant | undefined;
-          if (resourceType) {
-            // Check if target can accept more of this resource
-            const freeCapacity = (target as AnyStoreStructure).store.getFreeCapacity(resourceType);
-            if (freeCapacity === 0) return true; // Target full, abandon transfer
-          }
-        }
       }
       return false;
 
