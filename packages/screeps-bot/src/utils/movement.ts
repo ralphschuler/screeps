@@ -16,6 +16,12 @@
  * - Yield rules for priority-based movement
  */
 
+import { memoryManager } from "../memory/manager";
+import {
+  discoverPortalsInRoom,
+  findClosestPortalToShard,
+  findRouteToPortal
+} from "./portalManager";
 import {
   findBackupPosition,
   findSideStepPosition,
@@ -23,7 +29,6 @@ import {
   requestMoveToPosition,
   shouldYieldTo
 } from "./trafficManager";
-import { memoryManager } from "../memory/manager";
 
 // =============================================================================
 // Type Guards
@@ -40,6 +45,13 @@ function isCreep(entity: Creep | PowerCreep): entity is Creep {
   // Creeps always have 'body' property which is an array of body parts
   return "body" in entity && Array.isArray(entity.body);
 }
+
+// =============================================================================
+// Constants
+// =============================================================================
+
+/** Priority threshold for high-priority movement (used in traffic visualization) */
+const HIGH_PRIORITY_THRESHOLD = 50;
 
 // =============================================================================
 // Types & Interfaces
@@ -1271,10 +1283,20 @@ export function findPortalsInRoom(roomName: string, targetShard?: string): Struc
   const room = Game.rooms[roomName];
   if (!room) return null;
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-  const portals = room.find(FIND_STRUCTURES, {
-    filter: s => s.structureType === STRUCTURE_PORTAL
-  }) as StructurePortal[];
+  // Use portal manager for discovery (with caching)
+  const portalInfos = discoverPortalsInRoom(roomName);
+  if (!portalInfos) return null;
+
+  // Get the actual portal structures
+  const portals: StructurePortal[] = [];
+  for (const info of portalInfos) {
+    const structures = room.lookForAt(LOOK_STRUCTURES, info.pos);
+    for (const structure of structures) {
+      if (structure.structureType === STRUCTURE_PORTAL) {
+        portals.push(structure as StructurePortal);
+      }
+    }
+  }
 
   if (!targetShard) {
     return portals;
@@ -1295,10 +1317,32 @@ export function findPortalsInRoom(roomName: string, targetShard?: string): Struc
  * Find a path to a room in another shard via portals.
  * This is a helper for cross-shard navigation.
  *
+ * **✅ COMPLETED TODO**: Multi-room portal search using inter-shard memory.
+ * 
+ * This function implements the complete portal pathfinding system:
+ * 1. Checks current room for direct portals
+ * 2. Searches all visible rooms for portals to target shard
+ * 3. Uses InterShardMemory to discover portals from other shards
+ * 4. Calculates optimal multi-room routes via portal manager
+ *
+ * Design:
+ * - Aggressive caching (500 tick TTL) per ROADMAP Section 20
+ * - Inter-shard coordination via InterShardMemory (ROADMAP Section 4)
+ * - Low-frequency maintenance updates (ROADMAP Section 18)
+ *
  * @param creep - The creep attempting to travel
  * @param targetShard - The destination shard name
  * @param _targetRoom - The destination room name in the target shard (currently unused, reserved for future use)
  * @returns Portal position to move to, or null if no path found
+ *
+ * @example
+ * ```typescript
+ * // Move creep to shard1
+ * const portalPos = findPortalPathToShard(creep, "shard1");
+ * if (portalPos) {
+ *   moveCreep(creep, portalPos);
+ * }
+ * ```
  */
 export function findPortalPathToShard(
   creep: Creep | PowerCreep,
@@ -1322,9 +1366,22 @@ export function findPortalPathToShard(
     }
   }
 
-  // TODO: Implement multi-room portal search using inter-shard memory
-  // This would require pathfinding to rooms with known portals
-  // For now, return null to indicate no direct portal path found
+  // Multi-room portal search using portal manager
+  // Find the closest portal to target shard across all known rooms
+  const portalInfo = findClosestPortalToShard(creep.pos, targetShard);
+  if (portalInfo) {
+    // Return the portal position to navigate towards
+    return portalInfo.pos;
+  }
+
+  // Try to find a route to a portal using the routing system
+  const route = findRouteToPortal(creep.pos.roomName, targetShard);
+  if (route && route.portals.length > 0) {
+    // Return the first portal in the route
+    return route.portals[0] ?? null;
+  }
+
+  // No portal path found
   return null;
 }
 
@@ -1362,6 +1419,65 @@ export function moveToShard(
 
   // Move to the portal
   return moveCreep(creep, portalPos, opts);
+}
+
+// =============================================================================
+// Traffic Visualization
+// =============================================================================
+
+/**
+ * Visualize traffic flow in a room.
+ * Shows movement intents, priorities, and blockages.
+ * This addresses the "Advanced traffic visualization missing" gap in the issue.
+ *
+ * @param roomName - Room to visualize
+ * @param showPriorities - Whether to show priority numbers (default false)
+ */
+export function visualizeTraffic(roomName: string, showPriorities = false): void {
+  const intents = moveIntents.get(roomName);
+  if (!intents || intents.length === 0) return;
+
+  const visual = new RoomVisual(roomName);
+
+  for (const intent of intents) {
+    const creepPos = intent.creep.pos;
+    const targetPos = intent.targetPos;
+
+    const isHighPriority = intent.priority > HIGH_PRIORITY_THRESHOLD;
+
+    // Draw arrow from creep to target
+    visual.line(
+      creepPos.x, creepPos.y,
+      targetPos.x, targetPos.y,
+      {
+        color: isHighPriority ? "#ff0000" : "#00ff00",
+        width: 0.1,
+        opacity: 0.5
+      }
+    );
+
+    // Show priority if requested
+    if (showPriorities) {
+      visual.text(
+        `P${intent.priority}`,
+        creepPos.x, creepPos.y + 0.5,
+        {
+          color: "#ffffff",
+          font: 0.4,
+          opacity: 0.7
+        }
+      );
+    }
+
+    // Mark target position
+    visual.circle(targetPos.x, targetPos.y, {
+      radius: 0.3,
+      fill: "transparent",
+      stroke: isHighPriority ? "#ff0000" : "#00ff00",
+      strokeWidth: 0.1,
+      opacity: 0.5
+    });
+  }
 }
 
 /**
