@@ -702,7 +702,7 @@ export function factoryWorker(ctx: CreepContext): CreepAction {
   }
 
   // Priority 3: Supply base minerals for production
-  const baseMinerals: MineralConstant[] = [
+  const baseMinerals: ResourceConstant[] = [
     RESOURCE_UTRIUM, RESOURCE_LEMERGIUM, RESOURCE_KEANIUM,
     RESOURCE_ZYNTHIUM, RESOURCE_OXYGEN, RESOURCE_HYDROGEN, RESOURCE_CATALYST, RESOURCE_GHODIUM
   ];
