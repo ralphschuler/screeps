@@ -180,9 +180,10 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         if (collectionPoint) {
           // Move to collection point if not already there
           if (!creep.pos.isEqualTo(collectionPoint)) {
+            // Use priority 2 to match moveAwayFromSpawn - clearing blockades is important
             moveCreep(creep, collectionPoint, { 
               visualizePathStyle: { stroke: "#888888" },
-              priority: 1 
+              priority: 2
             });
             break;
           }

@@ -9240,10 +9240,14 @@ function getCollectionPoint(room, swarmState) {
  * - Preferably near storage or controller (common gathering points)
  * - Not on room exits
  *
+ * OPTIMIZATION: Uses a ring search pattern instead of full room scan to reduce CPU cost.
+ * Ring search starts at PREFERRED_DISTANCE_FROM_SPAWN and expands outward.
+ *
  * @param room - The room to calculate collection point for
  * @returns The optimal position, or null if none found
  */
 function calculateCollectionPoint(room) {
+    var _a;
     const spawns = room.find(FIND_MY_SPAWNS);
     if (spawns.length === 0) {
         return null;
@@ -9253,49 +9257,73 @@ function calculateCollectionPoint(room) {
     // Find the storage or controller as a secondary anchor point
     const storage = room.storage;
     const controller = room.controller;
-    // Generate candidate positions
+    // Pre-build structure lookup map for performance (single lookFor call)
+    const structureMap = new Map(); // key: "x,y", value: hasRoad
+    const structures = room.find(FIND_STRUCTURES);
+    for (const struct of structures) {
+        const key = `${struct.pos.x},${struct.pos.y}`;
+        if (struct.structureType === STRUCTURE_ROAD) {
+            structureMap.set(key, true);
+        }
+    }
+    // Generate candidate positions using ring search (more efficient than full grid)
     const candidates = [];
     const terrain = room.getTerrain();
-    // Search in a grid pattern around the room
-    for (let x = 3; x <= 46; x++) {
-        for (let y = 3; y <= 46; y++) {
-            const pos = new RoomPosition(x, y, room.name);
-            // Skip if not walkable
-            if (!isWalkable(room, pos, terrain)) {
-                continue;
+    // Ring search: check positions at distances from MIN to MAX from spawn
+    for (let distance = MIN_DISTANCE_FROM_SPAWN; distance <= MAX_DISTANCE_FROM_SPAWN; distance++) {
+        // Search in a ring at this distance
+        const x0 = primarySpawn.pos.x;
+        const y0 = primarySpawn.pos.y;
+        // Check positions in a square ring around spawn at this distance
+        for (let dx = -distance; dx <= distance; dx++) {
+            for (let dy = -distance; dy <= distance; dy++) {
+                // Only check positions approximately at this distance (ring, not filled square)
+                const actualDist = Math.max(Math.abs(dx), Math.abs(dy));
+                if (actualDist !== distance)
+                    continue;
+                const x = x0 + dx;
+                const y = y0 + dy;
+                // Skip positions outside valid room bounds (avoid exits)
+                if (x < 3 || x > 46 || y < 3 || y > 46)
+                    continue;
+                const pos = new RoomPosition(x, y, room.name);
+                // Skip if not walkable
+                if (!isWalkable(room, pos, terrain)) {
+                    continue;
+                }
+                // Score the position
+                let score = 0;
+                // Prefer positions at PREFERRED_DISTANCE_FROM_SPAWN
+                const distanceDiff = Math.abs(distance - PREFERRED_DISTANCE_FROM_SPAWN);
+                score -= distanceDiff; // Lower difference = higher score
+                // Prefer positions closer to storage (if it exists)
+                if (storage) {
+                    const storageDistance = pos.getRangeTo(storage.pos);
+                    score -= storageDistance * 0.5; // Half weight compared to spawn distance
+                }
+                // Prefer positions closer to controller (if it exists)
+                if (controller) {
+                    const controllerDistance = pos.getRangeTo(controller.pos);
+                    score -= controllerDistance * 0.3; // Lower weight
+                }
+                // Avoid positions on roads (use pre-built map)
+                const hasRoad = (_a = structureMap.get(`${x},${y}`)) !== null && _a !== void 0 ? _a : false;
+                if (hasRoad) {
+                    score -= 5; // Penalty for being on a road
+                }
+                candidates.push({ pos, score });
+                // Early exit if we found enough good candidates
+                if (candidates.length >= 50 && distance >= PREFERRED_DISTANCE_FROM_SPAWN) {
+                    break;
+                }
             }
-            // Calculate distance from spawn
-            const spawnDistance = pos.getRangeTo(primarySpawn.pos);
-            // Must be at least MIN_DISTANCE_FROM_SPAWN away from spawn
-            if (spawnDistance < MIN_DISTANCE_FROM_SPAWN) {
-                continue;
+            if (candidates.length >= 50 && distance >= PREFERRED_DISTANCE_FROM_SPAWN) {
+                break;
             }
-            // Skip if too far from spawn
-            if (spawnDistance > MAX_DISTANCE_FROM_SPAWN) {
-                continue;
-            }
-            // Score the position
-            let score = 0;
-            // Prefer positions at PREFERRED_DISTANCE_FROM_SPAWN
-            const distanceDiff = Math.abs(spawnDistance - PREFERRED_DISTANCE_FROM_SPAWN);
-            score -= distanceDiff; // Lower difference = higher score
-            // Prefer positions closer to storage (if it exists)
-            if (storage) {
-                const storageDistance = pos.getRangeTo(storage.pos);
-                score -= storageDistance * 0.5; // Half weight compared to spawn distance
-            }
-            // Prefer positions closer to controller (if it exists)
-            if (controller) {
-                const controllerDistance = pos.getRangeTo(controller.pos);
-                score -= controllerDistance * 0.3; // Lower weight
-            }
-            // Avoid positions on roads (creeps waiting shouldn't block roads)
-            const structures = room.lookForAt(LOOK_STRUCTURES, x, y);
-            const hasRoad = structures.some(s => s.structureType === STRUCTURE_ROAD);
-            if (hasRoad) {
-                score -= 5; // Penalty for being on a road
-            }
-            candidates.push({ pos, score });
+        }
+        // Early exit if we found enough good candidates
+        if (candidates.length >= 50 && distance >= PREFERRED_DISTANCE_FROM_SPAWN) {
+            break;
         }
     }
     // Sort by score (highest first)
@@ -9498,9 +9526,10 @@ function executeAction(creep, action, ctx) {
                 if (collectionPoint) {
                     // Move to collection point if not already there
                     if (!creep.pos.isEqualTo(collectionPoint)) {
+                        // Use priority 2 to match moveAwayFromSpawn - clearing blockades is important
                         moveCreep(creep, collectionPoint, {
                             visualizePathStyle: { stroke: "#888888" },
-                            priority: 1
+                            priority: 2
                         });
                         break;
                     }
