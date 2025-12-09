@@ -15,8 +15,7 @@ import type { SwarmState } from "../memory/schemas";
 import { memoryManager } from "../memory/manager";
 import { pheromoneManager } from "../logic/pheromone";
 import { calculateDangerLevel, evolutionManager, postureManager } from "../logic/evolution";
-import { profiler } from "./profiler";
-import { statsManager } from "./stats";
+import { unifiedStats } from "./unifiedStats";
 import { destroyMisplacedStructures, getBlueprint, placeConstructionSites } from "../layouts/blueprints";
 import { placeRoadConstructionSites } from "../layouts/roadNetworkPlanner";
 import { safeFind } from "../utils/safeFind";
@@ -130,11 +129,11 @@ export class RoomNode {
    * Main room tick
    */
   public run(totalOwnedRooms: number): void {
-    const cpuStart = profiler.startRoom(this.roomName);
+    const cpuStart = unifiedStats.startRoom(this.roomName);
 
     const room = Game.rooms[this.roomName];
     if (!room || !room.controller?.my) {
-      profiler.endRoom(this.roomName, cpuStart);
+      unifiedStats.endRoom(this.roomName, cpuStart);
       return;
     }
 
@@ -197,24 +196,10 @@ export class RoomNode {
       this.runResourceProcessing(room, swarm);
     }
 
-    // Record room stats
+    // Record room stats with unified stats system
     const cpuUsed = Game.cpu.getUsed() - cpuStart;
-    const roomData = profiler.getRoomData(this.roomName);
-    statsManager.recordRoom(room, roomData?.avgCpu ?? cpuUsed, roomData?.peakCpu ?? cpuUsed, {
-      energyHarvested: swarm.metrics.energyHarvested,
-      damageReceived: swarm.metrics.damageReceived,
-      danger: swarm.danger
-    });
-
-    // Record pheromone stats
-    statsManager.recordPheromones(
-      this.roomName,
-      swarm.pheromones,
-      swarm.posture,
-      pheromoneManager.getDominantPheromone(swarm.pheromones)
-    );
-
-    profiler.endRoom(this.roomName, cpuStart);
+    unifiedStats.recordRoom(room, cpuUsed);
+    unifiedStats.endRoom(this.roomName, cpuStart);
   }
 
   /**

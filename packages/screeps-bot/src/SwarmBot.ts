@@ -22,7 +22,6 @@
  */
 
 import type { RoleFamily, SwarmCreepMemory } from "./memory/schemas";
-import { profiler } from "./core/profiler";
 import { roomManager } from "./core/roomNode";
 import { runSpawnManager } from "./logic/spawn";
 import { memoryManager } from "./memory/manager";
@@ -33,11 +32,10 @@ import { kernel } from "./core/kernel";
 import { registerAllProcesses } from "./core/processRegistry";
 import { roomVisualizer } from "./visuals/roomVisualizer";
 import { mapVisualizer } from "./visuals/mapVisualizer";
-import { memorySegmentStats } from "./core/memorySegmentStats";
 import { getConfig } from "./config";
 import { LogLevel, configureLogger, logger } from "./core/logger";
 import { initializeNativeCallsTracking } from "./core/nativeCallsTracker";
-import { statsManager } from "./core/stats";
+import { unifiedStats } from "./core/unifiedStats";
 import { creepProcessManager } from "./core/creepProcessManager";
 import { roomProcessManager } from "./core/roomProcessManager";
 import { runPowerRole } from "./roles/power";
@@ -102,8 +100,8 @@ function initializeSystems(): void {
     cpuLogging: config.profiling
   });
 
-  // Initialize memory segment stats
-  memorySegmentStats.initialize();
+  // Initialize unified stats system
+  unifiedStats.initialize();
 
   // Initialize native calls tracking if enabled
   if (config.profiling) {
@@ -175,6 +173,9 @@ export function loop(): void {
     kernelInitialized = true;
   }
 
+  // Start stats collection for this tick
+  unifiedStats.startTick();
+
   // Critical bucket check - use kernel's bucket mode
   const bucketMode = kernel.getBucketMode();
   if (bucketMode === "critical") {
@@ -186,7 +187,7 @@ export function loop(): void {
     clearMoveRequests();
     finalizeMovement();
     clearRoomCaches();
-    profiler.finalizeTick();
+    unifiedStats.finalizeTick();
     return;
   }
 
@@ -221,7 +222,7 @@ export function loop(): void {
 
   // Synchronize creep and room processes with kernel
   // This must happen before kernel.run() to ensure all processes are registered
-  profiler.measureSubsystem("processSync", () => {
+  unifiedStats.measureSubsystem("processSync", () => {
     syncKernelProcesses();
   });
 
@@ -230,31 +231,31 @@ export function loop(): void {
   // - All room processes (registered by roomProcessManager)
   // - Empire, cluster, market, nuke, pheromone managers (registered by processRegistry)
   // The kernel's wrap-around queue ensures fair execution of all processes
-  profiler.measureSubsystem("kernel", () => {
+  unifiedStats.measureSubsystem("kernel", () => {
     kernel.run();
   });
 
   // Run spawns (high priority - always runs)
-  profiler.measureSubsystem("spawns", () => {
+  unifiedStats.measureSubsystem("spawns", () => {
     runSpawns();
   });
 
   // Process move requests - ask blocking creeps to move out of the way
   // This runs after creeps have registered their movement intentions
-  profiler.measureSubsystem("moveRequests", () => {
+  unifiedStats.measureSubsystem("moveRequests", () => {
     processMoveRequests();
   });
 
   // Run power creeps (if we have budget)
   if (kernel.hasCpuBudget()) {
-    profiler.measureSubsystem("powerCreeps", () => {
+    unifiedStats.measureSubsystem("powerCreeps", () => {
       runPowerCreeps();
     });
   }
 
   // Run visualizations (if enabled and budget allows)
   if (kernel.hasCpuBudget()) {
-    profiler.measureSubsystem("visualizations", () => {
+    unifiedStats.measureSubsystem("visualizations", () => {
       runVisualizations();
     });
   }
@@ -266,21 +267,14 @@ export function loop(): void {
   // This happens automatically based on the cache's internal interval
   memoryManager.persistHeapCache();
 
-  // Update empire stats
-  profiler.measureSubsystem("stats", () => {
-    statsManager.updateEmpireStats();
-    statsManager.finalizeTick();
-  });
-
-  // Finalize profiler tick (which will also update stats)
-  profiler.finalizeTick();
+  // Finalize unified stats for this tick - collects and exports all metrics
+  unifiedStats.finalizeTick();
 }
 
 // Re-export key modules
 export { memoryManager } from "./memory/manager";
 export { roomManager } from "./core/roomNode";
-export { profiler } from "./core/profiler";
-export { statsManager } from "./core/stats";
+export { unifiedStats } from "./core/unifiedStats";
 export { logger } from "./core/logger";
 export { kernel } from "./core/kernel";
 export { scheduler } from "./core/scheduler";
@@ -291,8 +285,11 @@ export { pheromoneManager } from "./logic/pheromone";
 export { evolutionManager, postureManager } from "./logic/evolution";
 export { roomVisualizer } from "./visuals/roomVisualizer";
 export { mapVisualizer } from "./visuals/mapVisualizer";
-export { memorySegmentStats } from "./core/memorySegmentStats";
 export { eventBus } from "./core/events";
+// Legacy exports for backward compatibility (deprecated - use unifiedStats)
+export { profiler } from "./core/profiler";
+export { statsManager } from "./core/stats";
+export { memorySegmentStats } from "./core/memorySegmentStats";
 export * from "./memory/schemas";
 export * from "./config";
 export * from "./core/processDecorators";
