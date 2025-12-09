@@ -1414,6 +1414,13 @@ export function moveToShard(
   return moveCreep(creep, portalPos, opts);
 }
 
+// =============================================================================
+// Traffic Visualization
+// =============================================================================
+
+/** Priority threshold for high-priority movement (used in traffic visualization) */
+const HIGH_PRIORITY_THRESHOLD = 50;
+
 /**
  * Visualize traffic flow in a room.
  * Shows movement intents, priorities, and blockages.
@@ -1432,12 +1439,14 @@ export function visualizeTraffic(roomName: string, showPriorities = false): void
     const creepPos = intent.creep.pos;
     const targetPos = intent.targetPos;
 
+    const isHighPriority = intent.priority > HIGH_PRIORITY_THRESHOLD;
+
     // Draw arrow from creep to target
     visual.line(
       creepPos.x, creepPos.y,
       targetPos.x, targetPos.y,
       {
-        color: intent.priority > 50 ? "#ff0000" : "#00ff00",
+        color: isHighPriority ? "#ff0000" : "#00ff00",
         width: 0.1,
         opacity: 0.5
       }
@@ -1460,7 +1469,7 @@ export function visualizeTraffic(roomName: string, showPriorities = false): void
     visual.circle(targetPos.x, targetPos.y, {
       radius: 0.3,
       fill: "transparent",
-      stroke: intent.priority > 50 ? "#ff0000" : "#00ff00",
+      stroke: isHighPriority ? "#ff0000" : "#00ff00",
       strokeWidth: 0.1,
       opacity: 0.5
     });

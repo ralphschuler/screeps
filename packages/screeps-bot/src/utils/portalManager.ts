@@ -263,6 +263,39 @@ export function publishPortalsToInterShardMemory(): boolean {
 }
 
 /**
+ * Validate portal data structure from InterShardMemory.
+ * Protects against malicious or corrupted data from other shards.
+ */
+function isValidPortalData(data: unknown): data is InterShardPortalData {
+  if (typeof data !== "object" || data === null) return false;
+  
+  const obj = data as Record<string, unknown>;
+  
+  // Check required fields
+  if (typeof obj.shard !== "string") return false;
+  if (typeof obj.lastUpdate !== "number") return false;
+  if (typeof obj.portals !== "object" || obj.portals === null) return false;
+  
+  // Validate portals structure
+  const portals = obj.portals as Record<string, unknown>;
+  for (const roomName in portals) {
+    const roomPortals = portals[roomName];
+    if (!Array.isArray(roomPortals)) return false;
+    
+    // Validate each portal destination
+    for (const portal of roomPortals) {
+      if (typeof portal !== "object" || portal === null) return false;
+      const dest = portal as Record<string, unknown>;
+      if (typeof dest.room !== "string") return false;
+      // shard is optional but must be string if present
+      if (dest.shard !== undefined && typeof dest.shard !== "string") return false;
+    }
+  }
+  
+  return true;
+}
+
+/**
  * Retrieve portal data from InterShardMemory for a specific shard.
  *
  * @param shardName - Name of the shard to query
@@ -275,10 +308,24 @@ export function getPortalDataFromInterShardMemory(shardName: string): InterShard
     
     if (!data) return null;
 
-    const ismData = JSON.parse(data) as Record<string, unknown>;
-    const portalData = ismData[ISM_PORTAL_KEY] as InterShardPortalData | undefined;
+    // Parse and validate the ISM data
+    let ismData: Record<string, unknown>;
+    try {
+      ismData = JSON.parse(data) as Record<string, unknown>;
+    } catch {
+      console.log(`[PortalManager] Invalid JSON from shard ${shardName}`);
+      return null;
+    }
 
-    return portalData ?? null;
+    const portalData = ismData[ISM_PORTAL_KEY];
+    
+    // Validate structure before returning
+    if (!isValidPortalData(portalData)) {
+      console.log(`[PortalManager] Invalid portal data structure from shard ${shardName}`);
+      return null;
+    }
+
+    return portalData;
   } catch (error) {
     console.log(`[PortalManager] Failed to read from InterShardMemory: ${String(error)}`);
     return null;

@@ -345,8 +345,11 @@ describe("Portal Manager", () => {
       if (!match) return null;
 
       const [, xDir, xNum, yDir, yNum] = match;
-      const x = xDir === "W" ? -parseInt(xNum!) - 1 : parseInt(xNum!);
-      const y = yDir === "N" ? parseInt(yNum!) : -parseInt(yNum!) - 1;
+      // Per Screeps docs: W0N0 is at coordinates (-1, 0)
+      // W rooms: x = -(num + 1), E rooms: x = num
+      // S rooms: y = -(num + 1), N rooms: y = num
+      const x = xDir === "W" ? -(parseInt(xNum!) + 1) : parseInt(xNum!);
+      const y = yDir === "N" ? parseInt(yNum!) : -(parseInt(yNum!) + 1);
 
       return { x, y };
     }
