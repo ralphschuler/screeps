@@ -590,6 +590,7 @@ export class MemorySegmentStats {
 
   /**
    * Convert posture string to numeric code for Grafana
+   * Returns -1 for unknown postures
    */
   private postureToCode(posture: RoomPosture): number {
     const mapping: Record<RoomPosture, number> = {
@@ -601,11 +602,12 @@ export class MemorySegmentStats {
       evacuate: 5,
       nukePrep: 6
     };
-    return mapping[posture] ?? 0;
+    return mapping[posture] ?? -1;
   }
 
   /**
    * Convert colony level string to numeric code for Grafana
+   * Returns 0 for unknown/invalid colony levels (valid codes start from 1)
    */
   private colonyLevelToCode(colonyLevel: EvolutionStage): number {
     const mapping: Record<EvolutionStage, number> = {

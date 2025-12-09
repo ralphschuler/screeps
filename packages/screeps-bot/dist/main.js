@@ -6139,6 +6139,7 @@ class MemorySegmentStats {
     }
     /**
      * Convert posture string to numeric code for Grafana
+     * Returns -1 for unknown postures
      */
     postureToCode(posture) {
         var _a;
@@ -6151,10 +6152,11 @@ class MemorySegmentStats {
             evacuate: 5,
             nukePrep: 6
         };
-        return (_a = mapping[posture]) !== null && _a !== void 0 ? _a : 0;
+        return (_a = mapping[posture]) !== null && _a !== void 0 ? _a : -1;
     }
     /**
      * Convert colony level string to numeric code for Grafana
+     * Returns 0 for unknown/invalid colony levels (valid codes start from 1)
      */
     colonyLevelToCode(colonyLevel) {
         var _a;
