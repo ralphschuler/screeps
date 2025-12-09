@@ -5,7 +5,7 @@ Exports Screeps stats to Grafana Cloud using the Graphite HTTP API from either `
 ## Features
 - **Memory mode**: periodically fetches `Memory.stats` and sends metrics to Grafana Cloud Graphite.
 - **Console mode**: subscribes to Screeps console logs and parses lines formatted as `stats:<key> <value> <range>`.
-- Uses Grafana Cloud Graphite HTTP API with plaintext format.
+- Uses Grafana Cloud Graphite HTTP API with JSON format.
 - Supports nested stats objects with automatic flattening.
 - Extracts room and subsystem information from metric keys for better tagging.
 - Optional full-memory export for deep debugging/visualization use-cases.
@@ -78,9 +78,10 @@ stats:bucket 9500 tick
 The exporter treats the first token as the stat name, the second as a numeric value, and the optional third token as the range label.
 
 ### Metric structure
-Metrics are written to Grafana Cloud Graphite using the plaintext protocol:
+Metrics are written to Grafana Cloud Graphite using the JSON format:
 - Metric name: `{GRAFANA_CLOUD_GRAPHITE_PREFIX}.{metric_path}` (e.g., `screeps.stats.cpu.used`)
-- Tags (appended to metric name):
+- Interval: Derived from `EXPORTER_POLL_INTERVAL_MS` (resolution for metric data points in seconds)
+- Tags (as key=value pairs):
   - `stat`: The full stat name (e.g., `cpu.used`, `room.W1N1.energy.storage`)
   - `range`: The range label or extracted room/subsystem name
   - `category`: The category of the stat (e.g., `cpu`, `room`, `profiler`)
@@ -89,9 +90,17 @@ Metrics are written to Grafana Cloud Graphite using the plaintext protocol:
 - Value: numeric value of the stat
 - Timestamp: Unix epoch timestamp in seconds
 
-Example Graphite metric:
-```
-screeps.stats.cpu.used;source=exporter;stat=cpu.used;range=tick;category=cpu 15.5 1702123456
+Example JSON payload:
+```json
+[
+  {
+    "name": "screeps.stats.cpu.used",
+    "interval": 10,
+    "value": 15.5,
+    "time": 1702123456,
+    "tags": ["source=exporter", "stat=cpu.used", "range=tick", "category=cpu"]
+  }
+]
 ```
 
 For scrape success metrics:

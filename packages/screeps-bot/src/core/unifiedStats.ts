@@ -634,119 +634,134 @@ export class UnifiedStatsManager {
   }
 
   /**
-   * Publish stats to Memory.stats in InfluxDB-friendly flat format
+   * Publish stats to Memory.stats as nested objects (not flat)
+   * The graphite exporter will handle flattening for Grafana
    */
   private publishToMemory(): void {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mem = Memory as unknown as Record<string, Record<string, number>>;
-    mem.stats = {} as Record<string, number>;
-    const stats = mem.stats;
-
+    const mem = Memory as unknown as Record<string, any>;
     const snap = this.currentSnapshot;
 
-    // CPU stats
-    stats["stats.cpu.used"] = snap.cpu.used;
-    stats["stats.cpu.limit"] = snap.cpu.limit;
-    stats["stats.cpu.bucket"] = snap.cpu.bucket;
-    stats["stats.cpu.percent"] = snap.cpu.percent;
-    stats["stats.cpu.heap_mb"] = snap.cpu.heapUsed;
-
-    // Progression stats
-    stats["stats.gcl.level"] = snap.progression.gcl.level;
-    stats["stats.gcl.progress"] = snap.progression.gcl.progress;
-    stats["stats.gcl.progress_total"] = snap.progression.gcl.progressTotal;
-    stats["stats.gcl.progress_percent"] = snap.progression.gcl.progressPercent;
-    stats["stats.gpl.level"] = snap.progression.gpl.level;
-
-    // Empire stats
-    stats["stats.empire.rooms"] = snap.empire.rooms;
-    stats["stats.empire.creeps"] = snap.empire.creeps;
-    stats["stats.empire.energy.storage"] = snap.empire.energy.storage;
-    stats["stats.empire.energy.terminal"] = snap.empire.energy.terminal;
-    stats["stats.empire.energy.available"] = snap.empire.energy.available;
-    stats["stats.empire.energy.capacity"] = snap.empire.energy.capacity;
-    stats["stats.empire.credits"] = snap.empire.credits;
-
-    // Room stats
-    for (const [roomName, room] of Object.entries(snap.rooms)) {
-      const prefix = `stats.room.${roomName}`;
-      
-      stats[`${prefix}.rcl`] = room.rcl;
-      stats[`${prefix}.energy.available`] = room.energy.available;
-      stats[`${prefix}.energy.capacity`] = room.energy.capacity;
-      stats[`${prefix}.energy.storage`] = room.energy.storage;
-      stats[`${prefix}.energy.terminal`] = room.energy.terminal;
-      stats[`${prefix}.controller.progress`] = room.controller.progress;
-      stats[`${prefix}.controller.progress_total`] = room.controller.progressTotal;
-      stats[`${prefix}.controller.progress_percent`] = room.controller.progressPercent;
-      stats[`${prefix}.creeps`] = room.creeps;
-      stats[`${prefix}.hostiles`] = room.hostiles;
-      
-      stats[`${prefix}.brain.danger`] = room.brain.danger;
-      stats[`${prefix}.brain.posture_code`] = room.brain.postureCode;
-      stats[`${prefix}.brain.colony_level_code`] = room.brain.colonyLevelCode;
-      
-      for (const [pheromone, value] of Object.entries(room.pheromones)) {
-        stats[`${prefix}.pheromone.${pheromone}`] = value;
+    // Create nested stats structure
+    mem.stats = {
+      tick: snap.tick,
+      timestamp: snap.timestamp,
+      cpu: {
+        used: snap.cpu.used,
+        limit: snap.cpu.limit,
+        bucket: snap.cpu.bucket,
+        percent: snap.cpu.percent,
+        heap_mb: snap.cpu.heapUsed
+      },
+      gcl: {
+        level: snap.progression.gcl.level,
+        progress: snap.progression.gcl.progress,
+        progress_total: snap.progression.gcl.progressTotal,
+        progress_percent: snap.progression.gcl.progressPercent
+      },
+      gpl: {
+        level: snap.progression.gpl.level
+      },
+      empire: {
+        rooms: snap.empire.rooms,
+        creeps: snap.empire.creeps,
+        energy: {
+          storage: snap.empire.energy.storage,
+          terminal: snap.empire.energy.terminal,
+          available: snap.empire.energy.available,
+          capacity: snap.empire.energy.capacity
+        },
+        credits: snap.empire.credits
+      },
+      rooms: {} as Record<string, any>,
+      subsystems: {} as Record<string, any>,
+      roles: {} as Record<string, any>,
+      native: {
+        pathfinder_search: snap.native.pathfinderSearch,
+        move_to: snap.native.moveTo,
+        move: snap.native.move,
+        harvest: snap.native.harvest,
+        transfer: snap.native.transfer,
+        withdraw: snap.native.withdraw,
+        build: snap.native.build,
+        repair: snap.native.repair,
+        upgrade_controller: snap.native.upgradeController,
+        attack: snap.native.attack,
+        ranged_attack: snap.native.rangedAttack,
+        heal: snap.native.heal,
+        dismantle: snap.native.dismantle,
+        say: snap.native.say,
+        total: snap.native.total
       }
-      
-      stats[`${prefix}.metrics.energy.harvested`] = room.metrics.energyHarvested;
-      stats[`${prefix}.metrics.energy.spawning`] = room.metrics.energySpawning;
-      stats[`${prefix}.metrics.energy.construction`] = room.metrics.energyConstruction;
-      stats[`${prefix}.metrics.energy.repair`] = room.metrics.energyRepair;
-      stats[`${prefix}.metrics.energy.tower`] = room.metrics.energyTower;
-      stats[`${prefix}.metrics.energy.available_for_sharing`] = room.metrics.energyAvailableForSharing;
-      stats[`${prefix}.metrics.energy.capacity_total`] = room.metrics.energyCapacityTotal;
-      stats[`${prefix}.metrics.energy.need`] = room.metrics.energyNeed;
-      stats[`${prefix}.metrics.controller_progress`] = room.metrics.controllerProgress;
-      stats[`${prefix}.metrics.hostile_count`] = room.metrics.hostileCount;
-      stats[`${prefix}.metrics.damage_received`] = room.metrics.damageReceived;
-      stats[`${prefix}.metrics.construction_sites`] = room.metrics.constructionSites;
-      
-      stats[`${prefix}.profiler.avg_cpu`] = room.profiler.avgCpu;
-      stats[`${prefix}.profiler.peak_cpu`] = room.profiler.peakCpu;
-      stats[`${prefix}.profiler.samples`] = room.profiler.samples;
+    };
+
+    // Room stats with nested structure
+    for (const [roomName, room] of Object.entries(snap.rooms)) {
+      mem.stats.rooms[roomName] = {
+        rcl: room.rcl,
+        energy: {
+          available: room.energy.available,
+          capacity: room.energy.capacity,
+          storage: room.energy.storage,
+          terminal: room.energy.terminal
+        },
+        controller: {
+          progress: room.controller.progress,
+          progress_total: room.controller.progressTotal,
+          progress_percent: room.controller.progressPercent
+        },
+        creeps: room.creeps,
+        hostiles: room.hostiles,
+        brain: {
+          danger: room.brain.danger,
+          posture_code: room.brain.postureCode,
+          colony_level_code: room.brain.colonyLevelCode
+        },
+        pheromones: { ...room.pheromones },
+        metrics: {
+          energy: {
+            harvested: room.metrics.energyHarvested,
+            spawning: room.metrics.energySpawning,
+            construction: room.metrics.energyConstruction,
+            repair: room.metrics.energyRepair,
+            tower: room.metrics.energyTower,
+            available_for_sharing: room.metrics.energyAvailableForSharing,
+            capacity_total: room.metrics.energyCapacityTotal,
+            need: room.metrics.energyNeed
+          },
+          controller_progress: room.metrics.controllerProgress,
+          hostile_count: room.metrics.hostileCount,
+          damage_received: room.metrics.damageReceived,
+          construction_sites: room.metrics.constructionSites
+        },
+        profiler: {
+          avg_cpu: room.profiler.avgCpu,
+          peak_cpu: room.profiler.peakCpu,
+          samples: room.profiler.samples
+        }
+      };
     }
 
     // Subsystem stats
     for (const [name, subsys] of Object.entries(snap.subsystems)) {
-      const prefix = `stats.profiler.subsystem.${name}`;
-      stats[`${prefix}.avg_cpu`] = subsys.avgCpu;
-      stats[`${prefix}.peak_cpu`] = subsys.peakCpu;
-      stats[`${prefix}.calls`] = subsys.calls;
-      stats[`${prefix}.samples`] = subsys.samples;
+      mem.stats.subsystems[name] = {
+        avg_cpu: subsys.avgCpu,
+        peak_cpu: subsys.peakCpu,
+        calls: subsys.calls,
+        samples: subsys.samples
+      };
     }
 
     // Role stats
     for (const [name, role] of Object.entries(snap.roles)) {
-      const prefix = `stats.profiler.role.${name}`;
-      stats[`${prefix}.count`] = role.count;
-      stats[`${prefix}.avg_cpu`] = role.avgCpu;
-      stats[`${prefix}.peak_cpu`] = role.peakCpu;
-      stats[`${prefix}.calls`] = role.calls;
-      stats[`${prefix}.samples`] = role.samples;
+      mem.stats.roles[name] = {
+        count: role.count,
+        avg_cpu: role.avgCpu,
+        peak_cpu: role.peakCpu,
+        calls: role.calls,
+        samples: role.samples
+      };
     }
-
-    // Native calls
-    stats["stats.native.pathfinder_search"] = snap.native.pathfinderSearch;
-    stats["stats.native.move_to"] = snap.native.moveTo;
-    stats["stats.native.move"] = snap.native.move;
-    stats["stats.native.harvest"] = snap.native.harvest;
-    stats["stats.native.transfer"] = snap.native.transfer;
-    stats["stats.native.withdraw"] = snap.native.withdraw;
-    stats["stats.native.build"] = snap.native.build;
-    stats["stats.native.repair"] = snap.native.repair;
-    stats["stats.native.upgrade_controller"] = snap.native.upgradeController;
-    stats["stats.native.attack"] = snap.native.attack;
-    stats["stats.native.ranged_attack"] = snap.native.rangedAttack;
-    stats["stats.native.heal"] = snap.native.heal;
-    stats["stats.native.dismantle"] = snap.native.dismantle;
-    stats["stats.native.say"] = snap.native.say;
-    stats["stats.native.total"] = snap.native.total;
-
-    // System info
-    stats["stats.system.tick"] = snap.tick;
-    stats["stats.system.timestamp"] = snap.timestamp;
   }
 
   /**
