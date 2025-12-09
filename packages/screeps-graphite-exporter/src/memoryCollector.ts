@@ -162,7 +162,7 @@ export async function startMemoryCollector(
       metrics.markScrapeSuccess('memory', false);
     }
 
-    // Flush metrics to InfluxDB after each poll
+    // Flush metrics to Grafana Cloud Graphite after each poll
     metrics.flush();
     
     // Schedule next poll
