@@ -11788,23 +11788,143 @@ function isStateValid(state, _ctx) {
  * We check capacity/position conditions first before validating targets.
  */
 function isStateComplete(state, ctx) {
+    var _a, _b;
     if (!state)
         return true;
     switch (state.action) {
         case "harvest":
+            // Harvest complete when full OR source is depleted/invalid
+            if (ctx.isFull)
+                return true;
+            // Check if source still has energy
+            if (state.targetId) {
+                const target = Game.getObjectById(state.targetId);
+                if (!target)
+                    return true; // Source destroyed
+                // Type guard for Source
+                if (typeof target === "object" && "energy" in target) {
+                    if (target.energy === 0)
+                        return true; // Source depleted
+                }
+            }
+            return false;
         case "harvestMineral":
+            // Mineral harvest complete when full OR mineral depleted
+            if (ctx.isFull)
+                return true;
+            // Check if mineral still available
+            if (state.targetId) {
+                const target = Game.getObjectById(state.targetId);
+                if (!target)
+                    return true; // Mineral destroyed
+                // Type guard for Mineral
+                if (typeof target === "object" && "mineralAmount" in target) {
+                    if (target.mineralAmount === 0)
+                        return true; // Mineral depleted
+                }
+            }
+            return false;
         case "harvestDeposit":
-            // Harvesting complete when full or no energy left
-            return ctx.isFull;
+            // Deposit harvest complete when full or deposit invalid
+            if (ctx.isFull)
+                return true;
+            // Check if deposit still valid
+            if (state.targetId) {
+                const target = Game.getObjectById(state.targetId);
+                if (!target)
+                    return true; // Deposit gone
+                // Type guard for Deposit - check cooldown
+                if (typeof target === "object" && "cooldown" in target && "lastCooldown" in target) {
+                    // If deposit has high cooldown, consider it complete
+                    if (target.cooldown > 100)
+                        return true;
+                }
+            }
+            return false;
         case "pickup":
+            // Pickup complete when full OR resource no longer exists
+            if (ctx.isFull)
+                return true;
+            // Check if dropped resource still exists
+            if (state.targetId) {
+                const target = Game.getObjectById(state.targetId);
+                if (!target)
+                    return true; // Resource picked up or decayed
+            }
+            return false;
         case "withdraw":
-            // Collection complete when full
-            return ctx.isFull;
+            // Withdraw complete when full OR source is empty/invalid
+            if (ctx.isFull)
+                return true;
+            // Check if source still has resources to withdraw
+            if (state.targetId) {
+                const target = Game.getObjectById(state.targetId);
+                if (!target)
+                    return true; // Target destroyed
+                // Type guard for structures/tombstones with store
+                if (typeof target === "object" && "store" in target && target.store) {
+                    const resourceType = (_a = state.data) === null || _a === void 0 ? void 0 : _a.resourceType;
+                    if (resourceType) {
+                        // Check if source still has resources
+                        const usedCapacity = target.store.getUsedCapacity(resourceType);
+                        if (usedCapacity === 0)
+                            return true; // Source empty, abandon withdraw
+                    }
+                }
+            }
+            return false;
         case "transfer":
+            // Transfer complete when empty OR target is full/invalid
+            if (ctx.isEmpty)
+                return true;
+            // Check if target is still valid and can accept resources
+            if (state.targetId) {
+                const target = Game.getObjectById(state.targetId);
+                if (!target)
+                    return true; // Target destroyed
+                // Type guard for structures with store
+                if (typeof target === "object" && "store" in target && target.store) {
+                    const resourceType = (_b = state.data) === null || _b === void 0 ? void 0 : _b.resourceType;
+                    if (resourceType) {
+                        // Check if target can accept more of this resource
+                        const freeCapacity = target.store.getFreeCapacity(resourceType);
+                        if (freeCapacity === 0)
+                            return true; // Target full, abandon transfer
+                    }
+                }
+            }
+            return false;
         case "build":
+            // Build complete when empty OR construction site finished/destroyed
+            if (ctx.isEmpty)
+                return true;
+            // Check if construction site still exists
+            if (state.targetId) {
+                const target = Game.getObjectById(state.targetId);
+                if (!target)
+                    return true; // Site completed or destroyed
+            }
+            return false;
         case "repair":
+            // Repair complete when empty OR structure fully repaired/destroyed
+            if (ctx.isEmpty)
+                return true;
+            // Check if structure still needs repair
+            if (state.targetId) {
+                const target = Game.getObjectById(state.targetId);
+                if (!target)
+                    return true; // Structure destroyed
+                // Type guard for structures with hits
+                if (typeof target === "object" && "hits" in target && "hitsMax" in target) {
+                    const structure = target;
+                    // Consider repair complete if structure is at full health or very close
+                    if (structure.hits >= structure.hitsMax)
+                        return true;
+                }
+            }
+            return false;
         case "upgrade":
-            // Delivery/work complete when empty
+            // Upgrade complete when empty (controller can always be upgraded)
             return ctx.isEmpty;
         case "moveToRoom":
             // Movement complete when in target room
