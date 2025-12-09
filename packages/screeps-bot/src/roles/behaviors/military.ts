@@ -634,25 +634,65 @@ export function ranger(ctx: CreepContext): CreepAction {
 
 /**
  * Execute squad-coordinated behavior.
+ * 
+ * ENHANCEMENT: Improved squad coordination with formation awareness.
+ * Squad members stay together and coordinate movements.
  */
 function squadBehavior(ctx: CreepContext, squad: SquadMemory): CreepAction {
+  // SQUAD COORDINATION: Check if we should wait for other squad members
+  const shouldWaitForSquad = (state: string): boolean => {
+    if (state !== "gathering" && state !== "moving") return false;
+    
+    // Count squad members in current room
+    const membersInRoom = squad.members.filter(name => {
+      const creep = Game.creeps[name];
+      return creep && creep.room.name === ctx.room.name;
+    }).length;
+    
+    // Wait if less than 50% of squad is present (minimum 2 members)
+    const totalMembers = squad.members.length;
+    return membersInRoom < Math.max(2, totalMembers * 0.5);
+  };
+
   switch (squad.state) {
     case "gathering":
       // Move to rally point
       if (ctx.room.name !== squad.rallyRoom) {
         return { type: "moveToRoom", roomName: squad.rallyRoom };
       }
-      return { type: "moveTo", target: new RoomPosition(25, 25, squad.rallyRoom) };
+      
+      // Wait at rally point for other squad members
+      const rallyPos = new RoomPosition(25, 25, squad.rallyRoom);
+      if (ctx.creep.pos.getRangeTo(rallyPos) > 3) {
+        return { type: "moveTo", target: rallyPos };
+      }
+      
+      return { type: "idle" };
 
     case "moving": {
       const targetRoom = squad.targetRooms[0];
-      if (targetRoom && ctx.room.name !== targetRoom) {
+      if (!targetRoom) return { type: "idle" };
+      
+      if (ctx.room.name !== targetRoom) {
+        // COORDINATION: Wait for squad if we're ahead
+        if (shouldWaitForSquad("moving")) {
+          return { type: "idle" };
+        }
         return { type: "moveToRoom", roomName: targetRoom };
       }
       return { type: "idle" };
     }
 
     case "attacking":
+      // RETREAT CHECK: Squad members should retreat if HP is too low
+      const hpPercent = ctx.creep.hits / ctx.creep.hitsMax;
+      if (hpPercent < squad.retreatThreshold) {
+        // Individual retreat to rally room
+        if (ctx.room.name !== squad.rallyRoom) {
+          return { type: "moveToRoom", roomName: squad.rallyRoom };
+        }
+      }
+      
       // Execute role-specific attack behavior
       switch (ctx.memory.role) {
         case "soldier":

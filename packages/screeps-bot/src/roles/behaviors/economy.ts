@@ -808,9 +808,15 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
       return { type: "moveToRoom", roomName: targetRoom };
     }
 
+    // ENERGY EFFICIENCY: Only collect if there's sufficient energy to justify the trip
+    // Remote hauling has travel costs, so we want to maximize energy per trip
+    const minEnergyThreshold = ctx.creep.store.getCapacity(RESOURCE_ENERGY) * 0.3; // 30% of capacity
+
     // In remote room - collect from containers or ground
     const containers = ctx.room.find(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_CONTAINER && s.store.getUsedCapacity(RESOURCE_ENERGY) > 0
+      filter: s => 
+        s.structureType === STRUCTURE_CONTAINER && 
+        s.store.getUsedCapacity(RESOURCE_ENERGY) >= minEnergyThreshold
     }) as StructureContainer[];
 
     if (containers.length > 0) {
@@ -819,6 +825,7 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     }
 
     // Check for dropped energy (cache 3 ticks - they disappear quickly)
+    // For dropped resources, collect even smaller amounts to prevent decay
     const dropped = ctx.room.find(FIND_DROPPED_RESOURCES, {
       filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 50
     });
@@ -826,6 +833,20 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     if (dropped.length > 0) {
       const closest = findCachedClosest(ctx.creep, dropped, "remoteHauler_remoteDrop", 3);
       if (closest) return { type: "pickup", target: closest };
+    }
+
+    // If no energy meets threshold, wait near a container for it to fill
+    if (containers.length === 0) {
+      const anyContainer = ctx.room.find(FIND_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_CONTAINER
+      }) as StructureContainer[];
+      
+      if (anyContainer.length > 0) {
+        const closest = findCachedClosest(ctx.creep, anyContainer, "remoteHauler_waitCont", 20);
+        if (closest && ctx.creep.pos.getRangeTo(closest) > 2) {
+          return { type: "moveTo", target: closest };
+        }
+      }
     }
 
     return { type: "idle" };
