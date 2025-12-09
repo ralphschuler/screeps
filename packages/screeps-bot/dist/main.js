@@ -21904,6 +21904,11 @@ function canLaunchDoctrine(cluster, doctrine) {
  *
  * Addresses ROADMAP Section 12: Attack target selection
  */
+/**
+ * Attack cooldown period in ticks (5000 ticks ≈ 4 hours at 20 ticks/sec)
+ * Prevents spamming attacks on the same room
+ */
+const ATTACK_COOLDOWN_TICKS = 5000;
 const DEFAULT_WEIGHTS = {
     rclWeight: 10,
     resourceWeight: 5,
@@ -21941,7 +21946,7 @@ function findAttackTargets(cluster, maxDistance = 10, maxTargets = 5, weights = 
             continue;
         // Skip if too recent (avoid spam attacks)
         const lastAttacked = (_b = (_a = Memory.lastAttacked) === null || _a === void 0 ? void 0 : _a[roomName]) !== null && _b !== void 0 ? _b : 0;
-        if (Game.time - lastAttacked < 5000)
+        if (Game.time - lastAttacked < ATTACK_COOLDOWN_TICKS)
             continue;
         // Calculate score
         const score = scoreTarget(intel, distance, warTargets.has(roomName), finalWeights);
@@ -22038,8 +22043,8 @@ function validateTarget(targetRoom) {
         logger.warn(`No intel for target ${targetRoom}`, { subsystem: "AttackTarget" });
         return false;
     }
-    // Check if target was recently seen
-    if (Game.time - intel.lastSeen > 5000) {
+    // Check if target was recently seen (use same cooldown constant for consistency)
+    if (Game.time - intel.lastSeen > ATTACK_COOLDOWN_TICKS) {
         logger.warn(`Intel for ${targetRoom} is stale (${Game.time - intel.lastSeen} ticks old)`, {
             subsystem: "AttackTarget"
         });
@@ -22324,6 +22329,19 @@ const spawnQueue = new SpawnQueueManager();
  * Addresses Issue: Squad formation logic and role composition
  */
 /**
+ * Screeps BODYPART_COST constants
+ */
+const BODYPART_COST = {
+    move: 50,
+    work: 100,
+    carry: 50,
+    attack: 80,
+    ranged_attack: 150,
+    heal: 250,
+    claim: 600,
+    tough: 10
+};
+/**
  * Active formations per cluster
  */
 const activeFormations = new Map();
@@ -22423,9 +22441,9 @@ function createSquadSpawnRequests(room, squad, composition, formation) {
                 },
                 priority,
                 targetRoom: squad.targetRooms[0],
-                boostRequirements: boostReqs.length > 0 ? boostReqs.map(resourceType => ({
-                    resourceType,
-                    bodyParts: bodyParts
+                boostRequirements: boostReqs.length > 0 ? boostReqs.map(boost => ({
+                    resourceType: boost.compound,
+                    bodyParts: bodyParts.filter(part => boost.parts.includes(part))
                 })) : undefined,
                 createdAt: Game.time,
                 additionalMemory: {
@@ -22483,18 +22501,22 @@ function generateBody(pattern, budget, repeatPattern) {
     return body.slice(0, 50); // Max 50 parts
 }
 /**
- * Get boost compounds for a role
+ * Get boost compounds and applicable body parts for a role
  */
 function getBoostsForRole(role) {
     switch (role) {
         case "soldier":
-            return [RESOURCE_CATALYZED_UTRIUM_ALKALIDE]; // UH2O -> XUH2O (attack boost)
+            // XUH2O: T3 attack boost (UH -> UH2O -> XUH2O)
+            return [{ compound: RESOURCE_CATALYZED_UTRIUM_ALKALIDE, parts: [ATTACK] }];
         case "ranger":
-            return [RESOURCE_CATALYZED_KEANIUM_ALKALIDE]; // KH2O -> XKH2O (ranged boost)
+            // XKH2O: T3 ranged attack boost (KH -> KH2O -> XKH2O)
+            return [{ compound: RESOURCE_CATALYZED_KEANIUM_ALKALIDE, parts: [RANGED_ATTACK] }];
         case "healer":
-            return [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE]; // LH2O -> XLH2O (heal boost)
+            // XLH2O: T3 heal boost (LH -> LH2O -> XLH2O)
+            return [{ compound: RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE, parts: [HEAL] }];
         case "siegeUnit":
-            return [RESOURCE_CATALYZED_ZYNTHIUM_ACID]; // ZH2O -> XZH2O (dismantle boost)
+            // XZH2O: T3 dismantle boost (ZH -> ZH2O -> XZH2O)
+            return [{ compound: RESOURCE_CATALYZED_ZYNTHIUM_ACID, parts: [WORK] }];
         default:
             return [];
     }

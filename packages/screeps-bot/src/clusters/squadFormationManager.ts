@@ -17,6 +17,20 @@ import { addCreepToSquad, getSquadReadiness } from "./squadCoordinator";
 import { getDoctrineComposition, DOCTRINE_CONFIGS } from "./offensiveDoctrine";
 
 /**
+ * Screeps BODYPART_COST constants
+ */
+const BODYPART_COST: Record<BodyPartConstant, number> = {
+  move: 50,
+  work: 100,
+  carry: 50,
+  attack: 80,
+  ranged_attack: 150,
+  heal: 250,
+  claim: 600,
+  tough: 10
+};
+
+/**
  * Squad formation tracking
  */
 interface SquadFormation {
@@ -146,9 +160,9 @@ function createSquadSpawnRequests(
         },
         priority,
         targetRoom: squad.targetRooms[0],
-        boostRequirements: boostReqs.length > 0 ? boostReqs.map(resourceType => ({
-          resourceType,
-          bodyParts: bodyParts
+        boostRequirements: boostReqs.length > 0 ? boostReqs.map(boost => ({
+          resourceType: boost.compound,
+          bodyParts: bodyParts.filter(part => boost.parts.includes(part))
         })) : undefined,
         createdAt: Game.time,
         additionalMemory: {
@@ -210,18 +224,22 @@ function generateBody(pattern: BodyPartConstant[], budget: number, repeatPattern
 }
 
 /**
- * Get boost compounds for a role
+ * Get boost compounds and applicable body parts for a role
  */
-function getBoostsForRole(role: string): MineralBoostConstant[] {
+function getBoostsForRole(role: string): Array<{ compound: MineralBoostConstant; parts: BodyPartConstant[] }> {
   switch (role) {
     case "soldier":
-      return [RESOURCE_CATALYZED_UTRIUM_ALKALIDE]; // UH2O -> XUH2O (attack boost)
+      // XUH2O: T3 attack boost (UH -> UH2O -> XUH2O)
+      return [{ compound: RESOURCE_CATALYZED_UTRIUM_ALKALIDE, parts: [ATTACK] }];
     case "ranger":
-      return [RESOURCE_CATALYZED_KEANIUM_ALKALIDE]; // KH2O -> XKH2O (ranged boost)
+      // XKH2O: T3 ranged attack boost (KH -> KH2O -> XKH2O)
+      return [{ compound: RESOURCE_CATALYZED_KEANIUM_ALKALIDE, parts: [RANGED_ATTACK] }];
     case "healer":
-      return [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE]; // LH2O -> XLH2O (heal boost)
+      // XLH2O: T3 heal boost (LH -> LH2O -> XLH2O)
+      return [{ compound: RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE, parts: [HEAL] }];
     case "siegeUnit":
-      return [RESOURCE_CATALYZED_ZYNTHIUM_ACID]; // ZH2O -> XZH2O (dismantle boost)
+      // XZH2O: T3 dismantle boost (ZH -> ZH2O -> XZH2O)
+      return [{ compound: RESOURCE_CATALYZED_ZYNTHIUM_ACID, parts: [WORK] }];
     default:
       return [];
   }

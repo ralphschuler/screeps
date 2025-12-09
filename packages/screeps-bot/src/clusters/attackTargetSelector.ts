@@ -19,6 +19,12 @@ import type { OffensiveDoctrine } from "./offensiveDoctrine";
 import { selectDoctrine } from "./offensiveDoctrine";
 
 /**
+ * Attack cooldown period in ticks (5000 ticks ≈ 4 hours at 20 ticks/sec)
+ * Prevents spamming attacks on the same room
+ */
+const ATTACK_COOLDOWN_TICKS = 5000;
+
+/**
  * Attack target with scoring
  */
 export interface AttackTarget {
@@ -101,7 +107,7 @@ export function findAttackTargets(
     
     // Skip if too recent (avoid spam attacks)
     const lastAttacked = (Memory as any).lastAttacked?.[roomName] ?? 0;
-    if (Game.time - lastAttacked < 5000) continue;
+    if (Game.time - lastAttacked < ATTACK_COOLDOWN_TICKS) continue;
     
     // Calculate score
     const score = scoreTarget(intel, distance, warTargets.has(roomName), finalWeights);
@@ -250,8 +256,8 @@ export function validateTarget(targetRoom: string): boolean {
     return false;
   }
   
-  // Check if target was recently seen
-  if (Game.time - intel.lastSeen > 5000) {
+  // Check if target was recently seen (use same cooldown constant for consistency)
+  if (Game.time - intel.lastSeen > ATTACK_COOLDOWN_TICKS) {
     logger.warn(`Intel for ${targetRoom} is stale (${Game.time - intel.lastSeen} ticks old)`, {
       subsystem: "AttackTarget"
     });
@@ -278,7 +284,7 @@ export function markRoomAttacked(roomName: string): void {
 /**
  * Check if a room can be attacked (not recently attacked)
  */
-export function canAttackRoom(roomName: string, cooldown: number = 5000): boolean {
+export function canAttackRoom(roomName: string, cooldown: number = ATTACK_COOLDOWN_TICKS): boolean {
   const lastAttacked = (Memory as any).lastAttacked?.[roomName] ?? 0;
   return Game.time - lastAttacked >= cooldown;
 }
