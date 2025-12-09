@@ -129,11 +129,11 @@ export class RoomNode {
    * Main room tick
    */
   public run(totalOwnedRooms: number): void {
-    const cpuStart = profiler.startRoom(this.roomName);
+    const cpuStart = unifiedStats.startRoom(this.roomName);
 
     const room = Game.rooms[this.roomName];
     if (!room || !room.controller?.my) {
-      profiler.endRoom(this.roomName, cpuStart);
+      unifiedStats.endRoom(this.roomName, cpuStart);
       return;
     }
 
@@ -196,24 +196,10 @@ export class RoomNode {
       this.runResourceProcessing(room, swarm);
     }
 
-    // Record room stats
+    // Record room stats with unified stats system
     const cpuUsed = Game.cpu.getUsed() - cpuStart;
-    const roomData = profiler.getRoomData(this.roomName);
-    statsManager.recordRoom(room, roomData?.avgCpu ?? cpuUsed, roomData?.peakCpu ?? cpuUsed, {
-      energyHarvested: swarm.metrics.energyHarvested,
-      damageReceived: swarm.metrics.damageReceived,
-      danger: swarm.danger
-    });
-
-    // Record pheromone stats
-    statsManager.recordPheromones(
-      this.roomName,
-      swarm.pheromones,
-      swarm.posture,
-      pheromoneManager.getDominantPheromone(swarm.pheromones)
-    );
-
-    profiler.endRoom(this.roomName, cpuStart);
+    unifiedStats.recordRoom(room, cpuUsed);
+    unifiedStats.endRoom(this.roomName, cpuStart);
   }
 
   /**
