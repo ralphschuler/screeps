@@ -49,7 +49,6 @@ export default {
         passes: 3, // Increased from 2 to 3 for more aggressive compression
         drop_console: false, // Keep console.log for Screeps debugging
         drop_debugger: true,
-        pure_funcs: [], // Could add functions known to have no side effects
         unsafe: true,
         unsafe_arrows: true,
         unsafe_comps: true,
@@ -67,7 +66,6 @@ export default {
       },
       mangle: {
         toplevel: true,
-        eval: true,
         properties: false // Don't mangle properties to avoid breaking Game object references
       },
       format: {
