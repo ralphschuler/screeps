@@ -83,7 +83,7 @@ export function populateSpawnQueue(room: Room, swarm: SwarmState): void {
 
     // Add request to queue
     const request: SpawnRequest = {
-      id: `${roleName}_${Game.time}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `${roleName}_${Game.time}_${Math.random().toString(36).substring(2, 11)}`,
       roomName: room.name,
       role: def.role,
       family: def.family,

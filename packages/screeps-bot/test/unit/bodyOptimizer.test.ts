@@ -32,7 +32,6 @@ describe("BodyOptimizer", () => {
         role: "harvester"
       });
 
-      console.log("Body cost:", body.cost, "Parts:", body.parts);
       assert.isTrue(body.cost <= 300, `Body cost ${body.cost} should be <= 300`);
       assert.isAtLeast(body.parts.filter(p => p === WORK).length, 2);
       assert.isAtLeast(body.parts.filter(p => p === MOVE).length, 1);

@@ -105,7 +105,7 @@ class SpawnQueueManager {
 
     // Assign unique ID if not provided
     if (!request.id) {
-      request.id = `${request.role}_${Game.time}_${Math.random().toString(36).substr(2, 9)}`;
+      request.id = `${request.role}_${Game.time}_${Math.random().toString(36).substring(2, 11)}`;
     }
 
     // Add to queue
@@ -299,7 +299,7 @@ class SpawnQueueManager {
    * Generate unique creep name
    */
   private generateCreepName(role: CreepRole): string {
-    return `${role}_${Game.time}_${Math.floor(Math.random() * 1000)}`;
+    return `${role}_${Game.time}_${Math.random().toString(36).substring(2, 11)}`;
   }
 
   /**

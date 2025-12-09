@@ -278,12 +278,13 @@ export function optimizeCombatBody(options: BodyOptimizationOptions): BodyTempla
 
   if (willBoost) {
     // Boosted: maximize TOUGH (cheap + effective)
-    // Pattern: 10 TOUGH, 20 ATTACK, 30 MOVE (fast, armored)
-    const costPerUnit = 10 + 80 + 50; // 140
-    const units = Math.floor(maxEnergy / costPerUnit);
-    tough = Math.min(10, Math.floor(units * 0.2));
-    attack = Math.min(20, Math.floor(units * 0.5));
-    move = Math.min(30, Math.ceil(units * 0.3));
+    // Pattern ratio: 1 TOUGH : 4 ATTACK : 5 MOVE (similar to non-boosted but boosted TOUGH is very effective)
+    // Cost per unit: 10 + 320 + 250 = 580
+    const costPerUnit = 580;
+    const units = Math.max(1, Math.floor(maxEnergy / costPerUnit));
+    tough = Math.min(10, units);
+    attack = Math.min(20, units * 4);
+    move = Math.min(30, units * 5);
   } else {
     // Non-boosted: standard composition
     // Pattern ratio: 1 TOUGH : 4 ATTACK : 5 MOVE
