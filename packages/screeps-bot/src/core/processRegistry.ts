@@ -8,6 +8,8 @@
  * - CoreProcessManager (core:pixelGeneration, core:memoryCleanup, core:memorySizeCheck,
  *                       core:memorySegmentStats, cluster:pheromoneDiffusion, room:labConfig,
  *                       room:pathCachePrecache)
+ * - TerminalManager (terminal:manager)
+ * - FactoryManager (factory:manager)
  * - EmpireManager (empire:manager)
  * - ExpansionManager (expansion:manager)
  * - RemoteInfrastructureManager (remote:infrastructure)
@@ -23,6 +25,8 @@
 
 import { clusterManager } from "../clusters/clusterManager";
 import { evacuationManager } from "../defense/evacuationManager";
+import { terminalManager } from "../economy/terminalManager";
+import { factoryManager } from "../economy/factoryManager";
 import { empireManager } from "../empire/empireManager";
 import { expansionManager } from "../empire/expansionManager";
 import { marketManager } from "../empire/marketManager";
@@ -45,6 +49,9 @@ export function registerAllProcesses(): void {
   registerAllDecoratedProcesses(
     // Core processes
     coreProcessManager,
+    // Economy processes
+    terminalManager,
+    factoryManager,
     // Empire processes
     empireManager,
     expansionManager,
