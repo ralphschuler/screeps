@@ -46,19 +46,34 @@ export default {
     typescript({ tsconfig: "./tsconfig.json" }),
     terser({
       compress: {
-        passes: 2,
+        passes: 3, // Increased from 2 to 3 for more aggressive compression
+        drop_console: false, // Keep console.log for Screeps debugging
+        drop_debugger: true,
+        pure_funcs: [], // Could add functions known to have no side effects
         unsafe: true,
         unsafe_arrows: true,
+        unsafe_comps: true,
+        unsafe_Function: true,
+        unsafe_math: true,
         unsafe_methods: true,
         unsafe_proto: true,
         unsafe_regexp: true,
-        unsafe_undefined: true
+        unsafe_undefined: true,
+        booleans_as_integers: true, // Convert booleans to 0/1
+        dead_code: true,
+        evaluate: true,
+        loops: true,
+        unused: true
       },
       mangle: {
-        toplevel: true
+        toplevel: true,
+        eval: true,
+        properties: false // Don't mangle properties to avoid breaking Game object references
       },
       format: {
-        comments: false
+        comments: false,
+        semicolons: true,
+        preserve_annotations: false
       }
     }),
 
