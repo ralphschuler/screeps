@@ -69,6 +69,8 @@ interface NukeScore {
 export class NukeManager {
   private config: NukeConfig;
   private lastRun = 0;
+  private nukerReadyLogged: Set<string> = new Set();
+  private terminalManager?: typeof import("../economy/terminalManager").terminalManager;
 
   public constructor(config: Partial<NukeConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -377,23 +379,24 @@ export class NukeManager {
         }
       }
 
-      // Log nuker readiness status
+      // Log nuker readiness status (track in Set to avoid spam)
+      const nukerId = `${roomName}-nuker`;
       if (energyNeeded === 0 && ghodiumNeeded === 0) {
-        if ((nuker as { _readyLogged?: boolean })._readyLogged !== true) {
+        if (!this.nukerReadyLogged.has(nukerId)) {
           logger.info(`Nuker in ${roomName} is fully loaded and ready to launch`, {
             subsystem: "Nuke"
           });
-          (nuker as { _readyLogged?: boolean })._readyLogged = true;
+          this.nukerReadyLogged.add(nukerId);
         }
       } else {
-        (nuker as { _readyLogged?: boolean })._readyLogged = false;
+        this.nukerReadyLogged.delete(nukerId);
       }
     }
   }
 
   /**
    * Request resource transfer via terminal
-   * Uses lazy import to avoid circular dependency
+   * Uses cached import to avoid circular dependency and ensure synchronous execution
    */
   private requestResourceTransfer(roomName: string, resourceType: ResourceConstant, amount: number): void {
     // Find a donor room with this resource
@@ -406,26 +409,26 @@ export class NukeManager {
       return;
     }
 
-    // Import terminal manager at runtime to avoid circular dependencies
-    // This is necessary because terminalManager may import other modules that import nukeManager
-    void import("../economy/terminalManager").then(module => {
-      const success = module.terminalManager.requestTransfer(
-        donorRoom,
-        roomName,
-        resourceType,
-        amount,
-        this.config.terminalPriority
-      );
+    // Lazy-load terminal manager on first use (synchronous require to avoid timing issues)
+    if (!this.terminalManager) {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      this.terminalManager = require("../economy/terminalManager").terminalManager as typeof import("../economy/terminalManager").terminalManager;
+    }
 
-      if (success) {
-        logger.info(
-          `Requested ${amount} ${resourceType} transfer from ${donorRoom} to ${roomName} for nuker`,
-          { subsystem: "Nuke" }
-        );
-      }
-    }).catch(error => {
-      logger.error(`Failed to request terminal transfer: ${error}`, { subsystem: "Nuke" });
-    });
+    const success = this.terminalManager.requestTransfer(
+      donorRoom,
+      roomName,
+      resourceType,
+      amount,
+      this.config.terminalPriority
+    );
+
+    if (success) {
+      logger.info(
+        `Requested ${amount} ${resourceType} transfer from ${donorRoom} to ${roomName} for nuker`,
+        { subsystem: "Nuke" }
+      );
+    }
   }
 
   /**

@@ -12358,7 +12358,7 @@ function linkManager(ctx) {
 /**
  * TerminalManager - Balance resources between storage and terminal.
  */
-function terminalManager$2(ctx) {
+function terminalManager$1(ctx) {
     if (!ctx.terminal || !ctx.storage)
         return { type: "idle" };
     const terminalEnergy = ctx.terminal.store.getUsedCapacity(RESOURCE_ENERGY);
@@ -12404,7 +12404,7 @@ const utilityBehaviors = {
     engineer,
     remoteWorker,
     linkManager,
-    terminalManager: terminalManager$2
+    terminalManager: terminalManager$1
 };
 /**
  * Evaluate and return an action for a utility role creep.
@@ -24408,12 +24408,6 @@ TerminalManager = __decorate([
  */
 const terminalManager = new TerminalManager();
 
-var terminalManager$1 = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  get TerminalManager () { return TerminalManager; },
-  terminalManager: terminalManager
-});
-
 /**
  * Factory Manager
  *
@@ -25781,6 +25775,7 @@ const DEFAULT_CONFIG$5 = {
 let NukeManager = class NukeManager {
     constructor(config = {}) {
         this.lastRun = 0;
+        this.nukerReadyLogged = new Set();
         this.config = { ...DEFAULT_CONFIG$5, ...config };
     }
     /**
@@ -26036,23 +26031,24 @@ let NukeManager = class NukeManager {
                     this.requestResourceTransfer(roomName, RESOURCE_GHODIUM, ghodiumNeeded - terminalGhodium);
                 }
             }
-            // Log nuker readiness status
+            // Log nuker readiness status (track in Set to avoid spam)
+            const nukerId = `${roomName}-nuker`;
             if (energyNeeded === 0 && ghodiumNeeded === 0) {
-                if (nuker._readyLogged !== true) {
+                if (!this.nukerReadyLogged.has(nukerId)) {
                     logger.info(`Nuker in ${roomName} is fully loaded and ready to launch`, {
                         subsystem: "Nuke"
                     });
-                    nuker._readyLogged = true;
+                    this.nukerReadyLogged.add(nukerId);
                 }
             }
             else {
-                nuker._readyLogged = false;
+                this.nukerReadyLogged.delete(nukerId);
             }
         }
     }
     /**
      * Request resource transfer via terminal
-     * Uses lazy import to avoid circular dependency
+     * Uses cached import to avoid circular dependency and ensure synchronous execution
      */
     requestResourceTransfer(roomName, resourceType, amount) {
         // Find a donor room with this resource
@@ -26061,16 +26057,15 @@ let NukeManager = class NukeManager {
             logger.debug(`No donor room found for ${amount} ${resourceType} to ${roomName}`, { subsystem: "Nuke" });
             return;
         }
-        // Import terminal manager at runtime to avoid circular dependencies
-        // This is necessary because terminalManager may import other modules that import nukeManager
-        void Promise.resolve().then(function () { return terminalManager$1; }).then(module => {
-            const success = module.terminalManager.requestTransfer(donorRoom, roomName, resourceType, amount, this.config.terminalPriority);
-            if (success) {
-                logger.info(`Requested ${amount} ${resourceType} transfer from ${donorRoom} to ${roomName} for nuker`, { subsystem: "Nuke" });
-            }
-        }).catch(error => {
-            logger.error(`Failed to request terminal transfer: ${error}`, { subsystem: "Nuke" });
-        });
+        // Lazy-load terminal manager on first use (synchronous require to avoid timing issues)
+        if (!this.terminalManager) {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            this.terminalManager = require("../economy/terminalManager").terminalManager;
+        }
+        const success = this.terminalManager.requestTransfer(donorRoom, roomName, resourceType, amount, this.config.terminalPriority);
+        if (success) {
+            logger.info(`Requested ${amount} ${resourceType} transfer from ${donorRoom} to ${roomName} for nuker`, { subsystem: "Nuke" });
+        }
     }
     /**
      * Find a room that can donate the requested resource

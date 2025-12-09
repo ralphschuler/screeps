@@ -210,10 +210,11 @@ describe("Nuke Manager", () => {
         terminal: mockTerminal,
         find: (type: FindConstant, opts?: FilterOptions<any>) => {
           if (type === FIND_MY_STRUCTURES) {
+            const structures = [mockNuker];
             if (opts?.filter) {
-              const structures = [mockNuker];
               return structures.filter(opts.filter as any);
             }
+            return structures;
           }
           return [];
         }
