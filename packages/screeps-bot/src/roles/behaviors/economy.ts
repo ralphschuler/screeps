@@ -658,10 +658,30 @@ export function factoryWorker(ctx: CreepContext): CreepAction {
 /**
  * RemoteHarvester - Stationary miner in remote room.
  * Travels to remote room, sits at source, harvests to container.
+ * 
+ * ENHANCEMENT: Added hostile detection and flee behavior for safety.
+ * Remote harvesters will flee from hostiles and return home if threatened.
  */
 export function remoteHarvester(ctx: CreepContext): CreepAction {
   // Get target room from memory
   const targetRoom = ctx.memory.targetRoom ?? ctx.memory.homeRoom;
+
+  // SAFETY: Check for nearby hostiles and flee if threatened
+  if (ctx.nearbyEnemies && ctx.hostiles.length > 0) {
+    const dangerousHostiles = ctx.hostiles.filter(h => 
+      ctx.creep.pos.getRangeTo(h) <= 5 &&
+      (h.getActiveBodyparts(ATTACK) > 0 || h.getActiveBodyparts(RANGED_ATTACK) > 0)
+    );
+    
+    if (dangerousHostiles.length > 0) {
+      // If in remote room with hostiles, return home for safety
+      if (ctx.room.name === targetRoom) {
+        return { type: "moveToRoom", roomName: ctx.memory.homeRoom };
+      }
+      // If in transit, flee from hostiles
+      return { type: "flee", from: dangerousHostiles.map(h => h.pos) };
+    }
+  }
 
   // If not in target room, move there
   if (ctx.room.name !== targetRoom) {
@@ -706,6 +726,9 @@ export function remoteHarvester(ctx: CreepContext): CreepAction {
 /**
  * RemoteHauler - Transports energy from remote room to home room.
  * Picks up from remote containers/ground, delivers to home storage.
+ * 
+ * ENHANCEMENT: Added hostile detection and flee behavior for safety.
+ * Remote haulers will flee from hostiles and prioritize returning home with cargo.
  */
 export function remoteHauler(ctx: CreepContext): CreepAction {
   const isWorking = updateWorkingState(ctx);
@@ -716,6 +739,23 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
   // It should idle until it gets reassigned or dies
   if (!targetRoom || targetRoom === homeRoom) {
     return { type: "idle" };
+  }
+
+  // SAFETY: Check for nearby hostiles and flee if threatened
+  if (ctx.nearbyEnemies && ctx.hostiles.length > 0) {
+    const dangerousHostiles = ctx.hostiles.filter(h => 
+      ctx.creep.pos.getRangeTo(h) <= 5 &&
+      (h.getActiveBodyparts(ATTACK) > 0 || h.getActiveBodyparts(RANGED_ATTACK) > 0)
+    );
+    
+    if (dangerousHostiles.length > 0) {
+      // If carrying energy, prioritize getting home
+      if (isWorking && ctx.room.name !== homeRoom) {
+        return { type: "moveToRoom", roomName: homeRoom };
+      }
+      // Otherwise flee from hostiles
+      return { type: "flee", from: dangerousHostiles.map(h => h.pos) };
+    }
   }
 
   if (isWorking) {

@@ -300,12 +300,30 @@ export function healer(ctx: CreepContext): CreepAction {
 /**
  * Soldier - Offensive combat creep.
  * Attacks hostiles and hostile structures.
+ * 
+ * ENHANCEMENT: Added threat assessment and retreat logic.
+ * Soldiers will retreat if critically damaged to preserve expensive units.
  */
 export function soldier(ctx: CreepContext): CreepAction {
   // Check for squad assignment
   if (ctx.memory.squadId) {
     const squad = getSquadMemory(ctx.memory.squadId);
     if (squad) return squadBehavior(ctx, squad);
+  }
+
+  // TACTICAL RETREAT: If critically damaged (below 30% HP), retreat to home room
+  // This is especially important for boosted creeps which are expensive to replace
+  const hpPercent = ctx.creep.hits / ctx.creep.hitsMax;
+  if (hpPercent < 0.3) {
+    if (ctx.room.name !== ctx.homeRoom) {
+      return { type: "moveToRoom", roomName: ctx.homeRoom };
+    }
+    // In home room, move near spawn for healing
+    const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+    if (spawns.length > 0 && ctx.creep.pos.getRangeTo(spawns[0]) > 3) {
+      return { type: "moveTo", target: spawns[0] };
+    }
+    return { type: "idle" };
   }
 
   // Solo behavior
@@ -357,12 +375,30 @@ export function soldier(ctx: CreepContext): CreepAction {
 /**
  * Siege - Dismantler creep for breaking defenses.
  * Priority: spawns → towers → walls/ramparts → other structures
+ * 
+ * ENHANCEMENT: Added threat assessment and retreat logic.
+ * Siege units will retreat if critically damaged to preserve expensive boosted units.
  */
 export function siege(ctx: CreepContext): CreepAction {
   // Check for squad assignment
   if (ctx.memory.squadId) {
     const squad = getSquadMemory(ctx.memory.squadId);
     if (squad) return squadBehavior(ctx, squad);
+  }
+
+  // TACTICAL RETREAT: If critically damaged (below 30% HP), retreat to home room
+  // Siege units are expensive, especially when boosted with WORK boosts
+  const hpPercent = ctx.creep.hits / ctx.creep.hitsMax;
+  if (hpPercent < 0.3) {
+    if (ctx.room.name !== ctx.homeRoom) {
+      return { type: "moveToRoom", roomName: ctx.homeRoom };
+    }
+    // In home room, move near spawn for healing
+    const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+    if (spawns.length > 0 && ctx.creep.pos.getRangeTo(spawns[0]) > 3) {
+      return { type: "moveTo", target: spawns[0] };
+    }
+    return { type: "idle" };
   }
 
   const targetRoom = ctx.memory.targetRoom ?? ctx.homeRoom;
@@ -431,9 +467,27 @@ export function siege(ctx: CreepContext): CreepAction {
 /**
  * Harasser - Hit-and-run attacker targeting workers.
  * Flees from dangerous combat creeps.
+ * 
+ * ENHANCEMENT: Improved threat assessment with HP-based retreat logic.
+ * Harassers are fast, cheap units designed for hit-and-run tactics.
  */
 export function harasser(ctx: CreepContext): CreepAction {
   const targetRoom = ctx.memory.targetRoom;
+
+  // TACTICAL RETREAT: If critically damaged (below 40% HP), return home
+  // Harassers should retreat earlier than heavy units since they're meant for hit-and-run
+  const hpPercent = ctx.creep.hits / ctx.creep.hitsMax;
+  if (hpPercent < 0.4) {
+    if (ctx.room.name !== ctx.homeRoom) {
+      return { type: "moveToRoom", roomName: ctx.homeRoom };
+    }
+    // In home room, move near spawn
+    const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+    if (spawns.length > 0 && ctx.creep.pos.getRangeTo(spawns[0]) > 3) {
+      return { type: "moveTo", target: spawns[0] };
+    }
+    return { type: "idle" };
+  }
 
   if (!targetRoom) {
     const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
@@ -481,9 +535,31 @@ export function harasser(ctx: CreepContext): CreepAction {
 /**
  * Ranger - Ranged kiting creep.
  * Maintains distance of 3 tiles while attacking.
+ * 
+ * ENHANCEMENT: Added threat assessment and retreat logic.
+ * Rangers will retreat if critically damaged to preserve expensive units.
  */
 export function ranger(ctx: CreepContext): CreepAction {
   const mem = ctx.creep.memory as unknown as SwarmCreepMemory & { assistTarget?: string };
+
+  // TACTICAL RETREAT: If critically damaged (below 30% HP), retreat to home room
+  // Rangers are valuable ranged attackers, often boosted for maximum effectiveness
+  const hpPercent = ctx.creep.hits / ctx.creep.hitsMax;
+  if (hpPercent < 0.3) {
+    // Clear assist target when retreating
+    if (mem.assistTarget) {
+      delete mem.assistTarget;
+    }
+    if (ctx.room.name !== ctx.homeRoom) {
+      return { type: "moveToRoom", roomName: ctx.homeRoom };
+    }
+    // In home room, move near spawn for healing
+    const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+    if (spawns.length > 0 && ctx.creep.pos.getRangeTo(spawns[0]) > 3) {
+      return { type: "moveTo", target: spawns[0] };
+    }
+    return { type: "idle" };
+  }
 
   // Check if assigned to assist another room
   if (mem.assistTarget) {
