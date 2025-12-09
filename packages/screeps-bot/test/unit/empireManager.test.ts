@@ -405,4 +405,134 @@ describe("Empire Manager Automation", () => {
       expect(overmind.claimQueue.length).to.equal(10, "Should keep only top 10 candidates");
     });
   });
+
+  describe("Cluster Health Monitoring", () => {
+    it("should calculate average energy across cluster rooms", () => {
+      const clusterRooms = [
+        { storage: { store: { energy: 100000 } }, terminal: { store: { energy: 50000 } } },
+        { storage: { store: { energy: 80000 } }, terminal: { store: { energy: 30000 } } }
+      ];
+
+      const totalEnergy = clusterRooms.reduce((sum: number, r: any) => {
+        return sum + (r.storage?.store?.energy ?? 0) + (r.terminal?.store?.energy ?? 0);
+      }, 0);
+      const avgEnergy = totalEnergy / clusterRooms.length;
+
+      expect(avgEnergy).to.equal(130000);
+    });
+
+    it("should detect low energy conditions", () => {
+      const avgEnergy = 25000;
+      const threshold = 30000;
+
+      const lowEnergy = avgEnergy < threshold;
+
+      expect(lowEnergy).to.be.true;
+    });
+
+    it("should calculate economy health index", () => {
+      const avgEnergy = 80000;
+      const roomCount = 2;
+      const totalRooms = 3;
+
+      const energyScore = Math.min(100, (avgEnergy / 100000) * 100);
+      const roomCountScore = (roomCount / totalRooms) * 100;
+      const economyIndex = Math.round((energyScore + roomCountScore) / 2);
+
+      expect(economyIndex).to.be.within(60, 90);
+    });
+
+    it("should detect unhealthy clusters", () => {
+      const economyIndex = 35;
+      const threshold = 40;
+
+      const isUnhealthy = economyIndex < threshold;
+
+      expect(isUnhealthy).to.be.true;
+    });
+  });
+
+  describe("Power Bank Profitability Assessment", () => {
+    it("should calculate travel time based on distance", () => {
+      const distance = 3;
+      const ticksPerRoom = 50;
+      const travelTime = distance * ticksPerRoom;
+
+      expect(travelTime).to.equal(150);
+    });
+
+    it("should estimate harvest time based on power amount", () => {
+      const power = 4000;
+      const harvestTime = power / 2; // 2 power per tick
+
+      expect(harvestTime).to.equal(2000);
+    });
+
+    it("should identify profitable power banks", () => {
+      const power = 3000;
+      const distance = 3;
+      const timeRemaining = 8000;
+      const closestRoomRcl = 8;
+
+      const ticksPerRoom = 50;
+      const travelTime = distance * ticksPerRoom;
+      const harvestTime = power / 2;
+      const totalTime = travelTime * 2 + harvestTime;
+
+      const isProfitable =
+        timeRemaining > totalTime * 1.5 &&
+        distance <= 5 &&
+        power >= 1000 &&
+        closestRoomRcl >= 7;
+
+      expect(isProfitable).to.be.true;
+    });
+
+    it("should identify unprofitable power banks (too far)", () => {
+      const power = 3000;
+      const distance = 8; // Too far
+      const timeRemaining = 8000;
+      const closestRoomRcl = 8;
+
+      const isProfitable = distance <= 5 && power >= 1000 && closestRoomRcl >= 7;
+
+      expect(isProfitable).to.be.false;
+    });
+
+    it("should identify unprofitable power banks (insufficient time)", () => {
+      const power = 3000;
+      const distance = 3;
+      const timeRemaining = 1000; // Not enough time
+      const closestRoomRcl = 8;
+
+      const ticksPerRoom = 50;
+      const travelTime = distance * ticksPerRoom;
+      const harvestTime = power / 2;
+      const totalTime = travelTime * 2 + harvestTime;
+
+      const isProfitable = timeRemaining > totalTime * 1.5;
+
+      expect(isProfitable).to.be.false;
+    });
+
+    it("should identify unprofitable power banks (low RCL)", () => {
+      const power = 3000;
+      const distance = 3;
+      const timeRemaining = 8000;
+      const closestRoomRcl = 5; // Too low
+
+      const isProfitable = closestRoomRcl >= 7;
+
+      expect(isProfitable).to.be.false;
+    });
+
+    it("should identify unprofitable power banks (too little power)", () => {
+      const power = 500; // Too little
+      const minPower = 1000;
+
+      const isProfitable = power >= minPower;
+
+      expect(isProfitable).to.be.false;
+    });
+  });
 });

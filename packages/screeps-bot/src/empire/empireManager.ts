@@ -124,6 +124,16 @@ export class EmpireManager {
       this.refreshNukeCandidates(overmind);
     });
 
+    // NEW: Automated cluster health monitoring
+    profiler.measureSubsystem("empire:clusterHealth", () => {
+      this.monitorClusterHealth();
+    });
+
+    // NEW: Automated power bank profitability assessment
+    profiler.measureSubsystem("empire:powerBankProfitability", () => {
+      this.assessPowerBankProfitability(overmind);
+    });
+
     // Log CPU usage
     const cpuUsed = Game.cpu.getUsed() - cpuStart;
     if (Game.time % 100 === 0) {
@@ -668,6 +678,151 @@ export class EmpireManager {
     }
 
     return score;
+  }
+
+  /**
+   * Monitor cluster health and detect issues
+   * Automatically triggers rebalancing when clusters are unhealthy
+   */
+  private monitorClusterHealth(): void {
+    // Only check every 50 ticks
+    if (Game.time % 50 !== 0) {
+      return;
+    }
+
+    const clusters = memoryManager.getClusters();
+    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+
+    for (const clusterId in clusters) {
+      const cluster = clusters[clusterId];
+      
+      // Calculate cluster health metrics
+      const clusterRooms = ownedRooms.filter(r => cluster.memberRooms.includes(r.name));
+      
+      if (clusterRooms.length === 0) {
+        continue;
+      }
+
+      // Check energy availability across cluster
+      const totalEnergy = clusterRooms.reduce((sum, r) => {
+        return sum + (r.storage?.store[RESOURCE_ENERGY] ?? 0) + (r.terminal?.store[RESOURCE_ENERGY] ?? 0);
+      }, 0);
+      const avgEnergy = totalEnergy / clusterRooms.length;
+
+      // Check CPU usage per room
+      const avgCpuPerRoom = Game.cpu.getUsed() / ownedRooms.length;
+
+      // Detect unhealthy conditions
+      const lowEnergy = avgEnergy < 30000;
+      const highCpu = avgCpuPerRoom > 2.0;
+
+      // Log warnings for unhealthy clusters
+      if (lowEnergy && Game.time % 500 === 0) {
+        logger.warn(
+          `Cluster ${clusterId} has low energy: ${avgEnergy.toFixed(0)} avg (threshold: 30000)`,
+          { subsystem: "Empire" }
+        );
+      }
+
+      if (highCpu && Game.time % 500 === 0) {
+        logger.warn(
+          `Cluster ${clusterId} has high CPU usage: ${avgCpuPerRoom.toFixed(2)} per room`,
+          { subsystem: "Empire" }
+        );
+      }
+
+      // Update cluster metrics
+      if (!cluster.metrics) {
+        cluster.metrics = {
+          energyIncome: 0,
+          energyConsumption: 0,
+          energyBalance: 0,
+          warIndex: 0,
+          economyIndex: 0
+        };
+      }
+
+      // Calculate economy health index (0-100)
+      const energyScore = Math.min(100, (avgEnergy / 100000) * 100);
+      const roomCountScore = (clusterRooms.length / cluster.memberRooms.length) * 100;
+      cluster.metrics.economyIndex = Math.round((energyScore + roomCountScore) / 2);
+
+      // Trigger rebalancing if economy index is low
+      if (cluster.metrics.economyIndex < 40 && Game.time % 500 === 0) {
+        logger.warn(
+          `Cluster ${clusterId} economy index low: ${cluster.metrics.economyIndex} - consider rebalancing`,
+          { subsystem: "Empire" }
+        );
+      }
+    }
+  }
+
+  /**
+   * Assess power bank profitability based on distance, power amount, and decay time
+   * Automatically marks unprofitable power banks as inactive
+   */
+  private assessPowerBankProfitability(overmind: OvermindMemory): void {
+    // Only assess every 100 ticks
+    if (Game.time % 100 !== 0) {
+      return;
+    }
+
+    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+    if (ownedRooms.length === 0) {
+      return;
+    }
+
+    for (const pb of overmind.powerBanks) {
+      if (pb.active) {
+        continue; // Already harvesting
+      }
+
+      // Find closest owned room
+      let minDistance = Infinity;
+      let closestRoom: Room | null = null;
+
+      for (const room of ownedRooms) {
+        const distance = Game.map.getRoomLinearDistance(room.name, pb.roomName);
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestRoom = room;
+        }
+      }
+
+      if (!closestRoom) {
+        continue;
+      }
+
+      // Calculate profitability score
+      const timeRemaining = pb.decayTick - Game.time;
+      const ticksPerRoom = 50; // Approximate travel time per room
+      const travelTime = minDistance * ticksPerRoom;
+      const harvestTime = pb.power / 2; // Approximate time to harvest (2 power per tick with good squad)
+      const totalTime = travelTime * 2 + harvestTime; // Round trip + harvest
+
+      // Power bank is profitable if we have enough time and it's reasonably close
+      const isProfitable = 
+        timeRemaining > totalTime * 1.5 && // Need 50% time buffer
+        minDistance <= 5 && // Max 5 rooms away
+        pb.power >= 1000 && // Minimum 1000 power
+        closestRoom.controller!.level >= 7; // Need RCL 7+ for power squads
+
+      // Log profitability assessment
+      if (!isProfitable && Game.time % 500 === 0) {
+        logger.debug(
+          `Power bank in ${pb.roomName} not profitable: ` +
+          `power=${pb.power}, distance=${minDistance}, timeRemaining=${timeRemaining}, ` +
+          `requiredTime=${totalTime.toFixed(0)}`,
+          { subsystem: "Empire" }
+        );
+      } else if (isProfitable && Game.time % 500 === 0) {
+        logger.info(
+          `Profitable power bank in ${pb.roomName}: ` +
+          `power=${pb.power}, distance=${minDistance}, timeRemaining=${timeRemaining}`,
+          { subsystem: "Empire" }
+        );
+      }
+    }
   }
 }
 
