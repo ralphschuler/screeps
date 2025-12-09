@@ -32,6 +32,12 @@ const FOCUS_ROOM_UPGRADER_LIMITS = {
 /** Priority boost for upgraders in focus rooms */
 const FOCUS_ROOM_UPGRADER_PRIORITY_BOOST = 40;
 
+/** Number of dangerous hostiles per remote guard needed */
+const THREATS_PER_GUARD = 2;
+
+/** Reservation threshold in ticks - trigger renewal below this */
+const RESERVATION_THRESHOLD_TICKS = 3000;
+
 /**
  * Body template definition
  */
@@ -744,8 +750,8 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState): bo
       if (dangerousHostiles.length > 0) {
         // Check how many guards are already assigned to this remote
         const currentGuards = countRemoteCreepsByTargetRoom(roomName, role, remoteName);
-        // Need at least 1 guard per threat, up to max per room
-        const neededGuards = Math.min(def.maxPerRoom, Math.ceil(dangerousHostiles.length / 2));
+        // Need guards scaled to threat level, up to max per room
+        const neededGuards = Math.min(def.maxPerRoom, Math.ceil(dangerousHostiles.length / THREATS_PER_GUARD));
         if (currentGuards < neededGuards) {
           return true;
         }
@@ -900,8 +906,8 @@ function needsReserver(_homeRoom: string, swarm: SwarmState): boolean {
       const reservedByUs = controller.reservation?.username === myUsername;
       const reservationTicks = controller.reservation?.ticksToEnd ?? 0;
       
-      // Need reserver if not reserved or reservation is running low (< 3000 ticks)
-      if (!reservedByUs || reservationTicks < 3000) {
+      // Need reserver if not reserved or reservation is running low
+      if (!reservedByUs || reservationTicks < RESERVATION_THRESHOLD_TICKS) {
         // Check if we already have a reserver going there
         const hasReserver = Object.values(Game.creeps).some(creep => {
           const memory = creep.memory as unknown as SwarmCreepMemory;

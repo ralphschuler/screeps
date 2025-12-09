@@ -19114,6 +19114,11 @@ function createDefenseRequest(room, swarm) {
  */
 const ENERGY_PER_SOURCE_TICK = 10; // 5 WORK parts harvest 10 energy/tick
 /**
+ * Constants for hauler dimensioning
+ */
+const HAULER_SAFETY_BUFFER = 1.2; // 20% buffer for safety margin
+const TILES_PER_ROOM = 50; // Average tiles to traverse per room (diagonal movement estimate)
+/**
  * Standard hauler configurations by tier
  */
 const HAULER_TIERS = [
@@ -19169,8 +19174,6 @@ function calculatePathDistance(fromRoom, toRoom) {
  * Estimate round trip ticks for a hauler
  */
 function estimateRoundTripTicks(distance, terrainFactor = 1.2) {
-    // Average tiles to traverse per room (assuming diagonal movement)
-    const TILES_PER_ROOM = 50;
     // Base movement: 1 tile per tick with 1:1 MOVE:CARRY ratio
     // Terrain factor accounts for swamps (1.0 = all plains, 1.5 = all swamps, 1.2 = mixed)
     const onewayTicks = distance * TILES_PER_ROOM * terrainFactor;
@@ -19201,8 +19204,8 @@ function calculateRemoteHaulerRequirement(homeRoom, remoteRoom, sourceCount, ava
     // Energy generated during round trip
     const energyGeneratedPerTrip = energyPerTick * roundTripTicks;
     // Minimum haulers = energy generated per trip / hauler capacity
-    // Add 20% buffer for safety
-    const minHaulers = Math.max(1, Math.ceil((energyGeneratedPerTrip / haulerConfig.capacity) * 1.2));
+    // Add safety buffer for reliability
+    const minHaulers = Math.max(1, Math.ceil((energyGeneratedPerTrip / haulerConfig.capacity) * HAULER_SAFETY_BUFFER));
     // Recommended haulers = add one extra for reliability
     const recommendedHaulers = Math.min(sourceCount * 2, minHaulers + 1);
     logger.debug(`Remote hauler calculation: ${homeRoom} -> ${remoteRoom} (${sourceCount} sources, ${distance} rooms away) - RT: ${roundTripTicks} ticks, E/tick: ${energyPerTick}, Min: ${minHaulers}, Rec: ${recommendedHaulers}, Cap: ${haulerConfig.capacity}`, { subsystem: "HaulerDimensioning" });
@@ -19239,6 +19242,10 @@ const FOCUS_ROOM_UPGRADER_LIMITS = {
 };
 /** Priority boost for upgraders in focus rooms */
 const FOCUS_ROOM_UPGRADER_PRIORITY_BOOST = 40;
+/** Number of dangerous hostiles per remote guard needed */
+const THREATS_PER_GUARD = 2;
+/** Reservation threshold in ticks - trigger renewal below this */
+const RESERVATION_THRESHOLD_TICKS = 3000;
 /**
  * Calculate body cost
  */
@@ -19881,8 +19888,8 @@ function needsRole(roomName, role, swarm) {
             if (dangerousHostiles.length > 0) {
                 // Check how many guards are already assigned to this remote
                 const currentGuards = countRemoteCreepsByTargetRoom(roomName, role, remoteName);
-                // Need at least 1 guard per threat, up to max per room
-                const neededGuards = Math.min(def.maxPerRoom, Math.ceil(dangerousHostiles.length / 2));
+                // Need guards scaled to threat level, up to max per room
+                const neededGuards = Math.min(def.maxPerRoom, Math.ceil(dangerousHostiles.length / THREATS_PER_GUARD));
                 if (currentGuards < neededGuards) {
                     return true;
                 }
@@ -20026,8 +20033,8 @@ function needsReserver(_homeRoom, swarm) {
             // Check if reserved by us
             const reservedByUs = ((_b = controller.reservation) === null || _b === void 0 ? void 0 : _b.username) === myUsername;
             const reservationTicks = (_d = (_c = controller.reservation) === null || _c === void 0 ? void 0 : _c.ticksToEnd) !== null && _d !== void 0 ? _d : 0;
-            // Need reserver if not reserved or reservation is running low (< 3000 ticks)
-            if (!reservedByUs || reservationTicks < 3000) {
+            // Need reserver if not reserved or reservation is running low
+            if (!reservedByUs || reservationTicks < RESERVATION_THRESHOLD_TICKS) {
                 // Check if we already have a reserver going there
                 const hasReserver = Object.values(Game.creeps).some(creep => {
                     const memory = creep.memory;

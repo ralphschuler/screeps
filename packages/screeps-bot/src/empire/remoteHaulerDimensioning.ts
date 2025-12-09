@@ -35,6 +35,12 @@ interface HaulerCapacity {
 }
 
 /**
+ * Constants for hauler dimensioning
+ */
+const HAULER_SAFETY_BUFFER = 1.2; // 20% buffer for safety margin
+const TILES_PER_ROOM = 50; // Average tiles to traverse per room (diagonal movement estimate)
+
+/**
  * Remote hauler requirement calculation result
  */
 export interface RemoteHaulerRequirement {
@@ -113,9 +119,6 @@ export function calculatePathDistance(fromRoom: string, toRoom: string): number 
  * Estimate round trip ticks for a hauler
  */
 export function estimateRoundTripTicks(distance: number, terrainFactor: number = 1.2): number {
-  // Average tiles to traverse per room (assuming diagonal movement)
-  const TILES_PER_ROOM = 50;
-
   // Base movement: 1 tile per tick with 1:1 MOVE:CARRY ratio
   // Terrain factor accounts for swamps (1.0 = all plains, 1.5 = all swamps, 1.2 = mixed)
   const onewayTicks = distance * TILES_PER_ROOM * terrainFactor;
@@ -157,8 +160,8 @@ export function calculateRemoteHaulerRequirement(
   const energyGeneratedPerTrip = energyPerTick * roundTripTicks;
 
   // Minimum haulers = energy generated per trip / hauler capacity
-  // Add 20% buffer for safety
-  const minHaulers = Math.max(1, Math.ceil((energyGeneratedPerTrip / haulerConfig.capacity) * 1.2));
+  // Add safety buffer for reliability
+  const minHaulers = Math.max(1, Math.ceil((energyGeneratedPerTrip / haulerConfig.capacity) * HAULER_SAFETY_BUFFER));
 
   // Recommended haulers = add one extra for reliability
   const recommendedHaulers = Math.min(sourceCount * 2, minHaulers + 1);

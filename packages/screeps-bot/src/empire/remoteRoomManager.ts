@@ -15,6 +15,11 @@ import { memoryManager } from "../memory/manager";
 import type { RoomIntel, SwarmState } from "../memory/schemas";
 
 /**
+ * Constants for remote room management
+ */
+const RESERVATION_THRESHOLD_TICKS = 3000; // Trigger reservation renewal below this threshold
+
+/**
  * Remote room status
  */
 export interface RemoteRoomStatus {
@@ -103,7 +108,7 @@ export function getRemoteRoomStatus(roomName: string, homeRoomName: string): Rem
 
   // Get reservation status
   const reservationTicks = controller?.reservation?.ticksToEnd ?? 0;
-  const needsReservation = controller && !enemyOwned && reservationTicks < 3000;
+  const needsReservation = controller && !enemyOwned && reservationTicks < RESERVATION_THRESHOLD_TICKS;
 
   // Check for threats
   const hostiles = room.find(FIND_HOSTILE_CREEPS);
