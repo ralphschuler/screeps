@@ -18305,8 +18305,11 @@ let creepCountCacheRef = null;
  * Count creeps by role in a room.
  * OPTIMIZATION: Cache results per tick to avoid iterating all creeps multiple times.
  * With multiple spawns in a room, this function could be called multiple times per tick.
+ *
+ * @param roomName - The room to count creeps in
+ * @param activeOnly - If true, only count active (non-spawning) creeps. Default: false
  */
-function countCreepsByRole(roomName) {
+function countCreepsByRole(roomName, activeOnly = false) {
     var _a, _b;
     // Clear cache if new tick or Game.creeps reference changed
     // Checking reference equality handles both production (new tick) and tests (creeps reassigned)
@@ -18315,8 +18318,10 @@ function countCreepsByRole(roomName) {
         creepCountCacheTick = Game.time;
         creepCountCacheRef = Game.creeps;
     }
+    // Use different cache key for active-only counts
+    const cacheKey = activeOnly ? `${roomName}_active` : roomName;
     // Check cache
-    const cached = creepCountCache.get(roomName);
+    const cached = creepCountCache.get(cacheKey);
     if (cached) {
         return cached;
     }
@@ -18327,12 +18332,16 @@ function countCreepsByRole(roomName) {
         const creep = Game.creeps[name];
         const memory = creep.memory;
         if (memory.homeRoom === roomName) {
+            // Skip spawning creeps if activeOnly is true
+            if (activeOnly && creep.spawning) {
+                continue;
+            }
             const role = (_a = memory.role) !== null && _a !== void 0 ? _a : "unknown";
             counts.set(role, ((_b = counts.get(role)) !== null && _b !== void 0 ? _b : 0) + 1);
         }
     }
     // Cache for this tick
-    creepCountCache.set(roomName, counts);
+    creepCountCache.set(cacheKey, counts);
     return counts;
 }
 /**
@@ -18557,11 +18566,15 @@ function getTransportCount(counts) {
     return ((_a = counts.get("hauler")) !== null && _a !== void 0 ? _a : 0) + ((_b = counts.get("larvaWorker")) !== null && _b !== void 0 ? _b : 0);
 }
 /**
- * Check if room is in emergency state (no energy-producing creeps)
- * This happens when all creeps die and extensions are empty
+ * Check if room is in emergency state (no ACTIVE energy-producing creeps)
+ * This happens when all creeps die and extensions are empty.
+ *
+ * IMPORTANT: Only counts ACTIVE (non-spawning) creeps. This ensures we continue
+ * spawning bootstrap creeps even while one is already spawning, allowing
+ * faster recovery from total workforce collapse.
  */
 function isEmergencySpawnState(roomName) {
-    const counts = countCreepsByRole(roomName);
+    const counts = countCreepsByRole(roomName, true); // activeOnly = true
     return getEnergyProducerCount(counts) === 0;
 }
 /**
@@ -18588,22 +18601,31 @@ const BOOTSTRAP_SPAWN_ORDER = [
  * In bootstrap mode, we use deterministic priority spawning instead of weighted selection.
  *
  * Bootstrap mode is active when:
- * - Zero energy producers exist, OR
+ * - Zero ACTIVE energy producers exist, OR
  * - We have energy producers but no transport (energy can't be distributed), OR
  * - We have fewer than minimum critical roles
+ *
+ * IMPORTANT: Uses activeOnly counts for emergency detection but total counts for
+ * role minimums. This ensures we aggressively spawn multiple small creeps during
+ * workforce collapse while still allowing spawning creeps to count towards role limits.
  */
 function isBootstrapMode(roomName, room) {
     var _a, _b;
-    const counts = countCreepsByRole(roomName);
-    // Critical: no energy production at all
-    if (getEnergyProducerCount(counts) === 0) {
+    // Check ACTIVE creeps for emergency detection
+    const activeCounts = countCreepsByRole(roomName, true);
+    // Critical: no ACTIVE energy production at all
+    // This ensures we keep spawning even while a larvaWorker is spawning
+    if (getEnergyProducerCount(activeCounts) === 0) {
         return true;
     }
     // Critical: we have harvesters but no way to transport energy
     // (larvaWorkers can self-transport so they count as transport)
-    if (getTransportCount(counts) === 0 && ((_a = counts.get("harvester")) !== null && _a !== void 0 ? _a : 0) > 0) {
+    if (getTransportCount(activeCounts) === 0 && ((_a = activeCounts.get("harvester")) !== null && _a !== void 0 ? _a : 0) > 0) {
         return true;
     }
+    // For minimum role checks, use total counts (including spawning)
+    // This prevents spawning duplicates when one is already spawning
+    const totalCounts = countCreepsByRole(roomName, false);
     // Check minimum counts against bootstrap order
     // This includes queenCarrier (when storage exists) as part of the order
     for (const req of BOOTSTRAP_SPAWN_ORDER) {
@@ -18611,7 +18633,7 @@ function isBootstrapMode(roomName, room) {
         if (req.condition && !req.condition(room)) {
             continue;
         }
-        const current = (_b = counts.get(req.role)) !== null && _b !== void 0 ? _b : 0;
+        const current = (_b = totalCounts.get(req.role)) !== null && _b !== void 0 ? _b : 0;
         if (current < req.minCount) {
             return true;
         }
@@ -18621,21 +18643,28 @@ function isBootstrapMode(roomName, room) {
 /**
  * Get the next role to spawn in bootstrap mode.
  * Uses deterministic priority order instead of weighted random selection.
+ *
+ * IMPORTANT: Checks active counts for emergency, but total counts for role minimums.
+ * This allows spawning additional larvaWorkers if none are active, even if one is spawning.
  */
 function getBootstrapRole(roomName, room, swarm) {
     var _a;
-    const counts = countCreepsByRole(roomName);
-    // First check emergency: zero energy producers
-    if (getEnergyProducerCount(counts) === 0) {
+    // Check ACTIVE energy producers for emergency
+    const activeCounts = countCreepsByRole(roomName, true);
+    // First check emergency: zero ACTIVE energy producers
+    // This ensures we can spawn multiple larvaWorkers if needed for faster recovery
+    if (getEnergyProducerCount(activeCounts) === 0) {
         return "larvaWorker";
     }
+    // For role minimums, use total counts (including spawning)
+    const totalCounts = countCreepsByRole(roomName, false);
     // Follow bootstrap order
     for (const req of BOOTSTRAP_SPAWN_ORDER) {
         // Skip conditional roles if condition not met
         if (req.condition && !req.condition(room)) {
             continue;
         }
-        const current = (_a = counts.get(req.role)) !== null && _a !== void 0 ? _a : 0;
+        const current = (_a = totalCounts.get(req.role)) !== null && _a !== void 0 ? _a : 0;
         if (current < req.minCount) {
             // Verify we can spawn this role (check needsRole for special conditions)
             if (needsRole(roomName, req.role, swarm)) {
@@ -18675,6 +18704,7 @@ function getAllSpawnableRoles(room, swarm) {
  * Spawn manager - run for a room
  */
 function runSpawnManager(room, swarm) {
+    var _a, _b, _c, _d;
     const spawns = room.find(FIND_MY_SPAWNS);
     const availableSpawn = spawns.find(s => !s.spawning);
     if (!availableSpawn)
@@ -18689,11 +18719,32 @@ function runSpawnManager(room, swarm) {
     // Workforce collapse warning: If we're in emergency with very low energy
     // Log a warning to help identify critical situations
     if (isEmergency && energyAvailable < 150) {
+        logger.warn(`WORKFORCE COLLAPSE: ${energyAvailable} energy available, need 150 to spawn minimal larvaWorker. ` +
+            `Room will recover once energy reaches 150.`, {
+            subsystem: "spawn",
+            room: room.name
+        });
         kernel.emit("spawn.emergency", {
             roomName: room.name,
             energyAvailable,
             message: "Critical workforce collapse - waiting for energy to spawn minimal creep",
             source: "SpawnManager"
+        });
+    }
+    // Log bootstrap mode for visibility
+    const inBootstrapMode = isBootstrapMode(room.name, room);
+    if (inBootstrapMode && Game.time % 10 === 0) {
+        const activeCounts = countCreepsByRole(room.name, true);
+        const totalCounts = countCreepsByRole(room.name, false);
+        const activeLarva = (_a = activeCounts.get("larvaWorker")) !== null && _a !== void 0 ? _a : 0;
+        (_b = totalCounts.get("larvaWorker")) !== null && _b !== void 0 ? _b : 0;
+        const activeHarvest = (_c = activeCounts.get("harvester")) !== null && _c !== void 0 ? _c : 0;
+        (_d = totalCounts.get("harvester")) !== null && _d !== void 0 ? _d : 0;
+        logger.info(`BOOTSTRAP MODE: ${getEnergyProducerCount(activeCounts)} active energy producers ` +
+            `(${activeLarva} larva, ${activeHarvest} harvest), ${getEnergyProducerCount(totalCounts)} total. ` +
+            `Energy: ${energyAvailable}/${energyCapacity}`, {
+            subsystem: "spawn",
+            room: room.name
         });
     }
     // SPAWN FIX: Try roles in priority order until we find one we can afford
@@ -18732,6 +18783,10 @@ function runSpawnManager(room, swarm) {
             memory: memory
         });
         if (result === OK) {
+            logger.info(`BOOTSTRAP SPAWN: ${role} (${name}) with ${body.parts.length} parts, cost ${body.cost}. Recovery in progress.`, {
+                subsystem: "spawn",
+                room: room.name
+            });
             kernel.emit("spawn.completed", {
                 roomName: room.name,
                 creepName: name,
@@ -19023,6 +19078,8 @@ function registerAllDecoratedProcesses(...instances) {
  */
 const DEFAULT_CONFIG$b = {
     minBucket: 2000,
+    // Request help before reaching bootstrap emergency threshold (150 energy)
+    // This gives buffer time for carrier to arrive with energy
     criticalEnergyThreshold: 300,
     mediumEnergyThreshold: 1000,
     lowEnergyThreshold: 3000,
@@ -19184,8 +19241,9 @@ class ResourceSharingManager {
         // Critical: spawn in danger of not being able to spawn
         if (energyAvailable < this.config.criticalEnergyThreshold) {
             // Extra critical if spawn is low on energy and can't spawn
+            // Bootstrap system can work with 150 energy (ultra-minimal larvaWorker)
             const spawns = room.find(FIND_MY_SPAWNS);
-            if (spawns.length > 0 && room.energyAvailable < 200) {
+            if (spawns.length > 0 && room.energyAvailable < 150) {
                 return 3;
             }
             return 3;
