@@ -23,6 +23,12 @@ import type { PerimeterPlan, ExitPosition } from "./perimeterDefense";
 import { calculatePerimeterPositions } from "./perimeterDefense";
 
 /**
+ * Constants for road-aware defense system
+ */
+const MAX_CONSTRUCTION_SITES = 10; // Screeps game limit
+const MAX_DEFENSIVE_STRUCTURES_PER_RCL = 2500; // Walls and ramparts limit per RCL
+
+/**
  * Enhanced perimeter plan with road awareness
  */
 export interface RoadAwarePerimeterPlan {
@@ -139,13 +145,13 @@ export function placeRoadAwarePerimeterDefense(
   const existingStructures = room.find(FIND_STRUCTURES);
   
   // Check site limit
-  if (existingSites.length >= 10) {
+  if (existingSites.length >= MAX_CONSTRUCTION_SITES) {
     return { sitesPlaced: 0, wallsRemoved: 0 };
   }
   
   let sitesPlaced = 0;
   let wallsRemoved = 0;
-  const maxToPlace = Math.min(maxSites, 10 - existingSites.length);
+  const maxToPlace = Math.min(maxSites, MAX_CONSTRUCTION_SITES - existingSites.length);
   
   // Get structure counts
   const wallCount = existingStructures.filter(
@@ -161,8 +167,8 @@ export function placeRoadAwarePerimeterDefense(
   ).length;
   
   // RCL structure limits
-  const wallLimit = rcl >= 2 ? 2500 : 0;
-  const rampartLimit = rcl >= 2 ? 2500 : 0;
+  const wallLimit = rcl >= 2 ? MAX_DEFENSIVE_STRUCTURES_PER_RCL : 0;
+  const rampartLimit = rcl >= 2 ? MAX_DEFENSIVE_STRUCTURES_PER_RCL : 0;
   
   // Priority 1: Remove walls that block roads (RCL 3+)
   // This is highest priority to ensure creeps can move efficiently

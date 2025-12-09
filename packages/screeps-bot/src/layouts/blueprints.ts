@@ -412,17 +412,21 @@ export const WAR_READY_BLUEPRINT: Blueprint = {
  * Key features:
  * - All structures within 11x11 grid for compact rampart coverage
  * - Spawns positioned for optimal coverage
- * - Labs arranged in proper reaction range (<=2 tiles)
+ * - 10 labs total: 2 input labs + 8 output labs (all within reaction range <=2)
  * - Towers positioned for overlapping fields of fire
  * - Storage, terminal, and factory in tight cluster
  * - Full 60 extensions in efficient pattern
- * - Requires minimal terrain: ~121 buildable tiles
+ * 
+ * Space requirements:
+ * - minSpaceRadius: 6 (ensures 13x13 buildable area around anchor)
+ * - Actual footprint: structures span from -6 to +6 on both axes
+ * - Requires minimal terrain walls: ≤10% of footprint
  */
 export const COMPACT_BUNKER_BLUEPRINT: Blueprint = {
   name: "compactBunker",
   rcl: 8,
   type: "bunker",
-  minSpaceRadius: 6,
+  minSpaceRadius: 6, // Anchor must be 6+ tiles from room edge for 13x13 area
   anchor: { x: 25, y: 25 },
   structures: [
     // Central core: Storage, Terminal, Factory in tight triangle
@@ -447,11 +451,11 @@ export const COMPACT_BUNKER_BLUEPRINT: Blueprint = {
     { x: -3, y: 3, structureType: STRUCTURE_TOWER },
     { x: 3, y: 3, structureType: STRUCTURE_TOWER },
     
-    // Lab cluster (10 labs in proper range <=2)
-    // Input labs
+    // Lab cluster: 10 labs total (2 input + 8 output) in proper reaction range <=2
+    // Input labs (receive minerals for reactions)
     { x: -2, y: 3, structureType: STRUCTURE_LAB },
     { x: -1, y: 3, structureType: STRUCTURE_LAB },
-    // Output labs (all within range 2 of inputs)
+    // Output labs (all within range 2 of both input labs for reactions)
     { x: -3, y: 4, structureType: STRUCTURE_LAB },
     { x: -2, y: 4, structureType: STRUCTURE_LAB },
     { x: -1, y: 4, structureType: STRUCTURE_LAB },
@@ -1056,6 +1060,14 @@ export function findBestSpawnPosition(room: Room): RoomPosition | null {
 }
 
 /**
+ * Blueprint space and validation constants
+ */
+const DEFAULT_MIN_SPACE_RADIUS = 7;
+const MAX_BUNKER_WALL_PERCENTAGE = 10; // Bunkers require mostly open terrain
+const MAX_SPREAD_WALL_PERCENTAGE = 25; // Spread layouts are more flexible
+const MAX_ANCHOR_SEARCH_RADIUS = 15; // Maximum distance from ideal center to search
+
+/**
  * Validate if a blueprint can fit in the room at the given anchor position
  * 
  * @param room The room to check
@@ -1069,7 +1081,7 @@ export function validateBlueprintFit(
   blueprint: Blueprint
 ): { fits: boolean; reason?: string; wallCount?: number; totalTiles?: number } {
   const terrain = room.getTerrain();
-  const minRadius = blueprint.minSpaceRadius ?? 7;
+  const minRadius = blueprint.minSpaceRadius ?? DEFAULT_MIN_SPACE_RADIUS;
   
   let wallCount = 0;
   let totalTiles = 0;
@@ -1119,21 +1131,21 @@ export function validateBlueprintFit(
   // Calculate wall percentage
   const wallPercentage = totalTiles > 0 ? (wallCount / totalTiles) * 100 : 0;
   
-  // Bunker blueprints are strict - max 10% walls allowed
-  if (blueprint.type === "bunker" && wallPercentage > 10) {
+  // Bunker blueprints are strict - require mostly open terrain
+  if (blueprint.type === "bunker" && wallPercentage > MAX_BUNKER_WALL_PERCENTAGE) {
     return {
       fits: false,
-      reason: `Too many walls in blueprint area (${wallPercentage.toFixed(1)}% walls, max 10% for bunker)`,
+      reason: `Too many walls in blueprint area (${wallPercentage.toFixed(1)}% walls, max ${MAX_BUNKER_WALL_PERCENTAGE}% for bunker)`,
       wallCount,
       totalTiles
     };
   }
   
-  // Spread blueprints are more flexible - max 25% walls allowed
-  if (blueprint.type === "spread" && wallPercentage > 25) {
+  // Spread blueprints are more flexible with terrain obstacles
+  if (blueprint.type === "spread" && wallPercentage > MAX_SPREAD_WALL_PERCENTAGE) {
     return {
       fits: false,
-      reason: `Too many walls in blueprint area (${wallPercentage.toFixed(1)}% walls, max 25% for spread layout)`,
+      reason: `Too many walls in blueprint area (${wallPercentage.toFixed(1)}% walls, max ${MAX_SPREAD_WALL_PERCENTAGE}% for spread layout)`,
       wallCount,
       totalTiles
     };
@@ -1169,11 +1181,11 @@ export function findBestBlueprintAnchor(
   const idealX = Math.round(sumX / (sources.length + 1));
   const idealY = Math.round(sumY / (sources.length + 1));
   
-  const minRadius = blueprint.minSpaceRadius ?? 7;
+  const minRadius = blueprint.minSpaceRadius ?? DEFAULT_MIN_SPACE_RADIUS;
   const candidates: { pos: RoomPosition; score: number }[] = [];
   
   // Search in expanding rings from ideal center
-  for (let radius = 0; radius <= 15; radius++) {
+  for (let radius = 0; radius <= MAX_ANCHOR_SEARCH_RADIUS; radius++) {
     for (let dx = -radius; dx <= radius; dx++) {
       for (let dy = -radius; dy <= radius; dy++) {
         // Only check positions on the current ring
