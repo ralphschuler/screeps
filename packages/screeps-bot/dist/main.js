@@ -22848,15 +22848,30 @@ let trackingEnabled = true;
 function wrapPathFinderSearch() {
     if (!PathFinder.search)
         return;
+    // Check if already wrapped by looking for our marker
+    const currentSearch = PathFinder.search;
+    if (currentSearch.__nativeCallsTrackerWrapped) {
+        return; // Already wrapped, skip
+    }
+    // Get the property descriptor to check if we can redefine it
+    const descriptor = Object.getOwnPropertyDescriptor(PathFinder, "search");
+    if (descriptor && descriptor.configurable === false) {
+        // Property is not configurable, we cannot wrap it
+        console.log(`[NativeCallsTracker] Warning: Cannot wrap PathFinder.search - property is not configurable`);
+        return;
+    }
     const originalSearch = PathFinder.search;
     try {
+        const wrappedFunction = function (...args) {
+            if (trackingEnabled) {
+                statsManager.recordNativeCall("pathfinderSearch");
+            }
+            return originalSearch.apply(PathFinder, args);
+        };
+        // Mark the wrapped function so we can detect it later
+        wrappedFunction.__nativeCallsTrackerWrapped = true;
         Object.defineProperty(PathFinder, "search", {
-            value: function (...args) {
-                if (trackingEnabled) {
-                    statsManager.recordNativeCall("pathfinderSearch");
-                }
-                return originalSearch.apply(PathFinder, args);
-            },
+            value: wrappedFunction,
             writable: true,
             enumerable: true,
             configurable: true
@@ -22874,14 +22889,28 @@ function wrapMethod(prototype, methodName, statName) {
     const original = prototype[methodName];
     if (!original)
         return;
+    // Check if already wrapped by looking for our marker
+    if (original.__nativeCallsTrackerWrapped) {
+        return; // Already wrapped, skip
+    }
+    // Get the property descriptor to check if we can redefine it
+    const descriptor = Object.getOwnPropertyDescriptor(prototype, methodName);
+    if (descriptor && descriptor.configurable === false) {
+        // Property is not configurable, we cannot wrap it
+        console.log(`[NativeCallsTracker] Warning: Cannot wrap ${methodName} - property is not configurable`);
+        return;
+    }
     try {
+        const wrappedFunction = function (...args) {
+            if (trackingEnabled) {
+                statsManager.recordNativeCall(statName);
+            }
+            return original.apply(this, args);
+        };
+        // Mark the wrapped function so we can detect it later
+        wrappedFunction.__nativeCallsTrackerWrapped = true;
         Object.defineProperty(prototype, methodName, {
-            value: function (...args) {
-                if (trackingEnabled) {
-                    statsManager.recordNativeCall(statName);
-                }
-                return original.apply(this, args);
-            },
+            value: wrappedFunction,
             writable: true,
             enumerable: true,
             configurable: true
