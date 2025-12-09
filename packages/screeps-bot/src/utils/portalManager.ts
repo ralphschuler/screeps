@@ -108,8 +108,8 @@ export function discoverPortalsInRoom(roomName: string): PortalInfo[] | null {
 
   // Find all portal structures
   const portalStructures = room.find(FIND_STRUCTURES, {
-    filter: s => s.structureType === STRUCTURE_PORTAL
-  }) as StructurePortal[];
+    filter: (s): s is StructurePortal => s.structureType === STRUCTURE_PORTAL
+  });
 
   const portals: PortalInfo[] = [];
 
@@ -208,6 +208,9 @@ export function findClosestPortalToShard(
  * Store portal data for current shard in InterShardMemory.
  * This allows other shards to discover routes to this shard.
  *
+ * Note: InterShardMemory stores a single string per shard. We use a JSON object
+ * to store multiple keys. The format is { portals: {...}, otherData: {...} }
+ *
  * @returns true if successfully stored, false otherwise
  */
 export function publishPortalsToInterShardMemory(): boolean {
@@ -235,12 +238,26 @@ export function publishPortalsToInterShardMemory(): boolean {
       lastUpdate: Game.time
     };
 
-    const key = `${ISM_PORTAL_KEY}${currentShard}`;
-    InterShardMemory.setLocal(key, JSON.stringify(data));
+    // Read existing ISM data and merge
+    let ismData: Record<string, unknown> = {};
+    try {
+      const existing = InterShardMemory.getLocal();
+      if (existing) {
+        ismData = JSON.parse(existing) as Record<string, unknown>;
+      }
+    } catch {
+      // If parsing fails, start fresh
+      ismData = {};
+    }
+
+    // Store under a namespaced key
+    ismData[ISM_PORTAL_KEY] = data;
+
+    InterShardMemory.setLocal(JSON.stringify(ismData));
 
     return true;
   } catch (error) {
-    console.log(`[PortalManager] Failed to publish to InterShardMemory: ${error}`);
+    console.log(`[PortalManager] Failed to publish to InterShardMemory: ${String(error)}`);
     return false;
   }
 }
@@ -253,14 +270,17 @@ export function publishPortalsToInterShardMemory(): boolean {
  */
 export function getPortalDataFromInterShardMemory(shardName: string): InterShardPortalData | null {
   try {
-    const key = `${ISM_PORTAL_KEY}${shardName}`;
-    const data = InterShardMemory.getLocal(key);
+    // Get data from the target shard
+    const data = InterShardMemory.getRemote(shardName);
     
     if (!data) return null;
 
-    return JSON.parse(data) as InterShardPortalData;
+    const ismData = JSON.parse(data) as Record<string, unknown>;
+    const portalData = ismData[ISM_PORTAL_KEY] as InterShardPortalData | undefined;
+
+    return portalData ?? null;
   } catch (error) {
-    console.log(`[PortalManager] Failed to read from InterShardMemory: ${error}`);
+    console.log(`[PortalManager] Failed to read from InterShardMemory: ${String(error)}`);
     return null;
   }
 }

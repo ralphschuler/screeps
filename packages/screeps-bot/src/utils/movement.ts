@@ -16,6 +16,12 @@
  * - Yield rules for priority-based movement
  */
 
+import { memoryManager } from "../memory/manager";
+import {
+  discoverPortalsInRoom,
+  findClosestPortalToShard,
+  findRouteToPortal
+} from "./portalManager";
 import {
   findBackupPosition,
   findSideStepPosition,
@@ -23,13 +29,6 @@ import {
   requestMoveToPosition,
   shouldYieldTo
 } from "./trafficManager";
-import { memoryManager } from "../memory/manager";
-import {
-  discoverPortalsInRoom,
-  findClosestPortalToShard,
-  findRouteToPortal,
-  type PortalInfo
-} from "./portalManager";
 
 // =============================================================================
 // Type Guards
@@ -1282,7 +1281,7 @@ export function findPortalsInRoom(roomName: string, targetShard?: string): Struc
   if (!portalInfos) return null;
 
   // Get the actual portal structures
-  let portals: StructurePortal[] = [];
+  const portals: StructurePortal[] = [];
   for (const info of portalInfos) {
     const structures = room.lookForAt(LOOK_STRUCTURES, info.pos);
     for (const structure of structures) {
