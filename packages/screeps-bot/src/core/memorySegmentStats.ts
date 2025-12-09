@@ -274,22 +274,20 @@ export class MemorySegmentStats {
     statsRoot["empire.rooms"] = stats.totalRooms;
 
     // Calculate empire-wide energy totals
-    let totalStorageEnergy = 0;
-    let totalTerminalEnergy = 0;
-    let totalEnergyAvailable = 0;
-    let totalEnergyCapacity = 0;
+    const energyTotals = stats.rooms.reduce(
+      (acc, room) => ({
+        storage: acc.storage + room.storageEnergy,
+        terminal: acc.terminal + room.terminalEnergy,
+        available: acc.available + room.energyAvailable,
+        capacity: acc.capacity + room.energyCapacity
+      }),
+      { storage: 0, terminal: 0, available: 0, capacity: 0 }
+    );
 
-    for (const room of stats.rooms) {
-      totalStorageEnergy += room.storageEnergy;
-      totalTerminalEnergy += room.terminalEnergy;
-      totalEnergyAvailable += room.energyAvailable;
-      totalEnergyCapacity += room.energyCapacity;
-    }
-
-    statsRoot["empire.energy.storage"] = totalStorageEnergy;
-    statsRoot["empire.energy.terminal"] = totalTerminalEnergy;
-    statsRoot["empire.energy.available"] = totalEnergyAvailable;
-    statsRoot["empire.energy.capacity"] = totalEnergyCapacity;
+    statsRoot["empire.energy.storage"] = energyTotals.storage;
+    statsRoot["empire.energy.terminal"] = energyTotals.terminal;
+    statsRoot["empire.energy.available"] = energyTotals.available;
+    statsRoot["empire.energy.capacity"] = energyTotals.capacity;
 
     // Per-room metrics - raw values only
     for (const room of stats.rooms) {
