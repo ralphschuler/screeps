@@ -6966,6 +6966,7 @@ class RoomVisualizer {
         // Only draw if there's a significant dominant pheromone
         if (!maxPheromone || maxValue < 10)
             return;
+        // TypeScript now knows maxPheromone is not null here
         const color = PHEROMONE_COLORS[maxPheromone];
         const intensity = Math.min(1, maxValue / 100) * 0.15; // Scale opacity
         // Draw room-wide overlay in top-right corner
@@ -16088,6 +16089,7 @@ const DEFAULT_CONFIG$c = {
     enableProcessing: true
 };
 const structureCache = new Map();
+const structureCountTracker = new Map();
 /**
  * Get or create structure cache for a room
  */
@@ -16188,36 +16190,43 @@ class RoomNode {
      * OPTIMIZATION: Only check enemy structures if hostiles are present or danger > 0
      */
     updateThreatAssessment(room, swarm) {
-        var _a, _b, _c, _d, _e, _f, _g;
+        var _a, _b;
         // Track structure count changes to detect destroyed structures
         // Only check every 5 ticks to reduce CPU usage
+        // Uses a separate Map to avoid polluting SwarmState memory
         if (Game.time % 5 === 0) {
             const cache = getStructureCache(room);
             const currentStructureCount = cache.spawns.length + cache.towers.length;
-            const lastCount = (_a = swarm._lastStructureCount) !== null && _a !== void 0 ? _a : currentStructureCount;
-            if (currentStructureCount < lastCount) {
-                // Structure(s) destroyed - emit event for each critical structure type
-                if (cache.spawns.length < ((_c = (_b = swarm._lastSpawns) === null || _b === void 0 ? void 0 : _b.length) !== null && _c !== void 0 ? _c : 0)) {
-                    kernel.emit("structure.destroyed", {
-                        roomName: this.roomName,
-                        structureType: STRUCTURE_SPAWN,
-                        structureId: "unknown",
-                        source: this.roomName
-                    });
-                }
-                if (cache.towers.length < ((_e = (_d = swarm._lastTowers) === null || _d === void 0 ? void 0 : _d.length) !== null && _e !== void 0 ? _e : 0)) {
-                    kernel.emit("structure.destroyed", {
-                        roomName: this.roomName,
-                        structureType: STRUCTURE_TOWER,
-                        structureId: "unknown",
-                        source: this.roomName
-                    });
+            const tracking = structureCountTracker.get(this.roomName);
+            if (tracking && tracking.lastTick < Game.time) {
+                // Compare with previous counts
+                if (currentStructureCount < tracking.lastStructureCount) {
+                    // Structure(s) destroyed - emit event for each critical structure type
+                    if (cache.spawns.length < tracking.lastSpawns.length) {
+                        kernel.emit("structure.destroyed", {
+                            roomName: this.roomName,
+                            structureType: STRUCTURE_SPAWN,
+                            structureId: "unknown",
+                            source: this.roomName
+                        });
+                    }
+                    if (cache.towers.length < tracking.lastTowers.length) {
+                        kernel.emit("structure.destroyed", {
+                            roomName: this.roomName,
+                            structureType: STRUCTURE_TOWER,
+                            structureId: "unknown",
+                            source: this.roomName
+                        });
+                    }
                 }
             }
-            // Store counts for next tick
-            swarm._lastStructureCount = currentStructureCount;
-            swarm._lastSpawns = cache.spawns;
-            swarm._lastTowers = cache.towers;
+            // Store counts for next check
+            structureCountTracker.set(this.roomName, {
+                lastStructureCount: currentStructureCount,
+                lastSpawns: cache.spawns,
+                lastTowers: cache.towers,
+                lastTick: Game.time
+            });
         }
         // Use safeFind to handle engine errors with corrupted owner data
         const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
@@ -16274,7 +16283,7 @@ class RoomNode {
             if (nukes.length > 0) {
                 if (!swarm.nukeDetected) {
                     pheromoneManager.onNukeDetected(swarm);
-                    const launchSource = (_g = (_f = nukes[0]) === null || _f === void 0 ? void 0 : _f.launchRoomName) !== null && _g !== void 0 ? _g : 'unidentified source';
+                    const launchSource = (_b = (_a = nukes[0]) === null || _a === void 0 ? void 0 : _a.launchRoomName) !== null && _b !== void 0 ? _b : 'unidentified source';
                     memoryManager.addRoomEvent(this.roomName, "nukeDetected", `${nukes.length} nuke(s) incoming from ${launchSource}`);
                     swarm.nukeDetected = true;
                     // Emit nuke detected events through kernel event system

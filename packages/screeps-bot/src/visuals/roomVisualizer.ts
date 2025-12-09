@@ -264,6 +264,7 @@ export class RoomVisualizer {
     // Only draw if there's a significant dominant pheromone
     if (!maxPheromone || maxValue < 10) return;
 
+    // TypeScript now knows maxPheromone is not null here
     const color = PHEROMONE_COLORS[maxPheromone];
     const intensity = Math.min(1, maxValue / 100) * 0.15; // Scale opacity
 
