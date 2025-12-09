@@ -278,6 +278,16 @@ export function hauler(ctx: CreepContext): CreepAction {
   const isWorking = updateWorkingState(ctx);
 
   if (isWorking) {
+    // Check what resource we're carrying
+    const carriedResources = Object.keys(ctx.creep.store) as ResourceConstant[];
+    const resourceType = carriedResources[0];
+    
+    // If carrying minerals (not energy), deliver to terminal or storage
+    if (resourceType && resourceType !== RESOURCE_ENERGY) {
+      const target = ctx.terminal ?? ctx.storage;
+      if (target) return { type: "transfer", target, resourceType };
+    }
+    
     // Deliver energy with priority: spawn > extensions > towers > storage > containers
     // OPTIMIZATION: Increased cache times to reduce pathfinding overhead
 
@@ -336,13 +346,40 @@ export function hauler(ctx: CreepContext): CreepAction {
     if (tombstone) return { type: "withdraw", target: tombstone, resourceType: RESOURCE_ENERGY };
   }
 
-  // 3. Containers (cache 15 ticks - increased from 10)
+  // 3. Containers with energy (cache 15 ticks - increased from 10)
   if (ctx.containers.length > 0) {
     const closest = findCachedClosest(ctx.creep, ctx.containers, "hauler_source", 15);
     if (closest) return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
   }
 
-  // 4. Storage (single target, no caching needed)
+  // 4. Containers with minerals (for mineral transport to terminal/storage)
+  const mineralContainers = ctx.room.find(FIND_STRUCTURES, {
+    filter: s => {
+      if (s.structureType !== STRUCTURE_CONTAINER) return false;
+      const container = s as StructureContainer;
+      // Check for any non-energy resources
+      for (const resourceType of RESOURCES_ALL) {
+        if (resourceType !== RESOURCE_ENERGY && container.store.getUsedCapacity(resourceType) > 0) {
+          return true;
+        }
+      }
+      return false;
+    }
+  }) as StructureContainer[];
+  
+  if (mineralContainers.length > 0) {
+    const closest = findCachedClosest(ctx.creep, mineralContainers, "hauler_mineral", 15);
+    if (closest) {
+      // Find first mineral type in container
+      for (const resourceType of RESOURCES_ALL) {
+        if (resourceType !== RESOURCE_ENERGY && closest.store.getUsedCapacity(resourceType) > 0) {
+          return { type: "withdraw", target: closest, resourceType };
+        }
+      }
+    }
+  }
+
+  // 5. Storage (single target, no caching needed)
   if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
     return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
   }
@@ -477,6 +514,7 @@ export function queenCarrier(ctx: CreepContext): CreepAction {
 
 /**
  * MineralHarvester - Harvest minerals from extractors.
+ * Enhanced to use containers like energy harvesters for better coordination.
  */
 export function mineralHarvester(ctx: CreepContext): CreepAction {
   const mineral = ctx.room.find(FIND_MINERALS)[0];
@@ -491,10 +529,22 @@ export function mineralHarvester(ctx: CreepContext): CreepAction {
     return { type: "idle" };
   }
 
+  // Full - find nearby container or terminal/storage
   if (ctx.isFull) {
+    const mineralType = Object.keys(ctx.creep.store)[0] as ResourceConstant;
+    
+    // Check for nearby container first (like energy harvesters)
+    const container = ctx.creep.pos.findInRange(FIND_STRUCTURES, 1, {
+      filter: s =>
+        s.structureType === STRUCTURE_CONTAINER &&
+        s.store.getFreeCapacity(mineralType) > 0
+    })[0] as StructureContainer | undefined;
+    
+    if (container) return { type: "transfer", target: container, resourceType: mineralType };
+    
+    // Fall back to terminal/storage
     const target = ctx.terminal ?? ctx.storage;
     if (target) {
-      const mineralType = Object.keys(ctx.creep.store)[0] as ResourceConstant;
       return { type: "transfer", target, resourceType: mineralType };
     }
   }
@@ -613,7 +663,8 @@ export function labTech(ctx: CreepContext): CreepAction {
 }
 
 /**
- * FactoryWorker - Supply factory with materials.
+ * FactoryWorker - Supply factory with materials and remove outputs.
+ * Enhanced to coordinate with factory manager for optimal production.
  */
 export function factoryWorker(ctx: CreepContext): CreepAction {
   if (!ctx.factory) return { type: "idle" };
@@ -628,7 +679,21 @@ export function factoryWorker(ctx: CreepContext): CreepAction {
   const source = ctx.terminal ?? ctx.storage;
   if (!source) return { type: "idle" };
 
-  // Supply energy first
+  // Priority 1: Remove factory outputs to make space
+  // Check for produced commodities that need removal
+  const commodityTypes: ResourceConstant[] = [
+    RESOURCE_UTRIUM_BAR, RESOURCE_LEMERGIUM_BAR, RESOURCE_KEANIUM_BAR,
+    RESOURCE_ZYNTHIUM_BAR, RESOURCE_GHODIUM_MELT, RESOURCE_OXIDANT, 
+    RESOURCE_REDUCTANT, RESOURCE_PURIFIER, RESOURCE_BATTERY
+  ];
+  
+  for (const commodity of commodityTypes) {
+    if (ctx.factory.store.getUsedCapacity(commodity) > 100) {
+      return { type: "withdraw", target: ctx.factory, resourceType: commodity };
+    }
+  }
+
+  // Priority 2: Supply energy
   if (
     ctx.factory.store.getUsedCapacity(RESOURCE_ENERGY) < 5000 &&
     source.store.getUsedCapacity(RESOURCE_ENERGY) > 10000
@@ -636,15 +701,18 @@ export function factoryWorker(ctx: CreepContext): CreepAction {
     return { type: "withdraw", target: source, resourceType: RESOURCE_ENERGY };
   }
 
-  // Supply bars/materials
-  const bars: ResourceConstant[] = [
-    RESOURCE_UTRIUM_BAR, RESOURCE_LEMERGIUM_BAR, RESOURCE_KEANIUM_BAR,
-    RESOURCE_ZYNTHIUM_BAR, RESOURCE_OXIDANT, RESOURCE_REDUCTANT
+  // Priority 3: Supply base minerals for production
+  const baseMinerals: MineralConstant[] = [
+    RESOURCE_UTRIUM, RESOURCE_LEMERGIUM, RESOURCE_KEANIUM,
+    RESOURCE_ZYNTHIUM, RESOURCE_OXYGEN, RESOURCE_HYDROGEN, RESOURCE_CATALYST, RESOURCE_GHODIUM
   ];
 
-  for (const bar of bars) {
-    if (ctx.factory.store.getUsedCapacity(bar) < 500 && source.store.getUsedCapacity(bar) > 0) {
-      return { type: "withdraw", target: source, resourceType: bar };
+  for (const mineral of baseMinerals) {
+    if (
+      ctx.factory.store.getUsedCapacity(mineral) < 1000 && 
+      source.store.getUsedCapacity(mineral) > 500
+    ) {
+      return { type: "withdraw", target: source, resourceType: mineral };
     }
   }
 

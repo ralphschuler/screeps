@@ -628,7 +628,8 @@ export class RoomNode {
   }
 
   /**
-   * Run link transfers
+   * Run link transfers with bidirectional support
+   * Enhanced logic supports: source→storage, storage→controller
    * OPTIMIZATION: Use cached structures
    */
   private runLinks(room: Room): void {
@@ -648,13 +649,27 @@ export class RoomNode {
     const sources = cache.sources;
     const sourceLinks = links.filter(l => sources.some(s => l.pos.getRangeTo(s) <= 2));
 
-    // Transfer from source links to storage link
+    // Find controller link (within 3 of controller for upgrader access)
+    const controller = room.controller;
+    const controllerLink = controller ? links.find(l => l.pos.getRangeTo(controller) <= 3 && l.id !== storageLink.id) : undefined;
+
+    // Priority 1: Transfer from source links to storage link
     for (const sourceLink of sourceLinks) {
       if (sourceLink.store.getUsedCapacity(RESOURCE_ENERGY) >= 400 && sourceLink.cooldown === 0) {
         if (storageLink.store.getFreeCapacity(RESOURCE_ENERGY) >= 400) {
           sourceLink.transferEnergy(storageLink);
-          break;
+          return; // One transfer per tick to avoid conflicts
         }
+      }
+    }
+
+    // Priority 2: Transfer from storage link to controller link (if controller needs energy)
+    if (controllerLink && storageLink.cooldown === 0) {
+      const controllerNeedsEnergy = controllerLink.store.getUsedCapacity(RESOURCE_ENERGY) < 400;
+      const storageLinkHasEnergy = storageLink.store.getUsedCapacity(RESOURCE_ENERGY) >= 400;
+      
+      if (controllerNeedsEnergy && storageLinkHasEnergy) {
+        storageLink.transferEnergy(controllerLink);
       }
     }
   }
