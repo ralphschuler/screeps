@@ -9,11 +9,11 @@
  * Addresses Issue: Bot not expanding into other rooms
  */
 
-import type { OvermindMemory, RoomIntel } from "../memory/schemas";
+import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { ProcessPriority, kernel } from "../core/kernel";
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
-import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import type { OvermindMemory, RoomIntel } from "../memory/schemas";
 
 /**
  * Expansion Manager Configuration
@@ -150,7 +150,7 @@ export class ExpansionManager {
    * Calculate remote mining capacity based on room stability
    * Returns reduced capacity for less stable rooms to prioritize owned room development
    */
-  private calculateRemoteCapacity(room: Room, swarm: any): number {
+  private calculateRemoteCapacity(room: Room, swarm: { danger: number }): number {
     const rcl = room.controller?.level ?? 0;
 
     // New rooms (RCL 3-4) get limited remotes
@@ -389,7 +389,7 @@ export class ExpansionManager {
    * Request a claimer to be spawned for expansion
    * Sets room posture to 'expand' to trigger claimer spawning
    */
-  private requestClaimerSpawn(targetRoom: string, overmind: OvermindMemory): void {
+  private requestClaimerSpawn(targetRoom: string, _overmind: OvermindMemory): void {
     // Find the best room to spawn the claimer from (closest stable room)
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
     const stableRooms = ownedRooms.filter(r => (r.controller?.level ?? 0) >= this.config.minRclForClaiming);
