@@ -19878,6 +19878,9 @@ function runSpawnManager(room, swarm) {
         };
         // For remote roles, set the targetRoom to the remote room that needs workers
         // Skip spawning if no valid target room is available (prevents spawn blocking)
+        // NOTE: This check is defensive - remote roles are not in BOOTSTRAP_SPAWN_ORDER
+        // and needsRole should already filter them. However, this provides extra safety
+        // in case bootstrap order is modified in the future.
         if (role === "remoteHarvester" || role === "remoteHauler") {
             const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
             if (targetRoom) {
