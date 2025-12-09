@@ -244,8 +244,7 @@ docker-compose up -d
 This includes:
 - Screeps private server
 - MongoDB and Redis
-- InfluxDB for metrics
-- Grafana for visualization
+- Grafana Cloud for metrics and visualization
 
 ## Code Style
 

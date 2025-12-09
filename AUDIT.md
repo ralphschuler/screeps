@@ -584,8 +584,7 @@ commodityIndex: 0, // TODO: Calculate based on factory production
 **Included:**
 - Screeps private server
 - MongoDB and Redis
-- InfluxDB for metrics
-- Grafana for visualization
+- Grafana Cloud for metrics and visualization
 
 ### 11.3 Auto-Respawn System ✅
 **Status:** Implemented with GitHub Actions
