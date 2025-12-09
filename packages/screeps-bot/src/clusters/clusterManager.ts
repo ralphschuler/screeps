@@ -8,6 +8,7 @@
  * - Rally point management
  * - Inter-room logistics
  * - Cluster-wide metrics
+ * - Offensive operations
  *
  * Addresses Issues: #8, #20, #36
  */
@@ -33,6 +34,10 @@ import {
   updateMilitaryReservations,
   routeEmergencyEnergy
 } from "./militaryResourcePooling";
+import {
+  planOffensiveOperations,
+  updateOffensiveOperations as updateGlobalOffensiveOps
+} from "./offensiveOperations";
 
 /**
  * Cluster Manager Configuration
@@ -135,6 +140,11 @@ export class ClusterManager {
     // Update squads
     profiler.measureSubsystem(`cluster:${cluster.id}:squads`, () => {
       this.updateSquads(cluster);
+    });
+
+    // Plan and update offensive operations
+    profiler.measureSubsystem(`cluster:${cluster.id}:offensive`, () => {
+      this.updateOffensiveOperations(cluster);
     });
 
     // Update rally points
@@ -371,6 +381,19 @@ export class ClusterManager {
       const squad = createDefenseSquad(cluster, request);
       cluster.squads.push(squad);
     }
+  }
+
+  /**
+   * Update offensive operations
+   */
+  private updateOffensiveOperations(cluster: ClusterMemory): void {
+    // Only plan new operations periodically (every 100 ticks)
+    if (Game.time % 100 === 0) {
+      planOffensiveOperations(cluster);
+    }
+    
+    // Always update existing operations
+    updateGlobalOffensiveOps();
   }
 
   /**

@@ -164,6 +164,16 @@ export function createOffensiveSquad(
   const squadId = `${type}_${targetRoom}_${Game.time}`;
   const rallyRoom = selectRallyRoom(cluster, targetRoom);
 
+  // Set retreat threshold based on squad type
+  let retreatThreshold = 0.3; // Default
+  if (type === "harass") {
+    retreatThreshold = 0.5; // Harassers retreat earlier
+  } else if (type === "raid") {
+    retreatThreshold = 0.4;
+  } else if (type === "siege") {
+    retreatThreshold = 0.3; // Siege units more resilient
+  }
+
   const squad: SquadDefinition = {
     id: squadId,
     type,
@@ -171,7 +181,8 @@ export function createOffensiveSquad(
     rallyRoom,
     targetRooms: [targetRoom],
     state: "gathering",
-    createdAt: Game.time
+    createdAt: Game.time,
+    retreatThreshold
   };
 
   logger.info(
