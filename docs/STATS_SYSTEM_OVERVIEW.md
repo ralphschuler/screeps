@@ -89,14 +89,14 @@ Each room records its stats at end of tick.
 - Pheromone levels
 - Danger level
 
-### 5. Influx Exporter (`screeps-influx-exporter`)
-Scrapes stats from Memory and exports to InfluxDB.
+### 5. Graphite Exporter (`screeps-graphite-exporter`)
+Scrapes stats from Memory and exports to Grafana Cloud using the Graphite HTTP API.
 
 **Enhanced Features:**
 - Recognizes new stats categories
 - Tags stats with category for filtering
 - Parses room names, role names, subsystem names
-- Supports time-series analysis in Grafana
+- Supports time-series analysis in Grafana Cloud
 
 ## Data Flow
 
@@ -122,7 +122,7 @@ Tick Start
         ├─> Finalize Stats (publish to Memory)
         └─> Finalize Profiler
             │
-Tick Complete → Memory.stats populated → Influx Exporter scrapes → Grafana displays
+Tick Complete → Memory.stats populated → Graphite Exporter scrapes → Grafana Cloud displays
 ```
 
 ## Statistics Categories
@@ -294,12 +294,12 @@ See `GRAFANA_DASHBOARD_EXAMPLE.md` for:
 - Alert configurations
 - Variable definitions
 
-### Influx Exporter
+### Graphite Exporter
 The exporter automatically:
 - Scrapes flattened stats from Memory
-- Tags stats with categories
+- Tags stats with categories using Graphite tag format
 - Parses stat keys to extract metadata
-- Stores in time-series database
+- Sends to Grafana Cloud Graphite endpoint
 
 ### Custom Tools
 Stats are published in a flat format for easy consumption:
@@ -369,11 +369,11 @@ Potential improvements:
 - Check initialization in main loop
 - Ensure profiling config is enabled
 
-### Influx Data Missing
+### Metrics Data Missing
 - Verify exporter is running
 - Check exporter logs for errors
-- Ensure InfluxDB is accessible
-- Verify bucket configuration
+- Ensure Grafana Cloud is accessible
+- Verify API key and endpoint configuration
 
 ### High Memory Usage
 - Disable native calls tracking if not needed

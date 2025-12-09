@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Unified Stats System consolidates all bot statistics collection into a single, cohesive system that exports metrics with proper category prefixes for optimal InfluxDB/Grafana integration.
+The Unified Stats System consolidates all bot statistics collection into a single, cohesive system that exports metrics with proper category prefixes for optimal Grafana Cloud integration.
 
 ## What Was Consolidated
 
@@ -21,7 +21,7 @@ Located at `packages/screeps-bot/src/core/unifiedStats.ts`, this module provides
 - **Tick lifecycle management** - `startTick()` and `finalizeTick()` 
 - **CPU profiling** - Track room and subsystem execution time
 - **Native call tracking** - Monitor PathFinder and creep action usage
-- **Automatic export** - Publishes to Memory.stats in InfluxDB-friendly format
+- **Automatic export** - Publishes to Memory.stats in a flat format for easy consumption
 
 ### Integration Points
 
@@ -259,49 +259,36 @@ console.log(`Rooms: ${snapshot.empire.rooms}`);
 console.log(`Creeps: ${snapshot.empire.creeps}`);
 ```
 
-## Grafana Dashboard
+## Grafana Cloud Dashboards
 
-The Grafana dashboard (`packages/screeps-server/grafana/provisioning/dashboards/screeps-ant-swarm.json`) has been updated to query the new metric format.
+Dashboards can be created in Grafana Cloud to query metrics from the Graphite data source.
 
 ### Example Queries
 
 **CPU Usage:**
-```flux
-from(bucket: "screeps")
-  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["stat"] == "stats.cpu.used")
-  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+```
+screeps.stats.cpu.used
 ```
 
 **Subsystem CPU (Stacked):**
-```flux
-from(bucket: "screeps")
-  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["stat"] =~ /stats\.profiler\.subsystem\..*\.avg_cpu$/)
-  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+```
+screeps.stats.profiler.subsystem.*.avg_cpu
 ```
 
 **Room Energy:**
-```flux
-from(bucket: "screeps")
-  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["stat"] =~ /stats\.room\..*\.energy\.storage$/)
-  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)
+```
+screeps.stats.room.*.energy.storage
 ```
 
-## InfluxDB Integration
+## Grafana Cloud Graphite Integration
 
-The influx exporter (`packages/screeps-influx-exporter`) automatically parses the `stats.*` prefix and creates proper categories:
+The Graphite exporter (`packages/screeps-graphite-exporter`) automatically parses the `stats.*` prefix and creates proper metric names with tags:
 
-- Keys like `stats.cpu.used` → category: `stats`, measurement field
-- Keys like `stats.room.W1N1.rcl` → category: `stats`, sub_category: `W1N1`
-- Keys like `stats.profiler.subsystem.kernel.avg_cpu` → category: `stats`, sub_category: `kernel`
+- Keys like `stats.cpu.used` → metric: `screeps.stats.cpu.used` with tags for category
+- Keys like `stats.room.W1N1.rcl` → metric: `screeps.stats.room.W1N1.rcl` with tags for room
+- Keys like `stats.profiler.subsystem.kernel.avg_cpu` → metric with tags for subsystem
 
-This enables powerful filtering in Grafana:
-```flux
-|> filter(fn: (r) => r["category"] == "stats")
-|> filter(fn: (r) => r["sub_category"] == "W1N1")
-```
+This enables powerful filtering in Grafana Cloud dashboards using Graphite's tag-based queries.
 
 ## Benefits
 
@@ -312,7 +299,7 @@ This enables powerful filtering in Grafana:
 
 ### Proper Categorization
 - All metrics use `stats.*` prefix
-- Easy to filter in InfluxDB/Grafana
+- Easy to filter in Grafana Cloud
 - Clear hierarchy and organization
 
 ### Better Performance
@@ -415,9 +402,9 @@ console.log(unifiedStats.isEnabled()); // Should be true
    console.log(JSON.stringify(Memory.stats).substring(0, 200));
    ```
 
-2. Check influx exporter is running and connected
+2. Check exporter is running and connected
 
-3. Verify InfluxDB bucket and credentials
+3. Verify Grafana Cloud endpoint and credentials
 
 ### High CPU usage
 
@@ -444,6 +431,5 @@ Potential improvements:
 ## See Also
 
 - [Stats System Overview](./STATS_SYSTEM_OVERVIEW.md)
-- [Grafana Dashboard Example](./GRAFANA_DASHBOARD_EXAMPLE.md)
-- [InfluxDB Exporter README](../packages/screeps-influx-exporter/README.md)
+- [Graphite Exporter README](../packages/screeps-graphite-exporter/README.md)
 - [ROADMAP](../ROADMAP.md) - Section 21: Logging, Monitoring & Visualisierung

@@ -382,8 +382,7 @@
 
 ### External Systems (Available)
 - **GitHub Actions** - Auto-respawn, CI/CD
-- **InfluxDB** - Metrics storage (via screeps-influx-exporter)
-- **Grafana** - Visualization dashboards
+- **Grafana Cloud** - Metrics storage and visualization (via screeps-graphite-exporter)
 - **Docker** - Private server setup
 
 ### Future Integrations (Planned)
