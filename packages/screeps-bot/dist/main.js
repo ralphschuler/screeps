@@ -15961,7 +15961,7 @@ const roomManager = new RoomManager();
  * Design Principles (from ROADMAP.md):
  * - Decentralization: Each room has local control logic
  * - Event-driven logic: Rooms respond to threats and pheromones
- * - Strict tick budget: Eco rooms ≤ 0.1 CPU, War rooms ≤ 0.25 CPU
+ * - CPU budgets: Eco rooms 2-4 CPU (4-8%), War rooms ~6 CPU (12%)
  */
 /**
  * Get process priority for a room based on its state
