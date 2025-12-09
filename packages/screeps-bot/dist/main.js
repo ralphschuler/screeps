@@ -3312,7 +3312,7 @@ var LogLevel;
     LogLevel[LogLevel["ERROR"] = 3] = "ERROR";
     LogLevel[LogLevel["NONE"] = 4] = "NONE";
 })(LogLevel || (LogLevel = {}));
-const DEFAULT_CONFIG$m = {
+const DEFAULT_CONFIG$o = {
     level: LogLevel.INFO,
     showTimestamp: true,
     showRoom: true,
@@ -3321,7 +3321,7 @@ const DEFAULT_CONFIG$m = {
 /**
  * Global logger configuration
  */
-let globalConfig = { ...DEFAULT_CONFIG$m };
+let globalConfig = { ...DEFAULT_CONFIG$o };
 /**
  * Set global logger configuration
  */
@@ -3825,7 +3825,7 @@ const DEFAULT_EVENT_PRIORITIES = {
     "cpu.spike": EventPriority.BACKGROUND,
     "bucket.modeChange": EventPriority.BACKGROUND
 };
-const DEFAULT_CONFIG$l = {
+const DEFAULT_CONFIG$n = {
     maxEventsPerTick: 50,
     maxQueueSize: 200,
     lowBucketThreshold: 2000,
@@ -3858,7 +3858,7 @@ class EventBus {
             eventsDropped: 0,
             handlersInvoked: 0
         };
-        this.config = { ...DEFAULT_CONFIG$l, ...config };
+        this.config = { ...DEFAULT_CONFIG$n, ...config };
     }
     /**
      * Subscribe to an event
@@ -4163,7 +4163,7 @@ const eventBus = new EventBus();
 /**
  * Default configuration
  */
-const DEFAULT_CONFIG$k = {
+const DEFAULT_CONFIG$m = {
     pheromone: {
         updateInterval: 5,
         decayFactors: {
@@ -4320,7 +4320,7 @@ const DEFAULT_CONFIG$k = {
 /**
  * Runtime configuration instance
  */
-let currentConfig = { ...DEFAULT_CONFIG$k };
+let currentConfig = { ...DEFAULT_CONFIG$m };
 /**
  * Get current configuration
  */
@@ -5732,7 +5732,7 @@ const memoryManager = new MemoryManager();
  *
  * Addresses Issue: #35
  */
-const DEFAULT_CONFIG$j = {
+const DEFAULT_CONFIG$l = {
     primarySegment: 90,
     backupSegment: 91,
     retentionPeriod: 10000,
@@ -5747,7 +5747,7 @@ class MemorySegmentStats {
         this.statsData = null;
         this.segmentRequested = false;
         this.lastUpdate = 0;
-        this.config = { ...DEFAULT_CONFIG$j, ...config };
+        this.config = { ...DEFAULT_CONFIG$l, ...config };
     }
     /**
      * Initialize stats manager
@@ -6200,7 +6200,7 @@ const memorySegmentStats = new MemorySegmentStats();
  * No flattening or processing is done here - the Influx exporter
  * handles all processing and formatting for Grafana dashboards.
  */
-const DEFAULT_CONFIG$i = {
+const DEFAULT_CONFIG$k = {
     enabled: true,
     smoothingFactor: 0.1,
     trackNativeCalls: true,
@@ -6211,7 +6211,7 @@ const DEFAULT_CONFIG$i = {
  */
 class StatsManager {
     constructor(config = {}) {
-        this.config = { ...DEFAULT_CONFIG$i, ...config };
+        this.config = { ...DEFAULT_CONFIG$k, ...config };
         this.nativeCallsThisTick = this.createEmptyNativeCalls();
     }
     /**
@@ -6515,7 +6515,7 @@ const statsManager = new StatsManager();
  * Measures per-room loop cost, global/strategic loop cost,
  * and stores rolling averages in Memory for tuning.
  */
-const DEFAULT_CONFIG$h = {
+const DEFAULT_CONFIG$j = {
     smoothingFactor: 0.1,
     enabled: true,
     logInterval: 100
@@ -6530,7 +6530,7 @@ class Profiler {
     constructor(config = {}) {
         this.tickMeasurements = new Map();
         this.subsystemMeasurements = new Map();
-        this.config = { ...DEFAULT_CONFIG$h, ...config };
+        this.config = { ...DEFAULT_CONFIG$j, ...config };
     }
     /**
      * Get or initialize the shared stats root in Memory
@@ -6768,7 +6768,7 @@ const profiler = new Profiler();
  *
  * Addresses Issue: #34
  */
-const DEFAULT_CONFIG$g = {
+const DEFAULT_CONFIG$i = {
     showPheromones: true,
     showPaths: false,
     showCombat: true,
@@ -6796,7 +6796,7 @@ const PHEROMONE_COLORS = {
  */
 class RoomVisualizer {
     constructor(config = {}) {
-        this.config = { ...DEFAULT_CONFIG$g, ...config };
+        this.config = { ...DEFAULT_CONFIG$i, ...config };
     }
     /**
      * Draw all visualizations for a room
@@ -7227,7 +7227,7 @@ const roomVisualizer = new RoomVisualizer();
  *
  * Complements RoomVisualizer which handles room-specific details.
  */
-const DEFAULT_CONFIG$f = {
+const DEFAULT_CONFIG$h = {
     showRoomStatus: true,
     showConnections: true,
     showThreats: true,
@@ -7253,7 +7253,7 @@ const POSTURE_COLORS = {
  */
 class MapVisualizer {
     constructor(config = {}) {
-        this.config = { ...DEFAULT_CONFIG$f, ...config };
+        this.config = { ...DEFAULT_CONFIG$h, ...config };
     }
     /**
      * Draw all map visualizations
@@ -11462,7 +11462,7 @@ function linkManager(ctx) {
 /**
  * TerminalManager - Balance resources between storage and terminal.
  */
-function terminalManager(ctx) {
+function terminalManager$1(ctx) {
     if (!ctx.terminal || !ctx.storage)
         return { type: "idle" };
     const terminalEnergy = ctx.terminal.store.getUsedCapacity(RESOURCE_ENERGY);
@@ -11508,7 +11508,7 @@ const utilityBehaviors = {
     engineer,
     remoteWorker,
     linkManager,
-    terminalManager
+    terminalManager: terminalManager$1
 };
 /**
  * Evaluate and return an action for a utility role creep.
@@ -13663,7 +13663,7 @@ const postureManager = new PostureManager();
  * - stats.native.*     - Native API call tracking
  * - stats.system.*     - System/tick information
  */
-const DEFAULT_CONFIG$e = {
+const DEFAULT_CONFIG$g = {
     enabled: true,
     smoothingFactor: 0.1,
     trackNativeCalls: true,
@@ -13681,7 +13681,7 @@ class UnifiedStatsManager {
         this.roomMeasurements = new Map();
         this.lastSegmentUpdate = 0;
         this.segmentRequested = false;
-        this.config = { ...DEFAULT_CONFIG$e, ...config };
+        this.config = { ...DEFAULT_CONFIG$g, ...config };
         this.currentSnapshot = this.createEmptySnapshot();
         this.nativeCallsThisTick = this.createEmptyNativeCalls();
     }
@@ -14388,7 +14388,7 @@ function addExtensionsToBlueprint(existingStructures, targetCount) {
  * Addresses Issue: Layout planner should incorporate roads so destruction routing
  * does not destroy all roads.
  */
-const DEFAULT_CONFIG$d = {
+const DEFAULT_CONFIG$f = {
     recalculateInterval: 1000,
     maxPathOps: 2000,
     includeRemoteRoads: true
@@ -14416,7 +14416,7 @@ const roadNetworkCache = new Map();
  */
 function calculateRoadNetwork(room, anchor, config = {}) {
     var _a, _b, _c;
-    const cfg = { ...DEFAULT_CONFIG$d, ...config };
+    const cfg = { ...DEFAULT_CONFIG$f, ...config };
     // Check cache
     const cached = roadNetworkCache.get(room.name);
     if (cached && Game.time - cached.lastCalculated < cfg.recalculateInterval) {
@@ -14485,7 +14485,7 @@ function calculateRoadNetwork(room, anchor, config = {}) {
  */
 function calculateRemoteRoads(homeRoom, remoteRoomNames, config = {}) {
     var _a, _b;
-    const cfg = { ...DEFAULT_CONFIG$d, ...config };
+    const cfg = { ...DEFAULT_CONFIG$f, ...config };
     const result = new Map();
     if (!cfg.includeRemoteRoads) {
         return result;
@@ -16466,7 +16466,7 @@ const REGULAR_CONSTRUCTION_INTERVAL = 10; // Ticks between construction checks
 function isEarlyGameDefense(rcl) {
     return rcl >= EARLY_GAME_RCL_MIN && rcl <= EARLY_GAME_RCL_MAX;
 }
-const DEFAULT_CONFIG$c = {
+const DEFAULT_CONFIG$e = {
     enablePheromones: true,
     enableEvolution: true,
     enableSpawning: true,
@@ -16504,7 +16504,7 @@ function getStructureCache(room) {
 class RoomNode {
     constructor(roomName, config = {}) {
         this.roomName = roomName;
-        this.config = { ...DEFAULT_CONFIG$c, ...config };
+        this.config = { ...DEFAULT_CONFIG$e, ...config };
     }
     /**
      * Main room tick
@@ -19305,7 +19305,7 @@ function registerAllDecoratedProcesses(...instances) {
  *
  * Addresses Issue: Allow rooms to share resources between each other
  */
-const DEFAULT_CONFIG$b = {
+const DEFAULT_CONFIG$d = {
     minBucket: 2000,
     // Request help before reaching bootstrap emergency threshold (150 energy)
     // This gives buffer time for carrier to arrive with energy
@@ -19324,7 +19324,7 @@ const DEFAULT_CONFIG$b = {
  */
 class ResourceSharingManager {
     constructor(config = {}) {
-        this.config = { ...DEFAULT_CONFIG$b, ...config };
+        this.config = { ...DEFAULT_CONFIG$d, ...config };
     }
     /**
      * Process resource sharing for a cluster
@@ -19906,7 +19906,7 @@ function updateMilitaryReservations(cluster) {
  *
  * Addresses Issues: #8, #20, #36
  */
-const DEFAULT_CONFIG$a = {
+const DEFAULT_CONFIG$c = {
     updateInterval: 10,
     minBucket: 3000,
     resourceBalanceThreshold: 10000,
@@ -19918,7 +19918,7 @@ const DEFAULT_CONFIG$a = {
 let ClusterManager = class ClusterManager {
     constructor(config = {}) {
         this.lastRun = new Map();
-        this.config = { ...DEFAULT_CONFIG$a, ...config };
+        this.config = { ...DEFAULT_CONFIG$c, ...config };
     }
     /**
      * Run all clusters
@@ -20484,7 +20484,7 @@ const clusterManager = new ClusterManager();
  *
  * Addresses Issue: #31
  */
-const DEFAULT_CONFIG$9 = {
+const DEFAULT_CONFIG$b = {
     triggerDangerLevel: 3,
     nukeEvacuationLeadTime: 5000,
     minStorageEnergy: 50000,
@@ -20509,7 +20509,7 @@ let EvacuationManager = class EvacuationManager {
         this.evacuations = new Map();
         this.lastTransferTick = 0;
         this.transfersThisTick = 0;
-        this.config = { ...DEFAULT_CONFIG$9, ...config };
+        this.config = { ...DEFAULT_CONFIG$b, ...config };
     }
     /**
      * Main tick - check for evacuation triggers and process active evacuations
@@ -20860,6 +20860,483 @@ EvacuationManager = __decorate([
  * Global evacuation manager instance
  */
 const evacuationManager = new EvacuationManager();
+
+/**
+ * Terminal Manager
+ *
+ * Handles automated terminal operations:
+ * - Inter-room energy balancing via terminal
+ * - Mineral distribution between rooms
+ * - Integration with market manager
+ * - Terminal overflow prevention
+ *
+ * Addresses Issue: Terminal automation needs work
+ */
+const DEFAULT_CONFIG$a = {
+    minBucket: 2000,
+    minStorageEnergy: 50000,
+    terminalEnergyTarget: 20000,
+    terminalEnergyMax: 50000,
+    energySendThreshold: 100000,
+    energyRequestThreshold: 30000,
+    minTransferAmount: 5000,
+    maxTransferCostRatio: 0.1 // Don't send if cost is >10% of amount
+};
+/**
+ * Terminal Manager Class
+ */
+let TerminalManager = class TerminalManager {
+    constructor(config = {}) {
+        this.transferQueue = [];
+        this.config = { ...DEFAULT_CONFIG$a, ...config };
+    }
+    /**
+     * Main terminal tick - runs periodically
+     * Registered as kernel process via decorator
+     */
+    run() {
+        if (Game.cpu.bucket < this.config.minBucket) {
+            return;
+        }
+        // Process terminals in all owned rooms
+        const roomsWithTerminals = Object.values(Game.rooms).filter(r => { var _a; return ((_a = r.controller) === null || _a === void 0 ? void 0 : _a.my) && r.terminal && r.terminal.my && r.terminal.isActive(); });
+        if (roomsWithTerminals.length < 2) {
+            // Need at least 2 terminals to balance
+            return;
+        }
+        // Clean old transfer requests
+        this.cleanTransferQueue();
+        // Balance energy between rooms
+        this.balanceEnergy(roomsWithTerminals);
+        // Balance minerals between rooms
+        this.balanceMinerals(roomsWithTerminals);
+        // Execute queued transfers
+        this.executeTransfers(roomsWithTerminals);
+    }
+    /**
+     * Clean expired or invalid transfer requests
+     */
+    cleanTransferQueue() {
+        this.transferQueue = this.transferQueue.filter(req => {
+            const fromRoom = Game.rooms[req.fromRoom];
+            const toRoom = Game.rooms[req.toRoom];
+            // Remove if rooms are not visible
+            if (!fromRoom || !toRoom)
+                return false;
+            // Remove if terminals don't exist
+            if (!fromRoom.terminal || !toRoom.terminal)
+                return false;
+            return true;
+        });
+    }
+    /**
+     * Balance energy between rooms with terminals
+     */
+    balanceEnergy(rooms) {
+        // Calculate energy status for each room
+        const roomStatuses = rooms.map(room => {
+            var _a;
+            const storage = room.storage;
+            const terminal = room.terminal;
+            const storageEnergy = (_a = storage === null || storage === void 0 ? void 0 : storage.store.getUsedCapacity(RESOURCE_ENERGY)) !== null && _a !== void 0 ? _a : 0;
+            const terminalEnergy = terminal.store.getUsedCapacity(RESOURCE_ENERGY);
+            const totalEnergy = storageEnergy + terminalEnergy;
+            return {
+                room,
+                terminal,
+                totalEnergy,
+                storageEnergy,
+                terminalEnergy,
+                needsEnergy: totalEnergy < this.config.energyRequestThreshold,
+                hasExcess: totalEnergy > this.config.energySendThreshold && storageEnergy > this.config.minStorageEnergy
+            };
+        });
+        // Find rooms that need energy
+        const needyRooms = roomStatuses.filter(s => s.needsEnergy).sort((a, b) => a.totalEnergy - b.totalEnergy);
+        // Find rooms with excess energy
+        const donorRooms = roomStatuses.filter(s => s.hasExcess).sort((a, b) => b.totalEnergy - a.totalEnergy);
+        // Create transfer requests
+        for (const needy of needyRooms) {
+            for (const donor of donorRooms) {
+                if (donor.room.name === needy.room.name)
+                    continue;
+                // Check if transfer is already queued
+                const alreadyQueued = this.transferQueue.some(req => req.fromRoom === donor.room.name &&
+                    req.toRoom === needy.room.name &&
+                    req.resourceType === RESOURCE_ENERGY);
+                if (alreadyQueued)
+                    continue;
+                // Calculate transfer amount
+                const transferAmount = Math.min(Math.floor((donor.totalEnergy - this.config.energySendThreshold) / 2), this.config.energyRequestThreshold - needy.totalEnergy, donor.terminal.store.getUsedCapacity(RESOURCE_ENERGY));
+                if (transferAmount < this.config.minTransferAmount)
+                    continue;
+                // Check transfer cost
+                const cost = Game.market.calcTransactionCost(transferAmount, donor.room.name, needy.room.name);
+                const costRatio = cost / transferAmount;
+                if (costRatio > this.config.maxTransferCostRatio) {
+                    logger.debug(`Skipping terminal transfer from ${donor.room.name} to ${needy.room.name}: cost ratio ${costRatio.toFixed(2)} too high`, { subsystem: "Terminal" });
+                    continue;
+                }
+                // Queue transfer
+                this.transferQueue.push({
+                    fromRoom: donor.room.name,
+                    toRoom: needy.room.name,
+                    resourceType: RESOURCE_ENERGY,
+                    amount: transferAmount,
+                    priority: 2
+                });
+                logger.info(`Queued energy transfer: ${transferAmount} from ${donor.room.name} to ${needy.room.name} (cost: ${cost})`, { subsystem: "Terminal" });
+                break; // One transfer per needy room per tick
+            }
+        }
+    }
+    /**
+     * Balance minerals between rooms with terminals
+     */
+    balanceMinerals(rooms) {
+        // Get mineral distribution across rooms
+        const mineralMap = new Map();
+        for (const room of rooms) {
+            const terminal = room.terminal;
+            // Check each mineral type
+            for (const resourceType of RESOURCES_ALL) {
+                if (resourceType === RESOURCE_ENERGY)
+                    continue;
+                const amount = terminal.store.getUsedCapacity(resourceType);
+                if (amount === 0)
+                    continue;
+                if (!mineralMap.has(resourceType)) {
+                    mineralMap.set(resourceType, []);
+                }
+                mineralMap.get(resourceType).push({ room, amount });
+            }
+        }
+        // Balance each mineral type
+        for (const [mineralType, roomList] of mineralMap.entries()) {
+            if (roomList.length < 2)
+                continue;
+            // Sort by amount
+            roomList.sort((a, b) => b.amount - a.amount);
+            const richest = roomList[0];
+            const poorest = roomList[roomList.length - 1];
+            // Only transfer if there's significant imbalance
+            const imbalance = richest.amount - poorest.amount;
+            if (imbalance < 5000)
+                continue;
+            // Check if transfer is already queued
+            const alreadyQueued = this.transferQueue.some(req => req.fromRoom === richest.room.name &&
+                req.toRoom === poorest.room.name &&
+                req.resourceType === mineralType);
+            if (alreadyQueued)
+                continue;
+            // Calculate transfer amount (half the imbalance)
+            const transferAmount = Math.min(Math.floor(imbalance / 2), richest.amount - 1000 // Keep some in source room
+            );
+            if (transferAmount < 1000)
+                continue;
+            // Queue transfer (lower priority than energy)
+            this.transferQueue.push({
+                fromRoom: richest.room.name,
+                toRoom: poorest.room.name,
+                resourceType: mineralType,
+                amount: transferAmount,
+                priority: 1
+            });
+            logger.info(`Queued mineral transfer: ${transferAmount} ${mineralType} from ${richest.room.name} to ${poorest.room.name}`, { subsystem: "Terminal" });
+        }
+    }
+    /**
+     * Execute queued transfers
+     */
+    executeTransfers(rooms) {
+        // Sort by priority (higher first)
+        this.transferQueue.sort((a, b) => b.priority - a.priority);
+        // Execute one transfer per room per tick
+        const processedRooms = new Set();
+        for (const request of this.transferQueue) {
+            if (processedRooms.has(request.fromRoom))
+                continue;
+            const fromRoom = rooms.find(r => r.name === request.fromRoom);
+            if (!fromRoom || !fromRoom.terminal)
+                continue;
+            const terminal = fromRoom.terminal;
+            if (terminal.cooldown > 0)
+                continue;
+            // Check if we have enough resources
+            const available = terminal.store.getUsedCapacity(request.resourceType);
+            if (available < request.amount) {
+                logger.debug(`Terminal transfer cancelled: insufficient ${request.resourceType} in ${request.fromRoom} (need ${request.amount}, have ${available})`, { subsystem: "Terminal" });
+                // Remove this request
+                this.transferQueue = this.transferQueue.filter(r => r !== request);
+                continue;
+            }
+            // Execute transfer
+            const result = terminal.send(request.resourceType, request.amount, request.toRoom, `Terminal auto-balance`);
+            if (result === OK) {
+                logger.info(`Terminal transfer executed: ${request.amount} ${request.resourceType} from ${request.fromRoom} to ${request.toRoom}`, { subsystem: "Terminal" });
+                processedRooms.add(request.fromRoom);
+                // Remove completed request
+                this.transferQueue = this.transferQueue.filter(r => r !== request);
+            }
+            else {
+                logger.warn(`Terminal transfer failed: ${result} for ${request.amount} ${request.resourceType} from ${request.fromRoom} to ${request.toRoom}`, { subsystem: "Terminal" });
+                // Remove failed request
+                this.transferQueue = this.transferQueue.filter(r => r !== request);
+            }
+        }
+    }
+    /**
+     * Manually queue a terminal transfer
+     */
+    queueTransfer(fromRoom, toRoom, resourceType, amount, priority = 1) {
+        this.transferQueue.push({
+            fromRoom,
+            toRoom,
+            resourceType,
+            amount,
+            priority
+        });
+    }
+};
+__decorate([
+    MediumFrequencyProcess("terminal:manager", "Terminal Manager", {
+        priority: ProcessPriority.MEDIUM,
+        interval: 20,
+        minBucket: 2000,
+        cpuBudget: 0.1
+    })
+], TerminalManager.prototype, "run", null);
+TerminalManager = __decorate([
+    ProcessClass()
+], TerminalManager);
+/**
+ * Global terminal manager instance
+ */
+const terminalManager = new TerminalManager();
+
+/**
+ * Factory Manager
+ *
+ * Handles automated factory operations:
+ * - Commodity production planning
+ * - Input resource management
+ * - Output distribution
+ * - Factory worker coordination
+ *
+ * Addresses Issue: Factory automation missing
+ */
+const DEFAULT_CONFIG$9 = {
+    minBucket: 2500,
+    minStorageEnergy: 80000,
+    inputBufferAmount: 2000,
+    outputBufferAmount: 5000
+};
+/**
+ * Simple commodity production recipes
+ * Maps output commodity to required inputs
+ */
+const COMMODITY_RECIPES = {
+    // Level 0 commodities (basic compression)
+    [RESOURCE_UTRIUM_BAR]: { [RESOURCE_UTRIUM]: 500, [RESOURCE_ENERGY]: 200 },
+    [RESOURCE_LEMERGIUM_BAR]: { [RESOURCE_LEMERGIUM]: 500, [RESOURCE_ENERGY]: 200 },
+    [RESOURCE_ZYNTHIUM_BAR]: { [RESOURCE_ZYNTHIUM]: 500, [RESOURCE_ENERGY]: 200 },
+    [RESOURCE_KEANIUM_BAR]: { [RESOURCE_KEANIUM]: 500, [RESOURCE_ENERGY]: 200 },
+    [RESOURCE_GHODIUM_MELT]: { [RESOURCE_GHODIUM]: 500, [RESOURCE_ENERGY]: 200 },
+    [RESOURCE_OXIDANT]: { [RESOURCE_OXYGEN]: 500, [RESOURCE_ENERGY]: 200 },
+    [RESOURCE_REDUCTANT]: { [RESOURCE_HYDROGEN]: 500, [RESOURCE_ENERGY]: 200 },
+    [RESOURCE_PURIFIER]: { [RESOURCE_CATALYST]: 500, [RESOURCE_ENERGY]: 200 },
+    [RESOURCE_BATTERY]: { [RESOURCE_ENERGY]: 600 }
+};
+/**
+ * Production priority for commodities (higher = more important)
+ */
+const PRODUCTION_PRIORITY = {
+    [RESOURCE_BATTERY]: 10,
+    [RESOURCE_UTRIUM_BAR]: 5,
+    [RESOURCE_LEMERGIUM_BAR]: 5,
+    [RESOURCE_ZYNTHIUM_BAR]: 5,
+    [RESOURCE_KEANIUM_BAR]: 5,
+    [RESOURCE_GHODIUM_MELT]: 4,
+    [RESOURCE_OXIDANT]: 3,
+    [RESOURCE_REDUCTANT]: 3,
+    [RESOURCE_PURIFIER]: 3
+};
+/**
+ * Factory Manager Class
+ */
+let FactoryManager = class FactoryManager {
+    constructor(config = {}) {
+        this.config = { ...DEFAULT_CONFIG$9, ...config };
+    }
+    /**
+     * Main factory tick - runs periodically
+     * Registered as kernel process via decorator
+     */
+    run() {
+        if (Game.cpu.bucket < this.config.minBucket) {
+            return;
+        }
+        // Process all rooms with factories
+        const roomsWithFactories = Object.values(Game.rooms).filter(r => {
+            var _a;
+            if (!((_a = r.controller) === null || _a === void 0 ? void 0 : _a.my))
+                return false;
+            const factories = r.find(FIND_MY_STRUCTURES, {
+                filter: s => s.structureType === STRUCTURE_FACTORY
+            });
+            return factories.length > 0;
+        });
+        for (const room of roomsWithFactories) {
+            this.processFactory(room);
+        }
+    }
+    /**
+     * Process a single factory
+     */
+    processFactory(room) {
+        const factories = room.find(FIND_MY_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_FACTORY
+        });
+        if (factories.length === 0)
+            return;
+        const factory = factories[0];
+        if (factory.cooldown > 0)
+            return;
+        const storage = room.storage;
+        if (!storage)
+            return;
+        // Check if we have enough energy in storage to run factory
+        const storageEnergy = storage.store.getUsedCapacity(RESOURCE_ENERGY);
+        if (storageEnergy < this.config.minStorageEnergy) {
+            return;
+        }
+        // Find what we can produce
+        const production = this.selectProduction(room, factory, storage);
+        if (!production) {
+            return;
+        }
+        // Check if we have enough inputs in factory
+        const recipe = COMMODITY_RECIPES[production];
+        if (!recipe)
+            return;
+        let canProduce = true;
+        for (const [resource, amount] of Object.entries(recipe)) {
+            const available = factory.store.getUsedCapacity(resource);
+            if (available < amount) {
+                canProduce = false;
+                break;
+            }
+        }
+        if (canProduce) {
+            // Produce the commodity
+            // Cast to CommodityConstant for factory.produce() - all our recipes are valid factory commodities
+            const result = factory.produce(production);
+            if (result === OK) {
+                logger.info(`Factory in ${room.name} producing ${production}`, { subsystem: "Factory" });
+            }
+            else if (result !== ERR_TIRED) {
+                logger.debug(`Factory production failed in ${room.name}: ${result}`, { subsystem: "Factory" });
+            }
+        }
+    }
+    /**
+     * Select what commodity to produce based on available resources and demand
+     */
+    selectProduction(room, factory, storage) {
+        var _a;
+        // Get list of possible productions sorted by priority
+        const candidates = [];
+        for (const [commodity, recipe] of Object.entries(COMMODITY_RECIPES)) {
+            const commodityKey = commodity;
+            // Check if we have all inputs in storage
+            let hasInputs = true;
+            let inputScore = 0;
+            for (const [resource, amount] of Object.entries(recipe)) {
+                const resourceKey = resource;
+                const available = storage.store.getUsedCapacity(resourceKey);
+                if (available < amount * 2) {
+                    // Not enough in storage to justify production
+                    hasInputs = false;
+                    break;
+                }
+                // Score based on excess (more excess = better candidate)
+                inputScore += available / (amount * 10);
+            }
+            if (!hasInputs)
+                continue;
+            // Check if we already have too much of this output
+            const outputInFactory = factory.store.getUsedCapacity(commodityKey);
+            const outputInStorage = storage.store.getUsedCapacity(commodityKey);
+            const totalOutput = outputInFactory + outputInStorage;
+            if (totalOutput > this.config.outputBufferAmount) {
+                continue; // Already have enough of this commodity
+            }
+            // Calculate score (priority + input availability - output saturation)
+            const priority = (_a = PRODUCTION_PRIORITY[commodityKey]) !== null && _a !== void 0 ? _a : 1;
+            const outputSaturation = totalOutput / this.config.outputBufferAmount;
+            const score = priority * inputScore * (1 - outputSaturation);
+            candidates.push({ commodity: commodityKey, priority, score });
+        }
+        if (candidates.length === 0)
+            return null;
+        // Sort by score (highest first)
+        candidates.sort((a, b) => b.score - a.score);
+        return candidates[0].commodity;
+    }
+    /**
+     * Get required inputs for factory production
+     * Used by factory workers to know what to supply
+     */
+    getRequiredInputs(factory, room) {
+        const storage = room.storage;
+        if (!storage)
+            return [];
+        const production = this.selectProduction(room, factory, storage);
+        if (!production)
+            return [];
+        const recipe = COMMODITY_RECIPES[production];
+        if (!recipe)
+            return [];
+        const required = [];
+        for (const [resource, amount] of Object.entries(recipe)) {
+            const resourceKey = resource;
+            const current = factory.store.getUsedCapacity(resourceKey);
+            const needed = Math.max(0, this.config.inputBufferAmount - current);
+            if (needed > 0) {
+                required.push({ resource: resourceKey, amount: Math.min(needed, amount * 2) });
+            }
+        }
+        return required;
+    }
+    /**
+     * Check if factory has outputs that need to be removed
+     */
+    hasOutputsToRemove(factory) {
+        // Check for any produced commodities in the factory
+        for (const commodity of Object.keys(COMMODITY_RECIPES)) {
+            const amount = factory.store.getUsedCapacity(commodity);
+            if (amount > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+};
+__decorate([
+    MediumFrequencyProcess("factory:manager", "Factory Manager", {
+        priority: ProcessPriority.LOW,
+        interval: 30,
+        minBucket: 2500,
+        cpuBudget: 0.05
+    })
+], FactoryManager.prototype, "run", null);
+FactoryManager = __decorate([
+    ProcessClass()
+], FactoryManager);
+/**
+ * Global factory manager instance
+ */
+const factoryManager = new FactoryManager();
 
 /**
  * Empire Manager - Global Meta-Layer
@@ -24411,6 +24888,8 @@ const coreProcessManager = new CoreProcessManager();
  * - CoreProcessManager (core:pixelGeneration, core:memoryCleanup, core:memorySizeCheck,
  *                       core:memorySegmentStats, cluster:pheromoneDiffusion, room:labConfig,
  *                       room:pathCachePrecache)
+ * - TerminalManager (terminal:manager)
+ * - FactoryManager (factory:manager)
  * - EmpireManager (empire:manager)
  * - ExpansionManager (expansion:manager)
  * - RemoteInfrastructureManager (remote:infrastructure)
@@ -24432,6 +24911,8 @@ function registerAllProcesses() {
     registerAllDecoratedProcesses(
     // Core processes
     coreProcessManager, 
+    // Economy processes
+    terminalManager, factoryManager, 
     // Empire processes
     empireManager, expansionManager, remoteInfrastructureManager, marketManager, nukeManager, powerBankHarvestingManager, shardManager, 
     // Cluster processes

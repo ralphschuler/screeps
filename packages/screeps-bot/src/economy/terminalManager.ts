@@ -75,7 +75,7 @@ export class TerminalManager {
    * Registered as kernel process via decorator
    */
   @MediumFrequencyProcess("terminal:manager", "Terminal Manager", {
-    priority: ProcessPriority.NORMAL,
+    priority: ProcessPriority.MEDIUM,
     interval: 20,
     minBucket: 2000,
     cpuBudget: 0.1
@@ -140,6 +140,7 @@ export class TerminalManager {
 
       return {
         room,
+        terminal,
         totalEnergy,
         storageEnergy,
         terminalEnergy,

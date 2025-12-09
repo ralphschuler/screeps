@@ -39,7 +39,7 @@ const DEFAULT_CONFIG: FactoryManagerConfig = {
  * Simple commodity production recipes
  * Maps output commodity to required inputs
  */
-const COMMODITY_RECIPES: Record<CommodityConstant | MineralCompoundConstant, Partial<Record<ResourceConstant, number>>> = {
+const COMMODITY_RECIPES: Partial<Record<CommodityConstant | MineralCompoundConstant, Partial<Record<ResourceConstant, number>>>> = {
   // Level 0 commodities (basic compression)
   [RESOURCE_UTRIUM_BAR]: { [RESOURCE_UTRIUM]: 500, [RESOURCE_ENERGY]: 200 },
   [RESOURCE_LEMERGIUM_BAR]: { [RESOURCE_LEMERGIUM]: 500, [RESOURCE_ENERGY]: 200 },
@@ -94,9 +94,13 @@ export class FactoryManager {
     }
 
     // Process all rooms with factories
-    const roomsWithFactories = Object.values(Game.rooms).filter(
-      r => r.controller?.my && r.factory && r.factory.my
-    );
+    const roomsWithFactories = Object.values(Game.rooms).filter(r => {
+      if (!r.controller?.my) return false;
+      const factories = r.find(FIND_MY_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_FACTORY
+      });
+      return factories.length > 0;
+    });
 
     for (const room of roomsWithFactories) {
       this.processFactory(room);
@@ -107,8 +111,13 @@ export class FactoryManager {
    * Process a single factory
    */
   private processFactory(room: Room): void {
-    const factory = room.factory;
-    if (!factory || factory.cooldown > 0) return;
+    const factories = room.find(FIND_MY_STRUCTURES, {
+      filter: s => s.structureType === STRUCTURE_FACTORY
+    }) as StructureFactory[];
+    
+    if (factories.length === 0) return;
+    const factory = factories[0];
+    if (factory.cooldown > 0) return;
 
     const storage = room.storage;
     if (!storage) return;
@@ -140,7 +149,8 @@ export class FactoryManager {
 
     if (canProduce) {
       // Produce the commodity
-      const result = factory.produce(production);
+      // Cast to CommodityConstant for factory.produce() - all our recipes are valid factory commodities
+      const result = factory.produce(production as CommodityConstant);
       if (result === OK) {
         logger.info(`Factory in ${room.name} producing ${production}`, { subsystem: "Factory" });
       } else if (result !== ERR_TIRED) {
