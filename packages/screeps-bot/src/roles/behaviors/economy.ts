@@ -730,7 +730,14 @@ export function factoryWorker(ctx: CreepContext): CreepAction {
  */
 export function remoteHarvester(ctx: CreepContext): CreepAction {
   // Get target room from memory
-  const targetRoom = ctx.memory.targetRoom ?? ctx.memory.homeRoom;
+  const targetRoom = ctx.memory.targetRoom;
+  
+  // SAFETY: If no valid target room, idle (executor will move away from spawn)
+  // This should not happen with proper spawn logic, but provides a failsafe
+  if (!targetRoom || targetRoom === ctx.memory.homeRoom) {
+    // Idle action triggers move-away-from-spawn logic in executor
+    return { type: "idle" };
+  }
 
   // SAFETY: Check for nearby hostiles and flee if threatened
   if (ctx.nearbyEnemies && ctx.hostiles.length > 0) {
@@ -808,9 +815,10 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
   const targetRoom = ctx.memory.targetRoom;
   const homeRoom = ctx.memory.homeRoom;
 
-  // If no targetRoom is set or targetRoom equals homeRoom, this remote hauler has no valid assignment
-  // It should idle until it gets reassigned or dies
+  // SAFETY: If no valid target room, idle (executor will move away from spawn)
+  // This should not happen with proper spawn logic, but provides a failsafe
   if (!targetRoom || targetRoom === homeRoom) {
+    // Idle action triggers move-away-from-spawn logic in executor
     return { type: "idle" };
   }
 

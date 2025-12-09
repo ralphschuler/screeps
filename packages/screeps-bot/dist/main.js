@@ -10428,9 +10428,14 @@ function factoryWorker(ctx) {
  * Remote harvesters will flee from hostiles and return home if threatened.
  */
 function remoteHarvester(ctx) {
-    var _a;
     // Get target room from memory
-    const targetRoom = (_a = ctx.memory.targetRoom) !== null && _a !== void 0 ? _a : ctx.memory.homeRoom;
+    const targetRoom = ctx.memory.targetRoom;
+    // SAFETY: If no valid target room, idle (executor will move away from spawn)
+    // This should not happen with proper spawn logic, but provides a failsafe
+    if (!targetRoom || targetRoom === ctx.memory.homeRoom) {
+        // Idle action triggers move-away-from-spawn logic in executor
+        return { type: "idle" };
+    }
     // SAFETY: Check for nearby hostiles and flee if threatened
     if (ctx.nearbyEnemies && ctx.hostiles.length > 0) {
         const dangerousHostiles = ctx.hostiles.filter(h => ctx.creep.pos.getRangeTo(h) <= 5 &&
@@ -10492,9 +10497,10 @@ function remoteHauler(ctx) {
     const isWorking = updateWorkingState(ctx);
     const targetRoom = ctx.memory.targetRoom;
     const homeRoom = ctx.memory.homeRoom;
-    // If no targetRoom is set or targetRoom equals homeRoom, this remote hauler has no valid assignment
-    // It should idle until it gets reassigned or dies
+    // SAFETY: If no valid target room, idle (executor will move away from spawn)
+    // This should not happen with proper spawn logic, but provides a failsafe
     if (!targetRoom || targetRoom === homeRoom) {
+        // Idle action triggers move-away-from-spawn logic in executor
         return { type: "idle" };
     }
     // SAFETY: Check for nearby hostiles and flee if threatened
@@ -19871,10 +19877,18 @@ function runSpawnManager(room, swarm) {
             version: 1
         };
         // For remote roles, set the targetRoom to the remote room that needs workers
+        // Skip spawning if no valid target room is available (prevents spawn blocking)
+        // NOTE: This check is defensive - remote roles are not in BOOTSTRAP_SPAWN_ORDER
+        // and needsRole should already filter them. However, this provides extra safety
+        // in case bootstrap order is modified in the future.
         if (role === "remoteHarvester" || role === "remoteHauler") {
             const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
             if (targetRoom) {
                 memory.targetRoom = targetRoom;
+            }
+            else {
+                // No valid target room - don't spawn this remote role
+                return;
             }
         }
         const result = availableSpawn.spawnCreep(body.parts, name, {
@@ -19923,10 +19937,15 @@ function runSpawnManager(room, swarm) {
             version: 1
         };
         // For remote roles, set the targetRoom to the remote room that needs workers
+        // Skip spawning if no valid target room is available (prevents spawn blocking)
         if (role === "remoteHarvester" || role === "remoteHauler") {
             const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
             if (targetRoom) {
                 memory.targetRoom = targetRoom;
+            }
+            else {
+                // No valid target room - skip this role and try next
+                continue;
             }
         }
         // For inter-room carrier, assign a transfer request
