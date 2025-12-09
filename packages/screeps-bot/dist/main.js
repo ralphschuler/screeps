@@ -4374,7 +4374,9 @@ const BASE_CONFIG = {
     enableStats: true,
     statsLogInterval: 100,
     pixelGenerationEnabled: true,
-    pixelRecoveryTicks: 100
+    pixelRecoveryTicks: 100,
+    budgetWarningThreshold: 1.5,
+    budgetWarningInterval: 500
 };
 const DEFAULT_CRITICAL_DIVISOR = 2;
 function deriveCriticalThreshold(lowBucketThreshold) {
@@ -4698,10 +4700,11 @@ class Kernel {
         }
         this.tickCpuUsed += cpuUsed;
         // Check CPU budget violation
-        // Only log if significantly over budget (>150%) to reduce noise
+        // Only log if significantly over budget to reduce noise
         const budgetLimit = this.getCpuLimit() * process.cpuBudget;
         const overBudgetRatio = cpuUsed / budgetLimit;
-        if (overBudgetRatio > 1.5 && Game.time % 500 === 0) {
+        if (overBudgetRatio > this.config.budgetWarningThreshold &&
+            Game.time % this.config.budgetWarningInterval === 0) {
             logger.warn(`Kernel: Process "${process.name}" exceeded CPU budget: ${cpuUsed.toFixed(3)} > ${budgetLimit.toFixed(3)} (${(overBudgetRatio * 100).toFixed(0)}%)`, { subsystem: "Kernel" });
         }
     }
@@ -15995,12 +15998,13 @@ function getRoomCpuBudget(room) {
     const rcl = room.controller.level;
     const hostiles = room.find(FIND_HOSTILE_CREEPS);
     // War mode: higher budget
-    // Typical war room usage: 2-6 CPU
+    // Typical war room usage: 2-6 CPU (budget set at upper end for safety)
     if (hostiles.length > 0) {
         return 0.12; // 12% per room (6 CPU for 50 CPU limit)
     }
     // Eco mode: budget based on RCL
     // Typical eco room usage: 0.5-2 CPU for small rooms, 2-6 CPU for large rooms
+    // Budgets are set at the upper end of observed usage to avoid false positives
     // RCL 1-3: Allow up to 2 CPU (4% of 50 CPU limit)
     // RCL 4-6: Allow up to 3 CPU (6% of 50 CPU limit)  
     // RCL 7-8: Allow up to 4 CPU (8% of 50 CPU limit)

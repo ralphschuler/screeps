@@ -53,13 +53,14 @@ function getRoomCpuBudget(room: Room): number {
   const hostiles = room.find(FIND_HOSTILE_CREEPS);
   
   // War mode: higher budget
-  // Typical war room usage: 2-6 CPU
+  // Typical war room usage: 2-6 CPU (budget set at upper end for safety)
   if (hostiles.length > 0) {
     return 0.12; // 12% per room (6 CPU for 50 CPU limit)
   }
 
   // Eco mode: budget based on RCL
   // Typical eco room usage: 0.5-2 CPU for small rooms, 2-6 CPU for large rooms
+  // Budgets are set at the upper end of observed usage to avoid false positives
   // RCL 1-3: Allow up to 2 CPU (4% of 50 CPU limit)
   // RCL 4-6: Allow up to 3 CPU (6% of 50 CPU limit)  
   // RCL 7-8: Allow up to 4 CPU (8% of 50 CPU limit)

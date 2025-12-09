@@ -137,6 +137,14 @@ export interface KernelConfig {
    * Default assumes it takes ~100 ticks to reach a stable bucket level.
    */
   pixelRecoveryTicks: number;
+  /**
+   * Ratio above budget that triggers warnings (e.g., 1.5 = 150% over budget)
+   */
+  budgetWarningThreshold: number;
+  /**
+   * Interval in ticks for logging CPU budget warnings
+   */
+  budgetWarningInterval: number;
 }
 
 /**
@@ -151,7 +159,9 @@ const BASE_CONFIG: Omit<KernelConfig, "lowBucketThreshold" | "highBucketThreshol
   enableStats: true,
   statsLogInterval: 100,
   pixelGenerationEnabled: true,
-  pixelRecoveryTicks: 100
+  pixelRecoveryTicks: 100,
+  budgetWarningThreshold: 1.5,
+  budgetWarningInterval: 500
 };
 
 const DEFAULT_CRITICAL_DIVISOR = 2;
@@ -535,10 +545,11 @@ export class Kernel {
     this.tickCpuUsed += cpuUsed;
 
     // Check CPU budget violation
-    // Only log if significantly over budget (>150%) to reduce noise
+    // Only log if significantly over budget to reduce noise
     const budgetLimit = this.getCpuLimit() * process.cpuBudget;
     const overBudgetRatio = cpuUsed / budgetLimit;
-    if (overBudgetRatio > 1.5 && Game.time % 500 === 0) {
+    if (overBudgetRatio > this.config.budgetWarningThreshold && 
+        Game.time % this.config.budgetWarningInterval === 0) {
       logger.warn(
         `Kernel: Process "${process.name}" exceeded CPU budget: ${cpuUsed.toFixed(3)} > ${budgetLimit.toFixed(3)} (${(overBudgetRatio * 100).toFixed(0)}%)`,
         { subsystem: "Kernel" }
