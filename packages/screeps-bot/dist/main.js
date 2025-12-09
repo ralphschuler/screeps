@@ -26144,7 +26144,7 @@ let NukeManager = class NukeManager {
         // Find average position of squad members
         const members = squad.members
             .map(name => Game.creeps[name])
-            .filter(c => c !== undefined);
+            .filter((c) => c != null);
         if (members.length === 0) {
             // Squad not spawned yet, estimate from rally room
             const distance = Game.map.getRoomLinearDistance(squad.rallyRoom, targetRoom);
