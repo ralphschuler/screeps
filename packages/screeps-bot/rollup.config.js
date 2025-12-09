@@ -7,7 +7,7 @@ import typescript from "rollup-plugin-typescript2";
 import screeps from "rollup-plugin-screeps";
 
 // Helper: returns undefined if the env value is empty or undefined
-function cleanEnv(value?: string): string | undefined {
+function cleanEnv(value) {
   if (!value || value.trim() === "") return undefined;
   return value.trim();
 }
