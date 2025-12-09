@@ -17,12 +17,18 @@ interface GraphiteMetric {
 
 /**
  * JSON format for Grafana Cloud Graphite HTTP API
+ * @see https://grafana.com/docs/grafana-cloud/send-data/metrics/metrics-graphite/http-api/
  */
 interface GraphiteJsonMetric {
+  /** Graphite metric name (e.g., "screeps.stats.cpu.used") */
   name: string;
+  /** Resolution in seconds - indicates how frequently data points are collected */
   interval: number;
+  /** Numeric value of the metric */
   value: number;
+  /** Unix timestamp in seconds */
   time: number;
+  /** Array of tags in "key=value" format */
   tags: string[];
 }
 
@@ -35,14 +41,16 @@ function sanitizeTagValue(name: string): string {
 
 /**
  * Convert a metric to Grafana Cloud Graphite JSON format
+ * @param metric The metric to convert
+ * @param interval The resolution in seconds (derived from polling interval)
  */
-function formatGraphiteMetricJson(metric: GraphiteMetric): GraphiteJsonMetric {
+function formatGraphiteMetricJson(metric: GraphiteMetric, interval: number): GraphiteJsonMetric {
   const tags = Object.entries(metric.tags)
     .map(([key, value]) => `${sanitizeTagValue(key)}=${sanitizeTagValue(value)}`);
   
   return {
     name: metric.name,
-    interval: 10, // 10 seconds resolution (can be adjusted based on polling interval)
+    interval,
     value: metric.value,
     time: metric.time,
     tags: tags
@@ -107,12 +115,14 @@ function parseStatKey(key: string): { measurement: string; category: string; sub
 
 export function createMetrics(config: ExporterConfig, logger: Logger): Metrics {
   const pendingMetrics: GraphiteMetric[] = [];
+  // Convert polling interval from milliseconds to seconds for Graphite interval field
+  const metricInterval = Math.ceil(config.pollIntervalMs / 1000);
 
   const flush = async () => {
     if (pendingMetrics.length === 0) return;
 
     // Format metrics in Grafana Cloud Graphite JSON format
-    const metricsData = pendingMetrics.map(formatGraphiteMetricJson);
+    const metricsData = pendingMetrics.map((metric) => formatGraphiteMetricJson(metric, metricInterval));
 
     try {
       const response = await fetch(config.graphiteUrl, {
