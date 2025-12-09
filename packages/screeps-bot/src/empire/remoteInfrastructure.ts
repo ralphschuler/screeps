@@ -14,6 +14,7 @@ import { memoryManager } from "../memory/manager";
 import { calculateRemoteRoads } from "../layouts/roadNetworkPlanner";
 import { ProcessPriority } from "../core/kernel";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import { checkRemoteRoomStatus } from "./remoteRoomManager";
 
 /**
  * Construction site limit per room (Screeps game limit is 100, but we use lower limit for remote rooms)
@@ -71,6 +72,9 @@ export class RemoteInfrastructureManager {
     for (const room of ownedRooms) {
       const swarm = memoryManager.getSwarmState(room.name);
       if (!swarm) continue;
+
+      // Check remote room status and remove lost remotes
+      checkRemoteRoomStatus(room.name);
 
       const remoteAssignments = swarm.remoteAssignments ?? [];
       if (remoteAssignments.length === 0) continue;

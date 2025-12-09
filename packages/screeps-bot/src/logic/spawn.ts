@@ -14,6 +14,7 @@ import { memoryManager } from "../memory/manager";
 import { getDefenderPriorityBoost } from "../spawning/defenderManager";
 import { type WeightedEntry, weightedSelection } from "../utils/weightedSelection";
 import { logger } from "../core/logger";
+import { calculateRemoteHaulerRequirement } from "../empire/remoteHaulerDimensioning";
 
 /**
  * Focus room upgrader scaling configuration
@@ -30,6 +31,12 @@ const FOCUS_ROOM_UPGRADER_LIMITS = {
 
 /** Priority boost for upgraders in focus rooms */
 const FOCUS_ROOM_UPGRADER_PRIORITY_BOOST = 40;
+
+/** Number of dangerous hostiles per remote guard needed */
+const THREATS_PER_GUARD = 2;
+
+/** Reservation threshold in ticks - trigger renewal below this */
+const RESERVATION_THRESHOLD_TICKS = 3000;
 
 /**
  * Body template definition
@@ -267,6 +274,18 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     maxPerRoom: 2,
     remoteRole: false
   },
+  remoteGuard: {
+    role: "remoteGuard",
+    family: "military",
+    bodies: [
+      createBody([TOUGH, ATTACK, MOVE, MOVE], 190),
+      createBody([TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE], 500),
+      createBody([TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 880)
+    ],
+    priority: 85, // Higher than regular guards - remote defense is critical
+    maxPerRoom: 4, // Higher max since distributed across remote rooms
+    remoteRole: true
+  },
   healer: {
     role: "healer",
     family: "military",
@@ -397,6 +416,7 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         builder: 1.0,
         queenCarrier: 1.0,
         guard: 0.3,
+        remoteGuard: 0.8,
         healer: 0.1,
         scout: 1.0,
         claimer: 0.8,
@@ -413,6 +433,7 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         builder: 1.0,
         queenCarrier: 0.8,
         guard: 0.3,
+        remoteGuard: 1.0,
         scout: 1.5,
         claimer: 1.5,
         remoteWorker: 1.5,
@@ -429,6 +450,7 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         builder: 0.5,
         queenCarrier: 1.0,
         guard: 2.0,
+        remoteGuard: 1.8,
         healer: 1.5,
         ranger: 1.0,
         scout: 0.8, // Added: scouts help monitor threats
@@ -536,6 +558,7 @@ export function getPheromoneMult(role: string, pheromones: Record<string, number
     upgrader: "upgrade",
     builder: "build",
     guard: "defense",
+    remoteGuard: "defense",
     healer: "defense",
     soldier: "war",
     siegeUnit: "siege",
@@ -654,12 +677,39 @@ export function getRemoteRoomNeedingWorkers(homeRoom: string, role: string, swar
   const remoteAssignments = swarm.remoteAssignments ?? [];
   if (remoteAssignments.length === 0) return null;
 
-  // Define max workers per remote room based on role
-  const maxPerRemote = role === "remoteHarvester" ? 2 : 2; // 2 harvesters and 2 haulers per remote
-
   // Find a remote room that needs workers
   for (const remoteRoom of remoteAssignments) {
     const currentCount = countRemoteCreepsByTargetRoom(homeRoom, role, remoteRoom);
+    const room = Game.rooms[remoteRoom];
+    
+    let maxPerRemote: number;
+    
+    if (role === "remoteHarvester") {
+      // 1 harvester per source
+      if (room) {
+        const sources = room.find(FIND_SOURCES);
+        maxPerRemote = sources.length;
+      } else {
+        maxPerRemote = 2; // Assume 2 sources if no vision
+      }
+    } else if (role === "remoteHauler") {
+      // Calculate based on distance and sources
+      if (room) {
+        const sources = room.find(FIND_SOURCES);
+        const sourceCount = sources.length;
+        
+        // Calculate optimal hauler count using dimensioning module
+        const energyCapacity = Game.rooms[homeRoom]?.energyCapacityAvailable ?? 800;
+        const requirement = calculateRemoteHaulerRequirement(homeRoom, remoteRoom, sourceCount, energyCapacity);
+        maxPerRemote = requirement.recommendedHaulers;
+      } else {
+        // No vision - use conservative estimate
+        maxPerRemote = 2;
+      }
+    } else {
+      maxPerRemote = 2;
+    }
+    
     if (currentCount < maxPerRemote) {
       return remoteRoom;
     }
@@ -679,6 +729,36 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState): bo
   if (role === "remoteHarvester" || role === "remoteHauler") {
     // Check if there's a remote room that needs workers
     return getRemoteRoomNeedingWorkers(roomName, role, swarm) !== null;
+  }
+  
+  // Remote guard: spawn if remote rooms have threats
+  if (role === "remoteGuard") {
+    const remoteAssignments = swarm.remoteAssignments ?? [];
+    if (remoteAssignments.length === 0) return false;
+    
+    // Check if any remote room has threats and needs guards
+    for (const remoteName of remoteAssignments) {
+      const remoteRoom = Game.rooms[remoteName];
+      if (!remoteRoom) continue; // Can't check rooms without vision
+      
+      // Check for hostile creeps with combat parts
+      const hostiles = remoteRoom.find(FIND_HOSTILE_CREEPS);
+      const dangerousHostiles = hostiles.filter(h =>
+        h.body.some(p => p.type === ATTACK || p.type === RANGED_ATTACK || p.type === WORK)
+      );
+      
+      if (dangerousHostiles.length > 0) {
+        // Check how many guards are already assigned to this remote
+        const currentGuards = countRemoteCreepsByTargetRoom(roomName, role, remoteName);
+        // Need guards scaled to threat level, up to max per room
+        const neededGuards = Math.min(def.maxPerRoom, Math.ceil(dangerousHostiles.length / THREATS_PER_GUARD));
+        if (currentGuards < neededGuards) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
   }
 
   const counts = countCreepsByRole(roomName);
@@ -809,24 +889,60 @@ function needsReserver(_homeRoom: string, swarm: SwarmState): boolean {
   const remotes = swarm.remoteAssignments ?? [];
   if (remotes.length === 0) return false;
   
+  const myUsername = getMyUsername();
+  
   // Check each remote room
   for (const remoteName of remotes) {
-    // Check if any claimer is already targeting this room for reservation
-    let hasReserver = false;
-    for (const creep of Object.values(Game.creeps)) {
-      const memory = creep.memory as unknown as SwarmCreepMemory;
-      if (memory.role === "claimer" && memory.targetRoom === remoteName) {
-        hasReserver = true;
-        break;
-      }
-    }
+    const remoteRoom = Game.rooms[remoteName];
     
-    if (!hasReserver) {
-      return true; // Found a remote that needs a reserver
+    // If we have vision, check reservation status
+    if (remoteRoom?.controller) {
+      const controller = remoteRoom.controller;
+      
+      // Skip if owned by anyone (can't reserve owned rooms)
+      if (controller.owner) continue;
+      
+      // Check if reserved by us
+      const reservedByUs = controller.reservation?.username === myUsername;
+      const reservationTicks = controller.reservation?.ticksToEnd ?? 0;
+      
+      // Need reserver if not reserved or reservation is running low
+      if (!reservedByUs || reservationTicks < RESERVATION_THRESHOLD_TICKS) {
+        // Check if we already have a reserver going there
+        const hasReserver = Object.values(Game.creeps).some(creep => {
+          const memory = creep.memory as unknown as SwarmCreepMemory;
+          return memory.role === "claimer" && memory.targetRoom === remoteName;
+        });
+        
+        if (!hasReserver) {
+          return true; // Found a remote that needs a reserver
+        }
+      }
+    } else {
+      // No vision - check if we have a reserver assigned
+      const hasReserver = Object.values(Game.creeps).some(creep => {
+        const memory = creep.memory as unknown as SwarmCreepMemory;
+        return memory.role === "claimer" && memory.targetRoom === remoteName;
+      });
+      
+      if (!hasReserver) {
+        return true; // No reserver for this remote
+      }
     }
   }
   
   return false;
+}
+
+/**
+ * Get my username (cached)
+ */
+function getMyUsername(): string {
+  const spawns = Object.values(Game.spawns);
+  if (spawns.length > 0) {
+    return spawns[0].owner.username;
+  }
+  return "";
 }
 
 /**

@@ -234,6 +234,95 @@ export function guard(ctx: CreepContext): CreepAction {
 }
 
 /**
+ * Remote Guard - Defends remote mining operations.
+ * Patrols assigned remote room and engages hostile threats.
+ * Returns to home room when remote is secure.
+ */
+export function remoteGuard(ctx: CreepContext): CreepAction {
+  const mem = ctx.creep.memory as unknown as SwarmCreepMemory & { targetRoom?: string };
+
+  // Must have target room assigned
+  if (!mem.targetRoom) {
+    // No target room - return to home
+    if (ctx.creep.room.name !== ctx.homeRoom) {
+      return { type: "moveToRoom", roomName: ctx.homeRoom };
+    }
+    return { type: "idle" };
+  }
+
+  // Move to target room if not there
+  if (ctx.creep.room.name !== mem.targetRoom) {
+    return { type: "moveToRoom", roomName: mem.targetRoom };
+  }
+
+  // In target room - check for hostiles
+  const hostiles = ctx.room.find(FIND_HOSTILE_CREEPS);
+  
+  // Filter to dangerous hostiles (with combat parts)
+  const dangerousHostiles = hostiles.filter(h =>
+    h.body.some(p => p.type === ATTACK || p.type === RANGED_ATTACK || p.type === WORK)
+  );
+
+  if (dangerousHostiles.length === 0) {
+    // Remote is secure - return to home room
+    if (ctx.creep.room.name !== ctx.homeRoom) {
+      return { type: "moveToRoom", roomName: ctx.homeRoom };
+    }
+    return { type: "idle" };
+  }
+
+  // Find priority target among dangerous hostiles
+  const target = findPriorityTargetFromList(ctx, dangerousHostiles);
+
+  if (target) {
+    const range = ctx.creep.pos.getRangeTo(target);
+    const hasRanged = hasBodyPart(ctx.creep, RANGED_ATTACK);
+    const hasMelee = hasBodyPart(ctx.creep, ATTACK);
+
+    if (hasRanged && range <= 3) return { type: "rangedAttack", target };
+    if (hasMelee && range <= 1) return { type: "attack", target };
+    return { type: "moveTo", target };
+  }
+
+  // Patrol remote room if no immediate threats
+  const sources = ctx.room.find(FIND_SOURCES);
+  if (sources.length > 0) {
+    // Move between sources
+    const closestSource = ctx.creep.pos.findClosestByRange(sources);
+    if (closestSource && ctx.creep.pos.getRangeTo(closestSource) > 3) {
+      return { type: "moveTo", target: closestSource };
+    }
+  }
+
+  return { type: "idle" };
+}
+
+/**
+ * Find priority target from a specific list of hostiles
+ */
+function findPriorityTargetFromList(ctx: CreepContext, hostiles: Creep[]): Creep | null {
+  if (hostiles.length === 0) return null;
+
+  // Priority: Boosted > Healers > Ranged > Melee > Others
+  const priorities = [
+    hostiles.filter(h => h.body.some(p => p.boost)),
+    hostiles.filter(h => hasBodyPart(h, HEAL)),
+    hostiles.filter(h => hasBodyPart(h, RANGED_ATTACK)),
+    hostiles.filter(h => hasBodyPart(h, ATTACK)),
+    hostiles
+  ];
+
+  for (const group of priorities) {
+    if (group.length > 0) {
+      // Return closest from this priority group
+      return ctx.creep.pos.findClosestByRange(group);
+    }
+  }
+
+  return null;
+}
+
+/**
  * Healer - Support creep that heals allies.
  * Priority: self-heal if critical → heal nearby allies → follow military creeps
  * Can assist neighboring rooms when requested.
@@ -734,6 +823,7 @@ function squadBehavior(ctx: CreepContext, squad: SquadMemory): CreepAction {
 
 const militaryBehaviors: Record<string, (ctx: CreepContext) => CreepAction> = {
   guard,
+  remoteGuard,
   healer,
   soldier,
   siegeUnit: siege,

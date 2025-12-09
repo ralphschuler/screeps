@@ -10992,6 +10992,81 @@ function guard(ctx) {
     return { type: "idle" };
 }
 /**
+ * Remote Guard - Defends remote mining operations.
+ * Patrols assigned remote room and engages hostile threats.
+ * Returns to home room when remote is secure.
+ */
+function remoteGuard(ctx) {
+    const mem = ctx.creep.memory;
+    // Must have target room assigned
+    if (!mem.targetRoom) {
+        // No target room - return to home
+        if (ctx.creep.room.name !== ctx.homeRoom) {
+            return { type: "moveToRoom", roomName: ctx.homeRoom };
+        }
+        return { type: "idle" };
+    }
+    // Move to target room if not there
+    if (ctx.creep.room.name !== mem.targetRoom) {
+        return { type: "moveToRoom", roomName: mem.targetRoom };
+    }
+    // In target room - check for hostiles
+    const hostiles = ctx.room.find(FIND_HOSTILE_CREEPS);
+    // Filter to dangerous hostiles (with combat parts)
+    const dangerousHostiles = hostiles.filter(h => h.body.some(p => p.type === ATTACK || p.type === RANGED_ATTACK || p.type === WORK));
+    if (dangerousHostiles.length === 0) {
+        // Remote is secure - return to home room
+        if (ctx.creep.room.name !== ctx.homeRoom) {
+            return { type: "moveToRoom", roomName: ctx.homeRoom };
+        }
+        return { type: "idle" };
+    }
+    // Find priority target among dangerous hostiles
+    const target = findPriorityTargetFromList(ctx, dangerousHostiles);
+    if (target) {
+        const range = ctx.creep.pos.getRangeTo(target);
+        const hasRanged = hasBodyPart(ctx.creep, RANGED_ATTACK);
+        const hasMelee = hasBodyPart(ctx.creep, ATTACK);
+        if (hasRanged && range <= 3)
+            return { type: "rangedAttack", target };
+        if (hasMelee && range <= 1)
+            return { type: "attack", target };
+        return { type: "moveTo", target };
+    }
+    // Patrol remote room if no immediate threats
+    const sources = ctx.room.find(FIND_SOURCES);
+    if (sources.length > 0) {
+        // Move between sources
+        const closestSource = ctx.creep.pos.findClosestByRange(sources);
+        if (closestSource && ctx.creep.pos.getRangeTo(closestSource) > 3) {
+            return { type: "moveTo", target: closestSource };
+        }
+    }
+    return { type: "idle" };
+}
+/**
+ * Find priority target from a specific list of hostiles
+ */
+function findPriorityTargetFromList(ctx, hostiles) {
+    if (hostiles.length === 0)
+        return null;
+    // Priority: Boosted > Healers > Ranged > Melee > Others
+    const priorities = [
+        hostiles.filter(h => h.body.some(p => p.boost)),
+        hostiles.filter(h => hasBodyPart(h, HEAL)),
+        hostiles.filter(h => hasBodyPart(h, RANGED_ATTACK)),
+        hostiles.filter(h => hasBodyPart(h, ATTACK)),
+        hostiles
+    ];
+    for (const group of priorities) {
+        if (group.length > 0) {
+            // Return closest from this priority group
+            return ctx.creep.pos.findClosestByRange(group);
+        }
+    }
+    return null;
+}
+/**
  * Healer - Support creep that heals allies.
  * Priority: self-heal if critical → heal nearby allies → follow military creeps
  * Can assist neighboring rooms when requested.
@@ -11442,6 +11517,7 @@ function squadBehavior(ctx, squad) {
 // =============================================================================
 const militaryBehaviors = {
     guard,
+    remoteGuard,
     healer,
     soldier,
     siegeUnit: siege,
@@ -19022,6 +19098,128 @@ function createDefenseRequest(room, swarm) {
 }
 
 /**
+ * Remote Hauler Dimensioning
+ *
+ * Calculates optimal number and size of haulers for remote mining operations.
+ * Takes into account:
+ * - Distance from home room to remote room
+ * - Number of sources in remote room
+ * - Energy generation rate per source
+ * - Path terrain (plains vs swamp)
+ *
+ * Addresses remote mining gaps from Issue: Remote Mining
+ */
+/**
+ * Source energy generation constants
+ */
+const ENERGY_PER_SOURCE_TICK = 10; // 5 WORK parts harvest 10 energy/tick
+/**
+ * Constants for hauler dimensioning
+ */
+const HAULER_SAFETY_BUFFER = 1.2; // 20% buffer for safety margin
+const TILES_PER_ROOM = 50; // Average tiles to traverse per room (diagonal movement estimate)
+/**
+ * Standard hauler configurations by tier
+ */
+const HAULER_TIERS = [
+    // Tier 1: Small hauler (400 energy)
+    {
+        carryParts: 4,
+        capacity: 200,
+        moveParts: 4,
+        cost: 400
+    },
+    // Tier 2: Medium hauler (800 energy)
+    {
+        carryParts: 8,
+        capacity: 400,
+        moveParts: 8,
+        cost: 800
+    },
+    // Tier 3: Large hauler (1600 energy)
+    {
+        carryParts: 16,
+        capacity: 800,
+        moveParts: 16,
+        cost: 1600
+    },
+    // Tier 4: Mega hauler (2400 energy) - for very long distances
+    {
+        carryParts: 24,
+        capacity: 1200,
+        moveParts: 24,
+        cost: 2400
+    }
+];
+/**
+ * Calculate path distance between two rooms
+ */
+function calculatePathDistance(fromRoom, toRoom) {
+    // Simple room distance calculation
+    // Parse room names (e.g., "E1N1", "W2S3")
+    const parseRoom = (roomName) => {
+        const match = roomName.match(/^([WE])(\d+)([NS])(\d+)$/);
+        if (!match)
+            return { x: 0, y: 0 };
+        const x = match[1] === "W" ? -parseInt(match[2], 10) : parseInt(match[2], 10);
+        const y = match[3] === "N" ? parseInt(match[4], 10) : -parseInt(match[4], 10);
+        return { x, y };
+    };
+    const from = parseRoom(fromRoom);
+    const to = parseRoom(toRoom);
+    // Manhattan distance in rooms
+    return Math.abs(to.x - from.x) + Math.abs(to.y - from.y);
+}
+/**
+ * Estimate round trip ticks for a hauler
+ */
+function estimateRoundTripTicks(distance, terrainFactor = 1.2) {
+    // Base movement: 1 tile per tick with 1:1 MOVE:CARRY ratio
+    // Terrain factor accounts for swamps (1.0 = all plains, 1.5 = all swamps, 1.2 = mixed)
+    const onewayTicks = distance * TILES_PER_ROOM * terrainFactor;
+    // Round trip
+    return Math.ceil(onewayTicks * 2);
+}
+/**
+ * Calculate optimal hauler configuration for a remote room
+ */
+function calculateRemoteHaulerRequirement(homeRoom, remoteRoom, sourceCount, availableEnergy) {
+    // Calculate distance
+    const distance = calculatePathDistance(homeRoom, remoteRoom);
+    // Estimate round trip time (assuming mixed terrain)
+    const roundTripTicks = estimateRoundTripTicks(distance);
+    // Calculate energy generation rate for all sources
+    const energyPerTick = sourceCount * ENERGY_PER_SOURCE_TICK;
+    // Select appropriate hauler size based on available energy
+    let haulerConfig = HAULER_TIERS[0];
+    for (const tier of HAULER_TIERS) {
+        if (tier.cost <= availableEnergy) {
+            haulerConfig = tier;
+        }
+        else {
+            break;
+        }
+    }
+    // Calculate minimum haulers needed to keep up with energy generation
+    // Energy generated during round trip
+    const energyGeneratedPerTrip = energyPerTick * roundTripTicks;
+    // Minimum haulers = energy generated per trip / hauler capacity
+    // Add safety buffer for reliability
+    const minHaulers = Math.max(1, Math.ceil((energyGeneratedPerTrip / haulerConfig.capacity) * HAULER_SAFETY_BUFFER));
+    // Recommended haulers = add one extra for reliability
+    const recommendedHaulers = Math.min(sourceCount * 2, minHaulers + 1);
+    logger.debug(`Remote hauler calculation: ${homeRoom} -> ${remoteRoom} (${sourceCount} sources, ${distance} rooms away) - RT: ${roundTripTicks} ticks, E/tick: ${energyPerTick}, Min: ${minHaulers}, Rec: ${recommendedHaulers}, Cap: ${haulerConfig.capacity}`, { subsystem: "HaulerDimensioning" });
+    return {
+        minHaulers,
+        recommendedHaulers,
+        haulerConfig,
+        distance,
+        roundTripTicks,
+        energyPerTick
+    };
+}
+
+/**
  * Spawn Logic - Phase 8
  *
  * Central spawn manager per room:
@@ -19044,6 +19242,10 @@ const FOCUS_ROOM_UPGRADER_LIMITS = {
 };
 /** Priority boost for upgraders in focus rooms */
 const FOCUS_ROOM_UPGRADER_PRIORITY_BOOST = 40;
+/** Number of dangerous hostiles per remote guard needed */
+const THREATS_PER_GUARD = 2;
+/** Reservation threshold in ticks - trigger renewal below this */
+const RESERVATION_THRESHOLD_TICKS = 3000;
 /**
  * Calculate body cost
  */
@@ -19239,6 +19441,18 @@ const ROLE_DEFINITIONS = {
         maxPerRoom: 2,
         remoteRole: false
     },
+    remoteGuard: {
+        role: "remoteGuard",
+        family: "military",
+        bodies: [
+            createBody([TOUGH, ATTACK, MOVE, MOVE], 190),
+            createBody([TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE], 500),
+            createBody([TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 880)
+        ],
+        priority: 85,
+        maxPerRoom: 4,
+        remoteRole: true
+    },
     healer: {
         role: "healer",
         family: "military",
@@ -19361,6 +19575,7 @@ function getPostureSpawnWeights(posture) {
                 builder: 1.0,
                 queenCarrier: 1.0,
                 guard: 0.3,
+                remoteGuard: 0.8,
                 healer: 0.1,
                 scout: 1.0,
                 claimer: 0.8,
@@ -19377,6 +19592,7 @@ function getPostureSpawnWeights(posture) {
                 builder: 1.0,
                 queenCarrier: 0.8,
                 guard: 0.3,
+                remoteGuard: 1.0,
                 scout: 1.5,
                 claimer: 1.5,
                 remoteWorker: 1.5,
@@ -19393,6 +19609,7 @@ function getPostureSpawnWeights(posture) {
                 builder: 0.5,
                 queenCarrier: 1.0,
                 guard: 2.0,
+                remoteGuard: 1.8,
                 healer: 1.5,
                 ranger: 1.0,
                 scout: 0.8,
@@ -19496,6 +19713,7 @@ function getPheromoneMult(role, pheromones) {
         upgrader: "upgrade",
         builder: "build",
         guard: "defense",
+        remoteGuard: "defense",
         healer: "defense",
         soldier: "war",
         siegeUnit: "siege",
@@ -19598,15 +19816,43 @@ function countRemoteCreepsByTargetRoom(homeRoom, role, targetRoom) {
  * Returns the room name if workers are needed, null otherwise.
  */
 function getRemoteRoomNeedingWorkers(homeRoom, role, swarm) {
-    var _a;
+    var _a, _b, _c;
     const remoteAssignments = (_a = swarm.remoteAssignments) !== null && _a !== void 0 ? _a : [];
     if (remoteAssignments.length === 0)
         return null;
-    // Define max workers per remote room based on role
-    const maxPerRemote = role === "remoteHarvester" ? 2 : 2; // 2 harvesters and 2 haulers per remote
     // Find a remote room that needs workers
     for (const remoteRoom of remoteAssignments) {
         const currentCount = countRemoteCreepsByTargetRoom(homeRoom, role, remoteRoom);
+        const room = Game.rooms[remoteRoom];
+        let maxPerRemote;
+        if (role === "remoteHarvester") {
+            // 1 harvester per source
+            if (room) {
+                const sources = room.find(FIND_SOURCES);
+                maxPerRemote = sources.length;
+            }
+            else {
+                maxPerRemote = 2; // Assume 2 sources if no vision
+            }
+        }
+        else if (role === "remoteHauler") {
+            // Calculate based on distance and sources
+            if (room) {
+                const sources = room.find(FIND_SOURCES);
+                const sourceCount = sources.length;
+                // Calculate optimal hauler count using dimensioning module
+                const energyCapacity = (_c = (_b = Game.rooms[homeRoom]) === null || _b === void 0 ? void 0 : _b.energyCapacityAvailable) !== null && _c !== void 0 ? _c : 800;
+                const requirement = calculateRemoteHaulerRequirement(homeRoom, remoteRoom, sourceCount, energyCapacity);
+                maxPerRemote = requirement.recommendedHaulers;
+            }
+            else {
+                // No vision - use conservative estimate
+                maxPerRemote = 2;
+            }
+        }
+        else {
+            maxPerRemote = 2;
+        }
         if (currentCount < maxPerRemote) {
             return remoteRoom;
         }
@@ -19617,7 +19863,7 @@ function getRemoteRoomNeedingWorkers(homeRoom, role, swarm) {
  * Check if room needs role
  */
 function needsRole(roomName, role, swarm) {
-    var _a;
+    var _a, _b;
     const def = ROLE_DEFINITIONS[role];
     if (!def)
         return false;
@@ -19626,8 +19872,33 @@ function needsRole(roomName, role, swarm) {
         // Check if there's a remote room that needs workers
         return getRemoteRoomNeedingWorkers(roomName, role, swarm) !== null;
     }
+    // Remote guard: spawn if remote rooms have threats
+    if (role === "remoteGuard") {
+        const remoteAssignments = (_a = swarm.remoteAssignments) !== null && _a !== void 0 ? _a : [];
+        if (remoteAssignments.length === 0)
+            return false;
+        // Check if any remote room has threats and needs guards
+        for (const remoteName of remoteAssignments) {
+            const remoteRoom = Game.rooms[remoteName];
+            if (!remoteRoom)
+                continue; // Can't check rooms without vision
+            // Check for hostile creeps with combat parts
+            const hostiles = remoteRoom.find(FIND_HOSTILE_CREEPS);
+            const dangerousHostiles = hostiles.filter(h => h.body.some(p => p.type === ATTACK || p.type === RANGED_ATTACK || p.type === WORK));
+            if (dangerousHostiles.length > 0) {
+                // Check how many guards are already assigned to this remote
+                const currentGuards = countRemoteCreepsByTargetRoom(roomName, role, remoteName);
+                // Need guards scaled to threat level, up to max per room
+                const neededGuards = Math.min(def.maxPerRoom, Math.ceil(dangerousHostiles.length / THREATS_PER_GUARD));
+                if (currentGuards < neededGuards) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     const counts = countCreepsByRole(roomName);
-    const current = (_a = counts.get(role)) !== null && _a !== void 0 ? _a : 0;
+    const current = (_b = counts.get(role)) !== null && _b !== void 0 ? _b : 0;
     // Check max per room (with special handling for upgraders in focus room)
     let maxForRoom = def.maxPerRoom;
     if (role === "upgrader" && swarm.clusterId) {
@@ -19745,26 +20016,57 @@ function needsRole(roomName, role, swarm) {
  * Check if room needs a reserver for any of its remote rooms
  */
 function needsReserver(_homeRoom, swarm) {
-    var _a;
+    var _a, _b, _c, _d;
     const remotes = (_a = swarm.remoteAssignments) !== null && _a !== void 0 ? _a : [];
     if (remotes.length === 0)
         return false;
+    const myUsername = getMyUsername$1();
     // Check each remote room
     for (const remoteName of remotes) {
-        // Check if any claimer is already targeting this room for reservation
-        let hasReserver = false;
-        for (const creep of Object.values(Game.creeps)) {
-            const memory = creep.memory;
-            if (memory.role === "claimer" && memory.targetRoom === remoteName) {
-                hasReserver = true;
-                break;
+        const remoteRoom = Game.rooms[remoteName];
+        // If we have vision, check reservation status
+        if (remoteRoom === null || remoteRoom === void 0 ? void 0 : remoteRoom.controller) {
+            const controller = remoteRoom.controller;
+            // Skip if owned by anyone (can't reserve owned rooms)
+            if (controller.owner)
+                continue;
+            // Check if reserved by us
+            const reservedByUs = ((_b = controller.reservation) === null || _b === void 0 ? void 0 : _b.username) === myUsername;
+            const reservationTicks = (_d = (_c = controller.reservation) === null || _c === void 0 ? void 0 : _c.ticksToEnd) !== null && _d !== void 0 ? _d : 0;
+            // Need reserver if not reserved or reservation is running low
+            if (!reservedByUs || reservationTicks < RESERVATION_THRESHOLD_TICKS) {
+                // Check if we already have a reserver going there
+                const hasReserver = Object.values(Game.creeps).some(creep => {
+                    const memory = creep.memory;
+                    return memory.role === "claimer" && memory.targetRoom === remoteName;
+                });
+                if (!hasReserver) {
+                    return true; // Found a remote that needs a reserver
+                }
             }
         }
-        if (!hasReserver) {
-            return true; // Found a remote that needs a reserver
+        else {
+            // No vision - check if we have a reserver assigned
+            const hasReserver = Object.values(Game.creeps).some(creep => {
+                const memory = creep.memory;
+                return memory.role === "claimer" && memory.targetRoom === remoteName;
+            });
+            if (!hasReserver) {
+                return true; // No reserver for this remote
+            }
         }
     }
     return false;
+}
+/**
+ * Get my username (cached)
+ */
+function getMyUsername$1() {
+    const spawns = Object.values(Game.spawns);
+    if (spawns.length > 0) {
+        return spawns[0].owner.username;
+    }
+    return "";
 }
 /**
  * Generate creep name
@@ -24116,6 +24418,95 @@ PowerBankHarvestingManager = __decorate([
 const powerBankHarvestingManager = new PowerBankHarvestingManager();
 
 /**
+ * Remote Room Manager
+ *
+ * Manages remote room operations:
+ * - Detects remote room loss (hostile takeover, reservation loss)
+ * - Tracks reservation status and timing
+ * - Coordinates remote room defense
+ * - Manages remote room assignments
+ *
+ * Addresses remote mining gaps from Issue: Remote Mining
+ */
+/**
+ * Check if a remote room has been lost
+ */
+function isRemoteRoomLost(room, homeRoomName) {
+    var _a, _b;
+    // Check if room is owned by someone else
+    if (((_a = room.controller) === null || _a === void 0 ? void 0 : _a.owner) && !room.controller.my) {
+        return { lost: true, reason: "enemyOwned" };
+    }
+    // Check if room is reserved by someone else
+    const myUsername = getMyUsername();
+    if (((_b = room.controller) === null || _b === void 0 ? void 0 : _b.reservation) && room.controller.reservation.username !== myUsername) {
+        return { lost: true, reason: "enemyReserved" };
+    }
+    // Check for hostile threats (aggressive hostiles with ATTACK or RANGED_ATTACK)
+    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    const dangerousHostiles = hostiles.filter(h => h.body.some(p => p.type === ATTACK || p.type === RANGED_ATTACK || p.type === WORK));
+    if (dangerousHostiles.length >= 2) {
+        // Multiple dangerous hostiles = too dangerous for remote mining
+        return { lost: true, reason: "hostile" };
+    }
+    return { lost: false };
+}
+/**
+ * Remove lost remote room from assignments
+ */
+function removeRemoteRoom(homeRoomName, remoteRoomName, reason) {
+    var _a;
+    const swarm = memoryManager.getSwarmState(homeRoomName);
+    if (!swarm)
+        return;
+    const remotes = (_a = swarm.remoteAssignments) !== null && _a !== void 0 ? _a : [];
+    const index = remotes.indexOf(remoteRoomName);
+    if (index !== -1) {
+        remotes.splice(index, 1);
+        swarm.remoteAssignments = remotes;
+        // Update intel to mark as lost
+        const overmind = memoryManager.getOvermind();
+        const intel = overmind.roomIntel[remoteRoomName];
+        if (intel) {
+            intel.threatLevel = 3;
+            intel.lastSeen = Game.time;
+        }
+        logger.warn(`Removed remote room ${remoteRoomName} from ${homeRoomName} due to: ${reason}`, { subsystem: "RemoteRoomManager" });
+    }
+}
+/**
+ * Check all remote rooms for a home room and remove lost ones
+ */
+function checkRemoteRoomStatus(homeRoomName) {
+    var _a;
+    const swarm = memoryManager.getSwarmState(homeRoomName);
+    if (!swarm)
+        return;
+    const remotes = (_a = swarm.remoteAssignments) !== null && _a !== void 0 ? _a : [];
+    if (remotes.length === 0)
+        return;
+    for (const remoteName of remotes) {
+        const room = Game.rooms[remoteName];
+        if (!room)
+            continue; // Can't check rooms without vision
+        const lossCheck = isRemoteRoomLost(room);
+        if (lossCheck.lost && lossCheck.reason) {
+            removeRemoteRoom(homeRoomName, remoteName, lossCheck.reason);
+        }
+    }
+}
+/**
+ * Get my username (cached)
+ */
+function getMyUsername() {
+    const spawns = Object.values(Game.spawns);
+    if (spawns.length > 0) {
+        return spawns[0].owner.username;
+    }
+    return "";
+}
+
+/**
  * Remote Infrastructure Manager
  *
  * Manages infrastructure in remote mining rooms:
@@ -24157,6 +24548,8 @@ let RemoteInfrastructureManager = class RemoteInfrastructureManager {
             const swarm = memoryManager.getSwarmState(room.name);
             if (!swarm)
                 continue;
+            // Check remote room status and remove lost remotes
+            checkRemoteRoomStatus(room.name);
             const remoteAssignments = (_a = swarm.remoteAssignments) !== null && _a !== void 0 ? _a : [];
             if (remoteAssignments.length === 0)
                 continue;
