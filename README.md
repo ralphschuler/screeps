@@ -1,6 +1,7 @@
 # Screeps Ant Swarm Bot · [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
 
 > An advanced Screeps AI implementation using swarm intelligence and distributed colony management
+> 
 
 A sophisticated Screeps bot built with TypeScript that implements swarm-based coordination, emergent behavior through pheromone systems, and multi-shard colony management. The bot is designed to efficiently manage 100+ rooms and 5000+ creeps while maintaining CPU efficiency.
 
