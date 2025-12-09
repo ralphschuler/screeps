@@ -9,7 +9,7 @@
  * This helps identify performance bottlenecks and optimize native call usage.
  */
 
-import { statsManager } from "./stats";
+import { unifiedStats } from "./unifiedStats";
 
 /**
  * Whether native calls tracking is enabled
@@ -63,7 +63,7 @@ export function wrapPathFinderSearch(): void {
   try {
     const wrappedFunction = function (...args: any[]): PathFinderPath {
       if (trackingEnabled) {
-        statsManager.recordNativeCall("pathfinderSearch");
+        unifiedStats.recordNativeCall("pathfinderSearch");
       }
       return (originalSearch as any).apply(PathFinder, args);
     };
@@ -89,7 +89,7 @@ export function wrapPathFinderSearch(): void {
 function wrapMethod(
   prototype: any,
   methodName: string,
-  statName: keyof Omit<import("./stats").NativeCallsStats, "total">
+  statName: keyof Omit<import("./unifiedStats").NativeCallStats, "total">
 ): void {
   const original = prototype[methodName];
   if (!original) return;
@@ -110,7 +110,7 @@ function wrapMethod(
   try {
     const wrappedFunction = function (this: any, ...args: any[]): any {
       if (trackingEnabled) {
-        statsManager.recordNativeCall(statName);
+        unifiedStats.recordNativeCall(statName);
       }
       return original.apply(this, args);
     };
