@@ -6823,6 +6823,10 @@ class RoomVisualizer {
         if (this.config.showPaths) {
             this.drawTrafficPaths(visual, room);
         }
+        // Always draw collection point if available
+        if (swarm === null || swarm === void 0 ? void 0 : swarm.collectionPoint) {
+            this.drawCollectionPoint(visual, swarm);
+        }
     }
     /**
      * Draw room statistics panel
@@ -7196,6 +7200,28 @@ class RoomVisualizer {
      */
     getConfig() {
         return { ...this.config };
+    }
+    /**
+     * Draw collection point marker
+     */
+    drawCollectionPoint(visual, swarm) {
+        if (!swarm.collectionPoint)
+            return;
+        const { x, y } = swarm.collectionPoint;
+        // Draw a circle at the collection point
+        visual.circle(x, y, {
+            radius: 0.5,
+            fill: "#00ff00",
+            opacity: 0.3,
+            stroke: "#00ff00",
+            strokeWidth: 0.1
+        });
+        // Draw a label
+        visual.text("⚓", x, y + 0.25, {
+            font: "0.6 monospace",
+            color: "#00ff00",
+            opacity: 0.8
+        });
     }
     /**
      * Toggle a specific visualization
@@ -9141,6 +9167,197 @@ function moveAwayFromSpawn(creep, range = 1, opts) {
 }
 
 /**
+ * Collection Point Manager
+ *
+ * Manages collection points for idle creeps to prevent spawn blockades.
+ * A collection point is a designated position away from spawns where idle creeps
+ * wait instead of blocking spawn areas.
+ *
+ * Design Principles (from ROADMAP.md):
+ * - Prevent spawn blockades by moving idle creeps to designated collection points
+ * - Use stigmergic communication (room memory) for decentralized coordination
+ * - CPU-efficient: calculate once per room, reuse until invalidated
+ */
+// =============================================================================
+// Constants
+// =============================================================================
+/** Minimum distance from spawn for collection point */
+const MIN_DISTANCE_FROM_SPAWN = 5;
+/** Preferred distance from spawn for collection point */
+const PREFERRED_DISTANCE_FROM_SPAWN = 8;
+/** Maximum distance from spawn (to keep creeps reasonably close) */
+const MAX_DISTANCE_FROM_SPAWN = 15;
+/** How often to recalculate collection point (in ticks) */
+const RECALCULATION_INTERVAL = 500;
+/** In-memory cache of collection points per room */
+const collectionPointCache = new Map();
+// =============================================================================
+// Public API
+// =============================================================================
+/**
+ * Get the collection point for a room.
+ * Returns cached position if available and recent, otherwise calculates a new one.
+ *
+ * @param room - The room to get collection point for
+ * @param swarmState - The room's swarm state (for memory persistence)
+ * @returns The collection point position, or null if none can be determined
+ */
+function getCollectionPoint(room, swarmState) {
+    // Check in-memory cache first
+    const cached = collectionPointCache.get(room.name);
+    if (cached && Game.time - cached.tick < RECALCULATION_INTERVAL) {
+        return cached.pos;
+    }
+    // Check memory for stored collection point
+    if (swarmState.collectionPoint) {
+        const pos = new RoomPosition(swarmState.collectionPoint.x, swarmState.collectionPoint.y, room.name);
+        // Validate the stored position is still valid
+        if (isValidCollectionPoint(room, pos)) {
+            // Cache it for quick access
+            collectionPointCache.set(room.name, { pos, tick: Game.time });
+            return pos;
+        }
+        // Position is no longer valid, will recalculate below
+    }
+    // Calculate a new collection point
+    const newPos = calculateCollectionPoint(room);
+    if (newPos) {
+        // Store in memory for persistence across ticks
+        swarmState.collectionPoint = { x: newPos.x, y: newPos.y };
+        // Cache for fast access this tick
+        collectionPointCache.set(room.name, { pos: newPos, tick: Game.time });
+    }
+    return newPos;
+}
+// =============================================================================
+// Internal Functions
+// =============================================================================
+/**
+ * Calculate an optimal collection point for a room.
+ * Finds a position that is:
+ * - Away from spawns (MIN_DISTANCE_FROM_SPAWN or more)
+ * - Walkable and not blocked by structures
+ * - Preferably near storage or controller (common gathering points)
+ * - Not on room exits
+ *
+ * @param room - The room to calculate collection point for
+ * @returns The optimal position, or null if none found
+ */
+function calculateCollectionPoint(room) {
+    const spawns = room.find(FIND_MY_SPAWNS);
+    if (spawns.length === 0) {
+        return null;
+    }
+    // Get the primary spawn (first one)
+    const primarySpawn = spawns[0];
+    // Find the storage or controller as a secondary anchor point
+    const storage = room.storage;
+    const controller = room.controller;
+    // Generate candidate positions
+    const candidates = [];
+    const terrain = room.getTerrain();
+    // Search in a grid pattern around the room
+    for (let x = 3; x <= 46; x++) {
+        for (let y = 3; y <= 46; y++) {
+            const pos = new RoomPosition(x, y, room.name);
+            // Skip if not walkable
+            if (!isWalkable(room, pos, terrain)) {
+                continue;
+            }
+            // Calculate distance from spawn
+            const spawnDistance = pos.getRangeTo(primarySpawn.pos);
+            // Must be at least MIN_DISTANCE_FROM_SPAWN away from spawn
+            if (spawnDistance < MIN_DISTANCE_FROM_SPAWN) {
+                continue;
+            }
+            // Skip if too far from spawn
+            if (spawnDistance > MAX_DISTANCE_FROM_SPAWN) {
+                continue;
+            }
+            // Score the position
+            let score = 0;
+            // Prefer positions at PREFERRED_DISTANCE_FROM_SPAWN
+            const distanceDiff = Math.abs(spawnDistance - PREFERRED_DISTANCE_FROM_SPAWN);
+            score -= distanceDiff; // Lower difference = higher score
+            // Prefer positions closer to storage (if it exists)
+            if (storage) {
+                const storageDistance = pos.getRangeTo(storage.pos);
+                score -= storageDistance * 0.5; // Half weight compared to spawn distance
+            }
+            // Prefer positions closer to controller (if it exists)
+            if (controller) {
+                const controllerDistance = pos.getRangeTo(controller.pos);
+                score -= controllerDistance * 0.3; // Lower weight
+            }
+            // Avoid positions on roads (creeps waiting shouldn't block roads)
+            const structures = room.lookForAt(LOOK_STRUCTURES, x, y);
+            const hasRoad = structures.some(s => s.structureType === STRUCTURE_ROAD);
+            if (hasRoad) {
+                score -= 5; // Penalty for being on a road
+            }
+            candidates.push({ pos, score });
+        }
+    }
+    // Sort by score (highest first)
+    candidates.sort((a, b) => b.score - a.score);
+    // Return the best candidate
+    return candidates.length > 0 ? candidates[0].pos : null;
+}
+/**
+ * Check if a position is walkable (not a wall and no blocking structures).
+ *
+ * @param room - The room containing the position
+ * @param pos - The position to check
+ * @param terrain - The room terrain (for performance)
+ * @returns true if the position is walkable
+ */
+function isWalkable(room, pos, terrain) {
+    // Check terrain
+    if (terrain.get(pos.x, pos.y) === TERRAIN_MASK_WALL) {
+        return false;
+    }
+    // Check for blocking structures
+    const structures = room.lookForAt(LOOK_STRUCTURES, pos.x, pos.y);
+    const blocked = structures.some(s => {
+        // Roads, containers, and friendly ramparts don't block
+        if (s.structureType === STRUCTURE_ROAD)
+            return false;
+        if (s.structureType === STRUCTURE_CONTAINER)
+            return false;
+        if (s.structureType === STRUCTURE_RAMPART && s.my)
+            return false;
+        // Everything else blocks
+        return true;
+    });
+    return !blocked;
+}
+/**
+ * Check if a stored collection point is still valid.
+ * Valid if it's walkable and meets distance requirements from spawn.
+ *
+ * @param room - The room containing the position
+ * @param pos - The position to validate
+ * @returns true if the position is still valid
+ */
+function isValidCollectionPoint(room, pos) {
+    const terrain = room.getTerrain();
+    // Must be walkable
+    if (!isWalkable(room, pos, terrain)) {
+        return false;
+    }
+    // Check distance from spawn
+    const spawns = room.find(FIND_MY_SPAWNS);
+    if (spawns.length === 0) {
+        return false;
+    }
+    const spawnDistance = pos.getRangeTo(spawns[0].pos);
+    if (spawnDistance < MIN_DISTANCE_FROM_SPAWN || spawnDistance > MAX_DISTANCE_FROM_SPAWN) {
+        return false;
+    }
+    return true;
+}
+
+/**
  * Action Executor
  *
  * Executes creep actions returned by behavior functions.
@@ -9178,6 +9395,7 @@ const PATH_COLORS = {
  * Handles all action types including automatic movement when out of range.
  */
 function executeAction(creep, action, ctx) {
+    var _a;
     let shouldClearState = false;
     switch (action.type) {
         // Resource gathering
@@ -9272,7 +9490,23 @@ function executeAction(creep, action, ctx) {
             if (moveOffRoomExit(creep)) {
                 break;
             }
-            // Then move away from spawns to prevent blocking new creeps
+            // Try to move to collection point if available
+            const room = Game.rooms[creep.pos.roomName];
+            if (room && ((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my)) {
+                const swarmState = memoryManager.getOrInitSwarmState(room.name);
+                const collectionPoint = getCollectionPoint(room, swarmState);
+                if (collectionPoint) {
+                    // Move to collection point if not already there
+                    if (!creep.pos.isEqualTo(collectionPoint)) {
+                        moveCreep(creep, collectionPoint, {
+                            visualizePathStyle: { stroke: "#888888" },
+                            priority: 1
+                        });
+                        break;
+                    }
+                }
+            }
+            // Fallback: move away from spawns to prevent blocking new creeps
             moveAwayFromSpawn(creep);
             break;
     }
