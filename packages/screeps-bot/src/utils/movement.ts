@@ -384,6 +384,11 @@ function positionAtDirection(origin: RoomPosition, direction: DirectionConstant)
 /**
  * Get adjacent room name in a direction.
  * Handles world coordinates (W/E and N/S).
+ * 
+ * Screeps coordinate system:
+ * - E increases to the right, W increases to the left
+ * - N increases upward, S increases downward
+ * - E0 is next to W0, N0 is next to S0
  */
 function getRoomNameInDirection(roomName: string, direction: DirectionConstant): string {
   const match = /^([WE])(\d+)([NS])(\d+)$/.exec(roomName);
@@ -392,41 +397,76 @@ function getRoomNameInDirection(roomName: string, direction: DirectionConstant):
   const [, ew, x, ns, y] = match;
   let xCoord = parseInt(x, 10);
   let yCoord = parseInt(y, 10);
+  let xDir = ew;
+  let yDir = ns;
   
-  // Adjust based on direction
+  // Adjust X coordinate based on direction
   if (direction === LEFT || direction === TOP_LEFT || direction === BOTTOM_LEFT) {
-    if (ew === 'W') xCoord++;
-    else if (xCoord === 0) {
-      xCoord = 0;
-      // Flip to W
-      return `W${xCoord}${ns}${y}`;
-    } else xCoord--;
+    if (ew === 'W') {
+      // Moving left in W sector increases coordinate
+      xCoord++;
+    } else {
+      // Moving left in E sector
+      if (xCoord === 0) {
+        // Cross to W0
+        xDir = 'W';
+        xCoord = 0;
+      } else {
+        // Stay in E, decrease coordinate
+        xCoord--;
+      }
+    }
   } else if (direction === RIGHT || direction === TOP_RIGHT || direction === BOTTOM_RIGHT) {
-    if (ew === 'E') xCoord++;
-    else if (xCoord === 0) {
-      xCoord = 0;
-      // Flip to E
-      return `E${xCoord}${ns}${y}`;
-    } else xCoord--;
+    if (ew === 'E') {
+      // Moving right in E sector increases coordinate
+      xCoord++;
+    } else {
+      // Moving right in W sector
+      if (xCoord === 0) {
+        // Cross to E0
+        xDir = 'E';
+        xCoord = 0;
+      } else {
+        // Stay in W, decrease coordinate
+        xCoord--;
+      }
+    }
   }
   
+  // Adjust Y coordinate based on direction
   if (direction === TOP || direction === TOP_LEFT || direction === TOP_RIGHT) {
-    if (ns === 'N') yCoord++;
-    else if (yCoord === 0) {
-      yCoord = 0;
-      // Flip to N
-      return `${ew}${x}N${yCoord}`;
-    } else yCoord--;
+    if (ns === 'N') {
+      // Moving up in N sector increases coordinate
+      yCoord++;
+    } else {
+      // Moving up in S sector
+      if (yCoord === 0) {
+        // Cross to N0
+        yDir = 'N';
+        yCoord = 0;
+      } else {
+        // Stay in S, decrease coordinate
+        yCoord--;
+      }
+    }
   } else if (direction === BOTTOM || direction === BOTTOM_LEFT || direction === BOTTOM_RIGHT) {
-    if (ns === 'S') yCoord++;
-    else if (yCoord === 0) {
-      yCoord = 0;
-      // Flip to S
-      return `${ew}${x}S${yCoord}`;
-    } else yCoord--;
+    if (ns === 'S') {
+      // Moving down in S sector increases coordinate
+      yCoord++;
+    } else {
+      // Moving down in N sector
+      if (yCoord === 0) {
+        // Cross to S0
+        yDir = 'S';
+        yCoord = 0;
+      } else {
+        // Stay in N, decrease coordinate
+        yCoord--;
+      }
+    }
   }
   
-  return `${ew}${xCoord}${ns}${yCoord}`;
+  return `${xDir}${xCoord}${yDir}${yCoord}`;
 }
 
 /**
