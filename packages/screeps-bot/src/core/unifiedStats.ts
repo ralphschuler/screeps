@@ -221,6 +221,17 @@ export interface StatsSnapshot {
   native: NativeCallStats;
 }
 
+/**
+ * Profiler memory structure for EMA tracking across ticks
+ */
+interface ProfilerMemory {
+  rooms: Record<string, { avgCpu: number; peakCpu: number; samples: number; lastTick: number }>;
+  subsystems: Record<string, { avgCpu: number; peakCpu: number; samples: number; callsThisTick: number }>;
+  roles?: Record<string, { avgCpu: number; peakCpu: number; samples: number; callsThisTick: number }>;
+  tickCount: number;
+  lastUpdate: number;
+}
+
 // ============================================================================
 // Unified Stats Manager
 // ============================================================================
@@ -749,7 +760,7 @@ export class UnifiedStatsManager {
   /**
    * Get profiler memory (for EMA tracking across ticks)
    */
-  private getProfilerMemory(): any {
+  private getProfilerMemory(): ProfilerMemory {
     const mem = Memory as unknown as Record<string, any>;
     if (!mem.stats || typeof mem.stats !== "object") {
       mem.stats = {};
