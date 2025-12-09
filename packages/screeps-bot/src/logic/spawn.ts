@@ -670,31 +670,38 @@ export function getRemoteRoomNeedingWorkers(homeRoom: string, role: string, swar
   const remoteAssignments = swarm.remoteAssignments ?? [];
   if (remoteAssignments.length === 0) return null;
 
-  // Define max workers per remote room based on role
-  // Scale based on number of sources in the remote room
-  let maxPerRemote: number;
-  
-  if (role === "remoteHarvester") {
-    maxPerRemote = 2; // 1 per source, assuming 2 sources
-  } else if (role === "remoteHauler") {
-    // Calculate based on distance and sources - more haulers for farther rooms
-    // For now, use simple 2 per remote, but this should be enhanced
-    maxPerRemote = 2;
-  } else {
-    maxPerRemote = 2;
-  }
-
   // Find a remote room that needs workers
   for (const remoteRoom of remoteAssignments) {
     const currentCount = countRemoteCreepsByTargetRoom(homeRoom, role, remoteRoom);
+    const room = Game.rooms[remoteRoom];
     
-    // For harvesters, check actual source count if we have vision
+    let maxPerRemote: number;
+    
     if (role === "remoteHarvester") {
-      const room = Game.rooms[remoteRoom];
+      // 1 harvester per source
       if (room) {
         const sources = room.find(FIND_SOURCES);
-        maxPerRemote = sources.length; // 1 harvester per source
+        maxPerRemote = sources.length;
+      } else {
+        maxPerRemote = 2; // Assume 2 sources if no vision
       }
+    } else if (role === "remoteHauler") {
+      // Calculate based on distance and sources
+      if (room) {
+        const sources = room.find(FIND_SOURCES);
+        const sourceCount = sources.length;
+        
+        // Import hauler dimensioning dynamically
+        const { calculateRemoteHaulerRequirement } = require("../empire/remoteHaulerDimensioning");
+        const energyCapacity = Game.rooms[homeRoom]?.energyCapacityAvailable ?? 800;
+        const requirement = calculateRemoteHaulerRequirement(homeRoom, remoteRoom, sourceCount, energyCapacity);
+        maxPerRemote = requirement.recommendedHaulers;
+      } else {
+        // No vision - use conservative estimate
+        maxPerRemote = 2;
+      }
+    } else {
+      maxPerRemote = 2;
     }
     
     if (currentCount < maxPerRemote) {
