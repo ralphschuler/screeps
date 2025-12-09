@@ -658,10 +658,30 @@ export function factoryWorker(ctx: CreepContext): CreepAction {
 /**
  * RemoteHarvester - Stationary miner in remote room.
  * Travels to remote room, sits at source, harvests to container.
+ * 
+ * ENHANCEMENT: Added hostile detection and flee behavior for safety.
+ * Remote harvesters will flee from hostiles and return home if threatened.
  */
 export function remoteHarvester(ctx: CreepContext): CreepAction {
   // Get target room from memory
   const targetRoom = ctx.memory.targetRoom ?? ctx.memory.homeRoom;
+
+  // SAFETY: Check for nearby hostiles and flee if threatened
+  if (ctx.nearbyEnemies && ctx.hostiles.length > 0) {
+    const dangerousHostiles = ctx.hostiles.filter(h => 
+      ctx.creep.pos.getRangeTo(h) <= 5 &&
+      (h.getActiveBodyparts(ATTACK) > 0 || h.getActiveBodyparts(RANGED_ATTACK) > 0)
+    );
+    
+    if (dangerousHostiles.length > 0) {
+      // If in remote room with hostiles, return home for safety
+      if (ctx.room.name === targetRoom) {
+        return { type: "moveToRoom", roomName: ctx.memory.homeRoom };
+      }
+      // If in transit, flee from hostiles
+      return { type: "flee", from: dangerousHostiles.map(h => h.pos) };
+    }
+  }
 
   // If not in target room, move there
   if (ctx.room.name !== targetRoom) {
@@ -704,8 +724,18 @@ export function remoteHarvester(ctx: CreepContext): CreepAction {
 }
 
 /**
+ * Energy collection threshold for remote haulers.
+ * Only collect from containers when they have this percentage of hauler capacity.
+ * This ensures travel costs are justified by energy gained.
+ */
+const REMOTE_HAULER_ENERGY_THRESHOLD = 0.3; // 30%
+
+/**
  * RemoteHauler - Transports energy from remote room to home room.
  * Picks up from remote containers/ground, delivers to home storage.
+ * 
+ * ENHANCEMENT: Added hostile detection and flee behavior for safety.
+ * Remote haulers will flee from hostiles and prioritize returning home with cargo.
  */
 export function remoteHauler(ctx: CreepContext): CreepAction {
   const isWorking = updateWorkingState(ctx);
@@ -716,6 +746,23 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
   // It should idle until it gets reassigned or dies
   if (!targetRoom || targetRoom === homeRoom) {
     return { type: "idle" };
+  }
+
+  // SAFETY: Check for nearby hostiles and flee if threatened
+  if (ctx.nearbyEnemies && ctx.hostiles.length > 0) {
+    const dangerousHostiles = ctx.hostiles.filter(h => 
+      ctx.creep.pos.getRangeTo(h) <= 5 &&
+      (h.getActiveBodyparts(ATTACK) > 0 || h.getActiveBodyparts(RANGED_ATTACK) > 0)
+    );
+    
+    if (dangerousHostiles.length > 0) {
+      // If carrying energy, prioritize getting home
+      if (isWorking && ctx.room.name !== homeRoom) {
+        return { type: "moveToRoom", roomName: homeRoom };
+      }
+      // Otherwise flee from hostiles
+      return { type: "flee", from: dangerousHostiles.map(h => h.pos) };
+    }
   }
 
   if (isWorking) {
@@ -768,9 +815,15 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
       return { type: "moveToRoom", roomName: targetRoom };
     }
 
+    // ENERGY EFFICIENCY: Only collect if there's sufficient energy to justify the trip
+    // Remote hauling has travel costs, so we want to maximize energy per trip
+    const minEnergyThreshold = ctx.creep.store.getCapacity(RESOURCE_ENERGY) * REMOTE_HAULER_ENERGY_THRESHOLD;
+
     // In remote room - collect from containers or ground
     const containers = ctx.room.find(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_CONTAINER && s.store.getUsedCapacity(RESOURCE_ENERGY) > 0
+      filter: s => 
+        s.structureType === STRUCTURE_CONTAINER && 
+        s.store.getUsedCapacity(RESOURCE_ENERGY) >= minEnergyThreshold
     }) as StructureContainer[];
 
     if (containers.length > 0) {
@@ -779,6 +832,7 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     }
 
     // Check for dropped energy (cache 3 ticks - they disappear quickly)
+    // For dropped resources, collect even smaller amounts to prevent decay
     const dropped = ctx.room.find(FIND_DROPPED_RESOURCES, {
       filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 50
     });
@@ -786,6 +840,20 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     if (dropped.length > 0) {
       const closest = findCachedClosest(ctx.creep, dropped, "remoteHauler_remoteDrop", 3);
       if (closest) return { type: "pickup", target: closest };
+    }
+
+    // If no energy meets threshold, wait near a container for it to fill
+    if (containers.length === 0) {
+      const anyContainer = ctx.room.find(FIND_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_CONTAINER
+      }) as StructureContainer[];
+      
+      if (anyContainer.length > 0) {
+        const closest = findCachedClosest(ctx.creep, anyContainer, "remoteHauler_waitCont", 20);
+        if (closest && ctx.creep.pos.getRangeTo(closest) > 2) {
+          return { type: "moveTo", target: closest };
+        }
+      }
     }
 
     return { type: "idle" };

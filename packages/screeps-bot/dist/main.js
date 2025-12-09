@@ -10018,11 +10018,27 @@ function factoryWorker(ctx) {
 /**
  * RemoteHarvester - Stationary miner in remote room.
  * Travels to remote room, sits at source, harvests to container.
+ *
+ * ENHANCEMENT: Added hostile detection and flee behavior for safety.
+ * Remote harvesters will flee from hostiles and return home if threatened.
  */
 function remoteHarvester(ctx) {
     var _a;
     // Get target room from memory
     const targetRoom = (_a = ctx.memory.targetRoom) !== null && _a !== void 0 ? _a : ctx.memory.homeRoom;
+    // SAFETY: Check for nearby hostiles and flee if threatened
+    if (ctx.nearbyEnemies && ctx.hostiles.length > 0) {
+        const dangerousHostiles = ctx.hostiles.filter(h => ctx.creep.pos.getRangeTo(h) <= 5 &&
+            (h.getActiveBodyparts(ATTACK) > 0 || h.getActiveBodyparts(RANGED_ATTACK) > 0));
+        if (dangerousHostiles.length > 0) {
+            // If in remote room with hostiles, return home for safety
+            if (ctx.room.name === targetRoom) {
+                return { type: "moveToRoom", roomName: ctx.memory.homeRoom };
+            }
+            // If in transit, flee from hostiles
+            return { type: "flee", from: dangerousHostiles.map(h => h.pos) };
+        }
+    }
     // If not in target room, move there
     if (ctx.room.name !== targetRoom) {
         return { type: "moveToRoom", roomName: targetRoom };
@@ -10055,8 +10071,17 @@ function remoteHarvester(ctx) {
     return { type: "drop", resourceType: RESOURCE_ENERGY };
 }
 /**
+ * Energy collection threshold for remote haulers.
+ * Only collect from containers when they have this percentage of hauler capacity.
+ * This ensures travel costs are justified by energy gained.
+ */
+const REMOTE_HAULER_ENERGY_THRESHOLD = 0.3; // 30%
+/**
  * RemoteHauler - Transports energy from remote room to home room.
  * Picks up from remote containers/ground, delivers to home storage.
+ *
+ * ENHANCEMENT: Added hostile detection and flee behavior for safety.
+ * Remote haulers will flee from hostiles and prioritize returning home with cargo.
  */
 function remoteHauler(ctx) {
     const isWorking = updateWorkingState(ctx);
@@ -10066,6 +10091,19 @@ function remoteHauler(ctx) {
     // It should idle until it gets reassigned or dies
     if (!targetRoom || targetRoom === homeRoom) {
         return { type: "idle" };
+    }
+    // SAFETY: Check for nearby hostiles and flee if threatened
+    if (ctx.nearbyEnemies && ctx.hostiles.length > 0) {
+        const dangerousHostiles = ctx.hostiles.filter(h => ctx.creep.pos.getRangeTo(h) <= 5 &&
+            (h.getActiveBodyparts(ATTACK) > 0 || h.getActiveBodyparts(RANGED_ATTACK) > 0));
+        if (dangerousHostiles.length > 0) {
+            // If carrying energy, prioritize getting home
+            if (isWorking && ctx.room.name !== homeRoom) {
+                return { type: "moveToRoom", roomName: homeRoom };
+            }
+            // Otherwise flee from hostiles
+            return { type: "flee", from: dangerousHostiles.map(h => h.pos) };
+        }
     }
     if (isWorking) {
         // Has energy - return to home room and deliver
@@ -10110,9 +10148,13 @@ function remoteHauler(ctx) {
         if (ctx.room.name !== targetRoom) {
             return { type: "moveToRoom", roomName: targetRoom };
         }
+        // ENERGY EFFICIENCY: Only collect if there's sufficient energy to justify the trip
+        // Remote hauling has travel costs, so we want to maximize energy per trip
+        const minEnergyThreshold = ctx.creep.store.getCapacity(RESOURCE_ENERGY) * REMOTE_HAULER_ENERGY_THRESHOLD;
         // In remote room - collect from containers or ground
         const containers = ctx.room.find(FIND_STRUCTURES, {
-            filter: s => s.structureType === STRUCTURE_CONTAINER && s.store.getUsedCapacity(RESOURCE_ENERGY) > 0
+            filter: s => s.structureType === STRUCTURE_CONTAINER &&
+                s.store.getUsedCapacity(RESOURCE_ENERGY) >= minEnergyThreshold
         });
         if (containers.length > 0) {
             const closest = findCachedClosest(ctx.creep, containers, "remoteHauler_remoteCont", 10);
@@ -10120,6 +10162,7 @@ function remoteHauler(ctx) {
                 return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
         }
         // Check for dropped energy (cache 3 ticks - they disappear quickly)
+        // For dropped resources, collect even smaller amounts to prevent decay
         const dropped = ctx.room.find(FIND_DROPPED_RESOURCES, {
             filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 50
         });
@@ -10127,6 +10170,18 @@ function remoteHauler(ctx) {
             const closest = findCachedClosest(ctx.creep, dropped, "remoteHauler_remoteDrop", 3);
             if (closest)
                 return { type: "pickup", target: closest };
+        }
+        // If no energy meets threshold, wait near a container for it to fill
+        if (containers.length === 0) {
+            const anyContainer = ctx.room.find(FIND_STRUCTURES, {
+                filter: s => s.structureType === STRUCTURE_CONTAINER
+            });
+            if (anyContainer.length > 0) {
+                const closest = findCachedClosest(ctx.creep, anyContainer, "remoteHauler_waitCont", 20);
+                if (closest && ctx.creep.pos.getRangeTo(closest) > 2) {
+                    return { type: "moveTo", target: closest };
+                }
+            }
         }
         return { type: "idle" };
     }
@@ -10468,6 +10523,9 @@ function healer(ctx) {
 /**
  * Soldier - Offensive combat creep.
  * Attacks hostiles and hostile structures.
+ *
+ * ENHANCEMENT: Added threat assessment and retreat logic.
+ * Soldiers will retreat if critically damaged to preserve expensive units.
  */
 function soldier(ctx) {
     var _a;
@@ -10476,6 +10534,20 @@ function soldier(ctx) {
         const squad = getSquadMemory(ctx.memory.squadId);
         if (squad)
             return squadBehavior(ctx, squad);
+    }
+    // TACTICAL RETREAT: If critically damaged (below 30% HP), retreat to home room
+    // This is especially important for boosted creeps which are expensive to replace
+    const hpPercent = ctx.creep.hits / ctx.creep.hitsMax;
+    if (hpPercent < 0.3) {
+        if (ctx.room.name !== ctx.homeRoom) {
+            return { type: "moveToRoom", roomName: ctx.homeRoom };
+        }
+        // In home room, move near spawn for healing
+        const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+        if (spawns.length > 0 && ctx.creep.pos.getRangeTo(spawns[0]) > 3) {
+            return { type: "moveTo", target: spawns[0] };
+        }
+        return { type: "idle" };
     }
     // Solo behavior
     const targetRoom = (_a = ctx.memory.targetRoom) !== null && _a !== void 0 ? _a : ctx.homeRoom;
@@ -10520,6 +10592,9 @@ function soldier(ctx) {
 /**
  * Siege - Dismantler creep for breaking defenses.
  * Priority: spawns → towers → walls/ramparts → other structures
+ *
+ * ENHANCEMENT: Added threat assessment and retreat logic.
+ * Siege units will retreat if critically damaged to preserve expensive boosted units.
  */
 function siege(ctx) {
     var _a;
@@ -10528,6 +10603,20 @@ function siege(ctx) {
         const squad = getSquadMemory(ctx.memory.squadId);
         if (squad)
             return squadBehavior(ctx, squad);
+    }
+    // TACTICAL RETREAT: If critically damaged (below 30% HP), retreat to home room
+    // Siege units are expensive, especially when boosted with WORK boosts
+    const hpPercent = ctx.creep.hits / ctx.creep.hitsMax;
+    if (hpPercent < 0.3) {
+        if (ctx.room.name !== ctx.homeRoom) {
+            return { type: "moveToRoom", roomName: ctx.homeRoom };
+        }
+        // In home room, move near spawn for healing
+        const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+        if (spawns.length > 0 && ctx.creep.pos.getRangeTo(spawns[0]) > 3) {
+            return { type: "moveTo", target: spawns[0] };
+        }
+        return { type: "idle" };
     }
     const targetRoom = (_a = ctx.memory.targetRoom) !== null && _a !== void 0 ? _a : ctx.homeRoom;
     // Move to target room
@@ -10590,9 +10679,26 @@ function siege(ctx) {
 /**
  * Harasser - Hit-and-run attacker targeting workers.
  * Flees from dangerous combat creeps.
+ *
+ * ENHANCEMENT: Improved threat assessment with HP-based retreat logic.
+ * Harassers are fast, cheap units designed for hit-and-run tactics.
  */
 function harasser(ctx) {
     const targetRoom = ctx.memory.targetRoom;
+    // TACTICAL RETREAT: If critically damaged (below 40% HP), return home
+    // Harassers should retreat earlier than heavy units since they're meant for hit-and-run
+    const hpPercent = ctx.creep.hits / ctx.creep.hitsMax;
+    if (hpPercent < 0.4) {
+        if (ctx.room.name !== ctx.homeRoom) {
+            return { type: "moveToRoom", roomName: ctx.homeRoom };
+        }
+        // In home room, move near spawn
+        const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+        if (spawns.length > 0 && ctx.creep.pos.getRangeTo(spawns[0]) > 3) {
+            return { type: "moveTo", target: spawns[0] };
+        }
+        return { type: "idle" };
+    }
     if (!targetRoom) {
         const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
         if (spawns.length > 0) {
@@ -10628,9 +10734,30 @@ function harasser(ctx) {
 /**
  * Ranger - Ranged kiting creep.
  * Maintains distance of 3 tiles while attacking.
+ *
+ * ENHANCEMENT: Added threat assessment and retreat logic.
+ * Rangers will retreat if critically damaged to preserve expensive units.
  */
 function ranger(ctx) {
     const mem = ctx.creep.memory;
+    // TACTICAL RETREAT: If critically damaged (below 30% HP), retreat to home room
+    // Rangers are valuable ranged attackers, often boosted for maximum effectiveness
+    const hpPercent = ctx.creep.hits / ctx.creep.hitsMax;
+    if (hpPercent < 0.3) {
+        // Clear assist target when retreating
+        if (mem.assistTarget) {
+            delete mem.assistTarget;
+        }
+        if (ctx.room.name !== ctx.homeRoom) {
+            return { type: "moveToRoom", roomName: ctx.homeRoom };
+        }
+        // In home room, move near spawn for healing
+        const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
+        if (spawns.length > 0 && ctx.creep.pos.getRangeTo(spawns[0]) > 3) {
+            return { type: "moveTo", target: spawns[0] };
+        }
+        return { type: "idle" };
+    }
     // Check if assigned to assist another room
     if (mem.assistTarget) {
         const assistRoom = Game.rooms[mem.assistTarget];
@@ -10698,23 +10825,61 @@ function ranger(ctx) {
 // =============================================================================
 /**
  * Execute squad-coordinated behavior.
+ *
+ * ENHANCEMENT: Improved squad coordination with formation awareness.
+ * Squad members stay together and coordinate movements.
  */
 function squadBehavior(ctx, squad) {
+    var _a;
+    // SQUAD COORDINATION: Check if we should wait for other squad members
+    const shouldWaitForSquad = (state) => {
+        if (state !== "gathering" && state !== "moving")
+            return false;
+        // Count squad members in current room
+        const membersInRoom = squad.members.filter(name => {
+            const creep = Game.creeps[name];
+            return creep && creep.room.name === ctx.room.name;
+        }).length;
+        // Wait if less than 50% of squad is present (minimum 2 members)
+        const totalMembers = squad.members.length;
+        return membersInRoom < Math.max(2, totalMembers * 0.5);
+    };
     switch (squad.state) {
         case "gathering":
             // Move to rally point
             if (ctx.room.name !== squad.rallyRoom) {
                 return { type: "moveToRoom", roomName: squad.rallyRoom };
             }
-            return { type: "moveTo", target: new RoomPosition(25, 25, squad.rallyRoom) };
+            // Wait at rally point for other squad members
+            const rallyPos = new RoomPosition(25, 25, squad.rallyRoom);
+            if (ctx.creep.pos.getRangeTo(rallyPos) > 3) {
+                return { type: "moveTo", target: rallyPos };
+            }
+            return { type: "idle" };
         case "moving": {
             const targetRoom = squad.targetRooms[0];
-            if (targetRoom && ctx.room.name !== targetRoom) {
+            if (!targetRoom)
+                return { type: "idle" };
+            if (ctx.room.name !== targetRoom) {
+                // COORDINATION: Wait for squad if we're ahead
+                if (shouldWaitForSquad("moving")) {
+                    return { type: "idle" };
+                }
                 return { type: "moveToRoom", roomName: targetRoom };
             }
             return { type: "idle" };
         }
         case "attacking":
+            // RETREAT CHECK: Squad members should retreat if HP is too low
+            // Default to 30% if retreatThreshold is not set
+            const hpPercent = ctx.creep.hits / ctx.creep.hitsMax;
+            const retreatThreshold = (_a = squad.retreatThreshold) !== null && _a !== void 0 ? _a : 0.3;
+            if (hpPercent < retreatThreshold) {
+                // Individual retreat to rally room
+                if (ctx.room.name !== squad.rallyRoom) {
+                    return { type: "moveToRoom", roomName: squad.rallyRoom };
+                }
+            }
             // Execute role-specific attack behavior
             switch (ctx.memory.role) {
                 case "soldier":
