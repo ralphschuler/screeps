@@ -4698,9 +4698,11 @@ class Kernel {
         }
         this.tickCpuUsed += cpuUsed;
         // Check CPU budget violation
+        // Only log if significantly over budget (>150%) to reduce noise
         const budgetLimit = this.getCpuLimit() * process.cpuBudget;
-        if (cpuUsed > budgetLimit && Game.time % 50 === 0) {
-            logger.warn(`Kernel: Process "${process.name}" exceeded CPU budget: ${cpuUsed.toFixed(3)} > ${budgetLimit.toFixed(3)}`, { subsystem: "Kernel" });
+        const overBudgetRatio = cpuUsed / budgetLimit;
+        if (overBudgetRatio > 1.5 && Game.time % 500 === 0) {
+            logger.warn(`Kernel: Process "${process.name}" exceeded CPU budget: ${cpuUsed.toFixed(3)} > ${budgetLimit.toFixed(3)} (${(overBudgetRatio * 100).toFixed(0)}%)`, { subsystem: "Kernel" });
         }
     }
     /**
@@ -4724,7 +4726,7 @@ class Kernel {
             return;
         }
         let processesRun = 0;
-        let processesSkipped = 0;
+        const processesSkipped = 0;
         let lastExecutedIndexThisTick = -1;
         // Start from the next process after the last one executed
         // This creates a wrap-around effect: if we stopped at index 5 last tick,
@@ -12325,18 +12327,22 @@ class CreepProcessManager {
     }
     /**
      * Get CPU budget based on priority
+     *
+     * Typical creep CPU usage ranges from 0.05 to 0.5 CPU depending on role complexity.
+     * Budgets should be generous enough to accommodate normal behavior while still
+     * catching outliers that need optimization.
      */
     getCpuBudgetForPriority(priority) {
         if (priority >= ProcessPriority.CRITICAL) {
-            return 0.002; // ~0.1 CPU per critical creep (50 creeps = 5 CPU)
+            return 0.012; // ~0.6 CPU per critical creep (50 creeps = 30 CPU)
         }
         if (priority >= ProcessPriority.HIGH) {
-            return 0.0015; // ~0.075 CPU per high priority creep
+            return 0.01; // ~0.5 CPU per high priority creep
         }
         if (priority >= ProcessPriority.MEDIUM) {
-            return 0.001; // ~0.05 CPU per medium priority creep
+            return 0.008; // ~0.4 CPU per medium priority creep
         }
-        return 0.0005; // ~0.025 CPU per low priority creep
+        return 0.006; // ~0.3 CPU per low priority creep
     }
     /**
      * Get statistics about registered creeps
@@ -15980,26 +15986,28 @@ function getRoomProcessPriority(room) {
 function getRoomCpuBudget(room) {
     var _a;
     if (!((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my)) {
-        return 0.01; // 1% for non-owned rooms
+        return 0.02; // 2% for non-owned rooms (1 CPU for 50 CPU limit)
     }
     const rcl = room.controller.level;
     const hostiles = room.find(FIND_HOSTILE_CREEPS);
     // War mode: higher budget
+    // Typical war room usage: 2-6 CPU, allow 8-12% budget
     if (hostiles.length > 0) {
-        return 0.005; // 0.5% per room (war mode, up to 0.25 CPU for RCL8)
+        return 0.12; // 12% per room (6 CPU for 50 CPU limit)
     }
-    // Eco mode: lower budget based on RCL
-    // RCL 1-3: 0.05% (0.025 CPU)
-    // RCL 4-6: 0.1% (0.05 CPU)
-    // RCL 7-8: 0.2% (0.1 CPU)
+    // Eco mode: budget based on RCL
+    // Typical eco room usage: 0.5-2 CPU for small rooms, 2-8 CPU for large rooms
+    // RCL 1-3: 0.05 CPU target (0.1% of 50 CPU)
+    // RCL 4-6: 0.1 CPU target (0.2% of 50 CPU)  
+    // RCL 7-8: 0.15 CPU target (0.3% of 50 CPU)
     if (rcl <= 3) {
-        return 0.0005;
+        return 0.04; // 4% (2 CPU for 50 CPU limit)
     }
     else if (rcl <= 6) {
-        return 0.001;
+        return 0.06; // 6% (3 CPU for 50 CPU limit)
     }
     else {
-        return 0.002;
+        return 0.08; // 8% (4 CPU for 50 CPU limit)
     }
 }
 /**

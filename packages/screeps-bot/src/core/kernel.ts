@@ -535,10 +535,12 @@ export class Kernel {
     this.tickCpuUsed += cpuUsed;
 
     // Check CPU budget violation
+    // Only log if significantly over budget (>150%) to reduce noise
     const budgetLimit = this.getCpuLimit() * process.cpuBudget;
-    if (cpuUsed > budgetLimit && Game.time % 50 === 0) {
+    const overBudgetRatio = cpuUsed / budgetLimit;
+    if (overBudgetRatio > 1.5 && Game.time % 500 === 0) {
       logger.warn(
-        `Kernel: Process "${process.name}" exceeded CPU budget: ${cpuUsed.toFixed(3)} > ${budgetLimit.toFixed(3)}`,
+        `Kernel: Process "${process.name}" exceeded CPU budget: ${cpuUsed.toFixed(3)} > ${budgetLimit.toFixed(3)} (${(overBudgetRatio * 100).toFixed(0)}%)`,
         { subsystem: "Kernel" }
       );
     }
@@ -569,7 +571,7 @@ export class Kernel {
     }
 
     let processesRun = 0;
-    let processesSkipped = 0;
+    const processesSkipped = 0;
     let lastExecutedIndexThisTick = -1;
 
     // Start from the next process after the last one executed
