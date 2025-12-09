@@ -142,7 +142,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
       break;
 
     case "moveToRoom":
-      moveToRoom(creep, action.roomName);
+      moveToRoom(creep, action.roomName, { visualizePathStyle: { stroke: PATH_COLORS.move } });
       break;
 
     case "flee":

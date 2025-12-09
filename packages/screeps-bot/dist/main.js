@@ -9547,7 +9547,7 @@ function executeAction(creep, action, ctx) {
             moveCreep(creep, action.target, { visualizePathStyle: { stroke: PATH_COLORS.move } });
             break;
         case "moveToRoom":
-            moveToRoom(creep, action.roomName);
+            moveToRoom(creep, action.roomName, { visualizePathStyle: { stroke: PATH_COLORS.move } });
             break;
         case "flee":
             fleeFrom(creep, action.from, 10);
