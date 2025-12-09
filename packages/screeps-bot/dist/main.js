@@ -9789,23 +9789,18 @@ function hauler(ctx) {
             if (s.structureType !== STRUCTURE_CONTAINER)
                 return false;
             const container = s;
-            // Check for any non-energy resources
-            for (const resourceType of RESOURCES_ALL) {
-                if (resourceType !== RESOURCE_ENERGY && container.store.getUsedCapacity(resourceType) > 0) {
-                    return true;
-                }
-            }
-            return false;
+            // Check for any non-energy resources using Object.keys for better performance
+            const resources = Object.keys(container.store);
+            return resources.some(r => r !== RESOURCE_ENERGY && container.store.getUsedCapacity(r) > 0);
         }
     });
     if (mineralContainers.length > 0) {
         const closest = findCachedClosest(ctx.creep, mineralContainers, "hauler_mineral", 15);
         if (closest) {
-            // Find first mineral type in container
-            for (const resourceType of RESOURCES_ALL) {
-                if (resourceType !== RESOURCE_ENERGY && closest.store.getUsedCapacity(resourceType) > 0) {
-                    return { type: "withdraw", target: closest, resourceType };
-                }
+            // Find first mineral type in container using Object.keys for better performance
+            const mineralType = Object.keys(closest.store).find(r => r !== RESOURCE_ENERGY && closest.store.getUsedCapacity(r) > 0);
+            if (mineralType) {
+                return { type: "withdraw", target: closest, resourceType: mineralType };
             }
         }
     }
@@ -20998,8 +20993,9 @@ let TerminalManager = class TerminalManager {
         const mineralMap = new Map();
         for (const room of rooms) {
             const terminal = room.terminal;
-            // Check each mineral type
-            for (const resourceType of RESOURCES_ALL) {
+            // Check each mineral type - only iterate over resources actually in the terminal
+            const resources = Object.keys(terminal.store);
+            for (const resourceType of resources) {
                 if (resourceType === RESOURCE_ENERGY)
                     continue;
                 const amount = terminal.store.getUsedCapacity(resourceType);
@@ -21134,6 +21130,7 @@ const DEFAULT_CONFIG$9 = {
 /**
  * Simple commodity production recipes
  * Maps output commodity to required inputs
+ * Note: Only includes level 0 commodities that can be produced in factory
  */
 const COMMODITY_RECIPES = {
     // Level 0 commodities (basic compression)
@@ -21228,8 +21225,7 @@ let FactoryManager = class FactoryManager {
             }
         }
         if (canProduce) {
-            // Produce the commodity
-            // Cast to CommodityConstant for factory.produce() - all our recipes are valid factory commodities
+            // Produce the commodity (production is already CommodityConstant)
             const result = factory.produce(production);
             if (result === OK) {
                 logger.info(`Factory in ${room.name} producing ${production}`, { subsystem: "Factory" });

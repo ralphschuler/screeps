@@ -36,10 +36,18 @@ const DEFAULT_CONFIG: FactoryManagerConfig = {
 };
 
 /**
+ * Recipe for a commodity
+ */
+interface CommodityRecipe {
+  [resource: string]: number;
+}
+
+/**
  * Simple commodity production recipes
  * Maps output commodity to required inputs
+ * Note: Only includes level 0 commodities that can be produced in factory
  */
-const COMMODITY_RECIPES: Partial<Record<CommodityConstant | MineralCompoundConstant, Partial<Record<ResourceConstant, number>>>> = {
+const COMMODITY_RECIPES: Partial<Record<CommodityConstant, CommodityRecipe>> = {
   // Level 0 commodities (basic compression)
   [RESOURCE_UTRIUM_BAR]: { [RESOURCE_UTRIUM]: 500, [RESOURCE_ENERGY]: 200 },
   [RESOURCE_LEMERGIUM_BAR]: { [RESOURCE_LEMERGIUM]: 500, [RESOURCE_ENERGY]: 200 },
@@ -55,7 +63,7 @@ const COMMODITY_RECIPES: Partial<Record<CommodityConstant | MineralCompoundConst
 /**
  * Production priority for commodities (higher = more important)
  */
-const PRODUCTION_PRIORITY: Partial<Record<CommodityConstant | MineralCompoundConstant, number>> = {
+const PRODUCTION_PRIORITY: Partial<Record<CommodityConstant, number>> = {
   [RESOURCE_BATTERY]: 10, // Most useful - pure energy compression
   [RESOURCE_UTRIUM_BAR]: 5,
   [RESOURCE_LEMERGIUM_BAR]: 5,
@@ -148,9 +156,8 @@ export class FactoryManager {
     }
 
     if (canProduce) {
-      // Produce the commodity
-      // Cast to CommodityConstant for factory.produce() - all our recipes are valid factory commodities
-      const result = factory.produce(production as CommodityConstant);
+      // Produce the commodity (production is already CommodityConstant)
+      const result = factory.produce(production);
       if (result === OK) {
         logger.info(`Factory in ${room.name} producing ${production}`, { subsystem: "Factory" });
       } else if (result !== ERR_TIRED) {
@@ -166,12 +173,12 @@ export class FactoryManager {
     room: Room,
     factory: StructureFactory,
     storage: StructureStorage
-  ): CommodityConstant | MineralCompoundConstant | null {
+  ): CommodityConstant | null {
     // Get list of possible productions sorted by priority
-    const candidates: Array<{ commodity: CommodityConstant | MineralCompoundConstant; priority: number; score: number }> = [];
+    const candidates: Array<{ commodity: CommodityConstant; priority: number; score: number }> = [];
 
     for (const [commodity, recipe] of Object.entries(COMMODITY_RECIPES)) {
-      const commodityKey = commodity as CommodityConstant | MineralCompoundConstant;
+      const commodityKey = commodity as CommodityConstant;
       
       // Check if we have all inputs in storage
       let hasInputs = true;
@@ -253,7 +260,7 @@ export class FactoryManager {
   public hasOutputsToRemove(factory: StructureFactory): boolean {
     // Check for any produced commodities in the factory
     for (const commodity of Object.keys(COMMODITY_RECIPES)) {
-      const amount = factory.store.getUsedCapacity(commodity as CommodityConstant | MineralCompoundConstant);
+      const amount = factory.store.getUsedCapacity(commodity as CommodityConstant);
       if (amount > 0) {
         return true;
       }

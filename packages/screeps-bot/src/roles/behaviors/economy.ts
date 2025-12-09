@@ -357,24 +357,22 @@ export function hauler(ctx: CreepContext): CreepAction {
     filter: s => {
       if (s.structureType !== STRUCTURE_CONTAINER) return false;
       const container = s as StructureContainer;
-      // Check for any non-energy resources
-      for (const resourceType of RESOURCES_ALL) {
-        if (resourceType !== RESOURCE_ENERGY && container.store.getUsedCapacity(resourceType) > 0) {
-          return true;
-        }
-      }
-      return false;
+      // Check for any non-energy resources using Object.keys for better performance
+      const resources = Object.keys(container.store) as ResourceConstant[];
+      return resources.some(r => r !== RESOURCE_ENERGY && container.store.getUsedCapacity(r) > 0);
     }
   }) as StructureContainer[];
   
   if (mineralContainers.length > 0) {
     const closest = findCachedClosest(ctx.creep, mineralContainers, "hauler_mineral", 15);
     if (closest) {
-      // Find first mineral type in container
-      for (const resourceType of RESOURCES_ALL) {
-        if (resourceType !== RESOURCE_ENERGY && closest.store.getUsedCapacity(resourceType) > 0) {
-          return { type: "withdraw", target: closest, resourceType };
-        }
+      // Find first mineral type in container using Object.keys for better performance
+      const mineralType = Object.keys(closest.store).find(
+        r => r !== RESOURCE_ENERGY && closest.store.getUsedCapacity(r as ResourceConstant) > 0
+      ) as ResourceConstant | undefined;
+      
+      if (mineralType) {
+        return { type: "withdraw", target: closest, resourceType: mineralType };
       }
     }
   }

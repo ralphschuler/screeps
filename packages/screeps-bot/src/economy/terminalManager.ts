@@ -222,8 +222,9 @@ export class TerminalManager {
     for (const room of rooms) {
       const terminal = room.terminal!;
       
-      // Check each mineral type
-      for (const resourceType of RESOURCES_ALL) {
+      // Check each mineral type - only iterate over resources actually in the terminal
+      const resources = Object.keys(terminal.store) as ResourceConstant[];
+      for (const resourceType of resources) {
         if (resourceType === RESOURCE_ENERGY) continue;
         
         const amount = terminal.store.getUsedCapacity(resourceType);
