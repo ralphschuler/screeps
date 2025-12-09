@@ -6,15 +6,22 @@ import commonjs from "@rollup/plugin-commonjs";
 import typescript from "rollup-plugin-typescript2";
 import screeps from "rollup-plugin-screeps";
 
+// Helper: returns undefined if the env value is empty or undefined
+function cleanEnv(value?: string): string | undefined {
+  if (!value || value.trim() === "") return undefined;
+  return value.trim();
+}
+
 const cfg = {
-  email: process.env.SCREEPS_USERNAME,
-  password: process.env.SCREEPS_PASS,
-  token: process.env.SCREEPS_TOKEN,
-  protocol: process.env.SCREEPS_PROTOCOL || "https",
-  hostname: process.env.SCREEPS_HOSTNAME || "screeps.com",
-  port: process.env.SCREEPS_PORT || 443,
-  path: process.env.SCREEPS_PATH || "/",
-  branch: process.env.SCREEPS_BRANCH || "main"
+  email: cleanEnv(process.env.SCREEPS_USERNAME),
+  password: cleanEnv(process.env.SCREEPS_PASS),
+  token: cleanEnv(process.env.SCREEPS_TOKEN),
+
+  protocol: cleanEnv(process.env.SCREEPS_PROTOCOL) || "https",
+  hostname: cleanEnv(process.env.SCREEPS_HOSTNAME) || "screeps.com",
+  port: cleanEnv(process.env.SCREEPS_PORT) || 443,
+  path: cleanEnv(process.env.SCREEPS_PATH) || "/",
+  branch: cleanEnv(process.env.SCREEPS_BRANCH) || "main"
 };
 
 export default {
@@ -30,6 +37,11 @@ export default {
     resolve({ rootDir: "src" }),
     commonjs(),
     typescript({ tsconfig: "./tsconfig.json" }),
-    screeps({ config: { screeps: cfg }, dryRun: cfg.token == null })
+
+    // dryRun enabled when token is missing
+    screeps({
+      config: { screeps: cfg },
+      dryRun: !cfg.token
+    })
   ]
 };
