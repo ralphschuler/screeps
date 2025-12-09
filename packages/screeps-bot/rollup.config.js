@@ -5,6 +5,7 @@ import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import typescript from "rollup-plugin-typescript2";
 import screeps from "rollup-plugin-screeps";
+import terser from "@rollup/plugin-terser";
 
 // Helper: returns undefined if the env value is empty or undefined
 function cleanEnv(value) {
@@ -35,7 +36,7 @@ export default {
   output: {
     file: "dist/main.js",
     format: "cjs",
-    sourcemap: true
+    sourcemap: false
   },
 
   plugins: [
@@ -43,6 +44,23 @@ export default {
     resolve({ rootDir: "src" }),
     commonjs(),
     typescript({ tsconfig: "./tsconfig.json" }),
+    terser({
+      compress: {
+        passes: 2,
+        unsafe: true,
+        unsafe_arrows: true,
+        unsafe_methods: true,
+        unsafe_proto: true,
+        unsafe_regexp: true,
+        unsafe_undefined: true
+      },
+      mangle: {
+        toplevel: true
+      },
+      format: {
+        comments: false
+      }
+    }),
 
     // Enable dryRun when not pushing to Screeps or when credentials are invalid
     screeps({
