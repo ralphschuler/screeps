@@ -183,6 +183,8 @@ export interface SquadDefinition {
   state: "gathering" | "moving" | "attacking" | "retreating" | "dissolving";
   /** Creation tick */
   createdAt: number;
+  /** Retreat threshold (HP percentage, 0-1) */
+  retreatThreshold?: number;
 }
 
 /**

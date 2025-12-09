@@ -21393,6 +21393,37 @@ function calculateSquadComposition(request) {
     };
 }
 /**
+ * Calculate optimal squad composition for an offensive operation
+ */
+function calculateOffensiveSquadComposition(targetRoom, intel) {
+    var _a, _b;
+    // Base composition for offense
+    let composition = {
+        guards: 2,
+        rangers: 3,
+        healers: 2,
+        siegeUnits: 1
+    };
+    // Scale up based on target defenses
+    if (intel) {
+        const towers = (_a = intel.towerCount) !== null && _a !== void 0 ? _a : 0;
+        const spawns = (_b = intel.spawnCount) !== null && _b !== void 0 ? _b : 0;
+        // More healers for heavy tower rooms
+        if (towers >= 3) {
+            composition.healers += 1;
+        }
+        // More siege units for fortified rooms
+        if (towers >= 2 && spawns >= 2) {
+            composition.siegeUnits += 1;
+        }
+        // More guards for larger bases
+        if (spawns >= 2) {
+            composition.guards += 1;
+        }
+    }
+    return composition;
+}
+/**
  * Find the best rally room for a squad targeting a specific room
  */
 function selectRallyRoom(cluster, targetRoom) {
@@ -21426,6 +21457,38 @@ function createDefenseSquad(cluster, request) {
     };
     logger.info(`Created defense squad ${squadId} for ${request.roomName}: ` +
         `${composition.guards}G/${composition.rangers}R/${composition.healers}H rally at ${rallyRoom}`, { subsystem: "Squad" });
+    return squad;
+}
+/**
+ * Create a new squad for an offensive operation
+ */
+function createOffensiveSquad(cluster, targetRoom, type, intel) {
+    const composition = calculateOffensiveSquadComposition(targetRoom, intel);
+    const squadId = `${type}_${targetRoom}_${Game.time}`;
+    const rallyRoom = selectRallyRoom(cluster, targetRoom);
+    // Set retreat threshold based on squad type
+    let retreatThreshold = 0.3; // Default
+    if (type === "harass") {
+        retreatThreshold = 0.5; // Harassers retreat earlier
+    }
+    else if (type === "raid") {
+        retreatThreshold = 0.4;
+    }
+    else if (type === "siege") {
+        retreatThreshold = 0.3; // Siege units more resilient
+    }
+    const squad = {
+        id: squadId,
+        type,
+        members: [],
+        rallyRoom,
+        targetRooms: [targetRoom],
+        state: "gathering",
+        createdAt: Game.time,
+        retreatThreshold
+    };
+    logger.info(`Created ${type} squad ${squadId} for ${targetRoom}: ` +
+        `${composition.guards}G/${composition.rangers}R/${composition.healers}H/${composition.siegeUnits}S rally at ${rallyRoom}`, { subsystem: "Squad" });
     return squad;
 }
 /**
@@ -21666,6 +21729,1026 @@ function updateMilitaryReservations(cluster) {
 }
 
 /**
+ * Offensive Doctrine System
+ *
+ * Implements the three-tier offensive escalation model from ROADMAP Section 12:
+ * 1. Harassment - Fast hit-and-run attacks on workers
+ * 2. Raid - Coordinated attacks to disrupt operations
+ * 3. Siege - Full-scale assault with dismantlers and support
+ *
+ * Each doctrine defines squad composition, tactics, and target priorities.
+ */
+/**
+ * Doctrine configurations by type
+ */
+const DOCTRINE_CONFIGS = {
+    harassment: {
+        composition: {
+            harassers: 3,
+            soldiers: 0,
+            rangers: 1,
+            healers: 0,
+            siegeUnits: 0
+        },
+        targetPriority: {
+            workers: 100,
+            military: 50,
+            spawns: 20,
+            towers: 10,
+            extensions: 15,
+            storage: 10,
+            defenses: 5,
+            labs: 5
+        },
+        minEnergy: 50000,
+        useBoosts: false,
+        retreatThreshold: 0.5,
+        creepSize: "small",
+        engagement: {
+            engageTowers: false,
+            maxTowers: 0,
+            prioritizeDefenses: false
+        }
+    },
+    raid: {
+        composition: {
+            harassers: 1,
+            soldiers: 2,
+            rangers: 3,
+            healers: 2,
+            siegeUnits: 0
+        },
+        targetPriority: {
+            military: 100,
+            towers: 80,
+            spawns: 90,
+            workers: 60,
+            extensions: 50,
+            storage: 40,
+            labs: 30,
+            defenses: 20
+        },
+        minEnergy: 100000,
+        useBoosts: false,
+        retreatThreshold: 0.4,
+        creepSize: "medium",
+        engagement: {
+            engageTowers: true,
+            maxTowers: 2,
+            prioritizeDefenses: false
+        }
+    },
+    siege: {
+        composition: {
+            harassers: 0,
+            soldiers: 2,
+            rangers: 4,
+            healers: 3,
+            siegeUnits: 2
+        },
+        targetPriority: {
+            towers: 100,
+            spawns: 100,
+            military: 90,
+            defenses: 80,
+            storage: 70,
+            labs: 60,
+            extensions: 50,
+            workers: 40
+        },
+        minEnergy: 200000,
+        useBoosts: true,
+        retreatThreshold: 0.3,
+        creepSize: "large",
+        engagement: {
+            engageTowers: true,
+            maxTowers: 6,
+            prioritizeDefenses: true
+        }
+    }
+};
+/**
+ * Determine appropriate doctrine based on target room intelligence
+ */
+function selectDoctrine(targetRoomName, intel) {
+    var _a, _b, _c, _d;
+    // Default to harassment if no intel
+    if (!intel) {
+        logger.debug(`No intel for ${targetRoomName}, defaulting to harassment`, {
+            subsystem: "Doctrine"
+        });
+        return "harassment";
+    }
+    const towers = (_a = intel.towerCount) !== null && _a !== void 0 ? _a : 0;
+    const spawns = (_b = intel.spawnCount) !== null && _b !== void 0 ? _b : 0;
+    const rcl = (_c = intel.rcl) !== null && _c !== void 0 ? _c : 0;
+    const military = (_d = intel.militaryPresence) !== null && _d !== void 0 ? _d : 0;
+    // Calculate threat score
+    const threatScore = towers * 3 + spawns * 2 + military * 1.5 + rcl * 0.5;
+    // Select doctrine based on threat
+    if (threatScore >= 20 || rcl >= 7) {
+        logger.info(`Selected SIEGE doctrine for ${targetRoomName} (threat: ${threatScore})`, {
+            subsystem: "Doctrine"
+        });
+        return "siege";
+    }
+    else if (threatScore >= 10 || rcl >= 5) {
+        logger.info(`Selected RAID doctrine for ${targetRoomName} (threat: ${threatScore})`, {
+            subsystem: "Doctrine"
+        });
+        return "raid";
+    }
+    else {
+        logger.info(`Selected HARASSMENT doctrine for ${targetRoomName} (threat: ${threatScore})`, {
+            subsystem: "Doctrine"
+        });
+        return "harassment";
+    }
+}
+/**
+ * Check if cluster has resources to launch a doctrine
+ */
+function canLaunchDoctrine(cluster, doctrine) {
+    var _a;
+    const config = DOCTRINE_CONFIGS[doctrine];
+    // Calculate total energy available across cluster rooms
+    let totalEnergy = 0;
+    for (const roomName of cluster.memberRooms) {
+        const room = Game.rooms[roomName];
+        if (!room || !((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my))
+            continue;
+        const storage = room.storage;
+        const terminal = room.terminal;
+        if (storage)
+            totalEnergy += storage.store.energy;
+        if (terminal)
+            totalEnergy += terminal.store.energy;
+    }
+    const canLaunch = totalEnergy >= config.minEnergy;
+    if (!canLaunch) {
+        logger.debug(`Cannot launch ${doctrine}: insufficient energy (${totalEnergy}/${config.minEnergy})`, { subsystem: "Doctrine" });
+    }
+    return canLaunch;
+}
+
+/**
+ * Attack Target Selector
+ *
+ * Strategic target selection for offensive operations.
+ * Evaluates potential targets based on:
+ * - Room value (RCL, resources, strategic position)
+ * - Defenses (towers, walls, military presence)
+ * - Distance from owned rooms
+ * - Current war status
+ * - Nuke coordination opportunities
+ *
+ * Addresses ROADMAP Section 12: Attack target selection
+ */
+/**
+ * Attack cooldown period in ticks (5000 ticks ≈ 4 hours at 20 ticks/sec)
+ * Prevents spamming attacks on the same room
+ */
+const ATTACK_COOLDOWN_TICKS = 5000;
+const DEFAULT_WEIGHTS = {
+    rclWeight: 10,
+    resourceWeight: 5,
+    strategicWeight: 3,
+    distancePenalty: 2,
+    weakDefenseBonus: 20,
+    strongDefensePenalty: 15,
+    warTargetBonus: 50
+};
+/**
+ * Find potential attack targets for a cluster
+ */
+function findAttackTargets(cluster, maxDistance = 10, maxTargets = 5, weights = {}) {
+    var _a, _b;
+    const finalWeights = { ...DEFAULT_WEIGHTS, ...weights };
+    const targets = [];
+    const overmind = memoryManager.getOvermind();
+    const roomIntel = overmind.roomIntel;
+    const warTargets = new Set(overmind.warTargets);
+    // Get all known rooms
+    for (const roomName in roomIntel) {
+        const intel = roomIntel[roomName];
+        // Skip if not scouted
+        if (!intel.scouted)
+            continue;
+        // Skip our own rooms
+        if (intel.owner === "self")
+            continue;
+        // Skip highway and SK rooms
+        if (intel.isHighway || intel.isSK)
+            continue;
+        // Calculate distance from cluster
+        const distance = getMinDistanceFromCluster(cluster, roomName);
+        if (distance > maxDistance)
+            continue;
+        // Skip if too recent (avoid spam attacks)
+        const lastAttacked = (_b = (_a = Memory.lastAttacked) === null || _a === void 0 ? void 0 : _a[roomName]) !== null && _b !== void 0 ? _b : 0;
+        if (Game.time - lastAttacked < ATTACK_COOLDOWN_TICKS)
+            continue;
+        // Calculate score
+        const score = scoreTarget(intel, distance, warTargets.has(roomName), finalWeights);
+        // Determine target type
+        let type = "neutral";
+        if (intel.owner) {
+            type = warTargets.has(intel.owner) || warTargets.has(roomName) ? "enemy" : "hostile";
+        }
+        // Select doctrine
+        const doctrine = selectDoctrine(roomName, {
+            towerCount: intel.towerCount,
+            spawnCount: intel.spawnCount,
+            rcl: intel.controllerLevel,
+            owner: intel.owner
+        });
+        targets.push({
+            roomName,
+            score,
+            distance,
+            doctrine,
+            type,
+            intel
+        });
+    }
+    // Sort by score (descending) and return top N
+    targets.sort((a, b) => b.score - a.score);
+    const selectedTargets = targets.slice(0, maxTargets);
+    if (selectedTargets.length > 0) {
+        logger.info(`Found ${selectedTargets.length} attack targets for cluster ${cluster.id}: ` +
+            selectedTargets.map(t => `${t.roomName}(${t.score.toFixed(0)})`).join(", "), { subsystem: "AttackTarget" });
+    }
+    return selectedTargets;
+}
+/**
+ * Score a potential target room
+ */
+function scoreTarget(intel, distance, isWarTarget, weights) {
+    var _a, _b;
+    let score = 0;
+    // Base value from RCL
+    score += intel.controllerLevel * weights.rclWeight;
+    // Resource value (presence of storage/terminal indicators)
+    if (intel.controllerLevel >= 6) {
+        score += weights.resourceWeight * 5;
+    }
+    else if (intel.controllerLevel >= 4) {
+        score += weights.resourceWeight * 2;
+    }
+    // Strategic position (rooms with many sources are valuable)
+    score += intel.sources * weights.strategicWeight;
+    // Distance penalty
+    score -= distance * weights.distancePenalty;
+    // Defense scoring
+    const towers = (_a = intel.towerCount) !== null && _a !== void 0 ? _a : 0;
+    const spawns = (_b = intel.spawnCount) !== null && _b !== void 0 ? _b : 0;
+    if (towers === 0 && spawns <= 1) {
+        // Weak defense bonus
+        score += weights.weakDefenseBonus;
+    }
+    else if (towers >= 4 || (towers >= 2 && spawns >= 2)) {
+        // Strong defense penalty
+        score -= weights.strongDefensePenalty;
+    }
+    // War target bonus
+    if (isWarTarget) {
+        score += weights.warTargetBonus;
+    }
+    // Threat level penalty (dangerous rooms are less attractive unless war target)
+    if (intel.threatLevel >= 2 && !isWarTarget) {
+        score -= intel.threatLevel * 10;
+    }
+    return Math.max(0, score);
+}
+/**
+ * Get minimum distance from any room in the cluster
+ */
+function getMinDistanceFromCluster(cluster, targetRoom) {
+    let minDistance = Infinity;
+    for (const roomName of cluster.memberRooms) {
+        const distance = Game.map.getRoomLinearDistance(roomName, targetRoom);
+        if (distance < minDistance) {
+            minDistance = distance;
+        }
+    }
+    return minDistance;
+}
+/**
+ * Validate that a target is still valid
+ */
+function validateTarget(targetRoom) {
+    const overmind = memoryManager.getOvermind();
+    const intel = overmind.roomIntel[targetRoom];
+    if (!intel) {
+        logger.warn(`No intel for target ${targetRoom}`, { subsystem: "AttackTarget" });
+        return false;
+    }
+    // Check if target was recently seen (use same cooldown constant for consistency)
+    if (Game.time - intel.lastSeen > ATTACK_COOLDOWN_TICKS) {
+        logger.warn(`Intel for ${targetRoom} is stale (${Game.time - intel.lastSeen} ticks old)`, {
+            subsystem: "AttackTarget"
+        });
+        return false;
+    }
+    return true;
+}
+/**
+ * Mark a room as attacked (to prevent spam)
+ */
+function markRoomAttacked(roomName) {
+    if (!Memory.lastAttacked) {
+        Memory.lastAttacked = {};
+    }
+    Memory.lastAttacked[roomName] = Game.time;
+    logger.info(`Marked ${roomName} as attacked at tick ${Game.time}`, {
+        subsystem: "AttackTarget"
+    });
+}
+
+/**
+ * Spawn Queue Management
+ *
+ * Manages spawn queue with priority-based ordering:
+ * - Emergency spawns (workforce collapse)
+ * - High priority (defenders, critical economy roles)
+ * - Normal priority (standard economy roles)
+ * - Low priority (utility, expansion roles)
+ *
+ * Supports:
+ * - Multi-spawn coordination (distributes tasks across available spawns)
+ * - Priority preemption (higher priority spawns can interrupt lower priority)
+ * - Emergency detection and fast-track spawning
+ */
+/**
+ * Spawn priority levels
+ */
+var SpawnPriority;
+(function (SpawnPriority) {
+    /** Critical emergency spawns (workforce collapse, no energy producers) */
+    SpawnPriority[SpawnPriority["EMERGENCY"] = 1000] = "EMERGENCY";
+    /** High priority (defenders during attack, critical roles) */
+    SpawnPriority[SpawnPriority["HIGH"] = 500] = "HIGH";
+    /** Normal priority (standard economy roles) */
+    SpawnPriority[SpawnPriority["NORMAL"] = 100] = "NORMAL";
+    /** Low priority (utility, expansion, optimization) */
+    SpawnPriority[SpawnPriority["LOW"] = 50] = "LOW";
+})(SpawnPriority || (SpawnPriority = {}));
+/**
+ * Global spawn queue manager
+ * Stores queues per room
+ */
+class SpawnQueueManager {
+    constructor() {
+        this.queues = new Map();
+    }
+    /**
+     * Get or create spawn queue for a room
+     */
+    getQueue(roomName) {
+        if (!this.queues.has(roomName)) {
+            this.queues.set(roomName, {
+                requests: [],
+                inProgress: new Map(),
+                lastUpdate: Game.time
+            });
+        }
+        return this.queues.get(roomName);
+    }
+    /**
+     * Add a spawn request to the queue
+     */
+    addRequest(request) {
+        const queue = this.getQueue(request.roomName);
+        // Assign unique ID if not provided
+        if (!request.id) {
+            request.id = `${request.role}_${Game.time}_${Math.random().toString(36).substring(2, 11)}`;
+        }
+        // Add to queue
+        queue.requests.push(request);
+        // Sort by priority (highest first)
+        queue.requests.sort((a, b) => b.priority - a.priority);
+        logger.debug(`Added spawn request: ${request.role} (priority: ${request.priority}) for room ${request.roomName}`, { subsystem: "SpawnQueue" });
+    }
+    /**
+     * Get next spawn request for a room
+     * Returns the highest priority request that can be spawned
+     */
+    getNextRequest(roomName, availableEnergy) {
+        const queue = this.getQueue(roomName);
+        // Clean up completed spawns
+        this.cleanupInProgress(queue);
+        // Find first request that fits energy budget
+        for (let i = 0; i < queue.requests.length; i++) {
+            const request = queue.requests[i];
+            // Check if already in progress
+            if (this.isRequestInProgress(queue, request.id)) {
+                continue;
+            }
+            // Check energy requirement
+            if (request.body.cost <= availableEnergy) {
+                return request;
+            }
+        }
+        return null;
+    }
+    /**
+     * Remove a request from the queue
+     */
+    removeRequest(roomName, requestId) {
+        const queue = this.getQueue(roomName);
+        queue.requests = queue.requests.filter(r => r.id !== requestId);
+    }
+    /**
+     * Mark a request as in progress
+     */
+    markInProgress(roomName, requestId, spawnId) {
+        const queue = this.getQueue(roomName);
+        queue.inProgress.set(requestId, { spawnId, requestId });
+    }
+    /**
+     * Check if a request is currently being spawned
+     */
+    isRequestInProgress(queue, requestId) {
+        return queue.inProgress.has(requestId);
+    }
+    /**
+     * Clean up completed spawn operations
+     */
+    cleanupInProgress(queue) {
+        // Remove completed spawns
+        const toRemove = [];
+        for (const [requestId, { spawnId }] of queue.inProgress) {
+            const spawn = Game.getObjectById(spawnId);
+            if (!spawn || !spawn.spawning) {
+                toRemove.push(requestId);
+            }
+        }
+        for (const requestId of toRemove) {
+            queue.inProgress.delete(requestId);
+        }
+    }
+    /**
+     * Get all pending requests for a room
+     */
+    getPendingRequests(roomName) {
+        const queue = this.getQueue(roomName);
+        return [...queue.requests];
+    }
+    /**
+     * Get queue size for a room
+     */
+    getQueueSize(roomName) {
+        const queue = this.getQueue(roomName);
+        return queue.requests.length;
+    }
+    /**
+     * Clear all requests for a room
+     */
+    clearQueue(roomName) {
+        const queue = this.getQueue(roomName);
+        queue.requests = [];
+        logger.debug(`Cleared spawn queue for room ${roomName}`, { subsystem: "SpawnQueue" });
+    }
+    /**
+     * Get available spawns in a room
+     */
+    getAvailableSpawns(roomName) {
+        const room = Game.rooms[roomName];
+        if (!room)
+            return [];
+        const spawns = room.find(FIND_MY_SPAWNS);
+        return spawns.filter(s => !s.spawning);
+    }
+    /**
+     * Process spawn queue for a room
+     * Attempts to spawn from queue using available spawns
+     * Returns number of spawns initiated
+     */
+    processQueue(roomName) {
+        const room = Game.rooms[roomName];
+        if (!room)
+            return 0;
+        const availableSpawns = this.getAvailableSpawns(roomName);
+        if (availableSpawns.length === 0)
+            return 0;
+        this.getQueue(roomName);
+        let spawnsInitiated = 0;
+        // Try to spawn using each available spawn
+        for (const spawn of availableSpawns) {
+            const request = this.getNextRequest(roomName, room.energyAvailable);
+            if (!request)
+                break; // No more spawnable requests
+            // Attempt to spawn
+            const result = this.executeSpawn(spawn, request);
+            if (result === OK) {
+                spawnsInitiated++;
+                this.markInProgress(roomName, request.id, spawn.id);
+                this.removeRequest(roomName, request.id);
+            }
+            else if (result !== ERR_NOT_ENOUGH_ENERGY) {
+                // If spawn failed for non-energy reason, remove from queue
+                this.removeRequest(roomName, request.id);
+                logger.warn(`Spawn request failed: ${request.role} in ${roomName} (error: ${result})`, { subsystem: "SpawnQueue" });
+            }
+        }
+        return spawnsInitiated;
+    }
+    /**
+     * Execute a spawn request
+     */
+    executeSpawn(spawn, request) {
+        const name = this.generateCreepName(request.role);
+        const memory = {
+            role: request.role,
+            family: request.family,
+            homeRoom: request.roomName,
+            version: 1,
+            ...request.additionalMemory
+        };
+        // Add optional fields
+        if (request.targetRoom) {
+            memory.targetRoom = request.targetRoom;
+        }
+        if (request.sourceId) {
+            memory.sourceId = request.sourceId;
+        }
+        if (request.boostRequirements) {
+            memory.boostRequirements = request.boostRequirements;
+        }
+        return spawn.spawnCreep(request.body.parts, name, {
+            memory: memory
+        });
+    }
+    /**
+     * Generate unique creep name
+     */
+    generateCreepName(role) {
+        return `${role}_${Game.time}_${Math.random().toString(36).substring(2, 11)}`;
+    }
+    /**
+     * Check if room has emergency spawns in queue
+     */
+    hasEmergencySpawns(roomName) {
+        const queue = this.getQueue(roomName);
+        return queue.requests.some(r => r.priority >= SpawnPriority.EMERGENCY);
+    }
+    /**
+     * Count spawns by priority level
+     */
+    countByPriority(roomName, priority) {
+        const queue = this.getQueue(roomName);
+        return queue.requests.filter(r => r.priority >= priority).length;
+    }
+    /**
+     * Get statistics about the spawn queue
+     */
+    getQueueStats(roomName) {
+        const queue = this.getQueue(roomName);
+        return {
+            total: queue.requests.length,
+            emergency: queue.requests.filter(r => r.priority >= SpawnPriority.EMERGENCY).length,
+            high: queue.requests.filter(r => r.priority >= SpawnPriority.HIGH && r.priority < SpawnPriority.EMERGENCY).length,
+            normal: queue.requests.filter(r => r.priority >= SpawnPriority.NORMAL && r.priority < SpawnPriority.HIGH).length,
+            low: queue.requests.filter(r => r.priority < SpawnPriority.NORMAL).length,
+            inProgress: queue.inProgress.size
+        };
+    }
+}
+// Export singleton instance
+const spawnQueue = new SpawnQueueManager();
+
+/**
+ * Squad Formation Manager
+ *
+ * Coordinates squad formation by:
+ * - Creating spawn requests for squad members
+ * - Tracking formation progress
+ * - Adding spawned creeps to squads
+ * - Managing squad lifecycle
+ *
+ * Addresses Issue: Squad formation logic and role composition
+ */
+/**
+ * Screeps BODYPART_COST constants
+ */
+const BODYPART_COST = {
+    move: 50,
+    work: 100,
+    carry: 50,
+    attack: 80,
+    ranged_attack: 150,
+    heal: 250,
+    claim: 600,
+    tough: 10
+};
+/**
+ * Active formations per cluster
+ */
+const activeFormations = new Map();
+/**
+ * Start forming a squad by creating spawn requests
+ */
+function startSquadFormation(cluster, squad) {
+    const squadId = squad.id;
+    // Check if already forming
+    if (activeFormations.has(squadId)) {
+        logger.debug(`Squad ${squadId} already forming`, { subsystem: "SquadFormation" });
+        return;
+    }
+    // Get composition from doctrine (map squad type to doctrine)
+    let composition;
+    if (squad.type === "defense") {
+        // Defense squads use a default composition (will be enhanced by defense manager)
+        composition = {
+            harassers: 0,
+            soldiers: 2,
+            rangers: 2,
+            healers: 1,
+            siegeUnits: 0
+        };
+    }
+    else {
+        const doctrineType = squad.type === "harass" ? "harassment" : squad.type;
+        const config = DOCTRINE_CONFIGS[doctrineType];
+        composition = config.composition;
+    }
+    // Convert composition to role map
+    const targetComposition = {};
+    if (composition.harassers > 0)
+        targetComposition.harasser = composition.harassers;
+    if (composition.soldiers > 0)
+        targetComposition.soldier = composition.soldiers;
+    if (composition.rangers > 0)
+        targetComposition.ranger = composition.rangers;
+    if (composition.healers > 0)
+        targetComposition.healer = composition.healers;
+    if (composition.siegeUnits > 0)
+        targetComposition.siegeUnit = composition.siegeUnits;
+    // Create formation tracker
+    const formation = {
+        squadId,
+        targetComposition,
+        currentComposition: {},
+        spawnRequests: new Set(),
+        formationStarted: Game.time
+    };
+    activeFormations.set(squadId, formation);
+    // Create spawn requests for each role
+    const rallyRoom = Game.rooms[squad.rallyRoom];
+    if (!rallyRoom) {
+        logger.warn(`Rally room ${squad.rallyRoom} not visible for squad ${squadId}`, {
+            subsystem: "SquadFormation"
+        });
+        return;
+    }
+    createSquadSpawnRequests(rallyRoom, squad, composition, formation);
+    logger.info(`Started forming squad ${squadId}: ${JSON.stringify(targetComposition)}`, { subsystem: "SquadFormation" });
+}
+/**
+ * Create spawn requests for squad members
+ */
+function createSquadSpawnRequests(room, squad, composition, formation) {
+    // Determine config based on squad type
+    let useBoosts = false;
+    if (squad.type !== "defense") {
+        const doctrineType = squad.type === "harass" ? "harassment" : squad.type;
+        const config = DOCTRINE_CONFIGS[doctrineType];
+        useBoosts = config.useBoosts;
+    }
+    // Determine priority based on squad type
+    let priority = SpawnPriority.NORMAL;
+    if (squad.type === "siege") {
+        priority = SpawnPriority.HIGH;
+    }
+    else if (squad.type === "defense") {
+        priority = SpawnPriority.EMERGENCY;
+    }
+    // Helper to create a spawn request
+    const createRequest = (role, count) => {
+        for (let i = 0; i < count; i++) {
+            const bodyParts = getBodyForRole(role, "medium", room.energyCapacityAvailable);
+            const bodyCost = bodyParts.reduce((sum, part) => sum + BODYPART_COST[part], 0);
+            const boostReqs = useBoosts ? getBoostsForRole(role) : [];
+            const request = {
+                id: `${squad.id}_${role}_${i}_${Game.time}`,
+                roomName: room.name,
+                role: role,
+                family: "military",
+                body: {
+                    parts: bodyParts,
+                    cost: bodyCost,
+                    minCapacity: bodyCost
+                },
+                priority,
+                targetRoom: squad.targetRooms[0],
+                boostRequirements: boostReqs.length > 0 ? boostReqs.map(boost => ({
+                    resourceType: boost.compound,
+                    bodyParts: bodyParts.filter(part => boost.parts.includes(part))
+                })) : undefined,
+                createdAt: Game.time,
+                additionalMemory: {
+                    squadId: squad.id
+                }
+            };
+            spawnQueue.addRequest(request);
+            formation.spawnRequests.add(request.id);
+        }
+    };
+    // Create requests for each role
+    if (composition.harassers > 0)
+        createRequest("harasser", composition.harassers);
+    if (composition.soldiers > 0)
+        createRequest("soldier", composition.soldiers);
+    if (composition.rangers > 0)
+        createRequest("ranger", composition.rangers);
+    if (composition.healers > 0)
+        createRequest("healer", composition.healers);
+    if (composition.siegeUnits > 0)
+        createRequest("siegeUnit", composition.siegeUnits);
+}
+/**
+ * Get body template for a role
+ */
+function getBodyForRole(role, size, maxEnergy) {
+    // Simple body generation - can be enhanced later
+    const budget = Math.min(maxEnergy, size === "small" ? 1500 : size === "medium" ? 3000 : 5000);
+    switch (role) {
+        case "harasser":
+            return generateBody([MOVE, ATTACK], budget, [MOVE, ATTACK]);
+        case "soldier":
+            return generateBody([TOUGH, MOVE, ATTACK, MOVE, ATTACK], budget, [TOUGH, MOVE, ATTACK]);
+        case "ranger":
+            return generateBody([TOUGH, MOVE, RANGED_ATTACK], budget, [MOVE, RANGED_ATTACK]);
+        case "healer":
+            return generateBody([TOUGH, MOVE, HEAL], budget, [MOVE, HEAL]);
+        case "siegeUnit":
+            return generateBody([TOUGH, MOVE, WORK], budget, [TOUGH, MOVE, WORK]);
+        default:
+            return [MOVE, ATTACK];
+    }
+}
+/**
+ * Generate body with a pattern up to budget
+ */
+function generateBody(pattern, budget, repeatPattern) {
+    const body = [...pattern];
+    let cost = pattern.reduce((sum, part) => sum + BODYPART_COST[part], 0);
+    const repeatCost = repeatPattern.reduce((sum, part) => sum + BODYPART_COST[part], 0);
+    while (cost + repeatCost <= budget && body.length < 50) {
+        body.push(...repeatPattern);
+        cost += repeatCost;
+    }
+    return body.slice(0, 50); // Max 50 parts
+}
+/**
+ * Get boost compounds and applicable body parts for a role
+ */
+function getBoostsForRole(role) {
+    switch (role) {
+        case "soldier":
+            // XUH2O: T3 attack boost (UH -> UH2O -> XUH2O)
+            return [{ compound: RESOURCE_CATALYZED_UTRIUM_ALKALIDE, parts: [ATTACK] }];
+        case "ranger":
+            // XKH2O: T3 ranged attack boost (KH -> KH2O -> XKH2O)
+            return [{ compound: RESOURCE_CATALYZED_KEANIUM_ALKALIDE, parts: [RANGED_ATTACK] }];
+        case "healer":
+            // XLH2O: T3 heal boost (LH -> LH2O -> XLH2O)
+            return [{ compound: RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE, parts: [HEAL] }];
+        case "siegeUnit":
+            // XZH2O: T3 dismantle boost (ZH -> ZH2O -> XZH2O)
+            return [{ compound: RESOURCE_CATALYZED_ZYNTHIUM_ACID, parts: [WORK] }];
+        default:
+            return [];
+    }
+}
+/**
+ * Update all active formations
+ * Remove stale formations that are taking too long
+ */
+function updateSquadFormations() {
+    const now = Game.time;
+    const FORMATION_TIMEOUT = 500; // 500 ticks = ~25 minutes at 20 ticks/sec
+    for (const [squadId, formation] of activeFormations.entries()) {
+        const age = now - formation.formationStarted;
+        if (age > FORMATION_TIMEOUT) {
+            logger.warn(`Squad ${squadId} formation timed out after ${age} ticks`, {
+                subsystem: "SquadFormation"
+            });
+            activeFormations.delete(squadId);
+        }
+    }
+}
+/**
+ * Check if a squad is currently forming
+ */
+function isSquadForming(squadId) {
+    return activeFormations.has(squadId);
+}
+
+/**
+ * Offensive Operations Coordinator
+ *
+ * High-level coordinator for offensive military operations.
+ * Manages the complete offensive workflow:
+ * 1. Target selection
+ * 2. Doctrine determination
+ * 3. Squad creation
+ * 4. Squad formation
+ * 5. Operation execution
+ * 6. Multi-room coordination
+ *
+ * Implements ROADMAP Section 12: Offensive Combat
+ */
+/**
+ * Active operations (stored in global)
+ */
+const activeOperations = new Map();
+/**
+ * Plan and launch offensive operations for a cluster
+ */
+function planOffensiveOperations(cluster) {
+    // Check if cluster is in war mode
+    if (cluster.role !== "war" && cluster.role !== "mixed") {
+        return;
+    }
+    // Check if we have capacity for more operations
+    const activeOps = Array.from(activeOperations.values()).filter(op => op.clusterId === cluster.id && op.state !== "complete" && op.state !== "failed");
+    const MAX_CONCURRENT_OPS = 2;
+    if (activeOps.length >= MAX_CONCURRENT_OPS) {
+        logger.debug(`Cluster ${cluster.id} at max operations (${activeOps.length})`, {
+            subsystem: "Offensive"
+        });
+        return;
+    }
+    // Find potential targets
+    const targets = findAttackTargets(cluster, 10, 3);
+    if (targets.length === 0) {
+        logger.debug(`No attack targets found for cluster ${cluster.id}`, {
+            subsystem: "Offensive"
+        });
+        return;
+    }
+    // Select best target
+    const target = targets[0];
+    // Check if we can launch the doctrine
+    if (!canLaunchDoctrine(cluster, target.doctrine)) {
+        logger.info(`Cluster ${cluster.id} cannot launch ${target.doctrine} doctrine (insufficient resources)`, { subsystem: "Offensive" });
+        return;
+    }
+    // Launch operation
+    launchOffensiveOperation(cluster, target.roomName, target.doctrine);
+}
+/**
+ * Launch an offensive operation
+ */
+function launchOffensiveOperation(cluster, targetRoom, doctrine) {
+    // Validate target
+    if (!validateTarget(targetRoom)) {
+        logger.warn(`Invalid target ${targetRoom}`, { subsystem: "Offensive" });
+        return null;
+    }
+    // Determine doctrine if not specified
+    const overmind = memoryManager.getOvermind();
+    const intel = overmind.roomIntel[targetRoom];
+    const finalDoctrine = doctrine !== null && doctrine !== void 0 ? doctrine : selectDoctrine(targetRoom, {
+        towerCount: intel === null || intel === void 0 ? void 0 : intel.towerCount,
+        spawnCount: intel === null || intel === void 0 ? void 0 : intel.spawnCount,
+        rcl: intel === null || intel === void 0 ? void 0 : intel.controllerLevel,
+        owner: intel === null || intel === void 0 ? void 0 : intel.owner
+    });
+    // Check if we can launch
+    if (!canLaunchDoctrine(cluster, finalDoctrine)) {
+        logger.warn(`Cannot launch ${finalDoctrine} operation on ${targetRoom} - insufficient resources`, { subsystem: "Offensive" });
+        return null;
+    }
+    // Create operation
+    const opId = `op_${cluster.id}_${targetRoom}_${Game.time}`;
+    const operation = {
+        id: opId,
+        clusterId: cluster.id,
+        targetRoom,
+        doctrine: finalDoctrine,
+        squadIds: [],
+        state: "planning",
+        createdAt: Game.time,
+        lastUpdate: Game.time
+    };
+    activeOperations.set(opId, operation);
+    // Create squad (map doctrine type to squad type)
+    const squadType = finalDoctrine === "harassment" ? "harass" : finalDoctrine;
+    const squad = createOffensiveSquad(cluster, targetRoom, squadType, {
+        towerCount: intel === null || intel === void 0 ? void 0 : intel.towerCount,
+        spawnCount: intel === null || intel === void 0 ? void 0 : intel.spawnCount
+    });
+    // Add squad to cluster memory
+    cluster.squads.push(squad);
+    operation.squadIds.push(squad.id);
+    // Start forming squad
+    startSquadFormation(cluster, squad);
+    operation.state = "forming";
+    // Mark room as being attacked
+    markRoomAttacked(targetRoom);
+    logger.info(`Launched ${finalDoctrine} operation ${opId} on ${targetRoom} with squad ${squad.id}`, { subsystem: "Offensive" });
+    return operation;
+}
+/**
+ * Update active offensive operations
+ */
+function updateOffensiveOperations() {
+    // Update squad formations
+    updateSquadFormations();
+    for (const [opId, operation] of activeOperations.entries()) {
+        updateOperation(operation);
+    }
+    // Clean up old operations
+    cleanupOperations();
+}
+/**
+ * Update a single operation
+ */
+function updateOperation(operation) {
+    operation.lastUpdate = Game.time;
+    const cluster = memoryManager.getCluster(operation.clusterId);
+    if (!cluster) {
+        operation.state = "failed";
+        logger.error(`Cluster ${operation.clusterId} not found for operation ${operation.id}`, {
+            subsystem: "Offensive"
+        });
+        return;
+    }
+    switch (operation.state) {
+        case "forming":
+            updateFormingOperation(operation);
+            break;
+        case "executing":
+            updateExecutingOperation(operation, cluster);
+            break;
+    }
+}
+/**
+ * Update an operation in forming state
+ */
+function updateFormingOperation(operation, cluster) {
+    // Check if all squads have finished forming
+    const allFormed = operation.squadIds.every(squadId => !isSquadForming(squadId));
+    if (allFormed) {
+        operation.state = "executing";
+        logger.info(`Operation ${operation.id} entering execution phase`, {
+            subsystem: "Offensive"
+        });
+    }
+    // Check for formation timeout
+    const age = Game.time - operation.createdAt;
+    if (age > 1000) {
+        operation.state = "failed";
+        logger.warn(`Operation ${operation.id} formation timed out`, {
+            subsystem: "Offensive"
+        });
+    }
+}
+/**
+ * Update an operation in executing state
+ */
+function updateExecutingOperation(operation, cluster) {
+    // Update squad states
+    for (const squadId of operation.squadIds) {
+        const squad = cluster.squads.find(s => s.id === squadId);
+        if (!squad)
+            continue;
+        validateSquadState(squad);
+        // Check if squad should be dissolved
+        if (shouldDissolveSquad(squad)) {
+            logger.info(`Squad ${squadId} dissolving, operation ${operation.id} may complete`, {
+                subsystem: "Offensive"
+            });
+            // Remove from cluster
+            const index = cluster.squads.findIndex(s => s.id === squadId);
+            if (index >= 0)
+                cluster.squads.splice(index, 1);
+        }
+    }
+    // Check if all squads are dissolved
+    const activeSquads = operation.squadIds.filter(squadId => cluster.squads.some(s => s.id === squadId));
+    if (activeSquads.length === 0) {
+        operation.state = "complete";
+        logger.info(`Operation ${operation.id} complete`, { subsystem: "Offensive" });
+    }
+}
+/**
+ * Clean up completed/failed operations
+ */
+function cleanupOperations() {
+    const MAX_AGE = 5000; // Keep for 5000 ticks for debugging
+    for (const [opId, operation] of activeOperations.entries()) {
+        const age = Game.time - operation.createdAt;
+        if ((operation.state === "complete" || operation.state === "failed") && age > MAX_AGE) {
+            activeOperations.delete(opId);
+            logger.debug(`Cleaned up operation ${opId}`, { subsystem: "Offensive" });
+        }
+    }
+}
+
+/**
  * Cluster Manager - Multi-Room Coordination
  *
  * Coordinates operations across rooms in a cluster:
@@ -21675,6 +22758,7 @@ function updateMilitaryReservations(cluster) {
  * - Rally point management
  * - Inter-room logistics
  * - Cluster-wide metrics
+ * - Offensive operations
  *
  * Addresses Issues: #8, #20, #36
  */
@@ -21746,6 +22830,10 @@ let ClusterManager = class ClusterManager {
         // Update squads
         profiler.measureSubsystem(`cluster:${cluster.id}:squads`, () => {
             this.updateSquads(cluster);
+        });
+        // Plan and update offensive operations
+        profiler.measureSubsystem(`cluster:${cluster.id}:offensive`, () => {
+            this.updateOffensiveOperations(cluster);
         });
         // Update rally points
         profiler.measureSubsystem(`cluster:${cluster.id}:rallyPoints`, () => {
@@ -21940,6 +23028,17 @@ let ClusterManager = class ClusterManager {
             const squad = createDefenseSquad(cluster, request);
             cluster.squads.push(squad);
         }
+    }
+    /**
+     * Update offensive operations
+     */
+    updateOffensiveOperations(cluster) {
+        // Only plan new operations periodically (every 100 ticks)
+        if (Game.time % 100 === 0) {
+            planOffensiveOperations(cluster);
+        }
+        // Always update existing operations
+        updateOffensiveOperations();
     }
     /**
      * Update cluster role based on metrics
