@@ -8,6 +8,7 @@
 import type { SwarmCreepMemory } from "../../memory/schemas";
 import { clearCacheOnStateChange, findCachedClosest } from "../../utils/cachedClosest";
 import type { CreepAction, CreepContext } from "./types";
+import { getPheromones, needsBuilding, needsUpgrading } from "./pheromoneHelper";
 
 // =============================================================================
 // Type Guards
@@ -127,12 +128,26 @@ export function larvaWorker(ctx: CreepContext): CreepAction {
       return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
     }
 
-    // Build construction sites
+    // Use pheromones to decide between building and upgrading
+    // This allows room-wide coordination through stigmergic communication
+    const pheromones = getPheromones(ctx.creep);
+    if (pheromones) {
+      // Prioritize building if build pheromone is high
+      if (needsBuilding(pheromones) && ctx.prioritizedSites.length > 0) {
+        return { type: "build", target: ctx.prioritizedSites[0]! };
+      }
+
+      // Prioritize upgrading if upgrade pheromone is high
+      if (needsUpgrading(pheromones) && ctx.room.controller) {
+        return { type: "upgrade", target: ctx.room.controller };
+      }
+    }
+
+    // Default priority: build then upgrade
     if (ctx.prioritizedSites.length > 0) {
       return { type: "build", target: ctx.prioritizedSites[0]! };
     }
 
-    // Upgrade controller
     if (ctx.room.controller) {
       return { type: "upgrade", target: ctx.room.controller };
     }

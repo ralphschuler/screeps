@@ -6,9 +6,9 @@
  */
 
 import { kernel } from "../core/kernel";
-import { pheromoneManager } from "./pheromone";
-import { memoryManager } from "../memory/manager";
 import { logger } from "../core/logger";
+import { memoryManager } from "../memory/manager";
+import { pheromoneManager } from "./pheromone";
 
 /**
  * Initialize pheromone event handlers

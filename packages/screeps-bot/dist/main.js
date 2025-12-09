@@ -9404,6 +9404,41 @@ function clearCacheOnStateChange(creep) {
 }
 
 /**
+ * Pheromone Helper
+ *
+ * Provides utility functions for creeps to read and respond to pheromones.
+ * This enables stigmergic (indirect) communication as specified in ROADMAP section 5.
+ *
+ * Usage:
+ * ```typescript
+ * const pheromones = getPheromones(creep);
+ * if (pheromones.defense > 20) {
+ *   // Prioritize defensive actions
+ * }
+ * ```
+ */
+/**
+ * Get pheromone levels for a creep's current room
+ */
+function getPheromones(creep) {
+    var _a;
+    const swarm = memoryManager.getSwarmState(creep.room.name);
+    return (_a = swarm === null || swarm === void 0 ? void 0 : swarm.pheromones) !== null && _a !== void 0 ? _a : null;
+}
+/**
+ * Check if room needs building based on pheromones
+ */
+function needsBuilding(pheromones) {
+    return pheromones.build > 15;
+}
+/**
+ * Check if room needs upgrading based on pheromones
+ */
+function needsUpgrading(pheromones) {
+    return pheromones.upgrade > 15;
+}
+
+/**
  * Economy Behaviors
  *
  * Simple, human-readable behavior functions for economy roles.
@@ -9516,11 +9551,23 @@ function larvaWorker(ctx) {
         if (ctx.storage && ctx.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
             return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
         }
-        // Build construction sites
+        // Use pheromones to decide between building and upgrading
+        // This allows room-wide coordination through stigmergic communication
+        const pheromones = getPheromones(ctx.creep);
+        if (pheromones) {
+            // Prioritize building if build pheromone is high
+            if (needsBuilding(pheromones) && ctx.prioritizedSites.length > 0) {
+                return { type: "build", target: ctx.prioritizedSites[0] };
+            }
+            // Prioritize upgrading if upgrade pheromone is high
+            if (needsUpgrading(pheromones) && ctx.room.controller) {
+                return { type: "upgrade", target: ctx.room.controller };
+            }
+        }
+        // Default priority: build then upgrade
         if (ctx.prioritizedSites.length > 0) {
             return { type: "build", target: ctx.prioritizedSites[0] };
         }
-        // Upgrade controller
         if (ctx.room.controller) {
             return { type: "upgrade", target: ctx.room.controller };
         }
