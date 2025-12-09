@@ -412,7 +412,7 @@ export type EconomyRole =
 /**
  * Military roles
  */
-export type MilitaryRole = "guard" | "healer" | "soldier" | "siegeUnit" | "harasser" | "ranger";
+export type MilitaryRole = "guard" | "remoteGuard" | "healer" | "soldier" | "siegeUnit" | "harasser" | "ranger";
 
 /**
  * Utility roles
