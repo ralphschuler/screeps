@@ -6,66 +6,47 @@
 
 import { expect } from "chai";
 
+// Test constants - shared critical structure types
+const CRITICAL_STRUCTURE_TYPES: StructureConstant[] = [
+  STRUCTURE_SPAWN,
+  STRUCTURE_STORAGE,
+  STRUCTURE_TERMINAL,
+  STRUCTURE_TOWER
+];
+
 describe("Rampart Automation System", () => {
   describe("Critical Structure Identification", () => {
     it("should identify spawns as critical structures", () => {
       const structureType = STRUCTURE_SPAWN;
-      const isCritical = [
-        STRUCTURE_SPAWN,
-        STRUCTURE_STORAGE,
-        STRUCTURE_TERMINAL,
-        STRUCTURE_TOWER
-      ].includes(structureType);
+      const isCritical = CRITICAL_STRUCTURE_TYPES.includes(structureType);
       
       expect(isCritical).to.be.true;
     });
 
     it("should identify storage as critical structure", () => {
       const structureType = STRUCTURE_STORAGE;
-      const isCritical = [
-        STRUCTURE_SPAWN,
-        STRUCTURE_STORAGE,
-        STRUCTURE_TERMINAL,
-        STRUCTURE_TOWER
-      ].includes(structureType);
+      const isCritical = CRITICAL_STRUCTURE_TYPES.includes(structureType);
       
       expect(isCritical).to.be.true;
     });
 
     it("should identify towers as critical structures", () => {
       const structureType = STRUCTURE_TOWER;
-      const isCritical = [
-        STRUCTURE_SPAWN,
-        STRUCTURE_STORAGE,
-        STRUCTURE_TERMINAL,
-        STRUCTURE_TOWER
-      ].includes(structureType);
+      const isCritical = CRITICAL_STRUCTURE_TYPES.includes(structureType);
       
       expect(isCritical).to.be.true;
     });
 
     it("should not identify roads as critical structures", () => {
       const structureType: StructureConstant = STRUCTURE_ROAD;
-      const criticalTypes: StructureConstant[] = [
-        STRUCTURE_SPAWN,
-        STRUCTURE_STORAGE,
-        STRUCTURE_TERMINAL,
-        STRUCTURE_TOWER
-      ];
-      const isCritical = criticalTypes.includes(structureType);
+      const isCritical = CRITICAL_STRUCTURE_TYPES.includes(structureType);
       
       expect(isCritical).to.be.false;
     });
 
     it("should not identify extensions as critical structures", () => {
       const structureType: StructureConstant = STRUCTURE_EXTENSION;
-      const criticalTypes: StructureConstant[] = [
-        STRUCTURE_SPAWN,
-        STRUCTURE_STORAGE,
-        STRUCTURE_TERMINAL,
-        STRUCTURE_TOWER
-      ];
-      const isCritical = criticalTypes.includes(structureType);
+      const isCritical = CRITICAL_STRUCTURE_TYPES.includes(structureType);
       
       expect(isCritical).to.be.false;
     });

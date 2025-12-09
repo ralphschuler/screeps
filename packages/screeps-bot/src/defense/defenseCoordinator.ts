@@ -44,6 +44,22 @@ export class DefenseCoordinator {
   private assignments: Map<string, DefenseAssignment> = new Map();
 
   /**
+   * Get defense requests from memory
+   */
+  private getDefenseRequestsFromMemory(): DefenseRequest[] {
+    const mem = Memory as unknown as Record<string, unknown>;
+    return (mem.defenseRequests as DefenseRequest[]) ?? [];
+  }
+
+  /**
+   * Set defense requests in memory
+   */
+  private setDefenseRequestsInMemory(requests: DefenseRequest[]): void {
+    const mem = Memory as unknown as Record<string, unknown>;
+    mem.defenseRequests = requests;
+  }
+
+  /**
    * Main coordination loop - process defense requests and assign helpers
    * Registered as kernel process via decorator
    */
@@ -55,8 +71,7 @@ export class DefenseCoordinator {
   })
   public run(): void {
     // Get active defense requests
-    const mem = Memory as unknown as Record<string, unknown>;
-    const requests = (mem.defenseRequests as DefenseRequest[]) ?? [];
+    const requests = this.getDefenseRequestsFromMemory();
     
     // Clean up completed assignments
     this.cleanupAssignments();
