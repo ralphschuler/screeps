@@ -11817,6 +11817,17 @@ function evaluatePowerCreepBehavior(ctx) {
  */
 const DEFAULT_STATE_TIMEOUT = 50;
 /**
+ * Cooldown threshold for deposit harvesting (in ticks)
+ * If a deposit's cooldown exceeds this value, the harvest action is considered complete
+ */
+const DEPOSIT_COOLDOWN_THRESHOLD = 100;
+/**
+ * Type guard to check if an object has hits (is a Structure).
+ */
+function hasHits(obj) {
+    return typeof obj === "object" && obj !== null && "hits" in obj && "hitsMax" in obj;
+}
+/**
  * Check if a state is still valid (target exists, not expired, etc.)
  */
 function isStateValid(state, _ctx) {
@@ -11878,9 +11889,10 @@ function isStateComplete(state, ctx) {
                 if (!target)
                     return true; // Deposit gone
                 // Type guard for Deposit - check cooldown
-                if (typeof target === "object" && "cooldown" in target && "lastCooldown" in target) {
+                if (typeof target === "object" && "cooldown" in target) {
+                    const deposit = target;
                     // If deposit has high cooldown, consider it complete
-                    if (target.cooldown > 100)
+                    if (deposit.cooldown > DEPOSIT_COOLDOWN_THRESHOLD)
                         return true;
                 }
             }
@@ -11940,11 +11952,10 @@ function isStateComplete(state, ctx) {
                 const target = Game.getObjectById(state.targetId);
                 if (!target)
                     return true; // Structure destroyed
-                // Type guard for structures with hits
-                if (typeof target === "object" && "hits" in target && "hitsMax" in target) {
-                    const structure = target;
-                    // Consider repair complete if structure is at full health or very close
-                    if (structure.hits >= structure.hitsMax)
+                // Check if structure is fully repaired
+                if (hasHits(target)) {
+                    // Consider repair complete if structure is at full health
+                    if (target.hits >= target.hitsMax)
                         return true;
                 }
             }

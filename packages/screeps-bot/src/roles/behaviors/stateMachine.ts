@@ -44,6 +44,19 @@ import type { CreepState } from "../../memory/schemas";
 const DEFAULT_STATE_TIMEOUT = 50;
 
 /**
+ * Cooldown threshold for deposit harvesting (in ticks)
+ * If a deposit's cooldown exceeds this value, the harvest action is considered complete
+ */
+const DEPOSIT_COOLDOWN_THRESHOLD = 100;
+
+/**
+ * Type guard to check if an object has hits (is a Structure).
+ */
+function hasHits(obj: unknown): obj is { hits: number; hitsMax: number } {
+  return typeof obj === "object" && obj !== null && "hits" in obj && "hitsMax" in obj;
+}
+
+/**
  * Check if a state is still valid (target exists, not expired, etc.)
  */
 function isStateValid(state: CreepState | undefined, _ctx: CreepContext): boolean {
@@ -108,9 +121,10 @@ function isStateComplete(state: CreepState | undefined, ctx: CreepContext): bool
         if (!target) return true; // Deposit gone
         
         // Type guard for Deposit - check cooldown
-        if (typeof target === "object" && "cooldown" in target && "lastCooldown" in target) {
+        if (typeof target === "object" && "cooldown" in target) {
+          const deposit = target as Deposit;
           // If deposit has high cooldown, consider it complete
-          if ((target as Deposit).cooldown > 100) return true;
+          if (deposit.cooldown > DEPOSIT_COOLDOWN_THRESHOLD) return true;
         }
       }
       return false;
@@ -170,11 +184,10 @@ function isStateComplete(state: CreepState | undefined, ctx: CreepContext): bool
         const target = Game.getObjectById(state.targetId);
         if (!target) return true; // Structure destroyed
         
-        // Type guard for structures with hits
-        if (typeof target === "object" && "hits" in target && "hitsMax" in target) {
-          const structure = target as Structure;
-          // Consider repair complete if structure is at full health or very close
-          if (structure.hits >= structure.hitsMax) return true;
+        // Check if structure is fully repaired
+        if (hasHits(target)) {
+          // Consider repair complete if structure is at full health
+          if (target.hits >= target.hitsMax) return true;
         }
       }
       return false;
