@@ -45,6 +45,8 @@ export interface ResourceSharingConfig {
 
 const DEFAULT_CONFIG: ResourceSharingConfig = {
   minBucket: 2000,
+  // Request help before reaching bootstrap emergency threshold (150 energy)
+  // This gives buffer time for carrier to arrive with energy
   criticalEnergyThreshold: 300, // Spawn needs energy urgently
   mediumEnergyThreshold: 1000, // Running low
   lowEnergyThreshold: 3000, // Could use some help
@@ -247,8 +249,9 @@ export class ResourceSharingManager {
     // Critical: spawn in danger of not being able to spawn
     if (energyAvailable < this.config.criticalEnergyThreshold) {
       // Extra critical if spawn is low on energy and can't spawn
+      // Bootstrap system can work with 150 energy (ultra-minimal larvaWorker)
       const spawns = room.find(FIND_MY_SPAWNS);
-      if (spawns.length > 0 && room.energyAvailable < 200) {
+      if (spawns.length > 0 && room.energyAvailable < 150) {
         return 3;
       }
       return 3;
