@@ -358,6 +358,8 @@ export interface SwarmState {
   remoteAssignments: string[];
   /** Cluster ID */
   clusterId?: string;
+  /** Collection point for idle creeps (away from spawn) */
+  collectionPoint?: { x: number; y: number };
   /** Metrics */
   metrics: {
     energyHarvested: number;

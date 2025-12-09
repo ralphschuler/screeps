@@ -101,6 +101,11 @@ export class RoomVisualizer {
     if (this.config.showPaths) {
       this.drawTrafficPaths(visual, room);
     }
+
+    // Always draw collection point if available
+    if (swarm?.collectionPoint) {
+      this.drawCollectionPoint(visual, swarm);
+    }
   }
 
   /**
@@ -532,6 +537,31 @@ export class RoomVisualizer {
    */
   public getConfig(): VisualizerConfig {
     return { ...this.config };
+  }
+
+  /**
+   * Draw collection point marker
+   */
+  private drawCollectionPoint(visual: RoomVisual, swarm: SwarmState): void {
+    if (!swarm.collectionPoint) return;
+
+    const { x, y } = swarm.collectionPoint;
+
+    // Draw a circle at the collection point
+    visual.circle(x, y, {
+      radius: 0.5,
+      fill: "#00ff00",
+      opacity: 0.3,
+      stroke: "#00ff00",
+      strokeWidth: 0.1
+    });
+
+    // Draw a label
+    visual.text("⚓", x, y + 0.25, {
+      font: "0.6 monospace",
+      color: "#00ff00",
+      opacity: 0.8
+    });
   }
 
   /**

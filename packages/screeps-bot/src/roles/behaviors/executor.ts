@@ -21,6 +21,8 @@
 import type { CreepAction, CreepContext } from "./types";
 import { fleeFrom, moveAwayFromSpawn, moveCreep, moveOffRoomExit, moveToRoom } from "../../utils/movement";
 import { requestMoveToPosition } from "../../utils/trafficManager";
+import { getCollectionPoint } from "../../utils/collectionPoint";
+import { memoryManager } from "../../memory/manager";
 
 /**
  * Path visualization colors for different action types.
@@ -170,7 +172,24 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
       if (moveOffRoomExit(creep)) {
         break;
       }
-      // Then move away from spawns to prevent blocking new creeps
+      // Try to move to collection point if available
+      const room = Game.rooms[creep.pos.roomName];
+      if (room && room.controller?.my) {
+        const swarmState = memoryManager.getOrInitSwarmState(room.name);
+        const collectionPoint = getCollectionPoint(room, swarmState);
+        if (collectionPoint) {
+          // Move to collection point if not already there
+          if (!creep.pos.isEqualTo(collectionPoint)) {
+            // Use priority 2 to match moveAwayFromSpawn - clearing blockades is important
+            moveCreep(creep, collectionPoint, { 
+              visualizePathStyle: { stroke: "#888888" },
+              priority: 2
+            });
+            break;
+          }
+        }
+      }
+      // Fallback: move away from spawns to prevent blocking new creeps
       moveAwayFromSpawn(creep);
       break;
   }
