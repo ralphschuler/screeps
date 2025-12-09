@@ -47,6 +47,13 @@ function isCreep(entity: Creep | PowerCreep): entity is Creep {
 }
 
 // =============================================================================
+// Constants
+// =============================================================================
+
+/** Priority threshold for high-priority movement (used in traffic visualization) */
+const HIGH_PRIORITY_THRESHOLD = 50;
+
+// =============================================================================
 // Types & Interfaces
 // =============================================================================
 
@@ -1417,9 +1424,6 @@ export function moveToShard(
 // =============================================================================
 // Traffic Visualization
 // =============================================================================
-
-/** Priority threshold for high-priority movement (used in traffic visualization) */
-const HIGH_PRIORITY_THRESHOLD = 50;
 
 /**
  * Visualize traffic flow in a room.

@@ -338,7 +338,7 @@ export function getPortalDataFromInterShardMemory(shardName: string): InterShard
 
 /**
  * Find a multi-room route to reach a portal leading to a specific shard.
- * Uses PathFinder to calculate the actual path through multiple rooms.
+ * Uses Game.map.findRoute to calculate the room path through multiple rooms.
  *
  * @param fromRoom - Starting room name
  * @param targetShard - Destination shard name
