@@ -9,6 +9,16 @@
  * 2. If valid, continue executing current state action
  * 3. If invalid/complete/expired, evaluate new action and commit to it
  * 4. Store state in creep memory for next tick
+ *
+ * State Completion Detection:
+ * - States are considered complete when the action succeeds OR the target becomes invalid
+ * - Transfer: complete when creep is empty OR target is full/destroyed
+ * - Withdraw: complete when creep is full OR source is empty/destroyed
+ * - Harvest: complete when creep is full OR source is depleted/destroyed
+ * - Build/Repair: complete when creep is empty OR target is finished/destroyed
+ *
+ * This prevents creeps from getting stuck in loops trying invalid actions
+ * (e.g., transferring to a full spawn, withdrawing from an empty container).
  */
 
 import type { CreepAction, CreepContext } from "./types";
