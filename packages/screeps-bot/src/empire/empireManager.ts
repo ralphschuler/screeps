@@ -14,12 +14,12 @@
  * Addresses Issues: #6, #20, #36
  */
 
-import type { ExpansionCandidate, OvermindMemory, RoomIntel } from "../memory/schemas";
-import { memoryManager } from "../memory/manager";
-import { logger } from "../core/logger";
-import { profiler } from "../core/profiler";
-import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { ProcessPriority } from "../core/kernel";
+import { logger } from "../core/logger";
+import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import { profiler } from "../core/profiler";
+import { memoryManager } from "../memory/manager";
+import type { ExpansionCandidate, OvermindMemory, RoomIntel } from "../memory/schemas";
 
 /**
  * Empire Manager Configuration
@@ -436,7 +436,6 @@ export class EmpireManager {
       return;
     }
 
-    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
     let updatedCount = 0;
 
     // Update intel for all visible rooms
@@ -552,15 +551,15 @@ export class EmpireManager {
    * Automatically unpause expansion when conditions are met
    */
   private checkExpansionReadiness(overmind: OvermindMemory): void {
-    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+    const allRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
     
     // Don't expand if at GCL limit
-    if (ownedRooms.length >= Game.gcl.level) {
+    if (allRooms.length >= Game.gcl.level) {
       return;
     }
 
     // Count stable rooms (RCL >= minStableRcl with storage)
-    const stableRooms = ownedRooms.filter(r => {
+    const stableRooms = allRooms.filter(r => {
       const rcl = r.controller?.level ?? 0;
       const hasStorage = r.storage !== undefined;
       return rcl >= this.config.minStableRcl && hasStorage;
@@ -691,13 +690,13 @@ export class EmpireManager {
     }
 
     const clusters = memoryManager.getClusters();
-    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+    const allOwnedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
 
     for (const clusterId in clusters) {
       const cluster = clusters[clusterId];
       
       // Calculate cluster health metrics
-      const clusterRooms = ownedRooms.filter(r => cluster.memberRooms.includes(r.name));
+      const clusterRooms = allOwnedRooms.filter(r => cluster.memberRooms.includes(r.name));
       
       if (clusterRooms.length === 0) {
         continue;
@@ -710,7 +709,7 @@ export class EmpireManager {
       const avgEnergy = totalEnergy / clusterRooms.length;
 
       // Check CPU usage per room
-      const avgCpuPerRoom = Game.cpu.getUsed() / ownedRooms.length;
+      const avgCpuPerRoom = Game.cpu.getUsed() / allOwnedRooms.length;
 
       // Detect unhealthy conditions
       const lowEnergy = avgEnergy < 30000;
@@ -805,7 +804,7 @@ export class EmpireManager {
         timeRemaining > totalTime * 1.5 && // Need 50% time buffer
         minDistance <= 5 && // Max 5 rooms away
         pb.power >= 1000 && // Minimum 1000 power
-        closestRoom.controller!.level >= 7; // Need RCL 7+ for power squads
+        (closestRoom.controller?.level ?? 0) >= 7; // Need RCL 7+ for power squads
 
       // Log profitability assessment
       if (!isProfitable && Game.time % 500 === 0) {
