@@ -10071,6 +10071,12 @@ function remoteHarvester(ctx) {
     return { type: "drop", resourceType: RESOURCE_ENERGY };
 }
 /**
+ * Energy collection threshold for remote haulers.
+ * Only collect from containers when they have this percentage of hauler capacity.
+ * This ensures travel costs are justified by energy gained.
+ */
+const REMOTE_HAULER_ENERGY_THRESHOLD = 0.3; // 30%
+/**
  * RemoteHauler - Transports energy from remote room to home room.
  * Picks up from remote containers/ground, delivers to home storage.
  *
@@ -10144,7 +10150,7 @@ function remoteHauler(ctx) {
         }
         // ENERGY EFFICIENCY: Only collect if there's sufficient energy to justify the trip
         // Remote hauling has travel costs, so we want to maximize energy per trip
-        const minEnergyThreshold = ctx.creep.store.getCapacity(RESOURCE_ENERGY) * 0.3; // 30% of capacity
+        const minEnergyThreshold = ctx.creep.store.getCapacity(RESOURCE_ENERGY) * REMOTE_HAULER_ENERGY_THRESHOLD;
         // In remote room - collect from containers or ground
         const containers = ctx.room.find(FIND_STRUCTURES, {
             filter: s => s.structureType === STRUCTURE_CONTAINER &&
@@ -10824,6 +10830,7 @@ function ranger(ctx) {
  * Squad members stay together and coordinate movements.
  */
 function squadBehavior(ctx, squad) {
+    var _a;
     // SQUAD COORDINATION: Check if we should wait for other squad members
     const shouldWaitForSquad = (state) => {
         if (state !== "gathering" && state !== "moving")
@@ -10864,8 +10871,10 @@ function squadBehavior(ctx, squad) {
         }
         case "attacking":
             // RETREAT CHECK: Squad members should retreat if HP is too low
+            // Default to 30% if retreatThreshold is not set
             const hpPercent = ctx.creep.hits / ctx.creep.hitsMax;
-            if (hpPercent < squad.retreatThreshold) {
+            const retreatThreshold = (_a = squad.retreatThreshold) !== null && _a !== void 0 ? _a : 0.3;
+            if (hpPercent < retreatThreshold) {
                 // Individual retreat to rally room
                 if (ctx.room.name !== squad.rallyRoom) {
                     return { type: "moveToRoom", roomName: squad.rallyRoom };

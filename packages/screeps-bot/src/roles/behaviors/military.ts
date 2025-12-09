@@ -685,8 +685,10 @@ function squadBehavior(ctx: CreepContext, squad: SquadMemory): CreepAction {
 
     case "attacking":
       // RETREAT CHECK: Squad members should retreat if HP is too low
+      // Default to 30% if retreatThreshold is not set
       const hpPercent = ctx.creep.hits / ctx.creep.hitsMax;
-      if (hpPercent < squad.retreatThreshold) {
+      const retreatThreshold = squad.retreatThreshold ?? 0.3;
+      if (hpPercent < retreatThreshold) {
         // Individual retreat to rally room
         if (ctx.room.name !== squad.rallyRoom) {
           return { type: "moveToRoom", roomName: squad.rallyRoom };

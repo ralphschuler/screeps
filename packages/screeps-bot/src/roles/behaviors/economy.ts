@@ -724,6 +724,13 @@ export function remoteHarvester(ctx: CreepContext): CreepAction {
 }
 
 /**
+ * Energy collection threshold for remote haulers.
+ * Only collect from containers when they have this percentage of hauler capacity.
+ * This ensures travel costs are justified by energy gained.
+ */
+const REMOTE_HAULER_ENERGY_THRESHOLD = 0.3; // 30%
+
+/**
  * RemoteHauler - Transports energy from remote room to home room.
  * Picks up from remote containers/ground, delivers to home storage.
  * 
@@ -810,7 +817,7 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
 
     // ENERGY EFFICIENCY: Only collect if there's sufficient energy to justify the trip
     // Remote hauling has travel costs, so we want to maximize energy per trip
-    const minEnergyThreshold = ctx.creep.store.getCapacity(RESOURCE_ENERGY) * 0.3; // 30% of capacity
+    const minEnergyThreshold = ctx.creep.store.getCapacity(RESOURCE_ENERGY) * REMOTE_HAULER_ENERGY_THRESHOLD;
 
     // In remote room - collect from containers or ground
     const containers = ctx.room.find(FIND_STRUCTURES, {
