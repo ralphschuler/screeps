@@ -49,7 +49,7 @@ const SQUAD_IDLE_TIMEOUT = 600;
 export function calculateSquadComposition(request: DefenseAssistanceRequest): SquadComposition {
   // Use urgency as threat level indicator (1-3)
   const threatLevel = Math.min(3, Math.max(1, request.urgency));
-  const baseComposition = THREAT_SQUAD_SIZE[threatLevel] ?? THREAT_SQUAD_SIZE[2]!;
+  const baseComposition = THREAT_SQUAD_SIZE[threatLevel] ?? THREAT_SQUAD_SIZE[2];
 
   // Adjust based on specific request needs
   return {

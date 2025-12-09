@@ -296,7 +296,9 @@ describe("Squad Coordinator", () => {
 
       const readiness = getSquadReadiness(squad);
 
-      assert.isTrue(readiness.ready, "Squad should be ready (has enough members)");
+      // Squad is "ready" because it has minimum viable members (3 >= 2 for defense)
+      // but still reports missing key roles for ideal composition
+      assert.isTrue(readiness.ready, "Squad should be ready (meets minimum member count)");
       assert.include(readiness.missingRoles, "ranger", "Should be missing ranger");
       assert.include(readiness.missingRoles, "healer", "Should be missing healer");
     });
