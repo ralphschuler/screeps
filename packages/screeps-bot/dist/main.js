@@ -16867,6 +16867,659 @@ function calculateWallRepairTarget(rcl, danger) {
 }
 
 /**
+ * Dynamic Defender Spawning
+ *
+ * Automatically spawns defenders based on threat assessment:
+ * - Analyzes hostile creeps in room
+ * - Calculates required defender count
+ * - Prioritizes defender spawning during attacks
+ * - Scales defender strength based on enemy composition
+ *
+ * Addresses Issue: #22
+ */
+/**
+ * Analyze room threats and determine defender requirements
+ */
+function analyzeDefenderNeeds(room) {
+    const result = {
+        guards: 0,
+        rangers: 0,
+        healers: 0,
+        urgency: 1.0,
+        reasons: []
+    };
+    // Find all hostile creeps
+    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    if (hostiles.length === 0) {
+        return result; // No threats
+    }
+    // Analyze hostile composition
+    let meleeCount = 0;
+    let rangedCount = 0;
+    let healerCount = 0;
+    let dismantlerCount = 0;
+    let boostedCount = 0;
+    for (const hostile of hostiles) {
+        const body = hostile.body;
+        // Check for boosted parts
+        const isBoosted = body.some(part => part.boost !== undefined);
+        if (isBoosted)
+            boostedCount++;
+        // Count part types
+        for (const part of body) {
+            if (part.type === ATTACK)
+                meleeCount++;
+            if (part.type === RANGED_ATTACK)
+                rangedCount++;
+            if (part.type === HEAL)
+                healerCount++;
+            if (part.type === WORK)
+                dismantlerCount++;
+        }
+    }
+    // Calculate defender requirements
+    // Guards for melee attackers (1:1 ratio, min 1 if any melee)
+    if (meleeCount > 0) {
+        result.guards = Math.max(1, Math.ceil(meleeCount / 4));
+        result.reasons.push(`${meleeCount} melee parts detected`);
+    }
+    // Rangers for ranged attackers (1:1.5 ratio)
+    if (rangedCount > 0) {
+        result.rangers = Math.max(1, Math.ceil(rangedCount / 6));
+        result.reasons.push(`${rangedCount} ranged parts detected`);
+    }
+    // Healers if enemies have healers (1:2 ratio)
+    if (healerCount > 0) {
+        result.healers = Math.max(1, Math.ceil(healerCount / 8));
+        result.reasons.push(`${healerCount} heal parts detected`);
+    }
+    // Extra defenders for dismantlers (they're dangerous)
+    if (dismantlerCount > 0) {
+        result.guards += Math.ceil(dismantlerCount / 5);
+        result.reasons.push(`${dismantlerCount} work parts (dismantlers)`);
+    }
+    // Boosted enemies require more defenders
+    if (boostedCount > 0) {
+        result.guards = Math.ceil(result.guards * 1.5);
+        result.rangers = Math.ceil(result.rangers * 1.5);
+        result.healers = Math.ceil(result.healers * 1.5);
+        result.urgency = 2.0;
+        result.reasons.push(`${boostedCount} boosted enemies (high threat)`);
+    }
+    // Minimum composition for any attack
+    if (hostiles.length > 0) {
+        result.guards = Math.max(result.guards, 1);
+        result.rangers = Math.max(result.rangers, 1);
+    }
+    // Large attacks require healers
+    if (hostiles.length >= 3) {
+        result.healers = Math.max(result.healers, 1);
+    }
+    // Urgency based on hostile count
+    if (hostiles.length >= 5) {
+        result.urgency = Math.max(result.urgency, 1.5);
+        result.reasons.push(`${hostiles.length} hostiles (large attack)`);
+    }
+    // Check for critical structures under attack
+    const damagedCritical = room.find(FIND_MY_STRUCTURES, {
+        filter: s => (s.structureType === STRUCTURE_SPAWN ||
+            s.structureType === STRUCTURE_STORAGE ||
+            s.structureType === STRUCTURE_TERMINAL) &&
+            s.hits < s.hitsMax * 0.8
+    });
+    if (damagedCritical.length > 0) {
+        result.urgency = 3.0;
+        result.reasons.push(`Critical structures under attack!`);
+    }
+    logger.info(`Defender analysis for ${room.name}: ${result.guards} guards, ${result.rangers} rangers, ${result.healers} healers (urgency: ${result.urgency}x) - ${result.reasons.join(", ")}`, { subsystem: "Defense" });
+    return result;
+}
+/**
+ * Get current defender count in room
+ */
+function getCurrentDefenders(room) {
+    const creeps = room.find(FIND_MY_CREEPS);
+    return {
+        guards: creeps.filter(c => c.memory.role === "guard").length,
+        rangers: creeps.filter(c => c.memory.role === "ranger").length,
+        healers: creeps.filter(c => c.memory.role === "healer").length
+    };
+}
+/**
+ * Calculate defender spawn priority boost
+ */
+function getDefenderPriorityBoost(room, swarm, role) {
+    const needs = analyzeDefenderNeeds(room);
+    const current = getCurrentDefenders(room);
+    // No boost if no threats
+    if (needs.guards === 0 && needs.rangers === 0 && needs.healers === 0) {
+        return 0;
+    }
+    let boost = 0;
+    // Boost priority for needed defenders
+    if (role === "guard" && current.guards < needs.guards) {
+        boost = 100 * needs.urgency;
+    }
+    else if (role === "ranger" && current.rangers < needs.rangers) {
+        boost = 100 * needs.urgency;
+    }
+    else if (role === "healer" && current.healers < needs.healers) {
+        boost = 100 * needs.urgency;
+    }
+    return boost;
+}
+/**
+ * Check if room needs external defense assistance
+ * A room needs help when:
+ * - It has significant threats (danger >= 2)
+ * - It cannot produce enough defenders (low energy, no spawns, or spawn queue full)
+ * - The threat is urgent (urgency >= 1.5)
+ */
+function needsDefenseAssistance(room, swarm) {
+    // No assistance needed if no significant threats
+    if (swarm.danger < 2) {
+        return false;
+    }
+    const needs = analyzeDefenderNeeds(room);
+    const current = getCurrentDefenders(room);
+    // Check if room lacks the defenders it needs
+    const defenderDeficit = (needs.guards - current.guards) + (needs.rangers - current.rangers);
+    if (defenderDeficit <= 0) {
+        return false; // Room has enough defenders
+    }
+    // Check if room can spawn defenders
+    const spawns = room.find(FIND_MY_SPAWNS);
+    if (spawns.length === 0) {
+        return true; // No spawns = definitely needs help
+    }
+    // Check if any spawn is available
+    const availableSpawns = spawns.filter(s => !s.spawning);
+    if (availableSpawns.length === 0) {
+        return true; // All spawns busy = needs help
+    }
+    // Check energy availability for spawning defenders
+    const energyAvailable = room.energyAvailable;
+    const minDefenderCost = 250; // Minimum cost for a basic defender
+    if (energyAvailable < minDefenderCost) {
+        return true; // Not enough energy = needs help
+    }
+    // Check urgency - high urgency threats need immediate help even if room can eventually spawn
+    if (needs.urgency >= 2.0 && defenderDeficit >= 2) {
+        return true; // Critical threat with multiple defender deficit = needs help
+    }
+    // Critical danger (level 3) with any defender deficit should request help
+    if (swarm.danger >= 3 && defenderDeficit >= 1) {
+        return true; // Critical danger always needs help
+    }
+    return false;
+}
+/**
+ * Create a defense request for a room that needs assistance
+ */
+function createDefenseRequest(room, swarm) {
+    if (!needsDefenseAssistance(room, swarm)) {
+        return null;
+    }
+    const needs = analyzeDefenderNeeds(room);
+    const current = getCurrentDefenders(room);
+    const request = {
+        roomName: room.name,
+        guardsNeeded: Math.max(0, needs.guards - current.guards),
+        rangersNeeded: Math.max(0, needs.rangers - current.rangers),
+        healersNeeded: Math.max(0, needs.healers - current.healers),
+        urgency: needs.urgency,
+        createdAt: Game.time,
+        threat: needs.reasons.join("; ")
+    };
+    logger.warn(`Defense assistance requested for ${room.name}: ${request.guardsNeeded} guards, ${request.rangersNeeded} rangers, ${request.healersNeeded} healers - ${request.threat}`, { subsystem: "Defense" });
+    return request;
+}
+
+/**
+ * Emergency Response System
+ *
+ * Coordinates emergency defense actions when rooms come under attack:
+ * - Escalates threat assessment
+ * - Triggers emergency defender spawning
+ * - Coordinates multi-room defense assistance
+ * - Manages boost allocation for defenders
+ *
+ * ROADMAP Reference: Section 12 - Kampf & Verteidigung
+ * - Adaptive behavior based on danger level
+ * - Emergency escalation for critical threats
+ * - Multi-room coordination
+ *
+ * Addresses Issue: #21 - Defense Systems
+ * - Emergency response triggers (currently basic)
+ * - Multi-room defense coordination (currently missing)
+ */
+/**
+ * Emergency response levels
+ */
+var EmergencyLevel;
+(function (EmergencyLevel) {
+    EmergencyLevel[EmergencyLevel["NONE"] = 0] = "NONE";
+    EmergencyLevel[EmergencyLevel["LOW"] = 1] = "LOW";
+    EmergencyLevel[EmergencyLevel["MEDIUM"] = 2] = "MEDIUM";
+    EmergencyLevel[EmergencyLevel["HIGH"] = 3] = "HIGH";
+    EmergencyLevel[EmergencyLevel["CRITICAL"] = 4] = "CRITICAL"; // Imminent destruction, safe mode consideration
+})(EmergencyLevel || (EmergencyLevel = {}));
+/**
+ * Emergency Response Manager
+ */
+class EmergencyResponseManager {
+    constructor() {
+        this.emergencyStates = new Map();
+    }
+    /**
+     * Assess and respond to threats in a room
+     */
+    assess(room, swarm) {
+        const existingState = this.emergencyStates.get(room.name);
+        const emergencyLevel = this.calculateEmergencyLevel(room, swarm);
+        // Create or update emergency state
+        let state;
+        if (existingState) {
+            state = existingState;
+            state.level = emergencyLevel;
+        }
+        else {
+            state = {
+                level: emergencyLevel,
+                startedAt: Game.time,
+                assistanceRequested: false,
+                boostsAllocated: false,
+                lastEscalation: 0
+            };
+            this.emergencyStates.set(room.name, state);
+        }
+        // Clear emergency state if threat is gone
+        if (emergencyLevel === EmergencyLevel.NONE) {
+            if (existingState) {
+                logger.info(`Emergency resolved in ${room.name}`, { subsystem: "Defense" });
+                this.emergencyStates.delete(room.name);
+            }
+            return state;
+        }
+        // Log emergency escalation
+        if (existingState && emergencyLevel > existingState.level) {
+            logger.warn(`Emergency escalated in ${room.name}: Level ${existingState.level} → ${emergencyLevel}`, { subsystem: "Defense" });
+            state.lastEscalation = Game.time;
+        }
+        // Execute emergency responses based on level
+        this.executeEmergencyResponse(room, swarm, state);
+        return state;
+    }
+    /**
+     * Calculate emergency level based on room state
+     */
+    calculateEmergencyLevel(room, swarm) {
+        // No emergency if no danger
+        if (swarm.danger === 0) {
+            return EmergencyLevel.NONE;
+        }
+        const hostiles = room.find(FIND_HOSTILE_CREEPS);
+        const needs = analyzeDefenderNeeds(room);
+        const current = getCurrentDefenders(room);
+        // Critical: Critical structures heavily damaged or about to be destroyed
+        const criticalStructures = room.find(FIND_MY_STRUCTURES, {
+            filter: s => (s.structureType === STRUCTURE_SPAWN ||
+                s.structureType === STRUCTURE_STORAGE ||
+                s.structureType === STRUCTURE_TERMINAL) &&
+                s.hits < s.hitsMax * 0.3
+        });
+        if (criticalStructures.length > 0) {
+            return EmergencyLevel.CRITICAL;
+        }
+        // High: Severely outnumbered or boosted enemies with insufficient defense
+        const boostedHostiles = hostiles.filter(h => h.body.some(p => p.boost));
+        const defenderDeficit = (needs.guards - current.guards) + (needs.rangers - current.rangers);
+        if (boostedHostiles.length > 0 && defenderDeficit >= 2) {
+            return EmergencyLevel.HIGH;
+        }
+        // High: Large attack force (5+ hostiles) with no defenders
+        if (hostiles.length >= 5 && current.guards === 0 && current.rangers === 0) {
+            return EmergencyLevel.HIGH;
+        }
+        // Medium: Significant threat with defender deficit
+        if (swarm.danger >= 2 && defenderDeficit >= 1) {
+            return EmergencyLevel.MEDIUM;
+        }
+        // Low: Minor threat detected
+        if (swarm.danger >= 1) {
+            return EmergencyLevel.LOW;
+        }
+        return EmergencyLevel.NONE;
+    }
+    /**
+     * Execute emergency response actions
+     */
+    executeEmergencyResponse(room, swarm, state) {
+        // Response: Request multi-room assistance for HIGH/CRITICAL emergencies
+        if ((state.level === EmergencyLevel.HIGH || state.level === EmergencyLevel.CRITICAL) &&
+            !state.assistanceRequested) {
+            const requested = this.requestDefenseAssistance(room, swarm);
+            if (requested) {
+                state.assistanceRequested = true;
+            }
+        }
+        // Response: Allocate boosts for MEDIUM/HIGH/CRITICAL emergencies
+        if ((state.level >= EmergencyLevel.MEDIUM) &&
+            !state.boostsAllocated &&
+            room.controller &&
+            room.controller.level >= 6) {
+            this.allocateBoostsForDefense(room, swarm);
+            state.boostsAllocated = true;
+        }
+        // Response: Update posture based on emergency level
+        this.updateDefensePosture(room, swarm, state);
+    }
+    /**
+     * Request defense assistance from neighboring rooms
+     */
+    requestDefenseAssistance(room, swarm) {
+        var _a;
+        if (!needsDefenseAssistance(room, swarm)) {
+            return false;
+        }
+        const request = createDefenseRequest(room, swarm);
+        if (!request) {
+            return false;
+        }
+        // Store request in memory for cluster coordination
+        const mem = Memory;
+        const requests = (_a = mem.defenseRequests) !== null && _a !== void 0 ? _a : [];
+        // Remove old requests for this room
+        const filtered = requests.filter((r) => r.roomName !== room.name || Game.time - r.createdAt < 500);
+        // Add new request
+        filtered.push(request);
+        mem.defenseRequests = filtered;
+        logger.warn(`Defense assistance requested for ${room.name}: ` +
+            `${request.guardsNeeded} guards, ${request.rangersNeeded} rangers - ${request.threat}`, { subsystem: "Defense" });
+        return true;
+    }
+    /**
+     * Allocate boosts for defensive creeps
+     */
+    allocateBoostsForDefense(room, swarm) {
+        var _a;
+        // Mark swarm state to prioritize boosting defenders
+        // The boost manager will read this flag and prioritize defense boosts
+        const mem = Memory;
+        const boostPriority = (_a = mem.boostDefensePriority) !== null && _a !== void 0 ? _a : {};
+        boostPriority[room.name] = true;
+        mem.boostDefensePriority = boostPriority;
+        logger.info(`Allocated boost priority for defenders in ${room.name}`, { subsystem: "Defense" });
+    }
+    /**
+     * Update defense posture based on emergency level
+     */
+    updateDefensePosture(room, swarm, state) {
+        // Update posture based on emergency level
+        switch (state.level) {
+            case EmergencyLevel.CRITICAL:
+                if (swarm.posture !== "evacuate") {
+                    swarm.posture = "war";
+                    swarm.pheromones.war = 100;
+                    swarm.pheromones.defense = 100;
+                    logger.warn(`${room.name} posture: CRITICAL DEFENSE`, { subsystem: "Defense" });
+                }
+                break;
+            case EmergencyLevel.HIGH:
+                if (swarm.posture !== "war" && swarm.posture !== "evacuate") {
+                    swarm.posture = "defensive";
+                    swarm.pheromones.defense = 80;
+                    swarm.pheromones.war = 40;
+                    logger.info(`${room.name} posture: HIGH DEFENSE`, { subsystem: "Defense" });
+                }
+                break;
+            case EmergencyLevel.MEDIUM:
+                if (swarm.posture === "eco" || swarm.posture === "expand") {
+                    swarm.posture = "defensive";
+                    swarm.pheromones.defense = 60;
+                    logger.info(`${room.name} posture: MEDIUM DEFENSE`, { subsystem: "Defense" });
+                }
+                break;
+            case EmergencyLevel.LOW:
+                if (swarm.posture === "eco" || swarm.posture === "expand") {
+                    swarm.pheromones.defense = 30;
+                    logger.debug(`${room.name}: LOW DEFENSE alert`, { subsystem: "Defense" });
+                }
+                break;
+        }
+    }
+    /**
+     * Get pending defense requests
+     */
+    getDefenseRequests() {
+        var _a;
+        const mem = Memory;
+        const requests = (_a = mem.defenseRequests) !== null && _a !== void 0 ? _a : [];
+        // Filter out stale requests (older than 500 ticks)
+        const active = requests.filter((r) => Game.time - r.createdAt < 500);
+        // Update memory if we filtered any
+        if (active.length !== requests.length) {
+            mem.defenseRequests = active;
+        }
+        return active;
+    }
+    /**
+     * Clear defense request for a room
+     */
+    clearDefenseRequest(roomName) {
+        var _a;
+        const mem = Memory;
+        const requests = (_a = mem.defenseRequests) !== null && _a !== void 0 ? _a : [];
+        const filtered = requests.filter((r) => r.roomName !== roomName);
+        mem.defenseRequests = filtered;
+    }
+    /**
+     * Get emergency state for a room
+     */
+    getEmergencyState(roomName) {
+        return this.emergencyStates.get(roomName);
+    }
+    /**
+     * Check if a room has an active emergency
+     */
+    hasEmergency(roomName) {
+        const state = this.emergencyStates.get(roomName);
+        return state !== undefined && state.level > EmergencyLevel.NONE;
+    }
+    /**
+     * Get all active emergencies sorted by severity
+     */
+    getActiveEmergencies() {
+        const emergencies = [];
+        for (const [roomName, state] of this.emergencyStates.entries()) {
+            if (state.level > EmergencyLevel.NONE) {
+                emergencies.push({ roomName, state });
+            }
+        }
+        // Sort by emergency level (highest first)
+        return emergencies.sort((a, b) => b.state.level - a.state.level);
+    }
+}
+/**
+ * Global emergency response manager instance
+ */
+const emergencyResponseManager = new EmergencyResponseManager();
+
+/**
+ * Rampart Automation System
+ *
+ * Automatically places and maintains ramparts on critical structures:
+ * - Core structures (spawns, storage, terminal, labs, etc.)
+ * - Towers for protection
+ * - Controller for safe upgrading
+ * - Dynamic rampart health targets based on danger level
+ *
+ * ROADMAP Reference: Section 17 - Mauern & Ramparts
+ * - Core-Shell protection strategy
+ * - Ramparts protect structures on their tile
+ * - Dynamic repair targets based on RCL and danger
+ *
+ * Addresses Issue: #21 - Defense Systems
+ * - Rampart placement automation (currently weak)
+ */
+/**
+ * Structure types that should be protected with ramparts
+ */
+const CRITICAL_STRUCTURES = [
+    STRUCTURE_SPAWN,
+    STRUCTURE_STORAGE,
+    STRUCTURE_TERMINAL,
+    STRUCTURE_TOWER,
+    STRUCTURE_LAB,
+    STRUCTURE_FACTORY,
+    STRUCTURE_POWER_SPAWN,
+    STRUCTURE_NUKER,
+    STRUCTURE_OBSERVER
+];
+/**
+ * Structure types that need ramparts at lower RCL
+ */
+const PRIORITY_STRUCTURES = [
+    STRUCTURE_SPAWN,
+    STRUCTURE_TOWER,
+    STRUCTURE_STORAGE
+];
+/**
+ * Get all critical structures that should have ramparts
+ */
+function getCriticalStructures(room, rcl) {
+    const structures = room.find(FIND_MY_STRUCTURES);
+    // At lower RCL, only protect priority structures
+    const targetTypes = rcl < 4 ? PRIORITY_STRUCTURES : CRITICAL_STRUCTURES;
+    return structures.filter(s => targetTypes.includes(s.structureType));
+}
+/**
+ * Check if a position has a rampart
+ */
+function hasRampart(room, x, y) {
+    const structures = room.lookForAt(LOOK_STRUCTURES, x, y);
+    return structures.some(s => s.structureType === STRUCTURE_RAMPART);
+}
+/**
+ * Check if a position has a rampart construction site
+ */
+function hasRampartSite(room, x, y) {
+    const sites = room.lookForAt(LOOK_CONSTRUCTION_SITES, x, y);
+    return sites.some(s => s.structureType === STRUCTURE_RAMPART);
+}
+/**
+ * Place ramparts on critical structures
+ *
+ * Strategy:
+ * 1. Identify all critical structures (spawns, storage, towers, labs, etc.)
+ * 2. Check if each structure has a rampart
+ * 3. Place rampart construction sites for unprotected structures
+ * 4. Prioritize based on structure importance and danger level
+ *
+ * @param room The room to fortify
+ * @param rcl Current room control level
+ * @param danger Current danger level (0-3)
+ * @param maxSites Maximum construction sites to place
+ * @returns Rampart placement result
+ */
+function placeRampartsOnCriticalStructures(room, rcl, danger, maxSites = 5) {
+    const result = {
+        placed: 0,
+        needsRepair: 0,
+        totalCritical: 0,
+        protected: 0
+    };
+    // Don't place ramparts before RCL 2
+    if (rcl < 2) {
+        return result;
+    }
+    // Get all critical structures
+    const criticalStructures = getCriticalStructures(room, rcl);
+    result.totalCritical = criticalStructures.length;
+    if (criticalStructures.length === 0) {
+        return result;
+    }
+    // Check existing construction sites
+    const existingSites = room.find(FIND_MY_CONSTRUCTION_SITES);
+    if (existingSites.length >= 10) {
+        // Construction site limit reached
+        return result;
+    }
+    const maxToPlace = Math.min(maxSites, 10 - existingSites.length);
+    // Get all ramparts for repair check
+    const ramparts = room.find(FIND_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_RAMPART
+    });
+    const repairTarget = calculateWallRepairTarget(rcl, danger);
+    // Track structures by priority
+    const unprotected = [];
+    // Check each critical structure
+    for (const structure of criticalStructures) {
+        const { x, y } = structure.pos;
+        // Check if structure has rampart
+        if (hasRampart(room, x, y)) {
+            result.protected++;
+            // Check if rampart needs repair
+            const rampart = ramparts.find(r => r.pos.x === x && r.pos.y === y);
+            if (rampart && rampart.hits < repairTarget) {
+                result.needsRepair++;
+            }
+        }
+        else if (!hasRampartSite(room, x, y)) {
+            // Structure is unprotected - calculate priority
+            let priority = 10;
+            // Higher priority for spawns and storage
+            if (structure.structureType === STRUCTURE_SPAWN) {
+                priority = 100;
+            }
+            else if (structure.structureType === STRUCTURE_STORAGE) {
+                priority = 90;
+            }
+            else if (structure.structureType === STRUCTURE_TOWER) {
+                priority = 80;
+            }
+            else if (structure.structureType === STRUCTURE_TERMINAL) {
+                priority = 70;
+            }
+            else if (structure.structureType === STRUCTURE_LAB) {
+                priority = 60;
+            }
+            // Increase priority during attacks
+            if (danger >= 2) {
+                priority += 50;
+            }
+            unprotected.push({ structure, priority });
+        }
+    }
+    // Sort unprotected structures by priority
+    unprotected.sort((a, b) => b.priority - a.priority);
+    // Place ramparts on unprotected structures
+    for (const { structure } of unprotected) {
+        if (result.placed >= maxToPlace) {
+            break;
+        }
+        const { x, y } = structure.pos;
+        const placeResult = room.createConstructionSite(x, y, STRUCTURE_RAMPART);
+        if (placeResult === OK) {
+            result.placed++;
+            logger.debug(`Placed rampart on ${structure.structureType} at (${x},${y})`, { subsystem: "Defense" });
+        }
+        else if (placeResult === ERR_FULL) {
+            // Construction site limit reached
+            break;
+        }
+    }
+    // Log summary if we placed ramparts or have unprotected structures
+    if (result.placed > 0 || unprotected.length > 0) {
+        logger.info(`Rampart automation for ${room.name}: ` +
+            `${result.protected}/${result.totalCritical} protected, ` +
+            `${result.placed} placed, ` +
+            `${unprotected.length - result.placed} pending`, { subsystem: "Defense" });
+    }
+    return result;
+}
+
+/**
  * Chemistry Planner - Reaction Chain Planning
  *
  * Plans and executes lab reactions:
@@ -17315,6 +17968,7 @@ class BoostManager {
      * Check if a creep should be boosted
      */
     shouldBoost(creep, swarm) {
+        var _a;
         const memory = creep.memory;
         // Check if already boosted
         if (memory.boosted) {
@@ -17325,8 +17979,16 @@ class BoostManager {
         if (!config) {
             return false; // No boost config for this role
         }
+        // Check if room has boost defense priority (emergency response system)
+        const mem = Memory;
+        const boostPriority = (_a = mem.boostDefensePriority) !== null && _a !== void 0 ? _a : {};
+        const hasDefensePriority = boostPriority[creep.room.name] === true;
+        // Lower threshold if defense priority is set
+        const effectiveMinDanger = hasDefensePriority
+            ? Math.max(1, config.minDanger - 1)
+            : config.minDanger;
         // Check danger level
-        if (swarm.danger < config.minDanger) {
+        if (swarm.danger < effectiveMinDanger) {
             return false; // Not dangerous enough to warrant boosting
         }
         // Check if room has labs
@@ -17586,6 +18248,8 @@ class RoomNode {
         }
         // Update threat assessment
         this.updateThreatAssessment(room, swarm);
+        // Assess emergency situation and coordinate response
+        emergencyResponseManager.assess(room, swarm);
         // Check safe mode trigger
         safeModeManager.checkSafeMode(room, swarm);
         // Update evolution stage
@@ -17925,8 +18589,18 @@ class RoomNode {
         // Priority 3: Place road construction sites for infrastructure routes (sources, controller, mineral)
         // Only place 1-2 road sites per tick to avoid overwhelming builders
         const roadSitesPlaced = placeRoadConstructionSites(room, anchor, 2);
+        // Priority 4: Place ramparts on critical structures (RCL 2+)
+        // Automated rampart placement for spawn, storage, towers, labs, etc.
+        let rampartResult = { placed: 0, needsRepair: 0, totalCritical: 0, protected: 0 };
+        if (rcl >= 2 && existingSites.length < 9) {
+            const maxRampartSites = swarm.danger >= 2 ? 3 : 2; // More aggressive during attacks
+            rampartResult = placeRampartsOnCriticalStructures(room, rcl, swarm.danger, maxRampartSites);
+            if (rampartResult.placed > 0) {
+                memoryManager.addRoomEvent(this.roomName, "rampartPlaced", `${rampartResult.placed} rampart(s) placed on critical structures`);
+            }
+        }
         // Update metrics
-        swarm.metrics.constructionSites = existingSites.length + placed + roadSitesPlaced + perimeterResult.sitesPlaced;
+        swarm.metrics.constructionSites = existingSites.length + placed + roadSitesPlaced + perimeterResult.sitesPlaced + rampartResult.placed;
     }
     /**
      * Run resource processing (labs, factory, power spawn)
@@ -18886,215 +19560,6 @@ function registerAllConsoleCommands() {
     registerDecoratedCommands(systemCommands);
     // Expose all commands to global scope
     commandRegistry.exposeToGlobal();
-}
-
-/**
- * Dynamic Defender Spawning
- *
- * Automatically spawns defenders based on threat assessment:
- * - Analyzes hostile creeps in room
- * - Calculates required defender count
- * - Prioritizes defender spawning during attacks
- * - Scales defender strength based on enemy composition
- *
- * Addresses Issue: #22
- */
-/**
- * Analyze room threats and determine defender requirements
- */
-function analyzeDefenderNeeds(room) {
-    const result = {
-        guards: 0,
-        rangers: 0,
-        healers: 0,
-        urgency: 1.0,
-        reasons: []
-    };
-    // Find all hostile creeps
-    const hostiles = room.find(FIND_HOSTILE_CREEPS);
-    if (hostiles.length === 0) {
-        return result; // No threats
-    }
-    // Analyze hostile composition
-    let meleeCount = 0;
-    let rangedCount = 0;
-    let healerCount = 0;
-    let dismantlerCount = 0;
-    let boostedCount = 0;
-    for (const hostile of hostiles) {
-        const body = hostile.body;
-        // Check for boosted parts
-        const isBoosted = body.some(part => part.boost !== undefined);
-        if (isBoosted)
-            boostedCount++;
-        // Count part types
-        for (const part of body) {
-            if (part.type === ATTACK)
-                meleeCount++;
-            if (part.type === RANGED_ATTACK)
-                rangedCount++;
-            if (part.type === HEAL)
-                healerCount++;
-            if (part.type === WORK)
-                dismantlerCount++;
-        }
-    }
-    // Calculate defender requirements
-    // Guards for melee attackers (1:1 ratio, min 1 if any melee)
-    if (meleeCount > 0) {
-        result.guards = Math.max(1, Math.ceil(meleeCount / 4));
-        result.reasons.push(`${meleeCount} melee parts detected`);
-    }
-    // Rangers for ranged attackers (1:1.5 ratio)
-    if (rangedCount > 0) {
-        result.rangers = Math.max(1, Math.ceil(rangedCount / 6));
-        result.reasons.push(`${rangedCount} ranged parts detected`);
-    }
-    // Healers if enemies have healers (1:2 ratio)
-    if (healerCount > 0) {
-        result.healers = Math.max(1, Math.ceil(healerCount / 8));
-        result.reasons.push(`${healerCount} heal parts detected`);
-    }
-    // Extra defenders for dismantlers (they're dangerous)
-    if (dismantlerCount > 0) {
-        result.guards += Math.ceil(dismantlerCount / 5);
-        result.reasons.push(`${dismantlerCount} work parts (dismantlers)`);
-    }
-    // Boosted enemies require more defenders
-    if (boostedCount > 0) {
-        result.guards = Math.ceil(result.guards * 1.5);
-        result.rangers = Math.ceil(result.rangers * 1.5);
-        result.healers = Math.ceil(result.healers * 1.5);
-        result.urgency = 2.0;
-        result.reasons.push(`${boostedCount} boosted enemies (high threat)`);
-    }
-    // Minimum composition for any attack
-    if (hostiles.length > 0) {
-        result.guards = Math.max(result.guards, 1);
-        result.rangers = Math.max(result.rangers, 1);
-    }
-    // Large attacks require healers
-    if (hostiles.length >= 3) {
-        result.healers = Math.max(result.healers, 1);
-    }
-    // Urgency based on hostile count
-    if (hostiles.length >= 5) {
-        result.urgency = Math.max(result.urgency, 1.5);
-        result.reasons.push(`${hostiles.length} hostiles (large attack)`);
-    }
-    // Check for critical structures under attack
-    const damagedCritical = room.find(FIND_MY_STRUCTURES, {
-        filter: s => (s.structureType === STRUCTURE_SPAWN ||
-            s.structureType === STRUCTURE_STORAGE ||
-            s.structureType === STRUCTURE_TERMINAL) &&
-            s.hits < s.hitsMax * 0.8
-    });
-    if (damagedCritical.length > 0) {
-        result.urgency = 3.0;
-        result.reasons.push(`Critical structures under attack!`);
-    }
-    logger.info(`Defender analysis for ${room.name}: ${result.guards} guards, ${result.rangers} rangers, ${result.healers} healers (urgency: ${result.urgency}x) - ${result.reasons.join(", ")}`, { subsystem: "Defense" });
-    return result;
-}
-/**
- * Get current defender count in room
- */
-function getCurrentDefenders(room) {
-    const creeps = room.find(FIND_MY_CREEPS);
-    return {
-        guards: creeps.filter(c => c.memory.role === "guard").length,
-        rangers: creeps.filter(c => c.memory.role === "ranger").length,
-        healers: creeps.filter(c => c.memory.role === "healer").length
-    };
-}
-/**
- * Calculate defender spawn priority boost
- */
-function getDefenderPriorityBoost(room, swarm, role) {
-    const needs = analyzeDefenderNeeds(room);
-    const current = getCurrentDefenders(room);
-    // No boost if no threats
-    if (needs.guards === 0 && needs.rangers === 0 && needs.healers === 0) {
-        return 0;
-    }
-    let boost = 0;
-    // Boost priority for needed defenders
-    if (role === "guard" && current.guards < needs.guards) {
-        boost = 100 * needs.urgency;
-    }
-    else if (role === "ranger" && current.rangers < needs.rangers) {
-        boost = 100 * needs.urgency;
-    }
-    else if (role === "healer" && current.healers < needs.healers) {
-        boost = 100 * needs.urgency;
-    }
-    return boost;
-}
-/**
- * Check if room needs external defense assistance
- * A room needs help when:
- * - It has significant threats (danger >= 2)
- * - It cannot produce enough defenders (low energy, no spawns, or spawn queue full)
- * - The threat is urgent (urgency >= 1.5)
- */
-function needsDefenseAssistance(room, swarm) {
-    // No assistance needed if no significant threats
-    if (swarm.danger < 2) {
-        return false;
-    }
-    const needs = analyzeDefenderNeeds(room);
-    const current = getCurrentDefenders(room);
-    // Check if room lacks the defenders it needs
-    const defenderDeficit = (needs.guards - current.guards) + (needs.rangers - current.rangers);
-    if (defenderDeficit <= 0) {
-        return false; // Room has enough defenders
-    }
-    // Check if room can spawn defenders
-    const spawns = room.find(FIND_MY_SPAWNS);
-    if (spawns.length === 0) {
-        return true; // No spawns = definitely needs help
-    }
-    // Check if any spawn is available
-    const availableSpawns = spawns.filter(s => !s.spawning);
-    if (availableSpawns.length === 0) {
-        return true; // All spawns busy = needs help
-    }
-    // Check energy availability for spawning defenders
-    const energyAvailable = room.energyAvailable;
-    const minDefenderCost = 250; // Minimum cost for a basic defender
-    if (energyAvailable < minDefenderCost) {
-        return true; // Not enough energy = needs help
-    }
-    // Check urgency - high urgency threats need immediate help even if room can eventually spawn
-    if (needs.urgency >= 2.0 && defenderDeficit >= 2) {
-        return true; // Critical threat with multiple defender deficit = needs help
-    }
-    // Critical danger (level 3) with any defender deficit should request help
-    if (swarm.danger >= 3 && defenderDeficit >= 1) {
-        return true; // Critical danger always needs help
-    }
-    return false;
-}
-/**
- * Create a defense request for a room that needs assistance
- */
-function createDefenseRequest(room, swarm) {
-    if (!needsDefenseAssistance(room, swarm)) {
-        return null;
-    }
-    const needs = analyzeDefenderNeeds(room);
-    const current = getCurrentDefenders(room);
-    const request = {
-        roomName: room.name,
-        guardsNeeded: Math.max(0, needs.guards - current.guards),
-        rangersNeeded: Math.max(0, needs.rangers - current.rangers),
-        healersNeeded: Math.max(0, needs.healers - current.healers),
-        urgency: needs.urgency,
-        createdAt: Game.time,
-        threat: needs.reasons.join("; ")
-    };
-    logger.warn(`Defense assistance requested for ${room.name}: ${request.guardsNeeded} guards, ${request.rangersNeeded} rangers, ${request.healersNeeded} healers - ${request.threat}`, { subsystem: "Defense" });
-    return request;
 }
 
 /**

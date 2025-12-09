@@ -23,6 +23,8 @@ import { safeModeManager } from "../defense/safeModeManager";
 import { placePerimeterDefense } from "../defense/perimeterDefense";
 import { placeRoadAwarePerimeterDefense } from "../defense/roadAwareDefense";
 import { calculateWallRepairTarget } from "../defense/wallRepairTargets";
+import { emergencyResponseManager } from "../defense/emergencyResponse";
+import { placeRampartsOnCriticalStructures } from "../defense/rampartAutomation";
 import { chemistryPlanner } from "../labs/chemistryPlanner";
 import { boostManager } from "../labs/boostManager";
 import { kernel } from "./kernel";
@@ -167,6 +169,9 @@ export class RoomNode {
 
     // Update threat assessment
     this.updateThreatAssessment(room, swarm);
+
+    // Assess emergency situation and coordinate response
+    emergencyResponseManager.assess(room, swarm);
 
     // Check safe mode trigger
     safeModeManager.checkSafeMode(room, swarm);
@@ -559,8 +564,24 @@ export class RoomNode {
     // Only place 1-2 road sites per tick to avoid overwhelming builders
     const roadSitesPlaced = placeRoadConstructionSites(room, anchor, 2);
 
+    // Priority 4: Place ramparts on critical structures (RCL 2+)
+    // Automated rampart placement for spawn, storage, towers, labs, etc.
+    let rampartResult = { placed: 0, needsRepair: 0, totalCritical: 0, protected: 0 };
+    if (rcl >= 2 && existingSites.length < 9) {
+      const maxRampartSites = swarm.danger >= 2 ? 3 : 2; // More aggressive during attacks
+      rampartResult = placeRampartsOnCriticalStructures(room, rcl, swarm.danger, maxRampartSites);
+      
+      if (rampartResult.placed > 0) {
+        memoryManager.addRoomEvent(
+          this.roomName,
+          "rampartPlaced",
+          `${rampartResult.placed} rampart(s) placed on critical structures`
+        );
+      }
+    }
+
     // Update metrics
-    swarm.metrics.constructionSites = existingSites.length + placed + roadSitesPlaced + perimeterResult.sitesPlaced;
+    swarm.metrics.constructionSites = existingSites.length + placed + roadSitesPlaced + perimeterResult.sitesPlaced + rampartResult.placed;
   }
 
   /**

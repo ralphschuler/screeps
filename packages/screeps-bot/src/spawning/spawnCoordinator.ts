@@ -24,6 +24,12 @@ import {
   type BodyTemplate
 } from "../logic/spawn";
 import { logger } from "../core/logger";
+import { 
+  analyzeDefenderNeeds, 
+  getCurrentDefenders, 
+  getDefenderPriorityBoost 
+} from "./defenderManager";
+import { emergencyResponseManager } from "../defense/emergencyResponse";
 
 /**
  * Populate spawn queue for a room
@@ -38,6 +44,16 @@ export function populateSpawnQueue(room: Room, swarm: SwarmState): void {
 
   const counts = countCreepsByRole(room.name);
   const isEmergency = isEmergencySpawnState(room.name);
+
+  // Check if we need emergency defenders
+  const defenderNeeds = analyzeDefenderNeeds(room);
+  const currentDefenders = getCurrentDefenders(room);
+  const emergencyState = emergencyResponseManager.getEmergencyState(room.name);
+
+  // Add defender requests first if there's a threat
+  if (defenderNeeds.guards > 0 || defenderNeeds.rangers > 0 || defenderNeeds.healers > 0) {
+    addDefenderRequests(room, swarm, defenderNeeds, currentDefenders);
+  }
 
   // Determine what roles are needed
   for (const [roleName, def] of Object.entries(ROLE_DEFINITIONS)) {
@@ -54,6 +70,19 @@ export function populateSpawnQueue(room: Room, swarm: SwarmState): void {
     // Emergency boost for critical economy roles
     if (isEmergency && (roleName === "larvaWorker" || roleName === "harvester")) {
       priority = SpawnPriority.EMERGENCY;
+    } else if (emergencyState && (roleName === "guard" || roleName === "ranger" || roleName === "healer")) {
+      // Boost defender priority during emergencies
+      // getDefenderPriorityBoost returns a numeric boost (e.g., 100 * urgency)
+      // We need to check if we actually need this defender role
+      const boost = getDefenderPriorityBoost(room, swarm, roleName);
+      if (boost >= 100) {
+        // High urgency (urgency >= 1.0), use EMERGENCY priority
+        priority = SpawnPriority.EMERGENCY;
+      } else if (boost > 0) {
+        // Some urgency, use HIGH priority
+        priority = SpawnPriority.HIGH;
+      }
+      // else keep original priority
     } else {
       // Map base priorities to queue priorities
       if (priority >= 90) {
@@ -169,6 +198,118 @@ export function processSpawnQueue(room: Room): number {
  */
 function generateCreepName(role: string): string {
   return `${role}_${Game.time}_${Math.floor(Math.random() * 1000)}`;
+}
+
+/**
+ * Add defender spawn requests to queue
+ */
+function addDefenderRequests(
+  room: Room,
+  swarm: SwarmState,
+  needs: ReturnType<typeof analyzeDefenderNeeds>,
+  current: ReturnType<typeof getCurrentDefenders>
+): void {
+  const maxEnergy = room.energyCapacityAvailable;
+  const emergencyEnergy = room.energyAvailable;
+
+  // Determine priority based on urgency
+  let priority = SpawnPriority.HIGH;
+  if (needs.urgency >= 2.0) {
+    priority = SpawnPriority.EMERGENCY;
+  }
+
+  // Add guard requests
+  const guardsNeeded = Math.max(0, needs.guards - current.guards);
+  for (let i = 0; i < guardsNeeded; i++) {
+    try {
+      // Use emergency energy if priority is emergency, otherwise use max capacity
+      const energyToUse = priority === SpawnPriority.EMERGENCY ? emergencyEnergy : maxEnergy;
+      const body = optimizeBody({
+        maxEnergy: energyToUse,
+        role: "guard"
+      });
+
+      const request: SpawnRequest = {
+        id: `guard_defense_${Game.time}_${i}`,
+        roomName: room.name,
+        role: "guard",
+        family: "military",
+        body,
+        priority,
+        createdAt: Game.time
+      };
+
+      spawnQueue.addRequest(request);
+    } catch (error) {
+      logger.error(`Failed to create guard spawn request: ${error}`, {
+        subsystem: "SpawnCoordinator"
+      });
+    }
+  }
+
+  // Add ranger requests
+  const rangersNeeded = Math.max(0, needs.rangers - current.rangers);
+  for (let i = 0; i < rangersNeeded; i++) {
+    try {
+      const energyToUse = priority === SpawnPriority.EMERGENCY ? emergencyEnergy : maxEnergy;
+      const body = optimizeBody({
+        maxEnergy: energyToUse,
+        role: "ranger"
+      });
+
+      const request: SpawnRequest = {
+        id: `ranger_defense_${Game.time}_${i}`,
+        roomName: room.name,
+        role: "ranger",
+        family: "military",
+        body,
+        priority,
+        createdAt: Game.time
+      };
+
+      spawnQueue.addRequest(request);
+    } catch (error) {
+      logger.error(`Failed to create ranger spawn request: ${error}`, {
+        subsystem: "SpawnCoordinator"
+      });
+    }
+  }
+
+  // Add healer requests (lower priority)
+  const healersNeeded = Math.max(0, needs.healers - current.healers);
+  if (healersNeeded > 0 && needs.urgency >= 1.5) {
+    for (let i = 0; i < healersNeeded; i++) {
+      try {
+        const body = optimizeBody({
+          maxEnergy: maxEnergy,
+          role: "healer"
+        });
+
+        const request: SpawnRequest = {
+          id: `healer_defense_${Game.time}_${i}`,
+          roomName: room.name,
+          role: "healer",
+          family: "military",
+          body,
+          priority: SpawnPriority.HIGH,
+          createdAt: Game.time
+        };
+
+        spawnQueue.addRequest(request);
+      } catch (error) {
+        logger.error(`Failed to create healer spawn request: ${error}`, {
+          subsystem: "SpawnCoordinator"
+        });
+      }
+    }
+  }
+
+  if (guardsNeeded > 0 || rangersNeeded > 0 || healersNeeded > 0) {
+    logger.info(
+      `Added defender spawn requests: ${guardsNeeded} guards, ${rangersNeeded} rangers, ${healersNeeded} healers (priority: ${priority})`,
+      { subsystem: "SpawnCoordinator" }
+    );
+  }
 }
 
 /**
