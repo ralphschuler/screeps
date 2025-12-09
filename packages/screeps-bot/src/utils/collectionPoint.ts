@@ -95,6 +95,11 @@ export function getCollectionPoint(room: Room, swarmState: SwarmState): RoomPosi
     swarmState.collectionPoint = { x: newPos.x, y: newPos.y };
     // Cache for fast access this tick
     collectionPointCache.set(room.name, { pos: newPos, tick: Game.time });
+  } else {
+    // Clear invalid collection point from memory
+    swarmState.collectionPoint = undefined;
+    // Also clear from cache
+    collectionPointCache.delete(room.name);
   }
 
   return newPos;
