@@ -1,15 +1,13 @@
 # Screeps Server Setup
 
-This package contains a Docker Compose configuration for running a local Screeps private server with integrated monitoring via InfluxDB and Grafana.
+This package contains a Docker Compose configuration for running a local Screeps private server with integrated monitoring via Grafana Cloud.
 
 ## Services
 
 - **screeps**: Screeps private server using screeps-launcher
 - **mongo**: MongoDB database for Screeps
 - **redis**: Redis for Screeps caching
-- **influxdb**: InfluxDB v2 for time-series metrics storage
-- **grafana**: Grafana for visualization and dashboards
-- **screeps-exporter**: Exports Screeps stats from Memory to InfluxDB
+- **screeps-exporter**: Exports Screeps stats from Memory to Grafana Cloud Graphite
 
 ## Getting Started
 
@@ -21,6 +19,8 @@ This package contains a Docker Compose configuration for running a local Screeps
 2. Set the required environment variables:
    - `STEAM_KEY`: Your Steam API key
    - `MAPTOOL_PASS`: Password for the map tool
+   - `GRAFANA_CLOUD_GRAPHITE_URL`: Your Grafana Cloud Graphite endpoint URL
+   - `GRAFANA_CLOUD_API_KEY`: Your Grafana Cloud API key
    - Bot credentials: Either `SCREEPS_TOKEN` or `SCREEPS_BOT_USERNAME` + `SCREEPS_BOT_PASSWORD`
 
 3. Start the services:
@@ -30,14 +30,13 @@ This package contains a Docker Compose configuration for running a local Screeps
 
 4. Access the services:
    - Screeps Server: http://localhost:21025
-   - Grafana: http://localhost:3000 (default login: admin/admin)
-   - InfluxDB: http://localhost:8086
+   - Grafana Cloud: Access your Grafana Cloud instance to view dashboards
 
 ## Monitoring Setup
 
-### Pre-configured Dashboard
+### Grafana Cloud Dashboards
 
-A Grafana dashboard is automatically provisioned at `grafana/provisioning/dashboards/screeps-ant-swarm.json`. It includes:
+Create dashboards in your Grafana Cloud instance to visualize:
 
 - **CPU Performance**: CPU usage, bucket level, and percentage
 - **Profiler Subsystems**: Stacked CPU usage by subsystem (rooms, kernel, spawns, creeps, etc.)
@@ -45,6 +44,11 @@ A Grafana dashboard is automatically provisioned at `grafana/provisioning/dashbo
 - **Empire Statistics**: Total creeps, rooms, GCL, GPL levels
 - **Energy Statistics**: Storage and terminal energy across all rooms
 - **Controller Progress**: Per-room controller upgrade progress
+
+Example Graphite queries:
+- CPU usage: `screeps.stats.cpu.used`
+- Room energy: `screeps.stats.room.*.energy.storage`
+- Subsystem CPU: `screeps.stats.profiler.subsystem.*.avg_cpu`
 
 ### Stats Format
 
@@ -66,22 +70,13 @@ Memory.stats = {
 
 ## Configuration
 
-### InfluxDB Settings
+### Grafana Cloud Settings
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `INFLUXDB_USERNAME` | admin | Initial admin username |
-| `INFLUXDB_PASSWORD` | screeps-password | Initial admin password |
-| `INFLUXDB_ORG` | screeps | Organization name |
-| `INFLUXDB_BUCKET` | screeps | Default bucket |
-| `INFLUXDB_TOKEN` | screeps-influxdb-token | API token |
-
-### Grafana Settings
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `GRAFANA_ADMIN_USER` | admin | Admin username |
-| `GRAFANA_ADMIN_PASSWORD` | admin | Admin password |
+| `GRAFANA_CLOUD_GRAPHITE_URL` | - | Grafana Cloud Graphite endpoint (required) |
+| `GRAFANA_CLOUD_API_KEY` | - | Grafana Cloud API key (required) |
+| `GRAFANA_CLOUD_GRAPHITE_PREFIX` | screeps | Prefix for all metrics |
 
 ### Exporter Settings
 
@@ -92,15 +87,14 @@ Memory.stats = {
 | `EXPORTER_MEMORY_PATH` | stats | Memory path to read stats from |
 | `EXPORTER_SHARD` | shard0 | Shard to read from |
 
-## Customizing the Dashboard
+## Creating Dashboards in Grafana Cloud
 
-The Grafana dashboard can be customized by editing `grafana/provisioning/dashboards/screeps-ant-swarm.json`. Changes will be picked up automatically within 30 seconds.
-
-To create a custom dashboard:
-1. Log into Grafana
-2. Create your dashboard
-3. Export it as JSON
-4. Save it to `grafana/provisioning/dashboards/`
+To create dashboards:
+1. Log into your Grafana Cloud instance
+2. Add a Graphite data source if not already configured
+3. Create a new dashboard
+4. Add panels with Graphite queries (see examples above)
+5. Save and share your dashboard
 
 ## Volumes
 
@@ -109,21 +103,20 @@ The following Docker volumes are used for persistence:
 - `redis-data`: Redis data
 - `mongo-data`: MongoDB data  
 - `screeps-data`: Screeps server data
-- `influxdb-data`: InfluxDB data
-- `influxdb-config`: InfluxDB configuration
-- `grafana-data`: Grafana dashboards and settings
 
 ## Troubleshooting
 
-### No data in Grafana
+### No data in Grafana Cloud
 1. Check that the bot is running and publishing to `Memory.stats`
 2. Verify exporter logs: `docker-compose logs screeps-exporter`
-3. Check InfluxDB is receiving data: `docker-compose logs influxdb`
+3. Check Grafana Cloud API key and endpoint URL are correct
+4. Verify metrics are being sent by checking exporter logs for "Sent X metrics"
 
-### Exporter failing to connect
+### Exporter failing to connect to Screeps
 1. Ensure bot credentials are set in `.env`
 2. For private servers, set `SCREEPS_PROTOCOL=http` and correct host/port
 
-### Dashboard not loading
-1. Check Grafana logs: `docker-compose logs grafana`
-2. Verify datasource is configured correctly
+### Exporter failing to send to Grafana Cloud
+1. Verify `GRAFANA_CLOUD_GRAPHITE_URL` is correct
+2. Check `GRAFANA_CLOUD_API_KEY` is valid
+3. Review exporter logs for specific error messages

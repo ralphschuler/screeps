@@ -11,7 +11,7 @@
   },
   "scripts": {
     "check-versions": "node scripts/check-versions.js",
-    "install:all": "npm install && cd packages/screeps-bot && npm install && cd ../screeps-influx-exporter && npm install && cd ../screeps-docs-mcp && npm install && cd ../screeps-mcp && npm install && cd ../screeps-wiki-mcp && npm install",
+    "install:all": "npm install && cd packages/screeps-bot && npm install && cd ../screeps-graphite-exporter && npm install && cd ../screeps-docs-mcp && npm install && cd ../screeps-mcp && npm install && cd ../screeps-wiki-mcp && npm install",
     "build": "cd packages/screeps-bot && npm run build",
     "build:mcp": "cd packages/screeps-docs-mcp && npm run build && cd ../screeps-mcp && npm run build && cd ../screeps-wiki-mcp && npm run build",
     "build:all": "npm run build && npm run build:mcp",

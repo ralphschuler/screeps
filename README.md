@@ -69,7 +69,7 @@ screeps/
 │   ├── screeps-mcp/          # MCP server for live Screeps game integration
 │   ├── screeps-wiki-mcp/     # MCP server for Screeps community wiki
 │   ├── screeps-server/       # Docker setup for private server
-│   └── screeps-influx-exporter/ # Metrics exporter
+│   └── screeps-graphite-exporter/ # Metrics exporter to Grafana Cloud
 ├── ROADMAP.md                # Development roadmap
 └── package.json              # Root package configuration
 ```
@@ -134,7 +134,7 @@ Edit `packages/screeps-bot/src/config/` files to customize:
 
 For the private server setup and metrics exporter, see:
 - `packages/screeps-server/.env.example`
-- `packages/screeps-influx-exporter/.env.example`
+- `packages/screeps-graphite-exporter/.env.example`
 
 ## Architecture
 

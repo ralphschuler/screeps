@@ -13,11 +13,9 @@ export interface ExporterConfig {
   token?: string;
   username?: string;
   password?: string;
-  influxUrl: string;
-  influxToken: string;
-  influxOrg: string;
-  influxBucket: string;
-  influxMeasurement: string;
+  graphiteUrl: string;
+  graphiteApiKey: string;
+  graphitePrefix: string;
 }
 
 function parseNumber(envValue: string | undefined, fallback: number): number {
@@ -40,9 +38,14 @@ export function loadConfig(): ExporterConfig {
     throw new Error('Set SCREEPS_TOKEN or SCREEPS_USERNAME + SCREEPS_PASSWORD for authentication.');
   }
 
-  const influxToken = process.env.INFLUXDB_TOKEN;
-  if (!influxToken) {
-    throw new Error('Set INFLUXDB_TOKEN for InfluxDB authentication.');
+  const graphiteApiKey = process.env.GRAFANA_CLOUD_API_KEY;
+  if (!graphiteApiKey) {
+    throw new Error('Set GRAFANA_CLOUD_API_KEY for Grafana Cloud authentication.');
+  }
+
+  const graphiteUrl = process.env.GRAFANA_CLOUD_GRAPHITE_URL;
+  if (!graphiteUrl) {
+    throw new Error('Set GRAFANA_CLOUD_GRAPHITE_URL for Grafana Cloud Graphite endpoint.');
   }
 
   return {
@@ -58,10 +61,8 @@ export function loadConfig(): ExporterConfig {
     token: screepsToken,
     username,
     password,
-    influxUrl: process.env.INFLUXDB_URL ?? 'http://localhost:8086',
-    influxToken,
-    influxOrg: process.env.INFLUXDB_ORG ?? 'screeps',
-    influxBucket: process.env.INFLUXDB_BUCKET ?? 'screeps',
-    influxMeasurement: process.env.INFLUXDB_MEASUREMENT ?? 'screeps'
+    graphiteUrl,
+    graphiteApiKey,
+    graphitePrefix: process.env.GRAFANA_CLOUD_GRAPHITE_PREFIX ?? 'screeps'
   };
 }

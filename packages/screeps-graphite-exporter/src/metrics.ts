@@ -1,4 +1,3 @@
-import { InfluxDB, Point, WriteApi } from '@influxdata/influxdb-client';
 import { ExporterConfig } from './config';
 import { Logger } from './logger';
 
@@ -9,11 +8,30 @@ export interface Metrics {
   flush(): void;
 }
 
+interface GraphiteMetric {
+  name: string;
+  value: number;
+  time: number;
+  tags: Record<string, string>;
+}
+
 /**
- * Sanitize a tag value for InfluxDB (replace invalid characters with underscores)
+ * Sanitize a tag value for Graphite (replace invalid characters with underscores)
  */
 function sanitizeTagValue(name: string): string {
   return name.replace(/[^a-zA-Z0-9_.-]/g, '_');
+}
+
+/**
+ * Convert a metric name to Graphite format with tags
+ */
+function formatGraphiteMetric(metric: GraphiteMetric): string {
+  const tags = Object.entries(metric.tags)
+    .map(([key, value]) => `${sanitizeTagValue(key)}=${sanitizeTagValue(value)}`)
+    .join(';');
+  
+  const metricName = tags ? `${metric.name};${tags}` : metric.name;
+  return `${metricName} ${metric.value} ${metric.time}`;
 }
 
 /**
@@ -73,29 +91,35 @@ function parseStatKey(key: string): { measurement: string; category: string; sub
 }
 
 export function createMetrics(config: ExporterConfig, logger: Logger): Metrics {
-  const influxDB = new InfluxDB({ url: config.influxUrl, token: config.influxToken });
-  const writeApi: WriteApi = influxDB.getWriteApi(config.influxOrg, config.influxBucket, 's');
-  writeApi.useDefaultTags({ source: 'exporter' });
+  const pendingMetrics: GraphiteMetric[] = [];
 
-  const pendingPoints: Point[] = [];
+  const flush = async () => {
+    if (pendingMetrics.length === 0) return;
 
-  const flush = () => {
-    if (pendingPoints.length === 0) return;
+    // Format metrics in Graphite plaintext format
+    const metricsData = pendingMetrics.map(formatGraphiteMetric).join('\n');
 
-    for (const point of pendingPoints) {
-      writeApi.writePoint(point);
-    }
-
-    writeApi
-      .flush()
-      .then(() => {
-        logger.info(`Sent ${pendingPoints.length} metrics to InfluxDB`);
-      })
-      .catch((err) => {
-        logger.error('InfluxDB write error', err);
+    try {
+      const response = await fetch(config.graphiteUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain',
+          'Authorization': `Bearer ${config.graphiteApiKey}`
+        },
+        body: metricsData
       });
 
-    pendingPoints.length = 0;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      logger.info(`Sent ${pendingMetrics.length} metrics to Grafana Cloud Graphite`);
+    } catch (err) {
+      logger.error('Grafana Cloud Graphite write error', err);
+    }
+
+    pendingMetrics.length = 0;
   };
 
   return {
@@ -104,44 +128,69 @@ export function createMetrics(config: ExporterConfig, logger: Logger): Metrics {
       const sanitizedRange = sanitizeTagValue(range);
       const parsed = parseStatKey(stat);
 
-      const point = new Point(config.influxMeasurement)
-        .tag('stat', sanitizedStat)
-        .tag('range', sanitizedRange)
-        .tag('category', sanitizeTagValue(parsed.category))
-        .floatField('value', value)
-        .timestamp(new Date());
+      const tags: Record<string, string> = {
+        source: 'exporter',
+        stat: sanitizedStat,
+        range: sanitizedRange,
+        category: sanitizeTagValue(parsed.category)
+      };
 
       // Add sub_category tag if present
       if (parsed.subCategory) {
-        point.tag('sub_category', sanitizeTagValue(parsed.subCategory));
+        tags.sub_category = sanitizeTagValue(parsed.subCategory);
       }
 
-      pendingPoints.push(point);
+      const metric: GraphiteMetric = {
+        name: `${config.graphitePrefix}.${parsed.measurement}`,
+        value,
+        time: Math.floor(Date.now() / 1000),
+        tags
+      };
+
+      pendingMetrics.push(metric);
     },
 
     recordStatWithTags(stat: string, value: number, tags: Record<string, string>) {
       const sanitizedStat = sanitizeTagValue(stat);
-      const point = new Point(config.influxMeasurement)
-        .tag('stat', sanitizedStat)
-        .floatField('value', value)
-        .timestamp(new Date());
+      const parsed = parseStatKey(stat);
 
-      for (const [tagKey, tagValue] of Object.entries(tags)) {
-        point.tag(sanitizeTagValue(tagKey), sanitizeTagValue(tagValue));
+      const allTags: Record<string, string> = {
+        source: 'exporter',
+        stat: sanitizedStat,
+        ...tags
+      };
+
+      // Sanitize all tag values
+      for (const [key, val] of Object.entries(allTags)) {
+        allTags[key] = sanitizeTagValue(val);
       }
 
-      pendingPoints.push(point);
+      const metric: GraphiteMetric = {
+        name: `${config.graphitePrefix}.${parsed.measurement}`,
+        value,
+        time: Math.floor(Date.now() / 1000),
+        tags: allTags
+      };
+
+      pendingMetrics.push(metric);
     },
 
     markScrapeSuccess(mode: string, success: boolean) {
       const sanitizedMode = sanitizeTagValue(mode);
-      const point = new Point(config.influxMeasurement)
-        .tag('type', 'scrape_success')
-        .tag('mode', sanitizedMode)
-        .tag('category', 'system')
-        .floatField('value', success ? 1 : 0)
-        .timestamp(new Date());
-      pendingPoints.push(point);
+      
+      const metric: GraphiteMetric = {
+        name: `${config.graphitePrefix}.system.scrape_success`,
+        value: success ? 1 : 0,
+        time: Math.floor(Date.now() / 1000),
+        tags: {
+          source: 'exporter',
+          type: 'scrape_success',
+          mode: sanitizedMode,
+          category: 'system'
+        }
+      };
+
+      pendingMetrics.push(metric);
     },
 
     flush
