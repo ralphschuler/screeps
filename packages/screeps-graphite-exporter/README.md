@@ -80,7 +80,7 @@ The exporter treats the first token as the stat name, the second as a numeric va
 ### Metric structure
 Metrics are written to Grafana Cloud Graphite using the JSON format:
 - Metric name: `{GRAFANA_CLOUD_GRAPHITE_PREFIX}.{metric_path}` (e.g., `screeps.stats.cpu.used`)
-- Interval: 10 seconds (resolution for metric data points)
+- Interval: Derived from `EXPORTER_POLL_INTERVAL_MS` (resolution for metric data points in seconds)
 - Tags (as key=value pairs):
   - `stat`: The full stat name (e.g., `cpu.used`, `room.W1N1.energy.storage`)
   - `range`: The range label or extracted room/subsystem name
