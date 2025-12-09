@@ -247,12 +247,17 @@ export class RoomVisualizer {
   }
 
   /**
+   * Minimum pheromone value to display in heatmap
+   */
+  private static readonly HEATMAP_MIN_THRESHOLD = 10;
+
+  /**
    * Draw pheromone heatmap overlay
    */
   private drawPheromoneHeatmap(visual: RoomVisual, swarm: SwarmState): void {
     // Find dominant pheromone (highest value)
     let maxPheromone: keyof PheromoneState | null = null;
-    let maxValue = 10; // Minimum threshold for display
+    let maxValue = RoomVisualizer.HEATMAP_MIN_THRESHOLD;
 
     for (const [key, value] of Object.entries(swarm.pheromones) as [keyof PheromoneState, number][]) {
       if (value > maxValue) {
@@ -262,7 +267,7 @@ export class RoomVisualizer {
     }
 
     // Only draw if there's a significant dominant pheromone
-    if (!maxPheromone || maxValue < 10) return;
+    if (!maxPheromone || maxValue < RoomVisualizer.HEATMAP_MIN_THRESHOLD) return;
 
     // TypeScript now knows maxPheromone is not null here
     const color = PHEROMONE_COLORS[maxPheromone];

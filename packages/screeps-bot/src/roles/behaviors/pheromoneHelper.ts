@@ -96,14 +96,22 @@ export function needsLogistics(pheromones: PheromoneState): boolean {
 }
 
 /**
+ * Pheromone priority scaling constants
+ */
+const PRIORITY_MIN = 0.5; // Minimum priority multiplier
+const PRIORITY_MAX = 2.0; // Maximum priority multiplier
+const PHEROMONE_MAX_VALUE = 100; // Maximum pheromone value for scaling
+
+/**
  * Get priority multiplier for a task based on pheromone levels
- * Returns a value between 0.5 (low priority) and 2.0 (high priority)
+ * Returns a value between PRIORITY_MIN (low priority) and PRIORITY_MAX (high priority)
  */
 export function getPriorityMultiplier(
   pheromones: PheromoneState,
   taskType: keyof PheromoneState
 ): number {
   const value = pheromones[taskType];
+  const range = PRIORITY_MAX - PRIORITY_MIN;
   // Scale: 0-100 pheromone maps to 0.5-2.0 multiplier
-  return 0.5 + (value / 100) * 1.5;
+  return PRIORITY_MIN + (value / PHEROMONE_MAX_VALUE) * range;
 }

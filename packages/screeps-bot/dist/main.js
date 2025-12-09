@@ -6956,7 +6956,7 @@ class RoomVisualizer {
     drawPheromoneHeatmap(visual, swarm) {
         // Find dominant pheromone (highest value)
         let maxPheromone = null;
-        let maxValue = 10; // Minimum threshold for display
+        let maxValue = RoomVisualizer.HEATMAP_MIN_THRESHOLD;
         for (const [key, value] of Object.entries(swarm.pheromones)) {
             if (value > maxValue) {
                 maxValue = value;
@@ -6964,7 +6964,7 @@ class RoomVisualizer {
             }
         }
         // Only draw if there's a significant dominant pheromone
-        if (!maxPheromone || maxValue < 10)
+        if (!maxPheromone || maxValue < RoomVisualizer.HEATMAP_MIN_THRESHOLD)
             return;
         // TypeScript now knows maxPheromone is not null here
         const color = PHEROMONE_COLORS[maxPheromone];
@@ -7206,6 +7206,10 @@ class RoomVisualizer {
         }
     }
 }
+/**
+ * Minimum pheromone value to display in heatmap
+ */
+RoomVisualizer.HEATMAP_MIN_THRESHOLD = 10;
 /**
  * Global room visualizer instance
  */
@@ -16221,10 +16225,11 @@ class RoomNode {
                 }
             }
             // Store counts for next check
+            // Use shallow copy to avoid holding references to old structure objects
             structureCountTracker.set(this.roomName, {
                 lastStructureCount: currentStructureCount,
-                lastSpawns: cache.spawns,
-                lastTowers: cache.towers,
+                lastSpawns: [...cache.spawns],
+                lastTowers: [...cache.towers],
                 lastTick: Game.time
             });
         }

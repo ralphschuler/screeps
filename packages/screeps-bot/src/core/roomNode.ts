@@ -255,10 +255,11 @@ export class RoomNode {
       }
       
       // Store counts for next check
+      // Use shallow copy to avoid holding references to old structure objects
       structureCountTracker.set(this.roomName, {
         lastStructureCount: currentStructureCount,
-        lastSpawns: cache.spawns,
-        lastTowers: cache.towers,
+        lastSpawns: [...cache.spawns],
+        lastTowers: [...cache.towers],
         lastTick: Game.time
       });
     }
