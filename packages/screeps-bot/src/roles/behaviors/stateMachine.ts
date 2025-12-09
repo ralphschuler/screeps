@@ -9,6 +9,29 @@
  * 2. If valid, continue executing current state action
  * 3. If invalid/complete/expired, evaluate new action and commit to it
  * 4. Store state in creep memory for next tick
+ *
+ * State Completion Detection:
+ * States are considered complete based on creep inventory state:
+ * - Transfer/Build/Repair/Upgrade: complete when creep is empty
+ * - Withdraw/Pickup/Harvest: complete when creep is full
+ * - Target destroyed: always triggers completion
+ *
+ * Invalid Target Handling:
+ * The executor (executeAction) detects when actions fail due to invalid targets
+ * and immediately clears the state, allowing the creep to find a new target:
+ * - ERR_FULL: Target is full (e.g., spawn filled by another creep)
+ * - ERR_NOT_ENOUGH_RESOURCES: Source is empty (e.g., container depleted)
+ * - ERR_INVALID_TARGET: Target doesn't exist or wrong type
+ *
+ * This two-layer approach prevents:
+ * 1. Creeps getting stuck trying invalid actions (executor catches errors)
+ * 2. Premature state transitions after partial transfers (state machine only checks inventory)
+ * 
+ * Example: Creep with 200 energy transferring to extensions with 50 capacity each:
+ * - Tick 1: Transfer 50 to extension A (fills it), creep has 150 left, state continues
+ * - Tick 2: Try transfer to extension A → ERR_FULL → executor clears state
+ * - Tick 2: Behavior evaluates, finds extension B, transfers 50, state continues
+ * - This allows smooth multi-target operations without appearing "idle"
  */
 
 import type { CreepAction, CreepContext } from "./types";
@@ -19,6 +42,19 @@ import type { CreepState } from "../../memory/schemas";
  * After this many ticks, state is considered expired and will be re-evaluated
  */
 const DEFAULT_STATE_TIMEOUT = 50;
+
+/**
+ * Cooldown threshold for deposit harvesting (in ticks)
+ * If a deposit's cooldown exceeds this value, the harvest action is considered complete
+ */
+const DEPOSIT_COOLDOWN_THRESHOLD = 100;
+
+/**
+ * Type guard to check if an object has hits (is a Structure).
+ */
+function hasHits(obj: unknown): obj is { hits: number; hitsMax: number } {
+  return typeof obj === "object" && obj !== null && "hits" in obj && "hitsMax" in obj;
+}
 
 /**
  * Check if a state is still valid (target exists, not expired, etc.)
@@ -54,21 +90,110 @@ function isStateComplete(state: CreepState | undefined, ctx: CreepContext): bool
 
   switch (state.action) {
     case "harvest":
+      // Harvest complete when full (executor handles depleted sources via ERR_NOT_ENOUGH_RESOURCES)
+      if (ctx.isFull) return true;
+      
+      // Only check if target was destroyed
+      if (state.targetId) {
+        const target = Game.getObjectById(state.targetId);
+        if (!target) return true; // Source destroyed
+      }
+      return false;
+
     case "harvestMineral":
+      // Mineral harvest complete when full (executor handles depleted minerals)
+      if (ctx.isFull) return true;
+      
+      // Only check if target was destroyed
+      if (state.targetId) {
+        const target = Game.getObjectById(state.targetId);
+        if (!target) return true; // Mineral destroyed
+      }
+      return false;
+
     case "harvestDeposit":
-      // Harvesting complete when full or no energy left
-      return ctx.isFull;
+      // Deposit harvest complete when full or deposit invalid
+      if (ctx.isFull) return true;
+      
+      // Check if deposit still valid
+      if (state.targetId) {
+        const target = Game.getObjectById(state.targetId);
+        if (!target) return true; // Deposit gone
+        
+        // Type guard for Deposit - check cooldown
+        if (typeof target === "object" && "cooldown" in target) {
+          const deposit = target as Deposit;
+          // If deposit has high cooldown, consider it complete
+          if (deposit.cooldown > DEPOSIT_COOLDOWN_THRESHOLD) return true;
+        }
+      }
+      return false;
 
     case "pickup":
+      // Pickup complete when full OR resource no longer exists
+      if (ctx.isFull) return true;
+      
+      // Check if dropped resource still exists
+      if (state.targetId) {
+        const target = Game.getObjectById(state.targetId);
+        if (!target) return true; // Resource picked up or decayed
+      }
+      return false;
+
     case "withdraw":
-      // Collection complete when full
-      return ctx.isFull;
+      // Withdraw complete when full (executor handles empty sources via ERR_NOT_ENOUGH_RESOURCES)
+      if (ctx.isFull) return true;
+      
+      // Only check if target was destroyed
+      if (state.targetId) {
+        const target = Game.getObjectById(state.targetId);
+        if (!target) return true; // Target destroyed
+      }
+      return false;
 
     case "transfer":
+      // Transfer complete when empty (executor handles invalid targets via ERR_FULL)
+      // Don't check if target is full here - that causes state to clear after each
+      // partial transfer, making creeps appear to "idle" between targets
+      if (ctx.isEmpty) return true;
+      
+      // Only check if target was destroyed
+      if (state.targetId) {
+        const target = Game.getObjectById(state.targetId);
+        if (!target) return true; // Target destroyed
+      }
+      return false;
+
     case "build":
+      // Build complete when empty OR construction site finished/destroyed
+      if (ctx.isEmpty) return true;
+      
+      // Check if construction site still exists
+      if (state.targetId) {
+        const target = Game.getObjectById(state.targetId);
+        if (!target) return true; // Site completed or destroyed
+      }
+      return false;
+
     case "repair":
+      // Repair complete when empty OR structure fully repaired/destroyed
+      if (ctx.isEmpty) return true;
+      
+      // Check if structure still needs repair
+      if (state.targetId) {
+        const target = Game.getObjectById(state.targetId);
+        if (!target) return true; // Structure destroyed
+        
+        // Check if structure is fully repaired
+        if (hasHits(target)) {
+          // Consider repair complete if structure is at full health
+          if (target.hits >= target.hitsMax) return true;
+        }
+      }
+      return false;
+
     case "upgrade":
-      // Delivery/work complete when empty
+      // Upgrade complete when empty (controller can always be upgraded)
       return ctx.isEmpty;
 
     case "moveToRoom":

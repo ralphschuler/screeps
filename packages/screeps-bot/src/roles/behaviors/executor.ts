@@ -3,6 +3,19 @@
  *
  * Executes creep actions returned by behavior functions.
  * Handles all action types and movement when targets are out of range.
+ * 
+ * Invalid Target Detection:
+ * When an action fails due to an invalid target (ERR_FULL, ERR_NOT_ENOUGH_RESOURCES,
+ * ERR_INVALID_TARGET), the executor immediately clears the creep's state. This allows
+ * the behavior function to re-evaluate and find a new valid target on the same tick,
+ * preventing creeps from appearing "idle" between actions.
+ * 
+ * Example: Hauler with 200 energy transferring to extensions (50 capacity each):
+ * - Transfer 50 to extension A → OK, state persists
+ * - Try transfer to extension A again → ERR_FULL, state cleared
+ * - Behavior re-evaluates → finds extension B
+ * - Transfer 50 to extension B → OK
+ * This happens seamlessly without the creep appearing idle.
  */
 
 import type { CreepAction, CreepContext } from "./types";
@@ -29,26 +42,28 @@ const PATH_COLORS = {
  * Handles all action types including automatic movement when out of range.
  */
 export function executeAction(creep: Creep, action: CreepAction, ctx: CreepContext): void {
+  let shouldClearState = false;
+  
   switch (action.type) {
     // Resource gathering
     case "harvest":
-      executeWithRange(creep, () => creep.harvest(action.target), action.target, PATH_COLORS.harvest);
+      shouldClearState = executeWithRange(creep, () => creep.harvest(action.target), action.target, PATH_COLORS.harvest);
       break;
 
     case "harvestMineral":
-      executeWithRange(creep, () => creep.harvest(action.target), action.target, PATH_COLORS.mineral);
+      shouldClearState = executeWithRange(creep, () => creep.harvest(action.target), action.target, PATH_COLORS.mineral);
       break;
 
     case "harvestDeposit":
-      executeWithRange(creep, () => creep.harvest(action.target), action.target, PATH_COLORS.deposit);
+      shouldClearState = executeWithRange(creep, () => creep.harvest(action.target), action.target, PATH_COLORS.deposit);
       break;
 
     case "pickup":
-      executeWithRange(creep, () => creep.pickup(action.target), action.target, PATH_COLORS.harvest);
+      shouldClearState = executeWithRange(creep, () => creep.pickup(action.target), action.target, PATH_COLORS.harvest);
       break;
 
     case "withdraw":
-      executeWithRange(
+      shouldClearState = executeWithRange(
         creep,
         () => creep.withdraw(action.target, action.resourceType),
         action.target,
@@ -58,7 +73,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
 
     // Resource delivery
     case "transfer":
-      executeWithRange(
+      shouldClearState = executeWithRange(
         creep,
         () => creep.transfer(action.target, action.resourceType),
         action.target,
@@ -72,19 +87,19 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
 
     // Construction and maintenance
     case "build":
-      executeWithRange(creep, () => creep.build(action.target), action.target, PATH_COLORS.build);
+      shouldClearState = executeWithRange(creep, () => creep.build(action.target), action.target, PATH_COLORS.build);
       break;
 
     case "repair":
-      executeWithRange(creep, () => creep.repair(action.target), action.target, PATH_COLORS.repair);
+      shouldClearState = executeWithRange(creep, () => creep.repair(action.target), action.target, PATH_COLORS.repair);
       break;
 
     case "upgrade":
-      executeWithRange(creep, () => creep.upgradeController(action.target), action.target, PATH_COLORS.transfer);
+      shouldClearState = executeWithRange(creep, () => creep.upgradeController(action.target), action.target, PATH_COLORS.transfer);
       break;
 
     case "dismantle":
-      executeWithRange(creep, () => creep.dismantle(action.target), action.target, PATH_COLORS.attack);
+      shouldClearState = executeWithRange(creep, () => creep.dismantle(action.target), action.target, PATH_COLORS.attack);
       break;
 
     // Combat
@@ -160,6 +175,12 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
       break;
   }
 
+  // Clear state if action failed due to invalid target
+  // This allows the creep to immediately re-evaluate and find a new target
+  if (shouldClearState) {
+    delete ctx.memory.state;
+  }
+
   // Update working state based on carry capacity
   updateWorkingState(ctx);
 }
@@ -167,17 +188,30 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
 /**
  * Execute an action that requires being in range.
  * Automatically moves toward target if out of range.
+ * Clears creep state if action fails due to invalid target (full, empty, etc.).
+ * 
+ * @returns true if action should clear state (due to failure)
  */
 function executeWithRange(
   creep: Creep,
   action: () => ScreepsReturnCode,
   target: RoomObject,
   pathColor: string
-): void {
+): boolean {
   const result = action();
+  
   if (result === ERR_NOT_IN_RANGE) {
     moveCreep(creep, target, { visualizePathStyle: { stroke: pathColor } });
+    return false;
   }
+  
+  // Check for errors that indicate the target is invalid and state should be cleared
+  // This allows the creep to immediately find a new target instead of being stuck
+  if (result === ERR_FULL) return true;              // Target is full (e.g., spawn/extension filled)
+  if (result === ERR_NOT_ENOUGH_RESOURCES) return true; // Source is empty (e.g., container depleted)
+  if (result === ERR_INVALID_TARGET) return true;    // Target doesn't exist or wrong type
+  
+  return false;
 }
 
 /**
