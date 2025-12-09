@@ -120,6 +120,18 @@ export function invalidateCollectionPoint(roomName: string): void {
 // =============================================================================
 
 /**
+ * Check if we should exit early from the search based on candidate count and distance.
+ * Early exit when we have enough good candidates at or beyond preferred distance.
+ *
+ * @param candidateCount - Number of candidates found so far
+ * @param distance - Current search distance from spawn
+ * @returns true if we should exit early
+ */
+function shouldEarlyExit(candidateCount: number, distance: number): boolean {
+  return candidateCount >= EARLY_EXIT_CANDIDATE_COUNT && distance >= PREFERRED_DISTANCE_FROM_SPAWN;
+}
+
+/**
  * Calculate an optimal collection point for a room.
  * Finds a position that is:
  * - Away from spawns (MIN_DISTANCE_FROM_SPAWN or more)
@@ -226,18 +238,18 @@ function calculateCollectionPoint(room: Room): RoomPosition | null {
 
         candidates.push({ pos, score });
 
-        // Early exit if we found enough good candidates
-        if (candidates.length >= EARLY_EXIT_CANDIDATE_COUNT && distance >= PREFERRED_DISTANCE_FROM_SPAWN) {
+        // Check for early exit
+        if (shouldEarlyExit(candidates.length, distance)) {
           break;
         }
       }
-      if (candidates.length >= EARLY_EXIT_CANDIDATE_COUNT && distance >= PREFERRED_DISTANCE_FROM_SPAWN) {
+      if (shouldEarlyExit(candidates.length, distance)) {
         break;
       }
     }
 
-    // Early exit if we found enough good candidates
-    if (candidates.length >= EARLY_EXIT_CANDIDATE_COUNT && distance >= PREFERRED_DISTANCE_FROM_SPAWN) {
+    // Check for early exit at ring level
+    if (shouldEarlyExit(candidates.length, distance)) {
       break;
     }
   }
