@@ -144,8 +144,9 @@ export function launchOffensiveOperation(
   
   activeOperations.set(opId, operation);
   
-  // Create squad
-  const squad = createOffensiveSquad(cluster, targetRoom, finalDoctrine, {
+  // Create squad (map doctrine type to squad type)
+  const squadType = finalDoctrine === "harassment" ? "harass" : finalDoctrine;
+  const squad = createOffensiveSquad(cluster, targetRoom, squadType, {
     towerCount: intel?.towerCount,
     spawnCount: intel?.spawnCount
   });

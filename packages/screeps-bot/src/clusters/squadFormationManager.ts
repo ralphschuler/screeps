@@ -47,9 +47,23 @@ export function startSquadFormation(
     return;
   }
   
-  // Get composition from doctrine
-  const config = DOCTRINE_CONFIGS[squad.type];
-  const composition = config.composition;
+  // Get composition from doctrine (map squad type to doctrine)
+  let composition: { harassers: number; soldiers: number; rangers: number; healers: number; siegeUnits: number };
+  
+  if (squad.type === "defense") {
+    // Defense squads use a default composition (will be enhanced by defense manager)
+    composition = {
+      harassers: 0,
+      soldiers: 2,
+      rangers: 2,
+      healers: 1,
+      siegeUnits: 0
+    };
+  } else {
+    const doctrineType = squad.type === "harass" ? "harassment" : squad.type;
+    const config = DOCTRINE_CONFIGS[doctrineType];
+    composition = config.composition;
+  }
   
   // Convert composition to role map
   const targetComposition: Record<string, number> = {};
@@ -96,8 +110,13 @@ function createSquadSpawnRequests(
   composition: { harassers: number; soldiers: number; rangers: number; healers: number; siegeUnits: number },
   formation: SquadFormation
 ): void {
-  const config = DOCTRINE_CONFIGS[squad.type];
-  const useBoosts = config.useBoosts;
+  // Determine config based on squad type
+  let useBoosts = false;
+  if (squad.type !== "defense") {
+    const doctrineType = squad.type === "harass" ? "harassment" : squad.type;
+    const config = DOCTRINE_CONFIGS[doctrineType];
+    useBoosts = config.useBoosts;
+  }
   
   // Determine priority based on squad type
   let priority = SpawnPriority.NORMAL;
@@ -110,23 +129,35 @@ function createSquadSpawnRequests(
   // Helper to create a spawn request
   const createRequest = (role: string, count: number) => {
     for (let i = 0; i < count; i++) {
+      const bodyParts = getBodyForRole(role, "medium", room.energyCapacityAvailable);
+      const bodyCost = bodyParts.reduce((sum, part) => sum + BODYPART_COST[part], 0);
+      
+      const boostReqs = useBoosts ? getBoostsForRole(role) : [];
+      
       const request: SpawnRequest = {
-        room: room.name,
+        id: `${squad.id}_${role}_${i}_${Game.time}`,
+        roomName: room.name,
         role: role as any,
-        body: getBodyForRole(role, config.creepSize, room.energyCapacityAvailable),
-        priority,
-        memory: {
-          role: role as any,
-          family: "military",
-          home: room.name,
-          squadId: squad.id,
-          targetRoom: squad.targetRooms[0]
+        family: "military",
+        body: {
+          parts: bodyParts,
+          cost: bodyCost,
+          minCapacity: bodyCost
         },
-        boost: useBoosts ? getBoostsForRole(role) : undefined
+        priority,
+        targetRoom: squad.targetRooms[0],
+        boostRequirements: boostReqs.length > 0 ? boostReqs.map(resourceType => ({
+          resourceType,
+          bodyParts: bodyParts
+        })) : undefined,
+        createdAt: Game.time,
+        additionalMemory: {
+          squadId: squad.id
+        }
       };
       
-      const requestId = spawnQueue.addRequest(request);
-      formation.spawnRequests.add(requestId);
+      spawnQueue.addRequest(request);
+      formation.spawnRequests.add(request.id);
     }
   };
   
