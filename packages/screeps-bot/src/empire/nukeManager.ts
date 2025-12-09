@@ -18,6 +18,7 @@ import { logger } from "../core/logger";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { ProcessPriority } from "../core/kernel";
 import type { SquadDefinition } from "../memory/schemas";
+import type { TerminalManager } from "../economy/terminalManager";
 
 /**
  * Nuke Manager Configuration
@@ -37,6 +38,8 @@ export interface NukeConfig {
   nukeFlightTime: number;
   /** Priority for terminal transfer of nuke resources */
   terminalPriority: number;
+  /** Buffer amount of resources to keep in donor room */
+  donorRoomBuffer: number;
 }
 
 const DEFAULT_CONFIG: NukeConfig = {
@@ -46,7 +49,8 @@ const DEFAULT_CONFIG: NukeConfig = {
   minScore: 50,
   siegeCoordinationWindow: 1000, // Start coordinating 1000 ticks before impact
   nukeFlightTime: 50000,
-  terminalPriority: 5 // High priority for nuke resource transfers
+  terminalPriority: 5, // High priority for nuke resource transfers
+  donorRoomBuffer: 1000 // Keep 1000 units buffer in donor rooms
 };
 
 /**
@@ -389,6 +393,7 @@ export class NukeManager {
 
   /**
    * Request resource transfer via terminal
+   * Uses lazy import to avoid circular dependency
    */
   private requestResourceTransfer(roomName: string, resourceType: ResourceConstant, amount: number): void {
     // Find a donor room with this resource
@@ -401,10 +406,10 @@ export class NukeManager {
       return;
     }
 
-    // Import terminal manager (avoiding circular dependencies)
-    try {
-      const { terminalManager } = require("../economy/terminalManager");
-      const success = terminalManager.requestTransfer(
+    // Import terminal manager at runtime to avoid circular dependencies
+    // This is necessary because terminalManager may import other modules that import nukeManager
+    void import("../economy/terminalManager").then(module => {
+      const success = module.terminalManager.requestTransfer(
         donorRoom,
         roomName,
         resourceType,
@@ -418,9 +423,9 @@ export class NukeManager {
           { subsystem: "Nuke" }
         );
       }
-    } catch (error) {
+    }).catch(error => {
       logger.error(`Failed to request terminal transfer: ${error}`, { subsystem: "Nuke" });
-    }
+    });
   }
 
   /**
@@ -439,7 +444,7 @@ export class NukeManager {
       const available = terminal.store.getUsedCapacity(resourceType) ?? 0;
       
       // Must have at least the requested amount + buffer
-      if (available < amount + 1000) continue;
+      if (available < amount + this.config.donorRoomBuffer) continue;
 
       const distance = Game.map.getRoomLinearDistance(roomName, targetRoom);
       candidates.push({ room: roomName, amount: available, distance });

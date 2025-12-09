@@ -12358,7 +12358,7 @@ function linkManager(ctx) {
 /**
  * TerminalManager - Balance resources between storage and terminal.
  */
-function terminalManager$1(ctx) {
+function terminalManager$2(ctx) {
     if (!ctx.terminal || !ctx.storage)
         return { type: "idle" };
     const terminalEnergy = ctx.terminal.store.getUsedCapacity(RESOURCE_ENERGY);
@@ -12404,7 +12404,7 @@ const utilityBehaviors = {
     engineer,
     remoteWorker,
     linkManager,
-    terminalManager: terminalManager$1
+    terminalManager: terminalManager$2
 };
 /**
  * Evaluate and return an action for a utility role creep.
@@ -23806,11 +23806,15 @@ let EvacuationManager = class EvacuationManager {
             const swarm = memoryManager.getSwarmState(roomName);
             if (!swarm)
                 continue;
-            // Check for nuke
+            // Check for nuke - primary condition is nuke presence
             const nukes = room.find(FIND_NUKES);
-            if (nukes.length > 0 && swarm.nukeDetected) {
+            if (nukes.length > 0) {
                 const nearestNuke = nukes.reduce((a, b) => { var _a, _b; return ((_a = a.timeToLand) !== null && _a !== void 0 ? _a : Infinity) < ((_b = b.timeToLand) !== null && _b !== void 0 ? _b : Infinity) ? a : b; });
                 if (((_b = nearestNuke.timeToLand) !== null && _b !== void 0 ? _b : Infinity) <= this.config.nukeEvacuationLeadTime) {
+                    // Set detection flag if not already set (for coordination with nuke manager)
+                    if (!swarm.nukeDetected) {
+                        swarm.nukeDetected = true;
+                    }
                     // Increase urgency based on number of nukes
                     const nukeCount = nukes.length;
                     logger.warn(`Triggering evacuation for ${roomName}: ${nukeCount} nuke(s) detected, impact in ${(_c = nearestNuke.timeToLand) !== null && _c !== void 0 ? _c : 0} ticks`, { subsystem: "Evacuation" });
@@ -24403,6 +24407,12 @@ TerminalManager = __decorate([
  * Global terminal manager instance
  */
 const terminalManager = new TerminalManager();
+
+var terminalManager$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  get TerminalManager () { return TerminalManager; },
+  terminalManager: terminalManager
+});
 
 /**
  * Factory Manager
@@ -25762,7 +25772,8 @@ const DEFAULT_CONFIG$5 = {
     minScore: 50,
     siegeCoordinationWindow: 1000,
     nukeFlightTime: 50000,
-    terminalPriority: 5 // High priority for nuke resource transfers
+    terminalPriority: 5,
+    donorRoomBuffer: 1000 // Keep 1000 units buffer in donor rooms
 };
 /**
  * Nuke Manager Class
@@ -26041,6 +26052,7 @@ let NukeManager = class NukeManager {
     }
     /**
      * Request resource transfer via terminal
+     * Uses lazy import to avoid circular dependency
      */
     requestResourceTransfer(roomName, resourceType, amount) {
         // Find a donor room with this resource
@@ -26049,17 +26061,16 @@ let NukeManager = class NukeManager {
             logger.debug(`No donor room found for ${amount} ${resourceType} to ${roomName}`, { subsystem: "Nuke" });
             return;
         }
-        // Import terminal manager (avoiding circular dependencies)
-        try {
-            const { terminalManager } = require("../economy/terminalManager");
-            const success = terminalManager.requestTransfer(donorRoom, roomName, resourceType, amount, this.config.terminalPriority);
+        // Import terminal manager at runtime to avoid circular dependencies
+        // This is necessary because terminalManager may import other modules that import nukeManager
+        void Promise.resolve().then(function () { return terminalManager$1; }).then(module => {
+            const success = module.terminalManager.requestTransfer(donorRoom, roomName, resourceType, amount, this.config.terminalPriority);
             if (success) {
                 logger.info(`Requested ${amount} ${resourceType} transfer from ${donorRoom} to ${roomName} for nuker`, { subsystem: "Nuke" });
             }
-        }
-        catch (error) {
+        }).catch(error => {
             logger.error(`Failed to request terminal transfer: ${error}`, { subsystem: "Nuke" });
-        }
+        });
     }
     /**
      * Find a room that can donate the requested resource
@@ -26076,7 +26087,7 @@ let NukeManager = class NukeManager {
                 continue;
             const available = (_b = terminal.store.getUsedCapacity(resourceType)) !== null && _b !== void 0 ? _b : 0;
             // Must have at least the requested amount + buffer
-            if (available < amount + 1000)
+            if (available < amount + this.config.donorRoomBuffer)
                 continue;
             const distance = Game.map.getRoomLinearDistance(roomName, targetRoom);
             candidates.push({ room: roomName, amount: available, distance });
