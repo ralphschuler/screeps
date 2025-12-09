@@ -10,7 +10,7 @@
  * Design Principles (from ROADMAP.md):
  * - Decentralization: Each room has local control logic
  * - Event-driven logic: Rooms respond to threats and pheromones
- * - Strict tick budget: Eco rooms ≤ 0.1 CPU, War rooms ≤ 0.25 CPU
+ * - CPU budgets: Eco rooms 2-4 CPU (4-8%), War rooms ~6 CPU (12%)
  */
 
 import { kernel, ProcessPriority } from "./kernel";
@@ -46,27 +46,30 @@ function getRoomProcessPriority(room: Room): ProcessPriority {
  */
 function getRoomCpuBudget(room: Room): number {
   if (!room.controller?.my) {
-    return 0.01; // 1% for non-owned rooms
+    return 0.02; // 2% for non-owned rooms (1 CPU for 50 CPU limit)
   }
 
   const rcl = room.controller.level;
   const hostiles = room.find(FIND_HOSTILE_CREEPS);
   
   // War mode: higher budget
+  // Typical war room usage: 2-6 CPU (budget set at upper end for safety)
   if (hostiles.length > 0) {
-    return 0.005; // 0.5% per room (war mode, up to 0.25 CPU for RCL8)
+    return 0.12; // 12% per room (6 CPU for 50 CPU limit)
   }
 
-  // Eco mode: lower budget based on RCL
-  // RCL 1-3: 0.05% (0.025 CPU)
-  // RCL 4-6: 0.1% (0.05 CPU)
-  // RCL 7-8: 0.2% (0.1 CPU)
+  // Eco mode: budget based on RCL
+  // Typical eco room usage: 0.5-2 CPU for small rooms, 2-6 CPU for large rooms
+  // Budgets are set at the upper end of observed usage to avoid false positives
+  // RCL 1-3: Allow up to 2 CPU (4% of 50 CPU limit)
+  // RCL 4-6: Allow up to 3 CPU (6% of 50 CPU limit)  
+  // RCL 7-8: Allow up to 4 CPU (8% of 50 CPU limit)
   if (rcl <= 3) {
-    return 0.0005;
+    return 0.04; // 4% (2 CPU for 50 CPU limit)
   } else if (rcl <= 6) {
-    return 0.001;
+    return 0.06; // 6% (3 CPU for 50 CPU limit)
   } else {
-    return 0.002;
+    return 0.08; // 8% (4 CPU for 50 CPU limit)
   }
 }
 

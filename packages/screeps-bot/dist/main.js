@@ -4374,7 +4374,9 @@ const BASE_CONFIG = {
     enableStats: true,
     statsLogInterval: 100,
     pixelGenerationEnabled: true,
-    pixelRecoveryTicks: 100
+    pixelRecoveryTicks: 100,
+    budgetWarningThreshold: 1.5,
+    budgetWarningInterval: 500
 };
 const DEFAULT_CRITICAL_DIVISOR = 2;
 function deriveCriticalThreshold(lowBucketThreshold) {
@@ -4698,9 +4700,12 @@ class Kernel {
         }
         this.tickCpuUsed += cpuUsed;
         // Check CPU budget violation
+        // Only log if significantly over budget to reduce noise
         const budgetLimit = this.getCpuLimit() * process.cpuBudget;
-        if (cpuUsed > budgetLimit && Game.time % 50 === 0) {
-            logger.warn(`Kernel: Process "${process.name}" exceeded CPU budget: ${cpuUsed.toFixed(3)} > ${budgetLimit.toFixed(3)}`, { subsystem: "Kernel" });
+        const overBudgetRatio = cpuUsed / budgetLimit;
+        if (overBudgetRatio > this.config.budgetWarningThreshold &&
+            Game.time % this.config.budgetWarningInterval === 0) {
+            logger.warn(`Kernel: Process "${process.name}" exceeded CPU budget: ${cpuUsed.toFixed(3)} > ${budgetLimit.toFixed(3)} (${(overBudgetRatio * 100).toFixed(0)}%)`, { subsystem: "Kernel" });
         }
     }
     /**
@@ -4724,7 +4729,6 @@ class Kernel {
             return;
         }
         let processesRun = 0;
-        let processesSkipped = 0;
         let lastExecutedIndexThisTick = -1;
         // Start from the next process after the last one executed
         // This creates a wrap-around effect: if we stopped at index 5 last tick,
@@ -4757,15 +4761,15 @@ class Kernel {
         }
         // Log stats periodically
         if (this.config.enableStats && Game.time % this.config.statsLogInterval === 0) {
-            this.logStats(processesRun, processesSkipped);
+            this.logStats(processesRun);
             eventBus.logStats();
         }
     }
     /**
      * Log kernel statistics
      */
-    logStats(processesRun, processesSkipped) {
-        logger.debug(`Kernel stats: ${processesRun} ran, ${processesSkipped} skipped, ${this.tickCpuUsed.toFixed(2)} CPU, mode: ${this.bucketMode}`, { subsystem: "Kernel" });
+    logStats(processesRun) {
+        logger.debug(`Kernel stats: ${processesRun} processes ran, ${this.tickCpuUsed.toFixed(2)} CPU, mode: ${this.bucketMode}`, { subsystem: "Kernel" });
     }
     /**
      * Get tick CPU used by kernel
@@ -12325,18 +12329,27 @@ class CreepProcessManager {
     }
     /**
      * Get CPU budget based on priority
+     *
+     * These budgets are fractions of the total CPU limit allocated per creep process.
+     * For a 50 CPU limit:
+     * - Critical: 1.2% = 0.6 CPU budget per creep
+     * - High: 1.0% = 0.5 CPU budget per creep
+     * - Medium: 0.8% = 0.4 CPU budget per creep
+     * - Low: 0.6% = 0.3 CPU budget per creep
+     *
+     * These are generous to accommodate complex behaviors while still catching outliers.
      */
     getCpuBudgetForPriority(priority) {
         if (priority >= ProcessPriority.CRITICAL) {
-            return 0.002; // ~0.1 CPU per critical creep (50 creeps = 5 CPU)
+            return 0.012; // 1.2% of CPU limit per creep
         }
         if (priority >= ProcessPriority.HIGH) {
-            return 0.0015; // ~0.075 CPU per high priority creep
+            return 0.01; // 1.0% of CPU limit per creep
         }
         if (priority >= ProcessPriority.MEDIUM) {
-            return 0.001; // ~0.05 CPU per medium priority creep
+            return 0.008; // 0.8% of CPU limit per creep
         }
-        return 0.0005; // ~0.025 CPU per low priority creep
+        return 0.006; // 0.6% of CPU limit per creep
     }
     /**
      * Get statistics about registered creeps
@@ -15951,7 +15964,7 @@ const roomManager = new RoomManager();
  * Design Principles (from ROADMAP.md):
  * - Decentralization: Each room has local control logic
  * - Event-driven logic: Rooms respond to threats and pheromones
- * - Strict tick budget: Eco rooms ≤ 0.1 CPU, War rooms ≤ 0.25 CPU
+ * - CPU budgets: Eco rooms 2-4 CPU (4-8%), War rooms ~6 CPU (12%)
  */
 /**
  * Get process priority for a room based on its state
@@ -15980,26 +15993,29 @@ function getRoomProcessPriority(room) {
 function getRoomCpuBudget(room) {
     var _a;
     if (!((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my)) {
-        return 0.01; // 1% for non-owned rooms
+        return 0.02; // 2% for non-owned rooms (1 CPU for 50 CPU limit)
     }
     const rcl = room.controller.level;
     const hostiles = room.find(FIND_HOSTILE_CREEPS);
     // War mode: higher budget
+    // Typical war room usage: 2-6 CPU (budget set at upper end for safety)
     if (hostiles.length > 0) {
-        return 0.005; // 0.5% per room (war mode, up to 0.25 CPU for RCL8)
+        return 0.12; // 12% per room (6 CPU for 50 CPU limit)
     }
-    // Eco mode: lower budget based on RCL
-    // RCL 1-3: 0.05% (0.025 CPU)
-    // RCL 4-6: 0.1% (0.05 CPU)
-    // RCL 7-8: 0.2% (0.1 CPU)
+    // Eco mode: budget based on RCL
+    // Typical eco room usage: 0.5-2 CPU for small rooms, 2-6 CPU for large rooms
+    // Budgets are set at the upper end of observed usage to avoid false positives
+    // RCL 1-3: Allow up to 2 CPU (4% of 50 CPU limit)
+    // RCL 4-6: Allow up to 3 CPU (6% of 50 CPU limit)  
+    // RCL 7-8: Allow up to 4 CPU (8% of 50 CPU limit)
     if (rcl <= 3) {
-        return 0.0005;
+        return 0.04; // 4% (2 CPU for 50 CPU limit)
     }
     else if (rcl <= 6) {
-        return 0.001;
+        return 0.06; // 6% (3 CPU for 50 CPU limit)
     }
     else {
-        return 0.002;
+        return 0.08; // 8% (4 CPU for 50 CPU limit)
     }
 }
 /**

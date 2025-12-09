@@ -137,6 +137,14 @@ export interface KernelConfig {
    * Default assumes it takes ~100 ticks to reach a stable bucket level.
    */
   pixelRecoveryTicks: number;
+  /**
+   * Ratio above budget that triggers warnings (e.g., 1.5 = 150% over budget)
+   */
+  budgetWarningThreshold: number;
+  /**
+   * Interval in ticks for logging CPU budget warnings
+   */
+  budgetWarningInterval: number;
 }
 
 /**
@@ -151,7 +159,9 @@ const BASE_CONFIG: Omit<KernelConfig, "lowBucketThreshold" | "highBucketThreshol
   enableStats: true,
   statsLogInterval: 100,
   pixelGenerationEnabled: true,
-  pixelRecoveryTicks: 100
+  pixelRecoveryTicks: 100,
+  budgetWarningThreshold: 1.5,
+  budgetWarningInterval: 500
 };
 
 const DEFAULT_CRITICAL_DIVISOR = 2;
@@ -535,10 +545,13 @@ export class Kernel {
     this.tickCpuUsed += cpuUsed;
 
     // Check CPU budget violation
+    // Only log if significantly over budget to reduce noise
     const budgetLimit = this.getCpuLimit() * process.cpuBudget;
-    if (cpuUsed > budgetLimit && Game.time % 50 === 0) {
+    const overBudgetRatio = cpuUsed / budgetLimit;
+    if (overBudgetRatio > this.config.budgetWarningThreshold && 
+        Game.time % this.config.budgetWarningInterval === 0) {
       logger.warn(
-        `Kernel: Process "${process.name}" exceeded CPU budget: ${cpuUsed.toFixed(3)} > ${budgetLimit.toFixed(3)}`,
+        `Kernel: Process "${process.name}" exceeded CPU budget: ${cpuUsed.toFixed(3)} > ${budgetLimit.toFixed(3)} (${(overBudgetRatio * 100).toFixed(0)}%)`,
         { subsystem: "Kernel" }
       );
     }
@@ -569,7 +582,6 @@ export class Kernel {
     }
 
     let processesRun = 0;
-    let processesSkipped = 0;
     let lastExecutedIndexThisTick = -1;
 
     // Start from the next process after the last one executed
@@ -609,7 +621,7 @@ export class Kernel {
 
     // Log stats periodically
     if (this.config.enableStats && Game.time % this.config.statsLogInterval === 0) {
-      this.logStats(processesRun, processesSkipped);
+      this.logStats(processesRun);
       eventBus.logStats();
     }
   }
@@ -617,9 +629,9 @@ export class Kernel {
   /**
    * Log kernel statistics
    */
-  private logStats(processesRun: number, processesSkipped: number): void {
+  private logStats(processesRun: number): void {
     logger.debug(
-      `Kernel stats: ${processesRun} ran, ${processesSkipped} skipped, ${this.tickCpuUsed.toFixed(2)} CPU, mode: ${this.bucketMode}`,
+      `Kernel stats: ${processesRun} processes ran, ${this.tickCpuUsed.toFixed(2)} CPU, mode: ${this.bucketMode}`,
       { subsystem: "Kernel" }
     );
   }
