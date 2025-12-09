@@ -8023,7 +8023,7 @@ function requestMoveToPosition(creep, targetPos) {
  */
 function processMoveRequests() {
     let movedCount = 0;
-    for (const [_posKey, requests] of moveRequests) {
+    for (const [, requests] of moveRequests) {
         if (requests.length === 0)
             continue;
         // Sort requests by priority (highest first)
