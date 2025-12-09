@@ -9189,6 +9189,14 @@ const PREFERRED_DISTANCE_FROM_SPAWN = 8;
 const MAX_DISTANCE_FROM_SPAWN = 15;
 /** How often to recalculate collection point (in ticks) */
 const RECALCULATION_INTERVAL = 500;
+/** Weight for storage distance in scoring (lower = prefer closer to storage) */
+const STORAGE_DISTANCE_WEIGHT = 0.5;
+/** Weight for controller distance in scoring (lower = prefer closer to controller) */
+const CONTROLLER_DISTANCE_WEIGHT = 0.3;
+/** Penalty for collection point being on a road */
+const ROAD_PENALTY = 5;
+/** Number of candidates to collect before early exit optimization kicks in */
+const EARLY_EXIT_CANDIDATE_COUNT = 50;
 /** In-memory cache of collection points per room */
 const collectionPointCache = new Map();
 // =============================================================================
@@ -9257,13 +9265,22 @@ function calculateCollectionPoint(room) {
     // Find the storage or controller as a secondary anchor point
     const storage = room.storage;
     const controller = room.controller;
-    // Pre-build structure lookup map for performance (single lookFor call)
-    const structureMap = new Map(); // key: "x,y", value: hasRoad
+    // Pre-build structure lookup maps for performance (single lookFor call)
+    const roadMap = new Map(); // key: "x,y", value: true if has road
+    const blockingMap = new Map(); // key: "x,y", value: true if blocked
     const structures = room.find(FIND_STRUCTURES);
     for (const struct of structures) {
         const key = `${struct.pos.x},${struct.pos.y}`;
+        // Track roads separately for scoring
         if (struct.structureType === STRUCTURE_ROAD) {
-            structureMap.set(key, true);
+            roadMap.set(key, true);
+        }
+        // Track blocking structures
+        const isBlocking = struct.structureType !== STRUCTURE_ROAD &&
+            struct.structureType !== STRUCTURE_CONTAINER &&
+            !(struct.structureType === STRUCTURE_RAMPART && struct.my);
+        if (isBlocking) {
+            blockingMap.set(key, true);
         }
     }
     // Generate candidate positions using ring search (more efficient than full grid)
@@ -9288,7 +9305,7 @@ function calculateCollectionPoint(room) {
                     continue;
                 const pos = new RoomPosition(x, y, room.name);
                 // Skip if not walkable
-                if (!isWalkable(room, pos, terrain)) {
+                if (!isWalkableWithMap(pos, terrain, blockingMap)) {
                     continue;
                 }
                 // Score the position
@@ -9299,30 +9316,30 @@ function calculateCollectionPoint(room) {
                 // Prefer positions closer to storage (if it exists)
                 if (storage) {
                     const storageDistance = pos.getRangeTo(storage.pos);
-                    score -= storageDistance * 0.5; // Half weight compared to spawn distance
+                    score -= storageDistance * STORAGE_DISTANCE_WEIGHT;
                 }
                 // Prefer positions closer to controller (if it exists)
                 if (controller) {
                     const controllerDistance = pos.getRangeTo(controller.pos);
-                    score -= controllerDistance * 0.3; // Lower weight
+                    score -= controllerDistance * CONTROLLER_DISTANCE_WEIGHT;
                 }
                 // Avoid positions on roads (use pre-built map)
-                const hasRoad = (_a = structureMap.get(`${x},${y}`)) !== null && _a !== void 0 ? _a : false;
+                const hasRoad = (_a = roadMap.get(`${x},${y}`)) !== null && _a !== void 0 ? _a : false;
                 if (hasRoad) {
-                    score -= 5; // Penalty for being on a road
+                    score -= ROAD_PENALTY;
                 }
                 candidates.push({ pos, score });
                 // Early exit if we found enough good candidates
-                if (candidates.length >= 50 && distance >= PREFERRED_DISTANCE_FROM_SPAWN) {
+                if (candidates.length >= EARLY_EXIT_CANDIDATE_COUNT && distance >= PREFERRED_DISTANCE_FROM_SPAWN) {
                     break;
                 }
             }
-            if (candidates.length >= 50 && distance >= PREFERRED_DISTANCE_FROM_SPAWN) {
+            if (candidates.length >= EARLY_EXIT_CANDIDATE_COUNT && distance >= PREFERRED_DISTANCE_FROM_SPAWN) {
                 break;
             }
         }
         // Early exit if we found enough good candidates
-        if (candidates.length >= 50 && distance >= PREFERRED_DISTANCE_FROM_SPAWN) {
+        if (candidates.length >= EARLY_EXIT_CANDIDATE_COUNT && distance >= PREFERRED_DISTANCE_FROM_SPAWN) {
             break;
         }
     }
@@ -9332,7 +9349,28 @@ function calculateCollectionPoint(room) {
     return candidates.length > 0 ? candidates[0].pos : null;
 }
 /**
+ * Check if a position is walkable using a pre-built blocking map.
+ * More efficient than isWalkable when checking many positions.
+ *
+ * @param pos - The position to check
+ * @param terrain - The room terrain (for performance)
+ * @param blockingMap - Pre-built map of blocking structures
+ * @returns true if the position is walkable
+ */
+function isWalkableWithMap(pos, terrain, blockingMap) {
+    var _a;
+    // Check terrain
+    if (terrain.get(pos.x, pos.y) === TERRAIN_MASK_WALL) {
+        return false;
+    }
+    // Check for blocking structures using pre-built map
+    const key = `${pos.x},${pos.y}`;
+    const isBlocked = (_a = blockingMap.get(key)) !== null && _a !== void 0 ? _a : false;
+    return !isBlocked;
+}
+/**
  * Check if a position is walkable (not a wall and no blocking structures).
+ * Used for validation outside of the optimization path.
  *
  * @param room - The room containing the position
  * @param pos - The position to check
