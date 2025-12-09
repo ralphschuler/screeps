@@ -487,6 +487,11 @@ export interface SwarmCreepMemory {
   squadId?: string;
   /** Boosted flag */
   boosted?: boolean;
+  /** Boost requirements (for spawning with boost intentions) */
+  boostRequirements?: {
+    resourceType: ResourceConstant;
+    bodyParts: BodyPartConstant[];
+  }[];
   /** Patrol waypoint index (for defense units) */
   patrolIndex?: number;
   /** Current state (for state machine) */
