@@ -14,12 +14,12 @@
  * Addresses Issues: #6, #20, #36
  */
 
-import type { ExpansionCandidate, OvermindMemory, RoomIntel } from "../memory/schemas";
-import { memoryManager } from "../memory/manager";
-import { logger } from "../core/logger";
-import { profiler } from "../core/profiler";
-import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { ProcessPriority } from "../core/kernel";
+import { logger } from "../core/logger";
+import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import { profiler } from "../core/profiler";
+import { memoryManager } from "../memory/manager";
+import type { ExpansionCandidate, OvermindMemory, RoomIntel } from "../memory/schemas";
 
 /**
  * Empire Manager Configuration
@@ -37,6 +37,12 @@ export interface EmpireConfig {
   maxExpansionDistance: number;
   /** Minimum room score for expansion */
   minExpansionScore: number;
+  /** Interval to refresh room intel (ticks) */
+  intelRefreshInterval: number;
+  /** Minimum RCL for rooms to be considered stable */
+  minStableRcl: number;
+  /** GCL progress notification threshold (%) */
+  gclNotifyThreshold: number;
 }
 
 const DEFAULT_CONFIG: EmpireConfig = {
@@ -45,7 +51,10 @@ const DEFAULT_CONFIG: EmpireConfig = {
   maxCpuBudget: 0.05, // 5% of CPU limit
   minGclForExpansion: 2,
   maxExpansionDistance: 10,
-  minExpansionScore: 50
+  minExpansionScore: 50,
+  intelRefreshInterval: 100,
+  minStableRcl: 4,
+  gclNotifyThreshold: 90 // Notify when GCL progress is at 90%
 };
 
 /**
@@ -93,6 +102,36 @@ export class EmpireManager {
 
     profiler.measureSubsystem("empire:objectives", () => {
       this.updateObjectives(overmind);
+    });
+
+    // NEW: Automated room intel refresh
+    profiler.measureSubsystem("empire:intelRefresh", () => {
+      this.refreshRoomIntel(overmind);
+    });
+
+    // NEW: Automated GCL progress tracking
+    profiler.measureSubsystem("empire:gclTracking", () => {
+      this.trackGCLProgress(overmind);
+    });
+
+    // NEW: Automated expansion readiness check
+    profiler.measureSubsystem("empire:expansionReadiness", () => {
+      this.checkExpansionReadiness(overmind);
+    });
+
+    // NEW: Automated nuke candidate refresh
+    profiler.measureSubsystem("empire:nukeCandidates", () => {
+      this.refreshNukeCandidates(overmind);
+    });
+
+    // NEW: Automated cluster health monitoring
+    profiler.measureSubsystem("empire:clusterHealth", () => {
+      this.monitorClusterHealth();
+    });
+
+    // NEW: Automated power bank profitability assessment
+    profiler.measureSubsystem("empire:powerBankProfitability", () => {
+      this.assessPowerBankProfitability(overmind);
     });
 
     // Log CPU usage
@@ -384,6 +423,404 @@ export class EmpireManager {
     if (candidate) {
       candidate.claimed = true;
       logger.info(`Marked expansion target as claimed: ${roomName}`, { subsystem: "Empire" });
+    }
+  }
+
+  /**
+   * Automated room intel refresh system
+   * Updates intel for owned and nearby rooms periodically
+   */
+  private refreshRoomIntel(overmind: OvermindMemory): void {
+    // Only refresh every N ticks
+    if (Game.time % this.config.intelRefreshInterval !== 0) {
+      return;
+    }
+
+    let updatedCount = 0;
+
+    // Update intel for all visible rooms
+    for (const roomName in Game.rooms) {
+      const room = Game.rooms[roomName];
+      if (!overmind.roomIntel[roomName]) {
+        overmind.roomIntel[roomName] = this.createRoomIntel(room);
+        updatedCount++;
+      } else {
+        this.updateRoomIntel(overmind.roomIntel[roomName], room);
+        updatedCount++;
+      }
+    }
+
+    if (updatedCount > 0 && Game.time % 500 === 0) {
+      logger.info(`Refreshed intel for ${updatedCount} rooms`, { subsystem: "Empire" });
+    }
+  }
+
+  /**
+   * Create room intel from a Room object
+   */
+  private createRoomIntel(room: Room): RoomIntel {
+    const sources = room.find(FIND_SOURCES);
+    const mineral = room.find(FIND_MINERALS)[0];
+    const controller = room.controller;
+    
+    // Calculate terrain type
+    let plainCount = 0;
+    let swampCount = 0;
+    const terrain = new Room.Terrain(room.name);
+    for (let x = 0; x < 50; x++) {
+      for (let y = 0; y < 50; y++) {
+        const tile = terrain.get(x, y);
+        if (tile === TERRAIN_MASK_SWAMP) swampCount++;
+        else if (tile === 0) plainCount++;
+      }
+    }
+    const terrainType = swampCount > plainCount ? "swamp" : plainCount > swampCount ? "plains" : "mixed";
+
+    return {
+      name: room.name,
+      lastSeen: Game.time,
+      sources: sources.length,
+      controllerLevel: controller?.level ?? 0,
+      owner: controller?.owner?.username,
+      reserver: controller?.reservation?.username,
+      mineralType: mineral?.mineralType,
+      threatLevel: 0,
+      scouted: true,
+      terrain: terrainType,
+      isHighway: false,
+      isSK: false,
+      towerCount: room.find(FIND_STRUCTURES, { filter: s => s.structureType === STRUCTURE_TOWER }).length,
+      spawnCount: room.find(FIND_STRUCTURES, { filter: s => s.structureType === STRUCTURE_SPAWN }).length
+    };
+  }
+
+  /**
+   * Update existing room intel from a Room object
+   */
+  private updateRoomIntel(intel: RoomIntel, room: Room): void {
+    intel.lastSeen = Game.time;
+    
+    const controller = room.controller;
+    if (controller) {
+      intel.controllerLevel = controller.level ?? 0;
+      intel.owner = controller.owner?.username;
+      intel.reserver = controller.reservation?.username;
+    }
+
+    // Update threat level based on hostiles
+    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    const dangerousHostiles = hostiles.filter(h => 
+      h.body.some(p => p.type === ATTACK || p.type === RANGED_ATTACK || p.type === WORK)
+    );
+    
+    if (dangerousHostiles.length >= 5) {
+      intel.threatLevel = 3;
+    } else if (dangerousHostiles.length >= 2) {
+      intel.threatLevel = 2;
+    } else if (dangerousHostiles.length > 0) {
+      intel.threatLevel = 1;
+    } else {
+      intel.threatLevel = 0;
+    }
+
+    // Update structure counts
+    intel.towerCount = room.find(FIND_STRUCTURES, { filter: s => s.structureType === STRUCTURE_TOWER }).length;
+    intel.spawnCount = room.find(FIND_STRUCTURES, { filter: s => s.structureType === STRUCTURE_SPAWN }).length;
+  }
+
+  /**
+   * Track GCL progress and notify when approaching next level
+   */
+  private trackGCLProgress(overmind: OvermindMemory): void {
+    const gclProgress = (Game.gcl.progress / Game.gcl.progressTotal) * 100;
+    
+    // Notify when approaching next GCL level
+    if (gclProgress >= this.config.gclNotifyThreshold && Game.time % 500 === 0) {
+      logger.info(
+        `GCL ${Game.gcl.level} progress: ${gclProgress.toFixed(1)}% (${Game.gcl.progress}/${Game.gcl.progressTotal})`,
+        { subsystem: "Empire" }
+      );
+    }
+
+    // Update target room count objective
+    overmind.objectives.targetRoomCount = Game.gcl.level;
+  }
+
+  /**
+   * Check if owned rooms are ready for expansion
+   * Automatically unpause expansion when conditions are met
+   */
+  private checkExpansionReadiness(overmind: OvermindMemory): void {
+    const allRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+    
+    // Don't expand if at GCL limit
+    if (allRooms.length >= Game.gcl.level) {
+      return;
+    }
+
+    // Count stable rooms (RCL >= minStableRcl with storage)
+    const stableRooms = allRooms.filter(r => {
+      const rcl = r.controller?.level ?? 0;
+      const hasStorage = r.storage !== undefined;
+      return rcl >= this.config.minStableRcl && hasStorage;
+    });
+
+    // Need at least one stable room to expand
+    if (stableRooms.length === 0) {
+      if (!overmind.objectives.expansionPaused) {
+        overmind.objectives.expansionPaused = true;
+        logger.info("Expansion paused: waiting for stable room (RCL >= 4 with storage)", { subsystem: "Empire" });
+      }
+      return;
+    }
+
+    // Check if we have enough energy reserves in stable rooms
+    const totalEnergy = stableRooms.reduce((sum, r) => sum + (r.storage?.store[RESOURCE_ENERGY] ?? 0), 0);
+    const avgEnergy = totalEnergy / stableRooms.length;
+    const minEnergyForExpansion = 50000; // Need 50k average to expand
+
+    if (avgEnergy < minEnergyForExpansion) {
+      if (!overmind.objectives.expansionPaused) {
+        overmind.objectives.expansionPaused = true;
+        logger.info(`Expansion paused: insufficient energy reserves (${avgEnergy.toFixed(0)} < ${minEnergyForExpansion})`, {
+          subsystem: "Empire"
+        });
+      }
+      return;
+    }
+
+    // All conditions met - ready to expand
+    if (overmind.objectives.expansionPaused) {
+      overmind.objectives.expansionPaused = false;
+      logger.info(
+        `Expansion resumed: ${stableRooms.length} stable rooms with ${avgEnergy.toFixed(0)} avg energy`,
+        { subsystem: "Empire" }
+      );
+    }
+  }
+
+  /**
+   * Refresh nuke candidates based on current war targets
+   */
+  private refreshNukeCandidates(overmind: OvermindMemory): void {
+    // Only refresh every 500 ticks
+    if (Game.time % 500 !== 0) {
+      return;
+    }
+
+    // Clear old launched nukes
+    overmind.nukeCandidates = overmind.nukeCandidates.filter(nc => {
+      if (nc.launched && Game.time - nc.launchTick > 50000) {
+        return false; // Nuke has impacted
+      }
+      return true;
+    });
+
+    // Only evaluate nuke candidates if in war mode
+    if (!overmind.objectives.warMode || overmind.warTargets.length === 0) {
+      return;
+    }
+
+    // Score war targets for nuke worthiness
+    for (const roomName of overmind.warTargets) {
+      const intel = overmind.roomIntel[roomName];
+      if (!intel || !intel.scouted) {
+        continue;
+      }
+
+      // Check if already a nuke candidate
+      const existing = overmind.nukeCandidates.find(nc => nc.roomName === roomName);
+      if (existing && !existing.launched) {
+        continue; // Already a candidate
+      }
+
+      // Calculate nuke score
+      const score = this.scoreNukeCandidate(intel);
+      
+      if (score >= 50) {
+        overmind.nukeCandidates.push({
+          roomName,
+          score,
+          launched: false,
+          launchTick: 0
+        });
+
+        logger.info(`Added nuke candidate: ${roomName} (score: ${score})`, { subsystem: "Empire" });
+      }
+    }
+
+    // Sort by score
+    overmind.nukeCandidates.sort((a, b) => b.score - a.score);
+
+    // Keep only top 10
+    overmind.nukeCandidates = overmind.nukeCandidates.slice(0, 10);
+  }
+
+  /**
+   * Score a room as a nuke candidate
+   */
+  private scoreNukeCandidate(intel: RoomIntel): number {
+    let score = 0;
+
+    // High RCL rooms are more valuable targets
+    score += intel.controllerLevel * 10;
+
+    // Towers make nuking more valuable (disrupts defense)
+    score += (intel.towerCount ?? 0) * 15;
+
+    // Spawns are critical infrastructure
+    score += (intel.spawnCount ?? 0) * 20;
+
+    // SK rooms and highway rooms are not good nuke targets
+    if (intel.isSK || intel.isHighway) {
+      return 0;
+    }
+
+    return score;
+  }
+
+  /**
+   * Monitor cluster health and detect issues
+   * Automatically triggers rebalancing when clusters are unhealthy
+   */
+  private monitorClusterHealth(): void {
+    // Only check every 50 ticks
+    if (Game.time % 50 !== 0) {
+      return;
+    }
+
+    const clusters = memoryManager.getClusters();
+    const allOwnedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+
+    for (const clusterId in clusters) {
+      const cluster = clusters[clusterId];
+      
+      // Calculate cluster health metrics
+      const clusterRooms = allOwnedRooms.filter(r => cluster.memberRooms.includes(r.name));
+      
+      if (clusterRooms.length === 0) {
+        continue;
+      }
+
+      // Check energy availability across cluster
+      const totalEnergy = clusterRooms.reduce((sum, r) => {
+        return sum + (r.storage?.store[RESOURCE_ENERGY] ?? 0) + (r.terminal?.store[RESOURCE_ENERGY] ?? 0);
+      }, 0);
+      const avgEnergy = totalEnergy / clusterRooms.length;
+
+      // Check CPU usage per room
+      const avgCpuPerRoom = Game.cpu.getUsed() / allOwnedRooms.length;
+
+      // Detect unhealthy conditions
+      const lowEnergy = avgEnergy < 30000;
+      const highCpu = avgCpuPerRoom > 2.0;
+
+      // Log warnings for unhealthy clusters
+      if (lowEnergy && Game.time % 500 === 0) {
+        logger.warn(
+          `Cluster ${clusterId} has low energy: ${avgEnergy.toFixed(0)} avg (threshold: 30000)`,
+          { subsystem: "Empire" }
+        );
+      }
+
+      if (highCpu && Game.time % 500 === 0) {
+        logger.warn(
+          `Cluster ${clusterId} has high CPU usage: ${avgCpuPerRoom.toFixed(2)} per room`,
+          { subsystem: "Empire" }
+        );
+      }
+
+      // Update cluster metrics
+      if (!cluster.metrics) {
+        cluster.metrics = {
+          energyIncome: 0,
+          energyConsumption: 0,
+          energyBalance: 0,
+          warIndex: 0,
+          economyIndex: 0
+        };
+      }
+
+      // Calculate economy health index (0-100)
+      const energyScore = Math.min(100, (avgEnergy / 100000) * 100);
+      const roomCountScore = (clusterRooms.length / cluster.memberRooms.length) * 100;
+      cluster.metrics.economyIndex = Math.round((energyScore + roomCountScore) / 2);
+
+      // Trigger rebalancing if economy index is low
+      if (cluster.metrics.economyIndex < 40 && Game.time % 500 === 0) {
+        logger.warn(
+          `Cluster ${clusterId} economy index low: ${cluster.metrics.economyIndex} - consider rebalancing`,
+          { subsystem: "Empire" }
+        );
+      }
+    }
+  }
+
+  /**
+   * Assess power bank profitability based on distance, power amount, and decay time
+   * Automatically marks unprofitable power banks as inactive
+   */
+  private assessPowerBankProfitability(overmind: OvermindMemory): void {
+    // Only assess every 100 ticks
+    if (Game.time % 100 !== 0) {
+      return;
+    }
+
+    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+    if (ownedRooms.length === 0) {
+      return;
+    }
+
+    for (const pb of overmind.powerBanks) {
+      if (pb.active) {
+        continue; // Already harvesting
+      }
+
+      // Find closest owned room
+      let minDistance = Infinity;
+      let closestRoom: Room | null = null;
+
+      for (const room of ownedRooms) {
+        const distance = Game.map.getRoomLinearDistance(room.name, pb.roomName);
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestRoom = room;
+        }
+      }
+
+      if (!closestRoom) {
+        continue;
+      }
+
+      // Calculate profitability score
+      const timeRemaining = pb.decayTick - Game.time;
+      const ticksPerRoom = 50; // Approximate travel time per room
+      const travelTime = minDistance * ticksPerRoom;
+      const harvestTime = pb.power / 2; // Approximate time to harvest (2 power per tick with good squad)
+      const totalTime = travelTime * 2 + harvestTime; // Round trip + harvest
+
+      // Power bank is profitable if we have enough time and it's reasonably close
+      const isProfitable = 
+        timeRemaining > totalTime * 1.5 && // Need 50% time buffer
+        minDistance <= 5 && // Max 5 rooms away
+        pb.power >= 1000 && // Minimum 1000 power
+        (closestRoom.controller?.level ?? 0) >= 7; // Need RCL 7+ for power squads
+
+      // Log profitability assessment
+      if (!isProfitable && Game.time % 500 === 0) {
+        logger.debug(
+          `Power bank in ${pb.roomName} not profitable: ` +
+          `power=${pb.power}, distance=${minDistance}, timeRemaining=${timeRemaining}, ` +
+          `requiredTime=${totalTime.toFixed(0)}`,
+          { subsystem: "Empire" }
+        );
+      } else if (isProfitable && Game.time % 500 === 0) {
+        logger.info(
+          `Profitable power bank in ${pb.roomName}: ` +
+          `power=${pb.power}, distance=${minDistance}, timeRemaining=${timeRemaining}`,
+          { subsystem: "Empire" }
+        );
+      }
     }
   }
 }
