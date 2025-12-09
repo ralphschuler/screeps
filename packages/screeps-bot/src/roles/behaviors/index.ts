@@ -35,3 +35,6 @@ export {
   type PowerCreepContext,
   type PowerCreepAction
 } from "./power";
+
+// Pheromone helper functions
+export * from "./pheromoneHelper";

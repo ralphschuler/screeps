@@ -39,6 +39,7 @@ import { unifiedStats } from "./core/unifiedStats";
 import { creepProcessManager } from "./core/creepProcessManager";
 import { roomProcessManager } from "./core/roomProcessManager";
 import { runPowerRole } from "./roles/power";
+import { initializePheromoneEventHandlers } from "./logic/pheromoneEventHandlers";
 
 // =============================================================================
 // Note: Creep and room management has been migrated to kernel processes
@@ -107,6 +108,9 @@ function initializeSystems(): void {
   if (config.profiling) {
     initializeNativeCallsTracking();
   }
+
+  // Initialize pheromone event handlers for event-driven updates
+  initializePheromoneEventHandlers();
 
   systemsInitialized = true;
 }

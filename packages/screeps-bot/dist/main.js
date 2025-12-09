@@ -6809,6 +6809,7 @@ class RoomVisualizer {
         }
         if (this.config.showPheromones && swarm) {
             this.drawPheromoneBars(visual, swarm);
+            this.drawPheromoneHeatmap(visual, swarm);
         }
         if (this.config.showCombat) {
             this.drawCombatInfo(visual, room);
@@ -6948,6 +6949,41 @@ class RoomVisualizer {
             });
             y += 0.5;
         }
+    }
+    /**
+     * Draw pheromone heatmap overlay
+     */
+    drawPheromoneHeatmap(visual, swarm) {
+        // Find dominant pheromone (highest value)
+        let maxPheromone = null;
+        let maxValue = RoomVisualizer.HEATMAP_MIN_THRESHOLD;
+        for (const [key, value] of Object.entries(swarm.pheromones)) {
+            if (value > maxValue) {
+                maxValue = value;
+                maxPheromone = key;
+            }
+        }
+        // Only draw if there's a significant dominant pheromone
+        if (!maxPheromone || maxValue < RoomVisualizer.HEATMAP_MIN_THRESHOLD)
+            return;
+        // TypeScript now knows maxPheromone is not null here
+        const color = PHEROMONE_COLORS[maxPheromone];
+        const intensity = Math.min(1, maxValue / 100) * 0.15; // Scale opacity
+        // Draw room-wide overlay in top-right corner
+        visual.rect(40, 10, 8, 5, {
+            fill: color,
+            opacity: intensity
+        });
+        visual.text(`Dominant: ${maxPheromone}`, 44, 12.5, {
+            align: "center",
+            font: "0.5 monospace",
+            color
+        });
+        visual.text(`Intensity: ${Math.round(maxValue)}`, 44, 13.5, {
+            align: "center",
+            font: "0.4 monospace",
+            color: "#ffffff"
+        });
     }
     /**
      * Draw combat information
@@ -7170,6 +7206,10 @@ class RoomVisualizer {
         }
     }
 }
+/**
+ * Minimum pheromone value to display in heatmap
+ */
+RoomVisualizer.HEATMAP_MIN_THRESHOLD = 10;
 /**
  * Global room visualizer instance
  */
@@ -9369,6 +9409,41 @@ function clearCacheOnStateChange(creep) {
 }
 
 /**
+ * Pheromone Helper
+ *
+ * Provides utility functions for creeps to read and respond to pheromones.
+ * This enables stigmergic (indirect) communication as specified in ROADMAP section 5.
+ *
+ * Usage:
+ * ```typescript
+ * const pheromones = getPheromones(creep);
+ * if (pheromones.defense > 20) {
+ *   // Prioritize defensive actions
+ * }
+ * ```
+ */
+/**
+ * Get pheromone levels for a creep's current room
+ */
+function getPheromones(creep) {
+    var _a;
+    const swarm = memoryManager.getSwarmState(creep.room.name);
+    return (_a = swarm === null || swarm === void 0 ? void 0 : swarm.pheromones) !== null && _a !== void 0 ? _a : null;
+}
+/**
+ * Check if room needs building based on pheromones
+ */
+function needsBuilding(pheromones) {
+    return pheromones.build > 15;
+}
+/**
+ * Check if room needs upgrading based on pheromones
+ */
+function needsUpgrading(pheromones) {
+    return pheromones.upgrade > 15;
+}
+
+/**
  * Economy Behaviors
  *
  * Simple, human-readable behavior functions for economy roles.
@@ -9481,11 +9556,23 @@ function larvaWorker(ctx) {
         if (ctx.storage && ctx.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
             return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
         }
-        // Build construction sites
+        // Use pheromones to decide between building and upgrading
+        // This allows room-wide coordination through stigmergic communication
+        const pheromones = getPheromones(ctx.creep);
+        if (pheromones) {
+            // Prioritize building if build pheromone is high
+            if (needsBuilding(pheromones) && ctx.prioritizedSites.length > 0) {
+                return { type: "build", target: ctx.prioritizedSites[0] };
+            }
+            // Prioritize upgrading if upgrade pheromone is high
+            if (needsUpgrading(pheromones) && ctx.room.controller) {
+                return { type: "upgrade", target: ctx.room.controller };
+            }
+        }
+        // Default priority: build then upgrade
         if (ctx.prioritizedSites.length > 0) {
             return { type: "build", target: ctx.prioritizedSites[0] };
         }
-        // Upgrade controller
         if (ctx.room.controller) {
             return { type: "upgrade", target: ctx.room.controller };
         }
@@ -16006,6 +16093,7 @@ const DEFAULT_CONFIG$c = {
     enableProcessing: true
 };
 const structureCache = new Map();
+const structureCountTracker = new Map();
 /**
  * Get or create structure cache for a room
  */
@@ -16107,6 +16195,44 @@ class RoomNode {
      */
     updateThreatAssessment(room, swarm) {
         var _a, _b;
+        // Track structure count changes to detect destroyed structures
+        // Only check every 5 ticks to reduce CPU usage
+        // Uses a separate Map to avoid polluting SwarmState memory
+        if (Game.time % 5 === 0) {
+            const cache = getStructureCache(room);
+            const currentStructureCount = cache.spawns.length + cache.towers.length;
+            const tracking = structureCountTracker.get(this.roomName);
+            if (tracking && tracking.lastTick < Game.time) {
+                // Compare with previous counts
+                if (currentStructureCount < tracking.lastStructureCount) {
+                    // Structure(s) destroyed - emit event for each critical structure type
+                    if (cache.spawns.length < tracking.lastSpawns.length) {
+                        kernel.emit("structure.destroyed", {
+                            roomName: this.roomName,
+                            structureType: STRUCTURE_SPAWN,
+                            structureId: "unknown",
+                            source: this.roomName
+                        });
+                    }
+                    if (cache.towers.length < tracking.lastTowers.length) {
+                        kernel.emit("structure.destroyed", {
+                            roomName: this.roomName,
+                            structureType: STRUCTURE_TOWER,
+                            structureId: "unknown",
+                            source: this.roomName
+                        });
+                    }
+                }
+            }
+            // Store counts for next check
+            // Use shallow copy to avoid holding references to old structure objects
+            structureCountTracker.set(this.roomName, {
+                lastStructureCount: currentStructureCount,
+                lastSpawns: [...cache.spawns],
+                lastTowers: [...cache.towers],
+                lastTick: Game.time
+            });
+        }
         // Use safeFind to handle engine errors with corrupted owner data
         const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
         // Only check enemy structures if we have hostiles or existing danger
@@ -20691,26 +20817,39 @@ let ExpansionManager = class ExpansionManager {
             // Remove if no intel (not scouted yet - keep it for now)
             if (!intel)
                 return true;
+            let reason = null;
             // Remove if now owned by someone else
             if (intel.owner) {
                 logger.info(`Removing remote ${remoteName} - now owned by ${intel.owner}`, { subsystem: "Expansion" });
-                return false;
+                reason = "claimed";
             }
             // Remove if reserved by hostile
             const myUsername = this.getMyUsername();
-            if (intel.reserver && intel.reserver !== myUsername) {
+            if (!reason && intel.reserver && intel.reserver !== myUsername) {
                 logger.info(`Removing remote ${remoteName} - reserved by ${intel.reserver}`, { subsystem: "Expansion" });
-                return false;
+                reason = "hostile";
             }
             // Remove if too dangerous
-            if (intel.threatLevel >= 3) {
+            if (!reason && intel.threatLevel >= 3) {
                 logger.info(`Removing remote ${remoteName} - threat level ${intel.threatLevel}`, { subsystem: "Expansion" });
-                return false;
+                reason = "hostile";
             }
             // Remove if too far (in case config changed)
-            const distance = Game.map.getRoomLinearDistance(homeRoom, remoteName);
-            if (distance > this.config.maxRemoteDistance) {
-                logger.info(`Removing remote ${remoteName} - too far (${distance})`, { subsystem: "Expansion" });
+            if (!reason) {
+                const distance = Game.map.getRoomLinearDistance(homeRoom, remoteName);
+                if (distance > this.config.maxRemoteDistance) {
+                    logger.info(`Removing remote ${remoteName} - too far (${distance})`, { subsystem: "Expansion" });
+                    reason = "unreachable";
+                }
+            }
+            // Emit remote lost event if we're removing this remote
+            if (reason) {
+                kernel.emit("remote.lost", {
+                    homeRoom,
+                    remoteRoom: remoteName,
+                    reason,
+                    source: homeRoom
+                });
                 return false;
             }
             return true;
@@ -23992,6 +24131,44 @@ function initializeNativeCallsTracking() {
 }
 
 /**
+ * Pheromone Event Handlers
+ *
+ * Registers event handlers to keep pheromones updated based on game events.
+ * This completes the event-driven pheromone system as specified in ROADMAP section 5.
+ */
+/**
+ * Initialize pheromone event handlers
+ * Should be called once during bot initialization
+ */
+function initializePheromoneEventHandlers() {
+    // Handle structure destroyed events
+    kernel.on("structure.destroyed", (event) => {
+        const swarm = memoryManager.getSwarmState(event.roomName);
+        if (swarm) {
+            pheromoneManager.onStructureDestroyed(swarm, event.structureType);
+            logger.debug(`Pheromone update: structure destroyed in ${event.roomName}`, {
+                subsystem: "Pheromone",
+                room: event.roomName
+            });
+        }
+    });
+    // Handle remote room lost events
+    kernel.on("remote.lost", (event) => {
+        const swarm = memoryManager.getSwarmState(event.homeRoom);
+        if (swarm) {
+            pheromoneManager.onRemoteSourceLost(swarm);
+            logger.info(`Pheromone update: remote source lost for ${event.homeRoom}`, {
+                subsystem: "Pheromone",
+                room: event.homeRoom
+            });
+        }
+    });
+    logger.info("Pheromone event handlers initialized", {
+        subsystem: "Pheromone"
+    });
+}
+
+/**
  * CPU Scheduler - Phase 6
  *
  * Implements bucket-based CPU management and task scheduling:
@@ -24270,6 +24447,8 @@ function initializeSystems() {
     if (config.profiling) {
         initializeNativeCallsTracking();
     }
+    // Initialize pheromone event handlers for event-driven updates
+    initializePheromoneEventHandlers();
     systemsInitialized = true;
 }
 /**

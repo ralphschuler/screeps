@@ -89,6 +89,19 @@ interface RoomStructureCache {
 const structureCache = new Map<string, RoomStructureCache>();
 
 /**
+ * Structure count tracking for detecting destroyed structures
+ * Separate from SwarmState to avoid polluting memory
+ */
+interface StructureCountTracking {
+  lastStructureCount: number;
+  lastSpawns: StructureSpawn[];
+  lastTowers: StructureTower[];
+  lastTick: number;
+}
+
+const structureCountTracker = new Map<string, StructureCountTracking>();
+
+/**
  * Get or create structure cache for a room
  */
 function getStructureCache(room: Room): RoomStructureCache {
@@ -209,6 +222,48 @@ export class RoomNode {
    * OPTIMIZATION: Only check enemy structures if hostiles are present or danger > 0
    */
   private updateThreatAssessment(room: Room, swarm: SwarmState): void {
+    // Track structure count changes to detect destroyed structures
+    // Only check every 5 ticks to reduce CPU usage
+    // Uses a separate Map to avoid polluting SwarmState memory
+    if (Game.time % 5 === 0) {
+      const cache = getStructureCache(room);
+      const currentStructureCount = cache.spawns.length + cache.towers.length;
+      
+      const tracking = structureCountTracker.get(this.roomName);
+      
+      if (tracking && tracking.lastTick < Game.time) {
+        // Compare with previous counts
+        if (currentStructureCount < tracking.lastStructureCount) {
+          // Structure(s) destroyed - emit event for each critical structure type
+          if (cache.spawns.length < tracking.lastSpawns.length) {
+            kernel.emit("structure.destroyed", {
+              roomName: this.roomName,
+              structureType: STRUCTURE_SPAWN,
+              structureId: "unknown",
+              source: this.roomName
+            });
+          }
+          if (cache.towers.length < tracking.lastTowers.length) {
+            kernel.emit("structure.destroyed", {
+              roomName: this.roomName,
+              structureType: STRUCTURE_TOWER,
+              structureId: "unknown",
+              source: this.roomName
+            });
+          }
+        }
+      }
+      
+      // Store counts for next check
+      // Use shallow copy to avoid holding references to old structure objects
+      structureCountTracker.set(this.roomName, {
+        lastStructureCount: currentStructureCount,
+        lastSpawns: [...cache.spawns],
+        lastTowers: [...cache.towers],
+        lastTick: Game.time
+      });
+    }
+
     // Use safeFind to handle engine errors with corrupted owner data
     const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
 
