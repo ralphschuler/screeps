@@ -3806,6 +3806,7 @@ const DEFAULT_EVENT_PRIORITIES = {
     "hostile.cleared": EventPriority.HIGH,
     "creep.died": EventPriority.HIGH,
     "energy.critical": EventPriority.HIGH,
+    "spawn.emergency": EventPriority.HIGH,
     "posture.change": EventPriority.HIGH,
     // Normal
     "spawn.completed": EventPriority.NORMAL,
@@ -16945,6 +16946,10 @@ const ROLE_DEFINITIONS = {
         role: "larvaWorker",
         family: "economy",
         bodies: [
+            // Ultra-minimal emergency body for total workforce collapse
+            // Can harvest and carry but moves slowly (1 tile per 2 ticks on plains)
+            // This ensures recovery is possible even with < 200 energy
+            createBody([WORK, CARRY], 150),
             createBody([WORK, CARRY, MOVE], 200),
             createBody([WORK, WORK, CARRY, CARRY, MOVE, MOVE], 400),
             createBody([WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE], 600),
@@ -17769,6 +17774,16 @@ function runSpawnManager(room, swarm) {
     // This prevents deadlock where we wait for extensions to fill but have no creeps to fill them.
     const isEmergency = isEmergencySpawnState(room.name);
     const effectiveCapacity = isEmergency ? energyAvailable : energyCapacity;
+    // Workforce collapse warning: If we're in emergency with very low energy
+    // Log a warning to help identify critical situations
+    if (isEmergency && energyAvailable < 150) {
+        kernel.emit("spawn.emergency", {
+            roomName: room.name,
+            energyAvailable,
+            message: "Critical workforce collapse - waiting for energy to spawn minimal creep",
+            source: "SpawnManager"
+        });
+    }
     // SPAWN FIX: Try roles in priority order until we find one we can afford
     // This prevents the spawn system from stalling when high-priority roles
     // are too expensive for current energy levels.
