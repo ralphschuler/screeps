@@ -24,6 +24,7 @@ import {
 } from "./portalManager";
 import {
   findBackupPosition,
+  findOpenPosition,
   findSideStepPosition,
   isInNarrowPassage,
   requestMoveToPosition,
@@ -95,6 +96,10 @@ export interface MoveOpts {
   maxRooms?: number;
   /** Allow routing through hostile rooms. Default false. */
   allowHostileRooms?: boolean;
+  /** Allow finding alternative positions within range if destination is blocked. Default false. */
+  allowAlternativeTarget?: boolean;
+  /** Range to search for alternative positions when destination is blocked. Default 1. */
+  alternativeRange?: number;
 }
 
 /**
@@ -350,6 +355,8 @@ function generateCostMatrix(
 
 /**
  * Find a path to the target using PathFinder with multi-room support
+ * When the destination is blocked and allowAlternativeTarget is enabled,
+ * it will search for alternative walkable positions within the specified range.
  */
 function findPath(origin: RoomPosition, target: RoomPosition | MoveTarget, opts: MoveOpts): PathFinderPath {
   const targetPos = "pos" in target ? target.pos : target;
@@ -373,6 +380,32 @@ function findPath(origin: RoomPosition, target: RoomPosition | MoveTarget, opts:
       return generateCostMatrix(roomName, opts.avoidCreeps ?? true, roadCost, allowHostileRooms);
     }
   });
+
+  // If path is incomplete and alternative targets are allowed, try to find an alternative position
+  if (result.incomplete && opts.allowAlternativeTarget && !isMultiRoom) {
+    const alternativeRange = opts.alternativeRange ?? 1;
+    const alternativePos = findOpenPosition(targetPos, alternativeRange);
+    
+    if (alternativePos) {
+      // Try pathfinding to the alternative position
+      const alternativeGoals = [{ pos: alternativePos, range }];
+      const alternativeResult = PathFinder.search(origin, alternativeGoals, {
+        plainCost: opts.plainCost ?? 2,
+        swampCost: opts.swampCost ?? 10,
+        maxOps: opts.maxOps ?? 2000,
+        maxRooms,
+        flee: opts.flee ?? false,
+        roomCallback: (roomName: string) => {
+          return generateCostMatrix(roomName, opts.avoidCreeps ?? true, roadCost, allowHostileRooms);
+        }
+      });
+      
+      // Use alternative path if it's better (complete or shorter)
+      if (!alternativeResult.incomplete || alternativeResult.path.length < result.path.length) {
+        return alternativeResult;
+      }
+    }
+  }
 
   return result;
 }
@@ -840,7 +873,10 @@ export function finalizeMovement(): void {
  *
  * @param creep - The creep or power creep to move
  * @param target - Target position or object with pos property
- * @param opts - Optional movement options including visualizePathStyle
+ * @param opts - Optional movement options including:
+ *   - visualizePathStyle: Visual styling for the path
+ *   - allowAlternativeTarget: If true, will search for alternative positions when destination is blocked
+ *   - alternativeRange: Range to search for alternative positions (default 1)
  * @returns The result of the movement action
  */
 export function moveCreep(

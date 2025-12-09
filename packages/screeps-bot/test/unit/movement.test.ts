@@ -1246,4 +1246,145 @@ describe("Movement Room Exit Handling", () => {
       expect(result!.y).to.equal(26);
     });
   });
+
+  describe("Alternative Target Finding", () => {
+    /**
+     * Simulates finding an alternative position when the destination is blocked.
+     * This mirrors the logic added to handle blocked destinations.
+     */
+    function findAlternativePosition(
+      targetPos: Position,
+      range: number,
+      isWalkable: (x: number, y: number) => boolean,
+      hasCreep: (x: number, y: number) => boolean
+    ): Position | null {
+      // Search in expanding rings from range 1 to specified range
+      for (let r = 1; r <= range; r++) {
+        const candidates: Position[] = [];
+        
+        // Check positions in a ring at distance r
+        for (let dx = -r; dx <= r; dx++) {
+          for (let dy = -r; dy <= r; dy++) {
+            // Only check positions at exactly range r (on the ring boundary)
+            if (Math.abs(dx) < r && Math.abs(dy) < r) continue;
+
+            const x = targetPos.x + dx;
+            const y = targetPos.y + dy;
+
+            // Check bounds (avoid exits)
+            if (x < 1 || x > 48 || y < 1 || y > 48) continue;
+
+            // Check if walkable and no creep
+            if (isWalkable(x, y) && !hasCreep(x, y)) {
+              candidates.push({ x, y });
+            }
+          }
+        }
+
+        // Return first valid candidate found
+        if (candidates.length > 0) {
+          return candidates[0];
+        }
+      }
+
+      return null;
+    }
+
+    it("should find adjacent alternative position when destination is blocked", () => {
+      const targetPos = { x: 25, y: 25 };
+      
+      // Target is blocked, but adjacent position is free
+      const isWalkable = (x: number, y: number) => {
+        return !(x === 25 && y === 25); // Target is not walkable
+      };
+      const hasCreep = (_x: number, _y: number) => false;
+
+      const result = findAlternativePosition(targetPos, 1, isWalkable, hasCreep);
+      expect(result).to.not.be.null;
+      expect(result!.x).to.be.within(24, 26);
+      expect(result!.y).to.be.within(24, 26);
+      // Should not be the target position itself
+      expect(result!.x !== 25 || result!.y !== 25).to.be.true;
+    });
+
+    it("should find position within range 2 when range 1 is all blocked", () => {
+      const targetPos = { x: 25, y: 25 };
+      
+      // Target and all range 1 positions blocked, but range 2 has options
+      const isWalkable = (x: number, y: number) => {
+        const dx = Math.abs(x - 25);
+        const dy = Math.abs(y - 25);
+        const distance = Math.max(dx, dy);
+        return distance > 1; // Only positions at distance > 1 are walkable
+      };
+      const hasCreep = (_x: number, _y: number) => false;
+
+      const result = findAlternativePosition(targetPos, 2, isWalkable, hasCreep);
+      expect(result).to.not.be.null;
+      const dx = Math.abs(result!.x - 25);
+      const dy = Math.abs(result!.y - 25);
+      const distance = Math.max(dx, dy);
+      expect(distance).to.equal(2);
+    });
+
+    it("should return null when no alternative position available within range", () => {
+      const targetPos = { x: 25, y: 25 };
+      
+      // All positions are blocked
+      const isWalkable = (_x: number, _y: number) => false;
+      const hasCreep = (_x: number, _y: number) => false;
+
+      const result = findAlternativePosition(targetPos, 2, isWalkable, hasCreep);
+      expect(result).to.be.null;
+    });
+
+    it("should skip positions occupied by creeps even if walkable", () => {
+      const targetPos = { x: 25, y: 25 };
+      
+      // All positions walkable but most have creeps
+      const isWalkable = (_x: number, _y: number) => true;
+      const hasCreep = (x: number, y: number) => {
+        // All adjacent positions have creeps except (26, 25)
+        if (x === 26 && y === 25) return false;
+        return Math.abs(x - 25) <= 1 && Math.abs(y - 25) <= 1;
+      };
+
+      const result = findAlternativePosition(targetPos, 1, isWalkable, hasCreep);
+      expect(result).to.not.be.null;
+      expect(result!.x).to.equal(26);
+      expect(result!.y).to.equal(25);
+    });
+
+    it("should avoid room exits (positions at edges)", () => {
+      const targetPos = { x: 1, y: 1 };
+      
+      // Position near corner, should not select exit positions (x=0 or y=0)
+      const isWalkable = (_x: number, _y: number) => true;
+      const hasCreep = (_x: number, _y: number) => false;
+
+      const result = findAlternativePosition(targetPos, 1, isWalkable, hasCreep);
+      expect(result).to.not.be.null;
+      // Should not be on an exit (x=0, x=49, y=0, y=49)
+      expect(result!.x).to.be.within(1, 48);
+      expect(result!.y).to.be.within(1, 48);
+    });
+
+    it("should prefer closer alternatives (range 1 before range 2)", () => {
+      const targetPos = { x: 25, y: 25 };
+      
+      // Both range 1 and range 2 have options, should find range 1 first
+      const isWalkable = (x: number, y: number) => {
+        return !(x === 25 && y === 25); // Everything except target is walkable
+      };
+      const hasCreep = (_x: number, _y: number) => false;
+
+      const result = findAlternativePosition(targetPos, 2, isWalkable, hasCreep);
+      expect(result).to.not.be.null;
+      // Should be at range 1 (adjacent)
+      const dx = Math.abs(result!.x - 25);
+      const dy = Math.abs(result!.y - 25);
+      const distance = Math.max(dx, dy);
+      expect(distance).to.equal(1);
+    });
+  });
 });

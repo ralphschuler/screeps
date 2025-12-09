@@ -8292,6 +8292,56 @@ function findSideStepPosition(creep) {
     });
     return (_a = roadPosition !== null && roadPosition !== void 0 ? roadPosition : positions[0]) !== null && _a !== void 0 ? _a : null;
 }
+/**
+ * Check if a position is walkable
+ */
+function isWalkable$1(pos) {
+    const room = Game.rooms[pos.roomName];
+    if (!room)
+        return false;
+    // Check terrain
+    const terrain = room.getTerrain();
+    if (terrain.get(pos.x, pos.y) === TERRAIN_MASK_WALL)
+        return false;
+    // Check structures
+    const structures = room.lookForAt(LOOK_STRUCTURES, pos);
+    for (const struct of structures) {
+        if (struct.structureType !== STRUCTURE_ROAD &&
+            struct.structureType !== STRUCTURE_CONTAINER &&
+            (struct.structureType !== STRUCTURE_RAMPART || !struct.my)) {
+            return false;
+        }
+    }
+    return true;
+}
+/**
+ * Find open position near target
+ */
+function findOpenPosition(pos, range = 1) {
+    const room = Game.rooms[pos.roomName];
+    if (!room)
+        return null;
+    for (let r = 1; r <= range; r++) {
+        for (let dx = -r; dx <= r; dx++) {
+            for (let dy = -r; dy <= r; dy++) {
+                if (Math.abs(dx) < r && Math.abs(dy) < r)
+                    continue;
+                const x = pos.x + dx;
+                const y = pos.y + dy;
+                if (x < ROOM_MIN_COORD || x > ROOM_MAX_COORD || y < ROOM_MIN_COORD || y > ROOM_MAX_COORD)
+                    continue;
+                const testPos = new RoomPosition(x, y, pos.roomName);
+                if (isWalkable$1(testPos)) {
+                    const creeps = room.lookForAt(LOOK_CREEPS, testPos);
+                    if (creeps.length === 0) {
+                        return testPos;
+                    }
+                }
+            }
+        }
+    }
+    return null;
+}
 
 /**
  * Movement Utilities
@@ -8517,9 +8567,11 @@ function generateCostMatrix(roomName, avoidCreeps, roadCost = 1, allowHostileRoo
 // =============================================================================
 /**
  * Find a path to the target using PathFinder with multi-room support
+ * When the destination is blocked and allowAlternativeTarget is enabled,
+ * it will search for alternative walkable positions within the specified range.
  */
 function findPath(origin, target, opts) {
-    var _a, _b, _c, _d, _e, _f, _g;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
     const targetPos = "pos" in target ? target.pos : target;
     const range = "range" in target ? target.range : 1;
     const roadCost = (_a = opts.roadCost) !== null && _a !== void 0 ? _a : 1;
@@ -8539,6 +8591,30 @@ function findPath(origin, target, opts) {
             return generateCostMatrix(roomName, (_a = opts.avoidCreeps) !== null && _a !== void 0 ? _a : true, roadCost, allowHostileRooms);
         }
     });
+    // If path is incomplete and alternative targets are allowed, try to find an alternative position
+    if (result.incomplete && opts.allowAlternativeTarget && !isMultiRoom) {
+        const alternativeRange = (_h = opts.alternativeRange) !== null && _h !== void 0 ? _h : 1;
+        const alternativePos = findOpenPosition(targetPos, alternativeRange);
+        if (alternativePos) {
+            // Try pathfinding to the alternative position
+            const alternativeGoals = [{ pos: alternativePos, range }];
+            const alternativeResult = PathFinder.search(origin, alternativeGoals, {
+                plainCost: (_j = opts.plainCost) !== null && _j !== void 0 ? _j : 2,
+                swampCost: (_k = opts.swampCost) !== null && _k !== void 0 ? _k : 10,
+                maxOps: (_l = opts.maxOps) !== null && _l !== void 0 ? _l : 2000,
+                maxRooms,
+                flee: (_m = opts.flee) !== null && _m !== void 0 ? _m : false,
+                roomCallback: (roomName) => {
+                    var _a;
+                    return generateCostMatrix(roomName, (_a = opts.avoidCreeps) !== null && _a !== void 0 ? _a : true, roadCost, allowHostileRooms);
+                }
+            });
+            // Use alternative path if it's better (complete or shorter)
+            if (!alternativeResult.incomplete || alternativeResult.path.length < result.path.length) {
+                return alternativeResult;
+            }
+        }
+    }
     return result;
 }
 /**
@@ -8932,7 +9008,10 @@ function finalizeMovement() {
  *
  * @param creep - The creep or power creep to move
  * @param target - Target position or object with pos property
- * @param opts - Optional movement options including visualizePathStyle
+ * @param opts - Optional movement options including:
+ *   - visualizePathStyle: Visual styling for the path
+ *   - allowAlternativeTarget: If true, will search for alternative positions when destination is blocked
+ *   - alternativeRange: Range to search for alternative positions (default 1)
  * @returns The result of the movement action
  */
 function moveCreep(creep, target, opts) {
