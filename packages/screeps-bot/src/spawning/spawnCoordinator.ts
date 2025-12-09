@@ -72,8 +72,17 @@ export function populateSpawnQueue(room: Room, swarm: SwarmState): void {
       priority = SpawnPriority.EMERGENCY;
     } else if (emergencyState && (roleName === "guard" || roleName === "ranger" || roleName === "healer")) {
       // Boost defender priority during emergencies
+      // getDefenderPriorityBoost returns a numeric boost (e.g., 100 * urgency)
+      // We need to check if we actually need this defender role
       const boost = getDefenderPriorityBoost(room, swarm, roleName);
-      priority = boost > 0 ? SpawnPriority.EMERGENCY : priority;
+      if (boost >= 100) {
+        // High urgency (urgency >= 1.0), use EMERGENCY priority
+        priority = SpawnPriority.EMERGENCY;
+      } else if (boost > 0) {
+        // Some urgency, use HIGH priority
+        priority = SpawnPriority.HIGH;
+      }
+      // else keep original priority
     } else {
       // Map base priorities to queue priorities
       if (priority >= 90) {
