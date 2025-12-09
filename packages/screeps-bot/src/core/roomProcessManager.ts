@@ -53,7 +53,7 @@ function getRoomCpuBudget(room: Room): number {
   const hostiles = room.find(FIND_HOSTILE_CREEPS);
   
   // War mode: higher budget
-  // Typical war room usage: 2-6 CPU, allow 8-12% budget
+  // Typical war room usage: 2-6 CPU
   if (hostiles.length > 0) {
     return 0.12; // 12% per room (6 CPU for 50 CPU limit)
   }

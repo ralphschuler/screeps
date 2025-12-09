@@ -236,21 +236,26 @@ export class CreepProcessManager {
   /**
    * Get CPU budget based on priority
    * 
-   * Typical creep CPU usage ranges from 0.05 to 0.5 CPU depending on role complexity.
-   * Budgets should be generous enough to accommodate normal behavior while still
-   * catching outliers that need optimization.
+   * These budgets are fractions of the total CPU limit allocated per creep process.
+   * For a 50 CPU limit:
+   * - Critical: 1.2% = 0.6 CPU budget per creep
+   * - High: 1.0% = 0.5 CPU budget per creep
+   * - Medium: 0.8% = 0.4 CPU budget per creep
+   * - Low: 0.6% = 0.3 CPU budget per creep
+   * 
+   * These are generous to accommodate complex behaviors while still catching outliers.
    */
   private getCpuBudgetForPriority(priority: ProcessPriority): number {
     if (priority >= ProcessPriority.CRITICAL) {
-      return 0.012; // ~0.6 CPU per critical creep (50 creeps = 30 CPU)
+      return 0.012; // 1.2% of CPU limit per creep
     }
     if (priority >= ProcessPriority.HIGH) {
-      return 0.01; // ~0.5 CPU per high priority creep
+      return 0.01; // 1.0% of CPU limit per creep
     }
     if (priority >= ProcessPriority.MEDIUM) {
-      return 0.008; // ~0.4 CPU per medium priority creep
+      return 0.008; // 0.8% of CPU limit per creep
     }
-    return 0.006; // ~0.3 CPU per low priority creep
+    return 0.006; // 0.6% of CPU limit per creep
   }
 
   /**
