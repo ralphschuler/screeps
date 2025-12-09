@@ -9527,11 +9527,16 @@ function executeAction(creep, action, ctx) {
         case "heal":
             executeWithRange(creep, () => creep.heal(action.target), action.target, PATH_COLORS.heal);
             break;
-        case "rangedHeal":
+        case "rangedHeal": {
             // Ranged heal always involves movement toward the target
             creep.rangedHeal(action.target);
-            moveCreep(creep, action.target, { visualizePathStyle: { stroke: PATH_COLORS.heal } });
+            const healMoveResult = moveCreep(creep, action.target, { visualizePathStyle: { stroke: PATH_COLORS.heal } });
+            // Clear state if pathfinding fails
+            if (healMoveResult === ERR_NO_PATH) {
+                shouldClearState = true;
+            }
             break;
+        }
         // Controller actions
         case "claim":
             executeWithRange(creep, () => creep.claimController(action.target), action.target, PATH_COLORS.heal);
@@ -9641,7 +9646,11 @@ function executeAction(creep, action, ctx) {
 function executeWithRange(creep, action, target, pathColor) {
     const result = action();
     if (result === ERR_NOT_IN_RANGE) {
-        moveCreep(creep, target, { visualizePathStyle: { stroke: pathColor } });
+        const moveResult = moveCreep(creep, target, { visualizePathStyle: { stroke: pathColor } });
+        // If movement fails with ERR_NO_PATH, indicate state should be cleared
+        if (moveResult === ERR_NO_PATH) {
+            return true;
+        }
         return false;
     }
     // Check for errors that indicate the target is invalid and state should be cleared
