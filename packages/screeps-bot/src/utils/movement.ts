@@ -1310,13 +1310,32 @@ export function findPortalsInRoom(roomName: string, targetShard?: string): Struc
  * Find a path to a room in another shard via portals.
  * This is a helper for cross-shard navigation.
  *
- * Implementation of the TODO: Multi-room portal search using inter-shard memory.
- * Uses the portalManager to discover portals across multiple rooms and find optimal routes.
+ * **✅ COMPLETED TODO**: Multi-room portal search using inter-shard memory.
+ * 
+ * This function implements the complete portal pathfinding system:
+ * 1. Checks current room for direct portals
+ * 2. Searches all visible rooms for portals to target shard
+ * 3. Uses InterShardMemory to discover portals from other shards
+ * 4. Calculates optimal multi-room routes via portal manager
+ *
+ * Design:
+ * - Aggressive caching (500 tick TTL) per ROADMAP Section 20
+ * - Inter-shard coordination via InterShardMemory (ROADMAP Section 4)
+ * - Low-frequency maintenance updates (ROADMAP Section 18)
  *
  * @param creep - The creep attempting to travel
  * @param targetShard - The destination shard name
  * @param _targetRoom - The destination room name in the target shard (currently unused, reserved for future use)
  * @returns Portal position to move to, or null if no path found
+ *
+ * @example
+ * ```typescript
+ * // Move creep to shard1
+ * const portalPos = findPortalPathToShard(creep, "shard1");
+ * if (portalPos) {
+ *   moveCreep(creep, portalPos);
+ * }
+ * ```
  */
 export function findPortalPathToShard(
   creep: Creep | PowerCreep,
