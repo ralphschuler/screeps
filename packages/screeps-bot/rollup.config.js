@@ -13,7 +13,7 @@ function cleanEnv(value) {
 }
 
 const cfg = {
-  email: cleanEnv(process.env.SCREEPS_USERNAME),
+  email: cleanEnv(process.env.SCREEPS_USER),
   password: cleanEnv(process.env.SCREEPS_PASS),
   token: cleanEnv(process.env.SCREEPS_TOKEN),
 
