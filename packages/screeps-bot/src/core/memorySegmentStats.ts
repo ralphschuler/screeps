@@ -245,8 +245,9 @@ export class MemorySegmentStats {
 
   /**
    * Publish stats to Memory.stats for the Influx exporter.
-   * Uses a flat key structure with dot-separated names for easy ingestion.
-   * All preprocessing and aggregation is now handled by the exporter.
+   * Uses a categorized structure with dot-separated names for easy organization in Grafana.
+   * Keys are prefixed with category (e.g., stats.cpu, stats.empire, stats.room)
+   * to enable better filtering and grouping in InfluxDB/Grafana dashboards.
    * Only numeric values are published as the exporter expects time-series data.
    */
   private publishStatsToMemory(stats: GlobalStats): void {
@@ -257,23 +258,23 @@ export class MemorySegmentStats {
     }
     const statsRoot = mem.stats;
 
-    // Global CPU metrics - raw values only
-    statsRoot["cpu.used"] = stats.cpuUsed;
-    statsRoot["cpu.limit"] = stats.cpuLimit;
-    statsRoot["cpu.bucket"] = stats.cpuBucket;
-    statsRoot["cpu.percent"] = stats.cpuLimit > 0 ? (stats.cpuUsed / stats.cpuLimit) * 100 : 0;
+    // CPU metrics with stats.cpu category prefix for better Grafana organization
+    statsRoot["stats.cpu.used"] = stats.cpuUsed;
+    statsRoot["stats.cpu.limit"] = stats.cpuLimit;
+    statsRoot["stats.cpu.bucket"] = stats.cpuBucket;
+    statsRoot["stats.cpu.percent"] = stats.cpuLimit > 0 ? (stats.cpuUsed / stats.cpuLimit) * 100 : 0;
 
-    // GCL/GPL metrics - raw values only
-    statsRoot["gcl.level"] = stats.gclLevel;
-    statsRoot["gcl.progress"] = stats.gclProgress;
-    statsRoot["gcl.progress_total"] = stats.gclProgressTotal;
-    statsRoot["gpl.level"] = stats.gplLevel;
+    // GCL/GPL metrics with stats.gcl and stats.gpl category prefixes
+    statsRoot["stats.gcl.level"] = stats.gclLevel;
+    statsRoot["stats.gcl.progress"] = stats.gclProgress;
+    statsRoot["stats.gcl.progress_total"] = stats.gclProgressTotal;
+    statsRoot["stats.gpl.level"] = stats.gplLevel;
 
-    // Empire metrics - raw values only
-    statsRoot["empire.creeps"] = stats.totalCreeps;
-    statsRoot["empire.rooms"] = stats.totalRooms;
+    // Empire-wide metrics with stats.empire category prefix
+    statsRoot["stats.empire.creeps"] = stats.totalCreeps;
+    statsRoot["stats.empire.rooms"] = stats.totalRooms;
 
-    // Calculate empire-wide energy totals
+    // Calculate and export empire-wide energy totals with proper categorization
     const energyTotals = stats.rooms.reduce(
       (acc, room) => ({
         storage: acc.storage + room.storageEnergy,
@@ -284,48 +285,53 @@ export class MemorySegmentStats {
       { storage: 0, terminal: 0, available: 0, capacity: 0 }
     );
 
-    statsRoot["empire.energy.storage"] = energyTotals.storage;
-    statsRoot["empire.energy.terminal"] = energyTotals.terminal;
-    statsRoot["empire.energy.available"] = energyTotals.available;
-    statsRoot["empire.energy.capacity"] = energyTotals.capacity;
+    statsRoot["stats.empire.energy.storage"] = energyTotals.storage;
+    statsRoot["stats.empire.energy.terminal"] = energyTotals.terminal;
+    statsRoot["stats.empire.energy.available"] = energyTotals.available;
+    statsRoot["stats.empire.energy.capacity"] = energyTotals.capacity;
 
-    // Per-room metrics - raw values only
+    // Per-room metrics with stats.room category prefix
+    // This enables easy filtering by room in Grafana dashboards
     for (const room of stats.rooms) {
-      const roomPrefix = `room.${room.roomName}`;
+      const roomPrefix = `stats.room.${room.roomName}`;
 
+      // Basic room info
       statsRoot[`${roomPrefix}.rcl`] = room.rcl;
       statsRoot[`${roomPrefix}.energy.available`] = room.energyAvailable;
       statsRoot[`${roomPrefix}.energy.capacity`] = room.energyCapacity;
       statsRoot[`${roomPrefix}.storage.energy`] = room.storageEnergy;
       statsRoot[`${roomPrefix}.terminal.energy`] = room.terminalEnergy;
       statsRoot[`${roomPrefix}.creeps`] = room.creepCount;
+      
+      // Controller progress tracking
       statsRoot[`${roomPrefix}.controller.progress`] = room.controllerProgress;
       statsRoot[`${roomPrefix}.controller.progress_total`] = room.controllerProgressTotal;
       statsRoot[`${roomPrefix}.controller.progress_percent`] = room.controllerProgressTotal > 0 
         ? (room.controllerProgress / room.controllerProgressTotal) * 100 
         : 0;
 
+      // Swarm brain state and metrics
       const swarm = memoryManager.getSwarmState(room.roomName);
       if (swarm) {
+        // Brain state with stats.brain category for AI/decision tracking
         statsRoot[`${roomPrefix}.brain.danger`] = swarm.danger;
         statsRoot[`${roomPrefix}.brain.posture_code`] = this.postureToCode(swarm.posture);
         statsRoot[`${roomPrefix}.brain.colony_level_code`] = this.colonyLevelToCode(swarm.colonyLevel);
 
+        // Pheromone levels with stats.pheromone category for swarm behavior tracking
         for (const [pheromone, value] of Object.entries(swarm.pheromones)) {
           statsRoot[`${roomPrefix}.pheromone.${pheromone}`] = value;
         }
 
+        // Room metrics with stats.metrics category for performance tracking
         const metrics = swarm.metrics;
         statsRoot[`${roomPrefix}.metrics.energy.harvested`] = metrics.energyHarvested;
         statsRoot[`${roomPrefix}.metrics.energy.spawning`] = metrics.energySpawning;
         statsRoot[`${roomPrefix}.metrics.energy.construction`] = metrics.energyConstruction;
         statsRoot[`${roomPrefix}.metrics.energy.repair`] = metrics.energyRepair;
         statsRoot[`${roomPrefix}.metrics.energy.tower`] = metrics.energyTower;
-        // Energy available for inter-room sharing (storage + containers - reserved)
         statsRoot[`${roomPrefix}.metrics.energy.available_for_sharing`] = metrics.energyAvailable;
-        // Total energy capacity (storage + containers)
         statsRoot[`${roomPrefix}.metrics.energy.capacity_total`] = metrics.energyCapacity;
-        // Energy need level: 0=no need, 1=low, 2=medium, 3=critical
         statsRoot[`${roomPrefix}.metrics.energy.need`] = metrics.energyNeed;
         statsRoot[`${roomPrefix}.metrics.controller_progress`] = metrics.controllerProgress;
         statsRoot[`${roomPrefix}.metrics.hostile_count`] = metrics.hostileCount;
@@ -334,9 +340,9 @@ export class MemorySegmentStats {
       }
     }
 
-    // System tick info
-    statsRoot["system.tick"] = stats.tick;
-    statsRoot["system.timestamp"] = Date.now();
+    // System timing information with stats.system category
+    statsRoot["stats.system.tick"] = stats.tick;
+    statsRoot["stats.system.timestamp"] = Date.now();
   }
 
   /**
