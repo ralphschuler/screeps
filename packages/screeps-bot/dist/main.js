@@ -19181,6 +19181,141 @@ function validateSquadState(squad) {
 }
 
 /**
+ * Military Resource Pooling - Cluster-wide Military Resource Coordination
+ *
+ * Manages resource pooling for military operations:
+ * - Energy reservation for emergency military spawning
+ * - Boost material coordination across cluster
+ * - Military supply tracking and allocation
+ * - Priority resource routing to rooms under attack
+ *
+ * Addresses Issue: #36 - Resource coordination for military operations
+ */
+/**
+ * Boost material requirements based on operation type
+ */
+({
+    defense: {
+        [RESOURCE_CATALYZED_GHODIUM_ALKALIDE]: 300,
+        [RESOURCE_CATALYZED_UTRIUM_ACID]: 300,
+        [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE]: 300 // Heal boost
+    },
+    raid: {
+        [RESOURCE_CATALYZED_GHODIUM_ALKALIDE]: 600,
+        [RESOURCE_CATALYZED_UTRIUM_ACID]: 600,
+        [RESOURCE_CATALYZED_KEANIUM_ALKALIDE]: 300,
+        [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE]: 600
+    },
+    siege: {
+        [RESOURCE_CATALYZED_GHODIUM_ALKALIDE]: 900,
+        [RESOURCE_CATALYZED_UTRIUM_ACID]: 600,
+        [RESOURCE_CATALYZED_ZYNTHIUM_ACID]: 900,
+        [RESOURCE_CATALYZED_KEANIUM_ALKALIDE]: 600,
+        [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE]: 900
+    }
+});
+/**
+ * Minimum energy to reserve for emergency military spawning per threat level
+ */
+const EMERGENCY_ENERGY_RESERVE = {
+    0: 0,
+    1: 5000,
+    2: 15000,
+    3: 50000 // High threat - large squad
+};
+/**
+ * Calculate energy reservation needed for a room based on threat
+ */
+function calculateEnergyReservation(roomName, dangerLevel) {
+    // Base reservation on danger level
+    let reservation = EMERGENCY_ENERGY_RESERVE[dangerLevel];
+    // Increase reservation if room has active defense requests
+    const clusters = memoryManager.getClusters();
+    for (const clusterId in clusters) {
+        const cluster = clusters[clusterId];
+        const hasDefenseRequest = cluster.defenseRequests.some(req => req.roomName === roomName && req.urgency >= 2);
+        if (hasDefenseRequest) {
+            reservation += 10000; // Additional reserve for active defense
+        }
+    }
+    return reservation;
+}
+/**
+ * Route emergency energy to a room under attack
+ */
+function routeEmergencyEnergy(cluster, targetRoom, amount) {
+    // Find best source room with excess energy
+    let bestSource;
+    let maxExcess = 0;
+    for (const roomName of cluster.memberRooms) {
+        if (roomName === targetRoom)
+            continue;
+        const room = Game.rooms[roomName];
+        if (!room || !room.storage)
+            continue;
+        const swarm = memoryManager.getSwarmState(roomName);
+        if (!swarm)
+            continue;
+        // Calculate excess energy (available - reserved)
+        const available = room.storage.store.getUsedCapacity(RESOURCE_ENERGY);
+        const dangerLevel = swarm.danger;
+        const reserved = calculateEnergyReservation(roomName, dangerLevel);
+        const excess = available - reserved;
+        if (excess > amount && excess > maxExcess) {
+            maxExcess = excess;
+            bestSource = roomName;
+        }
+    }
+    if (!bestSource) {
+        logger.warn(`No available energy source for emergency routing to ${targetRoom} (need ${amount})`, { subsystem: "MilitaryPool" });
+        return { success: false };
+    }
+    // Check if both rooms have terminals
+    const sourceRoom = Game.rooms[bestSource];
+    const targetRoomObj = Game.rooms[targetRoom];
+    if ((sourceRoom === null || sourceRoom === void 0 ? void 0 : sourceRoom.terminal) && (targetRoomObj === null || targetRoomObj === void 0 ? void 0 : targetRoomObj.terminal)) {
+        // Terminal transfer
+        const result = sourceRoom.terminal.send(RESOURCE_ENERGY, amount, targetRoom);
+        if (result === OK) {
+            logger.info(`Emergency energy routed: ${amount} from ${bestSource} to ${targetRoom}`, { subsystem: "MilitaryPool" });
+            return { success: true, sourceRoom: bestSource };
+        }
+    }
+    else {
+        // Create hauler transfer request
+        logger.info(`Creating hauler transfer request: ${amount} energy from ${bestSource} to ${targetRoom}`, { subsystem: "MilitaryPool" });
+        // Add to resource requests (will be handled by resource sharing manager)
+        cluster.resourceRequests.push({
+            toRoom: targetRoom,
+            fromRoom: bestSource,
+            resourceType: RESOURCE_ENERGY,
+            amount,
+            priority: 5,
+            createdAt: Game.time,
+            assignedCreeps: [],
+            delivered: 0
+        });
+        return { success: true, sourceRoom: bestSource };
+    }
+    return { success: false };
+}
+/**
+ * Update military resource reservations for all rooms in cluster
+ */
+function updateMilitaryReservations(cluster) {
+    for (const roomName of cluster.memberRooms) {
+        const swarm = memoryManager.getSwarmState(roomName);
+        if (!swarm)
+            continue;
+        const reservation = calculateEnergyReservation(roomName, swarm.danger);
+        // Log significant reservations
+        if (reservation > 0 && Game.time % 100 === 0) {
+            logger.debug(`Military energy reservation for ${roomName}: ${reservation} (danger ${swarm.danger})`, { subsystem: "MilitaryPool" });
+        }
+    }
+}
+
+/**
  * Cluster Manager - Multi-Room Coordination
  *
  * Coordinates operations across rooms in a cluster:
@@ -19265,6 +19400,10 @@ let ClusterManager = class ClusterManager {
         // Update rally points
         profiler.measureSubsystem(`cluster:${cluster.id}:rallyPoints`, () => {
             this.updateRallyPoints(cluster);
+        });
+        // Update military resource reservations
+        profiler.measureSubsystem(`cluster:${cluster.id}:militaryResources`, () => {
+            updateMilitaryReservations(cluster);
         });
         // Update cluster role
         profiler.measureSubsystem(`cluster:${cluster.id}:role`, () => {
@@ -19610,6 +19749,19 @@ let ClusterManager = class ClusterManager {
             }
             return true;
         });
+        // Route emergency energy to rooms under critical attack
+        for (const request of cluster.defenseRequests) {
+            if (request.urgency >= 3) {
+                const room = Game.rooms[request.roomName];
+                if (room && room.storage) {
+                    const energy = room.storage.store.getUsedCapacity(RESOURCE_ENERGY);
+                    // If room is critically low on energy, route emergency supplies
+                    if (energy < 10000) {
+                        routeEmergencyEnergy(cluster, request.roomName, 20000);
+                    }
+                }
+            }
+        }
         // Check each member room for new defense needs
         for (const roomName of cluster.memberRooms) {
             const room = Game.rooms[roomName];

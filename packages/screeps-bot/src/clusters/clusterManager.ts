@@ -29,6 +29,10 @@ import {
   shouldDissolveSquad,
   validateSquadState
 } from "./squadCoordinator";
+import {
+  updateMilitaryReservations,
+  routeEmergencyEnergy
+} from "./militaryResourcePooling";
 
 /**
  * Cluster Manager Configuration
@@ -136,6 +140,11 @@ export class ClusterManager {
     // Update rally points
     profiler.measureSubsystem(`cluster:${cluster.id}:rallyPoints`, () => {
       this.updateRallyPoints(cluster);
+    });
+
+    // Update military resource reservations
+    profiler.measureSubsystem(`cluster:${cluster.id}:militaryResources`, () => {
+      updateMilitaryReservations(cluster);
     });
 
     // Update cluster role
@@ -551,6 +560,20 @@ export class ClusterManager {
       
       return true;
     });
+
+    // Route emergency energy to rooms under critical attack
+    for (const request of cluster.defenseRequests) {
+      if (request.urgency >= 3) {
+        const room = Game.rooms[request.roomName];
+        if (room && room.storage) {
+          const energy = room.storage.store.getUsedCapacity(RESOURCE_ENERGY);
+          // If room is critically low on energy, route emergency supplies
+          if (energy < 10000) {
+            routeEmergencyEnergy(cluster, request.roomName, 20000);
+          }
+        }
+      }
+    }
 
     // Check each member room for new defense needs
     for (const roomName of cluster.memberRooms) {
