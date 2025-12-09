@@ -31,6 +31,14 @@ export interface ExpansionManagerConfig {
   minRemoteSources: number;
   /** Minimum RCL required before enabling remote mining */
   minRclForRemotes: number;
+  /** Minimum RCL required before claiming new rooms (stability threshold) */
+  minRclForClaiming: number;
+  /** Minimum GCL progress (0-1) before attempting next claim */
+  minGclProgressForClaim: number;
+  /** Prefer expansion within this distance of existing clusters */
+  clusterExpansionDistance: number;
+  /** Minimum percentage of owned rooms that must be stable before expansion */
+  minStableRoomPercentage: number;
 }
 
 const DEFAULT_CONFIG: ExpansionManagerConfig = {
@@ -39,7 +47,11 @@ const DEFAULT_CONFIG: ExpansionManagerConfig = {
   maxRemoteDistance: 2,
   maxRemotesPerRoom: 3,
   minRemoteSources: 1,
-  minRclForRemotes: 3
+  minRclForRemotes: 3,
+  minRclForClaiming: 4,
+  minGclProgressForClaim: 0.7, // 70% GCL progress before next claim
+  clusterExpansionDistance: 5,
+  minStableRoomPercentage: 0.6 // 60% of rooms must be RCL 4+ to expand
 };
 
 /**
@@ -75,8 +87,13 @@ export class ExpansionManager {
     // Update remote room assignments for all owned rooms
     this.updateRemoteAssignments(overmind);
 
-    // Assign targets to claimers from expansion queue
-    this.assignClaimerTargets(overmind);
+    // Check if we're ready for expansion
+    const expansionReady = this.isExpansionReady(overmind);
+
+    // Assign targets to claimers from expansion queue (only if ready)
+    if (expansionReady) {
+      this.assignClaimerTargets(overmind);
+    }
 
     // Assign targets to reservers for remote rooms
     this.assignReserverTargets();
@@ -84,6 +101,7 @@ export class ExpansionManager {
 
   /**
    * Update remote room assignments for all owned rooms
+   * Prioritizes room stability before assigning remotes
    */
   private updateRemoteAssignments(overmind: OvermindMemory): void {
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
@@ -104,10 +122,13 @@ export class ExpansionManager {
       // Validate current assignments (remove invalid ones)
       const validRemotes = this.validateRemoteAssignments(currentRemotes, overmind, room.name);
 
-      // Find new remote candidates if we need more
-      if (validRemotes.length < this.config.maxRemotesPerRoom) {
+      // Calculate remote capacity based on room stability
+      const maxRemotes = this.calculateRemoteCapacity(room, swarm);
+
+      // Find new remote candidates if we need more and room is stable
+      if (validRemotes.length < maxRemotes) {
         const candidates = this.findRemoteCandidates(room.name, overmind, validRemotes);
-        const slotsAvailable = this.config.maxRemotesPerRoom - validRemotes.length;
+        const slotsAvailable = maxRemotes - validRemotes.length;
         const newRemotes = candidates.slice(0, slotsAvailable);
 
         for (const remoteName of newRemotes) {
@@ -123,6 +144,39 @@ export class ExpansionManager {
         swarm.remoteAssignments = validRemotes;
       }
     }
+  }
+
+  /**
+   * Calculate remote mining capacity based on room stability
+   * Returns reduced capacity for less stable rooms to prioritize owned room development
+   */
+  private calculateRemoteCapacity(room: Room, swarm: any): number {
+    const rcl = room.controller?.level ?? 0;
+
+    // New rooms (RCL 3-4) get limited remotes
+    if (rcl < 4) {
+      return Math.min(1, this.config.maxRemotesPerRoom);
+    }
+
+    // Developing rooms (RCL 4-6) get moderate remotes
+    if (rcl < 7) {
+      return Math.min(2, this.config.maxRemotesPerRoom);
+    }
+
+    // Check room energy stability - reduce remotes if struggling
+    const storage = room.storage;
+    if (storage && storage.store.getUsedCapacity(RESOURCE_ENERGY) < 50000) {
+      // Low energy - reduce remote capacity
+      return Math.min(1, this.config.maxRemotesPerRoom);
+    }
+
+    // Check danger level - reduce remotes if under threat
+    if (swarm.danger >= 2) {
+      return Math.min(1, this.config.maxRemotesPerRoom);
+    }
+
+    // Mature rooms (RCL 7-8) with good energy get full capacity
+    return this.config.maxRemotesPerRoom;
   }
 
   /**
@@ -280,13 +334,30 @@ export class ExpansionManager {
 
   /**
    * Assign targets to claimers from expansion queue
+   * Triggers automatic claimer spawning if no claimer is available
    */
   private assignClaimerTargets(overmind: OvermindMemory): void {
     // Get next expansion target
     const nextTarget = this.getNextExpansionTarget(overmind);
     if (!nextTarget) return;
 
+    // Check if we already have a claimer assigned or en route
+    const hasClaimerForTarget = Object.values(Game.creeps).some(creep => {
+      const memory = creep.memory as unknown as {
+        role?: string;
+        targetRoom?: string;
+        task?: string;
+      };
+      return memory.role === "claimer" && memory.targetRoom === nextTarget.roomName && memory.task === "claim";
+    });
+
+    if (hasClaimerForTarget) {
+      // Already have a claimer for this target
+      return;
+    }
+
     // Find claimers without targets
+    let assignedClaimer = false;
     for (const creep of Object.values(Game.creeps)) {
       const memory = creep.memory as unknown as {
         role?: string;
@@ -303,7 +374,54 @@ export class ExpansionManager {
 
         // Mark as claimed in queue
         nextTarget.claimed = true;
+        assignedClaimer = true;
         break; // Only assign one claimer per tick
+      }
+    }
+
+    // If no claimer was assigned, trigger automatic spawning
+    if (!assignedClaimer) {
+      this.requestClaimerSpawn(nextTarget.roomName, overmind);
+    }
+  }
+
+  /**
+   * Request a claimer to be spawned for expansion
+   * Sets room posture to 'expand' to trigger claimer spawning
+   */
+  private requestClaimerSpawn(targetRoom: string, overmind: OvermindMemory): void {
+    // Find the best room to spawn the claimer from (closest stable room)
+    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+    const stableRooms = ownedRooms.filter(r => (r.controller?.level ?? 0) >= this.config.minRclForClaiming);
+
+    if (stableRooms.length === 0) return;
+
+    // Find closest stable room to target
+    let closestRoom: Room | null = null;
+    let minDistance = 999;
+
+    for (const room of stableRooms) {
+      const distance = Game.map.getRoomLinearDistance(room.name, targetRoom);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestRoom = room;
+      }
+    }
+
+    if (!closestRoom) return;
+
+    // Set room posture to 'expand' to prioritize claimer spawning
+    const swarm = memoryManager.getSwarmState(closestRoom.name);
+    if (swarm) {
+      // Only change posture if not in critical defensive state
+      if (swarm.posture !== "defensive" && swarm.posture !== "evacuate" && swarm.danger < 2) {
+        if (swarm.posture !== "expand") {
+          swarm.posture = "expand";
+          logger.info(
+            `Set ${closestRoom.name} to expand posture for claiming ${targetRoom} (distance: ${minDistance})`,
+            { subsystem: "Expansion" }
+          );
+        }
       }
     }
   }
@@ -365,20 +483,110 @@ export class ExpansionManager {
   }
 
   /**
-   * Get next expansion target from queue
+   * Check if empire is ready for expansion
+   * Implements GCL-based pacing and room stability checks
+   */
+  private isExpansionReady(overmind: OvermindMemory): boolean {
+    // Check if expansion is paused
+    if (overmind.objectives.expansionPaused) {
+      return false;
+    }
+
+    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+
+    // Check GCL limit
+    if (ownedRooms.length >= Game.gcl.level) {
+      return false;
+    }
+
+    // Check GCL progress threshold (70% by default)
+    // Only expand when we're close to the next GCL level
+    const gclProgress = Game.gcl.progress / Game.gcl.progressTotal;
+    if (gclProgress < this.config.minGclProgressForClaim) {
+      if (Game.time % 500 === 0) {
+        logger.info(
+          `Waiting for GCL progress: ${(gclProgress * 100).toFixed(1)}% (need ${(this.config.minGclProgressForClaim * 100).toFixed(0)}%)`,
+          { subsystem: "Expansion" }
+        );
+      }
+      return false;
+    }
+
+    // Check room stability - ensure existing rooms are mature enough
+    const stableRooms = ownedRooms.filter(r => (r.controller?.level ?? 0) >= this.config.minRclForClaiming);
+    const stablePercentage = stableRooms.length / ownedRooms.length;
+
+    if (stablePercentage < this.config.minStableRoomPercentage) {
+      if (Game.time % 500 === 0) {
+        logger.info(
+          `Waiting for room stability: ${stableRooms.length}/${ownedRooms.length} rooms stable (${(stablePercentage * 100).toFixed(0)}%, need ${(this.config.minStableRoomPercentage * 100).toFixed(0)}%)`,
+          { subsystem: "Expansion" }
+        );
+      }
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Get next expansion target from queue with cluster-based prioritization
    */
   private getNextExpansionTarget(overmind: OvermindMemory): { roomName: string; claimed: boolean } | null {
-    // Check if we can expand (GCL limit)
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+
+    // Check if we can expand (GCL limit)
     if (ownedRooms.length >= Game.gcl.level) {
       return null;
     }
 
-    // Find unclaimed target from queue
+    // Get unclaimed targets from queue
     const unclaimed = overmind.claimQueue.filter(c => !c.claimed);
     if (unclaimed.length === 0) return null;
 
-    return unclaimed[0];
+    // Prioritize expansion targets near existing clusters
+    const clusteredTargets = unclaimed.map(target => {
+      const minDistance = this.getMinDistanceToOwned(target.roomName, ownedRooms);
+      const isNearCluster = minDistance <= this.config.clusterExpansionDistance;
+      const clusterBonus = isNearCluster ? 100 : 0;
+
+      return {
+        ...target,
+        clusterScore: target.score + clusterBonus,
+        distanceToCluster: minDistance
+      };
+    });
+
+    // Sort by cluster score (higher = better)
+    clusteredTargets.sort((a, b) => b.clusterScore - a.clusterScore);
+
+    // Log cluster-based priority decision
+    if (Game.time % 100 === 0 && clusteredTargets.length > 0) {
+      const best = clusteredTargets[0];
+      logger.info(
+        `Next expansion target: ${best.roomName} (score: ${best.score}, cluster bonus: ${best.clusterScore - best.score}, distance: ${best.distanceToCluster})`,
+        { subsystem: "Expansion" }
+      );
+    }
+
+    return clusteredTargets[0];
+  }
+
+  /**
+   * Calculate minimum distance from a room to any owned room
+   */
+  private getMinDistanceToOwned(roomName: string, ownedRooms: Room[]): number {
+    if (ownedRooms.length === 0) return 999;
+
+    let minDistance = 999;
+    for (const room of ownedRooms) {
+      const distance = Game.map.getRoomLinearDistance(roomName, room.name);
+      if (distance < minDistance) {
+        minDistance = distance;
+      }
+    }
+
+    return minDistance;
   }
 
   /**
