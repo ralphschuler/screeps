@@ -369,11 +369,11 @@ Potential improvements:
 - Check initialization in main loop
 - Ensure profiling config is enabled
 
-### Influx Data Missing
+### Metrics Data Missing
 - Verify exporter is running
 - Check exporter logs for errors
-- Ensure InfluxDB is accessible
-- Verify bucket configuration
+- Ensure Grafana Cloud is accessible
+- Verify API key and endpoint configuration
 
 ### High Memory Usage
 - Disable native calls tracking if not needed

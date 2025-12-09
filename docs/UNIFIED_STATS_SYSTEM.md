@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Unified Stats System consolidates all bot statistics collection into a single, cohesive system that exports metrics with proper category prefixes for optimal InfluxDB/Grafana integration.
+The Unified Stats System consolidates all bot statistics collection into a single, cohesive system that exports metrics with proper category prefixes for optimal Grafana Cloud integration.
 
 ## What Was Consolidated
 
@@ -21,7 +21,7 @@ Located at `packages/screeps-bot/src/core/unifiedStats.ts`, this module provides
 - **Tick lifecycle management** - `startTick()` and `finalizeTick()` 
 - **CPU profiling** - Track room and subsystem execution time
 - **Native call tracking** - Monitor PathFinder and creep action usage
-- **Automatic export** - Publishes to Memory.stats in InfluxDB-friendly format
+- **Automatic export** - Publishes to Memory.stats in a flat format for easy consumption
 
 ### Integration Points
 
@@ -299,7 +299,7 @@ This enables powerful filtering in Grafana Cloud dashboards using Graphite's tag
 
 ### Proper Categorization
 - All metrics use `stats.*` prefix
-- Easy to filter in InfluxDB/Grafana
+- Easy to filter in Grafana Cloud
 - Clear hierarchy and organization
 
 ### Better Performance
@@ -402,9 +402,9 @@ console.log(unifiedStats.isEnabled()); // Should be true
    console.log(JSON.stringify(Memory.stats).substring(0, 200));
    ```
 
-2. Check influx exporter is running and connected
+2. Check exporter is running and connected
 
-3. Verify InfluxDB bucket and credentials
+3. Verify Grafana Cloud endpoint and credentials
 
 ### High CPU usage
 
