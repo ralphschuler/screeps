@@ -1387,4 +1387,295 @@ describe("Movement Room Exit Handling", () => {
       expect(distance).to.equal(1);
     });
   });
+
+  describe("Traveler-Inspired Enhancements", () => {
+    describe("SK Room Detection", () => {
+      /**
+       * Check if a room is a Source Keeper room.
+       * SK rooms are those where both coordinates mod 10 are between 4 and 6 (but not 5,5).
+       */
+      function isSourceKeeperRoom(roomName: string): boolean {
+        const parsed = /^[WE](\d+)[NS](\d+)$/.exec(roomName);
+        if (!parsed) return false;
+        
+        const xMod = parseInt(parsed[1], 10) % 10;
+        const yMod = parseInt(parsed[2], 10) % 10;
+        
+        const isSK = !(xMod === 5 && yMod === 5) && xMod >= 4 && xMod <= 6 && yMod >= 4 && yMod <= 6;
+        return isSK;
+      }
+
+      it("should identify SK rooms correctly", () => {
+        // SK rooms have both coordinates mod 10 between 4-6, but not 5,5
+        expect(isSourceKeeperRoom("E14N14")).to.be.true;
+        expect(isSourceKeeperRoom("E14N15")).to.be.true;
+        expect(isSourceKeeperRoom("E14N16")).to.be.true;
+        expect(isSourceKeeperRoom("E16N14")).to.be.true;
+        expect(isSourceKeeperRoom("E16N16")).to.be.true;
+        expect(isSourceKeeperRoom("W4S4")).to.be.true;
+        expect(isSourceKeeperRoom("W6S6")).to.be.true;
+      });
+
+      it("should not identify center rooms as SK rooms", () => {
+        // 5,5 is the center room, not SK
+        expect(isSourceKeeperRoom("E15N15")).to.be.false;
+        expect(isSourceKeeperRoom("E25N25")).to.be.false;
+        expect(isSourceKeeperRoom("W5S5")).to.be.false;
+      });
+
+      it("should not identify normal rooms as SK rooms", () => {
+        expect(isSourceKeeperRoom("E1N1")).to.be.false;
+        expect(isSourceKeeperRoom("E12N13")).to.be.false;
+        expect(isSourceKeeperRoom("E17N18")).to.be.false;
+        expect(isSourceKeeperRoom("W1S1")).to.be.false;
+      });
+
+      it("should not identify highway rooms as SK rooms", () => {
+        expect(isSourceKeeperRoom("E10N10")).to.be.false;
+        expect(isSourceKeeperRoom("E20N5")).to.be.false;
+        expect(isSourceKeeperRoom("E5N20")).to.be.false;
+      });
+    });
+
+    describe("Highway Room Detection", () => {
+      /**
+       * Check if a room is a highway room.
+       * Highway rooms have at least one coordinate divisible by 10.
+       */
+      function isHighwayRoom(roomName: string): boolean {
+        const parsed = /^[WE](\d+)[NS](\d+)$/.exec(roomName);
+        if (!parsed) return false;
+        
+        const x = parseInt(parsed[1], 10);
+        const y = parseInt(parsed[2], 10);
+        
+        return x % 10 === 0 || y % 10 === 0;
+      }
+
+      it("should identify highway rooms with x=0 mod 10", () => {
+        expect(isHighwayRoom("E0N5")).to.be.true;
+        expect(isHighwayRoom("E10N5")).to.be.true;
+        expect(isHighwayRoom("E20N15")).to.be.true;
+        expect(isHighwayRoom("W0S5")).to.be.true;
+        expect(isHighwayRoom("W10S5")).to.be.true;
+      });
+
+      it("should identify highway rooms with y=0 mod 10", () => {
+        expect(isHighwayRoom("E5N0")).to.be.true;
+        expect(isHighwayRoom("E5N10")).to.be.true;
+        expect(isHighwayRoom("E15N20")).to.be.true;
+        expect(isHighwayRoom("W5S0")).to.be.true;
+        expect(isHighwayRoom("W5S10")).to.be.true;
+      });
+
+      it("should identify corner highway rooms", () => {
+        expect(isHighwayRoom("E0N0")).to.be.true;
+        expect(isHighwayRoom("E10N10")).to.be.true;
+        expect(isHighwayRoom("E20N20")).to.be.true;
+        expect(isHighwayRoom("W0S0")).to.be.true;
+      });
+
+      it("should not identify normal rooms as highways", () => {
+        expect(isHighwayRoom("E1N1")).to.be.false;
+        expect(isHighwayRoom("E5N5")).to.be.false;
+        expect(isHighwayRoom("E15N15")).to.be.false;
+        expect(isHighwayRoom("W1S1")).to.be.false;
+      });
+
+      it("should not identify SK rooms as highways", () => {
+        expect(isHighwayRoom("E14N14")).to.be.false;
+        expect(isHighwayRoom("E16N16")).to.be.false;
+        expect(isHighwayRoom("W4S4")).to.be.false;
+      });
+    });
+
+    describe("Moving Target Support", () => {
+      /**
+       * Simulate checking if a target moved adjacently.
+       */
+      function isTargetAdjacent(
+        oldPos: { x: number; y: number; roomName: string },
+        newPos: { x: number; y: number; roomName: string }
+      ): boolean {
+        if (oldPos.roomName !== newPos.roomName) return false;
+        const dx = Math.abs(oldPos.x - newPos.x);
+        const dy = Math.abs(oldPos.y - newPos.y);
+        return dx <= 1 && dy <= 1 && (dx !== 0 || dy !== 0);
+      }
+
+      it("should detect adjacent target movement", () => {
+        const oldPos = { x: 25, y: 25, roomName: "E1N1" };
+        
+        // Test all 8 directions
+        expect(isTargetAdjacent(oldPos, { x: 25, y: 24, roomName: "E1N1" })).to.be.true; // N
+        expect(isTargetAdjacent(oldPos, { x: 26, y: 24, roomName: "E1N1" })).to.be.true; // NE
+        expect(isTargetAdjacent(oldPos, { x: 26, y: 25, roomName: "E1N1" })).to.be.true; // E
+        expect(isTargetAdjacent(oldPos, { x: 26, y: 26, roomName: "E1N1" })).to.be.true; // SE
+        expect(isTargetAdjacent(oldPos, { x: 25, y: 26, roomName: "E1N1" })).to.be.true; // S
+        expect(isTargetAdjacent(oldPos, { x: 24, y: 26, roomName: "E1N1" })).to.be.true; // SW
+        expect(isTargetAdjacent(oldPos, { x: 24, y: 25, roomName: "E1N1" })).to.be.true; // W
+        expect(isTargetAdjacent(oldPos, { x: 24, y: 24, roomName: "E1N1" })).to.be.true; // NW
+      });
+
+      it("should not detect same position as adjacent", () => {
+        const pos = { x: 25, y: 25, roomName: "E1N1" };
+        expect(isTargetAdjacent(pos, pos)).to.be.false;
+      });
+
+      it("should not detect distant positions as adjacent", () => {
+        const oldPos = { x: 25, y: 25, roomName: "E1N1" };
+        expect(isTargetAdjacent(oldPos, { x: 27, y: 25, roomName: "E1N1" })).to.be.false;
+        expect(isTargetAdjacent(oldPos, { x: 25, y: 27, roomName: "E1N1" })).to.be.false;
+        expect(isTargetAdjacent(oldPos, { x: 27, y: 27, roomName: "E1N1" })).to.be.false;
+      });
+
+      it("should not detect cross-room movement as adjacent", () => {
+        const oldPos = { x: 25, y: 25, roomName: "E1N1" };
+        expect(isTargetAdjacent(oldPos, { x: 25, y: 24, roomName: "E2N1" })).to.be.false;
+      });
+    });
+
+    describe("Path String Serialization", () => {
+      /**
+       * Simulate converting directions to/from strings.
+       */
+      function serializeDirections(directions: number[]): string {
+        return directions.join('');
+      }
+
+      function deserializeDirections(serialized: string): number[] {
+        return serialized.split('').map(c => parseInt(c, 10));
+      }
+
+      it("should serialize direction array to string", () => {
+        const directions = [1, 2, 3, 4, 5, 6, 7, 8];
+        const serialized = serializeDirections(directions);
+        expect(serialized).to.equal("12345678");
+      });
+
+      it("should deserialize string to direction array", () => {
+        const serialized = "12345678";
+        const directions = deserializeDirections(serialized);
+        expect(directions).to.deep.equal([1, 2, 3, 4, 5, 6, 7, 8]);
+      });
+
+      it("should handle empty path", () => {
+        expect(serializeDirections([])).to.equal("");
+        expect(deserializeDirections("")).to.deep.equal([]);
+      });
+
+      it("should handle single direction", () => {
+        expect(serializeDirections([5])).to.equal("5");
+        expect(deserializeDirections("5")).to.deep.equal([5]);
+      });
+
+      it("should round-trip correctly", () => {
+        const original = [1, 3, 5, 7, 2, 4, 6, 8];
+        const serialized = serializeDirections(original);
+        const deserialized = deserializeDirections(serialized);
+        expect(deserialized).to.deep.equal(original);
+      });
+    });
+
+    describe("Highway Bias Calculation", () => {
+      /**
+       * Simulate highway vs normal room cost calculation.
+       */
+      function getRoomCost(roomName: string, isHighway: boolean, highwayBias: number): number {
+        if (isHighway) return 1;
+        return highwayBias;
+      }
+
+      it("should apply highway bias to normal rooms", () => {
+        const isHighway = false;
+        expect(getRoomCost("E5N5", isHighway, 2.5)).to.equal(2.5);
+        expect(getRoomCost("E5N5", isHighway, 5.0)).to.equal(5.0);
+        expect(getRoomCost("E5N5", isHighway, 1.0)).to.equal(1.0);
+      });
+
+      it("should give highway rooms cost of 1", () => {
+        const isHighway = true;
+        expect(getRoomCost("E10N5", isHighway, 2.5)).to.equal(1);
+        expect(getRoomCost("E10N5", isHighway, 5.0)).to.equal(1);
+        expect(getRoomCost("E10N5", isHighway, 10.0)).to.equal(1);
+      });
+
+      it("should prefer highways with higher bias", () => {
+        const highwayRoom = "E10N5";
+        const normalRoom = "E5N5";
+        
+        // With bias 2.5, highway is 2.5x cheaper
+        const bias1 = 2.5;
+        const highwayCost1 = getRoomCost(highwayRoom, true, bias1);
+        const normalCost1 = getRoomCost(normalRoom, false, bias1);
+        expect(normalCost1 / highwayCost1).to.equal(2.5);
+        
+        // With bias 5.0, highway is 5x cheaper
+        const bias2 = 5.0;
+        const highwayCost2 = getRoomCost(highwayRoom, true, bias2);
+        const normalCost2 = getRoomCost(normalRoom, false, bias2);
+        expect(normalCost2 / highwayCost2).to.equal(5.0);
+      });
+    });
+
+    describe("CPU Tracking Logic", () => {
+      /**
+       * Simulate CPU accumulation and threshold checking.
+       */
+      interface CPUTracker {
+        accumulated: number;
+        threshold: number;
+      }
+
+      function addCPU(tracker: CPUTracker, cpuUsed: number): boolean {
+        tracker.accumulated += cpuUsed;
+        return tracker.accumulated > tracker.threshold;
+      }
+
+      it("should accumulate CPU usage", () => {
+        const tracker: CPUTracker = { accumulated: 0, threshold: 1000 };
+        
+        addCPU(tracker, 100);
+        expect(tracker.accumulated).to.equal(100);
+        
+        addCPU(tracker, 200);
+        expect(tracker.accumulated).to.equal(300);
+        
+        addCPU(tracker, 500);
+        expect(tracker.accumulated).to.equal(800);
+      });
+
+      it("should report when threshold exceeded", () => {
+        const tracker: CPUTracker = { accumulated: 900, threshold: 1000 };
+        
+        const shouldReport1 = addCPU(tracker, 50);
+        expect(shouldReport1).to.be.false;
+        expect(tracker.accumulated).to.equal(950);
+        
+        const shouldReport2 = addCPU(tracker, 100);
+        expect(shouldReport2).to.be.true;
+        expect(tracker.accumulated).to.equal(1050);
+      });
+
+      it("should not report below threshold", () => {
+        const tracker: CPUTracker = { accumulated: 0, threshold: 1000 };
+        
+        expect(addCPU(tracker, 100)).to.be.false;
+        expect(addCPU(tracker, 200)).to.be.false;
+        expect(addCPU(tracker, 300)).to.be.false;
+        expect(tracker.accumulated).to.equal(600);
+      });
+
+      it("should support different thresholds", () => {
+        const lowThreshold: CPUTracker = { accumulated: 0, threshold: 100 };
+        const highThreshold: CPUTracker = { accumulated: 0, threshold: 5000 };
+        
+        addCPU(lowThreshold, 150);
+        addCPU(highThreshold, 150);
+        
+        expect(lowThreshold.accumulated > lowThreshold.threshold).to.be.true;
+        expect(highThreshold.accumulated > highThreshold.threshold).to.be.false;
+      });
+    });
+  });
 });
