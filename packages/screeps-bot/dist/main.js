@@ -5842,6 +5842,7 @@ class MemorySegmentStats {
         statsRoot["cpu.used"] = stats.cpuUsed;
         statsRoot["cpu.limit"] = stats.cpuLimit;
         statsRoot["cpu.bucket"] = stats.cpuBucket;
+        statsRoot["cpu.percent"] = stats.cpuLimit > 0 ? (stats.cpuUsed / stats.cpuLimit) * 100 : 0;
         // GCL/GPL metrics - raw values only
         statsRoot["gcl.level"] = stats.gclLevel;
         statsRoot["gcl.progress"] = stats.gclProgress;
@@ -5850,6 +5851,21 @@ class MemorySegmentStats {
         // Empire metrics - raw values only
         statsRoot["empire.creeps"] = stats.totalCreeps;
         statsRoot["empire.rooms"] = stats.totalRooms;
+        // Calculate empire-wide energy totals
+        let totalStorageEnergy = 0;
+        let totalTerminalEnergy = 0;
+        let totalEnergyAvailable = 0;
+        let totalEnergyCapacity = 0;
+        for (const room of stats.rooms) {
+            totalStorageEnergy += room.storageEnergy;
+            totalTerminalEnergy += room.terminalEnergy;
+            totalEnergyAvailable += room.energyAvailable;
+            totalEnergyCapacity += room.energyCapacity;
+        }
+        statsRoot["empire.energy.storage"] = totalStorageEnergy;
+        statsRoot["empire.energy.terminal"] = totalTerminalEnergy;
+        statsRoot["empire.energy.available"] = totalEnergyAvailable;
+        statsRoot["empire.energy.capacity"] = totalEnergyCapacity;
         // Per-room metrics - raw values only
         for (const room of stats.rooms) {
             const roomPrefix = `room.${room.roomName}`;
@@ -5861,9 +5877,14 @@ class MemorySegmentStats {
             statsRoot[`${roomPrefix}.creeps`] = room.creepCount;
             statsRoot[`${roomPrefix}.controller.progress`] = room.controllerProgress;
             statsRoot[`${roomPrefix}.controller.progress_total`] = room.controllerProgressTotal;
+            statsRoot[`${roomPrefix}.controller.progress_percent`] = room.controllerProgressTotal > 0
+                ? (room.controllerProgress / room.controllerProgressTotal) * 100
+                : 0;
             const swarm = memoryManager.getSwarmState(room.roomName);
             if (swarm) {
                 statsRoot[`${roomPrefix}.brain.danger`] = swarm.danger;
+                statsRoot[`${roomPrefix}.brain.posture_code`] = this.postureToCode(swarm.posture);
+                statsRoot[`${roomPrefix}.brain.colony_level_code`] = this.colonyLevelToCode(swarm.colonyLevel);
                 for (const [pheromone, value] of Object.entries(swarm.pheromones)) {
                     statsRoot[`${roomPrefix}.pheromone.${pheromone}`] = value;
                 }
@@ -6119,6 +6140,36 @@ class MemorySegmentStats {
     clear() {
         this.statsData = this.createDefaultStatsData();
         this.saveToSegment();
+    }
+    /**
+     * Convert posture string to numeric code for Grafana
+     */
+    postureToCode(posture) {
+        var _a;
+        const mapping = {
+            eco: 0,
+            expand: 1,
+            defensive: 2,
+            war: 3,
+            siege: 4,
+            evacuate: 5,
+            nukePrep: 6
+        };
+        return (_a = mapping[posture]) !== null && _a !== void 0 ? _a : 0;
+    }
+    /**
+     * Convert colony level string to numeric code for Grafana
+     */
+    colonyLevelToCode(colonyLevel) {
+        var _a;
+        const mapping = {
+            seedNest: 1,
+            foragingExpansion: 2,
+            matureColony: 3,
+            fortifiedHive: 4,
+            empireDominance: 5
+        };
+        return (_a = mapping[colonyLevel]) !== null && _a !== void 0 ? _a : 0;
     }
 }
 /**
