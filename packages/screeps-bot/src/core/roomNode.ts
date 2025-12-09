@@ -209,6 +209,39 @@ export class RoomNode {
    * OPTIMIZATION: Only check enemy structures if hostiles are present or danger > 0
    */
   private updateThreatAssessment(room: Room, swarm: SwarmState): void {
+    // Track structure count changes to detect destroyed structures
+    // Only check every 5 ticks to reduce CPU usage
+    if (Game.time % 5 === 0) {
+      const cache = getStructureCache(room);
+      const currentStructureCount = cache.spawns.length + cache.towers.length;
+      const lastCount = (swarm as unknown as Record<string, number>)._lastStructureCount ?? currentStructureCount;
+      
+      if (currentStructureCount < lastCount) {
+        // Structure(s) destroyed - emit event for each critical structure type
+        if (cache.spawns.length < ((swarm as unknown as Record<string, StructureSpawn[]>)._lastSpawns?.length ?? 0)) {
+          kernel.emit("structure.destroyed", {
+            roomName: this.roomName,
+            structureType: STRUCTURE_SPAWN,
+            structureId: "unknown",
+            source: this.roomName
+          });
+        }
+        if (cache.towers.length < ((swarm as unknown as Record<string, StructureTower[]>)._lastTowers?.length ?? 0)) {
+          kernel.emit("structure.destroyed", {
+            roomName: this.roomName,
+            structureType: STRUCTURE_TOWER,
+            structureId: "unknown",
+            source: this.roomName
+          });
+        }
+      }
+      
+      // Store counts for next tick
+      (swarm as unknown as Record<string, number>)._lastStructureCount = currentStructureCount;
+      (swarm as unknown as Record<string, StructureSpawn[]>)._lastSpawns = cache.spawns;
+      (swarm as unknown as Record<string, StructureTower[]>)._lastTowers = cache.towers;
+    }
+
     // Use safeFind to handle engine errors with corrupted owner data
     const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
 

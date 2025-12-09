@@ -83,6 +83,7 @@ export class RoomVisualizer {
 
     if (this.config.showPheromones && swarm) {
       this.drawPheromoneBars(visual, swarm);
+      this.drawPheromoneHeatmap(visual, swarm);
     }
 
     if (this.config.showCombat) {
@@ -243,6 +244,46 @@ export class RoomVisualizer {
 
       y += 0.5;
     }
+  }
+
+  /**
+   * Draw pheromone heatmap overlay
+   */
+  private drawPheromoneHeatmap(visual: RoomVisual, swarm: SwarmState): void {
+    // Find dominant pheromone (highest value)
+    let maxPheromone: keyof PheromoneState | null = null;
+    let maxValue = 10; // Minimum threshold for display
+
+    for (const [key, value] of Object.entries(swarm.pheromones) as [keyof PheromoneState, number][]) {
+      if (value > maxValue) {
+        maxValue = value;
+        maxPheromone = key;
+      }
+    }
+
+    // Only draw if there's a significant dominant pheromone
+    if (!maxPheromone || maxValue < 10) return;
+
+    const color = PHEROMONE_COLORS[maxPheromone];
+    const intensity = Math.min(1, maxValue / 100) * 0.15; // Scale opacity
+
+    // Draw room-wide overlay in top-right corner
+    visual.rect(40, 10, 8, 5, {
+      fill: color,
+      opacity: intensity
+    });
+
+    visual.text(`Dominant: ${maxPheromone}`, 44, 12.5, {
+      align: "center",
+      font: "0.5 monospace",
+      color
+    });
+
+    visual.text(`Intensity: ${Math.round(maxValue)}`, 44, 13.5, {
+      align: "center",
+      font: "0.4 monospace",
+      color: "#ffffff"
+    });
   }
 
   /**

@@ -10,7 +10,7 @@
  */
 
 import type { OvermindMemory, RoomIntel } from "../memory/schemas";
-import { ProcessPriority } from "../core/kernel";
+import { ProcessPriority, kernel } from "../core/kernel";
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
@@ -139,29 +139,44 @@ export class ExpansionManager {
       // Remove if no intel (not scouted yet - keep it for now)
       if (!intel) return true;
 
+      let reason: "hostile" | "claimed" | "unreachable" | null = null;
+
       // Remove if now owned by someone else
       if (intel.owner) {
         logger.info(`Removing remote ${remoteName} - now owned by ${intel.owner}`, { subsystem: "Expansion" });
-        return false;
+        reason = "claimed";
       }
 
       // Remove if reserved by hostile
       const myUsername = this.getMyUsername();
-      if (intel.reserver && intel.reserver !== myUsername) {
+      if (!reason && intel.reserver && intel.reserver !== myUsername) {
         logger.info(`Removing remote ${remoteName} - reserved by ${intel.reserver}`, { subsystem: "Expansion" });
-        return false;
+        reason = "hostile";
       }
 
       // Remove if too dangerous
-      if (intel.threatLevel >= 3) {
+      if (!reason && intel.threatLevel >= 3) {
         logger.info(`Removing remote ${remoteName} - threat level ${intel.threatLevel}`, { subsystem: "Expansion" });
-        return false;
+        reason = "hostile";
       }
 
       // Remove if too far (in case config changed)
-      const distance = Game.map.getRoomLinearDistance(homeRoom, remoteName);
-      if (distance > this.config.maxRemoteDistance) {
-        logger.info(`Removing remote ${remoteName} - too far (${distance})`, { subsystem: "Expansion" });
+      if (!reason) {
+        const distance = Game.map.getRoomLinearDistance(homeRoom, remoteName);
+        if (distance > this.config.maxRemoteDistance) {
+          logger.info(`Removing remote ${remoteName} - too far (${distance})`, { subsystem: "Expansion" });
+          reason = "unreachable";
+        }
+      }
+
+      // Emit remote lost event if we're removing this remote
+      if (reason) {
+        kernel.emit("remote.lost", {
+          homeRoom,
+          remoteRoom: remoteName,
+          reason,
+          source: homeRoom
+        });
         return false;
       }
 
