@@ -6,7 +6,7 @@
     "moduleResolution": "node",
     "outDir": "dist",
     "baseUrl": "src/",
-    "sourceMap": true,
+    "sourceMap": false,
     "strict": true,
     "experimentalDecorators": true,
     "downlevelIteration": true,
