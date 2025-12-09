@@ -14,6 +14,7 @@ import { memoryManager } from "../memory/manager";
 import { getDefenderPriorityBoost } from "../spawning/defenderManager";
 import { type WeightedEntry, weightedSelection } from "../utils/weightedSelection";
 import { logger } from "../core/logger";
+import { calculateRemoteHaulerRequirement } from "../empire/remoteHaulerDimensioning";
 
 /**
  * Focus room upgrader scaling configuration
@@ -691,8 +692,7 @@ export function getRemoteRoomNeedingWorkers(homeRoom: string, role: string, swar
         const sources = room.find(FIND_SOURCES);
         const sourceCount = sources.length;
         
-        // Import hauler dimensioning dynamically
-        const { calculateRemoteHaulerRequirement } = require("../empire/remoteHaulerDimensioning");
+        // Calculate optimal hauler count using dimensioning module
         const energyCapacity = Game.rooms[homeRoom]?.energyCapacityAvailable ?? 800;
         const requirement = calculateRemoteHaulerRequirement(homeRoom, remoteRoom, sourceCount, energyCapacity);
         maxPerRemote = requirement.recommendedHaulers;

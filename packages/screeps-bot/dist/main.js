@@ -19098,6 +19098,125 @@ function createDefenseRequest(room, swarm) {
 }
 
 /**
+ * Remote Hauler Dimensioning
+ *
+ * Calculates optimal number and size of haulers for remote mining operations.
+ * Takes into account:
+ * - Distance from home room to remote room
+ * - Number of sources in remote room
+ * - Energy generation rate per source
+ * - Path terrain (plains vs swamp)
+ *
+ * Addresses remote mining gaps from Issue: Remote Mining
+ */
+/**
+ * Source energy generation constants
+ */
+const ENERGY_PER_SOURCE_TICK = 10; // 5 WORK parts harvest 10 energy/tick
+/**
+ * Standard hauler configurations by tier
+ */
+const HAULER_TIERS = [
+    // Tier 1: Small hauler (400 energy)
+    {
+        carryParts: 4,
+        capacity: 200,
+        moveParts: 4,
+        cost: 400
+    },
+    // Tier 2: Medium hauler (800 energy)
+    {
+        carryParts: 8,
+        capacity: 400,
+        moveParts: 8,
+        cost: 800
+    },
+    // Tier 3: Large hauler (1600 energy)
+    {
+        carryParts: 16,
+        capacity: 800,
+        moveParts: 16,
+        cost: 1600
+    },
+    // Tier 4: Mega hauler (2400 energy) - for very long distances
+    {
+        carryParts: 24,
+        capacity: 1200,
+        moveParts: 24,
+        cost: 2400
+    }
+];
+/**
+ * Calculate path distance between two rooms
+ */
+function calculatePathDistance(fromRoom, toRoom) {
+    // Simple room distance calculation
+    // Parse room names (e.g., "E1N1", "W2S3")
+    const parseRoom = (roomName) => {
+        const match = roomName.match(/^([WE])(\d+)([NS])(\d+)$/);
+        if (!match)
+            return { x: 0, y: 0 };
+        const x = match[1] === "W" ? -parseInt(match[2], 10) : parseInt(match[2], 10);
+        const y = match[3] === "N" ? parseInt(match[4], 10) : -parseInt(match[4], 10);
+        return { x, y };
+    };
+    const from = parseRoom(fromRoom);
+    const to = parseRoom(toRoom);
+    // Manhattan distance in rooms
+    return Math.abs(to.x - from.x) + Math.abs(to.y - from.y);
+}
+/**
+ * Estimate round trip ticks for a hauler
+ */
+function estimateRoundTripTicks(distance, terrainFactor = 1.2) {
+    // Average tiles to traverse per room (assuming diagonal movement)
+    const TILES_PER_ROOM = 50;
+    // Base movement: 1 tile per tick with 1:1 MOVE:CARRY ratio
+    // Terrain factor accounts for swamps (1.0 = all plains, 1.5 = all swamps, 1.2 = mixed)
+    const onewayTicks = distance * TILES_PER_ROOM * terrainFactor;
+    // Round trip
+    return Math.ceil(onewayTicks * 2);
+}
+/**
+ * Calculate optimal hauler configuration for a remote room
+ */
+function calculateRemoteHaulerRequirement(homeRoom, remoteRoom, sourceCount, availableEnergy) {
+    // Calculate distance
+    const distance = calculatePathDistance(homeRoom, remoteRoom);
+    // Estimate round trip time (assuming mixed terrain)
+    const roundTripTicks = estimateRoundTripTicks(distance);
+    // Calculate energy generation rate for all sources
+    const energyPerTick = sourceCount * ENERGY_PER_SOURCE_TICK;
+    // Select appropriate hauler size based on available energy
+    let haulerConfig = HAULER_TIERS[0];
+    for (const tier of HAULER_TIERS) {
+        if (tier.cost <= availableEnergy) {
+            haulerConfig = tier;
+        }
+        else {
+            break;
+        }
+    }
+    // Calculate minimum haulers needed to keep up with energy generation
+    // Energy generated during round trip
+    const energyGeneratedPerTrip = energyPerTick * roundTripTicks;
+    // Minimum haulers = energy generated per trip / hauler capacity
+    // Add 20% buffer for safety
+    const minHaulers = Math.max(1, Math.ceil((energyGeneratedPerTrip / haulerConfig.capacity) * 1.2));
+    // Recommended haulers = add one extra for reliability
+    const recommendedHaulers = Math.min(sourceCount * 2, minHaulers + 1);
+    logger.debug(`Remote hauler calculation: ${homeRoom} -> ${remoteRoom} (${sourceCount} sources, ${distance} rooms away) - RT: ${roundTripTicks} ticks, E/tick: ${energyPerTick}, Min: ${minHaulers}, Rec: ${recommendedHaulers}, Cap: ${haulerConfig.capacity}`, { subsystem: "HaulerDimensioning" });
+    return {
+        minHaulers,
+        recommendedHaulers,
+        haulerConfig,
+        distance,
+        roundTripTicks,
+        energyPerTick
+    };
+}
+
+/**
  * Spawn Logic - Phase 8
  *
  * Central spawn manager per room:
@@ -19714,8 +19833,7 @@ function getRemoteRoomNeedingWorkers(homeRoom, role, swarm) {
             if (room) {
                 const sources = room.find(FIND_SOURCES);
                 const sourceCount = sources.length;
-                // Import hauler dimensioning dynamically
-                const { calculateRemoteHaulerRequirement } = require("../empire/remoteHaulerDimensioning");
+                // Calculate optimal hauler count using dimensioning module
                 const energyCapacity = (_c = (_b = Game.rooms[homeRoom]) === null || _b === void 0 ? void 0 : _b.energyCapacityAvailable) !== null && _c !== void 0 ? _c : 800;
                 const requirement = calculateRemoteHaulerRequirement(homeRoom, remoteRoom, sourceCount, energyCapacity);
                 maxPerRemote = requirement.recommendedHaulers;
