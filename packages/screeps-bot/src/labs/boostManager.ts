@@ -93,8 +93,18 @@ export class BoostManager {
       return false; // No boost config for this role
     }
 
+    // Check if room has boost defense priority (emergency response system)
+    const mem = Memory as unknown as Record<string, unknown>;
+    const boostPriority = (mem.boostDefensePriority as Record<string, boolean>) ?? {};
+    const hasDefensePriority = boostPriority[creep.room.name] === true;
+
+    // Lower threshold if defense priority is set
+    const effectiveMinDanger = hasDefensePriority 
+      ? Math.max(1, config.minDanger - 1) 
+      : config.minDanger;
+
     // Check danger level
-    if (swarm.danger < config.minDanger) {
+    if (swarm.danger < effectiveMinDanger) {
       return false; // Not dangerous enough to warrant boosting
     }
 
