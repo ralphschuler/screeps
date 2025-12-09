@@ -3312,7 +3312,7 @@ var LogLevel;
     LogLevel[LogLevel["ERROR"] = 3] = "ERROR";
     LogLevel[LogLevel["NONE"] = 4] = "NONE";
 })(LogLevel || (LogLevel = {}));
-const DEFAULT_CONFIG$l = {
+const DEFAULT_CONFIG$m = {
     level: LogLevel.INFO,
     showTimestamp: true,
     showRoom: true,
@@ -3321,7 +3321,7 @@ const DEFAULT_CONFIG$l = {
 /**
  * Global logger configuration
  */
-let globalConfig = { ...DEFAULT_CONFIG$l };
+let globalConfig = { ...DEFAULT_CONFIG$m };
 /**
  * Set global logger configuration
  */
@@ -3825,7 +3825,7 @@ const DEFAULT_EVENT_PRIORITIES = {
     "cpu.spike": EventPriority.BACKGROUND,
     "bucket.modeChange": EventPriority.BACKGROUND
 };
-const DEFAULT_CONFIG$k = {
+const DEFAULT_CONFIG$l = {
     maxEventsPerTick: 50,
     maxQueueSize: 200,
     lowBucketThreshold: 2000,
@@ -3858,7 +3858,7 @@ class EventBus {
             eventsDropped: 0,
             handlersInvoked: 0
         };
-        this.config = { ...DEFAULT_CONFIG$k, ...config };
+        this.config = { ...DEFAULT_CONFIG$l, ...config };
     }
     /**
      * Subscribe to an event
@@ -4163,7 +4163,7 @@ const eventBus = new EventBus();
 /**
  * Default configuration
  */
-const DEFAULT_CONFIG$j = {
+const DEFAULT_CONFIG$k = {
     pheromone: {
         updateInterval: 5,
         decayFactors: {
@@ -4320,7 +4320,7 @@ const DEFAULT_CONFIG$j = {
 /**
  * Runtime configuration instance
  */
-let currentConfig = { ...DEFAULT_CONFIG$j };
+let currentConfig = { ...DEFAULT_CONFIG$k };
 /**
  * Get current configuration
  */
@@ -5732,7 +5732,7 @@ const memoryManager = new MemoryManager();
  *
  * Addresses Issue: #35
  */
-const DEFAULT_CONFIG$i = {
+const DEFAULT_CONFIG$j = {
     primarySegment: 90,
     backupSegment: 91,
     retentionPeriod: 10000,
@@ -5747,7 +5747,7 @@ class MemorySegmentStats {
         this.statsData = null;
         this.segmentRequested = false;
         this.lastUpdate = 0;
-        this.config = { ...DEFAULT_CONFIG$i, ...config };
+        this.config = { ...DEFAULT_CONFIG$j, ...config };
     }
     /**
      * Initialize stats manager
@@ -5832,8 +5832,9 @@ class MemorySegmentStats {
     }
     /**
      * Publish stats to Memory.stats for the Influx exporter.
-     * Uses a flat key structure with dot-separated names for easy ingestion.
-     * All preprocessing and aggregation is now handled by the exporter.
+     * Uses a categorized structure with dot-separated names for easy organization in Grafana.
+     * Keys are prefixed with category (e.g., stats.cpu, stats.empire, stats.room)
+     * to enable better filtering and grouping in InfluxDB/Grafana dashboards.
      * Only numeric values are published as the exporter expects time-series data.
      */
     publishStatsToMemory(stats) {
@@ -5843,63 +5844,67 @@ class MemorySegmentStats {
             mem.stats = {};
         }
         const statsRoot = mem.stats;
-        // Global CPU metrics - raw values only
-        statsRoot["cpu.used"] = stats.cpuUsed;
-        statsRoot["cpu.limit"] = stats.cpuLimit;
-        statsRoot["cpu.bucket"] = stats.cpuBucket;
-        statsRoot["cpu.percent"] = stats.cpuLimit > 0 ? (stats.cpuUsed / stats.cpuLimit) * 100 : 0;
-        // GCL/GPL metrics - raw values only
-        statsRoot["gcl.level"] = stats.gclLevel;
-        statsRoot["gcl.progress"] = stats.gclProgress;
-        statsRoot["gcl.progress_total"] = stats.gclProgressTotal;
-        statsRoot["gpl.level"] = stats.gplLevel;
-        // Empire metrics - raw values only
-        statsRoot["empire.creeps"] = stats.totalCreeps;
-        statsRoot["empire.rooms"] = stats.totalRooms;
-        // Calculate empire-wide energy totals
+        // CPU metrics with stats.cpu category prefix for better Grafana organization
+        statsRoot["stats.cpu.used"] = stats.cpuUsed;
+        statsRoot["stats.cpu.limit"] = stats.cpuLimit;
+        statsRoot["stats.cpu.bucket"] = stats.cpuBucket;
+        statsRoot["stats.cpu.percent"] = stats.cpuLimit > 0 ? (stats.cpuUsed / stats.cpuLimit) * 100 : 0;
+        // GCL/GPL metrics with stats.gcl and stats.gpl category prefixes
+        statsRoot["stats.gcl.level"] = stats.gclLevel;
+        statsRoot["stats.gcl.progress"] = stats.gclProgress;
+        statsRoot["stats.gcl.progress_total"] = stats.gclProgressTotal;
+        statsRoot["stats.gpl.level"] = stats.gplLevel;
+        // Empire-wide metrics with stats.empire category prefix
+        statsRoot["stats.empire.creeps"] = stats.totalCreeps;
+        statsRoot["stats.empire.rooms"] = stats.totalRooms;
+        // Calculate and export empire-wide energy totals with proper categorization
         const energyTotals = stats.rooms.reduce((acc, room) => ({
             storage: acc.storage + room.storageEnergy,
             terminal: acc.terminal + room.terminalEnergy,
             available: acc.available + room.energyAvailable,
             capacity: acc.capacity + room.energyCapacity
         }), { storage: 0, terminal: 0, available: 0, capacity: 0 });
-        statsRoot["empire.energy.storage"] = energyTotals.storage;
-        statsRoot["empire.energy.terminal"] = energyTotals.terminal;
-        statsRoot["empire.energy.available"] = energyTotals.available;
-        statsRoot["empire.energy.capacity"] = energyTotals.capacity;
-        // Per-room metrics - raw values only
+        statsRoot["stats.empire.energy.storage"] = energyTotals.storage;
+        statsRoot["stats.empire.energy.terminal"] = energyTotals.terminal;
+        statsRoot["stats.empire.energy.available"] = energyTotals.available;
+        statsRoot["stats.empire.energy.capacity"] = energyTotals.capacity;
+        // Per-room metrics with stats.room category prefix
+        // This enables easy filtering by room in Grafana dashboards
         for (const room of stats.rooms) {
-            const roomPrefix = `room.${room.roomName}`;
+            const roomPrefix = `stats.room.${room.roomName}`;
+            // Basic room info
             statsRoot[`${roomPrefix}.rcl`] = room.rcl;
             statsRoot[`${roomPrefix}.energy.available`] = room.energyAvailable;
             statsRoot[`${roomPrefix}.energy.capacity`] = room.energyCapacity;
             statsRoot[`${roomPrefix}.storage.energy`] = room.storageEnergy;
             statsRoot[`${roomPrefix}.terminal.energy`] = room.terminalEnergy;
             statsRoot[`${roomPrefix}.creeps`] = room.creepCount;
+            // Controller progress tracking
             statsRoot[`${roomPrefix}.controller.progress`] = room.controllerProgress;
             statsRoot[`${roomPrefix}.controller.progress_total`] = room.controllerProgressTotal;
             statsRoot[`${roomPrefix}.controller.progress_percent`] = room.controllerProgressTotal > 0
                 ? (room.controllerProgress / room.controllerProgressTotal) * 100
                 : 0;
+            // Swarm brain state and metrics
             const swarm = memoryManager.getSwarmState(room.roomName);
             if (swarm) {
+                // Brain state with stats.brain category for AI/decision tracking
                 statsRoot[`${roomPrefix}.brain.danger`] = swarm.danger;
                 statsRoot[`${roomPrefix}.brain.posture_code`] = this.postureToCode(swarm.posture);
                 statsRoot[`${roomPrefix}.brain.colony_level_code`] = this.colonyLevelToCode(swarm.colonyLevel);
+                // Pheromone levels with stats.pheromone category for swarm behavior tracking
                 for (const [pheromone, value] of Object.entries(swarm.pheromones)) {
                     statsRoot[`${roomPrefix}.pheromone.${pheromone}`] = value;
                 }
+                // Room metrics with stats.metrics category for performance tracking
                 const metrics = swarm.metrics;
                 statsRoot[`${roomPrefix}.metrics.energy.harvested`] = metrics.energyHarvested;
                 statsRoot[`${roomPrefix}.metrics.energy.spawning`] = metrics.energySpawning;
                 statsRoot[`${roomPrefix}.metrics.energy.construction`] = metrics.energyConstruction;
                 statsRoot[`${roomPrefix}.metrics.energy.repair`] = metrics.energyRepair;
                 statsRoot[`${roomPrefix}.metrics.energy.tower`] = metrics.energyTower;
-                // Energy available for inter-room sharing (storage + containers - reserved)
                 statsRoot[`${roomPrefix}.metrics.energy.available_for_sharing`] = metrics.energyAvailable;
-                // Total energy capacity (storage + containers)
                 statsRoot[`${roomPrefix}.metrics.energy.capacity_total`] = metrics.energyCapacity;
-                // Energy need level: 0=no need, 1=low, 2=medium, 3=critical
                 statsRoot[`${roomPrefix}.metrics.energy.need`] = metrics.energyNeed;
                 statsRoot[`${roomPrefix}.metrics.controller_progress`] = metrics.controllerProgress;
                 statsRoot[`${roomPrefix}.metrics.hostile_count`] = metrics.hostileCount;
@@ -5907,9 +5912,9 @@ class MemorySegmentStats {
                 statsRoot[`${roomPrefix}.metrics.construction_sites`] = metrics.constructionSites;
             }
         }
-        // System tick info
-        statsRoot["system.tick"] = stats.tick;
-        statsRoot["system.timestamp"] = Date.now();
+        // System timing information with stats.system category
+        statsRoot["stats.system.tick"] = stats.tick;
+        statsRoot["stats.system.timestamp"] = Date.now();
     }
     /**
      * Collect global stats
@@ -6195,7 +6200,7 @@ const memorySegmentStats = new MemorySegmentStats();
  * No flattening or processing is done here - the Influx exporter
  * handles all processing and formatting for Grafana dashboards.
  */
-const DEFAULT_CONFIG$h = {
+const DEFAULT_CONFIG$i = {
     enabled: true,
     smoothingFactor: 0.1,
     trackNativeCalls: true,
@@ -6206,7 +6211,7 @@ const DEFAULT_CONFIG$h = {
  */
 class StatsManager {
     constructor(config = {}) {
-        this.config = { ...DEFAULT_CONFIG$h, ...config };
+        this.config = { ...DEFAULT_CONFIG$i, ...config };
         this.nativeCallsThisTick = this.createEmptyNativeCalls();
     }
     /**
@@ -6510,7 +6515,7 @@ const statsManager = new StatsManager();
  * Measures per-room loop cost, global/strategic loop cost,
  * and stores rolling averages in Memory for tuning.
  */
-const DEFAULT_CONFIG$g = {
+const DEFAULT_CONFIG$h = {
     smoothingFactor: 0.1,
     enabled: true,
     logInterval: 100
@@ -6525,7 +6530,7 @@ class Profiler {
     constructor(config = {}) {
         this.tickMeasurements = new Map();
         this.subsystemMeasurements = new Map();
-        this.config = { ...DEFAULT_CONFIG$g, ...config };
+        this.config = { ...DEFAULT_CONFIG$h, ...config };
     }
     /**
      * Get or initialize the shared stats root in Memory
@@ -6763,7 +6768,7 @@ const profiler = new Profiler();
  *
  * Addresses Issue: #34
  */
-const DEFAULT_CONFIG$f = {
+const DEFAULT_CONFIG$g = {
     showPheromones: true,
     showPaths: false,
     showCombat: true,
@@ -6791,7 +6796,7 @@ const PHEROMONE_COLORS = {
  */
 class RoomVisualizer {
     constructor(config = {}) {
-        this.config = { ...DEFAULT_CONFIG$f, ...config };
+        this.config = { ...DEFAULT_CONFIG$g, ...config };
     }
     /**
      * Draw all visualizations for a room
@@ -7182,7 +7187,7 @@ const roomVisualizer = new RoomVisualizer();
  *
  * Complements RoomVisualizer which handles room-specific details.
  */
-const DEFAULT_CONFIG$e = {
+const DEFAULT_CONFIG$f = {
     showRoomStatus: true,
     showConnections: true,
     showThreats: true,
@@ -7208,7 +7213,7 @@ const POSTURE_COLORS = {
  */
 class MapVisualizer {
     constructor(config = {}) {
-        this.config = { ...DEFAULT_CONFIG$e, ...config };
+        this.config = { ...DEFAULT_CONFIG$f, ...config };
     }
     /**
      * Draw all map visualizations
@@ -13168,6 +13173,629 @@ const evolutionManager = new EvolutionManager();
 const postureManager = new PostureManager();
 
 /**
+ * Unified Statistics System
+ *
+ * Consolidates all bot statistics collection into a single cohesive system:
+ * - CPU profiling (formerly profiler.ts)
+ * - Performance metrics (formerly stats.ts)
+ * - Room/swarm metrics (from SwarmState)
+ * - Empire-wide aggregations
+ * - Memory segment persistence
+ *
+ * All stats are exported with proper category prefixes for InfluxDB/Grafana:
+ * - stats.cpu.*        - CPU usage metrics
+ * - stats.gcl.*        - GCL progression
+ * - stats.gpl.*        - GPL progression
+ * - stats.empire.*     - Empire-wide aggregations
+ * - stats.room.*       - Per-room metrics
+ * - stats.profiler.*   - CPU profiling data
+ * - stats.role.*       - Per-role performance
+ * - stats.subsystem.*  - Per-subsystem performance
+ * - stats.native.*     - Native API call tracking
+ * - stats.system.*     - System/tick information
+ */
+const DEFAULT_CONFIG$e = {
+    enabled: true,
+    smoothingFactor: 0.1,
+    trackNativeCalls: true,
+    logInterval: 100,
+    segmentUpdateInterval: 10,
+    segmentId: 90,
+    maxHistoryPoints: 1000
+};
+// ============================================================================
+// Unified Stats Manager
+// ============================================================================
+class UnifiedStatsManager {
+    constructor(config = {}) {
+        this.subsystemMeasurements = new Map();
+        this.roomMeasurements = new Map();
+        this.lastSegmentUpdate = 0;
+        this.segmentRequested = false;
+        this.config = { ...DEFAULT_CONFIG$e, ...config };
+        this.currentSnapshot = this.createEmptySnapshot();
+        this.nativeCallsThisTick = this.createEmptyNativeCalls();
+    }
+    /**
+     * Initialize stats system (call once at bot startup)
+     */
+    initialize() {
+        // Request memory segment for historical data
+        RawMemory.setActiveSegments([this.config.segmentId]);
+        this.segmentRequested = true;
+        logger.info("Unified stats system initialized", { subsystem: "Stats" });
+    }
+    /**
+     * Start of tick - reset transient data
+     */
+    startTick() {
+        if (!this.config.enabled)
+            return;
+        this.currentSnapshot = this.createEmptySnapshot();
+        this.nativeCallsThisTick = this.createEmptyNativeCalls();
+        this.subsystemMeasurements.clear();
+        this.roomMeasurements.clear();
+    }
+    /**
+     * End of tick - finalize and publish stats
+     */
+    finalizeTick() {
+        var _a, _b, _c, _d, _e, _f;
+        if (!this.config.enabled)
+            return;
+        // Finalize CPU stats
+        this.currentSnapshot.cpu = {
+            used: Game.cpu.getUsed(),
+            limit: Game.cpu.limit,
+            bucket: Game.cpu.bucket,
+            percent: Game.cpu.limit > 0 ? (Game.cpu.getUsed() / Game.cpu.limit) * 100 : 0,
+            heapUsed: ((_d = (_c = (_b = (_a = Game.cpu).getHeapStatistics) === null || _b === void 0 ? void 0 : _b.call(_a)) === null || _c === void 0 ? void 0 : _c.used_heap_size) !== null && _d !== void 0 ? _d : 0) / 1024 / 1024
+        };
+        // Finalize progression stats
+        this.currentSnapshot.progression = {
+            gcl: {
+                level: Game.gcl.level,
+                progress: Game.gcl.progress,
+                progressTotal: Game.gcl.progressTotal,
+                progressPercent: Game.gcl.progressTotal > 0 ? (Game.gcl.progress / Game.gcl.progressTotal) * 100 : 0
+            },
+            gpl: {
+                level: (_f = (_e = Game.gpl) === null || _e === void 0 ? void 0 : _e.level) !== null && _f !== void 0 ? _f : 0
+            }
+        };
+        // Finalize empire stats
+        this.finalizeEmpireStats();
+        // Finalize subsystem stats
+        this.finalizeSubsystemStats();
+        // Finalize native calls
+        this.currentSnapshot.native = { ...this.nativeCallsThisTick };
+        // Finalize tick info
+        this.currentSnapshot.tick = Game.time;
+        this.currentSnapshot.timestamp = Date.now();
+        // Publish to Memory.stats in InfluxDB-friendly format
+        this.publishToMemory();
+        // Update memory segment periodically
+        if (Game.time - this.lastSegmentUpdate >= this.config.segmentUpdateInterval) {
+            this.updateSegment();
+            this.lastSegmentUpdate = Game.time;
+        }
+        // Log summary periodically
+        if (this.config.logInterval > 0 && Game.time % this.config.logInterval === 0) {
+            this.logSummary();
+        }
+    }
+    // ============================================================================
+    // Recording Methods
+    // ============================================================================
+    /**
+     * Start measuring a room's execution
+     */
+    startRoom(_roomName) {
+        if (!this.config.enabled)
+            return 0;
+        return Game.cpu.getUsed();
+    }
+    /**
+     * End measuring a room's execution
+     */
+    endRoom(roomName, startCpu) {
+        if (!this.config.enabled)
+            return;
+        const cpuUsed = Game.cpu.getUsed() - startCpu;
+        this.roomMeasurements.set(roomName, cpuUsed);
+    }
+    /**
+     * Measure a subsystem execution
+     */
+    measureSubsystem(name, fn) {
+        var _a;
+        if (!this.config.enabled) {
+            return fn();
+        }
+        const startCpu = Game.cpu.getUsed();
+        const result = fn();
+        const cpuUsed = Game.cpu.getUsed() - startCpu;
+        const existing = (_a = this.subsystemMeasurements.get(name)) !== null && _a !== void 0 ? _a : [];
+        existing.push(cpuUsed);
+        this.subsystemMeasurements.set(name, existing);
+        return result;
+    }
+    /**
+     * Record a native API call
+     */
+    recordNativeCall(type) {
+        if (!this.config.enabled || !this.config.trackNativeCalls)
+            return;
+        this.nativeCallsThisTick[type]++;
+        this.nativeCallsThisTick.total++;
+    }
+    /**
+     * Record room statistics (call at end of room processing)
+     */
+    recordRoom(room, cpuUsed) {
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
+        if (!this.config.enabled)
+            return;
+        const swarm = memoryManager.getSwarmState(room.name);
+        const creepsInRoom = Object.values(Game.creeps).filter(c => c.room.name === room.name).length;
+        const hostiles = room.find(FIND_HOSTILE_CREEPS);
+        // Get or create room stats entry
+        let roomStats = this.currentSnapshot.rooms[room.name];
+        if (!roomStats) {
+            roomStats = {
+                name: room.name,
+                rcl: (_b = (_a = room.controller) === null || _a === void 0 ? void 0 : _a.level) !== null && _b !== void 0 ? _b : 0,
+                energy: {
+                    available: room.energyAvailable,
+                    capacity: room.energyCapacityAvailable,
+                    storage: (_d = (_c = room.storage) === null || _c === void 0 ? void 0 : _c.store.getUsedCapacity(RESOURCE_ENERGY)) !== null && _d !== void 0 ? _d : 0,
+                    terminal: (_f = (_e = room.terminal) === null || _e === void 0 ? void 0 : _e.store.getUsedCapacity(RESOURCE_ENERGY)) !== null && _f !== void 0 ? _f : 0
+                },
+                controller: {
+                    progress: (_h = (_g = room.controller) === null || _g === void 0 ? void 0 : _g.progress) !== null && _h !== void 0 ? _h : 0,
+                    progressTotal: (_k = (_j = room.controller) === null || _j === void 0 ? void 0 : _j.progressTotal) !== null && _k !== void 0 ? _k : 1,
+                    progressPercent: 0
+                },
+                creeps: creepsInRoom,
+                hostiles: hostiles.length,
+                brain: {
+                    danger: (_l = swarm === null || swarm === void 0 ? void 0 : swarm.danger) !== null && _l !== void 0 ? _l : 0,
+                    postureCode: this.postureToCode((_m = swarm === null || swarm === void 0 ? void 0 : swarm.posture) !== null && _m !== void 0 ? _m : "eco"),
+                    colonyLevelCode: this.colonyLevelToCode((_o = swarm === null || swarm === void 0 ? void 0 : swarm.colonyLevel) !== null && _o !== void 0 ? _o : "seedNest")
+                },
+                pheromones: {},
+                metrics: {
+                    energyHarvested: 0,
+                    energySpawning: 0,
+                    energyConstruction: 0,
+                    energyRepair: 0,
+                    energyTower: 0,
+                    energyAvailableForSharing: 0,
+                    energyCapacityTotal: 0,
+                    energyNeed: 0,
+                    controllerProgress: 0,
+                    hostileCount: hostiles.length,
+                    damageReceived: 0,
+                    constructionSites: 0
+                },
+                profiler: {
+                    avgCpu: cpuUsed,
+                    peakCpu: cpuUsed,
+                    samples: 1
+                }
+            };
+            this.currentSnapshot.rooms[room.name] = roomStats;
+        }
+        // Update controller progress percent
+        roomStats.controller.progressPercent = roomStats.controller.progressTotal > 0
+            ? (roomStats.controller.progress / roomStats.controller.progressTotal) * 100
+            : 0;
+        // Update swarm metrics if available
+        if (swarm) {
+            // Pheromones
+            for (const [pheromone, value] of Object.entries(swarm.pheromones)) {
+                roomStats.pheromones[pheromone] = value;
+            }
+            // Metrics
+            roomStats.metrics = {
+                energyHarvested: swarm.metrics.energyHarvested,
+                energySpawning: swarm.metrics.energySpawning,
+                energyConstruction: swarm.metrics.energyConstruction,
+                energyRepair: swarm.metrics.energyRepair,
+                energyTower: swarm.metrics.energyTower,
+                energyAvailableForSharing: swarm.metrics.energyAvailable,
+                energyCapacityTotal: swarm.metrics.energyCapacity,
+                energyNeed: swarm.metrics.energyNeed,
+                controllerProgress: swarm.metrics.controllerProgress,
+                hostileCount: swarm.metrics.hostileCount,
+                damageReceived: swarm.metrics.damageReceived,
+                constructionSites: swarm.metrics.constructionSites
+            };
+        }
+        // Update profiler data with EMA
+        const existingRoom = this.getProfilerMemory().rooms[room.name];
+        if (existingRoom) {
+            roomStats.profiler.avgCpu = existingRoom.avgCpu * (1 - this.config.smoothingFactor)
+                + cpuUsed * this.config.smoothingFactor;
+            roomStats.profiler.peakCpu = Math.max(existingRoom.peakCpu, cpuUsed);
+            roomStats.profiler.samples = existingRoom.samples + 1;
+        }
+        // Store back to profiler memory for next tick
+        this.getProfilerMemory().rooms[room.name] = {
+            avgCpu: roomStats.profiler.avgCpu,
+            peakCpu: roomStats.profiler.peakCpu,
+            samples: roomStats.profiler.samples,
+            lastTick: Game.time
+        };
+    }
+    // ============================================================================
+    // Private Helper Methods
+    // ============================================================================
+    createEmptySnapshot() {
+        return {
+            tick: Game.time,
+            timestamp: Date.now(),
+            cpu: {
+                used: 0,
+                limit: 0,
+                bucket: 0,
+                percent: 0,
+                heapUsed: 0
+            },
+            progression: {
+                gcl: {
+                    level: 0,
+                    progress: 0,
+                    progressTotal: 1,
+                    progressPercent: 0
+                },
+                gpl: {
+                    level: 0
+                }
+            },
+            empire: {
+                rooms: 0,
+                creeps: 0,
+                energy: {
+                    storage: 0,
+                    terminal: 0,
+                    available: 0,
+                    capacity: 0
+                },
+                credits: 0
+            },
+            rooms: {},
+            subsystems: {},
+            roles: {},
+            native: this.createEmptyNativeCalls()
+        };
+    }
+    createEmptyNativeCalls() {
+        return {
+            pathfinderSearch: 0,
+            moveTo: 0,
+            move: 0,
+            harvest: 0,
+            transfer: 0,
+            withdraw: 0,
+            build: 0,
+            repair: 0,
+            upgradeController: 0,
+            attack: 0,
+            rangedAttack: 0,
+            heal: 0,
+            dismantle: 0,
+            say: 0,
+            total: 0
+        };
+    }
+    finalizeEmpireStats() {
+        const ownedRooms = Object.values(this.currentSnapshot.rooms);
+        const totalCreeps = Object.keys(Game.creeps).length;
+        this.currentSnapshot.empire = {
+            rooms: ownedRooms.length,
+            creeps: totalCreeps,
+            energy: {
+                storage: ownedRooms.reduce((sum, r) => sum + r.energy.storage, 0),
+                terminal: ownedRooms.reduce((sum, r) => sum + r.energy.terminal, 0),
+                available: ownedRooms.reduce((sum, r) => sum + r.energy.available, 0),
+                capacity: ownedRooms.reduce((sum, r) => sum + r.energy.capacity, 0)
+            },
+            credits: Game.market.credits
+        };
+    }
+    finalizeSubsystemStats() {
+        var _a, _b, _c;
+        const profilerMem = this.getProfilerMemory();
+        // Process subsystem measurements
+        for (const [name, measurements] of this.subsystemMeasurements) {
+            const totalCpu = measurements.reduce((sum, m) => sum + m, 0);
+            const isRole = name.startsWith("role:");
+            const cleanName = isRole ? name.substring(5) : name;
+            if (isRole) {
+                // Role stats
+                const roleCount = Object.values(Game.creeps).filter(c => {
+                    const mem = c.memory;
+                    return mem.role === cleanName;
+                }).length;
+                const existing = (_a = profilerMem.roles) === null || _a === void 0 ? void 0 : _a[cleanName];
+                const avgCpu = existing
+                    ? existing.avgCpu * (1 - this.config.smoothingFactor) + totalCpu * this.config.smoothingFactor
+                    : totalCpu;
+                const peakCpu = existing ? Math.max(existing.peakCpu, totalCpu) : totalCpu;
+                this.currentSnapshot.roles[cleanName] = {
+                    name: cleanName,
+                    count: roleCount,
+                    avgCpu,
+                    peakCpu,
+                    calls: measurements.length,
+                    samples: ((_b = existing === null || existing === void 0 ? void 0 : existing.samples) !== null && _b !== void 0 ? _b : 0) + 1
+                };
+                // Update profiler memory
+                if (!profilerMem.roles)
+                    profilerMem.roles = {};
+                profilerMem.roles[cleanName] = {
+                    avgCpu,
+                    peakCpu,
+                    samples: this.currentSnapshot.roles[cleanName].samples,
+                    callsThisTick: measurements.length
+                };
+            }
+            else {
+                // Subsystem stats
+                const existing = profilerMem.subsystems[cleanName];
+                const avgCpu = existing
+                    ? existing.avgCpu * (1 - this.config.smoothingFactor) + totalCpu * this.config.smoothingFactor
+                    : totalCpu;
+                const peakCpu = existing ? Math.max(existing.peakCpu, totalCpu) : totalCpu;
+                this.currentSnapshot.subsystems[cleanName] = {
+                    name: cleanName,
+                    avgCpu,
+                    peakCpu,
+                    calls: measurements.length,
+                    samples: ((_c = existing === null || existing === void 0 ? void 0 : existing.samples) !== null && _c !== void 0 ? _c : 0) + 1
+                };
+                // Update profiler memory
+                profilerMem.subsystems[cleanName] = {
+                    avgCpu,
+                    peakCpu,
+                    samples: this.currentSnapshot.subsystems[cleanName].samples,
+                    callsThisTick: measurements.length
+                };
+            }
+        }
+    }
+    /**
+     * Publish stats to Memory.stats in InfluxDB-friendly flat format
+     */
+    publishToMemory() {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mem = Memory;
+        mem.stats = {};
+        const stats = mem.stats;
+        const snap = this.currentSnapshot;
+        // CPU stats
+        stats["stats.cpu.used"] = snap.cpu.used;
+        stats["stats.cpu.limit"] = snap.cpu.limit;
+        stats["stats.cpu.bucket"] = snap.cpu.bucket;
+        stats["stats.cpu.percent"] = snap.cpu.percent;
+        stats["stats.cpu.heap_mb"] = snap.cpu.heapUsed;
+        // Progression stats
+        stats["stats.gcl.level"] = snap.progression.gcl.level;
+        stats["stats.gcl.progress"] = snap.progression.gcl.progress;
+        stats["stats.gcl.progress_total"] = snap.progression.gcl.progressTotal;
+        stats["stats.gcl.progress_percent"] = snap.progression.gcl.progressPercent;
+        stats["stats.gpl.level"] = snap.progression.gpl.level;
+        // Empire stats
+        stats["stats.empire.rooms"] = snap.empire.rooms;
+        stats["stats.empire.creeps"] = snap.empire.creeps;
+        stats["stats.empire.energy.storage"] = snap.empire.energy.storage;
+        stats["stats.empire.energy.terminal"] = snap.empire.energy.terminal;
+        stats["stats.empire.energy.available"] = snap.empire.energy.available;
+        stats["stats.empire.energy.capacity"] = snap.empire.energy.capacity;
+        stats["stats.empire.credits"] = snap.empire.credits;
+        // Room stats
+        for (const [roomName, room] of Object.entries(snap.rooms)) {
+            const prefix = `stats.room.${roomName}`;
+            stats[`${prefix}.rcl`] = room.rcl;
+            stats[`${prefix}.energy.available`] = room.energy.available;
+            stats[`${prefix}.energy.capacity`] = room.energy.capacity;
+            stats[`${prefix}.energy.storage`] = room.energy.storage;
+            stats[`${prefix}.energy.terminal`] = room.energy.terminal;
+            stats[`${prefix}.controller.progress`] = room.controller.progress;
+            stats[`${prefix}.controller.progress_total`] = room.controller.progressTotal;
+            stats[`${prefix}.controller.progress_percent`] = room.controller.progressPercent;
+            stats[`${prefix}.creeps`] = room.creeps;
+            stats[`${prefix}.hostiles`] = room.hostiles;
+            stats[`${prefix}.brain.danger`] = room.brain.danger;
+            stats[`${prefix}.brain.posture_code`] = room.brain.postureCode;
+            stats[`${prefix}.brain.colony_level_code`] = room.brain.colonyLevelCode;
+            for (const [pheromone, value] of Object.entries(room.pheromones)) {
+                stats[`${prefix}.pheromone.${pheromone}`] = value;
+            }
+            stats[`${prefix}.metrics.energy.harvested`] = room.metrics.energyHarvested;
+            stats[`${prefix}.metrics.energy.spawning`] = room.metrics.energySpawning;
+            stats[`${prefix}.metrics.energy.construction`] = room.metrics.energyConstruction;
+            stats[`${prefix}.metrics.energy.repair`] = room.metrics.energyRepair;
+            stats[`${prefix}.metrics.energy.tower`] = room.metrics.energyTower;
+            stats[`${prefix}.metrics.energy.available_for_sharing`] = room.metrics.energyAvailableForSharing;
+            stats[`${prefix}.metrics.energy.capacity_total`] = room.metrics.energyCapacityTotal;
+            stats[`${prefix}.metrics.energy.need`] = room.metrics.energyNeed;
+            stats[`${prefix}.metrics.controller_progress`] = room.metrics.controllerProgress;
+            stats[`${prefix}.metrics.hostile_count`] = room.metrics.hostileCount;
+            stats[`${prefix}.metrics.damage_received`] = room.metrics.damageReceived;
+            stats[`${prefix}.metrics.construction_sites`] = room.metrics.constructionSites;
+            stats[`${prefix}.profiler.avg_cpu`] = room.profiler.avgCpu;
+            stats[`${prefix}.profiler.peak_cpu`] = room.profiler.peakCpu;
+            stats[`${prefix}.profiler.samples`] = room.profiler.samples;
+        }
+        // Subsystem stats
+        for (const [name, subsys] of Object.entries(snap.subsystems)) {
+            const prefix = `stats.profiler.subsystem.${name}`;
+            stats[`${prefix}.avg_cpu`] = subsys.avgCpu;
+            stats[`${prefix}.peak_cpu`] = subsys.peakCpu;
+            stats[`${prefix}.calls`] = subsys.calls;
+            stats[`${prefix}.samples`] = subsys.samples;
+        }
+        // Role stats
+        for (const [name, role] of Object.entries(snap.roles)) {
+            const prefix = `stats.profiler.role.${name}`;
+            stats[`${prefix}.count`] = role.count;
+            stats[`${prefix}.avg_cpu`] = role.avgCpu;
+            stats[`${prefix}.peak_cpu`] = role.peakCpu;
+            stats[`${prefix}.calls`] = role.calls;
+            stats[`${prefix}.samples`] = role.samples;
+        }
+        // Native calls
+        stats["stats.native.pathfinder_search"] = snap.native.pathfinderSearch;
+        stats["stats.native.move_to"] = snap.native.moveTo;
+        stats["stats.native.move"] = snap.native.move;
+        stats["stats.native.harvest"] = snap.native.harvest;
+        stats["stats.native.transfer"] = snap.native.transfer;
+        stats["stats.native.withdraw"] = snap.native.withdraw;
+        stats["stats.native.build"] = snap.native.build;
+        stats["stats.native.repair"] = snap.native.repair;
+        stats["stats.native.upgrade_controller"] = snap.native.upgradeController;
+        stats["stats.native.attack"] = snap.native.attack;
+        stats["stats.native.ranged_attack"] = snap.native.rangedAttack;
+        stats["stats.native.heal"] = snap.native.heal;
+        stats["stats.native.dismantle"] = snap.native.dismantle;
+        stats["stats.native.say"] = snap.native.say;
+        stats["stats.native.total"] = snap.native.total;
+        // System info
+        stats["stats.system.tick"] = snap.tick;
+        stats["stats.system.timestamp"] = snap.timestamp;
+    }
+    /**
+     * Update memory segment with historical data
+     */
+    updateSegment() {
+        // TODO: Implement segment persistence if needed
+        // For now, Memory.stats is sufficient for the influx exporter
+    }
+    /**
+     * Get profiler memory (for EMA tracking across ticks)
+     */
+    getProfilerMemory() {
+        const mem = Memory;
+        if (!mem.stats || typeof mem.stats !== "object") {
+            mem.stats = {};
+        }
+        if (!mem.stats.profiler) {
+            mem.stats.profiler = {
+                rooms: {},
+                subsystems: {},
+                roles: {},
+                tickCount: 0,
+                lastUpdate: 0
+            };
+        }
+        return mem.stats.profiler;
+    }
+    /**
+     * Log summary of stats
+     */
+    logSummary() {
+        const snap = this.currentSnapshot;
+        logger.info("=== Unified Stats Summary ===");
+        logger.info(`CPU: ${snap.cpu.used.toFixed(2)}/${snap.cpu.limit} (${snap.cpu.percent.toFixed(1)}%) | Bucket: ${snap.cpu.bucket}`);
+        logger.info(`Empire: ${snap.empire.rooms} rooms, ${snap.empire.creeps} creeps, ${snap.empire.credits} credits`);
+        // Top 5 subsystems by CPU
+        const topSubsystems = Object.values(snap.subsystems)
+            .sort((a, b) => b.avgCpu - a.avgCpu)
+            .slice(0, 5);
+        if (topSubsystems.length > 0) {
+            logger.info("Top Subsystems:");
+            for (const sys of topSubsystems) {
+                logger.info(`  ${sys.name}: ${sys.avgCpu.toFixed(3)} CPU`);
+            }
+        }
+        // Top 5 roles by CPU
+        const topRoles = Object.values(snap.roles)
+            .sort((a, b) => b.avgCpu - a.avgCpu)
+            .slice(0, 5);
+        if (topRoles.length > 0) {
+            logger.info("Top Roles:");
+            for (const role of topRoles) {
+                logger.info(`  ${role.name}: ${role.count} creeps, ${role.avgCpu.toFixed(3)} CPU`);
+            }
+        }
+        if (this.config.trackNativeCalls) {
+            logger.info(`Native calls: ${snap.native.total} total`);
+        }
+    }
+    /**
+     * Convert posture to numeric code for Grafana
+     */
+    postureToCode(posture) {
+        var _a;
+        const mapping = {
+            eco: 0,
+            expand: 1,
+            defensive: 2,
+            war: 3,
+            siege: 4,
+            evacuate: 5,
+            nukePrep: 6
+        };
+        return (_a = mapping[posture]) !== null && _a !== void 0 ? _a : -1;
+    }
+    /**
+     * Convert colony level to numeric code for Grafana
+     */
+    colonyLevelToCode(colonyLevel) {
+        var _a;
+        const mapping = {
+            seedNest: 1,
+            foragingExpansion: 2,
+            matureColony: 3,
+            fortifiedHive: 4,
+            empireDominance: 5
+        };
+        return (_a = mapping[colonyLevel]) !== null && _a !== void 0 ? _a : 0;
+    }
+    /**
+     * Get current stats snapshot
+     */
+    getSnapshot() {
+        return this.currentSnapshot;
+    }
+    /**
+     * Enable/disable stats collection
+     */
+    setEnabled(enabled) {
+        this.config.enabled = enabled;
+    }
+    /**
+     * Check if stats is enabled
+     */
+    isEnabled() {
+        return this.config.enabled;
+    }
+    /**
+     * Reset all stats
+     */
+    reset() {
+        var _a;
+        this.currentSnapshot = this.createEmptySnapshot();
+        const mem = Memory;
+        if ((_a = mem.stats) === null || _a === void 0 ? void 0 : _a.profiler) {
+            mem.stats.profiler = {
+                rooms: {},
+                subsystems: {},
+                roles: {},
+                tickCount: 0,
+                lastUpdate: 0
+            };
+        }
+    }
+}
+/**
+ * Global unified stats instance
+ */
+const unifiedStats = new UnifiedStatsManager();
+
+/**
  * Extension Generator
  *
  * Generates extension positions in a checkerboard pattern around the spawn
@@ -15412,11 +16040,11 @@ class RoomNode {
      * Main room tick
      */
     run(totalOwnedRooms) {
-        var _a, _b, _c, _d, _e;
-        const cpuStart = profiler.startRoom(this.roomName);
+        var _a, _b, _c;
+        const cpuStart = unifiedStats.startRoom(this.roomName);
         const room = Game.rooms[this.roomName];
         if (!room || !((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my)) {
-            profiler.endRoom(this.roomName, cpuStart);
+            unifiedStats.endRoom(this.roomName, cpuStart);
             return;
         }
         // OPTIMIZATION: Prefetch commonly accessed room objects to warm the object cache.
@@ -15466,17 +16094,10 @@ class RoomNode {
         if (this.config.enableProcessing && Game.time % 5 === 0) {
             this.runResourceProcessing(room, swarm);
         }
-        // Record room stats
+        // Record room stats with unified stats system
         const cpuUsed = Game.cpu.getUsed() - cpuStart;
-        const roomData = profiler.getRoomData(this.roomName);
-        statsManager.recordRoom(room, (_d = roomData === null || roomData === void 0 ? void 0 : roomData.avgCpu) !== null && _d !== void 0 ? _d : cpuUsed, (_e = roomData === null || roomData === void 0 ? void 0 : roomData.peakCpu) !== null && _e !== void 0 ? _e : cpuUsed, {
-            energyHarvested: swarm.metrics.energyHarvested,
-            damageReceived: swarm.metrics.damageReceived,
-            danger: swarm.danger
-        });
-        // Record pheromone stats
-        statsManager.recordPheromones(this.roomName, swarm.pheromones, swarm.posture, pheromoneManager.getDominantPheromone(swarm.pheromones));
-        profiler.endRoom(this.roomName, cpuStart);
+        unifiedStats.recordRoom(room, cpuUsed);
+        unifiedStats.endRoom(this.roomName, cpuStart);
     }
     /**
      * Update threat assessment.
@@ -22895,7 +23516,7 @@ function wrapPathFinderSearch() {
     try {
         const wrappedFunction = function (...args) {
             if (trackingEnabled) {
-                statsManager.recordNativeCall("pathfinderSearch");
+                unifiedStats.recordNativeCall("pathfinderSearch");
             }
             return originalSearch.apply(PathFinder, args);
         };
@@ -22934,7 +23555,7 @@ function wrapMethod(prototype, methodName, statName) {
     try {
         const wrappedFunction = function (...args) {
             if (trackingEnabled) {
-                statsManager.recordNativeCall(statName);
+                unifiedStats.recordNativeCall(statName);
             }
             return original.apply(this, args);
         };
@@ -23265,8 +23886,8 @@ function initializeSystems() {
         level: config.debug ? LogLevel.DEBUG : LogLevel.INFO,
         cpuLogging: config.profiling
     });
-    // Initialize memory segment stats
-    memorySegmentStats.initialize();
+    // Initialize unified stats system
+    unifiedStats.initialize();
     // Initialize native calls tracking if enabled
     if (config.profiling) {
         initializeNativeCallsTracking();
@@ -23331,6 +23952,8 @@ function loop$1() {
         kernel.initialize();
         kernelInitialized = true;
     }
+    // Start stats collection for this tick
+    unifiedStats.startTick();
     // Critical bucket check - use kernel's bucket mode
     const bucketMode = kernel.getBucketMode();
     if (bucketMode === "critical") {
@@ -23342,7 +23965,7 @@ function loop$1() {
         clearMoveRequests();
         finalizeMovement();
         clearRoomCaches();
-        profiler.finalizeTick();
+        unifiedStats.finalizeTick();
         return;
     }
     // Clear per-tick caches at the start of each tick
@@ -23371,7 +23994,7 @@ function loop$1() {
     memoryManager.initialize();
     // Synchronize creep and room processes with kernel
     // This must happen before kernel.run() to ensure all processes are registered
-    profiler.measureSubsystem("processSync", () => {
+    unifiedStats.measureSubsystem("processSync", () => {
         syncKernelProcesses();
     });
     // Run kernel processes - this now includes:
@@ -23379,27 +24002,27 @@ function loop$1() {
     // - All room processes (registered by roomProcessManager)
     // - Empire, cluster, market, nuke, pheromone managers (registered by processRegistry)
     // The kernel's wrap-around queue ensures fair execution of all processes
-    profiler.measureSubsystem("kernel", () => {
+    unifiedStats.measureSubsystem("kernel", () => {
         kernel.run();
     });
     // Run spawns (high priority - always runs)
-    profiler.measureSubsystem("spawns", () => {
+    unifiedStats.measureSubsystem("spawns", () => {
         runSpawns();
     });
     // Process move requests - ask blocking creeps to move out of the way
     // This runs after creeps have registered their movement intentions
-    profiler.measureSubsystem("moveRequests", () => {
+    unifiedStats.measureSubsystem("moveRequests", () => {
         processMoveRequests();
     });
     // Run power creeps (if we have budget)
     if (kernel.hasCpuBudget()) {
-        profiler.measureSubsystem("powerCreeps", () => {
+        unifiedStats.measureSubsystem("powerCreeps", () => {
             runPowerCreeps();
         });
     }
     // Run visualizations (if enabled and budget allows)
     if (kernel.hasCpuBudget()) {
-        profiler.measureSubsystem("visualizations", () => {
+        unifiedStats.measureSubsystem("visualizations", () => {
             runVisualizations();
         });
     }
@@ -23408,13 +24031,8 @@ function loop$1() {
     // Persist heap cache to Memory periodically
     // This happens automatically based on the cache's internal interval
     memoryManager.persistHeapCache();
-    // Update empire stats
-    profiler.measureSubsystem("stats", () => {
-        statsManager.updateEmpireStats();
-        statsManager.finalizeTick();
-    });
-    // Finalize profiler tick (which will also update stats)
-    profiler.finalizeTick();
+    // Finalize unified stats for this tick - collects and exports all metrics
+    unifiedStats.finalizeTick();
 }
 
 // =============================================================================
