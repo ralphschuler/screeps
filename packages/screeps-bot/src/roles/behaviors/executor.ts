@@ -137,17 +137,32 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
       break;
 
     // Movement
-    case "moveTo":
-      moveCreep(creep, action.target, { visualizePathStyle: { stroke: PATH_COLORS.move } });
+    case "moveTo": {
+      const moveResult = moveCreep(creep, action.target, { visualizePathStyle: { stroke: PATH_COLORS.move } });
+      // Clear state if pathfinding fails so the behavior can re-evaluate
+      if (moveResult === ERR_NO_PATH) {
+        shouldClearState = true;
+      }
       break;
+    }
 
-    case "moveToRoom":
-      moveToRoom(creep, action.roomName, { visualizePathStyle: { stroke: PATH_COLORS.move } });
+    case "moveToRoom": {
+      const moveResult = moveToRoom(creep, action.roomName, { visualizePathStyle: { stroke: PATH_COLORS.move } });
+      // Clear state if pathfinding fails so the behavior can re-evaluate
+      if (moveResult === ERR_NO_PATH) {
+        shouldClearState = true;
+      }
       break;
+    }
 
-    case "flee":
-      fleeFrom(creep, action.from, 10);
+    case "flee": {
+      const fleeResult = fleeFrom(creep, action.from, 10);
+      // Clear state if pathfinding fails so the behavior can re-evaluate
+      if (fleeResult === ERR_NO_PATH) {
+        shouldClearState = true;
+      }
       break;
+    }
 
     case "wait":
       // If on a room exit, move off first before waiting
