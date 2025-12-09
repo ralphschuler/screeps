@@ -3,7 +3,7 @@
     "list": [
       {
         "builtIn": 1,
-        "datasource": {
+          "datasource": {
           "type": "grafana",
           "uid": "-- Grafana --"
         },
@@ -19,7 +19,6 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 0,
   "links": [],
   "panels": [
     {
@@ -131,45 +130,20 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
+          "groupBy": [],
           "measurement": "screeps",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "from(bucket: \"screeps\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"stat\"] == \"cpu.used\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"CPU Used\")",
+          "query": "SELECT value FROM \"screeps\" WHERE (\"stat\"::tag = 'data.empire.cpuUsed') AND $timeFilter",
+          "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "mean"
-              }
-            ]
-          ],
+          "select": [],
           "tags": [
             {
               "key": "stat::tag",
               "operator": "=",
-              "value": "data.cpu.used"
+              "value": "data.empire.cpuUsed"
             }
           ]
         }
@@ -240,45 +214,20 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
+          "groupBy": [],
           "measurement": "screeps",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "from(bucket: \"screeps\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r[\"stat\"] == \"cpu.bucket\")\n  |> last()",
+          "query": "SELECT value FROM \"screeps\" WHERE (\"stat\"::tag = 'data.empire.cpuBucket') AND $timeFilter",
+          "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "mean"
-              }
-            ]
-          ],
+          "select": [],
           "tags": [
             {
               "key": "stat::tag",
               "operator": "=",
-              "value": "data.cpu.bucket"
+              "value": "data.empire.cpuBucket"
             }
           ]
         }
@@ -349,40 +298,15 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
+          "groupBy": [],
           "measurement": "screeps",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "from(bucket: \"screeps\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r[\"stat\"] == \"cpu.percent\")\n  |> last()",
+          "query": "SELECT value FROM \"screeps\" WHERE (\"stat\"::tag = 'data.cpu.percent') AND $timeFilter",
+          "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "mean"
-              }
-            ]
-          ],
+          "select": [],
           "tags": [
             {
               "key": "stat::tag",
@@ -450,45 +374,20 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
+          "groupBy": [],
           "measurement": "screeps",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "from(bucket: \"screeps\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r[\"stat\"] == \"cpu.limit\")\n  |> last()",
+          "query": "SELECT value FROM \"screeps\" WHERE (\"stat\"::tag = 'data.empire.cpuLimit') AND $timeFilter",
+          "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "mean"
-              }
-            ]
-          ],
+          "select": [],
           "tags": [
             {
               "key": "stat::tag",
               "operator": "=",
-              "value": "data.cpu.limit"
+              "value": "data.empire.cpuLimit"
             }
           ]
         }
@@ -593,12 +492,21 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"screeps\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"category\"] == \"profiler_subsystem\")\n  |> filter(fn: (r) => r[\"stat\"] =~ /avg_cpu$/)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"Subsystem CPU\")",
-          "refId": "A"
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT mean(\"value\") FROM \"screeps\" WHERE \"category\" = 'profiler_subsystem' AND \"stat\" = 'avg_cpu' AND $timeFilter GROUP BY time($__interval), \"sub_category\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
         }
       ],
       "title": "Subsystem CPU (Avg) - Stacked",
@@ -685,12 +593,21 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"screeps\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"category\"] == \"profiler_subsystem\")\n  |> filter(fn: (r) => r[\"stat\"] =~ /peak_cpu$/)\n  |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\n  |> yield(name: \"Peak CPU\")",
-          "refId": "A"
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT max(\"value\") FROM \"screeps\" WHERE \"category\" = 'profiler_subsystem' AND \"stat\" = 'peak_cpu' AND $timeFilter GROUP BY time($__interval), \"sub_category\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
         }
       ],
       "title": "Subsystem Peak CPU",
@@ -793,12 +710,21 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"screeps\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"category\"] == \"profiler_room\")\n  |> filter(fn: (r) => r[\"stat\"] =~ /avg_cpu$/)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"Room CPU\")",
-          "refId": "A"
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT mean(\"value\") FROM \"screeps\" WHERE \"category\" = 'profiler_room' AND \"stat\" = 'avg_cpu' AND $timeFilter GROUP BY time($__interval), \"sub_category\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
         }
       ],
       "title": "Room CPU (Avg)",
@@ -930,12 +856,21 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "avgCPU = from(bucket: \"screeps\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r[\"category\"] == \"profiler_room\")\n  |> filter(fn: (r) => r[\"stat\"] =~ /avg_cpu$/)\n  |> last()\n  |> map(fn: (r) => ({r with _field: \"avg_cpu\"}))\n\npeakCPU = from(bucket: \"screeps\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r[\"category\"] == \"profiler_room\")\n  |> filter(fn: (r) => r[\"stat\"] =~ /peak_cpu$/)\n  |> last()\n  |> map(fn: (r) => ({r with _field: \"peak_cpu\"}))\n\nunion(tables: [avgCPU, peakCPU])\n  |> pivot(rowKey: [\"sub_category\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> rename(columns: {sub_category: \"Room\", avg_cpu: \"Avg CPU\", peak_cpu: \"Peak CPU\"})",
-          "refId": "A"
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT last(\"value\") FROM \"screeps\" WHERE \"category\" = 'profiler_room' AND (\"stat\" = 'avg_cpu' OR \"stat\" = 'peak_cpu') AND $timeFilter GROUP BY \"sub_category\", \"stat\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
         }
       ],
       "title": "Room CPU Summary",
@@ -1035,12 +970,21 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"screeps\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"stat\"] == \"empire.creeps\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"Creeps\")",
-          "refId": "A"
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT mean(\"value\") FROM \"screeps\" WHERE \"stat\" = 'empire.creeps' AND $timeFilter GROUP BY time($__interval)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
         }
       ],
       "title": "Total Creeps",
@@ -1127,12 +1071,21 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"screeps\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"stat\"] == \"empire.rooms\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"Rooms\")",
-          "refId": "A"
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT mean(\"value\") FROM \"screeps\" WHERE \"stat\" = 'empire.rooms' AND $timeFilter GROUP BY time($__interval)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
         }
       ],
       "title": "Total Rooms",
@@ -1193,45 +1146,20 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
+          "groupBy": [],
           "measurement": "screeps",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "from(bucket: \"screeps\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r[\"stat\"] == \"gcl.level\")\n  |> last()",
+          "query": "SELECT value FROM \"screeps\" WHERE (\"stat\"::tag = 'data.empire.gcl') AND $timeFilter",
+          "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "mean"
-              }
-            ]
-          ],
+          "select": [],
           "tags": [
             {
               "key": "stat::tag",
               "operator": "=",
-              "value": "data.gcl.level"
+              "value": "data.empire.gcl"
             }
           ]
         }
@@ -1292,51 +1220,21 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
+          "groupBy": [],
           "measurement": "screeps",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "from(bucket: \"screeps\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r[\"stat\"] == \"gcl.progress\")\n  |> last()",
+          "query": "SELECT \"progress_last\" / \"total_last\" AS \"percent\" FROM (SELECT last(\"value\") AS \"progress_last\" FROM \"screeps\" WHERE \"stat\" = 'gcl.progress' AND $timeFilter), (SELECT last(\"value\") AS \"total_last\" FROM \"screeps\" WHERE \"stat\" = 'gcl.progress_total' AND $timeFilter)",
+          "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "mean"
-              }
-            ]
-          ],
-          "tags": [
-            {
-              "key": "stat::tag",
-              "operator": "=",
-              "value": "data.gcl.progress"
-            }
-          ]
+          "select": [],
+          "tags": []
         }
       ],
       "title": "GCL Progress",
@@ -1393,51 +1291,21 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
+          "groupBy": [],
           "measurement": "screeps",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "from(bucket: \"screeps\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r[\"stat\"] == \"gpl.level\")\n  |> last()",
+          "query": "SELECT last(\"value\") FROM \"screeps\" WHERE \"stat\" = 'gpl.level' AND $timeFilter",
+          "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "mean"
-              }
-            ]
-          ],
-          "tags": [
-            {
-              "key": "stat::tag",
-              "operator": "=",
-              "value": "data.gpl.level"
-            }
-          ]
+          "select": [],
+          "tags": []
         }
       ],
       "title": "GPL Level",
@@ -1494,51 +1362,21 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
+          "groupBy": [],
           "measurement": "screeps",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "from(bucket: \"screeps\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r[\"stat\"] == \"system.tick\")\n  |> last()",
+          "query": "SELECT last(\"value\") FROM \"screeps\" WHERE \"stat\" = 'system.tick' AND $timeFilter",
+          "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "mean"
-              }
-            ]
-          ],
-          "tags": [
-            {
-              "key": "stat::tag",
-              "operator": "=",
-              "value": "data.tick"
-            }
-          ]
+          "select": [],
+          "tags": []
         }
       ],
       "title": "Current Tick",
@@ -1641,20 +1479,21 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"screeps\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"stat\"] == \"empire.energy.storage\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"Storage Energy\")",
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
-          },
-          "query": "from(bucket: \"screeps\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"stat\"] == \"empire.energy.terminal\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"Terminal Energy\")",
-          "refId": "B"
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT mean(\"value\") FROM \"screeps\" WHERE (\"stat\" = 'empire.energy.storage' OR \"stat\" = 'empire.energy.terminal') AND $timeFilter GROUP BY time($__interval), \"stat\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
         }
       ],
       "title": "Empire Energy",
@@ -1744,12 +1583,21 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"screeps\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"category\"] == \"room\")\n  |> filter(fn: (r) => r[\"stat\"] =~ /storage\\.energy$/)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"Room Storage\")",
-          "refId": "A"
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT mean(\"value\") FROM \"screeps\" WHERE \"category\" = 'room' AND \"stat\" =~ /storage\\.energy$/ AND $timeFilter GROUP BY time($__interval), \"sub_category\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
         }
       ],
       "title": "Per-Room Storage Energy",
@@ -1853,52 +1701,21 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
+          "groupBy": [],
           "measurement": "screeps",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "from(bucket: \"screeps\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"category\"] == \"room\")\n  |> filter(fn: (r) => r[\"stat\"] =~ /controller\\.progress_percent$/)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"Controller Progress\")",
+          "query": "SELECT mean(\"value\") FROM \"screeps\" WHERE \"category\" = 'room' AND \"stat\" =~ /controller\\.progress_percent$/ AND $timeFilter GROUP BY time($__interval), \"sub_category\"",
+          "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "mean"
-              }
-            ]
-          ],
-          "tags": [
-            {
-              "condition": "AND",
-              "key": "stat::tag",
-              "operator": "=",
-              "value": "select tag value"
-            }
-          ]
+          "select": [],
+          "tags": []
         }
       ],
       "title": "Room Controller Progress",
@@ -2006,12 +1823,21 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"screeps\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"type\"] == \"scrape_success\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"Scrape Success\")",
-          "refId": "A"
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT mean(\"value\") FROM \"screeps\" WHERE \"type\" = 'scrape_success' AND $timeFilter GROUP BY time($__interval), \"mode\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
         }
       ],
       "title": "Exporter Scrape Success",
@@ -2065,12 +1891,21 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"screeps\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r[\"type\"] == \"scrape_success\")\n  |> group(columns: [\"mode\"], mode: \"by\")\n  |> last()\n  |> keep(columns: [\"_time\", \"mode\", \"_value\"])\n  |> rename(columns: {mode: \"Mode\", _value: \"Status\"})",
-          "refId": "A"
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT last(\"value\") FROM \"screeps\" WHERE \"type\" = 'scrape_success' AND $timeFilter GROUP BY \"mode\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
         }
       ],
       "title": "Last Scrape Status",
@@ -2170,12 +2005,21 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"screeps\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"stat\"] =~ /empire\\.energy\\.(available|capacity)$/)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"Empire Energy Available\")",
-          "refId": "A"
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT mean(\"value\") FROM \"screeps\" WHERE \"stat\" =~ /empire\\.energy\\.(available|capacity)$/ AND $timeFilter GROUP BY time($__interval), \"stat\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
         }
       ],
       "title": "Empire Energy Available vs Capacity",
@@ -2242,12 +2086,21 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"screeps\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r[\"stat\"] =~ /empire\\.energy\\.(available|capacity)$/)\n  |> last()\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"stat\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({ r with utilization: if r[\"empire.energy.capacity\"] == 0.0 then 0.0 else r[\"empire.energy.available\"] / r[\"empire.energy.capacity\"] }))\n  |> keep(columns: [\"_time\", \"utilization\"])",
-          "refId": "A"
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT \"available_last\" / \"capacity_last\" AS \"utilization\" FROM (SELECT last(\"value\") AS \"available_last\" FROM \"screeps\" WHERE \"stat\" = 'empire.energy.available' AND $timeFilter), (SELECT last(\"value\") AS \"capacity_last\" FROM \"screeps\" WHERE \"stat\" = 'empire.energy.capacity' AND $timeFilter)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
         }
       ],
       "title": "Energy Utilization",
@@ -2304,12 +2157,21 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "storage = from(bucket: \"screeps\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r[\"stat\"] == \"empire.energy.storage\")\n  |> last()\n\nterminal = from(bucket: \"screeps\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r[\"stat\"] == \"empire.energy.terminal\")\n  |> last()\n\nunion(tables: [storage, terminal])\n  |> group()\n  |> sum(column: \"_value\")\n  |> keep(columns: [\"_time\", \"_value\"])\n  |> rename(columns: {_value: \"Total Energy\"})",
-          "refId": "A"
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT \"storage_last\" + \"terminal_last\" AS \"total_energy\" FROM (SELECT last(\"value\") AS \"storage_last\" FROM \"screeps\" WHERE \"stat\" = 'empire.energy.storage' AND $timeFilter), (SELECT last(\"value\") AS \"terminal_last\" FROM \"screeps\" WHERE \"stat\" = 'empire.energy.terminal' AND $timeFilter)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
         }
       ],
       "title": "Total Stored + Terminal Energy",
@@ -2375,12 +2237,21 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "import \"strings\"\n\nfrom(bucket: \"screeps\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r[\"category\"] == \"room\")\n  |> filter(fn: (r) => r[\"stat\"] =~ /(rcl|creeps|energy\\.available|energy\\.capacity|storage\\.energy|controller\\.progress_percent)$/)\n  |> last()\n  |> map(fn: (r) => ({ r with metric: strings.replaceAll(v: r.stat, t: \"room.\" + r.sub_category + \".\", u: \"\") }))\n  |> pivot(rowKey: [\"sub_category\"], columnKey: [\"metric\"], valueColumn: \"_value\")\n  |> rename(columns: {sub_category: \"Room\", creeps: \"Creeps\", rcl: \"RCL\", \"energy.available\": \"Energy Available\", \"energy.capacity\": \"Energy Capacity\", \"storage.energy\": \"Storage Energy\", \"controller.progress_percent\": \"Controller %\"})",
-          "refId": "A"
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT last(\"value\") FROM \"screeps\" WHERE \"category\" = 'room' AND (\"stat\" =~ /rcl$/ OR \"stat\" =~ /creeps$/ OR \"stat\" =~ /energy\\.available$/ OR \"stat\" =~ /energy\\.capacity$/ OR \"stat\" =~ /storage\\.energy$/ OR \"stat\" =~ /controller\\.progress_percent$/) AND $timeFilter GROUP BY \"sub_category\", \"stat\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
         }
       ],
       "title": "Room Snapshot",
@@ -2482,12 +2353,21 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"screeps\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"category\"] == \"room\")\n  |> filter(fn: (r) => r[\"stat\"] =~ /pheromone\\.(expand|harvest|build|upgrade|defense|war|siege|logistics|nukeTarget)$/)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"Pheromones\")",
-          "refId": "A"
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT mean(\"value\") FROM \"screeps\" WHERE \"category\" = 'room' AND \"stat\" =~ /pheromone\\.(expand|harvest|build|upgrade|defense|war|siege|logistics|nukeTarget)$/ AND $timeFilter GROUP BY time($__interval), \"sub_category\", \"stat\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
         }
       ],
       "title": "Pheromone Signals",
@@ -2567,7 +2447,6 @@
                 "id": "mappings",
                 "value": [
                   {
-                    "type": "value",
                     "options": {
                       "0": {
                         "text": "Eco"
@@ -2590,7 +2469,8 @@
                       "6": {
                         "text": "Nuke Prep"
                       }
-                    }
+                    },
+                    "type": "value"
                   }
                 ]
               }
@@ -2606,7 +2486,6 @@
                 "id": "mappings",
                 "value": [
                   {
-                    "type": "value",
                     "options": {
                       "1": {
                         "text": "Seed Nest"
@@ -2623,7 +2502,8 @@
                       "5": {
                         "text": "Empire Dominance"
                       }
-                    }
+                    },
+                    "type": "value"
                   }
                 ]
               }
@@ -2645,16 +2525,690 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
+          "alias": "",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "import \"strings\"\n\nfrom(bucket: \"screeps\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r[\"category\"] == \"room\")\n  |> filter(fn: (r) => r[\"stat\"] =~ /(brain\\.danger|brain\\.posture_code|brain\\.colony_level_code|pheromone\\.(expand|defense|war|logistics|upgrade|build|harvest|siege|nukeTarget)|metrics\\.energy\\.harvested|metrics\\.energy\\.spawning|metrics\\.hostile_count)$/)\n  |> last()\n  |> map(fn: (r) => ({ r with metric: strings.replaceAll(v: r.stat, t: \"room.\" + r.sub_category + \".\", u: \"\") }))\n  |> pivot(rowKey: [\"sub_category\"], columnKey: [\"metric\"], valueColumn: \"_value\")\n  |> rename(columns: {sub_category: \"Room\", \"brain.danger\": \"Danger\", \"brain.posture_code\": \"Posture\", \"brain.colony_level_code\": \"Colony\", \"metrics.energy.harvested\": \"Energy Harvested\", \"metrics.energy.spawning\": \"Energy Spawning\", \"metrics.hostile_count\": \"Hostiles\", \"pheromone.expand\": \"P Expand\", \"pheromone.defense\": \"P Defense\", \"pheromone.war\": \"P War\", \"pheromone.logistics\": \"P Logistics\", \"pheromone.harvest\": \"P Harvest\", \"pheromone.build\": \"P Build\", \"pheromone.upgrade\": \"P Upgrade\", \"pheromone.siege\": \"P Siege\", \"pheromone.nukeTarget\": \"P Nuke\"})",
-          "refId": "A"
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT last(\"value\") FROM \"screeps\" WHERE \"category\" = 'room' AND \"stat\" =~ /(brain\\.danger|brain\\.posture_code|brain\\.colony_level_code|pheromone\\.(expand|defense|war|logistics|upgrade|build|harvest|siege|nukeTarget)|metrics\\.energy\\.harvested|metrics\\.energy\\.spawning|metrics\\.hostile_count)$/ AND $timeFilter GROUP BY \"sub_category\", \"stat\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
         }
       ],
       "title": "Room Brain Snapshot",
       "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 97
+      },
+      "id": 36,
+      "panels": [],
+      "title": "Profiler - Roles",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "CPU",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 98
+      },
+      "id": 37,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "12.3.0",
+      "targets": [
+        {
+          "alias": "",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT mean(\"value\") FROM \"screeps\" WHERE \"category\" = 'profiler_role' AND \"stat\" = 'avg_cpu' AND $timeFilter GROUP BY time($__interval), \"sub_category\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
+        }
+      ],
+      "title": "Role CPU (Avg)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 98
+      },
+      "id": 38,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "pluginVersion": "12.3.0",
+      "targets": [
+        {
+          "alias": "",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT last(\"value\") FROM \"screeps\" WHERE \"category\" = 'profiler_role' AND (\"stat\" = 'avg_cpu' OR \"stat\" = 'peak_cpu' OR \"stat\" = 'count') AND $timeFilter GROUP BY \"sub_category\", \"stat\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
+        }
+      ],
+      "title": "Role CPU & Counts",
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 108
+      },
+      "id": 39,
+      "panels": [],
+      "title": "Native API Calls",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Calls / tick",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 109
+      },
+      "id": 40,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "12.3.0",
+      "targets": [
+        {
+          "alias": "",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT sum(\"value\") FROM \"screeps\" WHERE \"stat\" =~ /^nativeCalls\\./ AND $timeFilter GROUP BY time($__interval), \"stat\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
+        }
+      ],
+      "title": "Native Calls per Tick",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 109
+      },
+      "id": 41,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "pluginVersion": "12.3.0",
+      "targets": [
+        {
+          "alias": "",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT last(\"value\") FROM \"screeps\" WHERE \"stat\" =~ /^nativeCalls\\./ AND $timeFilter GROUP BY \"stat\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
+        }
+      ],
+      "title": "Native Calls – Last Hour Snapshot",
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 116
+      },
+      "id": 42,
+      "panels": [],
+      "title": "Empire Details (Extended)",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Credits",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 117
+      },
+      "id": 43,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.3.0",
+      "targets": [
+        {
+          "alias": "",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT mean(\"value\") FROM \"screeps\" WHERE \"stat\" = 'empire.credits' AND $timeFilter GROUP BY time($__interval)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
+        }
+      ],
+      "title": "Empire Credits",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "MB",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 117
+      },
+      "id": 44,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.3.0",
+      "targets": [
+        {
+          "alias": "",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT mean(\"value\") FROM \"screeps\" WHERE \"stat\" = 'heapUsed' AND $timeFilter GROUP BY time($__interval)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
+        }
+      ],
+      "title": "Heap Used",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 100000000,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 200
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 117
+      },
+      "id": 45,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.3.0",
+      "targets": [
+        {
+          "alias": "",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "groupBy": [],
+          "measurement": "screeps",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT \"sys_last\" - \"prof_last\" AS \"Tick Lag\" FROM (SELECT last(\"value\") AS \"prof_last\" FROM \"screeps\" WHERE \"stat\" = 'profiler.tick_count' AND $timeFilter), (SELECT last(\"value\") AS \"sys_last\" FROM \"screeps\" WHERE \"stat\" = 'system.tick' AND $timeFilter)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [],
+          "tags": []
+        }
+      ],
+      "title": "Profiler Tick Lag",
+      "type": "stat"
     }
   ],
   "preload": false,
@@ -2691,5 +3245,5 @@
   "timezone": "browser",
   "title": "Screeps Ant Swarm",
   "uid": "screeps-ant-swarm",
-  "version": 3
+  "version": 1
 }
