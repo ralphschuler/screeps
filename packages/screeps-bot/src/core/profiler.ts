@@ -123,55 +123,7 @@ export class Profiler {
     return statsRoot[PROFILER_MEMORY_KEY] as ProfilerMemory;
   }
 
-  /**
-   * Publish flattened stats that the Influx exporter can scrape.
-   * Stats are published in a flat format with dot-separated keys for easy ingestion.
-   */
-  private publishStats(memory: ProfilerMemory): void {
-    const statsRoot = this.getStatsRoot();
 
-    // Publish global profiler metrics
-    statsRoot["profiler.tick_count"] = memory.tickCount;
-    statsRoot["profiler.last_update"] = memory.lastUpdate;
-
-    // Publish per-room CPU metrics with room name as part of the key
-    let totalRoomAvgCpu = 0;
-    let totalRoomPeakCpu = 0;
-    for (const [room, data] of Object.entries(memory.rooms)) {
-      statsRoot[`profiler.room.${room}.avg_cpu`] = data.avgCpu;
-      statsRoot[`profiler.room.${room}.peak_cpu`] = data.peakCpu;
-      statsRoot[`profiler.room.${room}.samples`] = data.samples;
-      totalRoomAvgCpu += data.avgCpu;
-      totalRoomPeakCpu = Math.max(totalRoomPeakCpu, data.peakCpu);
-    }
-    statsRoot["profiler.rooms.total_avg_cpu"] = totalRoomAvgCpu;
-    statsRoot["profiler.rooms.total_peak_cpu"] = totalRoomPeakCpu;
-    statsRoot["profiler.rooms.count"] = Object.keys(memory.rooms).length;
-
-    // Publish per-subsystem CPU metrics with subsystem name as part of the key
-    let totalSubsystemAvgCpu = 0;
-    for (const [name, data] of Object.entries(memory.subsystems)) {
-      statsRoot[`profiler.subsystem.${name}.avg_cpu`] = data.avgCpu;
-      statsRoot[`profiler.subsystem.${name}.peak_cpu`] = data.peakCpu;
-      statsRoot[`profiler.subsystem.${name}.samples`] = data.samples;
-      statsRoot[`profiler.subsystem.${name}.calls`] = data.callsThisTick;
-      totalSubsystemAvgCpu += data.avgCpu;
-    }
-    statsRoot["profiler.subsystems.total_avg_cpu"] = totalSubsystemAvgCpu;
-    statsRoot["profiler.subsystems.count"] = Object.keys(memory.subsystems).length;
-
-    // Publish per-role CPU metrics with role name as part of the key
-    let totalRoleAvgCpu = 0;
-    for (const [role, data] of Object.entries(memory.roles || {})) {
-      statsRoot[`profiler.role.${role}.avg_cpu`] = data.avgCpu;
-      statsRoot[`profiler.role.${role}.peak_cpu`] = data.peakCpu;
-      statsRoot[`profiler.role.${role}.samples`] = data.samples;
-      statsRoot[`profiler.role.${role}.calls`] = data.callsThisTick;
-      totalRoleAvgCpu += data.avgCpu;
-    }
-    statsRoot["profiler.roles.total_avg_cpu"] = totalRoleAvgCpu;
-    statsRoot["profiler.roles.count"] = Object.keys(memory.roles || {}).length;
-  }
 
   /**
    * Start measuring a room's loop
@@ -283,9 +235,6 @@ export class Profiler {
     this.tickMeasurements.clear();
     this.subsystemMeasurements.clear();
 
-    // Publish exporter-friendly stats
-    this.publishStats(memory);
-
     // Log summary if interval reached
     if (this.config.logInterval > 0 && Game.time % this.config.logInterval === 0) {
       this.logSummary();
@@ -367,8 +316,6 @@ export class Profiler {
       tickCount: 0,
       lastUpdate: 0
     } as ProfilerMemory;
-
-    this.publishStats(statsRoot[PROFILER_MEMORY_KEY] as ProfilerMemory);
   }
 
   /**
