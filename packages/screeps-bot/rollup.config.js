@@ -24,6 +24,12 @@ const cfg = {
   branch: cleanEnv(process.env.SCREEPS_BRANCH) || "main"
 };
 
+// Check if we have valid credentials (either token or email+password)
+const hasValidCredentials = cfg.token || (cfg.email && cfg.password);
+
+// Only push to Screeps when DEST=screeps is set (via npm run push)
+const shouldPushToScreeps = process.env.DEST === "screeps";
+
 export default {
   input: "src/main.ts",
   output: {
@@ -38,10 +44,10 @@ export default {
     commonjs(),
     typescript({ tsconfig: "./tsconfig.json" }),
 
-    // dryRun enabled when token is missing
+    // Enable dryRun when not pushing to Screeps or when credentials are invalid
     screeps({
       config: { screeps: cfg },
-      dryRun: !cfg.token
+      dryRun: !shouldPushToScreeps || !hasValidCredentials
     })
   ]
 };
