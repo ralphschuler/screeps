@@ -97,6 +97,15 @@ export interface SpawnCompletedEvent extends BaseEvent {
 }
 
 /**
+ * Spawn emergency event - triggered during workforce collapse with critically low energy
+ */
+export interface SpawnEmergencyEvent extends BaseEvent {
+  roomName: string;
+  energyAvailable: number;
+  message: string;
+}
+
+/**
  * Creep died event
  */
 export interface CreepDiedEvent extends BaseEvent {
@@ -250,6 +259,7 @@ export interface EventMap {
 
   // Economy events
   "spawn.completed": SpawnCompletedEvent;
+  "spawn.emergency": SpawnEmergencyEvent;
   "creep.died": CreepDiedEvent;
   "rcl.upgrade": RclUpgradeEvent;
   "energy.critical": EnergyCriticalEvent;
@@ -356,6 +366,7 @@ const DEFAULT_EVENT_PRIORITIES: Partial<Record<EventName, EventPriority>> = {
   "hostile.cleared": EventPriority.HIGH,
   "creep.died": EventPriority.HIGH,
   "energy.critical": EventPriority.HIGH,
+  "spawn.emergency": EventPriority.HIGH,
   "posture.change": EventPriority.HIGH,
   
   // Normal
