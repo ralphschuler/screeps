@@ -23795,7 +23795,7 @@ let EvacuationManager = class EvacuationManager {
      * Check for evacuation triggers
      */
     checkEvacuationTriggers() {
-        var _a, _b, _c;
+        var _a, _b, _c, _d;
         for (const roomName in Game.rooms) {
             const room = Game.rooms[roomName];
             if (!((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my))
@@ -23806,12 +23806,19 @@ let EvacuationManager = class EvacuationManager {
             const swarm = memoryManager.getSwarmState(roomName);
             if (!swarm)
                 continue;
-            // Check for nuke
+            // Check for nuke - primary condition is nuke presence
             const nukes = room.find(FIND_NUKES);
             if (nukes.length > 0) {
                 const nearestNuke = nukes.reduce((a, b) => { var _a, _b; return ((_a = a.timeToLand) !== null && _a !== void 0 ? _a : Infinity) < ((_b = b.timeToLand) !== null && _b !== void 0 ? _b : Infinity) ? a : b; });
                 if (((_b = nearestNuke.timeToLand) !== null && _b !== void 0 ? _b : Infinity) <= this.config.nukeEvacuationLeadTime) {
-                    this.startEvacuation(roomName, "nuke", Game.time + ((_c = nearestNuke.timeToLand) !== null && _c !== void 0 ? _c : 0));
+                    // Set detection flag if not already set (for coordination with nuke manager)
+                    if (!swarm.nukeDetected) {
+                        swarm.nukeDetected = true;
+                    }
+                    // Increase urgency based on number of nukes
+                    const nukeCount = nukes.length;
+                    logger.warn(`Triggering evacuation for ${roomName}: ${nukeCount} nuke(s) detected, impact in ${(_c = nearestNuke.timeToLand) !== null && _c !== void 0 ? _c : 0} ticks`, { subsystem: "Evacuation" });
+                    this.startEvacuation(roomName, "nuke", Game.time + ((_d = nearestNuke.timeToLand) !== null && _d !== void 0 ? _d : 0));
                     continue;
                 }
             }
@@ -24144,6 +24151,37 @@ let TerminalManager = class TerminalManager {
     constructor(config = {}) {
         this.transferQueue = [];
         this.config = { ...DEFAULT_CONFIG$a, ...config };
+    }
+    /**
+     * Request a resource transfer between rooms
+     * Public method for other systems (e.g., nuke manager) to request transfers
+     */
+    requestTransfer(fromRoom, toRoom, resourceType, amount, priority = 3) {
+        // Check if transfer is already queued
+        const alreadyQueued = this.transferQueue.some(req => req.fromRoom === fromRoom &&
+            req.toRoom === toRoom &&
+            req.resourceType === resourceType);
+        if (alreadyQueued) {
+            logger.debug(`Transfer already queued: ${amount} ${resourceType} from ${fromRoom} to ${toRoom}`, { subsystem: "Terminal" });
+            return false;
+        }
+        // Validate rooms exist and have terminals
+        const source = Game.rooms[fromRoom];
+        const target = Game.rooms[toRoom];
+        if (!source || !target || !source.terminal || !target.terminal) {
+            logger.warn(`Cannot queue transfer: rooms or terminals not available`, { subsystem: "Terminal" });
+            return false;
+        }
+        // Queue the transfer
+        this.transferQueue.push({
+            fromRoom,
+            toRoom,
+            resourceType,
+            amount,
+            priority
+        });
+        logger.info(`Queued transfer request: ${amount} ${resourceType} from ${fromRoom} to ${toRoom} (priority: ${priority})`, { subsystem: "Terminal" });
+        return true;
     }
     /**
      * Main terminal tick - runs periodically
@@ -25716,6 +25754,8 @@ const marketManager = new MarketManager();
  * - Nuker resource loading
  * - Nuke launch decisions
  * - Coordination with siege timing
+ * - Incoming nuke detection
+ * - Resource management coordination
  *
  * Addresses Issue: #24
  */
@@ -25723,7 +25763,11 @@ const DEFAULT_CONFIG$5 = {
     updateInterval: 500,
     minGhodium: 5000,
     minEnergy: 300000,
-    minScore: 50
+    minScore: 50,
+    siegeCoordinationWindow: 1000,
+    nukeFlightTime: 50000,
+    terminalPriority: 5,
+    donorRoomBuffer: 1000 // Keep 1000 units buffer in donor rooms
 };
 /**
  * Nuke Manager Class
@@ -25731,6 +25775,7 @@ const DEFAULT_CONFIG$5 = {
 let NukeManager = class NukeManager {
     constructor(config = {}) {
         this.lastRun = 0;
+        this.nukerReadyLogged = new Set();
         this.config = { ...DEFAULT_CONFIG$5, ...config };
     }
     /**
@@ -25739,10 +25784,16 @@ let NukeManager = class NukeManager {
      */
     run() {
         this.lastRun = Game.time;
+        // Detect incoming nukes
+        this.detectIncomingNukes();
+        // Manage resource accumulation
+        this.manageNukeResources();
         // Load nukers with resources
         this.loadNukers();
         // Evaluate nuke candidates
         this.evaluateNukeCandidates();
+        // Check for siege coordination opportunities
+        this.coordinateWithSieges();
         // Launch nukes if appropriate
         this.launchNukes();
     }
@@ -25908,6 +25959,203 @@ let NukeManager = class NukeManager {
                 break; // No more nukers available
             }
         }
+    }
+    /**
+     * Detect incoming nukes in owned rooms
+     */
+    detectIncomingNukes() {
+        var _a;
+        for (const roomName in Game.rooms) {
+            const room = Game.rooms[roomName];
+            if (!((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my))
+                continue;
+            const swarm = memoryManager.getSwarmState(roomName);
+            if (!swarm)
+                continue;
+            const nukes = room.find(FIND_NUKES);
+            if (nukes.length > 0 && !swarm.nukeDetected) {
+                // First detection - update pheromones and log
+                swarm.nukeDetected = true;
+                swarm.pheromones.defense = Math.min(100, swarm.pheromones.defense + 50);
+                swarm.danger = 3;
+                const impactTicks = Math.min(...nukes.map(n => { var _a; return (_a = n.timeToLand) !== null && _a !== void 0 ? _a : Infinity; }));
+                logger.warn(`INCOMING NUKE DETECTED in ${roomName}! Impact in ${impactTicks} ticks (${nukes.length} nuke${nukes.length > 1 ? "s" : ""})`, { subsystem: "Nuke" });
+                // Add to event log
+                swarm.eventLog.push({
+                    type: "nuke_incoming",
+                    time: Game.time,
+                    details: `${nukes.length} nuke(s), impact in ${impactTicks} ticks`
+                });
+                // Trim event log
+                if (swarm.eventLog.length > 20) {
+                    swarm.eventLog.shift();
+                }
+            }
+            else if (nukes.length === 0 && swarm.nukeDetected) {
+                // Nukes cleared (either impacted or something else)
+                swarm.nukeDetected = false;
+                logger.info(`Nuke threat cleared in ${roomName}`, { subsystem: "Nuke" });
+            }
+        }
+    }
+    /**
+     * Manage resource accumulation for nukers
+     * Coordinates with terminal manager to prepare nuke resources
+     */
+    manageNukeResources() {
+        var _a, _b;
+        // Only manage resources if in war mode
+        const overmind = memoryManager.getOvermind();
+        if (!overmind.objectives.warMode)
+            return;
+        for (const roomName in Game.rooms) {
+            const room = Game.rooms[roomName];
+            if (!((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my))
+                continue;
+            const nuker = room.find(FIND_MY_STRUCTURES, {
+                filter: s => s.structureType === STRUCTURE_NUKER
+            })[0];
+            if (!nuker)
+                continue;
+            const terminal = room.terminal;
+            if (!terminal || !terminal.my)
+                continue;
+            // Check what resources nuker needs
+            const energyNeeded = nuker.store.getFreeCapacity(RESOURCE_ENERGY);
+            const ghodiumNeeded = nuker.store.getFreeCapacity(RESOURCE_GHODIUM);
+            // Request ghodium if needed and terminal doesn't have enough
+            if (ghodiumNeeded > 0) {
+                const terminalGhodium = (_b = terminal.store.getUsedCapacity(RESOURCE_GHODIUM)) !== null && _b !== void 0 ? _b : 0;
+                if (terminalGhodium < ghodiumNeeded) {
+                    // Create terminal transfer request (implementation depends on terminal manager)
+                    this.requestResourceTransfer(roomName, RESOURCE_GHODIUM, ghodiumNeeded - terminalGhodium);
+                }
+            }
+            // Log nuker readiness status (track in Set to avoid spam)
+            const nukerId = `${roomName}-nuker`;
+            if (energyNeeded === 0 && ghodiumNeeded === 0) {
+                if (!this.nukerReadyLogged.has(nukerId)) {
+                    logger.info(`Nuker in ${roomName} is fully loaded and ready to launch`, {
+                        subsystem: "Nuke"
+                    });
+                    this.nukerReadyLogged.add(nukerId);
+                }
+            }
+            else {
+                this.nukerReadyLogged.delete(nukerId);
+            }
+        }
+    }
+    /**
+     * Request resource transfer via terminal
+     * Uses cached import to avoid circular dependency and ensure synchronous execution
+     */
+    requestResourceTransfer(roomName, resourceType, amount) {
+        // Find a donor room with this resource
+        const donorRoom = this.findDonorRoom(roomName, resourceType, amount);
+        if (!donorRoom) {
+            logger.debug(`No donor room found for ${amount} ${resourceType} to ${roomName}`, { subsystem: "Nuke" });
+            return;
+        }
+        // Lazy-load terminal manager on first use (synchronous require to avoid timing issues)
+        if (!this.terminalManager) {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            this.terminalManager = require("../economy/terminalManager").terminalManager;
+        }
+        const success = this.terminalManager.requestTransfer(donorRoom, roomName, resourceType, amount, this.config.terminalPriority);
+        if (success) {
+            logger.info(`Requested ${amount} ${resourceType} transfer from ${donorRoom} to ${roomName} for nuker`, { subsystem: "Nuke" });
+        }
+    }
+    /**
+     * Find a room that can donate the requested resource
+     */
+    findDonorRoom(targetRoom, resourceType, amount) {
+        var _a, _b, _c, _d;
+        const candidates = [];
+        for (const roomName in Game.rooms) {
+            const room = Game.rooms[roomName];
+            if (!((_a = room.controller) === null || _a === void 0 ? void 0 : _a.my) || roomName === targetRoom)
+                continue;
+            const terminal = room.terminal;
+            if (!terminal || !terminal.my)
+                continue;
+            const available = (_b = terminal.store.getUsedCapacity(resourceType)) !== null && _b !== void 0 ? _b : 0;
+            // Must have at least the requested amount + buffer
+            if (available < amount + this.config.donorRoomBuffer)
+                continue;
+            const distance = Game.map.getRoomLinearDistance(roomName, targetRoom);
+            candidates.push({ room: roomName, amount: available, distance });
+        }
+        if (candidates.length === 0)
+            return null;
+        // Sort by distance (prefer closer rooms)
+        candidates.sort((a, b) => a.distance - b.distance);
+        return (_d = (_c = candidates[0]) === null || _c === void 0 ? void 0 : _c.room) !== null && _d !== void 0 ? _d : null;
+    }
+    /**
+     * Coordinate nuke launches with siege squads
+     * Ensures nukes land when siege squads arrive
+     */
+    coordinateWithSieges() {
+        const overmind = memoryManager.getOvermind();
+        if (!overmind.objectives.warMode)
+            return;
+        // Get all clusters with active squads
+        const clusters = memoryManager.getClusters();
+        for (const cluster of Object.values(clusters)) {
+            if (!cluster.squads || cluster.squads.length === 0)
+                continue;
+            // Find siege squads
+            const siegeSquads = cluster.squads.filter(s => s.type === "siege");
+            for (const squad of siegeSquads) {
+                if (squad.state !== "moving" && squad.state !== "attacking")
+                    continue;
+                // Check if squad is targeting a nuke candidate
+                const targetRoom = squad.targetRooms[0];
+                if (!targetRoom)
+                    continue;
+                const nukeCandidate = overmind.nukeCandidates.find(c => c.roomName === targetRoom);
+                if (!nukeCandidate)
+                    continue;
+                // Don't launch if already launched
+                if (nukeCandidate.launched)
+                    continue;
+                // Estimate squad ETA to target
+                const squadEta = this.estimateSquadEta(squad, targetRoom);
+                // Calculate when to launch nuke so it arrives shortly before squad
+                const optimalLaunchTick = squadEta - this.config.nukeFlightTime + this.config.siegeCoordinationWindow;
+                if (Game.time >= optimalLaunchTick) {
+                    logger.info(`Nuke launch window opened for ${targetRoom} - siege squad ${squad.id} ETA: ${squadEta} ticks`, { subsystem: "Nuke" });
+                    // Increase nukeTarget pheromone to signal readiness
+                    // This will be picked up by the launch logic
+                    const targetSwarm = memoryManager.getSwarmState(targetRoom);
+                    if (targetSwarm) {
+                        targetSwarm.pheromones.nukeTarget = Math.min(100, targetSwarm.pheromones.nukeTarget + 50);
+                    }
+                }
+            }
+        }
+    }
+    /**
+     * Estimate ticks until squad reaches target
+     */
+    estimateSquadEta(squad, targetRoom) {
+        // Find average position of squad members
+        const members = squad.members
+            .map(name => Game.creeps[name])
+            .filter((c) => c != null);
+        if (members.length === 0) {
+            // Squad not spawned yet, estimate from rally room
+            const distance = Game.map.getRoomLinearDistance(squad.rallyRoom, targetRoom);
+            return distance * 50; // Rough estimate: 50 ticks per room
+        }
+        // Use closest member to target as estimate
+        const distances = members.map(creep => {
+            const distance = Game.map.getRoomLinearDistance(creep.room.name, targetRoom);
+            return distance * 50; // Rough estimate
+        });
+        return Math.min(...distances);
     }
 };
 __decorate([
