@@ -123,7 +123,7 @@ export interface RoomStats {
   /** Danger level (0-3) */
   danger: number;
   /** Total resources in storage and terminal (all resource types) */
-  resources: Record<ResourceConstant, number>;
+  resources: Partial<Record<ResourceConstant, number>>;
   /** Dropped energy on the ground */
   droppedEnergy: number;
 }
@@ -499,16 +499,23 @@ export class StatsManager {
     const hostiles = room.find(FIND_HOSTILE_CREEPS);
 
     // Collect all resources from storage and terminal
-    const resources: Record<ResourceConstant, number> = {} as Record<ResourceConstant, number>;
-    if (room.storage) {
-      for (const resourceType of Object.keys(room.storage.store) as ResourceConstant[]) {
-        resources[resourceType] = (resources[resourceType] ?? 0) + room.storage.store.getUsedCapacity(resourceType);
+    const resources: Partial<Record<ResourceConstant, number>> = {};
+    
+    // Helper function to add resources from a store
+    const addStoreResources = (store: StoreDefinition) => {
+      for (const resourceType in store) {
+        if (store[resourceType as ResourceConstant] > 0) {
+          const resource = resourceType as ResourceConstant;
+          resources[resource] = (resources[resource] ?? 0) + store[resource];
+        }
       }
+    };
+    
+    if (room.storage) {
+      addStoreResources(room.storage.store);
     }
     if (room.terminal) {
-      for (const resourceType of Object.keys(room.terminal.store) as ResourceConstant[]) {
-        resources[resourceType] = (resources[resourceType] ?? 0) + room.terminal.store.getUsedCapacity(resourceType);
-      }
+      addStoreResources(room.terminal.store);
     }
 
     // Find dropped energy on the ground
