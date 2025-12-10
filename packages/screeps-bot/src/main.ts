@@ -1,3 +1,5 @@
+// Initialize RoomVisual extensions from screepers/RoomVisual
+import "./visuals/roomVisualExtensions";
 import { ErrorMapper } from "utils/ErrorMapper";
 import { registerAllConsoleCommands } from "./core/consoleCommands";
 import { loop as swarmLoop } from "./SwarmBot";
