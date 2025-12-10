@@ -285,6 +285,12 @@ export function loop(): void {
   // This happens automatically based on the cache's internal interval
   memoryManager.persistHeapCache();
 
+  // Collect kernel process stats before finalizing
+  unifiedStats.collectProcessStats(kernel.getProcesses().reduce((map, p) => {
+    map.set(p.id, p);
+    return map;
+  }, new Map()));
+
   // Finalize unified stats for this tick - collects and exports all metrics
   unifiedStats.finalizeTick();
 }

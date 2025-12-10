@@ -207,6 +207,44 @@ export interface NativeCallStats {
 }
 
 /**
+ * Kernel process statistics entry
+ */
+export interface ProcessStatsEntry {
+  id: string;
+  name: string;
+  priority: number;
+  frequency: string;
+  state: string;
+  totalCpu: number;
+  runCount: number;
+  avgCpu: number;
+  maxCpu: number;
+  lastRunTick: number;
+  skippedCount: number;
+  errorCount: number;
+  cpuBudget: number;
+  minBucket: number;
+}
+
+/**
+ * Per-creep statistics entry
+ */
+export interface CreepStatsEntry {
+  name: string;
+  role: string;
+  homeRoom: string;
+  currentRoom: string;
+  cpu: number;
+  action: string;
+  ticksToLive: number;
+  hits: number;
+  hitsMax: number;
+  bodyParts: number;
+  fatigue: number;
+  actionsThisTick: number;
+}
+
+/**
  * Complete stats snapshot for a single tick
  */
 export interface StatsSnapshot {
@@ -219,6 +257,8 @@ export interface StatsSnapshot {
   subsystems: Record<string, SubsystemStatsEntry>;
   roles: Record<string, RoleStatsEntry>;
   native: NativeCallStats;
+  processes: Record<string, ProcessStatsEntry>;
+  creeps: Record<string, CreepStatsEntry>;
 }
 
 /**
@@ -316,6 +356,9 @@ export class UnifiedStatsManager {
     // Finalize native calls
     this.currentSnapshot.native = { ...this.nativeCallsThisTick };
 
+    // Collect creep stats if not already recorded
+    this.finalizeCreepStats();
+
     // Finalize tick info
     this.currentSnapshot.tick = Game.time;
     this.currentSnapshot.timestamp = Date.now();
@@ -384,6 +427,99 @@ export class UnifiedStatsManager {
     
     this.nativeCallsThisTick[type]++;
     this.nativeCallsThisTick.total++;
+  }
+
+  /**
+   * Record kernel process statistics
+   */
+  public recordProcess(process: {
+    id: string;
+    name: string;
+    priority: number;
+    frequency: string;
+    state: string;
+    cpuBudget: number;
+    minBucket: number;
+    stats: {
+      totalCpu: number;
+      runCount: number;
+      avgCpu: number;
+      maxCpu: number;
+      lastRunTick: number;
+      skippedCount: number;
+      errorCount: number;
+    };
+  }): void {
+    if (!this.config.enabled) return;
+
+    this.currentSnapshot.processes[process.id] = {
+      id: process.id,
+      name: process.name,
+      priority: process.priority,
+      frequency: process.frequency,
+      state: process.state,
+      totalCpu: process.stats.totalCpu,
+      runCount: process.stats.runCount,
+      avgCpu: process.stats.avgCpu,
+      maxCpu: process.stats.maxCpu,
+      lastRunTick: process.stats.lastRunTick,
+      skippedCount: process.stats.skippedCount,
+      errorCount: process.stats.errorCount,
+      cpuBudget: process.cpuBudget,
+      minBucket: process.minBucket
+    };
+  }
+
+  /**
+   * Collect all kernel process statistics
+   */
+  public collectProcessStats(processes: Map<string, {
+    id: string;
+    name: string;
+    priority: number;
+    frequency: string;
+    state: string;
+    cpuBudget: number;
+    minBucket: number;
+    stats: {
+      totalCpu: number;
+      runCount: number;
+      avgCpu: number;
+      maxCpu: number;
+      lastRunTick: number;
+      skippedCount: number;
+      errorCount: number;
+    };
+  }>): void {
+    if (!this.config.enabled) return;
+
+    processes.forEach((process) => {
+      this.recordProcess(process);
+    });
+  }
+
+  /**
+   * Record individual creep statistics
+   */
+  public recordCreep(creep: Creep, cpu: number, action: string, actionsCount = 0): void {
+    if (!this.config.enabled) return;
+
+    const creepMemory = creep.memory as unknown as { role?: string; homeRoom?: string };
+    
+    this.currentSnapshot.creeps[creep.name] = {
+      name: creep.name,
+      role: creepMemory.role ?? "unknown",
+      homeRoom: creepMemory.homeRoom ?? creep.room.name,
+      currentRoom: creep.room.name,
+      cpu,
+      action,
+      ticksToLive: creep.ticksToLive ?? 0,
+      hits: creep.hits,
+      hitsMax: creep.hitsMax,
+      bodyParts: creep.body.length,
+      fatigue: creep.fatigue,
+      actionsThisTick: actionsCount
+    };
   }
 
   /**
@@ -532,7 +668,9 @@ export class UnifiedStatsManager {
       rooms: {},
       subsystems: {},
       roles: {},
-      native: this.createEmptyNativeCalls()
+      native: this.createEmptyNativeCalls(),
+      processes: {},
+      creeps: {}
     };
   }
 
@@ -634,6 +772,39 @@ export class UnifiedStatsManager {
           peakCpu,
           samples: this.currentSnapshot.subsystems[cleanName].samples,
           callsThisTick: measurements.length
+        };
+      }
+    }
+  }
+
+  /**
+   * Finalize creep stats - collect stats for all creeps if not already recorded
+   */
+  private finalizeCreepStats(): void {
+    for (const creep of Object.values(Game.creeps)) {
+      // Only record if not already recorded this tick
+      if (!this.currentSnapshot.creeps[creep.name]) {
+        const creepMemory = creep.memory as unknown as { 
+          role?: string; 
+          homeRoom?: string; 
+          state?: { action?: string }; 
+          working?: boolean 
+        };
+        const action = creepMemory.state?.action ?? (creepMemory.working ? "working" : "idle");
+        
+        this.currentSnapshot.creeps[creep.name] = {
+          name: creep.name,
+          role: creepMemory.role ?? "unknown",
+          homeRoom: creepMemory.homeRoom ?? creep.room.name,
+          currentRoom: creep.room.name,
+          cpu: 0, // Will be filled in by creep runner if tracking
+          action,
+          ticksToLive: creep.ticksToLive ?? 0,
+          hits: creep.hits,
+          hitsMax: creep.hitsMax,
+          bodyParts: creep.body.length,
+          fatigue: creep.fatigue,
+          actionsThisTick: 0
         };
       }
     }
@@ -768,6 +939,44 @@ export class UnifiedStatsManager {
         samples: role.samples
       };
     }
+
+    // Process stats
+    mem.stats.processes = {} as Record<string, any>;
+    for (const [id, process] of Object.entries(snap.processes)) {
+      mem.stats.processes[id] = {
+        name: process.name,
+        priority: process.priority,
+        frequency: process.frequency,
+        state: process.state,
+        total_cpu: process.totalCpu,
+        run_count: process.runCount,
+        avg_cpu: process.avgCpu,
+        max_cpu: process.maxCpu,
+        last_run_tick: process.lastRunTick,
+        skipped_count: process.skippedCount,
+        error_count: process.errorCount,
+        cpu_budget: process.cpuBudget,
+        min_bucket: process.minBucket
+      };
+    }
+
+    // Creep stats
+    mem.stats.creeps = {} as Record<string, any>;
+    for (const [name, creep] of Object.entries(snap.creeps)) {
+      mem.stats.creeps[name] = {
+        role: creep.role,
+        home_room: creep.homeRoom,
+        current_room: creep.currentRoom,
+        cpu: creep.cpu,
+        action: creep.action,
+        ticks_to_live: creep.ticksToLive,
+        hits: creep.hits,
+        hits_max: creep.hitsMax,
+        body_parts: creep.bodyParts,
+        fatigue: creep.fatigue,
+        actions_this_tick: creep.actionsThisTick
+      };
+    }
   }
 
   /**
@@ -891,6 +1100,39 @@ export class UnifiedStatsManager {
       logger.info("Top Roles:");
       for (const role of topRoles) {
         logger.info(`  ${role.name}: ${role.count} creeps, ${role.avgCpu.toFixed(3)} CPU`);
+      }
+    }
+
+    // Top 5 processes by CPU
+    const topProcesses = Object.values(snap.processes)
+      .sort((a, b) => b.avgCpu - a.avgCpu)
+      .slice(0, 5);
+    if (topProcesses.length > 0) {
+      logger.info("Top Processes:");
+      for (const proc of topProcesses) {
+        logger.info(`  ${proc.name}: ${proc.avgCpu.toFixed(3)} CPU (runs: ${proc.runCount}, state: ${proc.state})`);
+      }
+    }
+
+    // Top 5 rooms by CPU
+    const topRooms = Object.values(snap.rooms)
+      .sort((a, b) => b.profiler.avgCpu - a.profiler.avgCpu)
+      .slice(0, 5);
+    if (topRooms.length > 0) {
+      logger.info("Top Rooms by CPU:");
+      for (const room of topRooms) {
+        logger.info(`  ${room.name}: ${room.profiler.avgCpu.toFixed(3)} CPU (RCL ${room.rcl})`);
+      }
+    }
+
+    // Top 5 creeps by CPU
+    const topCreeps = Object.values(snap.creeps)
+      .sort((a, b) => b.cpu - a.cpu)
+      .slice(0, 5);
+    if (topCreeps.length > 0) {
+      logger.info("Top Creeps by CPU:");
+      for (const creep of topCreeps) {
+        logger.info(`  ${creep.name} (${creep.role}): ${creep.cpu.toFixed(3)} CPU in ${creep.currentRoom}`);
       }
     }
 
