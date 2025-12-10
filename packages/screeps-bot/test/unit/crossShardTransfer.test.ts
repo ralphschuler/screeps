@@ -407,4 +407,42 @@ describe("Cross-Shard Resource Transfer", () => {
       expect(calculateProgress(666, 1000)).to.equal(67);
     });
   });
+
+  describe("Carrier Spawning Calculation", () => {
+    /**
+     * Simulates calculating how many carriers are needed for a transfer
+     */
+    function calculateCarriersNeeded(
+      transferAmount: number,
+      currentCapacity: number,
+      carrierCapacity: number
+    ): number {
+      const capacityNeeded = transferAmount - currentCapacity;
+      if (capacityNeeded <= 0) return 0;
+      return Math.ceil(capacityNeeded / carrierCapacity);
+    }
+
+    it("should return 0 carriers when capacity is sufficient", () => {
+      expect(calculateCarriersNeeded(1000, 1000, 400)).to.equal(0);
+      expect(calculateCarriersNeeded(1000, 1200, 400)).to.equal(0);
+    });
+
+    it("should calculate correct number of carriers needed", () => {
+      // Need 1000, have 0, each carrier has 400 capacity
+      expect(calculateCarriersNeeded(1000, 0, 400)).to.equal(3); // ceil(1000/400) = 3
+
+      // Need 1000, have 600, each carrier has 400 capacity
+      expect(calculateCarriersNeeded(1000, 600, 400)).to.equal(1); // ceil(400/400) = 1
+    });
+
+    it("should handle exact divisions", () => {
+      // Need exactly 800, have 0, each carrier has 400 capacity
+      expect(calculateCarriersNeeded(800, 0, 400)).to.equal(2);
+    });
+
+    it("should round up for partial carriers", () => {
+      // Need 1000, have 0, each carrier has 300 capacity
+      expect(calculateCarriersNeeded(1000, 0, 300)).to.equal(4); // ceil(1000/300) = 4
+    });
+  });
 });

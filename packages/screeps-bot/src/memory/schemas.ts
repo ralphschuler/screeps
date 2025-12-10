@@ -446,7 +446,8 @@ export type EconomyRole =
   | "factoryWorker"
   | "remoteHarvester"
   | "remoteHauler"
-  | "interRoomCarrier";
+  | "interRoomCarrier"
+  | "crossShardCarrier";
 
 /**
  * Military roles

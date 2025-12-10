@@ -416,6 +416,7 @@ export function optimizeBody(options: BodyOptimizationOptions): BodyTemplate {
     case "queenCarrier":
     case "remoteHauler":
     case "interRoomCarrier":
+    case "crossShardCarrier":
       return optimizeHaulerBody(options);
 
     case "upgrader":
