@@ -369,8 +369,11 @@ export class UnifiedStatsManager {
     this.currentSnapshot.tick = Game.time;
     this.currentSnapshot.timestamp = Date.now();
 
-    // Publish to Memory.stats in InfluxDB-friendly format
+    // Publish to Memory.stats first (console output reads from this)
     this.publishToMemory();
+
+    // Publish to console for graphite exporter to parse
+    this.publishToConsole();
 
     // Update memory segment periodically
     if (Game.time - this.lastSegmentUpdate >= this.config.segmentUpdateInterval) {
@@ -848,6 +851,25 @@ export class UnifiedStatsManager {
           actionsThisTick: 0
         };
       }
+    }
+  }
+
+  /**
+   * Output stats to console in JSON format for graphite exporter
+   * Outputs the entire Memory.stats object as a single JSON object
+   */
+  private publishToConsole(): void {
+    // Get the Memory.stats object that was just created by publishToMemory()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mem = Memory as unknown as Record<string, any>;
+    
+    if (mem.stats && typeof mem.stats === "object") {
+      // Output as a single JSON object with type "stats"
+      const statsOutput = {
+        type: "stats",
+        data: mem.stats
+      };
+      console.log(JSON.stringify(statsOutput));
     }
   }
 
