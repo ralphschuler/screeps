@@ -17,10 +17,11 @@
  * - MarketManager (empire:market)
  * - NukeManager (empire:nuke)
  * - PowerBankHarvestingManager (empire:powerBank)
+ * - PowerCreepManager (empire:powerCreep)
  * - ShardManager (empire:shard)
  * - EvacuationManager (cluster:evacuation)
  *
- * Addresses Issues: #5, #30
+ * Addresses Issues: #5, #26, #30
  */
 
 import { clusterManager } from "../clusters/clusterManager";
@@ -32,6 +33,7 @@ import { expansionManager } from "../empire/expansionManager";
 import { marketManager } from "../empire/marketManager";
 import { nukeManager } from "../empire/nukeManager";
 import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
+import { powerCreepManager } from "../empire/powerCreepManager";
 import { remoteInfrastructureManager } from "../empire/remoteInfrastructure";
 import { shardManager } from "../intershard/shardManager";
 import { coreProcessManager } from "./coreProcessManager";
@@ -59,6 +61,7 @@ export function registerAllProcesses(): void {
     marketManager,
     nukeManager,
     powerBankHarvestingManager,
+    powerCreepManager,
     shardManager,
     // Cluster processes
     clusterManager,

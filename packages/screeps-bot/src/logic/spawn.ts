@@ -400,6 +400,68 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     priority: 45,
     maxPerRoom: 4,
     remoteRole: true
+  },
+
+  // Power bank harvesting roles (regular creeps for power banks)
+  powerHarvester: {
+    role: "powerHarvester",
+    family: "power",
+    bodies: [
+      // Power banks have 2M hits. With 50% damage reflection, we need tough healers.
+      // Mid-tier: 20 ATTACK parts = 600 damage/tick, but 300 reflected damage
+      createBody(
+        [
+          TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,
+          ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
+          ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
+          ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
+          ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
+          MOVE, MOVE, MOVE, MOVE, MOVE,
+          MOVE, MOVE, MOVE, MOVE, MOVE,
+          MOVE, MOVE, MOVE, MOVE, MOVE,
+          MOVE, MOVE, MOVE, MOVE, MOVE,
+          MOVE, MOVE, MOVE, MOVE, MOVE
+        ],
+        2300
+      ),
+      // High-tier: 25 ATTACK parts for faster destruction
+      createBody(
+        [
+          TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,
+          TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,
+          ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
+          ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
+          ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
+          ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
+          MOVE, MOVE, MOVE, MOVE, MOVE,
+          MOVE, MOVE, MOVE, MOVE, MOVE,
+          MOVE, MOVE, MOVE, MOVE, MOVE,
+          MOVE, MOVE, MOVE, MOVE, MOVE
+        ],
+        3000
+      )
+    ],
+    priority: 30,
+    maxPerRoom: 2, // Per operation, coordinated by power bank manager
+    remoteRole: true
+  },
+  powerCarrier: {
+    role: "powerCarrier",
+    family: "power",
+    bodies: [
+      // Large carriers to collect dropped power efficiently
+      createBody(
+        [...Array(20).fill(CARRY), ...Array(20).fill(MOVE)],
+        2000
+      ),
+      createBody(
+        [...Array(25).fill(CARRY), ...Array(25).fill(MOVE)],
+        2500
+      )
+    ],
+    priority: 25,
+    maxPerRoom: 2, // Per operation
+    remoteRole: true
   }
 };
 

@@ -335,6 +335,56 @@ export function healer(ctx: CreepContext): CreepAction {
     return { type: "heal", target: ctx.creep };
   }
 
+  // Check if assigned to power bank operation
+  if (mem.targetRoom) {
+    // Move to target room (power bank location)
+    if (ctx.room.name !== mem.targetRoom) {
+      return { type: "moveToRoom", roomName: mem.targetRoom };
+    }
+
+    // In target room - heal power harvesters
+    const powerHarvesters = ctx.room.find(FIND_MY_CREEPS, {
+      filter: c => {
+        const m = c.memory as unknown as SwarmCreepMemory;
+        return m.role === "powerHarvester" && m.targetRoom === mem.targetRoom;
+      }
+    });
+
+    // Find most damaged power harvester
+    if (powerHarvesters.length > 0) {
+      powerHarvesters.sort((a, b) => a.hits / a.hitsMax - b.hits / b.hitsMax);
+      const target = powerHarvesters[0]!;
+      const range = ctx.creep.pos.getRangeTo(target);
+
+      // Follow and heal the most damaged harvester
+      if (range > 3) {
+        return { type: "moveTo", target };
+      } else if (range <= 1) {
+        return { type: "heal", target };
+      } else {
+        return { type: "rangedHeal", target };
+      }
+    }
+
+    // Check if power bank is destroyed
+    const powerBank = ctx.room.find(FIND_STRUCTURES, {
+      filter: s => s.structureType === STRUCTURE_POWER_BANK
+    })[0];
+
+    if (!powerBank && powerHarvesters.length === 0) {
+      // Power bank destroyed and no harvesters - return home
+      delete mem.targetRoom;
+      return { type: "moveToRoom", roomName: ctx.homeRoom };
+    }
+
+    // Stay near power bank if it exists
+    if (powerBank) {
+      if (ctx.creep.pos.getRangeTo(powerBank) > 3) {
+        return { type: "moveTo", target: powerBank };
+      }
+    }
+  }
+
   // Check if assigned to assist another room
   if (mem.assistTarget) {
     const assistRoom = Game.rooms[mem.assistTarget];

@@ -549,6 +549,92 @@ export class PowerBankHarvestingManager {
   }
 
   /**
+   * Request spawning for power bank operations
+   * Should be called by spawn logic to check if power bank creeps are needed
+   */
+  public requestSpawns(homeRoom: string): {
+    powerHarvesters: number;
+    healers: number;
+    powerCarriers: number;
+  } {
+    let totalHarvesters = 0;
+    let totalHealers = 0;
+    let totalCarriers = 0;
+
+    // Find operations that need this room's creeps
+    for (const [_, op] of this.operations) {
+      if (op.homeRoom !== homeRoom) continue;
+      if (op.state === "complete" || op.state === "failed") continue;
+
+      const required = this.getRequiredCreeps(op);
+      const current = {
+        attackers: op.assignedCreeps.attackers.filter(name => Game.creeps[name]).length,
+        healers: op.assignedCreeps.healers.filter(name => Game.creeps[name]).length,
+        carriers: op.assignedCreeps.carriers.filter(name => Game.creeps[name]).length
+      };
+
+      // Request missing creeps
+      if (op.state === "attacking" || op.state === "scouting") {
+        totalHarvesters += Math.max(0, required.attackers - current.attackers);
+        totalHealers += Math.max(0, required.healers - current.healers);
+      }
+
+      if (op.state === "collecting" || op.state === "attacking") {
+        totalCarriers += Math.max(0, required.carriers - current.carriers);
+      }
+    }
+
+    return {
+      powerHarvesters: totalHarvesters,
+      healers: totalHealers,
+      powerCarriers: totalCarriers
+    };
+  }
+
+  /**
+   * Get profitability estimate for a power bank operation
+   */
+  public getProfitability(pb: PowerBankEntry, homeRoom: string): {
+    power: number;
+    energyCost: number;
+    netProfit: number;
+    profitPerTick: number;
+  } {
+    const distance = Game.map.getRoomLinearDistance(pb.roomName, homeRoom);
+    const ticksRemaining = pb.decayTick - Game.time;
+
+    // Estimate creep costs (assume 2 attackers, 1 healer, 1 carrier)
+    const attackerCost = 2300; // Mid-tier attacker body
+    const healerCost = 600; // Mid-tier healer
+    const carrierCost = 2000; // Large carrier
+    const totalCreepCost = attackerCost * 2 + healerCost + carrierCost;
+
+    // Travel time estimate (both ways for carriers)
+    const travelTime = distance * 50; // Rough estimate
+
+    // Operation duration estimate
+    const hitsToDestroy = 2000000;
+    const dps = 600 * 2; // 2 attackers
+    const ticksToDestroy = Math.ceil(hitsToDestroy / dps);
+    const totalTicks = travelTime + ticksToDestroy;
+
+    // Energy cost including creep upkeep during operation
+    const energyCost = totalCreepCost + (totalTicks * 0.1); // Small upkeep cost
+
+    // Net profit
+    const powerValue = pb.power * 10; // Assume 10 energy value per power (market dependent)
+    const netProfit = powerValue - energyCost;
+    const profitPerTick = totalTicks > 0 ? netProfit / totalTicks : 0;
+
+    return {
+      power: pb.power,
+      energyCost,
+      netProfit,
+      profitPerTick
+    };
+  }
+
+  /**
    * Log current status
    */
   private logStatus(): void {

@@ -15,7 +15,29 @@ import type { CreepAction, CreepContext } from "./types";
 // =============================================================================
 
 /**
+ * Power bank damage reflection constant
+ * Power banks reflect this percentage of damage back to attackers
+ */
+const POWER_BANK_DAMAGE_REFLECTION = 0.5;
+
+/**
+ * Health threshold for power harvester retreat
+ * Retreat to healer when HP falls below this percentage
+ */
+const POWER_HARVESTER_RETREAT_THRESHOLD = 0.5;
+
+/**
+ * Check if a structure has a specific power effect active
+ */
+function hasActiveEffect(structure: RoomObject, effectType: PowerConstant): boolean {
+  const effects = (structure as { effects?: RoomObjectEffect[] }).effects;
+  return effects !== undefined && Array.isArray(effects) &&
+    effects.some(e => e.effect === effectType);
+}
+
+/**
  * PowerHarvester - Attack power banks in highway rooms.
+ * Power banks reflect 50% damage, so these creeps need healer support.
  */
 export function powerHarvester(ctx: CreepContext): CreepAction {
   const targetRoom = ctx.memory.targetRoom;
@@ -36,6 +58,21 @@ export function powerHarvester(ctx: CreepContext): CreepAction {
     // Power bank destroyed - return home
     delete ctx.memory.targetRoom;
     return { type: "moveToRoom", roomName: ctx.homeRoom };
+  }
+
+  // Check if heavily damaged - retreat to healer
+  if (ctx.creep.hits < ctx.creep.hitsMax * POWER_HARVESTER_RETREAT_THRESHOLD) {
+    // Find nearby healer
+    const healers = ctx.room.find(FIND_MY_CREEPS, {
+      filter: c => c.memory.role === "healer" && c.memory.targetRoom === targetRoom
+    });
+
+    if (healers.length > 0) {
+      const nearestHealer = ctx.creep.pos.findClosestByRange(healers);
+      if (nearestHealer && ctx.creep.pos.getRangeTo(nearestHealer) > 1) {
+        return { type: "moveTo", target: nearestHealer };
+      }
+    }
   }
 
   // Attack power bank
@@ -211,6 +248,7 @@ export function createPowerCreepContext(powerCreep: PowerCreep): PowerCreepConte
 /**
  * PowerQueen - Economy-focused Operator.
  * Uses powers to boost spawning, extensions, labs, and factory.
+ * Enhanced with power usage optimization and task scheduling.
  */
 export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
   // Check for renewal
@@ -220,42 +258,90 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
 
   const powers = ctx.availablePowers;
 
-  // Boost spawning
+  // Enable room power if not yet enabled
+  if (ctx.room.controller && !ctx.room.controller.isPowerEnabled) {
+    return { type: "enableRoom" };
+  }
+
+  // Priority 1: Generate ops when critically low
+  if (powers.includes(PWR_GENERATE_OPS) && ctx.ops < 20) {
+    return { type: "usePower", power: PWR_GENERATE_OPS };
+  }
+
+  // Priority 2: Boost spawning (high impact, 100 ops = 3x spawn speed for 1000 ticks)
   if (powers.includes(PWR_OPERATE_SPAWN) && ctx.ops >= 100) {
-    const busySpawn = ctx.spawns.find(s => s.spawning !== null);
+    // Find spawns that are actively spawning and don't have the effect
+    const busySpawn = ctx.spawns.find(s => {
+      const spawn = s as StructureSpawn;
+      return spawn.spawning !== null && !hasActiveEffect(spawn, PWR_OPERATE_SPAWN);
+    });
     if (busySpawn) return { type: "usePower", power: PWR_OPERATE_SPAWN, target: busySpawn };
   }
 
-  // Fill extensions
+  // Priority 3: Fill extensions (cost-effective, 2 ops for instant fill)
   if (powers.includes(PWR_OPERATE_EXTENSION) && ctx.ops >= 2) {
     const freeCapacity = ctx.extensions.reduce((sum, ext) => sum + ext.store.getFreeCapacity(RESOURCE_ENERGY), 0);
-    if (freeCapacity > 0 && ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 10000) {
-      return { type: "usePower", power: PWR_OPERATE_EXTENSION, target: ctx.storage };
+    // Only use if significant capacity needs filling and we have energy
+    if (freeCapacity > 1000 && ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 10000) {
+      // Check if effect is not already active
+      if (!hasActiveEffect(ctx.storage, PWR_OPERATE_EXTENSION)) {
+        return { type: "usePower", power: PWR_OPERATE_EXTENSION, target: ctx.storage };
+      }
     }
   }
 
-  // Boost storage capacity
-  if (powers.includes(PWR_OPERATE_STORAGE) && ctx.ops >= 100 && ctx.storage) {
-    if (ctx.storage.store.getUsedCapacity() > ctx.storage.store.getCapacity() * 0.9) {
-      return { type: "usePower", power: PWR_OPERATE_STORAGE, target: ctx.storage };
+  // Priority 4: Boost towers (high impact for defense, 10 ops = 2x effectiveness)
+  if (powers.includes(PWR_OPERATE_TOWER) && ctx.ops >= 10) {
+    const hostiles = ctx.room.find(FIND_HOSTILE_CREEPS);
+    if (hostiles.length > 0) {
+      const towers = ctx.room.find(FIND_MY_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_TOWER && !hasActiveEffect(s, PWR_OPERATE_TOWER)
+      }) as StructureTower[];
+      if (towers.length > 0) {
+        return { type: "usePower", power: PWR_OPERATE_TOWER, target: towers[0] };
+      }
     }
   }
 
-  // Boost lab reactions
+  // Priority 5: Boost lab reactions (10 ops = 2x reaction speed)
   if (powers.includes(PWR_OPERATE_LAB) && ctx.ops >= 10) {
-    const activeLab = ctx.labs.find(l => l.cooldown === 0 && l.mineralType);
+    // Find labs that are actively reacting and don't have the effect
+    const activeLab = ctx.labs.find(l => 
+      l.cooldown === 0 && 
+      l.mineralType && 
+      !hasActiveEffect(l, PWR_OPERATE_LAB)
+    );
     if (activeLab) return { type: "usePower", power: PWR_OPERATE_LAB, target: activeLab };
   }
 
-  // Boost factory
+  // Priority 6: Boost factory (100 ops = instant production)
   if (powers.includes(PWR_OPERATE_FACTORY) && ctx.ops >= 100 && ctx.factory) {
-    if (ctx.factory.cooldown === 0) {
+    // Only use if factory has work to do and effect not active
+    if (ctx.factory.cooldown === 0 && !hasActiveEffect(ctx.factory, PWR_OPERATE_FACTORY)) {
       return { type: "usePower", power: PWR_OPERATE_FACTORY, target: ctx.factory };
     }
   }
 
-  // Generate ops when low
-  if (powers.includes(PWR_GENERATE_OPS) && ctx.ops < 50) {
+  // Priority 7: Boost storage capacity when near full (100 ops = 2x capacity)
+  if (powers.includes(PWR_OPERATE_STORAGE) && ctx.ops >= 100 && ctx.storage) {
+    if (ctx.storage.store.getUsedCapacity() > ctx.storage.store.getCapacity() * 0.85 &&
+        !hasActiveEffect(ctx.storage, PWR_OPERATE_STORAGE)) {
+      return { type: "usePower", power: PWR_OPERATE_STORAGE, target: ctx.storage };
+    }
+  }
+
+  // Priority 8: Regen source when depleted (100 ops = instant regen)
+  if (powers.includes(PWR_REGEN_SOURCE) && ctx.ops >= 100) {
+    const depletedSource = ctx.room.find(FIND_SOURCES, {
+      filter: s => s.energy === 0 && s.ticksToRegeneration > 100
+    })[0];
+    if (depletedSource) {
+      return { type: "usePower", power: PWR_REGEN_SOURCE, target: depletedSource };
+    }
+  }
+
+  // Priority 9: Generate ops when below optimal level
+  if (powers.includes(PWR_GENERATE_OPS) && ctx.ops < 100) {
     return { type: "usePower", power: PWR_GENERATE_OPS };
   }
 
@@ -264,7 +350,7 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
     return { type: "moveToRoom", roomName: ctx.homeRoom };
   }
 
-  // Stay near storage
+  // Stay near storage for efficiency
   if (ctx.storage && ctx.powerCreep.pos.getRangeTo(ctx.storage) > 3) {
     return { type: "moveTo", target: ctx.storage };
   }
@@ -275,6 +361,7 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
 /**
  * PowerWarrior - Combat-support Power Creep.
  * Uses powers for defense and offense.
+ * Enhanced with priority-based power usage for combat situations.
  */
 export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
   // Check for renewal
@@ -283,49 +370,116 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
   }
 
   const powers = ctx.availablePowers;
+  const hostiles = safeFind(ctx.room, FIND_HOSTILE_CREEPS);
+  const hostileStructures = safeFind(ctx.room, FIND_HOSTILE_STRUCTURES);
 
-  // Generate ops when low
-  if (powers.includes(PWR_GENERATE_OPS) && ctx.ops < 50) {
+  // Enable room power if not yet enabled
+  if (ctx.room.controller && !ctx.room.controller.isPowerEnabled) {
+    return { type: "enableRoom" };
+  }
+
+  // Priority 1: Generate ops when critically low
+  if (powers.includes(PWR_GENERATE_OPS) && ctx.ops < 20) {
     return { type: "usePower", power: PWR_GENERATE_OPS };
   }
 
-  // Boost towers for defense - use safeFind for hostile creeps
-  if (powers.includes(PWR_OPERATE_TOWER) && ctx.ops >= 10) {
-    const hostiles = safeFind(ctx.room, FIND_HOSTILE_CREEPS);
-    if (hostiles.length > 0) {
-      const tower = ctx.room.find(FIND_MY_STRUCTURES, {
-        filter: s => s.structureType === STRUCTURE_TOWER
-      })[0] as StructureTower | undefined;
-      if (tower) return { type: "usePower", power: PWR_OPERATE_TOWER, target: tower };
+  // Priority 2: Shield allies in combat (10 ops = 5k HP shield)
+  if (powers.includes(PWR_SHIELD) && ctx.ops >= 10 && hostiles.length > 0) {
+    const damagedAlly = ctx.room.find(FIND_MY_CREEPS, {
+      filter: c => {
+        const mem = c.memory as { family?: string };
+        return mem.family === "military" && c.hits < c.hitsMax * 0.7;
+      }
+    })[0];
+    if (damagedAlly) {
+      return { type: "usePower", power: PWR_SHIELD, target: damagedAlly };
     }
   }
 
-  // Fortify ramparts
-  if (powers.includes(PWR_FORTIFY) && ctx.ops >= 5) {
-    const lowRampart = ctx.room.find(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_RAMPART && s.hits < 1000000
-    })[0] as StructureRampart | undefined;
-    if (lowRampart) return { type: "usePower", power: PWR_FORTIFY, target: lowRampart };
-  }
-
-  // Disrupt enemy spawns - use safeFind for hostile spawns
+  // Priority 3: Disrupt enemy spawns (high impact, 10 ops = spawn pause)
   if (powers.includes(PWR_DISRUPT_SPAWN) && ctx.ops >= 10) {
-    const enemySpawn = safeFind(ctx.room, FIND_HOSTILE_SPAWNS)[0];
+    const enemySpawns = safeFind(ctx.room, FIND_HOSTILE_SPAWNS, {
+      filter: s => !hasActiveEffect(s, PWR_DISRUPT_SPAWN)
+    });
+    const enemySpawn = enemySpawns[0];
     if (enemySpawn) return { type: "usePower", power: PWR_DISRUPT_SPAWN, target: enemySpawn };
   }
 
-  // Disrupt enemy towers - use safeFind for hostile structures
+  // Priority 4: Disrupt enemy towers (10 ops = disable tower)
   if (powers.includes(PWR_DISRUPT_TOWER) && ctx.ops >= 10) {
     const enemyTowers = safeFind(ctx.room, FIND_HOSTILE_STRUCTURES, {
-      filter: (s): s is StructureTower => s.structureType === STRUCTURE_TOWER
+      filter: (s): s is StructureTower => 
+        s.structureType === STRUCTURE_TOWER &&
+        !hasActiveEffect(s, PWR_DISRUPT_TOWER)
     });
     const enemyTower = enemyTowers[0];
     if (enemyTower) return { type: "usePower", power: PWR_DISRUPT_TOWER, target: enemyTower };
   }
 
-  // Move to home room
+  // Priority 5: Boost friendly towers for defense (10 ops = 2x effectiveness)
+  if (powers.includes(PWR_OPERATE_TOWER) && ctx.ops >= 10 && hostiles.length > 0) {
+    const towers = ctx.room.find(FIND_MY_STRUCTURES, {
+      filter: s => 
+        s.structureType === STRUCTURE_TOWER &&
+        !hasActiveEffect(s, PWR_OPERATE_TOWER)
+    }) as StructureTower[];
+    const tower = towers[0];
+    if (tower) return { type: "usePower", power: PWR_OPERATE_TOWER, target: tower };
+  }
+
+  // Priority 6: Fortify critical ramparts (5 ops = instant boost)
+  if (powers.includes(PWR_FORTIFY) && ctx.ops >= 5 && hostiles.length > 0) {
+    // Find critical ramparts (protecting spawns, storage, terminal)
+    const criticalStructures = [
+      ...ctx.spawns,
+      ctx.storage,
+      ctx.terminal
+    ].filter(s => s !== undefined);
+
+    for (const structure of criticalStructures) {
+      const rampart = ctx.room.lookForAt(LOOK_STRUCTURES, structure.pos).find(
+        s => s.structureType === STRUCTURE_RAMPART
+      ) as StructureRampart | undefined;
+      
+      if (rampart && rampart.hits < rampart.hitsMax * 0.5) {
+        return { type: "usePower", power: PWR_FORTIFY, target: rampart };
+      }
+    }
+
+    // Fortify any low rampart
+    const lowRampart = ctx.room.find(FIND_STRUCTURES, {
+      filter: s => s.structureType === STRUCTURE_RAMPART && s.hits < 500000
+    })[0] as StructureRampart | undefined;
+    if (lowRampart) return { type: "usePower", power: PWR_FORTIFY, target: lowRampart };
+  }
+
+  // Priority 7: Disrupt enemy terminals (50 ops = disable terminal)
+  if (powers.includes(PWR_DISRUPT_TERMINAL) && ctx.ops >= 50) {
+    const enemyTerminal = hostileStructures.find(
+      s => s.structureType === STRUCTURE_TERMINAL &&
+        !hasActiveEffect(s, PWR_DISRUPT_TERMINAL)
+    ) as StructureTerminal | undefined;
+    if (enemyTerminal) {
+      return { type: "usePower", power: PWR_DISRUPT_TERMINAL, target: enemyTerminal };
+    }
+  }
+
+  // Priority 8: Generate ops when below optimal level
+  if (powers.includes(PWR_GENERATE_OPS) && ctx.ops < 100) {
+    return { type: "usePower", power: PWR_GENERATE_OPS };
+  }
+
+  // Move to home room or combat zone
   if (!ctx.isInHomeRoom) {
     return { type: "moveToRoom", roomName: ctx.homeRoom };
+  }
+
+  // Position near threats for quick response
+  if (hostiles.length > 0) {
+    const nearest = ctx.powerCreep.pos.findClosestByRange(hostiles);
+    if (nearest && ctx.powerCreep.pos.getRangeTo(nearest) > 5) {
+      return { type: "moveTo", target: nearest };
+    }
   }
 
   return { type: "idle" };
