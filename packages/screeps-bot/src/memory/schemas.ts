@@ -106,6 +106,30 @@ export interface ResourceMarketData {
   trend: -1 | 0 | 1;
   /** Last update tick */
   lastUpdate: number;
+  /** Price volatility (standard deviation / average) */
+  volatility?: number;
+  /** Predicted next price (simple moving average) */
+  predictedPrice?: number;
+}
+
+/**
+ * Order statistics for tracking
+ */
+export interface OrderStats {
+  /** Order ID */
+  orderId: string;
+  /** Resource type */
+  resource: ResourceConstant;
+  /** Order type */
+  type: "buy" | "sell";
+  /** Created tick */
+  created: number;
+  /** Last extended tick */
+  lastExtended?: number;
+  /** Total amount traded */
+  totalTraded: number;
+  /** Total profit/cost */
+  totalValue: number;
 }
 
 /**
@@ -116,6 +140,12 @@ export interface MarketMemory {
   resources: Record<string, ResourceMarketData>;
   /** Last full market scan tick */
   lastScan: number;
+  /** Order tracking */
+  orders?: Record<string, OrderStats>;
+  /** Total profit from trading */
+  totalProfit?: number;
+  /** Last balance tick */
+  lastBalance?: number;
 }
 
 /**

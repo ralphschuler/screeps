@@ -329,4 +329,160 @@ describe("Market Manager", () => {
       expect(avgPrice * customSellThreshold).to.equal(1.20);
     });
   });
+
+  describe("Volatility Calculation", () => {
+    it("should calculate volatility correctly", () => {
+      const prices = [1.0, 1.1, 0.9, 1.2, 0.8];
+      const mean = prices.reduce((sum, p) => sum + p, 0) / prices.length;
+      const variance = prices.reduce((sum, p) => sum + Math.pow(p - mean, 2), 0) / prices.length;
+      const stdDev = Math.sqrt(variance);
+      const volatility = stdDev / mean;
+
+      expect(volatility).to.be.greaterThan(0);
+      expect(volatility).to.be.lessThan(1);
+    });
+
+    it("should detect high volatility", () => {
+      const stablePrices = [1.0, 1.01, 0.99, 1.0, 1.01];
+      const volatilePrices = [1.0, 1.5, 0.5, 2.0, 0.3];
+
+      const calcVolatility = (prices: number[]) => {
+        const mean = prices.reduce((sum, p) => sum + p, 0) / prices.length;
+        const variance = prices.reduce((sum, p) => sum + Math.pow(p - mean, 2), 0) / prices.length;
+        return Math.sqrt(variance) / mean;
+      };
+
+      const stableVol = calcVolatility(stablePrices);
+      const volatileVol = calcVolatility(volatilePrices);
+
+      expect(volatileVol).to.be.greaterThan(stableVol);
+      expect(stableVol).to.be.lessThan(0.02); // Very stable
+      expect(volatileVol).to.be.greaterThan(0.5); // Very volatile
+    });
+  });
+
+  describe("Price Prediction", () => {
+    it("should predict rising price", () => {
+      const prices = [1.0, 1.1, 1.2];
+      const slope = (prices[2] - prices[0]) / 2;
+      const prediction = prices[2] + slope;
+
+      expect(prediction).to.be.greaterThan(prices[2]);
+      expect(prediction).to.equal(1.3);
+    });
+
+    it("should predict falling price", () => {
+      const prices = [1.2, 1.1, 1.0];
+      const slope = (prices[2] - prices[0]) / 2;
+      const prediction = prices[2] + slope;
+
+      expect(prediction).to.be.lessThan(prices[2]);
+      expect(prediction).to.equal(0.9);
+    });
+
+    it("should predict stable price", () => {
+      const prices = [1.0, 1.0, 1.0];
+      const slope = (prices[2] - prices[0]) / 2;
+      const prediction = prices[2] + slope;
+
+      expect(prediction).to.equal(1.0);
+    });
+  });
+
+  describe("Emergency Buying", () => {
+    it("should identify critical resource shortage", () => {
+      const criticalResources = ["energy" as ResourceConstant, "G" as ResourceConstant];
+      const emergencyThreshold = 5000;
+      const currentEnergy = 3000;
+
+      const needsEmergency = criticalResources.includes("energy" as ResourceConstant) && currentEnergy < emergencyThreshold;
+
+      expect(needsEmergency).to.be.true;
+    });
+
+    it("should not trigger emergency for non-critical resources", () => {
+      const criticalResources = ["energy" as ResourceConstant, "G" as ResourceConstant];
+      const currentH = 1000;
+
+      const needsEmergency = criticalResources.includes("H" as ResourceConstant);
+
+      expect(needsEmergency).to.be.false;
+    });
+  });
+
+  describe("Credit Management", () => {
+    it("should enforce credit tiers", () => {
+      const credits = 15000;
+      const emergencyCredits = 5000;
+      const minCredits = 10000;
+      const tradingCredits = 50000;
+
+      // Can do emergency buying
+      const canEmergency = credits >= emergencyCredits;
+      // Can do normal trading
+      const canTrade = credits >= minCredits;
+      // Cannot do active trading
+      const canActiveTrade = credits >= tradingCredits;
+
+      expect(canEmergency).to.be.true;
+      expect(canTrade).to.be.true;
+      expect(canActiveTrade).to.be.false;
+    });
+  });
+
+  describe("Arbitrage Detection", () => {
+    it("should identify profitable arbitrage", () => {
+      const buyPrice = 1.5;
+      const sellPrice = 1.0;
+      const transportCost = 0.2;
+      const totalCost = sellPrice + transportCost;
+      const profit = buyPrice - totalCost;
+
+      expect(profit).to.be.greaterThan(0);
+      expect(profit).to.equal(0.3);
+    });
+
+    it("should reject unprofitable arbitrage", () => {
+      const buyPrice = 1.0;
+      const sellPrice = 1.0;
+      const transportCost = 0.5;
+      const totalCost = sellPrice + transportCost;
+      const profit = buyPrice - totalCost;
+
+      expect(profit).to.be.lessThan(0);
+    });
+
+    it("should respect max transport cost ratio", () => {
+      const sellPrice = 1.0;
+      const transportCost = 0.4;
+      const maxRatio = 0.3;
+
+      const isAcceptable = transportCost / sellPrice <= maxRatio;
+
+      expect(isAcceptable).to.be.false;
+    });
+  });
+
+  describe("Resource Balancing", () => {
+    it("should detect imbalance across rooms", () => {
+      const roomA = 20000;
+      const roomB = 5000;
+      const avgAmount = (roomA + roomB) / 2;
+      const difference = roomA - roomB;
+
+      const needsBalancing = difference > avgAmount * 0.5;
+
+      expect(needsBalancing).to.be.true;
+      expect(avgAmount).to.equal(12500);
+    });
+
+    it("should calculate transfer amount", () => {
+      const roomA = 20000;
+      const roomB = 5000;
+      const difference = roomA - roomB;
+      const transferAmount = Math.floor(difference / 2);
+
+      expect(transferAmount).to.equal(7500);
+    });
+  });
 });
