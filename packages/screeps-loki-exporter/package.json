@@ -1,0 +1,22 @@
+{
+  "name": "screeps-loki-exporter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Grafana Loki exporter for Screeps logs via console websocket",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "screeps-api": "^1.13.0",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
