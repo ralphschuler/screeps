@@ -22,7 +22,10 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Install git (required for cloning typed-screeps)
-RUN apk add --no-cache git
+# Workaround for busybox trigger issues with QEMU emulation in multi-arch builds:
+# We update apk-tools first, then install git from the updated toolchain
+RUN apk upgrade --no-cache apk-tools && \
+    apk add --no-cache git
 
 # Copy built files and dependencies
 COPY --from=builder /app/dist ./dist

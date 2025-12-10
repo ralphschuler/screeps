@@ -11,7 +11,10 @@ LABEL org.opencontainers.image.source=https://github.com/ralphschuler/screeps \
       org.opencontainers.image.licenses=MIT
 
 # Install git (required for simple-git to clone repositories)
-RUN apk add --no-cache git
+# Workaround for busybox trigger issues with QEMU emulation in multi-arch builds:
+# We update apk-tools first, then install git from the updated toolchain
+RUN apk upgrade --no-cache apk-tools && \
+    apk add --no-cache git
 
 # Set working directory
 WORKDIR /app
