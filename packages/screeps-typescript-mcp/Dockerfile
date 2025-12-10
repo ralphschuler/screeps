@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:18-slim AS builder
 
 WORKDIR /app
 
@@ -17,15 +17,14 @@ COPY src ./src
 RUN npm run build
 
 # Runtime stage
-FROM node:18-alpine
+FROM node:18-slim
 
 WORKDIR /app
 
 # Install git (required for cloning typed-screeps)
-# Workaround for busybox trigger issues with QEMU emulation in multi-arch builds:
-# We update apk-tools first, then install git from the updated toolchain
-RUN apk upgrade --no-cache apk-tools && \
-    apk add --no-cache git
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy built files and dependencies
 COPY --from=builder /app/dist ./dist
