@@ -124,7 +124,7 @@ describe("UnifiedStatsManager", function () {
       // Create mock creeps with roles
       const mockCreep1: any = {
         name: "harvester1",
-        memory: { role: "harvester", homeRoom: "W1N1" },
+        memory: { role: "harvester", homeRoom: "W1N1", working: true, state: { action: "harvesting" } },
         room: { name: "W1N1" },
         body: [{ type: WORK }, { type: CARRY }, { type: MOVE }],
         hits: 300,
@@ -136,12 +136,12 @@ describe("UnifiedStatsManager", function () {
 
       const mockCreep2: any = {
         name: "harvester2",
-        memory: { role: "harvester", homeRoom: "W1N1" },
+        memory: { role: "harvester", homeRoom: "W1N1", state: { action: "idle" } },
         room: { name: "W1N1" },
         body: [{ type: WORK }, { type: CARRY }, { type: MOVE }],
         hits: 300,
         hitsMax: 300,
-        ticksToLive: 1500,
+        ticksToLive: 1200,
         fatigue: 0,
         spawning: false
       };
@@ -166,6 +166,13 @@ describe("UnifiedStatsManager", function () {
       assert.equal(snapshot.roles.harvester.count, 2, "Should count 2 harvester creeps");
       assert.isDefined(snapshot.roles.harvester.avgCpu, "Should have avgCpu");
       assert.isDefined(snapshot.roles.harvester.peakCpu, "Should have peakCpu");
+      
+      // Enhanced stats
+      assert.equal(snapshot.roles.harvester.spawningCount, 0, "Should have 0 spawning creeps");
+      assert.equal(snapshot.roles.harvester.idleCount, 1, "Should have 1 idle creep");
+      assert.equal(snapshot.roles.harvester.activeCount, 1, "Should have 1 active creep");
+      assert.equal(snapshot.roles.harvester.totalBodyParts, 6, "Should have 6 total body parts");
+      assert.approximately(snapshot.roles.harvester.avgTicksToLive, 1350, 1, "Should have average TTL of 1350");
     });
 
     it("should track room execution", function () {
@@ -230,7 +237,7 @@ describe("UnifiedStatsManager", function () {
       // Create mock creeps with roles
       const mockCreep1: any = {
         name: "upgrader1",
-        memory: { role: "upgrader", homeRoom: "W1N1" },
+        memory: { role: "upgrader", homeRoom: "W1N1", working: true, state: { action: "upgrading" } },
         room: { name: "W1N1" },
         body: [{ type: WORK }, { type: CARRY }, { type: MOVE }],
         hits: 300,
@@ -252,6 +259,15 @@ describe("UnifiedStatsManager", function () {
       assert.equal(mem.stats.roles.upgrader.count, 1);
       assert.isDefined(mem.stats.roles.upgrader.avg_cpu);
       assert.isDefined(mem.stats.roles.upgrader.peak_cpu);
+      
+      // Enhanced role stats
+      assert.isDefined(mem.stats.roles.upgrader.spawning_count);
+      assert.isDefined(mem.stats.roles.upgrader.idle_count);
+      assert.isDefined(mem.stats.roles.upgrader.active_count);
+      assert.isDefined(mem.stats.roles.upgrader.avg_ticks_to_live);
+      assert.isDefined(mem.stats.roles.upgrader.total_body_parts);
+      assert.equal(mem.stats.roles.upgrader.active_count, 1);
+      assert.equal(mem.stats.roles.upgrader.total_body_parts, 3);
     });
 
     it("should export pheromones in room stats", function () {
