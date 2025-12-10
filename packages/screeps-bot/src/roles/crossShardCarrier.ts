@@ -296,7 +296,12 @@ export function handleCrossShardArrival(creep: Creep): void {
   const memory = creep.memory as CrossShardCarrierMemory;
   
   // If creep has a transfer request and is on the target shard, switch to delivering
-  if (memory.targetShard === Game.shard?.name && memory.state !== "delivering") {
+  // Only transition if not already in a final state
+  if (
+    memory.targetShard === Game.shard?.name &&
+    memory.state !== "delivering" &&
+    creep.store.getUsedCapacity() > 0
+  ) {
     memory.state = "delivering";
     logger.info(
       `CrossShardCarrier ${creep.name} arrived on target shard ${Game.shard?.name}`,

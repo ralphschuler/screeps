@@ -225,8 +225,8 @@ describe("Cross-Shard Resource Transfer", () => {
 
       const efficiency = calculateEfficiency(history);
 
-      // Only the second entry counts: 15/20 = 0.75
-      expect(efficiency).to.be.closeTo(0.375, 0.01); // 0.75 / 2 entries
+      // Only the second entry counts (first is skipped due to cpuLimit=0): 15/20 / 2 total entries = 0.375
+      expect(efficiency).to.be.closeTo(0.375, 0.01);
     });
 
     it("should identify high efficiency (near 1.0)", () => {

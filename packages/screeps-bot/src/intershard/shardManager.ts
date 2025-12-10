@@ -430,6 +430,42 @@ export class ShardManager {
   }
 
   /**
+   * Calculate weight for a shard based on role, load, and efficiency
+   */
+  private calculateShardWeight(
+    shard: ShardState,
+    shardName: string,
+    currentShard: string
+  ): number {
+    let weight = ROLE_CPU_WEIGHTS[shard.role];
+
+    // Adjust weight based on bucket level
+    const bucketLevel = shardName === currentShard ? Game.cpu.bucket : shard.health.bucketLevel;
+    if (bucketLevel < 2000) {
+      weight *= 0.8; // Reduce allocation if bucket is critically low
+    } else if (bucketLevel < 5000) {
+      weight *= 0.9; // Slightly reduce allocation if bucket is low
+    } else if (bucketLevel > 9000) {
+      weight *= 1.1; // Increase allocation if bucket is very high
+    }
+
+    // Adjust based on CPU efficiency (high usage = needs more)
+    const efficiency = this.calculateCpuEfficiency(shard);
+    if (efficiency > 0.95) {
+      weight *= 1.15; // Shard is using almost all CPU, likely needs more
+    } else if (efficiency < 0.6) {
+      weight *= 0.85; // Shard is underutilizing CPU
+    }
+
+    // War shards with high war index get priority
+    if (shard.role === "war" && shard.health.warIndex > 50) {
+      weight *= 1.2;
+    }
+
+    return weight;
+  }
+
+  /**
    * Distribute CPU limits across shards based on roles and load
    */
   private distributeCpuLimits(): void {
@@ -450,41 +486,7 @@ export class ShardManager {
         const shard = shards[name];
         if (!shard) continue;
 
-        let weight = ROLE_CPU_WEIGHTS[shard.role];
-
-        // Adjust weight based on bucket level (reduce CPU for low bucket shards)
-        if (name === currentShard) {
-          if (Game.cpu.bucket < 2000) {
-            weight *= 0.8; // Reduce allocation if bucket is critically low
-          } else if (Game.cpu.bucket < 5000) {
-            weight *= 0.9; // Slightly reduce allocation if bucket is low
-          } else if (Game.cpu.bucket > 9000) {
-            weight *= 1.1; // Increase allocation if bucket is very high
-          }
-        } else {
-          // For other shards, use their reported bucket levels
-          if (shard.health.bucketLevel < 2000) {
-            weight *= 0.8;
-          } else if (shard.health.bucketLevel < 5000) {
-            weight *= 0.9;
-          } else if (shard.health.bucketLevel > 9000) {
-            weight *= 1.1;
-          }
-        }
-
-        // Adjust based on CPU efficiency (high usage = needs more)
-        const efficiency = this.calculateCpuEfficiency(shard);
-        if (efficiency > 0.95) {
-          weight *= 1.15; // Shard is using almost all CPU, likely needs more
-        } else if (efficiency < 0.6) {
-          weight *= 0.85; // Shard is underutilizing CPU
-        }
-
-        // War shards with high war index get priority
-        if (shard.role === "war" && shard.health.warIndex > 50) {
-          weight *= 1.2;
-        }
-
+        const weight = this.calculateShardWeight(shard, name, currentShard);
         weights[name] = weight;
         totalWeight += weight;
       }
