@@ -38,9 +38,9 @@ export interface UnifiedStatsConfig {
   trackNativeCalls: boolean;
   /** Log summary interval in ticks (0 = never) */
   logInterval: number;
-  /** Update interval for memory segment persistence (in ticks) */
+  /** Update interval for memory segment persistence (in ticks, requires an active RawMemory segment) */
   segmentUpdateInterval: number;
-  /** Memory segment ID for stats storage */
+  /** Memory segment ID for stats storage (request via RawMemory.setActiveSegments) */
   segmentId: number;
   /** Maximum data points to keep in segment history */
   maxHistoryPoints: number;
@@ -256,8 +256,10 @@ export class UnifiedStatsManager {
    */
   public initialize(): void {
     // Request memory segment for historical data
-    RawMemory.setActiveSegments([this.config.segmentId]);
-    this.segmentRequested = true;
+    if (RawMemory.segments[this.config.segmentId] === undefined) {
+      RawMemory.setActiveSegments([this.config.segmentId]);
+      this.segmentRequested = true;
+    }
     logger.info("Unified stats system initialized", { subsystem: "Stats" });
   }
 
@@ -266,7 +268,11 @@ export class UnifiedStatsManager {
    */
   public startTick(): void {
     if (!this.config.enabled) return;
-    
+
+    // Keep the stats segment active for the next tick
+    RawMemory.setActiveSegments([this.config.segmentId]);
+    this.segmentRequested = true;
+
     this.currentSnapshot = this.createEmptySnapshot();
     this.nativeCallsThisTick = this.createEmptyNativeCalls();
     this.subsystemMeasurements.clear();
@@ -768,8 +774,70 @@ export class UnifiedStatsManager {
    * Update memory segment with historical data
    */
   private updateSegment(): void {
-    // TODO: Implement segment persistence if needed
-    // For now, Memory.stats is sufficient for the influx exporter
+    if (!this.config.enabled) return;
+
+    // If the segment is not yet active, request it and retry next tick
+    if (RawMemory.segments[this.config.segmentId] === undefined) {
+      if (!this.segmentRequested) {
+        RawMemory.setActiveSegments([this.config.segmentId]);
+        this.segmentRequested = true;
+      }
+      return;
+    }
+
+    this.segmentRequested = false;
+
+    const SEGMENT_SIZE_LIMIT = 100 * 1024; // 100KB limit per Screeps rules
+
+    // Load existing history if present
+    let history: StatsSnapshot[] = [];
+    const rawSegment = RawMemory.segments[this.config.segmentId];
+    if (rawSegment) {
+      try {
+        const parsed = JSON.parse(rawSegment);
+        if (Array.isArray(parsed)) {
+          history = parsed as StatsSnapshot[];
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        logger.error(`Failed to parse stats segment: ${errorMessage}`, { subsystem: "Stats" });
+      }
+    }
+
+    // Append current snapshot and trim to configured history length
+    history.push(this.currentSnapshot);
+    if (history.length > this.config.maxHistoryPoints) {
+      history = history.slice(-this.config.maxHistoryPoints);
+    }
+
+    // Serialize and ensure it fits within the segment limit
+    let json = JSON.stringify(history);
+    if (json.length > SEGMENT_SIZE_LIMIT) {
+      logger.warn(
+        `Stats segment size ${json.length} exceeds ${SEGMENT_SIZE_LIMIT} bytes, trimming history`,
+        { subsystem: "Stats" }
+      );
+
+      while (json.length > SEGMENT_SIZE_LIMIT && history.length > 1) {
+        history.shift();
+        json = JSON.stringify(history);
+      }
+
+      if (json.length > SEGMENT_SIZE_LIMIT) {
+        logger.error(
+          `Failed to persist stats segment within ${SEGMENT_SIZE_LIMIT} bytes after trimming`,
+          { subsystem: "Stats" }
+        );
+        return;
+      }
+    }
+
+    try {
+      RawMemory.segments[this.config.segmentId] = json;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.error(`Failed to save stats segment: ${errorMessage}`, { subsystem: "Stats" });
+    }
   }
 
   /**
