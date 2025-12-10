@@ -34,7 +34,7 @@
  * - This allows smooth multi-target operations without appearing "idle"
  */
 
-import type { CreepAction, CreepContext } from "./types";
+import type { CreepAction, CreepContext, StuckTrackingMemory } from "./types";
 import type { CreepState } from "../../memory/schemas";
 
 /**
@@ -89,23 +89,25 @@ function isStateValid(state: CreepState | undefined, ctx: CreepContext): boolean
   // Stationary actions like harvest/upgrade are exempt from this check
   const stationaryActions = new Set(["harvest", "harvestMineral", "upgrade"]);
   if (!stationaryActions.has(state.action)) {
-    // Type-safe memory access with runtime validation
-    interface StuckTrackingMemory {
-      lastPos?: string;
-      lastPosTick?: number;
-    }
+    // Type-safe memory access - StuckTrackingMemory extends CreepMemory
     const memory = ctx.creep.memory as unknown as StuckTrackingMemory;
-    const currentPosStr = `${ctx.creep.pos.x},${ctx.creep.pos.y},${ctx.creep.pos.roomName}`;
     
-    if (memory.lastPos === currentPosStr && typeof memory.lastPosTick === "number") {
+    // Efficient position comparison using separate coordinates
+    const hasMoved = memory.lastPosX !== ctx.creep.pos.x ||
+                     memory.lastPosY !== ctx.creep.pos.y ||
+                     memory.lastPosRoom !== ctx.creep.pos.roomName;
+    
+    if (!hasMoved && typeof memory.lastPosTick === "number") {
       const ticksStuck = Game.time - memory.lastPosTick;
       if (ticksStuck >= STUCK_DETECTION_THRESHOLD) {
         // Creep hasn't moved for STUCK_DETECTION_THRESHOLD ticks - state is invalid
         return false;
       }
-    } else {
-      // Update position tracking
-      memory.lastPos = currentPosStr;
+    } else if (hasMoved) {
+      // Update position tracking only when position changes
+      memory.lastPosX = ctx.creep.pos.x;
+      memory.lastPosY = ctx.creep.pos.y;
+      memory.lastPosRoom = ctx.creep.pos.roomName;
       memory.lastPosTick = Game.time;
     }
   }
