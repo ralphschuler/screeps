@@ -37,6 +37,12 @@ export function extractFrontMatter(content: string): { frontMatter: Record<strin
 
 /**
  * Remove markdown formatting to get plain text
+ * 
+ * Security Note: This function is used to extract plain text from markdown
+ * for indexing and search purposes. The output is never rendered as HTML
+ * or executed. The input source is from the trusted official Screeps
+ * documentation repository. Multiple sanitization passes are used to remove
+ * HTML tags and any remaining angle brackets.
  */
 export function stripMarkdown(content: string): string {
   return content
