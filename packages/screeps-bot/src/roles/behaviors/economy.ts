@@ -29,6 +29,17 @@ function isDeposit(obj: unknown): obj is Deposit {
 }
 
 // =============================================================================
+// Constants
+// =============================================================================
+
+/**
+ * Cache duration for stationary harvester structures (containers, links).
+ * Harvesters are stationary workers, so their nearby structures rarely change.
+ * 50 ticks provides good balance between CPU savings and responsiveness to changes.
+ */
+const HARVESTER_CACHE_DURATION = 50;
+
+// =============================================================================
 // Common Patterns
 // =============================================================================
 
@@ -272,14 +283,14 @@ function assignSource(ctx: CreepContext): Source | null {
 
 /**
  * OPTIMIZATION: Cached version of findNearbyContainer for stationary harvesters.
- * Caches the container ID for 50 ticks to avoid repeated findInRange calls.
+ * Caches the container ID for HARVESTER_CACHE_DURATION ticks to avoid repeated findInRange calls.
  * Harvesters are stationary, so their nearby structures don't change often.
  */
 function findNearbyContainerCached(creep: Creep): StructureContainer | undefined {
-  const memory = creep.memory as unknown as { nearbyContainerId?: Id<StructureContainer>; nearbyContainerTick?: number };
+  const memory = creep.memory as unknown as SwarmCreepMemory;
   
   // Check if we have a cached container ID and if it's still valid
-  if (memory.nearbyContainerId && memory.nearbyContainerTick && (Game.time - memory.nearbyContainerTick) < 50) {
+  if (memory.nearbyContainerId && memory.nearbyContainerTick && (Game.time - memory.nearbyContainerTick) < HARVESTER_CACHE_DURATION) {
     const container = Game.getObjectById(memory.nearbyContainerId);
     // Verify container still exists and has space
     if (container && container.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
@@ -305,14 +316,14 @@ function findNearbyContainerCached(creep: Creep): StructureContainer | undefined
 
 /**
  * OPTIMIZATION: Cached version of findNearbyLink for stationary harvesters.
- * Caches the link ID for 50 ticks to avoid repeated findInRange calls.
+ * Caches the link ID for HARVESTER_CACHE_DURATION ticks to avoid repeated findInRange calls.
  * Harvesters are stationary, so their nearby structures don't change often.
  */
 function findNearbyLinkCached(creep: Creep): StructureLink | undefined {
-  const memory = creep.memory as unknown as { nearbyLinkId?: Id<StructureLink>; nearbyLinkTick?: number };
+  const memory = creep.memory as unknown as SwarmCreepMemory;
   
   // Check if we have a cached link ID and if it's still valid
-  if (memory.nearbyLinkId && memory.nearbyLinkTick && (Game.time - memory.nearbyLinkTick) < 50) {
+  if (memory.nearbyLinkId && memory.nearbyLinkTick && (Game.time - memory.nearbyLinkTick) < HARVESTER_CACHE_DURATION) {
     const link = Game.getObjectById(memory.nearbyLinkId);
     // Verify link still exists and has space
     if (link && link.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
@@ -899,13 +910,13 @@ export function remoteHarvester(ctx: CreepContext): CreepAction {
 /**
  * OPTIMIZATION: Cached version of finding nearby container for remote harvesters.
  * Remote harvesters are stationary like regular harvesters, so we cache the container
- * near their assigned source for 50 ticks to avoid repeated findInRange calls.
+ * near their assigned source for HARVESTER_CACHE_DURATION ticks to avoid repeated findInRange calls.
  */
 function findRemoteContainerCached(creep: Creep, source: Source): StructureContainer | undefined {
-  const memory = creep.memory as unknown as { remoteContainerId?: Id<StructureContainer>; remoteContainerTick?: number };
+  const memory = creep.memory as unknown as SwarmCreepMemory;
   
   // Check if we have a cached container ID and if it's still valid
-  if (memory.remoteContainerId && memory.remoteContainerTick && (Game.time - memory.remoteContainerTick) < 50) {
+  if (memory.remoteContainerId && memory.remoteContainerTick && (Game.time - memory.remoteContainerTick) < HARVESTER_CACHE_DURATION) {
     const container = Game.getObjectById(memory.remoteContainerId);
     if (container) {
       return container;

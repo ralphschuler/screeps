@@ -574,6 +574,20 @@ export interface SwarmCreepMemory {
   transferRequest?: TransferRequestAssignment;
   /** Version for memory migration */
   version: number;
+  
+  // Harvester optimizations - cache nearby structures
+  /** Cached nearby container ID (for harvesters) */
+  nearbyContainerId?: Id<StructureContainer>;
+  /** Tick when container was cached (for harvesters) */
+  nearbyContainerTick?: number;
+  /** Cached nearby link ID (for harvesters) */
+  nearbyLinkId?: Id<StructureLink>;
+  /** Tick when link was cached (for harvesters) */
+  nearbyLinkTick?: number;
+  /** Cached remote container ID (for remote harvesters) */
+  remoteContainerId?: Id<StructureContainer>;
+  /** Tick when remote container was cached (for remote harvesters) */
+  remoteContainerTick?: number;
 }
 
 /**
