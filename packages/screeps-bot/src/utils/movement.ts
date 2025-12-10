@@ -306,19 +306,63 @@ function deserializePath(serialized: SerializedPos[]): RoomPosition[] {
  * Returns a string like "12345678" where each digit is a direction constant.
  *
  * Inspired by Traveler's serializePath method.
+ *
+ * **FIXED**: Room transitions are now handled correctly. When a path crosses a room
+ * boundary, we calculate the direction considering the wrap-around at room edges.
+ * For example, moving from (49, 25) in E1N1 to (0, 25) in E2N1 is direction RIGHT (3).
  */
 function serializePathToString(startPos: RoomPosition, path: RoomPosition[]): string {
   let serializedPath = '';
   let lastPosition = startPos;
   
   for (const position of path) {
-    // Only serialize within the same room
     if (position.roomName === lastPosition.roomName) {
+      // Same room - use simple direction calculation
       serializedPath += lastPosition.getDirectionTo(position);
     } else {
-      // For cross-room paths, we need to handle room transitions
-      // Add the direction to the exit
-      serializedPath += lastPosition.getDirectionTo(position);
+      // Cross-room transition - calculate direction accounting for room boundary wrap
+      // Calculate the effective delta considering room transitions
+      let dx = position.x - lastPosition.x;
+      let dy = position.y - lastPosition.y;
+      
+      // Adjust for room boundary wrapping
+      // When crossing from x=49 to x=0 (going RIGHT), dx should be +1 not -49
+      // When crossing from x=0 to x=49 (going LEFT), dx should be -1 not +49
+      if (Math.abs(dx) > 25) {
+        // Likely a room transition on X axis
+        if (dx > 0) {
+          // Crossing from high to low (e.g., 49 to 0) going LEFT
+          dx = -(50 - dx);
+        } else {
+          // Crossing from low to high (e.g., 0 to 49) going RIGHT
+          dx = 50 + dx;
+        }
+      }
+      
+      // Similarly for Y axis
+      if (Math.abs(dy) > 25) {
+        // Likely a room transition on Y axis
+        if (dy > 0) {
+          // Crossing from high to low (e.g., 49 to 0) going TOP
+          dy = -(50 - dy);
+        } else {
+          // Crossing from low to high (e.g., 0 to 49) going BOTTOM
+          dy = 50 + dy;
+        }
+      }
+      
+      // Now calculate direction from adjusted delta
+      let direction: number = RIGHT; // Default
+      if (dx === 0 && dy === -1) direction = TOP;
+      else if (dx === 1 && dy === -1) direction = TOP_RIGHT;
+      else if (dx === 1 && dy === 0) direction = RIGHT;
+      else if (dx === 1 && dy === 1) direction = BOTTOM_RIGHT;
+      else if (dx === 0 && dy === 1) direction = BOTTOM;
+      else if (dx === -1 && dy === 1) direction = BOTTOM_LEFT;
+      else if (dx === -1 && dy === 0) direction = LEFT;
+      else if (dx === -1 && dy === -1) direction = TOP_LEFT;
+      
+      serializedPath += direction;
     }
     lastPosition = position;
   }
