@@ -146,7 +146,7 @@ export class MarketCommands {
   })
   public data(resource: ResourceConstant): string {
     const history = Game.market.getHistory(resource);
-    if (history.length === 0) {
+    if (!history || history.length === 0) {
       return `No market history for ${resource}`;
     }
 
@@ -190,6 +190,7 @@ export class MarketCommands {
     for (const order of orders) {
       const type = order.type === ORDER_BUY ? "BUY " : "SELL";
       const price = order.price.toFixed(3);
+      // remainingAmount may be undefined for orders that haven't been processed yet
       const remaining = order.remainingAmount?.toString() ?? "?";
       output += `${type} | ${order.resourceType} | ${price} | ${remaining} | ${order.roomName ?? "N/A"}\n`;
     }
@@ -235,7 +236,12 @@ export class PowerCommands {
     output += `Progress: ${gplState.currentProgress} / ${gplState.progressNeeded}\n`;
     output += `Completion: ${((gplState.currentProgress / gplState.progressNeeded) * 100).toFixed(1)}%\n`;
     output += `Target Milestone: ${gplState.targetMilestone}\n`;
-    output += `Estimated Time: ${gplState.ticksToNextLevel === Infinity ? "N/A" : `${gplState.ticksToNextLevel.toLocaleString()} ticks`}\n`;
+    
+    // Format estimated time for better readability
+    const timeEstimate = gplState.ticksToNextLevel === Infinity 
+      ? "N/A (no progress yet)" 
+      : `${gplState.ticksToNextLevel.toLocaleString()} ticks`;
+    output += `Estimated Time: ${timeEstimate}\n`;
     output += `\nTotal Power Processed: ${gplState.totalPowerProcessed.toLocaleString()}\n`;
 
     return output;
