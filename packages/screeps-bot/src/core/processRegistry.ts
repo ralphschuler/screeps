@@ -10,6 +10,7 @@
  *                       room:pathCachePrecache)
  * - TerminalManager (terminal:manager)
  * - FactoryManager (factory:manager)
+ * - LinkManager (link:manager)
  * - EmpireManager (empire:manager)
  * - ExpansionManager (expansion:manager)
  * - RemoteInfrastructureManager (remote:infrastructure)
@@ -28,6 +29,7 @@ import { clusterManager } from "../clusters/clusterManager";
 import { evacuationManager } from "../defense/evacuationManager";
 import { terminalManager } from "../economy/terminalManager";
 import { factoryManager } from "../economy/factoryManager";
+import { linkManager } from "../economy/linkManager";
 import { empireManager } from "../empire/empireManager";
 import { expansionManager } from "../empire/expansionManager";
 import { marketManager } from "../empire/marketManager";
@@ -54,6 +56,7 @@ export function registerAllProcesses(): void {
     // Economy processes
     terminalManager,
     factoryManager,
+    linkManager,
     // Empire processes
     empireManager,
     expansionManager,
