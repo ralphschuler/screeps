@@ -346,6 +346,10 @@ export class Kernel {
       // When bucket is at max and pixel generation is enabled, use normal mode
       // to prevent CPU spikes. Pixel generation will empty the bucket this tick,
       // so we should be conservative rather than running expensive "high" mode operations.
+      // 
+      // NOTE: This check MUST come before the highBucketThreshold check to ensure
+      // we always use "normal" mode when at PIXEL_CPU_COST, regardless of the
+      // highBucketThreshold configuration value.
       newMode = "normal";
     } else if (bucket > this.config.highBucketThreshold) {
       newMode = "high";

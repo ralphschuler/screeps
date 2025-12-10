@@ -92,11 +92,13 @@ describe("Kernel CPU configuration", () => {
 
     // When bucket is slightly below PIXEL_CPU_COST but still above highMode threshold,
     // it should still use "high" mode
+    // Note: Game.time is incremented for test isolation and to simulate tick progression
     Game.time += 1;
     Game.cpu.bucket = 9500;
     expect(kernel.getBucketMode()).to.equal("high");
 
     // When pixel generation is disabled, bucket at PIXEL_CPU_COST should use "high" mode
+    // Note: Game.time is incremented for test isolation and to simulate tick progression
     Game.time += 1;
     Game.cpu.bucket = PIXEL_CPU_COST;
     kernel.updateConfig({ pixelGenerationEnabled: false });
