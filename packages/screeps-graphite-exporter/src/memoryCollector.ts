@@ -108,6 +108,19 @@ function decodeMemory(raw: unknown, logger: Logger): any {
   }
 }
 
+interface RateLimitInfo {
+  method: string;
+  path: string;
+  limit: number;
+  remaining: number;
+  reset: number;
+  toReset: number;
+}
+
+// Constants for rate limit handling
+const RATE_LIMIT_BUFFER_MS = 5000; // 5 second buffer after rate limit reset
+const RATE_LIMIT_FALLBACK_BACKOFF_MS = 30000; // 30 second fallback backoff
+
 export async function startMemoryCollector(
   api: ScreepsAPI,
   config: ExporterConfig,
@@ -115,17 +128,84 @@ export async function startMemoryCollector(
   logger: Logger
 ): Promise<void> {
   let timeoutHandle: NodeJS.Timeout | null = null;
+  let lastRateLimitInfo: RateLimitInfo | null = null;
 
-  const scheduleNextPoll = (delayMs: number) => {
+  // Listen to rate limit events from the API
+  api.on('rateLimit', (rateLimitInfo: RateLimitInfo) => {
+    // Validate rate limit info has valid numeric values
+    if (
+      typeof rateLimitInfo === 'object' &&
+      typeof rateLimitInfo.limit === 'number' &&
+      typeof rateLimitInfo.remaining === 'number' &&
+      typeof rateLimitInfo.reset === 'number' &&
+      typeof rateLimitInfo.toReset === 'number' &&
+      !isNaN(rateLimitInfo.limit) &&
+      !isNaN(rateLimitInfo.remaining) &&
+      !isNaN(rateLimitInfo.toReset)
+    ) {
+      lastRateLimitInfo = rateLimitInfo;
+      
+      // Only log if rate limits are being approached (< 50% remaining)
+      if (rateLimitInfo.remaining < rateLimitInfo.limit * 0.5) {
+        logger.info('Rate limit info', {
+          remaining: rateLimitInfo.remaining,
+          limit: rateLimitInfo.limit,
+          resetIn: rateLimitInfo.toReset
+        });
+      }
+    }
+  });
+
+  const calculateNextPollDelay = (): number => {
+    // Start with the configured poll interval
+    let delayMs = config.pollIntervalMs;
+
+    if (lastRateLimitInfo) {
+      const { remaining, limit, toReset } = lastRateLimitInfo;
+
+      // If we've exhausted the rate limit, wait until reset
+      if (remaining === 0 && toReset > 0) {
+        // Add a buffer to ensure the limit has reset
+        delayMs = (toReset * 1000) + RATE_LIMIT_BUFFER_MS;
+        
+        logger.warn(`Rate limit exhausted. Waiting until reset`, {
+          resetIn: toReset,
+          waitTime: Math.round(delayMs / 1000)
+        });
+      }
+      // If we're running low on rate limit quota (< 20% remaining)
+      else if (remaining < limit * 0.2 && remaining > 0 && toReset > 0) {
+        // Calculate delay to spread remaining requests evenly until reset
+        // Extra safety check to prevent division by zero
+        const safeDelay = Math.max(
+          remaining > 0 ? (toReset * 1000) / remaining : config.pollIntervalMs,
+          config.minPollIntervalMs
+        );
+        
+        logger.info(`Adjusting poll interval to respect rate limits`, {
+          remaining,
+          limit,
+          resetIn: toReset,
+          newDelay: Math.round(safeDelay)
+        });
+        
+        delayMs = Math.max(delayMs, safeDelay);
+      }
+    }
+
+    // Enforce minimum poll interval
+    return Math.max(delayMs, config.minPollIntervalMs);
+  };
+
+  const scheduleNextPoll = (customDelayMs?: number) => {
     if (timeoutHandle) {
       clearTimeout(timeoutHandle);
     }
+    const delayMs = customDelayMs ?? calculateNextPollDelay();
     timeoutHandle = setTimeout(() => poll(), delayMs);
   };
 
   const poll = async () => {
-    let nextPollDelayMs = config.pollIntervalMs;
-
     try {
       const rawMemory = await api.memory.get(config.memoryPath, config.shard);
       const decoded = decodeMemory(rawMemory, logger);
@@ -149,24 +229,41 @@ export async function startMemoryCollector(
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       
-      // Check if this is a rate limit error with specific pattern
-      const rateLimitMatch = errorMessage.match(/Rate limit exceeded, retry after (\d+)ms/i);
-      if (rateLimitMatch) {
-        const retryAfterMs = parseInt(rateLimitMatch[1], 10);
-        logger.warn(`Rate limit exceeded. Waiting ${retryAfterMs}ms before next poll.`);
-        nextPollDelayMs = retryAfterMs;
-      } else {
-        logger.error('Failed to poll stats from Memory', error);
+      // Handle HTTP 429 Too Many Requests
+      if (errorMessage.includes('429') || errorMessage.toLowerCase().includes('too many requests')) {
+        logger.warn('Rate limit exceeded (HTTP 429)', { error: errorMessage });
+        
+        // If we have rate limit info, use it to calculate wait time
+        // Otherwise, use a default backoff
+        if (
+          lastRateLimitInfo &&
+          typeof lastRateLimitInfo.toReset === 'number' &&
+          !isNaN(lastRateLimitInfo.toReset) &&
+          lastRateLimitInfo.toReset > 0
+        ) {
+          const waitMs = (lastRateLimitInfo.toReset * 1000) + RATE_LIMIT_BUFFER_MS;
+          logger.info(`Waiting ${Math.round(waitMs / 1000)}s for rate limit reset`);
+          scheduleNextPoll(waitMs);
+          metrics.markScrapeSuccess('memory', false);
+          return;
+        } else {
+          // Fallback: use default backoff when rate limit info is unavailable
+          logger.info(`Using fallback backoff: ${RATE_LIMIT_FALLBACK_BACKOFF_MS}ms`);
+          scheduleNextPoll(RATE_LIMIT_FALLBACK_BACKOFF_MS);
+          metrics.markScrapeSuccess('memory', false);
+          return;
+        }
       }
       
+      logger.error('Failed to poll stats from Memory', error);
       metrics.markScrapeSuccess('memory', false);
     }
 
     // Flush metrics to Grafana Cloud Graphite after each poll
     metrics.flush();
     
-    // Schedule next poll
-    scheduleNextPoll(nextPollDelayMs);
+    // Schedule next poll with dynamic rate limit adjustment
+    scheduleNextPoll();
   };
 
   await poll();

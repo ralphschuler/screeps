@@ -13,10 +13,20 @@ Exports Screeps stats to Grafana Cloud using the Graphite HTTP API from either `
 ## Configuration
 All configuration is provided via environment variables. Authentication requires either `SCREEPS_TOKEN` or the combination of `SCREEPS_USERNAME` and `SCREEPS_PASSWORD`.
 
+### Rate Limiting
+The exporter implements proper rate limit handling according to the [Screeps API documentation](https://docs.screeps.com/auth-tokens.html):
+- Monitors rate limit headers (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`)
+- Automatically adjusts polling interval when approaching rate limits (< 20% quota remaining)
+- Waits for rate limit reset when quota is exhausted (HTTP 429)
+- Enforces a minimum poll interval to prevent excessive API calls
+
+The default poll interval of 15 seconds (240 requests/hour) is well within the typical memory endpoint limit of 360 requests/hour.
+
 | Variable | Default | Description |
 | --- | --- | --- |
 | `EXPORTER_MODE` | `memory` | Set to `memory` or `console`. |
-| `EXPORTER_POLL_INTERVAL_MS` | `15000` | Poll interval for memory mode. |
+| `EXPORTER_POLL_INTERVAL_MS` | `15000` | Poll interval for memory mode. The exporter automatically adjusts this based on rate limit information from the Screeps API. |
+| `EXPORTER_MIN_POLL_INTERVAL_MS` | `10000` | Minimum poll interval to enforce (minimum 5 seconds). Prevents polling too frequently and hitting rate limits. |
 | `EXPORTER_MEMORY_PATH` | `stats` | Memory path to read stats from. |
 | `EXPORTER_MEMORY_FULL` | `false` | When `true`, flatten the entire Memory payload instead of only `Memory.stats`. |
 | `EXPORTER_SHARD` | `shard0` | Shard to read from when polling memory. |

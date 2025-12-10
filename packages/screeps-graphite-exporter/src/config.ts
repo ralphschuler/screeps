@@ -3,6 +3,7 @@ export type ExporterMode = 'memory' | 'console';
 export interface ExporterConfig {
   mode: ExporterMode;
   pollIntervalMs: number;
+  minPollIntervalMs: number;
   memoryPath: string;
   exportFullMemory: boolean;
   shard: string;
@@ -48,9 +49,13 @@ export function loadConfig(): ExporterConfig {
     throw new Error('Set GRAFANA_CLOUD_GRAPHITE_URL for Grafana Cloud Graphite endpoint.');
   }
 
+  const pollIntervalMs = parseNumber(process.env.EXPORTER_POLL_INTERVAL_MS, 15000);
+  const minPollIntervalMs = parseNumber(process.env.EXPORTER_MIN_POLL_INTERVAL_MS, 10000);
+
   return {
     mode,
-    pollIntervalMs: parseNumber(process.env.EXPORTER_POLL_INTERVAL_MS, 15000),
+    pollIntervalMs,
+    minPollIntervalMs: Math.max(minPollIntervalMs, 5000), // Enforce minimum 5s to respect rate limits
     memoryPath: process.env.EXPORTER_MEMORY_PATH ?? 'stats',
     exportFullMemory: (process.env.EXPORTER_MEMORY_FULL ?? 'false').toLowerCase() === 'true',
     shard: process.env.EXPORTER_SHARD ?? 'shard0',
