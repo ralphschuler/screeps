@@ -218,6 +218,7 @@ export class ResourceTransferCoordinator {
     }
 
     // TODO: Request spawning of carrier creeps
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/366
     // This would integrate with the spawn system
     logger.debug(`Transfer request ${request.taskId} needs ${neededCarryCapacity - currentCapacity} carry capacity`, {
       subsystem: "CrossShardTransfer"
