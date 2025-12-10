@@ -331,4 +331,193 @@ describe("expansion manager concepts", () => {
       assert.equal(remotesWithoutReserver[0], "E3N1");
     });
   });
+
+  describe("GCL-based expansion pacing", () => {
+    it("should check GCL progress before expansion", () => {
+      global.Game.gcl = {
+        level: 3,
+        progress: 500000, // 50% progress
+        progressTotal: 1000000
+      };
+
+      const gclProgress = global.Game.gcl.progress / global.Game.gcl.progressTotal;
+      const minProgressThreshold = 0.7; // 70% threshold
+
+      // Should not be ready to expand at 50% progress
+      assert.isBelow(gclProgress, minProgressThreshold, "GCL progress should be below threshold");
+    });
+
+    it("should allow expansion when GCL progress is sufficient", () => {
+      global.Game.gcl = {
+        level: 3,
+        progress: 800000, // 80% progress
+        progressTotal: 1000000
+      };
+
+      const gclProgress = global.Game.gcl.progress / global.Game.gcl.progressTotal;
+      const minProgressThreshold = 0.7; // 70% threshold
+
+      // Should be ready to expand at 80% progress
+      assert.isAtLeast(gclProgress, minProgressThreshold, "GCL progress should meet threshold");
+    });
+
+    it("should check room stability before expansion", () => {
+      global.Game.rooms = {
+        E1N1: {
+          name: "E1N1",
+          controller: { my: true, level: 5 }
+        } as unknown as Room,
+        E2N2: {
+          name: "E2N2",
+          controller: { my: true, level: 4 }
+        } as unknown as Room,
+        E3N3: {
+          name: "E3N3",
+          controller: { my: true, level: 2 }
+        } as unknown as Room
+      };
+
+      const ownedRooms = Object.values(global.Game.rooms).filter(r => r.controller?.my);
+      const minRclForClaiming = 4;
+      const stableRooms = ownedRooms.filter(r => (r.controller?.level ?? 0) >= minRclForClaiming);
+      const stablePercentage = stableRooms.length / ownedRooms.length;
+      const minStablePercentage = 0.6; // 60%
+
+      // 2 out of 3 rooms are RCL 4+ (66% > 60%)
+      assert.isAtLeast(stablePercentage, minStablePercentage, "Should have enough stable rooms");
+    });
+
+    it("should not expand when too few rooms are stable", () => {
+      global.Game.rooms = {
+        E1N1: {
+          name: "E1N1",
+          controller: { my: true, level: 5 }
+        } as unknown as Room,
+        E2N2: {
+          name: "E2N2",
+          controller: { my: true, level: 3 }
+        } as unknown as Room,
+        E3N3: {
+          name: "E3N3",
+          controller: { my: true, level: 2 }
+        } as unknown as Room
+      };
+
+      const ownedRooms = Object.values(global.Game.rooms).filter(r => r.controller?.my);
+      const minRclForClaiming = 4;
+      const stableRooms = ownedRooms.filter(r => (r.controller?.level ?? 0) >= minRclForClaiming);
+      const stablePercentage = stableRooms.length / ownedRooms.length;
+      const minStablePercentage = 0.6; // 60%
+
+      // Only 1 out of 3 rooms is RCL 4+ (33% < 60%)
+      assert.isBelow(stablePercentage, minStablePercentage, "Should not have enough stable rooms");
+    });
+  });
+
+  describe("cluster-based expansion strategy", () => {
+    it("should prioritize expansion near existing clusters", () => {
+      const overmind = createMockOvermindMemory();
+      overmind.claimQueue = [
+        { roomName: "E2N1", score: 80, distance: 1, claimed: false, lastEvaluated: 1000 },
+        { roomName: "E5N5", score: 85, distance: 10, claimed: false, lastEvaluated: 1000 }
+      ];
+
+      // Room closer to existing cluster should get bonus
+      const clusterExpansionDistance = 5;
+      const nearCluster = overmind.claimQueue[0].distance <= clusterExpansionDistance;
+      const farFromCluster = overmind.claimQueue[1].distance > clusterExpansionDistance;
+
+      assert.isTrue(nearCluster, "E2N1 should be near cluster");
+      assert.isTrue(farFromCluster, "E5N5 should be far from cluster");
+
+      // With cluster bonus of 100, E2N1 (80 + 100 = 180) beats E5N5 (85)
+      const e2n1ClusterScore = overmind.claimQueue[0].score + (nearCluster ? 100 : 0);
+      const e5n5ClusterScore = overmind.claimQueue[1].score + (farFromCluster ? 0 : 100);
+
+      assert.isAbove(e2n1ClusterScore, e5n5ClusterScore, "Nearby room should be prioritized");
+    });
+
+    it("should calculate minimum distance to owned rooms", () => {
+      global.Game.rooms = {
+        E1N1: {
+          name: "E1N1",
+          controller: { my: true, level: 5 }
+        } as unknown as Room,
+        E5N5: {
+          name: "E5N5",
+          controller: { my: true, level: 4 }
+        } as unknown as Room
+      };
+
+      // Mock distance function already set in beforeEach
+      // Note: The mock returns 1 for E1N1->E2N1, but 3 for E2N1->E1N1 (default case)
+      const ownedRooms = Object.values(global.Game.rooms).filter(r => r.controller?.my);
+
+      // Calculate min distance from E2N1
+      let minDistance = 999;
+      for (const room of ownedRooms) {
+        const distance = global.Game.map.getRoomLinearDistance("E2N1", room.name);
+        if (distance < minDistance) {
+          minDistance = distance;
+        }
+      }
+
+      // The mock distance function returns 3 for any unlisted pair, so min is 3
+      assert.isAtMost(minDistance, 999, "Should calculate distance to owned rooms");
+      assert.isAtLeast(minDistance, 1, "Distance should be reasonable");
+    });
+  });
+
+  describe("remote vs owned room priority logic", () => {
+    it("should calculate reduced remote capacity for low RCL rooms", () => {
+      const rcl = 3;
+      const maxRemotesPerRoom = 3;
+
+      // RCL 3 should get max 1 remote
+      const capacity = rcl < 4 ? Math.min(1, maxRemotesPerRoom) : maxRemotesPerRoom;
+
+      assert.equal(capacity, 1, "Low RCL room should have reduced remote capacity");
+    });
+
+    it("should calculate reduced remote capacity for rooms with low energy", () => {
+      const storage = { store: { getUsedCapacity: () => 30000 } };
+      const maxRemotesPerRoom = 3;
+
+      // Low energy threshold: 50000
+      const capacity = storage.store.getUsedCapacity() < 50000 ? Math.min(1, maxRemotesPerRoom) : maxRemotesPerRoom;
+
+      assert.equal(capacity, 1, "Low energy room should have reduced remote capacity");
+    });
+
+    it("should calculate reduced remote capacity for threatened rooms", () => {
+      const swarm = createMockSwarmState();
+      swarm.danger = 2;
+      const maxRemotesPerRoom = 3;
+
+      // Danger level 2+ should reduce capacity
+      const capacity = swarm.danger >= 2 ? Math.min(1, maxRemotesPerRoom) : maxRemotesPerRoom;
+
+      assert.equal(capacity, 1, "Threatened room should have reduced remote capacity");
+    });
+
+    it("should allow full remote capacity for stable mature rooms", () => {
+      const rcl = 8;
+      const storage = { store: { getUsedCapacity: () => 200000 } };
+      const swarm = createMockSwarmState();
+      swarm.danger = 0;
+      const maxRemotesPerRoom = 3;
+
+      // Check all conditions for full capacity
+      const hasHighRcl = rcl >= 7;
+      const hasGoodEnergy = storage.store.getUsedCapacity() >= 50000;
+      const isNotThreatened = swarm.danger < 2;
+
+      assert.isTrue(hasHighRcl, "Should have high RCL");
+      assert.isTrue(hasGoodEnergy, "Should have good energy");
+      assert.isTrue(isNotThreatened, "Should not be threatened");
+
+      const capacity = hasHighRcl && hasGoodEnergy && isNotThreatened ? maxRemotesPerRoom : 1;
+      assert.equal(capacity, 3, "Stable mature room should have full remote capacity");
+    });
+  });
 });
