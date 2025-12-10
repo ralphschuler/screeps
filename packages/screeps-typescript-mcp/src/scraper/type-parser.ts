@@ -8,6 +8,11 @@ import type { TypeDefinition, TypeKind, TypeCategory } from "../types.js";
 
 /**
  * Parse a TypeScript file and extract type definitions
+ * 
+ * Note: This is a simple regex-based parser that works well for the typed-screeps
+ * codebase. For more complex scenarios, consider using the TypeScript Compiler API
+ * for AST-based parsing which would handle edge cases like braces in strings/comments.
+ * 
  * @param filePath Path to the TypeScript file
  * @returns Array of type definitions
  */
@@ -20,11 +25,17 @@ export async function parseTypeScriptFile(filePath: string): Promise<TypeDefinit
   const lines = content.split("\n");
 
   // Regular expressions for different type definition patterns
+  // Matches: export interface Name<T> extends Base
   const interfaceRegex = /^export\s+interface\s+(\w+)(?:<[^>]+>)?(?:\s+extends\s+[^{]+)?/;
+  // Matches: export type Name = ... or export const Name = ...
   const typeRegex = /^export\s+(?:type|const)\s+(\w+)(?:<[^>]+>)?\s*=/;
+  // Matches: export class Name<T> extends Base or export abstract class Name
   const classRegex = /^export\s+(?:abstract\s+)?class\s+(\w+)(?:<[^>]+>)?(?:\s+(?:extends|implements)\s+[^{]+)?/;
+  // Matches: export enum Name
   const enumRegex = /^export\s+enum\s+(\w+)/;
+  // Matches: export function name(...) or export const name = (...) =>
   const functionRegex = /^export\s+(?:function|const)\s+(\w+)(?:<[^>]+>)?\s*\(/;
+  // Matches: export namespace Name or export module Name
   const namespaceRegex = /^export\s+(?:namespace|module)\s+(\w+)/;
 
   let currentDefinition: TypeDefinition | null = null;
@@ -220,9 +231,11 @@ export function extractRelatedTypes(definition: TypeDefinition): string[] {
   }
 
   // Extract type references (simple heuristic)
+  // Note: This regex extracts TypeScript generic syntax like Type<...>, not HTML tags
   const typeRefs = content.match(/:\s*([A-Z]\w+)(?:<[^>]+>)?/g);
   if (typeRefs) {
     typeRefs.forEach(ref => {
+      // Extract type name, removing TypeScript generic syntax (not HTML sanitization)
       const typeName = ref.replace(/:\s*/, "").replace(/<.*>/, "");
       if (typeName && typeName !== definition.name) {
         related.add(typeName);

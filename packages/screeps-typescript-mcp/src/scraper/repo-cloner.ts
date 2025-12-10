@@ -6,6 +6,7 @@ import { simpleGit, SimpleGit, SimpleGitOptions } from "simple-git";
 import { promises as fs } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
+import { randomUUID } from "crypto";
 
 const TYPED_SCREEPS_REPO = "https://github.com/screepers/typed-screeps.git";
 const REPO_BRANCH = "master";
@@ -15,7 +16,8 @@ const REPO_BRANCH = "master";
  * @returns Path to the cloned repository
  */
 export async function cloneTypesRepo(): Promise<string> {
-  const tempDir = join(tmpdir(), `typed-screeps-${Date.now()}`);
+  // Use randomUUID for unique directory name to avoid collisions
+  const tempDir = join(tmpdir(), `typed-screeps-${randomUUID()}`);
   
   const options: Partial<SimpleGitOptions> = {
     baseDir: tempDir,
