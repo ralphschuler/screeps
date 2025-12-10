@@ -1,0 +1,10 @@
+node_modules
+dist
+tests
+*.test.ts
+*.test.js
+.git
+.gitignore
+README.md
+tsconfig.test.json
+vitest.config.ts

@@ -1,0 +1,43 @@
+{
+  "name": "@ralphschuler/screeps-typescript-mcp",
+  "version": "0.1.0",
+  "description": "Model Context Protocol (MCP) server for browsing and querying TypeScript type definitions from typed-screeps",
+  "license": "MIT",
+  "author": "OpenAI Automations",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": "./dist/server.js",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:inspector": "vitest run tests/inspector",
+    "inspect": "npx @modelcontextprotocol/inspector node dist/server.js",
+    "inspect:cli": "npx @modelcontextprotocol/inspector --cli node dist/server.js",
+    "docker:build": "docker build -t screeps-typescript-mcp:latest .",
+    "docker:run": "docker run --rm -i -e TYPES_CACHE_TTL screeps-typescript-mcp:latest",
+    "docker:push": "docker tag screeps-typescript-mcp:latest ghcr.io/ralphschuler/screeps-typescript-mcp:latest && docker push ghcr.io/ralphschuler/screeps-typescript-mcp:latest"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.23.0",
+    "simple-git": "^3.30.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/inspector": "^0.17.2",
+    "@types/node": "^24.9.1",
+    "typescript": "^5.4.3",
+    "vitest": "^4.0.14"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
