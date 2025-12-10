@@ -46,6 +46,8 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
+// NOTE: Register all route handlers and middleware BEFORE this error handler.
+// Any routes or middleware added after this will NOT be covered by the error handler.
 app.use((err, _req, res, _next) => {
   console.error('Unexpected error', err);
   res.status(500).json({ error: 'Unexpected server error' });
