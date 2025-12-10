@@ -233,11 +233,19 @@ const stats = new UnifiedStatsManager({
   smoothingFactor: 0.1,             // EMA smoothing (0-1)
   trackNativeCalls: true,           // Track native API calls
   logInterval: 100,                 // Log summary every N ticks (0 = never)
-  segmentUpdateInterval: 10,        // Update memory segment every N ticks
-  segmentId: 90,                    // Memory segment ID
-  maxHistoryPoints: 1000            // Max history points in segment
+  segmentUpdateInterval: 10,        // Update memory segment every N ticks (requires RawMemory.setActiveSegments)
+  segmentId: 90,                    // Memory segment ID to request via RawMemory.setActiveSegments
+  maxHistoryPoints: 1000            // Max history points in segment before trimming
 });
 ```
+
+**Segment persistence and exporters**
+
+- Call `RawMemory.setActiveSegments([segmentId])` at startup (and keep requesting it) to enable historical persistence. If the
+  segment is not active, unified stats will skip segment writes until it becomes available.
+- The segment stores a compact history array of recent snapshots (trimmed to `maxHistoryPoints`). Exporters that need more than
+  the most recent tick should read and parse `RawMemory.segments[segmentId]` first, and fall back to `Memory.stats` for the
+  current tick view when segment persistence is disabled.
 
 ### Enable/Disable
 
