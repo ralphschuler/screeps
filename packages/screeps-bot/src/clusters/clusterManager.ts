@@ -38,6 +38,7 @@ import {
   planOffensiveOperations,
   updateOffensiveOperations as updateGlobalOffensiveOps
 } from "./offensiveOperations";
+import { updateClusterRallyPoints } from "./rallyPointManager";
 
 /**
  * Cluster Manager Configuration
@@ -149,7 +150,7 @@ export class ClusterManager {
 
     // Update rally points
     profiler.measureSubsystem(`cluster:${cluster.id}:rallyPoints`, () => {
-      this.updateRallyPoints(cluster);
+      updateClusterRallyPoints(cluster);
     });
 
     // Update military resource reservations
@@ -417,38 +418,7 @@ export class ClusterManager {
   /**
    * Update rally points based on current threats and operations
    */
-  private updateRallyPoints(cluster: ClusterMemory): void {
-    // Clear old rally points (older than 1000 ticks)
-    const validRallyPoints = cluster.rallyPoints.filter(rp => {
-      // Keep defensive rally points
-      if (rp.purpose === "defense") return true;
-      
-      // Keep rally points for active squads
-      const hasActiveSquad = cluster.squads.some(
-        squad => squad.rallyRoom === rp.roomName && squad.state !== "dissolving"
-      );
-      return hasActiveSquad;
-    });
 
-    cluster.rallyPoints = validRallyPoints;
-
-    // Add rally points for each member room (defense purposes)
-    for (const roomName of cluster.memberRooms) {
-      const existingDefense = cluster.rallyPoints.find(
-        rp => rp.roomName === roomName && rp.purpose === "defense"
-      );
-
-      if (!existingDefense) {
-        // Add a central rally point for the room
-        cluster.rallyPoints.push({
-          roomName,
-          x: 25,
-          y: 25,
-          purpose: "defense"
-        });
-      }
-    }
-  }
 
   /**
    * Update focus room for sequential upgrading strategy.

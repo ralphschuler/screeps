@@ -295,7 +295,14 @@ export interface ClusterMemory {
   /** Active squads */
   squads: SquadDefinition[];
   /** Rally points for defense/offense */
-  rallyPoints: { roomName: string; x: number; y: number; purpose: string }[];
+  rallyPoints: {
+    roomName: string;
+    x: number;
+    y: number;
+    purpose: "defense" | "offense" | "staging" | "retreat";
+    createdAt?: number;
+    lastUsed?: number;
+  }[];
   /** Defense assistance requests from member rooms */
   defenseRequests: DefenseAssistanceRequest[];
   /** Resource transfer requests for inter-room resource sharing */
