@@ -408,7 +408,7 @@ export function getSourceContainer(
   if (!room) return null;
   
   const allContainers = cachedRoomFind<StructureContainer>(room, FIND_STRUCTURES, {
-    filter: (s): s is StructureContainer => s.structureType === STRUCTURE_CONTAINER,
+    filter: (s: Structure): s is StructureContainer => s.structureType === STRUCTURE_CONTAINER,
     filterKey: STRUCTURE_CONTAINER
   });
   
@@ -448,28 +448,39 @@ export function getControllerEnergySource(
     }
   }
   
-  // Prefer link over container
-  const links = controller.pos.findInRange(FIND_STRUCTURES, 3, {
-    filter: (s): s is StructureLink =>
-      s.structureType === STRUCTURE_LINK &&
-      s.store.getUsedCapacity(RESOURCE_ENERGY) > 0
+  // Prefer link over container - use cached room find
+  const room = controller.room;
+  if (!room) return null;
+  
+  const allLinks = cachedRoomFind<StructureLink>(room, FIND_STRUCTURES, {
+    filter: (s: Structure): s is StructureLink => s.structureType === STRUCTURE_LINK,
+    filterKey: STRUCTURE_LINK
   });
   
-  if (links.length > 0) {
-    const link = links[0];
+  const nearbyLinks = allLinks.filter(
+    link => controller.pos.getRangeTo(link) <= 3 && 
+            link.store.getUsedCapacity(RESOURCE_ENERGY) > 0
+  );
+  
+  if (nearbyLinks.length > 0) {
+    const link = nearbyLinks[0];
     setRoleCache(creep, "upgrader", cacheKey, link.id, 100);
     return link;
   }
   
   // Fall back to container
-  const containers = controller.pos.findInRange(FIND_STRUCTURES, 3, {
-    filter: (s): s is StructureContainer =>
-      s.structureType === STRUCTURE_CONTAINER &&
-      s.store.getUsedCapacity(RESOURCE_ENERGY) > 0
+  const allContainers = cachedRoomFind<StructureContainer>(room, FIND_STRUCTURES, {
+    filter: (s: Structure): s is StructureContainer => s.structureType === STRUCTURE_CONTAINER,
+    filterKey: STRUCTURE_CONTAINER
   });
   
-  if (containers.length > 0) {
-    const container = containers[0];
+  const nearbyContainers = allContainers.filter(
+    container => controller.pos.getRangeTo(container) <= 3 &&
+                 container.store.getUsedCapacity(RESOURCE_ENERGY) > 0
+  );
+  
+  if (nearbyContainers.length > 0) {
+    const container = nearbyContainers[0];
     setRoleCache(creep, "upgrader", cacheKey, container.id, 100);
     return container;
   }
