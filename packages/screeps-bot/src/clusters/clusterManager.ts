@@ -16,7 +16,7 @@
 import type { ClusterMemory, SquadDefinition } from "../memory/schemas";
 import { ProcessPriority } from "../core/kernel";
 import { logger } from "../core/logger";
-import { profiler } from "../core/profiler";
+import { unifiedStats } from "../core/unifiedStats";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { memoryManager } from "../memory/manager";
 import {
@@ -119,52 +119,52 @@ export class ClusterManager {
     const cpuStart = Game.cpu.getUsed();
 
     // Update cluster metrics
-    profiler.measureSubsystem(`cluster:${cluster.id}:metrics`, () => {
+    unifiedStats.measureSubsystem(`cluster:${cluster.id}:metrics`, () => {
       this.updateClusterMetrics(cluster);
     });
 
     // Handle defense requests
-    profiler.measureSubsystem(`cluster:${cluster.id}:defense`, () => {
+    unifiedStats.measureSubsystem(`cluster:${cluster.id}:defense`, () => {
       this.processDefenseRequests(cluster);
     });
 
     // Balance terminal resources (RCL 6+ rooms)
-    profiler.measureSubsystem(`cluster:${cluster.id}:terminals`, () => {
+    unifiedStats.measureSubsystem(`cluster:${cluster.id}:terminals`, () => {
       this.balanceTerminalResources(cluster);
     });
 
     // Process resource sharing for pre-terminal rooms (RCL 1-5)
-    profiler.measureSubsystem(`cluster:${cluster.id}:resourceSharing`, () => {
+    unifiedStats.measureSubsystem(`cluster:${cluster.id}:resourceSharing`, () => {
       resourceSharingManager.processCluster(cluster);
     });
 
     // Update squads
-    profiler.measureSubsystem(`cluster:${cluster.id}:squads`, () => {
+    unifiedStats.measureSubsystem(`cluster:${cluster.id}:squads`, () => {
       this.updateSquads(cluster);
     });
 
     // Plan and update offensive operations
-    profiler.measureSubsystem(`cluster:${cluster.id}:offensive`, () => {
+    unifiedStats.measureSubsystem(`cluster:${cluster.id}:offensive`, () => {
       this.updateOffensiveOperations(cluster);
     });
 
     // Update rally points
-    profiler.measureSubsystem(`cluster:${cluster.id}:rallyPoints`, () => {
+    unifiedStats.measureSubsystem(`cluster:${cluster.id}:rallyPoints`, () => {
       updateClusterRallyPoints(cluster);
     });
 
     // Update military resource reservations
-    profiler.measureSubsystem(`cluster:${cluster.id}:militaryResources`, () => {
+    unifiedStats.measureSubsystem(`cluster:${cluster.id}:militaryResources`, () => {
       updateMilitaryReservations(cluster);
     });
 
     // Update cluster role
-    profiler.measureSubsystem(`cluster:${cluster.id}:role`, () => {
+    unifiedStats.measureSubsystem(`cluster:${cluster.id}:role`, () => {
       this.updateClusterRole(cluster);
     });
 
     // Update focus room for sequential upgrading
-    profiler.measureSubsystem(`cluster:${cluster.id}:focusRoom`, () => {
+    unifiedStats.measureSubsystem(`cluster:${cluster.id}:focusRoom`, () => {
       this.updateFocusRoom(cluster);
     });
 

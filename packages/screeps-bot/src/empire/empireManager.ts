@@ -17,7 +17,7 @@
 import { ProcessPriority } from "../core/kernel";
 import { logger } from "../core/logger";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { profiler } from "../core/profiler";
+import { unifiedStats } from "../core/unifiedStats";
 import { memoryManager } from "../memory/manager";
 import type { ExpansionCandidate, OvermindMemory, RoomIntel } from "../memory/schemas";
 
@@ -88,49 +88,49 @@ export class EmpireManager {
     overmind.lastRun = Game.time;
 
     // Run empire subsystems
-    profiler.measureSubsystem("empire:expansion", () => {
+    unifiedStats.measureSubsystem("empire:expansion", () => {
       this.updateExpansionQueue(overmind);
     });
 
-    profiler.measureSubsystem("empire:powerBanks", () => {
+    unifiedStats.measureSubsystem("empire:powerBanks", () => {
       this.updatePowerBanks(overmind);
     });
 
-    profiler.measureSubsystem("empire:warTargets", () => {
+    unifiedStats.measureSubsystem("empire:warTargets", () => {
       this.updateWarTargets(overmind);
     });
 
-    profiler.measureSubsystem("empire:objectives", () => {
+    unifiedStats.measureSubsystem("empire:objectives", () => {
       this.updateObjectives(overmind);
     });
 
     // NEW: Automated room intel refresh
-    profiler.measureSubsystem("empire:intelRefresh", () => {
+    unifiedStats.measureSubsystem("empire:intelRefresh", () => {
       this.refreshRoomIntel(overmind);
     });
 
     // NEW: Automated GCL progress tracking
-    profiler.measureSubsystem("empire:gclTracking", () => {
+    unifiedStats.measureSubsystem("empire:gclTracking", () => {
       this.trackGCLProgress(overmind);
     });
 
     // NEW: Automated expansion readiness check
-    profiler.measureSubsystem("empire:expansionReadiness", () => {
+    unifiedStats.measureSubsystem("empire:expansionReadiness", () => {
       this.checkExpansionReadiness(overmind);
     });
 
     // NEW: Automated nuke candidate refresh
-    profiler.measureSubsystem("empire:nukeCandidates", () => {
+    unifiedStats.measureSubsystem("empire:nukeCandidates", () => {
       this.refreshNukeCandidates(overmind);
     });
 
     // NEW: Automated cluster health monitoring
-    profiler.measureSubsystem("empire:clusterHealth", () => {
+    unifiedStats.measureSubsystem("empire:clusterHealth", () => {
       this.monitorClusterHealth();
     });
 
     // NEW: Automated power bank profitability assessment
-    profiler.measureSubsystem("empire:powerBankProfitability", () => {
+    unifiedStats.measureSubsystem("empire:powerBankProfitability", () => {
       this.assessPowerBankProfitability(overmind);
     });
 
