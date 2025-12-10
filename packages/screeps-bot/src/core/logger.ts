@@ -24,13 +24,15 @@ export interface LoggerConfig {
   showTimestamp: boolean;
   showRoom: boolean;
   cpuLogging: boolean;
+  outputFormat: "json" | "text";
 }
 
 const DEFAULT_CONFIG: LoggerConfig = {
   level: LogLevel.INFO,
   showTimestamp: true,
   showRoom: true,
-  cpuLogging: false
+  cpuLogging: false,
+  outputFormat: "json"
 };
 
 /**
@@ -61,9 +63,34 @@ export interface LogContext {
 }
 
 /**
+ * Log entry type for distinguishing logs from stats
+ */
+export type LogType = "log" | "stat";
+
+/**
  * Format log message with optional context
  */
-function formatMessage(level: string, message: string, context?: LogContext): string {
+function formatMessage(level: string, message: string, context?: LogContext, type: LogType = "log"): string {
+  if (globalConfig.outputFormat === "json") {
+    const logObject: Record<string, any> = {
+      type,
+      level,
+      message,
+      tick: Game.time
+    };
+
+    if (context?.subsystem) {
+      logObject.subsystem = context.subsystem;
+    }
+
+    if (context?.room) {
+      logObject.room = context.room;
+    }
+
+    return JSON.stringify(logObject);
+  }
+
+  // Legacy text format
   const parts: string[] = [];
 
   if (globalConfig.showTimestamp) {
@@ -149,6 +176,32 @@ export function measureCpu<T>(name: string, fn: () => T, context?: LogContext): 
 }
 
 /**
+ * Log a stat message (for metrics/stats exporters)
+ * Stats are distinguished from regular logs and can be filtered by exporters
+ */
+export function stat(key: string, value: number, unit?: string): void {
+  if (globalConfig.outputFormat === "json") {
+    const statObject: Record<string, any> = {
+      type: "stat",
+      key,
+      value,
+      tick: Game.time
+    };
+    if (unit) {
+      statObject.unit = unit;
+    }
+    console.log(JSON.stringify(statObject));
+  } else {
+    // Legacy format for graphite exporter
+    const parts = ["stats:", key, value.toString()];
+    if (unit) {
+      parts.push(unit);
+    }
+    console.log(parts.join(" "));
+  }
+}
+
+/**
  * Create a scoped logger for a specific subsystem
  */
 export function createLogger(subsystem: string) {
@@ -169,6 +222,7 @@ export const logger = {
   info,
   warn,
   error,
+  stat,
   measureCpu,
   configure: configureLogger,
   getConfig: getLoggerConfig,
