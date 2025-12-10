@@ -40,8 +40,9 @@ import type { CreepState } from "../../memory/schemas";
 /**
  * Default timeout for states (in ticks)
  * After this many ticks, state is considered expired and will be re-evaluated
+ * REFACTORED: Reduced from 50 to 25 to prevent creeps getting stuck on invalid targets
  */
-const DEFAULT_STATE_TIMEOUT = 50;
+const DEFAULT_STATE_TIMEOUT = 25;
 
 /**
  * Cooldown threshold for deposit harvesting (in ticks)
@@ -58,8 +59,9 @@ function hasHits(obj: unknown): obj is { hits: number; hitsMax: number } {
 
 /**
  * Check if a state is still valid (target exists, not expired, etc.)
+ * REFACTORED: Added stuck detection to prevent creeps cycling endlessly
  */
-function isStateValid(state: CreepState | undefined, _ctx: CreepContext): boolean {
+function isStateValid(state: CreepState | undefined, ctx: CreepContext): boolean {
   if (!state) return false;
 
   // Check timeout
@@ -73,6 +75,26 @@ function isStateValid(state: CreepState | undefined, _ctx: CreepContext): boolea
     const target = Game.getObjectById(state.targetId);
     if (!target) {
       return false;
+    }
+  }
+
+  // REFACTORED: Detect if creep is stuck (hasn't moved in 5+ ticks while not stationary)
+  // Stationary actions like harvest/upgrade are exempt from this check
+  const stationaryActions = new Set(["harvest", "harvestMineral", "upgrade"]);
+  if (!stationaryActions.has(state.action)) {
+    const memory = ctx.creep.memory as unknown as { lastPos?: string; lastPosTick?: number };
+    const currentPosStr = `${ctx.creep.pos.x},${ctx.creep.pos.y},${ctx.creep.pos.roomName}`;
+    
+    if (memory.lastPos === currentPosStr && memory.lastPosTick !== undefined) {
+      const ticksStuck = Game.time - memory.lastPosTick;
+      if (ticksStuck >= 5) {
+        // Creep hasn't moved in 5 ticks - state is invalid
+        return false;
+      }
+    } else {
+      // Update position tracking
+      memory.lastPos = currentPosStr;
+      memory.lastPosTick = Game.time;
     }
   }
 

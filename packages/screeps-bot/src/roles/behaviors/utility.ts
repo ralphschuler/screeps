@@ -198,92 +198,68 @@ function findExplorePosition(room: Room): RoomPosition | null {
 /**
  * Scout - Explore and map rooms.
  *
- * Movement strategy to prevent exit cycling:
- * 1. When on a room exit and actively traveling to a different target room, 
- *    let the movement system handle the exit (don't interrupt)
- * 2. When on an exit with no target or at the target room, move off the exit
- * 3. Track last explored room to avoid immediately cycling back
+ * REFACTORED: Simplified movement strategy to prevent exit cycling:
+ * 1. Always prioritize moving off exits when on one
+ * 2. When at target room and off exit, explore
+ * 3. When done exploring, pick next target avoiding last explored room
  * 
- * OPTIMIZATION: Only record intel when:
- * - Entering a new room (not seen before)
- * - At target room and exploring (stationary)
- * - Only once when reaching the center position (not every tick)
- * This reduces expensive recordRoomIntel() calls from every tick to only when needed.
+ * OPTIMIZATION: Only record intel once when reaching explore position
  */
 export function scout(ctx: CreepContext): CreepAction {
   const overmind = getOvermind();
+  const onExit = isCreepOnRoomExit(ctx.creep);
+
+  // PRIORITY 1: Always move off exits immediately
+  // This prevents all cycling issues by ensuring we're never stuck on exit tiles
+  if (onExit) {
+    return moveToRoomCenter(ctx.room.name);
+  }
 
   // Track the last room we fully explored (not just passed through)
-  const lastExploredRoom = ctx.memory.lastExploredRoom ;
+  const lastExploredRoom = ctx.memory.lastExploredRoom;
 
   // Find or assign target room
   let targetRoom = ctx.memory.targetRoom;
 
-  // CRITICAL FIX: Don't pick a new target if we just arrived at target room and are still on exit.
-  // This prevents the cycling behavior where scout enters room, is on exit, picks previous room as new target.
-  // We must first move off the exit and explore before picking next target.
-  const onExit = isCreepOnRoomExit(ctx.creep);
-  const justArrivedAtTarget = targetRoom && ctx.room.name === targetRoom && onExit;
-
+  // If no target, find next room to explore
   if (!targetRoom) {
-    // Pass lastExploredRoom to avoid cycling back to the room we just explored
     targetRoom = findNextExploreTarget(ctx.room.name, overmind, lastExploredRoom);
     if (targetRoom) {
       ctx.memory.targetRoom = targetRoom;
     } else {
-      delete ctx.memory.targetRoom;
-      // If no valid target found, clear lastExploredRoom to expand search
+      // No valid target found - clear lastExploredRoom to expand search
       delete ctx.memory.lastExploredRoom;
+      // Stay idle in current room
+      return { type: "idle" };
     }
   }
 
-  // CRITICAL: Only handle exits when we're NOT traveling to a different room.
-  // If we have a target room that's different from current room, the movement system
-  // in movement.ts (lines 565-601) already handles exit clearing properly.
-  // Interrupting that process causes the cycling behavior.
-  const travelingToOtherRoom = targetRoom && ctx.room.name !== targetRoom;
-  
-  if (onExit && !travelingToOtherRoom) {
-    // We're on an exit but not traveling - move toward room center
-    return moveToRoomCenter(ctx.room.name);
-  }
-
-  // Move to target room (movement.ts will handle exit clearing if needed)
+  // If traveling to a different room, move there
   if (targetRoom && ctx.room.name !== targetRoom) {
     return { type: "moveToRoom", roomName: targetRoom };
   }
 
-  // Explore current room - move toward center to gather intel
-  // OPTIMIZATION: Only record intel once when we're at the center position, not every tick
+  // We're at target room - explore it
   if (targetRoom && ctx.room.name === targetRoom) {
-    // CRITICAL FIX: If on exit, move off it first before exploring
-    // This prevents the scout from clearing targetRoom while still on the exit,
-    // which causes it to pick the previous room as the next target and cycle back
-    if (onExit) {
-      return moveToRoomCenter(ctx.room.name);
-    }
-
     const explorePos = findExplorePosition(ctx.room);
     if (explorePos) {
-      // Only record intel if we're at the explore position AND not on an exit
-      // Range 3 chosen to ensure full room visibility (controller and sources are scanned)
-      // without requiring the scout to reach exact center tile
       const INTEL_GATHER_RANGE = 3;
       if (ctx.creep.pos.getRangeTo(explorePos) <= INTEL_GATHER_RANGE) {
+        // At explore position - record intel
         recordRoomIntel(ctx.room, overmind);
-        // Mark this room as last explored so we don't immediately return to it
         ctx.memory.lastExploredRoom = ctx.room.name;
-        delete ctx.memory.targetRoom; // Done exploring, move to next room
+        delete ctx.memory.targetRoom; // Done exploring
+        return { type: "idle" };
       } else {
-        // Still moving to explore position
+        // Move to explore position
         return { type: "moveTo", target: explorePos };
       }
     } else {
-      // No valid explore position, record intel and move on
+      // No valid explore position - record intel and move on
       recordRoomIntel(ctx.room, overmind);
-      // Mark this room as last explored so we don't immediately return to it
       ctx.memory.lastExploredRoom = ctx.room.name;
       delete ctx.memory.targetRoom;
+      return { type: "idle" };
     }
   }
 
