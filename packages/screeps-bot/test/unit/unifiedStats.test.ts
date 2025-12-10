@@ -1,7 +1,7 @@
 import { assert } from "chai";
 import { UnifiedStatsManager } from "../../src/core/unifiedStats";
 
-// Define constants for tests
+// Body part constants from Screeps API
 const WORK = "work" as BodyPartConstant;
 const CARRY = "carry" as BodyPartConstant;
 const MOVE = "move" as BodyPartConstant;
@@ -155,8 +155,7 @@ describe("UnifiedStatsManager", function () {
       
       // Measure role execution (simulating what creepProcessManager does)
       statsManager.measureSubsystem("role:harvester", () => {
-        // Simulate creep execution
-        return;
+        // Simulate creep execution (no-op for test)
       });
       
       statsManager.finalizeTick();

@@ -174,7 +174,8 @@ export interface SubsystemStatsEntry {
 }
 
 /**
- * Per-role profiling stats (enhanced)
+ * Per-role profiling stats with additional metrics including spawn status,
+ * activity state (idle/active), average ticks to live, and body composition
  */
 export interface RoleStatsEntry {
   name: string;
