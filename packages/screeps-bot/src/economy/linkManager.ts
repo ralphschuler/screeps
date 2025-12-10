@@ -36,7 +36,7 @@ export interface LinkManagerConfig {
 }
 
 const DEFAULT_CONFIG: LinkManagerConfig = {
-  minBucket: 1500,
+  minBucket: 2000, // Align with standard medium frequency processes
   minSourceLinkEnergy: 400, // Transfer when source link is at least half full
   controllerLinkMaxEnergy: 700, // Keep controller link nearly full
   transferThreshold: 100, // Min energy to justify transfer
@@ -80,7 +80,7 @@ export class LinkManager {
   @MediumFrequencyProcess("link:manager", "Link Manager", {
     priority: ProcessPriority.MEDIUM,
     interval: 5, // Run every 5 ticks for responsive link management
-    minBucket: 1500,
+    minBucket: 2000, // Use standard medium frequency minBucket
     cpuBudget: 0.05
   })
   public run(): void {
@@ -224,12 +224,13 @@ export class LinkManager {
         }
 
         // Storage link gets priority if controller is satisfied
-        if (receiver.role === LinkRole.STORAGE && 
-            receiver.link.store.getUsedCapacity(RESOURCE_ENERGY) < this.config.storageLinkReserve) {
-          if (!bestReceiver) {
+        if (receiver.role === LinkRole.STORAGE) {
+          // Only fill storage link if it's significantly depleted
+          if (receiver.link.store.getUsedCapacity(RESOURCE_ENERGY) < this.config.storageLinkReserve) {
             bestReceiver = receiver;
+            break; // Found suitable storage link
           }
-          continue;
+          continue; // Storage link has enough, skip it
         }
 
         // Any other receiver as fallback
