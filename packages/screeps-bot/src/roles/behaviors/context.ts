@@ -292,7 +292,9 @@ function getActiveSources(cache: RoomCache): Source[] {
 
 /**
  * Get tombstones with energy from cache (lazy evaluation)
- * OPTIMIZATION: Tombstones with energy are common pickup targets for haulers
+ * OPTIMIZATION: Tombstones with energy are common pickup targets for haulers.
+ * This caching avoids expensive uncached room.find(FIND_TOMBSTONES) calls that
+ * were performed every tick in the hauler behavior evaluation.
  */
 function getTombstones(cache: RoomCache): Tombstone[] {
   if (cache._tombstones === undefined) {
@@ -305,7 +307,9 @@ function getTombstones(cache: RoomCache): Tombstone[] {
 
 /**
  * Get containers with minerals from cache (lazy evaluation)
- * OPTIMIZATION: Mineral containers are checked by haulers for mineral transport
+ * OPTIMIZATION: Mineral containers are checked by haulers for mineral transport.
+ * This caching avoids expensive uncached room.find(FIND_STRUCTURES) with complex
+ * filtering that was performed every tick in the hauler behavior evaluation.
  */
 function getMineralContainers(cache: RoomCache): StructureContainer[] {
   if (cache._mineralContainers === undefined) {

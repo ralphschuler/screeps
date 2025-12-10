@@ -50,7 +50,8 @@ const HARVESTER_CACHE_DURATION = 50;
  * OPTIMIZATION: Only clear cached targets on state change, not the state machine state.
  * The state machine's own completion detection handles invalid states efficiently.
  * Clearing state machine state here causes unnecessary re-evaluation and "dead ticks"
- * where creeps appear idle while establishing new states.
+ * where creeps appear idle while establishing new states, leading to perceived
+ * "idle time" and wasted CPU on frequent behavior re-evaluation during transitions.
  */
 function updateWorkingState(ctx: CreepContext): boolean {
   const wasWorking = ctx.memory.working ?? false;
