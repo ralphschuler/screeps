@@ -128,15 +128,20 @@ export class BoostManager {
 
     // Find labs with required boosts
     const labs = room.find(FIND_MY_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_LAB
-    }) as StructureLab[];
+      filter: (s): s is StructureLab => s.structureType === STRUCTURE_LAB
+    });
+
+    // Track which boosts still needed
+    const neededBoosts: ResourceConstant[] = [];
 
     for (const boost of config.boosts) {
-      // Check if creep already has this boost
-      const bodyParts = creep.body.filter(p => p.boost === boost);
-      if (bodyParts.length > 0) {
+      // Check if creep already has this boost on any body part
+      const hasBoost = creep.body.some(p => p.boost === boost);
+      if (hasBoost) {
         continue; // Already has this boost
       }
+
+      neededBoosts.push(boost);
 
       // Find lab with this boost
       const lab = labs.find(l => l.mineralType === boost && l.store[boost] >= 30);
@@ -147,20 +152,74 @@ export class BoostManager {
           const result = lab.boostCreep(creep);
           if (result === OK) {
             logger.info(`Boosted ${creep.name} with ${boost}`, { subsystem: "Boost" });
-          } else {
+            // Don't return yet, try to get next boost in same tick if possible
+          } else if (result !== ERR_NOT_FOUND) {
+            // ERR_NOT_FOUND means no suitable body parts for this boost, which is OK
             logger.error(`Failed to boost ${creep.name}: ${getBoostErrorMessage(result)}`, { subsystem: "Boost" });
+            return false; // Error, stop boosting
           }
         } else {
-          creep.moveTo(lab);
+          creep.moveTo(lab, { visualizePathStyle: { stroke: "#ffaa00" } });
+          return false; // Still moving to lab
         }
-        return false; // Still boosting
+      } else {
+        // Lab not ready with this boost
+        logger.debug(`Lab not ready with ${boost} for ${creep.name}`, { subsystem: "Boost" });
+        return false; // Can't continue without this boost
       }
     }
 
-    // All boosts applied
-    memory.boosted = true;
-    logger.info(`${creep.name} fully boosted`, { subsystem: "Boost" });
-    return true;
+    // All boosts applied or no boosts needed
+    if (neededBoosts.length === 0) {
+      memory.boosted = true;
+      logger.info(`${creep.name} fully boosted (all ${config.boosts.length} boosts applied)`, { subsystem: "Boost" });
+      return true;
+    }
+
+    return false; // Still need more boosts
+  }
+
+  /**
+   * Check if boost labs are ready for a specific role
+   */
+  public areBoostLabsReady(room: Room, role: string): boolean {
+    const config = BOOST_CONFIGS.find(c => c.role === role);
+    if (!config) return true; // No boost config = ready
+
+    const labs = room.find(FIND_MY_STRUCTURES, {
+      filter: (s): s is StructureLab => s.structureType === STRUCTURE_LAB
+    });
+
+    // Check each required boost
+    for (const boost of config.boosts) {
+      const lab = labs.find(l => l.mineralType === boost && l.store[boost] >= 30);
+      if (!lab) return false; // Missing a required boost
+    }
+
+    return true; // All boosts ready
+  }
+
+  /**
+   * Get missing boosts for a role
+   */
+  public getMissingBoosts(room: Room, role: string): ResourceConstant[] {
+    const config = BOOST_CONFIGS.find(c => c.role === role);
+    if (!config) return [];
+
+    const labs = room.find(FIND_MY_STRUCTURES, {
+      filter: (s): s is StructureLab => s.structureType === STRUCTURE_LAB
+    });
+
+    const missing: ResourceConstant[] = [];
+
+    for (const boost of config.boosts) {
+      const lab = labs.find(l => l.mineralType === boost && l.store[boost] >= 30);
+      if (!lab) {
+        missing.push(boost);
+      }
+    }
+
+    return missing;
   }
 
   /**
@@ -173,8 +232,8 @@ export class BoostManager {
     }
 
     const labs = room.find(FIND_MY_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_LAB
-    }) as StructureLab[];
+      filter: (s): s is StructureLab => s.structureType === STRUCTURE_LAB
+    });
 
     if (labs.length < 3) {
       return; // Need at least 3 labs
