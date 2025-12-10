@@ -1274,7 +1274,7 @@ function internalMoveTo(
           // Validate coordinates are within room bounds
           if (newX < 0 || newX > 49 || newY < 0 || newY > 49) {
             // Position outside room, skip flow field and use default pathfinding
-            flowFieldDirection = undefined;
+            flowFieldDirection = null;
           } else {
             const flowTargetPos = new RoomPosition(newX, newY, creep.pos.roomName);
             
