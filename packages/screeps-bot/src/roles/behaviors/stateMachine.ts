@@ -34,20 +34,28 @@
  * - This allows smooth multi-target operations without appearing "idle"
  */
 
-import type { CreepAction, CreepContext } from "./types";
+import type { CreepAction, CreepContext, StuckTrackingMemory } from "./types";
 import type { CreepState } from "../../memory/schemas";
 
 /**
  * Default timeout for states (in ticks)
  * After this many ticks, state is considered expired and will be re-evaluated
+ * REFACTORED: Reduced from 50 to 25 to prevent creeps getting stuck on invalid targets
  */
-const DEFAULT_STATE_TIMEOUT = 50;
+const DEFAULT_STATE_TIMEOUT = 25;
 
 /**
  * Cooldown threshold for deposit harvesting (in ticks)
  * If a deposit's cooldown exceeds this value, the harvest action is considered complete
  */
 const DEPOSIT_COOLDOWN_THRESHOLD = 100;
+
+/**
+ * Stuck detection threshold (in ticks)
+ * If a creep hasn't moved for this many ticks (while not performing stationary actions),
+ * the state is considered invalid and will be cleared
+ */
+const STUCK_DETECTION_THRESHOLD = 5;
 
 /**
  * Type guard to check if an object has hits (is a Structure).
@@ -58,8 +66,9 @@ function hasHits(obj: unknown): obj is { hits: number; hitsMax: number } {
 
 /**
  * Check if a state is still valid (target exists, not expired, etc.)
+ * REFACTORED: Added stuck detection to prevent creeps cycling endlessly
  */
-function isStateValid(state: CreepState | undefined, _ctx: CreepContext): boolean {
+function isStateValid(state: CreepState | undefined, ctx: CreepContext): boolean {
   if (!state) return false;
 
   // Check timeout
@@ -73,6 +82,43 @@ function isStateValid(state: CreepState | undefined, _ctx: CreepContext): boolea
     const target = Game.getObjectById(state.targetId);
     if (!target) {
       return false;
+    }
+  }
+
+  // REFACTORED: Detect if creep is stuck (hasn't moved while not performing stationary actions)
+  // Stationary actions like harvest/upgrade are exempt from this check
+  const stationaryActions = new Set(["harvest", "harvestMineral", "upgrade"]);
+  if (!stationaryActions.has(state.action)) {
+    // Type-safe memory access - StuckTrackingMemory extends CreepMemory
+    const memory = ctx.creep.memory as unknown as StuckTrackingMemory;
+    
+    // Initialize tracking on first run
+    if (typeof memory.lastPosTick !== "number") {
+      memory.lastPosX = ctx.creep.pos.x;
+      memory.lastPosY = ctx.creep.pos.y;
+      memory.lastPosRoom = ctx.creep.pos.roomName;
+      memory.lastPosTick = Game.time;
+      // Don't check for stuck on first run
+      return true;
+    }
+    
+    // Efficient position comparison using separate coordinates
+    const hasMoved = memory.lastPosX !== ctx.creep.pos.x ||
+                     memory.lastPosY !== ctx.creep.pos.y ||
+                     memory.lastPosRoom !== ctx.creep.pos.roomName;
+    
+    if (!hasMoved) {
+      const ticksStuck = Game.time - memory.lastPosTick;
+      if (ticksStuck >= STUCK_DETECTION_THRESHOLD) {
+        // Creep hasn't moved for STUCK_DETECTION_THRESHOLD ticks - state is invalid
+        return false;
+      }
+    } else {
+      // Update position tracking when position changes
+      memory.lastPosX = ctx.creep.pos.x;
+      memory.lastPosY = ctx.creep.pos.y;
+      memory.lastPosRoom = ctx.creep.pos.roomName;
+      memory.lastPosTick = Game.time;
     }
   }
 
@@ -338,6 +384,8 @@ function stateToAction(state: CreepState): CreepAction | null {
  * If creep has a valid ongoing state, continue that action.
  * Otherwise, evaluate new behavior and commit to it.
  * 
+ * REFACTORED: Added safety checks to prevent infinite loops
+ * 
  * @param ctx Creep context
  * @param behaviorFn Behavior function to call when evaluating new action
  * @returns Action to execute
@@ -365,11 +413,19 @@ export function evaluateWithStateMachine(
     }
   } else {
     // State invalid or expired - clear it
-    delete ctx.memory.state;
+    if (currentState) {
+      delete ctx.memory.state;
+    }
   }
 
   // No valid state - evaluate new action
   const newAction = behaviorFn(ctx);
+
+  // REFACTORED: Safety check - if behavior returns null/undefined, default to idle
+  // This prevents crashes if behavior functions have bugs
+  if (!newAction || !newAction.type) {
+    return { type: "idle" };
+  }
 
   // Don't store state for idle actions (they complete immediately)
   if (newAction.type !== "idle") {

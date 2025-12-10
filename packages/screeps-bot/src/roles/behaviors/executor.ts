@@ -42,8 +42,15 @@ const PATH_COLORS = {
 /**
  * Execute a creep action.
  * Handles all action types including automatic movement when out of range.
+ * REFACTORED: Added defensive checks for invalid actions
  */
 export function executeAction(creep: Creep, action: CreepAction, ctx: CreepContext): void {
+  // REFACTORED: Safety check - if action is invalid, clear state and return
+  if (!action || !action.type) {
+    delete ctx.memory.state;
+    return;
+  }
+
   let shouldClearState = false;
   
   switch (action.type) {
