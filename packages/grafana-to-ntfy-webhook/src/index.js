@@ -82,7 +82,7 @@ function formatNotification(payload) {
   }
 
   const messageBody = [description, '', ...lines].filter(Boolean).join('\n');
-  const tags = defaultTags ?? formatTagsArray(payload.tags);
+  const tags = defaultTags && defaultTags.length > 0 ? defaultTags : formatTagsArray(payload.tags);
 
   return {
     title,
