@@ -456,8 +456,10 @@ export class ChemistryPlanner {
     if (labs.length < 3) return;
 
     // Use first 2 labs as input labs, rest as output labs
-    const inputLab1 = labs[0]!;
-    const inputLab2 = labs[1]!;
+    const inputLab1 = labs[0];
+    const inputLab2 = labs[1];
+    if (!inputLab1 || !inputLab2) return; // Safety check
+    
     const outputLabs = labs.slice(2);
 
     // Ensure input labs have correct resources
