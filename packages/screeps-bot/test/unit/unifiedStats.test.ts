@@ -265,49 +265,6 @@ describe("UnifiedStatsManager", function () {
         find: () => []
       };
 
-      // Mock swarm state with pheromones
-      const mockMemoryManager: any = {
-        getSwarmState: () => ({
-          pheromones: {
-            expand: 45.5,
-            harvest: 80.2,
-            build: 100,
-            upgrade: 10.5,
-            defense: 5.0,
-            war: 0,
-            siege: 0,
-            logistics: 15.3,
-            nukeTarget: 0
-          },
-          danger: 0,
-          posture: "eco",
-          colonyLevel: "mature",
-          metrics: {
-            energyHarvested: 1000,
-            energySpawning: 0,
-            energyConstruction: 50,
-            energyRepair: 25,
-            energyTower: 0,
-            energyAvailable: 300,
-            energyCapacity: 550,
-            energyNeed: 250,
-            controllerProgress: 100,
-            hostileCount: 0,
-            damageReceived: 0,
-            constructionSites: 2
-          }
-        })
-      };
-
-      // Temporarily replace memoryManager import (this is a bit hacky for tests)
-      const originalRequire = (global as any).require;
-      (global as any).require = (id: string) => {
-        if (id.includes("memoryManager")) {
-          return { memoryManager: mockMemoryManager };
-        }
-        return originalRequire(id);
-      };
-
       mockGame.rooms = { W1N1: mockRoom };
       mockGame.creeps = {};
 
@@ -319,11 +276,8 @@ describe("UnifiedStatsManager", function () {
       assert.isDefined(mem.stats.rooms);
       assert.isDefined(mem.stats.rooms.W1N1);
       assert.isDefined(mem.stats.rooms.W1N1.pheromones);
-      // Pheromones should be present even if empty
+      // Pheromones should be present as an object (empty or populated based on swarm state)
       assert.isObject(mem.stats.rooms.W1N1.pheromones);
-
-      // Restore original require
-      (global as any).require = originalRequire;
     });
 
     it("should export room stats as nested structure", function () {
