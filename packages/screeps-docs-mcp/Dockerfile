@@ -10,6 +10,9 @@ LABEL org.opencontainers.image.source=https://github.com/ralphschuler/screeps \
       org.opencontainers.image.description="Screeps Documentation MCP Server" \
       org.opencontainers.image.licenses=MIT
 
+# Install git (required for simple-git to clone repositories)
+RUN apk add --no-cache git
+
 # Set working directory
 WORKDIR /app
 

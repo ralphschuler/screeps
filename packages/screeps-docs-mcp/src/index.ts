@@ -6,5 +6,6 @@
 export { createMCPServer } from "./server.js";
 export type { MCPServerConfig, DocEntry, APIDoc, MechanicsDoc, SearchResult, DocIndex } from "./types.js";
 export { buildIndex, searchIndex, getEntryById, clearCache } from "./scraper/index-builder.js";
-export { scrapeAPIObject, scrapeAllAPIObjects, getAPIObjectList } from "./scraper/api-scraper.js";
-export { scrapeMechanicsTopic, scrapeAllMechanics, getMechanicsTopicList } from "./scraper/mechanics-scraper.js";
+export { parseAPIObject, parseAllAPIObjects, getAPIObjectList } from "./scraper/api-scraper.js";
+export { parseMechanicsTopic, parseAllMechanics, getMechanicsTopicList } from "./scraper/mechanics-scraper.js";
+export { cloneDocsRepo, cleanupRepo } from "./scraper/repo-cloner.js";
