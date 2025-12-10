@@ -323,6 +323,11 @@ export class Kernel {
    * Determine current bucket mode.
    * When pixel generation is enabled, accounts for the recovery period
    * after a pixel is generated (bucket drops from 10000 to 0).
+   * 
+   * IMPORTANT: When bucket is at PIXEL_CPU_COST (10,000), we use "normal" mode
+   * instead of "high" to prevent CPU spikes. This is because pixel generation
+   * will empty the bucket in the same tick, and we want to be conservative
+   * before that happens.
    */
   private updateBucketMode(): void {
     const bucket = Game.cpu.bucket;
@@ -337,6 +342,15 @@ export class Kernel {
     } else if (bucket < this.config.lowBucketThreshold && !inPixelRecovery) {
       // Only enter low mode if we're NOT recovering from pixel generation
       newMode = "low";
+    } else if (bucket >= PIXEL_CPU_COST && this.config.pixelGenerationEnabled) {
+      // When bucket is at max and pixel generation is enabled, use normal mode
+      // to prevent CPU spikes. Pixel generation will empty the bucket this tick,
+      // so we should be conservative rather than running expensive "high" mode operations.
+      // 
+      // NOTE: This check MUST come before the highBucketThreshold check to ensure
+      // we always use "normal" mode when at PIXEL_CPU_COST, regardless of the
+      // highBucketThreshold configuration value.
+      newMode = "normal";
     } else if (bucket > this.config.highBucketThreshold) {
       newMode = "high";
     } else {
