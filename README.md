@@ -5,6 +5,10 @@
 
 A sophisticated Screeps bot built with TypeScript that implements swarm-based coordination, emergent behavior through pheromone systems, and multi-shard colony management. The bot is designed to efficiently manage 100+ rooms and 5000+ creeps while maintaining CPU efficiency.
 
+## Links
+- [Grafana Dashboard](https://ralphschuler.grafana.net/public-dashboards/1108066fad99495bbb26d67f0d55fe89)
+- [Screeps Profile](https://screeps.com/a/#!/profile/TedRoastBeef)
+
 ## Features
 
 - **Swarm Architecture**: Distributed colony management with emergent behavior
