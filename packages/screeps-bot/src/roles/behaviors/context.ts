@@ -316,12 +316,12 @@ function getMineralContainers(cache: RoomCache): StructureContainer[] {
     cache._mineralContainers = cache.room.find(FIND_STRUCTURES, {
       filter: s => {
         if (s.structureType !== STRUCTURE_CONTAINER) return false;
-        const container = s as StructureContainer;
+        const container = s ;
         // Check for any non-energy resources
         const resources = Object.keys(container.store) as ResourceConstant[];
         return resources.some(r => r !== RESOURCE_ENERGY && container.store.getUsedCapacity(r) > 0);
       }
-    }) as StructureContainer[];
+    }) ;
   }
   return cache._mineralContainers;
 }

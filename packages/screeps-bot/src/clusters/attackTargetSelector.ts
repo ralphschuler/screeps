@@ -77,8 +77,8 @@ const DEFAULT_WEIGHTS: ScoringWeights = {
  */
 export function findAttackTargets(
   cluster: ClusterMemory,
-  maxDistance: number = 10,
-  maxTargets: number = 5,
+  maxDistance = 10,
+  maxTargets = 5,
   weights: Partial<ScoringWeights> = {}
 ): AttackTarget[] {
   const finalWeights = { ...DEFAULT_WEIGHTS, ...weights };
@@ -226,7 +226,7 @@ function getMinDistanceFromCluster(cluster: ClusterMemory, targetRoom: string): 
 export function selectTargetForDoctrine(
   cluster: ClusterMemory,
   doctrine: OffensiveDoctrine,
-  maxDistance: number = 10
+  maxDistance = 10
 ): AttackTarget | null {
   const targets = findAttackTargets(cluster, maxDistance, 10);
   

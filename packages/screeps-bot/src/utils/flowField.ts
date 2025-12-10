@@ -110,7 +110,7 @@ export function createFlowField(
   costs[targetPos.x][targetPos.y] = 0;
 
   // Priority queue for Dijkstra (simple array, sorted by cost)
-  const queue: Array<{ x: number; y: number; cost: number }> = [
+  const queue: { x: number; y: number; cost: number }[] = [
     { x: targetPos.x, y: targetPos.y, cost: 0 }
   ];
 
@@ -247,7 +247,7 @@ export function getFlowField(
  * Prune old flow fields for a room
  */
 function pruneFlowFieldCache(roomName: string, maxFields: number): void {
-  const roomFields: Array<{ key: string; field: FlowField }> = [];
+  const roomFields: { key: string; field: FlowField }[] = [];
   
   for (const [key, field] of flowFieldCache.entries()) {
     if (field.roomName === roomName) {

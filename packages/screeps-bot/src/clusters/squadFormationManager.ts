@@ -12,9 +12,9 @@
 
 import type { ClusterMemory, SquadDefinition } from "../memory/schemas";
 import { logger } from "../core/logger";
-import { spawnQueue, SpawnPriority, type SpawnRequest } from "../spawning/spawnQueue";
+import { SpawnPriority, type SpawnRequest, spawnQueue } from "../spawning/spawnQueue";
 import { addCreepToSquad, getSquadReadiness } from "./squadCoordinator";
-import { getDoctrineComposition, DOCTRINE_CONFIGS } from "./offensiveDoctrine";
+import { DOCTRINE_CONFIGS, getDoctrineComposition } from "./offensiveDoctrine";
 
 /**
  * Screeps BODYPART_COST constants
@@ -226,7 +226,7 @@ function generateBody(pattern: BodyPartConstant[], budget: number, repeatPattern
 /**
  * Get boost compounds and applicable body parts for a role
  */
-function getBoostsForRole(role: string): Array<{ compound: MineralBoostConstant; parts: BodyPartConstant[] }> {
+function getBoostsForRole(role: string): { compound: MineralBoostConstant; parts: BodyPartConstant[] }[] {
   switch (role) {
     case "soldier":
       // XUH2O: T3 attack boost (UH -> UH2O -> XUH2O)
@@ -257,7 +257,7 @@ export function onCreepSpawned(creep: Creep): void {
   if (!formation) return;
   
   // Update composition
-  const role = creep.memory.role as string;
+  const role = creep.memory.role ;
   formation.currentComposition[role] = (formation.currentComposition[role] ?? 0) + 1;
   
   // Add creep to squad

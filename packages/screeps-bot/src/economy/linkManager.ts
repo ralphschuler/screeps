@@ -104,7 +104,7 @@ export class LinkManager {
   private processRoomLinks(room: Room): void {
     const links = room.find(FIND_MY_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_LINK
-    }) as StructureLink[];
+    }) ;
 
     if (links.length < 2) {
       // Need at least 2 links to transfer
@@ -295,7 +295,7 @@ export class LinkManager {
 
     const links = room.find(FIND_MY_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_LINK
-    }) as StructureLink[];
+    }) ;
 
     if (links.length < 2) {
       return false;

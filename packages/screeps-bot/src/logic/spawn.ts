@@ -1066,9 +1066,9 @@ export function determineNextRole(room: Room, swarm: SwarmState): string | null 
     const pheromoneMult = getPheromoneMult(role, swarm.pheromones as unknown as Record<string, number>);
     const priorityBoost = getDynamicPriorityBoost(room, swarm, role);
 
-    // Reduce weight based on current count
+    // Reduce weight based on current count (guard against division by zero)
     const current = counts.get(role) ?? 0;
-    const countFactor = Math.max(0.1, 1 - current / def.maxPerRoom);
+    const countFactor = def.maxPerRoom > 0 ? Math.max(0.1, 1 - current / def.maxPerRoom) : 0.1;
 
     const weight = (baseWeight + priorityBoost) * postureWeight * pheromoneMult * countFactor;
 
@@ -1241,9 +1241,9 @@ export function getAllSpawnableRoles(room: Room, swarm: SwarmState): string[] {
     const pheromoneMult = getPheromoneMult(role, swarm.pheromones as unknown as Record<string, number>);
     const priorityBoost = getDynamicPriorityBoost(room, swarm, role);
 
-    // Reduce weight based on current count
+    // Reduce weight based on current count (guard against division by zero)
     const current = counts.get(role) ?? 0;
-    const countFactor = Math.max(0.1, 1 - current / def.maxPerRoom);
+    const countFactor = def.maxPerRoom > 0 ? Math.max(0.1, 1 - current / def.maxPerRoom) : 0.1;
 
     const score = (baseWeight + priorityBoost) * postureWeight * pheromoneMult * countFactor;
 
@@ -1543,6 +1543,10 @@ export function findBestRepairTarget(room: Room): Structure | null {
 
   if (structures.length === 0) return null;
 
-  // Sort by damage percentage
-  return structures.sort((a, b) => a.hits / a.hitsMax - b.hits / b.hitsMax)[0] ?? null;
+  // Sort by damage percentage (guard against zero hitsMax, though it should never happen)
+  return structures.sort((a, b) => {
+    const ratioA = a.hitsMax > 0 ? a.hits / a.hitsMax : 0;
+    const ratioB = b.hitsMax > 0 ? b.hits / b.hitsMax : 0;
+    return ratioA - ratioB;
+  })[0] ?? null;
 }

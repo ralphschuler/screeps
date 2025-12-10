@@ -352,7 +352,11 @@ export function healer(ctx: CreepContext): CreepAction {
 
     // Find most damaged power harvester
     if (powerHarvesters.length > 0) {
-      powerHarvesters.sort((a, b) => a.hits / a.hitsMax - b.hits / b.hitsMax);
+      powerHarvesters.sort((a, b) => {
+        const ratioA = a.hitsMax > 0 ? a.hits / a.hitsMax : 1;
+        const ratioB = b.hitsMax > 0 ? b.hits / b.hitsMax : 1;
+        return ratioA - ratioB;
+      });
       const target = powerHarvesters[0]!;
       const range = ctx.creep.pos.getRangeTo(target);
 
@@ -412,7 +416,11 @@ export function healer(ctx: CreepContext): CreepAction {
   });
 
   if (damagedNearby.length > 0) {
-    damagedNearby.sort((a, b) => a.hits / a.hitsMax - b.hits / b.hitsMax);
+    damagedNearby.sort((a, b) => {
+      const ratioA = a.hitsMax > 0 ? a.hits / a.hitsMax : 1;
+      const ratioB = b.hitsMax > 0 ? b.hits / b.hitsMax : 1;
+      return ratioA - ratioB;
+    });
     const target = damagedNearby[0]!;
     const range = ctx.creep.pos.getRangeTo(target);
 
@@ -568,7 +576,7 @@ export function siege(ctx: CreepContext): CreepAction {
       }
       if (s.structureType === STRUCTURE_RAMPART) {
         // Ramparts have ownership - only dismantle enemy ramparts
-        return s.hits < 100000 && !(s as StructureRampart).my;
+        return s.hits < 100000 && !(s ).my;
       }
       return false;
     }

@@ -121,7 +121,7 @@ export class FactoryManager {
   private processFactory(room: Room): void {
     const factories = room.find(FIND_MY_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_FACTORY
-    }) as StructureFactory[];
+    }) ;
     
     if (factories.length === 0) return;
     const factory = factories[0];
@@ -175,7 +175,7 @@ export class FactoryManager {
     storage: StructureStorage
   ): CommodityConstant | null {
     // Get list of possible productions sorted by priority
-    const candidates: Array<{ commodity: CommodityConstant; priority: number; score: number }> = [];
+    const candidates: { commodity: CommodityConstant; priority: number; score: number }[] = [];
 
     for (const [commodity, recipe] of Object.entries(COMMODITY_RECIPES)) {
       const commodityKey = commodity as CommodityConstant;
@@ -229,7 +229,7 @@ export class FactoryManager {
    * Get required inputs for factory production
    * Used by factory workers to know what to supply
    */
-  public getRequiredInputs(factory: StructureFactory, room: Room): Array<{ resource: ResourceConstant; amount: number }> {
+  public getRequiredInputs(factory: StructureFactory, room: Room): { resource: ResourceConstant; amount: number }[] {
     const storage = room.storage;
     if (!storage) return [];
 
@@ -239,7 +239,7 @@ export class FactoryManager {
     const recipe = COMMODITY_RECIPES[production];
     if (!recipe) return [];
 
-    const required: Array<{ resource: ResourceConstant; amount: number }> = [];
+    const required: { resource: ResourceConstant; amount: number }[] = [];
 
     for (const [resource, amount] of Object.entries(recipe)) {
       const resourceKey = resource as ResourceConstant;

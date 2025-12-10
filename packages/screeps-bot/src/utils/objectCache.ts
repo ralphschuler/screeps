@@ -76,7 +76,7 @@ export function getCachedObjectById<T extends _HasId>(id: Id<T> | null | undefin
   }
 
   // Fetch from game
-  const obj = Game.getObjectById(id) as T | null;
+  const obj = Game.getObjectById(id) ;
   
   // Store in cache (including null results to avoid repeated failed lookups)
   cache.objects.set(id, obj);

@@ -451,7 +451,7 @@ export class ChemistryPlanner {
   public executeReaction(room: Room, reaction: Reaction): void {
     const labs = room.find(FIND_MY_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_LAB
-    }) as StructureLab[];
+    }) ;
 
     if (labs.length < 3) return;
 

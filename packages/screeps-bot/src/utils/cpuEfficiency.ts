@@ -57,9 +57,9 @@ export function throttleWithDefault<T>(
 // The cached versions provide the same functionality with better performance.
 
 import {
+  getCachedBodyPartCount,
   getCachedDamagePotential,
   getCachedHealPotential,
-  getCachedBodyPartCount,
   hasCachedBodyPart
 } from "./bodyPartCache";
 

@@ -118,7 +118,7 @@ export function calculatePathDistance(fromRoom: string, toRoom: string): number 
 /**
  * Estimate round trip ticks for a hauler
  */
-export function estimateRoundTripTicks(distance: number, terrainFactor: number = 1.2): number {
+export function estimateRoundTripTicks(distance: number, terrainFactor = 1.2): number {
   // Base movement: 1 tile per tick with 1:1 MOVE:CARRY ratio
   // Terrain factor accounts for swamps (1.0 = all plains, 1.5 = all swamps, 1.2 = mixed)
   const onewayTicks = distance * TILES_PER_ROOM * terrainFactor;

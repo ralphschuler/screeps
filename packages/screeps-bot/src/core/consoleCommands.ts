@@ -240,7 +240,7 @@ ${stats.rooms.map(r => `  ${r.roomName}: RCL${r.rcl} | ${r.creepCount} creeps | 
     // Process breakdown
     if (showAll || type === "process") {
       const processes = stats.processes || {};
-      const processList = Object.values(processes) as any[];
+      const processList = Object.values(processes) ;
       if (processList.length > 0) {
         lines.push("=== Process CPU Usage ===");
         const sorted = processList.sort((a: any, b: any) => b.avg_cpu - a.avg_cpu);
@@ -254,7 +254,7 @@ ${stats.rooms.map(r => `  ${r.roomName}: RCL${r.rcl} | ${r.creepCount} creeps | 
     // Room breakdown
     if (showAll || type === "room") {
       const rooms = stats.rooms || {};
-      const roomList = Object.values(rooms) as any[];
+      const roomList = Object.values(rooms) ;
       if (roomList.length > 0) {
         lines.push("=== Room CPU Usage ===");
         const sorted = roomList.sort((a: any, b: any) => b.profiler.avg_cpu - a.profiler.avg_cpu);
@@ -269,7 +269,7 @@ ${stats.rooms.map(r => `  ${r.roomName}: RCL${r.rcl} | ${r.creepCount} creeps | 
     // Subsystem breakdown
     if (showAll || type === "subsystem") {
       const subsystems = stats.subsystems || {};
-      const subsystemList = Object.values(subsystems) as any[];
+      const subsystemList = Object.values(subsystems) ;
       if (subsystemList.length > 0) {
         lines.push("=== Subsystem CPU Usage ===");
         const sorted = subsystemList.sort((a: any, b: any) => b.avg_cpu - a.avg_cpu);
@@ -284,7 +284,7 @@ ${stats.rooms.map(r => `  ${r.roomName}: RCL${r.rcl} | ${r.creepCount} creeps | 
     // Creep breakdown (top 10)
     if (showAll || type === "creep") {
       const creeps = stats.creeps || {};
-      const creepList = Object.values(creeps) as any[];
+      const creepList = Object.values(creeps) ;
       if (creepList.length > 0) {
         lines.push("=== Top Creeps by CPU (Top 10) ===");
         const sorted = creepList.sort((a: any, b: any) => b.cpu - a.cpu);

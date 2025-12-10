@@ -17,9 +17,9 @@ import type { ClusterMemory, SquadDefinition } from "../memory/schemas";
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
 import { findAttackTargets, markRoomAttacked, validateTarget } from "./attackTargetSelector";
-import { selectDoctrine, canLaunchDoctrine, type OffensiveDoctrine } from "./offensiveDoctrine";
+import { type OffensiveDoctrine, canLaunchDoctrine, selectDoctrine } from "./offensiveDoctrine";
 import { createOffensiveSquad, shouldDissolveSquad, validateSquadState } from "./squadCoordinator";
-import { startSquadFormation, updateSquadFormations, isSquadForming } from "./squadFormationManager";
+import { isSquadForming, startSquadFormation, updateSquadFormations } from "./squadFormationManager";
 
 /**
  * Offensive operation tracking

@@ -205,12 +205,12 @@ export function getRemotesNeedingReservation(homeRoomName: string): string[] {
 /**
  * Get list of remote rooms that need guards
  */
-export function getRemotesNeedingGuards(homeRoomName: string): Array<{ roomName: string; threatLevel: number }> {
+export function getRemotesNeedingGuards(homeRoomName: string): { roomName: string; threatLevel: number }[] {
   const swarm = memoryManager.getSwarmState(homeRoomName);
   if (!swarm) return [];
 
   const remotes = swarm.remoteAssignments ?? [];
-  const needingGuards: Array<{ roomName: string; threatLevel: number }> = [];
+  const needingGuards: { roomName: string; threatLevel: number }[] = [];
 
   for (const remoteName of remotes) {
     const status = getRemoteRoomStatus(remoteName, homeRoomName);

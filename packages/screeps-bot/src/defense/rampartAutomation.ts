@@ -138,12 +138,12 @@ export function placeRampartsOnCriticalStructures(
   // Get all ramparts for repair check
   const ramparts = room.find(FIND_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_RAMPART
-  }) as StructureRampart[];
+  }) ;
 
   const repairTarget = calculateWallRepairTarget(rcl, danger);
 
   // Track structures by priority
-  const unprotected: Array<{ structure: Structure; priority: number }> = [];
+  const unprotected: { structure: Structure; priority: number }[] = [];
 
   // Check each critical structure
   for (const structure of criticalStructures) {
@@ -245,7 +245,7 @@ export function getEmergencyRampartRepairs(
 
   const ramparts = room.find(FIND_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_RAMPART && s.hits < emergencyThreshold
-  }) as StructureRampart[];
+  }) ;
 
   // Sort by hits (lowest first)
   ramparts.sort((a, b) => a.hits - b.hits);
@@ -274,7 +274,7 @@ export function getCriticalRampartRepairs(
   const repairTarget = calculateWallRepairTarget(rcl, danger);
   const criticalStructures = getCriticalStructures(room, rcl);
 
-  const rampartsToRepair: Array<{ rampart: StructureRampart; priority: number }> = [];
+  const rampartsToRepair: { rampart: StructureRampart; priority: number }[] = [];
 
   // Find ramparts on critical structures
   for (const structure of criticalStructures) {

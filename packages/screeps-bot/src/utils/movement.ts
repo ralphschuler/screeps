@@ -46,8 +46,8 @@ import {
   shouldYieldTo
 } from "./trafficManager";
 import {
-  getFlowField,
-  getFlowDirection
+  getFlowDirection,
+  getFlowField
 } from "./flowField";
 
 // =============================================================================
@@ -733,7 +733,7 @@ function generateCostMatrix(
       // Block non-walkable structures
       // Public ramparts are walkable (Traveler-inspired)
       if (structure.structureType === STRUCTURE_RAMPART) {
-        const rampart = structure as StructureRampart;
+        const rampart = structure ;
         if (!rampart.my && !rampart.isPublic) {
           costs.set(structure.pos.x, structure.pos.y, 255);
         }
@@ -1196,8 +1196,8 @@ function internalMoveTo(
     const oldTargetParts = cachedPath.targetKey.split(':');
     if (oldTargetParts.length === 2) {
       const [oldRoom, oldCoords] = oldTargetParts;
-      const [oldX, oldY] = oldCoords!.split(',').map(s => parseInt(s, 10));
-      const oldTargetPos = new RoomPosition(oldX!, oldY!, oldRoom!);
+      const [oldX, oldY] = oldCoords.split(',').map(s => parseInt(s, 10));
+      const oldTargetPos = new RoomPosition(oldX, oldY, oldRoom);
       
       // Check if new target is adjacent to old target
       if (oldTargetPos.isNearTo(targetPos)) {

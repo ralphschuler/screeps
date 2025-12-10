@@ -195,11 +195,11 @@ export function shouldActivateEmergencyMode(creep: Creep): boolean {
  * Get recommended action priority for multi-role creeps
  * Returns sorted list of actions by pheromone priority
  */
-export function getActionPriorities(pheromones: PheromoneState): Array<{
+export function getActionPriorities(pheromones: PheromoneState): {
   action: keyof PheromoneState;
   priority: number;
-}> {
-  const actions: Array<{ action: keyof PheromoneState; priority: number }> = [];
+}[] {
+  const actions: { action: keyof PheromoneState; priority: number }[] = [];
 
   for (const key of Object.keys(pheromones) as (keyof PheromoneState)[]) {
     actions.push({

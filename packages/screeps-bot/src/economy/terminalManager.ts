@@ -79,7 +79,7 @@ export class TerminalManager {
     toRoom: string,
     resourceType: ResourceConstant,
     amount: number,
-    priority: number = 3
+    priority = 3
   ): boolean {
     // Check if transfer is already queued
     const alreadyQueued = this.transferQueue.some(
@@ -226,7 +226,7 @@ export class TerminalManager {
         const transferAmount = Math.min(
           Math.floor((donor.totalEnergy - this.config.energySendThreshold) / 2),
           this.config.energyRequestThreshold - needy.totalEnergy,
-          donor.terminal!.store.getUsedCapacity(RESOURCE_ENERGY)
+          donor.terminal.store.getUsedCapacity(RESOURCE_ENERGY)
         );
 
         if (transferAmount < this.config.minTransferAmount) continue;

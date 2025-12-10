@@ -329,7 +329,7 @@ function findNearbyContainerCached(creep: Creep): StructureContainer | undefined
   // This allows us to cache it even when full
   const containers = creep.pos.findInRange(FIND_STRUCTURES, 1, {
     filter: s => s.structureType === STRUCTURE_CONTAINER
-  }) as StructureContainer[];
+  }) ;
   
   const container = containers[0];
   
@@ -383,7 +383,7 @@ function findNearbyLinkCached(creep: Creep): StructureLink | undefined {
   // This allows us to cache it even when full
   const links = creep.pos.findInRange(FIND_MY_STRUCTURES, 1, {
     filter: s => s.structureType === STRUCTURE_LINK
-  }) as StructureLink[];
+  }) ;
   
   const link = links[0];
   
@@ -583,8 +583,8 @@ export function upgrader(ctx: CreepContext): CreepAction {
     const nearbyLinks = controller.pos.findInRange(FIND_MY_STRUCTURES, 2, {
       filter: s => 
         s.structureType === STRUCTURE_LINK &&
-        (s as StructureLink).store.getUsedCapacity(RESOURCE_ENERGY) > 50
-    }) as StructureLink[];
+        (s ).store.getUsedCapacity(RESOURCE_ENERGY) > 50
+    }) ;
     
     if (nearbyLinks.length > 0) {
       // Prefer link with most energy
@@ -612,8 +612,8 @@ export function upgrader(ctx: CreepContext): CreepAction {
     // This allows upgraders to position near a container and controller for maximum efficiency
     nearbyContainers = ctx.creep.pos.findInRange(FIND_STRUCTURES, 3, {
       filter: s => s.structureType === STRUCTURE_CONTAINER &&
-                   (s as StructureContainer).store.getUsedCapacity(RESOURCE_ENERGY) > 50
-    }) as StructureContainer[];
+                   (s ).store.getUsedCapacity(RESOURCE_ENERGY) > 50
+    }) ;
     
     // Cache the IDs
     memory[nearbyContainersCacheKey] = {
@@ -988,7 +988,7 @@ function findRemoteContainerCached(creep: Creep, source: Source): StructureConta
   // Cache miss or invalid - find a new container near the source
   const containers = source.pos.findInRange(FIND_STRUCTURES, 2, {
     filter: s => s.structureType === STRUCTURE_CONTAINER
-  }) as StructureContainer[];
+  }) ;
   
   const container = containers[0];
   
@@ -1116,7 +1116,7 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
       filter: s => 
         s.structureType === STRUCTURE_CONTAINER && 
         s.store.getUsedCapacity(RESOURCE_ENERGY) >= minEnergyThreshold
-    }) as StructureContainer[];
+    }) ;
 
     if (containers.length > 0) {
       const closest = findCachedClosest(ctx.creep, containers, "remoteHauler_remoteCont", 10);
@@ -1138,7 +1138,7 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     if (containers.length === 0) {
       const anyContainer = ctx.room.find(FIND_STRUCTURES, {
         filter: s => s.structureType === STRUCTURE_CONTAINER
-      }) as StructureContainer[];
+      }) ;
       
       if (anyContainer.length > 0) {
         const closest = findCachedClosest(ctx.creep, anyContainer, "remoteHauler_waitCont", 20);
@@ -1186,7 +1186,7 @@ export function interRoomCarrier(ctx: CreepContext): CreepAction {
     const containers = room.find(FIND_STRUCTURES, {
       filter: s =>
         s.structureType === STRUCTURE_CONTAINER && s.store.getFreeCapacity(resourceType) > 0
-    }) as StructureContainer[];
+    }) ;
 
     if (containers.length > 0) {
       const closest = findCachedClosest(ctx.creep, containers, "interRoomCarrier_targetCont", 10);
@@ -1222,7 +1222,7 @@ export function interRoomCarrier(ctx: CreepContext): CreepAction {
     const containers = room.find(FIND_STRUCTURES, {
       filter: s =>
         s.structureType === STRUCTURE_CONTAINER && s.store.getUsedCapacity(resourceType) > 0
-    }) as StructureContainer[];
+    }) ;
 
     if (containers.length > 0) {
       const closest = findCachedClosest(ctx.creep, containers, "interRoomCarrier_sourceCont", 10);

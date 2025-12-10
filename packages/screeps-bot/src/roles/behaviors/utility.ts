@@ -214,7 +214,7 @@ export function scout(ctx: CreepContext): CreepAction {
   const overmind = getOvermind();
 
   // Track the last room we fully explored (not just passed through)
-  const lastExploredRoom = ctx.memory.lastExploredRoom as string | undefined;
+  const lastExploredRoom = ctx.memory.lastExploredRoom ;
 
   // Find or assign target room
   let targetRoom = ctx.memory.targetRoom;
@@ -450,7 +450,7 @@ export function remoteWorker(ctx: CreepContext): CreepAction {
 export function linkManager(ctx: CreepContext): CreepAction {
   const links = ctx.room.find(FIND_MY_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_LINK
-  }) as StructureLink[];
+  }) ;
 
   if (links.length < 2 || !ctx.storage) return { type: "idle" };
 

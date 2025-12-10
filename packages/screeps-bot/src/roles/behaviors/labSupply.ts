@@ -57,7 +57,7 @@ function deliverToLabs(ctx: CreepContext): CreepAction {
     const obj = Game.getObjectById(ctx.memory.targetId as Id<StructureLab>);
     // Type guard to verify it's actually a lab
     if (obj && obj.structureType === STRUCTURE_LAB) {
-      const lab = obj as StructureLab;
+      const lab = obj ;
       // Find what we're carrying
       const carrying = Object.keys(ctx.creep.store).find(
         r => ctx.creep.store[r as ResourceConstant] > 0
