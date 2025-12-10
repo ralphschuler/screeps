@@ -31,6 +31,8 @@ export interface VisualizerConfig {
   showSpawnQueue: boolean;
   /** Enable room stats */
   showRoomStats: boolean;
+  /** Enable enhanced structure visualization */
+  showStructures: boolean;
   /** Opacity for overlays */
   opacity: number;
 }
@@ -42,6 +44,7 @@ const DEFAULT_CONFIG: VisualizerConfig = {
   showResourceFlow: false,
   showSpawnQueue: true,
   showRoomStats: true,
+  showStructures: false,
   opacity: 0.5
 };
 
@@ -100,6 +103,10 @@ export class RoomVisualizer {
 
     if (this.config.showPaths) {
       this.drawTrafficPaths(visual, room);
+    }
+
+    if (this.config.showStructures) {
+      this.drawEnhancedStructures(visual, room);
     }
 
     // Always draw collection point if available
@@ -298,7 +305,7 @@ export class RoomVisualizer {
   }
 
   /**
-   * Draw combat information
+   * Draw combat information with animated markers
    */
   private drawCombatInfo(visual: RoomVisual, room: Room): void {
     const hostiles = room.find(FIND_HOSTILE_CREEPS);
@@ -320,6 +327,16 @@ export class RoomVisualizer {
         font: "0.4 monospace",
         color
       });
+
+      // Add animated marker for high-threat hostiles
+      if (threat > 20) {
+        visual.animatedPosition(hostile.pos.x, hostile.pos.y, {
+          color,
+          opacity: 0.8,
+          radius: 1.0,
+          frames: 8
+        });
+      }
     }
 
     // Draw tower ranges if under attack
@@ -379,7 +396,7 @@ export class RoomVisualizer {
   }
 
   /**
-   * Draw spawn queue visualization
+   * Draw spawn queue visualization with enhanced speech bubbles
    */
   private drawSpawnQueue(visual: RoomVisual, room: Room): void {
     const spawns = room.find(FIND_MY_SPAWNS);
@@ -405,19 +422,31 @@ export class RoomVisualizer {
           opacity: 0.8
         });
 
-        // Spawning creep name/role
+        // Use speech bubble for spawning creep
         const memory = creep?.memory as unknown as { role?: string };
         const role = memory?.role ?? spawn.spawning.name;
-        visual.text(role, spawn.pos.x, spawn.pos.y - 1.9, {
-          font: "0.35 monospace",
-          color: "#ffffff"
+        visual.speech(role, spawn.pos.x, spawn.pos.y, {
+          background: "#2ccf3b",
+          textcolor: "#000000",
+          textsize: 0.4,
+          opacity: 0.9
         });
+
+        // Show animated marker for new spawns in first few ticks
+        if (spawn.spawning.remainingTime > spawn.spawning.needTime - 5) {
+          visual.animatedPosition(spawn.pos.x, spawn.pos.y, {
+            color: "#00ff00",
+            opacity: 0.6,
+            radius: 1.2,
+            frames: 10
+          });
+        }
       }
     }
   }
 
   /**
-   * Draw resource flow arrows
+   * Draw resource flow arrows and resource badges
    */
   private drawResourceFlow(visual: RoomVisual, room: Room): void {
     const storage = room.storage;
@@ -427,6 +456,10 @@ export class RoomVisualizer {
     const sources = room.find(FIND_SOURCES);
     for (const source of sources) {
       this.drawArrow(visual, source.pos, storage.pos, "#ffff00", 0.2);
+      // Draw energy badge at midpoint
+      const midX = (source.pos.x + storage.pos.x) / 2;
+      const midY = (source.pos.y + storage.pos.y) / 2;
+      visual.resource(RESOURCE_ENERGY, midX, midY, 0.2);
     }
 
     // Draw arrows from storage to spawns
@@ -441,6 +474,43 @@ export class RoomVisualizer {
     const controller = room.controller;
     if (controller) {
       this.drawArrow(visual, storage.pos, controller.pos, "#00ffff", 0.2);
+    }
+
+    // Draw resource badges for major resources in storage
+    if (storage.store.getUsedCapacity() > 0) {
+      let offsetX = 0.8;
+      const offsetY = -0.8;
+      
+      // Show top 3 resources by quantity
+      const resources = Object.keys(storage.store) as ResourceConstant[];
+      const sorted = resources
+        .filter(r => storage.store[r] > 1000)
+        .sort((a, b) => storage.store[b] - storage.store[a])
+        .slice(0, 3);
+      
+      for (const resource of sorted) {
+        visual.resource(resource, storage.pos.x + offsetX, storage.pos.y + offsetY, 0.3);
+        offsetX += 0.6;
+      }
+    }
+
+    // Draw resource badges for terminal if available
+    const terminal = room.terminal;
+    if (terminal && terminal.store.getUsedCapacity() > 0) {
+      let offsetX = 0.8;
+      const offsetY = -0.8;
+      
+      // Show top 3 resources by quantity
+      const resources = Object.keys(terminal.store) as ResourceConstant[];
+      const sorted = resources
+        .filter(r => terminal.store[r] > 1000)
+        .sort((a, b) => terminal.store[b] - terminal.store[a])
+        .slice(0, 3);
+      
+      for (const resource of sorted) {
+        visual.resource(resource, terminal.pos.x + offsetX, terminal.pos.y + offsetY, 0.3);
+        offsetX += 0.6;
+      }
     }
   }
 
@@ -460,6 +530,29 @@ export class RoomVisualizer {
       width: 0.1,
       lineStyle: "dashed"
     });
+  }
+
+  /**
+   * Draw enhanced structure visualization
+   * Uses the new structure() method from roomVisualExtensions
+   */
+  private drawEnhancedStructures(visual: RoomVisual, room: Room): void {
+    // Draw all structures with enhanced visuals
+    const structures = room.find(FIND_STRUCTURES);
+    
+    for (const structure of structures) {
+      visual.structure(structure.pos.x, structure.pos.y, structure.structureType, {
+        opacity: 0.8
+      });
+    }
+
+    // Draw construction sites with lower opacity
+    const sites = room.find(FIND_MY_CONSTRUCTION_SITES);
+    for (const site of sites) {
+      visual.structure(site.pos.x, site.pos.y, site.structureType, {
+        opacity: 0.3
+      });
+    }
   }
 
   /**
@@ -487,41 +580,12 @@ export class RoomVisualizer {
 
   /**
    * Draw blueprint overlay for planned structures
+   * Now uses enhanced structure visualization from roomVisualExtensions
    */
   public drawBlueprint(visual: RoomVisual, blueprint: { type: StructureConstant; pos: { x: number; y: number } }[]): void {
-    const structureColors: Record<string, string> = {
-      spawn: "#ff8800",
-      extension: "#ffff00",
-      tower: "#ff0000",
-      storage: "#00ff00",
-      terminal: "#00ffff",
-      lab: "#ff00ff",
-      factory: "#8800ff",
-      link: "#0088ff",
-      observer: "#888888",
-      nuker: "#ff0088",
-      powerSpawn: "#ff4400",
-      container: "#884400",
-      road: "#444444",
-      rampart: "#008800",
-      constructedWall: "#666666",
-      extractor: "#ff8888"
-    };
-
     for (const item of blueprint) {
-      const color = structureColors[item.type] ?? "#ffffff";
-
-      visual.rect(item.pos.x - 0.4, item.pos.y - 0.4, 0.8, 0.8, {
-        fill: color,
-        opacity: 0.3,
-        stroke: color,
-        strokeWidth: 0.05
-      });
-
-      visual.text(item.type.charAt(0).toUpperCase(), item.pos.x, item.pos.y + 0.15, {
-        font: "0.5 monospace",
-        color
-      });
+      // Use the enhanced structure drawing from RoomVisual extensions
+      visual.structure(item.pos.x, item.pos.y, item.type, { opacity: 0.4 });
     }
   }
 
