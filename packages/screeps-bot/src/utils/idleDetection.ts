@@ -68,9 +68,10 @@ const HARVESTER_WORKING_THRESHOLD = 40;
 /**
  * Minimum ticks a creep must have a valid state to be considered idle.
  * This prevents false positives for creeps that just started a task.
- * OPTIMIZATION: Reduced from 3 to 2 to allow idle detection to kick in sooner
+ * OPTIMIZATION: Reduced to 1 tick to allow idle detection immediately after state establishment
+ * This eliminates the "dead tick" where creeps appear idle after state transitions
  */
-const MIN_STATE_AGE_FOR_IDLE = 2;
+const MIN_STATE_AGE_FOR_IDLE = 1;
 
 // =============================================================================
 // Public API

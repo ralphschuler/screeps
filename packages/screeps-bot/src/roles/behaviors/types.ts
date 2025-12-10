@@ -100,6 +100,10 @@ export interface CreepContext {
   repairTargets: Structure[];
   labs: StructureLab[];
   factory: StructureFactory | undefined;
+  /** Tombstones with resources available for pickup */
+  tombstones: Tombstone[];
+  /** Containers with non-energy minerals for hauler transport */
+  mineralContainers: StructureContainer[];
 }
 
 /**

@@ -74,6 +74,8 @@ interface RoomCache {
   _factoryChecked?: boolean;
   _minerals?: Mineral[];
   _activeSources?: Source[];
+  _tombstones?: Tombstone[];
+  _mineralContainers?: StructureContainer[];
 }
 
 /** Per-room cache storage - cleared at the start of each tick via clearRoomCaches() */
@@ -289,6 +291,42 @@ function getActiveSources(cache: RoomCache): Source[] {
 }
 
 /**
+ * Get tombstones with energy from cache (lazy evaluation)
+ * OPTIMIZATION: Tombstones with energy are common pickup targets for haulers.
+ * This caching avoids expensive uncached room.find(FIND_TOMBSTONES) calls that
+ * were performed every tick in the hauler behavior evaluation.
+ */
+function getTombstones(cache: RoomCache): Tombstone[] {
+  if (cache._tombstones === undefined) {
+    cache._tombstones = cache.room.find(FIND_TOMBSTONES, {
+      filter: t => t.store.getUsedCapacity(RESOURCE_ENERGY) > 0
+    });
+  }
+  return cache._tombstones;
+}
+
+/**
+ * Get containers with minerals from cache (lazy evaluation)
+ * OPTIMIZATION: Mineral containers are checked by haulers for mineral transport.
+ * This caching avoids expensive uncached room.find(FIND_STRUCTURES) with complex
+ * filtering that was performed every tick in the hauler behavior evaluation.
+ */
+function getMineralContainers(cache: RoomCache): StructureContainer[] {
+  if (cache._mineralContainers === undefined) {
+    cache._mineralContainers = cache.room.find(FIND_STRUCTURES, {
+      filter: s => {
+        if (s.structureType !== STRUCTURE_CONTAINER) return false;
+        const container = s as StructureContainer;
+        // Check for any non-energy resources
+        const resources = Object.keys(container.store) as ResourceConstant[];
+        return resources.some(r => r !== RESOURCE_ENERGY && container.store.getUsedCapacity(r) > 0);
+      }
+    }) as StructureContainer[];
+  }
+  return cache._mineralContainers;
+}
+
+/**
  * Clear all room caches. Must be called at the start of each tick
  * to prevent memory leaks from stale room data.
  * Also clears military behavior caches.
@@ -444,6 +482,12 @@ export function createContext(creep: Creep): CreepContext {
     },
     get factory() {
       return getFactory(roomCache);
+    },
+    get tombstones() {
+      return getTombstones(roomCache);
+    },
+    get mineralContainers() {
+      return getMineralContainers(roomCache);
     }
   };
 }
