@@ -55,6 +55,9 @@ export function populateSpawnQueue(room: Room, swarm: SwarmState): void {
     addDefenderRequests(room, swarm, defenderNeeds, currentDefenders);
   }
 
+  // Add power bank operation requests
+  addPowerBankRequests(room);
+
   // Determine what roles are needed
   for (const [roleName, def] of Object.entries(ROLE_DEFINITIONS)) {
     const current = counts.get(roleName) ?? 0;
@@ -307,6 +310,108 @@ function addDefenderRequests(
   if (guardsNeeded > 0 || rangersNeeded > 0 || healersNeeded > 0) {
     logger.info(
       `Added defender spawn requests: ${guardsNeeded} guards, ${rangersNeeded} rangers, ${healersNeeded} healers (priority: ${priority})`,
+      { subsystem: "SpawnCoordinator" }
+    );
+  }
+}
+
+/**
+ * Add power bank operation spawn requests to queue
+ */
+function addPowerBankRequests(room: Room): void {
+  // Import dynamically to avoid circular dependency
+  const { powerBankHarvestingManager } = require("../empire/powerBankHarvesting");
+  
+  const requests = powerBankHarvestingManager.requestSpawns(room.name);
+  
+  if (requests.powerHarvesters === 0 && requests.healers === 0 && requests.powerCarriers === 0) {
+    return;
+  }
+
+  const maxEnergy = room.energyCapacityAvailable;
+  const priority = SpawnPriority.NORMAL; // Medium priority for power bank ops
+
+  // Add power harvester requests
+  for (let i = 0; i < requests.powerHarvesters; i++) {
+    try {
+      const body = optimizeBody({
+        maxEnergy: maxEnergy,
+        role: "powerHarvester"
+      });
+
+      const request: SpawnRequest = {
+        id: `powerHarvester_${Game.time}_${i}`,
+        roomName: room.name,
+        role: "powerHarvester",
+        family: "power",
+        body,
+        priority,
+        createdAt: Game.time
+      };
+
+      spawnQueue.addRequest(request);
+    } catch (error) {
+      logger.error(`Failed to create power harvester spawn request: ${error}`, {
+        subsystem: "SpawnCoordinator"
+      });
+    }
+  }
+
+  // Add healer requests for power bank support
+  for (let i = 0; i < requests.healers; i++) {
+    try {
+      const body = optimizeBody({
+        maxEnergy: maxEnergy,
+        role: "healer"
+      });
+
+      const request: SpawnRequest = {
+        id: `healer_powerBank_${Game.time}_${i}`,
+        roomName: room.name,
+        role: "healer",
+        family: "military",
+        body,
+        priority,
+        createdAt: Game.time
+      };
+
+      spawnQueue.addRequest(request);
+    } catch (error) {
+      logger.error(`Failed to create power bank healer spawn request: ${error}`, {
+        subsystem: "SpawnCoordinator"
+      });
+    }
+  }
+
+  // Add power carrier requests
+  for (let i = 0; i < requests.powerCarriers; i++) {
+    try {
+      const body = optimizeBody({
+        maxEnergy: maxEnergy,
+        role: "powerCarrier"
+      });
+
+      const request: SpawnRequest = {
+        id: `powerCarrier_${Game.time}_${i}`,
+        roomName: room.name,
+        role: "powerCarrier",
+        family: "power",
+        body,
+        priority,
+        createdAt: Game.time
+      };
+
+      spawnQueue.addRequest(request);
+    } catch (error) {
+      logger.error(`Failed to create power carrier spawn request: ${error}`, {
+        subsystem: "SpawnCoordinator"
+      });
+    }
+  }
+
+  if (requests.powerHarvesters > 0 || requests.healers > 0 || requests.powerCarriers > 0) {
+    logger.info(
+      `Added power bank spawn requests: ${requests.powerHarvesters} harvesters, ${requests.healers} healers, ${requests.powerCarriers} carriers`,
       { subsystem: "SpawnCoordinator" }
     );
   }
