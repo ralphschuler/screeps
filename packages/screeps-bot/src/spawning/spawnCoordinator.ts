@@ -30,6 +30,7 @@ import {
   getDefenderPriorityBoost 
 } from "./defenderManager";
 import { emergencyResponseManager } from "../defense/emergencyResponse";
+import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
 
 /**
  * Populate spawn queue for a room
@@ -319,9 +320,6 @@ function addDefenderRequests(
  * Add power bank operation spawn requests to queue
  */
 function addPowerBankRequests(room: Room): void {
-  // Import dynamically to avoid circular dependency
-  const { powerBankHarvestingManager } = require("../empire/powerBankHarvesting");
-  
   const requests = powerBankHarvestingManager.requestSpawns(room.name);
   
   if (requests.powerHarvesters === 0 && requests.healers === 0 && requests.powerCarriers === 0) {

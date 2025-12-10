@@ -15,6 +15,27 @@ import type { CreepAction, CreepContext } from "./types";
 // =============================================================================
 
 /**
+ * Power bank damage reflection constant
+ * Power banks reflect this percentage of damage back to attackers
+ */
+const POWER_BANK_DAMAGE_REFLECTION = 0.5;
+
+/**
+ * Health threshold for power harvester retreat
+ * Retreat to healer when HP falls below this percentage
+ */
+const POWER_HARVESTER_RETREAT_THRESHOLD = 0.5;
+
+/**
+ * Check if a structure has a specific power effect active
+ */
+function hasActiveEffect(structure: RoomObject, effectType: PowerConstant): boolean {
+  const effects = (structure as { effects?: RoomObjectEffect[] }).effects;
+  return effects !== undefined && Array.isArray(effects) &&
+    effects.some(e => e.effect === effectType);
+}
+
+/**
  * PowerHarvester - Attack power banks in highway rooms.
  * Power banks reflect 50% damage, so these creeps need healer support.
  */
@@ -40,7 +61,7 @@ export function powerHarvester(ctx: CreepContext): CreepAction {
   }
 
   // Check if heavily damaged - retreat to healer
-  if (ctx.creep.hits < ctx.creep.hitsMax * 0.5) {
+  if (ctx.creep.hits < ctx.creep.hitsMax * POWER_HARVESTER_RETREAT_THRESHOLD) {
     // Find nearby healer
     const healers = ctx.room.find(FIND_MY_CREEPS, {
       filter: c => c.memory.role === "healer" && c.memory.targetRoom === targetRoom
@@ -252,8 +273,7 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
     // Find spawns that are actively spawning and don't have the effect
     const busySpawn = ctx.spawns.find(s => {
       const spawn = s as StructureSpawn;
-      return spawn.spawning !== null && 
-        !spawn.effects?.some(e => e.effect === PWR_OPERATE_SPAWN);
+      return spawn.spawning !== null && !hasActiveEffect(spawn, PWR_OPERATE_SPAWN);
     });
     if (busySpawn) return { type: "usePower", power: PWR_OPERATE_SPAWN, target: busySpawn };
   }
@@ -264,7 +284,7 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
     // Only use if significant capacity needs filling and we have energy
     if (freeCapacity > 1000 && ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 10000) {
       // Check if effect is not already active
-      if (!ctx.storage.effects?.some(e => e.effect === PWR_OPERATE_EXTENSION)) {
+      if (!hasActiveEffect(ctx.storage, PWR_OPERATE_EXTENSION)) {
         return { type: "usePower", power: PWR_OPERATE_EXTENSION, target: ctx.storage };
       }
     }
@@ -275,8 +295,7 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
     const hostiles = ctx.room.find(FIND_HOSTILE_CREEPS);
     if (hostiles.length > 0) {
       const towers = ctx.room.find(FIND_MY_STRUCTURES, {
-        filter: s => s.structureType === STRUCTURE_TOWER &&
-          !s.effects?.some(e => e.effect === PWR_OPERATE_TOWER)
+        filter: s => s.structureType === STRUCTURE_TOWER && !hasActiveEffect(s, PWR_OPERATE_TOWER)
       }) as StructureTower[];
       if (towers.length > 0) {
         return { type: "usePower", power: PWR_OPERATE_TOWER, target: towers[0] };
@@ -290,7 +309,7 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
     const activeLab = ctx.labs.find(l => 
       l.cooldown === 0 && 
       l.mineralType && 
-      !l.effects?.some(e => e.effect === PWR_OPERATE_LAB)
+      !hasActiveEffect(l, PWR_OPERATE_LAB)
     );
     if (activeLab) return { type: "usePower", power: PWR_OPERATE_LAB, target: activeLab };
   }
@@ -298,8 +317,7 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
   // Priority 6: Boost factory (100 ops = instant production)
   if (powers.includes(PWR_OPERATE_FACTORY) && ctx.ops >= 100 && ctx.factory) {
     // Only use if factory has work to do and effect not active
-    if (ctx.factory.cooldown === 0 && 
-        !ctx.factory.effects?.some(e => e.effect === PWR_OPERATE_FACTORY)) {
+    if (ctx.factory.cooldown === 0 && !hasActiveEffect(ctx.factory, PWR_OPERATE_FACTORY)) {
       return { type: "usePower", power: PWR_OPERATE_FACTORY, target: ctx.factory };
     }
   }
@@ -307,7 +325,7 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
   // Priority 7: Boost storage capacity when near full (100 ops = 2x capacity)
   if (powers.includes(PWR_OPERATE_STORAGE) && ctx.ops >= 100 && ctx.storage) {
     if (ctx.storage.store.getUsedCapacity() > ctx.storage.store.getCapacity() * 0.85 &&
-        !ctx.storage.effects?.some(e => e.effect === PWR_OPERATE_STORAGE)) {
+        !hasActiveEffect(ctx.storage, PWR_OPERATE_STORAGE)) {
       return { type: "usePower", power: PWR_OPERATE_STORAGE, target: ctx.storage };
     }
   }
@@ -381,7 +399,7 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
   // Priority 3: Disrupt enemy spawns (high impact, 10 ops = spawn pause)
   if (powers.includes(PWR_DISRUPT_SPAWN) && ctx.ops >= 10) {
     const enemySpawns = safeFind(ctx.room, FIND_HOSTILE_SPAWNS, {
-      filter: s => !s.effects?.some(e => e.effect === PWR_DISRUPT_SPAWN)
+      filter: s => !hasActiveEffect(s, PWR_DISRUPT_SPAWN)
     });
     const enemySpawn = enemySpawns[0];
     if (enemySpawn) return { type: "usePower", power: PWR_DISRUPT_SPAWN, target: enemySpawn };
@@ -392,7 +410,7 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
     const enemyTowers = safeFind(ctx.room, FIND_HOSTILE_STRUCTURES, {
       filter: (s): s is StructureTower => 
         s.structureType === STRUCTURE_TOWER &&
-        !s.effects?.some(e => e.effect === PWR_DISRUPT_TOWER)
+        !hasActiveEffect(s, PWR_DISRUPT_TOWER)
     });
     const enemyTower = enemyTowers[0];
     if (enemyTower) return { type: "usePower", power: PWR_DISRUPT_TOWER, target: enemyTower };
@@ -403,7 +421,7 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
     const towers = ctx.room.find(FIND_MY_STRUCTURES, {
       filter: s => 
         s.structureType === STRUCTURE_TOWER &&
-        !s.effects?.some(e => e.effect === PWR_OPERATE_TOWER)
+        !hasActiveEffect(s, PWR_OPERATE_TOWER)
     }) as StructureTower[];
     const tower = towers[0];
     if (tower) return { type: "usePower", power: PWR_OPERATE_TOWER, target: tower };
@@ -439,7 +457,7 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
   if (powers.includes(PWR_DISRUPT_TERMINAL) && ctx.ops >= 50) {
     const enemyTerminal = hostileStructures.find(
       s => s.structureType === STRUCTURE_TERMINAL &&
-        !s.effects?.some(e => e.effect === PWR_DISRUPT_TERMINAL)
+        !hasActiveEffect(s, PWR_DISRUPT_TERMINAL)
     ) as StructureTerminal | undefined;
     if (enemyTerminal) {
       return { type: "usePower", power: PWR_DISRUPT_TERMINAL, target: enemyTerminal };
