@@ -189,7 +189,9 @@ function createMockContext(
     prioritizedSites: [],
     repairTargets: [],
     labs: [],
-    factory: undefined
+    factory: undefined,
+    tombstones: [],
+    mineralContainers: []
   };
 }
 
@@ -423,7 +425,9 @@ describe("remoteHauler behavior - delivery priority", () => {
         prioritizedSites: [],
         repairTargets: [],
         labs: [],
-        factory: undefined
+        factory: undefined,
+    tombstones: [],
+    mineralContainers: []
       };
 
       const action = remoteHauler(ctx);
@@ -477,7 +481,9 @@ describe("remoteHauler behavior - delivery priority", () => {
         prioritizedSites: [],
         repairTargets: [],
         labs: [],
-        factory: undefined
+        factory: undefined,
+    tombstones: [],
+    mineralContainers: []
       };
 
       const action = remoteHauler(ctx);
@@ -532,7 +538,9 @@ describe("remoteHauler behavior - delivery priority", () => {
         prioritizedSites: [],
         repairTargets: [],
         labs: [],
-        factory: undefined
+        factory: undefined,
+    tombstones: [],
+    mineralContainers: []
       };
 
       const action = remoteHauler(ctx);
@@ -582,7 +590,9 @@ describe("remoteHauler behavior - delivery priority", () => {
         prioritizedSites: [],
         repairTargets: [],
         labs: [],
-        factory: undefined
+        factory: undefined,
+    tombstones: [],
+    mineralContainers: []
       };
 
       const action = remoteHauler(ctx);
@@ -632,7 +642,9 @@ describe("remoteHauler behavior - delivery priority", () => {
         prioritizedSites: [],
         repairTargets: [],
         labs: [],
-        factory: undefined
+        factory: undefined,
+    tombstones: [],
+    mineralContainers: []
       };
 
       const action = remoteHauler(ctx);

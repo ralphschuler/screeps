@@ -467,7 +467,17 @@ export function hauler(ctx: CreepContext): CreepAction {
       if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
     }
 
-    return { type: "idle" };
+    // FIX: No valid delivery targets found, but creep still has energy
+    // Switch to collection mode to top off capacity instead of idling
+    // This prevents the deadlock where haulers with partial energy get stuck
+    // in working=true state with no valid targets
+    if (!ctx.isEmpty) {
+      ctx.memory.working = false;
+      clearCacheOnStateChange(ctx.creep);
+      // Fall through to collection logic below
+    } else {
+      return { type: "idle" };
+    }
   }
 
   // Collect energy - priority order
@@ -1069,6 +1079,17 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     if (ctx.depositContainers.length > 0) {
       const closest = findCachedClosest(ctx.creep, ctx.depositContainers, "remoteHauler_cont", 10);
       if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+    }
+
+    // FIX: No valid delivery targets found, but creep still has energy
+    // If in home room with energy but no targets, switch to collection mode
+    // to go back to remote room and top off capacity
+    // This prevents deadlock where remote haulers get stuck idle in home room
+    if (!ctx.isEmpty && ctx.room.name === homeRoom) {
+      ctx.memory.working = false;
+      clearCacheOnStateChange(ctx.creep);
+      // Switch to collection mode and return to remote room
+      return { type: "moveToRoom", roomName: targetRoom };
     }
 
     return { type: "idle" };
