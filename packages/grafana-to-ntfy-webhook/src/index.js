@@ -7,6 +7,7 @@ const ntfyToken = process.env.NTFY_TOKEN;
 const ntfyUser = process.env.NTFY_USER;
 const ntfyPassword = process.env.NTFY_PASSWORD;
 const defaultTags = parseTags(process.env.NTFY_TAGS);
+const webhookSecret = process.env.GRAFANA_WEBHOOK_SECRET ?? process.env.WEBHOOK_SECRET;
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -16,6 +17,11 @@ app.get('/health', (_req, res) => {
 });
 
 app.post('/webhook', async (req, res) => {
+  if (webhookSecret && !validateWebhookSecret(req, webhookSecret)) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
   if (!ntfyTopic) {
     res.status(500).json({ error: 'NTFY_TOPIC is not configured' });
     return;
@@ -138,6 +144,25 @@ function formatTagsArray(tags) {
   if (typeof tags === 'string') {
     return parseTags(tags);
   }
+  return undefined;
+}
+
+function validateWebhookSecret(req, expectedSecret) {
+  const providedSecret = extractProvidedSecret(req);
+  return Boolean(providedSecret && providedSecret === expectedSecret);
+}
+
+function extractProvidedSecret(req) {
+  const authHeader = req.get('authorization');
+  if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
+    return authHeader.slice('bearer '.length).trim();
+  }
+
+  const tokenHeader = req.get('x-grafana-token');
+  if (tokenHeader) {
+    return tokenHeader.trim();
+  }
+
   return undefined;
 }
 
