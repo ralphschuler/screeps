@@ -451,13 +451,13 @@ export class ChemistryPlanner {
   public executeReaction(room: Room, reaction: Reaction): void {
     const labs = room.find(FIND_MY_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_LAB
-    }) ;
+    }) as StructureLab[];
 
     if (labs.length < 3) return;
 
     // Use first 2 labs as input labs, rest as output labs
-    const inputLab1 = labs[0];
-    const inputLab2 = labs[1];
+    const inputLab1 = labs[0]!;
+    const inputLab2 = labs[1]!;
     const outputLabs = labs.slice(2);
 
     // Ensure input labs have correct resources

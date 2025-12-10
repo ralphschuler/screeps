@@ -128,8 +128,8 @@ export class BoostManager {
 
     // Find labs with required boosts
     const labs = room.find(FIND_MY_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_LAB
-    }) ;
+      filter: (s): s is StructureLab => s.structureType === STRUCTURE_LAB
+    });
 
     // Track which boosts still needed
     const neededBoosts: ResourceConstant[] = [];
@@ -187,8 +187,8 @@ export class BoostManager {
     if (!config) return true; // No boost config = ready
 
     const labs = room.find(FIND_MY_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_LAB
-    }) ;
+      filter: (s): s is StructureLab => s.structureType === STRUCTURE_LAB
+    });
 
     // Check each required boost
     for (const boost of config.boosts) {
@@ -207,8 +207,8 @@ export class BoostManager {
     if (!config) return [];
 
     const labs = room.find(FIND_MY_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_LAB
-    }) ;
+      filter: (s): s is StructureLab => s.structureType === STRUCTURE_LAB
+    });
 
     const missing: ResourceConstant[] = [];
 
@@ -232,8 +232,8 @@ export class BoostManager {
     }
 
     const labs = room.find(FIND_MY_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_LAB
-    }) ;
+      filter: (s): s is StructureLab => s.structureType === STRUCTURE_LAB
+    });
 
     if (labs.length < 3) {
       return; // Need at least 3 labs
