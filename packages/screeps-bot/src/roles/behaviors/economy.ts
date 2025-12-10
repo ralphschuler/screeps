@@ -164,6 +164,9 @@ export function larvaWorker(ctx: CreepContext): CreepAction {
 /**
  * Harvester - Stationary miner at a source.
  * Sits at source, harvests, and transfers to nearby container/link.
+ * 
+ * OPTIMIZATION: Harvesters are stationary workers - cache their nearby structures
+ * to avoid repeated findInRange calls which are expensive.
  */
 export function harvester(ctx: CreepContext): CreepAction {
   let source = ctx.assignedSource;
@@ -190,11 +193,13 @@ export function harvester(ctx: CreepContext): CreepAction {
     return { type: "harvest", target: source };
   }
 
-  // Full - find nearby container or link
-  const container = findNearbyContainer(ctx.creep);
+  // OPTIMIZATION: Full - find nearby container or link using cached lookup
+  // Since harvesters are stationary, we cache the nearby structures for 50 ticks
+  // to avoid expensive findInRange calls every tick
+  const container = findNearbyContainerCached(ctx.creep);
   if (container) return { type: "transfer", target: container, resourceType: RESOURCE_ENERGY };
 
-  const link = findNearbyLink(ctx.creep);
+  const link = findNearbyLinkCached(ctx.creep);
   if (link) return { type: "transfer", target: link, resourceType: RESOURCE_ENERGY };
 
   // Drop on ground for haulers
@@ -203,7 +208,13 @@ export function harvester(ctx: CreepContext): CreepAction {
 
 /**
  * Assign a source to a harvester, trying to balance load.
- * OPTIMIZATION: Cache source assignment counts per room per tick to avoid iterating all creeps
+ * 
+ * OPTIMIZATION v2: Instead of iterating through ALL Game.creeps (which can be 5000+),
+ * we only iterate through creeps in this specific room. This dramatically reduces
+ * the CPU cost, especially in large empires.
+ * 
+ * Additionally, we cache the source counts per room per tick to avoid recalculating
+ * for multiple harvesters spawning in the same tick.
  */
 function assignSource(ctx: CreepContext): Source | null {
   const sources = ctx.room.find(FIND_SOURCES);
@@ -226,11 +237,13 @@ function assignSource(ctx: CreepContext): Source | null {
       sourceCounts.set(s.id, 0);
     }
 
-    // OPTIMIZATION: Use for-in loop instead of Object.values() to avoid creating temporary array
-    for (const name in Game.creeps) {
-      const c = Game.creeps[name];
+    // MAJOR OPTIMIZATION: Only iterate through creeps in THIS room, not all Game.creeps
+    // This changes complexity from O(all_creeps) to O(room_creeps)
+    // For a 100-room empire with 50 creeps per room, this is 100x faster
+    const roomCreeps = ctx.room.find(FIND_MY_CREEPS);
+    for (const c of roomCreeps) {
       const m = c.memory as unknown as SwarmCreepMemory;
-      if (m.role === "harvester" && m.sourceId && c.room.name === ctx.room.name) {
+      if (m.role === "harvester" && m.sourceId) {
         sourceCounts.set(m.sourceId, (sourceCounts.get(m.sourceId) ?? 0) + 1);
       }
     }
@@ -257,6 +270,73 @@ function assignSource(ctx: CreepContext): Source | null {
   return bestSource;
 }
 
+/**
+ * OPTIMIZATION: Cached version of findNearbyContainer for stationary harvesters.
+ * Caches the container ID for 50 ticks to avoid repeated findInRange calls.
+ * Harvesters are stationary, so their nearby structures don't change often.
+ */
+function findNearbyContainerCached(creep: Creep): StructureContainer | undefined {
+  const memory = creep.memory as unknown as { nearbyContainerId?: Id<StructureContainer>; nearbyContainerTick?: number };
+  
+  // Check if we have a cached container ID and if it's still valid
+  if (memory.nearbyContainerId && memory.nearbyContainerTick && (Game.time - memory.nearbyContainerTick) < 50) {
+    const container = Game.getObjectById(memory.nearbyContainerId);
+    // Verify container still exists and has space
+    if (container && container.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+      return container;
+    }
+  }
+  
+  // Cache miss or invalid - find a new container
+  const container = creep.pos.findInRange(FIND_STRUCTURES, 1, {
+    filter: s =>
+      s.structureType === STRUCTURE_CONTAINER &&
+      s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+  })[0] as StructureContainer | undefined;
+  
+  // Cache the result if found
+  if (container) {
+    memory.nearbyContainerId = container.id;
+    memory.nearbyContainerTick = Game.time;
+  }
+  
+  return container;
+}
+
+/**
+ * OPTIMIZATION: Cached version of findNearbyLink for stationary harvesters.
+ * Caches the link ID for 50 ticks to avoid repeated findInRange calls.
+ * Harvesters are stationary, so their nearby structures don't change often.
+ */
+function findNearbyLinkCached(creep: Creep): StructureLink | undefined {
+  const memory = creep.memory as unknown as { nearbyLinkId?: Id<StructureLink>; nearbyLinkTick?: number };
+  
+  // Check if we have a cached link ID and if it's still valid
+  if (memory.nearbyLinkId && memory.nearbyLinkTick && (Game.time - memory.nearbyLinkTick) < 50) {
+    const link = Game.getObjectById(memory.nearbyLinkId);
+    // Verify link still exists and has space
+    if (link && link.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+      return link;
+    }
+  }
+  
+  // Cache miss or invalid - find a new link
+  const link = creep.pos.findInRange(FIND_MY_STRUCTURES, 1, {
+    filter: s =>
+      s.structureType === STRUCTURE_LINK &&
+      s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+  })[0] as StructureLink | undefined;
+  
+  // Cache the result if found
+  if (link) {
+    memory.nearbyLinkId = link.id;
+    memory.nearbyLinkTick = Game.time;
+  }
+  
+  return link;
+}
+
+// Keep the original uncached versions for other roles that might need them
 function findNearbyContainer(creep: Creep): StructureContainer | undefined {
   return creep.pos.findInRange(FIND_STRUCTURES, 1, {
     filter: s =>
@@ -805,17 +885,47 @@ export function remoteHarvester(ctx: CreepContext): CreepAction {
     return { type: "harvest", target: source };
   }
 
-  // Full - find nearby container
-  const containers = source.pos.findInRange(FIND_STRUCTURES, 2, {
-    filter: s => s.structureType === STRUCTURE_CONTAINER
-  }) as StructureContainer[];
-
-  if (containers.length > 0) {
-    return { type: "transfer", target: containers[0], resourceType: RESOURCE_ENERGY };
+  // OPTIMIZATION: Full - find nearby container using cached lookup
+  // Remote harvesters are also stationary at their sources, so cache for 50 ticks
+  const container = findRemoteContainerCached(ctx.creep, source);
+  if (container) {
+    return { type: "transfer", target: container, resourceType: RESOURCE_ENERGY };
   }
 
   // No container - drop energy for haulers
   return { type: "drop", resourceType: RESOURCE_ENERGY };
+}
+
+/**
+ * OPTIMIZATION: Cached version of finding nearby container for remote harvesters.
+ * Remote harvesters are stationary like regular harvesters, so we cache the container
+ * near their assigned source for 50 ticks to avoid repeated findInRange calls.
+ */
+function findRemoteContainerCached(creep: Creep, source: Source): StructureContainer | undefined {
+  const memory = creep.memory as unknown as { remoteContainerId?: Id<StructureContainer>; remoteContainerTick?: number };
+  
+  // Check if we have a cached container ID and if it's still valid
+  if (memory.remoteContainerId && memory.remoteContainerTick && (Game.time - memory.remoteContainerTick) < 50) {
+    const container = Game.getObjectById(memory.remoteContainerId);
+    if (container) {
+      return container;
+    }
+  }
+  
+  // Cache miss or invalid - find a new container near the source
+  const containers = source.pos.findInRange(FIND_STRUCTURES, 2, {
+    filter: s => s.structureType === STRUCTURE_CONTAINER
+  }) as StructureContainer[];
+  
+  const container = containers[0];
+  
+  // Cache the result if found
+  if (container) {
+    memory.remoteContainerId = container.id;
+    memory.remoteContainerTick = Game.time;
+  }
+  
+  return container;
 }
 
 /**
