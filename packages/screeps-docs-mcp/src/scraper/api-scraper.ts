@@ -1,139 +1,94 @@
 /**
- * Scraper for Screeps API documentation
+ * Scraper for Screeps API documentation from GitHub repository
  */
 
-import fetch from "node-fetch";
-import * as cheerio from "cheerio";
 import type { APIDoc, PropertyDoc, MethodDoc } from "../types.js";
+import { readRepoFile, listRepoFiles } from "./repo-cloner.js";
+import { 
+  extractTitle, 
+  stripMarkdown, 
+  extractAPIProperties, 
+  extractAPIMethods,
+  extractFrontMatter 
+} from "./markdown-parser.js";
 
 /**
- * Base URL for Screeps API documentation
+ * Base URL for Screeps API documentation (for reference links)
  */
 const API_BASE_URL = "https://docs.screeps.com/api/";
 
 /**
- * Common Screeps API objects to scrape
+ * Parse API documentation for a specific object from markdown file
  */
-const API_OBJECTS = [
-  "Game",
-  "Room",
-  "RoomObject",
-  "RoomPosition",
-  "Creep",
-  "Structure",
-  "StructureSpawn",
-  "StructureExtension",
-  "StructureTower",
-  "StructureStorage",
-  "StructureLink",
-  "StructureContainer",
-  "StructureController",
-  "StructureRampart",
-  "StructureWall",
-  "StructureRoad",
-  "StructureTerminal",
-  "StructureLab",
-  "StructureNuker",
-  "StructureObserver",
-  "StructurePowerSpawn",
-  "StructureExtractor",
-  "Source",
-  "Mineral",
-  "Deposit",
-  "Flag",
-  "PathFinder",
-  "Memory",
-  "RawMemory",
-  "InterShardMemory",
-  "Constants"
-];
-
-/**
- * Scrape API documentation for a specific object
- */
-export async function scrapeAPIObject(objectName: string): Promise<APIDoc | null> {
+export async function parseAPIObject(repoPath: string, filename: string): Promise<APIDoc | null> {
   try {
+    const filePath = `api/source/${filename}`;
+    const content = await readRepoFile(repoPath, filePath);
+    
+    // Extract object name from filename (e.g., "Game.md" -> "Game")
+    const objectName = filename.replace(/\.md$/, "");
+    
+    // Extract title from markdown
+    const title = extractTitle(content, filename);
+    
+    // Extract plain text content
+    const { body } = extractFrontMatter(content);
+    const plainContent = stripMarkdown(body);
+    
+    // Extract properties and methods
+    const properties = extractAPIProperties(content);
+    const methods = extractAPIMethods(content);
+    
     const url = `${API_BASE_URL}#${objectName}`;
-    const response = await fetch(API_BASE_URL);
-    const html = await response.text();
-    const $ = cheerio.load(html);
-
-    // Find the section for this object
-    const section = $(`#${objectName}`).parent();
-    if (!section.length) {
-      return null;
-    }
-
-    // Extract title (unused but kept for potential future use)
-    // const scrapedTitle = section.find("h1, h2, h3").first().text().trim();
-    const content = section.text().trim();
-
-    // Extract properties
-    const properties: PropertyDoc[] = [];
-    section.find(".api-property").each((_, elem) => {
-      const $elem = $(elem);
-      const name = $elem.find(".property-name").text().trim();
-      const type = $elem.find(".property-type").text().trim();
-      const description = $elem.find(".property-description").text().trim();
-
-      if (name) {
-        properties.push({ name, type, description });
-      }
-    });
-
-    // Extract methods
-    const methods: MethodDoc[] = [];
-    section.find(".api-method").each((_, elem) => {
-      const $elem = $(elem);
-      const name = $elem.find(".method-name").text().trim();
-      const signature = $elem.find(".method-signature").text().trim();
-      const description = $elem.find(".method-description").text().trim();
-      const returns = $elem.find(".method-returns").text().trim();
-
-      if (name) {
-        methods.push({ name, signature, description, returns });
-      }
-    });
-
+    
     return {
       id: `api-${objectName.toLowerCase()}`,
-      // Use canonical object name as title to avoid inconsistent heading scraping
-      title: objectName,
+      title,
       url,
-      content,
+      content: plainContent,
       type: "api",
       objectName,
       properties: properties.length > 0 ? properties : undefined,
       methods: methods.length > 0 ? methods : undefined,
-      keywords: [objectName.toLowerCase()]
+      keywords: [objectName.toLowerCase(), title.toLowerCase()]
     };
   } catch (error) {
-    console.error(`Error scraping API object ${objectName}:`, error);
+    console.error(`Error parsing API object from ${filename}:`, error);
     return null;
   }
 }
 
 /**
- * Scrape all API objects
+ * Parse all API objects from the repository
  */
-export async function scrapeAllAPIObjects(): Promise<APIDoc[]> {
+export async function parseAllAPIObjects(repoPath: string): Promise<APIDoc[]> {
   const results: APIDoc[] = [];
 
-  for (const objectName of API_OBJECTS) {
-    const doc = await scrapeAPIObject(objectName);
+  // List all markdown files in the api/source directory
+  const files = await listRepoFiles(repoPath, "api/source");
+  
+  for (const filename of files) {
+    // Skip constants.md as it's handled separately
+    if (filename === "constants.md") {
+      continue;
+    }
+    
+    const doc = await parseAPIObject(repoPath, filename);
     if (doc) {
       results.push(doc);
     }
-    // Rate limiting: wait 100ms between requests
-    await new Promise(resolve => setTimeout(resolve, 100));
   }
 
   return results;
 }
 
 /**
- * Get list of available API objects
+ * Get list of available API objects from the repository
  */
-export function getAPIObjectList(): string[] {
-  return [...API_OBJECTS];
+export async function getAPIObjectList(repoPath: string): Promise<string[]> {
+  const files = await listRepoFiles(repoPath, "api/source");
+  return files
+    .filter(f => f !== "constants.md")
+    .map(f => f.replace(/\.md$/, ""))
+    .sort();
 }

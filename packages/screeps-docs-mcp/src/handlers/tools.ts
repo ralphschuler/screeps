@@ -3,9 +3,7 @@
  */
 
 import { z } from "zod";
-import { buildIndex, searchIndex, getEntryById } from "../scraper/index-builder.js";
-import { getAPIObjectList } from "../scraper/api-scraper.js";
-import { getMechanicsTopicList } from "../scraper/mechanics-scraper.js";
+import { buildIndex, searchIndex, getEntryById, getEntriesByType } from "../scraper/index-builder.js";
 
 /**
  * Tool schemas
@@ -129,6 +127,9 @@ export async function handleGetAPI(args: z.infer<typeof toolSchemas.getAPI>) {
   const entry = getEntryById(index, `api-${args.objectName.toLowerCase()}`);
 
   if (!entry) {
+    const apiEntries = getEntriesByType(index, "api");
+    const available = apiEntries.map(e => e.title).sort();
+    
     return {
       content: [
         {
@@ -136,7 +137,7 @@ export async function handleGetAPI(args: z.infer<typeof toolSchemas.getAPI>) {
           text: JSON.stringify(
             {
               error: `API object not found: ${args.objectName}`,
-              available: getAPIObjectList()
+              available
             },
             null,
             2
@@ -164,6 +165,9 @@ export async function handleGetMechanics(args: z.infer<typeof toolSchemas.getMec
   const entry = getEntryById(index, `mechanics-${args.topic.toLowerCase()}`);
 
   if (!entry) {
+    const mechanicsEntries = getEntriesByType(index, "mechanics");
+    const available = mechanicsEntries.map(e => ({ topic: e.id.replace("mechanics-", ""), name: e.title }));
+    
     return {
       content: [
         {
@@ -171,7 +175,7 @@ export async function handleGetMechanics(args: z.infer<typeof toolSchemas.getMec
           text: JSON.stringify(
             {
               error: `Mechanics topic not found: ${args.topic}`,
-              available: getMechanicsTopicList()
+              available
             },
             null,
             2
@@ -195,7 +199,9 @@ export async function handleGetMechanics(args: z.infer<typeof toolSchemas.getMec
  * Handle listAPIs tool
  */
 export async function handleListAPIs() {
-  const apiList = getAPIObjectList();
+  const index = await buildIndex();
+  const apiEntries = getEntriesByType(index, "api");
+  const apiList = apiEntries.map(e => e.title).sort();
 
   return {
     content: [
@@ -211,7 +217,12 @@ export async function handleListAPIs() {
  * Handle listMechanics tool
  */
 export async function handleListMechanics() {
-  const mechanicsList = getMechanicsTopicList();
+  const index = await buildIndex();
+  const mechanicsEntries = getEntriesByType(index, "mechanics");
+  const mechanicsList = mechanicsEntries.map(e => ({ 
+    topic: e.id.replace("mechanics-", ""), 
+    name: e.title 
+  }));
 
   return {
     content: [

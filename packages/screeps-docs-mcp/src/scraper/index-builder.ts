@@ -3,8 +3,9 @@
  */
 
 import type { DocEntry, DocIndex, SearchResult } from "../types.js";
-import { scrapeAllAPIObjects } from "./api-scraper.js";
-import { scrapeAllMechanics } from "./mechanics-scraper.js";
+import { parseAllAPIObjects } from "./api-scraper.js";
+import { parseAllMechanics } from "./mechanics-scraper.js";
+import { cloneDocsRepo, cleanupRepo } from "./repo-cloner.js";
 
 /**
  * In-memory cache for documentation index
@@ -88,20 +89,35 @@ export async function buildIndex(useCache: boolean = true): Promise<DocIndex> {
     }
   }
 
-  // Scrape documentation
-  const apiDocs = await scrapeAllAPIObjects();
-  const mechanicsDocs = await scrapeAllMechanics();
+  let repoPath: string | null = null;
+  
+  try {
+    // Clone the documentation repository
+    console.log("Cloning Screeps documentation repository...");
+    repoPath = await cloneDocsRepo();
+    console.log("Repository cloned successfully");
 
-  const index: DocIndex = {
-    entries: [...apiDocs, ...mechanicsDocs],
-    lastUpdated: new Date(),
-    version: "1.0.0"
-  };
+    // Parse documentation from the repository
+    const apiDocs = await parseAllAPIObjects(repoPath);
+    const mechanicsDocs = await parseAllMechanics(repoPath);
 
-  // Cache the result
-  cache.set(index);
+    const index: DocIndex = {
+      entries: [...apiDocs, ...mechanicsDocs],
+      lastUpdated: new Date(),
+      version: "1.0.0"
+    };
 
-  return index;
+    // Cache the result
+    cache.set(index);
+
+    return index;
+  } finally {
+    // Clean up the cloned repository
+    if (repoPath) {
+      await cleanupRepo(repoPath);
+      console.log("Repository cleaned up");
+    }
+  }
 }
 
 /**

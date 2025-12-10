@@ -30,6 +30,7 @@
     "@modelcontextprotocol/sdk": "^1.23.0",
     "cheerio": "^1.0.0",
     "node-fetch": "^3.3.2",
+    "simple-git": "^3.30.0",
     "zod": "^4.1.13"
   },
   "devDependencies": {
