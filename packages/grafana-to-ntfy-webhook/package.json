@@ -1,0 +1,16 @@
+{
+  "name": "grafana-to-ntfy-webhook",
+  "version": "1.0.0",
+  "description": "Bridge Grafana alert webhooks to ntfy topics",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "engines": {
+    "node": ">=18 <=20"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
