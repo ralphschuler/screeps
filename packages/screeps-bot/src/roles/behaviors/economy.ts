@@ -69,6 +69,16 @@ function updateWorkingState(ctx: CreepContext): boolean {
 }
 
 /**
+ * Switch creep from working mode to collection mode.
+ * Used when creep has partial energy but no valid delivery targets.
+ * Prevents deadlock where creeps get stuck idle with energy.
+ */
+function switchToCollectionMode(ctx: CreepContext): void {
+  ctx.memory.working = false;
+  clearCacheOnStateChange(ctx.creep);
+}
+
+/**
  * Find energy to collect (common pattern for many roles).
  * Uses cached target finding to reduce CPU usage.
  *
@@ -472,8 +482,7 @@ export function hauler(ctx: CreepContext): CreepAction {
     // This prevents the deadlock where haulers with partial energy get stuck
     // in working=true state with no valid targets
     if (!ctx.isEmpty) {
-      ctx.memory.working = false;
-      clearCacheOnStateChange(ctx.creep);
+      switchToCollectionMode(ctx);
       // Fall through to collection logic below
     } else {
       return { type: "idle" };
@@ -1086,8 +1095,7 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     // to go back to remote room and top off capacity
     // This prevents deadlock where remote haulers get stuck idle in home room
     if (!ctx.isEmpty && ctx.room.name === homeRoom) {
-      ctx.memory.working = false;
-      clearCacheOnStateChange(ctx.creep);
+      switchToCollectionMode(ctx);
       // Switch to collection mode and return to remote room
       return { type: "moveToRoom", roomName: targetRoom };
     }
