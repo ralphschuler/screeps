@@ -130,35 +130,55 @@ const MAX_REASONABLE_RESET_SECONDS = 3600;
  * 
  * According to the Screeps API spec, X-RateLimit-Reset is in UTC epoch seconds,
  * so toReset (calculated as reset - current_time_seconds) should be in seconds.
- * However, if there's a bug in the screeps-api library or the server, toReset
- * might already be in milliseconds, which would cause wait times to be 1000x too long.
+ * However, if there's a bug in the screeps-api library or the server (e.g., reset
+ * sent in milliseconds instead of seconds), toReset could be a huge number that
+ * causes wait times to be absurdly long (hours instead of seconds).
  * 
- * @param toReset - The time until rate limit reset (expected in seconds, but may be in milliseconds)
+ * @param toReset - The time until rate limit reset (expected in seconds, but may be miscalculated)
  * @param logger - Logger for diagnostic messages
- * @returns The time in milliseconds
+ * @returns The time in milliseconds, capped to a maximum of 1 hour
  */
 function normalizeToResetMs(toReset: number, logger: Logger): number {
-  // If toReset is suspiciously large (> 1 hour in seconds), it's likely already in milliseconds
-  // or there's a calculation error.
-  if (toReset > MAX_REASONABLE_RESET_SECONDS) {
-    // Convert to seconds to check if that makes sense
+  // Sanity check: if toReset is negative or zero, something is wrong
+  if (toReset <= 0) {
+    logger.warn('Rate limit toReset is negative or zero, using fallback', {
+      rawToReset: toReset
+    });
+    return RATE_LIMIT_FALLBACK_BACKOFF_MS;
+  }
+
+  // If toReset is absurdly large (> 1 day in seconds), it's definitely a calculation error
+  // This happens when reset is sent in milliseconds but the screeps-api library expects seconds
+  if (toReset > 86400) { // 86400 seconds = 1 day
+    logger.error('Rate limit toReset is absurdly large (> 1 day), capping to 1 hour', {
+      rawToReset: toReset,
+      inDays: (toReset / 86400).toFixed(2),
+      cappedToSeconds: MAX_REASONABLE_RESET_SECONDS
+    });
+    return MAX_REASONABLE_RESET_SECONDS * 1000;
+  }
+
+  // If toReset is large but reasonable in milliseconds (e.g., 60000ms = 1 minute)
+  // Check if it's between 1 hour and 1 day in "seconds" but makes sense as milliseconds
+  if (toReset > MAX_REASONABLE_RESET_SECONDS && toReset <= 86400000) {
+    // This might already be in milliseconds
     const asSeconds = toReset / 1000;
     if (asSeconds > 0 && asSeconds <= MAX_REASONABLE_RESET_SECONDS) {
-      // This was likely already in milliseconds - log warning and return as-is
       logger.warn('Rate limit toReset appears to already be in milliseconds', {
         rawToReset: toReset,
         asSeconds: asSeconds
       });
-      return toReset;
+      return toReset; // Already in milliseconds, return as-is
     }
-    // Still too large even as milliseconds - cap it to avoid excessive waits
-    logger.error('Rate limit toReset is unreasonably large, capping to 1 hour', {
+    // Still doesn't make sense, cap it
+    logger.error('Rate limit toReset is ambiguous, capping to 1 hour', {
       rawToReset: toReset,
-      cappedSeconds: MAX_REASONABLE_RESET_SECONDS
+      cappedToSeconds: MAX_REASONABLE_RESET_SECONDS
     });
     return MAX_REASONABLE_RESET_SECONDS * 1000;
   }
-  // Normal case: toReset is in seconds, convert to milliseconds
+
+  // Normal case: toReset is in seconds (0-3600), convert to milliseconds
   return toReset * 1000;
 }
 
