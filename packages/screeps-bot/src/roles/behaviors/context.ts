@@ -292,12 +292,12 @@ function getActiveSources(cache: RoomCache): Source[] {
 
 /**
  * Get tombstones with energy from cache (lazy evaluation)
- * OPTIMIZATION: Tombstones with resources are common pickup targets for haulers
+ * OPTIMIZATION: Tombstones with energy are common pickup targets for haulers
  */
 function getTombstones(cache: RoomCache): Tombstone[] {
   if (cache._tombstones === undefined) {
     cache._tombstones = cache.room.find(FIND_TOMBSTONES, {
-      filter: t => t.store.getUsedCapacity() > 0
+      filter: t => t.store.getUsedCapacity(RESOURCE_ENERGY) > 0
     });
   }
   return cache._tombstones;
