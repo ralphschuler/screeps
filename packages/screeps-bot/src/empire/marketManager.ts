@@ -765,6 +765,7 @@ export class MarketManager {
   /**
    * Check for arbitrage opportunities
    * TODO: Complete implementation - currently disabled as it needs proper handling of:
+   Issue URL: https://github.com/ralphschuler/screeps/issues/350
    * 1. Waiting for resources to arrive after buy
    * 2. Executing sell order or deal after resources are available
    * 3. Tracking multi-step arbitrage transactions
@@ -805,6 +806,7 @@ export class MarketManager {
         );
 
         // TODO: Implement proper arbitrage execution:
+        // Issue URL: https://github.com/ralphschuler/screeps/issues/349
         // 1. Buy from lowest sell order
         // 2. Track the incoming transfer
         // 3. Once resources arrive, sell to highest buy order or create sell order
