@@ -13,8 +13,8 @@
  */
 
 import type { CrossShardTransferRequest } from "../intershard/resourceTransferCoordinator";
-import { resourceTransferCoordinator } from "../intershard/resourceTransferCoordinator";
 import { logger } from "../core/logger";
+import { resourceTransferCoordinator } from "../intershard/resourceTransferCoordinator";
 
 /**
  * Cross-shard carrier memory
@@ -152,7 +152,7 @@ function handleGathering(
 function handleMovingToPortal(
   creep: Creep,
   memory: CrossShardCarrierMemory,
-  request: CrossShardTransferRequest
+  _request: CrossShardTransferRequest
 ): void {
   const portalRoom = memory.portalRoom;
   if (!portalRoom) {
@@ -184,9 +184,10 @@ function handleEnteringPortal(
   request: CrossShardTransferRequest
 ): void {
   // Find portal in room
-  const portals = creep.room.find(FIND_STRUCTURES, {
+  const structures = creep.room.find(FIND_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_PORTAL
-  }) as StructurePortal[];
+  });
+  const portals = structures as StructurePortal[];
 
   // Find portal leading to target shard
   const targetPortal = portals.find(p => {
@@ -203,7 +204,7 @@ function handleEnteringPortal(
   }
 
   // Move to portal
-  const result = creep.moveTo(targetPortal, { reusePath: 5 });
+  creep.moveTo(targetPortal, { reusePath: 5 });
 
   // Check if we're adjacent to portal (about to enter)
   if (creep.pos.isNearTo(targetPortal)) {
@@ -223,7 +224,7 @@ function handleEnteringPortal(
 function handleDelivering(
   creep: Creep,
   memory: CrossShardCarrierMemory,
-  request: CrossShardTransferRequest
+  _request: CrossShardTransferRequest
 ): void {
   const targetRoom = memory.targetRoom;
   if (!targetRoom) {

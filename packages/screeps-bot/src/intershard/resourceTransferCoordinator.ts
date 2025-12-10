@@ -11,8 +11,8 @@
  * - Prioritizes transfers based on task priority and shard needs
  */
 
-import { logger } from "../core/logger";
 import type { InterShardTask } from "./schema";
+import { logger } from "../core/logger";
 import { shardManager } from "./shardManager";
 
 /**
@@ -65,7 +65,7 @@ export class ResourceTransferCoordinator {
         lastUpdate: Game.time
       };
     }
-    this.memory = Memory.crossShardTransfers as TransferCoordinatorMemory;
+    this.memory = Memory.crossShardTransfers;
   }
 
   /**
