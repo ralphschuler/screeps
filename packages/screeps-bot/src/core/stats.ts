@@ -35,7 +35,7 @@ export interface SubsystemStats {
 }
 
 /**
- * Per-creep role statistics
+ * Per-creep role statistics (enhanced)
  */
 export interface RoleStats {
   /** Number of creeps with this role */
@@ -48,6 +48,46 @@ export interface RoleStats {
   calls: number;
   /** Number of samples */
   samples: number;
+  /** Number of spawning creeps */
+  spawningCount: number;
+  /** Number of idle creeps */
+  idleCount: number;
+  /** Number of active/working creeps */
+  activeCount: number;
+  /** Average ticks to live */
+  avgTicksToLive: number;
+  /** Total body parts across all creeps of this role */
+  totalBodyParts: number;
+}
+
+/**
+ * Per-creep statistics
+ */
+export interface CreepStats {
+  /** Creep name */
+  name: string;
+  /** Creep role */
+  role: string;
+  /** Home room */
+  homeRoom: string;
+  /** Current room */
+  currentRoom: string;
+  /** CPU used this tick */
+  cpu: number;
+  /** Current action/state */
+  action: string;
+  /** Ticks to live */
+  ticksToLive: number;
+  /** Current hits */
+  hits: number;
+  /** Max hits */
+  hitsMax: number;
+  /** Number of body parts */
+  bodyParts: number;
+  /** Fatigue level */
+  fatigue: number;
+  /** Actions performed this tick */
+  actionsThisTick: number;
 }
 
 /**
@@ -179,6 +219,40 @@ export interface NativeCallsStats {
 }
 
 /**
+ * Kernel process statistics
+ */
+export interface KernelProcessStats {
+  /** Process ID */
+  id: string;
+  /** Process name */
+  name: string;
+  /** Process priority */
+  priority: number;
+  /** Process frequency */
+  frequency: string;
+  /** Process state */
+  state: string;
+  /** Total CPU used across all runs */
+  totalCpu: number;
+  /** Number of times process has run */
+  runCount: number;
+  /** Average CPU per run */
+  avgCpu: number;
+  /** Maximum CPU used in a single run */
+  maxCpu: number;
+  /** Last run tick */
+  lastRunTick: number;
+  /** Number of times process was skipped */
+  skippedCount: number;
+  /** Number of errors */
+  errorCount: number;
+  /** CPU budget */
+  cpuBudget: number;
+  /** Minimum bucket to run */
+  minBucket: number;
+}
+
+/**
  * Root stats container
  */
 export interface StatsRoot {
@@ -190,12 +264,16 @@ export interface StatsRoot {
   roles: Record<string, RoleStats>;
   /** Per-room statistics */
   rooms: Record<string, RoomStats>;
+  /** Per-creep statistics */
+  creeps: Record<string, CreepStats>;
   /** Overall empire statistics */
   empire: EmpireStats;
   /** Pheromone statistics per room */
   pheromones: Record<string, PheromoneStats>;
   /** Native calls statistics */
   nativeCalls: NativeCallsStats;
+  /** Kernel process statistics */
+  processes: Record<string, KernelProcessStats>;
 }
 
 // ============================================================================
@@ -255,6 +333,9 @@ export class StatsManager {
     if (!stats.rooms || typeof stats.rooms !== "object") {
       stats.rooms = {};
     }
+    if (!stats.creeps || typeof stats.creeps !== "object") {
+      stats.creeps = {};
+    }
     if (!stats.pheromones || typeof stats.pheromones !== "object") {
       stats.pheromones = {};
     }
@@ -263,6 +344,9 @@ export class StatsManager {
     }
     if (!stats.nativeCalls || typeof stats.nativeCalls !== "object") {
       stats.nativeCalls = this.createEmptyNativeCalls();
+    }
+    if (!stats.processes || typeof stats.processes !== "object") {
+      stats.processes = {};
     }
     
     return stats as StatsRoot;
@@ -277,9 +361,11 @@ export class StatsManager {
       subsystems: {},
       roles: {},
       rooms: {},
+      creeps: {},
       empire: this.createEmptyEmpireStats(),
       pheromones: {},
-      nativeCalls: this.createEmptyNativeCalls()
+      nativeCalls: this.createEmptyNativeCalls(),
+      processes: {}
     };
   }
 
@@ -351,9 +437,21 @@ export class StatsManager {
   }
 
   /**
-   * Record a role measurement
+   * Record a role measurement (enhanced with additional metrics)
    */
-  public recordRole(role: string, count: number, cpu: number, calls = 1): void {
+  public recordRole(
+    role: string, 
+    count: number, 
+    cpu: number, 
+    calls = 1,
+    metrics?: {
+      spawningCount?: number;
+      idleCount?: number;
+      activeCount?: number;
+      avgTicksToLive?: number;
+      totalBodyParts?: number;
+    }
+  ): void {
     if (!this.config.enabled) return;
 
     const stats = this.getStatsRoot();
@@ -365,7 +463,12 @@ export class StatsManager {
         avgCpu: cpu,
         peakCpu: cpu,
         calls,
-        samples: 1
+        samples: 1,
+        spawningCount: metrics?.spawningCount ?? 0,
+        idleCount: metrics?.idleCount ?? 0,
+        activeCount: metrics?.activeCount ?? count,
+        avgTicksToLive: metrics?.avgTicksToLive ?? 0,
+        totalBodyParts: metrics?.totalBodyParts ?? 0
       };
     } else {
       existing.count = count;
@@ -373,6 +476,11 @@ export class StatsManager {
       existing.peakCpu = Math.max(existing.peakCpu, cpu);
       existing.calls = calls;
       existing.samples++;
+      existing.spawningCount = metrics?.spawningCount ?? 0;
+      existing.idleCount = metrics?.idleCount ?? 0;
+      existing.activeCount = metrics?.activeCount ?? count;
+      existing.avgTicksToLive = metrics?.avgTicksToLive ?? 0;
+      existing.totalBodyParts = metrics?.totalBodyParts ?? 0;
     }
   }
 
@@ -451,6 +559,84 @@ export class StatsManager {
   }
 
   /**
+   * Record individual creep statistics
+   */
+  public recordCreep(creep: Creep, cpu: number, action: string, actionsCount = 0): void {
+    if (!this.config.enabled) return;
+
+    const stats = this.getStatsRoot();
+    const creepMemory = creep.memory as unknown as { role?: string; homeRoom?: string };
+    
+    stats.creeps[creep.name] = {
+      name: creep.name,
+      role: creepMemory.role ?? "unknown",
+      homeRoom: creepMemory.homeRoom ?? creep.room.name,
+      currentRoom: creep.room.name,
+      cpu,
+      action,
+      ticksToLive: creep.ticksToLive ?? 0,
+      hits: creep.hits,
+      hitsMax: creep.hitsMax,
+      bodyParts: creep.body.length,
+      fatigue: creep.fatigue,
+      actionsThisTick: actionsCount
+    };
+  }
+
+  /**
+   * Record kernel process statistics from a process object
+   */
+  public recordProcess(process: {
+    id: string;
+    name: string;
+    priority: number;
+    frequency: string;
+    state: string;
+    cpuBudget: number;
+    minBucket: number;
+    stats: {
+      totalCpu: number;
+      runCount: number;
+      avgCpu: number;
+      maxCpu: number;
+      lastRunTick: number;
+      skippedCount: number;
+      errorCount: number;
+    };
+  }): void {
+    if (!this.config.enabled) return;
+
+    const stats = this.getStatsRoot();
+    stats.processes[process.id] = {
+      id: process.id,
+      name: process.name,
+      priority: process.priority,
+      frequency: process.frequency,
+      state: process.state,
+      totalCpu: process.stats.totalCpu,
+      runCount: process.stats.runCount,
+      avgCpu: process.stats.avgCpu,
+      maxCpu: process.stats.maxCpu,
+      lastRunTick: process.stats.lastRunTick,
+      skippedCount: process.stats.skippedCount,
+      errorCount: process.stats.errorCount,
+      cpuBudget: process.cpuBudget,
+      minBucket: process.minBucket
+    };
+  }
+
+  /**
+   * Collect all kernel process statistics (call this from kernel after tick execution)
+   */
+  public collectProcessStats(processes: Map<string, any>): void {
+    if (!this.config.enabled) return;
+
+    for (const process of processes.values()) {
+      this.recordProcess(process);
+    }
+  }
+
+  /**
    * Update empire statistics
    */
   public updateEmpireStats(): void {
@@ -481,7 +667,7 @@ export class StatsManager {
   }
 
   /**
-   * Finalize tick - update tick number and native calls
+   * Finalize tick - update tick number, native calls, collect creep stats and enhanced role stats
    */
   public finalizeTick(): void {
     if (!this.config.enabled) return;
@@ -489,6 +675,85 @@ export class StatsManager {
     const stats = this.getStatsRoot();
     stats.tick = Game.time;
     stats.nativeCalls = { ...this.nativeCallsThisTick };
+
+    // Collect all creep stats and calculate enhanced role stats
+    stats.creeps = {};
+    const roleMetrics: Record<string, {
+      count: number;
+      spawning: number;
+      idle: number;
+      active: number;
+      totalTTL: number;
+      totalBodyParts: number;
+    }> = {};
+
+    for (const creep of Object.values(Game.creeps)) {
+      const creepMemory = creep.memory as unknown as { role?: string; homeRoom?: string; state?: { action?: string }; working?: boolean };
+      const role = creepMemory.role ?? "unknown";
+      const action = creepMemory.state?.action ?? "idle";
+      const isWorking = creepMemory.working ?? (action !== "idle");
+      
+      // Record individual creep stats if not already recorded this tick
+      if (!stats.creeps[creep.name]) {
+        stats.creeps[creep.name] = {
+          name: creep.name,
+          role,
+          homeRoom: creepMemory.homeRoom ?? creep.room.name,
+          currentRoom: creep.room.name,
+          cpu: 0, // Will be filled in by creep runner if tracking
+          action,
+          ticksToLive: creep.ticksToLive ?? 0,
+          hits: creep.hits,
+          hitsMax: creep.hitsMax,
+          bodyParts: creep.body.length,
+          fatigue: creep.fatigue,
+          actionsThisTick: 0
+        };
+      }
+
+      // Aggregate role metrics
+      if (!roleMetrics[role]) {
+        roleMetrics[role] = { count: 0, spawning: 0, idle: 0, active: 0, totalTTL: 0, totalBodyParts: 0 };
+      }
+      roleMetrics[role].count++;
+      roleMetrics[role].totalBodyParts += creep.body.length;
+      roleMetrics[role].totalTTL += creep.ticksToLive ?? 0;
+      
+      if (creep.spawning) {
+        roleMetrics[role].spawning++;
+      } else if (!isWorking || action === "idle") {
+        roleMetrics[role].idle++;
+      } else {
+        roleMetrics[role].active++;
+      }
+    }
+
+    // Update role stats with enhanced metrics
+    for (const [role, metrics] of Object.entries(roleMetrics)) {
+      const existing = stats.roles[role];
+      if (existing) {
+        existing.count = metrics.count;
+        existing.spawningCount = metrics.spawning;
+        existing.idleCount = metrics.idle;
+        existing.activeCount = metrics.active;
+        existing.avgTicksToLive = metrics.count > 0 ? metrics.totalTTL / metrics.count : 0;
+        existing.totalBodyParts = metrics.totalBodyParts;
+      } else {
+        // Create new role stat if it doesn't exist
+        stats.roles[role] = {
+          count: metrics.count,
+          avgCpu: 0,
+          peakCpu: 0,
+          calls: 0,
+          samples: 0,
+          spawningCount: metrics.spawning,
+          idleCount: metrics.idle,
+          activeCount: metrics.active,
+          avgTicksToLive: metrics.count > 0 ? metrics.totalTTL / metrics.count : 0,
+          totalBodyParts: metrics.totalBodyParts
+        };
+      }
+    }
 
     // Reset native calls for next tick
     this.nativeCallsThisTick = this.createEmptyNativeCalls();

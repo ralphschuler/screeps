@@ -282,4 +282,225 @@ describe("StatsManager", function () {
       assert.equal(stats.nativeCalls.build, 1);
     });
   });
+
+  describe("Per-Creep Stats Tracking", function () {
+    it("should record individual creep stats", function () {
+      const mockCreep: any = {
+        name: "harvester1",
+        room: { name: "W1N1" },
+        memory: { role: "harvester", homeRoom: "W1N1", state: { action: "harvesting" } },
+        ticksToLive: 1500,
+        hits: 100,
+        hitsMax: 100,
+        body: [{ type: WORK }, { type: CARRY }, { type: MOVE }],
+        fatigue: 0
+      };
+
+      statsManager.recordCreep(mockCreep, 0.5, "harvesting", 2);
+
+      const stats = statsManager.getStats();
+      assert.isDefined(stats.creeps.harvester1);
+      assert.equal(stats.creeps.harvester1.name, "harvester1");
+      assert.equal(stats.creeps.harvester1.role, "harvester");
+      assert.equal(stats.creeps.harvester1.homeRoom, "W1N1");
+      assert.equal(stats.creeps.harvester1.currentRoom, "W1N1");
+      assert.equal(stats.creeps.harvester1.cpu, 0.5);
+      assert.equal(stats.creeps.harvester1.action, "harvesting");
+      assert.equal(stats.creeps.harvester1.ticksToLive, 1500);
+      assert.equal(stats.creeps.harvester1.bodyParts, 3);
+      assert.equal(stats.creeps.harvester1.actionsThisTick, 2);
+    });
+
+    it("should collect all creep stats during finalizeTick", function () {
+      mockGame.creeps = {
+        harvester1: {
+          name: "harvester1",
+          room: { name: "W1N1" },
+          memory: { role: "harvester", homeRoom: "W1N1" },
+          ticksToLive: 1500,
+          hits: 100,
+          hitsMax: 100,
+          body: [{ type: WORK }, { type: CARRY }, { type: MOVE }],
+          fatigue: 0
+        },
+        upgrader1: {
+          name: "upgrader1",
+          room: { name: "W1N1" },
+          memory: { role: "upgrader", homeRoom: "W1N1" },
+          ticksToLive: 1200,
+          hits: 100,
+          hitsMax: 100,
+          body: [{ type: WORK }, { type: CARRY }, { type: MOVE }],
+          fatigue: 2
+        }
+      };
+
+      statsManager.finalizeTick();
+
+      const stats = statsManager.getStats();
+      assert.isDefined(stats.creeps);
+      assert.isDefined(stats.creeps.harvester1);
+      assert.isDefined(stats.creeps.upgrader1);
+      assert.equal(stats.creeps.harvester1.role, "harvester");
+      assert.equal(stats.creeps.upgrader1.role, "upgrader");
+      assert.equal(stats.creeps.upgrader1.fatigue, 2);
+    });
+
+    it("should handle creeps with missing memory gracefully", function () {
+      const mockCreep: any = {
+        name: "orphan1",
+        room: { name: "W1N1" },
+        memory: {}, // No role or homeRoom
+        ticksToLive: 1000,
+        hits: 50,
+        hitsMax: 100,
+        body: [{ type: MOVE }],
+        fatigue: 0
+      };
+
+      statsManager.recordCreep(mockCreep, 0.1, "idle", 0);
+
+      const stats = statsManager.getStats();
+      assert.isDefined(stats.creeps.orphan1);
+      assert.equal(stats.creeps.orphan1.role, "unknown");
+      assert.equal(stats.creeps.orphan1.homeRoom, "W1N1");
+    });
+  });
+
+  describe("Enhanced Role Stats", function () {
+    it("should calculate enhanced role metrics during finalizeTick", function () {
+      mockGame.creeps = {
+        harvester1: {
+          name: "harvester1",
+          room: { name: "W1N1" },
+          memory: { role: "harvester", homeRoom: "W1N1", working: true },
+          ticksToLive: 1500,
+          hits: 100,
+          hitsMax: 100,
+          body: [{ type: WORK }, { type: CARRY }, { type: MOVE }],
+          fatigue: 0,
+          spawning: false
+        },
+        harvester2: {
+          name: "harvester2",
+          room: { name: "W1N1" },
+          memory: { role: "harvester", homeRoom: "W1N1", working: false },
+          ticksToLive: 1200,
+          hits: 100,
+          hitsMax: 100,
+          body: [{ type: WORK }, { type: CARRY }, { type: MOVE }],
+          fatigue: 0,
+          spawning: false
+        },
+        upgrader1: {
+          name: "upgrader1",
+          room: { name: "W1N1" },
+          memory: { role: "upgrader", homeRoom: "W1N1" },
+          ticksToLive: 800,
+          hits: 100,
+          hitsMax: 100,
+          body: [{ type: WORK }, { type: CARRY }, { type: MOVE }],
+          fatigue: 2,
+          spawning: true
+        }
+      };
+
+      statsManager.finalizeTick();
+
+      const stats = statsManager.getStats();
+      assert.isDefined(stats.roles.harvester);
+      assert.equal(stats.roles.harvester.count, 2);
+      assert.equal(stats.roles.harvester.activeCount, 1);
+      assert.equal(stats.roles.harvester.idleCount, 1);
+      assert.equal(stats.roles.harvester.spawningCount, 0);
+      assert.equal(stats.roles.harvester.totalBodyParts, 6);
+      assert.equal(stats.roles.harvester.avgTicksToLive, 1350);
+
+      assert.isDefined(stats.roles.upgrader);
+      assert.equal(stats.roles.upgrader.count, 1);
+      assert.equal(stats.roles.upgrader.spawningCount, 1);
+    });
+
+    it("should record role with enhanced metrics", function () {
+      statsManager.recordRole("harvester", 3, 0.5, 3, {
+        spawningCount: 1,
+        idleCount: 1,
+        activeCount: 1,
+        avgTicksToLive: 1400,
+        totalBodyParts: 9
+      });
+
+      const stats = statsManager.getStats();
+      assert.equal(stats.roles.harvester.count, 3);
+      assert.equal(stats.roles.harvester.spawningCount, 1);
+      assert.equal(stats.roles.harvester.idleCount, 1);
+      assert.equal(stats.roles.harvester.activeCount, 1);
+      assert.equal(stats.roles.harvester.avgTicksToLive, 1400);
+      assert.equal(stats.roles.harvester.totalBodyParts, 9);
+    });
+  });
+
+  describe("Kernel Process Stats", function () {
+    it("should record kernel process stats", function () {
+      const mockProcess = {
+        id: "roomRunner_W1N1",
+        name: "Room Runner: W1N1",
+        priority: 75,
+        frequency: "high",
+        state: "idle",
+        cpuBudget: 0.1,
+        minBucket: 1000,
+        stats: {
+          totalCpu: 5.5,
+          runCount: 100,
+          avgCpu: 0.055,
+          maxCpu: 0.15,
+          lastRunTick: 12345,
+          skippedCount: 5,
+          errorCount: 0
+        }
+      };
+
+      statsManager.recordProcess(mockProcess);
+
+      const stats = statsManager.getStats();
+      assert.isDefined(stats.processes.roomRunner_W1N1);
+      assert.equal(stats.processes.roomRunner_W1N1.name, "Room Runner: W1N1");
+      assert.equal(stats.processes.roomRunner_W1N1.avgCpu, 0.055);
+      assert.equal(stats.processes.roomRunner_W1N1.runCount, 100);
+      assert.equal(stats.processes.roomRunner_W1N1.skippedCount, 5);
+    });
+
+    it("should collect all process stats from a map", function () {
+      const mockProcesses = new Map();
+      mockProcesses.set("proc1", {
+        id: "proc1",
+        name: "Process 1",
+        priority: 100,
+        frequency: "high",
+        state: "running",
+        cpuBudget: 0.5,
+        minBucket: 500,
+        stats: { totalCpu: 10, runCount: 20, avgCpu: 0.5, maxCpu: 1.0, lastRunTick: 12345, skippedCount: 0, errorCount: 0 }
+      });
+      mockProcesses.set("proc2", {
+        id: "proc2",
+        name: "Process 2",
+        priority: 50,
+        frequency: "medium",
+        state: "idle",
+        cpuBudget: 0.2,
+        minBucket: 2000,
+        stats: { totalCpu: 5, runCount: 10, avgCpu: 0.5, maxCpu: 0.8, lastRunTick: 12344, skippedCount: 2, errorCount: 1 }
+      });
+
+      statsManager.collectProcessStats(mockProcesses);
+
+      const stats = statsManager.getStats();
+      assert.equal(Object.keys(stats.processes).length, 2);
+      assert.isDefined(stats.processes.proc1);
+      assert.isDefined(stats.processes.proc2);
+      assert.equal(stats.processes.proc2.errorCount, 1);
+    });
+  });
 });
