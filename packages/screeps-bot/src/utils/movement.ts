@@ -313,7 +313,13 @@ function serializePath(path: RoomPosition[]): SerializedPos[] {
  * Deserialize a path from JSON array to RoomPositions
  */
 function deserializePath(serialized: SerializedPos[]): RoomPosition[] {
-  return serialized.map(pos => new RoomPosition(pos.x, pos.y, pos.r));
+  return serialized
+    .filter(pos => 
+      typeof pos.x === 'number' && typeof pos.y === 'number' && 
+      !isNaN(pos.x) && !isNaN(pos.y) && 
+      typeof pos.r === 'string' && pos.r.length > 0
+    )
+    .map(pos => new RoomPosition(pos.x, pos.y, pos.r));
 }
 
 /**
@@ -436,6 +442,12 @@ function positionAtDirection(origin: RoomPosition, direction: DirectionConstant)
   } else if (y > 49) {
     y = 0;
     roomName = getRoomNameInDirection(roomName, BOTTOM);
+  }
+  
+  // Validate final coordinates and room name before creating RoomPosition
+  if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y) || 
+      x < 0 || x > 49 || y < 0 || y > 49 || !roomName) {
+    return null;
   }
   
   return new RoomPosition(x, y, roomName);
@@ -1197,21 +1209,28 @@ function internalMoveTo(
     if (oldTargetParts.length === 2) {
       const [oldRoom, oldCoords] = oldTargetParts;
       const [oldX, oldY] = oldCoords.split(',').map(s => parseInt(s, 10));
-      const oldTargetPos = new RoomPosition(oldX, oldY, oldRoom);
       
-      // Check if new target is adjacent to old target
-      if (oldTargetPos.isNearTo(targetPos)) {
-        targetMoved = true;
-        // Append direction change to existing path
-        const direction = oldTargetPos.getDirectionTo(targetPos);
-        if (typeof cachedPath.path === 'string') {
-          cachedPath.path += direction.toString();
-        } else {
-          // For position-based paths, add new position
-          cachedPath.path.push({ x: targetPos.x, y: targetPos.y, r: targetPos.roomName });
+      // Validate parsed coordinates before creating RoomPosition
+      if (isNaN(oldX) || isNaN(oldY) || oldX < 0 || oldX > 49 || oldY < 0 || oldY > 49 || !oldRoom) {
+        // Invalid cached target, clear cache and continue
+        delete memory[MEMORY_PATH_KEY];
+      } else {
+        const oldTargetPos = new RoomPosition(oldX, oldY, oldRoom);
+        
+        // Check if new target is adjacent to old target
+        if (oldTargetPos.isNearTo(targetPos)) {
+          targetMoved = true;
+          // Append direction change to existing path
+          const direction = oldTargetPos.getDirectionTo(targetPos);
+          if (typeof cachedPath.path === 'string') {
+            cachedPath.path += direction.toString();
+          } else {
+            // For position-based paths, add new position
+            cachedPath.path.push({ x: targetPos.x, y: targetPos.y, r: targetPos.roomName });
+          }
+          cachedPath.targetKey = targetKey;
+          memory[MEMORY_PATH_KEY] = cachedPath;
         }
-        cachedPath.targetKey = targetKey;
-        memory[MEMORY_PATH_KEY] = cachedPath;
       }
     }
   }
@@ -1249,28 +1268,33 @@ function internalMoveTo(
         
         const offset = offsets[flowFieldDirection];
         if (offset) {
-          const flowTargetPos = new RoomPosition(
-            creep.pos.x + offset.dx,
-            creep.pos.y + offset.dy,
-            creep.pos.roomName
-          );
+          const newX = creep.pos.x + offset.dx;
+          const newY = creep.pos.y + offset.dy;
           
-          // Register movement intent using flow field direction
-          if (lastPreTickTime === Game.time) {
-            if (!moveIntents.has(creep.pos.roomName)) {
-              moveIntents.set(creep.pos.roomName, []);
-            }
-            const intents = moveIntents.get(creep.pos.roomName);
-            if (intents) {
-              intents.push({
-                creep,
-                priority,
-                targetPos: flowTargetPos
-              });
-            }
-            return OK;
+          // Validate coordinates are within room bounds
+          if (newX < 0 || newX > 49 || newY < 0 || newY > 49) {
+            // Position outside room, skip flow field and use default pathfinding
+            flowFieldDirection = undefined;
           } else {
-            return creep.move(flowFieldDirection);
+            const flowTargetPos = new RoomPosition(newX, newY, creep.pos.roomName);
+            
+            // Register movement intent using flow field direction
+            if (lastPreTickTime === Game.time) {
+              if (!moveIntents.has(creep.pos.roomName)) {
+                moveIntents.set(creep.pos.roomName, []);
+              }
+              const intents = moveIntents.get(creep.pos.roomName);
+              if (intents) {
+                intents.push({
+                  creep,
+                  priority,
+                  targetPos: flowTargetPos
+                });
+              }
+              return OK;
+            } else {
+              return creep.move(flowFieldDirection);
+            }
           }
         }
       }
