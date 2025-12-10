@@ -11,6 +11,7 @@ on:
       - '.github/workflows/mcp-docker.yml'
   release:
     types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: read
