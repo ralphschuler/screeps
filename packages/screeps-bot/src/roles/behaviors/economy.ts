@@ -35,7 +35,7 @@ function isDeposit(obj: unknown): obj is Deposit {
 /**
  * Update working state based on energy levels.
  * Returns true if creep should be working (has energy to spend).
- * Clears cached targets when state changes to ensure fresh target selection.
+ * Clears cached targets AND state machine state when state changes to ensure fresh target selection.
  */
 function updateWorkingState(ctx: CreepContext): boolean {
   const wasWorking = ctx.memory.working ?? false;
@@ -43,9 +43,12 @@ function updateWorkingState(ctx: CreepContext): boolean {
   if (ctx.isFull) ctx.memory.working = true;
   const isWorking = ctx.memory.working ?? false;
 
-  // Clear cached targets when working state changes
+  // Clear cached targets and state machine state when working state changes
+  // This ensures the creep immediately switches to the new behavior mode
+  // without continuing any ongoing actions from the previous mode
   if (wasWorking !== isWorking) {
     clearCacheOnStateChange(ctx.creep);
+    delete ctx.memory.state;  // Clear state machine state to force re-evaluation
   }
 
   return isWorking;
