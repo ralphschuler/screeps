@@ -27,6 +27,14 @@ declare global {
     role: string;
     room: string;
     working: boolean;
+    homeRoom?: string;
+    targetRoom?: string;
+    targetId?: string;
+    sourceId?: string;
+    squadId?: string;
+    state?: string;
+    task?: string;
+    lastExploredRoom?: string;
   }
 
   interface RoomMemory {

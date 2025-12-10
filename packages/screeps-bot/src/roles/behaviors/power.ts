@@ -437,6 +437,7 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
     ].filter(s => s !== undefined);
 
     for (const structure of criticalStructures) {
+      if (!structure) continue;
       const rampart = ctx.room.lookForAt(LOOK_STRUCTURES, structure.pos).find(
         s => s.structureType === STRUCTURE_RAMPART
       ) as StructureRampart | undefined;

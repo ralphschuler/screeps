@@ -2,12 +2,17 @@ import { ScreepsAPI } from 'screeps-api';
 import { LokiExporterConfig } from './config';
 
 export async function createApi(config: LokiExporterConfig): Promise<ScreepsAPI> {
-  const api = await ScreepsAPI.fromConfig(config.hostname, {
+  const api = new ScreepsAPI({
     protocol: config.protocol,
+    hostname: config.hostname,
     port: config.apiPort,
     path: config.apiPath,
-    ...(config.token ? { token: config.token } : { username: config.username, password: config.password })
+    token: config.token
   });
+
+  if (!config.token && config.username && config.password) {
+    await api.auth(config.username, config.password);
+  }
 
   return api;
 }
