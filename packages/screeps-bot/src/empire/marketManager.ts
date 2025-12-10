@@ -31,6 +31,10 @@ export interface MarketConfig {
   minBucket: number;
   /** Minimum credits to maintain */
   minCredits: number;
+  /** Emergency credit reserve for critical purchases */
+  emergencyCredits: number;
+  /** Trading credit reserve for normal operations */
+  tradingCredits: number;
   /** Maximum price multiplier for war mode */
   warPriceMultiplier: number;
   /** Buy threshold: % below average to trigger buy (e.g., 0.85 = 15% below avg) */
@@ -57,6 +61,14 @@ export interface MarketConfig {
   buyThresholds: Record<string, number>;
   /** Resources to track prices for */
   trackedResources: ResourceConstant[];
+  /** Critical resources that trigger emergency buying */
+  criticalResources: ResourceConstant[];
+  /** Minimum amount for emergency buying */
+  emergencyBuyThreshold: number;
+  /** Order age in ticks before considering extension */
+  orderExtensionAge: number;
+  /** Maximum transport cost as % of deal value for arbitrage */
+  maxTransportCostRatio: number;
 }
 
 const DEFAULT_CONFIG: MarketConfig = {
@@ -64,6 +76,8 @@ const DEFAULT_CONFIG: MarketConfig = {
   priceUpdateInterval: 500, // Update prices every 500 ticks
   minBucket: 7000,
   minCredits: 10000,
+  emergencyCredits: 5000, // Reserve for critical purchases
+  tradingCredits: 50000, // Threshold to enable active trading
   warPriceMultiplier: 2.0,
   buyPriceThreshold: 0.85, // Buy when price is 15% below average
   sellPriceThreshold: 1.15, // Sell when price is 15% above average
@@ -105,7 +119,11 @@ const DEFAULT_CONFIG: MarketConfig = {
     RESOURCE_CATALYST,
     RESOURCE_GHODIUM,
     RESOURCE_POWER
-  ]
+  ],
+  criticalResources: [RESOURCE_ENERGY, RESOURCE_GHODIUM],
+  emergencyBuyThreshold: 5000,
+  orderExtensionAge: 5000,
+  maxTransportCostRatio: 0.3 // Max 30% of deal value for transport
 };
 
 /**
@@ -141,8 +159,17 @@ export class MarketManager {
       this.updatePriceTracking();
     }
 
+    // Update order statistics
+    this.updateOrderStats();
+
+    // Check for emergency resource needs
+    this.handleEmergencyBuying();
+
     // Cancel old orders
     this.cancelOldOrders();
+
+    // Extend/modify existing orders
+    this.manageExistingOrders();
 
     // Update buy orders (with price-aware logic)
     this.updateBuyOrders();
@@ -150,8 +177,13 @@ export class MarketManager {
     // Update sell orders (with price-aware logic)
     this.updateSellOrders();
 
-    // Execute deals
+    // Execute deals and arbitrage
     this.executeDeal();
+
+    // Balance resources across rooms
+    if (Game.time % 200 === 0) {
+      this.balanceResourcesAcrossRooms();
+    }
   }
 
   /**
@@ -161,6 +193,15 @@ export class MarketManager {
     const overmind = memoryManager.getOvermind();
     if (!overmind.market) {
       overmind.market = createDefaultMarketMemory();
+    }
+    if (!overmind.market.orders) {
+      overmind.market.orders = {};
+    }
+    if (overmind.market.totalProfit === undefined) {
+      overmind.market.totalProfit = 0;
+    }
+    if (!overmind.market.lastBalance) {
+      overmind.market.lastBalance = 0;
     }
   }
 
@@ -239,6 +280,22 @@ export class MarketManager {
       } else {
         marketData.trend = 0; // Stable
       }
+    }
+
+    // Calculate volatility (standard deviation / mean)
+    if (recentPrices.length >= 5) {
+      const mean = marketData.avgPrice;
+      const variance =
+        recentPrices.reduce((sum, p) => sum + Math.pow(p.avgPrice - mean, 2), 0) / recentPrices.length;
+      const stdDev = Math.sqrt(variance);
+      marketData.volatility = stdDev / mean;
+    }
+
+    // Simple price prediction (linear extrapolation of trend)
+    if (marketData.priceHistory.length >= 3) {
+      const last3 = marketData.priceHistory.slice(-3);
+      const slope = (last3[2].avgPrice - last3[0].avgPrice) / 2;
+      marketData.predictedPrice = last3[2].avgPrice + slope;
     }
 
     marketData.lastUpdate = Game.time;
@@ -496,6 +553,47 @@ export class MarketManager {
   }
 
   /**
+   * Update order statistics
+   */
+  private updateOrderStats(): void {
+    const overmind = memoryManager.getOvermind();
+    if (!overmind.market?.orders) return;
+
+    const currentOrders = Game.market.orders;
+
+    // Update stats for active orders
+    for (const orderId in overmind.market.orders) {
+      const trackedOrder = overmind.market.orders[orderId];
+      const currentOrder = currentOrders[orderId];
+
+      if (!currentOrder) {
+        // Order completed or cancelled - calculate final profit
+        if (trackedOrder.totalTraded > 0) {
+          const profit = trackedOrder.type === "sell" ? trackedOrder.totalValue : -trackedOrder.totalValue;
+          overmind.market.totalProfit = (overmind.market.totalProfit ?? 0) + profit;
+
+          logger.info(
+            `Order completed: ${trackedOrder.resource} ${trackedOrder.type} - Traded: ${trackedOrder.totalTraded}, Value: ${trackedOrder.totalValue.toFixed(0)}, Profit: ${profit.toFixed(0)}`,
+            { subsystem: "Market" }
+          );
+        }
+
+        // Remove from tracking
+        delete overmind.market.orders[orderId];
+      } else if (currentOrder.totalAmount !== undefined) {
+        // Update traded amount
+        const traded = currentOrder.totalAmount - currentOrder.remainingAmount;
+        const newTraded = traded - trackedOrder.totalTraded;
+
+        if (newTraded > 0) {
+          trackedOrder.totalTraded = traded;
+          trackedOrder.totalValue += newTraded * currentOrder.price;
+        }
+      }
+    }
+  }
+
+  /**
    * Execute a deal if profitable
    */
   private executeDeal(): void {
@@ -534,6 +632,236 @@ export class MarketManager {
                 subsystem: "Market"
               });
             }
+          }
+        }
+      }
+    }
+
+    // Check for arbitrage opportunities (disabled for now - needs proper implementation)
+    // this.checkArbitrageOpportunities();
+  }
+
+  /**
+   * Handle emergency resource buying
+   * Buys critical resources at any price if below emergency threshold
+   */
+  private handleEmergencyBuying(): void {
+    const overmind = memoryManager.getOvermind();
+
+    // Skip if not enough emergency credits
+    if (Game.market.credits < this.config.emergencyCredits) return;
+
+    // Get total resources across all terminals
+    const totalResources: Record<string, number> = {};
+    for (const roomName in Game.rooms) {
+      const room = Game.rooms[roomName];
+      if (room.terminal && room.controller?.my) {
+        for (const resource in room.terminal.store) {
+          totalResources[resource] = (totalResources[resource] ?? 0) + room.terminal.store[resource as ResourceConstant];
+        }
+      }
+    }
+
+    // Check critical resources
+    for (const resource of this.config.criticalResources) {
+      const current = totalResources[resource] ?? 0;
+
+      if (current < this.config.emergencyBuyThreshold) {
+        this.executeEmergencyBuy(resource, this.config.emergencyBuyThreshold - current);
+      }
+    }
+  }
+
+  /**
+   * Execute emergency buy at best available price
+   */
+  private executeEmergencyBuy(resource: ResourceConstant, amount: number): void {
+    const orders = Game.market.getAllOrders({ type: ORDER_SELL, resourceType: resource });
+
+    if (orders.length === 0) return;
+
+    // Sort by total cost (price + transport)
+    const roomWithTerminal = Object.values(Game.rooms).find(r => r.terminal && r.controller?.my);
+    if (!roomWithTerminal?.terminal) return;
+
+    orders.sort((a, b) => {
+      // Calculate total cost including transport (if room is known)
+      const costA = a.roomName
+        ? a.price + Game.market.calcTransactionCost(1000, roomWithTerminal.name, a.roomName) / 1000
+        : a.price;
+      const costB = b.roomName
+        ? b.price + Game.market.calcTransactionCost(1000, roomWithTerminal.name, b.roomName) / 1000
+        : b.price;
+      return costA - costB;
+    });
+
+    const bestOrder = orders[0];
+    const buyAmount = Math.min(amount, bestOrder.amount, 10000);
+    const result = Game.market.deal(bestOrder.id, buyAmount, roomWithTerminal.name);
+
+    if (result === OK) {
+      logger.warn(`EMERGENCY BUY: ${buyAmount} ${resource} at ${bestOrder.price.toFixed(3)} credits/unit`, {
+        subsystem: "Market"
+      });
+    }
+  }
+
+  /**
+   * Manage existing orders - extend or modify as needed
+   */
+  private manageExistingOrders(): void {
+    const myOrders = Game.market.orders;
+
+    for (const orderId in myOrders) {
+      const order = myOrders[orderId];
+      const age = Game.time - order.created;
+
+      // Skip if order is too new
+      if (age < this.config.orderExtensionAge) continue;
+
+      // Check if we should adjust price (only for tracked resources)
+      // Skip if not a regular resource (e.g., tokens)
+      const resourceType = order.resourceType;
+      if (resourceType === "token") continue;
+      if (!this.config.trackedResources.includes(resourceType as ResourceConstant)) continue;
+      
+      const marketData = this.getMarketData(resourceType as ResourceConstant);
+      if (!marketData) continue;
+
+      // Get current market price
+      const history = Game.market.getHistory(resourceType as ResourceConstant);
+      if (history.length === 0) continue;
+
+      const currentPrice = history[history.length - 1].avgPrice;
+
+      // Adjust buy orders if price has changed significantly
+      if (order.type === ORDER_BUY) {
+        const targetPrice = currentPrice * this.config.buyOpportunityAdjustment;
+
+        // If our price is too low (more than 10% below target), extend with better price
+        if (order.price < targetPrice * 0.9 && order.remainingAmount > 1000) {
+          Game.market.extendOrder(orderId, Math.min(5000, order.remainingAmount));
+          logger.debug(`Extended buy order for ${order.resourceType}: +${order.remainingAmount} at ${order.price.toFixed(3)}`, {
+            subsystem: "Market"
+          });
+        }
+      }
+
+      // Adjust sell orders
+      if (order.type === ORDER_SELL) {
+        const targetPrice = currentPrice * this.config.sellOpportunityAdjustment;
+
+        // If our price is too high (more than 10% above target), extend with better price
+        if (order.price > targetPrice * 1.1 && order.remainingAmount > 1000) {
+          Game.market.extendOrder(orderId, Math.min(5000, order.remainingAmount));
+          logger.debug(`Extended sell order for ${order.resourceType}: +${order.remainingAmount} at ${order.price.toFixed(3)}`, {
+            subsystem: "Market"
+          });
+        }
+      }
+    }
+  }
+
+  /**
+   * Check for arbitrage opportunities
+   * TODO: Complete implementation - currently disabled as it needs proper handling of:
+   * 1. Waiting for resources to arrive after buy
+   * 2. Executing sell order or deal after resources are available
+   * 3. Tracking multi-step arbitrage transactions
+   */
+  private checkArbitrageOpportunities(): void {
+    // Only do this if we have sufficient trading credits
+    if (Game.market.credits < this.config.tradingCredits) return;
+
+    // Check each tracked resource
+    for (const resource of this.config.trackedResources) {
+      const buyOrders = Game.market.getAllOrders({ type: ORDER_BUY, resourceType: resource });
+      const sellOrders = Game.market.getAllOrders({ type: ORDER_SELL, resourceType: resource });
+
+      if (buyOrders.length === 0 || sellOrders.length === 0) continue;
+
+      // Find highest buy price and lowest sell price
+      buyOrders.sort((a, b) => b.price - a.price);
+      sellOrders.sort((a, b) => a.price - b.price);
+
+      const highestBuy = buyOrders[0];
+      const lowestSell = sellOrders[0];
+
+      // Check if arbitrage is profitable
+      const roomWithTerminal = Object.values(Game.rooms).find(r => r.terminal && r.controller?.my);
+      if (!roomWithTerminal?.terminal || !lowestSell.roomName || !highestBuy.roomName) continue;
+
+      const transportCost =
+        Game.market.calcTransactionCost(1000, roomWithTerminal.name, lowestSell.roomName) / 1000;
+      const totalCost = lowestSell.price + transportCost;
+      const profit = highestBuy.price - totalCost;
+
+      // If profitable and transport cost is reasonable
+      if (profit > 0 && transportCost / lowestSell.price < this.config.maxTransportCostRatio) {
+        // Log opportunity but don't execute yet (needs proper implementation)
+        logger.debug(
+          `ARBITRAGE OPPORTUNITY: ${resource} - Buy @ ${lowestSell.price.toFixed(3)}, Sell @ ${highestBuy.price.toFixed(3)}, Profit: ${profit.toFixed(3)}/unit`,
+          { subsystem: "Market" }
+        );
+
+        // TODO: Implement proper arbitrage execution:
+        // 1. Buy from lowest sell order
+        // 2. Track the incoming transfer
+        // 3. Once resources arrive, sell to highest buy order or create sell order
+      }
+    }
+  }
+
+  /**
+   * Balance resources across rooms via terminal transfers
+   */
+  private balanceResourcesAcrossRooms(): void {
+    const rooms = Object.values(Game.rooms).filter(r => r.terminal && r.controller?.my);
+
+    if (rooms.length < 2) return; // Need at least 2 rooms
+
+    // For each tracked resource, balance if needed
+    for (const resource of this.config.trackedResources) {
+      const roomResources: { room: Room; amount: number }[] = [];
+
+      // Collect resource amounts per room
+      for (const room of rooms) {
+        if (!room.terminal) continue;
+        const amount = room.terminal.store[resource] ?? 0;
+        roomResources.push({ room, amount });
+      }
+
+      if (roomResources.length < 2) continue;
+
+      // Find rooms with surplus and deficit
+      const avgAmount = roomResources.reduce((sum, r) => sum + r.amount, 0) / roomResources.length;
+
+      // Sort by amount
+      roomResources.sort((a, b) => b.amount - a.amount);
+
+      const richest = roomResources[0];
+      const poorest = roomResources[roomResources.length - 1];
+
+      // If difference is significant (more than 50% of average)
+      const difference = richest.amount - poorest.amount;
+      if (difference > avgAmount * 0.5 && richest.amount > 5000 && richest.room.terminal && poorest.room.terminal) {
+        const transferAmount = Math.min(Math.floor(difference / 2), 10000);
+
+        // Check if transfer is economical
+        const energyCost = Game.market.calcTransactionCost(transferAmount, richest.room.name, poorest.room.name);
+
+        // Only transfer if energy cost is reasonable (less than 10% of amount for energy, or <1000 for others)
+        if (
+          (resource === RESOURCE_ENERGY && energyCost < transferAmount * 0.1) ||
+          (resource !== RESOURCE_ENERGY && energyCost < 1000)
+        ) {
+          const result = richest.room.terminal.send(resource, transferAmount, poorest.room.name);
+
+          if (result === OK) {
+            logger.info(
+              `Balanced ${transferAmount} ${resource}: ${richest.room.name} -> ${poorest.room.name} (cost: ${energyCost} energy)`,
+              { subsystem: "Market" }
+            );
           }
         }
       }
