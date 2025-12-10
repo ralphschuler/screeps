@@ -360,6 +360,8 @@ function stateToAction(state: CreepState): CreepAction | null {
  * If creep has a valid ongoing state, continue that action.
  * Otherwise, evaluate new behavior and commit to it.
  * 
+ * REFACTORED: Added safety checks to prevent infinite loops
+ * 
  * @param ctx Creep context
  * @param behaviorFn Behavior function to call when evaluating new action
  * @returns Action to execute
@@ -387,11 +389,19 @@ export function evaluateWithStateMachine(
     }
   } else {
     // State invalid or expired - clear it
-    delete ctx.memory.state;
+    if (currentState) {
+      delete ctx.memory.state;
+    }
   }
 
   // No valid state - evaluate new action
   const newAction = behaviorFn(ctx);
+
+  // REFACTORED: Safety check - if behavior returns null/undefined, default to idle
+  // This prevents crashes if behavior functions have bugs
+  if (!newAction || !newAction.type) {
+    return { type: "idle" };
+  }
 
   // Don't store state for idle actions (they complete immediately)
   if (newAction.type !== "idle") {
