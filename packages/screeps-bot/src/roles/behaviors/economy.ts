@@ -46,7 +46,11 @@ const HARVESTER_CACHE_DURATION = 50;
 /**
  * Update working state based on energy levels.
  * Returns true if creep should be working (has energy to spend).
- * Clears cached targets AND state machine state when state changes to force immediate re-evaluation.
+ * 
+ * OPTIMIZATION: Only clear cached targets on state change, not the state machine state.
+ * The state machine's own completion detection handles invalid states efficiently.
+ * Clearing state machine state here causes unnecessary re-evaluation and "dead ticks"
+ * where creeps appear idle while establishing new states.
  */
 function updateWorkingState(ctx: CreepContext): boolean {
   const wasWorking = ctx.memory.working ?? false;
@@ -54,12 +58,10 @@ function updateWorkingState(ctx: CreepContext): boolean {
   if (ctx.isFull) ctx.memory.working = true;
   const isWorking = ctx.memory.working ?? false;
 
-  // Clear cached targets and state machine state when working state changes
-  // This forces immediate re-evaluation, ensuring the creep switches to the new behavior mode
-  // without continuing any ongoing actions from the previous mode
+  // Clear cached targets when working state changes to ensure fresh target selection
+  // State machine will naturally detect completion and re-evaluate on next tick
   if (wasWorking !== isWorking) {
     clearCacheOnStateChange(ctx.creep);
-    delete ctx.memory.state;  // Clear state machine state to force re-evaluation
   }
 
   return isWorking;
@@ -476,11 +478,9 @@ export function hauler(ctx: CreepContext): CreepAction {
   }
 
   // 2. Tombstones (cache 10 ticks - increased from 5)
-  const tombstones = ctx.room.find(FIND_TOMBSTONES, {
-    filter: t => t.store.getUsedCapacity(RESOURCE_ENERGY) > 0
-  });
-  if (tombstones.length > 0) {
-    const tombstone = findCachedClosest(ctx.creep, tombstones, "hauler_tomb", 10);
+  // OPTIMIZATION: Use cached tombstones from room context to avoid expensive room.find()
+  if (ctx.tombstones.length > 0) {
+    const tombstone = findCachedClosest(ctx.creep, ctx.tombstones, "hauler_tomb", 10);
     if (tombstone) return { type: "withdraw", target: tombstone, resourceType: RESOURCE_ENERGY };
   }
 
@@ -491,18 +491,9 @@ export function hauler(ctx: CreepContext): CreepAction {
   }
 
   // 4. Containers with minerals (for mineral transport to terminal/storage)
-  const mineralContainers = ctx.room.find(FIND_STRUCTURES, {
-    filter: s => {
-      if (s.structureType !== STRUCTURE_CONTAINER) return false;
-      const container = s as StructureContainer;
-      // Check for any non-energy resources using Object.keys for better performance
-      const resources = Object.keys(container.store) as ResourceConstant[];
-      return resources.some(r => r !== RESOURCE_ENERGY && container.store.getUsedCapacity(r) > 0);
-    }
-  }) as StructureContainer[];
-  
-  if (mineralContainers.length > 0) {
-    const closest = findCachedClosest(ctx.creep, mineralContainers, "hauler_mineral", 15);
+  // OPTIMIZATION: Use cached mineral containers from room context to avoid expensive room.find()
+  if (ctx.mineralContainers.length > 0) {
+    const closest = findCachedClosest(ctx.creep, ctx.mineralContainers, "hauler_mineral", 15);
     if (closest) {
       // Find first mineral type in container using Object.keys for better performance
       const mineralType = Object.keys(closest.store).find(
