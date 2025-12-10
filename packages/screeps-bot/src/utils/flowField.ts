@@ -412,6 +412,14 @@ export function clearFlowFieldCache(): void {
 }
 
 /**
+ * Manually cache a flow field (for testing)
+ */
+export function cacheFlowField(field: FlowField): void {
+  const key = getFieldKey(field.roomName, field.targetPos.x, field.targetPos.y);
+  flowFieldCache.set(key, field);
+}
+
+/**
  * Get flow field statistics
  */
 export function getFlowFieldStats(): {

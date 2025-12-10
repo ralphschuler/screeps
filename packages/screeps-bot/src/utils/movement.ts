@@ -1219,16 +1219,17 @@ function internalMoveTo(
   // Check if we can use flow fields (for single-room movement to common targets)
   const useFlowField = options.useFlowField ?? true;
   const sameRoom = creep.pos.roomName === targetPos.roomName;
-  let flowFieldDirection: DirectionConstant | null = null;
+  let flowFieldDirection: DirectionConstant | null | 0 = null;
   
   if (useFlowField && sameRoom && !options.flee) {
     // Try to get flow field for this target
     const flowField = getFlowField(creep.pos.roomName, targetPos);
     if (flowField) {
-      flowFieldDirection = getFlowDirection(flowField, creep.pos) ?? null;
+      const rawDirection = getFlowDirection(flowField, creep.pos);
       
-      // If we have a valid flow field direction, use it
-      if (flowFieldDirection) {
+      // If we have a valid flow field direction (not 0, not null), use it
+      if (rawDirection !== null && rawDirection !== 0) {
+        flowFieldDirection = rawDirection as DirectionConstant;
         // Calculate target position from direction
         const offsets: Record<DirectionConstant, { dx: number; dy: number }> = {
           [TOP]: { dx: 0, dy: -1 },
