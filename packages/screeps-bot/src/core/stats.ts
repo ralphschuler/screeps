@@ -656,9 +656,9 @@ export class StatsManager {
   public collectProcessStats(processes: Map<string, any>): void {
     if (!this.config.enabled) return;
 
-    for (const process of processes.values()) {
+    processes.forEach((process) => {
       this.recordProcess(process);
-    }
+    });
   }
 
   /**
