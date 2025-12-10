@@ -122,6 +122,10 @@ export interface RoomStats {
   damageReceived: number;
   /** Danger level (0-3) */
   danger: number;
+  /** Total resources in storage and terminal (all resource types) */
+  resources: Record<ResourceConstant, number>;
+  /** Dropped energy on the ground */
+  droppedEnergy: number;
 }
 
 /**
@@ -494,6 +498,25 @@ export class StatsManager {
     const creepsInRoom = Object.values(Game.creeps).filter(c => c.room.name === room.name).length;
     const hostiles = room.find(FIND_HOSTILE_CREEPS);
 
+    // Collect all resources from storage and terminal
+    const resources: Record<ResourceConstant, number> = {} as Record<ResourceConstant, number>;
+    if (room.storage) {
+      for (const resourceType of Object.keys(room.storage.store) as ResourceConstant[]) {
+        resources[resourceType] = (resources[resourceType] ?? 0) + room.storage.store.getUsedCapacity(resourceType);
+      }
+    }
+    if (room.terminal) {
+      for (const resourceType of Object.keys(room.terminal.store) as ResourceConstant[]) {
+        resources[resourceType] = (resources[resourceType] ?? 0) + room.terminal.store.getUsedCapacity(resourceType);
+      }
+    }
+
+    // Find dropped energy on the ground
+    const droppedResources = room.find(FIND_DROPPED_RESOURCES, {
+      filter: (r) => r.resourceType === RESOURCE_ENERGY
+    });
+    const droppedEnergy = droppedResources.reduce((sum, r) => sum + r.amount, 0);
+
     stats.rooms[room.name] = {
       name: room.name,
       rcl: room.controller?.level ?? 0,
@@ -508,7 +531,9 @@ export class StatsManager {
       controllerProgressTotal: room.controller?.progressTotal ?? 1,
       energyHarvested: metrics.energyHarvested ?? 0,
       damageReceived: metrics.damageReceived ?? 0,
-      danger: metrics.danger ?? 0
+      danger: metrics.danger ?? 0,
+      resources,
+      droppedEnergy
     };
   }
 

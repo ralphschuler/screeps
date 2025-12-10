@@ -149,10 +149,20 @@ describe("StatsManager", function () {
         },
         storage: {
           store: {
-            getUsedCapacity: () => 50000
+            [RESOURCE_ENERGY]: 50000,
+            getUsedCapacity: (resourceType?: ResourceConstant) => {
+              if (resourceType === RESOURCE_ENERGY) return 50000;
+              if (resourceType) return 0;
+              return 50000;
+            }
           }
         },
-        find: () => [] // No hostiles
+        find: (type: FindConstant) => {
+          if (type === FIND_DROPPED_RESOURCES) {
+            return [];
+          }
+          return []; // No hostiles
+        }
       };
 
       // This should not throw an error
@@ -167,6 +177,89 @@ describe("StatsManager", function () {
       assert.equal(stats.rooms.W1N1.name, "W1N1");
       assert.equal(stats.rooms.W1N1.rcl, 3);
       assert.equal(stats.rooms.W1N1.storageEnergy, 50000);
+      assert.isDefined(stats.rooms.W1N1.resources);
+      assert.equal(stats.rooms.W1N1.droppedEnergy, 0);
+    });
+
+    it("should track resources in storage and terminal", function () {
+      const mockRoom: any = {
+        name: "W1N1",
+        energyAvailable: 300,
+        energyCapacityAvailable: 550,
+        controller: { level: 5, progress: 5000, progressTotal: 10000, my: true },
+        storage: {
+          store: {
+            [RESOURCE_ENERGY]: 50000,
+            [RESOURCE_HYDROGEN]: 1000,
+            getUsedCapacity: (resourceType?: ResourceConstant) => {
+              if (resourceType === RESOURCE_ENERGY) return 50000;
+              if (resourceType === RESOURCE_HYDROGEN) return 1000;
+              if (resourceType) return 0;
+              return 51000;
+            }
+          }
+        },
+        terminal: {
+          store: {
+            [RESOURCE_ENERGY]: 10000,
+            [RESOURCE_OXYGEN]: 500,
+            getUsedCapacity: (resourceType?: ResourceConstant) => {
+              if (resourceType === RESOURCE_ENERGY) return 10000;
+              if (resourceType === RESOURCE_OXYGEN) return 500;
+              if (resourceType) return 0;
+              return 10500;
+            }
+          }
+        },
+        find: (type: FindConstant) => {
+          if (type === FIND_DROPPED_RESOURCES) {
+            return [];
+          }
+          return [];
+        }
+      };
+
+      statsManager.recordRoom(mockRoom, 0.5, 0.7);
+
+      const stats = statsManager.getStats();
+      assert.isDefined(stats.rooms.W1N1.resources);
+      assert.equal(stats.rooms.W1N1.resources[RESOURCE_ENERGY], 60000); // 50000 + 10000
+      assert.equal(stats.rooms.W1N1.resources[RESOURCE_HYDROGEN], 1000);
+      assert.equal(stats.rooms.W1N1.resources[RESOURCE_OXYGEN], 500);
+    });
+
+    it("should track dropped energy on the ground", function () {
+      const mockRoom: any = {
+        name: "W1N1",
+        energyAvailable: 300,
+        energyCapacityAvailable: 550,
+        controller: { level: 3, progress: 5000, progressTotal: 10000, my: true },
+        storage: {
+          store: {
+            [RESOURCE_ENERGY]: 50000,
+            getUsedCapacity: (resourceType?: ResourceConstant) => {
+              if (resourceType === RESOURCE_ENERGY) return 50000;
+              if (resourceType) return 0;
+              return 50000;
+            }
+          }
+        },
+        find: (type: FindConstant, opts?: any) => {
+          if (type === FIND_DROPPED_RESOURCES) {
+            // Return dropped energy resources
+            return [
+              { resourceType: RESOURCE_ENERGY, amount: 100 },
+              { resourceType: RESOURCE_ENERGY, amount: 250 }
+            ];
+          }
+          return [];
+        }
+      };
+
+      statsManager.recordRoom(mockRoom, 0.5, 0.7);
+
+      const stats = statsManager.getStats();
+      assert.equal(stats.rooms.W1N1.droppedEnergy, 350); // 100 + 250
     });
 
     it("should record pheromone stats", function () {
@@ -233,8 +326,22 @@ describe("StatsManager", function () {
         energyAvailable: 300,
         energyCapacityAvailable: 550,
         controller: { level: 3, progress: 5000, progressTotal: 10000, my: true },
-        storage: { store: { getUsedCapacity: () => 50000 } },
-        find: () => []
+        storage: { 
+          store: { 
+            [RESOURCE_ENERGY]: 50000,
+            getUsedCapacity: (resourceType?: ResourceConstant) => {
+              if (resourceType === RESOURCE_ENERGY) return 50000;
+              if (resourceType) return 0;
+              return 50000;
+            }
+          } 
+        },
+        find: (type: FindConstant) => {
+          if (type === FIND_DROPPED_RESOURCES) {
+            return [];
+          }
+          return [];
+        }
       };
 
       statsManager.recordRoom(mockRoom, 0.5, 0.7);
