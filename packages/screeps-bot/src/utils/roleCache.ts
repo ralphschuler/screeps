@@ -23,6 +23,8 @@
  * - Defenders: threat assessment, hostile positions
  */
 
+import { cachedRoomFind } from "./roomFindCache";
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -401,13 +403,19 @@ export function getSourceContainer(
     }
   }
   
-  // Find container near source
-  const containers = source.pos.findInRange(FIND_STRUCTURES, 1, {
-    filter: (s): s is StructureContainer => s.structureType === STRUCTURE_CONTAINER
+  // Find container near source using cached room find
+  const room = source.room;
+  if (!room) return null;
+  
+  const allContainers = cachedRoomFind<StructureContainer>(room, FIND_STRUCTURES, {
+    filter: (s): s is StructureContainer => s.structureType === STRUCTURE_CONTAINER,
+    filterKey: STRUCTURE_CONTAINER
   });
   
-  if (containers.length > 0) {
-    const container = containers[0];
+  const nearbyContainers = allContainers.filter(c => source.pos.getRangeTo(c) <= 1);
+  
+  if (nearbyContainers.length > 0) {
+    const container = nearbyContainers[0];
     setRoleCache(creep, "miner", cacheKey, container.id, 100);
     return container;
   }
