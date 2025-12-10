@@ -19,14 +19,15 @@ The exporter implements proper rate limit handling according to the [Screeps API
 - Automatically adjusts polling interval when approaching rate limits (< 20% quota remaining)
 - Waits for rate limit reset when quota is exhausted (HTTP 429)
 - Enforces a minimum poll interval to prevent excessive API calls
+- Detects and corrects miscalculated rate limit values to prevent excessively long wait times
 
-The default poll interval of 15 seconds (240 requests/hour) is well within the typical memory endpoint limit of 360 requests/hour.
+**Important:** The `GET /api/user/memory` endpoint has a rate limit of **1440 requests/day** (1 request per minute). The default poll interval of 90 seconds (40 requests/hour) is conservative and ensures you'll never exhaust your rate limit quota. You can reduce this if needed, but values below 60 seconds are not recommended.
 
 | Variable | Default | Description |
 | --- | --- | --- |
 | `EXPORTER_MODE` | `memory` | Set to `memory` or `console`. |
-| `EXPORTER_POLL_INTERVAL_MS` | `15000` | Poll interval for memory mode. The exporter automatically adjusts this based on rate limit information from the Screeps API. |
-| `EXPORTER_MIN_POLL_INTERVAL_MS` | `10000` | Minimum poll interval to enforce (minimum 5 seconds). Prevents polling too frequently and hitting rate limits. |
+| `EXPORTER_POLL_INTERVAL_MS` | `90000` | Poll interval for memory mode (in milliseconds). Default is 90 seconds (40 requests/hour), which is conservative and respects the API rate limit of 1440 requests/day. The exporter automatically adjusts this based on rate limit information from the Screeps API. |
+| `EXPORTER_MIN_POLL_INTERVAL_MS` | `60000` | Minimum poll interval to enforce (60 seconds = 1 minute). This ensures compliance with the `/api/user/memory` rate limit of 1440/day. Values below 60 seconds are not recommended. |
 | `EXPORTER_MEMORY_PATH` | `stats` | Memory path to read stats from. |
 | `EXPORTER_MEMORY_FULL` | `false` | When `true`, flatten the entire Memory payload instead of only `Memory.stats`. |
 | `EXPORTER_SHARD` | `shard0` | Shard to read from when polling memory. |

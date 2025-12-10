@@ -49,13 +49,16 @@ export function loadConfig(): ExporterConfig {
     throw new Error('Set GRAFANA_CLOUD_GRAPHITE_URL for Grafana Cloud Graphite endpoint.');
   }
 
-  const pollIntervalMs = parseNumber(process.env.EXPORTER_POLL_INTERVAL_MS, 15000);
-  const minPollIntervalMs = parseNumber(process.env.EXPORTER_MIN_POLL_INTERVAL_MS, 10000);
+  // GET /api/user/memory has a rate limit of 1440/day = 60/hour = 1/minute
+  // To be safe, default to 90 seconds (40 requests/hour, well under the limit)
+  // This ensures we never exhaust the rate limit quota
+  const pollIntervalMs = parseNumber(process.env.EXPORTER_POLL_INTERVAL_MS, 90000);
+  const minPollIntervalMs = parseNumber(process.env.EXPORTER_MIN_POLL_INTERVAL_MS, 60000);
 
   return {
     mode,
     pollIntervalMs,
-    minPollIntervalMs: Math.max(minPollIntervalMs, 5000), // Enforce minimum 5s to respect rate limits
+    minPollIntervalMs: Math.max(minPollIntervalMs, 60000), // Enforce minimum 60s to respect API rate limits (1440/day = 1/min)
     memoryPath: process.env.EXPORTER_MEMORY_PATH ?? 'stats',
     exportFullMemory: (process.env.EXPORTER_MEMORY_FULL ?? 'false').toLowerCase() === 'true',
     shard: process.env.EXPORTER_SHARD ?? 'shard0',
