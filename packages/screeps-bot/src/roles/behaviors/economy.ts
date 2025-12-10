@@ -254,7 +254,9 @@ function assignSource(ctx: CreepContext): Source | null {
     const roomCreeps = ctx.room.find(FIND_MY_CREEPS);
     for (const c of roomCreeps) {
       const m = c.memory as unknown as SwarmCreepMemory;
-      if (m.role === "harvester" && m.sourceId) {
+      // Only count harvesters that have a sourceId AND are assigned to sources in THIS room
+      // (sourceId could be from another room if creep is in transit)
+      if (m.role === "harvester" && m.sourceId && sourceCounts.has(m.sourceId)) {
         sourceCounts.set(m.sourceId, (sourceCounts.get(m.sourceId) ?? 0) + 1);
       }
     }
@@ -285,78 +287,108 @@ function assignSource(ctx: CreepContext): Source | null {
  * OPTIMIZATION: Cached version of findNearbyContainer for stationary harvesters.
  * Caches the container ID for HARVESTER_CACHE_DURATION ticks to avoid repeated findInRange calls.
  * Harvesters are stationary, so their nearby structures don't change often.
+ * 
+ * Optimization strategy: We cache the expensive findInRange operation but always check capacity
+ * since it's cheap (just property access) and changes frequently. This provides maximum CPU savings.
  */
 function findNearbyContainerCached(creep: Creep): StructureContainer | undefined {
   const memory = creep.memory as unknown as SwarmCreepMemory;
   
-  // Check if we have a cached container ID and if it's still valid
+  // Check if we have a cached container ID
   if (memory.nearbyContainerId && memory.nearbyContainerTick && (Game.time - memory.nearbyContainerTick) < HARVESTER_CACHE_DURATION) {
     const container = Game.getObjectById(memory.nearbyContainerId);
-    // Verify container still exists and has space
-    if (container && container.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-      return container;
+    // Verify container still exists
+    if (container) {
+      // Always check capacity (cheap check, changes frequently)
+      if (container.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+        return container;
+      }
+      // Container full but still exists - keep cache, return undefined
+      return undefined;
     }
-    // Container no longer valid - clear cache
+    // Container destroyed - clear cache
     delete memory.nearbyContainerId;
     delete memory.nearbyContainerTick;
   }
   
-  // Cache miss or invalid - find a new container
-  const container = creep.pos.findInRange(FIND_STRUCTURES, 1, {
-    filter: s =>
-      s.structureType === STRUCTURE_CONTAINER &&
-      s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-  })[0] as StructureContainer | undefined;
+  // Cache miss or container destroyed - find a new container
+  // Note: We find ANY container nearby, not just ones with capacity
+  // This allows us to cache it even when full
+  const containers = creep.pos.findInRange(FIND_STRUCTURES, 1, {
+    filter: s => s.structureType === STRUCTURE_CONTAINER
+  }) as StructureContainer[];
   
-  // Cache the result if found, otherwise clear cache
+  const container = containers[0];
+  
+  // Cache the result if found
   if (container) {
     memory.nearbyContainerId = container.id;
     memory.nearbyContainerTick = Game.time;
+    // Check capacity before returning
+    if (container.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+      return container;
+    }
+    return undefined;
   } else {
+    // No container found - clear cache
     delete memory.nearbyContainerId;
     delete memory.nearbyContainerTick;
+    return undefined;
   }
-  
-  return container;
 }
 
 /**
  * OPTIMIZATION: Cached version of findNearbyLink for stationary harvesters.
  * Caches the link ID for HARVESTER_CACHE_DURATION ticks to avoid repeated findInRange calls.
  * Harvesters are stationary, so their nearby structures don't change often.
+ * 
+ * Optimization strategy: We cache the expensive findInRange operation but always check capacity
+ * since it's cheap (just property access) and changes frequently. This provides maximum CPU savings.
  */
 function findNearbyLinkCached(creep: Creep): StructureLink | undefined {
   const memory = creep.memory as unknown as SwarmCreepMemory;
   
-  // Check if we have a cached link ID and if it's still valid
+  // Check if we have a cached link ID
   if (memory.nearbyLinkId && memory.nearbyLinkTick && (Game.time - memory.nearbyLinkTick) < HARVESTER_CACHE_DURATION) {
     const link = Game.getObjectById(memory.nearbyLinkId);
-    // Verify link still exists and has space
-    if (link && link.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-      return link;
+    // Verify link still exists
+    if (link) {
+      // Always check capacity (cheap check, changes frequently)
+      if (link.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+        return link;
+      }
+      // Link full but still exists - keep cache, return undefined
+      return undefined;
     }
-    // Link no longer valid - clear cache
+    // Link destroyed - clear cache
     delete memory.nearbyLinkId;
     delete memory.nearbyLinkTick;
   }
   
-  // Cache miss or invalid - find a new link
-  const link = creep.pos.findInRange(FIND_MY_STRUCTURES, 1, {
-    filter: s =>
-      s.structureType === STRUCTURE_LINK &&
-      s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-  })[0] as StructureLink | undefined;
+  // Cache miss or link destroyed - find a new link
+  // Note: We find ANY link nearby, not just ones with capacity
+  // This allows us to cache it even when full
+  const links = creep.pos.findInRange(FIND_MY_STRUCTURES, 1, {
+    filter: s => s.structureType === STRUCTURE_LINK
+  }) as StructureLink[];
   
-  // Cache the result if found, otherwise clear cache
+  const link = links[0];
+  
+  // Cache the result if found
   if (link) {
     memory.nearbyLinkId = link.id;
     memory.nearbyLinkTick = Game.time;
+    // Check capacity before returning
+    if (link.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+      return link;
+    }
+    return undefined;
   } else {
+    // No link found - clear cache
     delete memory.nearbyLinkId;
     delete memory.nearbyLinkTick;
+    return undefined;
   }
-  
-  return link;
 }
 
 // Keep the original uncached versions for other roles that might need them
