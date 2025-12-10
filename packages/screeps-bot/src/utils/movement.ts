@@ -45,6 +45,10 @@ import {
   requestMoveToPosition,
   shouldYieldTo
 } from "./trafficManager";
+import {
+  getFlowField,
+  getFlowDirection
+} from "./flowField";
 
 // =============================================================================
 // Type Guards
@@ -223,6 +227,18 @@ export interface MoveOpts {
    * Inspired by Traveler library.
    */
   cpuReportThreshold?: number;
+  /**
+   * Use flow fields for movement when available. Default true.
+   * 
+   * Flow fields provide pre-computed direction grids for common destinations:
+   * - Storage, controller, sources in owned rooms
+   * - Reduces pathfinding CPU for high-traffic routes
+   * - Best for creeps making frequent trips to the same destination
+   * 
+   * When enabled, flow fields are checked before expensive pathfinding.
+   * Addresses Issue #33: Advanced traffic management enhancement.
+   */
+  useFlowField?: boolean;
 }
 
 /**
@@ -1196,6 +1212,67 @@ function internalMoveTo(
         }
         cachedPath.targetKey = targetKey;
         memory[MEMORY_PATH_KEY] = cachedPath;
+      }
+    }
+  }
+
+  // Check if we can use flow fields (for single-room movement to common targets)
+  const useFlowField = options.useFlowField ?? true;
+  const sameRoom = creep.pos.roomName === targetPos.roomName;
+  let flowFieldDirection: DirectionConstant | null | 0 = null;
+  
+  if (useFlowField && sameRoom && !options.flee) {
+    // Try to get flow field for this target
+    const flowField = getFlowField(creep.pos.roomName, targetPos);
+    if (flowField) {
+      const rawDirection = getFlowDirection(flowField, creep.pos);
+      
+      // Check if we're at the destination (direction = 0)
+      if (rawDirection === 0) {
+        return OK; // Already at destination
+      }
+      
+      // If we have a valid flow field direction (not null), use it
+      if (rawDirection !== null) {
+        flowFieldDirection = rawDirection as DirectionConstant;
+        // Calculate target position from direction
+        const offsets: Record<DirectionConstant, { dx: number; dy: number }> = {
+          [TOP]: { dx: 0, dy: -1 },
+          [TOP_RIGHT]: { dx: 1, dy: -1 },
+          [RIGHT]: { dx: 1, dy: 0 },
+          [BOTTOM_RIGHT]: { dx: 1, dy: 1 },
+          [BOTTOM]: { dx: 0, dy: 1 },
+          [BOTTOM_LEFT]: { dx: -1, dy: 1 },
+          [LEFT]: { dx: -1, dy: 0 },
+          [TOP_LEFT]: { dx: -1, dy: -1 }
+        };
+        
+        const offset = offsets[flowFieldDirection];
+        if (offset) {
+          const flowTargetPos = new RoomPosition(
+            creep.pos.x + offset.dx,
+            creep.pos.y + offset.dy,
+            creep.pos.roomName
+          );
+          
+          // Register movement intent using flow field direction
+          if (lastPreTickTime === Game.time) {
+            if (!moveIntents.has(creep.pos.roomName)) {
+              moveIntents.set(creep.pos.roomName, []);
+            }
+            const intents = moveIntents.get(creep.pos.roomName);
+            if (intents) {
+              intents.push({
+                creep,
+                priority,
+                targetPos: flowTargetPos
+              });
+            }
+            return OK;
+          } else {
+            return creep.move(flowFieldDirection);
+          }
+        }
       }
     }
   }
