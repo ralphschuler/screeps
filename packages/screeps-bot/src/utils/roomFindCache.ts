@@ -181,7 +181,7 @@ export function cachedRoomFind<T>(
   let results: T[];
   
   if (opts?.filter) {
-    results = room.find(findType as any, { filter: opts.filter as any }) as T[];
+    results = room.find(findType as any, { filter: opts.filter  }) as T[];
   } else {
     results = room.find(findType as any) as T[];
   }
@@ -366,9 +366,9 @@ export function cachedFindMyStructures<T extends Structure>(
     return cachedRoomFind(room, FIND_MY_STRUCTURES, {
       filter: (s: Structure) => s.structureType === structureType,
       filterKey: structureType
-    }) as T[];
+    }) ;
   }
-  return cachedRoomFind(room, FIND_MY_STRUCTURES) as T[];
+  return cachedRoomFind(room, FIND_MY_STRUCTURES) ;
 }
 
 /**

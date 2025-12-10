@@ -174,7 +174,7 @@ function calculateCollectionPoint(room: Room): RoomPosition | null {
     const isBlocking = 
       struct.structureType !== STRUCTURE_ROAD &&
       struct.structureType !== STRUCTURE_CONTAINER &&
-      !(struct.structureType === STRUCTURE_RAMPART && (struct as StructureRampart).my);
+      !(struct.structureType === STRUCTURE_RAMPART && (struct ).my);
     
     if (isBlocking) {
       blockingMap.set(key, true);

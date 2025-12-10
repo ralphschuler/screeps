@@ -199,13 +199,13 @@ export function createPowerCreepContext(powerCreep: PowerCreep): PowerCreepConte
 
   const labs = room.find(FIND_MY_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_LAB
-  }) as StructureLab[];
+  }) ;
 
   const spawns = room.find(FIND_MY_SPAWNS);
 
   const extensions = room.find(FIND_MY_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_EXTENSION
-  }) as StructureExtension[];
+  }) ;
 
   const factory = room.find(FIND_MY_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_FACTORY
@@ -272,7 +272,7 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
   if (powers.includes(PWR_OPERATE_SPAWN) && ctx.ops >= 100) {
     // Find spawns that are actively spawning and don't have the effect
     const busySpawn = ctx.spawns.find(s => {
-      const spawn = s as StructureSpawn;
+      const spawn = s ;
       return spawn.spawning !== null && !hasActiveEffect(spawn, PWR_OPERATE_SPAWN);
     });
     if (busySpawn) return { type: "usePower", power: PWR_OPERATE_SPAWN, target: busySpawn };
@@ -296,7 +296,7 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
     if (hostiles.length > 0) {
       const towers = ctx.room.find(FIND_MY_STRUCTURES, {
         filter: s => s.structureType === STRUCTURE_TOWER && !hasActiveEffect(s, PWR_OPERATE_TOWER)
-      }) as StructureTower[];
+      }) ;
       if (towers.length > 0) {
         return { type: "usePower", power: PWR_OPERATE_TOWER, target: towers[0] };
       }
@@ -422,7 +422,7 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
       filter: s => 
         s.structureType === STRUCTURE_TOWER &&
         !hasActiveEffect(s, PWR_OPERATE_TOWER)
-    }) as StructureTower[];
+    }) ;
     const tower = towers[0];
     if (tower) return { type: "usePower", power: PWR_OPERATE_TOWER, target: tower };
   }

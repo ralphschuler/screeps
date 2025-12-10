@@ -20,9 +20,9 @@ import { unifiedStats } from "../core/unifiedStats";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { memoryManager } from "../memory/manager";
 import {
+  type DefenseRequest,
   createDefenseRequest,
-  needsDefenseAssistance,
-  type DefenseRequest
+  needsDefenseAssistance
 } from "../spawning/defenderManager";
 import { resourceSharingManager } from "./resourceSharing";
 import {
@@ -31,8 +31,8 @@ import {
   validateSquadState
 } from "./squadCoordinator";
 import {
-  updateMilitaryReservations,
-  routeEmergencyEnergy
+  routeEmergencyEnergy,
+  updateMilitaryReservations
 } from "./militaryResourcePooling";
 import {
   planOffensiveOperations,

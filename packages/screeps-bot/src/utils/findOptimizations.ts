@@ -212,8 +212,8 @@ export function findEnergySources(
   pos: RoomPosition,
   room: Room,
   minAmount = 50
-): Array<{ target: RoomObject; amount: number; range: number }> {
-  const sources: Array<{ target: RoomObject; amount: number; range: number }> = [];
+): { target: RoomObject; amount: number; range: number }[] {
+  const sources: { target: RoomObject; amount: number; range: number }[] = [];
   
   // Dropped resources
   const dropped = room.find(FIND_DROPPED_RESOURCES, {
@@ -231,7 +231,7 @@ export function findEnergySources(
   const containers = room.find(FIND_STRUCTURES, {
     filter: (s): s is StructureContainer =>
       s.structureType === STRUCTURE_CONTAINER &&
-      (s as StructureContainer).store.getUsedCapacity(RESOURCE_ENERGY) >= minAmount
+      (s ).store.getUsedCapacity(RESOURCE_ENERGY) >= minAmount
   });
   for (const container of containers) {
     sources.push({
@@ -274,7 +274,7 @@ export function findEnergySources(
 export function findHostilesByThreat(
   room: Room,
   pos?: RoomPosition
-): Array<{ creep: Creep; threat: number; range: number }> {
+): { creep: Creep; threat: number; range: number }[] {
   const hostiles = room.find(FIND_HOSTILE_CREEPS);
   
   // Early exit: no hostiles

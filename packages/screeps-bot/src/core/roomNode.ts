@@ -483,7 +483,7 @@ export class RoomNode {
     const rcl = room.controller?.level ?? 1;
 
     // Find spawn to use as anchor (use cached structures)
-    let spawn = cache.spawns[0];
+    const spawn = cache.spawns[0];
     let anchor: RoomPosition | undefined = spawn?.pos;
 
     if (!spawn) {

@@ -313,7 +313,7 @@ export class LabManager {
     // Find available lab for unboosting
     const labs = room.find(FIND_MY_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_LAB
-    }) as StructureLab[];
+    }) ;
 
     if (labs.length === 0) return false;
 

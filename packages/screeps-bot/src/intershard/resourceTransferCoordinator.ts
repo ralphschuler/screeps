@@ -14,7 +14,7 @@
 import type { InterShardTask } from "./schema";
 import { logger } from "../core/logger";
 import { optimizeBody } from "../spawning/bodyOptimizer";
-import { SpawnPriority, spawnQueue, type SpawnRequest } from "../spawning/spawnQueue";
+import { SpawnPriority, type SpawnRequest, spawnQueue } from "../spawning/spawnQueue";
 import { shardManager } from "./shardManager";
 
 /**

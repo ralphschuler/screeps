@@ -245,7 +245,8 @@ ${stats.rooms.map(r => `  ${r.roomName}: RCL${r.rcl} | ${r.creepCount} creeps | 
         lines.push("=== Process CPU Usage ===");
         const sorted = processList.sort((a: any, b: any) => b.avg_cpu - a.avg_cpu);
         for (const proc of sorted.slice(0, 10)) {
-          lines.push(`  ${proc.name}: ${proc.avg_cpu.toFixed(3)} CPU (runs: ${proc.run_count}, max: ${proc.max_cpu.toFixed(3)})`);
+          const procAny = proc as any;
+          lines.push(`  ${procAny.name}: ${procAny.avg_cpu.toFixed(3)} CPU (runs: ${procAny.run_count}, max: ${procAny.max_cpu.toFixed(3)})`);
         }
         lines.push("");
       }
@@ -259,8 +260,9 @@ ${stats.rooms.map(r => `  ${r.roomName}: RCL${r.rcl} | ${r.creepCount} creeps | 
         lines.push("=== Room CPU Usage ===");
         const sorted = roomList.sort((a: any, b: any) => b.profiler.avg_cpu - a.profiler.avg_cpu);
         for (const room of sorted) {
-          const roomName = room.name || 'unknown';
-          lines.push(`  ${roomName}: ${room.profiler.avg_cpu.toFixed(3)} CPU (RCL ${room.rcl})`);
+          const roomAny = room as any;
+          const roomName = roomAny.name || 'unknown';
+          lines.push(`  ${roomName}: ${roomAny.profiler.avg_cpu.toFixed(3)} CPU (RCL ${roomAny.rcl})`);
         }
         lines.push("");
       }
@@ -274,8 +276,9 @@ ${stats.rooms.map(r => `  ${r.roomName}: RCL${r.rcl} | ${r.creepCount} creeps | 
         lines.push("=== Subsystem CPU Usage ===");
         const sorted = subsystemList.sort((a: any, b: any) => b.avg_cpu - a.avg_cpu);
         for (const subsys of sorted.slice(0, 10)) {
-          const subsysName = subsys.name || 'unknown';
-          lines.push(`  ${subsysName}: ${subsys.avg_cpu.toFixed(3)} CPU (calls: ${subsys.calls})`);
+          const subsysAny = subsys as any;
+          const subsysName = subsysAny.name || 'unknown';
+          lines.push(`  ${subsysName}: ${subsysAny.avg_cpu.toFixed(3)} CPU (calls: ${subsysAny.calls})`);
         }
         lines.push("");
       }
@@ -289,9 +292,10 @@ ${stats.rooms.map(r => `  ${r.roomName}: RCL${r.rcl} | ${r.creepCount} creeps | 
         lines.push("=== Top Creeps by CPU (Top 10) ===");
         const sorted = creepList.sort((a: any, b: any) => b.cpu - a.cpu);
         for (const creep of sorted.slice(0, 10)) {
-          if (creep.cpu > 0) {
-            const creepName = creep.name || `${creep.role}_unknown`;
-            lines.push(`  ${creepName} (${creep.role}): ${creep.cpu.toFixed(3)} CPU in ${creep.current_room}`);
+          const creepAny = creep as any;
+          if (creepAny.cpu > 0) {
+            const creepName = creepAny.name || `${creepAny.role}_unknown`;
+            lines.push(`  ${creepName} (${creepAny.role}): ${creepAny.cpu.toFixed(3)} CPU in ${creepAny.current_room}`);
           }
         }
         lines.push("");

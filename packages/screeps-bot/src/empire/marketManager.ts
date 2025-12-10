@@ -319,7 +319,7 @@ export class MarketManager {
    */
   private getMarketData(resource: ResourceConstant): ResourceMarketData | undefined {
     const overmind = memoryManager.getOvermind();
-    return overmind.market?.resources[resource] as ResourceMarketData | undefined;
+    return overmind.market?.resources[resource] ;
   }
 
   /**
@@ -807,7 +807,7 @@ export class MarketManager {
       let resolved = false;
 
       if (trade.sellOrderId) {
-        const order = Game.market.getOrderById(trade.sellOrderId as string);
+        const order = Game.market.getOrderById(trade.sellOrderId );
 
         if (order && order.remainingAmount > 0 && order.roomName) {
           const dealAmount = Math.min(trade.amount, order.remainingAmount, available);

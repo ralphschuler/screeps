@@ -21,11 +21,11 @@ import { logger } from "../core/logger";
 import type { SwarmState } from "../memory/schemas";
 import { memoryManager } from "../memory/manager";
 import {
+  type DefenseRequest,
   analyzeDefenderNeeds,
-  getCurrentDefenders,
-  needsDefenseAssistance,
   createDefenseRequest,
-  type DefenseRequest
+  getCurrentDefenders,
+  needsDefenseAssistance
 } from "../spawning/defenderManager";
 
 /**
@@ -326,8 +326,8 @@ export class EmergencyResponseManager {
   /**
    * Get all active emergencies sorted by severity
    */
-  public getActiveEmergencies(): Array<{ roomName: string; state: EmergencyState }> {
-    const emergencies: Array<{ roomName: string; state: EmergencyState }> = [];
+  public getActiveEmergencies(): { roomName: string; state: EmergencyState }[] {
+    const emergencies: { roomName: string; state: EmergencyState }[] = [];
     
     for (const [roomName, state] of this.emergencyStates.entries()) {
       if (state.level > EmergencyLevel.NONE) {

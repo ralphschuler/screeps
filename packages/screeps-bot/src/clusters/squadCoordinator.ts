@@ -10,7 +10,7 @@
  * Addresses Issue: #36 - Squad formation and coordination
  */
 
-import type { ClusterMemory, SquadDefinition, DefenseAssistanceRequest } from "../memory/schemas";
+import type { ClusterMemory, DefenseAssistanceRequest, SquadDefinition } from "../memory/schemas";
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
 
@@ -68,7 +68,7 @@ export function calculateOffensiveSquadComposition(
   intel?: { towerCount?: number; spawnCount?: number }
 ): SquadComposition {
   // Base composition for offense
-  let composition: SquadComposition = {
+  const composition: SquadComposition = {
     guards: 2,
     rangers: 3,
     healers: 2,
@@ -358,7 +358,7 @@ export function getSquadReadiness(squad: SquadDefinition): {
   };
 
   for (const creep of members) {
-    const role = creep.memory.role as string;
+    const role = creep.memory.role ;
     if (role in roleCount) {
       roleCount[role]++;
     }

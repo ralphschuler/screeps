@@ -14,7 +14,7 @@ import {
   createDefaultOvermindMemory,
   createDefaultSwarmState
 } from "./schemas";
-import { heapCache, INFINITE_TTL } from "./heapCache";
+import { INFINITE_TTL, heapCache } from "./heapCache";
 
 const OVERMIND_KEY = "overmind";
 const CLUSTERS_KEY = "clusters";

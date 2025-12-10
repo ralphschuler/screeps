@@ -19,7 +19,7 @@
 
 import { logger } from "../core/logger";
 import { calculateRoadNetwork, getValidRoadPositions } from "../layouts/roadNetworkPlanner";
-import type { PerimeterPlan, ExitPosition } from "./perimeterDefense";
+import type { ExitPosition, PerimeterPlan } from "./perimeterDefense";
 import { calculatePerimeterPositions } from "./perimeterDefense";
 
 /**

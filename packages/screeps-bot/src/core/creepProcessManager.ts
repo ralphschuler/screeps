@@ -13,9 +13,9 @@
  * - Strict tick budget: CPU allocation per creep is managed by kernel
  */
 
-import { kernel, ProcessPriority } from "./kernel";
+import { ProcessPriority, kernel } from "./kernel";
 import { logger } from "./logger";
-import type { SwarmCreepMemory, RoleFamily } from "../memory/schemas";
+import type { RoleFamily, SwarmCreepMemory } from "../memory/schemas";
 import { runEconomyRole } from "../roles/economy";
 import { runMilitaryRole } from "../roles/military";
 import { runPowerCreepRole } from "../roles/power";

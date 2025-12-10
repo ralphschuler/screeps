@@ -13,7 +13,7 @@
  * - CPU budgets: Eco rooms 2-4 CPU (4-8%), War rooms ~6 CPU (12%)
  */
 
-import { kernel, ProcessPriority } from "./kernel";
+import { ProcessPriority, kernel } from "./kernel";
 import { logger } from "./logger";
 import { roomManager } from "./roomNode";
 

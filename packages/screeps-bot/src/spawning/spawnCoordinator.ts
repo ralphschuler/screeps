@@ -13,15 +13,15 @@
  */
 
 import type { SwarmState } from "../memory/schemas";
-import { spawnQueue, SpawnPriority, type SpawnRequest } from "./spawnQueue";
+import { SpawnPriority, type SpawnRequest, spawnQueue } from "./spawnQueue";
 import { optimizeBody } from "./bodyOptimizer";
 import { 
-  determineNextRole, 
+  type BodyTemplate, 
   ROLE_DEFINITIONS, 
   countCreepsByRole,
-  isEmergencySpawnState,
+  determineNextRole,
   getRemoteRoomNeedingWorkers,
-  type BodyTemplate
+  isEmergencySpawnState
 } from "../logic/spawn";
 import { logger } from "../core/logger";
 import { 
@@ -285,7 +285,7 @@ function addDefenderRequests(
     for (let i = 0; i < healersNeeded; i++) {
       try {
         const body = optimizeBody({
-          maxEnergy: maxEnergy,
+          maxEnergy,
           role: "healer"
         });
 
@@ -333,7 +333,7 @@ function addPowerBankRequests(room: Room): void {
   for (let i = 0; i < requests.powerHarvesters; i++) {
     try {
       const body = optimizeBody({
-        maxEnergy: maxEnergy,
+        maxEnergy,
         role: "powerHarvester"
       });
 
@@ -359,7 +359,7 @@ function addPowerBankRequests(room: Room): void {
   for (let i = 0; i < requests.healers; i++) {
     try {
       const body = optimizeBody({
-        maxEnergy: maxEnergy,
+        maxEnergy,
         role: "healer"
       });
 
@@ -385,7 +385,7 @@ function addPowerBankRequests(room: Room): void {
   for (let i = 0; i < requests.powerCarriers; i++) {
     try {
       const body = optimizeBody({
-        maxEnergy: maxEnergy,
+        maxEnergy,
         role: "powerCarrier"
       });
 
