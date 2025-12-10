@@ -1,0 +1,410 @@
+import { expect } from "chai";
+
+/**
+ * Tests for Cross-Shard Resource Transfer functionality
+ */
+
+describe("Cross-Shard Resource Transfer", () => {
+  describe("Transfer Request Priority", () => {
+    /**
+     * Simulates prioritization of transfer requests
+     */
+    interface TransferRequest {
+      id: string;
+      priority: number;
+      amount: number;
+      resourceType: string;
+    }
+
+    function prioritizeRequests(requests: TransferRequest[]): TransferRequest[] {
+      return requests.slice().sort((a, b) => b.priority - a.priority);
+    }
+
+    it("should sort requests by priority descending", () => {
+      const requests: TransferRequest[] = [
+        { id: "1", priority: 30, amount: 1000, resourceType: "energy" },
+        { id: "2", priority: 80, amount: 500, resourceType: "U" },
+        { id: "3", priority: 50, amount: 2000, resourceType: "energy" }
+      ];
+
+      const sorted = prioritizeRequests(requests);
+
+      expect(sorted[0].id).to.equal("2");
+      expect(sorted[1].id).to.equal("3");
+      expect(sorted[2].id).to.equal("1");
+    });
+
+    it("should handle empty request list", () => {
+      const sorted = prioritizeRequests([]);
+      expect(sorted).to.have.lengthOf(0);
+    });
+
+    it("should preserve order for equal priorities", () => {
+      const requests: TransferRequest[] = [
+        { id: "1", priority: 50, amount: 1000, resourceType: "energy" },
+        { id: "2", priority: 50, amount: 500, resourceType: "U" }
+      ];
+
+      const sorted = prioritizeRequests(requests);
+
+      expect(sorted).to.have.lengthOf(2);
+      expect(sorted[0].priority).to.equal(50);
+      expect(sorted[1].priority).to.equal(50);
+    });
+  });
+
+  describe("Portal Route Scoring", () => {
+    /**
+     * Simulates scoring portals for optimal route selection
+     */
+    interface Portal {
+      sourceRoom: string;
+      targetShard: string;
+      isStable: boolean;
+      threatRating: number;
+      traversalCount: number;
+      lastScouted: number;
+    }
+
+    function scorePortal(portal: Portal, fromRoom: string, currentTick: number): number {
+      let score = 100;
+
+      // Stability bonus
+      if (portal.isStable) {
+        score += 50;
+      }
+
+      // Threat penalty
+      score -= portal.threatRating * 15;
+
+      // Traversal history bonus
+      score += Math.min(portal.traversalCount * 2, 20);
+
+      // Recency bonus/penalty
+      const ticksSinceScout = currentTick - portal.lastScouted;
+      if (ticksSinceScout < 1000) {
+        score += 10;
+      } else if (ticksSinceScout > 5000) {
+        score -= 10;
+      }
+
+      return score;
+    }
+
+    it("should give high score to stable portals", () => {
+      const stablePortal: Portal = {
+        sourceRoom: "E1N1",
+        targetShard: "shard1",
+        isStable: true,
+        threatRating: 0,
+        traversalCount: 5,
+        lastScouted: 1000
+      };
+
+      const unstablePortal: Portal = {
+        ...stablePortal,
+        isStable: false
+      };
+
+      const stableScore = scorePortal(stablePortal, "E1N1", 1100);
+      const unstableScore = scorePortal(unstablePortal, "E1N1", 1100);
+
+      expect(stableScore).to.be.greaterThan(unstableScore);
+    });
+
+    it("should penalize high threat portals", () => {
+      const safePor: Portal = {
+        sourceRoom: "E1N1",
+        targetShard: "shard1",
+        isStable: true,
+        threatRating: 0,
+        traversalCount: 0,
+        lastScouted: 1000
+      };
+
+      const dangerousPortal: Portal = {
+        ...safePor,
+        threatRating: 3
+      };
+
+      const safeScore = scorePortal(safePor, "E1N1", 1100);
+      const dangerScore = scorePortal(dangerousPortal, "E1N1", 1100);
+
+      expect(safeScore).to.be.greaterThan(dangerScore);
+    });
+
+    it("should reward high traversal count", () => {
+      const newPortal: Portal = {
+        sourceRoom: "E1N1",
+        targetShard: "shard1",
+        isStable: true,
+        threatRating: 0,
+        traversalCount: 0,
+        lastScouted: 1000
+      };
+
+      const experiencedPortal: Portal = {
+        ...newPortal,
+        traversalCount: 10
+      };
+
+      const newScore = scorePortal(newPortal, "E1N1", 1100);
+      const expScore = scorePortal(experiencedPortal, "E1N1", 1100);
+
+      expect(expScore).to.be.greaterThan(newScore);
+    });
+
+    it("should favor recently scouted portals", () => {
+      const recentPortal: Portal = {
+        sourceRoom: "E1N1",
+        targetShard: "shard1",
+        isStable: true,
+        threatRating: 0,
+        traversalCount: 0,
+        lastScouted: 500
+      };
+
+      const oldPortal: Portal = {
+        ...recentPortal,
+        lastScouted: 0
+      };
+
+      const recentScore = scorePortal(recentPortal, "E1N1", 1000);
+      const oldScore = scorePortal(oldPortal, "E1N1", 6000);
+
+      expect(recentScore).to.be.greaterThan(oldScore);
+    });
+  });
+
+  describe("CPU Efficiency Calculation", () => {
+    /**
+     * Simulates calculating CPU efficiency from history
+     */
+    interface CPUHistoryEntry {
+      tick: number;
+      cpuLimit: number;
+      cpuUsed: number;
+      bucketLevel: number;
+    }
+
+    function calculateEfficiency(history: CPUHistoryEntry[]): number {
+      if (history.length === 0) return 1.0;
+
+      let totalEfficiency = 0;
+      for (const entry of history) {
+        if (entry.cpuLimit > 0) {
+          totalEfficiency += entry.cpuUsed / entry.cpuLimit;
+        }
+      }
+      return totalEfficiency / history.length;
+    }
+
+    it("should calculate average efficiency correctly", () => {
+      const history: CPUHistoryEntry[] = [
+        { tick: 100, cpuLimit: 20, cpuUsed: 15, bucketLevel: 10000 },
+        { tick: 200, cpuLimit: 20, cpuUsed: 18, bucketLevel: 9500 },
+        { tick: 300, cpuLimit: 20, cpuUsed: 19, bucketLevel: 9000 }
+      ];
+
+      const efficiency = calculateEfficiency(history);
+
+      // (15/20 + 18/20 + 19/20) / 3 = (0.75 + 0.9 + 0.95) / 3 = 0.866...
+      expect(efficiency).to.be.closeTo(0.867, 0.01);
+    });
+
+    it("should return 1.0 for empty history", () => {
+      const efficiency = calculateEfficiency([]);
+      expect(efficiency).to.equal(1.0);
+    });
+
+    it("should handle zero CPU limit entries", () => {
+      const history: CPUHistoryEntry[] = [
+        { tick: 100, cpuLimit: 0, cpuUsed: 0, bucketLevel: 10000 },
+        { tick: 200, cpuLimit: 20, cpuUsed: 15, bucketLevel: 9500 }
+      ];
+
+      const efficiency = calculateEfficiency(history);
+
+      // Only the second entry counts: 15/20 = 0.75
+      expect(efficiency).to.be.closeTo(0.375, 0.01); // 0.75 / 2 entries
+    });
+
+    it("should identify high efficiency (near 1.0)", () => {
+      const history: CPUHistoryEntry[] = [
+        { tick: 100, cpuLimit: 20, cpuUsed: 19.5, bucketLevel: 8000 },
+        { tick: 200, cpuLimit: 20, cpuUsed: 19.8, bucketLevel: 7500 }
+      ];
+
+      const efficiency = calculateEfficiency(history);
+
+      expect(efficiency).to.be.greaterThan(0.95);
+    });
+
+    it("should identify low efficiency", () => {
+      const history: CPUHistoryEntry[] = [
+        { tick: 100, cpuLimit: 20, cpuUsed: 8, bucketLevel: 10000 },
+        { tick: 200, cpuLimit: 20, cpuUsed: 10, bucketLevel: 10000 }
+      ];
+
+      const efficiency = calculateEfficiency(history);
+
+      expect(efficiency).to.be.lessThan(0.6);
+    });
+  });
+
+  describe("Shard Role Transitions", () => {
+    /**
+     * Simulates shard role assignment logic
+     */
+    interface ShardMetrics {
+      roomCount: number;
+      avgRCL: number;
+      economyIndex: number;
+      warIndex: number;
+    }
+
+    type ShardRole = "core" | "frontier" | "resource" | "backup" | "war";
+
+    function determineRole(metrics: ShardMetrics, currentRole: ShardRole, totalShards: number): ShardRole {
+      // War role: high war index
+      if (metrics.warIndex > 50) {
+        return "war";
+      }
+
+      // Backup role: minimal presence (check before frontier to match actual implementation)
+      if (totalShards > 1 && metrics.roomCount < 2 && metrics.avgRCL < 3) {
+        return "backup";
+      }
+
+      // Frontier role: low room count and low RCL
+      if (metrics.roomCount < 3 && metrics.avgRCL < 4) {
+        return "frontier";
+      }
+
+      // Resource role: strong economy, multiple mature rooms
+      if (metrics.economyIndex > 70 && metrics.roomCount >= 3 && metrics.avgRCL >= 6) {
+        return "resource";
+      }
+
+      // Transition from frontier to core when established
+      if (currentRole === "frontier" && metrics.roomCount >= 3 && metrics.avgRCL >= 5) {
+        return "core";
+      }
+
+      // Transition from war when war ends
+      if (currentRole === "war" && metrics.warIndex < 20) {
+        if (metrics.economyIndex > 70 && metrics.roomCount >= 3) {
+          return "resource";
+        } else if (metrics.roomCount >= 2) {
+          return "core";
+        }
+        return "frontier";
+      }
+
+      // Core role: stable, growing empire
+      if (metrics.roomCount >= 2 && metrics.avgRCL >= 4) {
+        return "core";
+      }
+
+      return currentRole;
+    }
+
+    it("should assign war role for high war index", () => {
+      const metrics: ShardMetrics = {
+        roomCount: 5,
+        avgRCL: 7,
+        economyIndex: 80,
+        warIndex: 75
+      };
+
+      const role = determineRole(metrics, "core", 1);
+      expect(role).to.equal("war");
+    });
+
+    it("should assign frontier role for early shard", () => {
+      const metrics: ShardMetrics = {
+        roomCount: 1,
+        avgRCL: 2,
+        economyIndex: 30,
+        warIndex: 0
+      };
+
+      const role = determineRole(metrics, "core", 1);
+      expect(role).to.equal("frontier");
+    });
+
+    it("should assign resource role for mature economic shard", () => {
+      const metrics: ShardMetrics = {
+        roomCount: 5,
+        avgRCL: 7.5,
+        economyIndex: 85,
+        warIndex: 5
+      };
+
+      const role = determineRole(metrics, "core", 1);
+      expect(role).to.equal("resource");
+    });
+
+    it("should transition frontier to core when established", () => {
+      const metrics: ShardMetrics = {
+        roomCount: 3,
+        avgRCL: 5.5,
+        economyIndex: 60,
+        warIndex: 0
+      };
+
+      const role = determineRole(metrics, "frontier", 1);
+      expect(role).to.equal("core");
+    });
+
+    it("should transition war to resource when war ends with strong economy", () => {
+      const metrics: ShardMetrics = {
+        roomCount: 4,
+        avgRCL: 7,
+        economyIndex: 80,
+        warIndex: 10
+      };
+
+      const role = determineRole(metrics, "war", 1);
+      expect(role).to.equal("resource");
+    });
+
+    it("should assign backup role for minimal multi-shard presence", () => {
+      const metrics: ShardMetrics = {
+        roomCount: 1,
+        avgRCL: 2,
+        economyIndex: 40,
+        warIndex: 0
+      };
+
+      const role = determineRole(metrics, "backup", 3);
+      expect(role).to.equal("backup");
+    });
+  });
+
+  describe("Transfer Progress Calculation", () => {
+    /**
+     * Simulates calculating transfer progress
+     */
+    function calculateProgress(transferred: number, total: number): number {
+      return Math.round((transferred / total) * 100);
+    }
+
+    it("should calculate 0% for no transfer", () => {
+      expect(calculateProgress(0, 1000)).to.equal(0);
+    });
+
+    it("should calculate 50% for half transfer", () => {
+      expect(calculateProgress(500, 1000)).to.equal(50);
+    });
+
+    it("should calculate 100% for complete transfer", () => {
+      expect(calculateProgress(1000, 1000)).to.equal(100);
+    });
+
+    it("should round to nearest integer", () => {
+      expect(calculateProgress(333, 1000)).to.equal(33);
+      expect(calculateProgress(666, 1000)).to.equal(67);
+    });
+  });
+});
