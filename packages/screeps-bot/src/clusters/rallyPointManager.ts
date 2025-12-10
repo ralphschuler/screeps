@@ -189,10 +189,13 @@ function findOffenseRallyPoint(room: Room): RallyPoint | null {
   candidates.sort((a, b) => b.score - a.score);
 
   if (candidates.length === 0) {
+    // Fallback with bounds checking
+    const safeX = Math.max(2, Math.min(47, anchor.x));
+    const safeY = Math.max(2, Math.min(47, anchor.y));
     return {
       roomName: room.name,
-      x: anchor.x,
-      y: anchor.y,
+      x: safeX,
+      y: safeY,
       purpose: "offense",
       createdAt: Game.time
     };
@@ -330,7 +333,8 @@ function evaluateRallyPosition(room: Room, pos: RoomPosition, purpose: string): 
     exitAccess = Math.max(0, 10 - distToNearestExit / 2);
   } else {
     // Defense and retreat want to be away from exits
-    exitAccess = Math.min(10, distToNearestExit / 2);
+    // Use scaling factor that allows positions near center to reach max score
+    exitAccess = Math.min(10, distToNearestExit / 2.5);
   }
   score += exitAccess;
 

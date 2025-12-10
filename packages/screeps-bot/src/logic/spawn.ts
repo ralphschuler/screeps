@@ -365,12 +365,12 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     role: "harasser",
     family: "military",
     bodies: [
-      // Small: Fast, cheap hit-and-run (1:1 move ratio for speed)
-      createBody([ATTACK, RANGED_ATTACK, MOVE, MOVE], 310),
-      // Medium: Balanced damage with mobility
-      createBody([ATTACK, ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE], 620),
+      // Small: Fast, cheap hit-and-run with survivability (1:1 move ratio for speed)
+      createBody([TOUGH, ATTACK, RANGED_ATTACK, MOVE, MOVE], 320),
+      // Medium: Balanced damage with mobility and durability
+      createBody([TOUGH, TOUGH, ATTACK, ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE], 640),
       // Large: Maximum harassment potential with healing support
-      createBody([ATTACK, ATTACK, ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, HEAL, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1150)
+      createBody([TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, HEAL, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1200)
     ],
     priority: 60,
     maxPerRoom: 3, // Allow multiple harassers for coordinated harassment
