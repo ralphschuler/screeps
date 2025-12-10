@@ -473,7 +473,24 @@ export class UnifiedStatsManager {
   /**
    * Collect all kernel process statistics
    */
-  public collectProcessStats(processes: Map<string, any>): void {
+  public collectProcessStats(processes: Map<string, {
+    id: string;
+    name: string;
+    priority: number;
+    frequency: string;
+    state: string;
+    cpuBudget: number;
+    minBucket: number;
+    stats: {
+      totalCpu: number;
+      runCount: number;
+      avgCpu: number;
+      maxCpu: number;
+      lastRunTick: number;
+      skippedCount: number;
+      errorCount: number;
+    };
+  }>): void {
     if (!this.config.enabled) return;
 
     processes.forEach((process) => {
