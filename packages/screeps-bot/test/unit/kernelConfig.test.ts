@@ -70,4 +70,36 @@ describe("Kernel CPU configuration", () => {
     expect(highProcess?.cpuBudget).to.equal(0.55);
     expect(lowProcess?.interval).to.equal(160);
   });
+
+  it("uses normal mode when bucket is at PIXEL_CPU_COST to prevent CPU spikes", () => {
+    updateConfig({
+      cpu: {
+        ...getConfig().cpu,
+        bucketThresholds: { lowMode: 2000, highMode: 9000 }
+      }
+    });
+
+    const kernel = new Kernel(buildKernelConfigFromCpu(getConfig().cpu));
+    const config = kernel.getConfig();
+
+    // Ensure pixel generation is enabled (default behavior)
+    expect(config.pixelGenerationEnabled).to.be.true;
+
+    // When bucket is at PIXEL_CPU_COST (10,000), mode should be "normal" instead of "high"
+    // This prevents CPU spikes when pixel generation empties the bucket
+    Game.cpu.bucket = PIXEL_CPU_COST;
+    expect(kernel.getBucketMode()).to.equal("normal");
+
+    // When bucket is slightly below PIXEL_CPU_COST but still above highMode threshold,
+    // it should still use "high" mode
+    Game.time += 1;
+    Game.cpu.bucket = 9500;
+    expect(kernel.getBucketMode()).to.equal("high");
+
+    // When pixel generation is disabled, bucket at PIXEL_CPU_COST should use "high" mode
+    Game.time += 1;
+    Game.cpu.bucket = PIXEL_CPU_COST;
+    kernel.updateConfig({ pixelGenerationEnabled: false });
+    expect(kernel.getBucketMode()).to.equal("high");
+  });
 });
