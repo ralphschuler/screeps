@@ -391,20 +391,20 @@ describe("Market Manager", () => {
 
   describe("Emergency Buying", () => {
     it("should identify critical resource shortage", () => {
-      const criticalResources = ["energy" as ResourceConstant, "G" as ResourceConstant];
+      const criticalResources: ResourceConstant[] = [RESOURCE_ENERGY, RESOURCE_GHODIUM];
       const emergencyThreshold = 5000;
       const currentEnergy = 3000;
 
-      const needsEmergency = criticalResources.includes("energy" as ResourceConstant) && currentEnergy < emergencyThreshold;
+      const needsEmergency = criticalResources.includes(RESOURCE_ENERGY) && currentEnergy < emergencyThreshold;
 
       expect(needsEmergency).to.be.true;
     });
 
     it("should not trigger emergency for non-critical resources", () => {
-      const criticalResources = ["energy" as ResourceConstant, "G" as ResourceConstant];
+      const criticalResources: ResourceConstant[] = [RESOURCE_ENERGY, RESOURCE_GHODIUM];
       const currentH = 1000;
 
-      const needsEmergency = criticalResources.includes("H" as ResourceConstant);
+      const needsEmergency = criticalResources.includes(RESOURCE_HYDROGEN);
 
       expect(needsEmergency).to.be.false;
     });

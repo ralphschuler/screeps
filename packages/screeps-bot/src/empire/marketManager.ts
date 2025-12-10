@@ -637,8 +637,8 @@ export class MarketManager {
       }
     }
 
-    // Check for arbitrage opportunities
-    this.checkArbitrageOpportunities();
+    // Check for arbitrage opportunities (disabled for now - needs proper implementation)
+    // this.checkArbitrageOpportunities();
   }
 
   /**
@@ -685,8 +685,13 @@ export class MarketManager {
     if (!roomWithTerminal?.terminal) return;
 
     orders.sort((a, b) => {
-      const costA = a.price + Game.market.calcTransactionCost(1000, roomWithTerminal.name, a.roomName!) / 1000;
-      const costB = b.price + Game.market.calcTransactionCost(1000, roomWithTerminal.name, b.roomName!) / 1000;
+      // Calculate total cost including transport (if room is known)
+      const costA = a.roomName
+        ? a.price + Game.market.calcTransactionCost(1000, roomWithTerminal.name, a.roomName) / 1000
+        : a.price;
+      const costB = b.roomName
+        ? b.price + Game.market.calcTransactionCost(1000, roomWithTerminal.name, b.roomName) / 1000
+        : b.price;
       return costA - costB;
     });
 
@@ -715,13 +720,16 @@ export class MarketManager {
       if (age < this.config.orderExtensionAge) continue;
 
       // Check if we should adjust price (only for tracked resources)
-      if (!this.config.trackedResources.includes(order.resourceType as ResourceConstant)) continue;
+      // Skip if not a regular resource (e.g., tokens)
+      const resourceType = order.resourceType;
+      if (resourceType === "token") continue;
+      if (!this.config.trackedResources.includes(resourceType as ResourceConstant)) continue;
       
-      const marketData = this.getMarketData(order.resourceType as ResourceConstant);
+      const marketData = this.getMarketData(resourceType as ResourceConstant);
       if (!marketData) continue;
 
       // Get current market price
-      const history = Game.market.getHistory(order.resourceType);
+      const history = Game.market.getHistory(resourceType as ResourceConstant);
       if (history.length === 0) continue;
 
       const currentPrice = history[history.length - 1].avgPrice;
@@ -756,6 +764,10 @@ export class MarketManager {
 
   /**
    * Check for arbitrage opportunities
+   * TODO: Complete implementation - currently disabled as it needs proper handling of:
+   * 1. Waiting for resources to arrive after buy
+   * 2. Executing sell order or deal after resources are available
+   * 3. Tracking multi-step arbitrage transactions
    */
   private checkArbitrageOpportunities(): void {
     // Only do this if we have sufficient trading credits
@@ -786,19 +798,16 @@ export class MarketManager {
 
       // If profitable and transport cost is reasonable
       if (profit > 0 && transportCost / lowestSell.price < this.config.maxTransportCostRatio) {
-        const amount = Math.min(lowestSell.amount, highestBuy.amount, 1000);
+        // Log opportunity but don't execute yet (needs proper implementation)
+        logger.debug(
+          `ARBITRAGE OPPORTUNITY: ${resource} - Buy @ ${lowestSell.price.toFixed(3)}, Sell @ ${highestBuy.price.toFixed(3)}, Profit: ${profit.toFixed(3)}/unit`,
+          { subsystem: "Market" }
+        );
 
-        // Execute arbitrage
-        const dealResult = Game.market.deal(lowestSell.id, amount, roomWithTerminal.name);
-        if (dealResult === OK) {
-          logger.info(
-            `ARBITRAGE: ${amount} ${resource} - Buy @ ${lowestSell.price.toFixed(3)}, Sell @ ${highestBuy.price.toFixed(3)}, Profit: ${profit.toFixed(3)}/unit`,
-            { subsystem: "Market" }
-          );
-
-          // Create immediate sell order or deal with buy order
-          // Note: In practice, we'd need to wait for resources to arrive
-        }
+        // TODO: Implement proper arbitrage execution:
+        // 1. Buy from lowest sell order
+        // 2. Track the incoming transfer
+        // 3. Once resources arrive, sell to highest buy order or create sell order
       }
     }
   }
