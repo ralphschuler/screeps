@@ -75,9 +75,13 @@ declare global {
 }
 
 /**
- * Draw a structure at the specified position
+ * Initialize extensions only if RoomVisual exists (i.e., in game environment)
  */
-RoomVisual.prototype.structure = function(
+if (typeof RoomVisual !== "undefined") {
+  /**
+   * Draw a structure at the specified position
+   */
+  RoomVisual.prototype.structure = function(
   x: number,
   y: number,
   type: StructureConstant,
@@ -500,6 +504,8 @@ RoomVisual.prototype.resource = function(
     opacity: 0.9
   });
 };
+
+} // End of RoomVisual check
 
 /**
  * Initialize the extensions
