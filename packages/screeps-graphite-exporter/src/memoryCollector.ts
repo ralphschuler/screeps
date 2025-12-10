@@ -120,6 +120,47 @@ interface RateLimitInfo {
 // Constants for rate limit handling
 const RATE_LIMIT_BUFFER_MS = 5000; // 5 second buffer after rate limit reset
 const RATE_LIMIT_FALLBACK_BACKOFF_MS = 30000; // 30 second fallback backoff
+// Maximum reasonable rate limit reset time (1 hour = 3600 seconds)
+// If toReset exceeds this, it's likely already in milliseconds
+const MAX_REASONABLE_RESET_SECONDS = 3600;
+
+/**
+ * Normalize the toReset value to milliseconds, handling cases where it might
+ * already be in milliseconds or incorrectly calculated.
+ * 
+ * According to the Screeps API spec, X-RateLimit-Reset is in UTC epoch seconds,
+ * so toReset (calculated as reset - current_time_seconds) should be in seconds.
+ * However, if there's a bug in the screeps-api library or the server, toReset
+ * might already be in milliseconds, which would cause wait times to be 1000x too long.
+ * 
+ * @param toReset - The time until rate limit reset (expected in seconds, but may be in milliseconds)
+ * @param logger - Logger for diagnostic messages
+ * @returns The time in milliseconds
+ */
+function normalizeToResetMs(toReset: number, logger: Logger): number {
+  // If toReset is suspiciously large (> 1 hour in seconds), it's likely already in milliseconds
+  // or there's a calculation error.
+  if (toReset > MAX_REASONABLE_RESET_SECONDS) {
+    // Convert to seconds to check if that makes sense
+    const asSeconds = toReset / 1000;
+    if (asSeconds > 0 && asSeconds <= MAX_REASONABLE_RESET_SECONDS) {
+      // This was likely already in milliseconds - log warning and return as-is
+      logger.warn('Rate limit toReset appears to already be in milliseconds', {
+        rawToReset: toReset,
+        asSeconds: asSeconds
+      });
+      return toReset;
+    }
+    // Still too large even as milliseconds - cap it to avoid excessive waits
+    logger.error('Rate limit toReset is unreasonably large, capping to 1 hour', {
+      rawToReset: toReset,
+      cappedSeconds: MAX_REASONABLE_RESET_SECONDS
+    });
+    return MAX_REASONABLE_RESET_SECONDS * 1000;
+  }
+  // Normal case: toReset is in seconds, convert to milliseconds
+  return toReset * 1000;
+}
 
 export async function startMemoryCollector(
   api: ScreepsAPI,
@@ -166,27 +207,31 @@ export async function startMemoryCollector(
       // If we've exhausted the rate limit, wait until reset
       if (remaining === 0 && toReset > 0) {
         // Add a buffer to ensure the limit has reset
-        delayMs = (toReset * 1000) + RATE_LIMIT_BUFFER_MS;
+        const toResetMs = normalizeToResetMs(toReset, logger);
+        delayMs = toResetMs + RATE_LIMIT_BUFFER_MS;
         
         logger.warn(`Rate limit exhausted. Waiting until reset`, {
-          resetIn: toReset,
-          waitTime: Math.round(delayMs / 1000)
+          rawToResetSeconds: toReset,
+          normalizedResetMs: toResetMs,
+          waitTimeSeconds: Math.round(delayMs / 1000)
         });
       }
       // If we're running low on rate limit quota (< 20% remaining)
       else if (remaining < limit * 0.2 && remaining > 0 && toReset > 0) {
         // Calculate delay to spread remaining requests evenly until reset
         // Extra safety check to prevent division by zero
+        const toResetMs = normalizeToResetMs(toReset, logger);
         const safeDelay = Math.max(
-          remaining > 0 ? (toReset * 1000) / remaining : config.pollIntervalMs,
+          remaining > 0 ? toResetMs / remaining : config.pollIntervalMs,
           config.minPollIntervalMs
         );
         
         logger.info(`Adjusting poll interval to respect rate limits`, {
           remaining,
           limit,
-          resetIn: toReset,
-          newDelay: Math.round(safeDelay)
+          rawToResetSeconds: toReset,
+          normalizedResetMs: toResetMs,
+          newDelayMs: Math.round(safeDelay)
         });
         
         delayMs = Math.max(delayMs, safeDelay);
@@ -241,8 +286,12 @@ export async function startMemoryCollector(
           !isNaN(lastRateLimitInfo.toReset) &&
           lastRateLimitInfo.toReset > 0
         ) {
-          const waitMs = (lastRateLimitInfo.toReset * 1000) + RATE_LIMIT_BUFFER_MS;
-          logger.info(`Waiting ${Math.round(waitMs / 1000)}s for rate limit reset`);
+          const toResetMs = normalizeToResetMs(lastRateLimitInfo.toReset, logger);
+          const waitMs = toResetMs + RATE_LIMIT_BUFFER_MS;
+          logger.info(`Waiting ${Math.round(waitMs / 1000)}s for rate limit reset`, {
+            rawToResetSeconds: lastRateLimitInfo.toReset,
+            normalizedResetMs: toResetMs
+          });
           scheduleNextPoll(waitMs);
           metrics.markScrapeSuccess('memory', false);
           return;
