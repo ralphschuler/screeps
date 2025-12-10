@@ -60,7 +60,9 @@ function formatGraphiteMetricJson(metric: GraphiteMetric, interval: number): Gra
 /**
  * Parse a stat key to extract category information.
  * Keys like "cpu.used", "room.W1N1.energy", "profiler.subsystem.kernel.avg_cpu",
- * "stats.empire.owned_rooms", "stats.room.W1N1.rcl", "stats.pheromone.W1N1.expand"
+ * "stats.empire.owned_rooms", "stats.rooms.W1N1.rcl", "stats.pheromones.W1N1.expand",
+ * "stats.roles.harvester.count", "stats.processes.proc1.avgCpu", "stats.creeps.harvester1.cpu",
+ * "stats.subsystems.kernel.avgCpu", "stats.overmind.status", "stats.clusters.cluster1.energy"
  * are parsed to extract meaningful tags.
  */
 function parseStatKey(key: string): { measurement: string; category: string; subCategory: string } {
@@ -78,17 +80,50 @@ function parseStatKey(key: string): { measurement: string; category: string; sub
     if (parts[1] === 'room' && parts.length >= 3) {
       return { measurement: key, category: 'stats_room', subCategory: parts[2] };
     }
+    if (parts[1] === 'rooms' && parts.length >= 3) {
+      return { measurement: key, category: 'stats_rooms', subCategory: parts[2] };
+    }
     if (parts[1] === 'subsystem' && parts.length >= 3) {
       return { measurement: key, category: 'stats_subsystem', subCategory: parts[2] };
+    }
+    if (parts[1] === 'subsystems' && parts.length >= 3) {
+      return { measurement: key, category: 'stats_subsystems', subCategory: parts[2] };
     }
     if (parts[1] === 'role' && parts.length >= 3) {
       return { measurement: key, category: 'stats_role', subCategory: parts[2] };
     }
+    if (parts[1] === 'roles' && parts.length >= 3) {
+      return { measurement: key, category: 'stats_roles', subCategory: parts[2] };
+    }
     if (parts[1] === 'pheromone' && parts.length >= 3) {
       return { measurement: key, category: 'stats_pheromone', subCategory: parts[2] };
     }
+    if (parts[1] === 'pheromones' && parts.length >= 3) {
+      return { measurement: key, category: 'stats_pheromones', subCategory: parts[2] };
+    }
     if (parts[1] === 'native_calls') {
       return { measurement: key, category: 'stats_native_calls', subCategory: parts[2] || '' };
+    }
+    if (parts[1] === 'process' && parts.length >= 3) {
+      return { measurement: key, category: 'stats_process', subCategory: parts[2] };
+    }
+    if (parts[1] === 'processes' && parts.length >= 3) {
+      return { measurement: key, category: 'stats_processes', subCategory: parts[2] };
+    }
+    if (parts[1] === 'creep' && parts.length >= 3) {
+      return { measurement: key, category: 'stats_creep', subCategory: parts[2] };
+    }
+    if (parts[1] === 'creeps' && parts.length >= 3) {
+      return { measurement: key, category: 'stats_creeps', subCategory: parts[2] };
+    }
+    if (parts[1] === 'overmind' && parts.length >= 2) {
+      return { measurement: key, category: 'stats_overmind', subCategory: parts[2] || '' };
+    }
+    if (parts[1] === 'cluster' && parts.length >= 3) {
+      return { measurement: key, category: 'stats_cluster', subCategory: parts[2] };
+    }
+    if (parts[1] === 'clusters' && parts.length >= 3) {
+      return { measurement: key, category: 'stats_clusters', subCategory: parts[2] };
     }
     return { measurement: key, category: 'stats', subCategory: parts[1] || '' };
   }

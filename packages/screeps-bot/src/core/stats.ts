@@ -122,6 +122,10 @@ export interface RoomStats {
   damageReceived: number;
   /** Danger level (0-3) */
   danger: number;
+  /** Total resources in storage and terminal (all resource types) */
+  resources: Partial<Record<ResourceConstant, number>>;
+  /** Dropped energy on the ground */
+  droppedEnergy: number;
 }
 
 /**
@@ -494,6 +498,32 @@ export class StatsManager {
     const creepsInRoom = Object.values(Game.creeps).filter(c => c.room.name === room.name).length;
     const hostiles = room.find(FIND_HOSTILE_CREEPS);
 
+    // Collect all resources from storage and terminal
+    const resources: Partial<Record<ResourceConstant, number>> = {};
+    
+    // Helper function to add resources from a store
+    const addStoreResources = (store: StoreDefinition) => {
+      for (const resourceType in store) {
+        if (store[resourceType as ResourceConstant] > 0) {
+          const resource = resourceType as ResourceConstant;
+          resources[resource] = (resources[resource] ?? 0) + store[resource];
+        }
+      }
+    };
+    
+    if (room.storage) {
+      addStoreResources(room.storage.store);
+    }
+    if (room.terminal) {
+      addStoreResources(room.terminal.store);
+    }
+
+    // Find dropped energy on the ground
+    const droppedResources = room.find(FIND_DROPPED_RESOURCES, {
+      filter: (r) => r.resourceType === RESOURCE_ENERGY
+    });
+    const droppedEnergy = droppedResources.reduce((sum, r) => sum + r.amount, 0);
+
     stats.rooms[room.name] = {
       name: room.name,
       rcl: room.controller?.level ?? 0,
@@ -508,7 +538,9 @@ export class StatsManager {
       controllerProgressTotal: room.controller?.progressTotal ?? 1,
       energyHarvested: metrics.energyHarvested ?? 0,
       damageReceived: metrics.damageReceived ?? 0,
-      danger: metrics.danger ?? 0
+      danger: metrics.danger ?? 0,
+      resources,
+      droppedEnergy
     };
   }
 
@@ -631,9 +663,9 @@ export class StatsManager {
   public collectProcessStats(processes: Map<string, any>): void {
     if (!this.config.enabled) return;
 
-    for (const process of processes.values()) {
+    processes.forEach((process) => {
       this.recordProcess(process);
-    }
+    });
   }
 
   /**
