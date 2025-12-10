@@ -124,6 +124,22 @@ export interface ShardState {
 }
 
 /**
+ * Enemy intelligence shared across shards
+ */
+export interface SharedEnemyIntel {
+  /** Enemy username */
+  username: string;
+  /** Known rooms across all shards */
+  rooms: string[];
+  /** Threat level (0-3) */
+  threatLevel: 0 | 1 | 2 | 3;
+  /** Last seen tick */
+  lastSeen: number;
+  /** Is ally/whitelisted */
+  isAlly: boolean;
+}
+
+/**
  * Global strategic targets
  */
 export interface GlobalStrategicTargets {
@@ -135,6 +151,10 @@ export interface GlobalStrategicTargets {
   primaryEcoShard?: string;
   /** Colonization priority shard */
   colonizationTarget?: string;
+  /** Global alliance list */
+  allies?: string[];
+  /** Global enemy list */
+  enemies?: SharedEnemyIntel[];
 }
 
 /**
@@ -256,7 +276,15 @@ export function serializeInterShardMemory(memory: InterShardMemorySchema): strin
       pl: memory.globalTargets.targetPowerLevel,
       ws: memory.globalTargets.mainWarShard,
       es: memory.globalTargets.primaryEcoShard,
-      ct: memory.globalTargets.colonizationTarget
+      ct: memory.globalTargets.colonizationTarget,
+      al: memory.globalTargets.allies,
+      en: (memory.globalTargets.enemies ?? []).map(e => ({
+        u: e.username,
+        r: e.rooms,
+        t: e.threatLevel,
+        s: e.lastSeen,
+        a: e.isAlly ? 1 : 0
+      }))
     },
     k: memory.tasks.map(t => ({
       i: t.id,
@@ -381,7 +409,14 @@ export function deserializeInterShardMemory(data: string): InterShardMemorySchem
       };
     }
 
-    const globalData = compact.g as { pl: number; ws?: string; es?: string; ct?: string };
+    const globalData = compact.g as {
+      pl: number;
+      ws?: string;
+      es?: string;
+      ct?: string;
+      al?: string[];
+      en?: { u: string; r: string[]; t: 0 | 1 | 2 | 3; s: number; a: number }[];
+    };
     const tasksData = compact.k as {
       i: string;
       y: string;
@@ -407,6 +442,18 @@ export function deserializeInterShardMemory(data: string): InterShardMemorySchem
     }
     if (globalData.ct) {
       globalTargets.colonizationTarget = globalData.ct;
+    }
+    if (globalData.al) {
+      globalTargets.allies = globalData.al;
+    }
+    if (globalData.en) {
+      globalTargets.enemies = globalData.en.map(e => ({
+        username: e.u,
+        rooms: e.r,
+        threatLevel: e.t,
+        lastSeen: e.s,
+        isAlly: e.a === 1
+      }));
     }
 
     return {
