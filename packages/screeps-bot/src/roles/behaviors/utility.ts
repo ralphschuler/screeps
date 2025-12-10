@@ -227,7 +227,8 @@ export function scout(ctx: CreepContext): CreepAction {
     if (targetRoom) {
       ctx.memory.targetRoom = targetRoom;
     } else {
-      // No valid target found - clear lastExploredRoom to expand search
+      // No valid target found - clear both to expand search
+      delete ctx.memory.targetRoom;
       delete ctx.memory.lastExploredRoom;
       // Stay idle in current room
       return { type: "idle" };

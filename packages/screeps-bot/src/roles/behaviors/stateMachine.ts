@@ -92,19 +92,29 @@ function isStateValid(state: CreepState | undefined, ctx: CreepContext): boolean
     // Type-safe memory access - StuckTrackingMemory extends CreepMemory
     const memory = ctx.creep.memory as unknown as StuckTrackingMemory;
     
+    // Initialize tracking on first run
+    if (typeof memory.lastPosTick !== "number") {
+      memory.lastPosX = ctx.creep.pos.x;
+      memory.lastPosY = ctx.creep.pos.y;
+      memory.lastPosRoom = ctx.creep.pos.roomName;
+      memory.lastPosTick = Game.time;
+      // Don't check for stuck on first run
+      return true;
+    }
+    
     // Efficient position comparison using separate coordinates
     const hasMoved = memory.lastPosX !== ctx.creep.pos.x ||
                      memory.lastPosY !== ctx.creep.pos.y ||
                      memory.lastPosRoom !== ctx.creep.pos.roomName;
     
-    if (!hasMoved && typeof memory.lastPosTick === "number") {
+    if (!hasMoved) {
       const ticksStuck = Game.time - memory.lastPosTick;
       if (ticksStuck >= STUCK_DETECTION_THRESHOLD) {
         // Creep hasn't moved for STUCK_DETECTION_THRESHOLD ticks - state is invalid
         return false;
       }
-    } else if (hasMoved) {
-      // Update position tracking only when position changes
+    } else {
+      // Update position tracking when position changes
       memory.lastPosX = ctx.creep.pos.x;
       memory.lastPosY = ctx.creep.pos.y;
       memory.lastPosRoom = ctx.creep.pos.roomName;
