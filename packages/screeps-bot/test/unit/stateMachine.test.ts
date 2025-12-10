@@ -132,6 +132,8 @@ function createMockContext(
     repairTargets: [],
     labs: [],
     factory: undefined,
+    tombstones: [],
+    mineralContainers: [],
     ...options
   };
 }
