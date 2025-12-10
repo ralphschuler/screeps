@@ -61,7 +61,8 @@ describe("Tower Logic", () => {
       const range = 5; // TOWER_OPTIMAL_RANGE
       const baseDamage = 600; // TOWER_POWER_ATTACK
 
-      const damage = range <= TOWER_OPTIMAL_RANGE ? baseDamage : baseDamage;
+      // At optimal range, no falloff
+      const damage = baseDamage;
       expect(damage).to.equal(600);
     });
 
