@@ -133,6 +133,32 @@ export interface OrderStats {
 }
 
 /**
+ * Pending arbitrage trade tracking
+ */
+export interface PendingArbitrageTrade {
+  /** Unique trade identifier */
+  id: string;
+  /** Resource being traded */
+  resource: ResourceConstant;
+  /** Amount purchased */
+  amount: number;
+  /** Buy order used */
+  buyOrderId: string;
+  /** Target buy order to sell into */
+  sellOrderId?: string;
+  /** Target sell price if no order is available */
+  targetSellPrice: number;
+  /** Room that executed the purchase */
+  destinationRoom: string;
+  /** Expected tick when transfer is ready */
+  expectedArrival: number;
+  /** Price paid per unit */
+  buyPrice: number;
+  /** Estimated transport cost paid in energy */
+  transportCost: number;
+}
+
+/**
  * Market memory containing all market intelligence
  */
 export interface MarketMemory {
@@ -146,6 +172,12 @@ export interface MarketMemory {
   totalProfit?: number;
   /** Last balance tick */
   lastBalance?: number;
+  /** Pending arbitrage trades */
+  pendingArbitrage?: PendingArbitrageTrade[];
+  /** Number of completed arbitrage cycles */
+  completedArbitrage?: number;
+  /** Profit generated from arbitrage cycles */
+  arbitrageProfit?: number;
 }
 
 /**
@@ -639,7 +671,10 @@ export function createDefaultSwarmState(): SwarmState {
 export function createDefaultMarketMemory(): MarketMemory {
   return {
     resources: {},
-    lastScan: 0
+    lastScan: 0,
+    pendingArbitrage: [],
+    completedArbitrage: 0,
+    arbitrageProfit: 0
   };
 }
 

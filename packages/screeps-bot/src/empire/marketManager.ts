@@ -16,7 +16,7 @@ import { memoryManager } from "../memory/manager";
 import { logger } from "../core/logger";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { ProcessPriority } from "../core/kernel";
-import type { PriceDataPoint, ResourceMarketData } from "../memory/schemas";
+import type { PendingArbitrageTrade, PriceDataPoint, ResourceMarketData } from "../memory/schemas";
 import { createDefaultMarketMemory } from "../memory/schemas";
 
 /**
@@ -162,6 +162,9 @@ export class MarketManager {
     // Update order statistics
     this.updateOrderStats();
 
+    // Reconcile pending arbitrage trades
+    this.reconcilePendingArbitrage();
+
     // Check for emergency resource needs
     this.handleEmergencyBuying();
 
@@ -178,6 +181,7 @@ export class MarketManager {
     this.updateSellOrders();
 
     // Execute deals and arbitrage
+    this.checkArbitrageOpportunities();
     this.executeDeal();
 
     // Balance resources across rooms
@@ -202,6 +206,15 @@ export class MarketManager {
     }
     if (!overmind.market.lastBalance) {
       overmind.market.lastBalance = 0;
+    }
+    if (!overmind.market.pendingArbitrage) {
+      overmind.market.pendingArbitrage = [];
+    }
+    if (overmind.market.completedArbitrage === undefined) {
+      overmind.market.completedArbitrage = 0;
+    }
+    if (overmind.market.arbitrageProfit === undefined) {
+      overmind.market.arbitrageProfit = 0;
     }
   }
 
@@ -637,8 +650,6 @@ export class MarketManager {
       }
     }
 
-    // Check for arbitrage opportunities (disabled for now - needs proper implementation)
-    // this.checkArbitrageOpportunities();
   }
 
   /**
@@ -763,53 +774,182 @@ export class MarketManager {
   }
 
   /**
+   * Reconcile pending arbitrage trades and execute outbound sales
+   */
+  private reconcilePendingArbitrage(): void {
+    const overmind = memoryManager.getOvermind();
+    const market = overmind.market;
+
+    if (!market?.pendingArbitrage || market.pendingArbitrage.length === 0) return;
+
+    const remaining: PendingArbitrageTrade[] = [];
+
+    for (const trade of market.pendingArbitrage) {
+      const room = Game.rooms[trade.destinationRoom];
+      const terminal = room?.terminal;
+
+      if (!terminal || !room?.controller?.my) {
+        remaining.push(trade);
+        continue;
+      }
+
+      if (Game.time < trade.expectedArrival || terminal.cooldown > 0) {
+        remaining.push(trade);
+        continue;
+      }
+
+      const available = terminal.store[trade.resource] ?? 0;
+      if (available < trade.amount) {
+        remaining.push(trade);
+        continue;
+      }
+
+      let resolved = false;
+
+      if (trade.sellOrderId) {
+        const order = Game.market.getOrderById(trade.sellOrderId as Id<Order>);
+
+        if (order && order.remainingAmount > 0 && order.roomName) {
+          const dealAmount = Math.min(trade.amount, order.remainingAmount, available);
+          const energyCost = Game.market.calcTransactionCost(dealAmount, terminal.room.name, order.roomName);
+
+          if (terminal.store[RESOURCE_ENERGY] >= energyCost) {
+            const result = Game.market.deal(order.id, dealAmount, terminal.room.name);
+
+            if (result === OK) {
+              const profit = (order.price - trade.buyPrice) * dealAmount;
+              market.totalProfit = (market.totalProfit ?? 0) + profit;
+              market.arbitrageProfit = (market.arbitrageProfit ?? 0) + profit;
+              market.completedArbitrage = (market.completedArbitrage ?? 0) + 1;
+
+              logger.info(
+                `Arbitrage complete: sold ${dealAmount} ${trade.resource} from ${terminal.room.name} at ${order.price.toFixed(
+                  3
+                )}, profit ${profit.toFixed(2)}`,
+                { subsystem: "Market" }
+              );
+
+              resolved = true;
+            }
+          }
+        }
+      }
+
+      if (!resolved) {
+        const result = Game.market.createOrder({
+          type: ORDER_SELL,
+          resourceType: trade.resource,
+          price: trade.targetSellPrice,
+          totalAmount: trade.amount,
+          roomName: terminal.room.name
+        });
+
+        if (result === OK) {
+          logger.info(
+            `Arbitrage posted sell order: ${trade.amount} ${trade.resource} at ${trade.targetSellPrice.toFixed(3)} from ${
+              terminal.room.name
+            }`,
+            { subsystem: "Market" }
+          );
+
+          resolved = true;
+        }
+      }
+
+      if (!resolved) {
+        remaining.push(trade);
+      }
+    }
+
+    market.pendingArbitrage = remaining;
+  }
+
+  /**
    * Check for arbitrage opportunities
-   * TODO: Complete implementation - currently disabled as it needs proper handling of:
-   Issue URL: https://github.com/ralphschuler/screeps/issues/350
-   * 1. Waiting for resources to arrive after buy
-   * 2. Executing sell order or deal after resources are available
-   * 3. Tracking multi-step arbitrage transactions
    */
   private checkArbitrageOpportunities(): void {
-    // Only do this if we have sufficient trading credits
+    if (Game.cpu.bucket < this.config.minBucket) return;
     if (Game.market.credits < this.config.tradingCredits) return;
 
-    // Check each tracked resource
+    const overmind = memoryManager.getOvermind();
+    const market = overmind.market;
+    const terminals = Object.values(Game.rooms).filter(r => r.terminal && r.controller?.my);
+
+    if (!market || terminals.length === 0) return;
+
+    const getRemainingAmount = (order: Order) => order.remainingAmount ?? order.amount ?? 0;
+
     for (const resource of this.config.trackedResources) {
-      const buyOrders = Game.market.getAllOrders({ type: ORDER_BUY, resourceType: resource });
-      const sellOrders = Game.market.getAllOrders({ type: ORDER_SELL, resourceType: resource });
+      const buyOrders = Game.market
+        .getAllOrders({ type: ORDER_BUY, resourceType: resource })
+        .filter(o => o.remainingAmount > 0 && o.roomName);
+      const sellOrders = Game.market
+        .getAllOrders({ type: ORDER_SELL, resourceType: resource })
+        .filter(o => o.remainingAmount > 0 && o.roomName);
 
       if (buyOrders.length === 0 || sellOrders.length === 0) continue;
 
-      // Find highest buy price and lowest sell price
       buyOrders.sort((a, b) => b.price - a.price);
       sellOrders.sort((a, b) => a.price - b.price);
 
       const highestBuy = buyOrders[0];
       const lowestSell = sellOrders[0];
 
-      // Check if arbitrage is profitable
-      const roomWithTerminal = Object.values(Game.rooms).find(r => r.terminal && r.controller?.my);
-      if (!roomWithTerminal?.terminal || !lowestSell.roomName || !highestBuy.roomName) continue;
+      if (!highestBuy.roomName || !lowestSell.roomName) continue;
 
-      const transportCost =
-        Game.market.calcTransactionCost(1000, roomWithTerminal.name, lowestSell.roomName) / 1000;
-      const totalCost = lowestSell.price + transportCost;
-      const profit = highestBuy.price - totalCost;
+      const alreadyPending = market.pendingArbitrage?.some(
+        trade => trade.buyOrderId === lowestSell.id || trade.sellOrderId === highestBuy.id
+      );
+      if (alreadyPending) continue;
 
-      // If profitable and transport cost is reasonable
-      if (profit > 0 && transportCost / lowestSell.price < this.config.maxTransportCostRatio) {
-        // Log opportunity but don't execute yet (needs proper implementation)
-        logger.debug(
-          `ARBITRAGE OPPORTUNITY: ${resource} - Buy @ ${lowestSell.price.toFixed(3)}, Sell @ ${highestBuy.price.toFixed(3)}, Profit: ${profit.toFixed(3)}/unit`,
+      const tradeAmount = Math.min(getRemainingAmount(highestBuy), getRemainingAmount(lowestSell), 5000);
+      if (tradeAmount <= 0) continue;
+
+      for (const room of terminals) {
+        const terminal = room.terminal!;
+        const freeCapacity = terminal.store.getFreeCapacity(resource) ?? 0;
+        if (freeCapacity < tradeAmount) continue;
+
+        const buyEnergyCost = Game.market.calcTransactionCost(tradeAmount, room.name, lowestSell.roomName);
+        const sellEnergyCost = Game.market.calcTransactionCost(tradeAmount, room.name, highestBuy.roomName);
+
+        const perUnitTransport = (buyEnergyCost + sellEnergyCost) / tradeAmount;
+        const profitPerUnit = highestBuy.price - lowestSell.price - perUnitTransport;
+
+        if (profitPerUnit <= 0) continue;
+        if (perUnitTransport / lowestSell.price > this.config.maxTransportCostRatio) continue;
+        if (terminal.store[RESOURCE_ENERGY] < buyEnergyCost) continue;
+
+        const creditsNeeded = lowestSell.price * tradeAmount;
+        if (Game.market.credits - creditsNeeded < this.config.minCredits) continue;
+
+        const result = Game.market.deal(lowestSell.id, tradeAmount, room.name);
+
+        if (result !== OK) continue;
+
+        const pendingTrade: PendingArbitrageTrade = {
+          id: `${resource}-${Game.time}-${lowestSell.id}`,
+          resource,
+          amount: tradeAmount,
+          buyOrderId: lowestSell.id,
+          sellOrderId: highestBuy.id,
+          targetSellPrice: highestBuy.price,
+          destinationRoom: room.name,
+          expectedArrival: Game.time + (terminal.cooldown ?? 0) + 1,
+          buyPrice: lowestSell.price,
+          transportCost: buyEnergyCost
+        };
+
+        market.pendingArbitrage?.push(pendingTrade);
+
+        logger.info(
+          `Arbitrage started: bought ${tradeAmount} ${resource} at ${lowestSell.price.toFixed(3)} to sell @ ${highestBuy.price.toFixed(
+            3
+          )} (profit/unit ~${profitPerUnit.toFixed(2)})`,
           { subsystem: "Market" }
         );
 
-        // TODO: Implement proper arbitrage execution:
-        // Issue URL: https://github.com/ralphschuler/screeps/issues/349
-        // 1. Buy from lowest sell order
-        // 2. Track the incoming transfer
-        // 3. Once resources arrive, sell to highest buy order or create sell order
+        break;
       }
     }
   }
