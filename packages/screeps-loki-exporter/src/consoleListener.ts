@@ -40,7 +40,6 @@ export async function startConsoleListener(
 
   socket.on('connected', () => {
     logger.info('Connected to Screeps console');
-    socket.subscribe('console', () => logger.info('Subscribed to console events'));
   });
 
   socket.on('disconnected', () => {
@@ -61,6 +60,10 @@ export async function startConsoleListener(
       }
     }
   });
+
+  // Subscribe to console events once, before connecting
+  // This prevents multiple subscriptions on reconnections
+  socket.subscribe('console', () => logger.info('Subscribed to console events'));
 
   if (typeof socket.connect === 'function') {
     await socket.connect();
