@@ -261,6 +261,23 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     remoteRole: false
   },
 
+  crossShardCarrier: {
+    role: "crossShardCarrier",
+    family: "economy",
+    bodies: [
+      createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
+      createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 800),
+      createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1200),
+      createBody(
+        [...Array(16).fill(CARRY), ...Array(16).fill(MOVE)],
+        1600
+      )
+    ],
+    priority: 85, // High priority for cross-shard logistics
+    maxPerRoom: 6, // Can have multiple carriers for large transfers
+    remoteRole: true
+  },
+
   // Military roles
   guard: {
     role: "guard",

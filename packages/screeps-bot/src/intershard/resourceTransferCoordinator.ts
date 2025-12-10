@@ -13,6 +13,8 @@
 
 import type { InterShardTask } from "./schema";
 import { logger } from "../core/logger";
+import { optimizeBody } from "../spawning/bodyOptimizer";
+import { SpawnPriority, spawnQueue, type SpawnRequest } from "../spawning/spawnQueue";
 import { shardManager } from "./shardManager";
 
 /**
@@ -217,12 +219,83 @@ export class ResourceTransferCoordinator {
       return;
     }
 
-    // TODO: Request spawning of carrier creeps
-    // Issue URL: https://github.com/ralphschuler/screeps/issues/366
-    // This would integrate with the spawn system
-    logger.debug(`Transfer request ${request.taskId} needs ${neededCarryCapacity - currentCapacity} carry capacity`, {
-      subsystem: "CrossShardTransfer"
-    });
+    // Request spawning of carrier creeps
+    const room = Game.rooms[request.sourceRoom];
+    if (!room || !room.controller?.my) {
+      logger.warn(`Source room ${request.sourceRoom} not available for spawning carriers`, {
+        subsystem: "CrossShardTransfer"
+      });
+      return;
+    }
+
+    // Calculate how many carriers we need
+    const capacityNeeded = neededCarryCapacity - currentCapacity;
+    const maxEnergy = room.energyCapacityAvailable;
+
+    // Optimize body for the carrier
+    let body;
+    try {
+      body = optimizeBody({
+        maxEnergy,
+        role: "crossShardCarrier"
+      });
+    } catch (error) {
+      logger.error(`Failed to optimize body for crossShardCarrier: ${String(error)}`, {
+        subsystem: "CrossShardTransfer"
+      });
+      return;
+    }
+
+    // Calculate how many carriers we need based on body capacity
+    const carrierCapacity = body.parts.filter(p => p === CARRY).length * 50;
+    const carriersNeeded = Math.ceil(capacityNeeded / carrierCapacity);
+
+    // Limit to spawning a reasonable number at once
+    const maxCarriersPerRequest = 3;
+    const carriersToSpawn = Math.min(carriersNeeded, maxCarriersPerRequest);
+
+    // Map priority to spawn priority
+    let spawnPriority = SpawnPriority.NORMAL;
+    if (request.priority >= 80) {
+      spawnPriority = SpawnPriority.HIGH;
+    } else if (request.priority >= 50) {
+      spawnPriority = SpawnPriority.NORMAL;
+    } else {
+      spawnPriority = SpawnPriority.LOW;
+    }
+
+    // Add spawn requests to queue
+    for (let i = 0; i < carriersToSpawn; i++) {
+      const spawnRequest: SpawnRequest = {
+        id: `crossShardCarrier_${request.taskId}_${i}_${Game.time}`,
+        roomName: request.sourceRoom,
+        role: "crossShardCarrier",
+        family: "economy",
+        body,
+        priority: spawnPriority,
+        createdAt: Game.time,
+        additionalMemory: {
+          transferRequestId: request.taskId,
+          sourceRoom: request.sourceRoom,
+          portalRoom: request.portalRoom,
+          targetShard: request.targetShard,
+          targetRoom: request.targetRoom,
+          resourceType: request.resourceType,
+          state: "gathering"
+        }
+      };
+
+      spawnQueue.addRequest(spawnRequest);
+      logger.info(
+        `Requested spawn of crossShardCarrier for transfer ${request.taskId} (${i + 1}/${carriersToSpawn})`,
+        { subsystem: "CrossShardTransfer" }
+      );
+    }
+
+    logger.debug(
+      `Transfer request ${request.taskId} needs ${capacityNeeded} carry capacity, requested ${carriersToSpawn} carriers`,
+      { subsystem: "CrossShardTransfer" }
+    );
   }
 
   /**
