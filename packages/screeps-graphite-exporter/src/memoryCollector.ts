@@ -132,15 +132,27 @@ export async function startMemoryCollector(
 
   // Listen to rate limit events from the API
   api.on('rateLimit', (rateLimitInfo: RateLimitInfo) => {
-    lastRateLimitInfo = rateLimitInfo;
-    
-    // Only log if rate limits are being approached (< 50% remaining)
-    if (rateLimitInfo.remaining < rateLimitInfo.limit * 0.5) {
-      logger.info('Rate limit info', {
-        remaining: rateLimitInfo.remaining,
-        limit: rateLimitInfo.limit,
-        resetIn: rateLimitInfo.toReset
-      });
+    // Validate rate limit info has valid numeric values
+    if (
+      typeof rateLimitInfo === 'object' &&
+      typeof rateLimitInfo.limit === 'number' &&
+      typeof rateLimitInfo.remaining === 'number' &&
+      typeof rateLimitInfo.reset === 'number' &&
+      typeof rateLimitInfo.toReset === 'number' &&
+      !isNaN(rateLimitInfo.limit) &&
+      !isNaN(rateLimitInfo.remaining) &&
+      !isNaN(rateLimitInfo.toReset)
+    ) {
+      lastRateLimitInfo = rateLimitInfo;
+      
+      // Only log if rate limits are being approached (< 50% remaining)
+      if (rateLimitInfo.remaining < rateLimitInfo.limit * 0.5) {
+        logger.info('Rate limit info', {
+          remaining: rateLimitInfo.remaining,
+          limit: rateLimitInfo.limit,
+          resetIn: rateLimitInfo.toReset
+        });
+      }
     }
   });
 
@@ -162,10 +174,11 @@ export async function startMemoryCollector(
         });
       }
       // If we're running low on rate limit quota (< 20% remaining)
-      else if (remaining < limit * 0.2 && remaining > 0) {
+      else if (remaining < limit * 0.2 && remaining > 0 && toReset > 0) {
         // Calculate delay to spread remaining requests evenly until reset
+        // Extra safety check to prevent division by zero
         const safeDelay = Math.max(
-          (toReset * 1000) / remaining,
+          remaining > 0 ? (toReset * 1000) / remaining : config.pollIntervalMs,
           config.minPollIntervalMs
         );
         
@@ -222,7 +235,12 @@ export async function startMemoryCollector(
         
         // If we have rate limit info, use it to calculate wait time
         // Otherwise, use a default backoff
-        if (lastRateLimitInfo && lastRateLimitInfo.toReset > 0) {
+        if (
+          lastRateLimitInfo &&
+          typeof lastRateLimitInfo.toReset === 'number' &&
+          !isNaN(lastRateLimitInfo.toReset) &&
+          lastRateLimitInfo.toReset > 0
+        ) {
           const waitMs = (lastRateLimitInfo.toReset * 1000) + RATE_LIMIT_BUFFER_MS;
           logger.info(`Waiting ${Math.round(waitMs / 1000)}s for rate limit reset`);
           scheduleNextPoll(waitMs);
