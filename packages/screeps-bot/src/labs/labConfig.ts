@@ -11,7 +11,7 @@
  */
 
 import { logger } from "../core/logger";
-import { heapCache, INFINITE_TTL } from "../memory/heapCache";
+import { INFINITE_TTL, heapCache } from "../memory/heapCache";
 
 /**
  * Lab role types

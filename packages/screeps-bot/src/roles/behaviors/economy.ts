@@ -1015,6 +1015,8 @@ export function interRoomCarrier(ctx: CreepContext): CreepAction {
   }
 }
 
+import { labSupply } from "./labSupply";
+
 const economyBehaviors: Record<string, (ctx: CreepContext) => CreepAction> = {
   larvaWorker,
   harvester,
@@ -1025,6 +1027,7 @@ const economyBehaviors: Record<string, (ctx: CreepContext) => CreepAction> = {
   mineralHarvester,
   depositHarvester,
   labTech,
+  labSupply,
   factoryWorker,
   remoteHarvester,
   remoteHauler,

@@ -27,7 +27,10 @@ import { emergencyResponseManager } from "../defense/emergencyResponse";
 import { placeRampartsOnCriticalStructures } from "../defense/rampartAutomation";
 import { chemistryPlanner } from "../labs/chemistryPlanner";
 import { boostManager } from "../labs/boostManager";
+import { labManager } from "../labs/labManager";
+import { labConfigManager } from "../labs/labConfig";
 import { kernel } from "./kernel";
+import { logger } from "./logger";
 import { prefetchRoomObjects } from "../utils/objectCache";
 
 /**
@@ -616,14 +619,54 @@ export class RoomNode {
     const swarm = memoryManager.getSwarmState(room.name);
     if (!swarm) return;
 
+    // Initialize lab manager for this room (loads config from memory)
+    labManager.initialize(room.name);
+
     // Prepare labs for boosting when danger is high
     boostManager.prepareLabs(room, swarm);
 
     // Plan reactions using chemistry planner
     const reaction = chemistryPlanner.planReactions(room, swarm);
     if (reaction) {
-      chemistryPlanner.executeReaction(room, reaction);
+      // Check if labs are ready for this reaction
+      const reactionStep = {
+        product: reaction.product as MineralCompoundConstant,
+        input1: reaction.input1 as MineralConstant | MineralCompoundConstant,
+        input2: reaction.input2 as MineralConstant | MineralCompoundConstant,
+        amountNeeded: 1000,
+        priority: reaction.priority
+      };
+
+      if (labManager.areLabsReady(room.name, reactionStep)) {
+        // Set active reaction if not already set or different
+        const config = labConfigManager.getConfig(room.name);
+        const currentReaction = config?.activeReaction;
+        
+        if (!currentReaction || 
+            currentReaction.input1 !== reaction.input1 ||
+            currentReaction.input2 !== reaction.input2 ||
+            currentReaction.output !== reaction.product) {
+          labManager.setActiveReaction(
+            room.name,
+            reaction.input1 as MineralConstant | MineralCompoundConstant,
+            reaction.input2 as MineralConstant | MineralCompoundConstant,
+            reaction.product as MineralCompoundConstant
+          );
+        }
+
+        // Execute reaction
+        chemistryPlanner.executeReaction(room, reaction);
+      } else {
+        // Labs not ready, resource logistics needs to supply them
+        logger.debug(
+          `Labs not ready for reaction: ${reaction.input1} + ${reaction.input2} -> ${reaction.product}`,
+          { subsystem: "Labs", room: room.name }
+        );
+      }
     }
+
+    // Save lab state to memory
+    labManager.save(room.name);
   }
 
   /**

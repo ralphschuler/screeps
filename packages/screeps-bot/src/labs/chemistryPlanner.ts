@@ -245,9 +245,9 @@ const REACTIONS: Record<string, Reaction> = {
 };
 
 /**
- * Target stockpile amounts
+ * Base stockpile targets (can be adjusted based on posture)
  */
-const STOCKPILE_TARGETS: Record<string, number> = {
+const BASE_STOCKPILE_TARGETS: Record<string, number> = {
   // War mode boosts
   [RESOURCE_CATALYZED_UTRIUM_ACID]: 3000,
   [RESOURCE_CATALYZED_KEANIUM_ALKALIDE]: 3000,
@@ -264,9 +264,96 @@ const STOCKPILE_TARGETS: Record<string, number> = {
 };
 
 /**
+ * Get stockpile target for a compound based on room state
+ */
+function getStockpileTarget(compound: ResourceConstant, swarm: SwarmState): number {
+  const baseTarget = BASE_STOCKPILE_TARGETS[compound] ?? 1000;
+  
+  // Increase war compound targets when in war/siege mode
+  if (swarm.posture === "war" || swarm.posture === "siege") {
+    if (compound === RESOURCE_CATALYZED_UTRIUM_ACID ||
+        compound === RESOURCE_CATALYZED_KEANIUM_ALKALIDE ||
+        compound === RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE ||
+        compound === RESOURCE_CATALYZED_GHODIUM_ACID) {
+      return baseTarget * 1.5; // 50% higher in war mode
+    }
+  }
+  
+  // Reduce eco compound targets when in war mode
+  if (swarm.posture === "war" || swarm.posture === "siege") {
+    if (compound === RESOURCE_CATALYZED_GHODIUM_ALKALIDE ||
+        compound === RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE) {
+      return baseTarget * 0.5; // 50% lower in war mode
+    }
+  }
+  
+  return baseTarget;
+}
+
+/**
  * Chemistry Planner Class
  */
 export class ChemistryPlanner {
+  /**
+   * Get reaction for a compound (lookup in REACTIONS table)
+   */
+  public getReaction(compound: ResourceConstant): Reaction | undefined {
+    return REACTIONS[compound];
+  }
+
+  /**
+   * Calculate full reaction chain for a target compound
+   * Returns array of reactions in order (dependencies first)
+   */
+  public calculateReactionChain(
+    target: ResourceConstant,
+    availableResources: Partial<Record<ResourceConstant, number>>
+  ): Reaction[] {
+    const chain: Reaction[] = [];
+    const visited = new Set<ResourceConstant>();
+
+    const buildChain = (compound: ResourceConstant): boolean => {
+      if (visited.has(compound)) return true;
+      visited.add(compound);
+
+      const reaction = REACTIONS[compound];
+      if (!reaction) {
+        // Base mineral or not in reactions table
+        return (availableResources[compound] ?? 0) > 0;
+      }
+
+      // Check if we need to produce input1
+      if ((availableResources[reaction.input1] ?? 0) < 100) {
+        if (!buildChain(reaction.input1)) return false;
+      }
+
+      // Check if we need to produce input2
+      if ((availableResources[reaction.input2] ?? 0) < 100) {
+        if (!buildChain(reaction.input2)) return false;
+      }
+
+      // Add this reaction to chain
+      chain.push(reaction);
+      return true;
+    };
+
+    buildChain(target);
+    return chain;
+  }
+
+  /**
+   * Check if we have enough resources for a reaction
+   */
+  public hasResourcesForReaction(
+    terminal: StructureTerminal,
+    reaction: Reaction,
+    minAmount = 100
+  ): boolean {
+    const input1Amount = terminal.store[reaction.input1] ?? 0;
+    const input2Amount = terminal.store[reaction.input2] ?? 0;
+    return input1Amount >= minAmount && input2Amount >= minAmount;
+  }
+
   /**
    * Plan reactions for a room
    */
@@ -296,18 +383,30 @@ export class ChemistryPlanner {
 
       // Check if we have enough of this compound
       const current = terminal.store[target] ?? 0;
-      const targetAmount = STOCKPILE_TARGETS[target] ?? 1000;
+      const targetAmount = getStockpileTarget(target, swarm);
 
       if (current < targetAmount) {
-        // Check if we have inputs
-        if (this.hasInputs(terminal, reaction)) {
-          return reaction;
-        } else {
-          // Need to produce intermediates first
-          const intermediate = this.findIntermediateReaction(terminal, reaction);
-          if (intermediate) {
-            return intermediate;
+        // Calculate full reaction chain
+        const availableResources: Partial<Record<ResourceConstant, number>> = {};
+        for (const [resourceType, amount] of Object.entries(terminal.store)) {
+          availableResources[resourceType as ResourceConstant] = amount;
+        }
+
+        const chain = this.calculateReactionChain(target, availableResources);
+        
+        // Find first reaction in chain that we can do
+        for (const chainReaction of chain) {
+          if (this.hasResourcesForReaction(terminal, chainReaction, 1000)) {
+            return chainReaction;
           }
+        }
+
+        // If we can't produce the chain, check if we should buy inputs
+        if (chain.length > 0) {
+          logger.debug(
+            `Cannot produce ${target}: missing inputs in reaction chain`,
+            { subsystem: "Chemistry", room: room.name }
+          );
         }
       }
     }
@@ -344,37 +443,7 @@ export class ChemistryPlanner {
     return targets;
   }
 
-  /**
-   * Check if terminal has inputs for reaction
-   */
-  private hasInputs(terminal: StructureTerminal, reaction: Reaction): boolean {
-    const input1Amount = terminal.store[reaction.input1] ?? 0;
-    const input2Amount = terminal.store[reaction.input2] ?? 0;
-    return input1Amount >= 1000 && input2Amount >= 1000;
-  }
 
-  /**
-   * Find intermediate reaction needed to produce target
-   */
-  private findIntermediateReaction(terminal: StructureTerminal, target: Reaction): Reaction | null {
-    // Check if we need to produce input1
-    if ((terminal.store[target.input1] ?? 0) < 1000) {
-      const intermediate = REACTIONS[target.input1];
-      if (intermediate && this.hasInputs(terminal, intermediate)) {
-        return intermediate;
-      }
-    }
-
-    // Check if we need to produce input2
-    if ((terminal.store[target.input2] ?? 0) < 1000) {
-      const intermediate = REACTIONS[target.input2];
-      if (intermediate && this.hasInputs(terminal, intermediate)) {
-        return intermediate;
-      }
-    }
-
-    return null;
-  }
 
   /**
    * Execute reaction in labs
@@ -382,7 +451,7 @@ export class ChemistryPlanner {
   public executeReaction(room: Room, reaction: Reaction): void {
     const labs = room.find(FIND_MY_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_LAB
-    }) as StructureLab[];
+    }) ;
 
     if (labs.length < 3) return;
 
