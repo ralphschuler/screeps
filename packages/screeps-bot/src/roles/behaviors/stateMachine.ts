@@ -51,6 +51,13 @@ const DEFAULT_STATE_TIMEOUT = 25;
 const DEPOSIT_COOLDOWN_THRESHOLD = 100;
 
 /**
+ * Stuck detection threshold (in ticks)
+ * If a creep hasn't moved for this many ticks (while not performing stationary actions),
+ * the state is considered invalid and will be cleared
+ */
+const STUCK_DETECTION_THRESHOLD = 5;
+
+/**
  * Type guard to check if an object has hits (is a Structure).
  */
 function hasHits(obj: unknown): obj is { hits: number; hitsMax: number } {
@@ -78,17 +85,22 @@ function isStateValid(state: CreepState | undefined, ctx: CreepContext): boolean
     }
   }
 
-  // REFACTORED: Detect if creep is stuck (hasn't moved in 5+ ticks while not stationary)
+  // REFACTORED: Detect if creep is stuck (hasn't moved while not performing stationary actions)
   // Stationary actions like harvest/upgrade are exempt from this check
   const stationaryActions = new Set(["harvest", "harvestMineral", "upgrade"]);
   if (!stationaryActions.has(state.action)) {
-    const memory = ctx.creep.memory as unknown as { lastPos?: string; lastPosTick?: number };
+    // Type-safe memory access with runtime validation
+    interface StuckTrackingMemory {
+      lastPos?: string;
+      lastPosTick?: number;
+    }
+    const memory = ctx.creep.memory as unknown as StuckTrackingMemory;
     const currentPosStr = `${ctx.creep.pos.x},${ctx.creep.pos.y},${ctx.creep.pos.roomName}`;
     
-    if (memory.lastPos === currentPosStr && memory.lastPosTick !== undefined) {
+    if (memory.lastPos === currentPosStr && typeof memory.lastPosTick === "number") {
       const ticksStuck = Game.time - memory.lastPosTick;
-      if (ticksStuck >= 5) {
-        // Creep hasn't moved in 5 ticks - state is invalid
+      if (ticksStuck >= STUCK_DETECTION_THRESHOLD) {
+        // Creep hasn't moved for STUCK_DETECTION_THRESHOLD ticks - state is invalid
         return false;
       }
     } else {
