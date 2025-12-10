@@ -6,7 +6,13 @@
 A sophisticated Screeps bot built with TypeScript that implements swarm-based coordination, emergent behavior through pheromone systems, and multi-shard colony management. The bot is designed to efficiently manage 100+ rooms and 5000+ creeps while maintaining CPU efficiency.
 
 ## Links
-- [Grafana Dashboard](https://ralphschuler.grafana.net/public-dashboards/1108066fad99495bbb26d67f0d55fe89)
+- [Grafana Dashboard (All)](https://ralphschuler.grafana.net/public-dashboards/1108066fad99495bbb26d67f0d55fe89)
+- [Grafana - Room Management](https://ralphschuler.grafana.net/public-dashboards/54f90cd8f73e4613a4a86ca6bce201c2)
+- [Grafana - Processes & Systems Monitor](https://ralphschuler.grafana.net/public-dashboards/a0e74e89c47b44689947a45fc3656ca5)
+- [Grafana - Empire & Economy](https://ralphschuler.grafana.net/public-dashboards/7145cd15c5b54eed884dd05d76505b97)
+- [Grafana - Creeps & Roles Monitor](https://ralphschuler.grafana.net/public-dashboards/05850278241341c699b8e2f4b99e7390)
+- [Grafana - CPU & Performance Monitor](https://ralphschuler.grafana.net/public-dashboards/d0bc9548d02247889147e0707cc61e8f)
+- [Grafana - AI & Pheromones](https://ralphschuler.grafana.net/public-dashboards/c7ce1e0c6dbe48d58559832cbcad0bcf)
 - [Screeps Profile](https://screeps.com/a/#!/profile/TedRoastBeef)
 
 ## Features
