@@ -282,4 +282,88 @@ describe("StatsManager", function () {
       assert.equal(stats.nativeCalls.build, 1);
     });
   });
+
+  describe("Per-Creep Stats Tracking", function () {
+    it("should record individual creep stats", function () {
+      const mockCreep: any = {
+        name: "harvester1",
+        room: { name: "W1N1" },
+        memory: { role: "harvester", homeRoom: "W1N1", state: { action: "harvesting" } },
+        ticksToLive: 1500,
+        hits: 100,
+        hitsMax: 100,
+        body: [{ type: WORK }, { type: CARRY }, { type: MOVE }],
+        fatigue: 0
+      };
+
+      statsManager.recordCreep(mockCreep, 0.5, "harvesting", 2);
+
+      const stats = statsManager.getStats();
+      assert.isDefined(stats.creeps.harvester1);
+      assert.equal(stats.creeps.harvester1.name, "harvester1");
+      assert.equal(stats.creeps.harvester1.role, "harvester");
+      assert.equal(stats.creeps.harvester1.homeRoom, "W1N1");
+      assert.equal(stats.creeps.harvester1.currentRoom, "W1N1");
+      assert.equal(stats.creeps.harvester1.cpu, 0.5);
+      assert.equal(stats.creeps.harvester1.action, "harvesting");
+      assert.equal(stats.creeps.harvester1.ticksToLive, 1500);
+      assert.equal(stats.creeps.harvester1.bodyParts, 3);
+      assert.equal(stats.creeps.harvester1.actionsThisTick, 2);
+    });
+
+    it("should collect all creep stats during finalizeTick", function () {
+      mockGame.creeps = {
+        harvester1: {
+          name: "harvester1",
+          room: { name: "W1N1" },
+          memory: { role: "harvester", homeRoom: "W1N1" },
+          ticksToLive: 1500,
+          hits: 100,
+          hitsMax: 100,
+          body: [{ type: WORK }, { type: CARRY }, { type: MOVE }],
+          fatigue: 0
+        },
+        upgrader1: {
+          name: "upgrader1",
+          room: { name: "W1N1" },
+          memory: { role: "upgrader", homeRoom: "W1N1" },
+          ticksToLive: 1200,
+          hits: 100,
+          hitsMax: 100,
+          body: [{ type: WORK }, { type: CARRY }, { type: MOVE }],
+          fatigue: 2
+        }
+      };
+
+      statsManager.finalizeTick();
+
+      const stats = statsManager.getStats();
+      assert.isDefined(stats.creeps);
+      assert.isDefined(stats.creeps.harvester1);
+      assert.isDefined(stats.creeps.upgrader1);
+      assert.equal(stats.creeps.harvester1.role, "harvester");
+      assert.equal(stats.creeps.upgrader1.role, "upgrader");
+      assert.equal(stats.creeps.upgrader1.fatigue, 2);
+    });
+
+    it("should handle creeps with missing memory gracefully", function () {
+      const mockCreep: any = {
+        name: "orphan1",
+        room: { name: "W1N1" },
+        memory: {}, // No role or homeRoom
+        ticksToLive: 1000,
+        hits: 50,
+        hitsMax: 100,
+        body: [{ type: MOVE }],
+        fatigue: 0
+      };
+
+      statsManager.recordCreep(mockCreep, 0.1, "idle", 0);
+
+      const stats = statsManager.getStats();
+      assert.isDefined(stats.creeps.orphan1);
+      assert.equal(stats.creeps.orphan1.role, "unknown");
+      assert.equal(stats.creeps.orphan1.homeRoom, "W1N1");
+    });
+  });
 });
