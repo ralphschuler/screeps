@@ -15,6 +15,10 @@ export type ShardRole = "core" | "frontier" | "resource" | "backup" | "war";
 export interface ShardHealthMetrics {
   /** CPU usage category (low/medium/high/critical) */
   cpuCategory: "low" | "medium" | "high" | "critical";
+  /** Actual CPU usage (0-1) */
+  cpuUsage: number;
+  /** Average CPU bucket level */
+  bucketLevel: number;
   /** Economy index (0-100) */
   economyIndex: number;
   /** War index (0-100) */
@@ -45,12 +49,20 @@ export interface InterShardTask {
   targetShard: string;
   /** Target room (if applicable) */
   targetRoom?: string;
+  /** Resource type for transfer tasks */
+  resourceType?: ResourceConstant;
+  /** Resource amount for transfer tasks */
+  resourceAmount?: number;
   /** Priority */
   priority: number;
   /** Status */
   status: "pending" | "active" | "complete" | "failed";
   /** Created tick */
   createdAt: number;
+  /** Last updated tick */
+  updatedAt?: number;
+  /** Progress percentage (0-100) */
+  progress?: number;
 }
 
 /**
@@ -71,6 +83,24 @@ export interface PortalInfo {
   threatRating: number;
   /** Last scouted */
   lastScouted: number;
+  /** Is portal stable/reliable */
+  isStable: boolean;
+  /** Number of successful traversals */
+  traversalCount?: number;
+}
+
+/**
+ * CPU allocation history entry
+ */
+export interface CpuAllocationHistory {
+  /** Game tick */
+  tick: number;
+  /** CPU limit at this time */
+  cpuLimit: number;
+  /** CPU used at this time */
+  cpuUsed: number;
+  /** Bucket level at this time */
+  bucketLevel: number;
 }
 
 /**
@@ -87,6 +117,10 @@ export interface ShardState {
   activeTasks: string[];
   /** Known portals */
   portals: PortalInfo[];
+  /** CPU allocation history (last 10 entries) */
+  cpuHistory?: CpuAllocationHistory[];
+  /** Current CPU limit */
+  cpuLimit?: number;
 }
 
 /**
@@ -146,6 +180,8 @@ export function createDefaultShardState(name: string): ShardState {
     role: "core",
     health: {
       cpuCategory: "low",
+      cpuUsage: 0,
+      bucketLevel: 10000,
       economyIndex: 50,
       warIndex: 0,
       commodityIndex: 0,
@@ -155,7 +191,9 @@ export function createDefaultShardState(name: string): ShardState {
       lastUpdate: 0
     },
     activeTasks: [],
-    portals: []
+    portals: [],
+    cpuHistory: [],
+    cpuLimit: 0
   };
 }
 
@@ -186,6 +224,8 @@ export function serializeInterShardMemory(memory: InterShardMemorySchema): strin
       r: state.role[0], // First letter of role
       h: {
         c: state.health.cpuCategory[0],
+        cu: Math.round(state.health.cpuUsage * 100) / 100,
+        b: state.health.bucketLevel,
         e: Math.round(state.health.economyIndex),
         w: Math.round(state.health.warIndex),
         m: Math.round(state.health.commodityIndex),
@@ -200,7 +240,16 @@ export function serializeInterShardMemory(memory: InterShardMemorySchema): strin
         sp: `${p.sourcePos.x},${p.sourcePos.y}`,
         ts: p.targetShard,
         tr: p.targetRoom,
-        th: p.threatRating
+        th: p.threatRating,
+        s: p.isStable ? 1 : 0,
+        tc: p.traversalCount ?? 0
+      })),
+      cl: state.cpuLimit,
+      ch: (state.cpuHistory ?? []).slice(-5).map(h => ({
+        t: h.tick,
+        l: h.cpuLimit,
+        u: Math.round(h.cpuUsed * 100) / 100,
+        b: h.bucketLevel
       }))
     })),
     g: {
@@ -215,8 +264,11 @@ export function serializeInterShardMemory(memory: InterShardMemorySchema): strin
       ss: t.sourceShard,
       ts: t.targetShard,
       tr: t.targetRoom,
+      rt: t.resourceType,
+      ra: t.resourceAmount,
       p: t.priority,
-      st: t.status[0]
+      st: t.status[0],
+      pr: t.progress
     })),
     ls: memory.lastSync
   };
@@ -282,9 +334,11 @@ export function deserializeInterShardMemory(data: string): InterShardMemorySchem
     const shardsData = compact.s as {
       n: string;
       r: string;
-      h: { c: string; e: number; w: number; m: number; rc: number; rl: number; cc: number; u: number };
+      h: { c: string; cu: number; b: number; e: number; w: number; m: number; rc: number; rl: number; cc: number; u: number };
       t: string[];
-      p: { sr: string; sp: string; ts: string; tr: string; th: number }[];
+      p: { sr: string; sp: string; ts: string; tr: string; th: number; s: number; tc: number }[];
+      cl?: number;
+      ch?: { t: number; l: number; u: number; b: number }[];
     }[];
 
     for (const s of shardsData) {
@@ -293,6 +347,8 @@ export function deserializeInterShardMemory(data: string): InterShardMemorySchem
         role: roleMap[s.r] ?? "core",
         health: {
           cpuCategory: cpuMap[s.h.c] ?? "low",
+          cpuUsage: s.h.cu ?? 0,
+          bucketLevel: s.h.b ?? 10000,
           economyIndex: s.h.e,
           warIndex: s.h.w,
           commodityIndex: s.h.m,
@@ -310,9 +366,18 @@ export function deserializeInterShardMemory(data: string): InterShardMemorySchem
             targetShard: p.ts,
             targetRoom: p.tr,
             threatRating: p.th,
-            lastScouted: 0
+            lastScouted: 0,
+            isStable: p.s === 1,
+            traversalCount: p.tc ?? 0
           };
-        })
+        }),
+        cpuLimit: s.cl,
+        cpuHistory: (s.ch ?? []).map(h => ({
+          tick: h.t,
+          cpuLimit: h.l,
+          cpuUsed: h.u,
+          bucketLevel: h.b
+        }))
       };
     }
 
@@ -323,8 +388,11 @@ export function deserializeInterShardMemory(data: string): InterShardMemorySchem
       ss: string;
       ts: string;
       tr?: string;
+      rt?: ResourceConstant;
+      ra?: number;
       p: number;
       st: string;
+      pr?: number;
     }[];
 
     const globalTargets: GlobalStrategicTargets = {
@@ -357,6 +425,15 @@ export function deserializeInterShardMemory(data: string): InterShardMemorySchem
         };
         if (t.tr) {
           task.targetRoom = t.tr;
+        }
+        if (t.rt) {
+          task.resourceType = t.rt;
+        }
+        if (t.ra !== undefined) {
+          task.resourceAmount = t.ra;
+        }
+        if (t.pr !== undefined) {
+          task.progress = t.pr;
         }
         return task;
       }),

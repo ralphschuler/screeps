@@ -181,6 +181,8 @@ export class ShardManager {
     // Update health metrics
     shardState.health = {
       cpuCategory,
+      cpuUsage: Math.round(cpuUsage * 100) / 100,
+      bucketLevel: Game.cpu.bucket,
       economyIndex: Math.round(economyIndex),
       warIndex: Math.round(warIndex),
       commodityIndex: 0, // TODO: Calculate based on factory production
@@ -189,6 +191,22 @@ export class ShardManager {
       creepCount: Object.keys(Game.creeps).length,
       lastUpdate: Game.time
     };
+
+    // Update CPU history (keep last 10 entries)
+    const cpuHistory = shardState.cpuHistory ?? [];
+    cpuHistory.push({
+      tick: Game.time,
+      cpuLimit: Game.cpu.limit,
+      cpuUsed: Game.cpu.getUsed(),
+      bucketLevel: Game.cpu.bucket
+    });
+    // Keep only last 10 entries
+    shardState.cpuHistory = cpuHistory.slice(-10);
+
+    // Update current CPU limit
+    if (Game.cpu.shardLimits) {
+      shardState.cpuLimit = Game.cpu.shardLimits[currentShard];
+    }
   }
 
   /**
@@ -295,14 +313,24 @@ export class ShardManager {
             p => p.sourceRoom === roomName && p.targetShard === targetShard
           );
 
-          if (!existing) {
+          if (existing) {
+            // Update existing portal
+            existing.lastScouted = Game.time;
+            // Determine stability: portals without decay tick are stable
+            existing.isStable = portal.ticksToDecay === undefined;
+            if (portal.ticksToDecay !== undefined) {
+              existing.decayTick = Game.time + portal.ticksToDecay;
+            }
+          } else {
             const portalInfo: PortalInfo = {
               sourceRoom: roomName,
               sourcePos: { x: portal.pos.x, y: portal.pos.y },
               targetShard,
               targetRoom,
               threatRating: 0,
-              lastScouted: Game.time
+              lastScouted: Game.time,
+              isStable: portal.ticksToDecay === undefined,
+              traversalCount: 0
             };
 
             // Check for decay tick on unstable portals
@@ -333,22 +361,50 @@ export class ShardManager {
     const shardState = this.interShardMemory.shards[currentShard];
     if (!shardState) return;
 
-    // Only auto-assign if role is default "core"
-    if (shardState.role !== "core") return;
-
     const health = shardState.health;
+    const allShards = Object.values(this.interShardMemory.shards);
 
-    // Determine role based on metrics
-    let newRole: ShardRole = "core";
+    // Determine role based on metrics with improved logic
+    let newRole: ShardRole = shardState.role;
 
+    // War role: high war index or under active attack
     if (health.warIndex > 50) {
       newRole = "war";
-    } else if (health.roomCount < 3 && health.avgRCL < 4) {
+    }
+    // Frontier role: low room count and low RCL, actively expanding
+    else if (health.roomCount < 3 && health.avgRCL < 4) {
       newRole = "frontier";
-    } else if (health.economyIndex > 70 && health.roomCount >= 3) {
+    }
+    // Resource role: strong economy, multiple mature rooms
+    else if (health.economyIndex > 70 && health.roomCount >= 3 && health.avgRCL >= 6) {
       newRole = "resource";
-    } else if (Object.keys(this.interShardMemory.shards).length > 1 && health.roomCount < 2) {
+    }
+    // Backup role: minimal presence, used for redundancy
+    else if (allShards.length > 1 && health.roomCount < 2 && health.avgRCL < 3) {
       newRole = "backup";
+    }
+    // Core role: stable, growing empire
+    else if (health.roomCount >= 2 && health.avgRCL >= 4) {
+      newRole = "core";
+    }
+
+    // Additional logic: transition from frontier to core when established
+    if (shardState.role === "frontier" && health.roomCount >= 3 && health.avgRCL >= 5) {
+      newRole = "core";
+      logger.info("Transitioning from frontier to core shard", { subsystem: "Shard" });
+    }
+
+    // Transition from war back to previous role when war index drops
+    if (shardState.role === "war" && health.warIndex < 20) {
+      // Determine best role based on current state
+      if (health.economyIndex > 70 && health.roomCount >= 3) {
+        newRole = "resource";
+      } else if (health.roomCount >= 2) {
+        newRole = "core";
+      } else {
+        newRole = "frontier";
+      }
+      logger.info(`War ended, transitioning to ${newRole}`, { subsystem: "Shard" });
     }
 
     if (newRole !== shardState.role) {
@@ -358,7 +414,59 @@ export class ShardManager {
   }
 
   /**
-   * Distribute CPU limits across shards based on roles
+   * Calculate CPU efficiency for a shard based on its history
+   */
+  private calculateCpuEfficiency(shard: ShardState): number {
+    if (!shard.cpuHistory || shard.cpuHistory.length === 0) return 1.0;
+
+    // Calculate average CPU usage efficiency
+    let totalEfficiency = 0;
+    for (const entry of shard.cpuHistory) {
+      if (entry.cpuLimit > 0) {
+        totalEfficiency += entry.cpuUsed / entry.cpuLimit;
+      }
+    }
+    return totalEfficiency / shard.cpuHistory.length;
+  }
+
+  /**
+   * Calculate weight for a shard based on role, load, and efficiency
+   */
+  private calculateShardWeight(
+    shard: ShardState,
+    shardName: string,
+    currentShard: string
+  ): number {
+    let weight = ROLE_CPU_WEIGHTS[shard.role];
+
+    // Adjust weight based on bucket level
+    const bucketLevel = shardName === currentShard ? Game.cpu.bucket : shard.health.bucketLevel;
+    if (bucketLevel < 2000) {
+      weight *= 0.8; // Reduce allocation if bucket is critically low
+    } else if (bucketLevel < 5000) {
+      weight *= 0.9; // Slightly reduce allocation if bucket is low
+    } else if (bucketLevel > 9000) {
+      weight *= 1.1; // Increase allocation if bucket is very high
+    }
+
+    // Adjust based on CPU efficiency (high usage = needs more)
+    const efficiency = this.calculateCpuEfficiency(shard);
+    if (efficiency > 0.95) {
+      weight *= 1.15; // Shard is using almost all CPU, likely needs more
+    } else if (efficiency < 0.6) {
+      weight *= 0.85; // Shard is underutilizing CPU
+    }
+
+    // War shards with high war index get priority
+    if (shard.role === "war" && shard.health.warIndex > 50) {
+      weight *= 1.2;
+    }
+
+    return weight;
+  }
+
+  /**
+   * Distribute CPU limits across shards based on roles and load
    */
   private distributeCpuLimits(): void {
     try {
@@ -368,22 +476,26 @@ export class ShardManager {
         ? Object.values(Game.cpu.shardLimits).reduce((sum, cpu) => sum + cpu, 0)
         : this.config.defaultCpuLimit * shardNames.length;
 
-      // Calculate weighted distribution
+      const currentShard = Game.shard?.name ?? "shard0";
+
+      // Calculate weighted distribution with dynamic adjustments
+      const weights: Record<string, number> = {};
       let totalWeight = 0;
+
       for (const name of shardNames) {
         const shard = shards[name];
-        if (shard) {
-          totalWeight += ROLE_CPU_WEIGHTS[shard.role];
-        }
+        if (!shard) continue;
+
+        const weight = this.calculateShardWeight(shard, name, currentShard);
+        weights[name] = weight;
+        totalWeight += weight;
       }
 
       // Build new limits
       const newLimits: { [shard: string]: number } = {};
       for (const name of shardNames) {
-        const shard = shards[name];
-        if (shard) {
-          const weight = ROLE_CPU_WEIGHTS[shard.role];
-          newLimits[name] = Math.max(5, Math.round((weight / totalWeight) * totalCpu));
+        if (weights[name]) {
+          newLimits[name] = Math.max(5, Math.round((weights[name] / totalWeight) * totalCpu));
         }
       }
 
@@ -391,7 +503,7 @@ export class ShardManager {
       if (Game.cpu.shardLimits) {
         const currentLimits = Game.cpu.shardLimits;
         const needsUpdate = shardNames.some(
-          name => (currentLimits[name] ?? 0) !== (newLimits[name] ?? 0)
+          name => Math.abs((currentLimits[name] ?? 0) - (newLimits[name] ?? 0)) > 1
         );
 
         if (needsUpdate) {
@@ -536,6 +648,150 @@ export class ShardManager {
     if (shardState) {
       shardState.role = role;
       logger.info(`Set shard role to: ${role}`, { subsystem: "Shard" });
+    }
+  }
+
+  /**
+   * Create a cross-shard resource transfer task
+   */
+  public createResourceTransferTask(
+    targetShard: string,
+    targetRoom: string,
+    resourceType: ResourceConstant,
+    amount: number,
+    priority = 50
+  ): void {
+    const currentShard = Game.shard?.name ?? "shard0";
+
+    const task: InterShardTask = {
+      id: `${Game.time}-transfer-${Math.random().toString(36).substring(2, 11)}`,
+      type: "transfer",
+      sourceShard: currentShard,
+      targetShard,
+      targetRoom,
+      resourceType,
+      resourceAmount: amount,
+      priority,
+      status: "pending",
+      createdAt: Game.time,
+      progress: 0
+    };
+
+    this.interShardMemory.tasks.push(task);
+    logger.info(
+      `Created resource transfer task: ${amount} ${resourceType} to ${targetShard}/${targetRoom}`,
+      { subsystem: "Shard" }
+    );
+  }
+
+  /**
+   * Get optimal portal route to target shard
+   * Returns the best portal based on stability, distance, and threat rating
+   */
+  public getOptimalPortalRoute(targetShard: string, fromRoom?: string): PortalInfo | null {
+    const currentShard = Game.shard?.name ?? "shard0";
+    const shardState = this.interShardMemory.shards[currentShard];
+    if (!shardState) return null;
+
+    const portalsToTarget = shardState.portals.filter(p => p.targetShard === targetShard);
+    if (portalsToTarget.length === 0) return null;
+
+    // Score portals based on multiple factors
+    const scoredPortals = portalsToTarget.map(portal => {
+      let score = 100;
+
+      // Stability is most important
+      if (portal.isStable) {
+        score += 50;
+      }
+
+      // Low threat is good
+      score -= portal.threatRating * 15;
+
+      // Higher traversal count indicates reliability
+      score += Math.min((portal.traversalCount ?? 0) * 2, 20);
+
+      // Distance factor if source room is specified
+      if (fromRoom) {
+        const distance = Game.map.getRoomLinearDistance(fromRoom, portal.sourceRoom);
+        score -= distance * 2;
+      }
+
+      // Recent scouting is better
+      const ticksSinceScout = Game.time - portal.lastScouted;
+      if (ticksSinceScout < 1000) {
+        score += 10;
+      } else if (ticksSinceScout > 5000) {
+        score -= 10;
+      }
+
+      return { portal, score };
+    });
+
+    // Sort by score descending and return best
+    scoredPortals.sort((a, b) => b.score - a.score);
+    return scoredPortals[0]?.portal ?? null;
+  }
+
+  /**
+   * Track portal traversal for reliability metrics
+   */
+  public recordPortalTraversal(sourceRoom: string, targetShard: string, success: boolean): void {
+    const currentShard = Game.shard?.name ?? "shard0";
+    const shardState = this.interShardMemory.shards[currentShard];
+    if (!shardState) return;
+
+    const portal = shardState.portals.find(
+      p => p.sourceRoom === sourceRoom && p.targetShard === targetShard
+    );
+
+    if (portal) {
+      if (success) {
+        portal.traversalCount = (portal.traversalCount ?? 0) + 1;
+        // Successful traversals reduce threat rating slightly
+        portal.threatRating = Math.max(0, portal.threatRating - 0.1);
+      } else {
+        // Failed traversals increase threat rating
+        portal.threatRating = Math.min(3, portal.threatRating + 0.5);
+      }
+    }
+  }
+
+  /**
+   * Update task progress
+   */
+  public updateTaskProgress(taskId: string, progress: number, status?: InterShardTask["status"]): void {
+    const task = this.interShardMemory.tasks.find(t => t.id === taskId);
+    if (task) {
+      task.progress = Math.min(100, Math.max(0, progress));
+      task.updatedAt = Game.time;
+      if (status) {
+        task.status = status;
+      }
+    }
+  }
+
+  /**
+   * Get active resource transfer tasks for this shard
+   */
+  public getActiveTransferTasks(): InterShardTask[] {
+    const currentShard = Game.shard?.name ?? "shard0";
+    return this.interShardMemory.tasks.filter(
+      t => t.type === "transfer" && 
+           (t.sourceShard === currentShard || t.targetShard === currentShard) &&
+           (t.status === "pending" || t.status === "active")
+    );
+  }
+
+  /**
+   * Cancel a task
+   */
+  public cancelTask(taskId: string): void {
+    const task = this.interShardMemory.tasks.find(t => t.id === taskId);
+    if (task) {
+      task.status = "failed";
+      task.updatedAt = Game.time;
+      logger.info(`Cancelled task ${taskId}`, { subsystem: "Shard" });
     }
   }
 }
