@@ -425,7 +425,26 @@ export function upgrader(ctx: CreepContext): CreepAction {
 
   // OPTIMIZATION: Find closest energy source ONCE and cache for long time (30 ticks)
   // Upgraders are stationary, so their energy source rarely changes
-  // Priority: storage > containers near controller > any container
+  // Priority: links near controller > containers near controller > storage > any container
+  
+  // Check for links near controller first (most efficient energy source)
+  // Links are filled automatically by LinkManager from source links
+  const controller = ctx.room.controller;
+  if (controller) {
+    const nearbyLinks = controller.pos.findInRange(FIND_MY_STRUCTURES, 2, {
+      filter: s => 
+        s.structureType === STRUCTURE_LINK &&
+        (s as StructureLink).store.getUsedCapacity(RESOURCE_ENERGY) > 50
+    }) as StructureLink[];
+    
+    if (nearbyLinks.length > 0) {
+      // Prefer link with most energy
+      const bestLink = nearbyLinks.reduce((a, b) => 
+        a.store.getUsedCapacity(RESOURCE_ENERGY) > b.store.getUsedCapacity(RESOURCE_ENERGY) ? a : b
+      );
+      return { type: "withdraw", target: bestLink, resourceType: RESOURCE_ENERGY };
+    }
+  }
   
   // OPTIMIZATION: Cache nearby container search per creep
   // Upgraders are stationary so this rarely changes (30 tick cache)
