@@ -121,7 +121,7 @@ export class FactoryManager {
   private processFactory(room: Room): void {
     const factories = room.find(FIND_MY_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_FACTORY
-    }) ;
+    }) as StructureFactory[];
     
     if (factories.length === 0) return;
     const factory = factories[0];

@@ -245,7 +245,7 @@ export function getEmergencyRampartRepairs(
 
   const ramparts = room.find(FIND_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_RAMPART && s.hits < emergencyThreshold
-  }) ;
+  }) as StructureRampart[];
 
   // Sort by hits (lowest first)
   ramparts.sort((a, b) => a.hits - b.hits);
