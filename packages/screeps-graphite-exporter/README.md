@@ -93,27 +93,23 @@ The exporter automatically extracts meaningful tags from metric keys:
 
 ### Console log format
 
-**JSON format (recommended):**
-Console mode expects JSON lines in the format:
+**JSON stats object format (current):**
+The bot outputs the entire `Memory.stats` object as a single JSON line per tick:
 ```json
-{"type": "stat", "key": "stats.cpu.used", "value": 15.5}
-{"type": "stat", "key": "stats.empire.rooms", "value": 3, "unit": "rooms"}
+{"type":"stats","data":{"tick":12345,"cpu":{"used":15.5,"limit":20,"bucket":9847},"empire":{"rooms":3,"creeps":42},"rooms":{"W1N1":{"rcl":5}}}}
 ```
 
-The exporter parses lines where:
-- `type` equals `"stat"`
-- `key` is the metric name (e.g., `"stats.cpu.used"`)
-- `value` is a numeric value
-- `unit` is optional and used as the range tag
+The exporter:
+1. Parses the JSON line
+2. Checks if `type === "stats"` and `data` exists
+3. Flattens the nested `data` object (e.g., `cpu.used`, `room.W1N1.rcl`)
+4. Sends all metrics to Grafana Cloud Graphite
 
-**Legacy text format:**
-Also supported for backward compatibility:
-```
-stats:cpu 12.3 10s
-stats:bucket 9500 tick
-```
+This is the same flattening process used in memory mode, but with real-time data from console.
 
-The exporter treats the first token as the stat name, the second as a numeric value, and the optional third token as the range label.
+**Legacy formats (backward compatibility):**
+- Single-stat JSON: `{"type": "stat", "key": "stats.cpu.used", "value": 15.5}`
+- Text format: `stats:cpu 12.3 10s`
 
 ### Metric structure
 Metrics are written to Grafana Cloud Graphite using the JSON format:

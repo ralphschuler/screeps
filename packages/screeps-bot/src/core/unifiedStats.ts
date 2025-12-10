@@ -369,11 +369,11 @@ export class UnifiedStatsManager {
     this.currentSnapshot.tick = Game.time;
     this.currentSnapshot.timestamp = Date.now();
 
+    // Publish to Memory.stats first (console output reads from this)
+    this.publishToMemory();
+
     // Publish to console for graphite exporter to parse
     this.publishToConsole();
-
-    // Publish to Memory.stats in InfluxDB-friendly format (for backward compatibility)
-    this.publishToMemory();
 
     // Update memory segment periodically
     if (Game.time - this.lastSegmentUpdate >= this.config.segmentUpdateInterval) {
@@ -856,140 +856,21 @@ export class UnifiedStatsManager {
 
   /**
    * Output stats to console in JSON format for graphite exporter
-   * Uses the JSON format: {"type": "stat", "key": "metric.name", "value": 123, "unit": "optional"}
+   * Outputs the entire Memory.stats object as a single JSON object
    */
   private publishToConsole(): void {
-    const snap = this.currentSnapshot;
-
-    // Helper to output a stat line
-    const outputStat = (key: string, value: number, unit?: string): void => {
-      const stat = {
-        type: "stat",
-        key,
-        value,
-        ...(unit && { unit })
+    // Get the Memory.stats object that was just created by publishToMemory()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mem = Memory as unknown as Record<string, any>;
+    
+    if (mem.stats && typeof mem.stats === "object") {
+      // Output as a single JSON object with type "stats"
+      const statsOutput = {
+        type: "stats",
+        data: mem.stats
       };
-      console.log(JSON.stringify(stat));
-    };
-
-    // CPU stats
-    outputStat("stats.cpu.used", snap.cpu.used);
-    outputStat("stats.cpu.limit", snap.cpu.limit);
-    outputStat("stats.cpu.bucket", snap.cpu.bucket);
-    outputStat("stats.cpu.percent", snap.cpu.percent);
-    outputStat("stats.cpu.heap_mb", snap.cpu.heapUsed);
-
-    // GCL/GPL stats
-    outputStat("stats.gcl.level", snap.progression.gcl.level);
-    outputStat("stats.gcl.progress", snap.progression.gcl.progress);
-    outputStat("stats.gcl.progress_total", snap.progression.gcl.progressTotal);
-    outputStat("stats.gcl.progress_percent", snap.progression.gcl.progressPercent);
-    outputStat("stats.gpl.level", snap.progression.gpl.level);
-
-    // Empire stats
-    outputStat("stats.empire.rooms", snap.empire.rooms);
-    outputStat("stats.empire.creeps", snap.empire.creeps);
-    outputStat("stats.empire.energy.storage", snap.empire.energy.storage);
-    outputStat("stats.empire.energy.terminal", snap.empire.energy.terminal);
-    outputStat("stats.empire.energy.available", snap.empire.energy.available);
-    outputStat("stats.empire.energy.capacity", snap.empire.energy.capacity);
-    outputStat("stats.empire.credits", snap.empire.credits);
-
-    // Room stats
-    for (const [roomName, room] of Object.entries(snap.rooms)) {
-      const prefix = `stats.room.${roomName}`;
-      
-      outputStat(`${prefix}.rcl`, room.rcl);
-      outputStat(`${prefix}.energy.available`, room.energy.available);
-      outputStat(`${prefix}.energy.capacity`, room.energy.capacity);
-      outputStat(`${prefix}.energy.storage`, room.energy.storage);
-      outputStat(`${prefix}.energy.terminal`, room.energy.terminal);
-      outputStat(`${prefix}.controller.progress`, room.controller.progress);
-      outputStat(`${prefix}.controller.progress_total`, room.controller.progressTotal);
-      outputStat(`${prefix}.controller.progress_percent`, room.controller.progressPercent);
-      outputStat(`${prefix}.creeps`, room.creeps);
-      outputStat(`${prefix}.hostiles`, room.hostiles);
-      outputStat(`${prefix}.brain.danger`, room.brain.danger);
-      outputStat(`${prefix}.brain.posture_code`, room.brain.postureCode);
-      outputStat(`${prefix}.brain.colony_level_code`, room.brain.colonyLevelCode);
-      
-      // Pheromones
-      for (const [pheromone, value] of Object.entries(room.pheromones)) {
-        outputStat(`${prefix}.pheromones.${pheromone}`, value);
-      }
-      
-      // Metrics
-      outputStat(`${prefix}.metrics.energy.harvested`, room.metrics.energyHarvested);
-      outputStat(`${prefix}.metrics.energy.spawning`, room.metrics.energySpawning);
-      outputStat(`${prefix}.metrics.energy.construction`, room.metrics.energyConstruction);
-      outputStat(`${prefix}.metrics.energy.repair`, room.metrics.energyRepair);
-      outputStat(`${prefix}.metrics.energy.tower`, room.metrics.energyTower);
-      outputStat(`${prefix}.metrics.energy.available_for_sharing`, room.metrics.energyAvailableForSharing);
-      outputStat(`${prefix}.metrics.energy.capacity_total`, room.metrics.energyCapacityTotal);
-      outputStat(`${prefix}.metrics.energy.need`, room.metrics.energyNeed);
-      outputStat(`${prefix}.metrics.controller_progress`, room.metrics.controllerProgress);
-      outputStat(`${prefix}.metrics.hostile_count`, room.metrics.hostileCount);
-      outputStat(`${prefix}.metrics.damage_received`, room.metrics.damageReceived);
-      outputStat(`${prefix}.metrics.construction_sites`, room.metrics.constructionSites);
-      
-      // Profiler
-      outputStat(`${prefix}.profiler.avg_cpu`, room.profiler.avgCpu);
-      outputStat(`${prefix}.profiler.peak_cpu`, room.profiler.peakCpu);
-      outputStat(`${prefix}.profiler.samples`, room.profiler.samples);
+      console.log(JSON.stringify(statsOutput));
     }
-
-    // Subsystem stats
-    for (const [name, subsys] of Object.entries(snap.subsystems)) {
-      const prefix = `stats.subsystem.${name}`;
-      outputStat(`${prefix}.avg_cpu`, subsys.avgCpu);
-      outputStat(`${prefix}.peak_cpu`, subsys.peakCpu);
-      outputStat(`${prefix}.calls`, subsys.calls);
-      outputStat(`${prefix}.samples`, subsys.samples);
-    }
-
-    // Role stats
-    for (const [name, role] of Object.entries(snap.roles)) {
-      const prefix = `stats.role.${name}`;
-      outputStat(`${prefix}.count`, role.count);
-      outputStat(`${prefix}.avg_cpu`, role.avgCpu);
-      outputStat(`${prefix}.peak_cpu`, role.peakCpu);
-      outputStat(`${prefix}.calls`, role.calls);
-      outputStat(`${prefix}.samples`, role.samples);
-      outputStat(`${prefix}.spawning_count`, role.spawningCount);
-      outputStat(`${prefix}.idle_count`, role.idleCount);
-      outputStat(`${prefix}.active_count`, role.activeCount);
-      outputStat(`${prefix}.avg_ticks_to_live`, role.avgTicksToLive);
-      outputStat(`${prefix}.total_body_parts`, role.totalBodyParts);
-    }
-
-    // Native call stats
-    outputStat("stats.native.pathfinder_search", snap.native.pathfinderSearch);
-    outputStat("stats.native.move_to", snap.native.moveTo);
-    outputStat("stats.native.move", snap.native.move);
-    outputStat("stats.native.harvest", snap.native.harvest);
-    outputStat("stats.native.transfer", snap.native.transfer);
-    outputStat("stats.native.withdraw", snap.native.withdraw);
-    outputStat("stats.native.build", snap.native.build);
-    outputStat("stats.native.repair", snap.native.repair);
-    outputStat("stats.native.upgrade_controller", snap.native.upgradeController);
-    outputStat("stats.native.attack", snap.native.attack);
-    outputStat("stats.native.ranged_attack", snap.native.rangedAttack);
-    outputStat("stats.native.heal", snap.native.heal);
-    outputStat("stats.native.dismantle", snap.native.dismantle);
-    outputStat("stats.native.say", snap.native.say);
-    outputStat("stats.native.total", snap.native.total);
-
-    // Process stats - only output summary metrics to avoid too much console spam
-    const processCpuTotal = Object.values(snap.processes).reduce((sum, p) => sum + p.avgCpu, 0);
-    const processCount = Object.keys(snap.processes).length;
-    outputStat("stats.processes.total_count", processCount);
-    outputStat("stats.processes.total_avg_cpu", processCpuTotal);
-
-    // Creep stats - only output summary metrics to avoid too much console spam
-    const creepCount = Object.keys(snap.creeps).length;
-    const creepCpuTotal = Object.values(snap.creeps).reduce((sum, c) => sum + c.cpu, 0);
-    outputStat("stats.creeps.total_count", creepCount);
-    outputStat("stats.creeps.total_cpu", creepCpuTotal);
   }
 
   /**

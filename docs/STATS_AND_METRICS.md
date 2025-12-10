@@ -18,16 +18,22 @@ The stats system is implemented in `src/core/unifiedStats.ts` and provides:
 The system supports two export modes:
 
 ### 1. Console Output (Primary Method)
-Stats are output to console as JSON objects in the format:
+Stats are output to console as a single JSON object per tick containing the entire `Memory.stats` structure:
 ```json
-{"type": "stat", "key": "stats.cpu.used", "value": 15.5}
+{"type":"stats","data":{"tick":12345,"cpu":{"used":15.5},"empire":{"rooms":3}}}
 ```
 
-This format is parsed by the graphite exporter's console listener, which subscribes to the Screeps console stream. This is the recommended method as it:
-- Provides real-time stats updates
+The graphite exporter's console listener subscribes to the Screeps console stream and:
+1. Parses the JSON object
+2. Flattens the nested structure (same as memory mode)
+3. Sends metrics to Grafana Cloud in real-time
+
+This is the recommended method as it:
+- Provides real-time stats updates (every tick)
 - Doesn't require polling the Screeps API
-- Respects API rate limits
-- Has lower latency
+- Respects API rate limits (no polling overhead)
+- Has lower latency (<1 second vs polling interval)
+- Uses the same flattening logic as memory mode
 
 ### 2. Memory Polling (Backward Compatibility)
 Stats are also written to `Memory.stats` in a nested object structure. The graphite exporter can poll this via the Screeps API, but this method:
