@@ -21,7 +21,7 @@ import { runMilitaryRole } from "../roles/military";
 import { runPowerCreepRole } from "../roles/power";
 import { runUtilityRole } from "../roles/utility";
 import { canSkipBehaviorEvaluation, executeIdleAction } from "../utils/idleDetection";
-import { profiler } from "./profiler";
+import { unifiedStats } from "./unifiedStats";
 
 /**
  * Role priorities - higher values = run first
@@ -100,7 +100,7 @@ function executeCreepRole(creep: Creep): void {
   const roleName = memory.role;
 
   // Profile per-role CPU usage for optimization insights
-  profiler.measureSubsystem(`role:${roleName}`, () => {
+  unifiedStats.measureSubsystem(`role:${roleName}`, () => {
     switch (family) {
       case "economy":
         runEconomyRole(creep);

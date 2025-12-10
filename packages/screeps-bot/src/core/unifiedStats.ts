@@ -174,7 +174,8 @@ export interface SubsystemStatsEntry {
 }
 
 /**
- * Per-role profiling stats
+ * Per-role profiling stats with additional metrics including spawn status,
+ * activity state (idle/active), average ticks to live, and body composition
  */
 export interface RoleStatsEntry {
   name: string;
@@ -183,6 +184,11 @@ export interface RoleStatsEntry {
   peakCpu: number;
   calls: number;
   samples: number;
+  spawningCount: number;
+  idleCount: number;
+  activeCount: number;
+  avgTicksToLive: number;
+  totalBodyParts: number;
 }
 
 /**
@@ -721,11 +727,41 @@ export class UnifiedStatsManager {
       const cleanName = isRole ? name.substring(5) : name;
 
       if (isRole) {
-        // Role stats
-        const roleCount = Object.values(Game.creeps).filter(c => {
+        // Role stats with enhanced metrics
+        const roleCreeps = Object.values(Game.creeps).filter(c => {
           const mem = c.memory as unknown as { role: string };
           return mem.role === cleanName;
-        }).length;
+        });
+        
+        const roleCount = roleCreeps.length;
+        
+        // Calculate enhanced metrics
+        let spawningCount = 0;
+        let idleCount = 0;
+        let activeCount = 0;
+        let totalTTL = 0;
+        let totalBodyParts = 0;
+        
+        for (const creep of roleCreeps) {
+          const creepMemory = creep.memory as unknown as { 
+            role?: string; 
+            state?: { action?: string }; 
+            working?: boolean 
+          };
+          const action = creepMemory.state?.action ?? "idle";
+          const isWorking = creepMemory.working ?? (action !== "idle");
+          
+          totalBodyParts += creep.body.length;
+          totalTTL += creep.ticksToLive ?? 0;
+          
+          if (creep.spawning) {
+            spawningCount++;
+          } else if (!isWorking || action === "idle") {
+            idleCount++;
+          } else {
+            activeCount++;
+          }
+        }
 
         const existing = profilerMem.roles?.[cleanName];
         const avgCpu = existing
@@ -739,7 +775,12 @@ export class UnifiedStatsManager {
           avgCpu,
           peakCpu,
           calls: measurements.length,
-          samples: (existing?.samples ?? 0) + 1
+          samples: (existing?.samples ?? 0) + 1,
+          spawningCount,
+          idleCount,
+          activeCount,
+          avgTicksToLive: roleCount > 0 ? totalTTL / roleCount : 0,
+          totalBodyParts
         };
 
         // Update profiler memory
@@ -929,14 +970,19 @@ export class UnifiedStatsManager {
       };
     }
 
-    // Role stats
+    // Role stats (enhanced)
     for (const [name, role] of Object.entries(snap.roles)) {
       mem.stats.roles[name] = {
         count: role.count,
         avg_cpu: role.avgCpu,
         peak_cpu: role.peakCpu,
         calls: role.calls,
-        samples: role.samples
+        samples: role.samples,
+        spawning_count: role.spawningCount,
+        idle_count: role.idleCount,
+        active_count: role.activeCount,
+        avg_ticks_to_live: role.avgTicksToLive,
+        total_body_parts: role.totalBodyParts
       };
     }
 

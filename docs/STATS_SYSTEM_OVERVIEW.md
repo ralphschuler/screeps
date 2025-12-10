@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The Screeps bot now features a comprehensive unified statistics system that tracks all aspects of bot performance and behavior. This document provides a high-level overview of the system.
+The Screeps bot features a **unified statistics system** (`unifiedStats`) that consolidates all performance tracking, metrics collection, and profiling into a single cohesive system. This replaced the previous dual-system approach (profiler + statsManager).
 
 ## Architecture
 
@@ -10,21 +10,22 @@ The Screeps bot now features a comprehensive unified statistics system that trac
 ┌─────────────────────────────────────────────────────────────┐
 │                     Memory.stats Root                        │
 │                  (Unified Stats Storage)                     │
+│                    Nested Object Format                      │
 └─────────────────────────────────────────────────────────────┘
                               │
-                ┌─────────────┼─────────────┐
-                │             │             │
-        ┌───────▼──────┐ ┌───▼────┐ ┌─────▼─────┐
-        │   StatsRoot  │ │Profiler│ │  Influx   │
-        │  (Structured)│ │(Legacy)│ │ Exporter  │
-        └──────────────┘ └────────┘ └───────────┘
+                ┌─────────────┴─────────────┐
+                │                           │
+        ┌───────▼──────┐            ┌──────▼────────┐
+        │ UnifiedStats │            │   Graphite    │
+        │   Manager    │───────────▶│   Exporter    │
+        └──────────────┘            └───────────────┘
                 │
-    ┌───────────┼───────────┬──────────┬──────────┐
-    │           │           │          │          │
-┌───▼───┐  ┌───▼────┐  ┌──▼───┐  ┌───▼───┐  ┌──▼────┐
-│Empire │  │ Rooms  │  │Roles │  │Subsys │  │Native │
-│ Stats │  │ Stats  │  │Stats │  │ Stats │  │Calls  │
-└───────┘  └────────┘  └──────┘  └───────┘  └───────┘
+    ┌───────────┼───────────┬──────────┬──────────┬──────────┐
+    │           │           │          │          │          │
+┌───▼───┐  ┌───▼────┐  ┌──▼───┐  ┌───▼───┐  ┌──▼────┐  ┌──▼────┐
+│Empire │  │ Rooms  │  │Roles │  │Subsys │  │Native │  │Process│
+│ Stats │  │ Stats  │  │Stats │  │ Stats │  │Calls  │  │ Stats │
+└───────┘  └────────┘  └──────┘  └───────┘  └───────┘  └───────┘
                 │
         ┌───────┼────────┐
         │       │        │
@@ -35,32 +36,32 @@ The Screeps bot now features a comprehensive unified statistics system that trac
 
 ## Components
 
-### 1. StatsManager (`core/stats.ts`)
-Central manager for all statistics collection and publishing.
+### 1. UnifiedStats (`core/unifiedStats.ts`)
+**Single central manager** for all statistics collection and publishing.
 
 **Responsibilities:**
 - Collect stats from all subsystems
 - Aggregate and compute rolling averages
-- Publish flattened stats to Memory
-- Provide helper functions for stats queries
+- Publish **nested object structure** to Memory.stats
+- Track role execution via `role:` prefix
+- Collect pheromones from SwarmState
+- Track native API calls
+- Record kernel process stats
 
 **Key Methods:**
-- `recordSubsystem()` - Record subsystem CPU usage
-- `recordRole()` - Record role CPU and count
-- `recordRoom()` - Record room metrics
-- `recordPheromones()` - Record pheromone levels
+- `measureSubsystem()` - Measure CPU for any subsystem (including roles with `role:` prefix)
+- `recordRoom()` - Record room metrics (includes pheromones automatically)
 - `recordNativeCall()` - Track native API calls
-- `updateEmpireStats()` - Compute empire-wide stats
-- `finalizeTick()` - Publish all stats at end of tick
+- `collectProcessStats()` - Collect kernel process stats
+- `finalizeTick()` - Publish all stats to Memory.stats at end of tick
 
 ### 2. Profiler (`core/profiler.ts`)
-Legacy profiler integrated with new stats system.
+**Legacy module maintained for backward compatibility** with console commands.
 
-**Integration:**
-- Measures CPU for rooms, subsystems, and roles
-- Automatically forwards measurements to StatsManager
-- Maintains backward compatibility
-- Publishes both old and new format stats
+**Status:**
+- No longer used for measurements
+- All measurement calls migrated to `unifiedStats`
+- Exported from SwarmBot.ts for console command support only
 
 ### 3. Native Calls Tracker (`core/nativeCallsTracker.ts`)
 Wraps Screeps API methods to track usage.
@@ -207,82 +208,75 @@ API usage tracking:
 
 ### Enable/Disable Stats
 ```typescript
-import { statsManager } from "./core/stats";
+import { unifiedStats } from "./core/unifiedStats";
 
-statsManager.setEnabled(false); // Disable
-statsManager.setEnabled(true);  // Enable
+unifiedStats.setEnabled(false); // Disable
+unifiedStats.setEnabled(true);  // Enable (default)
 ```
 
-### Enable/Disable Native Calls Tracking
+### Configure via Constructor
 ```typescript
-import { setNativeCallsTracking } from "./core/nativeCallsTracker";
-
-setNativeCallsTracking(false); // Disable
-setNativeCallsTracking(true);  // Enable (default)
-```
-
-### Configure Smoothing Factor
-```typescript
-// In stats.ts constructor
-new StatsManager({
-  smoothingFactor: 0.1 // Higher = more weight on recent values
+// In unifiedStats.ts
+new UnifiedStatsManager({
+  enabled: true,
+  smoothingFactor: 0.1,      // Higher = more weight on recent values
+  trackNativeCalls: true,     // Track native API calls
+  logInterval: 100,           // Log summary every N ticks (0 = never)
+  segmentUpdateInterval: 10,  // Update memory segment every N ticks
+  maxHistoryPoints: 1000      // Max historical data points in segment
 });
 ```
 
-### Configure Log Interval
+## Stats Access
+
+### Memory.stats Structure (Nested Objects)
 ```typescript
-// In stats.ts constructor
-new StatsManager({
-  logInterval: 100 // Log summary every N ticks (0 = never)
-});
+// Access stats directly from Memory
+Memory.stats = {
+  tick: number,
+  timestamp: number,
+  cpu: { used, limit, bucket, percent, heap_mb },
+  gcl: { level, progress, progress_total, progress_percent },
+  gpl: { level },
+  empire: { rooms, creeps, energy, credits },
+  rooms: {
+    [roomName]: {
+      rcl, energy, controller, creeps, hostiles,
+      brain: { danger, posture_code, colony_level_code },
+      pheromones: { expand, harvest, build, upgrade, defense, war, siege, logistics, nukeTarget },
+      metrics: { ... },
+      profiler: { avg_cpu, peak_cpu, samples }
+    }
+  },
+  roles: {
+    [roleName]: { count, avg_cpu, peak_cpu, calls, samples }
+  },
+  subsystems: {
+    [subsystemName]: { avg_cpu, peak_cpu, calls, samples }
+  },
+  native: { pathfinder_search, move, harvest, ... },
+  processes: {
+    [processId]: { name, priority, state, cpu stats, ... }
+  },
+  creeps: {
+    [creepName]: { role, home_room, current_room, cpu, action, ... }
+  }
+}
 ```
 
-## Helper Functions
-
-### Query Functions
+### Programmatic Access
 ```typescript
-import { 
-  getOwnedRoomNames,
-  getTotalCreepCount,
-  getCreepCountByRole,
-  getTotalStorageEnergy,
-  getAverageRCL,
-  getRoomByMetric
-} from "./core/stats";
+import { unifiedStats } from "./core/unifiedStats";
 
-// Get owned rooms
-const rooms = getOwnedRoomNames();
-
-// Get creep counts
-const totalCreeps = getTotalCreepCount();
-const harvesters = getCreepCountByRole("harvester");
-
-// Get energy totals
-const totalEnergy = getTotalStorageEnergy();
-
-// Get average RCL
-const avgRCL = getAverageRCL();
-
-// Find rooms by metric
-const richestRoom = getRoomByMetric("energy", "highest");
-const poorestRoom = getRoomByMetric("energy", "lowest");
-const mostExpensiveRoom = getRoomByMetric("cpu", "highest");
-```
-
-### Stats Access
-```typescript
-import { statsManager } from "./core/stats";
-
-// Get full stats object
-const stats = statsManager.getStats();
+// Get current snapshot
+const snapshot = unifiedStats.getSnapshot();
 
 // Access specific stats
-const empireStats = stats.empire;
-const roomStats = stats.rooms["W1N1"];
-const roleStats = stats.roles["harvester"];
-const subsystemStats = stats.subsystems["rooms"];
-const pheromoneStats = stats.pheromones["W1N1"];
-const nativeCallsStats = stats.nativeCalls;
+const empireStats = snapshot.empire;
+const roomStats = snapshot.rooms["W1N1"];
+const roleStats = snapshot.roles["harvester"];
+const subsystemStats = snapshot.subsystems["kernel"];
+const nativeCallsStats = snapshot.native;
 ```
 
 ## Integration with External Tools
@@ -296,18 +290,19 @@ See `GRAFANA_DASHBOARD_EXAMPLE.md` for:
 
 ### Graphite Exporter
 The exporter automatically:
-- Scrapes flattened stats from Memory
-- Tags stats with categories using Graphite tag format
+- Scrapes **nested object structure** from Memory.stats
+- Flattens and tags stats with categories
 - Parses stat keys to extract metadata
 - Sends to Grafana Cloud Graphite endpoint
 
 ### Custom Tools
-Stats are published in a flat format for easy consumption:
+Stats are published as **nested objects** for easy consumption:
 ```javascript
 // Access in console
-Memory["stats.empire.total_creeps"]
-Memory["stats.room.W1N1.rcl"]
-Memory["stats.role.harvester.count"]
+Memory.stats.empire.rooms
+Memory.stats.rooms.W1N1.rcl
+Memory.stats.roles.harvester.count
+Memory.stats.rooms.W1N1.pheromones.harvest
 ```
 
 ## Migration from Legacy Stats
