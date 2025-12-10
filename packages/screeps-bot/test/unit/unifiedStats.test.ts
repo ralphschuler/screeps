@@ -1,6 +1,11 @@
 import { assert } from "chai";
 import { UnifiedStatsManager } from "../../src/core/unifiedStats";
 
+// Define constants for tests
+const WORK = "work" as BodyPartConstant;
+const CARRY = "carry" as BodyPartConstant;
+const MOVE = "move" as BodyPartConstant;
+
 // Mock Game and Memory
 const mockGame: any = {
   time: 12345,
@@ -115,6 +120,54 @@ describe("UnifiedStatsManager", function () {
       assert.isDefined(snapshot.subsystems.testSubsystem);
     });
 
+    it("should measure role stats with role: prefix", function () {
+      // Create mock creeps with roles
+      const mockCreep1: any = {
+        name: "harvester1",
+        memory: { role: "harvester", homeRoom: "W1N1" },
+        room: { name: "W1N1" },
+        body: [{ type: WORK }, { type: CARRY }, { type: MOVE }],
+        hits: 300,
+        hitsMax: 300,
+        ticksToLive: 1500,
+        fatigue: 0,
+        spawning: false
+      };
+
+      const mockCreep2: any = {
+        name: "harvester2",
+        memory: { role: "harvester", homeRoom: "W1N1" },
+        room: { name: "W1N1" },
+        body: [{ type: WORK }, { type: CARRY }, { type: MOVE }],
+        hits: 300,
+        hitsMax: 300,
+        ticksToLive: 1500,
+        fatigue: 0,
+        spawning: false
+      };
+
+      mockGame.creeps = {
+        harvester1: mockCreep1,
+        harvester2: mockCreep2
+      };
+
+      statsManager.startTick();
+      
+      // Measure role execution (simulating what creepProcessManager does)
+      statsManager.measureSubsystem("role:harvester", () => {
+        // Simulate creep execution
+        return;
+      });
+      
+      statsManager.finalizeTick();
+      
+      const snapshot = statsManager.getSnapshot();
+      assert.isDefined(snapshot.roles.harvester, "Role stats should exist for harvester");
+      assert.equal(snapshot.roles.harvester.count, 2, "Should count 2 harvester creeps");
+      assert.isDefined(snapshot.roles.harvester.avgCpu, "Should have avgCpu");
+      assert.isDefined(snapshot.roles.harvester.peakCpu, "Should have peakCpu");
+    });
+
     it("should track room execution", function () {
       const mockRoom: any = {
         name: "W1N1",
@@ -157,20 +210,123 @@ describe("UnifiedStatsManager", function () {
   });
 
   describe("Memory Export", function () {
-    it("should export stats to Memory.stats with stats. prefix", function () {
+    it("should export stats to Memory.stats as nested objects", function () {
       statsManager.startTick();
       statsManager.finalizeTick();
       
       const mem = Memory as unknown as Record<string, any>;
       assert.isDefined(mem.stats);
-      assert.isDefined(mem.stats["stats.cpu.used"]);
-      assert.isDefined(mem.stats["stats.cpu.bucket"]);
-      assert.isDefined(mem.stats["stats.gcl.level"]);
-      assert.isDefined(mem.stats["stats.empire.creeps"]);
-      assert.isDefined(mem.stats["stats.system.tick"]);
+      assert.isDefined(mem.stats.cpu);
+      assert.isDefined(mem.stats.cpu.used);
+      assert.isDefined(mem.stats.cpu.bucket);
+      assert.isDefined(mem.stats.gcl);
+      assert.isDefined(mem.stats.gcl.level);
+      assert.isDefined(mem.stats.empire);
+      assert.isDefined(mem.stats.empire.creeps);
+      assert.isDefined(mem.stats.tick);
     });
 
-    it("should export room stats with proper prefix", function () {
+    it("should export role stats to Memory.stats.roles", function () {
+      // Create mock creeps with roles
+      const mockCreep1: any = {
+        name: "upgrader1",
+        memory: { role: "upgrader", homeRoom: "W1N1" },
+        room: { name: "W1N1" },
+        body: [{ type: WORK }, { type: CARRY }, { type: MOVE }],
+        hits: 300,
+        hitsMax: 300,
+        ticksToLive: 1500,
+        fatigue: 0,
+        spawning: false
+      };
+
+      mockGame.creeps = { upgrader1: mockCreep1 };
+
+      statsManager.startTick();
+      statsManager.measureSubsystem("role:upgrader", () => {});
+      statsManager.finalizeTick();
+      
+      const mem = Memory as unknown as Record<string, any>;
+      assert.isDefined(mem.stats.roles);
+      assert.isDefined(mem.stats.roles.upgrader);
+      assert.equal(mem.stats.roles.upgrader.count, 1);
+      assert.isDefined(mem.stats.roles.upgrader.avg_cpu);
+      assert.isDefined(mem.stats.roles.upgrader.peak_cpu);
+    });
+
+    it("should export pheromones in room stats", function () {
+      const mockRoom: any = {
+        name: "W1N1",
+        energyAvailable: 300,
+        energyCapacityAvailable: 550,
+        controller: { level: 3, progress: 5000, progressTotal: 10000, my: true },
+        storage: { store: { getUsedCapacity: () => 50000 } },
+        terminal: { store: { getUsedCapacity: () => 10000 } },
+        find: () => []
+      };
+
+      // Mock swarm state with pheromones
+      const mockMemoryManager: any = {
+        getSwarmState: () => ({
+          pheromones: {
+            expand: 45.5,
+            harvest: 80.2,
+            build: 100,
+            upgrade: 10.5,
+            defense: 5.0,
+            war: 0,
+            siege: 0,
+            logistics: 15.3,
+            nukeTarget: 0
+          },
+          danger: 0,
+          posture: "eco",
+          colonyLevel: "mature",
+          metrics: {
+            energyHarvested: 1000,
+            energySpawning: 0,
+            energyConstruction: 50,
+            energyRepair: 25,
+            energyTower: 0,
+            energyAvailable: 300,
+            energyCapacity: 550,
+            energyNeed: 250,
+            controllerProgress: 100,
+            hostileCount: 0,
+            damageReceived: 0,
+            constructionSites: 2
+          }
+        })
+      };
+
+      // Temporarily replace memoryManager import (this is a bit hacky for tests)
+      const originalRequire = (global as any).require;
+      (global as any).require = (id: string) => {
+        if (id.includes("memoryManager")) {
+          return { memoryManager: mockMemoryManager };
+        }
+        return originalRequire(id);
+      };
+
+      mockGame.rooms = { W1N1: mockRoom };
+      mockGame.creeps = {};
+
+      statsManager.startTick();
+      statsManager.recordRoom(mockRoom, 0.5);
+      statsManager.finalizeTick();
+      
+      const mem = Memory as unknown as Record<string, any>;
+      assert.isDefined(mem.stats.rooms);
+      assert.isDefined(mem.stats.rooms.W1N1);
+      assert.isDefined(mem.stats.rooms.W1N1.pheromones);
+      // Pheromones should be present even if empty
+      assert.isObject(mem.stats.rooms.W1N1.pheromones);
+
+      // Restore original require
+      (global as any).require = originalRequire;
+    });
+
+    it("should export room stats as nested structure", function () {
       const mockRoom: any = {
         name: "W1N1",
         energyAvailable: 300,
@@ -189,21 +345,11 @@ describe("UnifiedStatsManager", function () {
       statsManager.finalizeTick();
       
       const mem = Memory as unknown as Record<string, any>;
-      assert.isDefined(mem.stats["stats.room.W1N1.rcl"]);
-      assert.equal(mem.stats["stats.room.W1N1.rcl"], 3);
-      assert.isDefined(mem.stats["stats.room.W1N1.energy.storage"]);
-      assert.equal(mem.stats["stats.room.W1N1.energy.storage"], 50000);
-    });
-
-    it("should NOT export with old format (without stats. prefix)", function () {
-      statsManager.startTick();
-      statsManager.finalizeTick();
-      
-      const mem = Memory as unknown as Record<string, any>;
-      // These old formats should NOT exist
-      assert.isUndefined(mem.stats["cpu.used"]);
-      assert.isUndefined(mem.stats["gcl.level"]);
-      assert.isUndefined(mem.stats["empire.creeps"]);
+      assert.isDefined(mem.stats.rooms);
+      assert.isDefined(mem.stats.rooms.W1N1);
+      assert.equal(mem.stats.rooms.W1N1.rcl, 3);
+      assert.isDefined(mem.stats.rooms.W1N1.energy);
+      assert.equal(mem.stats.rooms.W1N1.energy.storage, 50000);
     });
   });
 
