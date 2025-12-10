@@ -13,6 +13,7 @@
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { ProcessPriority } from "../core/kernel";
 import { logger } from "../core/logger";
+import { memoryManager } from "../memory/manager";
 import { deserializeInterShardMemory, serializeInterShardMemory } from "../intershard/schema";
 import type { SharedEnemyIntel } from "../intershard/schema";
 
@@ -80,7 +81,8 @@ export class CrossShardIntelCoordinator {
   private updateEnemyIntelligence(interShardMemory: ReturnType<typeof deserializeInterShardMemory>): void {
     if (!interShardMemory) return;
 
-    // Get current shard's enemy data from Memory
+    // Get current shard's enemy data using memoryManager
+    const overmind = memoryManager.getOvermind();
     const enemyMap = new Map<string, SharedEnemyIntel>();
 
     // Initialize from existing global enemies
@@ -90,11 +92,9 @@ export class CrossShardIntelCoordinator {
       }
     }
 
-    // Update with current shard data from Memory.overmind
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    if (Memory.overmind?.warTargets) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
-      for (const target of Memory.overmind.warTargets as string[]) {
+    // Update with current shard data from overmind
+    if (overmind.warTargets) {
+      for (const target of overmind.warTargets) {
         const existing = enemyMap.get(target);
         if (existing) {
           existing.lastSeen = Game.time;
@@ -112,12 +112,9 @@ export class CrossShardIntelCoordinator {
     }
 
     // Update with room intel data
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    if (Memory.overmind?.roomIntel) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      for (const roomName in Memory.overmind.roomIntel as Record<string, { owner?: string; lastSeen: number; threatLevel: 0 | 1 | 2 | 3 }>) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        const intel = (Memory.overmind.roomIntel as Record<string, { owner?: string; lastSeen: number; threatLevel: 0 | 1 | 2 | 3 }>)[roomName];
+    if (overmind.roomIntel) {
+      for (const roomName in overmind.roomIntel) {
+        const intel = overmind.roomIntel[roomName];
         if (intel && intel.owner && !intel.owner.includes("Source Keeper")) {
           const existing = enemyMap.get(intel.owner);
           if (existing) {
