@@ -131,7 +131,7 @@ describe("Flow Field System", () => {
       expect(getFlowDirection(field, outOfBoundsPos)).to.be.null;
     });
 
-    it("should return null at target position (zero direction)", () => {
+    it("should return 0 at target position (at destination)", () => {
       const mockRoom = {
         name: "W1N1",
         getTerrain: () => ({
@@ -147,7 +147,7 @@ describe("Flow Field System", () => {
       const targetPos = new RoomPosition(25, 25, "W1N1");
       const field = createFlowField("W1N1", targetPos);
 
-      expect(getFlowDirection(field, targetPos)).to.be.null;
+      expect(getFlowDirection(field, targetPos)).to.equal(0);
     });
 
     it("should return valid direction constants for reachable positions", () => {

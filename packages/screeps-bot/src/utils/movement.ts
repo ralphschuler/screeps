@@ -1227,8 +1227,13 @@ function internalMoveTo(
     if (flowField) {
       const rawDirection = getFlowDirection(flowField, creep.pos);
       
-      // If we have a valid flow field direction (not 0, not null), use it
-      if (rawDirection !== null && rawDirection !== 0) {
+      // Check if we're at the destination (direction = 0)
+      if (rawDirection === 0) {
+        return OK; // Already at destination
+      }
+      
+      // If we have a valid flow field direction (not null), use it
+      if (rawDirection !== null) {
         flowFieldDirection = rawDirection as DirectionConstant;
         // Calculate target position from direction
         const offsets: Record<DirectionConstant, { dx: number; dy: number }> = {

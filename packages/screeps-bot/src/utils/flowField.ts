@@ -269,15 +269,19 @@ function pruneFlowFieldCache(roomName: string, maxFields: number): void {
 
 /**
  * Get direction from flow field at a position
+ * Returns:
+ * - DirectionConstant (1-8) for movement directions
+ * - 0 for positions at the destination
+ * - null for invalid positions or undefined directions
  */
 export function getFlowDirection(field: FlowField, pos: RoomPosition): FlowDirection | null {
   if (pos.roomName !== field.roomName) return null;
   if (pos.x < 0 || pos.x >= 50 || pos.y < 0 || pos.y >= 50) return null;
 
   const direction = field.directions[pos.x][pos.y];
-  if (direction === undefined || direction === 0) return null;
+  if (direction === undefined) return null;
 
-  return direction;
+  return direction; // Can be 0 (at destination) or 1-8 (movement direction)
 }
 
 /**
