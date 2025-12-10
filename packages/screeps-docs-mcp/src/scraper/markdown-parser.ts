@@ -3,6 +3,11 @@
  */
 
 /**
+ * Maximum description length for properties and methods
+ */
+const MAX_DESCRIPTION_LENGTH = 500;
+
+/**
  * Extract front matter from markdown content
  */
 export function extractFrontMatter(content: string): { frontMatter: Record<string, string>; body: string } {
@@ -106,8 +111,13 @@ export function extractSections(content: string): Array<{ heading: string; conte
 
 /**
  * Parse API properties from markdown content
- * Looks for property definitions in the format:
- * {% api_property name type %}
+ * Looks for property definitions in Jekyll liquid tag format:
+ * {% api_property PropertyName 'TypeString' %}
+ * 
+ * Capture groups:
+ * [1] = Property name (e.g., "Game.constructionSites")
+ * [2] = Type annotation in quotes
+ * [3] = Property description and content until next tag
  */
 export function extractAPIProperties(content: string): Array<{ name: string; type: string; description: string }> {
   const properties: Array<{ name: string; type: string; description: string }> = [];
@@ -117,7 +127,7 @@ export function extractAPIProperties(content: string): Array<{ name: string; typ
   while ((match = propertyRegex.exec(content)) !== null) {
     const name = match[1].replace(/^[^.]+\./, ""); // Remove object prefix (e.g., "Game." -> "")
     const type = match[2];
-    const description = stripMarkdown(match[3]).substring(0, 500); // Limit description length
+    const description = stripMarkdown(match[3]).substring(0, MAX_DESCRIPTION_LENGTH);
 
     properties.push({ name, type, description });
   }
@@ -127,8 +137,13 @@ export function extractAPIProperties(content: string): Array<{ name: string; typ
 
 /**
  * Parse API methods from markdown content
- * Looks for method definitions in the format:
- * {% api_method methodName signature %}
+ * Looks for method definitions in Jekyll liquid tag format:
+ * {% api_method methodName 'optionalSignature' %}
+ * 
+ * Capture groups:
+ * [1] = Method name (e.g., "Creep.moveTo")
+ * [2] = Optional signature string in quotes
+ * [3] = Method description and content until next tag (greedy match)
  */
 export function extractAPIMethods(content: string): Array<{ name: string; signature: string; description: string; returns: string }> {
   const methods: Array<{ name: string; signature: string; description: string; returns: string }> = [];
@@ -144,7 +159,7 @@ export function extractAPIMethods(content: string): Array<{ name: string; signat
     const returnMatch = methodContent.match(/returns?:?\s*([^\n]+)/i);
     const returns = returnMatch ? stripMarkdown(returnMatch[1]) : "";
     
-    const description = stripMarkdown(methodContent).substring(0, 500);
+    const description = stripMarkdown(methodContent).substring(0, MAX_DESCRIPTION_LENGTH);
 
     methods.push({ name, signature, description, returns });
   }

@@ -13,6 +13,7 @@ const DOCS_BASE_URL = "https://docs.screeps.com";
 
 /**
  * Mapping of filename to topic identifier
+ * Note: resources.md is mapped to "minerals" to maintain compatibility with existing API
  */
 const FILENAME_TO_TOPIC: Record<string, string> = {
   "control.md": "control",
@@ -20,7 +21,7 @@ const FILENAME_TO_TOPIC: Record<string, string> = {
   "defense.md": "defense",
   "market.md": "market",
   "power.md": "power",
-  "resources.md": "minerals",
+  "resources.md": "minerals", // Mapped to minerals for backwards compatibility
   "respawn.md": "respawn",
   "invaders.md": "invaders",
   "cpu-limit.md": "cpu",
