@@ -40,6 +40,8 @@ import { creepProcessManager } from "./core/creepProcessManager";
 import { roomProcessManager } from "./core/roomProcessManager";
 import { runPowerRole } from "./roles/power";
 import { initializePheromoneEventHandlers } from "./logic/pheromoneEventHandlers";
+import { runScheduledTasks } from "./utils/computationScheduler";
+import { heapCache } from "./memory/heapCache";
 
 // =============================================================================
 // Note: Creep and room management has been migrated to kernel processes
@@ -111,6 +113,9 @@ function initializeSystems(): void {
 
   // Initialize pheromone event handlers for event-driven updates
   initializePheromoneEventHandlers();
+
+  // Initialize heap cache system for memory persistence
+  heapCache.initialize();
 
   systemsInitialized = true;
 }
@@ -266,6 +271,15 @@ export function loop(): void {
 
   // Finalize movement system (traffic reconciliation)
   finalizeMovement();
+
+  // Run scheduled tasks (computation spreading)
+  // This runs low-priority tasks when CPU budget allows
+  if (kernel.hasCpuBudget()) {
+    unifiedStats.measureSubsystem("scheduledTasks", () => {
+      const availableCpu = Math.max(0, Game.cpu.limit - Game.cpu.getUsed());
+      runScheduledTasks(availableCpu);
+    });
+  }
 
   // Persist heap cache to Memory periodically
   // This happens automatically based on the cache's internal interval
