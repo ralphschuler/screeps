@@ -117,6 +117,10 @@ interface RateLimitInfo {
   toReset: number;
 }
 
+// Constants for rate limit handling
+const RATE_LIMIT_BUFFER_MS = 5000; // 5 second buffer after rate limit reset
+const RATE_LIMIT_FALLBACK_BACKOFF_MS = 30000; // 30 second fallback backoff
+
 export async function startMemoryCollector(
   api: ScreepsAPI,
   config: ExporterConfig,
@@ -147,8 +151,18 @@ export async function startMemoryCollector(
     if (lastRateLimitInfo) {
       const { remaining, limit, toReset } = lastRateLimitInfo;
 
+      // If we've exhausted the rate limit, wait until reset
+      if (remaining === 0 && toReset > 0) {
+        // Add a buffer to ensure the limit has reset
+        delayMs = (toReset * 1000) + RATE_LIMIT_BUFFER_MS;
+        
+        logger.warn(`Rate limit exhausted. Waiting until reset`, {
+          resetIn: toReset,
+          waitTime: Math.round(delayMs / 1000)
+        });
+      }
       // If we're running low on rate limit quota (< 20% remaining)
-      if (remaining < limit * 0.2 && remaining > 0) {
+      else if (remaining < limit * 0.2 && remaining > 0) {
         // Calculate delay to spread remaining requests evenly until reset
         const safeDelay = Math.max(
           (toReset * 1000) / remaining,
@@ -163,17 +177,6 @@ export async function startMemoryCollector(
         });
         
         delayMs = Math.max(delayMs, safeDelay);
-      }
-
-      // If we've exhausted the rate limit, wait until reset
-      if (remaining === 0 && toReset > 0) {
-        // Add a small buffer (5 seconds) to ensure the limit has reset
-        delayMs = (toReset * 1000) + 5000;
-        
-        logger.warn(`Rate limit exhausted. Waiting until reset`, {
-          resetIn: toReset,
-          waitTime: Math.round(delayMs / 1000)
-        });
       }
     }
 
@@ -220,16 +223,15 @@ export async function startMemoryCollector(
         // If we have rate limit info, use it to calculate wait time
         // Otherwise, use a default backoff
         if (lastRateLimitInfo && lastRateLimitInfo.toReset > 0) {
-          const waitMs = (lastRateLimitInfo.toReset * 1000) + 5000;
+          const waitMs = (lastRateLimitInfo.toReset * 1000) + RATE_LIMIT_BUFFER_MS;
           logger.info(`Waiting ${Math.round(waitMs / 1000)}s for rate limit reset`);
           scheduleNextPoll(waitMs);
           metrics.markScrapeSuccess('memory', false);
           return;
         } else {
-          // Fallback: exponential backoff starting at 30 seconds
-          const backoffMs = 30000;
-          logger.info(`Using fallback backoff: ${backoffMs}ms`);
-          scheduleNextPoll(backoffMs);
+          // Fallback: use default backoff when rate limit info is unavailable
+          logger.info(`Using fallback backoff: ${RATE_LIMIT_FALLBACK_BACKOFF_MS}ms`);
+          scheduleNextPoll(RATE_LIMIT_FALLBACK_BACKOFF_MS);
           metrics.markScrapeSuccess('memory', false);
           return;
         }
