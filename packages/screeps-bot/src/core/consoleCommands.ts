@@ -24,6 +24,7 @@ import { roomVisualizer } from "../visuals/roomVisualizer";
 import { mapVisualizer } from "../visuals/mapVisualizer";
 import { creepProcessManager } from "./creepProcessManager";
 import { roomProcessManager } from "./roomProcessManager";
+import { labCommands, marketCommands, powerCommands } from "./advancedSystemCommands";
 
 /**
  * Logging commands
@@ -600,6 +601,11 @@ export function registerAllConsoleCommands(): void {
   registerDecoratedCommands(kernelCommands);
   registerDecoratedCommands(systemCommands);
 
+  // Register advanced system commands
+  registerDecoratedCommands(labCommands);
+  registerDecoratedCommands(marketCommands);
+  registerDecoratedCommands(powerCommands);
+
   // Expose all commands to global scope
   commandRegistry.exposeToGlobal();
 }
@@ -611,5 +617,8 @@ export {
   statisticsCommands,
   configurationCommands,
   kernelCommands,
-  systemCommands
+  systemCommands,
+  labCommands,
+  marketCommands,
+  powerCommands
 };
