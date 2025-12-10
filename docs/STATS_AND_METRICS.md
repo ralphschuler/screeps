@@ -2,15 +2,38 @@
 
 ## Overview
 
-The SwarmBot uses a unified statistics system to track all aspects of bot performance, resource usage, and operational metrics. All statistics are stored in a clean, hierarchical structure in `Memory.stats` and can be exported to external monitoring tools like Grafana for visualization and analysis.
+The SwarmBot uses a unified statistics system to track all aspects of bot performance, resource usage, and operational metrics. Statistics are output to the console in JSON format for the graphite exporter to parse, and are also stored in `Memory.stats` for backward compatibility.
 
 ## Architecture
 
-The stats system is implemented in `src/core/stats.ts` and provides:
+The stats system is implemented in `src/core/unifiedStats.ts` and provides:
+- **Console output**: Stats are output as JSON to console for real-time export to Grafana
 - **Zero-cost abstraction**: Stats collection can be disabled without code changes
 - **Clean data structure**: No flattening - raw object hierarchy preserved
 - **Automatic collection**: Most stats are collected automatically during finalization
 - **Configurable**: Smoothing factors, logging intervals, and tracking features are configurable
+
+## Stats Export Modes
+
+The system supports two export modes:
+
+### 1. Console Output (Primary Method)
+Stats are output to console as JSON objects in the format:
+```json
+{"type": "stat", "key": "stats.cpu.used", "value": 15.5}
+```
+
+This format is parsed by the graphite exporter's console listener, which subscribes to the Screeps console stream. This is the recommended method as it:
+- Provides real-time stats updates
+- Doesn't require polling the Screeps API
+- Respects API rate limits
+- Has lower latency
+
+### 2. Memory Polling (Backward Compatibility)
+Stats are also written to `Memory.stats` in a nested object structure. The graphite exporter can poll this via the Screeps API, but this method:
+- Has API rate limits (1440 requests/day for `/api/user/memory`)
+- Has higher latency (polling interval)
+- May miss rapid changes between polls
 
 ## Statistics Categories
 
@@ -452,26 +475,40 @@ export function loop() {
 
 ## Exporting to Grafana
 
-Stats are stored in a clean, hierarchical format suitable for export to monitoring systems.
+### Using Console Output (Recommended)
 
-Example Grafana export structure:
-```javascript
-// Example: Export to external stats endpoint
-const stats = statsManager.getStats();
+The graphite exporter should be configured to use console mode:
 
-// Send to your stats collector
-RawMemory.segments[0] = JSON.stringify({
-  tick: stats.tick,
-  empire: stats.empire,
-  rooms: Object.values(stats.rooms),
-  roles: Object.values(stats.roles),
-  // ... more stats as needed
-});
+**In the exporter's `.env` file:**
+```bash
+EXPORTER_MODE=console
 ```
+
+The exporter will:
+1. Connect to the Screeps console via WebSocket
+2. Subscribe to console events
+3. Parse JSON stat lines in the format `{"type": "stat", "key": "metric.name", "value": 123}`
+4. Send metrics to Grafana Cloud Graphite
+
+### Using Memory Polling (Legacy)
+
+Alternatively, the exporter can poll `Memory.stats`:
+
+**In the exporter's `.env` file:**
+```bash
+EXPORTER_MODE=memory
+EXPORTER_POLL_INTERVAL_MS=90000  # 90 seconds (respects API rate limits)
+```
+
+The exporter will:
+1. Poll the Screeps API for `Memory.stats`
+2. Flatten nested objects into dot-separated keys
+3. Send metrics to Grafana Cloud Graphite
 
 For detailed Grafana integration examples, see:
 - [GRAFANA_DASHBOARD_EXAMPLE.md](./GRAFANA_DASHBOARD_EXAMPLE.md)
 - [STATS_SYSTEM_OVERVIEW.md](./STATS_SYSTEM_OVERVIEW.md)
+- [Graphite Exporter README](../packages/screeps-graphite-exporter/README.md)
 
 ---
 

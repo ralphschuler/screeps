@@ -1,14 +1,27 @@
 # Screeps Grafana Cloud Graphite Exporter
 
-Exports Screeps stats to Grafana Cloud using the Graphite HTTP API from either `Memory.stats` or console log output.
+Exports Screeps stats to Grafana Cloud using the Graphite HTTP API from either console output (recommended) or `Memory.stats` polling.
 
 ## Features
-- **Memory mode**: periodically fetches `Memory.stats` and sends metrics to Grafana Cloud Graphite.
-- **Console mode**: subscribes to Screeps console logs and parses lines formatted as `stats:<key> <value> <range>`.
+- **Console mode (recommended)**: subscribes to Screeps console logs and parses JSON stat lines for real-time metrics export.
+- **Memory mode**: periodically fetches `Memory.stats` and sends metrics to Grafana Cloud Graphite (subject to API rate limits).
 - Uses Grafana Cloud Graphite HTTP API with JSON format.
 - Supports nested stats objects with automatic flattening.
 - Extracts room and subsystem information from metric keys for better tagging.
 - Optional full-memory export for deep debugging/visualization use-cases.
+
+## Mode Comparison
+
+| Feature | Console Mode | Memory Mode |
+| --- | --- | --- |
+| **Real-time updates** | ✅ Yes (via WebSocket) | ❌ No (polling interval) |
+| **API rate limits** | ✅ Not affected | ⚠️ Limited to 1440/day |
+| **Latency** | ✅ Low (<1s) | ⚠️ High (poll interval) |
+| **Missing data** | ✅ Captures every tick | ⚠️ Misses ticks between polls |
+| **API calls** | ✅ Minimal (WebSocket) | ⚠️ 1 per poll |
+| **Recommended** | ✅ Yes | ❌ Legacy only |
+
+**Recommendation:** Use console mode for production deployments. Memory mode is only provided for backward compatibility.
 
 ## Configuration
 All configuration is provided via environment variables. Authentication requires either `SCREEPS_TOKEN` or the combination of `SCREEPS_USERNAME` and `SCREEPS_PASSWORD`.
@@ -25,7 +38,7 @@ The exporter implements proper rate limit handling according to the [Screeps API
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `EXPORTER_MODE` | `memory` | Set to `memory` or `console`. |
+| `EXPORTER_MODE` | `memory` | Set to `memory` or `console`. **Console mode is recommended** for real-time stats with lower API usage. |
 | `EXPORTER_POLL_INTERVAL_MS` | `90000` | Poll interval for memory mode (in milliseconds). Default is 90 seconds (40 requests/hour), which is conservative and respects the API rate limit of 1440 requests/day. The exporter automatically adjusts this based on rate limit information from the Screeps API. |
 | `EXPORTER_MIN_POLL_INTERVAL_MS` | `60000` | Minimum poll interval to enforce (60 seconds = 1 minute). This ensures compliance with the `/api/user/memory` rate limit of 1440/day. Values below 60 seconds are not recommended. |
 | `EXPORTER_MEMORY_PATH` | `stats` | Memory path to read stats from. |
@@ -79,8 +92,22 @@ The exporter automatically extracts meaningful tags from metric keys:
 - `range`: Used for grouping related metrics
 
 ### Console log format
-Console mode expects log lines like:
 
+**JSON format (recommended):**
+Console mode expects JSON lines in the format:
+```json
+{"type": "stat", "key": "stats.cpu.used", "value": 15.5}
+{"type": "stat", "key": "stats.empire.rooms", "value": 3, "unit": "rooms"}
+```
+
+The exporter parses lines where:
+- `type` equals `"stat"`
+- `key` is the metric name (e.g., `"stats.cpu.used"`)
+- `value` is a numeric value
+- `unit` is optional and used as the range tag
+
+**Legacy text format:**
+Also supported for backward compatibility:
 ```
 stats:cpu 12.3 10s
 stats:bucket 9500 tick
