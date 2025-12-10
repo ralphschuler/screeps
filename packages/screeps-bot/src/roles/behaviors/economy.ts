@@ -296,6 +296,9 @@ function findNearbyContainerCached(creep: Creep): StructureContainer | undefined
     if (container && container.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
       return container;
     }
+    // Container no longer valid - clear cache
+    delete memory.nearbyContainerId;
+    delete memory.nearbyContainerTick;
   }
   
   // Cache miss or invalid - find a new container
@@ -305,10 +308,13 @@ function findNearbyContainerCached(creep: Creep): StructureContainer | undefined
       s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
   })[0] as StructureContainer | undefined;
   
-  // Cache the result if found
+  // Cache the result if found, otherwise clear cache
   if (container) {
     memory.nearbyContainerId = container.id;
     memory.nearbyContainerTick = Game.time;
+  } else {
+    delete memory.nearbyContainerId;
+    delete memory.nearbyContainerTick;
   }
   
   return container;
@@ -329,6 +335,9 @@ function findNearbyLinkCached(creep: Creep): StructureLink | undefined {
     if (link && link.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
       return link;
     }
+    // Link no longer valid - clear cache
+    delete memory.nearbyLinkId;
+    delete memory.nearbyLinkTick;
   }
   
   // Cache miss or invalid - find a new link
@@ -338,10 +347,13 @@ function findNearbyLinkCached(creep: Creep): StructureLink | undefined {
       s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
   })[0] as StructureLink | undefined;
   
-  // Cache the result if found
+  // Cache the result if found, otherwise clear cache
   if (link) {
     memory.nearbyLinkId = link.id;
     memory.nearbyLinkTick = Game.time;
+  } else {
+    delete memory.nearbyLinkId;
+    delete memory.nearbyLinkTick;
   }
   
   return link;
@@ -911,6 +923,10 @@ export function remoteHarvester(ctx: CreepContext): CreepAction {
  * OPTIMIZATION: Cached version of finding nearby container for remote harvesters.
  * Remote harvesters are stationary like regular harvesters, so we cache the container
  * near their assigned source for HARVESTER_CACHE_DURATION ticks to avoid repeated findInRange calls.
+ * 
+ * Note: Remote containers don't check for free capacity since they're typically used as
+ * drop-off points and remote haulers will collect from them. The harvester just needs
+ * to know the container exists.
  */
 function findRemoteContainerCached(creep: Creep, source: Source): StructureContainer | undefined {
   const memory = creep.memory as unknown as SwarmCreepMemory;
@@ -921,6 +937,9 @@ function findRemoteContainerCached(creep: Creep, source: Source): StructureConta
     if (container) {
       return container;
     }
+    // Container no longer exists - clear cache
+    delete memory.remoteContainerId;
+    delete memory.remoteContainerTick;
   }
   
   // Cache miss or invalid - find a new container near the source
@@ -930,10 +949,13 @@ function findRemoteContainerCached(creep: Creep, source: Source): StructureConta
   
   const container = containers[0];
   
-  // Cache the result if found
+  // Cache the result if found, otherwise clear cache
   if (container) {
     memory.remoteContainerId = container.id;
     memory.remoteContainerTick = Game.time;
+  } else {
+    delete memory.remoteContainerId;
+    delete memory.remoteContainerTick;
   }
   
   return container;
