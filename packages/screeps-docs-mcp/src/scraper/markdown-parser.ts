@@ -52,8 +52,11 @@ export function stripMarkdown(content: string): string {
     .replace(/[*_]{1,2}([^*_]+)[*_]{1,2}/g, "$1")
     // Remove headers
     .replace(/^#+\s+/gm, "")
-    // Remove HTML tags
+    // Remove HTML tags (multiple passes to handle nested/malformed tags)
     .replace(/<[^>]+>/g, "")
+    .replace(/<[^>]+>/g, "")
+    // Remove any remaining angle brackets that could be part of incomplete tags
+    .replace(/[<>]/g, "")
     // Remove liquid/jekyll tags
     .replace(/\{%[\s\S]*?%\}/g, "")
     // Normalize whitespace
