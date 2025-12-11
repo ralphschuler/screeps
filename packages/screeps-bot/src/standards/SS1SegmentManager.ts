@@ -18,6 +18,7 @@
  */
 
 import { SS1Api, SS1Channel, SS1DefaultPublicSegment } from "./types";
+import * as LZString from "lz-string";
 
 export class SS1SegmentManager {
   private static readonly API_VERSION = "v1.0.0";
@@ -139,26 +140,33 @@ export class SS1SegmentManager {
    * Decompress channel data if compressed
    * @param data Compressed data
    * @returns Decompressed data
-   * @note TODO: Requires lzstring library integration
-   Issue URL: https://github.com/ralphschuler/screeps/issues/444
-   * For full SS1 compliance, add lzstring and implement compressToUTF16/decompressFromUTF16
    */
   public static decompressData(data: string): string {
-    console.log("[SS1] Warning: Decompression not implemented. Returning raw data. Install lzstring library for compression support.");
-    return data;
+    try {
+      const decompressed = LZString.decompressFromUTF16(data);
+      if (decompressed === null) {
+        console.log("[SS1] Warning: Decompression failed. Returning raw data.");
+        return data;
+      }
+      return decompressed;
+    } catch (error) {
+      console.log(`[SS1] Error during decompression: ${error}`);
+      return data;
+    }
   }
 
   /**
    * Compress channel data
    * @param data Raw data
    * @returns Compressed data
-   * @note TODO: Requires lzstring library integration
-   Issue URL: https://github.com/ralphschuler/screeps/issues/443
-   * For full SS1 compliance, add lzstring and implement compressToUTF16/decompressFromUTF16
    */
   public static compressData(data: string): string {
-    console.log("[SS1] Warning: Compression not implemented. Returning raw data. Install lzstring library for compression support.");
-    return data;
+    try {
+      return LZString.compressToUTF16(data);
+    } catch (error) {
+      console.log(`[SS1] Error during compression: ${error}. Returning raw data.`);
+      return data;
+    }
   }
 
   /**

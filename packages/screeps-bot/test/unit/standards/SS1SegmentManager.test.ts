@@ -82,4 +82,73 @@ describe("SS1SegmentManager", () => {
       expect(segment.channels.portals.segments).to.deep.equal([43, 87]);
     });
   });
+
+  describe("compression and decompression", () => {
+    it("should compress and decompress simple text", () => {
+      const originalData = "Hello, World!";
+      const compressed = SS1SegmentManager.compressData(originalData);
+      const decompressed = SS1SegmentManager.decompressData(compressed);
+
+      expect(decompressed).to.equal(originalData);
+      expect(compressed).to.not.equal(originalData);
+    });
+
+    it("should compress and decompress JSON data", () => {
+      const originalData = JSON.stringify({
+        rooms: ["W1N1", "W2N2", "W3N3"],
+        resources: { energy: 50000, power: 1000 },
+        timestamp: 12345678,
+      });
+      const compressed = SS1SegmentManager.compressData(originalData);
+      const decompressed = SS1SegmentManager.decompressData(compressed);
+
+      expect(decompressed).to.equal(originalData);
+      expect(JSON.parse(decompressed)).to.deep.equal(JSON.parse(originalData));
+    });
+
+    it("should compress large text efficiently", () => {
+      const originalData = "This is a test string. ".repeat(1000);
+      const compressed = SS1SegmentManager.compressData(originalData);
+      const decompressed = SS1SegmentManager.decompressData(compressed);
+
+      expect(decompressed).to.equal(originalData);
+      // Compressed data should be smaller than original
+      expect(compressed.length).to.be.lessThan(originalData.length);
+    });
+
+    it("should handle empty string", () => {
+      const originalData = "";
+      const compressed = SS1SegmentManager.compressData(originalData);
+      const decompressed = SS1SegmentManager.decompressData(compressed);
+
+      expect(decompressed).to.equal(originalData);
+    });
+
+    it("should handle special characters", () => {
+      const originalData = "Special: 日本語, émojis 🎉, symbols €£¥";
+      const compressed = SS1SegmentManager.compressData(originalData);
+      const decompressed = SS1SegmentManager.decompressData(compressed);
+
+      expect(decompressed).to.equal(originalData);
+    });
+
+    it("should handle multi-line text", () => {
+      const originalData = `Line 1
+Line 2
+Line 3
+Line 4`;
+      const compressed = SS1SegmentManager.compressData(originalData);
+      const decompressed = SS1SegmentManager.decompressData(compressed);
+
+      expect(decompressed).to.equal(originalData);
+    });
+
+    it("should return original data if decompression fails", () => {
+      const invalidCompressedData = "this is not compressed data";
+      const result = SS1SegmentManager.decompressData(invalidCompressedData);
+
+      // Should return the original data when decompression fails
+      expect(result).to.equal(invalidCompressedData);
+    });
+  });
 });
