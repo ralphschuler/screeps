@@ -86,6 +86,8 @@ function getCreepProcessPriority(role: string): ProcessPriority {
  * Execute a creep's role behavior
  */
 function executeCreepRole(creep: Creep): void {
+  const memory = creep.memory as unknown as SwarmCreepMemory;
+  
   // OPTIMIZATION: Skip behavior evaluation for idle creeps
   // Idle creeps are stationary workers (harvesters, upgraders) that are actively
   // working at their station and don't need to make new decisions.
@@ -100,7 +102,6 @@ function executeCreepRole(creep: Creep): void {
     // - Target out of range (creep was moved)
     // - Action returns error code (e.g., ERR_FULL, ERR_NOT_ENOUGH_RESOURCES)
     if (!success) {
-      const memory = creep.memory as unknown as SwarmCreepMemory;
       delete memory.state;
       // Fall through to normal behavior evaluation below
     } else {
@@ -110,7 +111,6 @@ function executeCreepRole(creep: Creep): void {
   }
 
   const family = getCreepFamily(creep);
-  const memory = creep.memory as unknown as SwarmCreepMemory;
   const roleName = memory.role;
 
   // Profile per-role CPU usage for optimization insights
