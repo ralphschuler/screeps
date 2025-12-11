@@ -91,8 +91,22 @@ function executeCreepRole(creep: Creep): void {
   // working at their station and don't need to make new decisions.
   // This saves ~0.1-0.2 CPU per skipped creep.
   if (canSkipBehaviorEvaluation(creep)) {
-    executeIdleAction(creep);
-    return;
+    const success = executeIdleAction(creep);
+    
+    // BUGFIX: If idle action fails, clear state and fall through to normal behavior
+    // This prevents creeps from getting stuck in an infinite loop of trying
+    // the same failed action. Common failure scenarios:
+    // - Target destroyed/despawned
+    // - Target out of range (creep was moved)
+    // - Action returns error code (e.g., ERR_FULL, ERR_NOT_ENOUGH_RESOURCES)
+    if (!success) {
+      const memory = creep.memory as unknown as SwarmCreepMemory;
+      delete memory.state;
+      // Fall through to normal behavior evaluation below
+    } else {
+      // Idle action succeeded, we're done
+      return;
+    }
   }
 
   const family = getCreepFamily(creep);
