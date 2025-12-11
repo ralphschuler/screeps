@@ -22,6 +22,7 @@ export interface TestCase {
   fn: () => void | Promise<void>;
   timeout?: number;
   skip?: boolean;
+  tags?: string[];
 }
 
 /**
@@ -52,6 +53,9 @@ export interface TestResult {
     actual?: any;
   };
   tick: number;
+  tags?: string[];
+  cpuUsed?: number;
+  memoryUsed?: number;
 }
 
 /**
@@ -66,6 +70,9 @@ export interface TestSummary {
   startTick: number;
   endTick: number;
   results: TestResult[];
+  timestamp?: number;
+  serverVersion?: string;
+  coverage?: TestCoverage;
 }
 
 /**
@@ -79,4 +86,91 @@ export interface TestContext {
   tick: number;
   getObjectById: (id: string) => any;
   getRoomObject: (roomName: string) => any;
+}
+
+/**
+ * Test filtering options
+ */
+export interface TestFilter {
+  pattern?: string | RegExp;
+  tags?: string[];
+  suites?: string[];
+  excludeTags?: string[];
+  excludeSuites?: string[];
+}
+
+/**
+ * Test coverage information
+ */
+export interface TestCoverage {
+  lines: {
+    total: number;
+    covered: number;
+    percentage: number;
+  };
+  branches: {
+    total: number;
+    covered: number;
+    percentage: number;
+  };
+  functions: {
+    total: number;
+    covered: number;
+    percentage: number;
+  };
+  statements: {
+    total: number;
+    covered: number;
+    percentage: number;
+  };
+}
+
+/**
+ * Performance benchmark result
+ */
+export interface BenchmarkResult {
+  name: string;
+  samples: number;
+  mean: number;
+  median: number;
+  min: number;
+  max: number;
+  stdDev: number;
+  iterations: number;
+}
+
+/**
+ * Visual snapshot for testing
+ */
+export interface VisualSnapshot {
+  roomName: string;
+  tick: number;
+  visualData: string; // Serialized RoomVisual data
+  timestamp: number;
+}
+
+/**
+ * Test persistence metadata
+ */
+export interface TestPersistence {
+  version: string;
+  lastRun: number;
+  totalRuns: number;
+  summaries: TestSummary[];
+  maxHistorySize?: number;
+}
+
+/**
+ * JSON output format for CI/CD
+ */
+export interface TestOutput {
+  version: string;
+  timestamp: number;
+  environment: {
+    server: string;
+    tick: number;
+  };
+  summary: TestSummary;
+  coverage?: TestCoverage;
+  benchmarks?: BenchmarkResult[];
 }
