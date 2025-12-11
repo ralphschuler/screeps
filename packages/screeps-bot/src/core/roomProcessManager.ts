@@ -209,18 +209,22 @@ export class RoomProcessManager {
 
   /**
    * Get minimum bucket requirement based on priority
+   * 
+   * BUGFIX: Reduced thresholds dramatically to prevent excessive process skipping.
+   * Previous thresholds (MEDIUM=2000, LOW=5000) caused 40 CPU waste when bucket was low.
+   * New thresholds allow processes to run and utilize available CPU even with lower bucket.
    */
   private getMinBucketForPriority(priority: ProcessPriority): number {
     if (priority >= ProcessPriority.CRITICAL) {
-      return 100; // Critical rooms run even at low bucket
+      return 50; // Critical rooms run almost always
     }
     if (priority >= ProcessPriority.HIGH) {
-      return 500;
+      return 100; // High priority with minimal bucket requirement
     }
     if (priority >= ProcessPriority.MEDIUM) {
-      return 2000;
+      return 200; // Medium priority - much lower threshold
     }
-    return 5000; // Low priority needs healthy bucket
+    return 500; // Low priority - still runs with moderate bucket
   }
 
   /**

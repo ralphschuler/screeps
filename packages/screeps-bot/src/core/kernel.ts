@@ -199,11 +199,19 @@ function deriveFrequencyIntervals(taskFrequencies: CPUConfig["taskFrequencies"])
   };
 }
 
+/**
+ * Derive frequency min bucket thresholds
+ * 
+ * BUGFIX: Reduced thresholds dramatically to prevent excessive process skipping.
+ * Previous formula used lowMode (2000) directly for medium frequency, causing
+ * 40 CPU waste when bucket was low. New thresholds allow processes to run
+ * and utilize available CPU even with lower bucket.
+ */
 function deriveFrequencyMinBucket(bucketThresholds: CPUConfig["bucketThresholds"], highBucketThreshold: number): Record<ProcessFrequency, number> {
   return {
-    high: Math.max(0, Math.floor(bucketThresholds.lowMode * 0.25)),
-    medium: bucketThresholds.lowMode,
-    low: Math.max(bucketThresholds.lowMode, Math.floor((bucketThresholds.lowMode + highBucketThreshold) / 2))
+    high: 100, // High frequency processes run with minimal bucket
+    medium: 200, // Medium frequency processes run with low bucket
+    low: 500 // Low frequency processes need moderate bucket
   };
 }
 
