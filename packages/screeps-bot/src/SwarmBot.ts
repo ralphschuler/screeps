@@ -19,6 +19,15 @@
  * - Priority-based creep execution (critical roles first)
  * - CPU budget checks between creeps
  * - Skips non-essential creeps when CPU is limited
+ * 
+ * TODO: Add performance monitoring to detect CPU hotspots across subsystems
+ * Track which subsystems consistently use the most CPU and optimize accordingly
+ * TODO: Implement graceful degradation strategy for high room counts (100+)
+ * Consider room batching or alternating room updates when approaching CPU limits
+ * TODO: Add emergency mode detection for catastrophic events (mass creep death)
+ * Rapid response protocol could prioritize recovery over normal operations
+ * TODO: Consider implementing a warm-up phase after respawn to rebuild caches
+ * First few ticks after respawn might need different scheduling priorities
  */
 
 import type { RoleFamily, SwarmCreepMemory } from "./memory/schemas";
@@ -123,6 +132,12 @@ function initializeSystems(): void {
 /**
  * Run visualizations for all owned rooms and map-level visuals
  * OPTIMIZATION: Use cached owned rooms list
+ * TODO: Add CPU budget for visualizations to prevent them consuming too much
+ * In low bucket, skip or simplify visualizations to preserve CPU
+ * TODO: Implement selective visualization based on observed rooms
+ * Only draw visuals for rooms currently visible to reduce overhead
+ * TODO: Add visualization layers (basic/detailed/debug) controlled by flags
+ * Allow users to toggle between minimal, standard, and verbose visualizations
  */
 function runVisualizations(): void {
   const config = getConfig();

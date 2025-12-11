@@ -21,6 +21,15 @@
  * - CPU-Bucket-gesteuertes Verhalten: High bucket enables expensive operations, low bucket restricts to core logic
  * - Frequenzebenen: High frequency (every tick), Medium (5-20 ticks), Low (≥100 ticks)
  * - Ereignisgetriebene Logik: Critical events trigger immediate updates
+ * 
+ * TODO: Implement adaptive CPU budgets based on room count and actual process performance
+ * Dynamic budget adjustment could better handle growth from 10 to 100+ rooms
+ * TODO: Add process dependency tracking to ensure prerequisite processes run first
+ * Some processes depend on others (e.g., intel must run before expansion decisions)
+ * TODO: Consider implementing process groups for coordinated batch execution
+ * Related processes could be grouped and executed together for better cache locality
+ * TODO: Add process health monitoring with automatic restart on repeated failures
+ * Processes with high error counts should be suspended and logged for investigation
  */
 
 import {
@@ -491,6 +500,10 @@ export class Kernel {
 
   /**
    * Check if process should run this tick
+   * TODO: Add jitter to intervals to prevent all processes running on the same tick
+   * Spread process execution across ticks for more even CPU distribution
+   * TODO: Implement priority decay for starved processes to prevent indefinite skipping
+   * Long-skipped low-priority processes could temporarily boost priority
    */
   private shouldRunProcess(process: Process): boolean {
     // Check bucket requirement
