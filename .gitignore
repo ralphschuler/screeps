@@ -32,6 +32,8 @@ dist/
 **/dist/
 # Exception: Keep screeps-bot dist/ for Screeps sync
 !packages/screeps-bot/dist/
+# Exception: Keep screepsmod-testing dist/ for the mod to work
+!packages/screepsmod-testing/dist/
 build/
 *.tsbuildinfo
 
