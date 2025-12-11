@@ -332,9 +332,21 @@ export class PosisKernelAdapter implements IPosisKernel {
       },
 
       setPriority: (targetId: string, priority: number) => {
-        // This is a limitation - we need to re-register the process with new priority
-        // For now, log a warning
-        logger.warn(`setPriority not fully implemented for ${targetId}`, {
+        const process = this.processInstances.get(targetId);
+        if (!process) {
+          logger.warn(`Cannot set priority for unknown process ${targetId}`, {
+            subsystem: "PosisKernel"
+          });
+          return;
+        }
+        
+        // Update process priority
+        process.priority = priority;
+        
+        // Note: The underlying kernel process priority cannot be changed after registration
+        // without re-registering. The new priority will take effect if the process is
+        // re-registered (e.g., after a respawn or manual restart).
+        logger.debug(`Updated priority for ${targetId} to ${priority} (takes effect on next registration)`, {
           subsystem: "PosisKernel"
         });
       },

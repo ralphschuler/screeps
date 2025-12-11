@@ -58,8 +58,8 @@ export class ExampleProcess extends BaseProcess {
       return;
     }
 
-    // Example 3: Fork a child process after 30 runs
-    if (this.counter === 30) {
+    // Example 3: Fork a child process after 30 runs (only if not already a child)
+    if (this.counter === 30 && !this.id.endsWith("-child")) {
       this.log("info", "Forking child process");
       const childProcess = new ExampleProcess(`${this.id}-child`);
       this.fork(`${this.id}-child`, childProcess);

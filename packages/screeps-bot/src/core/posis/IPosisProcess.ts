@@ -6,7 +6,7 @@
  *
  * References:
  * - https://github.com/screepers/POSIS
- * - ROADMAP.md Section 10: Creep-Ökosystem
+ * - ROADMAP.md Section 22: POSIS Operating System Architecture
  */
 
 import type { IPosisProcessSyscalls } from "./IPosisKernel";
