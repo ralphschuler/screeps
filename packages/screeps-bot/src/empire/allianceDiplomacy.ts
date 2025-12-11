@@ -187,6 +187,7 @@ function generateEconRequest(): void {
     credits: totalCredits,
     sharableEnergy: sharableEnergy,
     energyIncome: energyIncome, // TODO: Implement energy income tracking
+                                // Issue URL: https://github.com/ralphschuler/screeps/issues/473
     mineralNodes: mineralNodes as any
   });
 }
@@ -343,6 +344,7 @@ export function runAllianceDiplomacy(): void {
   processPlayerReputations();
 
   // TODO: Implement response handlers for ally requests
+  // Issue URL: https://github.com/ralphschuler/screeps/issues/472
   // - processResourceRequests() - fulfill resource requests via terminal
   // - processDefenseRequests() - send military support
   // - processAttackRequests() - coordinate attacks
