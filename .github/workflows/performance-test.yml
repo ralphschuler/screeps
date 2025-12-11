@@ -55,6 +55,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Add docker-compose shim
+        run: |
+          echo '#!/usr/bin/env bash' | sudo tee /usr/local/bin/docker-compose > /dev/null
+          echo 'exec docker compose "$@"' | sudo tee -a /usr/local/bin/docker-compose > /dev/null
+          sudo chmod +x /usr/local/bin/docker-compose
+
       - name: Verify Docker setup
         run: |
           docker --version
