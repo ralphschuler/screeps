@@ -1314,7 +1314,7 @@ function internalMoveTo(
 
   // Determine if we need to repath
   const repathIfStuck = options.repathIfStuck ?? 3;
-  // OPTIMIZATION: Using 50 ticks for reusePath per ROADMAP Section 20 (lines 516-517)
+  // OPTIMIZATION: Using 50 ticks for reusePath per ROADMAP Section 20
   // to balance CPU efficiency with responsiveness. Longer values reduce expensive 
   // PathFinder.search calls while still adapting to changes.
   const reusePath = options.reusePath ?? 50;
@@ -1408,7 +1408,8 @@ function internalMoveTo(
   // Force a repath to get a valid path from current position.
   // EXCEPTION: Don't force repath for string-based paths, as they are consumed incrementally
   // and don't need to contain the current position (they work via direction sequences).
-  if (currentIdx === -1 && onRoomExit && pathStr === null) {
+  const isStringBasedPath = pathStr !== null;
+  if (currentIdx === -1 && onRoomExit && !isStringBasedPath) {
     const newPath = generateAndCachePath();
     if (!newPath) {
       return ERR_NO_PATH;
