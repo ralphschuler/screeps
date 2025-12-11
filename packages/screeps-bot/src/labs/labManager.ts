@@ -14,6 +14,21 @@
  * - Reaction chain automation
  * - Boost policy based on danger level
  * - Resource recovery via unboost
+ * 
+ * TODO: Implement automatic lab layout optimization
+ * Calculate optimal lab positions for maximum reaction efficiency
+ * TODO: Add compound production scheduling based on boost demand
+ * Prioritize compounds for upcoming military operations
+ * TODO: Implement factory integration for commodity production
+ * Coordinate with labs for advanced resource processing
+ * TODO: Add compound sharing network across cluster
+ * Balance boost production across multiple lab facilities
+ * TODO: Consider implementing just-in-time boost production
+ * Produce boosts on-demand rather than maintaining large stockpiles
+ * TODO: Add boost cost analysis to evaluate military operation viability
+ * Track resource costs vs expected gains for boosted operations
+ * TODO: Implement automatic unboost scheduling for returning creeps
+ * Recover minerals from boosted creeps after missions
  */
 
 import type { SwarmState } from "../memory/schemas";

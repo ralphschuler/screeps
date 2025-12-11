@@ -14,6 +14,19 @@
  *
  * Addresses Issue: #21 - Defense Systems
  * - Multi-room defense coordination (currently missing)
+ * 
+ * TODO: Implement threat level assessment for prioritizing assistance
+ * High RCL rooms under attack should get priority over low RCL rooms
+ * TODO: Add cluster-wide defense resource pooling (ROADMAP Section 11)
+ * Cluster members should automatically assist each other
+ * TODO: Implement retreat protocols for overwhelmed rooms
+ * When defense is futile, evacuate valuable resources via terminals
+ * TODO: Add defense effectiveness metrics to improve strategy
+ * Track successful defenses vs losses to tune assistance levels
+ * TODO: Consider implementing preemptive defense for visible threats
+ * Send defenders before hostiles arrive if detected in adjacent rooms
+ * TODO: Add safe mode coordination to prevent wasting safe mode activations
+ * Cluster-wide tracking of safe mode cooldowns and availability
  */
 
 import { logger } from "../core/logger";

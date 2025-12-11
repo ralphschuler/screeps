@@ -8,6 +8,21 @@
  * - Terminal overflow prevention
  *
  * Addresses Issue: Terminal automation needs work
+ * 
+ * TODO: Implement smart energy routing to minimize transfer costs
+ * Calculate optimal path through multiple terminals if direct transfer is expensive
+ * TODO: Add mineral exchange market to balance cluster-wide mineral needs
+ * Track which rooms need which minerals and automate distribution
+ * TODO: Implement terminal network graph for routing optimization
+ * Pre-compute best paths between all terminals considering costs
+ * TODO: Add emergency energy transfer for rooms under attack
+ * Priority transfers should bypass normal queue
+ * TODO: Consider implementing resource pooling strategies per cluster
+ * Cluster-wide resource planning could improve efficiency
+ * TODO: Add terminal capacity management to prevent overflow
+ * Monitor fill levels and trigger clearance before hitting limits
+ * TODO: Integrate with market manager for automated buy/sell based on terminal contents
+ * Sell excess, buy deficits automatically within budget constraints
  */
 
 import { logger } from "../core/logger";
