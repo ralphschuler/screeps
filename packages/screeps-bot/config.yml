@@ -9,6 +9,7 @@ mods:
   - screepsmod-milestones-history
   - screepsmod-mongo
   - screepsmod-dynamicmarket
+  - ../screepsmod-testing
 bots:
   bot: ./dist
 serverConfig:
@@ -33,6 +34,12 @@ serverStats:
 env:
   backend:
     CLI_HOST: 0.0.0.0
+
+# screepsmod-testing configuration
+screepsmod:
+  testing:
+    autoRun: true
+    testInterval: 0
 
 # Rooms configuration for bot testing
 rooms:

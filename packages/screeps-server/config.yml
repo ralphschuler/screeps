@@ -29,6 +29,7 @@ mods:
   - screepsmod-web-client
   - screepsmod-cors
   - "@admon-dev/screepsmod-decorate"
+  - ../screepsmod-testing
 
 bots:
   choreographer: screeps-bot-choreographer
@@ -304,3 +305,9 @@ serverConfig:
 launcherOptions:
   autoUpdate: true
   logConsole: true
+
+# screepsmod-testing configuration
+screepsmod:
+  testing:
+    autoRun: true
+    testInterval: 0
