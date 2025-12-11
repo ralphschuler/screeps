@@ -173,13 +173,11 @@ export class Scheduler {
 
   /**
    * Check if task should run this tick
+   * 
+   * REMOVED: Bucket requirement check - tasks run regardless of bucket level.
+   * Bucket mode still affects frequency filtering (low mode skips non-high frequency tasks).
    */
   private shouldRunTask(task: ScheduledTask): boolean {
-    // Check bucket requirement
-    if (Game.cpu.bucket < task.minBucket) {
-      return false;
-    }
-
     // Check frequency
     const ticksSinceRun = Game.time - task.lastRun;
     const interval = this.getIntervalForFrequency(task.frequency);
@@ -285,6 +283,8 @@ export const scheduler = new Scheduler();
 
 /**
  * Create a high-frequency task (every tick)
+ * 
+ * REMOVED: minBucket requirement set to 0 - tasks run regardless of bucket level
  */
 export function createHighFrequencyTask(
   name: string,
@@ -295,7 +295,7 @@ export function createHighFrequencyTask(
     name,
     execute,
     frequency: "high",
-    minBucket: 500,
+    minBucket: 0,
     interval: 1,
     cpuBudget: 0.3,
     priority
@@ -304,6 +304,8 @@ export function createHighFrequencyTask(
 
 /**
  * Create a medium-frequency task (every 5-10 ticks)
+ * 
+ * REMOVED: minBucket requirement set to 0 - tasks run regardless of bucket level
  */
 export function createMediumFrequencyTask(
   name: string,
@@ -314,7 +316,7 @@ export function createMediumFrequencyTask(
     name,
     execute,
     frequency: "medium",
-    minBucket: 2000,
+    minBucket: 0,
     interval: 5,
     cpuBudget: 0.15,
     priority
@@ -323,6 +325,8 @@ export function createMediumFrequencyTask(
 
 /**
  * Create a low-frequency task (every 20-50 ticks)
+ * 
+ * REMOVED: minBucket requirement set to 0 - tasks run regardless of bucket level
  */
 export function createLowFrequencyTask(
   name: string,
@@ -333,7 +337,7 @@ export function createLowFrequencyTask(
     name,
     execute,
     frequency: "low",
-    minBucket: 5000,
+    minBucket: 0,
     interval: 20,
     cpuBudget: 0.1,
     priority

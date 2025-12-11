@@ -209,18 +209,13 @@ export class RoomProcessManager {
 
   /**
    * Get minimum bucket requirement based on priority
+   * 
+   * REMOVED: All bucket requirements - user regularly depletes bucket and doesn't
+   * want minBucket limitations blocking processes. Returns 0 for all priorities.
+   * Bucket mode in kernel still provides priority-based filtering during low bucket.
    */
   private getMinBucketForPriority(priority: ProcessPriority): number {
-    if (priority >= ProcessPriority.CRITICAL) {
-      return 100; // Critical rooms run even at low bucket
-    }
-    if (priority >= ProcessPriority.HIGH) {
-      return 500;
-    }
-    if (priority >= ProcessPriority.MEDIUM) {
-      return 2000;
-    }
-    return 5000; // Low priority needs healthy bucket
+    return 0; // No bucket requirements - processes run regardless of bucket level
   }
 
   /**

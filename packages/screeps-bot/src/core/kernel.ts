@@ -122,8 +122,17 @@ export interface KernelConfig {
   criticalBucketThreshold: number;
   /** Target CPU usage (fraction of limit) */
   targetCpuUsage: number;
-  /** Reserved CPU for finalization */
-  reservedCpu: number;
+  /**
+   * Reserved CPU for finalization (fraction of limit, e.g., 0.02 = 2%)
+   * This is subtracted from the effective CPU limit to ensure we have buffer
+   * for end-of-tick operations like memory serialization.
+   * 
+   * Using a percentage ensures the reserve scales with CPU limit:
+   * - 20 CPU limit: 0.02 * 20 = 0.4 CPU reserved
+   * - 50 CPU limit: 0.02 * 50 = 1.0 CPU reserved
+   * - 100 CPU limit: 0.02 * 100 = 2.0 CPU reserved
+   */
+  reservedCpuFraction: number;
   /** Enable process statistics */
   enableStats: boolean;
   /** Log interval for stats (ticks) */
@@ -163,8 +172,11 @@ export type BucketMode = "critical" | "low" | "normal" | "high";
 
 const BASE_CONFIG: Omit<KernelConfig, "lowBucketThreshold" | "highBucketThreshold" | "criticalBucketThreshold" | "frequencyIntervals" |
   "frequencyMinBucket" | "frequencyCpuBudgets"> = {
-  targetCpuUsage: 0.85,
-  reservedCpu: 5,
+  // Increased from 0.85 to 0.98 to use available CPU more efficiently
+  // The reserved CPU (2%) plus this gives us ~98% utilization with 2% buffer
+  // This prevents excessive CPU waste (was leaving 40+ CPU unused)
+  targetCpuUsage: 0.98,
+  reservedCpuFraction: 0.02, // 2% of CPU limit reserved for finalization
   enableStats: true,
   statsLogInterval: 100,
   pixelGenerationEnabled: true,
@@ -187,11 +199,17 @@ function deriveFrequencyIntervals(taskFrequencies: CPUConfig["taskFrequencies"])
   };
 }
 
+/**
+ * Derive frequency min bucket thresholds
+ * 
+ * REMOVED: All bucket requirements - user regularly depletes bucket and doesn't
+ * want minBucket limitations blocking processes. Returns 0 for all frequencies.
+ */
 function deriveFrequencyMinBucket(bucketThresholds: CPUConfig["bucketThresholds"], highBucketThreshold: number): Record<ProcessFrequency, number> {
   return {
-    high: Math.max(0, Math.floor(bucketThresholds.lowMode * 0.25)),
-    medium: bucketThresholds.lowMode,
-    low: Math.max(bucketThresholds.lowMode, Math.floor((bucketThresholds.lowMode + highBucketThreshold) / 2))
+    high: 0, // No bucket requirement
+    medium: 0, // No bucket requirement
+    low: 0 // No bucket requirement
   };
 }
 
@@ -475,18 +493,29 @@ export class Kernel {
 
   /**
    * Check if CPU budget is available
+   * 
+   * BUGFIX: Use the effective CPU limit (from getCpuLimit()) for both
+   * the limit and reserved CPU calculation to maintain consistency across
+   * all bucket modes (critical, low, normal, high).
    */
   public hasCpuBudget(): boolean {
     const used = Game.cpu.getUsed();
     const limit = this.getCpuLimit();
-    return (limit - used) > this.config.reservedCpu;
+    const reservedCpu = limit * this.config.reservedCpuFraction;
+    return (limit - used) > reservedCpu;
   }
 
   /**
    * Get remaining CPU budget
+   * 
+   * BUGFIX: Use the effective CPU limit (from getCpuLimit()) for both
+   * the limit and reserved CPU calculation to maintain consistency across
+   * all bucket modes (critical, low, normal, high).
    */
   public getRemainingCpu(): number {
-    return Math.max(0, this.getCpuLimit() - Game.cpu.getUsed() - this.config.reservedCpu);
+    const limit = this.getCpuLimit();
+    const reservedCpu = limit * this.config.reservedCpuFraction;
+    return Math.max(0, limit - Game.cpu.getUsed() - reservedCpu);
   }
 
   /**
@@ -514,17 +543,17 @@ export class Kernel {
 
   /**
    * Check if process should run this tick
+   * 
+   * REMOVED: Bucket requirement checks - user regularly depletes bucket and doesn't
+   * want minBucket limitations blocking processes. Bucket mode still affects priority
+   * filtering (critical/low modes only run high-priority processes).
+   * 
    * TODO: Add jitter to intervals to prevent all processes running on the same tick
    * Spread process execution across ticks for more even CPU distribution
    * TODO: Implement priority decay for starved processes to prevent indefinite skipping
    * Long-skipped low-priority processes could temporarily boost priority
    */
   private shouldRunProcess(process: Process): boolean {
-    // Check bucket requirement
-    if (Game.cpu.bucket < process.minBucket) {
-      return false;
-    }
-
     // Check interval (skip check if process has never run - runCount will be 0)
     if (process.stats.runCount > 0) {
       const ticksSinceRun = Game.time - process.stats.lastRunTick;

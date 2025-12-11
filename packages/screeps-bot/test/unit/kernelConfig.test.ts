@@ -104,4 +104,58 @@ describe("Kernel CPU configuration", () => {
     kernel.updateConfig({ pixelGenerationEnabled: false });
     expect(kernel.getBucketMode()).to.equal("high");
   });
+
+  it("reserved CPU scales with CPU limit to avoid excessive waste", () => {
+    // Test that reserved CPU is a percentage, not a fixed value
+    const kernel = new Kernel(buildKernelConfigFromCpu(getConfig().cpu));
+    const config = kernel.getConfig();
+
+    // Reserved CPU should be 2% of limit (default reservedCpuFraction = 0.02)
+    expect(config.reservedCpuFraction).to.equal(0.02);
+    // Target CPU usage should be 98% (increased from 85% to reduce waste)
+    expect(config.targetCpuUsage).to.equal(0.98);
+
+    // Test with 20 CPU limit
+    Game.cpu.limit = 20;
+    const expectedReserved20 = 20 * 0.02; // 0.4 CPU
+    const effectiveLimit20 = 20 * 0.98; // 19.6 CPU (targetCpuUsage = 0.98)
+    const stopAt20 = effectiveLimit20 - expectedReserved20; // 19.2 CPU
+    
+    // Mock Game.cpu.getUsed to be just under the stop threshold
+    Game.cpu.getUsed = () => stopAt20 - 0.1;
+    expect(kernel.hasCpuBudget()).to.be.true;
+    
+    // Mock Game.cpu.getUsed to be over the stop threshold
+    Game.cpu.getUsed = () => stopAt20 + 0.1;
+    expect(kernel.hasCpuBudget()).to.be.false;
+
+    // Test with 50 CPU limit - the main issue case
+    Game.cpu.limit = 50;
+    const expectedReserved50 = 50 * 0.02; // 1.0 CPU
+    const effectiveLimit50 = 50 * 0.98; // 49.0 CPU
+    const stopAt50 = effectiveLimit50 - expectedReserved50; // 48.0 CPU
+    
+    Game.cpu.getUsed = () => stopAt50 - 0.1;
+    expect(kernel.hasCpuBudget()).to.be.true;
+    
+    Game.cpu.getUsed = () => stopAt50 + 0.1;
+    expect(kernel.hasCpuBudget()).to.be.false;
+
+    // Test with 100 CPU limit
+    Game.cpu.limit = 100;
+    const expectedReserved100 = 100 * 0.02; // 2.0 CPU
+    const effectiveLimit100 = 100 * 0.98; // 98 CPU
+    const stopAt100 = effectiveLimit100 - expectedReserved100; // 96 CPU
+    
+    Game.cpu.getUsed = () => stopAt100 - 0.1;
+    expect(kernel.hasCpuBudget()).to.be.true;
+    
+    Game.cpu.getUsed = () => stopAt100 + 0.1;
+    expect(kernel.hasCpuBudget()).to.be.false;
+
+    // Verify dramatic improvement in CPU utilization:
+    // OLD (targetCpuUsage=0.85, reservedCpu=5): 50 CPU limit stopped at 37.5 (12.5 wasted = 25%)
+    // NEW (targetCpuUsage=0.98, reservedCpuFraction=0.02): 50 CPU limit stops at 48.0 (2.0 wasted = 4%)
+    // This is an 84% reduction in wasted CPU! (from 25% waste to 4% waste)
+  });
 });
