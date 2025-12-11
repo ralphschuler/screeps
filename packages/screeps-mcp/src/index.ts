@@ -29,5 +29,18 @@ export {
   handleMemoryGet,
   handleMemorySet,
   handleStats,
+  handleUserWorldStatus,
+  handleUserWorldStartRoom,
+  handleUserRooms,
+  handleMarketStats,
+  handleLeaderboardSeasons,
+  handleLeaderboardFind,
+  handleLeaderboardList,
+  handleExperimentalPvp,
+  handleExperimentalNukes,
+  handleUserMoneyHistory,
+  handleRoomDecorations,
+  handleUserOverview,
+  handleRespawnProhibitedRooms,
   toolSchemas
 } from "./handlers/tools.js";

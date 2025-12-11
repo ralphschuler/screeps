@@ -14,13 +14,16 @@ This package provides a standardized MCP server that exposes Screeps game data, 
 - **Screeps API Integration**: Secure connection to Screeps servers with token or email/password authentication
 - **WebSocket Console Support**: Automatically retrieves console command responses via WebSocket subscription
 - **Resource Providers**: Expose Screeps game objects, memory, and stats via MCP resources
-- **Comprehensive Tool Set**: 14 MCP tools covering:
+- **Comprehensive Tool Set**: 28 MCP tools covering:
   - Console commands with live response
   - Memory and segment operations
-  - Room data (terrain, objects, status)
-  - Market orders and trading
-  - User and shard information
-  - Game state queries
+  - Room data (terrain, objects, status, decorations)
+  - Market orders, trading, and market statistics
+  - User information, rooms, and world status
+  - Leaderboard queries (seasons, find, list)
+  - Experimental data (PVP, nukes)
+  - Money/credit history and user overview
+  - Game state queries and shard information
 - **Comprehensive Testing**: 100% test coverage with unit, integration, and e2e tests
 - **Type Safety**: Full TypeScript support with strict type checking
 
@@ -616,6 +619,339 @@ Get information about all shards.
     {
       "type": "text",
       "text": "{\"success\": true, \"data\": [{\"name\": \"shard0\", ...}, {...}]}"
+    }
+  ]
+}
+```
+
+### `screeps.user.world.status`
+
+Get user world status for a specific shard.
+
+**Input:**
+
+```json
+{
+  "shard": "shard3"
+}
+```
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"data\": {...}}"
+    }
+  ]
+}
+```
+
+### `screeps.user.world.start.room`
+
+Get user start room information.
+
+**Input:**
+
+```json
+{}
+```
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"data\": {...}}"
+    }
+  ]
+}
+```
+
+### `screeps.user.rooms`
+
+Get rooms owned by a specific user.
+
+**Input:**
+
+```json
+{
+  "userId": "588d50e64b9e9fe43a40ebb5"
+}
+```
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"data\": [...]}"
+    }
+  ]
+}
+```
+
+### `screeps.market.stats`
+
+Get market statistics for a resource type.
+
+**Input:**
+
+```json
+{
+  "resourceType": "energy",
+  "shard": "shard3"
+}
+```
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"data\": {...}}"
+    }
+  ]
+}
+```
+
+### `screeps.leaderboard.seasons`
+
+Get list of available leaderboard seasons.
+
+**Input:**
+
+```json
+{}
+```
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"data\": [...]}"
+    }
+  ]
+}
+```
+
+### `screeps.leaderboard.find`
+
+Find a user in the leaderboard.
+
+**Input:**
+
+```json
+{
+  "username": "someUser",
+  "season": "2024-01",
+  "mode": "world"
+}
+```
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"data\": {...}}"
+    }
+  ]
+}
+```
+
+### `screeps.leaderboard.list`
+
+Get leaderboard list with pagination.
+
+**Input:**
+
+```json
+{
+  "season": "2024-01",
+  "limit": 20,
+  "offset": 0,
+  "mode": "world"
+}
+```
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"data\": [...]}"
+    }
+  ]
+}
+```
+
+### `screeps.experimental.pvp`
+
+Get experimental PVP data for different time intervals.
+
+**Input:**
+
+```json
+{
+  "interval": 8
+}
+```
+
+**Note:** `interval` can be `8` for 1 hour, `180` for 24 hours, or `1440` for 7 days.
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"data\": {...}}"
+    }
+  ]
+}
+```
+
+### `screeps.experimental.nukes`
+
+Get experimental nukes data for different time intervals.
+
+**Input:**
+
+```json
+{
+  "interval": 8
+}
+```
+
+**Note:** `interval` can be `8` for 1 hour, `180` for 24 hours, or `1440` for 7 days.
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"data\": {...}}"
+    }
+  ]
+}
+```
+
+### `screeps.user.money.history`
+
+Get user money/credit transaction history.
+
+**Input:**
+
+```json
+{
+  "page": 0
+}
+```
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"data\": [...]}"
+    }
+  ]
+}
+```
+
+### `screeps.room.decorations`
+
+Get room decorations (visual customizations).
+
+**Input:**
+
+```json
+{
+  "room": "W1N1",
+  "shard": "shard3"
+}
+```
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"data\": {...}}"
+    }
+  ]
+}
+```
+
+### `screeps.user.overview`
+
+Get user overview with statistics.
+
+**Input:**
+
+```json
+{
+  "interval": 8,
+  "statName": "energyHarvested"
+}
+```
+
+**Note:** `interval` can be `8` for 1 hour, `180` for 24 hours, or `1440` for 7 days. `statName` options include: `creepsLost`, `creepsProduced`, `energyConstruction`, `energyControl`, `energyCreeps`, `energyHarvested`.
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"data\": {...}}"
+    }
+  ]
+}
+```
+
+### `screeps.respawn.prohibited.rooms`
+
+Get list of rooms where respawning is prohibited.
+
+**Input:**
+
+```json
+{}
+```
+
+**Output:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"data\": [...]}"
     }
   ]
 }
