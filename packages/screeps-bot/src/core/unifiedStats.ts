@@ -766,11 +766,17 @@ export class UnifiedStatsManager {
           }
         }
 
+        // BUGFIX: Calculate per-creep average CPU, not total CPU for all creeps
+        // measurements.length = number of creeps that executed this tick
+        // totalCpu = sum of CPU used by all creeps that executed
+        // avgCpuPerCreep = average CPU per creep that executed
+        const avgCpuPerCreep = measurements.length > 0 ? totalCpu / measurements.length : 0;
+        
         const existing = profilerMem.roles?.[cleanName];
         const avgCpu = existing
-          ? existing.avgCpu * (1 - this.config.smoothingFactor) + totalCpu * this.config.smoothingFactor
-          : totalCpu;
-        const peakCpu = existing ? Math.max(existing.peakCpu, totalCpu) : totalCpu;
+          ? existing.avgCpu * (1 - this.config.smoothingFactor) + avgCpuPerCreep * this.config.smoothingFactor
+          : avgCpuPerCreep;
+        const peakCpu = existing ? Math.max(existing.peakCpu, avgCpuPerCreep) : avgCpuPerCreep;
 
         this.currentSnapshot.roles[cleanName] = {
           name: cleanName,

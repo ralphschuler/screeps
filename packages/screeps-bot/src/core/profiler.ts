@@ -203,17 +203,23 @@ export class Profiler {
       const targetMap = isRole ? memory.roles : memory.subsystems;
       const cleanName = isRole ? name.substring(5) : name;
 
+      // BUGFIX: For roles, calculate per-creep average CPU
+      // measurements.length = number of creeps that executed
+      // totalCpu = sum of CPU used by all creeps
+      // avgCpuPerCreep = average CPU per creep
+      const cpuValue = isRole && measurements.length > 0 ? totalCpu / measurements.length : totalCpu;
+
       if (!targetMap[cleanName]) {
         targetMap[cleanName] = {
-          avgCpu: totalCpu,
-          peakCpu: totalCpu,
+          avgCpu: cpuValue,
+          peakCpu: cpuValue,
           samples: 1,
           callsThisTick: measurements.length
         };
       } else {
         const data = targetMap[cleanName];
-        data.avgCpu = data.avgCpu * (1 - this.config.smoothingFactor) + totalCpu * this.config.smoothingFactor;
-        data.peakCpu = Math.max(data.peakCpu, totalCpu);
+        data.avgCpu = data.avgCpu * (1 - this.config.smoothingFactor) + cpuValue * this.config.smoothingFactor;
+        data.peakCpu = Math.max(data.peakCpu, cpuValue);
         data.samples++;
         data.callsThisTick = measurements.length;
       }
@@ -225,7 +231,7 @@ export class Profiler {
           const mem = c.memory as unknown as { role: string };
           return mem.role === cleanName;
         }).length;
-        statsManager.recordRole(cleanName, roleCount, totalCpu, measurements.length);
+        statsManager.recordRole(cleanName, roleCount, cpuValue, measurements.length);
       } else {
         statsManager.recordSubsystem(cleanName, totalCpu, measurements.length);
       }

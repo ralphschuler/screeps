@@ -173,6 +173,41 @@ describe("Profiler", () => {
       const data = profiler.getSubsystemData("harvester");
       assert.isUndefined(data);
     });
+
+    it("should calculate per-creep average CPU for roles, not total", () => {
+      // Setup 3 harvester creeps
+      (global as any).Game.creeps = {
+        harvester1: { memory: { role: "harvester" } },
+        harvester2: { memory: { role: "harvester" } },
+        harvester3: { memory: { role: "harvester" } }
+      };
+
+      cpuUsed = 0;
+
+      // Each creep execution uses 0.1 CPU, total = 0.3 CPU
+      profiler.measureSubsystem("role:harvester", () => {
+        cpuUsed = 0.1;
+      });
+
+      cpuUsed = 0.1;
+      profiler.measureSubsystem("role:harvester", () => {
+        cpuUsed = 0.2;
+      });
+
+      cpuUsed = 0.2;
+      profiler.measureSubsystem("role:harvester", () => {
+        cpuUsed = 0.3;
+      });
+
+      profiler.finalizeTick();
+
+      // avgCpu should be per-creep average (0.3 / 3 = 0.1), not total (0.3)
+      // Access the memory directly to verify
+      const mem = (Memory as any).stats.profiler.roles.harvester;
+      assert.isDefined(mem, "Role stats should exist");
+      assert.approximately(mem.avgCpu, 0.1, 0.001, "Should be per-creep average CPU");
+      assert.equal(mem.callsThisTick, 3, "Should track 3 calls");
+    });
   });
 
   describe("Total CPU Calculation", () => {
