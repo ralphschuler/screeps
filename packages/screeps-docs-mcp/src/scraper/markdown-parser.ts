@@ -114,7 +114,7 @@ export function extractSections(content: string): Array<{ heading: string; conte
     if (!match || !match[2] || match.index === undefined) continue;
     
     const heading = match[2].trim();
-    const startIndex = match.index + (match[0]?.length || 0);
+    const startIndex = match.index + match[0].length;
     const nextMatch = matches[i + 1];
     const endIndex = nextMatch && nextMatch.index !== undefined ? nextMatch.index : body.length;
     const sectionContent = body.substring(startIndex, endIndex).trim();
@@ -174,7 +174,7 @@ export function extractAPIMethods(content: string): Array<{ name: string; signat
     if (!match[1] || !match[3]) continue;
     
     const name = match[1].replace(/^[^.]+\./, ""); // Remove object prefix
-    const signature = match[2] || "";
+    const signature = match[2] ?? "";
     const methodContent = match[3];
     
     // Extract return value if present
