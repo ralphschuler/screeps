@@ -21,6 +21,15 @@ export async function cloneDocsRepo(): Promise<string> {
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "screeps-docs-"));
   
   try {
+    // TODO: SSL Certificate Error - Git clone fails with certificate verification error
+    // Details: Git clone returns "server certificate verification failed. CAfile: none CRLfile: none"
+    // Encountered: When calling screeps_docs_list_apis or any screeps-docs-mcp tool
+    // Suggested Fix: Configure git to handle SSL certificates properly:
+    // 1. Set GIT_SSL_NO_VERIFY=1 environment variable (not recommended for production)
+    // 2. Configure git to use system CA certificates: git.env({ GIT_SSL_CAINFO: '/path/to/cacert.pem' })
+    // 3. Add git configuration option to disable SSL verification for this specific clone:
+    //    await git.clone(DOCS_REPO_URL, tmpDir, ["--depth", "1", "-c", "http.sslVerify=false"]);
+    // 4. Ensure the system has proper CA certificates installed
     const git = simpleGit();
     
     // Clone the repository with depth 1 (shallow clone) for efficiency
