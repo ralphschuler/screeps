@@ -103,6 +103,8 @@ export function Process(options: ProcessOptions) {
 /**
  * High frequency process decorator (runs every tick)
  * Shorthand for @Process with frequency: "high"
+ * 
+ * REMOVED: minBucket requirement set to 0 - processes run regardless of bucket level
  */
 export function HighFrequencyProcess(
   id: string,
@@ -114,7 +116,7 @@ export function HighFrequencyProcess(
     name,
     priority: ProcessPriority.HIGH,
     frequency: "high",
-    minBucket: 500,
+    minBucket: 0,
     cpuBudget: 0.3,
     interval: 1,
     ...options
@@ -124,6 +126,8 @@ export function HighFrequencyProcess(
 /**
  * Medium frequency process decorator (runs every 5-10 ticks)
  * Shorthand for @Process with frequency: "medium"
+ * 
+ * REMOVED: minBucket requirement set to 0 - processes run regardless of bucket level
  */
 export function MediumFrequencyProcess(
   id: string,
@@ -135,7 +139,7 @@ export function MediumFrequencyProcess(
     name,
     priority: ProcessPriority.MEDIUM,
     frequency: "medium",
-    minBucket: 2000,
+    minBucket: 0,
     cpuBudget: 0.15,
     interval: 5,
     ...options
@@ -145,6 +149,8 @@ export function MediumFrequencyProcess(
 /**
  * Low frequency process decorator (runs every 20+ ticks)
  * Shorthand for @Process with frequency: "low"
+ * 
+ * REMOVED: minBucket requirement set to 0 - processes run regardless of bucket level
  */
 export function LowFrequencyProcess(
   id: string,
@@ -156,7 +162,7 @@ export function LowFrequencyProcess(
     name,
     priority: ProcessPriority.LOW,
     frequency: "low",
-    minBucket: 5000,
+    minBucket: 0,
     cpuBudget: 0.1,
     interval: 20,
     ...options
@@ -166,6 +172,8 @@ export function LowFrequencyProcess(
 /**
  * Critical process decorator (must run every tick)
  * Shorthand for @Process with priority: CRITICAL
+ * 
+ * REMOVED: minBucket requirement set to 0 - processes run regardless of bucket level
  */
 export function CriticalProcess(
   id: string,
@@ -177,7 +185,7 @@ export function CriticalProcess(
     name,
     priority: ProcessPriority.CRITICAL,
     frequency: "high",
-    minBucket: 100,
+    minBucket: 0,
     cpuBudget: 0.3,
     interval: 1,
     ...options
@@ -187,6 +195,8 @@ export function CriticalProcess(
 /**
  * Idle process decorator (very low priority background tasks)
  * Shorthand for @Process with priority: IDLE
+ * 
+ * REMOVED: minBucket requirement set to 0 - processes run regardless of bucket level
  */
 export function IdleProcess(
   id: string,
@@ -198,7 +208,7 @@ export function IdleProcess(
     name,
     priority: ProcessPriority.IDLE,
     frequency: "low",
-    minBucket: 8000,
+    minBucket: 0,
     cpuBudget: 0.05,
     interval: 100,
     ...options

@@ -33,10 +33,12 @@ export class CoreProcessManager {
    * Runs every tick to check if bucket is at max (10,000) and generate a pixel.
    * Generating a pixel consumes 10,000 bucket (emptying it).
    * Notifies the kernel so it knows low bucket is expected during recovery.
+   * 
+   * Note: minBucket check removed - process runs regardless of bucket level.
+   * The internal check for PIXEL_CPU_COST ensures pixel generation only happens at max bucket.
    */
   @HighFrequencyProcess("core:pixelGeneration", "Pixel Generation", {
     priority: ProcessPriority.LOW,
-    minBucket: PIXEL_CPU_COST,
     cpuBudget: 0.001
   })
   public generatePixel(): void {
@@ -59,7 +61,6 @@ export class CoreProcessManager {
   @LowFrequencyProcess("core:memoryCleanup", "Memory Cleanup", {
     priority: ProcessPriority.LOW,
     interval: 50,
-    minBucket: 1000,
     cpuBudget: 0.01
   })
   public cleanupMemory(): void {
@@ -76,7 +77,6 @@ export class CoreProcessManager {
    */
   @IdleProcess("core:memorySizeCheck", "Memory Size Check", {
     interval: 100,
-    minBucket: 1000,
     cpuBudget: 0.005
   })
   public checkMemorySize(): void {
@@ -102,7 +102,6 @@ export class CoreProcessManager {
   @MediumFrequencyProcess("core:memorySegmentStats", "Memory Segment Stats", {
     priority: ProcessPriority.IDLE,
     interval: 10,
-    minBucket: 2000,
     cpuBudget: 0.01
   })
   public updateMemorySegmentStats(): void {
@@ -116,7 +115,6 @@ export class CoreProcessManager {
   @MediumFrequencyProcess("cluster:pheromoneDiffusion", "Pheromone Diffusion", {
     priority: ProcessPriority.MEDIUM,
     interval: 10,
-    minBucket: 2000,
     cpuBudget: 0.02
   })
   public runPheromoneDiffusion(): void {
@@ -138,7 +136,6 @@ export class CoreProcessManager {
   @LowFrequencyProcess("room:labConfig", "Lab Config Manager", {
     priority: ProcessPriority.LOW,
     interval: 200,
-    minBucket: 3000,
     cpuBudget: 0.01
   })
   public initializeLabConfigs(): void {
@@ -154,7 +151,6 @@ export class CoreProcessManager {
    */
   @IdleProcess("room:pathCachePrecache", "Path Cache Precache", {
     interval: 1000,
-    minBucket: 8000,
     cpuBudget: 0.03
   })
   public precacheRoomPaths(): void {

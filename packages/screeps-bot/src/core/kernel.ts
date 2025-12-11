@@ -202,16 +202,14 @@ function deriveFrequencyIntervals(taskFrequencies: CPUConfig["taskFrequencies"])
 /**
  * Derive frequency min bucket thresholds
  * 
- * BUGFIX: Reduced thresholds dramatically to prevent excessive process skipping.
- * Previous formula used lowMode (2000) directly for medium frequency, causing
- * 40 CPU waste when bucket was low. New thresholds allow processes to run
- * and utilize available CPU even with lower bucket.
+ * REMOVED: All bucket requirements - user regularly depletes bucket and doesn't
+ * want minBucket limitations blocking processes. Returns 0 for all frequencies.
  */
 function deriveFrequencyMinBucket(bucketThresholds: CPUConfig["bucketThresholds"], highBucketThreshold: number): Record<ProcessFrequency, number> {
   return {
-    high: 100, // High frequency processes run with minimal bucket
-    medium: 200, // Medium frequency processes run with low bucket
-    low: 500 // Low frequency processes need moderate bucket
+    high: 0, // No bucket requirement
+    medium: 0, // No bucket requirement
+    low: 0 // No bucket requirement
   };
 }
 
@@ -545,17 +543,17 @@ export class Kernel {
 
   /**
    * Check if process should run this tick
+   * 
+   * REMOVED: Bucket requirement checks - user regularly depletes bucket and doesn't
+   * want minBucket limitations blocking processes. Bucket mode still affects priority
+   * filtering (critical/low modes only run high-priority processes).
+   * 
    * TODO: Add jitter to intervals to prevent all processes running on the same tick
    * Spread process execution across ticks for more even CPU distribution
    * TODO: Implement priority decay for starved processes to prevent indefinite skipping
    * Long-skipped low-priority processes could temporarily boost priority
    */
   private shouldRunProcess(process: Process): boolean {
-    // Check bucket requirement
-    if (Game.cpu.bucket < process.minBucket) {
-      return false;
-    }
-
     // Check interval (skip check if process has never run - runCount will be 0)
     if (process.stats.runCount > 0) {
       const ticksSinceRun = Game.time - process.stats.lastRunTick;

@@ -234,21 +234,12 @@ export class CreepProcessManager {
   /**
    * Get minimum bucket requirement based on priority
    * 
-   * BUGFIX: Reduced thresholds dramatically to prevent excessive process skipping.
-   * Previous thresholds (MEDIUM=2000, LOW=5000) caused 40 CPU waste when bucket was low.
-   * New thresholds allow processes to run and utilize available CPU even with lower bucket.
+   * REMOVED: All bucket requirements - user regularly depletes bucket and doesn't
+   * want minBucket limitations blocking processes. Returns 0 for all priorities.
+   * Bucket mode in kernel still provides priority-based filtering during low bucket.
    */
   private getMinBucketForPriority(priority: ProcessPriority): number {
-    if (priority >= ProcessPriority.CRITICAL) {
-      return 50; // Critical creeps run almost always
-    }
-    if (priority >= ProcessPriority.HIGH) {
-      return 100; // High priority with minimal bucket requirement
-    }
-    if (priority >= ProcessPriority.MEDIUM) {
-      return 200; // Medium priority - much lower threshold
-    }
-    return 500; // Low priority - still runs with moderate bucket
+    return 0; // No bucket requirements - processes run regardless of bucket level
   }
 
   /**
