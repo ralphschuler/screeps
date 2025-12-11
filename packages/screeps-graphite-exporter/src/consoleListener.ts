@@ -146,7 +146,7 @@ export async function startConsoleListener(api: ScreepsAPI, metrics: Metrics, lo
       logger.info('Subscribed to console events and receiving messages');
       firstMessage = false;
     }
-    
+
     const lines = payload?.messages?.log ?? [];
     lines.forEach((line) => recordConsoleLine(metrics, logger, line));
     // Flush after each batch of console messages
