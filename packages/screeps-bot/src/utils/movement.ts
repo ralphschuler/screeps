@@ -262,6 +262,8 @@ interface CachedPath {
   targetKey: string;
   /** Accumulated CPU used for pathfinding (for tracking heavy operations) */
   cpu?: number;
+  /** Room name where path was created (for string-based paths only) */
+  startRoom?: string;
 }
 
 /**
@@ -1303,6 +1305,13 @@ function internalMoveTo(
     }
   }
 
+  // Check if creep changed rooms (for string-based paths)
+  // String-based paths are relative to start position, so they become invalid when room changes
+  let creepChangedRooms = false;
+  if (cachedPath && typeof cachedPath.path === 'string' && cachedPath.startRoom) {
+    creepChangedRooms = cachedPath.startRoom !== creep.pos.roomName;
+  }
+
   // Determine if we need to repath
   const repathIfStuck = options.repathIfStuck ?? 3;
   // OPTIMIZATION: Using 30 ticks for reusePath to balance CPU efficiency with responsiveness
@@ -1313,7 +1322,8 @@ function internalMoveTo(
     (!targetMoved && cachedPath.targetKey !== targetKey) ||
     Game.time - cachedPath.tick > reusePath ||
     newStuckCount >= repathIfStuck ||
-    cachedPathInDifferentRoom; // Force repath when path is from a different room
+    cachedPathInDifferentRoom || // Force repath when path is from a different room
+    creepChangedRooms; // Force repath when creep changed rooms (string-based paths only)
 
   let path: RoomPosition[];
   let pathStr: string | null = null;
@@ -1354,13 +1364,19 @@ function internalMoveTo(
       : serializePathToString(creep.pos, pathResult.path);
 
     // Cache the path
-    memory[MEMORY_PATH_KEY] = {
+    const cachedPathData: CachedPath = {
       path: serializedPath,
       tick: Game.time,
       targetKey,
       cpu: totalCpu
-    } as CachedPath;
-
+    };
+    
+    // For string-based paths, store the starting room to detect room changes
+    if (typeof serializedPath === 'string') {
+      cachedPathData.startRoom = creep.pos.roomName;
+    }
+    
+    memory[MEMORY_PATH_KEY] = cachedPathData;
     memory[MEMORY_STUCK_KEY] = 0;
     return pathResult.path;
   }

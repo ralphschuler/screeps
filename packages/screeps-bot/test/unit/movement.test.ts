@@ -144,6 +144,89 @@ describe("Movement Room Exit Handling", () => {
     });
   });
 
+  describe("String-based path cache invalidation on room change", () => {
+    /**
+     * Simulates the room change detection for string-based cached paths.
+     * String-based paths are direction sequences relative to the starting position.
+     * When a creep moves to a different room, these paths become invalid and must be regenerated.
+     * 
+     * Note: This test interface mirrors the CachedPath structure from movement.ts
+     * but simplified for testing purposes (only includes string paths, not position arrays).
+     */
+    interface TestCachedPath {
+      path: string; // direction string like "12345678"
+      startRoom?: string; // room where path was created
+    }
+
+    function shouldInvalidateStringPath(
+      cachedPath: TestCachedPath | null,
+      currentRoomName: string
+    ): boolean {
+      if (!cachedPath) return false;
+      // Only check room change for string-based paths
+      if (typeof cachedPath.path === 'string' && cachedPath.startRoom) {
+        return cachedPath.startRoom !== currentRoomName;
+      }
+      return false;
+    }
+
+    it("should invalidate string-based path when creep changes rooms", () => {
+      const cachedPath: TestCachedPath = {
+        path: "12345678", // direction string
+        startRoom: "E1N1"
+      };
+      expect(shouldInvalidateStringPath(cachedPath, "E2N1")).to.be.true;
+    });
+
+    it("should NOT invalidate string-based path when creep is in same room", () => {
+      const cachedPath: TestCachedPath = {
+        path: "12345678",
+        startRoom: "E1N1"
+      };
+      expect(shouldInvalidateStringPath(cachedPath, "E1N1")).to.be.false;
+    });
+
+    it("should NOT invalidate when no cached path exists", () => {
+      expect(shouldInvalidateStringPath(null, "E1N1")).to.be.false;
+    });
+
+    it("should NOT invalidate when startRoom is not set (legacy paths)", () => {
+      const cachedPath: TestCachedPath = {
+        path: "12345678",
+        // startRoom not set - simulates legacy cached paths
+      };
+      expect(shouldInvalidateStringPath(cachedPath, "E2N1")).to.be.false;
+    });
+
+    describe("Specific room transition scenarios", () => {
+      it("scenario: harvester moves from E1N1 to E2N1 - should invalidate", () => {
+        const cachedPath: TestCachedPath = {
+          path: "333", // moving right
+          startRoom: "E1N1"
+        };
+        // After crossing the exit, creep is now in E2N1
+        expect(shouldInvalidateStringPath(cachedPath, "E2N1")).to.be.true;
+      });
+
+      it("scenario: upgrader stays in E1N1 - should NOT invalidate", () => {
+        const cachedPath: TestCachedPath = {
+          path: "111222333", // moving around in same room
+          startRoom: "E1N1"
+        };
+        expect(shouldInvalidateStringPath(cachedPath, "E1N1")).to.be.false;
+      });
+
+      it("scenario: scout crosses from E1N1 to E1N2 - should invalidate", () => {
+        const cachedPath: TestCachedPath = {
+          path: "555", // moving down
+          startRoom: "E1N1"
+        };
+        // After crossing the exit, creep is now in E1N2
+        expect(shouldInvalidateStringPath(cachedPath, "E1N2")).to.be.true;
+      });
+    });
+  });
+
   describe("Repath trigger conditions", () => {
     /**
      * Simulates the repath decision logic.
@@ -155,6 +238,7 @@ describe("Movement Room Exit Handling", () => {
       isStuck: boolean;
       onRoomExit: boolean;
       pathInDifferentRoom: boolean;
+      creepChangedRooms: boolean;
     }
 
     function shouldRepath(conditions: RepathConditions): boolean {
@@ -163,7 +247,8 @@ describe("Movement Room Exit Handling", () => {
         conditions.targetChanged ||
         conditions.pathExpired ||
         conditions.isStuck ||
-        (conditions.onRoomExit && conditions.pathInDifferentRoom)
+        (conditions.onRoomExit && conditions.pathInDifferentRoom) ||
+        conditions.creepChangedRooms
       );
     }
 
@@ -175,7 +260,8 @@ describe("Movement Room Exit Handling", () => {
           pathExpired: false,
           isStuck: false,
           onRoomExit: false,
-          pathInDifferentRoom: false
+          pathInDifferentRoom: false,
+          creepChangedRooms: false
         })
       ).to.be.true;
     });
@@ -188,7 +274,8 @@ describe("Movement Room Exit Handling", () => {
           pathExpired: false,
           isStuck: false,
           onRoomExit: false,
-          pathInDifferentRoom: false
+          pathInDifferentRoom: false,
+          creepChangedRooms: false
         })
       ).to.be.true;
     });
@@ -201,7 +288,22 @@ describe("Movement Room Exit Handling", () => {
           pathExpired: false,
           isStuck: true,
           onRoomExit: false,
-          pathInDifferentRoom: false
+          pathInDifferentRoom: false,
+          creepChangedRooms: false
+        })
+      ).to.be.true;
+    });
+
+    it("should repath when creep changed rooms (NEW FIX)", () => {
+      expect(
+        shouldRepath({
+          hasCachedPath: true,
+          targetChanged: false,
+          pathExpired: false,
+          isStuck: false,
+          onRoomExit: false,
+          pathInDifferentRoom: false,
+          creepChangedRooms: true
         })
       ).to.be.true;
     });
@@ -214,7 +316,8 @@ describe("Movement Room Exit Handling", () => {
           pathExpired: false,
           isStuck: false,
           onRoomExit: true,
-          pathInDifferentRoom: true
+          pathInDifferentRoom: true,
+          creepChangedRooms: false
         })
       ).to.be.true;
     });
@@ -227,7 +330,8 @@ describe("Movement Room Exit Handling", () => {
           pathExpired: false,
           isStuck: false,
           onRoomExit: true,
-          pathInDifferentRoom: false
+          pathInDifferentRoom: false,
+          creepChangedRooms: false
         })
       ).to.be.false;
     });
@@ -240,7 +344,8 @@ describe("Movement Room Exit Handling", () => {
           pathExpired: false,
           isStuck: false,
           onRoomExit: false,
-          pathInDifferentRoom: true
+          pathInDifferentRoom: true,
+          creepChangedRooms: false
         })
       ).to.be.false;
     });
@@ -253,7 +358,8 @@ describe("Movement Room Exit Handling", () => {
           pathExpired: false,
           isStuck: false,
           onRoomExit: false,
-          pathInDifferentRoom: false
+          pathInDifferentRoom: false,
+          creepChangedRooms: false
         })
       ).to.be.false;
     });
