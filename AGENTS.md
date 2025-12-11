@@ -13,13 +13,14 @@ When encountering errors in source code that originates from this repository:
    ```typescript
    // TODO: [Error Type] - [Brief Description]
    // Details: [Full error message and context]
-   // Encountered: [Date/Context when error was found]
+   // Encountered: [Context or scenario when error was found]
+   // Suggested Fix: [If you have ideas for resolution]
    ```
 3. **Include Context**: The TODO should contain:
    - The specific error message or exception
    - The conditions that triggered the error
    - Any relevant stack trace information
-   - Suggestions for fixing the issue (if apparent)
+   - Suggestions for fixing the issue (if known)
 
 ### Example
 
@@ -27,7 +28,7 @@ When encountering errors in source code that originates from this repository:
 // TODO: TypeError - Cannot read property 'x' of undefined
 // Details: Attempting to access position.x when position is undefined
 // Encountered: During MCP server room terrain request
-// Fix: Add null check before accessing position properties
+// Suggested Fix: Add null check before accessing position properties
 if (!position) {
   throw new Error("Position is required");
 }
