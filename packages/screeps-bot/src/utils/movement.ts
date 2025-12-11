@@ -1314,9 +1314,10 @@ function internalMoveTo(
 
   // Determine if we need to repath
   const repathIfStuck = options.repathIfStuck ?? 3;
-  // OPTIMIZATION: Using 30 ticks for reusePath to balance CPU efficiency with responsiveness
-  // Longer values reduce expensive PathFinder.search calls while still adapting to changes
-  const reusePath = options.reusePath ?? 30;
+  // OPTIMIZATION: Using 50 ticks for reusePath per ROADMAP Section 20 (lines 516-517)
+  // to balance CPU efficiency with responsiveness. Longer values reduce expensive 
+  // PathFinder.search calls while still adapting to changes.
+  const reusePath = options.reusePath ?? 50;
   const needRepath =
     !cachedPath ||
     (!targetMoved && cachedPath.targetKey !== targetKey) ||
@@ -1405,7 +1406,9 @@ function internalMoveTo(
   // If current position not found in path and we're on a room exit,
   // this could mean the path is stale or doesn't include the creep's current position.
   // Force a repath to get a valid path from current position.
-  if (currentIdx === -1 && onRoomExit) {
+  // EXCEPTION: Don't force repath for string-based paths, as they are consumed incrementally
+  // and don't need to contain the current position (they work via direction sequences).
+  if (currentIdx === -1 && onRoomExit && pathStr === null) {
     const newPath = generateAndCachePath();
     if (!newPath) {
       return ERR_NO_PATH;
