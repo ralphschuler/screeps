@@ -3,6 +3,19 @@
  *
  * Simple, human-readable behavior functions for economy roles.
  * Each function evaluates the situation and returns an action.
+ * 
+ * TODO: Implement priority-based task assignment for economy roles
+ * Critical tasks (spawn refill) should override normal tasks
+ * TODO: Add behavior efficiency tracking per role
+ * Measure resource throughput and optimize behaviors
+ * TODO: Consider implementing opportunistic multi-tasking
+ * Creeps could do secondary tasks while moving (e.g., pick up energy)
+ * TODO: Add adaptive behavior based on room state
+ * Behavior priority should adjust based on room needs
+ * TODO: Implement path reuse between similar behaviors
+ * Harvesters and haulers use similar paths, could share
+ * TODO: Add behavior composability for complex roles
+ * Combine simple behaviors into more sophisticated strategies
  */
 
 import type { SwarmCreepMemory } from "../../memory/schemas";

@@ -8,6 +8,21 @@
  * References:
  * - https://github.com/screepers/POSIS
  * - ROADMAP.md Section 3: Architektur-Ebenen
+ * 
+ * TODO: Implement process sandboxing to isolate process state
+ * Prevent processes from interfering with each other's memory
+ * TODO: Add process resource limits (CPU, memory per process)
+ * Enforce hard limits to prevent runaway processes
+ * TODO: Implement process crash recovery with automatic restart
+ * Failed processes should restart after a cooldown period
+ * TODO: Add process communication tracing for debugging
+ * Log all IPC messages to diagnose coordination issues
+ * TODO: Consider implementing process migration between kernels
+ * Support moving processes to different kernel instances
+ * TODO: Add process checkpointing for state preservation
+ * Save process state to survive global resets
+ * TODO: Implement process priority inheritance for dependencies
+ * Dependent processes should boost priority of their dependencies
  */
 
 import type { IPosisProcess, IPosisProcessContext } from "./IPosisProcess";

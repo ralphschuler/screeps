@@ -2,6 +2,21 @@
  * Base Blueprints - Phase 5
  *
  * Pre-computed coordinate arrays for base layouts at different RCL stages.
+ * 
+ * TODO: Implement automatic blueprint selection based on terrain
+ * Analyze room terrain to choose best layout (bunker vs spread)
+ * TODO: Add dynamic blueprint generation for irregular terrain
+ * Generate custom layouts when pre-made blueprints don't fit
+ * TODO: Implement blueprint validation before construction
+ * Check for obstacles, sources, controller positions
+ * TODO: Add blueprint versioning for gradual base evolution
+ * Support incremental upgrades without full reconstruction
+ * TODO: Consider adding specialized blueprints (eco, war, hybrid)
+ * Different layouts optimized for different room postures
+ * TODO: Implement blueprint sharing/import from successful designs
+ * Allow importing proven layouts from other bots or players
+ * TODO: Add blueprint efficiency scoring
+ * Evaluate layouts based on path lengths, defense coverage, etc.
  */
 
 import type { EvolutionStage } from "../memory/schemas";

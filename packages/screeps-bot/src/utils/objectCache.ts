@@ -19,6 +19,17 @@
  * CPU Savings:
  * - With 100+ creeps accessing storage: ~1-2 CPU per tick
  * - With multiple creeps per source: ~0.5-1 CPU per tick
+ * 
+ * TODO: Add cache hit/miss statistics for performance monitoring
+ * Track cache effectiveness to validate caching strategy
+ * TODO: Implement cache warming for critical objects at tick start
+ * Pre-cache frequently used objects to avoid first-access cost
+ * TODO: Add cache size monitoring to prevent memory bloat
+ * Limit cache size or implement LRU eviction for large maps
+ * TODO: Consider implementing multi-tick caching for static objects
+ * Some objects (structures) could be cached for multiple ticks
+ * TODO: Add typed cache accessors for better type safety
+ * Separate cache methods for different object types (getStorage, getSource, etc.)
  */
 
 // =============================================================================

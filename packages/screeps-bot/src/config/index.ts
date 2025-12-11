@@ -3,6 +3,21 @@
  *
  * Central configuration for all bot parameters.
  * Single source of truth for tunable constants.
+ * 
+ * TODO: Implement configuration hot-reloading from Memory or segments
+ * Allow runtime config changes without code deployment
+ * TODO: Add configuration validation on initialization
+ * Catch invalid config values before they cause issues
+ * TODO: Implement configuration profiles (eco, war, balanced)
+ * Pre-defined config sets for different playstyles
+ * TODO: Add per-room configuration overrides
+ * Allow customizing behavior for specific rooms
+ * TODO: Consider implementing configuration versioning
+ * Track config changes over time for performance correlation
+ * TODO: Add configuration export/import for sharing between bots
+ * Successful configs could be shared or backed up
+ * TODO: Implement adaptive configuration based on performance metrics
+ * Automatically tune parameters based on observed outcomes
  */
 
 /**

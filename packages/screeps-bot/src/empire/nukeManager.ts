@@ -11,6 +11,21 @@
  * - Resource management coordination
  *
  * Addresses Issue: #24
+ * 
+ * TODO: Implement nuke salvo coordination for maximum impact
+ * Multiple nukes on same target timed to hit simultaneously
+ * TODO: Add nuke impact prediction and damage assessment
+ * Pre-calculate expected destruction before launching
+ * TODO: Implement automatic siege squad deployment with nukes
+ * Coordinate ground troops to arrive as nuke lands
+ * TODO: Add nuke defense detection and alert system
+ * Warn when incoming nukes detected, trigger evacuation
+ * TODO: Consider implementing counter-nuke strategies
+ * Respond to enemy nukes with retaliatory strikes
+ * TODO: Add nuke economics analysis
+ * Track resource costs vs gains from successful nuke operations
+ * TODO: Implement nuke target prioritization based on war goals
+ * Align nuke targets with overall strategic objectives
  */
 
 import { memoryManager } from "../memory/manager";
