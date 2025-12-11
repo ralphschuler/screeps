@@ -335,4 +335,79 @@ describe("UnifiedStatsManager", function () {
       assert.equal(snapshot.native.total, 0);
     });
   });
+
+  describe("Per-Creep CPU Average Fix", function () {
+    it("should calculate per-creep average CPU, not total CPU for all creeps", function () {
+      // Regression test for issue: metrics showing avgCpu = 39.1 when actual per-creep usage < 1
+      // Root cause: totalCpu for all creeps was stored as avgCpu, not divided by creep count
+      
+      // Setup: 5 larvaWorker creeps
+      const mockCreeps: any = {};
+      for (let i = 1; i <= 5; i++) {
+        mockCreeps[`larvaWorker${i}`] = {
+          name: `larvaWorker${i}`,
+          memory: { role: "larvaWorker", homeRoom: "W1N1", working: true, state: { action: "working" } },
+          room: { name: "W1N1" },
+          body: [{ type: WORK }, { type: CARRY }, { type: MOVE }],
+          hits: 300,
+          hitsMax: 300,
+          ticksToLive: 1500,
+          fatigue: 0,
+          spawning: false
+        };
+      }
+      mockGame.creeps = mockCreeps;
+
+      statsManager.startTick();
+      
+      // Simulate each creep execution using 0.2 CPU (total = 1.0 CPU)
+      let cpuUsed = 0;
+      mockGame.cpu.getUsed = () => cpuUsed;
+      
+      for (let i = 1; i <= 5; i++) {
+        statsManager.measureSubsystem("role:larvaWorker", () => {
+          cpuUsed += 0.2;
+        });
+      }
+      
+      statsManager.finalizeTick();
+      
+      const snapshot = statsManager.getSnapshot();
+      assert.isDefined(snapshot.roles.larvaWorker, "Role stats should exist");
+      
+      // CRITICAL: avgCpu should be per-creep average (1.0 / 5 = 0.2), NOT total (1.0)
+      assert.approximately(
+        snapshot.roles.larvaWorker.avgCpu, 
+        0.2, 
+        0.001, 
+        "avgCpu should be per-creep average (0.2), not total CPU (1.0)"
+      );
+      
+      assert.equal(snapshot.roles.larvaWorker.count, 5, "Should count 5 creeps");
+      assert.equal(snapshot.roles.larvaWorker.calls, 5, "Should track 5 calls (one per creep)");
+      
+      // Verify the fix prevents the EMA from accumulating incorrectly
+      // Second tick: only 1 creep remains, uses 0.2 CPU
+      mockGame.creeps = {
+        larvaWorker1: mockCreeps.larvaWorker1
+      };
+      
+      statsManager.startTick();
+      cpuUsed = 0;
+      statsManager.measureSubsystem("role:larvaWorker", () => {
+        cpuUsed += 0.2;
+      });
+      statsManager.finalizeTick();
+      
+      const snapshot2 = statsManager.getSnapshot();
+      // With smoothing factor 0.1: avgCpu = 0.2 * 0.9 + 0.2 * 0.1 = 0.2
+      // Without fix: avgCpu = 1.0 * 0.9 + 0.2 * 0.1 = 0.92 (WRONG!)
+      assert.approximately(
+        snapshot2.roles.larvaWorker.avgCpu,
+        0.2,
+        0.01,
+        "avgCpu should remain stable at 0.2 per creep, not inflate to 0.92"
+      );
+    });
+  });
 });
