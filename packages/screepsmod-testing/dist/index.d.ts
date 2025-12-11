@@ -13,11 +13,11 @@ export declare function describe(name: string, fn: () => void): void;
 /**
  * Define a test case
  */
-export declare function it(name: string, fn: () => void | Promise<void>): void;
+export declare function it(name: string, fn: () => void | Promise<void>, tags?: string[]): void;
 /**
  * Skip a test case
  */
-export declare function xit(name: string, fn: () => void | Promise<void>): void;
+export declare function xit(name: string, fn: () => void | Promise<void>, tags?: string[]): void;
 /**
  * Define a beforeEach hook
  */
@@ -38,4 +38,9 @@ export { globalRunner as testRunner };
 export * from './types';
 export * from './assertions';
 export { TestRunner } from './test-runner';
+export * from './performance';
+export * from './filter';
+export * from './reporter';
+export * from './persistence';
+export * from './visual';
 //# sourceMappingURL=index.d.ts.map

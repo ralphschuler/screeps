@@ -6,12 +6,19 @@
  */
 
 import { testRunner } from './index';
-import { TestContext } from './types';
+import { TestContext, TestFilter } from './types';
+import { PersistenceManager } from './persistence';
+import { JSONReporter, ConsoleReporter } from './reporter';
 
 let initialized = false;
 let testInterval = 0; // Run tests every N ticks (0 = run once)
 let lastTestTick = 0;
 let autoRunTests = false;
+let persistenceManager: PersistenceManager | null = null;
+let jsonReporter: JSONReporter | null = null;
+let consoleReporter: ConsoleReporter | null = null;
+let outputFormat: 'console' | 'json' | 'junit' | 'all' = 'console';
+let testFilter: TestFilter | undefined;
 
 /**
  * Backend module export for screepsmod
@@ -21,6 +28,28 @@ module.exports = function (config: any) {
   const modConfig = config.screepsmod?.testing || {};
   testInterval = modConfig.testInterval || 0;
   autoRunTests = modConfig.autoRun !== false; // Default to true
+  outputFormat = modConfig.outputFormat || 'console';
+  
+  // Initialize managers based on configuration
+  if (modConfig.persistence !== false) {
+    persistenceManager = new PersistenceManager(
+      modConfig.persistencePath,
+      modConfig.historySize
+    );
+  }
+  
+  if (outputFormat === 'json' || outputFormat === 'all') {
+    jsonReporter = new JSONReporter(modConfig.outputDir);
+  }
+  
+  if (outputFormat === 'console' || outputFormat === 'all') {
+    consoleReporter = new ConsoleReporter();
+  }
+  
+  // Parse test filter from configuration
+  if (modConfig.filter) {
+    testFilter = modConfig.filter;
+  }
 
   return {
     /**
@@ -97,16 +126,39 @@ module.exports = function (config: any) {
         }
       };
 
-      await testRunner.start(context);
+      // Run tests with filter
+      await testRunner.start(context, testFilter);
       
       const summary = testRunner.getSummary(tick);
       
       // Store results in a safe location (not in bot memory)
-      // Initialize if doesn't exist
       if (!gameData.__testResults) {
         gameData.__testResults = {};
       }
       gameData.__testResults = summary;
+      
+      // Persist results if enabled
+      if (persistenceManager) {
+        persistenceManager.save(summary);
+      }
+      
+      // Generate reports based on output format
+      if (jsonReporter) {
+        const output = jsonReporter.generate(summary);
+        jsonReporter.write(output);
+      }
+      
+      if (consoleReporter && (outputFormat === 'console' || outputFormat === 'all')) {
+        consoleReporter.printSummary(summary);
+      }
+      
+      // Generate JUnit XML if configured
+      if (outputFormat === 'junit' || outputFormat === 'all') {
+        if (!jsonReporter) {
+          jsonReporter = new JSONReporter();
+        }
+        jsonReporter.writeJUnit(summary);
+      }
     },
 
     /**
@@ -160,6 +212,42 @@ module.exports = function (config: any) {
             duration: summary.duration,
             tickRange: `${summary.startTick}-${summary.endTick}`
           };
+        },
+
+        /**
+         * Get test history from persistence
+         */
+        getTestHistory: () => {
+          if (!persistenceManager) {
+            return 'Persistence is not enabled';
+          }
+          return persistenceManager.getHistory();
+        },
+
+        /**
+         * Get test statistics from history
+         */
+        getTestStatistics: () => {
+          if (!persistenceManager) {
+            return 'Persistence is not enabled';
+          }
+          return persistenceManager.getStatistics();
+        },
+
+        /**
+         * Set test filter
+         */
+        setTestFilter: (filter: TestFilter) => {
+          testFilter = filter;
+          return `Filter set: ${JSON.stringify(filter)}`;
+        },
+
+        /**
+         * Clear test filter
+         */
+        clearTestFilter: () => {
+          testFilter = undefined;
+          return 'Filter cleared';
         }
       };
     }
