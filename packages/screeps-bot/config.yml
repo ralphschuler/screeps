@@ -1,7 +1,3 @@
-# Steam API key for authentication (optional, can be empty for local testing)
-# WARNING: DO NOT commit actual Steam API keys to version control
-# Set via environment variable STEAM_KEY in production/CI environments
-steamKey: ""
 pinnedPackages:
   ssri: 8.0.1
   cacache: 16.1.3
