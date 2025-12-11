@@ -704,3 +704,136 @@ Konfiguration
 - War/Nuke/Boost-Schwellen
 - CPU-Budget pro Ebene
 - Ermöglicht schnell unterschiedliche „Persönlichkeiten“ des Bots zu testen, ohne Kernlogik zu ändern.
+
+⸻
+
+24. Screepers Standards Integration
+
+Der Bot implementiert die Screepers Standards (https://github.com/screepers/screepers-standards) für standardisierte Inter-Player-Kommunikation und Zusammenarbeit.
+
+SS1: Default Public Segment (v1.0.0)
+- Discovery Protocol für Public Segments
+- Ermöglicht Spielern, unterstützte Kommunikationskanäle zu bewerben
+- Struktur:
+  - api: Version und Update-Tick
+  - channels: Named channels mit Protokoll, Segments, Data, Compression, Encryption
+- Implementation: src/standards/SS1SegmentManager.ts
+- Unterstützt:
+  - Multi-Segment-Nachrichten
+  - Compression (lzstring)
+  - Encryption (keyid-basiert)
+  - Protokoll-Registrierung
+
+SS2: Terminal Communications (v1.1.0)
+- Multi-Packet-Nachrichten via Terminal-Transaktionen
+- Format: `msg_id|packet_id|{final_packet|}message_chunk`
+- Eigenschaften:
+  - Message ID: 3-stellig alphanumerisch
+  - Packet ID: 0-99 (Reihenfolge)
+  - Final Packet: Angabe im ersten Paket
+  - Message Chunk: bis zu 91 Zeichen
+- Implementation: src/standards/SS2TerminalComms.ts
+- Features:
+  - Automatische Nachrichtenaufteilung
+  - Paket-Reassemblierung
+  - Timeout-Handling
+  - JSON-Parsing
+
+SS3: Unified Credentials File (v1.0)
+- Standardisiertes Credentials-Format (.screeps.yaml)
+- Suchpfade:
+  1. $SCREEPS_CONFIG (Env Variable)
+  2. project/.screeps.yaml
+  3. ./.screeps.yaml
+  4. $XDG_CONFIG_HOME/screeps/config.yaml
+  5. $HOME/.config/screeps/config.yaml
+  6. %APPDATA%/screeps/config.yaml (Windows)
+  7. ~/.screeps.yaml
+- Struktur:
+  - servers: Server-Konfigurationen (host, port, secure, token, username, password)
+  - configs: App-spezifische Configs
+- Note: Implementation optional für Build-Tools
+
+Segment Protocols
+
+Portals Protocol
+- Teilt Portal-Informationen zwischen Spielern
+- Datenstruktur: Array von PortalInfo
+  - room: Raumname
+  - pos: {x, y} Position
+  - destination: Zielraum (optional)
+  - unstable: Boolean für instabile Portale
+  - expires: Tick bis Portal verfällt
+- Implementation: src/standards/segment-protocols/PortalsProtocol.ts
+- Features:
+  - Auto-Scan von Räumen
+  - Aggregation von mehreren Spielern
+  - Portal-Mapping für Inter-Shard-Travel
+
+Room Needs Protocol
+- Bewirbt Ressourcenbedarf und Überschüsse
+- Datenstruktur: Array von RoomNeed
+  - room: Raumname
+  - resource: ResourceConstant
+  - amount: Anzahl (positiv für Bedarf, negativ für Überschuss)
+  - priority: 1-10 Priorität
+- Implementation: src/standards/segment-protocols/RoomNeedsProtocol.ts
+- Features:
+  - Auto-Berechnung basierend auf Storage/Terminal
+  - Matching zwischen Spielern
+  - Unterstützung für Encryption
+
+Terminal Communications Protocol (TermCom)
+- Listet Terminals für Kommunikation
+- Datenstruktur: Array von Raumnamen
+- Implementation: src/standards/segment-protocols/TerminalComProtocol.ts
+- Features:
+  - Auto-Update von eigenen Terminals
+  - Lookup für Spieler-Terminals
+
+Terminal Protocols
+
+Key Exchange Protocol
+- Sicherer Schlüsselaustausch via Terminal
+- Nachrichten-Typen:
+  - Request: `key request keyid`
+  - Response: `key keyid keystring`
+- Implementation: src/standards/terminal-protocols/KeyExchangeProtocol.ts
+- Features:
+  - Key Store Management
+  - Request/Response Handling
+  - Integration mit SS2 für Multi-Packet
+
+Resource Request Protocol
+- Anforderung und Erfüllung von Ressourcentransfers
+- Datenstruktur (JSON):
+  - Request: {type, resource, amount, toRoom, priority}
+  - Response: {type, requestId, accepted, estimatedTicks}
+- Implementation: src/standards/terminal-protocols/ResourceRequestProtocol.ts
+- Features:
+  - Auto-Fulfillment-Check
+  - Best-Terminal-Selection
+  - Transfer-Queue
+  - Priority-System
+
+Integration in Bot-Architektur
+- Alle Standards sind in src/standards/ organisiert
+- Können optional aktiviert/deaktiviert werden
+- Keine Abhängigkeiten zu Kern-Bot-Logik
+- CPU-effizient: Updates nur bei Bedarf
+- Memory-Segment-Management für große Daten
+- Terminal-Queue für Multi-Tick-Übertragungen
+
+Verwendung
+- Inter-Alliance-Kommunikation
+- Portal-Sharing für schnellere Expansion
+- Ressourcen-Trading zwischen Freunden
+- Koordinierte Kriegsführung
+- Notfall-Evakuierung
+- Market-Alternative für Verbündete
+
+Erweiterbarkeit
+- Neue Segment-Protokolle: segment_protocols/ folder
+- Neue Terminal-Protokolle: terminal_protocols/ folder
+- Protokolle müssen dokumentiert und registriert werden
+- Private/Entwicklungs-Protokolle mit x- Präfix
