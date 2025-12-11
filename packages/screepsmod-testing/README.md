@@ -291,10 +291,28 @@ screepsmod:
     # Run tests every N ticks (0 = run once only)
     testInterval: 0
     
-    # Future options:
-    # testPattern: "**/*.test.ts"
-    # outputFormat: "console" | "json"
-    # exitOnFailure: false
+    # Output format: "console", "json", "junit", or "all"
+    outputFormat: "console"
+    
+    # Directory for JSON/JUnit output
+    outputDir: "./test-results"
+    
+    # Enable test result persistence
+    persistence: true
+    
+    # Path for persistence file
+    persistencePath: "./.screeps-test-results.json"
+    
+    # Maximum number of test runs to keep in history
+    historySize: 10
+    
+    # Test filter (optional)
+    filter:
+      pattern: ".*"  # RegExp pattern for test names
+      tags: []       # Tags to include
+      suites: []     # Suite names to include
+      excludeTags: []
+      excludeSuites: []
 ```
 
 ## Migrating from Unit Tests
@@ -357,15 +375,106 @@ Tests run during the game tick and have full access to:
 - Current tick number
 - All game APIs and constants
 
+## Advanced Features
+
+### Test Result Persistence
+
+Test results are automatically persisted across server restarts when enabled:
+
+```typescript
+// Access test history via console commands
+getTestHistory()      // Get all stored test runs
+getTestStatistics()   // Get aggregated statistics
+```
+
+### JSON Output for CI/CD
+
+Export test results in JSON or JUnit XML format:
+
+```yaml
+screepsmod:
+  testing:
+    outputFormat: "json"  # or "junit" or "all"
+    outputDir: "./test-results"
+```
+
+Results are written to files like:
+- `test-results/test-results-{timestamp}.json`
+- `test-results/junit-results-{timestamp}.xml`
+
+### Performance Benchmarking
+
+Use performance helpers to benchmark code:
+
+```typescript
+import { benchmark, PerformanceAssert } from 'screepsmod-testing';
+
+describe('Performance Tests', () => {
+  it('should complete within CPU budget', async () => {
+    await PerformanceAssert.cpuBudget(() => {
+      // Your code here
+    }, 10); // Max 10 CPU
+  });
+
+  it('benchmark function performance', async () => {
+    const result = await benchmark('my-function', () => {
+      // Function to benchmark
+    }, { samples: 10, iterations: 100 });
+    
+    console.log(`Mean: ${result.mean}ms`);
+  });
+});
+```
+
+### Test Filtering
+
+Filter tests by tags or patterns:
+
+```typescript
+// Tag your tests
+it('should work', () => { /* ... */ }, ['integration', 'slow']);
+
+// Filter via console commands
+setTestFilter({ tags: ['integration'] })
+setTestFilter({ pattern: 'spawn.*' })
+clearTestFilter()
+```
+
+Or configure filters in `config.yml`:
+
+```yaml
+screepsmod:
+  testing:
+    filter:
+      tags: ['fast']
+      excludeTags: ['slow']
+      pattern: 'spawn.*'
+```
+
+### Visual Testing
+
+Capture and compare room visuals:
+
+```typescript
+import { VisualTester, VisualAssert } from 'screepsmod-testing';
+
+describe('Visual Tests', () => {
+  it('should match expected visual', () => {
+    const snapshot = tester.captureSnapshot('W1N1', Game.time);
+    VisualAssert.matchesSnapshot('W1N1', Game.time, expectedSnapshot);
+  });
+});
+```
+
 ## Roadmap
 
-- [ ] Test result persistence across server restarts
-- [ ] JSON output format for CI/CD integration
+- [x] Test result persistence across server restarts
+- [x] JSON output format for CI/CD integration
+- [x] Performance benchmarking helpers
+- [x] Test filtering by pattern/tag
+- [x] Visual testing helpers
 - [ ] Test coverage reporting
-- [ ] Performance benchmarking helpers
-- [ ] Test filtering by pattern/tag
 - [ ] Parallel test execution
-- [ ] Screenshot/visual testing helpers
 
 ## Contributing
 

@@ -7,10 +7,17 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 const index_1 = require("./index");
+const persistence_1 = require("./persistence");
+const reporter_1 = require("./reporter");
 let initialized = false;
 let testInterval = 0; // Run tests every N ticks (0 = run once)
 let lastTestTick = 0;
 let autoRunTests = false;
+let persistenceManager = null;
+let jsonReporter = null;
+let consoleReporter = null;
+let outputFormat = 'console';
+let testFilter;
 /**
  * Backend module export for screepsmod
  */
@@ -19,6 +26,21 @@ module.exports = function (config) {
     const modConfig = config.screepsmod?.testing || {};
     testInterval = modConfig.testInterval || 0;
     autoRunTests = modConfig.autoRun !== false; // Default to true
+    outputFormat = modConfig.outputFormat || 'console';
+    // Initialize managers based on configuration
+    if (modConfig.persistence !== false) {
+        persistenceManager = new persistence_1.PersistenceManager(modConfig.persistencePath, modConfig.historySize);
+    }
+    if (outputFormat === 'json' || outputFormat === 'all') {
+        jsonReporter = new reporter_1.JSONReporter(modConfig.outputDir);
+    }
+    if (outputFormat === 'console' || outputFormat === 'all') {
+        consoleReporter = new reporter_1.ConsoleReporter();
+    }
+    // Parse test filter from configuration
+    if (modConfig.filter) {
+        testFilter = modConfig.filter;
+    }
     return {
         /**
          * Called when the backend starts
@@ -88,14 +110,33 @@ module.exports = function (config) {
                     return gameData.Game?.rooms?.[roomName];
                 }
             };
-            await index_1.testRunner.start(context);
+            // Run tests with filter
+            await index_1.testRunner.start(context, testFilter);
             const summary = index_1.testRunner.getSummary(tick);
             // Store results in a safe location (not in bot memory)
-            // Initialize if doesn't exist
             if (!gameData.__testResults) {
                 gameData.__testResults = {};
             }
             gameData.__testResults = summary;
+            // Persist results if enabled
+            if (persistenceManager) {
+                persistenceManager.save(summary);
+            }
+            // Generate reports based on output format
+            if (jsonReporter) {
+                const output = jsonReporter.generate(summary);
+                jsonReporter.write(output);
+            }
+            if (consoleReporter && (outputFormat === 'console' || outputFormat === 'all')) {
+                consoleReporter.printSummary(summary);
+            }
+            // Generate JUnit XML if configured
+            if (outputFormat === 'junit' || outputFormat === 'all') {
+                if (!jsonReporter) {
+                    jsonReporter = new reporter_1.JSONReporter();
+                }
+                jsonReporter.writeJUnit(summary);
+            }
         },
         /**
          * Register console commands
@@ -145,6 +186,38 @@ module.exports = function (config) {
                         duration: summary.duration,
                         tickRange: `${summary.startTick}-${summary.endTick}`
                     };
+                },
+                /**
+                 * Get test history from persistence
+                 */
+                getTestHistory: () => {
+                    if (!persistenceManager) {
+                        return 'Persistence is not enabled';
+                    }
+                    return persistenceManager.getHistory();
+                },
+                /**
+                 * Get test statistics from history
+                 */
+                getTestStatistics: () => {
+                    if (!persistenceManager) {
+                        return 'Persistence is not enabled';
+                    }
+                    return persistenceManager.getStatistics();
+                },
+                /**
+                 * Set test filter
+                 */
+                setTestFilter: (filter) => {
+                    testFilter = filter;
+                    return `Filter set: ${JSON.stringify(filter)}`;
+                },
+                /**
+                 * Clear test filter
+                 */
+                clearTestFilter: () => {
+                    testFilter = undefined;
+                    return 'Filter cleared';
                 }
             };
         }

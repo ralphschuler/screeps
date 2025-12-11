@@ -1,4 +1,6 @@
-import { TestSuite, TestCase, TestResult, TestSummary, TestContext, TestStatus } from './types';
+import { TestSuite, TestCase, TestResult, TestSummary, TestContext, TestStatus, TestFilter } from './types';
+import { FilterManager } from './filter';
+import { CPUTracker, MemoryTracker } from './performance';
 
 /**
  * Test runner that executes tests within the Screeps server environment
@@ -10,6 +12,7 @@ export class TestRunner {
   private startTick = 0;
   private currentSuiteIndex = 0;
   private currentTestIndex = 0;
+  private filter?: FilterManager;
 
   /**
    * Register a test suite
@@ -41,9 +44,16 @@ export class TestRunner {
   }
 
   /**
+   * Set test filter
+   */
+  setFilter(filter?: TestFilter): void {
+    this.filter = filter ? new FilterManager(filter) : undefined;
+  }
+
+  /**
    * Start running tests
    */
-  async start(context: TestContext): Promise<void> {
+  async start(context: TestContext, filter?: TestFilter): Promise<void> {
     if (this.isRunning) {
       console.log('[screepsmod-testing] Test run already in progress');
       return;
@@ -55,8 +65,17 @@ export class TestRunner {
     this.currentSuiteIndex = 0;
     this.currentTestIndex = 0;
 
+    // Apply filter if provided
+    if (filter) {
+      this.setFilter(filter);
+    }
+
     console.log(`[screepsmod-testing] Starting test run at tick ${context.tick}`);
     console.log(`[screepsmod-testing] Found ${this.suites.size} test suites`);
+    
+    if (this.filter) {
+      console.log(`[screepsmod-testing] Filter: ${this.filter.getSummary()}`);
+    }
 
     await this.runAllTests(context);
   }
@@ -65,7 +84,13 @@ export class TestRunner {
    * Run all registered tests
    */
   private async runAllTests(context: TestContext): Promise<void> {
-    const suites = Array.from(this.suites.values());
+    let suites = Array.from(this.suites.values());
+
+    // Apply filter if set
+    if (this.filter) {
+      suites = this.filter.filterSuites(suites);
+      console.log(`[screepsmod-testing] Running ${suites.length} filtered suites`);
+    }
 
     for (const suite of suites) {
       await this.runSuite(suite, context);
@@ -141,25 +166,47 @@ export class TestRunner {
    */
   private async runTest(suiteName: string, test: TestCase, context: TestContext): Promise<void> {
     const startTime = Date.now();
+    const cpuTracker = new CPUTracker();
+    const memoryTracker = new MemoryTracker();
+    
     const result: TestResult = {
       suiteName,
       testName: test.name,
       status: 'running',
       duration: 0,
-      tick: context.tick
+      tick: context.tick,
+      tags: test.tags
     };
 
     try {
+      // Start performance tracking
+      cpuTracker.start();
+      memoryTracker.start();
+
       // Run test with timeout
       const timeout = test.timeout || 5000;
       await this.runWithTimeout(test.fn, timeout);
       
+      // Stop performance tracking
+      result.cpuUsed = cpuTracker.stop();
+      result.memoryUsed = memoryTracker.stop();
+      
       result.status = 'passed';
       result.duration = Date.now() - startTime;
-      console.log(`[screepsmod-testing] ✓ ${suiteName} > ${test.name} (${result.duration}ms)`);
+      
+      let perfInfo = '';
+      if (result.cpuUsed !== undefined) {
+        perfInfo = ` (${result.duration}ms, ${result.cpuUsed.toFixed(2)} CPU)`;
+      } else {
+        perfInfo = ` (${result.duration}ms)`;
+      }
+      
+      console.log(`[screepsmod-testing] ✓ ${suiteName} > ${test.name}${perfInfo}`);
     } catch (error: any) {
       result.status = 'failed';
       result.duration = Date.now() - startTime;
+      result.cpuUsed = cpuTracker.stop();
+      result.memoryUsed = memoryTracker.stop();
       result.error = {
         message: error.message || String(error),
         stack: error.stack,
@@ -214,7 +261,8 @@ export class TestRunner {
       duration,
       startTick: this.startTick,
       endTick: currentTick,
-      results: this.results
+      results: this.results,
+      timestamp: Date.now()
     };
   }
 

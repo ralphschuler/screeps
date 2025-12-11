@@ -37,7 +37,7 @@ export function describe(name: string, fn: () => void): void {
 /**
  * Define a test case
  */
-export function it(name: string, fn: () => void | Promise<void>): void {
+export function it(name: string, fn: () => void | Promise<void>, tags?: string[]): void {
   if (!currentSuiteContext) {
     throw new Error('it() can only be called within a describe() block');
   }
@@ -45,6 +45,7 @@ export function it(name: string, fn: () => void | Promise<void>): void {
   const test: TestCase = {
     name,
     fn,
+    tags,
   };
 
   currentSuiteContext.tests.push(test);
@@ -53,7 +54,7 @@ export function it(name: string, fn: () => void | Promise<void>): void {
 /**
  * Skip a test case
  */
-export function xit(name: string, fn: () => void | Promise<void>): void {
+export function xit(name: string, fn: () => void | Promise<void>, tags?: string[]): void {
   if (!currentSuiteContext) {
     throw new Error('xit() can only be called within a describe() block');
   }
@@ -62,6 +63,7 @@ export function xit(name: string, fn: () => void | Promise<void>): void {
     name,
     fn,
     skip: true,
+    tags,
   };
 
   currentSuiteContext.tests.push(test);
@@ -117,3 +119,10 @@ export { globalRunner as testRunner };
 export * from './types';
 export * from './assertions';
 export { TestRunner } from './test-runner';
+
+// Export new utilities
+export * from './performance';
+export * from './filter';
+export * from './reporter';
+export * from './persistence';
+export * from './visual';

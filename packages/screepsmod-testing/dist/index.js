@@ -53,20 +53,21 @@ function describe(name, fn) {
 /**
  * Define a test case
  */
-function it(name, fn) {
+function it(name, fn, tags) {
     if (!currentSuiteContext) {
         throw new Error('it() can only be called within a describe() block');
     }
     const test = {
         name,
         fn,
+        tags,
     };
     currentSuiteContext.tests.push(test);
 }
 /**
  * Skip a test case
  */
-function xit(name, fn) {
+function xit(name, fn, tags) {
     if (!currentSuiteContext) {
         throw new Error('xit() can only be called within a describe() block');
     }
@@ -74,6 +75,7 @@ function xit(name, fn) {
         name,
         fn,
         skip: true,
+        tags,
     };
     currentSuiteContext.tests.push(test);
 }
@@ -120,4 +122,10 @@ __exportStar(require("./types"), exports);
 __exportStar(require("./assertions"), exports);
 var test_runner_2 = require("./test-runner");
 Object.defineProperty(exports, "TestRunner", { enumerable: true, get: function () { return test_runner_2.TestRunner; } });
+// Export new utilities
+__exportStar(require("./performance"), exports);
+__exportStar(require("./filter"), exports);
+__exportStar(require("./reporter"), exports);
+__exportStar(require("./persistence"), exports);
+__exportStar(require("./visual"), exports);
 //# sourceMappingURL=index.js.map

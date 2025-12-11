@@ -1,4 +1,4 @@
-import { TestSuite, TestCase, TestSummary, TestContext } from './types';
+import { TestSuite, TestCase, TestSummary, TestContext, TestFilter } from './types';
 /**
  * Test runner that executes tests within the Screeps server environment
  */
@@ -9,6 +9,7 @@ export declare class TestRunner {
     private startTick;
     private currentSuiteIndex;
     private currentTestIndex;
+    private filter?;
     /**
      * Register a test suite
      */
@@ -22,9 +23,13 @@ export declare class TestRunner {
      */
     getSuites(): TestSuite[];
     /**
+     * Set test filter
+     */
+    setFilter(filter?: TestFilter): void;
+    /**
      * Start running tests
      */
-    start(context: TestContext): Promise<void>;
+    start(context: TestContext, filter?: TestFilter): Promise<void>;
     /**
      * Run all registered tests
      */
