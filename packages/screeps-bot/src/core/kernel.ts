@@ -487,20 +487,29 @@ export class Kernel {
 
   /**
    * Check if CPU budget is available
+   * 
+   * BUGFIX: Use the effective CPU limit (from getCpuLimit()) for both
+   * the limit and reserved CPU calculation to maintain consistency across
+   * all bucket modes (critical, low, normal, high).
    */
   public hasCpuBudget(): boolean {
     const used = Game.cpu.getUsed();
     const limit = this.getCpuLimit();
-    const reservedCpu = Game.cpu.limit * this.config.reservedCpuFraction;
+    const reservedCpu = limit * this.config.reservedCpuFraction;
     return (limit - used) > reservedCpu;
   }
 
   /**
    * Get remaining CPU budget
+   * 
+   * BUGFIX: Use the effective CPU limit (from getCpuLimit()) for both
+   * the limit and reserved CPU calculation to maintain consistency across
+   * all bucket modes (critical, low, normal, high).
    */
   public getRemainingCpu(): number {
-    const reservedCpu = Game.cpu.limit * this.config.reservedCpuFraction;
-    return Math.max(0, this.getCpuLimit() - Game.cpu.getUsed() - reservedCpu);
+    const limit = this.getCpuLimit();
+    const reservedCpu = limit * this.config.reservedCpuFraction;
+    return Math.max(0, limit - Game.cpu.getUsed() - reservedCpu);
   }
 
   /**
