@@ -370,8 +370,12 @@ export function engineer(ctx: CreepContext): CreepAction {
   }
 
   // OPTIMIZATION: Use cached closest for containers (cache 15 ticks - stable targets)
-  if (ctx.containers.length > 0) {
-    const closest = findCachedClosest(ctx.creep, ctx.containers, "engineer_cont", 15);
+  // BUGFIX: Filter by capacity HERE for fresh state, not in room cache
+  const containersWithEnergy = ctx.containers.filter(
+    c => c.store.getUsedCapacity(RESOURCE_ENERGY) > 100
+  );
+  if (containersWithEnergy.length > 0) {
+    const closest = findCachedClosest(ctx.creep, containersWithEnergy, "engineer_cont", 15);
     if (closest) return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
   }
 

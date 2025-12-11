@@ -156,14 +156,19 @@ function ensureAllStructuresLoaded(cache: RoomCache): void {
 
 /**
  * Get containers with energy from cache (lazy evaluation)
+ * 
+ * TODO: BUGFIX - Room cache stale capacity issue (same as spawnStructures)
+ * Multiple creeps can withdraw from containers in the same tick, making cached
+ * capacity stale. Fix: Don't filter by capacity in cache.
  */
 function getContainers(cache: RoomCache): StructureContainer[] {
   if (cache._containers === undefined) {
     ensureAllStructuresLoaded(cache);
+    // BUGFIX: Removed capacity check - return ALL containers
+    // Capacity will be checked by behavior functions for fresh state
     cache._containers = cache.allStructures.filter(
       (s): s is StructureContainer =>
-        s.structureType === STRUCTURE_CONTAINER &&
-        (s as StructureContainer).store.getUsedCapacity(RESOURCE_ENERGY) > 100
+        s.structureType === STRUCTURE_CONTAINER
     );
   }
   return cache._containers;
@@ -171,14 +176,22 @@ function getContainers(cache: RoomCache): StructureContainer[] {
 
 /**
  * Get containers with free capacity from cache (lazy evaluation)
+ * 
+ * TODO: BUGFIX - Room cache stale capacity issue (same as spawnStructures)
+ * Multiple creeps can deposit to containers in the same tick, making cached
+ * capacity stale. Fix: Return same as getContainers() - ALL containers.
+ * Behaviors will check for free vs used capacity as needed.
  */
 function getDepositContainers(cache: RoomCache): StructureContainer[] {
   if (cache._depositContainers === undefined) {
     ensureAllStructuresLoaded(cache);
+    // BUGFIX: Removed capacity check - return ALL containers  
+    // Capacity will be checked by behavior functions for fresh state
+    // Note: This is now the same as getContainers(), but kept separate
+    // for code clarity and potential future differentiation
     cache._depositContainers = cache.allStructures.filter(
       (s): s is StructureContainer =>
-        s.structureType === STRUCTURE_CONTAINER &&
-        (s as StructureContainer).store.getFreeCapacity(RESOURCE_ENERGY) > 0
+        s.structureType === STRUCTURE_CONTAINER
     );
   }
   return cache._depositContainers;
@@ -186,13 +199,27 @@ function getDepositContainers(cache: RoomCache): StructureContainer[] {
 
 /**
  * Get spawn structures needing energy from cache (lazy evaluation)
+ * 
+ * TODO: BUGFIX - Room cache stale capacity issue
+ * Problem: Cache is populated once per tick at first access, but structure
+ * capacity changes during the tick as creeps transfer energy. When multiple
+ * creeps (hauler + larvaWorker) access this in the same tick:
+ * 1. First creep filters and gets [spawn1] (has capacity)
+ * 2. First creep fills spawn1 
+ * 3. Second creep gets cached [spawn1] which is NOW FULL
+ * 4. Second creep tries transfer → ERR_FULL → re-evaluates
+ * 5. Re-evaluation gets SAME cached [spawn1] → infinite loop
+ * 
+ * Fix: Don't filter by capacity in cache. Return ALL spawn structures.
+ * Let behavior functions filter by capacity for fresh checks each time.
  */
 function getSpawnStructures(cache: RoomCache): (StructureSpawn | StructureExtension)[] {
   if (cache._spawnStructures === undefined) {
+    // BUGFIX: Removed capacity check from cache - return ALL spawn structures
+    // Capacity will be checked by behavior functions for fresh state
     cache._spawnStructures = cache.myStructures.filter(
       (s): s is StructureSpawn | StructureExtension =>
-        (s.structureType === STRUCTURE_SPAWN || s.structureType === STRUCTURE_EXTENSION) &&
-        (s as StructureSpawn | StructureExtension).store.getFreeCapacity(RESOURCE_ENERGY) > 0
+        s.structureType === STRUCTURE_SPAWN || s.structureType === STRUCTURE_EXTENSION
     );
   }
   return cache._spawnStructures;
@@ -200,13 +227,18 @@ function getSpawnStructures(cache: RoomCache): (StructureSpawn | StructureExtens
 
 /**
  * Get towers needing energy from cache (lazy evaluation)
+ * 
+ * TODO: BUGFIX - Room cache stale capacity issue (same as spawnStructures)
+ * See getSpawnStructures() for detailed explanation.
+ * Fix: Don't filter by capacity in cache. Return ALL towers.
  */
 function getTowers(cache: RoomCache): StructureTower[] {
   if (cache._towers === undefined) {
+    // BUGFIX: Removed capacity check from cache - return ALL towers
+    // Capacity will be checked by behavior functions for fresh state
     cache._towers = cache.myStructures.filter(
       (s): s is StructureTower =>
-        s.structureType === STRUCTURE_TOWER &&
-        (s as StructureTower).store.getFreeCapacity(RESOURCE_ENERGY) > 200
+        s.structureType === STRUCTURE_TOWER
     );
   }
   return cache._towers;
@@ -295,12 +327,18 @@ function getActiveSources(cache: RoomCache): Source[] {
  * OPTIMIZATION: Tombstones with energy are common pickup targets for haulers.
  * This caching avoids expensive uncached room.find(FIND_TOMBSTONES) calls that
  * were performed every tick in the hauler behavior evaluation.
+ * 
+ * TODO: BUGFIX - Room cache stale capacity issue (same as spawnStructures)
+ * Multiple creeps can loot tombstones in the same tick. However, tombstones
+ * typically have enough resources for multiple creeps, and they decay after
+ * a few ticks anyway, so the stale cache issue is less critical here.
+ * Still, removing the filter for consistency.
  */
 function getTombstones(cache: RoomCache): Tombstone[] {
   if (cache._tombstones === undefined) {
-    cache._tombstones = cache.room.find(FIND_TOMBSTONES, {
-      filter: t => t.store.getUsedCapacity(RESOURCE_ENERGY) > 0
-    });
+    // BUGFIX: Removed capacity check - return ALL tombstones
+    // Capacity will be checked by behavior functions for fresh state
+    cache._tombstones = cache.room.find(FIND_TOMBSTONES);
   }
   return cache._tombstones;
 }
