@@ -233,12 +233,11 @@ export function harvester(ctx: CreepContext): CreepAction {
 /**
  * Assign a source to a harvester, trying to balance load.
  * 
- * OPTIMIZATION v2: Instead of iterating through ALL Game.creeps (which can be 5000+),
- * we only iterate through creeps in this specific room. This dramatically reduces
- * the CPU cost, especially in large empires.
+ * Iterates through all creeps globally to count harvesters assigned to each source.
+ * This ensures spawning/traveling harvesters are counted, preventing duplicate assignments.
  * 
- * Additionally, we cache the source counts per room per tick to avoid recalculating
- * for multiple harvesters spawning in the same tick.
+ * The source counts are cached per room per tick to avoid recalculating for multiple
+ * harvesters spawning in the same tick.
  */
 function assignSource(ctx: CreepContext): Source | null {
   const sources = ctx.room.find(FIND_SOURCES);
