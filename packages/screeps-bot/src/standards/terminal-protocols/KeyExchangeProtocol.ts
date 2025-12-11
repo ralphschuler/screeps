@@ -6,6 +6,7 @@
 
 import { KeyExchangeRequest, KeyExchangeResponse } from "../types";
 import { SS2TerminalComms } from "../SS2TerminalComms";
+import { TerminalComProtocol } from "../segment-protocols/TerminalComProtocol";
 
 export class KeyExchangeProtocol {
   private static readonly PROTOCOL_NAME = "key_exchange";
@@ -114,9 +115,6 @@ export class KeyExchangeProtocol {
    * Handle incoming key request
    * @param sender Sender username
    * @param keyid Key identifier
-   * @note TODO: Complete implementation requires TerminalComProtocol integration
-   Issue URL: https://github.com/ralphschuler/screeps/issues/448
-   * to discover sender's terminal rooms and send the response
    */
   private static handleKeyRequest(sender: string, keyid: string): void {
     // Check if we have this key and are authorized to share it
@@ -134,13 +132,27 @@ export class KeyExchangeProtocol {
       return;
     }
 
-    // TODO: Get sender's terminal room from their termcom protocol (TerminalComProtocol)
-    // Issue URL: https://github.com/ralphschuler/screeps/issues/447
-    // For full implementation:
-    // 1. Read sender's terminal list using TerminalComProtocol.readTerminals(sender)
-    // 2. Select closest terminal to our terminal
-    // 3. Call this.sendKeyResponse(terminal, senderTerminalRoom, keyid, key)
-    console.log(`[KeyExchange] TODO: Implement full key response flow. Would send key ${keyid} to ${sender}`);
+    // Get sender's terminal rooms from their termcom protocol
+    const senderTerminals = TerminalComProtocol.readTerminals(sender);
+    if (!senderTerminals || senderTerminals.length === 0) {
+      console.log(`[KeyExchange] No terminal rooms found for ${sender}`);
+      return;
+    }
+
+    // Select closest terminal to our terminal
+    const targetRoom = this.findClosestTerminalRoom(terminal.room.name, senderTerminals);
+    if (!targetRoom) {
+      console.log(`[KeyExchange] Could not determine closest terminal for ${sender}`);
+      return;
+    }
+
+    // Send key response
+    const result = this.sendKeyResponse(terminal, targetRoom, keyid, key);
+    if (result === OK) {
+      console.log(`[KeyExchange] Sent key ${keyid} to ${sender} at ${targetRoom}`);
+    } else {
+      console.log(`[KeyExchange] Failed to send key ${keyid} to ${sender} at ${targetRoom}: ${result}`);
+    }
   }
 
   /**
@@ -182,6 +194,34 @@ export class KeyExchangeProtocol {
   ): void {
     const key = `${owner}:${keyid}`;
     this.keyStore.set(key, keystring);
+  }
+
+  /**
+   * Find closest terminal room from a list
+   * @param fromRoom Source room name
+   * @param targetRooms Array of target room names
+   * @returns Closest room name or null
+   */
+  private static findClosestTerminalRoom(
+    fromRoom: string,
+    targetRooms: string[]
+  ): string | null {
+    if (targetRooms.length === 0) {
+      return null;
+    }
+
+    let closestRoom: string | null = null;
+    let minDistance = Infinity;
+
+    for (const targetRoom of targetRooms) {
+      const distance = Game.map.getRoomLinearDistance(fromRoom, targetRoom);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestRoom = targetRoom;
+      }
+    }
+
+    return closestRoom;
   }
 
   /**
