@@ -153,6 +153,7 @@ export async function startConsoleListener(api: ScreepsAPI, metrics: Metrics, lo
     if (lines.length > 0) {
       metrics.flush();
     }
+    console.log(payload)
   });
 
   if (typeof socket.connect === 'function') {
