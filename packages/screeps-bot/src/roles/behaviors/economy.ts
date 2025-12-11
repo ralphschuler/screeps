@@ -263,16 +263,17 @@ function assignSource(ctx: CreepContext): Source | null {
 
     // BUGFIX: Count ALL harvesters assigned to sources in this room, not just those present
     // Previously used ctx.room.find(FIND_MY_CREEPS), which missed spawning/traveling creeps
-    // This caused multiple harvesters to be assigned to the same source
+    // This caused multiple harvesters to be assigned to the same source when only one was in the room
     // 
-    // OPTIMIZATION: We iterate Game.creeps but only process harvesters (small subset)
-    // This is more efficient than room.find() which processes ALL creep types
-    // For typical scenarios with ~5-10 harvesters per room, this is O(harvesters) not O(all_creeps)
+    // TRADEOFF: This iterates all creeps globally (O(all_creeps)) instead of room creeps (O(room_creeps))
+    // We trade some performance for correctness. The filter is very efficient (just role + sourceId check)
+    // and the issue only manifests during spawning/early game when correctness is most critical.
+    // Alternative considered: tracking spawning creeps separately, but adds complexity.
     for (const name in Game.creeps) {
       const c = Game.creeps[name];
       const m = c.memory as unknown as SwarmCreepMemory;
       // Only count harvesters that have a sourceId AND are assigned to sources in THIS room
-      // This includes spawning creeps and those traveling to the room
+      // This includes spawning creeps, creeps traveling to the room, and creeps temporarily in other rooms
       if (m.role === "harvester" && m.sourceId && sourceCounts.has(m.sourceId)) {
         sourceCounts.set(m.sourceId, (sourceCounts.get(m.sourceId) ?? 0) + 1);
       }
