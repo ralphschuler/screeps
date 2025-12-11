@@ -18,6 +18,13 @@ screeps.json
 # ScreepsServer data from integration tests
 /server
 
+# Performance testing generated files
+config.json
+.env
+docker-compose.yml
+logs/
+performance-results.json
+
 # Numerous always-ignore extensions
 *.diff
 *.err

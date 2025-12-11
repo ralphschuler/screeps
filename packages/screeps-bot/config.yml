@@ -1,0 +1,79 @@
+pinnedPackages:
+  ssri: 8.0.1
+  cacache: 16.1.3
+  passport-steam: 1.0.17
+mods:
+  - screepsmod-auth
+  - screepsmod-admin-utils
+  - screepsmod-server-stats
+  - screepsmod-milestones-history
+  - screepsmod-mongo
+  - screepsmod-dynamicmarket
+bots:
+  bot: ./dist
+serverConfig:
+  welcomeText: |
+    <h1>Performance Testing Server</h1>
+    <p>Automated bot testing in progress...</p>
+  tickRate: 100
+  socketUpdateRate: 100
+  shardName: "shard0"
+serverStats:
+  debug: false
+  rawExports: true
+  # WARNING: This is for automated testing ONLY, not for production use
+  # In production, set secret_key via environment variable
+  # This value is intentionally non-secret for local testing purposes
+  secret_key: "performance-testing-key"
+  usersStats: 2
+  roomsObjectsStats: 2
+  roomsIntentsStats: 2
+  runEveryTicks: 1
+  relayPort: undefined
+env:
+  backend:
+    CLI_HOST: 0.0.0.0
+
+# Rooms configuration for bot testing
+rooms:
+  W1N1:
+    bot: bot
+  W2N1:
+    bot: bot
+  W1N2:
+    bot: bot
+
+trackedRooms:
+  - W1N1
+  - W2N1
+  - W1N2
+
+# Milestones to track during testing
+milestones:
+  - name: "First Spawn"
+    room: W1N1
+    structures: 1
+  - name: "RCL 2"
+    room: W1N1
+    level: 2
+  - name: "10 Creeps"
+    room: W1N1
+    creeps: 10
+  - name: "RCL 3"
+    room: W1N1
+    level: 3
+  - name: "RCL 4"
+    room: W1N1
+    level: 4
+  - name: "RCL 5"
+    room: W1N1
+    level: 5
+  - name: "RCL 6"
+    room: W1N1
+    level: 6
+  - name: "RCL 7"
+    room: W1N1
+    level: 7
+  - name: "RCL 8"
+    room: W1N1
+    level: 8

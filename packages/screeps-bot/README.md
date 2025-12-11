@@ -159,9 +159,30 @@ npm run test-unit
 
 # Run integration tests
 npm run test-integration
+
+# Run performance tests (requires Docker)
+npm run test:performance
 ```
 
 Tests are located in the `test/` directory and use Mocha with Chai assertions.
+
+### Performance Testing
+
+The bot includes automated performance testing using [ScreepsPerformanceServer](https://github.com/screepers/ScreepsPerformanceServer). This allows testing the bot's behavior in a controlled environment with milestone tracking and performance metrics.
+
+**Note:** Performance testing is self-contained within this package and independent of the `packages/screeps-server` production server setup.
+
+**Quick performance test:**
+```bash
+npm run build
+npm run test:performance -- --maxTickCount=10000 --maxTimeDuration=30
+```
+
+Performance tests automatically run in GitHub Actions on pull requests and pushes to main branches. Results are saved as artifacts including:
+- Server logs and debug information
+- Milestone results and performance metrics
+
+For detailed documentation on performance testing, see [PERFORMANCE_TESTING.md](PERFORMANCE_TESTING.md).
 
 ## Code Style
 
