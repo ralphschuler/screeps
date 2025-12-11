@@ -32,6 +32,7 @@ import { labConfigManager } from "../labs/labConfig";
 import { kernel } from "./kernel";
 import { logger } from "./logger";
 import { prefetchRoomObjects } from "../utils/objectCache";
+import { logError } from "../utils/errorHandler";
 
 /**
  * Perimeter defense configuration constants
@@ -150,78 +151,89 @@ export class RoomNode {
   public run(totalOwnedRooms: number): void {
     const cpuStart = unifiedStats.startRoom(this.roomName);
 
-    const room = Game.rooms[this.roomName];
-    if (!room || !room.controller?.my) {
-      unifiedStats.endRoom(this.roomName, cpuStart);
-      return;
-    }
-
-    // OPTIMIZATION: Prefetch commonly accessed room objects to warm the object cache.
-    // This saves CPU when multiple creeps access the same objects (storage, sources, etc.)
-    // With 50+ creeps per room, this can save 1-2 CPU per tick.
-    prefetchRoomObjects(room);
-
-    // Get or initialize swarm state
-    const swarm = memoryManager.getOrInitSwarmState(this.roomName);
-
-    // Update metrics (only every 5 ticks to match pheromone update interval)
-    // This avoids expensive room.find() calls every tick
-    if (this.config.enablePheromones && Game.time % 5 === 0) {
-      pheromoneManager.updateMetrics(room, swarm);
-    }
-
-    // Update threat assessment
-    this.updateThreatAssessment(room, swarm);
-
-    // Assess emergency situation and coordinate response
-    emergencyResponseManager.assess(room, swarm);
-
-    // Check safe mode trigger
-    safeModeManager.checkSafeMode(room, swarm);
-
-    // Update evolution stage
-    if (this.config.enableEvolution) {
-      evolutionManager.updateEvolutionStage(swarm, room, totalOwnedRooms);
-      evolutionManager.updateMissingStructures(swarm, room);
-    }
-
-    // Update posture
-    postureManager.updatePosture(swarm);
-
-    // Update pheromones
-    if (this.config.enablePheromones) {
-      pheromoneManager.updatePheromones(swarm, room);
-    }
-
-    // Run tower control
-    if (this.config.enableTowers) {
-      this.runTowerControl(room, swarm);
-    }
-
-    // Run construction
-    // Perimeter defense runs more frequently in early game (RCL 2-3) for faster fortification
-    // Regular construction runs at standard interval to balance CPU usage
-    if (this.config.enableConstruction && postureManager.allowsBuilding(swarm.posture)) {
-      const rcl = room.controller?.level ?? 1;
-      const isEarlyDefense = isEarlyGameDefense(rcl);
-      const constructionInterval = isEarlyDefense 
-        ? EARLY_GAME_CONSTRUCTION_INTERVAL
-        : REGULAR_CONSTRUCTION_INTERVAL;
-      
-      if (Game.time % constructionInterval === 0) {
-        this.runConstruction(room, swarm);
+    try {
+      const room = Game.rooms[this.roomName];
+      if (!room || !room.controller?.my) {
+        unifiedStats.endRoom(this.roomName, cpuStart);
+        return;
       }
-    }
 
-    // Run resource processing (every 5 ticks)
-    if (this.config.enableProcessing && Game.time % 5 === 0) {
-      this.runResourceProcessing(room, swarm);
-    }
+      // OPTIMIZATION: Prefetch commonly accessed room objects to warm the object cache.
+      // This saves CPU when multiple creeps access the same objects (storage, sources, etc.)
+      // With 50+ creeps per room, this can save 1-2 CPU per tick.
+      prefetchRoomObjects(room);
 
-    // Record room stats with unified stats system
-    const cpuUsed = Game.cpu.getUsed() - cpuStart;
-    unifiedStats.recordRoom(room, cpuUsed);
-    unifiedStats.endRoom(this.roomName, cpuStart);
+      // Get or initialize swarm state
+      const swarm = memoryManager.getOrInitSwarmState(this.roomName);
+
+      // Update metrics (only every 5 ticks to match pheromone update interval)
+      // This avoids expensive room.find() calls every tick
+      if (this.config.enablePheromones && Game.time % 5 === 0) {
+        pheromoneManager.updateMetrics(room, swarm);
+      }
+
+      // Update threat assessment
+      this.updateThreatAssessment(room, swarm);
+
+      // Assess emergency situation and coordinate response
+      emergencyResponseManager.assess(room, swarm);
+
+      // Check safe mode trigger
+      safeModeManager.checkSafeMode(room, swarm);
+
+      // Update evolution stage
+      if (this.config.enableEvolution) {
+        evolutionManager.updateEvolutionStage(swarm, room, totalOwnedRooms);
+        evolutionManager.updateMissingStructures(swarm, room);
+      }
+
+      // Update posture
+      postureManager.updatePosture(swarm);
+
+      // Update pheromones
+      if (this.config.enablePheromones) {
+        pheromoneManager.updatePheromones(swarm, room);
+      }
+
+      // Run tower control
+      if (this.config.enableTowers) {
+        this.runTowerControl(room, swarm);
+      }
+
+      // Run construction
+      // Perimeter defense runs more frequently in early game (RCL 2-3) for faster fortification
+      // Regular construction runs at standard interval to balance CPU usage
+      if (this.config.enableConstruction && postureManager.allowsBuilding(swarm.posture)) {
+        const rcl = room.controller?.level ?? 1;
+        const isEarlyDefense = isEarlyGameDefense(rcl);
+        const constructionInterval = isEarlyDefense 
+          ? EARLY_GAME_CONSTRUCTION_INTERVAL
+          : REGULAR_CONSTRUCTION_INTERVAL;
+        
+        if (Game.time % constructionInterval === 0) {
+          this.runConstruction(room, swarm);
+        }
+      }
+
+      // Run resource processing (every 5 ticks)
+      if (this.config.enableProcessing && Game.time % 5 === 0) {
+        this.runResourceProcessing(room, swarm);
+      }
+
+      // Record room stats with unified stats system
+      const cpuUsed = Game.cpu.getUsed() - cpuStart;
+      unifiedStats.recordRoom(room, cpuUsed);
+      unifiedStats.endRoom(this.roomName, cpuStart);
+    } catch (error) {
+      // Log any uncaught errors during room processing
+      logError(error, {
+        subsystem: "RoomNode",
+        room: this.roomName,
+        operation: "run"
+      });
+      // End room stats even if there was an error
+      unifiedStats.endRoom(this.roomName, cpuStart);
+    }
   }
 
   /**

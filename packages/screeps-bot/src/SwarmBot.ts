@@ -58,7 +58,15 @@ import { heapCache } from "./memory/heapCache";
 function runPowerCreeps(): void {
   for (const powerCreep of Object.values(Game.powerCreeps)) {
     if (powerCreep.ticksToLive !== undefined) {
-      runPowerRole(powerCreep);
+      try {
+        runPowerRole(powerCreep);
+      } catch (error) {
+        // Log any uncaught errors during power creep execution
+        logger.error(`Power creep ${powerCreep.name} error: ${error instanceof Error ? error.message : String(error)}`, {
+          subsystem: "PowerCreeps",
+          room: powerCreep.room?.name
+        });
+      }
     }
   }
 }
@@ -69,8 +77,16 @@ function runPowerCreeps(): void {
 function runSpawns(): void {
   for (const room of Object.values(Game.rooms)) {
     if (room.controller?.my) {
-      const swarm = memoryManager.getOrInitSwarmState(room.name);
-      runSpawnManager(room, swarm);
+      try {
+        const swarm = memoryManager.getOrInitSwarmState(room.name);
+        runSpawnManager(room, swarm);
+      } catch (error) {
+        // Log any uncaught errors during spawn management
+        logger.error(`Spawn manager error in ${room.name}: ${error instanceof Error ? error.message : String(error)}`, {
+          subsystem: "Spawns",
+          room: room.name
+        });
+      }
     }
   }
 }

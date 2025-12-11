@@ -15,6 +15,7 @@ import { getDefenderPriorityBoost } from "../spawning/defenderManager";
 import { type WeightedEntry, weightedSelection } from "../utils/weightedSelection";
 import { logger } from "../core/logger";
 import { calculateRemoteHaulerRequirement } from "../empire/remoteHaulerDimensioning";
+import { logError } from "../utils/errorHandler";
 
 /**
  * Focus room upgrader scaling configuration
@@ -1260,10 +1261,11 @@ export function getAllSpawnableRoles(room: Room, swarm: SwarmState): string[] {
  * Spawn manager - run for a room
  */
 export function runSpawnManager(room: Room, swarm: SwarmState): void {
-  const spawns = room.find(FIND_MY_SPAWNS);
-  const availableSpawn = spawns.find(s => !s.spawning);
+  try {
+    const spawns = room.find(FIND_MY_SPAWNS);
+    const availableSpawn = spawns.find(s => !s.spawning);
 
-  if (!availableSpawn) return;
+    if (!availableSpawn) return;
 
   const energyCapacity = room.energyCapacityAvailable;
   const energyAvailable = room.energyAvailable;
@@ -1468,6 +1470,14 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
     if (result !== ERR_NOT_ENOUGH_ENERGY) {
       return;
     }
+  }
+  } catch (error) {
+    // Log any uncaught errors during spawn management
+    logError(error, {
+      subsystem: "SpawnManager",
+      room: room.name,
+      operation: "runSpawnManager"
+    });
   }
 }
 

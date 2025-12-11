@@ -22,6 +22,7 @@ import { runPowerCreepRole } from "../roles/power";
 import { runUtilityRole } from "../roles/utility";
 import { canSkipBehaviorEvaluation, executeIdleAction } from "../utils/idleDetection";
 import { unifiedStats } from "./unifiedStats";
+import { logError } from "../utils/errorHandler";
 
 /**
  * Role priorities - higher values = run first
@@ -86,38 +87,49 @@ function getCreepProcessPriority(role: string): ProcessPriority {
  * Execute a creep's role behavior
  */
 function executeCreepRole(creep: Creep): void {
-  // OPTIMIZATION: Skip behavior evaluation for idle creeps
-  // Idle creeps are stationary workers (harvesters, upgraders) that are actively
-  // working at their station and don't need to make new decisions.
-  // This saves ~0.1-0.2 CPU per skipped creep.
-  if (canSkipBehaviorEvaluation(creep)) {
-    executeIdleAction(creep);
-    return;
-  }
-
-  const family = getCreepFamily(creep);
-  const memory = creep.memory as unknown as SwarmCreepMemory;
-  const roleName = memory.role;
-
-  // Profile per-role CPU usage for optimization insights
-  unifiedStats.measureSubsystem(`role:${roleName}`, () => {
-    switch (family) {
-      case "economy":
-        runEconomyRole(creep);
-        break;
-      case "military":
-        runMilitaryRole(creep);
-        break;
-      case "utility":
-        runUtilityRole(creep);
-        break;
-      case "power":
-        runPowerCreepRole(creep);
-        break;
-      default:
-        runEconomyRole(creep);
+  try {
+    // OPTIMIZATION: Skip behavior evaluation for idle creeps
+    // Idle creeps are stationary workers (harvesters, upgraders) that are actively
+    // working at their station and don't need to make new decisions.
+    // This saves ~0.1-0.2 CPU per skipped creep.
+    if (canSkipBehaviorEvaluation(creep)) {
+      executeIdleAction(creep);
+      return;
     }
-  });
+
+    const family = getCreepFamily(creep);
+    const memory = creep.memory as unknown as SwarmCreepMemory;
+    const roleName = memory.role;
+
+    // Profile per-role CPU usage for optimization insights
+    unifiedStats.measureSubsystem(`role:${roleName}`, () => {
+      switch (family) {
+        case "economy":
+          runEconomyRole(creep);
+          break;
+        case "military":
+          runMilitaryRole(creep);
+          break;
+        case "utility":
+          runUtilityRole(creep);
+          break;
+        case "power":
+          runPowerCreepRole(creep);
+          break;
+        default:
+          runEconomyRole(creep);
+      }
+    });
+  } catch (error) {
+    // Log any uncaught errors during creep role execution
+    const memory = creep.memory as unknown as SwarmCreepMemory;
+    logError(error, {
+      subsystem: "CreepProcessManager",
+      room: creep.room.name,
+      creepName: creep.name,
+      operation: `executeRole:${memory.role ?? "unknown"}`
+    });
+  }
 }
 
 /**

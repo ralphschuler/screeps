@@ -23,6 +23,7 @@ import { fleeFrom, moveAwayFromSpawn, moveCreep, moveOffRoomExit, moveToRoom } f
 import { requestMoveToPosition } from "../../utils/trafficManager";
 import { getCollectionPoint } from "../../utils/collectionPoint";
 import { memoryManager } from "../../memory/manager";
+import { logError } from "../../utils/errorHandler";
 
 /**
  * Path visualization colors for different action types.
@@ -45,13 +46,14 @@ const PATH_COLORS = {
  * REFACTORED: Added defensive checks for invalid actions
  */
 export function executeAction(creep: Creep, action: CreepAction, ctx: CreepContext): void {
-  // REFACTORED: Safety check - if action is invalid, clear state and return
-  if (!action || !action.type) {
-    delete ctx.memory.state;
-    return;
-  }
+  try {
+    // REFACTORED: Safety check - if action is invalid, clear state and return
+    if (!action || !action.type) {
+      delete ctx.memory.state;
+      return;
+    }
 
-  let shouldClearState = false;
+    let shouldClearState = false;
   
   switch (action.type) {
     // Resource gathering
@@ -235,14 +237,25 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
     }
   }
 
-  // Clear state if action failed due to invalid target
-  // This allows the creep to immediately re-evaluate and find a new target
-  if (shouldClearState) {
+    // Clear state if action failed due to invalid target
+    // This allows the creep to immediately re-evaluate and find a new target
+    if (shouldClearState) {
+      delete ctx.memory.state;
+    }
+
+    // Update working state based on carry capacity
+    updateWorkingState(ctx);
+  } catch (error) {
+    // Log any uncaught errors during action execution
+    logError(error, {
+      subsystem: "BehaviorExecutor",
+      room: creep.room.name,
+      creepName: creep.name,
+      operation: "executeAction"
+    });
+    // Clear state to allow recovery
     delete ctx.memory.state;
   }
-
-  // Update working state based on carry capacity
-  updateWorkingState(ctx);
 }
 
 /**
