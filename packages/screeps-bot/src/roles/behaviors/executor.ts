@@ -291,12 +291,23 @@ function executeWithRange(
 /**
  * Update the working state based on creep's store capacity.
  * Working = true when full (should deliver), false when empty (should collect).
+ * 
+ * TODO: BUGFIX - Stale capacity values in context
+ * Problem: ctx.isFull and ctx.isEmpty are calculated ONCE when context is created
+ * at the start of the tick, BEFORE actions execute. After a transfer/withdraw action,
+ * the creep's capacity changes but ctx.isFull/isEmpty remain stale.
+ * 
+ * Fix: Check creep.store directly instead of using ctx.isFull/isEmpty
  */
 function updateWorkingState(ctx: CreepContext): void {
-  if (ctx.isEmpty) {
+  // BUGFIX: Use creep.store directly for fresh capacity state
+  const isEmpty = ctx.creep.store.getUsedCapacity() === 0;
+  const isFull = ctx.creep.store.getFreeCapacity() === 0;
+  
+  if (isEmpty) {
     ctx.memory.working = false;
   }
-  if (ctx.isFull) {
+  if (isFull) {
     ctx.memory.working = true;
   }
 }
