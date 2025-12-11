@@ -27,6 +27,19 @@
  * - Yield rules for priority-based movement
  * - Support for 5,000+ creeps with efficient traffic management
  * 
+ * TODO: Implement adaptive reusePath based on room danger level
+ * Increase path reuse in safe rooms, reduce in hostile/dynamic situations
+ * TODO: Add path sharing for creeps with similar routes (storage->source)
+ * Multiple creeps could use the same cached path to save CPU
+ * TODO: Implement predictive stuck detection using historical movement patterns
+ * Detect problematic paths before creeps get stuck
+ * TODO: Add path quality scoring to prefer better routes over time
+ * Track successful paths and favor them in future pathfinding
+ * TODO: Consider implementing obstacle avoidance prediction
+ * Pre-compute likely blockages (construction sites, other creeps) when pathing
+ * TODO: Add support for convoy movement (multiple creeps following a leader)
+ * Useful for military squads and hauler trains
+ * 
  * @see https://github.com/screepers/Traveler - Original Traveler library
  * @see ROADMAP.md Section 20 - Movement, Pathfinding & Traffic-Management
  */

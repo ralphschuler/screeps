@@ -6,6 +6,19 @@
  * - Periodic pheromone updates
  * - Event-driven updates
  * - Pheromone diffusion
+ * 
+ * TODO: Implement pheromone diffusion to neighboring rooms (ROADMAP Section 5)
+ * War and defense pheromones should propagate to adjacent rooms for coordinated response
+ * TODO: Add pheromone visualization for debugging and tuning
+ * Heat map overlays would help understand swarm coordination patterns
+ * TODO: Consider adding historical pheromone tracking for trend analysis
+ * Could help predict future needs and pre-emptively adjust behaviors
+ * TODO: Implement pheromone-based spawn priorities (ROADMAP Section 10)
+ * Spawn decisions should directly derive from pheromone profiles
+ * TODO: Add configurable pheromone thresholds per room type (eco vs war)
+ * Different room postures need different sensitivity levels
+ * TODO: Optimize metrics collection to reduce find() calls
+ * Some metrics could be calculated from existing data rather than scanning
  */
 
 import type { PheromoneState, SwarmState } from "../memory/schemas";

@@ -31,6 +31,12 @@ declare global {
       amount: number;
       scheduledTick: number;
     }>;
+    // TODO: Add memory migration version tracking field to support future schema changes
+    // memoryVersion?: number;
+    // TODO: Consider adding shard coordination memory for multi-shard operations (ROADMAP Section 11)
+    // interShardCoordination?: { shardRoles: Record<string, ShardRole>; lastUpdate: number; };
+    // TODO: Add global empire state for tracking all colonies and clusters (ROADMAP Section 4)
+    // empire?: { knownRooms: Record<string, RoomIntel>; clusters: string[]; warTargets: string[]; };
   }
 
   interface CreepMemory {
@@ -45,6 +51,14 @@ declare global {
     state?: string;
     task?: string;
     lastExploredRoom?: string;
+    // TODO: Add path caching for frequently used routes (ROADMAP Section 20)
+    // _path?: string; // Serialized path string for reuse
+    // _pathTick?: number; // Tick when path was calculated
+    // TODO: Add stuck detection tracking to improve movement recovery
+    // _stuckCount?: number; // Consecutive ticks the creep hasn't moved
+    // _lastPos?: string; // Serialized position from last tick
+    // TODO: Consider adding role-specific efficiency metrics for performance analysis
+    // _metrics?: { tasksCompleted: number; energyTransferred: number; };
   }
 
   interface RoomMemory {
@@ -66,6 +80,10 @@ declare global {
 // To add new commands, create a class with @Command decorated methods
 // and register it in registerAllConsoleCommands()
 // =============================================================================
+
+// TODO: Consider lazy loading console commands to reduce initial load time
+// Only register commands when first accessed or on-demand via a flag
+// This could save CPU on initialization for bots that rarely use console
 
 // Register all console commands (must be done before game loop starts)
 registerAllConsoleCommands();

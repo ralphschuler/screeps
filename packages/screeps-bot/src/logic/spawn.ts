@@ -6,6 +6,19 @@
  * - Uses weighted selection for next role
  * - Defines body templates per role
  * - Task assignment heuristics
+ * 
+ * TODO: Implement dynamic body scaling based on available energy and room needs
+ * Bodies should adapt to energy availability rather than fixed templates
+ * TODO: Add spawn queue persistence to survive global resets
+ * Current queue is lost on reset, causing spawn delays
+ * TODO: Implement spawn priority inheritance from pheromone values (ROADMAP Section 5)
+ * High defense pheromone should directly boost defender spawn priority
+ * TODO: Add spawn efficiency metrics to track time-to-first-spawn after creep death
+ * Measure and optimize spawn response time
+ * TODO: Consider implementing emergency spawn mode for critical situations
+ * Bypass normal queue for immediate threats (controller downgrade, no harvesters)
+ * TODO: Add body part caching to avoid recalculating for same energy levels
+ * Significant CPU savings for frequently spawned roles
  */
 
 import type { CreepRole, RoleFamily, SwarmCreepMemory, SwarmState } from "../memory/schemas";

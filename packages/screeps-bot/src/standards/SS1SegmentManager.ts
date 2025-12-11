@@ -2,6 +2,19 @@
  * SS1: Default Public Segment Manager
  * Manages the default public segment for advertising communication channels
  * Based on: https://github.com/screepers/screepers-standards/blob/master/SS1-Default_Public_Segment.md
+ * 
+ * TODO: Implement automatic channel registration from active protocols
+ * Scan for active protocols and auto-populate channels
+ * TODO: Add segment compression for larger channel lists
+ * Support more channels within 100KB limit
+ * TODO: Implement segment update throttling
+ * Only update when channels actually change
+ * TODO: Add validation for channel configurations
+ * Ensure all required fields are present and valid
+ * TODO: Consider implementing segment discovery for nearby players
+ * Auto-discover communication channels from neighboring players
+ * TODO: Add metrics for segment read/write success rates
+ * Track communication reliability
  */
 
 import { SS1Api, SS1Channel, SS1DefaultPublicSegment } from "./types";

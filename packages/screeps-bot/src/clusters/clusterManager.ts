@@ -11,6 +11,21 @@
  * - Offensive operations
  *
  * Addresses Issues: #8, #20, #36
+ * 
+ * TODO: Implement automatic cluster formation based on room proximity
+ * Rooms within N tiles should automatically form clusters
+ * TODO: Add cluster efficiency metrics (total energy, military strength)
+ * Track cluster-wide performance for optimization
+ * TODO: Implement dynamic rally point selection based on threats
+ * Rally points should adapt to current military situation
+ * TODO: Add cluster resource pooling for rapid response
+ * Emergency resources from all cluster members for defense
+ * TODO: Consider implementing cluster-level spawn coordination
+ * Distribute spawning across cluster to reduce individual room load
+ * TODO: Add cluster-wide construction planning
+ * Coordinate infrastructure projects across multiple rooms
+ * TODO: Implement cluster hierarchy for nested clusters
+ * Large empires could have clusters of clusters
  */
 
 import type { ClusterMemory, SquadDefinition } from "../memory/schemas";

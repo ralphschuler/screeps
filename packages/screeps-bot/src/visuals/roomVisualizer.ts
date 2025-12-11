@@ -10,6 +10,21 @@
  * - Resource flow visualization
  *
  * Addresses Issue: #34
+ * 
+ * TODO: Implement interactive visualization toggles via flags
+ * Place flags to enable/disable specific visualizations
+ * TODO: Add visualization layers with independent control
+ * Enable/disable different layers independently
+ * TODO: Implement 3D visualization effects for depth perception
+ * Use opacity and size to show elevation or importance
+ * TODO: Add animation support for dynamic visualizations
+ * Animate resource flows, creep paths, pheromone changes
+ * TODO: Consider implementing visualization caching
+ * Cache complex visualizations to reduce CPU cost
+ * TODO: Add performance impact tracking for visualizations
+ * Measure and display CPU cost of each visualization type
+ * TODO: Implement visualization presets for different use cases
+ * Quick switches between debug, presentation, and minimal modes
  */
 
 import type { PheromoneState, SwarmState } from "../memory/schemas";
