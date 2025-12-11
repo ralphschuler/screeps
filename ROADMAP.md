@@ -585,7 +585,61 @@ Debug-Levels
 
 ⸻
 
-22. Projektstruktur, Modularität & Tests
+22. POSIS Operating System Architecture
+
+POSIS-Implementierung
+- Der Bot implementiert eine POSIS-konforme (Portable Operating System Interface for Screeps) Architektur
+- Inspiriert von https://github.com/screepers/POSIS und https://github.com/screepers/ScreepsOS
+- Prozess-basierte Architektur mit Kernel, Prozessen und Inter-Process Communication (IPC)
+
+Kernkomponenten
+- IPosisKernel:
+- Zentrale Prozessverwaltung und Scheduling
+- CPU-Budget-Allokation pro Prozess
+- Bucket-basierte Betriebsmodi (critical, low, normal, high)
+- IPosisProcess:
+- Standardinterface für alle Prozesse
+- Lifecycle-Management (init, run, cleanup)
+- State-Serialisierung für Persistence
+- IPosisProcessContext:
+- Isoliertes Prozess-Memory
+- Syscalls für Kernel-Interaktion
+- Event-Bus für Kommunikation
+
+Syscalls (ScreepsOS-inspiriert)
+- sleep(ticks): Prozess für N Ticks pausieren
+- wake(processId): Schlafenden Prozess aufwecken
+- fork(processId, process): Child-Prozess spawnen
+- kill(processId): Prozess beenden
+- setPriority(processId, priority): Priorität anpassen
+- sendMessage(targetId, message): Nachricht an anderen Prozess senden
+- getMessages(): Eingehende Nachrichten abrufen
+- getSharedMemory(key) / setSharedMemory(key, value): Gemeinsamer Memory-Zugriff
+
+Process Hierarchy
+- Parent-Child-Beziehungen durch Forking
+- Hierarchische Prozess-Organisation
+- Automatisches Cleanup von Child-Prozessen
+
+Inter-Process Communication
+- Message Passing: Asynchrone Nachrichten zwischen Prozessen
+- Shared Memory: Gemeinsamer Speicher für Datenaustauch
+- Event Bus: Event-basierte Kommunikation
+
+State Persistence
+- Prozess-State wird in Memory.posisProcesses serialisiert
+- Automatische State-Restoration bei Respawn
+- Isoliertes Memory pro Prozess
+
+Integration
+- PosisKernelAdapter wraps existierenden Kernel
+- Volle Rückwärtskompatibilität mit bestehendem Code
+- BaseProcess-Klasse für einfache Prozesserstellung
+- Beispiel-Implementierungen in src/core/posis/examples/
+
+⸻
+
+23. Projektstruktur, Modularität & Tests
 
 Code-Struktur (TypeScript-Beispiel)
 - src/
@@ -593,6 +647,14 @@ Code-Struktur (TypeScript-Beispiel)
 - mainLoop.ts
 - scheduler.ts
 - logger.ts
+- kernel.ts (POSIS-kompatibles Kernel)
+- posis/ (POSIS-OS-Implementierung)
+- IPosisKernel.ts (Kernel-Interface)
+- IPosisProcess.ts (Process-Interface)
+- PosisKernelAdapter.ts (Kernel-Adapter)
+- BaseProcess.ts (Basis-Klasse für Prozesse)
+- examples/ (Beispiel-Implementierungen)
+- README.md (Dokumentation)
 - memory/
 - schema.ts (statische Typen für Memory)
 - swarmState.ts (Pheromon-Handling)
