@@ -127,6 +127,7 @@ export class SS1SegmentManager {
    * @param data Compressed data
    * @returns Decompressed data
    * @note TODO: Requires lzstring library integration
+   Issue URL: https://github.com/ralphschuler/screeps/issues/444
    * For full SS1 compliance, add lzstring and implement compressToUTF16/decompressFromUTF16
    */
   public static decompressData(data: string): string {
@@ -139,6 +140,7 @@ export class SS1SegmentManager {
    * @param data Raw data
    * @returns Compressed data
    * @note TODO: Requires lzstring library integration
+   Issue URL: https://github.com/ralphschuler/screeps/issues/443
    * For full SS1 compliance, add lzstring and implement compressToUTF16/decompressFromUTF16
    */
   public static compressData(data: string): string {

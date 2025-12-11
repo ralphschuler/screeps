@@ -192,6 +192,7 @@ export class SS2TerminalComms {
 
     // Multi-packet - queue remaining packets for subsequent ticks
     // TODO: Implement proper multi-packet queue system
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/445
     // For now, log warning and send first packet only
     console.log(
       `[SS2] Warning: Multi-packet message requires ${packets.length} transactions. Only sending first packet. Full multi-packet support requires implementation of packet queue.`

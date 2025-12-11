@@ -115,6 +115,7 @@ export class KeyExchangeProtocol {
    * @param sender Sender username
    * @param keyid Key identifier
    * @note TODO: Complete implementation requires TerminalComProtocol integration
+   Issue URL: https://github.com/ralphschuler/screeps/issues/448
    * to discover sender's terminal rooms and send the response
    */
   private static handleKeyRequest(sender: string, keyid: string): void {
@@ -134,6 +135,7 @@ export class KeyExchangeProtocol {
     }
 
     // TODO: Get sender's terminal room from their termcom protocol (TerminalComProtocol)
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/447
     // For full implementation:
     // 1. Read sender's terminal list using TerminalComProtocol.readTerminals(sender)
     // 2. Select closest terminal to our terminal
