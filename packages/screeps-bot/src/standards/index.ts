@@ -8,6 +8,10 @@ export * from "./types";
 export * from "./SS1SegmentManager";
 export * from "./SS2TerminalComms";
 
+// Alliance and diplomacy
+export * from "./types/allianceTypes";
+export * from "./SimpleAlliesManager";
+
 // Segment protocols
 export * from "./segment-protocols/PortalsProtocol";
 export * from "./segment-protocols/RoomNeedsProtocol";
