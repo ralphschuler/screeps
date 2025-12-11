@@ -104,4 +104,56 @@ describe("Kernel CPU configuration", () => {
     kernel.updateConfig({ pixelGenerationEnabled: false });
     expect(kernel.getBucketMode()).to.equal("high");
   });
+
+  it("reserved CPU scales with CPU limit to avoid excessive waste", () => {
+    // Test that reserved CPU is a percentage, not a fixed value
+    const kernel = new Kernel(buildKernelConfigFromCpu(getConfig().cpu));
+    const config = kernel.getConfig();
+
+    // Reserved CPU should be 2% of limit (default reservedCpuFraction = 0.02)
+    expect(config.reservedCpuFraction).to.equal(0.02);
+
+    // Test with 20 CPU limit
+    Game.cpu.limit = 20;
+    const expectedReserved20 = 20 * 0.02; // 0.4 CPU
+    const effectiveLimit20 = 20 * 0.85; // 17 CPU (targetCpuUsage = 0.85)
+    const stopAt20 = effectiveLimit20 - expectedReserved20; // 16.6 CPU
+    
+    // Mock Game.cpu.getUsed to be just under the stop threshold
+    Game.cpu.getUsed = () => stopAt20 - 0.1;
+    expect(kernel.hasCpuBudget()).to.be.true;
+    
+    // Mock Game.cpu.getUsed to be over the stop threshold
+    Game.cpu.getUsed = () => stopAt20 + 0.1;
+    expect(kernel.hasCpuBudget()).to.be.false;
+
+    // Test with 50 CPU limit
+    Game.cpu.limit = 50;
+    const expectedReserved50 = 50 * 0.02; // 1.0 CPU
+    const effectiveLimit50 = 50 * 0.85; // 42.5 CPU
+    const stopAt50 = effectiveLimit50 - expectedReserved50; // 41.5 CPU
+    
+    Game.cpu.getUsed = () => stopAt50 - 0.1;
+    expect(kernel.hasCpuBudget()).to.be.true;
+    
+    Game.cpu.getUsed = () => stopAt50 + 0.1;
+    expect(kernel.hasCpuBudget()).to.be.false;
+
+    // Test with 100 CPU limit
+    Game.cpu.limit = 100;
+    const expectedReserved100 = 100 * 0.02; // 2.0 CPU
+    const effectiveLimit100 = 100 * 0.85; // 85 CPU
+    const stopAt100 = effectiveLimit100 - expectedReserved100; // 83 CPU
+    
+    Game.cpu.getUsed = () => stopAt100 - 0.1;
+    expect(kernel.hasCpuBudget()).to.be.true;
+    
+    Game.cpu.getUsed = () => stopAt100 + 0.1;
+    expect(kernel.hasCpuBudget()).to.be.false;
+
+    // Verify that we're using much more CPU than before (less waste)
+    // With old fixed reservedCpu=5, 50 CPU limit would stop at 37.5 (12.5 wasted)
+    // With new reservedCpuFraction=0.02, 50 CPU limit stops at 41.5 (8.5 wasted)
+    // This is a ~32% reduction in wasted CPU!
+  });
 });

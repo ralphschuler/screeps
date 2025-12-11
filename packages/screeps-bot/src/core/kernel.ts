@@ -122,8 +122,17 @@ export interface KernelConfig {
   criticalBucketThreshold: number;
   /** Target CPU usage (fraction of limit) */
   targetCpuUsage: number;
-  /** Reserved CPU for finalization */
-  reservedCpu: number;
+  /**
+   * Reserved CPU for finalization (fraction of limit, e.g., 0.02 = 2%)
+   * This is subtracted from the effective CPU limit to ensure we have buffer
+   * for end-of-tick operations like memory serialization.
+   * 
+   * Using a percentage ensures the reserve scales with CPU limit:
+   * - 20 CPU limit: 0.02 * 20 = 0.4 CPU reserved
+   * - 50 CPU limit: 0.02 * 50 = 1.0 CPU reserved
+   * - 100 CPU limit: 0.02 * 100 = 2.0 CPU reserved
+   */
+  reservedCpuFraction: number;
   /** Enable process statistics */
   enableStats: boolean;
   /** Log interval for stats (ticks) */
@@ -164,7 +173,7 @@ export type BucketMode = "critical" | "low" | "normal" | "high";
 const BASE_CONFIG: Omit<KernelConfig, "lowBucketThreshold" | "highBucketThreshold" | "criticalBucketThreshold" | "frequencyIntervals" |
   "frequencyMinBucket" | "frequencyCpuBudgets"> = {
   targetCpuUsage: 0.85,
-  reservedCpu: 5,
+  reservedCpuFraction: 0.02, // 2% of CPU limit reserved for finalization
   enableStats: true,
   statsLogInterval: 100,
   pixelGenerationEnabled: true,
@@ -479,14 +488,16 @@ export class Kernel {
   public hasCpuBudget(): boolean {
     const used = Game.cpu.getUsed();
     const limit = this.getCpuLimit();
-    return (limit - used) > this.config.reservedCpu;
+    const reservedCpu = Game.cpu.limit * this.config.reservedCpuFraction;
+    return (limit - used) > reservedCpu;
   }
 
   /**
    * Get remaining CPU budget
    */
   public getRemainingCpu(): number {
-    return Math.max(0, this.getCpuLimit() - Game.cpu.getUsed() - this.config.reservedCpu);
+    const reservedCpu = Game.cpu.limit * this.config.reservedCpuFraction;
+    return Math.max(0, this.getCpuLimit() - Game.cpu.getUsed() - reservedCpu);
   }
 
   /**
