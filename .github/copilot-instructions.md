@@ -10,6 +10,77 @@ This is a Screeps bot repository with a swarm-based architecture. The ROADMAP.md
 2. **Maintain Consistency**: Keep code, tests, and documentation aligned with the established patterns
 3. **Respect Constraints**: Adhere to CPU budgets, memory limits, and performance targets outlined in the roadmap
 
+## TODO Comment Protocol
+
+This repository uses TODO comments that are automatically parsed and converted into GitHub issues by the `todo-to-issue` workflow. **Use TODO comments liberally** when appropriate - they are a feature, not a code smell.
+
+### When to Use TODO Comments
+
+It is **acceptable and encouraged** to create comprehensive TODO comments in these situations:
+
+1. **Placeholders**: When setting up code structure but full implementation is out of scope
+2. **Out of Scope Work**: When you identify work that should be done but exceeds the current task's boundaries
+3. **Partial Implementations**: When delivering a minimal working solution with clear next steps documented
+4. **Future Enhancements**: When you identify improvements during implementation
+5. **Complex Features**: When breaking down large features into smaller, trackable pieces
+6. **Error Documentation**: When encountering errors that need separate investigation (see Error Handling section)
+
+### Guidelines
+
+- **Don't feel pressured to implement everything immediately** - if something is getting out of scope or would require significant additional work, add a comprehensive TODO comment instead
+- **Be descriptive** - the TODO comment will become a GitHub issue, so include enough context for someone to pick up the work later
+- **Include relevant details** - reference ROADMAP.md sections, explain design decisions, suggest implementation approaches
+- **Use TODO comments to maintain focus** - they help you stay on track with the current task while documenting future work
+
+### TODO Comment Format
+
+```typescript
+// TODO: Brief description of what needs to be done
+// Optional: Additional context, details, or implementation notes
+// Can span multiple lines for comprehensive information
+```
+
+### Examples
+
+#### Example 1: Out of Scope Feature
+```typescript
+function processRemoteMining(room: Room) {
+  // TODO: Implement automatic road building for remote mining routes
+  // This is out of scope for the current mining implementation task
+  // Should use Dijkstra to find optimal paths and build roads gradually
+  // See ROADMAP.md Section 20 for pathfinding requirements
+  const resources = room.find(FIND_SOURCES);
+  // ... minimal implementation without roads
+}
+```
+
+#### Example 2: Placeholder for Complex Logic
+```typescript
+class DefenseCoordinator {
+  assessThreat(hostiles: Creep[]): ThreatLevel {
+    // TODO: Implement sophisticated threat assessment algorithm
+    // Should consider: hostile body parts, damage potential, distance to critical structures
+    // Should integrate with military system (see MILITARY_SYSTEM.md)
+    // For now, using simple count-based assessment
+    return hostiles.length > 5 ? 'high' : 'low';
+  }
+}
+```
+
+#### Example 3: Breaking Down Large Features
+```typescript
+// TODO: Implement advanced spawn queue with priority system
+// Features needed:
+// - Priority-based queueing (emergency > defense > economy)
+// - Energy availability prediction
+// - Body part optimization based on available energy
+// - Queue persistence across global resets
+// Current implementation uses simple FIFO queue
+class SpawnQueue {
+  // ... minimal implementation
+}
+```
+
 ## Error Handling Protocol
 
 When you encounter errors in source code that originates from this repository (including MCP servers, bot code, utilities, etc.):
