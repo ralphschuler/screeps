@@ -149,14 +149,17 @@ describe("Movement Room Exit Handling", () => {
      * Simulates the room change detection for string-based cached paths.
      * String-based paths are direction sequences relative to the starting position.
      * When a creep moves to a different room, these paths become invalid and must be regenerated.
+     * 
+     * Note: This test interface mirrors the CachedPath structure from movement.ts
+     * but simplified for testing purposes (only includes string paths, not position arrays).
      */
-    interface CachedPath {
+    interface TestCachedPath {
       path: string; // direction string like "12345678"
       startRoom?: string; // room where path was created
     }
 
     function shouldInvalidateStringPath(
-      cachedPath: CachedPath | null,
+      cachedPath: TestCachedPath | null,
       currentRoomName: string
     ): boolean {
       if (!cachedPath) return false;
@@ -168,7 +171,7 @@ describe("Movement Room Exit Handling", () => {
     }
 
     it("should invalidate string-based path when creep changes rooms", () => {
-      const cachedPath: CachedPath = {
+      const cachedPath: TestCachedPath = {
         path: "12345678", // direction string
         startRoom: "E1N1"
       };
@@ -176,7 +179,7 @@ describe("Movement Room Exit Handling", () => {
     });
 
     it("should NOT invalidate string-based path when creep is in same room", () => {
-      const cachedPath: CachedPath = {
+      const cachedPath: TestCachedPath = {
         path: "12345678",
         startRoom: "E1N1"
       };
@@ -188,16 +191,16 @@ describe("Movement Room Exit Handling", () => {
     });
 
     it("should NOT invalidate when startRoom is not set (legacy paths)", () => {
-      const cachedPath: CachedPath = {
-        path: "12345678"
-        // startRoom not set
+      const cachedPath: TestCachedPath = {
+        path: "12345678",
+        // startRoom not set - simulates legacy cached paths
       };
       expect(shouldInvalidateStringPath(cachedPath, "E2N1")).to.be.false;
     });
 
     describe("Specific room transition scenarios", () => {
       it("scenario: harvester moves from E1N1 to E2N1 - should invalidate", () => {
-        const cachedPath: CachedPath = {
+        const cachedPath: TestCachedPath = {
           path: "333", // moving right
           startRoom: "E1N1"
         };
@@ -206,7 +209,7 @@ describe("Movement Room Exit Handling", () => {
       });
 
       it("scenario: upgrader stays in E1N1 - should NOT invalidate", () => {
-        const cachedPath: CachedPath = {
+        const cachedPath: TestCachedPath = {
           path: "111222333", // moving around in same room
           startRoom: "E1N1"
         };
@@ -214,7 +217,7 @@ describe("Movement Room Exit Handling", () => {
       });
 
       it("scenario: scout crosses from E1N1 to E1N2 - should invalidate", () => {
-        const cachedPath: CachedPath = {
+        const cachedPath: TestCachedPath = {
           path: "555", // moving down
           startRoom: "E1N1"
         };
