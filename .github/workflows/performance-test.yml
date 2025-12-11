@@ -27,6 +27,8 @@ jobs:
   performance-test:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    environment:
+      name: testing
     permissions:
       contents: read
       actions: read
@@ -64,6 +66,7 @@ jobs:
         env:
           MAX_TICK_COUNT: ${{ github.event.inputs.maxTickCount || '10000' }}
           MAX_TIME_DURATION: ${{ github.event.inputs.maxTimeDuration || '30' }}
+          STEAM_KEY: ${{ secrets.STEAM_API_KEY }}
         run: |
           npm run test:performance -- \
             --maxTickCount=${MAX_TICK_COUNT} \
