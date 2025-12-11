@@ -76,7 +76,7 @@ After a workflow run:
 
 ## Configuration
 
-Performance test configuration is defined in `performance-config.yml`:
+Performance test configuration is defined in `config.yml`:
 
 ### Milestones
 
@@ -168,7 +168,7 @@ npm run test:performance -- --botFilePath=dist/custom
 
 ### Exporting Results
 
-Configure result export in `performance-config.yml`:
+Configure result export in `config.yml`:
 
 ```yaml
 # Example: Export to Discord
