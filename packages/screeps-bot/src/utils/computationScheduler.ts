@@ -249,7 +249,8 @@ export class ComputationScheduler {
           );
         }
       } catch (error) {
-        console.log(`[Scheduler] ERROR executing ${task.id}:`, error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.log(`[Scheduler] ERROR executing ${task.id}: ${errorMsg}`);
         // Still mark as run to prevent repeated failures
         task.lastRun = Game.time;
       }
