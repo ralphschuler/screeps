@@ -1575,6 +1575,13 @@ export function finalizeMovement(): void {
  * Use this when the creep's target changes or state is invalidated.
  * This prevents wandering behavior caused by stale path caches.
  *
+ * Clears:
+ * - Cached path data (direction strings or position arrays)
+ * - Stuck counter (resets to 0, allowing fresh stuck detection)
+ *
+ * Preserves:
+ * - Last position tracking (for stuck detection continuity)
+ *
  * @param creep - The creep to clear movement cache for
  */
 export function clearMovementCache(creep: Creep | PowerCreep): void {
@@ -1583,10 +1590,12 @@ export function clearMovementCache(creep: Creep | PowerCreep): void {
     return;
   }
   
-  const memory = creep.memory as unknown as { [key: string]: unknown };
+  // Type assertion is safe here because we're only deleting keys, not reading values
+  // The memory keys are internal to the movement system and use underscore prefixes
+  const memory = creep.memory as unknown as Record<string, unknown>;
   delete memory[MEMORY_PATH_KEY];
   delete memory[MEMORY_STUCK_KEY];
-  // Note: We don't clear MEMORY_LAST_POS_KEY to preserve stuck detection state
+  // Note: MEMORY_LAST_POS_KEY is preserved to maintain position tracking for stuck detection
 }
 
 /**
