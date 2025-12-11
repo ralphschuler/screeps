@@ -36,6 +36,7 @@ declare global {
     // TODO: Consider adding shard coordination memory for multi-shard operations (ROADMAP Section 11)
     // interShardCoordination?: { shardRoles: Record<string, ShardRole>; lastUpdate: number; };
     // TODO: Add global empire state for tracking all colonies and clusters (ROADMAP Section 4)
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/460
     // empire?: { knownRooms: Record<string, RoomIntel>; clusters: string[]; warTargets: string[]; };
   }
 
@@ -58,6 +59,7 @@ declare global {
     // _stuckCount?: number; // Consecutive ticks the creep hasn't moved
     // _lastPos?: string; // Serialized position from last tick
     // TODO: Consider adding role-specific efficiency metrics for performance analysis
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/458
     // _metrics?: { tasksCompleted: number; energyTransferred: number; };
   }
 
@@ -82,6 +84,7 @@ declare global {
 // =============================================================================
 
 // TODO: Consider lazy loading console commands to reduce initial load time
+// Issue URL: https://github.com/ralphschuler/screeps/issues/457
 // Only register commands when first accessed or on-demand via a flag
 // This could save CPU on initialization for bots that rarely use console
 
