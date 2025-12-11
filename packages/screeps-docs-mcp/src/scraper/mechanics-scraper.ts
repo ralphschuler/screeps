@@ -103,7 +103,9 @@ export async function getMechanicsTopicList(repoPath: string): Promise<Array<{ t
       const title = extractTitle(content, filename);
       const topic = FILENAME_TO_TOPIC[filename];
       
-      results.push({ topic, name: title });
+      if (topic) {
+        results.push({ topic, name: title });
+      }
     } catch (error) {
       console.error(`Error reading mechanics file ${filename}:`, error);
     }

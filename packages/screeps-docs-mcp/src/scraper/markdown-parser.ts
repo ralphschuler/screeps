@@ -18,7 +18,13 @@ export function extractFrontMatter(content: string): { frontMatter: Record<strin
     return { frontMatter: {}, body: content };
   }
 
-  const [, frontMatterText, body] = match;
+  const frontMatterText = match[1];
+  const body = match[2];
+  
+  if (!frontMatterText || !body) {
+    return { frontMatter: {}, body: content };
+  }
+  
   const frontMatter: Record<string, string> = {};
 
   // Parse simple key: value pairs
@@ -84,7 +90,7 @@ export function extractTitle(content: string, filename: string): string {
 
   // Check for first h1 heading
   const h1Match = body.match(/^#\s+(.+)$/m);
-  if (h1Match) {
+  if (h1Match && h1Match[1]) {
     return h1Match[1].trim();
   }
 
@@ -105,9 +111,12 @@ export function extractSections(content: string): Array<{ heading: string; conte
 
   for (let i = 0; i < matches.length; i++) {
     const match = matches[i];
+    if (!match || !match[2] || match.index === undefined) continue;
+    
     const heading = match[2].trim();
-    const startIndex = match.index! + match[0].length;
-    const endIndex = i < matches.length - 1 ? matches[i + 1].index! : body.length;
+    const startIndex = match.index + match[0].length;
+    const nextMatch = matches[i + 1];
+    const endIndex = nextMatch && nextMatch.index !== undefined ? nextMatch.index : body.length;
     const sectionContent = body.substring(startIndex, endIndex).trim();
 
     if (sectionContent) {
@@ -134,6 +143,8 @@ export function extractAPIProperties(content: string): Array<{ name: string; typ
 
   let match;
   while ((match = propertyRegex.exec(content)) !== null) {
+    if (!match[1] || !match[2] || !match[3]) continue;
+    
     const name = match[1].replace(/^[^.]+\./, ""); // Remove object prefix (e.g., "Game." -> "")
     const type = match[2];
     const description = stripMarkdown(match[3]).substring(0, MAX_DESCRIPTION_LENGTH);
@@ -160,13 +171,15 @@ export function extractAPIMethods(content: string): Array<{ name: string; signat
 
   let match;
   while ((match = methodRegex.exec(content)) !== null) {
+    if (!match[1] || !match[3]) continue;
+    
     const name = match[1].replace(/^[^.]+\./, ""); // Remove object prefix
-    const signature = match[2] || "";
+    const signature = match[2] ?? "";
     const methodContent = match[3];
     
     // Extract return value if present
     const returnMatch = methodContent.match(/returns?:?\s*([^\n]+)/i);
-    const returns = returnMatch ? stripMarkdown(returnMatch[1]) : "";
+    const returns = returnMatch && returnMatch[1] ? stripMarkdown(returnMatch[1]) : "";
     
     const description = stripMarkdown(methodContent).substring(0, MAX_DESCRIPTION_LENGTH);
 
