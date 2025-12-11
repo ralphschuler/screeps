@@ -1032,7 +1032,7 @@ export class ScreepsClient {
   /**
    * Get user overview
    */
-  public async getUserOverview(userId?: string, interval: number = 8, statName?: string): Promise<import("../types.js").ApiResult> {
+  public async getUserOverview(interval: number = 8, statName?: string): Promise<import("../types.js").ApiResult> {
     if (!this.api) {
       throw new Error("API not initialized. Call connect() first.");
     }

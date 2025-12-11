@@ -913,7 +913,7 @@ export async function handleRoomDecorations(client: ScreepsClient, args: z.infer
  * Tool handler: Get user overview
  */
 export async function handleUserOverview(client: ScreepsClient, args: z.infer<typeof toolSchemas.userOverview>) {
-  const result = await client.getUserOverview(undefined, args.interval, args.statName);
+  const result = await client.getUserOverview(args.interval, args.statName);
   return {
     content: [
       {
