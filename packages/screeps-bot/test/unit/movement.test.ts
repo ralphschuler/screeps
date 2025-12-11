@@ -57,6 +57,69 @@ describe("Movement Room Exit Handling", () => {
     });
   });
 
+  describe("Exit handling behavior", () => {
+    /**
+     * Determines if a creep on a room exit should move inward before continuing.
+     * This logic prevents cycling when the target is in the SAME room,
+     * but allows normal crossing when the target is in a DIFFERENT room.
+     */
+    function shouldMoveInwardFromExit(
+      creepOnExit: boolean,
+      targetInDifferentRoom: boolean
+    ): boolean {
+      // The fix: only move inward when target is in the SAME room
+      return creepOnExit && !targetInDifferentRoom;
+    }
+
+    it("should NOT move inward when target is in different room", () => {
+      // This is the fix for the cycling bug:
+      // Creep at (49, 25) in E1N1, target in E2N1
+      // Should proceed to cross the exit, NOT move inward
+      expect(shouldMoveInwardFromExit(true, true)).to.be.false;
+    });
+
+    it("should move inward when target is in same room", () => {
+      // Creep at (0, 25) in E1N1, target at (25, 25) in E1N1
+      // Should move inward first to prevent PathFinder from routing through E0N1
+      expect(shouldMoveInwardFromExit(true, false)).to.be.true;
+    });
+
+    it("should not move inward when not on exit", () => {
+      // Creep at (25, 25) in E1N1, target in E1N1
+      // Normal pathfinding continues
+      expect(shouldMoveInwardFromExit(false, false)).to.be.false;
+    });
+
+    it("should not move inward when not on exit, even with different room target", () => {
+      // Creep at (25, 25) in E1N1, target in E2N1
+      // Normal pathfinding continues
+      expect(shouldMoveInwardFromExit(false, true)).to.be.false;
+    });
+
+    describe("Specific scenarios", () => {
+      it("scenario: creep at right exit (x=49) needs to cross to adjacent room", () => {
+        // Creep at (49, 25) in E1N1, target at (10, 25) in E2N1
+        const onExit = isOnRoomExit({ x: 49, y: 25 });
+        const targetInDifferentRoom = true; // E2N1 vs E1N1
+        expect(shouldMoveInwardFromExit(onExit, targetInDifferentRoom)).to.be.false;
+      });
+
+      it("scenario: creep at left exit (x=0) needs to cross to adjacent room", () => {
+        // Creep at (0, 25) in E1N1, target at (40, 25) in E0N1
+        const onExit = isOnRoomExit({ x: 0, y: 25 });
+        const targetInDifferentRoom = true; // E0N1 vs E1N1
+        expect(shouldMoveInwardFromExit(onExit, targetInDifferentRoom)).to.be.false;
+      });
+
+      it("scenario: creep at exit with target in same room should move inward", () => {
+        // Creep at (49, 25) in E1N1, target at (25, 25) in E1N1
+        const onExit = isOnRoomExit({ x: 49, y: 25 });
+        const targetInDifferentRoom = false; // E1N1 vs E1N1
+        expect(shouldMoveInwardFromExit(onExit, targetInDifferentRoom)).to.be.true;
+      });
+    });
+  });
+
   describe("Path room mismatch detection", () => {
     /**
      * Simulates checking if a cached path is from a different room.

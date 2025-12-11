@@ -1127,14 +1127,16 @@ function internalMoveTo(
     return OK;
   }
 
-  // CRITICAL: Handle creeps on room exits that need to move to a different room.
-  // When a creep is on an exit tile and their target is in a DIFFERENT room,
+  // CRITICAL: Handle creeps on room exits with targets in the SAME room.
+  // When a creep is on an exit tile and their target is in the SAME room,
   // they must FIRST move off the exit tile toward the room center before continuing.
-  // This prevents cycling behavior where PathFinder would route them back through the exit.
+  // This prevents cycling behavior where PathFinder might route them through adjacent rooms.
+  // However, if the target is in a DIFFERENT room, the creep should proceed normally
+  // to cross the exit into the target room.
   const onRoomExit = isOnRoomExit(creep.pos);
   const targetInDifferentRoom = targetPos.roomName !== creep.pos.roomName;
 
-  if (onRoomExit && targetInDifferentRoom) {
+  if (onRoomExit && !targetInDifferentRoom) {
     // Find a walkable position off the exit that's more toward the room center
     // Note: findPositionOffExit only returns adjacent positions (within 1 tile),
     // so getDirection will always receive a valid adjacent position.
