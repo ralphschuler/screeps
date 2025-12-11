@@ -19,7 +19,7 @@
  */
 
 import type { CreepAction, CreepContext } from "./types";
-import { fleeFrom, moveAwayFromSpawn, moveCreep, moveOffRoomExit, moveToRoom } from "../../utils/movement";
+import { fleeFrom, moveAwayFromSpawn, moveCreep, moveOffRoomExit, moveToRoom, clearMovementCache } from "../../utils/movement";
 import { requestMoveToPosition } from "../../utils/trafficManager";
 import { getCollectionPoint } from "../../utils/collectionPoint";
 import { memoryManager } from "../../memory/manager";
@@ -239,6 +239,10 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
   // This allows the creep to immediately re-evaluate and find a new target
   if (shouldClearState) {
     delete ctx.memory.state;
+    // BUGFIX: Also clear movement cache to prevent wandering from stale paths
+    // When state is invalidated, the cached path to the old target is no longer valid
+    // This prevents creeps from making partial movements on stale paths before re-pathing
+    clearMovementCache(creep);
   }
 
   // Update working state based on carry capacity

@@ -1571,6 +1571,25 @@ export function finalizeMovement(): void {
 }
 
 /**
+ * Clear cached path for a creep.
+ * Use this when the creep's target changes or state is invalidated.
+ * This prevents wandering behavior caused by stale path caches.
+ *
+ * @param creep - The creep to clear movement cache for
+ */
+export function clearMovementCache(creep: Creep | PowerCreep): void {
+  if (!isCreep(creep)) {
+    // PowerCreeps don't use the same memory structure
+    return;
+  }
+  
+  const memory = creep.memory as unknown as { [key: string]: unknown };
+  delete memory[MEMORY_PATH_KEY];
+  delete memory[MEMORY_STUCK_KEY];
+  // Note: We don't clear MEMORY_LAST_POS_KEY to preserve stuck detection state
+}
+
+/**
  * Move a creep or power creep to a target position or object.
  *
  * @param creep - The creep or power creep to move

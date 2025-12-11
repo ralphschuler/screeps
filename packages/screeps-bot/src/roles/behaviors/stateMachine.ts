@@ -36,6 +36,7 @@
 
 import type { CreepAction, CreepContext, StuckTrackingMemory } from "./types";
 import type { CreepState } from "../../memory/schemas";
+import { clearMovementCache } from "../../utils/movement";
 
 /**
  * Default timeout for states (in ticks)
@@ -111,6 +112,10 @@ function isStateValid(state: CreepState | undefined, ctx: CreepContext): boolean
       const ticksStuck = Game.time - memory.lastPosTick;
       if (ticksStuck >= STUCK_DETECTION_THRESHOLD) {
         // Creep hasn't moved for STUCK_DETECTION_THRESHOLD ticks - state is invalid
+        // BUGFIX: Clear movement cache when stuck is detected
+        // This ensures the creep gets a fresh path calculation instead of continuing
+        // to follow a stale path that led to being stuck
+        clearMovementCache(ctx.creep);
         return false;
       }
     } else {
