@@ -272,7 +272,7 @@ export async function startMemoryCollector(
 
   const poll = async () => {
     try {
-      const rawMemory = await api.memory.get(config.memoryPath, config.shard);
+      const { data: rawMemory } = await api.memory.get(config.memoryPath, config.shard);
       const decoded = decodeMemory(rawMemory, logger);
       const stats = config.exportFullMemory ? decoded : decoded?.stats ?? decoded;
 
