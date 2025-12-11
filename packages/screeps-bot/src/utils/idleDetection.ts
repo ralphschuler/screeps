@@ -68,10 +68,17 @@ const HARVESTER_WORKING_THRESHOLD = 40;
 /**
  * Minimum ticks a creep must have a valid state to be considered idle.
  * This prevents false positives for creeps that just started a task.
- * OPTIMIZATION: Reduced to 1 tick to allow idle detection immediately after state establishment
- * This eliminates the "dead tick" where creeps appear idle after state transitions
+ * 
+ * BUGFIX: Increased from 1 to 3 ticks to prevent premature idle detection.
+ * When set to 1, creeps that just started moving toward a target would be
+ * considered "idle" immediately, causing executeIdleAction to run before
+ * they reach their destination. If multiple creeps target the same resource,
+ * this causes race conditions where both try to execute the idle action,
+ * leading to stuck states.
+ * 
+ * With 3 ticks, creeps have time to start moving before idle optimization kicks in.
  */
-const MIN_STATE_AGE_FOR_IDLE = 1;
+const MIN_STATE_AGE_FOR_IDLE = 3;
 
 // =============================================================================
 // Public API

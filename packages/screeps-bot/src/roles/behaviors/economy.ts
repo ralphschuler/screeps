@@ -233,12 +233,11 @@ export function harvester(ctx: CreepContext): CreepAction {
 /**
  * Assign a source to a harvester, trying to balance load.
  * 
- * OPTIMIZATION v2: Instead of iterating through ALL Game.creeps (which can be 5000+),
- * we only iterate through creeps in this specific room. This dramatically reduces
- * the CPU cost, especially in large empires.
+ * Iterates through all creeps globally to count harvesters assigned to each source.
+ * This ensures spawning/traveling harvesters are counted, preventing duplicate assignments.
  * 
- * Additionally, we cache the source counts per room per tick to avoid recalculating
- * for multiple harvesters spawning in the same tick.
+ * The source counts are cached per room per tick to avoid recalculating for multiple
+ * harvesters spawning in the same tick.
  */
 function assignSource(ctx: CreepContext): Source | null {
   const sources = ctx.room.find(FIND_SOURCES);
@@ -261,14 +260,19 @@ function assignSource(ctx: CreepContext): Source | null {
       sourceCounts.set(s.id, 0);
     }
 
-    // MAJOR OPTIMIZATION: Only iterate through creeps in THIS room, not all Game.creeps
-    // This changes complexity from O(all_creeps) to O(room_creeps)
-    // For a 100-room empire with 50 creeps per room, this is 100x faster
-    const roomCreeps = ctx.room.find(FIND_MY_CREEPS);
-    for (const c of roomCreeps) {
+    // BUGFIX: Count ALL harvesters assigned to sources in this room, not just those present
+    // Previously used ctx.room.find(FIND_MY_CREEPS), which missed spawning/traveling creeps
+    // This caused multiple harvesters to be assigned to the same source when only one was in the room
+    // 
+    // TRADEOFF: This iterates all creeps globally (O(all_creeps)) instead of room creeps (O(room_creeps))
+    // We trade some performance for correctness. The filter is very efficient (just role + sourceId check)
+    // and the issue only manifests during spawning/early game when correctness is most critical.
+    // Alternative considered: tracking spawning creeps separately, but adds complexity.
+    for (const name in Game.creeps) {
+      const c = Game.creeps[name];
       const m = c.memory as unknown as SwarmCreepMemory;
       // Only count harvesters that have a sourceId AND are assigned to sources in THIS room
-      // (sourceId could be from another room if creep is in transit)
+      // This includes spawning creeps, creeps traveling to the room, and creeps temporarily in other rooms
       if (m.role === "harvester" && m.sourceId && sourceCounts.has(m.sourceId)) {
         sourceCounts.set(m.sourceId, (sourceCounts.get(m.sourceId) ?? 0) + 1);
       }
