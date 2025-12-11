@@ -177,7 +177,7 @@ leading to incorrect CPU budget allocation.
 1. **Keep functions small** - aim for single responsibility
 2. **Document complex logic** with comments
 3. **Avoid magic numbers** - use named constants
-4. **Handle errors gracefully**
+4. **Handle errors gracefully** - see [AGENTS.md](./AGENTS.md) for error handling protocol
 5. **Write self-documenting code** - clear names over comments
 6. **Follow the ROADMAP** architecture principles
 
