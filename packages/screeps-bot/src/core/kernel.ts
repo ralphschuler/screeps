@@ -172,7 +172,10 @@ export type BucketMode = "critical" | "low" | "normal" | "high";
 
 const BASE_CONFIG: Omit<KernelConfig, "lowBucketThreshold" | "highBucketThreshold" | "criticalBucketThreshold" | "frequencyIntervals" |
   "frequencyMinBucket" | "frequencyCpuBudgets"> = {
-  targetCpuUsage: 0.85,
+  // Increased from 0.85 to 0.98 to use available CPU more efficiently
+  // The reserved CPU (2%) plus this gives us ~98% utilization with 2% buffer
+  // This prevents excessive CPU waste (was leaving 40+ CPU unused)
+  targetCpuUsage: 0.98,
   reservedCpuFraction: 0.02, // 2% of CPU limit reserved for finalization
   enableStats: true,
   statsLogInterval: 100,
