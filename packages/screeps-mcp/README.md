@@ -14,7 +14,7 @@ This package provides a standardized MCP server that exposes Screeps game data, 
 - **Screeps API Integration**: Secure connection to Screeps servers with token or email/password authentication
 - **WebSocket Console Support**: Automatically retrieves console command responses via WebSocket subscription
 - **Resource Providers**: Expose Screeps game objects, memory, and stats via MCP resources
-- **Comprehensive Tool Set**: 28 MCP tools covering:
+- **Comprehensive Tool Set**: 27 MCP tools covering:
   - Console commands with live response
   - Memory and segment operations
   - Room data (terrain, objects, status, decorations)

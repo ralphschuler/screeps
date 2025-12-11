@@ -12,7 +12,17 @@ import {
   getStatsResource,
   listResources
 } from "../../src/handlers/resources.js";
-import { listTools, handleConsole, handleMemoryGet, handleMemorySet, handleStats } from "../../src/handlers/tools.js";
+import {
+  listTools,
+  handleConsole,
+  handleMemoryGet,
+  handleMemorySet,
+  handleStats,
+  handleUserWorldStatus,
+  handleMarketStats,
+  handleLeaderboardList,
+  handleRoomDecorations
+} from "../../src/handlers/tools.js";
 
 describe("Resource Handlers", () => {
   let mockClient: Pick<ScreepsClient, "getRooms" | "getCreeps" | "getSpawns" | "getStats" | "getMemory">;
@@ -164,7 +174,7 @@ describe("Tool Handlers", () => {
     it("should return all available tools", () => {
       const tools = listTools();
 
-      expect(tools).toHaveLength(14);
+      expect(tools).toHaveLength(27);
       expect(tools.some(t => t.name === "screeps_console")).toBe(true);
       expect(tools.some(t => t.name === "screeps_memory_get")).toBe(true);
       expect(tools.some(t => t.name === "screeps_memory_set")).toBe(true);
@@ -179,6 +189,20 @@ describe("Tool Handlers", () => {
       expect(tools.some(t => t.name === "screeps_my_market_orders")).toBe(true);
       expect(tools.some(t => t.name === "screeps_user_info")).toBe(true);
       expect(tools.some(t => t.name === "screeps_shard_info")).toBe(true);
+      // New tools from screeps-world-openapi
+      expect(tools.some(t => t.name === "screeps_user_world_status")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_user_world_start_room")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_user_rooms")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_market_stats")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_leaderboard_seasons")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_leaderboard_find")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_leaderboard_list")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_experimental_pvp")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_experimental_nukes")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_user_money_history")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_room_decorations")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_user_overview")).toBe(true);
+      expect(tools.some(t => t.name === "screeps_respawn_prohibited_rooms")).toBe(true);
     });
 
     it("should include input schemas for all tools", () => {
@@ -275,6 +299,105 @@ describe("Tool Handlers", () => {
       expect(result.content).toHaveLength(1);
       expect(result.content[0]?.text).toContain("10");
       expect(result.content[0]?.text).toContain("5000");
+    });
+  });
+});
+
+describe("New Tool Handlers from screeps-world-openapi", () => {
+  let mockClient: Pick<
+    ScreepsClient,
+    "getUserWorldStatus" | "getMarketStats" | "getLeaderboardList" | "getRoomDecorations"
+  >;
+
+  beforeEach(() => {
+    mockClient = {
+      getUserWorldStatus: vi.fn(),
+      getMarketStats: vi.fn(),
+      getLeaderboardList: vi.fn(),
+      getRoomDecorations: vi.fn()
+    };
+  });
+
+  describe("handleUserWorldStatus", () => {
+    it("should retrieve user world status", async () => {
+      const mockStatus = {
+        success: true,
+        data: { status: "active" }
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockClient.getUserWorldStatus as any).mockResolvedValue(mockStatus);
+
+      const result = await handleUserWorldStatus(mockClient, { shard: "shard3" });
+
+      expect(result.content).toHaveLength(1);
+      expect(result.content[0]?.text).toContain("active");
+      expect(result.isError).toBe(false);
+    });
+
+    it("should handle errors gracefully", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockClient.getUserWorldStatus as any).mockResolvedValue({
+        success: false,
+        error: "Not found"
+      });
+
+      const result = await handleUserWorldStatus(mockClient, {});
+
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe("handleMarketStats", () => {
+    it("should retrieve market statistics", async () => {
+      const mockStats = {
+        success: true,
+        data: { average: 10, stddev: 2 }
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockClient.getMarketStats as any).mockResolvedValue(mockStats);
+
+      const result = await handleMarketStats(mockClient, { resourceType: "energy" });
+
+      expect(result.content).toHaveLength(1);
+      expect(result.content[0]?.text).toContain("average");
+      expect(result.isError).toBe(false);
+    });
+  });
+
+  describe("handleLeaderboardList", () => {
+    it("should retrieve leaderboard list", async () => {
+      const mockLeaderboard = {
+        success: true,
+        data: [{ rank: 1, username: "topPlayer" }]
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockClient.getLeaderboardList as any).mockResolvedValue(mockLeaderboard);
+
+      const result = await handleLeaderboardList(mockClient, {
+        limit: 10,
+        offset: 0
+      });
+
+      expect(result.content).toHaveLength(1);
+      expect(result.content[0]?.text).toContain("topPlayer");
+      expect(result.isError).toBe(false);
+    });
+  });
+
+  describe("handleRoomDecorations", () => {
+    it("should retrieve room decorations", async () => {
+      const mockDecorations = {
+        success: true,
+        data: { decorations: [] }
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockClient.getRoomDecorations as any).mockResolvedValue(mockDecorations);
+
+      const result = await handleRoomDecorations(mockClient, { room: "W1N1" });
+
+      expect(result.content).toHaveLength(1);
+      expect(result.content[0]?.text).toContain("decorations");
+      expect(result.isError).toBe(false);
     });
   });
 });
