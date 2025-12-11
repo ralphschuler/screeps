@@ -91,9 +91,11 @@ module.exports = function (config) {
             await index_1.testRunner.start(context);
             const summary = index_1.testRunner.getSummary(tick);
             // Store results in a safe location (not in bot memory)
-            if (gameData.__testResults) {
-                gameData.__testResults = summary;
+            // Initialize if doesn't exist
+            if (!gameData.__testResults) {
+                gameData.__testResults = {};
             }
+            gameData.__testResults = summary;
         },
         /**
          * Register console commands
@@ -101,14 +103,12 @@ module.exports = function (config) {
         async consoleCommands() {
             return {
                 /**
-                 * Run all tests
+                 * Run all tests (note: tests will run automatically based on configuration)
                  */
-                runTests: async () => {
-                    // This will be available in the server console
-                    console.log('[screepsmod-testing] Running tests via console command...');
-                    // Note: We need access to the current game state here
-                    // This is a limitation of the current implementation
-                    return 'Test run initiated. Check logs for results.';
+                runTests: () => {
+                    console.log('[screepsmod-testing] Tests run automatically based on testInterval configuration.');
+                    console.log('[screepsmod-testing] To manually trigger tests, set testInterval > 0 or restart the server.');
+                    return 'Tests are configured to run automatically. Use getTestSummary() to see results.';
                 },
                 /**
                  * List all registered tests
