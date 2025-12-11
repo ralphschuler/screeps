@@ -680,8 +680,6 @@ export class Kernel {
     );
   }
 
-
-
   /**
    * Get tick CPU used by kernel
    */
