@@ -1571,6 +1571,36 @@ export function finalizeMovement(): void {
 }
 
 /**
+ * Clear cached path for a creep.
+ * Use this when the creep's target changes or state is invalidated.
+ * This prevents wandering behavior caused by stale path caches.
+ *
+ * Clears:
+ * - Cached path data (direction strings or position arrays)
+ * - Stuck counter (resets to 0, allowing fresh stuck detection)
+ *
+ * Preserves:
+ * - Last position tracking (for stuck detection continuity)
+ *
+ * @param creep - The creep to clear movement cache for
+ */
+export function clearMovementCache(creep: Creep | PowerCreep): void {
+  if (!isCreep(creep)) {
+    // This function only handles Creep movement patterns
+    // PowerCreeps use a different memory structure for movement
+    return;
+  }
+  
+  // Access memory directly - TypeScript allows property deletion
+  // These keys are internal to the movement system (underscore-prefixed)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const memory = creep.memory as any;
+  delete memory[MEMORY_PATH_KEY];
+  delete memory[MEMORY_STUCK_KEY];
+  // Note: MEMORY_LAST_POS_KEY is preserved to maintain position tracking for stuck detection
+}
+
+/**
  * Move a creep or power creep to a target position or object.
  *
  * @param creep - The creep or power creep to move
