@@ -1586,13 +1586,15 @@ export function finalizeMovement(): void {
  */
 export function clearMovementCache(creep: Creep | PowerCreep): void {
   if (!isCreep(creep)) {
-    // PowerCreeps don't use the same memory structure
+    // This function only handles Creep movement patterns
+    // PowerCreeps use a different memory structure for movement
     return;
   }
   
-  // Type assertion is safe here because we're only deleting keys, not reading values
-  // The memory keys are internal to the movement system and use underscore prefixes
-  const memory = creep.memory as unknown as Record<string, unknown>;
+  // Access memory directly - TypeScript allows property deletion
+  // These keys are internal to the movement system (underscore-prefixed)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const memory = creep.memory as any;
   delete memory[MEMORY_PATH_KEY];
   delete memory[MEMORY_STUCK_KEY];
   // Note: MEMORY_LAST_POS_KEY is preserved to maintain position tracking for stuck detection
