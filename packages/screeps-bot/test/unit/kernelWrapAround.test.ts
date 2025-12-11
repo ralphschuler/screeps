@@ -424,4 +424,117 @@ describe("Kernel wrap-around process queue", () => {
     // It will be the first process checked in the next tick
     expect(p2Stats?.skippedCount).to.equal(0);
   });
+
+  it("should preserve wrap-around across queue rebuilds when processes are added", () => {
+    // BUGFIX TEST: This tests the fix for the issue where creeps would stop working
+    // when new creeps spawned, because the kernel would always restart from the
+    // beginning of the queue after rebuilding.
+
+    // Register 3 processes with same priority (order matters for this test)
+    kernel.registerProcess({
+      id: "creep:Harvester1",
+      name: "Harvester 1",
+      priority: ProcessPriority.HIGH,
+      frequency: "high",
+      execute: () => executionLog.push("harvester1")
+    });
+
+    kernel.registerProcess({
+      id: "creep:LarvaWorker1",
+      name: "LarvaWorker 1",
+      priority: ProcessPriority.HIGH,
+      frequency: "high",
+      execute: () => executionLog.push("larvaWorker1")
+    });
+
+    kernel.registerProcess({
+      id: "creep:Hauler1",
+      name: "Hauler 1",
+      priority: ProcessPriority.HIGH,
+      frequency: "high",
+      execute: () => executionLog.push("hauler1")
+    });
+
+    // Tick 1: Run all 3 processes
+    let cpuUsage = 0;
+    Game.cpu.getUsed = () => cpuUsage;
+    cpuUsage = 1;
+    kernel.run();
+    expect(executionLog).to.deep.equal(["harvester1", "larvaWorker1", "hauler1"]);
+    executionLog = [];
+
+    // Tick 2: Spawn a new LarvaWorker (queue rebuild)
+    Game.time += 1;
+    kernel.registerProcess({
+      id: "creep:LarvaWorker2",
+      name: "LarvaWorker 2",
+      priority: ProcessPriority.HIGH,
+      frequency: "high",
+      execute: () => executionLog.push("larvaWorker2")
+    });
+
+    // After queue rebuild, should continue from where we left off (after Hauler1)
+    // NOT restart from the beginning. Order by priority, then continue wrap-around.
+    cpuUsage = 1;
+    kernel.run();
+    
+    // Should start after hauler1 (last executed), wrapping around
+    // All have same priority, so sorted order is stable, new process added at end
+    // Expected: [harvester1, larvaWorker1, hauler1, larvaWorker2]
+    // Start after hauler1 -> larvaWorker2, then wrap to harvester1, larvaWorker1, hauler1
+    expect(executionLog).to.deep.equal(["larvaWorker2", "harvester1", "larvaWorker1", "hauler1"]);
+    executionLog = [];
+
+    // Tick 3: Verify all processes continue to run in rotation
+    Game.time += 1;
+    cpuUsage = 1;
+    kernel.run();
+    
+    // Should start after hauler1 (last executed), wrap to beginning
+    expect(executionLog).to.deep.equal(["larvaWorker2", "harvester1", "larvaWorker1", "hauler1"]);
+  });
+
+  it("should preserve wrap-around when last executed process is removed", () => {
+    // Register 3 processes
+    kernel.registerProcess({
+      id: "p1",
+      name: "Process 1",
+      priority: ProcessPriority.HIGH,
+      frequency: "high",
+      execute: () => executionLog.push("p1")
+    });
+
+    kernel.registerProcess({
+      id: "p2",
+      name: "Process 2",
+      priority: ProcessPriority.HIGH,
+      frequency: "high",
+      execute: () => executionLog.push("p2")
+    });
+
+    kernel.registerProcess({
+      id: "p3",
+      name: "Process 3",
+      priority: ProcessPriority.HIGH,
+      frequency: "high",
+      execute: () => executionLog.push("p3")
+    });
+
+    // Tick 1: Run all processes
+    let cpuUsage = 0;
+    Game.cpu.getUsed = () => cpuUsage;
+    cpuUsage = 1;
+    kernel.run();
+    expect(executionLog).to.deep.equal(["p1", "p2", "p3"]);
+    executionLog = [];
+
+    // Remove the last executed process (p3)
+    kernel.unregisterProcess("p3");
+
+    // Tick 2: Should wrap around to p1 (since p3 is gone, start from beginning)
+    Game.time += 1;
+    cpuUsage = 1;
+    kernel.run();
+    expect(executionLog).to.deep.equal(["p1", "p2"]);
+  });
 });

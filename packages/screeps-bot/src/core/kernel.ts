@@ -237,7 +237,9 @@ export class Kernel {
   /** Tick when a pixel was last generated (0 if none tracked) */
   private lastPixelGenerationTick = 0;
   private frequencyDefaults: Record<ProcessFrequency, FrequencyDefaults>;
-  /** Index of the last process executed in the queue (for wrap-around) */
+  /** ID of the last process executed (for wrap-around preservation across queue rebuilds) */
+  private lastExecutedProcessId: string | null = null;
+  /** Index of the last process executed in the current queue (for wrap-around within a tick) */
   private lastExecutedIndex = -1;
   /** Cached sorted process queue */
   private processQueue: Process[] = [];
@@ -488,14 +490,26 @@ export class Kernel {
   }
 
   /**
-   * Rebuild the process queue sorted by priority
+   * Rebuild the process queue sorted by priority.
+   * Preserves execution fairness by finding the last executed process
+   * in the new queue and continuing from the next one.
    */
   private rebuildProcessQueue(): void {
     this.processQueue = Array.from(this.processes.values())
       .sort((a, b) => b.priority - a.priority);
     this.queueDirty = false;
-    // Reset last executed index when queue is rebuilt
-    this.lastExecutedIndex = -1;
+    
+    // BUGFIX: Preserve wrap-around position across queue rebuilds
+    // When processes are added/removed (e.g., creep spawns/dies), we rebuild the queue.
+    // Find the last executed process in the new queue to resume from the next one.
+    // This ensures fair execution even when the queue is constantly changing.
+    if (this.lastExecutedProcessId) {
+      this.lastExecutedIndex = this.processQueue.findIndex(p => p.id === this.lastExecutedProcessId);
+      // If process no longer exists (-1), start from beginning (will become 0 after +1)
+    } else {
+      // No last executed process, start from beginning
+      this.lastExecutedIndex = -1;
+    }
   }
 
   /**
@@ -609,7 +623,7 @@ export class Kernel {
     }
 
     let processesRun = 0;
-    let lastExecutedIndexThisTick = -1;
+    let processesSkipped = 0;
 
     // Start from the next process after the last one executed
     // This creates a wrap-around effect: if we stopped at index 5 last tick,
@@ -623,32 +637,35 @@ export class Kernel {
 
       // Check if we should run this process
       if (!this.shouldRunProcess(process)) {
+        // Track processes that were skipped due to bucket/interval requirements
+        // BUGFIX: Increment per-process skippedCount for Grafana tracking
+        if (this.config.enableStats) {
+          process.stats.skippedCount++;
+        }
+        processesSkipped++;
         continue;
       }
 
       // Check overall CPU budget
       if (!this.hasCpuBudget()) {
-        // CPU budget exhausted - stop processing and save state for next tick
-        // Next tick will continue from the process after the last one we executed
-        // Note: We don't increment skippedCount for this process because we'll
-        // attempt to run it first thing next tick (it's not really "skipped")
+        // CPU budget exhausted - stop processing
+        // Don't count remaining processes as "skipped" - they'll run next tick
         break;
       }
 
       // Execute the process
       this.executeProcess(process);
       processesRun++;
-      lastExecutedIndexThisTick = index;
-    }
-
-    // Update the last executed index for next tick
-    if (lastExecutedIndexThisTick !== -1) {
-      this.lastExecutedIndex = lastExecutedIndexThisTick;
+      
+      // Track the last executed process by both ID and index
+      // ID survives queue rebuilds, index is used for wrap-around within the current queue
+      this.lastExecutedProcessId = process.id;
+      this.lastExecutedIndex = index;
     }
 
     // Log stats periodically
     if (this.config.enableStats && Game.time % this.config.statsLogInterval === 0) {
-      this.logStats(processesRun);
+      this.logStats(processesRun, processesSkipped);
       eventBus.logStats();
     }
   }
@@ -656,9 +673,9 @@ export class Kernel {
   /**
    * Log kernel statistics
    */
-  private logStats(processesRun: number): void {
+  private logStats(processesRun: number, processesSkipped: number): void {
     logger.debug(
-      `Kernel stats: ${processesRun} processes ran, ${this.tickCpuUsed.toFixed(2)} CPU, mode: ${this.bucketMode}`,
+      `Kernel stats: ${processesRun} processes ran, ${processesSkipped} skipped, ${this.tickCpuUsed.toFixed(2)} CPU, mode: ${this.bucketMode}`,
       { subsystem: "Kernel" }
     );
   }
