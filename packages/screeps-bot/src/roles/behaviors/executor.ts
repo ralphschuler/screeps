@@ -23,6 +23,7 @@ import { fleeFrom, moveAwayFromSpawn, moveCreep, moveOffRoomExit, moveToRoom, cl
 import { requestMoveToPosition } from "../../utils/trafficManager";
 import { getCollectionPoint } from "../../utils/collectionPoint";
 import { memoryManager } from "../../memory/manager";
+import { clearCache as clearAllCachedTargets } from "../../utils/cachedClosest";
 
 /**
  * Path visualization colors for different action types.
@@ -243,6 +244,11 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
     // When state is invalidated, the cached path to the old target is no longer valid
     // This prevents creeps from making partial movements on stale paths before re-pathing
     clearMovementCache(creep);
+    // BUGFIX: Clear all cached closest targets to prevent re-selecting the same invalid target
+    // When multiple creeps target the same structure, one may fill it and clear state.
+    // Without clearing the cache, the other creep will immediately re-select the same
+    // now-full target, creating an infinite loop where both creeps get stuck.
+    clearAllCachedTargets(creep);
   }
 
   // Update working state based on carry capacity

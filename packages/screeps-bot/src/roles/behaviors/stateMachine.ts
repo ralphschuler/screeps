@@ -37,6 +37,7 @@
 import type { CreepAction, CreepContext, StuckTrackingMemory } from "./types";
 import type { CreepState } from "../../memory/schemas";
 import { clearMovementCache } from "../../utils/movement";
+import { clearCache as clearAllCachedTargets } from "../../utils/cachedClosest";
 
 /**
  * Default timeout for states (in ticks)
@@ -116,6 +117,9 @@ function isStateValid(state: CreepState | undefined, ctx: CreepContext): boolean
         // This ensures the creep gets a fresh path calculation instead of continuing
         // to follow a stale path that led to being stuck
         clearMovementCache(ctx.creep);
+        // BUGFIX: Clear all cached closest targets to prevent re-selecting the same invalid target
+        // When creep is stuck, it may be targeting an unreachable or contested resource
+        clearAllCachedTargets(ctx.creep);
         return false;
       }
     } else {
