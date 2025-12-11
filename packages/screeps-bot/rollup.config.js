@@ -58,7 +58,7 @@ export default {
         unsafe_proto: true,
         unsafe_regexp: true,
         unsafe_undefined: true,
-        booleans_as_integers: true, // Convert booleans to 0/1
+        booleans_as_integers: false, // Keep booleans as true/false to preserve types in memory
         dead_code: true,
         evaluate: true,
         loops: true,
