@@ -77,8 +77,8 @@ export class SS2TerminalComms {
         continue;
       }
 
-      // Skip if no description
-      if (!transaction.description) {
+      // Skip if no description or sender
+      if (!transaction.description || !transaction.sender) {
         continue;
       }
 
