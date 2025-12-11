@@ -74,18 +74,21 @@ export function getCollectionPoint(room: Room, swarmState: SwarmState): RoomPosi
 
   // Check memory for stored collection point
   if (swarmState.collectionPoint) {
-    const pos = new RoomPosition(
-      swarmState.collectionPoint.x,
-      swarmState.collectionPoint.y,
-      room.name
-    );
-    // Validate the stored position is still valid
-    if (isValidCollectionPoint(room, pos)) {
-      // Cache it for quick access
-      collectionPointCache.set(room.name, { pos, tick: Game.time });
-      return pos;
+    // Validate coordinates are valid numbers before constructing RoomPosition
+    const x = swarmState.collectionPoint.x;
+    const y = swarmState.collectionPoint.y;
+    
+    if (typeof x === 'number' && typeof y === 'number' && !isNaN(x) && !isNaN(y) && 
+        x >= 0 && x < 50 && y >= 0 && y < 50) {
+      const pos = new RoomPosition(x, y, room.name);
+      // Validate the stored position is still valid
+      if (isValidCollectionPoint(room, pos)) {
+        // Cache it for quick access
+        collectionPointCache.set(room.name, { pos, tick: Game.time });
+        return pos;
+      }
     }
-    // Position is no longer valid, will recalculate below
+    // Position is invalid or no longer valid, will recalculate below
   }
 
   // Calculate a new collection point

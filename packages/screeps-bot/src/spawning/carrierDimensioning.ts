@@ -124,8 +124,9 @@ export function getOptimalHaulerBody(
     range: 1
   });
   
-  const { distance, hasRoads } = calculateEffectiveDistance(path.map(p => 
-    new RoomPosition(p.x, p.y, sourcePos.roomName)
+  const { distance, hasRoads } = calculateEffectiveDistance(path
+    .filter(p => typeof p.x === 'number' && typeof p.y === 'number' && !isNaN(p.x) && !isNaN(p.y))
+    .map(p => new RoomPosition(p.x, p.y, sourcePos.roomName)
   ));
   
   // Assume 10 energy/tick from source (conservative estimate)

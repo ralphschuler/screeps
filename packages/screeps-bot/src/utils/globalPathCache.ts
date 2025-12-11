@@ -181,7 +181,12 @@ export class GlobalPathCache {
       for (const posStr of positions) {
         const [x, y] = posStr.split(".");
         if (x && y) {
-          path.push(new RoomPosition(parseInt(x, 10), parseInt(y, 10), roomName));
+          const xNum = parseInt(x, 10);
+          const yNum = parseInt(y, 10);
+          // Validate parsed coordinates before creating RoomPosition
+          if (!isNaN(xNum) && !isNaN(yNum) && xNum >= 0 && xNum < 50 && yNum >= 0 && yNum < 50) {
+            path.push(new RoomPosition(xNum, yNum, roomName));
+          }
         }
       }
     }
