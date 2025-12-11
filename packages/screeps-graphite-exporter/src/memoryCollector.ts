@@ -272,12 +272,7 @@ export async function startMemoryCollector(
 
   const poll = async () => {
     try {
-      // TODO: TypeError - api.memory.get returns string not object with data property
-      // Issue URL: https://github.com/ralphschuler/screeps/issues/466
-      // Details: Type definition shows memory.get(path, shard) returns string directly
-      // Encountered: TypeScript compilation error during build
-      // Suggested Fix: Change to: const rawMemory = await api.memory.get(config.memoryPath, config.shard) as string;
-      const { data: rawMemory } = await api.memory.get(config.memoryPath, config.shard) as any;
+      const rawMemory = await api.memory.get(config.memoryPath, config.shard) as string;
       const decoded = decodeMemory(rawMemory, logger);
       const stats = config.exportFullMemory ? decoded : decoded?.stats ?? decoded;
 
