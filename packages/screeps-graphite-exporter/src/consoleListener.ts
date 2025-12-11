@@ -137,7 +137,16 @@ export async function startConsoleListener(api: ScreepsAPI, metrics: Metrics, lo
     metrics.flush();
   });
 
-  socket.on('console', (payload: { messages?: { log?: string[] } }) => {
+  // Subscribe to console events once, before connecting
+  // The subscribe() method registers the callback as the event handler for 'console' events
+  // So we should NOT use both socket.on() and socket.subscribe() - that would create duplicate handlers
+  let firstMessage = true;
+  socket.subscribe('console', (payload: { messages?: { log?: string[] } }) => {
+    if (firstMessage) {
+      logger.info('Subscribed to console events and receiving messages');
+      firstMessage = false;
+    }
+
     const lines = payload?.messages?.log ?? [];
     lines.forEach((line) => recordConsoleLine(metrics, logger, line));
     // Flush after each batch of console messages
@@ -145,10 +154,6 @@ export async function startConsoleListener(api: ScreepsAPI, metrics: Metrics, lo
       metrics.flush();
     }
   });
-
-  // Subscribe to console events once, before connecting
-  // This prevents multiple subscriptions on reconnections
-  socket.subscribe('console', () => logger.info('Subscribed to console events'));
 
   if (typeof socket.connect === 'function') {
     await socket.connect();
