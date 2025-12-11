@@ -1,5 +1,6 @@
 # Steam API key for authentication (optional, can be empty for local testing)
-# For production use, set via environment variable: STEAM_KEY
+# WARNING: DO NOT commit actual Steam API keys to version control
+# Set via environment variable STEAM_KEY in production/CI environments
 steamKey: ""
 pinnedPackages:
   ssri: 8.0.1
@@ -24,7 +25,9 @@ serverConfig:
 serverStats:
   debug: false
   rawExports: true
-  # Note: This is for automated testing only, not for production use
+  # WARNING: This is for automated testing ONLY, not for production use
+  # In production, set secret_key via environment variable
+  # This value is intentionally non-secret for local testing purposes
   secret_key: "performance-testing-key"
   usersStats: 2
   roomsObjectsStats: 2

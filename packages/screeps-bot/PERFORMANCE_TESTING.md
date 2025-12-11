@@ -16,7 +16,7 @@ Performance tests run the bot in a simulated Screeps server environment and trac
 
 ### Prerequisites
 
-- Node.js 16.x or later
+- Node.js 18.x or 20.x (LTS versions recommended)
 - Docker and Docker Compose installed and running
 - Built bot code (`npm run build`)
 
