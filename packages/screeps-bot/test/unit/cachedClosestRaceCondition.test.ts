@@ -11,7 +11,11 @@ import { findCachedClosest, clearCache } from "../../src/utils/cachedClosest";
 
 // Mock creep memory interface
 interface MockCreepMemory {
-  _ct?: Record<string, { i: Id<_HasId>; t: number; k: string }>;
+  _ct?: Record<string, { 
+    i: Id<_HasId>;  // Target ID
+    t: number;      // Cache tick (Game.time when cached)
+    k: string;      // Type key for validation
+  }>;
 }
 
 // Mock creep interface
@@ -139,7 +143,9 @@ describe("CachedClosest Race Condition Fix", () => {
 
     const extension1 = Game.getObjectById("ext1" as Id<StructureExtension>);
     const extension2 = Game.getObjectById("ext2" as Id<StructureExtension>);
-    // Need at least 2 targets to trigger caching (single target uses fast path)
+    // Need at least 2 targets to trigger caching
+    // Note: findCachedClosest has a fast path optimization for single targets
+    // that returns the target directly without caching (see cachedClosest.ts:78-80)
     const targets = [extension1!, extension2!] as (RoomObject & _HasId)[];
 
     // Find and cache target
