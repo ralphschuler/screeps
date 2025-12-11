@@ -306,7 +306,8 @@ serverConfig:
 serverStats:
   debug: true
   rawExports: true
-  secret_key: "secret"
+  # Note: For production use, set secret_key via environment variable
+  secret_key: "testing-only-change-in-production"
   usersStats: 2
   roomsObjectsStats: 2
   roomsIntentsStats: 2

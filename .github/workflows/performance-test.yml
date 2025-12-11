@@ -35,7 +35,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: packages/screeps-bot/.nvmrc
+          node-version: '16'
           cache: npm
           cache-dependency-path: packages/screeps-bot/package-lock.json
 
@@ -50,15 +50,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Install Docker Compose
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y docker-compose
-
       - name: Verify Docker setup
         run: |
           docker --version
-          docker-compose --version
+          docker compose version
           docker ps
 
       - name: Run performance test
