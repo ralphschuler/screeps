@@ -1,6 +1,6 @@
 # Screeps Server Setup
 
-This package contains a Docker Compose configuration for running a local Screeps private server with integrated monitoring via Grafana Cloud.
+This package contains a Docker Compose configuration for running a local Screeps private server with integrated monitoring via Grafana Cloud. The server is configured to work with ScreepsPerformanceServer for automated bot testing and performance benchmarking.
 
 ## Services
 
@@ -8,6 +8,13 @@ This package contains a Docker Compose configuration for running a local Screeps
 - **mongo**: MongoDB database for Screeps
 - **redis**: Redis for Screeps caching
 - **screeps-exporter**: Exports Screeps stats from Memory to Grafana Cloud Graphite
+
+## Performance Testing
+
+This server setup is compatible with [ScreepsPerformanceServer](https://github.com/screepers/ScreepsPerformanceServer), which enables automated bot testing with milestones tracking and detailed performance metrics. The server includes:
+
+- **screepsmod-server-stats**: Real-time statistics collection
+- **screepsmod-milestones-history**: Milestone tracking for testing progression
 
 ## Getting Started
 

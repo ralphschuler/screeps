@@ -14,6 +14,8 @@ mods:
   - screepsmod-bots
   - screepsmod-history
   - screepsmod-stats
+  - screepsmod-server-stats
+  - screepsmod-milestones-history
   - screepsmod-visualize
   - screepsmod-dynamicmarket
   - screepsmod-features
@@ -300,6 +302,16 @@ serverConfig:
   maxCPU: 100
   baseCPU: 20
   stepCPU: 10
+
+serverStats:
+  debug: true
+  rawExports: true
+  secret_key: "secret"
+  usersStats: 2
+  roomsObjectsStats: 2
+  roomsIntentsStats: 2
+  runEveryTicks: 1
+  relayPort: undefined
 
 launcherOptions:
   autoUpdate: true
