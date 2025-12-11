@@ -34,6 +34,19 @@ import {
   handleMyMarketOrders,
   handleUserInfo,
   handleShardInfo,
+  handleUserWorldStatus,
+  handleUserWorldStartRoom,
+  handleUserRooms,
+  handleMarketStats,
+  handleLeaderboardSeasons,
+  handleLeaderboardFind,
+  handleLeaderboardList,
+  handleExperimentalPvp,
+  handleExperimentalNukes,
+  handleUserMoneyHistory,
+  handleRoomDecorations,
+  handleUserOverview,
+  handleRespawnProhibitedRooms,
   toolSchemas
 } from "./handlers/tools.js";
 
@@ -335,6 +348,185 @@ export function createMCPServer(config: MCPServerConfig) {
     async () => {
       await ensureConnected();
       return await handleShardInfo(client);
+    }
+  );
+
+  server.registerTool(
+    "screeps_user_world_status",
+    {
+      title: "screeps_user_world_status",
+      description: "Get user world status for a specific shard",
+      inputSchema: toolSchemas.userWorldStatus as unknown as any
+    },
+    async (args: unknown) => {
+      await ensureConnected();
+      const validated = toolSchemas.userWorldStatus.parse(args);
+      return await handleUserWorldStatus(client, validated);
+    }
+  );
+
+  server.registerTool(
+    "screeps_user_world_start_room",
+    {
+      title: "screeps_user_world_start_room",
+      description: "Get user start room information",
+      inputSchema: toolSchemas.userWorldStartRoom as unknown as any
+    },
+    async () => {
+      await ensureConnected();
+      return await handleUserWorldStartRoom(client);
+    }
+  );
+
+  server.registerTool(
+    "screeps_user_rooms",
+    {
+      title: "screeps_user_rooms",
+      description: "Get rooms owned by a specific user",
+      inputSchema: toolSchemas.userRooms as unknown as any
+    },
+    async (args: unknown) => {
+      await ensureConnected();
+      const validated = toolSchemas.userRooms.parse(args);
+      return await handleUserRooms(client, validated);
+    }
+  );
+
+  server.registerTool(
+    "screeps_market_stats",
+    {
+      title: "screeps_market_stats",
+      description: "Get market statistics for a resource type",
+      inputSchema: toolSchemas.marketStats as unknown as any
+    },
+    async (args: unknown) => {
+      await ensureConnected();
+      const validated = toolSchemas.marketStats.parse(args);
+      return await handleMarketStats(client, validated);
+    }
+  );
+
+  server.registerTool(
+    "screeps_leaderboard_seasons",
+    {
+      title: "screeps_leaderboard_seasons",
+      description: "Get list of available leaderboard seasons",
+      inputSchema: toolSchemas.leaderboardSeasons as unknown as any
+    },
+    async () => {
+      await ensureConnected();
+      return await handleLeaderboardSeasons(client);
+    }
+  );
+
+  server.registerTool(
+    "screeps_leaderboard_find",
+    {
+      title: "screeps_leaderboard_find",
+      description: "Find a user in the leaderboard",
+      inputSchema: toolSchemas.leaderboardFind as unknown as any
+    },
+    async (args: unknown) => {
+      await ensureConnected();
+      const validated = toolSchemas.leaderboardFind.parse(args);
+      return await handleLeaderboardFind(client, validated);
+    }
+  );
+
+  server.registerTool(
+    "screeps_leaderboard_list",
+    {
+      title: "screeps_leaderboard_list",
+      description: "Get leaderboard list with pagination",
+      inputSchema: toolSchemas.leaderboardList as unknown as any
+    },
+    async (args: unknown) => {
+      await ensureConnected();
+      const validated = toolSchemas.leaderboardList.parse(args);
+      return await handleLeaderboardList(client, validated);
+    }
+  );
+
+  server.registerTool(
+    "screeps_experimental_pvp",
+    {
+      title: "screeps_experimental_pvp",
+      description: "Get experimental PVP data for different time intervals",
+      inputSchema: toolSchemas.experimentalPvp as unknown as any
+    },
+    async (args: unknown) => {
+      await ensureConnected();
+      const validated = toolSchemas.experimentalPvp.parse(args);
+      return await handleExperimentalPvp(client, validated);
+    }
+  );
+
+  server.registerTool(
+    "screeps_experimental_nukes",
+    {
+      title: "screeps_experimental_nukes",
+      description: "Get experimental nukes data for different time intervals",
+      inputSchema: toolSchemas.experimentalNukes as unknown as any
+    },
+    async (args: unknown) => {
+      await ensureConnected();
+      const validated = toolSchemas.experimentalNukes.parse(args);
+      return await handleExperimentalNukes(client, validated);
+    }
+  );
+
+  server.registerTool(
+    "screeps_user_money_history",
+    {
+      title: "screeps_user_money_history",
+      description: "Get user money/credit transaction history",
+      inputSchema: toolSchemas.userMoneyHistory as unknown as any
+    },
+    async (args: unknown) => {
+      await ensureConnected();
+      const validated = toolSchemas.userMoneyHistory.parse(args);
+      return await handleUserMoneyHistory(client, validated);
+    }
+  );
+
+  server.registerTool(
+    "screeps_room_decorations",
+    {
+      title: "screeps_room_decorations",
+      description: "Get room decorations (visual customizations)",
+      inputSchema: toolSchemas.roomDecorations as unknown as any
+    },
+    async (args: unknown) => {
+      await ensureConnected();
+      const validated = toolSchemas.roomDecorations.parse(args);
+      return await handleRoomDecorations(client, validated);
+    }
+  );
+
+  server.registerTool(
+    "screeps_user_overview",
+    {
+      title: "screeps_user_overview",
+      description: "Get user overview with statistics",
+      inputSchema: toolSchemas.userOverview as unknown as any
+    },
+    async (args: unknown) => {
+      await ensureConnected();
+      const validated = toolSchemas.userOverview.parse(args);
+      return await handleUserOverview(client, validated);
+    }
+  );
+
+  server.registerTool(
+    "screeps_respawn_prohibited_rooms",
+    {
+      title: "screeps_respawn_prohibited_rooms",
+      description: "Get list of rooms where respawning is prohibited",
+      inputSchema: toolSchemas.respawnProhibitedRooms as unknown as any
+    },
+    async () => {
+      await ensureConnected();
+      return await handleRespawnProhibitedRooms(client);
     }
   );
 

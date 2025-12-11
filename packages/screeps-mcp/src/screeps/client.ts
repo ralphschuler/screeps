@@ -772,4 +772,306 @@ export class ScreepsClient {
       };
     }
   }
+
+  /**
+   * Get user world status
+   */
+  public async getUserWorldStatus(shard?: string): Promise<import("../types.js").ApiResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const targetShard = shard || this.config.shard;
+      const response = await this.api.raw.user.worldStatus(targetShard);
+
+      return {
+        success: true,
+        data: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get user start room
+   */
+  public async getUserWorldStartRoom(): Promise<import("../types.js").ApiResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const response = await this.api.raw.user.worldStartRoom();
+
+      return {
+        success: true,
+        data: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get user rooms
+   */
+  public async getUserRooms(userId: string): Promise<import("../types.js").ApiResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const response = await this.api.raw.user.rooms(userId);
+
+      return {
+        success: true,
+        data: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get market stats
+   */
+  public async getMarketStats(resourceType: string, shard?: string): Promise<import("../types.js").ApiResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const targetShard = shard || this.config.shard;
+      const response = await this.api.raw.market.stats(resourceType, targetShard);
+
+      return {
+        success: true,
+        data: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get leaderboard seasons
+   */
+  public async getLeaderboardSeasons(): Promise<import("../types.js").ApiResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const response = await this.api.raw.leaderboard.seasons();
+
+      return {
+        success: true,
+        data: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Find user in leaderboard
+   */
+  public async findInLeaderboard(username: string, season?: string, mode?: string): Promise<import("../types.js").ApiResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const response = await this.api.raw.leaderboard.find(season, mode, username);
+
+      return {
+        success: true,
+        data: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get leaderboard list
+   */
+  public async getLeaderboardList(season?: string, limit: number = 20, offset: number = 0, mode?: string): Promise<import("../types.js").ApiResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const response = await this.api.raw.leaderboard.list(season, limit, offset, mode);
+
+      return {
+        success: true,
+        data: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get experimental PVP data
+   */
+  public async getExperimentalPvp(interval: number = 8): Promise<import("../types.js").ApiResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const response = await this.api.raw.experimental.pvp(interval);
+
+      return {
+        success: true,
+        data: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get experimental nukes data
+   */
+  public async getExperimentalNukes(interval: number = 8): Promise<import("../types.js").ApiResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const response = await this.api.raw.experimental.nukes(interval);
+
+      return {
+        success: true,
+        data: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get user money history
+   */
+  public async getUserMoneyHistory(page: number = 0): Promise<import("../types.js").ApiResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const response = await this.api.raw.user.moneyHistory(page);
+
+      return {
+        success: true,
+        data: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get room decorations
+   */
+  public async getRoomDecorations(room: string, shard?: string): Promise<import("../types.js").ApiResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const targetShard = shard || this.config.shard;
+      const response = await this.api.raw.game.roomDecorations(room, targetShard);
+
+      return {
+        success: true,
+        data: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get user overview
+   */
+  public async getUserOverview(interval: number = 8, statName?: string): Promise<import("../types.js").ApiResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const response = await this.api.raw.user.overview(interval, statName);
+
+      return {
+        success: true,
+        data: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get respawn prohibited rooms
+   */
+  public async getRespawnProhibitedRooms(): Promise<import("../types.js").ApiResult> {
+    if (!this.api) {
+      throw new Error("API not initialized. Call connect() first.");
+    }
+
+    try {
+      const response = await this.api.raw.user.respawnProhibitedRooms();
+
+      return {
+        success: true,
+        data: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
 }

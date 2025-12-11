@@ -153,9 +153,12 @@ describe("MCP Protocol Compliance", () => {
             name.includes("room_") ||
             name.includes("market") ||
             name.includes("my_") ||
-            name.includes("user_info") ||
+            name.includes("user_") ||
             name.includes("shard_info") ||
-            name.includes("segment")
+            name.includes("segment") ||
+            name.includes("leaderboard_") ||
+            name.includes("experimental_") ||
+            name.includes("respawn_")
         )
       ).toBe(true);
     });

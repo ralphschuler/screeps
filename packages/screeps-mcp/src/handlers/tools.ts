@@ -57,7 +57,61 @@ export const toolSchemas = {
     username: z.string().describe("Username to look up")
   }),
 
-  shardInfo: z.object({})
+  shardInfo: z.object({}),
+
+  userWorldStatus: z.object({
+    shard: z.string().optional().describe("Shard name (optional, uses configured shard if not provided)")
+  }),
+
+  userWorldStartRoom: z.object({}),
+
+  userRooms: z.object({
+    userId: z.string().describe("User ID to get rooms for")
+  }),
+
+  marketStats: z.object({
+    resourceType: z.string().describe("Resource type (e.g., 'energy', 'H')"),
+    shard: z.string().optional().describe("Shard name (optional, uses configured shard if not provided)")
+  }),
+
+  leaderboardSeasons: z.object({}),
+
+  leaderboardFind: z.object({
+    username: z.string().describe("Username to find in leaderboard"),
+    season: z.string().optional().describe("Season ID (optional)"),
+    mode: z.string().optional().describe("Leaderboard mode (optional)")
+  }),
+
+  leaderboardList: z.object({
+    season: z.string().optional().describe("Season ID (optional)"),
+    limit: z.number().int().min(1).max(100).optional().describe("Number of results to return (default: 20)"),
+    offset: z.number().int().min(0).optional().describe("Offset for pagination (default: 0)"),
+    mode: z.string().optional().describe("Leaderboard mode (optional)")
+  }),
+
+  experimentalPvp: z.object({
+    interval: z.number().int().optional().describe("Interval: 8 for 1 hour, 180 for 24 hours, 1440 for 7 days (default: 8)")
+  }),
+
+  experimentalNukes: z.object({
+    interval: z.number().int().optional().describe("Interval: 8 for 1 hour, 180 for 24 hours, 1440 for 7 days (default: 8)")
+  }),
+
+  userMoneyHistory: z.object({
+    page: z.number().int().min(0).optional().describe("Page number for pagination (default: 0)")
+  }),
+
+  roomDecorations: z.object({
+    room: z.string().describe("Room name (e.g., 'W1N1')"),
+    shard: z.string().optional().describe("Shard name (optional, uses configured shard if not provided)")
+  }),
+
+  userOverview: z.object({
+    interval: z.number().int().optional().describe("Interval: 8 for 1 hour, 180 for 24 hours, 1440 for 7 days (default: 8)"),
+    statName: z.string().optional().describe("Stat name filter (optional)")
+  }),
+
+  respawnProhibitedRooms: z.object({})
 };
 
 /**
@@ -242,6 +296,205 @@ export function listTools() {
     {
       name: "screeps_shard_info",
       description: "Get information about all shards",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        required: []
+      }
+    },
+    {
+      name: "screeps_user_world_status",
+      description: "Get user world status for a specific shard",
+      inputSchema: {
+        type: "object",
+        properties: {
+          shard: {
+            type: "string",
+            description: "Shard name (optional, uses configured shard if not provided)"
+          }
+        },
+        required: []
+      }
+    },
+    {
+      name: "screeps_user_world_start_room",
+      description: "Get user start room information",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        required: []
+      }
+    },
+    {
+      name: "screeps_user_rooms",
+      description: "Get rooms owned by a specific user",
+      inputSchema: {
+        type: "object",
+        properties: {
+          userId: {
+            type: "string",
+            description: "User ID to get rooms for"
+          }
+        },
+        required: ["userId"]
+      }
+    },
+    {
+      name: "screeps_market_stats",
+      description: "Get market statistics for a resource type",
+      inputSchema: {
+        type: "object",
+        properties: {
+          resourceType: {
+            type: "string",
+            description: "Resource type (e.g., 'energy', 'H')"
+          },
+          shard: {
+            type: "string",
+            description: "Shard name (optional, uses configured shard if not provided)"
+          }
+        },
+        required: ["resourceType"]
+      }
+    },
+    {
+      name: "screeps_leaderboard_seasons",
+      description: "Get list of available leaderboard seasons",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        required: []
+      }
+    },
+    {
+      name: "screeps_leaderboard_find",
+      description: "Find a user in the leaderboard",
+      inputSchema: {
+        type: "object",
+        properties: {
+          username: {
+            type: "string",
+            description: "Username to find in leaderboard"
+          },
+          season: {
+            type: "string",
+            description: "Season ID (optional)"
+          },
+          mode: {
+            type: "string",
+            description: "Leaderboard mode (optional)"
+          }
+        },
+        required: ["username"]
+      }
+    },
+    {
+      name: "screeps_leaderboard_list",
+      description: "Get leaderboard list with pagination",
+      inputSchema: {
+        type: "object",
+        properties: {
+          season: {
+            type: "string",
+            description: "Season ID (optional)"
+          },
+          limit: {
+            type: "number",
+            description: "Number of results to return (default: 20, max: 100)"
+          },
+          offset: {
+            type: "number",
+            description: "Offset for pagination (default: 0)"
+          },
+          mode: {
+            type: "string",
+            description: "Leaderboard mode (optional)"
+          }
+        },
+        required: []
+      }
+    },
+    {
+      name: "screeps_experimental_pvp",
+      description: "Get experimental PVP data for different time intervals",
+      inputSchema: {
+        type: "object",
+        properties: {
+          interval: {
+            type: "number",
+            description: "Interval: 8 for 1 hour, 180 for 24 hours, 1440 for 7 days (default: 8)"
+          }
+        },
+        required: []
+      }
+    },
+    {
+      name: "screeps_experimental_nukes",
+      description: "Get experimental nukes data for different time intervals",
+      inputSchema: {
+        type: "object",
+        properties: {
+          interval: {
+            type: "number",
+            description: "Interval: 8 for 1 hour, 180 for 24 hours, 1440 for 7 days (default: 8)"
+          }
+        },
+        required: []
+      }
+    },
+    {
+      name: "screeps_user_money_history",
+      description: "Get user money/credit transaction history",
+      inputSchema: {
+        type: "object",
+        properties: {
+          page: {
+            type: "number",
+            description: "Page number for pagination (default: 0)"
+          }
+        },
+        required: []
+      }
+    },
+    {
+      name: "screeps_room_decorations",
+      description: "Get room decorations (visual customizations)",
+      inputSchema: {
+        type: "object",
+        properties: {
+          room: {
+            type: "string",
+            description: "Room name (e.g., 'W1N1')"
+          },
+          shard: {
+            type: "string",
+            description: "Shard name (optional, uses configured shard if not provided)"
+          }
+        },
+        required: ["room"]
+      }
+    },
+    {
+      name: "screeps_user_overview",
+      description: "Get user overview with statistics",
+      inputSchema: {
+        type: "object",
+        properties: {
+          interval: {
+            type: "number",
+            description: "Interval: 8 for 1 hour, 180 for 24 hours, 1440 for 7 days (default: 8)"
+          },
+          statName: {
+            type: "string",
+            description: "Stat name filter (optional)"
+          }
+        },
+        required: []
+      }
+    },
+    {
+      name: "screeps_respawn_prohibited_rooms",
+      description: "Get list of rooms where respawning is prohibited",
       inputSchema: {
         type: "object",
         properties: {},
@@ -469,6 +722,214 @@ export async function handleUserInfo(client: ScreepsClient, args: z.infer<typeof
  */
 export async function handleShardInfo(client: ScreepsClient) {
   const result = await client.getShardInfo();
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(result, null, 2)
+      }
+    ],
+    isError: !result.success
+  };
+}
+
+/**
+ * Tool handler: Get user world status
+ */
+export async function handleUserWorldStatus(client: ScreepsClient, args: z.infer<typeof toolSchemas.userWorldStatus>) {
+  const result = await client.getUserWorldStatus(args.shard);
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(result, null, 2)
+      }
+    ],
+    isError: !result.success
+  };
+}
+
+/**
+ * Tool handler: Get user world start room
+ */
+export async function handleUserWorldStartRoom(client: ScreepsClient) {
+  const result = await client.getUserWorldStartRoom();
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(result, null, 2)
+      }
+    ],
+    isError: !result.success
+  };
+}
+
+/**
+ * Tool handler: Get user rooms
+ */
+export async function handleUserRooms(client: ScreepsClient, args: z.infer<typeof toolSchemas.userRooms>) {
+  const result = await client.getUserRooms(args.userId);
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(result, null, 2)
+      }
+    ],
+    isError: !result.success
+  };
+}
+
+/**
+ * Tool handler: Get market stats
+ */
+export async function handleMarketStats(client: ScreepsClient, args: z.infer<typeof toolSchemas.marketStats>) {
+  const result = await client.getMarketStats(args.resourceType, args.shard);
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(result, null, 2)
+      }
+    ],
+    isError: !result.success
+  };
+}
+
+/**
+ * Tool handler: Get leaderboard seasons
+ */
+export async function handleLeaderboardSeasons(client: ScreepsClient) {
+  const result = await client.getLeaderboardSeasons();
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(result, null, 2)
+      }
+    ],
+    isError: !result.success
+  };
+}
+
+/**
+ * Tool handler: Find user in leaderboard
+ */
+export async function handleLeaderboardFind(client: ScreepsClient, args: z.infer<typeof toolSchemas.leaderboardFind>) {
+  const result = await client.findInLeaderboard(args.username, args.season, args.mode);
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(result, null, 2)
+      }
+    ],
+    isError: !result.success
+  };
+}
+
+/**
+ * Tool handler: Get leaderboard list
+ */
+export async function handleLeaderboardList(client: ScreepsClient, args: z.infer<typeof toolSchemas.leaderboardList>) {
+  const result = await client.getLeaderboardList(args.season, args.limit, args.offset, args.mode);
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(result, null, 2)
+      }
+    ],
+    isError: !result.success
+  };
+}
+
+/**
+ * Tool handler: Get experimental PVP data
+ */
+export async function handleExperimentalPvp(client: ScreepsClient, args: z.infer<typeof toolSchemas.experimentalPvp>) {
+  const result = await client.getExperimentalPvp(args.interval);
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(result, null, 2)
+      }
+    ],
+    isError: !result.success
+  };
+}
+
+/**
+ * Tool handler: Get experimental nukes data
+ */
+export async function handleExperimentalNukes(client: ScreepsClient, args: z.infer<typeof toolSchemas.experimentalNukes>) {
+  const result = await client.getExperimentalNukes(args.interval);
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(result, null, 2)
+      }
+    ],
+    isError: !result.success
+  };
+}
+
+/**
+ * Tool handler: Get user money history
+ */
+export async function handleUserMoneyHistory(client: ScreepsClient, args: z.infer<typeof toolSchemas.userMoneyHistory>) {
+  const result = await client.getUserMoneyHistory(args.page);
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(result, null, 2)
+      }
+    ],
+    isError: !result.success
+  };
+}
+
+/**
+ * Tool handler: Get room decorations
+ */
+export async function handleRoomDecorations(client: ScreepsClient, args: z.infer<typeof toolSchemas.roomDecorations>) {
+  const result = await client.getRoomDecorations(args.room, args.shard);
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(result, null, 2)
+      }
+    ],
+    isError: !result.success
+  };
+}
+
+/**
+ * Tool handler: Get user overview
+ */
+export async function handleUserOverview(client: ScreepsClient, args: z.infer<typeof toolSchemas.userOverview>) {
+  const result = await client.getUserOverview(args.interval, args.statName);
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(result, null, 2)
+      }
+    ],
+    isError: !result.success
+  };
+}
+
+/**
+ * Tool handler: Get respawn prohibited rooms
+ */
+export async function handleRespawnProhibitedRooms(client: ScreepsClient) {
+  const result = await client.getRespawnProhibitedRooms();
   return {
     content: [
       {

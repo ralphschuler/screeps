@@ -1,0 +1,1571 @@
+openapi: 3.0.3
+info:
+  title: Screeps World Web API
+  version: 1.0.0
+  description: |
+    Unofficial API specification for Screeps World Web API.
+    
+    ## Authentication
+    
+    **For official servers (use Auth Tokens):**
+    - Send an `X-Token` header with your Auth Token as the value
+    
+    **For private servers (signin required):**
+    1. Call `/auth/signin` with your credentials:
+       ```json
+       {
+         "email": "your_username_or_email",
+         "password": "your_password"
+       }
+       ```
+    2. Use the returned token in subsequent requests:
+       - `X-Token`: The token string from the signin response
+       - `X-Username`: Your username (or any value)
+    
+    **Note:** The server may return a new token in the `X-Token` response header - use this updated token for future requests.
+    
+    ## Enum Values
+    - interval: `8` for 1 hour, `180` for 24 hours and `1440` for 7 days
+    - statName: creepsLost, creepsProduced, energyConstruction, energyControl, energyCreeps, energyHarvested
+
+servers:
+  - url: 'https://screeps.com/api'
+    description: Screeps Official Server
+    
+  - url: 'https://screeps.com/season/api'
+    description: Screeps Season Server
+
+  - url: 'https://screeps.com/ptr/api'
+    description: Screeps Public Test Realm
+
+  - url: 'http://localhost:21025/api'
+    description: Local Screeps Server
+
+  - url: '{custom}'
+    description: Custom Server URL
+    variables:
+      custom:
+        default: 'http://localhost:8080/(http://localhost:21025)/api'
+        description: Enter your custom server URL (including /api path)
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Token
+      description: API key for authentication
+    UsernameAuth:
+      type: apiKey
+      in: header
+      name: X-Username
+      description: Username for authentication (usually same as token)
+
+security:
+  - ApiKeyAuth: []
+    UsernameAuth: []
+
+tags:
+  - name: Authentication
+    description: Auth endpoints
+  - name: Registration
+    description: User registration endpoints
+  - name: Messaging
+    description: User messaging endpoints
+  - name: Room Information
+    description: Room data and statistics
+  - name: Market Information
+    description: Market and trading data
+  - name: Leaderboard
+    description: Leaderboard and ranking data
+  - name: User Information
+    description: User data and settings
+  - name: Game World
+    description: Game world endpoints
+  - name: Decorations
+    description: Decoration and theme management
+  - name: Other
+    description: Miscellaneous endpoints
+
+paths:
+  # Authentication
+  /auth/me:
+    get:
+      tags: [Authentication]
+      summary: Get current user information
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Current user information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: integer
+                  _id:
+                    type: string
+                  email:
+                    type: string
+                  username:
+                    type: string
+                  cpu:
+                    type: number
+                  badge:
+                    type: object
+                  password:
+                    type: boolean
+                  notifyPrefs:
+                    type: object
+                  gcl:
+                    type: number
+                  credits:
+                    type: number
+
+  /user/auth-token:
+    get:
+      tags: [Authentication]
+      summary: Get information about the current user's authentication tokens
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: User authentication tokens information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: integer
+                  tokens:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        _id:
+                          type: string
+                        full:
+                          type: boolean
+                        token:
+                          type: string
+                        description:
+                          type: string
+                        endpoints:
+                          type: array
+                          items:
+                            type: string
+                        websockets:
+                          type: array
+                          items:
+                            type: string
+              example:
+                ok: 1
+                tokens:
+                  - _id: "6867ccee2df7a30011682574"
+                    full: true
+                    token: "07038860-****-****-****-************"
+                    description: "token 1 (full access)"
+                  - _id: "6867cd0ea9d0b4001223f137"
+                    full: false
+                    token: "d2e4c9b7-****-****-****-************"
+                    description: "token 2 (websockets console)"
+                    endpoints: []
+                    websockets: ["console"]
+
+  /auth/signin:
+    post:
+      tags: [Authentication]
+      summary: Sign in to get authentication token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+            example:
+              email: user@example.com
+              password: password123
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: integer
+                  token:
+                    type: string
+
+  /auth/query-token:
+    post:
+      tags: [Authentication]
+      summary: Query token validity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Successful response
+
+  # Registration
+  /register/check-email:
+    get:
+      tags: [Registration]
+      summary: Check if email is available
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+            format: email
+          example: user@example.com
+      responses:
+        '200':
+          description: Email availability check result
+
+  /register/check-username:
+    get:
+      tags: [Registration]
+      summary: Check if username is available
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema:
+            type: string
+          example: danny
+      responses:
+        '200':
+          description: Username availability check result
+
+  /register/set-username:
+    post:
+      tags: [Registration]
+      summary: Set username for account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+      responses:
+        '200':
+          description: Successful response
+
+  /register/submit:
+    post:
+      tags: [Registration]
+      summary: Submit registration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+                modules:
+                  type: object
+      responses:
+        '200':
+          description: Successful response
+
+  # Messaging
+  /user/messages/index:
+    get:
+      tags: [Messaging]
+      summary: Get message index
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Message index with users info
+
+  /user/messages/list:
+    get:
+      tags: [Messaging]
+      summary: Get messages with specific user
+      parameters:
+        - name: respondent
+          in: query
+          required: true
+          schema:
+            type: string
+          example: 55605a6654db1fa952de8d90
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: List of messages
+
+  /user/messages/unread-count:
+    get:
+      tags: [Messaging]
+      summary: Get unread message count
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Unread message count
+
+  /user/messages/send:
+    post:
+      tags: [Messaging]
+      summary: Send message to user
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                respondent:
+                  type: string
+                text:
+                  type: string
+      responses:
+        '200':
+          description: Message sent successfully
+
+  /user/messages/mark-read:
+    post:
+      tags: [Messaging]
+      summary: Mark message as read
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+      responses:
+        '200':
+          description: Message marked as read
+
+  # Room Information
+  /game/room-overview:
+    get:
+      tags: [Room Information]
+      summary: Get room overview and statistics
+      parameters:
+        - name: interval
+          in: query
+          schema:
+            type: integer
+            enum: [8, 180, 1440]
+          example: 8
+        - name: room
+          in: query
+          required: true
+          schema:
+            type: string
+          example: E1N8
+        - name: shard
+          in: query
+          schema:
+            type: string
+          example: shard0
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Room overview with statistics
+
+  /game/room-terrain:
+    get:
+      tags: [Room Information]
+      summary: Get room terrain information
+      parameters:
+        - name: room
+          in: query
+          required: true
+          schema:
+            type: string
+          example: E1N8
+        - name: encoded
+          in: query
+          schema:
+            type: string
+          description: Return encoded terrain data
+          example: "1"
+        - name: shard
+          in: query
+          schema:
+            type: string
+          example: shard0
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Room terrain data
+
+  /game/room-status:
+    get:
+      tags: [Room Information]
+      summary: Get room status
+      parameters:
+        - name: room
+          in: query
+          required: true
+          schema:
+            type: string
+          example: E1N8
+        - name: shard
+          in: query
+          schema:
+            type: string
+          example: shard0
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Room status information
+
+  /game/room-objects:
+    get:
+      tags: [Room Information]
+      summary: Get room objects
+      parameters:
+        - name: room
+          in: query
+          required: true
+          schema:
+            type: string
+          example: E1N8
+        - name: shard
+          in: query
+          schema:
+            type: string
+          example: shard0
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Room objects and users
+
+  /game/room-decorations:
+    get:
+      tags: [Room Information]
+      summary: Get room decorations
+      parameters:
+        - name: room
+          in: query
+          required: true
+          schema:
+            type: string
+          example: E1N8
+        - name: shard
+          in: query
+          schema:
+            type: string
+          example: shard0
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Room decorations
+
+  /experimental/pvp:
+    get:
+      tags: [Room Information]
+      summary: Get PvP information
+      parameters:
+        - name: interval
+          in: query
+          schema:
+            type: integer
+          example: 100
+        - name: start
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: PvP room information
+
+  /experimental/nukes:
+    get:
+      tags: [Room Information]
+      summary: Get nuke information
+      responses:
+        '200':
+          description: Active nukes by shard
+
+  # Market Information
+  /game/market/orders-index:
+    get:
+      tags: [Market Information]
+      summary: Get market orders index
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Market orders index
+
+  /game/market/my-orders:
+    get:
+      tags: [Market Information]
+      summary: Get user's market orders
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: User's market orders
+
+  /game/market/orders:
+    get:
+      tags: [Market Information]
+      summary: Get market orders for resource
+      parameters:
+        - name: resourceType
+          in: query
+          required: true
+          schema:
+            type: string
+          example: Z
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Market orders for resource
+
+  /game/market/stats:
+    get:
+      tags: [Market Information]
+      summary: Get market statistics
+      parameters:
+        - name: shard
+          in: query
+          schema:
+            type: string
+          example: shard0
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Market statistics
+
+  /user/money-history:
+    get:
+      tags: [Market Information]
+      summary: Get user money history
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+          example: 0
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: User money transaction history
+
+  # Leaderboard
+  /leaderboard/seasons:
+    get:
+      tags: [Leaderboard]
+      summary: Get available seasons
+      responses:
+        '200':
+          description: Available seasons list
+
+  /leaderboard/find:
+    get:
+      tags: [Leaderboard]
+      summary: Find user in leaderboard
+      parameters:
+        - name: mode
+          in: query
+          required: true
+          schema:
+            type: string
+          example: world
+        - name: season
+          in: query
+          schema:
+            type: string
+          example: 2015-09
+        - name: username
+          in: query
+          required: true
+          schema:
+            type: string
+          example: danny
+      responses:
+        '200':
+          description: User leaderboard position
+
+  /leaderboard/list:
+    get:
+      tags: [Leaderboard]
+      summary: Get leaderboard list
+      parameters:
+        - name: season
+          in: query
+          schema:
+            type: string
+          example: 2024-01
+        - name: limit
+          in: query
+          schema:
+            type: string
+          example: '20'
+        - name: offset
+          in: query
+          schema:
+            type: string
+          example: '0'
+        - name: mode
+          in: query
+          schema:
+            type: string
+          example: world
+      responses:
+        '200':
+          description: Leaderboard entries
+
+  /scoreboard/list:
+    get:
+      tags: [Leaderboard]
+      summary: Get scoreboard (Season server only)
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+          example: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+          example: 0
+      responses:
+        '200':
+          description: Scoreboard entries
+
+  # User Information
+  /user/name:
+    get:
+      tags: [User Information]
+      summary: Get user name
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: User name
+
+  /user/stats:
+    get:
+      tags: [User Information]
+      summary: Get user statistics
+      parameters:
+        - name: interval
+          in: query
+          schema:
+            type: integer
+            enum: [8, 180, 1440]
+          example: 8
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: User statistics
+
+  /user/rooms:
+    get:
+      tags: [User Information]
+      summary: Get user rooms
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+          description: User ID
+          required: true
+          example: "588d50e64b9e9fe43a40ebb5"
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: User rooms
+
+  /user/find:
+    get:
+      tags: [User Information]
+      summary: Find user by ID or username
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+        - name: username
+          in: query
+          schema:
+            type: string
+          example: danny
+      responses:
+        '200':
+          description: User information
+
+  /user/overview:
+    get:
+      tags: [User Information]
+      summary: Get user overview
+      parameters:
+        - name: interval
+          in: query
+          schema:
+            type: integer
+            enum: [8, 180, 1440]
+          example: 1440
+        - name: statName
+          in: query
+          schema:
+            type: string
+            enum: [creepsLost, creepsProduced, energyConstruction, energyControl, energyCreeps, energyHarvested]
+          example: energyControl
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: User overview statistics
+
+  /user/respawn-prohibited-rooms:
+    get:
+      tags: [User Information]
+      summary: Get respawn prohibited rooms
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: List of prohibited rooms
+
+  /user/world-status:
+    get:
+      tags: [User Information]
+      summary: Get user world status
+      parameters:
+        - name: shard
+          in: query
+          schema:
+            type: string
+          example: shard0
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: User world status
+
+  /user/world-start-room:
+    get:
+      tags: [User Information]
+      summary: Get user start room
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: User start room
+
+  /user/console:
+    post:
+      tags: [User Information]
+      summary: Execute console command
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                expression:
+                  type: string
+      responses:
+        '200':
+          description: Console command result
+
+  /user/memory:
+    get:
+      tags: [User Information]
+      summary: Get user memory
+      parameters:
+        - name: path
+          in: query
+          schema:
+            type: string
+          example: flags.Flag1
+        - name: shard
+          in: query
+          schema:
+            type: string
+          example: shard0
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: User memory data
+
+    post:
+      tags: [User Information]
+      summary: Set user memory
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path:
+                  type: string
+                value:
+                  type: string
+      responses:
+        '200':
+          description: Memory updated
+
+  /user/memory-segment:
+    get:
+      tags: [User Information]
+      summary: Get memory segment
+      parameters:
+        - name: segment
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 99
+          example: 0
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Memory segment data
+
+    post:
+      tags: [User Information]
+      summary: Set memory segment
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                segment:
+                  type: integer
+                data:
+                  type: string
+      responses:
+        '200':
+          description: Memory segment updated
+
+  /user/code:
+    get:
+      tags: [User Information]
+      summary: Get user code
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: User code
+
+    post:
+      tags: [User Information]
+      summary: Set user code
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Code updated
+
+  /user/branches:
+    get:
+      tags: [User Information]
+      summary: Get user branches
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: User code branches
+
+  /user/set-active-branch:
+    post:
+      tags: [User Information]
+      summary: Set active branch
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                branch:
+                  type: string
+                activeName:
+                  type: string
+      responses:
+        '200':
+          description: Active branch set
+
+  /user/clone-branch:
+    post:
+      tags: [User Information]
+      summary: Clone branch
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                branch:
+                  type: string
+                newName:
+                  type: string
+                defaultModules:
+                  type: boolean
+      responses:
+        '200':
+          description: Branch cloned
+
+  /user/delete-branch:
+    post:
+      tags: [User Information]
+      summary: Delete branch
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                branch:
+                  type: string
+      responses:
+        '200':
+          description: Branch deleted
+
+  /user/notify-prefs:
+    post:
+      tags: [User Information]
+      summary: Set notification preferences
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prefs:
+                  type: object
+      responses:
+        '200':
+          description: Preferences updated
+
+  /user/tutorial-done:
+    post:
+      tags: [User Information]
+      summary: Mark tutorial as done
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Tutorial marked as done
+
+  /user/badge:
+    post:
+      tags: [User Information]
+      summary: Set user badge
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                badge:
+                  type: object
+                  properties:
+                    type:
+                      type: integer
+                    color1:
+                      type: string
+                    color2:
+                      type: string
+                    color3:
+                      type: string
+                    param:
+                      type: integer
+                    flip:
+                      type: boolean
+      responses:
+        '200':
+          description: Badge updated
+
+  /user/activate-ptr:
+    post:
+      tags: [User Information]
+      summary: Activate PTR (Public Test Realm only)
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: PTR activated
+
+  # Game World
+  /game/time:
+    get:
+      tags: [Game World]
+      summary: Get current game time
+      parameters:
+        - name: shard
+          in: query
+          schema:
+            type: string
+          example: shard0
+      responses:
+        '200':
+          description: Current game time
+
+  /game/world-size:
+    get:
+      tags: [Game World]
+      summary: Get world size
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: World dimensions
+
+  /game/shards/info:
+    get:
+      tags: [Game World]
+      summary: Get shard information
+      parameters:
+        - name: shard
+          in: query
+          schema:
+            type: string
+          example: shard0
+      responses:
+        '200':
+          description: Shard information
+
+  /game/map-stats:
+    post:
+      tags: [Game World]
+      summary: Get map statistics
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rooms:
+                  type: array
+                  items:
+                    type: string
+                  example: ["W50N50"]
+                statName:
+                  type: string
+                  example: owner0
+            example:
+              rooms: ["W50N50"]
+              statName: owner0
+      parameters:
+        - name: shard
+          in: query
+          schema:
+            type: string
+          example: shard0
+      responses:
+        '200':
+          description: Map statistics
+
+  /game/gen-unique-object-name:
+    post:
+      tags: [Game World]
+      summary: Generate unique object name
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum: [flag, spawn]
+      responses:
+        '200':
+          description: Unique object name
+
+  /game/check-unique-object-name:
+    post:
+      tags: [Game World]
+      summary: Check if object name is unique
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                name:
+                  type: string
+                shard:
+                  type: string
+      responses:
+        '200':
+          description: Name uniqueness check
+
+  /game/gen-unique-flag-name:
+    post:
+      tags: [Game World]
+      summary: Generate unique flag name
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                shard:
+                  type: string
+      responses:
+        '200':
+          description: Unique flag name
+
+  /game/create-flag:
+    post:
+      tags: [Game World]
+      summary: Create or move flag
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                room:
+                  type: string
+                x:
+                  type: integer
+                y:
+                  type: integer
+                name:
+                  type: string
+                color:
+                  type: integer
+                secondaryColor:
+                  type: integer
+      responses:
+        '200':
+          description: Flag created or moved
+
+  /game/change-flag:
+    post:
+      tags: [Game World]
+      summary: Change flag position
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                _id:
+                  type: string
+                room:
+                  type: string
+                x:
+                  type: integer
+                y:
+                  type: integer
+      responses:
+        '200':
+          description: Flag position changed
+
+  /game/change-flag-color:
+    post:
+      tags: [Game World]
+      summary: Change flag color
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                _id:
+                  type: string
+                color:
+                  type: integer
+                secondaryColor:
+                  type: integer
+      responses:
+        '200':
+          description: Flag color changed
+
+  /game/remove-flag:
+    post:
+      tags: [Game World]
+      summary: Remove flag
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                room:
+                  type: string
+                name:
+                  type: string
+                shard:
+                  type: string
+      responses:
+        '200':
+          description: Flag removed
+
+  /game/add-object-intent:
+    post:
+      tags: [Game World]
+      summary: Add object intent
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                _id:
+                  type: string
+                room:
+                  type: string
+                name:
+                  type: string
+                intent:
+                  type: object
+      responses:
+        '200':
+          description: Object intent added
+
+  /game/set-notify-when-attacked:
+    post:
+      tags: [Game World]
+      summary: Set notify when attacked
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                _id:
+                  type: string
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Notification setting updated
+
+  /game/create-construction:
+    post:
+      tags: [Game World]
+      summary: Create construction site
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                room:
+                  type: string
+                structureType:
+                  type: string
+                x:
+                  type: integer
+                y:
+                  type: integer
+      responses:
+        '200':
+          description: Construction site created
+
+  /game/place-spawn:
+    post:
+      tags: [Game World]
+      summary: Place spawn
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                room:
+                  type: string
+                name:
+                  type: string
+                x:
+                  type: integer
+                y:
+                  type: integer
+                shard:
+                  type: string
+      responses:
+        '200':
+          description: Spawn placed
+
+  /game/create-invader:
+    post:
+      tags: [Game World]
+      summary: Create invader
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                x:
+                  type: integer
+                y:
+                  type: integer
+                size:
+                  type: integer
+                type:
+                  type: string
+                boosted:
+                  type: boolean
+                shard:
+                  type: string
+      responses:
+        '200':
+          description: Invader created
+
+  /game/remove-invader:
+    post:
+      tags: [Game World]
+      summary: Remove invader
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                _id:
+                  type: string
+                shard:
+                  type: string
+      responses:
+        '200':
+          description: Invader removed
+
+  # Decorations
+  /decorations/inventory:
+    get:
+      tags: [Decorations]
+      summary: Get decoration inventory
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Decoration inventory
+
+  /decorations/themes:
+    get:
+      tags: [Decorations]
+      summary: Get decoration themes
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Available decoration themes
+
+  /decorations/convert:
+    post:
+      tags: [Decorations]
+      summary: Convert decorations
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decorations:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Decorations converted
+
+  /decorations/pixelize:
+    post:
+      tags: [Decorations]
+      summary: Pixelize decorations
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                count:
+                  type: integer
+                theme:
+                  type: string
+      responses:
+        '200':
+          description: Decorations pixelized
+
+  /decorations/activate:
+    post:
+      tags: [Decorations]
+      summary: Activate decoration
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                _id:
+                  type: string
+                active:
+                  type: boolean
+      responses:
+        '200':
+          description: Decoration activated
+
+  /decorations/deactivate:
+    post:
+      tags: [Decorations]
+      summary: Deactivate decorations
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decorations:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Decorations deactivated
+
+  # Other
+  /servers/list:
+    post:
+      tags: [Other]
+      summary: Get community servers list
+      responses:
+        '200':
+          description: Available community servers
+
+  /version:
+    get:
+      tags: [Other]
+      summary: Get API version
+      responses:
+        '200':
+          description: API version information
