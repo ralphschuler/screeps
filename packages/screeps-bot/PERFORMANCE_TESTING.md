@@ -1,6 +1,8 @@
 # Performance Testing
 
-This bot includes automated performance testing using [ScreepsPerformanceServer](https://github.com/screepers/ScreepsPerformanceServer), which enables testing the bot's behavior in a controlled environment with milestone tracking and performance metrics.
+This bot includes automated performance testing using [ScreepsPerformanceServer](https://github.com/screepers/ScreepsPerformanceServer), which enables testing the bot's behavior in a controlled, self-contained environment with milestone tracking and performance metrics.
+
+**Note:** Performance testing is completely self-contained within this bot package. It does not require or affect the `packages/screeps-server` package, which is a separate production server setup.
 
 ## Overview
 

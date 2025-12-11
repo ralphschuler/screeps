@@ -170,6 +170,8 @@ Tests are located in the `test/` directory and use Mocha with Chai assertions.
 
 The bot includes automated performance testing using [ScreepsPerformanceServer](https://github.com/screepers/ScreepsPerformanceServer). This allows testing the bot's behavior in a controlled environment with milestone tracking and performance metrics.
 
+**Note:** Performance testing is self-contained within this package and independent of the `packages/screeps-server` production server setup.
+
 **Quick performance test:**
 ```bash
 npm run build
