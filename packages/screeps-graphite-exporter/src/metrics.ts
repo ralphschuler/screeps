@@ -144,7 +144,34 @@ function parseStatKey(key: string): { measurement: string; category: string; sub
     return { measurement: key, category: 'room', subCategory: parts[1] };
   }
 
-  // Handle cpu, gcl, gpl, empire keys
+  // Handle stats keys without "stats." prefix (from Memory.stats when exportFullMemory is false)
+  // These should be categorized the same as their "stats." prefixed counterparts
+  if (parts[0] === 'processes' && parts.length >= 3) {
+    return { measurement: key, category: 'stats_processes', subCategory: parts[1] };
+  }
+  if (parts[0] === 'subsystems' && parts.length >= 3) {
+    return { measurement: key, category: 'stats_subsystems', subCategory: parts[1] };
+  }
+  if (parts[0] === 'roles' && parts.length >= 3) {
+    return { measurement: key, category: 'stats_roles', subCategory: parts[1] };
+  }
+  if (parts[0] === 'rooms' && parts.length >= 3) {
+    return { measurement: key, category: 'stats_rooms', subCategory: parts[1] };
+  }
+  if (parts[0] === 'creeps' && parts.length >= 3) {
+    return { measurement: key, category: 'stats_creeps', subCategory: parts[1] };
+  }
+  if (parts[0] === 'pheromones' && parts.length >= 3) {
+    return { measurement: key, category: 'stats_pheromones', subCategory: parts[1] };
+  }
+  if (parts[0] === 'nativeCalls') {
+    return { measurement: key, category: 'stats_native_calls', subCategory: parts[1] || '' };
+  }
+  if (parts[0] === 'empire') {
+    return { measurement: key, category: 'stats_empire', subCategory: parts[1] || '' };
+  }
+
+  // Handle cpu, gcl, gpl, and other top-level keys
   return { measurement: key, category: parts[0], subCategory: parts[1] || '' };
 }
 
