@@ -58,7 +58,11 @@ export class RoomNeedsProtocol {
       }
 
       // Note: Decryption would happen here if keyid is present
-      // TODO: Implement decryption support
+      // TODO: Implement decryption support using the KeyExchangeProtocol
+      // For encrypted channels, integrate with KeyExchangeProtocol.getKey()
+      if (channel.keyid) {
+        console.log(`[RoomNeeds] Warning: Channel is encrypted with keyid ${channel.keyid} but decryption is not implemented`);
+      }
 
       return JSON.parse(data) as RoomNeed[];
     } catch (error) {

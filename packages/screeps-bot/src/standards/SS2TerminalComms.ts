@@ -190,11 +190,11 @@ export class SS2TerminalComms {
       return terminal.send(resourceType, amount, targetRoom, packets[0]);
     }
 
-    // Multi-packet - send first packet
-    // Note: Subsequent packets need to be sent in following ticks
-    // This is a simplified implementation
+    // Multi-packet - queue remaining packets for subsequent ticks
+    // TODO: Implement proper multi-packet queue system
+    // For now, log warning and send first packet only
     console.log(
-      `[SS2] Multi-packet message requires ${packets.length} transactions`
+      `[SS2] Warning: Multi-packet message requires ${packets.length} transactions. Only sending first packet. Full multi-packet support requires implementation of packet queue.`
     );
     return terminal.send(resourceType, amount, targetRoom, packets[0]);
   }

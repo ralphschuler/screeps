@@ -126,12 +126,11 @@ export class SS1SegmentManager {
    * Decompress channel data if compressed
    * @param data Compressed data
    * @returns Decompressed data
+   * @note TODO: Requires lzstring library integration
+   * For full SS1 compliance, add lzstring and implement compressToUTF16/decompressFromUTF16
    */
   public static decompressData(data: string): string {
-    // Note: This requires lzstring library
-    // For now, this is a placeholder
-    // TODO: Implement lzstring decompression
-    console.log("[SS1] Decompression not yet implemented");
+    console.log("[SS1] Warning: Decompression not implemented. Returning raw data. Install lzstring library for compression support.");
     return data;
   }
 
@@ -139,12 +138,11 @@ export class SS1SegmentManager {
    * Compress channel data
    * @param data Raw data
    * @returns Compressed data
+   * @note TODO: Requires lzstring library integration
+   * For full SS1 compliance, add lzstring and implement compressToUTF16/decompressFromUTF16
    */
   public static compressData(data: string): string {
-    // Note: This requires lzstring library
-    // For now, this is a placeholder
-    // TODO: Implement lzstring compression
-    console.log("[SS1] Compression not yet implemented");
+    console.log("[SS1] Warning: Compression not implemented. Returning raw data. Install lzstring library for compression support.");
     return data;
   }
 

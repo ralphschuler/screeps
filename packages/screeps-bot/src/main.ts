@@ -23,6 +23,14 @@ declare global {
       lastSync: number;
       data: Record<string, { value: any; lastModified: number; ttl?: number }>;
     };
+    /** Resource transfer queue for Screepers Standards SS2 protocol */
+    resourceTransfers?: Array<{
+      from: string;
+      to: string;
+      resource: ResourceConstant;
+      amount: number;
+      scheduledTick: number;
+    }>;
   }
 
   interface CreepMemory {

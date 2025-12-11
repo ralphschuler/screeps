@@ -114,6 +114,8 @@ export class KeyExchangeProtocol {
    * Handle incoming key request
    * @param sender Sender username
    * @param keyid Key identifier
+   * @note TODO: Complete implementation requires TerminalComProtocol integration
+   * to discover sender's terminal rooms and send the response
    */
   private static handleKeyRequest(sender: string, keyid: string): void {
     // Check if we have this key and are authorized to share it
@@ -131,9 +133,12 @@ export class KeyExchangeProtocol {
       return;
     }
 
-    // Get sender's terminal room from their termcom protocol
-    // For now, this is simplified - actual implementation would need room lookup
-    console.log(`[KeyExchange] Would send key ${keyid} to ${sender}`);
+    // TODO: Get sender's terminal room from their termcom protocol (TerminalComProtocol)
+    // For full implementation:
+    // 1. Read sender's terminal list using TerminalComProtocol.readTerminals(sender)
+    // 2. Select closest terminal to our terminal
+    // 3. Call this.sendKeyResponse(terminal, senderTerminalRoom, keyid, key)
+    console.log(`[KeyExchange] TODO: Implement full key response flow. Would send key ${keyid} to ${sender}`);
   }
 
   /**
