@@ -21,19 +21,23 @@ export async function cloneDocsRepo(): Promise<string> {
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "screeps-docs-"));
   
   try {
-    // TODO: SSL Certificate Error - Git clone fails with certificate verification error
-    // Issue URL: https://github.com/ralphschuler/screeps/issues/479
-    // Details: Git clone returns "server certificate verification failed. CAfile: none CRLfile: none"
-    // Encountered: When calling screeps_docs_list_apis or any screeps-docs-mcp tool
-    // Suggested Fix: Configure git to handle SSL certificates properly:
-    // 1. Set GIT_SSL_NO_VERIFY=1 environment variable (not recommended for production)
-    // 2. Configure git to use system CA certificates: git.env({ GIT_SSL_CAINFO: '/path/to/cacert.pem' })
-    // 3. Add git configuration option to disable SSL verification for this specific clone:
-    //    await git.clone(DOCS_REPO_URL, tmpDir, ["--depth", "1", "-c", "http.sslVerify=false"]);
-    // 4. Ensure the system has proper CA certificates installed
-    const git = simpleGit();
+    // Configure git with proper SSL certificate handling
+    // Use system CA certificates if available via environment variables
+    const gitEnv: Record<string, string> = {};
+    
+    if (process.env.SSL_CERT_FILE) {
+      gitEnv.GIT_SSL_CAINFO = process.env.SSL_CERT_FILE;
+    }
+    
+    if (process.env.SSL_CERT_DIR) {
+      gitEnv.GIT_SSL_CAPATH = process.env.SSL_CERT_DIR;
+    }
+    
+    // Create git instance with environment configuration
+    const git = simpleGit().env(gitEnv);
     
     // Clone the repository with depth 1 (shallow clone) for efficiency
+    // Include git config to use system SSL certificates
     await git.clone(DOCS_REPO_URL, tmpDir, ["--depth", "1"]);
     
     return tmpDir;
