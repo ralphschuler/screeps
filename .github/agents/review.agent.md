@@ -1,3 +1,8 @@
+---
+name: review-agent
+description: Performs comprehensive repository-wide code reviews, evaluates every file against ES6 JavaScript best practices, and leaves actionable review comments using standardized prefixes (TODO, BUG, FEATURE, etc.)
+---
+
 # Senior JavaScript / TypeScript Code Review Prompt
 
 ## Role / Objective
