@@ -25,6 +25,7 @@ import type {
   RoomRequest
 } from "../standards/types/allianceTypes";
 import { logger } from "../core/logger";
+import { memoryManager } from "../memory/manager";
 
 /**
  * Player reputation tracker for diplomacy
@@ -44,25 +45,17 @@ interface AllianceDiplomacyMemory {
   lastProcessedTick: number;
 }
 
-// Augment the global Memory interface
-declare global {
-  interface Memory {
-    allianceDiplomacy?: AllianceDiplomacyMemory;
-  }
-}
-
 /**
  * Get or initialize alliance memory
  */
 function getAllianceMemory(): AllianceDiplomacyMemory {
   if (!Memory.allianceDiplomacy) {
-    Memory.allianceDiplomacy = {
+    (Memory as any).allianceDiplomacy = {
       playerReputations: {},
       lastProcessedTick: 0
     };
   }
-  // Safe to assert non-null since we initialize it above if undefined
-  return Memory.allianceDiplomacy as AllianceDiplomacyMemory;
+  return (Memory as any).allianceDiplomacy;
 }
 
 /**
@@ -181,6 +174,12 @@ function generateEconRequest(): void {
       totalEnergy += room.terminal.store[RESOURCE_ENERGY] || 0;
     }
 
+    // Calculate energy income from swarm metrics (rolling average of energy harvested per tick)
+    const swarm = memoryManager.getSwarmState(roomName);
+    if (swarm) {
+      energyIncome += swarm.metrics.energyHarvested;
+    }
+
     // Count mineral nodes
     const minerals = room.find(FIND_MINERALS);
     for (const mineral of minerals) {
@@ -194,8 +193,7 @@ function generateEconRequest(): void {
   simpleAllies.requestEcon({
     credits: totalCredits,
     sharableEnergy: sharableEnergy,
-    energyIncome: energyIncome, // TODO: Implement energy income tracking
-                                // Issue URL: https://github.com/ralphschuler/screeps/issues/473
+    energyIncome: energyIncome,
     mineralNodes: mineralNodes as any
   });
 }
