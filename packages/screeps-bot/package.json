@@ -9,7 +9,7 @@
     "push": "rollup -c --environment DEST:screeps",
     "test": "npm run test:unit",
     "test:unit": "mocha test/unit/**/*.ts",
-    "test:integration": "echo 'See docs/in-depth/testing.md for instructions on enabling integration tests'",
+    "test:integration": "npm run build && DOCKER_DEFAULT_PLATFORM=linux/amd64 screeps-performance-server --botFilePath=dist",
     "test:performance": "DOCKER_DEFAULT_PLATFORM=linux/amd64 screeps-performance-server --botFilePath=dist",
     "watch": "rollup -cw --environment DEST:screeps"
   },

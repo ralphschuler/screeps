@@ -18,6 +18,8 @@
     "build:mod": "cd packages/screepsmod-testing && npm run build",
     "build:all": "npm run build && npm run build:exporters && npm run build:mcp && npm run build:mod",
     "test": "cd packages/screeps-bot && npm test",
+    "test:unit": "cd packages/screeps-bot && npm run test:unit",
+    "test:integration": "cd packages/screeps-bot && npm run test:integration",
     "test:mcp": "cd packages/screeps-docs-mcp && npm test && cd ../screeps-mcp && npm test && cd ../screeps-wiki-mcp && npm test && cd ../screeps-typescript-mcp && npm test",
     "test:all": "npm run test && npm run test:mcp",
     "lint": "cd packages/screeps-bot && npm run lint",
