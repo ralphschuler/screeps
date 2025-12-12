@@ -1,8 +1,12 @@
 # Dependencies
 node_modules
 
-# Build outputs (rebuilt in Docker)
-dist
+# Source files (already compiled to dist)
+src
+tsconfig.json
+tsconfig.docker.json
+scripts
+build-scripts
 
 # Test files
 tests
@@ -16,7 +20,11 @@ tsconfig.test.json
 
 # Documentation (not needed in image)
 *.md
+!README.md
 
 # Editor files
 .vscode
 .idea
+
+# Submodule (not needed in image if docs-index.json is pre-built)
+docs-repo
