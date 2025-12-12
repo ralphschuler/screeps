@@ -6,7 +6,7 @@
 # Build the application before building the Docker image:
 #   npm ci && npm run build
 
-FROM node:20.19-slim
+FROM node:25.2-slim
 
 # Add OCI labels for GitHub Container Registry
 LABEL org.opencontainers.image.source=https://github.com/ralphschuler/screeps \
