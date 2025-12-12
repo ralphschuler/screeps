@@ -187,17 +187,11 @@ function normalizeToResetMs(toReset: number, logger: Logger): number {
  */
 async function fetchAvailableShards(api: ScreepsAPI, logger: Logger): Promise<string[]> {
   try {
-    const shardData = await api.raw.version() as any;
-    // The response contains shard information in various formats
-    // We need to extract shard names
-    if (shardData && shardData.shards) {
-      return shardData.shards;
-    }
+    const shardData = await api.raw.game.shards.info() as any;
     
-    // Fallback: try to get shard info from user info
-    const userInfo = await api.me() as any;
-    if (userInfo && userInfo.ok && userInfo.shards) {
-      return userInfo.shards;
+    if (shardData && Array.isArray(shardData.shards)) {
+      // Extract shard names from the response
+      return shardData.shards.map((shard: any) => shard.name);
     }
     
     logger.warn('Unable to fetch available shards, will use configured shard only');
