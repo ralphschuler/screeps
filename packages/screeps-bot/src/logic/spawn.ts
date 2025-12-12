@@ -1133,23 +1133,25 @@ export function isEmergencySpawnState(roomName: string): boolean {
  * recovery from a bad state, ensuring the economy can bootstrap properly.
  * 
  * DYNAMIC: Harvester count is determined by the number of sources in the room.
+ * Each room needs 1 harvester per source for optimal energy production.
  */
 function getBootstrapSpawnOrder(room: Room): { role: string; minCount: number; condition?: (room: Room) => boolean }[] {
   // Count sources in the room to determine how many harvesters we need
+  // Most rooms have 2 sources, but some have only 1
   const sources = room.find(FIND_SOURCES);
-  const sourceCount = sources.length;
+  const sourceCount = Math.max(sources.length, 1); // Ensure at least 1
   
   return [
     // 1. Energy production first - can't do anything without energy
     { role: "larvaWorker", minCount: 1 },
-    // 2. Static harvesters for efficient mining (1 per source)
-    // FIXED: Make harvester count dynamic based on actual source count
-    { role: "harvester", minCount: Math.min(sourceCount, 1) },  // At least 1 harvester
+    // 2. First harvester (always needed, regardless of source count)
+    { role: "harvester", minCount: 1 },
     // 3. Transport to distribute energy (1 is enough with bigger bodies)
     { role: "hauler", minCount: 1 },
-    // 4. Additional harvesters for additional sources (if room has 2+ sources)
-    // FIXED: Only require 2nd harvester if room actually has 2+ sources
-    ...(sourceCount >= 2 ? [{ role: "harvester" as const, minCount: 2 }] : []),
+    // 4. Additional harvesters for remaining sources (1 per source)
+    // FIXED: Dynamic harvester count based on actual sources in room
+    // This ensures single-source rooms don't get stuck waiting for 2nd harvester
+    { role: "harvester", minCount: sourceCount },
     // 5. Queen carrier when storage exists (manages spawns/extensions)
     { role: "queenCarrier", minCount: 1, condition: (room: Room) => Boolean(room.storage) },
     // 6. Upgrader for controller progress
