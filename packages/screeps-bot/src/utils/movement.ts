@@ -55,6 +55,7 @@ import {
   findBackupPosition,
   findOpenPosition,
   findSideStepPosition,
+  getCreepPriority,
   isInNarrowPassage,
   requestMoveToPosition,
   shouldYieldTo
@@ -86,6 +87,12 @@ function isCreep(entity: Creep | PowerCreep): entity is Creep {
 
 /** Priority threshold for high-priority movement (used in traffic visualization) */
 const HIGH_PRIORITY_THRESHOLD = 50;
+/**
+ * Soft cost applied to friendly creeps when avoidCreeps is enabled.
+ * Using a soft cost instead of an impassable wall allows pathing to
+ * succeed in crowded spawn areas while still preferring open tiles.
+ */
+const FRIENDLY_CREEP_COST = 10;
 
 // =============================================================================
 // Types & Interfaces
@@ -705,7 +712,9 @@ function generateCostMatrix(
   allowHostileRooms = false,
   allowSK = false,
   preferHighway = false,
-  highwayBias = 2.5
+  highwayBias = 2.5,
+  origin?: RoomPosition,
+  actorPriority?: number
 ): CostMatrix | false {
   const costs = new PathFinder.CostMatrix();
   const room = Game.rooms[roomName];
@@ -785,11 +794,19 @@ function generateCostMatrix(
   if (avoidCreeps) {
     const creeps = room.find(FIND_CREEPS);
     for (const creep of creeps) {
-      costs.set(creep.pos.x, creep.pos.y, 255);
+      if (origin && origin.isEqualTo(creep.pos)) continue; // Don't block the moving creep
+      const creepCost = creep.my
+        ? actorPriority !== undefined && getCreepPriority(creep) >= actorPriority
+          ? 255
+          : FRIENDLY_CREEP_COST
+        : 255;
+      costs.set(creep.pos.x, creep.pos.y, creepCost);
     }
     const powerCreeps = room.find(FIND_POWER_CREEPS);
     for (const pc of powerCreeps) {
-      costs.set(pc.pos.x, pc.pos.y, 255);
+      if (origin && origin.isEqualTo(pc.pos)) continue; // Don't block the moving creep
+      const creepCost = pc.my ? FRIENDLY_CREEP_COST : 255;
+      costs.set(pc.pos.x, pc.pos.y, creepCost);
     }
   }
 
@@ -810,7 +827,12 @@ function generateCostMatrix(
  * When the destination is blocked and allowAlternativeTarget is enabled,
  * it will search for alternative walkable positions within the specified range.
  */
-function findPath(origin: RoomPosition, target: RoomPosition | MoveTarget, opts: MoveOpts): PathFinderPath {
+function findPath(
+  origin: RoomPosition,
+  target: RoomPosition | MoveTarget,
+  opts: MoveOpts,
+  actorPriority?: number
+): PathFinderPath {
   const targetPos = "pos" in target ? target.pos : target;
   const range = "range" in target ? target.range : 1;
   const roadCost = opts.roadCost ?? 1;
@@ -877,13 +899,15 @@ function findPath(origin: RoomPosition, target: RoomPosition | MoveTarget, opts:
         return false;
       }
       return generateCostMatrix(
-        roomName, 
-        opts.avoidCreeps ?? true, 
-        roadCost, 
+        roomName,
+        opts.avoidCreeps ?? true,
+        roadCost,
         allowHostileRooms,
         allowSK,
         preferHighway,
-        highwayBias
+        highwayBias,
+        origin,
+        actorPriority
       );
     }
   });
@@ -893,7 +917,7 @@ function findPath(origin: RoomPosition, target: RoomPosition | MoveTarget, opts:
     // Try again with findRoute enabled
     const retryOpts = { ...opts };
     // Force use of allowed rooms
-    return findPath(origin, target, retryOpts);
+    return findPath(origin, target, retryOpts, actorPriority);
   }
 
   // If path is incomplete and alternative targets are allowed, try to find an alternative position
@@ -915,13 +939,15 @@ function findPath(origin: RoomPosition, target: RoomPosition | MoveTarget, opts:
             return false;
           }
           return generateCostMatrix(
-            roomName, 
-            opts.avoidCreeps ?? true, 
-            roadCost, 
+            roomName,
+            opts.avoidCreeps ?? true,
+            roadCost,
             allowHostileRooms,
             allowSK,
             preferHighway,
-            highwayBias
+            highwayBias,
+            origin,
+            actorPriority
           );
         }
       });
@@ -939,7 +965,13 @@ function findPath(origin: RoomPosition, target: RoomPosition | MoveTarget, opts:
 /**
  * Find a path to flee from multiple targets
  */
-function findFleePath(origin: RoomPosition, threats: RoomPosition[], range: number, opts: MoveOpts): PathFinderPath {
+function findFleePath(
+  origin: RoomPosition,
+  threats: RoomPosition[],
+  range: number,
+  opts: MoveOpts,
+  actorPriority?: number
+): PathFinderPath {
   const goals = threats.map(pos => ({ pos, range }));
   const roadCost = opts.roadCost ?? 1;
   const allowHostileRooms = opts.allowHostileRooms ?? false;
@@ -956,13 +988,15 @@ function findFleePath(origin: RoomPosition, threats: RoomPosition[], range: numb
     flee: true,
     roomCallback: (roomName: string) => {
       return generateCostMatrix(
-        roomName, 
-        opts.avoidCreeps ?? true, 
-        roadCost, 
+        roomName,
+        opts.avoidCreeps ?? true,
+        roadCost,
         allowHostileRooms,
         allowSK,
         preferHighway,
-        highwayBias
+        highwayBias,
+        origin,
+        actorPriority
       );
     }
   });
@@ -1149,6 +1183,7 @@ function internalMoveTo(
 
   const options = opts ?? {};
   const priority = options.priority ?? 1;
+  const actorPriority = isCreep(creep) ? getCreepPriority(creep) : undefined;
 
   // Check if already at target
   if (creep.pos.inRangeTo(targetPos, range)) {
@@ -1362,7 +1397,7 @@ function internalMoveTo(
    */
   function generateAndCachePath(): RoomPosition[] | null {
     const cpuStart = Game.cpu.getUsed();
-    const pathResult = findPath(creep.pos, { pos: targetPos, range }, options);
+    const pathResult = findPath(creep.pos, { pos: targetPos, range }, options, actorPriority);
     const cpuUsed = Game.cpu.getUsed() - cpuStart;
 
     if (pathResult.incomplete || pathResult.path.length === 0) {
@@ -1551,8 +1586,9 @@ function internalFlee(
 
   const options = { ...opts, flee: true };
   const priority = options.priority ?? 1;
+  const actorPriority = isCreep(creep) ? getCreepPriority(creep) : undefined;
 
-  const pathResult = findFleePath(creep.pos, threats, range, options);
+  const pathResult = findFleePath(creep.pos, threats, range, options, actorPriority);
 
   if (pathResult.incomplete || pathResult.path.length === 0) {
     return ERR_NO_PATH;
