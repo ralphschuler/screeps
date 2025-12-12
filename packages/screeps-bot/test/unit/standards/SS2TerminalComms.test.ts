@@ -128,6 +128,12 @@ describe("SS2TerminalComms", () => {
       // @ts-ignore: allow adding Game to global
       global.Game = { 
         time: 1000,
+        // @ts-ignore: partial CPU mock
+        cpu: {
+          getUsed: () => 0,
+          limit: 500,
+          bucket: 10000
+        },
         getObjectById: (id: Id<any>) => {
           if (id === "terminal1") {
             return mockTerminal;

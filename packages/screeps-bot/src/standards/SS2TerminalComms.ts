@@ -283,8 +283,16 @@ export class SS2TerminalComms {
 
     let packetsSent = 0;
     const toDelete: string[] = [];
+    const cpuStart = Game.cpu.getUsed();
+    const maxCpuPerTick = 5; // Limit CPU usage for queue processing
 
     for (const [queueKey, queueItem] of Object.entries(Memory.ss2PacketQueue)) {
+      // CPU budget check - don't process more items if we've used too much CPU
+      if (Game.cpu.getUsed() - cpuStart > maxCpuPerTick) {
+        logger.debug(`Queue processing stopped due to CPU budget limit (${maxCpuPerTick} CPU)`);
+        break;
+      }
+
       // Get terminal object
       const terminal = Game.getObjectById(queueItem.terminalId);
       if (!terminal) {
@@ -319,11 +327,12 @@ export class SS2TerminalComms {
       );
 
       if (result === OK) {
-        queueItem.nextPacketIndex++;
+        // Explicitly update Memory to ensure persistence
+        Memory.ss2PacketQueue[queueKey].nextPacketIndex = queueItem.nextPacketIndex + 1;
         packetsSent++;
 
         // Check if all packets sent
-        if (queueItem.nextPacketIndex >= queueItem.packets.length) {
+        if (Memory.ss2PacketQueue[queueKey].nextPacketIndex >= queueItem.packets.length) {
           const msgId = this.extractMessageId(packet);
           logger.info(`Completed sending multi-packet message`, {
             meta: { 
