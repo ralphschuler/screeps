@@ -60,6 +60,8 @@ npm start
 4. Logs with `type: "log"` are sent to Loki
 5. Logs with `type: "stat"` are filtered out (handled by graphite-exporter)
 6. Logs are batched and sent to Loki with appropriate labels
+7. Timestamps are set to the current real-world time (when logs are received)
+8. Game tick numbers are included in the log message for correlation with in-game events
 
 ## Bot Integration
 
@@ -91,7 +93,10 @@ You can query logs in Grafana using LogQL:
 {level="error"}
 {subsystem="spawn", room="E1S1"}
 {level="warn"} |= "CPU"
+{level="info"} |= "tick:12345"  # Find logs from a specific game tick
 ```
+
+**Note on Timestamps**: The exporter uses real-world timestamps (when logs are received) rather than game tick numbers. This ensures logs have valid, current timestamps in Loki. Game tick numbers are preserved in the log message itself as `[tick:XXXXX]` for correlation with in-game events.
 
 ## Docker Support
 
