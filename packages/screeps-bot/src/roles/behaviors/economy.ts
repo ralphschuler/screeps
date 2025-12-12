@@ -73,6 +73,10 @@ const HARVESTER_CACHE_DURATION = 50;
  * - Empty → working=false (collect energy)
  * - Full → working=true (deliver/work)
  * - Undefined → initialize based on current energy (has energy → true, empty → false)
+ *
+ * BUGFIX: Use live store values each tick instead of ctx.isEmpty/ctx.isFull.
+ * Those helpers are captured when context is created before actions execute,
+ * which caused creeps that filled up during execution to keep working=false.
  * 
  * OPTIMIZATION: Only clear cached targets on state change, not the state machine state.
  * The state machine's own completion detection handles invalid states efficiently.
@@ -81,17 +85,21 @@ const HARVESTER_CACHE_DURATION = 50;
  * "idle time" and wasted CPU on frequent behavior re-evaluation during transitions.
  */
 function updateWorkingState(ctx: CreepContext): boolean {
+  // Use fresh store values instead of ctx.isEmpty/isFull (which are captured pre-action)
+  const isEmpty = ctx.creep.store.getUsedCapacity() === 0;
+  const isFull = ctx.creep.store.getFreeCapacity() === 0;
+
   // Initialize working state if undefined - creeps with energy should be working
   if (ctx.memory.working === undefined) {
-    ctx.memory.working = !ctx.isEmpty;
+    ctx.memory.working = !isEmpty;
   }
-  
+
   const wasWorking = ctx.memory.working;
-  
+
   // Update state based on energy levels
-  if (ctx.isEmpty) ctx.memory.working = false;
-  if (ctx.isFull) ctx.memory.working = true;
-  
+  if (isEmpty) ctx.memory.working = false;
+  if (isFull) ctx.memory.working = true;
+
   const isWorking = ctx.memory.working;
 
   // Clear cached targets when working state changes to ensure fresh target selection
