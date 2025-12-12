@@ -623,11 +623,22 @@ export class Kernel {
     // Rebuild queue if needed (processes added/removed)
     if (this.queueDirty) {
       this.rebuildProcessQueue();
+      logger.info(`Kernel: Rebuilt process queue with ${this.processQueue.length} processes`, {
+        subsystem: "Kernel"
+      });
     }
 
     // If no processes, nothing to do
     if (this.processQueue.length === 0) {
+      logger.warn("Kernel: No processes registered in queue", { subsystem: "Kernel" });
       return;
+    }
+
+    // Log kernel run every 10 ticks for visibility
+    if (Game.time % 10 === 0) {
+      logger.info(`Kernel: Running ${this.processQueue.length} registered processes`, {
+        subsystem: "Kernel"
+      });
     }
 
     let processesRun = 0;

@@ -88,6 +88,14 @@ function getCreepProcessPriority(role: string): ProcessPriority {
 function executeCreepRole(creep: Creep): void {
   const memory = creep.memory as unknown as SwarmCreepMemory;
   
+  // Log every 10 ticks to track if creep roles are executing
+  if (Game.time % 10 === 0) {
+    logger.info(`Executing role for creep ${creep.name} (${memory.role})`, {
+      subsystem: "CreepProcessManager",
+      creep: creep.name
+    });
+  }
+  
   // OPTIMIZATION: Skip behavior evaluation for idle creeps
   // Idle creeps are stationary workers (harvesters, upgraders) that are actively
   // working at their station and don't need to make new decisions.
@@ -158,6 +166,8 @@ export class CreepProcessManager {
     this.lastSyncTick = Game.time;
 
     const currentCreeps = new Set<string>();
+    let registeredCount = 0;
+    let unregisteredCount = 0;
     
     // Register all living creeps as processes
     for (const name in Game.creeps) {
@@ -173,6 +183,7 @@ export class CreepProcessManager {
       // Register if not already registered
       if (!this.registeredCreeps.has(name)) {
         this.registerCreepProcess(creep);
+        registeredCount++;
       }
     }
 
@@ -180,7 +191,16 @@ export class CreepProcessManager {
     for (const name of this.registeredCreeps) {
       if (!currentCreeps.has(name)) {
         this.unregisterCreepProcess(name);
+        unregisteredCount++;
       }
+    }
+
+    // Log sync summary at INFO level for visibility
+    if (registeredCount > 0 || unregisteredCount > 0) {
+      logger.info(
+        `CreepProcessManager: Synced ${currentCreeps.size} creeps (registered: ${registeredCount}, unregistered: ${unregisteredCount})`,
+        { subsystem: "CreepProcessManager" }
+      );
     }
   }
 
@@ -213,7 +233,7 @@ export class CreepProcessManager {
 
     this.registeredCreeps.add(creep.name);
     
-    logger.debug(`Registered creep process: ${creep.name} (${role}) with priority ${priority}`, {
+    logger.info(`Registered creep process: ${creep.name} (${role}) with priority ${priority}`, {
       subsystem: "CreepProcessManager"
     });
   }
@@ -226,7 +246,7 @@ export class CreepProcessManager {
     kernel.unregisterProcess(processId);
     this.registeredCreeps.delete(name);
     
-    logger.debug(`Unregistered creep process: ${name}`, {
+    logger.info(`Unregistered creep process: ${name}`, {
       subsystem: "CreepProcessManager"
     });
   }
