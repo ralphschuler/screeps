@@ -363,7 +363,8 @@ export class ScreepsClient {
       };
     } catch (error) {
       // Handle 404 or other API errors gracefully
-      console.error(`Failed to get stats from Memory.stats: ${error instanceof Error ? error.message : String(error)}`);
+      // Note: This is not an error condition - it just means Memory.stats doesn't exist
+      // which is expected when users haven't set up stats collection in their bot
       
       // Return default empty stats instead of throwing
       return {
