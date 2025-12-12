@@ -26,12 +26,15 @@ The Screepers Standards provide a set of protocols for standardized communicatio
 
 #### SS2: Terminal Communications (v1.1.0)
 - **Location**: `SS2TerminalComms.ts`
-- **Status**: Core functionality implemented
+- **Status**: Fully implemented
 - **Features**:
   - Message parsing and reassembly
-  - Multi-packet message handling
+  - Multi-packet message handling with queue system
+  - Automatic packet transmission across multiple ticks
+  - Terminal cooldown management
   - JSON message support
   - Transaction validation
+  - CPU budget protection
 
 #### SS3: Unified Credentials File (v1.0)
 - **Status**: Documented (optional for build tools)
@@ -152,7 +155,40 @@ if (terminal) {
 }
 ```
 
-### Example 6: Processing Incoming Messages
+### Example 6: Sending Multi-Packet Messages
+
+```typescript
+import { SS2TerminalComms } from "./standards";
+
+const terminal = Game.rooms["W1N1"].terminal;
+if (terminal) {
+  // Long message that requires multiple packets
+  const longMessage = SS2TerminalComms.formatJSON({
+    type: "report",
+    data: {
+      rooms: ["W1N1", "W2N1", "W3N1"],
+      stats: { /* lots of data */ },
+      timestamp: Game.time
+    }
+  });
+  
+  // Automatically splits and queues packets if message > 100 chars
+  // Packets sent automatically each tick respecting terminal cooldown
+  const result = SS2TerminalComms.sendMessage(
+    terminal,
+    "E10S10",           // Target room
+    RESOURCE_ENERGY,    // Resource type
+    100,                // Amount per packet
+    longMessage         // Message (auto-split if needed)
+  );
+  
+  if (result === OK) {
+    console.log("Message queued for transmission");
+  }
+}
+```
+
+### Example 7: Processing Incoming Messages
 
 ```typescript
 import { SS2TerminalComms, ResourceRequestProtocol, KeyExchangeProtocol } from "./standards";
@@ -176,7 +212,7 @@ for (const { sender, message } of messages) {
 }
 ```
 
-### Example 7: Advertising Your Terminals
+### Example 8: Advertising Your Terminals
 
 ```typescript
 import { TerminalComProtocol } from "./standards";
@@ -196,10 +232,16 @@ if (Game.time % 100 === 0) {
 - **Files**: `SS1SegmentManager.ts`
 
 ### Multi-Packet Queue
-- **Status**: Not implemented
-- **Requirements**: Implement packet queue system for multi-tick sends
+- **Status**: ✅ Implemented
+- **Description**: Queue system for sending multi-packet messages across multiple ticks
 - **Impact**: Enables messages >100 characters via terminal
 - **Files**: `SS2TerminalComms.ts`
+- **Features**:
+  - Persistent queue storage in Memory
+  - Automatic packet transmission respecting terminal cooldown
+  - CPU budget protection (max 5 CPU per tick)
+  - Timeout handling (1000 ticks)
+  - Error recovery for missing terminals and insufficient resources
 
 ### Encryption/Decryption
 - **Status**: Not implemented
@@ -224,19 +266,36 @@ The standards implementation is designed to be:
 
 ### Adding to Main Loop
 
-To integrate standards into your main loop:
+The SS2 Terminal Communications queue processing is already integrated into the main game loop (`SwarmBot.ts`):
+
+```typescript
+// In SwarmBot.ts (already implemented)
+unifiedStats.measureSubsystem("ss2PacketQueue", () => {
+  SS2TerminalComms.processQueue(); // Runs every tick
+});
+```
+
+To process incoming messages and send multi-packet messages:
 
 ```typescript
 import { SS2TerminalComms, TerminalComProtocol } from "./standards";
 
-// In your main loop
-if (Game.time % 10 === 0) {
-  // Update our terminals list
-  TerminalComProtocol.updateOurTerminals();
-  
-  // Process incoming terminal messages
-  const messages = SS2TerminalComms.processIncomingTransactions();
-  // ... handle messages
+// Process incoming terminal messages
+const messages = SS2TerminalComms.processIncomingTransactions();
+for (const { sender, message } of messages) {
+  // Handle messages
+}
+
+// Send a multi-packet message (automatically queued if >100 chars)
+const terminal = Game.rooms["W1N1"].terminal;
+if (terminal) {
+  SS2TerminalComms.sendMessage(
+    terminal,
+    "E10S10",              // Target room
+    RESOURCE_ENERGY,       // Resource type
+    100,                   // Amount
+    "Long message..."      // Message (auto-split if needed)
+  );
 }
 ```
 
@@ -244,12 +303,23 @@ if (Game.time % 10 === 0) {
 
 Unit tests are available in `test/unit/standards/`:
 - `SS1SegmentManager.test.ts` (5 tests)
-- `SS2TerminalComms.test.ts` (11 tests)
+- `SS2TerminalComms.test.ts` (13 tests including queue management)
 
 Run tests:
 ```bash
 npm run test:unit -- --grep "SS1SegmentManager|SS2TerminalComms"
 ```
+
+### Queue System Test Coverage
+The SS2 multi-packet queue system has comprehensive test coverage:
+- Single-packet message handling
+- Multi-packet message queueing
+- Sequential packet transmission across ticks
+- Terminal cooldown respect
+- Missing terminal error handling
+- Insufficient resources retry logic
+- Critical error cleanup
+- Queue item expiration
 
 ## References
 

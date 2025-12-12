@@ -49,6 +49,20 @@ export interface SS2MessageBuffer {
   receivedAt: number; // First packet received tick
 }
 
+export interface SS2PacketQueueItem {
+  terminalId: Id<StructureTerminal>; // Terminal to send from
+  targetRoom: string; // Destination room
+  resourceType: ResourceConstant; // Resource to send
+  amount: number; // Amount per packet
+  packets: string[]; // Array of packet descriptions to send
+  nextPacketIndex: number; // Index of next packet to send
+  queuedAt: number; // Tick when item was queued
+}
+
+export interface SS2PacketQueue {
+  [key: string]: SS2PacketQueueItem; // Key format: terminalId:msgId
+}
+
 /**
  * SS3: Unified Credentials File v1.0
  * Standardized credentials storage format

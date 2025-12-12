@@ -54,6 +54,7 @@ import { runScheduledTasks } from "./utils/computationScheduler";
 import { heapCache } from "./memory/heapCache";
 import { simpleAllies } from "./standards/SimpleAlliesManager";
 import { runAllianceDiplomacy } from "./empire/allianceDiplomacy";
+import { SS2TerminalComms } from "./standards/SS2TerminalComms";
 
 // =============================================================================
 // Note: Creep and room management has been migrated to kernel processes
@@ -284,6 +285,12 @@ export function loop(): void {
   // Run spawns (high priority - always runs)
   unifiedStats.measureSubsystem("spawns", () => {
     runSpawns();
+  });
+
+  // Process SS2 Terminal Communications packet queue
+  // Sends queued multi-packet messages respecting terminal cooldowns
+  unifiedStats.measureSubsystem("ss2PacketQueue", () => {
+    SS2TerminalComms.processQueue();
   });
 
   // Process move requests - ask blocking creeps to move out of the way
