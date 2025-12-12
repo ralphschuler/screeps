@@ -510,23 +510,50 @@ export class Kernel {
     if (process.stats.runCount > 0) {
       const ticksSinceRun = Game.time - process.stats.lastRunTick;
       if (ticksSinceRun < process.interval) {
+        // Only log interval skips occasionally to avoid spam
+        if (Game.time % 100 === 0 && process.priority >= ProcessPriority.HIGH) {
+          logger.debug(
+            `Kernel: Process "${process.name}" skipped (interval: ${ticksSinceRun}/${process.interval} ticks)`,
+            { subsystem: "Kernel" }
+          );
+        }
         return false;
       }
     }
 
     // In critical bucket mode, only run CRITICAL priority processes
     if (this.bucketMode === "critical") {
+      if (process.priority < ProcessPriority.CRITICAL) {
+        if (Game.time % 50 === 0) {
+          logger.warn(
+            `Kernel: Process "${process.name}" skipped (bucket mode: critical, priority: ${process.priority})`,
+            { subsystem: "Kernel" }
+          );
+        }
+      }
       return process.priority >= ProcessPriority.CRITICAL;
     }
 
     // In low bucket mode, only run HIGH priority or higher processes
     // (This includes CRITICAL and HIGH, regardless of frequency)
     if (this.bucketMode === "low") {
+      if (process.priority < ProcessPriority.HIGH) {
+        if (Game.time % 50 === 0) {
+          logger.warn(
+            `Kernel: Process "${process.name}" skipped (bucket mode: low, priority: ${process.priority})`,
+            { subsystem: "Kernel" }
+          );
+        }
+      }
       return process.priority >= ProcessPriority.HIGH;
     }
 
     // Check if suspended
     if (process.state === "suspended") {
+      logger.warn(
+        `Kernel: Process "${process.name}" skipped (state: suspended)`,
+        { subsystem: "Kernel" }
+      );
       return false;
     }
 
@@ -605,6 +632,9 @@ export class Kernel {
 
     let processesRun = 0;
     let processesSkipped = 0;
+    let processesSkippedByCpu = 0;
+    let processesSkippedByInterval = 0;
+    let processesSkippedByBucketMode = 0;
 
     // Start from the next process after the last one executed
     // This creates a wrap-around effect: if we stopped at index 5 last tick,
@@ -617,13 +647,23 @@ export class Kernel {
       const process = this.processQueue[index];
 
       // Check if we should run this process
-      if (!this.shouldRunProcess(process)) {
+      const shouldRun = this.shouldRunProcess(process);
+      if (!shouldRun) {
         // Track processes that were skipped due to bucket/interval requirements
         // BUGFIX: Increment per-process skippedCount for Grafana tracking
         if (this.config.enableStats) {
           process.stats.skippedCount++;
         }
         processesSkipped++;
+        
+        // Track skip reasons for better diagnostics
+        if (process.stats.runCount > 0 && (Game.time - process.stats.lastRunTick) < process.interval) {
+          processesSkippedByInterval++;
+        } else if (this.bucketMode === "critical" && process.priority < ProcessPriority.CRITICAL) {
+          processesSkippedByBucketMode++;
+        } else if (this.bucketMode === "low" && process.priority < ProcessPriority.HIGH) {
+          processesSkippedByBucketMode++;
+        }
         continue;
       }
 
@@ -631,6 +671,11 @@ export class Kernel {
       if (!this.hasCpuBudget()) {
         // CPU budget exhausted - stop processing
         // Don't count remaining processes as "skipped" - they'll run next tick
+        processesSkippedByCpu = this.processQueue.length - processesRun - processesSkipped;
+        logger.warn(
+          `Kernel: CPU budget exhausted after ${processesRun} processes. ${processesSkippedByCpu} processes deferred to next tick. Used: ${Game.cpu.getUsed().toFixed(2)}/${this.getCpuLimit().toFixed(2)}`,
+          { subsystem: "Kernel" }
+        );
         break;
       }
 
@@ -646,19 +691,46 @@ export class Kernel {
 
     // Log stats periodically
     if (this.config.enableStats && Game.time % this.config.statsLogInterval === 0) {
-      this.logStats(processesRun, processesSkipped);
+      this.logStats(processesRun, processesSkipped, processesSkippedByInterval, processesSkippedByBucketMode, processesSkippedByCpu);
       eventBus.logStats();
     }
   }
 
   /**
-   * Log kernel statistics
+   * Log kernel statistics with detailed breakdown
    */
-  private logStats(processesRun: number, processesSkipped: number): void {
-    logger.debug(
-      `Kernel stats: ${processesRun} processes ran, ${processesSkipped} skipped, ${this.tickCpuUsed.toFixed(2)} CPU, mode: ${this.bucketMode}`,
+  private logStats(
+    processesRun: number, 
+    processesSkipped: number,
+    skippedByInterval: number,
+    skippedByBucketMode: number,
+    skippedByCpu: number
+  ): void {
+    const bucket = Game.cpu.bucket;
+    const bucketPercent = (bucket / 10000 * 100).toFixed(1);
+    const cpuUsed = Game.cpu.getUsed();
+    const cpuLimit = this.getCpuLimit();
+    
+    logger.info(
+      `Kernel: ${processesRun} ran, ${processesSkipped} skipped (interval: ${skippedByInterval}, bucket mode: ${skippedByBucketMode}, CPU: ${skippedByCpu}), ` +
+      `CPU: ${cpuUsed.toFixed(2)}/${cpuLimit.toFixed(2)} (${(cpuUsed/cpuLimit*100).toFixed(1)}%), bucket: ${bucket}/10000 (${bucketPercent}%), mode: ${this.bucketMode}`,
       { subsystem: "Kernel" }
     );
+    
+    // Log top skipped processes if we have a high skip count
+    if (processesSkipped > 10) {
+      const topSkipped = this.processQueue
+        .filter(p => p.stats.skippedCount > 100)
+        .sort((a, b) => b.stats.skippedCount - a.stats.skippedCount)
+        .slice(0, 5);
+      
+      if (topSkipped.length > 0) {
+        logger.warn(
+          `Kernel: Top skipped processes: ${topSkipped.map(p => `${p.name}(${p.stats.skippedCount}, interval:${p.interval})`).join(', ')}`,
+          { subsystem: "Kernel" }
+        );
+      }
+    }
   }
 
   /**

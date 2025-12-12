@@ -126,8 +126,10 @@ function findEnergy(ctx: CreepContext): CreepAction {
   if (containersWithEnergy.length > 0) {
     const distributed = findDistributedTarget(ctx.creep, containersWithEnergy, "energy_container");
     if (distributed) {
-      logger.debug(`${ctx.creep.name} (${ctx.memory.role}) selecting container ${distributed.id} at ${distributed.pos}`);
+      logger.debug(`${ctx.creep.name} (${ctx.memory.role}) selecting container ${distributed.id} at ${distributed.pos} with ${distributed.store.getUsedCapacity(RESOURCE_ENERGY)} energy`);
       return { type: "withdraw", target: distributed, resourceType: RESOURCE_ENERGY };
+    } else {
+      logger.warn(`${ctx.creep.name} (${ctx.memory.role}) found ${containersWithEnergy.length} containers but distribution returned null`);
     }
   }
 
@@ -145,9 +147,12 @@ function findEnergy(ctx: CreepContext): CreepAction {
     if (source) {
       logger.debug(`${ctx.creep.name} (${ctx.memory.role}) selecting source ${source.id} at ${source.pos}`);
       return { type: "harvest", target: source };
+    } else {
+      logger.warn(`${ctx.creep.name} (${ctx.memory.role}) found ${sources.length} sources but distribution returned null`);
     }
   }
 
+  logger.warn(`${ctx.creep.name} (${ctx.memory.role}) findEnergy returning idle - no energy sources available`);
   return { type: "idle" };
 }
 
@@ -194,9 +199,13 @@ export function larvaWorker(ctx: CreepContext): CreepAction {
   const isWorking = updateWorkingState(ctx);
 
   if (isWorking) {
+    logger.debug(`${ctx.creep.name} larvaWorker working with ${ctx.creep.store.getUsedCapacity(RESOURCE_ENERGY)} energy`);
     // Try to deliver energy
     const deliverAction = deliverEnergy(ctx);
-    if (deliverAction) return deliverAction;
+    if (deliverAction) {
+      logger.debug(`${ctx.creep.name} larvaWorker delivering via ${deliverAction.type}`);
+      return deliverAction;
+    }
 
     // Haul to storage when spawns/extensions/towers are full
     if (ctx.storage && ctx.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
@@ -220,6 +229,7 @@ export function larvaWorker(ctx: CreepContext): CreepAction {
 
     // Default priority: build then upgrade
     if (ctx.prioritizedSites.length > 0) {
+      logger.debug(`${ctx.creep.name} larvaWorker building site`);
       return { type: "build", target: ctx.prioritizedSites[0]! };
     }
 
@@ -246,9 +256,13 @@ export function harvester(ctx: CreepContext): CreepAction {
   // Assign a source if not already assigned
   if (!source) {
     source = assignSource(ctx);
+    logger.debug(`${ctx.creep.name} harvester assigned to source ${source?.id}`);
   }
 
-  if (!source) return { type: "idle" };
+  if (!source) {
+    logger.warn(`${ctx.creep.name} harvester has no source to harvest`);
+    return { type: "idle" };
+  }
 
   // Move to source if not nearby
   if (!ctx.creep.pos.isNearTo(source)) {
@@ -269,12 +283,19 @@ export function harvester(ctx: CreepContext): CreepAction {
   // Since harvesters are stationary, we cache the nearby structures for 50 ticks
   // to avoid expensive findInRange calls every tick
   const container = findNearbyContainerCached(ctx.creep);
-  if (container) return { type: "transfer", target: container, resourceType: RESOURCE_ENERGY };
+  if (container) {
+    logger.debug(`${ctx.creep.name} harvester transferring to container ${container.id}`);
+    return { type: "transfer", target: container, resourceType: RESOURCE_ENERGY };
+  }
 
   const link = findNearbyLinkCached(ctx.creep);
-  if (link) return { type: "transfer", target: link, resourceType: RESOURCE_ENERGY };
+  if (link) {
+    logger.debug(`${ctx.creep.name} harvester transferring to link ${link.id}`);
+    return { type: "transfer", target: link, resourceType: RESOURCE_ENERGY };
+  }
 
   // Drop on ground for haulers
+  logger.debug(`${ctx.creep.name} harvester dropping energy on ground`);
   return { type: "drop", resourceType: RESOURCE_ENERGY };
 }
 
@@ -479,6 +500,7 @@ function findNearbyLink(creep: Creep): StructureLink | undefined {
  */
 export function hauler(ctx: CreepContext): CreepAction {
   const isWorking = updateWorkingState(ctx);
+  logger.debug(`${ctx.creep.name} hauler state: working=${isWorking}, energy=${ctx.creep.store.getUsedCapacity(RESOURCE_ENERGY)}/${ctx.creep.store.getCapacity()}`);
 
   if (isWorking) {
     // Check what resource we're carrying
@@ -503,7 +525,10 @@ export function hauler(ctx: CreepContext): CreepAction {
     );
     if (spawns.length > 0) {
       const closest = findCachedClosest(ctx.creep, spawns, "hauler_spawn", 10);
-      if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+      if (closest) {
+        logger.debug(`${ctx.creep.name} hauler delivering to spawn ${closest.id}`);
+        return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+      }
     }
 
     // 2. Extensions second (cache 10 ticks - increased from 5)
@@ -546,9 +571,11 @@ export function hauler(ctx: CreepContext): CreepAction {
     // This prevents the deadlock where haulers with partial energy get stuck
     // in working=true state with no valid targets
     if (!ctx.isEmpty) {
+      logger.debug(`${ctx.creep.name} hauler has energy but no targets, switching to collection mode`);
       switchToCollectionMode(ctx);
       // Fall through to collection logic below
     } else {
+      logger.warn(`${ctx.creep.name} hauler idle (empty, working=true, no targets)`);
       return { type: "idle" };
     }
   }
@@ -580,7 +607,12 @@ export function hauler(ctx: CreepContext): CreepAction {
   );
   if (containersWithEnergy.length > 0) {
     const distributed = findDistributedTarget(ctx.creep, containersWithEnergy, "energy_container");
-    if (distributed) return { type: "withdraw", target: distributed, resourceType: RESOURCE_ENERGY };
+    if (distributed) {
+      logger.debug(`${ctx.creep.name} hauler withdrawing from container ${distributed.id} with ${distributed.store.getUsedCapacity(RESOURCE_ENERGY)} energy`);
+      return { type: "withdraw", target: distributed, resourceType: RESOURCE_ENERGY };
+    } else {
+      logger.debug(`${ctx.creep.name} hauler found ${containersWithEnergy.length} containers but distribution returned null`);
+    }
   }
 
   // 4. Containers with minerals (use distributed for mineral transport)
@@ -601,9 +633,11 @@ export function hauler(ctx: CreepContext): CreepAction {
 
   // 5. Storage (single target, no distribution needed)
   if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+    logger.debug(`${ctx.creep.name} hauler withdrawing from storage`);
     return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
   }
 
+  logger.warn(`${ctx.creep.name} hauler idle (no energy sources found)`);
   return { type: "idle" };
 }
 
