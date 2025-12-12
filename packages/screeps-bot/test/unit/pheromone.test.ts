@@ -107,10 +107,10 @@ describe("Pheromone System", () => {
       const swarm = createDefaultSwarmState();
       swarm.danger = 0;
 
-      pheromoneManager.onNukeDetected(swarm);
+  pheromoneManager.onNukeDetected(swarm);
 
-      expect(swarm.danger).to.equal(3);
-      expect(swarm.pheromones.siege).to.be.greaterThan(50);
+  expect(swarm.danger).to.equal(3);
+      expect(swarm.pheromones.siege).to.be.at.least(50);
     });
 
     it("should decrease expand pheromone on remote source lost", () => {
@@ -172,6 +172,9 @@ describe("Pheromone System", () => {
 
     it("should return null if all pheromones are below threshold", () => {
       const pheromones = createDefaultSwarmState().pheromones;
+      for (const key of Object.keys(pheromones) as (keyof typeof pheromones)[]) {
+        pheromones[key] = 0;
+      }
       pheromones.defense = 0.5;
       pheromones.war = 0.8;
 

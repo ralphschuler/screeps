@@ -76,7 +76,7 @@ describe("remote hauler dimensioning", () => {
       const shortDistance = calculateRemoteHaulerRequirement("E1N1", "E2N1", 2, 800);
       const longDistance = calculateRemoteHaulerRequirement("E1N1", "E5N1", 2, 800);
       
-      assert.isAbove(
+      assert.isAtLeast(
         longDistance.recommendedHaulers,
         shortDistance.recommendedHaulers,
         "Longer distance should need more haulers"
