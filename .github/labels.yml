@@ -1,0 +1,92 @@
+# Process Labels - Workflow and automation triggers
+- name: stale
+  color: FBCA04
+  description: Inactive 60+ days; auto-closes in 14 days unless reactivated.
+
+# Domain Labels - Technical area or component
+- name: automation
+  color: 0E8A16
+  description: Workflow, scripting, or infrastructure automation updates.
+- name: runtime
+  color: FBCA04
+  description: Screeps runtime behaviour, kernel, or creep orchestration changes.
+- name: documentation
+  color: 0052CC
+  description: Documentation updates in README, docs/, or developer guides.
+- name: dependencies
+  color: 0366D6
+  description: Dependency updates (often opened by Dependabot).
+- name: regression
+  color: C5DEF5
+  description: Issues that reoccurred after a previous fix.
+
+# State Labels - Issue lifecycle management
+- name: state/pending
+  color: EDEDED
+  description: Issues awaiting triage or initial review.
+- name: state/backlog
+  color: D4C5F9
+  description: Confirmed issues not yet started.
+- name: state/in-progress
+  color: FEF2C0
+  description: Issues currently being worked on.
+- name: state/blocked
+  color: F9D0C4
+  description: Issues blocked by external dependencies or other issues.
+- name: state/canceled
+  color: 6C757D
+  description: Issues that will not be addressed.
+- name: state/done
+  color: 0E8A16
+  description: Completed issues (alternative to closing).
+
+# Type Labels - Issue classification
+- name: type/bug
+  color: D73A4A
+  description: Confirmed defects that require fixes.
+- name: type/feature
+  color: A2EEEF
+  description: New functionality or capability requests.
+- name: type/enhancement
+  color: 84B6EB
+  description: Improvements to existing features or functionality.
+- name: type/chore
+  color: FEF2C0
+  description: Maintenance tasks, refactoring, or housekeeping.
+- name: type/question
+  color: D876E3
+  description: Questions or requests for clarification.
+
+# Priority Labels - Urgency and importance
+- name: priority/critical
+  color: B60205
+  description: Immediate attention required; blocking failures or production outages.
+- name: priority/high
+  color: D93F0B
+  description: High importance; address as soon as possible.
+- name: priority/medium
+  color: FBCA04
+  description: Standard priority; address in normal workflow.
+- name: priority/low
+  color: F9D0C4
+  description: Low priority; address when capacity allows.
+- name: priority/none
+  color: E4E4E4
+  description: No specific priority assigned.
+
+# Workflow Labels - Common GitHub labels
+- name: good-first-issue
+  color: 7057FF
+  description: Good for newcomers to the project.
+- name: help-wanted
+  color: 008672
+  description: Extra attention or assistance needed from the community.
+- name: wontfix
+  color: FFFFFF
+  description: This will not be worked on.
+- name: duplicate
+  color: CFD3D7
+  description: This issue or pull request already exists.
+- name: invalid
+  color: E4E669
+  description: This doesn't seem right or is not applicable.
