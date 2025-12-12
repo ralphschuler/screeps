@@ -15,6 +15,9 @@ import { evaluateUtilityBehavior } from "../../src/roles/behaviors/utility";
 import { evaluateWithStateMachine } from "../../src/roles/behaviors/stateMachine";
 import { executeAction } from "../../src/roles/behaviors/executor";
 
+// Constants from state machine module
+const STUCK_DETECTION_THRESHOLD = 5; // From stateMachine.ts
+const DEFAULT_STATE_TIMEOUT = 25; // From stateMachine.ts
 describe("Behavior System", () => {
   describe("Reliability - Edge Case Handling", () => {
     it("should handle undefined working state gracefully", () => {
@@ -77,8 +80,8 @@ describe("Behavior System", () => {
       ctx.memory.state = {
         action: "transfer",
         targetId: "invalid-id" as Id<StructureSpawn>,
-        startTick: Game.time - 5,
-        timeout: 25
+        startTick: Game.time - STUCK_DETECTION_THRESHOLD,
+        timeout: DEFAULT_STATE_TIMEOUT
       };
 
       const action = evaluateWithStateMachine(ctx, evaluateEconomyBehavior);
@@ -216,14 +219,14 @@ describe("Behavior System", () => {
       memory.lastPosX = ctx.creep.pos.x;
       memory.lastPosY = ctx.creep.pos.y;
       memory.lastPosRoom = ctx.creep.pos.roomName;
-      memory.lastPosTick = Game.time - 5; // Stuck for exactly STUCK_DETECTION_THRESHOLD (5) ticks
+      memory.lastPosTick = Game.time - STUCK_DETECTION_THRESHOLD;
       
       // Set a moveTo state (non-stationary action that should trigger stuck detection)
       ctx.memory.state = {
         action: "moveTo",
         targetId: "some-id" as Id<Source>,
-        startTick: Game.time - 4,
-        timeout: 25
+        startTick: Game.time - (STUCK_DETECTION_THRESHOLD - 1),
+        timeout: DEFAULT_STATE_TIMEOUT
       };
 
       const action = evaluateWithStateMachine(ctx, evaluateEconomyBehavior);
@@ -245,8 +248,8 @@ describe("Behavior System", () => {
       ctx.memory.state = {
         action: "harvest",
         targetId: "source-id" as Id<Source>,
-        startTick: Game.time - 50, // Exceeded default timeout of 25
-        timeout: 25
+        startTick: Game.time - (DEFAULT_STATE_TIMEOUT * 2), // Exceeded timeout
+        timeout: DEFAULT_STATE_TIMEOUT
       };
 
       const action = evaluateWithStateMachine(ctx, evaluateEconomyBehavior);

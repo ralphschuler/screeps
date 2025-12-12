@@ -212,8 +212,8 @@ function generateFallbackAction(ctx: CreepContext, strategy: FallbackStrategy): 
     case "harvest":
       // Try to find energy
       const sources = ctx.room.find(FIND_SOURCES_ACTIVE);
-      if (sources.length > 0) {
-        return { type: "harvest", target: sources[0]! };
+      if (sources.length > 0 && sources[0]) {
+        return { type: "harvest", target: sources[0] };
       }
       return { type: "idle" };
       
@@ -246,8 +246,9 @@ export function createEmergencyBehavior(ctx: CreepContext): BehaviorFunction {
       const needsEnergy = ctx.spawnStructures.filter(
         s => s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
       );
-      if (needsEnergy.length > 0) {
-        return { type: "transfer", target: needsEnergy[0]!, resourceType: RESOURCE_ENERGY };
+      const target = needsEnergy[0];
+      if (target) {
+        return { type: "transfer", target, resourceType: RESOURCE_ENERGY };
       }
     }
     
@@ -256,13 +257,15 @@ export function createEmergencyBehavior(ctx: CreepContext): BehaviorFunction {
       const droppedEnergy = ctx.droppedResources.filter(
         r => r.resourceType === RESOURCE_ENERGY && r.amount > 50
       );
-      if (droppedEnergy.length > 0) {
-        return { type: "pickup", target: droppedEnergy[0]! };
+      const droppedTarget = droppedEnergy[0];
+      if (droppedTarget) {
+        return { type: "pickup", target: droppedTarget };
       }
       
       const sources = ctx.room.find(FIND_SOURCES_ACTIVE);
-      if (sources.length > 0) {
-        return { type: "harvest", target: sources[0]! };
+      const source = sources[0];
+      if (source) {
+        return { type: "harvest", target: source };
       }
     }
     
