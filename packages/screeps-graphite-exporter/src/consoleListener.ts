@@ -1,4 +1,5 @@
 import { ScreepsAPI } from 'screeps-api';
+import { ExporterConfig } from './config';
 import { Metrics } from './metrics';
 import { Logger } from './logger';
 
@@ -49,7 +50,7 @@ function extractSubsystemFromKey(key: string): string | null {
   return null;
 }
 
-function recordConsoleLine(metrics: Metrics, logger: Logger, line: string) {
+function recordConsoleLine(metrics: Metrics, logger: Logger, line: string, shard: string) {
   // Try to parse as JSON first
   try {
     const parsed = JSON.parse(line.trim());
@@ -78,19 +79,19 @@ function recordConsoleLine(metrics: Metrics, logger: Logger, line: string) {
           }
         }
 
-        metrics.recordStat(key, range, value);
+        metrics.recordStat(key, range, value, shard);
         recordedCount++;
       }
       
       logger.info(`Recorded ${recordedCount} stats from console`, { tick: parsed.data.tick });
-      metrics.markScrapeSuccess('console', true);
+      metrics.markScrapeSuccess('console', true, shard);
       return;
     }
     
     // Legacy single-stat format: {"type": "stat", "key": "...", "value": ...}
     if (parsed.type === 'stat' && parsed.key && typeof parsed.value === 'number') {
-      metrics.recordStat(parsed.key, parsed.unit ?? 'console', parsed.value);
-      metrics.markScrapeSuccess('console', true);
+      metrics.recordStat(parsed.key, parsed.unit ?? 'console', parsed.value, shard);
+      metrics.markScrapeSuccess('console', true, shard);
       return;
     }
   } catch {
@@ -109,11 +110,11 @@ function recordConsoleLine(metrics: Metrics, logger: Logger, line: string) {
     return;
   }
 
-  metrics.recordStat(key, range ?? 'console', numeric);
-  metrics.markScrapeSuccess('console', true);
+  metrics.recordStat(key, range ?? 'console', numeric, shard);
+  metrics.markScrapeSuccess('console', true, shard);
 }
 
-export async function startConsoleListener(api: ScreepsAPI, metrics: Metrics, logger: Logger): Promise<void> {
+export async function startConsoleListener(api: ScreepsAPI, config: ExporterConfig, metrics: Metrics, logger: Logger): Promise<void> {
   const socket = api.socket;
 
   // Flush metrics every 15 seconds for console mode
@@ -127,13 +128,13 @@ export async function startConsoleListener(api: ScreepsAPI, metrics: Metrics, lo
 
   socket.on('disconnected', () => {
     logger.warn('Disconnected from Screeps console, reconnecting');
-    metrics.markScrapeSuccess('console', false);
+    metrics.markScrapeSuccess('console', false, config.shard);
     metrics.flush();
   });
 
   socket.on('error', (error: unknown) => {
     logger.error('Socket error', error);
-    metrics.markScrapeSuccess('console', false);
+    metrics.markScrapeSuccess('console', false, config.shard);
     metrics.flush();
   });
 
@@ -147,7 +148,7 @@ export async function startConsoleListener(api: ScreepsAPI, metrics: Metrics, lo
       firstMessage = false;
     }
     const lines = payload?.data?.messages?.log ?? [];
-    lines.forEach((line) => recordConsoleLine(metrics, logger, line));
+    lines.forEach((line) => recordConsoleLine(metrics, logger, line, config.shard));
     // Flush after each batch of console messages
     if (lines.length > 0) {
       metrics.flush();

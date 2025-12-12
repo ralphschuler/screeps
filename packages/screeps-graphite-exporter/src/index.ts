@@ -18,7 +18,7 @@ async function main() {
   if (config.mode === 'memory') {
     await startMemoryCollector(api, config, metrics, logger);
   } else {
-    await startConsoleListener(api, metrics, logger);
+    await startConsoleListener(api, config, metrics, logger);
   }
 }
 
