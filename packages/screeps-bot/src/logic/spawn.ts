@@ -1237,6 +1237,16 @@ export function getBootstrapRole(roomName: string, room: Room, swarm: SwarmState
   // Follow bootstrap order
   // FIXED: Use dynamic bootstrap order based on room's source count
   const bootstrapOrder = getBootstrapSpawnOrder(room);
+  
+  logger.info(`Bootstrap: Checking ${bootstrapOrder.length} roles in order`, {
+    subsystem: "spawn",
+    room: roomName,
+    meta: {
+      totalCreeps: totalCounts.size,
+      creepCounts: Array.from(totalCounts.entries())
+    }
+  });
+  
   for (const req of bootstrapOrder) {
     // Skip conditional roles if condition not met
     if (req.condition && !req.condition(room)) {
@@ -1428,9 +1438,27 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
       }
     }
 
-    const result = availableSpawn.spawnCreep(body.parts, name, {
-      memory: memory as unknown as CreepMemory
-    });
+    let result: ScreepsReturnCode;
+    try {
+      result = availableSpawn.spawnCreep(body.parts, name, {
+        memory: memory as unknown as CreepMemory
+      });
+    } catch (error) {
+      logger.error(
+        `EXCEPTION during spawn attempt for ${role}: ${error}`,
+        {
+          subsystem: "spawn",
+          room: room.name,
+          meta: {
+            error: String(error),
+            role,
+            bodyCost: body.cost,
+            bodyParts: body.parts.length
+          }
+        }
+      );
+      return;
+    }
 
     if (result === OK) {
       logger.info(
@@ -1448,6 +1476,31 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
         cost: body.cost,
         source: "SpawnManager"
       });
+    } else {
+      // Log spawn failures to diagnose issues
+      const errorName = result === ERR_NOT_ENOUGH_ENERGY ? "ERR_NOT_ENOUGH_ENERGY" :
+                        result === ERR_NAME_EXISTS ? "ERR_NAME_EXISTS" :
+                        result === ERR_BUSY ? "ERR_BUSY" :
+                        result === ERR_NOT_OWNER ? "ERR_NOT_OWNER" :
+                        result === ERR_INVALID_ARGS ? "ERR_INVALID_ARGS" :
+                        result === ERR_RCL_NOT_ENOUGH ? "ERR_RCL_NOT_ENOUGH" :
+                        `UNKNOWN(${result})`;
+      
+      logger.warn(
+        `BOOTSTRAP SPAWN FAILED: ${role} (${name}) - ${errorName}. Body: ${body.parts.length} parts, cost: ${body.cost}, available: ${energyAvailable}`,
+        {
+          subsystem: "spawn",
+          room: room.name,
+          meta: {
+            errorCode: result,
+            errorName,
+            role,
+            bodyCost: body.cost,
+            energyAvailable,
+            energyCapacity
+          }
+        }
+      );
     }
     return;
   }
@@ -1535,8 +1588,28 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
       return; // Successfully spawned, exit
     }
 
-    // If spawn failed for a reason other than insufficient energy, give up
+    // Log spawn failures for non-energy issues
     if (result !== ERR_NOT_ENOUGH_ENERGY) {
+      const errorName = result === ERR_NAME_EXISTS ? "ERR_NAME_EXISTS" :
+                        result === ERR_BUSY ? "ERR_BUSY" :
+                        result === ERR_NOT_OWNER ? "ERR_NOT_OWNER" :
+                        result === ERR_INVALID_ARGS ? "ERR_INVALID_ARGS" :
+                        result === ERR_RCL_NOT_ENOUGH ? "ERR_RCL_NOT_ENOUGH" :
+                        `UNKNOWN(${result})`;
+      
+      logger.warn(
+        `Spawn failed for ${role}: ${errorName}. Body: ${body.parts.length} parts, cost: ${body.cost}`,
+        {
+          subsystem: "spawn",
+          room: room.name,
+          meta: {
+            errorCode: result,
+            errorName,
+            role,
+            bodyCost: body.cost
+          }
+        }
+      );
       return;
     }
   }
