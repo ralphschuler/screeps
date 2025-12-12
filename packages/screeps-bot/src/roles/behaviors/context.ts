@@ -450,7 +450,6 @@ export function createContext(creep: Creep): CreepContext {
   if (memory.working === undefined) {
     memory.working = creep.store.getUsedCapacity() > 0;
     logger.debug(`${creep.name} initialized working=${memory.working} from carry state`, {
-      subsystem: "CreepContext",
       creep: creep.name
     });
   }
