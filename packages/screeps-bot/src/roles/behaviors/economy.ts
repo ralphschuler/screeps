@@ -73,6 +73,10 @@ const HARVESTER_CACHE_DURATION = 50;
  * - Empty → working=false (collect energy)
  * - Full → working=true (deliver/work)
  * - Undefined → initialize based on current energy (has energy → true, empty → false)
+ *
+ * BUGFIX: Use live store values each tick instead of ctx.isEmpty/ctx.isFull.
+ * Those helpers are captured when context is created before actions execute,
+ * which caused creeps that filled up during execution to keep working=false.
  * 
  * OPTIMIZATION: Only clear cached targets on state change, not the state machine state.
  * The state machine's own completion detection handles invalid states efficiently.
@@ -81,17 +85,21 @@ const HARVESTER_CACHE_DURATION = 50;
  * "idle time" and wasted CPU on frequent behavior re-evaluation during transitions.
  */
 function updateWorkingState(ctx: CreepContext): boolean {
+  // Use fresh store values instead of ctx.isEmpty/isFull (which are captured pre-action)
+  const isEmpty = ctx.creep.store.getUsedCapacity() === 0;
+  const isFull = ctx.creep.store.getFreeCapacity() === 0;
+
   // Initialize working state if undefined - creeps with energy should be working
   if (ctx.memory.working === undefined) {
-    ctx.memory.working = !ctx.isEmpty;
+    ctx.memory.working = !isEmpty;
   }
-  
+
   const wasWorking = ctx.memory.working;
-  
+
   // Update state based on energy levels
-  if (ctx.isEmpty) ctx.memory.working = false;
-  if (ctx.isFull) ctx.memory.working = true;
-  
+  if (isEmpty) ctx.memory.working = false;
+  if (isFull) ctx.memory.working = true;
+
   const isWorking = ctx.memory.working;
 
   // Clear cached targets when working state changes to ensure fresh target selection
@@ -195,7 +203,7 @@ function deliverEnergy(ctx: CreepContext): CreepAction | null {
   // Then towers (cache for 10 ticks - they drain slower)
   // BUGFIX: Filter by free capacity HERE for fresh state, not in room cache
   const towersWithCapacity = ctx.towers.filter(
-    t => t.store.getFreeCapacity(RESOURCE_ENERGY) > 200
+    t => t.store.getFreeCapacity(RESOURCE_ENERGY) >= 200
   );
   if (towersWithCapacity.length > 0) {
     const closest = findCachedClosest(ctx.creep, towersWithCapacity, "deliver_tower", 10);
@@ -396,7 +404,7 @@ function assignSource(ctx: CreepContext): Source | null {
  * since it's cheap (just property access) and changes frequently. This provides maximum CPU savings.
  */
 function findNearbyContainerCached(creep: Creep): StructureContainer | undefined {
-  const memory = creep.memory as unknown as SwarmCreepMemory;
+  const memory = (creep.memory as unknown as SwarmCreepMemory) ?? ({} as SwarmCreepMemory);
   
   // Check if we have a cached container ID
   if (memory.nearbyContainerId && memory.nearbyContainerTick && (Game.time - memory.nearbyContainerTick) < HARVESTER_CACHE_DURATION) {
@@ -450,7 +458,7 @@ function findNearbyContainerCached(creep: Creep): StructureContainer | undefined
  * since it's cheap (just property access) and changes frequently. This provides maximum CPU savings.
  */
 function findNearbyLinkCached(creep: Creep): StructureLink | undefined {
-  const memory = creep.memory as unknown as SwarmCreepMemory;
+  const memory = (creep.memory as unknown as SwarmCreepMemory) ?? ({} as SwarmCreepMemory);
   
   // Check if we have a cached link ID
   if (memory.nearbyLinkId && memory.nearbyLinkTick && (Game.time - memory.nearbyLinkTick) < HARVESTER_CACHE_DURATION) {
@@ -524,9 +532,10 @@ export function hauler(ctx: CreepContext): CreepAction {
     // Check what resource we're carrying
     const carriedResources = Object.keys(ctx.creep.store) as ResourceConstant[];
     const resourceType = carriedResources[0];
+    const energyCarried = ctx.creep.store.getUsedCapacity(RESOURCE_ENERGY);
     
     // If carrying minerals (not energy), deliver to terminal or storage
-    if (resourceType && resourceType !== RESOURCE_ENERGY) {
+    if (energyCarried === 0 && resourceType && resourceType !== RESOURCE_ENERGY) {
       const target = ctx.terminal ?? ctx.storage;
       if (target) return { type: "transfer", target, resourceType };
     }
@@ -562,7 +571,7 @@ export function hauler(ctx: CreepContext): CreepAction {
 
     // 3. Towers third (cache 15 ticks - increased from 10)
     const towersWithCapacity = ctx.towers.filter(
-      t => t.store.getFreeCapacity(RESOURCE_ENERGY) > 200
+      t => t.store.getFreeCapacity(RESOURCE_ENERGY) >= 200
     );
     if (towersWithCapacity.length > 0) {
       const closest = findCachedClosest(ctx.creep, towersWithCapacity, "hauler_tower", 15);
