@@ -182,16 +182,26 @@ function normalizeToResetMs(toReset: number, logger: Logger): number {
   return toReset * 1000;
 }
 
+interface ShardInfo {
+  name: string;
+  [key: string]: unknown;
+}
+
+interface ShardsResponse {
+  shards?: ShardInfo[];
+  [key: string]: unknown;
+}
+
 /**
  * Fetch available shard names from the Screeps API
  */
 async function fetchAvailableShards(api: ScreepsAPI, logger: Logger): Promise<string[]> {
   try {
-    const shardData = await api.raw.game.shards.info() as any;
+    const shardData = await api.raw.game.shards.info() as ShardsResponse;
     
     if (shardData && Array.isArray(shardData.shards)) {
       // Extract shard names from the response
-      return shardData.shards.map((shard: any) => shard.name);
+      return shardData.shards.map((shard: ShardInfo) => shard.name);
     }
     
     logger.warn('Unable to fetch available shards, will use configured shard only');
@@ -351,10 +361,13 @@ export async function startMemoryCollector(
           failedShards++;
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        // Check for rate limit error (HTTP 429)
+        const isRateLimitError = 
+          (error && typeof error === 'object' && 'status' in error && error.status === 429) ||
+          (error instanceof Error && (error.message.includes('429') || error.message.toLowerCase().includes('too many requests')));
         
-        // Handle HTTP 429 Too Many Requests
-        if (errorMessage.includes('429') || errorMessage.toLowerCase().includes('too many requests')) {
+        if (isRateLimitError) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           logger.warn('Rate limit exceeded (HTTP 429)', { error: errorMessage, shard });
           metrics.markScrapeSuccess('memory', false, shard);
           failedShards++;
