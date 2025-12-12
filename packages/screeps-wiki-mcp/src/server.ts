@@ -74,6 +74,16 @@ export function createMCPServer(config: MCPServerConfig) {
   }
 
   // Tools
+  // TODO: Missing inputSchema - Tool registration missing inputSchema property
+  // Details: The registerTool calls are missing the inputSchema property which causes validation errors
+  // Encountered: When calling screeps_wiki_search tool
+  // Suggested Fix: Add inputSchema to all registerTool calls like this:
+  // {
+  //   title: "screeps_wiki_search",
+  //   description: "Search the Screeps community wiki",
+  //   inputSchema: toolSchemas.search as unknown as any
+  // }
+  // The other MCP servers (screeps-mcp, screeps-docs-mcp, screeps-typescript-mcp) have examples of correct usage
   server.registerTool(
     "screeps_wiki_search",
     {
@@ -86,6 +96,7 @@ export function createMCPServer(config: MCPServerConfig) {
     }
   );
 
+  // Same missing inputSchema issue for all tool registrations
   server.registerTool(
     "screeps_wiki_get_article",
     {

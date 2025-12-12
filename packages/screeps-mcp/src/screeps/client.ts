@@ -318,6 +318,14 @@ export class ScreepsClient {
       throw new Error("API not initialized. Call connect() first.");
     }
 
+    // TODO: API Error - Stats endpoint returns 404
+    // Details: The memory.get("stats", shard) endpoint returns a 404 error
+    // Encountered: When calling screeps_stats tool via MCP
+    // Suggested Fix: Stats are not a standard memory path in Screeps. This method should either:
+    // 1. Query a different API endpoint if one exists for stats
+    // 2. Read from Memory.stats if users store stats there (but check if path exists first)
+    // 3. Use api.raw.user.overview() to get some stats like CPU usage
+    // 4. Remove this method if no valid stats endpoint exists
     const shard = this.config.shard ?? "shard3";
     const response = await this.api.memory.get("stats", shard);
 

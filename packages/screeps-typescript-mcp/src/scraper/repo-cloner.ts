@@ -28,6 +28,15 @@ export async function cloneTypesRepo(): Promise<string> {
   try {
     await fs.mkdir(tempDir, { recursive: true });
     
+    // TODO: SSL Certificate Error - Git clone fails with certificate verification error
+    // Details: Git clone returns "server certificate verification failed. CAfile: none CRLfile: none"
+    // Encountered: When calling any screeps-typescript-mcp tool
+    // Suggested Fix: Configure git to handle SSL certificates properly:
+    // 1. Set GIT_SSL_NO_VERIFY=1 environment variable (not recommended for production)
+    // 2. Configure git to use system CA certificates via SimpleGitOptions
+    // 3. Add git configuration option to disable SSL verification for this specific clone:
+    //    Add "-c", "http.sslVerify=false" to the clone arguments
+    // 4. Ensure the system has proper CA certificates installed
     const git: SimpleGit = simpleGit(options);
     
     // Clone with depth 1 for efficiency
