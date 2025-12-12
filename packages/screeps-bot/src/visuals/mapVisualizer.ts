@@ -12,6 +12,9 @@
  */
 
 import { memoryManager } from "../memory/manager";
+import { createLogger } from "../core/logger";
+
+const logger = createLogger("MapVisualizer");
 
 /**
  * Map visualization configuration

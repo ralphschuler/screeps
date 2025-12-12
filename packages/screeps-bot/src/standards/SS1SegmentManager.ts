@@ -48,9 +48,9 @@ export class SS1SegmentManager {
       
       // Check size limit
       if (data.length > this.MAX_SEGMENT_SIZE) {
-        console.log(
-          `[SS1] Warning: Segment data too large (${data.length} > ${this.MAX_SEGMENT_SIZE})`
-        );
+        logger.warn(`Segment data too large: ${data.length} bytes > ${this.MAX_SEGMENT_SIZE} bytes`, {
+          meta: { size: data.length, limit: this.MAX_SEGMENT_SIZE, channelCount: Object.keys(channels).length }
+        });
         return false;
       }
 
@@ -60,9 +60,14 @@ export class SS1SegmentManager {
       RawMemory.setDefaultPublicSegment(0);
       RawMemory.segments[0] = data;
 
+      logger.info(`Updated default public segment with ${Object.keys(channels).length} channels`, {
+        meta: { size: data.length, channels: Object.keys(channels) }
+      });
       return true;
     } catch (error) {
-      console.log(`[SS1] Error updating default public segment: ${error}`);
+      logger.error(`Error updating default public segment: ${String(error)}`, {
+        meta: { error: error instanceof Error ? error.message : String(error) }
+      });
       return false;
     }
   }
