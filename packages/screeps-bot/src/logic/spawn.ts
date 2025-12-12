@@ -1131,21 +1131,31 @@ export function isEmergencySpawnState(roomName: string): boolean {
  * Bootstrap spawn order - deterministic priority-based spawning.
  * This defines the order in which critical roles should be spawned during
  * recovery from a bad state, ensuring the economy can bootstrap properly.
+ * 
+ * DYNAMIC: Harvester count is determined by the number of sources in the room.
  */
-const BOOTSTRAP_SPAWN_ORDER: { role: string; minCount: number; condition?: (room: Room) => boolean }[] = [
-  // 1. Energy production first - can't do anything without energy
-  { role: "larvaWorker", minCount: 1 },
-  // 2. Static harvesters for efficient mining (1 per source is enough with bigger bodies)
-  { role: "harvester", minCount: 1 },
-  // 3. Transport to distribute energy (1 is enough with bigger bodies)
-  { role: "hauler", minCount: 1 },
-  // 4. Second harvester for second source
-  { role: "harvester", minCount: 2 },
-  // 5. Queen carrier when storage exists (manages spawns/extensions)
-  { role: "queenCarrier", minCount: 1, condition: (room) => Boolean(room.storage) },
-  // 6. Upgrader for controller progress
-  { role: "upgrader", minCount: 1 }
-];
+function getBootstrapSpawnOrder(room: Room): { role: string; minCount: number; condition?: (room: Room) => boolean }[] {
+  // Count sources in the room to determine how many harvesters we need
+  const sources = room.find(FIND_SOURCES);
+  const sourceCount = sources.length;
+  
+  return [
+    // 1. Energy production first - can't do anything without energy
+    { role: "larvaWorker", minCount: 1 },
+    // 2. Static harvesters for efficient mining (1 per source)
+    // FIXED: Make harvester count dynamic based on actual source count
+    { role: "harvester", minCount: Math.min(sourceCount, 1) },  // At least 1 harvester
+    // 3. Transport to distribute energy (1 is enough with bigger bodies)
+    { role: "hauler", minCount: 1 },
+    // 4. Additional harvesters for additional sources (if room has 2+ sources)
+    // FIXED: Only require 2nd harvester if room actually has 2+ sources
+    ...(sourceCount >= 2 ? [{ role: "harvester" as const, minCount: 2 }] : []),
+    // 5. Queen carrier when storage exists (manages spawns/extensions)
+    { role: "queenCarrier", minCount: 1, condition: (room: Room) => Boolean(room.storage) },
+    // 6. Upgrader for controller progress
+    { role: "upgrader", minCount: 1 }
+  ];
+}
 
 /**
  * Determine if the room is in "bootstrap" mode where critical roles are missing.
@@ -1181,8 +1191,9 @@ export function isBootstrapMode(roomName: string, room: Room): boolean {
   const totalCounts = countCreepsByRole(roomName, false);
   
   // Check minimum counts against bootstrap order
-  // This includes queenCarrier (when storage exists) as part of the order
-  for (const req of BOOTSTRAP_SPAWN_ORDER) {
+  // FIXED: Use dynamic bootstrap order based on room's source count
+  const bootstrapOrder = getBootstrapSpawnOrder(room);
+  for (const req of bootstrapOrder) {
     // Skip conditional roles if condition not met
     if (req.condition && !req.condition(room)) {
       continue;
@@ -1218,7 +1229,9 @@ export function getBootstrapRole(roomName: string, room: Room, swarm: SwarmState
   const totalCounts = countCreepsByRole(roomName, false);
   
   // Follow bootstrap order
-  for (const req of BOOTSTRAP_SPAWN_ORDER) {
+  // FIXED: Use dynamic bootstrap order based on room's source count
+  const bootstrapOrder = getBootstrapSpawnOrder(room);
+  for (const req of bootstrapOrder) {
     // Skip conditional roles if condition not met
     if (req.condition && !req.condition(room)) {
       continue;
