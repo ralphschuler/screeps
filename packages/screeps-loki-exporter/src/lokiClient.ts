@@ -117,9 +117,10 @@ export class LokiClient {
       }
 
       // Loki expects nanosecond timestamps
-      // We use the tick as milliseconds and multiply by 1e6 for nanoseconds
-      const timestampNs = (entry.tick * 1000 * 1e6).toString();
-      const logLine = entry.message;
+      // Use current real-world time, not the game tick
+      const timestampNs = (Date.now() * 1e6).toString();
+      // Include the game tick in the log line for correlation with game events
+      const logLine = `[tick:${entry.tick}] ${entry.message}`;
 
       streamMap.get(labelKey)!.push([timestampNs, logLine]);
     }
