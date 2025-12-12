@@ -407,7 +407,6 @@ export class ScreepsClient {
         value: response?.data
       };
     } catch (error) {
-      const shard = this.config.shard ?? "shard3";
       console.error(`❌ Failed to get memory at path: ${path} on shard: ${shard}`);
       if (error instanceof Error) {
         console.error(`   Error: ${error.message}`);
@@ -686,8 +685,8 @@ export class ScreepsClient {
       throw new Error("API not initialized. Call connect() first.");
     }
 
+    const shard = this.config.shard ?? "shard3";
     try {
-      const shard = this.config.shard ?? "shard3";
       const response = await this.api.raw.game.roomObjects(room, shard);
 
       return {
@@ -695,7 +694,6 @@ export class ScreepsClient {
         objects: response?.objects
       };
     } catch (error) {
-      const shard = this.config.shard ?? "shard3";
       console.error(`❌ Failed to get room objects for room: ${room} on shard: ${shard}`);
       if (error instanceof Error) {
         console.error(`   Error: ${error.message}`);
@@ -727,8 +725,8 @@ export class ScreepsClient {
       throw new Error("API not initialized. Call connect() first.");
     }
 
+    const shard = this.config.shard ?? "shard3";
     try {
-      const shard = this.config.shard ?? "shard3";
       const response = await this.api.raw.game.roomStatus(room, shard);
 
       return {
@@ -736,7 +734,6 @@ export class ScreepsClient {
         data: response
       };
     } catch (error) {
-      const shard = this.config.shard ?? "shard3";
       console.error(`❌ Failed to get room status for room: ${room} on shard: ${shard}`);
       if (error instanceof Error) {
         console.error(`   Error: ${error.message}`);
