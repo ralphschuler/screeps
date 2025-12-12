@@ -24,7 +24,9 @@ describe("Target Distribution System", () => {
       const targetPos = "pos" in target ? target.pos : target;
       const dx = Math.abs(this.x - targetPos.x);
       const dy = Math.abs(this.y - targetPos.y);
-      return Math.max(dx, dy); // Chebyshev distance
+      // Screeps uses Chebyshev distance (max of dx, dy) for range calculations
+      // This is simplified for testing - actual game engine uses same formula
+      return Math.max(dx, dy);
     }
   } as RoomPosition);
 

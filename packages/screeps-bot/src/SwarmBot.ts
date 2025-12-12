@@ -199,10 +199,6 @@ export function loop(): void {
     initializeSystems();
   }
 
-  // BUGFIX: Clear target assignments at start of tick
-  // This prevents creeps from selecting the same targets and blocking each other
-  clearTargetAssignments();
-
   // Sync kernel CPU configuration with runtime config
   kernel.updateFromCpuConfig(getConfig().cpu);
 
@@ -223,11 +219,12 @@ export function loop(): void {
       subsystem: "SwarmBot"
     });
     // Only run movement finalization to prevent stuck creeps
+    // Clear per-tick caches even in critical mode
+    clearTargetAssignments();
+    clearRoomCaches();
     initMovement();
     clearMoveRequests();
     finalizeMovement();
-    clearTargetAssignments();
-    clearRoomCaches();
     unifiedStats.finalizeTick();
     return;
   }
