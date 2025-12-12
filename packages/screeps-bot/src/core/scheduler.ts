@@ -9,7 +9,7 @@
  *
  * NOTE: The kernel is the primary source of truth for bucket modes.
  * The scheduler delegates to kernel for bucket mode decisions to ensure
- * consistent behavior, especially during pixel generation recovery periods.
+ * consistent behavior across all systems.
  */
 
 import { logger } from "./logger";
@@ -106,8 +106,7 @@ export class Scheduler {
 
   /**
    * Determine current bucket mode.
-   * Delegates to the kernel for consistent bucket mode decisions,
-   * especially during pixel generation recovery periods.
+   * Delegates to the kernel for consistent bucket mode decisions.
    * 
    * Note: The kernel has a more granular BucketMode ("critical" | "low" | "normal" | "high")
    * while the scheduler uses a simpler set ("low" | "normal" | "high") for backward compatibility.

@@ -4,6 +4,22 @@
 - Keep code, tests, and documentation aligned with the roadmap's swarm architecture, lifecycle stages, and design principles.
 - Update this file whenever roadmap-driven constraints change.
 
+## Code Philosophy: Required Code Only
+
+**Keep only code that is actively used and required.** When a feature is disabled or not needed:
+- **Remove it completely** - Don't just disable it with flags or comments
+- **No dead code** - Unused functions, classes, or modules should be deleted
+- **Reimplementation is acceptable** - If a feature is needed later, it can be reimplemented from scratch or from git history
+- **Simplicity over flexibility** - A smaller, focused codebase is easier to maintain and understand than one full of "just in case" code
+
+Examples:
+- ❌ Don't add config flags to disable features - remove the feature entirely
+- ❌ Don't keep "commented out" code for future reference - use git history
+- ❌ Don't implement features "just in case they're needed someday"
+- ✅ Remove unused imports, functions, and classes immediately
+- ✅ Delete entire subsystems if they're not being used
+- ✅ Trust that git history and documentation preserve removed functionality
+
 ## MCP Servers for Screeps
 
 This repository provides five MCP (Model Context Protocol) servers that you **MUST** use for fact-checking and verifying your decisions about Screeps. These servers provide authoritative information about the game API, documentation, TypeScript types, community strategies, and operational monitoring.
