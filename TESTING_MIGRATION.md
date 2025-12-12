@@ -1,5 +1,36 @@
 # Testing Migration: screepsmod-testing
 
+## ✅ Migration Status: Operational
+
+The screepsmod-testing integration test framework is now fully operational with initial test suites migrated.
+
+### Current Status
+- ✅ screepsmod-testing package built and configured
+- ✅ Integration test infrastructure created in `packages/screeps-bot/src/tests/`
+- ✅ Test loader integrated into bot's main loop
+- ✅ 5 initial test suites migrated (50+ tests)
+- ✅ Comprehensive documentation created
+- ✅ Bot builds successfully with tests
+
+### Test Suites Created
+1. **basic-game-state.test.ts** - Game state and API validation (12 tests)
+2. **spawn-system.test.ts** - Spawn management (10 tests)
+3. **creep-management.test.ts** - Creep lifecycle (17 tests)
+4. **swarm-kernel.test.ts** - Kernel process management (6 tests)
+5. **pheromone-system.test.ts** - Pheromone coordination (5 tests)
+
+### Quick Start
+```bash
+# Run integration tests with performance server
+cd packages/screeps-bot
+npm run test:integration
+
+# Or from root
+npm run test:integration
+```
+
+See `packages/screeps-bot/INTEGRATION_TEST_GUIDE.md` for complete documentation.
+
 ## Overview
 
 We've created a new modular testing framework called `screepsmod-testing` that runs tests **inside** the Screeps game server, providing full access to actual game state for comprehensive integration testing.

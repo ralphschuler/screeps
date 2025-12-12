@@ -25,6 +25,7 @@ export function loadIntegrationTests(): void {
     require('./creep-management.test');
     require('./swarm-kernel.test');
     require('./pheromone-system.test');
+    require('./stats-system.test');
 
     console.log('[Tests] Integration tests loaded successfully');
   } catch (error) {
