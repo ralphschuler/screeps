@@ -34,6 +34,20 @@ export class CoreProcessManager {
    * Generating a pixel consumes 10,000 bucket (emptying it).
    * Notifies the kernel so it knows low bucket is expected during recovery.
    * 
+   * DISABLED BY DEFAULT: Pixel generation is disabled in kernel config (pixelGenerationEnabled: false)
+   * This process will still be registered but won't actually generate pixels unless config is changed.
+   * 
+   * Rationale: Automatic pixel generation causes severe bucket instability:
+   * - Bucket fills to 10,000 -> Pixel generated -> Bucket drops to 0
+   * - Bot enters low bucket mode, filters out LOW/MEDIUM priority processes
+   * - Recovery is slow, and another pixel generates as soon as bucket refills
+   * - Creates a cycle of bucket depletion preventing normal operation
+   * 
+   * Manual pixel generation is recommended instead:
+   * - Wait for stable high bucket (>9000 for extended period)
+   * - Run: Game.cpu.generatePixel()
+   * - Monitor recovery before generating another
+   * 
    * Note: minBucket check removed - process runs regardless of bucket level.
    * The internal check for PIXEL_CPU_COST ensures pixel generation only happens at max bucket.
    */
@@ -42,6 +56,11 @@ export class CoreProcessManager {
     cpuBudget: 0.001
   })
   public generatePixel(): void {
+    // Check if pixel generation is enabled in kernel config
+    if (!kernel.getConfig().pixelGenerationEnabled) {
+      return; // Pixel generation disabled
+    }
+    
     if (Game.cpu.bucket >= PIXEL_CPU_COST) {
       const result = Game.cpu.generatePixel?.();
       if (result === OK) {

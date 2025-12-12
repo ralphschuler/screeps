@@ -179,7 +179,10 @@ const BASE_CONFIG: Omit<KernelConfig, "lowBucketThreshold" | "highBucketThreshol
   reservedCpuFraction: 0.02, // 2% of CPU limit reserved for finalization
   enableStats: true,
   statsLogInterval: 100,
-  pixelGenerationEnabled: true,
+  // DISABLED: Pixel generation causes instant bucket depletion (10000 -> 0)
+  // This makes the bot unable to recover and keeps it in low bucket mode indefinitely
+  // Users should manually generate pixels via console when they have stable high bucket
+  pixelGenerationEnabled: false,
   pixelRecoveryTicks: 100,
   budgetWarningThreshold: 1.5,
   budgetWarningInterval: 500
