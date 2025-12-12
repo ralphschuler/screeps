@@ -161,6 +161,12 @@ function createMockContext(
     prioritizedSites?: ConstructionSite[];
   } = {}
 ): CreepContext {
+  const room = createMockRoom(options.controller);
+  (creep as any).room = room;
+  if (!(creep.pos as any).getRangeTo) {
+    (creep.pos as any).getRangeTo = () => 1;
+  }
+
   const fullMemory: SwarmCreepMemory = {
     role: "larvaWorker",
     family: "economy",
@@ -171,7 +177,7 @@ function createMockContext(
 
   return {
     creep,
-    room: createMockRoom(options.controller),
+    room,
     memory: fullMemory,
     swarmState: undefined,
     squadMemory: undefined,
