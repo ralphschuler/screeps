@@ -22,10 +22,12 @@ import type {
   AttackRequest,
   PlayerRequest,
   EconRequest,
-  RoomRequest
+  RoomRequest,
+  WorkRequest
 } from "../standards/types/allianceTypes";
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
+import { terminalManager } from "../economy/terminalManager";
 
 /**
  * Player reputation tracker for diplomacy
@@ -325,6 +327,391 @@ export function reportPlayerAttack(playerName: string, roomName: string): void {
 }
 
 /**
+ * Process resource requests from allies and fulfill via terminal
+ */
+function processResourceRequests(): void {
+  const resourceRequests = simpleAllies.getResourceRequests();
+  const currentAlly = simpleAllies.getCurrentAlly();
+  
+  if (!currentAlly || resourceRequests.length === 0) {
+    return;
+  }
+
+  // Get our rooms with terminals
+  const roomsWithTerminals = Object.values(Game.rooms).filter(
+    r => r.controller?.my && r.terminal && r.terminal.my && r.terminal.isActive()
+  );
+
+  if (roomsWithTerminals.length === 0) {
+    return;
+  }
+
+  // Sort requests by priority (highest first)
+  const sortedRequests = [...resourceRequests].sort((a, b) => b.priority - a.priority);
+
+  // Process each request
+  for (const request of sortedRequests) {
+    // Only process terminal requests (we don't haul resources to ally rooms)
+    if (!request.terminal) {
+      continue;
+    }
+
+    // Find target room terminal
+    const targetRoom = Game.rooms[request.roomName];
+    if (!targetRoom || !targetRoom.terminal) {
+      logger.debug(
+        `Cannot fulfill resource request: ally room ${request.roomName} not visible or has no terminal`,
+        { subsystem: "Alliance" }
+      );
+      continue;
+    }
+
+    // Check if target room belongs to our ally
+    const targetOwner = targetRoom.controller?.owner?.username;
+    if (targetOwner !== currentAlly) {
+      logger.debug(
+        `Skipping resource request: room ${request.roomName} not owned by current ally ${currentAlly}`,
+        { subsystem: "Alliance" }
+      );
+      continue;
+    }
+
+    // Find a room that can fulfill this request
+    let fulfilled = false;
+    for (const sourceRoom of roomsWithTerminals) {
+      const sourceTerminal = sourceRoom.terminal!;
+      
+      // Check if we have enough of the resource
+      const available = sourceTerminal.store.getUsedCapacity(request.resourceType);
+      if (available < request.amount * 0.5) {
+        // Don't even try if we have less than 50% of requested amount
+        continue;
+      }
+
+      // Calculate how much we can send
+      const sendAmount = Math.min(available, request.amount);
+      
+      // Check if we can spare this resource
+      const storage = sourceRoom.storage;
+      const totalInRoom = available + (storage?.store.getUsedCapacity(request.resourceType) || 0);
+      
+      // Keep some reserve for our own use (25% or minimum 5k for energy)
+      const minReserve = request.resourceType === RESOURCE_ENERGY ? 
+        Math.max(50000, totalInRoom * 0.25) : 
+        Math.max(1000, totalInRoom * 0.25);
+      
+      if (totalInRoom - sendAmount < minReserve) {
+        logger.debug(
+          `Cannot fulfill request: insufficient ${request.resourceType} in ${sourceRoom.name} after reserve`,
+          { subsystem: "Alliance" }
+        );
+        continue;
+      }
+
+      // Check transfer cost
+      const cost = Game.market.calcTransactionCost(sendAmount, sourceRoom.name, request.roomName);
+      const costRatio = cost / sendAmount;
+      
+      // Be more generous with allies (higher cost ratio allowed than internal transfers)
+      if (costRatio > 0.2) {
+        logger.debug(
+          `Skipping resource transfer to ally: cost ratio ${costRatio.toFixed(2)} too high`,
+          { subsystem: "Alliance" }
+        );
+        continue;
+      }
+
+      // Queue the transfer with high priority
+      const success = terminalManager.requestTransfer(
+        sourceRoom.name,
+        request.roomName,
+        request.resourceType,
+        sendAmount,
+        5 // High priority for ally requests
+      );
+
+      if (success) {
+        logger.info(
+          `Queued resource transfer for ally ${currentAlly}: ${sendAmount} ${request.resourceType} from ${sourceRoom.name} to ${request.roomName}`,
+          { subsystem: "Alliance" }
+        );
+        fulfilled = true;
+        break;
+      }
+    }
+
+    if (!fulfilled) {
+      logger.debug(
+        `Could not fulfill resource request from ally ${currentAlly}: ${request.amount} ${request.resourceType} for ${request.roomName}`,
+        { subsystem: "Alliance" }
+      );
+    }
+  }
+}
+
+/**
+ * Process defense requests from allies and send military support
+ */
+function processDefenseRequests(): void {
+  const defenseRequests = simpleAllies.getDefenseRequests();
+  const currentAlly = simpleAllies.getCurrentAlly();
+  
+  if (!currentAlly || defenseRequests.length === 0) {
+    return;
+  }
+
+  // Sort by priority (highest first)
+  const sortedRequests = [...defenseRequests].sort((a, b) => b.priority - a.priority);
+
+  for (const request of sortedRequests) {
+    const targetRoom = Game.rooms[request.roomName];
+    
+    // We can only help if we can see the room
+    if (!targetRoom) {
+      logger.debug(
+        `Cannot assist with defense: ally room ${request.roomName} not visible`,
+        { subsystem: "Alliance" }
+      );
+      continue;
+    }
+
+    // Verify room belongs to our ally
+    const targetOwner = targetRoom.controller?.owner?.username;
+    if (targetOwner !== currentAlly) {
+      logger.debug(
+        `Skipping defense request: room ${request.roomName} not owned by current ally ${currentAlly}`,
+        { subsystem: "Alliance" }
+      );
+      continue;
+    }
+
+    // Check if there are actual hostiles
+    const hostiles = targetRoom.find(FIND_HOSTILE_CREEPS);
+    if (hostiles.length === 0) {
+      logger.debug(
+        `Skipping defense request: no hostiles in ${request.roomName}`,
+        { subsystem: "Alliance" }
+      );
+      continue;
+    }
+
+    // Find our nearby rooms that can help
+    const ownedRooms = Object.values(Game.rooms).filter(
+      r => r.controller?.my && r.name !== request.roomName
+    );
+
+    // Find available military units
+    let assignedCount = 0;
+    for (const sourceRoom of ownedRooms) {
+      const distance = Game.map.getRoomLinearDistance(sourceRoom.name, request.roomName);
+      
+      // Only help if room is reasonably close (max 5 rooms away)
+      if (distance > 5) {
+        continue;
+      }
+
+      // Find available defenders (not already assigned)
+      const availableDefenders = sourceRoom.find(FIND_MY_CREEPS, {
+        filter: c => {
+          const memory = c.memory as unknown as { role?: string; assistTarget?: string };
+          const role = memory.role;
+          return (role === "guard" || role === "ranger") && !memory.assistTarget;
+        }
+      });
+
+      // Assign up to 2 defenders from this room
+      const toAssign = Math.min(availableDefenders.length, 2);
+      
+      for (let i = 0; i < toAssign; i++) {
+        const defender = availableDefenders[i];
+        const memory = defender.memory as unknown as { assistTarget?: string; allyAssist?: string };
+        memory.assistTarget = request.roomName;
+        memory.allyAssist = currentAlly;
+        
+        assignedCount++;
+        logger.info(
+          `Assigned ${defender.name} from ${sourceRoom.name} to assist ally ${currentAlly} in ${request.roomName}`,
+          { subsystem: "Alliance" }
+        );
+      }
+
+      // Stop after assigning 4 total defenders
+      if (assignedCount >= 4) {
+        break;
+      }
+    }
+
+    if (assignedCount > 0) {
+      logger.info(
+        `Sent ${assignedCount} defenders to assist ally ${currentAlly} in ${request.roomName}`,
+        { subsystem: "Alliance" }
+      );
+    } else {
+      logger.debug(
+        `No available defenders to assist ally ${currentAlly} in ${request.roomName}`,
+        { subsystem: "Alliance" }
+      );
+    }
+  }
+}
+
+/**
+ * Process attack requests from allies and coordinate attacks
+ */
+function processAttackRequests(): void {
+  const attackRequests = simpleAllies.getAttackRequests();
+  const currentAlly = simpleAllies.getCurrentAlly();
+  
+  if (!currentAlly || attackRequests.length === 0) {
+    return;
+  }
+
+  // Sort by priority (highest first)
+  const sortedRequests = [...attackRequests].sort((a, b) => b.priority - a.priority);
+
+  for (const request of sortedRequests) {
+    // TODO: Implement attack coordination logic
+    // This requires integration with military planning systems
+    // For now, log the request for future implementation
+    
+    logger.info(
+      `Attack request from ally ${currentAlly} for room ${request.roomName} (priority: ${request.priority.toFixed(2)})`,
+      { subsystem: "Alliance" }
+    );
+
+    // TODO: Evaluate if we should participate in this attack
+    // - Check distance to target
+    // - Assess our military capacity
+    // - Check for conflicts with our own war plans
+    // - Coordinate rally points and timing
+    // - Assign military squads to the operation
+    
+    logger.debug(
+      `Attack coordination not yet implemented - request logged`,
+      { subsystem: "Alliance" }
+    );
+  }
+}
+
+/**
+ * Process work requests from allies and send construction/repair support
+ */
+function processWorkRequests(): void {
+  const workRequests = simpleAllies.getWorkRequests();
+  const currentAlly = simpleAllies.getCurrentAlly();
+  
+  if (!currentAlly || workRequests.length === 0) {
+    return;
+  }
+
+  // Sort by priority (highest first)
+  const sortedRequests = [...workRequests].sort((a, b) => b.priority - a.priority);
+
+  for (const request of sortedRequests) {
+    const targetRoom = Game.rooms[request.roomName];
+    
+    // We can only help if we can see the room
+    if (!targetRoom) {
+      logger.debug(
+        `Cannot assist with work: ally room ${request.roomName} not visible`,
+        { subsystem: "Alliance" }
+      );
+      continue;
+    }
+
+    // Verify room belongs to our ally
+    const targetOwner = targetRoom.controller?.owner?.username;
+    if (targetOwner !== currentAlly) {
+      logger.debug(
+        `Skipping work request: room ${request.roomName} not owned by current ally ${currentAlly}`,
+        { subsystem: "Alliance" }
+      );
+      continue;
+    }
+
+    // Check if there is work to do
+    const hasConstructionSites = request.workType === "build" && 
+      targetRoom.find(FIND_CONSTRUCTION_SITES).length > 0;
+    const hasRepairTargets = request.workType === "repair" && 
+      targetRoom.find(FIND_STRUCTURES, { 
+        filter: s => s.hits < s.hitsMax && s.structureType !== STRUCTURE_WALL 
+      }).length > 0;
+
+    if (!hasConstructionSites && !hasRepairTargets) {
+      logger.debug(
+        `Skipping work request: no ${request.workType} work in ${request.roomName}`,
+        { subsystem: "Alliance" }
+      );
+      continue;
+    }
+
+    // Find our nearby rooms that can help
+    const ownedRooms = Object.values(Game.rooms).filter(
+      r => r.controller?.my && r.name !== request.roomName
+    );
+
+    // Find available workers
+    let assignedCount = 0;
+    for (const sourceRoom of ownedRooms) {
+      const distance = Game.map.getRoomLinearDistance(sourceRoom.name, request.roomName);
+      
+      // Only help if room is reasonably close (max 4 rooms away for workers)
+      if (distance > 4) {
+        continue;
+      }
+
+      // Find available workers (larvaWorker or similar work roles, not already assigned)
+      const availableWorkers = sourceRoom.find(FIND_MY_CREEPS, {
+        filter: c => {
+          const memory = c.memory as unknown as { role?: string; assistTarget?: string };
+          const role = memory.role;
+          return (role === "larvaWorker" || role === "builder" || role === "repairer") && 
+                 !memory.assistTarget;
+        }
+      });
+
+      // Assign up to 2 workers from this room
+      const toAssign = Math.min(availableWorkers.length, 2);
+      
+      for (let i = 0; i < toAssign; i++) {
+        const worker = availableWorkers[i];
+        const memory = worker.memory as unknown as { 
+          assistTarget?: string; 
+          allyAssist?: string;
+          workType?: string;
+        };
+        memory.assistTarget = request.roomName;
+        memory.allyAssist = currentAlly;
+        memory.workType = request.workType;
+        
+        assignedCount++;
+        logger.info(
+          `Assigned ${worker.name} from ${sourceRoom.name} to assist ally ${currentAlly} with ${request.workType} in ${request.roomName}`,
+          { subsystem: "Alliance" }
+        );
+      }
+
+      // Stop after assigning 3 total workers
+      if (assignedCount >= 3) {
+        break;
+      }
+    }
+
+    if (assignedCount > 0) {
+      logger.info(
+        `Sent ${assignedCount} workers to assist ally ${currentAlly} with ${request.workType} in ${request.roomName}`,
+        { subsystem: "Alliance" }
+      );
+    } else {
+      logger.debug(
+        `No available workers to assist ally ${currentAlly} in ${request.roomName}`,
+        { subsystem: "Alliance" }
+      );
+    }
+  }
+}
+
+/**
  * Main alliance diplomacy tick
  * Call from your main loop
  */
@@ -349,13 +736,10 @@ export function runAllianceDiplomacy(): void {
 
   // Process ally requests (what allies need from us)
   processPlayerReputations();
-
-  // TODO: Implement response handlers for ally requests
-  // Issue URL: https://github.com/ralphschuler/screeps/issues/472
-  // - processResourceRequests() - fulfill resource requests via terminal
-  // - processDefenseRequests() - send military support
-  // - processAttackRequests() - coordinate attacks
-  // - processWorkRequests() - send construction/repair support
+  processResourceRequests();
+  processDefenseRequests();
+  processAttackRequests();
+  processWorkRequests();
 
   allianceMemory.lastProcessedTick = Game.time;
 }
