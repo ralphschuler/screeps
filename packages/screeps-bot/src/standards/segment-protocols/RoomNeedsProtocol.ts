@@ -6,6 +6,9 @@
 
 import { RoomNeed } from "../types";
 import { SS1SegmentManager } from "../SS1SegmentManager";
+import { createLogger } from "../../core/logger";
+
+const logger = createLogger("RoomNeedsProtocol");
 
 export class RoomNeedsProtocol {
   private static readonly PROTOCOL_NAME = "roomneeds";

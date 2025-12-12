@@ -5,6 +5,9 @@
  */
 
 import { SS2MessageBuffer, SS2TransactionMessage } from "./types";
+import { createLogger } from "../core/logger";
+
+const logger = createLogger("SS2TerminalComms");
 
 export class SS2TerminalComms {
   private static readonly MAX_DESCRIPTION_LENGTH = 100;

@@ -19,6 +19,9 @@
 
 import { SS1Api, SS1Channel, SS1DefaultPublicSegment } from "./types";
 import * as LZString from "lz-string";
+import { createLogger } from "../core/logger";
+
+const logger = createLogger("SS1SegmentManager");
 
 export class SS1SegmentManager {
   private static readonly API_VERSION = "v1.0.0";
