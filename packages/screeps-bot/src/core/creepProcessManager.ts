@@ -168,6 +168,10 @@ export class CreepProcessManager {
     const currentCreeps = new Set<string>();
     let registeredCount = 0;
     let unregisteredCount = 0;
+    let spawningCount = 0;
+    
+    // Count total creeps for visibility
+    const totalCreeps = Object.keys(Game.creeps).length;
     
     // Register all living creeps as processes
     for (const name in Game.creeps) {
@@ -175,6 +179,7 @@ export class CreepProcessManager {
       
       // Skip spawning creeps
       if (creep.spawning) {
+        spawningCount++;
         continue;
       }
       
@@ -195,11 +200,23 @@ export class CreepProcessManager {
       }
     }
 
-    // Log sync summary at INFO level for visibility
-    if (registeredCount > 0 || unregisteredCount > 0) {
+    // Enhanced logging for better visibility
+    // Log on changes OR periodically to show current state
+    const shouldLog = registeredCount > 0 || unregisteredCount > 0 || Game.time % 10 === 0;
+    
+    if (shouldLog) {
       logger.info(
-        `CreepProcessManager: Synced ${currentCreeps.size} creeps (registered: ${registeredCount}, unregistered: ${unregisteredCount})`,
-        { subsystem: "CreepProcessManager" }
+        `CreepProcessManager: ${currentCreeps.size} active, ${spawningCount} spawning, ${totalCreeps} total (registered: ${registeredCount}, unregistered: ${unregisteredCount})`,
+        { 
+          subsystem: "CreepProcessManager",
+          meta: {
+            activeCreeps: currentCreeps.size,
+            spawningCreeps: spawningCount,
+            totalCreeps,
+            registeredThisTick: registeredCount,
+            unregisteredThisTick: unregisteredCount
+          }
+        }
       );
     }
   }

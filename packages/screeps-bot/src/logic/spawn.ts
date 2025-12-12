@@ -1383,11 +1383,26 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
     const def = ROLE_DEFINITIONS[role];
     if (!def) return;
 
-    const body = getBestBody(def, effectiveCapacity);
-    if (!body) return;
-
-    // Check if we have enough energy
-    if (energyAvailable < body.cost) return;
+    // SPAWN FIX: Try optimal body first (based on capacity), then fallback to smaller body
+    // This prevents bootstrap from stalling when optimal body is too expensive
+    let body = getBestBody(def, effectiveCapacity);
+    if (body && energyAvailable >= body.cost) {
+      // Can afford optimal body, use it
+    } else {
+      // Can't afford optimal body, try smaller body based on available energy
+      body = getBestBody(def, energyAvailable);
+      if (!body) {
+        // No body configuration exists within available energy
+        logger.info(
+          `Bootstrap: No affordable body for ${role} (available: ${energyAvailable}, min needed: ${def.bodies[0]?.cost ?? "unknown"})`,
+          {
+            subsystem: "spawn",
+            room: room.name
+          }
+        );
+        return;
+      }
+    }
 
     // Spawn creep
     const name = generateCreepName(role);
@@ -1524,6 +1539,38 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
     if (result !== ERR_NOT_ENOUGH_ENERGY) {
       return;
     }
+  }
+  
+  // If we get here, we tried all spawnable roles but couldn't afford any
+  // Log this periodically for visibility
+  if (spawnableRoles.length > 0 && Game.time % 20 === 0) {
+    logger.info(
+      `No affordable spawns: ${spawnableRoles.length} roles need spawning but all too expensive. ` +
+      `Energy: ${energyAvailable}/${energyCapacity}`,
+      {
+        subsystem: "spawn",
+        room: room.name,
+        meta: {
+          topRoles: spawnableRoles.slice(0, 3).join(", "),
+          energyAvailable,
+          energyCapacity
+        }
+      }
+    );
+  } else if (spawnableRoles.length === 0 && Game.time % 100 === 0) {
+    // No roles need spawning at all - room is fully staffed
+    logger.info(
+      `No spawns needed: All roles fully staffed. Energy: ${energyAvailable}/${energyCapacity}`,
+      {
+        subsystem: "spawn",
+        room: room.name,
+        meta: {
+          energyAvailable,
+          energyCapacity,
+          activeCreeps: countCreepsByRole(room.name, true).size
+        }
+      }
+    );
   }
 }
 
