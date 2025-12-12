@@ -48,6 +48,34 @@ interface AllianceDiplomacyMemory {
 }
 
 /**
+ * Configuration constants for ally assistance
+ */
+const ALLY_ASSISTANCE_CONFIG = {
+  /** Minimum fulfillment ratio for resource requests (50%) */
+  MIN_FULFILLMENT_RATIO: 0.5,
+  /** Minimum energy reserve to keep when sending to allies */
+  MIN_ENERGY_RESERVE: 50000,
+  /** Minimum resource reserve to keep when sending to allies */
+  MIN_RESOURCE_RESERVE: 1000,
+  /** Reserve ratio - keep 25% of total resources */
+  RESERVE_RATIO: 0.25,
+  /** Maximum transfer cost ratio for ally resource transfers (20%) */
+  MAX_ALLY_COST_RATIO: 0.2,
+  /** Maximum room distance for defense assistance */
+  MAX_DEFENSE_ASSISTANCE_DISTANCE: 5,
+  /** Maximum room distance for work assistance */
+  MAX_WORK_ASSISTANCE_DISTANCE: 4,
+  /** Maximum defenders to assign per defense request */
+  MAX_DEFENDERS_PER_REQUEST: 4,
+  /** Maximum defenders to assign from each helper room */
+  MAX_DEFENDERS_PER_ROOM: 2,
+  /** Maximum workers to assign per work request */
+  MAX_WORKERS_PER_REQUEST: 3,
+  /** Maximum workers to assign from each helper room */
+  MAX_WORKERS_PER_ROOM: 2
+};
+
+/**
  * Get or initialize alliance memory
  */
 function getAllianceMemory(): AllianceDiplomacyMemory {
@@ -383,8 +411,8 @@ function processResourceRequests(): void {
       
       // Check if we have enough of the resource
       const available = sourceTerminal.store.getUsedCapacity(request.resourceType);
-      if (available < request.amount * 0.5) {
-        // Don't even try if we have less than 50% of requested amount
+      if (available < request.amount * ALLY_ASSISTANCE_CONFIG.MIN_FULFILLMENT_RATIO) {
+        // Don't even try if we have less than minimum fulfillment ratio of requested amount
         continue;
       }
 
@@ -395,10 +423,10 @@ function processResourceRequests(): void {
       const storage = sourceRoom.storage;
       const totalInRoom = available + (storage?.store.getUsedCapacity(request.resourceType) || 0);
       
-      // Keep some reserve for our own use (25% or minimum 5k for energy)
+      // Keep some reserve for our own use
       const minReserve = request.resourceType === RESOURCE_ENERGY ? 
-        Math.max(50000, totalInRoom * 0.25) : 
-        Math.max(1000, totalInRoom * 0.25);
+        Math.max(ALLY_ASSISTANCE_CONFIG.MIN_ENERGY_RESERVE, totalInRoom * ALLY_ASSISTANCE_CONFIG.RESERVE_RATIO) : 
+        Math.max(ALLY_ASSISTANCE_CONFIG.MIN_RESOURCE_RESERVE, totalInRoom * ALLY_ASSISTANCE_CONFIG.RESERVE_RATIO);
       
       if (totalInRoom - sendAmount < minReserve) {
         logger.debug(
@@ -413,7 +441,7 @@ function processResourceRequests(): void {
       const costRatio = cost / sendAmount;
       
       // Be more generous with allies (higher cost ratio allowed than internal transfers)
-      if (costRatio > 0.2) {
+      if (costRatio > ALLY_ASSISTANCE_CONFIG.MAX_ALLY_COST_RATIO) {
         logger.debug(
           `Skipping resource transfer to ally: cost ratio ${costRatio.toFixed(2)} too high`,
           { subsystem: "Alliance" }
@@ -505,8 +533,8 @@ function processDefenseRequests(): void {
     for (const sourceRoom of ownedRooms) {
       const distance = Game.map.getRoomLinearDistance(sourceRoom.name, request.roomName);
       
-      // Only help if room is reasonably close (max 5 rooms away)
-      if (distance > 5) {
+      // Only help if room is reasonably close
+      if (distance > ALLY_ASSISTANCE_CONFIG.MAX_DEFENSE_ASSISTANCE_DISTANCE) {
         continue;
       }
 
@@ -519,8 +547,8 @@ function processDefenseRequests(): void {
         }
       });
 
-      // Assign up to 2 defenders from this room
-      const toAssign = Math.min(availableDefenders.length, 2);
+      // Assign up to max defenders from this room
+      const toAssign = Math.min(availableDefenders.length, ALLY_ASSISTANCE_CONFIG.MAX_DEFENDERS_PER_ROOM);
       
       for (let i = 0; i < toAssign; i++) {
         const defender = availableDefenders[i];
@@ -535,8 +563,8 @@ function processDefenseRequests(): void {
         );
       }
 
-      // Stop after assigning 4 total defenders
-      if (assignedCount >= 4) {
+      // Stop after assigning max total defenders
+      if (assignedCount >= ALLY_ASSISTANCE_CONFIG.MAX_DEFENDERS_PER_REQUEST) {
         break;
       }
     }
@@ -655,8 +683,8 @@ function processWorkRequests(): void {
     for (const sourceRoom of ownedRooms) {
       const distance = Game.map.getRoomLinearDistance(sourceRoom.name, request.roomName);
       
-      // Only help if room is reasonably close (max 4 rooms away for workers)
-      if (distance > 4) {
+      // Only help if room is reasonably close
+      if (distance > ALLY_ASSISTANCE_CONFIG.MAX_WORK_ASSISTANCE_DISTANCE) {
         continue;
       }
 
@@ -670,8 +698,8 @@ function processWorkRequests(): void {
         }
       });
 
-      // Assign up to 2 workers from this room
-      const toAssign = Math.min(availableWorkers.length, 2);
+      // Assign up to max workers from this room
+      const toAssign = Math.min(availableWorkers.length, ALLY_ASSISTANCE_CONFIG.MAX_WORKERS_PER_ROOM);
       
       for (let i = 0; i < toAssign; i++) {
         const worker = availableWorkers[i];
@@ -691,8 +719,8 @@ function processWorkRequests(): void {
         );
       }
 
-      // Stop after assigning 3 total workers
-      if (assignedCount >= 3) {
+      // Stop after assigning max total workers
+      if (assignedCount >= ALLY_ASSISTANCE_CONFIG.MAX_WORKERS_PER_REQUEST) {
         break;
       }
     }
