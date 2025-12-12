@@ -12,6 +12,9 @@
  */
 
 import type { StructurePlacement } from "./blueprints";
+import { createLogger } from "../core/logger";
+
+const logger = createLogger("ExtensionGenerator");
 
 /**
  * Maximum number of extension positions to generate.

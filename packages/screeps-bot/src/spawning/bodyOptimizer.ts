@@ -15,6 +15,9 @@
  */
 
 import type { BodyTemplate } from "../logic/spawn";
+import { createLogger } from "../core/logger";
+
+const logger = createLogger("BodyOptimizer");
 
 /**
  * Body optimization options

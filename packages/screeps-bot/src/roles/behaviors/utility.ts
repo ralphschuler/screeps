@@ -10,6 +10,9 @@ import { findCachedClosest } from "../../utils/cachedClosest";
 import { isCreepOnRoomExit } from "../../utils/movement";
 import { safeFind } from "../../utils/safeFind";
 import type { CreepAction, CreepContext } from "./types";
+import { createLogger } from "../../core/logger";
+
+const logger = createLogger("UtilityBehaviors");
 
 // =============================================================================
 // Overmind / Intel Helpers

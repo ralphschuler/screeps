@@ -24,6 +24,9 @@ import { requestMoveToPosition } from "../../utils/trafficManager";
 import { getCollectionPoint } from "../../utils/collectionPoint";
 import { memoryManager } from "../../memory/manager";
 import { clearCache as clearAllCachedTargets } from "../../utils/cachedClosest";
+import { createLogger } from "../../core/logger";
+
+const logger = createLogger("ActionExecutor");
 
 /**
  * Path visualization colors for different action types.

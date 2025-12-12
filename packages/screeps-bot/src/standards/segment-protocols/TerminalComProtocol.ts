@@ -6,6 +6,9 @@
 
 import { TerminalRoomsList } from "../types";
 import { SS1SegmentManager } from "../SS1SegmentManager";
+import { createLogger } from "../../core/logger";
+
+const logger = createLogger("TerminalComProtocol");
 
 export class TerminalComProtocol {
   private static readonly PROTOCOL_NAME = "termcom";

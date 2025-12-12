@@ -28,6 +28,9 @@ import type {
   SimpleAlliesSegment,
   AllianceConfig
 } from "./types/allianceTypes";
+import { createLogger } from "../core/logger";
+
+const logger = createLogger("SimpleAlliesManager");
 
 /**
  * Maximum number of segments that can be open simultaneously

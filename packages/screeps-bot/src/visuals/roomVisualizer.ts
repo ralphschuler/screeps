@@ -29,6 +29,9 @@
 
 import type { PheromoneState, SwarmState } from "../memory/schemas";
 import { memoryManager } from "../memory/manager";
+import { createLogger } from "../core/logger";
+
+const logger = createLogger("RoomVisualizer");
 
 /**
  * Visualization configuration

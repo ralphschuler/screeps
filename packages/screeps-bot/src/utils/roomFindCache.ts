@@ -22,6 +22,10 @@
  * - Memory-efficient storage in global object
  */
 
+import { createLogger } from "../core/logger";
+
+const logger = createLogger("RoomFindCache");
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -205,8 +209,13 @@ export function cachedRoomFind<T>(
  */
 export function invalidateRoomCache(roomName: string): void {
   const cache = getCacheStore();
-  cache.entries.delete(roomName);
-  cache.stats.invalidations++;
+  const roomCache = cache.entries.get(roomName);
+  if (roomCache) {
+    const entriesCount = roomCache.size;
+    cache.entries.delete(roomName);
+    cache.stats.invalidations++;
+    logger.debug(`Invalidated all cache entries for room ${roomName} (${entriesCount} entries)`, roomName);
+  }
 }
 
 /**
@@ -242,6 +251,8 @@ export function invalidateStructureCache(roomName: string): void {
   const roomCache = cache.entries.get(roomName);
   if (!roomCache) return;
   
+  let invalidatedCount = 0;
+  
   // Invalidate all structure-related find types
   const structureTypes = [
     FIND_STRUCTURES,
@@ -258,8 +269,13 @@ export function invalidateStructureCache(roomName: string): void {
       if (key.startsWith(String(findType))) {
         roomCache.delete(key);
         cache.stats.invalidations++;
+        invalidatedCount++;
       }
     }
+  }
+  
+  if (invalidatedCount > 0) {
+    logger.debug(`Invalidated ${invalidatedCount} structure cache entries for room ${roomName}`, roomName);
   }
 }
 

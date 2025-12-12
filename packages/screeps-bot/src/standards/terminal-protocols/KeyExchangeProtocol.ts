@@ -7,6 +7,9 @@
 import { KeyExchangeRequest, KeyExchangeResponse } from "../types";
 import { SS2TerminalComms } from "../SS2TerminalComms";
 import { TerminalComProtocol } from "../segment-protocols/TerminalComProtocol";
+import { createLogger } from "../../core/logger";
+
+const logger = createLogger("KeyExchangeProtocol");
 
 export class KeyExchangeProtocol {
   private static readonly PROTOCOL_NAME = "key_exchange";

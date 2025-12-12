@@ -6,6 +6,9 @@
 
 import { PortalInfo } from "../types";
 import { SS1SegmentManager } from "../SS1SegmentManager";
+import { createLogger } from "../../core/logger";
+
+const logger = createLogger("PortalsProtocol");
 
 export class PortalsProtocol {
   private static readonly PROTOCOL_NAME = "portals";

@@ -6,6 +6,9 @@
 
 import { ResourceRequest, ResourceResponse } from "../types";
 import { SS2TerminalComms } from "../SS2TerminalComms";
+import { createLogger } from "../../core/logger";
+
+const logger = createLogger("ResourceRequestProtocol");
 
 export class ResourceRequestProtocol {
   private static readonly PROTOCOL_NAME = "resource_request";

@@ -5,6 +5,9 @@
  */
 
 import { SS2MessageBuffer, SS2TransactionMessage } from "./types";
+import { createLogger } from "../core/logger";
+
+const logger = createLogger("SS2TerminalComms");
 
 export class SS2TerminalComms {
   private static readonly MAX_DESCRIPTION_LENGTH = 100;
@@ -126,13 +129,26 @@ export class SS2TerminalComms {
         }
 
         if (chunks.length === buffer.finalPacket + 1) {
+          const fullMessage = chunks.join("");
           completedMessages.push({
             sender: transaction.sender.username,
-            message: chunks.join(""),
+            message: fullMessage,
           });
           this.messageBuffers.delete(bufferKey);
+          logger.info(`Received complete multi-packet message from ${transaction.sender.username}`, {
+            meta: { 
+              messageId: parsed.msgId, 
+              packets: chunks.length, 
+              totalSize: fullMessage.length,
+              sender: transaction.sender.username
+            }
+          });
         }
       }
+    }
+
+    if (completedMessages.length > 0) {
+      logger.debug(`Processed ${transactions.length} terminal transactions, completed ${completedMessages.length} messages`);
     }
 
     return completedMessages;
