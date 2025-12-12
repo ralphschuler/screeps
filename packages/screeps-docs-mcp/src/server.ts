@@ -80,23 +80,13 @@ export function createMCPServer(config: MCPServerConfig) {
     );
   }
 
-  // TODO: Missing inputSchema - Tool registrations missing inputSchema property
-  // Issue URL: https://github.com/ralphschuler/screeps/issues/480
-  // Details: All registerTool calls are missing the inputSchema property which causes validation errors
-  // Encountered: When calling any screeps-docs-mcp tool
-  // Suggested Fix: Add inputSchema to all registerTool calls like this:
-  // {
-  //   title: "screeps_docs_search",
-  //   description: "Search Screeps docs",
-  //   inputSchema: toolSchemas.search as unknown as any
-  // }
-  // See screeps-mcp/src/server.ts for correct examples
   // Tools
   server.registerTool(
     "screeps_docs_search",
     {
       title: "screeps_docs_search",
-      description: "Search Screeps docs"
+      description: "Search Screeps docs",
+      inputSchema: toolSchemas.search as unknown as any
     },
     async (args: unknown, _extra?: unknown) => {
       const validated = toolSchemas.search.parse(args);
@@ -108,12 +98,12 @@ export function createMCPServer(config: MCPServerConfig) {
     }
   );
 
-  // Same missing inputSchema issue for all tool registrations below
   server.registerTool(
     "screeps_docs_get_api",
     {
       title: "screeps_docs_get_api",
-      description: "Get API object documentation"
+      description: "Get API object documentation",
+      inputSchema: toolSchemas.getAPI as unknown as any
     },
     async (args: unknown, _extra?: unknown) => {
       const validated = toolSchemas.getAPI.parse(args);
@@ -129,7 +119,8 @@ export function createMCPServer(config: MCPServerConfig) {
     "screeps_docs_get_mechanics",
     {
       title: "screeps_docs_get_mechanics",
-      description: "Get game mechanics documentation"
+      description: "Get game mechanics documentation",
+      inputSchema: toolSchemas.getMechanics as unknown as any
     },
     async (args: unknown, _extra?: unknown) => {
       const validated = toolSchemas.getMechanics.parse(args);
@@ -145,7 +136,8 @@ export function createMCPServer(config: MCPServerConfig) {
     "screeps_docs_list_apis",
     {
       title: "screeps_docs_list_apis",
-      description: "List Screeps API objects"
+      description: "List Screeps API objects",
+      inputSchema: toolSchemas.listAPIs as unknown as any
     },
     async (_args: unknown, _extra?: unknown) => {
       const result = await handleListAPIs();
@@ -160,7 +152,8 @@ export function createMCPServer(config: MCPServerConfig) {
     "screeps_docs_list_mechanics",
     {
       title: "screeps_docs_list_mechanics",
-      description: "List Screeps mechanics topics"
+      description: "List Screeps mechanics topics",
+      inputSchema: toolSchemas.listMechanics as unknown as any
     },
     async (args: unknown, _extra?: unknown) => {
       toolSchemas.listMechanics.parse(args);

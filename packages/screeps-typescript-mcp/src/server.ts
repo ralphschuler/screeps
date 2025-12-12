@@ -80,23 +80,13 @@ export function createMCPServer(config: MCPServerConfig) {
     );
   }
 
-  // TODO: Missing inputSchema - Tool registrations missing inputSchema property
-  // Issue URL: https://github.com/ralphschuler/screeps/issues/483
-  // Details: All registerTool calls are missing the inputSchema property which causes validation errors
-  // Encountered: When calling any screeps-typescript-mcp tool
-  // Suggested Fix: Add inputSchema to all registerTool calls like this:
-  // {
-  //   title: "screeps_types_search",
-  //   description: "Search TypeScript type definitions from typed-screeps by name or keyword",
-  //   inputSchema: toolSchemas.search as unknown as any
-  // }
-  // See screeps-mcp/src/server.ts for correct examples
   // Tool: Search types
   server.registerTool(
     "screeps_types_search",
     {
       title: "screeps_types_search",
       description: "Search TypeScript type definitions from typed-screeps by name or keyword",
+      inputSchema: toolSchemas.search as unknown as any
     },
     async (args: unknown, _extra?: unknown) => {
       const validated = toolSchemas.search.parse(args);
@@ -108,13 +98,13 @@ export function createMCPServer(config: MCPServerConfig) {
     }
   );
 
-  // Same missing inputSchema issue for all tool registrations below
   // Tool: Get specific type
   server.registerTool(
     "screeps_types_get",
     {
       title: "screeps_types_get",
       description: "Get full TypeScript type definition by name",
+      inputSchema: toolSchemas.getType as unknown as any
     },
     async (args: unknown, _extra?: unknown) => {
       const validated = toolSchemas.getType.parse(args);
@@ -132,6 +122,7 @@ export function createMCPServer(config: MCPServerConfig) {
     {
       title: "screeps_types_list",
       description: "List all available TypeScript types with optional filtering",
+      inputSchema: toolSchemas.listTypes as unknown as any
     },
     async (args: unknown, _extra?: unknown) => {
       const validated = toolSchemas.listTypes.parse(args);
@@ -149,6 +140,7 @@ export function createMCPServer(config: MCPServerConfig) {
     {
       title: "screeps_types_related",
       description: "Get types related to a specific type (extended, implemented, or referenced)",
+      inputSchema: toolSchemas.getRelated as unknown as any
     },
     async (args: unknown, _extra?: unknown) => {
       const validated = toolSchemas.getRelated.parse(args);
@@ -166,6 +158,7 @@ export function createMCPServer(config: MCPServerConfig) {
     {
       title: "screeps_types_by_file",
       description: "Get all TypeScript types defined in a specific source file",
+      inputSchema: toolSchemas.getByFile as unknown as any
     },
     async (args: unknown, _extra?: unknown) => {
       const validated = toolSchemas.getByFile.parse(args);
