@@ -87,6 +87,8 @@ function startPerformanceServer() {
       },
     });
 
+    let serverReady = false;
+
     // Capture stdout and stderr
     performanceServerProcess.stdout.on('data', (data) => {
       const message = data.toString();
@@ -96,7 +98,8 @@ function startPerformanceServer() {
       }
 
       // Detect when server is ready
-      if (message.includes('Start the simulation') || message.includes('system.resumeSimulation')) {
+      if (!serverReady && (message.includes('Start the simulation') || message.includes('system.resumeSimulation'))) {
+        serverReady = true;
         log('Performance server is ready, connecting to API...');
         resolve();
       }
@@ -124,11 +127,12 @@ function startPerformanceServer() {
 
     // Give it some time to start up
     setTimeout(() => {
-      if (!apiConnected) {
-        log('Waiting for server to be ready...');
-        resolve(); // Resolve anyway and try to connect
+      if (!serverReady) {
+        log('Server startup timeout reached, attempting to connect anyway...');
+        serverReady = true; // Prevent double resolve
+        resolve();
       }
-    }, 30000); // 30 second timeout
+    }, 60000); // 60 second timeout (increased from 30)
   });
 }
 
