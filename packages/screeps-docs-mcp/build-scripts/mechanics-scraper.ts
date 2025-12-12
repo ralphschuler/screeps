@@ -2,7 +2,7 @@
  * Scraper for Screeps game mechanics documentation from GitHub repository
  */
 
-import type { MechanicsDoc, SectionDoc } from "../types.js";
+import type { MechanicsDoc, SectionDoc } from "../src/types.js";
 import { readRepoFile, listRepoFiles } from "./repo-cloner.js";
 import { extractTitle, stripMarkdown, extractSections, extractFrontMatter } from "./markdown-parser.js";
 
