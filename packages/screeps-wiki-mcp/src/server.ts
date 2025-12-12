@@ -74,22 +74,12 @@ export function createMCPServer(config: MCPServerConfig) {
   }
 
   // Tools
-  // TODO: Missing inputSchema - Tool registration missing inputSchema property
-  // Issue URL: https://github.com/ralphschuler/screeps/issues/484
-  // Details: The registerTool calls are missing the inputSchema property which causes validation errors
-  // Encountered: When calling screeps_wiki_search tool
-  // Suggested Fix: Add inputSchema to all registerTool calls like this:
-  // {
-  //   title: "screeps_wiki_search",
-  //   description: "Search the Screeps community wiki",
-  //   inputSchema: toolSchemas.search as unknown as any
-  // }
-  // The other MCP servers (screeps-mcp, screeps-docs-mcp, screeps-typescript-mcp) have examples of correct usage
   server.registerTool(
     "screeps_wiki_search",
     {
       title: "screeps_wiki_search",
-      description: "Search the Screeps community wiki"
+      description: "Search the Screeps community wiki",
+      inputSchema: toolSchemas.search as unknown as any
     },
     async (args: unknown, _extra?: unknown) => {
       const validated = toolSchemas.search.parse(args);
@@ -97,12 +87,12 @@ export function createMCPServer(config: MCPServerConfig) {
     }
   );
 
-  // Same missing inputSchema issue for all tool registrations
   server.registerTool(
     "screeps_wiki_get_article",
     {
       title: "screeps_wiki_get_article",
-      description: "Fetch a wiki article by title"
+      description: "Fetch a wiki article by title",
+      inputSchema: toolSchemas.getArticle as unknown as any
     },
     async (args: unknown, _extra?: unknown) => {
       const validated = toolSchemas.getArticle.parse(args);
@@ -114,7 +104,8 @@ export function createMCPServer(config: MCPServerConfig) {
     "screeps_wiki_list_categories",
     {
       title: "screeps_wiki_list_categories",
-      description: "List wiki categories"
+      description: "List wiki categories",
+      inputSchema: toolSchemas.listCategories as unknown as any
     },
     async (args: unknown, _extra?: unknown) => {
       const validated = toolSchemas.listCategories.parse(args);
@@ -126,7 +117,8 @@ export function createMCPServer(config: MCPServerConfig) {
     "screeps_wiki_get_table",
     {
       title: "screeps_wiki_get_table",
-      description: "Extract table data from a wiki article"
+      description: "Extract table data from a wiki article",
+      inputSchema: toolSchemas.getTable as unknown as any
     },
     async (args: unknown, _extra?: unknown) => {
       const validated = toolSchemas.getTable.parse(args);
