@@ -88,8 +88,12 @@ function getCreepProcessPriority(role: string): ProcessPriority {
 function executeCreepRole(creep: Creep): void {
   const memory = creep.memory as unknown as SwarmCreepMemory;
   
-  // Log every 10 ticks to track if creep roles are executing
-  if (Game.time % 10 === 0) {
+  // BUGFIX: Log EVERY tick during bootstrap to track creep execution
+  // This helps diagnose why creeps stop working after spawn attempts
+  const room = Game.rooms[memory.homeRoom];
+  const isBootstrap = room && isBootstrapMode(room);
+  
+  if (Game.time % 10 === 0 || isBootstrap) {
     logger.info(`Executing role for creep ${creep.name} (${memory.role})`, {
       subsystem: "CreepProcessManager",
       creep: creep.name
@@ -122,24 +126,51 @@ function executeCreepRole(creep: Creep): void {
   const roleName = memory.role;
 
   // Profile per-role CPU usage for optimization insights
-  unifiedStats.measureSubsystem(`role:${roleName}`, () => {
-    switch (family) {
-      case "economy":
-        runEconomyRole(creep);
-        break;
-      case "military":
-        runMilitaryRole(creep);
-        break;
-      case "utility":
-        runUtilityRole(creep);
-        break;
-      case "power":
-        runPowerCreepRole(creep);
-        break;
-      default:
-        runEconomyRole(creep);
-    }
-  });
+  try {
+    unifiedStats.measureSubsystem(`role:${roleName}`, () => {
+      switch (family) {
+        case "economy":
+          runEconomyRole(creep);
+          break;
+        case "military":
+          runMilitaryRole(creep);
+          break;
+        case "utility":
+          runUtilityRole(creep);
+          break;
+        case "power":
+          runPowerCreepRole(creep);
+          break;
+        default:
+          runEconomyRole(creep);
+      }
+    });
+  } catch (error) {
+    logger.error(
+      `EXCEPTION in role execution for ${creep.name} (${roleName}/${family}): ${error}`,
+      {
+        subsystem: "CreepProcessManager",
+        creep: creep.name,
+        meta: {
+          error: String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          role: roleName,
+          family,
+          pos: `${creep.pos.x},${creep.pos.y} in ${creep.room.name}`
+        }
+      }
+    );
+  }
+}
+
+// Helper to check if room is in bootstrap mode (imported from spawn logic)
+function isBootstrapMode(room: Room): boolean {
+  // Simple check - if we have very few creeps, we're probably in bootstrap
+  const creepCount = Object.values(Game.creeps).filter(c => {
+    const m = c.memory as unknown as SwarmCreepMemory;
+    return m.homeRoom === room.name;
+  }).length;
+  return creepCount < 5;
 }
 
 /**
@@ -202,7 +233,9 @@ export class CreepProcessManager {
 
     // Enhanced logging for better visibility
     // Log on changes OR periodically to show current state
-    const shouldLog = registeredCount > 0 || unregisteredCount > 0 || Game.time % 10 === 0;
+    // BUGFIX: Always log when total creeps < 5 (bootstrap mode) for debugging
+    const isBootstrapLikelyActive = totalCreeps < 5;
+    const shouldLog = registeredCount > 0 || unregisteredCount > 0 || Game.time % 10 === 0 || isBootstrapLikelyActive;
     
     if (shouldLog) {
       logger.info(
