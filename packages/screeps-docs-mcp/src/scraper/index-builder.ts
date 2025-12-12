@@ -2,10 +2,10 @@
  * Documentation index builder with caching
  */
 
+import { promises as fs } from "fs";
+import * as path from "path";
+import { fileURLToPath } from "url";
 import type { DocEntry, DocIndex, SearchResult } from "../types.js";
-import { parseAllAPIObjects } from "./api-scraper.js";
-import { parseAllMechanics } from "./mechanics-scraper.js";
-import { cloneDocsRepo, cleanupRepo } from "./repo-cloner.js";
 
 /**
  * In-memory cache for documentation index
@@ -78,7 +78,37 @@ export function configureCache(options?: { ttl?: number; maxSize?: number }) {
 }
 
 /**
+ * Load pre-built documentation index from JSON file
+ */
+async function loadPrebuiltIndex(): Promise<DocIndex> {
+  // Get the path to the pre-built index file
+  // The index is built at build time and included in the dist directory
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const indexPath = path.resolve(__dirname, "..", "docs-index.json");
+
+  try {
+    const content = await fs.readFile(indexPath, "utf-8");
+    const index = JSON.parse(content) as DocIndex;
+    
+    // Convert lastUpdated string back to Date object
+    if (index.lastUpdated) {
+      index.lastUpdated = new Date(index.lastUpdated);
+    }
+    
+    return index;
+  } catch (error) {
+    throw new Error(
+      `Failed to load pre-built documentation index. ` +
+      `The documentation may not have been built correctly. ` +
+      `Error: ${error}`
+    );
+  }
+}
+
+/**
  * Build complete documentation index
+ * Now loads from pre-built JSON instead of cloning at runtime
  */
 export async function buildIndex(useCache: boolean = true): Promise<DocIndex> {
   // Check cache first
@@ -89,35 +119,13 @@ export async function buildIndex(useCache: boolean = true): Promise<DocIndex> {
     }
   }
 
-  let repoPath: string | null = null;
-  
-  try {
-    // Clone the documentation repository
-    console.log("Cloning Screeps documentation repository...");
-    repoPath = await cloneDocsRepo();
-    console.log("Repository cloned successfully");
+  // Load from pre-built index
+  const index = await loadPrebuiltIndex();
 
-    // Parse documentation from the repository
-    const apiDocs = await parseAllAPIObjects(repoPath);
-    const mechanicsDocs = await parseAllMechanics(repoPath);
+  // Cache the result
+  cache.set(index);
 
-    const index: DocIndex = {
-      entries: [...apiDocs, ...mechanicsDocs],
-      lastUpdated: new Date(),
-      version: "1.0.0"
-    };
-
-    // Cache the result
-    cache.set(index);
-
-    return index;
-  } finally {
-    // Clean up the cloned repository
-    if (repoPath) {
-      await cleanupRepo(repoPath);
-      console.log("Repository cleaned up");
-    }
-  }
+  return index;
 }
 
 /**

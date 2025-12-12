@@ -2,7 +2,7 @@
  * Scraper for Screeps API documentation from GitHub repository
  */
 
-import type { APIDoc, PropertyDoc, MethodDoc } from "../types.js";
+import type { APIDoc, PropertyDoc, MethodDoc } from "../src/types.js";
 import { readRepoFile, listRepoFiles } from "./repo-cloner.js";
 import { 
   extractTitle, 
