@@ -140,4 +140,60 @@ describe("Logger JSON Output", () => {
     const parsed = JSON.parse(output);
     expect(parsed.level).to.equal("WARN");
   });
+
+  it("should protect reserved log fields from meta overwrite", () => {
+    (global as any).Game = { time: 12345 };
+
+    logger.info("Test message", {
+      subsystem: "TestSubsystem",
+      meta: {
+        type: "malicious",  // Should be ignored
+        level: "CRITICAL",  // Should be ignored
+        message: "evil",    // Should be ignored
+        tick: 99999,        // Should be ignored
+        customField: "ok"   // Should be included
+      }
+    });
+
+    const output = consoleLogStub.firstCall.args[0];
+    const parsed = JSON.parse(output);
+    
+    // Reserved fields should not be overwritten
+    expect(parsed.type).to.equal("log");
+    expect(parsed.level).to.equal("INFO");
+    expect(parsed.message).to.equal("Test message");
+    expect(parsed.tick).to.equal(12345);
+    
+    // Custom field should be included
+    expect(parsed.customField).to.equal("ok");
+  });
+
+  it("should protect reserved stat fields from meta overwrite", () => {
+    (global as any).Game = { time: 12345 };
+
+    logger.stat("test.metric", 100, "units", {
+      subsystem: "TestSubsystem",
+      meta: {
+        type: "malicious",   // Should be ignored
+        key: "evil.key",     // Should be ignored
+        value: 999,          // Should be ignored
+        tick: 99999,         // Should be ignored
+        unit: "bad",         // Should be ignored
+        customField: "ok"    // Should be included
+      }
+    });
+
+    const output = consoleLogStub.firstCall.args[0];
+    const parsed = JSON.parse(output);
+    
+    // Reserved fields should not be overwritten
+    expect(parsed.type).to.equal("stat");
+    expect(parsed.key).to.equal("test.metric");
+    expect(parsed.value).to.equal(100);
+    expect(parsed.tick).to.equal(12345);
+    expect(parsed.unit).to.equal("units");
+    
+    // Custom field should be included
+    expect(parsed.customField).to.equal("ok");
+  });
 });

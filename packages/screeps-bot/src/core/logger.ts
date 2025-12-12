@@ -78,6 +78,11 @@ export interface LogContext {
 export type LogType = "log" | "stat";
 
 /**
+ * Reserved log field names that cannot be overwritten by meta
+ */
+const RESERVED_LOG_FIELDS = new Set(["type", "level", "message", "tick", "subsystem", "room", "creep", "processId"]);
+
+/**
  * Format log message as single-line JSON with tick information
  */
 function formatMessage(level: string, message: string, context?: LogContext, type: LogType = "log"): string {
@@ -103,8 +108,12 @@ function formatMessage(level: string, message: string, context?: LogContext, typ
       logObject.processId = context.processId;
     }
     if (context.meta) {
-      // Flatten meta object into the log object
-      Object.assign(logObject, context.meta);
+      // Flatten meta object into the log object, but skip reserved fields
+      for (const key in context.meta) {
+        if (!RESERVED_LOG_FIELDS.has(key)) {
+          logObject[key] = context.meta[key];
+        }
+      }
     }
   }
 
@@ -176,6 +185,11 @@ export function measureCpu<T>(name: string, fn: () => T, context?: LogContext): 
 }
 
 /**
+ * Reserved stat field names that cannot be overwritten by meta
+ */
+const RESERVED_STAT_FIELDS = new Set(["type", "key", "value", "tick", "unit", "subsystem", "room"]);
+
+/**
  * Log a stat message (for metrics/stats exporters)
  * Stats are distinguished from regular logs and can be filtered by exporters
  */
@@ -200,7 +214,12 @@ export function stat(key: string, value: number, unit?: string, context?: LogCon
       statObject.room = context.room;
     }
     if (context.meta) {
-      Object.assign(statObject, context.meta);
+      // Flatten meta object into the stat object, but skip reserved fields
+      for (const key in context.meta) {
+        if (!RESERVED_STAT_FIELDS.has(key)) {
+          statObject[key] = context.meta[key];
+        }
+      }
     }
   }
   
