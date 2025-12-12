@@ -151,4 +151,111 @@ Line 4`;
       expect(result).to.equal(invalidCompressedData);
     });
   });
+
+  describe("encryption and decryption", () => {
+    it("should encrypt and decrypt simple text", () => {
+      const originalData = "Hello, World!";
+      const key = "secretKey";
+      const encrypted = SS1SegmentManager.encryptData(originalData, key);
+      const decrypted = SS1SegmentManager.decryptData(encrypted, key);
+
+      expect(decrypted).to.equal(originalData);
+      expect(encrypted).to.not.equal(originalData);
+    });
+
+    it("should encrypt and decrypt JSON data", () => {
+      const originalData = JSON.stringify({
+        rooms: ["W1N1", "W2N2", "W3N3"],
+        resources: { energy: 50000, power: 1000 },
+        timestamp: 12345678,
+      });
+      const key = "myEncryptionKey";
+      const encrypted = SS1SegmentManager.encryptData(originalData, key);
+      const decrypted = SS1SegmentManager.decryptData(encrypted, key);
+
+      expect(decrypted).to.equal(originalData);
+      expect(JSON.parse(decrypted)).to.deep.equal(JSON.parse(originalData));
+    });
+
+    it("should handle empty string", () => {
+      const originalData = "";
+      const key = "testKey";
+      const encrypted = SS1SegmentManager.encryptData(originalData, key);
+      const decrypted = SS1SegmentManager.decryptData(encrypted, key);
+
+      expect(decrypted).to.equal(originalData);
+    });
+
+    it("should handle special characters", () => {
+      const originalData = "Special: 日本語, émojis 🎉, symbols €£¥";
+      const key = "specialKey";
+      const encrypted = SS1SegmentManager.encryptData(originalData, key);
+      const decrypted = SS1SegmentManager.decryptData(encrypted, key);
+
+      expect(decrypted).to.equal(originalData);
+    });
+
+    it("should produce different ciphertext with different keys", () => {
+      const originalData = "Secret message";
+      const key1 = "key1";
+      const key2 = "key2";
+      
+      const encrypted1 = SS1SegmentManager.encryptData(originalData, key1);
+      const encrypted2 = SS1SegmentManager.encryptData(originalData, key2);
+
+      expect(encrypted1).to.not.equal(encrypted2);
+    });
+
+    it("should fail to decrypt with wrong key", () => {
+      const originalData = "Secret message";
+      const correctKey = "correctKey";
+      const wrongKey = "wrongKey";
+      
+      const encrypted = SS1SegmentManager.encryptData(originalData, correctKey);
+      const decrypted = SS1SegmentManager.decryptData(encrypted, wrongKey);
+
+      expect(decrypted).to.not.equal(originalData);
+    });
+
+    it("should handle multi-line text", () => {
+      const originalData = `Line 1
+Line 2
+Line 3
+Line 4`;
+      const key = "multilineKey";
+      const encrypted = SS1SegmentManager.encryptData(originalData, key);
+      const decrypted = SS1SegmentManager.decryptData(encrypted, key);
+
+      expect(decrypted).to.equal(originalData);
+    });
+
+    it("should return original data with empty key", () => {
+      const originalData = "Some data";
+      const encrypted = SS1SegmentManager.encryptData(originalData, "");
+      const decrypted = SS1SegmentManager.decryptData(originalData, "");
+
+      expect(encrypted).to.equal(originalData);
+      expect(decrypted).to.equal(originalData);
+    });
+
+    it("should handle long keys", () => {
+      const originalData = "Short message";
+      const longKey = "This is a very long key that is longer than the message itself";
+      
+      const encrypted = SS1SegmentManager.encryptData(originalData, longKey);
+      const decrypted = SS1SegmentManager.decryptData(encrypted, longKey);
+
+      expect(decrypted).to.equal(originalData);
+    });
+
+    it("should handle key wrapping for long data", () => {
+      const originalData = "A".repeat(1000);
+      const shortKey = "key";
+      
+      const encrypted = SS1SegmentManager.encryptData(originalData, shortKey);
+      const decrypted = SS1SegmentManager.decryptData(encrypted, shortKey);
+
+      expect(decrypted).to.equal(originalData);
+    });
+  });
 });
