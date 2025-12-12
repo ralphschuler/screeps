@@ -22,6 +22,7 @@
 import type { EvolutionStage } from "../memory/schemas";
 import { addExtensionsToBlueprint } from "./extensionGenerator";
 import { getValidRoadPositions } from "./roadNetworkPlanner";
+import { logger } from "../core/logger";
 
 /**
  * Structure placement entry
@@ -1002,8 +1003,15 @@ export function destroyMisplacedStructures(
     const result = structure.destroy();
     if (result === OK) {
       destroyed++;
-      // Log the destruction for debugging
-      console.log(`[Blueprint] Destroyed misplaced ${reason}`);
+      logger.info(`Destroyed misplaced structure: ${reason}`, {
+        subsystem: "Blueprint",
+        room: structure.room.name,
+        meta: { 
+          structureType: structure.structureType, 
+          pos: structure.pos.toString(),
+          reason 
+        }
+      });
     }
   }
   
