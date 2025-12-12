@@ -1,4 +1,4 @@
-name: MCP Docker Images
+name: Publish MCP
 
 on:
   push:
