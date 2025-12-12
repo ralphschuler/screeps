@@ -134,7 +134,7 @@ export function findCachedClosest<T extends RoomObject & _HasId>(
  * @param typeKey - The type key to clear (or undefined to clear all)
  */
 export function clearCache(creep: Creep, typeKey?: string): void {
-  const memory = creep.memory as unknown as { [key: string]: unknown };
+  const memory = (creep.memory as unknown as { [key: string]: unknown }) ?? {};
   const cacheData = memory[CACHE_KEY] as Record<string, CachedTarget> | undefined;
 
   if (!cacheData) return;

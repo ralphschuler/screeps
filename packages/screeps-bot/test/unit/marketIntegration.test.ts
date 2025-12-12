@@ -505,7 +505,7 @@ describe("Market System Integration", () => {
       // Calculate total cost including transfer
       const withTotalCost = deals.map(d => ({
         ...d,
-        totalCost: (d.price * 10000) + (d.transferCost * 0.01) // Transfer cost in energy value
+        totalCost: (d.price * 10000) + (d.transferCost * 1) // Transfer cost in energy value
       }));
 
       // Sort by total cost
@@ -604,7 +604,7 @@ describe("Market System Integration", () => {
 
       const transactions: Transaction[] = [
         { resourceType: "energy", amount: 10000, price: 0.85, timestamp: 9500, type: "buy" },
-        { resourceType: "energy", amount: 5000, price: 1.15, timestamp: 10000, type: "sell" }
+        { resourceType: "energy", amount: 10000, price: 1.15, timestamp: 10000, type: "sell" }
       ];
 
       // Calculate profit
