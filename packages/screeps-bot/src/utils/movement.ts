@@ -1071,6 +1071,18 @@ function reconcileTraffic(): void {
 
       if (result === OK) {
         occupied.add(targetKey);
+
+        // Consume cached path strings only after a successful move
+        if (isCreep(intent.creep)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const memory = intent.creep.memory as any;
+          const cachedPath = memory[MEMORY_PATH_KEY] as CachedPath | undefined;
+
+          if (cachedPath && typeof cachedPath.path === "string" && cachedPath.path.length > 0) {
+            cachedPath.path = cachedPath.path.substring(1);
+            memory[MEMORY_PATH_KEY] = cachedPath;
+          }
+        }
       }
     }
   }
@@ -1472,12 +1484,6 @@ function internalMoveTo(
         priority,
         targetPos: nextPos
       });
-    }
-
-    // Consume path string after successful move registration
-    if (shouldConsumePathString && cachedPath && pathStr !== null) {
-      cachedPath.path = pathStr.substring(1);
-      memory[MEMORY_PATH_KEY] = cachedPath;
     }
 
     // Visualize path if requested
