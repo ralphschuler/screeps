@@ -705,7 +705,8 @@ function generateCostMatrix(
   allowHostileRooms = false,
   allowSK = false,
   preferHighway = false,
-  highwayBias = 2.5
+  highwayBias = 2.5,
+  origin?: RoomPosition
 ): CostMatrix | false {
   const costs = new PathFinder.CostMatrix();
   const room = Game.rooms[roomName];
@@ -785,10 +786,12 @@ function generateCostMatrix(
   if (avoidCreeps) {
     const creeps = room.find(FIND_CREEPS);
     for (const creep of creeps) {
+      if (origin && origin.isEqualTo(creep.pos)) continue; // Don't block the moving creep
       costs.set(creep.pos.x, creep.pos.y, 255);
     }
     const powerCreeps = room.find(FIND_POWER_CREEPS);
     for (const pc of powerCreeps) {
+      if (origin && origin.isEqualTo(pc.pos)) continue; // Don't block the moving creep
       costs.set(pc.pos.x, pc.pos.y, 255);
     }
   }
@@ -877,13 +880,14 @@ function findPath(origin: RoomPosition, target: RoomPosition | MoveTarget, opts:
         return false;
       }
       return generateCostMatrix(
-        roomName, 
-        opts.avoidCreeps ?? true, 
-        roadCost, 
+        roomName,
+        opts.avoidCreeps ?? true,
+        roadCost,
         allowHostileRooms,
         allowSK,
         preferHighway,
-        highwayBias
+        highwayBias,
+        origin
       );
     }
   });
@@ -915,13 +919,14 @@ function findPath(origin: RoomPosition, target: RoomPosition | MoveTarget, opts:
             return false;
           }
           return generateCostMatrix(
-            roomName, 
-            opts.avoidCreeps ?? true, 
-            roadCost, 
+            roomName,
+            opts.avoidCreeps ?? true,
+            roadCost,
             allowHostileRooms,
             allowSK,
             preferHighway,
-            highwayBias
+            highwayBias,
+            origin
           );
         }
       });
@@ -956,13 +961,14 @@ function findFleePath(origin: RoomPosition, threats: RoomPosition[], range: numb
     flee: true,
     roomCallback: (roomName: string) => {
       return generateCostMatrix(
-        roomName, 
-        opts.avoidCreeps ?? true, 
-        roadCost, 
+        roomName,
+        opts.avoidCreeps ?? true,
+        roadCost,
         allowHostileRooms,
         allowSK,
         preferHighway,
-        highwayBias
+        highwayBias,
+        origin
       );
     }
   });
