@@ -688,6 +688,16 @@ export class ScreepsClient {
         objects: response?.objects
       };
     } catch (error) {
+      console.error(`❌ Failed to get room objects for room: ${room}`);
+      if (error instanceof Error) {
+        console.error(`   Error: ${error.message}`);
+        // Log response data if available (for API errors)
+        const apiError = error as Error & { response?: { status?: number; data?: unknown } };
+        if (apiError.response) {
+          console.error(`   Status: ${apiError.response.status}`);
+          console.error(`   Response data:`, apiError.response.data);
+        }
+      }
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error)
@@ -712,6 +722,16 @@ export class ScreepsClient {
         data: response
       };
     } catch (error) {
+      console.error(`❌ Failed to get room status for room: ${room}`);
+      if (error instanceof Error) {
+        console.error(`   Error: ${error.message}`);
+        // Log response data if available (for API errors)
+        const apiError = error as Error & { response?: { status?: number; data?: unknown } };
+        if (apiError.response) {
+          console.error(`   Status: ${apiError.response.status}`);
+          console.error(`   Response data:`, apiError.response.data);
+        }
+      }
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error)
