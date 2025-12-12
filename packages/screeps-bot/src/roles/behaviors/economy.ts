@@ -20,6 +20,7 @@
 
 import type { SwarmCreepMemory } from "../../memory/schemas";
 import { clearCacheOnStateChange, findCachedClosest } from "../../utils/cachedClosest";
+import { findDistributedTarget } from "../../utils/targetDistribution";
 import type { CreepAction, CreepContext } from "./types";
 import { getPheromones, needsBuilding, needsUpgrading } from "./pheromoneHelper";
 import { createLogger } from "../../core/logger";
@@ -96,39 +97,55 @@ function switchToCollectionMode(ctx: CreepContext): void {
 
 /**
  * Find energy to collect (common pattern for many roles).
- * Uses cached target finding to reduce CPU usage.
+ * Uses distributed target finding to prevent creeps from clustering on same container.
  *
- * OPTIMIZATION: Prioritize dropped resources and containers over room.find() calls.
+ * BUGFIX: Changed from findCachedClosest to findDistributedTarget for containers
+ * to prevent multiple creeps (larvaWorker, hauler) from selecting the same container
+ * and blocking each other. This solves the deadlock where spawning a hauler causes
+ * the larvaWorker to stop working.
+ *
+ * OPTIMIZATION: Still prioritize dropped resources and containers over room.find() calls.
  * Most rooms have containers set up, so we rarely need to fall back to harvesting.
  */
 function findEnergy(ctx: CreepContext): CreepAction {
-  // 1. Dropped resources (cache 5 ticks - they appear/disappear quickly)
+  // 1. Dropped resources (use cached - they're transient and rarely contested)
   if (ctx.droppedResources.length > 0) {
     const closest = findCachedClosest(ctx.creep, ctx.droppedResources, "energy_drop", 5);
-    if (closest) return { type: "pickup", target: closest };
+    if (closest) {
+      logger.debug(`${ctx.creep.name} (${ctx.memory.role}) selecting dropped resource at ${closest.pos}`);
+      return { type: "pickup", target: closest };
+    }
   }
 
-  // 2. Containers (cache 10 ticks - stable targets)
+  // 2. Containers (use distributed - most contested resource!)
   // BUGFIX: Filter by capacity HERE for fresh state, not in room cache
+  // BUGFIX: Use findDistributedTarget to prevent multiple creeps from selecting same container
   const containersWithEnergy = ctx.containers.filter(
     c => c.store.getUsedCapacity(RESOURCE_ENERGY) > 100
   );
   if (containersWithEnergy.length > 0) {
-    const closest = findCachedClosest(ctx.creep, containersWithEnergy, "energy_container", 10);
-    if (closest) return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
+    const distributed = findDistributedTarget(ctx.creep, containersWithEnergy, "energy_container");
+    if (distributed) {
+      logger.debug(`${ctx.creep.name} (${ctx.memory.role}) selecting container ${distributed.id} at ${distributed.pos}`);
+      return { type: "withdraw", target: distributed, resourceType: RESOURCE_ENERGY };
+    }
   }
 
-  // 3. Storage (single target, no caching needed)
+  // 3. Storage (single target, no distribution needed)
   if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+    logger.debug(`${ctx.creep.name} (${ctx.memory.role}) selecting storage at ${ctx.storage.pos}`);
     return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
   }
 
-  // 4. Harvest directly (sources don't change, cache 20 ticks)
+  // 4. Harvest directly (use distributed to prevent clustering on sources)
   // This is the most expensive option due to room.find(), but rarely used
   const sources = ctx.room.find(FIND_SOURCES_ACTIVE);
   if (sources.length > 0) {
-    const source = findCachedClosest(ctx.creep, sources, "energy_source", 20);
-    if (source) return { type: "harvest", target: source };
+    const source = findDistributedTarget(ctx.creep, sources, "energy_source");
+    if (source) {
+      logger.debug(`${ctx.creep.name} (${ctx.memory.role}) selecting source ${source.id} at ${source.pos}`);
+      return { type: "harvest", target: source };
+    }
   }
 
   return { type: "idle" };
@@ -537,14 +554,14 @@ export function hauler(ctx: CreepContext): CreepAction {
   }
 
   // Collect energy - priority order
-  // OPTIMIZATION: Increased cache times for haulers to reduce pathfinding overhead
-  // 1. Dropped resources (cache 5 ticks - increased from 3)
+  // BUGFIX: Use distributed targets for containers to prevent clustering with larvaWorkers
+  // 1. Dropped resources (use cached - transient and rarely contested)
   if (ctx.droppedResources.length > 0) {
     const closest = findCachedClosest(ctx.creep, ctx.droppedResources, "hauler_drop", 5);
     if (closest) return { type: "pickup", target: closest };
   }
 
-  // 2. Tombstones (cache 10 ticks - increased from 5)
+  // 2. Tombstones (use cached - transient targets)
   // OPTIMIZATION: Use cached tombstones from room context to avoid expensive room.find()
   // BUGFIX: Filter by capacity HERE for fresh state, not in room cache
   const tombstonesWithEnergy = ctx.tombstones.filter(
@@ -555,33 +572,34 @@ export function hauler(ctx: CreepContext): CreepAction {
     if (tombstone) return { type: "withdraw", target: tombstone, resourceType: RESOURCE_ENERGY };
   }
 
-  // 3. Containers with energy (cache 15 ticks - increased from 10)
+  // 3. Containers with energy (use distributed - most contested!)
   // BUGFIX: Filter by capacity HERE for fresh state, not in room cache
+  // BUGFIX: Use findDistributedTarget to prevent multiple haulers/larvaWorkers from same container
   const containersWithEnergy = ctx.containers.filter(
     c => c.store.getUsedCapacity(RESOURCE_ENERGY) > 100
   );
   if (containersWithEnergy.length > 0) {
-    const closest = findCachedClosest(ctx.creep, containersWithEnergy, "hauler_source", 15);
-    if (closest) return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
+    const distributed = findDistributedTarget(ctx.creep, containersWithEnergy, "energy_container");
+    if (distributed) return { type: "withdraw", target: distributed, resourceType: RESOURCE_ENERGY };
   }
 
-  // 4. Containers with minerals (for mineral transport to terminal/storage)
+  // 4. Containers with minerals (use distributed for mineral transport)
   // OPTIMIZATION: Use cached mineral containers from room context to avoid expensive room.find()
   if (ctx.mineralContainers.length > 0) {
-    const closest = findCachedClosest(ctx.creep, ctx.mineralContainers, "hauler_mineral", 15);
-    if (closest) {
+    const distributed = findDistributedTarget(ctx.creep, ctx.mineralContainers, "mineral_container");
+    if (distributed) {
       // Find first mineral type in container using Object.keys for better performance
-      const mineralType = Object.keys(closest.store).find(
-        r => r !== RESOURCE_ENERGY && closest.store.getUsedCapacity(r as ResourceConstant) > 0
+      const mineralType = Object.keys(distributed.store).find(
+        r => r !== RESOURCE_ENERGY && distributed.store.getUsedCapacity(r as ResourceConstant) > 0
       ) as ResourceConstant | undefined;
       
       if (mineralType) {
-        return { type: "withdraw", target: closest, resourceType: mineralType };
+        return { type: "withdraw", target: distributed, resourceType: mineralType };
       }
     }
   }
 
-  // 5. Storage (single target, no caching needed)
+  // 5. Storage (single target, no distribution needed)
   if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
     return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
   }

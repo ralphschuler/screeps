@@ -37,6 +37,7 @@ import { memoryManager } from "./memory/manager";
 import { clearRoomCaches } from "./roles/behaviors/context";
 import { finalizeMovement, initMovement } from "./utils/movement";
 import { clearMoveRequests, processMoveRequests } from "./utils/trafficManager";
+import { clearTargetAssignments } from "./utils/targetDistribution";
 import { kernel } from "./core/kernel";
 import { registerAllProcesses } from "./core/processRegistry";
 import { roomVisualizer } from "./visuals/roomVisualizer";
@@ -198,6 +199,10 @@ export function loop(): void {
     initializeSystems();
   }
 
+  // BUGFIX: Clear target assignments at start of tick
+  // This prevents creeps from selecting the same targets and blocking each other
+  clearTargetAssignments();
+
   // Sync kernel CPU configuration with runtime config
   kernel.updateFromCpuConfig(getConfig().cpu);
 
@@ -221,12 +226,15 @@ export function loop(): void {
     initMovement();
     clearMoveRequests();
     finalizeMovement();
+    clearTargetAssignments();
     clearRoomCaches();
     unifiedStats.finalizeTick();
     return;
   }
 
   // Clear per-tick caches at the start of each tick
+  // BUGFIX: Clear target assignments to prevent creeps from clustering on same targets
+  clearTargetAssignments();
   clearRoomCaches();
 
   // Cache owned rooms list (used frequently, expensive to compute)
