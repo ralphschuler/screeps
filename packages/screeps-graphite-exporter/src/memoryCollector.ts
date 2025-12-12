@@ -211,6 +211,8 @@ export async function startMemoryCollector(
   let timeoutHandle: NodeJS.Timeout | null = null;
   let lastRateLimitInfo: RateLimitInfo | null = null;
   let availableShards: string[] = [];
+  let lastShardFetchTime = 0;
+  const SHARD_REFETCH_INTERVAL_MS = 3600000; // Re-fetch shards every hour
 
   // Listen to rate limit events from the API
   api.on('rateLimit', (rateLimitInfo: RateLimitInfo) => {
@@ -292,15 +294,25 @@ export async function startMemoryCollector(
   };
 
   const poll = async () => {
-    // Fetch available shards if we're configured to fetch all shards and haven't fetched them yet
-    if (config.fetchAllShards && availableShards.length === 0) {
-      availableShards = await fetchAvailableShards(api, logger);
-      if (availableShards.length > 0) {
+    // Fetch available shards if we're configured to fetch all shards and:
+    // - haven't fetched them yet, OR
+    // - it's been more than an hour since the last fetch (to handle shard changes)
+    const now = Date.now();
+    if (config.fetchAllShards && (availableShards.length === 0 || now - lastShardFetchTime > SHARD_REFETCH_INTERVAL_MS)) {
+      const fetchedShards = await fetchAvailableShards(api, logger);
+      if (fetchedShards.length > 0) {
+        availableShards = fetchedShards;
+        lastShardFetchTime = now;
         logger.info(`Discovered ${availableShards.length} available shards: ${availableShards.join(', ')}`);
-      } else {
-        // Fallback to configured shard if we can't fetch available shards
+      } else if (availableShards.length === 0) {
+        // Only fallback to configured shard if we've never successfully fetched shards
         logger.warn('Failed to fetch available shards, using configured shard only');
         availableShards = [config.shard];
+        lastShardFetchTime = now;
+      } else {
+        // Keep using previously fetched shards if re-fetch fails
+        logger.warn('Failed to re-fetch available shards, using previous shard list');
+        lastShardFetchTime = now; // Still update timestamp to avoid spamming retries
       }
     }
 
@@ -312,6 +324,7 @@ export async function startMemoryCollector(
     let totalMetricsProcessed = 0;
     let successfulShards = 0;
     let failedShards = 0;
+    let rateLimitExceeded = false;
 
     for (const shard of shardsToPoll) {
       try {
@@ -343,36 +356,49 @@ export async function startMemoryCollector(
         // Handle HTTP 429 Too Many Requests
         if (errorMessage.includes('429') || errorMessage.toLowerCase().includes('too many requests')) {
           logger.warn('Rate limit exceeded (HTTP 429)', { error: errorMessage, shard });
-          
-          // If we have rate limit info, use it to calculate wait time
-          // Otherwise, use a default backoff
-          if (
-            lastRateLimitInfo &&
-            typeof lastRateLimitInfo.toReset === 'number' &&
-            !isNaN(lastRateLimitInfo.toReset) &&
-            lastRateLimitInfo.toReset > 0
-          ) {
-            const toResetMs = normalizeToResetMs(lastRateLimitInfo.toReset, logger);
-            const waitMs = toResetMs + RATE_LIMIT_BUFFER_MS;
-            logger.info(`Waiting ${Math.round(waitMs / 1000)}s for rate limit reset`, {
-              rawToResetSeconds: lastRateLimitInfo.toReset,
-              normalizedResetMs: toResetMs
-            });
-            scheduleNextPoll(waitMs);
-            metrics.markScrapeSuccess('memory', false, shard);
-            return;
-          } else {
-            // Fallback: use default backoff when rate limit info is unavailable
-            logger.info(`Using fallback backoff: ${RATE_LIMIT_FALLBACK_BACKOFF_MS}ms`);
-            scheduleNextPoll(RATE_LIMIT_FALLBACK_BACKOFF_MS);
-            metrics.markScrapeSuccess('memory', false, shard);
-            return;
-          }
+          metrics.markScrapeSuccess('memory', false, shard);
+          failedShards++;
+          rateLimitExceeded = true;
+          // Don't exit early - mark this shard as failed and continue with next shard
+          // The rate limit adjustment will be handled after processing all shards
+          continue;
         }
         
         logger.error('Failed to poll stats from Memory', { error, shard });
         metrics.markScrapeSuccess('memory', false, shard);
         failedShards++;
+      }
+    }
+
+    // Handle rate limit exceeded after processing all shards
+    if (rateLimitExceeded) {
+      // If we have rate limit info, use it to calculate wait time
+      // Otherwise, use a default backoff
+      if (
+        lastRateLimitInfo &&
+        typeof lastRateLimitInfo.toReset === 'number' &&
+        !isNaN(lastRateLimitInfo.toReset) &&
+        lastRateLimitInfo.toReset > 0
+      ) {
+        const toResetMs = normalizeToResetMs(lastRateLimitInfo.toReset, logger);
+        const waitMs = toResetMs + RATE_LIMIT_BUFFER_MS;
+        logger.info(`Rate limit exceeded for one or more shards. Waiting ${Math.round(waitMs / 1000)}s for rate limit reset`, {
+          rawToResetSeconds: lastRateLimitInfo.toReset,
+          normalizedResetMs: toResetMs
+        });
+        
+        // Flush whatever metrics we did collect before waiting
+        metrics.flush();
+        scheduleNextPoll(waitMs);
+        return;
+      } else {
+        // Fallback: use default backoff when rate limit info is unavailable
+        logger.info(`Rate limit exceeded for one or more shards. Using fallback backoff: ${RATE_LIMIT_FALLBACK_BACKOFF_MS}ms`);
+        
+        // Flush whatever metrics we did collect before waiting
+        metrics.flush();
+        scheduleNextPoll(RATE_LIMIT_FALLBACK_BACKOFF_MS);
+        return;
       }
     }
 
