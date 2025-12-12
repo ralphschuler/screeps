@@ -49,13 +49,14 @@ interface AllianceDiplomacyMemory {
  * Get or initialize alliance memory
  */
 function getAllianceMemory(): AllianceDiplomacyMemory {
-  if (!Memory.allianceDiplomacy) {
-    (Memory as any).allianceDiplomacy = {
+  const mem = Memory as { allianceDiplomacy?: AllianceDiplomacyMemory };
+  if (!mem.allianceDiplomacy) {
+    mem.allianceDiplomacy = {
       playerReputations: {},
       lastProcessedTick: 0
     };
   }
-  return (Memory as any).allianceDiplomacy;
+  return mem.allianceDiplomacy;
 }
 
 /**
@@ -176,7 +177,7 @@ function generateEconRequest(): void {
 
     // Calculate energy income from swarm metrics (rolling average of energy harvested per tick)
     const swarm = memoryManager.getSwarmState(roomName);
-    if (swarm) {
+    if (swarm && typeof swarm.metrics.energyHarvested === 'number') {
       energyIncome += swarm.metrics.energyHarvested;
     }
 
