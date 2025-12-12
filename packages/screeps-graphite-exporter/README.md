@@ -160,6 +160,16 @@ You can create dashboards in Grafana Cloud that query the Graphite data source. 
 - Room energy storage: `screeps.stats.room.*.energy.storage`
 - Subsystem CPU: `screeps.stats.profiler.subsystem.*.avg_cpu`
 
+### Filtering by Shard and Host
+
+When `EXPORTER_FETCH_ALL_SHARDS` is enabled, you can filter metrics by shard:
+- All shards: `seriesByTag('name=screeps.stats.cpu.used')`
+- Specific shard: `seriesByTag('name=screeps.stats.cpu.used', 'shard=shard0')`
+- Multiple shards: `seriesByTag('name=screeps.stats.cpu.used', 'shard=~shard[01]')`
+
+You can also filter by host if you're collecting metrics from multiple Screeps servers:
+- Specific host: `seriesByTag('name=screeps.stats.cpu.used', 'host=screeps.com')`
+
 ## Development
 
 ```bash
