@@ -29,6 +29,7 @@ export async function cloneTypesRepo(): Promise<string> {
     await fs.mkdir(tempDir, { recursive: true });
     
     // TODO: SSL Certificate Error - Git clone fails with certificate verification error
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/482
     // Details: Git clone returns "server certificate verification failed. CAfile: none CRLfile: none"
     // Encountered: When calling any screeps-typescript-mcp tool
     // Suggested Fix: Configure git to handle SSL certificates properly:

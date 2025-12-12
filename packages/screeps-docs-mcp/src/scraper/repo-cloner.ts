@@ -22,6 +22,7 @@ export async function cloneDocsRepo(): Promise<string> {
   
   try {
     // TODO: SSL Certificate Error - Git clone fails with certificate verification error
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/479
     // Details: Git clone returns "server certificate verification failed. CAfile: none CRLfile: none"
     // Encountered: When calling screeps_docs_list_apis or any screeps-docs-mcp tool
     // Suggested Fix: Configure git to handle SSL certificates properly:

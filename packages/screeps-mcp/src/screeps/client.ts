@@ -319,6 +319,7 @@ export class ScreepsClient {
     }
 
     // TODO: API Error - Stats endpoint returns 404
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/481
     // Details: The memory.get("stats", shard) endpoint returns a 404 error
     // Encountered: When calling screeps_stats tool via MCP
     // Suggested Fix: Stats are not a standard memory path in Screeps. This method should either:
