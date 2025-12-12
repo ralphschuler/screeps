@@ -1,4 +1,4 @@
-name: Publish Screeps Graphite Exporter
+name: Publish Exporter
 
 on:
   workflow_dispatch:

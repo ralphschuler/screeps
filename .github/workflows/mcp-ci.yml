@@ -1,4 +1,4 @@
-name: MCP Packages CI
+name: MCP CI
 
 on:
   pull_request:

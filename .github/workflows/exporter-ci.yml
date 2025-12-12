@@ -1,4 +1,4 @@
-name: Screeps Graphite Exporter CI
+name: Screeps Exporter CI
 
 on:
   push:
