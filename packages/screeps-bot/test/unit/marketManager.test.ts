@@ -368,7 +368,7 @@ describe("Market Manager", () => {
       const prediction = prices[2] + slope;
 
       expect(prediction).to.be.greaterThan(prices[2]);
-      expect(prediction).to.equal(1.3);
+      expect(prediction).to.be.closeTo(1.3, 0.0001);
     });
 
     it("should predict falling price", () => {
@@ -439,7 +439,7 @@ describe("Market Manager", () => {
       const profit = buyPrice - totalCost;
 
       expect(profit).to.be.greaterThan(0);
-      expect(profit).to.equal(0.3);
+      expect(profit).to.be.closeTo(0.3, 0.0001);
     });
 
     it("should reject unprofitable arbitrage", () => {

@@ -152,6 +152,13 @@ function createMockContext(
     droppedResources?: Resource[];
   } = {}
 ): CreepContext {
+  const room = createMockRoom();
+  // Attach minimal room and range helpers to creep for distributed target logic
+  (creep as any).room = room;
+  if (!(creep.pos as any).getRangeTo) {
+    (creep.pos as any).getRangeTo = () => 1;
+  }
+
   const fullMemory: SwarmCreepMemory = {
     role: "hauler",
     family: "economy",
@@ -162,7 +169,7 @@ function createMockContext(
 
   return {
     creep,
-    room: createMockRoom(),
+    room,
     memory: fullMemory,
     swarmState: undefined,
     squadMemory: undefined,

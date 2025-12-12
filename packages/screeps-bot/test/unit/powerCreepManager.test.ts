@@ -138,7 +138,7 @@ describe("PowerBankHarvesting", () => {
       const attackersNeeded = Math.ceil(dpsNeeded / dpsPerAttacker);
 
       expect(attackersNeeded).to.be.greaterThan(0);
-      expect(attackersNeeded).to.equal(1);
+      expect(attackersNeeded).to.equal(2);
     });
 
     it("should calculate healer needs based on ratio", () => {

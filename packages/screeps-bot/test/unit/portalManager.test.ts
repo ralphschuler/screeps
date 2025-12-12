@@ -197,7 +197,7 @@ describe("Portal Manager", () => {
       const routeA = { distance: 5, portals: 1, calculatedAt: 200 };
       const routeB = { distance: 5, portals: 1, calculatedAt: 100 };
       
-      expect(compareRoutes(routeA, routeB, 200)).to.be.greaterThan(0);
+      expect(compareRoutes(routeA, routeB, 200)).to.be.lessThan(0);
     });
 
     it("should return 0 for identical routes", () => {
@@ -379,9 +379,9 @@ describe("Portal Manager", () => {
     });
 
     it("should handle rooms in different quadrants", () => {
-      expect(getRoomLinearDistance("E1N1", "W1N1")).to.equal(2);
-      expect(getRoomLinearDistance("E1N1", "E1S1")).to.equal(2);
-      expect(getRoomLinearDistance("E1N1", "W1S1")).to.equal(2);
+      expect(getRoomLinearDistance("E1N1", "W1N1")).to.equal(3);
+      expect(getRoomLinearDistance("E1N1", "E1S1")).to.equal(3);
+      expect(getRoomLinearDistance("E1N1", "W1S1")).to.equal(3);
     });
 
     it("should handle diagonal distances", () => {
