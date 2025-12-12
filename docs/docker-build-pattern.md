@@ -71,8 +71,8 @@ CMD ["node", "dist/index.js"]
 FROM node:20.19-slim
 
 # Add OCI labels for GitHub Container Registry
-LABEL org.opencontainers.image.source=https://github.com/your-org/your-repo \
-      org.opencontainers.image.description="Your Package Description" \
+LABEL org.opencontainers.image.source=https://github.com/<your-org>/<your-repo> \
+      org.opencontainers.image.description="<Your Package Description>" \
       org.opencontainers.image.licenses=MIT
 
 # Install git if needed (e.g., for cloning repos at runtime)
