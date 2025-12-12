@@ -3,6 +3,9 @@ import "./visuals/roomVisualExtensions";
 import { ErrorMapper } from "utils/ErrorMapper";
 import { registerAllConsoleCommands } from "./core/consoleCommands";
 import { loop as swarmLoop } from "./SwarmBot";
+import { createLogger } from "./core/logger";
+
+const logger = createLogger("Main");
 
 declare global {
   /*
@@ -101,14 +104,25 @@ registerAllConsoleCommands();
 try {
   const { loadIntegrationTests } = require("./tests/loader");
   loadIntegrationTests();
+  logger.info("Integration tests loaded successfully");
 } catch (error) {
   // Tests not available or error loading - this is fine for production
-  console.log('[Main] Integration tests not loaded:', error);
+  logger.debug(`Integration tests not loaded: ${String(error)}`);
 }
 
 // When compiling TS to JS and bundling with rollup, the line numbers and file names in error messages change
 // This utility uses source maps to get the line numbers and file names of the original, TS source code
 export const loop = ErrorMapper.wrapLoop(() => {
-  // Run the SwarmBot main loop
-  swarmLoop();
+  try {
+    // Run the SwarmBot main loop
+    swarmLoop();
+  } catch (error) {
+    logger.error(`Critical error in main loop: ${String(error)}`, {
+      meta: {
+        stack: error instanceof Error ? error.stack : undefined,
+        tick: Game.time
+      }
+    });
+    throw error; // Re-throw to allow ErrorMapper to handle it
+  }
 });

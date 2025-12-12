@@ -12,6 +12,9 @@
  */
 
 import type { SwarmState } from "../memory/schemas";
+import { createLogger } from "../core/logger";
+
+const logger = createLogger("CollectionPoint");
 
 // =============================================================================
 // Constants
@@ -98,11 +101,13 @@ export function getCollectionPoint(room: Room, swarmState: SwarmState): RoomPosi
     swarmState.collectionPoint = { x: newPos.x, y: newPos.y };
     // Cache for fast access this tick
     collectionPointCache.set(room.name, { pos: newPos, tick: Game.time });
+    logger.info(`Calculated new collection point at ${newPos.x},${newPos.y}`, room.name);
   } else {
     // Clear invalid collection point from memory
     swarmState.collectionPoint = undefined;
     // Also clear from cache
     collectionPointCache.delete(room.name);
+    logger.warn(`Failed to calculate collection point for room`, room.name);
   }
 
   return newPos;
@@ -116,6 +121,7 @@ export function getCollectionPoint(room: Room, swarmState: SwarmState): RoomPosi
  */
 export function invalidateCollectionPoint(roomName: string): void {
   collectionPointCache.delete(roomName);
+  logger.debug(`Invalidated collection point cache for ${roomName}`, roomName);
 }
 
 // =============================================================================

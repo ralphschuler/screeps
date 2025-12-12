@@ -14,6 +14,10 @@
  * - With 100+ creeps checking body parts multiple times: ~0.5-1 CPU per tick
  */
 
+import { createLogger } from "../core/logger";
+
+const logger = createLogger("BodyPartCache");
+
 // =============================================================================
 // Types
 // =============================================================================

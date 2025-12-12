@@ -12,6 +12,9 @@
  */
 
 import type { SwarmCreepMemory } from "../memory/schemas";
+import { createLogger } from "../core/logger";
+
+const logger = createLogger("TrafficManager");
 
 // =============================================================================
 // Move Request System
@@ -54,8 +57,13 @@ function positionKey(pos: RoomPosition | { x: number; y: number; roomName: strin
  * Should be called at the beginning of the main loop.
  */
 export function clearMoveRequests(): void {
+  const requestCount = moveRequests.size;
   moveRequests.clear();
   lastMoveRequestTick = Game.time;
+  
+  if (requestCount > 0) {
+    logger.debug(`Cleared ${requestCount} move requests from previous tick`);
+  }
 }
 
 /**
@@ -102,9 +110,12 @@ export function requestMoveToPosition(creep: Creep, targetPos: RoomPosition): bo
  */
 export function processMoveRequests(): number {
   let movedCount = 0;
+  let requestsProcessed = 0;
 
   for (const [, requests] of moveRequests) {
     if (requests.length === 0) continue;
+
+    requestsProcessed += requests.length;
 
     // Sort requests by priority (highest first)
     requests.sort((a, b) => b.priority - a.priority);
@@ -130,9 +141,17 @@ export function processMoveRequests(): number {
         const result = blockingCreep.move(blockingCreep.pos.getDirectionTo(sideStep));
         if (result === OK) {
           movedCount++;
+          logger.debug(`Moved blocking creep ${blockingCreep.name} to make way for ${topRequest.requester.name}`, {
+            room: room.name,
+            meta: { blockingCreep: blockingCreep.name, requester: topRequest.requester.name }
+          });
         }
       }
     }
+  }
+
+  if (movedCount > 0) {
+    logger.info(`Processed ${requestsProcessed} move requests, moved ${movedCount} blocking creeps`);
   }
 
   return movedCount;

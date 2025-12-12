@@ -11,6 +11,9 @@
  */
 
 import type { BodyTemplate } from "../logic/spawn";
+import { createLogger } from "../core/logger";
+
+const logger = createLogger("CarrierDimensioning");
 
 /**
  * Calculate optimal carrier size for a route

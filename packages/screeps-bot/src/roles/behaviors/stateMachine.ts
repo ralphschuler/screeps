@@ -38,6 +38,9 @@ import type { CreepAction, CreepContext, StuckTrackingMemory } from "./types";
 import type { CreepState } from "../../memory/schemas";
 import { clearMovementCache } from "../../utils/movement";
 import { clearCache as clearAllCachedTargets } from "../../utils/cachedClosest";
+import { createLogger } from "../../core/logger";
+
+const logger = createLogger("StateMachine");
 
 /**
  * Default timeout for states (in ticks)

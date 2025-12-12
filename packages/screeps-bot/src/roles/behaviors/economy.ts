@@ -22,6 +22,9 @@ import type { SwarmCreepMemory } from "../../memory/schemas";
 import { clearCacheOnStateChange, findCachedClosest } from "../../utils/cachedClosest";
 import type { CreepAction, CreepContext } from "./types";
 import { getPheromones, needsBuilding, needsUpgrading } from "./pheromoneHelper";
+import { createLogger } from "../../core/logger";
+
+const logger = createLogger("EconomyBehaviors");
 
 // =============================================================================
 // Type Guards

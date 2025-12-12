@@ -10,6 +10,9 @@ import { findCachedClosest } from "../../utils/cachedClosest";
 import { safeFindClosestByRange } from "../../utils/safeFind";
 import { registerMilitaryCacheClear } from "./context";
 import type { CreepAction, CreepContext } from "./types";
+import { createLogger } from "../../core/logger";
+
+const logger = createLogger("MilitaryBehaviors");
 
 // =============================================================================
 // Patrol System

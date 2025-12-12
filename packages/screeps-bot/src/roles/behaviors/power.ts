@@ -9,6 +9,9 @@ import type { SwarmCreepMemory } from "../../memory/schemas";
 import { moveCreep, moveToRoom } from "../../utils/movement";
 import { safeFind } from "../../utils/safeFind";
 import type { CreepAction, CreepContext } from "./types";
+import { createLogger } from "../../core/logger";
+
+const logger = createLogger("PowerBehaviors");
 
 // =============================================================================
 // Regular Creep Power Roles

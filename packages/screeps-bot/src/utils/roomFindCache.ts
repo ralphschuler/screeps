@@ -22,6 +22,10 @@
  * - Memory-efficient storage in global object
  */
 
+import { createLogger } from "../core/logger";
+
+const logger = createLogger("RoomFindCache");
+
 // =============================================================================
 // Types
 // =============================================================================

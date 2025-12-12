@@ -32,6 +32,10 @@
  * Separate cache methods for different object types (getStorage, getSource, etc.)
  */
 
+import { createLogger } from "../core/logger";
+
+const logger = createLogger("ObjectCache");
+
 // =============================================================================
 // Types
 // =============================================================================

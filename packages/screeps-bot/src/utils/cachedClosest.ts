@@ -16,6 +16,10 @@
  *   passing filtered arrays, not FIND_* constants that could have engine issues
  */
 
+import { createLogger } from "../core/logger";
+
+const logger = createLogger("CachedClosest");
+
 // =============================================================================
 // Types
 // =============================================================================
