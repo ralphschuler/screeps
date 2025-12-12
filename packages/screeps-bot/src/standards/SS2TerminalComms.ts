@@ -13,6 +13,7 @@ export class SS2TerminalComms {
   private static readonly MAX_DESCRIPTION_LENGTH = 100;
   private static readonly MESSAGE_CHUNK_SIZE = 91; // Max 100 - 9 bytes header
   private static readonly MESSAGE_TIMEOUT = 1000; // Ticks before incomplete message expires
+  private static readonly QUEUE_TIMEOUT = 1000; // Ticks before queued packets expire
   private static readonly MESSAGE_ID_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
   
   private static messageBuffers: Map<string, SS2MessageBuffer> = new Map();
@@ -206,14 +207,190 @@ export class SS2TerminalComms {
       return terminal.send(resourceType, amount, targetRoom, packets[0]);
     }
 
-    // Multi-packet - queue remaining packets for subsequent ticks
-    // TODO: Implement proper multi-packet queue system
-    // Issue URL: https://github.com/ralphschuler/screeps/issues/445
-    // For now, log warning and send first packet only
-    console.log(
-      `[SS2] Warning: Multi-packet message requires ${packets.length} transactions. Only sending first packet. Full multi-packet support requires implementation of packet queue.`
-    );
-    return terminal.send(resourceType, amount, targetRoom, packets[0]);
+    // Multi-packet - queue all packets for subsequent ticks
+    const msgId = this.extractMessageId(packets[0]);
+    if (!msgId) {
+      logger.error("Failed to extract message ID from first packet");
+      return ERR_INVALID_ARGS;
+    }
+
+    this.queuePackets(terminal.id, targetRoom, resourceType, amount, packets, msgId);
+    logger.info(`Queued ${packets.length} packets for multi-packet message`, {
+      meta: { 
+        terminalId: terminal.id, 
+        messageId: msgId, 
+        packets: packets.length,
+        targetRoom 
+      }
+    });
+    return OK;
+  }
+
+  /**
+   * Extract message ID from a packet description
+   * @param packet Packet description
+   * @returns Message ID or null
+   */
+  private static extractMessageId(packet: string): string | null {
+    const match = packet.match(/^([\da-zA-Z]{1,3})\|/);
+    return match ? match[1] : null;
+  }
+
+  /**
+   * Queue packets for multi-packet transmission
+   * @param terminalId Terminal ID to send from
+   * @param targetRoom Target room
+   * @param resourceType Resource to send
+   * @param amount Amount to send per packet
+   * @param packets Array of packet descriptions
+   * @param msgId Message ID for this transmission
+   */
+  private static queuePackets(
+    terminalId: Id<StructureTerminal>,
+    targetRoom: string,
+    resourceType: ResourceConstant,
+    amount: number,
+    packets: string[],
+    msgId: string
+  ): void {
+    if (!Memory.ss2PacketQueue) {
+      Memory.ss2PacketQueue = {};
+    }
+
+    const queueKey = `${terminalId}:${msgId}`;
+    Memory.ss2PacketQueue[queueKey] = {
+      terminalId,
+      targetRoom,
+      resourceType,
+      amount,
+      packets,
+      nextPacketIndex: 0,
+      queuedAt: Game.time,
+    };
+  }
+
+  /**
+   * Process packet queue for all terminals
+   * Should be called each tick to send queued packets
+   * @returns Number of packets sent this tick
+   */
+  public static processQueue(): number {
+    if (!Memory.ss2PacketQueue) {
+      return 0;
+    }
+
+    this.cleanupExpiredQueue();
+
+    let packetsSent = 0;
+    const toDelete: string[] = [];
+
+    for (const [queueKey, queueItem] of Object.entries(Memory.ss2PacketQueue)) {
+      // Get terminal object
+      const terminal = Game.getObjectById(queueItem.terminalId);
+      if (!terminal) {
+        logger.warn(`Terminal not found for queue item, removing from queue`, {
+          meta: { queueKey, terminalId: queueItem.terminalId }
+        });
+        toDelete.push(queueKey);
+        continue;
+      }
+
+      // Check terminal cooldown
+      if (terminal.cooldown > 0) {
+        continue;
+      }
+
+      // Send next packet
+      const packet = queueItem.packets[queueItem.nextPacketIndex];
+      if (!packet) {
+        // Should not happen, but cleanup if it does
+        logger.warn(`No packet at index ${queueItem.nextPacketIndex}, removing queue item`, {
+          meta: { queueKey }
+        });
+        toDelete.push(queueKey);
+        continue;
+      }
+
+      const result = terminal.send(
+        queueItem.resourceType,
+        queueItem.amount,
+        queueItem.targetRoom,
+        packet
+      );
+
+      if (result === OK) {
+        queueItem.nextPacketIndex++;
+        packetsSent++;
+
+        // Check if all packets sent
+        if (queueItem.nextPacketIndex >= queueItem.packets.length) {
+          const msgId = this.extractMessageId(packet);
+          logger.info(`Completed sending multi-packet message`, {
+            meta: { 
+              messageId: msgId, 
+              packets: queueItem.packets.length,
+              targetRoom: queueItem.targetRoom 
+            }
+          });
+          toDelete.push(queueKey);
+        }
+      } else if (result === ERR_NOT_ENOUGH_RESOURCES) {
+        logger.warn(`Not enough resources to send packet, will retry next tick`, {
+          meta: { 
+            queueKey, 
+            resource: queueItem.resourceType, 
+            amount: queueItem.amount 
+          }
+        });
+      } else {
+        logger.error(`Failed to send packet: ${result}, removing queue item`, {
+          meta: { queueKey, result }
+        });
+        toDelete.push(queueKey);
+      }
+    }
+
+    // Cleanup completed/failed queue items
+    for (const key of toDelete) {
+      delete Memory.ss2PacketQueue[key];
+    }
+
+    if (packetsSent > 0) {
+      logger.debug(`Sent ${packetsSent} queued packets this tick`);
+    }
+
+    return packetsSent;
+  }
+
+  /**
+   * Clean up expired queue items
+   */
+  private static cleanupExpiredQueue(): void {
+    if (!Memory.ss2PacketQueue) {
+      return;
+    }
+
+    const now = Game.time;
+    const toDelete: string[] = [];
+
+    for (const [queueKey, queueItem] of Object.entries(Memory.ss2PacketQueue)) {
+      if (now - queueItem.queuedAt > this.QUEUE_TIMEOUT) {
+        const msgId = this.extractMessageId(queueItem.packets[0]);
+        logger.warn(`Queue item timed out after ${now - queueItem.queuedAt} ticks`, {
+          meta: { 
+            messageId: msgId, 
+            queueKey,
+            sentPackets: queueItem.nextPacketIndex,
+            totalPackets: queueItem.packets.length
+          }
+        });
+        toDelete.push(queueKey);
+      }
+    }
+
+    for (const key of toDelete) {
+      delete Memory.ss2PacketQueue[key];
+    }
   }
 
   /**

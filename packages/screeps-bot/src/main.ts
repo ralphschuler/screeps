@@ -39,6 +39,16 @@ declare global {
       playerReputations: Record<string, any>;
       lastProcessedTick: number;
     };
+    /** SS2 Terminal Communications multi-packet queue */
+    ss2PacketQueue?: Record<string, {
+      terminalId: Id<StructureTerminal>;
+      targetRoom: string;
+      resourceType: ResourceConstant;
+      amount: number;
+      packets: string[];
+      nextPacketIndex: number;
+      queuedAt: number;
+    }>;
     // TODO: Add memory migration version tracking field to support future schema changes
     // memoryVersion?: number;
     // TODO: Consider adding shard coordination memory for multi-shard operations (ROADMAP Section 11)
