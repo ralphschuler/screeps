@@ -3,13 +3,6 @@
 # This Dockerfile creates a container for running the Screeps MCP server
 # using stdio transport for integration with MCP clients like Claude Desktop.
 #
-# Multi-stage build: TypeScript compilation happens inside Docker
-
-# Screeps MCP Server Docker Image
-#
-# This Dockerfile creates a container for running the Screeps MCP server
-# using stdio transport for integration with MCP clients like Claude Desktop.
-#
 # Build the application before building the Docker image:
 #   npm ci && npm run build
 
