@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect, Assert } from 'screepsmod-testing';
+import { getRoomMemoryProperty, hasProperty } from './test-helpers';
 
 describe('Pheromone System', () => {
   it('should have pheromone data in memory', () => {
@@ -20,30 +21,26 @@ describe('Pheromone System', () => {
       
       if (room.controller?.my) {
         // Check if room has pheromone tracking in memory
-        const roomMemory = Memory.rooms?.[roomName];
+        const swarm = getRoomMemoryProperty(roomName, 'swarm');
         
-        if (roomMemory && 'swarm' in roomMemory) {
-          const swarm = (roomMemory as Record<string, any>).swarm;
+        if (swarm && hasProperty(swarm, 'pheromones')) {
+          const pheromones = swarm.pheromones;
           
-          if (swarm && 'pheromones' in swarm) {
-            const pheromones = swarm.pheromones;
-            
-            // Validate pheromone structure
-            Assert.isType(pheromones, 'object');
-            
-            // Common pheromone types
-            const pheromoneTypes = ['harvest', 'build', 'repair', 'upgrade', 'defense', 'war', 'expand'];
-            
-            for (const type of pheromoneTypes) {
-              if (pheromones[type] !== undefined) {
-                Assert.isType(pheromones[type], 'number');
-                Assert.greaterThanOrEqual(pheromones[type], 0);
-                Assert.lessThanOrEqual(pheromones[type], 100);
-              }
+          // Validate pheromone structure
+          Assert.isType(pheromones, 'object');
+          
+          // Common pheromone types
+          const pheromoneTypes = ['harvest', 'build', 'repair', 'upgrade', 'defense', 'war', 'expand'];
+          
+          for (const type of pheromoneTypes) {
+            if (pheromones[type] !== undefined) {
+              Assert.isType(pheromones[type], 'number');
+              Assert.greaterThanOrEqual(pheromones[type], 0);
+              Assert.lessThanOrEqual(pheromones[type], 100);
             }
-            
-            console.log(`[Test] Room ${roomName} pheromones:`, JSON.stringify(pheromones));
           }
+          
+          console.log(`[Test] Room ${roomName} pheromones:`, JSON.stringify(pheromones));
         }
       }
     }
@@ -56,20 +53,16 @@ describe('Pheromone Decay', () => {
       const room = Game.rooms[roomName];
       
       if (room.controller?.my) {
-        const roomMemory = Memory.rooms?.[roomName];
+        const swarm = getRoomMemoryProperty(roomName, 'swarm');
         
-        if (roomMemory && 'swarm' in roomMemory) {
-          const swarm = (roomMemory as Record<string, any>).swarm;
+        if (swarm && hasProperty(swarm, 'pheromones')) {
+          const pheromones = swarm.pheromones;
           
-          if (swarm && 'pheromones' in swarm) {
-            const pheromones = swarm.pheromones;
-            
-            // All pheromone values should be in valid range
-            for (const key in pheromones) {
-              const value = pheromones[key];
-              if (typeof value === 'number') {
-                Assert.inRange(value, 0, 100, `Pheromone ${key} should be between 0 and 100`);
-              }
+          // All pheromone values should be in valid range
+          for (const key in pheromones) {
+            const value = pheromones[key];
+            if (typeof value === 'number') {
+              Assert.inRange(value, 0, 100, `Pheromone ${key} should be between 0 and 100`);
             }
           }
         }
@@ -115,8 +108,6 @@ describe('Room State and Pheromones', () => {
       const room = Game.rooms[roomName];
       
       if (room.controller?.my) {
-        const roomMemory = Memory.rooms?.[roomName];
-        
         // Check for construction sites
         const constructionSites = room.find(FIND_MY_CONSTRUCTION_SITES);
         
@@ -125,20 +116,18 @@ describe('Room State and Pheromones', () => {
           filter: (s) => s.hits < s.hitsMax && s.structureType !== STRUCTURE_WALL && s.structureType !== STRUCTURE_RAMPART
         });
         
-        if (roomMemory && 'swarm' in roomMemory) {
-          const swarm = (roomMemory as Record<string, any>).swarm;
+        const swarm = getRoomMemoryProperty(roomName, 'swarm');
+        
+        if (swarm && hasProperty(swarm, 'pheromones')) {
+          const pheromones = swarm.pheromones;
           
-          if (swarm && 'pheromones' in swarm) {
-            const pheromones = swarm.pheromones;
-            
-            // Log correlations
-            if (constructionSites.length > 0 && pheromones.build !== undefined) {
-              console.log(`[Test] Room ${roomName} has ${constructionSites.length} construction sites, build pheromone: ${pheromones.build}`);
-            }
-            
-            if (damagedStructures.length > 0 && pheromones.repair !== undefined) {
-              console.log(`[Test] Room ${roomName} has ${damagedStructures.length} damaged structures, repair pheromone: ${pheromones.repair}`);
-            }
+          // Log correlations
+          if (constructionSites.length > 0 && pheromones.build !== undefined) {
+            console.log(`[Test] Room ${roomName} has ${constructionSites.length} construction sites, build pheromone: ${pheromones.build}`);
+          }
+          
+          if (damagedStructures.length > 0 && pheromones.repair !== undefined) {
+            console.log(`[Test] Room ${roomName} has ${damagedStructures.length} damaged structures, repair pheromone: ${pheromones.repair}`);
           }
         }
       }

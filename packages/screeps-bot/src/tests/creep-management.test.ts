@@ -162,7 +162,7 @@ describe('Creep Age and Recycling', () => {
       if (creep.ticksToLive && creep.ticksToLive < 50) {
         // Creeps near death might be recycling or have an exception
         // This is more of a logging test than an assertion
-        const isRecycling = (creep.memory as any).recycling === true;
+        const isRecycling = 'recycling' in creep.memory && creep.memory.recycling === true;
         console.log(`[Test] Creep ${name} has ${creep.ticksToLive} TTL, recycling: ${isRecycling}`);
       }
     }

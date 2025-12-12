@@ -63,10 +63,14 @@ describe('Memory Management', () => {
   });
 
   it('should allow writing to memory', () => {
-    // Store a test value
-    (Memory as any).integrationTest = { timestamp: Game.time };
-    Assert.isNotNullish((Memory as any).integrationTest);
-    Assert.equal((Memory as any).integrationTest.timestamp, Game.time);
+    // Store a test value with a prefixed key to avoid conflicts
+    const testKey = '_testIntegrationWrite';
+    (Memory as Record<string, any>)[testKey] = { timestamp: Game.time };
+    Assert.isNotNullish((Memory as Record<string, any>)[testKey]);
+    Assert.equal((Memory as Record<string, any>)[testKey].timestamp, Game.time);
+    
+    // Clean up test data
+    delete (Memory as Record<string, any>)[testKey];
   });
 
   it('should have creeps memory structure', () => {

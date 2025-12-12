@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect, Assert } from 'screepsmod-testing';
+import { getMemoryProperty, getRoomMemoryProperty } from './test-helpers';
 
 describe('Stats System', () => {
   it('should collect game time statistics', () => {
@@ -55,9 +56,9 @@ describe('Stats System', () => {
 
 describe('Memory Statistics', () => {
   it('should store stats in memory', () => {
-    // Check if stats structure exists (using type-safe property check)
-    if ('stats' in Memory) {
-      const stats = (Memory as Record<string, any>).stats;
+    // Check if stats structure exists (using type-safe helper)
+    const stats = getMemoryProperty('stats');
+    if (stats) {
       Assert.isType(stats, 'object');
       console.log('[Test] Stats structure exists in memory');
     } else {
@@ -70,10 +71,8 @@ describe('Memory Statistics', () => {
       const room = Game.rooms[roomName];
       
       if (room.controller?.my) {
-        const roomMemory = Memory.rooms?.[roomName];
-        
-        if (roomMemory && 'stats' in roomMemory) {
-          const stats = (roomMemory as Record<string, any>).stats;
+        const stats = getRoomMemoryProperty(roomName, 'stats');
+        if (stats) {
           console.log(`[Test] Room ${roomName} has stats:`, Object.keys(stats));
         }
       }
