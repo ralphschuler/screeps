@@ -26,6 +26,7 @@ import {
   createDefaultSwarmState
 } from "./schemas";
 import { INFINITE_TTL, heapCache } from "./heapCache";
+import { logger } from "../core/logger";
 
 const OVERMIND_KEY = "overmind";
 const CLUSTERS_KEY = "clusters";
@@ -76,7 +77,10 @@ export class MemoryManager {
     const storedVersion = (mem.memoryVersion as number) ?? 0;
 
     if (storedVersion < CURRENT_MEMORY_VERSION) {
-      console.log(`[MemoryManager] Migrating memory from version ${storedVersion} to ${CURRENT_MEMORY_VERSION}`);
+      logger.info(`Migrating memory from version ${storedVersion} to ${CURRENT_MEMORY_VERSION}`, {
+        subsystem: "MemoryManager",
+        meta: { fromVersion: storedVersion, toVersion: CURRENT_MEMORY_VERSION }
+      });
       
       // Run migrations in sequence
       if (storedVersion < 1) {
@@ -85,7 +89,10 @@ export class MemoryManager {
       
       // Update version
       mem.memoryVersion = CURRENT_MEMORY_VERSION;
-      console.log(`[MemoryManager] Memory migration complete`);
+      logger.info(`Memory migration complete`, {
+        subsystem: "MemoryManager",
+        meta: { version: CURRENT_MEMORY_VERSION }
+      });
     }
   }
 

@@ -23,6 +23,8 @@
  * - Survives resets: data restored from Memory after global reset
  */
 
+import { logger } from "../core/logger";
+
 // Augment Memory interface with cache property
 declare global {
   interface Memory {
@@ -191,7 +193,10 @@ export class HeapCacheManager {
 
     if (rehydratedCount > 0 && Game.time % 100 === 0) {
       // Only log periodically to reduce console spam
-      console.log(`[HeapCache] Rehydrated ${rehydratedCount} entries from Memory (${expiredCount} expired)`);
+      logger.info(`Rehydrated ${rehydratedCount} entries from Memory`, {
+        subsystem: "HeapCache",
+        meta: { rehydratedCount, expiredCount }
+      });
     }
   }
 

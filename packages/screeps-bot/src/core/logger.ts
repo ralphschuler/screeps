@@ -85,7 +85,7 @@ function formatMessage(level: string, message: string, context?: LogContext, typ
     type,
     level,
     message,
-    tick: Game.time
+    tick: typeof Game !== "undefined" ? Game.time : 0
   };
 
   // Add context fields
@@ -184,7 +184,7 @@ export function stat(key: string, value: number, unit?: string, context?: LogCon
     type: "stat",
     key,
     value,
-    tick: Game.time
+    tick: typeof Game !== "undefined" ? Game.time : 0
   };
   
   if (unit) {
