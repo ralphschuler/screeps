@@ -312,36 +312,71 @@ export class ScreepsClient {
 
   /**
    * Get game statistics
+   * 
+   * Attempts to read statistics from Memory.stats. If stats are not available
+   * (path doesn't exist or returns 404), returns a default structure with zero values.
+   * 
+   * Note: Memory.stats is populated by user bot code. If your bot doesn't write
+   * stats to Memory.stats, this method will return default empty values.
    */
   public async getStats(): Promise<StatsData> {
     if (!this.api) {
       throw new Error("API not initialized. Call connect() first.");
     }
 
-    // TODO: API Error - Stats endpoint returns 404
-    // Issue URL: https://github.com/ralphschuler/screeps/issues/481
-    // Details: The memory.get("stats", shard) endpoint returns a 404 error
-    // Encountered: When calling screeps_stats tool via MCP
-    // Suggested Fix: Stats are not a standard memory path in Screeps. This method should either:
-    // 1. Query a different API endpoint if one exists for stats
-    // 2. Read from Memory.stats if users store stats there (but check if path exists first)
-    // 3. Use api.raw.user.overview() to get some stats like CPU usage
-    // 4. Remove this method if no valid stats endpoint exists
     const shard = this.config.shard ?? "shard3";
-    const response = await this.api.memory.get("stats", shard);
+    
+    try {
+      // Try to read Memory.stats - this is where user bots typically store statistics
+      const response = await this.api.memory.get("stats", shard);
+      
+      // Check if we got an error response (Screeps returns a 200 with error message)
+      if (response?.data === "Incorrect memory path" || !response?.data) {
+        // Memory.stats doesn't exist - return default empty stats
+        return {
+          cpu: {
+            used: 0,
+            limit: 0,
+            bucket: undefined
+          },
+          gcl: undefined,
+          rooms: 0,
+          creeps: 0
+        };
+      }
 
-    const data = response?.data ?? {};
+      const data = response.data;
 
-    return {
-      cpu: {
-        used: data.cpu?.used ?? 0,
-        limit: data.cpu?.limit ?? 0,
-        bucket: data.cpu?.bucket
-      },
-      gcl: data.gcl,
-      rooms: data.rooms ?? 0,
-      creeps: data.creeps ?? 0
-    };
+      return {
+        cpu: {
+          used: data.cpu?.used ?? data.empire?.cpuUsed ?? 0,
+          limit: data.cpu?.limit ?? data.empire?.cpuLimit ?? 0,
+          bucket: data.cpu?.bucket ?? data.empire?.cpuBucket
+        },
+        gcl: data.gcl ?? (data.empire?.gcl ? {
+          level: data.empire.gcl,
+          progress: data.empire.gclProgress ?? 0,
+          progressTotal: 0
+        } : undefined),
+        rooms: data.rooms ?? data.empire?.ownedRooms ?? 0,
+        creeps: data.creeps ?? data.empire?.totalCreeps ?? 0
+      };
+    } catch (error) {
+      // Handle 404 or other API errors gracefully
+      console.error(`Failed to get stats from Memory.stats: ${error instanceof Error ? error.message : String(error)}`);
+      
+      // Return default empty stats instead of throwing
+      return {
+        cpu: {
+          used: 0,
+          limit: 0,
+          bucket: undefined
+        },
+        gcl: undefined,
+        rooms: 0,
+        creeps: 0
+      };
+    }
   }
 
   /**

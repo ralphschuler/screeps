@@ -281,6 +281,50 @@ describe("ScreepsClient", () => {
       expect(stats.cpu.bucket).toBeUndefined();
       expect(stats.rooms).toBe(0);
     });
+
+    it("should handle stats when Memory.stats doesn't exist (Incorrect memory path)", async () => {
+      mockApi.memory.get.mockResolvedValue({
+        data: "Incorrect memory path"
+      });
+
+      const stats = await client.getStats();
+
+      expect(stats.cpu.used).toBe(0);
+      expect(stats.cpu.limit).toBe(0);
+      expect(stats.cpu.bucket).toBeUndefined();
+      expect(stats.gcl).toBeUndefined();
+      expect(stats.rooms).toBe(0);
+      expect(stats.creeps).toBe(0);
+    });
+
+    it("should handle stats with empire-based structure", async () => {
+      mockApi.memory.get.mockResolvedValue({
+        data: {
+          empire: {
+            cpuUsed: 15.5,
+            cpuLimit: 30,
+            cpuBucket: 9500,
+            gcl: 5,
+            gclProgress: 12345,
+            ownedRooms: 3,
+            totalCreeps: 25
+          }
+        }
+      });
+
+      const stats = await client.getStats();
+
+      expect(stats.cpu.used).toBe(15.5);
+      expect(stats.cpu.limit).toBe(30);
+      expect(stats.cpu.bucket).toBe(9500);
+      expect(stats.gcl).toEqual({
+        level: 5,
+        progress: 12345,
+        progressTotal: 0
+      });
+      expect(stats.rooms).toBe(3);
+      expect(stats.creeps).toBe(25);
+    });
   });
 
   describe("Error handling", () => {
@@ -326,6 +370,20 @@ describe("ScreepsClient", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe("Console error");
+    });
+
+    it("should handle getStats API errors gracefully (404)", async () => {
+      mockApi.memory.get.mockRejectedValue(new Error("404 Not Found"));
+
+      const stats = await client.getStats();
+
+      // Should return default empty stats instead of throwing
+      expect(stats.cpu.used).toBe(0);
+      expect(stats.cpu.limit).toBe(0);
+      expect(stats.cpu.bucket).toBeUndefined();
+      expect(stats.gcl).toBeUndefined();
+      expect(stats.rooms).toBe(0);
+      expect(stats.creeps).toBe(0);
     });
   });
 
