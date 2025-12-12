@@ -206,7 +206,7 @@ This protocol helps maintain code quality and makes debugging more efficient by 
 
 ## MCP Servers for Screeps
 
-This repository provides four MCP (Model Context Protocol) servers that you **MUST** use for fact-checking and verifying your decisions about Screeps. These servers provide authoritative information about the game API, documentation, TypeScript types, and community strategies.
+This repository provides five MCP (Model Context Protocol) servers that you **MUST** use for fact-checking and verifying your decisions about Screeps. These servers provide authoritative information about the game API, documentation, TypeScript types, community strategies, and operational monitoring.
 
 ### Mandatory Fact-Checking
 
@@ -335,6 +335,44 @@ const result = spawn.spawnCreep(
 // Learn: Established patterns before implementing your own
 ```
 
+#### 5. grafana-mcp (Monitoring and Observability)
+**Purpose**: Performance monitoring, alerting, dashboard management, and operational visibility for bot health and metrics
+
+**Key Tools**:
+- `search_dashboards` / `get_dashboard_by_uid` - Access Grafana dashboards displaying bot performance
+- `list_alert_rules` / `get_alert_rule_by_uid` - Monitor configured alerts for anomaly detection
+- `query_prometheus` - Query time-series metrics (CPU usage, memory, creep counts, etc.)
+- `query_loki_logs` - Search and analyze bot logs for errors and debugging
+- `list_datasources` / `get_datasource_by_uid` - Access configured Prometheus, Loki, and other data sources
+- `get_sift_investigation` / `find_slow_requests` / `find_error_pattern_logs` - AI-powered performance analysis
+- `list_incidents` / `get_incident` - Track operational incidents and outages
+- `generate_deeplink` - Create direct links to specific dashboards and panels
+- Plus 50+ additional tools for comprehensive observability and monitoring
+
+**When to Use**:
+- Investigating performance degradation or CPU usage spikes
+- Analyzing historical bot behavior and trends
+- Debugging errors by correlating logs with metrics
+- Monitoring alert status and incident response
+- Creating or updating dashboards for new metrics
+- Validating that code changes improve performance
+
+**Example**:
+```typescript
+// Before optimizing pathfinding, analyze current performance
+// Use: query_prometheus with expr: "screeps_cpu_usage" to check baseline CPU
+// Use: query_loki_logs with logql: '{job="screeps-bot"} |= "pathfinding"' to find bottlenecks
+// Use: get_dashboard_by_uid to view "CPU & Performance Monitor" dashboard
+// Verify: Current metrics before and after optimization
+
+class PathfindingOptimizer {
+  async analyzePerformance() {
+    // Implementation informed by Grafana metrics showing
+    // pathfinding consumes 40% of CPU budget
+  }
+}
+```
+
 ### Fact-Checking Workflow
 
 #### Step 1: Identify Information Needs
@@ -344,6 +382,7 @@ Before writing Screeps code or documentation, identify what you need to verify:
 - Object properties and types
 - Game mechanics and rules
 - Community best practices
+- Performance metrics and operational health
 
 #### Step 2: Select Appropriate MCP Server
 Choose the right server for your needs:
@@ -351,6 +390,7 @@ Choose the right server for your needs:
 - **Need type definitions?** → Use `screeps-typescript-mcp`
 - **Want to test live?** → Use `screeps-mcp`
 - **Looking for strategies?** → Use `screeps-wiki-mcp`
+- **Debugging performance?** → Use `grafana-mcp`
 
 #### Step 3: Execute Verification
 Use the appropriate MCP tool to verify:
@@ -425,20 +465,28 @@ class TowerDefense {
 ```typescript
 // Goal: Reduce CPU usage in creep logic
 
-// Step 1: Check current CPU usage
-// Tool: screeps_stats
-// Baseline: Current CPU consumption metrics
+// Step 1: Check current CPU usage with detailed historical context
+// Tool: query_prometheus with datasourceUid and expr: "screeps_cpu_usage"
+// Tool: get_dashboard_by_uid for "CPU & Performance Monitor"
+// Baseline: Historical CPU trends and current usage patterns
 
-// Step 2: Research optimization techniques
+// Step 2: Analyze logs for performance bottlenecks
+// Tool: query_loki_logs with logql: '{job="screeps-bot"} |= "CPU"'
+// Tool: find_slow_requests to identify performance issues
+// Discover: Specific functions consuming excessive CPU
+
+// Step 3: Research optimization techniques
 // Tool: screeps_wiki_search with query: "cpu optimization"
 // Learn: Community-tested optimization patterns
 
-// Step 3: Verify API for efficient alternatives
+// Step 4: Verify API for efficient alternatives
 // Tool: screeps_docs_get_api with objectName: "PathFinder"
 // Discover: More efficient pathfinding options
 
-// Step 4: Implement optimizations and re-measure
-// Tool: screeps_stats again to confirm improvements
+// Step 5: Implement optimizations and validate improvements
+// Tool: query_prometheus again to measure impact
+// Tool: get_dashboard_by_uid to visualize performance gains
+// Validate: CPU reduction confirmed in Grafana metrics
 ```
 
 ### Error Prevention with MCP Servers
@@ -506,12 +554,21 @@ Incorporate MCP verification at every stage:
 4. **Testing Phase**
    - Use `screeps_memory_get` to inspect runtime state
    - Use `screeps_room_objects` to verify structure placement
-   - Use `screeps_stats` to measure performance
+   - Use `query_prometheus` to measure performance metrics
+   - Use `get_dashboard_by_uid` to visualize test results
 
 5. **Debugging Phase**
    - Use `screeps_console` to execute diagnostic commands
    - Use `screeps_memory_get` to inspect problematic state
    - Use `screeps_room_status` to verify room conditions
+   - Use `query_loki_logs` to search error logs
+   - Use `find_error_pattern_logs` for AI-powered error analysis
+
+6. **Monitoring Phase**
+   - Use `list_alert_rules` to review active alerts
+   - Use `get_dashboard_by_uid` to check operational dashboards
+   - Use `query_prometheus` to track KPIs and trends
+   - Use `get_incident` to review and learn from past incidents
 
 ### Priority and Authority
 

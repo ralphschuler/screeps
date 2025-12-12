@@ -6,7 +6,7 @@
 
 ## MCP Servers for Screeps
 
-This repository provides four MCP (Model Context Protocol) servers that you **MUST** use for fact-checking and verifying your decisions about Screeps. These servers provide authoritative information about the game API, documentation, TypeScript types, and community strategies.
+This repository provides five MCP (Model Context Protocol) servers that you **MUST** use for fact-checking and verifying your decisions about Screeps. These servers provide authoritative information about the game API, documentation, TypeScript types, community strategies, and operational monitoring.
 
 ### When to Use MCP Servers
 
@@ -68,6 +68,19 @@ Tools include:
 
 **Example**: When designing a new bot architecture, use `screeps_wiki_search` with `query: "bot architecture"` to learn from community-proven approaches like Overmind or other established patterns.
 
+#### 5. grafana-mcp (Monitoring and Observability)
+**Use for**: Performance monitoring, alerting, dashboard management, and operational visibility
+
+Tools include:
+- `search_dashboards` / `get_dashboard_by_uid` - Access Grafana dashboards for bot performance metrics
+- `list_alert_rules` / `get_alert_rule_by_uid` - Monitor alert configurations for anomaly detection
+- `query_prometheus` / `query_loki_logs` - Query metrics and logs for performance analysis
+- `list_datasources` / `get_datasource_by_uid` - Access configured data sources
+- `get_sift_investigation` / `find_slow_requests` - AI-powered performance debugging
+- And 50+ additional tools for comprehensive observability
+
+**Example**: When investigating CPU performance issues, use `query_prometheus` to analyze historical CPU usage patterns, `query_loki_logs` to examine error logs, and `get_dashboard_by_uid` to view real-time performance dashboards.
+
 ### Fact-Checking Protocol
 
 Follow this protocol when working on Screeps-related tasks:
@@ -75,7 +88,8 @@ Follow this protocol when working on Screeps-related tasks:
 1. **Before Coding**: Verify API methods, properties, and constants using `screeps-docs-mcp` or `screeps-typescript-mcp`
 2. **During Development**: Check game state and test assumptions using `screeps-mcp` live tools
 3. **For Strategy**: Consult community wisdom using `screeps-wiki-mcp` to avoid reinventing solutions
-4. **When Uncertain**: Use search tools (`screeps_docs_search`, `screeps_types_search`, `screeps_wiki_search`) to find relevant information
+4. **For Performance**: Monitor metrics and debug issues using `grafana-mcp` observability tools
+5. **When Uncertain**: Use search tools (`screeps_docs_search`, `screeps_types_search`, `screeps_wiki_search`) to find relevant information
 
 ### Examples of Required Fact-Checking
 
@@ -129,6 +143,7 @@ The MCP servers should be seamlessly integrated into your workflow:
 3. **Testing Assumptions**: Use `screeps_console` to test code snippets in the live game environment
 4. **Memory Debugging**: Use `screeps_memory_get` to inspect bot memory state when debugging
 5. **Performance Validation**: Use `screeps_stats` to verify CPU usage and performance metrics
+6. **Operational Monitoring**: Use `grafana-mcp` tools to access dashboards, query metrics, analyze logs, and investigate performance issues
 
 ### Priority and Trust
 
