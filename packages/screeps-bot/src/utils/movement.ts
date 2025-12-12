@@ -45,6 +45,7 @@
  */
 
 import { memoryManager } from "../memory/manager";
+import { logger } from "../core/logger";
 import {
   discoverPortalsInRoom,
   findClosestPortalToShard,
@@ -1364,9 +1365,19 @@ function internalMoveTo(
     // Report heavy CPU usage (Traveler-inspired)
     const cpuReportThreshold = options.cpuReportThreshold ?? 1000;
     if (totalCpu > cpuReportThreshold) {
-      console.log(
-        `[Movement] Heavy pathfinding CPU: ${creep.name} used ${totalCpu.toFixed(2)} CPU ` +
-        `(${cpuUsed.toFixed(2)} this call) from ${creep.pos} to ${targetPos}`
+      logger.warn(
+        `Heavy pathfinding CPU: ${creep.name} used ${totalCpu.toFixed(2)} CPU (${cpuUsed.toFixed(2)} this call)`, 
+        { 
+          subsystem: "Movement", 
+          creep: creep.name, 
+          room: creep.room?.name,
+          meta: { 
+            totalCpu: totalCpu.toFixed(2), 
+            thisCpu: cpuUsed.toFixed(2), 
+            from: creep.pos.toString(), 
+            to: targetPos.toString() 
+          } 
+        }
       );
     }
 

@@ -113,6 +113,8 @@ function initializeSystems(): void {
     level: config.debug ? LogLevel.DEBUG : LogLevel.INFO,
     cpuLogging: config.profiling
   });
+  
+  logger.info("Bot initialized", { subsystem: "SwarmBot", meta: { debug: config.debug, profiling: config.profiling } });
 
   // Initialize unified stats system
   unifiedStats.initialize();

@@ -24,6 +24,8 @@
  * - Statistics aggregation
  */
 
+import { logger } from "../core/logger";
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -205,9 +207,10 @@ export class ComputationScheduler {
         if (bucket < threshold) {
           this.stats.skippedThisTick++;
           if (this.config.logExecution) {
-            console.log(
-              `[Scheduler] Skipping ${task.id} (bucket ${bucket} < ${threshold})`
-            );
+            logger.debug(`Skipping task ${task.id} due to low bucket`, {
+              subsystem: "Scheduler",
+              meta: { taskId: task.id, bucket, threshold }
+            });
           }
           continue;
         }
@@ -218,9 +221,10 @@ export class ComputationScheduler {
       if (cpuUsed + taskMaxCpu > cpuBudget && task.skippable) {
         this.stats.deferredThisTick++;
         if (this.config.logExecution) {
-          console.log(
-            `[Scheduler] Deferring ${task.id} (budget exceeded)`
-          );
+          logger.debug(`Deferring task ${task.id} - budget exceeded`, {
+            subsystem: "Scheduler",
+            meta: { taskId: task.id, cpuUsed, cpuBudget }
+          });
         }
         continue;
       }
@@ -236,20 +240,28 @@ export class ComputationScheduler {
         cpuUsed += taskCpuUsed;
 
         if (this.config.logExecution) {
-          console.log(
-            `[Scheduler] Executed ${task.id} (${taskCpuUsed.toFixed(2)} CPU)`
-          );
+          logger.debug(`Executed task ${task.id}`, {
+            subsystem: "Scheduler",
+            meta: { taskId: task.id, cpuUsed: taskCpuUsed.toFixed(2) }
+          });
         }
 
         // Warn if task exceeded its budget
         if (taskCpuUsed > taskMaxCpu) {
-          console.log(
-            `[Scheduler] WARNING: ${task.id} exceeded CPU budget ` +
-            `(${taskCpuUsed.toFixed(2)} > ${taskMaxCpu})`
-          );
+          logger.warn(`Task ${task.id} exceeded CPU budget`, {
+            subsystem: "Scheduler",
+            meta: { 
+              taskId: task.id, 
+              cpuUsed: taskCpuUsed.toFixed(2), 
+              cpuBudget: taskMaxCpu 
+            }
+          });
         }
       } catch (error) {
-        console.log(`[Scheduler] ERROR executing ${task.id}:`, error);
+        logger.error(`Error executing task ${task.id}: ${String(error)}`, {
+          subsystem: "Scheduler",
+          meta: { taskId: task.id }
+        });
         // Still mark as run to prevent repeated failures
         task.lastRun = Game.time;
       }
@@ -277,9 +289,16 @@ export class ComputationScheduler {
     try {
       task.execute();
       task.lastRun = Game.time;
+      logger.info(`Force-executed task ${taskId}`, {
+        subsystem: "Scheduler",
+        meta: { taskId }
+      });
       return true;
     } catch (error) {
-      console.log(`[Scheduler] ERROR force-executing ${taskId}:`, error);
+      logger.error(`Error force-executing task ${taskId}: ${String(error)}`, {
+        subsystem: "Scheduler",
+        meta: { taskId }
+      });
       return false;
     }
   }
