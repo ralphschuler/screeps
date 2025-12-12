@@ -1383,11 +1383,26 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
     const def = ROLE_DEFINITIONS[role];
     if (!def) return;
 
-    const body = getBestBody(def, effectiveCapacity);
-    if (!body) return;
-
-    // Check if we have enough energy
-    if (energyAvailable < body.cost) return;
+    // SPAWN FIX: Try optimal body first (based on capacity), then fallback to smaller body
+    // This prevents bootstrap from stalling when optimal body is too expensive
+    let body = getBestBody(def, effectiveCapacity);
+    if (body && energyAvailable >= body.cost) {
+      // Can afford optimal body, use it
+    } else {
+      // Can't afford optimal body, try smaller body based on available energy
+      body = getBestBody(def, energyAvailable);
+      if (!body || energyAvailable < body.cost) {
+        // Can't afford any body for this role
+        logger.info(
+          `Bootstrap: Cannot afford ${role} (cheapest: ${body?.cost ?? "N/A"}, available: ${energyAvailable})`,
+          {
+            subsystem: "spawn",
+            room: room.name
+          }
+        );
+        return;
+      }
+    }
 
     // Spawn creep
     const name = generateCreepName(role);
