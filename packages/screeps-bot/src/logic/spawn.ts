@@ -1391,10 +1391,10 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
     } else {
       // Can't afford optimal body, try smaller body based on available energy
       body = getBestBody(def, energyAvailable);
-      if (!body || energyAvailable < body.cost) {
-        // Can't afford any body for this role
+      if (!body) {
+        // No body configuration exists within available energy
         logger.info(
-          `Bootstrap: Cannot afford ${role} (cheapest: ${body?.cost ?? "N/A"}, available: ${energyAvailable})`,
+          `Bootstrap: No affordable body for ${role} (available: ${energyAvailable}, min needed: ${def.bodies[0]?.cost ?? "unknown"})`,
           {
             subsystem: "spawn",
             room: room.name
