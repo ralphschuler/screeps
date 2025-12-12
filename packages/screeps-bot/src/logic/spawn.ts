@@ -1525,6 +1525,38 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
       return;
     }
   }
+  
+  // If we get here, we tried all spawnable roles but couldn't afford any
+  // Log this periodically for visibility
+  if (spawnableRoles.length > 0 && Game.time % 20 === 0) {
+    logger.info(
+      `No affordable spawns: ${spawnableRoles.length} roles need spawning but all too expensive. ` +
+      `Energy: ${energyAvailable}/${energyCapacity}`,
+      {
+        subsystem: "spawn",
+        room: room.name,
+        meta: {
+          topRoles: spawnableRoles.slice(0, 3).join(", "),
+          energyAvailable,
+          energyCapacity
+        }
+      }
+    );
+  } else if (spawnableRoles.length === 0 && Game.time % 100 === 0) {
+    // No roles need spawning at all - room is fully staffed
+    logger.info(
+      `No spawns needed: All roles fully staffed. Energy: ${energyAvailable}/${energyCapacity}`,
+      {
+        subsystem: "spawn",
+        room: room.name,
+        meta: {
+          energyAvailable,
+          energyCapacity,
+          activeCreeps: countCreepsByRole(room.name, true).size
+        }
+      }
+    );
+  }
 }
 
 /**
