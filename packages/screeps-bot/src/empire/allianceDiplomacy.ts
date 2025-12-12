@@ -61,7 +61,8 @@ function getAllianceMemory(): AllianceDiplomacyMemory {
       lastProcessedTick: 0
     };
   }
-  return Memory.allianceDiplomacy;
+  // Safe to assert non-null since we initialize it above if undefined
+  return Memory.allianceDiplomacy as AllianceDiplomacyMemory;
 }
 
 /**
