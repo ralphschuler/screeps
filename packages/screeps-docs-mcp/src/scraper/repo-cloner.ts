@@ -34,9 +34,7 @@ export async function cloneDocsRepo(): Promise<string> {
     }
     
     // Create git instance with environment configuration
-    const git = simpleGit({
-      config: Object.keys(gitEnv).length > 0 ? [] : undefined
-    }).env(gitEnv);
+    const git = simpleGit().env(gitEnv);
     
     // Clone the repository with depth 1 (shallow clone) for efficiency
     // Include git config to use system SSL certificates
