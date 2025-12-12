@@ -1,0 +1,62 @@
+---
+name: Stale Issue
+
+on:
+  schedule:
+    # Run daily at midnight UTC
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Detect and close stale issues
+        uses: actions/stale@v10
+        with:
+          # Stale detection configuration
+          days-before-stale: 60
+          days-before-close: 14
+
+          # Stale and close messages
+          stale-issue-message: >
+            This issue has been inactive for 60 days and will be closed
+            in 14 days unless there is activity. If this issue is still
+            relevant, please comment or remove the `stale` label.
+          close-issue-message: >
+            This issue was automatically closed due to inactivity. If this
+            issue is still relevant, please reopen it or create a new issue
+            with updated context.
+
+          # Label configuration
+          stale-issue-label: stale
+
+          # Exempt labels - issues with these labels are never stale
+          exempt-issue-labels: >
+            pinned,
+            security,
+            priority/critical,
+            priority/high
+
+          # Do not process pull requests, only issues
+          days-before-pr-stale: -1
+          days-before-pr-close: -1
+
+          # Remove stale label when issues receive activity
+          remove-stale-when-updated: true
+
+          # Operations per run - increase if needed
+          operations-per-run: 100
+
+          # Authentication
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
