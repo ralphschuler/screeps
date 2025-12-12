@@ -148,7 +148,7 @@ export class SS2TerminalComms {
     }
 
     if (completedMessages.length > 0) {
-      logger.debug(`Processed ${transactions.length} terminal transactions, completed ${completedMessages.length} messages`);
+      logger.debug(`Processed ${Game.market.incomingTransactions.length} terminal transactions, completed ${completedMessages.length} messages`);
     }
 
     return completedMessages;
