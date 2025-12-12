@@ -55,11 +55,10 @@ describe('Stats System', () => {
 
 describe('Memory Statistics', () => {
   it('should store stats in memory', () => {
-    const memory = Memory as any;
-    
-    // Check if stats structure exists
-    if (memory.stats) {
-      Assert.isType(memory.stats, 'object');
+    // Check if stats structure exists (using type-safe property check)
+    if ('stats' in Memory) {
+      const stats = (Memory as Record<string, any>).stats;
+      Assert.isType(stats, 'object');
       console.log('[Test] Stats structure exists in memory');
     } else {
       console.log('[Test] Stats structure not yet initialized');
@@ -71,10 +70,11 @@ describe('Memory Statistics', () => {
       const room = Game.rooms[roomName];
       
       if (room.controller?.my) {
-        const roomMemory = (Memory as any).rooms?.[roomName];
+        const roomMemory = Memory.rooms?.[roomName];
         
-        if (roomMemory?.stats) {
-          console.log(`[Test] Room ${roomName} has stats:`, Object.keys(roomMemory.stats));
+        if (roomMemory && 'stats' in roomMemory) {
+          const stats = (roomMemory as Record<string, any>).stats;
+          console.log(`[Test] Room ${roomName} has stats:`, Object.keys(stats));
         }
       }
     }
