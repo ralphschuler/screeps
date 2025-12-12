@@ -36,7 +36,7 @@ jobs:
       SCREEPS_BRANCH: ${{ vars.SCREEPS_BRANCH }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Use Node.js
         uses: actions/setup-node@v4
