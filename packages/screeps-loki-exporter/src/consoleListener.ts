@@ -50,8 +50,16 @@ export async function startConsoleListener(
     logger.error('Socket error', error);
   });
 
-  socket.on('console', (payload: { messages?: { log?: string[] } }) => {
-    const lines = payload?.messages?.log ?? [];
+  // Subscribe to console events once, before connecting
+  // The subscribe() method registers the callback as the event handler for 'console' events
+  let firstMessage = true;
+  socket.subscribe('console', (payload: { data?: { messages?: { log?: string[] } } }) => {
+    if (firstMessage) {
+      logger.info('Subscribed to console events and receiving messages');
+      firstMessage = false;
+    }
+    
+    const lines = payload?.data?.messages?.log ?? [];
     
     for (const line of lines) {
       const logEntry = parseLogLine(line, logger);
@@ -60,10 +68,6 @@ export async function startConsoleListener(
       }
     }
   });
-
-  // Subscribe to console events once, before connecting
-  // This prevents multiple subscriptions on reconnections
-  socket.subscribe('console', () => logger.info('Subscribed to console events'));
 
   if (typeof socket.connect === 'function') {
     await socket.connect();
