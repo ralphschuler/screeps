@@ -599,6 +599,7 @@ function processAttackRequests(): void {
 
   for (const request of sortedRequests) {
     // TODO: Implement attack coordination logic
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/496
     // This requires integration with military planning systems
     // For now, log the request for future implementation
     
@@ -608,6 +609,7 @@ function processAttackRequests(): void {
     );
 
     // TODO: Evaluate if we should participate in this attack
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/495
     // - Check distance to target
     // - Assess our military capacity
     // - Check for conflicts with our own war plans
