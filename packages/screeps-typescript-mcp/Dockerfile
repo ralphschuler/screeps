@@ -1,39 +1,36 @@
-# Build stage
-FROM node:18-slim AS builder
+# Screeps TypeScript MCP Server Docker Image
+#
+# This Dockerfile creates a container for running the Screeps TypeScript types
+# MCP server using stdio transport for integration with MCP clients.
+#
+# Build the application before building the Docker image:
+#   npm ci && npm run build
 
-WORKDIR /app
+FROM node:20.19-slim
 
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.docker.json ./tsconfig.json
-
-# Install dependencies
-RUN npm ci --only=production
-
-# Copy source files
-COPY src ./src
-
-# Build TypeScript
-RUN npm run build
-
-# Runtime stage
-FROM node:18-slim
-
-WORKDIR /app
+# Add OCI labels for GitHub Container Registry
+LABEL org.opencontainers.image.source=https://github.com/ralphschuler/screeps \
+      org.opencontainers.image.description="Screeps TypeScript MCP Server" \
+      org.opencontainers.image.licenses=MIT
 
 # Install git (required for cloning typed-screeps)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends git && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy built files and dependencies
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./
+# Set working directory
+WORKDIR /app
 
 # Set environment variables
 ENV NODE_ENV=production
 ENV TYPES_CACHE_TTL=3600
+
+# Copy package files and install production dependencies only
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+# Copy pre-built application
+COPY dist/ ./dist/
 
 # Run the server
 ENTRYPOINT ["node", "dist/server.js"]

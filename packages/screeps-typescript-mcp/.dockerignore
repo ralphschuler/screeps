@@ -1,5 +1,7 @@
 node_modules
-dist
+src
+tsconfig.json
+tsconfig.docker.json
 tests
 *.test.ts
 *.test.js
@@ -8,3 +10,5 @@ tests
 README.md
 tsconfig.test.json
 vitest.config.ts
+.vscode
+.idea

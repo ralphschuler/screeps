@@ -1,8 +1,10 @@
 # Dependencies
 node_modules/
 
-# Build output
-dist/
+# Source files (already compiled to dist)
+src/
+tsconfig.json
+tsconfig.docker.json
 
 # Tests
 tests/
