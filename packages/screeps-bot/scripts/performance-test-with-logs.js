@@ -185,8 +185,14 @@ async function connectToAPI() {
       api.socket.subscribe('console', (event) => {
         if (event.data && event.data.messages && event.data.messages.log) {
           event.data.messages.log.forEach((message) => {
-            // Remove HTML tags for cleaner logs
-            const cleanMessage = message.replace(/<[^>]*>/g, '');
+            // Remove HTML tags for cleaner logs - use multiple passes to ensure complete removal
+            let cleanMessage = message;
+            let previousMessage = '';
+            // Keep removing HTML tags until no more changes occur
+            while (cleanMessage !== previousMessage) {
+              previousMessage = cleanMessage;
+              cleanMessage = cleanMessage.replace(/<[^>]*>/g, '');
+            }
             const logLine = log(`[Console] ${cleanMessage}`);
             consoleLogStream.write(logLine + '\n');
           });
@@ -195,7 +201,14 @@ async function connectToAPI() {
         // Also capture results
         if (event.data && event.data.messages && event.data.messages.results) {
           event.data.messages.results.forEach((result) => {
-            const logLine = log(`[Result] ${result}`);
+            // Sanitize results as well
+            let cleanResult = String(result);
+            let previousResult = '';
+            while (cleanResult !== previousResult) {
+              previousResult = cleanResult;
+              cleanResult = cleanResult.replace(/<[^>]*>/g, '');
+            }
+            const logLine = log(`[Result] ${cleanResult}`);
             consoleLogStream.write(logLine + '\n');
           });
         }
