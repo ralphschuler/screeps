@@ -86,6 +86,12 @@ function isCreep(entity: Creep | PowerCreep): entity is Creep {
 
 /** Priority threshold for high-priority movement (used in traffic visualization) */
 const HIGH_PRIORITY_THRESHOLD = 50;
+/**
+ * Soft cost applied to friendly creeps when avoidCreeps is enabled.
+ * Using a soft cost instead of an impassable wall allows pathing to
+ * succeed in crowded spawn areas while still preferring open tiles.
+ */
+const FRIENDLY_CREEP_COST = 10;
 
 // =============================================================================
 // Types & Interfaces
@@ -705,7 +711,8 @@ function generateCostMatrix(
   allowHostileRooms = false,
   allowSK = false,
   preferHighway = false,
-  highwayBias = 2.5
+  highwayBias = 2.5,
+  origin?: RoomPosition
 ): CostMatrix | false {
   const costs = new PathFinder.CostMatrix();
   const room = Game.rooms[roomName];
@@ -785,11 +792,15 @@ function generateCostMatrix(
   if (avoidCreeps) {
     const creeps = room.find(FIND_CREEPS);
     for (const creep of creeps) {
-      costs.set(creep.pos.x, creep.pos.y, 255);
+      if (origin && origin.isEqualTo(creep.pos)) continue; // Don't block the moving creep
+      const creepCost = creep.my ? FRIENDLY_CREEP_COST : 255;
+      costs.set(creep.pos.x, creep.pos.y, creepCost);
     }
     const powerCreeps = room.find(FIND_POWER_CREEPS);
     for (const pc of powerCreeps) {
-      costs.set(pc.pos.x, pc.pos.y, 255);
+      if (origin && origin.isEqualTo(pc.pos)) continue; // Don't block the moving creep
+      const creepCost = pc.my ? FRIENDLY_CREEP_COST : 255;
+      costs.set(pc.pos.x, pc.pos.y, creepCost);
     }
   }
 
@@ -877,13 +888,14 @@ function findPath(origin: RoomPosition, target: RoomPosition | MoveTarget, opts:
         return false;
       }
       return generateCostMatrix(
-        roomName, 
-        opts.avoidCreeps ?? true, 
-        roadCost, 
+        roomName,
+        opts.avoidCreeps ?? true,
+        roadCost,
         allowHostileRooms,
         allowSK,
         preferHighway,
-        highwayBias
+        highwayBias,
+        origin
       );
     }
   });
@@ -915,13 +927,14 @@ function findPath(origin: RoomPosition, target: RoomPosition | MoveTarget, opts:
             return false;
           }
           return generateCostMatrix(
-            roomName, 
-            opts.avoidCreeps ?? true, 
-            roadCost, 
+            roomName,
+            opts.avoidCreeps ?? true,
+            roadCost,
             allowHostileRooms,
             allowSK,
             preferHighway,
-            highwayBias
+            highwayBias,
+            origin
           );
         }
       });
@@ -956,13 +969,14 @@ function findFleePath(origin: RoomPosition, threats: RoomPosition[], range: numb
     flee: true,
     roomCallback: (roomName: string) => {
       return generateCostMatrix(
-        roomName, 
-        opts.avoidCreeps ?? true, 
-        roadCost, 
+        roomName,
+        opts.avoidCreeps ?? true,
+        roadCost,
         allowHostileRooms,
         allowSK,
         preferHighway,
-        highwayBias
+        highwayBias,
+        origin
       );
     }
   });
