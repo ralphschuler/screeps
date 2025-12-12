@@ -195,6 +195,14 @@ function runVisualizations(): void {
  * Main loop for SwarmBot
  */
 export function loop(): void {
+  // Log every 10 ticks to confirm main loop is running
+  if (!systemsInitialized || Game.time % 10 === 0) {
+    logger.info(`SwarmBot loop executing at tick ${Game.time}`, {
+      subsystem: "SwarmBot",
+      meta: { systemsInitialized }
+    });
+  }
+  
   // Initialize systems on first tick
   if (!systemsInitialized) {
     initializeSystems();
