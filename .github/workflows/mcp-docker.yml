@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'packages/screeps-docs-mcp/**'
+      - 'packages/screeps-typescript-mcp/**'
       - 'packages/screeps-mcp/**'
       - 'packages/screeps-wiki-mcp/**'
       - '.github/workflows/mcp-docker.yml'
