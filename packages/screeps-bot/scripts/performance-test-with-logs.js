@@ -47,7 +47,6 @@ const serverLogStream = fs.createWriteStream(config.serverLogFile, { flags: 'a' 
 
 let performanceServerProcess = null;
 let isShuttingDown = false;
-let apiConnected = false;
 
 /**
  * Log message with timestamp
@@ -179,12 +178,8 @@ async function connectToAPI() {
       // Subscribe to console output for all tracked rooms
       const rooms = ['W1N1', 'W2N1', 'W3N1']; // Add more rooms as needed
       
-      rooms.forEach(room => {
-        log(`Subscribing to room ${room}...`);
-        api.socket.subscribe(`room:${room}`, (event) => {
-          // This is called when room data updates
-        });
-      });
+      // Note: We don't need room data updates for log capture, only console output
+      // Room subscriptions are kept minimal to reduce network traffic
 
       // Subscribe to console logs
       api.socket.subscribe('console', (event) => {
@@ -242,12 +237,17 @@ async function cleanup() {
     performanceServerProcess.kill('SIGTERM');
 
     // Force kill after 5 seconds
-    setTimeout(() => {
+    const forceKillTimeout = setTimeout(() => {
       if (performanceServerProcess && !performanceServerProcess.killed) {
         log('Force killing performance server...');
         performanceServerProcess.kill('SIGKILL');
       }
     }, 5000);
+
+    // Clear timeout if process exits before force kill
+    performanceServerProcess.once('exit', () => {
+      clearTimeout(forceKillTimeout);
+    });
   }
 
   log('Cleanup complete');
