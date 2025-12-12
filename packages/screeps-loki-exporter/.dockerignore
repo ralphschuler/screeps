@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log
+.env
+.env.*
+!.env.example
+src
+tsconfig.json
+*.md
+.git
+.gitignore
+.vscode
+.idea
+tests
+coverage
