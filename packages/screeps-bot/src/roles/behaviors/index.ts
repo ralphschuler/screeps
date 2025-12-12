@@ -38,3 +38,20 @@ export {
 
 // Pheromone helper functions
 export * from "./pheromoneHelper";
+
+// Resilience and priority systems (NEW)
+export {
+  withResilience,
+  createEmergencyBehavior,
+  assessBehaviorHealth,
+  shouldUseEmergencyMode,
+  type BehaviorResult
+} from "./resilience";
+
+export {
+  calculateBehaviorPriorities,
+  selectHighestPriorityTask,
+  type TaskType,
+  type PriorityScore,
+  type TaskPriorities
+} from "./priority";
