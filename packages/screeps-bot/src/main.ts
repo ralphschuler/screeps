@@ -31,6 +31,11 @@ declare global {
       amount: number;
       scheduledTick: number;
     }>;
+    /** Alliance diplomacy tracking */
+    allianceDiplomacy?: {
+      playerReputations: Record<string, any>;
+      lastProcessedTick: number;
+    };
     // TODO: Add memory migration version tracking field to support future schema changes
     // memoryVersion?: number;
     // TODO: Consider adding shard coordination memory for multi-shard operations (ROADMAP Section 11)
@@ -90,6 +95,16 @@ declare global {
 
 // Register all console commands (must be done before game loop starts)
 registerAllConsoleCommands();
+
+// Load integration tests if screepsmod-testing is available
+// This is a one-time initialization that happens when the module is loaded
+try {
+  const { loadIntegrationTests } = require("./tests/loader");
+  loadIntegrationTests();
+} catch (error) {
+  // Tests not available or error loading - this is fine for production
+  console.log('[Main] Integration tests not loaded:', error);
+}
 
 // When compiling TS to JS and bundling with rollup, the line numbers and file names in error messages change
 // This utility uses source maps to get the line numbers and file names of the original, TS source code
