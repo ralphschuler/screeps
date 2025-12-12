@@ -49,6 +49,25 @@ let performanceServerProcess = null;
 let isShuttingDown = false;
 
 /**
+ * Sanitize HTML from messages
+ * Uses multiple passes to remove nested HTML tags with a safety limit
+ */
+function sanitizeHtml(input) {
+  const MAX_ITERATIONS = 10; // Prevent infinite loops with malformed HTML
+  let clean = String(input);
+  let previous = '';
+  let iterations = 0;
+  
+  while (clean !== previous && iterations < MAX_ITERATIONS) {
+    previous = clean;
+    clean = clean.replace(/<[^>]*>/g, '');
+    iterations++;
+  }
+  
+  return clean;
+}
+
+/**
  * Log message with timestamp
  */
 function log(message, stream = console.log) {
@@ -185,14 +204,7 @@ async function connectToAPI() {
       api.socket.subscribe('console', (event) => {
         if (event.data && event.data.messages && event.data.messages.log) {
           event.data.messages.log.forEach((message) => {
-            // Remove HTML tags for cleaner logs - use multiple passes to ensure complete removal
-            let cleanMessage = message;
-            let previousMessage = '';
-            // Keep removing HTML tags until no more changes occur
-            while (cleanMessage !== previousMessage) {
-              previousMessage = cleanMessage;
-              cleanMessage = cleanMessage.replace(/<[^>]*>/g, '');
-            }
+            const cleanMessage = sanitizeHtml(message);
             const logLine = log(`[Console] ${cleanMessage}`);
             consoleLogStream.write(logLine + '\n');
           });
@@ -201,13 +213,7 @@ async function connectToAPI() {
         // Also capture results
         if (event.data && event.data.messages && event.data.messages.results) {
           event.data.messages.results.forEach((result) => {
-            // Sanitize results as well
-            let cleanResult = String(result);
-            let previousResult = '';
-            while (cleanResult !== previousResult) {
-              previousResult = cleanResult;
-              cleanResult = cleanResult.replace(/<[^>]*>/g, '');
-            }
+            const cleanResult = sanitizeHtml(result);
             const logLine = log(`[Result] ${cleanResult}`);
             consoleLogStream.write(logLine + '\n');
           });

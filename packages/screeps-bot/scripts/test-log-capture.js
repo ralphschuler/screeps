@@ -64,14 +64,21 @@ setTimeout(() => {
       }
     }
     
-    // Test result
-    const testPassed = consoleLogExists && serverLogExists && fs.statSync(serverLogFile).size > 0;
+    // Test result - we need both files to exist
+    // Server log must have content (it captures startup output)
+    // Console log can be empty if bot doesn't run, but it must exist
+    const serverLogHasContent = serverLogExists && fs.statSync(serverLogFile).size > 0;
+    const testPassed = consoleLogExists && serverLogHasContent;
     
     if (testPassed) {
-      console.log('\n✅ Test PASSED: Log files were created');
+      console.log('\n✅ Test PASSED: Log capture is working correctly');
+      console.log('  - Console log file created (ready for bot output)');
+      console.log('  - Server log file created with content');
       process.exit(0);
     } else {
       console.log('\n❌ Test FAILED: Log files were not created properly');
+      if (!consoleLogExists) console.log('  - Console log file missing');
+      if (!serverLogHasContent) console.log('  - Server log file missing or empty');
       console.log('\nScript output:');
       console.log(output);
       process.exit(1);
