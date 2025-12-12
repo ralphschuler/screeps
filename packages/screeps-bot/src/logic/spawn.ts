@@ -1224,6 +1224,10 @@ export function getBootstrapRole(roomName: string, room: Room, swarm: SwarmState
   // First check emergency: zero ACTIVE energy producers
   // This ensures we can spawn multiple larvaWorkers if needed for faster recovery
   if (getEnergyProducerCount(activeCounts) === 0) {
+    logger.info(`Bootstrap: Spawning larvaWorker (emergency - no active energy producers)`, {
+      subsystem: "spawn",
+      room: roomName
+    });
     return "larvaWorker";
   }
 
@@ -1236,18 +1240,42 @@ export function getBootstrapRole(roomName: string, room: Room, swarm: SwarmState
   for (const req of bootstrapOrder) {
     // Skip conditional roles if condition not met
     if (req.condition && !req.condition(room)) {
+      logger.info(`Bootstrap: Skipping ${req.role} (condition not met)`, {
+        subsystem: "spawn",
+        room: roomName
+      });
       continue;
     }
 
     const current = totalCounts.get(req.role) ?? 0;
     if (current < req.minCount) {
       // Verify we can spawn this role (check needsRole for special conditions)
-      if (needsRole(roomName, req.role, swarm)) {
+      const canSpawn = needsRole(roomName, req.role, swarm);
+      logger.info(
+        `Bootstrap: Role ${req.role} needs spawning (current: ${current}, min: ${req.minCount}, needsRole: ${canSpawn})`,
+        {
+          subsystem: "spawn",
+          room: roomName
+        }
+      );
+      if (canSpawn) {
         return req.role;
+      } else {
+        logger.warn(
+          `Bootstrap: Role ${req.role} blocked by needsRole check (current: ${current}/${req.minCount})`,
+          {
+            subsystem: "spawn",
+            room: roomName
+          }
+        );
       }
     }
   }
 
+  logger.info(`Bootstrap: No role needs spawning`, {
+    subsystem: "spawn",
+    room: roomName
+  });
   return null;
 }
 
