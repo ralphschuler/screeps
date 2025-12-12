@@ -89,17 +89,18 @@ For MCP clients like Claude Desktop or Cursor, configure the Docker-based server
 ### Programmatic Usage
 
 ```typescript
-import { buildIndex, searchIndex } from "@ralphschuler/screeps-docs-mcp";
+import { buildIndex, searchIndex, getEntryById } from "@ralphschuler/screeps-docs-mcp";
 
-// Build documentation index
+// Load the pre-built documentation index
 const index = await buildIndex();
 
 // Search documentation
 const results = searchIndex(index, "spawn creep");
+console.log(`Found ${results.length} results`);
 
-// Get specific API documentation
-import { getAPIObjectList } from "@ralphschuler/screeps-docs-mcp";
-const apis = getAPIObjectList();
+// Get a specific documentation entry by ID
+const gameDoc = getEntryById(index, "api-game");
+console.log(gameDoc?.title); // "Game"
 ```
 
 ## MCP Resources
@@ -198,26 +199,53 @@ Documentation is sourced from the official Screeps documentation repository:
 - Repository: https://github.com/screeps/docs
 - Branch: master
 
-The server clones the repository on every build to ensure the documentation is always up-to-date. The repository is automatically cleaned up after building the index.
+**Build-Time Documentation Parsing:**
+
+The documentation is parsed at **build time** (not runtime) to ensure instant access without network dependencies:
+
+1. The docs repository is included as a git submodule at `docs-repo/`
+2. During the build process, the documentation is parsed into a JSON index
+3. The pre-built index is bundled with the package
+4. At runtime, the server loads the pre-built index directly (no cloning needed)
+
+This approach eliminates SSL certificate issues, reduces startup time, and removes the runtime dependency on `simple-git`.
 
 ## Development
 
 ```bash
-# Install dependencies
-yarn install
+# Clone with submodules (first time)
+git clone --recursive https://github.com/ralphschuler/screeps.git
+# OR update submodules in existing clone
+git submodule update --init --recursive
 
-# Build
-yarn build
+# Install dependencies
+npm install
+
+# Build (includes parsing docs from submodule)
+npm run build
+
+# Build just the documentation index
+npm run build:index
 
 # Run tests
-yarn test
+npm test
 
 # Run tests with coverage
-yarn test:coverage
+npm run test:coverage
 
 # Run MCP Inspector tests (protocol compliance)
 npm run test:inspector
 ```
+
+### Build Process Details
+
+The build happens in three stages:
+
+1. **`npm run build:scripts`** - Compiles the build-time TypeScript scripts
+2. **`npm run build:index`** - Parses documentation from the submodule and generates `dist/docs-index.json`
+3. **`npm run build`** - Compiles the runtime TypeScript code that loads the pre-built index
+
+The submodule (`docs-repo/`) contains the official Screeps documentation and is only needed at build time, not runtime.
 
 ### MCP Inspector Testing
 
