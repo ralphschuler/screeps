@@ -204,6 +204,52 @@ function createMockContext(
   };
 }
 
+describe("larvaWorker behavior - working state initialization", () => {
+  describe("when working state is undefined", () => {
+    it("should initialize working=true when creep has partial energy", () => {
+      const creep = createMockCreep({ freeCapacity: 50, usedCapacity: 50 }); // Partial energy
+      const spawn = createMockSpawn(100);
+      
+      // Create context without isWorking set (simulating undefined state)
+      const ctx = createMockContext(creep, {
+        isWorking: undefined,
+        spawnStructures: [spawn]
+      });
+      
+      // Memory working should be undefined initially
+      ctx.memory.working = undefined;
+
+      const action = larvaWorker(ctx);
+
+      // Creep should recognize it has energy and start working (delivering)
+      assert.equal(action.type, "transfer", "Creep with partial energy should deliver, not collect");
+      if (action.type === "transfer") {
+        assert.equal(action.target, spawn, "Should deliver to spawn");
+      }
+      // Working state should now be true
+      assert.equal(ctx.memory.working, true, "Working state should be initialized to true for creep with energy");
+    });
+
+    it("should initialize working=false when creep is empty", () => {
+      const creep = createMockCreep({ freeCapacity: 100, usedCapacity: 0 }); // Empty
+      
+      const ctx = createMockContext(creep, {
+        isWorking: undefined
+      });
+      
+      // Memory working should be undefined initially
+      ctx.memory.working = undefined;
+
+      const action = larvaWorker(ctx);
+
+      // Creep should recognize it's empty and start collecting
+      assert.notEqual(action.type, "transfer", "Empty creep should not try to deliver");
+      // Working state should now be false
+      assert.equal(ctx.memory.working, false, "Working state should be initialized to false for empty creep");
+    });
+  });
+});
+
 describe("larvaWorker behavior - delivery priority", () => {
   describe("when larvaWorker has energy to deliver", () => {
     it("should deliver to spawn first when spawn needs energy", () => {

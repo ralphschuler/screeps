@@ -64,6 +64,16 @@ const HARVESTER_CACHE_DURATION = 50;
  * Update working state based on energy levels.
  * Returns true if creep should be working (has energy to spend).
  * 
+ * BUGFIX: Initialize working state based on current energy when undefined.
+ * This prevents deadlock where creeps with partial energy have working=false,
+ * causing them to try collecting more energy but being unable to due to
+ * lack of free capacity.
+ * 
+ * State transitions:
+ * - Empty → working=false (collect energy)
+ * - Full → working=true (deliver/work)
+ * - Undefined → initialize based on current energy (has energy → true, empty → false)
+ * 
  * OPTIMIZATION: Only clear cached targets on state change, not the state machine state.
  * The state machine's own completion detection handles invalid states efficiently.
  * Clearing state machine state here causes unnecessary re-evaluation and "dead ticks"
@@ -71,10 +81,18 @@ const HARVESTER_CACHE_DURATION = 50;
  * "idle time" and wasted CPU on frequent behavior re-evaluation during transitions.
  */
 function updateWorkingState(ctx: CreepContext): boolean {
-  const wasWorking = ctx.memory.working ?? false;
+  // Initialize working state if undefined - creeps with energy should be working
+  if (ctx.memory.working === undefined) {
+    ctx.memory.working = !ctx.isEmpty;
+  }
+  
+  const wasWorking = ctx.memory.working;
+  
+  // Update state based on energy levels
   if (ctx.isEmpty) ctx.memory.working = false;
   if (ctx.isFull) ctx.memory.working = true;
-  const isWorking = ctx.memory.working ?? false;
+  
+  const isWorking = ctx.memory.working;
 
   // Clear cached targets when working state changes to ensure fresh target selection
   // State machine will naturally detect completion and re-evaluate on next tick
