@@ -10,6 +10,23 @@ This is a Screeps bot repository with a swarm-based architecture. The ROADMAP.md
 2. **Maintain Consistency**: Keep code, tests, and documentation aligned with the established patterns
 3. **Respect Constraints**: Adhere to CPU budgets, memory limits, and performance targets outlined in the roadmap
 4. **Verify with MCP Servers**: Always fact-check Screeps-related decisions using the available MCP servers before implementing or documenting
+5. **Required Code Only**: Keep only code that is actively used. Remove disabled or unused features completely rather than keeping them with config flags
+
+## Code Philosophy: Required Code Only
+
+**Keep only code that is actively used and required.** When a feature is disabled or not needed:
+- **Remove it completely** - Don't just disable it with flags or comments
+- **No dead code** - Unused functions, classes, or modules should be deleted
+- **Reimplementation is acceptable** - If a feature is needed later, it can be reimplemented from scratch or from git history
+- **Simplicity over flexibility** - A smaller, focused codebase is easier to maintain and understand than one full of "just in case" code
+
+Examples:
+- ❌ Don't add config flags to disable features - remove the feature entirely
+- ❌ Don't keep "commented out" code for future reference - use git history
+- ❌ Don't implement features "just in case they're needed someday"
+- ✅ Remove unused imports, functions, and classes immediately
+- ✅ Delete entire subsystems if they're not being used
+- ✅ Trust that git history and documentation preserve removed functionality
 
 ## TODO Comment Protocol
 

@@ -2,7 +2,6 @@
  * Core Process Manager
  *
  * Manages core bot processes that don't belong to a specific subsystem:
- * - Pixel generation (when bucket is full)
  * - Memory cleanup (removing dead creeps)
  * - Memory size monitoring
  * - Memory segment statistics
@@ -28,51 +27,6 @@ import { logger } from "./logger";
  */
 @ProcessClass()
 export class CoreProcessManager {
-  /**
-   * Pixel Generation - Generate pixels when bucket is full
-   * Runs every tick to check if bucket is at max (10,000) and generate a pixel.
-   * Generating a pixel consumes 10,000 bucket (emptying it).
-   * Notifies the kernel so it knows low bucket is expected during recovery.
-   * 
-   * DISABLED BY DEFAULT: Pixel generation is disabled in kernel config (pixelGenerationEnabled: false)
-   * This process will still be registered but won't actually generate pixels unless config is changed.
-   * 
-   * Rationale: Automatic pixel generation causes severe bucket instability:
-   * - Bucket fills to 10,000 -> Pixel generated -> Bucket drops to 0
-   * - Bot enters low bucket mode, filters out LOW/MEDIUM priority processes
-   * - Recovery is slow, and another pixel generates as soon as bucket refills
-   * - Creates a cycle of bucket depletion preventing normal operation
-   * 
-   * Manual pixel generation is recommended instead:
-   * - Wait for stable high bucket (>9000 for extended period)
-   * - Run: Game.cpu.generatePixel()
-   * - Monitor recovery before generating another
-   * 
-   * Note: minBucket check removed - process runs regardless of bucket level.
-   * The internal check for PIXEL_CPU_COST ensures pixel generation only happens at max bucket.
-   */
-  @HighFrequencyProcess("core:pixelGeneration", "Pixel Generation", {
-    priority: ProcessPriority.LOW,
-    cpuBudget: 0.001
-  })
-  public generatePixel(): void {
-    // Check if pixel generation is enabled in kernel config
-    if (!kernel.getConfig().pixelGenerationEnabled) {
-      return; // Pixel generation disabled
-    }
-    
-    if (Game.cpu.bucket >= PIXEL_CPU_COST) {
-      const result = Game.cpu.generatePixel?.();
-      if (result === OK) {
-        // Notify kernel that a pixel was generated so it expects low bucket
-        kernel.notifyPixelGenerated();
-        logger.info("Generated pixel from full CPU bucket", { subsystem: "Pixel" });
-      } else if (result === ERR_NOT_ENOUGH_RESOURCES) {
-        logger.debug("Could not generate pixel: not enough CPU bucket", { subsystem: "Pixel" });
-      }
-    }
-  }
-
   /**
    * Memory Cleanup - Remove dead creeps from Memory
    * Runs every 50 ticks to clean up memory for creeps that no longer exist
