@@ -44,17 +44,25 @@ interface AllianceDiplomacyMemory {
   lastProcessedTick: number;
 }
 
+// Augment the global Memory interface
+declare global {
+  interface Memory {
+    allianceDiplomacy?: AllianceDiplomacyMemory;
+  }
+}
+
 /**
  * Get or initialize alliance memory
  */
 function getAllianceMemory(): AllianceDiplomacyMemory {
   if (!Memory.allianceDiplomacy) {
-    (Memory as any).allianceDiplomacy = {
+    Memory.allianceDiplomacy = {
       playerReputations: {},
       lastProcessedTick: 0
     };
   }
-  return (Memory as any).allianceDiplomacy;
+  // Safe to assert non-null since we initialize it above if undefined
+  return Memory.allianceDiplomacy as AllianceDiplomacyMemory;
 }
 
 /**
