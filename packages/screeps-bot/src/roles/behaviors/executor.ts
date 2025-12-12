@@ -313,9 +313,23 @@ function executeWithRange(
 function updateWorkingState(ctx: CreepContext): void {
   // BUGFIX: Use creep.store directly for fresh capacity state
   const isEmpty = ctx.creep.store.getUsedCapacity() === 0;
+  const isFull = ctx.creep.store.getFreeCapacity() === 0;
 
-  // If the creep has any energy at all, consider it working. Requiring a full
-  // store meant creeps that picked up partial energy (common when containers
-  // are low) stayed in `working = false` forever and never delivered.
-  ctx.memory.working = !isEmpty;
+  // BUGFIX: Re-initialize undefined working state based on actual energy
+  // Global resets or memory wipes can clear creep memory while they still
+  // have energy. If working remains undefined, downstream behaviors assume
+  // the creep is in collection mode and never deliver, leading to the
+  // reported "working: false" deadlock even though the kernel executes
+  // their processes. Initialize to true when carrying energy so they resume
+  // their work cycle immediately.
+  if (ctx.memory.working === undefined) {
+    ctx.memory.working = !isEmpty;
+  }
+
+  if (isEmpty) {
+    ctx.memory.working = false;
+  }
+  if (isFull) {
+    ctx.memory.working = true;
+  }
 }

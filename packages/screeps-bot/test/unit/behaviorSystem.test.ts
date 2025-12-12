@@ -29,10 +29,38 @@ describe("Behavior System", () => {
       });
 
       const action = evaluateEconomyBehavior(ctx);
-      
+
       // Should initialize to working=true (has energy to deliver)
       expect(ctx.memory.working).to.equal(true);
       expect(action.type).to.not.equal("idle");
+    });
+
+    it("should restore working flag after memory resets when creep has energy", () => {
+      const ctx = createMockContext({
+        role: "larvaWorker",
+        working: undefined,
+        energy: { used: 25, free: 75 }
+      });
+
+      (global as any).Game = {
+        rooms: {
+          W1N1: {
+            name: "W1N1",
+            controller: { my: true },
+            find: () => [],
+            getPositionAt: () => ({ pos: { x: 25, y: 25, roomName: "W1N1" } })
+          }
+        },
+        map: { getRoomLinearDistance: () => 0 },
+        cpu: { getUsed: () => 0, limit: 0, bucket: 10000 },
+        time: 0,
+        getObjectById: () => null
+      } as unknown as Game;
+
+      // Execute a no-op action to trigger executor working-state update
+      executeAction(ctx.creep, { type: "idle" }, ctx);
+
+      expect(ctx.memory.working).to.equal(true);
     });
 
     it("should handle empty room with no resources", () => {
