@@ -57,6 +57,9 @@ function recordConsoleLine(metrics: Metrics, logger: Logger, line: string, shard
     
     // New format: entire stats object
     if (parsed.type === 'stats' && parsed.data && typeof parsed.data === 'object') {
+      // Use shard from log if available, otherwise use the fallback shard parameter
+      const logShard = parsed.shard || shard;
+      
       // Flatten the stats object and ingest all metrics
       const flatStats = flattenObject(parsed.data as Record<string, unknown>);
       
@@ -79,19 +82,21 @@ function recordConsoleLine(metrics: Metrics, logger: Logger, line: string, shard
           }
         }
 
-        metrics.recordStat(key, range, value, shard);
+        metrics.recordStat(key, range, value, logShard);
         recordedCount++;
       }
       
-      logger.info(`Recorded ${recordedCount} stats from console`, { tick: parsed.data.tick });
-      metrics.markScrapeSuccess('console', true, shard);
+      logger.info(`Recorded ${recordedCount} stats from console`, { tick: parsed.data.tick, shard: logShard });
+      metrics.markScrapeSuccess('console', true, logShard);
       return;
     }
     
     // Legacy single-stat format: {"type": "stat", "key": "...", "value": ...}
     if (parsed.type === 'stat' && parsed.key && typeof parsed.value === 'number') {
-      metrics.recordStat(parsed.key, parsed.unit ?? 'console', parsed.value, shard);
-      metrics.markScrapeSuccess('console', true, shard);
+      // Use shard from log if available, otherwise use the fallback shard parameter
+      const logShard = parsed.shard || shard;
+      metrics.recordStat(parsed.key, parsed.unit ?? 'console', parsed.value, logShard);
+      metrics.markScrapeSuccess('console', true, logShard);
       return;
     }
   } catch {

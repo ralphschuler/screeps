@@ -99,20 +99,21 @@ The exporter automatically extracts meaningful tags from metric keys:
 **JSON stats object format (current):**
 The bot outputs the entire `Memory.stats` object as a single JSON line per tick:
 ```json
-{"type":"stats","data":{"tick":12345,"cpu":{"used":15.5,"limit":20,"bucket":9847},"empire":{"rooms":3,"creeps":42},"rooms":{"W1N1":{"rcl":5}}}}
+{"type":"stats","shard":"shard0","data":{"tick":12345,"cpu":{"used":15.5,"limit":20,"bucket":9847},"empire":{"rooms":3,"creeps":42},"rooms":{"W1N1":{"rcl":5}}}}
 ```
 
 The exporter:
 1. Parses the JSON line
-2. Checks if `type === "stats"` and `data` exists
-3. Flattens the nested `data` object (e.g., `cpu.used`, `room.W1N1.rcl`)
-4. Sends all metrics to Grafana Cloud Graphite
+2. Extracts the `shard` field from the log (or uses configured fallback if not present)
+3. Checks if `type === "stats"` and `data` exists
+4. Flattens the nested `data` object (e.g., `cpu.used`, `room.W1N1.rcl`)
+5. Sends all metrics to Grafana Cloud Graphite with the correct shard label
 
-This is the same flattening process used in memory mode, but with real-time data from console.
+This is the same flattening process used in memory mode, but with real-time data from console. The shard information is automatically extracted from each log line, allowing proper labeling of metrics from different shards even when using a single console WebSocket connection.
 
 **Legacy formats (backward compatibility):**
-- Single-stat JSON: `{"type": "stat", "key": "stats.cpu.used", "value": 15.5}`
-- Text format: `stats:cpu 12.3 10s`
+- Single-stat JSON: `{"type": "stat", "key": "stats.cpu.used", "value": 15.5, "shard": "shard0"}`
+- Text format: `stats:cpu 12.3 10s` (uses configured shard fallback)
 
 ### Metric structure
 Metrics are written to Grafana Cloud Graphite using the JSON format:

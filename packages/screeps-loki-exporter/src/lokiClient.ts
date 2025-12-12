@@ -7,6 +7,7 @@ export interface LogEntry {
   level: string;
   message: string;
   tick: number;
+  shard?: string;
   subsystem?: string;
   room?: string;
 }
@@ -97,6 +98,9 @@ export class LokiClient {
     for (const entry of entries) {
       const labels: Record<string, string> = {
         ...this.config.extraLabels,
+        host: this.config.hostname,
+        // Use shard from log entry if available, otherwise fall back to config
+        shard: entry.shard || this.config.shard,
         level: entry.level,
         type: entry.type
       };
