@@ -442,6 +442,19 @@ export function createContext(creep: Creep): CreepContext {
   // Get cached room data - only runs find() once per room per tick
   const roomCache = getRoomCache(room);
 
+  // BUGFIX: Ensure working state is initialized based on current carry
+  // Creeps can spawn with working undefined, which causes behaviors to treat
+  // them as always collecting. When a creep already has energy (e.g., spawned
+  // with carry from renewals or from persisted state), initialize working
+  // according to the actual store contents to prevent idle deadlocks.
+  if (memory.working === undefined) {
+    memory.working = creep.store.getUsedCapacity() > 0;
+    logger.debug(`${creep.name} initialized working=${memory.working} from carry state`, {
+      subsystem: "CreepContext",
+      creep: creep.name
+    });
+  }
+
   const homeRoom = memory.homeRoom ?? room.name;
 
   return {
