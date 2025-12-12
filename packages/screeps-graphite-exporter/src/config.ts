@@ -7,6 +7,7 @@ export interface ExporterConfig {
   memoryPath: string;
   exportFullMemory: boolean;
   shard: string;
+  fetchAllShards: boolean;
   protocol: string;
   hostname: string;
   apiPort: number | undefined;
@@ -62,6 +63,7 @@ export function loadConfig(): ExporterConfig {
     memoryPath: process.env.EXPORTER_MEMORY_PATH ?? 'stats',
     exportFullMemory: (process.env.EXPORTER_MEMORY_FULL ?? 'false').toLowerCase() === 'true',
     shard: process.env.EXPORTER_SHARD ?? 'shard0',
+    fetchAllShards: (process.env.EXPORTER_FETCH_ALL_SHARDS ?? 'false').toLowerCase() === 'true',
     protocol: process.env.SCREEPS_PROTOCOL ?? 'https',
     hostname: process.env.SCREEPS_HOST ?? 'screeps.com',
     apiPort: process.env.SCREEPS_PORT ? Number(process.env.SCREEPS_PORT) : undefined,

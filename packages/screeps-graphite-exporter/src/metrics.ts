@@ -2,9 +2,9 @@ import { ExporterConfig } from './config';
 import { Logger } from './logger';
 
 export interface Metrics {
-  recordStat(stat: string, range: string, value: number): void;
+  recordStat(stat: string, range: string, value: number, shard?: string): void;
   recordStatWithTags(stat: string, value: number, tags: Record<string, string>): void;
-  markScrapeSuccess(mode: string, success: boolean): void;
+  markScrapeSuccess(mode: string, success: boolean, shard?: string): void;
   flush(): void;
 }
 
@@ -210,7 +210,7 @@ export function createMetrics(config: ExporterConfig, logger: Logger): Metrics {
   };
 
   return {
-    recordStat(stat: string, range: string, value: number) {
+    recordStat(stat: string, range: string, value: number, shard?: string) {
       const sanitizedStat = sanitizeTagValue(stat);
       const sanitizedRange = sanitizeTagValue(range);
       const parsed = parseStatKey(stat);
@@ -219,8 +219,14 @@ export function createMetrics(config: ExporterConfig, logger: Logger): Metrics {
         source: 'exporter',
         stat: sanitizedStat,
         range: sanitizedRange,
-        category: sanitizeTagValue(parsed.category)
+        category: sanitizeTagValue(parsed.category),
+        host: sanitizeTagValue(config.hostname)
       };
+
+      // Add shard tag if provided
+      if (shard) {
+        tags.shard = sanitizeTagValue(shard);
+      }
 
       // Add sub_category tag if present
       if (parsed.subCategory) {
@@ -244,6 +250,7 @@ export function createMetrics(config: ExporterConfig, logger: Logger): Metrics {
       const allTags: Record<string, string> = {
         source: 'exporter',
         stat: sanitizedStat,
+        host: sanitizeTagValue(config.hostname),
         ...tags
       };
 
@@ -262,19 +269,27 @@ export function createMetrics(config: ExporterConfig, logger: Logger): Metrics {
       pendingMetrics.push(metric);
     },
 
-    markScrapeSuccess(mode: string, success: boolean) {
+    markScrapeSuccess(mode: string, success: boolean, shard?: string) {
       const sanitizedMode = sanitizeTagValue(mode);
       
+      const tags: Record<string, string> = {
+        source: 'exporter',
+        type: 'scrape_success',
+        mode: sanitizedMode,
+        category: 'system',
+        host: sanitizeTagValue(config.hostname)
+      };
+
+      // Add shard tag if provided
+      if (shard) {
+        tags.shard = sanitizeTagValue(shard);
+      }
+
       const metric: GraphiteMetric = {
         name: `${config.graphitePrefix}.system.scrape_success`,
         value: success ? 1 : 0,
         time: Math.floor(Date.now() / 1000),
-        tags: {
-          source: 'exporter',
-          type: 'scrape_success',
-          mode: sanitizedMode,
-          category: 'system'
-        }
+        tags
       };
 
       pendingMetrics.push(metric);
