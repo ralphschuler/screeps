@@ -27,6 +27,7 @@ jobs:
           - screeps-docs-mcp
           - screeps-mcp
           - screeps-wiki-mcp
+          - screeps-typescript-mcp
     steps:
       - name: Checkout
         uses: actions/checkout@v6
