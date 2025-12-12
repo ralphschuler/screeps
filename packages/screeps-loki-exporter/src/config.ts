@@ -7,6 +7,7 @@ export interface LokiExporterConfig {
   token?: string;
   username?: string;
   password?: string;
+  shard: string;
 
   // Loki connection
   lokiUrl: string;
@@ -73,6 +74,7 @@ export function loadConfig(): LokiExporterConfig {
     token: screepsToken,
     username,
     password,
+    shard: process.env.SCREEPS_SHARD ?? 'shard0',
     lokiUrl,
     lokiUsername,
     lokiApiKey,

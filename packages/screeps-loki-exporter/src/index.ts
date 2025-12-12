@@ -11,6 +11,7 @@ async function main() {
   const lokiClient = new LokiClient(config, logger);
 
   logger.info('Starting Screeps Loki exporter');
+  logger.info(`Screeps host: ${config.hostname}, shard: ${config.shard}`);
   logger.info(`Grafana Loki target: ${config.lokiUrl}`);
   logger.info(`Batch size: ${config.batchSize}, Interval: ${config.batchIntervalMs}ms`);
 

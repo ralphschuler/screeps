@@ -31,7 +31,10 @@ GRAFANA_LOKI_URL=https://logs-prod-012.grafana.net/loki/api/v1/push
 GRAFANA_LOKI_USERNAME=123456
 GRAFANA_LOKI_API_KEY=your_api_key_here
 
-# Optional
+# Optional - Screeps connection
+SCREEPS_SHARD=shard0  # Default: shard0
+
+# Optional - Loki configuration
 LOKI_EXTRA_LABELS=env:production,game:screeps
 LOKI_BATCH_SIZE=100
 LOKI_BATCH_INTERVAL_MS=5000
@@ -71,22 +74,30 @@ Your Screeps bot should use the updated logger that outputs JSON format:
 import { logger } from './core/logger';
 
 // Regular logs (sent to Loki)
+// The logger automatically includes the shard information from Game.shard.name
 logger.info('Spawning harvester', { room: 'E1S1', subsystem: 'spawn' });
 logger.error('Failed to spawn creep', { room: 'E1S1', subsystem: 'spawn' });
 
 // Stats (filtered by Loki exporter, sent to Graphite)
+// Stats also include shard information automatically
 logger.stat('energy.harvested', 1000, 'E1S1');
 logger.stat('cpu.used', 15.5);
 ```
+
+The logger automatically includes the current shard name (`Game.shard.name`) in every log entry, ensuring that logs from different shards are properly labeled even when received through a single console WebSocket connection.
 
 ## Labels in Loki
 
 Each log entry is tagged with labels:
 - `level`: debug, info, warn, error
 - `type`: log (stats are filtered out)
+- `host`: Screeps server hostname (e.g., "screeps.com")
+- `shard`: Shard name extracted from the log (e.g., "shard0", "shard1", "shard2")
 - `subsystem`: optional subsystem name
 - `room`: optional room name
 - Any custom labels from `LOKI_EXTRA_LABELS`
+
+The `shard` label is automatically extracted from the log messages themselves, so logs from different shards are correctly labeled even when using a single console WebSocket connection.
 
 You can query logs in Grafana using LogQL:
 ```logql
@@ -94,6 +105,8 @@ You can query logs in Grafana using LogQL:
 {subsystem="spawn", room="E1S1"}
 {level="warn"} |= "CPU"
 {level="info"} |= "tick:12345"  # Find logs from a specific game tick
+{shard="shard0"}  # Filter logs by shard
+{host="screeps.com", shard="shard1"}  # Filter by host and shard
 ```
 
 **Note on Timestamps**: The exporter uses real-world timestamps (when logs are received) rather than game tick numbers. This ensures logs have valid, current timestamps in Loki. Game tick numbers are preserved in the log message itself as `[tick:XXXXX]` for correlation with in-game events.

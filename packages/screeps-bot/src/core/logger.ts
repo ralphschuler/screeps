@@ -68,6 +68,8 @@ export interface LogContext {
   creep?: string;
   /** Process ID if log is process-specific */
   processId?: string;
+  /** Shard name - automatically populated if not provided */
+  shard?: string;
   /** Additional metadata as key-value pairs */
   meta?: Record<string, any>;
 }
@@ -80,7 +82,7 @@ export type LogType = "log" | "stat";
 /**
  * Reserved log field names that cannot be overwritten by meta
  */
-const RESERVED_LOG_FIELDS = new Set(["type", "level", "message", "tick", "subsystem", "room", "creep", "processId"]);
+const RESERVED_LOG_FIELDS = new Set(["type", "level", "message", "tick", "subsystem", "room", "creep", "processId", "shard"]);
 
 /**
  * Format log message as single-line JSON with tick information
@@ -90,11 +92,16 @@ function formatMessage(level: string, message: string, context?: LogContext, typ
     type,
     level,
     message,
-    tick: typeof Game !== "undefined" ? Game.time : 0
+    tick: typeof Game !== "undefined" ? Game.time : 0,
+    shard: typeof Game !== "undefined" && Game.shard ? Game.shard.name : "shard0"
   };
 
   // Add context fields
   if (context) {
+    // Allow explicit shard override from context
+    if (context.shard) {
+      logObject.shard = context.shard;
+    }
     if (context.subsystem) {
       logObject.subsystem = context.subsystem;
     }
@@ -187,7 +194,7 @@ export function measureCpu<T>(name: string, fn: () => T, context?: LogContext): 
 /**
  * Reserved stat field names that cannot be overwritten by meta
  */
-const RESERVED_STAT_FIELDS = new Set(["type", "key", "value", "tick", "unit", "subsystem", "room"]);
+const RESERVED_STAT_FIELDS = new Set(["type", "key", "value", "tick", "unit", "subsystem", "room", "shard"]);
 
 /**
  * Log a stat message (for metrics/stats exporters)
@@ -198,7 +205,8 @@ export function stat(key: string, value: number, unit?: string, context?: LogCon
     type: "stat",
     key,
     value,
-    tick: typeof Game !== "undefined" ? Game.time : 0
+    tick: typeof Game !== "undefined" ? Game.time : 0,
+    shard: typeof Game !== "undefined" && Game.shard ? Game.shard.name : "shard0"
   };
   
   if (unit) {
@@ -207,6 +215,10 @@ export function stat(key: string, value: number, unit?: string, context?: LogCon
   
   // Add context fields if provided
   if (context) {
+    // Allow explicit shard override from context
+    if (context.shard) {
+      statObject.shard = context.shard;
+    }
     if (context.subsystem) {
       statObject.subsystem = context.subsystem;
     }

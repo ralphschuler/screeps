@@ -196,4 +196,70 @@ describe("Logger JSON Output", () => {
     // Custom field should be included
     expect(parsed.customField).to.equal("ok");
   });
+
+  it("should include shard from Game.shard.name", () => {
+    (global as any).Game = { time: 12345, shard: { name: "shard2" } };
+
+    logger.info("Test message");
+
+    const output = consoleLogStub.firstCall.args[0];
+    const parsed = JSON.parse(output);
+    
+    expect(parsed.shard).to.equal("shard2");
+  });
+
+  it("should default to shard0 when Game.shard is not available", () => {
+    (global as any).Game = { time: 12345 };
+
+    logger.info("Test message");
+
+    const output = consoleLogStub.firstCall.args[0];
+    const parsed = JSON.parse(output);
+    
+    expect(parsed.shard).to.equal("shard0");
+  });
+
+  it("should allow shard override from context", () => {
+    (global as any).Game = { time: 12345, shard: { name: "shard1" } };
+
+    logger.info("Test message", { shard: "shard3" });
+
+    const output = consoleLogStub.firstCall.args[0];
+    const parsed = JSON.parse(output);
+    
+    expect(parsed.shard).to.equal("shard3");
+  });
+
+  it("should include shard in stat messages", () => {
+    (global as any).Game = { time: 12345, shard: { name: "shard1" } };
+
+    logger.stat("cpu.used", 15.5);
+
+    const output = consoleLogStub.firstCall.args[0];
+    const parsed = JSON.parse(output);
+    
+    expect(parsed).to.deep.include({
+      type: "stat",
+      key: "cpu.used",
+      value: 15.5,
+      tick: 12345,
+      shard: "shard1"
+    });
+  });
+
+  it("should protect shard field from meta overwrite", () => {
+    (global as any).Game = { time: 12345, shard: { name: "shard1" } };
+
+    logger.info("Test message", {
+      meta: {
+        shard: "malicious"  // Should be ignored
+      }
+    });
+
+    const output = consoleLogStub.firstCall.args[0];
+    const parsed = JSON.parse(output);
+    
+    // Shard from Game.shard.name should be preserved
+    expect(parsed.shard).to.equal("shard1");
+  });
 });

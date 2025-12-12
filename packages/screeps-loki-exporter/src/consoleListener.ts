@@ -22,6 +22,7 @@ function parseLogLine(line: string, logger: Logger): LogEntry | null {
       level: parsed.level,
       message: parsed.message,
       tick: parsed.tick,
+      shard: parsed.shard,
       subsystem: parsed.subsystem,
       room: parsed.room
     };
