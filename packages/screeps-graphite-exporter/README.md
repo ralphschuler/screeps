@@ -43,7 +43,8 @@ The exporter implements proper rate limit handling according to the [Screeps API
 | `EXPORTER_MIN_POLL_INTERVAL_MS` | `60000` | Minimum poll interval to enforce (60 seconds = 1 minute). This ensures compliance with the `/api/user/memory` rate limit of 1440/day. Values below 60 seconds are not recommended. |
 | `EXPORTER_MEMORY_PATH` | `stats` | Memory path to read stats from. |
 | `EXPORTER_MEMORY_FULL` | `false` | When `true`, flatten the entire Memory payload instead of only `Memory.stats`. |
-| `EXPORTER_SHARD` | `shard0` | Shard to read from when polling memory. |
+| `EXPORTER_SHARD` | `shard0` | Shard to read from when polling memory (used as fallback if `EXPORTER_FETCH_ALL_SHARDS` is disabled or fails). |
+| `EXPORTER_FETCH_ALL_SHARDS` | `false` | When `true`, automatically discovers and fetches memory from all available shards. Each shard's metrics will be tagged with the shard name for filtering in Grafana. |
 | `GRAFANA_CLOUD_GRAPHITE_URL` | _none_ | Grafana Cloud Graphite endpoint URL (required). Example: `https://graphite-prod-01-eu-west-0.grafana.net/graphite/metrics` |
 | `GRAFANA_CLOUD_API_KEY` | _none_ | Grafana Cloud API key for authentication (required). |
 | `GRAFANA_CLOUD_GRAPHITE_PREFIX` | `screeps` | Prefix for all Graphite metric names. |
@@ -90,6 +91,8 @@ The exporter automatically extracts meaningful tags from metric keys:
 - `category`: First part of the key (e.g., `cpu`, `room`, `profiler`)
 - `sub_category`: Room name or subsystem name when applicable
 - `range`: Used for grouping related metrics
+- `shard`: The shard name (e.g., `shard0`, `shard1`) - only present when `EXPORTER_FETCH_ALL_SHARDS` is enabled
+- `host`: The Screeps server hostname (e.g., `screeps.com`) - always present for all metrics
 
 ### Console log format
 
@@ -120,6 +123,8 @@ Metrics are written to Grafana Cloud Graphite using the JSON format:
   - `range`: The range label or extracted room/subsystem name
   - `category`: The category of the stat (e.g., `cpu`, `room`, `profiler`)
   - `sub_category`: Sub-category when present (e.g., room name, subsystem name)
+  - `shard`: The shard name (e.g., `shard0`) when `EXPORTER_FETCH_ALL_SHARDS` is enabled
+  - `host`: The Screeps server hostname (e.g., `screeps.com`)
   - `source`: Always `exporter`
 - Value: numeric value of the stat
 - Timestamp: Unix epoch timestamp in seconds
@@ -143,6 +148,8 @@ For scrape success metrics:
   - `type`: `scrape_success`
   - `mode`: `memory` or `console`
   - `category`: `system`
+  - `shard`: The shard name (e.g., `shard0`) when `EXPORTER_FETCH_ALL_SHARDS` is enabled
+  - `host`: The Screeps server hostname (e.g., `screeps.com`)
   - `source`: `exporter`
 - Value: 1 for success, 0 for failure
 

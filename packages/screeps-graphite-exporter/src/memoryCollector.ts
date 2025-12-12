@@ -49,7 +49,7 @@ function extractSubsystemFromKey(key: string): string | null {
   return null;
 }
 
-function ingestStat(metrics: Metrics, logger: Logger, key: string, value: unknown) {
+function ingestStat(metrics: Metrics, logger: Logger, key: string, value: unknown, shard?: string) {
   if (typeof value === 'number') {
     // Determine the range tag based on key structure
     let range = 'memory';
@@ -62,7 +62,7 @@ function ingestStat(metrics: Metrics, logger: Logger, key: string, value: unknow
       range = subsystemName;
     }
 
-    metrics.recordStat(key, range, value);
+    metrics.recordStat(key, range, value, shard);
     return;
   }
 
@@ -86,7 +86,7 @@ function ingestStat(metrics: Metrics, logger: Logger, key: string, value: unknow
         }
       }
 
-      metrics.recordStat(flatKey, range, flatValue);
+      metrics.recordStat(flatKey, range, flatValue, shard);
     }
     return;
   }
@@ -182,6 +182,32 @@ function normalizeToResetMs(toReset: number, logger: Logger): number {
   return toReset * 1000;
 }
 
+/**
+ * Fetch available shard names from the Screeps API
+ */
+async function fetchAvailableShards(api: ScreepsAPI, logger: Logger): Promise<string[]> {
+  try {
+    const shardData = await api.raw.version() as any;
+    // The response contains shard information in various formats
+    // We need to extract shard names
+    if (shardData && shardData.shards) {
+      return shardData.shards;
+    }
+    
+    // Fallback: try to get shard info from user info
+    const userInfo = await api.me() as any;
+    if (userInfo && userInfo.ok && userInfo.shards) {
+      return userInfo.shards;
+    }
+    
+    logger.warn('Unable to fetch available shards, will use configured shard only');
+    return [];
+  } catch (error) {
+    logger.error('Failed to fetch available shards', error);
+    return [];
+  }
+}
+
 export async function startMemoryCollector(
   api: ScreepsAPI,
   config: ExporterConfig,
@@ -190,6 +216,7 @@ export async function startMemoryCollector(
 ): Promise<void> {
   let timeoutHandle: NodeJS.Timeout | null = null;
   let lastRateLimitInfo: RateLimitInfo | null = null;
+  let availableShards: string[] = [];
 
   // Listen to rate limit events from the API
   api.on('rateLimit', (rateLimitInfo: RateLimitInfo) => {
@@ -271,61 +298,92 @@ export async function startMemoryCollector(
   };
 
   const poll = async () => {
-    try {
-      const rawMemory = await api.memory.get(config.memoryPath, config.shard) as string;
-      const decoded = decodeMemory(rawMemory, logger);
-      const stats = config.exportFullMemory ? decoded : decoded?.stats ?? decoded;
-
-      if (stats && typeof stats === 'object') {
-        // Flatten the entire stats object and ingest all metrics
-        const flatStats = flattenObject(stats as Record<string, unknown>);
-
-        // Ingest all flattened stats
-        for (const [key, value] of Object.entries(flatStats)) {
-          ingestStat(metrics, logger, key, value);
-        }
-
-        metrics.markScrapeSuccess('memory', true);
-        logger.info(`Processed ${Object.keys(flatStats).length} flat metrics from Memory.stats`);
+    // Fetch available shards if we're configured to fetch all shards and haven't fetched them yet
+    if (config.fetchAllShards && availableShards.length === 0) {
+      availableShards = await fetchAvailableShards(api, logger);
+      if (availableShards.length > 0) {
+        logger.info(`Discovered ${availableShards.length} available shards: ${availableShards.join(', ')}`);
       } else {
-        logger.warn('No stats found in memory path', { path: config.memoryPath, shard: config.shard });
-        metrics.markScrapeSuccess('memory', false);
+        // Fallback to configured shard if we can't fetch available shards
+        logger.warn('Failed to fetch available shards, using configured shard only');
+        availableShards = [config.shard];
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      // Handle HTTP 429 Too Many Requests
-      if (errorMessage.includes('429') || errorMessage.toLowerCase().includes('too many requests')) {
-        logger.warn('Rate limit exceeded (HTTP 429)', { error: errorMessage });
-        
-        // If we have rate limit info, use it to calculate wait time
-        // Otherwise, use a default backoff
-        if (
-          lastRateLimitInfo &&
-          typeof lastRateLimitInfo.toReset === 'number' &&
-          !isNaN(lastRateLimitInfo.toReset) &&
-          lastRateLimitInfo.toReset > 0
-        ) {
-          const toResetMs = normalizeToResetMs(lastRateLimitInfo.toReset, logger);
-          const waitMs = toResetMs + RATE_LIMIT_BUFFER_MS;
-          logger.info(`Waiting ${Math.round(waitMs / 1000)}s for rate limit reset`, {
-            rawToResetSeconds: lastRateLimitInfo.toReset,
-            normalizedResetMs: toResetMs
-          });
-          scheduleNextPoll(waitMs);
-          metrics.markScrapeSuccess('memory', false);
-          return;
+    }
+
+    // Determine which shards to poll
+    const shardsToPoll = config.fetchAllShards && availableShards.length > 0
+      ? availableShards
+      : [config.shard];
+
+    let totalMetricsProcessed = 0;
+    let successfulShards = 0;
+    let failedShards = 0;
+
+    for (const shard of shardsToPoll) {
+      try {
+        const rawMemory = await api.memory.get(config.memoryPath, shard) as string;
+        const decoded = decodeMemory(rawMemory, logger);
+        const stats = config.exportFullMemory ? decoded : decoded?.stats ?? decoded;
+
+        if (stats && typeof stats === 'object') {
+          // Flatten the entire stats object and ingest all metrics
+          const flatStats = flattenObject(stats as Record<string, unknown>);
+
+          // Ingest all flattened stats with shard tag
+          for (const [key, value] of Object.entries(flatStats)) {
+            ingestStat(metrics, logger, key, value, shard);
+          }
+
+          metrics.markScrapeSuccess('memory', true, shard);
+          totalMetricsProcessed += Object.keys(flatStats).length;
+          successfulShards++;
+          logger.info(`Processed ${Object.keys(flatStats).length} flat metrics from Memory.stats on ${shard}`);
         } else {
-          // Fallback: use default backoff when rate limit info is unavailable
-          logger.info(`Using fallback backoff: ${RATE_LIMIT_FALLBACK_BACKOFF_MS}ms`);
-          scheduleNextPoll(RATE_LIMIT_FALLBACK_BACKOFF_MS);
-          metrics.markScrapeSuccess('memory', false);
-          return;
+          logger.warn('No stats found in memory path', { path: config.memoryPath, shard });
+          metrics.markScrapeSuccess('memory', false, shard);
+          failedShards++;
         }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        
+        // Handle HTTP 429 Too Many Requests
+        if (errorMessage.includes('429') || errorMessage.toLowerCase().includes('too many requests')) {
+          logger.warn('Rate limit exceeded (HTTP 429)', { error: errorMessage, shard });
+          
+          // If we have rate limit info, use it to calculate wait time
+          // Otherwise, use a default backoff
+          if (
+            lastRateLimitInfo &&
+            typeof lastRateLimitInfo.toReset === 'number' &&
+            !isNaN(lastRateLimitInfo.toReset) &&
+            lastRateLimitInfo.toReset > 0
+          ) {
+            const toResetMs = normalizeToResetMs(lastRateLimitInfo.toReset, logger);
+            const waitMs = toResetMs + RATE_LIMIT_BUFFER_MS;
+            logger.info(`Waiting ${Math.round(waitMs / 1000)}s for rate limit reset`, {
+              rawToResetSeconds: lastRateLimitInfo.toReset,
+              normalizedResetMs: toResetMs
+            });
+            scheduleNextPoll(waitMs);
+            metrics.markScrapeSuccess('memory', false, shard);
+            return;
+          } else {
+            // Fallback: use default backoff when rate limit info is unavailable
+            logger.info(`Using fallback backoff: ${RATE_LIMIT_FALLBACK_BACKOFF_MS}ms`);
+            scheduleNextPoll(RATE_LIMIT_FALLBACK_BACKOFF_MS);
+            metrics.markScrapeSuccess('memory', false, shard);
+            return;
+          }
+        }
+        
+        logger.error('Failed to poll stats from Memory', { error, shard });
+        metrics.markScrapeSuccess('memory', false, shard);
+        failedShards++;
       }
-      
-      logger.error('Failed to poll stats from Memory', error);
-      metrics.markScrapeSuccess('memory', false);
+    }
+
+    if (shardsToPoll.length > 1) {
+      logger.info(`Completed poll cycle: ${successfulShards}/${shardsToPoll.length} shards successful, ${totalMetricsProcessed} total metrics`);
     }
 
     // Flush metrics to Grafana Cloud Graphite after each poll
