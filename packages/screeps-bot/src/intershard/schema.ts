@@ -4,6 +4,8 @@
  * Multi-shard meta layer schema and serialization.
  */
 
+import { logger } from "../core/logger";
+
 /**
  * Shard role in multi-shard empire
  */
@@ -318,7 +320,10 @@ export function deserializeInterShardMemory(data: string): InterShardMemorySchem
     const dataStr = JSON.stringify(parsed.d);
     const expectedChecksum = calculateChecksum(dataStr);
     if (parsed.c !== expectedChecksum) {
-      console.log("InterShardMemory checksum mismatch");
+      logger.warn("InterShardMemory checksum mismatch", {
+        subsystem: "InterShard",
+        meta: { expected: expectedChecksum, actual: parsed.c }
+      });
       return null;
     }
 
@@ -487,8 +492,10 @@ export function deserializeInterShardMemory(data: string): InterShardMemorySchem
       lastSync: compact.ls as number,
       checksum: parsed.c
     };
-  } catch {
-    console.log("Failed to deserialize InterShardMemory");
+  } catch (error) {
+    logger.error(`Failed to deserialize InterShardMemory: ${String(error)}`, {
+      subsystem: "InterShard"
+    });
     return null;
   }
 }

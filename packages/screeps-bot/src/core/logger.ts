@@ -2,7 +2,15 @@
  * Logger Module
  *
  * Provides structured logging with levels (debug/info/warn/error).
- * Includes optional CPU logging wrapper for per-room/per-subsystem profiling.
+ * All logs are output as single-line JSON objects for Loki ingestion.
+ * Each log includes the current game tick for traceability.
+ * 
+ * Key features:
+ * - Single-line JSON output (Loki-compatible)
+ * - Automatic tick tracking for all logs
+ * - Rich metadata support (subsystem, room, creep, etc.)
+ * - Log level filtering
+ * - CPU measurement utilities
  */
 
 /**
@@ -21,18 +29,12 @@ export enum LogLevel {
  */
 export interface LoggerConfig {
   level: LogLevel;
-  showTimestamp: boolean;
-  showRoom: boolean;
   cpuLogging: boolean;
-  outputFormat: "json" | "text";
 }
 
 const DEFAULT_CONFIG: LoggerConfig = {
   level: LogLevel.INFO,
-  showTimestamp: true,
-  showRoom: true,
-  cpuLogging: false,
-  outputFormat: "json"
+  cpuLogging: false
 };
 
 /**
@@ -55,11 +57,19 @@ export function getLoggerConfig(): LoggerConfig {
 }
 
 /**
- * Log context type
+ * Log context type - rich metadata for logs
  */
 export interface LogContext {
-  room?: string | undefined;
+  /** Subsystem generating the log (e.g., "kernel", "spawns", "defense") */
   subsystem?: string;
+  /** Room name if log is room-specific */
+  room?: string;
+  /** Creep name if log is creep-specific */
+  creep?: string;
+  /** Process ID if log is process-specific */
+  processId?: string;
+  /** Additional metadata as key-value pairs */
+  meta?: Record<string, any>;
 }
 
 /**
@@ -68,48 +78,47 @@ export interface LogContext {
 export type LogType = "log" | "stat";
 
 /**
- * Format log message with optional context
+ * Reserved log field names that cannot be overwritten by meta
+ */
+const RESERVED_LOG_FIELDS = new Set(["type", "level", "message", "tick", "subsystem", "room", "creep", "processId"]);
+
+/**
+ * Format log message as single-line JSON with tick information
  */
 function formatMessage(level: string, message: string, context?: LogContext, type: LogType = "log"): string {
-  if (globalConfig.outputFormat === "json") {
-    const logObject: Record<string, any> = {
-      type,
-      level,
-      message,
-      tick: Game.time
-    };
+  const logObject: Record<string, any> = {
+    type,
+    level,
+    message,
+    tick: typeof Game !== "undefined" ? Game.time : 0
+  };
 
-    if (context?.subsystem) {
+  // Add context fields
+  if (context) {
+    if (context.subsystem) {
       logObject.subsystem = context.subsystem;
     }
-
-    if (context?.room) {
+    if (context.room) {
       logObject.room = context.room;
     }
-
-    return JSON.stringify(logObject);
+    if (context.creep) {
+      logObject.creep = context.creep;
+    }
+    if (context.processId) {
+      logObject.processId = context.processId;
+    }
+    if (context.meta) {
+      // Flatten meta object into the log object, but skip reserved fields
+      for (const key in context.meta) {
+        if (!RESERVED_LOG_FIELDS.has(key)) {
+          logObject[key] = context.meta[key];
+        }
+      }
+    }
   }
 
-  // Legacy text format
-  const parts: string[] = [];
-
-  if (globalConfig.showTimestamp) {
-    parts.push(`[${Game.time}]`);
-  }
-
-  parts.push(`[${level}]`);
-
-  if (context?.subsystem) {
-    parts.push(`[${context.subsystem}]`);
-  }
-
-  if (globalConfig.showRoom && context?.room) {
-    parts.push(`[${context.room}]`);
-  }
-
-  parts.push(message);
-
-  return parts.join(" ");
+  // Always output single-line JSON for Loki compatibility
+  return JSON.stringify(logObject);
 }
 
 /**
@@ -176,41 +185,90 @@ export function measureCpu<T>(name: string, fn: () => T, context?: LogContext): 
 }
 
 /**
+ * Reserved stat field names that cannot be overwritten by meta
+ */
+const RESERVED_STAT_FIELDS = new Set(["type", "key", "value", "tick", "unit", "subsystem", "room"]);
+
+/**
  * Log a stat message (for metrics/stats exporters)
  * Stats are distinguished from regular logs and can be filtered by exporters
  */
-export function stat(key: string, value: number, unit?: string): void {
-  if (globalConfig.outputFormat === "json") {
-    const statObject: Record<string, any> = {
-      type: "stat",
-      key,
-      value,
-      tick: Game.time
-    };
-    if (unit) {
-      statObject.unit = unit;
-    }
-    console.log(JSON.stringify(statObject));
-  } else {
-    // Legacy format for graphite exporter
-    const parts = ["stats:", key, value.toString()];
-    if (unit) {
-      parts.push(unit);
-    }
-    console.log(parts.join(" "));
+export function stat(key: string, value: number, unit?: string, context?: LogContext): void {
+  const statObject: Record<string, any> = {
+    type: "stat",
+    key,
+    value,
+    tick: typeof Game !== "undefined" ? Game.time : 0
+  };
+  
+  if (unit) {
+    statObject.unit = unit;
   }
+  
+  // Add context fields if provided
+  if (context) {
+    if (context.subsystem) {
+      statObject.subsystem = context.subsystem;
+    }
+    if (context.room) {
+      statObject.room = context.room;
+    }
+    if (context.meta) {
+      // Flatten meta object into the stat object, but skip reserved fields
+      for (const key in context.meta) {
+        if (!RESERVED_STAT_FIELDS.has(key)) {
+          statObject[key] = context.meta[key];
+        }
+      }
+    }
+  }
+  
+  // Always output single-line JSON
+  console.log(JSON.stringify(statObject));
 }
 
 /**
  * Create a scoped logger for a specific subsystem
+ * Provides convenient methods with pre-filled subsystem context
  */
 export function createLogger(subsystem: string) {
   return {
-    debug: (message: string, room?: string) => debug(message, { subsystem, room }),
-    info: (message: string, room?: string) => info(message, { subsystem, room }),
-    warn: (message: string, room?: string) => warn(message, { subsystem, room }),
-    error: (message: string, room?: string) => error(message, { subsystem, room }),
-    measureCpu: <T>(name: string, fn: () => T, room?: string) => measureCpu(name, fn, { subsystem, room })
+    debug: (message: string, contextOrRoom?: string | Omit<LogContext, "subsystem">) => {
+      const context = typeof contextOrRoom === "string" 
+        ? { subsystem, room: contextOrRoom }
+        : { subsystem, ...contextOrRoom };
+      debug(message, context);
+    },
+    info: (message: string, contextOrRoom?: string | Omit<LogContext, "subsystem">) => {
+      const context = typeof contextOrRoom === "string" 
+        ? { subsystem, room: contextOrRoom }
+        : { subsystem, ...contextOrRoom };
+      info(message, context);
+    },
+    warn: (message: string, contextOrRoom?: string | Omit<LogContext, "subsystem">) => {
+      const context = typeof contextOrRoom === "string" 
+        ? { subsystem, room: contextOrRoom }
+        : { subsystem, ...contextOrRoom };
+      warn(message, context);
+    },
+    error: (message: string, contextOrRoom?: string | Omit<LogContext, "subsystem">) => {
+      const context = typeof contextOrRoom === "string" 
+        ? { subsystem, room: contextOrRoom }
+        : { subsystem, ...contextOrRoom };
+      error(message, context);
+    },
+    stat: (key: string, value: number, unit?: string, contextOrRoom?: string | Omit<LogContext, "subsystem">) => {
+      const context = typeof contextOrRoom === "string" 
+        ? { subsystem, room: contextOrRoom }
+        : { subsystem, ...contextOrRoom };
+      stat(key, value, unit, context);
+    },
+    measureCpu: <T>(name: string, fn: () => T, contextOrRoom?: string | Omit<LogContext, "subsystem">) => {
+      const context = typeof contextOrRoom === "string" 
+        ? { subsystem, room: contextOrRoom }
+        : { subsystem, ...contextOrRoom };
+      return measureCpu(name, fn, context);
+    }
   };
 }
 

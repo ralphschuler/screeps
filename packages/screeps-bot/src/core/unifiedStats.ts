@@ -870,9 +870,10 @@ export class UnifiedStatsManager {
     const mem = Memory as unknown as Record<string, any>;
     
     if (mem.stats && typeof mem.stats === "object") {
-      // Output as a single JSON object with type "stats"
+      // Output as a single JSON object with type "stats" and tick for traceability
       const statsOutput = {
         type: "stats",
+        tick: typeof Game !== "undefined" ? Game.time : 0,
         data: mem.stats
       };
       console.log(JSON.stringify(statsOutput));

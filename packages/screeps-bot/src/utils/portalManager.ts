@@ -11,6 +11,7 @@
  */
 
 import { memoryManager } from "../memory/manager";
+import { logger } from "../core/logger";
 
 // =============================================================================
 // Types & Interfaces
@@ -96,6 +97,11 @@ export function discoverPortalsInRoom(roomName: string): PortalInfo[] | null {
   const cached = memoryManager.getHeapCache().get<PortalInfo[] | null>(cacheKey);
   
   if (cached !== undefined) {
+    logger.debug(`Using cached portal data for room ${roomName}`, { 
+      subsystem: "PortalManager", 
+      room: roomName,
+      meta: { portalCount: cached?.length ?? 0 } 
+    });
     return cached;
   }
 
@@ -143,6 +149,17 @@ export function discoverPortalsInRoom(roomName: string): PortalInfo[] | null {
 
   // Cache the results
   memoryManager.getHeapCache().set(cacheKey, portals, PORTAL_CACHE_TTL);
+
+  if (portals.length > 0) {
+    logger.info(`Discovered ${portals.length} portal(s) in room ${roomName}`, { 
+      subsystem: "PortalManager", 
+      room: roomName,
+      meta: { 
+        portalCount: portals.length,
+        destinations: portals.map(p => p.destination.shard ? `${p.destination.shard}:${p.destination.room}` : p.destination.room)
+      } 
+    });
+  }
 
   return portals;
 }
@@ -255,9 +272,16 @@ export function publishPortalsToInterShardMemory(): boolean {
 
     InterShardMemory.setLocal(JSON.stringify(ismData));
 
+    logger.debug("Published portal data to InterShardMemory", { 
+      subsystem: "PortalManager", 
+      meta: { portalCount: Object.keys(data.portals).length } 
+    });
+
     return true;
   } catch (error) {
-    console.log(`[PortalManager] Failed to publish to InterShardMemory: ${String(error)}`);
+    logger.error(`Failed to publish to InterShardMemory: ${String(error)}`, { 
+      subsystem: "PortalManager" 
+    });
     return false;
   }
 }
@@ -313,7 +337,10 @@ export function getPortalDataFromInterShardMemory(shardName: string): InterShard
     try {
       ismData = JSON.parse(data) as Record<string, unknown>;
     } catch {
-      console.log(`[PortalManager] Invalid JSON from shard ${shardName}`);
+      logger.warn(`Invalid JSON from shard ${shardName}`, { 
+        subsystem: "PortalManager", 
+        meta: { shard: shardName } 
+      });
       return null;
     }
 
@@ -321,13 +348,24 @@ export function getPortalDataFromInterShardMemory(shardName: string): InterShard
     
     // Validate structure before returning
     if (!isValidPortalData(portalData)) {
-      console.log(`[PortalManager] Invalid portal data structure from shard ${shardName}`);
+      logger.warn(`Invalid portal data structure from shard ${shardName}`, { 
+        subsystem: "PortalManager", 
+        meta: { shard: shardName } 
+      });
       return null;
     }
 
+    logger.debug(`Retrieved portal data from shard ${shardName}`, { 
+      subsystem: "PortalManager", 
+      meta: { shard: shardName, portalCount: Object.keys(portalData.portals).length } 
+    });
+
     return portalData;
   } catch (error) {
-    console.log(`[PortalManager] Failed to read from InterShardMemory: ${String(error)}`);
+    logger.error(`Failed to read from InterShardMemory: ${String(error)}`, { 
+      subsystem: "PortalManager", 
+      meta: { shard: shardName } 
+    });
     return null;
   }
 }

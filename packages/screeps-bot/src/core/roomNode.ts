@@ -813,10 +813,12 @@ export class RoomManager {
         node.run(totalOwned);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : String(err);
-        console.log(`[RoomManager] ERROR in room ${node.roomName}: ${errorMessage}`);
-        if (err instanceof Error && err.stack) {
-          console.log(err.stack);
-        }
+        const stack = err instanceof Error && err.stack ? err.stack : undefined;
+        logger.error(`Error in room ${node.roomName}: ${errorMessage}`, {
+          subsystem: "RoomManager",
+          room: node.roomName,
+          meta: { stack }
+        });
         // Continue processing other rooms
       }
     }
@@ -871,10 +873,12 @@ export class RoomManager {
       node.run(totalOwned);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      console.log(`[RoomManager] ERROR in room ${room.name}: ${errorMessage}`);
-      if (err instanceof Error && err.stack) {
-        console.log(err.stack);
-      }
+      const stack = err instanceof Error && err.stack ? err.stack : undefined;
+      logger.error(`Error in room ${room.name}: ${errorMessage}`, {
+        subsystem: "RoomManager",
+        room: room.name,
+        meta: { stack }
+      });
     }
   }
 }
