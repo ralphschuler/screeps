@@ -1083,6 +1083,18 @@ function reconcileTraffic(): void {
                     occupied.add(posKey(movePosition));
                   }
                 }
+              } else {
+                logger.info("Movement blocked by higher-priority creep", {
+                  subsystem: "Movement",
+                  room: room.name,
+                  creep: intent.creep.name,
+                  meta: {
+                    blocker: blockingCreep.name,
+                    blockerPriority: isCreep(blockingCreep) ? getCreepPriority(blockingCreep) : undefined,
+                    actorPriority: getCreepPriority(intent.creep),
+                    target: intent.targetPos.toString()
+                  }
+                });
               }
             }
           }
@@ -1095,6 +1107,16 @@ function reconcileTraffic(): void {
           if (isCreep(intent.creep)) {
             requestMoveToPosition(intent.creep, intent.targetPos);
           }
+          logger.info("Movement deferred: target position still occupied", {
+            subsystem: "Movement",
+            room: room?.name ?? intent.creep.pos.roomName,
+            creep: intent.creep.name,
+            meta: {
+              target: intent.targetPos.toString(),
+              occupiedBy: blockingCreep?.name,
+              requestedYield: isCreep(blockingCreep) ? shouldYieldTo(blockingCreep, intent.creep) : undefined
+            }
+          });
           continue;
         }
       }
@@ -1132,11 +1154,24 @@ function internalMoveTo(
 ): CreepMoveReturnCode | -2 | -5 | -7 | -10 {
   // Handle spawning creeps
   if ("spawning" in creep && creep.spawning) {
+    logger.info("Movement blocked: creep is still spawning", {
+      subsystem: "Movement",
+      creep: creep.name,
+      room: creep.pos.roomName
+    });
     return ERR_BUSY;
   }
 
   // Handle fatigue (only applies to Creeps, not PowerCreeps)
   if ("fatigue" in creep && creep.fatigue > 0) {
+    logger.info("Movement blocked: creep is fatigued", {
+      subsystem: "Movement",
+      creep: creep.name,
+      room: creep.pos.roomName,
+      meta: {
+        fatigue: creep.fatigue
+      }
+    });
     return ERR_TIRED;
   }
 
@@ -1147,6 +1182,11 @@ function internalMoveTo(
   if (Array.isArray(targets)) {
     const firstTarget = targets[0];
     if (!firstTarget) {
+      logger.warn("Movement failed: empty target array provided", {
+        subsystem: "Movement",
+        creep: creep.name,
+        room: creep.pos.roomName
+      });
       return ERR_INVALID_TARGET;
     }
     // Check type at runtime
@@ -1178,6 +1218,14 @@ function internalMoveTo(
       range = targets.range;
     }
   } else {
+    logger.warn("Movement failed: invalid target provided", {
+      subsystem: "Movement",
+      creep: creep.name,
+      room: creep.pos.roomName,
+      meta: {
+        targetType: typeof targets
+      }
+    });
     return ERR_INVALID_TARGET;
   }
 
@@ -1401,6 +1449,18 @@ function internalMoveTo(
     const cpuUsed = Game.cpu.getUsed() - cpuStart;
 
     if (pathResult.incomplete || pathResult.path.length === 0) {
+      logger.warn("Movement failed: no viable path found", {
+        subsystem: "Movement",
+        creep: creep.name,
+        room: creep.pos.roomName,
+        meta: {
+          target: targetPos.toString(),
+          incomplete: pathResult.incomplete,
+          pathLength: pathResult.path.length,
+          avoidCreeps: options.avoidCreeps ?? true,
+          actorPriority
+        }
+      });
       delete memory[MEMORY_PATH_KEY];
       return null;
     }
