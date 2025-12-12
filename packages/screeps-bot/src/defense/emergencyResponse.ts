@@ -68,6 +68,19 @@ export class EmergencyResponseManager {
     const existingState = this.emergencyStates.get(room.name);
     const emergencyLevel = this.calculateEmergencyLevel(room, swarm);
 
+    // If no threat and no existing emergency, return default state without creating entry
+    // BUGFIX: Don't create emergency state entries for rooms with no threats
+    // This prevents spam from repeatedly creating and deleting NONE-level states
+    if (emergencyLevel === EmergencyLevel.NONE && !existingState) {
+      return {
+        level: EmergencyLevel.NONE,
+        startedAt: Game.time,
+        assistanceRequested: false,
+        boostsAllocated: false,
+        lastEscalation: 0
+      };
+    }
+
     // Create or update emergency state
     let state: EmergencyState;
     if (existingState) {
