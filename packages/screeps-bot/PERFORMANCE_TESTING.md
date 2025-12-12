@@ -59,6 +59,30 @@ npm run test:performance -- \
 - `--force`: Force overwrite of config files
 - `--debug`: Enable debug logging
 
+## Log Capture
+
+The performance tests use a custom log capture script (`scripts/performance-test-with-logs.js`) that:
+
+1. Starts the screeps-performance-server in the background
+2. Connects to the Screeps API via WebSocket
+3. Captures ALL console output (not just errors)
+4. Writes logs to the `logs/` directory:
+   - `console.log`: All bot console output
+   - `server.log`: Performance server output and debug information
+
+This ensures that the performance test artifacts contain actual bot output, not just empty log files.
+
+### Running with Log Capture Locally
+
+```bash
+npm run test:performance:logs -- \
+  --maxTickCount=5000 \
+  --maxTimeDuration=15 \
+  --debug
+```
+
+The `--debug` flag will also output server logs to the console for real-time monitoring.
+
 ## GitHub Actions Integration
 
 Performance tests automatically run on:
@@ -73,8 +97,10 @@ After a workflow run:
 2. Select the "Performance Tests" workflow
 3. Click on a specific run
 4. Download artifacts:
-   - `performance-test-logs`: Server logs and debug information
-   - `performance-test-results`: Milestone results and performance metrics
+   - `performance-test-logs`: Contains `console.log` (bot console output) and `server.log` (server debug output)
+   - `performance-test-results`: Milestone results and performance metrics (JSON format)
+
+The `console.log` file contains timestamped bot console output with HTML tags removed for readability.
 
 ## Configuration
 

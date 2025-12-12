@@ -74,7 +74,7 @@ jobs:
           MAX_TIME_DURATION: ${{ github.event.inputs.maxTimeDuration || '30' }}
           STEAM_KEY: ${{ secrets.STEAM_API_KEY }}
         run: |
-          npm run test:performance -- \
+          npm run test:performance:logs -- \
             --maxTickCount=${MAX_TICK_COUNT} \
             --maxTimeDuration=${MAX_TIME_DURATION} \
             --serverPort=21025 \
