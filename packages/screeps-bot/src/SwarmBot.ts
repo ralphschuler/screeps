@@ -37,6 +37,7 @@ import { memoryManager } from "./memory/manager";
 import { clearRoomCaches } from "./roles/behaviors/context";
 import { finalizeMovement, initMovement } from "./utils/movement";
 import { clearMoveRequests, processMoveRequests } from "./utils/trafficManager";
+import { clearTargetAssignments } from "./utils/targetDistribution";
 import { kernel } from "./core/kernel";
 import { registerAllProcesses } from "./core/processRegistry";
 import { roomVisualizer } from "./visuals/roomVisualizer";
@@ -218,15 +219,19 @@ export function loop(): void {
       subsystem: "SwarmBot"
     });
     // Only run movement finalization to prevent stuck creeps
+    // Clear per-tick caches even in critical mode
+    clearTargetAssignments();
+    clearRoomCaches();
     initMovement();
     clearMoveRequests();
     finalizeMovement();
-    clearRoomCaches();
     unifiedStats.finalizeTick();
     return;
   }
 
   // Clear per-tick caches at the start of each tick
+  // BUGFIX: Clear target assignments to prevent creeps from clustering on same targets
+  clearTargetAssignments();
   clearRoomCaches();
 
   // Cache owned rooms list (used frequently, expensive to compute)
