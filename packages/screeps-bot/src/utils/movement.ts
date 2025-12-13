@@ -1046,14 +1046,15 @@ function reconcileTraffic(): void {
     for (const intent of intents) {
       const targetKey = posKey(intent.targetPos);
 
+      // Track a potential blocking creep so we can include it in deferred logs
+      let blockingCreep: Creep | undefined;
+
       // Check if target is occupied
       if (occupied.has(targetKey)) {
         // Try to resolve the blockage by asking the blocking creep to move
         if (room) {
           const blockingCreeps = room.lookForAt(LOOK_CREEPS, intent.targetPos.x, intent.targetPos.y);
-          const blockingCreep = blockingCreeps.find(
-            c => c.my && c.name !== intent.creep.name
-          );
+          blockingCreep = blockingCreeps.find(c => c.my && c.name !== intent.creep.name);
 
           if (blockingCreep) {
             // Only ask to move if the blocking creep should yield (based on priority)
@@ -1107,6 +1108,12 @@ function reconcileTraffic(): void {
           if (isCreep(intent.creep)) {
             requestMoveToPosition(intent.creep, intent.targetPos);
           }
+
+          const blockingCreepYield =
+            blockingCreep && isCreep(blockingCreep) && isCreep(intent.creep)
+              ? shouldYieldTo(blockingCreep, intent.creep)
+              : undefined;
+
           logger.info("Movement deferred: target position still occupied", {
             subsystem: "Movement",
             room: room?.name ?? intent.creep.pos.roomName,
@@ -1114,7 +1121,7 @@ function reconcileTraffic(): void {
             meta: {
               target: intent.targetPos.toString(),
               occupiedBy: blockingCreep?.name,
-              requestedYield: isCreep(blockingCreep) ? shouldYieldTo(blockingCreep, intent.creep) : undefined
+              requestedYield: blockingCreepYield
             }
           });
           continue;
