@@ -275,7 +275,19 @@ export function larvaWorker(ctx: CreepContext): CreepAction {
       return { type: "upgrade", target: ctx.room.controller };
     }
 
-    return { type: "idle" };
+    // FIX: No valid work targets found, but creep still has energy
+    // Switch to collection mode to top off capacity instead of idling
+    // This prevents deadlock where larvaWorkers with partial energy get stuck
+    // in working=true state with no valid targets
+    if (!ctx.isEmpty) {
+      logger.debug(`${ctx.creep.name} larvaWorker has energy but no targets, switching to collection mode`);
+      switchToCollectionMode(ctx);
+      // Fall through to collection logic below
+    } else {
+      // This should never happen (working=true but isEmpty=true), but log it as a warning
+      logger.warn(`${ctx.creep.name} larvaWorker idle (empty, working=true, no targets) - this indicates a bug`);
+      return { type: "idle" };
+    }
   }
 
   return findEnergy(ctx);
