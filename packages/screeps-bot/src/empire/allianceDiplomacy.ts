@@ -681,9 +681,10 @@ export function evaluateAttackRequest(request: AttackRequest, currentAlly: strin
   );
   
   // Count ally attack operations
-  const allyOps = activeOps.filter(op => 
-    (op as any).isAllyAssist === true
-  );
+  const allyOps = activeOps.filter(op => {
+    const extendedOp = op as typeof op & { isAllyAssist?: boolean };
+    return extendedOp.isAllyAssist === true;
+  });
   
   if (allyOps.length >= ALLY_ASSISTANCE_CONFIG.MAX_CONCURRENT_ALLY_ATTACKS) {
     return {
