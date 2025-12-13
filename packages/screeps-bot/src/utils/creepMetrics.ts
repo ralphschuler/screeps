@@ -7,11 +7,16 @@
 
 import type { CreepMetrics } from "../core/stats";
 
+// Type for creep memory with metrics support
+interface CreepMemoryWithMetrics {
+  _metrics?: CreepMetrics;
+}
+
 /**
  * Initialize metrics for a creep if not already present.
  * Called when a creep is first spawned or when metrics are enabled.
  */
-export function initializeMetrics(creepMemory: CreepMemory): void {
+export function initializeMetrics(creepMemory: CreepMemoryWithMetrics): void {
   if (!creepMemory._metrics) {
     creepMemory._metrics = {
       tasksCompleted: 0,
@@ -28,7 +33,7 @@ export function initializeMetrics(creepMemory: CreepMemory): void {
 /**
  * Get metrics for a creep, initializing if necessary.
  */
-export function getMetrics(creepMemory: CreepMemory): CreepMetrics {
+export function getMetrics(creepMemory: CreepMemoryWithMetrics): CreepMetrics {
   initializeMetrics(creepMemory);
   return creepMemory._metrics!;
 }
@@ -36,7 +41,7 @@ export function getMetrics(creepMemory: CreepMemory): CreepMetrics {
 /**
  * Record energy harvested from a source.
  */
-export function recordHarvest(creepMemory: CreepMemory, amount: number): void {
+export function recordHarvest(creepMemory: CreepMemoryWithMetrics, amount: number): void {
   const metrics = getMetrics(creepMemory);
   metrics.energyHarvested += amount;
 }
@@ -44,7 +49,7 @@ export function recordHarvest(creepMemory: CreepMemory, amount: number): void {
 /**
  * Record energy or resources transferred to a structure or creep.
  */
-export function recordTransfer(creepMemory: CreepMemory, amount: number): void {
+export function recordTransfer(creepMemory: CreepMemoryWithMetrics, amount: number): void {
   const metrics = getMetrics(creepMemory);
   metrics.energyTransferred += amount;
 }
@@ -52,7 +57,7 @@ export function recordTransfer(creepMemory: CreepMemory, amount: number): void {
 /**
  * Record build progress contributed to a construction site.
  */
-export function recordBuild(creepMemory: CreepMemory, progress: number): void {
+export function recordBuild(creepMemory: CreepMemoryWithMetrics, progress: number): void {
   const metrics = getMetrics(creepMemory);
   metrics.buildProgress += progress;
 }
@@ -60,7 +65,7 @@ export function recordBuild(creepMemory: CreepMemory, progress: number): void {
 /**
  * Record repair progress contributed to a structure.
  */
-export function recordRepair(creepMemory: CreepMemory, progress: number): void {
+export function recordRepair(creepMemory: CreepMemoryWithMetrics, progress: number): void {
   const metrics = getMetrics(creepMemory);
   metrics.repairProgress += progress;
 }
@@ -68,7 +73,7 @@ export function recordRepair(creepMemory: CreepMemory, progress: number): void {
 /**
  * Record damage dealt to an enemy creep or structure.
  */
-export function recordDamage(creepMemory: CreepMemory, damage: number): void {
+export function recordDamage(creepMemory: CreepMemoryWithMetrics, damage: number): void {
   const metrics = getMetrics(creepMemory);
   metrics.damageDealt += damage;
 }
@@ -76,7 +81,7 @@ export function recordDamage(creepMemory: CreepMemory, damage: number): void {
 /**
  * Record healing done to a friendly creep.
  */
-export function recordHealing(creepMemory: CreepMemory, healing: number): void {
+export function recordHealing(creepMemory: CreepMemoryWithMetrics, healing: number): void {
   const metrics = getMetrics(creepMemory);
   metrics.healingDone += healing;
 }
@@ -84,7 +89,7 @@ export function recordHealing(creepMemory: CreepMemory, healing: number): void {
 /**
  * Record a completed task (build finished, upgrade complete, etc.)
  */
-export function recordTaskComplete(creepMemory: CreepMemory): void {
+export function recordTaskComplete(creepMemory: CreepMemoryWithMetrics): void {
   const metrics = getMetrics(creepMemory);
   metrics.tasksCompleted += 1;
 }
@@ -93,7 +98,7 @@ export function recordTaskComplete(creepMemory: CreepMemory): void {
  * Get efficiency summary for a creep.
  * Returns human-readable statistics about the creep's performance.
  */
-export function getEfficiencySummary(creepMemory: CreepMemory): string {
+export function getEfficiencySummary(creepMemory: CreepMemoryWithMetrics): string {
   if (!creepMemory._metrics) {
     return "No metrics available";
   }
@@ -115,7 +120,7 @@ export function getEfficiencySummary(creepMemory: CreepMemory): string {
 /**
  * Reset metrics for a creep (useful for testing or manual resets).
  */
-export function resetMetrics(creepMemory: CreepMemory): void {
+export function resetMetrics(creepMemory: CreepMemoryWithMetrics): void {
   creepMemory._metrics = {
     tasksCompleted: 0,
     energyTransferred: 0,
