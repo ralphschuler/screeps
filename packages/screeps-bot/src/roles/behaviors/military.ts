@@ -35,6 +35,9 @@ const patrolWaypointCache: Map<string, PatrolWaypointCache> = new Map();
  * Get patrol waypoints for a room covering exits and spawn areas.
  * OPTIMIZATION: Cache waypoints per room and only regenerate if spawns change.
  * This saves CPU by avoiding repeated room.find() and terrain checks.
+ * 
+ * ENHANCEMENT: Expanded patrol coverage to ensure guards encounter threats faster.
+ * Added corner waypoints and mid-room positions for better threat detection.
  */
 function getPatrolWaypoints(room: Room): RoomPosition[] {
   const spawns = room.find(FIND_MY_SPAWNS);
@@ -58,14 +61,31 @@ function getPatrolWaypoints(room: Room): RoomPosition[] {
   }
 
   // Add exit patrol positions (center of each exit side)
-  // Top exit
+  // Top exit (center and corners)
+  waypoints.push(new RoomPosition(10, 5, roomName));
   waypoints.push(new RoomPosition(25, 5, roomName));
-  // Bottom exit
+  waypoints.push(new RoomPosition(39, 5, roomName));
+  // Bottom exit (center and corners)
+  waypoints.push(new RoomPosition(10, 44, roomName));
   waypoints.push(new RoomPosition(25, 44, roomName));
-  // Left exit
+  waypoints.push(new RoomPosition(39, 44, roomName));
+  // Left exit (center and mid-points)
+  waypoints.push(new RoomPosition(5, 10, roomName));
   waypoints.push(new RoomPosition(5, 25, roomName));
-  // Right exit
+  waypoints.push(new RoomPosition(5, 39, roomName));
+  // Right exit (center and mid-points)
+  waypoints.push(new RoomPosition(44, 10, roomName));
   waypoints.push(new RoomPosition(44, 25, roomName));
+  waypoints.push(new RoomPosition(44, 39, roomName));
+
+  // Add room corners for complete coverage
+  waypoints.push(new RoomPosition(10, 10, roomName));
+  waypoints.push(new RoomPosition(39, 10, roomName));
+  waypoints.push(new RoomPosition(10, 39, roomName));
+  waypoints.push(new RoomPosition(39, 39, roomName));
+
+  // Add central waypoint for room center coverage
+  waypoints.push(new RoomPosition(25, 25, roomName));
 
   // Clamp positions to valid room bounds and filter out walls
   const filtered = waypoints
@@ -275,6 +295,12 @@ export function remoteGuard(ctx: CreepContext): CreepAction {
     if (ctx.creep.room.name !== ctx.homeRoom) {
       return { type: "moveToRoom", roomName: ctx.homeRoom };
     }
+    // In home room with no assignment - patrol for home defense
+    const waypoints = getPatrolWaypoints(ctx.room);
+    const nextWaypoint = getNextPatrolWaypoint(ctx.creep, waypoints);
+    if (nextWaypoint) {
+      return { type: "moveTo", target: nextWaypoint };
+    }
     return { type: "idle" };
   }
 
@@ -295,6 +321,12 @@ export function remoteGuard(ctx: CreepContext): CreepAction {
     // Remote is secure - return to home room
     if (ctx.creep.room.name !== ctx.homeRoom) {
       return { type: "moveToRoom", roomName: ctx.homeRoom };
+    }
+    // In home room - patrol for home defense
+    const waypoints = getPatrolWaypoints(ctx.room);
+    const nextWaypoint = getNextPatrolWaypoint(ctx.creep, waypoints);
+    if (nextWaypoint) {
+      return { type: "moveTo", target: nextWaypoint };
     }
     return { type: "idle" };
   }
@@ -467,6 +499,14 @@ export function healer(ctx: CreepContext): CreepAction {
   if (militaryCreeps.length > 0) {
     const military = findCachedClosest(ctx.creep, militaryCreeps, "healer_follow", 5);
     if (military) return { type: "moveTo", target: military };
+  }
+
+  // No military to follow - patrol the room
+  const waypoints = getPatrolWaypoints(ctx.room);
+  const nextWaypoint = getNextPatrolWaypoint(ctx.creep, waypoints);
+
+  if (nextWaypoint) {
+    return { type: "moveTo", target: nextWaypoint };
   }
 
   return { type: "idle" };
@@ -704,9 +744,17 @@ export function harasser(ctx: CreepContext): CreepAction {
     return { type: "moveToRoom", roomName: ctx.homeRoom };
   }
 
-  // In home room with no work - move to collection point
+  // In home room with no work - move to collection point or patrol
   const collectionAction = moveToCollectionPoint(ctx, "harasser (no targets)");
   if (collectionAction) return collectionAction;
+
+  // If at collection point or no collection point available, patrol the room
+  const waypoints = getPatrolWaypoints(ctx.room);
+  const nextWaypoint = getNextPatrolWaypoint(ctx.creep, waypoints);
+
+  if (nextWaypoint) {
+    return { type: "moveTo", target: nextWaypoint };
+  }
 
   return { type: "idle" };
 }
