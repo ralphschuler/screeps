@@ -17,23 +17,26 @@
 
 import {
   type ClusterMemory,
+  type EmpireMemory,
   type EventLogEntry,
   type OvermindMemory,
   type SwarmCreepMemory,
   type SwarmState,
   createDefaultClusterMemory,
+  createDefaultEmpireMemory,
   createDefaultOvermindMemory,
   createDefaultSwarmState
 } from "./schemas";
 import { INFINITE_TTL, heapCache } from "./heapCache";
 import { logger } from "../core/logger";
 
+const EMPIRE_KEY = "empire";
 const OVERMIND_KEY = "overmind";
 const CLUSTERS_KEY = "clusters";
 /** Screeps memory limit in bytes */
 const MEMORY_LIMIT_BYTES = 2097152; // 2MB
 /** Current memory version */
-const CURRENT_MEMORY_VERSION = 1;
+const CURRENT_MEMORY_VERSION = 2;
 /**
  * Interval for dead creep memory cleanup.
  * Running every tick is wasteful since creeps don't die that often.
@@ -59,7 +62,8 @@ export class MemoryManager {
     heapCache.initialize();
 
     this.runMemoryMigration();
-    this.ensureOvermindMemory();
+    this.ensureEmpireMemory();
+    this.ensureOvermindMemory(); // Keep for backward compatibility during transition
     this.ensureClustersMemory();
 
     // Only clean dead creeps periodically to save CPU
@@ -86,6 +90,9 @@ export class MemoryManager {
       if (storedVersion < 1) {
         this.migrateToV1();
       }
+      if (storedVersion < 2) {
+        this.migrateToV2();
+      }
       
       // Update version
       mem.memoryVersion = CURRENT_MEMORY_VERSION;
@@ -110,6 +117,53 @@ export class MemoryManager {
   }
 
   /**
+   * Migrate to version 2: Consolidate overmind into empire
+   */
+  private migrateToV2(): void {
+    const mem = Memory as unknown as Record<string, any>;
+    
+    // If overmind exists but empire doesn't, migrate overmind to empire
+    if (mem[OVERMIND_KEY] && !mem[EMPIRE_KEY]) {
+      const overmind = mem[OVERMIND_KEY] as OvermindMemory;
+      const clusters = mem[CLUSTERS_KEY] as Record<string, ClusterMemory> | undefined;
+      
+      // Create empire memory from overmind
+      mem[EMPIRE_KEY] = {
+        knownRooms: overmind.roomIntel || {},
+        clusters: clusters ? Object.keys(clusters) : [],
+        warTargets: overmind.warTargets || [],
+        ownedRooms: {},
+        claimQueue: overmind.claimQueue || [],
+        nukeCandidates: overmind.nukeCandidates || [],
+        powerBanks: overmind.powerBanks || [],
+        market: overmind.market,
+        objectives: overmind.objectives || {
+          targetPowerLevel: 0,
+          targetRoomCount: 1,
+          warMode: false,
+          expansionPaused: false
+        },
+        lastUpdate: overmind.lastRun || 0
+      };
+      
+      logger.info("Migrated overmind memory to empire structure", {
+        subsystem: "MemoryManager",
+        meta: { clusterCount: mem[EMPIRE_KEY].clusters.length }
+      });
+    }
+  }
+
+  /**
+   * Ensure empire memory exists
+   */
+  private ensureEmpireMemory(): void {
+    const mem = Memory as unknown as Record<string, unknown>;
+    if (!mem[EMPIRE_KEY]) {
+      mem[EMPIRE_KEY] = createDefaultEmpireMemory();
+    }
+  }
+
+  /**
    * Ensure overmind memory exists
    */
   private ensureOvermindMemory(): void {
@@ -130,7 +184,28 @@ export class MemoryManager {
   }
 
   /**
+   * Get empire memory (cached with infinite TTL)
+   * Note: Returns a reference to the cached object. Modifications will be tracked.
+   */
+  public getEmpire(): EmpireMemory {
+    const cacheKey = `memory:${EMPIRE_KEY}`;
+    let empire = heapCache.get<EmpireMemory>(cacheKey);
+    
+    if (!empire) {
+      this.ensureEmpireMemory();
+      const mem = Memory as unknown as Record<string, EmpireMemory>;
+      // Cache a reference to the Memory object for fast access
+      // Changes to this object will need to be re-cached to persist
+      heapCache.set(cacheKey, mem[EMPIRE_KEY], INFINITE_TTL);
+      empire = mem[EMPIRE_KEY];
+    }
+    
+    return empire;
+  }
+
+  /**
    * Get overmind memory (cached with infinite TTL)
+   * @deprecated Use getEmpire() instead. Kept for backward compatibility.
    * Note: Returns a reference to the cached object. Modifications will be tracked.
    */
   public getOvermind(): OvermindMemory {
