@@ -68,19 +68,43 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
   switch (action.type) {
     // Resource gathering
     case "harvest":
-      shouldClearState = executeWithRange(creep, () => creep.harvest(action.target), action.target, PATH_COLORS.harvest);
+      shouldClearState = executeWithRange(
+        creep,
+        () => creep.harvest(action.target),
+        action.target,
+        PATH_COLORS.harvest,
+        action.type
+      );
       break;
 
     case "harvestMineral":
-      shouldClearState = executeWithRange(creep, () => creep.harvest(action.target), action.target, PATH_COLORS.mineral);
+      shouldClearState = executeWithRange(
+        creep,
+        () => creep.harvest(action.target),
+        action.target,
+        PATH_COLORS.mineral,
+        action.type
+      );
       break;
 
     case "harvestDeposit":
-      shouldClearState = executeWithRange(creep, () => creep.harvest(action.target), action.target, PATH_COLORS.deposit);
+      shouldClearState = executeWithRange(
+        creep,
+        () => creep.harvest(action.target),
+        action.target,
+        PATH_COLORS.deposit,
+        action.type
+      );
       break;
 
     case "pickup":
-      shouldClearState = executeWithRange(creep, () => creep.pickup(action.target), action.target, PATH_COLORS.harvest);
+      shouldClearState = executeWithRange(
+        creep,
+        () => creep.pickup(action.target),
+        action.target,
+        PATH_COLORS.harvest,
+        action.type
+      );
       break;
 
     case "withdraw":
@@ -88,7 +112,8 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         creep,
         () => creep.withdraw(action.target, action.resourceType),
         action.target,
-        PATH_COLORS.harvest
+        PATH_COLORS.harvest,
+        action.type
       );
       break;
 
@@ -98,7 +123,8 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         creep,
         () => creep.transfer(action.target, action.resourceType),
         action.target,
-        PATH_COLORS.transfer
+        PATH_COLORS.transfer,
+        action.type
       );
       break;
 
@@ -108,32 +134,62 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
 
     // Construction and maintenance
     case "build":
-      shouldClearState = executeWithRange(creep, () => creep.build(action.target), action.target, PATH_COLORS.build);
+      shouldClearState = executeWithRange(
+        creep,
+        () => creep.build(action.target),
+        action.target,
+        PATH_COLORS.build,
+        action.type
+      );
       break;
 
     case "repair":
-      shouldClearState = executeWithRange(creep, () => creep.repair(action.target), action.target, PATH_COLORS.repair);
+      shouldClearState = executeWithRange(
+        creep,
+        () => creep.repair(action.target),
+        action.target,
+        PATH_COLORS.repair,
+        action.type
+      );
       break;
 
     case "upgrade":
-      shouldClearState = executeWithRange(creep, () => creep.upgradeController(action.target), action.target, PATH_COLORS.transfer);
+      shouldClearState = executeWithRange(
+        creep,
+        () => creep.upgradeController(action.target),
+        action.target,
+        PATH_COLORS.transfer,
+        action.type
+      );
       break;
 
     case "dismantle":
-      shouldClearState = executeWithRange(creep, () => creep.dismantle(action.target), action.target, PATH_COLORS.attack);
+      shouldClearState = executeWithRange(
+        creep,
+        () => creep.dismantle(action.target),
+        action.target,
+        PATH_COLORS.attack,
+        action.type
+      );
       break;
 
     // Combat
     case "attack":
-      executeWithRange(creep, () => creep.attack(action.target), action.target, PATH_COLORS.attack);
+      executeWithRange(creep, () => creep.attack(action.target), action.target, PATH_COLORS.attack, action.type);
       break;
 
     case "rangedAttack":
-      executeWithRange(creep, () => creep.rangedAttack(action.target), action.target, PATH_COLORS.attack);
+      executeWithRange(
+        creep,
+        () => creep.rangedAttack(action.target),
+        action.target,
+        PATH_COLORS.attack,
+        action.type
+      );
       break;
 
     case "heal":
-      executeWithRange(creep, () => creep.heal(action.target), action.target, PATH_COLORS.heal);
+      executeWithRange(creep, () => creep.heal(action.target), action.target, PATH_COLORS.heal, action.type);
       break;
 
     case "rangedHeal": {
@@ -149,15 +205,33 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
 
     // Controller actions
     case "claim":
-      executeWithRange(creep, () => creep.claimController(action.target), action.target, PATH_COLORS.heal);
+      executeWithRange(
+        creep,
+        () => creep.claimController(action.target),
+        action.target,
+        PATH_COLORS.heal,
+        action.type
+      );
       break;
 
     case "reserve":
-      executeWithRange(creep, () => creep.reserveController(action.target), action.target, PATH_COLORS.heal);
+      executeWithRange(
+        creep,
+        () => creep.reserveController(action.target),
+        action.target,
+        PATH_COLORS.heal,
+        action.type
+      );
       break;
 
     case "attackController":
-      executeWithRange(creep, () => creep.attackController(action.target), action.target, PATH_COLORS.attack);
+      executeWithRange(
+        creep,
+        () => creep.attackController(action.target),
+        action.target,
+        PATH_COLORS.attack,
+        action.type
+      );
       break;
 
     // Movement
@@ -277,25 +351,46 @@ function executeWithRange(
   creep: Creep,
   action: () => ScreepsReturnCode,
   target: RoomObject,
-  pathColor: string
+  pathColor: string,
+  actionLabel?: string
 ): boolean {
   const result = action();
-  
+
   if (result === ERR_NOT_IN_RANGE) {
     const moveResult = moveCreep(creep, target, { visualizePathStyle: { stroke: pathColor } });
+    if (moveResult !== OK) {
+      logger.info("Movement attempt returned non-OK result", {
+        room: creep.pos.roomName,
+        creep: creep.name,
+        meta: {
+          action: actionLabel ?? "rangeAction",
+          moveResult,
+          target: target.pos.toString()
+        }
+      });
+    }
     // If movement fails with ERR_NO_PATH, indicate state should be cleared
     if (moveResult === ERR_NO_PATH) {
       return true;
     }
     return false;
   }
-  
+
   // Check for errors that indicate the target is invalid and state should be cleared
   // This allows the creep to immediately find a new target instead of being stuck
-  if (result === ERR_FULL) return true;              // Target is full (e.g., spawn/extension filled)
-  if (result === ERR_NOT_ENOUGH_RESOURCES) return true; // Source is empty (e.g., container depleted)
-  if (result === ERR_INVALID_TARGET) return true;    // Target doesn't exist or wrong type
-  
+  if (result === ERR_FULL || result === ERR_NOT_ENOUGH_RESOURCES || result === ERR_INVALID_TARGET) {
+    logger.info("Clearing state after action error", {
+      room: creep.pos.roomName,
+      creep: creep.name,
+      meta: {
+        action: actionLabel ?? "rangeAction",
+        result,
+        target: target.pos.toString()
+      }
+    });
+    return true;
+  }
+
   return false;
 }
 
