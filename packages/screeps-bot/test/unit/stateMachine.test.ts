@@ -1,6 +1,7 @@
 import { assert } from "chai";
 import { evaluateWithStateMachine } from "../../src/roles/behaviors/stateMachine";
-import type { CreepContext, CreepAction } from "../../src/roles/behaviors/types";
+import { isTargetBlocked } from "../../src/utils/blockedTargets";
+import type { CreepContext, CreepAction, StuckTrackingMemory } from "../../src/roles/behaviors/types";
 import type { SwarmCreepMemory, CreepState } from "../../src/memory/schemas";
 
 /**
@@ -13,6 +14,9 @@ interface MockStore {
 }
 
 interface MockPosition {
+  x: number;
+  y: number;
+  roomName: string;
   inRangeTo: (target: { pos: RoomPosition } | RoomPosition, range: number) => boolean;
   isNearTo: (target: unknown) => boolean;
 }
@@ -36,6 +40,9 @@ function createMockCreep(options: {
   capacity: number | null;
   usedCapacity: number;
   inRange?: boolean;
+  x?: number;
+  y?: number;
+  roomName?: string;
 }): Creep {
   const freeCapacity = options.capacity === null ? null : options.capacity - options.usedCapacity;
   const mockCreep: MockCreep = {
@@ -46,6 +53,9 @@ function createMockCreep(options: {
       getUsedCapacity: () => options.usedCapacity
     },
     pos: {
+      x: options.x ?? 25,
+      y: options.y ?? 25,
+      roomName: options.roomName ?? "E1N1",
       inRangeTo: () => options.inRange ?? false,
       isNearTo: () => options.inRange ?? false
     }
@@ -370,7 +380,7 @@ describe("State Machine", () => {
       const ctx = createMockContext(creep);
 
       // Set up stuck tracking - creep has been stuck for 5 ticks
-      const memory = ctx.memory as any;
+      const memory = ctx.memory as unknown as StuckTrackingMemory;
       const stuckStartTick = 995;
       memory.lastPosX = creep.pos.x;
       memory.lastPosY = creep.pos.y;
@@ -420,7 +430,7 @@ describe("State Machine", () => {
       const ctx = createMockContext(creep);
 
       // Initialize stuck tracking
-      const memory = ctx.memory as any;
+      const memory = ctx.memory as unknown as StuckTrackingMemory;
       memory.lastPosX = 20;
       memory.lastPosY = 20;
       memory.lastPosRoom = "E1N1";
@@ -448,6 +458,40 @@ describe("State Machine", () => {
 
       // State should remain valid since creep is making progress
       assert.equal(action.type, "moveTo");
+    });
+
+    it("should block target when stuck is detected", () => {
+      const source = createMockSource();
+      setupGameMock({ source1: source });
+
+      const creep = createMockCreep({ capacity: 50, usedCapacity: 25 });
+      const ctx = createMockContext(creep);
+
+      // Set up stuck tracking - creep has been stuck for 5 ticks
+      const memory = ctx.memory as unknown as StuckTrackingMemory;
+      const stuckStartTick = 995;
+      memory.lastPosX = creep.pos.x;
+      memory.lastPosY = creep.pos.y;
+      memory.lastPosRoom = creep.pos.roomName;
+      memory.lastPosTick = stuckStartTick;
+
+      // Set up a state with a target that will be blocked
+      const existingState: CreepState = {
+        action: "pickup", // Non-stationary action
+        targetId: source.id,
+        startTick: 995,
+        timeout: 50
+      };
+      ctx.memory.state = existingState;
+
+      // Verify target is not blocked initially
+      assert.isFalse(isTargetBlocked(creep, source.id), "Target should not be blocked initially");
+
+      // Call state machine - should detect stuck and block the target
+      evaluateWithStateMachine(ctx, () => ({ type: "idle" }));
+
+      // Verify target is now blocked
+      assert.isTrue(isTargetBlocked(creep, source.id), "Target should be blocked after stuck detection");
     });
   });
 });

@@ -121,4 +121,10 @@ export interface StuckTrackingMemory {
   lastPosY?: number;
   lastPosRoom?: string;
   lastPosTick?: number;
+  /** 
+   * Blocked targets that caused the creep to get stuck.
+   * Key: target ID, Value: tick when block expires
+   * Targets are automatically unblocked after a cooldown period
+   */
+  blockedTargets?: Record<string, number>;
 }
