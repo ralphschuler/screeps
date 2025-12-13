@@ -306,6 +306,12 @@ let moveIntents: Map<string, MoveIntent[]> = new Map();
 /** Last tick when preTick was called */
 let lastPreTickTime = -1;
 
+/** Last tick when finalizeMovement reconciled intents */
+let lastFinalizeTick = -1;
+
+/** Track missing init warnings to avoid repeating them every move call */
+let lastMissingInitWarningTick = -1;
+
 // =============================================================================
 // Memory Keys (using underscores to minimize memory footprint)
 // =============================================================================
@@ -1010,6 +1016,16 @@ function findFleePath(
  * Internal preTick - Initialize movement system at the start of each tick.
  */
 function preTick(): void {
+  if (lastFinalizeTick !== -1 && lastFinalizeTick !== Game.time - 1) {
+    logger.warn("Movement reconciliation skipped previous tick", {
+      subsystem: "Movement",
+      meta: {
+        lastFinalizeTick,
+        currentTick: Game.time
+      }
+    });
+  }
+
   moveIntents = new Map();
   lastPreTickTime = Game.time;
 }
@@ -1019,6 +1035,16 @@ function preTick(): void {
  * Now integrates with the move request system to ask blocking creeps to move.
  */
 function reconcileTraffic(): void {
+  if (lastPreTickTime !== Game.time) {
+    logger.warn("finalizeMovement called before initMovement", {
+      subsystem: "Movement",
+      meta: {
+        lastPreTickTime,
+        currentTick: Game.time
+      }
+    });
+  }
+
   for (const [roomName, intents] of moveIntents) {
     if (intents.length === 0) continue;
 
@@ -1149,6 +1175,8 @@ function reconcileTraffic(): void {
       }
     }
   }
+
+  lastFinalizeTick = Game.time;
 }
 
 /**
@@ -1159,6 +1187,19 @@ function internalMoveTo(
   targets: RoomPosition | _HasRoomPosition | MoveTarget | RoomPosition[] | MoveTarget[],
   opts?: MoveOpts
 ): CreepMoveReturnCode | -2 | -5 | -7 | -10 {
+  if (lastPreTickTime !== Game.time && lastMissingInitWarningTick !== Game.time) {
+    logger.warn("moveCreep invoked without initMovement first", {
+      subsystem: "Movement",
+      creep: creep.name,
+      room: creep.pos.roomName,
+      meta: {
+        lastPreTickTime,
+        currentTick: Game.time
+      }
+    });
+    lastMissingInitWarningTick = Game.time;
+  }
+
   // Handle spawning creeps
   if ("spawning" in creep && creep.spawning) {
     logger.info("Movement blocked: creep is still spawning", {
