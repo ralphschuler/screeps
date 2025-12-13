@@ -425,6 +425,12 @@ global.SAFE_MODE_COST = 1000;
 global.MARKET_FEE = 0.05;
 global.MAX_MARKET_ORDERS = 300;
 global.MAX_CREEP_SIZE = 50;
+global.ORDER_BUY = 'buy';
+global.ORDER_SELL = 'sell';
+global.PIXEL = 'pixel';
+global.CPU_UNLOCK = 'cpuUnlock';
+global.SUBSCRIPTION_TOKEN = 'token';
+global.ACCESS_KEY = 'accessKey';
 
 // Mock InterShardMemory
 global.InterShardMemory = {
