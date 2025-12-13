@@ -60,7 +60,7 @@ function getPatrolWaypoints(room: Room): RoomPosition[] {
     waypoints.push(new RoomPosition(spawn.pos.x - 3, spawn.pos.y - 3, roomName));
   }
 
-  // Add exit patrol positions (center of each exit side)
+  // Add exit patrol positions (center and corners of each exit side)
   // Top exit (center and corners)
   waypoints.push(new RoomPosition(10, 5, roomName));
   waypoints.push(new RoomPosition(25, 5, roomName));
