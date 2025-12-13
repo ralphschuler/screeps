@@ -11,6 +11,7 @@ import { safeFindClosestByRange } from "../../utils/safeFind";
 import { registerMilitaryCacheClear } from "./context";
 import type { CreepAction, CreepContext } from "./types";
 import { createLogger } from "../../core/logger";
+import { getCollectionPoint } from "../../utils/collectionPoint";
 
 const logger = createLogger("MilitaryBehaviors");
 
@@ -174,6 +175,30 @@ function findPriorityTarget(ctx: CreepContext): Creep | null {
  */
 function hasBodyPart(creep: Creep, part: BodyPartConstant): boolean {
   return creep.getActiveBodyparts(part) > 0;
+}
+
+/**
+ * Move to collection point if available and not already there.
+ * Collection points are designated positions away from spawns where idle military units wait.
+ * Returns true if the creep should move to collection point, false otherwise.
+ * 
+ * @param ctx - Creep context
+ * @param debugLabel - Label for debug logging (e.g., "siegeUnit", "harasser")
+ * @returns CreepAction to move to collection point, or null if at collection point or unavailable
+ */
+function moveToCollectionPoint(ctx: CreepContext, debugLabel: string): CreepAction | null {
+  if (!ctx.swarmState) return null;
+  
+  const collectionPoint = getCollectionPoint(ctx.room, ctx.swarmState);
+  if (!collectionPoint) return null;
+  
+  // Only move if not already near collection point
+  if (ctx.creep.pos.getRangeTo(collectionPoint) > 2) {
+    logger.debug(`${ctx.creep.name} ${debugLabel} moving to collection point at ${collectionPoint.x},${collectionPoint.y}`);
+    return { type: "moveTo", target: collectionPoint };
+  }
+  
+  return null;
 }
 
 /**
@@ -594,21 +619,16 @@ export function siege(ctx: CreepContext): CreepAction {
   });
   if (structure) return { type: "dismantle", target: structure };
 
-  // No targets - patrol the room
+  // No targets - move to collection point to avoid blocking spawns
+  const collectionAction = moveToCollectionPoint(ctx, "siegeUnit");
+  if (collectionAction) return collectionAction;
+
+  // Fallback: patrol the room if at collection point or no collection point available
   const waypoints = getPatrolWaypoints(ctx.room);
   const nextWaypoint = getNextPatrolWaypoint(ctx.creep, waypoints);
 
   if (nextWaypoint) {
     return { type: "moveTo", target: nextWaypoint };
-  }
-
-  // Fallback: move near spawn if no waypoints available (cache 20 ticks - spawns don't move)
-  const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
-  if (spawns.length > 0) {
-    const mySpawn = findCachedClosest(ctx.creep, spawns, "siege_spawn", 20);
-    if (mySpawn && ctx.creep.pos.getRangeTo(mySpawn) > 5) {
-      return { type: "moveTo", target: mySpawn };
-    }
   }
 
   return { type: "idle" };
@@ -640,11 +660,9 @@ export function harasser(ctx: CreepContext): CreepAction {
   }
 
   if (!targetRoom) {
-    const spawns = ctx.spawnStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
-    if (spawns.length > 0) {
-      const spawn = findCachedClosest(ctx.creep, spawns, "harasser_spawn", 20);
-      if (spawn) return { type: "moveTo", target: spawn };
-    }
+    // No target room assigned - move to collection point to avoid blocking spawns
+    const collectionAction = moveToCollectionPoint(ctx, "harasser (no target)");
+    if (collectionAction) return collectionAction;
     return { type: "idle" };
   }
 
@@ -678,6 +696,17 @@ export function harasser(ctx: CreepContext): CreepAction {
     if (range <= 3) return { type: "rangedAttack", target };
     return { type: "moveTo", target };
   }
+
+  // No targets found in assigned target room
+  // Return to home room to avoid wasting CPU searching an empty room
+  // Harasser will wait at collection point until new target is assigned
+  if (ctx.room.name !== ctx.homeRoom) {
+    return { type: "moveToRoom", roomName: ctx.homeRoom };
+  }
+
+  // In home room with no work - move to collection point
+  const collectionAction = moveToCollectionPoint(ctx, "harasser (no targets)");
+  if (collectionAction) return collectionAction;
 
   return { type: "idle" };
 }
