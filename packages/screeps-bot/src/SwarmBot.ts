@@ -346,6 +346,9 @@ export function loop(): void {
     return map;
   }, new Map()));
 
+  // Set the number of processes skipped this tick
+  unifiedStats.setSkippedProcesses(kernel.getSkippedProcessesThisTick());
+
   // Finalize unified stats for this tick - collects and exports all metrics
   unifiedStats.finalizeTick();
 }

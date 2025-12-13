@@ -99,6 +99,7 @@ export interface EmpireStats {
     capacity: number;
   };
   credits: number;
+  skippedProcesses: number;
 }
 
 /**
@@ -290,6 +291,7 @@ export class UnifiedStatsManager {
   private roomMeasurements: Map<string, number> = new Map();
   private lastSegmentUpdate = 0;
   private segmentRequested = false;
+  private skippedProcessesThisTick = 0;
 
   public constructor(config: Partial<UnifiedStatsConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -323,6 +325,7 @@ export class UnifiedStatsManager {
     this.nativeCallsThisTick = this.createEmptyNativeCalls();
     this.subsystemMeasurements.clear();
     this.roomMeasurements.clear();
+    this.skippedProcessesThisTick = 0;
   }
 
   /**
@@ -508,6 +511,14 @@ export class UnifiedStatsManager {
   }
 
   /**
+   * Set the number of processes skipped this tick
+   */
+  public setSkippedProcesses(count: number): void {
+    if (!this.config.enabled) return;
+    this.skippedProcessesThisTick = count;
+  }
+
+  /**
    * Record individual creep statistics
    */
   public recordCreep(creep: Creep, cpu: number, action: string, actionsCount = 0): void {
@@ -672,7 +683,8 @@ export class UnifiedStatsManager {
           available: 0,
           capacity: 0
         },
-        credits: 0
+        credits: 0,
+        skippedProcesses: 0
       },
       rooms: {},
       subsystems: {},
@@ -716,7 +728,8 @@ export class UnifiedStatsManager {
         available: ownedRooms.reduce((sum, r) => sum + r.energy.available, 0),
         capacity: ownedRooms.reduce((sum, r) => sum + r.energy.capacity, 0)
       },
-      credits: Game.market.credits
+      credits: Game.market.credits,
+      skippedProcesses: this.skippedProcessesThisTick
     };
   }
 
@@ -918,7 +931,8 @@ export class UnifiedStatsManager {
           available: snap.empire.energy.available,
           capacity: snap.empire.energy.capacity
         },
-        credits: snap.empire.credits
+        credits: snap.empire.credits,
+        skipped_processes: snap.empire.skippedProcesses
       },
       rooms: {} as Record<string, any>,
       subsystems: {} as Record<string, any>,

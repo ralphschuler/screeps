@@ -304,6 +304,34 @@ describe("StatsManager", function () {
       assert.equal(stats.empire.totalStorageEnergy, 80000);
       assert.equal(stats.empire.gcl, 3);
     });
+
+    it("should track skipped processes count", function () {
+      mockGame.rooms = {
+        W1N1: {
+          controller: { my: true, level: 3 },
+          storage: { store: { getUsedCapacity: () => 50000 } }
+        }
+      };
+
+      statsManager.updateEmpireStats(5);
+
+      const stats = statsManager.getStats();
+      assert.equal(stats.empire.skippedProcesses, 5);
+    });
+
+    it("should default skipped processes to 0", function () {
+      mockGame.rooms = {
+        W1N1: {
+          controller: { my: true, level: 3 },
+          storage: { store: { getUsedCapacity: () => 50000 } }
+        }
+      };
+
+      statsManager.updateEmpireStats();
+
+      const stats = statsManager.getStats();
+      assert.equal(stats.empire.skippedProcesses, 0);
+    });
   });
 
   describe("Finalize Tick", function () {
