@@ -26,7 +26,8 @@
     "lint": "cd packages/screeps-bot && npm run lint",
     "push": "cd packages/screeps-bot && npm run push",
     "watch": "cd packages/screeps-bot && npm run watch",
-    "respawn": "node utils/respawner.js"
+    "respawn": "node utils/respawner.js",
+    "build:docs": "node scripts/build-docs.js"
   },
   "repository": {
     "type": "git",
