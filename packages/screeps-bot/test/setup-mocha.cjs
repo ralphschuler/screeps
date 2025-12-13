@@ -427,11 +427,10 @@ global.MAX_MARKET_ORDERS = 300;
 global.MAX_CREEP_SIZE = 50;
 global.ORDER_BUY = 'buy';
 global.ORDER_SELL = 'sell';
-global.RESOURCE_PIXEL = 'pixel';
 global.PIXEL = 'pixel';
-global.RESOURCE_CPU_UNLOCK = 'cpuUnlock';
 global.CPU_UNLOCK = 'cpuUnlock';
-global.RESOURCE_CREDITS = 'credits';
+global.SUBSCRIPTION_TOKEN = 'token';
+global.ACCESS_KEY = 'accessKey';
 
 // Mock InterShardMemory
 global.InterShardMemory = {

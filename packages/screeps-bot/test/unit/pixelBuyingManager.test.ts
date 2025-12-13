@@ -43,7 +43,6 @@ const mockGame: any = {
 (global as any).RESOURCE_ZYNTHIUM = "Z";
 (global as any).RESOURCE_CATALYST = "X";
 (global as any).RESOURCE_GHODIUM = "G";
-(global as any).RESOURCE_PIXEL = "pixel";
 (global as any).PIXEL = "pixel";
 
 describe("Pixel Buying Manager", () => {
@@ -219,7 +218,7 @@ describe("Pixel Buying Manager", () => {
 
       // Only expensive orders available
       mockGame.market.getAllOrders = () => [
-        { id: "order1", type: ORDER_SELL, resourceType: RESOURCE_PIXEL, price: 10000, amount: 5, roomName: "W5N5" }
+        { id: "order1", type: ORDER_SELL, resourceType: PIXEL, price: 10000, amount: 5, roomName: "W5N5" }
       ];
 
       let dealCalled = false;
@@ -237,9 +236,9 @@ describe("Pixel Buying Manager", () => {
 
     it("should prefer cheaper orders", () => {
       const orders = [
-        { id: "order2", type: ORDER_SELL, resourceType: RESOURCE_PIXEL, price: 3000, amount: 5, roomName: "W3N3" },
-        { id: "order1", type: ORDER_SELL, resourceType: RESOURCE_PIXEL, price: 1500, amount: 5, roomName: "W5N5" },
-        { id: "order3", type: ORDER_SELL, resourceType: RESOURCE_PIXEL, price: 4500, amount: 5, roomName: "W2N2" }
+        { id: "order2", type: ORDER_SELL, resourceType: PIXEL, price: 3000, amount: 5, roomName: "W3N3" },
+        { id: "order1", type: ORDER_SELL, resourceType: PIXEL, price: 1500, amount: 5, roomName: "W5N5" },
+        { id: "order3", type: ORDER_SELL, resourceType: PIXEL, price: 4500, amount: 5, roomName: "W2N2" }
       ];
 
       // Sort by price (cheapest first)

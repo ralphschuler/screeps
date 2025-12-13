@@ -263,8 +263,10 @@ export class PixelBuyingManager {
    * Check if we have enough credits to buy pixels
    */
   private hasEnoughCredits(): boolean {
+    // availableCredits = total credits minus reserve we must maintain
+    // We check if what's available (after reserve) is at least minCreditsForPixels
     const availableCredits = Game.market.credits - this.config.creditReserve;
-    return availableCredits >= this.config.minCreditsForPixels - this.config.creditReserve;
+    return availableCredits >= this.config.minCreditsForPixels;
   }
 
   /**
