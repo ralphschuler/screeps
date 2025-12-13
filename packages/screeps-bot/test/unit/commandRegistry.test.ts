@@ -324,3 +324,81 @@ describe("@Command decorator", () => {
     expect(cmd?.handler()).to.equal("bound value");
   });
 });
+
+describe("Lazy Loading", () => {
+  beforeEach(() => {
+    clearCommandDecoratorMetadata();
+    commandRegistry.reset();
+  });
+
+  it("should support lazy loading mode", () => {
+    let registrationCalled = false;
+    const registrationCallback = (): void => {
+      registrationCalled = true;
+      commandRegistry.register(
+        { name: "lazyCmd", description: "Lazy command" },
+        () => "lazy result"
+      );
+    };
+
+    commandRegistry.initialize();
+    commandRegistry.enableLazyLoading(registrationCallback);
+
+    // Registration should not be called yet
+    expect(registrationCalled).to.be.false;
+    expect(commandRegistry.getCommand("lazyCmd")).to.be.undefined;
+  });
+
+  it("should trigger lazy loading on first execute", () => {
+    let registrationCalled = false;
+    const registrationCallback = (): void => {
+      registrationCalled = true;
+      commandRegistry.register(
+        { name: "lazyCmd", description: "Lazy command" },
+        () => "lazy result"
+      );
+    };
+
+    commandRegistry.initialize();
+    commandRegistry.enableLazyLoading(registrationCallback);
+
+    // Execute a command - should trigger registration
+    const result = commandRegistry.execute("lazyCmd");
+
+    expect(registrationCalled).to.be.true;
+    expect(result).to.equal("lazy result");
+  });
+
+  it("should only trigger lazy loading once", () => {
+    let registrationCount = 0;
+    const registrationCallback = (): void => {
+      registrationCount++;
+      commandRegistry.register(
+        { name: "lazyCmd", description: "Lazy command" },
+        () => "lazy result"
+      );
+    };
+
+    commandRegistry.initialize();
+    commandRegistry.enableLazyLoading(registrationCallback);
+
+    // Execute multiple times
+    commandRegistry.execute("lazyCmd");
+    commandRegistry.execute("lazyCmd");
+    commandRegistry.execute("lazyCmd");
+
+    // Should only register once
+    expect(registrationCount).to.equal(1);
+  });
+
+  it("should work without lazy loading when not enabled", () => {
+    commandRegistry.initialize();
+    commandRegistry.register(
+      { name: "normalCmd", description: "Normal command" },
+      () => "normal result"
+    );
+
+    const result = commandRegistry.execute("normalCmd");
+    expect(result).to.equal("normal result");
+  });
+});

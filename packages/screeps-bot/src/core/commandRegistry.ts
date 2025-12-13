@@ -73,6 +73,9 @@ const commandDecoratorStore: CommandDecoratorMetadata[] = [];
 class CommandRegistry {
   private commands: Map<string, RegisteredCommand> = new Map();
   private initialized = false;
+  private lazyLoadEnabled = false;
+  private commandsRegistered = false;
+  private registrationCallback?: () => void;
 
   /**
    * Register a command with the registry
@@ -143,8 +146,13 @@ class CommandRegistry {
 
   /**
    * Execute a command by name
+   * In lazy loading mode, this will trigger command registration on first call
    */
   public execute(name: string, ...args: unknown[]): unknown {
+    if (this.lazyLoadEnabled && !this.commandsRegistered) {
+      this.triggerLazyLoad();
+    }
+
     const command = this.commands.get(name);
     if (!command) {
       return `Command "${name}" not found. Use help() to see available commands.`;
@@ -243,6 +251,12 @@ class CommandRegistry {
 
     // Add the help command directly to global for convenient access
     g.help = (commandName?: string): string => {
+      // Trigger lazy load if needed when help is called
+      if (this.lazyLoadEnabled && !this.commandsRegistered) {
+        this.triggerLazyLoad();
+        // Re-expose commands after lazy loading
+        this.exposeToGlobal();
+      }
       if (commandName) {
         return this.generateCommandHelp(commandName);
       }
@@ -281,6 +295,30 @@ class CommandRegistry {
 
     this.initialized = true;
     logger.info("Command registry initialized", { subsystem: "CommandRegistry" });
+  }
+
+  /**
+   * Enable lazy loading mode
+   * Commands will be registered only when first accessed
+   */
+  public enableLazyLoading(registrationCallback: () => void): void {
+    this.lazyLoadEnabled = true;
+    this.registrationCallback = registrationCallback;
+    logger.info("Console commands lazy loading enabled", { subsystem: "CommandRegistry" });
+  }
+
+  /**
+   * Trigger lazy loading of all commands
+   * Called automatically when a command is first accessed
+   */
+  private triggerLazyLoad(): void {
+    if (!this.commandsRegistered && this.registrationCallback) {
+      logger.debug("Lazy loading console commands on first access", { subsystem: "CommandRegistry" });
+      this.commandsRegistered = true;
+      this.registrationCallback();
+      // After registration, expose all commands to global
+      this.exposeToGlobal();
+    }
   }
 
   /**
