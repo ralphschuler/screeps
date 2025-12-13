@@ -725,6 +725,9 @@ export class StatsManager {
   public updateEmpireStats(skippedProcesses = 0): void {
     if (!this.config.enabled) return;
 
+    // Ensure non-negative value for skipped processes
+    const validSkippedProcesses = Math.max(0, skippedProcesses);
+
     const stats = this.getStatsRoot();
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
     const totalCreeps = Object.keys(Game.creeps).length;
@@ -746,7 +749,7 @@ export class StatsManager {
       heapUsed: (Game.cpu.getHeapStatistics?.()?.used_heap_size ?? 0) / 1024 / 1024,
       credits: Game.market.credits,
       rooms: ownedRooms.map(r => r.name),
-      skippedProcesses
+      skippedProcesses: validSkippedProcesses
     };
   }
 
