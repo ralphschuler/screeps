@@ -516,6 +516,7 @@ function trackActionMetrics(
       // WORK parts contribute 1 energy per tick to controller
       // Note: We track this in buildProgress for now as it's construction-like work
       // TODO: Consider adding a separate upgradeProgress metric for clarity
+      // Issue URL: https://github.com/ralphschuler/screeps/issues/582
       const workParts = creep.body.filter(p => p.type === WORK && p.hits > 0).length;
       metrics.recordBuild(creep.memory as any, workParts);
       break;
