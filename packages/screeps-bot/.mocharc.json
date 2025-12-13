@@ -1,6 +1,6 @@
 {
   "require": [
-    "test/setup-mocha.js",
+    "test/setup-mocha.cjs",
     "ts-node/register",
     "tsconfig-paths/register"
   ],
