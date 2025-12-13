@@ -1,9 +1,9 @@
-// Initialize RoomVisual extensions from screepers/RoomVisual
 import "./visuals/roomVisualExtensions";
 import { ErrorMapper } from "utils/ErrorMapper";
 import { registerAllConsoleCommands } from "./core/consoleCommands";
 import { loop as swarmLoop } from "./SwarmBot";
 import { createLogger } from "./core/logger";
+import { getConfig } from "./config";
 
 const logger = createLogger("Main");
 
@@ -96,18 +96,16 @@ declare global {
 // - Automatic help() command with all registered commands
 // - Consistent command metadata (description, usage, examples)
 // - Centralized command management via CommandRegistry
+// - Lazy loading support to reduce initialization CPU
 //
 // To add new commands, create a class with @Command decorated methods
 // and register it in registerAllConsoleCommands()
 // =============================================================================
 
-// TODO: Consider lazy loading console commands to reduce initial load time
-// Issue URL: https://github.com/ralphschuler/screeps/issues/457
-// Only register commands when first accessed or on-demand via a flag
-// This could save CPU on initialization for bots that rarely use console
-
-// Register all console commands (must be done before game loop starts)
-registerAllConsoleCommands();
+// Register console commands (uses lazy loading by default to save CPU)
+// Commands are registered on first access via help() or any command call
+const config = getConfig();
+registerAllConsoleCommands(config.lazyLoadConsoleCommands);
 
 // Load integration tests if screepsmod-testing is available
 // This is a one-time initialization that happens when the module is loaded

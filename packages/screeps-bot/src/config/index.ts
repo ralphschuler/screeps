@@ -244,6 +244,8 @@ export interface BotConfig {
   profiling: boolean;
   /** Enable visualizations */
   visualizations: boolean;
+  /** Enable lazy loading of console commands (reduces initialization CPU) */
+  lazyLoadConsoleCommands: boolean;
 }
 
 /**
@@ -408,7 +410,8 @@ export const DEFAULT_CONFIG: BotConfig = {
   },
   debug: false,
   profiling: true,
-  visualizations: true
+  visualizations: true,
+  lazyLoadConsoleCommands: true
 };
 
 /**

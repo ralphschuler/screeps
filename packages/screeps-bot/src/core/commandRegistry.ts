@@ -73,6 +73,10 @@ const commandDecoratorStore: CommandDecoratorMetadata[] = [];
 class CommandRegistry {
   private commands: Map<string, RegisteredCommand> = new Map();
   private initialized = false;
+  private lazyLoadEnabled = false;
+  private commandsRegistered = false;
+  private registrationCallback?: () => void;
+  private commandsExposed = false;
 
   /**
    * Register a command with the registry
@@ -108,22 +112,35 @@ class CommandRegistry {
 
   /**
    * Get a registered command
+   * Triggers lazy loading if needed
    */
   public getCommand(name: string): RegisteredCommand | undefined {
+    if (this.lazyLoadEnabled && !this.commandsRegistered) {
+      this.triggerLazyLoad();
+    }
     return this.commands.get(name);
   }
 
   /**
    * Get all registered commands
+   * Triggers lazy loading if needed
    */
   public getCommands(): RegisteredCommand[] {
+    if (this.lazyLoadEnabled && !this.commandsRegistered) {
+      this.triggerLazyLoad();
+    }
     return Array.from(this.commands.values());
   }
 
   /**
    * Get command names grouped by category
+   * Triggers lazy loading if needed
    */
   public getCommandsByCategory(): Map<string, RegisteredCommand[]> {
+    if (this.lazyLoadEnabled && !this.commandsRegistered) {
+      this.triggerLazyLoad();
+    }
+    
     const categories = new Map<string, RegisteredCommand[]>();
 
     for (const cmd of this.commands.values()) {
@@ -143,8 +160,13 @@ class CommandRegistry {
 
   /**
    * Execute a command by name
+   * In lazy loading mode, this will trigger command registration on first call
    */
   public execute(name: string, ...args: unknown[]): unknown {
+    if (this.lazyLoadEnabled && !this.commandsRegistered) {
+      this.triggerLazyLoad();
+    }
+
     const command = this.commands.get(name);
     if (!command) {
       return `Command "${name}" not found. Use help() to see available commands.`;
@@ -201,8 +223,13 @@ class CommandRegistry {
 
   /**
    * Generate help output for a specific command
+   * Triggers lazy loading if needed
    */
   public generateCommandHelp(name: string): string {
+    if (this.lazyLoadEnabled && !this.commandsRegistered) {
+      this.triggerLazyLoad();
+    }
+    
     const command = this.commands.get(name);
     if (!command) {
       return `Command "${name}" not found. Use help() to see available commands.`;
@@ -237,21 +264,28 @@ class CommandRegistry {
     // This is safe because we're only adding command handler functions.
     const g = global as unknown as Record<string, unknown>;
 
-    for (const [name, command] of this.commands) {
-      g[name] = command.handler;
+    // Only expose commands if not already exposed or if new commands were registered
+    if (!this.commandsExposed || (this.lazyLoadEnabled && this.commandsRegistered)) {
+      for (const [name, command] of this.commands) {
+        g[name] = command.handler;
+      }
+      this.commandsExposed = true;
+      logger.debug(`Exposed ${this.commands.size} commands to global scope`, {
+        subsystem: "CommandRegistry"
+      });
     }
 
-    // Add the help command directly to global for convenient access
+    // Always set up the help command wrapper (for lazy loading support)
     g.help = (commandName?: string): string => {
+      // Trigger lazy load if needed when help is called
+      if (this.lazyLoadEnabled && !this.commandsRegistered) {
+        this.triggerLazyLoad();
+      }
       if (commandName) {
         return this.generateCommandHelp(commandName);
       }
       return this.generateHelp();
     };
-
-    logger.debug(`Exposed ${this.commands.size} commands to global scope`, {
-      subsystem: "CommandRegistry"
-    });
   }
 
   /**
@@ -284,6 +318,30 @@ class CommandRegistry {
   }
 
   /**
+   * Enable lazy loading mode
+   * Commands will be registered only when first accessed
+   */
+  public enableLazyLoading(registrationCallback: () => void): void {
+    this.lazyLoadEnabled = true;
+    this.registrationCallback = registrationCallback;
+    logger.info("Console commands lazy loading enabled", { subsystem: "CommandRegistry" });
+  }
+
+  /**
+   * Trigger lazy loading of all commands
+   * Called automatically when a command is first accessed
+   */
+  private triggerLazyLoad(): void {
+    if (!this.commandsRegistered && this.registrationCallback) {
+      logger.debug("Lazy loading console commands on first access", { subsystem: "CommandRegistry" });
+      this.commandsRegistered = true;
+      this.registrationCallback();
+      // After registration, expose all commands to global
+      this.exposeToGlobal();
+    }
+  }
+
+  /**
    * Get count of registered commands
    */
   public getCommandCount(): number {
@@ -304,6 +362,10 @@ class CommandRegistry {
   public reset(): void {
     this.commands.clear();
     this.initialized = false;
+    this.lazyLoadEnabled = false;
+    this.commandsRegistered = false;
+    this.commandsExposed = false;
+    this.registrationCallback = undefined;
   }
 }
 

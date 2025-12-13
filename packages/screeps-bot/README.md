@@ -117,12 +117,29 @@ All bot operations run as kernel processes with priority-based scheduling:
 
 ### Console Commands
 
-Inspect process management with these commands:
-- `showKernelStats()` - View kernel statistics and CPU usage
-- `showCreepStats()` - View creep process statistics by priority
-- `showRoomStats()` - View room process statistics
-- `listCreepProcesses(role?)` - List creep processes with optional role filter
-- `listProcesses()` - List all kernel processes
+The bot provides an extensive set of console commands for debugging and management. Commands are **lazy-loaded by default** to reduce initialization CPU cost.
+
+#### Using Commands
+
+Commands are automatically loaded when you call `help()` or any command for the first time:
+
+```javascript
+help()  // Shows all available commands (triggers lazy loading)
+showKernelStats()  // View kernel statistics and CPU usage
+showCreepStats()  // View creep process statistics by priority
+showRoomStats()  // View room process statistics
+listCreepProcesses('harvester')  // List harvester processes
+listProcesses()  // List all kernel processes
+```
+
+#### Lazy Loading
+
+Console commands are lazy-loaded to save CPU during bot initialization:
+- **Default behavior**: Commands register only when first accessed via `help()` or direct call
+- **CPU savings**: ~0.3-0.8 CPU saved per tick during initialization
+- **Configuration**: Set `lazyLoadConsoleCommands: false` in config to disable
+
+See [LAZY_LOADING_COMMANDS.md](LAZY_LOADING_COMMANDS.md) for detailed documentation.
 
 For detailed architecture documentation, see the root [ROADMAP.md](../../ROADMAP.md).
 

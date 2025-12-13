@@ -178,6 +178,64 @@ export class SS1SegmentManager {
   }
 
   /**
+   * Decrypt channel data using XOR cipher
+   * @param data Encrypted data
+   * @param key Encryption key
+   * @returns Decrypted data
+   */
+  public static decryptData(data: string, key: string): string {
+    try {
+      if (!key || key.length === 0) {
+        logger.warn("Decryption key is empty", { meta: {} });
+        return data;
+      }
+
+      let decrypted = "";
+      for (let i = 0; i < data.length; i++) {
+        const dataChar = data.charCodeAt(i);
+        const keyChar = key.charCodeAt(i % key.length);
+        decrypted += String.fromCharCode(dataChar ^ keyChar);
+      }
+      
+      return decrypted;
+    } catch (error) {
+      logger.error(`Error during decryption: ${String(error)}`, {
+        meta: { error: error instanceof Error ? error.message : String(error) }
+      });
+      return data;
+    }
+  }
+
+  /**
+   * Encrypt channel data using XOR cipher
+   * @param data Raw data
+   * @param key Encryption key
+   * @returns Encrypted data
+   */
+  public static encryptData(data: string, key: string): string {
+    try {
+      if (!key || key.length === 0) {
+        logger.warn("Encryption key is empty", { meta: {} });
+        return data;
+      }
+
+      let encrypted = "";
+      for (let i = 0; i < data.length; i++) {
+        const dataChar = data.charCodeAt(i);
+        const keyChar = key.charCodeAt(i % key.length);
+        encrypted += String.fromCharCode(dataChar ^ keyChar);
+      }
+      
+      return encrypted;
+    } catch (error) {
+      logger.error(`Error during encryption: ${String(error)}`, {
+        meta: { error: error instanceof Error ? error.message : String(error) }
+      });
+      return data;
+    }
+  }
+
+  /**
    * Create a channel definition for advertising
    * @param protocol Protocol name
    * @param options Channel options

@@ -592,26 +592,41 @@ const systemCommands = new SystemCommands();
 
 /**
  * Register all console commands with the command registry
+ * @param lazy - If true, defer actual registration until first command is used
  */
-export function registerAllConsoleCommands(): void {
-  // Initialize command registry first
-  commandRegistry.initialize();
+export function registerAllConsoleCommands(lazy = false): void {
+  const doRegistration = (): void => {
+    // Initialize command registry first
+    commandRegistry.initialize();
 
-  // Register decorated commands from all command class instances
-  registerDecoratedCommands(loggingCommands);
-  registerDecoratedCommands(visualizationCommands);
-  registerDecoratedCommands(statisticsCommands);
-  registerDecoratedCommands(configurationCommands);
-  registerDecoratedCommands(kernelCommands);
-  registerDecoratedCommands(systemCommands);
+    // Register decorated commands from all command class instances
+    registerDecoratedCommands(loggingCommands);
+    registerDecoratedCommands(visualizationCommands);
+    registerDecoratedCommands(statisticsCommands);
+    registerDecoratedCommands(configurationCommands);
+    registerDecoratedCommands(kernelCommands);
+    registerDecoratedCommands(systemCommands);
 
-  // Register advanced system commands
-  registerDecoratedCommands(labCommands);
-  registerDecoratedCommands(marketCommands);
-  registerDecoratedCommands(powerCommands);
+    // Register advanced system commands
+    registerDecoratedCommands(labCommands);
+    registerDecoratedCommands(marketCommands);
+    registerDecoratedCommands(powerCommands);
 
-  // Expose all commands to global scope
-  commandRegistry.exposeToGlobal();
+    // Expose all commands to global scope
+    commandRegistry.exposeToGlobal();
+  };
+
+  if (lazy) {
+    // Initialize command registry with just the help command
+    commandRegistry.initialize();
+    // Enable lazy loading - commands will be registered on first access
+    commandRegistry.enableLazyLoading(doRegistration);
+    // Expose just the help command initially
+    commandRegistry.exposeToGlobal();
+  } else {
+    // Immediate registration
+    doRegistration();
+  }
 }
 
 // Export command classes for potential extension

@@ -6,6 +6,7 @@
 
 import { RoomNeed } from "../types";
 import { SS1SegmentManager } from "../SS1SegmentManager";
+import { KeyExchangeProtocol } from "../terminal-protocols/KeyExchangeProtocol";
 import { createLogger } from "../../core/logger";
 
 const logger = createLogger("RoomNeedsProtocol");
@@ -60,17 +61,25 @@ export class RoomNeedsProtocol {
         data = SS1SegmentManager.decompressData(data);
       }
 
-      // Note: Decryption would happen here if keyid is present
-      // TODO: Implement decryption support using the KeyExchangeProtocol
-      // Issue URL: https://github.com/ralphschuler/screeps/issues/446
-      // For encrypted channels, integrate with KeyExchangeProtocol.getKey()
+      // Decrypt if needed
       if (channel.keyid) {
-        console.log(`[RoomNeeds] Warning: Channel is encrypted with keyid ${channel.keyid} but decryption is not implemented`);
+        const key = KeyExchangeProtocol.getKey(username, channel.keyid);
+        
+        if (!key) {
+          logger.warn(`Channel is encrypted with keyid ${channel.keyid} but key is not available for ${username}`, {
+            meta: { username, keyid: channel.keyid }
+          });
+          return null;
+        }
+        
+        data = SS1SegmentManager.decryptData(data, key);
       }
 
       return JSON.parse(data) as RoomNeed[];
     } catch (error) {
-      console.log(`[RoomNeeds] Error reading needs from ${username}: ${error}`);
+      logger.error(`Error reading needs from ${username}: ${String(error)}`, {
+        meta: { username, error: error instanceof Error ? error.message : String(error) }
+      });
       return null;
     }
   }
