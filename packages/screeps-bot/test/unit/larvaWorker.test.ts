@@ -432,5 +432,30 @@ describe("larvaWorker behavior - delivery priority", () => {
         assert.equal(action.target, controller, "Should upgrade when no storage exists and no construction sites");
       }
     });
+
+    it("should switch to collection mode when has energy but no targets and no controller", () => {
+      const creep = createMockCreep({ freeCapacity: 50, usedCapacity: 50 }); // Has partial energy
+      const mockRoom = createMockRoom(undefined); // No controller
+      
+      const ctx = createMockContext(creep, {
+        isWorking: true,
+        spawnStructures: [],
+        towers: [],
+        storage: undefined,
+        prioritizedSites: [],
+        controller: undefined // No controller
+      });
+      
+      // Mock room.find to return empty sources for findEnergy fallback
+      (mockRoom as any).find = () => [];
+      (creep as any).room = mockRoom;
+
+      const action = larvaWorker(ctx);
+
+      // Should switch to collection mode and call findEnergy
+      // Since there are no energy sources, it will return idle
+      // But the important part is that working state was switched to false
+      assert.equal(ctx.memory.working, false, "Should switch working state to false");
+    });
   });
 });
