@@ -38,6 +38,7 @@ import type { CreepAction, CreepContext, StuckTrackingMemory } from "./types";
 import type { CreepState } from "../../memory/schemas";
 import { clearMovementCache } from "../../utils/movement";
 import { clearCache as clearAllCachedTargets } from "../../utils/cachedClosest";
+import { blockTarget } from "../../utils/blockedTargets";
 import { createLogger } from "../../core/logger";
 
 const logger = createLogger("StateMachine");
@@ -138,6 +139,24 @@ function getStateValidity(state: CreepState | undefined, ctx: CreepContext): Sta
         // BUGFIX: Clear all cached closest targets to prevent re-selecting the same invalid target
         // When creep is stuck, it may be targeting an unreachable or contested resource
         clearAllCachedTargets(ctx.creep);
+
+        // BUGFIX: Block the current target to prevent re-selection
+        // When a creep is stuck trying to reach a specific target, that target is likely
+        // unreachable or contested. Block it for a cooldown period to force the creep
+        // to try alternative targets instead of cycling endlessly on the same one.
+        if (state.targetId) {
+          blockTarget(ctx.creep, state.targetId);
+          logger.info("Blocked stuck target", {
+            room: ctx.creep.pos.roomName,
+            creep: ctx.creep.name,
+            meta: {
+              action: state.action,
+              role: ctx.memory.role,
+              targetId: state.targetId,
+              ticksStuck
+            }
+          });
+        }
 
         // BUGFIX: DO NOT reset stuck tracking here!
         // The tracking should only be updated when the creep actually moves (see below).

@@ -12,11 +12,13 @@
  * - Target validated each tick (exists and still in range)
  * - Automatic cache invalidation when target becomes invalid
  * - TTL (time-to-live) to periodically refresh targets
+ * - Integrates with blocked target tracking to prevent stuck states
  * - Uses direct findClosestByRange (not safeFindClosestByRange) since we're 
  *   passing filtered arrays, not FIND_* constants that could have engine issues
  */
 
 import { createLogger } from "../core/logger";
+import { isTargetBlocked } from "./blockedTargets";
 
 const logger = createLogger("CachedClosest");
 
@@ -59,6 +61,7 @@ const MAX_VALID_RANGE = 20;
 /**
  * Find the closest object from an array, using cache when possible.
  * Falls back to findClosestByRange when cache is invalid or expired.
+ * Automatically filters out blocked targets to prevent stuck states.
  *
  * @param creep - The creep looking for a target
  * @param targets - Array of potential targets
@@ -78,9 +81,18 @@ export function findCachedClosest<T extends RoomObject & _HasId>(
     return null;
   }
 
+  // Filter out blocked targets before processing
+  const availableTargets = targets.filter(t => !isTargetBlocked(creep, t.id));
+  
+  // Fast path: no available targets after filtering
+  if (availableTargets.length === 0) {
+    clearCache(creep, typeKey);
+    return null;
+  }
+
   // Fast path: only one target
-  if (targets.length === 1) {
-    return targets[0];
+  if (availableTargets.length === 1) {
+    return availableTargets[0];
   }
 
   const memory = creep.memory as unknown as { [key: string]: unknown };
@@ -92,23 +104,29 @@ export function findCachedClosest<T extends RoomObject & _HasId>(
     // Validate cached target still exists and is in the targets array
     const cachedTarget = Game.getObjectById(cached.i) as T | null;
     if (cachedTarget) {
-      // Check if cached target is in the targets array
-      const stillValid = targets.some(t => t.id === cachedTarget.id);
-      if (stillValid) {
-        // Extra validation: target shouldn't be too far (prevents stale cache)
-        const range = creep.pos.getRangeTo(cachedTarget.pos);
-        if (range <= MAX_VALID_RANGE) {
-          return cachedTarget;
+      // Check if cached target is blocked
+      if (isTargetBlocked(creep, cachedTarget.id)) {
+        // Cached target is now blocked, clear cache and find new target
+        clearCache(creep, typeKey);
+      } else {
+        // Check if cached target is in the available targets array
+        const stillValid = availableTargets.some(t => t.id === cachedTarget.id);
+        if (stillValid) {
+          // Extra validation: target shouldn't be too far (prevents stale cache)
+          const range = creep.pos.getRangeTo(cachedTarget.pos);
+          if (range <= MAX_VALID_RANGE) {
+            return cachedTarget;
+          }
         }
       }
     }
   }
 
-  // Cache miss or invalid - find new closest target
+  // Cache miss or invalid - find new closest target from available (non-blocked) targets
   // Note: Using direct findClosestByRange here is safe because we're passing
   // a pre-filtered array of targets, not a FIND_* constant. Engine errors only
   // occur with FIND_* constants when there's corrupted owner data.
-  const closest = creep.pos.findClosestByRange(targets);
+  const closest = creep.pos.findClosestByRange(availableTargets);
   if (closest) {
     // Update cache
     if (!memory[CACHE_KEY]) {
