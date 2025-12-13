@@ -4,7 +4,7 @@
  * Centralizes registration of all scheduled tasks with the scheduler.
  * Ensures all managers and subsystems are properly integrated.
  *
- * All minBucket values set to 0 - processes run regardless of bucket level.
+ * Task registration minBucket values set to 0 - processes run regardless of bucket level.
  * This aligns with kernel defaults and prevents blocking when bucket is depleted.
  *
  * Addresses Issue: #30
