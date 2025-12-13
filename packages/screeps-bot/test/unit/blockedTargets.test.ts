@@ -105,7 +105,7 @@ describe("Blocked Targets", () => {
       
       // Verify block was cleaned up
       const memory = creep.memory as unknown as StuckTrackingMemory;
-      assert.isUndefined(memory.blockedTargets![targetId]);
+      assert.isUndefined(memory.blockedTargets?.[targetId]);
     });
 
     it("should return false when blockedTargets is undefined", () => {
@@ -173,8 +173,8 @@ describe("Blocked Targets", () => {
       cleanupExpiredBlocks(creep);
 
       const memory = creep.memory as unknown as StuckTrackingMemory;
-      assert.isUndefined(memory.blockedTargets![target1], "target1 should be expired");
-      assert.isDefined(memory.blockedTargets![target2], "target2 should still be blocked");
+      assert.isUndefined(memory.blockedTargets?.[target1], "target1 should be expired");
+      assert.isDefined(memory.blockedTargets?.[target2], "target2 should still be blocked");
     });
 
     it("should delete blockedTargets when all blocks expired", () => {

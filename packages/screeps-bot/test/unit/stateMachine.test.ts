@@ -1,7 +1,7 @@
 import { assert } from "chai";
 import { evaluateWithStateMachine } from "../../src/roles/behaviors/stateMachine";
 import { isTargetBlocked } from "../../src/utils/blockedTargets";
-import type { CreepContext, CreepAction } from "../../src/roles/behaviors/types";
+import type { CreepContext, CreepAction, StuckTrackingMemory } from "../../src/roles/behaviors/types";
 import type { SwarmCreepMemory, CreepState } from "../../src/memory/schemas";
 
 /**
@@ -380,7 +380,7 @@ describe("State Machine", () => {
       const ctx = createMockContext(creep);
 
       // Set up stuck tracking - creep has been stuck for 5 ticks
-      const memory = ctx.memory as any;
+      const memory = ctx.memory as unknown as StuckTrackingMemory;
       const stuckStartTick = 995;
       memory.lastPosX = creep.pos.x;
       memory.lastPosY = creep.pos.y;
@@ -430,7 +430,7 @@ describe("State Machine", () => {
       const ctx = createMockContext(creep);
 
       // Initialize stuck tracking
-      const memory = ctx.memory as any;
+      const memory = ctx.memory as unknown as StuckTrackingMemory;
       memory.lastPosX = 20;
       memory.lastPosY = 20;
       memory.lastPosRoom = "E1N1";
@@ -468,7 +468,7 @@ describe("State Machine", () => {
       const ctx = createMockContext(creep);
 
       // Set up stuck tracking - creep has been stuck for 5 ticks
-      const memory = ctx.memory as any;
+      const memory = ctx.memory as unknown as StuckTrackingMemory;
       const stuckStartTick = 995;
       memory.lastPosX = creep.pos.x;
       memory.lastPosY = creep.pos.y;
