@@ -297,8 +297,8 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
       createBody([TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE], 500),
       createBody([TOUGH, TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1070)
     ],
-    priority: 80,
-    maxPerRoom: 2,
+    priority: 60, // Reduced from 80 - only spawn when there are actual threats
+    maxPerRoom: 1, // Reduced from 2 - one guard is enough for most situations
     remoteRole: false
   },
   remoteGuard: {
@@ -309,8 +309,8 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
       createBody([TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE], 500),
       createBody([TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 880)
     ],
-    priority: 85, // Higher than regular guards - remote defense is critical
-    maxPerRoom: 4, // Higher max since distributed across remote rooms
+    priority: 65, // Reduced from 85 - only spawn when remote rooms actually need defense
+    maxPerRoom: 2, // Reduced from 4 - fewer guards per remote room
     remoteRole: true
   },
   healer: {
@@ -321,7 +321,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
       createBody([HEAL, HEAL, MOVE, MOVE], 600),
       createBody([HEAL, HEAL, HEAL, HEAL, MOVE, MOVE, MOVE, MOVE], 1200)
     ],
-    priority: 75,
+    priority: 55, // Reduced from 75 - only spawn when actively needed for combat
     maxPerRoom: 1,
     remoteRole: false
   },
@@ -336,8 +336,8 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
         1340
       )
     ],
-    priority: 70,
-    maxPerRoom: 2,
+    priority: 50, // Reduced from 70 - offensive units should be spawned on-demand
+    maxPerRoom: 1, // Reduced from 2 - one soldier per room
     remoteRole: false
   },
   siegeUnit: {
@@ -372,8 +372,8 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
         1040
       )
     ],
-    priority: 50,
-    maxPerRoom: 2,
+    priority: 30, // Reduced from 50 - siege units only for planned operations
+    maxPerRoom: 1, // Reduced from 2 - siege units are specialized, spawn on-demand
     remoteRole: false
   },
   ranger: {
@@ -384,8 +384,8 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
       createBody([RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE], 400),
       createBody([RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE], 800)
     ],
-    priority: 65,
-    maxPerRoom: 2,
+    priority: 55, // Reduced from 65 - rangers for specific defense scenarios
+    maxPerRoom: 1, // Reduced from 2 - one ranger per room
     remoteRole: false
   },
   harasser: {
@@ -399,8 +399,8 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
       // Large: Maximum harassment potential with healing support
       createBody([TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, HEAL, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1200)
     ],
-    priority: 60,
-    maxPerRoom: 3, // Allow multiple harassers for coordinated harassment
+    priority: 40, // Reduced from 60 - harassers for offensive operations only
+    maxPerRoom: 1, // Reduced from 3 - one harasser per room, spawn more on-demand
     remoteRole: false
   },
 
