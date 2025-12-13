@@ -1506,26 +1506,28 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
   }
 
   // Normal mode: Get all spawnable roles sorted by priority
-  // Try each one until we find an affordable option
+  // CHANGED: Wait for optimal energy instead of spawning smaller creeps
+  // When out of bootstrap mode, we want to spawn larger, more efficient creeps
+  // rather than spawning whatever we can afford immediately.
   const spawnableRoles = getAllSpawnableRoles(room, swarm);
 
   for (const role of spawnableRoles) {
     const def = ROLE_DEFINITIONS[role];
     if (!def) continue;
 
-    // SPAWN FIX: Try optimal body first (based on capacity), then fallback to smaller body
-    // 1. Try to spawn optimal body for capacity
-    let body = getBestBody(def, effectiveCapacity);
-    if (body && energyAvailable >= body.cost) {
-      // Can afford optimal body, use it
-    } else {
-      // Can't afford optimal body, try smaller body based on available energy
-      body = getBestBody(def, energyAvailable);
-      if (!body || energyAvailable < body.cost) {
-        // Can't afford any body for this role, try next role
-        continue;
-      }
+    // Get the optimal body for our room's energy capacity
+    const optimalBody = getBestBody(def, effectiveCapacity);
+    if (!optimalBody) continue; // No body template exists for this role
+    
+    // In normal mode, only spawn if we can afford the optimal body
+    // This prevents spawning small inefficient creeps when we're not in emergency
+    if (energyAvailable < optimalBody.cost) {
+      // Can't afford optimal body for this role, skip it and try next role
+      continue;
     }
+    
+    // We can afford the optimal body, use it
+    const body = optimalBody;
 
     // We found an affordable role, spawn it
     const name = generateCreepName(role);
@@ -1614,11 +1616,12 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
     }
   }
   
-  // If we get here, we tried all spawnable roles but couldn't afford any
+  // If we get here, we tried all spawnable roles but couldn't afford optimal bodies
+  // In normal mode, we wait for energy to accumulate rather than spawning small creeps
   // Log this periodically for visibility
   if (spawnableRoles.length > 0 && Game.time % 20 === 0) {
     logger.info(
-      `No affordable spawns: ${spawnableRoles.length} roles need spawning but all too expensive. ` +
+      `Waiting for energy: ${spawnableRoles.length} roles need spawning, waiting for optimal bodies. ` +
       `Energy: ${energyAvailable}/${energyCapacity}`,
       {
         subsystem: "spawn",

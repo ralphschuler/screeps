@@ -189,7 +189,7 @@ describe("spawn energy constraints", () => {
   });
 
   describe("fallback to cheaper roles when energy is insufficient", () => {
-    it("should spawn cheaper role when expensive role is selected but unaffordable", () => {
+    it("should wait for optimal body instead of spawning small creep when not in bootstrap", () => {
       // Setup: Room with limited energy (300 available, 800 capacity)
       const room = createMockRoom("E1N1", 300, 800);
       global.Game.rooms["E1N1"] = room;
@@ -215,14 +215,14 @@ describe("spawn energy constraints", () => {
       // Run spawn manager
       runSpawnManager(room, swarm);
 
-      // Should have spawned something affordable
-      // With 300 energy available, roles like builder (250) or hauler (200)
-      // should be spawnable even if more expensive roles are prioritized first
+      // CHANGED BEHAVIOR: Should NOT spawn when we can't afford optimal bodies
+      // With 300 energy available and 800 capacity, system should wait for more energy
+      // to spawn optimal-sized creeps instead of small inefficient ones
       const creepsAfter = Object.keys(global.Game.creeps);
-      assert.isAbove(
+      assert.equal(
         creepsAfter.length,
         creepsBefore,
-        "Should have spawned an affordable creep when expensive roles exist"
+        "Should wait for optimal energy instead of spawning small creep"
       );
     });
 
@@ -251,9 +251,9 @@ describe("spawn energy constraints", () => {
       assert.equal(creepsAfter, creepsBefore, "Should not spawn when energy too low");
     });
 
-    it("should try multiple roles until finding an affordable one", () => {
-      // Setup: Room with moderate energy
-      const room = createMockRoom("E1N1", 400, 800);
+    it("should spawn when energy is sufficient for optimal body", () => {
+      // Setup: Room with moderate energy that can afford optimal bodies
+      const room = createMockRoom("E1N1", 800, 800);
       global.Game.rooms["E1N1"] = room;
 
       // Create existing creeps - most roles are at max, forcing selection
@@ -272,12 +272,12 @@ describe("spawn energy constraints", () => {
       // Run spawn manager
       runSpawnManager(room, swarm);
 
-      // Should have spawned something
+      // Should have spawned something since we have full energy capacity available
       const creepsAfter = Object.keys(global.Game.creeps).length;
       assert.isAbove(
         creepsAfter,
         creepsBefore,
-        "Should spawn an affordable role even if first selection was too expensive"
+        "Should spawn optimal body when full energy is available"
       );
     });
 
@@ -301,13 +301,35 @@ describe("spawn energy constraints", () => {
       const memory = creeps[0].memory as unknown as Record<string, unknown>;
       assert.equal(memory.role, "larvaWorker", "Should spawn larvaWorker in bootstrap mode");
     });
+    
+    it("should spawn smaller bodies in bootstrap mode even when capacity is higher", () => {
+      // Setup: Room in bootstrap mode with limited energy but higher capacity
+      const room = createMockRoom("E1N1", 250, 800);
+      global.Game.rooms["E1N1"] = room;
 
-    it("should handle case where selected role has no affordable body", () => {
+      // No creeps - should be in bootstrap mode
+      global.Game.creeps = {};
+
+      const swarm = createMockSwarmState();
+
+      // Run spawn manager
+      runSpawnManager(room, swarm);
+
+      // Should have spawned a larvaWorker with smaller body (250 energy)
+      // even though capacity is 800 - this is correct bootstrap behavior
+      const creeps = Object.values(global.Game.creeps);
+      assert.equal(creeps.length, 1, "Should spawn one creep in bootstrap mode");
+
+      const memory = creeps[0].memory as unknown as Record<string, unknown>;
+      assert.equal(memory.role, "larvaWorker", "Should spawn larvaWorker with available energy");
+    });
+
+    it("should wait for optimal energy when all cheap roles are maxed", () => {
       // Setup: Room with limited energy
       const room = createMockRoom("E1N1", 150, 800);
       global.Game.rooms["E1N1"] = room;
 
-      // Create existing creeps
+      // Create existing creeps - most roles maxed out
       createMockCreeps({
         larvaWorker: 3,
         harvester: 2,
@@ -322,15 +344,15 @@ describe("spawn energy constraints", () => {
       // Run spawn manager
       runSpawnManager(room, swarm);
 
-      // With 150 energy, only scout (50) might be affordable
-      // Since most roles are maxed, it should either spawn scout or nothing
+      // With new behavior, should wait for optimal energy rather than spawning small creeps
+      // Even scout (50 energy) won't be spawned if the optimal body costs more
       const creepsAfter = Object.keys(global.Game.creeps).length;
 
-      // Either spawned a scout or correctly decided nothing was needed
-      // (both outcomes are acceptable)
-      assert.isTrue(
-        creepsAfter === creepsBefore || creepsAfter === creepsBefore + 1,
-        "Should either spawn affordable role or correctly skip"
+      // Should not spawn when we can't afford optimal bodies
+      assert.equal(
+        creepsAfter,
+        creepsBefore,
+        "Should wait for optimal energy instead of spawning minimal creeps"
       );
     });
   });
