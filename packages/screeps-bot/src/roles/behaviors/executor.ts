@@ -19,8 +19,7 @@
  */
 
 import type { CreepAction, CreepContext } from "./types";
-import { fleeFrom, moveAwayFromSpawn, moveCreep, moveOffRoomExit, moveToRoom, clearMovementCache } from "../../utils/movement";
-import { requestMoveToPosition } from "../../utils/trafficManager";
+import { fleeFrom, moveAwayFromSpawn, moveCreep, moveOffRoomExit, moveToRoom, clearMovementCache } from "../../utils/movementAdapter";
 import { getCollectionPoint } from "../../utils/collectionPoint";
 import { memoryManager } from "../../memory/manager";
 import { clearCache as clearAllCachedTargets } from "../../utils/cachedClosest";
@@ -277,11 +276,12 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
       break;
 
     case "requestMove": {
-      // Register a move request for the target position
-      // This tells blocking creeps that this creep wants to move there
-      requestMoveToPosition(creep, action.target);
-      // Also move toward the target position
-      const requestMoveResult = moveCreep(creep, action.target, { visualizePathStyle: { stroke: PATH_COLORS.move } });
+      // Move toward the target position with higher priority
+      // Cartographer's traffic management will handle asking blocking creeps to move
+      const requestMoveResult = moveCreep(creep, action.target, { 
+        visualizePathStyle: { stroke: PATH_COLORS.move },
+        priority: 5 // Higher priority to help unblock
+      });
       // Clear state if pathfinding fails
       if (requestMoveResult === ERR_NO_PATH) {
         shouldClearState = true;

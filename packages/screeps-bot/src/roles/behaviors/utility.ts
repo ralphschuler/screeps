@@ -7,7 +7,7 @@
 
 import type { RoomIntel } from "../../memory/schemas";
 import { findCachedClosest } from "../../utils/cachedClosest";
-import { isCreepOnRoomExit } from "../../utils/movement";
+import { isCreepOnRoomExit } from "../../utils/movementAdapter";
 import { safeFind } from "../../utils/safeFind";
 import type { CreepAction, CreepContext } from "./types";
 import { createLogger } from "../../core/logger";

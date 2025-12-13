@@ -35,8 +35,7 @@ import { roomManager } from "./core/roomNode";
 import { runSpawnManager } from "./logic/spawn";
 import { memoryManager } from "./memory/manager";
 import { clearRoomCaches } from "./roles/behaviors/context";
-import { finalizeMovement, initMovement } from "./utils/movement";
-import { clearMoveRequests, processMoveRequests } from "./utils/trafficManager";
+import { finalizeMovement, initMovement } from "./utils/movementAdapter";
 import { clearTargetAssignments } from "./utils/targetDistribution";
 import { kernel } from "./core/kernel";
 import { registerAllProcesses } from "./core/processRegistry";
@@ -263,9 +262,6 @@ export function loop(): void {
   // Initialize movement system (traffic management preTick)
   initMovement();
 
-  // Clear move requests from previous tick
-  clearMoveRequests();
-
   // Initialize memory structures
   memoryManager.initialize();
 
@@ -299,12 +295,6 @@ export function loop(): void {
   // Sends queued multi-packet messages respecting terminal cooldowns
   unifiedStats.measureSubsystem("ss2PacketQueue", () => {
     SS2TerminalComms.processQueue();
-  });
-
-  // Process move requests - ask blocking creeps to move out of the way
-  // This runs after creeps have registered their movement intentions
-  unifiedStats.measureSubsystem("moveRequests", () => {
-    processMoveRequests();
   });
 
   // Run power creeps (if we have budget)

@@ -36,7 +36,7 @@
 
 import type { CreepAction, CreepContext, StuckTrackingMemory } from "./types";
 import type { CreepState } from "../../memory/schemas";
-import { clearMovementCache } from "../../utils/movement";
+import { clearMovementCache } from "../../utils/movementAdapter";
 import { clearCache as clearAllCachedTargets } from "../../utils/cachedClosest";
 import { blockTarget } from "../../utils/blockedTargets";
 import { createLogger } from "../../core/logger";

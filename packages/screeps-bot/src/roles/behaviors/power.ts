@@ -6,7 +6,7 @@
  */
 
 import type { SwarmCreepMemory } from "../../memory/schemas";
-import { moveCreep, moveToRoom } from "../../utils/movement";
+import { moveCreep, moveToRoom } from "../../utils/movementAdapter";
 import { safeFind } from "../../utils/safeFind";
 import type { CreepAction, CreepContext } from "./types";
 import { createLogger } from "../../core/logger";
