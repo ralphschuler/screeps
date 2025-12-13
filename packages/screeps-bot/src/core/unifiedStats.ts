@@ -515,7 +515,7 @@ export class UnifiedStatsManager {
    */
   public setSkippedProcesses(count: number): void {
     if (!this.config.enabled) return;
-    this.skippedProcessesThisTick = count;
+    this.skippedProcessesThisTick = Math.max(0, count);
   }
 
   /**

@@ -7,8 +7,8 @@ describe("Kernel Skipped Processes Tracking", () => {
 
   beforeEach(() => {
     resetConfig();
-    // @ts-ignore: Allow setting test values
-    global.Game = {
+    // Set up global Game mock
+    (global as any).Game = {
       time: 0,
       cpu: {
         bucket: 10000,
