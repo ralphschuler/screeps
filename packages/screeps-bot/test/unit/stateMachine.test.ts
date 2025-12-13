@@ -361,5 +361,93 @@ describe("State Machine", () => {
       assert.isDefined(ctx.memory.state);
       assert.equal(ctx.memory.state?.data?.resourceType, RESOURCE_ENERGY);
     });
+
+    it("should not reset stuck tracking when state is invalidated", () => {
+      const source = createMockSource();
+      setupGameMock({ source1: source });
+
+      const creep = createMockCreep({ capacity: 50, usedCapacity: 25 });
+      const ctx = createMockContext(creep);
+
+      // Set up stuck tracking - creep has been stuck for 5 ticks
+      const memory = ctx.memory as any;
+      const stuckStartTick = 995;
+      memory.lastPosX = creep.pos.x;
+      memory.lastPosY = creep.pos.y;
+      memory.lastPosRoom = creep.pos.roomName;
+      memory.lastPosTick = stuckStartTick;
+
+      // Set up a state that will be detected as stuck
+      const existingState: CreepState = {
+        action: "moveTo", // Non-stationary action
+        targetId: source.id,
+        startTick: 995,
+        timeout: 50
+      };
+      ctx.memory.state = existingState;
+
+      // First call: should detect stuck and invalidate state
+      const action1 = evaluateWithStateMachine(ctx, () => ({ type: "harvest", target: source }));
+
+      // Verify state was invalidated and new action was evaluated
+      assert.equal(action1.type, "harvest");
+      assert.isDefined(ctx.memory.state);
+      assert.equal(ctx.memory.state?.action, "harvest");
+
+      // CRITICAL: Verify stuck tracking was NOT reset
+      // The lastPosTick should still be the original stuck time
+      assert.equal(memory.lastPosTick, stuckStartTick, "Stuck tracking should NOT be reset when state is invalidated");
+
+      // Simulate creep still stuck on next tick (hasn't moved)
+      (global as any).Game.time = 1001;
+
+      // Second call on next tick: If stuck tracking was incorrectly reset,
+      // the creep would appear "unstuck" and keep the invalid state.
+      // With our fix, stuck tracking persists and immediately detects stuck again.
+      const action2 = evaluateWithStateMachine(ctx, () => ({ type: "idle" }));
+
+      // Since the creep still hasn't moved and stuck tracking wasn't reset,
+      // it should be detected as stuck again immediately
+      assert.equal(action2.type, "idle");
+      assert.equal(memory.lastPosTick, stuckStartTick, "Stuck tracking should persist until creep moves");
+    });
+
+    it("should update stuck tracking only when creep moves", () => {
+      const source = createMockSource();
+      setupGameMock({ source1: source });
+
+      const creep = createMockCreep({ capacity: 50, usedCapacity: 25, inRange: false });
+      const ctx = createMockContext(creep);
+
+      // Initialize stuck tracking
+      const memory = ctx.memory as any;
+      memory.lastPosX = 20;
+      memory.lastPosY = 20;
+      memory.lastPosRoom = "E1N1";
+      memory.lastPosTick = 990;
+
+      // Set up state
+      const existingState: CreepState = {
+        action: "moveTo",
+        targetId: source.id,
+        startTick: 995,
+        timeout: 50
+      };
+      ctx.memory.state = existingState;
+
+      // Simulate creep moved to new position
+      (creep.pos as any).x = 21;
+      (creep.pos as any).y = 21;
+
+      const action = evaluateWithStateMachine(ctx, () => ({ type: "harvest", target: source }));
+
+      // When creep moves, stuck tracking should be updated
+      assert.equal(memory.lastPosX, 21, "Position X should be updated when creep moves");
+      assert.equal(memory.lastPosY, 21, "Position Y should be updated when creep moves");
+      assert.equal(memory.lastPosTick, 1000, "Tick should be updated when creep moves");
+
+      // State should remain valid since creep is making progress
+      assert.equal(action.type, "moveTo");
+    });
   });
 });
