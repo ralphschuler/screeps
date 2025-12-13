@@ -138,6 +138,15 @@ function getStateValidity(state: CreepState | undefined, ctx: CreepContext): Sta
         // BUGFIX: Clear all cached closest targets to prevent re-selecting the same invalid target
         // When creep is stuck, it may be targeting an unreachable or contested resource
         clearAllCachedTargets(ctx.creep);
+
+        // Reset stuck tracking so the next action has a chance to make progress before
+        // being marked as stuck again. Without this reset, the stale lastPosTick causes
+        // the creep to be flagged as stuck every tick, preventing stateful actions from
+        // executing and forcing constant re-evaluation.
+        memory.lastPosX = ctx.creep.pos.x;
+        memory.lastPosY = ctx.creep.pos.y;
+        memory.lastPosRoom = ctx.creep.pos.roomName;
+        memory.lastPosTick = Game.time;
         return {
           valid: false,
           reason: "stuck",
