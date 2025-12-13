@@ -112,22 +112,35 @@ class CommandRegistry {
 
   /**
    * Get a registered command
+   * Triggers lazy loading if needed
    */
   public getCommand(name: string): RegisteredCommand | undefined {
+    if (this.lazyLoadEnabled && !this.commandsRegistered) {
+      this.triggerLazyLoad();
+    }
     return this.commands.get(name);
   }
 
   /**
    * Get all registered commands
+   * Triggers lazy loading if needed
    */
   public getCommands(): RegisteredCommand[] {
+    if (this.lazyLoadEnabled && !this.commandsRegistered) {
+      this.triggerLazyLoad();
+    }
     return Array.from(this.commands.values());
   }
 
   /**
    * Get command names grouped by category
+   * Triggers lazy loading if needed
    */
   public getCommandsByCategory(): Map<string, RegisteredCommand[]> {
+    if (this.lazyLoadEnabled && !this.commandsRegistered) {
+      this.triggerLazyLoad();
+    }
+    
     const categories = new Map<string, RegisteredCommand[]>();
 
     for (const cmd of this.commands.values()) {
@@ -210,8 +223,13 @@ class CommandRegistry {
 
   /**
    * Generate help output for a specific command
+   * Triggers lazy loading if needed
    */
   public generateCommandHelp(name: string): string {
+    if (this.lazyLoadEnabled && !this.commandsRegistered) {
+      this.triggerLazyLoad();
+    }
+    
     const command = this.commands.get(name);
     if (!command) {
       return `Command "${name}" not found. Use help() to see available commands.`;
