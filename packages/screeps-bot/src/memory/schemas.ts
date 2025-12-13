@@ -605,6 +605,8 @@ export interface SwarmCreepMemory {
   patrolIndex?: number;
   /** Current state (for state machine) */
   state?: CreepState;
+  /** Flag indicating creep should return home due to unreachable target (ERR_NO_PATH) */
+  returningHome?: boolean;
   /** Transfer request assignment (for interRoomCarrier role) */
   transferRequest?: TransferRequestAssignment;
   /** Version for memory migration */

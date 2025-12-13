@@ -356,6 +356,22 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
     // Without clearing the cache, the other creep will immediately re-select the same
     // now-full target, creating an infinite loop where both creeps get stuck.
     clearAllCachedTargets(creep);
+    
+    // BUGFIX: Set returningHome flag when ERR_NO_PATH occurs
+    // This tells the state machine to send the creep back to its home room
+    // instead of re-evaluating the same unreachable target
+    // The flag will be cleared once the creep is back in its home room
+    if (!ctx.memory.returningHome) {
+      ctx.memory.returningHome = true;
+      logger.info("Target unreachable, sending creep home", {
+        room: creep.pos.roomName,
+        creep: creep.name,
+        meta: {
+          role: ctx.memory.role,
+          homeRoom: ctx.memory.homeRoom || creep.pos.roomName
+        }
+      });
+    }
   }
 
   // Update working state based on carry capacity

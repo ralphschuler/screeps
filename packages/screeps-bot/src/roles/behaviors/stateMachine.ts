@@ -386,6 +386,7 @@ function stateToAction(state: CreepState): CreepAction | null {
  * Otherwise, evaluate new behavior and commit to it.
  * 
  * REFACTORED: Added safety checks to prevent infinite loops
+ * BUGFIX: Check returningHome flag to handle unreachable targets (ERR_NO_PATH)
  * 
  * @param ctx Creep context
  * @param behaviorFn Behavior function to call when evaluating new action
@@ -395,6 +396,33 @@ export function evaluateWithStateMachine(
   ctx: CreepContext,
   behaviorFn: (ctx: CreepContext) => CreepAction
 ): CreepAction {
+  // BUGFIX: Check if creep should return home due to unreachable target
+  // When ERR_NO_PATH occurs, executor sets returningHome flag
+  // Send creep back to home room, then clear the flag once they arrive
+  if (ctx.memory.returningHome) {
+    // Clear flag if creep is back in home room
+    if (ctx.isInHomeRoom) {
+      delete ctx.memory.returningHome;
+      logger.info("Creep returned home, resuming normal behavior", {
+        room: ctx.creep.pos.roomName,
+        creep: ctx.creep.name,
+        meta: { role: ctx.memory.role }
+      });
+    } else {
+      // Not home yet - return moveToRoom action
+      logger.debug("Creep returning to home room", {
+        room: ctx.creep.pos.roomName,
+        creep: ctx.creep.name,
+        meta: {
+          role: ctx.memory.role,
+          homeRoom: ctx.homeRoom,
+          currentRoom: ctx.creep.room.name
+        }
+      });
+      return { type: "moveToRoom", roomName: ctx.homeRoom };
+    }
+  }
+
   const currentState = ctx.memory.state;
 
   // Check if we have a valid ongoing state
