@@ -28,6 +28,11 @@ import type {
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
 import { terminalManager } from "../economy/terminalManager";
+import { getMilitaryResourceSummary, hasSufficientMilitaryEnergy } from "../clusters/militaryResourcePooling";
+import { getClusterOperations, launchOffensiveOperation } from "../clusters/offensiveOperations";
+import { findOptimalRallyPoint } from "../clusters/rallyPointManager";
+import { selectDoctrine, canLaunchDoctrine, DOCTRINE_CONFIGS, type OffensiveDoctrine } from "../clusters/offensiveDoctrine";
+import type { ClusterMemory } from "../memory/schemas";
 
 /**
  * Player reputation tracker for diplomacy
@@ -72,7 +77,15 @@ const ALLY_ASSISTANCE_CONFIG = {
   /** Maximum workers to assign per work request */
   MAX_WORKERS_PER_REQUEST: 3,
   /** Maximum workers to assign from each helper room */
-  MAX_WORKERS_PER_ROOM: 2
+  MAX_WORKERS_PER_ROOM: 2,
+  /** Maximum room distance for attack assistance */
+  MAX_ATTACK_ASSISTANCE_DISTANCE: 8,
+  /** Minimum energy for attack participation */
+  MIN_ATTACK_ENERGY: 150000,
+  /** Maximum concurrent ally attack operations */
+  MAX_CONCURRENT_ALLY_ATTACKS: 1,
+  /** Minimum priority for attack participation (0-1) */
+  MIN_ATTACK_PRIORITY: 0.6
 };
 
 /**
@@ -584,6 +597,240 @@ function processDefenseRequests(): void {
 }
 
 /**
+ * Attack participation evaluation result
+ */
+export interface AttackEvaluation {
+  /** Whether we should participate */
+  shouldParticipate: boolean;
+  /** Reason for decision */
+  reason: string;
+  /** Closest cluster to target (if participating) */
+  cluster?: ClusterMemory;
+  /** Distance to target */
+  distance?: number;
+  /** Recommended doctrine */
+  doctrine?: OffensiveDoctrine;
+  /** Rally point for coordination */
+  rallyPoint?: { roomName: string; x: number; y: number };
+}
+
+/**
+ * Evaluate if we should participate in an ally's attack request
+ * @internal Exported for testing purposes
+ */
+export function evaluateAttackRequest(request: AttackRequest, currentAlly: string): AttackEvaluation {
+  const targetRoom = request.roomName;
+  
+  // Check priority threshold
+  if (request.priority < ALLY_ASSISTANCE_CONFIG.MIN_ATTACK_PRIORITY) {
+    return {
+      shouldParticipate: false,
+      reason: `Priority too low: ${request.priority.toFixed(2)} < ${ALLY_ASSISTANCE_CONFIG.MIN_ATTACK_PRIORITY}`
+    };
+  }
+  
+  // Find closest cluster to target
+  const clusters = memoryManager.getClusters();
+  let closestCluster: ClusterMemory | undefined;
+  let minDistance = Infinity;
+  
+  for (const clusterId in clusters) {
+    const cluster = clusters[clusterId];
+    
+    // Calculate minimum distance from cluster to target
+    for (const roomName of cluster.memberRooms) {
+      const distance = Game.map.getRoomLinearDistance(roomName, targetRoom);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestCluster = cluster;
+      }
+    }
+  }
+  
+  // Check distance to target
+  if (minDistance > ALLY_ASSISTANCE_CONFIG.MAX_ATTACK_ASSISTANCE_DISTANCE) {
+    return {
+      shouldParticipate: false,
+      reason: `Target too far: ${minDistance} > ${ALLY_ASSISTANCE_CONFIG.MAX_ATTACK_ASSISTANCE_DISTANCE} rooms`,
+      distance: minDistance
+    };
+  }
+  
+  if (!closestCluster) {
+    return {
+      shouldParticipate: false,
+      reason: "No suitable cluster found"
+    };
+  }
+  
+  // Assess our military capacity
+  const militaryResources = getMilitaryResourceSummary(closestCluster);
+  
+  if (militaryResources.availableEnergy < ALLY_ASSISTANCE_CONFIG.MIN_ATTACK_ENERGY) {
+    return {
+      shouldParticipate: false,
+      reason: `Insufficient energy: ${militaryResources.availableEnergy} < ${ALLY_ASSISTANCE_CONFIG.MIN_ATTACK_ENERGY}`,
+      cluster: closestCluster,
+      distance: minDistance
+    };
+  }
+  
+  // Check for conflicts with our own war plans
+  const activeOps = getClusterOperations(closestCluster.id).filter(
+    op => op.state === "forming" || op.state === "executing"
+  );
+  
+  // Count ally attack operations
+  // TODO: Consider creating a type guard function isAllyOperation(op) 
+  // to centralize this logic and improve maintainability
+  const allyOps = activeOps.filter(op => {
+    const extendedOp = op as typeof op & { isAllyAssist?: boolean };
+    return extendedOp.isAllyAssist === true;
+  });
+  
+  if (allyOps.length >= ALLY_ASSISTANCE_CONFIG.MAX_CONCURRENT_ALLY_ATTACKS) {
+    return {
+      shouldParticipate: false,
+      reason: `Already assisting in ${allyOps.length} ally attacks (max: ${ALLY_ASSISTANCE_CONFIG.MAX_CONCURRENT_ALLY_ATTACKS})`,
+      cluster: closestCluster,
+      distance: minDistance
+    };
+  }
+  
+  // Check if we're already attacking this room
+  const existingOp = activeOps.find(op => op.targetRoom === targetRoom);
+  if (existingOp) {
+    return {
+      shouldParticipate: false,
+      reason: `Already have active operation on ${targetRoom}`,
+      cluster: closestCluster,
+      distance: minDistance
+    };
+  }
+  
+  // Get intel on target to select doctrine
+  const overmind = memoryManager.getOvermind();
+  const intel = overmind.roomIntel[targetRoom];
+  
+  const doctrine = selectDoctrine(targetRoom, {
+    towerCount: intel?.towerCount,
+    spawnCount: intel?.spawnCount,
+    rcl: intel?.controllerLevel,
+    owner: intel?.owner
+  });
+  
+  // Check if we can launch the doctrine
+  if (!canLaunchDoctrine(closestCluster, doctrine)) {
+    return {
+      shouldParticipate: false,
+      reason: `Cannot launch ${doctrine} doctrine (insufficient resources)`,
+      cluster: closestCluster,
+      distance: minDistance,
+      doctrine
+    };
+  }
+  
+  // Find staging rally point (use a room near the target)
+  let rallyPoint: { roomName: string; x: number; y: number } | undefined;
+  
+  // Use the closest cluster room as staging area
+  let stagingRoom: string | undefined;
+  let stagingDistance = Infinity;
+  
+  for (const roomName of closestCluster.memberRooms) {
+    const distance = Game.map.getRoomLinearDistance(roomName, targetRoom);
+    if (distance < stagingDistance) {
+      stagingDistance = distance;
+      stagingRoom = roomName;
+    }
+  }
+  
+  if (stagingRoom && Game.rooms[stagingRoom]) {
+    const rally = findOptimalRallyPoint(Game.rooms[stagingRoom], "staging");
+    if (rally) {
+      rallyPoint = {
+        roomName: rally.roomName,
+        x: rally.x,
+        y: rally.y
+      };
+    }
+  }
+  
+  // All checks passed - we should participate
+  return {
+    shouldParticipate: true,
+    reason: `Can assist with ${doctrine} attack on ${targetRoom} from cluster ${closestCluster.id}`,
+    cluster: closestCluster,
+    distance: minDistance,
+    doctrine,
+    rallyPoint
+  };
+}
+
+/**
+ * Coordinate attack with ally by launching an operation
+ */
+function coordinateAllyAttack(
+  request: AttackRequest,
+  evaluation: AttackEvaluation,
+  currentAlly: string
+): boolean {
+  if (!evaluation.cluster || !evaluation.doctrine) {
+    logger.error("Cannot coordinate attack: missing cluster or doctrine", {
+      subsystem: "Alliance"
+    });
+    return false;
+  }
+  
+  const { cluster, doctrine, rallyPoint } = evaluation;
+  
+  logger.info(
+    `Coordinating ${doctrine} attack with ally ${currentAlly} on ${request.roomName}`,
+    { subsystem: "Alliance" }
+  );
+  
+  // Launch the offensive operation
+  const operation = launchOffensiveOperation(
+    cluster,
+    request.roomName,
+    doctrine
+  );
+  
+  if (!operation) {
+    logger.warn(
+      `Failed to launch operation for ally attack on ${request.roomName}`,
+      { subsystem: "Alliance" }
+    );
+    return false;
+  }
+  
+  // Mark this as an ally assistance operation (extend the object)
+  // TODO: Consider adding isAllyAssist and allyName to OffensiveOperation interface
+  // for better type safety and consistency across the codebase
+  const extendedOp = operation as typeof operation & { 
+    isAllyAssist?: boolean; 
+    allyName?: string; 
+  };
+  extendedOp.isAllyAssist = true;
+  extendedOp.allyName = currentAlly;
+  
+  // Log rally point if available
+  if (rallyPoint) {
+    logger.info(
+      `Rally point set for ally attack: ${rallyPoint.roomName} [${rallyPoint.x},${rallyPoint.y}]`,
+      { subsystem: "Alliance" }
+    );
+  }
+  
+  logger.info(
+    `Successfully launched ally attack operation ${operation.id} with squads: ${operation.squadIds.join(", ")}`,
+    { subsystem: "Alliance" }
+  );
+  
+  return true;
+}
+
+/**
  * Process attack requests from allies and coordinate attacks
  */
 function processAttackRequests(): void {
@@ -598,28 +845,43 @@ function processAttackRequests(): void {
   const sortedRequests = [...attackRequests].sort((a, b) => b.priority - a.priority);
 
   for (const request of sortedRequests) {
-    // TODO: Implement attack coordination logic
-    // Issue URL: https://github.com/ralphschuler/screeps/issues/496
-    // This requires integration with military planning systems
-    // For now, log the request for future implementation
-    
     logger.info(
       `Attack request from ally ${currentAlly} for room ${request.roomName} (priority: ${request.priority.toFixed(2)})`,
       { subsystem: "Alliance" }
     );
 
-    // TODO: Evaluate if we should participate in this attack
-    // Issue URL: https://github.com/ralphschuler/screeps/issues/495
-    // - Check distance to target
-    // - Assess our military capacity
-    // - Check for conflicts with our own war plans
-    // - Coordinate rally points and timing
-    // - Assign military squads to the operation
+    // Evaluate if we should participate in this attack
+    const evaluation = evaluateAttackRequest(request, currentAlly);
     
-    logger.debug(
-      `Attack coordination not yet implemented - request logged`,
+    if (!evaluation.shouldParticipate) {
+      logger.debug(
+        `Declining ally attack request: ${evaluation.reason}`,
+        { subsystem: "Alliance" }
+      );
+      continue;
+    }
+    
+    logger.info(
+      `Evaluation passed: ${evaluation.reason}`,
       { subsystem: "Alliance" }
     );
+    
+    // Coordinate the attack
+    const success = coordinateAllyAttack(request, evaluation, currentAlly);
+    
+    if (success) {
+      // Only process one attack request per tick to avoid overwhelming our military
+      logger.info(
+        `Successfully joined ally attack on ${request.roomName} - pausing further requests this tick`,
+        { subsystem: "Alliance" }
+      );
+      break;
+    } else {
+      logger.warn(
+        `Failed to coordinate ally attack on ${request.roomName}`,
+        { subsystem: "Alliance" }
+      );
+    }
   }
 }
 
