@@ -14,21 +14,23 @@ In `stateMachine.ts`, when stuck detection triggered:
 
 ### Before Fix (Incorrect)
 ```
+Flow: getStateValidity() → lines 130-153 (old code)
+
 Tick 1000: Stuck at (10,10), lastPosTick=995
-           ticksStuck = 5 → STUCK DETECTED
-           ❌ Reset: lastPosTick=1000
+           Line 131: ticksStuck = 5 → STUCK DETECTED
+           Lines 146-149: ❌ Reset: lastPosTick=1000
            Evaluate new action
 
 Tick 1001: Still at (10,10), lastPosTick=1000
-           ticksStuck = 1 → appears "unstuck" ✗
+           Line 131: ticksStuck = 1 → appears "unstuck" ✗
            Keep invalid state
 
 Tick 1002-1004: Same pattern, ticksStuck = 2,3,4
                 Keep invalid state
 
 Tick 1005: Still at (10,10), lastPosTick=1000
-           ticksStuck = 5 → STUCK DETECTED AGAIN
-           ❌ Reset: lastPosTick=1005
+           Line 131: ticksStuck = 5 → STUCK DETECTED AGAIN
+           Lines 146-149: ❌ Reset: lastPosTick=1005
            Reevaluate (5 ticks wasted!)
 
 Result: State reevaluated every 5 ticks indefinitely
@@ -36,17 +38,19 @@ Result: State reevaluated every 5 ticks indefinitely
 
 ### After Fix (Correct)
 ```
+Flow: getStateValidity() → lines 130-164 (new code)
+
 Tick 1000: Stuck at (10,10), lastPosTick=995
-           ticksStuck = 5 → STUCK DETECTED
-           ✅ Keep: lastPosTick=995 (no reset)
+           Line 131: ticksStuck = 5 → STUCK DETECTED
+           Lines 142-147: ✅ Keep: lastPosTick=995 (no reset)
            Evaluate new action
 
 Tick 1001: Still at (10,10), lastPosTick=995
-           ticksStuck = 6 → STILL STUCK
+           Line 131: ticksStuck = 6 → STILL STUCK
            Evaluate new action (different one)
 
 Tick 1002: Moved to (10,11)!
-           ✅ Update: lastPosTick=1002, lastPosX=10, lastPosY=11
+           Lines 154-160: ✅ Update: lastPosTick=1002, lastPosX=10, lastPosY=11
            Creep making progress
 
 Result: Stuck tracking persists until creep actually moves
