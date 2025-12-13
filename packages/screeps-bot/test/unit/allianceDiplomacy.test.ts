@@ -332,3 +332,124 @@ describe("OffensiveOperation Interface", () => {
     expect(mockOperation.allyName).to.be.undefined;
   });
 });
+
+describe("Type Guard Functions", () => {
+  let isAllyOperation: (op: any) => boolean;
+
+  before(() => {
+    // Dynamic import to get the type guard function
+    const module = require("../../src/empire/allianceDiplomacy");
+    isAllyOperation = module.isAllyOperation;
+  });
+
+  describe("isAllyOperation", () => {
+    it("should return true for operations with isAllyAssist set to true", () => {
+      const allyOp = {
+        id: "ally_op_1",
+        clusterId: "cluster_1",
+        targetRoom: "W1N1",
+        doctrine: "raid",
+        squadIds: ["squad_1"],
+        state: "forming",
+        createdAt: 1000,
+        lastUpdate: 1000,
+        isAllyAssist: true,
+        allyName: "TestAlly"
+      };
+      
+      expect(isAllyOperation(allyOp)).to.be.true;
+    });
+
+    it("should return false for operations with isAllyAssist set to false", () => {
+      const normalOp = {
+        id: "normal_op_1",
+        clusterId: "cluster_1",
+        targetRoom: "W2N2",
+        doctrine: "harassment",
+        squadIds: ["squad_2"],
+        state: "executing",
+        createdAt: 2000,
+        lastUpdate: 2000,
+        isAllyAssist: false
+      };
+      
+      expect(isAllyOperation(normalOp)).to.be.false;
+    });
+
+    it("should return false for operations without isAllyAssist property", () => {
+      const normalOp = {
+        id: "normal_op_2",
+        clusterId: "cluster_1",
+        targetRoom: "W3N3",
+        doctrine: "raid",
+        squadIds: ["squad_3"],
+        state: "planning",
+        createdAt: 3000,
+        lastUpdate: 3000
+      };
+      
+      expect(isAllyOperation(normalOp)).to.be.false;
+    });
+
+    it("should return false for operations with isAllyAssist set to undefined", () => {
+      const normalOp = {
+        id: "normal_op_3",
+        clusterId: "cluster_2",
+        targetRoom: "W4N4",
+        doctrine: "harassment",
+        squadIds: ["squad_4"],
+        state: "executing",
+        createdAt: 4000,
+        lastUpdate: 4000,
+        isAllyAssist: undefined
+      };
+      
+      expect(isAllyOperation(normalOp)).to.be.false;
+    });
+
+    it("should filter array of operations correctly", () => {
+      const operations = [
+        {
+          id: "op_1",
+          clusterId: "cluster_1",
+          targetRoom: "W1N1",
+          doctrine: "raid",
+          squadIds: ["squad_1"],
+          state: "forming",
+          createdAt: 1000,
+          lastUpdate: 1000,
+          isAllyAssist: true,
+          allyName: "Ally1"
+        },
+        {
+          id: "op_2",
+          clusterId: "cluster_1",
+          targetRoom: "W2N2",
+          doctrine: "harassment",
+          squadIds: ["squad_2"],
+          state: "executing",
+          createdAt: 2000,
+          lastUpdate: 2000
+        },
+        {
+          id: "op_3",
+          clusterId: "cluster_1",
+          targetRoom: "W3N3",
+          doctrine: "raid",
+          squadIds: ["squad_3"],
+          state: "forming",
+          createdAt: 3000,
+          lastUpdate: 3000,
+          isAllyAssist: true,
+          allyName: "Ally2"
+        }
+      ];
+
+      const allyOps = operations.filter(isAllyOperation);
+      
+      expect(allyOps).to.have.lengthOf(2);
+      expect(allyOps[0].id).to.equal("op_1");
+      expect(allyOps[1].id).to.equal("op_3");
+    });
+  });
+});
