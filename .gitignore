@@ -100,3 +100,6 @@ $RECYCLE.BIN/
 # Screeps specific
 screeps.json
 **/screeps.json
+
+# Generated documentation (wiki build output)
+wiki/

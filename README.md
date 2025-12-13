@@ -235,10 +235,29 @@ For detailed documentation, see [utils/README.md](./utils/README.md).
 
 ## Documentation
 
+The project documentation is organized and automatically published to the [GitHub Wiki](https://github.com/ralphschuler/screeps/wiki).
+
+### Documentation Structure
+
+- **[Project Wiki](https://github.com/ralphschuler/screeps/wiki)** - Combined documentation from all sources
 - [ROADMAP.md](./ROADMAP.md) - Comprehensive development roadmap and architecture
 - [CONTRIBUTING.md](./CONTRIBUTING.md) - Contribution guidelines
 - [utils/README.md](./utils/README.md) - Auto-respawn system and utilities
+- [docs/](./docs/) - General project documentation
 - [packages/screeps-bot/docs/](./packages/screeps-bot/docs/) - Detailed technical documentation
+- Package-specific docs in `packages/*/docs/` directories
+
+### Building Documentation
+
+Documentation is automatically built and published to the wiki when changes are pushed to the `main` branch. To build locally:
+
+```shell
+npm run build:docs
+```
+
+This aggregates all markdown files from the root `docs/` directory and all package `docs/` directories into a unified wiki format.
+
+For more information, see [docs/README.md](./docs/README.md).
 
 ## Private Server Setup
 
