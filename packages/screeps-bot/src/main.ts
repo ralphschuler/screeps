@@ -76,9 +76,23 @@ declare global {
     // TODO: Add stuck detection tracking to improve movement recovery
     // _stuckCount?: number; // Consecutive ticks the creep hasn't moved
     // _lastPos?: string; // Serialized position from last tick
-    // TODO: Consider adding role-specific efficiency metrics for performance analysis
-    // Issue URL: https://github.com/ralphschuler/screeps/issues/458
-    // _metrics?: { tasksCompleted: number; energyTransferred: number; };
+    /** Role-specific efficiency metrics for performance analysis */
+    _metrics?: {
+      /** Total number of tasks completed (builds finished, upgrades done, etc.) */
+      tasksCompleted: number;
+      /** Total energy/resources transferred to structures or other creeps */
+      energyTransferred: number;
+      /** Total energy harvested from sources */
+      energyHarvested: number;
+      /** Total construction progress contributed */
+      buildProgress: number;
+      /** Total repair progress contributed */
+      repairProgress: number;
+      /** Total damage dealt (for combat roles) */
+      damageDealt: number;
+      /** Total healing done (for healer roles) */
+      healingDone: number;
+    };
   }
 
   interface RoomMemory {

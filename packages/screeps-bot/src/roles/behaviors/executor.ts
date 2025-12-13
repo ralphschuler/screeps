@@ -28,6 +28,7 @@ import { getCollectionPoint } from "../../utils/collectionPoint";
 import { memoryManager } from "../../memory/manager";
 import { clearCache as clearAllCachedTargets } from "../../utils/cachedClosest";
 import { createLogger } from "../../core/logger";
+import * as metrics from "../../utils/creepMetrics";
 
 const logger = createLogger("ActionExecutor");
 
@@ -364,6 +365,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
  * Execute an action that requires being in range.
  * Automatically moves toward target if out of range.
  * Clears creep state if action fails due to invalid target (full, empty, etc.).
+ * Tracks metrics for successful actions.
  * 
  * @returns true if action should clear state (due to failure)
  */
@@ -396,6 +398,11 @@ function executeWithRange(
     return false;
   }
 
+  // Track successful actions in metrics
+  if (result === OK && actionLabel) {
+    trackActionMetrics(creep, actionLabel, target);
+  }
+
   // Check for errors that indicate the target is invalid and state should be cleared
   // This allows the creep to immediately find a new target instead of being stuck
   if (result === ERR_FULL || result === ERR_NOT_ENOUGH_RESOURCES || result === ERR_INVALID_TARGET) {
@@ -412,6 +419,101 @@ function executeWithRange(
   }
 
   return false;
+}
+
+/**
+ * Track metrics for a successful action.
+ */
+function trackActionMetrics(creep: Creep, actionType: string, target: RoomObject): void {
+  // Initialize metrics if needed
+  metrics.initializeMetrics(creep.memory);
+
+  // Determine what to track based on action type and target
+  switch (actionType) {
+    case "harvest":
+    case "harvestMineral":
+    case "harvestDeposit": {
+      // For harvest, we track the amount harvested
+      // Estimate based on WORK parts (2 energy per WORK part per tick)
+      const workParts = creep.body.filter(p => p.type === WORK && p.hits > 0).length;
+      const harvestAmount = workParts * 2;
+      metrics.recordHarvest(creep.memory, harvestAmount);
+      break;
+    }
+
+    case "transfer": {
+      // For transfer, track the amount transferred
+      // We can estimate by the creep's carry amount or a fixed value
+      const transferAmount = Math.min(
+        creep.store.getUsedCapacity(),
+        (target as AnyStoreStructure).store?.getFreeCapacity() ?? 0
+      );
+      if (transferAmount > 0) {
+        metrics.recordTransfer(creep.memory, transferAmount);
+      }
+      break;
+    }
+
+    case "build": {
+      // For build, track build progress
+      // WORK parts contribute 5 build power per tick
+      const workParts = creep.body.filter(p => p.type === WORK && p.hits > 0).length;
+      const buildPower = workParts * 5;
+      metrics.recordBuild(creep.memory, buildPower);
+      
+      // Check if construction site completed
+      const site = target as ConstructionSite;
+      if (site.progress >= site.progressTotal - buildPower) {
+        metrics.recordTaskComplete(creep.memory);
+      }
+      break;
+    }
+
+    case "repair": {
+      // For repair, track repair progress
+      const workParts = creep.body.filter(p => p.type === WORK && p.hits > 0).length;
+      const repairPower = workParts * 100;
+      metrics.recordRepair(creep.memory, repairPower);
+      break;
+    }
+
+    case "attack": {
+      // For attack, track damage dealt
+      const attackParts = creep.body.filter(p => p.type === ATTACK && p.hits > 0).length;
+      const damage = attackParts * 30;
+      metrics.recordDamage(creep.memory, damage);
+      break;
+    }
+
+    case "rangedAttack": {
+      // For ranged attack, track damage dealt (damage depends on range)
+      const rangedParts = creep.body.filter(p => p.type === RANGED_ATTACK && p.hits > 0).length;
+      const range = creep.pos.getRangeTo(target);
+      let damage = 0;
+      if (range <= 1) damage = rangedParts * 10;
+      else if (range <= 2) damage = rangedParts * 4;
+      else if (range <= 3) damage = rangedParts * 1;
+      metrics.recordDamage(creep.memory, damage);
+      break;
+    }
+
+    case "heal":
+    case "rangedHeal": {
+      // For heal, track healing done
+      const healParts = creep.body.filter(p => p.type === HEAL && p.hits > 0).length;
+      const healing = actionType === "heal" ? healParts * 12 : healParts * 4;
+      metrics.recordHealing(creep.memory, healing);
+      break;
+    }
+
+    case "upgrade": {
+      // For upgrade, track task completion
+      // WORK parts contribute 1 energy per tick to controller
+      const workParts = creep.body.filter(p => p.type === WORK && p.hits > 0).length;
+      metrics.recordBuild(creep.memory, workParts); // Reuse build metric for upgrade
+      break;
+    }
+  }
 }
 
 /**

@@ -58,6 +58,47 @@ export interface RoleStats {
   avgTicksToLive: number;
   /** Total body parts across all creeps of this role */
   totalBodyParts: number;
+  /** Aggregated efficiency metrics for this role */
+  metrics?: {
+    /** Total tasks completed by all creeps of this role */
+    totalTasksCompleted: number;
+    /** Total energy transferred by all creeps of this role */
+    totalEnergyTransferred: number;
+    /** Total energy harvested by all creeps of this role */
+    totalEnergyHarvested: number;
+    /** Total build progress by all creeps of this role */
+    totalBuildProgress: number;
+    /** Total repair progress by all creeps of this role */
+    totalRepairProgress: number;
+    /** Total damage dealt by all creeps of this role */
+    totalDamageDealt: number;
+    /** Total healing done by all creeps of this role */
+    totalHealingDone: number;
+    /** Average efficiency per creep (tasks completed per creep) */
+    avgTasksPerCreep: number;
+    /** Average energy throughput per creep */
+    avgEnergyPerCreep: number;
+  };
+}
+
+/**
+ * Role-specific efficiency metrics stored in creep memory
+ */
+export interface CreepMetrics {
+  /** Total number of tasks completed (builds finished, upgrades done, etc.) */
+  tasksCompleted: number;
+  /** Total energy/resources transferred to structures or other creeps */
+  energyTransferred: number;
+  /** Total energy harvested from sources */
+  energyHarvested: number;
+  /** Total construction progress contributed */
+  buildProgress: number;
+  /** Total repair progress contributed */
+  repairProgress: number;
+  /** Total damage dealt (for combat roles) */
+  damageDealt: number;
+  /** Total healing done (for healer roles) */
+  healingDone: number;
 }
 
 /**
@@ -88,6 +129,8 @@ export interface CreepStats {
   fatigue: number;
   /** Actions performed this tick */
   actionsThisTick: number;
+  /** Role-specific efficiency metrics (if available) */
+  metrics?: CreepMetrics;
 }
 
 /**
@@ -597,7 +640,11 @@ export class StatsManager {
     if (!this.config.enabled) return;
 
     const stats = this.getStatsRoot();
-    const creepMemory = creep.memory as unknown as { role?: string; homeRoom?: string };
+    const creepMemory = creep.memory as unknown as { 
+      role?: string; 
+      homeRoom?: string;
+      _metrics?: CreepMetrics;
+    };
     
     stats.creeps[creep.name] = {
       name: creep.name,
@@ -611,7 +658,8 @@ export class StatsManager {
       hitsMax: creep.hitsMax,
       bodyParts: creep.body.length,
       fatigue: creep.fatigue,
-      actionsThisTick: actionsCount
+      actionsThisTick: actionsCount,
+      metrics: creepMemory._metrics ? { ...creepMemory._metrics } : undefined
     };
   }
 
@@ -717,10 +765,23 @@ export class StatsManager {
       active: number;
       totalTTL: number;
       totalBodyParts: number;
+      totalTasksCompleted: number;
+      totalEnergyTransferred: number;
+      totalEnergyHarvested: number;
+      totalBuildProgress: number;
+      totalRepairProgress: number;
+      totalDamageDealt: number;
+      totalHealingDone: number;
     }> = {};
 
     for (const creep of Object.values(Game.creeps)) {
-      const creepMemory = creep.memory as unknown as { role?: string; homeRoom?: string; state?: { action?: string }; working?: boolean };
+      const creepMemory = creep.memory as unknown as { 
+        role?: string; 
+        homeRoom?: string; 
+        state?: { action?: string }; 
+        working?: boolean;
+        _metrics?: CreepMetrics;
+      };
       const role = creepMemory.role ?? "unknown";
       const action = creepMemory.state?.action ?? "idle";
       const isWorking = creepMemory.working ?? (action !== "idle");
@@ -739,17 +800,43 @@ export class StatsManager {
           hitsMax: creep.hitsMax,
           bodyParts: creep.body.length,
           fatigue: creep.fatigue,
-          actionsThisTick: 0
+          actionsThisTick: 0,
+          metrics: creepMemory._metrics ? { ...creepMemory._metrics } : undefined
         };
       }
 
       // Aggregate role metrics
       if (!roleMetrics[role]) {
-        roleMetrics[role] = { count: 0, spawning: 0, idle: 0, active: 0, totalTTL: 0, totalBodyParts: 0 };
+        roleMetrics[role] = { 
+          count: 0, 
+          spawning: 0, 
+          idle: 0, 
+          active: 0, 
+          totalTTL: 0, 
+          totalBodyParts: 0,
+          totalTasksCompleted: 0,
+          totalEnergyTransferred: 0,
+          totalEnergyHarvested: 0,
+          totalBuildProgress: 0,
+          totalRepairProgress: 0,
+          totalDamageDealt: 0,
+          totalHealingDone: 0
+        };
       }
       roleMetrics[role].count++;
       roleMetrics[role].totalBodyParts += creep.body.length;
       roleMetrics[role].totalTTL += creep.ticksToLive ?? 0;
+      
+      // Aggregate efficiency metrics
+      if (creepMemory._metrics) {
+        roleMetrics[role].totalTasksCompleted += creepMemory._metrics.tasksCompleted;
+        roleMetrics[role].totalEnergyTransferred += creepMemory._metrics.energyTransferred;
+        roleMetrics[role].totalEnergyHarvested += creepMemory._metrics.energyHarvested;
+        roleMetrics[role].totalBuildProgress += creepMemory._metrics.buildProgress;
+        roleMetrics[role].totalRepairProgress += creepMemory._metrics.repairProgress;
+        roleMetrics[role].totalDamageDealt += creepMemory._metrics.damageDealt;
+        roleMetrics[role].totalHealingDone += creepMemory._metrics.healingDone;
+      }
       
       if (creep.spawning) {
         roleMetrics[role].spawning++;
@@ -763,6 +850,21 @@ export class StatsManager {
     // Update role stats with enhanced metrics
     for (const [role, metrics] of Object.entries(roleMetrics)) {
       const existing = stats.roles[role];
+      
+      // Calculate aggregated efficiency metrics
+      const efficiencyMetrics = {
+        totalTasksCompleted: metrics.totalTasksCompleted,
+        totalEnergyTransferred: metrics.totalEnergyTransferred,
+        totalEnergyHarvested: metrics.totalEnergyHarvested,
+        totalBuildProgress: metrics.totalBuildProgress,
+        totalRepairProgress: metrics.totalRepairProgress,
+        totalDamageDealt: metrics.totalDamageDealt,
+        totalHealingDone: metrics.totalHealingDone,
+        avgTasksPerCreep: metrics.count > 0 ? metrics.totalTasksCompleted / metrics.count : 0,
+        avgEnergyPerCreep: metrics.count > 0 ? 
+          (metrics.totalEnergyTransferred + metrics.totalEnergyHarvested) / metrics.count : 0
+      };
+      
       if (existing) {
         existing.count = metrics.count;
         existing.spawningCount = metrics.spawning;
@@ -770,6 +872,7 @@ export class StatsManager {
         existing.activeCount = metrics.active;
         existing.avgTicksToLive = metrics.count > 0 ? metrics.totalTTL / metrics.count : 0;
         existing.totalBodyParts = metrics.totalBodyParts;
+        existing.metrics = efficiencyMetrics;
       } else {
         // Create new role stat if it doesn't exist
         stats.roles[role] = {
@@ -782,7 +885,8 @@ export class StatsManager {
           idleCount: metrics.idle,
           activeCount: metrics.active,
           avgTicksToLive: metrics.count > 0 ? metrics.totalTTL / metrics.count : 0,
-          totalBodyParts: metrics.totalBodyParts
+          totalBodyParts: metrics.totalBodyParts,
+          metrics: efficiencyMetrics
         };
       }
     }
