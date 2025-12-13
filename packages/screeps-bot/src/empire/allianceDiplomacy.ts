@@ -599,7 +599,7 @@ function processDefenseRequests(): void {
 /**
  * Attack participation evaluation result
  */
-interface AttackEvaluation {
+export interface AttackEvaluation {
   /** Whether we should participate */
   shouldParticipate: boolean;
   /** Reason for decision */
@@ -616,8 +616,9 @@ interface AttackEvaluation {
 
 /**
  * Evaluate if we should participate in an ally's attack request
+ * @internal Exported for testing purposes
  */
-function evaluateAttackRequest(request: AttackRequest, currentAlly: string): AttackEvaluation {
+export function evaluateAttackRequest(request: AttackRequest, currentAlly: string): AttackEvaluation {
   const targetRoom = request.roomName;
   
   // Check priority threshold
