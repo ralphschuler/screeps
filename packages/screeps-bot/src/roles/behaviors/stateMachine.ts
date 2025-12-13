@@ -34,11 +34,8 @@
  * - This allows smooth multi-target operations without appearing "idle"
  */
 
-import type { CreepAction, CreepContext, StuckTrackingMemory } from "./types";
+import type { CreepAction, CreepContext } from "./types";
 import type { CreepState } from "../../memory/schemas";
-import { clearCachedPath } from "screeps-cartographer";
-import { clearCache as clearAllCachedTargets } from "../../utils/cachedClosest";
-import { blockTarget } from "../../utils/blockedTargets";
 import { createLogger } from "../../core/logger";
 
 const logger = createLogger("StateMachine");
@@ -46,7 +43,6 @@ const logger = createLogger("StateMachine");
 /**
  * Default timeout for states (in ticks)
  * After this many ticks, state is considered expired and will be re-evaluated
- * REFACTORED: Reduced from 50 to 25 to prevent creeps getting stuck on invalid targets
  */
 const DEFAULT_STATE_TIMEOUT = 25;
 
@@ -55,13 +51,6 @@ const DEFAULT_STATE_TIMEOUT = 25;
  * If a deposit's cooldown exceeds this value, the harvest action is considered complete
  */
 const DEPOSIT_COOLDOWN_THRESHOLD = 100;
-
-/**
- * Stuck detection threshold (in ticks)
- * If a creep hasn't moved for this many ticks (while not performing stationary actions),
- * the state is considered invalid and will be cleared
- */
-const STUCK_DETECTION_THRESHOLD = 5;
 
 /**
  * Type guard to check if an object has hits (is a Structure).
@@ -78,7 +67,7 @@ interface StateValidityResult {
 
 /**
  * Check if a state is still valid (target exists, not expired, etc.)
- * REFACTORED: Added stuck detection to prevent creeps cycling endlessly
+ * Note: Stuck detection is handled by Cartographer's traffic management
  */
 function getStateValidity(state: CreepState | undefined, ctx: CreepContext): StateValidityResult {
   if (!state) return { valid: false, reason: "noState" };
@@ -102,80 +91,6 @@ function getStateValidity(state: CreepState | undefined, ctx: CreepContext): Sta
         reason: "missingTarget",
         meta: { targetId: state.targetId }
       };
-    }
-  }
-
-  // REFACTORED: Detect if creep is stuck (hasn't moved while not performing stationary actions)
-  // Stationary actions like harvest/upgrade are exempt from this check
-  const stationaryActions = new Set(["harvest", "harvestMineral", "upgrade"]);
-  if (!stationaryActions.has(state.action)) {
-    // Type-safe memory access - StuckTrackingMemory extends CreepMemory
-    const memory = ctx.creep.memory as unknown as StuckTrackingMemory;
-
-    // Initialize tracking on first run
-    if (typeof memory.lastPosTick !== "number") {
-      memory.lastPosX = ctx.creep.pos.x;
-      memory.lastPosY = ctx.creep.pos.y;
-      memory.lastPosRoom = ctx.creep.pos.roomName;
-      memory.lastPosTick = Game.time;
-      // Don't check for stuck on first run
-      return { valid: true };
-    }
-
-    // Efficient position comparison using separate coordinates
-    const hasMoved =
-      memory.lastPosX !== ctx.creep.pos.x ||
-      memory.lastPosY !== ctx.creep.pos.y ||
-      memory.lastPosRoom !== ctx.creep.pos.roomName;
-
-    if (!hasMoved) {
-      const ticksStuck = Game.time - memory.lastPosTick;
-      if (ticksStuck >= STUCK_DETECTION_THRESHOLD) {
-        // Creep hasn't moved for STUCK_DETECTION_THRESHOLD ticks - state is invalid
-        // BUGFIX: Clear movement cache when stuck is detected
-        // This ensures the creep gets a fresh path calculation instead of continuing
-        // to follow a stale path that led to being stuck
-        clearCachedPath(ctx.creep);
-        // BUGFIX: Clear all cached closest targets to prevent re-selecting the same invalid target
-        // When creep is stuck, it may be targeting an unreachable or contested resource
-        clearAllCachedTargets(ctx.creep);
-
-        // BUGFIX: Block the current target to prevent re-selection
-        // When a creep is stuck trying to reach a specific target, that target is likely
-        // unreachable or contested. Block it for a cooldown period to force the creep
-        // to try alternative targets instead of cycling endlessly on the same one.
-        if (state.targetId) {
-          blockTarget(ctx.creep, state.targetId);
-          logger.info("Blocked stuck target", {
-            room: ctx.creep.pos.roomName,
-            creep: ctx.creep.name,
-            meta: {
-              action: state.action,
-              role: ctx.memory.role,
-              targetId: state.targetId,
-              ticksStuck
-            }
-          });
-        }
-
-        // BUGFIX: DO NOT reset stuck tracking here!
-        // The tracking should only be updated when the creep actually moves (see below).
-        // Resetting here causes a cycle where stuck creeps appear "unstuck" for 5 ticks
-        // before being detected again, leading to constant reevaluation.
-        // Instead, let the stuck state persist until the creep finds a valid action
-        // that actually moves it to a new position.
-        return {
-          valid: false,
-          reason: "stuck",
-          meta: { ticksStuck }
-        };
-      }
-    } else {
-      // Update position tracking when position changes
-      memory.lastPosX = ctx.creep.pos.x;
-      memory.lastPosY = ctx.creep.pos.y;
-      memory.lastPosRoom = ctx.creep.pos.roomName;
-      memory.lastPosTick = Game.time;
     }
   }
 
