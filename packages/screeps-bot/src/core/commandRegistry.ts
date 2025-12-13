@@ -76,6 +76,7 @@ class CommandRegistry {
   private lazyLoadEnabled = false;
   private commandsRegistered = false;
   private registrationCallback?: () => void;
+  private commandsExposed = false;
 
   /**
    * Register a command with the registry
@@ -245,27 +246,28 @@ class CommandRegistry {
     // This is safe because we're only adding command handler functions.
     const g = global as unknown as Record<string, unknown>;
 
-    for (const [name, command] of this.commands) {
-      g[name] = command.handler;
+    // Only expose commands if not already exposed or if new commands were registered
+    if (!this.commandsExposed || (this.lazyLoadEnabled && this.commandsRegistered)) {
+      for (const [name, command] of this.commands) {
+        g[name] = command.handler;
+      }
+      this.commandsExposed = true;
+      logger.debug(`Exposed ${this.commands.size} commands to global scope`, {
+        subsystem: "CommandRegistry"
+      });
     }
 
-    // Add the help command directly to global for convenient access
+    // Always set up the help command wrapper (for lazy loading support)
     g.help = (commandName?: string): string => {
       // Trigger lazy load if needed when help is called
       if (this.lazyLoadEnabled && !this.commandsRegistered) {
         this.triggerLazyLoad();
-        // Re-expose commands after lazy loading
-        this.exposeToGlobal();
       }
       if (commandName) {
         return this.generateCommandHelp(commandName);
       }
       return this.generateHelp();
     };
-
-    logger.debug(`Exposed ${this.commands.size} commands to global scope`, {
-      subsystem: "CommandRegistry"
-    });
   }
 
   /**
@@ -342,6 +344,10 @@ class CommandRegistry {
   public reset(): void {
     this.commands.clear();
     this.initialized = false;
+    this.lazyLoadEnabled = false;
+    this.commandsRegistered = false;
+    this.commandsExposed = false;
+    this.registrationCallback = undefined;
   }
 }
 
