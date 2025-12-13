@@ -20,7 +20,6 @@ import { shardManager } from "../intershard/shardManager";
 import { evacuationManager } from "../defense/evacuationManager";
 import { labConfigManager } from "../labs/labConfig";
 import { memorySegmentStats } from "./memorySegmentStats";
-import { globalPathCache } from "../utils/globalPathCache";
 import { logger } from "./logger";
 
 /**
@@ -177,21 +176,8 @@ export function registerAllTasks(): void {
   });
 
   // Path Cache Precaching - Pre-cache room paths (every 1000 ticks)
-  scheduler.registerTask({
-    ...createLowFrequencyTask(
-      "pathCachePrecache",
-      () => {
-        const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
-        for (const room of ownedRooms) {
-          globalPathCache.precacheRoomPaths(room.name);
-        }
-      },
-      5
-    ),
-    interval: 1000,
-    minBucket: 8000,
-    cpuBudget: 0.03
-  });
+  // Path cache precaching is now handled by screeps-cartographer internally
+  // This task is no longer needed with the cartographer library
 
   logger.info(`Registered ${scheduler.getTasks().length} scheduled tasks`, { subsystem: "TaskRegistry" });
 }

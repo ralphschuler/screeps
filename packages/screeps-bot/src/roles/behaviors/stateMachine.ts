@@ -36,7 +36,7 @@
 
 import type { CreepAction, CreepContext, StuckTrackingMemory } from "./types";
 import type { CreepState } from "../../memory/schemas";
-import { clearMovementCache } from "../../utils/movement";
+import { clearCachedPath } from "screeps-cartographer";
 import { clearCache as clearAllCachedTargets } from "../../utils/cachedClosest";
 import { blockTarget } from "../../utils/blockedTargets";
 import { createLogger } from "../../core/logger";
@@ -135,7 +135,7 @@ function getStateValidity(state: CreepState | undefined, ctx: CreepContext): Sta
         // BUGFIX: Clear movement cache when stuck is detected
         // This ensures the creep gets a fresh path calculation instead of continuing
         // to follow a stale path that led to being stuck
-        clearMovementCache(ctx.creep);
+        clearCachedPath(ctx.creep);
         // BUGFIX: Clear all cached closest targets to prevent re-selecting the same invalid target
         // When creep is stuck, it may be targeting an unreachable or contested resource
         clearAllCachedTargets(ctx.creep);
