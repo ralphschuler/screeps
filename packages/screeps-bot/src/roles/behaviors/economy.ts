@@ -155,7 +155,13 @@ function findEnergy(ctx: CreepContext): CreepAction {
       logger.debug(`${ctx.creep.name} (${ctx.memory.role}) selecting container ${distributed.id} at ${distributed.pos} with ${distributed.store.getUsedCapacity(RESOURCE_ENERGY)} energy`);
       return { type: "withdraw", target: distributed, resourceType: RESOURCE_ENERGY };
     } else {
-      logger.warn(`${ctx.creep.name} (${ctx.memory.role}) found ${containersWithEnergy.length} containers but distribution returned null`);
+      // BUGFIX: If distribution returns null (shouldn't happen but defensive), fall back to closest container
+      logger.warn(`${ctx.creep.name} (${ctx.memory.role}) found ${containersWithEnergy.length} containers but distribution returned null, falling back to closest`);
+      const fallback = ctx.creep.pos.findClosestByRange(containersWithEnergy);
+      if (fallback) {
+        logger.debug(`${ctx.creep.name} (${ctx.memory.role}) using fallback container ${fallback.id} at ${fallback.pos}`);
+        return { type: "withdraw", target: fallback, resourceType: RESOURCE_ENERGY };
+      }
     }
   }
 
@@ -174,7 +180,13 @@ function findEnergy(ctx: CreepContext): CreepAction {
       logger.debug(`${ctx.creep.name} (${ctx.memory.role}) selecting source ${source.id} at ${source.pos}`);
       return { type: "harvest", target: source };
     } else {
-      logger.warn(`${ctx.creep.name} (${ctx.memory.role}) found ${sources.length} sources but distribution returned null`);
+      // BUGFIX: If distribution returns null (shouldn't happen but defensive), fall back to closest source
+      logger.warn(`${ctx.creep.name} (${ctx.memory.role}) found ${sources.length} sources but distribution returned null, falling back to closest`);
+      const fallback = ctx.creep.pos.findClosestByRange(sources);
+      if (fallback) {
+        logger.debug(`${ctx.creep.name} (${ctx.memory.role}) using fallback source ${fallback.id} at ${fallback.pos}`);
+        return { type: "harvest", target: fallback };
+      }
     }
   }
 
@@ -638,7 +650,13 @@ export function hauler(ctx: CreepContext): CreepAction {
       logger.debug(`${ctx.creep.name} hauler withdrawing from container ${distributed.id} with ${distributed.store.getUsedCapacity(RESOURCE_ENERGY)} energy`);
       return { type: "withdraw", target: distributed, resourceType: RESOURCE_ENERGY };
     } else {
-      logger.debug(`${ctx.creep.name} hauler found ${containersWithEnergy.length} containers but distribution returned null`);
+      // BUGFIX: If distribution returns null (shouldn't happen but defensive), fall back to closest container
+      logger.debug(`${ctx.creep.name} hauler found ${containersWithEnergy.length} containers but distribution returned null, falling back to closest`);
+      const fallback = ctx.creep.pos.findClosestByRange(containersWithEnergy);
+      if (fallback) {
+        logger.debug(`${ctx.creep.name} hauler using fallback container ${fallback.id}`);
+        return { type: "withdraw", target: fallback, resourceType: RESOURCE_ENERGY };
+      }
     }
   }
 
@@ -654,6 +672,20 @@ export function hauler(ctx: CreepContext): CreepAction {
       
       if (mineralType) {
         return { type: "withdraw", target: distributed, resourceType: mineralType };
+      }
+    } else {
+      // BUGFIX: If distribution returns null (shouldn't happen but defensive), fall back to closest container
+      logger.debug(`${ctx.creep.name} hauler found ${ctx.mineralContainers.length} mineral containers but distribution returned null, falling back to closest`);
+      const fallback = ctx.creep.pos.findClosestByRange(ctx.mineralContainers);
+      if (fallback) {
+        const mineralType = Object.keys(fallback.store).find(
+          r => r !== RESOURCE_ENERGY && fallback.store.getUsedCapacity(r as ResourceConstant) > 0
+        ) as ResourceConstant | undefined;
+        
+        if (mineralType) {
+          logger.debug(`${ctx.creep.name} hauler using fallback mineral container ${fallback.id}`);
+          return { type: "withdraw", target: fallback, resourceType: mineralType };
+        }
       }
     }
   }
