@@ -69,24 +69,38 @@ function hasHits(obj: unknown): obj is { hits: number; hitsMax: number } {
   return typeof obj === "object" && obj !== null && "hits" in obj && "hitsMax" in obj;
 }
 
+interface StateValidityResult {
+  valid: boolean;
+  reason?: string;
+  meta?: Record<string, unknown>;
+}
+
 /**
  * Check if a state is still valid (target exists, not expired, etc.)
  * REFACTORED: Added stuck detection to prevent creeps cycling endlessly
  */
-function isStateValid(state: CreepState | undefined, ctx: CreepContext): boolean {
-  if (!state) return false;
+function getStateValidity(state: CreepState | undefined, ctx: CreepContext): StateValidityResult {
+  if (!state) return { valid: false, reason: "noState" };
 
   // Check timeout
   const age = Game.time - state.startTick;
   if (age > state.timeout) {
-    return false;
+    return {
+      valid: false,
+      reason: "expired",
+      meta: { age, timeout: state.timeout }
+    };
   }
 
   // Validate target if present
   if (state.targetId) {
     const target = Game.getObjectById(state.targetId);
     if (!target) {
-      return false;
+      return {
+        valid: false,
+        reason: "missingTarget",
+        meta: { targetId: state.targetId }
+      };
     }
   }
 
@@ -96,7 +110,7 @@ function isStateValid(state: CreepState | undefined, ctx: CreepContext): boolean
   if (!stationaryActions.has(state.action)) {
     // Type-safe memory access - StuckTrackingMemory extends CreepMemory
     const memory = ctx.creep.memory as unknown as StuckTrackingMemory;
-    
+
     // Initialize tracking on first run
     if (typeof memory.lastPosTick !== "number") {
       memory.lastPosX = ctx.creep.pos.x;
@@ -104,14 +118,15 @@ function isStateValid(state: CreepState | undefined, ctx: CreepContext): boolean
       memory.lastPosRoom = ctx.creep.pos.roomName;
       memory.lastPosTick = Game.time;
       // Don't check for stuck on first run
-      return true;
+      return { valid: true };
     }
-    
+
     // Efficient position comparison using separate coordinates
-    const hasMoved = memory.lastPosX !== ctx.creep.pos.x ||
-                     memory.lastPosY !== ctx.creep.pos.y ||
-                     memory.lastPosRoom !== ctx.creep.pos.roomName;
-    
+    const hasMoved =
+      memory.lastPosX !== ctx.creep.pos.x ||
+      memory.lastPosY !== ctx.creep.pos.y ||
+      memory.lastPosRoom !== ctx.creep.pos.roomName;
+
     if (!hasMoved) {
       const ticksStuck = Game.time - memory.lastPosTick;
       if (ticksStuck >= STUCK_DETECTION_THRESHOLD) {
@@ -123,7 +138,11 @@ function isStateValid(state: CreepState | undefined, ctx: CreepContext): boolean
         // BUGFIX: Clear all cached closest targets to prevent re-selecting the same invalid target
         // When creep is stuck, it may be targeting an unreachable or contested resource
         clearAllCachedTargets(ctx.creep);
-        return false;
+        return {
+          valid: false,
+          reason: "stuck",
+          meta: { ticksStuck }
+        };
       }
     } else {
       // Update position tracking when position changes
@@ -134,7 +153,7 @@ function isStateValid(state: CreepState | undefined, ctx: CreepContext): boolean
     }
   }
 
-  return true;
+  return { valid: true };
 }
 
 /**
@@ -409,10 +428,17 @@ export function evaluateWithStateMachine(
   const currentState = ctx.memory.state;
 
   // Check if we have a valid ongoing state
-  if (currentState && isStateValid(currentState, ctx)) {
+  const validity = getStateValidity(currentState, ctx);
+
+  if (currentState && validity.valid) {
     // Check if state is complete
     if (isStateComplete(currentState, ctx)) {
       // State complete - clear it and evaluate new action
+      logger.info("State completed, evaluating new action", {
+        room: ctx.creep.pos.roomName,
+        creep: ctx.creep.name,
+        meta: { action: currentState.action, role: ctx.memory.role }
+      });
       delete ctx.memory.state;
     } else {
       // State still ongoing - try to reconstruct and continue action
@@ -421,11 +447,26 @@ export function evaluateWithStateMachine(
         return action;
       }
       // Failed to reconstruct - clear state and evaluate new
+      logger.info("State reconstruction failed, re-evaluating behavior", {
+        room: ctx.creep.pos.roomName,
+        creep: ctx.creep.name,
+        meta: { action: currentState.action, role: ctx.memory.role }
+      });
       delete ctx.memory.state;
     }
   } else {
     // State invalid or expired - clear it
     if (currentState) {
+      logger.info("State invalid, re-evaluating behavior", {
+        room: ctx.creep.pos.roomName,
+        creep: ctx.creep.name,
+        meta: {
+          action: currentState.action,
+          role: ctx.memory.role,
+          invalidReason: validity.reason,
+          ...validity.meta
+        }
+      });
       delete ctx.memory.state;
     }
   }
@@ -436,6 +477,11 @@ export function evaluateWithStateMachine(
   // REFACTORED: Safety check - if behavior returns null/undefined, default to idle
   // This prevents crashes if behavior functions have bugs
   if (!newAction || !newAction.type) {
+    logger.warn("Behavior returned invalid action, defaulting to idle", {
+      room: ctx.creep.pos.roomName,
+      creep: ctx.creep.name,
+      meta: { role: ctx.memory.role }
+    });
     return { type: "idle" };
   }
 
@@ -443,6 +489,21 @@ export function evaluateWithStateMachine(
   if (newAction.type !== "idle") {
     // Commit to this new action
     ctx.memory.state = actionToState(newAction, ctx);
+    logger.info("Committed new state action", {
+      room: ctx.creep.pos.roomName,
+      creep: ctx.creep.name,
+      meta: {
+        action: newAction.type,
+        role: ctx.memory.role,
+        targetId: ctx.memory.state?.targetId
+      }
+    });
+  } else {
+    logger.info("Behavior returned idle action", {
+      room: ctx.creep.pos.roomName,
+      creep: ctx.creep.name,
+      meta: { role: ctx.memory.role }
+    });
   }
 
   return newAction;
