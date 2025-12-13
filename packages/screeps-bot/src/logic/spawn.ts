@@ -825,9 +825,18 @@ export function getRemoteRoomNeedingWorkers(homeRoom: string, role: string, swar
 /**
  * Check if room needs role
  */
-export function needsRole(roomName: string, role: string, swarm: SwarmState): boolean {
+export function needsRole(roomName: string, role: string, swarm: SwarmState, isBootstrapMode = false): boolean {
   const def = ROLE_DEFINITIONS[role];
   if (!def) return false;
+
+  // SPECIAL: larvaWorker should ONLY be spawned during bootstrap/emergency
+  // Once the economy is stable, use specialized roles instead
+  // HOWEVER: Allow it in bootstrap mode (when isBootstrapMode = true)
+  if (role === "larvaWorker" && !isBootstrapMode) {
+    // larvaWorker is handled exclusively by bootstrap mode
+    // Return false here to prevent spawning in normal mode
+    return false;
+  }
 
   // Special handling for remote roles
   if (role === "remoteHarvester" || role === "remoteHauler") {
@@ -1260,7 +1269,8 @@ export function getBootstrapRole(roomName: string, room: Room, swarm: SwarmState
     const current = totalCounts.get(req.role) ?? 0;
     if (current < req.minCount) {
       // Verify we can spawn this role (check needsRole for special conditions)
-      const canSpawn = needsRole(roomName, req.role, swarm);
+      // Pass isBootstrapMode = true to allow larvaWorker in bootstrap mode
+      const canSpawn = needsRole(roomName, req.role, swarm, true);
       logger.info(
         `Bootstrap: Role ${req.role} needs spawning (current: ${current}, min: ${req.minCount}, needsRole: ${canSpawn})`,
         {
@@ -1506,28 +1516,27 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
   }
 
   // Normal mode: Get all spawnable roles sorted by priority
-  // Try each one until we find an affordable option
+  // CHANGED: Wait for optimal energy instead of spawning smaller creeps
+  // When out of bootstrap mode, we want to spawn larger, more efficient creeps
+  // rather than spawning whatever we can afford immediately.
   const spawnableRoles = getAllSpawnableRoles(room, swarm);
 
   for (const role of spawnableRoles) {
     const def = ROLE_DEFINITIONS[role];
     if (!def) continue;
 
-    // SPAWN FIX: Try optimal body first (based on capacity), then fallback to smaller body
-    // 1. Try to spawn optimal body for capacity
-    let body = getBestBody(def, effectiveCapacity);
-    if (body && energyAvailable >= body.cost) {
-      // Can afford optimal body, use it
-    } else {
-      // Can't afford optimal body, try smaller body based on available energy
-      body = getBestBody(def, energyAvailable);
-      if (!body || energyAvailable < body.cost) {
-        // Can't afford any body for this role, try next role
-        continue;
-      }
+    // Get the optimal body for our room's energy capacity
+    const optimalBody = getBestBody(def, effectiveCapacity);
+    if (!optimalBody) continue; // No body template exists for this role
+    
+    // In normal mode, only spawn if we can afford the optimal body
+    // This prevents spawning small inefficient creeps when we're not in emergency
+    if (energyAvailable < optimalBody.cost) {
+      // Can't afford optimal body for this role, skip it and try next role
+      continue;
     }
 
-    // We found an affordable role, spawn it
+    // We can afford the optimal body, spawn it
     const name = generateCreepName(role);
     const memory: SwarmCreepMemory = {
       role: def.role,
@@ -1572,7 +1581,7 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
       }
     }
 
-    const result = availableSpawn.spawnCreep(body.parts, name, {
+    const result = availableSpawn.spawnCreep(optimalBody.parts, name, {
       memory: memory as unknown as CreepMemory
     });
 
@@ -1582,7 +1591,7 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
         roomName: room.name,
         creepName: name,
         role,
-        cost: body.cost,
+        cost: optimalBody.cost,
         source: "SpawnManager"
       });
       return; // Successfully spawned, exit
@@ -1598,7 +1607,7 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
                         `UNKNOWN(${result})`;
       
       logger.warn(
-        `Spawn failed for ${role}: ${errorName}. Body: ${body.parts.length} parts, cost: ${body.cost}`,
+        `Spawn failed for ${role}: ${errorName}. Body: ${optimalBody.parts.length} parts, cost: ${optimalBody.cost}`,
         {
           subsystem: "spawn",
           room: room.name,
@@ -1606,7 +1615,7 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
             errorCode: result,
             errorName,
             role,
-            bodyCost: body.cost
+            bodyCost: optimalBody.cost
           }
         }
       );
@@ -1614,11 +1623,12 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
     }
   }
   
-  // If we get here, we tried all spawnable roles but couldn't afford any
+  // If we get here, we tried all spawnable roles but couldn't afford optimal bodies
+  // In normal mode, we wait for energy to accumulate rather than spawning small creeps
   // Log this periodically for visibility
   if (spawnableRoles.length > 0 && Game.time % 20 === 0) {
     logger.info(
-      `No affordable spawns: ${spawnableRoles.length} roles need spawning but all too expensive. ` +
+      `Waiting for energy: ${spawnableRoles.length} roles need spawning, waiting for optimal bodies. ` +
       `Energy: ${energyAvailable}/${energyCapacity}`,
       {
         subsystem: "spawn",
