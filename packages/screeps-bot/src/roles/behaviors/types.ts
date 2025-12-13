@@ -111,20 +111,3 @@ export interface CreepContext {
  * This is the core abstraction for all creep decision making.
  */
 export type BehaviorFunction = (ctx: CreepContext) => CreepAction;
-
-/**
- * Memory interface for stuck detection tracking.
- * Used by state machine to detect if a creep is stuck at the same position.
- */
-export interface StuckTrackingMemory {
-  lastPosX?: number;
-  lastPosY?: number;
-  lastPosRoom?: string;
-  lastPosTick?: number;
-  /** 
-   * Blocked targets that caused the creep to get stuck.
-   * Key: target ID, Value: tick when block expires
-   * Targets are automatically unblocked after a cooldown period
-   */
-  blockedTargets?: Record<string, number>;
-}

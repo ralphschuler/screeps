@@ -406,7 +406,7 @@ Behavior System
 
 **Solutions**:
 - Stuck detection automatically clears state after 5 ticks
-- Use traffic manager for creep coordination
+- Cartographer's traffic management automatically handles creep coordination
 - Check path visualization to see where creep is trying to go
 
 ### Creep Keeps Changing Tasks

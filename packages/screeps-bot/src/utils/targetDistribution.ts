@@ -11,12 +11,10 @@
  * - Per-tick target assignment tracking
  * - Automatic load balancing based on creep count per target
  * - Fallback to closest target when all targets are equally loaded
- * - Integrates with blocked target tracking to prevent stuck states
  * - Memory-efficient: stored in global cache, not Memory
  */
 
 import { createLogger } from "../core/logger";
-import { isTargetBlocked } from "./blockedTargets";
 
 const logger = createLogger("TargetDistribution");
 
@@ -77,14 +75,12 @@ function getAssignmentTracker(roomName: string): TargetAssignment {
 /**
  * Find the best target from an array, considering current assignments.
  * Balances creeps across targets to prevent congestion.
- * Automatically filters out blocked targets to prevent stuck states.
  *
  * Strategy:
- * 1. Filter out blocked targets
- * 2. Count how many creeps are already assigned to each target
- * 3. Select target with fewest assignments
- * 4. Tie-break by distance (closest wins)
- * 5. Register assignment for this creep
+ * 1. Count how many creeps are already assigned to each target
+ * 2. Select target with fewest assignments
+ * 3. Tie-break by distance (closest wins)
+ * 4. Register assignment for this creep
  *
  * @param creep - The creep looking for a target
  * @param targets - Array of potential targets
@@ -101,18 +97,10 @@ export function findDistributedTarget<T extends RoomObject & _HasId>(
     return null;
   }
 
-  // Filter out blocked targets before processing
-  const availableTargets = targets.filter(t => !isTargetBlocked(creep, t.id));
-  
-  // Fast path: no available targets after filtering
-  if (availableTargets.length === 0) {
-    return null;
-  }
-
   // Fast path: only one target
-  if (availableTargets.length === 1) {
-    registerAssignment(creep, availableTargets[0], typeKey);
-    return availableTargets[0];
+  if (targets.length === 1) {
+    registerAssignment(creep, targets[0], typeKey);
+    return targets[0];
   }
 
   const tracker = getAssignmentTracker(creep.room.name);
@@ -122,7 +110,7 @@ export function findDistributedTarget<T extends RoomObject & _HasId>(
   let minAssignments = Infinity;
   let minDistance = Infinity;
   
-  for (const target of availableTargets) {
+  for (const target of targets) {
     const assignmentKey = `${typeKey}:${target.id}`;
     const assignedCreeps = tracker.assignments.get(assignmentKey) || [];
     const assignmentCount = assignedCreeps.length;

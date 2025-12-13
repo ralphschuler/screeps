@@ -538,19 +538,24 @@ Global/Room-Level-Pfadmanagement
 - Straßen (günstiger)
 - Massen-Traffic-Korridore
 
-Traffic-Regeln für 5.000+ Creeps
-- Kein mehrfaches moveTo pro Tick: Jede Rolle stellt sicher, dass pro Creep nur ein Move-Intent erzeugt wird (sonst überschreiben sich Pfade).
-- Stuck-Detection:
-- creep.memory.stuck–Zähler; bei >N: Pfad neu berechnen oder „Side-Step“ versuchen.
-- Yield-Regeln:
-- Creeps mit „niedriger Priorität“ weichen solchen mit hoher (z.B. Hauler weichen Defendern).
-- Flow-Field-Ansätze:
-- Für stark frequentierte Routen (z.B. Storage↔Spawn) Nutzung von globalen „Richtungsfeldern“.
+Traffic-Management mit screeps-cartographer
+
+Dieser Bot nutzt **screeps-cartographer** (https://github.com/glitchassassin/screeps-cartographer) für das komplette Traffic-Management:
+- **Automatisches Traffic-Management**: Cartographer löst Konflikte zwischen Creeps und koordiniert Bewegungen
+- **Priority-System**: Creeps mit höherer Priorität haben Vorrang (z.B. Defender > Hauler)
+- **Stuck-Detection**: Automatische Erkennung und Handling von blockierten Creeps
+- **Path-Caching**: Effizientes Caching von Pfaden zur CPU-Optimierung
+- **Multi-Room Support**: Unterstützt Bewegung über Raumgrenzen und Portale
+
+Cartographer wird zentral in SwarmBot.ts integriert:
+- `preTick()` initialisiert das Traffic-System zu Beginn jedes Ticks
+- `reconcileTraffic()` führt die Bewegungsbefehle am Ende des Ticks aus
+- `moveTo()` wird in den Behavior-Executors verwendet
 
 Remote & Inter-Room Bewegung
 - Nutzung von Portalen & Exits:
-- Pfade Raum-übergreifend mit PathFinder unter Angabe von roomCallback.
-- Optionale Nutzung von Community-Libs (z.B. Traveler / Cartographer) – aber Architektur bleibt so, dass Austausch jederzeit möglich ist.
+  - Pfade Raum-übergreifend mit PathFinder unter Angabe von roomCallback.
+- Cartographer übernimmt automatisch Multi-Room-Pathfinding und Portal-Navigation.
 
 ⸻
 
