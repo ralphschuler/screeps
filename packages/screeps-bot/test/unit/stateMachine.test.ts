@@ -14,6 +14,9 @@ interface MockStore {
 }
 
 interface MockPosition {
+  x: number;
+  y: number;
+  roomName: string;
   inRangeTo: (target: { pos: RoomPosition } | RoomPosition, range: number) => boolean;
   isNearTo: (target: unknown) => boolean;
 }
@@ -37,6 +40,9 @@ function createMockCreep(options: {
   capacity: number | null;
   usedCapacity: number;
   inRange?: boolean;
+  x?: number;
+  y?: number;
+  roomName?: string;
 }): Creep {
   const freeCapacity = options.capacity === null ? null : options.capacity - options.usedCapacity;
   const mockCreep: MockCreep = {
@@ -47,6 +53,9 @@ function createMockCreep(options: {
       getUsedCapacity: () => options.usedCapacity
     },
     pos: {
+      x: options.x ?? 25,
+      y: options.y ?? 25,
+      roomName: options.roomName ?? "E1N1",
       inRangeTo: () => options.inRange ?? false,
       isNearTo: () => options.inRange ?? false
     }
