@@ -6,7 +6,7 @@
  */
 
 import type { SwarmCreepMemory } from "../../memory/schemas";
-import { moveCreep, moveToRoom } from "../../utils/movementAdapter";
+import { moveTo } from "screeps-cartographer";
 import { safeFind } from "../../utils/safeFind";
 import type { CreepAction, CreepContext } from "./types";
 import { createLogger } from "../../core/logger";
@@ -499,23 +499,25 @@ export function executePowerCreepAction(powerCreep: PowerCreep, action: PowerCre
         ? powerCreep.usePower(action.power, action.target)
         : powerCreep.usePower(action.power);
       if (result === ERR_NOT_IN_RANGE && action.target) {
-        moveCreep(powerCreep, action.target);
+        moveTo(powerCreep, action.target);
       }
       break;
     }
 
     case "moveTo":
-      moveCreep(powerCreep, action.target);
+      moveTo(powerCreep, action.target);
       break;
 
-    case "moveToRoom":
-      moveToRoom(powerCreep, action.roomName);
+    case "moveToRoom": {
+      const targetPos = new RoomPosition(25, 25, action.roomName);
+      moveTo(powerCreep, { pos: targetPos, range: 20 }, { maxRooms: 16 });
       break;
+    }
 
     case "renewSelf": {
       const result = powerCreep.renew(action.spawn);
       if (result === ERR_NOT_IN_RANGE) {
-        moveCreep(powerCreep, action.spawn);
+        moveTo(powerCreep, action.spawn);
       }
       break;
     }
@@ -524,7 +526,7 @@ export function executePowerCreepAction(powerCreep: PowerCreep, action: PowerCre
       if (powerCreep.room?.controller) {
         const result = powerCreep.enableRoom(powerCreep.room.controller);
         if (result === ERR_NOT_IN_RANGE) {
-          moveCreep(powerCreep, powerCreep.room.controller);
+          moveTo(powerCreep, powerCreep.room.controller);
         }
       }
       break;

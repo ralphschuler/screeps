@@ -19,7 +19,6 @@ import { memoryManager } from "../memory/manager";
 import { pheromoneManager } from "../logic/pheromone";
 import { labConfigManager } from "../labs/labConfig";
 import { memorySegmentStats } from "./memorySegmentStats";
-import { globalPathCache } from "../utils/globalPathCache";
 import { logger } from "./logger";
 
 /**
@@ -122,15 +121,14 @@ export class CoreProcessManager {
    * Path Cache Precaching - Pre-cache room paths
    * Runs every 1000 ticks to precache frequently used paths
    */
-  @IdleProcess("room:pathCachePrecache", "Path Cache Precache", {
+  // Path cache precaching is now handled by screeps-cartographer internally
+  // This process is no longer needed with the cartographer library
+  @IdleProcess("room:pathCachePrecache", "Path Cache Precache (Disabled)", {
     interval: 1000,
-    cpuBudget: 0.03
+    cpuBudget: 0.01
   })
   public precacheRoomPaths(): void {
-    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
-    for (const room of ownedRooms) {
-      globalPathCache.precacheRoomPaths(room.name);
-    }
+    // No-op: Cartographer handles path caching internally
   }
 }
 

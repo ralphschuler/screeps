@@ -35,7 +35,7 @@ import { roomManager } from "./core/roomNode";
 import { runSpawnManager } from "./logic/spawn";
 import { memoryManager } from "./memory/manager";
 import { clearRoomCaches } from "./roles/behaviors/context";
-import { finalizeMovement, initMovement } from "./utils/movementAdapter";
+import { preTick as initMovement, reconcileTraffic as finalizeMovement } from "screeps-cartographer";
 import { clearTargetAssignments } from "./utils/targetDistribution";
 import { kernel } from "./core/kernel";
 import { registerAllProcesses } from "./core/processRegistry";
@@ -231,7 +231,6 @@ export function loop(): void {
     clearTargetAssignments();
     clearRoomCaches();
     initMovement();
-    clearMoveRequests();
     finalizeMovement();
     unifiedStats.finalizeTick();
     return;

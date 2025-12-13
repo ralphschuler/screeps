@@ -7,7 +7,7 @@
 
 import type { RoomIntel } from "../../memory/schemas";
 import { findCachedClosest } from "../../utils/cachedClosest";
-import { isCreepOnRoomExit } from "../../utils/movementAdapter";
+import { isExit } from "screeps-cartographer";
 import { safeFind } from "../../utils/safeFind";
 import type { CreepAction, CreepContext } from "./types";
 import { createLogger } from "../../core/logger";
@@ -210,7 +210,7 @@ function findExplorePosition(room: Room): RoomPosition | null {
  */
 export function scout(ctx: CreepContext): CreepAction {
   const overmind = getOvermind();
-  const onExit = isCreepOnRoomExit(ctx.creep);
+  const onExit = isExit(ctx.creep.pos);
 
   // PRIORITY 1: Always move off exits immediately
   // This prevents all cycling issues by ensuring we're never stuck on exit tiles

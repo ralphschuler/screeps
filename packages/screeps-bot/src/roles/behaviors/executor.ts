@@ -19,7 +19,11 @@
  */
 
 import type { CreepAction, CreepContext } from "./types";
-import { fleeFrom, moveAwayFromSpawn, moveCreep, moveOffRoomExit, moveToRoom, clearMovementCache } from "../../utils/movementAdapter";
+import { 
+  moveTo,
+  clearCachedPath,
+  isExit
+} from "screeps-cartographer";
 import { getCollectionPoint } from "../../utils/collectionPoint";
 import { memoryManager } from "../../memory/manager";
 import { clearCache as clearAllCachedTargets } from "../../utils/cachedClosest";
@@ -194,7 +198,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
     case "rangedHeal": {
       // Ranged heal always involves movement toward the target
       creep.rangedHeal(action.target);
-      const healMoveResult = moveCreep(creep, action.target, { visualizePathStyle: { stroke: PATH_COLORS.heal } });
+      const healMoveResult = moveTo(creep, action.target, { visualizePathStyle: { stroke: PATH_COLORS.heal } });
       // Clear state if pathfinding fails
       if (healMoveResult === ERR_NO_PATH) {
         shouldClearState = true;
@@ -235,7 +239,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
 
     // Movement
     case "moveTo": {
-      const moveResult = moveCreep(creep, action.target, { visualizePathStyle: { stroke: PATH_COLORS.move } });
+      const moveResult = moveTo(creep, action.target, { visualizePathStyle: { stroke: PATH_COLORS.move } });
       // Clear state if pathfinding fails so the behavior can re-evaluate
       if (moveResult === ERR_NO_PATH) {
         shouldClearState = true;
@@ -244,7 +248,12 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
     }
 
     case "moveToRoom": {
-      const moveResult = moveToRoom(creep, action.roomName, { visualizePathStyle: { stroke: PATH_COLORS.move } });
+      // Move to room center with range 20
+      const targetPos = new RoomPosition(25, 25, action.roomName);
+      const moveResult = moveTo(creep, { pos: targetPos, range: 20 }, { 
+        visualizePathStyle: { stroke: PATH_COLORS.move },
+        maxRooms: 16
+      });
       // Clear state if pathfinding fails so the behavior can re-evaluate
       if (moveResult === ERR_NO_PATH) {
         shouldClearState = true;
@@ -253,7 +262,9 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
     }
 
     case "flee": {
-      const fleeResult = fleeFrom(creep, action.from, 10);
+      // Convert positions to MoveTargets with range
+      const fleeTargets = action.from.map(pos => ({ pos, range: 10 }));
+      const fleeResult = moveTo(creep, fleeTargets, { flee: true });
       // Clear state if pathfinding fails so the behavior can re-evaluate
       if (fleeResult === ERR_NO_PATH) {
         shouldClearState = true;
@@ -263,11 +274,14 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
 
     case "wait":
       // If on a room exit, move off first before waiting
-      if (moveOffRoomExit(creep)) {
+      if (isExit(creep.pos)) {
+        // Move toward room center
+        const roomCenter = new RoomPosition(25, 25, creep.pos.roomName);
+        moveTo(creep, roomCenter, { priority: 2 });
         break;
       }
       if (!creep.pos.isEqualTo(action.position)) {
-        const waitMoveResult = moveCreep(creep, action.position);
+        const waitMoveResult = moveTo(creep, action.position);
         // Clear state if pathfinding fails
         if (waitMoveResult === ERR_NO_PATH) {
           shouldClearState = true;
@@ -278,7 +292,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
     case "requestMove": {
       // Move toward the target position with higher priority
       // Cartographer's traffic management will handle asking blocking creeps to move
-      const requestMoveResult = moveCreep(creep, action.target, { 
+      const requestMoveResult = moveTo(creep, action.target, { 
         visualizePathStyle: { stroke: PATH_COLORS.move },
         priority: 5 // Higher priority to help unblock
       });
@@ -291,7 +305,9 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
 
     case "idle": {
       // When idle, first move off room exit tiles to prevent endless cycling between rooms
-      if (moveOffRoomExit(creep)) {
+      if (isExit(creep.pos)) {
+        const roomCenter = new RoomPosition(25, 25, creep.pos.roomName);
+        moveTo(creep, roomCenter, { priority: 2 });
         break;
       }
       // Try to move to collection point if available
@@ -302,8 +318,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         if (collectionPoint) {
           // Move to collection point if not already there
           if (!creep.pos.isEqualTo(collectionPoint)) {
-            // Use priority 2 to match moveAwayFromSpawn - clearing blockades is important
-            const idleMoveResult = moveCreep(creep, collectionPoint, { 
+            const idleMoveResult = moveTo(creep, collectionPoint, { 
               visualizePathStyle: { stroke: "#888888" },
               priority: 2
             });
@@ -316,7 +331,12 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         }
       }
       // Fallback: move away from spawns to prevent blocking new creeps
-      moveAwayFromSpawn(creep);
+      const spawns = Game.rooms[creep.pos.roomName]?.find(FIND_MY_SPAWNS) || [];
+      const nearbySpawn = spawns.find(spawn => creep.pos.inRangeTo(spawn.pos, 1));
+      if (nearbySpawn) {
+        // Flee from spawn
+        moveTo(creep, { pos: nearbySpawn.pos, range: 3 }, { flee: true, priority: 2 });
+      }
       break;
     }
   }
@@ -328,7 +348,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
     // BUGFIX: Also clear movement cache to prevent wandering from stale paths
     // When state is invalidated, the cached path to the old target is no longer valid
     // This prevents creeps from making partial movements on stale paths before re-pathing
-    clearMovementCache(creep);
+    clearCachedPath(creep);
     // BUGFIX: Clear all cached closest targets to prevent re-selecting the same invalid target
     // When multiple creeps target the same structure, one may fill it and clear state.
     // Without clearing the cache, the other creep will immediately re-select the same
@@ -357,7 +377,7 @@ function executeWithRange(
   const result = action();
 
   if (result === ERR_NOT_IN_RANGE) {
-    const moveResult = moveCreep(creep, target, { visualizePathStyle: { stroke: pathColor } });
+    const moveResult = moveTo(creep, target, { visualizePathStyle: { stroke: pathColor } });
     if (moveResult !== OK) {
       logger.info("Movement attempt returned non-OK result", {
         room: creep.pos.roomName,

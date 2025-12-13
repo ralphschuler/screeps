@@ -1,153 +1,67 @@
 import { expect } from "chai";
-import sinon from "sinon";
-
-// We can't easily unit test the full movement module due to global dependencies,
-// but we can test the key logic concepts for room exit handling.
+import * as cartographer from "screeps-cartographer";
 
 /**
- * Common Position interface used across test cases
+ * Movement System Tests (Screeps Cartographer)
+ * 
+ * These tests verify the integration with screeps-cartographer.
+ * The library is fully integrated directly, replacing our custom movement implementation.
  */
-interface Position {
-  x: number;
-  y: number;
-}
 
-describe("Movement Room Exit Handling", () => {
-  /**
-   * Helper to check if a position is on a room exit.
-   * This mirrors the logic in the movement module.
-   */
-  function isOnRoomExit(pos: Position): boolean {
-    return pos.x === 0 || pos.x === 49 || pos.y === 0 || pos.y === 49;
-  }
+describe("Movement System (Cartographer Integration)", () => {
+  describe("isExit detection", () => {
+    // Helper function matching cartographer's isExit logic
+    function isExit(pos: { x: number; y: number }): boolean {
+      return pos.x === 0 || pos.y === 0 || pos.x === 49 || pos.y === 49;
+    }
 
-  describe("isOnRoomExit detection", () => {
     it("should detect position on left exit (x=0)", () => {
-      expect(isOnRoomExit({ x: 0, y: 25 })).to.be.true;
+      expect(isExit({ x: 0, y: 25 })).to.be.true;
     });
 
     it("should detect position on right exit (x=49)", () => {
-      expect(isOnRoomExit({ x: 49, y: 25 })).to.be.true;
+      expect(isExit({ x: 49, y: 25 })).to.be.true;
     });
 
     it("should detect position on top exit (y=0)", () => {
-      expect(isOnRoomExit({ x: 25, y: 0 })).to.be.true;
+      expect(isExit({ x: 25, y: 0 })).to.be.true;
     });
 
     it("should detect position on bottom exit (y=49)", () => {
-      expect(isOnRoomExit({ x: 25, y: 49 })).to.be.true;
+      expect(isExit({ x: 25, y: 49 })).to.be.true;
     });
 
     it("should detect corner positions as exits", () => {
-      expect(isOnRoomExit({ x: 0, y: 0 })).to.be.true;
-      expect(isOnRoomExit({ x: 49, y: 0 })).to.be.true;
-      expect(isOnRoomExit({ x: 0, y: 49 })).to.be.true;
-      expect(isOnRoomExit({ x: 49, y: 49 })).to.be.true;
+      expect(isExit({ x: 0, y: 0 })).to.be.true;
+      expect(isExit({ x: 49, y: 0 })).to.be.true;
+      expect(isExit({ x: 0, y: 49 })).to.be.true;
+      expect(isExit({ x: 49, y: 49 })).to.be.true;
     });
 
     it("should not detect center positions as exits", () => {
-      expect(isOnRoomExit({ x: 25, y: 25 })).to.be.false;
+      expect(isExit({ x: 25, y: 25 })).to.be.false;
     });
 
     it("should not detect positions one away from edge as exits", () => {
-      expect(isOnRoomExit({ x: 1, y: 25 })).to.be.false;
-      expect(isOnRoomExit({ x: 48, y: 25 })).to.be.false;
-      expect(isOnRoomExit({ x: 25, y: 1 })).to.be.false;
-      expect(isOnRoomExit({ x: 25, y: 48 })).to.be.false;
+      expect(isExit({ x: 1, y: 25 })).to.be.false;
+      expect(isExit({ x: 48, y: 25 })).to.be.false;
+      expect(isExit({ x: 25, y: 1 })).to.be.false;
+      expect(isExit({ x: 25, y: 48 })).to.be.false;
     });
   });
 
-  describe("Exit handling behavior", () => {
-    /**
-     * Determines if a creep on a room exit should move inward before continuing.
-     * This logic prevents cycling when the target is in the SAME room,
-     * but allows normal crossing when the target is in a DIFFERENT room.
-     */
-    function shouldMoveInwardFromExit(
-      creepOnExit: boolean,
-      targetInDifferentRoom: boolean
-    ): boolean {
-      // The fix: only move inward when target is in the SAME room
-      return creepOnExit && !targetInDifferentRoom;
-    }
-
-    it("should NOT move inward when target is in different room", () => {
-      // This is the fix for the cycling bug:
-      // Creep at (49, 25) in E1N1, target in E2N1
-      // Should proceed to cross the exit, NOT move inward
-      expect(shouldMoveInwardFromExit(true, true)).to.be.false;
-    });
-
-    it("should move inward when target is in same room", () => {
-      // Creep at (0, 25) in E1N1, target at (25, 25) in E1N1
-      // Should move inward first to prevent PathFinder from routing through E0N1
-      expect(shouldMoveInwardFromExit(true, false)).to.be.true;
-    });
-
-    it("should not move inward when not on exit", () => {
-      // Creep at (25, 25) in E1N1, target in E1N1
-      // Normal pathfinding continues
-      expect(shouldMoveInwardFromExit(false, false)).to.be.false;
-    });
-
-    it("should not move inward when not on exit, even with different room target", () => {
-      // Creep at (25, 25) in E1N1, target in E2N1
-      // Normal pathfinding continues
-      expect(shouldMoveInwardFromExit(false, true)).to.be.false;
-    });
-
-    describe("Specific scenarios", () => {
-      it("scenario: creep at right exit (x=49) needs to cross to adjacent room", () => {
-        // Creep at (49, 25) in E1N1, target at (10, 25) in E2N1
-        const onExit = isOnRoomExit({ x: 49, y: 25 });
-        const targetInDifferentRoom = true; // E2N1 vs E1N1
-        expect(shouldMoveInwardFromExit(onExit, targetInDifferentRoom)).to.be.false;
-      });
-
-      it("scenario: creep at left exit (x=0) needs to cross to adjacent room", () => {
-        // Creep at (0, 25) in E1N1, target at (40, 25) in E0N1
-        const onExit = isOnRoomExit({ x: 0, y: 25 });
-        const targetInDifferentRoom = true; // E0N1 vs E1N1
-        expect(shouldMoveInwardFromExit(onExit, targetInDifferentRoom)).to.be.false;
-      });
-
-      it("scenario: creep at exit with target in same room should move inward", () => {
-        // Creep at (49, 25) in E1N1, target at (25, 25) in E1N1
-        const onExit = isOnRoomExit({ x: 49, y: 25 });
-        const targetInDifferentRoom = false; // E1N1 vs E1N1
-        expect(shouldMoveInwardFromExit(onExit, targetInDifferentRoom)).to.be.true;
-      });
+  describe("Cartographer library integration", () => {
+    it("exports expected movement functions", () => {
+      // This test verifies the cartographer library is accessible
+      // Actual functionality testing requires integration tests with game simulation
+      expect(cartographer.preTick).to.be.a("function");
+      expect(cartographer.reconcileTraffic).to.be.a("function");
+      expect(cartographer.moveTo).to.be.a("function");
+      expect(cartographer.clearCachedPath).to.be.a("function");
+      expect(cartographer.isExit).to.be.a("function");
     });
   });
-
-  describe("Path room mismatch detection", () => {
-    /**
-     * Simulates checking if a cached path is from a different room.
-     */
-    function isPathFromDifferentRoom(
-      cachedPathFirstRoomName: string | undefined,
-      currentRoomName: string
-    ): boolean {
-      return cachedPathFirstRoomName !== undefined && cachedPathFirstRoomName !== currentRoomName;
-    }
-
-    it("should detect when path is from different room", () => {
-      expect(isPathFromDifferentRoom("E1N1", "E2N1")).to.be.true;
-    });
-
-    it("should not detect when path is from same room", () => {
-      expect(isPathFromDifferentRoom("E1N1", "E1N1")).to.be.false;
-    });
-
-    it("should handle undefined path room", () => {
-      expect(isPathFromDifferentRoom(undefined, "E1N1")).to.be.false;
-    });
-  });
-
-  describe("String-based path cache invalidation on room change", () => {
-    /**
-     * Simulates the room change detection for string-based cached paths.
-     * String-based paths are direction sequences relative to the starting position.
+});
      * When a creep moves to a different room, these paths become invalid and must be regenerated.
      * 
      * Note: This test interface mirrors the CachedPath structure from movement.ts
