@@ -13,6 +13,7 @@ Each creep can track the following performance indicators:
 - **energyTransferred**: Total resources delivered to structures or other creeps
 - **buildProgress**: Total construction work contributed (build power units)
 - **repairProgress**: Total repair work done (repair power units)
+- **upgradeProgress**: Total upgrade work contributed to controllers (upgrade power units)
 - **damageDealt**: Combat damage dealt to enemies
 - **healingDone**: Healing provided to friendly creeps
 
@@ -26,9 +27,9 @@ Metrics are automatically tracked when creeps successfully perform actions throu
 - **Transfer actions**: Records actual amount transferred (resource-type specific)
 - **Build actions**: Records build power contributed (5 per WORK part)
 - **Repair actions**: Records repair power contributed (100 per WORK part)
+- **Upgrade actions**: Records upgrade power contributed (1 per WORK part)
 - **Attack actions**: Records damage dealt based on ATTACK/RANGED_ATTACK parts
 - **Heal actions**: Records healing done based on HEAL parts
-- **Upgrade actions**: Records controller progress (tracked in buildProgress)
 
 ## Accessing Metrics
 
@@ -43,6 +44,7 @@ if (metrics) {
   console.log(`Energy harvested: ${metrics.energyHarvested}`);
   console.log(`Energy transferred: ${metrics.energyTransferred}`);
   console.log(`Tasks completed: ${metrics.tasksCompleted}`);
+  console.log(`Upgrade progress: ${metrics.upgradeProgress}`);
 }
 
 // Get a human-readable summary
@@ -83,6 +85,7 @@ if (creepStats.metrics) {
   //   energyTransferred: 950,
   //   buildProgress: 500,
   //   repairProgress: 0,
+  //   upgradeProgress: 300,
   //   damageDealt: 0,
   //   healingDone: 0
   // }
@@ -112,6 +115,7 @@ import {
   recordTransfer,
   recordBuild,
   recordRepair,
+  recordUpgrade,
   recordDamage,
   recordHealing,
   recordTaskComplete
@@ -120,6 +124,7 @@ import {
 // Record specific metrics
 recordHarvest(creep.memory, 10); // Record 10 energy harvested
 recordTransfer(creep.memory, 50); // Record 50 energy transferred
+recordUpgrade(creep.memory, 5); // Record 5 upgrade power contributed
 recordTaskComplete(creep.memory); // Increment task counter
 ```
 
@@ -181,11 +186,10 @@ Total Healing Done: sum(Memory.stats.roles['healer'].metrics.totalHealingDone)
 
 The following enhancements could be considered:
 
-1. **Separate Upgrade Metric**: Currently upgrade progress reuses `buildProgress`
-2. **Per-Tick Rates**: Track actions per tick for rate analysis
-3. **Resource-Specific Tracking**: Track different resource types separately
-4. **Efficiency Ratios**: CPU per action, energy per distance, etc.
-5. **Historical Trends**: Track metric changes over time
+1. **Per-Tick Rates**: Track actions per tick for rate analysis
+2. **Resource-Specific Tracking**: Track different resource types separately
+3. **Efficiency Ratios**: CPU per action, energy per distance, etc.
+4. **Historical Trends**: Track metric changes over time
 
 ## Related Files
 
