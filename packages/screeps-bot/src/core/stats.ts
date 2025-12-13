@@ -70,6 +70,8 @@ export interface RoleStats {
     totalBuildProgress: number;
     /** Total repair progress by all creeps of this role */
     totalRepairProgress: number;
+    /** Total upgrade progress by all creeps of this role */
+    totalUpgradeProgress: number;
     /** Total damage dealt by all creeps of this role */
     totalDamageDealt: number;
     /** Total healing done by all creeps of this role */
@@ -78,6 +80,8 @@ export interface RoleStats {
     avgTasksPerCreep: number;
     /** Average energy throughput per creep */
     avgEnergyPerCreep: number;
+    /** Average upgrade progress per creep */
+    avgUpgradePerCreep: number;
   };
 }
 
@@ -95,6 +99,8 @@ export interface CreepMetrics {
   buildProgress: number;
   /** Total repair progress contributed */
   repairProgress: number;
+  /** Total upgrade progress contributed to controllers */
+  upgradeProgress: number;
   /** Total damage dealt (for combat roles) */
   damageDealt: number;
   /** Total healing done (for healer roles) */
@@ -777,6 +783,7 @@ export class StatsManager {
       totalEnergyHarvested: number;
       totalBuildProgress: number;
       totalRepairProgress: number;
+      totalUpgradeProgress: number;
       totalDamageDealt: number;
       totalHealingDone: number;
     }> = {};
@@ -826,6 +833,7 @@ export class StatsManager {
           totalEnergyHarvested: 0,
           totalBuildProgress: 0,
           totalRepairProgress: 0,
+          totalUpgradeProgress: 0,
           totalDamageDealt: 0,
           totalHealingDone: 0
         };
@@ -841,6 +849,7 @@ export class StatsManager {
         roleMetrics[role].totalEnergyHarvested += creepMemory._metrics.energyHarvested;
         roleMetrics[role].totalBuildProgress += creepMemory._metrics.buildProgress;
         roleMetrics[role].totalRepairProgress += creepMemory._metrics.repairProgress;
+        roleMetrics[role].totalUpgradeProgress += creepMemory._metrics.upgradeProgress;
         roleMetrics[role].totalDamageDealt += creepMemory._metrics.damageDealt;
         roleMetrics[role].totalHealingDone += creepMemory._metrics.healingDone;
       }
@@ -865,11 +874,13 @@ export class StatsManager {
         totalEnergyHarvested: metrics.totalEnergyHarvested,
         totalBuildProgress: metrics.totalBuildProgress,
         totalRepairProgress: metrics.totalRepairProgress,
+        totalUpgradeProgress: metrics.totalUpgradeProgress,
         totalDamageDealt: metrics.totalDamageDealt,
         totalHealingDone: metrics.totalHealingDone,
         avgTasksPerCreep: metrics.count > 0 ? metrics.totalTasksCompleted / metrics.count : 0,
         avgEnergyPerCreep: metrics.count > 0 ? 
-          (metrics.totalEnergyTransferred + metrics.totalEnergyHarvested) / metrics.count : 0
+          (metrics.totalEnergyTransferred + metrics.totalEnergyHarvested) / metrics.count : 0,
+        avgUpgradePerCreep: metrics.count > 0 ? metrics.totalUpgradeProgress / metrics.count : 0
       };
       
       if (existing) {

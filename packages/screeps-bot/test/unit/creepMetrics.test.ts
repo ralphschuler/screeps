@@ -10,6 +10,7 @@ import {
   recordTransfer,
   recordBuild,
   recordRepair,
+  recordUpgrade,
   recordDamage,
   recordHealing,
   recordTaskComplete,
@@ -26,6 +27,7 @@ interface MockCreepMemory {
     energyHarvested: number;
     buildProgress: number;
     repairProgress: number;
+    upgradeProgress: number;
     damageDealt: number;
     healingDone: number;
   };
@@ -51,6 +53,7 @@ describe("Creep Metrics", () => {
       assert.equal(mockMemory._metrics!.energyHarvested, 0);
       assert.equal(mockMemory._metrics!.buildProgress, 0);
       assert.equal(mockMemory._metrics!.repairProgress, 0);
+      assert.equal(mockMemory._metrics!.upgradeProgress, 0);
       assert.equal(mockMemory._metrics!.damageDealt, 0);
       assert.equal(mockMemory._metrics!.healingDone, 0);
     });
@@ -62,6 +65,7 @@ describe("Creep Metrics", () => {
         energyHarvested: 200,
         buildProgress: 50,
         repairProgress: 30,
+        upgradeProgress: 40,
         damageDealt: 0,
         healingDone: 0
       };
@@ -88,6 +92,7 @@ describe("Creep Metrics", () => {
         energyHarvested: 300,
         buildProgress: 100,
         repairProgress: 50,
+        upgradeProgress: 75,
         damageDealt: 200,
         healingDone: 150
       };
@@ -136,6 +141,16 @@ describe("Creep Metrics", () => {
       
       recordRepair(mockMemory, 100);
       assert.equal(mockMemory._metrics!.repairProgress, 300);
+    });
+  });
+
+  describe("recordUpgrade", () => {
+    it("should increment upgradeProgress", () => {
+      recordUpgrade(mockMemory, 150);
+      assert.equal(mockMemory._metrics!.upgradeProgress, 150);
+      
+      recordUpgrade(mockMemory, 75);
+      assert.equal(mockMemory._metrics!.upgradeProgress, 225);
     });
   });
 
@@ -221,6 +236,14 @@ describe("Creep Metrics", () => {
       assert.include(summary, "1000 repaired");
     });
 
+    it("should summarize upgrade activity", () => {
+      initializeMetrics(mockMemory);
+      recordUpgrade(mockMemory, 500);
+      
+      const summary = getEfficiencySummary(mockMemory);
+      assert.include(summary, "500 upgraded");
+    });
+
     it("should combine multiple metrics in summary", () => {
       initializeMetrics(mockMemory);
       recordTaskComplete(mockMemory);
@@ -244,6 +267,7 @@ describe("Creep Metrics", () => {
         energyHarvested: 300,
         buildProgress: 100,
         repairProgress: 50,
+        upgradeProgress: 250,
         damageDealt: 200,
         healingDone: 150
       };
@@ -255,6 +279,7 @@ describe("Creep Metrics", () => {
       assert.equal(mockMemory._metrics.energyHarvested, 0);
       assert.equal(mockMemory._metrics.buildProgress, 0);
       assert.equal(mockMemory._metrics.repairProgress, 0);
+      assert.equal(mockMemory._metrics.upgradeProgress, 0);
       assert.equal(mockMemory._metrics.damageDealt, 0);
       assert.equal(mockMemory._metrics.healingDone, 0);
     });

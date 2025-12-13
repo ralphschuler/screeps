@@ -24,6 +24,7 @@ export function initializeMetrics(creepMemory: CreepMemoryWithMetrics): void {
       energyHarvested: 0,
       buildProgress: 0,
       repairProgress: 0,
+      upgradeProgress: 0,
       damageDealt: 0,
       healingDone: 0
     };
@@ -71,6 +72,14 @@ export function recordRepair(creepMemory: CreepMemoryWithMetrics, progress: numb
 }
 
 /**
+ * Record upgrade progress contributed to a controller.
+ */
+export function recordUpgrade(creepMemory: CreepMemoryWithMetrics, progress: number): void {
+  const metrics = getMetrics(creepMemory);
+  metrics.upgradeProgress += progress;
+}
+
+/**
  * Record damage dealt to an enemy creep or structure.
  */
 export function recordDamage(creepMemory: CreepMemoryWithMetrics, damage: number): void {
@@ -111,6 +120,7 @@ export function getEfficiencySummary(creepMemory: CreepMemoryWithMetrics): strin
   if (m.energyTransferred > 0) parts.push(`${m.energyTransferred} transferred`);
   if (m.buildProgress > 0) parts.push(`${m.buildProgress} built`);
   if (m.repairProgress > 0) parts.push(`${m.repairProgress} repaired`);
+  if (m.upgradeProgress > 0) parts.push(`${m.upgradeProgress} upgraded`);
   if (m.damageDealt > 0) parts.push(`${m.damageDealt} damage`);
   if (m.healingDone > 0) parts.push(`${m.healingDone} healing`);
   
@@ -127,6 +137,7 @@ export function resetMetrics(creepMemory: CreepMemoryWithMetrics): void {
     energyHarvested: 0,
     buildProgress: 0,
     repairProgress: 0,
+    upgradeProgress: 0,
     damageDealt: 0,
     healingDone: 0
   };
