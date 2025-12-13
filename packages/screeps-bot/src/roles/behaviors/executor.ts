@@ -128,7 +128,8 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         () => creep.transfer(action.target, action.resourceType),
         action.target,
         PATH_COLORS.transfer,
-        action.type
+        action.type,
+        { resourceType: action.resourceType }
       );
       break;
 
@@ -374,7 +375,8 @@ function executeWithRange(
   action: () => ScreepsReturnCode,
   target: RoomObject,
   pathColor: string,
-  actionLabel?: string
+  actionLabel?: string,
+  actionData?: { resourceType?: ResourceConstant }
 ): boolean {
   const result = action();
 
@@ -400,7 +402,7 @@ function executeWithRange(
 
   // Track successful actions in metrics
   if (result === OK && actionLabel) {
-    trackActionMetrics(creep, actionLabel, target);
+    trackActionMetrics(creep, actionLabel, target, actionData);
   }
 
   // Check for errors that indicate the target is invalid and state should be cleared
@@ -424,9 +426,14 @@ function executeWithRange(
 /**
  * Track metrics for a successful action.
  */
-function trackActionMetrics(creep: Creep, actionType: string, target: RoomObject): void {
-  // Initialize metrics if needed
-  metrics.initializeMetrics(creep.memory);
+function trackActionMetrics(
+  creep: Creep, 
+  actionType: string, 
+  target: RoomObject,
+  actionData?: { resourceType?: ResourceConstant }
+): void {
+  // Initialize metrics if needed (cast to allow structural compatibility)
+  metrics.initializeMetrics(creep.memory as any);
 
   // Determine what to track based on action type and target
   switch (actionType) {
@@ -437,19 +444,20 @@ function trackActionMetrics(creep: Creep, actionType: string, target: RoomObject
       // Estimate based on WORK parts (2 energy per WORK part per tick)
       const workParts = creep.body.filter(p => p.type === WORK && p.hits > 0).length;
       const harvestAmount = workParts * 2;
-      metrics.recordHarvest(creep.memory, harvestAmount);
+      metrics.recordHarvest(creep.memory as any, harvestAmount);
       break;
     }
 
     case "transfer": {
-      // For transfer, track the amount transferred
-      // We can estimate by the creep's carry amount or a fixed value
+      // For transfer, track the actual amount transferred
+      // Use the specific resource type from the action
+      const resourceType = actionData?.resourceType ?? RESOURCE_ENERGY;
       const transferAmount = Math.min(
-        creep.store.getUsedCapacity(),
-        (target as AnyStoreStructure).store?.getFreeCapacity() ?? 0
+        creep.store.getUsedCapacity(resourceType),
+        (target as AnyStoreStructure).store?.getFreeCapacity(resourceType) ?? 0
       );
       if (transferAmount > 0) {
-        metrics.recordTransfer(creep.memory, transferAmount);
+        metrics.recordTransfer(creep.memory as any, transferAmount);
       }
       break;
     }
@@ -459,13 +467,10 @@ function trackActionMetrics(creep: Creep, actionType: string, target: RoomObject
       // WORK parts contribute 5 build power per tick
       const workParts = creep.body.filter(p => p.type === WORK && p.hits > 0).length;
       const buildPower = workParts * 5;
-      metrics.recordBuild(creep.memory, buildPower);
+      metrics.recordBuild(creep.memory as any, buildPower);
       
-      // Check if construction site completed
-      const site = target as ConstructionSite;
-      if (site.progress >= site.progressTotal - buildPower) {
-        metrics.recordTaskComplete(creep.memory);
-      }
+      // Note: Task completion is tracked separately when construction finishes
+      // to avoid false positives from partial progress
       break;
     }
 
@@ -473,7 +478,7 @@ function trackActionMetrics(creep: Creep, actionType: string, target: RoomObject
       // For repair, track repair progress
       const workParts = creep.body.filter(p => p.type === WORK && p.hits > 0).length;
       const repairPower = workParts * 100;
-      metrics.recordRepair(creep.memory, repairPower);
+      metrics.recordRepair(creep.memory as any, repairPower);
       break;
     }
 
@@ -481,7 +486,7 @@ function trackActionMetrics(creep: Creep, actionType: string, target: RoomObject
       // For attack, track damage dealt
       const attackParts = creep.body.filter(p => p.type === ATTACK && p.hits > 0).length;
       const damage = attackParts * 30;
-      metrics.recordDamage(creep.memory, damage);
+      metrics.recordDamage(creep.memory as any, damage);
       break;
     }
 
@@ -493,7 +498,7 @@ function trackActionMetrics(creep: Creep, actionType: string, target: RoomObject
       if (range <= 1) damage = rangedParts * 10;
       else if (range <= 2) damage = rangedParts * 4;
       else if (range <= 3) damage = rangedParts * 1;
-      metrics.recordDamage(creep.memory, damage);
+      metrics.recordDamage(creep.memory as any, damage);
       break;
     }
 
@@ -502,15 +507,17 @@ function trackActionMetrics(creep: Creep, actionType: string, target: RoomObject
       // For heal, track healing done
       const healParts = creep.body.filter(p => p.type === HEAL && p.hits > 0).length;
       const healing = actionType === "heal" ? healParts * 12 : healParts * 4;
-      metrics.recordHealing(creep.memory, healing);
+      metrics.recordHealing(creep.memory as any, healing);
       break;
     }
 
     case "upgrade": {
-      // For upgrade, track task completion
+      // For upgrade, track controller progress
       // WORK parts contribute 1 energy per tick to controller
+      // Note: We track this in buildProgress for now as it's construction-like work
+      // TODO: Consider adding a separate upgradeProgress metric for clarity
       const workParts = creep.body.filter(p => p.type === WORK && p.hits > 0).length;
-      metrics.recordBuild(creep.memory, workParts); // Reuse build metric for upgrade
+      metrics.recordBuild(creep.memory as any, workParts);
       break;
     }
   }
