@@ -247,6 +247,8 @@ export class Kernel {
   private processQueue: Process[] = [];
   /** Flag indicating if process queue needs rebuild */
   private queueDirty = true;
+  /** Number of processes skipped this tick */
+  private skippedProcessesThisTick = 0;
 
   public constructor(config: KernelConfig) {
     this.config = { ...config };
@@ -616,6 +618,7 @@ export class Kernel {
   public run(): void {
     this.updateBucketMode();
     this.tickCpuUsed = 0;
+    this.skippedProcessesThisTick = 0;
 
     // Process queued events from previous ticks
     eventBus.processQueue();
@@ -666,6 +669,7 @@ export class Kernel {
           process.stats.skippedCount++;
         }
         processesSkipped++;
+        this.skippedProcessesThisTick++;
         
         // Track skip reasons for better diagnostics
         if (process.stats.runCount > 0 && (Game.time - process.stats.lastRunTick) < process.interval) {
@@ -749,6 +753,13 @@ export class Kernel {
    */
   public getTickCpuUsed(): number {
     return this.tickCpuUsed;
+  }
+
+  /**
+   * Get number of processes skipped this tick
+   */
+  public getSkippedProcessesThisTick(): number {
+    return this.skippedProcessesThisTick;
   }
 
   /**

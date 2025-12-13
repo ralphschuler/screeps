@@ -199,6 +199,8 @@ export interface EmpireStats {
   credits: number;
   /** List of owned room names */
   rooms: string[];
+  /** Number of processes skipped this tick */
+  skippedProcesses: number;
 }
 
 /**
@@ -432,7 +434,8 @@ export class StatsManager {
       cpuBucket: 0,
       heapUsed: 0,
       credits: 0,
-      rooms: []
+      rooms: [],
+      skippedProcesses: 0
     };
   }
 
@@ -719,8 +722,11 @@ export class StatsManager {
   /**
    * Update empire statistics
    */
-  public updateEmpireStats(): void {
+  public updateEmpireStats(skippedProcesses = 0): void {
     if (!this.config.enabled) return;
+
+    // Ensure non-negative value for skipped processes
+    const validSkippedProcesses = Math.max(0, skippedProcesses);
 
     const stats = this.getStatsRoot();
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
@@ -742,7 +748,8 @@ export class StatsManager {
       cpuBucket: Game.cpu.bucket,
       heapUsed: (Game.cpu.getHeapStatistics?.()?.used_heap_size ?? 0) / 1024 / 1024,
       credits: Game.market.credits,
-      rooms: ownedRooms.map(r => r.name)
+      rooms: ownedRooms.map(r => r.name),
+      skippedProcesses: validSkippedProcesses
     };
   }
 
