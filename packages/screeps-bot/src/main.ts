@@ -49,13 +49,32 @@ declare global {
       nextPacketIndex: number;
       queuedAt: number;
     }>;
-    // TODO: Add memory migration version tracking field to support future schema changes
-    // memoryVersion?: number;
+    // Memory migration version tracking field
+    memoryVersion?: number;
     // TODO: Consider adding shard coordination memory for multi-shard operations (ROADMAP Section 11)
     // interShardCoordination?: { shardRoles: Record<string, ShardRole>; lastUpdate: number; };
-    // TODO: Add global empire state for tracking all colonies and clusters (ROADMAP Section 4)
-    // Issue URL: https://github.com/ralphschuler/screeps/issues/460
-    // empire?: { knownRooms: Record<string, RoomIntel>; clusters: string[]; warTargets: string[]; };
+    /** Global empire state for tracking all colonies and clusters (ROADMAP Section 4) */
+    empire?: {
+      knownRooms: Record<string, any>;
+      clusters: string[];
+      warTargets: string[];
+      ownedRooms: Record<string, any>;
+      claimQueue: any[];
+      nukeCandidates: any[];
+      powerBanks: any[];
+      market?: any;
+      objectives: {
+        targetPowerLevel: number;
+        targetRoomCount: number;
+        warMode: boolean;
+        expansionPaused: boolean;
+      };
+      lastUpdate: number;
+    };
+    /** Overmind memory - deprecated, use empire instead */
+    overmind?: any;
+    /** Clusters memory */
+    clusters?: Record<string, any>;
   }
 
   interface CreepMemory {

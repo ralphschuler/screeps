@@ -181,7 +181,40 @@ export interface MarketMemory {
 }
 
 /**
+ * Empire memory - Global meta-layer state (ROADMAP Section 4)
+ * Tracks all colonies, clusters, and empire-wide strategic decisions
+ */
+export interface EmpireMemory {
+  /** Known rooms with intel data */
+  knownRooms: Record<string, RoomIntel>;
+  /** List of active cluster IDs */
+  clusters: string[];
+  /** Active war targets (player usernames or room names) */
+  warTargets: string[];
+  /** Owned rooms with roles and cluster assignments */
+  ownedRooms: Record<string, OwnedRoomEntry>;
+  /** Claim queue sorted by expansion score */
+  claimQueue: ExpansionCandidate[];
+  /** Nuke candidates with scores */
+  nukeCandidates: { roomName: string; score: number; launched: boolean; launchTick: number }[];
+  /** Power bank locations */
+  powerBanks: PowerBankEntry[];
+  /** Market intelligence data */
+  market?: MarketMemory;
+  /** Global strategic objectives */
+  objectives: {
+    targetPowerLevel: number;
+    targetRoomCount: number;
+    warMode: boolean;
+    expansionPaused: boolean;
+  };
+  /** Last update tick */
+  lastUpdate: number;
+}
+
+/**
  * Global overmind memory
+ * @deprecated Use EmpireMemory instead. This interface is kept for backward compatibility during migration.
  */
 export interface OvermindMemory {
   /** Rooms seen with last seen time */
@@ -713,7 +746,31 @@ export function createDefaultMarketMemory(): MarketMemory {
 }
 
 /**
+ * Create default empire memory
+ */
+export function createDefaultEmpireMemory(): EmpireMemory {
+  return {
+    knownRooms: {},
+    clusters: [],
+    warTargets: [],
+    ownedRooms: {},
+    claimQueue: [],
+    nukeCandidates: [],
+    powerBanks: [],
+    market: createDefaultMarketMemory(),
+    objectives: {
+      targetPowerLevel: 0,
+      targetRoomCount: 1,
+      warMode: false,
+      expansionPaused: false
+    },
+    lastUpdate: 0
+  };
+}
+
+/**
  * Create default overmind memory
+ * @deprecated Use createDefaultEmpireMemory instead. This is kept for backward compatibility.
  */
 export function createDefaultOvermindMemory(): OvermindMemory {
   return {
