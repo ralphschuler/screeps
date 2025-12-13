@@ -422,4 +422,91 @@ describe("spawn energy constraints", () => {
       assert.isBelow(endTime - startTime, 100, "Should not hang");
     });
   });
+
+  describe("larvaWorker spawning restrictions", () => {
+    it("should spawn larvaWorker in bootstrap mode", () => {
+      // Setup: Empty room (bootstrap mode)
+      const room = createMockRoom("E1N1", 200, 800);
+      global.Game.rooms["E1N1"] = room;
+
+      // No creeps - bootstrap mode
+      global.Game.creeps = {};
+
+      const swarm = createMockSwarmState();
+
+      // Run spawn manager
+      runSpawnManager(room, swarm);
+
+      // Should spawn larvaWorker in bootstrap mode
+      const creeps = Object.values(global.Game.creeps);
+      assert.equal(creeps.length, 1, "Should spawn one creep");
+
+      const memory = creeps[0].memory as unknown as Record<string, unknown>;
+      assert.equal(memory.role, "larvaWorker", "Should spawn larvaWorker in bootstrap mode");
+    });
+
+    it("should NOT spawn larvaWorker in normal mode", () => {
+      // Setup: Room with enough creeps to exit bootstrap mode
+      const room = createMockRoom("E1N1", 800, 800);
+      global.Game.rooms["E1N1"] = room;
+
+      // Create creeps to exit bootstrap mode (but no larvaWorker)
+      createMockCreeps({
+        harvester: 2,
+        hauler: 2,
+        upgrader: 1
+        // Note: No larvaWorker - but we shouldn't spawn one in normal mode
+      });
+
+      const swarm = createMockSwarmState();
+
+      const creepsBefore = Object.keys(global.Game.creeps).length;
+
+      // Run spawn manager
+      runSpawnManager(room, swarm);
+
+      // Check that if a creep was spawned, it's NOT a larvaWorker
+      const creepsAfter = Object.values(global.Game.creeps);
+      
+      // Find any newly spawned creeps
+      const newCreeps = creepsAfter.filter(c => {
+        const creepName = c.name;
+        return creepName.includes(`_${global.Game.time}_`);
+      });
+
+      // If a new creep was spawned, verify it's not a larvaWorker
+      if (newCreeps.length > 0) {
+        const memory = newCreeps[0].memory as unknown as Record<string, unknown>;
+        assert.notEqual(
+          memory.role,
+          "larvaWorker",
+          "Should NOT spawn larvaWorker in normal mode"
+        );
+      }
+      // Otherwise, no spawn occurred which is also fine
+    });
+
+    it("should not select larvaWorker when checking spawnable roles in normal mode", () => {
+      // Setup: Room out of bootstrap mode
+      const room = createMockRoom("E1N1", 800, 800);
+      global.Game.rooms["E1N1"] = room;
+
+      createMockCreeps({
+        harvester: 2,
+        hauler: 1,
+        upgrader: 1
+      });
+
+      const swarm = createMockSwarmState();
+
+      // Get all spawnable roles
+      const spawnableRoles = getAllSpawnableRoles(room, swarm);
+
+      // larvaWorker should NOT be in the list
+      assert.isFalse(
+        spawnableRoles.includes("larvaWorker"),
+        "larvaWorker should not be spawnable in normal mode"
+      );
+    });
+  });
 });

@@ -829,6 +829,14 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState): bo
   const def = ROLE_DEFINITIONS[role];
   if (!def) return false;
 
+  // SPECIAL: larvaWorker should ONLY be spawned during bootstrap/emergency
+  // Once the economy is stable, use specialized roles instead
+  if (role === "larvaWorker") {
+    // larvaWorker is handled exclusively by bootstrap mode
+    // Return false here to prevent spawning in normal mode
+    return false;
+  }
+
   // Special handling for remote roles
   if (role === "remoteHarvester" || role === "remoteHauler") {
     // Check if there's a remote room that needs workers
