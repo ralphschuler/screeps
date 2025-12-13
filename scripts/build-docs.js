@@ -21,6 +21,9 @@ const OUTPUT_DIR = path.join(ROOT_DIR, 'wiki');
 
 /**
  * Recursively find all markdown files in a directory
+ * @param {string} dir - Directory to search
+ * @param {string} baseDir - Base directory for calculating relative paths (defaults to dir)
+ * @returns {Promise<Array<{fullPath: string, relativePath: string, name: string}>>} Array of file information
  */
 async function findMarkdownFiles(dir, baseDir = dir) {
   const files = [];
@@ -70,6 +73,13 @@ async function getPackages() {
 
 /**
  * Create a sanitized filename for wiki pages
+ * Converts markdown filenames to wiki-compatible format by:
+ * - Removing .md extension
+ * - Replacing invalid characters with hyphens
+ * - Collapsing multiple hyphens
+ * - Trimming leading/trailing hyphens
+ * @param {string} name - Original filename to sanitize
+ * @returns {string} Sanitized filename suitable for wiki links
  */
 function sanitizeWikiFilename(name) {
   return name
@@ -100,6 +110,14 @@ function generateTableOfContents(sections) {
 
 /**
  * Process markdown content for wiki compatibility
+ * Adds source file reference and converts relative markdown links to wiki-style links
+ * @param {string} content - Original markdown content
+ * @param {string} sourceFile - Path to the source file (for reference)
+ * @returns {string} Processed markdown content
+ * 
+ * Transformations:
+ * - Adds source reference header
+ * - Converts ./file.md and ../file.md to wiki-style [text](WikiPageName) format
  */
 function processMarkdownContent(content, sourceFile) {
   // Add source file reference at the top
