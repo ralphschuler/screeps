@@ -651,7 +651,7 @@ export function hauler(ctx: CreepContext): CreepAction {
       return { type: "withdraw", target: distributed, resourceType: RESOURCE_ENERGY };
     } else {
       // BUGFIX: If distribution returns null (shouldn't happen but defensive), fall back to closest container
-      logger.debug(`${ctx.creep.name} hauler found ${containersWithEnergy.length} containers but distribution returned null, falling back to closest`);
+      logger.warn(`${ctx.creep.name} hauler found ${containersWithEnergy.length} containers but distribution returned null, falling back to closest`);
       const fallback = ctx.creep.pos.findClosestByRange(containersWithEnergy);
       if (fallback) {
         logger.debug(`${ctx.creep.name} hauler using fallback container ${fallback.id}`);
@@ -675,7 +675,7 @@ export function hauler(ctx: CreepContext): CreepAction {
       }
     } else {
       // BUGFIX: If distribution returns null (shouldn't happen but defensive), fall back to closest container
-      logger.debug(`${ctx.creep.name} hauler found ${ctx.mineralContainers.length} mineral containers but distribution returned null, falling back to closest`);
+      logger.warn(`${ctx.creep.name} hauler found ${ctx.mineralContainers.length} mineral containers but distribution returned null, falling back to closest`);
       const fallback = ctx.creep.pos.findClosestByRange(ctx.mineralContainers);
       if (fallback) {
         const mineralType = Object.keys(fallback.store).find(
