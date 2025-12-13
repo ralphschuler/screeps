@@ -609,7 +609,7 @@ export interface AttackEvaluation {
   /** Distance to target */
   distance?: number;
   /** Recommended doctrine */
-  doctrine?: string;
+  doctrine?: OffensiveDoctrine;
   /** Rally point for coordination */
   rallyPoint?: { roomName: string; x: number; y: number };
 }
@@ -790,7 +790,7 @@ function coordinateAllyAttack(
   const operation = launchOffensiveOperation(
     cluster,
     request.roomName,
-    doctrine as any
+    doctrine
   );
   
   if (!operation) {
@@ -801,9 +801,13 @@ function coordinateAllyAttack(
     return false;
   }
   
-  // Mark this as an ally assistance operation
-  (operation as any).isAllyAssist = true;
-  (operation as any).allyName = currentAlly;
+  // Mark this as an ally assistance operation (extend the object)
+  const extendedOp = operation as typeof operation & { 
+    isAllyAssist?: boolean; 
+    allyName?: string; 
+  };
+  extendedOp.isAllyAssist = true;
+  extendedOp.allyName = currentAlly;
   
   // Log rally point if available
   if (rallyPoint) {

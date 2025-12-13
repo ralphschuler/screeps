@@ -4,7 +4,8 @@
 
 import { expect } from "chai";
 import { SimpleAlliesManager } from "../../src/standards/SimpleAlliesManager";
-import { FunnelGoal } from "../../src/standards/types/allianceTypes";
+import { FunnelGoal, type AttackRequest } from "../../src/standards/types/allianceTypes";
+import type { AttackEvaluation } from "../../src/empire/allianceDiplomacy";
 
 describe("SimpleAlliesManager", () => {
   let manager: SimpleAlliesManager;
@@ -217,7 +218,7 @@ describe("Alliance Response Handlers", () => {
 
 describe("Attack Request Evaluation", () => {
   // Import after describe to avoid initialization issues
-  let evaluateAttackRequest: any;
+  let evaluateAttackRequest: (request: AttackRequest, ally: string) => AttackEvaluation;
 
   before(() => {
     // Dynamic import to avoid circular dependencies
