@@ -74,7 +74,7 @@ export interface MarketTrendAnalyzerConfig {
 
 const DEFAULT_CONFIG: MarketTrendAnalyzerConfig = {
   updateInterval: 500,
-  minBucket: 7000,
+  minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
   maxCpuBudget: 0.02, // 2% of CPU limit
   trackedResources: [
     RESOURCE_ENERGY,
@@ -112,7 +112,7 @@ export class MarketTrendAnalyzer {
   @LowFrequencyProcess("empire:marketTrends", "Market Trend Analyzer", {
     priority: ProcessPriority.LOW,
     interval: 500,
-    minBucket: 7000,
+    minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
     cpuBudget: 0.02
   })
   public run(): void {

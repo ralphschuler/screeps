@@ -53,7 +53,7 @@ export interface PixelBuyingConfig {
 
 const DEFAULT_CONFIG: PixelBuyingConfig = {
   updateInterval: 200, // Check every 200 ticks
-  minBucket: 5000, // Only run when bucket is healthy
+  minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
   minCreditsForPixels: 500000, // Need at least 500k credits
   creditReserve: 100000, // Always keep 100k credits in reserve
   minEnergySurplus: 500000, // Need at least 500k energy surplus
@@ -131,7 +131,7 @@ export class PixelBuyingManager {
   @LowFrequencyProcess("empire:pixelBuying", "Pixel Buying Manager", {
     priority: ProcessPriority.IDLE, // Very low priority - only runs when everything else is fine
     interval: 200,
-    minBucket: 5000,
+    minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
     cpuBudget: 0.01
   })
   public run(): void {

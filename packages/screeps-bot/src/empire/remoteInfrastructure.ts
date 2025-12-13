@@ -40,7 +40,7 @@ export interface RemoteInfrastructureConfig {
 
 const DEFAULT_CONFIG: RemoteInfrastructureConfig = {
   updateInterval: 50,
-  minBucket: 3000,
+  minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
   maxSitesPerRemotePerTick: 2
 };
 
@@ -62,7 +62,7 @@ export class RemoteInfrastructureManager {
   @MediumFrequencyProcess("remote:infrastructure", "Remote Infrastructure Manager", {
     priority: ProcessPriority.LOW,
     interval: 50,
-    minBucket: 3000,
+    minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
     cpuBudget: 0.05
   })
   public run(): void {

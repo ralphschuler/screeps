@@ -36,7 +36,7 @@ export interface LinkManagerConfig {
 }
 
 const DEFAULT_CONFIG: LinkManagerConfig = {
-  minBucket: 2000, // Align with standard medium frequency processes
+  minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
   minSourceLinkEnergy: 400, // Transfer when source link is at least half full
   controllerLinkMaxEnergy: 700, // Keep controller link nearly full
   transferThreshold: 100, // Min energy to justify transfer
@@ -80,7 +80,7 @@ export class LinkManager {
   @MediumFrequencyProcess("link:manager", "Link Manager", {
     priority: ProcessPriority.MEDIUM,
     interval: 5, // Run every 5 ticks for responsive link management
-    minBucket: 2000, // Use standard medium frequency minBucket
+    minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
     cpuBudget: 0.05
   })
   public run(): void {

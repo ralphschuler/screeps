@@ -79,7 +79,7 @@ export class DefenseCoordinator {
   @MediumFrequencyProcess("cluster:defense", "Defense Coordinator", {
     priority: ProcessPriority.HIGH,
     interval: 3,
-    minBucket: 1500,
+    minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
     cpuBudget: 0.05
   })
   public run(): void {

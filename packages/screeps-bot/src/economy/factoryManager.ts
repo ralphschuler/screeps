@@ -29,7 +29,7 @@ export interface FactoryManagerConfig {
 }
 
 const DEFAULT_CONFIG: FactoryManagerConfig = {
-  minBucket: 2500,
+  minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
   minStorageEnergy: 80000,
   inputBufferAmount: 2000,
   outputBufferAmount: 5000
@@ -93,7 +93,7 @@ export class FactoryManager {
   @MediumFrequencyProcess("factory:manager", "Factory Manager", {
     priority: ProcessPriority.LOW,
     interval: 30,
-    minBucket: 2500,
+    minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
     cpuBudget: 0.05
   })
   public run(): void {
