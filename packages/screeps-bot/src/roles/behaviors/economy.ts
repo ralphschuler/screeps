@@ -282,7 +282,7 @@ export function larvaWorker(ctx: CreepContext): CreepAction {
     if (!ctx.isEmpty) {
       logger.debug(`${ctx.creep.name} larvaWorker has energy but no targets, switching to collection mode`);
       switchToCollectionMode(ctx);
-      // Continue to findEnergy() call below after exiting the working block
+      // After switching to collection mode, exit working block and call findEnergy() below
     } else {
       // This should never happen (working=true but isEmpty=true), but log it as a warning
       logger.warn(`${ctx.creep.name} larvaWorker idle (empty, working=true, no targets) - this indicates a bug`);
