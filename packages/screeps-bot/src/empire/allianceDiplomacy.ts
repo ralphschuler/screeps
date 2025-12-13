@@ -681,6 +681,8 @@ export function evaluateAttackRequest(request: AttackRequest, currentAlly: strin
   );
   
   // Count ally attack operations
+  // TODO: Consider creating a type guard function isAllyOperation(op) 
+  // to centralize this logic and improve maintainability
   const allyOps = activeOps.filter(op => {
     const extendedOp = op as typeof op & { isAllyAssist?: boolean };
     return extendedOp.isAllyAssist === true;
@@ -803,6 +805,8 @@ function coordinateAllyAttack(
   }
   
   // Mark this as an ally assistance operation (extend the object)
+  // TODO: Consider adding isAllyAssist and allyName to OffensiveOperation interface
+  // for better type safety and consistency across the codebase
   const extendedOp = operation as typeof operation & { 
     isAllyAssist?: boolean; 
     allyName?: string; 
