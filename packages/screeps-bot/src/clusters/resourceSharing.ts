@@ -44,7 +44,7 @@ export interface ResourceSharingConfig {
 }
 
 const DEFAULT_CONFIG: ResourceSharingConfig = {
-  minBucket: 2000,
+  minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
   // Request help before reaching bootstrap emergency threshold (150 energy)
   // This gives buffer time for carrier to arrive with energy
   criticalEnergyThreshold: 300, // Spawn needs energy urgently

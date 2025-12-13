@@ -94,7 +94,7 @@ export class EvacuationManager {
   @MediumFrequencyProcess("cluster:evacuation", "Evacuation Manager", {
     priority: ProcessPriority.HIGH,
     interval: 5,
-    minBucket: 2000,
+    minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
     cpuBudget: 0.02
   })
   public run(): void {

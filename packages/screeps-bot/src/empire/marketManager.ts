@@ -89,7 +89,7 @@ export interface MarketConfig {
 const DEFAULT_CONFIG: MarketConfig = {
   updateInterval: 100,
   priceUpdateInterval: 500, // Update prices every 500 ticks
-  minBucket: 7000,
+  minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
   minCredits: 10000,
   emergencyCredits: 5000, // Reserve for critical purchases
   tradingCredits: 50000, // Threshold to enable active trading
@@ -160,7 +160,7 @@ export class MarketManager {
   @LowFrequencyProcess("empire:market", "Market Manager", {
     priority: ProcessPriority.LOW,
     interval: 100,
-    minBucket: 7000,
+    minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
     cpuBudget: 0.02
   })
   public run(): void {

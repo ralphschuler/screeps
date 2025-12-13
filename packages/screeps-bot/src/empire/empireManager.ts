@@ -62,7 +62,7 @@ export interface EmpireConfig {
 
 const DEFAULT_CONFIG: EmpireConfig = {
   updateInterval: 30,
-  minBucket: 5000,
+  minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
   maxCpuBudget: 0.05, // 5% of CPU limit
   minGclForExpansion: 2,
   maxExpansionDistance: 10,
@@ -91,7 +91,7 @@ export class EmpireManager {
   @LowFrequencyProcess("empire:manager", "Empire Manager", {
     priority: ProcessPriority.MEDIUM,
     interval: 30,
-    minBucket: 5000,
+    minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
     cpuBudget: 0.05
   })
   public run(): void {

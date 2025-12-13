@@ -45,7 +45,7 @@ export interface ShardManagerConfig {
 
 const DEFAULT_CONFIG: ShardManagerConfig = {
   updateInterval: 100,
-  minBucket: 5000,
+  minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
   maxCpuBudget: 0.02,
   defaultCpuLimit: 20
 };
@@ -107,7 +107,7 @@ export class ShardManager {
   @LowFrequencyProcess("empire:shard", "Shard Manager", {
     priority: ProcessPriority.LOW,
     interval: 100,
-    minBucket: 5000,
+    minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
     cpuBudget: 0.02
   })
   public run(): void {

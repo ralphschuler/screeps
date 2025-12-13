@@ -52,7 +52,7 @@ export interface TerminalManagerConfig {
 }
 
 const DEFAULT_CONFIG: TerminalManagerConfig = {
-  minBucket: 2000,
+  minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
   minStorageEnergy: 50000,
   terminalEnergyTarget: 20000,
   terminalEnergyMax: 50000,
@@ -146,7 +146,7 @@ export class TerminalManager {
   @MediumFrequencyProcess("terminal:manager", "Terminal Manager", {
     priority: ProcessPriority.MEDIUM,
     interval: 20,
-    minBucket: 2000,
+    minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
     cpuBudget: 0.1
   })
   public run(): void {

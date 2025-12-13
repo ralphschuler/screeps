@@ -4,6 +4,9 @@
  * Centralizes registration of all scheduled tasks with the scheduler.
  * Ensures all managers and subsystems are properly integrated.
  *
+ * Task registration minBucket values set to 0 - processes run regardless of bucket level.
+ * This aligns with kernel defaults and prevents blocking when bucket is depleted.
+ *
  * Addresses Issue: #30
  */
 
@@ -32,7 +35,7 @@ export function registerAllTasks(): void {
   scheduler.registerTask({
     ...createLowFrequencyTask("empireManager", () => empireManager.run(), 80),
     interval: 30,
-    minBucket: 5000,
+    minBucket: 0,
     cpuBudget: 0.05
   });
 
@@ -40,7 +43,7 @@ export function registerAllTasks(): void {
   scheduler.registerTask({
     ...createMediumFrequencyTask("clusterManager", () => clusterManager.run(), 70),
     interval: 10,
-    minBucket: 3000,
+    minBucket: 0,
     cpuBudget: 0.03
   });
 
@@ -48,7 +51,7 @@ export function registerAllTasks(): void {
   scheduler.registerTask({
     ...createLowFrequencyTask("marketManager", () => marketManager.run(), 40),
     interval: 100,
-    minBucket: 7000,
+    minBucket: 0,
     cpuBudget: 0.02
   });
 
@@ -56,7 +59,7 @@ export function registerAllTasks(): void {
   scheduler.registerTask({
     ...createLowFrequencyTask("nukeManager", () => nukeManager.run(), 30),
     interval: 500,
-    minBucket: 8000,
+    minBucket: 0,
     cpuBudget: 0.01
   });
 
@@ -78,7 +81,7 @@ export function registerAllTasks(): void {
       60
     ),
     interval: 10,
-    minBucket: 2000,
+    minBucket: 0,
     cpuBudget: 0.02
   });
 
@@ -96,7 +99,7 @@ export function registerAllTasks(): void {
       20
     ),
     interval: 50,
-    minBucket: 1000,
+    minBucket: 0,
     cpuBudget: 0.01
   });
 
@@ -122,7 +125,7 @@ export function registerAllTasks(): void {
       10
     ),
     interval: 100,
-    minBucket: 1000,
+    minBucket: 0,
     cpuBudget: 0.005
   });
 
@@ -130,7 +133,7 @@ export function registerAllTasks(): void {
   scheduler.registerTask({
     ...createLowFrequencyTask("shardManager", () => shardManager.run(), 35),
     interval: 100,
-    minBucket: 5000,
+    minBucket: 0,
     cpuBudget: 0.02
   });
 
@@ -138,7 +141,7 @@ export function registerAllTasks(): void {
   scheduler.registerTask({
     ...createMediumFrequencyTask("evacuationManager", () => evacuationManager.run(), 75),
     interval: 5,
-    minBucket: 2000,
+    minBucket: 0,
     cpuBudget: 0.02
   });
 
@@ -146,7 +149,7 @@ export function registerAllTasks(): void {
   scheduler.registerTask({
     ...createLowFrequencyTask("powerBankHarvesting", () => powerBankHarvestingManager.run(), 25),
     interval: 50,
-    minBucket: 7000,
+    minBucket: 0,
     cpuBudget: 0.02
   });
 
@@ -163,7 +166,7 @@ export function registerAllTasks(): void {
       15
     ),
     interval: 200,
-    minBucket: 3000,
+    minBucket: 0,
     cpuBudget: 0.01
   });
 
@@ -171,7 +174,7 @@ export function registerAllTasks(): void {
   scheduler.registerTask({
     ...createMediumFrequencyTask("memorySegmentStats", () => memorySegmentStats.run(), 5),
     interval: 10,
-    minBucket: 2000,
+    minBucket: 0,
     cpuBudget: 0.01
   });
 

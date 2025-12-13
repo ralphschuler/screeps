@@ -58,7 +58,7 @@ export interface ExpansionManagerConfig {
 
 const DEFAULT_CONFIG: ExpansionManagerConfig = {
   updateInterval: 20,
-  minBucket: 4000,
+  minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
   maxRemoteDistance: 2,
   maxRemotesPerRoom: 3,
   minRemoteSources: 1,
@@ -90,7 +90,7 @@ export class ExpansionManager {
   @MediumFrequencyProcess("expansion:manager", "Expansion Manager", {
     priority: ProcessPriority.LOW,
     interval: 20,
-    minBucket: 4000,
+    minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
     cpuBudget: 0.02
   })
   public run(): void {

@@ -84,7 +84,7 @@ export interface ThreatPredictorConfig {
 
 const DEFAULT_CONFIG: ThreatPredictorConfig = {
   updateInterval: 20,
-  minBucket: 5000,
+  minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
   maxCpuBudget: 0.02, // 2% of CPU limit
   trackHistoryLength: 1000,
   minThreatStrength: 5, // Minimum 5 combat parts
@@ -112,7 +112,7 @@ export class ThreatPredictor {
   @LowFrequencyProcess("empire:threatPredictor", "Threat Predictor", {
     priority: ProcessPriority.MEDIUM,
     interval: 20,
-    minBucket: 5000,
+    minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
     cpuBudget: 0.02
   })
   public run(): void {

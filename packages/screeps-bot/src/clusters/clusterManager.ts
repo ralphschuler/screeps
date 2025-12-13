@@ -71,7 +71,7 @@ export interface ClusterConfig {
 
 const DEFAULT_CONFIG: ClusterConfig = {
   updateInterval: 10,
-  minBucket: 3000,
+  minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
   resourceBalanceThreshold: 10000,
   minTerminalEnergy: 50000
 };
@@ -95,7 +95,7 @@ export class ClusterManager {
   @MediumFrequencyProcess("cluster:manager", "Cluster Manager", {
     priority: ProcessPriority.MEDIUM,
     interval: 10,
-    minBucket: 3000,
+    minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
     cpuBudget: 0.03
   })
   public run(): void {
