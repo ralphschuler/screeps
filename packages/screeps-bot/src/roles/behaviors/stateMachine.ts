@@ -300,6 +300,16 @@ function isStateComplete(state: CreepState | undefined, ctx: CreepContext): bool
           return ctx.creep.pos.inRangeTo(targetWithPos.pos, 1);
         }
       }
+
+      if (state.targetPos) {
+        const targetPos = new RoomPosition(
+          state.targetPos.x,
+          state.targetPos.y,
+          state.targetPos.roomName
+        );
+        return ctx.creep.pos.inRangeTo(targetPos, 1);
+      }
+
       return false;
 
     case "idle":
@@ -330,6 +340,12 @@ function actionToState(action: CreepAction, _ctx: CreepContext): CreepState {
   // Extract room name for room movement
   if (action.type === "moveToRoom") {
     state.targetRoom = action.roomName;
+  }
+
+  // Store serialized target position for moveTo actions without stable IDs (e.g., RoomPosition)
+  if (action.type === "moveTo") {
+    const pos = "pos" in action.target ? action.target.pos : action.target;
+    state.targetPos = { x: pos.x, y: pos.y, roomName: pos.roomName };
   }
 
   // Store additional data based on action type
@@ -404,7 +420,20 @@ function stateToAction(state: CreepState): CreepAction | null {
       return target ? { type: "upgrade", target: target as StructureController } : null;
 
     case "moveTo":
-      return target ? { type: "moveTo", target } : null;
+      if (target) {
+        return { type: "moveTo", target };
+      }
+
+      if (state.targetPos) {
+        const targetPos = new RoomPosition(
+          state.targetPos.x,
+          state.targetPos.y,
+          state.targetPos.roomName
+        );
+        return { type: "moveTo", target: targetPos };
+      }
+
+      return null;
 
     case "moveToRoom":
       return state.targetRoom ? { type: "moveToRoom", roomName: state.targetRoom } : null;
