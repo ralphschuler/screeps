@@ -10,6 +10,8 @@ describe("Defense Unit Patrol Functionality", () => {
   /**
    * Simulates the getPatrolWaypoints logic that generates waypoints
    * around exits and spawns for defense units to patrol.
+   * 
+   * UPDATED: Enhanced patrol coverage to match military.ts implementation
    */
   function getPatrolWaypoints(
     spawns: Array<{ x: number; y: number }>,
@@ -24,11 +26,32 @@ describe("Defense Unit Patrol Functionality", () => {
       waypoints.push({ x: spawn.x - 3, y: spawn.y - 3, roomName });
     }
 
-    // Add exit patrol positions (center of each exit side)
-    waypoints.push({ x: 25, y: 5, roomName }); // Top exit
-    waypoints.push({ x: 25, y: 44, roomName }); // Bottom exit
-    waypoints.push({ x: 5, y: 25, roomName }); // Left exit
-    waypoints.push({ x: 44, y: 25, roomName }); // Right exit
+    // Add exit patrol positions (center and corners of each exit side)
+    // Top exit (center and corners)
+    waypoints.push({ x: 10, y: 5, roomName });
+    waypoints.push({ x: 25, y: 5, roomName });
+    waypoints.push({ x: 39, y: 5, roomName });
+    // Bottom exit (center and corners)
+    waypoints.push({ x: 10, y: 44, roomName });
+    waypoints.push({ x: 25, y: 44, roomName });
+    waypoints.push({ x: 39, y: 44, roomName });
+    // Left exit (center and mid-points)
+    waypoints.push({ x: 5, y: 10, roomName });
+    waypoints.push({ x: 5, y: 25, roomName });
+    waypoints.push({ x: 5, y: 39, roomName });
+    // Right exit (center and mid-points)
+    waypoints.push({ x: 44, y: 10, roomName });
+    waypoints.push({ x: 44, y: 25, roomName });
+    waypoints.push({ x: 44, y: 39, roomName });
+
+    // Add room corners for complete coverage
+    waypoints.push({ x: 10, y: 10, roomName });
+    waypoints.push({ x: 39, y: 10, roomName });
+    waypoints.push({ x: 10, y: 39, roomName });
+    waypoints.push({ x: 39, y: 39, roomName });
+
+    // Add central waypoint for room center coverage
+    waypoints.push({ x: 25, y: 25, roomName });
 
     // Filter and clamp positions
     return waypoints
@@ -87,19 +110,23 @@ describe("Defense Unit Patrol Functionality", () => {
     it("should generate patrol waypoints covering all four exits", () => {
       const waypoints = getPatrolWaypoints([], "E1N1");
 
-      // Should have at least 4 waypoints for the exits
-      expect(waypoints.length).to.be.at.least(4);
+      // Should have at least 17 waypoints (12 exit points + 4 corners + 1 center)
+      expect(waypoints.length).to.be.at.least(17);
 
-      // Check for exit waypoints
-      const hasTopExit = waypoints.some(w => w.y === 5 && w.x === 25);
-      const hasBottomExit = waypoints.some(w => w.y === 44 && w.x === 25);
-      const hasLeftExit = waypoints.some(w => w.x === 5 && w.y === 25);
-      const hasRightExit = waypoints.some(w => w.x === 44 && w.y === 25);
+      // Check for exit waypoints (center and corners)
+      const hasTopExitCenter = waypoints.some(w => w.y === 5 && w.x === 25);
+      const hasTopExitLeft = waypoints.some(w => w.y === 5 && w.x === 10);
+      const hasTopExitRight = waypoints.some(w => w.y === 5 && w.x === 39);
+      const hasBottomExitCenter = waypoints.some(w => w.y === 44 && w.x === 25);
+      const hasLeftExitCenter = waypoints.some(w => w.x === 5 && w.y === 25);
+      const hasRightExitCenter = waypoints.some(w => w.x === 44 && w.y === 25);
 
-      expect(hasTopExit, "Should have top exit waypoint").to.be.true;
-      expect(hasBottomExit, "Should have bottom exit waypoint").to.be.true;
-      expect(hasLeftExit, "Should have left exit waypoint").to.be.true;
-      expect(hasRightExit, "Should have right exit waypoint").to.be.true;
+      expect(hasTopExitCenter, "Should have top exit center waypoint").to.be.true;
+      expect(hasTopExitLeft, "Should have top exit left waypoint").to.be.true;
+      expect(hasTopExitRight, "Should have top exit right waypoint").to.be.true;
+      expect(hasBottomExitCenter, "Should have bottom exit waypoint").to.be.true;
+      expect(hasLeftExitCenter, "Should have left exit waypoint").to.be.true;
+      expect(hasRightExitCenter, "Should have right exit waypoint").to.be.true;
     });
 
     it("should add waypoints near spawns", () => {
@@ -148,8 +175,31 @@ describe("Defense Unit Patrol Functionality", () => {
       ];
       const waypoints = getPatrolWaypoints(spawns, "E1N1");
 
-      // Should have waypoints for both spawns (2 per spawn) plus 4 exit waypoints
-      expect(waypoints.length).to.equal(8);
+      // Should have waypoints for both spawns (2 per spawn) plus 12 exit waypoints + 4 corners + 1 center
+      expect(waypoints.length).to.equal(21);
+    });
+
+    it("should include room corners for complete coverage", () => {
+      const waypoints = getPatrolWaypoints([], "E1N1");
+
+      // Check for corner waypoints
+      const hasTopLeft = waypoints.some(w => w.x === 10 && w.y === 10);
+      const hasTopRight = waypoints.some(w => w.x === 39 && w.y === 10);
+      const hasBottomLeft = waypoints.some(w => w.x === 10 && w.y === 39);
+      const hasBottomRight = waypoints.some(w => w.x === 39 && w.y === 39);
+
+      expect(hasTopLeft, "Should have top-left corner waypoint").to.be.true;
+      expect(hasTopRight, "Should have top-right corner waypoint").to.be.true;
+      expect(hasBottomLeft, "Should have bottom-left corner waypoint").to.be.true;
+      expect(hasBottomRight, "Should have bottom-right corner waypoint").to.be.true;
+    });
+
+    it("should include central waypoint for room center coverage", () => {
+      const waypoints = getPatrolWaypoints([], "E1N1");
+
+      // Check for central waypoint
+      const hasCenter = waypoints.some(w => w.x === 25 && w.y === 25);
+      expect(hasCenter, "Should have central waypoint").to.be.true;
     });
   });
 
