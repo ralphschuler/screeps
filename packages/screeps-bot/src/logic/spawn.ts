@@ -1525,11 +1525,8 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
       // Can't afford optimal body for this role, skip it and try next role
       continue;
     }
-    
-    // We can afford the optimal body, use it
-    const body = optimalBody;
 
-    // We found an affordable role, spawn it
+    // We can afford the optimal body, spawn it
     const name = generateCreepName(role);
     const memory: SwarmCreepMemory = {
       role: def.role,
@@ -1574,7 +1571,7 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
       }
     }
 
-    const result = availableSpawn.spawnCreep(body.parts, name, {
+    const result = availableSpawn.spawnCreep(optimalBody.parts, name, {
       memory: memory as unknown as CreepMemory
     });
 
@@ -1584,7 +1581,7 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
         roomName: room.name,
         creepName: name,
         role,
-        cost: body.cost,
+        cost: optimalBody.cost,
         source: "SpawnManager"
       });
       return; // Successfully spawned, exit
@@ -1600,7 +1597,7 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
                         `UNKNOWN(${result})`;
       
       logger.warn(
-        `Spawn failed for ${role}: ${errorName}. Body: ${body.parts.length} parts, cost: ${body.cost}`,
+        `Spawn failed for ${role}: ${errorName}. Body: ${optimalBody.parts.length} parts, cost: ${optimalBody.cost}`,
         {
           subsystem: "spawn",
           room: room.name,
@@ -1608,7 +1605,7 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
             errorCode: result,
             errorName,
             role,
-            bodyCost: body.cost
+            bodyCost: optimalBody.cost
           }
         }
       );
