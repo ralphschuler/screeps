@@ -1,5 +1,6 @@
 import { assert } from "chai";
 import { evaluateWithStateMachine } from "../../src/roles/behaviors/stateMachine";
+import { isTargetBlocked } from "../../src/utils/blockedTargets";
 import type { CreepContext, CreepAction } from "../../src/roles/behaviors/types";
 import type { SwarmCreepMemory, CreepState } from "../../src/memory/schemas";
 
@@ -448,6 +449,40 @@ describe("State Machine", () => {
 
       // State should remain valid since creep is making progress
       assert.equal(action.type, "moveTo");
+    });
+
+    it("should block target when stuck is detected", () => {
+      const source = createMockSource();
+      setupGameMock({ source1: source });
+
+      const creep = createMockCreep({ capacity: 50, usedCapacity: 25 });
+      const ctx = createMockContext(creep);
+
+      // Set up stuck tracking - creep has been stuck for 5 ticks
+      const memory = ctx.memory as any;
+      const stuckStartTick = 995;
+      memory.lastPosX = creep.pos.x;
+      memory.lastPosY = creep.pos.y;
+      memory.lastPosRoom = creep.pos.roomName;
+      memory.lastPosTick = stuckStartTick;
+
+      // Set up a state with a target that will be blocked
+      const existingState: CreepState = {
+        action: "pickup", // Non-stationary action
+        targetId: source.id,
+        startTick: 995,
+        timeout: 50
+      };
+      ctx.memory.state = existingState;
+
+      // Verify target is not blocked initially
+      assert.isFalse(isTargetBlocked(creep, source.id), "Target should not be blocked initially");
+
+      // Call state machine - should detect stuck and block the target
+      evaluateWithStateMachine(ctx, () => ({ type: "idle" }));
+
+      // Verify target is now blocked
+      assert.isTrue(isTargetBlocked(creep, source.id), "Target should be blocked after stuck detection");
     });
   });
 });
