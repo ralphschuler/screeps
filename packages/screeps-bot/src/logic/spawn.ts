@@ -825,13 +825,14 @@ export function getRemoteRoomNeedingWorkers(homeRoom: string, role: string, swar
 /**
  * Check if room needs role
  */
-export function needsRole(roomName: string, role: string, swarm: SwarmState): boolean {
+export function needsRole(roomName: string, role: string, swarm: SwarmState, isBootstrapMode = false): boolean {
   const def = ROLE_DEFINITIONS[role];
   if (!def) return false;
 
   // SPECIAL: larvaWorker should ONLY be spawned during bootstrap/emergency
   // Once the economy is stable, use specialized roles instead
-  if (role === "larvaWorker") {
+  // HOWEVER: Allow it in bootstrap mode (when isBootstrapMode = true)
+  if (role === "larvaWorker" && !isBootstrapMode) {
     // larvaWorker is handled exclusively by bootstrap mode
     // Return false here to prevent spawning in normal mode
     return false;
@@ -1268,7 +1269,8 @@ export function getBootstrapRole(roomName: string, room: Room, swarm: SwarmState
     const current = totalCounts.get(req.role) ?? 0;
     if (current < req.minCount) {
       // Verify we can spawn this role (check needsRole for special conditions)
-      const canSpawn = needsRole(roomName, req.role, swarm);
+      // Pass isBootstrapMode = true to allow larvaWorker in bootstrap mode
+      const canSpawn = needsRole(roomName, req.role, swarm, true);
       logger.info(
         `Bootstrap: Role ${req.role} needs spawning (current: ${current}, min: ${req.minCount}, needsRole: ${canSpawn})`,
         {
