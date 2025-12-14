@@ -1,14 +1,14 @@
 /**
  * Guard Behavior Tests
  *
- * Tests for guard creep behavior to ensure they stay in their home room.
+ * Tests for guard creep behavior including home defense and room assistance.
  */
 
 import { expect } from "chai";
 
 describe("Guard Behavior", () => {
-  describe("Home Room Restriction", () => {
-    it("should stay in home room and not accept assist assignments", () => {
+  describe("Room Assistance (NEW BEHAVIOR)", () => {
+    it("should accept assist assignments from defense coordinator", () => {
       // Mock guard creep with assist target assigned
       const mockMemory: {
         role: string;
@@ -19,23 +19,55 @@ describe("Guard Behavior", () => {
         role: "guard",
         family: "military",
         homeRoom: "W1N1",
-        assistTarget: "W2N1" // Should be removed
+        assistTarget: "W2N1" // Should be kept for assistance
       };
 
-      // Simulate guard clearing assist target
-      if (mockMemory.assistTarget) {
+      // Guards now accept assist targets
+      expect(mockMemory.assistTarget).to.equal("W2N1");
+    });
+
+    it("should clear assist target when threat is resolved", () => {
+      const mockMemory: {
+        role: string;
+        family: string;
+        homeRoom: string;
+        assistTarget?: string;
+      } = {
+        role: "guard",
+        family: "military",
+        homeRoom: "W1N1",
+        assistTarget: "W2N1"
+      };
+
+      // Simulate threat resolved - guard clears assist target
+      const hostilesCount = 0;
+      if (hostilesCount === 0) {
         delete mockMemory.assistTarget;
       }
 
       expect(mockMemory.assistTarget).to.be.undefined;
     });
 
-    it("should return to home room if outside", () => {
+    it("should move to assist room when assigned", () => {
+      const homeRoom = "W1N1";
+      const currentRoom = "W1N1";
+      const assistTarget = "W2N1";
+
+      // Guard should move to assist room
+      const shouldMoveToAssist = currentRoom !== assistTarget;
+
+      expect(shouldMoveToAssist).to.be.true;
+    });
+  });
+
+  describe("Home Room Defense", () => {
+    it("should return to home room if outside and no assist target", () => {
       const homeRoom: string = "W1N1";
       const currentRoom: string = "W2N1";
+      const hasAssistTarget = false;
 
-      // Guard should move back to home room
-      const shouldReturnHome = currentRoom !== homeRoom;
+      // Guard should return home if not on assist mission
+      const shouldReturnHome = currentRoom !== homeRoom && !hasAssistTarget;
 
       expect(shouldReturnHome).to.be.true;
     });
