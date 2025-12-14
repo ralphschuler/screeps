@@ -75,14 +75,30 @@ npm install
 screeps/
 ├── packages/
 │   ├── screeps-bot/          # Main bot implementation
+│   ├── screeps-tasks/        # Optional task-based creep management system
 │   ├── screeps-docs-mcp/     # MCP server for Screeps API documentation
 │   ├── screeps-mcp/          # MCP server for live Screeps game integration
 │   ├── screeps-wiki-mcp/     # MCP server for Screeps community wiki
 │   ├── screeps-server/       # Docker setup for private server
 │   └── screeps-graphite-exporter/ # Metrics exporter to Grafana Cloud
-├── ROADMAP.md                # Development roadmap
+├── ROADMAP.md                # Complete swarm architecture specification (24 sections)
 └── package.json              # Root package configuration
 ```
+
+**Note**: The `screeps-tasks` package provides an optional task-based architecture for creep management with action composition, task queues, and priorities. The main bot uses a behavior-based approach via kernel processes, but the task system is available as an alternative pattern.
+
+### Architecture
+
+The bot implements a comprehensive **swarm-based architecture** as specified in [ROADMAP.md](ROADMAP.md):
+
+- **24 Architectural Sections**: From core vision to advanced features
+- **5-Layer Architecture**: Empire → Shard → Cluster → Room → Creep
+- **Pheromone Coordination**: 9 pheromone types for emergent behavior (8 from ROADMAP + nukeTarget extension)
+- **Kernel-Based Process Management**: Fair CPU allocation and bucket-aware execution
+- **POSIS OS Integration**: Portable Operating System Interface for Screeps
+- **Screepers Standards Compliance**: SS1, SS2, SS3 for interoperability
+
+For detailed compliance verification, see [packages/screeps-bot/ROADMAP_COMPLIANCE.md](packages/screeps-bot/ROADMAP_COMPLIANCE.md).
 
 ### Setting up Dev Environment
 
