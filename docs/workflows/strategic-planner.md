@@ -67,7 +67,7 @@ These variables can be configured but have sensible defaults:
 **Cause**: Required secrets (SCREEPS_TOKEN and/or GRAFANA_SERVICE_ACCOUNT_TOKEN) are not configured or are empty.
 
 **Solution**: 
-1. Check the workflow logs for the "Validate required secrets" step
+1. Check the workflow logs for the "Validate required secrets" step (available after merging this PR)
 2. Configure the missing secrets as described above
 3. Re-run the workflow
 
