@@ -1,0 +1,71 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"]
+    },
+    "screeps-mcp": {
+      "type": "local",
+      "tools": ["*"],
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "-e",
+        "SCREEPS_TOKEN=${SCREEPS_TOKEN}",
+        "-e",
+        "SCREEPS_SHARD=${SCREEPS_SHARD:-shard3}",
+        "ghcr.io/ralphschuler/screeps-mcp:latest"
+      ]
+    },
+    "screeps-docs-mcp": {
+      "type": "local",
+      "tools": ["*"],
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "-e",
+        "DOCS_CACHE_TTL=${DOCS_CACHE_TTL:-3600}",
+        "ghcr.io/ralphschuler/screeps-docs-mcp:latest"
+      ]
+    },
+    "screeps-wiki-mcp": {
+      "type": "local",
+      "tools": ["*"],
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "-e",
+        "WIKI_CACHE_TTL=${WIKI_CACHE_TTL:-3600}",
+        "ghcr.io/ralphschuler/screeps-wiki-mcp:latest"
+      ]
+    },
+    "screeps-typescript-mcp": {
+      "type": "local",
+      "tools": ["*"],
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "ghcr.io/ralphschuler/screeps-typescript-mcp:latest"
+      ]
+    },
+    "grafana": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-grafana"
+      ],
+      "env": {
+        "GRAFANA_URL": "${GRAFANA_URL:-https://ralphschuler.grafana.net}",
+        "GRAFANA_SERVICE_ACCOUNT_TOKEN": "${GRAFANA_SERVICE_ACCOUNT_TOKEN}"
+      }
+    }
+  }
+}

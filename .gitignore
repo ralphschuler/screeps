@@ -103,3 +103,7 @@ screeps.json
 
 # Generated documentation (wiki build output)
 wiki/
+
+# Copilot strategic planning reports
+reports/
+!reports/copilot/.gitkeep
