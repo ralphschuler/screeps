@@ -106,7 +106,7 @@ The bot implements a comprehensive **swarm-based architecture** as specified in 
 
 **Swarm Intelligence**: Emergent behavior through local rules and pheromone-based coordination
 - **9 Pheromone Types**: expand, harvest, build, upgrade, defense, war, siege, logistics, nukeTarget
-  - 8 core types from ROADMAP + 1 extension (nukeTarget) for nuclear warfare coordination
+- 8 core types from ROADMAP + 1 extension (nukeTarget) for nuclear warfare coordination
 - **Stigmergic Communication**: Indirect coordination via Room.memory pheromone values
 - **Event-Driven Updates**: Pheromones respond to hostiles, nukes, structure destruction
 - **Decay & Diffusion**: Pheromones decay over time and propagate to neighboring rooms
