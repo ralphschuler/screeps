@@ -185,6 +185,18 @@ src/
 └── visuals/        # Debug visualizations
 ```
 
+### Task System (Optional)
+
+The repository includes an optional **task-based architecture** for creep management in `packages/screeps-tasks`:
+
+- **Action-based composition**: Build creep behaviors from atomic actions (Harvest, Transfer, Build, etc.)
+- **TaskManager**: Create, execute, and manage task lifecycles
+- **Task queues and priorities**: Advanced task scheduling and prioritization
+- **Memory persistence**: Tasks persist across ticks
+- **Extensible**: Create custom actions for specific behaviors
+
+**Note**: The main bot currently uses a **behavior-based approach** via kernel processes. The task system is available as an alternative architecture pattern but is not currently integrated into the main bot implementation. See `packages/screeps-tasks/README.md` for usage examples.
+
 ## Testing
 
 ```bash

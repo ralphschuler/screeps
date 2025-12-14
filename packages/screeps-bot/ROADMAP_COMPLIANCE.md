@@ -201,7 +201,7 @@ export enum EvolutionStage {
 
 ### ✅ Section 10: Creep-Ökosystem – Rollen & Benennung
 
-**Status**: COMPLIANT
+**Status**: COMPLIANT (with extension)
 
 **Implementation**:
 - **Wirtschaft**: worker, staticMiner, carrier, upgrader, builder, mineralMiner (all in `src/roles/economy/`)
@@ -211,10 +211,20 @@ export enum EvolutionStage {
 - **Utility**: Various utility roles
 - **Power Creeps**: `src/roles/power/`
 
+**Task System Extension**:
+- **`packages/screeps-tasks`**: Standalone task-based architecture for creep management
+  - Provides action-based task composition (HarvestAction, TransferAction, etc.)
+  - TaskManager for task lifecycle management (create, execute, cleanup)
+  - Supports task queues, priorities, and conditional execution
+  - Action registry for custom action types
+  - Memory persistence for tasks across ticks
+- **Note**: The task system is available as a separate package but not currently integrated into the main bot implementation. The bot uses a behavior-based approach via kernel processes instead.
+
 **Evidence**:
 - All role categories from ROADMAP Section 10 are implemented
 - Squad coordination system supports multi-creep formations
 - Role-based process management via kernel
+- Task system provides alternative architecture pattern for creep management (available but not currently used)
 
 ### ✅ Section 11: Cluster- & Empire-Logik
 
