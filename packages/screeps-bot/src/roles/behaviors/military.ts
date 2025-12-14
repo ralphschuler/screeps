@@ -252,7 +252,7 @@ function getSquadMemory(squadId: string): SquadMemory | undefined {
  * Can assist neighboring rooms when requested by defense coordinator.
  */
 export function guard(ctx: CreepContext): CreepAction {
-  const mem = ctx.creep.memory as unknown as SwarmCreepMemory & { assistTarget?: string };
+  const mem = ctx.creep.memory as unknown as SwarmCreepMemory;
 
   // Check if assigned to assist another room
   if (mem.assistTarget) {
@@ -425,7 +425,7 @@ function findPriorityTargetFromList(ctx: CreepContext, hostiles: Creep[]): Creep
  * Can assist neighboring rooms when requested.
  */
 export function healer(ctx: CreepContext): CreepAction {
-  const mem = ctx.creep.memory as unknown as SwarmCreepMemory & { assistTarget?: string };
+  const mem = ctx.creep.memory as unknown as SwarmCreepMemory;
 
   // Always heal self if critically damaged
   if (ctx.creep.hits < ctx.creep.hitsMax * 0.5) {
@@ -804,7 +804,7 @@ export function harasser(ctx: CreepContext): CreepAction {
  * Rangers will retreat if critically damaged to preserve expensive units.
  */
 export function ranger(ctx: CreepContext): CreepAction {
-  const mem = ctx.creep.memory as unknown as SwarmCreepMemory & { assistTarget?: string };
+  const mem = ctx.creep.memory as unknown as SwarmCreepMemory;
 
   // TACTICAL RETREAT: If critically damaged (below 30% HP), retreat to home room
   // Rangers are valuable ranged attackers, often boosted for maximum effectiveness

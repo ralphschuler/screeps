@@ -10,7 +10,7 @@ import type { SwarmCreepMemory } from "../../src/memory/schemas";
 describe("Guard Assist Behavior", () => {
   describe("Assist Target Assignment", () => {
     it("should accept assist target assignment from defense coordinator", () => {
-      const memory = {} as unknown as SwarmCreepMemory & { assistTarget?: string };
+      const memory = {} as unknown as SwarmCreepMemory;
       
       // Defense coordinator assigns target
       memory.assistTarget = "W2N2";
@@ -21,7 +21,7 @@ describe("Guard Assist Behavior", () => {
     it("should clear assist target when threat is resolved", () => {
       const memory = {
         assistTarget: "W2N2"
-      } as unknown as SwarmCreepMemory & { assistTarget?: string };
+      } as unknown as SwarmCreepMemory;
       
       // Simulate threat resolved
       const hostilesCount = 0;
