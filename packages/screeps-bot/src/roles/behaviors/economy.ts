@@ -197,24 +197,38 @@ function findEnergy(ctx: CreepContext): CreepAction {
 }
 
 /**
- * Deliver energy to spawn structures and towers.
+ * Deliver energy following the standard priority order.
+ * Priority: Spawns → Extensions → Towers → Storage → Containers → Anything Else
  * Uses cached target finding to reduce CPU usage.
  * 
  * BUGFIX: Filter by capacity here, not in room cache, to get fresh capacity state.
  * Multiple creeps can fill structures in the same tick, making cached capacity stale.
  */
 function deliverEnergy(ctx: CreepContext): CreepAction | null {
-  // Spawns and extensions first (cache for 5 ticks - they fill quickly)
+  // 1. Spawns first (highest priority, cache for 5 ticks - they fill quickly)
   // BUGFIX: Filter by free capacity HERE for fresh state, not in room cache
-  const spawnStructuresWithCapacity = ctx.spawnStructures.filter(
-    s => s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+  const spawns = ctx.spawnStructures.filter(
+    (s): s is StructureSpawn => 
+      s.structureType === STRUCTURE_SPAWN &&
+      s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
   );
-  if (spawnStructuresWithCapacity.length > 0) {
-    const closest = findCachedClosest(ctx.creep, spawnStructuresWithCapacity, "deliver_spawn", 5);
+  if (spawns.length > 0) {
+    const closest = findCachedClosest(ctx.creep, spawns, "deliver_spawn", 5);
     if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
   }
 
-  // Then towers (cache for 10 ticks - they drain slower)
+  // 2. Extensions second (cache for 5 ticks - they fill quickly)
+  const extensions = ctx.spawnStructures.filter(
+    (s): s is StructureExtension => 
+      s.structureType === STRUCTURE_EXTENSION &&
+      s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+  );
+  if (extensions.length > 0) {
+    const closest = findCachedClosest(ctx.creep, extensions, "deliver_ext", 5);
+    if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+  }
+
+  // 3. Towers third (cache for 10 ticks - they drain slower)
   // BUGFIX: Filter by free capacity HERE for fresh state, not in room cache
   // FIX: Lower threshold from 200 to 100 to keep towers better stocked for defense
   // Towers need to be kept full for rapid response to threats (ROADMAP.md Section 12)
@@ -223,6 +237,21 @@ function deliverEnergy(ctx: CreepContext): CreepAction | null {
   );
   if (towersWithCapacity.length > 0) {
     const closest = findCachedClosest(ctx.creep, towersWithCapacity, "deliver_tower", 10);
+    if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+  }
+
+  // 4. Storage fourth
+  if (ctx.storage && ctx.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+    return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+  }
+
+  // 5. Containers fifth (cache for 10 ticks)
+  // BUGFIX: Filter by capacity HERE for fresh state, not in room cache
+  const depositContainersWithCapacity = ctx.depositContainers.filter(
+    c => c.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+  );
+  if (depositContainersWithCapacity.length > 0) {
+    const closest = findCachedClosest(ctx.creep, depositContainersWithCapacity, "deliver_cont", 10);
     if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
   }
 
@@ -235,23 +264,18 @@ function deliverEnergy(ctx: CreepContext): CreepAction | null {
 
 /**
  * LarvaWorker - General purpose starter creep.
- * Priority: deliver energy → haul to storage → build → upgrade
+ * Priority: deliver energy (spawns→extensions→towers→storage→containers) → build → upgrade
  */
 export function larvaWorker(ctx: CreepContext): CreepAction {
   const isWorking = updateWorkingState(ctx);
 
   if (isWorking) {
     logger.debug(`${ctx.creep.name} larvaWorker working with ${ctx.creep.store.getUsedCapacity(RESOURCE_ENERGY)} energy`);
-    // Try to deliver energy
+    // Try to deliver energy following standard priority: spawns→extensions→towers→storage→containers
     const deliverAction = deliverEnergy(ctx);
     if (deliverAction) {
       logger.debug(`${ctx.creep.name} larvaWorker delivering via ${deliverAction.type}`);
       return deliverAction;
-    }
-
-    // Haul to storage when spawns/extensions/towers are full
-    if (ctx.storage && ctx.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-      return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
     }
 
     // Use pheromones to decide between building and upgrading
@@ -743,6 +767,7 @@ export function builder(ctx: CreepContext): CreepAction {
 
 /**
  * Upgrader - Upgrade the room controller.
+ * Priority: deliver energy to spawns/extensions/towers first, then upgrade controller
  * OPTIMIZATION: Upgraders are stationary workers that benefit from long cache times
  * and stable behavior to maximize idle detection efficiency.
  */
@@ -750,6 +775,42 @@ export function upgrader(ctx: CreepContext): CreepAction {
   const isWorking = updateWorkingState(ctx);
 
   if (isWorking) {
+    // Before upgrading, check if critical structures need energy
+    // Priority: Spawns → Extensions → Towers → Upgrade
+    // This ensures the room economy stays healthy while upgrading
+    
+    // 1. Check spawns first (highest priority)
+    const spawns = ctx.spawnStructures.filter(
+      (s): s is StructureSpawn => 
+        s.structureType === STRUCTURE_SPAWN &&
+        s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+    );
+    if (spawns.length > 0) {
+      const closest = findCachedClosest(ctx.creep, spawns, "upgrader_spawn", 5);
+      if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+    }
+
+    // 2. Check extensions second
+    const extensions = ctx.spawnStructures.filter(
+      (s): s is StructureExtension => 
+        s.structureType === STRUCTURE_EXTENSION &&
+        s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+    );
+    if (extensions.length > 0) {
+      const closest = findCachedClosest(ctx.creep, extensions, "upgrader_ext", 5);
+      if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+    }
+
+    // 3. Check towers third
+    const towersWithCapacity = ctx.towers.filter(
+      t => t.store.getFreeCapacity(RESOURCE_ENERGY) >= 100
+    );
+    if (towersWithCapacity.length > 0) {
+      const closest = findCachedClosest(ctx.creep, towersWithCapacity, "upgrader_tower", 10);
+      if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+    }
+
+    // 4. All critical structures filled - now upgrade controller
     if (ctx.room.controller) {
       return { type: "upgrade", target: ctx.room.controller };
     }
@@ -1267,8 +1328,10 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     }
 
     // 3. Towers third (cache 10 ticks)
+    // FIX: Lower threshold from 200 to 100 to keep towers better stocked for defense
+    // Towers need to be kept full for rapid response to threats (ROADMAP.md Section 12)
     const towersWithCapacity = ctx.towers.filter(
-      t => t.store.getFreeCapacity(RESOURCE_ENERGY) > 200
+      t => t.store.getFreeCapacity(RESOURCE_ENERGY) >= 100
     );
     if (towersWithCapacity.length > 0) {
       const closest = findCachedClosest(ctx.creep, towersWithCapacity, "remoteHauler_tower", 10);
