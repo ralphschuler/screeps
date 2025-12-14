@@ -17,6 +17,7 @@
  * - ClusterManager (cluster:manager)
  * - MarketManager (empire:market)
  * - PixelBuyingManager (empire:pixelBuying)
+ * - PixelGenerationManager (empire:pixelGeneration)
  * - NukeManager (empire:nuke)
  * - PowerBankHarvestingManager (empire:powerBank)
  * - PowerCreepManager (empire:powerCreep)
@@ -36,6 +37,7 @@ import { expansionManager } from "../empire/expansionManager";
 import { marketManager } from "../empire/marketManager";
 import { nukeManager } from "../empire/nukeManager";
 import { pixelBuyingManager } from "../empire/pixelBuyingManager";
+import { pixelGenerationManager } from "../empire/pixelGenerationManager";
 import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
 import { powerCreepManager } from "../empire/powerCreepManager";
 import { remoteInfrastructureManager } from "../empire/remoteInfrastructure";
@@ -65,6 +67,7 @@ export function registerAllProcesses(): void {
     remoteInfrastructureManager,
     marketManager,
     pixelBuyingManager,
+    pixelGenerationManager,
     nukeManager,
     powerBankHarvestingManager,
     powerCreepManager,
