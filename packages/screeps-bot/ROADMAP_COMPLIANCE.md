@@ -167,7 +167,7 @@ export enum EvolutionStage {
 
 ### ✅ Section 9: Base-Blueprints (Baupläne)
 
-**STATUS**: COMPLIANT
+**Status**: COMPLIANT
 
 **Implementation**:
 - Blueprints system: `src/layouts/blueprints.ts`
@@ -315,7 +315,7 @@ export enum EvolutionStage {
 
 ### ✅ Section 18: CPU-Management & Scheduling
 
-**STATUS**: COMPLIANT
+**Status**: COMPLIANT
 
 **Implementation**:
 - **Kernel scheduler**: `src/core/kernel.ts` with priority-based process execution
@@ -338,7 +338,7 @@ export enum EvolutionStage {
 
 ### ✅ Section 19: Resilienz & Respawn-Fähigkeit
 
-**STATUS**: COMPLIANT
+**Status**: COMPLIANT
 
 **Implementation**:
 - **Multi-room redundancy**: Empire manager encourages early expansion
@@ -354,7 +354,7 @@ export enum EvolutionStage {
 
 ### ✅ Section 20: Bewegung, Pathfinding & Traffic-Management
 
-**STATUS**: COMPLIANT
+**Status**: COMPLIANT
 
 **Implementation**:
 - **screeps-cartographer integration**: Main movement system
@@ -376,7 +376,7 @@ export enum EvolutionStage {
 
 ### ✅ Section 21: Logging, Monitoring & Visualisierung
 
-**STATUS**: COMPLIANT
+**Status**: COMPLIANT
 
 **Implementation**:
 - **Logger**: `src/core/logger.ts` with configurable log levels (DEBUG, INFO, WARN, ERROR)
@@ -397,7 +397,7 @@ export enum EvolutionStage {
 
 ### ✅ Section 22: POSIS Operating System Architecture
 
-**STATUS**: COMPLIANT
+**Status**: COMPLIANT
 
 **Implementation**:
 - **POSIS interfaces**: `src/core/posis/` directory
@@ -418,7 +418,7 @@ export enum EvolutionStage {
 
 ### ✅ Section 23: Projektstruktur, Modularität & Tests
 
-**STATUS**: COMPLIANT
+**Status**: COMPLIANT
 
 **Implementation**:
 - **Project structure**: Matches ROADMAP specification exactly:
@@ -444,7 +444,7 @@ export enum EvolutionStage {
 
 ### ✅ Section 24: Screepers Standards Integration
 
-**STATUS**: COMPLIANT
+**Status**: COMPLIANT
 
 **Implementation**:
 - **SS1: Default Public Segment**: `src/standards/SS1SegmentManager.ts`
