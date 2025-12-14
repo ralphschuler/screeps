@@ -1,5 +1,12 @@
 const https = require('https');
 
+// TODO(P2): ARCH - Convert respawner.js to TypeScript for type safety
+// This utility handles critical account operations and would benefit from type checking
+// TODO(P1): SECURITY - Add rate limiting for API calls to prevent accidental DDoS
+// Too many rapid calls could trigger account restrictions
+// TODO(P2): STYLE - Replace callback-based promises with async/await throughout
+// Modern async patterns would improve readability
+
 // Configuration constants
 const SPAWN_SEARCH_RADIUS = 3; // Rooms to search in each direction from starting room
 const SHARD_SCORE_TICK_DIVISOR = 1000; // Divisor for normalizing tick count in shard scoring

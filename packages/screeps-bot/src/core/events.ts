@@ -22,6 +22,13 @@
  * // Emit events
  * eventBus.emit('hostile.detected', { roomName: 'W1N1', creepId: '...' });
  * ```
+ * 
+ * TODO(P2): ARCH - Consider implementing event replay/persistence for debugging
+ * Store recent events in a ring buffer for post-mortem analysis of issues
+ * TODO(P2): PERF - Add event coalescing for high-frequency events
+ * Multiple identical events in the same tick could be merged to reduce handler calls
+ * TODO(P3): TEST - Add unit tests for event bus priority ordering and bucket filtering
+ * Ensure events are processed in correct order and bucket thresholds are respected
  */
 
 import { logger } from "./logger";

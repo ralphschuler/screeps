@@ -9,6 +9,11 @@
  * 
  * Note: This uses basic version comparison logic suitable for simple ranges.
  * For complex version requirements, npm's built-in engine checking is recommended.
+ * 
+ * TODO(P3): STYLE - Convert to TypeScript for consistency with the rest of the codebase
+ * All other source files are TypeScript
+ * TODO(P3): FEATURE - Add support for more complex semver ranges (e.g., ^, ~, ||)
+ * Current implementation only handles >= and <= operators
  */
 
 const { engines } = require('../package.json');

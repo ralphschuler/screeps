@@ -1,5 +1,12 @@
 /**
  * MCP Tool handlers for Screeps wiki operations
+ * 
+ * TODO(P2): FEATURE - Add article version tracking for change detection
+ * Notify users when commonly accessed articles have been updated
+ * TODO(P3): PERF - Implement request batching for multiple article fetches
+ * Reduce HTTP overhead when fetching related articles
+ * TODO(P2): DOC - Add JSDoc for return types of all handler functions
+ * Better documentation improves maintainability
  */
 
 import { z } from "zod";

@@ -13,20 +13,22 @@
  *
  * Addresses Issues: #6, #20, #36
  * 
- * TODO: Implement multi-shard coordination via InterShardMemory (ROADMAP Section 3)
+ * TODO(P2): ARCH - Implement multi-shard coordination via InterShardMemory (ROADMAP Section 3)
  * Track shard roles, resources, and portal networks across shards
- * TODO: Add expansion candidate scoring with multiple factors
+ * TODO(P2): FEATURE - Add expansion candidate scoring with multiple factors
  * Consider source count, mineral type, distance, hostile neighbors, portals
- * TODO: Implement war target prioritization based on strategic value
+ * TODO(P2): ARCH - Implement war target prioritization based on strategic value
  * High-value targets: blocking expansion, valuable resources, weak defenses
- * TODO: Add GCL progress notifications for planning expansion timing
+ * TODO(P3): FEATURE - Add GCL progress notifications for planning expansion timing
  * Alert when GCL is about to level up so expansion can be prepared
- * TODO: Consider implementing empire statistics dashboard
+ * TODO(P3): FEATURE - Consider implementing empire statistics dashboard
  * Track total rooms, energy income, military strength, market activity
- * TODO: Add automatic shard migration for load balancing
+ * TODO(P3): ARCH - Add automatic shard migration for load balancing
  * When one shard is overloaded, migrate operations to less crowded shards
- * TODO: Implement portal network graph for inter-shard travel optimization
+ * TODO(P3): ARCH - Implement portal network graph for inter-shard travel optimization
  * Pre-compute best portal routes for expansion and resource sharing
+ * TODO(P2): TEST - Add integration tests for empire decision-making logic
+ * Verify expansion and war decisions are made correctly
  */
 
 import { ProcessPriority } from "../core/kernel";
