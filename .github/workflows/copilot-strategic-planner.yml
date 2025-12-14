@@ -6,6 +6,15 @@ on:
     # Run every 6 hours to analyze bot performance and create improvement roadmaps
     - cron: "0 */6 * * *"
   workflow_dispatch:
+    inputs:
+      verbose:
+        description: 'Enable verbose logging for debugging'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
 permissions:
   contents: read
@@ -39,7 +48,7 @@ jobs:
           prompt-path: .github/copilot/prompts/strategic-planner
           output-path: "reports/copilot/strategic-planner-${{ github.run_id }}.log"
           timeout: "40"
-          verbose: "true"
+          verbose: "${{ inputs.verbose || 'false' }}"
           additional-mcp-config: '@.github/mcp/all-servers.json'
 
       - name: Upload strategic planning report
