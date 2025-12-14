@@ -6,6 +6,7 @@ import { SourceMapConsumer } from "source-map";
 // TODO(P2): PERF - Cache source map parsing to avoid expensive re-parsing on global resets
 // First call after reset uses >30 CPU which can impact startup performance
 // TODO(P1): BUG - Add error handling for missing source map file
+// Issue URL: https://github.com/ralphschuler/screeps/issues/615
 // If main.js.map is not bundled, the require will throw
 
 /**

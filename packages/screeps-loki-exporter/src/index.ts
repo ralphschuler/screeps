@@ -3,6 +3,7 @@
 // TODO(P2): FEATURE - Add health check endpoint for monitoring
 // Allow external systems to verify the exporter is running
 // TODO(P2): FEATURE - Add log filtering/sampling to reduce volume in high-traffic scenarios
+// Issue URL: https://github.com/ralphschuler/screeps/issues/617
 // Not all console output needs to be exported to Loki
 
 import { loadConfig } from './config';

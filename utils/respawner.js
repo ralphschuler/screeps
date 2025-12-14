@@ -5,6 +5,7 @@ const https = require('https');
 // TODO(P1): SECURITY - Add rate limiting for API calls to prevent accidental DDoS
 // Too many rapid calls could trigger account restrictions
 // TODO(P2): STYLE - Replace callback-based promises with async/await throughout
+// Issue URL: https://github.com/ralphschuler/screeps/issues/618
 // Modern async patterns would improve readability
 
 // Configuration constants
