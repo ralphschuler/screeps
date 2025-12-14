@@ -825,6 +825,62 @@ export function getRemoteRoomNeedingWorkers(homeRoom: string, role: string, swar
 }
 
 /**
+ * Assign target room to remote role creep memory.
+ * 
+ * Handles target room assignment for remote roles (remoteHarvester, remoteHauler, remoteWorker).
+ * For remoteHarvester and remoteHauler, finds a remote room that needs more workers of that role.
+ * For remoteWorker, uses load balancing to assign to the remote room with fewest workers.
+ * 
+ * @param role - The role to assign a target room for
+ * @param memory - The creep memory to update with targetRoom
+ * @param swarm - The swarm state containing remote assignments
+ * @param homeRoom - The home room name for the creep
+ * @returns true if assignment successful or not needed, false if no target available
+ */
+function assignRemoteTargetRoom(role: string, memory: SwarmCreepMemory, swarm: SwarmState, homeRoom: string): boolean {
+  if (role === "remoteHarvester" || role === "remoteHauler") {
+    const targetRoom = getRemoteRoomNeedingWorkers(homeRoom, role, swarm);
+    if (targetRoom) {
+      memory.targetRoom = targetRoom;
+      return true;
+    }
+    return false;
+  }
+  
+  if (role === "remoteWorker") {
+    const remoteAssignments = swarm.remoteAssignments ?? [];
+    if (remoteAssignments.length > 0) {
+      // Load balancing: assign to remote room with fewest remoteWorkers
+      // If multiple rooms have same count, use Game.time for deterministic round-robin
+      let minCount = Infinity;
+      let candidatesWithMinCount: string[] = [];
+      
+      for (const remoteName of remoteAssignments) {
+        const count = countRemoteCreepsByTargetRoom(homeRoom, role, remoteName);
+        if (count < minCount) {
+          minCount = count;
+          candidatesWithMinCount = [remoteName];
+        } else if (count === minCount) {
+          candidatesWithMinCount.push(remoteName);
+        }
+      }
+      
+      // Select from candidates: use round-robin if multiple, otherwise take the only one
+      const bestRemote = candidatesWithMinCount.length > 1
+        ? candidatesWithMinCount[Game.time % candidatesWithMinCount.length]
+        : candidatesWithMinCount[0];
+      
+      memory.targetRoom = bestRemote;
+      return true;
+    }
+    return false;
+  }
+  
+  // Not a remote role - no assignment needed, return true to allow spawning
+  return true;
+}
+
+/**
  * Check if room needs role
  */
 export function needsRole(roomName: string, role: string, swarm: SwarmState, isBootstrapMode = false): boolean {
@@ -844,6 +900,12 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
   if (role === "remoteHarvester" || role === "remoteHauler") {
     // Check if there's a remote room that needs workers
     return getRemoteRoomNeedingWorkers(roomName, role, swarm) !== null;
+  }
+  
+  // Remote worker: only spawn if we have remote rooms assigned
+  if (role === "remoteWorker") {
+    const remoteAssignments = swarm.remoteAssignments ?? [];
+    return remoteAssignments.length > 0;
   }
   
   // Remote guard: spawn if remote rooms have threats
@@ -1026,7 +1088,7 @@ function needsReserver(_homeRoom: string, swarm: SwarmState): boolean {
         // Check if we already have a reserver going there
         const hasReserver = Object.values(Game.creeps).some(creep => {
           const memory = creep.memory as unknown as SwarmCreepMemory;
-          return memory.role === "claimer" && memory.targetRoom === remoteName;
+          return memory.role === "claimer" && memory.targetRoom === remoteName && memory.task === "reserve";
         });
         
         if (!hasReserver) {
@@ -1037,7 +1099,7 @@ function needsReserver(_homeRoom: string, swarm: SwarmState): boolean {
       // No vision - check if we have a reserver assigned
       const hasReserver = Object.values(Game.creeps).some(creep => {
         const memory = creep.memory as unknown as SwarmCreepMemory;
-        return memory.role === "claimer" && memory.targetRoom === remoteName;
+        return memory.role === "claimer" && memory.targetRoom === remoteName && memory.task === "reserve";
       });
       
       if (!hasReserver) {
@@ -1437,17 +1499,8 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
 
     // For remote roles, set the targetRoom to the remote room that needs workers
     // Skip spawning if no valid target room is available (prevents spawn blocking)
-    // NOTE: This check is defensive - remote roles are not in BOOTSTRAP_SPAWN_ORDER
-    // and needsRole should already filter them. However, this provides extra safety
-    // in case bootstrap order is modified in the future.
-    if (role === "remoteHarvester" || role === "remoteHauler") {
-      const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
-      if (targetRoom) {
-        memory.targetRoom = targetRoom;
-      } else {
-        // No valid target room - don't spawn this remote role
-        return;
-      }
+    if (!assignRemoteTargetRoom(role, memory, swarm, room.name)) {
+      return;
     }
 
     let result: ScreepsReturnCode;
@@ -1549,14 +1602,8 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
 
     // For remote roles, set the targetRoom to the remote room that needs workers
     // Skip spawning if no valid target room is available (prevents spawn blocking)
-    if (role === "remoteHarvester" || role === "remoteHauler") {
-      const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
-      if (targetRoom) {
-        memory.targetRoom = targetRoom;
-      } else {
-        // No valid target room - skip this role and try next
-        continue;
-      }
+    if (!assignRemoteTargetRoom(role, memory, swarm, room.name)) {
+      continue;
     }
 
     // For inter-room carrier, assign a transfer request
