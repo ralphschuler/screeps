@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "module": "esnext",
+    "lib": ["es2018"],
+    "target": "es2018",
+    "moduleResolution": "node",
+    "outDir": "../dist-test",
+    "rootDir": ".",
+    "sourceMap": false,
+    "strict": true,
+    "experimentalDecorators": true,
+    "downlevelIteration": true,
+    "noImplicitReturns": true,
+    "allowSyntheticDefaultImports": true,
+    "allowUnreachableCode": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["mocha", "chai", "node"]
+  },
+  "include": ["./**/*", "../src/**/*"],
+  "exclude": ["node_modules"]
+}
