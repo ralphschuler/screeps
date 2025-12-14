@@ -1,8 +1,13 @@
-# Bucket Management and Process Prioritization
+# Bucket Management and Process Execution
 
 ## Overview
 
-The SwarmBot uses an intelligent bucket management system to prevent CPU throttling while ensuring critical operations always run. This document explains how the system works and what to expect during different bucket levels.
+The SwarmBot uses the CPU bucket as an indicator of CPU health, but **no longer filters processes based on bucket level**. Instead, the kernel uses:
+- **Rolling index process execution**: Ensures all processes get their turn even under CPU pressure
+- **CPU budget checks**: Stops execution when CPU limit is reached, picking up where it left off next tick
+- **Priority-based ordering**: Higher priority processes execute first in the queue
+
+This approach ensures critical operations complete first while still giving every process a fair chance to run.
 
 ## Important: Pixel Generation is Disabled
 
@@ -30,7 +35,7 @@ Game.cpu.generatePixel();
 
 ### Re-enabling Automatic Pixel Generation (Not Recommended)
 
-If you want to re-enable automatic generation despite the risks:
+If you want to re-enable automatic generation:
 
 ```typescript
 // In src/core/kernel.ts, change:
@@ -39,109 +44,94 @@ pixelGenerationEnabled: false,
 pixelGenerationEnabled: true,
 ```
 
-**Warning**: Only do this if you have:
-- Stable CPU usage well below your limit
-- Bucket consistently stays at or near 10,000
-- Understanding that your bot will enter low bucket mode every time it generates a pixel
+**Note**: This will empty the bucket to 0, but the bot will continue to function normally thanks to the rolling index system.
 
-## Bucket Modes
+## Bucket Modes (Informational Only)
 
-The kernel operates in one of four modes based on your CPU bucket level:
+The kernel tracks bucket modes for monitoring purposes, but **these modes no longer affect which processes run**:
 
 ### Critical Mode (Bucket < 500)
-- **What runs**: Only CRITICAL priority processes
-- **What's filtered**: Everything except movement finalization
-- **Purpose**: Prevent complete CPU exhaustion
-- **Typical processes**: None (minimal tick processing only)
+- **Status indicator only** - all processes still attempt to run
+- **Purpose**: Shows bucket is critically low in logs/metrics
 
 ### Low Mode (Bucket < 2000)
-- **What runs**: CRITICAL and HIGH priority processes
-- **What's filtered**: MEDIUM and LOW priority processes
-- **Purpose**: Recover bucket while maintaining core functionality
-- **Typical processes**:
-  - ✅ Room management (HIGH)
-  - ✅ Creep execution (HIGH)
-  - ✅ Spawn logic (always runs)
-  - ✅ Emergency response (runs with rooms)
-  - ❌ Empire management (MEDIUM)
-  - ❌ Market operations (LOW)
-  - ❌ Cluster coordination (MEDIUM)
-  - ❌ Expansion planning (MEDIUM)
-  - ❌ Power bank harvesting (LOW)
+- **Status indicator only** - all processes still attempt to run
+- **Purpose**: Shows bucket is below optimal level
 
 ### Normal Mode (Bucket 2000-9000)
-- **What runs**: All processes
-- **What's filtered**: Nothing
-- **Purpose**: Standard operation
-- **Typical processes**: Everything runs
+- **Status indicator only** - all processes still attempt to run
+- **Purpose**: Standard operation indicator
 
 ### High Mode (Bucket > 9000)
-- **What runs**: All processes with full budgets
-- **What's filtered**: Nothing
-- **Purpose**: Utilize excess CPU for expensive operations
-- **Typical processes**: Everything runs with higher budgets
+- **Status indicator only** - all processes still attempt to run
+- **Purpose**: Shows bucket is at healthy level
+
+## How Process Execution Actually Works
+
+Instead of filtering by bucket mode, the kernel uses:
+
+1. **Rolling Index Queue**: Processes execute in priority order. If CPU budget is exhausted mid-tick, execution resumes at the next process in the next tick.
+
+2. **CPU Budget Checks**: Each tick, the kernel stops executing new processes when CPU limit is approached, preventing throttling.
+
+3. **Fair Execution**: Every process eventually runs, even under CPU pressure. Higher priority processes execute first, but lower priority ones still get their turn.
+
+4. **Interval-based Scheduling**: Processes define their own intervals (e.g., run every 10 ticks). The kernel respects these intervals regardless of bucket level.
 
 ## What You'll See in Logs
 
-### During Low Bucket Mode
+### Bucket Status Logging
 
-Every 100 ticks, you'll see:
+Every 100 ticks when bucket is low:
 ```
-Bucket LOW mode: 1850/10000 bucket. Running 15/42 processes (filtering LOW/MEDIUM priority)
-```
-
-This is **normal and expected** when your bucket is low. The bot is:
-1. ✅ Still managing your rooms
-2. ✅ Still running your creeps
-3. ✅ Still spawning new creeps
-4. ✅ Still responding to threats
-5. ⏸️ Pausing empire-wide decisions to recover CPU
-
-### Bootstrap Mode Logs
-
-Every 10 ticks during recovery:
-```
-BOOTSTRAP MODE: 1 active energy producers (1 larva, 0 harvest), 1 total. Energy: 508/1800
+Bucket LOW mode: 1850/10000 bucket. Running processes normally with rolling queue.
 ```
 
-This shows your room is recovering from workforce collapse (all creeps died). This is **normal** during:
-- Initial room setup
-- Post-attack recovery
-- After deploying new code with bugs
+This is **informational only**. The bot continues to run all processes in priority order.
 
-### Emergency Response Logs
+### CPU Budget Exhausted Logs
 
-When threats appear and are resolved:
+When CPU limit is reached mid-tick:
 ```
-Emergency resolved in W1N5
+Kernel: CPU budget exhausted after 25 processes. 17 processes deferred to next tick.
 ```
 
-This appears once per threat resolution, not repeatedly. If you see this every few ticks, something is wrong (please report as a bug).
+This shows the rolling queue in action - the remaining 17 processes will be first in line next tick.
 
-## Why Other Systems Stop
+## Why Bucket Doesn't Affect Execution
 
-If you notice your bot is only logging bootstrap and emergency messages, check your bucket:
+Previously, the bot would filter out low-priority processes when bucket was low. This approach had issues:
 
-1. **Bucket < 2000**: Most systems are intentionally paused
-   - This is **correct behavior** to prevent CPU throttling
-   - Your rooms and creeps still run normally
-   - Empire-wide decisions are deferred until bucket recovers
+1. **Starvation**: Some processes might never run if bucket stayed low
+2. **Unpredictable behavior**: Users couldn't rely on when features would work
+3. **Redundant**: CPU budget checks already prevent throttling
 
-2. **Bucket > 2000**: All systems should be running
-   - If you still only see minimal logs, there may be an issue
-   - Check for errors in the console
-   - Verify processes are registered: `kernel.getProcesses().length`
+The new approach with rolling index and CPU budget checks provides:
+- ✅ **Predictable execution**: All processes eventually run
+- ✅ **Fair scheduling**: Lower priority processes aren't starved
+- ✅ **CPU protection**: Budget checks prevent throttling
+- ✅ **Simpler logic**: Fewer edge cases and special behaviors
 
-## How to Improve Bucket
+## Managing CPU Usage
 
-### Short Term (Immediate Recovery)
+Since bucket mode no longer filters processes, manage CPU through:
+
+1. **Process Intervals**: Set longer intervals for non-critical processes
+2. **Process Priorities**: Higher priority processes execute first
+3. **CPU Budgets**: Each process has a CPU budget limit
+4. **Room Count**: Reduce active rooms if CPU usage is too high
+5. **Optimization**: Profile and optimize expensive processes
+
+## How to Manage Low Bucket
+
+### Short Term (If Bucket Stays Low)
 
 1. **Reduce room count** - Unclaim excess rooms temporarily
 2. **Disable visualizations** - Set `visualizations: false` in config
 3. **Disable profiling** - Set `profiling: false` in config
-4. **Wait it out** - The bot will automatically throttle and recover
+4. **Increase process intervals** - Make non-critical processes run less frequently
 
-### Long Term (Prevent Future Issues)
+### Long Term (Optimize CPU Usage)
 
 1. **Optimize pathfinding** - Enable path caching (ROADMAP Section 20)
 2. **Reduce creep count** - Tune spawn priorities to match your CPU
@@ -151,14 +141,14 @@ If you notice your bot is only logging bootstrap and emergency messages, check y
 
 ## Process Priority Reference
 
-Understanding process priorities helps you predict what will run:
+Process priorities determine execution order (higher runs first):
 
 ### CRITICAL (100)
-- Movement finalization (prevent stuck creeps)
-- Room processes under attack
+- Movement finalization
+- Critical room operations
 
 ### HIGH (75)
-- Room management (owned rooms)
+- Room management
 - Creep execution
 - Spawn coordination
 
@@ -166,27 +156,24 @@ Understanding process priorities helps you predict what will run:
 - Empire management
 - Cluster coordination
 - Terminal operations
-- Link management
-- Threat prediction
 
 ### LOW (25)
 - Market operations
 - Power bank harvesting
-- Power creep management
-- Factory operations
 - Expansion planning
-- Remote infrastructure
 
 ### IDLE (10)
 - Visualizations
 - Statistics collection
 
-## Monitoring Bucket Health
+**Note**: Unlike before, lower priority processes still execute - they just run after higher priority ones. With the rolling index, they're guaranteed to eventually get CPU time.
+
+## Monitoring Bucket and CPU
 
 ### Console Commands
 
 ```javascript
-// Check current bucket mode
+// Check current bucket mode (informational only)
 kernel.getBucketMode()
 
 // See all registered processes
@@ -195,62 +182,73 @@ kernel.getProcesses().map(p => `${p.name}: ${p.priority}`)
 // Check which processes ran this tick
 kernel.getProcesses().filter(p => p.stats.lastRunTick === Game.time)
 
-// View bucket history (if you log it)
-Memory.stats.bucket
+// Check processes skipped due to intervals (not bucket)
+kernel.getSkippedProcessesThisTick()
 ```
 
 ### Grafana Dashboards
 
 If you have Grafana configured, monitor:
-- `screeps_cpu_bucket` - Bucket level over time
+- `screeps_cpu_bucket` - Bucket level over time (informational)
 - `screeps_processes_run` - Processes executed per tick
-- `screeps_processes_skipped` - Processes filtered by bucket mode
-- `screeps_kernel_mode` - Bucket mode changes
+- `screeps_processes_skipped` - Processes skipped due to intervals
+- `screeps_cpu_used` - Actual CPU usage vs limit
 
 ## FAQ
 
-**Q: Why does my bot stop managing the market when bucket is low?**
-A: Market operations are LOW priority and get filtered in low bucket mode. This is intentional - market trades are not time-critical.
+**Q: What happens when bucket is low?**
+A: Nothing different - all processes still run in priority order. CPU budget checks prevent throttling.
 
-**Q: Is it bad if my bot is always in low bucket mode?**
-A: Not necessarily. If your rooms are functioning well, this means you're using all available CPU efficiently. However, empire-wide features (expansion, market) won't work.
+**Q: Why track bucket mode if it doesn't affect execution?**
+A: For monitoring and metrics. Low bucket indicates high CPU usage, which helps identify optimization needs.
 
-**Q: How do I force a process to always run?**
-A: Set its priority to CRITICAL or HIGH. But be careful - this can prevent bucket recovery.
+**Q: Will low priority processes ever run if CPU is constantly high?**
+A: Yes! The rolling index ensures they execute eventually. They might run less frequently, but they won't be completely blocked.
 
-**Q: Why doesn't the bot just run everything slower instead of filtering?**
-A: The wrap-around queue already does this. Filtering by priority ensures critical operations (spawns, defense) always complete even under CPU pressure.
+**Q: How do I ensure a process always runs?**
+A: Set high priority and a short interval (like 1 tick). But be aware this increases CPU usage.
 
-**Q: Can I change the bucket thresholds?**
-A: Yes, modify `config.cpu.bucketThresholds` in `src/config/index.ts`. Default: low=2000, high=9000, critical=500.
+**Q: Can I re-enable bucket-based filtering?**
+A: Not recommended. The rolling index + CPU budget approach is more predictable and fair.
+
+**Q: What if I hit CPU throttling?**
+A: The CPU budget checks should prevent this, but if it happens, reduce room count or optimize expensive processes.
 
 ## Troubleshooting
 
-### Bucket keeps dropping despite throttling
+### CPU usage too high / bucket dropping
 
-1. Check for infinite loops or unoptimized code
-2. Profile CPU usage: `npm run profile` (if implemented)
-3. Review process CPU budgets: `kernel.getProcesses().map(p => p.stats.avgCpu)`
-4. Consider reducing room count or creep count
+1. Check process CPU usage: `kernel.getProcesses().map(p => ({ name: p.name, cpu: p.stats.avgCpu }))`
+2. Reduce room count or creep count
+3. Increase intervals for non-critical processes
+4. Profile and optimize expensive processes
 
-### Bucket is high but systems still not running
+### Some processes not running
 
-1. Verify kernel initialized: `kernel.getProcesses().length > 0`
-2. Check for suspended processes: `kernel.getProcesses().filter(p => p.state === 'suspended')`
-3. Look for errors in console
-4. Check process intervals: Some processes only run every N ticks
+1. Check intervals: Processes might be scheduled to run infrequently
+2. Check suspension: `kernel.getProcesses().filter(p => p.state === 'suspended')`
+3. Check CPU budget exhaustion: Look for "CPU budget exhausted" logs
+4. Verify process registration: `kernel.getProcesses().length > 0`
 
-### Emergency resolved spam returned
+### Want to know execution order
 
-If you see "Emergency resolved" every few ticks after this fix, that indicates a bug was reintroduced. Please report with:
-- Bucket level
-- Room name
-- Hostile count in the room
-- Swarm danger level
+Processes execute in this order:
+1. Sorted by priority (CRITICAL → HIGH → MEDIUM → LOW → IDLE)
+2. Within same priority, order is deterministic but may vary
+3. Rolling index resumes from where it left off each tick
 
 ## See Also
 
 - [ROADMAP.md](../../ROADMAP.md) - CPU budget guidelines and architecture
 - [LOGGING.md](../../LOGGING.md) - Log format and querying
-- [src/core/kernel.ts](src/core/kernel.ts) - Kernel implementation
+- [src/core/kernel.ts](src/core/kernel.ts) - Kernel implementation with rolling index
 - [src/config/index.ts](src/config/index.ts) - Configuration options
+
+## Migration Note
+
+If you're upgrading from an older version that used bucket-based filtering:
+- Bucket modes are now informational only
+- All processes attempt to run regardless of bucket level
+- CPU budget checks and rolling index provide protection against throttling
+- You may see different processes running when bucket is low - this is expected
+- Monitor CPU usage and adjust process intervals/priorities as needed

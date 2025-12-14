@@ -48,7 +48,7 @@ describe("Kernel Skipped Processes Tracking", () => {
     expect(kernel.getSkippedProcessesThisTick()).to.equal(1);
   });
 
-  it("should track skipped processes due to bucket mode", () => {
+  it("should NOT skip processes due to bucket mode", () => {
     // Register processes with different priorities
     kernel.registerProcess({
       id: "low-priority",
@@ -72,9 +72,9 @@ describe("Kernel Skipped Processes Tracking", () => {
     Game.cpu.bucket = 500;
     kernel.run();
 
-    // In critical mode, low priority processes should be skipped
-    // High priority process should also be skipped (only CRITICAL runs in critical mode)
-    expect(kernel.getSkippedProcessesThisTick()).to.equal(2);
+    // With bucket mode process skipping removed, all processes should run
+    // regardless of bucket level (CPU budget checks will stop execution if needed)
+    expect(kernel.getSkippedProcessesThisTick()).to.equal(0);
   });
 
   it("should reset skipped processes count each tick", () => {
