@@ -4,7 +4,6 @@ description: |
 
   Features:
   - Automatic caching based on prompt content and model
-  - Configurable timeout (default: 30 minutes)
   - Verbose logging for debugging
   - MCP (Model Context Protocol) server configuration support with environment variable substitution
   - Conditional repository checkout (skips if already present)
@@ -18,6 +17,8 @@ description: |
   - Base GitHub MCP server is included by default
   - MCP config is written to ~/.config/github-copilot/servers.json (the standard Copilot CLI config path)
   - If MCP config file is not found, action continues with base GitHub MCP server (warning logged)
+  
+  Note: Set timeout-minutes at the job level in your workflow, not via the 'timeout' input (which is deprecated).
 author: "ralph@nyphon.de"
 inputs:
   prompt-path:
@@ -54,10 +55,6 @@ inputs:
   copilot-token:
     description: API token for GitHub Copilot service (use secrets.COPILOT_TOKEN)
     required: true
-  timeout:
-    description: Maximum time in minutes for Copilot CLI execution (default 30 minutes)
-    required: false
-    default: "30"
   verbose:
     description: Enable verbose logging for debugging (true/false, default false)
     required: false
@@ -301,7 +298,6 @@ runs:
       id: copilot
       if: inputs.force-response == 'true' || steps.cache-response.outputs.cache-hit != 'true'
       shell: bash
-      timeout-minutes: ${{ fromJSON(inputs.timeout) }}
       env:
         COPILOT_TOKEN: ${{ inputs.copilot-token }}
         PROMPT_FILE: ${{ steps.render.outputs.prompt-file }}
