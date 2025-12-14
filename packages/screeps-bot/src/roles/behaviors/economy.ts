@@ -216,8 +216,10 @@ function deliverEnergy(ctx: CreepContext): CreepAction | null {
 
   // Then towers (cache for 10 ticks - they drain slower)
   // BUGFIX: Filter by free capacity HERE for fresh state, not in room cache
+  // FIX: Lower threshold from 200 to 100 to keep towers better stocked for defense
+  // Towers need to be kept full for rapid response to threats (ROADMAP.md Section 12)
   const towersWithCapacity = ctx.towers.filter(
-    t => t.store.getFreeCapacity(RESOURCE_ENERGY) >= 200
+    t => t.store.getFreeCapacity(RESOURCE_ENERGY) >= 100
   );
   if (towersWithCapacity.length > 0) {
     const closest = findCachedClosest(ctx.creep, towersWithCapacity, "deliver_tower", 10);
@@ -596,8 +598,10 @@ export function hauler(ctx: CreepContext): CreepAction {
     }
 
     // 3. Towers third (cache 15 ticks - increased from 10)
+    // FIX: Lower threshold from 200 to 100 to keep towers better stocked for defense
+    // Towers need to be kept full for rapid response to threats (ROADMAP.md Section 12)
     const towersWithCapacity = ctx.towers.filter(
-      t => t.store.getFreeCapacity(RESOURCE_ENERGY) >= 200
+      t => t.store.getFreeCapacity(RESOURCE_ENERGY) >= 100
     );
     if (towersWithCapacity.length > 0) {
       const closest = findCachedClosest(ctx.creep, towersWithCapacity, "hauler_tower", 15);
