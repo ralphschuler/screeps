@@ -144,12 +144,14 @@ function initializeSystems(): void {
 /**
  * Run visualizations for all owned rooms and map-level visuals
  * OPTIMIZATION: Use cached owned rooms list
- * TODO(P3): PERF - Add CPU budget for visualizations to prevent them consuming too much
- * In low bucket, skip or simplify visualizations to preserve CPU
- * TODO(P3): PERF - Implement selective visualization based on observed rooms
- * Only draw visuals for rooms currently visible to reduce overhead
- * TODO(P3): FEATURE - Add visualization layers (basic/detailed/debug) controlled by flags
- * Allow users to toggle between minimal, standard, and verbose visualizations
+ * 
+ * TODO(P3): PERF - Visualization optimization improvements:
+ * - Add CPU budget for visualizations to prevent them consuming too much
+ *   (in low bucket, skip or simplify visualizations to preserve CPU)
+ * - Implement selective visualization based on observed rooms
+ *   (only draw visuals for rooms currently visible to reduce overhead)
+ * - Add visualization layers (basic/detailed/debug) controlled by flags
+ *   (allow users to toggle between minimal, standard, and verbose visualizations)
  */
 function runVisualizations(): void {
   const config = getConfig();
