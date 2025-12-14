@@ -1,51 +1,29 @@
 /**
- * Evolution & Posture System - Phase 3
- *
- * Manages room lifecycle:
- * - Evolution stages (colony levels)
- * - Posture states
- * - State transitions
+ * Evolution & Posture System managing room lifecycle stages and state transitions.
  */
 
 import type { EvolutionStage, RoomPosture, SwarmState } from "../memory/schemas";
 import { logger } from "../core/logger";
 import { kernel } from "../core/kernel";
 
-/**
- * Evolution stage thresholds
- */
+/** Evolution stage thresholds */
 export interface EvolutionThresholds {
-  /** RCL requirement */
   rcl: number;
-  /** Minimum rooms requirement */
   minRooms?: number;
-  /** Minimum remote rooms serviced */
   minRemoteRooms?: number;
-  /** Minimum GCL requirement */
   minGcl?: number;
-  /** Storage required */
   requiresStorage?: boolean;
-  /** Terminal required (when available for the RCL) */
   requiresTerminal?: boolean;
-  /** Labs required */
   requiresLabs?: boolean;
-  /** Minimum number of labs */
   minLabCount?: number;
-  /** Factory required */
   requiresFactory?: boolean;
-  /** Nuker required */
   requiresNuker?: boolean;
-  /** Power spawn required */
   requiresPowerSpawn?: boolean;
-  /** Observer required */
   requiresObserver?: boolean;
-  /** Minimum tower count (for defensive readiness) */
   minTowerCount?: number;
 }
 
-/**
- * Evolution stage configurations
- */
+/** Evolution stage configurations */
 export const EVOLUTION_STAGES: Record<EvolutionStage, EvolutionThresholds> = {
   seedNest: {
     rcl: 1

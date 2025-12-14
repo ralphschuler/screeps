@@ -1,20 +1,8 @@
 /**
- * Memory Schemas - Phase 1
- *
- * TypeScript interfaces for all memory structures:
- * - Global/Empire memory
- * - Cluster/Colony state
- * - Room/Swarm state
- * - Creep/Squad state
+ * TypeScript interfaces for all memory structures.
  */
 
-// ============================================================================
-// 1.1 Global / Empire Memory
-// ============================================================================
-
-/**
- * Room intel entry for known rooms
- */
+/** Room intel entry for known rooms */
 export interface RoomIntel {
   /** Room name */
   name: string;

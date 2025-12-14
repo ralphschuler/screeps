@@ -1,33 +1,5 @@
 /**
- * SwarmBot - Main Bot Entry Point
- *
- * Coordinates all swarm bot subsystems:
- * - Memory initialization
- * - Room management
- * - Creep role execution
- * - Spawning
- * - Strategic decisions
- *
- * ARCHITECTURE:
- * The bot uses a central Kernel for process management:
- * - Process registration with priority and CPU budget
- * - CPU bucket-based scheduling
- * - Lifecycle management (init, run, cleanup)
- *
- * PERFORMANCE OPTIMIZATIONS:
- * - CPU bucket management with early exit when bucket is low
- * - Priority-based creep execution (critical roles first)
- * - CPU budget checks between creeps
- * - Skips non-essential creeps when CPU is limited
- * 
- * TODO(P2): PERF - Add performance monitoring to detect CPU hotspots across subsystems
- * Track which subsystems consistently use the most CPU and optimize accordingly
- * TODO(P2): ARCH - Implement graceful degradation strategy for high room counts (100+)
- * Consider room batching or alternating room updates when approaching CPU limits
- * TODO(P1): FEATURE - Add emergency mode detection for catastrophic events (mass creep death)
- * Rapid response protocol could prioritize recovery over normal operations
- * TODO(P3): PERF - Consider implementing a warm-up phase after respawn to rebuild caches
- * First few ticks after respawn might need different scheduling priorities
+ * SwarmBot main entry point coordinating all subsystems via kernel-based process management.
  */
 
 import type { RoleFamily, SwarmCreepMemory } from "./memory/schemas";

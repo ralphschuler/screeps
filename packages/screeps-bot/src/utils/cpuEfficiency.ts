@@ -1,26 +1,10 @@
 /**
- * CPU Efficiency Utilities
- *
- * Provides optimized patterns for common operations that can be CPU-intensive:
- * - Efficient iteration patterns
- * - Lazy evaluation helpers
- * - Throttled execution for non-critical operations
- * - Position-based caching for lookups
- *
- * DESIGN PRINCIPLES (from ROADMAP.md):
- * - Aggressives Caching + TTL
- * - Striktes Tick-Budget: Öko-Raum ≤ 0,1 CPU, Kampf-Raum ≤ 0,25 CPU
- * - Frequenzebenen: High (every tick), Medium (5-20 ticks), Low (≥100 ticks)
+ * CPU efficiency utilities with throttled execution and lazy evaluation.
  */
 
 /**
  * Execute a function only every N ticks.
- * Useful for expensive operations that don't need to run every tick.
- *
- * @param fn - Function to execute
- * @param interval - Number of ticks between executions
- * @param offset - Optional offset to spread load across ticks (default: 0)
- * @returns Result of function, or undefined if not executed this tick
+ * @param offset - Optional offset to spread load across ticks
  */
 export function throttle<T>(fn: () => T, interval: number, offset = 0): T | undefined {
   if ((Game.time + offset) % interval === 0) {
@@ -29,15 +13,7 @@ export function throttle<T>(fn: () => T, interval: number, offset = 0): T | unde
   return undefined;
 }
 
-/**
- * Execute a function only every N ticks, with a default value for non-execution ticks.
- *
- * @param fn - Function to execute
- * @param interval - Number of ticks between executions
- * @param defaultValue - Value to return on non-execution ticks
- * @param offset - Optional offset to spread load across ticks (default: 0)
- * @returns Result of function, or default value if not executed this tick
- */
+/** Execute a function only every N ticks, with a default value for non-execution ticks. */
 export function throttleWithDefault<T>(
   fn: () => T,
   interval: number,
@@ -50,12 +26,7 @@ export function throttleWithDefault<T>(
   return defaultValue;
 }
 
-// NOTE: These functions are now deprecated in favor of the cached versions
-// in bodyPartCache.ts. They are kept here for backward compatibility,
-// but new code should use getCachedDamagePotential, getCachedHealPotential,
-// getCachedBodyPartCount, and hasCachedBodyPart instead.
-// The cached versions provide the same functionality with better performance.
-
+// Deprecated: Use cached versions from bodyPartCache.ts for better performance
 import {
   getCachedBodyPartCount,
   getCachedDamagePotential,
@@ -64,35 +35,21 @@ import {
 } from "./bodyPartCache";
 
 /**
- * Calculate total body part damage potential efficiently.
- * Uses a single-pass iteration instead of multiple filter calls.
- * 
- * @deprecated Use getCachedDamagePotential from bodyPartCache instead for better performance
- * @param creep - Creep to analyze
- * @returns Total potential damage per tick from ATTACK and RANGED_ATTACK parts
+ * @deprecated Use getCachedDamagePotential from bodyPartCache instead
  */
 export function calculateCreepDamagePotential(creep: Creep): number {
   return getCachedDamagePotential(creep);
 }
 
 /**
- * Calculate total heal potential efficiently.
- * 
- * @deprecated Use getCachedHealPotential from bodyPartCache instead for better performance
- * @param creep - Creep to analyze
- * @returns Total potential healing per tick from HEAL parts
+ * @deprecated Use getCachedHealPotential from bodyPartCache instead
  */
 export function calculateCreepHealPotential(creep: Creep): number {
   return getCachedHealPotential(creep);
 }
 
 /**
- * Count active body parts of a specific type efficiently.
- * 
- * @deprecated Use getCachedBodyPartCount from bodyPartCache instead for better performance
- * @param creep - Creep to analyze
- * @param partType - Type of body part to count
- * @returns Number of active (hits > 0) parts of the specified type
+ * @deprecated Use getCachedBodyPartCount from bodyPartCache instead
  */
 export function countActiveBodyParts(creep: Creep, partType: BodyPartConstant): number {
   return getCachedBodyPartCount(creep, partType, true);

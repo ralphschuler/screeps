@@ -1,31 +1,10 @@
 /**
- * Idle Creep Detection
- *
- * Detects creeps that are truly idle and can skip expensive behavior evaluation.
- * This is a significant CPU optimization for large swarms (1000+ creeps).
- *
- * A creep is considered idle when:
- * 1. It's at its work position (e.g., harvester at source, upgrader at controller)
- * 2. It has an ongoing state that's still valid
- * 3. It doesn't need to make new decisions
- *
- * Design Principles (from ROADMAP.md Section 18):
- * - "Idle creep detection: Skip behavior evaluation for truly idle creeps"
- * - CPU savings: ~0.1-0.2 CPU per skipped creep
- * - With 142 creeps, ~20-40% may be in idle working state
- * - Potential savings: 3-8 CPU
+ * Idle creep detection to skip expensive behavior evaluation.
+ * CPU savings: ~0.1-0.2 CPU per skipped creep.
  */
 
 import type { SwarmCreepMemory } from "../memory/schemas";
 
-// =============================================================================
-// Type Guards
-// =============================================================================
-
-/**
- * Type guard to check if an object is a RoomObject.
- * RoomObjects have pos and room properties.
- */
 function isRoomObject(obj: unknown): obj is RoomObject {
   return (
     obj !== null &&

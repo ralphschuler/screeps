@@ -1,26 +1,5 @@
 /**
- * Spawn Logic - Phase 8
- *
- * Central spawn manager per room:
- * - Derives role weights from evolution stage, posture, pheromones
- * - Uses weighted selection for next role
- * - Defines body templates per role
- * - Task assignment heuristics
- * 
- * TODO(P2): ARCH - Implement dynamic body scaling based on available energy and room needs
- * Bodies should adapt to energy availability rather than fixed templates
- * TODO(P1): BUG - Add spawn queue persistence to survive global resets
- * Current queue is lost on reset, causing spawn delays
- * TODO(P2): ARCH - Implement spawn priority inheritance from pheromone values (ROADMAP Section 5)
- * High defense pheromone should directly boost defender spawn priority
- * TODO(P3): PERF - Add spawn efficiency metrics to track time-to-first-spawn after creep death
- * Measure and optimize spawn response time
- * TODO(P1): FEATURE - Consider implementing emergency spawn mode for critical situations
- * Bypass normal queue for immediate threats (controller downgrade, no harvesters)
- * TODO(P3): PERF - Add body part caching to avoid recalculating for same energy levels
- * Significant CPU savings for frequently spawned roles
- * TODO(P2): TEST - Add unit tests for spawn queue priority ordering
- * Ensure roles are spawned in correct priority order
+ * Central spawn manager deriving role weights from evolution stage, posture, and pheromones.
  */
 
 import type { CreepRole, RoleFamily, SwarmCreepMemory, SwarmState } from "../memory/schemas";
@@ -31,16 +10,9 @@ import { type WeightedEntry, weightedSelection } from "../utils/weightedSelectio
 import { logger } from "../core/logger";
 import { calculateRemoteHaulerRequirement } from "../empire/remoteHaulerDimensioning";
 
-/**
- * Focus room upgrader scaling configuration
- * Defines how many upgraders a focus room should spawn based on RCL
- */
 const FOCUS_ROOM_UPGRADER_LIMITS = {
-  /** RCL 1-3: Early game, limited energy */
   EARLY: 2,
-  /** RCL 4-6: Mid game, stable economy */
   MID: 4,
-  /** RCL 7: Late game, push to RCL 8 */
   LATE: 6
 } as const;
 
@@ -53,39 +25,23 @@ const THREATS_PER_GUARD = 2;
 /** Reservation threshold in ticks - trigger renewal below this */
 const RESERVATION_THRESHOLD_TICKS = 3000;
 
-/**
- * Body template definition
- */
+/** Body template definition */
 export interface BodyTemplate {
-  /** Body parts */
   parts: BodyPartConstant[];
-  /** Cost of the body */
   cost: number;
-  /** Minimum energy capacity required */
   minCapacity: number;
 }
 
-/**
- * Role spawn definition
- */
+/** Role spawn definition */
 export interface RoleSpawnDef {
-  /** Role name */
   role: CreepRole;
-  /** Role family */
   family: RoleFamily;
-  /** Body templates by energy tier */
   bodies: BodyTemplate[];
-  /** Base priority */
   priority: number;
-  /** Maximum creeps of this role per room */
   maxPerRoom: number;
-  /** Whether this role is needed in remote rooms */
   remoteRole: boolean;
 }
 
-/**
- * Calculate body cost
- */
 function calculateBodyCost(parts: BodyPartConstant[]): number {
   const costs: Record<BodyPartConstant, number> = {
     [MOVE]: 50,
@@ -101,9 +57,6 @@ function calculateBodyCost(parts: BodyPartConstant[]): number {
   return parts.reduce((sum, part) => sum + costs[part], 0);
 }
 
-/**
- * Create body template
- */
 function createBody(parts: BodyPartConstant[], minCapacity = 0): BodyTemplate {
   return {
     parts,
@@ -112,18 +65,13 @@ function createBody(parts: BodyPartConstant[], minCapacity = 0): BodyTemplate {
   };
 }
 
-/**
- * Role definitions
- */
+/** Role definitions */
 export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
   // Economy roles
   larvaWorker: {
     role: "larvaWorker",
     family: "economy",
     bodies: [
-      // Ultra-minimal emergency body for total workforce collapse
-      // Can harvest and carry but moves slowly (1 tile per 2 ticks on plains)
-      // This ensures recovery is possible even with < 200 energy
       createBody([WORK, CARRY], 150),
       createBody([WORK, CARRY, MOVE], 200),
       createBody([WORK, WORK, CARRY, CARRY, MOVE, MOVE], 400),
@@ -446,13 +394,10 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     remoteRole: true
   },
 
-  // Power bank harvesting roles (regular creeps for power banks)
   powerHarvester: {
     role: "powerHarvester",
     family: "power",
     bodies: [
-      // Power banks have 2M hits. With 50% damage reflection, we need tough healers.
-      // Mid-tier: 20 ATTACK parts = 600 damage/tick, but 300 reflected damage
       createBody(
         [
           TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,
@@ -468,7 +413,6 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
         ],
         2300
       ),
-      // High-tier: 25 ATTACK parts for faster destruction
       createBody(
         [
           TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,
@@ -493,7 +437,6 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     role: "powerCarrier",
     family: "power",
     bodies: [
-      // Large carriers to collect dropped power efficiently
       createBody(
         [...Array(20).fill(CARRY), ...Array(20).fill(MOVE)],
         2000
@@ -509,9 +452,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
   }
 };
 
-/**
- * Get spawn profile weights based on posture
- */
+/** Get spawn profile weights based on posture */
 export function getPostureSpawnWeights(posture: string): Record<string, number> {
   switch (posture) {
     case "eco":
@@ -559,7 +500,7 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         remoteGuard: 1.8,
         healer: 1.5,
         ranger: 1.0,
-        scout: 0.8, // Added: scouts help monitor threats
+        scout: 0.8,
         engineer: 1.2,
         remoteHarvester: 0.5,
         remoteHauler: 0.5,
@@ -576,7 +517,7 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         healer: 2.0,
         soldier: 2.0,
         ranger: 1.5,
-        scout: 0.8, // Added: scouts help with reconnaissance
+        scout: 0.8,
         engineer: 0.5,
         remoteHarvester: 0.3,
         remoteHauler: 0.3,
@@ -594,7 +535,7 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         soldier: 2.5,
         siegeUnit: 2.0,
         ranger: 1.0,
-        scout: 0.5, // Added: scouts help monitor siege targets
+        scout: 0.5,
         engineer: 0.2,
         remoteHarvester: 0.1,
         remoteHauler: 0.1
@@ -612,7 +553,7 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         builder: 0.5,
         queenCarrier: 1.0,
         guard: 1.5,
-        scout: 0.5, // Added: scouts can monitor incoming threats
+        scout: 0.5,
         engineer: 2.0,
         remoteHarvester: 0.5,
         remoteHauler: 0.5
@@ -624,16 +565,14 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         upgrader: 1.0,
         builder: 1.0,
         queenCarrier: 1.0,
-        scout: 1.0, // Added: scouts should spawn in any posture
+        scout: 1.0,
         remoteHarvester: 1.0,
         remoteHauler: 1.0
       };
   }
 }
 
-/**
- * Get dynamic priority adjustments for roles
- */
+/** Get dynamic priority adjustments for roles */
 export function getDynamicPriorityBoost(room: Room, swarm: SwarmState, role: string): number {
   let boost = 0;
 
@@ -646,7 +585,6 @@ export function getDynamicPriorityBoost(room: Room, swarm: SwarmState, role: str
   if (role === "upgrader" && swarm.clusterId) {
     const cluster = memoryManager.getCluster(swarm.clusterId);
     if (cluster?.focusRoom === room.name) {
-      // Significant boost to prioritize upgrading in focus room
       boost += FOCUS_ROOM_UPGRADER_PRIORITY_BOOST;
     }
   }
@@ -654,9 +592,7 @@ export function getDynamicPriorityBoost(room: Room, swarm: SwarmState, role: str
   return boost;
 }
 
-/**
- * Get pheromone multipliers for roles
- */
+/** Get pheromone multipliers for roles */
 export function getPheromoneMult(role: string, pheromones: Record<string, number>): number {
   const map: Record<string, string> = {
     harvester: "harvest",
@@ -682,53 +618,43 @@ export function getPheromoneMult(role: string, pheromones: Record<string, number
   if (!pheromoneKey) return 1.0;
 
   const value = pheromones[pheromoneKey] ?? 0;
-  // Scale: 0-100 pheromone maps to 0.5-2.0 multiplier
   return 0.5 + (value / 100) * 1.5;
 }
 
 /**
- * Cache for creep counts per room, cleared each tick.
- * OPTIMIZATION: Avoid iterating all creeps multiple times per tick when multiple spawns exist.
+ * Creep count cache (cleared each tick) to avoid repeated iteration.
+ * OPTIMIZATION: With multiple spawns per room, this prevents redundant creep iteration.
  */
 const creepCountCache = new Map<string, Map<string, number>>();
 let creepCountCacheTick = -1;
 let creepCountCacheRef: Record<string, Creep> | null = null;
 
 /**
- * Count creeps by role in a room.
- * OPTIMIZATION: Cache results per tick to avoid iterating all creeps multiple times.
- * With multiple spawns in a room, this function could be called multiple times per tick.
- * 
- * @param roomName - The room to count creeps in
- * @param activeOnly - If true, only count active (non-spawning) creeps. Default: false
+ * Count creeps by role in a room with per-tick caching.
+ * @param activeOnly - If true, only count non-spawning creeps
  */
 export function countCreepsByRole(roomName: string, activeOnly = false): Map<string, number> {
   // Clear cache if new tick or Game.creeps reference changed
-  // Checking reference equality handles both production (new tick) and tests (creeps reassigned)
   if (creepCountCacheTick !== Game.time || creepCountCacheRef !== Game.creeps) {
     creepCountCache.clear();
     creepCountCacheTick = Game.time;
     creepCountCacheRef = Game.creeps;
   }
 
-  // Use different cache key for active-only counts
   const cacheKey = activeOnly ? `${roomName}_active` : roomName;
   
-  // Check cache
   const cached = creepCountCache.get(cacheKey);
   if (cached) {
     return cached;
   }
 
-  // Build counts
   const counts = new Map<string, number>();
 
-  // OPTIMIZATION: Use for-in loop instead of Object.values() to avoid creating temporary array
+  // OPTIMIZATION: Use for-in loop to avoid creating temporary array
   for (const name in Game.creeps) {
     const creep = Game.creeps[name];
     const memory = creep.memory as unknown as SwarmCreepMemory;
     if (memory.homeRoom === roomName) {
-      // Skip spawning creeps if activeOnly is true
       if (activeOnly && creep.spawning) {
         continue;
       }
@@ -738,16 +664,12 @@ export function countCreepsByRole(roomName: string, activeOnly = false): Map<str
     }
   }
 
-  // Cache for this tick
   creepCountCache.set(cacheKey, counts);
   return counts;
 }
 
-/**
- * Get best body for energy capacity
- */
+/** Get best body for energy capacity */
 export function getBestBody(def: RoleSpawnDef, energyCapacity: number): BodyTemplate | null {
-  // Find best body that fits capacity
   let best: BodyTemplate | null = null;
 
   for (const body of def.bodies) {
@@ -761,9 +683,7 @@ export function getBestBody(def: RoleSpawnDef, energyCapacity: number): BodyTemp
   return best;
 }
 
-/**
- * Count remote creeps assigned to a specific target room
- */
+/** Count remote creeps assigned to a specific target room */
 export function countRemoteCreepsByTargetRoom(homeRoom: string, role: string, targetRoom: string): number {
   let count = 0;
   for (const creep of Object.values(Game.creeps)) {
@@ -777,13 +697,11 @@ export function countRemoteCreepsByTargetRoom(homeRoom: string, role: string, ta
 
 /**
  * Get the remote room that needs workers of a given role.
- * Returns the room name if workers are needed, null otherwise.
  */
 export function getRemoteRoomNeedingWorkers(homeRoom: string, role: string, swarm: SwarmState): string | null {
   const remoteAssignments = swarm.remoteAssignments ?? [];
   if (remoteAssignments.length === 0) return null;
 
-  // Find a remote room that needs workers
   for (const remoteRoom of remoteAssignments) {
     const currentCount = countRemoteCreepsByTargetRoom(homeRoom, role, remoteRoom);
     const room = Game.rooms[remoteRoom];
@@ -791,25 +709,21 @@ export function getRemoteRoomNeedingWorkers(homeRoom: string, role: string, swar
     let maxPerRemote: number;
     
     if (role === "remoteHarvester") {
-      // 1 harvester per source
       if (room) {
         const sources = room.find(FIND_SOURCES);
         maxPerRemote = sources.length;
       } else {
-        maxPerRemote = 2; // Assume 2 sources if no vision
+        maxPerRemote = 2;
       }
     } else if (role === "remoteHauler") {
-      // Calculate based on distance and sources
       if (room) {
         const sources = room.find(FIND_SOURCES);
         const sourceCount = sources.length;
         
-        // Calculate optimal hauler count using dimensioning module
         const energyCapacity = Game.rooms[homeRoom]?.energyCapacityAvailable ?? 800;
         const requirement = calculateRemoteHaulerRequirement(homeRoom, remoteRoom, sourceCount, energyCapacity);
         maxPerRemote = requirement.recommendedHaulers;
       } else {
-        // No vision - use conservative estimate
         maxPerRemote = 2;
       }
     } else {
