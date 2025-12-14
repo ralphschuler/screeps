@@ -256,36 +256,30 @@ export function guard(ctx: CreepContext): CreepAction {
 
   // Check if assigned to assist another room
   if (mem.assistTarget) {
-    const assistRoom = Game.rooms[mem.assistTarget];
-    if (assistRoom) {
-      const hostiles = assistRoom.find(FIND_HOSTILE_CREEPS);
-      if (hostiles.length === 0) {
-        // Threat resolved, clear assignment and return home
-        delete mem.assistTarget;
-        if (ctx.creep.room.name !== ctx.homeRoom) {
-          return { type: "moveToRoom", roomName: ctx.homeRoom };
-        }
-      } else {
-        // Move to assist room if not there yet
-        if (ctx.creep.room.name !== mem.assistTarget) {
-          return { type: "moveToRoom", roomName: mem.assistTarget };
-        }
+    // Move to assist room if not there yet
+    if (ctx.creep.room.name !== mem.assistTarget) {
+      return { type: "moveToRoom", roomName: mem.assistTarget };
+    }
 
-        // In assist room - engage hostiles using same logic as home defense
-        const assistTarget = findPriorityTarget(ctx);
-        if (assistTarget) {
-          const range = ctx.creep.pos.getRangeTo(assistTarget);
-          const hasRanged = hasBodyPart(ctx.creep, RANGED_ATTACK);
-          const hasMelee = hasBodyPart(ctx.creep, ATTACK);
-
-          if (hasRanged && range <= 3) return { type: "rangedAttack", target: assistTarget };
-          if (hasMelee && range <= 1) return { type: "attack", target: assistTarget };
-          return { type: "moveTo", target: assistTarget };
-        }
+    // In assist room - check if threat is resolved using pre-computed hostiles from context
+    if (ctx.hostiles.length === 0) {
+      // Threat resolved, clear assignment and return home
+      delete mem.assistTarget;
+      if (ctx.creep.room.name !== ctx.homeRoom) {
+        return { type: "moveToRoom", roomName: ctx.homeRoom };
       }
     } else {
-      // Can't see assist room - move towards it
-      return { type: "moveToRoom", roomName: mem.assistTarget };
+      // Engage hostiles using same logic as home defense
+      const assistTarget = findPriorityTarget(ctx);
+      if (assistTarget) {
+        const range = ctx.creep.pos.getRangeTo(assistTarget);
+        const hasRanged = hasBodyPart(ctx.creep, RANGED_ATTACK);
+        const hasMelee = hasBodyPart(ctx.creep, ATTACK);
+
+        if (hasRanged && range <= 3) return { type: "rangedAttack", target: assistTarget };
+        if (hasMelee && range <= 1) return { type: "attack", target: assistTarget };
+        return { type: "moveTo", target: assistTarget };
+      }
     }
   }
 

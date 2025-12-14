@@ -437,34 +437,33 @@ export class RoomNode {
 
   /**
    * Get priority score for hostile targeting
+   * OPTIMIZATION: Use getActiveBodyparts() for faster priority calculation
+   * Consistent with military.ts findPriorityTarget implementation
    */
   private getHostilePriority(hostile: Creep): number {
     let score = 0;
 
-    for (const part of hostile.body) {
-      if (!part.hits) continue;
+    // Use getActiveBodyparts() for faster body part counting (O(1) per type vs O(n) for all parts)
+    const healParts = hostile.getActiveBodyparts(HEAL);
+    const rangedParts = hostile.getActiveBodyparts(RANGED_ATTACK);
+    const attackParts = hostile.getActiveBodyparts(ATTACK);
+    const claimParts = hostile.getActiveBodyparts(CLAIM);
+    const workParts = hostile.getActiveBodyparts(WORK);
 
-      switch (part.type) {
-        case HEAL:
-          score += 100;
-          break;
-        case RANGED_ATTACK:
-          score += 50;
-          break;
-        case ATTACK:
-          score += 40;
-          break;
-        case CLAIM:
-          score += 60;
-          break;
-        case WORK:
-          score += 30;
-          break;
-      }
+    // Calculate score based on body composition (same priority as military.ts)
+    score += healParts * 100;
+    score += rangedParts * 50;
+    score += attackParts * 40;
+    score += claimParts * 60;
+    score += workParts * 30;
 
-      // Boosted parts are higher priority
-      if (part.boost) {
-        score += 20;
+    // Check for any boosted parts (only if score is high to avoid unnecessary iteration)
+    if (score > 0) {
+      for (const part of hostile.body) {
+        if (part.boost) {
+          score += 20;
+          break; // Only add boost bonus once
+        }
       }
     }
 
