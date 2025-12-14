@@ -125,12 +125,11 @@ export class PixelGenerationManager {
    * Ensure pixel generation memory exists
    */
   private ensurePixelGenerationMemory(): void {
+    // Use global memory to persist across global resets
+    // This is similar to how kernel processes store state
     const g = global as any;
-    if (!g.Memory) {
-      g.Memory = {};
-    }
-    if (!g.Memory.pixelGeneration) {
-      g.Memory.pixelGeneration = createDefaultPixelGenerationMemory();
+    if (!g._pixelGenerationMemory) {
+      g._pixelGenerationMemory = createDefaultPixelGenerationMemory();
     }
   }
 
@@ -139,7 +138,7 @@ export class PixelGenerationManager {
    */
   private getPixelGenerationMemory(): PixelGenerationMemory | undefined {
     const g = global as any;
-    return g.Memory?.pixelGeneration as PixelGenerationMemory | undefined;
+    return g._pixelGenerationMemory as PixelGenerationMemory | undefined;
   }
 
   /**

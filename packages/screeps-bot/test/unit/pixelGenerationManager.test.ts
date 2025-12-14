@@ -9,8 +9,9 @@ import { expect } from "chai";
 import { PixelGenerationManager, createDefaultPixelGenerationMemory } from "../../src/empire/pixelGenerationManager";
 
 // Mock global objects
-const mockMemory: any = {
-  pixelGeneration: createDefaultPixelGenerationMemory()
+const mockMemory: any = {};
+const mockGlobal: any = {
+  _pixelGenerationMemory: createDefaultPixelGenerationMemory()
 };
 
 const mockGame: any = {
@@ -25,6 +26,8 @@ const mockGame: any = {
 // Setup globals
 (global as any).Game = mockGame;
 (global as any).Memory = mockMemory;
+// Store pixel generation memory in global like the manager does
+Object.assign(global as any, mockGlobal);
 (global as any).OK = 0;
 (global as any).ERR_NOT_ENOUGH_RESOURCES = -6;
 (global as any).ERR_FULL = -8;
@@ -38,8 +41,8 @@ describe("Pixel Generation Manager", () => {
     mockGame.cpu.bucket = 10000;
     mockGame.cpu.generatePixel = () => OK;
     
-    // Reset memory
-    mockMemory.pixelGeneration = createDefaultPixelGenerationMemory();
+    // Reset memory in global
+    (global as any)._pixelGenerationMemory = createDefaultPixelGenerationMemory();
 
     // Create manager with test config
     manager = new PixelGenerationManager({
