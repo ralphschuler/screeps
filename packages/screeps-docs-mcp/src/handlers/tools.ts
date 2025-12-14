@@ -1,5 +1,12 @@
 /**
  * MCP Tool handlers for Screeps documentation operations
+ * 
+ * TODO(P2): FEATURE - Add fuzzy search support for better query matching
+ * Allow typos and partial matches for improved usability
+ * TODO(P3): PERF - Implement search result caching with TTL
+ * Repeated searches for common terms could benefit from caching
+ * TODO(P2): DOC - Add JSDoc for return types of all handler functions
+ * Better documentation improves maintainability
  */
 
 import { z } from "zod";

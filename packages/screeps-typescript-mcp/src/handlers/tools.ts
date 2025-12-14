@@ -1,5 +1,12 @@
 /**
  * Tool handlers for the MCP server
+ * 
+ * TODO(P3): FEATURE - Add type hierarchy visualization support
+ * Generate inheritance/implementation trees for complex types
+ * TODO(P2): PERF - Implement incremental index updates for type changes
+ * Avoid full rebuild when only a few types change
+ * TODO(P2): DOC - Add JSDoc for return types of all handler functions
+ * Better documentation improves maintainability
  */
 
 import { z } from "zod";

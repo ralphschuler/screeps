@@ -9,6 +9,13 @@
  * 
  * It combines them into a structured wiki format that can be pushed
  * to the GitHub repository wiki.
+ * 
+ * TODO(P3): FEATURE - Add support for automatic cross-reference linking
+ * Generate links between related documentation pages
+ * TODO(P3): FEATURE - Add table of contents generation within each page
+ * Large documentation pages would benefit from internal navigation
+ * TODO(P3): STYLE - Convert to TypeScript for consistency with the rest of the codebase
+ * All other source files are TypeScript
  */
 
 const fs = require('fs').promises;

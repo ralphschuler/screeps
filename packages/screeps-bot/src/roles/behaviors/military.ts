@@ -3,6 +3,19 @@
  *
  * Simple, human-readable behavior functions for military roles.
  * Includes defense, offense, and squad-based combat.
+ * 
+ * TODO(P2): ARCH - Implement kiting behavior for ranged attackers
+ * Maintain distance while dealing damage for improved survivability
+ * TODO(P2): FEATURE - Add formation-aware movement for squads
+ * Squad members should maintain formation while moving as a unit
+ * TODO(P1): FEATURE - Implement threat prioritization for target selection
+ * Focus on highest-threat enemies (healers, boosted creeps) first
+ * TODO(P2): PERF - Add combat simulation for engagement decision-making
+ * Predict fight outcomes before committing to engagements
+ * TODO(P3): FEATURE - Implement retreat behavior for losing fights
+ * Disengage and regroup when fight is going poorly
+ * TODO(P2): TEST - Add unit tests for military behavior logic
+ * Verify correct targeting and movement decisions
  */
 
 import type { SquadMemory, SwarmCreepMemory } from "../../memory/schemas";

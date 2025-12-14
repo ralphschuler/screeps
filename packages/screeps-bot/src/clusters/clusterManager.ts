@@ -12,20 +12,22 @@
  *
  * Addresses Issues: #8, #20, #36
  * 
- * TODO: Implement automatic cluster formation based on room proximity
+ * TODO(P2): ARCH - Implement automatic cluster formation based on room proximity
  * Rooms within N tiles should automatically form clusters
- * TODO: Add cluster efficiency metrics (total energy, military strength)
+ * TODO(P2): FEATURE - Add cluster efficiency metrics (total energy, military strength)
  * Track cluster-wide performance for optimization
- * TODO: Implement dynamic rally point selection based on threats
+ * TODO(P2): ARCH - Implement dynamic rally point selection based on threats
  * Rally points should adapt to current military situation
- * TODO: Add cluster resource pooling for rapid response
+ * TODO(P1): FEATURE - Add cluster resource pooling for rapid response
  * Emergency resources from all cluster members for defense
- * TODO: Consider implementing cluster-level spawn coordination
+ * TODO(P3): ARCH - Consider implementing cluster-level spawn coordination
  * Distribute spawning across cluster to reduce individual room load
- * TODO: Add cluster-wide construction planning
+ * TODO(P3): FEATURE - Add cluster-wide construction planning
  * Coordinate infrastructure projects across multiple rooms
- * TODO: Implement cluster hierarchy for nested clusters
+ * TODO(P3): ARCH - Implement cluster hierarchy for nested clusters
  * Large empires could have clusters of clusters
+ * TODO(P2): TEST - Add integration tests for cluster resource balancing
+ * Verify resources are distributed correctly across cluster members
  */
 
 import type { ClusterMemory, SquadDefinition } from "../memory/schemas";

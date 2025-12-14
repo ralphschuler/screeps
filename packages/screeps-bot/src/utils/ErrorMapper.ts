@@ -1,6 +1,13 @@
 /* eslint-disable */
 import { SourceMapConsumer } from "source-map";
 
+// TODO(P2): STYLE - Re-enable eslint for this file and fix style issues
+// The eslint-disable was added to ignore initial issues but should be addressed
+// TODO(P2): PERF - Cache source map parsing to avoid expensive re-parsing on global resets
+// First call after reset uses >30 CPU which can impact startup performance
+// TODO(P1): BUG - Add error handling for missing source map file
+// If main.js.map is not bundled, the require will throw
+
 /**
  * Converts special HTML characters to their entity equivalents.
  * Replaces &, <, >, ", and ' with their HTML entity codes.
