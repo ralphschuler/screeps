@@ -1,51 +1,21 @@
 /**
- * Pheromone System - Phase 2
- *
- * Implements the pheromone-based coordination system:
- * - Metrics collection (rolling averages)
- * - Periodic pheromone updates
- * - Event-driven updates
- * - Pheromone diffusion
- * 
- * TODO(P2): ARCH - Implement pheromone diffusion to neighboring rooms (ROADMAP Section 5)
- * War and defense pheromones should propagate to adjacent rooms for coordinated response
- * TODO(P3): FEATURE - Add pheromone visualization for debugging and tuning
- * Heat map overlays would help understand swarm coordination patterns
- * TODO(P3): FEATURE - Consider adding historical pheromone tracking for trend analysis
- * Could help predict future needs and pre-emptively adjust behaviors
- * TODO(P2): ARCH - Implement pheromone-based spawn priorities (ROADMAP Section 10)
- * Spawn decisions should directly derive from pheromone profiles
- * TODO(P3): FEATURE - Add configurable pheromone thresholds per room type (eco vs war)
- * Different room postures need different sensitivity levels
- * TODO(P2): PERF - Optimize metrics collection to reduce find() calls
- * Some metrics could be calculated from existing data rather than scanning
- * TODO(P2): TEST - Add unit tests for pheromone decay and diffusion calculations
- * Verify values converge correctly over time
+ * Pheromone-based coordination system with metrics collection, periodic updates, and diffusion.
  */
 
 import type { PheromoneState, SwarmState } from "../memory/schemas";
 import { logger } from "../core/logger";
 import { safeFind } from "../utils/safeFind";
 
-/**
- * Pheromone configuration
- */
+/** Pheromone system configuration */
 export interface PheromoneConfig {
-  /** Update interval in ticks */
   updateInterval: number;
-  /** Decay factors per pheromone type (0.9-0.99) */
   decayFactors: Record<keyof PheromoneState, number>;
-  /** Diffusion rates (fraction leaked to neighbors) */
   diffusionRates: Record<keyof PheromoneState, number>;
-  /** Max pheromone value */
   maxValue: number;
-  /** Min pheromone value */
   minValue: number;
 }
 
-/**
- * Default pheromone configuration
- */
+/** Default pheromone configuration */
 export const DEFAULT_PHEROMONE_CONFIG: PheromoneConfig = {
   updateInterval: 5,
   decayFactors: {
@@ -83,9 +53,6 @@ export class RollingAverage {
 
   public constructor(private maxSamples: number = 10) {}
 
-  /**
-   * Add a value
-   */
   public add(value: number): number {
     this.values.push(value);
     this.sum += value;
@@ -98,25 +65,17 @@ export class RollingAverage {
     return this.get();
   }
 
-  /**
-   * Get current average
-   */
   public get(): number {
     return this.values.length > 0 ? this.sum / this.values.length : 0;
   }
 
-  /**
-   * Reset
-   */
   public reset(): void {
     this.values = [];
     this.sum = 0;
   }
 }
 
-/**
- * Room metrics tracker
- */
+/** Room metrics tracker */
 export interface RoomMetricsTracker {
   energyHarvested: RollingAverage;
   energySpawning: RollingAverage;
@@ -130,9 +89,7 @@ export interface RoomMetricsTracker {
   lastControllerProgress: number;
 }
 
-/**
- * Create a new metrics tracker
- */
+/** Create a new metrics tracker */
 export function createMetricsTracker(): RoomMetricsTracker {
   return {
     energyHarvested: new RollingAverage(10),
@@ -148,9 +105,7 @@ export function createMetricsTracker(): RoomMetricsTracker {
   };
 }
 
-/**
- * Pheromone Manager
- */
+/** Pheromone Manager */
 export class PheromoneManager {
   private config: PheromoneConfig;
   private trackers: Map<string, RoomMetricsTracker> = new Map();
@@ -173,12 +128,11 @@ export class PheromoneManager {
 
   /**
    * Update metrics from a room.
-   * Uses optimized iteration patterns for better CPU efficiency.
+   * OPTIMIZATION: Reuses cached sources to reduce duplicate find() calls.
    */
   public updateMetrics(room: Room, swarm: SwarmState): void {
     const tracker = this.getTracker(room.name);
 
-    // Energy harvested (approximation from source depletion)
     // OPTIMIZATION: Cache sources to share with calculateContributions
     const cacheKey = `sources_${room.name}`;
     const cached = (global as unknown as Record<string, { sources: Source[]; tick: number } | undefined>)[cacheKey];
@@ -191,7 +145,7 @@ export class PheromoneManager {
       (global as unknown as Record<string, { sources: Source[]; tick: number }>)[cacheKey] = { sources, tick: Game.time };
     }
 
-    // Use a single loop instead of two reduce calls for efficiency
+    // Use a single loop for efficiency
     let totalSourceCapacity = 0;
     let totalSourceEnergy = 0;
     for (const source of sources) {
@@ -210,14 +164,12 @@ export class PheromoneManager {
       tracker.lastControllerProgress = room.controller.progress;
     }
 
-    // Hostile count and damage - use safeFind to handle engine errors with corrupted owner data
-    // Calculate damage in a single loop instead of multiple filter calls
+    // Calculate damage in a single loop
     const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
     tracker.hostileCount.add(hostiles.length);
 
     let potentialDamage = 0;
     for (const hostile of hostiles) {
-      // Iterate body parts once, counting both attack types in the same loop
       for (const part of hostile.body) {
         if (part.hits > 0) {
           if (part.type === ATTACK) {
@@ -237,9 +189,7 @@ export class PheromoneManager {
     swarm.metrics.damageReceived = tracker.damageReceived.get();
   }
 
-  /**
-   * Periodic pheromone update
-   */
+  /** Periodic pheromone update */
   public updatePheromones(swarm: SwarmState, room: Room): void {
     if (Game.time < swarm.nextUpdateTick) return;
 
@@ -260,16 +210,14 @@ export class PheromoneManager {
   }
 
   /**
-   * Calculate pheromone contributions from current state
-   * OPTIMIZATION: Reuse sources from updateMetrics to avoid duplicate room.find() calls
+   * Calculate pheromone contributions from current state.
+   * OPTIMIZATION: Reuses sources cached by updateMetrics.
    */
   private calculateContributions(swarm: SwarmState, room: Room): void {
     const pheromones = swarm.pheromones;
     const tracker = this.getTracker(room.name);
 
-    // Harvest contribution based on available sources
-    // OPTIMIZATION: Sources are already found in updateMetrics, but we need them here too
-    // Since this runs every 5 ticks (same as updateMetrics), we can cache them
+    // OPTIMIZATION: Sources already cached in updateMetrics
     const cacheKey = `sources_${room.name}`;
     const cached = (global as unknown as Record<string, { sources: Source[]; tick: number } | undefined>)[cacheKey];
     let sources: Source[];
@@ -316,7 +264,6 @@ export class PheromoneManager {
       pheromones.siege = this.clamp(pheromones.siege + 20);
     }
 
-    // Logistics contribution based on energy distribution needs
     // OPTIMIZATION: Use cached spawns from structure cache if available
     if (room.storage) {
       const spawns = room.find(FIND_MY_SPAWNS);
@@ -334,9 +281,7 @@ export class PheromoneManager {
     }
   }
 
-  /**
-   * Clamp pheromone value to valid range
-   */
+  /** Clamp pheromone value to valid range */
   private clamp(value: number): number {
     return Math.max(this.config.minValue, Math.min(this.config.maxValue, value));
   }
