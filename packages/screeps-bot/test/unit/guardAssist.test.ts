@@ -45,7 +45,7 @@ describe("Guard Assist Behavior", () => {
     it("should return home after assist mission completes", () => {
       const memory = {
         assistTarget: undefined
-      } as unknown as SwarmCreepMemory & { assistTarget?: string };
+      } as unknown as SwarmCreepMemory;
       const currentRoom = "W2N2";
       const homeRoom = "W1N1";
       
@@ -57,7 +57,7 @@ describe("Guard Assist Behavior", () => {
 
   describe("Guard Combat in Assist Mode", () => {
     it("should engage hostiles in assist room", () => {
-      const memory = { assistTarget: "W2N2" } as unknown as SwarmCreepMemory & { assistTarget?: string };
+      const memory = { assistTarget: "W2N2" } as unknown as SwarmCreepMemory;
       const currentRoom = "W2N2";
       const hostilesPresent = true;
       
@@ -77,7 +77,7 @@ describe("Guard Assist Behavior", () => {
     });
 
     it("should not engage in home room when on assist mission", () => {
-      const memory = { assistTarget: "W2N2" } as unknown as SwarmCreepMemory & { assistTarget?: string };
+      const memory = { assistTarget: "W2N2" } as unknown as SwarmCreepMemory;
       const currentRoom = "W1N1"; // home room
       const assistRoom = "W2N2";
       
@@ -90,7 +90,7 @@ describe("Guard Assist Behavior", () => {
 
   describe("Guard Patrol in Home Room", () => {
     it("should patrol home room when no assist target and no threats", () => {
-      const memory = {} as unknown as SwarmCreepMemory & { assistTarget?: string };
+      const memory = {} as unknown as SwarmCreepMemory;
       const currentRoom = "W1N1";
       const homeRoom = "W1N1";
       const hostilesCount = 0;
@@ -101,7 +101,7 @@ describe("Guard Assist Behavior", () => {
     });
 
     it("should defend home room when no assist target and threats present", () => {
-      const memory = {} as unknown as SwarmCreepMemory & { assistTarget?: string };
+      const memory = {} as unknown as SwarmCreepMemory;
       const currentRoom = "W1N1";
       const homeRoom = "W1N1";
       const hostilesCount = 2;
