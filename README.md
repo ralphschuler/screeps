@@ -90,7 +90,7 @@ The bot implements a comprehensive **swarm-based architecture** as specified in 
 
 - **24 Architectural Sections**: From core vision to advanced features
 - **5-Layer Architecture**: Empire → Shard → Cluster → Room → Creep
-- **Pheromone Coordination**: 8 pheromone types for emergent behavior
+- **Pheromone Coordination**: 9 pheromone types for emergent behavior (8 from ROADMAP + nukeTarget extension)
 - **Kernel-Based Process Management**: Fair CPU allocation and bucket-aware execution
 - **POSIS OS Integration**: Portable Operating System Interface for Screeps
 - **Screepers Standards Compliance**: SS1, SS2, SS3 for interoperability

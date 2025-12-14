@@ -81,21 +81,38 @@ The bot implements a **swarm-based architecture** with pheromone coordination, k
 // From src/memory/schemas.ts
 export interface SwarmState {
   colonyLevel: EvolutionStage;
-  posture: RoomPosture;  // Maps to "intent" in ROADMAP
+  posture: RoomPosture;  // Implementation uses "posture" instead of ROADMAP's "intent"
   danger: 0 | 1 | 2 | 3;
   pheromones: PheromoneState;
   nextUpdateTick: number;
   eventLog: EventLogEntry[];
-  // ... (complete match with ROADMAP Section 4)
+  // ... (matches ROADMAP Section 4 with minor naming difference)
+}
+
+export interface PheromoneState {
+  // ROADMAP's 8 core pheromone types
+  expand: number;
+  harvest: number;
+  build: number;
+  upgrade: number;
+  defense: number;
+  war: number;
+  siege: number;
+  logistics: number;
+  // Extension: nukeTarget (not in ROADMAP, added by implementation)
+  nukeTarget: number;
 }
 ```
 
+**Note**: The implementation uses `posture` instead of `intent` for the room's operational mode. This is a naming difference, but the functionality is identical - both represent eco/expand/defense/war/siege/evacuate modes.
+
 ### ✅ Section 5: Pheromon-System (Schwarm-Signale)
 
-**Status**: COMPLIANT
+**Status**: COMPLIANT (with extension)
 
 **Implementation**:
-- All 8 pheromone types implemented: `src/memory/schemas.ts` - PheromoneState
+- All 8 ROADMAP pheromone types implemented in `src/memory/schemas.ts` - PheromoneState interface
+- **Extension**: Added `nukeTarget` pheromone (9th type, not in ROADMAP specification)
 - Periodic updates: `src/logic/pheromone.ts` - updates every 5-10 ticks based on metrics
 - Event updates: `src/logic/pheromoneEventHandlers.ts` - responds to hostiles, nukes, structure destruction
 - Decay: Built into pheromone manager with configurable decay factor
@@ -103,7 +120,8 @@ export interface SwarmState {
 
 **Evidence**:
 - `src/logic/pheromoneEventHandlers.ts` explicitly references "ROADMAP section 5"
-- All 8 pheromone types present in PheromoneState interface
+- All 8 ROADMAP pheromone types present: expand, harvest, build, upgrade, defense, war, siege, logistics
+- nukeTarget is an implementation extension for nuclear warfare coordination
 - Event-driven updates for danger, defense, war, and siege pheromones
 
 ### ✅ Section 6: Kolonie-Lebenszyklus (Phasen)
@@ -472,7 +490,7 @@ export enum EvolutionStage {
 
 ## Summary
 
-### Compliance Status: ✅ 100% COMPLIANT
+### Compliance Status: ✅ FULLY COMPLIANT (with minor extensions)
 
 All 24 sections of the ROADMAP are fully implemented in the codebase:
 
@@ -481,6 +499,13 @@ All 24 sections of the ROADMAP are fully implemented in the codebase:
 - ✅ **Sections 11-15**: Advanced systems (clusters, combat, nukes, power, market)
 - ✅ **Sections 16-20**: Advanced features (labs, walls, CPU, resiliency, pathfinding)
 - ✅ **Sections 21-24**: Infrastructure (logging, POSIS, structure, standards)
+
+### Minor Differences from ROADMAP
+
+1. **Naming**: Implementation uses `posture` instead of `intent` for room operational mode (same functionality)
+2. **Extension**: Added `nukeTarget` as a 9th pheromone type (not specified in ROADMAP but complementary)
+
+These differences represent implementation details and extensions that enhance the ROADMAP specification without violating its principles.
 
 ### Key Strengths
 
