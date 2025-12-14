@@ -81,10 +81,13 @@ export class PixelGenerationManager {
   /**
    * Main pixel generation tick
    * Registered as kernel process via decorator
+   * 
+   * Note: Uses interval: 1 to check every tick for accurate consecutive tick counting
+   * The IDLE priority ensures this only runs when bot has excess CPU
    */
   @LowFrequencyProcess("empire:pixelGeneration", "Pixel Generation Manager", {
     priority: ProcessPriority.IDLE, // Very low priority - only when everything else is fine
-    interval: 1, // Check every tick since we're tracking consecutive ticks
+    interval: 1, // Must check every tick to track consecutive ticks accurately
     minBucket: 0,
     cpuBudget: 0.01
   })
@@ -174,6 +177,11 @@ export class PixelGenerationManager {
       memory.totalPixelsGenerated++;
       memory.lastGenerationTick = Game.time;
       
+      // Calculate how long we waited (only meaningful if bucketFullSince > 0)
+      const ticksWaited = memory.bucketFullSince > 0 
+        ? Game.time - memory.bucketFullSince 
+        : memory.consecutiveFullTicks;
+      
       // Reset consecutive counter after generation
       // This ensures we wait another 25 ticks before next generation
       memory.consecutiveFullTicks = 0;
@@ -185,7 +193,7 @@ export class PixelGenerationManager {
           subsystem: "PixelGeneration",
           meta: {
             bucket: Game.cpu.bucket,
-            ticksWaited: Game.time - memory.bucketFullSince
+            ticksWaited
           }
         }
       );
