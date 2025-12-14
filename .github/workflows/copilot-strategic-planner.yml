@@ -27,7 +27,7 @@ concurrency:
 jobs:
   strategic-planning:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 180
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -50,7 +50,6 @@ jobs:
           copilot-token: ${{ secrets.COPILOT_TOKEN }}
           prompt-path: .github/agents/strategic-planner.agent.md
           output-path: "reports/copilot/strategic-planner-${{ github.run_id }}.log"
-          timeout: "40"
           verbose: "${{ inputs.verbose || 'false' }}"
           additional-mcp-config: '@.github/mcp/all-servers.json'
 
