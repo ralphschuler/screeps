@@ -827,6 +827,9 @@ export function getRemoteRoomNeedingWorkers(homeRoom: string, role: string, swar
 /**
  * Assign target room to remote role creep memory.
  * Returns true if successfully assigned, false if no target available.
+ * 
+ * TODO: Implement load balancing for remoteWorker assignments across multiple remote rooms
+ * Currently always assigns the first remote room, which could lead to uneven distribution
  */
 function assignRemoteTargetRoom(role: string, memory: SwarmCreepMemory, swarm: SwarmState, homeRoom: string): boolean {
   if (role === "remoteHarvester" || role === "remoteHauler") {
@@ -841,14 +844,15 @@ function assignRemoteTargetRoom(role: string, memory: SwarmCreepMemory, swarm: S
   if (role === "remoteWorker") {
     const remoteAssignments = swarm.remoteAssignments ?? [];
     if (remoteAssignments.length > 0) {
-      // Assign to first remote room (simple round-robin could be added later)
+      // TODO: Implement round-robin or load-balanced assignment across remotes
       memory.targetRoom = remoteAssignments[0];
       return true;
     }
     return false;
   }
   
-  return true; // Not a remote role, no assignment needed
+  // Not a remote role - no assignment needed, return true to allow spawning
+  return true;
 }
 
 /**
