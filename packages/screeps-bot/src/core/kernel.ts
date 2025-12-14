@@ -500,9 +500,12 @@ export class Kernel {
   /**
    * Check if process should run this tick
    * 
-   * REMOVED: Bucket requirement checks - user regularly depletes bucket and doesn't
-   * want minBucket limitations blocking processes. Bucket mode still affects priority
-   * filtering (critical/low modes only run high-priority processes).
+   * Processes are only skipped based on:
+   * - Interval timing (process hasn't reached its next scheduled run)
+   * - Suspension state (process is explicitly suspended)
+   * 
+   * Bucket mode no longer affects process execution - the rolling index
+   * and CPU budget checks provide sufficient protection against CPU overuse.
    * 
    * TODO(P2): PERF - Add jitter to intervals to prevent all processes running on the same tick
    * Spread process execution across ticks for more even CPU distribution
@@ -523,33 +526,6 @@ export class Kernel {
         }
         return false;
       }
-    }
-
-    // In critical bucket mode, only run CRITICAL priority processes
-    if (this.bucketMode === "critical") {
-      if (process.priority < ProcessPriority.CRITICAL) {
-        if (Game.time % 50 === 0) {
-          logger.warn(
-            `Kernel: Process "${process.name}" skipped (bucket mode: critical, priority: ${process.priority})`,
-            { subsystem: "Kernel" }
-          );
-        }
-      }
-      return process.priority >= ProcessPriority.CRITICAL;
-    }
-
-    // In low bucket mode, only run HIGH priority or higher processes
-    // (This includes CRITICAL and HIGH, regardless of frequency)
-    if (this.bucketMode === "low") {
-      if (process.priority < ProcessPriority.HIGH) {
-        if (Game.time % 50 === 0) {
-          logger.warn(
-            `Kernel: Process "${process.name}" skipped (bucket mode: low, priority: ${process.priority})`,
-            { subsystem: "Kernel" }
-          );
-        }
-      }
-      return process.priority >= ProcessPriority.HIGH;
     }
 
     // Check if suspended
@@ -665,7 +641,7 @@ export class Kernel {
       // Check if we should run this process
       const shouldRun = this.shouldRunProcess(process);
       if (!shouldRun) {
-        // Track processes that were skipped due to bucket/interval requirements
+        // Track processes that were skipped due to interval/suspension
         // BUGFIX: Increment per-process skippedCount for Grafana tracking
         if (this.config.enableStats) {
           process.stats.skippedCount++;
@@ -676,11 +652,9 @@ export class Kernel {
         // Track skip reasons for better diagnostics
         if (process.stats.runCount > 0 && (Game.time - process.stats.lastRunTick) < process.interval) {
           processesSkippedByInterval++;
-        } else if (this.bucketMode === "critical" && process.priority < ProcessPriority.CRITICAL) {
-          processesSkippedByBucketMode++;
-        } else if (this.bucketMode === "low" && process.priority < ProcessPriority.HIGH) {
-          processesSkippedByBucketMode++;
         }
+        // Note: processesSkippedByBucketMode is no longer incremented as bucket mode
+        // no longer affects process execution
         continue;
       }
 
