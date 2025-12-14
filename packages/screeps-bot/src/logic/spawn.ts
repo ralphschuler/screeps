@@ -825,6 +825,33 @@ export function getRemoteRoomNeedingWorkers(homeRoom: string, role: string, swar
 }
 
 /**
+ * Assign target room to remote role creep memory.
+ * Returns true if successfully assigned, false if no target available.
+ */
+function assignRemoteTargetRoom(role: string, memory: SwarmCreepMemory, swarm: SwarmState, homeRoom: string): boolean {
+  if (role === "remoteHarvester" || role === "remoteHauler") {
+    const targetRoom = getRemoteRoomNeedingWorkers(homeRoom, role, swarm);
+    if (targetRoom) {
+      memory.targetRoom = targetRoom;
+      return true;
+    }
+    return false;
+  }
+  
+  if (role === "remoteWorker") {
+    const remoteAssignments = swarm.remoteAssignments ?? [];
+    if (remoteAssignments.length > 0) {
+      // Assign to first remote room (simple round-robin could be added later)
+      memory.targetRoom = remoteAssignments[0];
+      return true;
+    }
+    return false;
+  }
+  
+  return true; // Not a remote role, no assignment needed
+}
+
+/**
  * Check if room needs role
  */
 export function needsRole(roomName: string, role: string, swarm: SwarmState, isBootstrapMode = false): boolean {
@@ -847,10 +874,8 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
   }
   
   // Remote worker: only spawn if we have remote rooms assigned
-  // Remote workers help build infrastructure in remote rooms during expansion
   if (role === "remoteWorker") {
     const remoteAssignments = swarm.remoteAssignments ?? [];
-    // Only spawn if we have remote rooms assigned
     return remoteAssignments.length > 0;
   }
   
@@ -1445,29 +1470,8 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
 
     // For remote roles, set the targetRoom to the remote room that needs workers
     // Skip spawning if no valid target room is available (prevents spawn blocking)
-    // NOTE: This check is defensive - remote roles are not in BOOTSTRAP_SPAWN_ORDER
-    // and needsRole should already filter them. However, this provides extra safety
-    // in case bootstrap order is modified in the future.
-    if (role === "remoteHarvester" || role === "remoteHauler") {
-      const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
-      if (targetRoom) {
-        memory.targetRoom = targetRoom;
-      } else {
-        // No valid target room - don't spawn this remote role
-        return;
-      }
-    }
-    
-    // Remote worker: assign to any remote room from assignments
-    if (role === "remoteWorker") {
-      const remoteAssignments = swarm.remoteAssignments ?? [];
-      if (remoteAssignments.length > 0) {
-        // Assign to first remote room (simple round-robin could be added later)
-        memory.targetRoom = remoteAssignments[0];
-      } else {
-        // No remote rooms - don't spawn
-        return;
-      }
+    if (!assignRemoteTargetRoom(role, memory, swarm, room.name)) {
+      return;
     }
 
     let result: ScreepsReturnCode;
@@ -1569,26 +1573,8 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
 
     // For remote roles, set the targetRoom to the remote room that needs workers
     // Skip spawning if no valid target room is available (prevents spawn blocking)
-    if (role === "remoteHarvester" || role === "remoteHauler") {
-      const targetRoom = getRemoteRoomNeedingWorkers(room.name, role, swarm);
-      if (targetRoom) {
-        memory.targetRoom = targetRoom;
-      } else {
-        // No valid target room - skip this role and try next
-        continue;
-      }
-    }
-    
-    // Remote worker: assign to any remote room from assignments
-    if (role === "remoteWorker") {
-      const remoteAssignments = swarm.remoteAssignments ?? [];
-      if (remoteAssignments.length > 0) {
-        // Assign to first remote room (simple round-robin could be added later)
-        memory.targetRoom = remoteAssignments[0];
-      } else {
-        // No remote rooms - skip this role
-        continue;
-      }
+    if (!assignRemoteTargetRoom(role, memory, swarm, room.name)) {
+      continue;
     }
 
     // For inter-room carrier, assign a transfer request
