@@ -224,9 +224,6 @@ export class TaskManager {
    * Save a task to creep memory
    */
   saveTaskToCreep(creep: Creep, task: Task): void {
-    if (!creep.memory.task) {
-      creep.memory.task = {} as any;
-    }
     creep.memory.task = this.serializeTask(task);
   }
 
@@ -241,7 +238,8 @@ export class TaskManager {
     try {
       return this.deserializeTask(creep.memory.task as SerializedTask, actionRegistry);
     } catch (error) {
-      console.log(`Failed to load task from creep ${creep.name}: ${error}`);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.log(`Failed to load task from creep ${creep.name}: ${errorMsg}`);
       return undefined;
     }
   }
