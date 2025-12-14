@@ -358,6 +358,7 @@ export class RoomNode {
   /**
    * Run tower control
    * OPTIMIZATION: Use cached structures to avoid repeated room.find() calls
+   * OPTIMIZATION: All towers focus fire on the same target for faster kills
    */
   private runTowerControl(room: Room, swarm: SwarmState): void {
     const cache = getStructureCache(room);
@@ -368,17 +369,16 @@ export class RoomNode {
     // Find targets - use safeFind to handle engine errors with corrupted owner data
     const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
 
+    // Select primary target once for all towers to focus fire
+    const primaryTarget = hostiles.length > 0 ? this.selectTowerTarget(hostiles) : null;
+
     for (const tower of towers) {
       if (tower.store.getUsedCapacity(RESOURCE_ENERGY) < 10) continue;
 
-      // Priority 1: Attack hostiles
-      if (hostiles.length > 0) {
-        // Target priority: healers > ranged > melee > others
-        const target = this.selectTowerTarget(hostiles);
-        if (target) {
-          tower.attack(target);
-          continue;
-        }
+      // Priority 1: Attack hostiles (all towers focus fire on same target)
+      if (primaryTarget) {
+        tower.attack(primaryTarget);
+        continue;
       }
 
       // Priority 2: Heal damaged creeps (only in non-siege)
