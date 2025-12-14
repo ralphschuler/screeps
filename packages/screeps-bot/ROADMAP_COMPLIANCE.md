@@ -199,32 +199,53 @@ export enum EvolutionStage {
 - Coordinate-based placement relative to anchor points
 - Automatic selection based on room constraints
 
-### ✅ Section 10: Creep-Ökosystem – Rollen & Benennung
+### ⚠️ Section 10: Creep-Ökosystem – Rollen & Benennung
 
-**Status**: COMPLIANT (with extension)
+**Status**: PARTIAL COMPLIANCE - Missing job-market system
 
-**Implementation**:
+**Current Implementation (Role-Based)**:
 - **Wirtschaft**: worker, staticMiner, carrier, upgrader, builder, mineralMiner (all in `src/roles/economy/`)
 - **Scouting & Expansion**: scout, claimer (in `src/roles/utility/`)
 - **Verteidigung**: defender, rangedDefender, healer (in `src/roles/military/`)
 - **Offensive**: soldier, siegeDismantler, harasser, squads (in `src/roles/military/` and `src/clusters/`)
 - **Utility**: Various utility roles
 - **Power Creeps**: `src/roles/power/`
+- **Architecture**: State machine-based with behaviors (see `docs/STATE_MACHINES.md`)
+
+**Missing: Job-Market System (Pull-Based Architecture)**
+
+The ROADMAP envisions a **job-market system** where:
+- **Jobs (Aufträge)**: System creates jobs like "bring 800 energy to spawn", "build site X", "pickup drop at (x,y)"
+- **Pull-based**: Creeps autonomously select jobs (pull) instead of being assigned roles (push)
+- **Utility AI**: Creeps score jobs based on: `priority * weight + distance * weight + urgency * weight + fitness * weight - conflict penalty`
+- **Job claiming**: Jobs track claims with TTL to handle creep deaths
+- **Room blackboard**: Local coordination via room-level job queues and pheromone-like scores
+- **Reusable steps**: Jobs composed of small action steps (moveTo, withdraw, transfer, harvest, upgrade, build)
+- **Emergent behavior**: Many agents responding to same environment creates swarm coordination
+
+**Current Architecture vs. Target**:
+- ✅ Has: Role-based behavior system with state machines
+- ✅ Has: Pheromone coordination for spawn priorities
+- ❌ Missing: Job queue with claiming system
+- ❌ Missing: Utility AI scoring for job selection
+- ❌ Missing: Room blackboard for job coordination
+- ❌ Missing: Reusable step-based job execution
+- ❌ Missing: Pull-based autonomous creep behavior
 
 **Task System Extension**:
-- **`packages/screeps-tasks`**: Standalone task-based architecture for creep management
-  - Provides action-based task composition (HarvestAction, TransferAction, etc.)
-  - TaskManager for task lifecycle management (create, execute, cleanup)
-  - Supports task queues, priorities, and conditional execution
-  - Action registry for custom action types
-  - Memory persistence for tasks across ticks
-- **Note**: The task system is available as a separate package but not currently integrated into the main bot implementation. The bot uses a behavior-based approach via kernel processes instead.
+- **`packages/screeps-tasks`**: Provides action-based task composition but uses push-based assignment, not pull-based job market
+  - Has action composition (HarvestAction, TransferAction, etc.)
+  - Has TaskManager for lifecycle management
+  - Missing: Job queue, claiming, utility scoring
+  - Note: Available but not integrated into main bot
+
+**Recommendation**: Implement job-market system as described in the new requirement to achieve true swarm-based pull architecture.
 
 **Evidence**:
-- All role categories from ROADMAP Section 10 are implemented
-- Squad coordination system supports multi-creep formations
-- Role-based process management via kernel
-- Task system provides alternative architecture pattern for creep management (available but not currently used)
+- Current role implementation in `src/roles/` directories
+- State machine documentation in `docs/STATE_MACHINES.md`
+- Task system available in `packages/screeps-tasks` but doesn't implement job-market pattern
+- No job queue, claiming, or utility AI scoring system found in codebase
 
 ### ✅ Section 11: Cluster- & Empire-Logik
 
@@ -500,41 +521,78 @@ export enum EvolutionStage {
 
 ## Summary
 
-### Compliance Status: ✅ FULLY COMPLIANT (with minor extensions)
+### Compliance Status: ⚠️ MOSTLY COMPLIANT (23/24 sections complete, 1 partial)
 
-All 24 sections of the ROADMAP are fully implemented in the codebase:
+Implementation status by section group:
 
-- ✅ **Sections 1-5**: Core architecture (vision, principles, layers, memory, pheromones)
-- ✅ **Sections 6-10**: Economy and lifecycle (stages, mining, roles, blueprints)
-- ✅ **Sections 11-15**: Advanced systems (clusters, combat, nukes, power, market)
-- ✅ **Sections 16-20**: Advanced features (labs, walls, CPU, resiliency, pathfinding)
-- ✅ **Sections 21-24**: Infrastructure (logging, POSIS, structure, standards)
+- ✅ **Sections 1-5**: Core architecture (vision, principles, layers, memory, pheromones) - COMPLETE
+- ✅ **Sections 6-9**: Economy foundation (lifecycle, mining, economy, blueprints) - COMPLETE
+- ⚠️ **Section 10**: Creep ecosystem - PARTIAL (has role-based system, missing job-market architecture)
+- ✅ **Sections 11-15**: Advanced systems (clusters, combat, nukes, power, market) - COMPLETE
+- ✅ **Sections 16-20**: Advanced features (labs, walls, CPU, resiliency, pathfinding) - COMPLETE
+- ✅ **Sections 21-24**: Infrastructure (logging, POSIS, structure, standards) - COMPLETE
+
+### Critical Gap: Job-Market System (Section 10)
+
+**What's Missing**: The ROADMAP envisions a **pull-based job-market system** where:
+1. System creates jobs (Aufträge): "haul 800 energy to spawn", "build site X", "pickup drop"
+2. Creeps autonomously select jobs using utility AI scoring
+3. Jobs have claiming mechanism with TTL
+4. Coordination via room blackboard and pheromone-like scores
+5. Jobs composed of reusable step actions (moveTo, withdraw, transfer, etc.)
+
+**Current State**: Bot uses push-based role assignment with state machines instead of pull-based job market.
+
+**Impact**: The swarm-based emergent behavior is partially achieved through pheromones affecting spawn priorities, but individual creeps don't autonomously select work - they're assigned roles centrally.
 
 ### Minor Differences from ROADMAP
 
 1. **Naming**: Implementation uses `posture` instead of `intent` for room operational mode (same functionality)
 2. **Extension**: Added `nukeTarget` as a 9th pheromone type (not specified in ROADMAP but complementary)
+3. **Architecture**: Uses role-based + state machines instead of job-market + utility AI (Section 10)
 
-These differences represent implementation details and extensions that enhance the ROADMAP specification without violating its principles.
+These differences represent architectural choices. The job-market system would be a significant enhancement to achieve fully autonomous swarm behavior.
 
 ### Key Strengths
 
-1. **Complete Implementation**: Every ROADMAP section has corresponding code
+1. **Comprehensive Implementation**: 23 of 24 ROADMAP sections fully implemented
 2. **Documentation**: Many files reference specific ROADMAP sections
 3. **Architecture Alignment**: Code structure matches ROADMAP's layered design
-4. **Modern Practices**: Uses TypeScript, kernel-based scheduling, process management
+4. **Modern Practices**: TypeScript, kernel scheduling, process management
 5. **Standards Compliance**: Implements Screepers Standards for interoperability
 
 ### Recommendations
 
-1. ✅ **Code already compliant** - No changes needed for basic compliance
-2. ✅ **Documentation references ROADMAP** - Many files already cite relevant sections
-3. 🟡 **Could add more ROADMAP references** - Some files could explicitly mention their ROADMAP section
-4. 🟡 **Could create architecture diagrams** - Visual representation of the layered architecture
-5. 🟡 **Could add ROADMAP compliance tests** - Automated verification of architecture constraints
+1. 🔴 **HIGH PRIORITY: Implement Job-Market System** (Section 10)
+   - Create job queue with claiming mechanism and TTL
+   - Implement utility AI scoring for autonomous job selection
+   - Build room blackboard for local job coordination
+   - Create reusable step-based job execution system
+   - Migrate from push-based roles to pull-based job market
+   - Enable true swarm emergent behavior at creep level
+
+2. 🟡 **OPTIONAL: Add ROADMAP references**
+   - Some files could explicitly mention their ROADMAP section
+   - Would improve traceability between spec and implementation
+
+3. 🟡 **OPTIONAL: Create architecture diagrams**
+   - Visual representation of the layered architecture
+   - Job-market flow diagrams once implemented
+
+4. 🟡 **OPTIONAL: Add compliance tests**
+   - Automated verification of architecture constraints
+   - Ensure future changes maintain ROADMAP compliance
 
 ## Conclusion
 
-The Screeps bot implementation is **fully compliant** with the ROADMAP.md specification. The swarm-based architecture with pheromone coordination, kernel-based process management, and distributed colony control is completely implemented across all 24 sections.
+The Screeps bot implementation is **mostly compliant** (23/24 sections) with the ROADMAP.md specification. The swarm-based architecture with pheromone coordination, kernel-based process management, and distributed colony control is implemented across most sections.
 
-The codebase represents a production-ready implementation of the ROADMAP's vision for a scalable, efficient, and resilient Screeps bot capable of managing 100+ rooms and 5000+ creeps.
+**Critical Gap**: Section 10 (Creep Ecosystem) currently uses a push-based role assignment system with state machines instead of the envisioned pull-based job-market system with utility AI and autonomous job selection. This represents the main architectural difference from the ROADMAP's vision.
+
+**Next Steps**: Implementing the job-market system would:
+- Enable true autonomous swarm behavior at the creep level
+- Reduce micromanagement through emergent coordination
+- Make the system more flexible and scalable
+- Better align with the swarm intelligence principles in Section 1
+
+The codebase provides a solid foundation with 23/24 sections complete. Adding the job-market system would fully realize the ROADMAP's vision of a scalable, efficient, and truly swarm-based Screeps bot.
