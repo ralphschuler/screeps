@@ -1,0 +1,93 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@executeautomation/playwright-mcp-server@latest"],
+      "env": {}
+    },
+    "screeps-mcp": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "-e",
+        "SCREEPS_TOKEN=${SCREEPS_TOKEN}",
+        "-e",
+        "SCREEPS_HOST=${SCREEPS_HOST:-screeps.com}",
+        "-e",
+        "SCREEPS_SHARD=${SCREEPS_SHARD:-shard3}",
+        "ghcr.io/ralphschuler/screeps-mcp:latest"
+      ],
+      "env": {
+        "SCREEPS_TOKEN": "COPILOT_MCP_SCREEPS_TOKEN",
+        "SCREEPS_HOST": "COPILOT_MCP_SCREEPS_HOST",
+        "SCREEPS_SHARD": "COPILOT_MCP_SCREEPS_SHARD"
+      }
+    },
+    "screeps-docs-mcp": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "-e",
+        "DOCS_CACHE_TTL=${DOCS_CACHE_TTL:-3600}",
+        "ghcr.io/ralphschuler/screeps-docs-mcp:latest"
+      ],
+      "env": {
+        "DOCS_CACHE_TTL": "COPILOT_MCP_SCREEPS_DOCS_CACHE_TTL"
+      }
+    },
+    "screeps-wiki-mcp": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "-e",
+        "WIKI_CACHE_TTL=${WIKI_CACHE_TTL:-3600}",
+        "ghcr.io/ralphschuler/screeps-wiki-mcp:latest"
+      ],
+      "env": {
+        "WIKI_CACHE_TTL": "COPILOT_MCP_SCREEPS_WIKI_CACHE_TTL"
+      }
+    },
+    "grafana-mcp": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "-e",
+        "GRAFANA_URL=https://ralphschuler.grafana.net",
+        "-e",
+        "GRAFANA_SERVICE_ACCOUNT_TOKEN=${GRAFANA_SERVICE_ACCOUNT_TOKEN}",
+        "mcp/grafana",
+        "-t",
+        "stdio"
+      ],
+      "env": {
+        "GRAFANA_SERVICE_ACCOUNT_TOKEN": "COPILOT_MCP_GRAFANA_SERVICE_ACCOUNT_TOKEN"
+      }
+    },
+    "screeps-typescript-mcp": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "-e",
+        "TYPES_CACHE_TTL=${TYPES_CACHE_TTL:-3600}",
+        "ghcr.io/ralphschuler/screeps-typescript-mcp:latest"
+      ],
+      "env": {
+        "TYPES_CACHE_TTL": "COPILOT_MCP_SCREEPS_TYPES_CACHE_TTL"
+      }
+    }
+  }
+}

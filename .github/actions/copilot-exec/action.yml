@@ -1,0 +1,371 @@
+name: copilot-exec
+description: |
+  Run GitHub Copilot CLI with a rendered prompt template (simplified env-based + caching).
+
+  Features:
+  - Automatic caching based on prompt content and model
+  - Configurable timeout (default: 30 minutes)
+  - Verbose logging for debugging
+  - MCP (Model Context Protocol) server configuration support with environment variable substitution
+  - Conditional repository checkout (skips if already present)
+  - Dependency caching for npm global packages and project node_modules
+  - Performance optimizations for faster workflow execution
+
+  MCP Server Integration:
+  - Supports multiple MCP servers via JSON configuration
+  - Environment variables in MCP configs (e.g., ${SCREEPS_TOKEN}) are automatically substituted
+  - Use @path syntax to reference MCP config files (e.g., '@.github/mcp/all-servers.json')
+  - Base GitHub MCP server is included by default
+  - MCP config is written to ~/.config/github-copilot/servers.json (the standard Copilot CLI config path)
+  - If MCP config file is not found, action continues with base GitHub MCP server (warning logged)
+author: "ralph@nyphon.de"
+inputs:
+  prompt-path:
+    description: Path to the prompt template file
+    required: true
+  working-directory:
+    description: Directory to run the Copilot command in
+    required: false
+    default: ""
+  output-path:
+    description: File path (relative to working-directory) to store Copilot output
+    required: false
+    default: copilot-output.txt
+  extra-args:
+    description: Additional arguments to append to the Copilot CLI invocation
+    required: false
+    default: ""
+  additional-mcp-config:
+    description: |
+      Optional MCP configuration JSON or @path to extend Copilot's capabilities.
+      Environment variables using ${VAR} or ${VAR:-default} syntax are automatically substituted.
+      Example file reference: '@.github/mcp/all-servers.json'
+      Example inline: '{"mcpServers": {"custom": {"command": "npx", "args": ["-y", "my-server"]}}}'
+    required: false
+    default: ""
+  allow-all-paths:
+    description: Whether to allow Copilot CLI access to any file path
+    required: false
+    default: "true"
+  model:
+    description: Optional model identifier to pass to Copilot CLI. If not provided or empty, no model flag is passed to Copilot CLI.
+    required: false
+    default: ""
+  copilot-token:
+    description: API token for GitHub Copilot service (use secrets.COPILOT_TOKEN)
+    required: true
+  timeout:
+    description: Maximum time in minutes for Copilot CLI execution (default 30 minutes)
+    required: false
+    default: "30"
+  verbose:
+    description: Enable verbose logging for debugging (true/false, default false)
+    required: false
+    default: "false"
+  force-response:
+    description: Skip cache restoration to force fresh Copilot CLI execution (true/false, default false). Useful for time-sensitive data analysis or debugging.
+    required: false
+    default: "false"
+
+outputs:
+  output-path:
+    description: Absolute path to the Copilot CLI output file
+    value: ${{ steps.cached.outputs.output-path || steps.copilot.outputs.output-path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Detect checkout status
+      id: detect-checkout
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ -d .git ]; then
+          echo "need-checkout=false" >> "$GITHUB_OUTPUT"
+          echo "✅ Repository already present, skipping checkout"
+        else
+          echo "need-checkout=true" >> "$GITHUB_OUTPUT"
+          echo "🔄 Repository not present, will perform checkout"
+        fi
+    - name: Conditional checkout
+      if: steps.detect-checkout.outputs.need-checkout == 'true'
+      uses: actions/checkout@v4
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+
+    - name: Cache npm global + npm cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.npm/_global
+          ~/.npm/_cacache
+        key: copilot-cli-${{ runner.os }}-node20-${{ hashFiles('.github/actions/copilot-exec/action.yml') }}
+        restore-keys: |
+          copilot-cli-${{ runner.os }}-node20-
+
+    - name: Cache project dependencies
+      id: cache-deps
+      uses: actions/cache@v4
+      with:
+        path: |
+          node_modules
+        key: copilot-deps-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          copilot-deps-${{ runner.os }}-
+
+    - name: Install Copilot CLI (npm global)
+      shell: bash
+      run: |
+        set -euo pipefail
+        export NPM_CONFIG_PREFIX="$HOME/.npm/_global"
+        export PATH="$HOME/.npm/_global/bin:$PATH"
+        if command -v copilot >/dev/null 2>&1; then
+          echo "✅ Copilot CLI cached"
+        else
+          npm install -g @github/copilot
+        fi
+        echo "$HOME/.npm/_global/bin" >> "$GITHUB_PATH"
+
+    - name: Install project dependencies (if package.json present)
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ -f package.json ]; then
+          echo "📦 Installing project dependencies"
+          npm ci || npm install
+        else
+          echo "ℹ️ No package.json found, skipping dependency install"
+        fi
+
+    - name: Render prompt
+      id: render
+      if: cancelled() == false
+      shell: bash
+      env:
+        PROMPT_TEMPLATE: ${{ inputs.prompt-path }}
+        VERBOSE: ${{ inputs.verbose }}
+      run: |
+        set -euo pipefail
+        start_time=$(date +%s)
+
+        if [ "$VERBOSE" = "true" ]; then
+          echo "🔍 Rendering prompt template: $PROMPT_TEMPLATE"
+        fi
+
+        rendered="$(mktemp)"
+        envsubst < "$PROMPT_TEMPLATE" > "$rendered"
+        prompt_sha=$(sha256sum "$rendered" | awk '{print $1}')
+
+        echo "prompt-file=$rendered" >> "$GITHUB_OUTPUT"
+        echo "prompt-sha=$prompt_sha" >> "$GITHUB_OUTPUT"
+
+        if [ "$VERBOSE" = "true" ]; then
+          end_time=$(date +%s)
+          elapsed=$((end_time - start_time))
+          rendered_size=$(wc -c < "$rendered")
+          echo "✅ Prompt rendered in ${elapsed}s (size: ${rendered_size} bytes, sha256: $prompt_sha)"
+        fi
+
+    - name: Install jq
+      shell: bash
+      run: |
+        set -euo pipefail
+        if ! command -v jq >/dev/null 2>&1; then
+          sudo apt-get update -qq && sudo apt-get install -y -qq jq
+        fi
+
+    - name: Resolve model configuration
+      id: resolve-model
+      shell: bash
+      env:
+        REQUESTED_MODEL: ${{ inputs.model }}
+        COPILOT_MODEL: ${{ env.COPILOT_MODEL }}
+        VERBOSE: ${{ inputs.verbose }}
+      run: |
+        set -euo pipefail
+
+        model=""
+        if [ -n "${REQUESTED_MODEL:-}" ]; then
+          model="$REQUESTED_MODEL"
+        elif [ -n "${COPILOT_MODEL:-}" ]; then
+          model="$COPILOT_MODEL"
+        fi
+
+        echo "model=$model" >> "$GITHUB_OUTPUT"
+
+        if [ "$VERBOSE" = "true" ]; then
+          if [ -n "$model" ]; then
+            echo "✅ Using model: $model"
+          else
+            echo "ℹ️ No model specified, using Copilot CLI default"
+          fi
+        fi
+
+    - name: Configure MCP servers
+      shell: bash
+      env:
+        MCP_CONFIG_INPUT: ${{ inputs.additional-mcp-config }}
+        VERBOSE: ${{ inputs.verbose }}
+      run: |
+        set -euo pipefail
+
+        mkdir -p ~/.config/github-copilot
+
+        base_config='{
+          "mcpServers": {
+            "github": {
+              "command": "npx",
+              "args": ["-y", "@modelcontextprotocol/server-github"]
+            }
+          }
+        }'
+
+        if [ -z "$MCP_CONFIG_INPUT" ]; then
+          echo "$base_config" > ~/.config/github-copilot/servers.json
+          if [ "$VERBOSE" = "true" ]; then
+            echo "ℹ️ Using base GitHub MCP server only"
+          fi
+          exit 0
+        fi
+
+        if [[ "$MCP_CONFIG_INPUT" == @* ]]; then
+          config_file="${MCP_CONFIG_INPUT#@}"
+          if [ ! -f "$config_file" ]; then
+            echo "⚠️ MCP config file not found: $config_file"
+            echo "⚠️ Continuing with base GitHub MCP server only"
+            echo "$base_config" > ~/.config/github-copilot/servers.json
+            exit 0
+          fi
+          
+          if [ "$VERBOSE" = "true" ]; then
+            echo "📖 Reading MCP config from: $config_file"
+          fi
+          
+          config_content=$(cat "$config_file")
+        else
+          config_content="$MCP_CONFIG_INPUT"
+        fi
+
+        config_content=$(echo "$config_content" | envsubst)
+        
+        merged_config=$(echo "$base_config" "$config_content" | jq -s '.[0] * .[1]')
+        
+        echo "$merged_config" > ~/.config/github-copilot/servers.json
+
+        if [ "$VERBOSE" = "true" ]; then
+          echo "✅ MCP configuration written to ~/.config/github-copilot/servers.json"
+          echo "MCP servers configured:"
+          jq -r '.mcpServers | keys[]' ~/.config/github-copilot/servers.json
+        fi
+
+    - name: Restore cached response
+      if: inputs.force-response != 'true'
+      id: cache-response
+      uses: actions/cache@v4
+      with:
+        path: copilot-cache
+        key: copilot-response-${{ steps.render.outputs.prompt-sha }}-${{ steps.resolve-model.outputs.model }}-v1
+
+    - name: Check cache hit
+      id: cached
+      if: inputs.force-response != 'true' && steps.cache-response.outputs.cache-hit == 'true'
+      shell: bash
+      env:
+        OUTPUT_PATH: ${{ inputs.output-path }}
+        WORKING_DIR: ${{ inputs.working-directory }}
+        VERBOSE: ${{ inputs.verbose }}
+      run: |
+        set -euo pipefail
+
+        if [ "$VERBOSE" = "true" ]; then
+          echo "✅ Cache hit! Restoring cached response"
+        fi
+
+        cd "${WORKING_DIR:-.}"
+        
+        mkdir -p "$(dirname "$OUTPUT_PATH")"
+        
+        cp copilot-cache/output.txt "$OUTPUT_PATH"
+        
+        abs_path="$(cd "$(dirname "$OUTPUT_PATH")" && pwd)/$(basename "$OUTPUT_PATH")"
+        echo "output-path=$abs_path" >> "$GITHUB_OUTPUT"
+
+        if [ "$VERBOSE" = "true" ]; then
+          echo "📄 Cached output restored to: $abs_path"
+        fi
+
+    - name: Run Copilot CLI
+      id: copilot
+      if: inputs.force-response == 'true' || steps.cache-response.outputs.cache-hit != 'true'
+      shell: bash
+      timeout-minutes: ${{ fromJSON(inputs.timeout) }}
+      env:
+        COPILOT_TOKEN: ${{ inputs.copilot-token }}
+        PROMPT_FILE: ${{ steps.render.outputs.prompt-file }}
+        OUTPUT_PATH: ${{ inputs.output-path }}
+        WORKING_DIR: ${{ inputs.working-directory }}
+        EXTRA_ARGS: ${{ inputs.extra-args }}
+        ALLOW_ALL_PATHS: ${{ inputs.allow-all-paths }}
+        MODEL: ${{ steps.resolve-model.outputs.model }}
+        VERBOSE: ${{ inputs.verbose }}
+      run: |
+        set -euo pipefail
+        start_time=$(date +%s)
+
+        export NPM_CONFIG_PREFIX="$HOME/.npm/_global"
+        export PATH="$HOME/.npm/_global/bin:$PATH"
+
+        cd "${WORKING_DIR:-.}"
+        
+        mkdir -p "$(dirname "$OUTPUT_PATH")"
+
+        args=()
+        
+        if [ "$ALLOW_ALL_PATHS" = "true" ]; then
+          args+=("--allow-all-paths")
+        fi
+        
+        if [ -n "$MODEL" ]; then
+          args+=("--model" "$MODEL")
+        fi
+        
+        if [ -n "$EXTRA_ARGS" ]; then
+          IFS=' ' read -ra extra_array <<< "$EXTRA_ARGS"
+          args+=("${extra_array[@]}")
+        fi
+
+        if [ "$VERBOSE" = "true" ]; then
+          echo "🚀 Starting Copilot CLI execution"
+          echo "📝 Prompt file: $PROMPT_FILE"
+          echo "📂 Working directory: ${WORKING_DIR:-.}"
+          echo "📄 Output file: $OUTPUT_PATH"
+          echo "⚙️ Extra args: ${EXTRA_ARGS:-none}"
+          echo "🔧 Model: ${MODEL:-default}"
+        fi
+
+        copilot "${args[@]}" < "$PROMPT_FILE" > "$OUTPUT_PATH" 2>&1 || {
+          exit_code=$?
+          echo "❌ Copilot CLI failed with exit code: $exit_code"
+          if [ -f "$OUTPUT_PATH" ]; then
+            echo "📄 Partial output:"
+            tail -n 50 "$OUTPUT_PATH"
+          fi
+          exit $exit_code
+        }
+
+        abs_path="$(cd "$(dirname "$OUTPUT_PATH")" && pwd)/$(basename "$OUTPUT_PATH")"
+        echo "output-path=$abs_path" >> "$GITHUB_OUTPUT"
+
+        mkdir -p copilot-cache
+        cp "$OUTPUT_PATH" copilot-cache/output.txt
+
+        if [ "$VERBOSE" = "true" ]; then
+          end_time=$(date +%s)
+          elapsed=$((end_time - start_time))
+          output_size=$(wc -c < "$OUTPUT_PATH")
+          echo "✅ Copilot CLI completed in ${elapsed}s"
+          echo "📄 Output written to: $abs_path (size: ${output_size} bytes)"
+        fi
