@@ -850,16 +850,28 @@ function assignRemoteTargetRoom(role: string, memory: SwarmCreepMemory, swarm: S
   if (role === "remoteWorker") {
     const remoteAssignments = swarm.remoteAssignments ?? [];
     if (remoteAssignments.length > 0) {
-      // Simple load balancing: assign to remote room with fewest remoteWorkers
+      // Load balancing: assign to remote room with fewest remoteWorkers
+      // If multiple rooms have same count, use Game.time for deterministic round-robin
       let minCount = Infinity;
       let bestRemote = remoteAssignments[0];
+      let candidatesWithMinCount: string[] = [];
       
       for (const remoteName of remoteAssignments) {
         const count = countRemoteCreepsByTargetRoom(homeRoom, role, remoteName);
         if (count < minCount) {
           minCount = count;
-          bestRemote = remoteName;
+          candidatesWithMinCount = [remoteName];
+        } else if (count === minCount) {
+          candidatesWithMinCount.push(remoteName);
         }
+      }
+      
+      // If multiple rooms with same count, use round-robin based on Game.time
+      if (candidatesWithMinCount.length > 1) {
+        const index = Game.time % candidatesWithMinCount.length;
+        bestRemote = candidatesWithMinCount[index];
+      } else {
+        bestRemote = candidatesWithMinCount[0];
       }
       
       memory.targetRoom = bestRemote;
