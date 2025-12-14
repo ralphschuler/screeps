@@ -603,6 +603,8 @@ export interface SwarmCreepMemory {
   }[];
   /** Patrol waypoint index (for defense units) */
   patrolIndex?: number;
+  /** Assist target room (for defense units helping other rooms) */
+  assistTarget?: string;
   /** Current state (for state machine) */
   state?: CreepState;
   /** Flag indicating creep should return home due to unreachable target (ERR_NO_PATH) */

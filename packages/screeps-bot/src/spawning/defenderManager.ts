@@ -203,13 +203,13 @@ export function needsEmergencyDefenders(room: Room, swarm: SwarmState): boolean 
 /**
  * Check if room needs external defense assistance
  * A room needs help when:
- * - It has significant threats (danger >= 2)
+ * - It has threats (danger >= 1) AND cannot handle them alone
  * - It cannot produce enough defenders (low energy, no spawns, or spawn queue full)
- * - The threat is urgent (urgency >= 1.5)
+ * - The threat is urgent or the room is overwhelmed
  */
 export function needsDefenseAssistance(room: Room, swarm: SwarmState): boolean {
-  // No assistance needed if no significant threats
-  if (swarm.danger < 2) {
+  // No assistance needed if no threats at all
+  if (swarm.danger < 1) {
     return false;
   }
 
@@ -230,15 +230,15 @@ export function needsDefenseAssistance(room: Room, swarm: SwarmState): boolean {
 
   // Check if any spawn is available
   const availableSpawns = spawns.filter(s => !s.spawning);
-  if (availableSpawns.length === 0) {
-    return true; // All spawns busy = needs help
+  if (availableSpawns.length === 0 && defenderDeficit >= 1) {
+    return true; // All spawns busy and we need defenders = needs help
   }
 
   // Check energy availability for spawning defenders
   const energyAvailable = room.energyAvailable;
   const minDefenderCost = 250; // Minimum cost for a basic defender
-  if (energyAvailable < minDefenderCost) {
-    return true; // Not enough energy = needs help
+  if (energyAvailable < minDefenderCost && defenderDeficit >= 1) {
+    return true; // Not enough energy and we need defenders = needs help
   }
 
   // Check urgency - high urgency threats need immediate help even if room can eventually spawn
@@ -249,6 +249,12 @@ export function needsDefenseAssistance(room: Room, swarm: SwarmState): boolean {
   // Critical danger (level 3) with any defender deficit should request help
   if (swarm.danger >= 3 && defenderDeficit >= 1) {
     return true; // Critical danger always needs help
+  }
+
+  // Danger level 2 (active attack) with significant deficit or low RCL needs help
+  const rcl = room.controller?.level ?? 1;
+  if (swarm.danger >= 2 && (defenderDeficit >= 2 || rcl <= 3)) {
+    return true; // Active attack on low RCL room or significant deficit = needs help
   }
 
   return false;

@@ -358,6 +358,7 @@ export class RoomNode {
   /**
    * Run tower control
    * OPTIMIZATION: Use cached structures to avoid repeated room.find() calls
+   * OPTIMIZATION: All towers focus fire on the same target for faster kills
    */
   private runTowerControl(room: Room, swarm: SwarmState): void {
     const cache = getStructureCache(room);
@@ -368,17 +369,16 @@ export class RoomNode {
     // Find targets - use safeFind to handle engine errors with corrupted owner data
     const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
 
+    // Select primary target once for all towers to focus fire
+    const primaryTarget = hostiles.length > 0 ? this.selectTowerTarget(hostiles) : null;
+
     for (const tower of towers) {
       if (tower.store.getUsedCapacity(RESOURCE_ENERGY) < 10) continue;
 
-      // Priority 1: Attack hostiles
-      if (hostiles.length > 0) {
-        // Target priority: healers > ranged > melee > others
-        const target = this.selectTowerTarget(hostiles);
-        if (target) {
-          tower.attack(target);
-          continue;
-        }
+      // Priority 1: Attack hostiles (all towers focus fire on same target)
+      if (primaryTarget) {
+        tower.attack(primaryTarget);
+        continue;
       }
 
       // Priority 2: Heal damaged creeps (only in non-siege)
@@ -437,34 +437,33 @@ export class RoomNode {
 
   /**
    * Get priority score for hostile targeting
+   * OPTIMIZATION: Use getActiveBodyparts() for faster priority calculation
+   * Consistent with military.ts findPriorityTarget implementation
    */
   private getHostilePriority(hostile: Creep): number {
     let score = 0;
 
-    for (const part of hostile.body) {
-      if (!part.hits) continue;
+    // Use getActiveBodyparts() for faster body part counting (O(1) per type vs O(n) for all parts)
+    const healParts = hostile.getActiveBodyparts(HEAL);
+    const rangedParts = hostile.getActiveBodyparts(RANGED_ATTACK);
+    const attackParts = hostile.getActiveBodyparts(ATTACK);
+    const claimParts = hostile.getActiveBodyparts(CLAIM);
+    const workParts = hostile.getActiveBodyparts(WORK);
 
-      switch (part.type) {
-        case HEAL:
-          score += 100;
-          break;
-        case RANGED_ATTACK:
-          score += 50;
-          break;
-        case ATTACK:
-          score += 40;
-          break;
-        case CLAIM:
-          score += 60;
-          break;
-        case WORK:
-          score += 30;
-          break;
-      }
+    // Calculate score based on body composition (same priority as military.ts)
+    score += healParts * 100;
+    score += rangedParts * 50;
+    score += attackParts * 40;
+    score += claimParts * 60;
+    score += workParts * 30;
 
-      // Boosted parts are higher priority
-      if (part.boost) {
-        score += 20;
+    // Check for any boosted parts (only if score is high to avoid unnecessary iteration)
+    if (score > 0) {
+      for (const part of hostile.body) {
+        if (part.boost) {
+          score += 20;
+          break; // Only add boost bonus once
+        }
       }
     }
 

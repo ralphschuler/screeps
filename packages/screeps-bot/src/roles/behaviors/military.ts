@@ -249,22 +249,46 @@ function getSquadMemory(squadId: string): SquadMemory | undefined {
 /**
  * Guard - Home defense creep.
  * Attacks nearby hostiles, patrols the room when idle.
- * Guards stay in their home room and do not chase hostiles outside.
+ * Can assist neighboring rooms when requested by defense coordinator.
  */
 export function guard(ctx: CreepContext): CreepAction {
-  const mem = ctx.creep.memory as unknown as SwarmCreepMemory & { assistTarget?: string };
+  const mem = ctx.creep.memory as unknown as SwarmCreepMemory;
 
-  // Guards should not leave their home room - clear any assist assignments
+  // Check if assigned to assist another room
   if (mem.assistTarget) {
-    delete mem.assistTarget;
+    // Move to assist room if not there yet
+    if (ctx.creep.room.name !== mem.assistTarget) {
+      return { type: "moveToRoom", roomName: mem.assistTarget };
+    }
+
+    // In assist room - check if threat is resolved using pre-computed hostiles from context
+    if (ctx.hostiles.length === 0) {
+      // Threat resolved, clear assignment and return home
+      delete mem.assistTarget;
+      if (ctx.creep.room.name !== ctx.homeRoom) {
+        return { type: "moveToRoom", roomName: ctx.homeRoom };
+      }
+    } else {
+      // Engage hostiles using same logic as home defense
+      const assistTarget = findPriorityTarget(ctx);
+      if (assistTarget) {
+        const range = ctx.creep.pos.getRangeTo(assistTarget);
+        const hasRanged = hasBodyPart(ctx.creep, RANGED_ATTACK);
+        const hasMelee = hasBodyPart(ctx.creep, ATTACK);
+
+        if (hasRanged && range <= 3) return { type: "rangedAttack", target: assistTarget };
+        if (hasMelee && range <= 1) return { type: "attack", target: assistTarget };
+        return { type: "moveTo", target: assistTarget };
+      }
+    }
   }
 
-  // Return to home room if not there
+  // Return to home room if not there (and not on assist mission)
   if (ctx.creep.room.name !== ctx.homeRoom) {
     return { type: "moveToRoom", roomName: ctx.homeRoom };
   }
 
-  // Normal home defense behavior - only engage hostiles in home room
+  // Normal home defense behavior - engage hostiles in home room
   const target = findPriorityTarget(ctx);
 
   if (target) {
@@ -401,7 +425,7 @@ function findPriorityTargetFromList(ctx: CreepContext, hostiles: Creep[]): Creep
  * Can assist neighboring rooms when requested.
  */
 export function healer(ctx: CreepContext): CreepAction {
-  const mem = ctx.creep.memory as unknown as SwarmCreepMemory & { assistTarget?: string };
+  const mem = ctx.creep.memory as unknown as SwarmCreepMemory;
 
   // Always heal self if critically damaged
   if (ctx.creep.hits < ctx.creep.hitsMax * 0.5) {
@@ -780,7 +804,7 @@ export function harasser(ctx: CreepContext): CreepAction {
  * Rangers will retreat if critically damaged to preserve expensive units.
  */
 export function ranger(ctx: CreepContext): CreepAction {
-  const mem = ctx.creep.memory as unknown as SwarmCreepMemory & { assistTarget?: string };
+  const mem = ctx.creep.memory as unknown as SwarmCreepMemory;
 
   // TACTICAL RETREAT: If critically damaged (below 30% HP), retreat to home room
   // Rangers are valuable ranged attackers, often boosted for maximum effectiveness
