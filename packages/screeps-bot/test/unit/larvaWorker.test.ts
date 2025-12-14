@@ -107,6 +107,20 @@ function createMockStorage(freeCapacity: number, usedCapacity: number = 10000): 
 }
 
 /**
+ * Create a mock container for testing
+ */
+function createMockContainer(freeCapacity: number, usedCapacity: number = 0): StructureContainer {
+  return {
+    id: "mockContainerId" as Id<StructureContainer>,
+    structureType: STRUCTURE_CONTAINER,
+    store: {
+      getFreeCapacity: () => freeCapacity,
+      getUsedCapacity: () => usedCapacity
+    }
+  } as unknown as StructureContainer;
+}
+
+/**
  * Create a mock controller for testing
  */
 function createMockController(): StructureController {
@@ -157,6 +171,7 @@ function createMockContext(
     spawnStructures?: (StructureSpawn | StructureExtension)[];
     towers?: StructureTower[];
     storage?: StructureStorage;
+    depositContainers?: StructureContainer[];
     controller?: StructureController;
     prioritizedSites?: ConstructionSite[];
   } = {}
@@ -194,7 +209,7 @@ function createMockContext(
     damagedStructureCount: 0,
     droppedResources: [],
     containers: [],
-    depositContainers: [],
+    depositContainers: options.depositContainers ?? [],
     spawnStructures: options.spawnStructures ?? [],
     towers: options.towers ?? [],
     storage: options.storage,
@@ -341,6 +356,32 @@ describe("larvaWorker behavior - delivery priority", () => {
       assert.equal(action.type, "transfer");
       if (action.type === "transfer") {
         assert.equal(action.target, storage, "Should haul to storage when spawn/extensions/towers are full");
+        assert.equal(action.resourceType, RESOURCE_ENERGY);
+      }
+    });
+
+    it("should deliver to containers when spawn/extensions/towers/storage are full", () => {
+      const creep = createMockCreep({ freeCapacity: 0, usedCapacity: 50 });
+      const storage = createMockStorage(0); // Full storage
+      const container = createMockContainer(1000); // Container with space
+      const controller = createMockController();
+      const site = createMockConstructionSite();
+
+      const ctx = createMockContext(creep, {
+        isWorking: true,
+        spawnStructures: [],
+        towers: [],
+        storage: storage,
+        depositContainers: [container],
+        controller: controller,
+        prioritizedSites: [site]
+      });
+
+      const action = larvaWorker(ctx);
+
+      assert.equal(action.type, "transfer");
+      if (action.type === "transfer") {
+        assert.equal(action.target, container, "Should deliver to container when spawn/extensions/towers/storage are full");
         assert.equal(action.resourceType, RESOURCE_ENERGY);
       }
     });
