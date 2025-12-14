@@ -32,4 +32,24 @@ export class UpgradeControllerAction implements Action {
 
     return this.upgradeAction.execute(creep);
   }
+
+  serialize() {
+    return {
+      type: this.type,
+      data: {
+        controllerId: this.controller.id,
+        moved: this.moved
+      }
+    };
+  }
+
+  static deserialize(data: any): UpgradeControllerAction {
+    const controller = Game.getObjectById(data.controllerId) as StructureController;
+    if (!controller) {
+      throw new Error(`Controller not found: ${data.controllerId}`);
+    }
+    const action = new UpgradeControllerAction(controller);
+    action.moved = data.moved ?? false;
+    return action;
+  }
 }

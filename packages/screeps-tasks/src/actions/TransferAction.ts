@@ -41,4 +41,23 @@ export class TransferAction implements Action {
       error: `Transfer failed with code: ${result}`
     };
   }
+
+  serialize() {
+    return {
+      type: this.type,
+      data: {
+        targetId: this.target.id,
+        resourceType: this.resourceType,
+        amount: this.amount
+      }
+    };
+  }
+
+  static deserialize(data: any): TransferAction {
+    const target = Game.getObjectById(data.targetId) as AnyCreep | Structure;
+    if (!target) {
+      throw new Error(`Transfer target not found: ${data.targetId}`);
+    }
+    return new TransferAction(target, data.resourceType, data.amount);
+  }
 }

@@ -35,4 +35,23 @@ export class MoveToAction implements Action {
       error: `MoveTo failed with code: ${result}`
     };
   }
+
+  serialize() {
+    const targetPos = this.target instanceof RoomPosition ? this.target : this.target.pos;
+    return {
+      type: this.type,
+      data: {
+        x: targetPos.x,
+        y: targetPos.y,
+        roomName: targetPos.roomName,
+        range: this.range,
+        options: this.options
+      }
+    };
+  }
+
+  static deserialize(data: any): MoveToAction {
+    const pos = new RoomPosition(data.x, data.y, data.roomName);
+    return new MoveToAction(pos, data.range, data.options);
+  }
 }

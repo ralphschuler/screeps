@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "module": "esnext",
+    "module": "commonjs",
     "lib": ["es2018"],
     "target": "es2018",
     "moduleResolution": "node",
@@ -15,7 +15,7 @@
     "allowUnreachableCode": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["mocha", "chai", "node"]
+    "types": ["mocha", "chai", "node", "screeps"]
   },
   "include": ["./**/*", "../src/**/*"],
   "exclude": ["node_modules"]

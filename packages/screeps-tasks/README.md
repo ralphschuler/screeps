@@ -4,21 +4,15 @@ A minimal, flexible task system for Screeps creeps. This library allows you to a
 
 ## Features
 
-- **Simple Task Model**: Tasks consist of an ID, creep assignment, status, and a sequence of actions
+- **Simple Task Model**: Tasks consist of an ID, creep assignment, status, loop flag, and a sequence of actions
 - **Modular Actions**: Small, reusable action modules (harvest, transfer, moveTo, etc.)
 - **Composite Actions**: Combine basic actions into higher-level behaviors
 - **Predictable Task IDs**: Task IDs are generated deterministically based on creep name and game time
 - **Task Lifecycle**: Automatic tracking of task status (pending, processing, finished, failed)
+- **Looping Tasks**: Tasks can be configured to loop indefinitely or run once
+- **Memory Persistence**: Built-in serialization/deserialization for saving tasks to creep memory
+- **Extensible**: Override serialize/deserialize methods for custom persistence behavior
 - **Flexible**: Easy to extend with custom actions and task management strategies
-
-## Important Notes
-
-⚠️ **Memory Persistence**: This is a minimal implementation focused on task execution logic. The `TaskManager` stores tasks in memory that **will not persist between global resets**. For production use, you should:
-- Store task data in `Memory` if persistence is needed
-- Recreate tasks each tick based on creep state
-- Or implement your own serialization/deserialization layer
-
-See the examples for patterns on recreating tasks as needed.
 
 ## Installation
 
@@ -41,6 +35,7 @@ interface Task {
   status: TaskStatus;      // pending, processing, finished, failed
   actions: Action[];       // Array of actions to execute
   currentActionIndex: number;
+  loop: boolean;           // Whether task repeats when finished
 }
 ```
 
@@ -52,6 +47,7 @@ An action is a single operation that a creep can perform:
 interface Action {
   readonly type: string;
   execute(creep: Creep): ActionResult;
+  serialize?(): SerializedAction;  // Optional: for persistence
 }
 ```
 
@@ -75,7 +71,8 @@ import { taskManager } from '@ralphschuler/screeps-tasks';
 // Create a task
 const task = taskManager.createTask({
   creepId: creep.name,
-  actions: [/* actions */]
+  actions: [/* actions */],
+  loop: false  // Optional: set to true for repeating tasks
 });
 
 // Execute a task
@@ -83,6 +80,62 @@ taskManager.executeTask(task.id, creep);
 
 // Get active task for a creep
 const activeTask = taskManager.getActiveTask(creep.name);
+
+// Save task to creep memory
+taskManager.saveTaskToCreep(creep, task);
+
+// Load task from creep memory
+const loadedTask = taskManager.loadTaskFromCreep(creep, actionRegistry);
+```
+
+## Memory Persistence
+
+Tasks can be saved to and loaded from creep memory for persistence between global resets:
+
+```typescript
+import { taskManager, defaultActionRegistry, HarvestEnergyAction, TransferEnergyAction } from '@ralphschuler/screeps-tasks';
+
+function persistentHarvester(creep: Creep) {
+  // Try to load existing task from memory
+  let task = taskManager.loadTaskFromCreep(creep, defaultActionRegistry);
+  
+  if (!task) {
+    // Create a new looping task
+    const source = creep.pos.findClosestByPath(FIND_SOURCES);
+    const spawn = creep.room.find(FIND_MY_SPAWNS)[0];
+    
+    task = taskManager.createTask({
+      creepId: creep.name,
+      actions: [new HarvestEnergyAction(source), new TransferEnergyAction(spawn)],
+      loop: true  // Task will repeat indefinitely
+    });
+    
+    // Save to memory
+    taskManager.saveTaskToCreep(creep, task);
+  }
+  
+  // Execute and save progress
+  taskManager.executeTask(task.id, creep);
+  taskManager.saveTaskToCreep(creep, task);
+}
+```
+
+### Custom Serialization
+
+Override `serializeTask` and `deserializeTask` for custom persistence behavior:
+
+```typescript
+class MyTaskManager extends TaskManager {
+  serializeTask(task: Task): SerializedTask {
+    // Custom serialization logic
+    return super.serializeTask(task);
+  }
+  
+  deserializeTask(serialized: SerializedTask, actionRegistry: ActionRegistry): Task {
+    // Custom deserialization logic
+    return super.deserializeTask(serialized, actionRegistry);
+  }
+}
 ```
 
 ## Available Actions

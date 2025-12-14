@@ -39,4 +39,21 @@ export class HarvestAction implements Action {
       error: `Harvest failed with code: ${result}`
     };
   }
+
+  serialize() {
+    return {
+      type: this.type,
+      data: {
+        targetId: this.target.id
+      }
+    };
+  }
+
+  static deserialize(data: any): HarvestAction {
+    const target = Game.getObjectById(data.targetId) as Source | Mineral;
+    if (!target) {
+      throw new Error(`Harvest target not found: ${data.targetId}`);
+    }
+    return new HarvestAction(target);
+  }
 }

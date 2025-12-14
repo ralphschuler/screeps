@@ -39,4 +39,21 @@ export class UpgradeAction implements Action {
       error: `Upgrade failed with code: ${result}`
     };
   }
+
+  serialize() {
+    return {
+      type: this.type,
+      data: {
+        controllerId: this.controller.id
+      }
+    };
+  }
+
+  static deserialize(data: any): UpgradeAction {
+    const controller = Game.getObjectById(data.controllerId) as StructureController;
+    if (!controller) {
+      throw new Error(`Controller not found: ${data.controllerId}`);
+    }
+    return new UpgradeAction(controller);
+  }
 }

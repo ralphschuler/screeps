@@ -39,4 +39,23 @@ export class WithdrawAction implements Action {
       error: `Withdraw failed with code: ${result}`
     };
   }
+
+  serialize() {
+    return {
+      type: this.type,
+      data: {
+        targetId: this.target.id,
+        resourceType: this.resourceType,
+        amount: this.amount
+      }
+    };
+  }
+
+  static deserialize(data: any): WithdrawAction {
+    const target = Game.getObjectById(data.targetId) as Structure | Tombstone | Ruin;
+    if (!target) {
+      throw new Error(`Withdraw target not found: ${data.targetId}`);
+    }
+    return new WithdrawAction(target, data.resourceType, data.amount);
+  }
 }

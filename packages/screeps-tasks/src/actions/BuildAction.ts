@@ -45,4 +45,21 @@ export class BuildAction implements Action {
       error: `Build failed with code: ${result}`
     };
   }
+
+  serialize() {
+    return {
+      type: this.type,
+      data: {
+        targetId: this.target.id
+      }
+    };
+  }
+
+  static deserialize(data: any): BuildAction {
+    const target = Game.getObjectById(data.targetId) as ConstructionSite;
+    if (!target) {
+      throw new Error(`Construction site not found: ${data.targetId}`);
+    }
+    return new BuildAction(target);
+  }
 }

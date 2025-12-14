@@ -32,4 +32,25 @@ export class TransferEnergyAction implements Action {
 
     return this.transferAction.execute(creep);
   }
+
+  serialize() {
+    return {
+      type: this.type,
+      data: {
+        targetId: this.target.id,
+        amount: this.amount,
+        moved: this.moved
+      }
+    };
+  }
+
+  static deserialize(data: any): TransferEnergyAction {
+    const target = Game.getObjectById(data.targetId) as AnyCreep | Structure;
+    if (!target) {
+      throw new Error(`Transfer target not found: ${data.targetId}`);
+    }
+    const action = new TransferEnergyAction(target, data.amount);
+    action.moved = data.moved ?? false;
+    return action;
+  }
 }

@@ -1,13 +1,11 @@
-import { Task, TaskConfig, TaskStatus } from './types';
+import { Task, TaskConfig, TaskStatus, SerializedTask, SerializedAction, Action } from './types';
 
 /**
  * TaskManager - Manages task lifecycle and execution
  * 
- * Note: This is a minimal implementation that stores tasks in memory.
- * Tasks will NOT persist between global resets. For production use:
- * - Recreate tasks each tick based on creep state (see examples)
- * - Store task data in Memory if persistence is needed
- * - Or extend this class with serialization/deserialization methods
+ * Note: This implementation provides serialize/deserialize methods for persistence.
+ * Tasks can be stored in Memory and restored between global resets.
+ * Override serializeTask/deserializeTask methods to customize serialization behavior.
  */
 export class TaskManager {
   private tasks: Map<string, Task> = new Map();
@@ -22,7 +20,8 @@ export class TaskManager {
       creepId: config.creepId,
       status: TaskStatus.PENDING,
       actions: config.actions,
-      currentActionIndex: 0
+      currentActionIndex: 0,
+      loop: config.loop ?? false
     };
 
     this.tasks.set(task.id, task);
@@ -70,8 +69,13 @@ export class TaskManager {
     task.status = TaskStatus.PROCESSING;
 
     if (task.currentActionIndex >= task.actions.length) {
-      task.status = TaskStatus.FINISHED;
-      return true;
+      if (task.loop) {
+        // Reset to beginning for looping tasks
+        task.currentActionIndex = 0;
+      } else {
+        task.status = TaskStatus.FINISHED;
+        return true;
+      }
     }
 
     const currentAction = task.actions[task.currentActionIndex];
@@ -86,8 +90,13 @@ export class TaskManager {
       task.currentActionIndex++;
 
       if (task.currentActionIndex >= task.actions.length) {
-        task.status = TaskStatus.FINISHED;
-        return true;
+        if (task.loop) {
+          // Reset to beginning for looping tasks
+          task.currentActionIndex = 0;
+        } else {
+          task.status = TaskStatus.FINISHED;
+          return true;
+        }
       }
     }
 
@@ -139,6 +148,105 @@ export class TaskManager {
   }
 
   /**
+   * Serialize a task to a format that can be stored in Memory
+   * Override this method to customize serialization behavior
+   */
+  serializeTask(task: Task): SerializedTask {
+    return {
+      id: task.id,
+      creepId: task.creepId,
+      status: task.status,
+      currentActionIndex: task.currentActionIndex,
+      loop: task.loop,
+      actions: task.actions.map(action => this.serializeAction(action))
+    };
+  }
+
+  /**
+   * Deserialize a task from Memory
+   * Override this method to customize deserialization behavior
+   * 
+   * @param serialized - The serialized task data
+   * @param actionRegistry - Map of action types to constructor functions
+   */
+  deserializeTask(serialized: SerializedTask, actionRegistry: ActionRegistry): Task {
+    const actions = serialized.actions.map(serializedAction =>
+      this.deserializeAction(serializedAction, actionRegistry)
+    );
+
+    const task: Task = {
+      id: serialized.id,
+      creepId: serialized.creepId,
+      status: serialized.status,
+      currentActionIndex: serialized.currentActionIndex,
+      loop: serialized.loop ?? false,
+      actions
+    };
+
+    this.tasks.set(task.id, task);
+    return task;
+  }
+
+  /**
+   * Serialize an action to a format that can be stored in Memory
+   * Override this method to customize action serialization
+   */
+  protected serializeAction(action: Action): SerializedAction {
+    if (action.serialize) {
+      return action.serialize();
+    }
+
+    // Default serialization - just stores the type
+    // Users should override this or implement serialize() on their actions
+    return {
+      type: action.type,
+      data: {}
+    };
+  }
+
+  /**
+   * Deserialize an action from Memory
+   * Override this method to customize action deserialization
+   */
+  protected deserializeAction(
+    serialized: SerializedAction,
+    actionRegistry: ActionRegistry
+  ): Action {
+    const ActionClass = actionRegistry[serialized.type];
+    if (!ActionClass) {
+      throw new Error(`No action registered for type: ${serialized.type}`);
+    }
+
+    return ActionClass(serialized.data);
+  }
+
+  /**
+   * Save a task to creep memory
+   */
+  saveTaskToCreep(creep: Creep, task: Task): void {
+    if (!creep.memory.task) {
+      creep.memory.task = {} as any;
+    }
+    creep.memory.task = this.serializeTask(task);
+  }
+
+  /**
+   * Load a task from creep memory
+   */
+  loadTaskFromCreep(creep: Creep, actionRegistry: ActionRegistry): Task | undefined {
+    if (!creep.memory.task) {
+      return undefined;
+    }
+
+    try {
+      return this.deserializeTask(creep.memory.task as SerializedTask, actionRegistry);
+    } catch (error) {
+      console.log(`Failed to load task from creep ${creep.name}: ${error}`);
+      return undefined;
+    }
+  }
+
+  /**
    * Generate a predictable task ID
    */
   private generateTaskId(creepId: string): string {
@@ -147,6 +255,13 @@ export class TaskManager {
     return `task_${creepId}_${timestamp}_${counter}`;
   }
 }
+
+/**
+ * Action registry maps action type strings to deserializer functions
+ */
+export type ActionRegistry = {
+  [actionType: string]: (data: any) => Action;
+};
 
 /**
  * Global task manager instance
