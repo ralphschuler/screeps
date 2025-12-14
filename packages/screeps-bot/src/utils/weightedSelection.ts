@@ -1,19 +1,10 @@
 /**
- * Weighted Selection Utility - Phase 4
- *
- * Generic roulette selection from {key, weight} arrays.
- * Used for:
- * - Spawn decisions
- * - Task target selection
- * - Nuke target selection
- * - Squad target prioritization
+ * Generic weighted roulette selection utility.
  */
 
 import { random } from "./random";
 
-/**
- * Weighted entry type
- */
+/** Weighted entry type */
 export interface WeightedEntry<T> {
   key: T;
   weight: number;

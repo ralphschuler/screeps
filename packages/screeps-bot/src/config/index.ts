@@ -1,28 +1,8 @@
 /**
- * Configuration Module - Phase 17
- *
  * Central configuration for all bot parameters.
- * Single source of truth for tunable constants.
- * 
- * TODO(P1): ARCH - Implement configuration hot-reloading from Memory or segments
- * Allow runtime config changes without code deployment
- * TODO(P1): BUG - Add configuration validation on initialization
- * Catch invalid config values before they cause issues
- * TODO(P2): FEATURE - Implement configuration profiles (eco, war, balanced)
- * Pre-defined config sets for different playstyles
- * TODO(P2): FEATURE - Add per-room configuration overrides
- * Allow customizing behavior for specific rooms
- * TODO(P3): ARCH - Consider implementing configuration versioning
- * Track config changes over time for performance correlation
- * TODO(P3): FEATURE - Add configuration export/import for sharing between bots
- * Successful configs could be shared or backed up
- * TODO(P3): PERF - Implement adaptive configuration based on performance metrics
- * Automatically tune parameters based on observed outcomes
  */
 
-/**
- * Pheromone configuration
- */
+/** Pheromone configuration */
 export interface PheromoneConfig {
   /** Update interval in ticks */
   updateInterval: number;

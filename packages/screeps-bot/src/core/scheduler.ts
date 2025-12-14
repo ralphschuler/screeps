@@ -1,15 +1,5 @@
 /**
- * CPU Scheduler - Phase 6
- *
- * Implements bucket-based CPU management and task scheduling:
- * - High-frequency tasks (every tick)
- * - Medium-frequency tasks (every 5-10 ticks)
- * - Low-frequency tasks (every 20-50 ticks)
- * - Bucket modes (normal, low, high)
- *
- * NOTE: The kernel is the primary source of truth for bucket modes.
- * The scheduler delegates to kernel for bucket mode decisions to ensure
- * consistent behavior across all systems.
+ * CPU scheduler implementing bucket-based CPU management and task scheduling.
  */
 
 import { logger } from "./logger";
