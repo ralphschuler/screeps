@@ -1,5 +1,12 @@
 /**
  * MCP Tool handlers for Screeps operations
+ * 
+ * TODO(P2): ARCH - Extract tool schemas into separate file for better organization
+ * Schemas and handlers should be in separate modules for maintainability
+ * TODO(P1): SECURITY - Add input sanitization for console commands
+ * Prevent injection attacks or malicious command execution
+ * TODO(P2): DOC - Add JSDoc comments to all handler functions describing return types
+ * Better documentation improves code maintainability
  */
 
 import { z } from "zod";

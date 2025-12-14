@@ -1,3 +1,10 @@
+// TODO(P2): ARCH - Add graceful shutdown handling for the exporter
+// Ensure buffered metrics are flushed before exit
+// TODO(P2): FEATURE - Add health check endpoint for monitoring
+// Allow external systems to verify the exporter is running
+// TODO(P2): TEST - Add integration tests for metric collection and export
+// Verify metrics are correctly formatted for Graphite/Grafana
+
 import { loadConfig } from './config';
 import { createApi } from './api';
 import { createLogger } from './logger';

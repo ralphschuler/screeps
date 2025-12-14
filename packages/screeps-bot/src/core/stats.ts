@@ -12,6 +12,15 @@
  * All stats are stored as a clean object structure in Memory.stats.
  * No flattening or processing is done here - the Influx exporter
  * handles all processing and formatting for Grafana dashboards.
+ * 
+ * TODO(P2): PERF - Add stats sampling to reduce CPU overhead in large empires
+ * Not every creep/room needs stats recorded every tick
+ * TODO(P2): ARCH - Consider moving stats to Memory segments to reduce main memory usage
+ * Stats can consume significant memory in large empires
+ * TODO(P3): FEATURE - Add historical stats tracking for trend analysis
+ * Store rolling averages over longer time periods for performance regression detection
+ * TODO(P2): TEST - Add unit tests for stats aggregation logic
+ * Verify averages, peaks, and counts are calculated correctly
  */
 
 import { logger } from "./logger";

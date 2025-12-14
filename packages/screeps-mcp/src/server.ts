@@ -5,20 +5,22 @@
  * Model Context Protocol server integration for Screeps bot development.
  * Exposes Screeps game data, memory, and operations via MCP protocol.
  * 
- * TODO: Add authentication and authorization for sensitive operations
+ * TODO(P1): SECURITY - Add authentication and authorization for sensitive operations
  * Memory writes and console commands should be protected
- * TODO: Implement request rate limiting to prevent API abuse
+ * TODO(P2): PERF - Implement request rate limiting to prevent API abuse
  * Too many requests could impact game performance
- * TODO: Add caching layer for frequently accessed data
+ * TODO(P2): PERF - Add caching layer for frequently accessed data
  * Room status, terrain, etc. change rarely and can be cached
- * TODO: Consider implementing websocket support for real-time updates
+ * TODO(P3): FEATURE - Consider implementing websocket support for real-time updates
  * Push notifications when important events occur in-game
- * TODO: Add batch operation support for efficiency
+ * TODO(P3): FEATURE - Add batch operation support for efficiency
  * Multiple memory reads/writes in one request
- * TODO: Implement data validation for all inputs
+ * TODO(P1): BUG - Implement data validation for all inputs
  * Prevent malformed data from causing errors
- * TODO: Add comprehensive error handling and logging
+ * TODO(P1): ARCH - Add comprehensive error handling and logging
  * Better diagnostics for debugging client-server issues
+ * TODO(P2): TEST - Add integration tests for MCP tool handlers
+ * Verify all tools return expected results
  */
 
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";

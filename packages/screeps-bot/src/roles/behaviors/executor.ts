@@ -541,12 +541,12 @@ function trackActionMetrics(
  * Update the working state based on creep's store capacity.
  * Working = true when full (should deliver), false when empty (should collect).
  * 
- * TODO: BUGFIX - Stale capacity values in context
- * Problem: ctx.isFull and ctx.isEmpty are calculated ONCE when context is created
+ * TODO(P2): STYLE - Stale capacity values in context already fixed
+ * Problem was: ctx.isFull and ctx.isEmpty are calculated ONCE when context is created
  * at the start of the tick, BEFORE actions execute. After a transfer/withdraw action,
  * the creep's capacity changes but ctx.isFull/isEmpty remain stale.
  * 
- * Fix: Check creep.store directly instead of using ctx.isFull/isEmpty
+ * Fix already applied: Check creep.store directly instead of using ctx.isFull/isEmpty
  */
 function updateWorkingState(ctx: CreepContext): void {
   // BUGFIX: Use creep.store directly for fresh capacity state

@@ -11,20 +11,22 @@
  *
  * Addresses Issues: #3, #27, #36
  * 
- * TODO: Implement machine learning for price prediction
+ * TODO(P3): FEATURE - Implement machine learning for price prediction
  * Historical data could train models to predict price movements
- * TODO: Add arbitrage detection for profit opportunities
+ * TODO(P2): FEATURE - Add arbitrage detection for profit opportunities
  * Buy from one room, sell to another when profitable after transport costs
- * TODO: Implement bulk trading optimization to minimize order fees
+ * TODO(P2): PERF - Implement bulk trading optimization to minimize order fees
  * Batch small trades into larger orders to reduce 5% fee impact
- * TODO: Add seasonal pattern detection for resource prices
+ * TODO(P3): FEATURE - Add seasonal pattern detection for resource prices
  * Some resources have predictable price cycles (e.g., seasonal demand)
- * TODO: Consider implementing automated market maker functionality
+ * TODO(P3): FEATURE - Consider implementing automated market maker functionality
  * Provide liquidity for less common resources to earn fees
- * TODO: Add integration with expansion manager for resource acquisition
+ * TODO(P2): ARCH - Add integration with expansion manager for resource acquisition
  * Buy resources needed for rapid expansion or war preparation
- * TODO: Implement emergency resource sharing via market
+ * TODO(P1): FEATURE - Implement emergency resource sharing via market
  * When cluster is under attack, buy critical resources immediately
+ * TODO(P2): TEST - Add unit tests for price calculation and trade decision logic
+ * Verify trading decisions are made correctly based on price data
  */
 
 import { memoryManager } from "../memory/manager";

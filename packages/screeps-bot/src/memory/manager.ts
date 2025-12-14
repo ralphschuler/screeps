@@ -3,16 +3,18 @@
  *
  * Handles initialization, validation, and access to all memory structures.
  * 
- * TODO: Implement memory compression for large data structures to stay under 2MB limit
+ * TODO(P1): PERF - Implement memory compression for large data structures to stay under 2MB limit
  * Consider LZ compression for intel data, pathfinding caches, and historical stats
- * TODO: Add memory usage monitoring with alerts when approaching the 2MB limit
+ * TODO(P1): BUG - Add memory usage monitoring with alerts when approaching the 2MB limit
  * Track memory size per subsystem to identify bloat and optimize proactively
- * TODO: Implement automatic memory pruning for old/stale data
+ * TODO(P2): ARCH - Implement automatic memory pruning for old/stale data
  * Remove intel older than X ticks, expired paths, and dead process data
- * TODO: Add memory migration system for schema changes between versions
+ * TODO(P2): ARCH - Add memory migration system for schema changes between versions
  * Support backward-compatible updates when modifying memory structure
- * TODO: Consider using Memory segments for rarely-accessed data (ROADMAP Section 4)
+ * TODO(P2): ARCH - Consider using Memory segments for rarely-accessed data (ROADMAP Section 4)
  * Move historical stats, old intel, or cached paths to segments
+ * TODO(P2): TEST - Add unit tests for memory migration logic
+ * Ensure migrations don't corrupt or lose data during version upgrades
  */
 
 import {
@@ -321,9 +323,9 @@ export class MemoryManager {
    * Clean up dead creep memory
    * OPTIMIZATION: Use for-in loop instead of Object.keys() to avoid creating temporary array.
    * With 100+ creeps, this saves ~0.1 CPU per cleanup cycle.
-   * TODO: Add batch cleanup with configurable limit to spread cost across ticks
+   * TODO(P3): PERF - Add batch cleanup with configurable limit to spread cost across ticks
    * For 1000+ creeps, cleaning all at once might be expensive
-   * TODO: Consider tracking high-value creep data before cleanup for post-mortem analysis
+   * TODO(P3): FEATURE - Consider tracking high-value creep data before cleanup for post-mortem analysis
    * Log or cache stats for expensive boosted creeps to analyze their effectiveness
    */
   public cleanDeadCreeps(): number {
