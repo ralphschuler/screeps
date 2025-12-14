@@ -244,6 +244,8 @@ The project documentation is organized and automatically published to the [GitHu
 - [CONTRIBUTING.md](./CONTRIBUTING.md) - Contribution guidelines
 - [utils/README.md](./utils/README.md) - Auto-respawn system and utilities
 - [docs/](./docs/) - General project documentation
+  - **[State Machines](./docs/STATE_MACHINES.md)** - Creep behavior architecture and overview
+  - **[State Machine Gallery](./docs/STATE_MACHINE_GALLERY.md)** - Visual index of all 26 creep roles with Mermaid diagrams
 - [packages/screeps-bot/docs/](./packages/screeps-bot/docs/) - Detailed technical documentation
 - Package-specific docs in `packages/*/docs/` directories
 

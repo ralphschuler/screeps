@@ -64,6 +64,10 @@ Current documentation includes:
 - **System Documentation**: Core systems and architecture
 - **Stats and Metrics**: Monitoring, metrics, and performance tracking
 - **Game Mechanics**: Screeps-specific features and systems
+- **State Machines**: Creep behavior visualization and documentation
+  - [State Machine Overview](STATE_MACHINES.md) - Architecture and common patterns
+  - [State Machine Gallery](STATE_MACHINE_GALLERY.md) - Visual index of all 26 creep roles
+  - Individual role diagrams in `state-machines/` subdirectories
 - **Package Documentation**: Specific documentation for each package
 
 ## Wiki Structure
