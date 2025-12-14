@@ -299,7 +299,7 @@ runs:
       if: inputs.force-response == 'true' || steps.cache-response.outputs.cache-hit != 'true'
       shell: bash
       env:
-        COPILOT_TOKEN: ${{ inputs.copilot-token }}
+        GITHUB_TOKEN: ${{ inputs.copilot-token }}
         PROMPT_FILE: ${{ steps.render.outputs.prompt-file }}
         OUTPUT_PATH: ${{ inputs.output-path }}
         WORKING_DIR: ${{ inputs.working-directory }}
