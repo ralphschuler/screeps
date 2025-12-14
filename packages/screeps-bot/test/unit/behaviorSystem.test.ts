@@ -214,6 +214,38 @@ describe("Behavior System", () => {
       expect(action2.type).to.be.oneOf(["build", "upgrade"]);
     });
 
+    it("builder should prioritize energy delivery to spawns before building", () => {
+      const ctx = createMockContext({
+        role: "builder",
+        working: true,
+        energy: { used: 100, free: 0 },
+        spawnStructures: createMockSpawns([
+          { energy: 250, capacity: 300 } // Spawn needs energy
+        ]),
+        prioritizedSites: [createMockConstructionSite()] // Construction site available
+      });
+
+      // Builder with energy should deliver to spawn first, not build
+      const action = evaluateEconomyBehavior(ctx);
+      expect(action.type).to.equal("transfer", "Builder should deliver energy to spawn before building");
+    });
+
+    it("builder should build only after critical structures are filled", () => {
+      const ctx = createMockContext({
+        role: "builder",
+        working: true,
+        energy: { used: 100, free: 0 },
+        spawnStructures: createMockSpawns([
+          { energy: 300, capacity: 300 } // Spawn is full
+        ]),
+        prioritizedSites: [createMockConstructionSite()] // Construction site available
+      });
+
+      // Builder should build when spawns/extensions/towers are full
+      const action = evaluateEconomyBehavior(ctx);
+      expect(action.type).to.equal("build", "Builder should build when critical structures are full");
+    });
+
     it("should respond to room danger level", () => {
       const ctx = createMockContext({
         role: "larvaWorker",
