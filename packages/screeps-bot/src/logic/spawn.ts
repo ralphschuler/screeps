@@ -1457,6 +1457,18 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
         return;
       }
     }
+    
+    // Remote worker: assign to any remote room from assignments
+    if (role === "remoteWorker") {
+      const remoteAssignments = swarm.remoteAssignments ?? [];
+      if (remoteAssignments.length > 0) {
+        // Assign to first remote room (simple round-robin could be added later)
+        memory.targetRoom = remoteAssignments[0];
+      } else {
+        // No remote rooms - don't spawn
+        return;
+      }
+    }
 
     let result: ScreepsReturnCode;
     try {
@@ -1563,6 +1575,18 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
         memory.targetRoom = targetRoom;
       } else {
         // No valid target room - skip this role and try next
+        continue;
+      }
+    }
+    
+    // Remote worker: assign to any remote room from assignments
+    if (role === "remoteWorker") {
+      const remoteAssignments = swarm.remoteAssignments ?? [];
+      if (remoteAssignments.length > 0) {
+        // Assign to first remote room (simple round-robin could be added later)
+        memory.targetRoom = remoteAssignments[0];
+      } else {
+        // No remote rooms - skip this role
         continue;
       }
     }
