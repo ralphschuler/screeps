@@ -826,10 +826,16 @@ export function getRemoteRoomNeedingWorkers(homeRoom: string, role: string, swar
 
 /**
  * Assign target room to remote role creep memory.
- * Returns true if successfully assigned, false if no target available.
  * 
- * TODO: Implement load balancing for remoteWorker assignments across multiple remote rooms
- * Currently always assigns the first remote room, which could lead to uneven distribution
+ * Handles target room assignment for remote roles (remoteHarvester, remoteHauler, remoteWorker).
+ * For remoteHarvester and remoteHauler, finds a remote room that needs more workers of that role.
+ * For remoteWorker, uses load balancing to assign to the remote room with fewest workers.
+ * 
+ * @param role - The role to assign a target room for
+ * @param memory - The creep memory to update with targetRoom
+ * @param swarm - The swarm state containing remote assignments
+ * @param homeRoom - The home room name for the creep
+ * @returns true if assignment successful or not needed, false if no target available
  */
 function assignRemoteTargetRoom(role: string, memory: SwarmCreepMemory, swarm: SwarmState, homeRoom: string): boolean {
   if (role === "remoteHarvester" || role === "remoteHauler") {
@@ -844,8 +850,19 @@ function assignRemoteTargetRoom(role: string, memory: SwarmCreepMemory, swarm: S
   if (role === "remoteWorker") {
     const remoteAssignments = swarm.remoteAssignments ?? [];
     if (remoteAssignments.length > 0) {
-      // TODO: Implement round-robin or load-balanced assignment across remotes
-      memory.targetRoom = remoteAssignments[0];
+      // Simple load balancing: assign to remote room with fewest remoteWorkers
+      let minCount = Infinity;
+      let bestRemote = remoteAssignments[0];
+      
+      for (const remoteName of remoteAssignments) {
+        const count = countRemoteCreepsByTargetRoom(homeRoom, role, remoteName);
+        if (count < minCount) {
+          minCount = count;
+          bestRemote = remoteName;
+        }
+      }
+      
+      memory.targetRoom = bestRemote;
       return true;
     }
     return false;
