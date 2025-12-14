@@ -16,6 +16,12 @@
 import { logger } from "../core/logger";
 
 /**
+ * Room center coordinates for pathfinding targets
+ */
+const ROOM_CENTER_X = 25;
+const ROOM_CENTER_Y = 25;
+
+/**
  * Road segment for multi-room paths
  */
 export interface RoadSegment {
@@ -162,7 +168,115 @@ export function calculateRoadNetwork(
 }
 
 /**
+ * Get the exit direction from one room to another
+ * 
+ * @param fromRoom Source room name
+ * @param toRoom Destination room name
+ * @returns Exit direction or null if rooms are not adjacent
+ */
+function getExitDirection(fromRoom: string, toRoom: string): "top" | "bottom" | "left" | "right" | null {
+  const parseRoom = (name: string) => {
+    const match = name.match(/([WE])(\d+)([NS])(\d+)/);
+    if (!match) return null;
+    return {
+      x: (match[1] === 'W' ? -1 : 1) * parseInt(match[2], 10),
+      y: (match[3] === 'N' ? 1 : -1) * parseInt(match[4], 10)
+    };
+  };
+  
+  const from = parseRoom(fromRoom);
+  const to = parseRoom(toRoom);
+  
+  if (!from || !to) return null;
+  
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  
+  // Determine which edge
+  if (dx > 0) return 'right'; // Going east (x=49)
+  if (dx < 0) return 'left';  // Going west (x=0)
+  if (dy > 0) return 'top';   // Going north (y=0)
+  if (dy < 0) return 'bottom'; // Going south (y=49)
+  
+  return null;
+}
+
+/**
+ * Get exit positions in a room that lead to another room
+ * 
+ * @param roomName The room to find exits in
+ * @param direction The exit direction
+ * @returns Array of positions at the exit
+ */
+function getExitPositions(roomName: string, direction: "top" | "bottom" | "left" | "right"): RoomPosition[] {
+  const positions: RoomPosition[] = [];
+  const terrain = Game.map.getRoomTerrain(roomName);
+  
+  switch (direction) {
+    case "top": // y=0
+      for (let x = 0; x < 50; x++) {
+        if (terrain.get(x, 0) !== TERRAIN_MASK_WALL) {
+          positions.push(new RoomPosition(x, 0, roomName));
+        }
+      }
+      break;
+    case "bottom": // y=49
+      for (let x = 0; x < 50; x++) {
+        if (terrain.get(x, 49) !== TERRAIN_MASK_WALL) {
+          positions.push(new RoomPosition(x, 49, roomName));
+        }
+      }
+      break;
+    case "left": // x=0
+      for (let y = 0; y < 50; y++) {
+        if (terrain.get(0, y) !== TERRAIN_MASK_WALL) {
+          positions.push(new RoomPosition(0, y, roomName));
+        }
+      }
+      break;
+    case "right": // x=49
+      for (let y = 0; y < 50; y++) {
+        if (terrain.get(49, y) !== TERRAIN_MASK_WALL) {
+          positions.push(new RoomPosition(49, y, roomName));
+        }
+      }
+      break;
+  }
+  
+  return positions;
+}
+
+/**
+ * Find the closest exit position from a given position
+ * 
+ * @param from Starting position
+ * @param exitPositions Array of exit positions to choose from
+ * @returns Closest exit position
+ */
+function findClosestExit(from: RoomPosition, exitPositions: RoomPosition[]): RoomPosition | null {
+  if (exitPositions.length === 0) return null;
+  
+  let closest = exitPositions[0];
+  let minDist = from.getRangeTo(closest);
+  
+  for (const pos of exitPositions) {
+    const dist = from.getRangeTo(pos);
+    if (dist < minDist) {
+      minDist = dist;
+      closest = pos;
+    }
+  }
+  
+  return closest;
+}
+
+/**
  * Calculate roads for remote mining routes
+ *
+ * This function calculates roads from the home room to remote rooms by:
+ * 1. Finding the exit direction from home room to remote room
+ * 2. Calculating paths to the exit points (not just room center)
+ * 3. This ensures roads leading to exits are included and protected from blueprint destruction
  *
  * @param homeRoom The home room with spawn/storage
  * @param remoteRoomNames Array of remote room names to connect
@@ -189,11 +303,68 @@ export function calculateRemoteRoads(
   }
 
   for (const remoteRoomName of remoteRoomNames) {
-    // Calculate multi-room path to remote room center
-    const remoteTarget = new RoomPosition(25, 25, remoteRoomName);
-
     try {
+      // Find the exit direction from home room to remote room
+      const exitDirection = getExitDirection(homeRoom.name, remoteRoomName);
+      
+      if (!exitDirection) {
+        logger.warn(
+          `Cannot determine exit direction from ${homeRoom.name} to ${remoteRoomName}`,
+          { subsystem: "RoadNetwork" }
+        );
+        continue;
+      }
+      
+      // Get all exit positions in the home room that lead to the remote room
+      const exitPositions = getExitPositions(homeRoom.name, exitDirection);
+      
+      if (exitPositions.length === 0) {
+        logger.warn(
+          `No valid exit positions found in ${homeRoom.name} towards ${remoteRoomName}`,
+          { subsystem: "RoadNetwork" }
+        );
+        continue;
+      }
+      
+      // Find the closest exit to our hub position
+      const targetExit = findClosestExit(hubPos, exitPositions);
+      
+      if (!targetExit) {
+        continue;
+      }
+      
+      // Calculate path from hub to the exit
       const pathResult = PathFinder.search(
+        hubPos,
+        { pos: targetExit, range: 0 }, // Range 0 to reach the actual exit tile
+        {
+          plainCost: 2,
+          swampCost: 10,
+          maxOps: cfg.maxPathOps,
+          roomCallback: (roomName: string) => {
+            // Only allow pathfinding in the home room for exit approach roads
+            // Returning false prevents PathFinder from searching through other rooms
+            if (roomName !== homeRoom.name) {
+              return false;
+            }
+            return generateRoadCostMatrix(roomName);
+          }
+        }
+      );
+
+      if (!pathResult.incomplete) {
+        // Group positions by room (should all be in home room for exit approach)
+        for (const pos of pathResult.path) {
+          if (!result.has(pos.roomName)) {
+            result.set(pos.roomName, new Set());
+          }
+          result.get(pos.roomName)?.add(`${pos.x},${pos.y}`);
+        }
+      }
+      
+      // Also calculate the full path to remote room center for roads in the remote room itself
+      const remoteTarget = new RoomPosition(ROOM_CENTER_X, ROOM_CENTER_Y, remoteRoomName);
+      const fullPathResult = PathFinder.search(
         hubPos,
         { pos: remoteTarget, range: 20 },
         {
@@ -206,9 +377,9 @@ export function calculateRemoteRoads(
         }
       );
 
-      if (!pathResult.incomplete) {
-        // Group positions by room
-        for (const pos of pathResult.path) {
+      if (!fullPathResult.incomplete) {
+        // Add positions from the full path (includes transit rooms and remote room)
+        for (const pos of fullPathResult.path) {
           if (!result.has(pos.roomName)) {
             result.set(pos.roomName, new Set());
           }
