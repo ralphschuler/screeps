@@ -119,8 +119,9 @@ function canPerformTask(task: TaskType, ctx: CreepContext): boolean {
       
     case "refillTowers":
       // Need energy and towers that need filling
+      // FIX: Match threshold with deliverEnergy/hauler (100 instead of 200)
       return !ctx.isEmpty && ctx.towers.some(t => 
-        t.store.getFreeCapacity(RESOURCE_ENERGY) > 200
+        t.store.getFreeCapacity(RESOURCE_ENERGY) > 100
       );
       
     case "build":
