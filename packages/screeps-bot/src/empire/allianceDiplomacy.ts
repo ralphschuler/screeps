@@ -29,7 +29,7 @@ import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
 import { terminalManager } from "../economy/terminalManager";
 import { getMilitaryResourceSummary, hasSufficientMilitaryEnergy } from "../clusters/militaryResourcePooling";
-import { getClusterOperations, launchOffensiveOperation } from "../clusters/offensiveOperations";
+import { getClusterOperations, launchOffensiveOperation, type OffensiveOperation } from "../clusters/offensiveOperations";
 import { findOptimalRallyPoint } from "../clusters/rallyPointManager";
 import { selectDoctrine, canLaunchDoctrine, DOCTRINE_CONFIGS, type OffensiveDoctrine } from "../clusters/offensiveDoctrine";
 import type { ClusterMemory } from "../memory/schemas";
@@ -615,6 +615,16 @@ export interface AttackEvaluation {
 }
 
 /**
+ * Type guard to check if an operation is an ally assistance operation
+ * @param op - The offensive operation to check
+ * @returns True if the operation is assisting an ally
+ * @internal Exported for testing purposes
+ */
+export function isAllyOperation(op: OffensiveOperation): boolean {
+  return op.isAllyAssist === true;
+}
+
+/**
  * Evaluate if we should participate in an ally's attack request
  * @internal Exported for testing purposes
  */
@@ -681,7 +691,7 @@ export function evaluateAttackRequest(request: AttackRequest, currentAlly: strin
   );
   
   // Count ally attack operations
-  const allyOps = activeOps.filter(op => op.isAllyAssist === true);
+  const allyOps = activeOps.filter(isAllyOperation);
   
   if (allyOps.length >= ALLY_ASSISTANCE_CONFIG.MAX_CONCURRENT_ALLY_ATTACKS) {
     return {
