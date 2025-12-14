@@ -18,7 +18,7 @@
  *
  * Design Principles (from ROADMAP.md):
  * - Striktes Tick-Budget: Eco rooms ≤ 0.1 CPU, War rooms ≤ 0.25 CPU, Global overmind ≤ 1 CPU
- * - CPU-Bucket-gesteuertes Verhalten: High bucket enables expensive operations, low bucket restricts to core logic
+ * - Rolling index execution: All processes get fair execution time via wrap-around queue
  * - Frequenzebenen: High frequency (every tick), Medium (5-20 ticks), Low (≥100 ticks)
  * - Ereignisgetriebene Logik: Critical events trigger immediate updates
  * 
@@ -626,7 +626,6 @@ export class Kernel {
     let processesSkipped = 0;
     let processesSkippedByCpu = 0;
     let processesSkippedByInterval = 0;
-    let processesSkippedByBucketMode = 0;
 
     // Start from the next process after the last one executed
     // This creates a wrap-around effect: if we stopped at index 5 last tick,
@@ -682,7 +681,7 @@ export class Kernel {
 
     // Log stats periodically
     if (this.config.enableStats && Game.time % this.config.statsLogInterval === 0) {
-      this.logStats(processesRun, processesSkipped, processesSkippedByInterval, processesSkippedByBucketMode, processesSkippedByCpu);
+      this.logStats(processesRun, processesSkipped, processesSkippedByInterval, processesSkippedByCpu);
       eventBus.logStats();
     }
   }
@@ -694,7 +693,6 @@ export class Kernel {
     processesRun: number, 
     processesSkipped: number,
     skippedByInterval: number,
-    skippedByBucketMode: number,
     skippedByCpu: number
   ): void {
     const bucket = Game.cpu.bucket;
@@ -703,7 +701,7 @@ export class Kernel {
     const cpuLimit = this.getCpuLimit();
     
     logger.info(
-      `Kernel: ${processesRun} ran, ${processesSkipped} skipped (interval: ${skippedByInterval}, bucket mode: ${skippedByBucketMode}, CPU: ${skippedByCpu}), ` +
+      `Kernel: ${processesRun} ran, ${processesSkipped} skipped (interval: ${skippedByInterval}, CPU: ${skippedByCpu}), ` +
       `CPU: ${cpuUsed.toFixed(2)}/${cpuLimit.toFixed(2)} (${(cpuUsed/cpuLimit*100).toFixed(1)}%), bucket: ${bucket}/10000 (${bucketPercent}%), mode: ${this.bucketMode}`,
       { subsystem: "Kernel" }
     );
