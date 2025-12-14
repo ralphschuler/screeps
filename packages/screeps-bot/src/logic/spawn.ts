@@ -846,6 +846,14 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
     return getRemoteRoomNeedingWorkers(roomName, role, swarm) !== null;
   }
   
+  // Remote worker: only spawn if we have remote rooms assigned
+  // Remote workers help build infrastructure in remote rooms during expansion
+  if (role === "remoteWorker") {
+    const remoteAssignments = swarm.remoteAssignments ?? [];
+    // Only spawn if we have remote rooms assigned
+    return remoteAssignments.length > 0;
+  }
+  
   // Remote guard: spawn if remote rooms have threats
   if (role === "remoteGuard") {
     const remoteAssignments = swarm.remoteAssignments ?? [];
@@ -1026,7 +1034,7 @@ function needsReserver(_homeRoom: string, swarm: SwarmState): boolean {
         // Check if we already have a reserver going there
         const hasReserver = Object.values(Game.creeps).some(creep => {
           const memory = creep.memory as unknown as SwarmCreepMemory;
-          return memory.role === "claimer" && memory.targetRoom === remoteName;
+          return memory.role === "claimer" && memory.targetRoom === remoteName && memory.task === "reserve";
         });
         
         if (!hasReserver) {
@@ -1037,7 +1045,7 @@ function needsReserver(_homeRoom: string, swarm: SwarmState): boolean {
       // No vision - check if we have a reserver assigned
       const hasReserver = Object.values(Game.creeps).some(creep => {
         const memory = creep.memory as unknown as SwarmCreepMemory;
-        return memory.role === "claimer" && memory.targetRoom === remoteName;
+        return memory.role === "claimer" && memory.targetRoom === remoteName && memory.task === "reserve";
       });
       
       if (!hasReserver) {
