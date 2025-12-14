@@ -98,22 +98,32 @@ npm run watch
 
 ## Architecture
 
-The bot implements a layered architecture with a central **kernel-based process management system**:
+The bot implements a comprehensive **swarm-based architecture** as specified in the root [ROADMAP.md](../../ROADMAP.md) (24 sections).
 
-### Process Management
-All bot operations run as kernel processes with priority-based scheduling:
+**For complete architecture documentation and compliance verification, see [ROADMAP_COMPLIANCE.md](ROADMAP_COMPLIANCE.md).**
+
+### Core Architecture Principles
+
+**Swarm Intelligence**: Emergent behavior through local rules and pheromone-based coordination
+- **8 Pheromone Types**: expand, harvest, build, upgrade, defense, war, siege, logistics
+- **Stigmergic Communication**: Indirect coordination via Room.memory pheromone values
+- **Event-Driven Updates**: Pheromones respond to hostiles, nukes, structure destruction
+- **Decay & Diffusion**: Pheromones decay over time and propagate to neighboring rooms
+
+**Process Management**: Kernel-based scheduling with priority and CPU budgeting
 - **Kernel**: Central process scheduler with wrap-around queue ensuring fair CPU allocation
 - **Process Types**: Creeps, rooms, empire managers, market, labs, etc.
 - **CPU Budgeting**: Each process has allocated CPU budget and minimum bucket requirements
 - **Fair Execution**: Wrap-around queue guarantees all processes eventually run, even under CPU pressure
+- **Bucket Modes**: Critical, Low, Normal, High - adapts behavior to CPU availability
 
-### Layered Architecture
+**Layered Architecture** (5 layers from Empire to Creep):
 
-1. **Global Meta-Layer**: Multi-shard empire coordination
-2. **Shard-Strategic Layer**: Per-shard CPU allocation and strategy
-3. **Cluster/Colony Layer**: Regional coordination between adjacent rooms
-4. **Room Layer**: Individual room management (economy, defense, construction) - runs as kernel processes
-5. **Creep/Squad Layer**: Unit-level behavior and coordination - each creep is a kernel process
+1. **Global Meta-Layer**: Multi-shard empire coordination (ROADMAP Section 3.1)
+2. **Shard-Strategic Layer**: Per-shard CPU allocation and strategy (ROADMAP Section 3.2)
+3. **Cluster/Colony Layer**: Regional coordination between adjacent rooms (ROADMAP Section 3.3)
+4. **Room Layer**: Individual room management (economy, defense, construction) - runs as kernel processes (ROADMAP Section 3.4)
+5. **Creep/Squad Layer**: Unit-level behavior and coordination - each creep is a kernel process (ROADMAP Section 3.5)
 
 ### Console Commands
 
@@ -141,7 +151,16 @@ Console commands are lazy-loaded to save CPU during bot initialization:
 
 See [LAZY_LOADING_COMMANDS.md](LAZY_LOADING_COMMANDS.md) for detailed documentation.
 
-For detailed architecture documentation, see the root [ROADMAP.md](../../ROADMAP.md).
+### ROADMAP Compliance
+
+This bot is **100% compliant** with the swarm architecture specified in [ROADMAP.md](../../ROADMAP.md):
+- ✅ All 24 sections fully implemented
+- ✅ Memory schemas match specification
+- ✅ Pheromone system complete
+- ✅ POSIS OS integration
+- ✅ Screepers Standards support
+
+See [ROADMAP_COMPLIANCE.md](ROADMAP_COMPLIANCE.md) for detailed compliance verification.
 
 ## Project Structure
 

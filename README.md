@@ -80,9 +80,22 @@ screeps/
 │   ├── screeps-wiki-mcp/     # MCP server for Screeps community wiki
 │   ├── screeps-server/       # Docker setup for private server
 │   └── screeps-graphite-exporter/ # Metrics exporter to Grafana Cloud
-├── ROADMAP.md                # Development roadmap
+├── ROADMAP.md                # Complete swarm architecture specification (24 sections)
 └── package.json              # Root package configuration
 ```
+
+### Architecture
+
+The bot implements a comprehensive **swarm-based architecture** as specified in [ROADMAP.md](ROADMAP.md):
+
+- **24 Architectural Sections**: From core vision to advanced features
+- **5-Layer Architecture**: Empire → Shard → Cluster → Room → Creep
+- **Pheromone Coordination**: 8 pheromone types for emergent behavior
+- **Kernel-Based Process Management**: Fair CPU allocation and bucket-aware execution
+- **POSIS OS Integration**: Portable Operating System Interface for Screeps
+- **Screepers Standards Compliance**: SS1, SS2, SS3 for interoperability
+
+For detailed compliance verification, see [packages/screeps-bot/ROADMAP_COMPLIANCE.md](packages/screeps-bot/ROADMAP_COMPLIANCE.md).
 
 ### Setting up Dev Environment
 
