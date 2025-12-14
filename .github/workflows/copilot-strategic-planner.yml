@@ -1,6 +1,19 @@
 ---
 name: Copilot Strategic Planner
 
+# This workflow uses GitHub Copilot with MCP (Model Context Protocol) servers to:
+# 1. Analyze live Screeps bot performance using screeps-mcp and grafana-mcp
+# 2. Review code quality and architecture alignment with ROADMAP.md
+# 3. Create evidence-based GitHub issues for improvements
+#
+# REQUIRED SECRETS:
+# - SCREEPS_TOKEN: Screeps API token for accessing game data (from https://screeps.com/a/#!/account/auth-tokens)
+# - GRAFANA_SERVICE_ACCOUNT_TOKEN: Grafana service account token with read permissions
+# - COPILOT_TOKEN: GitHub Copilot API token
+#
+# The workflow will fail immediately if these secrets are not configured.
+# See the "Validate required secrets" step for detailed error messages.
+
 on:
   schedule:
     # Run every 6 hours to analyze bot performance and create improvement roadmaps
@@ -33,6 +46,47 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          missing_secrets=()
+          
+          if [ -z "${{ secrets.SCREEPS_TOKEN }}" ]; then
+            missing_secrets+=("SCREEPS_TOKEN")
+          fi
+          
+          if [ -z "${{ secrets.GRAFANA_SERVICE_ACCOUNT_TOKEN }}" ]; then
+            missing_secrets+=("GRAFANA_SERVICE_ACCOUNT_TOKEN")
+          fi
+          
+          if [ -z "${{ secrets.COPILOT_TOKEN }}" ]; then
+            missing_secrets+=("COPILOT_TOKEN")
+          fi
+          
+          if [ ${#missing_secrets[@]} -gt 0 ]; then
+            echo "❌ ERROR: Required secrets are not configured:"
+            for secret in "${missing_secrets[@]}"; do
+              echo "  - $secret"
+            done
+            echo ""
+            echo "To fix this issue:"
+            echo "1. Go to: https://github.com/${{ github.repository }}/settings/secrets/actions"
+            echo "2. Configure the missing secrets:"
+            echo "   - SCREEPS_TOKEN: Your Screeps API token (get from https://screeps.com/a/#!/account/auth-tokens)"
+            echo "   - GRAFANA_SERVICE_ACCOUNT_TOKEN: Grafana service account token with read permissions"
+            echo "   - COPILOT_TOKEN: GitHub Copilot API token"
+            echo ""
+            echo "The strategic planner workflow requires these secrets to:"
+            echo "  - Access live Screeps game data (SCREEPS_TOKEN)"
+            echo "  - Query Grafana monitoring dashboards (GRAFANA_SERVICE_ACCOUNT_TOKEN)"
+            echo "  - Use GitHub Copilot AI (COPILOT_TOKEN)"
+            echo ""
+            echo "Without these credentials, the agent cannot perform comprehensive analysis."
+            exit 1
+          fi
+          
+          echo "✅ All required secrets are configured"
 
       - name: Run strategic planning analysis
         uses: ./.github/actions/copilot-exec
