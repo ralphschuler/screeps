@@ -27,12 +27,13 @@ The workflow requires three secrets to function properly. **The workflow will fa
 #### 2. GRAFANA_SERVICE_ACCOUNT_TOKEN
 - **Purpose**: Access Grafana monitoring dashboards and query metrics
 - **How to get**:
-  1. Go to your Grafana instance (https://ralphschuler.grafana.net)
+  1. Go to your Grafana instance (e.g., `https://<your-org>.grafana.net`)
   2. Navigate to Administration > Service Accounts
   3. Create a new service account with read permissions
   4. Generate a token for the service account
 - **Required permissions**: Read access to dashboards, datasources, and queries
 - **Used by**: `grafana-mcp` server to analyze performance trends
+- **Note**: The Grafana URL is configured in `.github/mcp/all-servers.json`
 
 #### 3. COPILOT_TOKEN
 - **Purpose**: Authenticate with GitHub Copilot API for AI-powered analysis

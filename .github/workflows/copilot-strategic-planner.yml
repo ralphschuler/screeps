@@ -49,18 +49,23 @@ jobs:
 
       - name: Validate required secrets
         shell: bash
+        env:
+          # GitHub automatically masks secret values in logs
+          SCREEPS_TOKEN_SET: ${{ secrets.SCREEPS_TOKEN != '' }}
+          GRAFANA_TOKEN_SET: ${{ secrets.GRAFANA_SERVICE_ACCOUNT_TOKEN != '' }}
+          COPILOT_TOKEN_SET: ${{ secrets.COPILOT_TOKEN != '' }}
         run: |
           missing_secrets=()
           
-          if [ -z "${{ secrets.SCREEPS_TOKEN }}" ]; then
+          if [ "$SCREEPS_TOKEN_SET" != "true" ]; then
             missing_secrets+=("SCREEPS_TOKEN")
           fi
           
-          if [ -z "${{ secrets.GRAFANA_SERVICE_ACCOUNT_TOKEN }}" ]; then
+          if [ "$GRAFANA_TOKEN_SET" != "true" ]; then
             missing_secrets+=("GRAFANA_SERVICE_ACCOUNT_TOKEN")
           fi
           
-          if [ -z "${{ secrets.COPILOT_TOKEN }}" ]; then
+          if [ "$COPILOT_TOKEN_SET" != "true" ]; then
             missing_secrets+=("COPILOT_TOKEN")
           fi
           
