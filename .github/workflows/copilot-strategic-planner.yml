@@ -28,6 +28,8 @@ jobs:
   strategic-planning:
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    environment:
+      name: copilot
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
