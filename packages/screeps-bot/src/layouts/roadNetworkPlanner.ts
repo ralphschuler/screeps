@@ -16,6 +16,12 @@
 import { logger } from "../core/logger";
 
 /**
+ * Room center coordinates for pathfinding targets
+ */
+const ROOM_CENTER_X = 25;
+const ROOM_CENTER_Y = 25;
+
+/**
  * Road segment for multi-room paths
  */
 export interface RoadSegment {
@@ -337,6 +343,7 @@ export function calculateRemoteRoads(
           maxOps: cfg.maxPathOps,
           roomCallback: (roomName: string) => {
             // Only allow pathfinding in the home room for exit approach roads
+            // Returning false prevents PathFinder from searching through other rooms
             if (roomName !== homeRoom.name) {
               return false;
             }
@@ -356,7 +363,7 @@ export function calculateRemoteRoads(
       }
       
       // Also calculate the full path to remote room center for roads in the remote room itself
-      const remoteTarget = new RoomPosition(25, 25, remoteRoomName);
+      const remoteTarget = new RoomPosition(ROOM_CENTER_X, ROOM_CENTER_Y, remoteRoomName);
       const fullPathResult = PathFinder.search(
         hubPos,
         { pos: remoteTarget, range: 20 },

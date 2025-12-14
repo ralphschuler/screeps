@@ -3,10 +3,10 @@ import { assert } from "chai";
 /**
  * Test suite for ensuring roads towards room exits are protected in blueprints
  * 
- * This addresses the issue: "our bot is destroying roads towards exits. ensure they exist in our blueprints."
+ * This addresses the issue: Our bot is destroying roads towards exits. Ensure they exist in our blueprints.
  * 
  * The problem was that roads leading to room exits (edges at x=0, x=49, y=0, y=49) were being
- * destroyed by blueprint validation because they weren't being calculated as part of the valid
+ * destroyed by the blueprint validation because they weren't being calculated as part of the valid
  * road network. This happens when:
  * 
  * 1. Remote mining is active - creeps need to move to adjacent rooms
@@ -16,10 +16,10 @@ import { assert } from "chai";
  * 5. destroyMisplacedStructures() destroyed these valid roads
  * 
  * The fix:
- * - Modified calculateRemoteRoads() to calculate paths to actual EXIT points
+ * - Modified calculateRemoteRoads() to calculate paths to actual exit points
  * - Exit points are the room edge tiles where rooms connect
  * - This ensures all roads leading to exits are included in valid positions
- * - Blueprint validation now preserves roads that approach exits
+ * - The blueprint validation now preserves roads that approach exits
  */
 describe("Blueprint Exit Roads Protection", () => {
   describe("exit direction calculation", () => {
