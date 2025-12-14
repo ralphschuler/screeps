@@ -218,9 +218,10 @@ Look for:
 
 **A. Search for Existing Issues**
 
-Before creating new issues, search thoroughly:
+Before creating new issues, search thoroughly using GitHub CLI:
 
-```bash
+Example search command:
+```
 gh issue list --search "keyword1 keyword2" --json number,title,state,labels --limit 100
 ```
 

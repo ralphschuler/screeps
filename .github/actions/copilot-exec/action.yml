@@ -101,7 +101,7 @@ runs:
         path: |
           ~/.npm/_global
           ~/.npm/_cacache
-        key: copilot-cli-${{ runner.os }}-node20-v2-@github/copilot@1.0.0
+        key: copilot-cli-${{ runner.os }}-node20-v2
         restore-keys: |
           copilot-cli-${{ runner.os }}-node20-
 
