@@ -17,6 +17,7 @@ export class BuildAction implements Action {
 
     if (result === OK) {
       const stillHasEnergy = creep.store[RESOURCE_ENERGY] > 0;
+      // Check if site still exists (minimal CPU cost for completion detection)
       const siteStillExists = Game.getObjectById(this.target.id) !== null;
       return {
         success: true,

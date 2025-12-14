@@ -11,6 +11,15 @@ A minimal, flexible task system for Screeps creeps. This library allows you to a
 - **Task Lifecycle**: Automatic tracking of task status (pending, processing, finished, failed)
 - **Flexible**: Easy to extend with custom actions and task management strategies
 
+## Important Notes
+
+⚠️ **Memory Persistence**: This is a minimal implementation focused on task execution logic. The `TaskManager` stores tasks in memory that **will not persist between global resets**. For production use, you should:
+- Store task data in `Memory` if persistence is needed
+- Recreate tasks each tick based on creep state
+- Or implement your own serialization/deserialization layer
+
+See the examples for patterns on recreating tasks as needed.
+
 ## Installation
 
 ```bash

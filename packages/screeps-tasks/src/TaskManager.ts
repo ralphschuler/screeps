@@ -2,6 +2,12 @@ import { Task, TaskConfig, TaskStatus } from './types';
 
 /**
  * TaskManager - Manages task lifecycle and execution
+ * 
+ * Note: This is a minimal implementation that stores tasks in memory.
+ * Tasks will NOT persist between global resets. For production use:
+ * - Recreate tasks each tick based on creep state (see examples)
+ * - Store task data in Memory if persistence is needed
+ * - Or extend this class with serialization/deserialization methods
  */
 export class TaskManager {
   private tasks: Map<string, Task> = new Map();
