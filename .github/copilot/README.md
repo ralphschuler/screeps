@@ -21,31 +21,41 @@ This workflow acts as a **repository auditor and strategic analyst**, continuous
 
 ## MCP Servers Used
 
-The workflow integrates with five MCP servers for comprehensive analysis:
+The workflow integrates with seven MCP servers for comprehensive analysis:
 
-### 1. screeps-mcp (Live Game State)
+### 1. github (GitHub Integration)
+- Repository metadata and issue management
+- Pull request and commit information
+- Actions workflow data
+
+### 2. playwright (Browser Automation)
+- Web UI interaction and testing
+- Screenshot and visual validation capabilities
+- Browser-based data extraction
+
+### 3. screeps-mcp (Live Game State)
 - Real-time bot performance metrics
 - Memory inspection and analysis
 - Room status and object data
 - Market and economy tracking
 - CPU and GCL statistics
 
-### 2. screeps-docs-mcp (Official Documentation)
+### 4. screeps-docs-mcp (Official Documentation)
 - API reference verification
 - Game mechanics documentation
 - Ensure code uses correct API patterns
 
-### 3. screeps-wiki-mcp (Community Knowledge)
+### 5. screeps-wiki-mcp (Community Knowledge)
 - Community strategies and best practices
 - Proven optimization techniques
 - Research community approaches
 
-### 4. screeps-typescript-mcp (Type Definitions)
+### 6. screeps-typescript-mcp (Type Definitions)
 - TypeScript interface verification
 - Type safety checks
 - API type definitions
 
-### 5. grafana-mcp (Monitoring & Observability)
+### 7. grafana-mcp (Monitoring & Observability)
 - Performance dashboards access
 - Metrics querying (Prometheus)
 - Log analysis (Loki)
@@ -101,14 +111,17 @@ Every issue must be:
 
 Configure these in GitHub repository settings:
 
-### Required
+### Required Secrets
 - `COPILOT_TOKEN` - GitHub Copilot API token
-- `SCREEPS_TOKEN` - Screeps API token for game access
-- `GRAFANA_SERVICE_ACCOUNT_TOKEN` - Grafana service account token
+- `SCREEPS_TOKEN` - Screeps API token for game access (passed as `COPILOT_MCP_SCREEPS_TOKEN`)
+- `GRAFANA_SERVICE_ACCOUNT_TOKEN` - Grafana service account token (passed as `COPILOT_MCP_GRAFANA_SERVICE_ACCOUNT_TOKEN`)
 
 ### Optional Variables
-- `SCREEPS_SHARD` - Target shard (default: `shard3`)
-- `GRAFANA_URL` - Grafana instance URL (default: `https://ralphschuler.grafana.net`)
+- `SCREEPS_HOST` - Screeps server hostname (default: `screeps.com`, passed as `COPILOT_MCP_SCREEPS_HOST`)
+- `SCREEPS_SHARD` - Target shard (default: `shard3`, passed as `COPILOT_MCP_SCREEPS_SHARD`)
+- `SCREEPS_DOCS_CACHE_TTL` - Docs cache TTL in seconds (default: `3600`, passed as `COPILOT_MCP_SCREEPS_DOCS_CACHE_TTL`)
+- `SCREEPS_WIKI_CACHE_TTL` - Wiki cache TTL in seconds (default: `3600`, passed as `COPILOT_MCP_SCREEPS_WIKI_CACHE_TTL`)
+- `SCREEPS_TYPES_CACHE_TTL` - Types cache TTL in seconds (default: `3600`, passed as `COPILOT_MCP_SCREEPS_TYPES_CACHE_TTL`)
 
 ## Output
 
