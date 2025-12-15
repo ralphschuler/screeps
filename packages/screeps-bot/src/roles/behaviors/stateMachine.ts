@@ -404,10 +404,7 @@ export function evaluateWithStateMachine(
     if (ctx.isInHomeRoom) {
       delete ctx.memory.returningHome;
       
-      // BUGFIX: For scouts, clear target memory to prevent cycling
-      // Scouts explore rooms and may encounter temporary path issues (e.g., blocked exits, hostile creeps)
-      // If we don't clear their target, they'll immediately try to go back to the same room
-      // and get stuck in a cycle: home -> problematic room -> ERR_NO_PATH -> home -> repeat
+      // BUGFIX: For scouts, clear exploration targets to prevent cycling when returning home due to path errors
       if (ctx.memory.role === "scout") {
         delete ctx.memory.targetRoom;
         delete ctx.memory.lastExploredRoom;

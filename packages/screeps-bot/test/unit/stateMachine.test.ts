@@ -433,7 +433,9 @@ describe("State Machine", () => {
       const action = evaluateWithStateMachine(ctx, behaviorFn);
 
       assert.equal(action.type, "moveToRoom");
-      assert.equal((action as any).roomName, "E1N1");
+      if (action.type === "moveToRoom") {
+        assert.equal(action.roomName, "E1N1");
+      }
       assert.isDefined(ctx.memory.returningHome, "returningHome flag should persist until home");
       assert.equal(ctx.memory.targetRoom, "E2N2", "targetRoom should persist until home");
     });
