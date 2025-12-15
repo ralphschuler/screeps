@@ -37,6 +37,7 @@ import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { unifiedStats } from "../core/unifiedStats";
 import { memoryManager } from "../memory/manager";
 import type { ExpansionCandidate, OvermindMemory, RoomIntel } from "../memory/schemas";
+import * as ExpansionScoring from "./expansionScoring";
 
 /**
  * Empire Manager Configuration
@@ -279,7 +280,7 @@ export class EmpireManager {
     }
 
     // 2. Mineral type value (rare minerals get bonus)
-    score += this.getMineralBonus(intel.mineralType);
+    score += ExpansionScoring.getMineralBonus(intel.mineralType);
 
     // 3. Distance penalty (linear penalty from nearest owned room)
     const distance = this.getMinDistanceToOwned(intel.name, ownedRooms);
@@ -289,22 +290,22 @@ export class EmpireManager {
     score -= distance * 5;
 
     // 4. Hostile presence penalty (check adjacent rooms for hostile players)
-    const hostilePenalty = this.calculateHostilePenalty(intel.name);
+    const hostilePenalty = ExpansionScoring.calculateHostilePenalty(intel.name);
     score -= hostilePenalty;
 
     // 5. Threat level penalty
     score -= intel.threatLevel * 15;
 
     // 6. Terrain analysis
-    score += this.getTerrainBonus(intel.terrain);
+    score += ExpansionScoring.getTerrainBonus(intel.terrain);
 
     // 7. Highway proximity bonus (strategic value)
-    if (this.isNearHighway(intel.name)) {
+    if (ExpansionScoring.isNearHighway(intel.name)) {
       score += 10;
     }
 
     // 8. Portal proximity bonus (strategic value for cross-shard expansion)
-    const portalBonus = this.getPortalProximityBonus(intel.name);
+    const portalBonus = ExpansionScoring.getPortalProximityBonus(intel.name);
     score += portalBonus;
 
     // 9. Controller level bonus (faster startup if previously owned)
@@ -314,7 +315,7 @@ export class EmpireManager {
     }
 
     // 10. Cluster proximity bonus (prefer expansion near existing clusters)
-    const clusterBonus = this.getClusterProximityBonus(intel.name, ownedRooms, distance);
+    const clusterBonus = ExpansionScoring.getClusterProximityBonus(intel.name, ownedRooms, distance);
     score += clusterBonus;
 
     // 11. Highway rooms are not good for expansion (cannot claim)
@@ -328,191 +329,6 @@ export class EmpireManager {
     }
 
     return Math.max(0, score);
-  }
-
-  /**
-   * Get mineral value bonus based on mineral rarity
-   */
-  private getMineralBonus(mineralType?: MineralConstant): number {
-    if (!mineralType) return 0;
-
-    // Rare/valuable minerals get higher scores
-    const mineralValues: Partial<Record<MineralConstant, number>> = {
-      X: 15, // Catalyst - very rare and valuable
-      Z: 12, // Zynthium - valuable for combat
-      K: 12, // Keanium - valuable for combat
-      L: 10, // Lemergium - valuable for healing
-      U: 10, // Utrium - valuable for attack/harvest
-      O: 8, // Oxygen - common but useful
-      H: 8 // Hydrogen - common but useful
-    };
-
-    return mineralValues[mineralType] ?? 5;
-  }
-
-  /**
-   * Calculate hostile presence penalty by scanning adjacent rooms
-   */
-  private calculateHostilePenalty(roomName: string): number {
-    const overmind = memoryManager.getOvermind();
-    let penalty = 0;
-    const adjacentRooms = this.getAdjacentRoomNames(roomName);
-
-    for (const adjRoom of adjacentRooms) {
-      const intel = overmind.roomIntel[adjRoom];
-      if (!intel) continue;
-
-      // Heavy penalty for hostile-owned adjacent rooms
-      if (intel.owner && !this.isAlly(intel.owner)) {
-        penalty += 30;
-      }
-
-      // Penalty for high threat adjacent rooms
-      if (intel.threatLevel >= 2) {
-        penalty += intel.threatLevel * 10;
-      }
-
-      // Penalty for hostile structures (towers, spawns)
-      if (intel.towerCount && intel.towerCount > 0) {
-        penalty += intel.towerCount * 5;
-      }
-    }
-
-    return penalty;
-  }
-
-  /**
-   * Get terrain bonus/penalty
-   */
-  private getTerrainBonus(terrain: "plains" | "swamp" | "mixed"): number {
-    if (terrain === "plains") {
-      return 15; // Plains are easier to traverse and build on
-    } else if (terrain === "swamp") {
-      return -10; // Swamps are expensive to traverse
-    }
-    return 0; // Mixed terrain is neutral
-  }
-
-  /**
-   * Check if room is near a highway (within 1 room distance)
-   */
-  private isNearHighway(roomName: string): boolean {
-    const adjacentRooms = this.getAdjacentRoomNames(roomName);
-    for (const adjRoom of adjacentRooms) {
-      const parsed = this.parseRoomName(adjRoom);
-      if (!parsed) continue;
-
-      // Highway rooms have coordinates divisible by 10
-      if (parsed.x % 10 === 0 || parsed.y % 10 === 0) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Get portal proximity bonus (strategic value)
-   */
-  private getPortalProximityBonus(roomName: string): number {
-    const overmind = memoryManager.getOvermind();
-    // Check if any adjacent rooms have portals
-    const adjacentRooms = this.getAdjacentRoomNames(roomName);
-
-    for (const adjRoom of adjacentRooms) {
-      const intel = overmind.roomIntel[adjRoom];
-      if (!intel) continue;
-
-      // TODO: Add portal tracking to RoomIntel schema
-      // For now, highway rooms are potential portal locations
-      if (intel.isHighway) {
-        return 5; // Small bonus for highway proximity (potential portals)
-      }
-    }
-
-    return 0;
-  }
-
-  /**
-   * Get cluster proximity bonus
-   * Heavily favors expansion adjacent to existing owned rooms
-   */
-  private getClusterProximityBonus(roomName: string, ownedRooms: Room[], distance: number): number {
-    if (ownedRooms.length === 0) return 0;
-
-    // Strong bonus for being very close to existing cluster
-    if (distance <= 2) {
-      return 25;
-    } else if (distance <= 3) {
-      return 15;
-    } else if (distance <= 5) {
-      return 5;
-    }
-
-    return 0;
-  }
-
-  /**
-   * Get adjacent room names (up, down, left, right, and diagonals)
-   */
-  private getAdjacentRoomNames(roomName: string): string[] {
-    const parsed = this.parseRoomName(roomName);
-    if (!parsed) return [];
-
-    const { x, y, xDir, yDir } = parsed;
-    const adjacent: string[] = [];
-
-    // Generate all 8 adjacent rooms
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dy = -1; dy <= 1; dy++) {
-        if (dx === 0 && dy === 0) continue; // Skip the room itself
-
-        const newX = x + dx;
-        const newY = y + dy;
-
-        // Handle coordinate wrapping and direction
-        let adjXDir = xDir;
-        let adjYDir = yDir;
-        let adjX = newX;
-        let adjY = newY;
-
-        if (newX < 0) {
-          adjXDir = xDir === "E" ? "W" : "E";
-          adjX = Math.abs(newX) - 1;
-        }
-        if (newY < 0) {
-          adjYDir = yDir === "N" ? "S" : "N";
-          adjY = Math.abs(newY) - 1;
-        }
-
-        adjacent.push(`${adjXDir}${adjX}${adjYDir}${adjY}`);
-      }
-    }
-
-    return adjacent;
-  }
-
-  /**
-   * Parse room name into coordinates
-   */
-  private parseRoomName(roomName: string): { x: number; y: number; xDir: string; yDir: string } | null {
-    const match = roomName.match(/^([WE])(\d+)([NS])(\d+)$/);
-    if (!match) return null;
-
-    return {
-      xDir: match[1],
-      x: parseInt(match[2], 10),
-      yDir: match[3],
-      y: parseInt(match[4], 10)
-    };
-  }
-
-  /**
-   * Check if a player is an ally
-   */
-  private isAlly(username: string): boolean {
-    // TODO: Implement alliance checking from config or memory
-    // For now, always return false (no allies)
-    return false;
   }
 
   /**
