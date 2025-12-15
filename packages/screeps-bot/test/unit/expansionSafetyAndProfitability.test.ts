@@ -30,6 +30,29 @@ function createMockRoomIntel(name: string, options: Partial<RoomIntel> = {}): Ro
 }
 
 /**
+ * Calculate simple ROI for testing (shared utility)
+ * Matches the logic in expansionManager.calculateRemoteProfitability
+ */
+function calculateTestROI(distance: number, sources: number): number {
+  const harvesterCost = 650;
+  const haulerCost = 450;
+  const totalBodyCost = harvesterCost + haulerCost * sources;
+
+  const tripTime = distance * 50;
+  const tripsPerLifetime = 1500 / tripTime;
+  const costPerTrip = totalBodyCost / tripsPerLifetime;
+  const energyCost = costPerTrip / tripTime;
+
+  const sourceOutput = 3000;
+  const energyPerTick = (sourceOutput / 300) * sources;
+
+  const energyGain = energyPerTick - energyCost;
+  const roi = energyGain / energyCost;
+
+  return roi;
+}
+
+/**
  * Parse room name into coordinates
  */
 function parseRoomName(roomName: string): { x: number; y: number; xDir: string; yDir: string } | null {
@@ -354,53 +377,15 @@ describe("Remote Mining Profitability", () => {
 
   describe("Distance Impact on Profitability", () => {
     it("should show close remotes are more profitable", () => {
-      const calculateSimpleROI = (distance: number, sources: number) => {
-        const harvesterCost = 650;
-        const haulerCost = 450;
-        const totalBodyCost = harvesterCost + haulerCost * sources;
-
-        const tripTime = distance * 50;
-        const tripsPerLifetime = 1500 / tripTime;
-        const costPerTrip = totalBodyCost / tripsPerLifetime;
-        const energyCost = costPerTrip / tripTime;
-
-        const sourceOutput = 3000;
-        const energyPerTick = (sourceOutput / 300) * sources;
-
-        const energyGain = energyPerTick - energyCost;
-        const roi = energyGain / energyCost;
-
-        return roi;
-      };
-
-      const roi1 = calculateSimpleROI(1, 2);
-      const roi5 = calculateSimpleROI(5, 2);
+      const roi1 = calculateTestROI(1, 2);
+      const roi5 = calculateTestROI(5, 2);
 
       expect(roi1).to.be.greaterThan(roi5);
     });
 
     it("should show more sources can offset distance penalty", () => {
-      const calculateSimpleROI = (distance: number, sources: number) => {
-        const harvesterCost = 650;
-        const haulerCost = 450;
-        const totalBodyCost = harvesterCost + haulerCost * sources;
-
-        const tripTime = distance * 50;
-        const tripsPerLifetime = 1500 / tripTime;
-        const costPerTrip = totalBodyCost / tripsPerLifetime;
-        const energyCost = costPerTrip / tripTime;
-
-        const sourceOutput = 3000;
-        const energyPerTick = (sourceOutput / 300) * sources;
-
-        const energyGain = energyPerTick - energyCost;
-        const roi = energyGain / energyCost;
-
-        return roi;
-      };
-
-      const roiFar1Source = calculateSimpleROI(3, 1);
-      const roiFar2Sources = calculateSimpleROI(3, 2);
+      const roiFar1Source = calculateTestROI(3, 1);
+      const roiFar2Sources = calculateTestROI(3, 2);
 
       expect(roiFar2Sources).to.be.greaterThan(roiFar1Source);
     });

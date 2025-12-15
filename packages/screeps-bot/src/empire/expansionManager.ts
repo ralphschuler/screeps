@@ -23,6 +23,17 @@ import { memoryManager } from "../memory/manager";
 import type { OvermindMemory, RoomIntel } from "../memory/schemas";
 
 /**
+ * Simplified creep memory interface for expansion tasks
+ */
+interface ClaimerMemory {
+  role?: string;
+  targetRoom?: string;
+  task?: string;
+  homeRoom?: string;
+  family?: string;
+}
+
+/**
  * Expansion Manager Configuration
  */
 export interface ExpansionManagerConfig {
@@ -606,11 +617,7 @@ export class ExpansionManager {
 
     // Check if we already have a claimer assigned or en route
     const hasClaimerForTarget = Object.values(Game.creeps).some(creep => {
-      const memory = creep.memory as unknown as {
-        role?: string;
-        targetRoom?: string;
-        task?: string;
-      };
+      const memory = creep.memory as ClaimerMemory;
       return memory.role === "claimer" && memory.targetRoom === nextTarget.roomName && memory.task === "claim";
     });
 
@@ -622,12 +629,7 @@ export class ExpansionManager {
     // Find claimers without targets
     let assignedClaimer = false;
     for (const creep of Object.values(Game.creeps)) {
-      const memory = creep.memory as unknown as {
-        role?: string;
-        targetRoom?: string;
-        task?: string;
-        family?: string;
-      };
+      const memory = creep.memory as ClaimerMemory;
 
       if (memory.role === "claimer" && !memory.targetRoom) {
         // Assign the expansion target
@@ -695,13 +697,7 @@ export class ExpansionManager {
   private assignReserverTargets(): void {
     // Find claimers without targets that should reserve
     for (const creep of Object.values(Game.creeps)) {
-      const memory = creep.memory as unknown as {
-        role?: string;
-        targetRoom?: string;
-        task?: string;
-        homeRoom?: string;
-        family?: string;
-      };
+      const memory = creep.memory as ClaimerMemory;
 
       // Skip if not a claimer or already has target
       if (memory.role !== "claimer" || memory.targetRoom) continue;
@@ -732,11 +728,7 @@ export class ExpansionManager {
    */
   private hasReserverAssigned(roomName: string): boolean {
     for (const creep of Object.values(Game.creeps)) {
-      const memory = creep.memory as unknown as {
-        role?: string;
-        targetRoom?: string;
-        task?: string;
-      };
+      const memory = creep.memory as ClaimerMemory;
 
       if (memory.role === "claimer" && memory.targetRoom === roomName && memory.task === "reserve") {
         return true;
@@ -1050,7 +1042,7 @@ export class ExpansionManager {
 
       // Check if claimer died repeatedly
       const hasActiveClaimer = Object.values(Game.creeps).some(creep => {
-        const memory = creep.memory as unknown as { role?: string; targetRoom?: string; task?: string };
+        const memory = creep.memory as ClaimerMemory;
         return memory.role === "claimer" && memory.targetRoom === candidate.roomName && memory.task === "claim";
       });
 
@@ -1096,7 +1088,7 @@ export class ExpansionManager {
 
     // Cancel any claimers assigned to this room
     for (const creep of Object.values(Game.creeps)) {
-      const memory = creep.memory as unknown as { role?: string; targetRoom?: string; task?: string };
+      const memory = creep.memory as ClaimerMemory;
       if (memory.role === "claimer" && memory.targetRoom === roomName && memory.task === "claim") {
         // Clear their target so they can be reassigned
         memory.targetRoom = undefined;
