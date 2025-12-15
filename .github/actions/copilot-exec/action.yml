@@ -246,7 +246,45 @@ runs:
           config_content="$MCP_CONFIG_INPUT"
         fi
 
+        # Process environment variable mappings from the config
+        # The 'env' field maps expected var names to actual env var names
+        # For example: "SCREEPS_TOKEN": "COPILOT_MCP_SCREEPS_TOKEN"
+        # We need to export the mapped variables so they're available for substitution
+        
+        if [ "$VERBOSE" = "true" ]; then
+          echo "🔧 Processing environment variable mappings..."
+        fi
+        
+        # Extract and export mapped environment variables
+        while IFS='=' read -r var_name source_var; do
+          if [ -n "$var_name" ] && [ -n "$source_var" ]; then
+            # Only export if the source variable exists
+            if [ -n "${!source_var:-}" ]; then
+              export "$var_name=${!source_var}"
+              if [ "$VERBOSE" = "true" ]; then
+                echo "✓ Exported $var_name from $source_var"
+              fi
+            else
+              if [ "$VERBOSE" = "true" ]; then
+                echo "⚠ Skipping $var_name (source $source_var not set)"
+              fi
+            fi
+          fi
+        done < <(echo "$config_content" | jq -r '
+          .mcpServers // {} | 
+          to_entries[] | 
+          select(.value.env != null) |
+          .value.env |
+          to_entries[] |
+          "\(.key)=\(.value)"
+        ')
+
+        # Now run envsubst with the properly mapped environment variables
         config_content=$(echo "$config_content" | envsubst)
+        
+        # Remove the 'env' field from the config as it's no longer needed
+        # and not part of the MCP server JSON schema
+        config_content=$(echo "$config_content" | jq 'walk(if type == "object" then del(.env) else . end)')
         
         merged_config=$(echo "$base_config" "$config_content" | jq -s '.[0] * .[1]')
         
