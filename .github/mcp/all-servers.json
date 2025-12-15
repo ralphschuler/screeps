@@ -16,11 +16,11 @@
         "--rm",
         "-i",
         "-e",
-        "SCREEPS_TOKEN=${COPILOT_MCP_SCREEPS_TOKEN}",
+        "SCREEPS_TOKEN=${SCREEPS_TOKEN}",
         "-e",
-        "SCREEPS_HOST=${COPILOT_MCP_SCREEPS_HOST:-screeps.com}",
+        "SCREEPS_HOST=${SCREEPS_HOST:-screeps.com}",
         "-e",
-        "SCREEPS_SHARD=${COPILOT_MCP_SCREEPS_SHARD:-shard3}",
+        "SCREEPS_SHARD=${SCREEPS_SHARD:-shard3}",
         "ghcr.io/ralphschuler/screeps-mcp:latest"
       ]
     },
@@ -31,7 +31,7 @@
         "--rm",
         "-i",
         "-e",
-        "DOCS_CACHE_TTL=${COPILOT_MCP_DOCS_CACHE_TTL:-3600}",
+        "DOCS_CACHE_TTL=${DOCS_CACHE_TTL:-3600}",
         "ghcr.io/ralphschuler/screeps-docs-mcp:latest"
       ]
     },
@@ -42,7 +42,7 @@
         "--rm",
         "-i",
         "-e",
-        "WIKI_CACHE_TTL=${COPILOT_MCP_WIKI_CACHE_TTL:-3600}",
+        "WIKI_CACHE_TTL=${WIKI_CACHE_TTL:-3600}",
         "ghcr.io/ralphschuler/screeps-wiki-mcp:latest"
       ]
     },
@@ -55,7 +55,7 @@
         "-e",
         "GRAFANA_URL=https://ralphschuler.grafana.net",
         "-e",
-        "GRAFANA_SERVICE_ACCOUNT_TOKEN=${COPILOT_MCP_GRAFANA_SERVICE_ACCOUNT_TOKEN}",
+        "GRAFANA_SERVICE_ACCOUNT_TOKEN=${GRAFANA_SERVICE_ACCOUNT_TOKEN}",
         "mcp/grafana",
         "-t",
         "stdio"
@@ -68,7 +68,7 @@
         "--rm",
         "-i",
         "-e",
-        "TYPES_CACHE_TTL=${COPILOT_MCP_TYPES_CACHE_TTL:-3600}",
+        "TYPES_CACHE_TTL=${TYPES_CACHE_TTL:-3600}",
         "ghcr.io/ralphschuler/screeps-typescript-mcp:latest"
       ]
     }
