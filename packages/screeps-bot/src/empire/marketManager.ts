@@ -495,6 +495,94 @@ export class MarketManager {
   }
 
   /**
+   * Public method to sell surplus resources from a specific terminal
+   * Called by terminal manager when capacity management triggers
+   */
+  public sellSurplusFromTerminal(
+    roomName: string,
+    resource: ResourceConstant,
+    amount: number
+  ): boolean {
+    const room = Game.rooms[roomName];
+    if (!room?.terminal || !room.controller?.my) {
+      logger.warn(`Cannot sell from ${roomName}: no terminal or not owned`, {
+        subsystem: "Market"
+      });
+      return false;
+    }
+
+    // Check if we have enough resources
+    const available = room.terminal.store.getUsedCapacity(resource);
+    if (available < amount) {
+      logger.debug(
+        `Cannot sell ${amount} ${resource} from ${roomName}: only ${available} available`,
+        { subsystem: "Market" }
+      );
+      return false;
+    }
+
+    // Get current market data for pricing
+    const overmind = memoryManager.getOvermind();
+    if (!overmind.market) {
+      // Market memory not initialized, use fallback pricing
+      const price = 0.5;
+      const orderResult = Game.market.createOrder({
+        type: ORDER_SELL,
+        resourceType: resource,
+        price,
+        totalAmount: amount,
+        roomName
+      });
+      return orderResult === OK;
+    }
+    
+    const marketData = overmind.market.resources[resource];
+    
+    // Calculate sell price (slightly below average to sell quickly)
+    let price = 0.5; // Default fallback
+    
+    if (marketData?.avgPrice) {
+      // Sell at 5% below average for quick sale
+      price = marketData.avgPrice * 0.95;
+    } else {
+      // No price data, check current market orders
+      const buyOrders = Game.market.getAllOrders({
+        type: ORDER_BUY,
+        resourceType: resource
+      });
+      
+      if (buyOrders.length > 0) {
+        // Sell at best buy order price (instant sale)
+        buyOrders.sort((a, b) => b.price - a.price);
+        price = buyOrders[0]!.price;
+      }
+    }
+
+    // Create sell order
+    const orderResult = Game.market.createOrder({
+      type: ORDER_SELL,
+      resourceType: resource,
+      price,
+      totalAmount: amount,
+      roomName
+    });
+
+    if (orderResult === OK) {
+      logger.info(
+        `Created surplus sell order: ${amount} ${resource} from ${roomName} at ${price.toFixed(3)} credits/unit`,
+        { subsystem: "Market" }
+      );
+      return true;
+    } else {
+      logger.warn(
+        `Failed to create sell order: ${orderResult} for ${amount} ${resource} from ${roomName}`,
+        { subsystem: "Market" }
+      );
+      return false;
+    }
+  }
+
+  /**
    * Update sell orders based on resource surplus and price signals
    */
   private updateSellOrders(): void {

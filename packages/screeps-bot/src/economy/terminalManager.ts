@@ -22,6 +22,7 @@ import { logger } from "../core/logger";
 import { ProcessPriority } from "../core/kernel";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { memoryManager } from "../memory/manager";
+import { marketManager } from "../empire/marketManager";
 import { terminalRouter } from "./terminalRouter";
 import type { TerminalRoute } from "./terminalRouter";
 
@@ -390,13 +391,16 @@ export class TerminalManager {
           }
         }
 
-        // TODO: Integrate with market manager for auto-sell
-        // For now, just log that we would sell
-        if (Game.time % 50 === 0) {
-          logger.debug(
-            `Would sell ${excess} ${resource} from ${room.name} terminal (market integration pending)`,
-            { subsystem: "Terminal" }
-          );
+        // If couldn't transfer to hub, sell on market
+        if (Game.time % 10 === 0) {
+          // Try to sell surplus via market manager
+          const sold = marketManager.sellSurplusFromTerminal(room.name, resource, excess);
+          if (sold) {
+            logger.info(
+              `Sold ${excess} ${resource} from ${room.name} terminal via market`,
+              { subsystem: "Terminal" }
+            );
+          }
         }
       }
     }
