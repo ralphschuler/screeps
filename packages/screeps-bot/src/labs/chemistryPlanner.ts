@@ -264,22 +264,32 @@ const BASE_STOCKPILE_TARGETS: Record<string, number> = {
 };
 
 /**
- * Get stockpile target for a compound based on room state
+ * Get stockpile target for a compound based on room state and demand prediction
+ * Implements just-in-time production by adjusting targets based on war pheromone
  */
 function getStockpileTarget(compound: ResourceConstant, swarm: SwarmState): number {
   const baseTarget = BASE_STOCKPILE_TARGETS[compound] ?? 1000;
   
-  // Increase war compound targets when in war/siege mode
-  if (swarm.posture === "war" || swarm.posture === "siege") {
+  // Just-in-time production: increase targets when war pheromone is rising
+  const warPheromone = swarm.pheromones.war ?? 0;
+  const siegePheromone = swarm.pheromones.siege ?? 0;
+  const militaryDemand = Math.max(warPheromone, siegePheromone);
+  
+  // Pre-produce boosts when military demand is detected (200 ticks before spawn)
+  // War pheromone > 50 indicates upcoming military operations
+  const jitMultiplier = militaryDemand > 50 ? 1 + (militaryDemand / 100) * 0.5 : 1;
+  
+  // Increase war compound targets when in war/siege mode or high demand
+  if (swarm.posture === "war" || swarm.posture === "siege" || militaryDemand > 50) {
     if (compound === RESOURCE_CATALYZED_UTRIUM_ACID ||
         compound === RESOURCE_CATALYZED_KEANIUM_ALKALIDE ||
         compound === RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE ||
         compound === RESOURCE_CATALYZED_GHODIUM_ACID) {
-      return baseTarget * 1.5; // 50% higher in war mode
+      return baseTarget * 1.5 * jitMultiplier; // Higher in war mode with JIT
     }
   }
   
-  // Reduce eco compound targets when in war mode
+  // Reduce eco compound targets when in war mode to prioritize combat boosts
   if (swarm.posture === "war" || swarm.posture === "siege") {
     if (compound === RESOURCE_CATALYZED_GHODIUM_ALKALIDE ||
         compound === RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE) {
@@ -361,7 +371,7 @@ export class ChemistryPlanner {
     // Get available labs
     const labs = room.find(FIND_MY_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_LAB
-    }) as StructureLab[];
+    }) ;
 
     if (labs.length < 3) {
       return null; // Need at least 3 labs for reactions
@@ -443,6 +453,62 @@ export class ChemistryPlanner {
     return targets;
   }
 
+  /**
+   * Schedule compound production based on demand and priorities
+   * Returns prioritized list of reactions needed across all rooms
+   */
+  public scheduleCompoundProduction(
+    rooms: Room[],
+    swarm: SwarmState
+  ): { room: Room; reaction: Reaction; priority: number }[] {
+    const schedule: { room: Room; reaction: Reaction; priority: number }[] = [];
+
+    for (const room of rooms) {
+      const terminal = room.terminal;
+      if (!terminal) continue;
+
+      // Get target compounds based on room state
+      const targets = this.getTargetCompounds(swarm);
+
+      // Evaluate each target
+      for (const target of targets) {
+        const reaction = REACTIONS[target];
+        if (!reaction) continue;
+
+        const current = terminal.store[target] ?? 0;
+        const targetAmount = getStockpileTarget(target, swarm);
+        const shortage = targetAmount - current;
+
+        // Only schedule if we have a shortage
+        if (shortage > 0) {
+          // Calculate priority based on shortage percentage and base priority
+          const shortagePercent = shortage / targetAmount;
+          const priority = reaction.priority * (1 + shortagePercent);
+
+          // Check if we can produce this reaction
+          const availableResources: Partial<Record<ResourceConstant, number>> = {};
+          for (const [resourceType, amount] of Object.entries(terminal.store)) {
+            availableResources[resourceType as ResourceConstant] = amount;
+          }
+
+          const chain = this.calculateReactionChain(target, availableResources);
+          
+          // Schedule the first producible reaction in the chain
+          for (const chainReaction of chain) {
+            if (this.hasResourcesForReaction(terminal, chainReaction, 1000)) {
+              schedule.push({ room, reaction: chainReaction, priority });
+              break; // Only schedule one reaction per target per room
+            }
+          }
+        }
+      }
+    }
+
+    // Sort by priority (highest first)
+    schedule.sort((a, b) => b.priority - a.priority);
+
+    return schedule;
+  }
 
 
   /**

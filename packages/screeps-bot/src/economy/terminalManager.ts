@@ -6,6 +6,7 @@
  * - Mineral distribution between rooms
  * - Integration with market manager
  * - Terminal overflow prevention
+ * - Compound sharing network for cluster-wide boost distribution
  *
  * Addresses Issue: Terminal automation needs work
  * 
@@ -17,8 +18,8 @@
  * Pre-compute best paths between all terminals considering costs
  * TODO: Add emergency energy transfer for rooms under attack
  * Priority transfers should bypass normal queue
- * TODO: Consider implementing resource pooling strategies per cluster
- * Cluster-wide resource planning could improve efficiency
+ * Compound sharing network implemented via balanceCompoundsAcrossCluster()
+ * Tracks cluster-wide compound levels and routes production to deficit rooms
  * TODO: Add terminal capacity management to prevent overflow
  * Monitor fill levels and trigger clearance before hitting limits
  * TODO: Integrate with market manager for automated buy/sell based on terminal contents
@@ -429,6 +430,96 @@ export class TerminalManager {
       amount,
       priority
     });
+  }
+
+  /**
+   * Balance boost compounds across cluster
+   * Implements compound sharing network for cluster-wide boost availability
+   * @param clusterRooms Array of room names in the cluster
+   * @param targetCompounds Compounds to balance (e.g., T3 boosts)
+   */
+  public balanceCompoundsAcrossCluster(
+    clusterRooms: string[],
+    targetCompounds: ResourceConstant[]
+  ): void {
+    // Track compound levels across cluster
+    const compoundLevels = new Map<
+      ResourceConstant,
+      { roomName: string; amount: number; terminal: StructureTerminal }[]
+    >();
+
+    // Collect data from all terminals
+    for (const roomName of clusterRooms) {
+      const room = Game.rooms[roomName];
+      if (!room?.terminal) continue;
+
+      for (const compound of targetCompounds) {
+        const amount = room.terminal.store[compound] ?? 0;
+        
+        if (!compoundLevels.has(compound)) {
+          compoundLevels.set(compound, []);
+        }
+        
+        compoundLevels.get(compound)!.push({
+          roomName,
+          amount,
+          terminal: room.terminal
+        });
+      }
+    }
+
+    // Balance each compound
+    for (const [compound, levels] of compoundLevels.entries()) {
+      if (levels.length < 2) continue;
+
+      // Calculate average amount
+      const totalAmount = levels.reduce((sum, l) => sum + l.amount, 0);
+      const avgAmount = totalAmount / levels.length;
+
+      // Sort by amount (ascending)
+      levels.sort((a, b) => a.amount - b.amount);
+
+      // Transfer from surplus to deficit rooms
+      const deficit = levels.filter(l => l.amount < avgAmount * 0.7); // <70% of average
+      const surplus = levels.filter(l => l.amount > avgAmount * 1.3); // >130% of average
+
+      for (const surplusRoom of surplus) {
+        for (const deficitRoom of deficit) {
+          const transferAmount = Math.min(
+            Math.floor((surplusRoom.amount - avgAmount) / 2),
+            Math.floor((avgAmount - deficitRoom.amount) / 2),
+            3000 // Max single transfer
+          );
+
+          if (transferAmount >= 500) {
+            // Queue compound transfer with high priority for military compounds
+            const isMilitaryCompound = (
+              compound === RESOURCE_CATALYZED_UTRIUM_ACID ||
+              compound === RESOURCE_CATALYZED_KEANIUM_ALKALIDE ||
+              compound === RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE ||
+              compound === RESOURCE_CATALYZED_GHODIUM_ACID
+            );
+
+            this.queueTransfer(
+              surplusRoom.roomName,
+              deficitRoom.roomName,
+              compound,
+              transferAmount,
+              isMilitaryCompound ? 8 : 5 // Higher priority for military compounds
+            );
+
+            logger.info(
+              `Queued compound balance: ${transferAmount} ${compound} from ${surplusRoom.roomName} to ${deficitRoom.roomName}`,
+              { subsystem: "Terminal" }
+            );
+
+            // Update amounts to reflect pending transfer
+            surplusRoom.amount -= transferAmount;
+            deficitRoom.amount += transferAmount;
+          }
+        }
+      }
+    }
   }
 }
 

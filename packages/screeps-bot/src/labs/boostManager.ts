@@ -5,6 +5,7 @@
  * - Lab pre-loading with boost compounds
  * - Creep boosting before role execution
  * - Boost decisions based on posture/danger
+ * - Boost cost analysis with ROI calculation
  *
  * Addresses Issue: #23
  */
@@ -266,6 +267,78 @@ export class BoostManager {
 
       labIndex++;
     }
+  }
+
+  /**
+   * Calculate boost cost for a creep
+   * Returns total mineral and energy cost for all boosts
+   */
+  public calculateBoostCost(role: string, bodySize: number): { mineral: number; energy: number } {
+    const config = BOOST_CONFIGS.find(c => c.role === role);
+    if (!config) return { mineral: 0, energy: 0 };
+
+    const mineralCost = bodySize * 30 * config.boosts.length; // 30 mineral per part
+    const energyCost = bodySize * 20 * config.boosts.length; // 20 energy per part
+
+    return { mineral: mineralCost, energy: energyCost };
+  }
+
+  /**
+   * Analyze boost ROI (Return on Investment)
+   * Compares resource cost against expected performance gains
+   * @returns true if boosting is worthwhile
+   */
+  public analyzeBoostROI(
+    role: string,
+    bodySize: number,
+    expectedLifetime: number,
+    dangerLevel: number
+  ): { worthwhile: boolean; roi: number; reasoning: string } {
+    const config = BOOST_CONFIGS.find(c => c.role === role);
+    if (!config) {
+      return { worthwhile: false, roi: 0, reasoning: "No boost config for role" };
+    }
+
+    const cost = this.calculateBoostCost(role, bodySize);
+    const totalCost = cost.mineral + cost.energy * 0.01; // Energy worth less than minerals
+
+    // Calculate expected gains based on boost type and role
+    let expectedGain = 0;
+    let boostMultiplier = 1;
+
+    // Different roles have different boost effectiveness
+    switch (role) {
+      case "soldier":
+      case "ranger":
+        // Combat boosts: 4x attack/ranged attack damage
+        boostMultiplier = 4;
+        expectedGain = bodySize * boostMultiplier * expectedLifetime * 0.5;
+        break;
+      case "healer":
+        // Heal boost: 4x heal power
+        boostMultiplier = 4;
+        expectedGain = bodySize * boostMultiplier * expectedLifetime * 0.3;
+        break;
+      case "siegeUnit":
+        // Dismantle boost: 4x dismantle power
+        boostMultiplier = 4;
+        expectedGain = bodySize * boostMultiplier * expectedLifetime * 0.7;
+        break;
+      default:
+        expectedGain = bodySize * 2 * expectedLifetime * 0.2;
+    }
+
+    // Adjust for danger level - higher danger = more valuable
+    expectedGain *= 1 + dangerLevel * 0.5;
+
+    const roi = expectedGain / totalCost;
+    const worthwhile = roi > 1.5; // Need at least 1.5x return
+
+    const reasoning = worthwhile
+      ? `High ROI: ${roi.toFixed(2)}x (gain: ${expectedGain.toFixed(0)}, cost: ${totalCost.toFixed(0)})`
+      : `Low ROI: ${roi.toFixed(2)}x (gain: ${expectedGain.toFixed(0)}, cost: ${totalCost.toFixed(0)})`;
+
+    return { worthwhile, roi, reasoning };
   }
 }
 

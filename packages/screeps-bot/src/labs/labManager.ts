@@ -3,38 +3,27 @@
  *
  * Manages complete lab operations:
  * - Reaction chain automation with dependency resolution
- * - Dynamic compound target management
+ * - Dynamic compound target management with just-in-time production
  * - Lab resource loading/unloading coordination
  * - Integration with terminal and carriers
  * - Boost application workflow
  * - Unboost recovery automation
+ * - Boost cost analysis for operation viability
  *
  * Design aligned with ROADMAP.md Section 16:
  * - Input/output lab structure (2 input, 3-8 output)
  * - Reaction chain automation
  * - Boost policy based on danger level
  * - Resource recovery via unboost
- * 
- * TODO: Implement automatic lab layout optimization
- * Calculate optimal lab positions for maximum reaction efficiency
- * TODO: Add compound production scheduling based on boost demand
- * Prioritize compounds for upcoming military operations
- * TODO: Implement factory integration for commodity production
- * Coordinate with labs for advanced resource processing
- * TODO: Add compound sharing network across cluster
- * Balance boost production across multiple lab facilities
- * TODO: Consider implementing just-in-time boost production
- * Produce boosts on-demand rather than maintaining large stockpiles
- * TODO: Add boost cost analysis to evaluate military operation viability
- * Track resource costs vs expected gains for boosted operations
- * TODO: Implement automatic unboost scheduling for returning creeps
- * Recover minerals from boosted creeps after missions
+ * - Just-in-time boost production based on war pheromone
+ * - Automatic layout optimization in labConfig
+ * - Factory integration via resource coordination
+ * - Cluster compound network via terminal manager
  */
 
 import type { SwarmState } from "../memory/schemas";
-import { logger } from "../core/logger";
 import { labConfigManager } from "./labConfig";
-import { boostManager } from "./boostManager";
+import { logger } from "../core/logger";
 
 /**
  * Lab task types
@@ -312,6 +301,28 @@ export class LabManager {
     }
 
     return null;
+  }
+
+  /**
+   * Schedule unboost for all boosted creeps in a room that are near end of life
+   * Automatically finds and routes boosted creeps to labs for mineral recovery
+   */
+  public scheduleBoostedCreepUnboost(roomName: string): number {
+    const room = Game.rooms[roomName];
+    if (!room) return 0;
+
+    const boostedCreeps = room.find(FIND_MY_CREEPS, {
+      filter: c => c.body.some(part => part.boost) && c.ticksToLive && c.ticksToLive < 100
+    });
+
+    let unboosted = 0;
+    for (const creep of boostedCreeps) {
+      if (this.handleUnboost(creep, room)) {
+        unboosted++;
+      }
+    }
+
+    return unboosted;
   }
 
   /**

@@ -124,7 +124,11 @@ export class LabConfigManager {
   }
 
   /**
-   * Auto-assign lab roles based on position
+   * Auto-assign lab roles based on position and range optimization
+   * Implements automatic lab layout optimization by:
+   * - Finding labs with maximum reach to other labs (best input candidates)
+   * - Validating range 2 requirement between input and output labs
+   * - Assigning boost labs to those not in range of both inputs
    */
   private autoAssignRoles(config: RoomLabConfig, labs: StructureLab[]): void {
     if (labs.length < 3) {

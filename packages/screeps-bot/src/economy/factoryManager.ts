@@ -6,6 +6,7 @@
  * - Input resource management
  * - Output distribution
  * - Factory worker coordination
+ * - Lab integration for resource coordination
  *
  * Addresses Issue: Factory automation missing
  */
@@ -125,7 +126,7 @@ export class FactoryManager {
     
     if (factories.length === 0) return;
     const factory = factories[0];
-    if (factory.cooldown > 0) return;
+    if (!factory || factory.cooldown > 0) return;
 
     const storage = room.storage;
     if (!storage) return;
@@ -266,6 +267,29 @@ export class FactoryManager {
       }
     }
     return false;
+  }
+
+  /**
+   * Check if factory can operate without conflicting with lab operations
+   * Factory and labs may compete for the same base minerals
+   * @param room Room to check
+   * @returns true if factory can safely operate
+   */
+  public canOperateWithoutLabConflict(room: Room): boolean {
+    const terminal = room.terminal;
+    if (!terminal) return false;
+
+    // Check if labs are actively producing compounds
+    const labs = room.find(FIND_MY_STRUCTURES, {
+      filter: s => s.structureType === STRUCTURE_LAB
+    }) as StructureLab[];
+
+    // If labs are running reactions, defer factory operations
+    const activeLabCount = labs.filter(lab => lab.mineralType && lab.mineralAmount > 0).length;
+    
+    // Allow factory to run if less than half the labs are active
+    // This ensures labs have priority during active compound production
+    return activeLabCount < labs.length / 2 || labs.length === 0;
   }
 }
 
