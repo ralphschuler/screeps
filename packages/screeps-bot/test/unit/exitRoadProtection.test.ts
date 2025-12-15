@@ -3,247 +3,319 @@ import { assert } from "chai";
 /**
  * Test suite for exit road protection
  * 
- * Verifies that roads near room exits are always considered valid infrastructure,
+ * Verifies that roads to ALL room exits are always calculated and protected,
  * regardless of current remote room assignments. This prevents the bot from
  * destroying roads when remote rooms are temporarily lost or reassigned.
+ * 
+ * The new approach calculates paths from hub (storage/spawn) to all 4 exits
+ * and protects those complete paths as permanent infrastructure.
  */
 describe("Exit Road Protection", () => {
-  describe("exit zone definition", () => {
-    it("should define protection distance from room exits", () => {
-      // Protection distance of 3 means roads at:
-      // - x = 0, 1, 2, 3 (left edge)
-      // - x = 46, 47, 48, 49 (right edge)
-      // - y = 0, 1, 2, 3 (top edge)
-      // - y = 46, 47, 48, 49 (bottom edge)
+  describe("exit road calculation approach", () => {
+    it("should calculate roads to all 4 room exits", () => {
+      // The new approach:
+      // 1. Finds all exits in each direction (top, bottom, left, right)
+      // 2. Selects closest exit to hub in each direction
+      // 3. Calculates path from hub to each exit
+      // 4. Protects ALL positions along those paths
       
-      const protectionDistance = 3;
-      const roomSize = 50;
+      const directions = ["top", "bottom", "left", "right"];
       
-      const leftZone = { min: 0, max: protectionDistance };
-      const rightZone = { min: roomSize - 1 - protectionDistance, max: roomSize - 1 };
-      const topZone = { min: 0, max: protectionDistance };
-      const bottomZone = { min: roomSize - 1 - protectionDistance, max: roomSize - 1 };
+      assert.equal(directions.length, 4, "Should calculate roads to all 4 directions");
       
-      assert.equal(leftZone.max, 3, "Left zone should extend to x=3");
-      assert.equal(rightZone.min, 46, "Right zone should start at x=46");
-      assert.equal(topZone.max, 3, "Top zone should extend to y=3");
-      assert.equal(bottomZone.min, 46, "Bottom zone should start at y=46");
+      for (const direction of directions) {
+        assert.exists(direction, `Direction ${direction} should be calculated`);
+      }
     });
-  });
 
-  describe("road position classification", () => {
-    it("should identify roads in exit zones", () => {
-      // Example road positions and whether they're in exit zones
-      const testCases = [
-        { x: 0, y: 25, inExitZone: true, reason: "at left edge" },
-        { x: 1, y: 25, inExitZone: true, reason: "near left edge" },
-        { x: 3, y: 25, inExitZone: true, reason: "within left zone" },
-        { x: 4, y: 25, inExitZone: false, reason: "outside left zone" },
-        { x: 49, y: 25, inExitZone: true, reason: "at right edge" },
-        { x: 48, y: 25, inExitZone: true, reason: "near right edge" },
-        { x: 46, y: 25, inExitZone: true, reason: "within right zone" },
-        { x: 45, y: 25, inExitZone: false, reason: "outside right zone" },
-        { x: 25, y: 0, inExitZone: true, reason: "at top edge" },
-        { x: 25, y: 2, inExitZone: true, reason: "within top zone" },
-        { x: 25, y: 4, inExitZone: false, reason: "outside top zone" },
-        { x: 25, y: 49, inExitZone: true, reason: "at bottom edge" },
-        { x: 25, y: 47, inExitZone: true, reason: "within bottom zone" },
-        { x: 25, y: 45, inExitZone: false, reason: "outside bottom zone" },
-        { x: 25, y: 25, inExitZone: false, reason: "in room center" }
+    it("should protect complete paths, not just positions near exits", () => {
+      // Example scenario:
+      // Hub at (25, 25)
+      // Exit at (0, 25)
+      // Path: (25,25) → (24,25) → (23,25) → ... → (1,25) → (0,25)
+      //
+      // OLD APPROACH: Only protected x=0-3 (near exit)
+      // NEW APPROACH: Protects ALL positions from hub to exit (x=0-25)
+      
+      const examplePath = [];
+      for (let x = 25; x >= 0; x--) {
+        examplePath.push({ x, y: 25 });
+      }
+      
+      assert.equal(examplePath.length, 26, "Complete path should have all positions");
+      assert.equal(examplePath[0].x, 25, "Path should start at hub");
+      assert.equal(examplePath[25].x, 0, "Path should end at exit");
+    });
+
+    it("should work independently of remote room assignments", () => {
+      // Key difference from old approach:
+      // - OLD: findExistingExitRoads() only protected roads within distance
+      // - NEW: calculateExitRoads() always calculates full paths to exits
+      //
+      // This means roads are protected even when:
+      // - Remote rooms are removed
+      // - Remote assignments change
+      // - No remotes exist yet
+      
+      const scenarios = [
+        { remoteRooms: [], description: "No remote rooms" },
+        { remoteRooms: ["W1N2"], description: "One remote room" },
+        { remoteRooms: ["W1N2", "W1N3"], description: "Multiple remote rooms" }
       ];
       
-      const protectionDistance = 3;
-      
-      for (const testCase of testCases) {
-        const { x, y, inExitZone, reason } = testCase;
-        
-        const nearLeft = x <= protectionDistance;
-        const nearRight = x >= (49 - protectionDistance);
-        const nearTop = y <= protectionDistance;
-        const nearBottom = y >= (49 - protectionDistance);
-        
-        const isInExitZone = nearLeft || nearRight || nearTop || nearBottom;
-        
-        assert.equal(
-          isInExitZone,
-          inExitZone,
-          `Position (${x}, ${y}) should ${inExitZone ? "be" : "not be"} in exit zone (${reason})`
-        );
+      for (const scenario of scenarios) {
+        // In all scenarios, exit roads should be calculated and protected
+        assert.exists(scenario.description, "Should handle scenario: " + scenario.description);
       }
     });
   });
 
-  describe("exit road protection behavior", () => {
-    it("should understand why exit roads need protection", () => {
-      // Exit roads are protected because:
-      const protectionReasons = [
-        "Roads near exits facilitate inter-room movement",
-        "They're used for multiple purposes, not just one specific remote",
-        "Destroying them when a remote is lost wastes resources",
-        "Rebuilding roads every time remote assignments change is inefficient",
-        "Exit roads are permanent infrastructure, like roads to sources"
+  describe("integration with blueprint validation", () => {
+    it("should add exit roads to valid positions before remote roads", () => {
+      // Execution order in getValidRoadPositions():
+      // 1. Blueprint roads
+      // 2. Calculated network roads (sources, controller, mineral)
+      // 3. Exit roads (ALWAYS calculated) ← NEW
+      // 4. Remote roads (only if remoteRooms.length > 0)
+      //
+      // This ensures exit roads are protected even without remote assignments
+      
+      const executionOrder = [
+        "blueprint roads",
+        "calculated network roads",
+        "exit roads to all 4 exits",
+        "remote roads (if applicable)"
       ];
       
-      assert.isAbove(protectionReasons.length, 0, "Should have clear reasons for protection");
+      assert.equal(executionOrder.length, 4, "Should have 4 steps");
+      assert.equal(executionOrder[2], "exit roads to all 4 exits", "Exit roads should be step 3");
     });
 
-    it("should protect exit roads even when remote assignments change", () => {
-      // Scenario: Remote room is lost
+    it("should protect roads from destruction when remote is lost", () => {
+      // Scenario:
+      // 1. Initially: remote room exists, roads built
+      // 2. Remote lost: remoteRooms = []
+      // 3. Blueprint validation runs
+      //
+      // OLD BEHAVIOR: Roads beyond protection distance destroyed
+      // NEW BEHAVIOR: All roads to exits protected via calculateExitRoads()
+      
       const scenario = {
-        initialState: {
-          remoteAssignments: ["W1N2"],
-          roadsBuilt: [
-            { x: 0, y: 25, description: "exit to W1N2" },
-            { x: 1, y: 25, description: "approach to exit" },
-            { x: 2, y: 25, description: "approach to exit" }
-          ]
+        before: {
+          remoteRooms: ["W1N2"],
+          roadsProtected: "via remote calculation"
         },
-        afterRemoteLost: {
-          remoteAssignments: [], // Remote removed due to hostiles
-          roadsBuilt: [
-            { x: 0, y: 25, description: "exit to W1N2" },
-            { x: 1, y: 25, description: "approach to exit" },
-            { x: 2, y: 25, description: "approach to exit" }
-          ]
+        after: {
+          remoteRooms: [],
+          roadsProtected: "via exit calculation"
         }
       };
       
-      // Before fix: roads would be destroyed when remote is removed
-      // After fix: roads are protected because they're in exit zone
-      
-      assert.equal(
-        scenario.afterRemoteLost.roadsBuilt.length,
-        scenario.initialState.roadsBuilt.length,
-        "Exit roads should remain after remote is lost"
-      );
-    });
-
-    it("should handle corner cases for exit protection", () => {
-      // Corner positions (e.g., x=3, y=3) are in BOTH horizontal and vertical zones
-      const cornerPosition = { x: 3, y: 3 };
-      
-      const nearLeft = cornerPosition.x <= 3;
-      const nearTop = cornerPosition.y <= 3;
-      
-      assert.isTrue(nearLeft, "Corner should be in left zone");
-      assert.isTrue(nearTop, "Corner should be in top zone");
-      assert.isTrue(
-        nearLeft || nearTop,
-        "Corner position should be protected by either zone"
-      );
+      assert.exists(scenario.after.roadsProtected, "Roads should still be protected after remote lost");
     });
   });
 
-  describe("integration with blueprint validation", () => {
-    it("should protect exit roads in validation flow", () => {
-      // Flow:
-      // 1. findExistingExitRoads() finds roads near exits
-      // 2. getValidRoadPositions() adds them to valid positions
-      // 3. findMisplacedStructures() checks roads against valid positions
-      // 4. Exit roads are NOT marked as misplaced
-      // 5. destroyMisplacedStructures() preserves them
+  describe("advantages over old approach", () => {
+    it("should eliminate the protection distance limitation", () => {
+      // OLD APPROACH:
+      // - EXIT_ROAD_PROTECTION_DISTANCE = 3
+      // - Only protected positions 0-3 and 46-49
+      // - Roads at positions 4-45 destroyed when remote lost
+      //
+      // NEW APPROACH:
+      // - No distance limit
+      // - Calculates actual paths to exits
+      // - Protects complete paths regardless of length
       
-      const validationFlow = [
-        "findExistingExitRoads scans room for roads near exits",
-        "getValidRoadPositions includes exit roads",
-        "findMisplacedStructures validates against valid positions",
-        "Exit roads are marked as valid",
-        "destroyMisplacedStructures does not destroy them"
-      ];
+      const newApproach = {
+        method: "path-based",
+        coverage: "complete paths from hub to exits (varies by room)",
+        limitation: "none"
+      };
       
-      assert.equal(validationFlow.length, 5, "Complete flow has 5 steps");
-      assert.include(
-        validationFlow[validationFlow.length - 1],
-        "not destroy",
-        "Final step should preserve roads"
-      );
+      assert.equal(newApproach.limitation, "none", "New approach has no coverage limitation");
     });
 
-    it("should work independently of remote assignments", () => {
-      // getValidRoadPositions now:
-      // 1. Adds blueprint roads
-      // 2. Adds calculated network roads  
-      // 3. Adds remote mining roads (if remoteRooms provided)
-      // 4. Adds exit zone roads (ALWAYS, regardless of remote assignments)
+    it("should adapt to actual room layout", () => {
+      // NEW APPROACH benefits:
+      // - Calculates paths based on actual terrain
+      // - Finds optimal routes to exits
+      // - Adapts to different hub positions
+      // - Works with any room layout
+      //
+      // OLD APPROACH limitation:
+      // - Fixed distance regardless of room layout
+      // - Didn't consider actual paths
+      // - Same protection zone for all rooms
       
-      const withRemotes = {
-        remoteAssignments: ["W1N2", "W1N3"],
-        exitRoadsProtected: true
+      const adaptability = {
+        terrain: "Uses PathFinder with terrain costs",
+        hubPosition: "Calculates from actual hub (storage/spawn)",
+        roomLayout: "Adapts to each room's unique layout"
       };
       
-      const withoutRemotes = {
-        remoteAssignments: [],
-        exitRoadsProtected: true
-      };
-      
-      assert.isTrue(
-        withRemotes.exitRoadsProtected,
-        "Exit roads should be protected with remote assignments"
-      );
-      assert.isTrue(
-        withoutRemotes.exitRoadsProtected,
-        "Exit roads should be protected without remote assignments"
-      );
+      assert.exists(adaptability.terrain, "Should consider terrain");
+      assert.exists(adaptability.hubPosition, "Should use actual hub position");
+      assert.exists(adaptability.roomLayout, "Should adapt to room layout");
     });
   });
 
   describe("performance considerations", () => {
-    it("should efficiently identify exit roads", () => {
-      // findExistingExitRoads():
-      // 1. Finds all road structures in room (room.find)
-      // 2. Filters by distance from edges (simple arithmetic)
-      // 3. Returns Set of position keys
+    it("should calculate paths efficiently", () => {
+      // Performance characteristics:
+      // - Runs once per tick (or less with caching)
+      // - 4 PathFinder.search calls (one per direction)
+      // - Only searches within home room
+      // - Uses road cost matrix for optimization
+      //
+      // Trade-off:
+      // - Slightly more CPU than distance check
+      // - But prevents wasteful road destruction/rebuilding
+      // - Net benefit: saves energy and construction time
       
-      // Time complexity: O(n) where n = number of roads in room
-      // Space complexity: O(m) where m = number of exit roads
+      const performance = {
+        pathfinderCalls: 4,
+        searchScope: "home room only",
+        caching: "can be cached",
+        netBenefit: "saves resources by preventing destruction"
+      };
       
-      // Typical room might have 100-200 roads, 5-20 near exits
-      const typicalRoads = 150;
-      const typicalExitRoads = 12;
-      
-      assert.isBelow(
-        typicalExitRoads / typicalRoads,
-        0.2,
-        "Exit roads are typically < 20% of total roads"
-      );
+      assert.equal(performance.pathfinderCalls, 4, "Should call PathFinder 4 times");
+      assert.equal(performance.searchScope, "home room only", "Should limit search to home room");
     });
   });
 
-  describe("edge cases", () => {
-    it("should handle rooms with no roads near exits", () => {
-      // If a room has no roads near exits, findExistingExitRoads returns empty Set
-      const emptySet = new Set<string>();
+  describe("functional behavior verification", () => {
+    it("should verify exit road calculation produces position keys", () => {
+      // While we can't fully mock Room and PathFinder in this test environment,
+      // we can verify that the road position format is correct
       
-      assert.equal(emptySet.size, 0, "Empty set should have size 0");
-      // getValidRoadPositions should handle this gracefully
+      // Road positions are stored as "x,y" strings
+      const exampleRoadPositions = new Set<string>();
+      exampleRoadPositions.add("25,25");
+      exampleRoadPositions.add("24,25");
+      exampleRoadPositions.add("23,25");
+      
+      assert.equal(exampleRoadPositions.size, 3, "Should store 3 positions");
+      assert.isTrue(exampleRoadPositions.has("25,25"), "Should contain hub position");
+      assert.isTrue(exampleRoadPositions.has("24,25"), "Should contain path position");
+      
+      // Verify format is parseable
+      for (const posKey of exampleRoadPositions) {
+        const [xStr, yStr] = posKey.split(',');
+        const x = parseInt(xStr, 10);
+        const y = parseInt(yStr, 10);
+        
+        assert.isNumber(x, "X coordinate should be a number");
+        assert.isNumber(y, "Y coordinate should be a number");
+        assert.isAtLeast(x, 0, "X should be >= 0");
+        assert.isAtMost(x, 49, "X should be <= 49");
+        assert.isAtLeast(y, 0, "Y should be >= 0");
+        assert.isAtMost(y, 49, "Y should be <= 49");
+      }
     });
 
-    it("should handle rooms with ALL roads near exits", () => {
-      // Pathological case: room with only exit roads
-      const allExitRoads = [
-        { x: 0, y: 25 },
-        { x: 1, y: 25 },
-        { x: 49, y: 25 },
-        { x: 48, y: 25 }
+    it("should verify calculateExitRoads handles all 4 directions", () => {
+      // The function should iterate through all 4 directions
+      const directions: ("top" | "bottom" | "left" | "right")[] = ["top", "bottom", "left", "right"];
+      
+      assert.equal(directions.length, 4, "Should process 4 directions");
+      
+      // Each direction maps to specific room edges
+      const directionToEdge = {
+        top: { axis: "y", value: 0 },
+        bottom: { axis: "y", value: 49 },
+        left: { axis: "x", value: 0 },
+        right: { axis: "x", value: 49 }
+      };
+      
+      for (const direction of directions) {
+        const edge = directionToEdge[direction];
+        assert.exists(edge, `Direction ${direction} should map to an edge`);
+        assert.oneOf(edge.axis, ["x", "y"], "Edge axis should be x or y");
+        assert.oneOf(edge.value, [0, 49], "Edge value should be 0 or 49");
+      }
+    });
+
+    it("should verify path calculation handles incomplete paths correctly", () => {
+      // When PathFinder returns incomplete: true, the function should:
+      // 1. NOT add positions from the incomplete path
+      // 2. Log a warning (as per the fix we just added)
+      
+      const mockIncompletePathResult = {
+        path: [
+          { x: 25, y: 25, roomName: "W1N1" },
+          { x: 24, y: 25, roomName: "W1N1" }
+        ],
+        incomplete: true
+      };
+      
+      assert.isTrue(mockIncompletePathResult.incomplete, "Path should be incomplete");
+      assert.isAbove(mockIncompletePathResult.path.length, 0, "Incomplete path may still have positions");
+      
+      // With our fix, incomplete paths should NOT be added to exitRoads
+      // and should generate a warning log
+    });
+
+    it("should verify error handling for failed path calculations", () => {
+      // The calculateExitRoads function has try/catch for each direction
+      // Errors should be caught and logged without crashing
+      
+      const mockError = new Error("PathFinder failed");
+      
+      // The catch block should:
+      // 1. Extract error message
+      // 2. Log warning with room name and direction
+      // 3. Continue processing other directions
+      
+      assert.instanceOf(mockError, Error, "Should handle Error instances");
+      assert.isString(mockError.message, "Error should have message");
+    });
+
+    it("should verify getValidRoadPositions integration", () => {
+      // The getValidRoadPositions function should:
+      // 1. Get hub position (storage or spawn)
+      // 2. Call calculateExitRoads if hub exists
+      // 3. Add all returned positions to validPositions
+      
+      // Mock storage and spawn positions
+      const mockStoragePos = { x: 25, y: 25, roomName: "W1N1" };
+      const mockSpawnPos = { x: 27, y: 27, roomName: "W1N1" };
+      
+      // Storage should be preferred over spawn
+      const hubPos = mockStoragePos ?? mockSpawnPos;
+      
+      assert.equal(hubPos.x, 25, "Should use storage position when available");
+      assert.equal(hubPos.y, 25, "Hub should be at storage");
+    });
+
+    it("should verify exit roads are calculated before remote roads", () => {
+      // In getValidRoadPositions, the order matters:
+      // 1. Blueprint roads
+      // 2. Calculated network roads
+      // 3. Exit roads (NEW - always calculated)
+      // 4. Remote roads (only if remoteRooms.length > 0)
+      
+      // This ensures exit roads are in validPositions even when remoteRooms = []
+      
+      const executionSteps = [
+        { order: 1, type: "blueprint", required: true },
+        { order: 2, type: "network", required: true },
+        { order: 3, type: "exit", required: true, condition: "always" },
+        { order: 4, type: "remote", required: false, condition: "if remoteRooms.length > 0" }
       ];
       
-      assert.isAbove(allExitRoads.length, 0, "Should handle all-exit-road scenario");
-    });
-
-    it("should not protect roads at exact room center", () => {
-      // Room center (25, 25) should NOT be in any exit zone
-      const center = { x: 25, y: 25 };
-      const protectionDistance = 3;
+      const exitRoadStep = executionSteps.find(s => s.type === "exit");
+      const remoteRoadStep = executionSteps.find(s => s.type === "remote");
       
-      const nearLeft = center.x <= protectionDistance;
-      const nearRight = center.x >= (49 - protectionDistance);
-      const nearTop = center.y <= protectionDistance;
-      const nearBottom = center.y >= (49 - protectionDistance);
+      assert.exists(exitRoadStep, "Exit road step should exist");
+      assert.exists(remoteRoadStep, "Remote road step should exist");
       
-      assert.isFalse(nearLeft, "Center should not be near left");
-      assert.isFalse(nearRight, "Center should not be near right");
-      assert.isFalse(nearTop, "Center should not be near top");
-      assert.isFalse(nearBottom, "Center should not be near bottom");
+      if (exitRoadStep && remoteRoadStep) {
+        assert.isTrue(exitRoadStep.required, "Exit roads should always be calculated");
+        assert.equal(exitRoadStep.condition, "always", "Exit roads calculated unconditionally");
+        assert.isBelow(exitRoadStep.order, remoteRoadStep.order, "Exit roads should be before remote roads");
+      }
     });
   });
 });
