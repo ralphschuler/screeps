@@ -198,20 +198,13 @@ export function loop(): void {
   // Start stats collection for this tick
   unifiedStats.startTick();
 
-  // Critical bucket check - use kernel's bucket mode
+  // Log bucket mode for monitoring (informational only - does not affect execution)
+  // Per BUCKET_MANAGEMENT.md: bucket mode is informational only and does not affect CPU limits or which processes run
   const bucketMode = kernel.getBucketMode();
-  if (bucketMode === "critical") {
-    logger.warn(`CRITICAL: CPU bucket at ${Game.cpu.bucket}, minimal processing`, {
+  if (bucketMode === "critical" && Game.time % 10 === 0) {
+    logger.warn(`CRITICAL: CPU bucket at ${Game.cpu.bucket}, continuing normal processing`, {
       subsystem: "SwarmBot"
     });
-    // Only run movement finalization to prevent stuck creeps
-    // Clear per-tick caches even in critical mode
-    clearTargetAssignments();
-    clearRoomCaches();
-    initMovement();
-    finalizeMovement();
-    unifiedStats.finalizeTick();
-    return;
   }
 
   // Clear per-tick caches at the start of each tick

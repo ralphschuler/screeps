@@ -30,10 +30,9 @@ describe("SwarmBot logging", () => {
     sandbox.restore();
   });
 
-  it("logs critical bucket mode through the logger", () => {
-    // With kernel-based process management, creeps are now managed as processes
-    // and skipping is handled by the kernel. Instead, test that critical bucket
-    // mode is properly logged when it occurs.
+  it("logs critical bucket mode through the logger but continues normal processing", () => {
+    // Per BUCKET_MANAGEMENT.md: bucket mode is informational only and does not affect execution
+    // Test that critical bucket mode is logged for monitoring but bot continues normal processing
     
     const loggerModule = require("../../src/core/logger");
     const warnSpy = sandbox.spy(loggerModule.logger, "warn");
@@ -45,7 +44,8 @@ describe("SwarmBot logging", () => {
 
     sandbox.stub(bot.kernel, "initialize");
     sandbox.stub(bot.kernel, "getBucketMode").returns("critical");
-    sandbox.stub(bot.kernel, "hasCpuBudget").returns(false);
+    sandbox.stub(bot.kernel, "hasCpuBudget").returns(true);
+    const kernelRunStub = sandbox.stub(bot.kernel, "run");
     sandbox.stub(bot.roomManager, "run");
     sandbox.stub(bot.profiler, "measureSubsystem").callsFake((_, fn: () => void) => fn());
 
@@ -59,9 +59,12 @@ describe("SwarmBot logging", () => {
     // Verify critical bucket warning is logged
     sinon.assert.called(warnSpy);
     const warnCall = warnSpy.getCalls().find((call: any) => 
-      call.args[0] && call.args[0].includes("CRITICAL") && call.args[0].includes("CPU bucket")
+      call.args[0] && call.args[0].includes("CRITICAL") && call.args[0].includes("CPU bucket") && call.args[0].includes("continuing normal processing")
     );
-    assert.isDefined(warnCall);
+    assert.isDefined(warnCall, "Should log critical bucket warning with 'continuing normal processing' message");
+    
+    // Verify kernel.run() was called (normal processing continues despite critical bucket)
+    sinon.assert.called(kernelRunStub);
   });
 
   it("logs visualization errors through the logger", () => {
