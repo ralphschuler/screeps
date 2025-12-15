@@ -211,7 +211,7 @@ A: The bot continues to function normally using full CPU limit. Bucket mode is t
 A: For monitoring and metrics. Low bucket indicates high sustained CPU usage, which helps identify optimization needs. Individual processes can also check bucket mode to skip expensive optional operations.
 
 **Q: Won't using full CPU when bucket is low make it drain faster?**
-A: No - the bucket drains when you exceed your CPU limit, not when you use your full limit. Using full CPU actually helps bucket recover faster by doing more productive work per tick.
+A: No - the bucket drains when you exceed your CPU limit and regenerates when you're below it. Using the full CPU limit doesn't make the bucket drain faster - it just means we're doing more productive work per tick. This can actually help with faster bucket recovery because more efficient work completion may reduce CPU usage in future ticks.
 
 **Q: Will low priority processes ever run if CPU is constantly high?**
 A: Yes! The rolling index ensures they execute eventually. They might run less frequently, but they won't be completely blocked.

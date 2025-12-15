@@ -435,7 +435,7 @@ export class Kernel {
    * Returns the effective CPU limit regardless of bucket mode. The system continues
    * to process normally even with low bucket, using the full targetCpuUsage.
    * Individual processes can check bucket mode if they want to skip expensive
-   * optional operations (like pre-computation, layout optimization) when bucket is low.
+   * optional operations (like heavy calculations, optional optimizations) when bucket is low.
    */
   public getCpuLimit(): number {
     return Game.cpu.limit * this.config.targetCpuUsage;
