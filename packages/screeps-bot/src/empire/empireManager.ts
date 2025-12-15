@@ -37,6 +37,7 @@ import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { unifiedStats } from "../core/unifiedStats";
 import { memoryManager } from "../memory/manager";
 import type { ExpansionCandidate, OvermindMemory, RoomIntel } from "../memory/schemas";
+import * as ExpansionScoring from "./expansionScoring";
 
 /**
  * Empire Manager Configuration
@@ -264,49 +265,67 @@ export class EmpireManager {
   }
 
   /**
-   * Score an expansion candidate
+   * Score an expansion candidate (multi-factor expansion scoring)
+   * Implements comprehensive scoring based on ROADMAP Section 7 & 9 requirements
    */
   private scoreExpansionCandidate(intel: RoomIntel, ownedRooms: Room[]): number {
     let score = 0;
 
-    // Source count (most important)
-    score += intel.sources * 40;
+    // 1. Source count scoring (primary economic factor)
+    // 2 sources = +40 points, 1 source = +20 points
+    if (intel.sources === 2) {
+      score += 40;
+    } else if (intel.sources === 1) {
+      score += 20;
+    }
 
-    // Distance penalty (prefer closer rooms)
+    // 2. Mineral type value (rare minerals get bonus)
+    score += ExpansionScoring.getMineralBonus(intel.mineralType);
+
+    // 3. Distance penalty (linear penalty from nearest owned room)
     const distance = this.getMinDistanceToOwned(intel.name, ownedRooms);
     if (distance > this.config.maxExpansionDistance) {
       return 0; // Too far
     }
-    score -= distance * 3;
+    score -= distance * 5;
 
-    // Mineral bonus (strategic minerals worth more)
-    if (intel.mineralType) {
-      const strategicMinerals: MineralConstant[] = [RESOURCE_CATALYST, RESOURCE_ZYNTHIUM, RESOURCE_KEANIUM];
-      if (strategicMinerals.includes(intel.mineralType)) {
-        score += 15;
-      } else {
-        score += 10;
-      }
-    }
+    // 4. Hostile presence penalty (check adjacent rooms for hostile players)
+    const hostilePenalty = ExpansionScoring.calculateHostilePenalty(intel.name);
+    score -= hostilePenalty;
 
-    // Terrain bonus (plains preferred over swamp)
-    if (intel.terrain === "plains") {
+    // 5. Threat level penalty
+    score -= intel.threatLevel * 15;
+
+    // 6. Terrain analysis
+    score += ExpansionScoring.getTerrainBonus(intel.terrain);
+
+    // 7. Highway proximity bonus (strategic value)
+    if (ExpansionScoring.isNearHighway(intel.name)) {
       score += 10;
-    } else if (intel.terrain === "swamp") {
-      score -= 5;
     }
 
-    // Threat penalty
-    score -= intel.threatLevel * 20;
+    // 8. Portal proximity bonus (strategic value for cross-shard expansion)
+    const portalBonus = ExpansionScoring.getPortalProximityBonus(intel.name);
+    score += portalBonus;
 
-    // Highway rooms are not good for expansion
+    // 9. Controller level bonus (faster startup if previously owned)
+    if (intel.controllerLevel > 0 && !intel.owner) {
+      // Previously owned but now abandoned - bonus for existing infrastructure
+      score += intel.controllerLevel * 2;
+    }
+
+    // 10. Cluster proximity bonus (prefer expansion near existing clusters)
+    const clusterBonus = ExpansionScoring.getClusterProximityBonus(intel.name, ownedRooms, distance);
+    score += clusterBonus;
+
+    // 11. Highway rooms are not good for expansion (cannot claim)
     if (intel.isHighway) {
       return 0;
     }
 
-    // SK rooms are not good for early expansion
+    // 12. SK rooms require special handling - heavily penalize for now
     if (intel.isSK) {
-      score -= 30;
+      score -= 50;
     }
 
     return Math.max(0, score);
