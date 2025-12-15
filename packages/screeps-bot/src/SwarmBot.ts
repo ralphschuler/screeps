@@ -21,6 +21,7 @@ import { creepProcessManager } from "./core/creepProcessManager";
 import { roomProcessManager } from "./core/roomProcessManager";
 import { runPowerRole } from "./roles/power";
 import { initializePheromoneEventHandlers } from "./logic/pheromoneEventHandlers";
+import { initializePathCacheEvents } from "./utils/pathCacheEvents";
 import { runScheduledTasks } from "./utils/computationScheduler";
 import { heapCache } from "./memory/heapCache";
 import { simpleAllies } from "./standards/SimpleAlliesManager";
@@ -99,6 +100,9 @@ function initializeSystems(): void {
 
   // Initialize pheromone event handlers for event-driven updates
   initializePheromoneEventHandlers();
+
+  // Initialize path cache event handlers for automatic invalidation
+  initializePathCacheEvents();
 
   // Initialize heap cache system for memory persistence
   heapCache.initialize();
