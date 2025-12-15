@@ -126,7 +126,8 @@ export class FactoryManager {
     
     if (factories.length === 0) return;
     const factory = factories[0];
-    if (!factory || factory.cooldown > 0) return;
+    if (!factory) return;
+    if (factory.cooldown > 0) return;
 
     const storage = room.storage;
     if (!storage) return;
