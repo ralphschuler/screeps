@@ -22,12 +22,7 @@
         "-e",
         "SCREEPS_SHARD=${COPILOT_MCP_SCREEPS_SHARD:-shard3}",
         "ghcr.io/ralphschuler/screeps-mcp:latest"
-      ],
-      "env": {
-        "COPILOT_MCP_SCREEPS_TOKEN": "COPILOT_MCP_SCREEPS_TOKEN",
-        "COPILOT_MCP_SCREEPS_HOST": "COPILOT_MCP_SCREEPS_HOST",
-        "COPILOT_MCP_SCREEPS_SHARD": "COPILOT_MCP_SCREEPS_SHARD"
-      }
+      ]
     },
     "screeps-docs-mcp": {
       "command": "docker",
@@ -38,10 +33,7 @@
         "-e",
         "DOCS_CACHE_TTL=${COPILOT_MCP_DOCS_CACHE_TTL:-3600}",
         "ghcr.io/ralphschuler/screeps-docs-mcp:latest"
-      ],
-      "env": {
-        "COPILOT_MCP_DOCS_CACHE_TTL": "COPILOT_MCP_SCREEPS_DOCS_CACHE_TTL"
-      }
+      ]
     },
     "screeps-wiki-mcp": {
       "command": "docker",
@@ -52,10 +44,7 @@
         "-e",
         "WIKI_CACHE_TTL=${COPILOT_MCP_WIKI_CACHE_TTL:-3600}",
         "ghcr.io/ralphschuler/screeps-wiki-mcp:latest"
-      ],
-      "env": {
-        "COPILOT_MCP_WIKI_CACHE_TTL": "COPILOT_MCP_SCREEPS_WIKI_CACHE_TTL"
-      }
+      ]
     },
     "grafana-mcp": {
       "command": "docker",
@@ -70,10 +59,7 @@
         "mcp/grafana",
         "-t",
         "stdio"
-      ],
-      "env": {
-        "COPILOT_MCP_GRAFANA_SERVICE_ACCOUNT_TOKEN": "COPILOT_MCP_GRAFANA_SERVICE_ACCOUNT_TOKEN"
-      }
+      ]
     },
     "screeps-typescript-mcp": {
       "command": "docker",
@@ -84,10 +70,7 @@
         "-e",
         "TYPES_CACHE_TTL=${COPILOT_MCP_TYPES_CACHE_TTL:-3600}",
         "ghcr.io/ralphschuler/screeps-typescript-mcp:latest"
-      ],
-      "env": {
-        "COPILOT_MCP_TYPES_CACHE_TTL": "COPILOT_MCP_SCREEPS_TYPES_CACHE_TTL"
-      }
+      ]
     }
   }
 }
