@@ -12,6 +12,30 @@ When we establish remote mining operations, we build roads:
 
 These roads are critical infrastructure, but they exist across room boundaries. We need to ensure they are considered "part of our blueprint" and not accidentally destroyed during blueprint validation.
 
+## Issue: Road Destruction at Exits
+
+### The Bug
+Roads near room exits were being destroyed when:
+1. A remote room was assigned and roads were built towards it
+2. The remote room was later removed from assignments (due to hostiles, claims, or danger)
+3. Blueprint validation no longer considered these roads valid
+4. Roads were destroyed as "misplaced structures"
+
+### Root Cause
+The `validateRemoteAssignments()` function in `expansionManager.ts` removes remote rooms from `swarm.remoteAssignments` when they become hostile, claimed, or too dangerous. When this happened, roads that were built towards those remotes were no longer included in the valid road positions, causing them to be marked as misplaced and destroyed.
+
+### The Fix
+Exit roads are now **always** considered valid infrastructure, regardless of current remote assignments:
+
+1. New constant: `EXIT_ROAD_PROTECTION_DISTANCE = 3`
+2. New function: `findExistingExitRoads()` identifies roads within 3 tiles of any room edge
+3. Updated: `getValidRoadPositions()` now includes exit roads in valid positions
+
+This ensures that:
+- Roads near exits (x ≤ 3, x ≥ 46, y ≤ 3, y ≥ 46) are permanent infrastructure
+- They survive remote assignment changes
+- They facilitate all inter-room movement, not just specific remotes
+
 ## Solution Architecture
 
 ### 1. Remote Road Calculation
@@ -111,7 +135,7 @@ export function getValidRoadPositions(
     validPositions.add(posKey);
   }
   
-  // 3. Add remote mining roads (THIS IS KEY!)
+  // 3. Add remote mining roads (if remoteRooms provided)
   if (remoteRooms.length > 0) {
     const remoteRoads = calculateRemoteRoads(room, remoteRooms);
     const homeRoomRoads = remoteRoads.get(room.name);
@@ -122,9 +146,17 @@ export function getValidRoadPositions(
     }
   }
   
+  // 4. CRITICAL: Add exit-zone roads (ALWAYS protected)
+  const exitProtectionRoads = findExistingExitRoads(room, EXIT_ROAD_PROTECTION_DISTANCE);
+  for (const posKey of exitProtectionRoads) {
+    validPositions.add(posKey);
+  }
+  
   return validPositions;
 }
 ```
+
+The fourth step ensures that **all existing roads within 3 tiles of room edges are always valid**, regardless of whether they were built for a remote that's now abandoned.
 
 ## Complete Lifecycle
 

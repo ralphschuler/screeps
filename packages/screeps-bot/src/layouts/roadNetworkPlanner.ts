@@ -480,12 +480,55 @@ function generateRoadCostMatrix(roomName: string): CostMatrix | false {
 }
 
 /**
+ * Distance from room exits where roads are always considered valid infrastructure
+ * Roads within this distance from edges (x=0, x=49, y=0, y=49) are protected
+ */
+const EXIT_ROAD_PROTECTION_DISTANCE = 3;
+
+/**
+ * Find existing roads near room exits that should be protected
+ * 
+ * This protects roads that are within EXIT_ROAD_PROTECTION_DISTANCE of any room edge.
+ * These roads are considered permanent infrastructure because they facilitate inter-room
+ * movement, regardless of current remote mining assignments.
+ * 
+ * @param room The room to scan for exit roads
+ * @param distance Distance from edges to protect roads (default: 3)
+ * @returns Set of position keys for existing roads near exits
+ */
+function findExistingExitRoads(room: Room, distance = 3): Set<string> {
+  const exitRoads = new Set<string>();
+  
+  // Find all existing road structures in the room
+  const roads = room.find(FIND_STRUCTURES, {
+    filter: s => s.structureType === STRUCTURE_ROAD
+  });
+  
+  for (const road of roads) {
+    const { x, y } = road.pos;
+    
+    // Check if road is within protection distance of any room edge
+    const nearLeftEdge = x <= distance;             // Near x=0
+    const nearRightEdge = x >= (49 - distance);      // Near x=49
+    const nearTopEdge = y <= distance;               // Near y=0
+    const nearBottomEdge = y >= (49 - distance);     // Near y=49
+    
+    if (nearLeftEdge || nearRightEdge || nearTopEdge || nearBottomEdge) {
+      exitRoads.add(`${x},${y}`);
+    }
+  }
+  
+  return exitRoads;
+}
+
+/**
  * Get all valid road positions for a room
  *
  * Combines:
  * - Blueprint roads
  * - Calculated infrastructure roads (to sources, controller, mineral)
  * - Remote mining roads (if applicable)
+ * - Exit-zone roads (always valid, regardless of remote assignments)
  *
  * @param room The room to get road positions for
  * @param anchor The blueprint anchor position (usually spawn)
@@ -525,6 +568,14 @@ export function getValidRoadPositions(
         validPositions.add(posKey);
       }
     }
+  }
+
+  // CRITICAL FIX: Always protect roads near room exits, regardless of current remote assignments
+  // This prevents road destruction when remote rooms are temporarily lost or reassigned
+  // Exit roads are general infrastructure that facilitate all inter-room movement
+  const exitProtectionRoads = findExistingExitRoads(room, EXIT_ROAD_PROTECTION_DISTANCE);
+  for (const posKey of exitProtectionRoads) {
+    validPositions.add(posKey);
   }
 
   return validPositions;
