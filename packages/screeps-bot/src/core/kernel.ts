@@ -361,22 +361,14 @@ export class Kernel {
     }
     
     // FEATURE: Periodic bucket status logging for user visibility
-    // Log bucket status every 100 ticks to help users understand why some systems aren't running
-    // This makes it clear when low/critical bucket is filtering out low-priority processes
+    // Log bucket status every 100 ticks to help users monitor bucket health
+    // Bucket mode is informational only - it doesn't affect process execution
     if (Game.time % 100 === 0 && (this.bucketMode === "low" || this.bucketMode === "critical")) {
       const totalProcesses = this.processes.size;
-      const eligibleProcesses = Array.from(this.processes.values()).filter(p => {
-        if (this.bucketMode === "critical") {
-          return p.priority >= ProcessPriority.CRITICAL;
-        } else if (this.bucketMode === "low") {
-          return p.priority >= ProcessPriority.HIGH;
-        }
-        return true;
-      }).length;
       
       logger.info(
         `Bucket ${this.bucketMode.toUpperCase()} mode: ${bucket}/10000 bucket. ` +
-        `Running ${eligibleProcesses}/${totalProcesses} processes (filtering LOW/MEDIUM priority)`,
+        `Running all ${totalProcesses} processes normally (bucket mode is informational only)`,
         { subsystem: "Kernel" }
       );
     }
@@ -431,20 +423,14 @@ export class Kernel {
 
   /**
    * Get CPU limit for current tick
+   * 
+   * Returns the effective CPU limit regardless of bucket mode. The system continues
+   * to process normally even with low bucket, using the full targetCpuUsage.
+   * Individual processes can check bucket mode if they want to skip expensive
+   * optional operations (like heavy calculations, optional optimizations) when bucket is low.
    */
   public getCpuLimit(): number {
-    const baseLimit = Game.cpu.limit;
-
-    switch (this.bucketMode) {
-      case "critical":
-        return baseLimit * 0.3;
-      case "low":
-        return baseLimit * 0.5;
-      case "high":
-        return baseLimit * this.config.targetCpuUsage;
-      default:
-        return baseLimit * this.config.targetCpuUsage;
-    }
+    return Game.cpu.limit * this.config.targetCpuUsage;
   }
 
   /**
