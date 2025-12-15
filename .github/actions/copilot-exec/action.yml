@@ -259,6 +259,7 @@ runs:
         while IFS='=' read -r var_name source_var; do
           if [ -n "$var_name" ] && [ -n "$source_var" ]; then
             # Only export if the source variable exists
+            # Using indirect variable expansion: ${!source_var} expands to the value of the variable named by source_var
             if [ -n "${!source_var:-}" ]; then
               export "$var_name=${!source_var}"
               if [ "$VERBOSE" = "true" ]; then
@@ -281,6 +282,9 @@ runs:
 
         # Substitute environment variables using eval to handle bash-style defaults
         # This handles both ${VAR} and ${VAR:-default} syntax
+        # SECURITY NOTE: The config content comes from a trusted repository file
+        # (.github/mcp/all-servers.json) and is not user-controlled at runtime.
+        # Only repository maintainers with write access can modify this file.
         config_temp=$(mktemp)
         echo "$config_content" > "$config_temp"
         config_content=$(eval "cat <<EOF

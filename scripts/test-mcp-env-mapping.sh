@@ -23,6 +23,7 @@ echo "------------------------------------------------"
 # Extract and export mapped environment variables (same logic as in action.yml)
 while IFS='=' read -r var_name source_var; do
   if [ -n "$var_name" ] && [ -n "$source_var" ]; then
+    # Using indirect variable expansion: ${!source_var} gets the value of the variable named by source_var
     if [ -n "${!source_var:-}" ]; then
       export "$var_name=${!source_var}"
       echo "✓ Exported $var_name from $source_var = ${!source_var}"
@@ -43,6 +44,8 @@ echo ""
 echo "Step 2: Substituting environment variables with bash expansion"
 echo "---------------------------------------------------------------"
 # Use heredoc with eval to handle bash-style default values
+# SECURITY NOTE: The config content comes from a trusted repository file
+# and is not user-controlled. This eval is safe in this context.
 config_temp=$(mktemp)
 echo "$config_content" > "$config_temp"
 config_content=$(eval "cat <<EOF
