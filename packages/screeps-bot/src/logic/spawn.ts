@@ -258,8 +258,8 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
         MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE
       ], 1740)
     ],
-    priority: 60, // Reduced from 80 - only spawn when there are actual threats
-    maxPerRoom: 2, // Allow 2 guards for better defense coverage
+    priority: 65, // Increased from 60 - higher priority for better defense readiness
+    maxPerRoom: 4, // Increased from 2 - keep more guards on hand to defend against invaders
     remoteRole: false
   },
   remoteGuard: {
@@ -363,8 +363,8 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
         MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE
       ], 1480)
     ],
-    priority: 55, // Reduced from 65 - rangers for specific defense scenarios
-    maxPerRoom: 2, // Allow 2 rangers for kiting tactics
+    priority: 60, // Increased from 55 - higher priority for better defense readiness
+    maxPerRoom: 4, // Increased from 2 - keep more rangers on hand for defense
     remoteRole: false
   },
   harasser: {

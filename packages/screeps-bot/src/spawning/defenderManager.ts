@@ -41,10 +41,20 @@ export function analyzeDefenderNeeds(room: Room): DefenderRequirement {
     reasons: []
   };
 
+  // Baseline defense force - always maintain minimum guards for readiness
+  // This ensures we're prepared when invaders arrive
+  const rcl = room.controller?.level ?? 1;
+  if (rcl >= 3) {
+    // RCL 3+ rooms should maintain a standing defense force
+    result.guards = 1;
+    result.rangers = 1;
+    result.reasons.push(`Baseline defense force for RCL ${rcl}`);
+  }
+
   // Find all hostile creeps
   const hostiles = room.find(FIND_HOSTILE_CREEPS);
   if (hostiles.length === 0) {
-    return result; // No threats
+    return result; // Return baseline requirements if no active threats
   }
 
   // Analyze hostile composition
@@ -107,8 +117,8 @@ export function analyzeDefenderNeeds(room: Room): DefenderRequirement {
 
   // Minimum composition for any attack
   if (hostiles.length > 0) {
-    result.guards = Math.max(result.guards, 1);
-    result.rangers = Math.max(result.rangers, 1);
+    result.guards = Math.max(result.guards, 2); // Increased from 1 - maintain at least 2 guards during attacks
+    result.rangers = Math.max(result.rangers, 2); // Increased from 1 - maintain at least 2 rangers during attacks
   }
 
   // Large attacks require healers
