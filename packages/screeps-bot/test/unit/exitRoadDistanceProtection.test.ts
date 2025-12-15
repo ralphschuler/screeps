@@ -398,12 +398,20 @@ describe("Exit Road Distance Protection", () => {
       // Even if room has hundreds of roads, function should work
       // Performance: O(n) where n is number of roads
       
-      const manyRoads = Array.from({ length: 1000 }, (_, i) => ({
-        x: i % 50,
-        y: Math.floor(i / 50)
+      // Generate positions covering the full room range (0-49 for both x and y)
+      const manyRoads = Array.from({ length: 500 }, (_, i) => ({
+        x: (i * 7) % 50,  // Distribute across x-axis
+        y: (i * 11) % 50  // Distribute across y-axis
       }));
       
-      assert.equal(manyRoads.length, 1000);
+      assert.equal(manyRoads.length, 500);
+      // Verify all positions are valid
+      for (const road of manyRoads) {
+        assert.isAtLeast(road.x, 0);
+        assert.isAtMost(road.x, 49);
+        assert.isAtLeast(road.y, 0);
+        assert.isAtMost(road.y, 49);
+      }
       // Function should handle this without issues
     });
 
