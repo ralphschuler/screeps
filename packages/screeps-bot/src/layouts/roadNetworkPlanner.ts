@@ -500,7 +500,7 @@ function calculateExitRoads(
   const exitRoads = new Set<string>();
   
   // Calculate paths to all 4 exits
-  const directions: Array<"top" | "bottom" | "left" | "right"> = ["top", "bottom", "left", "right"];
+  const directions: ("top" | "bottom" | "left" | "right")[] = ["top", "bottom", "left", "right"];
   
   for (const direction of directions) {
     try {
@@ -539,6 +539,11 @@ function calculateExitRoads(
             exitRoads.add(`${pos.x},${pos.y}`);
           }
         }
+      } else {
+        logger.warn(
+          `Incomplete path when calculating exit road for ${direction} in ${room.name} (target exit: ${targetExit.x},${targetExit.y}). Path length: ${pathResult.path.length}`,
+          { subsystem: "RoadNetwork" }
+        );
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
