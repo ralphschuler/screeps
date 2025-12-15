@@ -1,86 +1,51 @@
 /**
- * Utilities for cloning the typed-screeps repository
+ * Utilities for accessing the pre-cloned typed-screeps repository
  */
 
-import { simpleGit, SimpleGit, SimpleGitOptions } from "simple-git";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 import { promises as fs } from "fs";
-import { join } from "path";
-import { tmpdir } from "os";
-import { randomUUID } from "crypto";
 
-const TYPED_SCREEPS_REPO = "https://github.com/screepers/typed-screeps.git";
-const REPO_BRANCH = "master";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
- * Clone the typed-screeps repository to a temporary directory
+ * Get the path to the pre-cloned typed-screeps repository
+ * The repository is cloned during build time via scripts/clone-types.ts
  * @returns Path to the cloned repository
  */
-export async function cloneTypesRepo(): Promise<string> {
-  // Use randomUUID for unique directory name to avoid collisions
-  const tempDir = join(tmpdir(), `typed-screeps-${randomUUID()}`);
-  
-  const options: Partial<SimpleGitOptions> = {
-    baseDir: tempDir,
-    binary: "git",
-    maxConcurrentProcesses: 6,
-  };
-
-  try {
-    await fs.mkdir(tempDir, { recursive: true });
-    
-    // TODO: SSL Certificate Error - Git clone fails with certificate verification error
-    // Issue URL: https://github.com/ralphschuler/screeps/issues/482
-    // Details: Git clone returns "server certificate verification failed. CAfile: none CRLfile: none"
-    // Encountered: When calling any screeps-typescript-mcp tool
-    // Suggested Fix: Configure git to handle SSL certificates properly:
-    // 1. Set GIT_SSL_NO_VERIFY=1 environment variable (not recommended for production)
-    // 2. Configure git to use system CA certificates via SimpleGitOptions
-    // 3. Add git configuration option to disable SSL verification for this specific clone:
-    //    Add "-c", "http.sslVerify=false" to the clone arguments
-    // 4. Ensure the system has proper CA certificates installed
-    const git: SimpleGit = simpleGit(options);
-    
-    // Clone with depth 1 for efficiency
-    await git.clone(TYPED_SCREEPS_REPO, tempDir, [
-      "--depth",
-      "1",
-      "--branch",
-      REPO_BRANCH,
-      "--single-branch",
-    ]);
-
-    console.log(`Cloned typed-screeps to ${tempDir}`);
-    return tempDir;
-  } catch (error) {
-    // Cleanup on error
-    try {
-      await fs.rm(tempDir, { recursive: true, force: true });
-    } catch (cleanupError) {
-      console.error("Error cleaning up after failed clone:", cleanupError);
-    }
-    throw new Error(`Failed to clone typed-screeps repository: ${error}`);
-  }
-}
-
-/**
- * Clean up the cloned repository
- * @param repoPath Path to the repository to clean up
- */
-export async function cleanupRepo(repoPath: string): Promise<void> {
-  try {
-    await fs.rm(repoPath, { recursive: true, force: true });
-    console.log(`Cleaned up repository at ${repoPath}`);
-  } catch (error) {
-    console.error(`Error cleaning up repository at ${repoPath}:`, error);
-    throw error;
-  }
+export function getTypesRepoPath(): string {
+  // In production (dist/), go up two levels to reach the package root
+  // In development (src/), go up two levels to reach the package root
+  const packageRoot = join(__dirname, "..", "..");
+  return join(packageRoot, "typed-screeps");
 }
 
 /**
  * Get the source directory path from the cloned repository
- * @param repoPath Path to the cloned repository
  * @returns Path to the src directory
  */
-export function getSourcePath(repoPath: string): string {
-  return join(repoPath, "src");
+export function getSourcePath(): string {
+  return join(getTypesRepoPath(), "src");
+}
+
+/**
+ * Verify that the types repository exists
+ * @throws Error if the repository doesn't exist
+ */
+export async function verifyTypesRepo(): Promise<void> {
+  const repoPath = getTypesRepoPath();
+  const srcPath = getSourcePath();
+
+  try {
+    await fs.access(repoPath);
+    await fs.access(srcPath);
+  } catch (error) {
+    throw new Error(
+      `typed-screeps repository not found at ${repoPath}. ` +
+      `The repository should be cloned during 'npm run build' via the prebuild script. ` +
+      `If building from source, ensure dependencies are installed and run the build. ` +
+      `If using a pre-built package, this indicates a packaging issue.`
+    );
+  }
 }

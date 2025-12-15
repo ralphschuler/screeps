@@ -238,7 +238,7 @@ Type definitions are sourced from the official typed-screeps repository:
 - Repository: https://github.com/screepers/typed-screeps
 - Branch: master
 
-The server clones the repository on-demand to build the type index. The repository is automatically cleaned up after indexing.
+The server clones the repository during build time to include the type definitions in the distribution. This ensures fast startup and eliminates runtime dependencies on git.
 
 ## Development
 
@@ -246,7 +246,7 @@ The server clones the repository on-demand to build the type index. The reposito
 # Install dependencies
 npm install
 
-# Build
+# Build (includes cloning typed-screeps repository)
 npm run build
 
 # Run tests
@@ -258,6 +258,8 @@ npm run test:coverage
 # Run MCP Inspector tests (protocol compliance)
 npm run test:inspector
 ```
+
+**Note:** The build process automatically clones the typed-screeps repository into the `typed-screeps/` directory. This directory is excluded from version control but included in the distribution package.
 
 ### MCP Inspector Testing
 
