@@ -491,15 +491,19 @@ export class TerminalManager {
             3000 // Max single transfer
           );
 
-          if (transferAmount >= 500) {
-            // Queue compound transfer with high priority for military compounds
-            const isMilitaryCompound = (
-              compound === RESOURCE_CATALYZED_UTRIUM_ACID ||
-              compound === RESOURCE_CATALYZED_KEANIUM_ALKALIDE ||
-              compound === RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE ||
-              compound === RESOURCE_CATALYZED_GHODIUM_ACID
-            );
+          // Determine minimum transfer threshold based on compound tier
+          // T3 compounds are valuable - allow smaller transfers
+          const isMilitaryCompound = (
+            compound === RESOURCE_CATALYZED_UTRIUM_ACID ||
+            compound === RESOURCE_CATALYZED_KEANIUM_ALKALIDE ||
+            compound === RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE ||
+            compound === RESOURCE_CATALYZED_GHODIUM_ACID ||
+            compound === RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE ||
+            compound === RESOURCE_CATALYZED_GHODIUM_ALKALIDE
+          );
+          const minTransfer = isMilitaryCompound ? 300 : 500;
 
+          if (transferAmount >= minTransfer) {
             this.queueTransfer(
               surplusRoom.roomName,
               deficitRoom.roomName,
@@ -513,7 +517,8 @@ export class TerminalManager {
               { subsystem: "Terminal" }
             );
 
-            // Update amounts to reflect pending transfer
+            // Track pending transfer to prevent double-transfers
+            // Note: Working with copied values to avoid mutating original data
             surplusRoom.amount -= transferAmount;
             deficitRoom.amount += transferAmount;
           }

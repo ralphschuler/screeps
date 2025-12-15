@@ -311,8 +311,9 @@ export class LabManager {
     const room = Game.rooms[roomName];
     if (!room) return 0;
 
+    // Align TTL threshold with handleUnboost (TTL <= 50)
     const boostedCreeps = room.find(FIND_MY_CREEPS, {
-      filter: c => c.body.some(part => part.boost) && c.ticksToLive && c.ticksToLive < 100
+      filter: c => c.body.some(part => part.boost) && c.ticksToLive && c.ticksToLive <= 50
     });
 
     let unboosted = 0;

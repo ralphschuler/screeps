@@ -285,8 +285,9 @@ export class FactoryManager {
       filter: s => s.structureType === STRUCTURE_LAB
     }) as StructureLab[];
 
-    // If labs are running reactions, defer factory operations
-    const activeLabCount = labs.filter(lab => lab.mineralType && lab.mineralAmount > 0).length;
+    // If labs are running reactions (cooldown > 0), defer factory operations
+    // This checks for actual reaction activity, not just stored compounds
+    const activeLabCount = labs.filter(lab => lab.cooldown > 0).length;
     
     // Allow factory to run if less than half the labs are active
     // This ensures labs have priority during active compound production

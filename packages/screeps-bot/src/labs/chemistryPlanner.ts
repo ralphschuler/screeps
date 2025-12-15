@@ -285,7 +285,9 @@ function getStockpileTarget(compound: ResourceConstant, swarm: SwarmState): numb
         compound === RESOURCE_CATALYZED_KEANIUM_ALKALIDE ||
         compound === RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE ||
         compound === RESOURCE_CATALYZED_GHODIUM_ACID) {
-      return baseTarget * 1.5 * jitMultiplier; // Higher in war mode with JIT
+      // Cap total multiplier to prevent overproduction (max 1.5 * 1.5 = 2.25, capped at 1.75)
+      const totalMultiplier = Math.min(1.5 * jitMultiplier, 1.75);
+      return baseTarget * totalMultiplier;
     }
   }
   
@@ -482,8 +484,9 @@ export class ChemistryPlanner {
         // Only schedule if we have a shortage
         if (shortage > 0) {
           // Calculate priority based on shortage percentage and base priority
+          // Cap shortagePercent at 0.5 to keep priorities predictable
           const shortagePercent = shortage / targetAmount;
-          const priority = reaction.priority * (1 + shortagePercent);
+          const priority = reaction.priority * (1 + Math.min(shortagePercent, 0.5));
 
           // Check if we can produce this reaction
           const availableResources: Partial<Record<ResourceConstant, number>> = {};

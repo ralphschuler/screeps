@@ -275,11 +275,19 @@ describe("Lab System", () => {
     it("should calculate boost cost for a creep", () => {
       const cost = boostManager.calculateBoostCost("soldier", 10);
       
-      // Soldier has 2 boosts: XUH2O and XLHO2
+      // Soldier has 2 boosts (XUH2O and XLHO2) based on BOOST_CONFIGS
       // 10 parts * 30 mineral per part * 2 boosts = 600 mineral
       // 10 parts * 20 energy per part * 2 boosts = 400 energy
+      // These values are derived from the boost config and LAB_BOOST constants
       expect(cost.mineral).to.equal(600);
       expect(cost.energy).to.equal(400);
+    });
+
+    it("should handle unknown role gracefully", () => {
+      const cost = boostManager.calculateBoostCost("unknownRole", 10);
+      
+      expect(cost.mineral).to.equal(0);
+      expect(cost.energy).to.equal(0);
     });
 
     it("should analyze boost ROI", () => {

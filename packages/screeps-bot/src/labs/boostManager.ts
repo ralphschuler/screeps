@@ -300,32 +300,59 @@ export class BoostManager {
     }
 
     const cost = this.calculateBoostCost(role, bodySize);
-    const totalCost = cost.mineral + cost.energy * 0.01; // Energy worth less than minerals
+    // Energy-to-mineral ratio: configurable, conservative estimate
+    // 1 mineral ≈ 10 energy in value for boost compounds
+    const totalCost = cost.mineral + cost.energy * 0.1;
 
-    // Calculate expected gains based on boost type and role
+    // Calculate expected gains based on actual Screeps mechanics
+    // Assumptions:
+    // - Relevant body parts are boosted with T3 compounds (4x multiplier)
+    // - Creep survives for expectedLifetime ticks
+    // - Per-tick effects based on Screeps documentation
     let expectedGain = 0;
-    let boostMultiplier = 1;
 
     // Different roles have different boost effectiveness
     switch (role) {
-      case "soldier":
-      case "ranger":
-        // Combat boosts: 4x attack/ranged attack damage
-        boostMultiplier = 4;
-        expectedGain = bodySize * boostMultiplier * expectedLifetime * 0.5;
+      case "soldier": {
+        // ATTACK part: 30 dmg/tick base, XUH2O: x4 = 120 dmg/tick
+        // Assume 1/3 of body parts are ATTACK (typical ratio)
+        const attackParts = Math.floor(bodySize / 3);
+        const baseDamage = 30;
+        const boostMultiplier = 4; // XUH2O
+        expectedGain = attackParts * baseDamage * boostMultiplier * expectedLifetime;
         break;
-      case "healer":
-        // Heal boost: 4x heal power
-        boostMultiplier = 4;
-        expectedGain = bodySize * boostMultiplier * expectedLifetime * 0.3;
+      }
+      case "ranger": {
+        // RANGED_ATTACK part: 10 dmg/tick base, XKHO2: x4 = 40 dmg/tick
+        // Assume 1/3 of body parts are RANGED_ATTACK
+        const rangedParts = Math.floor(bodySize / 3);
+        const baseDamage = 10;
+        const boostMultiplier = 4; // XKHO2
+        expectedGain = rangedParts * baseDamage * boostMultiplier * expectedLifetime;
         break;
-      case "siegeUnit":
-        // Dismantle boost: 4x dismantle power
-        boostMultiplier = 4;
-        expectedGain = bodySize * boostMultiplier * expectedLifetime * 0.7;
+      }
+      case "healer": {
+        // HEAL part: 12 heal/tick base, XLHO2: x4 = 48 heal/tick
+        // Assume 1/3 of body parts are HEAL
+        const healParts = Math.floor(bodySize / 3);
+        const baseHeal = 12;
+        const boostMultiplier = 4; // XLHO2
+        expectedGain = healParts * baseHeal * boostMultiplier * expectedLifetime;
         break;
-      default:
-        expectedGain = bodySize * 2 * expectedLifetime * 0.2;
+      }
+      case "siegeUnit": {
+        // WORK part (dismantle): 50/tick base, XGH2O: x4 = 200/tick
+        // Assume 1/3 of body parts are WORK
+        const workParts = Math.floor(bodySize / 3);
+        const baseDismantle = 50;
+        const boostMultiplier = 4; // XGH2O
+        expectedGain = workParts * baseDismantle * boostMultiplier * expectedLifetime;
+        break;
+      }
+      default: {
+        // Fallback for unknown roles: assume moderate gain
+        expectedGain = bodySize * 10 * expectedLifetime;
+      }
     }
 
     // Adjust for danger level - higher danger = more valuable
