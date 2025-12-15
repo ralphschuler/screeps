@@ -370,5 +370,74 @@ describe("State Machine", () => {
       assert.isDefined(ctx.memory.state);
       assert.equal(ctx.memory.state?.data?.resourceType, RESOURCE_ENERGY);
     });
+
+    it("should clear scout target memory when returning home", () => {
+      const creep = createMockCreep({ capacity: 50, usedCapacity: 0, roomName: "E1N1" });
+      const ctx = createMockContext(creep, {
+        role: "scout",
+        returningHome: true,
+        targetRoom: "E2N2",
+        lastExploredRoom: "E1N2"
+      });
+      ctx.homeRoom = "E1N1";
+      ctx.isInHomeRoom = true;
+
+      const behaviorFn = (): CreepAction => {
+        return { type: "idle" };
+      };
+
+      const action = evaluateWithStateMachine(ctx, behaviorFn);
+
+      assert.equal(action.type, "idle");
+      assert.isUndefined(ctx.memory.returningHome, "returningHome flag should be cleared");
+      assert.isUndefined(ctx.memory.targetRoom, "Scout targetRoom should be cleared to prevent cycling");
+      assert.isUndefined(ctx.memory.lastExploredRoom, "Scout lastExploredRoom should be cleared to prevent cycling");
+    });
+
+    it("should not clear non-scout memory when returning home", () => {
+      const creep = createMockCreep({ capacity: 50, usedCapacity: 0, roomName: "E1N1" });
+      const ctx = createMockContext(creep, {
+        role: "harvester",
+        returningHome: true,
+        targetRoom: "E2N2"
+      });
+      ctx.homeRoom = "E1N1";
+      ctx.isInHomeRoom = true;
+
+      const behaviorFn = (): CreepAction => {
+        return { type: "idle" };
+      };
+
+      const action = evaluateWithStateMachine(ctx, behaviorFn);
+
+      assert.equal(action.type, "idle");
+      assert.isUndefined(ctx.memory.returningHome, "returningHome flag should be cleared");
+      assert.equal(ctx.memory.targetRoom, "E2N2", "Non-scout targetRoom should be preserved");
+    });
+
+    it("should return moveToRoom when scout is returning home but not there yet", () => {
+      const creep = createMockCreep({ capacity: 50, usedCapacity: 0, roomName: "E2N2" });
+      const ctx = createMockContext(creep, {
+        role: "scout",
+        returningHome: true,
+        targetRoom: "E2N2"
+      });
+      ctx.homeRoom = "E1N1";
+      ctx.isInHomeRoom = false;
+      ctx.room = createMockRoom("E2N2");
+
+      const behaviorFn = (): CreepAction => {
+        return { type: "idle" };
+      };
+
+      const action = evaluateWithStateMachine(ctx, behaviorFn);
+
+      assert.equal(action.type, "moveToRoom");
+      if (action.type === "moveToRoom") {
+        assert.equal(action.roomName, "E1N1");
+      }
+      assert.isDefined(ctx.memory.returningHome, "returningHome flag should persist until home");
+      assert.equal(ctx.memory.targetRoom, "E2N2", "targetRoom should persist until home");
+    });
   });
 });

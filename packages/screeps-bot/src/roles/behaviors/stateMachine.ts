@@ -403,11 +403,23 @@ export function evaluateWithStateMachine(
     // Clear flag if creep is back in home room
     if (ctx.isInHomeRoom) {
       delete ctx.memory.returningHome;
-      logger.info("Creep returned home, resuming normal behavior", {
-        room: ctx.creep.pos.roomName,
-        creep: ctx.creep.name,
-        meta: { role: ctx.memory.role }
-      });
+      
+      // BUGFIX: For scouts, clear exploration targets to prevent cycling when returning home due to path errors
+      if (ctx.memory.role === "scout") {
+        delete ctx.memory.targetRoom;
+        delete ctx.memory.lastExploredRoom;
+        logger.info("Scout returned home, cleared exploration targets to prevent cycling", {
+          room: ctx.creep.pos.roomName,
+          creep: ctx.creep.name,
+          meta: { role: ctx.memory.role }
+        });
+      } else {
+        logger.info("Creep returned home, resuming normal behavior", {
+          room: ctx.creep.pos.roomName,
+          creep: ctx.creep.name,
+          meta: { role: ctx.memory.role }
+        });
+      }
     } else {
       // Not home yet - return moveToRoom action
       logger.debug("Creep returning to home room", {
