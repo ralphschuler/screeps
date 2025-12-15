@@ -12,9 +12,9 @@ describe("Exit Road Protection", () => {
     it("should define protection distance from room exits", () => {
       // Protection distance of 10 means roads at:
       // - x = 0-10 (left edge)
-      // - x = 40-49 (right edge)
+      // - x = 39-49 (right edge)
       // - y = 0-10 (top edge)
-      // - y = 40-49 (bottom edge)
+      // - y = 39-49 (bottom edge)
       // 
       // This covers most paths from room center (~25) to exits,
       // preventing destruction when remote assignments change
@@ -28,9 +28,9 @@ describe("Exit Road Protection", () => {
       const bottomZone = { min: roomSize - 1 - protectionDistance, max: roomSize - 1 };
       
       assert.equal(leftZone.max, 10, "Left zone should extend to x=10");
-      assert.equal(rightZone.min, 40, "Right zone should start at x=40");
+      assert.equal(rightZone.min, 39, "Right zone should start at x=39");
       assert.equal(topZone.max, 10, "Top zone should extend to y=10");
-      assert.equal(bottomZone.min, 40, "Bottom zone should start at y=40");
+      assert.equal(bottomZone.min, 39, "Bottom zone should start at y=39");
     });
   });
 
