@@ -21,9 +21,9 @@
 import { logger } from "../core/logger";
 import { ProcessPriority } from "../core/kernel";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import { memoryManager } from "../memory/manager";
 import { terminalRouter } from "./terminalRouter";
 import type { TerminalRoute } from "./terminalRouter";
-import { memoryManager } from "../memory/manager";
 
 /**
  * Terminal manager configuration
