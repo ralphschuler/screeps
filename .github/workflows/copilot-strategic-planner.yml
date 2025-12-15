@@ -30,24 +30,24 @@ jobs:
     timeout-minutes: 180
     environment:
       name: copilot
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO_NAME: "${{ github.repository }}"
+      RUN_ID: "${{ github.run_id }}"
+      RUN_URL: "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      COPILOT_MCP_SCREEPS_TOKEN: ${{ secrets.COPILOT_MCP_SSCREEPS_TOKEN }}
+      COPILOT_MCP_SCREEPS_HOST: ${{ vars.COPILOT_MCP_SSCREEPS_HOST || 'screeps.com' }}
+      COPILOT_MCP_SCREEPS_SHARD: ${{ vars.COPILOT_MCP_SSCREEPS_SHARD || 'shard3' }}
+      COPILOT_MCP_SCREEPS_DOCS_CACHE_TTL: ${{ vars.SCREEPS_DOCS_CACHE_TTL || '3600' }}
+      COPILOT_MCP_SCREEPS_WIKI_CACHE_TTL: ${{ vars.SCREEPS_WIKI_CACHE_TTL || '3600' }}
+      COPILOT_MCP_SCREEPS_TYPES_CACHE_TTL: ${{ vars.SCREEPS_TYPES_CACHE_TTL || '3600' }}
+      COPILOT_MCP_GRAFANA_SERVICE_ACCOUNT_TOKEN: ${{ secrets.COPILOT_MCP_SGRAFANA_SERVICE_ACCOUNT_TOKEN }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
       - name: Run strategic planning analysis
         uses: ./.github/actions/copilot-exec
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO_NAME: "${{ github.repository }}"
-          RUN_ID: "${{ github.run_id }}"
-          RUN_URL: "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          COPILOT_MCP_SCREEPS_TOKEN: ${{ secrets.COPILOT_MCP_SSCREEPS_TOKEN }}
-          COPILOT_MCP_SCREEPS_HOST: ${{ vars.COPILOT_MCP_SSCREEPS_HOST || 'screeps.com' }}
-          COPILOT_MCP_SCREEPS_SHARD: ${{ vars.COPILOT_MCP_SSCREEPS_SHARD || 'shard3' }}
-          COPILOT_MCP_SCREEPS_DOCS_CACHE_TTL: ${{ vars.SCREEPS_DOCS_CACHE_TTL || '3600' }}
-          COPILOT_MCP_SCREEPS_WIKI_CACHE_TTL: ${{ vars.SCREEPS_WIKI_CACHE_TTL || '3600' }}
-          COPILOT_MCP_SCREEPS_TYPES_CACHE_TTL: ${{ vars.SCREEPS_TYPES_CACHE_TTL || '3600' }}
-          COPILOT_MCP_GRAFANA_SERVICE_ACCOUNT_TOKEN: ${{ secrets.COPILOT_MCP_SGRAFANA_SERVICE_ACCOUNT_TOKEN }}
         with:
           copilot-token: ${{ secrets.COPILOT_TOKEN }}
           prompt-path: .github/agents/strategic-planner.agent.md
