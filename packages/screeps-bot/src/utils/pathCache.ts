@@ -257,10 +257,16 @@ export function invalidateRoom(roomName: string): void {
   // Convert iterator to array to avoid downlevelIteration requirement
   const keys = Array.from(cache.paths.keys());
   for (const key of keys) {
-    // Check if key contains this room name
-    if (key.includes(`${roomName}:`)) {
-      cache.paths.delete(key);
-      count++;
+    // Parse key format: "roomA:x,y:roomB:x,y"
+    // Check if either the start or end room matches
+    const parts = key.split(":");
+    if (parts.length >= 4) {
+      const startRoom = parts[0];
+      const endRoom = parts[2];
+      if (startRoom === roomName || endRoom === roomName) {
+        cache.paths.delete(key);
+        count++;
+      }
     }
   }
 
@@ -321,9 +327,8 @@ export function cleanupExpiredPaths(): void {
   const cache = getCacheStore();
   const keysToDelete: string[] = [];
 
-  // Convert iterator to array to avoid downlevelIteration requirement
-  const entries = Array.from(cache.paths.entries());
-  for (const [key, entry] of entries) {
+  // Iterate directly over the Map without creating an intermediate array
+  for (const [key, entry] of cache.paths) {
     if (entry.ttl !== undefined) {
       const age = Game.time - entry.cachedAt;
       if (age > entry.ttl) {
