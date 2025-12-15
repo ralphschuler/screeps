@@ -78,8 +78,6 @@ declare global {
     state?: string;
     task?: string;
     lastExploredRoom?: string;
-    // TODO: Add path caching for frequently used routes (ROADMAP Section 20)
-    // TODO: Add stuck detection tracking to improve movement recovery
     /** Role-specific efficiency metrics */
     _metrics?: {
       tasksCompleted: number;
