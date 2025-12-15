@@ -243,12 +243,23 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     role: "guard",
     family: "military",
     bodies: [
-      createBody([TOUGH, ATTACK, MOVE, MOVE], 190),
-      createBody([TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE], 500),
-      createBody([TOUGH, TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1070)
+      // Minimal: For emergency spawning with low energy
+      createBody([TOUGH, ATTACK, ATTACK, MOVE, MOVE, MOVE], 310),
+      // Small: Basic defense capability
+      createBody([TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 620),
+      // Medium: Balanced defense with ranged support
+      createBody([TOUGH, TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1070),
+      // Large: Strong defender with healing capability
+      createBody([
+        TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,
+        ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
+        RANGED_ATTACK, RANGED_ATTACK,
+        HEAL,
+        MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE
+      ], 1740)
     ],
     priority: 60, // Reduced from 80 - only spawn when there are actual threats
-    maxPerRoom: 1, // Reduced from 2 - one guard is enough for most situations
+    maxPerRoom: 2, // Allow 2 guards for better defense coverage
     remoteRole: false
   },
   remoteGuard: {
@@ -267,9 +278,18 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     role: "healer",
     family: "military",
     bodies: [
-      createBody([HEAL, MOVE], 300),
-      createBody([HEAL, HEAL, MOVE, MOVE], 600),
-      createBody([HEAL, HEAL, HEAL, HEAL, MOVE, MOVE, MOVE, MOVE], 1200)
+      // Minimal: Emergency healer
+      createBody([HEAL, MOVE, MOVE], 350),
+      // Small: Basic healing support
+      createBody([TOUGH, HEAL, HEAL, MOVE, MOVE, MOVE], 620),
+      // Medium: Strong healing support
+      createBody([TOUGH, TOUGH, HEAL, HEAL, HEAL, HEAL, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1240),
+      // Large: Powerful healer with durability
+      createBody([
+        TOUGH, TOUGH, TOUGH, TOUGH,
+        HEAL, HEAL, HEAL, HEAL, HEAL, HEAL, HEAL, HEAL,
+        MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE
+      ], 2640)
     ],
     priority: 55, // Reduced from 75 - only spawn when actively needed for combat
     maxPerRoom: 1,
@@ -330,12 +350,21 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     role: "ranger",
     family: "military",
     bodies: [
-      createBody([RANGED_ATTACK, MOVE], 200),
-      createBody([RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE], 400),
-      createBody([RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE], 800)
+      // Minimal: Emergency ranged defender
+      createBody([TOUGH, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE], 360),
+      // Small: Basic ranged defense
+      createBody([TOUGH, TOUGH, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE], 570),
+      // Medium: Strong ranged attacker
+      createBody([TOUGH, TOUGH, TOUGH, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1040),
+      // Large: Powerful ranged unit with mobility
+      createBody([
+        TOUGH, TOUGH, TOUGH, TOUGH,
+        RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK,
+        MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE
+      ], 1480)
     ],
     priority: 55, // Reduced from 65 - rangers for specific defense scenarios
-    maxPerRoom: 1, // Reduced from 2 - one ranger per room
+    maxPerRoom: 2, // Allow 2 rangers for kiting tactics
     remoteRole: false
   },
   harasser: {
@@ -500,7 +529,7 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         remoteGuard: 1.8,
         healer: 1.5,
         ranger: 1.0,
-        scout: 0.8,
+        scout: 0.0, // No scouts during defensive operations
         engineer: 1.2,
         remoteHarvester: 0.5,
         remoteHauler: 0.5,
@@ -517,7 +546,7 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         healer: 2.0,
         soldier: 2.0,
         ranger: 1.5,
-        scout: 0.8,
+        scout: 0.0, // No scouts during war operations
         engineer: 0.5,
         remoteHarvester: 0.3,
         remoteHauler: 0.3,
@@ -535,7 +564,7 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
         soldier: 2.5,
         siegeUnit: 2.0,
         ranger: 1.0,
-        scout: 0.5,
+        scout: 0.0, // No scouts during siege operations
         engineer: 0.2,
         remoteHarvester: 0.1,
         remoteHauler: 0.1
@@ -883,8 +912,16 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
 
   // Scout: Spawn if we have remote rooms without full intel
   // or if we're in expand posture and need more room data
+  // CRITICAL: Do NOT spawn scouts during active defense - military units have priority
   if (role === "scout") {
-    // Always allow scouts if we don't have one (up to max per room)
+    // Never spawn scouts during defensive operations (danger >= 1)
+    // Military units must take absolute priority during invasions
+    if (swarm.danger >= 1) return false;
+    
+    // Never spawn scouts in war/siege/defensive postures
+    if (swarm.posture === "defensive" || swarm.posture === "war" || swarm.posture === "siege") return false;
+    
+    // Always allow scouts if we don't have one (up to max per room) and room is safe
     if (current === 0) return true;
     
     // In expand posture, allow more scouts
