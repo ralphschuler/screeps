@@ -13,11 +13,6 @@ LABEL org.opencontainers.image.source=https://github.com/ralphschuler/screeps \
       org.opencontainers.image.description="Screeps TypeScript MCP Server" \
       org.opencontainers.image.licenses=MIT
 
-# Install git (required for cloning typed-screeps)
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends git && \
-    rm -rf /var/lib/apt/lists/*
-
 # Set working directory
 WORKDIR /app
 
@@ -31,6 +26,9 @@ RUN npm ci --omit=dev
 
 # Copy pre-built application
 COPY dist/ ./dist/
+
+# Copy pre-cloned typed-screeps repository
+COPY typed-screeps/ ./typed-screeps/
 
 # Run the server
 ENTRYPOINT ["node", "dist/server.js"]

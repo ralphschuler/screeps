@@ -29,4 +29,4 @@ export {
   extractRelatedTypes,
   getTypeList,
 } from "./scraper/type-parser.js";
-export { cloneTypesRepo, cleanupRepo, getSourcePath } from "./scraper/repo-cloner.js";
+export { getTypesRepoPath, getSourcePath, verifyTypesRepo } from "./scraper/repo-cloner.js";

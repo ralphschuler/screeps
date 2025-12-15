@@ -3,7 +3,7 @@
  */
 
 import type { TypeIndex, TypeDefinition, CacheConfig } from "../types.js";
-import { cloneTypesRepo, cleanupRepo, getSourcePath } from "./repo-cloner.js";
+import { getSourcePath, verifyTypesRepo } from "./repo-cloner.js";
 import { parseAllTypes, extractRelatedTypes } from "./type-parser.js";
 
 // Global cache
@@ -43,12 +43,11 @@ export async function buildIndex(forceRefresh = false): Promise<TypeIndex> {
   }
 
   console.log("Building type index...");
-  let repoPath: string | null = null;
 
   try {
-    // Clone repository
-    repoPath = await cloneTypesRepo();
-    const srcPath = getSourcePath(repoPath);
+    // Verify the pre-cloned repository exists
+    await verifyTypesRepo();
+    const srcPath = getSourcePath();
 
     // Parse all types
     const definitions = await parseAllTypes(srcPath);
@@ -102,15 +101,9 @@ export async function buildIndex(forceRefresh = false): Promise<TypeIndex> {
 
     console.log(`Built index with ${types.size} type definitions`);
     return index;
-  } finally {
-    // Always cleanup
-    if (repoPath) {
-      try {
-        await cleanupRepo(repoPath);
-      } catch (error) {
-        console.error("Error cleaning up repository:", error);
-      }
-    }
+  } catch (error) {
+    console.error("Error building type index:", error);
+    throw error;
   }
 }
 
