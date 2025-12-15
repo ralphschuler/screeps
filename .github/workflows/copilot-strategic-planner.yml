@@ -54,6 +54,7 @@ jobs:
           output-path: "reports/copilot/strategic-planner-${{ github.run_id }}.log"
           verbose: "${{ inputs.verbose || 'false' }}"
           additional-mcp-config: '@.github/mcp/all-servers.json'
+          force-response: true
 
       - name: Upload strategic planning report
         if: always()
