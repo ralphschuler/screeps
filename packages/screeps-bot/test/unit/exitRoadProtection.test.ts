@@ -10,13 +10,16 @@ import { assert } from "chai";
 describe("Exit Road Protection", () => {
   describe("exit zone definition", () => {
     it("should define protection distance from room exits", () => {
-      // Protection distance of 3 means roads at:
-      // - x = 0, 1, 2, 3 (left edge)
-      // - x = 46, 47, 48, 49 (right edge)
-      // - y = 0, 1, 2, 3 (top edge)
-      // - y = 46, 47, 48, 49 (bottom edge)
+      // Protection distance of 10 means roads at:
+      // - x = 0-10 (left edge)
+      // - x = 40-49 (right edge)
+      // - y = 0-10 (top edge)
+      // - y = 40-49 (bottom edge)
+      // 
+      // This covers most paths from room center (~25) to exits,
+      // preventing destruction when remote assignments change
       
-      const protectionDistance = 3;
+      const protectionDistance = 10;
       const roomSize = 50;
       
       const leftZone = { min: 0, max: protectionDistance };
@@ -24,10 +27,10 @@ describe("Exit Road Protection", () => {
       const topZone = { min: 0, max: protectionDistance };
       const bottomZone = { min: roomSize - 1 - protectionDistance, max: roomSize - 1 };
       
-      assert.equal(leftZone.max, 3, "Left zone should extend to x=3");
-      assert.equal(rightZone.min, 46, "Right zone should start at x=46");
-      assert.equal(topZone.max, 3, "Top zone should extend to y=3");
-      assert.equal(bottomZone.min, 46, "Bottom zone should start at y=46");
+      assert.equal(leftZone.max, 10, "Left zone should extend to x=10");
+      assert.equal(rightZone.min, 40, "Right zone should start at x=40");
+      assert.equal(topZone.max, 10, "Top zone should extend to y=10");
+      assert.equal(bottomZone.min, 40, "Bottom zone should start at y=40");
     });
   });
 
@@ -37,22 +40,23 @@ describe("Exit Road Protection", () => {
       const testCases = [
         { x: 0, y: 25, inExitZone: true, reason: "at left edge" },
         { x: 1, y: 25, inExitZone: true, reason: "near left edge" },
-        { x: 3, y: 25, inExitZone: true, reason: "within left zone" },
-        { x: 4, y: 25, inExitZone: false, reason: "outside left zone" },
+        { x: 5, y: 25, inExitZone: true, reason: "within left zone" },
+        { x: 10, y: 25, inExitZone: true, reason: "at left zone boundary" },
+        { x: 11, y: 25, inExitZone: false, reason: "outside left zone" },
         { x: 49, y: 25, inExitZone: true, reason: "at right edge" },
         { x: 48, y: 25, inExitZone: true, reason: "near right edge" },
-        { x: 46, y: 25, inExitZone: true, reason: "within right zone" },
-        { x: 45, y: 25, inExitZone: false, reason: "outside right zone" },
+        { x: 40, y: 25, inExitZone: true, reason: "at right zone boundary" },
+        { x: 39, y: 25, inExitZone: false, reason: "outside right zone" },
         { x: 25, y: 0, inExitZone: true, reason: "at top edge" },
-        { x: 25, y: 2, inExitZone: true, reason: "within top zone" },
-        { x: 25, y: 4, inExitZone: false, reason: "outside top zone" },
+        { x: 25, y: 8, inExitZone: true, reason: "within top zone" },
+        { x: 25, y: 11, inExitZone: false, reason: "outside top zone" },
         { x: 25, y: 49, inExitZone: true, reason: "at bottom edge" },
-        { x: 25, y: 47, inExitZone: true, reason: "within bottom zone" },
-        { x: 25, y: 45, inExitZone: false, reason: "outside bottom zone" },
+        { x: 25, y: 42, inExitZone: true, reason: "within bottom zone" },
+        { x: 25, y: 38, inExitZone: false, reason: "outside bottom zone" },
         { x: 25, y: 25, inExitZone: false, reason: "in room center" }
       ];
       
-      const protectionDistance = 3;
+      const protectionDistance = 10;
       
       for (const testCase of testCases) {
         const { x, y, inExitZone, reason } = testCase;
@@ -119,11 +123,11 @@ describe("Exit Road Protection", () => {
     });
 
     it("should handle corner cases for exit protection", () => {
-      // Corner positions (e.g., x=3, y=3) are in BOTH horizontal and vertical zones
-      const cornerPosition = { x: 3, y: 3 };
+      // Corner positions (e.g., x=10, y=10) are in BOTH horizontal and vertical zones
+      const cornerPosition = { x: 10, y: 10 };
       
-      const nearLeft = cornerPosition.x <= 3;
-      const nearTop = cornerPosition.y <= 3;
+      const nearLeft = cornerPosition.x <= 10;
+      const nearTop = cornerPosition.y <= 10;
       
       assert.isTrue(nearLeft, "Corner should be in left zone");
       assert.isTrue(nearTop, "Corner should be in top zone");
