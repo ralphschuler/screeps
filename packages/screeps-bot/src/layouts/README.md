@@ -29,6 +29,10 @@ Main blueprint definitions and placement logic.
 - `findBestBlueprintAnchor(room, blueprint)` - Finds optimal placement position
 - `placeConstructionSites(room, anchor, blueprint)` - Places structures from blueprint
 - `destroyMisplacedStructures(room, anchor, blueprint)` - Removes structures that don't match
+- `calculateBlueprintEfficiency(room, anchor, blueprint)` - Evaluates layout efficiency metrics
+- `exportBlueprint(blueprint)` - Exports blueprint to JSON for sharing
+- `importBlueprint(json)` - Imports blueprint from JSON with validation
+- `compareBlueprintEfficiency(room, bp1, bp2)` - A/B tests two blueprint configurations
 
 ### extensionGenerator.ts
 Generates extension positions in checkerboard pattern to ensure no two extensions are adjacent.
@@ -202,12 +206,76 @@ This system implements ROADMAP Section 9 requirements:
 ✅ **Lab Clusters**: Optimized 10-lab cluster in COMPACT_BUNKER_BLUEPRINT
 ✅ **Construction Integration**: Fully integrated with roomNode construction system
 
+## Blueprint Efficiency Metrics
+
+The system includes comprehensive efficiency metrics for evaluating and comparing blueprints:
+
+```typescript
+const metrics = calculateBlueprintEfficiency(room, anchor, blueprint);
+// Returns: {
+//   avgPathLength: number,        // Average path from storage to critical points
+//   towerCoverage: number,         // % of room covered by tower range (0-100)
+//   defenseScore: number,          // Based on ramparts + towers (0-100)
+//   energyEfficiency: number,      // Based on link vs road usage (0-100)
+//   overallScore: number,          // Weighted average (0-100)
+//   details: {
+//     pathLengthToController,
+//     pathLengthToSources[],
+//     towerCount,
+//     rampartCount,
+//     linkCount
+//   }
+// }
+```
+
+**Scoring Weights:**
+- Path Length: 30% (lower is better)
+- Tower Coverage: 25% (higher is better)
+- Defense Score: 25% (higher is better)
+- Energy Efficiency: 20% (higher is better)
+
+### Blueprint Import/Export
+
+Share proven layouts with JSON serialization:
+
+```typescript
+// Export blueprint
+const json = exportBlueprint(COMPACT_BUNKER_BLUEPRINT);
+console.log(json); // Pretty-printed JSON
+
+// Import blueprint
+const imported = importBlueprint(json);
+if (imported) {
+  // Blueprint successfully validated and imported
+  const result = selectBestBlueprint(room, rcl);
+}
+```
+
+**Validation on Import:**
+- Required fields: name, rcl, anchor, structures, roads, ramparts
+- Type validation for all coordinates and structure types
+- Returns `null` if validation fails
+
+### Comparing Blueprints
+
+A/B test different layouts:
+
+```typescript
+const result = compareBlueprintEfficiency(
+  room,
+  { blueprint: COMPACT_BUNKER_BLUEPRINT, anchor: pos1 },
+  { blueprint: WAR_READY_BLUEPRINT, anchor: pos2 }
+);
+// Returns: { blueprint, anchor, metrics }
+// Selects the configuration with the highest overall efficiency score
+```
+
 ## Future Enhancements
 
 Potential improvements (not currently required):
 
+- **Dynamic Blueprint Generation**: Automatically generate custom layouts for irregular terrain
 - **Multi-Bunker Layouts**: Support for multiple separate bunkers in large rooms
-- **Specialized Blueprints**: Military bunker, economy bunker, hybrid layouts
 - **Visual Planner**: In-game RoomVisual display of planned vs. built structures
-- **Blueprint Scoring**: Score different layouts and pick best for specific strategies
+- **Metrics Dashboard**: Real-time display of blueprint efficiency scores
 - **Auto-Rampart Patterns**: Automatic rampart patterns around structures based on danger level
