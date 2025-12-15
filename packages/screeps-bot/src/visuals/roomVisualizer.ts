@@ -9,27 +9,23 @@
  * - Spawn queue visualization
  * - Resource flow visualization
  *
+ * Features:
+ * ✓ Interactive visualization toggles via flags (viz_{layer_name})
+ * ✓ Visualization layers with independent control
+ * ✓ 3D visualization effects for depth perception
+ * ✓ Animation support for dynamic visualizations
+ * ✓ Visualization caching for static elements
+ * ✓ Performance impact tracking for visualizations
+ * ✓ Visualization presets (debug, presentation, minimal, performance)
+ *
  * Addresses Issue: #34
- * 
- * TODO: Implement interactive visualization toggles via flags
- * Place flags to enable/disable specific visualizations
- * TODO: Add visualization layers with independent control
- * Enable/disable different layers independently
- * TODO: Implement 3D visualization effects for depth perception
- * Use opacity and size to show elevation or importance
- * TODO: Add animation support for dynamic visualizations
- * Animate resource flows, creep paths, pheromone changes
- * TODO: Consider implementing visualization caching
- * Cache complex visualizations to reduce CPU cost
- * TODO: Add performance impact tracking for visualizations
- * Measure and display CPU cost of each visualization type
- * TODO: Implement visualization presets for different use cases
- * Quick switches between debug, presentation, and minimal modes
  */
 
 import type { PheromoneState, SwarmState } from "../memory/schemas";
+import { VisualizationLayer } from "../memory/schemas";
 import { memoryManager } from "../memory/manager";
 import { createLogger } from "../core/logger";
+import { visualizationManager } from "./visualizationManager";
 
 const logger = createLogger("RoomVisualizer");
 
@@ -98,38 +94,62 @@ export class RoomVisualizer {
     const visual = new RoomVisual(room.name);
     const swarm = memoryManager.getOrInitSwarmState(room.name);
 
+    // Update from flags every tick
+    visualizationManager.updateFromFlags();
+
     if (this.config.showRoomStats) {
       this.drawRoomStats(visual, room, swarm);
     }
 
-    if (this.config.showPheromones && swarm) {
-      this.drawPheromoneBars(visual, swarm);
-      this.drawPheromoneHeatmap(visual, swarm);
+    // Draw layers based on visualization manager configuration
+    if (this.config.showPheromones && visualizationManager.isLayerEnabled(VisualizationLayer.Pheromones) && swarm) {
+      const { cost } = visualizationManager.measureCost(() => {
+        this.drawPheromoneBars(visual, swarm);
+        this.drawPheromoneHeatmap(visual, swarm);
+      });
+      visualizationManager.trackLayerCost("pheromones", cost);
     }
 
-    if (this.config.showCombat) {
-      this.drawCombatInfo(visual, room);
+    if (this.config.showCombat && visualizationManager.isLayerEnabled(VisualizationLayer.Defense)) {
+      const { cost } = visualizationManager.measureCost(() => {
+        this.drawCombatInfo(visual, room);
+      });
+      visualizationManager.trackLayerCost("defense", cost);
     }
 
     if (this.config.showSpawnQueue) {
       this.drawSpawnQueue(visual, room);
     }
 
-    if (this.config.showResourceFlow) {
-      this.drawResourceFlow(visual, room);
+    if (this.config.showResourceFlow && visualizationManager.isLayerEnabled(VisualizationLayer.Economy)) {
+      const { cost } = visualizationManager.measureCost(() => {
+        this.drawResourceFlow(visual, room);
+      });
+      visualizationManager.trackLayerCost("economy", cost);
     }
 
-    if (this.config.showPaths) {
-      this.drawTrafficPaths(visual, room);
+    if (this.config.showPaths && visualizationManager.isLayerEnabled(VisualizationLayer.Paths)) {
+      const { cost } = visualizationManager.measureCost(() => {
+        this.drawTrafficPaths(visual, room);
+      });
+      visualizationManager.trackLayerCost("paths", cost);
     }
 
-    if (this.config.showStructures) {
-      this.drawEnhancedStructures(visual, room);
+    if (this.config.showStructures && visualizationManager.isLayerEnabled(VisualizationLayer.Construction)) {
+      const { cost } = visualizationManager.measureCost(() => {
+        this.drawEnhancedStructures(visual, room);
+      });
+      visualizationManager.trackLayerCost("construction", cost);
     }
 
     // Always draw collection point if available
     if (swarm?.collectionPoint) {
       this.drawCollectionPoint(visual, swarm);
+    }
+
+    // Draw performance metrics if enabled
+    if (visualizationManager.isLayerEnabled(VisualizationLayer.Performance)) {
+      this.drawPerformanceMetrics(visual);
     }
   }
 
@@ -323,7 +343,7 @@ export class RoomVisualizer {
   }
 
   /**
-   * Draw combat information with animated markers
+   * Draw combat information with animated markers and 3D depth effects
    */
   private drawCombatInfo(visual: RoomVisual, room: Room): void {
     const hostiles = room.find(FIND_HOSTILE_CREEPS);
@@ -333,10 +353,14 @@ export class RoomVisualizer {
       const threat = this.calculateCreepThreat(hostile);
       const color = threat > 30 ? "#ff0000" : threat > 10 ? "#ff8800" : "#ffff00";
 
+      // 3D effect: Size variation based on threat level
+      const radius = 0.4 + (threat / 100);
+      const opacity = 0.2 + (threat / 100) * 0.3; // Higher threat = more visible
+
       visual.circle(hostile.pos, {
-        radius: 0.6,
+        radius,
         fill: color,
-        opacity: 0.3,
+        opacity,
         stroke: color,
         strokeWidth: 0.1
       });
@@ -346,7 +370,7 @@ export class RoomVisualizer {
         color
       });
 
-      // Add animated marker for high-threat hostiles
+      // Animated pulsing effect for high-threat hostiles
       if (threat > 20) {
         visual.animatedPosition(hostile.pos.x, hostile.pos.y, {
           color,
@@ -357,27 +381,28 @@ export class RoomVisualizer {
       }
     }
 
-    // Draw tower ranges if under attack
+    // Draw tower ranges if under attack with 3D depth
     if (hostiles.length > 0) {
       const towers = room.find(FIND_MY_STRUCTURES, {
         filter: s => s.structureType === STRUCTURE_TOWER
       }) ;
 
       for (const tower of towers) {
-        // Optimal range (full damage)
+        // 3D effect: Layer ranges with decreasing opacity
+        // Optimal range (full damage) - elevated/bright
         visual.circle(tower.pos, {
           radius: 5,
           fill: "#00ff00",
-          opacity: 0.1,
+          opacity: 0.15, // Increased from 0.1 for elevation effect
           stroke: "#00ff00",
           strokeWidth: 0.05
         });
 
-        // Medium range
+        // Medium range - ground level
         visual.circle(tower.pos, {
           radius: 10,
           fill: "#ffff00",
-          opacity: 0.05,
+          opacity: 0.08, // Reduced for depth
           stroke: "#ffff00",
           strokeWidth: 0.05
         });
@@ -464,34 +489,34 @@ export class RoomVisualizer {
   }
 
   /**
-   * Draw resource flow arrows and resource badges
+   * Draw resource flow arrows and resource badges with animation
    */
   private drawResourceFlow(visual: RoomVisual, room: Room): void {
     const storage = room.storage;
     if (!storage) return;
 
-    // Draw arrows from sources to storage
+    // Draw animated arrows from sources to storage
     const sources = room.find(FIND_SOURCES);
     for (const source of sources) {
-      this.drawArrow(visual, source.pos, storage.pos, "#ffff00", 0.2);
+      this.drawFlowingArrow(visual, source.pos, storage.pos, "#ffff00", 0.3);
       // Draw energy badge at midpoint
       const midX = (source.pos.x + storage.pos.x) / 2;
       const midY = (source.pos.y + storage.pos.y) / 2;
       visual.resource(RESOURCE_ENERGY, midX, midY, 0.2);
     }
 
-    // Draw arrows from storage to spawns
+    // Draw animated arrows from storage to spawns
     const spawns = room.find(FIND_MY_SPAWNS);
     for (const spawn of spawns) {
       if (spawn.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-        this.drawArrow(visual, storage.pos, spawn.pos, "#00ff00", 0.2);
+        this.drawFlowingArrow(visual, storage.pos, spawn.pos, "#00ff00", 0.3);
       }
     }
 
-    // Draw arrows from storage to controller
+    // Draw animated arrows from storage to controller
     const controller = room.controller;
     if (controller) {
-      this.drawArrow(visual, storage.pos, controller.pos, "#00ffff", 0.2);
+      this.drawFlowingArrow(visual, storage.pos, controller.pos, "#00ffff", 0.3);
     }
 
     // Draw resource badges for major resources in storage
@@ -533,6 +558,37 @@ export class RoomVisualizer {
   }
 
   /**
+   * Draw an animated flowing arrow between two positions
+   */
+  private drawFlowingArrow(
+    visual: RoomVisual,
+    from: RoomPosition,
+    to: RoomPosition,
+    color: string,
+    opacity: number
+  ): void {
+    // Base line
+    visual.line(from, to, {
+      color,
+      opacity: opacity * 0.5,
+      width: 0.1,
+      lineStyle: "dashed"
+    });
+
+    // Animated flow indicator (moves along the line)
+    const frame = Game.time % 20;
+    const progress = frame / 20;
+    const flowX = from.x + (to.x - from.x) * progress;
+    const flowY = from.y + (to.y - from.y) * progress;
+
+    visual.circle(flowX, flowY, {
+      radius: 0.15,
+      fill: color,
+      opacity: opacity
+    });
+  }
+
+  /**
    * Draw an arrow between two positions
    */
   private drawArrow(
@@ -551,25 +607,128 @@ export class RoomVisualizer {
   }
 
   /**
-   * Draw enhanced structure visualization
+   * Draw enhanced structure visualization with 3D depth effects
    * Uses the new structure() method from roomVisualExtensions
    */
   private drawEnhancedStructures(visual: RoomVisual, room: Room): void {
-    // Draw all structures with enhanced visuals
-    const structures = room.find(FIND_STRUCTURES);
+    // Use cached structure positions if available
+    const cached = visualizationManager.getCachedStructures(room.name);
     
-    for (const structure of structures) {
-      visual.structure(structure.pos.x, structure.pos.y, structure.structureType, {
-        opacity: 0.8
-      });
+    if (cached) {
+      // Draw from cache
+      for (const struct of cached) {
+        const opacity = this.getStructureDepthOpacity(struct.type);
+        visual.structure(struct.x, struct.y, struct.type, { opacity });
+      }
+    } else {
+      // Draw and cache
+      const structures = room.find(FIND_STRUCTURES);
+      const structureData: Array<{ x: number; y: number; type: StructureConstant }> = [];
+      
+      for (const structure of structures) {
+        const opacity = this.getStructureDepthOpacity(structure.structureType);
+        visual.structure(structure.pos.x, structure.pos.y, structure.structureType, { opacity });
+        structureData.push({
+          x: structure.pos.x,
+          y: structure.pos.y,
+          type: structure.structureType
+        });
+      }
+      
+      // Cache for next time
+      visualizationManager.cacheStructures(room.name, structureData);
     }
 
-    // Draw construction sites with lower opacity
+    // Draw construction sites with lower opacity (ground level)
     const sites = room.find(FIND_MY_CONSTRUCTION_SITES);
     for (const site of sites) {
       visual.structure(site.pos.x, site.pos.y, site.structureType, {
-        opacity: 0.3
+        opacity: 0.3 // Ground level blueprint
       });
+    }
+  }
+
+  /**
+   * Get 3D depth opacity for structure types
+   */
+  private getStructureDepthOpacity(type: StructureConstant): number {
+    // 3D depth effect: Opacity indicates elevation
+    switch (type) {
+      case STRUCTURE_RAMPART:
+        return 0.8; // Elevated defensive structure
+      case STRUCTURE_TOWER:
+        return 0.9; // Tall structure
+      case STRUCTURE_SPAWN:
+      case STRUCTURE_STORAGE:
+      case STRUCTURE_TERMINAL:
+        return 0.85; // Important/large structures
+      case STRUCTURE_ROAD:
+        return 0.3; // Ground level
+      case STRUCTURE_WALL:
+        return 0.9; // Tall barrier
+      default:
+        return 0.7; // Default elevation
+    }
+  }
+
+  /**
+   * Draw performance metrics overlay
+   */
+  private drawPerformanceMetrics(visual: RoomVisual): void {
+    const metrics = visualizationManager.getPerformanceMetrics();
+    const x = 0.5;
+    let y = 7.5;
+    const lineHeight = 0.5;
+
+    // Background panel
+    visual.rect(0, 7, 10, 5.5, {
+      fill: "#000000",
+      opacity: 0.8,
+      stroke: "#ffff00",
+      strokeWidth: 0.05
+    });
+
+    // Title
+    visual.text("Visualization Performance", x, y, {
+      align: "left",
+      font: "0.5 monospace",
+      color: "#ffff00"
+    });
+    y += lineHeight;
+
+    // Total cost
+    const costColor = metrics.percentOfBudget > 10 ? "#ff0000" : "#00ff00";
+    visual.text(`Total: ${metrics.totalCost.toFixed(3)} CPU`, x, y, {
+      align: "left",
+      font: "0.4 monospace",
+      color: costColor
+    });
+    y += lineHeight;
+
+    visual.text(`(${metrics.percentOfBudget.toFixed(1)}% of budget)`, x, y, {
+      align: "left",
+      font: "0.35 monospace",
+      color: costColor
+    });
+    y += lineHeight;
+
+    // Per-layer costs
+    visual.text("Layer Costs:", x, y, {
+      align: "left",
+      font: "0.4 monospace",
+      color: "#ffffff"
+    });
+    y += lineHeight;
+
+    for (const [layer, cost] of Object.entries(metrics.layerCosts)) {
+      if (cost > 0) {
+        visual.text(`  ${layer}: ${cost.toFixed(3)}`, x, y, {
+          align: "left",
+          font: "0.35 monospace",
+          color: "#aaaaaa"
+        });
+        y += 0.4;
+      }
     }
   }
 
