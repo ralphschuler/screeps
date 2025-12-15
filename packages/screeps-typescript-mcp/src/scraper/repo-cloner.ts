@@ -43,7 +43,9 @@ export async function verifyTypesRepo(): Promise<void> {
   } catch (error) {
     throw new Error(
       `typed-screeps repository not found at ${repoPath}. ` +
-      `Please run 'npm run build' to clone the repository during the build process.`
+      `The repository should be cloned during 'npm run build' via the prebuild script. ` +
+      `If building from source, ensure dependencies are installed and run the build. ` +
+      `If using a pre-built package, this indicates a packaging issue.`
     );
   }
 }

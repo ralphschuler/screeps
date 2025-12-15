@@ -64,7 +64,7 @@ export async function parseTypeScriptFile(filePath: string): Promise<TypeDefinit
       continue;
     }
 
-    // Skip empty lines
+    // Skip empty lines and reset definition tracking when braces are balanced
     if (!line) {
       if (currentDefinition && braceCount === 0) {
         currentDefinition = null;
