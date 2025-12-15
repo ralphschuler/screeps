@@ -361,22 +361,14 @@ export class Kernel {
     }
     
     // FEATURE: Periodic bucket status logging for user visibility
-    // Log bucket status every 100 ticks to help users understand why some systems aren't running
-    // This makes it clear when low/critical bucket is filtering out low-priority processes
+    // Log bucket status every 100 ticks to help users monitor bucket health
+    // Bucket mode is informational only - it doesn't affect process execution
     if (Game.time % 100 === 0 && (this.bucketMode === "low" || this.bucketMode === "critical")) {
       const totalProcesses = this.processes.size;
-      const eligibleProcesses = Array.from(this.processes.values()).filter(p => {
-        if (this.bucketMode === "critical") {
-          return p.priority >= ProcessPriority.CRITICAL;
-        } else if (this.bucketMode === "low") {
-          return p.priority >= ProcessPriority.HIGH;
-        }
-        return true;
-      }).length;
       
       logger.info(
         `Bucket ${this.bucketMode.toUpperCase()} mode: ${bucket}/10000 bucket. ` +
-        `Running ${eligibleProcesses}/${totalProcesses} processes (filtering LOW/MEDIUM priority)`,
+        `Running all ${totalProcesses} processes normally (bucket mode is informational only)`,
         { subsystem: "Kernel" }
       );
     }
