@@ -2,11 +2,13 @@
  * Expansion Safety and Profitability Tests
  *
  * Tests for safety analysis and remote mining profitability calculations
+ * Calls actual implementation methods from expansionScoring.ts
  */
 
 import { expect } from "chai";
 import type { RoomIntel, OvermindMemory } from "../../src/memory/schemas";
 import { createDefaultOvermindMemory } from "../../src/memory/schemas";
+import * as ExpansionScoring from "../../src/empire/expansionScoring";
 
 // Mock the global Game object
 declare const global: { Game: typeof Game; Memory: typeof Memory };
@@ -377,17 +379,24 @@ describe("Remote Mining Profitability", () => {
 
   describe("Distance Impact on Profitability", () => {
     it("should show close remotes are more profitable", () => {
-      const roi1 = calculateTestROI(1, 2);
-      const roi5 = calculateTestROI(5, 2);
+      const closeIntel = createMockRoomIntel("E2N1", { sources: 2 });
+      const farIntel = createMockRoomIntel("E6N1", { sources: 2 });
+      
+      const closeProfit = ExpansionScoring.calculateRemoteProfitability("E2N1", "E1N1", closeIntel);
+      const farProfit = ExpansionScoring.calculateRemoteProfitability("E6N1", "E1N1", farIntel);
 
-      expect(roi1).to.be.greaterThan(roi5);
+      expect(closeProfit.roi).to.be.greaterThan(farProfit.roi);
+      expect(closeProfit.isProfitable).to.be.true;
     });
 
     it("should show more sources can offset distance penalty", () => {
-      const roiFar1Source = calculateTestROI(3, 1);
-      const roiFar2Sources = calculateTestROI(3, 2);
+      const farOneSource = createMockRoomIntel("E4N1", { sources: 1 });
+      const farTwoSources = createMockRoomIntel("E4N2", { sources: 2 });
 
-      expect(roiFar2Sources).to.be.greaterThan(roiFar1Source);
+      const profit1 = ExpansionScoring.calculateRemoteProfitability("E4N1", "E1N1", farOneSource);
+      const profit2 = ExpansionScoring.calculateRemoteProfitability("E4N2", "E1N1", farTwoSources);
+
+      expect(profit2.roi).to.be.greaterThan(profit1.roi);
     });
   });
 });

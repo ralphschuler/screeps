@@ -2,10 +2,12 @@
  * Expansion Scoring Tests
  *
  * Tests for multi-factor expansion scoring algorithm
+ * Calls actual implementation methods from expansionScoring.ts
  */
 
 import { expect } from "chai";
 import type { RoomIntel } from "../../src/memory/schemas";
+import * as ExpansionScoring from "../../src/empire/expansionScoring";
 
 // Mock the global Game object
 declare const global: { Game: typeof Game; Memory: typeof Memory };
@@ -83,25 +85,29 @@ describe("Multi-Factor Expansion Scoring", () => {
 
   describe("Mineral Value Scoring", () => {
     it("should give high bonus for catalyst (X)", () => {
-      const intel = createMockRoomIntel("E1N1", { mineralType: RESOURCE_CATALYST });
-      const mineralBonus = intel.mineralType === RESOURCE_CATALYST ? 15 : 0;
+      const mineralBonus = ExpansionScoring.getMineralBonus(RESOURCE_CATALYST);
       expect(mineralBonus).to.equal(15);
     });
 
     it("should give medium bonus for combat minerals (Z, K)", () => {
-      const zynthiumIntel = createMockRoomIntel("E1N1", { mineralType: RESOURCE_ZYNTHIUM });
-      const keaniumIntel = createMockRoomIntel("E2N1", { mineralType: RESOURCE_KEANIUM });
+      const zynthiumBonus = ExpansionScoring.getMineralBonus(RESOURCE_ZYNTHIUM);
+      const keaniumBonus = ExpansionScoring.getMineralBonus(RESOURCE_KEANIUM);
 
-      expect(zynthiumIntel.mineralType).to.equal(RESOURCE_ZYNTHIUM);
-      expect(keaniumIntel.mineralType).to.equal(RESOURCE_KEANIUM);
+      expect(zynthiumBonus).to.equal(12);
+      expect(keaniumBonus).to.equal(12);
     });
 
     it("should give lower bonus for common minerals (H, O)", () => {
-      const hydrogenIntel = createMockRoomIntel("E1N1", { mineralType: RESOURCE_HYDROGEN });
-      const oxygenIntel = createMockRoomIntel("E2N1", { mineralType: RESOURCE_OXYGEN });
+      const hydrogenBonus = ExpansionScoring.getMineralBonus(RESOURCE_HYDROGEN);
+      const oxygenBonus = ExpansionScoring.getMineralBonus(RESOURCE_OXYGEN);
 
-      expect(hydrogenIntel.mineralType).to.equal(RESOURCE_HYDROGEN);
-      expect(oxygenIntel.mineralType).to.equal(RESOURCE_OXYGEN);
+      expect(hydrogenBonus).to.equal(8);
+      expect(oxygenBonus).to.equal(8);
+    });
+
+    it("should return 0 for no mineral", () => {
+      const noMineralBonus = ExpansionScoring.getMineralBonus(undefined);
+      expect(noMineralBonus).to.equal(0);
     });
   });
 
@@ -125,20 +131,17 @@ describe("Multi-Factor Expansion Scoring", () => {
 
   describe("Terrain Analysis", () => {
     it("should give bonus for plains terrain", () => {
-      const intel = createMockRoomIntel("E1N1", { terrain: "plains" });
-      const terrainBonus = intel.terrain === "plains" ? 15 : intel.terrain === "swamp" ? -10 : 0;
+      const terrainBonus = ExpansionScoring.getTerrainBonus("plains");
       expect(terrainBonus).to.equal(15);
     });
 
     it("should penalize swamp terrain", () => {
-      const intel = createMockRoomIntel("E1N1", { terrain: "swamp" });
-      const terrainPenalty = intel.terrain === "plains" ? 15 : intel.terrain === "swamp" ? -10 : 0;
+      const terrainPenalty = ExpansionScoring.getTerrainBonus("swamp");
       expect(terrainPenalty).to.equal(-10);
     });
 
     it("should be neutral for mixed terrain", () => {
-      const intel = createMockRoomIntel("E1N1", { terrain: "mixed" });
-      const terrainBonus = intel.terrain === "plains" ? 15 : intel.terrain === "swamp" ? -10 : 0;
+      const terrainBonus = ExpansionScoring.getTerrainBonus("mixed");
       expect(terrainBonus).to.equal(0);
     });
   });
