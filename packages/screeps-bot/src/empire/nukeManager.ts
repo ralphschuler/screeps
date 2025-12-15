@@ -85,6 +85,31 @@ const NUKE_COST = {
 };
 
 /**
+ * Structure value estimates for damage assessment
+ */
+const STRUCTURE_VALUES: Record<string, number> = {
+  [STRUCTURE_SPAWN]: 15000,
+  [STRUCTURE_TOWER]: 5000,
+  [STRUCTURE_STORAGE]: 30000,
+  [STRUCTURE_TERMINAL]: 100000,
+  [STRUCTURE_LAB]: 50000,
+  [STRUCTURE_NUKER]: 100000,
+  [STRUCTURE_POWER_SPAWN]: 100000,
+  [STRUCTURE_OBSERVER]: 8000,
+  [STRUCTURE_EXTENSION]: 3000,
+  [STRUCTURE_LINK]: 5000
+};
+
+/**
+ * Intel-based damage estimation weights
+ */
+const INTEL_DAMAGE_WEIGHTS = {
+  TOWER_WEIGHT: 5,
+  SPAWN_WEIGHT: 10,
+  BASE_STRUCTURE_COUNT: 5
+};
+
+/**
  * Nuke candidate scoring factors
  */
 interface NukeScore {
@@ -962,8 +987,11 @@ export class NukeManager {
       // Estimate based on intel
       const intel = memoryManager.getOvermind().roomIntel[targetRoom];
       if (intel) {
-        // Rough estimate: towers, spawns, and storage
-        const structureEstimate = (intel.towerCount || 0) * 5 + (intel.spawnCount || 0) * 10 + 5;
+        // Rough estimate: towers, spawns, and storage using configurable weights
+        const structureEstimate = 
+          (intel.towerCount || 0) * INTEL_DAMAGE_WEIGHTS.TOWER_WEIGHT + 
+          (intel.spawnCount || 0) * INTEL_DAMAGE_WEIGHTS.SPAWN_WEIGHT + 
+          INTEL_DAMAGE_WEIGHTS.BASE_STRUCTURE_COUNT;
         result.estimatedDamage = NUKE_DAMAGE.CENTER + NUKE_DAMAGE.RADIUS * structureEstimate;
         result.estimatedValue = result.estimatedDamage * 0.01; // Rough energy equivalent
       }
@@ -1008,21 +1036,7 @@ export class NukeManager {
    * Estimate energy value of a structure
    */
   private estimateStructureValue(structure: Structure): number {
-    // Simplified structure value estimation
-    const costs: Record<string, number> = {
-      [STRUCTURE_SPAWN]: 15000,
-      [STRUCTURE_TOWER]: 5000,
-      [STRUCTURE_STORAGE]: 30000,
-      [STRUCTURE_TERMINAL]: 100000,
-      [STRUCTURE_LAB]: 50000,
-      [STRUCTURE_NUKER]: 100000,
-      [STRUCTURE_POWER_SPAWN]: 100000,
-      [STRUCTURE_OBSERVER]: 8000,
-      [STRUCTURE_EXTENSION]: 3000,
-      [STRUCTURE_LINK]: 5000
-    };
-
-    return costs[structure.structureType] || 1000;
+    return STRUCTURE_VALUES[structure.structureType] || 1000;
   }
 
   /**
@@ -1116,8 +1130,8 @@ export class NukeManager {
     const economics = overmind.nukeEconomics;
 
     // Update ROI calculation if we have data
-    if (economics.totalEnergyCost > 0 && economics.totalGhodiumCost > 0) {
-      const totalCost = economics.totalEnergyCost + economics.totalGhodiumCost;
+    const totalCost = economics.totalEnergyCost + economics.totalGhodiumCost;
+    if (totalCost > 0) {
       const totalGain = economics.totalValueDestroyed;
       economics.lastROI = totalGain / totalCost;
 
@@ -1165,8 +1179,13 @@ export class NukeManager {
   private calculateNukeROI(targetRoom: string, targetPos: RoomPosition): number {
     const prediction = this.predictNukeImpact(targetRoom, targetPos);
     const cost = NUKE_COST.ENERGY + NUKE_COST.GHODIUM;
-    const gain = prediction.estimatedValue;
     
+    // Handle edge case where no value is predicted
+    if (prediction.estimatedValue === 0) {
+      return 0;
+    }
+    
+    const gain = prediction.estimatedValue;
     return gain / cost;
   }
 }
