@@ -114,7 +114,7 @@ describe("pathCache", () => {
       result = getCachedPath(from, to);
       assert.isNotNull(result);
 
-      // Advance time by another 10 ticks - should be expired
+      // Advance time by 5 more ticks (total 15 from cache) - should be expired
       // @ts-ignore
       global.Game.time = 1015;
       result = getCachedPath(from, to);

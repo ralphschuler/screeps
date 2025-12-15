@@ -21,6 +21,34 @@
  * - Storage ↔ Remote entrances (500 tick TTL)
  * - Spawn ↔ Extensions (permanent until structures change)
  *
+ * Usage Example:
+ * ```typescript
+ * import { getCachedPath, cachePath } from "./utils/pathCache";
+ * 
+ * // In your movement logic:
+ * function moveCreepToTarget(creep: Creep, target: RoomPosition) {
+ *   // Check cache first
+ *   const cachedPath = getCachedPath(creep.pos, target);
+ *   if (cachedPath) {
+ *     // Use cartographer's moveByPath with cached path
+ *     creep.moveByPath(cachedPath);
+ *     return;
+ *   }
+ *   
+ *   // Cache miss - calculate new path
+ *   const path = creep.room.findPath(creep.pos, target, {
+ *     ignoreCreeps: true,
+ *     serialize: false
+ *   });
+ *   
+ *   if (path.length > 0) {
+ *     // Cache the path for future use (permanent for static routes)
+ *     cachePath(creep.pos, target, path);
+ *     creep.moveByPath(path);
+ *   }
+ * }
+ * ```
+ *
  * CPU Savings:
  * - PathFinder.search costs 0.5-2 CPU per call
  * - With 5-10 creeps per room: 2.5-20 CPU waste without caching
@@ -54,8 +82,6 @@ interface CachedPath {
  * Path cache storage structure
  */
 interface PathCacheStore {
-  /** Current game tick */
-  tick: number;
   /** Cached paths by route key */
   paths: Map<string, CachedPath>;
   /** Statistics for monitoring */
@@ -78,9 +104,6 @@ export interface CachePathOptions {
 // Constants
 // =============================================================================
 
-/** Default TTL for dynamic routes (500 ticks ~= 15 minutes at 2.0 game speed) */
-const DEFAULT_TTL = 500;
-
 /** Maximum cache size to prevent memory bloat */
 const MAX_CACHE_SIZE = 1000;
 
@@ -96,7 +119,6 @@ function getCacheStore(): PathCacheStore {
   const g = global as any;
   if (!g._pathCache) {
     g._pathCache = {
-      tick: Game.time,
       paths: new Map<string, CachedPath>(),
       stats: {
         hits: 0,
@@ -321,13 +343,16 @@ export function getPathCacheStats(): {
 
 /**
  * Cleanup expired paths periodically.
- * Call this once per tick or less frequently to avoid CPU overhead.
+ * 
+ * Note: This function is optional - the cache implements lazy cleanup where
+ * expired paths are automatically removed when accessed via getCachedPath.
+ * Call this function from the main loop only if you want proactive cleanup
+ * to prevent memory accumulation from unaccessed expired paths.
  */
 export function cleanupExpiredPaths(): void {
   const cache = getCacheStore();
   const keysToDelete: string[] = [];
 
-  // Iterate directly over the Map without creating an intermediate array
   for (const [key, entry] of cache.paths) {
     if (entry.ttl !== undefined) {
       const age = Game.time - entry.cachedAt;
@@ -371,16 +396,9 @@ export function cacheCommonRoutes(room: Room): void {
       serialize: false
     });
     if (pathToSource.length > 0) {
+      // Cache both directions - paths work bidirectionally
       cachePath(storage.pos, source.pos, pathToSource);
-      
-      // For reverse path, recalculate since PathStep directions need to be inverted
-      const pathFromSource = room.findPath(source.pos, storage.pos, {
-        ignoreCreeps: true,
-        serialize: false
-      });
-      if (pathFromSource.length > 0) {
-        cachePath(source.pos, storage.pos, pathFromSource);
-      }
+      cachePath(source.pos, storage.pos, pathToSource);
     }
   }
 
