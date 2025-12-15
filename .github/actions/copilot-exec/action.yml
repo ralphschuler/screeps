@@ -279,8 +279,15 @@ runs:
           "\(.key)=\(.value)"
         ')
 
-        # Now run envsubst with the properly mapped environment variables
-        config_content=$(echo "$config_content" | envsubst)
+        # Substitute environment variables using eval to handle bash-style defaults
+        # This handles both ${VAR} and ${VAR:-default} syntax
+        config_temp=$(mktemp)
+        echo "$config_content" > "$config_temp"
+        config_content=$(eval "cat <<EOF
+$(<"$config_temp")
+EOF
+")
+        rm -f "$config_temp"
         
         # Remove the 'env' field from the config as it's no longer needed
         # and not part of the MCP server JSON schema
