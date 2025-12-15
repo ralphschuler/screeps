@@ -5,6 +5,7 @@
  * - Lab pre-loading with boost compounds
  * - Creep boosting before role execution
  * - Boost decisions based on posture/danger
+ * - Boost cost analysis with ROI calculation
  *
  * Addresses Issue: #23
  */
@@ -266,6 +267,105 @@ export class BoostManager {
 
       labIndex++;
     }
+  }
+
+  /**
+   * Calculate boost cost for a creep
+   * Returns total mineral and energy cost for all boosts
+   */
+  public calculateBoostCost(role: string, bodySize: number): { mineral: number; energy: number } {
+    const config = BOOST_CONFIGS.find(c => c.role === role);
+    if (!config) return { mineral: 0, energy: 0 };
+
+    const mineralCost = bodySize * 30 * config.boosts.length; // 30 mineral per part
+    const energyCost = bodySize * 20 * config.boosts.length; // 20 energy per part
+
+    return { mineral: mineralCost, energy: energyCost };
+  }
+
+  /**
+   * Analyze boost ROI (Return on Investment)
+   * Compares resource cost against expected performance gains
+   * @returns true if boosting is worthwhile
+   */
+  public analyzeBoostROI(
+    role: string,
+    bodySize: number,
+    expectedLifetime: number,
+    dangerLevel: number
+  ): { worthwhile: boolean; roi: number; reasoning: string } {
+    const config = BOOST_CONFIGS.find(c => c.role === role);
+    if (!config) {
+      return { worthwhile: false, roi: 0, reasoning: "No boost config for role" };
+    }
+
+    const cost = this.calculateBoostCost(role, bodySize);
+    // Energy-to-mineral ratio: configurable, conservative estimate
+    // 1 mineral ≈ 10 energy in value for boost compounds
+    const totalCost = cost.mineral + cost.energy * 0.1;
+
+    // Calculate expected gains based on actual Screeps mechanics
+    // Assumptions:
+    // - Relevant body parts are boosted with T3 compounds (4x multiplier)
+    // - Creep survives for expectedLifetime ticks
+    // - Per-tick effects based on Screeps documentation
+    let expectedGain = 0;
+
+    // Different roles have different boost effectiveness
+    switch (role) {
+      case "soldier": {
+        // ATTACK part: 30 dmg/tick base, XUH2O: x4 = 120 dmg/tick
+        // Assume 1/3 of body parts are ATTACK (typical ratio)
+        const attackParts = Math.floor(bodySize / 3);
+        const baseDamage = 30;
+        const boostMultiplier = 4; // XUH2O
+        expectedGain = attackParts * baseDamage * boostMultiplier * expectedLifetime;
+        break;
+      }
+      case "ranger": {
+        // RANGED_ATTACK part: 10 dmg/tick base, XKHO2: x4 = 40 dmg/tick
+        // Assume 1/3 of body parts are RANGED_ATTACK
+        const rangedParts = Math.floor(bodySize / 3);
+        const baseDamage = 10;
+        const boostMultiplier = 4; // XKHO2
+        expectedGain = rangedParts * baseDamage * boostMultiplier * expectedLifetime;
+        break;
+      }
+      case "healer": {
+        // HEAL part: 12 heal/tick base, XLHO2: x4 = 48 heal/tick
+        // Assume 1/3 of body parts are HEAL
+        const healParts = Math.floor(bodySize / 3);
+        const baseHeal = 12;
+        const boostMultiplier = 4; // XLHO2
+        expectedGain = healParts * baseHeal * boostMultiplier * expectedLifetime;
+        break;
+      }
+      case "siegeUnit": {
+        // WORK part (dismantle): 50/tick base, XGH2O: x4 = 200/tick
+        // Assume 1/3 of body parts are WORK
+        const workParts = Math.floor(bodySize / 3);
+        const baseDismantle = 50;
+        const boostMultiplier = 4; // XGH2O
+        expectedGain = workParts * baseDismantle * boostMultiplier * expectedLifetime;
+        break;
+      }
+      default: {
+        // Fallback for unknown roles: assume moderate gain
+        expectedGain = bodySize * 10 * expectedLifetime;
+      }
+    }
+
+    // Adjust for danger level - higher danger = more valuable
+    expectedGain *= 1 + dangerLevel * 0.5;
+
+    const roi = expectedGain / totalCost;
+    const worthwhile = roi > 1.5; // Need at least 1.5x return
+
+    const reasoning = worthwhile
+      ? `High ROI: ${roi.toFixed(2)}x (gain: ${expectedGain.toFixed(0)}, cost: ${totalCost.toFixed(0)})`
+      : `Low ROI: ${roi.toFixed(2)}x (gain: ${expectedGain.toFixed(0)}, cost: ${totalCost.toFixed(0)})`;
+
+    return { worthwhile, roi, reasoning };
   }
 }
 

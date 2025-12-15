@@ -264,4 +264,60 @@ describe("Lab System", () => {
       expect(labManager.save).to.be.a("function");
     });
   });
+
+  describe("Automatic Unboost Scheduling", () => {
+    it("should schedule unboost for boosted creeps near end of life", () => {
+      expect(labManager.scheduleBoostedCreepUnboost).to.be.a("function");
+    });
+  });
+
+  describe("Boost Cost Analysis", () => {
+    it("should calculate boost cost for a creep", () => {
+      const cost = boostManager.calculateBoostCost("soldier", 10);
+      
+      // Soldier has 2 boosts (XUH2O and XLHO2) based on BOOST_CONFIGS
+      // 10 parts * 30 mineral per part * 2 boosts = 600 mineral
+      // 10 parts * 20 energy per part * 2 boosts = 400 energy
+      // These values are derived from the boost config and LAB_BOOST constants
+      expect(cost.mineral).to.equal(600);
+      expect(cost.energy).to.equal(400);
+    });
+
+    it("should handle unknown role gracefully", () => {
+      const cost = boostManager.calculateBoostCost("unknownRole", 10);
+      
+      expect(cost.mineral).to.equal(0);
+      expect(cost.energy).to.equal(0);
+    });
+
+    it("should analyze boost ROI", () => {
+      const analysis = boostManager.analyzeBoostROI("soldier", 10, 1500, 3);
+      
+      expect(analysis).to.have.property("worthwhile");
+      expect(analysis).to.have.property("roi");
+      expect(analysis).to.have.property("reasoning");
+      expect(analysis.roi).to.be.a("number");
+    });
+
+    it("should recommend boosting for high danger operations", () => {
+      const analysis = boostManager.analyzeBoostROI("soldier", 20, 1500, 3);
+      
+      // High danger (3) and large creep (20 parts) should have good ROI
+      expect(analysis.worthwhile).to.be.true;
+      expect(analysis.roi).to.be.greaterThan(1.5);
+    });
+
+    it("should not recommend boosting for low value operations", () => {
+      const analysis = boostManager.analyzeBoostROI("soldier", 5, 100, 0);
+      
+      // Low danger (0) and small/short-lived creep should have poor ROI
+      expect(analysis.worthwhile).to.be.false;
+    });
+  });
+
+  describe("Compound Production Scheduling", () => {
+    it("should schedule compound production based on demand", () => {
+      expect(chemistryPlanner.scheduleCompoundProduction).to.be.a("function");
+    });
+  });
 });
