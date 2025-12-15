@@ -305,6 +305,8 @@ runs:
         WORKING_DIR: ${{ inputs.working-directory }}
         EXTRA_ARGS: ${{ inputs.extra-args }}
         ALLOW_ALL_PATHS: ${{ inputs.allow-all-paths }}
+        COPILOT_ALLOW_ALL: "1"
+        COPILOT_TELEMETRY_OPTOUT: "1"
         MODEL: ${{ steps.resolve-model.outputs.model }}
         VERBOSE: ${{ inputs.verbose }}
       run: |
@@ -342,7 +344,7 @@ runs:
           echo "🔧 Model: ${MODEL:-default}"
         fi
 
-        copilot "${args[@]}" < "$PROMPT_FILE" > "$OUTPUT_PATH" 2>&1 || {
+        copilot --allow-all-tools "${args[@]}" < "$PROMPT_FILE" > "$OUTPUT_PATH" 2>&1 || {
           exit_code=$?
           echo "❌ Copilot CLI failed with exit code: $exit_code"
           if [ -f "$OUTPUT_PATH" ]; then
