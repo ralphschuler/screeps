@@ -103,6 +103,7 @@ export function getPortalProximityBonus(roomName: string): number {
     if (!intel) continue;
 
     // TODO: Add portal tracking to RoomIntel schema
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/679
     // For now, highway rooms are potential portal locations
     if (intel.isHighway) {
       return 5; // Small bonus for highway proximity (potential portals)
@@ -191,6 +192,7 @@ export function parseRoomName(roomName: string): { x: number; y: number; xDir: s
  */
 export function isAlly(_username: string): boolean {
   // TODO: Implement alliance checking from config or memory
+  // Issue URL: https://github.com/ralphschuler/screeps/issues/678
   // For now, always return false (no allies)
   return false;
 }
