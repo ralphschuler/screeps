@@ -493,10 +493,10 @@ const EXIT_ROAD_PROTECTION_DISTANCE = 3;
  * movement, regardless of current remote mining assignments.
  * 
  * @param room The room to scan for exit roads
- * @param distance Distance from edges to protect roads (default: 3)
+ * @param distance Distance from edges to protect roads (default: EXIT_ROAD_PROTECTION_DISTANCE)
  * @returns Set of position keys for existing roads near exits
  */
-function findExistingExitRoads(room: Room, distance = 3): Set<string> {
+function findExistingExitRoads(room: Room, distance = EXIT_ROAD_PROTECTION_DISTANCE): Set<string> {
   const exitRoads = new Set<string>();
   
   // Find all existing road structures in the room
