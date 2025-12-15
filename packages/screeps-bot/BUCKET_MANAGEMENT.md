@@ -2,12 +2,13 @@
 
 ## Overview
 
-The SwarmBot uses the CPU bucket as an indicator of CPU health, but **no longer filters processes based on bucket level**. Instead, the kernel uses:
+The SwarmBot uses the CPU bucket as an indicator of CPU health for monitoring purposes only. The kernel **does not throttle or filter processes based on bucket level**. Instead, the kernel uses:
+- **Full CPU utilization**: Uses the configured targetCpuUsage (default 98%) regardless of bucket level
 - **Rolling index process execution**: Ensures all processes get their turn even under CPU pressure
 - **CPU budget checks**: Stops execution when CPU limit is reached, picking up where it left off next tick
 - **Priority-based ordering**: Higher priority processes execute first in the queue
 
-This approach ensures critical operations complete first while still giving every process a fair chance to run.
+This approach ensures the bot continues to function normally even when bucket is low, maximizing productivity and preventing bucket-related starvation of critical operations.
 
 ## Important: Pixel Generation is Disabled
 
@@ -48,23 +49,29 @@ pixelGenerationEnabled: true,
 
 ## Bucket Modes (Informational Only)
 
-The kernel tracks bucket modes for monitoring purposes, but **these modes no longer affect which processes run**:
+The kernel tracks bucket modes for monitoring and metrics purposes only. **These modes do not affect CPU limits or which processes run**. All processes attempt to run with the full configured CPU limit regardless of bucket level:
 
 ### Critical Mode (Bucket < 500)
-- **Status indicator only** - all processes still attempt to run
+- **Status indicator only** - full CPU limit still available
 - **Purpose**: Shows bucket is critically low in logs/metrics
+- **Effect on CPU**: None - uses full targetCpuUsage (98%)
 
 ### Low Mode (Bucket < 2000)
-- **Status indicator only** - all processes still attempt to run
+- **Status indicator only** - full CPU limit still available
 - **Purpose**: Shows bucket is below optimal level
+- **Effect on CPU**: None - uses full targetCpuUsage (98%)
 
 ### Normal Mode (Bucket 2000-9000)
-- **Status indicator only** - all processes still attempt to run
+- **Status indicator only** - full CPU limit still available
 - **Purpose**: Standard operation indicator
+- **Effect on CPU**: None - uses full targetCpuUsage (98%)
 
 ### High Mode (Bucket > 9000)
-- **Status indicator only** - all processes still attempt to run
+- **Status indicator only** - full CPU limit still available
 - **Purpose**: Shows bucket is at healthy level
+- **Effect on CPU**: None - uses full targetCpuUsage (98%)
+
+**Note**: Individual processes can check `kernel.getBucketMode()` if they want to skip expensive optional operations (like pre-computation, layout planning) when bucket is low, but this is opt-in per process, not enforced by the kernel.
 
 ## How Process Execution Actually Works
 
@@ -100,17 +107,18 @@ This shows the rolling queue in action - the remaining 17 processes will be firs
 
 ## Why Bucket Doesn't Affect Execution
 
-Previously, the bot would filter out low-priority processes when bucket was low. This approach had issues:
+Previously, the bot would reduce the CPU limit when bucket was low (to 30% in critical mode, 50% in low mode). This approach had issues:
 
-1. **Starvation**: Some processes might never run if bucket stayed low
-2. **Unpredictable behavior**: Users couldn't rely on when features would work
-3. **Redundant**: CPU budget checks already prevent throttling
+1. **Over-throttling**: Reducing CPU to 30-50% caused severe performance degradation
+2. **Bucket spiral**: Using less CPU meant bucket recovered slower, prolonging the throttling
+3. **Starvation**: Critical processes might not run due to artificially low CPU limit
+4. **Unpredictable behavior**: Bot would switch between normal and throttled modes unpredictably
 
-The new approach with rolling index and CPU budget checks provides:
-- ✅ **Predictable execution**: All processes eventually run
-- ✅ **Fair scheduling**: Lower priority processes aren't starved
-- ✅ **CPU protection**: Budget checks prevent throttling
-- ✅ **Simpler logic**: Fewer edge cases and special behaviors
+The new approach with full CPU utilization regardless of bucket mode provides:
+- ✅ **Consistent performance**: Bot always uses full CPU capacity
+- ✅ **Faster recovery**: Using full CPU means more productive work, less time throttled
+- ✅ **Predictable execution**: All processes eventually run at normal intervals
+- ✅ **Simpler logic**: No complex bucket-based throttling calculations
 
 ## Managing CPU Usage
 
@@ -197,10 +205,13 @@ If you have Grafana configured, monitor:
 ## FAQ
 
 **Q: What happens when bucket is low?**
-A: Nothing different - all processes still run in priority order. CPU budget checks prevent throttling.
+A: The bot continues to function normally using full CPU limit. Bucket mode is tracked for monitoring only.
 
-**Q: Why track bucket mode if it doesn't affect execution?**
-A: For monitoring and metrics. Low bucket indicates high CPU usage, which helps identify optimization needs.
+**Q: Why track bucket mode if it doesn't affect CPU limit?**
+A: For monitoring and metrics. Low bucket indicates high sustained CPU usage, which helps identify optimization needs. Individual processes can also check bucket mode to skip expensive optional operations.
+
+**Q: Won't using full CPU when bucket is low make it drain faster?**
+A: No - the bucket drains when you exceed your CPU limit, not when you use your full limit. Using full CPU actually helps bucket recover faster by doing more productive work per tick.
 
 **Q: Will low priority processes ever run if CPU is constantly high?**
 A: Yes! The rolling index ensures they execute eventually. They might run less frequently, but they won't be completely blocked.
@@ -208,11 +219,11 @@ A: Yes! The rolling index ensures they execute eventually. They might run less f
 **Q: How do I ensure a process always runs?**
 A: Set high priority and a short interval (like 1 tick). But be aware this increases CPU usage.
 
-**Q: Can I re-enable bucket-based filtering?**
-A: Not recommended. The rolling index + CPU budget approach is more predictable and fair.
+**Q: Can I make my process skip expensive operations when bucket is low?**
+A: Yes! Call `kernel.getBucketMode()` in your process and skip optional expensive operations when mode is "critical" or "low". But this is opt-in, not enforced by the kernel.
 
 **Q: What if I hit CPU throttling?**
-A: The CPU budget checks should prevent this, but if it happens, reduce room count or optimize expensive processes.
+A: The CPU budget checks should prevent this. If throttling happens, reduce room count, optimize expensive processes, or increase process intervals.
 
 ## Troubleshooting
 
@@ -246,9 +257,11 @@ Processes execute in this order:
 
 ## Migration Note
 
-If you're upgrading from an older version that used bucket-based filtering:
-- Bucket modes are now informational only
-- All processes attempt to run regardless of bucket level
+If you're upgrading from an older version:
+- **CPU limit is no longer reduced based on bucket mode** - the bot now uses full CPU even when bucket is low
+- Bucket modes are now informational only and don't affect CPU limits
+- All processes attempt to run with full CPU budget regardless of bucket level
 - CPU budget checks and rolling index provide protection against throttling
-- You may see different processes running when bucket is low - this is expected
+- You may notice better performance when bucket is low - this is expected and intentional
 - Monitor CPU usage and adjust process intervals/priorities as needed
+- If you want bucket-aware behavior, implement it in your individual processes by checking `kernel.getBucketMode()`

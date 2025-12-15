@@ -431,20 +431,14 @@ export class Kernel {
 
   /**
    * Get CPU limit for current tick
+   * 
+   * Returns the effective CPU limit regardless of bucket mode. The system continues
+   * to process normally even with low bucket, using the full targetCpuUsage.
+   * Individual processes can check bucket mode if they want to skip expensive
+   * optional operations (like pre-computation, layout optimization) when bucket is low.
    */
   public getCpuLimit(): number {
-    const baseLimit = Game.cpu.limit;
-
-    switch (this.bucketMode) {
-      case "critical":
-        return baseLimit * 0.3;
-      case "low":
-        return baseLimit * 0.5;
-      case "high":
-        return baseLimit * this.config.targetCpuUsage;
-      default:
-        return baseLimit * this.config.targetCpuUsage;
-    }
+    return Game.cpu.limit * this.config.targetCpuUsage;
   }
 
   /**
