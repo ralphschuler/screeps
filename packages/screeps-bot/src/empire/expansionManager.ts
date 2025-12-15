@@ -2,26 +2,18 @@
  * Expansion Manager - Remote Mining and Room Claiming Coordinator
  *
  * Coordinates expansion activities:
- * - Identifies and assigns remote mining rooms
+ * - Identifies and assigns remote mining rooms with profitability analysis
  * - Assigns claim targets to claimers from expansion queue
  * - Assigns reserve targets to reservers for remote rooms
+ * - Monitors and cancels failed expansion attempts
  *
- * Addresses Issue: Bot not expanding into other rooms
- * 
- * TODO: Implement multi-factor scoring for expansion candidates
- * Consider: source count, mineral type, distance, threats, portals
- * TODO: Add expansion path safety analysis
- * Avoid expansion routes through hostile territory
- * TODO: Implement expansion timing optimization based on GCL progress
- * Time expansions to match GCL level-ups for efficient growth
- * TODO: Add cluster-aware expansion to maintain compact territory
- * Prefer expansion near existing rooms for better defense
- * TODO: Consider implementing expansion templates (eco vs mil)
- * Different expansion strategies for resource vs strategic rooms
- * TODO: Add remote mining profitability analysis
- * Calculate expected ROI before assigning remote miners
- * TODO: Implement expansion cancellation for failed attempts
- * Detect and abort expansions that aren't progressing
+ * Features:
+ * ✅ Multi-factor scoring for expansion candidates (sources, minerals, distance, threats, portals, clusters)
+ * ✅ Expansion path safety analysis (2-range hostile scanning, war zone detection)
+ * ✅ GCL-based expansion timing optimization
+ * ✅ Cluster-aware expansion (prefer expansion near existing rooms)
+ * ✅ Remote mining profitability analysis (ROI >2x threshold)
+ * ✅ Expansion cancellation (timeout, claimer death, hostile claims, low energy)
  */
 
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
