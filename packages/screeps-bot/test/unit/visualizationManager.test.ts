@@ -6,6 +6,10 @@ import { assert } from "chai";
 import { VisualizationManager } from "../../src/visuals/visualizationManager";
 import { VisualizationLayer } from "../../src/memory/schemas";
 
+// Define Screeps constants for test environment
+const STRUCTURE_SPAWN = "spawn" as StructureConstant;
+const STRUCTURE_TOWER = "tower" as StructureConstant;
+
 // Mock Game and Memory
 const mockGame: Record<string, unknown> = {
   time: 100,

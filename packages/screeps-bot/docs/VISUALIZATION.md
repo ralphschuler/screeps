@@ -8,7 +8,7 @@ The visualization system provides interactive, performance-tracked visual overla
 
 ### 1. Flag-Based Layer Toggles
 
-Place flags in-game to enable/disable visualization layers without code changes:
+Place flags in-game to enable visualization layers without code changes:
 
 - `viz_pheromones` - Pheromone heatmap overlay
 - `viz_paths` - Creep movement paths
@@ -19,6 +19,8 @@ Place flags in-game to enable/disable visualization layers without code changes:
 - `viz_performance` - CPU performance metrics
 
 **Example**: Place a flag named `viz_pheromones` in any room to enable pheromone visualization across all rooms.
+
+**Important**: Flags only **enable** layers, they do not disable them. To disable a layer, use the console command `disableVisLayer('pheromones')`. This design prevents flags from overriding manual console settings.
 
 ### 2. Independent Layer Control
 
@@ -275,9 +277,10 @@ Rolling average calculation:
 
 Flags are checked every tick in `visualizationManager.updateFromFlags()`:
 1. Find all flags matching `viz_*` pattern
-2. Enable corresponding layers if flag exists
-3. Disable layers if flag was removed
-4. Log changes to console
+2. Enable corresponding layers if flag exists and layer not already enabled
+3. Log changes to console
+
+**Note**: Flags only enable layers, they don't disable them. This prevents flags from overriding manual console settings. To disable a layer, use `disableVisLayer()` console command.
 
 ## Migration Guide
 

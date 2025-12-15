@@ -157,6 +157,8 @@ export class VisualizationManager {
   /**
    * Update layers based on flags
    * Flag naming: viz_{layer_name}
+   * Note: Flags only ENABLE layers, they don't disable them
+   * Use console commands to disable layers
    */
   public updateFromFlags(): void {
     const flags = Game.flags;
@@ -174,13 +176,13 @@ export class VisualizationManager {
     for (const [flagName, layer] of Object.entries(flagLayers)) {
       const flagExists = Object.values(flags).some(f => f.name === flagName);
       
+      // Only enable if flag exists and layer not already enabled
       if (flagExists && !this.isLayerEnabled(layer)) {
         this.enableLayer(layer);
         logger.info(`Enabled layer ${VisualizationLayer[layer]} via flag`);
-      } else if (!flagExists && this.isLayerEnabled(layer)) {
-        this.disableLayer(layer);
-        logger.info(`Disabled layer ${VisualizationLayer[layer]} - flag removed`);
       }
+      // Note: Flags don't disable layers - use console commands for that
+      // This prevents flags from overriding manual console settings
     }
   }
 
