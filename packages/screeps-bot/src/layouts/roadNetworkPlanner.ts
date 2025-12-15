@@ -480,51 +480,72 @@ function generateRoadCostMatrix(roomName: string): CostMatrix | false {
 }
 
 /**
- * Distance from room exits where roads are always considered valid infrastructure
- * Roads within this distance from edges (x=0, x=49, y=0, y=49) are protected
+ * Calculate roads to all room exits as permanent infrastructure
  * 
- * Distance of 10 protects roads from room edges:
- * - Left: x = 0 through 10 (11 tiles)
- * - Right: x = 39 through 49 (11 tiles) 
- * - Top: y = 0 through 10 (11 tiles)
- * - Bottom: y = 39 through 49 (11 tiles)
+ * This ensures roads leading to exits are always protected, regardless of
+ * current remote room assignments. This prevents wasteful destruction and
+ * rebuilding when remote assignments change.
  * 
- * This covers most paths from room center (~25) to exits, preventing road
- * destruction when remote room assignments change. Roads leading to exits
- * remain valid infrastructure regardless of current remote mining assignments.
+ * @param room The room to calculate exit roads for
+ * @param hubPos The hub position (storage or spawn)
+ * @param config Configuration for pathfinding
+ * @returns Set of position keys for roads to exits
  */
-const EXIT_ROAD_PROTECTION_DISTANCE = 10;
-
-/**
- * Find existing roads near room exits that should be protected
- * 
- * This protects roads that are within EXIT_ROAD_PROTECTION_DISTANCE of any room edge.
- * These roads are considered permanent infrastructure because they facilitate inter-room
- * movement, regardless of current remote mining assignments.
- * 
- * @param room The room to scan for exit roads
- * @param distance Distance from edges to protect roads (default: EXIT_ROAD_PROTECTION_DISTANCE)
- * @returns Set of position keys for existing roads near exits
- */
-function findExistingExitRoads(room: Room, distance = EXIT_ROAD_PROTECTION_DISTANCE): Set<string> {
+function calculateExitRoads(
+  room: Room,
+  hubPos: RoomPosition,
+  config: Partial<RoadNetworkConfig> = {}
+): Set<string> {
+  const cfg = { ...DEFAULT_CONFIG, ...config };
   const exitRoads = new Set<string>();
   
-  // Find all existing road structures in the room
-  const roads = room.find(FIND_STRUCTURES, {
-    filter: s => s.structureType === STRUCTURE_ROAD
-  });
+  // Calculate paths to all 4 exits
+  const directions: Array<"top" | "bottom" | "left" | "right"> = ["top", "bottom", "left", "right"];
   
-  for (const road of roads) {
-    const { x, y } = road.pos;
-    
-    // Check if road is within protection distance of any room edge
-    const nearLeftEdge = x <= distance;             // Near x=0
-    const nearRightEdge = x >= (49 - distance);      // Near x=49
-    const nearTopEdge = y <= distance;               // Near y=0
-    const nearBottomEdge = y >= (49 - distance);     // Near y=49
-    
-    if (nearLeftEdge || nearRightEdge || nearTopEdge || nearBottomEdge) {
-      exitRoads.add(`${x},${y}`);
+  for (const direction of directions) {
+    try {
+      // Get all exit positions in this direction
+      const exitPositions = getExitPositions(room.name, direction);
+      
+      if (exitPositions.length === 0) continue;
+      
+      // Find the closest exit to our hub position
+      const targetExit = findClosestExit(hubPos, exitPositions);
+      
+      if (!targetExit) continue;
+      
+      // Calculate path from hub to the exit
+      const pathResult = PathFinder.search(
+        hubPos,
+        { pos: targetExit, range: 0 }, // Range 0 to reach the actual exit tile
+        {
+          plainCost: 2,
+          swampCost: 10,
+          maxOps: cfg.maxPathOps,
+          roomCallback: (roomName: string) => {
+            // Only allow pathfinding in the home room for exit approach roads
+            if (roomName !== room.name) {
+              return false;
+            }
+            return generateRoadCostMatrix(roomName);
+          }
+        }
+      );
+
+      if (!pathResult.incomplete) {
+        // Add all positions in the path to exit roads
+        for (const pos of pathResult.path) {
+          if (pos.roomName === room.name) {
+            exitRoads.add(`${pos.x},${pos.y}`);
+          }
+        }
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.warn(
+        `Failed to calculate exit road for ${direction} in ${room.name}: ${errorMessage}`,
+        { subsystem: "RoadNetwork" }
+      );
     }
   }
   
@@ -537,8 +558,8 @@ function findExistingExitRoads(room: Room, distance = EXIT_ROAD_PROTECTION_DISTA
  * Combines:
  * - Blueprint roads
  * - Calculated infrastructure roads (to sources, controller, mineral)
+ * - Roads to all room exits (permanent infrastructure)
  * - Remote mining roads (if applicable)
- * - Exit-zone roads (always valid, regardless of remote assignments)
  *
  * @param room The room to get road positions for
  * @param anchor The blueprint anchor position (usually spawn)
@@ -569,7 +590,22 @@ export function getValidRoadPositions(
     validPositions.add(posKey);
   }
 
+  // CRITICAL FIX: Always calculate and protect roads to ALL room exits
+  // This ensures roads to exits are permanent infrastructure, regardless of
+  // current remote room assignments. Prevents wasteful destruction/rebuilding.
+  const storage = room.storage;
+  const spawn = room.find(FIND_MY_SPAWNS)[0];
+  const hubPos = storage?.pos ?? spawn?.pos;
+  
+  if (hubPos) {
+    const exitRoads = calculateExitRoads(room, hubPos);
+    for (const posKey of exitRoads) {
+      validPositions.add(posKey);
+    }
+  }
+
   // Add remote mining roads (roads in this room that lead to remote rooms)
+  // This is in addition to exit roads for paths that extend into remote rooms
   if (remoteRooms.length > 0) {
     const remoteRoads = calculateRemoteRoads(room, remoteRooms);
     const homeRoomRoads = remoteRoads.get(room.name);
@@ -578,14 +614,6 @@ export function getValidRoadPositions(
         validPositions.add(posKey);
       }
     }
-  }
-
-  // CRITICAL FIX: Always protect roads near room exits, regardless of current remote assignments
-  // This prevents road destruction when remote rooms are temporarily lost or reassigned
-  // Exit roads are general infrastructure that facilitate all inter-room movement
-  const exitProtectionRoads = findExistingExitRoads(room, EXIT_ROAD_PROTECTION_DISTANCE);
-  for (const posKey of exitProtectionRoads) {
-    validPositions.add(posKey);
   }
 
   return validPositions;
