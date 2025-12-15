@@ -1301,6 +1301,24 @@ export interface BlueprintEfficiencyMetrics {
 }
 
 /**
+ * Blueprint efficiency scoring constants
+ */
+const EFFICIENCY_WEIGHTS = {
+  PATH_LENGTH: 0.3,
+  TOWER_COVERAGE: 0.25,
+  DEFENSE_SCORE: 0.25,
+  ENERGY_EFFICIENCY: 0.2
+} as const;
+
+const SCORING_FACTORS = {
+  LINK_POINTS: 15,
+  BASE_ROAD_SCORE: 50,
+  ROAD_PENALTY_DIVISOR: 10,
+  RAMPART_POINTS: 2,
+  TOWER_POINTS: 10
+} as const;
+
+/**
  * Calculate efficiency metrics for a blueprint in a specific room
  * 
  * @param room The room to evaluate
@@ -1350,12 +1368,13 @@ export function calculateBlueprintEfficiency(
   let coveredTiles = 0;
   const totalTiles = 48 * 48; // Exclude room edges
   
-  // Sample coverage at grid points for performance
-  for (let x = 1; x <= 48; x += 2) {
-    for (let y = 1; y <= 48; y += 2) {
+  // Sample coverage at grid points for performance (12x12 grid = 144 samples)
+  const SAMPLE_STEP = 4;
+  for (let x = 1; x <= 48; x += SAMPLE_STEP) {
+    for (let y = 1; y <= 48; y += SAMPLE_STEP) {
       const pos = new RoomPosition(x, y, room.name);
       const inRange = towerPositions.some(towerPos => towerPos.getRangeTo(pos) <= 20);
-      if (inRange) coveredTiles += 4; // Each sample represents 2x2 area
+      if (inRange) coveredTiles += SAMPLE_STEP * SAMPLE_STEP; // Each sample represents 4x4 area
     }
   }
   
@@ -1364,20 +1383,24 @@ export function calculateBlueprintEfficiency(
   // Calculate defense score
   const rampartCount = blueprint.ramparts.length;
   const towerCount = towerStructs.length;
-  const defenseScore = Math.min(100, (rampartCount * 2) + (towerCount * 10));
+  const defenseScore = Math.min(100, (rampartCount * SCORING_FACTORS.RAMPART_POINTS) + (towerCount * SCORING_FACTORS.TOWER_POINTS));
   
   // Calculate energy efficiency
   const linkCount = structures.filter(s => s.structureType === STRUCTURE_LINK).length;
   const roadCount = blueprint.roads.length;
   // Links are more efficient than roads for energy transport
-  const energyEfficiency = Math.min(100, (linkCount * 15) + Math.max(0, 50 - roadCount / 10));
+  const energyEfficiency = Math.min(
+    100,
+    (linkCount * SCORING_FACTORS.LINK_POINTS) + 
+    Math.max(0, SCORING_FACTORS.BASE_ROAD_SCORE - roadCount / SCORING_FACTORS.ROAD_PENALTY_DIVISOR)
+  );
   
   // Overall score (weighted average)
   const overallScore = (
-    (avgPathLength > 0 ? Math.max(0, 100 - avgPathLength) * 0.3 : 0) +
-    (towerCoverage * 0.25) +
-    (defenseScore * 0.25) +
-    (energyEfficiency * 0.2)
+    (avgPathLength > 0 ? Math.max(0, 100 - avgPathLength) * EFFICIENCY_WEIGHTS.PATH_LENGTH : 0) +
+    (towerCoverage * EFFICIENCY_WEIGHTS.TOWER_COVERAGE) +
+    (defenseScore * EFFICIENCY_WEIGHTS.DEFENSE_SCORE) +
+    (energyEfficiency * EFFICIENCY_WEIGHTS.ENERGY_EFFICIENCY)
   );
   
   return {
