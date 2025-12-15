@@ -18,8 +18,8 @@ const mockGame: any = {
       const parseRoom = (name: string) => {
         const match = name.match(/([WE])(\d+)([NS])(\d+)/);
         if (!match) return { x: 0, y: 0 };
-        const x = (match[1] === "W" ? -1 : 1) * parseInt(match[2]!);
-        const y = (match[3] === "N" ? 1 : -1) * parseInt(match[4]!);
+        const x = (match[1] === "W" ? -1 : 1) * parseInt(match[2]!, 10);
+        const y = (match[3] === "N" ? 1 : -1) * parseInt(match[4]!, 10);
         return { x, y };
       };
       
@@ -168,8 +168,10 @@ describe("Terminal Router", () => {
       
       expect(route).to.not.be.null;
       expect(route?.cost).to.be.lessThanOrEqual(300);
-      expect(route?.path[0]).to.equal("W1N1");
-      expect(route?.path[route.path.length - 1]).to.equal("W4N1");
+      if (route) {
+        expect(route.path[0]).to.equal("W1N1");
+        expect(route.path[route.path.length - 1]).to.equal("W4N1");
+      }
     });
 
     it("should return null if no route exists", () => {

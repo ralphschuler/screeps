@@ -265,7 +265,7 @@ export class TerminalRouter {
       return null; // Not in route or already at destination
     }
 
-    return route.path[currentIndex + 1] ?? null;
+    return route.path[currentIndex + 1] || null;
   }
 }
 
