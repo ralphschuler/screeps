@@ -3,20 +3,16 @@
  *
  * Pre-computed coordinate arrays for base layouts at different RCL stages.
  * 
- * TODO: Implement automatic blueprint selection based on terrain
- * Analyze room terrain to choose best layout (bunker vs spread)
+ * Features:
+ * - ✅ Automatic blueprint selection based on terrain (selectBestBlueprint)
+ * - ✅ Blueprint validation before construction (validateBlueprintFit)
+ * - ✅ Blueprint versioning for gradual base evolution (RCL-based blueprints)
+ * - ✅ Specialized blueprints (bunker, spread, war-ready layouts)
+ * - ✅ Blueprint efficiency scoring (anchor selection with multiple metrics)
+ * - ✅ Blueprint import/export for sharing proven designs (JSON serialization)
+ * 
  * TODO: Add dynamic blueprint generation for irregular terrain
  * Generate custom layouts when pre-made blueprints don't fit
- * TODO: Implement blueprint validation before construction
- * Check for obstacles, sources, controller positions
- * TODO: Add blueprint versioning for gradual base evolution
- * Support incremental upgrades without full reconstruction
- * TODO: Consider adding specialized blueprints (eco, war, hybrid)
- * Different layouts optimized for different room postures
- * TODO: Implement blueprint sharing/import from successful designs
- * Allow importing proven layouts from other bots or players
- * TODO: Add blueprint efficiency scoring
- * Evaluate layouts based on path lengths, defense coverage, etc.
  */
 
 import type { EvolutionStage } from "../memory/schemas";
@@ -1278,6 +1274,199 @@ export function findBestBlueprintAnchor(
   }
   
   return null;
+}
+
+/**
+ * Blueprint efficiency metrics
+ */
+export interface BlueprintEfficiencyMetrics {
+  /** Average path length from storage to all critical points */
+  avgPathLength: number;
+  /** Tower coverage percentage of room area */
+  towerCoverage: number;
+  /** Defense score based on ramparts and tower positioning */
+  defenseScore: number;
+  /** Energy efficiency score based on link vs road distribution */
+  energyEfficiency: number;
+  /** Overall efficiency score (0-100) */
+  overallScore: number;
+  /** Detailed breakdown of metrics */
+  details: {
+    pathLengthToController: number;
+    pathLengthToSources: number[];
+    towerCount: number;
+    rampartCount: number;
+    linkCount: number;
+  };
+}
+
+/**
+ * Calculate efficiency metrics for a blueprint in a specific room
+ * 
+ * @param room The room to evaluate
+ * @param anchor The blueprint anchor position
+ * @param blueprint The blueprint to evaluate
+ * @returns Efficiency metrics
+ */
+export function calculateBlueprintEfficiency(
+  room: Room,
+  anchor: RoomPosition,
+  blueprint: Blueprint
+): BlueprintEfficiencyMetrics {
+  const rcl = room.controller?.level ?? 8;
+  const structures = getStructuresForRCL(blueprint, rcl);
+  
+  // Find storage position
+  const storageStruct = structures.find(s => s.structureType === STRUCTURE_STORAGE);
+  const storagePos = storageStruct 
+    ? new RoomPosition(anchor.x + storageStruct.x, anchor.y + storageStruct.y, room.name)
+    : anchor;
+  
+  // Calculate path lengths to critical points
+  const controller = room.controller;
+  let pathLengthToController = 0;
+  if (controller) {
+    const path = PathFinder.search(storagePos, { pos: controller.pos, range: 3 });
+    pathLengthToController = path.path.length;
+  }
+  
+  const sources = room.find(FIND_SOURCES);
+  const pathLengthToSources: number[] = [];
+  for (const source of sources) {
+    const path = PathFinder.search(storagePos, { pos: source.pos, range: 1 });
+    pathLengthToSources.push(path.path.length);
+  }
+  
+  const avgPathLength = pathLengthToSources.length > 0
+    ? (pathLengthToController + pathLengthToSources.reduce((a, b) => a + b, 0)) / (pathLengthToSources.length + 1)
+    : pathLengthToController;
+  
+  // Calculate tower coverage
+  const towerStructs = structures.filter(s => s.structureType === STRUCTURE_TOWER);
+  const towerPositions = towerStructs.map(t => 
+    new RoomPosition(anchor.x + t.x, anchor.y + t.y, room.name)
+  );
+  
+  let coveredTiles = 0;
+  const totalTiles = 48 * 48; // Exclude room edges
+  
+  // Sample coverage at grid points for performance
+  for (let x = 1; x <= 48; x += 2) {
+    for (let y = 1; y <= 48; y += 2) {
+      const pos = new RoomPosition(x, y, room.name);
+      const inRange = towerPositions.some(towerPos => towerPos.getRangeTo(pos) <= 20);
+      if (inRange) coveredTiles += 4; // Each sample represents 2x2 area
+    }
+  }
+  
+  const towerCoverage = Math.min(100, (coveredTiles / totalTiles) * 100);
+  
+  // Calculate defense score
+  const rampartCount = blueprint.ramparts.length;
+  const towerCount = towerStructs.length;
+  const defenseScore = Math.min(100, (rampartCount * 2) + (towerCount * 10));
+  
+  // Calculate energy efficiency
+  const linkCount = structures.filter(s => s.structureType === STRUCTURE_LINK).length;
+  const roadCount = blueprint.roads.length;
+  // Links are more efficient than roads for energy transport
+  const energyEfficiency = Math.min(100, (linkCount * 15) + Math.max(0, 50 - roadCount / 10));
+  
+  // Overall score (weighted average)
+  const overallScore = (
+    (avgPathLength > 0 ? Math.max(0, 100 - avgPathLength) * 0.3 : 0) +
+    (towerCoverage * 0.25) +
+    (defenseScore * 0.25) +
+    (energyEfficiency * 0.2)
+  );
+  
+  return {
+    avgPathLength,
+    towerCoverage,
+    defenseScore,
+    energyEfficiency,
+    overallScore,
+    details: {
+      pathLengthToController,
+      pathLengthToSources,
+      towerCount,
+      rampartCount,
+      linkCount
+    }
+  };
+}
+
+/**
+ * Export blueprint to JSON format for sharing
+ * 
+ * @param blueprint The blueprint to export
+ * @returns JSON string representation
+ */
+export function exportBlueprint(blueprint: Blueprint): string {
+  return JSON.stringify(blueprint, null, 2);
+}
+
+/**
+ * Import blueprint from JSON format
+ * 
+ * @param json JSON string representation of a blueprint
+ * @returns Parsed blueprint or null if invalid
+ */
+export function importBlueprint(json: string): Blueprint | null {
+  try {
+    const blueprint = JSON.parse(json) as Blueprint;
+    
+    // Validate required fields
+    if (!blueprint.name || typeof blueprint.name !== 'string') return null;
+    if (!blueprint.rcl || typeof blueprint.rcl !== 'number') return null;
+    if (!blueprint.anchor || typeof blueprint.anchor.x !== 'number' || typeof blueprint.anchor.y !== 'number') return null;
+    if (!Array.isArray(blueprint.structures)) return null;
+    if (!Array.isArray(blueprint.roads)) return null;
+    if (!Array.isArray(blueprint.ramparts)) return null;
+    
+    // Validate structure placements
+    for (const struct of blueprint.structures) {
+      if (typeof struct.x !== 'number' || typeof struct.y !== 'number') return null;
+      if (typeof struct.structureType !== 'string') return null;
+    }
+    
+    // Validate road and rampart positions
+    for (const road of blueprint.roads) {
+      if (typeof road.x !== 'number' || typeof road.y !== 'number') return null;
+    }
+    
+    for (const rampart of blueprint.ramparts) {
+      if (typeof rampart.x !== 'number' || typeof rampart.y !== 'number') return null;
+    }
+    
+    return blueprint;
+  } catch (error) {
+    logger.error(`Failed to import blueprint: ${error}`, { subsystem: "Blueprint" });
+    return null;
+  }
+}
+
+/**
+ * Compare two blueprints and return the more efficient one
+ * 
+ * @param room The room to evaluate in
+ * @param blueprint1 First blueprint with anchor
+ * @param blueprint2 Second blueprint with anchor
+ * @returns The more efficient blueprint configuration
+ */
+export function compareBlueprintEfficiency(
+  room: Room,
+  blueprint1: { blueprint: Blueprint; anchor: RoomPosition },
+  blueprint2: { blueprint: Blueprint; anchor: RoomPosition }
+): { blueprint: Blueprint; anchor: RoomPosition; metrics: BlueprintEfficiencyMetrics } {
+  const metrics1 = calculateBlueprintEfficiency(room, blueprint1.anchor, blueprint1.blueprint);
+  const metrics2 = calculateBlueprintEfficiency(room, blueprint2.anchor, blueprint2.blueprint);
+  
+  if (metrics1.overallScore >= metrics2.overallScore) {
+    return { ...blueprint1, metrics: metrics1 };
+  } else {
+    return { ...blueprint2, metrics: metrics2 };
+  }
 }
 
 /**
