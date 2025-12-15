@@ -47,7 +47,7 @@ jobs:
           SCREEPS_DOCS_CACHE_TTL: ${{ vars.SCREEPS_DOCS_CACHE_TTL || '3600' }}
           SCREEPS_WIKI_CACHE_TTL: ${{ vars.SCREEPS_WIKI_CACHE_TTL || '3600' }}
           SCREEPS_TYPES_CACHE_TTL: ${{ vars.SCREEPS_TYPES_CACHE_TTL || '3600' }}
-          GRAFANA_SERVICE_ACCOUNT_TOKEN: ${{ secrets.COPILOT_MCP_SGRAFANA_SERVICE_ACCOUNT_TOKEN }}
+          GRAFANA_SERVICE_ACCOUNT_TOKEN: ${{ secrets.COPILOT_MCP_GRAFANA_SERVICE_ACCOUNT_TOKEN }}
         with:
           copilot-token: ${{ secrets.COPILOT_TOKEN }}
           prompt-path: .github/agents/strategic-planner.agent.md
