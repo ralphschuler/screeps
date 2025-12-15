@@ -73,6 +73,13 @@ const MAX_CONSTRUCTION_SITES_PER_ROOM = 10;
 const DEFAULT_ROAD_SITES_PER_TICK = 3;
 
 /**
+ * Distance from room exits within which existing roads are protected
+ * Expanded from 3 to 10 to prevent remote mining road destruction
+ * This provides a fallback protection in addition to path-based protection
+ */
+const EXIT_ROAD_PROTECTION_DISTANCE = 10;
+
+/**
  * Cache of calculated road networks per room
  */
 const roadNetworkCache = new Map<string, RoomRoadNetwork>();
@@ -480,6 +487,66 @@ function generateRoadCostMatrix(roomName: string): CostMatrix | false {
 }
 
 /**
+ * Find existing roads near room exits as fallback protection
+ * 
+ * This provides distance-based protection for roads near exits, which serves
+ * as a fallback in case path-based protection fails (e.g., incomplete paths,
+ * missing hub position, or pathfinding errors).
+ * 
+ * @param room The room to find exit roads in
+ * @param distance Distance from exits to protect (default: EXIT_ROAD_PROTECTION_DISTANCE)
+ * @returns Set of position keys for roads near exits
+ */
+function findExistingExitRoads(
+  room: Room,
+  distance: number = EXIT_ROAD_PROTECTION_DISTANCE
+): Set<string> {
+  const exitRoads = new Set<string>();
+  
+  // Find all roads in the room
+  const roads = room.find(FIND_STRUCTURES, {
+    filter: s => s.structureType === STRUCTURE_ROAD
+  });
+  
+  // Also check for road construction sites
+  const roadSites = room.find(FIND_CONSTRUCTION_SITES, {
+    filter: s => s.structureType === STRUCTURE_ROAD
+  });
+  
+  // Check each road to see if it's near an exit
+  for (const road of roads) {
+    if (isNearExit(road.pos, distance)) {
+      exitRoads.add(`${road.pos.x},${road.pos.y}`);
+    }
+  }
+  
+  // Also protect construction sites near exits
+  for (const site of roadSites) {
+    if (isNearExit(site.pos, distance)) {
+      exitRoads.add(`${site.pos.x},${site.pos.y}`);
+    }
+  }
+  
+  return exitRoads;
+}
+
+/**
+ * Check if a position is near a room exit
+ * 
+ * @param pos Position to check
+ * @param distance Distance threshold from exits
+ * @returns True if position is within distance of any exit
+ */
+function isNearExit(pos: RoomPosition, distance: number): boolean {
+  return (
+    pos.x <= distance ||           // Near left exit (x=0)
+    pos.x >= (49 - distance) ||    // Near right exit (x=49)
+    pos.y <= distance ||           // Near top exit (y=0)
+    pos.y >= (49 - distance)       // Near bottom exit (y=49)
+  );
+}
+
+/**
  * Calculate roads to all room exits as permanent infrastructure
  * 
  * This ensures roads leading to exits are always protected, regardless of
@@ -619,6 +686,16 @@ export function getValidRoadPositions(
         validPositions.add(posKey);
       }
     }
+  }
+
+  // FALLBACK PROTECTION: Distance-based exit road protection
+  // This provides additional protection for existing roads near exits within
+  // EXIT_ROAD_PROTECTION_DISTANCE (10 tiles) from room edges.
+  // This serves as a defense-in-depth measure in case path-based protection
+  // fails due to pathfinding issues, missing hub position, or other edge cases.
+  const existingExitRoads = findExistingExitRoads(room);
+  for (const posKey of existingExitRoads) {
+    validPositions.add(posKey);
   }
 
   return validPositions;
