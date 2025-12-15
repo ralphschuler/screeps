@@ -11,10 +11,10 @@ describe("Exit Road Protection", () => {
   describe("exit zone definition", () => {
     it("should define protection distance from room exits", () => {
       // Protection distance of 10 means roads at:
-      // - x = 0-10 (left edge)
-      // - x = 39-49 (right edge)
-      // - y = 0-10 (top edge)
-      // - y = 39-49 (bottom edge)
+      // - Left: x = 0 through 10 (11 tiles)
+      // - Right: x = 39 through 49 (11 tiles)
+      // - Top: y = 0 through 10 (11 tiles)
+      // - Bottom: y = 39 through 49 (11 tiles)
       // 
       // This covers most paths from room center (~25) to exits,
       // preventing destruction when remote assignments change

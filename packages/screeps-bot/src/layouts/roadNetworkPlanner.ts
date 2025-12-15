@@ -483,10 +483,15 @@ function generateRoadCostMatrix(roomName: string): CostMatrix | false {
  * Distance from room exits where roads are always considered valid infrastructure
  * Roads within this distance from edges (x=0, x=49, y=0, y=49) are protected
  * 
- * Distance of 10 protects roads from room edges (0-10 and 39-49), which covers
- * most paths from room center (~25) to exits. This prevents road destruction
- * when remote room assignments change, as roads leading to exits remain valid
- * infrastructure regardless of current remote mining assignments.
+ * Distance of 10 protects roads from room edges:
+ * - Left: x = 0 through 10 (11 tiles)
+ * - Right: x = 39 through 49 (11 tiles) 
+ * - Top: y = 0 through 10 (11 tiles)
+ * - Bottom: y = 39 through 49 (11 tiles)
+ * 
+ * This covers most paths from room center (~25) to exits, preventing road
+ * destruction when remote room assignments change. Roads leading to exits
+ * remain valid infrastructure regardless of current remote mining assignments.
  */
 const EXIT_ROAD_PROTECTION_DISTANCE = 10;
 
