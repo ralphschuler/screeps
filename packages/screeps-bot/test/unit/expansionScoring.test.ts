@@ -4,7 +4,7 @@
  * Tests for multi-factor expansion scoring algorithm
  */
 
-import { assert, expect } from "chai";
+import { expect } from "chai";
 import type { RoomIntel } from "../../src/memory/schemas";
 
 // Mock the global Game object

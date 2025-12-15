@@ -152,11 +152,11 @@ Template system would provide minimal additional value over the comprehensive mu
 | Remote reservation | ✅ Complete | `assignReserverTargets()` |
 | GCL capacity utilization | ✅ Complete | `isExpansionReady()` |
 | Autonomous expansion | ✅ Complete | EmpireManager + ExpansionManager |
-| Multi-factor scoring | ✅ Complete | 12-factor evaluation |
+| Multi-factor scoring | ✅ Core Complete | 12-factor evaluation (portal=stub) |
 | Safety analysis | ✅ Complete | 2-range hostile scanning |
 | Profitability analysis | ✅ Complete | ROI >2x threshold |
 | Expansion cancellation | ✅ Complete | Timeout + failure detection |
 | GCL-based timing | ✅ Complete | 70% progress threshold |
 | Cluster-aware expansion | ✅ Complete | Distance-based clustering |
 
-**Overall Compliance**: 100% (11/11 requirements met or exceeded)
+**Overall Compliance**: Core implementation complete (11/11 requirements with 2 documented stubs for future enhancement)

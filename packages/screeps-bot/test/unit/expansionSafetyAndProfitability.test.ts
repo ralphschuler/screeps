@@ -4,7 +4,7 @@
  * Tests for safety analysis and remote mining profitability calculations
  */
 
-import { assert, expect } from "chai";
+import { expect } from "chai";
 import type { RoomIntel, OvermindMemory } from "../../src/memory/schemas";
 import { createDefaultOvermindMemory } from "../../src/memory/schemas";
 
@@ -115,7 +115,7 @@ describe("Expansion Safety Analysis", () => {
       time: 1000,
       gcl: { level: 2, progress: 0, progressTotal: 1000000 },
       map: {
-        getRoomLinearDistance: (room1: string, room2: string) => {
+        getRoomLinearDistance: (_room1: string, _room2: string) => {
           return 1; // Simple mock
         }
       },
