@@ -22,6 +22,10 @@ describe("pathCache", () => {
       time: 1000
     };
 
+    // Set up Screeps constants for tests
+    (global as any).FIND_SOURCES = 105;
+    (global as any).STRUCTURE_STORAGE = "storage";
+
     // Mock Room.serializePath and Room.deserializePath
     // @ts-ignore: Setting up test environment
     global.Room = {

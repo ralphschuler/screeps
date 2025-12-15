@@ -367,9 +367,15 @@ export function cacheCommonRoutes(room: Room): void {
     });
     if (pathToSource.length > 0) {
       cachePath(storage.pos, source.pos, pathToSource);
-      // Also cache reverse path
-      const reversePath = [...pathToSource].reverse();
-      cachePath(source.pos, storage.pos, reversePath);
+      
+      // For reverse path, recalculate since PathStep directions need to be inverted
+      const pathFromSource = room.findPath(source.pos, storage.pos, {
+        ignoreCreeps: true,
+        serialize: false
+      });
+      if (pathFromSource.length > 0) {
+        cachePath(source.pos, storage.pos, pathFromSource);
+      }
     }
   }
 
