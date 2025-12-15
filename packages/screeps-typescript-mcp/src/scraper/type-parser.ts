@@ -25,18 +25,18 @@ export async function parseTypeScriptFile(filePath: string): Promise<TypeDefinit
   const lines = content.split("\n");
 
   // Regular expressions for different type definition patterns
-  // Matches: export interface Name<T> extends Base
-  const interfaceRegex = /^export\s+interface\s+(\w+)(?:<[^>]+>)?(?:\s+extends\s+[^{]+)?/;
-  // Matches: export type Name = ... or export const Name = ...
-  const typeRegex = /^export\s+(?:type|const)\s+(\w+)(?:<[^>]+>)?\s*=/;
-  // Matches: export class Name<T> extends Base or export abstract class Name
-  const classRegex = /^export\s+(?:abstract\s+)?class\s+(\w+)(?:<[^>]+>)?(?:\s+(?:extends|implements)\s+[^{]+)?/;
-  // Matches: export enum Name
-  const enumRegex = /^export\s+enum\s+(\w+)/;
-  // Matches: export function name(...) or export const name = (...) =>
-  const functionRegex = /^export\s+(?:function|const)\s+(\w+)(?:<[^>]+>)?\s*\(/;
-  // Matches: export namespace Name or export module Name
-  const namespaceRegex = /^export\s+(?:namespace|module)\s+(\w+)/;
+  // Matches: interface Name<T> extends Base or export interface Name<T> extends Base
+  const interfaceRegex = /^(?:export\s+)?interface\s+(\w+)(?:<[^>]+>)?(?:\s+extends\s+[^{]+)?/;
+  // Matches: type Name = ... or export type Name = ... or export const Name = ...
+  const typeRegex = /^(?:export\s+)?(?:type|const)\s+(\w+)(?:<[^>]+>)?\s*=/;
+  // Matches: class Name<T> extends Base or export class Name or export abstract class Name
+  const classRegex = /^(?:export\s+)?(?:abstract\s+)?class\s+(\w+)(?:<[^>]+>)?(?:\s+(?:extends|implements)\s+[^{]+)?/;
+  // Matches: enum Name or export enum Name
+  const enumRegex = /^(?:export\s+)?enum\s+(\w+)/;
+  // Matches: function name(...) or export function name(...) or export const name = (...) =>
+  const functionRegex = /^(?:export\s+)?(?:function|const)\s+(\w+)(?:<[^>]+>)?\s*\(/;
+  // Matches: namespace Name or export namespace Name or export module Name
+  const namespaceRegex = /^(?:export\s+)?(?:namespace|module)\s+(\w+)/;
 
   let currentDefinition: TypeDefinition | null = null;
   let braceCount = 0;
@@ -64,8 +64,8 @@ export async function parseTypeScriptFile(filePath: string): Promise<TypeDefinit
       continue;
     }
 
-    // Skip empty lines and non-export declarations
-    if (!line || !line.startsWith("export")) {
+    // Skip empty lines
+    if (!line) {
       if (currentDefinition && braceCount === 0) {
         currentDefinition = null;
       }
