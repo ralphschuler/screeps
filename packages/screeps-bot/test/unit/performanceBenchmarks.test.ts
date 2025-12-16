@@ -702,23 +702,27 @@ describe("Performance Benchmarks", () => {
       
       resetCacheStats();
       
-      // Access object at tick 1000
-      getCachedObjectById("test-storage-1" as Id<any>);
+      // Access object at tick 1000 (structure with 10-tick TTL, expires at 1010)
+      const obj1 = getCachedObjectById("test-storage-1" as Id<any>);
       
-      // Advance 5 ticks (structure TTL is 10, so should still be cached)
+      // Advance 5 ticks (structure still cached, expires at 1010)
       // @ts-ignore: Modifying test environment
       global.Game.time = 1005;
       
       const time1 = measurePerformance("within_ttl", () => {
-        getCachedObjectById("test-storage-1" as Id<any>);
+        const obj2 = getCachedObjectById("test-storage-1" as Id<any>);
+        // Should be same cached object
+        expect(obj1).to.equal(obj2);
       });
       
-      // Advance past TTL (10+ ticks)
+      // Advance past TTL (to tick 1010 - entry expires)
       // @ts-ignore: Modifying test environment  
-      global.Game.time = 1011;
+      global.Game.time = 1010;
       
       const time2 = measurePerformance("after_ttl", () => {
-        getCachedObjectById("test-storage-1" as Id<any>);
+        const obj3 = getCachedObjectById("test-storage-1" as Id<any>);
+        // Should be freshly fetched, different object
+        expect(obj1).to.not.equal(obj3);
       });
       
       // Both should complete quickly (no performance degradation)

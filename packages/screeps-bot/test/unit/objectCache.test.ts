@@ -109,24 +109,26 @@ describe("objectCache", () => {
       const result1 = getCachedObjectById("test-storage-1" as Id<any>);
       assert.isNotNull(result1);
       
-      // Advance to tick 1005 - should still be cached
+      // Advance to tick 1005 - should still be cached (expires at 1010)
       // @ts-ignore: Modifying test environment
       global.Game.time = 1005;
       const result2 = getCachedObjectById("test-storage-1" as Id<any>);
-      assert.equal(result1, result2);
+      assert.equal(result1, result2); // Same cached object
       
-      // Advance to tick 1010 - should still be cached (expires at 1010)
+      // Advance to tick 1009 - should still be cached (expires at 1010)
+      // @ts-ignore: Modifying test environment
+      global.Game.time = 1009;
+      const result3 = getCachedObjectById("test-storage-1" as Id<any>);
+      assert.equal(result1, result3); // Same cached object
+      
+      // Advance to tick 1010 - should be expired and refetched
       // @ts-ignore: Modifying test environment
       global.Game.time = 1010;
-      const result3 = getCachedObjectById("test-storage-1" as Id<any>);
-      assert.equal(result1, result3);
-      
-      // Advance to tick 1011 - should be expired and refetched
-      // @ts-ignore: Modifying test environment
-      global.Game.time = 1011;
       const result4 = getCachedObjectById("test-storage-1" as Id<any>);
       // Object content should be same but it's a fresh fetch
       assert.equal(result4?.id, "test-storage-1");
+      // Should not be the same reference since it was refetched
+      assert.notEqual(result1, result4);
     });
 
     it("should cache sources for 5 ticks", () => {
@@ -138,7 +140,7 @@ describe("objectCache", () => {
         return null;
       };
       
-      // Fetch at tick 1000
+      // Fetch at tick 1000 (expires at 1005)
       const result1 = getCachedObjectById("test-source-1" as Id<Source>);
       assert.isNotNull(result1);
       
@@ -148,16 +150,17 @@ describe("objectCache", () => {
       const result2 = getCachedObjectById("test-source-1" as Id<Source>);
       assert.equal(result1, result2);
       
-      // Advance to tick 1006 - should be expired
+      // Advance to tick 1005 - should be expired
       // @ts-ignore: Modifying test environment
-      global.Game.time = 1006;
+      global.Game.time = 1005;
       const result3 = getCachedObjectById("test-source-1" as Id<Source>);
-      // Still returns same data but refetched
+      // Still returns same data but refetched (new reference)
       assert.equal(result3?.id, "test-source-1");
+      assert.notEqual(result1, result3);
     });
 
     it("should support custom TTL", () => {
-      // Fetch with custom TTL of 3 ticks
+      // Fetch with custom TTL of 3 ticks (expires at 1003)
       const result1 = getCachedObjectById("test-storage-1" as Id<any>, 3);
       assert.isNotNull(result1);
       
@@ -167,11 +170,12 @@ describe("objectCache", () => {
       const result2 = getCachedObjectById("test-storage-1" as Id<any>, 3);
       assert.equal(result1, result2);
       
-      // Advance to tick 1004 - should be expired
+      // Advance to tick 1003 - should be expired
       // @ts-ignore: Modifying test environment
-      global.Game.time = 1004;
+      global.Game.time = 1003;
       const result3 = getCachedObjectById("test-storage-1" as Id<any>, 3);
       assert.equal(result3?.id, "test-storage-1");
+      assert.notEqual(result1, result3);
     });
   });
 
@@ -294,22 +298,30 @@ describe("objectCache", () => {
     it("typed accessors should use appropriate TTL", () => {
       resetCacheStats();
       
-      // Structure accessor should use 10 tick TTL
-      getCachedStructure("test-tower-1" as Id<StructureTower>);
+      // Structure accessor should use 10 tick TTL (expires at 1010)
+      const tower1 = getCachedStructure("test-tower-1" as Id<StructureTower>);
       // @ts-ignore: Modifying test environment
       global.Game.time = 1009;
-      getCachedStructure("test-tower-1" as Id<StructureTower>);
+      const tower2 = getCachedStructure("test-tower-1" as Id<StructureTower>);
+      
+      // Should be same cached object
+      assert.equal(tower1, tower2);
       
       let stats = getCacheStatistics();
       assert.equal(stats.hits, 1); // Should be cached
       
       resetCacheStats();
       
-      // Source accessor should use 5 tick TTL
-      getCachedSource("test-source-1" as Id<Source>);
+      // Source accessor should use 5 tick TTL (expires at 1005)
+      // @ts-ignore: Reset to tick 1000
+      global.Game.time = 1000;
+      const source1 = getCachedSource("test-source-1" as Id<Source>);
       // @ts-ignore: Modifying test environment
       global.Game.time = 1004;
-      getCachedSource("test-source-1" as Id<Source>);
+      const source2 = getCachedSource("test-source-1" as Id<Source>);
+      
+      // Should be same cached object
+      assert.equal(source1, source2);
       
       stats = getCacheStatistics();
       assert.equal(stats.hits, 1); // Should be cached
@@ -358,21 +370,25 @@ describe("objectCache", () => {
   });
 
   describe("cache invalidation", () => {
-    it("should clear expired entries but not cache structure on tick change", () => {
-      // Cache an object
+    it("should not clear cache on tick change (TTL handles expiration)", () => {
+      // Cache an object with 10 tick TTL at tick 1000 (expires at 1010)
       getCachedObjectById("test-storage-1" as Id<any>);
       
       const stats1 = getObjectCacheStats();
       assert.equal(stats1.size, 1);
       
-      // Advance game time by 1 tick - structure should still be cached
+      // Advance game time by 5 ticks - should still be cached
       // @ts-ignore: Modifying test environment
-      global.Game.time = 1001;
+      global.Game.time = 1005;
       
-      // Cache store is recreated on tick change, but stats persist
+      // Cache should NOT be cleared, entry should still exist
       const stats2 = getObjectCacheStats();
-      assert.equal(stats2.size, 0); // New tick = new cache
-      assert.equal(stats2.tick, 1001);
+      assert.equal(stats2.size, 1);
+      assert.equal(stats2.tick, 1005);
+      
+      // Access same object - should be a cache hit
+      const result = getCachedObjectById("test-storage-1" as Id<any>);
+      assert.isNotNull(result);
     });
   });
 

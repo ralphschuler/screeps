@@ -111,18 +111,20 @@ const EVICTION_THRESHOLD = 12000;
 
 /**
  * Get or initialize the cache store.
- * Statistics persist across ticks, but expired entries are removed.
+ * Cache persists across ticks with TTL-based expiration.
+ * Statistics persist indefinitely until manually reset.
  */
 function getCacheStore(): ObjectCacheStore {
   const g = global as any;
-  if (!g._objectCache || g._objectCache.tick !== Game.time) {
-    const previousStats = g._objectCache?.stats || { hits: 0, misses: 0 };
+  if (!g._objectCache) {
     g._objectCache = {
       tick: Game.time,
       objects: new Map(),
-      stats: previousStats
+      stats: { hits: 0, misses: 0 }
     };
   }
+  // Update tick but don't clear cache - TTL handles expiration
+  g._objectCache.tick = Game.time;
   return g._objectCache as ObjectCacheStore;
 }
 
@@ -152,10 +154,13 @@ function getTTL(obj: any): number {
 
 /**
  * Evict least recently used entries when cache exceeds threshold.
- * Removes oldest 20% of entries based on lastAccessed time.
+ * Removes entries to bring cache size below 10,000 (provides breathing room).
  */
 function evictLRU(cache: ObjectCacheStore): void {
-  const entriesToRemove = Math.floor(cache.objects.size * 0.2);
+  const targetSize = 10000; // Reduce to this size to avoid frequent evictions
+  const entriesToRemove = cache.objects.size - targetSize;
+  
+  if (entriesToRemove <= 0) return;
   
   // Sort entries by lastAccessed (oldest first)
   const entries = Array.from(cache.objects.entries()).sort(
@@ -198,7 +203,7 @@ export function getCachedObjectById<T extends _HasId>(
   
   // Check cache first
   const cached = cache.objects.get(id);
-  if (cached && cached.expiresAt >= currentTick) {
+  if (cached && cached.expiresAt > currentTick) {
     // Cache hit - update access time for LRU
     cached.lastAccessed = currentTick;
     cache.stats.hits++;
