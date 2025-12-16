@@ -594,4 +594,192 @@ describe("Performance Benchmarks", () => {
       expect(average).to.be.lessThan(MAX_AVG);
     });
   });
+
+  describe("Object Cache Performance", () => {
+    beforeEach(() => {
+      // Reset Game and global state
+      // @ts-ignore: Setting up test environment
+      global.Game = {
+        time: 1000,
+        rooms: {},
+        cpu: { getUsed: () => 0 },
+        getObjectById: (id: Id<any>) => {
+          // Simulate lookup cost
+          let sum = 0;
+          for (let i = 0; i < 10; i++) {
+            sum += i;
+          }
+          
+          if (id === "test-storage-1") {
+            return { id, structureType: STRUCTURE_STORAGE };
+          }
+          return null;
+        }
+      };
+      
+      const { clearObjectCache, resetCacheStats } = require("../../src/utils/objectCache");
+      clearObjectCache();
+      resetCacheStats();
+    });
+
+    it("should reduce lookup time with caching", () => {
+      const { getCachedObjectById } = require("../../src/utils/objectCache");
+      
+      // First lookup - cache miss (slower)
+      const time1 = measurePerformance("cache_miss", () => {
+        getCachedObjectById("test-storage-1" as Id<any>);
+      });
+      
+      // Second lookup - cache hit (faster)
+      const time2 = measurePerformance("cache_hit", () => {
+        getCachedObjectById("test-storage-1" as Id<any>);
+      });
+      
+      // Cache hit should be faster than cache miss
+      expect(time2).to.be.at.most(time1);
+    });
+
+    it("should achieve high hit rate with repeated accesses", () => {
+      const { getCachedObjectById, getCacheStatistics, resetCacheStats } = 
+        require("../../src/utils/objectCache");
+      
+      resetCacheStats();
+      
+      // Access same object 100 times
+      for (let i = 0; i < 100; i++) {
+        getCachedObjectById("test-storage-1" as Id<any>);
+      }
+      
+      const stats = getCacheStatistics();
+      
+      // Should have 1 miss (first access) and 99 hits
+      expect(stats.misses).to.equal(1);
+      expect(stats.hits).to.equal(99);
+      expect(stats.hitRate).to.equal(99); // 99/100 = 99%
+    });
+
+    it("should demonstrate CPU savings with multiple objects", () => {
+      const { getCachedObjectById, getCacheStatistics, resetCacheStats } = 
+        require("../../src/utils/objectCache");
+      
+      // Mock multiple objects
+      const objectIds = Array.from({ length: 50 }, (_, i) => `obj-${i}`);
+      
+      // @ts-ignore: Mock getObjectById
+      global.Game.getObjectById = (id: Id<any>) => {
+        // Simulate lookup cost
+        let sum = 0;
+        for (let i = 0; i < 10; i++) {
+          sum += i;
+        }
+        return { id };
+      };
+      
+      resetCacheStats();
+      
+      // Access each object 10 times
+      const time = measurePerformance("cached_multi_access", () => {
+        for (let i = 0; i < 10; i++) {
+          for (const id of objectIds) {
+            getCachedObjectById(id as Id<any>);
+          }
+        }
+      });
+      
+      const stats = getCacheStatistics();
+      
+      // Should have 50 misses (one per unique object) and 450 hits (9 additional accesses per object)
+      expect(stats.misses).to.equal(50);
+      expect(stats.hits).to.equal(450);
+      expect(stats.hitRate).to.equal(90); // 450/500 = 90%
+      
+      // CPU saved should be positive
+      expect(stats.cpuSaved).to.be.greaterThan(0);
+    });
+
+    it("should maintain performance with TTL expiration", () => {
+      const { getCachedObjectById, resetCacheStats } = require("../../src/utils/objectCache");
+      
+      resetCacheStats();
+      
+      // Access object at tick 1000
+      getCachedObjectById("test-storage-1" as Id<any>);
+      
+      // Advance 5 ticks (structure TTL is 10, so should still be cached)
+      // @ts-ignore: Modifying test environment
+      global.Game.time = 1005;
+      
+      const time1 = measurePerformance("within_ttl", () => {
+        getCachedObjectById("test-storage-1" as Id<any>);
+      });
+      
+      // Advance past TTL (10+ ticks)
+      // @ts-ignore: Modifying test environment  
+      global.Game.time = 1011;
+      
+      const time2 = measurePerformance("after_ttl", () => {
+        getCachedObjectById("test-storage-1" as Id<any>);
+      });
+      
+      // Both should complete quickly (no performance degradation)
+      expect(time1).to.be.lessThan(10);
+      expect(time2).to.be.lessThan(10);
+    });
+
+    it("should handle cache warming efficiently", () => {
+      const { warmCache } = require("../../src/utils/objectCache");
+      
+      // Mock rooms with structures
+      // @ts-ignore: Setting up test environment
+      global.Game.rooms = {
+        W1N1: {
+          name: "W1N1",
+          controller: {
+            my: true,
+            id: "controller-1" as Id<StructureController>
+          },
+          storage: {
+            id: "storage-1" as Id<StructureStorage>
+          },
+          terminal: {
+            id: "terminal-1" as Id<StructureTerminal>
+          },
+          find: () => []
+        }
+      };
+      
+      const time = measurePerformance("cache_warm", () => {
+        warmCache();
+      });
+      
+      // Cache warming should be fast (< 50ms in test environment)
+      expect(time).to.be.lessThan(50);
+    });
+
+    it("should scale with large cache sizes", () => {
+      const { getCachedObjectById } = require("../../src/utils/objectCache");
+      
+      // Create 1000 unique object IDs
+      const objectIds = Array.from({ length: 1000 }, (_, i) => `obj-${i}`);
+      
+      // @ts-ignore: Mock getObjectById
+      global.Game.getObjectById = (id: Id<any>) => ({ id });
+      
+      // Populate cache
+      for (const id of objectIds) {
+        getCachedObjectById(id as Id<any>);
+      }
+      
+      // Access random objects (should be fast due to Map lookup)
+      const time = measurePerformance("large_cache_access", () => {
+        for (let i = 0; i < 100; i++) {
+          const randomId = objectIds[Math.floor(Math.random() * objectIds.length)];
+          getCachedObjectById(randomId as Id<any>);
+        }
+      });
+      
+      // Should still be fast with large cache
+      expect(time).to.be.lessThan(20);
+    });
+  });
 });
