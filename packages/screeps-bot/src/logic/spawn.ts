@@ -9,6 +9,7 @@ import { getDefenderPriorityBoost } from "../spawning/defenderManager";
 import { type WeightedEntry, weightedSelection } from "../utils/weightedSelection";
 import { logger } from "../core/logger";
 import { calculateRemoteHaulerRequirement } from "../empire/remoteHaulerDimensioning";
+import { resourceTransferCoordinator, type CrossShardTransferRequest } from "../intershard/resourceTransferCoordinator";
 
 const FOCUS_ROOM_UPGRADER_LIMITS = {
   EARLY: 2,
@@ -1009,9 +1010,6 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
 
   // Cross-shard carrier needs active cross-shard transfer requests
   if (role === "crossShardCarrier") {
-    // Import resourceTransferCoordinator to check for active requests
-    const { resourceTransferCoordinator } = require("../intershard/resourceTransferCoordinator");
-    
     // Check if there are any active cross-shard transfer requests
     const activeRequests = resourceTransferCoordinator.getActiveRequests();
     if (activeRequests.length === 0) {
@@ -1019,7 +1017,7 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
     }
     
     // Check if any request originates from this room and needs carriers
-    const needsCarriers = activeRequests.some((req: any) => {
+    const needsCarriers = activeRequests.some((req: CrossShardTransferRequest) => {
       // Only spawn for requests from this room
       if (req.sourceRoom !== room.name) return false;
       
