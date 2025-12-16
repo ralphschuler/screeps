@@ -5,24 +5,18 @@
  * This interface provides a contract for process management, scheduling,
  * and inter-process communication.
  *
+ * Enhancements implemented:
+ * - Process sandboxing with isolated memory and syscall-only communication
+ * - Per-process CPU and memory resource limits with hard enforcement
+ * - Automatic crash recovery with cooldown and permanent disable after 3 crashes
+ * - IPC communication tracing for debugging inter-process messages
+ * - Process migration support with state serialization and validation
+ * - Automatic checkpointing for state preservation across global resets
+ * - Priority inheritance for process dependencies to prevent priority inversion
+ *
  * References:
  * - https://github.com/screepers/POSIS
- * - ROADMAP.md Section 3: Architektur-Ebenen
- * 
- * TODO: Implement process sandboxing to isolate process state
- * Prevent processes from interfering with each other's memory
- * TODO: Add process resource limits (CPU, memory per process)
- * Enforce hard limits to prevent runaway processes
- * TODO: Implement process crash recovery with automatic restart
- * Failed processes should restart after a cooldown period
- * TODO: Add process communication tracing for debugging
- * Log all IPC messages to diagnose coordination issues
- * TODO: Consider implementing process migration between kernels
- * Support moving processes to different kernel instances
- * TODO: Add process checkpointing for state preservation
- * Save process state to survive global resets
- * TODO: Implement process priority inheritance for dependencies
- * Dependent processes should boost priority of their dependencies
+ * - ROADMAP.md Section 22: POSIS Operating System Architecture
  */
 
 import type { IPosisProcess, IPosisProcessContext } from "./IPosisProcess";
