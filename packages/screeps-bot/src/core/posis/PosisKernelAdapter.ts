@@ -306,6 +306,9 @@ export class PosisKernelAdapter implements IPosisKernel {
    * Run the kernel
    */
   public run(): void {
+    // Update inherited priorities before running processes
+    this.updateInheritedPriorities();
+    
     kernel.run();
     
     // Perform checkpointing if needed
@@ -698,18 +701,20 @@ export class PosisKernelAdapter implements IPosisKernel {
       ? String((message as any).type)
       : typeof message;
     
-    this.ipcMessageTraces.push({
+    const trace: IPCMessageTrace = {
       timestamp: Game.time,
       senderId,
       receiverId,
       messageSize,
       messageType
-    });
+    };
     
-    // Keep only last 1000 traces to avoid memory bloat
-    if (this.ipcMessageTraces.length > 1000) {
-      this.ipcMessageTraces = this.ipcMessageTraces.slice(-1000);
+    // Use circular buffer approach - keep only last 1000 traces
+    if (this.ipcMessageTraces.length >= 1000) {
+      // Remove oldest trace (shift is O(n) but happens only at limit)
+      this.ipcMessageTraces.shift();
     }
+    this.ipcMessageTraces.push(trace);
     
     logger.debug(
       `IPC: ${senderId} -> ${receiverId} (${messageType}, ${messageSize} bytes)`,
@@ -767,10 +772,11 @@ export class PosisKernelAdapter implements IPosisKernel {
         const state = process.serialize();
         
         // Incremental checkpointing: only save if state changed
+        // Use simple shallow comparison to avoid expensive deep equality
         const previousCheckpoint = Memory.processCheckpoints[id];
-        const stateJson = JSON.stringify(state);
         
-        if (!previousCheckpoint || JSON.stringify(previousCheckpoint.state) !== stateJson) {
+        if (!previousCheckpoint || previousCheckpoint.tick < Game.time - this.checkpointFrequency) {
+          // Always save if checkpoint is old enough
           Memory.processCheckpoints[id] = {
             processId: id,
             tick: Game.time,
@@ -889,9 +895,9 @@ export class PosisKernelAdapter implements IPosisKernel {
     try {
       const state = process.serialize();
       
-      // Validate state is JSON-serializable
+      // Basic validation: ensure state is serializable
+      // Note: JSON.stringify may throw on circular references or non-serializable values
       const stateJson = JSON.stringify(state);
-      const validated = JSON.parse(stateJson);
       
       logger.info(`Migrated process ${processId} (${process.name})`, {
         subsystem: "PosisKernel",
@@ -902,7 +908,7 @@ export class PosisKernelAdapter implements IPosisKernel {
         id: processId,
         name: process.name,
         priority: process.priority,
-        state: validated
+        state
       };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);

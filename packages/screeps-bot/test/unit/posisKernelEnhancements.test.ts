@@ -393,8 +393,8 @@ describe("POSIS Kernel Enhancements", () => {
       kernel.registerProcess("sender", sender);
       kernel.registerProcess("receiver", receiver);
       
-      // Communication should only work through syscalls
-      sender.sendMessage("receiver", { type: "hello" });
+      // Communication should only work through syscalls via kernel
+      kernel.sendMessage("receiver", { type: "hello" }, "sender");
       
       kernel.run();
       
