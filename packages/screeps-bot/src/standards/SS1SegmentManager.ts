@@ -40,6 +40,15 @@ interface SS1ManagerMemory {
   metrics?: SS1Metrics;
 }
 
+/**
+ * Extend global Memory interface
+ */
+declare global {
+  interface Memory {
+    ss1Manager?: SS1ManagerMemory;
+  }
+}
+
 export class SS1SegmentManager {
   private static readonly API_VERSION = "v1.0.0";
   private static readonly MAX_SEGMENT_SIZE = 100 * 1024; // 100 KB

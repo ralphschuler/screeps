@@ -297,6 +297,13 @@ export class ResourceRequestProtocol {
         logger.warn(`Transfer failed: room ${transfer.from} has no terminal`, {
           meta: { transfer }
         });
+        // Retry later if terminal might become available
+        if (Game.time - transfer.scheduledTick < 10) {
+          remaining.push({
+            ...transfer,
+            scheduledTick: Game.time + 5,
+          });
+        }
         continue;
       }
 
@@ -312,16 +319,22 @@ export class ResourceRequestProtocol {
           `Sent ${transfer.amount} ${transfer.resource} to ${transfer.to}`,
           { meta: { transfer } }
         );
-      } else {
+      } else if (result === ERR_NOT_ENOUGH_RESOURCES || result === ERR_TIRED) {
+        // Retry on next tick for recoverable errors
         logger.warn(
-          `Transfer failed with code ${result}: ${transfer.amount} ${transfer.resource} to ${transfer.to}`,
+          `Transfer failed with code ${result}: ${transfer.amount} ${transfer.resource} to ${transfer.to} - retrying`,
           { meta: { transfer, result } }
         );
-        // Retry on next tick
         remaining.push({
           ...transfer,
           scheduledTick: Game.time + 1,
         });
+      } else {
+        // Log permanent failures but don't retry
+        logger.error(
+          `Transfer permanently failed with code ${result}: ${transfer.amount} ${transfer.resource} to ${transfer.to}`,
+          { meta: { transfer, result } }
+        );
       }
     }
 
@@ -331,6 +344,15 @@ export class ResourceRequestProtocol {
   /**
    * Auto-fulfill ally resource requests based on configuration
    * @param config Fulfillment configuration
+   * 
+   * NOTE: This is a placeholder for future integration with SS2TerminalComms.
+   * Full implementation requires:
+   * 1. Integration with SS2TerminalComms message processing
+   * 2. Alliance configuration for allowed allies
+   * 3. Resource availability checks
+   * 4. Transfer cost calculations
+   * 
+   * For now, use processQueuedTransfers() to execute manually queued transfers.
    */
   public static autoFulfillRequests(config: {
     allyUsernames: string[];
@@ -340,13 +362,25 @@ export class ResourceRequestProtocol {
     const maxTransfers = config.maxTransfersPerTick || 2;
     const minReserve = config.minReserveRatio || 0.5;
     
-    let transfersThisTick = 0;
-
-    // Process messages from allies (simplified - in real implementation,
-    // would need to integrate with SS2TerminalComms message processing)
-    // This is a placeholder showing the concept
-    
     // Process queued transfers from previous requests
     this.processQueuedTransfers();
+    
+    // TODO: Implement automatic ally request processing
+    // This would require:
+    // 1. Reading incoming SS2 messages via SS2TerminalComms.processIncomingTransactions()
+    // 2. Filtering for messages from config.allyUsernames
+    // 3. Parsing resource requests using processMessage()
+    // 4. Auto-approving requests based on availability and reserve ratios
+    // 5. Queuing approved transfers
+    //
+    // Example workflow:
+    // const messages = SS2TerminalComms.processIncomingTransactions();
+    // for (const { sender, message } of messages) {
+    //   if (!config.allyUsernames.includes(sender)) continue;
+    //   if (this.processMessage(sender, message)) {
+    //     // Request was handled by handleResourceRequest()
+    //     // which already queues the transfer if approved
+    //   }
+    // }
   }
 }
