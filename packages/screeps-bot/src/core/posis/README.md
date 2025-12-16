@@ -17,6 +17,16 @@ POSIS provides a standardized, process-based architecture for building modular, 
 - **CPU Budget Management**: Fair resource allocation across processes
 - **Event-Driven Communication**: Event bus for decoupled communication
 
+#### Enhanced Features (v2.0)
+
+- **Process Sandboxing**: Isolated memory namespaces preventing direct access to other process state
+- **Resource Limits**: Per-process CPU and memory limits with hard enforcement
+- **Crash Recovery**: Automatic restart after cooldown (10 ticks) with permanent disable after 3 consecutive crashes
+- **Communication Tracing**: Debug IPC messages with detailed logging and excessive communication detection
+- **Process Migration**: Serialize/transfer processes between kernel instances (cross-shard support)
+- **Automatic Checkpointing**: Incremental state preservation every N ticks, survives global resets
+- **Priority Inheritance**: Boost priority of dependencies to prevent priority inversion deadlocks
+
 ## Architecture
 
 ```
@@ -254,3 +264,147 @@ See `examples/ExampleProcess.ts` for a comprehensive example demonstrating:
 - [ScreepsOS GitHub](https://github.com/screepers/ScreepsOS)
 - [Screeps Wiki: Operating Systems](https://wiki.screepspl.us/Operating_System/)
 - [ROADMAP.md](../../../ROADMAP.md) - Bot architecture and design principles
+
+## Advanced Features
+
+### Resource Limits
+
+Configure CPU and memory limits per process:
+
+```typescript
+posisKernel.setProcessResourceLimits("my-process", {
+  cpuBudget: 0.15,           // 15% of CPU limit
+  cpuWarningThreshold: 0.8,  // Warn at 80% of budget
+  memoryLimit: 1024000       // Optional memory limit in bytes
+});
+```
+
+Processes exceeding hard CPU limits are automatically killed.
+
+### Crash Recovery
+
+Processes that crash are automatically recovered:
+
+- **Cooldown**: 10 ticks before restart attempt
+- **Consecutive Crash Limit**: 3 crashes before permanent disable
+- **Console Alerts**: Notifications for disabled processes
+- **Crash Metadata**: Track crash count and history
+
+```typescript
+// Get crash information
+const crashMeta = posisKernel.getProcessCrashMetadata("my-process");
+console.log(`Crashes: ${crashMeta.crashCount}, Disabled: ${crashMeta.disabled}`);
+```
+
+### Communication Tracing
+
+Enable detailed IPC debugging:
+
+```typescript
+// Enable IPC tracing
+posisKernel.setIPCTracing(true);
+
+// Get recent message traces
+const traces = posisKernel.getIPCMessageTraces(100);
+traces.forEach(trace => {
+  console.log(`${trace.senderId} -> ${trace.receiverId}: ${trace.messageType} (${trace.messageSize} bytes)`);
+});
+```
+
+Features:
+- Log all IPC messages with sender, receiver, type, and size
+- Detect excessive communication (>100 messages/tick on a channel)
+- Performance metrics per communication channel
+- Automatic trace history pruning (keeps last 1000 traces)
+
+### Process Checkpointing
+
+Automatic state preservation across global resets:
+
+```typescript
+// Set checkpoint frequency (ticks)
+posisKernel.setCheckpointFrequency(100); // Checkpoint every 100 ticks
+
+// Checkpoints are automatically saved to Memory.processCheckpoints
+// State is restored automatically on kernel initialization
+```
+
+Features:
+- Incremental checkpointing (only saves if state changed)
+- Automatic restoration after global resets
+- Per-process checkpoint with timestamp
+- Configurable checkpoint frequency
+
+### Process Migration
+
+Migrate processes between kernel instances (e.g., cross-shard):
+
+```typescript
+// Export process from source kernel
+const migrationData = sourceKernel.migrateProcess("my-process");
+
+// Store in InterShardMemory or transfer via other means
+InterShardMemory.setLocal(JSON.stringify(migrationData));
+
+// Import process in target kernel
+const data = JSON.parse(InterShardMemory.getRemote("shard1") || "{}");
+const process = new MyProcess(data.id);
+targetKernel.importMigratedProcess(data, process);
+```
+
+Features:
+- JSON serialization with validation
+- State validation after migration
+- Automatic rollback on import failure
+- Cross-shard migration support
+
+### Priority Inheritance
+
+Prevent priority inversion by boosting dependency priorities:
+
+```typescript
+// Track dependency: spawn-process depends on hauler-process
+posisKernel.addProcessDependency("spawn-process", "hauler-process");
+
+// When spawn-process (high priority) depends on hauler-process (low priority),
+// hauler-process (the dependency) automatically inherits the higher priority
+```
+
+Features:
+- Automatic priority boosting for dependencies
+- Maximum inherited priority cap (configurable)
+- Prevents priority inversion deadlocks
+- Example: Military process boosts logistics process priority
+
+### Process Sandboxing
+
+Processes have isolated memory and syscall-only communication:
+
+```typescript
+class SandboxedProcess extends BaseProcess {
+  protected doRun(): void {
+    // This process's isolated memory
+    this.memory.myData = "isolated";
+    
+    // Cannot directly access other process memory
+    // Must use syscalls for communication
+    this.sendMessage("other-process", { data: "hello" });
+  }
+}
+```
+
+Features:
+- Isolated memory namespace per process
+- Enforced syscall-only communication
+- Data validation for inter-process transfers
+- Prevents process interference
+
+### CPU Usage Tracking
+
+Monitor per-process CPU consumption:
+
+```typescript
+// Get CPU used by specific process
+const cpuUsed = posisKernel.getProcessCpuUsage("my-process");
+console.log(`Process used ${cpuUsed.toFixed(3)} CPU`);
+```
