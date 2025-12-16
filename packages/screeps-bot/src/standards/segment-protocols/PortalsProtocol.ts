@@ -129,4 +129,28 @@ export class PortalsProtocol {
 
     return allPortals;
   }
+
+  /**
+   * Auto-scan all owned rooms and advertise portals
+   * @returns Success status
+   */
+  public static autoAdvertisePortals(): boolean {
+    const allPortals: PortalInfo[] = [];
+
+    // Scan all owned rooms
+    for (const roomName in Game.rooms) {
+      const room = Game.rooms[roomName];
+      if (!room.controller?.my) continue;
+
+      const portals = this.scanRoomForPortals(roomName);
+      allPortals.push(...portals);
+    }
+
+    // Only advertise if we have portals
+    if (allPortals.length === 0) {
+      return false;
+    }
+
+    return this.advertisePortals(allPortals);
+  }
 }

@@ -171,4 +171,44 @@ export class RoomNeedsProtocol {
 
     return matches;
   }
+
+  /**
+   * Auto-calculate and advertise room needs for all owned rooms
+   * @param thresholds Optional custom thresholds
+   * @returns Success status
+   */
+  public static autoAdvertiseNeeds(
+    thresholds?: { [resource: string]: { min: number; max: number } }
+  ): boolean {
+    // Default thresholds if not provided
+    const defaultThresholds = thresholds || {
+      energy: { min: 50000, max: 500000 },
+      power: { min: 1000, max: 10000 },
+      [RESOURCE_HYDROGEN]: { min: 1000, max: 5000 },
+      [RESOURCE_OXYGEN]: { min: 1000, max: 5000 },
+      [RESOURCE_UTRIUM]: { min: 1000, max: 5000 },
+      [RESOURCE_LEMERGIUM]: { min: 1000, max: 5000 },
+      [RESOURCE_KEANIUM]: { min: 1000, max: 5000 },
+      [RESOURCE_ZYNTHIUM]: { min: 1000, max: 5000 },
+      [RESOURCE_CATALYST]: { min: 1000, max: 5000 },
+    };
+
+    const allNeeds: RoomNeed[] = [];
+
+    // Calculate needs for all owned rooms
+    for (const roomName in Game.rooms) {
+      const room = Game.rooms[roomName];
+      if (!room.controller?.my) continue;
+
+      const needs = this.calculateRoomNeeds(room, defaultThresholds);
+      allNeeds.push(...needs);
+    }
+
+    // Only advertise if we have needs
+    if (allNeeds.length === 0) {
+      return false;
+    }
+
+    return this.advertiseNeeds(allNeeds);
+  }
 }

@@ -271,4 +271,82 @@ export class ResourceRequestProtocol {
   private static generateRequestId(): string {
     return `req_${Game.time}_${this.requestIdCounter++}`;
   }
+
+  /**
+   * Process queued resource transfers
+   * Execute transfers scheduled for this tick
+   */
+  public static processQueuedTransfers(): void {
+    if (!Memory.resourceTransfers || Memory.resourceTransfers.length === 0) {
+      return;
+    }
+
+    const transfers = Memory.resourceTransfers;
+    const remaining = [];
+
+    for (const transfer of transfers) {
+      // Check if scheduled for this tick
+      if (transfer.scheduledTick > Game.time) {
+        remaining.push(transfer);
+        continue;
+      }
+
+      // Find the terminal
+      const room = Game.rooms[transfer.from];
+      if (!room || !room.terminal) {
+        logger.warn(`Transfer failed: room ${transfer.from} has no terminal`, {
+          meta: { transfer }
+        });
+        continue;
+      }
+
+      // Execute transfer
+      const result = room.terminal.send(
+        transfer.resource,
+        transfer.amount,
+        transfer.to
+      );
+
+      if (result === OK) {
+        logger.info(
+          `Sent ${transfer.amount} ${transfer.resource} to ${transfer.to}`,
+          { meta: { transfer } }
+        );
+      } else {
+        logger.warn(
+          `Transfer failed with code ${result}: ${transfer.amount} ${transfer.resource} to ${transfer.to}`,
+          { meta: { transfer, result } }
+        );
+        // Retry on next tick
+        remaining.push({
+          ...transfer,
+          scheduledTick: Game.time + 1,
+        });
+      }
+    }
+
+    Memory.resourceTransfers = remaining;
+  }
+
+  /**
+   * Auto-fulfill ally resource requests based on configuration
+   * @param config Fulfillment configuration
+   */
+  public static autoFulfillRequests(config: {
+    allyUsernames: string[];
+    maxTransfersPerTick?: number;
+    minReserveRatio?: number;
+  }): void {
+    const maxTransfers = config.maxTransfersPerTick || 2;
+    const minReserve = config.minReserveRatio || 0.5;
+    
+    let transfersThisTick = 0;
+
+    // Process messages from allies (simplified - in real implementation,
+    // would need to integrate with SS2TerminalComms message processing)
+    // This is a placeholder showing the concept
+    
+    // Process queued transfers from previous requests
+    this.processQueuedTransfers();
+  }
 }
