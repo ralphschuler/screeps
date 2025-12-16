@@ -1021,23 +1021,23 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
       // Only spawn for requests from this room
       if (req.sourceRoom !== room.name) return false;
       
-      // Check if request needs more carriers
       const assignedCreeps = req.assignedCreeps || [];
-      const assignedCount = assignedCreeps.filter((name: string) => Game.creeps[name]).length;
       const neededCarryCapacity = req.amount - req.transferred;
       
-      // Calculate current capacity of assigned creeps
+      // Get alive creeps and calculate their capacity
       let currentCapacity = 0;
+      let aliveCreepCount = 0;
       for (const creepName of assignedCreeps) {
         const creep = Game.creeps[creepName];
         if (creep) {
           currentCapacity += creep.carryCapacity;
+          aliveCreepCount++;
         }
       }
       
       // Need carriers if we need more capacity and haven't hit the max carriers per request
       const maxCarriersPerRequest = 3;
-      return currentCapacity < neededCarryCapacity && assignedCount < maxCarriersPerRequest;
+      return currentCapacity < neededCarryCapacity && aliveCreepCount < maxCarriersPerRequest;
     });
     
     if (!needsCarriers) return false;
