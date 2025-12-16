@@ -71,15 +71,38 @@ The Screepers Standards provide a set of protocols for standardized communicatio
 
 ## Usage Examples
 
-### Example 1: Advertising Your Portals
+### Quick Start with Automation
+
+```typescript
+import { 
+  ProtocolRegistry, 
+  installStandardsCommands 
+} from "./standards";
+
+// Initialize in main.ts
+ProtocolRegistry.initializeDefaults();
+installStandardsCommands();
+
+// Enable protocols you want to use
+ProtocolRegistry.enableProtocol('portals');
+ProtocolRegistry.enableProtocol('roomneeds');
+
+// Auto-update segment every 100 ticks
+if (Game.time % 100 === 0) {
+  ProtocolRegistry.updateSegment(true, true); // throttling + compression
+}
+```
+
+### Example 1: Advertising Your Portals (Automatic)
 
 ```typescript
 import { PortalsProtocol } from "./standards";
 
-// Scan your rooms for portals
-const portals = PortalsProtocol.scanRoomForPortals("W1N1");
+// Auto-scan all owned rooms and advertise
+PortalsProtocol.autoAdvertisePortals();
 
-// Advertise them to allies
+// Manual approach (for specific rooms)
+const portals = PortalsProtocol.scanRoomForPortals("W1N1");
 PortalsProtocol.advertisePortals(portals);
 ```
 
@@ -97,22 +120,25 @@ const allPortals = PortalsProtocol.aggregatePortals([
 ]);
 ```
 
-### Example 3: Advertising Resource Needs
+### Example 3: Advertising Resource Needs (Automatic)
 
 ```typescript
 import { RoomNeedsProtocol } from "./standards";
 
-// Define thresholds
-const thresholds = {
+// Auto-calculate and advertise needs for all rooms
+RoomNeedsProtocol.autoAdvertiseNeeds();
+
+// Custom thresholds (optional)
+const customThresholds = {
   energy: { min: 50000, max: 200000 },
-  U: { min: 1000, max: 5000 },
+  power: { min: 1000, max: 5000 },
+  [RESOURCE_UTRIUM]: { min: 1000, max: 5000 },
 };
+RoomNeedsProtocol.autoAdvertiseNeeds(customThresholds);
 
-// Calculate needs for a room
+// Manual approach (for specific room)
 const room = Game.rooms["W1N1"];
-const needs = RoomNeedsProtocol.calculateRoomNeeds(room, thresholds);
-
-// Advertise needs
+const needs = RoomNeedsProtocol.calculateRoomNeeds(room, customThresholds);
 RoomNeedsProtocol.advertiseNeeds(needs);
 ```
 
@@ -223,13 +249,113 @@ if (Game.time % 100 === 0) {
 }
 ```
 
+### Example 9: Using Protocol Registry
+
+```typescript
+import { ProtocolRegistry } from "./standards";
+
+// Initialize default protocols
+ProtocolRegistry.initializeDefaults();
+
+// Enable protocols you want
+ProtocolRegistry.enableProtocol('portals');
+ProtocolRegistry.enableProtocol('roomneeds');
+
+// Auto-update segment (with throttling and compression)
+if (Game.time % 100 === 0) {
+  ProtocolRegistry.updateSegment(true, true);
+}
+
+// List active protocols
+const active = ProtocolRegistry.getActiveProtocols();
+console.log(`Active protocols: ${active.size}`);
+
+// Disable a protocol
+ProtocolRegistry.disableProtocol('portals');
+```
+
+### Example 10: Segment Discovery
+
+```typescript
+import { SS1SegmentManager } from "./standards";
+
+// Discover nearby players (within 5 rooms)
+const discovered = SS1SegmentManager.discoverNearbyPlayers(5);
+
+for (const [username, channels] of discovered) {
+  console.log(`${username} supports: ${channels.join(", ")}`);
+}
+
+// View metrics
+const metrics = SS1SegmentManager.getMetrics();
+console.log(`Segment reads: ${metrics.segmentReads.success}/${metrics.segmentReads.success + metrics.segmentReads.failure}`);
+```
+
 ## TODOs and Future Enhancements
 
-### Compression Support
-- **Status**: Not implemented
-- **Requirements**: Add `lzstring` library
-- **Impact**: Enables compressed segment data for larger payloads
+### ✅ Automatic Channel Registration
+- **Status**: ✅ Implemented
+- **Description**: ProtocolRegistry manages active protocols and auto-generates SS1 channels
+- **Impact**: Eliminates manual channel management
+- **Files**: `ProtocolRegistry.ts`, `SS1SegmentManager.ts`
+
+### ✅ Segment Compression
+- **Status**: ✅ Implemented
+- **Description**: Automatic compression of large channel data using lz-string
+- **Impact**: Fits more data within 100KB segment limit
 - **Files**: `SS1SegmentManager.ts`
+- **Features**:
+  - Auto-compress channels >1000 bytes
+  - Transparent decompression on read
+  - Fallback to uncompressed if needed
+
+### ✅ Update Throttling
+- **Status**: ✅ Implemented
+- **Description**: Content hash tracking prevents unnecessary segment writes
+- **Impact**: Reduces segment write overhead
+- **Files**: `SS1SegmentManager.ts`
+- **Features**:
+  - 100-tick minimum update interval
+  - Hash-based change detection
+  - Force update option available
+
+### ✅ Channel Validation
+- **Status**: ✅ Implemented
+- **Description**: Validates channel configurations before writing
+- **Impact**: Prevents malformed segments
+- **Files**: `SS1SegmentManager.ts`
+- **Features**:
+  - Segment ID range validation (0-99)
+  - Version format checking
+  - Mutually exclusive field validation
+  - Type checking
+
+### ✅ Segment Discovery
+- **Status**: ✅ Implemented
+- **Description**: Auto-discovers nearby player segments
+- **Impact**: Enables automatic alliance protocol detection
+- **Files**: `SS1SegmentManager.ts`
+- **Features**:
+  - Scans rooms within 5-room radius
+  - TTL-based cache (10,000 ticks)
+  - Automatic segment requests
+
+### ✅ Metrics Tracking
+- **Status**: ✅ Implemented
+- **Description**: Comprehensive segment operation metrics
+- **Impact**: Enables communication debugging and monitoring
+- **Files**: `SS1SegmentManager.ts`
+- **Features**:
+  - Read/write success rates
+  - Protocol usage statistics
+  - Console commands for viewing
+
+### ✅ Console Commands
+- **Status**: ✅ Implemented
+- **Description**: Full console interface for standards management
+- **Impact**: Easy testing and debugging
+- **Files**: `consoleCommands.ts`
+- **Usage**: See Console Commands section below
 
 ### Multi-Packet Queue
 - **Status**: ✅ Implemented
@@ -244,16 +370,86 @@ if (Game.time % 100 === 0) {
   - Error recovery for missing terminals and insufficient resources
 
 ### Encryption/Decryption
-- **Status**: Not implemented
-- **Requirements**: Integration with key exchange and crypto library
+- **Status**: ✅ Implemented (basic XOR cipher)
+- **Description**: Encryption support in SS1SegmentManager
 - **Impact**: Enables secure encrypted channels
 - **Files**: `RoomNeedsProtocol.ts`, `SS1SegmentManager.ts`
+- **Note**: Uses simple XOR cipher for lightweight encryption
 
 ### Key Exchange Response
 - **Status**: Partially implemented
 - **Requirements**: Integration with TerminalComProtocol for room lookup
 - **Impact**: Completes key exchange workflow
 - **Files**: `KeyExchangeProtocol.ts`
+
+## Console Commands
+
+The standards module provides comprehensive console commands for easy management and testing.
+
+### Installation
+
+```typescript
+import { installStandardsCommands } from "./standards";
+
+// In main.ts or console
+installStandardsCommands();
+```
+
+### Available Commands
+
+```javascript
+// Help
+standards.help()                          // Show all available commands
+
+// Protocol Management
+standards.initProtocols()                 // Initialize default protocols
+standards.listProtocols()                 // List all registered protocols
+standards.enableProtocol('portals')       // Enable a protocol
+standards.disableProtocol('roomneeds')    // Disable a protocol
+standards.updateSegment()                 // Update segment with active protocols
+
+// Metrics
+standards.metrics()                       // Show segment operation metrics
+standards.resetMetrics()                  // Reset all metrics
+
+// Discovery
+standards.discover(5)                     // Discover nearby players (max distance)
+standards.listPlayerChannels('username')  // List channels from player
+standards.getPlayerPortals('username')    // Get portals from player
+standards.getPlayerNeeds('username')      // Get needs from player
+
+// Protocol Actions
+standards.advertisePortals()              // Auto-scan and advertise portals
+standards.advertiseNeeds()                // Auto-calculate and advertise needs
+standards.processTransfers()              // Process queued resource transfers
+```
+
+### Example Workflow
+
+```javascript
+// 1. Initialize and enable protocols
+standards.initProtocols()
+standards.enableProtocol('portals')
+standards.enableProtocol('roomneeds')
+standards.enableProtocol('terminalcom')
+
+// 2. Auto-advertise your data
+standards.advertisePortals()    // Scans all owned rooms for portals
+standards.advertiseNeeds()      // Calculates needs from all rooms
+
+// 3. Update segment
+standards.updateSegment()       // Publishes to segment 0
+
+// 4. Discover allies
+standards.discover(5)           // Find nearby players
+
+// 5. View their data
+standards.getPlayerPortals('AllyUsername')
+standards.getPlayerNeeds('AllyUsername')
+
+// 6. Check performance
+standards.metrics()
+```
 
 ## Integration with Bot Architecture
 

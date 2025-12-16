@@ -271,4 +271,113 @@ export class ResourceRequestProtocol {
   private static generateRequestId(): string {
     return `req_${Game.time}_${this.requestIdCounter++}`;
   }
+
+  /**
+   * Process queued resource transfers
+   * Execute transfers scheduled for this tick
+   */
+  public static processQueuedTransfers(): void {
+    if (!Memory.resourceTransfers || Memory.resourceTransfers.length === 0) {
+      return;
+    }
+
+    const transfers = Memory.resourceTransfers;
+    const remaining = [];
+
+    for (const transfer of transfers) {
+      // Check if scheduled for this tick
+      if (transfer.scheduledTick > Game.time) {
+        remaining.push(transfer);
+        continue;
+      }
+
+      // Find the terminal
+      const room = Game.rooms[transfer.from];
+      if (!room || !room.terminal) {
+        logger.warn(`Transfer failed: room ${transfer.from} has no terminal`, {
+          meta: { transfer }
+        });
+        // Retry later if terminal might become available
+        if (Game.time - transfer.scheduledTick < 10) {
+          remaining.push({
+            ...transfer,
+            scheduledTick: Game.time + 5,
+          });
+        }
+        continue;
+      }
+
+      // Execute transfer
+      const result = room.terminal.send(
+        transfer.resource,
+        transfer.amount,
+        transfer.to
+      );
+
+      if (result === OK) {
+        logger.info(
+          `Sent ${transfer.amount} ${transfer.resource} to ${transfer.to}`,
+          { meta: { transfer } }
+        );
+      } else if (result === ERR_NOT_ENOUGH_RESOURCES || result === ERR_TIRED) {
+        // Retry on next tick for recoverable errors
+        logger.warn(
+          `Transfer failed with code ${result}: ${transfer.amount} ${transfer.resource} to ${transfer.to} - retrying`,
+          { meta: { transfer, result } }
+        );
+        remaining.push({
+          ...transfer,
+          scheduledTick: Game.time + 1,
+        });
+      } else {
+        // Log permanent failures but don't retry
+        logger.error(
+          `Transfer permanently failed with code ${result}: ${transfer.amount} ${transfer.resource} to ${transfer.to}`,
+          { meta: { transfer, result } }
+        );
+      }
+    }
+
+    Memory.resourceTransfers = remaining;
+  }
+
+  /**
+   * Auto-fulfill ally resource requests based on configuration
+   * @param config Fulfillment configuration
+   * 
+   * NOTE: This is a placeholder for future integration with SS2TerminalComms.
+   * Full implementation requires:
+   * 1. Integration with SS2TerminalComms message processing
+   * 2. Alliance configuration for allowed allies
+   * 3. Resource availability checks
+   * 4. Transfer cost calculations
+   * 
+   * For now, use processQueuedTransfers() to execute manually queued transfers.
+   */
+  public static autoFulfillRequests(config: {
+    allyUsernames: string[];
+    maxTransfersPerTick?: number;
+    minReserveRatio?: number;
+  }): void {
+    // Process queued transfers from previous requests
+    this.processQueuedTransfers();
+    
+    // TODO: Implement automatic ally request processing
+    // This would require:
+    // 1. Reading incoming SS2 messages via SS2TerminalComms.processIncomingTransactions()
+    // 2. Filtering for messages from config.allyUsernames
+    // 3. Parsing resource requests using processMessage()
+    // 4. Auto-approving requests based on availability and reserve ratios
+    // 5. Queuing approved transfers
+    //
+    // Example workflow:
+    // const messages = SS2TerminalComms.processIncomingTransactions();
+    // for (const { sender, message } of messages) {
+    //   if (!config.allyUsernames.includes(sender)) continue;
+    //   if (this.processMessage(sender, message)) {
+    //     // Request was handled by handleResourceRequest()
+    //     // which already queues the transfer if approved
+    //   }
+    // }
+  }
 }

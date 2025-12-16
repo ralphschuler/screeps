@@ -7,6 +7,8 @@
 export * from "./types";
 export * from "./SS1SegmentManager";
 export * from "./SS2TerminalComms";
+export * from "./ProtocolRegistry";
+export * from "./consoleCommands";
 
 // Alliance and diplomacy
 export * from "./types/allianceTypes";
