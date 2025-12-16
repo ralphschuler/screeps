@@ -359,9 +359,6 @@ export class ResourceRequestProtocol {
     maxTransfersPerTick?: number;
     minReserveRatio?: number;
   }): void {
-    const maxTransfers = config.maxTransfersPerTick || 2;
-    const minReserve = config.minReserveRatio || 0.5;
-    
     // Process queued transfers from previous requests
     this.processQueuedTransfers();
     

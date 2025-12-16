@@ -6,7 +6,6 @@
 import { SS1Channel, SS1SegmentManager } from "./SS1SegmentManager";
 import { PortalsProtocol } from "./segment-protocols/PortalsProtocol";
 import { RoomNeedsProtocol } from "./segment-protocols/RoomNeedsProtocol";
-import { TerminalComProtocol } from "./segment-protocols/TerminalComProtocol";
 import { createLogger } from "../core/logger";
 
 const logger = createLogger("ProtocolRegistry");
@@ -123,9 +122,24 @@ export class ProtocolRegistry {
   ): boolean {
     let channels = this.generateChannels();
 
+    // Validate channels first before compression (fail fast)
+    const validChannels: { [channelName: string]: SS1Channel } = {};
+    for (const [name, channel] of Object.entries(channels)) {
+      const validation = SS1SegmentManager.validateChannel(name, channel);
+      if (validation.valid) {
+        validChannels[name] = channel;
+      } else {
+        logger.warn(`Skipping invalid channel ${name}: ${validation.errors.join(", ")}`, {
+          meta: { channel: name, errors: validation.errors }
+        });
+      }
+    }
+
     // Apply compression if needed
     if (useCompression) {
-      channels = SS1SegmentManager.compressChannelsIfNeeded(channels);
+      channels = SS1SegmentManager.compressChannelsIfNeeded(validChannels);
+    } else {
+      channels = validChannels;
     }
 
     // Update with or without throttling

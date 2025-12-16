@@ -4,11 +4,12 @@ import { SS1SegmentManager } from "../../../src/standards/SS1SegmentManager";
 
 describe("ProtocolRegistry", () => {
   beforeEach(() => {
-    // @ts-ignore: allow adding Game to global
+    // @ts-expect-error: allow adding Game to global
     global.Game = { 
       time: 1000,
       rooms: {}
     };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (Memory as any).ss1Manager = undefined;
   });
 

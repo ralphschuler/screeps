@@ -4,7 +4,7 @@
  * Based on: https://github.com/screepers/screepers-standards/blob/master/SS1-Default_Public_Segment.md
  */
 
-import { SS1Api, SS1Channel, SS1DefaultPublicSegment } from "./types";
+import { SS1Channel, SS1DefaultPublicSegment } from "./types";
 import * as LZString from "lz-string";
 import { createLogger } from "../core/logger";
 
@@ -66,7 +66,8 @@ export class SS1SegmentManager {
     channels: { [channelName: string]: SS1Channel }
   ): boolean {
     try {
-      // Validate all channels
+      // Validate all channels and filter out invalid ones
+      const validChannels: { [channelName: string]: SS1Channel } = {};
       for (const [name, channel] of Object.entries(channels)) {
         const validation = this.validateChannel(name, channel);
         if (!validation.valid) {
@@ -74,8 +75,16 @@ export class SS1SegmentManager {
             meta: { channel: name, errors: validation.errors }
           });
           this.trackMetric("segmentWrites", false, channel.protocol);
-          return false;
+          // Continue processing other channels instead of failing entire operation
+          continue;
         }
+        validChannels[name] = channel;
+      }
+      
+      // If no valid channels, return false
+      if (Object.keys(validChannels).length === 0) {
+        logger.warn("No valid channels to advertise", { meta: {} });
+        return false;
       }
 
       const segment: SS1DefaultPublicSegment = {
@@ -83,7 +92,7 @@ export class SS1SegmentManager {
           version: this.API_VERSION,
           update: Game.time,
         },
-        channels: channels,
+        channels: validChannels,
       };
 
       const data = JSON.stringify(segment);
@@ -103,8 +112,8 @@ export class SS1SegmentManager {
       RawMemory.setDefaultPublicSegment(0);
       RawMemory.segments[0] = data;
 
-      logger.info(`Updated default public segment with ${Object.keys(channels).length} channels`, {
-        meta: { size: data.length, channels: Object.keys(channels) }
+      logger.info(`Updated default public segment with ${Object.keys(validChannels).length} channels`, {
+        meta: { size: data.length, channels: Object.keys(validChannels) }
       });
       
       // Track metrics for each protocol
@@ -421,7 +430,7 @@ export class SS1SegmentManager {
     }
 
     // Validate version format
-    if (channel.version && !/^v?\d+\.\d+\.\d+/.test(channel.version)) {
+    if (channel.version && !/^v?\d+\.\d+\.\d+$/.test(channel.version)) {
       errors.push(`Invalid version format: ${channel.version}`);
     }
 
@@ -431,7 +440,7 @@ export class SS1SegmentManager {
     }
 
     // Validate compression flag
-    if (channel.compressed && typeof channel.compressed !== "boolean") {
+    if (channel.compressed !== undefined && typeof channel.compressed !== "boolean") {
       errors.push("Compressed flag must be boolean");
     }
 
@@ -544,8 +553,10 @@ export class SS1SegmentManager {
 
       if (!isNearby) continue;
 
-      // Add room owner to nearby players
-      if (room.controller.owner && room.controller.owner.username !== "Invader") {
+      // Add room owner to nearby players (exclude our own username and Invader)
+      if (room.controller.owner && 
+          room.controller.owner.username !== "Invader" &&
+          !room.controller.my) {
         nearbyPlayers.add(room.controller.owner.username);
       }
     }

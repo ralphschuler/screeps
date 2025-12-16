@@ -223,7 +223,7 @@ Examples:
  * Install standards commands to global
  */
 export function installStandardsCommands(): void {
-  // @ts-ignore: Adding to global
+  // @ts-expect-error: Adding to global
   global.standards = standardsCommands;
   console.log("Standards commands installed. Type 'standards.help()' for usage.");
 }

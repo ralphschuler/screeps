@@ -314,6 +314,20 @@ Line 4`;
         expect(result.valid).to.be.true;
       }
     });
+
+    it("should reject invalid compressed field type", () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const channel: any = {
+        protocol: "test",
+        data: "test data",
+        compressed: "true", // String instead of boolean
+        update: 1000,
+      };
+
+      const result = SS1SegmentManager.validateChannel("test", channel);
+      expect(result.valid).to.be.false;
+      expect(result.errors.some(e => e.includes("boolean"))).to.be.true;
+    });
   });
 
   describe("compression threshold", () => {
