@@ -1007,6 +1007,44 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
     if (!needsCarriers) return false;
   }
 
+  // Cross-shard carrier needs active cross-shard transfer requests
+  if (role === "crossShardCarrier") {
+    // Import resourceTransferCoordinator to check for active requests
+    const { resourceTransferCoordinator } = require("../intershard/resourceTransferCoordinator");
+    
+    // Check if there are any active cross-shard transfer requests
+    const activeRequests = resourceTransferCoordinator.getActiveRequests();
+    if (activeRequests.length === 0) {
+      return false;
+    }
+    
+    // Check if any request originates from this room and needs carriers
+    const needsCarriers = activeRequests.some((req: any) => {
+      // Only spawn for requests from this room
+      if (req.sourceRoom !== room.name) return false;
+      
+      // Check if request needs more carriers
+      const assignedCreeps = req.assignedCreeps || [];
+      const assignedCount = assignedCreeps.filter((name: string) => Game.creeps[name]).length;
+      const neededCarryCapacity = req.amount - req.transferred;
+      
+      // Calculate current capacity of assigned creeps
+      let currentCapacity = 0;
+      for (const creepName of assignedCreeps) {
+        const creep = Game.creeps[creepName];
+        if (creep) {
+          currentCapacity += creep.carryCapacity;
+        }
+      }
+      
+      // Need carriers if we need more capacity and haven't hit the max carriers per request
+      const maxCarriersPerRequest = 3;
+      return currentCapacity < neededCarryCapacity && assignedCount < maxCarriersPerRequest;
+    });
+    
+    if (!needsCarriers) return false;
+  }
+
   return true;
 }
 
