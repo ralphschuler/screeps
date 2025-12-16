@@ -330,7 +330,7 @@ posisKernel.setCheckpointFrequency(100); // Checkpoint every 100 ticks
 ```
 
 Features:
-- Incremental checkpointing (only saves changed state)
+- Incremental checkpointing (only saves if state changed)
 - Automatic restoration after global resets
 - Per-process checkpoint with timestamp
 - Configurable checkpoint frequency
@@ -366,8 +366,8 @@ Prevent priority inversion by boosting dependency priorities:
 // Track dependency: spawn-process depends on hauler-process
 posisKernel.addProcessDependency("spawn-process", "hauler-process");
 
-// When spawn-process (high priority) needs hauler-process (low priority),
-// hauler-process automatically inherits higher priority
+// When spawn-process (high priority) depends on hauler-process (low priority),
+// hauler-process (the dependency) automatically inherits the higher priority
 ```
 
 Features:

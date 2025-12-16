@@ -138,6 +138,13 @@ export class PosisKernelAdapter implements IPosisKernel {
   private processDependencies: Map<string, Set<string>> = new Map(); // dependent -> dependencies
   private inheritedPriorities: Map<string, number> = new Map(); // process -> inherited priority
   private maxInheritedPriority = 100; // Cap on inherited priority
+  
+  // Configuration constants
+  private static readonly CRASH_COOLDOWN_TICKS = 10;
+  private static readonly MAX_CONSECUTIVE_CRASHES = 3;
+  private static readonly EXCESSIVE_IPC_THRESHOLD = 100;
+  private static readonly IPC_TRACE_BUFFER_SIZE = 1000;
+  private static readonly IPC_TRACE_BATCH_REMOVE = 100;
 
   /**
    * Initialize the kernel adapter
@@ -145,7 +152,8 @@ export class PosisKernelAdapter implements IPosisKernel {
   public initialize(): void {
     kernel.initialize();
     this.loadProcessStates();
-    this.loadCheckpoints();
+    // Note: loadCheckpoints() is called during registerProcess for each process
+    // to ensure processes exist before checkpoint restoration
   }
   
   /**
@@ -221,6 +229,9 @@ export class PosisKernelAdapter implements IPosisKernel {
     if (savedState && process.deserialize) {
       process.deserialize(savedState);
     }
+    
+    // Restore from checkpoint if available
+    this.restoreProcessCheckpoint(id, process);
 
     // Register with underlying kernel
     kernel.registerProcess({
@@ -278,6 +289,11 @@ export class PosisKernelAdapter implements IPosisKernel {
     this.inheritedPriorities.delete(id);
     this.processDependencies.delete(id);
     
+    // Clean up checkpoint data in Memory
+    if (Memory.processCheckpoints) {
+      delete Memory.processCheckpoints[id];
+    }
+    
     kernel.unregisterProcess(id);
   }
 
@@ -306,6 +322,9 @@ export class PosisKernelAdapter implements IPosisKernel {
    * Run the kernel
    */
   public run(): void {
+    // Reset per-tick IPC message count at start of tick
+    this.ipcMessageCount.clear();
+    
     // Update inherited priorities before running processes
     this.updateInheritedPriorities();
     
@@ -343,8 +362,8 @@ export class PosisKernelAdapter implements IPosisKernel {
       const count = (this.ipcMessageCount.get(channelKey) || 0) + 1;
       this.ipcMessageCount.set(channelKey, count);
       
-      // Warn if excessive (more than 100 messages per tick on a channel)
-      if (count > 100 && count % 100 === 0) {
+      // Warn if excessive (more than EXCESSIVE_IPC_THRESHOLD messages per tick on a channel)
+      if (count > PosisKernelAdapter.EXCESSIVE_IPC_THRESHOLD && count % PosisKernelAdapter.EXCESSIVE_IPC_THRESHOLD === 0) {
         logger.warn(
           `Excessive IPC: ${channelKey} has sent ${count} messages this tick`,
           { subsystem: "PosisKernel" }
@@ -426,6 +445,7 @@ export class PosisKernelAdapter implements IPosisKernel {
 
     // Track CPU usage before execution
     const cpuBefore = Game.cpu.getUsed();
+    let processKilled = false;
     
     // Run process with crash recovery
     try {
@@ -435,24 +455,35 @@ export class PosisKernelAdapter implements IPosisKernel {
       // Handle async processes (optional)
       if (result instanceof Promise) {
         result.catch((err) => {
-          this.handleProcessCrash(id, err);
+          // For async errors, we need to check if process still exists
+          if (this.processInstances.has(id)) {
+            this.handleProcessCrash(id, err);
+          }
         });
       }
       
-      process.state = "idle";
-      
-      // Reset consecutive crash counter on success
-      if (crashMeta) {
-        crashMeta.consecutiveCrashes = 0;
+      // Only update state if process wasn't killed
+      if (this.processInstances.has(id)) {
+        process.state = "idle";
+        
+        // Reset consecutive crash counter on success
+        if (crashMeta) {
+          crashMeta.consecutiveCrashes = 0;
+        }
+      } else {
+        processKilled = true;
       }
     } catch (err) {
       this.handleProcessCrash(id, err);
+      processKilled = !this.processInstances.has(id);
     }
     
-    // Check CPU usage and enforce limits
-    const cpuUsed = Game.cpu.getUsed() - cpuBefore;
-    this.processCpuUsage.set(id, cpuUsed);
-    this.checkResourceLimits(id, cpuUsed);
+    // Check CPU usage and enforce limits (only if process wasn't already killed)
+    if (!processKilled) {
+      const cpuUsed = Game.cpu.getUsed() - cpuBefore;
+      this.processCpuUsage.set(id, cpuUsed);
+      this.checkResourceLimits(id, cpuUsed);
+    }
   }
   
   /**
@@ -493,20 +524,20 @@ export class PosisKernelAdapter implements IPosisKernel {
     process.state = "error";
     
     // Check if we should disable the process permanently
-    if (crashMeta.consecutiveCrashes >= 3) {
+    if (crashMeta.consecutiveCrashes >= PosisKernelAdapter.MAX_CONSECUTIVE_CRASHES) {
       crashMeta.disabled = true;
       logger.error(
-        `Process ${id} (${process.name}) disabled after 3 consecutive crashes`,
+        `Process ${id} (${process.name}) disabled after ${PosisKernelAdapter.MAX_CONSECUTIVE_CRASHES} consecutive crashes`,
         { subsystem: "PosisKernel", processId: id }
       );
       console.log(
-        `⚠️ POSIS ALERT: Process "${process.name}" (${id}) has been permanently disabled after 3 consecutive crashes`
+        `⚠️ POSIS ALERT: Process "${process.name}" (${id}) has been permanently disabled after ${PosisKernelAdapter.MAX_CONSECUTIVE_CRASHES} consecutive crashes`
       );
     } else {
-      // Set restart cooldown (10 ticks)
-      crashMeta.restartCooldownUntil = Game.time + 10;
+      // Set restart cooldown
+      crashMeta.restartCooldownUntil = Game.time + PosisKernelAdapter.CRASH_COOLDOWN_TICKS;
       logger.warn(
-        `Process ${id} (${process.name}) will restart in 10 ticks (crashes: ${crashMeta.consecutiveCrashes}/3)`,
+        `Process ${id} (${process.name}) will restart in ${PosisKernelAdapter.CRASH_COOLDOWN_TICKS} ticks (crashes: ${crashMeta.consecutiveCrashes}/${PosisKernelAdapter.MAX_CONSECUTIVE_CRASHES})`,
         { subsystem: "PosisKernel", processId: id }
       );
     }
@@ -693,12 +724,19 @@ export class PosisKernelAdapter implements IPosisKernel {
   }
   
   /**
+   * Type guard to check if message has a 'type' property
+   */
+  private hasTypeProperty(obj: unknown): obj is { type: unknown } {
+    return typeof obj === 'object' && obj !== null && 'type' in obj;
+  }
+  
+  /**
    * Trace IPC message for debugging
    */
   private traceIPCMessage(senderId: string, receiverId: string, message: unknown): void {
     const messageSize = JSON.stringify(message).length;
-    const messageType = typeof message === 'object' && message !== null && 'type' in message
-      ? String((message as any).type)
+    const messageType = this.hasTypeProperty(message)
+      ? String(message.type)
       : typeof message;
     
     const trace: IPCMessageTrace = {
@@ -709,10 +747,10 @@ export class PosisKernelAdapter implements IPosisKernel {
       messageType
     };
     
-    // Use circular buffer approach - keep only last 1000 traces
-    if (this.ipcMessageTraces.length >= 1000) {
-      // Remove oldest trace (shift is O(n) but happens only at limit)
-      this.ipcMessageTraces.shift();
+    // Use circular buffer approach - keep only last IPC_TRACE_BUFFER_SIZE traces
+    if (this.ipcMessageTraces.length >= PosisKernelAdapter.IPC_TRACE_BUFFER_SIZE) {
+      // Remove oldest batch at once to reduce O(n) operation frequency
+      this.ipcMessageTraces.splice(0, PosisKernelAdapter.IPC_TRACE_BATCH_REMOVE);
     }
     this.ipcMessageTraces.push(trace);
     
@@ -752,9 +790,6 @@ export class PosisKernelAdapter implements IPosisKernel {
         { subsystem: "PosisKernel" }
       );
     }
-    
-    // Reset per-tick message count
-    this.ipcMessageCount.clear();
   }
   
   /**
@@ -772,11 +807,10 @@ export class PosisKernelAdapter implements IPosisKernel {
         const state = process.serialize();
         
         // Incremental checkpointing: only save if state changed
-        // Use simple shallow comparison to avoid expensive deep equality
         const previousCheckpoint = Memory.processCheckpoints[id];
+        const stateJson = JSON.stringify(state);
         
-        if (!previousCheckpoint || previousCheckpoint.tick < Game.time - this.checkpointFrequency) {
-          // Always save if checkpoint is old enough
+        if (!previousCheckpoint || JSON.stringify(previousCheckpoint.state) !== stateJson) {
           Memory.processCheckpoints[id] = {
             processId: id,
             tick: Game.time,
@@ -796,24 +830,16 @@ export class PosisKernelAdapter implements IPosisKernel {
   }
   
   /**
-   * Load checkpoints from Memory
+   * Restore checkpoint for a single process
    */
-  private loadCheckpoints(): void {
+  private restoreProcessCheckpoint(id: string, process: IPosisProcess): void {
     if (!Memory.processCheckpoints) return;
     
-    let restoredCount = 0;
-    
-    for (const [id, checkpoint] of Object.entries(Memory.processCheckpoints)) {
-      const process = this.processInstances.get(id);
-      if (process?.deserialize && checkpoint.state) {
-        process.deserialize(checkpoint.state);
-        restoredCount++;
-      }
-    }
-    
-    if (restoredCount > 0) {
-      logger.info(
-        `Restored ${restoredCount} processes from checkpoints`,
+    const checkpoint = Memory.processCheckpoints[id];
+    if (checkpoint?.state && process.deserialize) {
+      process.deserialize(checkpoint.state);
+      logger.debug(
+        `Restored process ${id} from checkpoint (tick ${checkpoint.tick})`,
         { subsystem: "PosisKernel" }
       );
     }
@@ -880,6 +906,18 @@ export class PosisKernelAdapter implements IPosisKernel {
   }
   
   /**
+   * Get the effective priority for a process (for scheduling)
+   * Returns the inherited priority if present, otherwise the base priority.
+   * NOTE: The scheduler should use this method to determine process order.
+   */
+  public getEffectivePriority(processId: string): number {
+    const inherited = this.inheritedPriorities.get(processId);
+    const process = this.processInstances.get(processId);
+    if (!process) return 0;
+    return inherited !== undefined ? inherited : process.priority;
+  }
+  
+  /**
    * Migrate a process to another kernel instance
    * Returns serialized process state for migration
    */
@@ -928,6 +966,20 @@ export class PosisKernelAdapter implements IPosisKernel {
     options?: IPosisSpawnOptions
   ): boolean {
     try {
+      // Validate required fields
+      if (!processData.id || typeof processData.id !== 'string') {
+        throw new Error('Missing or invalid process id');
+      }
+      if (!processData.name || typeof processData.name !== 'string') {
+        throw new Error('Missing or invalid process name');
+      }
+      if (processData.priority !== undefined && typeof processData.priority !== 'number') {
+        throw new Error('Invalid process priority');
+      }
+      if (!processData.state || typeof processData.state !== 'object') {
+        throw new Error('Missing or invalid process state');
+      }
+      
       const id = processData.id as string;
       
       // Register the process
@@ -950,7 +1002,7 @@ export class PosisKernelAdapter implements IPosisKernel {
       });
       
       // Rollback on failure
-      if (processData.id) {
+      if (processData.id && typeof processData.id === 'string') {
         this.unregisterProcess(processData.id as string);
       }
       

@@ -1,10 +1,9 @@
 import { expect } from "chai";
 import { PosisKernelAdapter } from "../../src/core/posis/PosisKernelAdapter";
 import { BaseProcess } from "../../src/core/posis/BaseProcess";
-import type { IPosisProcess } from "../../src/core/posis/IPosisProcess";
 
 // Mock Game object
-declare const global: any;
+declare const global: NodeJS.Global & typeof globalThis;
 
 class TestProcess extends BaseProcess {
   public runCount = 0;
@@ -72,8 +71,10 @@ describe("POSIS Kernel Enhancements", () => {
       // Check crash metadata
       const crashMeta = kernel.getProcessCrashMetadata("crash-test");
       expect(crashMeta).to.not.be.undefined;
-      expect(crashMeta?.crashCount).to.equal(1);
-      expect(crashMeta?.consecutiveCrashes).to.equal(1);
+      if (crashMeta) {
+        expect(crashMeta.crashCount).to.equal(1);
+        expect(crashMeta.consecutiveCrashes).to.equal(1);
+      }
     });
     
     it("should restart crashed process after cooldown", () => {
@@ -114,8 +115,11 @@ describe("POSIS Kernel Enhancements", () => {
       
       // Check that process is disabled
       const crashMeta = kernel.getProcessCrashMetadata("disable-test");
-      expect(crashMeta?.disabled).to.be.true;
-      expect(crashMeta?.consecutiveCrashes).to.equal(3);
+      expect(crashMeta).to.not.be.undefined;
+      if (crashMeta) {
+        expect(crashMeta.disabled).to.be.true;
+        expect(crashMeta.consecutiveCrashes).to.equal(3);
+      }
       
       // Process should not run even after cooldown
       process.shouldCrash = false;
@@ -135,7 +139,10 @@ describe("POSIS Kernel Enhancements", () => {
       kernel.run();
       
       let crashMeta = kernel.getProcessCrashMetadata("recovery-test");
-      expect(crashMeta?.consecutiveCrashes).to.equal(1);
+      expect(crashMeta).to.not.be.undefined;
+      if (crashMeta) {
+        expect(crashMeta.consecutiveCrashes).to.equal(1);
+      }
       
       // Successful run
       process.shouldCrash = false;
@@ -143,7 +150,10 @@ describe("POSIS Kernel Enhancements", () => {
       kernel.run();
       
       crashMeta = kernel.getProcessCrashMetadata("recovery-test");
-      expect(crashMeta?.consecutiveCrashes).to.equal(0);
+      expect(crashMeta).to.not.be.undefined;
+      if (crashMeta) {
+        expect(crashMeta.consecutiveCrashes).to.equal(0);
+      }
     });
   });
 
@@ -206,8 +216,13 @@ describe("POSIS Kernel Enhancements", () => {
       
       // Check that checkpoint was saved
       expect(Memory.processCheckpoints).to.not.be.undefined;
-      expect(Memory.processCheckpoints["checkpoint-test"]).to.not.be.undefined;
-      expect(Memory.processCheckpoints["checkpoint-test"].state.runCount).to.equal(4);
+      if (Memory.processCheckpoints) {
+        expect(Memory.processCheckpoints["checkpoint-test"]).to.not.be.undefined;
+        const checkpoint = Memory.processCheckpoints["checkpoint-test"];
+        if (checkpoint && checkpoint.state) {
+          expect((checkpoint.state as any).runCount).to.equal(4);
+        }
+      }
     });
     
     it("should restore process state from checkpoint", () => {
@@ -301,9 +316,11 @@ describe("POSIS Kernel Enhancements", () => {
       const migrationData = kernel.migrateProcess("migrate-test");
       
       expect(migrationData).to.not.be.null;
-      expect(migrationData?.id).to.equal("migrate-test");
-      expect(migrationData?.name).to.equal("MigrateTest");
-      expect(migrationData?.state).to.deep.include({ runCount: 10 });
+      if (migrationData) {
+        expect(migrationData.id).to.equal("migrate-test");
+        expect(migrationData.name).to.equal("MigrateTest");
+        expect(migrationData.state).to.deep.include({ runCount: 10 });
+      }
     });
     
     it("should import a migrated process", () => {
