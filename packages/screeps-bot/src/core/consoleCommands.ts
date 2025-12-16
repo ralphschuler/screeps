@@ -165,6 +165,144 @@ class VisualizationCommands {
       .map(([key, value]) => `${key}: ${String(value)}`)
       .join("\n");
   }
+
+  @Command({
+    name: "setVisMode",
+    description: "Set visualization mode preset (debug, presentation, minimal, performance)",
+    usage: "setVisMode(mode)",
+    examples: [
+      "setVisMode('debug')",
+      "setVisMode('presentation')",
+      "setVisMode('minimal')",
+      "setVisMode('performance')"
+    ],
+    category: "Visualization"
+  })
+  public setVisMode(mode: string): string {
+    const validModes = ["debug", "presentation", "minimal", "performance"];
+    if (!validModes.includes(mode)) {
+      return `Invalid mode: ${mode}. Valid modes: ${validModes.join(", ")}`;
+    }
+
+    const { visualizationManager } = require("../visuals/visualizationManager");
+    visualizationManager.setMode(mode as "debug" | "presentation" | "minimal" | "performance");
+    return `Visualization mode set to: ${mode}`;
+  }
+
+  @Command({
+    name: "toggleVisLayer",
+    description: "Toggle a specific visualization layer",
+    usage: "toggleVisLayer(layer)",
+    examples: [
+      "toggleVisLayer('pheromones')",
+      "toggleVisLayer('paths')",
+      "toggleVisLayer('defense')",
+      "toggleVisLayer('economy')",
+      "toggleVisLayer('performance')"
+    ],
+    category: "Visualization"
+  })
+  public toggleVisLayer(layer: string): string {
+    const { visualizationManager } = require("../visuals/visualizationManager");
+    const { VisualizationLayer } = require("../memory/schemas");
+    
+    const layerMap: Record<string, number> = {
+      pheromones: VisualizationLayer.Pheromones,
+      paths: VisualizationLayer.Paths,
+      traffic: VisualizationLayer.Traffic,
+      defense: VisualizationLayer.Defense,
+      economy: VisualizationLayer.Economy,
+      construction: VisualizationLayer.Construction,
+      performance: VisualizationLayer.Performance
+    };
+
+    const vizLayer = layerMap[layer.toLowerCase()];
+    if (!vizLayer) {
+      return `Unknown layer: ${layer}. Valid layers: ${Object.keys(layerMap).join(", ")}`;
+    }
+
+    visualizationManager.toggleLayer(vizLayer);
+    const enabled = visualizationManager.isLayerEnabled(vizLayer);
+    return `Layer ${layer}: ${enabled ? "enabled" : "disabled"}`;
+  }
+
+  @Command({
+    name: "showVisPerf",
+    description: "Show visualization performance metrics",
+    usage: "showVisPerf()",
+    examples: ["showVisPerf()"],
+    category: "Visualization"
+  })
+  public showVisPerf(): string {
+    const { visualizationManager } = require("../visuals/visualizationManager");
+    const metrics = visualizationManager.getPerformanceMetrics();
+    
+    let result = "=== Visualization Performance ===\n";
+    result += `Total CPU: ${metrics.totalCost.toFixed(3)}\n`;
+    result += `% of Budget: ${metrics.percentOfBudget.toFixed(2)}%\n`;
+    result += "\nPer-Layer Costs:\n";
+    
+    for (const [layer, cost] of Object.entries(metrics.layerCosts)) {
+      const costValue = cost as number;
+      if (costValue > 0) {
+        result += `  ${layer}: ${costValue.toFixed(3)} CPU\n`;
+      }
+    }
+    
+    return result;
+  }
+
+  @Command({
+    name: "showVisConfig",
+    description: "Show current visualization configuration",
+    usage: "showVisConfig()",
+    examples: ["showVisConfig()"],
+    category: "Visualization"
+  })
+  public showVisConfig(): string {
+    const { visualizationManager } = require("../visuals/visualizationManager");
+    const { VisualizationLayer } = require("../memory/schemas");
+    const config = visualizationManager.getConfig();
+    
+    let result = "=== Visualization Configuration ===\n";
+    result += `Mode: ${config.mode}\n`;
+    result += "\nEnabled Layers:\n";
+    
+    const layerNames: Record<number, string> = {
+      [VisualizationLayer.Pheromones]: "Pheromones",
+      [VisualizationLayer.Paths]: "Paths",
+      [VisualizationLayer.Traffic]: "Traffic",
+      [VisualizationLayer.Defense]: "Defense",
+      [VisualizationLayer.Economy]: "Economy",
+      [VisualizationLayer.Construction]: "Construction",
+      [VisualizationLayer.Performance]: "Performance"
+    };
+
+    for (const [value, name] of Object.entries(layerNames)) {
+      const layer = parseInt(value, 10);
+      const enabled = (config.enabledLayers & layer) !== 0;
+      result += `  ${name}: ${enabled ? "✓" : "✗"}\n`;
+    }
+    
+    return result;
+  }
+
+  @Command({
+    name: "clearVisCache",
+    description: "Clear visualization cache",
+    usage: "clearVisCache(roomName?)",
+    examples: ["clearVisCache()", "clearVisCache('W1N1')"],
+    category: "Visualization"
+  })
+  public clearVisCache(roomName?: string): string {
+    const { visualizationManager } = require("../visuals/visualizationManager");
+    visualizationManager.clearCache(roomName);
+    
+    if (roomName) {
+      return `Visualization cache cleared for room: ${roomName}`;
+    }
+    return "All visualization caches cleared";
+  }
 }
 
 /**
