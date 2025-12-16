@@ -363,6 +363,7 @@ export class ResourceRequestProtocol {
     this.processQueuedTransfers();
     
     // TODO: Implement automatic ally request processing
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/716
     // This would require:
     // 1. Reading incoming SS2 messages via SS2TerminalComms.processIncomingTransactions()
     // 2. Filtering for messages from config.allyUsernames
