@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { MAX_CARRIERS_PER_CROSS_SHARD_REQUEST } from "../../src/logic/spawn";
 
 /**
  * Tests for Cross-Shard Resource Transfer functionality
@@ -487,22 +488,20 @@ describe("Cross-Shard Resource Transfer", () => {
     });
 
     it("should respect max carriers per request limit", () => {
-      const maxCarriersPerRequest = 3;
-      
       // Can spawn when under limit
-      expect(0 < maxCarriersPerRequest).to.be.true;
-      expect(1 < maxCarriersPerRequest).to.be.true;
-      expect(2 < maxCarriersPerRequest).to.be.true;
+      expect(0 < MAX_CARRIERS_PER_CROSS_SHARD_REQUEST).to.be.true;
+      expect(1 < MAX_CARRIERS_PER_CROSS_SHARD_REQUEST).to.be.true;
+      expect(2 < MAX_CARRIERS_PER_CROSS_SHARD_REQUEST).to.be.true;
       
       // Cannot spawn when at or over limit
-      expect(3 < maxCarriersPerRequest).to.be.false;
-      expect(4 < maxCarriersPerRequest).to.be.false;
+      expect(3 < MAX_CARRIERS_PER_CROSS_SHARD_REQUEST).to.be.false;
+      expect(4 < MAX_CARRIERS_PER_CROSS_SHARD_REQUEST).to.be.false;
     });
 
     it("should only count alive creeps for capacity calculation", () => {
       // Simulates filtering dead creeps
       const assignedCreeps = ["creep1", "creep2", "creep3"];
-      const mockCreeps: Record<string, any> = {
+      const mockCreeps: Record<string, Pick<Creep, "carryCapacity">> = {
         creep1: { carryCapacity: 800 },
         // creep2 is dead (not in Game.creeps)
         creep3: { carryCapacity: 800 }

@@ -26,6 +26,9 @@ const THREATS_PER_GUARD = 2;
 /** Reservation threshold in ticks - trigger renewal below this */
 const RESERVATION_THRESHOLD_TICKS = 3000;
 
+/** Maximum number of carriers that can be assigned to a single cross-shard transfer request */
+export const MAX_CARRIERS_PER_CROSS_SHARD_REQUEST = 3;
+
 /** Body template definition */
 export interface BodyTemplate {
   parts: BodyPartConstant[];
@@ -1036,8 +1039,7 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
       }
       
       // Need carriers if we need more capacity and haven't hit the max carriers per request
-      const maxCarriersPerRequest = 3;
-      return currentCapacity < neededCarryCapacity && aliveCreepCount < maxCarriersPerRequest;
+      return currentCapacity < neededCarryCapacity && aliveCreepCount < MAX_CARRIERS_PER_CROSS_SHARD_REQUEST;
     });
     
     if (!needsCarriers) return false;
