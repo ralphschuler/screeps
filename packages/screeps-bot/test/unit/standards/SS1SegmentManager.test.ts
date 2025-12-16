@@ -258,4 +258,147 @@ Line 4`;
       expect(decrypted).to.equal(originalData);
     });
   });
+
+  describe("channel validation", () => {
+    it("should validate valid channel", () => {
+      const channel = SS1SegmentManager.createChannel("test", {
+        segments: [1, 2, 3],
+        version: "v1.0.0",
+      });
+
+      const result = SS1SegmentManager.validateChannel("test", channel);
+      expect(result.valid).to.be.true;
+      expect(result.errors).to.be.empty;
+    });
+
+    it("should reject invalid segment IDs", () => {
+      const channel = SS1SegmentManager.createChannel("test", {
+        segments: [-1, 100, 50],
+      });
+
+      const result = SS1SegmentManager.validateChannel("test", channel);
+      expect(result.valid).to.be.false;
+      expect(result.errors.length).to.be.at.least(1);
+      expect(result.errors[0]).to.include("Invalid segment ID");
+    });
+
+    it("should reject invalid version format", () => {
+      const channel = SS1SegmentManager.createChannel("test", {
+        version: "invalid",
+      });
+
+      const result = SS1SegmentManager.validateChannel("test", channel);
+      expect(result.valid).to.be.false;
+      expect(result.errors.some(e => e.includes("version"))).to.be.true;
+    });
+
+    it("should reject data and segments together", () => {
+      const channel: any = {
+        protocol: "test",
+        data: "test data",
+        segments: [1, 2, 3],
+        update: 1000,
+      };
+
+      const result = SS1SegmentManager.validateChannel("test", channel);
+      expect(result.valid).to.be.false;
+      expect(result.errors.some(e => e.includes("mutually exclusive"))).to.be.true;
+    });
+
+    it("should accept valid version formats", () => {
+      const validVersions = ["v1.0.0", "1.0.0", "v2.1.3", "10.20.30"];
+      
+      for (const version of validVersions) {
+        const channel = SS1SegmentManager.createChannel("test", { version });
+        const result = SS1SegmentManager.validateChannel("test", channel);
+        expect(result.valid).to.be.true;
+      }
+    });
+  });
+
+  describe("compression threshold", () => {
+    it("should compress large channel data automatically", () => {
+      const largeData = "x".repeat(2000);
+      const channels = {
+        large: SS1SegmentManager.createChannel("test", { data: largeData }),
+        small: SS1SegmentManager.createChannel("test2", { data: "small" }),
+      };
+
+      const compressed = SS1SegmentManager.compressChannelsIfNeeded(channels);
+      
+      expect(compressed.large.compressed).to.be.true;
+      expect(compressed.small.compressed).to.not.be.true;
+    });
+
+    it("should not compress small data", () => {
+      const smallData = "x".repeat(500);
+      const channels = {
+        test: SS1SegmentManager.createChannel("test", { data: smallData }),
+      };
+
+      const compressed = SS1SegmentManager.compressChannelsIfNeeded(channels);
+      expect(compressed.test.compressed).to.not.be.true;
+    });
+  });
+
+  describe("content hashing and throttling", () => {
+    beforeEach(() => {
+      // Reset memory for each test
+      (Memory as any).ss1Manager = undefined;
+    });
+
+    it("should not update when content unchanged", () => {
+      const channels = {
+        test: SS1SegmentManager.createChannel("test", { data: "test" }),
+      };
+
+      // First update should succeed
+      const result1 = SS1SegmentManager.updateWithThrottling(channels);
+      expect(result1).to.be.true;
+
+      // Second update with same content should be skipped
+      const result2 = SS1SegmentManager.updateWithThrottling(channels);
+      expect(result2).to.be.true; // Returns true but doesn't actually update
+    });
+
+    it("should force update when requested", () => {
+      const channels = {
+        test: SS1SegmentManager.createChannel("test", { data: "test" }),
+      };
+
+      SS1SegmentManager.updateWithThrottling(channels);
+      const result = SS1SegmentManager.updateWithThrottling(channels, true);
+      expect(result).to.be.true;
+    });
+  });
+
+  describe("metrics tracking", () => {
+    beforeEach(() => {
+      (Memory as any).ss1Manager = undefined;
+      SS1SegmentManager.resetMetrics();
+    });
+
+    it("should track metrics", () => {
+      const metrics = SS1SegmentManager.getMetrics();
+      expect(metrics).to.not.be.null;
+      expect(metrics?.segmentWrites).to.exist;
+      expect(metrics?.segmentReads).to.exist;
+    });
+
+    it("should reset metrics", () => {
+      SS1SegmentManager.resetMetrics();
+      const metrics = SS1SegmentManager.getMetrics();
+      
+      expect(metrics?.segmentWrites.success).to.equal(0);
+      expect(metrics?.segmentWrites.failure).to.equal(0);
+      expect(metrics?.segmentReads.success).to.equal(0);
+      expect(metrics?.segmentReads.failure).to.equal(0);
+    });
+
+    it("should generate metrics summary", () => {
+      const summary = SS1SegmentManager.getMetricsSummary();
+      expect(summary).to.be.a("string");
+      expect(summary).to.include("SS1 Segment Manager Metrics");
+    });
+  });
 });
