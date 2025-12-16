@@ -332,6 +332,40 @@ ${stats.rooms.map(r => `  ${r.roomName}: RCL${r.rcl} | ${r.creepCount} creeps | 
   }
 
   @Command({
+    name: "cacheStats",
+    description: "Show object cache statistics (hits, misses, hit rate, CPU savings)",
+    usage: "cacheStats()",
+    examples: ["cacheStats()"],
+    category: "Statistics"
+  })
+  public cacheStats(): string {
+    const { getCacheStatistics } = require("../utils/objectCache");
+    const stats = getCacheStatistics();
+    
+    return `=== Object Cache Statistics ===
+Cache Size: ${stats.size} entries
+Cache Hits: ${stats.hits}
+Cache Misses: ${stats.misses}
+Hit Rate: ${stats.hitRate.toFixed(2)}%
+Estimated CPU Saved: ${stats.cpuSaved.toFixed(3)} CPU
+
+Performance: ${stats.hitRate >= 80 ? "Excellent" : stats.hitRate >= 60 ? "Good" : stats.hitRate >= 40 ? "Fair" : "Poor"}`;
+  }
+
+  @Command({
+    name: "resetCacheStats",
+    description: "Reset cache statistics counters (for benchmarking)",
+    usage: "resetCacheStats()",
+    examples: ["resetCacheStats()"],
+    category: "Statistics"
+  })
+  public resetCacheStats(): string {
+    const { resetCacheStats } = require("../utils/objectCache");
+    resetCacheStats();
+    return "Cache statistics reset";
+  }
+
+  @Command({
     name: "toggleProfiling",
     description: "Toggle CPU profiling on/off",
     usage: "toggleProfiling()",
