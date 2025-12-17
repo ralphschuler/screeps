@@ -1,11 +1,10 @@
 import { expect } from "chai";
 import { Kernel, ProcessPriority, buildKernelConfigFromCpu } from "../../src/core/kernel";
 import { getConfig, resetConfig } from "../../src/config";
-import { eventBus } from "../../src/core/events";
 
 describe("Kernel process health monitoring", () => {
   let kernel: Kernel;
-  let eventLog: Array<{ event: string; data: any }>;
+  let eventLog: Array<{ event: 'suspended' | 'recovered'; data: unknown }>;
 
   beforeEach(() => {
     resetConfig();
@@ -13,7 +12,7 @@ describe("Kernel process health monitoring", () => {
     
     // Mock Game global
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore: Allow setting test values
+    // @ts-expect-error: Allow setting test values
     global.Game = {
       ...global.Game,
       time: 0,
@@ -56,13 +55,12 @@ describe("Kernel process health monitoring", () => {
     });
 
     it("should maintain high health score for successful runs", () => {
-      let runCount = 0;
       kernel.registerProcess({
         id: "test",
         name: "Test Process",
         priority: ProcessPriority.MEDIUM,
         frequency: "high",
-        execute: () => { runCount++; }
+        execute: () => {}
       });
 
       // Run 10 times successfully
@@ -212,15 +210,15 @@ describe("Kernel process health monitoring", () => {
 
       const process = kernel.getProcess("test");
       expect(process?.state).to.equal("suspended");
-      expect(process?.stats.suspendedUntil).to.not.be.null;
+      expect(process?.stats.suspendedUntil).to.not.equal(null);
       expect(process?.stats.suspensionReason).to.include("3 consecutive failures");
       
       // Should emit suspension event
       expect(eventLog).to.have.lengthOf(1);
       expect(eventLog[0].event).to.equal("suspended");
-      expect(eventLog[0].data.processId).to.equal("test");
-      expect(eventLog[0].data.consecutive).to.equal(3);
-      expect(eventLog[0].data.permanent).to.be.false;
+      expect((eventLog[0].data as any).processId).to.equal("test");
+      expect((eventLog[0].data as any).consecutive).to.equal(3);
+      expect((eventLog[0].data as any).permanent).to.equal(false);
     });
 
     it("should use exponential backoff for suspension duration", () => {
@@ -308,9 +306,9 @@ describe("Kernel process health monitoring", () => {
       
       // Should emit permanent suspension event
       const suspensionEvents = eventLog.filter(e => e.event === "suspended");
-      const permanentSuspension = suspensionEvents.find(e => e.data.permanent === true);
-      expect(permanentSuspension).to.not.be.undefined;
-      expect(permanentSuspension?.data.consecutive).to.equal(10);
+      const permanentSuspension = suspensionEvents.find(e => (e.data as any).permanent === true);
+      expect(permanentSuspension).to.not.equal(undefined);
+      expect((permanentSuspension?.data as any).consecutive).to.equal(10);
     });
   });
 
@@ -344,13 +342,13 @@ describe("Kernel process health monitoring", () => {
       // Process should be resumed automatically
       const processAfter = kernel.getProcess("test");
       expect(processAfter?.state).to.not.equal("suspended");
-      expect(processAfter?.stats.suspendedUntil).to.be.null;
-      expect(processAfter?.stats.suspensionReason).to.be.null;
+      expect(processAfter?.stats.suspendedUntil).to.equal(null);
+      expect(processAfter?.stats.suspensionReason).to.equal(null);
       
       // Should emit recovery event
       const recoveryEvents = eventLog.filter(e => e.event === "recovered");
       expect(recoveryEvents).to.have.lengthOf(1);
-      expect(recoveryEvents[0].data.processId).to.equal("test");
+      expect((recoveryEvents[0].data as any).processId).to.equal("test");
     });
 
     it("should not resume before suspension expires", () => {
@@ -408,22 +406,22 @@ describe("Kernel process health monitoring", () => {
       
       // Manually resume
       const result = kernel.resumeProcess("test");
-      expect(result).to.be.true;
+      expect(result).to.equal(true);
 
       const process = kernel.getProcess("test");
       expect(process?.state).to.not.equal("suspended");
-      expect(process?.stats.suspendedUntil).to.be.null;
-      expect(process?.stats.suspensionReason).to.be.null;
+      expect(process?.stats.suspendedUntil).to.equal(null);
+      expect(process?.stats.suspensionReason).to.equal(null);
       
       // Should emit recovery event with manual flag
       expect(eventLog).to.have.lengthOf(1);
       expect(eventLog[0].event).to.equal("recovered");
-      expect(eventLog[0].data.manual).to.be.true;
+      expect((eventLog[0].data as any).manual).to.equal(true);
     });
 
     it("should return false when trying to resume non-existent process", () => {
       const result = kernel.resumeProcess("non-existent");
-      expect(result).to.be.false;
+      expect(result).to.equal(false);
     });
 
     it("should return false when trying to resume non-suspended process", () => {
@@ -436,7 +434,7 @@ describe("Kernel process health monitoring", () => {
       });
 
       const result = kernel.resumeProcess("test");
-      expect(result).to.be.false;
+      expect(result).to.equal(false);
     });
   });
 
