@@ -54,14 +54,22 @@ export function moveToWithRemoteCache(
     });
     
     // moveByPath expects the path to start from current position or adjacent
-    // If creep is on the path or near it, use moveByPath
+    // For remote mining, the cached path starts from a home spawn/storage position
+    // We'll use moveByPath if the creep is on or adjacent to the first path step
+    // Note: PathStep only has x, y coordinates (no room), so for cross-room paths
+    // we check if the creep is in the same room and near the coordinates
     const firstStep = cachedPath[0];
-    const onPath = creep.pos.x === firstStep.x && 
-                   creep.pos.y === firstStep.y && 
-                   creep.pos.roomName === creep.room.name;
-    const nearPath = creep.pos.getRangeTo(new RoomPosition(firstStep.x, firstStep.y, creep.room.name)) <= 1;
     
-    if (onPath || nearPath) {
+    // Check if creep is at the first step (same position in current room)
+    const atFirstStep = creep.pos.x === firstStep.x && creep.pos.y === firstStep.y;
+    
+    // Check if creep is adjacent to first step (within range 1 in current room)
+    // This avoids creating RoomPosition with potentially wrong room name
+    const adjacentToPath = !atFirstStep && 
+      Math.abs(creep.pos.x - firstStep.x) <= 1 && 
+      Math.abs(creep.pos.y - firstStep.y) <= 1;
+    
+    if (atFirstStep || adjacentToPath) {
       const moveByPathResult = creep.moveByPath(cachedPath);
       
       // If moveByPath succeeded, we're done
@@ -71,7 +79,7 @@ export function moveToWithRemoteCache(
       
       // If moveByPath failed, log and fall through to moveTo
       logger.debug(`moveByPath failed for ${creep.name}, falling back to moveTo`, {
-        meta: { result: moveByPathResult, onPath, nearPath }
+        meta: { result: moveByPathResult, atFirstStep, adjacentToPath }
       });
     }
   }

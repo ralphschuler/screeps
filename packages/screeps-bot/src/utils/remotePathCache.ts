@@ -240,8 +240,12 @@ function getRoomCallback(roomName: string): CostMatrix | boolean {
   }
   
   // Avoid rooms with hostile structures (unless it's a highway)
+  const coords = roomName.match(/\d+/g);
   const isHighway = /^[WE]\d+[NS]\d+$/.test(roomName) && 
-    (parseInt(roomName.match(/\d+/)?.[0] ?? "0", 10) % 10 === 0);
+    coords !== null &&
+    coords.length === 2 &&
+    parseInt(coords[0], 10) % 10 === 0 &&
+    parseInt(coords[1], 10) % 10 === 0;
   
   if (!isHighway) {
     const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES, {
