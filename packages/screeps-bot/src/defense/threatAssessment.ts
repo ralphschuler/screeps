@@ -152,6 +152,7 @@ export function assessThreat(room: Room): ThreatAnalysis {
   });
   
   // TODO: Improve tower DPS accuracy by calculating distance-based damage falloff
+  // Issue URL: https://github.com/ralphschuler/screeps/issues/741
   // Details: Current implementation assumes flat 300 damage per tower, but actual damage
   //          varies from 150 (max range) to 600 (min range). Consider calculating average
   //          distance from towers to hostile creeps for more accurate threat assessment.
@@ -262,6 +263,7 @@ export function estimateDefenderCost(
   const defendersNeeded = Math.ceil(totalDPS / effectiveDefenderDps);
   
   // TODO: Refine defender cost estimation based on actual room defender templates
+  // Issue URL: https://github.com/ralphschuler/screeps/issues/740
   // Details: Use the military/role system to derive per-template DPS and energy
   //          costs (including boosts) instead of a single global heuristic.
   // See: ROADMAP.md Section 12 - Threat-Level & Posture for integration
