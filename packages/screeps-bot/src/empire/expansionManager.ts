@@ -64,7 +64,7 @@ const DEFAULT_CONFIG: ExpansionManagerConfig = {
   updateInterval: 20,
   minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
   maxRemoteDistance: 2,
-  maxRemotesPerRoom: 3,
+  maxRemotesPerRoom: 4, // Increased from 3 to support energy needs at RCL 5-6
   minRemoteSources: 1,
   minRclForRemotes: 3,
   minRclForClaiming: 4,
@@ -175,17 +175,12 @@ export class ExpansionManager {
   private calculateRemoteCapacity(room: Room, swarm: { danger: number }): number {
     const rcl = room.controller?.level ?? 0;
 
-    // New rooms (RCL 3-4) get limited remotes
-    if (rcl < 4) {
+    // Check danger level - reduce remotes if under threat (applies to all RCLs)
+    if (swarm.danger >= 2) {
       return Math.min(1, this.config.maxRemotesPerRoom);
     }
 
-    // Developing rooms (RCL 4-6) get moderate remotes
-    if (rcl < 7) {
-      return Math.min(2, this.config.maxRemotesPerRoom);
-    }
-
-    // Check room energy stability - reduce remotes if critically low
+    // Check room energy stability - reduce remotes if critically low (applies to all RCLs)
     // Changed from 50000 to 10000 to allow remote mining to BUILD UP energy reserves
     // instead of requiring high reserves before enabling remote mining (chicken-and-egg problem)
     const storage = room.storage;
@@ -194,9 +189,20 @@ export class ExpansionManager {
       return Math.min(1, this.config.maxRemotesPerRoom);
     }
 
-    // Check danger level - reduce remotes if under threat
-    if (swarm.danger >= 2) {
+    // Early-stage rooms (RCL < 4) get limited remotes
+    if (rcl < 4) {
       return Math.min(1, this.config.maxRemotesPerRoom);
+    }
+
+    // RCL 4 gets 2 remotes - still developing infrastructure
+    if (rcl === 4) {
+      return Math.min(2, this.config.maxRemotesPerRoom);
+    }
+
+    // RCL 5-6 get 3 remotes - need extra energy for development
+    // At RCL 5, rooms often have only 2 local sources which is insufficient
+    if (rcl < 7) {
+      return Math.min(3, this.config.maxRemotesPerRoom);
     }
 
     // Mature rooms (RCL 7-8) with good energy get full capacity

@@ -195,7 +195,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
       createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1050),
       createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 1600)
     ],
-    priority: 75,
+    priority: 85, // Increased from 75 to prioritize remote income generation after core economy roles
     maxPerRoom: 6, // Higher max since these are distributed across remote rooms
     remoteRole: true
   },
@@ -210,7 +210,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
         1600
       )
     ],
-    priority: 70,
+    priority: 80, // Increased from 70 to prioritize remote logistics over other economic roles
     maxPerRoom: 6, // Higher max since these are distributed across remote rooms
     remoteRole: true
   },
