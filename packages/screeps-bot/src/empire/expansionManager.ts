@@ -189,7 +189,7 @@ export class ExpansionManager {
       return Math.min(1, this.config.maxRemotesPerRoom);
     }
 
-    // New rooms (RCL 3-4) get limited remotes
+    // Early-stage rooms (RCL < 4) get limited remotes
     if (rcl < 4) {
       return Math.min(1, this.config.maxRemotesPerRoom);
     }
