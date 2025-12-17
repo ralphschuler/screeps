@@ -6,9 +6,9 @@
  * 
  * Invalid Target Detection:
  * When an action fails due to an invalid target (ERR_FULL, ERR_NOT_ENOUGH_RESOURCES,
- * ERR_INVALID_TARGET), the executor immediately clears the creep's state. This allows
- * the behavior function to re-evaluate and find a new valid target on the same tick,
- * preventing creeps from appearing "idle" between actions.
+ * ERR_INVALID_TARGET, ERR_NO_PATH), the executor immediately clears the creep's state.
+ * This allows the behavior function to re-evaluate and find a new valid target on the
+ * same tick, preventing creeps from appearing "idle" between actions.
  * 
  * Example: Hauler with 200 energy transferring to extensions (50 capacity each):
  * - Transfer 50 to extension A → OK, state persists
@@ -16,6 +16,11 @@
  * - Behavior re-evaluates → finds extension B
  * - Transfer 50 to extension B → OK
  * This happens seamlessly without the creep appearing idle.
+ * 
+ * ERR_NO_PATH Handling:
+ * When a target becomes unreachable (ERR_NO_PATH), the creep's state is cleared and it
+ * immediately re-evaluates to find a new accessible target. This prevents wasted time
+ * traveling back to the home room when other valid targets may be available nearby.
  */
 
 import type { CreepAction, CreepContext } from "./types";
@@ -356,22 +361,6 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
     // Without clearing the cache, the other creep will immediately re-select the same
     // now-full target, creating an infinite loop where both creeps get stuck.
     clearAllCachedTargets(creep);
-    
-    // BUGFIX: Set returningHome flag when ERR_NO_PATH occurs
-    // This tells the state machine to send the creep back to its home room
-    // instead of re-evaluating the same unreachable target
-    // The flag will be cleared once the creep is back in its home room
-    if (!ctx.memory.returningHome) {
-      ctx.memory.returningHome = true;
-      logger.info("Target unreachable, sending creep home", {
-        room: creep.pos.roomName,
-        creep: creep.name,
-        meta: {
-          role: ctx.memory.role,
-          homeRoom: ctx.memory.homeRoom || creep.pos.roomName
-        }
-      });
-    }
   }
 
   // Update working state based on carry capacity

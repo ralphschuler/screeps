@@ -18,20 +18,28 @@
  *
  * Invalid Target Handling:
  * The executor (executeAction) detects when actions fail due to invalid targets
- * and immediately clears the state, allowing the creep to find a new target:
+ * and immediately clears the state, allowing the creep to re-evaluate and find a new target:
  * - ERR_FULL: Target is full (e.g., spawn filled by another creep)
  * - ERR_NOT_ENOUGH_RESOURCES: Source is empty (e.g., container depleted)
  * - ERR_INVALID_TARGET: Target doesn't exist or wrong type
+ * - ERR_NO_PATH: Target is unreachable (blocked or no valid path exists)
  *
  * This two-layer approach prevents:
  * 1. Creeps getting stuck trying invalid actions (executor catches errors)
  * 2. Premature state transitions after partial transfers (state machine only checks inventory)
+ * 3. Wasted time returning home when other valid targets may be available nearby
  * 
- * Example: Creep with 200 energy transferring to extensions with 50 capacity each:
+ * Example: Creep with 200 energy transferring to extensions (50 capacity each):
  * - Tick 1: Transfer 50 to extension A (fills it), creep has 150 left, state continues
  * - Tick 2: Try transfer to extension A → ERR_FULL → executor clears state
  * - Tick 2: Behavior evaluates, finds extension B, transfers 50, state continues
  * - This allows smooth multi-target operations without appearing "idle"
+ * 
+ * Example: Creep trying to reach unreachable target:
+ * - Tick 1: Try to move to blocked target → ERR_NO_PATH → executor clears state
+ * - Tick 1: Behavior re-evaluates, finds accessible alternative target
+ * - Tick 2: Move to new target → OK
+ * - No wasted time traveling back to home room
  */
 
 import type { CreepAction, CreepContext } from "./types";
@@ -386,7 +394,6 @@ function stateToAction(state: CreepState): CreepAction | null {
  * Otherwise, evaluate new behavior and commit to it.
  * 
  * REFACTORED: Added safety checks to prevent infinite loops
- * BUGFIX: Check returningHome flag to handle unreachable targets (ERR_NO_PATH)
  * 
  * @param ctx Creep context
  * @param behaviorFn Behavior function to call when evaluating new action
@@ -396,44 +403,6 @@ export function evaluateWithStateMachine(
   ctx: CreepContext,
   behaviorFn: (ctx: CreepContext) => CreepAction
 ): CreepAction {
-  // BUGFIX: Check if creep should return home due to unreachable target
-  // When ERR_NO_PATH occurs, executor sets returningHome flag
-  // Send creep back to home room, then clear the flag once they arrive
-  if (ctx.memory.returningHome) {
-    // Clear flag if creep is back in home room
-    if (ctx.isInHomeRoom) {
-      delete ctx.memory.returningHome;
-      
-      // BUGFIX: For scouts, clear exploration targets to prevent cycling when returning home due to path errors
-      if (ctx.memory.role === "scout") {
-        delete ctx.memory.targetRoom;
-        delete ctx.memory.lastExploredRoom;
-        logger.info("Scout returned home, cleared exploration targets to prevent cycling", {
-          room: ctx.creep.pos.roomName,
-          creep: ctx.creep.name,
-          meta: { role: ctx.memory.role }
-        });
-      } else {
-        logger.info("Creep returned home, resuming normal behavior", {
-          room: ctx.creep.pos.roomName,
-          creep: ctx.creep.name,
-          meta: { role: ctx.memory.role }
-        });
-      }
-    } else {
-      // Not home yet - return moveToRoom action
-      logger.debug("Creep returning to home room", {
-        room: ctx.creep.pos.roomName,
-        creep: ctx.creep.name,
-        meta: {
-          role: ctx.memory.role,
-          homeRoom: ctx.homeRoom,
-          currentRoom: ctx.creep.room.name
-        }
-      });
-      return { type: "moveToRoom", roomName: ctx.homeRoom };
-    }
-  }
 
   const currentState = ctx.memory.state;
 
