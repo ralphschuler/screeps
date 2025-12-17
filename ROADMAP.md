@@ -602,6 +602,14 @@ Kernkomponenten
 - Zentrale Prozessverwaltung und Scheduling
 - CPU-Budget-Allokation pro Prozess
 - Bucket-basierte Betriebsmodi (critical, low, normal, high)
+- **Process Health Monitoring:** Automatische Fehlererfassung und Wiederherstellung
+  - Health Score (0-100): Berechnet aus Erfolgsrate und aktueller Performance
+  - Consecutive Error Tracking: Zählt aufeinanderfolgende Fehler pro Prozess
+  - Automatic Suspension: Nach 3 Fehlern mit exponentiellem Backoff (2^errors Ticks, max 1000)
+  - Circuit Breaker: Permanente Suspension nach 10 aufeinanderfolgenden Fehlern
+  - Automatic Recovery: Prozesse werden automatisch fortgesetzt wenn Suspension abläuft
+  - Event Emission: `process.suspended` und `process.recovered` Events für Monitoring
+  - Console Commands: `showProcessHealth()`, `resumeAllProcesses()` für manuelle Steuerung
 - IPosisProcess:
 - Standardinterface für alle Prozesse
 - Lifecycle-Management (init, run, cleanup)
