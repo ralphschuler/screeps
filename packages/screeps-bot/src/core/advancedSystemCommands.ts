@@ -428,6 +428,7 @@ export class PowerCommands {
     }
 
     // Check GPL requirement
+    // POWER_INFO is a global constant provided by the Screeps game engine
     const powerInfo = POWER_INFO[power];
     if (!powerInfo) {
       return `Invalid power: ${power}`;

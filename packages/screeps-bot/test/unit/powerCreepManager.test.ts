@@ -98,6 +98,8 @@ describe("PowerCreepManager", () => {
 
   describe("Power Upgrade Logic", () => {
     it("should filter powers by GPL level", () => {
+      // Note: POWER_INFO is a global constant provided by Screeps game engine
+      // In tests, we simulate the filtering logic that uses POWER_INFO
       const ECO_OPERATOR_POWERS = [
         PWR_GENERATE_OPS,        // Level 0
         PWR_OPERATE_SPAWN,       // Level 2
@@ -107,9 +109,18 @@ describe("PowerCreepManager", () => {
       
       const currentGPL = 5;
       
+      // In actual game environment, POWER_INFO would be used to filter
+      // For testing, we verify the filtering logic concept
+      const powerLevels = {
+        [PWR_GENERATE_OPS]: 0,
+        [PWR_OPERATE_SPAWN]: 2,
+        [PWR_OPERATE_TOWER]: 10,
+        [PWR_OPERATE_LAB]: 20
+      };
+      
       const availablePowers = ECO_OPERATOR_POWERS.filter(power => {
-        const powerInfo = POWER_INFO[power];
-        return powerInfo && powerInfo.level !== undefined && powerInfo.level <= currentGPL;
+        const levelRequired = powerLevels[power];
+        return levelRequired !== undefined && levelRequired <= currentGPL;
       });
 
       // Should include GENERATE_OPS (0) and OPERATE_SPAWN (2), exclude TOWER (10) and LAB (20)

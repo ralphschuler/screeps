@@ -422,11 +422,13 @@ export class PowerCreepManager {
 
   /**
    * Generate power upgrade path for a role
+   * POWER_INFO is a global constant provided by the Screeps game engine
    */
   private generatePowerPath(role: "powerQueen" | "powerWarrior", currentLevel: number): PowerConstant[] {
     const basePowers = role === "powerQueen" ? ECO_OPERATOR_POWERS : COMBAT_OPERATOR_POWERS;
     
     // Filter to powers available at current GPL level
+    // POWER_INFO is globally available in Screeps runtime
     const availablePowers = basePowers.filter(power => {
       const powerInfo = POWER_INFO[power];
       return powerInfo && powerInfo.level !== undefined && powerInfo.level <= (this.gplState?.currentLevel ?? 0);
@@ -469,11 +471,13 @@ export class PowerCreepManager {
 
   /**
    * Select next power for a power creep to upgrade
+   * POWER_INFO is a global constant provided by the Screeps game engine
    */
   private selectNextPower(pc: PowerCreep, assignment: PowerCreepAssignment): PowerConstant | null {
     const powerPath = assignment.powerPath ?? this.generatePowerPath(assignment.role, pc.level);
     
     // Find first power in path that we don't have yet
+    // POWER_INFO is globally available in Screeps runtime
     for (const power of powerPath) {
       if (!pc.powers[power]) {
         // Verify we meet GPL requirement
