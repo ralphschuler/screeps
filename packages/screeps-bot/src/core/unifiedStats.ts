@@ -685,12 +685,21 @@ export class UnifiedStatsManager {
           progressPercent: 0
         },
         gpl: {
-          level: 0
+          level: 0,
+          progress: 0,
+          progressTotal: 0,
+          progressPercent: 0
         }
       },
       empire: {
         rooms: 0,
         creeps: 0,
+        powerCreeps: {
+          total: 0,
+          spawned: 0,
+          eco: 0,
+          combat: 0
+        },
         energy: {
           storage: 0,
           terminal: 0,
