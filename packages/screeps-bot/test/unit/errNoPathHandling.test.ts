@@ -2,8 +2,9 @@
  * ERR_NO_PATH Handling Tests
  *
  * Tests for the behavior system's handling of unreachable targets (ERR_NO_PATH).
- * When a creep encounters an unreachable target, it should return to its home room
- * instead of re-evaluating the same unreachable target repeatedly.
+ * When a creep encounters an unreachable target, it should clear its state and
+ * re-evaluate to find a new accessible target, instead of returning to its home room.
+ * This prevents wasted time and allows creeps to adapt quickly to changing situations.
  */
 
 import { expect } from "chai";
@@ -101,126 +102,171 @@ describe("ERR_NO_PATH Handling", () => {
     delete (global as any).Game;
   });
 
-  it("should set returningHome flag when ERR_NO_PATH occurs", () => {
-    // Initially, no returningHome flag
-    expect(mockContext.memory.returningHome).to.be.undefined;
+  it("should clear state when ERR_NO_PATH occurs and allow re-evaluation", () => {
+    // Initially, no state
+    expect(mockContext.memory.state).to.be.undefined;
 
-    // Get an action from state machine
+    // Get an action from state machine - should call behavior function
     const action = evaluateWithStateMachine(mockContext, mockBehaviorFn);
     
-    // Simulate ERR_NO_PATH by manually setting the flag (as executor would do)
-    // In real scenario, executeAction would set this when moveTo returns ERR_NO_PATH
-    mockContext.memory.returningHome = true;
-
-    // Verify flag is set
-    expect(mockContext.memory.returningHome).to.be.true;
-  });
-
-  it("should return moveToRoom action when returningHome flag is set", () => {
-    // Set returningHome flag
-    mockContext.memory.returningHome = true;
-
-    // Call state machine
-    const action = evaluateWithStateMachine(mockContext, mockBehaviorFn);
-
-    // Should return moveToRoom action to home room
-    expect(action.type).to.equal("moveToRoom");
-    if (action.type === "moveToRoom") {
-      expect(action.roomName).to.equal("W1N1");
-    }
-  });
-
-  it("should clear returningHome flag when creep arrives home", () => {
-    // Set returningHome flag
-    mockContext.memory.returningHome = true;
-
-    // Creep is now in home room
-    mockContext.isInHomeRoom = true;
-    mockCreep.room.name = "W1N1";
-    mockCreep.pos.roomName = "W1N1";
-
-    // Call state machine
-    const action = evaluateWithStateMachine(mockContext, mockBehaviorFn);
-
-    // Flag should be cleared
-    expect(mockContext.memory.returningHome).to.be.undefined;
-
-    // Should resume normal behavior (call behavior function)
+    // Action should be harvest (from behavior function)
     expect(action.type).to.equal("harvest");
+    
+    // State should be set
+    expect(mockContext.memory.state).to.not.be.undefined;
+    
+    // Simulate ERR_NO_PATH by clearing state (as executor would do)
+    delete mockContext.memory.state;
+    
+    // Call state machine again - should call behavior function again for re-evaluation
+    const newAction = evaluateWithStateMachine(mockContext, mockBehaviorFn);
+    
+    // Should get a new action from behavior function, not moveToRoom
+    expect(newAction.type).to.equal("harvest");
   });
 
-  it("should not call behavior function while returningHome flag is set", () => {
-    let behaviorCalled = false;
+  it("should re-evaluate behavior immediately when state is cleared", () => {
+    let behaviorCallCount = 0;
     const trackingBehaviorFn = (ctx: CreepContext): CreepAction => {
-      behaviorCalled = true;
+      behaviorCallCount++;
+      return { 
+        type: "transfer", 
+        target: { id: "spawn1", store: { getFreeCapacity: () => 100 } } as any,
+        resourceType: RESOURCE_ENERGY
+      };
+    };
+
+    // First call - should call behavior function
+    const action1 = evaluateWithStateMachine(mockContext, trackingBehaviorFn);
+    expect(behaviorCallCount).to.equal(1);
+    expect(action1.type).to.equal("transfer");
+
+    // Simulate ERR_NO_PATH by clearing state
+    delete mockContext.memory.state;
+
+    // Second call - should call behavior function again for re-evaluation
+    const action2 = evaluateWithStateMachine(mockContext, trackingBehaviorFn);
+    expect(behaviorCallCount).to.equal(2);
+    expect(action2.type).to.equal("transfer");
+  });
+
+  it("should allow finding alternative targets after ERR_NO_PATH", () => {
+    let callCount = 0;
+    const smartBehaviorFn = (ctx: CreepContext): CreepAction => {
+      callCount++;
+      if (callCount === 1) {
+        // First call: return target that will fail with ERR_NO_PATH
+        return { 
+          type: "moveTo", 
+          target: { id: "unreachable", pos: { x: 0, y: 0, roomName: "W3N3" } } as any
+        };
+      } else {
+        // After state clear: return accessible alternative
+        return { 
+          type: "moveTo", 
+          target: { id: "accessible", pos: { x: 10, y: 10, roomName: "W2N2" } } as any
+        };
+      }
+    };
+
+    // First call - gets unreachable target
+    const action1 = evaluateWithStateMachine(mockContext, smartBehaviorFn);
+    expect(action1.type).to.equal("moveTo");
+    expect(callCount).to.equal(1);
+
+    // Simulate ERR_NO_PATH clearing state
+    delete mockContext.memory.state;
+
+    // Second call - should re-evaluate and get accessible target
+    const action2 = evaluateWithStateMachine(mockContext, smartBehaviorFn);
+    expect(action2.type).to.equal("moveTo");
+    expect(callCount).to.equal(2);
+  });
+
+  it("should continue calling behavior function for each re-evaluation", () => {
+    let behaviorCalled = 0;
+    const trackingBehaviorFn = (ctx: CreepContext): CreepAction => {
+      behaviorCalled++;
       return { type: "harvest", target: {} as any };
     };
 
-    // Set returningHome flag
-    mockContext.memory.returningHome = true;
+    // First call
+    evaluateWithStateMachine(mockContext, trackingBehaviorFn);
+    expect(behaviorCalled).to.equal(1);
 
-    // Call state machine
-    const action = evaluateWithStateMachine(mockContext, trackingBehaviorFn);
+    // Simulate ERR_NO_PATH clearing state
+    delete mockContext.memory.state;
 
-    // Behavior function should NOT be called
-    expect(behaviorCalled).to.be.false;
-    expect(action.type).to.equal("moveToRoom");
+    // Second call - behavior should be called again
+    evaluateWithStateMachine(mockContext, trackingBehaviorFn);
+    expect(behaviorCalled).to.equal(2);
   });
 
-  it("should handle multiple ERR_NO_PATH occurrences gracefully", () => {
-    // First ERR_NO_PATH
-    mockContext.memory.returningHome = true;
+  it("should handle state clearing efficiently without loops", () => {
+    let evaluationCount = 0;
+    const behaviorFn = (ctx: CreepContext): CreepAction => {
+      evaluationCount++;
+      return { 
+        type: "build", 
+        target: { id: "site1", pos: { x: 5, y: 5, roomName: "W2N2" } } as any
+      };
+    };
 
-    // Get action (should be moveToRoom)
-    let action = evaluateWithStateMachine(mockContext, mockBehaviorFn);
-    expect(action.type).to.equal("moveToRoom");
+    // First evaluation
+    const action1 = evaluateWithStateMachine(mockContext, behaviorFn);
+    expect(evaluationCount).to.equal(1);
+    expect(action1.type).to.equal("build");
 
-    // Simulate another tick while still not home
-    action = evaluateWithStateMachine(mockContext, mockBehaviorFn);
-    expect(action.type).to.equal("moveToRoom");
+    // State should be set
+    expect(mockContext.memory.state).to.not.be.undefined;
 
-    // Flag should still be set
-    expect(mockContext.memory.returningHome).to.be.true;
+    // Simulate multiple ERR_NO_PATH occurrences (state clearing)
+    for (let i = 0; i < 3; i++) {
+      delete mockContext.memory.state;
+      const action = evaluateWithStateMachine(mockContext, behaviorFn);
+      expect(action.type).to.equal("build");
+    }
 
-    // Now arrive home
-    mockContext.isInHomeRoom = true;
-    action = evaluateWithStateMachine(mockContext, mockBehaviorFn);
-
-    // Flag cleared and normal behavior resumes
-    expect(mockContext.memory.returningHome).to.be.undefined;
-    expect(action.type).to.equal("harvest");
+    // Should have called behavior function once per state clear + initial
+    expect(evaluationCount).to.equal(4);
   });
 
-  it("should work with different roles", () => {
+  it("should work consistently across different roles", () => {
     const roles = ["hauler", "builder", "upgrader", "remoteHarvester"];
 
     for (const role of roles) {
       mockContext.memory.role = role as any;
-      mockContext.memory.returningHome = true;
-
+      
+      // Call behavior - should return action
       const action = evaluateWithStateMachine(mockContext, mockBehaviorFn);
+      expect(action.type).to.equal("harvest");
 
-      expect(action.type).to.equal("moveToRoom");
-      if (action.type === "moveToRoom") {
-        expect(action.roomName).to.equal("W1N1");
-      }
+      // Simulate ERR_NO_PATH clearing state
+      delete mockContext.memory.state;
 
-      // Reset for next iteration
-      delete mockContext.memory.returningHome;
+      // Call again - should re-evaluate, not return home
+      const action2 = evaluateWithStateMachine(mockContext, mockBehaviorFn);
+      expect(action2.type).to.equal("harvest");
+      expect(action2.type).to.not.equal("moveToRoom");
     }
   });
 
-  it("should handle case where homeRoom is current room", () => {
-    // Creep is in home room but returningHome is set
-    mockContext.isInHomeRoom = true;
-    mockContext.memory.returningHome = true;
-    mockCreep.room.name = "W1N1";
-    mockCreep.pos.roomName = "W1N1";
+  it("should preserve behavior evaluation regardless of location", () => {
+    // Test in remote room (not home room)
+    mockContext.isInHomeRoom = false;
+    mockCreep.room.name = "W2N2";
+    mockCreep.pos.roomName = "W2N2";
 
     const action = evaluateWithStateMachine(mockContext, mockBehaviorFn);
 
-    // Should clear flag and resume normal behavior
-    expect(mockContext.memory.returningHome).to.be.undefined;
+    // Should call behavior function and get action, not auto-return home
     expect(action.type).to.equal("harvest");
+    
+    // Simulate ERR_NO_PATH clearing state
+    delete mockContext.memory.state;
+    
+    // Should still re-evaluate in same location
+    const action2 = evaluateWithStateMachine(mockContext, mockBehaviorFn);
+    expect(action2.type).to.equal("harvest");
   });
 });

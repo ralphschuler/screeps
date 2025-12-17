@@ -371,11 +371,10 @@ describe("State Machine", () => {
       assert.equal(ctx.memory.state?.data?.resourceType, RESOURCE_ENERGY);
     });
 
-    it("should clear scout target memory when returning home", () => {
+    it("should evaluate behavior normally when creep is in home room", () => {
       const creep = createMockCreep({ capacity: 50, usedCapacity: 0, roomName: "E1N1" });
       const ctx = createMockContext(creep, {
         role: "scout",
-        returningHome: true,
         targetRoom: "E2N2",
         lastExploredRoom: "E1N2"
       });
@@ -389,16 +388,15 @@ describe("State Machine", () => {
       const action = evaluateWithStateMachine(ctx, behaviorFn);
 
       assert.equal(action.type, "idle");
-      assert.isUndefined(ctx.memory.returningHome, "returningHome flag should be cleared");
-      assert.isUndefined(ctx.memory.targetRoom, "Scout targetRoom should be cleared to prevent cycling");
-      assert.isUndefined(ctx.memory.lastExploredRoom, "Scout lastExploredRoom should be cleared to prevent cycling");
+      // Memory should be preserved - no automatic clearing
+      assert.equal(ctx.memory.targetRoom, "E2N2", "Scout targetRoom should be preserved");
+      assert.equal(ctx.memory.lastExploredRoom, "E1N2", "Scout lastExploredRoom should be preserved");
     });
 
-    it("should not clear non-scout memory when returning home", () => {
+    it("should evaluate behavior normally regardless of role", () => {
       const creep = createMockCreep({ capacity: 50, usedCapacity: 0, roomName: "E1N1" });
       const ctx = createMockContext(creep, {
         role: "harvester",
-        returningHome: true,
         targetRoom: "E2N2"
       });
       ctx.homeRoom = "E1N1";
@@ -411,33 +409,31 @@ describe("State Machine", () => {
       const action = evaluateWithStateMachine(ctx, behaviorFn);
 
       assert.equal(action.type, "idle");
-      assert.isUndefined(ctx.memory.returningHome, "returningHome flag should be cleared");
-      assert.equal(ctx.memory.targetRoom, "E2N2", "Non-scout targetRoom should be preserved");
+      assert.equal(ctx.memory.targetRoom, "E2N2", "targetRoom should be preserved");
     });
 
-    it("should return moveToRoom when scout is returning home but not there yet", () => {
+    it("should call behavior function when creep is in remote room", () => {
       const creep = createMockCreep({ capacity: 50, usedCapacity: 0, roomName: "E2N2" });
       const ctx = createMockContext(creep, {
         role: "scout",
-        returningHome: true,
         targetRoom: "E2N2"
       });
       ctx.homeRoom = "E1N1";
       ctx.isInHomeRoom = false;
       ctx.room = createMockRoom("E2N2");
 
+      let behaviorCalled = false;
       const behaviorFn = (): CreepAction => {
+        behaviorCalled = true;
         return { type: "idle" };
       };
 
       const action = evaluateWithStateMachine(ctx, behaviorFn);
 
-      assert.equal(action.type, "moveToRoom");
-      if (action.type === "moveToRoom") {
-        assert.equal(action.roomName, "E1N1");
-      }
-      assert.isDefined(ctx.memory.returningHome, "returningHome flag should persist until home");
-      assert.equal(ctx.memory.targetRoom, "E2N2", "targetRoom should persist until home");
+      // Should call behavior function, not automatically return home
+      assert.isTrue(behaviorCalled, "Behavior function should be called");
+      assert.equal(action.type, "idle");
+      assert.equal(ctx.memory.targetRoom, "E2N2", "targetRoom should be preserved");
     });
   });
 });
