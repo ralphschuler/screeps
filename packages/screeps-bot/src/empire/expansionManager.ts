@@ -185,10 +185,12 @@ export class ExpansionManager {
       return Math.min(2, this.config.maxRemotesPerRoom);
     }
 
-    // Check room energy stability - reduce remotes if struggling
+    // Check room energy stability - reduce remotes if critically low
+    // Changed from 50000 to 10000 to allow remote mining to BUILD UP energy reserves
+    // instead of requiring high reserves before enabling remote mining (chicken-and-egg problem)
     const storage = room.storage;
-    if (storage && storage.store.getUsedCapacity(RESOURCE_ENERGY) < 50000) {
-      // Low energy - reduce remote capacity
+    if (storage && storage.store.getUsedCapacity(RESOURCE_ENERGY) < 10000) {
+      // Critically low energy - reduce remote capacity
       return Math.min(1, this.config.maxRemotesPerRoom);
     }
 
