@@ -12,7 +12,7 @@
  */
 
 import { createLogger } from "../core/logger";
-import { type TaskPriority, scheduleTask } from "./computationScheduler";
+import { TaskPriority, scheduleTask } from "./computationScheduler";
 import { precacheRemoteRoutes } from "./remotePathCache";
 import { getRemoteRoomsForRoom } from "./remoteRoomUtils";
 

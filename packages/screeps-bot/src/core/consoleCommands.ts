@@ -526,11 +526,19 @@ Remaining CPU: ${kernel.getRemainingCpu().toFixed(2)}
 Processes: ${stats.totalProcesses} total (${stats.activeProcesses} active, ${stats.suspendedProcesses} suspended)
 Total CPU Used: ${stats.totalCpuUsed.toFixed(3)}
 Avg CPU/Process: ${stats.avgCpuPerProcess.toFixed(4)}
+Avg Health Score: ${stats.avgHealthScore.toFixed(1)}/100
 
 Top CPU Consumers:`;
 
     for (const proc of stats.topCpuProcesses) {
       output += `\n  ${proc.name}: ${proc.avgCpu.toFixed(4)} avg CPU`;
+    }
+
+    if (stats.unhealthyProcesses.length > 0) {
+      output += "\n\nUnhealthy Processes (Health < 50):";
+      for (const proc of stats.unhealthyProcesses) {
+        output += `\n  ${proc.name}: ${proc.healthScore.toFixed(1)}/100 (${proc.consecutiveErrors} consecutive errors)`;
+      }
     }
 
     return output;
@@ -551,14 +559,16 @@ Top CPU Consumers:`;
     }
 
     let output = "=== Registered Processes ===\n";
-    output += "ID | Name | Priority | Frequency | State | Runs | Avg CPU | Skipped | Errors\n";
-    output += "-".repeat(90) + "\n";
+    output += "ID | Name | Priority | Frequency | State | Runs | Avg CPU | Health | Errors\n";
+    output += "-".repeat(100) + "\n";
 
     const sorted = [...processes].sort((a, b) => b.priority - a.priority);
 
     for (const p of sorted) {
       const avgCpu = p.stats.avgCpu.toFixed(4);
-      output += `${p.id} | ${p.name} | ${p.priority} | ${p.frequency} | ${p.state} | ${p.stats.runCount} | ${avgCpu} | ${p.stats.skippedCount} | ${p.stats.errorCount}\n`;
+      const health = p.stats.healthScore.toFixed(0);
+      const healthIndicator = p.stats.healthScore >= 80 ? "✓" : p.stats.healthScore >= 50 ? "⚠" : "✗";
+      output += `${p.id} | ${p.name} | ${p.priority} | ${p.frequency} | ${p.state} | ${p.stats.runCount} | ${avgCpu} | ${healthIndicator}${health} | ${p.stats.errorCount}(${p.stats.consecutiveErrors})\n`;
     }
 
     return output;
@@ -604,6 +614,72 @@ Top CPU Consumers:`;
   public resetKernelStats(): string {
     kernel.resetStats();
     return "Kernel statistics reset.";
+  }
+
+  @Command({
+    name: "showProcessHealth",
+    description: "Show health status of all processes with detailed metrics",
+    usage: "showProcessHealth()",
+    examples: ["showProcessHealth()"],
+    category: "Kernel"
+  })
+  public showProcessHealth(): string {
+    const processes = kernel.getProcesses();
+
+    if (processes.length === 0) {
+      return "No processes registered with kernel.";
+    }
+
+    // Sort by health score (ascending - worst first)
+    const sorted = [...processes].sort((a, b) => a.stats.healthScore - b.stats.healthScore);
+
+    let output = "=== Process Health Status ===\n";
+    output += "Name | Health | Errors | Consecutive | Status | Last Success\n";
+    output += "-".repeat(80) + "\n";
+
+    for (const p of sorted) {
+      const health = p.stats.healthScore.toFixed(0);
+      const healthIcon = p.stats.healthScore >= 80 ? "✓" : p.stats.healthScore >= 50 ? "⚠" : "✗";
+      const ticksSinceSuccess = p.stats.lastSuccessfulRunTick > 0 
+        ? Game.time - p.stats.lastSuccessfulRunTick 
+        : "never";
+      const status = p.state === "suspended" 
+        ? `SUSPENDED (${p.stats.suspensionReason})` 
+        : p.state.toUpperCase();
+      
+      output += `${p.name} | ${healthIcon} ${health}/100 | ${p.stats.errorCount} | ${p.stats.consecutiveErrors} | ${status} | ${ticksSinceSuccess}\n`;
+    }
+
+    const stats = kernel.getStatsSummary();
+    output += `\nAverage Health: ${stats.avgHealthScore.toFixed(1)}/100`;
+    output += `\nSuspended Processes: ${stats.suspendedProcesses}`;
+
+    return output;
+  }
+
+  @Command({
+    name: "resumeAllProcesses",
+    description: "Resume all suspended processes (use with caution)",
+    usage: "resumeAllProcesses()",
+    examples: ["resumeAllProcesses()"],
+    category: "Kernel"
+  })
+  public resumeAllProcesses(): string {
+    const processes = kernel.getProcesses();
+    const suspended = processes.filter(p => p.state === "suspended");
+    
+    if (suspended.length === 0) {
+      return "No suspended processes to resume.";
+    }
+
+    let resumed = 0;
+    for (const p of suspended) {
+      if (kernel.resumeProcess(p.id)) {
+        resumed++;
+      }
+    }
+
+    return `Resumed ${resumed} of ${suspended.length} suspended processes.`;
   }
 
   @Command({

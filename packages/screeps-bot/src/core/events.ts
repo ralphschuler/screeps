@@ -248,6 +248,29 @@ export interface ExpansionCandidateEvent extends BaseEvent {
   distance: number;
 }
 
+/**
+ * Process suspended event
+ */
+export interface ProcessSuspendedEvent extends BaseEvent {
+  processId: string;
+  processName: string;
+  reason: string;
+  consecutive: number;
+  permanent: boolean;
+  resumeAt?: number;
+}
+
+/**
+ * Process recovered event
+ */
+export interface ProcessRecoveredEvent extends BaseEvent {
+  processId: string;
+  processName: string;
+  previousReason: string;
+  consecutiveErrors: number;
+  manual?: boolean;
+}
+
 // ============================================================================
 // Event Map - Maps event names to their payload types
 // ============================================================================
@@ -288,6 +311,10 @@ export interface EventMap {
   // System events
   "cpu.spike": CpuSpikeEvent;
   "bucket.modeChange": BucketModeChangeEvent;
+  
+  // Process events
+  "process.suspended": ProcessSuspendedEvent;
+  "process.recovered": ProcessRecoveredEvent;
 }
 
 /**

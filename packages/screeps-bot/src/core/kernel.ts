@@ -28,8 +28,6 @@
  * Some processes depend on others (e.g., intel must run before expansion decisions)
  * TODO(P3): ARCH - Consider implementing process groups for coordinated batch execution
  * Related processes could be grouped and executed together for better cache locality
- * TODO(P1): BUG - Add process health monitoring with automatic restart on repeated failures
- * Processes with high error counts should be suspended and logged for investigation
  * TODO(P2): TEST - Add unit tests for kernel process scheduling and wrap-around queue behavior
  * Critical system component needs comprehensive test coverage
  */
@@ -84,6 +82,16 @@ export interface ProcessStats {
   skippedCount: number;
   /** Number of errors */
   errorCount: number;
+  /** Number of consecutive errors (reset on successful run) */
+  consecutiveErrors: number;
+  /** Last successful run tick (no errors) */
+  lastSuccessfulRunTick: number;
+  /** Health score (0-100) based on success rate and recent performance */
+  healthScore: number;
+  /** Tick when process can resume (null if active) */
+  suspendedUntil: number | null;
+  /** Reason for suspension */
+  suspensionReason: string | null;
 }
 
 /**
@@ -291,7 +299,12 @@ export class Kernel {
         maxCpu: 0,
         lastRunTick: 0,
         skippedCount: 0,
-        errorCount: 0
+        errorCount: 0,
+        consecutiveErrors: 0,
+        lastSuccessfulRunTick: 0,
+        healthScore: 100,
+        suspendedUntil: null,
+        suspensionReason: null
       }
     };
 
@@ -499,6 +512,47 @@ export class Kernel {
    * Long-skipped low-priority processes could temporarily boost priority
    */
   private shouldRunProcess(process: Process): boolean {
+    // Check if suspended and if suspension has expired
+    if (process.state === "suspended" && process.stats.suspendedUntil !== null) {
+      // Check if suspension period has expired
+      if (Game.time >= process.stats.suspendedUntil) {
+        // Automatic recovery: resume process
+        process.state = "idle";
+        process.stats.suspendedUntil = null;
+        const previousReason = process.stats.suspensionReason;
+        process.stats.suspensionReason = null;
+        
+        logger.info(
+          `Kernel: Process "${process.name}" automatically resumed after suspension. ` +
+          `Previous reason: ${previousReason}. Consecutive errors: ${process.stats.consecutiveErrors}`,
+          { 
+            subsystem: "Kernel",
+            processId: process.id
+          }
+        );
+        
+        // Emit recovery event
+        this.emit('process.recovered', {
+          processId: process.id,
+          processName: process.name,
+          previousReason: previousReason || 'Unknown',
+          consecutiveErrors: process.stats.consecutiveErrors
+        }, { priority: 50 });
+        
+        // Process can now run
+      } else {
+        // Still suspended
+        if (Game.time % 100 === 0) {
+          const ticksRemaining = process.stats.suspendedUntil - Game.time;
+          logger.debug(
+            `Kernel: Process "${process.name}" suspended (${ticksRemaining} ticks remaining)`,
+            { subsystem: "Kernel" }
+          );
+        }
+        return false;
+      }
+    }
+
     // Check interval (skip check if process has never run - runCount will be 0)
     if (process.stats.runCount > 0) {
       const ticksSinceRun = Game.time - process.stats.lastRunTick;
@@ -514,16 +568,42 @@ export class Kernel {
       }
     }
 
-    // Check if suspended
-    if (process.state === "suspended") {
-      logger.warn(
-        `Kernel: Process "${process.name}" skipped (state: suspended)`,
-        { subsystem: "Kernel" }
-      );
-      return false;
+    return true;
+  }
+
+  /**
+   * Calculate health score for a process (0-100)
+   * 
+   * Health score is based on:
+   * - Success rate: (runCount - errorCount) / runCount * 100
+   * - Recent success bonus: +20 if successful run in last 100 ticks
+   * - Penalty for consecutive errors: reduces score significantly
+   * 
+   * @param stats - Process statistics
+   * @returns Health score between 0 and 100
+   */
+  private calculateHealthScore(stats: ProcessStats): number {
+    // If process hasn't run yet, assume healthy
+    if (stats.runCount === 0) {
+      return 100;
     }
 
-    return true;
+    // Base score from success rate
+    const successRate = (stats.runCount - stats.errorCount) / stats.runCount;
+    let score = successRate * 100;
+
+    // Bonus for recent successful run (within last 100 ticks)
+    const ticksSinceSuccess = Game.time - stats.lastSuccessfulRunTick;
+    if (ticksSinceSuccess < 100 && stats.lastSuccessfulRunTick > 0) {
+      score += 20;
+    }
+
+    // Heavy penalty for consecutive errors
+    // Each consecutive error reduces score by 15 points
+    score -= stats.consecutiveErrors * 15;
+
+    // Clamp to 0-100 range
+    return Math.max(0, Math.min(100, score));
   }
 
   /**
@@ -536,13 +616,73 @@ export class Kernel {
     try {
       process.execute();
       process.state = "idle";
+      
+      // Success: reset consecutive errors and update last successful run
+      process.stats.consecutiveErrors = 0;
+      process.stats.lastSuccessfulRunTick = Game.time;
     } catch (err) {
       process.state = "error";
       process.stats.errorCount++;
+      process.stats.consecutiveErrors++;
+      
       const errorMessage = err instanceof Error ? err.message : String(err);
       logger.error(`Kernel: Process "${process.name}" error: ${errorMessage}`, { subsystem: "Kernel" });
       if (err instanceof Error && err.stack) {
         logger.error(err.stack, { subsystem: "Kernel" });
+      }
+
+      // Check for automatic suspension
+      const consecutiveErrors = process.stats.consecutiveErrors;
+      
+      // Circuit breaker: permanent suspension after 10 consecutive failures
+      if (consecutiveErrors >= 10) {
+        process.stats.suspendedUntil = Number.MAX_SAFE_INTEGER;
+        process.stats.suspensionReason = `Circuit breaker: ${consecutiveErrors} consecutive failures (permanent)`;
+        process.state = "suspended";
+        
+        logger.error(
+          `Kernel: Process "${process.name}" permanently suspended after ${consecutiveErrors} consecutive failures`,
+          { subsystem: "Kernel", processId: process.id }
+        );
+        
+        // Emit critical event for permanent suspension
+        this.emit('process.suspended', {
+          processId: process.id,
+          processName: process.name,
+          reason: process.stats.suspensionReason,
+          consecutive: consecutiveErrors,
+          permanent: true
+        }, { immediate: true, priority: 100 });
+      }
+      // Automatic suspension after 3 consecutive failures with exponential backoff
+      else if (consecutiveErrors >= 3) {
+        // Exponential backoff: 2^errors ticks, max 1000 ticks
+        const suspensionDuration = Math.min(1000, Math.pow(2, consecutiveErrors));
+        process.stats.suspendedUntil = Game.time + suspensionDuration;
+        process.stats.suspensionReason = `${consecutiveErrors} consecutive failures (auto-resume in ${suspensionDuration} ticks)`;
+        process.state = "suspended";
+        
+        logger.warn(
+          `Kernel: Process "${process.name}" suspended for ${suspensionDuration} ticks after ${consecutiveErrors} consecutive failures`,
+          { 
+            subsystem: "Kernel",
+            processId: process.id,
+            meta: {
+              errorCount: process.stats.errorCount,
+              resumeAt: process.stats.suspendedUntil
+            }
+          }
+        );
+        
+        // Emit event for temporary suspension
+        this.emit('process.suspended', {
+          processId: process.id,
+          processName: process.name,
+          reason: process.stats.suspensionReason,
+          consecutive: consecutiveErrors,
+          permanent: false,
+          resumeAt: process.stats.suspendedUntil
+        }, { immediate: true, priority: 75 });
       }
     }
 
@@ -555,6 +695,9 @@ export class Kernel {
       process.stats.avgCpu = process.stats.totalCpu / process.stats.runCount;
       process.stats.maxCpu = Math.max(process.stats.maxCpu, cpuUsed);
       process.stats.lastRunTick = Game.time;
+      
+      // Update health score
+      process.stats.healthScore = this.calculateHealthScore(process.stats);
     }
 
     this.tickCpuUsed += cpuUsed;
@@ -742,7 +885,28 @@ export class Kernel {
     const process = this.processes.get(id);
     if (process && process.state === "suspended") {
       process.state = "idle";
-      logger.info(`Kernel: Resumed process "${process.name}"`, { subsystem: "Kernel" });
+      process.stats.suspendedUntil = null;
+      const previousReason = process.stats.suspensionReason;
+      process.stats.suspensionReason = null;
+      
+      logger.info(
+        `Kernel: Manually resumed process "${process.name}". ` +
+        `Previous reason: ${previousReason}. Consecutive errors: ${process.stats.consecutiveErrors}`,
+        { 
+          subsystem: "Kernel",
+          processId: id
+        }
+      );
+      
+      // Emit manual recovery event
+      this.emit('process.recovered', {
+        processId: process.id,
+        processName: process.name,
+        previousReason: previousReason || 'Unknown',
+        consecutiveErrors: process.stats.consecutiveErrors,
+        manual: true
+      }, { priority: 50 });
+      
       return true;
     }
     return false;
@@ -758,6 +922,8 @@ export class Kernel {
     totalCpuUsed: number;
     avgCpuPerProcess: number;
     topCpuProcesses: { name: string; avgCpu: number }[];
+    unhealthyProcesses: { name: string; healthScore: number; consecutiveErrors: number }[];
+    avgHealthScore: number;
   } {
     const processes = Array.from(this.processes.values());
     const active = processes.filter(p => p.state !== "suspended");
@@ -771,13 +937,30 @@ export class Kernel {
       .slice(0, 5)
       .map(p => ({ name: p.name, avgCpu: p.stats.avgCpu }));
 
+    // Find unhealthy processes (health score < 50)
+    const unhealthy = [...processes]
+      .filter(p => p.stats.healthScore < 50)
+      .sort((a, b) => a.stats.healthScore - b.stats.healthScore)
+      .slice(0, 5)
+      .map(p => ({ 
+        name: p.name, 
+        healthScore: p.stats.healthScore,
+        consecutiveErrors: p.stats.consecutiveErrors
+      }));
+
+    // Calculate average health score
+    const totalHealth = processes.reduce((sum, p) => sum + p.stats.healthScore, 0);
+    const avgHealth = processes.length > 0 ? totalHealth / processes.length : 100;
+
     return {
       totalProcesses: processes.length,
       activeProcesses: active.length,
       suspendedProcesses: suspended.length,
       totalCpuUsed: totalCpu,
       avgCpuPerProcess: avgCpu,
-      topCpuProcesses: topCpu
+      topCpuProcesses: topCpu,
+      unhealthyProcesses: unhealthy,
+      avgHealthScore: avgHealth
     };
   }
 
@@ -793,7 +976,12 @@ export class Kernel {
         maxCpu: 0,
         lastRunTick: 0,
         skippedCount: 0,
-        errorCount: 0
+        errorCount: 0,
+        consecutiveErrors: 0,
+        lastSuccessfulRunTick: 0,
+        healthScore: 100,
+        suspendedUntil: null,
+        suspensionReason: null
       };
     }
     logger.info("Kernel: Reset all process statistics", { subsystem: "Kernel" });
