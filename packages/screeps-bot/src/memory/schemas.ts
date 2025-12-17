@@ -679,6 +679,8 @@ export interface SwarmCreepMemory {
   returningHome?: boolean;
   /** Transfer request assignment (for interRoomCarrier role) */
   transferRequest?: TransferRequestAssignment;
+  /** Workflow state for cross-shard carriers (simple string state vs. complex CreepState) */
+  workflowState?: string;
   /** Version for memory migration */
   version: number;
   

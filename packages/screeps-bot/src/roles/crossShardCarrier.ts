@@ -22,7 +22,7 @@ import { resourceTransferCoordinator } from "../intershard/resourceTransferCoord
 interface CrossShardCarrierMemory extends CreepMemory {
   role: "crossShardCarrier";
   transferRequestId?: string;
-  state?: "gathering" | "movingToPortal" | "enteringPortal" | "delivering";
+  workflowState?: "gathering" | "movingToPortal" | "enteringPortal" | "delivering";
   sourceRoom?: string;
   portalRoom?: string;
   targetShard?: string;
@@ -37,8 +37,8 @@ export function runCrossShardCarrier(creep: Creep): void {
   const memory = creep.memory as CrossShardCarrierMemory;
 
   // Initialize state if needed
-  if (!memory.state) {
-    memory.state = "gathering";
+  if (!memory.workflowState) {
+    memory.workflowState = "gathering";
   }
 
   // Get transfer request
@@ -60,7 +60,7 @@ export function runCrossShardCarrier(creep: Creep): void {
         memory.targetShard = request.targetShard;
         memory.targetRoom = request.targetRoom;
         memory.resourceType = request.resourceType;
-        memory.state = "gathering";
+        memory.workflowState = "gathering";
       }
     }
   }
@@ -75,7 +75,7 @@ export function runCrossShardCarrier(creep: Creep): void {
   }
 
   // Execute state machine
-  switch (memory.state) {
+  switch (memory.workflowState) {
     case "gathering":
       handleGathering(creep, memory, request);
       break;
@@ -121,7 +121,7 @@ function handleGathering(
   const storage = creep.room.storage;
 
   if (creep.store.getFreeCapacity() === 0) {
-    memory.state = "movingToPortal";
+    memory.workflowState = "movingToPortal";
     logger.info(`CrossShardCarrier ${creep.name} gathered resources, moving to portal`, {
       subsystem: "CrossShardCarrier"
     });
@@ -164,7 +164,7 @@ function handleMovingToPortal(
 
   // Check if already in portal room
   if (creep.room.name === portalRoom) {
-    memory.state = "enteringPortal";
+    memory.workflowState = "enteringPortal";
     return;
   }
 
@@ -299,10 +299,10 @@ export function handleCrossShardArrival(creep: Creep): void {
   // Only transition if not already in a final state
   if (
     memory.targetShard === Game.shard?.name &&
-    memory.state !== "delivering" &&
+    memory.workflowState !== "delivering" &&
     creep.store.getUsedCapacity() > 0
   ) {
-    memory.state = "delivering";
+    memory.workflowState = "delivering";
     logger.info(
       `CrossShardCarrier ${creep.name} arrived on target shard ${Game.shard?.name}`,
       { subsystem: "CrossShardCarrier" }

@@ -18,6 +18,23 @@ import { SpawnPriority, type SpawnRequest, spawnQueue } from "../spawning/spawnQ
 import { shardManager } from "./shardManager";
 
 /**
+ * Additional memory fields for cross-shard carrier creeps
+ * 
+ * NOTE: This interface is intended to be composed with the base SwarmCreepMemory.
+ * Only fields that are unique to cross-shard behavior should be defined here.
+ */
+interface CrossShardCarrierAdditionalMemory {
+  /** ID of the associated cross-shard transfer request */
+  transferRequestId: string;
+  /** Room containing the portal used for this transfer */
+  portalRoom: string;
+  /** Target shard for this transfer */
+  targetShard: string;
+  /** Workflow state for the cross-shard transfer lifecycle */
+  workflowState: "gathering" | "movingToPortal" | "enteringPortal" | "delivering";
+}
+
+/**
  * Transfer request for cross-shard resource movement
  */
 export interface CrossShardTransferRequest {
@@ -266,6 +283,15 @@ export class ResourceTransferCoordinator {
 
     // Add spawn requests to queue
     for (let i = 0; i < carriersToSpawn; i++) {
+      // Build additional memory with cross-shard specific fields
+      // Note: Standard fields like targetRoom are set directly on SpawnRequest
+      const additionalMemory: CrossShardCarrierAdditionalMemory = {
+        transferRequestId: request.taskId,
+        portalRoom: request.portalRoom,
+        targetShard: request.targetShard,
+        workflowState: "gathering"
+      };
+
       const spawnRequest: SpawnRequest = {
         id: `crossShardCarrier_${request.taskId}_${i}_${Game.time}`,
         roomName: request.sourceRoom,
@@ -274,15 +300,8 @@ export class ResourceTransferCoordinator {
         body,
         priority: spawnPriority,
         createdAt: Game.time,
-        additionalMemory: {
-          transferRequestId: request.taskId,
-          sourceRoom: request.sourceRoom,
-          portalRoom: request.portalRoom,
-          targetShard: request.targetShard,
-          targetRoom: request.targetRoom,
-          resourceType: request.resourceType,
-          state: "gathering"
-        }
+        targetRoom: request.targetRoom, // Standard field, not in additionalMemory
+        additionalMemory: additionalMemory
       };
 
       spawnQueue.addRequest(spawnRequest);
