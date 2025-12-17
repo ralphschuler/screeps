@@ -38,6 +38,7 @@
 
 import { cachePath, getCachedPath } from "./pathCache";
 import { createLogger } from "../core/logger";
+import { getRemoteMiningRoomCallback } from "./remoteRoomUtils";
 
 const logger = createLogger("RemotePathCache");
 
@@ -171,7 +172,7 @@ export function precacheRemoteRoutes(homeRoom: Room, remoteRooms: string[]): voi
           plainCost: 2,
           swampCost: 10,
           maxRooms: 16,
-          roomCallback: getRoomCallback
+          roomCallback: getRemoteMiningRoomCallback
         });
         
         if (!pathToSource.incomplete && pathToSource.path.length > 0) {
@@ -201,7 +202,7 @@ export function precacheRemoteRoutes(homeRoom: Room, remoteRooms: string[]): voi
           plainCost: 2,
           swampCost: 10,
           maxRooms: 16,
-          roomCallback: getRoomCallback
+          roomCallback: getRemoteMiningRoomCallback
         });
         
         if (!pathToHome.incomplete && pathToHome.path.length > 0) {
@@ -223,61 +224,6 @@ export function precacheRemoteRoutes(homeRoom: Room, remoteRooms: string[]): voi
       meta: { remoteRooms: remoteRooms.length, routesCached: cachedCount }
     });
   }
-}
-
-/**
- * Room callback for PathFinder to handle remote mining pathfinding.
- * Avoids rooms with hostile structures and prefers roads.
- *
- * @param roomName - Room name being evaluated
- * @returns Cost matrix or false to avoid the room
- */
-function getRoomCallback(roomName: string): CostMatrix | boolean {
-  const room = Game.rooms[roomName];
-  if (!room) {
-    // Room not visible - allow pathfinding through it
-    return true;
-  }
-  
-  // Avoid rooms with hostile structures (unless it's a highway)
-  const coords = roomName.match(/\d+/g);
-  const isHighway = /^[WE]\d+[NS]\d+$/.test(roomName) && 
-    coords !== null &&
-    coords.length === 2 &&
-    parseInt(coords[0], 10) % 10 === 0 &&
-    parseInt(coords[1], 10) % 10 === 0;
-  
-  if (!isHighway) {
-    const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES, {
-      filter: s => s.structureType !== STRUCTURE_CONTROLLER &&
-                   s.structureType !== STRUCTURE_KEEPER_LAIR
-    });
-    
-    if (hostileStructures.length > 0) {
-      // Avoid this room
-      return false;
-    }
-  }
-  
-  // Create cost matrix preferring roads
-  const costs = new PathFinder.CostMatrix();
-  
-  // Mark roads as cheaper
-  const roads = room.find(FIND_STRUCTURES, {
-    filter: s => s.structureType === STRUCTURE_ROAD
-  });
-  
-  for (const road of roads) {
-    costs.set(road.pos.x, road.pos.y, 1);
-  }
-  
-  // Mark creeps as obstacles (will be avoided in pathfinding)
-  const creeps = room.find(FIND_CREEPS);
-  for (const creep of creeps) {
-    costs.set(creep.pos.x, creep.pos.y, 255);
-  }
-  
-  return costs;
 }
 
 /**
@@ -305,7 +251,7 @@ export function getOrCalculateRemotePath(
     plainCost: 2,
     swampCost: 10,
     maxRooms: 16,
-    roomCallback: getRoomCallback
+    roomCallback: getRemoteMiningRoomCallback
   });
   
   if (!result.incomplete && result.path.length > 0) {

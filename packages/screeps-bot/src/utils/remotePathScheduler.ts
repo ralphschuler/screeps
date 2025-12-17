@@ -14,39 +14,9 @@
 import { createLogger } from "../core/logger";
 import { type TaskPriority, scheduleTask } from "./computationScheduler";
 import { precacheRemoteRoutes } from "./remotePathCache";
+import { getRemoteRoomsForRoom } from "./remoteRoomUtils";
 
 const logger = createLogger("RemotePathScheduler");
-
-/**
- * Get list of remote rooms being mined by a home room.
- * Scans for creeps with remoteHarvester or remoteHauler roles assigned to this home room.
- * 
- * @param room - Home room
- * @returns Array of remote room names
- */
-function getRemoteRoomsForRoom(room: Room): string[] {
-  const remoteRooms = new Set<string>();
-  
-  // Look for remote creeps assigned to this room
-  for (const creep of Object.values(Game.creeps)) {
-    // Type guard to safely access memory properties
-    const memory = creep.memory as {
-      role?: string;
-      homeRoom?: string;
-      targetRoom?: string;
-    };
-    
-    // Check if this is a remote creep assigned to our room
-    if ((memory.role === "remoteHarvester" || memory.role === "remoteHauler") &&
-        memory.homeRoom === room.name &&
-        memory.targetRoom &&
-        memory.targetRoom !== room.name) {
-      remoteRooms.add(memory.targetRoom);
-    }
-  }
-  
-  return Array.from(remoteRooms);
-}
 
 /**
  * Precache remote mining routes for all owned rooms with remote operations.

@@ -13,19 +13,20 @@ import { clearPathCache } from "../../src/utils/pathCache.js";
 describe("remotePathCache", () => {
   beforeEach(() => {
     // Reset Game and global state
-    // @ts-ignore: Setting up test environment
+    // @ts-expect-error: Setting up test environment
     global.Game = {
       time: 1000,
       rooms: {}
     };
 
     // Set up Screeps constants for tests
-    (global as any).FIND_SOURCES = 105;
-    (global as any).FIND_STRUCTURES = 107;
-    (global as any).STRUCTURE_CONTAINER = "container";
+    (global as unknown as Record<string, number>).FIND_SOURCES = 105;
+    (global as unknown as Record<string, number>).FIND_STRUCTURES = 107;
+    (global as unknown as Record<string, number>).FIND_MY_SPAWNS = 106;
+    (global as unknown as Record<string, string>).STRUCTURE_CONTAINER = "container";
 
     // Mock Room.serializePath and Room.deserializePath
-    // @ts-ignore: Setting up test environment
+    // @ts-expect-error: Setting up test environment
     global.Room = {
       serializePath: (path: PathStep[]): string => {
         return JSON.stringify(path);
@@ -36,14 +37,15 @@ describe("remotePathCache", () => {
     };
 
     // Mock PathFinder for testing
-    (global as any).PathFinder = {
-      search: (from: RoomPosition, goal: any, opts?: any) => {
+    (global as unknown as Record<string, unknown>).PathFinder = {
+      search: (from: RoomPosition, goal: { pos: RoomPosition; range: number }) => {
         // Mock successful pathfinding with a simple path
+        // PathStep only has x, y properties (no dx, dy, direction)
         return {
           path: [
-            { x: from.x + 1, y: from.y + 1, dx: 1, dy: 1, direction: 2 },
-            { x: from.x + 2, y: from.y + 2, dx: 1, dy: 1, direction: 2 },
-            { x: goal.pos.x, y: goal.pos.y, dx: 0, dy: 0, direction: 0 }
+            { x: from.x + 1, y: from.y + 1 },
+            { x: from.x + 2, y: from.y + 2 },
+            { x: goal.pos.x, y: goal.pos.y }
           ],
           ops: 50,
           cost: 5,
@@ -80,9 +82,9 @@ describe("remotePathCache", () => {
       const from = new RoomPosition(10, 10, "W1N1");
       const to = new RoomPosition(20, 20, "W2N2");
       const path: PathStep[] = [
-        { x: 11, y: 11, dx: 1, dy: 1, direction: 2 },
-        { x: 12, y: 12, dx: 1, dy: 1, direction: 2 },
-        { x: 13, y: 13, dx: 1, dy: 1, direction: 2 }
+        { x: 11, y: 11 },
+        { x: 12, y: 12 },
+        { x: 13, y: 13 }
       ];
 
       cacheRemoteMiningPath(from, to, path, "harvester");
@@ -97,8 +99,8 @@ describe("remotePathCache", () => {
     it("should cache harvester and hauler routes independently", () => {
       const from = new RoomPosition(10, 10, "W1N1");
       const to = new RoomPosition(20, 20, "W2N2");
-      const harvesterPath: PathStep[] = [{ x: 11, y: 11, dx: 1, dy: 1, direction: 2 }];
-      const haulerPath: PathStep[] = [{ x: 21, y: 21, dx: 1, dy: 1, direction: 2 }];
+      const harvesterPath: PathStep[] = [{ x: 11, y: 11 }];
+      const haulerPath: PathStep[] = [{ x: 21, y: 21 }];
 
       cacheRemoteMiningPath(from, to, harvesterPath, "harvester");
       cacheRemoteMiningPath(from, to, haulerPath, "hauler");
@@ -115,7 +117,7 @@ describe("remotePathCache", () => {
     it("should respect TTL and expire paths after 500 ticks", () => {
       const from = new RoomPosition(10, 10, "W1N1");
       const to = new RoomPosition(20, 20, "W2N2");
-      const path: PathStep[] = [{ x: 11, y: 11, dx: 1, dy: 1, direction: 2 }];
+      const path: PathStep[] = [{ x: 11, y: 11 }];
 
       cacheRemoteMiningPath(from, to, path, "harvester");
 
@@ -124,13 +126,13 @@ describe("remotePathCache", () => {
       assert.isNotNull(result);
 
       // Advance time by 400 ticks - should still be available
-      // @ts-ignore
+      // @ts-expect-error: Setting up test environment
       global.Game.time = 1400;
       result = getRemoteMiningPath(from, to, "harvester");
       assert.isNotNull(result);
 
       // Advance time by 200 more ticks (total 600 from cache) - should be expired
-      // @ts-ignore
+      // @ts-expect-error: Setting up test environment
       global.Game.time = 1600;
       result = getRemoteMiningPath(from, to, "harvester");
       assert.isNull(result);
@@ -143,7 +145,7 @@ describe("remotePathCache", () => {
         name: "W1N1",
         storage: undefined,
         find: (type: FindConstant) => {
-          if (type === (global as any).FIND_MY_SPAWNS) {
+          if (type === (global as unknown as Record<string, number>).FIND_MY_SPAWNS) {
             return [{
               pos: new RoomPosition(25, 25, "W1N1")
             }];
@@ -155,19 +157,19 @@ describe("remotePathCache", () => {
       const remoteRoom = {
         name: "W2N2",
         find: (type: FindConstant) => {
-          if (type === (global as any).FIND_SOURCES) {
+          if (type === (global as unknown as Record<string, number>).FIND_SOURCES) {
             return [{
               pos: new RoomPosition(10, 10, "W2N2")
             }];
           }
-          if (type === (global as any).FIND_STRUCTURES) {
+          if (type === (global as unknown as Record<string, number>).FIND_STRUCTURES) {
             return [];
           }
           return [];
         }
       } as unknown as Room;
 
-      // @ts-ignore
+      // @ts-expect-error: Setting up test environment
       global.Game.rooms = {
         W1N1: homeRoom,
         W2N2: remoteRoom
@@ -192,7 +194,7 @@ describe("remotePathCache", () => {
           pos: new RoomPosition(25, 25, "W1N1")
         } as StructureStorage,
         find: (type: FindConstant) => {
-          if (type === (global as any).FIND_MY_SPAWNS) {
+          if (type === (global as unknown as Record<string, number>).FIND_MY_SPAWNS) {
             return [];
           }
           return [];
@@ -202,12 +204,12 @@ describe("remotePathCache", () => {
       const remoteRoom = {
         name: "W2N2",
         find: (type: FindConstant) => {
-          if (type === (global as any).FIND_SOURCES) {
+          if (type === (global as unknown as Record<string, number>).FIND_SOURCES) {
             return [{
               pos: new RoomPosition(10, 10, "W2N2")
             }];
           }
-          if (type === (global as any).FIND_STRUCTURES) {
+          if (type === (global as unknown as Record<string, number>).FIND_STRUCTURES) {
             return [{
               structureType: "container",
               pos: new RoomPosition(11, 11, "W2N2")
@@ -217,7 +219,7 @@ describe("remotePathCache", () => {
         }
       } as unknown as Room;
 
-      // @ts-ignore
+      // @ts-expect-error: Setting up test environment
       global.Game.rooms = {
         W1N1: homeRoom,
         W2N2: remoteRoom
@@ -244,7 +246,7 @@ describe("remotePathCache", () => {
         find: () => []
       } as unknown as Room;
 
-      // @ts-ignore
+      // @ts-expect-error: Setting up test environment
       global.Game.rooms = {
         W1N1: homeRoom
         // W2N2 is not visible
