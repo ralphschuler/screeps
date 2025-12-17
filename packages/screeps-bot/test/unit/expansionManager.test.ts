@@ -479,14 +479,24 @@ describe("expansion manager concepts", () => {
       assert.equal(capacity, 1, "Low RCL room should have reduced remote capacity");
     });
 
-    it("should calculate reduced remote capacity for rooms with low energy", () => {
-      const storage = { store: { getUsedCapacity: () => 30000 } };
+    it("should calculate reduced remote capacity for rooms with critically low energy", () => {
+      const storage = { store: { getUsedCapacity: () => 5000 } };
       const maxRemotesPerRoom = 3;
 
-      // Low energy threshold: 50000
-      const capacity = storage.store.getUsedCapacity() < 50000 ? Math.min(1, maxRemotesPerRoom) : maxRemotesPerRoom;
+      // Critically low energy threshold: 10000 (changed from 50000 to allow remote mining to build up energy)
+      const capacity = storage.store.getUsedCapacity() < 10000 ? Math.min(1, maxRemotesPerRoom) : maxRemotesPerRoom;
 
-      assert.equal(capacity, 1, "Low energy room should have reduced remote capacity");
+      assert.equal(capacity, 1, "Critically low energy room should have reduced remote capacity");
+    });
+
+    it("should allow full remote capacity for rooms with moderate energy", () => {
+      const storage = { store: { getUsedCapacity: () => 25000 } };
+      const maxRemotesPerRoom = 3;
+
+      // Moderate energy (above 10k threshold) should allow full capacity
+      const capacity = storage.store.getUsedCapacity() < 10000 ? Math.min(1, maxRemotesPerRoom) : maxRemotesPerRoom;
+
+      assert.equal(capacity, 3, "Room with moderate energy should have full remote capacity to build up reserves");
     });
 
     it("should calculate reduced remote capacity for threatened rooms", () => {
@@ -507,9 +517,9 @@ describe("expansion manager concepts", () => {
       swarm.danger = 0;
       const maxRemotesPerRoom = 3;
 
-      // Check all conditions for full capacity
+      // Check all conditions for full capacity (updated energy threshold to 10000)
       const hasHighRcl = rcl >= 7;
-      const hasGoodEnergy = storage.store.getUsedCapacity() >= 50000;
+      const hasGoodEnergy = storage.store.getUsedCapacity() >= 10000;
       const isNotThreatened = swarm.danger < 2;
 
       assert.isTrue(hasHighRcl, "Should have high RCL");
