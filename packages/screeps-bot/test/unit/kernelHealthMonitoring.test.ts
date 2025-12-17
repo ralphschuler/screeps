@@ -107,8 +107,9 @@ describe("Kernel process health monitoring", () => {
       expect(process?.stats.runCount).to.equal(3);
       expect(process?.stats.errorCount).to.equal(2);
       expect(process?.stats.consecutiveErrors).to.equal(2);
-      // Health score should be reduced but not zero (2/3 success rate ~= 33%)
+      // Health score should be reduced but not zero (2/3 success rate ~= 67%)
       // Plus penalty for consecutive errors (2 * 15 = 30)
+      // Expected: 67 - 30 = 37
       expect(process?.stats.healthScore).to.be.lessThan(70);
       expect(process?.stats.healthScore).to.be.greaterThan(0);
     });
@@ -241,7 +242,8 @@ describe("Kernel process health monitoring", () => {
 
       const process = kernel.getProcess("test");
       const expectedDuration = Math.pow(2, 3); // 2^3 = 8 ticks
-      expect(process?.stats.suspendedUntil).to.equal(Game.time + expectedDuration);
+      // Game.time is 2 after the loop (last i=2), so suspension should be until tick 2 + 8 = 10
+      expect(process?.stats.suspendedUntil).to.equal(2 + expectedDuration);
     });
 
     it("should not run suspended processes", () => {
