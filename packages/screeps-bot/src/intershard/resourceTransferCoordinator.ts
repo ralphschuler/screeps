@@ -281,8 +281,8 @@ export class ResourceTransferCoordinator {
           targetShard: request.targetShard,
           targetRoom: request.targetRoom,
           resourceType: request.resourceType,
-          state: "gathering"
-        }
+          workflowState: "gathering"
+        } as any
       };
 
       spawnQueue.addRequest(spawnRequest);

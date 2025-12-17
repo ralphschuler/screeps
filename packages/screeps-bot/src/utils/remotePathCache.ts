@@ -179,7 +179,7 @@ export function precacheRemoteRoutes(homeRoom: Room, remoteRooms: string[]): voi
           cacheRemoteMiningPath(
             mainSpawn.pos,
             source.pos,
-            pathToSource.path,
+            pathToSource.path as unknown as PathStep[],
             "harvester"
           );
           cachedCount++;
@@ -209,7 +209,7 @@ export function precacheRemoteRoutes(homeRoom: Room, remoteRooms: string[]): voi
           cacheRemoteMiningPath(
             sourcePos,
             storage.pos,
-            pathToHome.path,
+            pathToHome.path as unknown as PathStep[],
             "hauler"
           );
           cachedCount++;
@@ -256,8 +256,8 @@ export function getOrCalculateRemotePath(
   
   if (!result.incomplete && result.path.length > 0) {
     // Cache the calculated path
-    cacheRemoteMiningPath(from, to, result.path, routeType);
-    return result.path;
+    cacheRemoteMiningPath(from, to, result.path as unknown as PathStep[], routeType);
+    return result.path as unknown as PathStep[];
   }
   
   logger.warn(`Failed to calculate remote path: ${from.roomName} → ${to.roomName}`, {
