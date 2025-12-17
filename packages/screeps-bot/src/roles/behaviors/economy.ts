@@ -99,8 +99,15 @@ function updateWorkingState(ctx: CreepContext): boolean {
   const wasWorking = ctx.memory.working;
 
   // Update state based on energy levels
-  if (isEmpty) ctx.memory.working = false;
-  if (isFull) ctx.memory.working = true;
+  // BUGFIX: Transition to working when creep has ANY energy, not just when full
+  // This prevents upgraders from getting stuck trying to collect more energy
+  // when they already have enough to work with (e.g., after withdrawing from
+  // a link or container that doesn't fill them completely).
+  if (isEmpty) {
+    ctx.memory.working = false;
+  } else {
+    ctx.memory.working = true;
+  }
 
   const isWorking = ctx.memory.working;
 
