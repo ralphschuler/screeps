@@ -27,6 +27,7 @@ import { heapCache } from "./memory/heapCache";
 import { simpleAllies } from "./standards/SimpleAlliesManager";
 import { runAllianceDiplomacy } from "./empire/allianceDiplomacy";
 import { SS2TerminalComms } from "./standards/SS2TerminalComms";
+import { initializeRemotePathScheduler } from "./utils/remotePathScheduler";
 
 // =============================================================================
 // Note: Creep and room management has been migrated to kernel processes
@@ -103,6 +104,9 @@ function initializeSystems(): void {
 
   // Initialize path cache event handlers for automatic invalidation
   initializePathCacheEvents();
+
+  // Initialize remote path cache scheduler for periodic precaching
+  initializeRemotePathScheduler();
 
   // Initialize heap cache system for memory persistence
   heapCache.initialize();
