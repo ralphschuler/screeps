@@ -23,11 +23,13 @@
  * - PowerCreepManager (empire:powerCreep)
  * - ShardManager (empire:shard)
  * - EvacuationManager (cluster:evacuation)
+ * - DefenseCoordinator (cluster:defense)
  *
  * Addresses Issues: #5, #26, #30
  */
 
 import { clusterManager } from "../clusters/clusterManager";
+import { defenseCoordinator } from "../defense/defenseCoordinator";
 import { evacuationManager } from "../defense/evacuationManager";
 import { terminalManager } from "../economy/terminalManager";
 import { factoryManager } from "../economy/factoryManager";
@@ -74,7 +76,9 @@ export function registerAllProcesses(): void {
     shardManager,
     // Cluster processes
     clusterManager,
-    evacuationManager
+    evacuationManager,
+    // Defense processes
+    defenseCoordinator
   );
 
   logger.info(`Registered ${kernel.getProcesses().length} processes with kernel`, {
