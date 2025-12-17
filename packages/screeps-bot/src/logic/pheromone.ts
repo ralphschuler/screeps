@@ -355,10 +355,13 @@ export class PheromoneManager {
       const neighborSwarm = (room.memory as unknown as { swarm?: SwarmState }).swarm;
       if (!neighborSwarm) continue;
 
-      // Diffuse defense pheromone (weakened)
-      const diffusedAmount = threatScore / 20; // 5% of original threat
+      // Diffuse defense pheromone based on difference from source-equivalent level
+      const sourceDefenseLevel = this.clamp(threatScore / 10);
+      const neighborDefense = neighborSwarm.pheromones.defense;
+      const positiveDifference = Math.max(0, sourceDefenseLevel - neighborDefense);
+      const diffusedAmount = positiveDifference * 0.05; // 5% of difference toward source level
       neighborSwarm.pheromones.defense = this.clamp(
-        neighborSwarm.pheromones.defense + diffusedAmount
+        neighborDefense + diffusedAmount
       );
     }
   }

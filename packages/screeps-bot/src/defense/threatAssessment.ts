@@ -151,6 +151,11 @@ export function assessThreat(room: Room): ThreatAnalysis {
     filter: s => s.structureType === STRUCTURE_TOWER
   });
   
+  // TODO: Improve tower DPS accuracy by calculating distance-based damage falloff
+  // Details: Current implementation assumes flat 300 damage per tower, but actual damage
+  //          varies from 150 (max range) to 600 (min range). Consider calculating average
+  //          distance from towers to hostile creeps for more accurate threat assessment.
+  // See: ROADMAP.md Section 12 - Threat-Level & Posture
   const towerDPS = towers.reduce((sum, tower) => {
     const structureTower = tower as StructureTower;
     // Tower at max range does 150 damage, at min range does 600
@@ -187,6 +192,8 @@ export function assessThreat(room: Room): ThreatAnalysis {
   if (nukes.length > 0) {
     threatScore += 500;
     recommendedResponse = "safemode";
+    // Recalculate danger level with nuke threat included
+    dangerLevel = 3; // Nukes always set danger to max level
   }
 
   return {
@@ -229,14 +236,36 @@ export function calculateDangerLevel(threatScore: number): 0 | 1 | 2 | 3 {
 /**
  * Estimate energy cost to spawn defenders
  * 
- * @param totalDPS - Total hostile DPS
- * @returns Estimated energy cost
+ * This uses a simplified baseline defender model:
+ * - We assume an unboosted "generic" defender (mixed melee/ranged) can sustain
+ *   ~300 raw DPS (attack + ranged_attack) in typical engagement ranges.
+ * - We assume such a defender costs roughly 1300 energy to spawn.
+ * 
+ * These values are intentionally conservative heuristics for high-level planning,
+ * not exact combat simulation. Callers that know their actual defender templates
+ * (e.g. heavy boosted melee, pure ranged, cheaper trash defenders) can override
+ * the defaults for more accurate estimates.
+ * 
+ * @param totalDPS - Total hostile DPS we want to counter
+ * @param defenderDpsPerCreep - Expected sustainable DPS per defending creep (default: 300)
+ * @param energyPerDefender - Energy cost to spawn one baseline defender creep (default: 1300)
+ * @returns Estimated total energy required to spawn enough defenders
  */
-export function estimateDefenderCost(totalDPS: number): number {
-  // Rough estimate: need enough defenders to match hostile DPS
-  // Each defender costs ~1300 energy for a basic ranged/melee defender
-  const defendersNeeded = Math.ceil(totalDPS / 300); // Assume 300 DPS per defender
-  return defendersNeeded * 1300;
+export function estimateDefenderCost(
+  totalDPS: number,
+  defenderDpsPerCreep: number = 300,
+  energyPerDefender: number = 1300
+): number {
+  // Rough estimate: need enough defenders to at least match hostile DPS
+  // Guard against invalid configuration to avoid division by zero
+  const effectiveDefenderDps = Math.max(defenderDpsPerCreep, 1);
+  const defendersNeeded = Math.ceil(totalDPS / effectiveDefenderDps);
+  
+  // TODO: Refine defender cost estimation based on actual room defender templates
+  // Details: Use the military/role system to derive per-template DPS and energy
+  //          costs (including boosts) instead of a single global heuristic.
+  // See: ROADMAP.md Section 12 - Threat-Level & Posture for integration
+  return defendersNeeded * energyPerDefender;
 }
 
 /**

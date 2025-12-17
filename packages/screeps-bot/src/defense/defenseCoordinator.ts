@@ -110,15 +110,22 @@ export class DefenseCoordinator {
     const assignedRangers = this.getAssignedDefenders(request.roomName, "ranger");
 
     // Calculate remaining need based on threat assessment
+    const threatGuardNeed = threat.assistanceRequired
+      ? Math.max(0, Math.ceil(threat.totalHostileDPS / 300) - assignedGuards.length)
+      : 0;
+    const threatRangerNeed = threat.assistanceRequired
+      ? Math.max(0, Math.ceil(threat.totalHostileDPS / 300) - assignedRangers.length)
+      : 0;
+
     const guardsNeeded = Math.max(
       0,
       request.guardsNeeded - assignedGuards.length,
-      threat.assistanceRequired ? Math.ceil(threat.totalHostileDPS / 300) - assignedGuards.length : 0
+      threatGuardNeed
     );
     const rangersNeeded = Math.max(
       0,
       request.rangersNeeded - assignedRangers.length,
-      threat.assistanceRequired ? Math.ceil(threat.totalHostileDPS / 300) - assignedRangers.length : 0
+      threatRangerNeed
     );
 
     if (guardsNeeded === 0 && rangersNeeded === 0) {

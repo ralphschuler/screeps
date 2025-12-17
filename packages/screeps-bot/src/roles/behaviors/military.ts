@@ -3,19 +3,6 @@
  *
  * Simple, human-readable behavior functions for military roles.
  * Includes defense, offense, and squad-based combat.
- * 
- * TODO(P2): ARCH - Implement kiting behavior for ranged attackers
- * Maintain distance while dealing damage for improved survivability
- * TODO(P2): FEATURE - Add formation-aware movement for squads
- * Squad members should maintain formation while moving as a unit
- * TODO(P1): FEATURE - Implement threat prioritization for target selection
- * Focus on highest-threat enemies (healers, boosted creeps) first
- * TODO(P2): PERF - Add combat simulation for engagement decision-making
- * Predict fight outcomes before committing to engagements
- * TODO(P3): FEATURE - Implement retreat behavior for losing fights
- * Disengage and regroup when fight is going poorly
- * TODO(P2): TEST - Add unit tests for military behavior logic
- * Verify correct targeting and movement decisions
  */
 
 import type { SquadMemory, SwarmCreepMemory } from "../../memory/schemas";
@@ -25,6 +12,7 @@ import { registerMilitaryCacheClear } from "./context";
 import type { CreepAction, CreepContext } from "./types";
 import { createLogger } from "../../core/logger";
 import { getCollectionPoint } from "../../utils/collectionPoint";
+import { checkAndExecuteRetreat } from "../../defense/retreatProtocol";
 
 const logger = createLogger("MilitaryBehaviors");
 
@@ -253,6 +241,11 @@ function getSquadMemory(squadId: string): SquadMemory | undefined {
  */
 export function guard(ctx: CreepContext): CreepAction {
   const mem = ctx.creep.memory as unknown as SwarmCreepMemory;
+
+  // Check if should retreat based on threat assessment
+  if (checkAndExecuteRetreat(ctx.creep)) {
+    return { type: "idle" }; // Retreat logic handles movement
+  }
 
   // Check if assigned to assist another room
   if (mem.assistTarget) {
@@ -805,6 +798,11 @@ export function harasser(ctx: CreepContext): CreepAction {
  */
 export function ranger(ctx: CreepContext): CreepAction {
   const mem = ctx.creep.memory as unknown as SwarmCreepMemory;
+
+  // Check if should retreat based on threat assessment
+  if (checkAndExecuteRetreat(ctx.creep)) {
+    return { type: "idle" }; // Retreat logic handles movement
+  }
 
   // TACTICAL RETREAT: If critically damaged (below 30% HP), retreat to home room
   // Rangers are valuable ranged attackers, often boosted for maximum effectiveness

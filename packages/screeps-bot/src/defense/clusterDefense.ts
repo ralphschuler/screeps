@@ -186,8 +186,12 @@ export class ClusterDefenseCoordinator {
       return;
     }
 
-    // Check if safe mode is available
-    if (room.controller.safeModeAvailable > 0 && !room.controller.safeMode) {
+    // Check if safe mode is available and not on cooldown
+    if (
+      room.controller.safeModeAvailable > 0 &&
+      !room.controller.safeMode &&
+      !room.controller.safeModeCooldown
+    ) {
       const result = room.controller.activateSafeMode();
       
       if (result === OK) {

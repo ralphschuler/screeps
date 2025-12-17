@@ -51,9 +51,17 @@ export function shouldRetreat(creep: Creep, threat: ThreatAnalysis): boolean {
   }
 
   // Retreat if creep is damaged and enemy has healers
-  if (creep.hits < creep.hitsMax * 0.3 && threat.healerCount > 0) {
+  // Check for friendly healer support first
+  const friendlyHealers = creep.room.find(FIND_MY_CREEPS, {
+    filter: c => {
+      const memory = c.memory as unknown as { role?: string };
+      return memory.role === "healer";
+    }
+  });
+  
+  if (creep.hits < creep.hitsMax * 0.3 && threat.healerCount > 0 && friendlyHealers.length === 0) {
     logger.info(
-      `Creep ${creep.name} retreating: damaged (${creep.hits}/${creep.hitsMax}) and enemy has ${threat.healerCount} healers`,
+      `Creep ${creep.name} retreating: damaged (${creep.hits}/${creep.hitsMax}) facing ${threat.healerCount} enemy healers without friendly healer support`,
       {
         subsystem: "Defense",
         room: creep.room.name,
@@ -101,18 +109,43 @@ export function executeRetreat(creep: Creep): void {
   }
 
   // Second priority: flee to nearest exit leading to owned room
-  const exits = [FIND_EXIT_TOP, FIND_EXIT_BOTTOM, FIND_EXIT_LEFT, FIND_EXIT_RIGHT];
-  
-  for (const exitConstant of exits) {
-    const exitPositions = creep.room.find(exitConstant);
-    if (exitPositions.length === 0) continue;
-    
-    const exit = creep.pos.findClosestByPath(exitPositions);
-    if (exit) {
-      creep.moveTo(exit, {
-        visualizePathStyle: { stroke: "#ffaa00" }
-      });
-      return;
+  const describedExits = Game.map.describeExits(creep.room.name);
+  if (describedExits) {
+    const directionToFindExit: Partial<Record<DirectionConstant, FindConstant>> = {
+      [TOP]: FIND_EXIT_TOP,
+      [BOTTOM]: FIND_EXIT_BOTTOM,
+      [LEFT]: FIND_EXIT_LEFT,
+      [RIGHT]: FIND_EXIT_RIGHT
+    };
+
+    const friendlyExitPositions: RoomPosition[] = [];
+
+    for (const [directionString, roomName] of Object.entries(describedExits)) {
+      const direction = Number(directionString) as DirectionConstant;
+      const targetRoom = Game.rooms[roomName];
+      if (!targetRoom?.controller?.my) {
+        continue;
+      }
+
+      const findConstant = directionToFindExit[direction];
+      if (!findConstant) {
+        continue;
+      }
+
+      const positions = creep.room.find(findConstant);
+      if (positions.length > 0) {
+        friendlyExitPositions.push(...positions);
+      }
+    }
+
+    if (friendlyExitPositions.length > 0) {
+      const exit = creep.pos.findClosestByPath(friendlyExitPositions);
+      if (exit) {
+        creep.moveTo(exit, {
+          visualizePathStyle: { stroke: "#ffaa00" }
+        });
+        return;
+      }
     }
   }
 

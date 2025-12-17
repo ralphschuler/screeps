@@ -32,7 +32,9 @@ describe("Threat Assessment", () => {
     });
 
     it("should handle boundary values correctly", () => {
-      assert.equal(calculateDangerLevel(1), 1, "Threat score 1 should be level 1");
+      // Explicitly document the special case: 0 maps to danger level 0
+      assert.equal(calculateDangerLevel(0), 0, "Threat score 0 should be level 0 (special case)");
+      assert.equal(calculateDangerLevel(1), 1, "Threat score 1 should be level 1 (start of 1-299 range)");
       assert.equal(calculateDangerLevel(299), 1, "Threat score 299 should be level 1");
       assert.equal(calculateDangerLevel(300), 2, "Threat score 300 should be level 2");
       assert.equal(calculateDangerLevel(799), 2, "Threat score 799 should be level 2");

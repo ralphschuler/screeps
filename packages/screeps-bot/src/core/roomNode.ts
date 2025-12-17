@@ -32,6 +32,7 @@ import { labConfigManager } from "../labs/labConfig";
 import { kernel } from "./kernel";
 import { logger } from "./logger";
 import { prefetchRoomObjects } from "../utils/objectCache";
+import { assessThreat } from "../defense/threatAssessment";
 
 /**
  * Perimeter defense configuration constants
@@ -298,25 +299,41 @@ export class RoomNode {
       }
     }
 
-    const newDanger = calculateDangerLevel(hostiles.length, potentialDamage, enemyStructures.length > 0);
+    // Use threat assessment for accurate danger level calculation
+    if (hostiles.length > 0) {
+      const threat = assessThreat(room);
+      const newDanger = threat.dangerLevel;
 
-    // Update danger and emit events if increased
-    if (newDanger > swarm.danger) {
-      pheromoneManager.onHostileDetected(swarm, hostiles.length, newDanger);
-      memoryManager.addRoomEvent(this.roomName, "hostileDetected", `${hostiles.length} hostiles, danger=${newDanger}`);
+      // Update danger and emit events if increased
+      if (newDanger > swarm.danger) {
+        // Update pheromones with threat assessment data
+        pheromoneManager.updateDangerFromThreat(swarm, threat.threatScore, threat.dangerLevel);
+        
+        // Diffuse danger to cluster rooms if part of a cluster
+        if (swarm.clusterId) {
+          const cluster = memoryManager.getCluster(swarm.clusterId);
+          if (cluster) {
+            pheromoneManager.diffuseDangerToCluster(room.name, threat.threatScore, cluster.memberRooms);
+          }
+        }
+        
+        memoryManager.addRoomEvent(this.roomName, "hostileDetected", `${hostiles.length} hostiles, danger=${newDanger}, score=${threat.threatScore}`);
 
-      // Emit hostile detected events for each hostile through the kernel event system
-      for (const hostile of hostiles) {
-        kernel.emit("hostile.detected", {
-          roomName: this.roomName,
-          hostileId: hostile.id,
-          hostileOwner: hostile.owner.username,
-          bodyParts: hostile.body.length,
-          threatLevel: newDanger,
-          source: this.roomName
-        });
+        // Emit hostile detected events for each hostile through the kernel event system
+        for (const hostile of hostiles) {
+          kernel.emit("hostile.detected", {
+            roomName: this.roomName,
+            hostileId: hostile.id,
+            hostileOwner: hostile.owner.username,
+            bodyParts: hostile.body.length,
+            threatLevel: newDanger,
+            source: this.roomName
+          });
+        }
       }
-    } else if (hostiles.length === 0 && swarm.danger > 0) {
+      
+      swarm.danger = newDanger;
+    } else if (swarm.danger > 0) {
       // Emit hostile cleared event when danger level drops to 0
       kernel.emit("hostile.cleared", {
         roomName: this.roomName,
