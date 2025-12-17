@@ -320,6 +320,136 @@ export class PowerCommands {
       return `Failed to reassign ${powerCreepName} (not found)`;
     }
   }
+
+  @Command({
+    name: "power.create",
+    description: "Manually create a new power creep (automatic creation is also enabled)",
+    usage: "power.create(name, className)",
+    examples: [
+      "power.create('operator_eco', POWER_CLASS.OPERATOR)",
+      "power.create('my_operator', 'operator')"
+    ],
+    category: "Power"
+  })
+  public create(name: string, className: PowerClassConstant | string): string {
+    // Normalize className
+    const powerClass = typeof className === "string" && className.toLowerCase() === "operator"
+      ? POWER_CLASS.OPERATOR
+      : className as PowerClassConstant;
+
+    // Check if power creep already exists
+    if (Game.powerCreeps[name]) {
+      return `Power creep "${name}" already exists`;
+    }
+
+    // Check GPL level
+    if (!Game.gpl || Game.gpl.level < 1) {
+      return "GPL level too low (need GPL 1+)";
+    }
+
+    // Check if we have capacity
+    const currentCount = Object.keys(Game.powerCreeps).length;
+    if (currentCount >= Game.gpl.level) {
+      return `Cannot create power creep: ${currentCount}/${Game.gpl.level} already created`;
+    }
+
+    const result = PowerCreep.create(name, powerClass);
+    if (result === OK) {
+      return `Created power creep "${name}" (${powerClass})`;
+    } else {
+      return `Failed to create power creep: ${result}`;
+    }
+  }
+
+  @Command({
+    name: "power.spawn",
+    description: "Manually spawn a power creep at a power spawn",
+    usage: "power.spawn(powerCreepName, roomName?)",
+    examples: [
+      "power.spawn('operator_eco')",
+      "power.spawn('operator_eco', 'E2S2')"
+    ],
+    category: "Power"
+  })
+  public spawn(powerCreepName: string, roomName?: string): string {
+    const pc = Game.powerCreeps[powerCreepName];
+    if (!pc) {
+      return `Power creep "${powerCreepName}" not found`;
+    }
+
+    // Check if already spawned
+    if (pc.ticksToLive !== undefined) {
+      return `Power creep "${powerCreepName}" is already spawned (TTL: ${pc.ticksToLive})`;
+    }
+
+    // Find power spawn
+    const targetRoom = roomName ?? pc.memory.homeRoom ?? Object.keys(Game.rooms)[0];
+    const room = Game.rooms[targetRoom];
+    
+    if (!room) {
+      return `Room "${targetRoom}" not visible`;
+    }
+
+    const powerSpawn = room.find(FIND_MY_STRUCTURES, {
+      filter: s => s.structureType === STRUCTURE_POWER_SPAWN
+    })[0] as StructurePowerSpawn | undefined;
+
+    if (!powerSpawn) {
+      return `No power spawn found in ${targetRoom}`;
+    }
+
+    const result = pc.spawn(powerSpawn);
+    if (result === OK) {
+      return `Spawned power creep "${powerCreepName}" at ${targetRoom}`;
+    } else {
+      return `Failed to spawn power creep: ${result}`;
+    }
+  }
+
+  @Command({
+    name: "power.upgrade",
+    description: "Manually upgrade a power creep with a specific power",
+    usage: "power.upgrade(powerCreepName, power)",
+    examples: [
+      "power.upgrade('operator_eco', PWR_OPERATE_SPAWN)",
+      "power.upgrade('operator_eco', PWR_OPERATE_TOWER)"
+    ],
+    category: "Power"
+  })
+  public upgrade(powerCreepName: string, power: PowerConstant): string {
+    const pc = Game.powerCreeps[powerCreepName];
+    if (!pc) {
+      return `Power creep "${powerCreepName}" not found`;
+    }
+
+    // Check if already has power
+    if (pc.powers[power]) {
+      return `Power creep "${powerCreepName}" already has ${power}`;
+    }
+
+    // Check GPL requirement
+    // POWER_INFO is a global constant provided by the Screeps game engine
+    const powerInfo = POWER_INFO[power];
+    if (!powerInfo) {
+      return `Invalid power: ${power}`;
+    }
+
+    if (powerInfo.level !== undefined && powerInfo.level > Game.gpl.level) {
+      return `GPL too low for ${power} (need GPL ${powerInfo.level}, have ${Game.gpl.level})`;
+    }
+
+    // Check if creep can level up
+    if (pc.level >= Game.gpl.level) {
+      return `Power creep is already at max level (${pc.level}/${Game.gpl.level})`;
+    }
+
+    const result = pc.upgrade(power);
+    if (result === OK) {
+      return `Upgraded ${powerCreepName} to level ${pc.level} with ${power}`;
+    } else {
+      return `Failed to upgrade: ${result}`;
+    }
+  }
 }
 
 // Export command class instances

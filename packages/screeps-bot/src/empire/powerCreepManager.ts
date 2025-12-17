@@ -41,6 +41,36 @@ const DEFAULT_CONFIG: PowerCreepConfig = {
 };
 
 /**
+ * Power paths for economy operators
+ * Prioritizes economic boosts: spawn speed, tower effectiveness, labs, storage
+ */
+const ECO_OPERATOR_POWERS: PowerConstant[] = [
+  PWR_GENERATE_OPS,        // Level 0: Generate ops for other powers
+  PWR_OPERATE_SPAWN,       // Level 2: 50% faster spawning
+  PWR_OPERATE_EXTENSION,   // Level 0: Instant extension fill
+  PWR_OPERATE_TOWER,       // Level 10: 50% tower effectiveness
+  PWR_OPERATE_LAB,         // Level 20: Faster reactions
+  PWR_OPERATE_STORAGE,     // Level 25: +500K storage capacity
+  PWR_REGEN_SOURCE,        // Level 10: Instant source regeneration
+  PWR_OPERATE_FACTORY      // Level 0: Instant factory production
+];
+
+/**
+ * Power paths for combat operators
+ * Prioritizes combat powers: disruption, shielding, and spawning
+ */
+const COMBAT_OPERATOR_POWERS: PowerConstant[] = [
+  PWR_GENERATE_OPS,        // Level 0: Generate ops for other powers
+  PWR_OPERATE_SPAWN,       // Level 2: Still useful for military
+  PWR_SHIELD,              // Level 0: Mobile ramparts for allies
+  PWR_DISRUPT_SPAWN,       // Level 2: Disable enemy spawns
+  PWR_DISRUPT_TOWER,       // Level 14: Disable enemy towers
+  PWR_FORTIFY,             // Level 0: Boost rampart HP
+  PWR_OPERATE_TOWER,       // Level 10: Boost friendly towers
+  PWR_DISRUPT_TERMINAL     // Level 20: Disable enemy terminals
+];
+
+/**
  * Power creep assignment
  */
 export interface PowerCreepAssignment {
@@ -60,6 +90,8 @@ export interface PowerCreepAssignment {
   lastRespawnTick?: number;
   /** Priority score for respawn */
   priority: number;
+  /** Planned powers for upgrade path */
+  powerPath?: PowerConstant[];
 }
 
 /**
@@ -135,6 +167,9 @@ export class PowerCreepManager {
 
     // Manage power creep assignments
     this.manageAssignments();
+
+    // Check for power upgrades when GPL increases
+    this.checkPowerUpgrades();
 
     // Check for respawn needs
     this.checkRespawnNeeds();
@@ -358,6 +393,9 @@ export class PowerCreepManager {
       if (combatRoom) bestRoom = combatRoom.room.name;
     }
 
+    // Generate power path for this role
+    const powerPath = this.generatePowerPath(role);
+
     const assignment: PowerCreepAssignment = {
       name: pc.name,
       className: pc.className,
@@ -366,7 +404,8 @@ export class PowerCreepManager {
       level: pc.level,
       spawned: pc.ticksToLive !== undefined,
       lastRespawnTick: pc.ticksToLive !== undefined ? Game.time : undefined,
-      priority: role === "powerQueen" ? 100 : 80
+      priority: role === "powerQueen" ? 100 : 80,
+      powerPath
     };
 
     // Store assignment in power creep memory
@@ -379,6 +418,77 @@ export class PowerCreepManager {
     });
 
     return assignment;
+  }
+
+  /**
+   * Generate power upgrade path for a role
+   * POWER_INFO is a global constant provided by the Screeps game engine
+   */
+  private generatePowerPath(role: "powerQueen" | "powerWarrior"): PowerConstant[] {
+    const basePowers = role === "powerQueen" ? ECO_OPERATOR_POWERS : COMBAT_OPERATOR_POWERS;
+    
+    // Filter to powers available at current GPL level
+    // POWER_INFO is globally available in Screeps runtime
+    const availablePowers = basePowers.filter(power => {
+      const powerInfo = POWER_INFO[power];
+      return powerInfo && powerInfo.level !== undefined && powerInfo.level <= (this.gplState?.currentLevel ?? 0);
+    });
+
+    return availablePowers;
+  }
+
+  /**
+   * Check and upgrade power creeps with new powers
+   */
+  private checkPowerUpgrades(): void {
+    if (!this.gplState) return;
+
+    for (const [name, assignment] of this.assignments) {
+      const pc = Game.powerCreeps[name];
+      if (!pc) continue;
+
+      // Check if power creep can level up
+      if (pc.level >= this.gplState.currentLevel) continue;
+
+      // Find next power to upgrade
+      const nextPower = this.selectNextPower(pc, assignment);
+      if (!nextPower) continue;
+
+      // Attempt to upgrade
+      const result = pc.upgrade(nextPower);
+      if (result === OK) {
+        logger.info(`Upgraded ${pc.name} to level ${pc.level + 1} with ${nextPower}`, {
+          subsystem: "PowerCreep"
+        });
+        assignment.level = pc.level;
+      } else if (result !== ERR_NOT_ENOUGH_RESOURCES) {
+        logger.warn(`Failed to upgrade ${pc.name}: ${result}`, {
+          subsystem: "PowerCreep"
+        });
+      }
+    }
+  }
+
+  /**
+   * Select next power for a power creep to upgrade
+   * POWER_INFO is a global constant provided by the Screeps game engine
+   */
+  private selectNextPower(pc: PowerCreep, assignment: PowerCreepAssignment): PowerConstant | null {
+    const powerPath = assignment.powerPath ?? this.generatePowerPath(assignment.role);
+    
+    // Find first power in path that we don't have yet
+    // POWER_INFO is globally available in Screeps runtime
+    for (const power of powerPath) {
+      if (!pc.powers[power]) {
+        // Verify we meet GPL requirement
+        const powerInfo = POWER_INFO[power];
+        if (powerInfo && powerInfo.level !== undefined && powerInfo.level <= (this.gplState?.currentLevel ?? 0)) {
+          return power;
+        }
+      }
+    }
+
+    return null;
   }
 
   /**
