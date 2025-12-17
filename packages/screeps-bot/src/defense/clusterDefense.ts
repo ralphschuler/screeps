@@ -34,26 +34,13 @@ function findClusterForRoom(roomName: string): string | undefined {
  * @returns Array of room names in cluster
  */
 function getClusterRooms(clusterId: string): string[] {
-  const empireMemory = memoryManager.getEmpire();
-  const cluster = empireMemory.clusters.find(c => c === clusterId);
+  const cluster = memoryManager.getCluster(clusterId);
   
   if (!cluster) {
     return [];
   }
 
-  // Find all rooms with this cluster ID
-  const rooms: string[] = [];
-  for (const roomName of Object.keys(Game.rooms)) {
-    const room = Game.rooms[roomName];
-    if (!room?.controller?.my) continue;
-    
-    const swarmState = memoryManager.getOrInitSwarmState(roomName);
-    if (swarmState.clusterId === clusterId) {
-      rooms.push(roomName);
-    }
-  }
-  
-  return rooms;
+  return cluster.memberRooms;
 }
 
 /**

@@ -324,7 +324,7 @@ export class PheromoneManager {
     swarm.danger = dangerLevel;
 
     // Update defense pheromone based on threat score
-    swarm.pheromones.defense = this.clamp(Math.min(100, threatScore / 10));
+    swarm.pheromones.defense = this.clamp(threatScore / 10);
 
     // Update war pheromone if persistent threat
     if (dangerLevel >= 2) {
