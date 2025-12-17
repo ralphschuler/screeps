@@ -22,7 +22,6 @@
  * - PowerBankHarvestingManager (empire:powerBank)
  * - PowerCreepManager (empire:powerCreep)
  * - ShardManager (empire:shard)
- * - ClusterManager (cluster:manager)
  * - EvacuationManager (cluster:evacuation)
  * - DefenseCoordinator (cluster:defense)
  *
