@@ -8,7 +8,7 @@ declare const global: { Game: typeof Game };
 /**
  * Create mock room intel
  */
-function createMockRoomIntel(name: string, sources = 2, threatLevel = 0 as 0 | 1 | 2 | 3): RoomIntel {
+function createMockRoomIntel(name: string, sources = 2, threatLevel: 0 | 1 | 2 | 3 = 0): RoomIntel {
   return {
     name,
     lastSeen: 1000,
@@ -238,12 +238,15 @@ describe("Remote Mining Profitability Analysis", () => {
       );
     });
 
-    it("should calculate ROI as net profit to cost ratio", () => {
+    it("should calculate ROI as net profit to investment cost ratio", () => {
       const intel = createMockRoomIntel("E2N1", 2, 0);
       const result = ExpansionScoring.calculateRemoteProfitability("E2N1", "E1N1", intel);
 
-      const totalCost = result.carrierCostPerTick + result.infrastructureCost / 50000 + result.threatCost;
-      const expectedROI = result.netProfitPerTick / totalCost;
+      // ROI should be calculated as: netProfit / (carrierCost + infrastructureCost/lifetime)
+      // threatCost is NOT included in investment cost (it's lost revenue, not investment)
+      const infrastructureCostPerTick = result.infrastructureCost / 50000;
+      const totalInvestmentCost = result.carrierCostPerTick + infrastructureCostPerTick;
+      const expectedROI = result.netProfitPerTick / totalInvestmentCost;
 
       assert.approximately(result.roi, expectedROI, 0.01, "ROI should be calculated correctly");
     });
@@ -266,6 +269,121 @@ describe("Remote Mining Profitability Analysis", () => {
         0.01,
         "Infrastructure should be amortized correctly"
       );
+    });
+
+    it("should include deprecated fields for backward compatibility", () => {
+      const intel = createMockRoomIntel("E2N1", 2, 0);
+      const result = ExpansionScoring.calculateRemoteProfitability("E2N1", "E1N1", intel);
+
+      // Verify deprecated fields are present
+      assert.isDefined(result.energyGain, "energyGain should be defined for backward compatibility");
+      assert.isDefined(result.energyCost, "energyCost should be defined for backward compatibility");
+
+      // Verify they map to the correct new fields
+      assert.equal(result.energyGain, result.netProfitPerTick, "energyGain should equal netProfitPerTick");
+
+      const infrastructureCostPerTick = result.infrastructureCost / 50000;
+      const expectedEnergyCost = result.carrierCostPerTick + infrastructureCostPerTick;
+      assert.approximately(
+        result.energyCost!,
+        expectedEnergyCost,
+        0.01,
+        "energyCost should equal carrierCost + infrastructureCost per tick"
+      );
+    });
+  });
+
+  describe("edge cases and input validation", () => {
+    it("should throw error for invalid distance (zero)", () => {
+      // Mock distance = 0
+      global.Game.map.getRoomLinearDistance = () => 0;
+      const intel = createMockRoomIntel("E1N1", 2, 0);
+
+      assert.throws(
+        () => ExpansionScoring.calculateRemoteProfitability("E1N1", "E1N1", intel),
+        /invalid distance/,
+        "Should reject distance of 0"
+      );
+    });
+
+    it("should throw error for invalid distance (negative)", () => {
+      // Mock distance = -1
+      global.Game.map.getRoomLinearDistance = () => -1;
+      const intel = createMockRoomIntel("E2N1", 2, 0);
+
+      assert.throws(
+        () => ExpansionScoring.calculateRemoteProfitability("E2N1", "E1N1", intel),
+        /invalid distance/,
+        "Should reject negative distance"
+      );
+    });
+
+    it("should throw error for zero sources", () => {
+      const intel = createMockRoomIntel("E2N1", 0, 0);
+
+      assert.throws(
+        () => ExpansionScoring.calculateRemoteProfitability("E2N1", "E1N1", intel),
+        /intel.sources must be positive/,
+        "Should reject zero sources"
+      );
+    });
+
+    it("should throw error for negative sources", () => {
+      const intel = createMockRoomIntel("E2N1", -1, 0);
+
+      assert.throws(
+        () => ExpansionScoring.calculateRemoteProfitability("E2N1", "E1N1", intel),
+        /intel.sources must be positive/,
+        "Should reject negative sources"
+      );
+    });
+
+    it("should throw error for invalid threat level (too high)", () => {
+      const intel = createMockRoomIntel("E2N1", 2, 0);
+      intel.threatLevel = 4 as any; // Force invalid value
+
+      assert.throws(
+        () => ExpansionScoring.calculateRemoteProfitability("E2N1", "E1N1", intel),
+        /intel.threatLevel must be in \[0, 3\]/,
+        "Should reject threat level above 3"
+      );
+    });
+
+    it("should throw error for invalid threat level (negative)", () => {
+      const intel = createMockRoomIntel("E2N1", 2, 0);
+      intel.threatLevel = -1 as any; // Force invalid value
+
+      assert.throws(
+        () => ExpansionScoring.calculateRemoteProfitability("E2N1", "E1N1", intel),
+        /intel.threatLevel must be in \[0, 3\]/,
+        "Should reject negative threat level"
+      );
+    });
+
+    it("should handle very high ROI without score overflow", () => {
+      // Create scenario with very high ROI (close, safe, multi-source)
+      global.Game.map.getRoomLinearDistance = () => 1;
+      const intel = createMockRoomIntel("E2N1", 2, 0);
+      const result = ExpansionScoring.calculateRemoteProfitability("E2N1", "E1N1", intel);
+
+      // Score should be clamped to 100 even with high ROI
+      assert.isAtMost(result.profitabilityScore, 100, "Score should not exceed 100");
+      assert.isAtLeast(result.profitabilityScore, 0, "Score should not be below 0");
+    });
+
+    it("should handle negative net profit with appropriate score", () => {
+      // Far distance with high threat should result in negative profit
+      global.Game.map.getRoomLinearDistance = () => 10;
+      const intel = createMockRoomIntel("E10N10", 1, 3); // Single source, max threat, far away
+
+      const result = ExpansionScoring.calculateRemoteProfitability("E10N10", "E1N1", intel);
+
+      // Should be unprofitable
+      assert.isFalse(result.isProfitable, "Should be unprofitable");
+
+      // Score should still be in valid range
+      assert.isAtMost(result.profitabilityScore, 100, "Score should not exceed 100");
+      assert.isAtLeast(result.profitabilityScore, 0, "Score should not be below 0");
     });
   });
 
