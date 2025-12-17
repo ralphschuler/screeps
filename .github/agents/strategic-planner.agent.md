@@ -23,7 +23,7 @@ The bot has to be Highly performant, modular and human readable.
 3. **Create** well-researched GitHub issues with evidence and implementation plans
 4. **Update** existing issues rather than creating duplicates
 5. **Prioritize** based on impact, effort, and strategic alignment
-6. **Modularize** code into it own npm modules under packages/screeps-<name>
+6. **Modularize** code into it own npm modules under packages/screeps-<name> with name @ralphschuler/screeps-<package>
 7. **Cleanup** unused and repeating code.
 
 ## AVAILABLE MCP TOOLS
