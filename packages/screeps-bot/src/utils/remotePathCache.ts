@@ -233,13 +233,13 @@ export function precacheRemoteRoutes(homeRoom: Room, remoteRooms: string[]): voi
  * @param from - Start position
  * @param to - End position
  * @param routeType - Type of route
- * @returns Path steps
+ * @returns Path steps (may be RoomPosition[] from PathFinder or PathStep[] from cache)
  */
 export function getOrCalculateRemotePath(
   from: RoomPosition,
   to: RoomPosition,
   routeType: RemoteRouteType
-): PathStep[] | null {
+): PathStep[] | RoomPosition[] | null {
   // Try cache first
   const path = getRemoteMiningPath(from, to, routeType);
   if (path) {
@@ -257,7 +257,7 @@ export function getOrCalculateRemotePath(
   if (!result.incomplete && result.path.length > 0) {
     // Cache the calculated path
     cacheRemoteMiningPath(from, to, result.path, routeType);
-    return result.path as unknown as PathStep[];
+    return result.path;
   }
   
   logger.warn(`Failed to calculate remote path: ${from.roomName} → ${to.roomName}`, {
