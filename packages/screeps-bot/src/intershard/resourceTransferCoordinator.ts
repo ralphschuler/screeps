@@ -283,6 +283,8 @@ export class ResourceTransferCoordinator {
 
     // Add spawn requests to queue
     for (let i = 0; i < carriersToSpawn; i++) {
+      // Build additional memory with cross-shard specific fields
+      // Note: Standard fields like targetRoom are set directly on SpawnRequest
       const additionalMemory: CrossShardCarrierAdditionalMemory = {
         transferRequestId: request.taskId,
         portalRoom: request.portalRoom,
@@ -298,7 +300,7 @@ export class ResourceTransferCoordinator {
         body,
         priority: spawnPriority,
         createdAt: Game.time,
-        targetRoom: request.targetRoom,
+        targetRoom: request.targetRoom, // Standard field, not in additionalMemory
         additionalMemory: additionalMemory
       };
 
