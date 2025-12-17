@@ -339,9 +339,8 @@ export class RoomNode {
         roomName: this.roomName,
         source: this.roomName
       });
+      swarm.danger = 0;
     }
-
-    swarm.danger = newDanger;
 
     // Check for nukes (only every 10 ticks to reduce CPU cost)
     // Nukes have a long flight time (~50k ticks), so checking every 10 ticks is sufficient

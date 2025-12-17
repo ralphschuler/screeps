@@ -132,7 +132,7 @@ export function executeRetreat(creep: Creep): void {
         continue;
       }
 
-      const positions = creep.room.find(findConstant);
+      const positions = creep.room.find(findConstant) as RoomPosition[];
       if (positions.length > 0) {
         friendlyExitPositions.push(...positions);
       }

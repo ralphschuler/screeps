@@ -172,7 +172,7 @@ export function assessThreat(room: Room): ThreatAnalysis {
   const estimatedDefenderCost = estimateDefenderCost(totalDPS);
 
   // Determine danger level (0-3)
-  const dangerLevel = calculateDangerLevel(threatScore);
+  let dangerLevel = calculateDangerLevel(threatScore);
 
   // Recommend response strategy
   let recommendedResponse: ThreatAnalysis["recommendedResponse"];

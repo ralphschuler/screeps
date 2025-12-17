@@ -383,7 +383,8 @@ export class PowerCommands {
     }
 
     // Find power spawn
-    const targetRoom = roomName ?? pc.memory.homeRoom ?? Object.keys(Game.rooms)[0];
+    const memory = pc.memory as { homeRoom?: string };
+    const targetRoom = roomName ?? memory.homeRoom ?? Object.keys(Game.rooms)[0];
     const room = Game.rooms[targetRoom];
     
     if (!room) {
@@ -434,9 +435,6 @@ export class PowerCommands {
       return `Invalid power: ${power}`;
     }
 
-    if (powerInfo.level !== undefined && powerInfo.level > Game.gpl.level) {
-      return `GPL too low for ${power} (need GPL ${powerInfo.level}, have ${Game.gpl.level})`;
-    }
 
     // Check if creep can level up
     if (pc.level >= Game.gpl.level) {

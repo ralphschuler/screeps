@@ -429,9 +429,11 @@ export class PowerCreepManager {
     
     // Filter to powers available at current GPL level
     // POWER_INFO is globally available in Screeps runtime
+    // powerInfo.level is an array of GPL requirements for each tier
     const availablePowers = basePowers.filter(power => {
       const powerInfo = POWER_INFO[power];
-      return powerInfo && powerInfo.level !== undefined && powerInfo.level <= (this.gplState?.currentLevel ?? 0);
+      // Power is available if any tier can be unlocked at current GPL (first tier is usually level 0)
+      return powerInfo && powerInfo.level !== undefined && powerInfo.level[0] <= (this.gplState?.currentLevel ?? 0);
     });
 
     return availablePowers;
@@ -480,9 +482,9 @@ export class PowerCreepManager {
     // POWER_INFO is globally available in Screeps runtime
     for (const power of powerPath) {
       if (!pc.powers[power]) {
-        // Verify we meet GPL requirement
+        // Verify we meet GPL requirement (check first tier of power)
         const powerInfo = POWER_INFO[power];
-        if (powerInfo && powerInfo.level !== undefined && powerInfo.level <= (this.gplState?.currentLevel ?? 0)) {
+        if (powerInfo && powerInfo.level !== undefined && powerInfo.level[0] <= (this.gplState?.currentLevel ?? 0)) {
           return power;
         }
       }
