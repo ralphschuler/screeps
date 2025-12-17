@@ -12,9 +12,11 @@
  * - structure.destroyed: Invalidates paths in the room where structure was destroyed
  */
 
-import { eventBus } from "../core/events";
-import { invalidateRoom, cacheCommonRoutes } from "./pathCache";
 import { createLogger } from "../core/logger";
+import { eventBus } from "../core/events";
+import { cacheCommonRoutes, invalidateRoom } from "./pathCache";
+import { precacheRemoteRoutes } from "./remotePathCache";
+import { getRemoteRoomsForRoom } from "./remoteRoomUtils";
 
 const logger = createLogger("PathCacheEvents");
 
@@ -35,11 +37,22 @@ export function initializePathCacheEvents(): void {
     // Invalidate all cached paths in this room
     invalidateRoom(roomName);
     
-    // If storage was just built, cache common routes
+    // If storage was just built, cache common routes (including remote routes)
     if (structureType === STRUCTURE_STORAGE) {
       const room = Game.rooms[roomName];
       if (room) {
         cacheCommonRoutes(room);
+        
+        // Also precache remote mining routes
+        const remoteRooms = getRemoteRoomsForRoom(room);
+        if (remoteRooms.length > 0) {
+          precacheRemoteRoutes(room, remoteRooms);
+          logger.info(`Cached remote routes after storage construction in ${roomName}`, {
+            room: roomName,
+            meta: { remoteRooms: remoteRooms.length }
+          });
+        }
+        
         logger.info(`Cached common routes after storage construction in ${roomName}`, {
           room: roomName
         });
