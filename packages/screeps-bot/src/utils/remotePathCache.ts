@@ -161,7 +161,7 @@ export function precacheRemoteRoutes(homeRoom: Room, remoteRooms: string[]): voi
     const sources = remoteRoom.find(FIND_SOURCES);
     const containers = remoteRoom.find(FIND_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_CONTAINER
-    }) as StructureContainer[];
+    });
     
     // Cache routes from spawn to each remote source (for harvesters)
     if (spawns.length > 0) {
@@ -189,8 +189,11 @@ export function precacheRemoteRoutes(homeRoom: Room, remoteRooms: string[]): voi
     // Cache routes from remote containers/sources to home storage (for haulers)
     if (storage) {
       // Prefer containers if they exist
-      const haulerSources = containers.length > 0 
-        ? containers.map(c => c.pos)
+      const containerStructures = containers.filter(
+        (s): s is StructureContainer => s.structureType === STRUCTURE_CONTAINER
+      );
+      const haulerSources = containerStructures.length > 0 
+        ? containerStructures.map(c => c.pos)
         : sources.map(s => s.pos);
       
       for (const sourcePos of haulerSources) {
@@ -238,7 +241,7 @@ function getRoomCallback(roomName: string): CostMatrix | boolean {
   
   // Avoid rooms with hostile structures (unless it's a highway)
   const isHighway = /^[WE]\d+[NS]\d+$/.test(roomName) && 
-    (parseInt(roomName.match(/\d+/)?.[0] ?? "0") % 10 === 0);
+    (parseInt(roomName.match(/\d+/)?.[0] ?? "0", 10) % 10 === 0);
   
   if (!isHighway) {
     const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES, {
@@ -288,7 +291,7 @@ export function getOrCalculateRemotePath(
   routeType: RemoteRouteType
 ): PathStep[] | null {
   // Try cache first
-  let path = getRemoteMiningPath(from, to, routeType);
+  const path = getRemoteMiningPath(from, to, routeType);
   if (path) {
     return path;
   }

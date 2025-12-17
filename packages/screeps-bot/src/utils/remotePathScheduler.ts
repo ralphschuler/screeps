@@ -11,9 +11,9 @@
  * - Expected savings: 80-90% reduction in pathfinding CPU
  */
 
-import { scheduleTask, TaskPriority } from "./computationScheduler";
-import { precacheRemoteRoutes } from "./remotePathCache";
 import { createLogger } from "../core/logger";
+import { type TaskPriority, scheduleTask } from "./computationScheduler";
+import { precacheRemoteRoutes } from "./remotePathCache";
 
 const logger = createLogger("RemotePathScheduler");
 
@@ -29,7 +29,12 @@ function getRemoteRoomsForRoom(room: Room): string[] {
   
   // Look for remote creeps assigned to this room
   for (const creep of Object.values(Game.creeps)) {
-    const memory = creep.memory as any;
+    // Type guard to safely access memory properties
+    const memory = creep.memory as {
+      role?: string;
+      homeRoom?: string;
+      targetRoom?: string;
+    };
     
     // Check if this is a remote creep assigned to our room
     if ((memory.role === "remoteHarvester" || memory.role === "remoteHauler") &&

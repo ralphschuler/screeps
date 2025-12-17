@@ -15,9 +15,9 @@
  * - Expected savings: 80-90% reduction for remote mining pathfinding
  */
 
-import { moveTo } from "screeps-cartographer";
-import { getRemoteMiningPath, cacheRemoteMiningPath, type RemoteRouteType } from "./remotePathCache";
 import { createLogger } from "../core/logger";
+import { type RemoteRouteType, cacheRemoteMiningPath, getRemoteMiningPath } from "./remotePathCache";
+import { moveTo } from "screeps-cartographer";
 
 const logger = createLogger("RemoteMiningMovement");
 
@@ -62,36 +62,36 @@ export function moveToWithRemoteCache(
     const nearPath = creep.pos.getRangeTo(new RoomPosition(firstStep.x, firstStep.y, creep.room.name)) <= 1;
     
     if (onPath || nearPath) {
-      const result = creep.moveByPath(cachedPath);
+      const moveByPathResult = creep.moveByPath(cachedPath);
       
       // If moveByPath succeeded, we're done
-      if (result === OK || result === ERR_TIRED) {
-        return result;
+      if (moveByPathResult === OK || moveByPathResult === ERR_TIRED) {
+        return moveByPathResult;
       }
       
       // If moveByPath failed, log and fall through to moveTo
       logger.debug(`moveByPath failed for ${creep.name}, falling back to moveTo`, {
-        meta: { result, onPath, nearPath }
+        meta: { result: moveByPathResult, onPath, nearPath }
       });
     }
   }
   
   // Cache miss or moveByPath failed - use cartographer's moveTo
   // Cartographer will handle pathfinding and its own caching
-  const result = moveTo(creep, target, {
+  const moveToResult = moveTo(creep, target, {
     ...options,
     maxRooms: 16, // Allow multi-room pathfinding for remote mining
   });
   
   // If movement was successful and we have a valid path, cache it for future use
   // Note: We only cache on successful pathfinding (OK or ERR_TIRED means path was found)
-  if ((result === OK || result === ERR_TIRED) && !cachedPath) {
+  if ((moveToResult === OK || moveToResult === ERR_TIRED) && !cachedPath) {
     // Try to extract the path from cartographer's internal cache to store in our centralized cache
     // This is opportunistic - if we can't get the path, we'll cache it next time
     tryCachePath(creep, targetPos, routeType);
   }
   
-  return result;
+  return moveToResult;
 }
 
 /**
@@ -118,19 +118,19 @@ function tryCachePath(
   
   // Calculate the path using PathFinder
   // We use the same parameters as cartographer would use
-  const result = PathFinder.search(creep.pos, { pos: target, range: 1 }, {
+  const pathResult = PathFinder.search(creep.pos, { pos: target, range: 1 }, {
     plainCost: 2,
     swampCost: 10,
     maxRooms: 16,
     roomCallback: getRemoteRoomCallback
   });
   
-  if (!result.incomplete && result.path.length > 0) {
+  if (!pathResult.incomplete && pathResult.path.length > 0) {
     // Cache the path for future use
-    cacheRemoteMiningPath(creep.pos, target, result.path, routeType);
+    cacheRemoteMiningPath(creep.pos, target, pathResult.path, routeType);
     
     logger.debug(`Cached new remote path for ${creep.name} (${routeType})`, {
-      meta: { pathLength: result.path.length }
+      meta: { pathLength: pathResult.path.length }
     });
   }
 }

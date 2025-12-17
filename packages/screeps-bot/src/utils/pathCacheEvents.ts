@@ -12,10 +12,10 @@
  * - structure.destroyed: Invalidates paths in the room where structure was destroyed
  */
 
-import { eventBus } from "../core/events";
-import { invalidateRoom, cacheCommonRoutes } from "./pathCache";
-import { precacheRemoteRoutes } from "./remotePathCache";
 import { createLogger } from "../core/logger";
+import { eventBus } from "../core/events";
+import { cacheCommonRoutes, invalidateRoom } from "./pathCache";
+import { precacheRemoteRoutes } from "./remotePathCache";
 
 const logger = createLogger("PathCacheEvents");
 
@@ -31,7 +31,12 @@ function getRemoteRoomsForRoom(room: Room): string[] {
   
   // Look for remote creeps assigned to this room
   for (const creep of Object.values(Game.creeps)) {
-    const memory = creep.memory as any;
+    // Type guard to safely access memory properties
+    const memory = creep.memory as {
+      role?: string;
+      homeRoom?: string;
+      targetRoom?: string;
+    };
     
     // Check if this is a remote creep assigned to our room
     if ((memory.role === "remoteHarvester" || memory.role === "remoteHauler") &&
