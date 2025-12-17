@@ -42,22 +42,22 @@ describe("Threat Assessment", () => {
 
   describe("estimateDefenderCost", () => {
     it("should return 0 for no threat", () => {
-      const cost = estimateDefenderCost(0, 0);
+      const cost = estimateDefenderCost(0);
       assert.equal(cost, 0, "No threat should have 0 defender cost");
     });
 
     it("should estimate cost based on DPS", () => {
-      const cost = estimateDefenderCost(300, 1000);
+      const cost = estimateDefenderCost(300);
       assert.equal(cost, 1300, "300 DPS should need 1 defender at 1300 energy");
     });
 
     it("should scale with higher DPS", () => {
-      const cost = estimateDefenderCost(600, 2000);
+      const cost = estimateDefenderCost(600);
       assert.equal(cost, 2600, "600 DPS should need 2 defenders at 2600 energy");
     });
 
     it("should round up partial defenders", () => {
-      const cost = estimateDefenderCost(450, 1500);
+      const cost = estimateDefenderCost(450);
       assert.equal(cost, 2600, "450 DPS should need 2 defenders (rounded up)");
     });
   });

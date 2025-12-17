@@ -8,8 +8,8 @@
  * - Retreat when overwhelmed to preserve resources
  */
 
-import { assessThreat, type ThreatAnalysis } from "./threatAssessment";
 import { logger } from "../core/logger";
+import { type ThreatAnalysis, assessThreat } from "./threatAssessment";
 
 /**
  * Determine if a creep should retreat based on threat assessment
@@ -104,28 +104,15 @@ export function executeRetreat(creep: Creep): void {
   const exits = [FIND_EXIT_TOP, FIND_EXIT_BOTTOM, FIND_EXIT_LEFT, FIND_EXIT_RIGHT];
   
   for (const exitConstant of exits) {
-    const exit = creep.pos.findClosestByPath(exitConstant);
+    const exitPositions = creep.room.find(exitConstant);
+    if (exitPositions.length === 0) continue;
+    
+    const exit = creep.pos.findClosestByPath(exitPositions);
     if (exit) {
-      // Check if exit leads to owned room
-      const exitDir = creep.room.findExitTo(exit);
-      if (exitDir !== ERR_NO_PATH && exitDir !== ERR_INVALID_ARGS) {
-        const neighborRoom = Game.map.describeExits(creep.room.name);
-        if (neighborRoom) {
-          const direction = exitDir as ExitKey;
-          const neighborName = neighborRoom[direction];
-          
-          // Check if neighbor is owned by us
-          if (neighborName) {
-            const neighbor = Game.rooms[neighborName];
-            if (neighbor?.controller?.my) {
-              creep.moveTo(exit, {
-                visualizePathStyle: { stroke: "#ffaa00" }
-              });
-              return;
-            }
-          }
-        }
-      }
+      creep.moveTo(exit, {
+        visualizePathStyle: { stroke: "#ffaa00" }
+      });
+      return;
     }
   }
 
@@ -154,5 +141,3 @@ export function checkAndExecuteRetreat(creep: Creep): boolean {
   
   return false;
 }
-
-type ExitKey = "1" | "3" | "5" | "7";

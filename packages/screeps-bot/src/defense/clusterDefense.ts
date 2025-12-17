@@ -14,7 +14,7 @@
 
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
-import { assessThreat, type ThreatAnalysis, logThreatAnalysis } from "./threatAssessment";
+import { type ThreatAnalysis, assessThreat, logThreatAnalysis } from "./threatAssessment";
 
 /**
  * Find cluster for a room
@@ -34,7 +34,7 @@ function findClusterForRoom(roomName: string): string | undefined {
  * @returns Array of room names in cluster
  */
 function getClusterRooms(clusterId: string): string[] {
-  const empireMemory = memoryManager.getEmpireMemory();
+  const empireMemory = memoryManager.getEmpire();
   const cluster = empireMemory.clusters.find(c => c === clusterId);
   
   if (!cluster) {
@@ -47,8 +47,8 @@ function getClusterRooms(clusterId: string): string[] {
     const room = Game.rooms[roomName];
     if (!room?.controller?.my) continue;
     
-    const swarm = memoryManager.getOrInitSwarmState(roomName);
-    if (swarm.clusterId === clusterId) {
+    const swarmState = memoryManager.getOrInitSwarmState(roomName);
+    if (swarmState.clusterId === clusterId) {
       rooms.push(roomName);
     }
   }
@@ -103,10 +103,13 @@ export class ClusterDefenseCoordinator {
           `Cluster Defense: Sending ${defenders.length} defenders to ${request.roomName}`,
           {
             subsystem: "Defense",
-            cluster: clusterId,
-            targetRoom: request.roomName,
-            threatScore: request.threatScore,
-            priority: request.assistancePriority
+            room: request.roomName,
+            meta: {
+              cluster: clusterId,
+              targetRoom: request.roomName,
+              threatScore: request.threatScore,
+              priority: request.assistancePriority
+            }
           }
         );
       }
@@ -206,9 +209,11 @@ export class ClusterDefenseCoordinator {
           {
             subsystem: "Defense",
             room: mostCritical.roomName,
-            threatScore: mostCritical.threatScore,
-            hostiles: mostCritical.hostileCount,
-            dangerLevel: mostCritical.dangerLevel
+            meta: {
+              threatScore: mostCritical.threatScore,
+              hostiles: mostCritical.hostileCount,
+              dangerLevel: mostCritical.dangerLevel
+            }
           }
         );
       } else {
@@ -217,7 +222,9 @@ export class ClusterDefenseCoordinator {
           {
             subsystem: "Defense",
             room: mostCritical.roomName,
-            errorCode: result
+            meta: {
+              errorCode: result
+            }
           }
         );
       }

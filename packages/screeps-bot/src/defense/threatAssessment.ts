@@ -149,12 +149,13 @@ export function assessThreat(room: Room): ThreatAnalysis {
   // Calculate tower effectiveness
   const towers = room.find(FIND_MY_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_TOWER
-  }) as StructureTower[];
+  });
   
   const towerDPS = towers.reduce((sum, tower) => {
+    const structureTower = tower as StructureTower;
     // Tower at max range does 150 damage, at min range does 600
     // Assume average effectiveness of 300 damage per tower with energy
-    return sum + (tower.store.getUsedCapacity(RESOURCE_ENERGY) >= 10 ? 300 : 0);
+    return sum + (structureTower.store.getUsedCapacity(RESOURCE_ENERGY) >= 10 ? 300 : 0);
   }, 0);
 
   // Determine if assistance needed
@@ -162,7 +163,7 @@ export function assessThreat(room: Room): ThreatAnalysis {
   const assistancePriority = Math.min(100, Math.max(0, (totalDPS - towerDPS) / 10));
 
   // Calculate estimated defender cost
-  const estimatedDefenderCost = estimateDefenderCost(totalDPS, totalHP);
+  const estimatedDefenderCost = estimateDefenderCost(totalDPS);
 
   // Determine danger level (0-3)
   const dangerLevel = calculateDangerLevel(threatScore);
@@ -229,10 +230,9 @@ export function calculateDangerLevel(threatScore: number): 0 | 1 | 2 | 3 {
  * Estimate energy cost to spawn defenders
  * 
  * @param totalDPS - Total hostile DPS
- * @param totalHP - Total hostile HP
  * @returns Estimated energy cost
  */
-export function estimateDefenderCost(totalDPS: number, totalHP: number): number {
+export function estimateDefenderCost(totalDPS: number): number {
   // Rough estimate: need enough defenders to match hostile DPS
   // Each defender costs ~1300 energy for a basic ranged/melee defender
   const defendersNeeded = Math.ceil(totalDPS / 300); // Assume 300 DPS per defender
@@ -253,14 +253,16 @@ export function logThreatAnalysis(threat: ThreatAnalysis): void {
     {
       subsystem: "Defense",
       room: threat.roomName,
-      threat: {
-        dangerLevel: threat.dangerLevel,
-        threatScore: threat.threatScore,
-        hostileCount: threat.hostileCount,
-        boostedCount: threat.boostedCount,
-        healerCount: threat.healerCount,
-        dismantlerCount: threat.dismantlerCount,
-        recommendedResponse: threat.recommendedResponse
+      meta: {
+        threat: {
+          dangerLevel: threat.dangerLevel,
+          threatScore: threat.threatScore,
+          hostileCount: threat.hostileCount,
+          boostedCount: threat.boostedCount,
+          healerCount: threat.healerCount,
+          dismantlerCount: threat.dismantlerCount,
+          recommendedResponse: threat.recommendedResponse
+        }
       }
     }
   );
