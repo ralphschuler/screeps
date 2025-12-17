@@ -8,7 +8,7 @@ declare const global: { Game: typeof Game };
 /**
  * Create mock room intel
  */
-function createMockRoomIntel(name: string, sources = 2, threatLevel: 0 | 1 | 2 | 3 = 0): RoomIntel {
+function createMockRoomIntel(name: string, sources = 2, threatLevel = 0 as 0 | 1 | 2 | 3): RoomIntel {
   return {
     name,
     lastSeen: 1000,
@@ -248,12 +248,13 @@ describe("Remote Mining Profitability Analysis", () => {
       assert.approximately(result.roi, expectedROI, 0.01, "ROI should be calculated correctly");
     });
 
-    it("should amortize infrastructure cost over 50000 ticks", () => {
+    it("should amortize infrastructure cost over expected lifetime", () => {
       const intel = createMockRoomIntel("E2N1", 2, 0);
       const result = ExpansionScoring.calculateRemoteProfitability("E2N1", "E1N1", intel);
 
-      // Infrastructure cost per tick should be total / 50000
-      const expectedInfraPerTick = result.infrastructureCost / 50000;
+      // Infrastructure cost per tick should be total / lifetime
+      const INFRASTRUCTURE_LIFETIME_TICKS = 50000;
+      const expectedInfraPerTick = result.infrastructureCost / INFRASTRUCTURE_LIFETIME_TICKS;
 
       // Verify this is factored into net profit calculation
       const calculatedNetProfit =

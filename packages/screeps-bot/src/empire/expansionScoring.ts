@@ -285,8 +285,11 @@ export function calculateRemoteProfitability(
   const distance = Game.map.getRoomLinearDistance(homeRoom, roomName);
 
   // === Energy Harvest Rate ===
-  // Source output verified via screeps-docs-mcp: 3000 energy per 300 ticks in reserved rooms, 1500 in non-reserved
-  const sourceOutput = 3000; // Assume reservation
+  // Source output verified via screeps-docs-mcp:
+  // - Reserved rooms: 3000 energy per 300 ticks
+  // - Non-reserved rooms: 1500 energy per 300 ticks
+  // We assume reservation since remote mining should include a reserver
+  const sourceOutput = 3000;
   const energyPerTick = (sourceOutput / 300) * intel.sources;
 
   // === Carrier (Hauler) Cost Per Tick ===
@@ -307,17 +310,20 @@ export function calculateRemoteProfitability(
   // Energy cost per tick (amortized)
   const carrierCostPerTick = energyCostPerTrip / tripTime;
 
-  // === Infrastructure Cost (one-time, amortized over 50000 ticks) ===
+  // === Infrastructure Cost (one-time, amortized over expected lifetime) ===
   // Container: 5000 energy (verified via screeps-docs-mcp)
   // Road: 300 energy per tile (verified via screeps-docs-mcp)
-  // Estimate: distance * 50 tiles for roads (both directions)
+  // Road tiles estimate: distance * 50 tiles
+  // Rationale: Each room is 50x50, and paths are typically ~50 tiles per room distance
+  // accounting for obstacles and optimal routing
   const containerCost = 5000 * intel.sources; // One container per source
-  const roadTiles = distance * 50; // Approximate road length
+  const roadTiles = distance * 50; // Approximate road length based on room size
   const roadCost = roadTiles * 300;
   const totalInfrastructureCost = containerCost + roadCost;
   
-  // Amortize over 50000 ticks (reasonable infrastructure lifetime)
-  const infrastructureCostPerTick = totalInfrastructureCost / 50000;
+  // Amortize over 50000 ticks (reasonable infrastructure lifetime before decay/replacement)
+  const INFRASTRUCTURE_LIFETIME_TICKS = 50000;
+  const infrastructureCostPerTick = totalInfrastructureCost / INFRASTRUCTURE_LIFETIME_TICKS;
 
   // === Threat Cost ===
   // Estimate energy loss from hostile activity
@@ -381,8 +387,8 @@ function calculateProfitabilityScore(metrics: {
   // Threat penalty: -10 points if hostile activity detected
   const threatPenalty = metrics.threatCost > 0 ? 10 : 0;
 
-  // ROI bonus: +5 points per 100% ROI
-  const roiBonus = (metrics.roi / 100) * 5;
+  // ROI bonus: +5 points per 1.0 ROI (e.g., ROI of 2.0 = 10 bonus points)
+  const roiBonus = metrics.roi * 5;
 
   return Math.max(0, Math.min(100, baseScore - distancePenalty + revenueBonus - threatPenalty + roiBonus));
 }
