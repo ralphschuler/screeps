@@ -95,6 +95,43 @@ describe("PowerCreepManager", () => {
       expect(economyPriority).to.be.greaterThan(combatPriority);
     });
   });
+
+  describe("Power Upgrade Logic", () => {
+    it("should filter powers by GPL level", () => {
+      const ECO_OPERATOR_POWERS = [
+        PWR_GENERATE_OPS,        // Level 0
+        PWR_OPERATE_SPAWN,       // Level 2
+        PWR_OPERATE_TOWER,       // Level 10
+        PWR_OPERATE_LAB,         // Level 20
+      ];
+      
+      const currentGPL = 5;
+      
+      const availablePowers = ECO_OPERATOR_POWERS.filter(power => {
+        const powerInfo = POWER_INFO[power];
+        return powerInfo && powerInfo.level !== undefined && powerInfo.level <= currentGPL;
+      });
+
+      // Should include GENERATE_OPS (0) and OPERATE_SPAWN (2), exclude TOWER (10) and LAB (20)
+      expect(availablePowers).to.include(PWR_GENERATE_OPS);
+      expect(availablePowers).to.include(PWR_OPERATE_SPAWN);
+      expect(availablePowers).to.not.include(PWR_OPERATE_TOWER);
+      expect(availablePowers).to.not.include(PWR_OPERATE_LAB);
+    });
+
+    it("should select next power not already learned", () => {
+      const powerPath = [PWR_GENERATE_OPS, PWR_OPERATE_SPAWN, PWR_OPERATE_TOWER];
+      const learnedPowers = {
+        [PWR_GENERATE_OPS]: { level: 1, cooldown: 0 },
+        [PWR_OPERATE_SPAWN]: { level: 2, cooldown: 0 }
+      };
+
+      // Find first power not in learned
+      const nextPower = powerPath.find(power => !learnedPowers[power]);
+
+      expect(nextPower).to.equal(PWR_OPERATE_TOWER);
+    });
+  });
 });
 
 describe("PowerBankHarvesting", () => {

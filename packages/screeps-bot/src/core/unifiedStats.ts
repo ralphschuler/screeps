@@ -83,6 +83,9 @@ export interface ProgressionStats {
   };
   gpl: {
     level: number;
+    progress: number;
+    progressTotal: number;
+    progressPercent: number;
   };
 }
 
@@ -92,6 +95,12 @@ export interface ProgressionStats {
 export interface EmpireStats {
   rooms: number;
   creeps: number;
+  powerCreeps: {
+    total: number;
+    spawned: number;
+    eco: number;
+    combat: number;
+  };
   energy: {
     storage: number;
     terminal: number;
@@ -352,7 +361,12 @@ export class UnifiedStatsManager {
         progressPercent: Game.gcl.progressTotal > 0 ? (Game.gcl.progress / Game.gcl.progressTotal) * 100 : 0
       },
       gpl: {
-        level: Game.gpl?.level ?? 0
+        level: Game.gpl?.level ?? 0,
+        progress: Game.gpl?.progress ?? 0,
+        progressTotal: Game.gpl?.progressTotal ?? 0,
+        progressPercent: (Game.gpl?.progressTotal ?? 0) > 0 
+          ? ((Game.gpl?.progress ?? 0) / (Game.gpl?.progressTotal ?? 0)) * 100 
+          : 0
       }
     };
 
@@ -718,10 +732,28 @@ export class UnifiedStatsManager {
   private finalizeEmpireStats(): void {
     const ownedRooms = Object.values(this.currentSnapshot.rooms);
     const totalCreeps = Object.keys(Game.creeps).length;
+    
+    // Count power creeps
+    const powerCreeps = Object.values(Game.powerCreeps);
+    const spawnedPowerCreeps = powerCreeps.filter(pc => pc.ticksToLive !== undefined);
+    const ecoPowerCreeps = powerCreeps.filter(pc => {
+      const memory = pc.memory as { role?: string };
+      return memory.role === "powerQueen";
+    });
+    const combatPowerCreeps = powerCreeps.filter(pc => {
+      const memory = pc.memory as { role?: string };
+      return memory.role === "powerWarrior";
+    });
 
     this.currentSnapshot.empire = {
       rooms: ownedRooms.length,
       creeps: totalCreeps,
+      powerCreeps: {
+        total: powerCreeps.length,
+        spawned: spawnedPowerCreeps.length,
+        eco: ecoPowerCreeps.length,
+        combat: combatPowerCreeps.length
+      },
       energy: {
         storage: ownedRooms.reduce((sum, r) => sum + r.energy.storage, 0),
         terminal: ownedRooms.reduce((sum, r) => sum + r.energy.terminal, 0),
@@ -920,11 +952,20 @@ export class UnifiedStatsManager {
         progress_percent: snap.progression.gcl.progressPercent
       },
       gpl: {
-        level: snap.progression.gpl.level
+        level: snap.progression.gpl.level,
+        progress: snap.progression.gpl.progress,
+        progress_total: snap.progression.gpl.progressTotal,
+        progress_percent: snap.progression.gpl.progressPercent
       },
       empire: {
         rooms: snap.empire.rooms,
         creeps: snap.empire.creeps,
+        power_creeps: {
+          total: snap.empire.powerCreeps.total,
+          spawned: snap.empire.powerCreeps.spawned,
+          eco: snap.empire.powerCreeps.eco,
+          combat: snap.empire.powerCreeps.combat
+        },
         energy: {
           storage: snap.empire.energy.storage,
           terminal: snap.empire.energy.terminal,
