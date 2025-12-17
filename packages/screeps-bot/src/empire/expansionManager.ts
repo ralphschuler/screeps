@@ -64,7 +64,7 @@ const DEFAULT_CONFIG: ExpansionManagerConfig = {
   updateInterval: 20,
   minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
   maxRemoteDistance: 2,
-  maxRemotesPerRoom: 3,
+  maxRemotesPerRoom: 4, // Increased from 3 to support energy needs at RCL 5-6
   minRemoteSources: 1,
   minRclForRemotes: 3,
   minRclForClaiming: 4,
@@ -180,9 +180,15 @@ export class ExpansionManager {
       return Math.min(1, this.config.maxRemotesPerRoom);
     }
 
-    // Developing rooms (RCL 4-6) get moderate remotes
-    if (rcl < 7) {
+    // RCL 4 gets 2 remotes - still developing infrastructure
+    if (rcl === 4) {
       return Math.min(2, this.config.maxRemotesPerRoom);
+    }
+
+    // RCL 5-6 get 3 remotes - need extra energy for development
+    // At RCL 5, rooms often have only 2 local sources which is insufficient
+    if (rcl < 7) {
+      return Math.min(3, this.config.maxRemotesPerRoom);
     }
 
     // Check room energy stability - reduce remotes if critically low
