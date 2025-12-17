@@ -36,7 +36,7 @@
  * ```
  */
 
-import { cachePath, getCachedPath } from "./pathCache";
+import { cachePath, getCachedPath, convertRoomPositionsToPathSteps } from "./pathCache";
 import { createLogger } from "../core/logger";
 import { getRemoteMiningRoomCallback } from "./remoteRoomUtils";
 
@@ -114,13 +114,13 @@ export function getRemoteMiningPath(
  *
  * @param from - Start position
  * @param to - End position
- * @param path - Path to cache (from Room.findPath or PathFinder.search)
+ * @param path - Path to cache (must be PathStep[] format)
  * @param routeType - Type of route (harvester or hauler)
  */
 export function cacheRemoteMiningPath(
   from: RoomPosition,
   to: RoomPosition,
-  path: PathStep[] | RoomPosition[],
+  path: PathStep[],
   routeType: RemoteRouteType
 ): void {
   // Cache with remote-specific TTL
@@ -176,10 +176,12 @@ export function precacheRemoteRoutes(homeRoom: Room, remoteRooms: string[]): voi
         });
         
         if (!pathToSource.incomplete && pathToSource.path.length > 0) {
+          // Convert RoomPosition[] to PathStep[] before caching
+          const pathSteps = convertRoomPositionsToPathSteps(pathToSource.path);
           cacheRemoteMiningPath(
             mainSpawn.pos,
             source.pos,
-            pathToSource.path,
+            pathSteps,
             "harvester"
           );
           cachedCount++;
@@ -206,10 +208,12 @@ export function precacheRemoteRoutes(homeRoom: Room, remoteRooms: string[]): voi
         });
         
         if (!pathToHome.incomplete && pathToHome.path.length > 0) {
+          // Convert RoomPosition[] to PathStep[] before caching
+          const pathSteps = convertRoomPositionsToPathSteps(pathToHome.path);
           cacheRemoteMiningPath(
             sourcePos,
             storage.pos,
-            pathToHome.path,
+            pathSteps,
             "hauler"
           );
           cachedCount++;
@@ -233,13 +237,13 @@ export function precacheRemoteRoutes(homeRoom: Room, remoteRooms: string[]): voi
  * @param from - Start position
  * @param to - End position
  * @param routeType - Type of route
- * @returns Path steps (may be RoomPosition[] from PathFinder or PathStep[] from cache)
+ * @returns Path steps in PathStep[] format
  */
 export function getOrCalculateRemotePath(
   from: RoomPosition,
   to: RoomPosition,
   routeType: RemoteRouteType
-): PathStep[] | RoomPosition[] | null {
+): PathStep[] | null {
   // Try cache first
   const path = getRemoteMiningPath(from, to, routeType);
   if (path) {
@@ -255,9 +259,10 @@ export function getOrCalculateRemotePath(
   });
   
   if (!result.incomplete && result.path.length > 0) {
-    // Cache the calculated path
-    cacheRemoteMiningPath(from, to, result.path, routeType);
-    return result.path;
+    // Convert RoomPosition[] to PathStep[] before caching
+    const pathSteps = convertRoomPositionsToPathSteps(result.path);
+    cacheRemoteMiningPath(from, to, pathSteps, routeType);
+    return pathSteps;
   }
   
   logger.warn(`Failed to calculate remote path: ${from.roomName} → ${to.roomName}`, {

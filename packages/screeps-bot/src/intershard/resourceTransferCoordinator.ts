@@ -19,14 +19,18 @@ import { shardManager } from "./shardManager";
 
 /**
  * Additional memory fields for cross-shard carrier creeps
+ * 
+ * NOTE: This interface is intended to be composed with the base SwarmCreepMemory.
+ * Only fields that are unique to cross-shard behavior should be defined here.
  */
 interface CrossShardCarrierAdditionalMemory {
+  /** ID of the associated cross-shard transfer request */
   transferRequestId: string;
-  sourceRoom: string;
+  /** Room containing the portal used for this transfer */
   portalRoom: string;
+  /** Target shard for this transfer */
   targetShard: string;
-  targetRoom: string;
-  resourceType: ResourceConstant;
+  /** Workflow state for the cross-shard transfer lifecycle */
   workflowState: "gathering" | "movingToPortal" | "enteringPortal" | "delivering";
 }
 
@@ -281,11 +285,8 @@ export class ResourceTransferCoordinator {
     for (let i = 0; i < carriersToSpawn; i++) {
       const additionalMemory: CrossShardCarrierAdditionalMemory = {
         transferRequestId: request.taskId,
-        sourceRoom: request.sourceRoom,
         portalRoom: request.portalRoom,
         targetShard: request.targetShard,
-        targetRoom: request.targetRoom,
-        resourceType: request.resourceType,
         workflowState: "gathering"
       };
 
@@ -297,7 +298,8 @@ export class ResourceTransferCoordinator {
         body,
         priority: spawnPriority,
         createdAt: Game.time,
-        additionalMemory: additionalMemory as any
+        targetRoom: request.targetRoom,
+        additionalMemory: additionalMemory
       };
 
       spawnQueue.addRequest(spawnRequest);

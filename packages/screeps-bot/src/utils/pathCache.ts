@@ -205,17 +205,63 @@ export function getCachedPath(from: RoomPosition, to: RoomPosition): PathStep[] 
 }
 
 /**
+ * Convert RoomPosition[] from PathFinder.search() to PathStep[] format.
+ * PathStep format is required for Room.serializePath() and Room.deserializePath().
+ * 
+ * @param positions - Array of RoomPosition objects from PathFinder.search()
+ * @returns PathStep[] array with direction information
+ */
+export function convertRoomPositionsToPathSteps(positions: RoomPosition[]): PathStep[] {
+  const steps: PathStep[] = [];
+  
+  for (let i = 0; i < positions.length; i++) {
+    const pos = positions[i];
+    const prevPos = i > 0 ? positions[i - 1] : null;
+    
+    // Calculate direction from previous position
+    let direction: DirectionConstant = TOP;
+    let dx = 0;
+    let dy = 0;
+    
+    if (prevPos && prevPos.roomName === pos.roomName) {
+      dx = pos.x - prevPos.x;
+      dy = pos.y - prevPos.y;
+      
+      // Calculate direction constant based on dx/dy
+      if (dy === -1 && dx === 0) direction = TOP;
+      else if (dy === -1 && dx === 1) direction = TOP_RIGHT;
+      else if (dy === 0 && dx === 1) direction = RIGHT;
+      else if (dy === 1 && dx === 1) direction = BOTTOM_RIGHT;
+      else if (dy === 1 && dx === 0) direction = BOTTOM;
+      else if (dy === 1 && dx === -1) direction = BOTTOM_LEFT;
+      else if (dy === 0 && dx === -1) direction = LEFT;
+      else if (dy === -1 && dx === -1) direction = TOP_LEFT;
+    }
+    
+    steps.push({
+      x: pos.x,
+      y: pos.y,
+      dx,
+      dy,
+      direction
+    });
+  }
+  
+  return steps;
+}
+
+/**
  * Cache a path for future use.
  *
  * @param from - Start position
  * @param to - End position
- * @param path - Path array to cache (from Room.findPath or PathFinder.search)
+ * @param path - Path array to cache (must be PathStep[] format from Room.findPath)
  * @param options - Caching options (TTL, etc.)
  */
 export function cachePath(
   from: RoomPosition,
   to: RoomPosition,
-  path: PathStep[] | RoomPosition[],
+  path: PathStep[],
   options: CachePathOptions = {}
 ): void {
   const cache = getCacheStore();
@@ -233,9 +279,7 @@ export function cachePath(
   }
 
   // Serialize path
-  // Note: Room.serializePath() accepts both PathStep[] and RoomPosition[] at runtime,
-  // but TypeScript types only define PathStep[]. This is a known limitation of the type definitions.
-  const serializedPath = Room.serializePath(path as PathStep[]);
+  const serializedPath = Room.serializePath(path);
 
   // Store in cache
   cache.paths.set(key, {
