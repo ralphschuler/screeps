@@ -472,30 +472,30 @@ describe("Cross-Shard Resource Transfer", () => {
       
       // Case 1: No carriers assigned
       let currentCapacity = 0;
-      expect(currentCapacity < neededCarryCapacity).to.be.true;
+      expect(currentCapacity).to.be.lessThan(neededCarryCapacity);
       
       // Case 2: Some capacity but not enough
       currentCapacity = 5000;
-      expect(currentCapacity < neededCarryCapacity).to.be.true;
+      expect(currentCapacity).to.be.lessThan(neededCarryCapacity);
       
       // Case 3: Enough capacity
       currentCapacity = 10000;
-      expect(currentCapacity < neededCarryCapacity).to.be.false;
+      expect(currentCapacity).to.not.be.lessThan(neededCarryCapacity);
       
       // Case 4: More than enough capacity
       currentCapacity = 15000;
-      expect(currentCapacity < neededCarryCapacity).to.be.false;
+      expect(currentCapacity).to.not.be.lessThan(neededCarryCapacity);
     });
 
     it("should respect max carriers per request limit", () => {
       // Can spawn when under limit
-      expect(0 < MAX_CARRIERS_PER_CROSS_SHARD_REQUEST).to.be.true;
-      expect(1 < MAX_CARRIERS_PER_CROSS_SHARD_REQUEST).to.be.true;
-      expect(2 < MAX_CARRIERS_PER_CROSS_SHARD_REQUEST).to.be.true;
+      expect(0).to.be.lessThan(MAX_CARRIERS_PER_CROSS_SHARD_REQUEST);
+      expect(1).to.be.lessThan(MAX_CARRIERS_PER_CROSS_SHARD_REQUEST);
+      expect(2).to.be.lessThan(MAX_CARRIERS_PER_CROSS_SHARD_REQUEST);
       
       // Cannot spawn when at or over limit
-      expect(3 < MAX_CARRIERS_PER_CROSS_SHARD_REQUEST).to.be.false;
-      expect(4 < MAX_CARRIERS_PER_CROSS_SHARD_REQUEST).to.be.false;
+      expect(3).to.not.be.lessThan(MAX_CARRIERS_PER_CROSS_SHARD_REQUEST);
+      expect(4).to.not.be.lessThan(MAX_CARRIERS_PER_CROSS_SHARD_REQUEST);
     });
 
     it("should only count alive creeps for capacity calculation", () => {
