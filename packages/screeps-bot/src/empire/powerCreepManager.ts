@@ -394,7 +394,7 @@ export class PowerCreepManager {
     }
 
     // Generate power path for this role
-    const powerPath = this.generatePowerPath(role, pc.level);
+    const powerPath = this.generatePowerPath(role);
 
     const assignment: PowerCreepAssignment = {
       name: pc.name,
@@ -424,7 +424,7 @@ export class PowerCreepManager {
    * Generate power upgrade path for a role
    * POWER_INFO is a global constant provided by the Screeps game engine
    */
-  private generatePowerPath(role: "powerQueen" | "powerWarrior", currentLevel: number): PowerConstant[] {
+  private generatePowerPath(role: "powerQueen" | "powerWarrior"): PowerConstant[] {
     const basePowers = role === "powerQueen" ? ECO_OPERATOR_POWERS : COMBAT_OPERATOR_POWERS;
     
     // Filter to powers available at current GPL level
@@ -474,7 +474,7 @@ export class PowerCreepManager {
    * POWER_INFO is a global constant provided by the Screeps game engine
    */
   private selectNextPower(pc: PowerCreep, assignment: PowerCreepAssignment): PowerConstant | null {
-    const powerPath = assignment.powerPath ?? this.generatePowerPath(assignment.role, pc.level);
+    const powerPath = assignment.powerPath ?? this.generatePowerPath(assignment.role);
     
     // Find first power in path that we don't have yet
     // POWER_INFO is globally available in Screeps runtime
