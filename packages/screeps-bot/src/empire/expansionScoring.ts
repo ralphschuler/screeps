@@ -255,23 +255,41 @@ export function isInWarZone(roomName: string): boolean {
 }
 
 /**
- * Calculate remote mining profitability
- * Returns true if the remote is profitable (>2x ROI)
+ * Detailed remote mining profitability analysis result
+ */
+export interface RemoteProfitability {
+  roomName: string;
+  sourceId?: Id<Source>;
+  energyPerTick: number;
+  carrierCostPerTick: number;
+  pathDistance: number;
+  infrastructureCost: number;
+  threatCost: number;
+  netProfitPerTick: number;
+  roi: number;
+  profitabilityScore: number;
+  isProfitable: boolean;
+}
+
+/**
+ * Calculate comprehensive remote mining profitability
+ * Implements detailed analysis with infrastructure and threat costs
  * Energy costs and mechanics verified via screeps-docs-mcp
  */
 export function calculateRemoteProfitability(
   roomName: string,
   homeRoom: string,
-  intel: RoomIntel
-): {
-  isProfitable: boolean;
-  energyCost: number;
-  energyGain: number;
-  roi: number;
-} {
+  intel: RoomIntel,
+  sourceId?: Id<Source>
+): RemoteProfitability {
   const distance = Game.map.getRoomLinearDistance(homeRoom, roomName);
 
-  // Calculate energy cost
+  // === Energy Harvest Rate ===
+  // Source output verified via screeps-docs-mcp: 3000 energy per 300 ticks in reserved rooms, 1500 in non-reserved
+  const sourceOutput = 3000; // Assume reservation
+  const energyPerTick = (sourceOutput / 300) * intel.sources;
+
+  // === Carrier (Hauler) Cost Per Tick ===
   // Body costs verified via screeps-docs-mcp:
   // WORK: 100, CARRY: 50, MOVE: 50
   // Remote harvester: 5 WORK (500) + 3 MOVE (150) = 650
@@ -287,23 +305,84 @@ export function calculateRemoteProfitability(
   const energyCostPerTrip = totalBodyCost / tripsPerLifetime;
 
   // Energy cost per tick (amortized)
-  const energyCost = energyCostPerTrip / tripTime;
+  const carrierCostPerTick = energyCostPerTrip / tripTime;
 
-  // Calculate energy gain
-  // Source output verified via screeps-docs-mcp: 3000 energy per 300 ticks in reserved rooms, 1500 in non-reserved
-  const sourceOutput = 3000; // Assume reservation
-  const energyPerTick = (sourceOutput / 300) * intel.sources;
+  // === Infrastructure Cost (one-time, amortized over 50000 ticks) ===
+  // Container: 5000 energy (verified via screeps-docs-mcp)
+  // Road: 300 energy per tile (verified via screeps-docs-mcp)
+  // Estimate: distance * 50 tiles for roads (both directions)
+  const containerCost = 5000 * intel.sources; // One container per source
+  const roadTiles = distance * 50; // Approximate road length
+  const roadCost = roadTiles * 300;
+  const totalInfrastructureCost = containerCost + roadCost;
+  
+  // Amortize over 50000 ticks (reasonable infrastructure lifetime)
+  const infrastructureCostPerTick = totalInfrastructureCost / 50000;
 
-  // Net gain per tick
-  const energyGain = energyPerTick - energyCost;
+  // === Threat Cost ===
+  // Estimate energy loss from hostile activity
+  // Threat level 0: no cost
+  // Threat level 1: 10% loss (occasional raids)
+  // Threat level 2: 30% loss (frequent attacks)
+  // Threat level 3: 60% loss (constant warfare)
+  const threatMultipliers = [0, 0.1, 0.3, 0.6];
+  const threatMultiplier = threatMultipliers[intel.threatLevel] ?? 0;
+  const threatCost = energyPerTick * threatMultiplier;
 
-  // ROI: gain / cost ratio
-  const roi = energyGain / energyCost;
+  // === Net Profit Per Tick ===
+  const netProfitPerTick = energyPerTick - carrierCostPerTick - infrastructureCostPerTick - threatCost;
+
+  // === ROI: net profit / total cost ratio ===
+  const totalCost = carrierCostPerTick + infrastructureCostPerTick + threatCost;
+  const roi = totalCost > 0 ? netProfitPerTick / totalCost : 0;
+
+  // === Profitability Score (0-100) ===
+  const profitabilityScore = calculateProfitabilityScore({
+    distance,
+    energyPerTick,
+    threatCost,
+    roi,
+    netProfitPerTick
+  });
 
   return {
-    isProfitable: roi > 2.0, // Must generate >2x energy vs cost
-    energyCost,
-    energyGain,
-    roi
+    roomName,
+    sourceId,
+    energyPerTick,
+    carrierCostPerTick,
+    pathDistance: distance,
+    infrastructureCost: totalInfrastructureCost,
+    threatCost,
+    netProfitPerTick,
+    roi,
+    profitabilityScore,
+    isProfitable: roi > 2.0 && netProfitPerTick > 0 // Must generate >2x energy vs cost AND be net positive
   };
+}
+
+/**
+ * Calculate profitability score (0-100) based on multiple factors
+ */
+function calculateProfitabilityScore(metrics: {
+  distance: number;
+  energyPerTick: number;
+  threatCost: number;
+  roi: number;
+  netProfitPerTick: number;
+}): number {
+  const baseScore = 50;
+
+  // Distance penalty: -2 points per room distance
+  const distancePenalty = metrics.distance * 2;
+
+  // Revenue bonus: +1 point per 10 energy/tick net profit
+  const revenueBonus = metrics.netProfitPerTick / 10;
+
+  // Threat penalty: -10 points if hostile activity detected
+  const threatPenalty = metrics.threatCost > 0 ? 10 : 0;
+
+  // ROI bonus: +5 points per 100% ROI
+  const roiBonus = (metrics.roi / 100) * 5;
+
+  return Math.max(0, Math.min(100, baseScore - distancePenalty + revenueBonus - threatPenalty + roiBonus));
 }
