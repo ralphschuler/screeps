@@ -22,6 +22,7 @@
  * - PowerBankHarvestingManager (empire:powerBank)
  * - PowerCreepManager (empire:powerCreep)
  * - ShardManager (empire:shard)
+ * - ClusterManager (cluster:manager)
  * - EvacuationManager (cluster:evacuation)
  * - DefenseCoordinator (cluster:defense)
  *
@@ -76,8 +77,8 @@ export function registerAllProcesses(): void {
     shardManager,
     // Cluster processes
     clusterManager,
-    evacuationManager,
     // Defense processes
+    evacuationManager,
     defenseCoordinator
   );
 

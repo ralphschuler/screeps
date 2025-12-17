@@ -264,7 +264,7 @@ The DefenseCoordinator process automatically:
 
 ### Threat Assessment Thresholds
 
-- **Danger Level 0:** No threats (threatScore = 0)
+- **Danger Level 0:** No threats (threatScore = 0) - "ruhig" (calm)
 - **Danger Level 1:** Hostile sighted (threatScore < 300)
 - **Danger Level 2:** Active attack (threatScore < 800)
 - **Danger Level 3:** Siege/nuke (threatScore >= 800)
