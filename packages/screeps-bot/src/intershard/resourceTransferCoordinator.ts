@@ -18,6 +18,19 @@ import { SpawnPriority, type SpawnRequest, spawnQueue } from "../spawning/spawnQ
 import { shardManager } from "./shardManager";
 
 /**
+ * Additional memory fields for cross-shard carrier creeps
+ */
+interface CrossShardCarrierAdditionalMemory {
+  transferRequestId: string;
+  sourceRoom: string;
+  portalRoom: string;
+  targetShard: string;
+  targetRoom: string;
+  resourceType: ResourceConstant;
+  workflowState: "gathering" | "movingToPortal" | "enteringPortal" | "delivering";
+}
+
+/**
  * Transfer request for cross-shard resource movement
  */
 export interface CrossShardTransferRequest {
@@ -266,6 +279,16 @@ export class ResourceTransferCoordinator {
 
     // Add spawn requests to queue
     for (let i = 0; i < carriersToSpawn; i++) {
+      const additionalMemory: CrossShardCarrierAdditionalMemory = {
+        transferRequestId: request.taskId,
+        sourceRoom: request.sourceRoom,
+        portalRoom: request.portalRoom,
+        targetShard: request.targetShard,
+        targetRoom: request.targetRoom,
+        resourceType: request.resourceType,
+        workflowState: "gathering"
+      };
+
       const spawnRequest: SpawnRequest = {
         id: `crossShardCarrier_${request.taskId}_${i}_${Game.time}`,
         roomName: request.sourceRoom,
@@ -274,15 +297,7 @@ export class ResourceTransferCoordinator {
         body,
         priority: spawnPriority,
         createdAt: Game.time,
-        additionalMemory: {
-          transferRequestId: request.taskId,
-          sourceRoom: request.sourceRoom,
-          portalRoom: request.portalRoom,
-          targetShard: request.targetShard,
-          targetRoom: request.targetRoom,
-          resourceType: request.resourceType,
-          workflowState: "gathering"
-        } as any
+        additionalMemory: additionalMemory as any
       };
 
       spawnQueue.addRequest(spawnRequest);

@@ -114,13 +114,13 @@ export function getRemoteMiningPath(
  *
  * @param from - Start position
  * @param to - End position
- * @param path - Path to cache
+ * @param path - Path to cache (from Room.findPath or PathFinder.search)
  * @param routeType - Type of route (harvester or hauler)
  */
 export function cacheRemoteMiningPath(
   from: RoomPosition,
   to: RoomPosition,
-  path: PathStep[],
+  path: PathStep[] | RoomPosition[],
   routeType: RemoteRouteType
 ): void {
   // Cache with remote-specific TTL
@@ -179,7 +179,7 @@ export function precacheRemoteRoutes(homeRoom: Room, remoteRooms: string[]): voi
           cacheRemoteMiningPath(
             mainSpawn.pos,
             source.pos,
-            pathToSource.path as unknown as PathStep[],
+            pathToSource.path,
             "harvester"
           );
           cachedCount++;
@@ -209,7 +209,7 @@ export function precacheRemoteRoutes(homeRoom: Room, remoteRooms: string[]): voi
           cacheRemoteMiningPath(
             sourcePos,
             storage.pos,
-            pathToHome.path as unknown as PathStep[],
+            pathToHome.path,
             "hauler"
           );
           cachedCount++;
@@ -256,7 +256,7 @@ export function getOrCalculateRemotePath(
   
   if (!result.incomplete && result.path.length > 0) {
     // Cache the calculated path
-    cacheRemoteMiningPath(from, to, result.path as unknown as PathStep[], routeType);
+    cacheRemoteMiningPath(from, to, result.path, routeType);
     return result.path as unknown as PathStep[];
   }
   

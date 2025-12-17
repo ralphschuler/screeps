@@ -209,13 +209,13 @@ export function getCachedPath(from: RoomPosition, to: RoomPosition): PathStep[] 
  *
  * @param from - Start position
  * @param to - End position
- * @param path - Path array to cache
+ * @param path - Path array to cache (from Room.findPath or PathFinder.search)
  * @param options - Caching options (TTL, etc.)
  */
 export function cachePath(
   from: RoomPosition,
   to: RoomPosition,
-  path: PathStep[],
+  path: PathStep[] | RoomPosition[],
   options: CachePathOptions = {}
 ): void {
   const cache = getCacheStore();
@@ -233,7 +233,9 @@ export function cachePath(
   }
 
   // Serialize path
-  const serializedPath = Room.serializePath(path);
+  // Note: Room.serializePath() accepts both PathStep[] and RoomPosition[] at runtime,
+  // but TypeScript types only define PathStep[]. This is a known limitation of the type definitions.
+  const serializedPath = Room.serializePath(path as PathStep[]);
 
   // Store in cache
   cache.paths.set(key, {
