@@ -175,6 +175,20 @@ export class ExpansionManager {
   private calculateRemoteCapacity(room: Room, swarm: { danger: number }): number {
     const rcl = room.controller?.level ?? 0;
 
+    // Check danger level - reduce remotes if under threat (applies to all RCLs)
+    if (swarm.danger >= 2) {
+      return Math.min(1, this.config.maxRemotesPerRoom);
+    }
+
+    // Check room energy stability - reduce remotes if critically low (applies to all RCLs)
+    // Changed from 50000 to 10000 to allow remote mining to BUILD UP energy reserves
+    // instead of requiring high reserves before enabling remote mining (chicken-and-egg problem)
+    const storage = room.storage;
+    if (storage && storage.store.getUsedCapacity(RESOURCE_ENERGY) < 10000) {
+      // Critically low energy - reduce remote capacity
+      return Math.min(1, this.config.maxRemotesPerRoom);
+    }
+
     // New rooms (RCL 3-4) get limited remotes
     if (rcl < 4) {
       return Math.min(1, this.config.maxRemotesPerRoom);
@@ -189,20 +203,6 @@ export class ExpansionManager {
     // At RCL 5, rooms often have only 2 local sources which is insufficient
     if (rcl < 7) {
       return Math.min(3, this.config.maxRemotesPerRoom);
-    }
-
-    // Check room energy stability - reduce remotes if critically low
-    // Changed from 50000 to 10000 to allow remote mining to BUILD UP energy reserves
-    // instead of requiring high reserves before enabling remote mining (chicken-and-egg problem)
-    const storage = room.storage;
-    if (storage && storage.store.getUsedCapacity(RESOURCE_ENERGY) < 10000) {
-      // Critically low energy - reduce remote capacity
-      return Math.min(1, this.config.maxRemotesPerRoom);
-    }
-
-    // Check danger level - reduce remotes if under threat
-    if (swarm.danger >= 2) {
-      return Math.min(1, this.config.maxRemotesPerRoom);
     }
 
     // Mature rooms (RCL 7-8) with good energy get full capacity
