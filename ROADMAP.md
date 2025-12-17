@@ -367,25 +367,79 @@ Nuke-Scoring & Einsatz
 
 14. Power Creeps (Endgame-Einheiten)
 
+**Implementation Status**: ✅ **COMPLETE** (PowerCreepManager + automated power upgrade + console commands)
+
 Mechanik
 - Global Power Level (GPL) → Anzahl und Level der Power Creeps.
 - Power Creeps sind account-gebunden und respawnbar (Power Spawn, Cooldown).
+- **Automated GPL Progression Tracking**: Monitors GPL progress, processing rates, and estimated time to next level.
+- **Automatic Power Processing**: Rooms with power spawns automatically process power to increase GPL when reserves allow.
 
 Operator-Powers (Beispiele)
-- Ökonomie:
-- OPERATE_SPAWN (schnelleres Spawning)
-- OPERATE_TOWER (Tower-Effizienz)
-- OPERATE_LAB, OPERATE_STORAGE, OPERATE_FACTORY
-- Kampf:
-- DISRUPT_SPAWN, DISRUPT_TOWER, SHIELD (mobiler Schutzrampart)
+- Ökonomie (ECO_OPERATOR_POWERS):
+  - PWR_GENERATE_OPS (Level 0) - Generate ops for other powers
+  - PWR_OPERATE_SPAWN (Level 2) - 50% faster spawning (3x speed with ops)
+  - PWR_OPERATE_EXTENSION (Level 0) - Instant extension fill
+  - PWR_OPERATE_TOWER (Level 10) - 50% tower effectiveness
+  - PWR_OPERATE_LAB (Level 20) - 2x-4x reaction speed
+  - PWR_OPERATE_STORAGE (Level 25) - +500K storage capacity
+  - PWR_REGEN_SOURCE (Level 10) - Instant source regeneration
+  - PWR_OPERATE_FACTORY (Level 0) - Instant factory production
+- Kampf (COMBAT_OPERATOR_POWERS):
+  - PWR_GENERATE_OPS (Level 0) - Generate ops for other powers
+  - PWR_OPERATE_SPAWN (Level 2) - Still useful for military spawning
+  - PWR_SHIELD (Level 0) - Mobile ramparts for allies (5k HP)
+  - PWR_DISRUPT_SPAWN (Level 2) - Disable enemy spawns
+  - PWR_DISRUPT_TOWER (Level 14) - Disable enemy towers
+  - PWR_FORTIFY (Level 0) - Boost rampart HP
+  - PWR_OPERATE_TOWER (Level 10) - Boost friendly towers
+  - PWR_DISRUPT_TERMINAL (Level 20) - Disable enemy terminals
+
+Automated System Features
+- **Power Creep Lifecycle Management**:
+  - Automatic creation based on GPL and eco/combat ratio (70% eco, 30% combat)
+  - Automatic spawning/respawning at available power spawns
+  - Automatic renewal when TTL < 1000
+  - Room assignment based on RCL, structure count, and threat level
+- **Power Selection & Upgrade**:
+  - Role-based power paths (eco vs combat operators)
+  - Automatic power upgrades when GPL increases
+  - Powers filtered by GPL level requirements
+  - Smart selection of next power based on role and current level
+- **Power Usage Scheduling**:
+  - Economy operators: Priority-based power usage (spawn > extension > tower > lab > factory > storage)
+  - Combat operators: Tactical power usage (shield > disrupt spawn > disrupt tower > fortify)
+  - Powers only used when conditions are met (e.g., spawn is spawning, enemies present, resources available)
+  - Effect checking to avoid redundant power usage
 
 Einsatzstrategie
-- Öko-Operator:
-- Sitzt meist im Haupt-Öko-Raum und benutzt Langzeit-Powers auf Spawn/Tower/Labs/Storage in Intervallen.
-- Combat-Operator:
-- Wird im War-/Siege-Modus in Front-Räume verlegt und nutzt offensive Powers taktisch.
+- Öko-Operator (powerQueen):
+  - Sitzt meist im Haupt-Öko-Raum und benutzt Langzeit-Powers auf Spawn/Tower/Labs/Storage in Intervallen.
+  - Assigned to highest RCL rooms with most structures
+  - Priority: OPERATE_SPAWN (2x spawn speed) > OPERATE_EXTENSION (instant fill) > OPERATE_TOWER (defense)
+- Combat-Operator (powerWarrior):
+  - Wird im War-/Siege-Modus in Front-Räume verlegt und nutzt offensive Powers taktisch.
+  - Assigned to rooms with highest threat/danger scores
+  - Priority: SHIELD (protect allies) > DISRUPT_SPAWN (stop reinforcements) > DISRUPT_TOWER (disable defense)
 - CPU-Effizienz:
-- Power Creeps werden nur in dedizierten Intervallen geupdatet (z.B. alle X Ticks), nicht in jedem Tick.
+  - Power Creeps werden nur in dedizierten Intervallen geupdatet (z.B. alle X Ticks), nicht in jedem Tick.
+  - PowerCreepManager runs every 20 ticks as low-priority kernel process
+  - Power behaviors check cooldowns and conditions before using powers
+
+Console Commands
+- `power.gpl()` - Show GPL status, progress, and estimates
+- `power.creeps()` - List all power creeps with assignments and status
+- `power.create(name, className)` - Manually create a power creep
+- `power.spawn(name, roomName?)` - Manually spawn a power creep
+- `power.upgrade(name, power)` - Manually upgrade with specific power
+- `power.assign(name, roomName)` - Reassign power creep to different room
+- `power.operations()` - List active power bank operations
+
+Unified Stats Integration
+- GPL tracking: level, progress, progressTotal, progressPercent
+- Power creep counts: total, spawned, eco, combat
+- Exported to Grafana for monitoring and alerting
+- Process stats available via kernel for performance monitoring
 
 ⸻
 
