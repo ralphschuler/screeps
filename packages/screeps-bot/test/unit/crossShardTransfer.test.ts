@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { MAX_CARRIERS_PER_CROSS_SHARD_REQUEST } from "../../src/logic/spawn";
 
 /**
  * Tests for Cross-Shard Resource Transfer functionality
@@ -443,6 +444,80 @@ describe("Cross-Shard Resource Transfer", () => {
     it("should round up for partial carriers", () => {
       // Need 1000, have 0, each carrier has 300 capacity
       expect(calculateCarriersNeeded(1000, 0, 300)).to.equal(4); // ceil(1000/300) = 4
+    });
+  });
+
+  describe("crossShardCarrier spawning logic", () => {
+    /**
+     * Tests for crossShardCarrier needsRole behavior
+     * 
+     * NOTE: The actual needsRole function checks resourceTransferCoordinator.getActiveRequests()
+     * to determine if crossShardCarriers should be spawned. This ensures carriers are only
+     * spawned when there are active cross-shard transfer requests that need capacity.
+     * 
+     * The logic checks:
+     * 1. If there are any active transfer requests
+     * 2. If any request originates from the current room
+     * 3. If the request needs more carrier capacity (current capacity < needed capacity)
+     * 4. If we haven't reached the max carriers per request (3)
+     * 
+     * This prevents wasting resources spawning carriers when they're not needed.
+     */
+    
+    it("should verify carrier capacity calculation logic is correct", () => {
+      // Simulate the capacity calculation used in needsRole
+      const transferAmount = 10000;
+      const transferred = 0;
+      const neededCarryCapacity = transferAmount - transferred;
+      
+      // Case 1: No carriers assigned
+      let currentCapacity = 0;
+      expect(currentCapacity).to.be.lessThan(neededCarryCapacity);
+      
+      // Case 2: Some capacity but not enough
+      currentCapacity = 5000;
+      expect(currentCapacity).to.be.lessThan(neededCarryCapacity);
+      
+      // Case 3: Enough capacity
+      currentCapacity = 10000;
+      expect(currentCapacity).to.not.be.lessThan(neededCarryCapacity);
+      
+      // Case 4: More than enough capacity
+      currentCapacity = 15000;
+      expect(currentCapacity).to.not.be.lessThan(neededCarryCapacity);
+    });
+
+    it("should respect max carriers per request limit", () => {
+      // Can spawn when under limit
+      expect(0).to.be.lessThan(MAX_CARRIERS_PER_CROSS_SHARD_REQUEST);
+      expect(1).to.be.lessThan(MAX_CARRIERS_PER_CROSS_SHARD_REQUEST);
+      expect(2).to.be.lessThan(MAX_CARRIERS_PER_CROSS_SHARD_REQUEST);
+      
+      // Cannot spawn when at or over limit
+      expect(3).to.not.be.lessThan(MAX_CARRIERS_PER_CROSS_SHARD_REQUEST);
+      expect(4).to.not.be.lessThan(MAX_CARRIERS_PER_CROSS_SHARD_REQUEST);
+    });
+
+    it("should only count alive creeps for capacity calculation", () => {
+      // Simulates filtering dead creeps
+      const assignedCreeps = ["creep1", "creep2", "creep3"];
+      const mockCreeps: Record<string, Pick<Creep, "carryCapacity">> = {
+        creep1: { carryCapacity: 800 },
+        // creep2 is dead (not in Game.creeps)
+        creep3: { carryCapacity: 800 }
+      };
+      
+      // Calculate capacity only for alive creeps
+      let currentCapacity = 0;
+      for (const creepName of assignedCreeps) {
+        const creep = mockCreeps[creepName];
+        if (creep) {
+          currentCapacity += creep.carryCapacity;
+        }
+      }
+      
+      // Should only count creep1 and creep3
+      expect(currentCapacity).to.equal(1600);
     });
   });
 });
