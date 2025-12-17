@@ -312,6 +312,58 @@ export class PheromoneManager {
   }
 
   /**
+   * Update danger pheromone based on threat assessment
+   * Integrates with threat assessment system for more accurate danger signaling
+   * 
+   * @param swarm - Swarm state to update
+   * @param threatScore - Composite threat score from threat assessment
+   * @param dangerLevel - Calculated danger level (0-3)
+   */
+  public updateDangerFromThreat(swarm: SwarmState, threatScore: number, dangerLevel: 0 | 1 | 2 | 3): void {
+    // Set danger level
+    swarm.danger = dangerLevel;
+
+    // Update defense pheromone based on threat score
+    swarm.pheromones.defense = this.clamp(Math.min(100, threatScore / 10));
+
+    // Update war pheromone if persistent threat
+    if (dangerLevel >= 2) {
+      swarm.pheromones.war = this.clamp(swarm.pheromones.war + dangerLevel * 10);
+    }
+
+    // Update siege pheromone if critical threat
+    if (dangerLevel >= 3) {
+      swarm.pheromones.siege = this.clamp(swarm.pheromones.siege + 20);
+    }
+  }
+
+  /**
+   * Diffuse danger pheromone to neighboring cluster rooms
+   * 
+   * @param sourceRoom - Room with threat
+   * @param threatScore - Composite threat score
+   * @param clusterRooms - All rooms in the cluster
+   */
+  public diffuseDangerToCluster(sourceRoom: string, threatScore: number, clusterRooms: string[]): void {
+    for (const neighborRoom of clusterRooms) {
+      if (neighborRoom === sourceRoom) continue;
+
+      const room = Game.rooms[neighborRoom];
+      if (!room?.controller?.my) continue;
+
+      // Get or initialize neighbor swarm state
+      const neighborSwarm = (room.memory as unknown as { swarm?: SwarmState }).swarm;
+      if (!neighborSwarm) continue;
+
+      // Diffuse defense pheromone (weakened)
+      const diffusedAmount = threatScore / 20; // 5% of original threat
+      neighborSwarm.pheromones.defense = this.clamp(
+        neighborSwarm.pheromones.defense + diffusedAmount
+      );
+    }
+  }
+
+  /**
    * Handle structure destroyed
    */
   public onStructureDestroyed(swarm: SwarmState, structureType: StructureConstant): void {

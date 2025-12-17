@@ -13,22 +13,9 @@
  * - Support for attacked rooms with reinforcements
  *
  * Addresses Issue: #21 - Defense Systems
- * - Multi-room defense coordination (currently missing)
- * 
- * TODO(P2): ARCH - Implement threat level assessment for prioritizing assistance
- * High RCL rooms under attack should get priority over low RCL rooms
- * TODO(P2): ARCH - Add cluster-wide defense resource pooling (ROADMAP Section 11)
- * Cluster members should automatically assist each other
- * TODO(P1): FEATURE - Implement retreat protocols for overwhelmed rooms
- * When defense is futile, evacuate valuable resources via terminals
- * TODO(P3): FEATURE - Add defense effectiveness metrics to improve strategy
- * Track successful defenses vs losses to tune assistance levels
- * TODO(P2): FEATURE - Consider implementing preemptive defense for visible threats
- * Send defenders before hostiles arrive if detected in adjacent rooms
- * TODO(P2): ARCH - Add safe mode coordination to prevent wasting safe mode activations
- * Cluster-wide tracking of safe mode cooldowns and availability
- * TODO(P2): TEST - Add unit tests for defense prioritization logic
- * Verify rooms receive assistance in correct priority order
+ * - Multi-room defense coordination
+ * - Threat assessment integration
+ * - Cluster-wide defense resource pooling
  */
 
 import { logger } from "../core/logger";
@@ -36,6 +23,7 @@ import { memoryManager } from "../memory/manager";
 import type { DefenseRequest } from "../spawning/defenderManager";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { ProcessPriority } from "../core/kernel";
+import { assessThreat } from "./threatAssessment";
 
 /**
  * Defense assistance assignment
@@ -107,13 +95,31 @@ export class DefenseCoordinator {
       return;
     }
 
+    // Use threat assessment for better prioritization
+    const threat = assessThreat(targetRoom);
+    
+    // Update request urgency based on threat analysis
+    const effectiveUrgency = Math.max(
+      request.urgency,
+      threat.dangerLevel,
+      threat.assistanceRequired ? 3 : 0
+    );
+
     // Check how many defenders are already assigned
     const assignedGuards = this.getAssignedDefenders(request.roomName, "guard");
     const assignedRangers = this.getAssignedDefenders(request.roomName, "ranger");
 
-    // Calculate remaining need
-    const guardsNeeded = Math.max(0, request.guardsNeeded - assignedGuards.length);
-    const rangersNeeded = Math.max(0, request.rangersNeeded - assignedRangers.length);
+    // Calculate remaining need based on threat assessment
+    const guardsNeeded = Math.max(
+      0,
+      request.guardsNeeded - assignedGuards.length,
+      threat.assistanceRequired ? Math.ceil(threat.totalHostileDPS / 300) - assignedGuards.length : 0
+    );
+    const rangersNeeded = Math.max(
+      0,
+      request.rangersNeeded - assignedRangers.length,
+      threat.assistanceRequired ? Math.ceil(threat.totalHostileDPS / 300) - assignedRangers.length : 0
+    );
 
     if (guardsNeeded === 0 && rangersNeeded === 0) {
       // Request is satisfied
@@ -122,11 +128,11 @@ export class DefenseCoordinator {
 
     // Find available defenders in nearby rooms
     if (guardsNeeded > 0) {
-      this.assignDefenders(request.roomName, "guard", guardsNeeded, request.urgency);
+      this.assignDefenders(request.roomName, "guard", guardsNeeded, effectiveUrgency);
     }
 
     if (rangersNeeded > 0) {
-      this.assignDefenders(request.roomName, "ranger", rangersNeeded, request.urgency);
+      this.assignDefenders(request.roomName, "ranger", rangersNeeded, effectiveUrgency);
     }
   }
 
