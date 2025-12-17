@@ -56,6 +56,7 @@ import {
   updateOffensiveOperations as updateGlobalOffensiveOps
 } from "./offensiveOperations";
 import { updateClusterRallyPoints } from "./rallyPointManager";
+import { coordinateClusterDefense } from "../defense/clusterDefense";
 
 /**
  * Cluster Manager Configuration
@@ -143,6 +144,9 @@ export class ClusterManager {
     // Handle defense requests
     unifiedStats.measureSubsystem(`cluster:${cluster.id}:defense`, () => {
       this.processDefenseRequests(cluster);
+      
+      // Coordinate cluster-wide defense (threat assessment and defender sharing)
+      coordinateClusterDefense(cluster.id);
     });
 
     // Balance terminal resources (RCL 6+ rooms)
