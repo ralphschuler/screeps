@@ -32,6 +32,7 @@ export { getPostureSpawnWeights, getDynamicPriorityBoost, getPheromoneMult } fro
 // From spawnNeedsAnalyzer.ts
 export {
   countCreepsByRole,
+  countCreepsOfRole,
   needsRole,
   countRemoteCreepsByTargetRoom,
   getRemoteRoomNeedingWorkers,
