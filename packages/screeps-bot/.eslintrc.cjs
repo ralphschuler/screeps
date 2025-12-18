@@ -67,7 +67,7 @@ module.exports = {
     "no-bitwise": "error",
     "no-caller": "error",
     "no-cond-assign": "error",
-    "no-console": "off",
+    "no-console": "error",
     "no-eval": "error",
     "no-invalid-this": "off",
     "no-multiple-empty-lines": "off",
@@ -84,5 +84,19 @@ module.exports = {
     radix: "error",
     "sort-imports": "warn",
     "spaced-comment": "error",
-  }
+  },
+  overrides: [
+    {
+      // Allow console.log in specific files where it's intentional
+      files: [
+        "src/core/logger.ts",
+        "src/utils/ErrorMapper.ts",
+        "src/core/unifiedStats.ts",
+        "src/standards/consoleCommands.ts"
+      ],
+      rules: {
+        "no-console": "off"
+      }
+    }
+  ]
 };

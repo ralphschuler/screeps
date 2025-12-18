@@ -7,6 +7,9 @@
 
 import { describe, it, expect, Assert } from 'screepsmod-testing';
 import { getMemoryProperty, getRoomMemoryProperty } from './test-helpers';
+import { createLogger } from '../core/logger';
+
+const logger = createLogger("StatsSystemTest");
 
 describe('Stats System', () => {
   it('should collect game time statistics', () => {
@@ -14,7 +17,7 @@ describe('Stats System', () => {
     Assert.isType(Game.time, 'number');
     Assert.greaterThan(Game.time, 0);
     
-    console.log(`[Test] Current game time: ${Game.time}`);
+    logger.debug('Current game time', { meta: { gameTime: Game.time } });
   });
 
   it('should track CPU usage', () => {
@@ -23,14 +26,14 @@ describe('Stats System', () => {
     Assert.greaterThanOrEqual(cpuUsed, 0);
     Assert.lessThanOrEqual(cpuUsed, Game.cpu.limit * 2); // Allow some buffer
     
-    console.log(`[Test] CPU used: ${cpuUsed.toFixed(2)} / ${Game.cpu.limit}`);
+    logger.debug('CPU usage', { meta: { cpuUsed: cpuUsed.toFixed(2), cpuLimit: Game.cpu.limit } });
   });
 
   it('should track CPU bucket', () => {
     Assert.isNotNullish(Game.cpu.bucket);
     Assert.inRange(Game.cpu.bucket, 0, 10000);
     
-    console.log(`[Test] CPU bucket: ${Game.cpu.bucket}`);
+    logger.debug('CPU bucket', { meta: { bucket: Game.cpu.bucket } });
   });
 
   it('should track GCL progress', () => {
@@ -40,7 +43,7 @@ describe('Stats System', () => {
     Assert.greaterThanOrEqual(Game.gcl.progress, 0);
     Assert.greaterThan(Game.gcl.progressTotal, 0);
     
-    console.log(`[Test] GCL: ${Game.gcl.level} (${Game.gcl.progress}/${Game.gcl.progressTotal})`);
+    logger.debug('GCL progress', { meta: { gclLevel: Game.gcl.level, progress: Game.gcl.progress, progressTotal: Game.gcl.progressTotal } });
   });
 
   it('should track GPL if power is enabled', () => {
@@ -49,7 +52,7 @@ describe('Stats System', () => {
       Assert.greaterThanOrEqual(Game.gpl.level, 0);
       Assert.greaterThanOrEqual(Game.gpl.progress, 0);
       
-      console.log(`[Test] GPL: ${Game.gpl.level} (${Game.gpl.progress}/${Game.gpl.progressTotal})`);
+      logger.debug('GPL progress', { meta: { gplLevel: Game.gpl.level, progress: Game.gpl.progress, progressTotal: Game.gpl.progressTotal } });
     }
   });
 });
@@ -60,9 +63,9 @@ describe('Memory Statistics', () => {
     const stats = getMemoryProperty('stats');
     if (stats) {
       Assert.isType(stats, 'object');
-      console.log('[Test] Stats structure exists in memory');
+      logger.debug('Stats structure exists in memory');
     } else {
-      console.log('[Test] Stats structure not yet initialized');
+      logger.debug('Stats structure not yet initialized');
     }
   });
 
@@ -73,7 +76,7 @@ describe('Memory Statistics', () => {
       if (room.controller?.my) {
         const stats = getRoomMemoryProperty(roomName, 'stats');
         if (stats) {
-          console.log(`[Test] Room ${roomName} has stats:`, Object.keys(stats));
+          logger.debug('Room has stats', { room: roomName, meta: { statKeys: Object.keys(stats) } });
         }
       }
     }
@@ -103,7 +106,7 @@ describe('Resource Statistics', () => {
     }
     
     if (roomCount > 0) {
-      console.log(`[Test] Total energy across ${roomCount} rooms: ${totalEnergy}`);
+      logger.debug('Total energy across rooms', { meta: { roomCount, totalEnergy } });
       Assert.greaterThanOrEqual(totalEnergy, 0);
     }
   });
@@ -117,7 +120,7 @@ describe('Resource Statistics', () => {
     }
     
     if (Object.keys(roleCounts).length > 0) {
-      console.log('[Test] Creep counts by role:', JSON.stringify(roleCounts));
+      logger.debug('Creep counts by role', { meta: { roleCounts } });
       
       for (const role in roleCounts) {
         Assert.greaterThan(roleCounts[role], 0);
@@ -139,9 +142,12 @@ describe('Room Statistics', () => {
           Assert.greaterThan(room.controller.progressTotal, 0);
           
           const progressPercent = ((room.controller.progress / room.controller.progressTotal) * 100).toFixed(1);
-          console.log(`[Test] Room ${roomName} RCL ${room.controller.level}: ${progressPercent}%`);
+          logger.debug('Room RCL progress', { 
+            room: roomName, 
+            meta: { rcl: room.controller.level, progressPercent: `${progressPercent}%` } 
+          });
         } else {
-          console.log(`[Test] Room ${roomName} is RCL 8 (max level)`);
+          logger.debug('Room at max RCL', { room: roomName, meta: { rcl: 8 } });
         }
       }
     }
@@ -158,7 +164,10 @@ describe('Room Statistics', () => {
         Assert.greaterThanOrEqual(structures.length, 0);
         Assert.greaterThanOrEqual(constructionSites.length, 0);
         
-        console.log(`[Test] Room ${roomName}: ${structures.length} structures, ${constructionSites.length} construction sites`);
+        logger.debug('Room structures', { 
+          room: roomName, 
+          meta: { structureCount: structures.length, constructionSiteCount: constructionSites.length } 
+        });
       }
     }
   });
@@ -173,7 +182,14 @@ describe('Room Statistics', () => {
         Assert.lessThanOrEqual(room.energyAvailable, room.energyCapacityAvailable);
         
         const energyPercent = ((room.energyAvailable / room.energyCapacityAvailable) * 100).toFixed(1);
-        console.log(`[Test] Room ${roomName} energy: ${energyPercent}% (${room.energyAvailable}/${room.energyCapacityAvailable})`);
+        logger.debug('Room energy', { 
+          room: roomName, 
+          meta: { 
+            energyPercent: `${energyPercent}%`, 
+            energyAvailable: room.energyAvailable, 
+            energyCapacity: room.energyCapacityAvailable 
+          } 
+        });
       }
     }
   });
@@ -189,7 +205,7 @@ describe('Empire Statistics', () => {
       }
     }
     
-    console.log(`[Test] Total controlled rooms: ${controlledCount}`);
+    logger.debug('Total controlled rooms', { meta: { controlledCount } });
     Assert.greaterThanOrEqual(controlledCount, 0);
     Assert.lessThanOrEqual(controlledCount, Game.gcl.level);
   });
@@ -197,14 +213,14 @@ describe('Empire Statistics', () => {
   it('should count total creeps', () => {
     const creepCount = Object.keys(Game.creeps).length;
     
-    console.log(`[Test] Total creeps: ${creepCount}`);
+    logger.debug('Total creeps', { meta: { creepCount } });
     Assert.greaterThanOrEqual(creepCount, 0);
   });
 
   it('should count total spawns', () => {
     const spawnCount = Object.keys(Game.spawns).length;
     
-    console.log(`[Test] Total spawns: ${spawnCount}`);
+    logger.debug('Total spawns', { meta: { spawnCount } });
     Assert.greaterThanOrEqual(spawnCount, 0);
   });
 });
@@ -215,7 +231,7 @@ describe('Market Statistics', () => {
       Assert.isNotNullish(Game.market.credits);
       Assert.greaterThanOrEqual(Game.market.credits, 0);
       
-      console.log(`[Test] Market credits: ${Game.market.credits}`);
+      logger.debug('Market credits', { meta: { credits: Game.market.credits } });
     }
   });
 
@@ -224,10 +240,10 @@ describe('Market Statistics', () => {
       const orders = Game.market.orders;
       const orderCount = Object.keys(orders).length;
       
-      console.log(`[Test] Active market orders: ${orderCount}`);
+      logger.debug('Active market orders', { meta: { orderCount } });
       Assert.greaterThanOrEqual(orderCount, 0);
     }
   });
 });
 
-console.log('[Tests] Stats system tests registered');
+logger.info('Stats system tests registered');

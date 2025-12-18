@@ -530,8 +530,9 @@ export class PosisKernelAdapter implements IPosisKernel {
         `Process ${id} (${process.name}) disabled after ${PosisKernelAdapter.MAX_CONSECUTIVE_CRASHES} consecutive crashes`,
         { subsystem: "PosisKernel", processId: id }
       );
-      console.log(
-        `⚠️ POSIS ALERT: Process "${process.name}" (${id}) has been permanently disabled after ${PosisKernelAdapter.MAX_CONSECUTIVE_CRASHES} consecutive crashes`
+      logger.error(
+        `⚠️ POSIS ALERT: Process "${process.name}" (${id}) has been permanently disabled after ${PosisKernelAdapter.MAX_CONSECUTIVE_CRASHES} consecutive crashes`,
+        { subsystem: "PosisKernel", processId: id }
       );
     } else {
       // Set restart cooldown

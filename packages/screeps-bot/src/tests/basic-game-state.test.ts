@@ -6,6 +6,9 @@
  */
 
 import { describe, it, expect, Assert } from 'screepsmod-testing';
+import { createLogger } from '../core/logger';
+
+const logger = createLogger("BasicGameStateTest");
 
 describe('Game State Validation', () => {
   it('should have access to Game object', () => {
@@ -84,7 +87,7 @@ describe('Memory Management', () => {
       if (!Game.creeps[name]) {
         // If a creep is in memory but not in Game, it should be cleaned up
         // We'll just log this for now rather than asserting
-        console.log(`[Test] Found orphaned creep memory: ${name}`);
+        logger.debug('Found orphaned creep memory', { meta: { creepName: name } });
       }
     }
     // The actual cleanup should happen in the main loop, not here
@@ -99,4 +102,4 @@ describe('Main Loop Export', () => {
   });
 });
 
-console.log('[Tests] Basic game state tests registered');
+logger.info('Basic game state tests registered');

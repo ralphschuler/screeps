@@ -5,6 +5,9 @@
  */
 
 import { describe, it, expect, Assert } from 'screepsmod-testing';
+import { createLogger } from '../core/logger';
+
+const logger = createLogger("SpawnSystemTest");
 
 describe('Spawn Management', () => {
   it('should have spawns object', () => {
@@ -98,7 +101,7 @@ describe('Controlled Rooms', () => {
       }
     }
     
-    console.log(`[Test] Found ${controlledCount} controlled rooms`);
+    logger.debug('Controlled rooms count', { meta: { controlledCount } });
   });
 
   it('should have valid structures in controlled rooms', () => {
@@ -116,4 +119,4 @@ describe('Controlled Rooms', () => {
   });
 });
 
-console.log('[Tests] Spawn system tests registered');
+logger.info('Spawn system tests registered');

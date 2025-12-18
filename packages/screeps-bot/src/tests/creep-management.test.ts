@@ -5,6 +5,9 @@
  */
 
 import { describe, it, expect, Assert } from 'screepsmod-testing';
+import { createLogger } from '../core/logger';
+
+const logger = createLogger("CreepManagementTest");
 
 describe('Creep Lifecycle', () => {
   it('should have creeps object', () => {
@@ -163,7 +166,7 @@ describe('Creep Age and Recycling', () => {
         // Creeps near death might be recycling or have an exception
         // This is more of a logging test than an assertion
         const isRecycling = 'recycling' in creep.memory && creep.memory.recycling === true;
-        console.log(`[Test] Creep ${name} has ${creep.ticksToLive} TTL, recycling: ${isRecycling}`);
+        logger.debug('Creep near death', { creep: name, meta: { ttl: creep.ticksToLive, recycling: isRecycling } });
       }
     }
   });
@@ -185,4 +188,4 @@ describe('Memory Synchronization', () => {
   });
 });
 
-console.log('[Tests] Creep management tests registered');
+logger.info('Creep management tests registered');

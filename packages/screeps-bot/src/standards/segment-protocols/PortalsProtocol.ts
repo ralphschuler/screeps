@@ -62,7 +62,7 @@ export class PortalsProtocol {
 
       return JSON.parse(data) as PortalInfo[];
     } catch (error) {
-      console.log(`[Portals] Error reading portals from ${username}: ${error}`);
+      logger.error("Error reading portals", { meta: { username, error: String(error) } });
       return null;
     }
   }

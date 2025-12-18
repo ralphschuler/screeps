@@ -10,6 +10,9 @@
  */
 
 import { unifiedStats } from "./unifiedStats";
+import { createLogger } from "./logger";
+
+const logger = createLogger("NativeCallsTracker");
 
 /**
  * Whether native calls tracking is enabled
@@ -54,7 +57,7 @@ export function wrapPathFinderSearch(): void {
   const descriptor = Object.getOwnPropertyDescriptor(PathFinder, "search");
   if (descriptor && descriptor.configurable === false) {
     // Property is not configurable, we cannot wrap it
-    console.log(`[NativeCallsTracker] Warning: Cannot wrap PathFinder.search - property is not configurable`);
+    logger.warn("Cannot wrap PathFinder.search - property is not configurable");
     return;
   }
 
@@ -78,7 +81,7 @@ export function wrapPathFinderSearch(): void {
       configurable: true
     });
   } catch (error) {
-    console.log(`[NativeCallsTracker] Warning: Failed to wrap PathFinder.search: ${error}`);
+    logger.warn("Failed to wrap PathFinder.search", { meta: { error: String(error) } });
   }
 }
 
@@ -103,7 +106,7 @@ function wrapMethod(
   const descriptor = Object.getOwnPropertyDescriptor(prototype, methodName);
   if (descriptor && descriptor.configurable === false) {
     // Property is not configurable, we cannot wrap it
-    console.log(`[NativeCallsTracker] Warning: Cannot wrap ${methodName} - property is not configurable`);
+    logger.warn("Cannot wrap method - property is not configurable", { meta: { methodName } });
     return;
   }
 
@@ -125,7 +128,7 @@ function wrapMethod(
       configurable: true
     });
   } catch (error) {
-    console.log(`[NativeCallsTracker] Warning: Failed to wrap ${methodName}: ${error}`);
+    logger.warn("Failed to wrap method", { meta: { methodName, error: String(error) } });
   }
 }
 

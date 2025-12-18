@@ -121,9 +121,13 @@ export class SS2TerminalComms {
         for (let i = 0; i <= buffer.finalPacket; i++) {
           const chunk = buffer.packets.get(i);
           if (!chunk) {
-            console.log(
-              `[SS2] Missing packet ${i} for message ${parsed.msgId} from ${transaction.sender.username}`
-            );
+            logger.warn("Missing packet in multi-packet message", { 
+              meta: { 
+                packetId: i, 
+                messageId: parsed.msgId, 
+                sender: transaction.sender.username 
+              } 
+            });
             break;
           }
           chunks.push(chunk);
@@ -445,9 +449,12 @@ export class SS2TerminalComms {
     const now = Game.time;
     for (const [key, buffer] of this.messageBuffers.entries()) {
       if (now - buffer.receivedAt > this.MESSAGE_TIMEOUT) {
-        console.log(
-          `[SS2] Message ${buffer.msgId} from ${buffer.sender} timed out`
-        );
+        logger.warn("Message timed out", { 
+          meta: { 
+            messageId: buffer.msgId, 
+            sender: buffer.sender 
+          } 
+        });
         this.messageBuffers.delete(key);
       }
     }
@@ -465,7 +472,7 @@ export class SS2TerminalComms {
       }
       return null;
     } catch (error) {
-      console.log(`[SS2] Error parsing JSON: ${error}`);
+      logger.error("Error parsing JSON", { meta: { error: String(error) } });
       return null;
     }
   }

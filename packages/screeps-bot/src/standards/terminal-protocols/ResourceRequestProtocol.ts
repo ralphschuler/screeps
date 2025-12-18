@@ -130,22 +130,29 @@ export class ResourceRequestProtocol {
     sender: string,
     request: ResourceRequest & { requestId: string }
   ): void {
-    console.log(
-      `[ResourceRequest] Request from ${sender}: ${request.amount} ${request.resource} to ${request.toRoom} (priority ${request.priority})`
-    );
+    logger.info("Resource request received", { 
+      meta: { 
+        sender, 
+        requestId: request.requestId,
+        amount: request.amount, 
+        resource: request.resource, 
+        toRoom: request.toRoom, 
+        priority: request.priority 
+      } 
+    });
 
     // Check if we can fulfill the request
     const canFulfill = this.canFulfillRequest(request);
     
     if (!canFulfill) {
-      console.log(`[ResourceRequest] Cannot fulfill request ${request.requestId}`);
+      logger.warn("Cannot fulfill request", { meta: { requestId: request.requestId } });
       return;
     }
 
     // Find best terminal to send from
     const terminal = this.findBestTerminal(request.resource, request.amount);
     if (!terminal) {
-      console.log(`[ResourceRequest] No suitable terminal found`);
+      logger.warn("No suitable terminal found");
       return;
     }
 
@@ -177,12 +184,16 @@ export class ResourceRequestProtocol {
     sender: string,
     response: ResourceResponse
   ): void {
-    console.log(
-      `[ResourceRequest] Response from ${sender} for ${response.requestId}: ${response.accepted ? "accepted" : "rejected"}`
-    );
+    logger.info("Resource response received", { 
+      meta: { 
+        sender, 
+        requestId: response.requestId, 
+        accepted: response.accepted 
+      } 
+    });
 
     if (response.accepted && response.estimatedTicks) {
-      console.log(`[ResourceRequest] Estimated delivery: ${response.estimatedTicks} ticks`);
+      logger.info("Estimated delivery", { meta: { estimatedTicks: response.estimatedTicks } });
     }
 
     // Clean up pending request
