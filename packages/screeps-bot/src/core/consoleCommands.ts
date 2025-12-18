@@ -26,6 +26,7 @@ import { creepProcessManager } from "./creepProcessManager";
 import { roomProcessManager } from "./roomProcessManager";
 import { labCommands, marketCommands, powerCommands } from "./advancedSystemCommands";
 import { shardCommands } from "./shardCommands";
+import { economyCommands } from "../economy/economyCommands";
 
 /**
  * Logging commands
@@ -908,6 +909,7 @@ export function registerAllConsoleCommands(lazy = false): void {
     registerDecoratedCommands(marketCommands);
     registerDecoratedCommands(powerCommands);
     registerDecoratedCommands(shardCommands);
+    registerDecoratedCommands(economyCommands);
 
     // Expose all commands to global scope
     commandRegistry.exposeToGlobal();
