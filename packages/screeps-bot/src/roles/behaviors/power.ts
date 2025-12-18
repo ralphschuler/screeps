@@ -294,10 +294,11 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
 
   // Priority 4: Boost towers (high impact for defense, 10 ops = 2x effectiveness)
   if (powers.includes(PWR_OPERATE_TOWER) && ctx.ops >= 10) {
-    const hostiles = ctx.room.find(FIND_HOSTILE_CREEPS);
+    const hostiles = cachedRoomFind(ctx.room, FIND_HOSTILE_CREEPS);
     if (hostiles.length > 0) {
-      const towers = ctx.room.find(FIND_MY_STRUCTURES, {
-        filter: s => s.structureType === STRUCTURE_TOWER && !hasActiveEffect(s, PWR_OPERATE_TOWER)
+      const towers = cachedRoomFind(ctx.room, FIND_MY_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_TOWER && !hasActiveEffect(s, PWR_OPERATE_TOWER),
+        filterKey: 'towerNoEffect'
       }) ;
       if (towers.length > 0) {
         return { type: "usePower", power: PWR_OPERATE_TOWER, target: towers[0] };
@@ -334,8 +335,9 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
 
   // Priority 8: Regen source when depleted (100 ops = instant regen)
   if (powers.includes(PWR_REGEN_SOURCE) && ctx.ops >= 100) {
-    const depletedSource = ctx.room.find(FIND_SOURCES, {
-      filter: s => s.energy === 0 && s.ticksToRegeneration > 100
+    const depletedSource = cachedRoomFind(ctx.room, FIND_SOURCES, {
+      filter: (s: Source) => s.energy === 0 && s.ticksToRegeneration !== undefined && s.ticksToRegeneration > 100,
+      filterKey: 'depletedSource'
     })[0];
     if (depletedSource) {
       return { type: "usePower", power: PWR_REGEN_SOURCE, target: depletedSource };
@@ -387,11 +389,12 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
 
   // Priority 2: Shield allies in combat (10 ops = 5k HP shield)
   if (powers.includes(PWR_SHIELD) && ctx.ops >= 10 && hostiles.length > 0) {
-    const damagedAlly = ctx.room.find(FIND_MY_CREEPS, {
-      filter: c => {
+    const damagedAlly = cachedRoomFind(ctx.room, FIND_MY_CREEPS, {
+      filter: (c: Creep) => {
         const mem = c.memory as { family?: string };
         return mem.family === "military" && c.hits < c.hitsMax * 0.7;
-      }
+      },
+      filterKey: 'damagedMilitary'
     })[0];
     if (damagedAlly) {
       return { type: "usePower", power: PWR_SHIELD, target: damagedAlly };
@@ -420,10 +423,11 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
 
   // Priority 5: Boost friendly towers for defense (10 ops = 2x effectiveness)
   if (powers.includes(PWR_OPERATE_TOWER) && ctx.ops >= 10 && hostiles.length > 0) {
-    const towers = ctx.room.find(FIND_MY_STRUCTURES, {
+    const towers = cachedRoomFind(ctx.room, FIND_MY_STRUCTURES, {
       filter: s => 
         s.structureType === STRUCTURE_TOWER &&
-        !hasActiveEffect(s, PWR_OPERATE_TOWER)
+        !hasActiveEffect(s, PWR_OPERATE_TOWER),
+      filterKey: 'towerNoEffect'
     }) ;
     const tower = towers[0];
     if (tower) return { type: "usePower", power: PWR_OPERATE_TOWER, target: tower };
@@ -450,8 +454,9 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
     }
 
     // Fortify any low rampart
-    const lowRampart = ctx.room.find(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_RAMPART && s.hits < 500000
+    const lowRampart = cachedRoomFind(ctx.room, FIND_STRUCTURES, {
+      filter: (s: Structure) => s.structureType === STRUCTURE_RAMPART && s.hits < 500000,
+      filterKey: 'lowRampart'
     })[0] as StructureRampart | undefined;
     if (lowRampart) return { type: "usePower", power: PWR_FORTIFY, target: lowRampart };
   }
