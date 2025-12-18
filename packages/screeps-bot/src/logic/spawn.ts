@@ -10,6 +10,12 @@ import { type WeightedEntry, weightedSelection } from "../utils/weightedSelectio
 import { logger } from "../core/logger";
 import { calculateRemoteHaulerRequirement } from "../empire/remoteHaulerDimensioning";
 import { resourceTransferCoordinator, type CrossShardTransferRequest } from "../intershard/resourceTransferCoordinator";
+import {
+  cachedFindSources,
+  cachedFindMyStructures,
+  cachedFindConstructionSites,
+  cachedRoomFind
+} from "../utils/roomFindCache";
 
 const FOCUS_ROOM_UPGRADER_LIMITS = {
   EARLY: 2,
@@ -743,14 +749,14 @@ export function getRemoteRoomNeedingWorkers(homeRoom: string, role: string, swar
     
     if (role === "remoteHarvester") {
       if (room) {
-        const sources = room.find(FIND_SOURCES);
+        const sources = cachedFindSources(room);
         maxPerRemote = sources.length;
       } else {
         maxPerRemote = 2;
       }
     } else if (role === "remoteHauler") {
       if (room) {
-        const sources = room.find(FIND_SOURCES);
+        const sources = cachedFindSources(room);
         const sourceCount = sources.length;
         
         const energyCapacity = Game.rooms[homeRoom]?.energyCapacityAvailable ?? 800;
@@ -866,7 +872,7 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
       if (!remoteRoom) continue; // Can't check rooms without vision
       
       // Check for hostile creeps with combat parts
-      const hostiles = remoteRoom.find(FIND_HOSTILE_CREEPS);
+      const hostiles = cachedRoomFind(remoteRoom, FIND_HOSTILE_CREEPS);
       const dangerousHostiles = hostiles.filter(h =>
         h.body.some(p => p.type === ATTACK || p.type === RANGED_ATTACK || p.type === WORK)
       );
@@ -1200,7 +1206,7 @@ export function isEmergencySpawnState(roomName: string): boolean {
 function getBootstrapSpawnOrder(room: Room): { role: string; minCount: number; condition?: (room: Room) => boolean }[] {
   // Count sources in the room to determine how many harvesters we need
   // Most rooms have 2 sources, but some have only 1
-  const sources = room.find(FIND_SOURCES);
+  const sources = cachedFindSources(room);
   const sourceCount = Math.max(sources.length, 1); // Ensure at least 1
   
   return [
@@ -1389,7 +1395,7 @@ export function getAllSpawnableRoles(room: Room, swarm: SwarmState): string[] {
  * Spawn manager - run for a room
  */
 export function runSpawnManager(room: Room, swarm: SwarmState): void {
-  const spawns = room.find(FIND_MY_SPAWNS);
+  const spawns = cachedFindMyStructures<StructureSpawn>(room, STRUCTURE_SPAWN);
   const availableSpawn = spawns.find(s => !s.spawning);
 
   if (!availableSpawn) return;
@@ -1700,7 +1706,7 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
  */
 export function assignHarvesterSource(creep: Creep): Id<Source> | null {
   const room = creep.room;
-  const sources = room.find(FIND_SOURCES);
+  const sources = cachedFindSources(room);
 
   // Count harvesters per source
   const sourceCounts = new Map<string, number>();
@@ -1734,7 +1740,7 @@ export function assignHarvesterSource(creep: Creep): Id<Source> | null {
  * Task assignment - find best construction site
  */
 export function findBestConstructionSite(room: Room): ConstructionSite | null {
-  const sites = room.find(FIND_MY_CONSTRUCTION_SITES);
+  const sites = cachedFindConstructionSites(room);
   if (sites.length === 0) return null;
 
   // Priority: spawn > extension > tower > storage > other
@@ -1761,7 +1767,10 @@ export function findBestConstructionSite(room: Room): ConstructionSite | null {
  * Task assignment - find best repair target
  */
 export function findBestRepairTarget(room: Room): Structure | null {
-  const structures = room.find(FIND_STRUCTURES, {
+  const structures = cachedRoomFind(room, FIND_STRUCTURES, {
+    filter: (s: Structure) => s.hits < s.hitsMax && s.structureType !== STRUCTURE_WALL,
+    filterKey: 'damagedStructures'
+  });
     filter: s => s.hits < s.hitsMax && s.structureType !== STRUCTURE_WALL && s.structureType !== STRUCTURE_RAMPART
   });
 
