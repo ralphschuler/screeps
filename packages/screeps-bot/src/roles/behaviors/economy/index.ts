@@ -17,6 +17,7 @@
  * TODO(P3): ARCH - Add behavior composability for complex roles
  * Combine simple behaviors into more sophisticated strategies
  * TODO(P2): TEST - Add unit tests for behavior decision logic
+ Issue URL: https://github.com/ralphschuler/screeps/issues/775
  * Verify correct actions are selected for various scenarios
  */
 
