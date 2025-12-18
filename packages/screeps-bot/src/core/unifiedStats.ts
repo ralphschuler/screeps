@@ -25,6 +25,7 @@ import { logger } from "./logger";
 import { memoryManager } from "../memory/manager";
 import { EvolutionStage, PheromoneState, RoomPosture } from "../memory/schemas";
 import { shardManager } from "../intershard/shardManager";
+import { getRoomFindCacheStats } from "../utils/roomFindCache";
 
 // ============================================================================
 // Configuration
@@ -236,6 +237,20 @@ export interface NativeCallStats {
 }
 
 /**
+ * Room.find() cache statistics
+ */
+export interface CacheStats {
+  roomFind: {
+    rooms: number;
+    totalEntries: number;
+    hits: number;
+    misses: number;
+    invalidations: number;
+    hitRate: number;
+  };
+}
+
+/**
  * Kernel process statistics entry
  */
 export interface ProcessStatsEntry {
@@ -288,6 +303,7 @@ export interface StatsSnapshot {
   native: NativeCallStats;
   processes: Record<string, ProcessStatsEntry>;
   creeps: Record<string, CreepStatsEntry>;
+  cache: CacheStats;
 }
 
 /**
@@ -388,6 +404,9 @@ export class UnifiedStatsManager {
 
     // Finalize subsystem stats
     this.finalizeSubsystemStats();
+
+    // Finalize cache stats
+    this.finalizeCacheStats();
 
     // Finalize native calls
     this.currentSnapshot.native = { ...this.nativeCallsThisTick };
@@ -727,7 +746,17 @@ export class UnifiedStatsManager {
       roles: {},
       native: this.createEmptyNativeCalls(),
       processes: {},
-      creeps: {}
+      creeps: {},
+      cache: {
+        roomFind: {
+          rooms: 0,
+          totalEntries: 0,
+          hits: 0,
+          misses: 0,
+          invalidations: 0,
+          hitRate: 0
+        }
+      }
     };
   }
 
@@ -949,6 +978,16 @@ export class UnifiedStatsManager {
         };
       }
     }
+  }
+
+  /**
+   * Finalize cache stats - collect room.find() cache statistics
+   */
+  private finalizeCacheStats(): void {
+    const roomFindStats = getRoomFindCacheStats();
+    this.currentSnapshot.cache = {
+      roomFind: roomFindStats
+    };
   }
 
   /**
