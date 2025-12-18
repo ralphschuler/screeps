@@ -380,8 +380,8 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     role: "scout",
     family: "utility",
     bodies: [createBody([MOVE], 50)],
-    priority: 65, // Increased from 40 - scouts are important for expansion and intel gathering
-    maxPerRoom: 2, // Allow 2 scouts per room for better coverage
+    priority: 30, // REDUCED from 65 - scouts are expensive CPU-wise, spawn only when truly needed
+    maxPerRoom: 1, // REDUCED from 2 - one scout per room is sufficient for intel gathering
     remoteRole: true
   },
   claimer: {
@@ -411,7 +411,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
       createBody([WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 750)
     ],
     priority: 45,
-    maxPerRoom: 4,
+    maxPerRoom: 2, // REDUCED from 4 - limit spawning per home room to prevent overproduction
     remoteRole: true
   },
 

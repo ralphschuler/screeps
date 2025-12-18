@@ -162,19 +162,40 @@ export function assignRemoteTargetRoom(role: string, memory: SwarmCreepMemory, s
   if (role === "remoteWorker") {
     const remoteAssignments = swarm.remoteAssignments ?? [];
     if (remoteAssignments.length > 0) {
+      // OPTIMIZATION: Limit total workers per remote room across ALL home rooms
+      // to prevent CPU overusage from too many remote workers
+      const MAX_WORKERS_PER_REMOTE = 2; // Hard cap per remote room globally
+      
       // Load balancing: assign to remote room with fewest remoteWorkers
       // If multiple rooms have same count, use Game.time for deterministic round-robin
       let minCount = Infinity;
       let candidatesWithMinCount: string[] = [];
       
       for (const remoteName of remoteAssignments) {
-        const count = countRemoteCreepsByTargetRoom(homeRoom, role, remoteName);
-        if (count < minCount) {
-          minCount = count;
-          candidatesWithMinCount = [remoteName];
-        } else if (count === minCount) {
-          candidatesWithMinCount.push(remoteName);
+        // Count ALL remote workers targeting this remote (from all home rooms)
+        let totalCount = 0;
+        for (const creepName in Game.creeps) {
+          const creep = Game.creeps[creepName];
+          const mem = creep.memory as unknown as SwarmCreepMemory;
+          if (mem.role === role && mem.targetRoom === remoteName) {
+            totalCount++;
+          }
         }
+        
+        // Only consider this remote if it's under the global cap
+        if (totalCount < MAX_WORKERS_PER_REMOTE) {
+          if (totalCount < minCount) {
+            minCount = totalCount;
+            candidatesWithMinCount = [remoteName];
+          } else if (totalCount === minCount) {
+            candidatesWithMinCount.push(remoteName);
+          }
+        }
+      }
+      
+      if (candidatesWithMinCount.length === 0) {
+        // All remote rooms are at capacity
+        return false;
       }
       
       // Select from candidates: use round-robin if multiple, otherwise take the only one
@@ -284,10 +305,40 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
     return getRemoteRoomNeedingWorkers(roomName, role, swarm) !== null;
   }
   
-  // Remote worker: only spawn if we have remote rooms assigned
+  // Remote worker: check if any remote room needs more workers
+  // CRITICAL FIX: Must count workers by targetRoom assignment, not by homeRoom location
+  // because remote workers travel away from home and would be undercounted
   if (role === "remoteWorker") {
     const remoteAssignments = swarm.remoteAssignments ?? [];
-    return remoteAssignments.length > 0;
+    if (remoteAssignments.length === 0) return false;
+    
+    // Check each remote room to see if it needs more workers
+    const MAX_WORKERS_PER_REMOTE = 2; // Global limit per target remote room
+    
+    for (const remoteName of remoteAssignments) {
+      // Count ALL remote workers assigned to this target room (from ALL home rooms)
+      let totalWorkersForRemote = 0;
+      for (const creepName in Game.creeps) {
+        const creep = Game.creeps[creepName];
+        const mem = creep.memory as unknown as SwarmCreepMemory;
+        if (mem.role === "remoteWorker" && mem.targetRoom === remoteName) {
+          totalWorkersForRemote++;
+        }
+      }
+      
+      // If this remote needs workers and we haven't hit max for this home room, spawn
+      if (totalWorkersForRemote < MAX_WORKERS_PER_REMOTE) {
+        // Also check per-home-room limit to distribute workers across home rooms
+        const workersFromThisHome = countRemoteCreepsByTargetRoom(roomName, role, remoteName);
+        const maxPerHomeRoom = Math.ceil(MAX_WORKERS_PER_REMOTE / Math.max(1, remoteAssignments.length));
+        
+        if (workersFromThisHome < maxPerHomeRoom) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
   }
   
   // Remote guard: spawn if remote rooms have threats

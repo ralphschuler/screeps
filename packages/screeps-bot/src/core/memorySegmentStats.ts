@@ -34,7 +34,7 @@ const DEFAULT_CONFIG: StatsConfig = {
   primarySegment: 90,
   backupSegment: 91,
   retentionPeriod: 10000,
-  updateInterval: 10,
+  updateInterval: 50, // INCREASED from 10 to 50 ticks - reduce CPU overhead from stats collection
   maxDataPoints: 1000
 };
 
