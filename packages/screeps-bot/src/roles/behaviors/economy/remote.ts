@@ -4,11 +4,11 @@
  * Remote harvesting and hauling in external rooms.
  */
 
-import type { SwarmCreepMemory } from "../../../../memory/schemas";
-import type { CreepAction, CreepContext } from "../../types";
-import { findCachedClosest } from "../../../../utils/cachedClosest";
+import type { SwarmCreepMemory } from "../../../memory/schemas";
+import type { CreepAction, CreepContext } from "../types";
+import { findCachedClosest } from "../../../utils/cachedClosest";
 import { updateWorkingState, switchToCollectionMode } from "./common/stateManagement";
-import { cachedRoomFind, cachedFindSources, cachedFindDroppedResources } from "../../../../utils/roomFindCache";
+import { cachedRoomFind, cachedFindSources, cachedFindDroppedResources } from "../../../utils/roomFindCache";
 
 /**
  * Cache duration for stationary harvester structures (containers, links).

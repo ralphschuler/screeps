@@ -5,10 +5,10 @@
  * Sits at source, harvests, and transfers to nearby container/link.
  */
 
-import type { SwarmCreepMemory } from "../../../../memory/schemas";
-import type { CreepAction, CreepContext } from "../../types";
-import { cachedFindSources } from "../../../../utils/roomFindCache";
-import { createLogger } from "../../../../core/logger";
+import type { SwarmCreepMemory } from "../../../memory/schemas";
+import type { CreepAction, CreepContext } from "../types";
+import { cachedFindSources } from "../../../utils/roomFindCache";
+import { createLogger } from "../../../core/logger";
 
 const logger = createLogger("HarvesterBehavior");
 

@@ -5,11 +5,11 @@
  * Uses cached target finding to reduce CPU usage.
  */
 
-import type { CreepAction, CreepContext } from "../../types";
-import { findCachedClosest } from "../../../../utils/cachedClosest";
-import { findDistributedTarget } from "../../../../utils/targetDistribution";
+import type { CreepAction, CreepContext } from "../types";
+import { findCachedClosest } from "../../../utils/cachedClosest";
+import { findDistributedTarget } from "../../../utils/targetDistribution";
 import { updateWorkingState, switchToCollectionMode } from "./common/stateManagement";
-import { createLogger } from "../../../../core/logger";
+import { createLogger } from "../../../core/logger";
 
 const logger = createLogger("HaulerBehavior");
 

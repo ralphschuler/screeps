@@ -4,9 +4,9 @@
  * Cross-room resource transfer behaviors.
  */
 
-import type { CreepAction, CreepContext } from "../../types";
-import { findCachedClosest } from "../../../../utils/cachedClosest";
-import { cachedRoomFind, cachedFindMyStructures } from "../../../../utils/roomFindCache";
+import type { CreepAction, CreepContext } from "../types";
+import { findCachedClosest } from "../../../utils/cachedClosest";
+import { cachedRoomFind, cachedFindMyStructures } from "../../../utils/roomFindCache";
 
 /**
  * InterRoomCarrier - Transfer resources between rooms in a cluster.
