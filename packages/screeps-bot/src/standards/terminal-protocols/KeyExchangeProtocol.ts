@@ -95,7 +95,7 @@ export class KeyExchangeProtocol {
     if (parts[1] === "request" && parts.length >= 3) {
       // Key request
       const keyid = parts[2];
-      console.log(`[KeyExchange] Received key request for ${keyid} from ${sender}`);
+      logger.info("Received key request", { meta: { keyid, sender } });
       
       // Handle request - implementation depends on key management policy
       this.handleKeyRequest(sender, keyid);
@@ -104,7 +104,7 @@ export class KeyExchangeProtocol {
       // Key response
       const keyid = parts[1];
       const keystring = parts[2];
-      console.log(`[KeyExchange] Received key ${keyid} from ${sender}`);
+      logger.info("Received key", { meta: { keyid, sender } });
       
       // Store key
       this.storeKey(sender, keyid, keystring);
@@ -124,37 +124,37 @@ export class KeyExchangeProtocol {
     const key = this.getKey(sender, keyid);
     
     if (!key) {
-      console.log(`[KeyExchange] Key ${keyid} not found or not authorized for ${sender}`);
+      logger.warn("Key not found or not authorized", { meta: { keyid, sender } });
       return;
     }
 
     // Find a terminal to respond from
     const terminal = this.findAvailableTerminal();
     if (!terminal) {
-      console.log(`[KeyExchange] No available terminal to respond to ${sender}`);
+      logger.warn("No available terminal to respond", { meta: { sender } });
       return;
     }
 
     // Get sender's terminal rooms from their termcom protocol
     const senderTerminals = TerminalComProtocol.readTerminals(sender);
     if (!senderTerminals || senderTerminals.length === 0) {
-      console.log(`[KeyExchange] No terminal rooms found for ${sender}`);
+      logger.warn("No terminal rooms found", { meta: { sender } });
       return;
     }
 
     // Select closest terminal to our terminal
     const targetRoom = this.findClosestTerminalRoom(terminal.room.name, senderTerminals);
     if (!targetRoom) {
-      console.log(`[KeyExchange] Could not determine closest terminal for ${sender}`);
+      logger.warn("Could not determine closest terminal", { meta: { sender } });
       return;
     }
 
     // Send key response
     const result = this.sendKeyResponse(terminal, targetRoom, keyid, key);
     if (result === OK) {
-      console.log(`[KeyExchange] Sent key ${keyid} to ${sender} at ${targetRoom}`);
+      logger.info("Sent key", { meta: { keyid, sender, targetRoom } });
     } else {
-      console.log(`[KeyExchange] Failed to send key ${keyid} to ${sender} at ${targetRoom}: ${result}`);
+      logger.error("Failed to send key", { meta: { keyid, sender, targetRoom, result } });
     }
   }
 

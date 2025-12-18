@@ -7,6 +7,9 @@
 
 import { describe, it, expect, Assert } from 'screepsmod-testing';
 import { getRoomMemoryProperty, hasProperty } from './test-helpers';
+import { createLogger } from '../core/logger';
+
+const logger = createLogger("PheromoneSystemTest");
 
 describe('Pheromone System', () => {
   it('should have pheromone data in memory', () => {
@@ -40,7 +43,7 @@ describe('Pheromone System', () => {
             }
           }
           
-          console.log(`[Test] Room ${roomName} pheromones:`, JSON.stringify(pheromones));
+          logger.debug('Room pheromones', { room: roomName, meta: { pheromones } });
         }
       }
     }
@@ -82,7 +85,7 @@ describe('Pheromone Influence on Behavior', () => {
     }
     
     if (Object.keys(roleCounts).length > 0) {
-      console.log('[Test] Creep role distribution:', JSON.stringify(roleCounts));
+      logger.debug('Creep role distribution', { meta: { roleCounts } });
       
       // Should have at least some economic roles (harvesters, upgraders, builders)
       const economicRoles = ['harvester', 'upgrader', 'builder', 'hauler'];
@@ -123,11 +126,17 @@ describe('Room State and Pheromones', () => {
           
           // Log correlations
           if (constructionSites.length > 0 && pheromones.build !== undefined) {
-            console.log(`[Test] Room ${roomName} has ${constructionSites.length} construction sites, build pheromone: ${pheromones.build}`);
+            logger.debug('Room construction sites and build pheromone', { 
+              room: roomName, 
+              meta: { constructionSiteCount: constructionSites.length, buildPheromone: pheromones.build } 
+            });
           }
           
           if (damagedStructures.length > 0 && pheromones.repair !== undefined) {
-            console.log(`[Test] Room ${roomName} has ${damagedStructures.length} damaged structures, repair pheromone: ${pheromones.repair}`);
+            logger.debug('Room damaged structures and repair pheromone', { 
+              room: roomName, 
+              meta: { damagedStructureCount: damagedStructures.length, repairPheromone: pheromones.repair } 
+            });
           }
         }
       }
@@ -135,4 +144,4 @@ describe('Room State and Pheromones', () => {
   });
 });
 
-console.log('[Tests] Pheromone system tests registered');
+logger.info('Pheromone system tests registered');

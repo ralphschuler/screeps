@@ -149,7 +149,7 @@ export class SS1SegmentManager {
       
       // Validate API version compatibility
       if (!segment.api || !segment.api.version) {
-        console.log(`[SS1] Invalid segment from ${username}: missing API version`);
+        logger.warn("Invalid segment - missing API version", { meta: { username } });
         this.trackMetric("segmentReads", false);
         return null;
       }
@@ -157,7 +157,7 @@ export class SS1SegmentManager {
       this.trackMetric("segmentReads", true);
       return segment;
     } catch (error) {
-      console.log(`[SS1] Error reading segment from ${username}: ${error}`);
+      logger.error("Error reading player segment", { meta: { username, error: String(error) } });
       this.trackMetric("segmentReads", false);
       return null;
     }
@@ -189,9 +189,7 @@ export class SS1SegmentManager {
       for (const segmentId of segmentIds) {
         const data = RawMemory.foreignSegment;
         if (!data || data.username !== username) {
-          console.log(
-            `[SS1] Missing segment ${segmentId} from ${username}`
-          );
+          logger.warn("Missing segment in multi-segment channel", { meta: { username, segmentId } });
           return null;
         }
         segments.push(data.data);
@@ -199,9 +197,7 @@ export class SS1SegmentManager {
 
       return segments.join("");
     } catch (error) {
-      console.log(
-        `[SS1] Error reading multi-segment from ${username}: ${error}`
-      );
+      logger.error("Error reading multi-segment channel", { meta: { username, error: String(error) } });
       return null;
     }
   }
@@ -215,12 +211,12 @@ export class SS1SegmentManager {
     try {
       const decompressed = LZString.decompressFromUTF16(data);
       if (decompressed === null) {
-        console.log("[SS1] Warning: Decompression failed. Returning raw data.");
+        logger.warn("Decompression failed, returning raw data");
         return data;
       }
       return decompressed;
     } catch (error) {
-      console.log(`[SS1] Error during decompression: ${error}`);
+      logger.error("Error during decompression", { meta: { error: String(error) } });
       return data;
     }
   }
@@ -234,7 +230,7 @@ export class SS1SegmentManager {
     try {
       return LZString.compressToUTF16(data);
     } catch (error) {
-      console.log(`[SS1] Error during compression: ${error}. Returning raw data.`);
+      logger.error("Error during compression, returning raw data", { meta: { error: String(error) } });
       return data;
     }
   }

@@ -57,7 +57,7 @@ export class TerminalComProtocol {
 
       return JSON.parse(data) as TerminalRoomsList;
     } catch (error) {
-      console.log(`[TermCom] Error reading terminals from ${username}: ${error}`);
+      logger.error("Error reading terminals", { meta: { username, error: String(error) } });
       return null;
     }
   }

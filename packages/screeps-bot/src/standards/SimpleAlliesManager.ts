@@ -108,7 +108,7 @@ export class SimpleAlliesManager {
 
     // Check segment limit
     if (Object.keys(RawMemory.segments).length >= MAX_SEGMENTS_OPEN) {
-      console.log("[SimpleAllies] Warning: Too many segments open, skipping publish");
+      logger.warn("Too many segments open, skipping publish", { meta: { segmentCount: Object.keys(RawMemory.segments).length, maxSegments: MAX_SEGMENTS_OPEN } });
       return;
     }
 
@@ -149,7 +149,7 @@ export class SimpleAlliesManager {
     try {
       this.allySegmentData = JSON.parse(RawMemory.foreignSegment.data || "{}");
     } catch (err) {
-      console.log(`[SimpleAllies] Error parsing data from ${this.currentAlly}:`, err);
+      logger.error("Error parsing ally data", { meta: { ally: this.currentAlly, error: String(err) } });
       this.allySegmentData = {};
     }
   }

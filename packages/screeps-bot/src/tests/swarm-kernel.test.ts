@@ -7,6 +7,9 @@
 
 import { describe, it, expect, Assert } from 'screepsmod-testing';
 import { kernel } from '../core/kernel';
+import { createLogger } from '../core/logger';
+
+const logger = createLogger("SwarmKernelTest");
 
 describe('Kernel Process Management', () => {
   it('should have kernel initialized', () => {
@@ -21,7 +24,7 @@ describe('Kernel Process Management', () => {
     Assert.isTrue(Array.isArray(processes));
     
     // Log process count for visibility
-    console.log(`[Test] Kernel has ${processes.length} registered processes`);
+    logger.debug('Kernel registered processes', { meta: { processCount: processes.length } });
   });
 
   it('should have creep processes for active creeps', () => {
@@ -31,7 +34,7 @@ describe('Kernel Process Management', () => {
       const creepProcesses = kernel.getProcesses().filter(p => p.id.startsWith('creep:'));
       
       // Should have processes for creeps (may not be 1:1 depending on implementation)
-      console.log(`[Test] Found ${creepProcesses.length} creep processes for ${creepCount} creeps`);
+      logger.debug('Creep processes', { meta: { creepProcessCount: creepProcesses.length, creepCount } });
     }
   });
 
@@ -47,7 +50,7 @@ describe('Kernel Process Management', () => {
       const roomProcesses = kernel.getProcesses().filter(p => p.id.startsWith('room:'));
       
       // Should have processes for rooms (may not be 1:1 depending on implementation)
-      console.log(`[Test] Found ${roomProcesses.length} room processes for ${controlledRoomCount} controlled rooms`);
+      logger.debug('Room processes', { meta: { roomProcessCount: roomProcesses.length, controlledRoomCount } });
     }
   });
 });
@@ -75,9 +78,9 @@ describe('Kernel Configuration', () => {
     // The kernel should have CPU management
     // Check if kernel has a config property (implementation detail may vary)
     if ('config' in kernel) {
-      console.log('[Test] Kernel configuration exists');
+      logger.debug('Kernel configuration exists');
     } else {
-      console.log('[Test] Kernel configuration structure may vary');
+      logger.debug('Kernel configuration structure may vary');
     }
   });
 
@@ -87,8 +90,8 @@ describe('Kernel Configuration', () => {
     
     // Kernel should not exceed CPU limit
     const cpuUsed = Game.cpu.getUsed();
-    console.log(`[Test] CPU used: ${cpuUsed.toFixed(2)} / ${Game.cpu.limit}`);
+    logger.debug('CPU usage', { meta: { cpuUsed: cpuUsed.toFixed(2), cpuLimit: Game.cpu.limit } });
   });
 });
 
-console.log('[Tests] SwarmBot kernel tests registered');
+logger.info('SwarmBot kernel tests registered');
