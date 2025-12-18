@@ -4,7 +4,7 @@
  * Queen carrier, lab tech, and factory worker roles.
  */
 
-import type { CreepAction, CreepContext } from "../../types";
+import type { CreepAction, CreepContext } from "../types";
 import { updateWorkingState } from "./common/stateManagement";
 import { deliverEnergy } from "./common/energyManagement";
 

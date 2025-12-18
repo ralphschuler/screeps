@@ -5,8 +5,8 @@
  * Priority: deliver energy to spawns/extensions/towers first, then build
  */
 
-import type { CreepAction, CreepContext } from "../../types";
-import { findCachedClosest } from "../../../../utils/cachedClosest";
+import type { CreepAction, CreepContext } from "../types";
+import { findCachedClosest } from "../../../utils/cachedClosest";
 import { updateWorkingState } from "./common/stateManagement";
 import { findEnergy } from "./common/energyManagement";
 

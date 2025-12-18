@@ -4,8 +4,8 @@
  * Mineral harvesting and deposit harvesting behaviors.
  */
 
-import type { CreepAction, CreepContext } from "../../types";
-import { cachedRoomFind } from "../../../../utils/roomFindCache";
+import type { CreepAction, CreepContext } from "../types";
+import { cachedRoomFind } from "../../../utils/roomFindCache";
 
 /**
  * Type guard to check if an object is a Deposit.

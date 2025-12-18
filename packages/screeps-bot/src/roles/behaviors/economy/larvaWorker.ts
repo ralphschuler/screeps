@@ -5,11 +5,11 @@
  * Priority: deliver energy (spawns→extensions→towers→storage→containers) → build → upgrade
  */
 
-import type { CreepAction, CreepContext } from "../../types";
+import type { CreepAction, CreepContext } from "../types";
 import { updateWorkingState, switchToCollectionMode } from "./common/stateManagement";
 import { deliverEnergy, findEnergy } from "./common/energyManagement";
-import { getPheromones, needsBuilding, needsUpgrading } from "../../pheromoneHelper";
-import { createLogger } from "../../../../core/logger";
+import { getPheromones, needsBuilding, needsUpgrading } from "../pheromoneHelper";
+import { createLogger } from "../../../core/logger";
 
 const logger = createLogger("LarvaWorkerBehavior");
 

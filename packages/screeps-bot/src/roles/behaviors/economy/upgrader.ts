@@ -5,10 +5,10 @@
  * Priority: deliver energy to spawns/extensions/towers first, then upgrade controller
  */
 
-import type { CreepAction, CreepContext } from "../../types";
-import { findCachedClosest } from "../../../../utils/cachedClosest";
+import type { CreepAction, CreepContext } from "../types";
+import { findCachedClosest } from "../../../utils/cachedClosest";
 import { updateWorkingState } from "./common/stateManagement";
-import { cachedFindSources } from "../../../../utils/roomFindCache";
+import { cachedFindSources } from "../../../utils/roomFindCache";
 
 /**
  * Upgrader - Upgrade the room controller.
