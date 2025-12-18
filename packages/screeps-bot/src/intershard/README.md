@@ -358,3 +358,173 @@ Test coverage:
 - ROADMAP.md Section 11: Cluster- & Empire-Logik
 - Game API: `Game.cpu.setShardLimits`, `InterShardMemory`
 - Portal documentation: https://docs.screeps.com/api/#StructurePortal
+
+## Console Commands (New!)
+
+All shard management is accessible via console commands in the `shard` namespace:
+
+### Monitoring Commands
+
+```javascript
+// View current shard status
+shard.status()
+
+// List all known shards
+shard.all()
+
+// Check sync health
+shard.syncStatus()
+
+// View memory usage breakdown
+shard.memoryStats()
+
+// View CPU allocation history
+shard.cpuHistory()
+```
+
+### Management Commands
+
+```javascript
+// Set shard role manually
+shard.setRole('core')      // core, frontier, resource, backup, war
+shard.setRole('war')
+
+// Force InterShardMemory sync with validation
+shard.forceSync()
+```
+
+### Portal Commands
+
+```javascript
+// List all portals
+shard.portals()
+
+// List portals to specific shard
+shard.portals('shard1')
+
+// Find best portal route
+shard.bestPortal('shard1')
+shard.bestPortal('shard2', 'E1N1')  // from specific room
+```
+
+### Task Commands
+
+```javascript
+// Create cross-shard tasks
+shard.createTask('colonize', 'shard1', 'E5N5', 80)
+shard.createTask('reinforce', 'shard2', 'W1N1', 90)
+shard.createTask('evacuate', 'shard0', 'E1N1', 100)
+
+// List active inter-shard tasks
+shard.tasks()
+```
+
+### Resource Transfer Commands
+
+```javascript
+// Create resource transfer
+shard.transferResource('shard1', 'E5N5', 'energy', 50000, 70)
+shard.transferResource('shard2', 'W1N1', 'U', 5000, 80)
+
+// List active transfers
+shard.transfers()
+```
+
+## Enhanced Sync Protocol (New!)
+
+The InterShardMemory sync protocol now includes:
+
+### Validation
+- Structure integrity checks
+- Data type validation
+- Shard state verification
+- Portal and task array validation
+
+### Recovery
+- Automatic repair of corrupted data
+- Fallback to stored data on failure
+- Emergency trim when memory exceeds limits
+- Periodic sync verification
+
+### Health Monitoring
+Sync is considered healthy when:
+- Memory usage <90% of 100KB limit
+- Last sync occurred within 500 ticks
+
+Check health with: `shard.syncStatus()`
+
+### Error Handling
+- Automatic validation before sync
+- Graceful degradation on failures
+- Detailed error logging
+- Recovery attempts on corruption
+
+## Unified Stats Integration (New!)
+
+Shard metrics are now exported to Grafana:
+
+```javascript
+stats.empire.shard.name              // Shard name
+stats.empire.shard.role              // Current role
+stats.empire.shard.cpu_usage         // CPU usage (0-1)
+stats.empire.shard.cpu_category      // low/medium/high/critical
+stats.empire.shard.bucket_level      // Bucket level
+stats.empire.shard.economy_index     // Economy health (0-100)
+stats.empire.shard.war_index         // War pressure (0-100)
+stats.empire.shard.avg_rcl           // Average RCL
+stats.empire.shard.portals_count     // Known portals
+stats.empire.shard.active_tasks_count // Active tasks
+```
+
+All stats are automatically collected and exported every tick.
+
+## Troubleshooting
+
+### Sync Issues
+
+```javascript
+// 1. Check sync health
+shard.syncStatus()
+
+// 2. View memory breakdown
+shard.memoryStats()
+
+// 3. Force a validated sync
+shard.forceSync()
+
+// 4. If memory is >90%, system will auto-trim
+// Monitor with: shard.memoryStats()
+```
+
+### Transfer Problems
+
+```javascript
+// 1. Check active transfers
+shard.transfers()
+
+// 2. Verify portal routes exist
+shard.portals('targetShard')
+
+// 3. Find best portal
+shard.bestPortal('targetShard')
+
+// 4. Check task status
+shard.tasks()
+```
+
+### High Memory Usage
+
+The system automatically manages memory:
+1. Old tasks removed after 5000 ticks
+2. Old portals removed after 10000 ticks
+3. Emergency trim keeps only current shard if >100KB
+
+Force cleanup:
+```javascript
+// View current usage
+shard.memoryStats()
+
+// Force sync (triggers validation and trim)
+shard.forceSync()
+```
+

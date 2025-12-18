@@ -109,6 +109,18 @@ export interface EmpireStats {
   };
   credits: number;
   skippedProcesses: number;
+  shard?: {
+    name: string;
+    role: string;
+    cpuUsage: number;
+    cpuCategory: string;
+    bucketLevel: number;
+    economyIndex: number;
+    warIndex: number;
+    avgRCL: number;
+    portalsCount: number;
+    activeTasksCount: number;
+  };
 }
 
 /**
@@ -754,6 +766,31 @@ export class UnifiedStatsManager {
       return memory.role === "powerWarrior";
     });
 
+    // Collect shard stats if available
+    let shardStats: EmpireStats["shard"];
+    try {
+      // Dynamically import shardManager to avoid circular dependencies
+      const { shardManager } = require("../intershard/shardManager");
+      const shardState = shardManager.getCurrentShardState();
+      
+      if (shardState) {
+        shardStats = {
+          name: shardState.name,
+          role: shardState.role,
+          cpuUsage: shardState.health.cpuUsage,
+          cpuCategory: shardState.health.cpuCategory,
+          bucketLevel: shardState.health.bucketLevel,
+          economyIndex: shardState.health.economyIndex,
+          warIndex: shardState.health.warIndex,
+          avgRCL: shardState.health.avgRCL,
+          portalsCount: shardState.portals.length,
+          activeTasksCount: shardState.activeTasks.length
+        };
+      }
+    } catch (err) {
+      // ShardManager not available or failed to load
+    }
+
     this.currentSnapshot.empire = {
       rooms: ownedRooms.length,
       creeps: totalCreeps,
@@ -770,7 +807,8 @@ export class UnifiedStatsManager {
         capacity: ownedRooms.reduce((sum, r) => sum + r.energy.capacity, 0)
       },
       credits: Game.market.credits,
-      skippedProcesses: this.skippedProcessesThisTick
+      skippedProcesses: this.skippedProcessesThisTick,
+      shard: shardStats
     };
   }
 
@@ -982,7 +1020,19 @@ export class UnifiedStatsManager {
           capacity: snap.empire.energy.capacity
         },
         credits: snap.empire.credits,
-        skipped_processes: snap.empire.skippedProcesses
+        skipped_processes: snap.empire.skippedProcesses,
+        shard: snap.empire.shard ? {
+          name: snap.empire.shard.name,
+          role: snap.empire.shard.role,
+          cpu_usage: snap.empire.shard.cpuUsage,
+          cpu_category: snap.empire.shard.cpuCategory,
+          bucket_level: snap.empire.shard.bucketLevel,
+          economy_index: snap.empire.shard.economyIndex,
+          war_index: snap.empire.shard.warIndex,
+          avg_rcl: snap.empire.shard.avgRCL,
+          portals_count: snap.empire.shard.portalsCount,
+          active_tasks_count: snap.empire.shard.activeTasksCount
+        } : undefined
       },
       rooms: {} as Record<string, any>,
       subsystems: {} as Record<string, any>,

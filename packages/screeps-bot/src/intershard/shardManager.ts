@@ -524,10 +524,22 @@ export class ShardManager {
 
   /**
    * Sync InterShardMemory with other shards
+   * Enhanced with validation and recovery mechanisms
    */
   private syncInterShardMemory(): void {
     try {
       this.interShardMemory.lastSync = Game.time;
+
+      // Validate before serialization
+      const validationResult = this.validateInterShardMemory();
+      if (!validationResult.valid) {
+        logger.warn(
+          `InterShardMemory validation failed: ${validationResult.errors.join(", ")}`,
+          { subsystem: "Shard" }
+        );
+        // Attempt to fix validation issues
+        this.repairInterShardMemory();
+      }
 
       const serialized = serializeInterShardMemory(this.interShardMemory);
 
@@ -539,13 +551,222 @@ export class ShardManager {
         );
         // Trim old data if needed
         this.trimInterShardMemory();
+        
+        // Try serializing again after trim
+        const trimmedSerialized = serializeInterShardMemory(this.interShardMemory);
+        if (trimmedSerialized.length > INTERSHARD_MEMORY_LIMIT) {
+          logger.error(
+            `InterShardMemory still too large after trim: ${trimmedSerialized.length}/${INTERSHARD_MEMORY_LIMIT}`,
+            { subsystem: "Shard" }
+          );
+          // Last resort: remove all but current shard
+          this.emergencyTrim();
+          return;
+        }
+        
+        InterShardMemory.setLocal(trimmedSerialized);
         return;
       }
 
       InterShardMemory.setLocal(serialized);
+      
+      // Periodically verify sync succeeded
+      if (Game.time % 50 === 0) {
+        this.verifySyncIntegrity();
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       logger.error(`Failed to sync InterShardMemory: ${errorMessage}`, { subsystem: "Shard" });
+      
+      // Attempt recovery
+      this.attemptSyncRecovery();
+    }
+  }
+
+  /**
+   * Validate InterShardMemory structure and data integrity
+   */
+  private validateInterShardMemory(): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    // Check version
+    if (typeof this.interShardMemory.version !== "number") {
+      errors.push("Invalid version");
+    }
+
+    // Check shards object
+    if (typeof this.interShardMemory.shards !== "object") {
+      errors.push("Invalid shards object");
+    } else {
+      // Validate each shard state
+      for (const [name, shard] of Object.entries(this.interShardMemory.shards)) {
+        if (!shard.health || typeof shard.health.lastUpdate !== "number") {
+          errors.push(`Shard ${name} has invalid health data`);
+        }
+        if (!Array.isArray(shard.portals)) {
+          errors.push(`Shard ${name} has invalid portals array`);
+        }
+        if (!Array.isArray(shard.activeTasks)) {
+          errors.push(`Shard ${name} has invalid activeTasks array`);
+        }
+      }
+    }
+
+    // Check tasks array
+    if (!Array.isArray(this.interShardMemory.tasks)) {
+      errors.push("Invalid tasks array");
+    }
+
+    // Check lastSync
+    if (typeof this.interShardMemory.lastSync !== "number") {
+      errors.push("Invalid lastSync");
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors
+    };
+  }
+
+  /**
+   * Repair corrupted InterShardMemory data
+   */
+  private repairInterShardMemory(): void {
+    // Ensure version is valid
+    if (typeof this.interShardMemory.version !== "number") {
+      this.interShardMemory.version = 1;
+    }
+
+    // Ensure shards object exists
+    if (typeof this.interShardMemory.shards !== "object") {
+      this.interShardMemory.shards = {};
+    }
+
+    // Repair each shard state
+    for (const [name, shard] of Object.entries(this.interShardMemory.shards)) {
+      if (!shard.health || typeof shard.health.lastUpdate !== "number") {
+        this.interShardMemory.shards[name] = createDefaultShardState(name);
+      }
+      if (!Array.isArray(shard.portals)) {
+        shard.portals = [];
+      }
+      if (!Array.isArray(shard.activeTasks)) {
+        shard.activeTasks = [];
+      }
+    }
+
+    // Ensure tasks array exists
+    if (!Array.isArray(this.interShardMemory.tasks)) {
+      this.interShardMemory.tasks = [];
+    }
+
+    // Ensure globalTargets exists
+    if (!this.interShardMemory.globalTargets) {
+      this.interShardMemory.globalTargets = { targetPowerLevel: 0 };
+    }
+
+    // Ensure lastSync is valid
+    if (typeof this.interShardMemory.lastSync !== "number") {
+      this.interShardMemory.lastSync = Game.time;
+    }
+
+    logger.info("Repaired InterShardMemory structure", { subsystem: "Shard" });
+  }
+
+  /**
+   * Verify sync integrity by checking if data was written correctly
+   */
+  private verifySyncIntegrity(): void {
+    try {
+      const rawData = InterShardMemory.getLocal();
+      if (!rawData) {
+        logger.warn("InterShardMemory verification failed: no data present", {
+          subsystem: "Shard"
+        });
+        return;
+      }
+
+      const parsed = deserializeInterShardMemory(rawData);
+      if (!parsed) {
+        logger.warn("InterShardMemory verification failed: deserialization failed", {
+          subsystem: "Shard"
+        });
+        return;
+      }
+
+      // Check if current shard is present
+      const currentShard = Game.shard?.name ?? "shard0";
+      if (!parsed.shards[currentShard]) {
+        logger.warn(
+          `InterShardMemory verification failed: current shard ${currentShard} not found`,
+          { subsystem: "Shard" }
+        );
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.warn(`InterShardMemory verification failed: ${errorMessage}`, {
+        subsystem: "Shard"
+      });
+    }
+  }
+
+  /**
+   * Attempt to recover from sync failure
+   */
+  private attemptSyncRecovery(): void {
+    try {
+      logger.info("Attempting InterShardMemory recovery", { subsystem: "Shard" });
+
+      // Try to load from InterShardMemory first
+      const rawData = InterShardMemory.getLocal();
+      if (rawData) {
+        const parsed = deserializeInterShardMemory(rawData);
+        if (parsed) {
+          // Successfully recovered from InterShardMemory
+          this.interShardMemory = parsed;
+          logger.info("Recovered InterShardMemory from storage", { subsystem: "Shard" });
+          return;
+        }
+      }
+
+      // If that fails, recreate with current shard only
+      const currentShard = Game.shard?.name ?? "shard0";
+      this.interShardMemory = createDefaultInterShardMemory();
+      this.interShardMemory.shards[currentShard] = createDefaultShardState(currentShard);
+
+      logger.info("Recreated InterShardMemory with current shard only", {
+        subsystem: "Shard"
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.error(`InterShardMemory recovery failed: ${errorMessage}`, {
+        subsystem: "Shard"
+      });
+    }
+  }
+
+  /**
+   * Emergency trim: keep only current shard data
+   */
+  private emergencyTrim(): void {
+    const currentShard = Game.shard?.name ?? "shard0";
+    const currentShardState = this.interShardMemory.shards[currentShard];
+
+    if (currentShardState) {
+      // Keep only current shard
+      this.interShardMemory.shards = { [currentShard]: currentShardState };
+
+      // Clear all tasks except those involving current shard
+      this.interShardMemory.tasks = this.interShardMemory.tasks.filter(
+        t => t.sourceShard === currentShard || t.targetShard === currentShard
+      );
+
+      // Keep only most recent portals
+      currentShardState.portals = currentShardState.portals
+        .sort((a, b) => b.lastScouted - a.lastScouted)
+        .slice(0, 10);
+
+      logger.warn("Emergency trim applied to InterShardMemory", { subsystem: "Shard" });
     }
   }
 
@@ -793,6 +1014,101 @@ export class ShardManager {
       task.updatedAt = Game.time;
       logger.info(`Cancelled task ${taskId}`, { subsystem: "Shard" });
     }
+  }
+
+  /**
+   * Get sync status and health metrics
+   */
+  public getSyncStatus(): {
+    lastSync: number;
+    ticksSinceSync: number;
+    memorySize: number;
+    sizePercent: number;
+    shardsTracked: number;
+    activeTasks: number;
+    totalPortals: number;
+    isHealthy: boolean;
+  } {
+    const serialized = serializeInterShardMemory(this.interShardMemory);
+    const memorySize = serialized.length;
+    const sizePercent = (memorySize / INTERSHARD_MEMORY_LIMIT) * 100;
+    const ticksSinceSync = Game.time - this.interShardMemory.lastSync;
+
+    // Calculate health
+    const isHealthy = 
+      memorySize < INTERSHARD_MEMORY_LIMIT * 0.9 && // Less than 90% full
+      ticksSinceSync < 500; // Synced within last 500 ticks
+
+    // Count portals across all shards
+    let totalPortals = 0;
+    for (const shard of Object.values(this.interShardMemory.shards)) {
+      totalPortals += shard.portals.length;
+    }
+
+    return {
+      lastSync: this.interShardMemory.lastSync,
+      ticksSinceSync,
+      memorySize,
+      sizePercent: Math.round(sizePercent * 100) / 100,
+      shardsTracked: Object.keys(this.interShardMemory.shards).length,
+      activeTasks: this.interShardMemory.tasks.filter(t => 
+        t.status === "pending" || t.status === "active"
+      ).length,
+      totalPortals,
+      isHealthy
+    };
+  }
+
+  /**
+   * Force a full sync with validation
+   */
+  public forceSync(): void {
+    logger.info("Forcing InterShardMemory sync with validation", { subsystem: "Shard" });
+    this.syncInterShardMemory();
+  }
+
+  /**
+   * Get InterShardMemory size and usage statistics
+   */
+  public getMemoryStats(): {
+    size: number;
+    limit: number;
+    percent: number;
+    breakdown: {
+      shards: number;
+      tasks: number;
+      portals: number;
+      other: number;
+    };
+  } {
+    const fullSerialized = serializeInterShardMemory(this.interShardMemory);
+    const size = fullSerialized.length;
+
+    // Estimate breakdown by serializing individual parts
+    const shardsOnly = serializeInterShardMemory({
+      ...this.interShardMemory,
+      tasks: [],
+      globalTargets: { targetPowerLevel: 0 }
+    }).length;
+
+    const tasksOnly = JSON.stringify(this.interShardMemory.tasks).length;
+
+    let portalsCount = 0;
+    for (const shard of Object.values(this.interShardMemory.shards)) {
+      portalsCount += JSON.stringify(shard.portals).length;
+    }
+
+    return {
+      size,
+      limit: INTERSHARD_MEMORY_LIMIT,
+      percent: Math.round((size / INTERSHARD_MEMORY_LIMIT) * 10000) / 100,
+      breakdown: {
+        shards: shardsOnly,
+        tasks: tasksOnly,
+        portals: portalsCount,
+        other: size - shardsOnly - tasksOnly
+      }
+    };
   }
 }
 
