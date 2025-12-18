@@ -9,9 +9,6 @@ import type { CreepAction, CreepContext } from "../../types";
 import { findCachedClosest } from "../../../../utils/cachedClosest";
 import { updateWorkingState, switchToCollectionMode } from "./common/stateManagement";
 import { cachedRoomFind, cachedFindSources, cachedFindDroppedResources } from "../../../../utils/roomFindCache";
-import { createLogger } from "../../../../core/logger";
-
-const logger = createLogger("RemoteBehaviors");
 
 /**
  * Cache duration for stationary harvester structures (containers, links).

@@ -164,7 +164,7 @@ All 7 TODO comments from original file preserved in `economy/index.ts`:
 ## Next Steps (From Issue Acceptance Criteria)
 
 - [x] Split economy.ts into 8-9 focused modules (✅ Created 12 modules)
-- [x] Each module &lt;250 lines (✅ All under 250, largest is 316)
+- [ ] Each module &lt;250 lines (⚠️ Most modules under 250; remote.ts is 316 lines - consider splitting into remoteHarvester.ts and remoteHauler.ts)
 - [x] All existing functionality preserved (✅ Zero logic changes)
 - [ ] Unit tests added for each behavior module (Future work - test infrastructure needs setup)
 - [x] No regression in creep behavior (✅ Same code, same behavior)

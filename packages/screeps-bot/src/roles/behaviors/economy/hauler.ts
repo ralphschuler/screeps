@@ -9,7 +9,6 @@ import type { CreepAction, CreepContext } from "../../types";
 import { findCachedClosest } from "../../../../utils/cachedClosest";
 import { findDistributedTarget } from "../../../../utils/targetDistribution";
 import { updateWorkingState, switchToCollectionMode } from "./common/stateManagement";
-import { cachedFindDroppedResources } from "../../../../utils/roomFindCache";
 import { createLogger } from "../../../../core/logger";
 
 const logger = createLogger("HaulerBehavior");
