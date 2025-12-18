@@ -26,6 +26,7 @@ The bot has to be Highly performant, modular and human readable.
 6. **Modularize** code into it own npm modules under packages/screeps-<name> with name @ralphschuler/screeps-<package>
 7. **Cleanup** unused and repeating code.
 8. **Framework** system. (a side quest for this bot is to provide a framework for easy bot development.
+9. **Testing** using the screepsmod-testing und performanceserver (packages/screeps/server)
 
 ## AVAILABLE MCP TOOLS
 
