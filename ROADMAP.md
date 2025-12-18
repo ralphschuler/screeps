@@ -156,6 +156,27 @@ Stage 2 – Foraging Expansion (RCL 3–4)
 - Reservierte Controller erhöhen Source-Capacity von 1500 auf 3000.
 - Erstes Claim eines zweiten Raums, falls GCL ausreichend.
 
+**Autonomous Expansion System (IMPLEMENTED)**
+The bot includes a fully autonomous expansion system that operates without manual intervention:
+- **GCL-Aware Expansion**: Automatically claims new rooms when GCL level increases and GCL progress reaches 70%
+- **Room Stability Requirements**: Only expands when 60% of existing rooms are RCL 4+ (stable)
+- **Multi-Factor Scoring**: Expansion candidates scored by:
+  - Source count (2 sources preferred)
+  - Mineral type (rare minerals get higher scores)
+  - Distance from owned rooms (closer is better)
+  - Hostile proximity (adjacent hostile players heavily penalized)
+  - Cluster awareness (rooms near existing colonies prioritized)
+  - Portal proximity (strategic value for cross-shard expansion)
+- **Automated Claimer Spawning**: Rooms automatically switch to 'expand' posture to spawn claimers
+- **Progress Monitoring**: Failed expansions auto-cancel (timeout, claimer death, hostile claim, low energy)
+- **Bootstrap Integration**: Newly claimed rooms automatically enter bootstrap mode to rebuild economy
+- **Console Commands**:
+  - `expansion.status()` - View GCL progress, claim queue, active expansions
+  - `expansion.pause()` / `expansion.resume()` - Control expansion automation
+  - `expansion.addRemote()` / `expansion.removeRemote()` - Manual remote management
+  - `expansion.clearQueue()` - Reset expansion queue
+
+
 Stage 3 – Mature Colony (RCL 4–6)
 - Storage (RCL4) als zentrales Lager.
 - Tower (ab RCL3) und zusätzliche Tower (RCL5,6) für Verteidigung.

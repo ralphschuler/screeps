@@ -27,6 +27,7 @@ import { roomProcessManager } from "./roomProcessManager";
 import { labCommands, marketCommands, powerCommands } from "./advancedSystemCommands";
 import { shardCommands } from "./shardCommands";
 import { economyCommands } from "../economy/economyCommands";
+import { expansionCommands } from "../empire/expansionCommands";
 
 /**
  * Logging commands
@@ -910,6 +911,7 @@ export function registerAllConsoleCommands(lazy = false): void {
     registerDecoratedCommands(powerCommands);
     registerDecoratedCommands(shardCommands);
     registerDecoratedCommands(economyCommands);
+    registerDecoratedCommands(expansionCommands);
 
     // Expose all commands to global scope
     commandRegistry.exposeToGlobal();
@@ -939,5 +941,6 @@ export {
   labCommands,
   marketCommands,
   powerCommands,
-  shardCommands
+  shardCommands,
+  expansionCommands
 };
