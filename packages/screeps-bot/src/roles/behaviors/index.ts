@@ -24,7 +24,7 @@ export { createContext } from "./context";
 export { executeAction } from "./executor";
 
 // Behavior evaluators by role family
-export { evaluateEconomyBehavior } from "./economy";
+export { evaluateEconomyBehavior } from "./economy/index";
 export { evaluateMilitaryBehavior } from "./military";
 export { evaluateUtilityBehavior } from "./utility";
 export {
