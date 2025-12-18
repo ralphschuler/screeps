@@ -925,3 +925,128 @@ Erweiterbarkeit
 - Neue Terminal-Protokolle: terminal_protocols/ folder
 - Protokolle müssen dokumentiert und registriert werden
 - Private/Entwicklungs-Protokolle mit x- Präfix
+
+⸻
+
+25. TooAngel Diplomacy & Quest System
+
+**Implementation Status**: ✅ **COMPLETE** (Reputation tracking + Quest system with buildcs support)
+
+Der Bot implementiert das TooAngel-NPC-Diplomatie- und Quest-System für automatisierte Zusammenarbeit mit TooAngel-Bots auf privaten und öffentlichen Servern.
+
+API-Dokumentation
+- Basiert auf: https://github.com/TooAngel/screeps/blob/master/doc/API.md
+- Terminal-basierte Kommunikation (JSON-Nachrichten)
+- Reputation-System für Spieler-Tracking
+- Quest-System für kooperative Aufgaben
+
+Reputation-System
+- **Reputation-Tracking**: Automatische Verfolgung der Reputation bei TooAngel-NPCs
+- **API-Requests**: Terminal-Transfers mit `{"type": "reputation"}` für aktuelle Reputation
+- **Responses**: Empfang von `{"type": "reputation", "reputation": VALUE}`
+- **Public Segments**: Zugriff auf Top-10/Bottom-10 Highscores (Segment 1 & 2)
+- **Reputation-Gains**: Tracking von Ressourcen-Transfers und Quest-Completions
+- **Reputation-Losses**: Tracking von Angriffen (Nukes, etc.)
+
+Quest-System
+- **NPC-Detection**: Automatische Erkennung von TooAngel-NPCs via Controller-Signs
+  - Sign-Format: `{"type": "quest", "id": "QUEST_ID", "origin": "ROOM_NAME", "info": "URL"}`
+- **Quest-Lifecycle**:
+  1. **Discovery**: Scan von Controller-Signs in sichtbaren Räumen
+  2. **Application**: Terminal-Transfer mit `{"type": "quest", "id": "...", "action": "apply"}`
+  3. **Reception**: Empfang von Quest-Details via Terminal
+  4. **Execution**: Automatische Koordination von Creeps für Quest-Completion
+  5. **Completion**: Automatische Erkennung + optionale Bestätigung
+- **Quest-Typen** (aktuell unterstützt):
+  - `buildcs`: Alle Construction Sites im Raum bauen ✅
+  - `defend`: Raum verteidigen (TODO)
+  - `attack`: Raum angreifen (TODO)
+  - `sign`: Controller signieren (TODO)
+  - `dismantle`: Struktur abbauen (TODO)
+  - `transport`: Ressourcen transportieren (TODO)
+  - `terminal`: Ressourcen via Terminal senden (TODO)
+  - `harvest`: Ressourcen ernten (TODO)
+
+Quest-Execution (buildcs)
+- **Creep-Assignment**: Automatische Zuweisung von Buildern zum Quest-Raum
+- **Construction**: Bau aller Construction Sites
+- **Completion-Detection**: Automatische Erkennung wenn alle Sites gebaut sind
+- **Notification**: Optionale Benachrichtigung an TooAngel-NPC
+
+Kernel-Integration
+- **Process**: Läuft als Low-Frequency-Prozess (alle 10 Ticks)
+- **Priority**: LOW (nicht-kritisch für Bot-Betrieb)
+- **CPU-Budget**: Min. Bucket 2000 für Ausführung
+- **Intervals**:
+  - NPC-Scan: alle 500 Ticks
+  - Reputation-Request: alle 2000 Ticks
+  - Quest-Discovery: alle 1000 Ticks
+  - Message-Processing: jeder Tick (für Responsiveness)
+
+Memory-Struktur
+```typescript
+Memory.tooangel = {
+  enabled: boolean,
+  reputation: {
+    value: number,
+    lastUpdated: number,
+    lastRequestedAt?: number
+  },
+  npcRooms: Record<string, {
+    roomName: string,
+    lastSeen: number,
+    hasTerminal: boolean,
+    availableQuests: string[]
+  }>,
+  activeQuests: Record<string, {
+    id: string,
+    type: QuestType,
+    status: QuestStatus,
+    targetRoom: string,
+    originRoom: string,
+    deadline: number,
+    assignedCreeps: string[]
+  }>,
+  completedQuests: string[],
+  lastProcessedTick: number
+}
+```
+
+Console-Commands
+- `tooangel.status()` - Zeigt aktuellen Status (Reputation, aktive Quests)
+- `tooangel.enable()` / `tooangel.disable()` - Integration ein/ausschalten
+- `tooangel.reputation()` - Aktuelle Reputation anzeigen
+- `tooangel.requestReputation(fromRoom?)` - Reputation-Update anfordern
+- `tooangel.quests()` - Aktive Quests auflisten
+- `tooangel.npcs()` - Entdeckte NPC-Räume anzeigen
+- `tooangel.apply(questId, originRoom, fromRoom?)` - Manuell für Quest bewerben
+- `tooangel.help()` - Hilfe anzeigen
+
+Implementation-Details
+- **Location**: `src/empire/tooangel/`
+- **Modules**:
+  - `types.ts` - TypeScript-Definitionen
+  - `npcDetector.ts` - NPC-Erkennung via Controller-Signs
+  - `reputationManager.ts` - Reputation-Tracking & API
+  - `questManager.ts` - Quest-Lifecycle-Management
+  - `questExecutor.ts` - Quest-Ausführung (buildcs)
+  - `tooAngelManager.ts` - Hauptkoordinator mit Kernel-Integration
+  - `consoleCommands.ts` - Console-Befehle
+- **Tests**: 19 Tests in `test/unit/tooangel.test.ts` (alle passing)
+- **Process-Registration**: Automatisch via `processRegistry.ts`
+
+Vorteile
+- **Automatische Freundschaft**: Kooperation mit TooAngel-Bots ohne manuelle Konfiguration
+- **Reputation-Building**: Automatischer Aufbau von Reputation durch Quests
+- **Ressourcen-Austausch**: Sichere Ressourcen-Transfers via Terminal
+- **Quest-Rewards**: Belohnungen (Ressourcen, Reputation) für Quest-Completions
+- **NPC-Handel**: Alternative zu Markt-Trading mit vertrauenswürdigen NPCs
+- **Private-Server-Ready**: Volle Unterstützung für private Server mit TooAngel-NPCs
+
+Zukünftige Erweiterungen
+- Unterstützung für weitere Quest-Typen (defend, attack, sign, etc.)
+- Automatische Quest-Priorisierung basierend auf Reputation-Gains
+- Koordinierte Multi-Room-Quests
+- Quest-Erstellung (eigene Quests an TooAngel senden)
+- Integration mit Alliance-System für koordinierte Quests
+

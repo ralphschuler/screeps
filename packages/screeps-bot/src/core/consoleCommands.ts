@@ -28,6 +28,7 @@ import { labCommands, marketCommands, powerCommands } from "./advancedSystemComm
 import { shardCommands } from "./shardCommands";
 import { economyCommands } from "../economy/economyCommands";
 import { expansionCommands } from "../empire/expansionCommands";
+import { tooAngelCommands } from "../empire/tooangel/consoleCommands";
 
 /**
  * Logging commands
@@ -913,6 +914,9 @@ export function registerAllConsoleCommands(lazy = false): void {
     registerDecoratedCommands(economyCommands);
     registerDecoratedCommands(expansionCommands);
 
+    // Register TooAngel commands as global object
+    (global as Record<string, unknown>).tooangel = tooAngelCommands;
+
     // Expose all commands to global scope
     commandRegistry.exposeToGlobal();
   };
@@ -942,5 +946,6 @@ export {
   marketCommands,
   powerCommands,
   shardCommands,
-  expansionCommands
+  expansionCommands,
+  tooAngelCommands
 };
