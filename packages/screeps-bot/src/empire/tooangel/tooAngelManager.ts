@@ -146,9 +146,14 @@ export class TooAngelManager {
       }
 
     } catch (error) {
-      logger.error(`TooAngel manager error: ${error}`, {
-        subsystem: "TooAngel"
-      });
+      // Track error count to prevent log spam
+      const errorKey = `tooangel_error_${Game.time % 100}`;
+      if (!(Memory as any)[errorKey]) {
+        logger.error(`TooAngel manager error: ${error}`, {
+          subsystem: "TooAngel"
+        });
+        (Memory as any)[errorKey] = true;
+      }
     }
   }
 

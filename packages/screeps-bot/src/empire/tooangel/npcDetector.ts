@@ -26,7 +26,7 @@ export function parseQuestSign(sign: string | undefined): TooAngelQuestSign | nu
         typeof parsed.info === "string") {
       return parsed as TooAngelQuestSign;
     }
-  } catch (e) {
+  } catch {
     // Not JSON or not a quest sign
   }
 
@@ -56,7 +56,7 @@ export function scanRoomForNPC(room: Room): TooAngelNPCRoom | null {
   return {
     roomName: room.name,
     lastSeen: Game.time,
-    hasTerminal: terminal !== undefined && terminal.my === false,
+    hasTerminal: terminal !== undefined && !terminal.my,
     availableQuests: [questSign.id]
   };
 }

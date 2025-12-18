@@ -14,6 +14,7 @@
 import { logger } from "../../core/logger";
 import type { TooAngelReputationMessage, TooAngelReputation } from "./types";
 import { findClosestNPCRoom } from "./npcDetector";
+import { getTooAngelMemory } from "./memoryInit";
 
 /**
  * Configuration for reputation system
@@ -26,45 +27,6 @@ const REPUTATION_CONFIG = {
   /** How long to wait for a reputation response (in ticks) */
   RESPONSE_TIMEOUT: 100
 };
-
-/**
- * Get or initialize TooAngel memory
- */
-function getTooAngelMemory() {
-  const mem = Memory as { 
-    tooangel?: {
-      enabled?: boolean;
-      reputation?: TooAngelReputation;
-      npcRooms?: Record<string, any>;
-      activeQuests?: Record<string, any>;
-      completedQuests?: string[];
-      lastProcessedTick?: number;
-    }
-  };
-  
-  if (!mem.tooangel) {
-    mem.tooangel = {
-      enabled: true,
-      reputation: {
-        value: 0,
-        lastUpdated: 0
-      },
-      npcRooms: {},
-      activeQuests: {},
-      completedQuests: [],
-      lastProcessedTick: 0
-    };
-  }
-  
-  if (!mem.tooangel.reputation) {
-    mem.tooangel.reputation = {
-      value: 0,
-      lastUpdated: 0
-    };
-  }
-
-  return mem.tooangel;
-}
 
 /**
  * Get current reputation value
@@ -84,7 +46,7 @@ export function parseReputationResponse(description: string): number | null {
     if (parsed.type === "reputation" && typeof parsed.reputation === "number") {
       return parsed.reputation;
     }
-  } catch (e) {
+  } catch {
     // Not a valid reputation response
   }
 
@@ -226,25 +188,29 @@ export function requestReputation(fromRoomName?: string): boolean {
 /**
  * Read public segments for reputation highscores
  * 
+ * **NOT YET IMPLEMENTED**
+ * 
  * Segment 1: Top 10 players (highest reputation)
  * Segment 2: Bottom 10 players (lowest reputation)
+ * 
+ * @returns Empty object - feature not yet implemented
+ * @deprecated This feature requires RawMemory API access which is not yet implemented
  */
 export function readReputationHighscores(): {
   top10?: Array<{ username: string; reputation: number }>;
   bottom10?: Array<{ username: string; reputation: number }>;
 } {
-  const result: {
-    top10?: Array<{ username: string; reputation: number }>;
-    bottom10?: Array<{ username: string; reputation: number }>;
-  } = {};
-
-  // TODO: Read public segments when we have the API available
-  // For now, this is a placeholder
-  // RawMemory.setActiveSegments([1, 2]);
-  // const segment1 = RawMemory.segments[1];
-  // const segment2 = RawMemory.segments[2];
-
-  return result;
+  // TODO: Implement when RawMemory segment reading is available
+  // This requires:
+  // 1. RawMemory.setActiveSegments([1, 2])
+  // 2. Reading RawMemory.segments[1] and RawMemory.segments[2]
+  // 3. Parsing the segment data to extract highscore information
+  
+  logger.debug("readReputationHighscores not yet implemented", {
+    subsystem: "TooAngel"
+  });
+  
+  return {};
 }
 
 /**

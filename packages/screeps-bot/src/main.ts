@@ -74,8 +74,24 @@ declare global {
         lastUpdated: number;
         lastRequestedAt?: number;
       };
-      npcRooms: Record<string, any>;
-      activeQuests: Record<string, any>;
+      npcRooms: Record<string, {
+        roomName: string;
+        lastSeen: number;
+        hasTerminal: boolean;
+        availableQuests: string[];
+      }>;
+      activeQuests: Record<string, {
+        id: string;
+        type: string;
+        status: string;
+        targetRoom: string;
+        originRoom: string;
+        deadline: number;
+        appliedAt?: number;
+        receivedAt?: number;
+        completedAt?: number;
+        assignedCreeps?: string[];
+      }>;
       completedQuests: string[];
       lastProcessedTick: number;
     };

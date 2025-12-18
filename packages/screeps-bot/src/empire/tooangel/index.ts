@@ -10,6 +10,7 @@ export * from "./reputationManager";
 export * from "./questManager";
 export * from "./questExecutor";
 export * from "./tooAngelManager";
+export * from "./memoryInit";
 
 // Re-export the main manager instance
 export { tooAngelManager } from "./tooAngelManager";

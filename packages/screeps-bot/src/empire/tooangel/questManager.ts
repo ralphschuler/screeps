@@ -13,10 +13,10 @@ import { logger } from "../../core/logger";
 import type {
   TooAngelQuest,
   TooAngelQuestMemory,
-  TooAngelQuestType,
-  QuestStatus
+  TooAngelQuestType
 } from "./types";
-import { parseQuestSign, getNPCRooms } from "./npcDetector";
+import { getNPCRooms } from "./npcDetector";
+import { getTooAngelMemory } from "./memoryInit";
 
 /**
  * Quest configuration
@@ -81,9 +81,19 @@ export function parseQuestMessage(description: string): TooAngelQuest | null {
         parsed.room &&
         parsed.quest &&
         typeof parsed.end === "number") {
+      
+      // Validate deadline is in the future (if not a completion message)
+      if (!parsed.result && parsed.end <= Game.time) {
+        logger.debug(
+          `Ignoring quest ${parsed.id} with past deadline: ${parsed.end} (current: ${Game.time})`,
+          { subsystem: "TooAngel" }
+        );
+        return null;
+      }
+      
       return parsed as TooAngelQuest;
     }
-  } catch (e) {
+  } catch {
     // Not a valid quest message
   }
 
@@ -183,14 +193,10 @@ export function applyForQuest(
     return false;
   }
 
-  // Create application message
-  const application: TooAngelQuest = {
+  // Create application message (only include required fields for application)
+  const application: Partial<TooAngelQuest> = {
     type: "quest",
     id: questId,
-    room: "",  // Not known yet
-    quest: "buildcs", // Placeholder
-    end: 0,  // Not known yet
-    origin: originRoom,
     action: "apply"
   };
 
@@ -207,15 +213,15 @@ export function applyForQuest(
       { subsystem: "TooAngel" }
     );
 
-    // Track application in memory
+    // Track application in memory (will be updated when quest details are received)
     const memory = getTooAngelMemory();
     memory.activeQuests![questId] = {
       id: questId,
-      type: "buildcs", // Will be updated when we receive the quest
+      type: "buildcs", // Placeholder - will be updated when quest is received
       status: "applied",
-      targetRoom: "", // Will be updated
+      targetRoom: "", // Will be updated when quest is received
       originRoom: originRoom,
-      deadline: 0, // Will be updated
+      deadline: 0, // Will be updated when quest is received
       appliedAt: Game.time
     };
 
@@ -268,7 +274,9 @@ export function processQuestMessages(): void {
       memory.activeQuests![quest.id] = {
         id: quest.id,
         type: quest.quest,
-        status: existing?.status === "applied" ? "active" : "active",
+        status: existing?.status === "completed" || existing?.status === "failed" 
+          ? existing.status 
+          : "active",
         targetRoom: quest.room,
         originRoom: quest.origin || transaction.from,
         deadline: quest.end,
@@ -322,10 +330,7 @@ function handleQuestCompletion(quest: TooAngelQuest): void {
     memory.completedQuests!.push(quest.id);
   }
 
-  // Clean up after a while
-  setTimeout(() => {
-    delete memory.activeQuests![quest.id];
-  }, 1000);
+  // Note: Quest cleanup happens in cleanupExpiredQuests() based on completedAt timestamp
 }
 
 /**

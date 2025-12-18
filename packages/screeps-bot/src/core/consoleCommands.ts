@@ -915,7 +915,7 @@ export function registerAllConsoleCommands(lazy = false): void {
     registerDecoratedCommands(expansionCommands);
 
     // Register TooAngel commands as global object
-    (global as any).tooangel = tooAngelCommands;
+    (global as Record<string, unknown>).tooangel = tooAngelCommands;
 
     // Expose all commands to global scope
     commandRegistry.exposeToGlobal();

@@ -8,7 +8,15 @@
 
 import { logger } from "../../core/logger";
 import type { TooAngelQuestMemory } from "./types";
-import { getQuest, notifyQuestComplete } from "./questManager";
+import { notifyQuestComplete } from "./questManager";
+
+/**
+ * Quest executor configuration
+ */
+const EXECUTOR_CONFIG = {
+  /** Maximum builders to assign per quest */
+  MAX_BUILDERS_PER_QUEST: 3
+};
 
 /**
  * Check if a buildcs quest is completed
@@ -73,7 +81,7 @@ export function executeBuildcsQuest(quest: TooAngelQuestMemory): void {
   }
 
   // Assign more builders if needed
-  if (builders.length < 3 && constructionSites.length > 0) {
+  if (builders.length < EXECUTOR_CONFIG.MAX_BUILDERS_PER_QUEST && constructionSites.length > 0) {
     // Find idle builders in nearby rooms
     for (const roomName in Game.rooms) {
       const room = Game.rooms[roomName];
@@ -104,10 +112,10 @@ export function executeBuildcsQuest(quest: TooAngelQuestMemory): void {
           { subsystem: "TooAngel" }
         );
 
-        if (builders.length >= 3) break;
+        if (builders.length >= EXECUTOR_CONFIG.MAX_BUILDERS_PER_QUEST) break;
       }
 
-      if (builders.length >= 3) break;
+      if (builders.length >= EXECUTOR_CONFIG.MAX_BUILDERS_PER_QUEST) break;
     }
   }
 
@@ -148,8 +156,8 @@ export function executeQuests(): void {
       continue;
     }
 
-    // Check deadline
-    if (quest.deadline > 0 && Game.time >= quest.deadline) {
+    // Check deadline (use > to allow execution on the deadline tick itself)
+    if (quest.deadline > 0 && Game.time > quest.deadline) {
       logger.warn(
         `Quest ${questId} missed deadline (${quest.deadline})`,
         { subsystem: "TooAngel" }

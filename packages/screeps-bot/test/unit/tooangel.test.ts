@@ -8,7 +8,6 @@ import {
   parseQuestMessage,
   parseReputationResponse
 } from "../../src/empire/tooangel";
-import type { TooAngelQuestSign, TooAngelQuest } from "../../src/empire/tooangel/types";
 
 describe("TooAngel System", () => {
   describe("NPC Detector", () => {
