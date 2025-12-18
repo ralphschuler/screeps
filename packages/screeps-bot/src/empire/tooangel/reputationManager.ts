@@ -201,6 +201,7 @@ export function readReputationHighscores(): {
   bottom10?: Array<{ username: string; reputation: number }>;
 } {
   // TODO: Implement when RawMemory segment reading is available
+  // Issue URL: https://github.com/ralphschuler/screeps/issues/785
   // This requires:
   // 1. RawMemory.setActiveSegments([1, 2])
   // 2. Reading RawMemory.segments[1] and RawMemory.segments[2]
