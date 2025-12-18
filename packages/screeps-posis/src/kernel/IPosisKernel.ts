@@ -19,7 +19,7 @@
  * - ROADMAP.md Section 22: POSIS Operating System Architecture
  */
 
-import type { IPosisProcess, IPosisProcessContext } from "./IPosisProcess";
+import type { IPosisProcess, IPosisProcessContext } from "../process/IPosisProcess";
 
 /**
  * Process spawn options

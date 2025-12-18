@@ -9,7 +9,7 @@
  * - ROADMAP.md Section 22: POSIS Operating System Architecture
  */
 
-import type { IPosisProcessSyscalls } from "./IPosisKernel";
+import type { IPosisProcessSyscalls } from "../kernel/IPosisKernel";
 
 /**
  * Process state

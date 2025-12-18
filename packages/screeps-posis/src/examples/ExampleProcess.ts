@@ -10,7 +10,7 @@
  * This is a reference implementation showing best practices.
  */
 
-import { BaseProcess } from "../BaseProcess";
+import { BaseProcess } from "../process/BaseProcess";
 
 interface ExampleProcessState {
   counter: number;
@@ -104,12 +104,11 @@ export class ExampleProcess extends BaseProcess {
    * Deserialize process state
    */
   protected deserializeState(state: Record<string, unknown>): void {
-    const typedState = state as ExampleProcessState;
-    if (typedState.counter !== undefined) {
-      this.counter = typedState.counter;
+    if (state.counter !== undefined) {
+      this.counter = state.counter as number;
     }
-    if (typedState.lastMessage !== undefined) {
-      this.lastMessage = typedState.lastMessage;
+    if (state.lastMessage !== undefined) {
+      this.lastMessage = state.lastMessage as string;
     }
   }
 

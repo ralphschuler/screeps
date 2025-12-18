@@ -24,7 +24,7 @@ import type {
   IPosisProcessContext,
   IPosisProcessState
 } from "./IPosisProcess";
-import type { IPosisProcessSyscalls } from "./IPosisKernel";
+import type { IPosisProcessSyscalls } from "../kernel/IPosisKernel";
 
 /**
  * Base process implementation

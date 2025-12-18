@@ -14,10 +14,22 @@
  * References:
  * - https://github.com/screepers/POSIS
  * - https://github.com/screepers/ScreepsOS
- * - ROADMAP.md Section 3: Architektur-Ebenen
+ * - ROADMAP.md Section 22: POSIS Operating System Architecture
  */
 
-export * from "./IPosisKernel";
-export * from "./IPosisProcess";
-export * from "./PosisKernelAdapter";
-export * from "./BaseProcess";
+// Kernel exports
+export {
+  IPosisKernel,
+  IPosisSpawnOptions,
+  IPosisProcessSyscalls
+} from "./kernel/IPosisKernel";
+
+// Process exports
+export {
+  IPosisProcess,
+  IPosisProcessContext,
+  IPosisProcessState,
+  IPosisProcessMemory
+} from "./process/IPosisProcess";
+
+export { BaseProcess } from "./process/BaseProcess";
