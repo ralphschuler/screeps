@@ -186,8 +186,8 @@ function findEnergy(ctx: CreepContext): CreepAction {
   }
 
   // 4. Harvest directly (use distributed to prevent clustering on sources)
-  // This is the most expensive option due to room.find(), but rarely used
-  const sources = cachedRoomFind(ctx.room, FIND_SOURCES_ACTIVE);
+  // NOTE: Using cachedFindSources + energy filter instead of FIND_SOURCES_ACTIVE cache
+  const sources = cachedFindSources(ctx.room).filter(source => source.energy > 0);
   if (sources.length > 0) {
     const source = findDistributedTarget(ctx.creep, sources, "energy_source");
     if (source) {
@@ -938,7 +938,8 @@ export function upgrader(ctx: CreepContext): CreepAction {
   }
 
   // Last resort: harvest from source (cache for 30 ticks)
-  const sources = cachedRoomFind(ctx.room, FIND_SOURCES_ACTIVE);
+  // NOTE: Using cachedFindSources + energy filter instead of FIND_SOURCES_ACTIVE cache
+  const sources = cachedFindSources(ctx.room).filter(source => source.energy > 0);
   if (sources.length > 0) {
     const source = findCachedClosest(ctx.creep, sources, "upgrader_source", 30);
     if (source) return { type: "harvest", target: source };
@@ -1535,8 +1536,6 @@ export function interRoomCarrier(ctx: CreepContext): CreepAction {
     const containers = cachedRoomFind(room, FIND_STRUCTURES, {
       filter: (s: Structure) => s.structureType === STRUCTURE_CONTAINER && (s as StructureContainer).store.getUsedCapacity(resourceType) > 0,
       filterKey: `container_${resourceType}`
-    }) as StructureContainer[];
-        s.structureType === STRUCTURE_CONTAINER && (s as StructureContainer).store.getUsedCapacity(resourceType) > 0
     }) as StructureContainer[];
 
     if (containers.length > 0) {

@@ -12,7 +12,6 @@ import type { CreepAction, CreepContext } from "./types";
 import { createLogger } from "../../core/logger";
 import {
   cachedRoomFind,
-  cachedFindSources,
   cachedFindMyStructures,
   cachedFindDroppedResources
 } from "../../utils/roomFindCache";
@@ -60,7 +59,7 @@ export function powerHarvester(ctx: CreepContext): CreepAction {
 
   // Find power bank
   const powerBank = cachedRoomFind(ctx.room, FIND_STRUCTURES, {
-    filter: s => s.structureType === STRUCTURE_POWER_BANK,
+    filter: (s: Structure) => s.structureType === STRUCTURE_POWER_BANK,
     filterKey: 'powerBank'
   })[0] as StructurePowerBank | undefined;
 
@@ -147,7 +146,7 @@ export function powerCarrier(ctx: CreepContext): CreepAction {
 
   // Wait near power bank if it still exists
   const powerBank = cachedRoomFind(ctx.room, FIND_STRUCTURES, {
-    filter: s => s.structureType === STRUCTURE_POWER_BANK,
+    filter: (s: Structure) => s.structureType === STRUCTURE_POWER_BANK,
     filterKey: 'powerBank'
   })[0] as StructurePowerBank | undefined;
 
@@ -297,7 +296,7 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
     const hostiles = cachedRoomFind(ctx.room, FIND_HOSTILE_CREEPS);
     if (hostiles.length > 0) {
       const towers = cachedRoomFind(ctx.room, FIND_MY_STRUCTURES, {
-        filter: s => s.structureType === STRUCTURE_TOWER && !hasActiveEffect(s, PWR_OPERATE_TOWER),
+        filter: (s: Structure) => s.structureType === STRUCTURE_TOWER && !hasActiveEffect(s, PWR_OPERATE_TOWER),
         filterKey: 'towerNoEffect'
       }) ;
       if (towers.length > 0) {
@@ -336,7 +335,7 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
   // Priority 8: Regen source when depleted (100 ops = instant regen)
   if (powers.includes(PWR_REGEN_SOURCE) && ctx.ops >= 100) {
     const depletedSource = cachedRoomFind(ctx.room, FIND_SOURCES, {
-      filter: (s: Source) => s.energy === 0 && s.ticksToRegeneration !== undefined && s.ticksToRegeneration > 100,
+      filter: (s: Source) => s.energy === 0 && s.ticksToRegeneration > 100,
       filterKey: 'depletedSource'
     })[0];
     if (depletedSource) {
@@ -424,7 +423,7 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
   // Priority 5: Boost friendly towers for defense (10 ops = 2x effectiveness)
   if (powers.includes(PWR_OPERATE_TOWER) && ctx.ops >= 10 && hostiles.length > 0) {
     const towers = cachedRoomFind(ctx.room, FIND_MY_STRUCTURES, {
-      filter: s => 
+      filter: (s: Structure) => 
         s.structureType === STRUCTURE_TOWER &&
         !hasActiveEffect(s, PWR_OPERATE_TOWER),
       filterKey: 'towerNoEffect'
