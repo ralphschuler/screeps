@@ -45,9 +45,9 @@ Consumption Breakdown (per tick):
   Upgraders: 2.10
   Builders: 0.10
   Towers: 6.00
-  Spawning: 30.00
+  Spawning: 3.00
   Repairs: 0.50
-  Total: 38.70
+  Total: 11.70
 ```
 
 ## How It Works

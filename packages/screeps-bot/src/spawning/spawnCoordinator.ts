@@ -106,8 +106,14 @@ export function populateSpawnQueue(room: Room, swarm: SwarmState): void {
     try {
       // Use energy prediction to optimize body size
       // Look ahead to see what energy will be available when spawn completes
-      const avgBodySize = 20; // Rough estimate of body parts
-      const ticksToSpawn = avgBodySize * 3; // Each body part takes 3 ticks to spawn
+      // VERIFIED: Each body part takes 3 ticks to spawn (CREEP_SPAWN_TIME per body part)
+      // Estimate body size dynamically based on room energy capacity
+      const estimatedBodyParts = Math.max(
+        3,
+        Math.min(50, Math.floor(maxEnergy / 100))
+      ); // Assume ~100 energy per body part, clamp to 3-50 range
+      const CREEP_SPAWN_TIME = 3; // Ticks per body part (Screeps constant)
+      const ticksToSpawn = estimatedBodyParts * CREEP_SPAWN_TIME;
       const predictedEnergy = energyFlowPredictor.getMaxAffordableInTicks(room, ticksToSpawn);
       
       // Use the higher of current capacity or predicted energy
@@ -181,7 +187,7 @@ export function processSpawnQueue(room: Room): number {
         `Delaying spawn of ${request.role} (priority: ${request.priority}) - waiting for better energy availability`,
         { subsystem: "SpawnCoordinator" }
       );
-      continue; // Skip this request, try next one
+      break; // Stop processing further spawns this tick to avoid repeated evaluation
     }
 
     // Attempt spawn

@@ -192,6 +192,8 @@ export class EnergyFlowPredictor {
   /**
    * Calculate income from harvester creeps
    * Harvesters move between source and storage, so they have lower efficiency
+   * 
+   * Verified via screeps-docs-mcp: WORK part harvests 2 energy/tick (Creep.harvest)
    */
   private calculateHarvesterIncome(room: Room): number {
     const creeps = room.find(FIND_MY_CREEPS, {
@@ -204,15 +206,18 @@ export class EnergyFlowPredictor {
       totalWorkParts += workParts;
     }
 
-    // Each WORK part harvests 2 energy/tick, but harvesters spend ~50% time moving
-    // So effective rate is ~1 energy/tick per WORK part
-    const efficiency = 1.0;
-    return totalWorkParts * efficiency;
+    // VERIFIED: Each WORK part harvests 2 energy/tick (per Screeps API docs)
+    // Harvesters spend ~50% time moving, so effective rate is ~1 energy/tick per WORK part
+    const harvestRatePerWork = 2; // Per Screeps API
+    const efficiency = 0.5; // 50% uptime due to travel
+    return totalWorkParts * harvestRatePerWork * efficiency;
   }
 
   /**
    * Calculate income from static miner creeps
    * Static miners sit on source, so they have very high efficiency
+   * 
+   * Verified via screeps-docs-mcp: WORK part harvests 2 energy/tick (Creep.harvest)
    */
   private calculateMinerIncome(room: Room): number {
     const creeps = room.find(FIND_MY_CREEPS, {
@@ -225,10 +230,11 @@ export class EnergyFlowPredictor {
       totalWorkParts += workParts;
     }
 
-    // Static miners harvest at full efficiency: 2 energy/tick per WORK part
-    // But they need carriers to transport, so assume ~90% of energy reaches storage
-    const efficiency = 1.8;
-    return totalWorkParts * efficiency;
+    // VERIFIED: Static miners harvest at 2 energy/tick per WORK part (per Screeps API)
+    // Assume ~90% efficiency due to carrier transport delays and container management
+    const harvestRatePerWork = 2; // Per Screeps API
+    const efficiency = 0.9; // 90% reaches storage
+    return totalWorkParts * harvestRatePerWork * efficiency;
   }
 
   /**
@@ -244,6 +250,8 @@ export class EnergyFlowPredictor {
 
   /**
    * Calculate energy consumption from upgraders
+   * 
+   * Verified via screeps-docs-mcp: WORK part uses 1 energy/tick when upgrading (Creep.upgradeController)
    */
   private calculateUpgraderConsumption(room: Room): number {
     const creeps = room.find(FIND_MY_CREEPS, {
@@ -256,14 +264,17 @@ export class EnergyFlowPredictor {
       totalWorkParts += workParts;
     }
 
-    // Each WORK part uses 1 energy/tick when upgrading
+    // VERIFIED: Each WORK part uses 1 energy/tick when upgrading (per Screeps API)
     // Upgraders work ~70% of the time (rest is refilling)
-    const efficiency = 0.7;
-    return totalWorkParts * efficiency;
+    const energyPerWork = 1; // Per Screeps API
+    const efficiency = 0.7; // 70% uptime
+    return totalWorkParts * energyPerWork * efficiency;
   }
 
   /**
    * Calculate energy consumption from builders
+   * 
+   * Verified via screeps-docs-mcp: WORK part builds for 5 energy/tick (Creep.build)
    */
   private calculateBuilderConsumption(room: Room): number {
     const creeps = room.find(FIND_MY_CREEPS, {
@@ -283,15 +294,17 @@ export class EnergyFlowPredictor {
       totalWorkParts += workParts;
     }
 
-    // Each WORK part uses 5 energy/tick when building
+    // VERIFIED: Each WORK part uses 5 energy/tick when building (per Screeps API)
     // Builders work ~50% of the time (rest is traveling and refilling)
-    const efficiency = 0.5;
-    const energyPerTick = 5;
-    return totalWorkParts * efficiency * energyPerTick;
+    const energyPerWork = 5; // Per Screeps API
+    const efficiency = 0.5; // 50% uptime
+    return totalWorkParts * energyPerWork * efficiency;
   }
 
   /**
    * Calculate energy consumption from towers
+   * 
+   * Verified via screeps-typescript-mcp: Tower actions consume 10 energy per action
    */
   private calculateTowerConsumption(room: Room): number {
     const towers = room.find(FIND_MY_STRUCTURES, {
@@ -302,19 +315,15 @@ export class EnergyFlowPredictor {
       return 0;
     }
 
-    // Towers consume energy for:
-    // - Repairs: 10 energy/action, variable frequency
-    // - Attacks: 10 energy/action during combat
-    // - Healing: 10 energy/action during combat
-
+    // VERIFIED: Towers consume 10 energy per action (attack/heal/repair - per Screeps API)
     // In peacetime, towers mainly repair
     // Assume average 2 repair actions per tower per tick during active repair
     // But towers only repair when structures need it, so reduce by activity factor
     const repairActivityFactor = 0.3; // Towers repair 30% of the time on average
-    const energyPerRepair = 10;
+    const energyPerAction = 10; // Per Screeps API
     const repairsPerTick = 2;
 
-    return towers.length * repairActivityFactor * energyPerRepair * repairsPerTick;
+    return towers.length * repairActivityFactor * energyPerAction * repairsPerTick;
   }
 
   /**

@@ -123,9 +123,9 @@ describe("EnergyFlowPredictor", () => {
       mockRoom.find = (type: FindConstant) => {
         if (type === FIND_MY_CREEPS) {
           // Many upgraders
-          return Array(10).fill(null).map(() => ({
+          return Array.from({ length: 10 }, () => ({
             memory: { role: "upgrader" },
-            body: Array(5).fill(null).map(() => ({ type: WORK, hits: 100 }))
+            body: Array.from({ length: 5 }, () => ({ type: WORK, hits: 100 }))
           })) as Creep[];
         }
         return [];
@@ -394,9 +394,9 @@ describe("EnergyFlowPredictor", () => {
       mockRoom.find = (type: FindConstant) => {
         if (type === FIND_MY_CREEPS) {
           // Very high income
-          return Array(20).fill(null).map(() => ({
+          return Array.from({ length: 20 }, () => ({
             memory: { role: "harvester" },
-            body: Array(5).fill(null).map(() => ({ type: WORK, hits: 100 }))
+            body: Array.from({ length: 5 }, () => ({ type: WORK, hits: 100 }))
           })) as Creep[];
         }
         return [];
@@ -447,3 +447,4 @@ describe("EnergyFlowPredictor", () => {
     });
   });
 });
+
