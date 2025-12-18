@@ -8,6 +8,7 @@ import { expect } from "chai";
  * without requiring the full ClusterManager implementation or Game objects.
  * 
  * Addresses TODO(P2): TEST - Add integration tests for cluster resource balancing
+ Issue URL: https://github.com/ralphschuler/screeps/issues/782
  * in src/clusters/clusterManager.ts
  * 
  * Note: These are algorithm-level tests that verify the logic used by ClusterManager
