@@ -11,6 +11,7 @@ import { Command } from "./commandRegistry";
 import { shardManager } from "../intershard/shardManager";
 import { resourceTransferCoordinator } from "../intershard/resourceTransferCoordinator";
 import type { ShardRole } from "../intershard/schema";
+import { INTERSHARD_MEMORY_LIMIT } from "../intershard/schema";
 
 /**
  * Shard management commands
@@ -336,6 +337,61 @@ export class ShardCommands {
     }
 
     return lines.join("\n");
+  }
+
+  @Command({
+    name: "shard.syncStatus",
+    description: "Display InterShardMemory sync status and health",
+    usage: "shard.syncStatus()",
+    examples: ["shard.syncStatus()"],
+    category: "Shard"
+  })
+  public syncStatus(): string {
+    const status = shardManager.getSyncStatus();
+    const health = status.isHealthy ? "✓ HEALTHY" : "⚠ DEGRADED";
+
+    return (
+      `=== InterShardMemory Sync Status ===\n` +
+      `Status: ${health}\n` +
+      `Last Sync: ${status.lastSync} (${status.ticksSinceSync} ticks ago)\n` +
+      `Memory Usage: ${status.memorySize} / ${INTERSHARD_MEMORY_LIMIT} bytes (${status.sizePercent}%)\n` +
+      `Shards Tracked: ${status.shardsTracked}\n` +
+      `Active Tasks: ${status.activeTasks}\n` +
+      `Total Portals: ${status.totalPortals}`
+    );
+  }
+
+  @Command({
+    name: "shard.memoryStats",
+    description: "Display InterShardMemory size breakdown",
+    usage: "shard.memoryStats()",
+    examples: ["shard.memoryStats()"],
+    category: "Shard"
+  })
+  public memoryStats(): string {
+    const stats = shardManager.getMemoryStats();
+
+    return (
+      `=== InterShardMemory Usage ===\n` +
+      `Total: ${stats.size} / ${stats.limit} bytes (${stats.percent}%)\n` +
+      `\nBreakdown:\n` +
+      `  Shards: ${stats.breakdown.shards} bytes\n` +
+      `  Tasks: ${stats.breakdown.tasks} bytes\n` +
+      `  Portals: ${stats.breakdown.portals} bytes\n` +
+      `  Other: ${stats.breakdown.other} bytes`
+    );
+  }
+
+  @Command({
+    name: "shard.forceSync",
+    description: "Force a full InterShardMemory sync with validation",
+    usage: "shard.forceSync()",
+    examples: ["shard.forceSync()"],
+    category: "Shard"
+  })
+  public forceSync(): string {
+    shardManager.forceSync();
+    return "InterShardMemory sync forced. Check logs for results.";
   }
 }
 
