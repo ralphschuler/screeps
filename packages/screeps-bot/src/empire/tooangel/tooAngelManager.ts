@@ -99,7 +99,10 @@ export class TooAngelManager {
    * Main process run method
    * Called by kernel every tick
    */
-  @LowFrequencyProcess({ priority: ProcessPriority.LOW, interval: 10 })
+  @LowFrequencyProcess("empire:tooangel", "TooAngel Manager", {
+    priority: ProcessPriority.LOW,
+    interval: 10
+  })
   public run(): void {
     if (!this.isEnabled()) {
       return;
