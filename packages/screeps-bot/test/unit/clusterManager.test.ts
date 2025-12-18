@@ -120,6 +120,11 @@ describe("Cluster Resource Balancing", () => {
     });
 
     it("should calculate cluster total resources", () => {
+      interface MockRoom {
+        storage: { store: { energy: number; H: number } };
+        terminal: { store: { energy: number; H: number } };
+      }
+
       const cluster = {
         rooms: {
           "W1N1": {
@@ -137,7 +142,7 @@ describe("Cluster Resource Balancing", () => {
       let totalEnergy = 0;
       let totalH = 0;
 
-      Object.values(cluster.rooms).forEach((room: any) => {
+      Object.values(cluster.rooms).forEach((room: MockRoom) => {
         totalEnergy += (room.storage?.store.energy || 0) + (room.terminal?.store.energy || 0);
         totalH += (room.storage?.store.H || 0) + (room.terminal?.store.H || 0);
       });
@@ -291,7 +296,15 @@ describe("Cluster Resource Balancing", () => {
     it("should balance base minerals across cluster", () => {
       const baseMinerals = ["H", "O", "U", "L", "K", "Z", "X"];
       
-      const cluster = {
+      interface ClusterMinerals {
+        [mineral: string]: number;
+      }
+
+      interface ClusterRooms {
+        [roomName: string]: ClusterMinerals;
+      }
+      
+      const cluster: ClusterRooms = {
         "W1N1": { H: 50000, O: 0, U: 5000, L: 10000, K: 20000, Z: 0, X: 5000 },
         "W1N2": { H: 0, O: 40000, U: 0, L: 5000, K: 0, Z: 30000, X: 0 }
       };
@@ -301,7 +314,7 @@ describe("Cluster Resource Balancing", () => {
 
       baseMinerals.forEach(mineral => {
         const rooms = Object.keys(cluster);
-        const totals = rooms.map(r => ({ room: r, amount: (cluster as any)[r][mineral] || 0 }));
+        const totals = rooms.map(r => ({ room: r, amount: cluster[r][mineral] || 0 }));
         const hasMineral = totals.filter(t => t.amount > 10000);
         const needsMineral = totals.filter(t => t.amount < 5000);
 
