@@ -396,7 +396,7 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
         return mem.family === "military" && c.hits < c.hitsMax * 0.7;
       },
       filterKey: 'damagedMilitary'
-    })[0];
+    })[0] as Creep | undefined;
     if (damagedAlly) {
       return { type: "usePower", power: PWR_SHIELD, target: damagedAlly };
     }
@@ -429,7 +429,7 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
         s.structureType === STRUCTURE_TOWER &&
         !hasActiveEffect(s, PWR_OPERATE_TOWER),
       filterKey: 'towerNoEffect'
-    }) ;
+    }) as StructureTower[];
     const tower = towers[0];
     if (tower) return { type: "usePower", power: PWR_OPERATE_TOWER, target: tower };
   }
