@@ -31,6 +31,7 @@ import {
 } from "./defenderManager";
 import { emergencyResponseManager } from "../defense/emergencyResponse";
 import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
+import { energyFlowPredictor } from "../economy/energyFlowPredictor";
 
 /**
  * Populate spawn queue for a room
@@ -103,8 +104,18 @@ export function populateSpawnQueue(room: Room, swarm: SwarmState): void {
     let body: BodyTemplate;
 
     try {
+      // Use energy prediction to optimize body size
+      // Look ahead to see what energy will be available when spawn completes
+      const avgBodySize = 20; // Rough estimate of body parts
+      const ticksToSpawn = avgBodySize * 3; // Each body part takes 3 ticks to spawn
+      const predictedEnergy = energyFlowPredictor.getMaxAffordableInTicks(room, ticksToSpawn);
+      
+      // Use the higher of current capacity or predicted energy
+      // This allows spawning larger bodies when we know energy will be available
+      const effectiveMaxEnergy = Math.max(maxEnergy, predictedEnergy);
+
       body = optimizeBody({
-        maxEnergy,
+        maxEnergy: effectiveMaxEnergy,
         role: roleName
       });
     } catch (error) {
@@ -145,7 +156,7 @@ export function populateSpawnQueue(room: Room, swarm: SwarmState): void {
 
 /**
  * Process spawns for a room using the spawn queue
- * Uses all available spawns to process queue
+ * Uses all available spawns to process queue with energy prediction
  */
 export function processSpawnQueue(room: Room): number {
   const availableSpawns = spawnQueue.getAvailableSpawns(room.name);
@@ -161,6 +172,16 @@ export function processSpawnQueue(room: Room): number {
     const request = spawnQueue.getNextRequest(room.name, energyAvailable);
     if (!request) {
       break; // No more affordable requests
+    }
+
+    // Use energy prediction to decide if we should delay low-priority spawns
+    const shouldDelay = shouldDelaySpawn(room, request);
+    if (shouldDelay) {
+      logger.debug(
+        `Delaying spawn of ${request.role} (priority: ${request.priority}) - waiting for better energy availability`,
+        { subsystem: "SpawnCoordinator" }
+      );
+      continue; // Skip this request, try next one
     }
 
     // Attempt spawn
@@ -463,4 +484,61 @@ export function getSpawnQueueStatus(roomName: string): {
     hasEmergency: spawnQueue.hasEmergencySpawns(roomName),
     stats: spawnQueue.getQueueStats(roomName)
   };
+}
+
+/**
+ * Determine if a spawn request should be delayed based on energy prediction
+ * 
+ * Strategy:
+ * - Emergency and High priority: Never delay
+ * - Normal priority: Delay if energy is low and prediction shows better energy soon
+ * - Low priority: Delay if energy flow is negative or insufficient
+ */
+function shouldDelaySpawn(room: Room, request: SpawnRequest): boolean {
+  // Never delay emergency or high priority spawns
+  if (request.priority >= SpawnPriority.HIGH) {
+    return false;
+  }
+
+  const currentEnergy = room.energyAvailable;
+  const bodyCost = request.body.cost;
+
+  // If we can't afford it at all, don't delay (let normal queue logic handle it)
+  if (currentEnergy < bodyCost) {
+    return false;
+  }
+
+  // For low priority spawns, check if we should wait for better energy availability
+  if (request.priority < SpawnPriority.NORMAL) {
+    // Check energy flow prediction
+    const prediction = energyFlowPredictor.predictEnergyInTicks(room, 50);
+    
+    // If energy flow is negative, delay low priority spawns
+    if (prediction.netFlow < 0) {
+      return true;
+    }
+
+    // If current energy is less than 50% of capacity, delay low priority
+    const energyPercent = currentEnergy / room.energyCapacityAvailable;
+    if (energyPercent < 0.5) {
+      return true;
+    }
+  }
+
+  // For normal priority, only delay if energy is critically low and improving
+  if (request.priority === SpawnPriority.NORMAL) {
+    const energyPercent = currentEnergy / room.energyCapacityAvailable;
+    
+    // If energy is below 30% of capacity
+    if (energyPercent < 0.3) {
+      const prediction = energyFlowPredictor.predictEnergyInTicks(room, 25);
+      
+      // Only delay if energy flow is positive (will improve)
+      if (prediction.netFlow > 0) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
