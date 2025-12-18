@@ -28,6 +28,7 @@ import { simpleAllies } from "./standards/SimpleAlliesManager";
 import { runAllianceDiplomacy } from "./empire/allianceDiplomacy";
 import { SS2TerminalComms } from "./standards/SS2TerminalComms";
 import { initializeRemotePathScheduler } from "./utils/remotePathScheduler";
+import { shardManager } from "./intershard/shardManager";
 
 // =============================================================================
 // Note: Creep and room management has been migrated to kernel processes
@@ -121,7 +122,6 @@ function initializeSystems(): void {
   // Initialize shard manager for multi-shard coordination
   // Note: shardManager is already registered as a kernel process
   // This just loads the InterShardMemory on startup
-  const { shardManager } = require("./intershard/shardManager");
   shardManager.initialize();
 
   systemsInitialized = true;

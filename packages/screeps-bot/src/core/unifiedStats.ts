@@ -24,6 +24,7 @@
 import { logger } from "./logger";
 import { memoryManager } from "../memory/manager";
 import { EvolutionStage, PheromoneState, RoomPosture } from "../memory/schemas";
+import { shardManager } from "../intershard/shardManager";
 
 // ============================================================================
 // Configuration
@@ -769,8 +770,6 @@ export class UnifiedStatsManager {
     // Collect shard stats if available
     let shardStats: EmpireStats["shard"];
     try {
-      // Dynamically import shardManager to avoid circular dependencies
-      const { shardManager } = require("../intershard/shardManager");
       const shardState = shardManager.getCurrentShardState();
       
       if (shardState) {
