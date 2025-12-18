@@ -1768,10 +1768,8 @@ export function findBestConstructionSite(room: Room): ConstructionSite | null {
  */
 export function findBestRepairTarget(room: Room): Structure | null {
   const structures = cachedRoomFind(room, FIND_STRUCTURES, {
-    filter: (s: Structure) => s.hits < s.hitsMax && s.structureType !== STRUCTURE_WALL,
+    filter: (s: Structure) => s.hits < s.hitsMax && s.structureType !== STRUCTURE_WALL && s.structureType !== STRUCTURE_RAMPART,
     filterKey: 'damagedStructures'
-  });
-    filter: s => s.hits < s.hitsMax && s.structureType !== STRUCTURE_WALL && s.structureType !== STRUCTURE_RAMPART
   });
 
   if (structures.length === 0) return null;
