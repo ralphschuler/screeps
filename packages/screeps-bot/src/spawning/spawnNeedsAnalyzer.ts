@@ -34,8 +34,12 @@ const FOCUS_ROOM_UPGRADER_LIMITS = {
 /**
  * Creep count cache (cleared each tick) to avoid repeated iteration.
  * OPTIMIZATION: With multiple spawns per room, this prevents redundant creep iteration.
+ * 
+ * Cache structure:
+ * - Key format for normal count: `roomName` or `roomName_active`
+ * - Key format for role count: `roomName:role` (counts specific role from a home room)
  */
-const creepCountCache = new Map<string, Map<string, number>>();
+const creepCountCache = new Map<string, Map<string, number> | number>();
 let creepCountCacheTick = -1;
 let creepCountCacheRef: Record<string, Creep> | null = null;
 
@@ -55,7 +59,7 @@ export function countCreepsByRole(roomName: string, activeOnly = false): Map<str
   const cacheKey = activeOnly ? `${roomName}_active` : roomName;
   
   const cached = creepCountCache.get(cacheKey);
-  if (cached) {
+  if (cached && cached instanceof Map) {
     return cached;
   }
 
@@ -77,6 +81,40 @@ export function countCreepsByRole(roomName: string, activeOnly = false): Map<str
 
   creepCountCache.set(cacheKey, counts);
   return counts;
+}
+
+/**
+ * Count creeps of a specific role from a home room (cached).
+ * More efficient than countCreepsByRole().get(role) when you only need one role.
+ * @param roomName - Home room name
+ * @param role - Role to count
+ */
+export function countCreepsOfRole(roomName: string, role: string): number {
+  // Clear cache if new tick
+  if (creepCountCacheTick !== Game.time || creepCountCacheRef !== Game.creeps) {
+    creepCountCache.clear();
+    creepCountCacheTick = Game.time;
+    creepCountCacheRef = Game.creeps;
+  }
+
+  const cacheKey = `${roomName}:${role}`;
+  const cached = creepCountCache.get(cacheKey);
+  if (typeof cached === "number") {
+    return cached;
+  }
+
+  // Count creeps with this role from this home room
+  let count = 0;
+  for (const name in Game.creeps) {
+    const creep = Game.creeps[name];
+    const memory = creep.memory as unknown as SwarmCreepMemory;
+    if (memory.homeRoom === roomName && memory.role === role) {
+      count++;
+    }
+  }
+
+  creepCountCache.set(cacheKey, count);
+  return count;
 }
 
 /**
@@ -163,11 +201,12 @@ export function assignRemoteTargetRoom(role: string, memory: SwarmCreepMemory, s
     const remoteAssignments = swarm.remoteAssignments ?? [];
     if (remoteAssignments.length > 0) {
       // Load balancing: assign to remote room with fewest remoteWorkers
-      // If multiple rooms have same count, use Game.time for deterministic round-robin
+      // Count by assignment (targetRoom), not by physical location
       let minCount = Infinity;
       let candidatesWithMinCount: string[] = [];
       
       for (const remoteName of remoteAssignments) {
+        // Count workers assigned to this remote (from this home)
         const count = countRemoteCreepsByTargetRoom(homeRoom, role, remoteName);
         if (count < minCount) {
           minCount = count;
@@ -285,9 +324,18 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
   }
   
   // Remote worker: only spawn if we have remote rooms assigned
+  // CRITICAL FIX: Must count workers by homeRoom ASSIGNMENT, not by physical location
+  // because remote workers travel away from home and would be undercounted
   if (role === "remoteWorker") {
     const remoteAssignments = swarm.remoteAssignments ?? [];
-    return remoteAssignments.length > 0;
+    if (remoteAssignments.length === 0) return false;
+    
+    // Use cached count of workers assigned from this home room (by memory.homeRoom)
+    // This counts workers regardless of their current physical location
+    const workersFromThisHome = countCreepsOfRole(roomName, "remoteWorker");
+    
+    // Check against maxPerRoom from role definition (already retrieved above)
+    return workersFromThisHome < def.maxPerRoom;
   }
   
   // Remote guard: spawn if remote rooms have threats

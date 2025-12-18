@@ -59,9 +59,10 @@ function recordRoomIntel(room: Room, overmind: Record<string, unknown>): void {
   // Update last seen timestamp
   roomsSeen[room.name] = Game.time;
 
-  // If room was recently scanned (within 1000 ticks), only update dynamic data
-  // OPTIMIZATION: Increased from 500 to 1000 ticks to reduce CPU on frequent rescans
-  if (existingIntel && ticksSinceLastScan < 1000) {
+  // If room was recently scanned (within 2000 ticks), only update dynamic data
+  // OPTIMIZATION: Increased from 1000 to 2000 ticks to reduce CPU on frequent rescans
+  // Scouts were causing high CPU usage due to too-frequent terrain analysis
+  if (existingIntel && ticksSinceLastScan < 2000) {
     existingIntel.lastSeen = Game.time;
     
     // Only update threat level (dynamic data)
@@ -79,14 +80,14 @@ function recordRoomIntel(room: Room, overmind: Record<string, unknown>): void {
     return;
   }
 
-  // Full scan for new rooms or rooms not scanned in 500+ ticks
+  // Full scan for new rooms or rooms not scanned in 2000+ ticks
   const sources = room.find(FIND_SOURCES);
   const mineral = room.find(FIND_MINERALS)[0];
   const controller = room.controller;
   // Use safeFind to handle engine errors with corrupted owner data
   const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
 
-  // Classify terrain (expensive operation, only do once per 1000 ticks)
+  // Classify terrain (expensive operation, only do once per 2000 ticks)
   // OPTIMIZATION: Sample fewer tiles (every 10 instead of every 5) to reduce CPU cost
   const terrain = room.getTerrain();
   let swampCount = 0;
