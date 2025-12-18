@@ -5,9 +5,9 @@
  * EmpireManager and ExpansionManager to maintain consistency and avoid duplication.
  */
 
+import { getConfig } from "../config";
 import { memoryManager } from "../memory/manager";
 import type { RoomIntel } from "../memory/schemas";
-import { getConfig } from "../config";
 
 /**
  * Remote mining configuration constants
