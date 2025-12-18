@@ -26,6 +26,12 @@ import { findDistributedTarget } from "../../utils/targetDistribution";
 import type { CreepAction, CreepContext } from "./types";
 import { getPheromones, needsBuilding, needsUpgrading } from "./pheromoneHelper";
 import { createLogger } from "../../core/logger";
+import {
+  cachedFindSources,
+  cachedRoomFind,
+  cachedFindMyStructures,
+  cachedFindDroppedResources
+} from "../../utils/roomFindCache";
 
 const logger = createLogger("EconomyBehaviors");
 
@@ -180,8 +186,8 @@ function findEnergy(ctx: CreepContext): CreepAction {
   }
 
   // 4. Harvest directly (use distributed to prevent clustering on sources)
-  // This is the most expensive option due to room.find(), but rarely used
-  const sources = ctx.room.find(FIND_SOURCES_ACTIVE);
+  // NOTE: Using cachedFindSources + energy filter instead of FIND_SOURCES_ACTIVE cache
+  const sources = cachedFindSources(ctx.room).filter(source => source.energy > 0);
   if (sources.length > 0) {
     const source = findDistributedTarget(ctx.creep, sources, "energy_source");
     if (source) {
@@ -393,7 +399,7 @@ export function harvester(ctx: CreepContext): CreepAction {
  * harvesters spawning in the same tick.
  */
 function assignSource(ctx: CreepContext): Source | null {
-  const sources = ctx.room.find(FIND_SOURCES);
+  const sources = cachedFindSources(ctx.room);
   if (sources.length === 0) return null;
 
   // Cache source counts per room per tick
@@ -932,7 +938,8 @@ export function upgrader(ctx: CreepContext): CreepAction {
   }
 
   // Last resort: harvest from source (cache for 30 ticks)
-  const sources = ctx.room.find(FIND_SOURCES_ACTIVE);
+  // NOTE: Using cachedFindSources + energy filter instead of FIND_SOURCES_ACTIVE cache
+  const sources = cachedFindSources(ctx.room).filter(source => source.energy > 0);
   if (sources.length > 0) {
     const source = findCachedClosest(ctx.creep, sources, "upgrader_source", 30);
     if (source) return { type: "harvest", target: source };
@@ -975,7 +982,7 @@ export function queenCarrier(ctx: CreepContext): CreepAction {
  * Enhanced to use containers like energy harvesters for better coordination.
  */
 export function mineralHarvester(ctx: CreepContext): CreepAction {
-  const mineral = ctx.room.find(FIND_MINERALS)[0];
+  const mineral = cachedRoomFind(ctx.room, FIND_MINERALS)[0];
   if (!mineral) return { type: "idle" };
 
   const extractor = mineral.pos.lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_EXTRACTOR);
@@ -1016,7 +1023,7 @@ export function mineralHarvester(ctx: CreepContext): CreepAction {
 export function depositHarvester(ctx: CreepContext): CreepAction {
   // Find or assign target deposit
   if (!ctx.memory.targetId) {
-    const deposits = ctx.room.find(FIND_DEPOSITS);
+    const deposits = cachedRoomFind(ctx.room, FIND_DEPOSITS);
     if (deposits.length > 0) {
       const best = deposits.reduce((a, b) => (a.cooldown < b.cooldown ? a : b));
       // Store the deposit ID. This is safe because Screeps object IDs are always strings,
@@ -1418,10 +1425,11 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     const minEnergyThreshold = ctx.creep.store.getCapacity(RESOURCE_ENERGY) * REMOTE_HAULER_ENERGY_THRESHOLD;
 
     // In remote room - collect from containers or ground
-    const containers = ctx.room.find(FIND_STRUCTURES, {
-      filter: s => 
+    const containers = cachedRoomFind(ctx.room, FIND_STRUCTURES, {
+      filter: (s: Structure) => 
         s.structureType === STRUCTURE_CONTAINER && 
-        (s as StructureContainer).store.getUsedCapacity(RESOURCE_ENERGY) >= minEnergyThreshold
+        (s as StructureContainer).store.getUsedCapacity(RESOURCE_ENERGY) >= minEnergyThreshold,
+      filterKey: 'remoteContainers'
     }) as StructureContainer[];
 
     if (containers.length > 0) {
@@ -1431,9 +1439,7 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
 
     // Check for dropped energy (cache 3 ticks - they disappear quickly)
     // For dropped resources, collect even smaller amounts to prevent decay
-    const dropped = ctx.room.find(FIND_DROPPED_RESOURCES, {
-      filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 50
-    });
+    const dropped = cachedFindDroppedResources(ctx.room, RESOURCE_ENERGY).filter(r => r.amount > 50);
 
     if (dropped.length > 0) {
       const closest = findCachedClosest(ctx.creep, dropped, "remoteHauler_remoteDrop", 3);
@@ -1442,8 +1448,9 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
 
     // If no energy meets threshold, wait near a container for it to fill
     if (containers.length === 0) {
-      const anyContainer = ctx.room.find(FIND_STRUCTURES, {
-        filter: s => s.structureType === STRUCTURE_CONTAINER
+      const anyContainer = cachedRoomFind(ctx.room, FIND_STRUCTURES, {
+        filter: (s: Structure) => s.structureType === STRUCTURE_CONTAINER,
+        filterKey: 'containers'
       }) as StructureContainer[];
       
       if (anyContainer.length > 0) {
@@ -1489,9 +1496,10 @@ export function interRoomCarrier(ctx: CreepContext): CreepAction {
     }
 
     // Find containers with space
-    const containers = room.find(FIND_STRUCTURES, {
-      filter: s =>
-        s.structureType === STRUCTURE_CONTAINER && (s as StructureContainer).store.getFreeCapacity(resourceType) > 0
+    const containers = cachedRoomFind(room, FIND_STRUCTURES, {
+      filter: (s: Structure) =>
+        s.structureType === STRUCTURE_CONTAINER && (s as StructureContainer).store.getFreeCapacity(resourceType) > 0,
+      filterKey: `container_${resourceType}`
     }) as StructureContainer[];
 
     if (containers.length > 0) {
@@ -1500,7 +1508,7 @@ export function interRoomCarrier(ctx: CreepContext): CreepAction {
     }
 
     // If nowhere to deliver, drop it near spawn
-    const spawns = room.find(FIND_MY_SPAWNS);
+    const spawns = cachedFindMyStructures<StructureSpawn>(room, STRUCTURE_SPAWN);
     if (spawns.length > 0) {
       if (ctx.creep.pos.isNearTo(spawns[0])) {
         return { type: "drop", resourceType };
@@ -1525,9 +1533,9 @@ export function interRoomCarrier(ctx: CreepContext): CreepAction {
     }
 
     // Try containers
-    const containers = room.find(FIND_STRUCTURES, {
-      filter: s =>
-        s.structureType === STRUCTURE_CONTAINER && (s as StructureContainer).store.getUsedCapacity(resourceType) > 0
+    const containers = cachedRoomFind(room, FIND_STRUCTURES, {
+      filter: (s: Structure) => s.structureType === STRUCTURE_CONTAINER && (s as StructureContainer).store.getUsedCapacity(resourceType) > 0,
+      filterKey: `container_${resourceType}`
     }) as StructureContainer[];
 
     if (containers.length > 0) {

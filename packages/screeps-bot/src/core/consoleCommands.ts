@@ -367,6 +367,53 @@ Performance: ${stats.hitRate >= 80 ? "Excellent" : stats.hitRate >= 60 ? "Good" 
   }
 
   @Command({
+    name: "roomFindCacheStats",
+    description: "Show room.find() cache statistics (hits, misses, hit rate)",
+    usage: "roomFindCacheStats()",
+    examples: ["roomFindCacheStats()"],
+    category: "Statistics"
+  })
+  public roomFindCacheStats(): string {
+    const { getRoomFindCacheStats } = require("../utils/roomFindCache");
+    const stats = getRoomFindCacheStats();
+    
+    const hitRatePercent = (stats.hitRate * 100).toFixed(2);
+    const totalQueries = stats.hits + stats.misses;
+    const avgEntriesPerRoom = stats.rooms > 0 ? (stats.totalEntries / stats.rooms).toFixed(1) : "0";
+    
+    // Estimate CPU saved (conservative estimate: 0.05 CPU per cache hit)
+    const estimatedCpuSaved = (stats.hits * 0.05).toFixed(3);
+    
+    return `=== Room.find() Cache Statistics ===
+Cached Rooms: ${stats.rooms}
+Total Entries: ${stats.totalEntries}
+Avg Entries/Room: ${avgEntriesPerRoom}
+
+Total Queries: ${totalQueries}
+Cache Hits: ${stats.hits}
+Cache Misses: ${stats.misses}
+Hit Rate: ${hitRatePercent}%
+
+Cache Invalidations: ${stats.invalidations}
+Estimated CPU Saved: ~${estimatedCpuSaved} CPU this tick
+
+Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "Good" : stats.hitRate >= 0.5 ? "Fair" : "Poor - Consider more caching"}`;
+  }
+
+  @Command({
+    name: "clearRoomFindCache",
+    description: "Clear all room.find() cache entries and reset stats",
+    usage: "clearRoomFindCache()",
+    examples: ["clearRoomFindCache()"],
+    category: "Statistics"
+  })
+  public clearRoomFindCache(): string {
+    const { clearRoomFindCache } = require("../utils/roomFindCache");
+    clearRoomFindCache();
+    return "Room.find() cache cleared and statistics reset";
+  }
+
+  @Command({
     name: "toggleProfiling",
     description: "Toggle CPU profiling on/off",
     usage: "toggleProfiling()",

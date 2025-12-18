@@ -10,6 +10,11 @@ import { moveTo } from "screeps-cartographer";
 import { safeFind } from "../../utils/safeFind";
 import type { CreepAction, CreepContext } from "./types";
 import { createLogger } from "../../core/logger";
+import {
+  cachedRoomFind,
+  cachedFindMyStructures,
+  cachedFindDroppedResources
+} from "../../utils/roomFindCache";
 
 const logger = createLogger("PowerBehaviors");
 
@@ -53,8 +58,9 @@ export function powerHarvester(ctx: CreepContext): CreepAction {
   }
 
   // Find power bank
-  const powerBank = ctx.room.find(FIND_STRUCTURES, {
-    filter: s => s.structureType === STRUCTURE_POWER_BANK
+  const powerBank = cachedRoomFind(ctx.room, FIND_STRUCTURES, {
+    filter: (s: Structure) => s.structureType === STRUCTURE_POWER_BANK,
+    filterKey: 'powerBank'
   })[0] as StructurePowerBank | undefined;
 
   if (!powerBank) {
@@ -66,8 +72,9 @@ export function powerHarvester(ctx: CreepContext): CreepAction {
   // Check if heavily damaged - retreat to healer
   if (ctx.creep.hits < ctx.creep.hitsMax * POWER_HARVESTER_RETREAT_THRESHOLD) {
     // Find nearby healer
-    const healers = ctx.room.find(FIND_MY_CREEPS, {
-      filter: c => c.memory.role === "healer" && c.memory.targetRoom === targetRoom
+    const healers = cachedRoomFind(ctx.room, FIND_MY_CREEPS, {
+      filter: (c: Creep) => c.memory.role === "healer" && c.memory.targetRoom === targetRoom,
+      filterKey: `healer_${targetRoom}`
     });
 
     if (healers.length > 0) {
@@ -102,9 +109,8 @@ export function powerCarrier(ctx: CreepContext): CreepAction {
 
     const homeRoom = Game.rooms[ctx.homeRoom];
     if (homeRoom) {
-      const powerSpawn = homeRoom.find(FIND_MY_STRUCTURES, {
-        filter: s => s.structureType === STRUCTURE_POWER_SPAWN
-      })[0] as StructurePowerSpawn | undefined;
+      // Locate power spawn
+      const powerSpawn = cachedFindMyStructures<StructurePowerSpawn>(homeRoom, STRUCTURE_POWER_SPAWN)[0];
 
       if (powerSpawn && powerSpawn.store.getFreeCapacity(RESOURCE_POWER) > 0) {
         return { type: "transfer", target: powerSpawn, resourceType: RESOURCE_POWER };
@@ -126,22 +132,22 @@ export function powerCarrier(ctx: CreepContext): CreepAction {
   }
 
   // Collect dropped power
-  const droppedPower = ctx.room.find(FIND_DROPPED_RESOURCES, {
-    filter: r => r.resourceType === RESOURCE_POWER
-  })[0];
+  const droppedPower = cachedFindDroppedResources(ctx.room, RESOURCE_POWER)[0];
 
   if (droppedPower) return { type: "pickup", target: droppedPower };
 
   // Collect from ruins
-  const ruin = ctx.room.find(FIND_RUINS, {
-    filter: r => r.store.getUsedCapacity(RESOURCE_POWER) > 0
+  const ruin = cachedRoomFind(ctx.room, FIND_RUINS, {
+    filter: (r: Ruin) => r.store.getUsedCapacity(RESOURCE_POWER) > 0,
+    filterKey: 'powerRuin'
   })[0];
 
   if (ruin) return { type: "withdraw", target: ruin, resourceType: RESOURCE_POWER };
 
   // Wait near power bank if it still exists
-  const powerBank = ctx.room.find(FIND_STRUCTURES, {
-    filter: s => s.structureType === STRUCTURE_POWER_BANK
+  const powerBank = cachedRoomFind(ctx.room, FIND_STRUCTURES, {
+    filter: (s: Structure) => s.structureType === STRUCTURE_POWER_BANK,
+    filterKey: 'powerBank'
   })[0] as StructurePowerBank | undefined;
 
   if (powerBank) {
@@ -200,23 +206,15 @@ export function createPowerCreepContext(powerCreep: PowerCreep): PowerCreepConte
   const memory = powerCreep.memory as unknown as { homeRoom?: string };
   const homeRoom = memory.homeRoom ?? room.name;
 
-  const labs = room.find(FIND_MY_STRUCTURES, {
-    filter: s => s.structureType === STRUCTURE_LAB
-  }) as StructureLab[];
+  const labs = cachedFindMyStructures<StructureLab>(room, STRUCTURE_LAB);
 
-  const spawns = room.find(FIND_MY_SPAWNS);
+  const spawns = cachedFindMyStructures<StructureSpawn>(room, STRUCTURE_SPAWN);
 
-  const extensions = room.find(FIND_MY_STRUCTURES, {
-    filter: s => s.structureType === STRUCTURE_EXTENSION
-  }) as StructureExtension[];
+  const extensions = cachedFindMyStructures<StructureExtension>(room, STRUCTURE_EXTENSION);
 
-  const factory = room.find(FIND_MY_STRUCTURES, {
-    filter: s => s.structureType === STRUCTURE_FACTORY
-  })[0] as StructureFactory | undefined;
+  const factory = cachedFindMyStructures<StructureFactory>(room, STRUCTURE_FACTORY)[0];
 
-  const powerSpawn = room.find(FIND_MY_STRUCTURES, {
-    filter: s => s.structureType === STRUCTURE_POWER_SPAWN
-  })[0] as StructurePowerSpawn | undefined;
+  const powerSpawn = cachedFindMyStructures<StructurePowerSpawn>(room, STRUCTURE_POWER_SPAWN)[0];
 
   // Get available (off-cooldown) powers
   const availablePowers: PowerConstant[] = [];
@@ -295,10 +293,11 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
 
   // Priority 4: Boost towers (high impact for defense, 10 ops = 2x effectiveness)
   if (powers.includes(PWR_OPERATE_TOWER) && ctx.ops >= 10) {
-    const hostiles = ctx.room.find(FIND_HOSTILE_CREEPS);
+    const hostiles = cachedRoomFind(ctx.room, FIND_HOSTILE_CREEPS);
     if (hostiles.length > 0) {
-      const towers = ctx.room.find(FIND_MY_STRUCTURES, {
-        filter: s => s.structureType === STRUCTURE_TOWER && !hasActiveEffect(s, PWR_OPERATE_TOWER)
+      const towers = cachedRoomFind(ctx.room, FIND_MY_STRUCTURES, {
+        filter: (s: Structure) => s.structureType === STRUCTURE_TOWER && !hasActiveEffect(s, PWR_OPERATE_TOWER),
+        filterKey: 'towerNoEffect'
       }) ;
       if (towers.length > 0) {
         return { type: "usePower", power: PWR_OPERATE_TOWER, target: towers[0] };
@@ -335,8 +334,9 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
 
   // Priority 8: Regen source when depleted (100 ops = instant regen)
   if (powers.includes(PWR_REGEN_SOURCE) && ctx.ops >= 100) {
-    const depletedSource = ctx.room.find(FIND_SOURCES, {
-      filter: s => s.energy === 0 && s.ticksToRegeneration > 100
+    const depletedSource = cachedRoomFind(ctx.room, FIND_SOURCES, {
+      filter: (s: Source) => s.energy === 0 && s.ticksToRegeneration > 100,
+      filterKey: 'depletedSource'
     })[0];
     if (depletedSource) {
       return { type: "usePower", power: PWR_REGEN_SOURCE, target: depletedSource };
@@ -388,11 +388,12 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
 
   // Priority 2: Shield allies in combat (10 ops = 5k HP shield)
   if (powers.includes(PWR_SHIELD) && ctx.ops >= 10 && hostiles.length > 0) {
-    const damagedAlly = ctx.room.find(FIND_MY_CREEPS, {
-      filter: c => {
+    const damagedAlly = cachedRoomFind(ctx.room, FIND_MY_CREEPS, {
+      filter: (c: Creep) => {
         const mem = c.memory as { family?: string };
         return mem.family === "military" && c.hits < c.hitsMax * 0.7;
-      }
+      },
+      filterKey: 'damagedMilitary'
     })[0];
     if (damagedAlly) {
       return { type: "usePower", power: PWR_SHIELD, target: damagedAlly };
@@ -421,10 +422,11 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
 
   // Priority 5: Boost friendly towers for defense (10 ops = 2x effectiveness)
   if (powers.includes(PWR_OPERATE_TOWER) && ctx.ops >= 10 && hostiles.length > 0) {
-    const towers = ctx.room.find(FIND_MY_STRUCTURES, {
-      filter: s => 
+    const towers = cachedRoomFind(ctx.room, FIND_MY_STRUCTURES, {
+      filter: (s: Structure) => 
         s.structureType === STRUCTURE_TOWER &&
-        !hasActiveEffect(s, PWR_OPERATE_TOWER)
+        !hasActiveEffect(s, PWR_OPERATE_TOWER),
+      filterKey: 'towerNoEffect'
     }) ;
     const tower = towers[0];
     if (tower) return { type: "usePower", power: PWR_OPERATE_TOWER, target: tower };
@@ -451,8 +453,9 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
     }
 
     // Fortify any low rampart
-    const lowRampart = ctx.room.find(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_RAMPART && s.hits < 500000
+    const lowRampart = cachedRoomFind(ctx.room, FIND_STRUCTURES, {
+      filter: (s: Structure) => s.structureType === STRUCTURE_RAMPART && s.hits < 500000,
+      filterKey: 'lowRampart'
     })[0] as StructureRampart | undefined;
     if (lowRampart) return { type: "usePower", power: PWR_FORTIFY, target: lowRampart };
   }
