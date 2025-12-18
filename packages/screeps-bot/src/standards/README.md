@@ -333,7 +333,7 @@ console.log(`Segment reads: ${metrics.segmentReads.success}/${metrics.segmentRea
 ### ✅ Segment Discovery
 - **Status**: ✅ Implemented
 - **Description**: Auto-discovers nearby player segments
-- **Impact**: Enables automatic alliance protocol detection
+- **Impact**: Enables automatic protocol detection for inter-player communication
 - **Files**: `SS1SegmentManager.ts`
 - **Features**:
   - Scans rooms within 5-room radius

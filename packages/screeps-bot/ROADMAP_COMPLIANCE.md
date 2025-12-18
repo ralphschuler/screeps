@@ -516,7 +516,7 @@ The ROADMAP envisions a **job-market system** where:
 
 **Evidence**:
 - Complete `src/standards/` directory with all protocols
-- SimpleAlliesManager for alliance coordination
+- Screepers Standards protocols (SS1, SS2) for inter-player communication
 - Standards are optional and can be enabled/disabled
 
 ## Summary

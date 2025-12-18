@@ -10,7 +10,7 @@ Implemented comprehensive multi-factor expansion scoring system for the Screeps 
 **Test Coverage**: 40+ unit tests  
 **Core Features**: 9/11 acceptance criteria complete, 2 deferred to deployment
 
-**Status**: Core implementation complete with stub placeholders for future features (portal tracking, alliance integration). Ready for testing and iteration.
+**Status**: Core implementation complete with stub placeholders for future features (portal tracking). Ready for testing and iteration.
 
 ---
 
@@ -162,7 +162,7 @@ Comprehensive room evaluation considering:
 
 **Stub/Placeholder Features**:
 - Portal tracking: Returns highway proximity bonus (5 points) as placeholder - TODO: Add portal positions to RoomIntel schema
-- Alliance integration: Always returns false - TODO: Implement alliance checking from config or memory
+- Alliance integration: Removed per ROADMAP "Required Code Only" philosophy (alliance system was disabled)
 
 ---
 
@@ -283,7 +283,7 @@ From original issue:
 
 ## Conclusion
 
-The multi-factor expansion scoring **core implementation is complete and ready for testing**. All primary acceptance criteria have been met, with stub placeholders clearly documented for future enhancements (portal tracking, alliance integration).
+The multi-factor expansion scoring **core implementation is complete and ready for testing**. All primary acceptance criteria have been met, with stub placeholders clearly documented for future enhancements (portal tracking).
 
 The system provides a robust foundation for autonomous expansion that will enable the bot to efficiently utilize full GCL capacity and scale to 100+ rooms per shard as envisioned in the ROADMAP. Stub features can be implemented iteratively as needed.
 

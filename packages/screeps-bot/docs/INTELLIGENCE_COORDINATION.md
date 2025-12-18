@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Intelligence & Coordination system provides comprehensive enemy tracking, threat prediction, cross-shard intelligence sharing, alliance management, and market trend analysis for the Screeps bot.
+The Intelligence & Coordination system provides comprehensive enemy tracking, threat prediction, cross-shard intelligence sharing, and market trend analysis for the Screeps bot.
 
 ## Components
 
@@ -24,7 +24,6 @@ Continuously scans rooms for enemy activity and updates the intelligence databas
   maxCpuBudget: 0.02,       // 2% CPU budget
   roomsPerTick: 3,          // Scan 3 rooms per tick
   rescanInterval: 1000,     // Rescan rooms every 1000 ticks
-  allies: [],               // Allied player usernames
   aggressionThreshold: 5    // Actions to elevate threat
 }
 ```
@@ -39,10 +38,6 @@ const scanner = new IntelScanner();
 // Get enemy info
 const enemy = scanner.getEnemyPlayer("username");
 const allEnemies = scanner.getAllEnemies();
-
-// Manage allies
-scanner.addAlly("allyUsername");
-scanner.removeAlly("formerAlly");
 ```
 
 ### 2. Threat Predictor (`ThreatPredictor`)
@@ -92,7 +87,6 @@ Shares intelligence across all shards via InterShardMemory.
 
 **Features:**
 - Enemy intelligence sharing across shards
-- Global alliance list synchronization
 - Compact serialization (fits in 100KB limit)
 - Automatic threat response coordination
 
@@ -111,13 +105,8 @@ import { CrossShardIntelCoordinator } from "./empire/intelligence";
 
 const coordinator = new CrossShardIntelCoordinator();
 
-// Manage global allies
-coordinator.addGlobalAlly("allyUsername");
-coordinator.removeGlobalAlly("formerAlly");
-
 // Get global intelligence
 const globalEnemies = coordinator.getGlobalEnemies();
-const globalAllies = coordinator.getGlobalAllies();
 ```
 
 ### 4. Market Trend Analyzer (`MarketTrendAnalyzer`)
@@ -227,10 +216,6 @@ global.threats.getAllPredictions()
 // Get market opportunities
 global.market.getOpportunities()
 global.market.getSupplyDemand(RESOURCE_ENERGY)
-
-// Manage allies
-global.intel.addAlly("allyUsername")
-global.crossShard.addGlobalAlly("allyUsername")
 ```
 
 ## Configuration
@@ -240,8 +225,7 @@ All components can be configured via their constructors:
 ```typescript
 // In SwarmBot.ts or main initialization
 const intelScanner = new IntelScanner({
-  roomsPerTick: 5,
-  allies: ["ally1", "ally2"]
+  roomsPerTick: 5
 });
 
 const threatPredictor = new ThreatPredictor({
@@ -271,5 +255,4 @@ Potential improvements:
 2. Historical pattern analysis
 3. Diplomatic relationship tracking
 4. Market price forecasting models
-5. Multi-player alliance coordination
-6. Automated treaty negotiations
+5. Automated treaty negotiations
