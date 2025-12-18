@@ -3,7 +3,6 @@
  *
  * Coordinates intelligence sharing across shards:
  * - Share enemy intelligence
- * - Sync alliance lists
  * - Coordinate threat responses
  * - Share war targets
  *
@@ -137,16 +136,8 @@ export class CrossShardIntelCoordinator {
       }
     }
 
-    // Sync alliance list
-    if (interShardMemory.globalTargets.allies) {
-      for (const ally of interShardMemory.globalTargets.allies) {
-        const enemy = enemyMap.get(ally);
-        if (enemy) {
-          enemy.isAlly = true;
-          enemy.threatLevel = 0;
-        }
-      }
-    }
+    // Note: Alliance system has been removed per ROADMAP "Required Code Only" philosophy
+    // The allies field in InterShardMemory schema remains for potential future use
 
     // Update intershard memory
     interShardMemory.globalTargets.enemies = Array.from(enemyMap.values());
