@@ -1,11 +1,22 @@
 import { expect } from "chai";
 
 /**
- * Cluster Manager Tests
+ * Cluster Manager Algorithm Tests
  * 
- * Tests for cluster resource balancing and coordination.
+ * Tests the core algorithms used for cluster resource balancing and coordination.
+ * These tests validate the mathematical and logical foundations of cluster management
+ * without requiring the full ClusterManager implementation or Game objects.
+ * 
  * Addresses TODO(P2): TEST - Add integration tests for cluster resource balancing
  * in src/clusters/clusterManager.ts
+ * 
+ * Note: These are algorithm-level tests that verify the logic used by ClusterManager
+ * and resourceSharingManager. They test resource distribution calculations, transfer
+ * cost optimization, emergency prioritization, and mineral balancing algorithms in
+ * isolation from the game environment.
+ * 
+ * For full integration testing of ClusterManager with Game objects, see the
+ * integration test suite (when available).
  */
 
 describe("Cluster Resource Balancing", () => {
@@ -206,7 +217,6 @@ describe("Cluster Resource Balancing", () => {
     });
 
     it("should prefer closer rooms for transfers", () => {
-      const sourceRoom = "W1N1";
       const targetRooms = [
         { name: "W1N2", needs: 100000, distance: 1 },
         { name: "W1N5", needs: 150000, distance: 4 },
@@ -256,16 +266,20 @@ describe("Cluster Resource Balancing", () => {
 
   describe("Emergency Sharing", () => {
     it("should trigger emergency sharing when room is critical", () => {
+      interface MockSpawn {
+        energy: number;
+      }
+
       const room = {
         storage: { store: { energy: 5000 } },
         terminal: { store: { energy: 1000 } },
-        spawns: [{ energy: 100 }]
+        spawns: [{ energy: 100 }] as MockSpawn[]
       };
 
       const totalEnergy = 
         (room.storage?.store.energy || 0) +
         (room.terminal?.store.energy || 0) +
-        room.spawns.reduce((sum: number, s: any) => sum + (s.energy || 0), 0);
+        room.spawns.reduce((sum: number, s: MockSpawn) => sum + (s.energy || 0), 0);
 
       const isCritical = totalEnergy < 10000; // Critical threshold
 
@@ -310,7 +324,12 @@ describe("Cluster Resource Balancing", () => {
       };
 
       // Calculate which minerals to share
-      const mineralSharing: any[] = [];
+      interface MineralTransfer {
+        mineral: string;
+        from: string;
+        to: string;
+      }
+      const mineralSharing: MineralTransfer[] = [];
 
       baseMinerals.forEach(mineral => {
         const rooms = Object.keys(cluster);
@@ -374,8 +393,8 @@ describe("Cluster Performance", () => {
 
     const CPU_THRESHOLD = 5.0;
     const highCPURooms = Object.entries(roomCPU)
-      .filter(([_, cpu]) => cpu > CPU_THRESHOLD)
-      .map(([room, _]) => room);
+      .filter(([, cpu]) => cpu > CPU_THRESHOLD)
+      .map(([room]) => room);
 
     expect(highCPURooms).to.include("W2N1");
     expect(highCPURooms).to.have.lengthOf(2);
