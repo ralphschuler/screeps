@@ -1,17 +1,18 @@
 {
   "require": [
-    "test/setup-mocha.cjs",
-    "ts-node/register",
-    "tsconfig-paths/register"
+    "test/setup-mocha.cjs"
+  ],
+  "extensions": ["ts"],
+  "spec": ["test/unit/**/*.ts"],
+  "node-option": [
+    "import=tsx/esm"
   ],
   "ui": "bdd",
   "reporter": "spec",
-  "bail": true,
+  "bail": false,
   "full-trace": true,
-  "watch-extensions": ["tsx", "ts"],
   "color": true,
   "recursive": true,
   "timeout": 5000,
-  "exit": true,
-  "spec": ["test/unit/**/*.ts"]
+  "exit": true
 }

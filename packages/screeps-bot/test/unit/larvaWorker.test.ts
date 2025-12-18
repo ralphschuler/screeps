@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import { larvaWorker } from "../../src/roles/behaviors/economy";
+import { larvaWorker } from "../../src/roles/behaviors/economy/larvaWorker";
 import type { CreepContext } from "../../src/roles/behaviors/types";
 import type { SwarmCreepMemory } from "../../src/memory/schemas";
 
