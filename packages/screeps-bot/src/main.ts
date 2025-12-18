@@ -66,6 +66,19 @@ declare global {
     overmind?: any;
     /** Clusters memory */
     clusters?: Record<string, any>;
+    /** TooAngel diplomacy and quest system */
+    tooangel?: {
+      enabled: boolean;
+      reputation: {
+        value: number;
+        lastUpdated: number;
+        lastRequestedAt?: number;
+      };
+      npcRooms: Record<string, any>;
+      activeQuests: Record<string, any>;
+      completedQuests: string[];
+      lastProcessedTick: number;
+    };
   }
 
   interface CreepMemory {

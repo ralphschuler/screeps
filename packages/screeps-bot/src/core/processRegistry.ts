@@ -23,6 +23,7 @@
  * - PowerCreepManager (empire:powerCreep)
  * - ShardManager (empire:shard)
  * - CrossShardIntelCoordinator (empire:crossShardIntel)
+ * - TooAngelManager (empire:tooangel)
  * - EvacuationManager (cluster:evacuation)
  * - DefenseCoordinator (cluster:defense)
  *
@@ -46,6 +47,7 @@ import { powerCreepManager } from "../empire/powerCreepManager";
 import { remoteInfrastructureManager } from "../empire/remoteInfrastructure";
 import { shardManager } from "../intershard/shardManager";
 import { crossShardIntelCoordinator } from "../empire/crossShardIntel";
+import { tooAngelManager } from "../empire/tooangel/tooAngelManager";
 import { coreProcessManager } from "./coreProcessManager";
 import { kernel } from "./kernel";
 import { logger } from "./logger";
@@ -77,6 +79,7 @@ export function registerAllProcesses(): void {
     powerCreepManager,
     shardManager,
     crossShardIntelCoordinator,
+    tooAngelManager,
     // Cluster processes
     clusterManager,
     // Defense processes
