@@ -7,6 +7,7 @@
 
 import { memoryManager } from "../memory/manager";
 import type { RoomIntel } from "../memory/schemas";
+import { getConfig } from "../config";
 
 /**
  * Remote mining configuration constants
@@ -207,12 +208,21 @@ export function parseRoomName(roomName: string): { x: number; y: number; xDir: s
 
 /**
  * Check if a player is an ally
+ * Checks the alliance configuration to determine if a username is in the allies list
+ * 
+ * @param username - The username to check for alliance status
+ * @returns true if the username is in the allies list AND alliance system is enabled, false otherwise
  */
-export function isAlly(_username: string): boolean {
-  // TODO: Implement alliance checking from config or memory
-  // Issue URL: https://github.com/ralphschuler/screeps/issues/678
-  // For now, always return false (no allies)
-  return false;
+export function isAlly(username: string): boolean {
+  const config = getConfig();
+  
+  // If alliance system is disabled, no one is an ally
+  if (!config.alliance.enabled) {
+    return false;
+  }
+  
+  // Check if username is in the allies list (case-sensitive comparison)
+  return config.alliance.allies.includes(username);
 }
 
 /**

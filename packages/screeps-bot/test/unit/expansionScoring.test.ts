@@ -8,6 +8,7 @@
 import { expect } from "chai";
 import type { RoomIntel } from "../../src/memory/schemas";
 import * as ExpansionScoring from "../../src/empire/expansionScoring";
+import { updateConfig, resetConfig } from "../../src/config";
 
 // Mock the global Game object
 declare const global: { Game: typeof Game; Memory: typeof Memory };
@@ -61,6 +62,9 @@ describe("Multi-Factor Expansion Scoring", () => {
       creeps: {},
       rooms: {}
     } as typeof Memory;
+    
+    // Reset config to default before each test
+    resetConfig();
   });
 
   describe("Source Count Scoring", () => {
@@ -326,6 +330,115 @@ describe("Multi-Factor Expansion Scoring", () => {
       // Total: 40 - 50 + 15 + 0 = 5
 
       expect(closeScore).to.be.greaterThan(farScore);
+    });
+  });
+
+  describe("Alliance Checking", () => {
+    it("should return false when alliance system is disabled", () => {
+      // Default config has alliance.enabled = false
+      const result = ExpansionScoring.isAlly("AllyPlayer");
+      expect(result).to.be.false;
+    });
+
+    it("should return false for non-ally when alliance system is enabled", () => {
+      updateConfig({
+        alliance: {
+          enabled: true,
+          allies: ["AllyPlayer1", "AllyPlayer2"],
+          allySegmentID: 90,
+          minResourceToFulfill: 1000,
+          maxDefenseDistance: 10
+        }
+      });
+      
+      const result = ExpansionScoring.isAlly("EnemyPlayer");
+      expect(result).to.be.false;
+    });
+
+    it("should return true for ally when alliance system is enabled", () => {
+      updateConfig({
+        alliance: {
+          enabled: true,
+          allies: ["AllyPlayer1", "AllyPlayer2"],
+          allySegmentID: 90,
+          minResourceToFulfill: 1000,
+          maxDefenseDistance: 10
+        }
+      });
+      
+      const result1 = ExpansionScoring.isAlly("AllyPlayer1");
+      const result2 = ExpansionScoring.isAlly("AllyPlayer2");
+      
+      expect(result1).to.be.true;
+      expect(result2).to.be.true;
+    });
+
+    it("should return false for ally when alliance system is disabled", () => {
+      updateConfig({
+        alliance: {
+          enabled: false,
+          allies: ["AllyPlayer1", "AllyPlayer2"],
+          allySegmentID: 90,
+          minResourceToFulfill: 1000,
+          maxDefenseDistance: 10
+        }
+      });
+      
+      const result = ExpansionScoring.isAlly("AllyPlayer1");
+      expect(result).to.be.false;
+    });
+
+    it("should be case-sensitive", () => {
+      updateConfig({
+        alliance: {
+          enabled: true,
+          allies: ["AllyPlayer"],
+          allySegmentID: 90,
+          minResourceToFulfill: 1000,
+          maxDefenseDistance: 10
+        }
+      });
+      
+      const resultExact = ExpansionScoring.isAlly("AllyPlayer");
+      const resultLowerCase = ExpansionScoring.isAlly("allyplayer");
+      const resultUpperCase = ExpansionScoring.isAlly("ALLYPLAYER");
+      
+      expect(resultExact).to.be.true;
+      expect(resultLowerCase).to.be.false;
+      expect(resultUpperCase).to.be.false;
+    });
+
+    it("should handle empty allies list", () => {
+      updateConfig({
+        alliance: {
+          enabled: true,
+          allies: [],
+          allySegmentID: 90,
+          minResourceToFulfill: 1000,
+          maxDefenseDistance: 10
+        }
+      });
+      
+      const result = ExpansionScoring.isAlly("SomePlayer");
+      expect(result).to.be.false;
+    });
+
+    it("should handle multiple allies correctly", () => {
+      updateConfig({
+        alliance: {
+          enabled: true,
+          allies: ["Ally1", "Ally2", "Ally3", "Ally4", "Ally5"],
+          allySegmentID: 90,
+          minResourceToFulfill: 1000,
+          maxDefenseDistance: 10
+        }
+      });
+      
+      expect(ExpansionScoring.isAlly("Ally1")).to.be.true;
+      expect(ExpansionScoring.isAlly("Ally3")).to.be.true;
+      expect(ExpansionScoring.isAlly("Ally5")).to.be.true;
+      expect(ExpansionScoring.isAlly("Enemy")).to.be.false;
+      expect(ExpansionScoring.isAlly("Ally6")).to.be.false;
     });
   });
 });
