@@ -13,3 +13,8 @@ export * from "./tooAngelManager";
 
 // Re-export the main manager instance
 export { tooAngelManager } from "./tooAngelManager";
+
+// Re-export specific parsing functions for testing
+export { parseQuestSign } from "./npcDetector";
+export { parseReputationResponse } from "./reputationManager";
+export { parseQuestMessage } from "./questManager";
