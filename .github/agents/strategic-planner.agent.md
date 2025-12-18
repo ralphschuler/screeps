@@ -25,6 +25,7 @@ The bot has to be Highly performant, modular and human readable.
 5. **Prioritize** based on impact, effort, and strategic alignment
 6. **Modularize** code into it own npm modules under packages/screeps-<name> with name @ralphschuler/screeps-<package>
 7. **Cleanup** unused and repeating code.
+8. **Framework** system. (a side quest for this bot is to provide a framework for easy bot development.
 
 ## AVAILABLE MCP TOOLS
 
