@@ -100,8 +100,8 @@ describe("BaseProcess", () => {
       let stateWhileRunning: IPosisProcessState = "idle";
       
       class StateCheckProcess extends BaseProcess {
-        constructor(id: string) {
-          super(id, "StateCheck", 50);
+        constructor(id: string, name: string, priority: number) {
+          super(id, name, priority);
         }
         
         protected doRun(): void {
