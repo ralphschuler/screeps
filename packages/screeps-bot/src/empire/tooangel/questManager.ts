@@ -33,43 +33,6 @@ const QUEST_CONFIG = {
 };
 
 /**
- * Get TooAngel memory
- */
-function getTooAngelMemory() {
-  const mem = Memory as {
-    tooangel?: {
-      enabled?: boolean;
-      reputation?: any;
-      npcRooms?: Record<string, any>;
-      activeQuests?: Record<string, TooAngelQuestMemory>;
-      completedQuests?: string[];
-      lastProcessedTick?: number;
-    }
-  };
-
-  if (!mem.tooangel) {
-    mem.tooangel = {
-      enabled: true,
-      reputation: { value: 0, lastUpdated: 0 },
-      npcRooms: {},
-      activeQuests: {},
-      completedQuests: [],
-      lastProcessedTick: 0
-    };
-  }
-
-  if (!mem.tooangel.activeQuests) {
-    mem.tooangel.activeQuests = {};
-  }
-
-  if (!mem.tooangel.completedQuests) {
-    mem.tooangel.completedQuests = [];
-  }
-
-  return mem.tooangel;
-}
-
-/**
  * Parse quest message from terminal transaction
  */
 export function parseQuestMessage(description: string): TooAngelQuest | null {
