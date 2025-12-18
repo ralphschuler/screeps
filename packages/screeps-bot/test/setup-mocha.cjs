@@ -439,6 +439,27 @@ global.InterShardMemory = {
   getRemote: () => null
 };
 
+// Mock power constants
+global.PWR_GENERATE_OPS = 1;
+global.PWR_OPERATE_SPAWN = 2;
+global.PWR_OPERATE_TOWER = 3;
+global.PWR_OPERATE_STORAGE = 4;
+global.PWR_OPERATE_LAB = 5;
+global.PWR_OPERATE_EXTENSION = 6;
+global.PWR_OPERATE_OBSERVER = 7;
+global.PWR_OPERATE_TERMINAL = 8;
+global.PWR_DISRUPT_SPAWN = 9;
+global.PWR_DISRUPT_TOWER = 10;
+global.PWR_DISRUPT_SOURCE = 11;
+global.PWR_SHIELD = 12;
+global.PWR_REGEN_SOURCE = 13;
+global.PWR_REGEN_MINERAL = 14;
+global.PWR_DISRUPT_TERMINAL = 15;
+global.PWR_OPERATE_POWER = 16;
+global.PWR_FORTIFY = 17;
+global.PWR_OPERATE_CONTROLLER = 18;
+global.PWR_OPERATE_FACTORY = 19;
+
 // Mock RawMemory
 global.RawMemory = {
   get: () => JSON.stringify(global.Memory),

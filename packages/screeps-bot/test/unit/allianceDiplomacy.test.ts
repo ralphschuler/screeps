@@ -220,9 +220,9 @@ describe("Attack Request Evaluation", () => {
   // Import after describe to avoid initialization issues
   let evaluateAttackRequest: (request: AttackRequest, ally: string) => AttackEvaluation;
 
-  before(() => {
+  before(async () => {
     // Dynamic import to avoid circular dependencies
-    const module = require("../../src/empire/allianceDiplomacy");
+    const module = await import("../../src/empire/allianceDiplomacy");
     evaluateAttackRequest = module.evaluateAttackRequest;
   });
 

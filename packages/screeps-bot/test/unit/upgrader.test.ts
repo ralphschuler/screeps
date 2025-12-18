@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import { upgrader } from "../../src/roles/behaviors/economy";
+import { upgrader } from "../../src/roles/behaviors/economy/upgrader";
 import type { CreepContext } from "../../src/roles/behaviors/types";
 import type { SwarmCreepMemory } from "../../src/memory/schemas";
 
