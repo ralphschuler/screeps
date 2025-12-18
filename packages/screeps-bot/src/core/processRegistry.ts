@@ -22,6 +22,7 @@
  * - PowerBankHarvestingManager (empire:powerBank)
  * - PowerCreepManager (empire:powerCreep)
  * - ShardManager (empire:shard)
+ * - CrossShardIntelCoordinator (empire:crossShardIntel)
  * - EvacuationManager (cluster:evacuation)
  * - DefenseCoordinator (cluster:defense)
  *
@@ -44,6 +45,7 @@ import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
 import { powerCreepManager } from "../empire/powerCreepManager";
 import { remoteInfrastructureManager } from "../empire/remoteInfrastructure";
 import { shardManager } from "../intershard/shardManager";
+import { crossShardIntelCoordinator } from "../empire/crossShardIntel";
 import { coreProcessManager } from "./coreProcessManager";
 import { kernel } from "./kernel";
 import { logger } from "./logger";
@@ -74,6 +76,7 @@ export function registerAllProcesses(): void {
     powerBankHarvestingManager,
     powerCreepManager,
     shardManager,
+    crossShardIntelCoordinator,
     // Cluster processes
     clusterManager,
     // Defense processes

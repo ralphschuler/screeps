@@ -232,3 +232,8 @@ export class CrossShardIntelCoordinator {
     return interShardMemory.globalTargets.allies || [];
   }
 }
+
+/**
+ * Global cross-shard intel coordinator instance
+ */
+export const crossShardIntelCoordinator = new CrossShardIntelCoordinator();

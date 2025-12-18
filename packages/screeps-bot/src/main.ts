@@ -41,7 +41,9 @@ declare global {
       queuedAt: number;
     }>;
     memoryVersion?: number;
-    // TODO: Consider adding shard coordination memory for multi-shard operations (ROADMAP Section 11)
+    // Multi-shard coordination memory (ROADMAP Section 11 - IMPLEMENTED)
+    // Note: InterShardMemory is used for cross-shard coordination, not Memory
+    // See src/intershard/shardManager.ts for implementation
     /** Global empire state for tracking all colonies and clusters (ROADMAP Section 4) */
     empire?: {
       knownRooms: Record<string, any>;

@@ -118,6 +118,12 @@ function initializeSystems(): void {
     enabled: config.alliance.enabled
   });
 
+  // Initialize shard manager for multi-shard coordination
+  // Note: shardManager is already registered as a kernel process
+  // This just loads the InterShardMemory on startup
+  const { shardManager } = require("./intershard/shardManager");
+  shardManager.initialize();
+
   systemsInitialized = true;
 }
 
