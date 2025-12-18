@@ -411,7 +411,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
       createBody([WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 750)
     ],
     priority: 45,
-    maxPerRoom: 2, // REDUCED from 4 - limit spawning per home room to prevent overproduction
+    maxPerRoom: 4, // Restored to original value - allows multiple remote workers
     remoteRole: true
   },
 
