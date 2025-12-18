@@ -1,4 +1,4 @@
-# @screeps/posis - Portable Operating System Interface for Screeps
+# @ralphschuler/screeps-posis - Portable Operating System Interface for Screeps
 
 A standardized, process-based architecture for building modular, maintainable Screeps bots following OS principles.
 
@@ -19,7 +19,7 @@ POSIS provides standard interfaces for building Screeps bots with:
 This package is currently private and designed for use within the screeps monorepo:
 
 ```typescript
-import { IPosisKernel, BaseProcess } from "@screeps/posis";
+import { IPosisKernel, BaseProcess } from "@ralphschuler/screeps-posis";
 ```
 
 ## Core Interfaces
@@ -92,7 +92,7 @@ abstract class BaseProcess implements IPosisProcess {
 Extend `BaseProcess` for common functionality:
 
 ```typescript
-import { BaseProcess } from "@screeps/posis";
+import { BaseProcess } from "@ralphschuler/screeps-posis";
 
 class HarvesterProcess extends BaseProcess {
   constructor(id: string) {

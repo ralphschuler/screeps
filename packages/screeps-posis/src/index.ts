@@ -33,6 +33,3 @@ export {
 } from "./process/IPosisProcess";
 
 export { BaseProcess } from "./process/BaseProcess";
-
-// Example exports
-export { ExampleProcess } from "./examples/ExampleProcess";

@@ -1,5 +1,5 @@
 {
-  "name": "@screeps/posis",
+  "name": "@ralphschuler/screeps-posis",
   "version": "1.0.0",
   "description": "Portable Operating System Interface for Screeps - A process-based kernel architecture",
   "main": "dist/index.js",
