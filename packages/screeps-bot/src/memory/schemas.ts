@@ -32,6 +32,8 @@ export interface RoomIntel {
   towerCount?: number;
   /** Number of spawns (for nuke targeting) */
   spawnCount?: number;
+  /** Whether room contains portal structures */
+  hasPortal?: boolean;
 }
 
 /**
