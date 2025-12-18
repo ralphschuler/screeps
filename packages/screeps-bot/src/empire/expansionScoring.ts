@@ -121,11 +121,9 @@ export function getPortalProximityBonus(roomName: string): number {
     const intel = overmind.roomIntel[adjRoom];
     if (!intel) continue;
 
-    // TODO: Add portal tracking to RoomIntel schema
-    // Issue URL: https://github.com/ralphschuler/screeps/issues/679
-    // For now, highway rooms are potential portal locations
-    if (intel.isHighway) {
-      return 5; // Small bonus for highway proximity (potential portals)
+    // Check for actual portal presence
+    if (intel.hasPortal) {
+      return 10; // Moderate bonus for confirmed portal proximity
     }
   }
 

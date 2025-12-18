@@ -234,6 +234,10 @@ export class IntelScanner {
     const spawns = room.find(FIND_STRUCTURES, { filter: s => s.structureType === STRUCTURE_SPAWN });
     intel.spawnCount = spawns.length;
 
+    // Check for portals
+    const portals = room.find(FIND_STRUCTURES, { filter: s => s.structureType === STRUCTURE_PORTAL });
+    intel.hasPortal = portals.length > 0;
+
     // Update terrain classification
     intel.terrain = this.classifyTerrain(room);
     intel.isHighway = this.isHighwayRoom(room.name);
