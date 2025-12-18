@@ -301,7 +301,7 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
       if (!remoteRoom) continue; // Can't check rooms without vision
       
       // Check for hostile creeps with combat parts
-      const hostiles = cachedRoomFind(remoteRoom, FIND_HOSTILE_CREEPS);
+      const hostiles = cachedRoomFind(remoteRoom, FIND_HOSTILE_CREEPS) as Creep[];
       const dangerousHostiles = hostiles.filter(h =>
         h.body.some(p => p.type === ATTACK || p.type === RANGED_ATTACK || p.type === WORK)
       );

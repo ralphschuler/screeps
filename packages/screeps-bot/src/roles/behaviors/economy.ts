@@ -982,10 +982,12 @@ export function queenCarrier(ctx: CreepContext): CreepAction {
  * Enhanced to use containers like energy harvesters for better coordination.
  */
 export function mineralHarvester(ctx: CreepContext): CreepAction {
-  const mineral = cachedRoomFind(ctx.room, FIND_MINERALS)[0];
+  const minerals = cachedRoomFind(ctx.room, FIND_MINERALS) as Mineral[];
+  const mineral = minerals[0];
   if (!mineral) return { type: "idle" };
 
-  const extractor = mineral.pos.lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_EXTRACTOR);
+  const structures = mineral.pos.lookFor(LOOK_STRUCTURES);
+  const extractor = structures.find(s => s.structureType === STRUCTURE_EXTRACTOR);
   if (!extractor) return { type: "idle" };
 
   if (mineral.mineralAmount === 0) {
@@ -1023,7 +1025,7 @@ export function mineralHarvester(ctx: CreepContext): CreepAction {
 export function depositHarvester(ctx: CreepContext): CreepAction {
   // Find or assign target deposit
   if (!ctx.memory.targetId) {
-    const deposits = cachedRoomFind(ctx.room, FIND_DEPOSITS);
+    const deposits = cachedRoomFind(ctx.room, FIND_DEPOSITS) as Deposit[];
     if (deposits.length > 0) {
       const best = deposits.reduce((a, b) => (a.cooldown < b.cooldown ? a : b));
       // Store the deposit ID. This is safe because Screeps object IDs are always strings,

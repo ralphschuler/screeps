@@ -75,7 +75,7 @@ export function powerHarvester(ctx: CreepContext): CreepAction {
     const healers = cachedRoomFind(ctx.room, FIND_MY_CREEPS, {
       filter: (c: Creep) => c.memory.role === "healer" && c.memory.targetRoom === targetRoom,
       filterKey: `healer_${targetRoom}`
-    });
+    }) as Creep[];
 
     if (healers.length > 0) {
       const nearestHealer = ctx.creep.pos.findClosestByRange(healers);
@@ -137,10 +137,11 @@ export function powerCarrier(ctx: CreepContext): CreepAction {
   if (droppedPower) return { type: "pickup", target: droppedPower };
 
   // Collect from ruins
-  const ruin = cachedRoomFind(ctx.room, FIND_RUINS, {
+  const ruins = cachedRoomFind(ctx.room, FIND_RUINS, {
     filter: (r: Ruin) => r.store.getUsedCapacity(RESOURCE_POWER) > 0,
     filterKey: 'powerRuin'
-  })[0];
+  }) as Ruin[];
+  const ruin = ruins[0];
 
   if (ruin) return { type: "withdraw", target: ruin, resourceType: RESOURCE_POWER };
 
@@ -298,7 +299,7 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
       const towers = cachedRoomFind(ctx.room, FIND_MY_STRUCTURES, {
         filter: (s: Structure) => s.structureType === STRUCTURE_TOWER && !hasActiveEffect(s, PWR_OPERATE_TOWER),
         filterKey: 'towerNoEffect'
-      }) ;
+      }) as StructureTower[];
       if (towers.length > 0) {
         return { type: "usePower", power: PWR_OPERATE_TOWER, target: towers[0] };
       }
@@ -334,10 +335,11 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
 
   // Priority 8: Regen source when depleted (100 ops = instant regen)
   if (powers.includes(PWR_REGEN_SOURCE) && ctx.ops >= 100) {
-    const depletedSource = cachedRoomFind(ctx.room, FIND_SOURCES, {
+    const depletedSources = cachedRoomFind(ctx.room, FIND_SOURCES, {
       filter: (s: Source) => s.energy === 0 && s.ticksToRegeneration > 100,
       filterKey: 'depletedSource'
-    })[0];
+    }) as Source[];
+    const depletedSource = depletedSources[0];
     if (depletedSource) {
       return { type: "usePower", power: PWR_REGEN_SOURCE, target: depletedSource };
     }

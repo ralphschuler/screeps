@@ -130,14 +130,16 @@ export function findBestRepairTarget(room: Room): Structure | null {
   const structures = cachedRoomFind(room, FIND_STRUCTURES, {
     filter: (s: Structure) => s.hits < s.hitsMax && s.structureType !== STRUCTURE_WALL && s.structureType !== STRUCTURE_RAMPART,
     filterKey: 'damagedStructures'
-  });
+  }) as Structure[];
 
   if (structures.length === 0) return null;
 
   // Sort by damage percentage (guard against zero hitsMax, though it should never happen)
-  return structures.sort((a, b) => {
+  const sorted = structures.sort((a, b) => {
     const ratioA = a.hitsMax > 0 ? a.hits / a.hitsMax : 0;
     const ratioB = b.hitsMax > 0 ? b.hits / b.hitsMax : 0;
     return ratioA - ratioB;
-  })[0] ?? null;
+  });
+  
+  return sorted[0] ?? null;
 }
