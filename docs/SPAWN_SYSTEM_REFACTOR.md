@@ -11,17 +11,17 @@ Before:
 packages/screeps-bot/src/logic/spawn.ts (1,783 lines)
 
 After:
-packages/screeps-bot/src/logic/spawn.ts (147 lines) - Re-export layer
-packages/screeps-bot/src/spawning/roleDefinitions.ts (465 lines)
-packages/screeps-bot/src/spawning/spawnPriority.ts (201 lines)
-packages/screeps-bot/src/spawning/spawnNeedsAnalyzer.ts (449 lines)
-packages/screeps-bot/src/spawning/bootstrapManager.ts (205 lines)
-packages/screeps-bot/src/spawning/spawnQueueManager.ts (445 lines)
+packages/screeps-bot/src/logic/spawn.ts (145 lines) - Re-export layer
+packages/screeps-bot/src/spawning/roleDefinitions.ts (474 lines)
+packages/screeps-bot/src/spawning/spawnPriority.ts (204 lines)
+packages/screeps-bot/src/spawning/spawnNeedsAnalyzer.ts (484 lines)
+packages/screeps-bot/src/spawning/bootstrapManager.ts (202 lines)
+packages/screeps-bot/src/spawning/spawnQueueManager.ts (430 lines)
 ```
 
 ### Module Responsibilities
 
-#### 1. roleDefinitions.ts (465 lines)
+#### 1. roleDefinitions.ts (474 lines)
 **Purpose**: Defines all creep role body templates and spawn configurations
 
 **Exports**:
@@ -35,7 +35,7 @@ packages/screeps-bot/src/spawning/spawnQueueManager.ts (445 lines)
 - Template creation with energy requirements
 - Role priorities and maxPerRoom limits
 
-#### 2. spawnPriority.ts (201 lines)
+#### 2. spawnPriority.ts (204 lines)
 **Purpose**: Calculates dynamic spawn priorities based on room state
 
 **Exports**:
@@ -47,7 +47,7 @@ packages/screeps-bot/src/spawning/spawnQueueManager.ts (445 lines)
 - `defenderManager` for threat-based priority
 - `memoryManager` for cluster/focus room data
 
-#### 3. spawnNeedsAnalyzer.ts (449 lines)
+#### 3. spawnNeedsAnalyzer.ts (484 lines)
 **Purpose**: Determines which roles need spawning based on room conditions
 
 **Exports**:
@@ -65,7 +65,7 @@ packages/screeps-bot/src/spawning/spawnQueueManager.ts (445 lines)
 - Resource request validation (inter-room carriers, cross-shard carriers)
 - Focus room upgrader scaling
 
-#### 4. bootstrapManager.ts (205 lines)
+#### 4. bootstrapManager.ts (202 lines)
 **Purpose**: Handles emergency recovery and early game spawning
 
 **Exports**:
@@ -81,7 +81,7 @@ packages/screeps-bot/src/spawning/spawnQueueManager.ts (445 lines)
 - Prevents deadlock in energy-depleted states
 - Ensures minimum viable economy
 
-#### 5. spawnQueueManager.ts (445 lines)
+#### 5. spawnQueueManager.ts (430 lines)
 **Purpose**: Main spawn coordination and execution
 
 **Exports**:
@@ -99,7 +99,7 @@ packages/screeps-bot/src/spawning/spawnQueueManager.ts (445 lines)
 - Comprehensive spawn failure logging
 - Kernel event emission (spawn.completed, spawn.emergency)
 
-#### 6. spawn.ts (147 lines)
+#### 6. spawn.ts (145 lines)
 **Purpose**: Backward compatibility layer
 
 **Content**:
@@ -113,16 +113,16 @@ packages/screeps-bot/src/spawning/spawnQueueManager.ts (445 lines)
 
 ### Size Reduction
 - **Before**: 1,783 lines in single file
-- **After**: 147 lines + 5 modules (1,765 lines total)
-- **Main file reduction**: 92% (1,783 → 147 lines)
-- **Average module size**: 353 lines (well under 400 line target)
+- **After**: 145 lines + 5 modules (1,794 lines total)
+- **Main file reduction**: 92% (1,783 → 145 lines)
+- **Average module size**: 359 lines (well under 500 line target)
 
 ### Largest Modules
-1. spawnNeedsAnalyzer.ts - 449 lines (role need logic)
-2. roleDefinitions.ts - 465 lines (25+ role definitions)
-3. spawnQueueManager.ts - 445 lines (main coordination)
-4. bootstrapManager.ts - 205 lines (emergency logic)
-5. spawnPriority.ts - 201 lines (priority calculation)
+1. spawnNeedsAnalyzer.ts - 484 lines (role need logic)
+2. roleDefinitions.ts - 474 lines (25+ role definitions)
+3. spawnQueueManager.ts - 430 lines (main coordination)
+4. spawnPriority.ts - 204 lines (priority calculation)
+5. bootstrapManager.ts - 202 lines (emergency logic)
 
 ### Complexity Distribution
 - **roleDefinitions.ts**: Low complexity (data definitions)

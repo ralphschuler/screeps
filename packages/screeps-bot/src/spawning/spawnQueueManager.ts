@@ -165,9 +165,7 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
     const activeCounts = countCreepsByRole(room.name, true);
     const totalCounts = countCreepsByRole(room.name, false);
     const activeLarva = activeCounts.get("larvaWorker") ?? 0;
-    const totalLarva = totalCounts.get("larvaWorker") ?? 0;
     const activeHarvest = activeCounts.get("harvester") ?? 0;
-    const totalHarvest = totalCounts.get("harvester") ?? 0;
     
     logger.info(
       `BOOTSTRAP MODE: ${getEnergyProducerCount(activeCounts)} active energy producers ` +
