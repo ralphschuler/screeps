@@ -11,7 +11,7 @@
  * Addresses Issue: #17
  */
 
-import type { StructurePlacement } from "./blueprints";
+import type { StructurePlacement } from "./blueprints/types";
 import { createLogger } from "../core/logger";
 
 const logger = createLogger("ExtensionGenerator");
