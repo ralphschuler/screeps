@@ -13,7 +13,7 @@ import {
   ECONOMIC_MATURITY_BLUEPRINT,
   WAR_READY_BLUEPRINT,
   COMPACT_BUNKER_BLUEPRINT
-} from "../../src/layouts/blueprints";
+} from "../../src/layouts/blueprints/index";
 
 /**
  * Test suite for automated blueprint selection and validation
