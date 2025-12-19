@@ -4,9 +4,10 @@
   "description": "Chemistry and lab management system for Screeps - reaction chains, boost production, and lab coordination",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "private": true,
+  "private": false,
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "mocha test/**/*.test.ts"
   },
   "keywords": [
     "screeps",
@@ -16,7 +17,7 @@
     "boosts",
     "typescript"
   ],
-  "author": "",
+  "author": "Ralph Schuler",
   "license": "Unlicense",
   "devDependencies": {
     "@types/chai": "^4.1.6",

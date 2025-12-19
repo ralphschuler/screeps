@@ -210,13 +210,11 @@ export class BoostManager {
       getBoostConfig("ranger"),
       getBoostConfig("healer"),
       getBoostConfig("siegeUnit")
-    ].filter(c => c && swarm.danger >= c.minDanger);
+    ].filter((c): c is NonNullable<typeof c> => c !== undefined && swarm.danger >= c.minDanger);
 
     for (const config of allConfigs) {
-      if (config) {
-        for (const boost of config.boosts) {
-          requiredBoosts.add(boost);
-        }
+      for (const boost of config.boosts) {
+        requiredBoosts.add(boost);
       }
     }
 
