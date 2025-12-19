@@ -1,55 +1,15 @@
 /**
- * Boost Manager - Creep Boosting System
+ * Boost Manager - Creep Boosting System (Adapter)
  *
- * Manages creep boosting:
- * - Lab pre-loading with boost compounds
- * - Creep boosting before role execution
- * - Boost decisions based on posture/danger
- * - Boost cost analysis with ROI calculation
+ * Adapter layer that bridges bot-specific dependencies with the
+ * @ralphschuler/screeps-chemistry package
  *
  * Addresses Issue: #23
  */
 
 import type { SwarmCreepMemory, SwarmState } from "../memory/schemas";
 import { logger } from "../core/logger";
-
-/**
- * Boost configuration for a role
- */
-export interface BoostConfig {
-  /** Role name */
-  role: string;
-  /** Required boosts */
-  boosts: ResourceConstant[];
-  /** Minimum danger level to boost */
-  minDanger: number;
-}
-
-/**
- * Default boost configurations
- */
-const BOOST_CONFIGS: BoostConfig[] = [
-  {
-    role: "soldier",
-    boosts: [RESOURCE_CATALYZED_UTRIUM_ACID, RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE],
-    minDanger: 2
-  },
-  {
-    role: "ranger",
-    boosts: [RESOURCE_CATALYZED_KEANIUM_ALKALIDE, RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE],
-    minDanger: 2
-  },
-  {
-    role: "healer",
-    boosts: [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE, RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE],
-    minDanger: 2
-  },
-  {
-    role: "siegeUnit",
-    boosts: [RESOURCE_CATALYZED_GHODIUM_ACID, RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE],
-    minDanger: 1
-  }
-];
+import { calculateBoostCost, getBoostConfig } from "@ralphschuler/screeps-chemistry";
 
 /**
  * Map error codes to readable strings
@@ -74,7 +34,7 @@ function getBoostErrorMessage(code: ScreepsReturnCode): string {
 }
 
 /**
- * Boost Manager Class
+ * Boost Manager Class (Adapter)
  */
 export class BoostManager {
   /**
@@ -89,7 +49,7 @@ export class BoostManager {
     }
 
     // Get boost config for role
-    const config = BOOST_CONFIGS.find(c => c.role === memory.role);
+    const config = getBoostConfig(memory.role);
     if (!config) {
       return false; // No boost config for this role
     }
@@ -124,7 +84,7 @@ export class BoostManager {
     const memory = creep.memory as unknown as SwarmCreepMemory;
 
     // Get boost config
-    const config = BOOST_CONFIGS.find(c => c.role === memory.role);
+    const config = getBoostConfig(memory.role);
     if (!config) return false;
 
     // Find labs with required boosts
@@ -184,7 +144,7 @@ export class BoostManager {
    * Check if boost labs are ready for a specific role
    */
   public areBoostLabsReady(room: Room, role: string): boolean {
-    const config = BOOST_CONFIGS.find(c => c.role === role);
+    const config = getBoostConfig(role);
     if (!config) return true; // No boost config = ready
 
     const labs = room.find(FIND_MY_STRUCTURES, {
@@ -204,7 +164,7 @@ export class BoostManager {
    * Get missing boosts for a role
    */
   public getMissingBoosts(room: Room, role: string): ResourceConstant[] {
-    const config = BOOST_CONFIGS.find(c => c.role === role);
+    const config = getBoostConfig(role);
     if (!config) return [];
 
     const labs = room.find(FIND_MY_STRUCTURES, {
@@ -245,11 +205,16 @@ export class BoostManager {
 
     // Load boost compounds into labs
     const requiredBoosts = new Set<ResourceConstant>();
-    for (const config of BOOST_CONFIGS) {
-      if (swarm.danger >= config.minDanger) {
-        for (const boost of config.boosts) {
-          requiredBoosts.add(boost);
-        }
+    const allConfigs = [
+      getBoostConfig("soldier"),
+      getBoostConfig("ranger"),
+      getBoostConfig("healer"),
+      getBoostConfig("siegeUnit")
+    ].filter((c): c is NonNullable<typeof c> => c !== undefined && swarm.danger >= c.minDanger);
+
+    for (const config of allConfigs) {
+      for (const boost of config.boosts) {
+        requiredBoosts.add(boost);
       }
     }
 
@@ -274,13 +239,7 @@ export class BoostManager {
    * Returns total mineral and energy cost for all boosts
    */
   public calculateBoostCost(role: string, bodySize: number): { mineral: number; energy: number } {
-    const config = BOOST_CONFIGS.find(c => c.role === role);
-    if (!config) return { mineral: 0, energy: 0 };
-
-    const mineralCost = bodySize * 30 * config.boosts.length; // 30 mineral per part
-    const energyCost = bodySize * 20 * config.boosts.length; // 20 energy per part
-
-    return { mineral: mineralCost, energy: energyCost };
+    return calculateBoostCost(role, bodySize);
   }
 
   /**
@@ -294,7 +253,7 @@ export class BoostManager {
     expectedLifetime: number,
     dangerLevel: number
   ): { worthwhile: boolean; roi: number; reasoning: string } {
-    const config = BOOST_CONFIGS.find(c => c.role === role);
+    const config = getBoostConfig(role);
     if (!config) {
       return { worthwhile: false, roi: 0, reasoning: "No boost config for role" };
     }
@@ -305,17 +264,11 @@ export class BoostManager {
     const totalCost = cost.mineral + cost.energy * 0.1;
 
     // Calculate expected gains based on actual Screeps mechanics
-    // Assumptions:
-    // - Relevant body parts are boosted with T3 compounds (4x multiplier)
-    // - Creep survives for expectedLifetime ticks
-    // - Per-tick effects based on Screeps documentation
     let expectedGain = 0;
 
     // Different roles have different boost effectiveness
     switch (role) {
       case "soldier": {
-        // ATTACK part: 30 dmg/tick base, XUH2O: x4 = 120 dmg/tick
-        // Assume 1/3 of body parts are ATTACK (typical ratio)
         const attackParts = Math.floor(bodySize / 3);
         const baseDamage = 30;
         const boostMultiplier = 4; // XUH2O
@@ -323,8 +276,6 @@ export class BoostManager {
         break;
       }
       case "ranger": {
-        // RANGED_ATTACK part: 10 dmg/tick base, XKHO2: x4 = 40 dmg/tick
-        // Assume 1/3 of body parts are RANGED_ATTACK
         const rangedParts = Math.floor(bodySize / 3);
         const baseDamage = 10;
         const boostMultiplier = 4; // XKHO2
@@ -332,8 +283,6 @@ export class BoostManager {
         break;
       }
       case "healer": {
-        // HEAL part: 12 heal/tick base, XLHO2: x4 = 48 heal/tick
-        // Assume 1/3 of body parts are HEAL
         const healParts = Math.floor(bodySize / 3);
         const baseHeal = 12;
         const boostMultiplier = 4; // XLHO2
@@ -341,8 +290,6 @@ export class BoostManager {
         break;
       }
       case "siegeUnit": {
-        // WORK part (dismantle): 50/tick base, XGH2O: x4 = 200/tick
-        // Assume 1/3 of body parts are WORK
         const workParts = Math.floor(bodySize / 3);
         const baseDismantle = 50;
         const boostMultiplier = 4; // XGH2O
@@ -350,7 +297,6 @@ export class BoostManager {
         break;
       }
       default: {
-        // Fallback for unknown roles: assume moderate gain
         expectedGain = bodySize * 10 * expectedLifetime;
       }
     }
