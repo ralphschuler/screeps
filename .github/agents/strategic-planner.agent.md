@@ -27,6 +27,7 @@ The bot has to be Highly performant, modular and human readable.
 7. **Cleanup** unused and repeating code.
 8. **Framework** system. (a side quest for this bot is to provide a framework for easy bot development.
 9. **Testing** using the screepsmod-testing und performanceserver (packages/screeps/server)
+10. **Close** outdated issues and PRs.
 
 ## AVAILABLE MCP TOOLS
 
