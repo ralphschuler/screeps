@@ -349,10 +349,6 @@ export { evolutionManager, postureManager } from "./logic/evolution";
 export { roomVisualizer } from "./visuals/roomVisualizer";
 export { mapVisualizer } from "./visuals/mapVisualizer";
 export { eventBus } from "./core/events";
-// Legacy exports for backward compatibility (deprecated - use unifiedStats)
-export { profiler } from "./core/profiler";
-export { statsManager } from "./core/stats";
-export { memorySegmentStats } from "./core/memorySegmentStats";
 export * from "./memory/schemas";
 export * from "./config";
 export * from "./core/processDecorators";
