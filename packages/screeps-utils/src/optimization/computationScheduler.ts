@@ -336,11 +336,18 @@ export class ComputationScheduler {
 // =============================================================================
 
 /**
+ * Global object type with computation scheduler attached
+ */
+interface GlobalWithScheduler {
+  _computationScheduler?: ComputationScheduler;
+}
+
+/**
  * Get or create the global scheduler instance.
  * Stored in global object to persist across ticks.
  */
 function getGlobalScheduler(): ComputationScheduler {
-  const g = global as any;
+  const g = global as GlobalWithScheduler;
   if (!g._computationScheduler) {
     g._computationScheduler = new ComputationScheduler();
   }

@@ -32,7 +32,7 @@ import { cachedRoomFind } from "./roomFindCache";
 /**
  * Cached data entry with TTL
  */
-interface CacheEntry<T = any> {
+interface CacheEntry<T = unknown> {
   /** Cached value */
   value: T;
   /** Tick when cached */
@@ -49,6 +49,13 @@ interface RoleCacheStore {
   tick: number;
   /** Cache entries: roleType -> creepName -> dataKey -> entry */
   entries: Map<string, Map<string, Map<string, CacheEntry>>>;
+}
+
+/**
+ * Global object type with role cache attached
+ */
+interface GlobalWithRoleCache {
+  _roleCache?: RoleCacheStore;
 }
 
 // =============================================================================
@@ -93,7 +100,7 @@ const DEFAULT_TTL: Record<string, number> = {
  * Get or initialize the cache store
  */
 function getCacheStore(): RoleCacheStore {
-  const g = global as any;
+  const g = global as GlobalWithRoleCache;
   if (!g._roleCache || g._roleCache.tick !== Game.time) {
     // Clear entries each tick
     g._roleCache = {
@@ -149,7 +156,7 @@ function getCreepCache(roleType: string, creepName: string): Map<string, CacheEn
  *   if (structure) creep.repair(structure);
  * }
  */
-export function getRoleCache<T = any>(
+export function getRoleCache<T = unknown>(
   creep: Creep,
   roleType: string,
   dataKey: string
@@ -185,7 +192,7 @@ export function getRoleCache<T = any>(
  * // Cache with custom TTL
  * setRoleCache(creep, "miner", "assignedSource", sourceId, 200);
  */
-export function setRoleCache<T = any>(
+export function setRoleCache<T = unknown>(
   creep: Creep,
   roleType: string,
   dataKey: string,
@@ -255,7 +262,7 @@ export function clearRoleTypeCache(roleType: string): void {
  * Primarily for testing.
  */
 export function clearAllRoleCache(): void {
-  const g = global as any;
+  const g = global as GlobalWithRoleCache;
   if (g._roleCache) {
     g._roleCache.entries.clear();
   }

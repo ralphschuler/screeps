@@ -10,15 +10,20 @@ import {
 } from '../../src/selection/weightedSelection';
 import { resetRandom } from '../../src/selection/random';
 
+declare global {
+  // eslint-disable-next-line no-var
+  var Game: { time: number };
+}
+
 // Mock Game global
-(global as any).Game = {
+global.Game = {
   time: 1000
 };
 
 describe('Weighted Selection Utilities', () => {
   beforeEach(() => {
     resetRandom();
-    (global as any).Game.time = 1000;
+    global.Game.time = 1000;
   });
 
   describe('weightedSelection()', () => {
@@ -33,7 +38,7 @@ describe('Weighted Selection Utilities', () => {
 
     it('should return undefined for empty array', () => {
       const selected = weightedSelection([]);
-      expect(selected).to.be.undefined;
+      expect(selected).to.equal(undefined);
     });
 
     it('should ignore zero and negative weights', () => {
@@ -52,7 +57,7 @@ describe('Weighted Selection Utilities', () => {
         { key: 'b', weight: -1 }
       ];
       const selected = weightedSelection(entries);
-      expect(selected).to.be.undefined;
+      expect(selected).to.equal(undefined);
     });
   });
 
@@ -139,7 +144,7 @@ describe('Weighted Selection Utilities', () => {
 
     it('should return undefined for empty array', () => {
       const highest = getHighest([]);
-      expect(highest).to.be.undefined;
+      expect(highest).to.equal(undefined);
     });
   });
 
@@ -167,7 +172,7 @@ describe('Weighted Selection Utilities', () => {
 
     it('should return undefined for empty array', () => {
       const lowest = getLowest([]);
-      expect(lowest).to.be.undefined;
+      expect(lowest).to.equal(undefined);
     });
   });
 });

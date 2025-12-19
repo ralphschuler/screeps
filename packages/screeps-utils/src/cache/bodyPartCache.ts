@@ -51,10 +51,17 @@ interface BodyPartCacheStore {
 // =============================================================================
 
 /**
+ * Global object type with body part cache attached
+ */
+interface GlobalWithBodyPartCache {
+  _bodyPartCache?: BodyPartCacheStore;
+}
+
+/**
  * Get or initialize the cache store
  */
 function getCacheStore(): BodyPartCacheStore {
-  const g = global as any;
+  const g = global as GlobalWithBodyPartCache;
   if (!g._bodyPartCache || g._bodyPartCache.tick !== Game.time) {
     g._bodyPartCache = {
       tick: Game.time,
@@ -241,7 +248,7 @@ export function getBodyPartCacheStats(): {
  * Only needed for testing.
  */
 export function clearBodyPartCache(): void {
-  const g = global as any;
+  const g = global as GlobalWithBodyPartCache;
   if (g._bodyPartCache) {
     g._bodyPartCache.data.clear();
   }

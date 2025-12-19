@@ -1,15 +1,20 @@
 import { expect } from 'chai';
 import { random, randomInt, shuffle, pick, resetRandom } from '../../src/selection/random';
 
+declare global {
+  // eslint-disable-next-line no-var
+  var Game: { time: number };
+}
+
 // Mock Game global
-(global as any).Game = {
+global.Game = {
   time: 1000
 };
 
 describe('Random Utilities', () => {
   beforeEach(() => {
     resetRandom();
-    (global as any).Game.time = 1000;
+    global.Game.time = 1000;
   });
 
   describe('random()', () => {
@@ -30,7 +35,7 @@ describe('Random Utilities', () => {
 
     it('should change when Game.time changes', () => {
       const value1 = random();
-      (global as any).Game.time = 1001;
+      global.Game.time = 1001;
       resetRandom();
       const value2 = random();
       expect(value1).to.not.equal(value2);
@@ -41,7 +46,7 @@ describe('Random Utilities', () => {
     it('should return an integer in range [min, max)', () => {
       for (let i = 0; i < 100; i++) {
         resetRandom();
-        (global as any).Game.time = 1000 + i;
+        global.Game.time = 1000 + i;
         const value = randomInt(0, 10);
         expect(value).to.be.a('number');
         expect(value).to.be.at.least(0);
@@ -76,11 +81,11 @@ describe('Random Utilities', () => {
     it('should produce different orders for different ticks', () => {
       const arr = [1, 2, 3, 4, 5];
       resetRandom();
-      (global as any).Game.time = 1000;
+      global.Game.time = 1000;
       const shuffled1 = shuffle(arr);
       
       resetRandom();
-      (global as any).Game.time = 1001;
+      global.Game.time = 1001;
       const shuffled2 = shuffle(arr);
       
       // With high probability, they should be different
@@ -98,7 +103,7 @@ describe('Random Utilities', () => {
 
     it('should return undefined for empty array', () => {
       const picked = pick([]);
-      expect(picked).to.be.undefined;
+      expect(picked).to.equal(undefined);
     });
 
     it('should be deterministic for the same tick', () => {

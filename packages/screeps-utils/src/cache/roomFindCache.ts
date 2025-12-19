@@ -31,7 +31,7 @@
 /**
  * Cached find result with metadata
  */
-interface CachedFindResult<T = any> {
+interface CachedFindResult<T = unknown> {
   /** Cached results */
   results: T[];
   /** Tick when cached */
@@ -54,6 +54,13 @@ interface RoomFindCacheStore {
     misses: number;
     invalidations: number;
   };
+}
+
+/**
+ * Global object type with room find cache attached
+ */
+interface GlobalWithRoomFindCache {
+  _roomFindCache?: RoomFindCacheStore;
 }
 
 // =============================================================================
@@ -101,7 +108,7 @@ const DEFAULT_TTL: Record<string, number> = {
  * Get or initialize the cache store
  */
 function getCacheStore(): RoomFindCacheStore {
-  const g = global as any;
+  const g = global as GlobalWithRoomFindCache;
   if (!g._roomFindCache || g._roomFindCache.tick !== Game.time) {
     // Preserve stats across ticks, but clear entries
     const prevStats = g._roomFindCache?.stats ?? { hits: 0, misses: 0, invalidations: 0 };
@@ -156,7 +163,7 @@ export function cachedRoomFind<T>(
   room: Room,
   findType: FindConstant,
   opts?: {
-    filter?: any | ((obj: T) => boolean);
+    filter?: ((obj: T) => boolean);
     filterKey?: string;
     ttl?: number;
   }
@@ -183,9 +190,9 @@ export function cachedRoomFind<T>(
   let results: T[];
   
   if (opts?.filter) {
-    results = room.find(findType as any, { filter: opts.filter  }) as T[];
+    results = room.find(findType as FindConstant, { filter: opts.filter }) as T[];
   } else {
-    results = room.find(findType as any) as T[];
+    results = room.find(findType as FindConstant) as T[];
   }
   
   // Store in cache
@@ -209,7 +216,6 @@ export function invalidateRoomCache(roomName: string): void {
   const cache = getCacheStore();
   const roomCache = cache.entries.get(roomName);
   if (roomCache) {
-    const entriesCount = roomCache.size;
     cache.entries.delete(roomName);
     cache.stats.invalidations++;
   }
@@ -312,7 +318,7 @@ export function getRoomFindCacheStats(): {
  * Primarily for testing, rarely needed in production.
  */
 export function clearRoomFindCache(): void {
-  const g = global as any;
+  const g = global as GlobalWithRoomFindCache;
   if (g._roomFindCache) {
     g._roomFindCache.entries.clear();
     g._roomFindCache.stats = { hits: 0, misses: 0, invalidations: 0 };
@@ -375,12 +381,12 @@ export function cachedFindMyStructures<T extends Structure>(
   structureType?: StructureConstant
 ): T[] {
   if (structureType) {
-    return cachedRoomFind(room, FIND_MY_STRUCTURES, {
-      filter: (s: Structure) => s.structureType === structureType,
+    return cachedRoomFind<T>(room, FIND_MY_STRUCTURES, {
+      filter: (s: T) => s.structureType === structureType,
       filterKey: structureType
-    }) ;
+    });
   }
-  return cachedRoomFind(room, FIND_MY_STRUCTURES) ;
+  return cachedRoomFind<T>(room, FIND_MY_STRUCTURES);
 }
 
 /**

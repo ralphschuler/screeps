@@ -31,7 +31,7 @@ export class ErrorMapper {
 
   public static get consumer(): SourceMapConsumer {
     if (this._consumer == null) {
-      // @ts-check
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const rawSourceMap = require("main.js.map");
       // Parse the source map if it's a string, otherwise use it directly
       let sourceMapData;

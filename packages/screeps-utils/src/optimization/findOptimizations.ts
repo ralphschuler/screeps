@@ -25,7 +25,14 @@
  */
 interface FindInRangeCache {
   tick: number;
-  results: Map<string, any[]>;
+  results: Map<string, RoomObject[]>;
+}
+
+/**
+ * Global object type with find cache attached
+ */
+interface GlobalWithFindCache {
+  _findInRangeCache?: FindInRangeCache;
 }
 
 // =============================================================================
@@ -36,7 +43,7 @@ interface FindInRangeCache {
  * Get or initialize findInRange cache
  */
 function getFindInRangeCache(): FindInRangeCache {
-  const g = global as any;
+  const g = global as GlobalWithFindCache;
   if (!g._findInRangeCache || g._findInRangeCache.tick !== Game.time) {
     g._findInRangeCache = {
       tick: Game.time,
@@ -325,7 +332,7 @@ export function getFindOptimizationStats(): {
  * Only needed for testing.
  */
 export function clearFindCache(): void {
-  const g = global as any;
+  const g = global as GlobalWithFindCache;
   if (g._findInRangeCache) {
     g._findInRangeCache.results.clear();
   }

@@ -38,7 +38,7 @@
  */
 interface CacheEntry {
   /** Cached object value */
-  value: any;
+  value: _HasId | null;
   /** Tick when this entry expires */
   expiresAt: number;
   /** Last tick this entry was accessed (for LRU) */
@@ -68,12 +68,19 @@ interface ObjectCacheStore {
   /** Current game tick */
   tick: number;
   /** Cached objects by ID with TTL */
-  objects: Map<Id<any>, CacheEntry>;
+  objects: Map<Id<_HasId>, CacheEntry>;
   /** Cache statistics */
   stats: {
     hits: number;
     misses: number;
   };
+}
+
+/**
+ * Global object type with object cache attached
+ */
+interface GlobalWithObjectCache {
+  _objectCache?: ObjectCacheStore;
 }
 
 // =============================================================================
@@ -111,7 +118,7 @@ const EVICTION_THRESHOLD = 12000;
  * Statistics persist indefinitely until manually reset.
  */
 function getCacheStore(): ObjectCacheStore {
-  const g = global as any;
+  const g = global as GlobalWithObjectCache;
   if (!g._objectCache) {
     g._objectCache = {
       tick: Game.time,
@@ -127,24 +134,29 @@ function getCacheStore(): ObjectCacheStore {
 /**
  * Determine TTL for an object based on its type
  */
-function getTTL(obj: any): number {
+function getTTL(
+  obj: _HasId | null | undefined
+): number {
   if (!obj) return DEFAULT_TTL;
-  
+
+  // Try to cast to RoomObject for type checking
+  const roomObj = obj as unknown as RoomObject;
+
   // Check for structure types
   if ('structureType' in obj) {
     return STRUCTURE_TTL;
   }
-  
+
   // Check for sources and minerals
-  if (obj instanceof Source || obj instanceof Mineral) {
+  if (roomObj instanceof Source || roomObj instanceof Mineral) {
     return RESOURCE_TTL;
   }
-  
+
   // Check for creeps
-  if (obj instanceof Creep) {
+  if (roomObj instanceof Creep) {
     return CREEP_TTL;
   }
-  
+
   return DEFAULT_TTL;
 }
 
@@ -411,7 +423,6 @@ export function warmCache(): void {
     }
   }
   
-  const cpuUsed = Game.cpu.getUsed() - startCpu;
   // Cache warming complete
 }
 
@@ -420,7 +431,7 @@ export function warmCache(): void {
  * Only needed for testing.
  */
 export function clearObjectCache(): void {
-  const g = global as any;
+  const g = global as GlobalWithObjectCache;
   if (g._objectCache) {
     g._objectCache.objects.clear();
     g._objectCache.stats = { hits: 0, misses: 0 };
