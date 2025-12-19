@@ -45,7 +45,7 @@ export function cachedRoomFind<T>(
 ): T[] {
   const key = getCacheKey(room.name, findType, opts?.filterKey);
   
-  return globalCache.get<T[]>(key, {
+  const result = globalCache.get<T[]>(key, {
     namespace: NAMESPACE,
     ttl: opts?.ttl ?? DEFAULT_TTL[findType] ?? 20,
     compute: () => {
@@ -55,7 +55,10 @@ export function cachedRoomFind<T>(
         return room.find(findType as any) as T[];
       }
     }
-  })!;
+  });
+  
+  // Return empty array if undefined (shouldn't happen with compute function)
+  return result ?? [];
 }
 
 export function invalidateRoomCache(roomName: string): void {

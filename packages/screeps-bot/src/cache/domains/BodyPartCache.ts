@@ -72,12 +72,14 @@ function computeBodyPartData(creep: Creep): BodyPartData {
  * Get body part data from cache or compute
  */
 function getBodyPartData(creep: Creep): BodyPartData {
-  return globalCache.get<BodyPartData>(creep.name, {
+  const result = globalCache.get<BodyPartData>(creep.name, {
     namespace: NAMESPACE,
-    strategy: 'tick',
-    ttl: 1,
+    ttl: 1, // Per-tick cache
     compute: () => computeBodyPartData(creep)
-  })!;
+  });
+  
+  // Should always return a value due to compute function
+  return result ?? computeBodyPartData(creep);
 }
 
 /**

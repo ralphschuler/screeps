@@ -109,7 +109,8 @@ export class CacheManager {
     stats.hits++;
     entry.hits++;
     entry.lastAccessed = Game.time;
-    store.set(fullKey, entry);
+    // Note: Don't call store.set() on every hit to avoid expensive writes
+    // The in-memory entry is already updated
 
     return entry.value as T;
   }
@@ -124,8 +125,12 @@ export class CacheManager {
 
     // Check max size and evict if needed
     if (options?.maxSize && store.size() >= options.maxSize) {
-      this.evictLRU(namespace, store);
-      this.getStats(namespace).evictions++;
+      // Evict 10% of cache to reduce eviction frequency
+      const toEvict = Math.max(1, Math.floor(options.maxSize * 0.1));
+      for (let i = 0; i < toEvict; i++) {
+        this.evictLRU(namespace, store);
+      }
+      this.getStats(namespace).evictions += toEvict;
     }
 
     const entry: CacheEntry<T> = {
@@ -178,8 +183,12 @@ export class CacheManager {
       
       const keys = store.keys();
       for (const key of keys) {
-        // Extract the actual key (remove namespace prefix)
-        const actualKey = key.substring(key.indexOf(':') + 1);
+        // Extract the actual key after namespace prefix
+        // Format: "namespace:actualKey" so we need to skip first ':'
+        const colonIndex = key.indexOf(':');
+        if (colonIndex === -1) continue;
+        
+        const actualKey = key.substring(colonIndex + 1);
         if (pattern.test(actualKey)) {
           store.delete(key);
           count++;
