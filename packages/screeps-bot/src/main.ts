@@ -25,11 +25,6 @@ declare global {
       amount: number;
       scheduledTick: number;
     }>;
-    /** Alliance diplomacy tracking */
-    allianceDiplomacy?: {
-      playerReputations: Record<string, any>;
-      lastProcessedTick: number;
-    };
     /** SS2 Terminal Communications multi-packet queue */
     ss2PacketQueue?: Record<string, {
       terminalId: Id<StructureTerminal>;

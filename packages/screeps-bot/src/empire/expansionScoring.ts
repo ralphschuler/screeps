@@ -206,21 +206,13 @@ export function parseRoomName(roomName: string): { x: number; y: number; xDir: s
 
 /**
  * Check if a player is an ally
- * Checks the alliance configuration to determine if a username is in the allies list
  * 
  * @param username - The username to check for alliance status
- * @returns true if the username is in the allies list AND alliance system is enabled, false otherwise
+ * @returns Always returns false since alliance system has been removed
  */
 export function isAlly(username: string): boolean {
-  const config = getConfig();
-  
-  // If alliance system is disabled, no one is an ally
-  if (!config.alliance.enabled) {
-    return false;
-  }
-  
-  // Check if username is in the allies list (case-sensitive comparison)
-  return config.alliance.allies.includes(username);
+  // Alliance system removed - no allies
+  return false;
 }
 
 /**
