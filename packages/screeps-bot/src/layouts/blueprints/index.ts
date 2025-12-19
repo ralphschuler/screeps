@@ -12,6 +12,7 @@
  * - ✅ Blueprint import/export for sharing proven designs (JSON serialization)
  * 
  * TODO: Add dynamic blueprint generation for irregular terrain
+ Issue URL: https://github.com/ralphschuler/screeps/issues/794
  * Generate custom layouts when pre-made blueprints don't fit
  */
 
