@@ -289,8 +289,10 @@ export interface CreepStatsEntry {
 }
 
 /**
- * Role-specific efficiency metrics stored in creep memory
- * Used by creepMetrics.ts for tracking individual creep performance
+ * Role-specific efficiency metrics stored in creep memory.
+ * Used by creepMetrics.ts for tracking individual creep performance.
+ * 
+ * NOTE: Consolidated from legacy stats.ts - this is now the canonical definition.
  */
 export interface CreepMetrics {
   /** Total number of tasks completed (builds finished, upgrades done, etc.) */
