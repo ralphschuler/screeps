@@ -6,7 +6,6 @@
  */
 
 import { logger } from "./logger";
-import { statsManager } from "./stats";
 
 /**
  * Profiler memory schema
@@ -222,18 +221,6 @@ export class Profiler {
         data.peakCpu = Math.max(data.peakCpu, cpuValue);
         data.samples++;
         data.callsThisTick = measurements.length;
-      }
-
-      // Record to unified stats system
-      if (isRole) {
-        // Count creeps with this role
-        const roleCount = Object.values(Game.creeps).filter(c => {
-          const mem = c.memory as unknown as { role: string };
-          return mem.role === cleanName;
-        }).length;
-        statsManager.recordRole(cleanName, roleCount, cpuValue, measurements.length);
-      } else {
-        statsManager.recordSubsystem(cleanName, totalCpu, measurements.length);
       }
     }
 

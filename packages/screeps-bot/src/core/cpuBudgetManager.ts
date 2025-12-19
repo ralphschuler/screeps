@@ -10,7 +10,7 @@
  */
 
 import { logger } from "./logger";
-import { profiler } from "./profiler";
+import { unifiedStats } from "./unifiedStats";
 
 /**
  * Subsystem type
