@@ -1,5 +1,5 @@
 {
-  "require": ["ts-node/register/transpile-only", "tsconfig-paths/register"],
+  "require": ["ts-node/register/transpile-only"],
   "ui": "bdd",
   "reporter": "spec",
   "bail": true,
@@ -10,5 +10,8 @@
   "timeout": 5000,
   "exit": true,
   "spec": ["test/**/*.test.ts"],
-  "node-option": ["require=ts-node/register/transpile-only"]
+  "node-option": ["require=ts-node/register/transpile-only"],
+  "ts-node": {
+    "project": "./tsconfig.test.json"
+  }
 }
