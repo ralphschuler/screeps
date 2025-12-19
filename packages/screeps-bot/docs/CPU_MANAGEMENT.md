@@ -64,65 +64,69 @@ interface CpuBudgetConfig {
 
 **Strict Mode**: When enabled, the budget manager will skip remaining processing for subsystems that exceed their budget. In non-strict mode (default), violations are logged as warnings but processing continues.
 
-### 2. Profiler (`src/core/profiler.ts`)
+### 2. Unified Stats System (`src/core/unifiedStats.ts`)
 
-The Profiler measures CPU usage per room, subsystem, and role, maintaining rolling averages using exponential moving average (EMA).
+The Unified Stats System consolidates all statistics collection including CPU profiling, performance metrics, and monitoring. It measures CPU usage per room, subsystem, and role, maintaining rolling averages using exponential moving average (EMA).
 
 #### Usage
 
 ```typescript
-import { profiler } from './core/profiler';
+import { unifiedStats } from './core/unifiedStats';
+
+// Initialize (called once at bot startup)
+unifiedStats.initialize();
+
+// Start of tick
+unifiedStats.startTick();
 
 // Profile a room
-const startCpu = profiler.startRoom('W1N1');
+const startCpu = unifiedStats.startRoom('W1N1');
 // ... room logic ...
-profiler.endRoom('W1N1', startCpu);
+unifiedStats.endRoom('W1N1', startCpu);
 
 // Profile a subsystem
-const result = profiler.measureSubsystem('spawning', () => {
+const result = unifiedStats.measureSubsystem('spawning', () => {
   // Spawning logic here
   return spawnResult;
 });
 
-// Profile roles
-profiler.measureSubsystem('role:harvester', () => {
+// Profile roles (use role: prefix)
+unifiedStats.measureSubsystem('role:harvester', () => {
   // Harvester logic
 });
 
 // Finalize tick (call at end of main loop)
-profiler.finalizeTick();
+unifiedStats.finalizeTick();
 
-// Get profiling data
-const roomData = profiler.getRoomData('W1N1');
-console.log(`W1N1: avg=${roomData.avgCpu.toFixed(3)} peak=${roomData.peakCpu.toFixed(3)}`);
+// Get statistics snapshot
+const snapshot = unifiedStats.getSnapshot();
+console.log(`CPU: ${snapshot.cpu.used.toFixed(2)}/${snapshot.cpu.limit} (${snapshot.cpu.percent.toFixed(1)}%)`);
 
-const subsystemData = profiler.getSubsystemData('spawning');
-console.log(`Spawning: avg=${subsystemData.avgCpu.toFixed(3)}`);
-
-// Log summary (automatic at configured interval)
-profiler.logSummary();
-
-// Enable/disable profiling
-profiler.setEnabled(false);
-profiler.setEnabled(true);
+// Enable/disable stats collection
+unifiedStats.setEnabled(false);
+unifiedStats.setEnabled(true);
 
 // Reset all data
-profiler.reset();
+unifiedStats.reset();
 ```
 
 #### Configuration
 
 ```typescript
-interface ProfilerConfig {
-  smoothingFactor: number;   // Default: 0.1 (higher = more weight on recent)
-  enabled: boolean;          // Default: true
-  logInterval: number;       // Default: 100 (ticks between summaries, 0 = never)
+interface UnifiedStatsConfig {
+  enabled: boolean;              // Default: true
+  smoothingFactor: number;       // Default: 0.1 (higher = more weight on recent)
+  trackNativeCalls: boolean;     // Default: true
+  logInterval: number;           // Default: 100 (ticks between summaries, 0 = never)
+  segmentUpdateInterval: number; // Default: 10 (ticks between segment updates)
+  segmentId: number;             // Default: 90 (memory segment for stats)
+  maxHistoryPoints: number;      // Default: 1000 (max data points in history)
 }
 ```
 
 #### Exponential Moving Average (EMA)
 
-The profiler uses EMA for rolling averages:
+The unified stats system uses EMA for rolling averages:
 
 ```
 new_avg = old_avg * (1 - smoothingFactor) + new_value * smoothingFactor

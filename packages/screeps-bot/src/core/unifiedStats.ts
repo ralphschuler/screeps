@@ -289,6 +289,31 @@ export interface CreepStatsEntry {
 }
 
 /**
+ * Role-specific efficiency metrics stored in creep memory.
+ * Used by creepMetrics.ts for tracking individual creep performance.
+ * 
+ * NOTE: Consolidated from legacy stats.ts - this is now the canonical definition.
+ */
+export interface CreepMetrics {
+  /** Total number of tasks completed (builds finished, upgrades done, etc.) */
+  tasksCompleted: number;
+  /** Total energy/resources transferred to structures or other creeps */
+  energyTransferred: number;
+  /** Total energy harvested from sources */
+  energyHarvested: number;
+  /** Total construction progress contributed */
+  buildProgress: number;
+  /** Total repair progress contributed */
+  repairProgress: number;
+  /** Total upgrade progress contributed to controllers */
+  upgradeProgress: number;
+  /** Total damage dealt (for combat roles) */
+  damageDealt: number;
+  /** Total healing done (for healer roles) */
+  healingDone: number;
+}
+
+/**
  * Complete stats snapshot for a single tick
  */
 export interface StatsSnapshot {

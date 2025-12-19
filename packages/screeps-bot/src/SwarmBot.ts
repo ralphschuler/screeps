@@ -349,10 +349,40 @@ export { evolutionManager, postureManager } from "./logic/evolution";
 export { roomVisualizer } from "./visuals/roomVisualizer";
 export { mapVisualizer } from "./visuals/mapVisualizer";
 export { eventBus } from "./core/events";
-// Legacy exports for backward compatibility (deprecated - use unifiedStats)
-export { profiler } from "./core/profiler";
-export { statsManager } from "./core/stats";
+
+// Deprecated exports - redirect to unifiedStats with console warnings
+import { unifiedStats as _unifiedStats } from "./core/unifiedStats";
+import { memorySegmentStats as _memorySegmentStats } from "./core/memorySegmentStats";
+
+/**
+ * @deprecated Use unifiedStats instead. This export will be removed in a future version.
+ * profiler.ts has been consolidated into unifiedStats.ts for better performance and maintainability.
+ */
+export const profiler = new Proxy(_unifiedStats, {
+  get(target, prop) {
+    if (prop === Symbol.toStringTag) return "Profiler";
+    console.log(`[DEPRECATION WARNING] profiler.${String(prop)} is deprecated. Use unifiedStats.${String(prop)} instead.`);
+    return (target as any)[prop];
+  }
+});
+
+/**
+ * @deprecated Use unifiedStats instead. This export will be removed in a future version.
+ * stats.ts has been consolidated into unifiedStats.ts for better performance and maintainability.
+ */
+export const statsManager = new Proxy(_unifiedStats, {
+  get(target, prop) {
+    if (prop === Symbol.toStringTag) return "StatsManager";
+    console.log(`[DEPRECATION WARNING] statsManager.${String(prop)} is deprecated. Use unifiedStats.${String(prop)} instead.`);
+    return (target as any)[prop];
+  }
+});
+
+/**
+ * @deprecated memorySegmentStats is still available but consider using unifiedStats for most use cases.
+ */
 export { memorySegmentStats } from "./core/memorySegmentStats";
+
 export * from "./memory/schemas";
 export * from "./config";
 export * from "./core/processDecorators";

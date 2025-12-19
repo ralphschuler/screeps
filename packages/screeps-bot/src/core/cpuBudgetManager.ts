@@ -10,7 +10,6 @@
  */
 
 import { logger } from "./logger";
-import { profiler } from "./profiler";
 
 /**
  * Subsystem type

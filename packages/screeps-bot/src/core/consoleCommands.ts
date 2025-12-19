@@ -18,7 +18,7 @@ import { Command, commandRegistry, registerDecoratedCommands } from "./commandRe
 import { kernel } from "./kernel";
 import { LogLevel, configureLogger, getLoggerConfig } from "./logger";
 import { memorySegmentStats } from "./memorySegmentStats";
-import { profiler } from "./profiler";
+import { unifiedStats } from "./unifiedStats";
 import { getConfig, updateConfig } from "../config";
 import { roomVisualizer } from "../visuals/roomVisualizer";
 import { mapVisualizer } from "../visuals/mapVisualizer";
@@ -427,7 +427,7 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
     const config = getConfig();
     const newValue = !config.profiling;
     updateConfig({ profiling: newValue });
-    profiler.setEnabled(newValue);
+    unifiedStats.setEnabled(newValue);
     configureLogger({ cpuLogging: newValue });
     return `Profiling: ${newValue ? "ENABLED" : "DISABLED"}`;
   }
