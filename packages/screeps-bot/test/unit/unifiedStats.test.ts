@@ -410,4 +410,50 @@ describe("UnifiedStatsManager", function () {
       );
     });
   });
+
+  describe("CreepMetrics Interface", function () {
+    it("should validate CreepMetrics interface structure", function () {
+      // Import the interface type to ensure it exists and has the correct structure
+      const mockMetrics: import("../../src/core/unifiedStats").CreepMetrics = {
+        tasksCompleted: 5,
+        energyTransferred: 1000,
+        energyHarvested: 500,
+        buildProgress: 200,
+        repairProgress: 150,
+        upgradeProgress: 300,
+        damageDealt: 0,
+        healingDone: 0
+      };
+
+      // Verify all required properties exist
+      assert.equal(mockMetrics.tasksCompleted, 5);
+      assert.equal(mockMetrics.energyTransferred, 1000);
+      assert.equal(mockMetrics.energyHarvested, 500);
+      assert.equal(mockMetrics.buildProgress, 200);
+      assert.equal(mockMetrics.repairProgress, 150);
+      assert.equal(mockMetrics.upgradeProgress, 300);
+      assert.equal(mockMetrics.damageDealt, 0);
+      assert.equal(mockMetrics.healingDone, 0);
+    });
+
+    it("should support CreepMetrics in creep memory", function () {
+      // Simulate a creep with metrics in memory
+      const creepMemory: { _metrics?: import("../../src/core/unifiedStats").CreepMetrics } = {
+        _metrics: {
+          tasksCompleted: 3,
+          energyTransferred: 500,
+          energyHarvested: 250,
+          buildProgress: 100,
+          repairProgress: 0,
+          upgradeProgress: 150,
+          damageDealt: 0,
+          healingDone: 0
+        }
+      };
+
+      assert.isDefined(creepMemory._metrics);
+      assert.equal(creepMemory._metrics!.tasksCompleted, 3);
+      assert.equal(creepMemory._metrics!.energyHarvested, 250);
+    });
+  });
 });
