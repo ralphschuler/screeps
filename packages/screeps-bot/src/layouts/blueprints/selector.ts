@@ -9,6 +9,8 @@ import { ECONOMIC_MATURITY_BLUEPRINT } from "./definitions/economic-maturity";
 import { WAR_READY_BLUEPRINT } from "./definitions/war-ready";
 import { COMPACT_BUNKER_BLUEPRINT } from "./definitions/compact-bunker";
 import { findBestBlueprintAnchor, findBestSpawnPosition } from "./validator";
+import { getStructureLimits } from "./constants";
+import { addExtensionsToBlueprint } from "../extensionGenerator";
 
 /**
  * Get blueprint for evolution stage
@@ -33,7 +35,6 @@ export function getBlueprintForStage(stage: EvolutionStage): Blueprint {
  * Get blueprint for specific RCL
  */
 export function getBlueprintForRCL(rcl: number): Blueprint {
-  if (rcl >= 8) return COMPACT_BUNKER_BLUEPRINT;
   if (rcl >= 7) return WAR_READY_BLUEPRINT;
   if (rcl >= 5) return ECONOMIC_MATURITY_BLUEPRINT;
   if (rcl >= 3) return CORE_COLONY_BLUEPRINT;
@@ -41,95 +42,14 @@ export function getBlueprintForRCL(rcl: number): Blueprint {
 }
 
 /**
- * Get structure limits per RCL
- */
-function getStructureLimits(rcl: number): Record<BuildableStructureConstant, number> {
-  const limits: Record<number, Partial<Record<BuildableStructureConstant, number>>> = {
-    1: { spawn: 1, extension: 0, road: 2500, constructedWall: 0 },
-    2: { spawn: 1, extension: 5, road: 2500, constructedWall: 2500, rampart: 2500, container: 5 },
-    3: { spawn: 1, extension: 10, road: 2500, constructedWall: 2500, rampart: 2500, container: 5, tower: 1 },
-    4: {
-      spawn: 1,
-      extension: 20,
-      road: 2500,
-      constructedWall: 2500,
-      rampart: 2500,
-      container: 5,
-      tower: 1,
-      storage: 1
-    },
-    5: {
-      spawn: 1,
-      extension: 30,
-      road: 2500,
-      constructedWall: 2500,
-      rampart: 2500,
-      container: 5,
-      tower: 2,
-      storage: 1,
-      link: 2
-    },
-    6: {
-      spawn: 1,
-      extension: 40,
-      road: 2500,
-      constructedWall: 2500,
-      rampart: 2500,
-      container: 5,
-      tower: 2,
-      storage: 1,
-      link: 3,
-      terminal: 1,
-      extractor: 1,
-      lab: 3
-    },
-    7: {
-      spawn: 2,
-      extension: 50,
-      road: 2500,
-      constructedWall: 2500,
-      rampart: 2500,
-      container: 5,
-      tower: 3,
-      storage: 1,
-      link: 4,
-      terminal: 1,
-      extractor: 1,
-      lab: 6,
-      factory: 1
-    },
-    8: {
-      spawn: 3,
-      extension: 60,
-      road: 2500,
-      constructedWall: 2500,
-      rampart: 2500,
-      container: 5,
-      tower: 6,
-      storage: 1,
-      link: 6,
-      terminal: 1,
-      extractor: 1,
-      lab: 10,
-      factory: 1,
-      nuker: 1,
-      observer: 1,
-      powerSpawn: 1
-    }
-  };
-
-  return (limits[rcl] ?? limits[1]) as Record<BuildableStructureConstant, number>;
-}
-
-/**
  * Get structures for a specific RCL from a blueprint
- * Filters structures based on RCL limits
+ * Filters structures based on RCL limits and adds extensions to reach the limit
  */
 export function getStructuresForRCL(blueprint: Blueprint, rcl: number): StructurePlacement[] {
   const limits = getStructureLimits(rcl);
   const counts: Record<string, number> = {};
 
-  const structures = blueprint.structures.filter(s => {
+  let structures = blueprint.structures.filter(s => {
     const type = s.structureType;
     const limit = limits[type] ?? 0;
     const current = counts[type] ?? 0;
@@ -139,6 +59,12 @@ export function getStructuresForRCL(blueprint: Blueprint, rcl: number): Structur
     counts[type] = current + 1;
     return true;
   });
+
+  // Add extensions to reach RCL limit
+  const extensionLimit = limits[STRUCTURE_EXTENSION] ?? 0;
+  if (extensionLimit > 0) {
+    structures = addExtensionsToBlueprint(structures, extensionLimit);
+  }
 
   return structures;
 }

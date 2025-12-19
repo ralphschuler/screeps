@@ -24,6 +24,9 @@ export type {
   EvolutionStage
 } from "./types";
 
+// Constants
+export { getStructureLimits } from "./constants";
+
 // Blueprint definitions
 export { EARLY_COLONY_BLUEPRINT } from "./definitions/early-colony";
 export { CORE_COLONY_BLUEPRINT } from "./definitions/core-colony";

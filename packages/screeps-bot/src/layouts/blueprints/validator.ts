@@ -178,7 +178,6 @@ export function findBestBlueprintAnchor(
   if (!controller) return null;
   
   const sources = room.find(FIND_SOURCES);
-  const mineral = room.find(FIND_MINERALS)[0];
   
   // Calculate ideal center point (between controller and sources)
   let sumX = controller.pos.x;
