@@ -24,8 +24,6 @@ import { initializePheromoneEventHandlers } from "./logic/pheromoneEventHandlers
 import { initializePathCacheEvents } from "./utils/pathCacheEvents";
 import { runScheduledTasks } from "./utils/computationScheduler";
 import { heapCache } from "./memory/heapCache";
-import { simpleAllies } from "./standards/SimpleAlliesManager";
-import { runAllianceDiplomacy } from "./empire/allianceDiplomacy";
 import { SS2TerminalComms } from "./standards/SS2TerminalComms";
 import { initializeRemotePathScheduler } from "./utils/remotePathScheduler";
 import { shardManager } from "./intershard/shardManager";
@@ -111,13 +109,6 @@ function initializeSystems(): void {
 
   // Initialize heap cache system for memory persistence
   heapCache.initialize();
-
-  // Initialize alliance system with configuration
-  simpleAllies.updateConfig({
-    allies: config.alliance.allies,
-    allySegmentID: config.alliance.allySegmentID,
-    enabled: config.alliance.enabled
-  });
 
   // Initialize shard manager for multi-shard coordination
   // Note: shardManager is already registered as a kernel process
@@ -245,12 +236,6 @@ export function loop(): void {
   // Initialize memory structures
   memoryManager.initialize();
 
-  // Initialize alliance system (reads ally segments)
-  // This must happen early to have ally data available for decision-making
-  unifiedStats.measureSubsystem("allianceInit", () => {
-    simpleAllies.initRun();
-  });
-
   // Synchronize creep and room processes with kernel
   // This must happen before kernel.run() to ensure all processes are registered
   unifiedStats.measureSubsystem("processSync", () => {
@@ -302,20 +287,6 @@ export function loop(): void {
       runScheduledTasks(availableCpu);
     });
   }
-
-  // Run alliance diplomacy system (generate requests, process ally data)
-  // This runs periodically based on CPU budget
-  if (kernel.hasCpuBudget() && Game.time % 10 === 0) {
-    unifiedStats.measureSubsystem("allianceDiplomacy", () => {
-      runAllianceDiplomacy();
-    });
-  }
-
-  // Finalize alliance system (publish our segment)
-  // This must happen near the end to include all generated requests
-  unifiedStats.measureSubsystem("allianceFinalize", () => {
-    simpleAllies.endRun();
-  });
 
   // Persist heap cache to Memory periodically
   // This happens automatically based on the cache's internal interval

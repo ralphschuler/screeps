@@ -190,22 +190,6 @@ export interface BoostConfig {
 }
 
 /**
- * Alliance configuration
- */
-export interface AllianceConfig {
-  /** List of allied player usernames */
-  allies: string[];
-  /** Segment ID for alliance communication (default: 90) */
-  allySegmentID: number;
-  /** Enable alliance system */
-  enabled: boolean;
-  /** Minimum resource amount to fulfill requests */
-  minResourceToFulfill: number;
-  /** Maximum distance to send military support */
-  maxDefenseDistance: number;
-}
-
-/**
  * Complete bot configuration
  */
 export interface BotConfig {
@@ -217,7 +201,6 @@ export interface BotConfig {
   market: MarketConfig;
   spawn: SpawnConfig;
   boost: BoostConfig;
-  alliance: AllianceConfig;
   /** Enable debug logging */
   debug: boolean;
   /** Enable profiling */
@@ -380,13 +363,6 @@ export const DEFAULT_CONFIG: BotConfig = {
       "XGH2O" as MineralBoostConstant
     ],
     minBoostAmount: 30
-  },
-  alliance: {
-    allies: [],
-    allySegmentID: 90,
-    enabled: false,
-    minResourceToFulfill: 1000,
-    maxDefenseDistance: 10
   },
   debug: false,
   profiling: true,
