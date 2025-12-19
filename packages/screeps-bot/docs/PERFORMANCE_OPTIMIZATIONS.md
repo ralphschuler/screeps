@@ -233,14 +233,14 @@ All optimizations include comprehensive unit tests:
 
 ## Performance Monitoring
 
-Use the built-in profiler to measure actual savings:
+Use the built-in unified stats system to measure actual savings:
 
 ```typescript
-import { profiler } from "core/profiler";
+import { unifiedStats } from "core/unifiedStats";
 import { getObjectCacheStats, getBodyPartCacheStats } from "utils/objectCache";
 
-// Enable profiling
-profiler.setEnabled(true);
+// Enable stats collection
+unifiedStats.setEnabled(true);
 
 // Check cache statistics
 const objStats = getObjectCacheStats();

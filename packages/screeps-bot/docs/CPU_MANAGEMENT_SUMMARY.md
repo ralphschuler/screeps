@@ -42,15 +42,19 @@ The CPU Management system is now fully implemented, tested, and documented. All 
   - Configurable limits
   - Automatic budget checking
 
-### 4. CPU Profiling System ✅
-- **Location**: `src/core/profiler.ts`
-- **Implementation**: Exponential Moving Average (EMA) based profiling
+### 4. Unified Stats System ✅
+- **Location**: `src/core/unifiedStats.ts`
+- **Implementation**: Consolidated statistics system with EMA-based profiling
 - **Capabilities**:
   - Per-room CPU tracking
   - Per-subsystem CPU tracking
-  - Per-role CPU tracking
+  - Per-role CPU tracking with enhanced metrics
   - Peak CPU detection
   - Rolling averages with configurable smoothing
+  - Native API call tracking
+  - Process statistics collection
+  - Memory segment persistence
+  - Grafana/InfluxDB export support
   - Periodic summary logging
 
 ### 5. Native Calls Tracking ✅
@@ -65,18 +69,20 @@ The CPU Management system is now fully implemented, tested, and documented. All 
   - Idempotent wrapping (safe to call multiple times)
   - Handles read-only properties
   - Enable/disable tracking at runtime
+  - Integration with unified stats system
 
 ### 6. Subsystem CPU Measurement ✅
-- **Location**: `src/core/unifiedStats.ts` (integration)
-- **Implementation**: Integrated with profiler for comprehensive metrics
+- **Location**: `src/core/unifiedStats.ts`
+- **Implementation**: Integrated stats collection for comprehensive metrics
 - **Features**:
   - Automatic collection per tick
-  - Storage in Memory.stats.profiler
+  - Storage in Memory.stats
   - Integration with stats export
+  - Memory segment persistence
 
 ## Test Coverage
 
-### New Tests Added: 48 tests
+### Test Suite: Consolidated
 
 1. **cpuBudgetManager.test.ts** - 16 tests
    - Budget checking (within/over budget)
@@ -85,13 +91,13 @@ The CPU Management system is now fully implemented, tested, and documented. All 
    - Room budget enforcement
    - Configuration updates
 
-2. **profiler.test.ts** - 20 tests
-   - Room profiling
-   - Subsystem profiling
-   - EMA calculations
-   - Peak CPU tracking
-   - Enable/disable functionality
-   - Data retrieval
+2. **unifiedStats.test.ts** - Comprehensive coverage
+   - Stats collection (CPU, progression, native calls)
+   - Subsystem and role measurement
+   - Room execution tracking
+   - Memory export
+   - Reset functionality
+   - Per-creep CPU averaging
 
 3. **nativeCallsTracker.test.ts** - 12 tests
    - PathFinder wrapping
@@ -183,33 +189,36 @@ The implementation strictly follows ROADMAP.md Section 18:
 
 ## Files Modified/Created
 
-### Core Implementation (Existing)
+### Core Implementation
 - `src/core/cpuBudgetManager.ts` (184 lines)
-- `src/core/profiler.ts` (340 lines)
+- `src/core/unifiedStats.ts` (1443 lines) - Consolidated stats system
 - `src/core/nativeCallsTracker.ts` (177 lines)
 - `src/core/kernel.ts` (integrated)
 
-### Tests (New)
+### Tests
 - `test/unit/cpuBudgetManager.test.ts` (211 lines)
-- `test/unit/profiler.test.ts` (310 lines)
+- `test/unit/unifiedStats.test.ts` (413 lines) - Comprehensive stats tests
 - `test/unit/nativeCallsTracker.test.ts` (245 lines)
 
-### Documentation (New)
-- `docs/CPU_MANAGEMENT.md` (476 lines)
+### Documentation
+- `docs/CPU_MANAGEMENT.md` (updated)
 - `docs/CPU_MANAGEMENT_SUMMARY.md` (this file)
 
 ## Usage Example
 
 ```typescript
 import { kernel } from './core/kernel';
-import { profiler } from './core/profiler';
+import { unifiedStats } from './core/unifiedStats';
 import { cpuBudgetManager } from './core/cpuBudgetManager';
 import { initializeNativeCallsTracking } from './core/nativeCallsTracker';
 
 // Initialize once
 initializeNativeCallsTracking();
+unifiedStats.initialize();
 
 export function loop() {
+  unifiedStats.startTick();
+  
   // Check bucket mode
   const bucketMode = kernel.getBucketMode();
   if (bucketMode === 'critical') return;
@@ -219,26 +228,27 @@ export function loop() {
     if (!room.controller?.my) continue;
     
     const isWarRoom = room.memory.danger >= 2;
-    const startCpu = profiler.startRoom(room.name);
+    const startCpu = unifiedStats.startRoom(room.name);
     
     cpuBudgetManager.executeRoomWithBudget(room.name, isWarRoom, () => {
       runRoomLogic(room);
     });
     
-    profiler.endRoom(room.name, startCpu);
+    unifiedStats.endRoom(room.name, startCpu);
   }
   
-  profiler.finalizeTick();
+  unifiedStats.finalizeTick();
 }
 ```
 
 ## Conclusion
 
-The CPU Management system is **complete, tested, documented, and production-ready**. All features specified in the original issue have been implemented to a high standard with excellent code quality.
+The CPU Management system is **complete, tested, documented, and production-ready**. All features specified in the original issue have been implemented to a high standard with excellent code quality. The stats system has been consolidated from three separate systems into a single unified system, reducing code complexity and improving maintainability.
 
 **Status**: ✅ Excellent - Production-ready  
 **Recommendation**: Ready for deployment
 
 ---
-*Last Updated: 2025-12-10*  
-*Issue: #5 CPU Management*
+*Last Updated: 2025-12-19*  
+*Issue: #5 CPU Management*  
+*Consolidated Stats: stats.ts, profiler.ts → unifiedStats.ts*
