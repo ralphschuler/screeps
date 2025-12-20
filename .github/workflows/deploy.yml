@@ -44,8 +44,16 @@ jobs:
           node-version-file: packages/screeps-bot/.nvmrc
           cache: npm
 
+      - name: Install dependencies for screeps-chemistry
+        working-directory: packages/screeps-chemistry
+        run: npm ci
+
+      - name: Build screeps-chemistry
+        working-directory: packages/screeps-chemistry
+        run: npm run build
+
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build
         run: npm run build
