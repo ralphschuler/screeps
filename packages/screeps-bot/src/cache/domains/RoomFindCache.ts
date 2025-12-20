@@ -98,7 +98,7 @@ export function getRoomFindCacheStats() {
     totalEntries: stats.size,
     hits: stats.hits,
     misses: stats.misses,
-    invalidations: stats.evictions,
+    invalidations: stats.evictions, // Note: includes both evictions and manual invalidations
     hitRate: stats.hitRate
   };
 }

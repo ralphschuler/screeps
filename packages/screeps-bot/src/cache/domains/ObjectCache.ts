@@ -46,9 +46,18 @@ export function getCachedObjectById<T extends _HasId>(
 
   return globalCache.get<T | null>(id, {
     namespace: NAMESPACE,
-    ttl: ttl ?? DEFAULT_TTL,
+    ttl: ttl ?? DEFAULT_TTL, // Will use automatic TTL if not provided via compute callback
     compute: () => {
       const obj = Game.getObjectById(id);
+      // Use automatic TTL determination if ttl was not explicitly provided
+      if (ttl === undefined && obj) {
+        const autoTTL = getTTL(obj);
+        // Store with automatic TTL by updating the cache entry
+        globalCache.set(id, obj, {
+          namespace: NAMESPACE,
+          ttl: autoTTL
+        });
+      }
       return obj;
     }
   }) ?? null;

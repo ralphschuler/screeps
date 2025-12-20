@@ -184,7 +184,8 @@ export class CacheManager {
       const keys = store.keys();
       for (const key of keys) {
         // Extract the actual key after namespace prefix
-        // Format: "namespace:actualKey" so we need to skip first ':'
+        // Keys are formatted as "namespace:actualKey" where actualKey may contain colons
+        // (e.g., "path:W1N1:1,2:W2N2:3,4"). We skip the first colon to get actualKey.
         const colonIndex = key.indexOf(':');
         if (colonIndex === -1) continue;
         

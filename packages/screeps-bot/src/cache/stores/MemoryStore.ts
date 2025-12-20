@@ -133,8 +133,12 @@ export class MemoryStore implements CacheStore {
     const entry = heap.entries.get(key);
     
     if (entry) {
-      // Update last accessed
-      entry.lastAccessed = Game.time;
+      // Update last accessed and mark dirty so it can be persisted.
+      // Only mark dirty once per tick for this entry to reduce persistence overhead.
+      if (entry.lastAccessed !== Game.time) {
+        entry.lastAccessed = Game.time;
+        entry.dirty = true;
+      }
       return entry as CacheEntry<T>;
     }
     

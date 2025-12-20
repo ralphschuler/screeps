@@ -98,7 +98,10 @@ export function invalidatePath(from: RoomPosition, to: RoomPosition): void {
  * Invalidate all paths in a room
  */
 export function invalidateRoom(roomName: string): void {
-  const pattern = new RegExp(`^${roomName}:|:${roomName}:`);
+  // Escape special regex characters in room name (though unlikely in Screeps)
+  const escapedRoom = roomName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Match room name at start, middle, or end of path key
+  const pattern = new RegExp(`^${escapedRoom}:|:${escapedRoom}:|:${escapedRoom}$`);
   globalCache.invalidatePattern(pattern, NAMESPACE);
 }
 
