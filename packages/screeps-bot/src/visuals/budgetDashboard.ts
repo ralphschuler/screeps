@@ -26,6 +26,8 @@ export interface BudgetDashboardOptions {
   showProcesses?: boolean;
   /** Maximum number of processes to show */
   maxProcesses?: number;
+  /** Maximum length for process names before truncation */
+  maxProcessNameLength?: number;
 }
 
 /**
@@ -229,8 +231,13 @@ export function renderBudgetDashboard(options: BudgetDashboardOptions = {}): num
             : "#FFD93D";
 
         const statusIcon = process.state === "suspended" ? "⚠" : "○";
+        const maxNameLength = options.maxProcessNameLength ?? 15;
+        const displayName = process.name.length > maxNameLength 
+          ? process.name.substring(0, maxNameLength - 1) + "…"
+          : process.name;
+          
         visual.text(
-          `${statusIcon} ${process.name.substring(0, 15)}: ${process.stats.healthScore.toFixed(0)}%`,
+          `${statusIcon} ${displayName}: ${process.stats.healthScore.toFixed(0)}%`,
           x,
           currentY,
           {

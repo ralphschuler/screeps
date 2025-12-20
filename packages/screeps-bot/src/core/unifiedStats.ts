@@ -26,6 +26,7 @@ import { memoryManager } from "../memory/manager";
 import { EvolutionStage, PheromoneState, RoomPosture } from "../memory/schemas";
 import { shardManager } from "../intershard/shardManager";
 import { getRoomFindCacheStats } from "../utils/roomFindCache";
+import { calculateRoomScalingMultiplier, calculateBucketMultiplier, type AdaptiveBudgetConfig } from "./adaptiveBudgets";
 
 // ============================================================================
 // Configuration
@@ -625,7 +626,7 @@ export class UnifiedStatsManager {
     getConfig: () => {
       enableAdaptiveBudgets: boolean;
       frequencyCpuBudgets: Record<string, number>;
-      adaptiveBudgetConfig: unknown;
+      adaptiveBudgetConfig: AdaptiveBudgetConfig;
     };
     getTickCpuUsed: () => number;
     getProcesses: () => Array<{ cpuBudget: number }>;
@@ -637,7 +638,6 @@ export class UnifiedStatsManager {
     
     // Calculate metrics if adaptive budgets are enabled
     if (adaptiveBudgetsEnabled) {
-      // Import adaptive budget functions dynamically to get current multipliers
       const roomCount = Object.keys(Game.rooms).length;
       const bucket = Game.cpu.bucket;
       
@@ -650,8 +650,8 @@ export class UnifiedStatsManager {
       this.currentSnapshot.kernelBudgets = {
         adaptiveBudgetsEnabled: true,
         roomCount,
-        roomMultiplier: 0, // Will be calculated from adaptiveBudgets module
-        bucketMultiplier: 0, // Will be calculated from adaptiveBudgets module
+        roomMultiplier: calculateRoomScalingMultiplier(roomCount, config.adaptiveBudgetConfig),
+        bucketMultiplier: calculateBucketMultiplier(bucket, config.adaptiveBudgetConfig),
         budgets: {
           high: config.frequencyCpuBudgets.high || 0,
           medium: config.frequencyCpuBudgets.medium || 0,
@@ -661,21 +661,6 @@ export class UnifiedStatsManager {
         totalUsed,
         utilizationRatio
       };
-
-      // Calculate multipliers using adaptive budget functions
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const { calculateRoomScalingMultiplier, calculateBucketMultiplier } = 
-          require("./adaptiveBudgets");
-        
-        this.currentSnapshot.kernelBudgets.roomMultiplier = 
-          calculateRoomScalingMultiplier(roomCount, config.adaptiveBudgetConfig);
-        this.currentSnapshot.kernelBudgets.bucketMultiplier = 
-          calculateBucketMultiplier(bucket, config.adaptiveBudgetConfig);
-      } catch (error) {
-        // If import fails, use default values
-        logger.warn("Failed to calculate adaptive budget multipliers", { subsystem: "Stats" });
-      }
     } else {
       // Static budgets
       const processes = kernel.getProcesses();
