@@ -44,6 +44,14 @@ jobs:
           cache: npm
           cache-dependency-path: packages/screeps-bot/package-lock.json
 
+      - name: Install dependencies for screeps-chemistry
+        working-directory: packages/screeps-chemistry
+        run: npm ci
+
+      - name: Build screeps-chemistry
+        working-directory: packages/screeps-chemistry
+        run: npm run build
+
       - name: Install dependencies
         working-directory: packages/screeps-bot
         run: npm ci
