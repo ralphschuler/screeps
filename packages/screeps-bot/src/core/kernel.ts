@@ -42,6 +42,7 @@ import {
 import type { CPUConfig } from "../config";
 import { getConfig } from "../config";
 import { logger } from "./logger";
+import { getAdaptiveBudgets, type AdaptiveBudgetConfig, DEFAULT_ADAPTIVE_CONFIG } from "./adaptiveBudgets";
 
 /**
  * Process priority levels
@@ -161,6 +162,14 @@ export interface KernelConfig {
    * Interval in ticks for logging CPU budget warnings
    */
   budgetWarningInterval: number;
+  /**
+   * Enable adaptive CPU budgets based on room count and bucket level
+   */
+  enableAdaptiveBudgets: boolean;
+  /**
+   * Configuration for adaptive budget calculation
+   */
+  adaptiveBudgetConfig: AdaptiveBudgetConfig;
 }
 
 /**
@@ -178,7 +187,9 @@ const BASE_CONFIG: Omit<KernelConfig, "lowBucketThreshold" | "highBucketThreshol
   enableStats: true,
   statsLogInterval: 100,
   budgetWarningThreshold: 1.5,
-  budgetWarningInterval: 500
+  budgetWarningInterval: 500,
+  enableAdaptiveBudgets: true,
+  adaptiveBudgetConfig: DEFAULT_ADAPTIVE_CONFIG
 };
 
 const DEFAULT_CRITICAL_DIVISOR = 2;
@@ -423,6 +434,38 @@ export class Kernel {
         cpuBudget: this.config.frequencyCpuBudgets.low
       }
     };
+  }
+
+  /**
+   * Update adaptive CPU budgets based on current game state
+   * 
+   * If adaptive budgets are enabled, calculates new budgets based on:
+   * - Current room count (logarithmic scaling)
+   * - Current bucket level (conservation/boost multipliers)
+   * 
+   * This is called each tick during run() to keep budgets aligned with empire size
+   */
+  private updateAdaptiveBudgets(): void {
+    if (!this.config.enableAdaptiveBudgets) {
+      return;
+    }
+
+    const adaptiveBudgets = getAdaptiveBudgets(this.config.adaptiveBudgetConfig);
+    
+    // Update frequency defaults with new adaptive budgets
+    this.config.frequencyCpuBudgets = adaptiveBudgets;
+    this.frequencyDefaults = this.buildFrequencyDefaults();
+
+    // Log budget changes periodically for visibility
+    if (Game.time % 500 === 0) {
+      const roomCount = Object.keys(Game.rooms).length;
+      const bucket = Game.cpu.bucket;
+      logger.info(
+        `Adaptive budgets updated: rooms=${roomCount}, bucket=${bucket}, ` +
+        `high=${adaptiveBudgets.high.toFixed(3)}, medium=${adaptiveBudgets.medium.toFixed(3)}, low=${adaptiveBudgets.low.toFixed(3)}`,
+        { subsystem: "Kernel" }
+      );
+    }
   }
 
   /**
@@ -724,6 +767,7 @@ export class Kernel {
    */
   public run(): void {
     this.updateBucketMode();
+    this.updateAdaptiveBudgets(); // Update budgets based on current empire size and bucket
     this.tickCpuUsed = 0;
     this.skippedProcessesThisTick = 0;
 
