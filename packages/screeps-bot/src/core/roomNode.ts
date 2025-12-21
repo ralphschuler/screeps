@@ -20,7 +20,6 @@ import { destroyMisplacedStructures, getBlueprint, placeConstructionSites, selec
 import { placeRoadConstructionSites } from "../layouts/roadNetworkPlanner";
 import { safeFind } from "../utils/optimization";
 import { safeModeManager } from "../defense/safeModeManager";
-import { placePerimeterDefense } from "../defense/perimeterDefense";
 import { placeRoadAwarePerimeterDefense } from "../defense/roadAwareDefense";
 import { calculateWallRepairTarget } from "../defense/wallRepairTargets";
 import { emergencyResponseManager } from "../defense/emergencyResponse";

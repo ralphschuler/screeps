@@ -14,8 +14,6 @@ import {
   getCachedRepairTarget,
   getCachedBuildTarget,
   getAssignedSource,
-  getSourceContainer,
-  getControllerEnergySource,
   clearTargetCaches
 } from "../../src/utils/caching/roleCache";
 

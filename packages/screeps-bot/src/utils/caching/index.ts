@@ -42,6 +42,18 @@ export {
 } from "./objectCache";
 
 // Path Cache - pathfinding results caching
+export {
+  convertRoomPositionsToPathSteps,
+  getCachedPath,
+  cachePath,
+  invalidatePath,
+  invalidateRoom,
+  clearPathCache,
+  getPathCacheStats,
+  cleanupExpiredPaths,
+  cacheCommonRoutes
+} from "./pathCache";
+
 export type { CachePathOptions } from "./pathCache";
 
 // Role Cache - role-specific data caching
