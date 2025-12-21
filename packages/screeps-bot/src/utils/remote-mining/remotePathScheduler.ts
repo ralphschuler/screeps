@@ -11,8 +11,8 @@
  * - Expected savings: 80-90% reduction in pathfinding CPU
  */
 
-import { createLogger } from "../core/logger";
-import { TaskPriority, scheduleTask } from "./computationScheduler";
+import { createLogger } from "../../core/logger";
+import { TaskPriority, scheduleTask } from "../scheduling";
 import { precacheRemoteRoutes } from "./remotePathCache";
 import { getRemoteRoomsForRoom } from "./remoteRoomUtils";
 

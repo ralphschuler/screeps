@@ -1,5 +1,5 @@
 import "./visuals/roomVisualExtensions";
-import { ErrorMapper } from "utils/ErrorMapper";
+import { ErrorMapper } from "utils/legacy";
 import { registerAllConsoleCommands } from "./core/consoleCommands";
 import { loop as swarmLoop } from "./SwarmBot";
 import { createLogger } from "./core/logger";

@@ -6,7 +6,7 @@
  */
 
 import type { CreepAction, CreepContext } from "../types";
-import { findCachedClosest } from "../../../utils/cachedClosest";
+import { findCachedClosest } from "../../../utils/caching";
 import { updateWorkingState } from "./common/stateManagement";
 import { findEnergy } from "./common/energyManagement";
 

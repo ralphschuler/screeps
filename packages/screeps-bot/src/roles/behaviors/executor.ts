@@ -29,11 +29,11 @@ import {
   clearCachedPath,
   isExit
 } from "screeps-cartographer";
-import { getCollectionPoint } from "../../utils/collectionPoint";
+import { getCollectionPoint } from "../../utils/common";
 import { memoryManager } from "../../memory/manager";
-import { clearCache as clearAllCachedTargets } from "../../utils/cachedClosest";
+import { clearCache as clearAllCachedTargets } from "../../utils/caching";
 import { createLogger } from "../../core/logger";
-import * as metrics from "../../utils/creepMetrics";
+import * as metrics from "../../utils/metrics";
 
 const logger = createLogger("ActionExecutor");
 

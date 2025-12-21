@@ -12,7 +12,7 @@
  * to continue operating even when encountering corrupted game data.
  */
 
-import { logger } from "../core/logger";
+import { logger } from "../../core/logger";
 
 /**
  * Log a safe find error with consistent formatting.

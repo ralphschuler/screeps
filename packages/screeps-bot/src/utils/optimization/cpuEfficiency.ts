@@ -32,7 +32,7 @@ import {
   getCachedDamagePotential,
   getCachedHealPotential,
   hasCachedBodyPart
-} from "./bodyPartCache";
+} from "../caching/bodyPartCache";
 
 /**
  * @deprecated Use getCachedDamagePotential from bodyPartCache instead

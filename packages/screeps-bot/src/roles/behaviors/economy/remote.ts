@@ -6,9 +6,9 @@
 
 import type { SwarmCreepMemory } from "../../../memory/schemas";
 import type { CreepAction, CreepContext } from "../types";
-import { findCachedClosest } from "../../../utils/cachedClosest";
+import { findCachedClosest } from "../../../utils/caching";
 import { updateWorkingState, switchToCollectionMode } from "./common/stateManagement";
-import { cachedRoomFind, cachedFindSources, cachedFindDroppedResources } from "../../../utils/roomFindCache";
+import { cachedRoomFind, cachedFindSources, cachedFindDroppedResources } from "../../../utils/caching";
 
 /**
  * Cache duration for stationary harvester structures (containers, links).

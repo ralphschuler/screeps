@@ -11,8 +11,8 @@
  * - CPU-efficient: calculate once per room, reuse until invalidated
  */
 
-import type { SwarmState } from "../memory/schemas";
-import { createLogger } from "../core/logger";
+import type { SwarmState } from "../../memory/schemas";
+import { createLogger } from "../../core/logger";
 
 const logger = createLogger("CollectionPoint");
 

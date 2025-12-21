@@ -14,4 +14,4 @@ export {
   getCachedMoveRatio,
   getBodyPartCacheStats,
   clearBodyPartCache
-} from "../cache/domains/BodyPartCache";
+} from "../../cache/domains/BodyPartCache";

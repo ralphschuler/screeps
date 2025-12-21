@@ -127,7 +127,7 @@ export function findStructuresByType<T extends Structure>(
   const structures = room.find(FIND_STRUCTURES);
   const typeSet = new Set(structureTypes);
   
-  let results = structures.filter((s): s is T => typeSet.has(s.structureType));
+  let results = structures.filter((s): s is T & AnyStructure => typeSet.has(s.structureType)) as T[];
   
   if (filterFn) {
     results = results.filter(filterFn);

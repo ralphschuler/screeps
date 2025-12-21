@@ -15,10 +15,11 @@
  * - Expected savings: 80-90% reduction for remote mining pathfinding
  */
 
-import { createLogger } from "../core/logger";
+import { createLogger } from "../../core/logger";
 import { moveTo } from "screeps-cartographer";
 import { type RemoteRouteType, cacheRemoteMiningPath, getRemoteMiningPath } from "./remotePathCache";
 import { getRemoteMiningRoomCallback } from "./remoteRoomUtils";
+import { convertRoomPositionsToPathSteps } from "../caching/pathCache";
 
 const logger = createLogger("RemoteMiningMovement");
 
@@ -134,8 +135,9 @@ function cachePathAfterMovement(
   });
   
   if (!pathResult.incomplete && pathResult.path.length > 0) {
-    // Cache the path for future use
-    cacheRemoteMiningPath(creep.pos, target, pathResult.path, routeType);
+    // Convert RoomPosition[] to PathStep[] and cache the path for future use
+    const pathSteps = convertRoomPositionsToPathSteps(pathResult.path);
+    cacheRemoteMiningPath(creep.pos, target, pathSteps, routeType);
     
     logger.debug(`Cached new remote path for ${creep.name} (${routeType})`, {
       meta: { pathLength: pathResult.path.length }

@@ -24,7 +24,7 @@
  * - Statistics aggregation
  */
 
-import { logger } from "../core/logger";
+import { logger } from "../../core/logger";
 
 // =============================================================================
 // Types

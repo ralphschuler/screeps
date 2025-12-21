@@ -20,7 +20,7 @@ import { runEconomyRole } from "../roles/economy";
 import { runMilitaryRole } from "../roles/military";
 import { runPowerCreepRole } from "../roles/power";
 import { runUtilityRole } from "../roles/utility";
-import { canSkipBehaviorEvaluation, executeIdleAction } from "../utils/idleDetection";
+import { canSkipBehaviorEvaluation, executeIdleAction } from "../utils/optimization";
 import { unifiedStats } from "./unifiedStats";
 
 /**

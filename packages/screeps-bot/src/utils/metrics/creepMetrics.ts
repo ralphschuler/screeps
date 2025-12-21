@@ -5,7 +5,7 @@
  * These metrics track creep performance for analysis and optimization.
  */
 
-import type { CreepMetrics } from "../core/unifiedStats";
+import type { CreepMetrics } from "../../core/unifiedStats";
 
 // Type for creep memory with metrics support
 interface CreepMemoryWithMetrics {

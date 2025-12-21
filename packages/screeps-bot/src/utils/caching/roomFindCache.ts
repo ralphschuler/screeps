@@ -18,4 +18,4 @@ export {
   cachedFindMyStructures,
   cachedFindConstructionSites,
   cachedFindDroppedResources
-} from "../cache/domains/RoomFindCache";
+} from "../../cache/domains/RoomFindCache";

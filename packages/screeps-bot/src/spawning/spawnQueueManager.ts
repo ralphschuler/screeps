@@ -13,11 +13,11 @@ import { ROLE_DEFINITIONS, type BodyTemplate, type RoleSpawnDef } from "./roleDe
 import { getPostureSpawnWeights, getDynamicPriorityBoost, getPheromoneMult } from "./spawnPriority";
 import { countCreepsByRole, needsRole, assignRemoteTargetRoom } from "./spawnNeedsAnalyzer";
 import { isBootstrapMode, getBootstrapRole, isEmergencySpawnState, getEnergyProducerCount } from "./bootstrapManager";
-import { type WeightedEntry, weightedSelection } from "../utils/weightedSelection";
+import { type WeightedEntry, weightedSelection } from "../utils/common";
 import { kernel } from "../core/kernel";
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
-import { cachedFindMyStructures } from "../utils/roomFindCache";
+import { cachedFindMyStructures } from "../utils/caching";
 
 /**
  * Get best body template for a role based on available energy capacity

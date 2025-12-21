@@ -5,7 +5,7 @@
  */
 
 import type { CreepContext } from "../../types";
-import { clearCacheOnStateChange } from "../../../../utils/cachedClosest";
+import { clearCacheOnStateChange } from "../../../../utils/caching";
 
 /**
  * Update working state based on energy levels.

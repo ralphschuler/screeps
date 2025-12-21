@@ -18,7 +18,7 @@ import { calculateDangerLevel, evolutionManager, postureManager } from "../logic
 import { unifiedStats } from "./unifiedStats";
 import { destroyMisplacedStructures, getBlueprint, placeConstructionSites, selectBestBlueprint } from "../layouts/blueprints/index";
 import { placeRoadConstructionSites } from "../layouts/roadNetworkPlanner";
-import { safeFind } from "../utils/safeFind";
+import { safeFind } from "../utils/optimization";
 import { safeModeManager } from "../defense/safeModeManager";
 import { placePerimeterDefense } from "../defense/perimeterDefense";
 import { placeRoadAwarePerimeterDefense } from "../defense/roadAwareDefense";
@@ -31,7 +31,7 @@ import { labManager } from "../labs/labManager";
 import { labConfigManager } from "../labs/labConfig";
 import { kernel } from "./kernel";
 import { logger } from "./logger";
-import { prefetchRoomObjects } from "../utils/objectCache";
+import { prefetchRoomObjects } from "../utils/caching";
 import { assessThreat } from "../defense/threatAssessment";
 
 /**

@@ -12,11 +12,11 @@
  * - structure.destroyed: Invalidates paths in the room where structure was destroyed
  */
 
-import { createLogger } from "../core/logger";
-import { eventBus } from "../core/events";
-import { cacheCommonRoutes, invalidateRoom } from "./pathCache";
-import { precacheRemoteRoutes } from "./remotePathCache";
-import { getRemoteRoomsForRoom } from "./remoteRoomUtils";
+import { createLogger } from "../../core/logger";
+import { eventBus } from "../../core/events";
+import { cacheCommonRoutes, invalidateRoom } from "../caching/pathCache";
+import { precacheRemoteRoutes } from "../remote-mining/remotePathCache";
+import { getRemoteRoomsForRoom } from "../remote-mining/remoteRoomUtils";
 
 const logger = createLogger("PathCacheEvents");
 
