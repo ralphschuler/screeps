@@ -15,6 +15,6 @@ export {
   getPathCacheStats,
   cleanupExpiredPaths,
   cacheCommonRoutes
-} from "../cache/domains/PathCache";
+} from "../../cache/domains/PathCache";
 
-export type { CachePathOptions } from "../cache/domains/PathCache";
+export type { CachePathOptions } from "../../cache/domains/PathCache";

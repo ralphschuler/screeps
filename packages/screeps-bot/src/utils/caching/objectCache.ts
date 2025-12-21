@@ -19,4 +19,4 @@ export {
   getCacheStatistics,
   clearObjectCache,
   resetCacheStats
-} from "../cache/domains/ObjectCache";
+} from "../../cache/domains/ObjectCache";

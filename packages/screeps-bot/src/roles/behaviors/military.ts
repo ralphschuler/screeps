@@ -6,12 +6,12 @@
  */
 
 import type { SquadMemory, SwarmCreepMemory } from "../../memory/schemas";
-import { findCachedClosest } from "../../utils/cachedClosest";
-import { safeFindClosestByRange } from "../../utils/safeFind";
+import { findCachedClosest } from "../../utils/caching";
+import { safeFindClosestByRange } from "../../utils/optimization";
 import { registerMilitaryCacheClear } from "./context";
 import type { CreepAction, CreepContext } from "./types";
 import { createLogger } from "../../core/logger";
-import { getCollectionPoint } from "../../utils/collectionPoint";
+import { getCollectionPoint } from "../../utils/common";
 import { checkAndExecuteRetreat } from "../../defense/retreatProtocol";
 
 const logger = createLogger("MilitaryBehaviors");

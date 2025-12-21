@@ -5,7 +5,7 @@ import {
   getAssignmentCount,
   getAssignedCreeps,
   clearTargetAssignments
-} from "../../src/utils/targetDistribution";
+} from "../../src/utils/common/targetDistribution";
 
 /**
  * Test suite for target distribution system

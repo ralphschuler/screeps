@@ -5,7 +5,7 @@
  * Extracted from duplicated code in remotePathScheduler and pathCacheEvents.
  */
 
-import { createLogger } from "../core/logger";
+import { createLogger } from "../../core/logger";
 
 const logger = createLogger("RemoteRoomUtils");
 

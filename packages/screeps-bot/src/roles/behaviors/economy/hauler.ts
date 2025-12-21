@@ -6,8 +6,8 @@
  */
 
 import type { CreepAction, CreepContext } from "../types";
-import { findCachedClosest } from "../../../utils/cachedClosest";
-import { findDistributedTarget } from "../../../utils/targetDistribution";
+import { findCachedClosest } from "../../../utils/caching";
+import { findDistributedTarget } from "../../../utils/common";
 import { updateWorkingState, switchToCollectionMode } from "./common/stateManagement";
 import { createLogger } from "../../../core/logger";
 

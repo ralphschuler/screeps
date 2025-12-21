@@ -9,4 +9,4 @@ export {
   findCachedClosest,
   clearCache,
   clearCacheOnStateChange
-} from "../cache/domains/ClosestCache";
+} from "../../cache/domains/ClosestCache";

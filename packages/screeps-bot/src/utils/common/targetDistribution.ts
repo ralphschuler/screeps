@@ -14,7 +14,7 @@
  * - Memory-efficient: stored in global cache, not Memory
  */
 
-import { createLogger } from "../core/logger";
+import { createLogger } from "../../core/logger";
 
 const logger = createLogger("TargetDistribution");
 

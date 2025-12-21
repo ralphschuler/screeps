@@ -7,16 +7,13 @@
 
 import type { SwarmCreepMemory } from "../../memory/schemas";
 import { moveTo } from "screeps-cartographer";
-import { safeFind } from "../../utils/safeFind";
+import { safeFind } from "../../utils/optimization";
 import type { CreepAction, CreepContext } from "./types";
-import { createLogger } from "../../core/logger";
 import {
   cachedRoomFind,
   cachedFindMyStructures,
   cachedFindDroppedResources
-} from "../../utils/roomFindCache";
-
-const logger = createLogger("PowerBehaviors");
+} from "../../utils/caching";
 
 // =============================================================================
 // Regular Creep Power Roles

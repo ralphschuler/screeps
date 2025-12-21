@@ -12,7 +12,7 @@
 
 import type { CreepAction, CreepContext } from "./types";
 import { labManager } from "../../labs/labManager";
-import { clearCacheOnStateChange } from "../../utils/cachedClosest";
+import { clearCacheOnStateChange } from "../../utils/caching";
 
 /**
  * Update working state for lab supply.

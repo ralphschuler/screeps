@@ -8,7 +8,7 @@ import { runSpawnManager } from "./logic/spawn";
 import { memoryManager } from "./memory/manager";
 import { clearRoomCaches } from "./roles/behaviors/context";
 import { preTick as initMovement, reconcileTraffic as finalizeMovement } from "screeps-cartographer";
-import { clearTargetAssignments } from "./utils/targetDistribution";
+import { clearTargetAssignments } from "./utils/common";
 import { kernel } from "./core/kernel";
 import { registerAllProcesses } from "./core/processRegistry";
 import { roomVisualizer } from "./visuals/roomVisualizer";
@@ -21,11 +21,11 @@ import { creepProcessManager } from "./core/creepProcessManager";
 import { roomProcessManager } from "./core/roomProcessManager";
 import { runPowerRole } from "./roles/power";
 import { initializePheromoneEventHandlers } from "./logic/pheromoneEventHandlers";
-import { initializePathCacheEvents } from "./utils/pathCacheEvents";
-import { runScheduledTasks } from "./utils/computationScheduler";
+import { initializePathCacheEvents } from "./utils/pathfinding";
+import { runScheduledTasks } from "./utils/scheduling";
 import { heapCache } from "./memory/heapCache";
 import { SS2TerminalComms } from "./standards/SS2TerminalComms";
-import { initializeRemotePathScheduler } from "./utils/remotePathScheduler";
+import { initializeRemotePathScheduler } from "./utils/remote-mining";
 import { shardManager } from "./intershard/shardManager";
 
 // =============================================================================

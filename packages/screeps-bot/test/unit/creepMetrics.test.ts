@@ -16,7 +16,7 @@ import {
   recordTaskComplete,
   getEfficiencySummary,
   resetMetrics
-} from "../../src/utils/creepMetrics";
+} from "../../src/utils/metrics/creepMetrics";
 
 // Simple mock memory compatible with the CreepMemoryWithMetrics interface
 interface MockCreepMemory {

@@ -23,7 +23,7 @@
  *
  * Usage:
  * ```typescript
- * import { getRemoteMiningPath } from "./utils/remotePathCache";
+ * import { getRemoteMiningPath } from "./utils/remote-mining";
  * 
  * // In remote harvester behavior:
  * const path = getRemoteMiningPath(spawn.pos, remoteSource.pos, "harvester");
@@ -36,8 +36,8 @@
  * ```
  */
 
-import { cachePath, getCachedPath, convertRoomPositionsToPathSteps } from "./pathCache";
-import { createLogger } from "../core/logger";
+import { cachePath, getCachedPath, convertRoomPositionsToPathSteps } from "../caching/pathCache";
+import { createLogger } from "../../core/logger";
 import { getRemoteMiningRoomCallback } from "./remoteRoomUtils";
 
 const logger = createLogger("RemotePathCache");

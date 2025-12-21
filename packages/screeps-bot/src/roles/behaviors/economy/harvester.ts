@@ -7,7 +7,7 @@
 
 import type { SwarmCreepMemory } from "../../../memory/schemas";
 import type { CreepAction, CreepContext } from "../types";
-import { cachedFindSources } from "../../../utils/roomFindCache";
+import { cachedFindSources } from "../../../utils/caching";
 import { createLogger } from "../../../core/logger";
 
 const logger = createLogger("HarvesterBehavior");

@@ -10,8 +10,8 @@
  * - Low frequency updates (≥100 ticks) for portal mapping
  */
 
-import { memoryManager } from "../memory/manager";
-import { logger } from "../core/logger";
+import { memoryManager } from "../../memory/manager";
+import { logger } from "../../core/logger";
 
 // =============================================================================
 // Types & Interfaces

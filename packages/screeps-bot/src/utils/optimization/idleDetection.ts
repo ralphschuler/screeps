@@ -3,7 +3,7 @@
  * CPU savings: ~0.1-0.2 CPU per skipped creep.
  */
 
-import type { SwarmCreepMemory } from "../memory/schemas";
+import type { SwarmCreepMemory } from "../../memory/schemas";
 
 function isRoomObject(obj: unknown): obj is RoomObject {
   return (
