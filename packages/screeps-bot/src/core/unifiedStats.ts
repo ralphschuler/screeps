@@ -23,7 +23,7 @@
 
 import { logger } from "./logger";
 import { memoryManager } from "../memory/manager";
-import { EvolutionStage, PheromoneState, RoomPosture } from "../memory/schemas";
+import { EvolutionStage, RoomPosture } from "../memory/schemas";
 import { shardManager } from "../intershard/shardManager";
 import { getRoomFindCacheStats } from "../utils/roomFindCache";
 import { calculateRoomScalingMultiplier, calculateBucketMultiplier, type AdaptiveBudgetConfig } from "./adaptiveBudgets";

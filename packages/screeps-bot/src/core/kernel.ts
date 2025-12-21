@@ -444,6 +444,11 @@ export class Kernel {
    * - Current bucket level (conservation/boost multipliers)
    * 
    * This is called each tick during run() to keep budgets aligned with empire size
+   * 
+   * WARNING: This method mutates this.config.frequencyCpuBudgets and rebuilds
+   * this.frequencyDefaults each tick. Code that caches references to these
+   * objects may see stale values. Always access via getConfig() or 
+   * getFrequencyDefaults() to get current values.
    */
   private updateAdaptiveBudgets(): void {
     if (!this.config.enableAdaptiveBudgets) {
@@ -453,6 +458,7 @@ export class Kernel {
     const adaptiveBudgets = getAdaptiveBudgets(this.config.adaptiveBudgetConfig);
     
     // Update frequency defaults with new adaptive budgets
+    // NOTE: This mutates the config object - see method documentation
     this.config.frequencyCpuBudgets = adaptiveBudgets;
     this.frequencyDefaults = this.buildFrequencyDefaults();
 

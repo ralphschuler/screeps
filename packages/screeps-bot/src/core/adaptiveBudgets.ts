@@ -79,11 +79,11 @@ export const DEFAULT_ADAPTIVE_CONFIG: AdaptiveBudgetConfig = {
  * Formula: 1 + log(rooms / minRooms) / log(scaleFactor)
  * This provides smooth, sublinear growth as empire expands
  *
- * Examples with scaleFactor=10:
+ * Examples with scaleFactor=20 (default):
  * - 1 room:   1.0x (baseline)
- * - 10 rooms: 1.0x (log10(10) / log10(10) = 1)
- * - 50 rooms: 1.7x
- * - 100 rooms: 2.0x
+ * - 10 rooms: ~1.8x
+ * - 50 rooms: ~1.6x
+ * - 100 rooms: ~1.8x
  *
  * @param roomCount - Current number of controlled rooms
  * @param config - Budget configuration
@@ -110,14 +110,14 @@ export function calculateRoomScalingMultiplier(
  * Calculate bucket-based multiplier
  *
  * Adjusts budgets based on CPU bucket status:
- * - High bucket (>9000): 1.5x multiplier - safe to spend more
+ * - High bucket (>9000): 1.2x multiplier - safe to spend more
  * - Normal bucket (2000-9000): 1.0x multiplier - standard operation
- * - Low bucket (<2000): 0.5x multiplier - conserve CPU
- * - Critical bucket (<500): 0.25x multiplier - minimal operation
+ * - Low bucket (<2000): 0.6x multiplier - conserve CPU
+ * - Critical bucket (<500): 0.3x multiplier - minimal operation
  *
  * @param bucket - Current CPU bucket level
  * @param config - Budget configuration
- * @returns Bucket multiplier (0.25 to 1.5)
+ * @returns Bucket multiplier (0.3 to 1.2)
  */
 export function calculateBucketMultiplier(
   bucket: number,

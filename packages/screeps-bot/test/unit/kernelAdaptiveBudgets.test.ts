@@ -283,12 +283,19 @@ describe("Kernel adaptive budget integration", () => {
     it("should log budget updates every 500 ticks", () => {
       let loggedAt500 = false;
 
-      // Override logger to capture logs
-      const originalInfo = console.log;
+      // Override console.log to capture JSON-formatted logger output
+      const originalLog = console.log;
       console.log = (...args: unknown[]) => {
-        const message = args.join(" ");
-        if (message.includes("Adaptive budgets updated")) {
-          loggedAt500 = true;
+        const logMessage = args[0];
+        if (typeof logMessage === 'string') {
+          try {
+            const parsed = JSON.parse(logMessage);
+            if (parsed.message && parsed.message.includes("Adaptive budgets updated")) {
+              loggedAt500 = true;
+            }
+          } catch {
+            // Not JSON, ignore
+          }
         }
       };
 
@@ -299,7 +306,7 @@ describe("Kernel adaptive budget integration", () => {
 
         expect(loggedAt500).to.equal(true);
       } finally {
-        console.log = originalInfo;
+        console.log = originalLog;
       }
     });
   });
