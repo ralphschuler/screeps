@@ -23,9 +23,10 @@
 
 import { logger } from "./logger";
 import { memoryManager } from "../memory/manager";
-import { EvolutionStage, PheromoneState, RoomPosture } from "../memory/schemas";
+import { EvolutionStage, RoomPosture } from "../memory/schemas";
 import { shardManager } from "../intershard/shardManager";
 import { getRoomFindCacheStats } from "../utils/roomFindCache";
+import { calculateRoomScalingMultiplier, calculateBucketMultiplier, type AdaptiveBudgetConfig } from "./adaptiveBudgets";
 
 // ============================================================================
 // Configuration
@@ -71,6 +72,32 @@ export interface CpuStats {
   bucket: number;
   percent: number;
   heapUsed: number;
+}
+
+/**
+ * Kernel adaptive budget statistics
+ */
+export interface KernelBudgetStats {
+  /** Whether adaptive budgets are enabled */
+  adaptiveBudgetsEnabled: boolean;
+  /** Current room count used for budget scaling */
+  roomCount: number;
+  /** Current room scaling multiplier */
+  roomMultiplier: number;
+  /** Current bucket multiplier */
+  bucketMultiplier: number;
+  /** Per-frequency budget allocations */
+  budgets: {
+    high: number;
+    medium: number;
+    low: number;
+  };
+  /** Total allocated budget across all processes */
+  totalAllocated: number;
+  /** Total budget used this tick */
+  totalUsed: number;
+  /** Budget utilization ratio (used / allocated) */
+  utilizationRatio: number;
 }
 
 /**
@@ -320,6 +347,7 @@ export interface StatsSnapshot {
   tick: number;
   timestamp: number;
   cpu: CpuStats;
+  kernelBudgets: KernelBudgetStats;
   progression: ProgressionStats;
   empire: EmpireStats;
   rooms: Record<string, RoomStatsEntry>;
@@ -590,6 +618,73 @@ export class UnifiedStatsManager {
   }
 
   /**
+   * Collect kernel adaptive budget statistics
+   * 
+   * @param kernel - Kernel instance to collect budget stats from
+   */
+  public collectKernelBudgetStats(kernel: {
+    getConfig: () => {
+      enableAdaptiveBudgets: boolean;
+      frequencyCpuBudgets: Record<string, number>;
+      adaptiveBudgetConfig: AdaptiveBudgetConfig;
+    };
+    getTickCpuUsed: () => number;
+    getProcesses: () => Array<{ cpuBudget: number }>;
+  }): void {
+    if (!this.config.enabled) return;
+
+    const config = kernel.getConfig();
+    const adaptiveBudgetsEnabled = config.enableAdaptiveBudgets;
+    
+    // Calculate metrics if adaptive budgets are enabled
+    if (adaptiveBudgetsEnabled) {
+      const roomCount = Object.keys(Game.rooms).length;
+      const bucket = Game.cpu.bucket;
+      
+      // Calculate total allocated and used budgets
+      const processes = kernel.getProcesses();
+      const totalAllocated = processes.reduce((sum, p) => sum + p.cpuBudget, 0);
+      const totalUsed = kernel.getTickCpuUsed();
+      const utilizationRatio = totalAllocated > 0 ? totalUsed / totalAllocated : 0;
+
+      this.currentSnapshot.kernelBudgets = {
+        adaptiveBudgetsEnabled: true,
+        roomCount,
+        roomMultiplier: calculateRoomScalingMultiplier(roomCount, config.adaptiveBudgetConfig),
+        bucketMultiplier: calculateBucketMultiplier(bucket, config.adaptiveBudgetConfig),
+        budgets: {
+          high: config.frequencyCpuBudgets.high || 0,
+          medium: config.frequencyCpuBudgets.medium || 0,
+          low: config.frequencyCpuBudgets.low || 0
+        },
+        totalAllocated,
+        totalUsed,
+        utilizationRatio
+      };
+    } else {
+      // Static budgets
+      const processes = kernel.getProcesses();
+      const totalAllocated = processes.reduce((sum, p) => sum + p.cpuBudget, 0);
+      const totalUsed = kernel.getTickCpuUsed();
+
+      this.currentSnapshot.kernelBudgets = {
+        adaptiveBudgetsEnabled: false,
+        roomCount: Object.keys(Game.rooms).length,
+        roomMultiplier: 1.0,
+        bucketMultiplier: 1.0,
+        budgets: {
+          high: config.frequencyCpuBudgets.high || 0,
+          medium: config.frequencyCpuBudgets.medium || 0,
+          low: config.frequencyCpuBudgets.low || 0
+        },
+        totalAllocated,
+        totalUsed,
+        utilizationRatio: totalAllocated > 0 ? totalUsed / totalAllocated : 0
+      };
+    }
+  }
+
+  /**
    * Record individual creep statistics
    */
   public recordCreep(creep: Creep, cpu: number, action: string, actionsCount = 0): void {
@@ -772,6 +867,20 @@ export class UnifiedStatsManager {
       native: this.createEmptyNativeCalls(),
       processes: {},
       creeps: {},
+      kernelBudgets: {
+        adaptiveBudgetsEnabled: false,
+        roomCount: 0,
+        roomMultiplier: 1.0,
+        bucketMultiplier: 1.0,
+        budgets: {
+          high: 0,
+          medium: 0,
+          low: 0
+        },
+        totalAllocated: 0,
+        totalUsed: 0,
+        utilizationRatio: 0
+      },
       cache: {
         roomFind: {
           rooms: 0,
@@ -1054,6 +1163,18 @@ export class UnifiedStatsManager {
         bucket: snap.cpu.bucket,
         percent: snap.cpu.percent,
         heap_mb: snap.cpu.heapUsed
+      },
+      kernel: {
+        adaptive_budgets_enabled: snap.kernelBudgets.adaptiveBudgetsEnabled,
+        room_count: snap.kernelBudgets.roomCount,
+        room_multiplier: snap.kernelBudgets.roomMultiplier,
+        bucket_multiplier: snap.kernelBudgets.bucketMultiplier,
+        budget_high: snap.kernelBudgets.budgets.high,
+        budget_medium: snap.kernelBudgets.budgets.medium,
+        budget_low: snap.kernelBudgets.budgets.low,
+        total_allocated: snap.kernelBudgets.totalAllocated,
+        total_used: snap.kernelBudgets.totalUsed,
+        utilization_ratio: snap.kernelBudgets.utilizationRatio
       },
       gcl: {
         level: snap.progression.gcl.level,

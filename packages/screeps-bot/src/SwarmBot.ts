@@ -298,6 +298,9 @@ export function loop(): void {
     return map;
   }, new Map()));
 
+  // Collect kernel budget stats (adaptive budgets)
+  unifiedStats.collectKernelBudgetStats(kernel);
+
   // Set the number of processes skipped this tick
   unifiedStats.setSkippedProcesses(kernel.getSkippedProcessesThisTick());
 
