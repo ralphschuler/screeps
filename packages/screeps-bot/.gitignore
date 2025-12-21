@@ -95,4 +95,3 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 *.bak
-dist/
