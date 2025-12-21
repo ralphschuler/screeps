@@ -7,8 +7,8 @@ import {
   getRemoteMiningPath,
   cacheRemoteMiningPath,
   precacheRemoteRoutes
-} from "../../src/utils/remotePathCache.js";
-import { clearPathCache } from "../../src/utils/pathCache.js";
+} from "../../src/utils/remote-mining/remotePathCache.js";
+import { clearPathCache } from "../../src/utils/caching/pathCache.js";
 
 describe("remotePathCache", () => {
   beforeEach(() => {

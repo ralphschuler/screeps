@@ -10,7 +10,7 @@ import {
   unscheduleTask,
   runScheduledTasks,
   getSchedulerStats
-} from "../../src/utils/computationScheduler";
+} from "../../src/utils/scheduling/computationScheduler";
 
 describe("computationScheduler", () => {
   beforeEach(() => {

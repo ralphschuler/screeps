@@ -7,7 +7,7 @@
  */
 
 import { assert } from "chai";
-import { findCachedClosest, clearCache } from "../../src/utils/cachedClosest";
+import { findCachedClosest, clearCache } from "../../src/utils/caching/cachedClosest";
 
 // Mock creep memory interface
 interface MockCreepMemory {

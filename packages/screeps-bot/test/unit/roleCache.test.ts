@@ -17,7 +17,7 @@ import {
   getSourceContainer,
   getControllerEnergySource,
   clearTargetCaches
-} from "../../src/utils/roleCache";
+} from "../../src/utils/caching/roleCache";
 
 describe("roleCache", () => {
   beforeEach(() => {
