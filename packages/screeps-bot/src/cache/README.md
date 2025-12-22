@@ -207,10 +207,66 @@ const sources = cachedRoomFind(room, FIND_SOURCES);
 
 ## Debugging
 
+### Understanding Cache Systems
+
+This repository has two cache systems serving different purposes:
+
+**1. Unified Cache System (`src/cache/`)** - For game API results
+- Caches expensive game API calls (room.find(), Game.getObjectById(), pathfinding)
+- Reduces CPU by avoiding repeated API calls
+- TTL-based expiration and LRU eviction
+- Monitored via unified stats system
+
+**2. Heap Cache (`src/memory/heapCache.ts`)** - For Memory persistence
+- Write-ahead cache for Memory access (empire, clusters, swarms)
+- Reduces Memory serialization overhead
+- Persists data across global resets
+- Complementary to unified cache, not redundant
+
+Both systems are necessary and serve distinct roles in the bot architecture.
+
 ### View Cache Statistics
 ```typescript
 const stats = globalCache.getCacheStats('namespace');
 console.log(JSON.stringify(stats, null, 2));
+```
+
+### Unified Stats Integration
+
+All cache systems are automatically monitored via the unified stats system. Cache metrics are collected every tick and exported to Grafana:
+
+- `stats.cache.roomFind.*` - Room.find() cache statistics (full metrics: hits, misses, hitRate, size)
+- `stats.cache.bodyPart.*` - Body part cache statistics (size only)
+- `stats.cache.object.*` - Object cache (Game.getObjectById) statistics (size only)
+- `stats.cache.path.*` - Path cache statistics (full metrics: hits, misses, hitRate, size, evictions)
+- `stats.cache.role.*` - Role-specific cache statistics (totalEntries only)
+- `stats.cache.global.*` - Aggregate statistics across all cache namespaces (full metrics)
+
+**Note:** Not all cache domains track the same metrics. The `object` and `bodyPart` 
+caches focus on size tracking for memory management, while `path` and `roomFind` 
+caches track detailed hit/miss statistics for performance analysis.
+
+The stats include:
+- `hits` - Number of cache hits
+- `misses` - Number of cache misses
+- `hitRate` - Hit rate as percentage (0-1)
+- `size` - Current number of entries
+- `evictions` - Number of evictions performed
+
+Example Grafana query:
+```promql
+# Cache hit rate over time (global aggregate)
+stats_cache_global_hitRate
+
+# Cache sizes by namespace
+stats_cache_object_size          # Object cache size
+stats_cache_path_size            # Path cache size  
+stats_cache_roomFind_totalEntries # Room find cache entries
+stats_cache_bodyPart_size        # Body part cache size
+
+# Note: Different domains may use 'size' or 'totalEntries' depending on 
+# their specific stat structure. Check the domain's getCacheStats() 
+# implementation for exact metric names.
 ```
 
 ### Clear Cache for Testing

@@ -25,7 +25,14 @@ import { logger } from "./logger";
 import { memoryManager } from "../memory/manager";
 import { EvolutionStage, RoomPosture } from "../memory/schemas";
 import { shardManager } from "../intershard/shardManager";
-import { getRoomFindCacheStats } from "../utils/caching";
+import { 
+  getRoomFindCacheStats,
+  getBodyPartCacheStats,
+  getObjectCacheStats,
+  getPathCacheStats,
+  getRoleCacheStats
+} from "../utils/caching";
+import { globalCache } from "../cache";
 import { calculateRoomScalingMultiplier, calculateBucketMultiplier, type AdaptiveBudgetConfig } from "./adaptiveBudgets";
 
 // ============================================================================
@@ -264,9 +271,10 @@ export interface NativeCallStats {
 }
 
 /**
- * Room.find() cache statistics
+ * Unified cache statistics from all cache systems
  */
 export interface CacheStats {
+  /** Room.find() cache statistics */
   roomFind: {
     rooms: number;
     totalEntries: number;
@@ -274,6 +282,35 @@ export interface CacheStats {
     misses: number;
     invalidations: number;
     hitRate: number;
+  };
+  /** Body part cache statistics */
+  bodyPart: {
+    size: number;
+  };
+  /** Object cache (Game.getObjectById) statistics */
+  object: {
+    size: number;
+  };
+  /** Path cache statistics */
+  path: {
+    size: number;
+    maxSize: number;
+    hits: number;
+    misses: number;
+    evictions: number;
+    hitRate: number;
+  };
+  /** Role-specific data cache statistics */
+  role: {
+    totalEntries: number;
+  };
+  /** Global cache manager aggregate statistics */
+  global: {
+    hits: number;
+    misses: number;
+    hitRate: number;
+    size: number;
+    evictions: number;
   };
 }
 
@@ -1115,12 +1152,28 @@ export class UnifiedStatsManager {
   }
 
   /**
-   * Finalize cache stats - collect room.find() cache statistics
+   * Finalize cache stats - collect statistics from all cache systems
    */
   private finalizeCacheStats(): void {
     const roomFindStats = getRoomFindCacheStats();
+    const bodyPartStats = getBodyPartCacheStats();
+    const objectStats = getObjectCacheStats();
+    const pathStats = getPathCacheStats();
+    const roleStats = getRoleCacheStats();
+    // Get aggregate stats across all namespaces (hits, misses, size, evictions summed)
+    const globalStats = globalCache.getCacheStats();
+    
     this.currentSnapshot.cache = {
-      roomFind: roomFindStats
+      roomFind: roomFindStats,
+      bodyPart: {
+        size: bodyPartStats.size
+      },
+      object: {
+        size: objectStats.size
+      },
+      path: pathStats,
+      role: roleStats,
+      global: globalStats
     };
   }
 
