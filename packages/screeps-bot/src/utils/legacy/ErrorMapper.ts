@@ -5,9 +5,6 @@ import { SourceMapConsumer } from "source-map";
 // The eslint-disable was added to ignore initial issues but should be addressed
 // TODO(P2): PERF - Cache source map parsing to avoid expensive re-parsing on global resets
 // First call after reset uses >30 CPU which can impact startup performance
-// TODO(P1): BUG - Add error handling for missing source map file
-// Issue URL: https://github.com/ralphschuler/screeps/issues/615
-// If main.js.map is not bundled, the require will throw
 
 /**
  * Converts special HTML characters to their entity equivalents.
@@ -27,24 +24,35 @@ function escapeHtml(str: string | undefined): string {
 
 export class ErrorMapper {
   // Cache consumer
-  private static _consumer?: SourceMapConsumer;
+  private static _consumer?: SourceMapConsumer | null;
+  private static _sourceMapAvailable?: boolean;
 
-  public static get consumer(): SourceMapConsumer {
-    if (this._consumer == null) {
-      // @ts-check
-      const rawSourceMap = require("main.js.map");
-      // Parse the source map if it's a string, otherwise use it directly
-      let sourceMapData;
-      if (typeof rawSourceMap === "string") {
-        try {
-          sourceMapData = JSON.parse(rawSourceMap);
-        } catch (e) {
-          throw new Error(`Failed to parse source map JSON: ${e instanceof Error ? e.message : String(e)}`);
+  public static get consumer(): SourceMapConsumer | null {
+    if (this._consumer === undefined) {
+      try {
+        // @ts-ignore - require may fail if source map not bundled
+        const rawSourceMap = require("main.js.map");
+        // Parse the source map if it's a string, otherwise use it directly
+        let sourceMapData;
+        if (typeof rawSourceMap === "string") {
+          try {
+            sourceMapData = JSON.parse(rawSourceMap);
+          } catch (e) {
+            console.error(`Failed to parse source map JSON: ${e instanceof Error ? e.message : String(e)}`);
+            this._consumer = null;
+            this._sourceMapAvailable = false;
+            return null;
+          }
+        } else {
+          sourceMapData = rawSourceMap;
         }
-      } else {
-        sourceMapData = rawSourceMap;
+        this._consumer = new SourceMapConsumer(sourceMapData);
+        this._sourceMapAvailable = true;
+      } catch (e) {
+        // Source map not available - this is expected when sourcemap is disabled in build
+        this._consumer = null;
+        this._sourceMapAvailable = false;
       }
-      this._consumer = new SourceMapConsumer(sourceMapData);
     }
 
     return this._consumer;
@@ -68,6 +76,14 @@ export class ErrorMapper {
       return this.cache[stack];
     }
 
+    // If source map not available, return original stack trace
+    const consumer = this.consumer;
+    if (!consumer) {
+      const result = error.toString();
+      this.cache[stack] = result;
+      return result;
+    }
+
     // eslint-disable-next-line no-useless-escape
     const re = /^\s+at\s+(.+?\s+)?\(?([0-z._\-\\\/]+):(\d+):(\d+)\)?$/gm;
     let match: RegExpExecArray | null;
@@ -75,7 +91,7 @@ export class ErrorMapper {
 
     while ((match = re.exec(stack))) {
       if (match[2] === "main") {
-        const pos = this.consumer.originalPositionFor({
+        const pos = consumer.originalPositionFor({
           column: parseInt(match[4], 10),
           line: parseInt(match[3], 10)
         });

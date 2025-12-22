@@ -163,18 +163,18 @@ export function opportunisticTransfer(creep: Creep, primaryAction: CreepAction):
   
   // Look for structures that need energy nearby
   // Priority: spawns > extensions > towers (critical structures only)
-  const needsEnergy = creep.pos.findInRange(FIND_MY_STRUCTURES, 1, {
+  const needsEnergy: (StructureSpawn | StructureExtension | StructureTower)[] = creep.pos.findInRange(FIND_MY_STRUCTURES, 1, {
     filter: (s: AnyOwnedStructure) => {
       if (s.structureType === STRUCTURE_SPAWN ||
           s.structureType === STRUCTURE_EXTENSION) {
-        return (s as StructureSpawn | StructureExtension).store.getFreeCapacity(RESOURCE_ENERGY) > 0;
+        return s.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
       }
       if (s.structureType === STRUCTURE_TOWER) {
-        return (s as StructureTower).store.getFreeCapacity(RESOURCE_ENERGY) >= 100;
+        return s.store.getFreeCapacity(RESOURCE_ENERGY) >= 100;
       }
       return false;
     }
-  });
+  }) as (StructureSpawn | StructureExtension | StructureTower)[];
   
   if (needsEnergy.length > 0) {
     // Transfer to highest priority structure (spawns first, then extensions, then towers)
