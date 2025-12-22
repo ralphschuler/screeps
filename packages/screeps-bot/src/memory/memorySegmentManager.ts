@@ -81,7 +81,7 @@ export class MemorySegmentManager {
       
       // Remove the newly added segment since we exceeded the limit
       this.activeSegments.delete(segmentId);
-      throw new Error(`Segment limit exceeded: Cannot load segment ${segmentId}. Already have 10 active segments. Release a segment first.`);
+      throw new Error(`Segment limit exceeded: Cannot load segment ${segmentId}. Already have ${activeArray.length - 1} active segments (limit: 10). Release a segment first.`);
     }
     
     // Update active segments for next tick
