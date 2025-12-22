@@ -249,11 +249,18 @@ export class RoomFindOptimizer {
    * Update TTL config for a specific find type
    *
    * @param type - Find constant
-   * @param config - New TTL config
+   * @param config - New TTL config (partial update)
    */
   setTTLConfig(type: FindConstant, config: Partial<TTLConfig>): void {
+    // Get existing config or create default if doesn't exist
+    const existing = this.ttlConfig[type] || {
+      lowBucket: 50,
+      normal: 20,
+      highBucket: 5
+    };
+    
     this.ttlConfig[type] = {
-      ...this.ttlConfig[type],
+      ...existing,
       ...config
     } as TTLConfig;
   }
@@ -280,6 +287,10 @@ export class ObjectIdOptimizer {
 
   /**
    * Batch get objects by IDs with caching
+   * 
+   * Note: This is a convenience wrapper that processes each ID individually.
+   * It provides a cleaner API but is not a performance optimization over
+   * calling getById multiple times.
    *
    * @param ids - Array of object IDs
    * @param ttl - Optional TTL override
