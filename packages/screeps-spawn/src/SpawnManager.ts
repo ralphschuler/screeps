@@ -18,6 +18,14 @@ import { DEFAULT_ROLE_DEFINITIONS, getRoleDefinition } from "./roleDefinitions";
 import { calculateBodyCost, validateBody, sortBodyParts } from "./bodyUtils";
 
 /**
+ * Pheromone calculation constants
+ */
+const PHEROMONE_BASE_MULTIPLIER = 0.5; // Base multiplier ensures roles have minimum priority
+const ECONOMY_PHEROMONE_WEIGHT = 3; // Average across 3 pheromone types for economy
+const MILITARY_PHEROMONE_WEIGHT = 3; // Average across 3 pheromone types for military  
+const UTILITY_PHEROMONE_WEIGHT = 2; // Average across 2 pheromone types for utility
+
+/**
  * SpawnManager class
  * 
  * Manages spawn operations with clean separation from game state.
@@ -175,9 +183,11 @@ export class SpawnManager {
 
   /**
    * Generate unique creep name
+   * Note: Uses Game.time if available, falls back to random if not
    */
   generateCreepName(role: string): string {
-    return `${role}_${Game.time}_${Math.floor(Math.random() * 1000)}`;
+    const time = (typeof Game !== 'undefined' && Game.time) ? Game.time : Date.now();
+    return `${role}_${time}_${Math.floor(Math.random() * 1000)}`;
   }
 
   /**
@@ -232,27 +242,36 @@ export class SpawnManager {
   }
 
   /**
-   * Get pheromone multiplier for a role
+   * Get pheromone multiplier for a role based on room state
+   * 
+   * Calculates a multiplier (0.5 to 1.5) based on relevant pheromone values:
+   * - Economy roles: Average of harvest, build, upgrade pheromones
+   * - Military roles: Average of defense, war, siege pheromones
+   * - Utility roles: Average of expand, logistics pheromones
+   * 
+   * Base multiplier of 0.5 ensures all roles maintain minimum priority
    */
   private getPheromoneMult(role: string, roomState: RoomState): number {
     const def = getRoleDefinition(role, this.roleDefs);
     if (!def) return 1.0;
 
-    // Map role families to pheromones
     const pheromones = roomState.pheromones;
     
     switch (def.family) {
       case "economy":
         // Economy roles boost with harvest/build/upgrade pheromones
-        return 0.5 + (pheromones.harvest + pheromones.build + pheromones.upgrade) / 3;
+        return PHEROMONE_BASE_MULTIPLIER + 
+          (pheromones.harvest + pheromones.build + pheromones.upgrade) / ECONOMY_PHEROMONE_WEIGHT;
       
       case "military":
         // Military roles boost with defense/war pheromones
-        return 0.5 + (pheromones.defense + pheromones.war + pheromones.siege) / 3;
+        return PHEROMONE_BASE_MULTIPLIER + 
+          (pheromones.defense + pheromones.war + pheromones.siege) / MILITARY_PHEROMONE_WEIGHT;
       
       case "utility":
         // Utility roles boost with expansion/logistics
-        return 0.5 + (pheromones.expand + pheromones.logistics) / 2;
+        return PHEROMONE_BASE_MULTIPLIER + 
+          (pheromones.expand + pheromones.logistics) / UTILITY_PHEROMONE_WEIGHT;
       
       default:
         return 1.0;
