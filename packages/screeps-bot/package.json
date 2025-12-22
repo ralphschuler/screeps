@@ -61,6 +61,7 @@
   },
   "dependencies": {
     "@ralphschuler/screeps-chemistry": "file:../screeps-chemistry",
+    "@ralphschuler/screeps-spawn": "file:../screeps-spawn",
     "lz-string": "^1.5.0",
     "screeps-cartographer": "^1.8.13",
     "source-map": "~0.6.1"
