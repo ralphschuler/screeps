@@ -32,6 +32,7 @@ const ASSIGNMENT_REFRESH_INTERVAL = 10;
  * Default maximum harvesters per source
  * Each source typically has ~2 mining spots around it
  * TODO: Calculate exact spots from terrain analysis
+ Issue URL: https://github.com/ralphschuler/screeps/issues/824
  */
 const DEFAULT_MAX_HARVESTERS_PER_SOURCE = 2;
 
