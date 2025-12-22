@@ -26,14 +26,12 @@ import {
   type SwarmState,
   createDefaultClusterMemory,
   createDefaultEmpireMemory,
-  createDefaultOvermindMemory,
   createDefaultSwarmState
 } from "./schemas";
 import { INFINITE_TTL, heapCache } from "./heapCache";
 import { logger } from "../core/logger";
 
 const EMPIRE_KEY = "empire";
-const OVERMIND_KEY = "overmind";
 const CLUSTERS_KEY = "clusters";
 /** Screeps memory limit in bytes */
 const MEMORY_LIMIT_BYTES = 2097152; // 2MB
@@ -65,7 +63,6 @@ export class MemoryManager {
 
     this.runMemoryMigration();
     this.ensureEmpireMemory();
-    this.ensureOvermindMemory(); // Keep for backward compatibility during transition
     this.ensureClustersMemory();
 
     // Only clean dead creeps periodically to save CPU
@@ -123,6 +120,7 @@ export class MemoryManager {
    */
   private migrateToV2(): void {
     const mem = Memory as unknown as Record<string, any>;
+    const OVERMIND_KEY = "overmind"; // Local reference for migration only
     
     // If overmind exists but empire doesn't, migrate overmind to empire
     if (mem[OVERMIND_KEY] && !mem[EMPIRE_KEY]) {
@@ -152,6 +150,12 @@ export class MemoryManager {
         subsystem: "MemoryManager",
         meta: { clusterCount: mem[EMPIRE_KEY].clusters.length }
       });
+      
+      // Clean up old overmind memory after successful migration
+      delete mem.overmind;
+      logger.info("Removed deprecated overmind memory structure", {
+        subsystem: "MemoryManager"
+      });
     }
   }
 
@@ -162,16 +166,6 @@ export class MemoryManager {
     const mem = Memory as unknown as Record<string, unknown>;
     if (!mem[EMPIRE_KEY]) {
       mem[EMPIRE_KEY] = createDefaultEmpireMemory();
-    }
-  }
-
-  /**
-   * Ensure overmind memory exists
-   */
-  private ensureOvermindMemory(): void {
-    const mem = Memory as unknown as Record<string, unknown>;
-    if (!mem[OVERMIND_KEY]) {
-      mem[OVERMIND_KEY] = createDefaultOvermindMemory();
     }
   }
 
@@ -203,27 +197,6 @@ export class MemoryManager {
     }
     
     return empire;
-  }
-
-  /**
-   * Get overmind memory (cached with infinite TTL)
-   * @deprecated Use getEmpire() instead. Kept for backward compatibility.
-   * Note: Returns a reference to the cached object. Modifications will be tracked.
-   */
-  public getOvermind(): OvermindMemory {
-    const cacheKey = `memory:${OVERMIND_KEY}`;
-    let overmind = heapCache.get<OvermindMemory>(cacheKey);
-    
-    if (!overmind) {
-      this.ensureOvermindMemory();
-      const mem = Memory as unknown as Record<string, OvermindMemory>;
-      // Cache a reference to the Memory object for fast access
-      // Changes to this object will need to be re-cached to persist
-      heapCache.set(cacheKey, mem[OVERMIND_KEY], INFINITE_TTL);
-      overmind = mem[OVERMIND_KEY];
-    }
-    
-    return overmind;
   }
 
   /**
