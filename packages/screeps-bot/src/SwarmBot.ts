@@ -326,6 +326,17 @@ export { roomVisualizer } from "./visuals/roomVisualizer";
 export { mapVisualizer } from "./visuals/mapVisualizer";
 export { eventBus } from "./core/events";
 
+// Re-export optimization layer
+export {
+  roomFindOptimizer,
+  objectIdOptimizer,
+  optimizedFind,
+  optimizedGetById,
+  RoomFindOptimizer,
+  ObjectIdOptimizer
+} from "./core/roomFindOptimizer";
+export type { RoomEvent, BucketThresholds, TTLConfig } from "./core/roomFindOptimizer";
+
 // Deprecated exports - redirect to unifiedStats with console warnings
 import { unifiedStats as _unifiedStats } from "./core/unifiedStats";
 import { memorySegmentStats as _memorySegmentStats } from "./core/memorySegmentStats";
