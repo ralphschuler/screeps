@@ -30,8 +30,13 @@ Relevante Doku
 - Ereignisgetriebene Logik
 - Kritische Ereignisse (Hostiles, eingehende Nukes, zerstörte Strukturen, Remote-Verlust) aktualisieren sofort relevante Flags.
 - Periodische Routinen (Scans, Pheromon-Updates, Markt-Analysen) laufen nur alle N Ticks.
-- Aggressives Caching + TTL
+- Aggressives Caching + TTL ✅ **IMPLEMENTED**
 - Pfade, Scans, Analyseergebnisse werden mit TTL gecacht (im globalen Objekt, nicht in Memory) und nur bei Bedarf neu berechnet.
+- **Unified Cache System** in `src/cache/` konsolidiert alle Caching-Operationen:
+  - Room.find() cache, Object cache (Game.getObjectById), Path cache, Role cache, Body part cache
+  - TTL-based expiration, LRU eviction, namespace isolation
+  - Integriert mit unified stats system für Monitoring (hit rate, evictions, etc.)
+  - Heap & Memory storage backends für verschiedene Persistenz-Anforderungen
 - Striktes Tick-Budget
 - Zielgrößen: „Öko-Raum“ ≤ 0,1 CPU, „Kampf-Raum“ ≤ 0,25 CPU, globaler Overmind ≤ 1 CPU alle 20–50 Ticks.
 - CPU-Bucket-gesteuertes Verhalten
