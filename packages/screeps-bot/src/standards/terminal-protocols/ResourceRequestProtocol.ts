@@ -359,7 +359,7 @@ export class ResourceRequestProtocol {
    * NOTE: This is a placeholder for future integration with SS2TerminalComms.
    * Full implementation requires:
    * 1. Integration with SS2TerminalComms message processing
-   * 2. Alliance configuration for allowed allies
+   * 2. Player whitelist configuration for allowed transfers
    * 3. Resource availability checks
    * 4. Transfer cost calculations
    * 

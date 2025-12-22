@@ -942,10 +942,8 @@ Integration in Bot-Architektur
 - Terminal-Queue für Multi-Tick-Übertragungen
 
 Verwendung
-- Inter-Alliance-Kommunikation
 - Portal-Sharing für schnellere Expansion
 - Ressourcen-Trading zwischen Freunden
-- Koordinierte Kriegsführung
 - Notfall-Evakuierung
 - Market-Alternative für Verbündete
 
@@ -1077,5 +1075,4 @@ Zukünftige Erweiterungen
 - Automatische Quest-Priorisierung basierend auf Reputation-Gains
 - Koordinierte Multi-Room-Quests
 - Quest-Erstellung (eigene Quests an TooAngel senden)
-- Integration mit Alliance-System für koordinierte Quests
 

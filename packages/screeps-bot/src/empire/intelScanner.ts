@@ -476,25 +476,4 @@ export class IntelScanner {
   public getAllEnemies(): EnemyPlayer[] {
     return Array.from(this.enemyPlayers.values());
   }
-
-  /**
-   * Add ally
-   */
-  public addAlly(username: string): void {
-    if (!this.config.allies.includes(username)) {
-      this.config.allies.push(username);
-      logger.info(`Added ally: ${username}`, { subsystem: "Intel" });
-    }
-  }
-
-  /**
-   * Remove ally
-   */
-  public removeAlly(username: string): void {
-    const index = this.config.allies.indexOf(username);
-    if (index > -1) {
-      this.config.allies.splice(index, 1);
-      logger.info(`Removed ally: ${username}`, { subsystem: "Intel" });
-    }
-  }
 }

@@ -9,7 +9,7 @@
  * - Reputation tracking and API
  * - Quest lifecycle management (discover, apply, execute, complete)
  * - Terminal-based communication
- * - Integration with existing alliance diplomacy
+ * - Player-to-player coordination protocol
  * 
  * Based on: https://github.com/TooAngel/screeps/blob/master/doc/API.md
  */
