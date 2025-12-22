@@ -93,7 +93,7 @@ jobs:
 
       - name: Upload performance test logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: performance-test-logs
           path: packages/screeps-bot/logs/
@@ -101,7 +101,7 @@ jobs:
 
       - name: Upload performance test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: performance-test-results
           path: packages/screeps-bot/performance-results.json

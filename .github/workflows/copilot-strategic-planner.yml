@@ -58,7 +58,7 @@ jobs:
 
       - name: Upload strategic planning report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: strategic-planner-report-${{ github.run_id }}
           path: |
