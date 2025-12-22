@@ -342,12 +342,27 @@ export class MemoryManager {
 
   /**
    * Record room as seen
+   * Updates the lastSeen timestamp for a room in empire memory
    * Note: Modifies the cached object in-place. Changes persist via Memory reference.
    */
   public recordRoomSeen(roomName: string): void {
-    const overmind = this.getOvermind();
-    overmind.roomsSeen[roomName] = Game.time;
-    // No need to re-cache: overmind is a reference to Memory object
+    const empire = this.getEmpire();
+    if (!empire.knownRooms[roomName]) {
+      empire.knownRooms[roomName] = {
+        name: roomName,
+        lastSeen: Game.time,
+        sources: 0,
+        controllerLevel: 0,
+        threatLevel: 0,
+        scouted: false,
+        terrain: "mixed",
+        isHighway: false,
+        isSK: false
+      };
+    } else {
+      empire.knownRooms[roomName].lastSeen = Game.time;
+    }
+    // No need to re-cache: empire is a reference to Memory object
   }
 
   /**

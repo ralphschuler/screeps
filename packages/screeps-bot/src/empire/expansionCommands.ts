@@ -20,7 +20,7 @@ export class ExpansionCommands {
     category: "Empire"
   })
   public status(): string {
-    const overmind = memoryManager.getOvermind();
+    const empire = memoryManager.getEmpire();
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
     
     // GCL Status
@@ -30,12 +30,12 @@ export class ExpansionCommands {
     
     // Expansion readiness
     const canExpand = roomsAvailable > 0;
-    const expansionPaused = overmind.objectives.expansionPaused;
+    const expansionPaused = empire.objectives.expansionPaused;
     
     // Queue status
-    const totalCandidates = overmind.claimQueue.length;
-    const unclaimedCandidates = overmind.claimQueue.filter(c => !c.claimed).length;
-    const activeClaims = overmind.claimQueue.filter(c => c.claimed).length;
+    const totalCandidates = empire.claimQueue.length;
+    const unclaimedCandidates = empire.claimQueue.filter(c => !c.claimed).length;
+    const activeClaims = empire.claimQueue.filter(c => c.claimed).length;
     
     // Active claimers
     const activeClaimers = Object.values(Game.creeps).filter(creep => {
@@ -58,7 +58,7 @@ Active Claimers: ${activeClaimers.length}
     // Show top expansion candidates
     if (unclaimedCandidates > 0) {
       output += "=== Top Expansion Candidates ===\n";
-      const unclaimed = overmind.claimQueue.filter(c => !c.claimed).slice(0, 5);
+      const unclaimed = empire.claimQueue.filter(c => !c.claimed).slice(0, 5);
       for (const candidate of unclaimed) {
         const age = Game.time - candidate.lastEvaluated;
         output += `  ${candidate.roomName}: Score ${candidate.score.toFixed(0)}, Distance ${candidate.distance}, Age ${age} ticks\n`;
@@ -69,7 +69,7 @@ Active Claimers: ${activeClaimers.length}
     // Show active expansions
     if (activeClaims > 0) {
       output += "=== Active Expansion Attempts ===\n";
-      const active = overmind.claimQueue.filter(c => c.claimed);
+      const active = empire.claimQueue.filter(c => c.claimed);
       for (const candidate of active) {
         const age = Game.time - candidate.lastEvaluated;
         const claimer = activeClaimers.find(c => (c.memory as any).targetRoom === candidate.roomName);
@@ -105,8 +105,8 @@ Active Claimers: ${activeClaimers.length}
     category: "Empire"
   })
   public pause(): string {
-    const overmind = memoryManager.getOvermind();
-    overmind.objectives.expansionPaused = true;
+    const empire = memoryManager.getEmpire();
+    empire.objectives.expansionPaused = true;
     return "Expansion paused. Use expansion.resume() to re-enable.";
   }
 
@@ -118,8 +118,8 @@ Active Claimers: ${activeClaimers.length}
     category: "Empire"
   })
   public resume(): string {
-    const overmind = memoryManager.getOvermind();
-    overmind.objectives.expansionPaused = false;
+    const empire = memoryManager.getEmpire();
+    empire.objectives.expansionPaused = false;
     return "Expansion resumed.";
   }
 
@@ -161,9 +161,9 @@ Active Claimers: ${activeClaimers.length}
     category: "Empire"
   })
   public clearQueue(): string {
-    const overmind = memoryManager.getOvermind();
-    const count = overmind.claimQueue.length;
-    overmind.claimQueue = [];
+    const empire = memoryManager.getEmpire();
+    const count = empire.claimQueue.length;
+    empire.claimQueue = [];
     return `Cleared ${count} candidates from claim queue. Queue will repopulate on next empire tick.`;
   }
 }

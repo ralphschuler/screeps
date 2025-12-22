@@ -172,12 +172,12 @@ export class PixelBuyingManager {
    * Ensure pixel buying memory exists
    */
   private ensurePixelBuyingMemory(): void {
-    const overmind = memoryManager.getOvermind();
-    if (!overmind.market) {
+    const empire = memoryManager.getEmpire();
+    if (!empire.market) {
       return;
     }
     // Store pixel buying data in market memory
-    const marketMem = overmind.market as unknown as Record<string, unknown>;
+    const marketMem = empire.market as unknown as Record<string, unknown>;
     if (!marketMem.pixelBuying) {
       marketMem.pixelBuying = createDefaultPixelBuyingMemory();
     }
@@ -187,9 +187,9 @@ export class PixelBuyingManager {
    * Get pixel buying memory
    */
   private getPixelBuyingMemory(): PixelBuyingMemory | undefined {
-    const overmind = memoryManager.getOvermind();
-    if (!overmind.market) return undefined;
-    const marketMem = overmind.market as unknown as Record<string, unknown>;
+    const empire = memoryManager.getEmpire();
+    if (!empire.market) return undefined;
+    const marketMem = empire.market as unknown as Record<string, unknown>;
     return marketMem.pixelBuying as PixelBuyingMemory | undefined;
   }
 

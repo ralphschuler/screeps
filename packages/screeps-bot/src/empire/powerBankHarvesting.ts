@@ -121,7 +121,7 @@ export class PowerBankHarvestingManager {
    * Scan visible rooms for power banks
    */
   private scanForPowerBanks(): void {
-    const overmind = memoryManager.getOvermind();
+    const empire = memoryManager.getEmpire();
 
     for (const roomName in Game.rooms) {
       const room = Game.rooms[roomName];
@@ -143,7 +143,7 @@ export class PowerBankHarvestingManager {
 
       for (const pb of powerBanks) {
         // Check if already tracked
-        const existing = overmind.powerBanks.find(
+        const existing = empire.powerBanks.find(
           entry => entry.roomName === roomName && entry.pos.x === pb.pos.x && entry.pos.y === pb.pos.y
         );
 
@@ -156,7 +156,7 @@ export class PowerBankHarvestingManager {
             active: false
           };
 
-          overmind.powerBanks.push(entry);
+          empire.powerBanks.push(entry);
 
           if (pb.power >= this.config.minPower) {
             logger.info(`Power bank discovered in ${roomName}: ${pb.power} power`, {
@@ -172,7 +172,7 @@ export class PowerBankHarvestingManager {
     }
 
     // Clean up decayed power banks
-    overmind.powerBanks = overmind.powerBanks.filter(pb => pb.decayTick > Game.time);
+    empire.powerBanks = empire.powerBanks.filter(pb => pb.decayTick > Game.time);
   }
 
   /**
@@ -343,13 +343,13 @@ export class PowerBankHarvestingManager {
       return;
     }
 
-    const overmind = memoryManager.getOvermind();
+    const empire = memoryManager.getEmpire();
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my && r.controller.level >= 7);
 
     if (ownedRooms.length === 0) return;
 
     // Find best power bank opportunity
-    const candidates = overmind.powerBanks
+    const candidates = empire.powerBanks
       .filter(pb => {
         // Not already active
         if (pb.active || this.operations.has(pb.roomName)) return false;

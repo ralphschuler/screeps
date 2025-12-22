@@ -84,9 +84,9 @@ export function findAttackTargets(
   const finalWeights = { ...DEFAULT_WEIGHTS, ...weights };
   const targets: AttackTarget[] = [];
   
-  const overmind = memoryManager.getOvermind();
-  const roomIntel = overmind.roomIntel;
-  const warTargets = new Set(overmind.warTargets);
+  const empire = memoryManager.getEmpire();
+  const roomIntel = empire.knownRooms;
+  const warTargets = new Set(empire.warTargets);
 
   // Get all known rooms
   for (const roomName in roomIntel) {
@@ -248,8 +248,8 @@ export function selectTargetForDoctrine(
  * Validate that a target is still valid
  */
 export function validateTarget(targetRoom: string): boolean {
-  const overmind = memoryManager.getOvermind();
-  const intel = overmind.roomIntel[targetRoom];
+  const empire = memoryManager.getEmpire();
+  const intel = empire.knownRooms[targetRoom];
   
   if (!intel) {
     logger.warn(`No intel for target ${targetRoom}`, { subsystem: "AttackTarget" });

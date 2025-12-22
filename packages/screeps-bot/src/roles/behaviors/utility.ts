@@ -5,59 +5,31 @@
  * Includes scouting, claiming, engineering, and logistics.
  */
 
-import type { RoomIntel } from "../../memory/schemas";
+import type { RoomIntel, EmpireMemory } from "../../memory/schemas";
 import { findCachedClosest } from "../../utils/caching";
 import { isExit } from "screeps-cartographer";
 import { safeFind } from "../../utils/optimization";
 import type { CreepAction, CreepContext } from "./types";
 import { createLogger } from "../../core/logger";
+import { memoryManager } from "../../memory/manager";
 
 const logger = createLogger("UtilityBehaviors");
 
 // =============================================================================
-// Overmind / Intel Helpers
+// Empire / Intel Helpers
 // =============================================================================
-
-/**
- * Get or initialize overmind memory.
- */
-function getOvermind(): Record<string, unknown> {
-  const mem = Memory as unknown as Record<string, unknown>;
-  if (!mem.overmind) {
-    mem.overmind = {
-      roomsSeen: {},
-      roomIntel: {},
-      claimQueue: [],
-      warTargets: [],
-      nukeCandidates: [],
-      powerBanks: [],
-      objectives: {
-        targetPowerLevel: 0,
-        targetRoomCount: 1,
-        warMode: false,
-        expansionPaused: false
-      },
-      lastRun: 0
-    };
-  }
-  return mem.overmind as Record<string, unknown>;
-}
 
 /**
  * Record intelligence about a room.
  * OPTIMIZATION: Only do full scan if room hasn't been scouted recently (500 ticks).
  * This reduces expensive terrain scanning and room.find() calls.
  */
-function recordRoomIntel(room: Room, overmind: Record<string, unknown>): void {
-  const roomsSeen = overmind.roomsSeen as Record<string, number>;
-  const roomIntel = overmind.roomIntel as Record<string, RoomIntel>;
+function recordRoomIntel(room: Room, empire: EmpireMemory): void {
+  const knownRooms = empire.knownRooms;
 
-  const existingIntel = roomIntel[room.name];
+  const existingIntel = knownRooms[room.name];
   const lastSeen = existingIntel?.lastSeen ?? 0;
   const ticksSinceLastScan = Game.time - lastSeen;
-
-  // Update last seen timestamp
-  roomsSeen[room.name] = Game.time;
 
   // If room was recently scanned (within 2000 ticks), only update dynamic data
   // OPTIMIZATION: Increased from 1000 to 2000 ticks to reduce CPU on frequent rescans
@@ -124,7 +96,7 @@ function recordRoomIntel(room: Room, overmind: Record<string, unknown>): void {
   if (controller?.reservation?.username) intel.reserver = controller.reservation.username;
   if (mineral?.mineralType) intel.mineralType = mineral.mineralType;
 
-  roomIntel[room.name] = intel;
+  knownRooms[room.name] = intel;
 }
 
 /**
@@ -133,10 +105,10 @@ function recordRoomIntel(room: Room, overmind: Record<string, unknown>): void {
  */
 function findNextExploreTarget(
   currentRoom: string,
-  overmind: Record<string, unknown>,
+  empire: EmpireMemory,
   previousRoom?: string
 ): string | undefined {
-  const roomsSeen = overmind.roomsSeen as Record<string, number>;
+  const knownRooms = empire.knownRooms;
   const exits = Game.map.describeExits(currentRoom);
   if (!exits) return undefined;
 
@@ -146,7 +118,7 @@ function findNextExploreTarget(
     // Skip the previous room to prevent cycling
     if (previousRoom && roomName === previousRoom) continue;
 
-    const lastSeen = roomsSeen[roomName] ?? 0;
+    const lastSeen = knownRooms[roomName]?.lastSeen ?? 0;
     if (Game.time - lastSeen > 1000) {
       candidates.push({ room: roomName, lastSeen });
     }
@@ -210,7 +182,7 @@ function findExplorePosition(room: Room): RoomPosition | null {
  * OPTIMIZATION: Only record intel once when reaching explore position
  */
 export function scout(ctx: CreepContext): CreepAction {
-  const overmind = getOvermind();
+  const empire = memoryManager.getEmpire();
   const onExit = isExit(ctx.creep.pos);
 
   // PRIORITY 1: Always move off exits immediately
@@ -227,7 +199,7 @@ export function scout(ctx: CreepContext): CreepAction {
 
   // If no target, find next room to explore
   if (!targetRoom) {
-    targetRoom = findNextExploreTarget(ctx.room.name, overmind, lastExploredRoom);
+    targetRoom = findNextExploreTarget(ctx.room.name, empire, lastExploredRoom);
     if (targetRoom) {
       ctx.memory.targetRoom = targetRoom;
     } else {
@@ -251,7 +223,7 @@ export function scout(ctx: CreepContext): CreepAction {
       const INTEL_GATHER_RANGE = 3;
       if (ctx.creep.pos.getRangeTo(explorePos) <= INTEL_GATHER_RANGE) {
         // At explore position - record intel
-        recordRoomIntel(ctx.room, overmind);
+        recordRoomIntel(ctx.room, empire);
         ctx.memory.lastExploredRoom = ctx.room.name;
         delete ctx.memory.targetRoom; // Done exploring
         return { type: "idle" };
@@ -261,7 +233,7 @@ export function scout(ctx: CreepContext): CreepAction {
       }
     } else {
       // No valid explore position - record intel and move on
-      recordRoomIntel(ctx.room, overmind);
+      recordRoomIntel(ctx.room, empire);
       ctx.memory.lastExploredRoom = ctx.room.name;
       delete ctx.memory.targetRoom;
       return { type: "idle" };

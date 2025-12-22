@@ -52,12 +52,12 @@ export function getMineralBonus(mineralType?: MineralConstant): number {
  * Calculate hostile presence penalty by scanning adjacent rooms
  */
 export function calculateHostilePenalty(roomName: string): number {
-  const overmind = memoryManager.getOvermind();
+  const empire = memoryManager.getEmpire();
   let penalty = 0;
   const adjacentRooms = getAdjacentRoomNames(roomName);
 
   for (const adjRoom of adjacentRooms) {
-    const intel = overmind.roomIntel[adjRoom];
+    const intel = empire.knownRooms[adjRoom];
     if (!intel) continue;
 
     // Heavy penalty for hostile-owned adjacent rooms
@@ -113,12 +113,12 @@ export function isNearHighway(roomName: string): boolean {
  * Get portal proximity bonus (strategic value)
  */
 export function getPortalProximityBonus(roomName: string): number {
-  const overmind = memoryManager.getOvermind();
+  const empire = memoryManager.getEmpire();
   // Check if any adjacent rooms have portals
   const adjacentRooms = getAdjacentRoomNames(roomName);
 
   for (const adjRoom of adjacentRooms) {
-    const intel = overmind.roomIntel[adjRoom];
+    const intel = empire.knownRooms[adjRoom];
     if (!intel) continue;
 
     // Check for actual portal presence
@@ -257,12 +257,12 @@ export function getRoomsInRange(roomName: string, range: number): string[] {
  * Check if room is in a war zone (between two hostile players)
  */
 export function isInWarZone(roomName: string): boolean {
-  const overmind = memoryManager.getOvermind();
+  const empire = memoryManager.getEmpire();
   const adjacentRooms = getAdjacentRoomNames(roomName);
   const hostilePlayers = new Set<string>();
 
   for (const adjRoom of adjacentRooms) {
-    const intel = overmind.roomIntel[adjRoom];
+    const intel = empire.knownRooms[adjRoom];
     if (intel?.owner && !isAlly(intel.owner)) {
       hostilePlayers.add(intel.owner);
     }

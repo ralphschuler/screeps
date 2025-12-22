@@ -82,7 +82,7 @@ export class CrossShardIntelCoordinator {
     if (!interShardMemory) return;
 
     // Get current shard's enemy data using memoryManager
-    const overmind = memoryManager.getOvermind();
+    const empire = memoryManager.getEmpire();
     const enemyMap = new Map<string, SharedEnemyIntel>();
 
     // Initialize from existing global enemies
@@ -92,9 +92,9 @@ export class CrossShardIntelCoordinator {
       }
     }
 
-    // Update with current shard data from overmind
-    if (overmind.warTargets) {
-      for (const target of overmind.warTargets) {
+    // Update with current shard data from empire
+    if (empire.warTargets) {
+      for (const target of empire.warTargets) {
         const existing = enemyMap.get(target);
         if (existing) {
           existing.lastSeen = Game.time;
@@ -112,9 +112,9 @@ export class CrossShardIntelCoordinator {
     }
 
     // Update with room intel data
-    if (overmind.roomIntel) {
-      for (const roomName in overmind.roomIntel) {
-        const intel = overmind.roomIntel[roomName];
+    if (empire.knownRooms) {
+      for (const roomName in empire.knownRooms) {
+        const intel = empire.knownRooms[roomName];
         if (intel && intel.owner && !intel.owner.includes("Source Keeper")) {
           const existing = enemyMap.get(intel.owner);
           if (existing) {

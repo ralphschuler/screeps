@@ -211,27 +211,27 @@ export class MarketManager {
    * Ensure market memory exists and is initialized
    */
   private ensureMarketMemory(): void {
-    const overmind = memoryManager.getOvermind();
-    if (!overmind.market) {
-      overmind.market = createDefaultMarketMemory();
+    const empire = memoryManager.getEmpire();
+    if (!empire.market) {
+      empire.market = createDefaultMarketMemory();
     }
-    if (!overmind.market.orders) {
-      overmind.market.orders = {};
+    if (!empire.market.orders) {
+      empire.market.orders = {};
     }
-    if (overmind.market.totalProfit === undefined) {
-      overmind.market.totalProfit = 0;
+    if (empire.market.totalProfit === undefined) {
+      empire.market.totalProfit = 0;
     }
-    if (!overmind.market.lastBalance) {
-      overmind.market.lastBalance = 0;
+    if (!empire.market.lastBalance) {
+      empire.market.lastBalance = 0;
     }
-    if (!overmind.market.pendingArbitrage) {
-      overmind.market.pendingArbitrage = [];
+    if (!empire.market.pendingArbitrage) {
+      empire.market.pendingArbitrage = [];
     }
-    if (overmind.market.completedArbitrage === undefined) {
-      overmind.market.completedArbitrage = 0;
+    if (empire.market.completedArbitrage === undefined) {
+      empire.market.completedArbitrage = 0;
     }
-    if (overmind.market.arbitrageProfit === undefined) {
-      overmind.market.arbitrageProfit = 0;
+    if (empire.market.arbitrageProfit === undefined) {
+      empire.market.arbitrageProfit = 0;
     }
   }
 
@@ -239,14 +239,14 @@ export class MarketManager {
    * Update price tracking for all tracked resources
    */
   private updatePriceTracking(): void {
-    const overmind = memoryManager.getOvermind();
-    if (!overmind.market) return;
+    const empire = memoryManager.getEmpire();
+    if (!empire.market) return;
 
     for (const resource of this.config.trackedResources) {
       this.updateResourcePrice(resource);
     }
 
-    overmind.market.lastScan = Game.time;
+    empire.market.lastScan = Game.time;
     logger.debug(`Updated market prices for ${this.config.trackedResources.length} resources`, {
       subsystem: "Market"
     });
@@ -256,8 +256,8 @@ export class MarketManager {
    * Update price data for a specific resource
    */
   private updateResourcePrice(resource: ResourceConstant): void {
-    const overmind = memoryManager.getOvermind();
-    if (!overmind.market) return;
+    const empire = memoryManager.getEmpire();
+    if (!empire.market) return;
 
     const history = Game.market.getHistory(resource);
     if (history.length === 0) return;
@@ -266,7 +266,7 @@ export class MarketManager {
     const latest = history[history.length - 1];
 
     // Get or create market data for this resource
-    let marketData = overmind.market.resources[resource] as ResourceMarketData | undefined;
+    let marketData = empire.market.resources[resource] as ResourceMarketData | undefined;
     if (!marketData) {
       marketData = {
         resource,
@@ -275,7 +275,7 @@ export class MarketManager {
         trend: 0,
         lastUpdate: Game.time
       };
-      overmind.market.resources[resource] = marketData;
+      empire.market.resources[resource] = marketData;
     }
 
     // Add new price point
@@ -335,8 +335,8 @@ export class MarketManager {
    * Get market data for a resource
    */
   private getMarketData(resource: ResourceConstant): ResourceMarketData | undefined {
-    const overmind = memoryManager.getOvermind();
-    return overmind.market?.resources[resource] ;
+    const empire = memoryManager.getEmpire();
+    return empire.market?.resources[resource] ;
   }
 
   /**
@@ -397,8 +397,8 @@ export class MarketManager {
    * Update buy orders based on resource needs and price signals
    */
   private updateBuyOrders(): void {
-    const overmind = memoryManager.getOvermind();
-    const isWarMode = overmind.objectives.warMode;
+    const empire = memoryManager.getEmpire();
+    const isWarMode = empire.objectives.warMode;
 
     // Get total resources across all terminals
     const totalResources: Record<string, number> = {};
@@ -522,8 +522,8 @@ export class MarketManager {
     }
 
     // Get current market data for pricing
-    const overmind = memoryManager.getOvermind();
-    if (!overmind.market) {
+    const empire = memoryManager.getEmpire();
+    if (!empire.market) {
       // Market memory not initialized, use fallback pricing
       const price = 0.5;
       const orderResult = Game.market.createOrder({
@@ -536,7 +536,7 @@ export class MarketManager {
       return orderResult === OK;
     }
     
-    const marketData = overmind.market.resources[resource];
+    const marketData = empire.market.resources[resource];
     
     // Calculate sell price (slightly below average to sell quickly)
     let price = 0.5; // Default fallback
@@ -674,21 +674,21 @@ export class MarketManager {
    * Update order statistics
    */
   private updateOrderStats(): void {
-    const overmind = memoryManager.getOvermind();
-    if (!overmind.market?.orders) return;
+    const empire = memoryManager.getEmpire();
+    if (!empire.market?.orders) return;
 
     const currentOrders = Game.market.orders;
 
     // Update stats for active orders
-    for (const orderId in overmind.market.orders) {
-      const trackedOrder = overmind.market.orders[orderId];
+    for (const orderId in empire.market.orders) {
+      const trackedOrder = empire.market.orders[orderId];
       const currentOrder = currentOrders[orderId];
 
       if (!currentOrder) {
         // Order completed or cancelled - calculate final profit
         if (trackedOrder.totalTraded > 0) {
           const profit = trackedOrder.type === "sell" ? trackedOrder.totalValue : -trackedOrder.totalValue;
-          overmind.market.totalProfit = (overmind.market.totalProfit ?? 0) + profit;
+          empire.market.totalProfit = (empire.market.totalProfit ?? 0) + profit;
 
           logger.info(
             `Order completed: ${trackedOrder.resource} ${trackedOrder.type} - Traded: ${trackedOrder.totalTraded}, Value: ${trackedOrder.totalValue.toFixed(0)}, Profit: ${profit.toFixed(0)}`,
@@ -697,7 +697,7 @@ export class MarketManager {
         }
 
         // Remove from tracking
-        delete overmind.market.orders[orderId];
+        delete empire.market.orders[orderId];
       } else if (currentOrder.totalAmount !== undefined) {
         // Update traded amount
         const traded = currentOrder.totalAmount - currentOrder.remainingAmount;
@@ -718,8 +718,8 @@ export class MarketManager {
     // Find best deals (every 50 ticks to save CPU)
     if (Game.time % 50 !== 0) return;
 
-    const overmind = memoryManager.getOvermind();
-    const isWarMode = overmind.objectives.warMode;
+    const empire = memoryManager.getEmpire();
+    const isWarMode = empire.objectives.warMode;
 
     // In war mode, prioritize buying boosts
     if (isWarMode) {
@@ -762,7 +762,7 @@ export class MarketManager {
    * Buys critical resources at any price if below emergency threshold
    */
   private handleEmergencyBuying(): void {
-    const overmind = memoryManager.getOvermind();
+    const empire = memoryManager.getEmpire();
 
     // Skip if not enough emergency credits
     if (Game.market.credits < this.config.emergencyCredits) return;
@@ -882,8 +882,8 @@ export class MarketManager {
    * Reconcile pending arbitrage trades and execute outbound sales
    */
   private reconcilePendingArbitrage(): void {
-    const overmind = memoryManager.getOvermind();
-    const market = overmind.market;
+    const empire = memoryManager.getEmpire();
+    const market = empire.market;
 
     if (!market?.pendingArbitrage || market.pendingArbitrage.length === 0) return;
 
@@ -976,8 +976,8 @@ export class MarketManager {
     if (Game.cpu.bucket < this.config.minBucket) return;
     if (Game.market.credits < this.config.tradingCredits) return;
 
-    const overmind = memoryManager.getOvermind();
-    const market = overmind.market;
+    const empire = memoryManager.getEmpire();
+    const market = empire.market;
     const terminals = Object.values(Game.rooms).filter(r => r.terminal && r.controller?.my);
 
     if (!market || terminals.length === 0) return;
