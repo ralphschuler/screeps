@@ -36,7 +36,7 @@ const CLUSTERS_KEY = "clusters";
 /** Screeps memory limit in bytes */
 const MEMORY_LIMIT_BYTES = 2097152; // 2MB
 /** Current memory version */
-const CURRENT_MEMORY_VERSION = 2;
+const CURRENT_MEMORY_VERSION = 3;
 /**
  * Interval for dead creep memory cleanup.
  * Running every tick is wasteful since creeps don't die that often.
@@ -91,6 +91,9 @@ export class MemoryManager {
       }
       if (storedVersion < 2) {
         this.migrateToV2();
+      }
+      if (storedVersion < 3) {
+        this.migrateToV3();
       }
       
       // Update version
@@ -180,6 +183,60 @@ export class MemoryManager {
       delete mem.overmind;
       logger.info("Removed deprecated overmind memory structure", {
         subsystem: "MemoryManager"
+      });
+    }
+  }
+
+  /**
+   * Migrate to version 3: Ensure all clusters have required arrays
+   * Fixes: TypeError when accessing cluster.squads.some() or cluster.defenseRequests.some()
+   */
+  private migrateToV3(): void {
+    const mem = Memory as unknown as Record<string, any>;
+    const clusters = mem[CLUSTERS_KEY] as Record<string, ClusterMemory> | undefined;
+    
+    if (!clusters) {
+      return; // No clusters to migrate
+    }
+    
+    let migratedCount = 0;
+    for (const clusterId in clusters) {
+      const cluster = clusters[clusterId];
+      let needsMigration = false;
+      
+      // Ensure squads array exists
+      if (!cluster.squads) {
+        cluster.squads = [];
+        needsMigration = true;
+      }
+      
+      // Ensure defenseRequests array exists
+      if (!cluster.defenseRequests) {
+        cluster.defenseRequests = [];
+        needsMigration = true;
+      }
+      
+      // Ensure rallyPoints array exists
+      if (!cluster.rallyPoints) {
+        cluster.rallyPoints = [];
+        needsMigration = true;
+      }
+      
+      // Ensure resourceRequests array exists
+      if (!cluster.resourceRequests) {
+        cluster.resourceRequests = [];
+        needsMigration = true;
+      }
+      
+      if (needsMigration) {
+        migratedCount++;
+      }
+    }
+    
+    if (migratedCount > 0) {
+      logger.info(`Migrated ${migratedCount} cluster(s) to ensure required arrays exist`, {
+        subsystem: "MemoryManager",
+        meta: { migratedCount, totalClusters: Object.keys(clusters).length }
       });
     }
   }
