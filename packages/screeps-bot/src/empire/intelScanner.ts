@@ -195,7 +195,7 @@ export class IntelScanner {
   /**
    * Update room intel from visible room
    */
-  private updateRoomIntel(room: Room, overmind: ReturnType<typeof memoryManager.getOvermind>): void {
+  private updateRoomIntel(room: Room, empire: ReturnType<typeof memoryManager.getEmpire>): void {
     const intel = empire.knownRooms[room.name] || this.createDefaultIntel(room.name);
 
     // Update basic info
