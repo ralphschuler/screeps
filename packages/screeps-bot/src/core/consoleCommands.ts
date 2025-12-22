@@ -29,6 +29,7 @@ import { shardCommands } from "./shardCommands";
 import { economyCommands } from "../economy/economyCommands";
 import { expansionCommands } from "../empire/expansionCommands";
 import { tooAngelCommands } from "../empire/tooangel/consoleCommands";
+import { memoryCommands } from "../memory/memoryCommands";
 
 /**
  * Logging commands
@@ -913,6 +914,7 @@ export function registerAllConsoleCommands(lazy = false): void {
     registerDecoratedCommands(shardCommands);
     registerDecoratedCommands(economyCommands);
     registerDecoratedCommands(expansionCommands);
+    registerDecoratedCommands(memoryCommands);
 
     // Register TooAngel commands as global object
     (global as unknown as Record<string, unknown>).tooangel = tooAngelCommands;
@@ -947,5 +949,6 @@ export {
   powerCommands,
   shardCommands,
   expansionCommands,
-  tooAngelCommands
+  tooAngelCommands,
+  memoryCommands
 };

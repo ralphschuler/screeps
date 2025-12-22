@@ -2,19 +2,14 @@
  * Memory Manager
  *
  * Handles initialization, validation, and access to all memory structures.
+ * Integrates memory compression, segmentation, monitoring, and automatic pruning.
  * 
- * TODO(P1): PERF - Implement memory compression for large data structures to stay under 2MB limit
- * Consider LZ compression for intel data, pathfinding caches, and historical stats
- * TODO(P1): BUG - Add memory usage monitoring with alerts when approaching the 2MB limit
- * Track memory size per subsystem to identify bloat and optimize proactively
- * TODO(P2): ARCH - Implement automatic memory pruning for old/stale data
- * Remove intel older than X ticks, expired paths, and dead process data
- * TODO(P2): ARCH - Add memory migration system for schema changes between versions
- * Support backward-compatible updates when modifying memory structure
- * TODO(P2): ARCH - Consider using Memory segments for rarely-accessed data (ROADMAP Section 4)
- * Move historical stats, old intel, or cached paths to segments
- * TODO(P2): TEST - Add unit tests for memory migration logic
- * Ensure migrations don't corrupt or lose data during version upgrades
+ * Memory Management Strategy (ROADMAP Section 4):
+ * - Layer 1: Memory monitoring with alerts (memoryMonitor.ts)
+ * - Layer 2: Automatic data pruning (memoryPruner.ts)
+ * - Layer 3: Memory segmentation for rarely-accessed data (memorySegmentManager.ts)
+ * - Layer 4: Data compression using LZ-String (memoryCompressor.ts)
+ * - Layer 5: Schema migration system (migrations.ts)
  */
 
 import {
@@ -30,18 +25,31 @@ import {
 } from "./schemas";
 import { INFINITE_TTL, heapCache } from "./heapCache";
 import { logger } from "../core/logger";
+import { memoryMonitor } from "./memoryMonitor";
+import { memoryPruner } from "./memoryPruner";
+import { migrationRunner } from "./migrations";
 
 const EMPIRE_KEY = "empire";
 const CLUSTERS_KEY = "clusters";
 /** Screeps memory limit in bytes */
 const MEMORY_LIMIT_BYTES = 2097152; // 2MB
-/** Current memory version */
-const CURRENT_MEMORY_VERSION = 3;
+/** Current memory version - managed by migrations.ts */
+const CURRENT_MEMORY_VERSION = 6;
 /**
  * Interval for dead creep memory cleanup.
  * Running every tick is wasteful since creeps don't die that often.
  */
 const DEAD_CREEP_CLEANUP_INTERVAL = 10;
+/**
+ * Interval for automatic memory pruning.
+ * Runs comprehensive cleanup every N ticks.
+ */
+const MEMORY_PRUNING_INTERVAL = 100;
+/**
+ * Interval for memory monitoring.
+ * Checks memory usage and alerts when approaching limits.
+ */
+const MEMORY_MONITORING_INTERVAL = 50;
 
 /**
  * Memory Manager class
@@ -49,6 +57,8 @@ const DEAD_CREEP_CLEANUP_INTERVAL = 10;
 export class MemoryManager {
   private lastInitializeTick: number | null = null;
   private lastCleanupTick = 0;
+  private lastPruningTick = 0;
+  private lastMonitoringTick = 0;
 
   /**
    * Initialize all memory structures
@@ -61,7 +71,9 @@ export class MemoryManager {
     // Initialize heap cache first (rehydrates from Memory if needed)
     heapCache.initialize();
 
-    this.runMemoryMigration();
+    // Run memory migrations (must run before ensuring memory structures)
+    migrationRunner.runMigrations();
+    
     this.ensureEmpireMemory();
     this.ensureClustersMemory();
 
@@ -70,174 +82,17 @@ export class MemoryManager {
       this.cleanDeadCreeps();
       this.lastCleanupTick = Game.time;
     }
-  }
 
-  /**
-   * Run memory migration if version changed
-   */
-  private runMemoryMigration(): void {
-    const mem = Memory as unknown as Record<string, unknown>;
-    const storedVersion = (mem.memoryVersion as number) ?? 0;
+    // Run comprehensive memory pruning periodically
+    if (Game.time - this.lastPruningTick >= MEMORY_PRUNING_INTERVAL) {
+      memoryPruner.pruneAll();
+      this.lastPruningTick = Game.time;
+    }
 
-    if (storedVersion < CURRENT_MEMORY_VERSION) {
-      logger.info(`Migrating memory from version ${storedVersion} to ${CURRENT_MEMORY_VERSION}`, {
-        subsystem: "MemoryManager",
-        meta: { fromVersion: storedVersion, toVersion: CURRENT_MEMORY_VERSION }
-      });
-      
-      // Run migrations in sequence
-      if (storedVersion < 1) {
-        this.migrateToV1();
-      }
-      if (storedVersion < 2) {
-        this.migrateToV2();
-      }
-      if (storedVersion < 3) {
-        this.migrateToV3();
-      }
-      
-      // Update version
-      mem.memoryVersion = CURRENT_MEMORY_VERSION;
-      logger.info(`Memory migration complete`, {
-        subsystem: "MemoryManager",
-        meta: { version: CURRENT_MEMORY_VERSION }
-      });
-    }
-  }
-
-  /**
-   * Migrate to version 1
-   */
-  private migrateToV1(): void {
-    // Migration to v1: Update all creep memory to include version field
-    for (const name in Memory.creeps) {
-      const creepMem = Memory.creeps[name] as unknown as SwarmCreepMemory;
-      if (creepMem && creepMem.version === undefined) {
-        creepMem.version = 1;
-      }
-    }
-  }
-
-  /**
-   * Migrate to version 2: Consolidate overmind into empire
-   */
-  private migrateToV2(): void {
-    const mem = Memory as unknown as Record<string, any>;
-    const OVERMIND_KEY = "overmind"; // Local reference for migration only
-    
-    // If overmind exists but empire doesn't, migrate overmind to empire
-    if (mem[OVERMIND_KEY] && !mem[EMPIRE_KEY]) {
-      const overmind = mem[OVERMIND_KEY] as OvermindMemory;
-      const clusters = mem[CLUSTERS_KEY] as Record<string, ClusterMemory> | undefined;
-      
-      // Create empire memory from overmind
-      const knownRooms = overmind.roomIntel || {};
-      
-      // Migrate roomsSeen data for rooms not already in roomIntel
-      if (overmind.roomsSeen) {
-        for (const roomName in overmind.roomsSeen) {
-          if (!knownRooms[roomName]) {
-            // Create minimal RoomIntel entry for rooms that were seen but not fully scouted
-            knownRooms[roomName] = {
-              name: roomName,
-              lastSeen: overmind.roomsSeen[roomName],
-              sources: 0,
-              controllerLevel: 0,
-              threatLevel: 0,
-              scouted: false,
-              terrain: "mixed",
-              isHighway: false,
-              isSK: false
-            };
-          }
-        }
-      }
-      
-      mem[EMPIRE_KEY] = {
-        knownRooms,
-        clusters: clusters ? Object.keys(clusters) : [],
-        warTargets: overmind.warTargets || [],
-        ownedRooms: {},
-        claimQueue: overmind.claimQueue || [],
-        nukeCandidates: overmind.nukeCandidates || [],
-        powerBanks: overmind.powerBanks || [],
-        nukesInFlight: overmind.nukesInFlight,
-        incomingNukes: overmind.incomingNukes,
-        nukeEconomics: overmind.nukeEconomics,
-        market: overmind.market,
-        objectives: overmind.objectives || {
-          targetPowerLevel: 0,
-          targetRoomCount: 1,
-          warMode: false,
-          expansionPaused: false
-        },
-        lastUpdate: overmind.lastRun || 0
-      };
-      
-      logger.info("Migrated overmind memory to empire structure", {
-        subsystem: "MemoryManager",
-        meta: { clusterCount: mem[EMPIRE_KEY].clusters.length }
-      });
-      
-      // Clean up old overmind memory after successful migration
-      delete mem.overmind;
-      logger.info("Removed deprecated overmind memory structure", {
-        subsystem: "MemoryManager"
-      });
-    }
-  }
-
-  /**
-   * Migrate to version 3: Ensure all clusters have required arrays
-   * Fixes: TypeError when accessing cluster.squads.some() or cluster.defenseRequests.some()
-   */
-  private migrateToV3(): void {
-    const mem = Memory as unknown as Record<string, any>;
-    const clusters = mem[CLUSTERS_KEY] as Record<string, ClusterMemory> | undefined;
-    
-    if (!clusters) {
-      return; // No clusters to migrate
-    }
-    
-    let migratedCount = 0;
-    for (const clusterId in clusters) {
-      const cluster = clusters[clusterId];
-      let needsMigration = false;
-      
-      // Ensure squads array exists
-      if (!cluster.squads) {
-        cluster.squads = [];
-        needsMigration = true;
-      }
-      
-      // Ensure defenseRequests array exists
-      if (!cluster.defenseRequests) {
-        cluster.defenseRequests = [];
-        needsMigration = true;
-      }
-      
-      // Ensure rallyPoints array exists
-      if (!cluster.rallyPoints) {
-        cluster.rallyPoints = [];
-        needsMigration = true;
-      }
-      
-      // Ensure resourceRequests array exists
-      if (!cluster.resourceRequests) {
-        cluster.resourceRequests = [];
-        needsMigration = true;
-      }
-      
-      if (needsMigration) {
-        migratedCount++;
-      }
-    }
-    
-    if (migratedCount > 0) {
-      logger.info(`Migrated ${migratedCount} cluster(s) to ensure required arrays exist`, {
-        subsystem: "MemoryManager",
-        meta: { migratedCount, totalClusters: Object.keys(clusters).length }
-      });
+    // Monitor memory usage periodically
+    if (Game.time - this.lastMonitoringTick >= MEMORY_MONITORING_INTERVAL) {
+      memoryMonitor.checkMemoryUsage();
+      this.lastMonitoringTick = Game.time;
     }
   }
 
