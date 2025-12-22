@@ -144,21 +144,27 @@ export class MemoryPruner {
     const mem = Memory as unknown as Record<string, unknown>;
     const empire = mem.empire as EmpireMemory | undefined;
     
-    if (!empire?.market?.priceHistory) return 0;
+    if (!empire?.market) return 0;
+
+    // Check if priceHistory exists (it may not be in the type but could be in memory)
+    const marketRecord = empire.market as unknown as Record<string, unknown>;
+    const priceHistory = marketRecord.priceHistory as Record<string, Array<{ time: number }>> | undefined;
+    
+    if (!priceHistory) return 0;
 
     let pruned = 0;
     const cutoffTime = Game.time - maxAge;
 
-    for (const resourceType in empire.market.priceHistory) {
-      const history = empire.market.priceHistory[resourceType];
+    for (const resourceType in priceHistory) {
+      const history = priceHistory[resourceType];
       if (!history) continue;
 
       const initialLength = history.length;
       // Keep only recent price data
-      empire.market.priceHistory[resourceType] = history.filter(
+      priceHistory[resourceType] = history.filter(
         entry => entry.time >= cutoffTime
       );
-      pruned += initialLength - empire.market.priceHistory[resourceType].length;
+      pruned += initialLength - priceHistory[resourceType].length;
     }
 
     return pruned;

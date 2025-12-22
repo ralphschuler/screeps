@@ -219,8 +219,9 @@ export class MemoryCommands {
     }
 
     // Clear main memory
-    for (const key in Memory) {
-      delete (Memory as Record<string, unknown>)[key];
+    const mem = Memory as unknown as Record<string, unknown>;
+    for (const key in mem) {
+      delete mem[key];
     }
 
     // Clear active segments

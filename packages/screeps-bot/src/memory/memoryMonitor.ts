@@ -91,7 +91,7 @@ export class MemoryMonitor {
           meta: { used, limit: MEMORY_LIMIT_BYTES, percentage }
         });
       } else if (status === "warning") {
-        logger.warning("Memory usage warning", {
+        logger.warn("Memory usage warning", {
           subsystem: "MemoryMonitor",
           meta: { used, limit: MEMORY_LIMIT_BYTES, percentage }
         });

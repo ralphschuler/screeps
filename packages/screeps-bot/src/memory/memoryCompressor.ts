@@ -12,7 +12,7 @@
  * - Market history: 70-80% reduction (numeric time-series data)
  */
 
-import LZString from "lz-string";
+import * as LZString from "lz-string";
 import { logger } from "../core/logger";
 import type { RoomIntel } from "./schemas";
 

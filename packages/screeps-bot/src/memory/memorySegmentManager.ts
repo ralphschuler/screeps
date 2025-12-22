@@ -70,7 +70,7 @@ export class MemorySegmentManager {
     // Update active segments for next tick
     const activeArray = Array.from(this.activeSegments);
     if (activeArray.length > 10) {
-      logger.warning("More than 10 segments requested", {
+      logger.warn("More than 10 segments requested", {
         subsystem: "MemorySegmentManager",
         meta: { count: activeArray.length, segments: activeArray }
       });
@@ -102,7 +102,7 @@ export class MemorySegmentManager {
    */
   public writeSegment<T>(segmentId: number, key: string, data: T, version = 1): boolean {
     if (!this.isSegmentLoaded(segmentId)) {
-      logger.warning("Attempted to write to unloaded segment", {
+      logger.warn("Attempted to write to unloaded segment", {
         subsystem: "MemorySegmentManager",
         meta: { segmentId, key }
       });
@@ -156,7 +156,7 @@ export class MemorySegmentManager {
    */
   public readSegment<T>(segmentId: number, key: string): T | null {
     if (!this.isSegmentLoaded(segmentId)) {
-      logger.warning("Attempted to read from unloaded segment", {
+      logger.warn("Attempted to read from unloaded segment", {
         subsystem: "MemorySegmentManager",
         meta: { segmentId, key }
       });
@@ -232,7 +232,7 @@ export class MemorySegmentManager {
    */
   public clearSegment(segmentId: number): void {
     if (!this.isSegmentLoaded(segmentId)) {
-      logger.warning("Attempted to clear unloaded segment", {
+      logger.warn("Attempted to clear unloaded segment", {
         subsystem: "MemorySegmentManager",
         meta: { segmentId }
       });
@@ -310,7 +310,7 @@ export class MemorySegmentManager {
       if (data && typeof data === "object" && part in data) {
         data = (data as Record<string, unknown>)[part];
       } else {
-        logger.warning("Memory path not found for migration", {
+        logger.warn("Memory path not found for migration", {
           subsystem: "MemorySegmentManager",
           meta: { memoryPath, segmentId, key }
         });

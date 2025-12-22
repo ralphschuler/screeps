@@ -93,11 +93,12 @@ export const migrations: Migration[] = [
       if (!empire) return;
 
       // Check if portals exist and are not already compressed
-      const portals = (empire as Record<string, unknown>).portals;
+      const empireRecord = empire as unknown as Record<string, unknown>;
+      const portals = empireRecord.portals;
       if (portals && !memoryCompressor.isCompressed(portals)) {
         const compressed = memoryCompressor.compressPortalMap(portals as unknown[]);
-        (empire as Record<string, unknown>).compressedPortals = compressed;
-        delete (empire as Record<string, unknown>).portals;
+        empireRecord.compressedPortals = compressed;
+        delete empireRecord.portals;
         
         logger.info("Compressed portal map data", {
           subsystem: "MemoryMigrations",
@@ -117,10 +118,16 @@ export const migrations: Migration[] = [
       const mem = memory as unknown as Record<string, unknown>;
       const empire = mem.empire as EmpireMemory | undefined;
       
-      if (!empire?.market?.priceHistory) return;
+      if (!empire?.market) return;
+
+      // Check if priceHistory exists (it may not be in the type but could be in memory)
+      const marketRecord = empire.market as unknown as Record<string, unknown>;
+      const priceHistory = marketRecord.priceHistory;
+      
+      if (!priceHistory) return;
 
       // Compress market history
-      const compressed = memoryCompressor.compressMarketHistory(empire.market.priceHistory);
+      const compressed = memoryCompressor.compressMarketHistory(priceHistory);
       
       // Move to segment
       const segmentId = memorySegmentManager.suggestSegmentForType("MARKET_HISTORY");
@@ -130,7 +137,7 @@ export const migrations: Migration[] = [
         memorySegmentManager.writeSegment(segmentId, "priceHistory", compressed);
         
         // Remove from main memory
-        delete empire.market.priceHistory;
+        delete marketRecord.priceHistory;
         
         logger.info("Migrated market history to segments", {
           subsystem: "MemoryMigrations",
@@ -236,7 +243,7 @@ export class MigrationRunner {
   public rollbackToVersion(version: number): void {
     const mem = Memory as unknown as Record<string, unknown>;
     
-    logger.warning(`Rolling back memory version to ${version}`, {
+    logger.warn(`Rolling back memory version to ${version}`, {
       subsystem: "MigrationRunner",
       meta: { fromVersion: this.getCurrentVersion(), toVersion: version }
     });
