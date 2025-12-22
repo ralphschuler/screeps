@@ -10,7 +10,7 @@
  * - 0-9:   Active room data (hot data that needs frequent access)
  * - 10-19: Historical intel (accessed every 100-1000 ticks)
  * - 20-29: Market history and price trends (accessed every 500+ ticks)
- * - 30-39: Alliance/Standards data (SS2 protocol packets)
+ * - 30-39: Standards data (SS2 protocol packets, player coordination)
  * - 40-49: Archived empire state (old expansion candidates, war history)
  * - 50-89: Reserved for future use
  * - 90-99: Stats and monitoring data (used by memorySegmentStats)
@@ -28,8 +28,8 @@ export const SEGMENT_ALLOCATION = {
   HISTORICAL_INTEL: { start: 10, end: 19 },
   /** Market history segments */
   MARKET_HISTORY: { start: 20, end: 29 },
-  /** Alliance data segments */
-  ALLIANCE_DATA: { start: 30, end: 39 },
+  /** Standards data segments */
+  STANDARDS_DATA: { start: 30, end: 39 },
   /** Archived empire state */
   ARCHIVED_EMPIRE: { start: 40, end: 49 },
   /** Reserved for future use */
