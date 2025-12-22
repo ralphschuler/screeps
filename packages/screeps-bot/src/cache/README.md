@@ -207,6 +207,24 @@ const sources = cachedRoomFind(room, FIND_SOURCES);
 
 ## Debugging
 
+### Understanding Cache Systems
+
+This repository has two cache systems serving different purposes:
+
+**1. Unified Cache System (`src/cache/`)** - For game API results
+- Caches expensive game API calls (room.find(), Game.getObjectById(), pathfinding)
+- Reduces CPU by avoiding repeated API calls
+- TTL-based expiration and LRU eviction
+- Monitored via unified stats system
+
+**2. Heap Cache (`src/memory/heapCache.ts`)** - For Memory persistence
+- Write-ahead cache for Memory access (empire, clusters, swarms)
+- Reduces Memory serialization overhead
+- Persists data across global resets
+- Complementary to unified cache, not redundant
+
+Both systems are necessary and serve distinct roles in the bot architecture.
+
 ### View Cache Statistics
 ```typescript
 const stats = globalCache.getCacheStats('namespace');
