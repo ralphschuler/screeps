@@ -235,12 +235,16 @@ console.log(JSON.stringify(stats, null, 2));
 
 All cache systems are automatically monitored via the unified stats system. Cache metrics are collected every tick and exported to Grafana:
 
-- `stats.cache.roomFind.*` - Room.find() cache statistics
-- `stats.cache.bodyPart.*` - Body part cache statistics  
-- `stats.cache.object.*` - Object cache (Game.getObjectById) statistics
-- `stats.cache.path.*` - Path cache statistics
-- `stats.cache.role.*` - Role-specific cache statistics
-- `stats.cache.global.*` - Aggregate statistics across all cache namespaces
+- `stats.cache.roomFind.*` - Room.find() cache statistics (full metrics: hits, misses, hitRate, size)
+- `stats.cache.bodyPart.*` - Body part cache statistics (size only)
+- `stats.cache.object.*` - Object cache (Game.getObjectById) statistics (size only)
+- `stats.cache.path.*` - Path cache statistics (full metrics: hits, misses, hitRate, size, evictions)
+- `stats.cache.role.*` - Role-specific cache statistics (totalEntries only)
+- `stats.cache.global.*` - Aggregate statistics across all cache namespaces (full metrics)
+
+**Note:** Not all cache domains track the same metrics. The `object` and `bodyPart` 
+caches focus on size tracking for memory management, while `path` and `roomFind` 
+caches track detailed hit/miss statistics for performance analysis.
 
 The stats include:
 - `hits` - Number of cache hits

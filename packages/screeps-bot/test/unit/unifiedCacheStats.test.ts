@@ -14,7 +14,7 @@ import {
 
 describe("Unified Cache Stats Integration", () => {
   beforeEach(() => {
-    // @ts-ignore: Test environment setup - mocking global Game object for cache testing
+    // @ts-expect-error: Test environment setup - mocking global Game object for cache testing
     global.Game = { time: 1000 };
     
     // Clear all caches
@@ -58,11 +58,8 @@ describe("Unified Cache Stats Integration", () => {
       const stats = getObjectCacheStats();
       
       assert.isDefined(stats, "Object stats should be defined");
-      assert.isDefined(stats.hits, "Object stats should have hits");
-      assert.isDefined(stats.misses, "Object stats should have misses");
-      assert.isDefined(stats.hitRate, "Object stats should have hitRate");
       assert.isDefined(stats.size, "Object stats should have size");
-      assert.isDefined(stats.evictions, "Object stats should have evictions");
+      assert.isDefined(stats.tick, "Object stats should have tick");
     });
 
     it("should collect path cache stats", () => {
@@ -173,7 +170,9 @@ describe("Unified Cache Stats Integration", () => {
       // All stats should be valid numbers (not NaN or undefined)
       assert.isNumber(roomFindStats.hits);
       assert.isNumber(bodyPartStats.size);
-      assert.isNumber(objectStats.hitRate);
+      assert.isNumber(bodyPartStats.tick);
+      assert.isNumber(objectStats.size);
+      assert.isNumber(objectStats.tick);
       assert.isNumber(pathStats.evictions);
       assert.isNumber(roleStats.totalEntries);
       assert.isNumber(globalStats.size);
@@ -181,8 +180,6 @@ describe("Unified Cache Stats Integration", () => {
       // Hit rates should be between 0 and 1
       assert.isAtLeast(roomFindStats.hitRate, 0);
       assert.isAtMost(roomFindStats.hitRate, 1);
-      assert.isAtLeast(objectStats.hitRate, 0);
-      assert.isAtMost(objectStats.hitRate, 1);
       assert.isAtLeast(pathStats.hitRate, 0);
       assert.isAtMost(pathStats.hitRate, 1);
       assert.isAtLeast(globalStats.hitRate, 0);

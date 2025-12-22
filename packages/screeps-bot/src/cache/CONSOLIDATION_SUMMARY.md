@@ -52,14 +52,19 @@ All cache metrics are now collected and exported to Grafana:
 
 ```typescript
 stats.cache = {
-  roomFind: { hits, misses, hitRate, size, invalidations },
-  bodyPart: { size },
-  object: { hits, misses, hitRate, size, evictions },
-  path: { hits, misses, hitRate, size, evictions },
-  role: { totalEntries },
-  global: { hits, misses, hitRate, size, evictions }
+  global: { hits, misses, hitRate, size, evictions },    // Aggregate
+  roomFind: { hits, misses, hitRate, totalEntries },     // room.find()
+  object: { size },                                       // getObjectById() - size only
+  path: { hits, misses, hitRate, size, evictions },      // pathfinding
+  role: { totalEntries },                                 // role assignments
+  bodyPart: { size }                                      // body part counts - size only
 }
 ```
+
+**Note:** Different cache domains export different metrics based on their tracking capabilities:
+- **Full metrics** (hits, misses, hitRate, size, evictions): `path`, `roomFind`, `global`
+- **Size only**: `object`, `bodyPart` (optimized for memory management rather than hit/miss tracking)
+- **Custom metrics**: `role` exports `totalEntries` instead of `size`
 
 ## Migration Status
 

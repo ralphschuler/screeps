@@ -289,11 +289,7 @@ export interface CacheStats {
   };
   /** Object cache (Game.getObjectById) statistics */
   object: {
-    hits: number;
-    misses: number;
-    hitRate: number;
     size: number;
-    evictions: number;
   };
   /** Path cache statistics */
   path: {
@@ -1169,8 +1165,12 @@ export class UnifiedStatsManager {
     
     this.currentSnapshot.cache = {
       roomFind: roomFindStats,
-      bodyPart: bodyPartStats,
-      object: objectStats,
+      bodyPart: {
+        size: bodyPartStats.size
+      },
+      object: {
+        size: objectStats.size
+      },
       path: pathStats,
       role: roleStats,
       global: globalStats
