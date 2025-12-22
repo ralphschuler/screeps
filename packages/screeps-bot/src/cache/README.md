@@ -251,13 +251,18 @@ The stats include:
 
 Example Grafana query:
 ```promql
-# Cache hit rate over time
+# Cache hit rate over time (global aggregate)
 stats_cache_global_hitRate
 
-# Cache size by namespace
-stats_cache_object_size
-stats_cache_path_size
-stats_cache_roomFind_totalEntries
+# Cache sizes by namespace
+stats_cache_object_size          # Object cache size
+stats_cache_path_size            # Path cache size  
+stats_cache_roomFind_totalEntries # Room find cache entries
+stats_cache_bodyPart_size        # Body part cache size
+
+# Note: Different domains may use 'size' or 'totalEntries' depending on 
+# their specific stat structure. Check the domain's getCacheStats() 
+# implementation for exact metric names.
 ```
 
 ### Clear Cache for Testing

@@ -14,8 +14,7 @@ import {
 
 describe("Unified Cache Stats Integration", () => {
   beforeEach(() => {
-    // Reset Game
-    // @ts-ignore: Setting up test environment
+    // @ts-ignore: Test environment setup - mocking global Game object for cache testing
     global.Game = { time: 1000 };
     
     // Clear all caches
@@ -128,7 +127,7 @@ describe("Unified Cache Stats Integration", () => {
         globalCache.set(`key${i}`, `value${i}`, { namespace: "efficiency", ttl: 100 });
       }
       
-      // Access half of them to simulate partial hit rate
+      // Access half of them (successful gets that were previously cached)
       for (let i = 0; i < 5; i++) {
         globalCache.get(`key${i}`, { namespace: "efficiency" });
       }
@@ -137,8 +136,9 @@ describe("Unified Cache Stats Integration", () => {
       
       // Verify we can measure cache effectiveness
       assert.equal(stats.size, 10, "Cache should contain 10 entries");
-      assert.equal(stats.hits, 5, "Should have 5 hits");
-      assert.equal(stats.hitRate, 1.0, "Hit rate should be 100% (misses don't count on gets without compute)");
+      assert.equal(stats.hits, 5, "Should have 5 hits from successful gets");
+      // Note: Cache misses only count when compute function is provided and called
+      assert.equal(stats.hitRate, 1.0, "Hit rate should be 100% (only hits counted, no compute misses)");
     });
 
     it("should track evictions when cache is full", () => {

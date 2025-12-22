@@ -1164,7 +1164,8 @@ export class UnifiedStatsManager {
     const objectStats = getObjectCacheStats();
     const pathStats = getPathCacheStats();
     const roleStats = getRoleCacheStats();
-    const globalStats = globalCache.getCacheStats(); // Aggregate all namespaces
+    // Get aggregate stats across all namespaces (hits, misses, size, evictions summed)
+    const globalStats = globalCache.getCacheStats();
     
     this.currentSnapshot.cache = {
       roomFind: roomFindStats,
