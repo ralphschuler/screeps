@@ -3,12 +3,16 @@
  * 
  * Construct and repair structures.
  * Priority: deliver energy to spawns/extensions/towers first, then build
+ * 
+ * OPTIMIZATION: Uses centralized target assignment for construction sites
+ * to reduce per-creep search complexity from O(n) to O(1).
  */
 
 import type { CreepAction, CreepContext } from "../types";
 import { findCachedClosest } from "../../../utils/caching";
 import { updateWorkingState } from "./common/stateManagement";
 import { findEnergy } from "./common/energyManagement";
+import { getAssignedBuildTarget } from "../../../economy/targetAssignmentManager";
 
 /**
  * Builder - Construct and repair structures.
@@ -55,6 +59,15 @@ export function builder(ctx: CreepContext): CreepAction {
     }
 
     // 4. All critical structures filled - now build construction sites
+    // OPTIMIZATION: Use centralized assignment manager (O(1) lookup)
+    // instead of per-creep construction site search
+    let assignedSite = getAssignedBuildTarget(ctx.creep);
+    
+    // Use assigned site if available, otherwise fall back to prioritized sites
+    if (assignedSite) {
+      return { type: "build", target: assignedSite };
+    }
+    
     if (ctx.prioritizedSites.length > 0) {
       return { type: "build", target: ctx.prioritizedSites[0]! };
     }
