@@ -9,6 +9,7 @@ import type { SwarmCreepMemory } from "../../../memory/schemas";
 import type { CreepAction, CreepContext } from "../types";
 import { cachedFindSources } from "../../../utils/caching";
 import { createLogger } from "../../../core/logger";
+import { getAssignedSource } from "../../../economy/targetAssignmentManager";
 
 const logger = createLogger("HarvesterBehavior");
 
@@ -25,11 +26,21 @@ const HARVESTER_CACHE_DURATION = 50;
  * 
  * OPTIMIZATION: Harvesters are stationary workers - cache their nearby structures
  * to avoid repeated findInRange calls which are expensive.
+ * 
+ * OPTIMIZATION: Use centralized target assignment manager for O(1) source lookup
+ * instead of O(n) search per creep. See targetAssignmentManager.ts for details.
  */
 export function harvester(ctx: CreepContext): CreepAction {
-  let source = ctx.assignedSource;
+  // OPTIMIZATION: Use centralized assignment manager (O(1) lookup)
+  // instead of per-creep source search (O(n) complexity)
+  let source = getAssignedSource(ctx.creep);
+  
+  // Fallback to context-assigned source if manager hasn't assigned yet
+  if (!source) {
+    source = ctx.assignedSource;
+  }
 
-  // Assign a source if not already assigned
+  // Final fallback to manual assignment (for backward compatibility)
   if (!source) {
     source = assignSource(ctx);
     logger.debug(`${ctx.creep.name} harvester assigned to source ${source?.id}`);

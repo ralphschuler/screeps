@@ -9,6 +9,7 @@ import { memoryManager } from "./memory/manager";
 import { clearRoomCaches } from "./roles/behaviors/context";
 import { preTick as initMovement, reconcileTraffic as finalizeMovement } from "screeps-cartographer";
 import { clearTargetAssignments } from "./utils/common";
+import { clearTargetAssignments as clearEconomyAssignments } from "./economy/targetAssignmentManager";
 import { kernel } from "./core/kernel";
 import { registerAllProcesses } from "./core/processRegistry";
 import { roomVisualizer } from "./visuals/roomVisualizer";
@@ -211,6 +212,7 @@ export function loop(): void {
   // Clear per-tick caches at the start of each tick
   // BUGFIX: Clear target assignments to prevent creeps from clustering on same targets
   clearTargetAssignments();
+  clearEconomyAssignments(); // Clear centralized economy target assignments
   clearRoomCaches();
 
   // Cache owned rooms list (used frequently, expensive to compute)

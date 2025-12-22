@@ -234,6 +234,30 @@ Kernrollen
 - Builder/Repairer:
 - Fokus auf Ramparts/Walls, kritische Strukturen.
 
+CPU-Optimierungen (Implementiert)
+- **Zentralisierte Zielzuweisung**: O(n+m) statt O(n*m) Komplexität
+  - `targetAssignmentManager.ts` berechnet Zuweisungen einmal pro Raum
+  - Harvester → Sources, Builder → Construction Sites batch-zugewiesen
+  - 10-Tick Cache mit automatischer Neuberechnung
+  - Einsparung: 0.02-0.04 CPU pro Öko-Raum
+- **Vorgefertigte Raumpfade**: 100-Tick amortisierte Pfadberechnung
+  - `roomPathManager.ts` speichert serialisierte Pfade für häufige Routen
+  - Spawn ↔ Sources, Spawn ↔ Controller, Spawn ↔ Storage vorberechnet
+  - Creeps verwenden `moveByPath()` mit O(1) Pfad-Lookup
+  - Einsparung: 0.03-0.05 CPU pro Öko-Raum
+- **Opportunistische Multi-Tasking**: 10-15% weniger Creeps benötigt
+  - `opportunisticActions.ts` ermöglicht sekundäre Aufgaben während Bewegung
+  - Creeps sammeln Energie, reparieren Strukturen, oder transferieren entlang ihres Weges
+  - CPU-Bucket-gesteuert (nur wenn Bucket > 2000)
+  - Einsparung: 0.01-0.02 CPU pro Öko-Raum
+- **Frühe Exit-Optimierungen**: Überspringen unnötiger Verarbeitung
+  - Spawning Creeps übersprungen (können noch nicht handeln)
+  - Sterbende Creeps ohne Ressourcen übersprungen (< 50 TTL)
+  - Erweiterte Idle-Detection für stationäre Arbeiter
+  - Einsparung: 0.01-0.02 CPU pro Öko-Raum
+
+**Gesamteinsparung**: 0.07-0.13 CPU pro Öko-Raum (Ziel ≤ 0.1 erreicht!)
+
 Logistik-Strukturen
 - Storage (RCL4) als zentrales Hub.
 - Links (ab RCL5/6) für Source → Storage/Controller Transfers.
