@@ -259,6 +259,12 @@ export function claimer(ctx: CreepContext): CreepAction {
     return { type: "idle" };
   }
 
+  // PRIORITY: Always move off exits immediately to prevent cycling between rooms
+  const onExit = isExit(ctx.creep.pos);
+  if (onExit) {
+    return moveToRoomCenter(ctx.room.name);
+  }
+
   // Move to target room
   if (ctx.room.name !== targetRoom) {
     return { type: "moveToRoom", roomName: targetRoom };
