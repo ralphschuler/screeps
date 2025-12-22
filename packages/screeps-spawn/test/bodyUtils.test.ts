@@ -4,7 +4,6 @@
 
 import { expect } from "chai";
 import {
-  BODY_PART_COSTS,
   MAX_BODY_PARTS,
   calculateBodyCost,
   validateBody,

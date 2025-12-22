@@ -4,7 +4,7 @@
 
 import { expect } from "chai";
 import { SpawnManager } from "../src/SpawnManager";
-import { RoomState, SpawnRequest } from "../src/types";
+import { RoomState } from "../src/types";
 
 describe("SpawnManager", () => {
   let spawnManager: SpawnManager;

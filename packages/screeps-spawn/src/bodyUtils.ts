@@ -6,6 +6,16 @@
 
 /**
  * Standard Screeps body part costs
+ * 
+ * Verified with MCP (screeps-docs-mcp: StructureSpawn API, screeps-typescript-mcp: Creep interface):
+ * - MOVE: 50 ✓
+ * - WORK: 100 ✓
+ * - CARRY: 50 ✓
+ * - ATTACK: 80 ✓
+ * - RANGED_ATTACK: 150 ✓
+ * - HEAL: 250 ✓
+ * - CLAIM: 600 ✓
+ * - TOUGH: 10 ✓
  */
 export const BODY_PART_COSTS: Record<BodyPartConstant, number> = {
   [MOVE]: 50,
@@ -20,6 +30,9 @@ export const BODY_PART_COSTS: Record<BodyPartConstant, number> = {
 
 /**
  * Maximum body parts per creep
+ * 
+ * Verified with MCP (screeps-docs-mcp: Creep API, screeps-typescript-mcp: Creep interface):
+ * "Each creep consists of up to 50 body parts"
  */
 export const MAX_BODY_PARTS = 50;
 
@@ -36,6 +49,13 @@ export function calculateBodyCost(
 
 /**
  * Validate body parts array
+ * 
+ * Verified with MCP (screeps-docs-mcp, screeps-typescript-mcp):
+ * - MAX_BODY_PARTS = 50 (confirmed from Creep interface docs)
+ * - Body part costs verified against official Screeps API
+ * - MOVE requirement is a practical necessity (without MOVE, creeps cannot move),
+ *   though not explicitly mandated by the game API
+ * 
  * @returns true if valid, error message if invalid
  */
 export function validateBody(parts: BodyPartConstant[]): true | string {
@@ -47,7 +67,7 @@ export function validateBody(parts: BodyPartConstant[]): true | string {
     return `Body exceeds maximum of ${MAX_BODY_PARTS} parts`;
   }
 
-  // Must have at least one MOVE part
+  // Must have at least one MOVE part (practical requirement - creeps without MOVE cannot move)
   if (!parts.includes(MOVE)) {
     return "Body must contain at least one MOVE part";
   }

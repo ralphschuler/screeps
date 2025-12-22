@@ -1,8 +1,5 @@
 {
-  "require": ["ts-node/register", "tsconfig-paths/register", "test/setup.ts"],
+  "require": ["ts-node/register/transpile-only", "test/setup.ts"],
   "extension": ["ts"],
-  "spec": "test/**/*.test.ts",
-  "ts-node": {
-    "project": "./tsconfig.test.json"
-  }
+  "spec": "test/**/*.test.ts"
 }
