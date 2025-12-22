@@ -34,8 +34,8 @@
 
 // Core cache system
 export { CacheManager, globalCache } from "./CacheManager";
-export { CacheStore } from "./CacheStore";
-export { CacheEntry, CacheOptions, CacheStats } from "./CacheEntry";
+export type { CacheStore } from "./CacheStore";
+export type { CacheEntry, CacheOptions, CacheStats } from "./CacheEntry";
 
 // Storage backends
 export { HeapStore } from "./stores/HeapStore";
@@ -80,9 +80,9 @@ export {
   clearPathCache,
   getPathCacheStats,
   cleanupExpiredPaths,
-  cacheCommonRoutes,
-  CachePathOptions
+  cacheCommonRoutes
 } from "./domains/PathCache";
+export type { CachePathOptions } from "./domains/PathCache";
 
 // Domain-specific wrappers - Room Find Cache
 export {
