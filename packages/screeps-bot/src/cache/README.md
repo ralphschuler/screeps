@@ -213,6 +213,35 @@ const stats = globalCache.getCacheStats('namespace');
 console.log(JSON.stringify(stats, null, 2));
 ```
 
+### Unified Stats Integration
+
+All cache systems are automatically monitored via the unified stats system. Cache metrics are collected every tick and exported to Grafana:
+
+- `stats.cache.roomFind.*` - Room.find() cache statistics
+- `stats.cache.bodyPart.*` - Body part cache statistics  
+- `stats.cache.object.*` - Object cache (Game.getObjectById) statistics
+- `stats.cache.path.*` - Path cache statistics
+- `stats.cache.role.*` - Role-specific cache statistics
+- `stats.cache.global.*` - Aggregate statistics across all cache namespaces
+
+The stats include:
+- `hits` - Number of cache hits
+- `misses` - Number of cache misses
+- `hitRate` - Hit rate as percentage (0-1)
+- `size` - Current number of entries
+- `evictions` - Number of evictions performed
+
+Example Grafana query:
+```promql
+# Cache hit rate over time
+stats_cache_global_hitRate
+
+# Cache size by namespace
+stats_cache_object_size
+stats_cache_path_size
+stats_cache_roomFind_totalEntries
+```
+
 ### Clear Cache for Testing
 ```typescript
 globalCache.clear('namespace'); // Clear specific namespace
