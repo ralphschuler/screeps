@@ -36,7 +36,7 @@ import { logger } from "../core/logger";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { unifiedStats } from "../core/unifiedStats";
 import { memoryManager } from "../memory/manager";
-import type { ExpansionCandidate, OvermindMemory, RoomIntel } from "../memory/schemas";
+import type { ExpansionCandidate, EmpireMemory, RoomIntel } from "../memory/schemas";
 import * as ExpansionScoring from "./expansionScoring";
 
 /**
@@ -99,47 +99,47 @@ export class EmpireManager {
   })
   public run(): void {
     const cpuStart = Game.cpu.getUsed();
-    const overmind = memoryManager.getOvermind();
+    const empire = memoryManager.getEmpire();
 
     // Update last run time
     this.lastRun = Game.time;
-    overmind.lastRun = Game.time;
+    empire.lastUpdate = Game.time;
 
     // Run empire subsystems
     unifiedStats.measureSubsystem("empire:expansion", () => {
-      this.updateExpansionQueue(overmind);
+      this.updateExpansionQueue(empire);
     });
 
     unifiedStats.measureSubsystem("empire:powerBanks", () => {
-      this.updatePowerBanks(overmind);
+      this.updatePowerBanks(empire);
     });
 
     unifiedStats.measureSubsystem("empire:warTargets", () => {
-      this.updateWarTargets(overmind);
+      this.updateWarTargets(empire);
     });
 
     unifiedStats.measureSubsystem("empire:objectives", () => {
-      this.updateObjectives(overmind);
+      this.updateObjectives(empire);
     });
 
     // NEW: Automated room intel refresh
     unifiedStats.measureSubsystem("empire:intelRefresh", () => {
-      this.refreshRoomIntel(overmind);
+      this.refreshRoomIntel(empire);
     });
 
     // NEW: Automated GCL progress tracking
     unifiedStats.measureSubsystem("empire:gclTracking", () => {
-      this.trackGCLProgress(overmind);
+      this.trackGCLProgress(empire);
     });
 
     // NEW: Automated expansion readiness check
     unifiedStats.measureSubsystem("empire:expansionReadiness", () => {
-      this.checkExpansionReadiness(overmind);
+      this.checkExpansionReadiness(empire);
     });
 
     // NEW: Automated nuke candidate refresh
     unifiedStats.measureSubsystem("empire:nukeCandidates", () => {
-      this.refreshNukeCandidates(overmind);
+      this.refreshNukeCandidates(empire);
     });
 
     // NEW: Automated cluster health monitoring
@@ -149,7 +149,7 @@ export class EmpireManager {
 
     // NEW: Automated power bank profitability assessment
     unifiedStats.measureSubsystem("empire:powerBankProfitability", () => {
-      this.assessPowerBankProfitability(overmind);
+      this.assessPowerBankProfitability(empire);
     });
 
     // Log CPU usage
@@ -162,9 +162,9 @@ export class EmpireManager {
   /**
    * Remove owned rooms from claim queue
    */
-  private cleanupClaimQueue(overmind: OvermindMemory, ownedRoomNames: Set<string>): void {
-    const initialQueueLength = overmind.claimQueue.length;
-    overmind.claimQueue = overmind.claimQueue.filter(candidate => {
+  private cleanupClaimQueue(empire: EmpireMemory, ownedRoomNames: Set<string>): void {
+    const initialQueueLength = empire.claimQueue.length;
+    empire.claimQueue = empire.claimQueue.filter(candidate => {
       const isNowOwned = ownedRoomNames.has(candidate.roomName);
       if (isNowOwned) {
         logger.info(`Removing ${candidate.roomName} from claim queue - now owned`, { subsystem: "Empire" });
@@ -173,8 +173,8 @@ export class EmpireManager {
       return true;
     });
     
-    if (overmind.claimQueue.length < initialQueueLength) {
-      logger.info(`Cleaned up claim queue: removed ${initialQueueLength - overmind.claimQueue.length} owned room(s)`, {
+    if (empire.claimQueue.length < initialQueueLength) {
+      logger.info(`Cleaned up claim queue: removed ${initialQueueLength - empire.claimQueue.length} owned room(s)`, {
         subsystem: "Empire"
       });
     }
@@ -183,7 +183,7 @@ export class EmpireManager {
   /**
    * Update expansion queue with scored candidates
    */
-  private updateExpansionQueue(overmind: OvermindMemory): void {
+  private updateExpansionQueue(empire: EmpireMemory): void {
     // Check if we can expand
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
     const ownedRoomNames = new Set(ownedRooms.map(r => r.name));
@@ -195,7 +195,7 @@ export class EmpireManager {
     if (spawns.length > 0 && spawns[0].owner) {
       const myUsername = spawns[0].owner.username;
       for (const room of ownedRooms) {
-        const intel = overmind.roomIntel[room.name];
+        const intel = empire.knownRooms[room.name];
         if (intel && intel.owner !== myUsername) {
           intel.owner = myUsername;
           logger.info(`Updated room intel for ${room.name} - now owned by ${myUsername}`, { subsystem: "Empire" });
@@ -204,7 +204,7 @@ export class EmpireManager {
     }
 
     // Always cleanup the claim queue to remove owned rooms
-    this.cleanupClaimQueue(overmind, ownedRoomNames);
+    this.cleanupClaimQueue(empire, ownedRoomNames);
 
     if (ownedRooms.length >= gclLevel) {
       // At GCL limit, don't evaluate expansion
@@ -216,7 +216,7 @@ export class EmpireManager {
       return;
     }
 
-    if (overmind.objectives.expansionPaused) {
+    if (empire.objectives.expansionPaused) {
       // Expansion manually paused
       return;
     }
@@ -224,8 +224,8 @@ export class EmpireManager {
     // Score all scouted rooms
     const candidates: ExpansionCandidate[] = [];
 
-    for (const roomName in overmind.roomIntel) {
-      const intel = overmind.roomIntel[roomName];
+    for (const roomName in empire.knownRooms) {
+      const intel = empire.knownRooms[roomName];
 
       // Skip if already owned or claimed
       if (intel.owner || intel.reserver) {
@@ -255,7 +255,7 @@ export class EmpireManager {
     candidates.sort((a, b) => b.score - a.score);
 
     // Update claim queue (keep top 10)
-    overmind.claimQueue = candidates.slice(0, 10);
+    empire.claimQueue = candidates.slice(0, 10);
 
     if (candidates.length > 0 && Game.time % 100 === 0) {
       logger.info(`Expansion queue updated: ${candidates.length} candidates, top score: ${candidates[0].score}`, {
@@ -350,9 +350,9 @@ export class EmpireManager {
   /**
    * Update power bank tracking
    */
-  private updatePowerBanks(overmind: OvermindMemory): void {
+  private updatePowerBanks(empire: EmpireMemory): void {
     // Remove expired power banks
-    overmind.powerBanks = overmind.powerBanks.filter(pb => pb.decayTick > Game.time);
+    empire.powerBanks = empire.powerBanks.filter(pb => pb.decayTick > Game.time);
 
     // Check visible rooms for power banks
     for (const roomName in Game.rooms) {
@@ -364,13 +364,13 @@ export class EmpireManager {
 
       for (const pb of powerBanks) {
         // Check if already tracked
-        const existing = overmind.powerBanks.find(
+        const existing = empire.powerBanks.find(
           entry => entry.roomName === roomName && entry.pos.x === pb.pos.x && entry.pos.y === pb.pos.y
         );
 
         if (!existing) {
           // Add new power bank
-          overmind.powerBanks.push({
+          empire.powerBanks.push({
             roomName,
             pos: { x: pb.pos.x, y: pb.pos.y },
             power: pb.power,
@@ -387,11 +387,11 @@ export class EmpireManager {
   /**
    * Update war targets
    */
-  private updateWarTargets(overmind: OvermindMemory): void {
+  private updateWarTargets(empire: EmpireMemory): void {
     // Remove war targets that are no longer valid
-    overmind.warTargets = overmind.warTargets.filter(target => {
+    empire.warTargets = empire.warTargets.filter(target => {
       // Check if target still exists and is hostile
-      const intel = overmind.roomIntel[target];
+      const intel = empire.knownRooms[target];
       if (!intel) return false;
 
       // Remove if room is now owned by us
@@ -403,13 +403,13 @@ export class EmpireManager {
     });
 
     // Auto-add war targets based on threat
-    if (overmind.objectives.warMode) {
-      for (const roomName in overmind.roomIntel) {
-        const intel = overmind.roomIntel[roomName];
+    if (empire.objectives.warMode) {
+      for (const roomName in empire.knownRooms) {
+        const intel = empire.knownRooms[roomName];
 
         // Add high-threat rooms as war targets
-        if (intel.threatLevel >= 2 && !overmind.warTargets.includes(roomName)) {
-          overmind.warTargets.push(roomName);
+        if (intel.threatLevel >= 2 && !empire.warTargets.includes(roomName)) {
+          empire.warTargets.push(roomName);
           logger.warn(`Added war target: ${roomName} (threat level ${intel.threatLevel})`, { subsystem: "Empire" });
         }
       }
@@ -419,24 +419,24 @@ export class EmpireManager {
   /**
    * Update global objectives
    */
-  private updateObjectives(overmind: OvermindMemory): void {
+  private updateObjectives(empire: EmpireMemory): void {
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
 
     // Update target room count (GCL level)
-    overmind.objectives.targetRoomCount = Game.gcl.level;
+    empire.objectives.targetRoomCount = Game.gcl.level;
 
     // Update target power level (based on owned rooms)
-    overmind.objectives.targetPowerLevel = Math.min(25, ownedRooms.length * 3);
+    empire.objectives.targetPowerLevel = Math.min(25, ownedRooms.length * 3);
 
     // Auto-enable war mode if we have war targets
-    if (overmind.warTargets.length > 0 && !overmind.objectives.warMode) {
-      overmind.objectives.warMode = true;
+    if (empire.warTargets.length > 0 && !empire.objectives.warMode) {
+      empire.objectives.warMode = true;
       logger.warn("War mode enabled due to active war targets", { subsystem: "Empire" });
     }
 
     // Auto-disable war mode if no war targets for 1000 ticks
-    if (overmind.warTargets.length === 0 && overmind.objectives.warMode) {
-      overmind.objectives.warMode = false;
+    if (empire.warTargets.length === 0 && empire.objectives.warMode) {
+      empire.objectives.warMode = false;
       logger.info("War mode disabled - no active war targets", { subsystem: "Empire" });
     }
   }
@@ -445,8 +445,8 @@ export class EmpireManager {
    * Get next expansion target
    */
   public getNextExpansionTarget(): ExpansionCandidate | null {
-    const overmind = memoryManager.getOvermind();
-    const unclaimed = overmind.claimQueue.filter(c => !c.claimed);
+    const empire = memoryManager.getEmpire();
+    const unclaimed = empire.claimQueue.filter(c => !c.claimed);
     return unclaimed.length > 0 ? unclaimed[0] : null;
   }
 
@@ -454,8 +454,8 @@ export class EmpireManager {
    * Mark expansion target as claimed
    */
   public markExpansionClaimed(roomName: string): void {
-    const overmind = memoryManager.getOvermind();
-    const candidate = overmind.claimQueue.find(c => c.roomName === roomName);
+    const empire = memoryManager.getEmpire();
+    const candidate = empire.claimQueue.find(c => c.roomName === roomName);
     if (candidate) {
       candidate.claimed = true;
       logger.info(`Marked expansion target as claimed: ${roomName}`, { subsystem: "Empire" });
@@ -466,7 +466,7 @@ export class EmpireManager {
    * Automated room intel refresh system
    * Updates intel for owned and nearby rooms periodically
    */
-  private refreshRoomIntel(overmind: OvermindMemory): void {
+  private refreshRoomIntel(empire: EmpireMemory): void {
     // Only refresh every N ticks
     if (Game.time % this.config.intelRefreshInterval !== 0) {
       return;
@@ -477,11 +477,11 @@ export class EmpireManager {
     // Update intel for all visible rooms
     for (const roomName in Game.rooms) {
       const room = Game.rooms[roomName];
-      if (!overmind.roomIntel[roomName]) {
-        overmind.roomIntel[roomName] = this.createRoomIntel(room);
+      if (!empire.knownRooms[roomName]) {
+        empire.knownRooms[roomName] = this.createRoomIntel(room);
         updatedCount++;
       } else {
-        this.updateRoomIntel(overmind.roomIntel[roomName], room);
+        this.updateRoomIntel(empire.knownRooms[roomName], room);
         updatedCount++;
       }
     }
@@ -567,7 +567,7 @@ export class EmpireManager {
   /**
    * Track GCL progress and notify when approaching next level
    */
-  private trackGCLProgress(overmind: OvermindMemory): void {
+  private trackGCLProgress(empire: EmpireMemory): void {
     const gclProgress = (Game.gcl.progress / Game.gcl.progressTotal) * 100;
     
     // Notify when approaching next GCL level
@@ -579,14 +579,14 @@ export class EmpireManager {
     }
 
     // Update target room count objective
-    overmind.objectives.targetRoomCount = Game.gcl.level;
+    empire.objectives.targetRoomCount = Game.gcl.level;
   }
 
   /**
    * Check if owned rooms are ready for expansion
    * Automatically unpause expansion when conditions are met
    */
-  private checkExpansionReadiness(overmind: OvermindMemory): void {
+  private checkExpansionReadiness(empire: EmpireMemory): void {
     const allRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
     
     // Don't expand if at GCL limit
@@ -603,8 +603,8 @@ export class EmpireManager {
 
     // Need at least one stable room to expand
     if (stableRooms.length === 0) {
-      if (!overmind.objectives.expansionPaused) {
-        overmind.objectives.expansionPaused = true;
+      if (!empire.objectives.expansionPaused) {
+        empire.objectives.expansionPaused = true;
         logger.info("Expansion paused: waiting for stable room (RCL >= 4 with storage)", { subsystem: "Empire" });
       }
       return;
@@ -616,8 +616,8 @@ export class EmpireManager {
     const minEnergyForExpansion = 50000; // Need 50k average to expand
 
     if (avgEnergy < minEnergyForExpansion) {
-      if (!overmind.objectives.expansionPaused) {
-        overmind.objectives.expansionPaused = true;
+      if (!empire.objectives.expansionPaused) {
+        empire.objectives.expansionPaused = true;
         logger.info(`Expansion paused: insufficient energy reserves (${avgEnergy.toFixed(0)} < ${minEnergyForExpansion})`, {
           subsystem: "Empire"
         });
@@ -626,8 +626,8 @@ export class EmpireManager {
     }
 
     // All conditions met - ready to expand
-    if (overmind.objectives.expansionPaused) {
-      overmind.objectives.expansionPaused = false;
+    if (empire.objectives.expansionPaused) {
+      empire.objectives.expansionPaused = false;
       logger.info(
         `Expansion resumed: ${stableRooms.length} stable rooms with ${avgEnergy.toFixed(0)} avg energy`,
         { subsystem: "Empire" }
@@ -638,14 +638,14 @@ export class EmpireManager {
   /**
    * Refresh nuke candidates based on current war targets
    */
-  private refreshNukeCandidates(overmind: OvermindMemory): void {
+  private refreshNukeCandidates(empire: EmpireMemory): void {
     // Only refresh every 500 ticks
     if (Game.time % 500 !== 0) {
       return;
     }
 
     // Clear old launched nukes
-    overmind.nukeCandidates = overmind.nukeCandidates.filter(nc => {
+    empire.nukeCandidates = empire.nukeCandidates.filter(nc => {
       if (nc.launched && Game.time - nc.launchTick > 50000) {
         return false; // Nuke has impacted
       }
@@ -653,19 +653,19 @@ export class EmpireManager {
     });
 
     // Only evaluate nuke candidates if in war mode
-    if (!overmind.objectives.warMode || overmind.warTargets.length === 0) {
+    if (!empire.objectives.warMode || empire.warTargets.length === 0) {
       return;
     }
 
     // Score war targets for nuke worthiness
-    for (const roomName of overmind.warTargets) {
-      const intel = overmind.roomIntel[roomName];
+    for (const roomName of empire.warTargets) {
+      const intel = empire.knownRooms[roomName];
       if (!intel || !intel.scouted) {
         continue;
       }
 
       // Check if already a nuke candidate
-      const existing = overmind.nukeCandidates.find(nc => nc.roomName === roomName);
+      const existing = empire.nukeCandidates.find(nc => nc.roomName === roomName);
       if (existing && !existing.launched) {
         continue; // Already a candidate
       }
@@ -674,7 +674,7 @@ export class EmpireManager {
       const score = this.scoreNukeCandidate(intel);
       
       if (score >= 50) {
-        overmind.nukeCandidates.push({
+        empire.nukeCandidates.push({
           roomName,
           score,
           launched: false,
@@ -686,10 +686,10 @@ export class EmpireManager {
     }
 
     // Sort by score
-    overmind.nukeCandidates.sort((a, b) => b.score - a.score);
+    empire.nukeCandidates.sort((a, b) => b.score - a.score);
 
     // Keep only top 10
-    overmind.nukeCandidates = overmind.nukeCandidates.slice(0, 10);
+    empire.nukeCandidates = empire.nukeCandidates.slice(0, 10);
   }
 
   /**
@@ -796,7 +796,7 @@ export class EmpireManager {
    * Assess power bank profitability based on distance, power amount, and decay time
    * Automatically marks unprofitable power banks as inactive
    */
-  private assessPowerBankProfitability(overmind: OvermindMemory): void {
+  private assessPowerBankProfitability(empire: EmpireMemory): void {
     // Only assess every 100 ticks
     if (Game.time % 100 !== 0) {
       return;
@@ -807,7 +807,7 @@ export class EmpireManager {
       return;
     }
 
-    for (const pb of overmind.powerBanks) {
+    for (const pb of empire.powerBanks) {
       if (pb.active) {
         continue; // Already harvesting
       }

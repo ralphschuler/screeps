@@ -26,14 +26,12 @@ import {
   type SwarmState,
   createDefaultClusterMemory,
   createDefaultEmpireMemory,
-  createDefaultOvermindMemory,
   createDefaultSwarmState
 } from "./schemas";
 import { INFINITE_TTL, heapCache } from "./heapCache";
 import { logger } from "../core/logger";
 
 const EMPIRE_KEY = "empire";
-const OVERMIND_KEY = "overmind";
 const CLUSTERS_KEY = "clusters";
 /** Screeps memory limit in bytes */
 const MEMORY_LIMIT_BYTES = 2097152; // 2MB
@@ -65,7 +63,6 @@ export class MemoryManager {
 
     this.runMemoryMigration();
     this.ensureEmpireMemory();
-    this.ensureOvermindMemory(); // Keep for backward compatibility during transition
     this.ensureClustersMemory();
 
     // Only clean dead creeps periodically to save CPU
@@ -123,6 +120,7 @@ export class MemoryManager {
    */
   private migrateToV2(): void {
     const mem = Memory as unknown as Record<string, any>;
+    const OVERMIND_KEY = "overmind"; // Local reference for migration only
     
     // If overmind exists but empire doesn't, migrate overmind to empire
     if (mem[OVERMIND_KEY] && !mem[EMPIRE_KEY]) {
@@ -130,14 +128,39 @@ export class MemoryManager {
       const clusters = mem[CLUSTERS_KEY] as Record<string, ClusterMemory> | undefined;
       
       // Create empire memory from overmind
+      const knownRooms = overmind.roomIntel || {};
+      
+      // Migrate roomsSeen data for rooms not already in roomIntel
+      if (overmind.roomsSeen) {
+        for (const roomName in overmind.roomsSeen) {
+          if (!knownRooms[roomName]) {
+            // Create minimal RoomIntel entry for rooms that were seen but not fully scouted
+            knownRooms[roomName] = {
+              name: roomName,
+              lastSeen: overmind.roomsSeen[roomName],
+              sources: 0,
+              controllerLevel: 0,
+              threatLevel: 0,
+              scouted: false,
+              terrain: "mixed",
+              isHighway: false,
+              isSK: false
+            };
+          }
+        }
+      }
+      
       mem[EMPIRE_KEY] = {
-        knownRooms: overmind.roomIntel || {},
+        knownRooms,
         clusters: clusters ? Object.keys(clusters) : [],
         warTargets: overmind.warTargets || [],
         ownedRooms: {},
         claimQueue: overmind.claimQueue || [],
         nukeCandidates: overmind.nukeCandidates || [],
         powerBanks: overmind.powerBanks || [],
+        nukesInFlight: overmind.nukesInFlight,
+        incomingNukes: overmind.incomingNukes,
+        nukeEconomics: overmind.nukeEconomics,
         market: overmind.market,
         objectives: overmind.objectives || {
           targetPowerLevel: 0,
@@ -152,6 +175,12 @@ export class MemoryManager {
         subsystem: "MemoryManager",
         meta: { clusterCount: mem[EMPIRE_KEY].clusters.length }
       });
+      
+      // Clean up old overmind memory after successful migration
+      delete mem.overmind;
+      logger.info("Removed deprecated overmind memory structure", {
+        subsystem: "MemoryManager"
+      });
     }
   }
 
@@ -162,16 +191,6 @@ export class MemoryManager {
     const mem = Memory as unknown as Record<string, unknown>;
     if (!mem[EMPIRE_KEY]) {
       mem[EMPIRE_KEY] = createDefaultEmpireMemory();
-    }
-  }
-
-  /**
-   * Ensure overmind memory exists
-   */
-  private ensureOvermindMemory(): void {
-    const mem = Memory as unknown as Record<string, unknown>;
-    if (!mem[OVERMIND_KEY]) {
-      mem[OVERMIND_KEY] = createDefaultOvermindMemory();
     }
   }
 
@@ -203,27 +222,6 @@ export class MemoryManager {
     }
     
     return empire;
-  }
-
-  /**
-   * Get overmind memory (cached with infinite TTL)
-   * @deprecated Use getEmpire() instead. Kept for backward compatibility.
-   * Note: Returns a reference to the cached object. Modifications will be tracked.
-   */
-  public getOvermind(): OvermindMemory {
-    const cacheKey = `memory:${OVERMIND_KEY}`;
-    let overmind = heapCache.get<OvermindMemory>(cacheKey);
-    
-    if (!overmind) {
-      this.ensureOvermindMemory();
-      const mem = Memory as unknown as Record<string, OvermindMemory>;
-      // Cache a reference to the Memory object for fast access
-      // Changes to this object will need to be re-cached to persist
-      heapCache.set(cacheKey, mem[OVERMIND_KEY], INFINITE_TTL);
-      overmind = mem[OVERMIND_KEY];
-    }
-    
-    return overmind;
   }
 
   /**
@@ -342,12 +340,27 @@ export class MemoryManager {
 
   /**
    * Record room as seen
+   * Updates the lastSeen timestamp for a room in empire memory
    * Note: Modifies the cached object in-place. Changes persist via Memory reference.
    */
   public recordRoomSeen(roomName: string): void {
-    const overmind = this.getOvermind();
-    overmind.roomsSeen[roomName] = Game.time;
-    // No need to re-cache: overmind is a reference to Memory object
+    const empire = this.getEmpire();
+    if (!empire.knownRooms[roomName]) {
+      empire.knownRooms[roomName] = {
+        name: roomName,
+        lastSeen: Game.time,
+        sources: 0,
+        controllerLevel: 0,
+        threatLevel: 0,
+        scouted: false,
+        terrain: "mixed",
+        isHighway: false,
+        isSK: false
+      };
+    } else {
+      empire.knownRooms[roomName].lastSeen = Game.time;
+    }
+    // No need to re-cache: empire is a reference to Memory object
   }
 
   /**

@@ -26,48 +26,6 @@ export function throttleWithDefault<T>(
   return defaultValue;
 }
 
-// Deprecated: Use cached versions from bodyPartCache.ts for better performance
-import {
-  getCachedBodyPartCount,
-  getCachedDamagePotential,
-  getCachedHealPotential,
-  hasCachedBodyPart
-} from "../caching/bodyPartCache";
-
-/**
- * @deprecated Use getCachedDamagePotential from bodyPartCache instead
- */
-export function calculateCreepDamagePotential(creep: Creep): number {
-  return getCachedDamagePotential(creep);
-}
-
-/**
- * @deprecated Use getCachedHealPotential from bodyPartCache instead
- */
-export function calculateCreepHealPotential(creep: Creep): number {
-  return getCachedHealPotential(creep);
-}
-
-/**
- * @deprecated Use getCachedBodyPartCount from bodyPartCache instead
- */
-export function countActiveBodyParts(creep: Creep, partType: BodyPartConstant): number {
-  return getCachedBodyPartCount(creep, partType, true);
-}
-
-/**
- * Check if a creep has any active parts of a specific type.
- * More efficient than counting when you only need to know presence.
- * 
- * @deprecated Use hasCachedBodyPart from bodyPartCache instead for better performance
- * @param creep - Creep to check
- * @param partType - Type of body part to check for
- * @returns true if creep has at least one active part of the specified type
- */
-export function hasActiveBodyPart(creep: Creep, partType: BodyPartConstant): boolean {
-  return hasCachedBodyPart(creep, partType, true);
-}
-
 /**
  * Filter array efficiently by running predicate only once per unique value.
  * Useful when the predicate is expensive and there may be duplicates.

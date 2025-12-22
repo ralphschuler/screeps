@@ -147,8 +147,8 @@ export function removeRemoteRoom(homeRoomName: string, remoteRoomName: string, r
     swarm.remoteAssignments = remotes;
 
     // Update intel to mark as lost
-    const overmind = memoryManager.getOvermind();
-    const intel = overmind.roomIntel[remoteRoomName];
+    const empire = memoryManager.getEmpire();
+    const intel = empire.knownRooms[remoteRoomName];
     if (intel) {
       intel.threatLevel = 3;
       intel.lastSeen = Game.time;

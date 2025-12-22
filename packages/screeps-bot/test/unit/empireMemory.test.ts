@@ -206,17 +206,6 @@ describe("Empire Memory", () => {
     });
   });
 
-  describe("Backward Compatibility", () => {
-    it("should still support getOvermind() method", () => {
-      manager.initialize();
-      const overmind = manager.getOvermind();
-
-      expect(overmind).to.exist;
-      expect(overmind.roomIntel).to.be.an("object");
-      expect(overmind.warTargets).to.be.an("array");
-    });
-  });
-
   describe("Memory Versioning", () => {
     it("should update memory version to 2 after migration", () => {
       // @ts-ignore: Set old version

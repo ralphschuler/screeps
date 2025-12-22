@@ -210,21 +210,21 @@ export class NukeManager {
    * Evaluate nuke candidates
    */
   private evaluateNukeCandidates(): void {
-    const overmind = memoryManager.getOvermind();
+    const empire = memoryManager.getEmpire();
 
     // Clear old candidates
-    overmind.nukeCandidates = [];
+    empire.nukeCandidates = [];
 
     // Only evaluate if in war mode
-    if (!overmind.objectives.warMode) {
+    if (!empire.objectives.warMode) {
       return;
     }
 
     // Score all war targets
-    for (const roomName of overmind.warTargets) {
+    for (const roomName of empire.warTargets) {
       const score = this.scoreNukeCandidate(roomName);
       if (score.score >= this.config.minScore) {
-        overmind.nukeCandidates.push({
+        empire.nukeCandidates.push({
           roomName,
           score: score.score,
           launched: false,
@@ -238,7 +238,7 @@ export class NukeManager {
     }
 
     // Sort by score
-    overmind.nukeCandidates.sort((a, b) => b.score - a.score);
+    empire.nukeCandidates.sort((a, b) => b.score - a.score);
   }
 
   /**
@@ -248,7 +248,7 @@ export class NukeManager {
     let score = 0;
     const reasons: string[] = [];
 
-    const intel = memoryManager.getOvermind().roomIntel[roomName];
+    const intel = memoryManager.getEmpire().knownRooms[roomName];
     if (!intel) {
       return { roomName, score: 0, reasons: ["No intel"] };
     }
@@ -312,7 +312,7 @@ export class NukeManager {
     }
 
     // 7. War target bonus (aligned with empire objectives)
-    if (memoryManager.getOvermind().warTargets.includes(roomName)) {
+    if (memoryManager.getEmpire().warTargets.includes(roomName)) {
       score += 15;
       reasons.push("War target");
     }
@@ -336,10 +336,10 @@ export class NukeManager {
    * Launch nukes at top candidates with tracking and economics
    */
   private launchNukes(): void {
-    const overmind = memoryManager.getOvermind();
+    const empire = memoryManager.getEmpire();
 
     // Only launch if in war mode
-    if (!overmind.objectives.warMode) {
+    if (!empire.objectives.warMode) {
       return;
     }
 
@@ -367,7 +367,7 @@ export class NukeManager {
     }
 
     // Launch at top candidates
-    for (const candidate of overmind.nukeCandidates) {
+    for (const candidate of empire.nukeCandidates) {
       if (candidate.launched) continue;
 
       // Find a nuker in range
@@ -409,14 +409,14 @@ export class NukeManager {
             estimatedValue: prediction.estimatedValue
           };
 
-          if (!overmind.nukesInFlight) {
-            overmind.nukesInFlight = [];
+          if (!empire.nukesInFlight) {
+            empire.nukesInFlight = [];
           }
-          overmind.nukesInFlight.push(nukeInFlight);
+          empire.nukesInFlight.push(nukeInFlight);
 
           // Update economics tracking
-          if (!overmind.nukeEconomics) {
-            overmind.nukeEconomics = {
+          if (!empire.nukeEconomics) {
+            empire.nukeEconomics = {
               nukesLaunched: 0,
               totalEnergyCost: 0,
               totalGhodiumCost: 0,
@@ -424,12 +424,12 @@ export class NukeManager {
               totalValueDestroyed: 0
             };
           }
-          overmind.nukeEconomics.nukesLaunched++;
-          overmind.nukeEconomics.totalEnergyCost += NUKE_COST.ENERGY;
-          overmind.nukeEconomics.totalGhodiumCost += NUKE_COST.GHODIUM;
-          overmind.nukeEconomics.totalDamageDealt += prediction.estimatedDamage;
-          overmind.nukeEconomics.totalValueDestroyed += prediction.estimatedValue;
-          overmind.nukeEconomics.lastLaunchTick = Game.time;
+          empire.nukeEconomics.nukesLaunched++;
+          empire.nukeEconomics.totalEnergyCost += NUKE_COST.ENERGY;
+          empire.nukeEconomics.totalGhodiumCost += NUKE_COST.GHODIUM;
+          empire.nukeEconomics.totalDamageDealt += prediction.estimatedDamage;
+          empire.nukeEconomics.totalValueDestroyed += prediction.estimatedValue;
+          empire.nukeEconomics.lastLaunchTick = Game.time;
 
           logger.warn(
             `NUKE LAUNCHED from ${nuker.room.name} to ${candidate.roomName}! ` +
@@ -461,9 +461,9 @@ export class NukeManager {
    * Detect incoming nukes in owned rooms with comprehensive alerts
    */
   private detectIncomingNukes(): void {
-    const overmind = memoryManager.getOvermind();
-    if (!overmind.incomingNukes) {
-      overmind.incomingNukes = [];
+    const empire = memoryManager.getEmpire();
+    if (!empire.incomingNukes) {
+      empire.incomingNukes = [];
     }
 
     for (const roomName in Game.rooms) {
@@ -481,7 +481,7 @@ export class NukeManager {
           const nukeId = `${roomName}-${nuke.pos.x}-${nuke.pos.y}-${nuke.launchRoomName || "unknown"}`;
           
           // Check if already tracked
-          const existingAlert = overmind.incomingNukes.find(
+          const existingAlert = empire.incomingNukes.find(
             a => a.roomName === roomName && 
                  a.landingPos.x === nuke.pos.x && 
                  a.landingPos.y === nuke.pos.y
@@ -503,7 +503,7 @@ export class NukeManager {
             const threatenedStructures = this.identifyThreatenedStructures(room, nuke.pos);
             alert.threatenedStructures = threatenedStructures;
 
-            overmind.incomingNukes.push(alert);
+            empire.incomingNukes.push(alert);
 
             // Update swarm state
             if (!swarm.nukeDetected) {
@@ -624,8 +624,8 @@ export class NukeManager {
    */
   private manageNukeResources(): void {
     // Only manage resources if in war mode
-    const overmind = memoryManager.getOvermind();
-    if (!overmind.objectives.warMode) return;
+    const empire = memoryManager.getEmpire();
+    if (!empire.objectives.warMode) return;
 
     for (const roomName in Game.rooms) {
       const room = Game.rooms[roomName];
@@ -740,12 +740,12 @@ export class NukeManager {
    * Ensures nukes land when siege squads arrive, and deploys squads if needed
    */
   private coordinateWithSieges(): void {
-    const overmind = memoryManager.getOvermind();
-    if (!overmind.objectives.warMode) return;
-    if (!overmind.nukesInFlight || overmind.nukesInFlight.length === 0) return;
+    const empire = memoryManager.getEmpire();
+    if (!empire.objectives.warMode) return;
+    if (!empire.nukesInFlight || empire.nukesInFlight.length === 0) return;
 
     // Check each nuke in flight for siege coordination opportunity
-    for (const nuke of overmind.nukesInFlight) {
+    for (const nuke of empire.nukesInFlight) {
       const ticksUntilImpact = nuke.impactTick - Game.time;
 
       // Skip if nuke already has a siege squad assigned
@@ -780,7 +780,7 @@ export class NukeManager {
         const targetRoom = squad.targetRooms[0];
         if (!targetRoom) continue;
 
-        const targetedNuke = overmind.nukesInFlight?.find(n => n.targetRoom === targetRoom);
+        const targetedNuke = empire.nukesInFlight?.find(n => n.targetRoom === targetRoom);
         if (targetedNuke && !targetedNuke.siegeSquadId) {
           targetedNuke.siegeSquadId = squad.id;
           logger.info(
@@ -899,18 +899,18 @@ export class NukeManager {
    * Initialize nuke tracking arrays if they don't exist
    */
   private initializeNukeTracking(): void {
-    const overmind = memoryManager.getOvermind();
+    const empire = memoryManager.getEmpire();
     
-    if (!overmind.nukesInFlight) {
-      overmind.nukesInFlight = [];
+    if (!empire.nukesInFlight) {
+      empire.nukesInFlight = [];
     }
     
-    if (!overmind.incomingNukes) {
-      overmind.incomingNukes = [];
+    if (!empire.incomingNukes) {
+      empire.incomingNukes = [];
     }
     
-    if (!overmind.nukeEconomics) {
-      overmind.nukeEconomics = {
+    if (!empire.nukeEconomics) {
+      empire.nukeEconomics = {
         nukesLaunched: 0,
         totalEnergyCost: 0,
         totalGhodiumCost: 0,
@@ -925,12 +925,12 @@ export class NukeManager {
    * Groups nukes targeting the same room to hit within salvoSyncWindow
    */
   private coordinateNukeSalvos(): void {
-    const overmind = memoryManager.getOvermind();
-    if (!overmind.nukesInFlight || overmind.nukesInFlight.length === 0) return;
+    const empire = memoryManager.getEmpire();
+    if (!empire.nukesInFlight || empire.nukesInFlight.length === 0) return;
 
     // Group nukes by target room
     const nukesByTarget = new Map<string, NukeInFlight[]>();
-    for (const nuke of overmind.nukesInFlight) {
+    for (const nuke of empire.nukesInFlight) {
       const existing = nukesByTarget.get(nuke.targetRoom) || [];
       existing.push(nuke);
       nukesByTarget.set(nuke.targetRoom, existing);
@@ -985,7 +985,7 @@ export class NukeManager {
     const room = Game.rooms[targetRoom];
     if (!room) {
       // Estimate based on intel
-      const intel = memoryManager.getOvermind().roomIntel[targetRoom];
+      const intel = memoryManager.getEmpire().knownRooms[targetRoom];
       if (intel) {
         // Rough estimate: towers, spawns, and storage using configurable weights
         const structureEstimate = 
@@ -1044,18 +1044,18 @@ export class NukeManager {
    * Identify nuke sources and consider retaliatory strikes
    */
   private processCounterNukeStrategies(): void {
-    const overmind = memoryManager.getOvermind();
-    if (!overmind.incomingNukes || overmind.incomingNukes.length === 0) return;
+    const empire = memoryManager.getEmpire();
+    if (!empire.incomingNukes || empire.incomingNukes.length === 0) return;
 
-    for (const alert of overmind.incomingNukes) {
+    for (const alert of empire.incomingNukes) {
       // Only process if source room is identified
       if (!alert.sourceRoom) continue;
 
       // Check if already a war target
-      if (overmind.warTargets.includes(alert.sourceRoom)) continue;
+      if (empire.warTargets.includes(alert.sourceRoom)) continue;
 
       // Verify conditions for counter-nuke
-      const sourceRoomIntel = overmind.roomIntel[alert.sourceRoom];
+      const sourceRoomIntel = empire.knownRooms[alert.sourceRoom];
       if (!sourceRoomIntel) continue;
 
       // Enemy must have RCL8 (nuker capability)
@@ -1076,8 +1076,8 @@ export class NukeManager {
       }
 
       // Add to war targets for retaliation
-      if (!overmind.warTargets.includes(alert.sourceRoom)) {
-        overmind.warTargets.push(alert.sourceRoom);
+      if (!empire.warTargets.includes(alert.sourceRoom)) {
+        empire.warTargets.push(alert.sourceRoom);
         logger.warn(
           `COUNTER-NUKE AUTHORIZED: ${alert.sourceRoom} added to war targets for nuke retaliation`,
           { subsystem: "Nuke" }
@@ -1124,10 +1124,10 @@ export class NukeManager {
    * Update nuke economics tracking
    */
   private updateNukeEconomics(): void {
-    const overmind = memoryManager.getOvermind();
-    if (!overmind.nukeEconomics) return;
+    const empire = memoryManager.getEmpire();
+    if (!empire.nukeEconomics) return;
 
-    const economics = overmind.nukeEconomics;
+    const economics = empire.nukeEconomics;
 
     // Update ROI calculation if we have data
     const totalCost = economics.totalEnergyCost + economics.totalGhodiumCost;
@@ -1150,22 +1150,22 @@ export class NukeManager {
    * Clean up old nuke tracking data
    */
   private cleanupNukeTracking(): void {
-    const overmind = memoryManager.getOvermind();
+    const empire = memoryManager.getEmpire();
     
     // Remove nukes that have already impacted
-    if (overmind.nukesInFlight) {
-      overmind.nukesInFlight = overmind.nukesInFlight.filter(
+    if (empire.nukesInFlight) {
+      empire.nukesInFlight = empire.nukesInFlight.filter(
         nuke => nuke.impactTick > Game.time
       );
     }
 
     // Remove old incoming nuke alerts (already impacted)
-    if (overmind.incomingNukes) {
-      const before = overmind.incomingNukes.length;
-      overmind.incomingNukes = overmind.incomingNukes.filter(
+    if (empire.incomingNukes) {
+      const before = empire.incomingNukes.length;
+      empire.incomingNukes = empire.incomingNukes.filter(
         alert => alert.impactTick > Game.time
       );
-      const removed = before - overmind.incomingNukes.length;
+      const removed = before - empire.incomingNukes.length;
       
       if (removed > 0) {
         logger.info(`Cleaned up ${removed} impacted nuke alert(s)`, { subsystem: "Nuke" });

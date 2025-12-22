@@ -419,12 +419,12 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
 
   // Claimer: Only spawn if we have expansion targets or remote rooms that need reserving
   if (role === "claimer") {
-    const overmind = memoryManager.getOvermind();
+    const empire = memoryManager.getEmpire();
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
     
     // Check if we have unclaimed expansion targets and can expand
     const canExpand = ownedRooms.length < Game.gcl.level;
-    const hasExpansionTarget = overmind.claimQueue.some(c => !c.claimed);
+    const hasExpansionTarget = empire.claimQueue.some(c => !c.claimed);
     
     // Check if we have remote rooms that need reserving (no reserver assigned)
     const hasUnreservedRemote = needsReserver(roomName, swarm);

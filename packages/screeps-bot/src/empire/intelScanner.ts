@@ -131,12 +131,12 @@ export class IntelScanner {
    * Build queue of rooms to scan
    */
   private buildScanQueue(): void {
-    const overmind = memoryManager.getOvermind();
+    const empire = memoryManager.getEmpire();
     const roomsToScan: string[] = [];
 
     // Add all known rooms that need rescanning
-    for (const roomName in overmind.roomIntel) {
-      const intel = overmind.roomIntel[roomName];
+    for (const roomName in empire.knownRooms) {
+      const intel = empire.knownRooms[roomName];
       const timeSinceLastScan = Game.time - intel.lastSeen;
 
       // Prioritize rooms with higher threat levels and older scans
@@ -147,8 +147,8 @@ export class IntelScanner {
 
     // Sort by priority: threat level (desc), last seen (asc)
     roomsToScan.sort((a, b) => {
-      const intelA = overmind.roomIntel[a];
-      const intelB = overmind.roomIntel[b];
+      const intelA = empire.knownRooms[a];
+      const intelB = empire.knownRooms[b];
       if (!intelA || !intelB) return 0;
 
       // Higher threat first
@@ -168,7 +168,7 @@ export class IntelScanner {
    * Scan rooms from the queue
    */
   private scanRooms(): void {
-    const overmind = memoryManager.getOvermind();
+    const empire = memoryManager.getEmpire();
     let scanned = 0;
 
     while (scanned < this.config.roomsPerTick && this.scanQueue.length > 0) {
@@ -179,7 +179,7 @@ export class IntelScanner {
       const room = Game.rooms[roomName];
       if (!room) {
         // No visibility, mark as seen but not updated
-        const intel = overmind.roomIntel[roomName];
+        const intel = empire.knownRooms[roomName];
         if (intel) {
           intel.lastSeen = Game.time;
         }
@@ -195,8 +195,8 @@ export class IntelScanner {
   /**
    * Update room intel from visible room
    */
-  private updateRoomIntel(room: Room, overmind: ReturnType<typeof memoryManager.getOvermind>): void {
-    const intel = overmind.roomIntel[room.name] || this.createDefaultIntel(room.name);
+  private updateRoomIntel(room: Room, empire: ReturnType<typeof memoryManager.getEmpire>): void {
+    const intel = empire.knownRooms[room.name] || this.createDefaultIntel(room.name);
 
     // Update basic info
     intel.lastSeen = Game.time;
@@ -243,7 +243,7 @@ export class IntelScanner {
     intel.isHighway = this.isHighwayRoom(room.name);
     intel.isSK = this.isSourceKeeperRoom(room.name);
 
-    overmind.roomIntel[room.name] = intel;
+    empire.knownRooms[room.name] = intel;
   }
 
   /**
@@ -403,13 +403,13 @@ export class IntelScanner {
    * Detect threats in visible rooms
    */
   private detectThreats(): void {
-    const overmind = memoryManager.getOvermind();
+    const empire = memoryManager.getEmpire();
 
     for (const roomName in Game.rooms) {
       const room = Game.rooms[roomName];
       if (!room) continue;
 
-      const intel = overmind.roomIntel[roomName];
+      const intel = empire.knownRooms[roomName];
       if (!intel) continue;
 
       // Detect hostile creeps
@@ -440,11 +440,11 @@ export class IntelScanner {
    * Update room threat levels in intel database
    */
   private updateRoomThreatLevels(): void {
-    const overmind = memoryManager.getOvermind();
+    const empire = memoryManager.getEmpire();
 
     // Decay threat levels for rooms not recently seen
-    for (const roomName in overmind.roomIntel) {
-      const intel = overmind.roomIntel[roomName];
+    for (const roomName in empire.knownRooms) {
+      const intel = empire.knownRooms[roomName];
       const timeSinceLastSeen = Game.time - intel.lastSeen;
 
       // Decay threat level if not seen recently
@@ -460,7 +460,7 @@ export class IntelScanner {
         warTargets.push(username);
       }
     }
-    overmind.warTargets = [...new Set(warTargets)]; // Remove duplicates
+    empire.warTargets = [...new Set(warTargets)]; // Remove duplicates
   }
 
   /**

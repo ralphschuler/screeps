@@ -20,7 +20,7 @@ import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators"
 import { ProcessPriority, kernel } from "../core/kernel";
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
-import type { OvermindMemory, RoomIntel } from "../memory/schemas";
+import type { EmpireMemory, RoomIntel } from "../memory/schemas";
 import * as ExpansionScoring from "./expansionScoring";
 
 /**
@@ -98,23 +98,23 @@ export class ExpansionManager {
     cpuBudget: 0.02
   })
   public run(): void {
-    const overmind = memoryManager.getOvermind();
+    const empire = memoryManager.getEmpire();
 
     // Update last run time
     this.lastRun = Game.time;
 
     // Monitor expansion progress and cancel failed attempts
-    this.monitorExpansionProgress(overmind);
+    this.monitorExpansionProgress(empire);
 
     // Update remote room assignments for all owned rooms
-    this.updateRemoteAssignments(overmind);
+    this.updateRemoteAssignments(empire);
 
     // Check if we're ready for expansion
-    const expansionReady = this.isExpansionReady(overmind);
+    const expansionReady = this.isExpansionReady(empire);
 
     // Assign targets to claimers from expansion queue (only if ready)
     if (expansionReady) {
-      this.assignClaimerTargets(overmind);
+      this.assignClaimerTargets(empire);
     }
 
     // Assign targets to reservers for remote rooms
@@ -125,7 +125,7 @@ export class ExpansionManager {
    * Update remote room assignments for all owned rooms
    * Prioritizes room stability before assigning remotes
    */
-  private updateRemoteAssignments(overmind: OvermindMemory): void {
+  private updateRemoteAssignments(empire: EmpireMemory): void {
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
 
     for (const room of ownedRooms) {
@@ -142,14 +142,14 @@ export class ExpansionManager {
       const currentRemotes = swarm.remoteAssignments ?? [];
 
       // Validate current assignments (remove invalid ones)
-      const validRemotes = this.validateRemoteAssignments(currentRemotes, overmind, room.name);
+      const validRemotes = this.validateRemoteAssignments(currentRemotes, empire, room.name);
 
       // Calculate remote capacity based on room stability
       const maxRemotes = this.calculateRemoteCapacity(room, swarm);
 
       // Find new remote candidates if we need more and room is stable
       if (validRemotes.length < maxRemotes) {
-        const candidates = this.findRemoteCandidates(room.name, overmind, validRemotes);
+        const candidates = this.findRemoteCandidates(room.name, empire, validRemotes);
         const slotsAvailable = maxRemotes - validRemotes.length;
         const newRemotes = candidates.slice(0, slotsAvailable);
 
@@ -214,11 +214,11 @@ export class ExpansionManager {
    */
   private validateRemoteAssignments(
     remotes: string[],
-    overmind: OvermindMemory,
+    empire: EmpireMemory,
     homeRoom: string
   ): string[] {
     return remotes.filter(remoteName => {
-      const intel = overmind.roomIntel[remoteName];
+      const intel = empire.knownRooms[remoteName];
 
       // Remove if no intel (not scouted yet - keep it for now)
       if (!intel) return true;
@@ -273,20 +273,20 @@ export class ExpansionManager {
    */
   private findRemoteCandidates(
     homeRoom: string,
-    overmind: OvermindMemory,
+    empire: EmpireMemory,
     currentRemotes: string[]
   ): string[] {
     const candidates: { roomName: string; score: number }[] = [];
     const myUsername = this.getMyUsername();
 
-    for (const roomName in overmind.roomIntel) {
+    for (const roomName in empire.knownRooms) {
       // Skip if already assigned
       if (currentRemotes.includes(roomName)) continue;
 
       // Skip if already assigned to another room
       if (this.isRemoteAssignedElsewhere(roomName, homeRoom)) continue;
 
-      const intel = overmind.roomIntel[roomName];
+      const intel = empire.knownRooms[roomName];
 
       // Skip if not scouted
       if (!intel.scouted) continue;
@@ -363,7 +363,7 @@ export class ExpansionManager {
   private scoreClaimCandidate(
     intel: RoomIntel,
     distance: number,
-    overmind: OvermindMemory,
+
     ownedRooms: Room[]
   ): number {
     let score = 0;
@@ -436,9 +436,9 @@ export class ExpansionManager {
    * Assign targets to claimers from expansion queue
    * Triggers automatic claimer spawning if no claimer is available
    */
-  private assignClaimerTargets(overmind: OvermindMemory): void {
+  private assignClaimerTargets(empire: EmpireMemory): void {
     // Get next expansion target
-    const nextTarget = this.getNextExpansionTarget(overmind);
+    const nextTarget = this.getNextExpansionTarget(empire);
     if (!nextTarget) return;
 
     // Check if we already have a claimer assigned or en route
@@ -472,7 +472,7 @@ export class ExpansionManager {
 
     // If no claimer was assigned, trigger automatic spawning
     if (!assignedClaimer) {
-      this.requestClaimerSpawn(nextTarget.roomName, overmind);
+      this.requestClaimerSpawn(nextTarget.roomName, empire);
     }
   }
 
@@ -480,7 +480,7 @@ export class ExpansionManager {
    * Request a claimer to be spawned for expansion
    * Sets room posture to 'expand' to trigger claimer spawning
    */
-  private requestClaimerSpawn(targetRoom: string, _overmind: OvermindMemory): void {
+  private requestClaimerSpawn(targetRoom: string, _empire: EmpireMemory): void {
     // Find the best room to spawn the claimer from (closest stable room)
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
     const stableRooms = ownedRooms.filter(r => (r.controller?.level ?? 0) >= this.config.minRclForClaiming);
@@ -567,9 +567,9 @@ export class ExpansionManager {
    * Check if empire is ready for expansion
    * Implements GCL-based pacing and room stability checks
    */
-  private isExpansionReady(overmind: OvermindMemory): boolean {
+  private isExpansionReady(empire: EmpireMemory): boolean {
     // Check if expansion is paused
-    if (overmind.objectives.expansionPaused) {
+    if (empire.objectives.expansionPaused) {
       return false;
     }
 
@@ -613,7 +613,7 @@ export class ExpansionManager {
   /**
    * Get next expansion target from queue with cluster-based prioritization
    */
-  private getNextExpansionTarget(overmind: OvermindMemory): { roomName: string; claimed: boolean } | null {
+  private getNextExpansionTarget(empire: EmpireMemory): { roomName: string; claimed: boolean } | null {
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
 
     // Check if we can expand (GCL limit)
@@ -622,7 +622,7 @@ export class ExpansionManager {
     }
 
     // Get unclaimed targets from queue
-    const unclaimed = overmind.claimQueue.filter(c => !c.claimed);
+    const unclaimed = empire.claimQueue.filter(c => !c.claimed);
     if (unclaimed.length === 0) return null;
 
     // Prioritize expansion targets near existing clusters
@@ -689,7 +689,7 @@ export class ExpansionManager {
    * Perform safety analysis for a room expansion candidate
    * Scans 2-range radius for hostile structures and threats
    */
-  private performSafetyAnalysis(roomName: string, overmind: OvermindMemory): {
+  private performSafetyAnalysis(roomName: string, empire: EmpireMemory): {
     isSafe: boolean;
     threatDescription: string;
   } {
@@ -699,7 +699,7 @@ export class ExpansionManager {
     const nearbyRooms = ExpansionScoring.getRoomsInRange(roomName, 2);
 
     for (const nearbyRoom of nearbyRooms) {
-      const intel = overmind.roomIntel[nearbyRoom];
+      const intel = empire.knownRooms[nearbyRoom];
       if (!intel) continue;
 
       // Check for hostile ownership
@@ -736,11 +736,11 @@ export class ExpansionManager {
    * Monitor and cancel failed expansion attempts
    * Auto-cancels if claimer dies repeatedly, room becomes hostile, or energy drops
    */
-  private monitorExpansionProgress(overmind: OvermindMemory): void {
+  private monitorExpansionProgress(empire: EmpireMemory): void {
     const now = Game.time;
 
     // Check each claimed expansion target for progress
-    for (const candidate of overmind.claimQueue) {
+    for (const candidate of empire.claimQueue) {
       if (!candidate.claimed) continue;
 
       // Check if expansion has timed out (5000 ticks from last evaluation)
@@ -751,7 +751,7 @@ export class ExpansionManager {
         if (room?.controller?.my) {
           // Successfully claimed! Mark as complete and remove from queue
           logger.info(`Expansion to ${candidate.roomName} completed successfully`, { subsystem: "Expansion" });
-          this.removeFromClaimQueue(overmind, candidate.roomName);
+          this.removeFromClaimQueue(empire, candidate.roomName);
           continue;
         }
 
@@ -759,7 +759,7 @@ export class ExpansionManager {
         logger.warn(`Expansion to ${candidate.roomName} timed out after ${timeSinceEvaluation} ticks`, {
           subsystem: "Expansion"
         });
-        this.cancelExpansion(overmind, candidate.roomName, "timeout");
+        this.cancelExpansion(empire, candidate.roomName, "timeout");
         continue;
       }
 
@@ -772,17 +772,17 @@ export class ExpansionManager {
       if (!hasActiveClaimer && timeSinceEvaluation > 1000) {
         // No claimer and it's been a while - likely died
         logger.warn(`No active claimer for ${candidate.roomName} expansion`, { subsystem: "Expansion" });
-        this.cancelExpansion(overmind, candidate.roomName, "claimer_died");
+        this.cancelExpansion(empire, candidate.roomName, "claimer_died");
         continue;
       }
 
       // Check if room became hostile before claim completes
-      const intel = overmind.roomIntel[candidate.roomName];
+      const intel = empire.knownRooms[candidate.roomName];
       if (intel?.owner && intel.owner !== this.getMyUsername()) {
         logger.warn(`${candidate.roomName} claimed by ${intel.owner} before we could claim it`, {
           subsystem: "Expansion"
         });
-        this.cancelExpansion(overmind, candidate.roomName, "hostile_claim");
+        this.cancelExpansion(empire, candidate.roomName, "hostile_claim");
         continue;
       }
 
@@ -796,7 +796,7 @@ export class ExpansionManager {
         logger.warn(`Cancelling expansion to ${candidate.roomName} due to low energy (avg: ${avgEnergy})`, {
           subsystem: "Expansion"
         });
-        this.cancelExpansion(overmind, candidate.roomName, "low_energy");
+        this.cancelExpansion(empire, candidate.roomName, "low_energy");
         continue;
       }
     }
@@ -805,9 +805,9 @@ export class ExpansionManager {
   /**
    * Cancel an expansion attempt
    */
-  private cancelExpansion(overmind: OvermindMemory, roomName: string, reason: string): void {
+  private cancelExpansion(empire: EmpireMemory, roomName: string, reason: string): void {
     // Remove from claim queue
-    this.removeFromClaimQueue(overmind, roomName);
+    this.removeFromClaimQueue(empire, roomName);
 
     // Cancel any claimers assigned to this room
     for (const creep of Object.values(Game.creeps)) {
@@ -826,10 +826,10 @@ export class ExpansionManager {
   /**
    * Remove a room from the claim queue
    */
-  private removeFromClaimQueue(overmind: OvermindMemory, roomName: string): void {
-    const idx = overmind.claimQueue.findIndex(c => c.roomName === roomName);
+  private removeFromClaimQueue(empire: EmpireMemory, roomName: string): void {
+    const idx = empire.claimQueue.findIndex(c => c.roomName === roomName);
     if (idx !== -1) {
-      overmind.claimQueue.splice(idx, 1);
+      empire.claimQueue.splice(idx, 1);
     }
   }
 

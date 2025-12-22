@@ -5,13 +5,10 @@
  * find optimizations, safe find wrappers, and idle detection.
  */
 
-// CPU Efficiency - throttling and body part calculations
+// CPU Efficiency - throttling
 export {
   throttle,
-  throttleWithDefault,
-  calculateCreepDamagePotential,
-  calculateCreepHealPotential,
-  countActiveBodyParts
+  throttleWithDefault
 } from "./cpuEfficiency";
 
 // Find Optimizations - optimized room.find() variants

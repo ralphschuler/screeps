@@ -115,8 +115,8 @@ export function launchOffensiveOperation(
   }
   
   // Determine doctrine if not specified
-  const overmind = memoryManager.getOvermind();
-  const intel = overmind.roomIntel[targetRoom];
+  const empire = memoryManager.getEmpire();
+  const intel = empire.knownRooms[targetRoom];
   const finalDoctrine = doctrine ?? selectDoctrine(targetRoom, {
     towerCount: intel?.towerCount,
     spawnCount: intel?.spawnCount,

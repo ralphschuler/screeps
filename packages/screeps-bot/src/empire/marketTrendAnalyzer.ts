@@ -191,12 +191,12 @@ export class MarketTrendAnalyzer {
    * Detect trading opportunities
    */
   private detectTradingOpportunities(): void {
-    const overmind = memoryManager.getOvermind();
+    const empire = memoryManager.getEmpire();
     const newOpportunities: TradingOpportunity[] = [];
 
     for (const resource of this.config.trackedResources) {
       // Get market data - using string key for Record<string, ResourceMarketData>
-      const marketData = overmind.market?.resources[resource as string];
+      const marketData = empire.market?.resources[resource as string];
       if (!marketData) continue;
 
       const supplyDemand = this.supplyDemandCache.get(resource);

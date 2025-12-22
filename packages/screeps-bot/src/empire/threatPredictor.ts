@@ -241,8 +241,8 @@ export class ThreatPredictor {
           );
 
           // Update room intel threat level
-          const overmind = memoryManager.getOvermind();
-          const intel = overmind.roomIntel[ownedRoom.name];
+          const empire = memoryManager.getEmpire();
+          const intel = empire.knownRooms[ownedRoom.name];
           if (intel) {
             intel.threatLevel = Math.max(intel.threatLevel, 2) as 0 | 1 | 2 | 3;
           }
