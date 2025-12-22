@@ -16,7 +16,6 @@
  */
 
 import { createLogger } from "../core/logger";
-import { PathFinder } from "screeps-cartographer";
 
 const logger = createLogger("RoomPathManager");
 

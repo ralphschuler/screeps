@@ -29,6 +29,13 @@ const logger = createLogger("TargetAssignmentManager");
 const ASSIGNMENT_REFRESH_INTERVAL = 10;
 
 /**
+ * Default maximum harvesters per source
+ * Each source typically has ~2 mining spots around it
+ * TODO: Calculate exact spots from terrain analysis
+ */
+const DEFAULT_MAX_HARVESTERS_PER_SOURCE = 2;
+
+/**
  * Source assignment for harvesters
  */
 interface SourceAssignment {
@@ -172,8 +179,7 @@ function assignHarvestersToSources(
   // Initialize source assignments
   for (const source of sources) {
     // Each source can support ~2 harvesters (typical mining spots)
-    // TODO: Calculate exact spots from terrain analysis
-    const maxHarvesters = 2;
+    const maxHarvesters = DEFAULT_MAX_HARVESTERS_PER_SOURCE;
     
     assignments.sources.set(source.id, {
       sourceId: source.id,

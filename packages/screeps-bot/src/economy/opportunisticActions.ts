@@ -45,10 +45,17 @@ const CONFIG = {
 };
 
 /**
+ * Default minimum CPU bucket threshold for opportunistic actions
+ * Ensures we only perform extra work when CPU is healthy
+ * Per ROADMAP Section 18: CPU-Bucket-gesteuertes Verhalten
+ */
+const DEFAULT_MIN_BUCKET_THRESHOLD = 2000;
+
+/**
  * Check if opportunistic actions are allowed based on CPU bucket
  */
 function canPerformOpportunisticActions(): boolean {
-  return Game.cpu.bucket >= CONFIG.minBucket;
+  return Game.cpu.bucket >= DEFAULT_MIN_BUCKET_THRESHOLD;
 }
 
 /**
@@ -222,7 +229,7 @@ export function getOpportunisticStats(): {
 } {
   return {
     enabled: canPerformOpportunisticActions(),
-    minBucket: CONFIG.minBucket,
+    minBucket: DEFAULT_MIN_BUCKET_THRESHOLD,
     currentBucket: Game.cpu.bucket
   };
 }
