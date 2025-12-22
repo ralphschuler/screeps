@@ -84,12 +84,14 @@ This document tracks the cleanup efforts following the "Required Code Only" phil
 
 #### Impact (Combined Phase 1 + Phase 2)
 
-- **Lines Removed**: 1,704 lines total
+- **Lines Removed**: 1,791 lines total
   - Phase 1: 1,604 lines (4 files deleted)
-  - Phase 2: 100 lines (lingering references)
+  - Phase 2: 187 lines total
+    - 100 lines: production code (lingering references)
+    - 87 lines: test cleanup
 - **Files Deleted**: 4 files (Phase 1)
-- **Files Modified**: 4 files (Phase 2)
-- **Codebase Size**: Reduced from 64,866 to 63,162 lines (2.6% reduction)
+- **Files Modified**: 5 files (Phase 2)
+- **Codebase Size**: Reduced from 64,866 to 63,075 lines (2.8% reduction)
 - **Build Status**: ✅ Builds successfully (pre-existing error in unifiedStats.ts unrelated to cleanup)
 - **Test Status**: ✅ All tests pass (pre-existing failures unrelated to cleanup)
 

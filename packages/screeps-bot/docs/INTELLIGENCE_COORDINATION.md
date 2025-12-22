@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Intelligence & Coordination system provides comprehensive enemy tracking, threat prediction, cross-shard intelligence sharing, alliance management, and market trend analysis for the Screeps bot.
+The Intelligence & Coordination system provides comprehensive enemy tracking, threat prediction, cross-shard intelligence sharing, and market trend analysis for the Screeps bot.
 
 ## Components
 
@@ -40,9 +40,8 @@ const scanner = new IntelScanner();
 const enemy = scanner.getEnemyPlayer("username");
 const allEnemies = scanner.getAllEnemies();
 
-// Manage allies
-scanner.addAlly("allyUsername");
-scanner.removeAlly("formerAlly");
+// Note: Allies must be configured at initialization time
+// via the config.allies array (manual whitelist)
 ```
 
 ### 2. Threat Predictor (`ThreatPredictor`)
@@ -111,13 +110,11 @@ import { CrossShardIntelCoordinator } from "./empire/intelligence";
 
 const coordinator = new CrossShardIntelCoordinator();
 
-// Manage global allies
-coordinator.addGlobalAlly("allyUsername");
-coordinator.removeGlobalAlly("formerAlly");
-
 // Get global intelligence
 const globalEnemies = coordinator.getGlobalEnemies();
-const globalAllies = coordinator.getGlobalAllies();
+
+// Note: Alliance management methods (addGlobalAlly, removeGlobalAlly, getGlobalAllies) 
+// have been removed as part of the alliance system cleanup
 ```
 
 ### 4. Market Trend Analyzer (`MarketTrendAnalyzer`)
@@ -228,9 +225,8 @@ global.threats.getAllPredictions()
 global.market.getOpportunities()
 global.market.getSupplyDemand(RESOURCE_ENERGY)
 
-// Manage allies
-global.intel.addAlly("allyUsername")
-global.crossShard.addGlobalAlly("allyUsername")
+// Note: Alliance management methods have been removed
+// Configure allies at initialization time via config.allies array
 ```
 
 ## Configuration
