@@ -128,14 +128,39 @@ export class MemoryManager {
       const clusters = mem[CLUSTERS_KEY] as Record<string, ClusterMemory> | undefined;
       
       // Create empire memory from overmind
+      const knownRooms = overmind.roomIntel || {};
+      
+      // Migrate roomsSeen data for rooms not already in roomIntel
+      if (overmind.roomsSeen) {
+        for (const roomName in overmind.roomsSeen) {
+          if (!knownRooms[roomName]) {
+            // Create minimal RoomIntel entry for rooms that were seen but not fully scouted
+            knownRooms[roomName] = {
+              name: roomName,
+              lastSeen: overmind.roomsSeen[roomName],
+              sources: 0,
+              controllerLevel: 0,
+              threatLevel: 0,
+              scouted: false,
+              terrain: "mixed",
+              isHighway: false,
+              isSK: false
+            };
+          }
+        }
+      }
+      
       mem[EMPIRE_KEY] = {
-        knownRooms: overmind.roomIntel || {},
+        knownRooms,
         clusters: clusters ? Object.keys(clusters) : [],
         warTargets: overmind.warTargets || [],
         ownedRooms: {},
         claimQueue: overmind.claimQueue || [],
         nukeCandidates: overmind.nukeCandidates || [],
         powerBanks: overmind.powerBanks || [],
+        nukesInFlight: overmind.nukesInFlight,
+        incomingNukes: overmind.incomingNukes,
+        nukeEconomics: overmind.nukeEconomics,
         market: overmind.market,
         objectives: overmind.objectives || {
           targetPowerLevel: 0,

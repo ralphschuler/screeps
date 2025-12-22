@@ -762,8 +762,6 @@ export class MarketManager {
    * Buys critical resources at any price if below emergency threshold
    */
   private handleEmergencyBuying(): void {
-    const empire = memoryManager.getEmpire();
-
     // Skip if not enough emergency credits
     if (Game.market.credits < this.config.emergencyCredits) return;
 
