@@ -38,7 +38,7 @@ export class ErrorMapper {
           try {
             sourceMapData = JSON.parse(rawSourceMap);
           } catch (e) {
-            console.log(`Failed to parse source map JSON: ${e instanceof Error ? e.message : String(e)}`);
+            console.error(`Failed to parse source map JSON: ${e instanceof Error ? e.message : String(e)}`);
             this._consumer = null;
             this._sourceMapAvailable = false;
             return null;

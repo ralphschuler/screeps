@@ -181,7 +181,7 @@ export class MemorySegmentManager {
         if (!segmentContent) return null;
         
         parsed = JSON.parse(segmentContent);
-        if (!parsed) return null;
+        if (parsed == null) return null;
         this.segmentCache.set(segmentId, parsed);
       }
 
