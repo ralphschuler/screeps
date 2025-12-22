@@ -67,15 +67,24 @@ export class MemorySegmentManager {
 
     this.activeSegments.add(segmentId);
     
-    // Update active segments for next tick
+    // Enforce 10-segment limit
     const activeArray = Array.from(this.activeSegments);
     if (activeArray.length > 10) {
-      logger.warn("More than 10 segments requested", {
+      logger.error("Cannot have more than 10 active segments", {
         subsystem: "MemorySegmentManager",
-        meta: { count: activeArray.length, segments: activeArray }
+        meta: { 
+          requested: segmentId,
+          currentCount: activeArray.length,
+          activeSegments: activeArray 
+        }
       });
+      
+      // Remove the newly added segment since we exceeded the limit
+      this.activeSegments.delete(segmentId);
+      throw new Error(`Segment limit exceeded: Cannot load segment ${segmentId}. Already have 10 active segments. Release a segment first.`);
     }
     
+    // Update active segments for next tick
     RawMemory.setActiveSegments(activeArray);
   }
 

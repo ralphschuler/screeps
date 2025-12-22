@@ -24,7 +24,6 @@ import {
   createDefaultSwarmState
 } from "./schemas";
 import { INFINITE_TTL, heapCache } from "./heapCache";
-import { logger } from "../core/logger";
 import { memoryMonitor } from "./memoryMonitor";
 import { memoryPruner } from "./memoryPruner";
 import { migrationRunner } from "./migrations";
@@ -33,8 +32,6 @@ const EMPIRE_KEY = "empire";
 const CLUSTERS_KEY = "clusters";
 /** Screeps memory limit in bytes */
 const MEMORY_LIMIT_BYTES = 2097152; // 2MB
-/** Current memory version - managed by migrations.ts */
-const CURRENT_MEMORY_VERSION = 6;
 /**
  * Interval for dead creep memory cleanup.
  * Running every tick is wasteful since creeps don't die that often.

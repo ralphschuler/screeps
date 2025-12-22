@@ -144,8 +144,8 @@ export class MemoryCompressor {
    * Calculate compression statistics
    */
   public getCompressionStats<T>(data: T): CompressionStats {
-    const originalSize = JSON.stringify(data).length;
     const compressed = this.compress(data);
+    const originalSize = compressed.originalSize;
     const compressedSize = compressed.compressedSize;
     const bytesSaved = originalSize - compressedSize;
     const ratio = compressedSize / originalSize;
@@ -160,6 +160,7 @@ export class MemoryCompressor {
 
   /**
    * Test if compression is beneficial for given data
+   * Note: This performs actual compression to get accurate stats
    */
   public shouldCompress<T>(data: T, minSizeBytes = 1000, maxRatio = 0.9): boolean {
     const size = JSON.stringify(data).length;
@@ -168,10 +169,10 @@ export class MemoryCompressor {
     if (size < minSizeBytes) return false;
 
     // Test compression ratio
-    const stats = this.getCompressionStats(data);
+    const compressed = this.compress(data);
     
     // Compress if we save at least 10% (ratio < 0.9)
-    return stats.ratio < maxRatio;
+    return compressed.compressedSize / compressed.originalSize < maxRatio;
   }
 
   /**

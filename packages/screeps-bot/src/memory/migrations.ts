@@ -8,7 +8,7 @@
  */
 
 import { logger } from "../core/logger";
-import { memorySegmentManager, SEGMENT_ALLOCATION } from "./memorySegmentManager";
+import { memorySegmentManager } from "./memorySegmentManager";
 import { memoryCompressor } from "./memoryCompressor";
 import type { EmpireMemory } from "./schemas";
 
@@ -62,24 +62,41 @@ export const migrations: Migration[] = [
       // Move historical intel to segment
       if (Object.keys(historicalIntel).length > 0) {
         const segmentId = memorySegmentManager.suggestSegmentForType("HISTORICAL_INTEL");
-        memorySegmentManager.requestSegment(segmentId);
         
-        // Will migrate next tick when segment is loaded
-        if (memorySegmentManager.isSegmentLoaded(segmentId)) {
-          memorySegmentManager.writeSegment(segmentId, "historicalIntel", historicalIntel);
-          
-          // Update main memory to only contain active intel
-          empire.knownRooms = activeIntel as EmpireMemory["knownRooms"];
-          
-          logger.info("Migrated historical intel to segments", {
+        // Request segment if not loaded - it will be available next tick
+        if (!memorySegmentManager.isSegmentLoaded(segmentId)) {
+          memorySegmentManager.requestSegment(segmentId);
+          logger.info("Segment not loaded, migration will continue next tick", {
             subsystem: "MemoryMigrations",
-            meta: {
-              historicalCount: Object.keys(historicalIntel).length,
-              activeCount: Object.keys(activeIntel).length,
-              segmentId
-            }
+            meta: { segmentId }
           });
+          // Don't modify memory yet - migration will retry next tick
+          return;
         }
+        
+        // Segment is loaded, write data
+        const writeSuccess = memorySegmentManager.writeSegment(segmentId, "historicalIntel", historicalIntel);
+        
+        if (!writeSuccess) {
+          logger.error("Failed to write historical intel to segment", {
+            subsystem: "MemoryMigrations",
+            meta: { segmentId }
+          });
+          // Don't delete from main memory if write failed
+          return;
+        }
+        
+        // Only update main memory after successful write
+        empire.knownRooms = activeIntel as EmpireMemory["knownRooms"];
+        
+        logger.info("Migrated historical intel to segments", {
+          subsystem: "MemoryMigrations",
+          meta: {
+            historicalCount: Object.keys(historicalIntel).length,
+            activeCount: Object.keys(activeIntel).length,
+            segmentId
+          }
+        });
       }
     }
   },
@@ -131,23 +148,41 @@ export const migrations: Migration[] = [
       
       // Move to segment
       const segmentId = memorySegmentManager.suggestSegmentForType("MARKET_HISTORY");
-      memorySegmentManager.requestSegment(segmentId);
       
-      if (memorySegmentManager.isSegmentLoaded(segmentId)) {
-        memorySegmentManager.writeSegment(segmentId, "priceHistory", compressed);
-        
-        // Remove from main memory
-        delete marketRecord.priceHistory;
-        
-        logger.info("Migrated market history to segments", {
+      // Request segment if not loaded - it will be available next tick
+      if (!memorySegmentManager.isSegmentLoaded(segmentId)) {
+        memorySegmentManager.requestSegment(segmentId);
+        logger.info("Segment not loaded, migration will continue next tick", {
           subsystem: "MemoryMigrations",
-          meta: {
-            originalSize: compressed.originalSize,
-            compressedSize: compressed.compressedSize,
-            segmentId
-          }
+          meta: { segmentId }
         });
+        // Don't modify memory yet - migration will retry next tick
+        return;
       }
+      
+      // Segment is loaded, write data
+      const writeSuccess = memorySegmentManager.writeSegment(segmentId, "priceHistory", compressed);
+      
+      if (!writeSuccess) {
+        logger.error("Failed to write market history to segment", {
+          subsystem: "MemoryMigrations",
+          meta: { segmentId }
+        });
+        // Don't delete from main memory if write failed
+        return;
+      }
+      
+      // Only remove from main memory after successful write
+      delete marketRecord.priceHistory;
+      
+      logger.info("Migrated market history to segments", {
+        subsystem: "MemoryMigrations",
+        meta: {
+          originalSize: compressed.originalSize,
+          compressedSize: compressed.compressedSize,
+          segmentId
+        }
+      });
     }
   }
 ];

@@ -224,18 +224,15 @@ export class MemoryCommands {
       delete mem[key];
     }
 
-    // Clear active segments
-    const activeSegments = memorySegmentManager.getActiveSegments();
-    for (const segmentId of activeSegments) {
-      if (memorySegmentManager.isSegmentLoaded(segmentId)) {
-        memorySegmentManager.clearSegment(segmentId);
-      }
+    // Clear all memory segments (0-99)
+    for (let segmentId = 0; segmentId < 100; segmentId++) {
+      RawMemory.segments[segmentId] = "";
     }
 
     // Reinitialize
     memoryManager.initialize();
 
-    return `Memory reset complete. All data cleared.`;
+    return `Memory reset complete. All data cleared (main memory + 100 segments).`;
   }
 }
 

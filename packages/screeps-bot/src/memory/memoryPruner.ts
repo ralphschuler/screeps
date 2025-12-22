@@ -8,7 +8,7 @@
  */
 
 import { logger } from "../core/logger";
-import type { EmpireMemory, RoomIntel, SwarmState } from "./schemas";
+import type { EmpireMemory, SwarmState } from "./schemas";
 
 /** Maximum event log entries per room */
 const MAX_EVENT_LOG_ENTRIES = 20;
@@ -230,7 +230,6 @@ export class MemoryPruner {
 
     // Remove landed nukes from tracking
     if (empire.nukesInFlight) {
-      const initialCount = Object.keys(empire.nukesInFlight).length;
       for (const nukeId in empire.nukesInFlight) {
         const nuke = empire.nukesInFlight[nukeId];
         if (nuke.impactTick < Game.time) {
@@ -261,13 +260,11 @@ export class MemoryPruner {
     const empire = mem.empire as EmpireMemory | undefined;
 
     // Check event logs
-    let totalEventLogs = 0;
     if (Memory.rooms) {
       for (const roomName in Memory.rooms) {
         const roomMem = Memory.rooms[roomName] as unknown as { swarm?: SwarmState };
         const swarm = roomMem?.swarm;
         if (swarm?.eventLog) {
-          totalEventLogs += swarm.eventLog.length;
           if (swarm.eventLog.length > MAX_EVENT_LOG_ENTRIES * 2) {
             recommendations.push(`Room ${roomName} has ${swarm.eventLog.length} event log entries (recommended max: ${MAX_EVENT_LOG_ENTRIES})`);
           }

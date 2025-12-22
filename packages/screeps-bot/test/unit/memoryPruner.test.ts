@@ -1,12 +1,13 @@
 import { expect } from "chai";
 import { memoryPruner } from "../../src/memory/memoryPruner";
-import type { EmpireMemory, SwarmState } from "../../src/memory/schemas";
+import type { EmpireMemory } from "../../src/memory/schemas";
+import { createDefaultSwarmState } from "../../src/memory/schemas";
 import { Game as MockGame } from "./mock";
 
 describe("Memory Pruner", () => {
   beforeEach(() => {
     // Reset Memory before each test
-    // @ts-ignore
+    // @ts-expect-error - Overriding global Memory for tests
     global.Memory = {
       creeps: {},
       rooms: {},
@@ -14,7 +15,7 @@ describe("Memory Pruner", () => {
       flags: {}
     };
 
-    // @ts-ignore
+    // @ts-expect-error - Overriding global Game for tests
     global.Game = {
       ...MockGame,
       time: 10000,
@@ -26,13 +27,13 @@ describe("Memory Pruner", () => {
   describe("pruneDeadCreeps", () => {
     it("should remove dead creep memory", () => {
       Memory.creeps = {
-        alive1: { role: "harvester" } as any,
-        dead1: { role: "hauler" } as any,
-        dead2: { role: "builder" } as any
+        alive1: { role: "harvester" } as CreepMemory,
+        dead1: { role: "hauler" } as CreepMemory,
+        dead2: { role: "builder" } as CreepMemory
       };
 
       // Only alive1 exists in Game.creeps
-      // @ts-ignore
+      // @ts-expect-error - Overriding global Game.creeps for tests
       global.Game.creeps = {
         alive1: { name: "alive1" }
       };
@@ -47,11 +48,11 @@ describe("Memory Pruner", () => {
 
     it("should not remove living creep memory", () => {
       Memory.creeps = {
-        alive1: { role: "harvester" } as any,
-        alive2: { role: "hauler" } as any
+        alive1: { role: "harvester" } as CreepMemory,
+        alive2: { role: "hauler" } as CreepMemory
       };
 
-      // @ts-ignore
+      // @ts-expect-error - Overriding global Game.creeps for tests
       global.Game.creeps = {
         alive1: { name: "alive1" },
         alive2: { name: "alive2" }
@@ -66,27 +67,20 @@ describe("Memory Pruner", () => {
 
   describe("pruneEventLogs", () => {
     it("should prune old event log entries", () => {
-      const swarm: SwarmState = {
-        eventLog: Array.from({ length: 50 }, (_, i) => ({
-          type: "test",
-          time: 1000 + i
-        })),
-        version: 1,
-        colonyLevel: 1,
-        pheromones: {} as any,
-        intent: "eco",
-        danger: 0,
-        sourceMeta: []
-      };
+      const swarm = createDefaultSwarmState();
+      swarm.eventLog = Array.from({ length: 50 }, (_, i) => ({
+        type: "test",
+        time: 1000 + i
+      }));
 
       Memory.rooms = {
-        W1N1: { swarm } as any
+        W1N1: { swarm } as RoomMemory
       };
 
       const pruned = memoryPruner.pruneEventLogs(20);
 
       expect(pruned).to.equal(30);
-      const roomSwarm = (Memory.rooms.W1N1 as any).swarm as SwarmState;
+      const roomSwarm = (Memory.rooms.W1N1 as RoomMemory).swarm!;
       expect(roomSwarm.eventLog).to.have.lengthOf(20);
       
       // Verify we kept the most recent entries
@@ -95,27 +89,20 @@ describe("Memory Pruner", () => {
     });
 
     it("should not prune if under limit", () => {
-      const swarm: SwarmState = {
-        eventLog: Array.from({ length: 10 }, (_, i) => ({
-          type: "test",
-          time: 1000 + i
-        })),
-        version: 1,
-        colonyLevel: 1,
-        pheromones: {} as any,
-        intent: "eco",
-        danger: 0,
-        sourceMeta: []
-      };
+      const swarm = createDefaultSwarmState();
+      swarm.eventLog = Array.from({ length: 10 }, (_, i) => ({
+        type: "test",
+        time: 1000 + i
+      }));
 
       Memory.rooms = {
-        W1N1: { swarm } as any
+        W1N1: { swarm } as RoomMemory
       };
 
       const pruned = memoryPruner.pruneEventLogs(20);
 
       expect(pruned).to.equal(0);
-      const roomSwarm = (Memory.rooms.W1N1 as any).swarm as SwarmState;
+      const roomSwarm = (Memory.rooms.W1N1 as RoomMemory).swarm!;
       expect(roomSwarm.eventLog).to.have.lengthOf(10);
     });
   });
@@ -191,7 +178,7 @@ describe("Memory Pruner", () => {
       mem.empire = empire as EmpireMemory;
 
       // Mock owned room
-      // @ts-ignore
+      // @ts-expect-error - Overriding global Game.rooms for tests
       global.Game.rooms = {
         W1N1: {
           controller: { my: true }
@@ -209,25 +196,18 @@ describe("Memory Pruner", () => {
     it("should run all pruning operations", () => {
       // Setup dead creep
       Memory.creeps = {
-        dead1: { role: "harvester" } as any
+        dead1: { role: "harvester" } as CreepMemory
       };
 
       // Setup room with excessive event logs
-      const swarm: SwarmState = {
-        eventLog: Array.from({ length: 50 }, (_, i) => ({
-          type: "test",
-          time: 1000 + i
-        })),
-        version: 1,
-        colonyLevel: 1,
-        pheromones: {} as any,
-        intent: "eco",
-        danger: 0,
-        sourceMeta: []
-      };
+      const swarm = createDefaultSwarmState();
+      swarm.eventLog = Array.from({ length: 50 }, (_, i) => ({
+        type: "test",
+        time: 1000 + i
+      }));
 
       Memory.rooms = {
-        W1N1: { swarm } as any
+        W1N1: { swarm } as RoomMemory
       };
 
       // Setup stale intel
@@ -260,21 +240,14 @@ describe("Memory Pruner", () => {
   describe("getRecommendations", () => {
     it("should provide recommendations for memory optimization", () => {
       // Setup excessive event logs
-      const swarm: SwarmState = {
-        eventLog: Array.from({ length: 100 }, (_, i) => ({
-          type: "test",
-          time: 1000 + i
-        })),
-        version: 1,
-        colonyLevel: 1,
-        pheromones: {} as any,
-        intent: "eco",
-        danger: 0,
-        sourceMeta: []
-      };
+      const swarm = createDefaultSwarmState();
+      swarm.eventLog = Array.from({ length: 100 }, (_, i) => ({
+        type: "test",
+        time: 1000 + i
+      }));
 
       Memory.rooms = {
-        W1N1: { swarm } as any
+        W1N1: { swarm } as RoomMemory
       };
 
       const recommendations = memoryPruner.getRecommendations();

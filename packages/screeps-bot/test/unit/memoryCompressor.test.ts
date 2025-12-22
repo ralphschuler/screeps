@@ -80,18 +80,18 @@ describe("Memory Compressor", () => {
   describe("shouldCompress", () => {
     it("should not compress small data", () => {
       const smallData = { foo: "bar" };
-      expect(memoryCompressor.shouldCompress(smallData, 1000)).to.be.false;
+      expect(memoryCompressor.shouldCompress(smallData, 1000)).to.equal(false);
     });
 
     it("should compress large repetitive data", () => {
       const largeData = { repeated: "test ".repeat(500) };
-      expect(memoryCompressor.shouldCompress(largeData, 1000)).to.be.true;
+      expect(memoryCompressor.shouldCompress(largeData, 1000)).to.equal(true);
     });
 
     it("should not compress already-compressed data", () => {
       // Random data doesn't compress well
       const randomData = Array.from({ length: 1000 }, () => Math.random());
-      expect(memoryCompressor.shouldCompress(randomData, 100, 0.9)).to.be.false;
+      expect(memoryCompressor.shouldCompress(randomData, 100, 0.9)).to.equal(false);
     });
   });
 
@@ -100,8 +100,8 @@ describe("Memory Compressor", () => {
       const data = { foo: "bar" };
       const compressed = memoryCompressor.compress(data);
       
-      expect(memoryCompressor.isCompressed(compressed)).to.be.true;
-      expect(memoryCompressor.isCompressed(data)).to.be.false;
+      expect(memoryCompressor.isCompressed(compressed)).to.equal(true);
+      expect(memoryCompressor.isCompressed(data)).to.equal(false);
     });
   });
 
