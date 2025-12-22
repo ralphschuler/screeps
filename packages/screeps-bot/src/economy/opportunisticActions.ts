@@ -174,7 +174,7 @@ export function opportunisticTransfer(creep: Creep, primaryAction: CreepAction):
       }
       return false;
     }
-  });
+  }) as Array<StructureSpawn | StructureExtension | StructureTower>;
   
   if (needsEnergy.length > 0) {
     // Transfer to highest priority structure (spawns first, then extensions, then towers)
