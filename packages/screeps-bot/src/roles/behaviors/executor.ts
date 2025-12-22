@@ -65,7 +65,7 @@ const PATH_COLORS = {
  */
 export function executeAction(creep: Creep, action: CreepAction, ctx: CreepContext): void {
   // REFACTORED: Safety check - if action is invalid, clear state and return
-  if (!action || !optimizedAction.type) {
+  if (!action || !action.type) {
     logger.warn(`${creep.name} received invalid action, clearing state`);
     delete ctx.memory.state;
     return;
@@ -77,8 +77,8 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
   const optimizedAction = applyOpportunisticActions(creep, action);
   
   // If action was modified, log it for monitoring
-  if (optimizedAction.type !== optimizedAction.type) {
-    logger.debug(`${creep.name} opportunistic action: ${optimizedAction.type} → ${optimizedAction.type}`);
+  if (action.type !== optimizedAction.type) {
+    logger.debug(`${creep.name} opportunistic action: ${action.type} → ${optimizedAction.type}`);
   }
 
   // Log the action being executed for debugging
