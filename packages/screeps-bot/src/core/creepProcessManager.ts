@@ -84,9 +84,30 @@ function getCreepProcessPriority(role: string): ProcessPriority {
 
 /**
  * Execute a creep's role behavior
+ * 
+ * OPTIMIZATION (Phase 6): Early exit optimizations to skip unnecessary processing
+ * - Skip spawning creeps (can't act yet)
+ * - Skip dying creeps with no resources (can't contribute)
+ * - Use existing idle detection system for stationary workers
  */
 function executeCreepRole(creep: Creep): void {
   const memory = creep.memory as unknown as SwarmCreepMemory;
+  
+  // OPTIMIZATION: Early exit for spawning creeps
+  // Spawning creeps can't perform actions, so skip all processing
+  if (creep.spawning) {
+    return;
+  }
+  
+  // OPTIMIZATION: Early exit for dying creeps with no resources
+  // Creeps with <50 TTL and no stored resources can't meaningfully contribute
+  // Exception: Military creeps can still attack/heal even while dying
+  if (memory.family !== 'military' && 
+      creep.ticksToLive !== undefined && 
+      creep.ticksToLive < 50 && 
+      creep.store.getUsedCapacity() === 0) {
+    return;
+  }
   
   // BUGFIX: Log EVERY tick during bootstrap to track creep execution
   // This helps diagnose why creeps stop working after spawn attempts
