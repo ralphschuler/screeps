@@ -3,7 +3,6 @@
  *
  * Coordinates intelligence sharing across shards:
  * - Share enemy intelligence
- * - Sync alliance lists
  * - Coordinate threat responses
  * - Share war targets
  *
@@ -137,17 +136,6 @@ export class CrossShardIntelCoordinator {
       }
     }
 
-    // Sync alliance list
-    if (interShardMemory.globalTargets.allies) {
-      for (const ally of interShardMemory.globalTargets.allies) {
-        const enemy = enemyMap.get(ally);
-        if (enemy) {
-          enemy.isAlly = true;
-          enemy.threatLevel = 0;
-        }
-      }
-    }
-
     // Update intershard memory
     interShardMemory.globalTargets.enemies = Array.from(enemyMap.values());
 
@@ -162,51 +150,6 @@ export class CrossShardIntelCoordinator {
   }
 
   /**
-   * Add ally to global list
-   */
-  public addGlobalAlly(username: string): void {
-    const rawData = InterShardMemory.getLocal();
-    if (!rawData) return;
-
-    const interShardMemory = deserializeInterShardMemory(rawData);
-    if (!interShardMemory) return;
-
-    if (!interShardMemory.globalTargets.allies) {
-      interShardMemory.globalTargets.allies = [];
-    }
-
-    if (!interShardMemory.globalTargets.allies.includes(username)) {
-      interShardMemory.globalTargets.allies.push(username);
-      logger.info(`Added global ally: ${username}`, { subsystem: "CrossShardIntel" });
-
-      const serialized = serializeInterShardMemory(interShardMemory);
-      InterShardMemory.setLocal(serialized);
-    }
-  }
-
-  /**
-   * Remove ally from global list
-   */
-  public removeGlobalAlly(username: string): void {
-    const rawData = InterShardMemory.getLocal();
-    if (!rawData) return;
-
-    const interShardMemory = deserializeInterShardMemory(rawData);
-    if (!interShardMemory) return;
-
-    if (interShardMemory.globalTargets.allies) {
-      const index = interShardMemory.globalTargets.allies.indexOf(username);
-      if (index > -1) {
-        interShardMemory.globalTargets.allies.splice(index, 1);
-        logger.info(`Removed global ally: ${username}`, { subsystem: "CrossShardIntel" });
-
-        const serialized = serializeInterShardMemory(interShardMemory);
-        InterShardMemory.setLocal(serialized);
-      }
-    }
-  }
-
-  /**
    * Get global enemies from intershard memory
    */
   public getGlobalEnemies(): SharedEnemyIntel[] {
@@ -217,19 +160,6 @@ export class CrossShardIntelCoordinator {
     if (!interShardMemory) return [];
 
     return interShardMemory.globalTargets.enemies || [];
-  }
-
-  /**
-   * Get global allies from intershard memory
-   */
-  public getGlobalAllies(): string[] {
-    const rawData = InterShardMemory.getLocal();
-    if (!rawData) return [];
-
-    const interShardMemory = deserializeInterShardMemory(rawData);
-    if (!interShardMemory) return [];
-
-    return interShardMemory.globalTargets.allies || [];
   }
 }
 

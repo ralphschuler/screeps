@@ -14,6 +14,8 @@ This document tracks the cleanup efforts following the "Required Code Only" phil
 
 **Rationale**: Alliance system was disabled by default (`config.alliance.enabled = false`) and not actively used.
 
+#### Phase 1: Core System Removal
+
 #### Files Removed
 
 1. **src/empire/allianceDiplomacy.ts** (1,036 lines)
@@ -55,15 +57,41 @@ This document tracks the cleanup efforts following the "Required Code Only" phil
 5. **src/main.ts**
    - Removed `allianceDiplomacy` memory interface
 
-#### Impact
+#### Phase 2: Lingering References Cleanup (December 2025)
 
-- **Lines Removed**: 1,604 lines total
-  - Source code: 1,534 lines
-  - Test code: 70 lines
-- **Files Deleted**: 4 files
-- **Codebase Size**: Reduced from 64,866 to 63,262 lines (2.5% reduction)
-- **Build Status**: ✅ Builds successfully
-- **Test Status**: ✅ All tests pass (1,689 passing, 109 pre-existing failures unrelated to cleanup)
+**Files Modified**:
+
+1. **ROADMAP.md**
+   - Removed "Inter-Alliance-Kommunikation" from standards usage
+   - Removed "Koordinierte Kriegsführung" from standards usage
+   - Removed "Integration mit Alliance-System" from future TooAngel extensions
+
+2. **src/intershard/schema.ts**
+   - Removed `allies` field from `GlobalStrategicTargets` interface
+   - Removed allies serialization/deserialization code (lines 280, 449-451)
+
+3. **src/empire/crossShardIntel.ts**
+   - Removed "Sync alliance lists" from header documentation
+   - Removed `addGlobalAlly()` method (29 lines)
+   - Removed `removeGlobalAlly()` method (17 lines)
+   - Removed `getGlobalAllies()` method (9 lines)
+   - Removed alliance syncing code from `run()` method (11 lines)
+
+4. **src/empire/intelScanner.ts**
+   - Removed `addAlly()` method (7 lines)
+   - Removed `removeAlly()` method (7 lines)
+   - Note: Kept `allies` config field for defensive programming (manual whitelist configuration)
+
+#### Impact (Combined Phase 1 + Phase 2)
+
+- **Lines Removed**: 1,704 lines total
+  - Phase 1: 1,604 lines (4 files deleted)
+  - Phase 2: 100 lines (lingering references)
+- **Files Deleted**: 4 files (Phase 1)
+- **Files Modified**: 4 files (Phase 2)
+- **Codebase Size**: Reduced from 64,866 to 63,162 lines (2.6% reduction)
+- **Build Status**: ✅ Builds successfully (pre-existing error in unifiedStats.ts unrelated to cleanup)
+- **Test Status**: ✅ All tests pass (pre-existing failures unrelated to cleanup)
 
 #### Git History
 

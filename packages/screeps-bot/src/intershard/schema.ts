@@ -153,8 +153,6 @@ export interface GlobalStrategicTargets {
   primaryEcoShard?: string;
   /** Colonization priority shard */
   colonizationTarget?: string;
-  /** Global alliance list */
-  allies?: string[];
   /** Global enemy list */
   enemies?: SharedEnemyIntel[];
 }
@@ -279,7 +277,6 @@ export function serializeInterShardMemory(memory: InterShardMemorySchema): strin
       ws: memory.globalTargets.mainWarShard,
       es: memory.globalTargets.primaryEcoShard,
       ct: memory.globalTargets.colonizationTarget,
-      al: memory.globalTargets.allies,
       en: (memory.globalTargets.enemies ?? []).map(e => ({
         u: e.username,
         r: e.rooms,
@@ -447,9 +444,6 @@ export function deserializeInterShardMemory(data: string): InterShardMemorySchem
     }
     if (globalData.ct) {
       globalTargets.colonizationTarget = globalData.ct;
-    }
-    if (globalData.al) {
-      globalTargets.allies = globalData.al;
     }
     if (globalData.en) {
       globalTargets.enemies = globalData.en.map(e => ({
