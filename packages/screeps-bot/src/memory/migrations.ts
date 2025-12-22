@@ -184,6 +184,54 @@ export const migrations: Migration[] = [
         }
       });
     }
+  },
+  {
+    version: 7,
+    description: "Ensure all clusters have required array properties",
+    migrate: (memory) => {
+      const mem = memory as unknown as Record<string, unknown>;
+      const clusters = mem.clusters as Record<string, unknown> | undefined;
+      
+      if (!clusters) return;
+
+      let migratedCount = 0;
+      
+      // Iterate through all clusters and ensure they have required arrays
+      for (const clusterId in clusters) {
+        const cluster = clusters[clusterId] as Record<string, unknown>;
+        
+        // Ensure squads array exists
+        if (!cluster.squads) {
+          cluster.squads = [];
+          migratedCount++;
+        }
+        
+        // Ensure defenseRequests array exists
+        if (!cluster.defenseRequests) {
+          cluster.defenseRequests = [];
+          migratedCount++;
+        }
+        
+        // Ensure resourceRequests array exists
+        if (!cluster.resourceRequests) {
+          cluster.resourceRequests = [];
+          migratedCount++;
+        }
+        
+        // Ensure rallyPoints array exists
+        if (!cluster.rallyPoints) {
+          cluster.rallyPoints = [];
+          migratedCount++;
+        }
+      }
+      
+      if (migratedCount > 0) {
+        logger.info(`Migrated ${migratedCount} cluster array properties`, {
+          subsystem: "MemoryMigrations",
+          meta: { clustersProcessed: Object.keys(clusters).length }
+        });
+      }
+    }
   }
 ];
 
