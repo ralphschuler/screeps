@@ -28,7 +28,10 @@ export interface CreepState {
  * Idle detection configuration
  */
 export interface IdleDetectionConfig {
-  /** Minimum ticks a creep must have a valid state to be considered idle */
+  /**
+   * Minimum ticks a creep must have a valid state before it is considered
+   * stable enough to skip behavior re-evaluation.
+   */
   minStateAge?: number;
   /** Roles that are eligible for idle detection */
   idleEligibleRoles?: Set<string>;
@@ -141,8 +144,10 @@ export function isTargetStillValid(
  * 
  * **Note**: This is a heuristic check and may produce false positives.
  * For example, a creep with partial carry capacity might have stopped
- * mid-task. For accurate idle detection, use `canSkipBehaviorEvaluation()`
- * with proper state tracking.
+ * mid-task, be stuck, waiting, or have failed to complete a task. Partial
+ * cargo does not guarantee the creep is actively working - it might just
+ * mean the creep stopped mid-task. For accurate idle detection, use
+ * `canSkipBehaviorEvaluation()` with proper state tracking.
  * 
  * @param creep - The creep to check
  * @returns true if creep is likely actively working
@@ -161,6 +166,7 @@ export function isCreepActivelyWorking(creep: Creep): boolean {
   if (carryCapacity > 0) {
     const used = creep.store.getUsedCapacity();
     // If creep is not empty and not full, it's likely working
+    // WARNING: This can be a false positive if the creep is stuck or stopped mid-task
     if (used > 0 && used < carryCapacity) {
       return true;
     }

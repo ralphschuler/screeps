@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Successfully extracted **15 utility files** from `packages/screeps-bot/src/utils/` into the standalone `@ralphschuler/screeps-utils` package, meeting all acceptance criteria for issue #XXX.
+Successfully extracted **15 utility files** from `packages/screeps-bot/src/utils/` into the standalone `@ralphschuler/screeps-utils` package, meeting all acceptance criteria for issue #737.
 
 ## Implementation Approach
 
