@@ -48,19 +48,48 @@ describe("Threat Assessment", () => {
       assert.equal(cost, 0, "No threat should have 0 defender cost");
     });
 
-    it("should estimate cost based on DPS", () => {
-      const cost = estimateDefenderCost(300);
-      assert.equal(cost, 1300, "300 DPS should need 1 defender at 1300 energy");
+    it("should estimate cost based on actual defender templates", () => {
+      // With actual templates, the calculation will be based on:
+      // - Guard templates: varying DPS and costs across 4 tiers
+      // - Ranger templates: varying DPS and costs across 4 tiers
+      // - Average of both for balanced defense composition
+      
+      // The cost should be non-zero and scale with DPS
+      const cost300 = estimateDefenderCost(300);
+      const cost600 = estimateDefenderCost(600);
+      
+      assert.isAbove(cost300, 0, "300 DPS should require non-zero energy");
+      assert.isAbove(cost600, cost300, "Higher DPS should require more energy");
+      
+      // Cost should approximately double when DPS doubles
+      // (within 20% tolerance due to rounding and averaging)
+      const ratio = cost600 / cost300;
+      assert.isAtLeast(ratio, 1.6, "Cost should scale with DPS (lower bound)");
+      assert.isAtMost(ratio, 2.4, "Cost should scale with DPS (upper bound)");
     });
 
-    it("should scale with higher DPS", () => {
-      const cost = estimateDefenderCost(600);
-      assert.equal(cost, 2600, "600 DPS should need 2 defenders at 2600 energy");
+    it("should allow manual override of defender stats", () => {
+      // Test backward compatibility with manual overrides
+      const cost = estimateDefenderCost(300, 150, 800);
+      // 300 DPS / 150 DPS per defender = 2 defenders
+      // 2 defenders * 800 energy = 1600 energy
+      assert.equal(cost, 1600, "Manual overrides should work correctly");
     });
 
-    it("should round up partial defenders", () => {
-      const cost = estimateDefenderCost(450);
-      assert.equal(cost, 2600, "450 DPS should need 2 defenders (rounded up)");
+    it("should handle partial defender requirements by rounding up", () => {
+      // Test that partial defenders are rounded up
+      const cost = estimateDefenderCost(100, 75, 500);
+      // 100 DPS / 75 DPS per defender = 1.33... defenders -> rounds to 2
+      // 2 defenders * 500 energy = 1000 energy
+      assert.equal(cost, 1000, "Should round up partial defenders");
+    });
+
+    it("should prevent division by zero with invalid defender DPS", () => {
+      // Test guard against invalid configuration
+      const cost = estimateDefenderCost(300, 0, 1000);
+      // Should use Math.max(0, 1) = 1 as effective DPS
+      // 300 DPS / 1 DPS = 300 defenders * 1000 = 300000
+      assert.equal(cost, 300000, "Should handle zero DPS gracefully");
     });
   });
 

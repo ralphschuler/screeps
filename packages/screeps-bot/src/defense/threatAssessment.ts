@@ -12,6 +12,7 @@
  */
 
 import { logger } from "../core/logger";
+import { ROLE_DEFINITIONS } from "../spawning/roleDefinitions";
 
 /**
  * Comprehensive threat analysis for a room
@@ -235,38 +236,126 @@ export function calculateDangerLevel(threatScore: number): 0 | 1 | 2 | 3 {
 }
 
 /**
- * Estimate energy cost to spawn defenders
+ * Calculate DPS from body parts composition
  * 
- * This uses a simplified baseline defender model:
- * - We assume an unboosted "generic" defender (mixed melee/ranged) can sustain
- *   ~300 raw DPS (attack + ranged_attack) in typical engagement ranges.
- * - We assume such a defender costs roughly 1300 energy to spawn.
+ * @param parts - Array of body part constants
+ * @returns Total damage per second (attack parts * 30 + ranged parts * 10)
+ */
+function calculateBodyDPS(parts: BodyPartConstant[]): number {
+  let dps = 0;
+  for (const part of parts) {
+    if (part === ATTACK) {
+      dps += 30; // Attack parts deal 30 damage
+    } else if (part === RANGED_ATTACK) {
+      dps += 10; // Ranged attack parts deal 10 damage
+    }
+  }
+  return dps;
+}
+
+/**
+ * Defender template statistics
+ */
+interface DefenderTemplate {
+  /** Body parts composition */
+  parts: BodyPartConstant[];
+  /** Energy cost to spawn */
+  cost: number;
+  /** Damage per second */
+  dps: number;
+}
+
+/**
+ * Get defender templates from role definitions for a specific role.
+ * Returns all available body templates with their DPS and cost calculated.
  * 
- * These values are intentionally conservative heuristics for high-level planning,
- * not exact combat simulation. Callers that know their actual defender templates
- * (e.g. heavy boosted melee, pure ranged, cheaper trash defenders) can override
- * the defaults for more accurate estimates.
+ * @param role - Defender role ('guard' or 'ranger')
+ * @returns Array of defender templates sorted by cost (ascending)
+ */
+function getDefenderTemplates(role: "guard" | "ranger"): DefenderTemplate[] {
+  const roleDef = ROLE_DEFINITIONS[role];
+  if (!roleDef) {
+    return [];
+  }
+
+  return roleDef.bodies.map(template => ({
+    parts: template.parts,
+    cost: template.cost,
+    dps: calculateBodyDPS(template.parts)
+  })).sort((a, b) => a.cost - b.cost);
+}
+
+/**
+ * Calculate average defender stats across templates.
+ * Uses all templates to compute a weighted average that represents
+ * the typical defender capability across different energy levels.
+ * 
+ * @param templates - Array of defender templates
+ * @returns Object with average DPS per energy spent
+ */
+function calculateAverageDefenderStats(templates: DefenderTemplate[]): { dpsPerEnergy: number; avgCost: number; avgDps: number } {
+  if (templates.length === 0) {
+    // Fallback to conservative defaults if no templates available
+    return { dpsPerEnergy: 300 / 1300, avgCost: 1300, avgDps: 300 };
+  }
+
+  // Calculate average cost and DPS across all templates
+  const totalCost = templates.reduce((sum, t) => sum + t.cost, 0);
+  const totalDps = templates.reduce((sum, t) => sum + t.dps, 0);
+  const avgCost = totalCost / templates.length;
+  const avgDps = totalDps / templates.length;
+  
+  // Calculate DPS per energy unit for efficiency metric
+  const dpsPerEnergy = avgDps / avgCost;
+
+  return { dpsPerEnergy, avgCost, avgDps };
+}
+
+/**
+ * Estimate energy cost to spawn defenders based on actual room defender templates.
+ * 
+ * This function analyzes the actual body templates defined in the role system
+ * for guards and rangers, calculates their real DPS and energy costs, and uses
+ * these values to estimate the defender spawning cost required to counter a
+ * given hostile DPS threat.
+ * 
+ * The estimation combines both guard (melee/mixed) and ranger (ranged) templates
+ * to provide a balanced defense composition estimate.
  * 
  * @param totalDPS - Total hostile DPS we want to counter
- * @param defenderDpsPerCreep - Expected sustainable DPS per defending creep (default: 300)
- * @param energyPerDefender - Energy cost to spawn one baseline defender creep (default: 1300)
+ * @param defenderDpsPerCreep - Optional override for DPS per defender (uses actual templates if not provided)
+ * @param energyPerDefender - Optional override for energy per defender (uses actual templates if not provided)
  * @returns Estimated total energy required to spawn enough defenders
  */
 export function estimateDefenderCost(
   totalDPS: number,
-  defenderDpsPerCreep: number = 300,
-  energyPerDefender: number = 1300
+  defenderDpsPerCreep?: number,
+  energyPerDefender?: number
 ): number {
-  // Rough estimate: need enough defenders to at least match hostile DPS
+  // If no overrides provided, calculate from actual defender templates
+  if (defenderDpsPerCreep === undefined || energyPerDefender === undefined) {
+    // Get templates for both guard and ranger roles
+    const guardTemplates = getDefenderTemplates("guard");
+    const rangerTemplates = getDefenderTemplates("ranger");
+    
+    // Calculate stats for both roles
+    const guardStats = calculateAverageDefenderStats(guardTemplates);
+    const rangerStats = calculateAverageDefenderStats(rangerTemplates);
+    
+    // Use weighted average of guard and ranger (50/50 mix for balanced defense)
+    // This reflects typical defense composition
+    const avgDps = (guardStats.avgDps + rangerStats.avgDps) / 2;
+    const avgCost = (guardStats.avgCost + rangerStats.avgCost) / 2;
+    
+    // Use calculated values if no overrides
+    defenderDpsPerCreep = defenderDpsPerCreep ?? avgDps;
+    energyPerDefender = energyPerDefender ?? avgCost;
+  }
+  
   // Guard against invalid configuration to avoid division by zero
   const effectiveDefenderDps = Math.max(defenderDpsPerCreep, 1);
   const defendersNeeded = Math.ceil(totalDPS / effectiveDefenderDps);
   
-  // TODO: Refine defender cost estimation based on actual room defender templates
-  // Issue URL: https://github.com/ralphschuler/screeps/issues/740
-  // Details: Use the military/role system to derive per-template DPS and energy
-  //          costs (including boosts) instead of a single global heuristic.
-  // See: ROADMAP.md Section 12 - Threat-Level & Posture for integration
   return defendersNeeded * energyPerDefender;
 }
 
