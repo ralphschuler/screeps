@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-As the Screeps bot grew from a simple room controller to a multi-room, multi-shard empire managing 500+ TypeScript files and 2.4MB of code, several organizational challenges emerged:
+As the Screeps bot grew from a simple room controller to a multi-room, multi-shard empire managing 500+ TypeScript files across multiple packages, several organizational challenges emerged:
 
 - **Monolithic main loop**: All logic was executed sequentially in a single main.js file, making it difficult to manage complexity
 - **CPU budget management**: No systematic way to allocate CPU budgets to different subsystems or implement priority-based execution

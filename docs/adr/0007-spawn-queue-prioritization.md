@@ -296,7 +296,7 @@ function getBootstrapRole(room: Room): string {
   - `packages/screeps-bot/src/spawning/spawnPriority.ts` - Priority calculation
   - `packages/screeps-bot/src/spawning/bootstrapManager.ts` - Bootstrap mode
   - `packages/screeps-bot/src/spawning/roleDefinitions.ts` - Role definitions
-  - `ROADMAP.md` Section 9 - Spawn management
+  - Root `ROADMAP.md` Section 9 - Spawn management
 
 ## Implementation Notes
 

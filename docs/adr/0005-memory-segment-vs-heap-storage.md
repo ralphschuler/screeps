@@ -343,12 +343,15 @@ Memory.empire.shards.shard0 = { /* ... */ };
 **Heap (transient cache)**:
 ```typescript
 // Store in heap via unified cache
-import { cache } from './cache/unifiedCache';
+import { globalCache } from './cache';
 
-const creeps = cache.get(
+const creeps = globalCache.get(
   `room_${room.name}_creeps`,
-  () => room.find(FIND_MY_CREEPS),
-  { ttl: 10 }
+  {
+    namespace: 'room',
+    ttl: 10,
+    compute: () => room.find(FIND_MY_CREEPS)
+  }
 );
 ```
 

@@ -344,14 +344,14 @@ function shouldPerformAction(
 - **Internal Documentation**:
   - `docs/DEFENSE_COORDINATION.md` - Defense system overview
   - `packages/screeps-bot/src/defense/threatAssessment.ts` - Threat calculation
-  - `packages/screeps-bot/src/structures/tower.ts` - Tower logic
+  - `packages/screeps-bot/src/core/roomNode.ts` (lines 374-440) - Tower logic
   - `ROADMAP.md` Section 12 - Defense systems
 
 ## Implementation Notes
 
 ### Code Location
 
-`packages/screeps-bot/src/structures/tower.ts`
+`packages/screeps-bot/src/core/roomNode.ts` (lines 374-440)
 
 ### Integration with Defense System
 

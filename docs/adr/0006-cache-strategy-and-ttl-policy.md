@@ -85,22 +85,25 @@ Implement a **unified cache system** (`packages/screeps-bot/src/cache/`) with TT
 ### Core API
 
 ```typescript
-import { cache } from './cache/unifiedCache';
+import { globalCache } from './cache';
 
 // Store with TTL
-const value = cache.get(
+const value = globalCache.get(
   'room:find:W1N1:FIND_MY_CREEPS',
-  () => room.find(FIND_MY_CREEPS),
-  { ttl: 10, namespace: 'room' }
+  {
+    namespace: 'room',
+    ttl: 10,
+    compute: () => room.find(FIND_MY_CREEPS)
+  }
 );
 
 // Manual set/get
-cache.set('key', value, { ttl: 20 });
-const val = cache.get('key');
+globalCache.set('key', value, { ttl: 20 });
+const val = globalCache.get('key');
 
 // Clear cache
-cache.clear('room'); // Clear namespace
-cache.clearAll();    // Clear everything
+globalCache.clear('room'); // Clear namespace
+globalCache.clearAll();    // Clear everything
 ```
 
 ### TTL Policy
@@ -341,39 +344,48 @@ Cache overhead remains minimal even at large scales.
 **Location**: `packages/screeps-bot/src/cache/`
 
 **Files**:
-- `unifiedCache.ts`: Main cache interface
-- `heapCache.ts`: Heap-based backend (default)
-- `memoryCache.ts`: Memory-based backend (limited use)
-- `cacheStats.ts`: Statistics collection
+- `CacheManager.ts`: Main cache interface and orchestration
+- `stores/HeapStore.ts`: Heap-based backend (default)
+- `stores/MemoryStore.ts`: Memory-based backend (limited use)
+- `CacheEntry.ts`: Cache entry types and statistics
 
 ### Usage Examples
 
 **Basic caching**:
 ```typescript
-import { cache } from './cache/unifiedCache';
+import { globalCache } from './cache';
 
-const creeps = cache.get(
+const creeps = globalCache.get(
   `room_${room.name}_creeps`,
-  () => room.find(FIND_MY_CREEPS),
-  { ttl: 10, namespace: 'room' }
+  {
+    namespace: 'room',
+    ttl: 10,
+    compute: () => room.find(FIND_MY_CREEPS)
+  }
 );
 ```
 
 **Path caching**:
 ```typescript
-const path = cache.get(
+const path = globalCache.get(
   `path_${start}_${end}`,
-  () => PathFinder.search(start, end).path,
-  { ttl: 50, namespace: 'path' }
+  {
+    namespace: 'path',
+    ttl: 50,
+    compute: () => PathFinder.search(start, end).path
+  }
 );
 ```
 
 **Object lookup caching**:
 ```typescript
-const obj = cache.get(
+const obj = globalCache.get(
   `obj_${id}`,
-  () => Game.getObjectById(id),
-  { ttl: 10, namespace: 'object' }
+  {
+    namespace: 'object',
+    ttl: 10,
+    compute: () => Game.getObjectById(id)
+  }
 );
 ```
 
