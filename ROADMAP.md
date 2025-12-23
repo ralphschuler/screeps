@@ -1,5 +1,7 @@
 # ROADMAP: Schwarm-Ansatz für Screeps Bot
 
+> **Architecture Decision Records**: For detailed rationale behind architectural choices, see [docs/adr/](docs/adr/README.md)
+
 1. Vision & High-Level Objectives (Schwarm-Ansatz)
 
 Zielbild
@@ -50,6 +52,9 @@ Relevante Doku
 ⸻
 
 3. Architektur-Ebenen (Schichtenmodell)
+
+**See**: [ADR-0004: Five-Layer Swarm Architecture](docs/adr/0004-five-layer-swarm-architecture.md)
+
 1. Global Meta-Layer (Empire / Multi-Shard)
 - Koordiniert Rollen von Shards (Core, Expansion, Resource, Backup).
 - Nutzt InterShardMemory (100 kB pro Shard) für shard-übergreifende Ziele, Status und Routen.
@@ -110,6 +115,8 @@ Constraints
 ⸻
 
 5. Pheromon-System (Schwarm-Signale)
+
+**See**: [ADR-0002: Pheromone Coordination System](docs/adr/0002-pheromone-coordination-system.md)
 
 Pheromon-Typen (pro Raum)
 - expand, harvest, build, upgrade, defense, war, siege, logistics
