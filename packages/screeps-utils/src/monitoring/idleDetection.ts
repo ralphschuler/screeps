@@ -95,13 +95,8 @@ export function canSkipBehaviorEvaluation(
     return false;
   }
   
-  // Verify target still exists
-  const target = Game.getObjectById(state.targetId);
-  if (!target) {
-    return false;
-  }
-  
-  return true;
+  // Verify target still exists and is accessible
+  return isTargetStillValid(creep, state.targetId);
 }
 
 /**
@@ -144,8 +139,13 @@ export function isTargetStillValid(
  * This checks if the creep is currently performing an action based on
  * common Screeps action return codes.
  * 
+ * **Note**: This is a heuristic check and may produce false positives.
+ * For example, a creep with partial carry capacity might have stopped
+ * mid-task. For accurate idle detection, use `canSkipBehaviorEvaluation()`
+ * with proper state tracking.
+ * 
  * @param creep - The creep to check
- * @returns true if creep is actively working
+ * @returns true if creep is likely actively working
  */
 export function isCreepActivelyWorking(creep: Creep): boolean {
   // Check if creep is fatigued (was recently moving)
