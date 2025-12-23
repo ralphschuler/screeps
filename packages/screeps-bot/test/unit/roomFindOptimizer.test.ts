@@ -4,10 +4,23 @@ import { clearRoomFindCache } from "../../src/cache/domains/RoomFindCache";
 import { clearObjectCache } from "../../src/cache/domains/ObjectCache";
 
 // Define global Screeps classes for testing
-(global as any).Source = class Source {};
-(global as any).Mineral = class Mineral {};
-(global as any).Creep = class Creep {};
-(global as any).Structure = class Structure {};
+interface SourceClass {
+  new(): Source;
+}
+interface MineralClass {
+  new(): Mineral;
+}
+interface CreepClass {
+  new(): Creep;
+}
+interface StructureClass {
+  new(): Structure;
+}
+
+(global as typeof global & { Source: SourceClass }).Source = class Source {} as SourceClass;
+(global as typeof global & { Mineral: MineralClass }).Mineral = class Mineral {} as MineralClass;
+(global as typeof global & { Creep: CreepClass }).Creep = class Creep {} as CreepClass;
+(global as typeof global & { Structure: StructureClass }).Structure = class Structure {} as StructureClass;
 
 describe("RoomFindOptimizer", () => {
   let optimizer: RoomFindOptimizer;
@@ -21,7 +34,18 @@ describe("RoomFindOptimizer", () => {
     optimizer = new RoomFindOptimizer();
 
     // Mock Game object
-    (global as any).Game = {
+    const gameGlobal = global as typeof global & {
+      Game: {
+        time: number;
+        cpu: {
+          bucket: number;
+          limit: number;
+          getUsed: () => number;
+        };
+        rooms: Record<string, Room>;
+      };
+    };
+    gameGlobal.Game = {
       time: 1000,
       cpu: {
         bucket: 5000,
@@ -34,64 +58,75 @@ describe("RoomFindOptimizer", () => {
     // Create a mock room
     mockRoom = {
       name: "W1N1",
-      find: (type: FindConstant, opts?: any) => {
+      find: <K extends FindConstant>(
+        type: K,
+        opts?: {
+          filter?: ((obj: FindTypes[K]) => boolean) | Partial<FindTypes[K]>;
+        }
+      ): FindTypes[K][] => {
         // Return different results based on type
         if (type === FIND_MY_STRUCTURES) {
           const allStructures = [
             { id: "struct1" as Id<Structure>, structureType: STRUCTURE_SPAWN },
             { id: "struct2" as Id<Structure>, structureType: STRUCTURE_TOWER }
-          ];
+          ] as FindTypes[K][];
           
           // Apply filter if provided
-          if (opts?.filter) {
-            return allStructures.filter(opts.filter);
+          if (opts?.filter && typeof opts.filter === 'function') {
+            return allStructures.filter(opts.filter as (obj: FindTypes[K]) => boolean);
           }
           return allStructures;
         }
         if (type === FIND_SOURCES) {
-          return [{ id: "source1" as Id<Source> }, { id: "source2" as Id<Source> }];
+          return [{ id: "source1" as Id<Source> }, { id: "source2" as Id<Source> }] as FindTypes[K][];
         }
         if (type === FIND_HOSTILE_CREEPS) {
-          return [{ id: "hostile1" as Id<Creep>, name: "invader1" }];
+          return [{ id: "hostile1" as Id<Creep>, name: "invader1" }] as FindTypes[K][];
         }
         return [];
       }
-    } as any as Room;
+    } as unknown as Room;
   });
 
   describe("getTTL()", () => {
     it("should return low bucket TTL when bucket is low", () => {
-      (global as any).Game.cpu.bucket = 1000;
+      const gameGlobal = global as typeof global & { Game: { cpu: { bucket: number } } };
+      gameGlobal.Game.cpu.bucket = 1000;
       const ttl = optimizer.getTTL(FIND_MY_STRUCTURES);
       expect(ttl).to.equal(100); // lowBucket value for structures
     });
 
     it("should return high bucket TTL when bucket is high", () => {
-      (global as any).Game.cpu.bucket = 9000;
+      const gameGlobal = global as typeof global & { Game: { cpu: { bucket: number } } };
+      gameGlobal.Game.cpu.bucket = 9000;
       const ttl = optimizer.getTTL(FIND_MY_STRUCTURES);
       expect(ttl).to.equal(20); // highBucket value for structures
     });
 
     it("should return normal TTL when bucket is in normal range", () => {
-      (global as any).Game.cpu.bucket = 5000;
+      const gameGlobal = global as typeof global & { Game: { cpu: { bucket: number } } };
+      gameGlobal.Game.cpu.bucket = 5000;
       const ttl = optimizer.getTTL(FIND_MY_STRUCTURES);
       expect(ttl).to.equal(50); // normal value for structures
     });
 
     it("should return very long TTL for sources (never change)", () => {
-      (global as any).Game.cpu.bucket = 5000;
+      const gameGlobal = global as typeof global & { Game: { cpu: { bucket: number } } };
+      gameGlobal.Game.cpu.bucket = 5000;
       const ttl = optimizer.getTTL(FIND_SOURCES);
       expect(ttl).to.equal(5000); // Sources never change
     });
 
     it("should return short TTL for hostile creeps", () => {
-      (global as any).Game.cpu.bucket = 5000;
+      const gameGlobal = global as typeof global & { Game: { cpu: { bucket: number } } };
+      gameGlobal.Game.cpu.bucket = 5000;
       const ttl = optimizer.getTTL(FIND_HOSTILE_CREEPS);
       expect(ttl).to.equal(10); // Normal bucket value for hostiles
     });
 
     it("should use fallback TTL for unknown find types", () => {
-      (global as any).Game.cpu.bucket = 5000;
+      const gameGlobal = global as typeof global & { Game: { cpu: { bucket: number } } };
+      gameGlobal.Game.cpu.bucket = 5000;
       const ttl = optimizer.getTTL(999 as FindConstant);
       expect(ttl).to.equal(20); // Fallback normal value
     });
@@ -127,13 +162,14 @@ describe("RoomFindOptimizer", () => {
     });
 
     it("should use bucket-aware TTL", () => {
+      const gameGlobal = global as typeof global & { Game: { cpu: { bucket: number } } };
       // Low bucket - should cache longer
-      (global as any).Game.cpu.bucket = 1000;
+      gameGlobal.Game.cpu.bucket = 1000;
       const ttl1 = optimizer.getTTL(FIND_MY_STRUCTURES);
       expect(ttl1).to.equal(100);
 
       // High bucket - should cache shorter
-      (global as any).Game.cpu.bucket = 9000;
+      gameGlobal.Game.cpu.bucket = 9000;
       const ttl2 = optimizer.getTTL(FIND_MY_STRUCTURES);
       expect(ttl2).to.equal(20);
 
@@ -196,31 +232,97 @@ describe("RoomFindOptimizer", () => {
     });
 
     it("should invalidate creep cache on creep events", () => {
-      // Cache creeps
-      optimizer.find(mockRoom, FIND_MY_CREEPS);
+      // Cache some creeps first
+      const initialCreeps = [{ id: "creep1" as Id<Creep>, name: "worker1" }];
+      mockRoom.find = <K extends FindConstant>(type: K): FindTypes[K][] => {
+        if (type === FIND_MY_CREEPS) return initialCreeps as FindTypes[K][];
+        return [];
+      };
+      
+      const result1 = optimizer.find(mockRoom, FIND_MY_CREEPS);
+      expect(result1).to.have.length(1);
+
+      // Change the mock to return different results (creep died)
+      mockRoom.find = <K extends FindConstant>(type: K): FindTypes[K][] => {
+        if (type === FIND_MY_CREEPS) return [] as FindTypes[K][];
+        return [];
+      };
 
       // Invalidate
       optimizer.invalidate("W1N1", "creep_died");
 
-      // Cache should be invalidated (tested implicitly through TTL)
+      // Should get new results (empty array)
+      const result2 = optimizer.find(mockRoom, FIND_MY_CREEPS);
+      expect(result2).to.have.length(0);
     });
 
     it("should invalidate hostile cache on hostile events", () => {
-      optimizer.find(mockRoom, FIND_HOSTILE_CREEPS);
-      optimizer.invalidate("W1N1", "hostile_entered");
+      // Cache some hostiles first
+      const initialHostiles = [{ id: "hostile1" as Id<Creep>, name: "invader1" }];
+      mockRoom.find = <K extends FindConstant>(type: K): FindTypes[K][] => {
+        if (type === FIND_HOSTILE_CREEPS) return initialHostiles as FindTypes[K][];
+        return [];
+      };
+      
+      const result1 = optimizer.find(mockRoom, FIND_HOSTILE_CREEPS);
+      expect(result1).to.have.length(1);
+
+      // Change the mock to return different results (hostile left)
+      mockRoom.find = <K extends FindConstant>(type: K): FindTypes[K][] => {
+        if (type === FIND_HOSTILE_CREEPS) return [] as FindTypes[K][];
+        return [];
+      };
+
+      // Invalidate
+      optimizer.invalidate("W1N1", "hostile_left");
+
+      // Should get new results (empty array)
+      const result2 = optimizer.find(mockRoom, FIND_HOSTILE_CREEPS);
+      expect(result2).to.have.length(0);
+    });
+
+    it("should invalidate entire room cache on unknown event", () => {
+      // Cache structures and creeps
+      mockRoom.find = <K extends FindConstant>(type: K): FindTypes[K][] => {
+        if (type === FIND_MY_STRUCTURES) {
+          return [{ id: "struct1" as Id<Structure>, structureType: STRUCTURE_SPAWN }] as FindTypes[K][];
+        }
+        if (type === FIND_MY_CREEPS) {
+          return [{ id: "creep1" as Id<Creep>, name: "worker1" }] as FindTypes[K][];
+        }
+        return [];
+      };
+
+      optimizer.find(mockRoom, FIND_MY_STRUCTURES);
+      optimizer.find(mockRoom, FIND_MY_CREEPS);
+
+      // Change the mock to return different results
+      mockRoom.find = <K extends FindConstant>(type: K): FindTypes[K][] => {
+        return [] as FindTypes[K][];
+      };
+
+      // Invalidate with unknown event - should clear all caches for the room
+      optimizer.invalidate("W1N1", "unknown_event" as RoomEvent);
+
+      // Both should get new results
+      const structures = optimizer.find(mockRoom, FIND_MY_STRUCTURES);
+      const creeps = optimizer.find(mockRoom, FIND_MY_CREEPS);
+      expect(structures).to.have.length(0);
+      expect(creeps).to.have.length(0);
     });
   });
 
   describe("setBucketThresholds()", () => {
     it("should update bucket thresholds", () => {
+      const gameGlobal = global as typeof global & { Game: { cpu: { bucket: number } } };
       optimizer.setBucketThresholds({ low: 3000, high: 7000 });
 
       // Low bucket threshold changed
-      (global as any).Game.cpu.bucket = 2500;
+      gameGlobal.Game.cpu.bucket = 2500;
       let ttl = optimizer.getTTL(FIND_MY_STRUCTURES);
       expect(ttl).to.equal(100); // Should be lowBucket
 
-      (global as any).Game.cpu.bucket = 3500;
+      gameGlobal.Game.cpu.bucket = 3500;
       ttl = optimizer.getTTL(FIND_MY_STRUCTURES);
       expect(ttl).to.equal(50); // Should be normal
     });
@@ -228,13 +330,14 @@ describe("RoomFindOptimizer", () => {
 
   describe("setTTLConfig()", () => {
     it("should update TTL config for a specific type", () => {
+      const gameGlobal = global as typeof global & { Game: { cpu: { bucket: number } } };
       optimizer.setTTLConfig(FIND_MY_STRUCTURES, {
         lowBucket: 200,
         normal: 100,
         highBucket: 50
       });
 
-      (global as any).Game.cpu.bucket = 1000;
+      gameGlobal.Game.cpu.bucket = 1000;
       const ttl = optimizer.getTTL(FIND_MY_STRUCTURES);
       expect(ttl).to.equal(200);
     });
@@ -261,14 +364,20 @@ describe("ObjectIdOptimizer", () => {
     optimizer = new ObjectIdOptimizer();
 
     // Mock Game object
-    (global as any).Game = {
+    const gameGlobal = global as typeof global & {
+      Game: {
+        time: number;
+        getObjectById: <T extends _HasId>(id: Id<T>) => T | null;
+      };
+    };
+    gameGlobal.Game = {
       time: 1000,
-      getObjectById: (id: Id<any>) => {
+      getObjectById: <T extends _HasId>(id: Id<T>): T | null => {
         if (id === "struct1") {
-          return { id: "struct1", structureType: STRUCTURE_SPAWN };
+          return { id: "struct1", structureType: STRUCTURE_SPAWN } as unknown as T;
         }
         if (id === "source1") {
-          return { id: "source1", energy: 3000 };
+          return { id: "source1", energy: 3000 } as unknown as T;
         }
         return null;
       }
@@ -277,13 +386,18 @@ describe("ObjectIdOptimizer", () => {
 
   describe("getById()", () => {
     it("should cache Game.getObjectById results", () => {
+      const gameGlobal = global as typeof global & {
+        Game: {
+          getObjectById: <T extends _HasId>(id: Id<T>) => T | null;
+        };
+      };
       const result1 = optimizer.getById("struct1" as Id<Structure>);
       expect(result1).to.not.be.null;
       expect(result1!.id).to.equal("struct1");
 
       // Mock to throw if called again
-      const originalGetById = (global as any).Game.getObjectById;
-      (global as any).Game.getObjectById = () => {
+      const originalGetById = gameGlobal.Game.getObjectById;
+      gameGlobal.Game.getObjectById = () => {
         throw new Error("Should not call getObjectById again - should use cache");
       };
 
@@ -292,7 +406,7 @@ describe("ObjectIdOptimizer", () => {
       expect(result2).to.deep.equal(result1);
 
       // Restore
-      (global as any).Game.getObjectById = originalGetById;
+      gameGlobal.Game.getObjectById = originalGetById;
     });
 
     it("should return null for invalid IDs", () => {

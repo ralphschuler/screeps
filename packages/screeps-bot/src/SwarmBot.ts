@@ -339,7 +339,6 @@ export type { RoomEvent, BucketThresholds, TTLConfig } from "./core/roomFindOpti
 
 // Deprecated exports - redirect to unifiedStats with console warnings
 import { unifiedStats as _unifiedStats } from "./core/unifiedStats";
-import { memorySegmentStats as _memorySegmentStats } from "./core/memorySegmentStats";
 
 /**
  * @deprecated Use unifiedStats instead. This export will be removed in a future version.

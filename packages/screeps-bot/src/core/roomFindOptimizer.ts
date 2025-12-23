@@ -154,7 +154,7 @@ export class RoomFindOptimizer {
     room: Room,
     type: FindConstant,
     opts?: {
-      filter?: any | ((obj: T) => boolean);
+      filter?: ((obj: T) => boolean) | Partial<T>;
       filterKey?: string;
     }
   ): T[] {
@@ -325,7 +325,7 @@ export const objectIdOptimizer = new ObjectIdOptimizer();
 export function optimizedFind<T>(
   room: Room,
   type: FindConstant,
-  opts?: { filter?: any | ((obj: T) => boolean); filterKey?: string }
+  opts?: { filter?: ((obj: T) => boolean) | Partial<T>; filterKey?: string }
 ): T[] {
   return roomFindOptimizer.find<T>(room, type, opts);
 }

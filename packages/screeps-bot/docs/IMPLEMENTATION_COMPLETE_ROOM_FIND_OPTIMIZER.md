@@ -2,7 +2,7 @@
 
 ## Summary
 
-Successfully implemented a centralized optimization layer for `room.find()` and `Game.getObjectById()` operations as requested in issue #[issue_number].
+Successfully implemented a centralized optimization layer for `room.find()` and `Game.getObjectById()` operations as requested in issue #736.
 
 ## What Was Implemented
 
