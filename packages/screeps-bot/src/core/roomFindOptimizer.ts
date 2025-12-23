@@ -90,6 +90,7 @@ const DEFAULT_TTL_CONFIG: Record<FindConstant, TTLConfig> = {
   [FIND_HOSTILE_STRUCTURES]: { lowBucket: 50, normal: 20, highBucket: 10 },
 
   // Sources and minerals never change - very long cache
+  [FIND_SOURCES_ACTIVE]: { lowBucket: 10000, normal: 5000, highBucket: 1000 },
   [FIND_SOURCES]: { lowBucket: 10000, normal: 5000, highBucket: 1000 },
   [FIND_MINERALS]: { lowBucket: 10000, normal: 5000, highBucket: 1000 },
   [FIND_DEPOSITS]: { lowBucket: 200, normal: 100, highBucket: 50 },
@@ -111,9 +112,12 @@ const DEFAULT_TTL_CONFIG: Record<FindConstant, TTLConfig> = {
   // Other objects
   [FIND_FLAGS]: { lowBucket: 100, normal: 50, highBucket: 20 },
   [FIND_MY_SPAWNS]: { lowBucket: 200, normal: 100, highBucket: 50 },
+  [FIND_HOSTILE_SPAWNS]: { lowBucket: 100, normal: 50, highBucket: 20 },
+  [FIND_HOSTILE_CONSTRUCTION_SITES]: { lowBucket: 50, normal: 20, highBucket: 10 },
   [FIND_NUKES]: { lowBucket: 50, normal: 20, highBucket: 10 },
   [FIND_POWER_CREEPS]: { lowBucket: 20, normal: 10, highBucket: 5 },
   [FIND_MY_POWER_CREEPS]: { lowBucket: 20, normal: 10, highBucket: 5 },
+  [FIND_HOSTILE_POWER_CREEPS]: { lowBucket: 20, normal: 10, highBucket: 5 },
 
   // Exit-related (rarely used but included for completeness)
   [FIND_EXIT_TOP]: { lowBucket: 1000, normal: 500, highBucket: 100 },

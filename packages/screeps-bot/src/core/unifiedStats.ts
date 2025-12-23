@@ -926,6 +926,30 @@ export class UnifiedStatsManager {
           misses: 0,
           invalidations: 0,
           hitRate: 0
+        },
+        bodyPart: {
+          size: 0
+        },
+        object: {
+          size: 0
+        },
+        path: {
+          size: 0,
+          maxSize: 0,
+          hits: 0,
+          misses: 0,
+          evictions: 0,
+          hitRate: 0
+        },
+        role: {
+          totalEntries: 0
+        },
+        global: {
+          hits: 0,
+          misses: 0,
+          hitRate: 0,
+          size: 0,
+          evictions: 0
         }
       }
     };
