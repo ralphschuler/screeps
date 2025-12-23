@@ -1,9 +1,10 @@
 # Screeps Ant Swarm Bot · [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
 
 > An advanced Screeps AI implementation using swarm intelligence and distributed colony management
-> 
 
 A sophisticated Screeps bot built with TypeScript that implements swarm-based coordination, emergent behavior through pheromone systems, and multi-shard colony management. The bot is designed to efficiently manage 100+ rooms and 5000+ creeps while maintaining CPU efficiency.
+
+**Architecture Documentation**: For detailed architectural decisions and rationale, see [Architecture Decision Records (ADRs)](docs/adr/README.md)
 
 ## Links
 - [Grafana Dashboard (All)](https://ralphschuler.grafana.net/public-dashboards/1108066fad99495bbb26d67f0d55fe89)
@@ -171,6 +172,18 @@ The bot follows a layered architecture as defined in [ROADMAP.md](./ROADMAP.md):
 3. **Cluster/Colony Layer**: Regional colony coordination
 4. **Room Layer**: Individual room management
 5. **Creep/Squad Layer**: Unit-level behavior
+
+**Architecture Decision Records**: For detailed rationale behind architectural decisions, see [docs/adr/README.md](docs/adr/README.md)
+
+Key architectural decisions documented:
+- [POSIS Process Architecture](docs/adr/0001-posis-process-architecture.md) - Process-based OS abstraction
+- [Pheromone Coordination System](docs/adr/0002-pheromone-coordination-system.md) - Stigmergic communication
+- [Cartographer Traffic Management](docs/adr/0003-cartographer-traffic-management.md) - Pathfinding optimization
+- [Five-Layer Swarm Architecture](docs/adr/0004-five-layer-swarm-architecture.md) - Hierarchical organization
+- [Memory vs Heap Storage](docs/adr/0005-memory-segment-vs-heap-storage.md) - Storage strategy
+- [Cache Strategy and TTL Policy](docs/adr/0006-cache-strategy-and-ttl-policy.md) - Caching implementation
+- [Spawn Queue Prioritization](docs/adr/0007-spawn-queue-prioritization.md) - Spawn logic
+- [Tower Targeting Algorithm](docs/adr/0008-tower-targeting-algorithm.md) - Defense automation
 
 Key design principles:
 - **Decentralization**: Each room has autonomous control logic

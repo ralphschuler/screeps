@@ -7,7 +7,29 @@ This directory contains general documentation for the Screeps project.
 Documentation for this project is organized as follows:
 
 - **Root `docs/` directory**: General project documentation, guides, and system overviews
+- **`docs/adr/` directory**: Architecture Decision Records (ADRs) documenting key architectural choices
 - **Package `docs/` directories**: Package-specific documentation in `packages/*/docs/`
+
+## Architecture Decision Records (ADRs)
+
+The **[docs/adr/](adr/README.md)** directory contains comprehensive Architecture Decision Records that document:
+
+- Why certain architectural patterns were chosen
+- Trade-offs between different approaches
+- Performance implications of design decisions
+- Historical context for future refactoring
+
+**Key ADRs**:
+- [ADR-0001: POSIS Process Architecture](adr/0001-posis-process-architecture.md)
+- [ADR-0002: Pheromone Coordination System](adr/0002-pheromone-coordination-system.md)
+- [ADR-0003: Cartographer Traffic Management](adr/0003-cartographer-traffic-management.md)
+- [ADR-0004: Five-Layer Swarm Architecture](adr/0004-five-layer-swarm-architecture.md)
+- [ADR-0005: Memory Segment vs Heap Storage](adr/0005-memory-segment-vs-heap-storage.md)
+- [ADR-0006: Cache Strategy and TTL Policy](adr/0006-cache-strategy-and-ttl-policy.md)
+- [ADR-0007: Spawn Queue Prioritization](adr/0007-spawn-queue-prioritization.md)
+- [ADR-0008: Tower Targeting Algorithm](adr/0008-tower-targeting-algorithm.md)
+
+See [adr/README.md](adr/README.md) for the complete ADR index and template.
 
 ## Building Documentation
 
@@ -61,6 +83,8 @@ Documentation is automatically published to the [project wiki](https://github.co
 
 Current documentation includes:
 
+- **Architecture Decision Records (ADRs)**: Key architectural decisions and their rationale
+  - See [adr/README.md](adr/README.md) for the complete ADR catalog
 - **System Documentation**: Core systems and architecture
 - **Stats and Metrics**: Monitoring, metrics, and performance tracking
 - **Game Mechanics**: Screeps-specific features and systems
