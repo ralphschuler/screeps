@@ -147,22 +147,35 @@ export function assessThreat(room: Room): ThreatAnalysis {
     threatScore += (attackParts + rangedParts) * 10;
   }
 
-  // Calculate tower effectiveness
+  // Calculate tower effectiveness with distance-based damage falloff
   const towers = room.find(FIND_MY_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_TOWER
   });
   
-  // TODO: Improve tower DPS accuracy by calculating distance-based damage falloff
-  // Issue URL: https://github.com/ralphschuler/screeps/issues/741
-  // Details: Current implementation assumes flat 300 damage per tower, but actual damage
-  //          varies from 150 (max range) to 600 (min range). Consider calculating average
-  //          distance from towers to hostile creeps for more accurate threat assessment.
-  // See: ROADMAP.md Section 12 - Threat-Level & Posture
+  // Calculate actual tower DPS based on distance to hostile creeps
+  // See ROADMAP.md Section 12 - Threat-Level & Posture: "Range-Falloff beachten"
   const towerDPS = towers.reduce((sum, tower) => {
     const structureTower = tower as StructureTower;
-    // Tower at max range does 150 damage, at min range does 600
-    // Assume average effectiveness of 300 damage per tower with energy
-    return sum + (structureTower.store.getUsedCapacity(RESOURCE_ENERGY) >= 10 ? 300 : 0);
+    
+    // Skip towers without enough energy to shoot (10 energy per shot)
+    if (structureTower.store.getUsedCapacity(RESOURCE_ENERGY) < 10) {
+      return sum;
+    }
+    
+    if (hostiles.length === 0) {
+      return sum;
+    }
+    
+    // Calculate average distance from this tower to all hostiles
+    const totalDistance = hostiles.reduce((dist, hostile) => {
+      return dist + tower.pos.getRangeTo(hostile.pos);
+    }, 0);
+    const avgDistance = totalDistance / hostiles.length;
+    
+    // Get actual damage based on average distance
+    const damage = calculateTowerDamage(avgDistance);
+    
+    return sum + damage;
   }, 0);
 
   // Determine if assistance needed
@@ -215,6 +228,37 @@ export function assessThreat(room: Room): ThreatAnalysis {
     assistancePriority,
     recommendedResponse
   };
+}
+
+/**
+ * Calculate tower attack damage based on distance to target.
+ * 
+ * Verified via screeps-docs-mcp:
+ * - Tower attack effectiveness: 600 damage at range ≤5 to 150 damage at range ≥20
+ * - Linear falloff between min and max range
+ * 
+ * Formula: damage = 600 - (distance - 5) * 30 for 5 < distance < 20
+ * 
+ * @param distance - Distance from tower to target
+ * @returns Damage dealt by tower at the given distance
+ */
+export function calculateTowerDamage(distance: number): number {
+  const TOWER_DAMAGE_MAX = 600;
+  const TOWER_DAMAGE_MIN = 150;
+  const TOWER_RANGE_MIN = 5;
+  const TOWER_RANGE_MAX = 20;
+  
+  if (distance <= TOWER_RANGE_MIN) {
+    return TOWER_DAMAGE_MAX; // Max damage at close range (≤5)
+  } else if (distance >= TOWER_RANGE_MAX) {
+    return TOWER_DAMAGE_MIN; // Min damage at far range (≥20)
+  } else {
+    // Linear interpolation between min and max
+    const rangeSpan = TOWER_RANGE_MAX - TOWER_RANGE_MIN; // 15 tiles
+    const damageSpan = TOWER_DAMAGE_MAX - TOWER_DAMAGE_MIN; // 450 damage
+    const damagePerTile = damageSpan / rangeSpan; // 30 damage per tile
+    return TOWER_DAMAGE_MAX - (distance - TOWER_RANGE_MIN) * damagePerTile;
+  }
 }
 
 /**

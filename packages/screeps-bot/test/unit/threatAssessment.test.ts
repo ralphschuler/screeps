@@ -6,6 +6,7 @@ import { assert } from "chai";
 import {
   assessThreat,
   calculateDangerLevel,
+  calculateTowerDamage,
   estimateDefenderCost
 } from "../../src/defense/threatAssessment";
 
@@ -116,6 +117,66 @@ describe("Threat Assessment", () => {
       // This is a basic structural test
       // Full testing requires mock Game objects which is complex
       assert.isFunction(assessThreat, "assessThreat should be a function");
+    });
+  });
+
+  describe("calculateTowerDamage", () => {
+    it("should return maximum damage (600) at minimum range (≤5)", () => {
+      assert.equal(calculateTowerDamage(0), 600, "Damage at range 0 should be 600");
+      assert.equal(calculateTowerDamage(3), 600, "Damage at range 3 should be 600");
+      assert.equal(calculateTowerDamage(5), 600, "Damage at range 5 should be 600");
+    });
+
+    it("should return minimum damage (150) at maximum range (≥20)", () => {
+      assert.equal(calculateTowerDamage(20), 150, "Damage at range 20 should be 150");
+      assert.equal(calculateTowerDamage(25), 150, "Damage at range 25 should be 150");
+      assert.equal(calculateTowerDamage(50), 150, "Damage at range 50 should be 150");
+    });
+
+    it("should calculate linear interpolation for intermediate ranges", () => {
+      // Formula: damage = 600 - (distance - 5) * 30
+      // At range 10: 600 - (10 - 5) * 30 = 600 - 150 = 450
+      assert.equal(calculateTowerDamage(10), 450, "Damage at range 10 should be 450");
+      
+      // At range 12.5: 600 - (12.5 - 5) * 30 = 600 - 225 = 375
+      assert.equal(calculateTowerDamage(12.5), 375, "Damage at range 12.5 should be 375");
+      
+      // At range 15: 600 - (15 - 5) * 30 = 600 - 300 = 300
+      assert.equal(calculateTowerDamage(15), 300, "Damage at range 15 should be 300");
+    });
+
+    it("should handle edge cases at boundaries", () => {
+      // Just above min range
+      assert.approximately(calculateTowerDamage(5.1), 597, 0.01, "Damage at range 5.1 should be approximately 597");
+      
+      // Just below max range
+      assert.approximately(calculateTowerDamage(19.9), 153, 0.01, "Damage at range 19.9 should be approximately 153");
+    });
+
+    it("should produce damage values that match Screeps API documentation", () => {
+      // Verified via screeps-docs-mcp: Tower attack effectiveness
+      // - 600 damage at range ≤5
+      // - 150 damage at range ≥20
+      // - Linear falloff between ranges
+      
+      // Verify the entire range follows linear falloff
+      const damageAt6 = calculateTowerDamage(6);
+      const damageAt7 = calculateTowerDamage(7);
+      const damageAt8 = calculateTowerDamage(8);
+      
+      // Each tile should reduce damage by 30
+      assert.equal(damageAt6 - damageAt7, 30, "Damage should decrease by 30 per tile");
+      assert.equal(damageAt7 - damageAt8, 30, "Damage should decrease by 30 per tile");
+    });
+
+    it("should return consistent values for averaged distances", () => {
+      // Test with a realistic average distance scenario
+      // If we have hostiles at ranges 8, 12, and 16, average is 12
+      const avgDistance = (8 + 12 + 16) / 3; // 12
+      const damage = calculateTowerDamage(avgDistance);
+      
+      // At range 12: 600 - (12 - 5) * 30 = 600 - 210 = 390
+      assert.equal(damage, 390, "Damage at average range 12 should be 390");
     });
   });
 
