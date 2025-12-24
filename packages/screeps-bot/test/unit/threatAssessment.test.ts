@@ -48,19 +48,66 @@ describe("Threat Assessment", () => {
       assert.equal(cost, 0, "No threat should have 0 defender cost");
     });
 
-    it("should estimate cost based on DPS", () => {
-      const cost = estimateDefenderCost(300);
-      assert.equal(cost, 1300, "300 DPS should need 1 defender at 1300 energy");
+    it("should estimate cost based on actual defender templates", () => {
+      // With actual templates, the calculation will be based on:
+      // - Guard templates: varying DPS and costs across 4 tiers
+      // - Ranger templates: varying DPS and costs across 4 tiers
+      // - Average of both for balanced defense composition
+      
+      // The cost should be non-zero and scale with DPS
+      const cost300 = estimateDefenderCost(300);
+      const cost600 = estimateDefenderCost(600);
+      
+      assert.isAbove(cost300, 0, "300 DPS should require non-zero energy");
+      assert.isAbove(cost600, cost300, "Higher DPS should require more energy");
+      
+      // Cost should approximately double when DPS doubles
+      // (within 20% tolerance due to rounding and averaging)
+      const ratio = cost600 / cost300;
+      assert.isAtLeast(ratio, 1.6, "Cost should scale with DPS (lower bound)");
+      assert.isAtMost(ratio, 2.4, "Cost should scale with DPS (upper bound)");
     });
 
-    it("should scale with higher DPS", () => {
-      const cost = estimateDefenderCost(600);
-      assert.equal(cost, 2600, "600 DPS should need 2 defenders at 2600 energy");
+    it("should calculate values matching current guard and ranger templates", () => {
+      // Verify the actual calculated values from current templates
+      // Guard average: 935 energy, 157.5 DPS (from 4 tiers: 310/60, 620/120, 1070/190, 1740/260)
+      // Ranger average: 862.5 energy, 45 DPS (from 4 tiers: 360/20, 570/30, 1040/50, 1480/80)
+      // Combined 50/50 mix: 898.75 energy, 101.25 DPS
+      
+      // Test with 101.25 DPS (should need ~1 defender at ~899 energy)
+      const costFor101DPS = estimateDefenderCost(101.25);
+      assert.approximately(costFor101DPS, 899, 1, "Should match calculated template averages");
+      
+      // Test with 202.5 DPS (should need ~2 defenders at ~1798 energy)
+      const costFor202DPS = estimateDefenderCost(202.5);
+      assert.approximately(costFor202DPS, 1798, 2, "Should scale linearly with DPS");
     });
 
-    it("should round up partial defenders", () => {
-      const cost = estimateDefenderCost(450);
-      assert.equal(cost, 2600, "450 DPS should need 2 defenders (rounded up)");
+    it("should allow manual override of defender stats", () => {
+      // Test backward compatibility with manual overrides
+      const cost = estimateDefenderCost(300, 150, 800);
+      // 300 DPS / 150 DPS per defender = 2 defenders
+      // 2 defenders * 800 energy = 1600 energy
+      assert.equal(cost, 1600, "Manual overrides should work correctly");
+    });
+
+    it("should handle partial defender requirements by rounding up", () => {
+      // Test that partial defenders are rounded up
+      const cost = estimateDefenderCost(100, 75, 500);
+      // 100 DPS / 75 DPS per defender = 1.33... defenders -> rounds to 2
+      // 2 defenders * 500 energy = 1000 energy
+      assert.equal(cost, 1000, "Should round up partial defenders");
+    });
+
+    it("should use fallback values when defender DPS is zero or negative", () => {
+      // Test guard against invalid configuration - should fall back to defaults
+      const costZero = estimateDefenderCost(300, 0, 1000);
+      const costNegative = estimateDefenderCost(300, -10, 1000);
+      
+      // Should fall back to default: 300 DPS per defender, 1300 energy
+      // 300 DPS / 300 DPS = 1 defender * 1300 energy = 1300
+      assert.equal(costZero, 1300, "Should use fallback values (300 DPS, 1300 energy) when DPS is zero");
+      assert.equal(costNegative, 1300, "Should use fallback values (300 DPS, 1300 energy) when DPS is negative");
     });
   });
 
