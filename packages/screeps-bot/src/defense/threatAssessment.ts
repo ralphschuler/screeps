@@ -238,6 +238,10 @@ export function calculateDangerLevel(threatScore: number): 0 | 1 | 2 | 3 {
 /**
  * Calculate DPS from body parts composition
  * 
+ * Damage values verified via screeps-docs-mcp:
+ * - ATTACK: 30 hits per tick (short-ranged attack)
+ * - RANGED_ATTACK: 10 hits per tick (long-range attack, single target)
+ * 
  * @param parts - Array of body part constants
  * @returns Total damage per second (attack parts * 30 + ranged parts * 10)
  */
@@ -245,9 +249,9 @@ function calculateBodyDPS(parts: BodyPartConstant[]): number {
   let dps = 0;
   for (const part of parts) {
     if (part === ATTACK) {
-      dps += 30; // Attack parts deal 30 damage
+      dps += 30; // Attack parts deal 30 damage per tick
     } else if (part === RANGED_ATTACK) {
-      dps += 10; // Ranged attack parts deal 10 damage
+      dps += 10; // Ranged attack parts deal 10 damage per tick
     }
   }
   return dps;
@@ -342,8 +346,17 @@ export function estimateDefenderCost(
     const guardStats = calculateAverageDefenderStats(guardTemplates);
     const rangerStats = calculateAverageDefenderStats(rangerTemplates);
     
-    // Use weighted average of guard and ranger (50/50 mix for balanced defense)
-    // This reflects typical defense composition
+    // Use a simple 50/50 mix of guard and ranger stats as the default baseline.
+    // Rationale:
+    // - Our standard defense posture (see ROADMAP Section 12) aims for a roughly
+    //   balanced melee (guard) and ranged (ranger) composition when no room-specific
+    //   data is available.
+    // - This heuristic provides a stable, order-of-magnitude estimate of defender
+    //   spawning cost for threat scoring without tightly coupling to any specific
+    //   spawn strategy.
+    // - Callers that track actual defender composition for a room should supply
+    //   defenderDpsPerCreep and energyPerDefender explicitly to override this
+    //   baseline and reflect their real mix.
     const avgDps = (guardStats.avgDps + rangerStats.avgDps) / 2;
     const avgCost = (guardStats.avgCost + rangerStats.avgCost) / 2;
     
@@ -352,9 +365,14 @@ export function estimateDefenderCost(
     energyPerDefender = energyPerDefender ?? avgCost;
   }
   
-  // Guard against invalid configuration to avoid division by zero
-  const effectiveDefenderDps = Math.max(defenderDpsPerCreep, 1);
-  const defendersNeeded = Math.ceil(totalDPS / effectiveDefenderDps);
+  // Validate defender DPS to prevent division by zero or nonsensical results
+  // If invalid (≤0), fall back to the conservative default values
+  if (defenderDpsPerCreep <= 0) {
+    defenderDpsPerCreep = 300; // Conservative fallback from original implementation
+    energyPerDefender = 1300;
+  }
+  
+  const defendersNeeded = Math.ceil(totalDPS / defenderDpsPerCreep);
   
   return defendersNeeded * energyPerDefender;
 }

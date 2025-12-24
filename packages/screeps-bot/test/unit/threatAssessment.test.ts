@@ -68,6 +68,21 @@ describe("Threat Assessment", () => {
       assert.isAtMost(ratio, 2.4, "Cost should scale with DPS (upper bound)");
     });
 
+    it("should calculate values matching current guard and ranger templates", () => {
+      // Verify the actual calculated values from current templates
+      // Guard average: 935 energy, 157.5 DPS (from 4 tiers: 310/60, 620/120, 1070/190, 1740/260)
+      // Ranger average: 862.5 energy, 45 DPS (from 4 tiers: 360/20, 570/30, 1040/50, 1480/80)
+      // Combined 50/50 mix: 898.75 energy, 101.25 DPS
+      
+      // Test with 101.25 DPS (should need ~1 defender at ~899 energy)
+      const costFor101DPS = estimateDefenderCost(101.25);
+      assert.approximately(costFor101DPS, 899, 1, "Should match calculated template averages");
+      
+      // Test with 202.5 DPS (should need ~2 defenders at ~1798 energy)
+      const costFor202DPS = estimateDefenderCost(202.5);
+      assert.approximately(costFor202DPS, 1798, 2, "Should scale linearly with DPS");
+    });
+
     it("should allow manual override of defender stats", () => {
       // Test backward compatibility with manual overrides
       const cost = estimateDefenderCost(300, 150, 800);
@@ -84,12 +99,15 @@ describe("Threat Assessment", () => {
       assert.equal(cost, 1000, "Should round up partial defenders");
     });
 
-    it("should prevent division by zero with invalid defender DPS", () => {
-      // Test guard against invalid configuration
-      const cost = estimateDefenderCost(300, 0, 1000);
-      // Should use Math.max(0, 1) = 1 as effective DPS
-      // 300 DPS / 1 DPS = 300 defenders * 1000 = 300000
-      assert.equal(cost, 300000, "Should handle zero DPS gracefully");
+    it("should use fallback values when defender DPS is zero or negative", () => {
+      // Test guard against invalid configuration - should fall back to defaults
+      const costZero = estimateDefenderCost(300, 0, 1000);
+      const costNegative = estimateDefenderCost(300, -10, 1000);
+      
+      // Should fall back to default: 300 DPS per defender, 1300 energy
+      // 300 DPS / 300 DPS = 1 defender * 1300 energy = 1300
+      assert.equal(costZero, 1300, "Should use fallback values (300 DPS, 1300 energy) when DPS is zero");
+      assert.equal(costNegative, 1300, "Should use fallback values (300 DPS, 1300 energy) when DPS is negative");
     });
   });
 
