@@ -3,5 +3,10 @@
   "compilerOptions": {
     "types": ["node", "mocha", "chai", "screeps"]
   },
-  "include": ["src/**/*", "test/**/*"]
+  "include": ["src/**/*", "test/**/*"],
+  "ts-node": {
+    "compilerOptions": {
+      "module": "commonjs"
+    }
+  }
 }
