@@ -11,8 +11,8 @@
  * ROADMAP Reference: Section 12 - Threat-Level & Posture
  */
 
-import { logger } from "../core/logger";
-import { ROLE_DEFINITIONS } from "../spawning/roleDefinitions";
+import { logger } from "@bot/core/logger";
+import { ROLE_DEFINITIONS } from "@bot/spawning/roleDefinitions";
 
 /**
  * Comprehensive threat analysis for a room

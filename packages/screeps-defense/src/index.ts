@@ -32,8 +32,7 @@ export {
 } from "./structures/rampartAutomation";
 
 export {
-  calculateWallRepairTarget,
-  getWallHealthTarget
+  calculateWallRepairTarget
 } from "./structures/wallRepairTargets";
 
 export {
@@ -56,7 +55,6 @@ export {
 } from "./coordination/retreatProtocol";
 
 export {
-  ClusterDefense,
   ClusterDefenseCoordinator,
   clusterDefenseCoordinator,
   coordinateClusterDefense

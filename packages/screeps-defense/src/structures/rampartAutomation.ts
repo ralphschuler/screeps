@@ -16,7 +16,7 @@
  * - Rampart placement automation (currently weak)
  */
 
-import { logger } from "../core/logger";
+import { logger } from "@bot/core/logger";
 import { calculateWallRepairTarget } from "./wallRepairTargets";
 
 /**

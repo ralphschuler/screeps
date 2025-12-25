@@ -12,9 +12,9 @@
  * - Inter-Room-Logistik
  */
 
-import { logger } from "../core/logger";
-import { memoryManager } from "../memory/manager";
-import { type ThreatAnalysis, assessThreat, logThreatAnalysis } from "./threatAssessment";
+import { logger } from "@bot/core/logger";
+import { memoryManager } from "@bot/memory/manager";
+import { type ThreatAnalysis, assessThreat, logThreatAnalysis } from "../threat/threatAssessment";
 
 /**
  * Find cluster for a room

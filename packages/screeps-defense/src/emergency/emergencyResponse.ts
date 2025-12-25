@@ -17,16 +17,16 @@
  * - Multi-room defense coordination (currently missing)
  */
 
-import { logger } from "../core/logger";
-import type { SwarmState } from "../memory/schemas";
-import { memoryManager } from "../memory/manager";
+import { logger } from "@bot/core/logger";
+import type { SwarmState } from "@bot/memory/schemas";
+import { memoryManager } from "@bot/memory/manager";
 import {
   type DefenseRequest,
   analyzeDefenderNeeds,
   createDefenseRequest,
   getCurrentDefenders,
   needsDefenseAssistance
-} from "../spawning/defenderManager";
+} from "@bot/spawning/defenderManager";
 
 /**
  * Emergency response levels

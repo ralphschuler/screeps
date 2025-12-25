@@ -9,8 +9,8 @@
  * Addresses Issue: #21
  */
 
-import type { SwarmState } from "../memory/schemas";
-import { logger } from "../core/logger";
+import type { SwarmState } from "@bot/memory/schemas";
+import { logger } from "@bot/core/logger";
 
 /**
  * Safe Mode Manager Class

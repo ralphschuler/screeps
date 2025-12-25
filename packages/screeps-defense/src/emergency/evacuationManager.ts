@@ -10,10 +10,10 @@
  * Addresses Issue: #31
  */
 
-import { logger } from "../core/logger";
-import { memoryManager } from "../memory/manager";
-import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { ProcessPriority } from "../core/kernel";
+import { logger } from "@bot/core/logger";
+import { memoryManager } from "@bot/memory/manager";
+import { MediumFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
+import { ProcessPriority } from "@bot/core/kernel";
 
 /**
  * Evacuation configuration

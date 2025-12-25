@@ -17,7 +17,6 @@ import {
   // Structure Defense
   placeRampartsOnCriticalStructures,
   calculateWallRepairTarget,
-  getWallHealthTarget,
   placePerimeterDefense,
   placeRoadAwarePerimeterDefense,
   
@@ -25,7 +24,7 @@ import {
   defenseCoordinator,
   DefenseCoordinator,
   checkAndExecuteRetreat,
-  ClusterDefense,
+  ClusterDefenseCoordinator,
   
   // Emergency
   emergencyResponseManager,
@@ -51,7 +50,6 @@ describe('@ralphschuler/screeps-defense', () => {
     it('should export structure defense functions', () => {
       expect(placeRampartsOnCriticalStructures).to.be.a('function');
       expect(calculateWallRepairTarget).to.be.a('function');
-      expect(getWallHealthTarget).to.be.a('function');
       expect(placePerimeterDefense).to.be.a('function');
       expect(placeRoadAwarePerimeterDefense).to.be.a('function');
     });
@@ -60,7 +58,7 @@ describe('@ralphschuler/screeps-defense', () => {
       expect(DefenseCoordinator).to.be.a('function'); // Constructor
       expect(defenseCoordinator).to.be.an('object');
       expect(checkAndExecuteRetreat).to.be.a('function');
-      expect(ClusterDefense).to.be.a('function'); // Constructor
+      expect(ClusterDefenseCoordinator).to.be.a('function'); // Constructor
     });
     
     it('should export emergency response components', () => {
