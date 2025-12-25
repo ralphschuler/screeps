@@ -22,7 +22,7 @@ import { logger } from "../core/logger";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { ProcessPriority } from "../core/kernel";
 import type { SquadDefinition, NukeInFlight, IncomingNukeAlert, NukeEconomics } from "../memory/schemas";
-import type { TerminalManager } from "../economy/terminalManager";
+import type { TerminalManager } from "@ralphschuler/screeps-economy";
 
 /**
  * Nuke Manager Configuration

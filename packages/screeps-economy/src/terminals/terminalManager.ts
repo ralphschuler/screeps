@@ -18,11 +18,11 @@
  * - Market integration for surplus/deficit handling
  */
 
-import { logger } from "../core/logger";
-import { ProcessPriority } from "../core/kernel";
-import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { memoryManager } from "../memory/manager";
-import { marketManager } from "../empire/marketManager";
+import { logger } from "@bot/core/logger";
+import { ProcessPriority } from "@bot/core/kernel";
+import { MediumFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
+import { memoryManager } from "@bot/memory/manager";
+import { marketManager } from "../market/marketManager";
 import { terminalRouter } from "./terminalRouter";
 import type { TerminalRoute } from "./terminalRouter";
 

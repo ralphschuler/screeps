@@ -14,7 +14,7 @@ import { createLowFrequencyTask, createMediumFrequencyTask, scheduler } from "./
 import type { SwarmState } from "../memory/schemas";
 import { empireManager } from "../empire/empireManager";
 import { clusterManager } from "../clusters/clusterManager";
-import { marketManager } from "../empire/marketManager";
+import { marketManager } from "@ralphschuler/screeps-economy";
 import { nukeManager } from "../empire/nukeManager";
 import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
 import { pheromoneManager } from "../logic/pheromone";

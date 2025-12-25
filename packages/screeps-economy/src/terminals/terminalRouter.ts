@@ -11,7 +11,7 @@
  * Reduces transfer costs by 30-50% compared to always using direct transfers.
  */
 
-import { logger } from "../core/logger";
+import { logger } from "@bot/core/logger";
 
 /**
  * Terminal node in the network graph
