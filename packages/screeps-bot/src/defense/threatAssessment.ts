@@ -162,10 +162,6 @@ export function assessThreat(room: Room): ThreatAnalysis {
       return sum;
     }
     
-    if (hostiles.length === 0) {
-      return sum;
-    }
-    
     // Calculate average distance from this tower to all hostiles
     const totalDistance = hostiles.reduce((dist, hostile) => {
       return dist + tower.pos.getRangeTo(hostile.pos);
