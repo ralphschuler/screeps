@@ -12,7 +12,7 @@ import { registerMilitaryCacheClear } from "./context";
 import type { CreepAction, CreepContext } from "./types";
 import { createLogger } from "../../core/logger";
 import { getCollectionPoint } from "../../utils/common";
-import { checkAndExecuteRetreat } from "../../defense/retreatProtocol";
+import { checkAndExecuteRetreat } from "@ralphschuler/screeps-defense";
 
 const logger = createLogger("MilitaryBehaviors");
 
