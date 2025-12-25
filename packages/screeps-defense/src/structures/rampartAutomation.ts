@@ -138,7 +138,7 @@ export function placeRampartsOnCriticalStructures(
   // Get all ramparts for repair check
   const ramparts = room.find(FIND_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_RAMPART
-  }) ;
+  });
 
   const repairTarget = calculateWallRepairTarget(rcl, danger);
 
