@@ -8,7 +8,6 @@
  * - Terminal routing for inter-room resource distribution
  * - Factory management for commodity production
  * - Market trading AI with trend analysis
- * - Spawn coordination and priority management
  * 
  * @example
  * ```typescript

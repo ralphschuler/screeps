@@ -112,13 +112,29 @@ const marketManager = new MarketManager({
 
 ## Architecture
 
-This package depends on the bot's core systems via TypeScript path mapping:
+### Dependencies
 
-- `@bot/core/*` - Kernel, logger, process decorators
-- `@bot/memory/*` - Memory manager and schemas
-- `@bot/utils/*` - Caching and utility functions
+This package has a tight coupling to the bot's core infrastructure and **cannot be used standalone**. It requires:
 
-The package is designed to be used within a bot that provides these core systems.
+1. **Bot Core Systems** (via TypeScript path mapping `@bot/*`):
+   - `@bot/core/*` - Kernel, logger, process decorators
+   - `@bot/memory/*` - Memory manager and schemas
+   - `@bot/utils/*` - Caching and utility functions
+
+2. **Peer Dependencies**:
+   - The bot package must be present at `../screeps-bot` for compilation
+   - This package is designed exclusively for use within the ralphschuler/screeps bot project
+
+### Compilation Requirements
+
+The economy package uses TypeScript path mappings to access the bot's source code. This means:
+- The bot package must be available at `../screeps-bot/src/*` during compilation
+- Changes to the bot's directory structure may require updates to `tsconfig.json`
+- The package cannot be compiled independently without the bot package present
+
+### Integration
+
+Managers use decorator-based process registration and are automatically registered with the kernel when imported by the bot's process registry.
 
 ## Development
 
@@ -142,4 +158,4 @@ Unlicense
 
 - `@ralphschuler/screeps-utils` - Utility functions and caching
 - `@ralphschuler/screeps-chemistry` - Lab and reaction management
-- `@ralphschuler/screeps-spawn` - Spawn coordination (TBD)
+- `@ralphschuler/screeps-spawn` - Spawn coordination (Coming soon - not yet extracted)
