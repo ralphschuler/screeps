@@ -15,9 +15,9 @@
  * - Each link has 800 energy capacity and cooldown after transfer
  */
 
-import { logger } from "../core/logger";
-import { ProcessPriority } from "../core/kernel";
-import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import { logger } from "@bot/core/logger";
+import { ProcessPriority } from "@bot/core/kernel";
+import { MediumFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
 
 /**
  * Link manager configuration

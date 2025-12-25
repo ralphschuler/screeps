@@ -10,7 +10,6 @@ import { labManager } from "../labs/labManager";
 import { labConfigManager } from "../labs/labConfig";
 import { chemistryPlanner } from "../labs/chemistryPlanner";
 import { boostManager } from "../labs/boostManager";
-import { marketManager } from "../empire/marketManager";
 import { powerCreepManager } from "../empire/powerCreepManager";
 import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
 

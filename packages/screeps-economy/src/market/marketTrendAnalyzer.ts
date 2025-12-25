@@ -11,10 +11,10 @@
  * Addresses Issue: Intelligence & Coordination (market trend analysis)
  */
 
-import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { ProcessPriority } from "../core/kernel";
-import { logger } from "../core/logger";
-import { memoryManager } from "../memory/manager";
+import { LowFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
+import { ProcessPriority } from "@bot/core/kernel";
+import { logger } from "@bot/core/logger";
+import { memoryManager } from "@bot/memory/manager";
 
 /**
  * Supply/demand analysis result

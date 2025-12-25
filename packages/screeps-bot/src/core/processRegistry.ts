@@ -33,12 +33,9 @@
 import { clusterManager } from "../clusters/clusterManager";
 import { defenseCoordinator } from "../defense/defenseCoordinator";
 import { evacuationManager } from "../defense/evacuationManager";
-import { terminalManager } from "../economy/terminalManager";
-import { factoryManager } from "../economy/factoryManager";
-import { linkManager } from "../economy/linkManager";
+import { terminalManager, factoryManager, linkManager, marketManager } from "@ralphschuler/screeps-economy";
 import { empireManager } from "../empire/empireManager";
 import { expansionManager } from "../empire/expansionManager";
-import { marketManager } from "../empire/marketManager";
 import { nukeManager } from "../empire/nukeManager";
 import { pixelBuyingManager } from "../empire/pixelBuyingManager";
 import { pixelGenerationManager } from "../empire/pixelGenerationManager";

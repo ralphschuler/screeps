@@ -1,0 +1,38 @@
+{
+  "name": "@ralphschuler/screeps-economy",
+  "version": "0.1.0",
+  "description": "Economy subsystem for Screeps - link networks, terminal routing, factory management, and market trading",
+  "main": "dist/screeps-economy/src/index.js",
+  "types": "dist/screeps-economy/src/index.d.ts",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "test": "mocha test/**/*.test.ts",
+    "test:watch": "mocha --watch test/**/*.test.ts"
+  },
+  "keywords": [
+    "screeps",
+    "economy",
+    "links",
+    "terminals",
+    "factories",
+    "market",
+    "typescript"
+  ],
+  "author": "",
+  "license": "Unlicense",
+  "peerDependencies": {
+    "screeps-typescript-starter": "*"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.1.6",
+    "@types/mocha": "^5.2.5",
+    "@types/node": "^13.13.1",
+    "@types/screeps": "^3.3.8",
+    "chai": "^4.2.0",
+    "mocha": "^11.7.5",
+    "ts-node": "^10.2.0",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^4.8.4"
+  }
+}

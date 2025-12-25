@@ -11,9 +11,9 @@
  * Addresses Issue: Factory automation missing
  */
 
-import { logger } from "../core/logger";
-import { ProcessPriority } from "../core/kernel";
-import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import { logger } from "@bot/core/logger";
+import { ProcessPriority } from "@bot/core/kernel";
+import { MediumFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
 
 /**
  * Factory manager configuration

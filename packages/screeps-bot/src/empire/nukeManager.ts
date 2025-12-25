@@ -22,7 +22,7 @@ import { logger } from "../core/logger";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { ProcessPriority } from "../core/kernel";
 import type { SquadDefinition, NukeInFlight, IncomingNukeAlert, NukeEconomics } from "../memory/schemas";
-import type { TerminalManager } from "../economy/terminalManager";
+import type { TerminalManager } from "@ralphschuler/screeps-economy";
 
 /**
  * Nuke Manager Configuration
@@ -126,7 +126,7 @@ export class NukeManager {
   private config: NukeConfig;
   private lastRun = 0;
   private nukerReadyLogged: Set<string> = new Set();
-  private terminalManager?: typeof import("../economy/terminalManager").terminalManager;
+  private terminalManager?: typeof import("@ralphschuler/screeps-economy").terminalManager;
 
   public constructor(config: Partial<NukeConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -686,7 +686,7 @@ export class NukeManager {
     // Lazy-load terminal manager on first use (synchronous require to avoid timing issues)
     if (!this.terminalManager) {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      this.terminalManager = require("../economy/terminalManager").terminalManager as typeof import("../economy/terminalManager").terminalManager;
+      this.terminalManager = require("@ralphschuler/screeps-economy").terminalManager as typeof import("@ralphschuler/screeps-economy").terminalManager;
     }
 
     const success = this.terminalManager.requestTransfer(
