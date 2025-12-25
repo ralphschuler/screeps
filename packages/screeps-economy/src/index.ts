@@ -40,4 +40,6 @@ export type { MarketConfig } from './market/marketManager';
 export { MarketTrendAnalyzer } from './market/marketTrendAnalyzer';
 
 // TODO: Add spawning exports once spawning files are moved
+// Issue URL: https://github.com/ralphschuler/screeps/issues/853
 // TODO: Add other economy utilities (energyFlowPredictor, targetAssignmentManager, etc.)
+// Issue URL: https://github.com/ralphschuler/screeps/issues/852
