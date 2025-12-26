@@ -8,8 +8,8 @@
  * - Retreat when overwhelmed to preserve resources
  */
 
-import { logger } from "../core/logger";
-import { type ThreatAnalysis, assessThreat } from "./threatAssessment";
+import { logger } from "@bot/core/logger";
+import { type ThreatAnalysis, assessThreat } from "../threat/threatAssessment";
 
 /**
  * Determine if a creep should retreat based on threat assessment

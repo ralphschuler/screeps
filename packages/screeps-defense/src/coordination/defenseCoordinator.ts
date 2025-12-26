@@ -18,12 +18,12 @@
  * - Cluster-wide defense resource pooling
  */
 
-import { logger } from "../core/logger";
-import { memoryManager } from "../memory/manager";
-import type { DefenseRequest } from "../spawning/defenderManager";
-import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { ProcessPriority } from "../core/kernel";
-import { assessThreat } from "./threatAssessment";
+import { logger } from "@bot/core/logger";
+import { memoryManager } from "@bot/memory/manager";
+import type { DefenseRequest } from "@bot/spawning/defenderManager";
+import { MediumFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
+import { ProcessPriority } from "@bot/core/kernel";
+import { assessThreat } from "../threat/threatAssessment";
 
 /**
  * Defense assistance assignment

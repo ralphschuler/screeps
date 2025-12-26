@@ -29,7 +29,7 @@ import {
   getCurrentDefenders, 
   getDefenderPriorityBoost 
 } from "./defenderManager";
-import { emergencyResponseManager } from "../defense/emergencyResponse";
+import { emergencyResponseManager } from "@ralphschuler/screeps-defense";
 import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
 import { energyFlowPredictor } from "../economy/energyFlowPredictor";
 

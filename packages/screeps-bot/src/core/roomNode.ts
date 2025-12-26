@@ -19,11 +19,14 @@ import { unifiedStats } from "./unifiedStats";
 import { destroyMisplacedStructures, getBlueprint, placeConstructionSites, selectBestBlueprint } from "../layouts/blueprints/index";
 import { placeRoadConstructionSites } from "../layouts/roadNetworkPlanner";
 import { safeFind } from "../utils/optimization";
-import { safeModeManager } from "../defense/safeModeManager";
-import { placeRoadAwarePerimeterDefense } from "../defense/roadAwareDefense";
-import { calculateWallRepairTarget } from "../defense/wallRepairTargets";
-import { emergencyResponseManager } from "../defense/emergencyResponse";
-import { placeRampartsOnCriticalStructures } from "../defense/rampartAutomation";
+import {
+  safeModeManager,
+  placeRoadAwarePerimeterDefense,
+  calculateWallRepairTarget,
+  emergencyResponseManager,
+  placeRampartsOnCriticalStructures,
+  assessThreat
+} from "@ralphschuler/screeps-defense";
 import { chemistryPlanner } from "../labs/chemistryPlanner";
 import { boostManager } from "../labs/boostManager";
 import { labManager } from "../labs/labManager";
@@ -31,7 +34,6 @@ import { labConfigManager } from "../labs/labConfig";
 import { kernel } from "./kernel";
 import { logger } from "./logger";
 import { prefetchRoomObjects } from "../utils/caching";
-import { assessThreat } from "../defense/threatAssessment";
 
 /**
  * Perimeter defense configuration constants

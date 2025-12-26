@@ -56,7 +56,7 @@ import {
   updateOffensiveOperations as updateGlobalOffensiveOps
 } from "./offensiveOperations";
 import { updateClusterRallyPoints } from "./rallyPointManager";
-import { coordinateClusterDefense } from "../defense/clusterDefense";
+import { coordinateClusterDefense } from "@ralphschuler/screeps-defense";
 
 /**
  * Cluster Manager Configuration

@@ -20,7 +20,7 @@ import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
 import { pheromoneManager } from "../logic/pheromone";
 import { memoryManager } from "../memory/manager";
 import { shardManager } from "../intershard/shardManager";
-import { evacuationManager } from "../defense/evacuationManager";
+import { evacuationManager } from "@ralphschuler/screeps-defense";
 import { labConfigManager } from "../labs/labConfig";
 import { memorySegmentStats } from "./memorySegmentStats";
 import { logger } from "./logger";

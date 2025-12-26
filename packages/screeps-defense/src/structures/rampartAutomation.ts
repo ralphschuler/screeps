@@ -16,7 +16,7 @@
  * - Rampart placement automation (currently weak)
  */
 
-import { logger } from "../core/logger";
+import { logger } from "@bot/core/logger";
 import { calculateWallRepairTarget } from "./wallRepairTargets";
 
 /**
@@ -138,7 +138,7 @@ export function placeRampartsOnCriticalStructures(
   // Get all ramparts for repair check
   const ramparts = room.find(FIND_STRUCTURES, {
     filter: s => s.structureType === STRUCTURE_RAMPART
-  }) ;
+  });
 
   const repairTarget = calculateWallRepairTarget(rcl, danger);
 

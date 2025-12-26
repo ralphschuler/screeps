@@ -17,8 +17,8 @@
  * - Remove walls at strategic positions to extend road network
  */
 
-import { logger } from "../core/logger";
-import { calculateRoadNetwork, getValidRoadPositions } from "../layouts/roadNetworkPlanner";
+import { logger } from "@bot/core/logger";
+import { calculateRoadNetwork, getValidRoadPositions } from "@bot/layouts/roadNetworkPlanner";
 import type { ExitPosition, PerimeterPlan } from "./perimeterDefense";
 import { calculatePerimeterPositions } from "./perimeterDefense";
 

@@ -31,8 +31,7 @@
  */
 
 import { clusterManager } from "../clusters/clusterManager";
-import { defenseCoordinator } from "../defense/defenseCoordinator";
-import { evacuationManager } from "../defense/evacuationManager";
+import { defenseCoordinator, evacuationManager } from "@ralphschuler/screeps-defense";
 import { terminalManager, factoryManager, linkManager, marketManager } from "@ralphschuler/screeps-economy";
 import { empireManager } from "../empire/empireManager";
 import { expansionManager } from "../empire/expansionManager";

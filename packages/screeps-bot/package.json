@@ -61,6 +61,7 @@
   },
   "dependencies": {
     "@ralphschuler/screeps-chemistry": "file:../screeps-chemistry",
+    "@ralphschuler/screeps-defense": "file:../screeps-defense",
     "@ralphschuler/screeps-economy": "file:../screeps-economy",
     "@ralphschuler/screeps-spawn": "file:../screeps-spawn",
     "@ralphschuler/screeps-utils": "file:../screeps-utils",

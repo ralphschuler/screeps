@@ -11,8 +11,8 @@
  * ROADMAP Reference: Section 12 - Threat-Level & Posture
  */
 
-import { logger } from "../core/logger";
-import { ROLE_DEFINITIONS } from "../spawning/roleDefinitions";
+import { logger } from "@bot/core/logger";
+import { ROLE_DEFINITIONS } from "@bot/spawning/roleDefinitions";
 
 /**
  * Comprehensive threat analysis for a room
@@ -258,6 +258,12 @@ export function calculateTowerDamage(distance: number): number {
 }
 
 /**
+ * Threat score thresholds for danger level calculation
+ */
+const THREAT_THRESHOLD_HOSTILE_SIGHTED = 300;  // Danger level 1: Minor threat
+const THREAT_THRESHOLD_ACTIVE_ATTACK = 800;     // Danger level 2: Significant threat
+
+/**
  * Calculate danger level from threat score
  * 
  * @param threatScore - Composite threat score
@@ -266,9 +272,9 @@ export function calculateTowerDamage(distance: number): number {
 export function calculateDangerLevel(threatScore: number): 0 | 1 | 2 | 3 {
   if (threatScore === 0) {
     return 0; // ruhig (calm)
-  } else if (threatScore < 300) {
+  } else if (threatScore < THREAT_THRESHOLD_HOSTILE_SIGHTED) {
     return 1; // Hostile gesichtet (hostile sighted)
-  } else if (threatScore < 800) {
+  } else if (threatScore < THREAT_THRESHOLD_ACTIVE_ATTACK) {
     return 2; // aktiver Angriff (active attack)
   } else {
     return 3; // Belagerung/Nuke (siege/nuke)
