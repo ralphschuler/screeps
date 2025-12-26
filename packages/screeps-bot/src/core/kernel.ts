@@ -113,6 +113,18 @@ export interface Process {
   cpuBudget: number;
   /** Run interval in ticks (for medium/low frequency) */
   interval: number;
+  /** 
+   * Tick modulo for distributed execution (optional)
+   * If set, process runs when (Game.time + tickOffset) % tickModulo === 0
+   * Example: tickModulo=5, tickOffset=2 -> runs on ticks 2, 7, 12, 17, ...
+   */
+  tickModulo?: number;
+  /**
+   * Tick offset for distributed execution (optional)
+   * Used with tickModulo to distribute processes across ticks
+   * Must be less than tickModulo
+   */
+  tickOffset?: number;
   /** Process execution function */
   execute: () => void;
   /** Current state */
@@ -288,6 +300,8 @@ export class Kernel {
     minBucket?: number;
     cpuBudget?: number;
     interval?: number;
+    tickModulo?: number;
+    tickOffset?: number;
     execute: () => void;
   }): void {
     const frequency = options.frequency ?? "medium";
@@ -301,6 +315,8 @@ export class Kernel {
       minBucket: options.minBucket ?? defaults.minBucket,
       cpuBudget: options.cpuBudget ?? defaults.cpuBudget,
       interval: options.interval ?? defaults.interval,
+      tickModulo: options.tickModulo,
+      tickOffset: options.tickOffset,
       execute: options.execute,
       state: "idle",
       stats: {
@@ -549,6 +565,7 @@ export class Kernel {
    * Check if process should run this tick
    * 
    * Processes are only skipped based on:
+   * - Tick distribution (tickModulo/tickOffset for distributed execution)
    * - Interval timing (process hasn't reached its next scheduled run)
    * - Suspension state (process is explicitly suspended)
    * 
@@ -598,6 +615,15 @@ export class Kernel {
             { subsystem: "Kernel" }
           );
         }
+        return false;
+      }
+    }
+
+    // Check tick distribution (tickModulo/tickOffset)
+    // If tickModulo is set, only run when (Game.time + tickOffset) % tickModulo === 0
+    if (process.tickModulo !== undefined && process.tickModulo > 0) {
+      const offset = process.tickOffset ?? 0;
+      if ((Game.time + offset) % process.tickModulo !== 0) {
         return false;
       }
     }
