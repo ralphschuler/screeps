@@ -101,7 +101,8 @@ const result = placeRampartsOnCriticalStructures(room, threat.dangerLevel);
 console.log(`Protected ${result.protected}/${result.totalCritical} critical structures`);
 
 // Get dynamic repair target for walls/ramparts
-const repairTarget = calculateWallRepairTarget(room, structure, threat.dangerLevel);
+const rcl = room.controller?.level ?? 1;
+const repairTarget = calculateWallRepairTarget(rcl, threat.dangerLevel);
 if (structure.hits < repairTarget) {
   tower.repair(structure);
 }
