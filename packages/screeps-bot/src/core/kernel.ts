@@ -1064,6 +1064,57 @@ export class Kernel {
   }
 
   /**
+   * Get tick distribution statistics
+   * Provides insights into how processes are distributed across ticks
+   */
+  public getDistributionStats(): {
+    totalProcesses: number;
+    distributedProcesses: number;
+    everyTickProcesses: number;
+    distributionRatio: number;
+    moduloCounts: Record<number, number>;
+    averageTickLoad: number;
+    estimatedCpuReduction: number;
+  } {
+    const processes = Array.from(this.processes.values());
+    const distributed = processes.filter(p => p.tickModulo !== undefined && p.tickModulo > 0);
+    const everyTick = processes.filter(p => !p.tickModulo || p.tickModulo === 0);
+    
+    // Count processes by modulo value
+    const moduloCounts: Record<number, number> = {};
+    for (const process of distributed) {
+      const modulo = process.tickModulo!;
+      moduloCounts[modulo] = (moduloCounts[modulo] || 0) + 1;
+    }
+
+    // Calculate average tick load
+    // Every tick processes run every tick, distributed processes run every N ticks
+    const everyTickLoad = everyTick.length;
+    const distributedLoad = distributed.reduce((sum, p) => {
+      return sum + (1 / (p.tickModulo || 1));
+    }, 0);
+    const averageTickLoad = everyTickLoad + distributedLoad;
+
+    // Calculate estimated CPU reduction
+    // Without distribution: all processes would run every tick
+    // With distribution: only averageTickLoad processes run per tick
+    const withoutDistribution = processes.length;
+    const estimatedReduction = withoutDistribution > 0
+      ? ((withoutDistribution - averageTickLoad) / withoutDistribution) * 100
+      : 0;
+
+    return {
+      totalProcesses: processes.length,
+      distributedProcesses: distributed.length,
+      everyTickProcesses: everyTick.length,
+      distributionRatio: processes.length > 0 ? (distributed.length / processes.length) : 0,
+      moduloCounts,
+      averageTickLoad,
+      estimatedCpuReduction: estimatedReduction
+    };
+  }
+
+  /**
    * Get kernel configuration
    */
   public getConfig(): KernelConfig {

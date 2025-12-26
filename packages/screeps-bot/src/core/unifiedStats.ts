@@ -332,6 +332,10 @@ export interface ProcessStatsEntry {
   errorCount: number;
   cpuBudget: number;
   minBucket: number;
+  /** Tick modulo for distributed execution (if set) */
+  tickModulo?: number;
+  /** Tick offset for distributed execution (if set) */
+  tickOffset?: number;
 }
 
 /**
@@ -588,6 +592,8 @@ export class UnifiedStatsManager {
     state: string;
     cpuBudget: number;
     minBucket: number;
+    tickModulo?: number;
+    tickOffset?: number;
     stats: {
       totalCpu: number;
       runCount: number;
@@ -614,7 +620,9 @@ export class UnifiedStatsManager {
       skippedCount: process.stats.skippedCount,
       errorCount: process.stats.errorCount,
       cpuBudget: process.cpuBudget,
-      minBucket: process.minBucket
+      minBucket: process.minBucket,
+      tickModulo: process.tickModulo,
+      tickOffset: process.tickOffset
     };
   }
 
@@ -629,6 +637,8 @@ export class UnifiedStatsManager {
     state: string;
     cpuBudget: number;
     minBucket: number;
+    tickModulo?: number;
+    tickOffset?: number;
     stats: {
       totalCpu: number;
       runCount: number;
