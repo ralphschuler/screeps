@@ -156,23 +156,24 @@ describe("Kernel tick distribution", () => {
     // Each tick should have exactly one process execution (distributed round-robin)
     expect(executionLog.size).to.equal(10);
     
+    // When (tick + offset) % modulo === 0:
     // Tick 0: (0+0)%5=0 -> process-0
     expect(executionLog.get(0)).to.deep.equal(["process-0"]);
-    // Tick 1: (1+1)%5=2 -> process-1
-    expect(executionLog.get(1)).to.deep.equal(["process-1"]);
-    // Tick 2: (2+2)%5=4 -> process-2
-    expect(executionLog.get(2)).to.deep.equal(["process-2"]);
-    // Tick 3: (3+3)%5=1 -> process-3
-    expect(executionLog.get(3)).to.deep.equal(["process-3"]);
-    // Tick 4: (4+4)%5=3 -> process-4
-    expect(executionLog.get(4)).to.deep.equal(["process-4"]);
+    // Tick 1: (1+4)%5=0 -> process-4
+    expect(executionLog.get(1)).to.deep.equal(["process-4"]);
+    // Tick 2: (2+3)%5=0 -> process-3
+    expect(executionLog.get(2)).to.deep.equal(["process-3"]);
+    // Tick 3: (3+2)%5=0 -> process-2
+    expect(executionLog.get(3)).to.deep.equal(["process-2"]);
+    // Tick 4: (4+1)%5=0 -> process-1
+    expect(executionLog.get(4)).to.deep.equal(["process-1"]);
     
     // Pattern repeats for ticks 5-9
     expect(executionLog.get(5)).to.deep.equal(["process-0"]);
-    expect(executionLog.get(6)).to.deep.equal(["process-1"]);
-    expect(executionLog.get(7)).to.deep.equal(["process-2"]);
-    expect(executionLog.get(8)).to.deep.equal(["process-3"]);
-    expect(executionLog.get(9)).to.deep.equal(["process-4"]);
+    expect(executionLog.get(6)).to.deep.equal(["process-4"]);
+    expect(executionLog.get(7)).to.deep.equal(["process-3"]);
+    expect(executionLog.get(8)).to.deep.equal(["process-2"]);
+    expect(executionLog.get(9)).to.deep.equal(["process-1"]);
   });
 
   it("should combine tickModulo with interval", () => {
