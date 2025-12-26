@@ -284,8 +284,10 @@ describe("Kernel tick distribution", () => {
     
     const withDistribution = processesPerTick.get(0) || 0;
     
-    // With distribution, should run only 4 processes per tick (20 / 5)
-    // Without distribution, runs all 20
+    // With distribution modulo=5 and offsets 0-4:
+    // Tick 0 executes processes where (0 + offset) % 5 === 0
+    // Only offset=0 matches: 4 processes execute (20 processes / 5 offset groups = 4 per group)
+    // Without distribution, all 20 processes run
     expect(withoutDistribution).to.equal(20);
     expect(withDistribution).to.equal(4);
     
