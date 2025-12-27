@@ -69,6 +69,14 @@ jobs:
         working-directory: packages/screeps-utils
         run: npm run build
 
+      - name: Install dependencies for screeps-bot
+        working-directory: packages/screeps-bot
+        run: npm ci
+
+      - name: Build screeps-bot
+        working-directory: packages/screeps-bot
+        run: npm run build
+
       - name: Install dependencies for screeps-defense
         working-directory: packages/screeps-defense
         run: npm ci
@@ -83,14 +91,6 @@ jobs:
 
       - name: Build screeps-economy
         working-directory: packages/screeps-economy
-        run: npm run build
-
-      - name: Install dependencies
-        working-directory: packages/screeps-bot
-        run: npm ci
-
-      - name: Build bot
-        working-directory: packages/screeps-bot
         run: npm run build
 
       - name: Set up Docker Buildx
