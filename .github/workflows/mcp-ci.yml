@@ -28,9 +28,6 @@ jobs:
           - screeps-docs-mcp
           - screeps-mcp
           - screeps-wiki-mcp
-    defaults:
-      run:
-        working-directory: packages/${{ matrix.package }}
     env:
       CI: true
     steps:
@@ -42,16 +39,15 @@ jobs:
         with:
           node-version: '20'
           cache: npm
-          cache-dependency-path: packages/${{ matrix.package }}/package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        run: npm run build
+      - name: Build ${{ matrix.package }}
+        run: npm run build -w @ralphschuler/${{ matrix.package }}
 
-      - name: Run tests
-        run: npm test
+      - name: Run tests for ${{ matrix.package }}
+        run: npm test -w @ralphschuler/${{ matrix.package }}
 
       - name: Upload coverage
         if: matrix.package == 'screeps-docs-mcp'

@@ -43,54 +43,11 @@ jobs:
         with:
           node-version: '20'
           cache: npm
-          cache-dependency-path: packages/screeps-bot/package-lock.json
 
-      - name: Install dependencies for screeps-chemistry
-        working-directory: packages/screeps-chemistry
+      - name: Install dependencies
         run: npm ci
 
-      - name: Build screeps-chemistry
-        working-directory: packages/screeps-chemistry
-        run: npm run build
-
-      - name: Install dependencies for screeps-spawn
-        working-directory: packages/screeps-spawn
-        run: npm ci
-
-      - name: Build screeps-spawn
-        working-directory: packages/screeps-spawn
-        run: npm run build
-
-      - name: Install dependencies for screeps-utils
-        working-directory: packages/screeps-utils
-        run: npm ci
-
-      - name: Build screeps-utils
-        working-directory: packages/screeps-utils
-        run: npm run build
-
-      - name: Install dependencies for screeps-bot
-        working-directory: packages/screeps-bot
-        run: npm ci
-
-      - name: Build screeps-bot
-        working-directory: packages/screeps-bot
-        run: npm run build
-
-      - name: Install dependencies for screeps-defense
-        working-directory: packages/screeps-defense
-        run: npm ci
-
-      - name: Build screeps-defense
-        working-directory: packages/screeps-defense
-        run: npm run build
-
-      - name: Install dependencies for screeps-economy
-        working-directory: packages/screeps-economy
-        run: npm ci
-
-      - name: Build screeps-economy
-        working-directory: packages/screeps-economy
+      - name: Build all packages
         run: npm run build
 
       - name: Set up Docker Buildx
