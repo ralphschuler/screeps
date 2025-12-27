@@ -122,7 +122,7 @@ export interface Process {
   /**
    * Tick offset for distributed execution (optional)
    * Used with tickModulo to distribute processes across ticks
-   * Must be less than tickModulo
+   * Should be less than tickModulo for predictable distribution
    */
   tickOffset?: number;
   /** Process execution function */
@@ -306,6 +306,25 @@ export class Kernel {
   }): void {
     const frequency = options.frequency ?? "medium";
     const defaults = this.frequencyDefaults[frequency];
+
+    // Validate tick distribution parameters
+    if (options.tickModulo !== undefined) {
+      if (options.tickModulo < 0) {
+        logger.error(
+          `Kernel: Cannot register process "${options.name}" - tickModulo must be non-negative (got ${options.tickModulo})`,
+          { subsystem: "Kernel" }
+        );
+        throw new Error(`Invalid tickModulo: ${options.tickModulo} (must be >= 0)`);
+      }
+      
+      if (options.tickOffset !== undefined && options.tickOffset >= options.tickModulo) {
+        logger.error(
+          `Kernel: Cannot register process "${options.name}" - tickOffset (${options.tickOffset}) must be less than tickModulo (${options.tickModulo})`,
+          { subsystem: "Kernel" }
+        );
+        throw new Error(`Invalid tickOffset: ${options.tickOffset} (must be < tickModulo ${options.tickModulo})`);
+      }
+    }
 
     const process: Process = {
       id: options.id,

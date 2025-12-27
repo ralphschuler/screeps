@@ -54,6 +54,7 @@ describe("Kernel tick distribution", () => {
     // Should have executed on all 10 ticks
     expect(executionLog.size).to.equal(10);
     for (let tick = 0; tick < 10; tick++) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       expect(executionLog.has(tick)).to.be.true;
       expect(executionLog.get(tick)).to.deep.equal(["every-tick"]);
     }
@@ -84,14 +85,21 @@ describe("Kernel tick distribution", () => {
 
     // Should execute on ticks: 0, 5, 10, 15 (when tick % 5 === 0)
     expect(executionLog.size).to.equal(4);
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     expect(executionLog.has(0)).to.be.true;
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     expect(executionLog.has(5)).to.be.true;
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     expect(executionLog.has(10)).to.be.true;
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     expect(executionLog.has(15)).to.be.true;
     
     // Should NOT execute on other ticks
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     expect(executionLog.has(1)).to.be.false;
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     expect(executionLog.has(2)).to.be.false;
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     expect(executionLog.has(3)).to.be.false;
   });
 
@@ -121,9 +129,13 @@ describe("Kernel tick distribution", () => {
     // With offset 2, should execute when (tick + 2) % 5 === 0
     // Which means: tick 3, 8, 13, 18
     expect(executionLog.size).to.equal(4);
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     expect(executionLog.has(3)).to.be.true;
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     expect(executionLog.has(8)).to.be.true;
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     expect(executionLog.has(13)).to.be.true;
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     expect(executionLog.has(18)).to.be.true;
   });
 
@@ -204,9 +216,12 @@ describe("Kernel tick distribution", () => {
     // interval=10 means must wait 10 ticks between executions
     // Expected execution: tick 0, then next eligible is tick 10, then tick 20
     expect(executionLog.size).to.equal(3);
-    expect(executionLog.has(0)).to.equal(true);
-    expect(executionLog.has(10)).to.equal(true);
-    expect(executionLog.has(20)).to.equal(true);
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    expect(executionLog.has(0)).to.be.true;
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    expect(executionLog.has(10)).to.be.true;
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    expect(executionLog.has(20)).to.be.true;
   });
 
   it("should handle zero tickModulo as no distribution", () => {
@@ -294,5 +309,71 @@ describe("Kernel tick distribution", () => {
     // This represents an 80% reduction in processes per tick
     const reduction = ((withoutDistribution - withDistribution) / withoutDistribution) * 100;
     expect(reduction).to.equal(80);
+  });
+
+  it("should reject negative tickModulo values", () => {
+    expect(() => {
+      kernel.registerProcess({
+        id: "negative-modulo",
+        name: "Negative Modulo Process",
+        priority: ProcessPriority.HIGH,
+        frequency: "high",
+        tickModulo: -5,
+        execute: () => {}
+      });
+    }).to.throw("Invalid tickModulo: -5 (must be >= 0)");
+  });
+
+  it("should reject tickOffset >= tickModulo", () => {
+    expect(() => {
+      kernel.registerProcess({
+        id: "invalid-offset",
+        name: "Invalid Offset Process",
+        priority: ProcessPriority.HIGH,
+        frequency: "high",
+        tickModulo: 5,
+        tickOffset: 5, // Equal to tickModulo, should be rejected
+        execute: () => {}
+      });
+    }).to.throw("Invalid tickOffset: 5 (must be < tickModulo 5)");
+    
+    expect(() => {
+      kernel.registerProcess({
+        id: "invalid-offset-2",
+        name: "Invalid Offset Process 2",
+        priority: ProcessPriority.HIGH,
+        frequency: "high",
+        tickModulo: 5,
+        tickOffset: 6, // Greater than tickModulo, should be rejected
+        execute: () => {}
+      });
+    }).to.throw("Invalid tickOffset: 6 (must be < tickModulo 5)");
+  });
+
+  it("should accept valid tickModulo and tickOffset combinations", () => {
+    // Should not throw
+    expect(() => {
+      kernel.registerProcess({
+        id: "valid-distribution",
+        name: "Valid Distribution Process",
+        priority: ProcessPriority.HIGH,
+        frequency: "high",
+        tickModulo: 5,
+        tickOffset: 4, // Less than tickModulo, valid
+        execute: () => {}
+      });
+    }).to.not.throw();
+
+    expect(() => {
+      kernel.registerProcess({
+        id: "valid-distribution-2",
+        name: "Valid Distribution Process 2",
+        priority: ProcessPriority.HIGH,
+        frequency: "high",
+        tickModulo: 10,
+        tickOffset: 0, // 0 is valid
+        execute: () => {}
+      });
+    }).to.not.throw();
   });
 });
