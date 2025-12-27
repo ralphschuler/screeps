@@ -28,6 +28,13 @@ import { memoryMonitor } from "./memoryMonitor";
 import { memoryPruner } from "./memoryPruner";
 import { migrationRunner } from "./migrations";
 
+// Extend RoomMemory interface to add hostile property
+declare global {
+  interface RoomMemory {
+    hostile?: boolean;
+  }
+}
+
 const EMPIRE_KEY = "empire";
 const CLUSTERS_KEY = "clusters";
 /** Screeps memory limit in bytes */
