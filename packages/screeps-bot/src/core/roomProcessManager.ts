@@ -1,21 +1,34 @@
 /**
  * Room Process Manager
  *
- * Manages room operations as kernel processes, ensuring every room
- * gets processed eventually through the kernel's wrap-around queue system.
- *
- * Each owned room becomes a process with high priority, allowing
- * the kernel to handle CPU budgeting and fair execution scheduling.
+ * Manages room operations as kernel processes with distributed execution.
+ * 
+ * Critical rooms (under attack) run every tick.
+ * Economic rooms are distributed across multiple ticks using tick modulo/offset
+ * for better CPU efficiency at scale.
  *
  * Design Principles (from ROADMAP.md):
  * - Decentralization: Each room has local control logic
  * - Event-driven logic: Rooms respond to threats and pheromones
  * - CPU budgets: Eco rooms 2-4 CPU (4-8%), War rooms ~6 CPU (12%)
+ * - Frequency tiers: Critical (every tick), Economic (every 5 ticks distributed)
  */
 
 import { ProcessPriority, kernel } from "./kernel";
 import { logger } from "./logger";
 import { roomManager } from "./roomNode";
+
+/**
+ * Configuration for room distribution strategy
+ */
+const ROOM_DISTRIBUTION_CONFIG = {
+  /** Economic rooms run every N ticks */
+  economicRoomModulo: 5,
+  /** Reserved/scout rooms run every N ticks */
+  reservedRoomModulo: 10,
+  /** Remote/visible rooms run every N ticks */
+  remoteRoomModulo: 20
+};
 
 /**
  * Get process priority for a room based on its state
@@ -74,18 +87,74 @@ function getRoomCpuBudget(room: Room): number {
 }
 
 /**
+ * Get tick distribution parameters for a room based on its priority
+ * Returns { tickModulo, tickOffset } or undefined for non-distributed execution
+ */
+function getRoomDistribution(room: Room, priority: ProcessPriority, roomIndex: number): { tickModulo?: number; tickOffset?: number } {
+  // CRITICAL priority rooms (under attack) always run every tick - no distribution
+  if (priority === ProcessPriority.CRITICAL) {
+    return { tickModulo: undefined, tickOffset: undefined };
+  }
+
+  // HIGH priority rooms (owned, eco mode) - distribute across 5 ticks
+  if (priority === ProcessPriority.HIGH && room.controller?.my) {
+    return {
+      tickModulo: ROOM_DISTRIBUTION_CONFIG.economicRoomModulo,
+      tickOffset: roomIndex % ROOM_DISTRIBUTION_CONFIG.economicRoomModulo
+    };
+  }
+
+  // MEDIUM priority rooms (reserved) - distribute across 10 ticks
+  if (priority === ProcessPriority.MEDIUM) {
+    return {
+      tickModulo: ROOM_DISTRIBUTION_CONFIG.reservedRoomModulo,
+      tickOffset: roomIndex % ROOM_DISTRIBUTION_CONFIG.reservedRoomModulo
+    };
+  }
+
+  // LOW priority rooms (remote/visible) - distribute across 20 ticks
+  if (priority === ProcessPriority.LOW) {
+    return {
+      tickModulo: ROOM_DISTRIBUTION_CONFIG.remoteRoomModulo,
+      tickOffset: roomIndex % ROOM_DISTRIBUTION_CONFIG.remoteRoomModulo
+    };
+  }
+
+  // Default: no distribution
+  return { tickModulo: undefined, tickOffset: undefined };
+}
+
+/**
  * Room Process Manager
  *
  * Manages registration and lifecycle of room processes with the kernel.
- * Each visible room is registered as a high-frequency process that runs
- * every tick (when CPU budget allows).
- *
- * Owned rooms are prioritized higher and can run more frequently even
- * under CPU pressure.
+ * Implements distributed execution to spread room processing across ticks.
+ * 
+ * Distribution Strategy:
+ * - Critical rooms (under attack): Every tick
+ * - Economic rooms (owned): Every 5 ticks, distributed
+ * - Reserved rooms: Every 10 ticks, distributed
+ * - Remote/visible rooms: Every 20 ticks, distributed
  */
 export class RoomProcessManager {
   private registeredRooms = new Set<string>();
   private lastSyncTick = -1;
+  /** Maps room names to their assigned index for distribution */
+  private roomIndices = new Map<string, number>();
+  /** Counter for assigning room indices */
+  private nextRoomIndex = 0;
+
+  /**
+   * Get or assign an index for a room (used for tick distribution)
+   */
+  private getRoomIndex(roomName: string): number {
+    let index = this.roomIndices.get(roomName);
+    if (index === undefined) {
+      index = this.nextRoomIndex++;
+      this.roomIndices.set(roomName, index);
+    }
+    return index;
+  }
 
   /**
    * Synchronize room processes with kernel.
@@ -132,19 +201,23 @@ export class RoomProcessManager {
   }
 
   /**
-   * Register a room as a kernel process
+   * Register a room as a kernel process with tick distribution
    */
   private registerRoomProcess(room: Room): void {
     const priority = getRoomProcessPriority(room);
     const cpuBudget = getRoomCpuBudget(room);
     const processId = `room:${room.name}`;
+    const roomIndex = this.getRoomIndex(room.name);
+    const distribution = getRoomDistribution(room, priority, roomIndex);
 
     kernel.registerProcess({
       id: processId,
       name: `Room ${room.name}${room.controller?.my ? " (owned)" : ""}`,
       priority,
-      frequency: "high", // Rooms run every tick
+      frequency: "high",
       interval: 1,
+      tickModulo: distribution.tickModulo,
+      tickOffset: distribution.tickOffset,
       minBucket: this.getMinBucketForPriority(priority),
       cpuBudget,
       execute: () => {
@@ -159,16 +232,22 @@ export class RoomProcessManager {
 
     this.registeredRooms.add(room.name);
 
-    logger.debug(`Registered room process: ${room.name} with priority ${priority}`, {
-      subsystem: "RoomProcessManager"
-    });
+    const distributionInfo = distribution.tickModulo 
+      ? `(mod=${distribution.tickModulo}, offset=${distribution.tickOffset})`
+      : "(every tick)";
+    logger.debug(
+      `Registered room process: ${room.name} with priority ${priority} ${distributionInfo}`,
+      { subsystem: "RoomProcessManager" }
+    );
   }
 
   /**
-   * Update a room process with new priority and budget
+   * Update a room process with new priority, budget, and distribution
    */
   private updateRoomProcess(room: Room, priority: ProcessPriority, cpuBudget: number): void {
     const processId = `room:${room.name}`;
+    const roomIndex = this.getRoomIndex(room.name);
+    const distribution = getRoomDistribution(room, priority, roomIndex);
     
     // Unregister and re-register with new parameters
     kernel.unregisterProcess(processId);
@@ -179,6 +258,8 @@ export class RoomProcessManager {
       priority,
       frequency: "high",
       interval: 1,
+      tickModulo: distribution.tickModulo,
+      tickOffset: distribution.tickOffset,
       minBucket: this.getMinBucketForPriority(priority),
       cpuBudget,
       execute: () => {
@@ -189,9 +270,13 @@ export class RoomProcessManager {
       }
     });
 
-    logger.debug(`Updated room process: ${room.name} priority=${priority} budget=${cpuBudget}`, {
-      subsystem: "RoomProcessManager"
-    });
+    const distributionInfo = distribution.tickModulo
+      ? `mod=${distribution.tickModulo}, offset=${distribution.tickOffset}`
+      : "every tick";
+    logger.debug(
+      `Updated room process: ${room.name} priority=${priority} budget=${cpuBudget} (${distributionInfo})`,
+      { subsystem: "RoomProcessManager" }
+    );
   }
 
   /**
@@ -201,6 +286,7 @@ export class RoomProcessManager {
     const processId = `room:${roomName}`;
     kernel.unregisterProcess(processId);
     this.registeredRooms.delete(roomName);
+    this.roomIndices.delete(roomName);
 
     logger.debug(`Unregistered room process: ${roomName}`, {
       subsystem: "RoomProcessManager"
@@ -264,6 +350,8 @@ export class RoomProcessManager {
    */
   public reset(): void {
     this.registeredRooms.clear();
+    this.roomIndices.clear();
+    this.nextRoomIndex = 0;
     this.lastSyncTick = -1;
   }
 }

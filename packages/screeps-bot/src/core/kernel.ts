@@ -113,6 +113,18 @@ export interface Process {
   cpuBudget: number;
   /** Run interval in ticks (for medium/low frequency) */
   interval: number;
+  /** 
+   * Tick modulo for distributed execution (optional)
+   * If set, process runs when (Game.time + tickOffset) % tickModulo === 0
+   * Example: tickModulo=5, tickOffset=2 -> runs on ticks 2, 7, 12, 17, ...
+   */
+  tickModulo?: number;
+  /**
+   * Tick offset for distributed execution (optional)
+   * Used with tickModulo to distribute processes across ticks
+   * Must be less than tickModulo (enforced by validation)
+   */
+  tickOffset?: number;
   /** Process execution function */
   execute: () => void;
   /** Current state */
@@ -288,10 +300,31 @@ export class Kernel {
     minBucket?: number;
     cpuBudget?: number;
     interval?: number;
+    tickModulo?: number;
+    tickOffset?: number;
     execute: () => void;
   }): void {
     const frequency = options.frequency ?? "medium";
     const defaults = this.frequencyDefaults[frequency];
+
+    // Validate tick distribution parameters
+    if (options.tickModulo !== undefined) {
+      if (options.tickModulo < 0) {
+        logger.error(
+          `Kernel: Cannot register process "${options.name}" - tickModulo must be non-negative (got ${options.tickModulo})`,
+          { subsystem: "Kernel" }
+        );
+        throw new Error(`Invalid tickModulo: ${options.tickModulo} (must be >= 0)`);
+      }
+      
+      if (options.tickOffset !== undefined && options.tickOffset >= options.tickModulo) {
+        logger.error(
+          `Kernel: Cannot register process "${options.name}" - tickOffset (${options.tickOffset}) must be less than tickModulo (${options.tickModulo})`,
+          { subsystem: "Kernel" }
+        );
+        throw new Error(`Invalid tickOffset: ${options.tickOffset} (must be < tickModulo ${options.tickModulo})`);
+      }
+    }
 
     const process: Process = {
       id: options.id,
@@ -301,6 +334,8 @@ export class Kernel {
       minBucket: options.minBucket ?? defaults.minBucket,
       cpuBudget: options.cpuBudget ?? defaults.cpuBudget,
       interval: options.interval ?? defaults.interval,
+      tickModulo: options.tickModulo,
+      tickOffset: options.tickOffset,
       execute: options.execute,
       state: "idle",
       stats: {
@@ -549,6 +584,7 @@ export class Kernel {
    * Check if process should run this tick
    * 
    * Processes are only skipped based on:
+   * - Tick distribution (tickModulo/tickOffset for distributed execution)
    * - Interval timing (process hasn't reached its next scheduled run)
    * - Suspension state (process is explicitly suspended)
    * 
@@ -598,6 +634,15 @@ export class Kernel {
             { subsystem: "Kernel" }
           );
         }
+        return false;
+      }
+    }
+
+    // Check tick distribution (tickModulo/tickOffset)
+    // If tickModulo is set, only run when (Game.time + tickOffset) % tickModulo === 0
+    if (process.tickModulo !== undefined && process.tickModulo > 0) {
+      const offset = process.tickOffset ?? 0;
+      if ((Game.time + offset) % process.tickModulo !== 0) {
         return false;
       }
     }
@@ -1035,6 +1080,57 @@ export class Kernel {
       };
     }
     logger.info("Kernel: Reset all process statistics", { subsystem: "Kernel" });
+  }
+
+  /**
+   * Get tick distribution statistics
+   * Provides insights into how processes are distributed across ticks
+   */
+  public getDistributionStats(): {
+    totalProcesses: number;
+    distributedProcesses: number;
+    everyTickProcesses: number;
+    distributionRatio: number;
+    moduloCounts: Record<number, number>;
+    averageTickLoad: number;
+    estimatedCpuReduction: number;
+  } {
+    const processes = Array.from(this.processes.values());
+    const distributed = processes.filter(p => p.tickModulo !== undefined && p.tickModulo > 0);
+    const everyTick = processes.filter(p => !p.tickModulo || p.tickModulo === 0);
+    
+    // Count processes by modulo value
+    const moduloCounts: Record<number, number> = {};
+    for (const process of distributed) {
+      const modulo = process.tickModulo!;
+      moduloCounts[modulo] = (moduloCounts[modulo] || 0) + 1;
+    }
+
+    // Calculate average tick load
+    // Every tick processes run every tick, distributed processes run every N ticks
+    const everyTickLoad = everyTick.length;
+    const distributedLoad = distributed.reduce((sum, p) => {
+      return sum + (1 / (p.tickModulo || 1));
+    }, 0);
+    const averageTickLoad = everyTickLoad + distributedLoad;
+
+    // Calculate estimated CPU reduction
+    // Without distribution: all processes would run every tick
+    // With distribution: only averageTickLoad processes run per tick
+    const withoutDistribution = processes.length;
+    const estimatedReduction = withoutDistribution > 0
+      ? ((withoutDistribution - averageTickLoad) / withoutDistribution) * 100
+      : 0;
+
+    return {
+      totalProcesses: processes.length,
+      distributedProcesses: distributed.length,
+      everyTickProcesses: everyTick.length,
+      distributionRatio: processes.length > 0 ? (distributed.length / processes.length) : 0,
+      moduloCounts,
+      averageTickLoad,
+      estimatedCpuReduction: estimatedReduction
+    };
   }
 
   /**
