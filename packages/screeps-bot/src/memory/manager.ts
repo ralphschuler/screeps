@@ -28,6 +28,16 @@ import { memoryMonitor } from "./memoryMonitor";
 import { memoryPruner } from "./memoryPruner";
 import { migrationRunner } from "./migrations";
 
+// Extend RoomMemory interface to add hostile property
+// Used by memoryManager to cache whether a room contains hostile structures/creeps
+// This helps avoid repeated room scans and improves performance
+declare global {
+  interface RoomMemory {
+    /** Whether the room has been marked as hostile (contains enemy structures/creeps) */
+    hostile?: boolean;
+  }
+}
+
 const EMPIRE_KEY = "empire";
 const CLUSTERS_KEY = "clusters";
 /** Screeps memory limit in bytes */
