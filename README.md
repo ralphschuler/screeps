@@ -50,15 +50,11 @@ cd screeps
 # Optional: Check your Node.js and npm versions
 npm run check-versions
 
-# Install dependencies
-npm install
-
-# Navigate to the bot package
-cd packages/screeps-bot
-
-# Install bot dependencies
+# Install dependencies for all packages (using npm workspaces)
 npm install
 ```
+
+**Note**: This repository uses [npm workspaces](https://docs.npmjs.com/cli/v8/using-npm/workspaces) to manage the monorepo. A single `npm install` at the root will install dependencies for all packages.
 
 ## Developing
 
@@ -109,12 +105,19 @@ For detailed compliance verification, see [packages/screeps-bot/ROADMAP_COMPLIAN
 cd packages/screeps-bot
 cp .env.example .env
 # Edit .env with your credentials (SCREEPS_TOKEN or SCREEPS_USERNAME/SCREEPS_PASS)
+cd ../..  # Return to repository root
 ```
 
 2. **Build the project**:
 
 ```shell
+# Build all packages (recommended)
 npm run build
+
+# Or build specific packages
+npm run build:utils
+npm run build:chemistry
+npm run build:spawn
 ```
 
 3. **Deploy to Screeps**:
@@ -125,25 +128,59 @@ You can deploy using either:
 
 ### Development Workflow
 
-- **Lint your code**: `npm run lint`
-- **Run tests**: `npm test`
-- **Watch mode**: `npm run watch` (auto-builds and deploys on file changes)
-- **Build only**: `npm run build`
+**Working with npm Workspaces**:
+
+All npm scripts at the root level now use workspace commands, so you can run everything from the repository root:
+
+```shell
+# Lint the main bot
+npm run lint
+
+# Run tests for specific packages
+npm run test:utils      # Test utils package
+npm run test:spawn      # Test spawn package
+npm run test:all        # Test all packages
+
+# Build specific packages
+npm run build:utils
+npm run build:chemistry
+npm run build:all       # Build everything
+
+# Watch mode for the bot
+npm run watch
+```
+
+**Working within a specific package**:
+
+If you need to work on a specific package, you can still navigate to it and run commands directly:
+
+```shell
+cd packages/screeps-bot
+npm run build           # Build just this package
+npm test                # Test just this package
+```
 
 ### Running Tests
 
 ```shell
-# Run all tests
+# Run tests for the main bot
 npm test
 
-# Run unit tests only
-npm run test-unit
+# Run tests for specific packages
+npm run test:utils
+npm run test:spawn
+npm run test:chemistry
+npm run test:mcp
 
-# Run integration tests (requires setup)
-npm run test-integration
+# Run all tests across all packages
+npm run test:all
+
+# Run specific test types (bot only)
+npm run test:unit         # Unit tests only
+npm run test:integration  # Integration tests (requires setup)
 ```
 
-Tests are located in `packages/screeps-bot/test/` and use Mocha with Chai assertions.
+Tests are located in each package's `test/` directory and use Mocha with Chai assertions.
 
 ## Configuration
 

@@ -19,6 +19,9 @@ bower_components/
 # Yarn Integrity file
 .yarn-integrity
 
+# npm workspaces - ignore package-lock.json in workspace packages
+packages/*/package-lock.json
+
 # Optional eslint cache
 .eslintcache
 
