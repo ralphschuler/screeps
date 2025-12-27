@@ -204,9 +204,9 @@ describe("Kernel tick distribution", () => {
     // interval=10 means must wait 10 ticks between executions
     // Expected execution: tick 0, then next eligible is tick 10, then tick 20
     expect(executionLog.size).to.equal(3);
-    expect(executionLog.has(0)).to.be.true;
-    expect(executionLog.has(10)).to.be.true;
-    expect(executionLog.has(20)).to.be.true;
+    expect(executionLog.has(0)).to.equal(true);
+    expect(executionLog.has(10)).to.equal(true);
+    expect(executionLog.has(20)).to.equal(true);
   });
 
   it("should handle zero tickModulo as no distribution", () => {
