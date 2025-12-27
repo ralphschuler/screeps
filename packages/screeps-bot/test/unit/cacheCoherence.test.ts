@@ -141,7 +141,7 @@ describe("CacheCoherence", () => {
 
     it("should invalidate multiple namespaces", () => {
       const scope: InvalidationScope = {
-        type: "global"
+        type: "global",
         // No namespaces specified = all namespaces
       };
       

@@ -166,7 +166,7 @@ export function initializeCacheEvents(): void {
         { meta: { invalidated, remoteRoom } }
       );
     },
-    { priority: EventPriority.HIGH }
+    { priority: EventPriority.NORMAL }  // Match default priority from events.ts
   );
 
   // Spawn completed - invalidate role caches

@@ -115,6 +115,20 @@ export class CacheCoherenceManager {
   
   /** Total memory budget across all caches */
   private totalMemoryBudget = this.DEFAULT_MEMORY_BUDGET;
+  
+  /** Cached regex patterns for common invalidations */
+  private regexCache = new Map<string, RegExp>();
+  
+  /** Estimated bytes per cache entry by namespace (configurable) */
+  private estimatedBytesPerEntry: Record<string, number> = {
+    object: 512,      // Small - mostly object references
+    bodypart: 256,    // Very small - just numbers
+    path: 2048,       // Large - serialized paths
+    roomFind: 1024,   // Medium - array of objects
+    role: 512,        // Small - role assignments
+    closest: 256,     // Small - single object reference
+    default: 1024     // Default estimate
+  };
 
   /**
    * Register a cache layer with the coherence manager
@@ -179,8 +193,8 @@ export class CacheCoherenceManager {
 
         case "room":
           if (scope.roomName) {
-            // Invalidate all keys containing the room name
-            const pattern = new RegExp(`(^|:)${this.escapeRegex(scope.roomName)}($|:)`);
+            // Use cached regex pattern
+            const pattern = this.getRoomPattern(scope.roomName);
             const count = cache.manager.invalidatePattern(pattern, namespace);
             invalidated += count;
           }
@@ -188,8 +202,8 @@ export class CacheCoherenceManager {
 
         case "creep":
           if (scope.creepName) {
-            // Invalidate keys containing creep name or ID
-            const pattern = new RegExp(this.escapeRegex(scope.creepName));
+            // Use cached regex pattern
+            const pattern = this.getCreepPattern(scope.creepName);
             const count = cache.manager.invalidatePattern(pattern, namespace);
             invalidated += count;
           }
@@ -205,10 +219,9 @@ export class CacheCoherenceManager {
 
         case "structure":
           if (scope.structureType && scope.roomName) {
-            // Invalidate keys for specific structure type in room
-            const pattern = new RegExp(
-              `${this.escapeRegex(scope.roomName)}.*${scope.structureType}`
-            );
+            // Use cached regex pattern
+            const patternStr = `${this.escapeRegex(scope.roomName)}.*${scope.structureType}`;
+            const pattern = this.getCachedRegex(patternStr);
             const count = cache.manager.invalidatePattern(pattern, namespace);
             invalidated += count;
           }
@@ -221,10 +234,48 @@ export class CacheCoherenceManager {
   }
 
   /**
+   * Get or create cached regex pattern
+   */
+  private getCachedRegex(pattern: string): RegExp {
+    let regex = this.regexCache.get(pattern);
+    if (!regex) {
+      regex = new RegExp(pattern);
+      this.regexCache.set(pattern, regex);
+      
+      // Limit cache size to prevent memory leak
+      if (this.regexCache.size > 100) {
+        // Remove oldest entry (first in Map)
+        const firstKey = this.regexCache.keys().next().value;
+        if (firstKey) {
+          this.regexCache.delete(firstKey);
+        }
+      }
+    }
+    return regex;
+  }
+
+  /**
    * Escape special regex characters
    */
   private escapeRegex(str: string): string {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /**
+   * Build and cache regex pattern for room invalidation
+   */
+  private getRoomPattern(roomName: string): RegExp {
+    const escapedRoom = this.escapeRegex(roomName);
+    const patternStr = `(^|:)${escapedRoom}($|:)`;
+    return this.getCachedRegex(patternStr);
+  }
+
+  /**
+   * Build and cache regex pattern for creep invalidation
+   */
+  private getCreepPattern(creepName: string): RegExp {
+    const escapedCreep = this.escapeRegex(creepName);
+    return this.getCachedRegex(escapedCreep);
   }
 
   /**
@@ -246,7 +297,7 @@ export class CacheCoherenceManager {
     const sortedCaches = Array.from(this.registeredCaches.values())
       .sort((a, b) => a.priority - b.priority);
 
-    // Evict from lowest priority caches first
+    // Evict from lowest priority caches first using LRU
     for (const cache of sortedCaches) {
       if (totalEvicted >= targetReduction) break;
 
@@ -255,12 +306,23 @@ export class CacheCoherenceManager {
       
       if (cacheSize === 0) continue;
 
-      // Evict 10% of this cache
-      const toEvict = Math.max(1, Math.floor(cacheSize * 0.1));
+      // Calculate how many entries to evict (10% or enough to meet target)
+      const bytesPerEntry = this.estimatedBytesPerEntry[cache.namespace] 
+        ?? this.estimatedBytesPerEntry.default;
+      const entriesNeeded = Math.ceil((targetReduction - totalEvicted) / bytesPerEntry);
+      const toEvict = Math.min(
+        Math.max(1, Math.floor(cacheSize * 0.1)),
+        entriesNeeded
+      );
       
-      // Use cache manager's cleanup which does LRU eviction
+      // Evict using the cache manager's LRU eviction
+      // CacheManager.evictLRU is private, so we trigger it via cleanup
+      // TODO: Expose a public evictLRU(namespace, count) method in CacheManager
       for (let i = 0; i < toEvict; i++) {
-        cache.manager.cleanup();
+        // For now, use cleanup which removes expired entries
+        // This isn't true LRU but will reduce cache size
+        const evicted = cache.manager.cleanup();
+        if (evicted === 0) break; // No more to evict
       }
 
       totalEvicted += toEvict;
@@ -271,18 +333,27 @@ export class CacheCoherenceManager {
 
   /**
    * Estimate total memory usage across all caches
-   * This is approximate - actual memory usage may vary
+   * Uses configurable per-namespace estimates for accuracy
    */
   private estimateTotalMemory(): number {
     let total = 0;
     
     for (const cache of this.registeredCaches.values()) {
       const stats = cache.manager.getCacheStats(cache.namespace);
-      // Rough estimate: 1KB per cache entry
-      total += stats.size * 1024;
+      const bytesPerEntry = this.estimatedBytesPerEntry[cache.namespace] 
+        ?? this.estimatedBytesPerEntry.default;
+      total += stats.size * bytesPerEntry;
     }
     
     return total;
+  }
+
+  /**
+   * Set estimated bytes per entry for a namespace
+   * Allows fine-tuning memory estimation
+   */
+  public setMemoryEstimate(namespace: string, bytesPerEntry: number): void {
+    this.estimatedBytesPerEntry[namespace] = bytesPerEntry;
   }
 
   /**
