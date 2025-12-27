@@ -122,7 +122,7 @@ export interface Process {
   /**
    * Tick offset for distributed execution (optional)
    * Used with tickModulo to distribute processes across ticks
-   * Should be less than tickModulo for predictable distribution
+   * Must be less than tickModulo (enforced by validation)
    */
   tickOffset?: number;
   /** Process execution function */
