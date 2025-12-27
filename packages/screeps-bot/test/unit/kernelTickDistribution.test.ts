@@ -11,7 +11,7 @@ describe("Kernel tick distribution", () => {
     executionLog = new Map();
     
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore: Allow setting test values
+    // @ts-expect-error: Allow setting test values
     global.Game = {
       ...global.Game,
       time: 0,
