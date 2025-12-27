@@ -183,10 +183,9 @@ async function connectToAPI() {
 
       api.socket.on('connected', () => {
         log('WebSocket connected');
-        apiConnected = true;
       });
 
-      api.socket.on('auth', (event) => {
+      api.socket.on('auth', () => {
         log('WebSocket authenticated');
       });
 
