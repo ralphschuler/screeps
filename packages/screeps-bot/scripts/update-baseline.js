@@ -48,10 +48,15 @@ function updateBaseline(branch, report) {
     baseline = JSON.parse(data);
   }
   
-  // Update baseline with new values
+  // Update baseline metadata
   baseline.commit = report.commit;
   baseline.timestamp = report.timestamp;
   baseline.branch = branch;
+  
+  // Preserve existing scenarios object if it exists
+  if (!baseline.scenarios) {
+    baseline.scenarios = {};
+  }
   
   // Update default scenario - check for proper nested structure
   if (report.analysis && report.analysis.cpu && 

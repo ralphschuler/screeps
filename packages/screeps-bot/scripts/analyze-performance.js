@@ -22,7 +22,6 @@ const __dirname = path.dirname(__filename);
 const REGRESSION_THRESHOLD = 0.10; // 10% increase is considered a regression
 const LOGS_DIR = path.join(__dirname, '..', 'logs');
 const CONSOLE_LOG_FILE = path.join(LOGS_DIR, 'console.log');
-const SERVER_LOG_FILE = path.join(LOGS_DIR, 'server.log');
 const RESULTS_FILE = path.join(__dirname, '..', 'performance-results.json');
 const BASELINE_DIR = path.join(__dirname, '..', '..', '..', 'performance-baselines');
 const REPORT_FILE = path.join(__dirname, '..', 'performance-report.json');
@@ -53,8 +52,9 @@ function parseCpuMetrics(consoleLog) {
             bucketHistory.push(stats.data.cpu.bucket);
           }
         }
-      } catch (e) {
-        // Not valid JSON, continue to next format
+        continue; // Skip plain text parsing if JSON was successful
+      } catch {
+        // Not valid JSON, continue to plain text parsing
       }
     }
     
@@ -160,8 +160,12 @@ function detectRegression(current, baseline, threshold = REGRESSION_THRESHOLD) {
     };
   }
   
-  const avgCpuChange = (current.avgCpu - baseline.avgCpu) / baseline.avgCpu;
-  const maxCpuChange = (current.maxCpu - baseline.maxCpu) / baseline.maxCpu;
+  // Use safe denominators to avoid division by zero
+  const avgCpuDenom = baseline.avgCpu || Number.EPSILON;
+  const maxCpuDenom = baseline.maxCpu || Number.EPSILON;
+  
+  const avgCpuChange = (current.avgCpu - baseline.avgCpu) / avgCpuDenom;
+  const maxCpuChange = (current.maxCpu - baseline.maxCpu) / maxCpuDenom;
   
   const avgRegression = avgCpuChange > threshold;
   const maxRegression = maxCpuChange > threshold;
@@ -217,8 +221,8 @@ function formatMarkdownReport(report) {
   markdown += '### Summary\n\n';
   markdown += '| Metric | Value | Status |\n';
   markdown += '|--------|-------|--------|\n';
-  markdown += `| Avg CPU | ${report.summary.avgCpu} | ${regression.avgRegression ? '❌' : '✅'} |\n`;
-  markdown += `| Max CPU | ${report.summary.maxCpu} | ${regression.maxRegression ? '❌' : '✅'} |\n`;
+  markdown += `| Avg CPU | ${report.summary.avgCpu} | ${regression.avgRegression === true ? '❌' : '✅'} |\n`;
+  markdown += `| Max CPU | ${report.summary.maxCpu} | ${regression.maxRegression === true ? '❌' : '✅'} |\n`;
   markdown += `| P95 CPU | ${report.summary.p95Cpu} | ℹ️ |\n`;
   markdown += `| P99 CPU | ${report.summary.p99Cpu} | ℹ️ |\n`;
   markdown += `| Avg Bucket | ${report.summary.avgBucket} | ${analysis.bucket.avg > 9000 ? '✅' : '⚠️'} |\n`;
@@ -231,11 +235,11 @@ function formatMarkdownReport(report) {
     markdown += '| Metric | Current | Baseline | Change |\n';
     markdown += '|--------|---------|----------|--------|\n';
     
-    if (regression.avgRegression) {
+    if (regression.avgRegression === true && regression.current && regression.baseline) {
       markdown += `| Avg CPU | ${regression.current.avgCpu.toFixed(3)} | ${regression.baseline.avgCpu.toFixed(3)} | +${regression.avgCpuChange.toFixed(1)}% |\n`;
     }
     
-    if (regression.maxRegression) {
+    if (regression.maxRegression === true && regression.current && regression.baseline) {
       markdown += `| Max CPU | ${regression.current.maxCpu.toFixed(3)} | ${regression.baseline.maxCpu.toFixed(3)} | +${regression.maxCpuChange.toFixed(1)}% |\n`;
     }
     

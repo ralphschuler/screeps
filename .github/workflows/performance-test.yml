@@ -30,7 +30,7 @@ jobs:
     environment:
       name: testing
     permissions:
-      contents: read
+      contents: write
       actions: read
       pull-requests: write
     
@@ -188,7 +188,7 @@ jobs:
         working-directory: packages/screeps-bot
         run: |
           if [ -f performance-report.json ]; then
-            PASSED=$(cat performance-report.json | grep -o '"passed":[^,]*' | grep -o 'true\|false')
+            PASSED=$(node -e "const report = require('./performance-report.json'); console.log(report.passed);")
             if [ "$PASSED" = "false" ]; then
               echo "::error::Performance regression detected"
               exit 1
