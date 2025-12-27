@@ -251,4 +251,4 @@ The CPU Management system is **complete, tested, documented, and production-read
 ---
 *Last Updated: 2025-12-19*  
 *Issue: #5 CPU Management*  
-*Consolidated Stats: stats.ts, profiler.ts → unifiedStats.ts*
+*Stats System: All statistics consolidated in unifiedStats.ts*

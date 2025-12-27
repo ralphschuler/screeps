@@ -194,7 +194,7 @@ The following enhancements could be considered:
 ## Related Files
 
 - `src/utils/creepMetrics.ts` - Metric utility functions
-- `src/core/stats.ts` - Stats system with metric aggregation
+- `src/core/unifiedStats.ts` - Unified stats system with metric aggregation
 - `src/main.ts` - CreepMemory interface definition
 - `src/memory/schemas.ts` - SwarmCreepMemory interface definition
 - `src/roles/behaviors/executor.ts` - Automatic metric tracking
