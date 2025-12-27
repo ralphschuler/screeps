@@ -175,7 +175,7 @@ All removed code is preserved in git history and can be restored if needed:
 - **Philosophy**: AGENTS.md - "Code Philosophy: Required Code Only"
 - **Related Issues**:
   - #708 - Alliance system potentially disabled
-  - #712 - Stats system consolidation (completed - stats.ts and profiler.ts already removed)
+  - #712 - Stats system consolidation (✅ COMPLETED - stats.ts, profiler.ts removed, deprecated exports eliminated)
 
 ## Conclusion
 

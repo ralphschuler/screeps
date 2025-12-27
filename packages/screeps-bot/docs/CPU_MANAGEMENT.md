@@ -235,9 +235,8 @@ Here's how the components work together in the main loop:
 
 ```typescript
 import { kernel } from './core/kernel';
-import { profiler } from './core/profiler';
-import { cpuBudgetManager } from './core/cpuBudgetManager';
 import { unifiedStats } from './core/unifiedStats';
+import { cpuBudgetManager } from './core/cpuBudgetManager';
 import { initializeNativeCallsTracking } from './core/nativeCallsTracker';
 
 // Initialize once
@@ -259,7 +258,7 @@ export function loop() {
     if (!room.controller?.my) continue;
     
     const isWarRoom = room.memory.danger >= 2;
-    const startCpu = profiler.startRoom(room.name);
+    const startCpu = unifiedStats.startRoom(room.name);
     
     cpuBudgetManager.executeRoomWithBudget(room.name, isWarRoom, () => {
       // Room logic here
@@ -268,16 +267,15 @@ export function loop() {
       runRoomSpawning(room);
     });
     
-    profiler.endRoom(room.name, startCpu);
+    unifiedStats.endRoom(room.name, startCpu);
   }
   
   // Profile subsystems
-  profiler.measureSubsystem('empire', () => {
+  unifiedStats.measureSubsystem('empire', () => {
     runEmpireLogic();
   });
   
   // Finalize
-  profiler.finalizeTick();
   unifiedStats.finalizeTick();
 }
 ```
@@ -337,25 +335,25 @@ The system provides console commands for debugging:
 // View CPU budget violations
 help('cpu')
 
-// Check profiler data
-profiler.logSummary()
+// Check unified stats summary
+unifiedStats.logSummary()
 
 // Get bucket mode
 kernel.getBucketMode()
 
-// Check specific room profiling
-profiler.getRoomData('W1N1')
+// Check specific room profiling (via Memory.stats)
+Memory.stats.rooms['W1N1']
 
-// Reset profiler data
-profiler.reset()
+// Reset unified stats data
+unifiedStats.reset()
 
-// View unified stats
-unifiedStats.getStats()
+// View unified stats snapshot
+unifiedStats.getSnapshot()
 ```
 
 ### Memory Structure
 
-Profiler data is stored in `Memory.stats.profiler`:
+Profiler data is stored in `Memory.stats.rooms[roomName].profiler`:
 
 ```typescript
 {
@@ -391,7 +389,7 @@ Profiler data is stored in `Memory.stats.profiler`:
 Comprehensive test suites are provided:
 
 - `test/unit/cpuBudgetManager.test.ts` - Budget enforcement tests
-- `test/unit/profiler.test.ts` - Profiling and EMA tests
+- `test/unit/unifiedStats.test.ts` - Stats collection and profiling tests
 - `test/unit/nativeCallsTracker.test.ts` - Method wrapping tests
 
 Run tests:
@@ -454,10 +452,10 @@ export const cpuConfig = {
 - Check if strict mode is needed
 - Verify budget limits are appropriate
 
-**Issue**: Profiler data not updating
-- Call `profiler.finalizeTick()` at end of loop
+**Issue**: Stats data not updating
+- Call `unifiedStats.finalizeTick()` at end of loop
 - Check if profiling is enabled
-- Verify Memory.stats.profiler exists
+- Verify Memory.stats exists
 
 ## References
 

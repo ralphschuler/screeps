@@ -55,15 +55,7 @@ The Screeps bot features a **unified statistics system** (`unifiedStats`) that c
 - `collectProcessStats()` - Collect kernel process stats
 - `finalizeTick()` - Publish all stats to Memory.stats at end of tick
 
-### 2. Profiler (`core/profiler.ts`)
-**Legacy module maintained for backward compatibility** with console commands.
-
-**Status:**
-- No longer used for measurements
-- All measurement calls migrated to `unifiedStats`
-- Exported from SwarmBot.ts for console command support only
-
-### 3. Native Calls Tracker (`core/nativeCallsTracker.ts`)
+### 2. Native Calls Tracker (`core/nativeCallsTracker.ts`)
 Wraps Screeps API methods to track usage.
 
 **Tracked Methods:**
@@ -78,7 +70,7 @@ Wraps Screeps API methods to track usage.
 - Can be enabled/disabled
 - Initialized once at bot startup
 
-### 4. Room Integration (`core/roomNode.ts`)
+### 3. Room Integration (`core/roomNode.ts`)
 Each room records its stats at end of tick.
 
 **Collected Metrics:**
@@ -90,7 +82,7 @@ Each room records its stats at end of tick.
 - Pheromone levels
 - Danger level
 
-### 5. Graphite Exporter (`screeps-graphite-exporter`)
+### 4. Graphite Exporter (`screeps-graphite-exporter`)
 Scrapes stats from Memory and exports to Grafana Cloud using the Graphite HTTP API.
 
 **Enhanced Features:**

@@ -47,7 +47,7 @@ describe("SwarmBot logging", () => {
     sandbox.stub(bot.kernel, "hasCpuBudget").returns(true);
     const kernelRunStub = sandbox.stub(bot.kernel, "run");
     sandbox.stub(bot.roomManager, "run");
-    sandbox.stub(bot.profiler, "measureSubsystem").callsFake((_, fn: () => void) => fn());
+    sandbox.stub(bot.unifiedStats, "measureSubsystem").callsFake((_, fn: () => void) => fn());
 
     // @ts-ignore: test setup for Game globals
     global.Game.creeps = {};
@@ -81,7 +81,7 @@ describe("SwarmBot logging", () => {
     sandbox.stub(bot.kernel, "getBucketMode").returns("normal");
     sandbox.stub(bot.kernel, "hasCpuBudget").returns(true);
     sandbox.stub(bot.roomManager, "run");
-    sandbox.stub(bot.profiler, "measureSubsystem").callsFake((_, fn: () => void) => fn());
+    sandbox.stub(bot.unifiedStats, "measureSubsystem").callsFake((_, fn: () => void) => fn());
 
     sandbox.stub(bot.roomVisualizer, "draw").throws(new Error("boom"));
 

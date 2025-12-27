@@ -175,7 +175,7 @@
 | TODO Comment | File | Status |
 |--------------|------|--------|
 | Add unit tests for behavior decision logic | `roles/behaviors/economy/index.ts` | ✅ ADDRESSED - behaviorSystem.test.ts (17 tests) |
-| Add unit tests for stats aggregation logic | `core/stats.ts` | ✅ ADDRESSED - stats.test.ts (23 tests) |
+| Add unit tests for stats aggregation logic | `core/unifiedStats.ts` | ✅ ADDRESSED - unifiedStats.test.ts (23 tests) |
 | Add unit tests for event bus priority ordering | `core/events.ts` | ✅ ADDRESSED - events.test.ts (26 tests) |
 | Add unit tests for kernel process scheduling | `core/kernel.ts` | ✅ ADDRESSED - kernelWrapAround.test.ts + other kernel tests |
 | Add integration tests for empire decision-making | `empire/empireManager.ts` | ✅ ADDRESSED - empireManager.test.ts (34 tests) |
