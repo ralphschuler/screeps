@@ -1,0 +1,40 @@
+{
+  "commit": "initial",
+  "timestamp": "2025-12-27T00:00:00Z",
+  "branch": "develop",
+  "scenarios": {
+    "default": {
+      "avgCpu": 0.08,
+      "maxCpu": 0.1,
+      "p95Cpu": 0.095,
+      "p99Cpu": 0.098
+    },
+    "Single Room Economy": {
+      "avgCpu": 0.08,
+      "maxCpu": 0.1,
+      "p95Cpu": 0.095,
+      "p99Cpu": 0.098
+    },
+    "10-Room Empire": {
+      "avgCpu": 1.2,
+      "maxCpu": 1.5,
+      "p95Cpu": 1.45,
+      "p99Cpu": 1.48
+    },
+    "Combat Defense": {
+      "avgCpu": 0.2,
+      "maxCpu": 0.25,
+      "p95Cpu": 0.24,
+      "p99Cpu": 0.245
+    }
+  },
+  "metadata": {
+    "description": "Initial baseline values based on ROADMAP.md targets",
+    "source": "ROADMAP.md Section 2 - Design Principles",
+    "targets": {
+      "eco_room": "≤0.1 CPU per tick",
+      "combat_room": "≤0.25 CPU per tick",
+      "global_kernel": "≤1 CPU every 20-50 ticks"
+    }
+  }
+}

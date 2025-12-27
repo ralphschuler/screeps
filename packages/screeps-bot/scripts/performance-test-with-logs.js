@@ -247,8 +247,12 @@ async function cleanup() {
   log('Cleaning up...');
 
   // Close log streams
-  consoleLogStream.end();
-  serverLogStream.end();
+  if (consoleLogStream) {
+    consoleLogStream.end();
+  }
+  if (serverLogStream) {
+    serverLogStream.end();
+  }
 
   // Kill performance server if still running
   if (performanceServerProcess && !performanceServerProcess.killed) {

@@ -30,8 +30,9 @@ jobs:
     environment:
       name: testing
     permissions:
-      contents: read
+      contents: write
       actions: read
+      pull-requests: write
     
     steps:
       - name: Checkout
@@ -52,12 +53,44 @@ jobs:
         working-directory: packages/screeps-chemistry
         run: npm run build
 
-      - name: Install dependencies
+      - name: Install dependencies for screeps-spawn
+        working-directory: packages/screeps-spawn
+        run: npm ci
+
+      - name: Build screeps-spawn
+        working-directory: packages/screeps-spawn
+        run: npm run build
+
+      - name: Install dependencies for screeps-utils
+        working-directory: packages/screeps-utils
+        run: npm ci
+
+      - name: Build screeps-utils
+        working-directory: packages/screeps-utils
+        run: npm run build
+
+      - name: Install dependencies for screeps-bot
         working-directory: packages/screeps-bot
         run: npm ci
 
-      - name: Build bot
+      - name: Build screeps-bot
         working-directory: packages/screeps-bot
+        run: npm run build
+
+      - name: Install dependencies for screeps-defense
+        working-directory: packages/screeps-defense
+        run: npm ci
+
+      - name: Build screeps-defense
+        working-directory: packages/screeps-defense
+        run: npm run build
+
+      - name: Install dependencies for screeps-economy
+        working-directory: packages/screeps-economy
+        run: npm ci
+
+      - name: Build screeps-economy
+        working-directory: packages/screeps-economy
         run: npm run build
 
       - name: Set up Docker Buildx
@@ -107,3 +140,106 @@ jobs:
           path: packages/screeps-bot/performance-results.json
           retention-days: 30
           if-no-files-found: warn
+
+      - name: Analyze performance results
+        if: always()
+        working-directory: packages/screeps-bot
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_EVENT_NUMBER: ${{ github.event.number }}
+        run: node scripts/analyze-performance.js
+        continue-on-error: true
+
+      - name: Upload performance report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: performance-report
+          path: |
+            packages/screeps-bot/performance-report.json
+            packages/screeps-bot/performance-report.md
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Comment PR with performance results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            const reportPath = path.join(process.cwd(), 'packages/screeps-bot/performance-report.md');
+            
+            if (!fs.existsSync(reportPath)) {
+              console.log('Performance report not found, skipping PR comment');
+              return;
+            }
+            
+            const report = fs.readFileSync(reportPath, 'utf-8');
+            
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('📊 Performance Test Results')
+            );
+            
+            const commentBody = report;
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+              console.log('Updated existing PR comment');
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody
+              });
+              console.log('Created new PR comment');
+            }
+
+      - name: Check for performance regression
+        if: always()
+        working-directory: packages/screeps-bot
+        run: |
+          if [ -f performance-report.json ]; then
+            PASSED=$(node -e "const report = require('./performance-report.json'); console.log(report.passed);")
+            if [ "$PASSED" = "false" ]; then
+              echo "::error::Performance regression detected"
+              exit 1
+            fi
+          fi
+
+      - name: Update performance baseline
+        if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+        working-directory: packages/screeps-bot
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: node scripts/update-baseline.js
+
+      - name: Commit baseline update
+        if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore(performance): update baseline for ${{ github.ref_name }}'
+          file_pattern: 'performance-baselines/*.json'
+          commit_user_name: 'github-actions[bot]'
+          commit_user_email: 'github-actions[bot]@users.noreply.github.com'
+          skip_dirty_check: false
