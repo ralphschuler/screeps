@@ -53,14 +53,19 @@ function updateBaseline(branch, report) {
   baseline.timestamp = report.timestamp;
   baseline.branch = branch;
   
-  // Update default scenario
-  if (report.analysis && report.analysis.cpu) {
+  // Update default scenario - check for proper nested structure
+  if (report.analysis && report.analysis.cpu && 
+      typeof report.analysis.cpu.avg === 'number' &&
+      typeof report.analysis.cpu.max === 'number') {
     baseline.scenarios.default = {
       avgCpu: report.analysis.cpu.avg,
       maxCpu: report.analysis.cpu.max,
-      p95Cpu: report.analysis.cpu.p95,
-      p99Cpu: report.analysis.cpu.p99
+      p95Cpu: report.analysis.cpu.p95 || 0,
+      p99Cpu: report.analysis.cpu.p99 || 0
     };
+  } else {
+    console.warn('Warning: Report missing CPU analysis data, baseline not updated');
+    return;
   }
   
   // Write updated baseline

@@ -96,14 +96,36 @@ function calculateStats(values) {
   
   const sorted = [...values].sort((a, b) => a - b);
   const sum = values.reduce((a, b) => a + b, 0);
+  const len = sorted.length;
+  
+  // Calculate median (average of two middle values for even-length arrays)
+  let median;
+  if (len % 2 === 0) {
+    median = (sorted[len / 2 - 1] + sorted[len / 2]) / 2;
+  } else {
+    median = sorted[Math.floor(len / 2)];
+  }
+  
+  // Calculate percentiles using linear interpolation
+  const percentile = (p) => {
+    const index = (p / 100) * (len - 1);
+    const lower = Math.floor(index);
+    const upper = Math.ceil(index);
+    const weight = index - lower;
+    
+    if (lower === upper) {
+      return sorted[lower];
+    }
+    return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+  };
   
   return {
     avg: sum / values.length,
     max: Math.max(...values),
     min: Math.min(...values),
-    median: sorted[Math.floor(sorted.length / 2)],
-    p95: sorted[Math.floor(sorted.length * 0.95)],
-    p99: sorted[Math.floor(sorted.length * 0.99)]
+    median: median,
+    p95: percentile(95),
+    p99: percentile(99)
   };
 }
 
