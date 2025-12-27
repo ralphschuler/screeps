@@ -6,6 +6,12 @@ import commonjs from "@rollup/plugin-commonjs";
 import typescript from "rollup-plugin-typescript2";
 import screeps from "rollup-plugin-screeps";
 import terser from "@rollup/plugin-terser";
+import alias from "@rollup/plugin-alias";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Helper: returns undefined if the env value is empty or undefined
 function cleanEnv(value) {
@@ -41,7 +47,15 @@ export default {
 
   plugins: [
     clear({ targets: ["dist"] }),
-    resolve({ rootDir: "src" }),
+    alias({
+      entries: [
+        { find: "@bot", replacement: path.resolve(__dirname, "src") }
+      ]
+    }),
+    resolve({ 
+      rootDir: path.resolve(__dirname, "src"),
+      extensions: [".js", ".ts"]
+    }),
     commonjs(),
     typescript({ tsconfig: "./tsconfig.json" }),
     terser({
