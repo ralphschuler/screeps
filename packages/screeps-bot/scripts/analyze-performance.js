@@ -29,26 +29,50 @@ const REPORT_FILE = path.join(__dirname, '..', 'performance-report.json');
 
 /**
  * Parse CPU usage from console logs
+ * Supports two formats:
+ * 1. JSON stats output: {"type":"stats","tick":123,"data":{"cpu":{"used":0.5}}}
+ * 2. Plain text: CPU: 0.5 Bucket: 9500
  */
 function parseCpuMetrics(consoleLog) {
-  const cpuPattern = /CPU:\s*([\d.]+)/gi;
-  const bucketPattern = /Bucket:\s*(\d+)/gi;
-  
   const cpuHistory = [];
   const bucketHistory = [];
   
-  let match;
-  while ((match = cpuPattern.exec(consoleLog)) !== null) {
-    const cpu = parseFloat(match[1]);
-    if (!isNaN(cpu)) {
-      cpuHistory.push(cpu);
-    }
-  }
+  // Split into lines
+  const lines = consoleLog.split('\n');
   
-  while ((match = bucketPattern.exec(consoleLog)) !== null) {
-    const bucket = parseInt(match[1], 10);
-    if (!isNaN(bucket)) {
-      bucketHistory.push(bucket);
+  for (const line of lines) {
+    // Try parsing JSON stats format first
+    if (line.includes('"type":"stats"') || line.includes('"type": "stats"')) {
+      try {
+        const stats = JSON.parse(line);
+        if (stats.data && stats.data.cpu) {
+          if (typeof stats.data.cpu.used === 'number') {
+            cpuHistory.push(stats.data.cpu.used);
+          }
+          if (typeof stats.data.cpu.bucket === 'number') {
+            bucketHistory.push(stats.data.cpu.bucket);
+          }
+        }
+      } catch (e) {
+        // Not valid JSON, continue to next format
+      }
+    }
+    
+    // Try plain text format
+    const cpuMatch = line.match(/CPU:\s*([\d.]+)/i);
+    if (cpuMatch) {
+      const cpu = parseFloat(cpuMatch[1]);
+      if (!isNaN(cpu)) {
+        cpuHistory.push(cpu);
+      }
+    }
+    
+    const bucketMatch = line.match(/Bucket:\s*(\d+)/i);
+    if (bucketMatch) {
+      const bucket = parseInt(bucketMatch[1], 10);
+      if (!isNaN(bucket)) {
+        bucketHistory.push(bucket);
+      }
     }
   }
   
