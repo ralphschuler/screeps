@@ -11,7 +11,7 @@ import { cacheCoherence } from "./CacheCoherence";
  * Collect cache coherence statistics for Grafana
  * Call this from the main stats collection routine
  */
-export function collectCacheStats(): Record<string, any> {
+export function collectCacheStats(): Record<string, number> {
   const stats = cacheCoherence.getCacheStats();
 
   return {

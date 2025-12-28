@@ -26,6 +26,9 @@ describe("CacheCoherence", () => {
     };
     g.Memory = {};
     
+    // Note: These tests use isolated instances rather than singleton instances
+    // (cacheCoherence and globalCache) to prevent state leakage between tests
+    // and allow independent testing of the coherence manager behavior
     coherence = new CacheCoherenceManager();
     cache1 = new CacheManager('heap');
     cache2 = new CacheManager('heap');
@@ -244,6 +247,7 @@ describe("CacheCoherence", () => {
       g.Game.time = 1000;
       
       const cleaned1 = coherence.cleanup();
+      assert.isAtLeast(cleaned1, 0);
       
       // Try again immediately - should skip
       const cleaned2 = coherence.cleanup();

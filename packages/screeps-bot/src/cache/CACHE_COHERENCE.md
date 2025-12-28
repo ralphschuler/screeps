@@ -68,11 +68,13 @@ import { initializeCacheEvents } from "./cache";
 // Call once during bot initialization
 initializeCacheEvents();
 
-// Events automatically trigger invalidation:
+// Events automatically trigger invalidation (8 handlers):
 // - creep.died → object/role caches
 // - structure.destroyed → object/path caches
 // - construction.complete → path/roomFind caches
 // - hostile.detected → closest/roomFind caches
+// - hostile.cleared → closest/roomFind caches
+// - spawn.completed → role caches
 // - rcl.upgrade → roomFind/path caches
 // - remote.lost → all caches for that room
 ```

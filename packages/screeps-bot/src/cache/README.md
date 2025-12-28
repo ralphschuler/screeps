@@ -437,6 +437,8 @@ Automatic cache invalidation based on game events:
 | `structure.destroyed` | `object`, `path` in that room |
 | `construction.complete` | `path`, `roomFind` in that room |
 | `hostile.detected` | `closest`, `roomFind` in that room |
+| `hostile.cleared` | `closest`, `roomFind` in that room |
+| `spawn.completed` | `role` in that room |
 | `rcl.upgrade` | `roomFind`, `path` in that room |
 | `remote.lost` | All caches for that room |
 

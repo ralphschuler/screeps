@@ -11,6 +11,14 @@ import { cacheCoherence, CacheLayer } from "./CacheCoherence";
 /**
  * Register all caches with the coherence manager
  * Call this during bot initialization
+ * 
+ * Total allocated budgets: 33MB (5+2+10+8+3+5)
+ * Default total budget in CacheCoherence: 50MB
+ * The 17MB difference allows for overhead and future expansion
+ * 
+ * Note: All caches currently share the same globalCache CacheManager instance.
+ * The namespace separation provides logical isolation while using shared storage.
+ * Future enhancement: Use separate CacheManager instances per layer.
  */
 export function registerAllCaches(): void {
   // L1 Cache: Fast, short-lived data (object references, body parts)

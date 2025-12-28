@@ -6,6 +6,11 @@
  *
  * Event-based invalidation prevents stale cache data and improves correctness
  * while maintaining high cache hit rates.
+ *
+ * Implements 8 event handlers:
+ * - creep.died, structure.destroyed, construction.complete
+ * - hostile.detected, hostile.cleared, remote.lost
+ * - spawn.completed, rcl.upgrade
  */
 
 import { eventBus, EventPriority } from "../core/events";
@@ -173,7 +178,7 @@ export function initializeCacheEvents(): void {
   eventBus.on(
     "spawn.completed",
     (event) => {
-      const { roomName, creepName } = event;
+      const { roomName } = event;
       
       // Invalidate room-level role caches (new creep may change role assignments)
       const scope: InvalidationScope = {

@@ -235,22 +235,29 @@ export class CacheCoherenceManager {
 
   /**
    * Get or create cached regex pattern
+   * Uses LRU eviction by re-inserting on access
    */
   private getCachedRegex(pattern: string): RegExp {
     let regex = this.regexCache.get(pattern);
-    if (!regex) {
+    
+    if (regex) {
+      // Refresh entry to maintain LRU ordering (most recently used at the end)
+      this.regexCache.delete(pattern);
+    } else {
       regex = new RegExp(pattern);
-      this.regexCache.set(pattern, regex);
-      
-      // Limit cache size to prevent memory leak
-      if (this.regexCache.size > 100) {
-        // Remove oldest entry (first in Map)
-        const firstKey = this.regexCache.keys().next().value;
-        if (firstKey) {
-          this.regexCache.delete(firstKey);
-        }
+    }
+    
+    this.regexCache.set(pattern, regex);
+    
+    // Limit cache size to prevent memory leak
+    if (this.regexCache.size > 100) {
+      // Remove least recently used entry (first in Map due to insertion order)
+      const firstKey = this.regexCache.keys().next().value;
+      if (firstKey !== undefined) {
+        this.regexCache.delete(firstKey);
       }
     }
+    
     return regex;
   }
 
@@ -315,17 +322,29 @@ export class CacheCoherenceManager {
         entriesNeeded
       );
       
-      // Evict using the cache manager's LRU eviction
-      // CacheManager.evictLRU is private, so we trigger it via cleanup
-      // TODO: Expose a public evictLRU(namespace, count) method in CacheManager
-      for (let i = 0; i < toEvict; i++) {
-        // For now, use cleanup which removes expired entries
+      // Evict using the cache manager's LRU eviction when available
+      const managerAny = cache.manager as any;
+      let actuallyEvicted = 0;
+      
+      if (typeof managerAny.evictLRU === "function") {
+        // Use proper LRU eviction if available
+        managerAny.evictLRU(cache.namespace, toEvict);
+        actuallyEvicted = toEvict;
+      } else {
+        // Fallback: use cleanup which only removes expired entries
         // This isn't true LRU but will reduce cache size
-        const evicted = cache.manager.cleanup();
-        if (evicted === 0) break; // No more to evict
+        // TODO: Implement proper LRU eviction in CacheManager.evictLRU(namespace, count)
+        for (let i = 0; i < toEvict; i++) {
+          const evicted = cache.manager.cleanup();
+          if (evicted > 0) {
+            actuallyEvicted += evicted;
+          } else {
+            break; // No more to evict
+          }
+        }
       }
 
-      totalEvicted += toEvict;
+      totalEvicted += actuallyEvicted;
     }
 
     return totalEvicted;
