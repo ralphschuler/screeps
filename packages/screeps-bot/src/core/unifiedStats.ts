@@ -1139,6 +1139,20 @@ export class UnifiedStatsManager {
         continue;
       }
 
+      // Check for CPU spikes (similar to room spike detection)
+      if (current >= baseline * this.config.anomalyDetection.spikeThreshold) {
+        anomalies.push({
+          type: "spike",
+          target: processId,
+          targetType: "process",
+          current,
+          baseline,
+          multiplier: current / baseline,
+          tick: Game.time,
+          context: `${processStats.name} (${processStats.frequency})`
+        });
+      }
+
       // Check for sustained high CPU compared to budget
       if (processStats.cpuBudget > 0) {
         const utilizationRatio = baseline / processStats.cpuBudget;
@@ -1919,7 +1933,7 @@ export class UnifiedStatsManager {
   /**
    * Posture code to name mapping for console display
    */
-  private static readonly POSTURE_NAMES: readonly string[] = [
+  public static readonly POSTURE_NAMES: readonly string[] = [
     "eco",
     "expand", 
     "defensive",
@@ -1932,7 +1946,7 @@ export class UnifiedStatsManager {
   /**
    * Convert posture code back to name
    */
-  private postureCodeToName(code: number): string {
+  public postureCodeToName(code: number): string {
     return UnifiedStatsManager.POSTURE_NAMES[code] ?? "eco";
   }
 

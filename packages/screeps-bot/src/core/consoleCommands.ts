@@ -632,12 +632,9 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
     const rooms = Object.values(snapshot.rooms).sort((a, b) => b.profiler.avgCpu - a.profiler.avgCpu);
     const topRooms = showAll ? rooms : rooms.slice(0, 10);
     
-    // Posture names matching unifiedStats mapping
-    const postureNames = ["eco", "expand", "defensive", "war", "siege", "evacuate", "nukePrep"];
-    
     result += `Top ${topRooms.length} Rooms by CPU:\n`;
     for (const room of topRooms) {
-      const posture = postureNames[room.brain.postureCode] || "eco";
+      const posture = unifiedStats.postureCodeToName(room.brain.postureCode);
       result += `  ${room.name} (RCL${room.rcl}, ${posture}): avg ${room.profiler.avgCpu.toFixed(3)} | peak ${room.profiler.peakCpu.toFixed(3)} | samples ${room.profiler.samples}\n`;
     }
     

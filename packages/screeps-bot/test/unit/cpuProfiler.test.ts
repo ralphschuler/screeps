@@ -102,7 +102,20 @@ describe("CPU Profiler Enhancement", () => {
         posture: "eco",
         danger: 0,
         pheromones: {},
-        metrics: {}
+        metrics: {
+          energyHarvested: 0,
+          energySpawning: 0,
+          energyConstruction: 0,
+          energyRepair: 0,
+          energyTower: 0,
+          energyAvailable: 0,
+          energyCapacity: 0,
+          energyNeed: 0,
+          controllerProgress: 0,
+          hostileCount: 0,
+          damageReceived: 0,
+          constructionSites: 0
+        }
       };
 
       // Record room with low CPU (0.05)
@@ -134,7 +147,20 @@ describe("CPU Profiler Enhancement", () => {
         posture: "eco",
         danger: 0,
         pheromones: {},
-        metrics: {}
+        metrics: {
+          energyHarvested: 0,
+          energySpawning: 0,
+          energyConstruction: 0,
+          energyRepair: 0,
+          energyTower: 0,
+          energyAvailable: 0,
+          energyCapacity: 0,
+          energyNeed: 0,
+          controllerProgress: 0,
+          hostileCount: 0,
+          damageReceived: 0,
+          constructionSites: 0
+        }
       };
 
       // Record room with 80% of eco budget (0.08 / 0.1)
@@ -198,7 +224,20 @@ describe("CPU Profiler Enhancement", () => {
         posture: "war",
         danger: 2,
         pheromones: {},
-        metrics: {}
+        metrics: {
+          energyHarvested: 0,
+          energySpawning: 0,
+          energyConstruction: 0,
+          energyRepair: 0,
+          energyTower: 0,
+          energyAvailable: 0,
+          energyCapacity: 0,
+          energyNeed: 0,
+          controllerProgress: 0,
+          hostileCount: 0,
+          damageReceived: 0,
+          constructionSites: 0
+        }
       };
 
       // Record room with 0.2 CPU (would exceed eco budget but ok for war)
@@ -231,17 +270,33 @@ describe("CPU Profiler Enhancement", () => {
         posture: "eco",
         danger: 0,
         pheromones: {},
-        metrics: {}
+        metrics: {
+          energyHarvested: 0,
+          energySpawning: 0,
+          energyConstruction: 0,
+          energyRepair: 0,
+          energyTower: 0,
+          energyAvailable: 0,
+          energyCapacity: 0,
+          energyNeed: 0,
+          controllerProgress: 0,
+          hostileCount: 0,
+          damageReceived: 0,
+          constructionSites: 0
+        }
       };
 
       // Establish baseline with multiple samples
+      // Note: This doesn't simulate actual tick-by-tick processing but directly
+      // manipulates the profiler memory to establish a baseline for anomaly detection.
+      // In production, the EMA calculation happens across real ticks via finalizeTick().
       statsManager.startTick();
       for (let i = 0; i < 15; i++) {
         const cpuStart = statsManager.startRoom("W1N1");
         statsManager.recordRoom(mockRoom, 0.05); // Normal baseline
         statsManager.endRoom("W1N1", cpuStart);
         
-        // Advance profiler memory
+        // Advance profiler memory to simulate accumulated samples
         mockMemory.stats.profiler.rooms["W1N1"] = {
           avgCpu: 0.05,
           peakCpu: 0.06,
@@ -288,7 +343,20 @@ describe("CPU Profiler Enhancement", () => {
         posture: "eco",
         danger: 0,
         pheromones: {},
-        metrics: {}
+        metrics: {
+          energyHarvested: 0,
+          energySpawning: 0,
+          energyConstruction: 0,
+          energyRepair: 0,
+          energyTower: 0,
+          energyAvailable: 0,
+          energyCapacity: 0,
+          energyNeed: 0,
+          controllerProgress: 0,
+          hostileCount: 0,
+          damageReceived: 0,
+          constructionSites: 0
+        }
       };
 
       // Only 3 samples (below minSamples threshold of 10)
@@ -342,7 +410,20 @@ describe("CPU Profiler Enhancement", () => {
         posture: "eco",
         danger: 0,
         pheromones: {},
-        metrics: {}
+        metrics: {
+          energyHarvested: 0,
+          energySpawning: 0,
+          energyConstruction: 0,
+          energyRepair: 0,
+          energyTower: 0,
+          energyAvailable: 0,
+          energyCapacity: 0,
+          energyNeed: 0,
+          controllerProgress: 0,
+          hostileCount: 0,
+          damageReceived: 0,
+          constructionSites: 0
+        }
       };
 
       // Establish baseline
