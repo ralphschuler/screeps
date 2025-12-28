@@ -80,6 +80,31 @@ function updateBaseline(branch, report) {
   console.log(`   Commit: ${baseline.commit}`);
   console.log(`   Avg CPU: ${baseline.scenarios.default.avgCpu.toFixed(3)}`);
   console.log(`   Max CPU: ${baseline.scenarios.default.maxCpu.toFixed(3)}`);
+  
+  // Archive historical snapshot
+  archiveHistoricalSnapshot(branch, baseline);
+}
+
+/**
+ * Archive a historical snapshot of the baseline
+ */
+function archiveHistoricalSnapshot(branch, baseline) {
+  const historyDir = path.join(BASELINE_DIR, 'history');
+  
+  // Ensure history directory exists
+  if (!fs.existsSync(historyDir)) {
+    fs.mkdirSync(historyDir, { recursive: true });
+  }
+  
+  // Create filename with date and commit
+  const date = new Date(baseline.timestamp).toISOString().split('T')[0];
+  const commitShort = baseline.commit.substring(0, 7);
+  const filename = `${date}_${branch}_${commitShort}.json`;
+  const filepath = path.join(historyDir, filename);
+  
+  // Write historical snapshot
+  fs.writeFileSync(filepath, JSON.stringify(baseline, null, 2));
+  console.log(`📊 Archived historical snapshot: ${filename}`);
 }
 
 /**
