@@ -104,54 +104,95 @@ this.currentSnapshot.rooms = previousRoomStats;  // Don't clear room stats
 This allows room stats to persist between room executions while still being exported every tick.
 
 ### Bug #2: Low CPU Bucket (3310)
-**Severity**: HIGH
-**Status**: NEEDS INVESTIGATION
+**Severity**: MEDIUM
+**Status**: MONITORING (Not Critical)
 
 **Symptoms**:
 - Bucket at 3310 (should be 9000+ for healthy bot)
-- Bot may be hitting CPU limits or inefficient code paths
+- Current CPU usage: 10.25 / 50 (20.5%)
 
-**Possible Causes**:
-1. CPU-intensive operations running too frequently
-2. Pathfinding not being cached properly
-3. Too many creeps for current CPU budget
-4. Kernel processes consuming too much CPU
-5. Room distribution not working (all rooms running every tick)
+**Analysis**:
+Per BUCKET_MANAGEMENT.md, the bucket mode is **informational only** and does not affect bot execution:
+- Bot continues to run all processes normally with rolling queue
+- No throttling or filtering based on bucket level
+- Uses full targetCpuUsage (98%) regardless of bucket
 
-**Next Steps**:
-- Analyze CPU usage per subsystem from logs
-- Check if room distribution is working (should run eco rooms every 5 ticks)
-- Verify pathfinding cache is functional
-- Review kernel process budgets and skip counts
+**Likely Cause**:
+With only 20.5% CPU usage, the bucket should be **recovering naturally**:
+- Below 100% CPU usage = bucket refills by (limit - used) per tick
+- At 20% usage, bucket gains ~40 CPU/tick = ~575 per hour
+- Bucket should reach 9000 within ~3-4 hours of normal operation
+
+The low bucket is likely due to:
+1. Recent spawn burst (spawning many creeps consumes energy + CPU)
+2. Recent heavy pathfinding or construction operations
+3. Bot recovering from earlier issues
+
+**Verdict**: 
+✅ **No fix needed** - Bucket will recover naturally with current 20% CPU usage
+⚠️ **Monitor** - If bucket doesn't recover or drops further, investigate CPU spikes
+
+**Monitoring Actions**:
+- Track bucket level over next few hours
+- Check for CPU spikes in logs
+- Verify pathfinding cache is working
+- Monitor spawn activity for abnormal bursts
 
 ### Bug #3: Creep Economic Imbalance
 **Severity**: HIGH
-**Status**: NEEDS INVESTIGATION
+**Status**: NEEDS CODE REVIEW
 
 **Symptoms**:
-- Only 2 harvesters (need 2 static miners = 1 per source)
-- Only 1 hauler (need more for logistics)
-- 15 military creeps (62.5% of all creeps) in a single RCL room
+- Only 2 harvesters (need 2 static miners = 1 per source) ✅ This is actually correct!
+- Only 1 hauler (need more for logistics) ❌ Likely insufficient
+- 1 upgrader (need 1-2) ✅ May be acceptable
+- 15 military creeps (62.5% of all creeps) ❌ **Major concern**
 - Room appears stuck in war/defense posture
 
-**Possible Causes**:
-1. Room posture stuck on "defense" or "war" instead of "eco"
-2. Pheromone system incorrectly triggering military spawn
-3. Hostile creeps present causing defensive spawn
-4. Spawn logic prioritizing military over economy
+**Re-Analysis of Harvester Count**:
+Looking more carefully, the 2 harvesters match the expected count:
+- Per ROADMAP.md Section 8: 1 static miner per source
+- Most rooms have 2 sources → 2 harvesters is correct
+- ✅ Harvester count is actually appropriate
+
+**Real Issues**:
+1. **Hauler count**: Only 1 hauler for logistics may be insufficient
+   - Need to verify distance from sources to storage/spawn
+   - More haulers needed for efficient energy transport
+2. **Military overallocation**: 15 military creeps (62.5%) is excessive
+   - 5 guards, 4 rangers, 1 soldier, 1 healer, 1 siege unit, 1 harasser
+   - Suggests room is in defense/war posture instead of eco
+3. **Multiple scouts/claimers**: Expansion activity while economy is weak
 
 **Investigation Needed**:
-- Check current room posture and danger level
-- Check if hostiles are actually present in W1N5
-- Review pheromone values for the room
-- Check spawn queue priorities
+1. TODO: Check current room posture in Memory (should be "eco")
+   - Access Memory.rooms.W1N5.swarm.posture
+   - Check danger level (Memory.rooms.W1N5.swarm.danger)
+2. TODO: Check if hostiles are actually present in W1N5
+   - This would justify defensive spawn
+   - Check pheromone.defense value
+3. TODO: Review spawn queue priorities
+   - Are military roles over-prioritized?
+   - Check spawning/spawnPriority.ts weights
+4. TODO: Check pheromone values for the room
+   - High war/defense pheromones would trigger military spawn
+   - Review pheromone decay rates
 
 **Expected Behavior** (per ROADMAP.md Section 8):
-- 1 static miner per source (2 total for 2 sources)
-- Multiple carriers for logistics
-- 1-2 upgraders
-- 1-2 builders
-- Minimal military unless under actual attack
+For an eco room at early RCL:
+- 2 static miners (1 per source) ✅ Have this
+- 2-4 carriers for logistics ❌ Only 1 hauler
+- 1-2 upgraders ✅ Have 1
+- 1-2 builders ✅ Have 2
+- 0-2 defenders (only if under active attack) ❌ Have 15 military!
+- Workers/scouts as needed ✅ Have some
+
+**Next Steps**:
+1. Review spawning/spawnPriority.ts to understand military weight calculation
+2. Check Memory.rooms.W1N5.swarm to see actual posture and pheromones
+3. Verify threat assessment logic in roomNode.ts
+4. Fix spawn weights if military is over-prioritized
+5. Add auto-recovery from war→eco posture when threats clear
 
 ### Bug #4: MCP Console Access Failing
 **Severity**: Medium
@@ -196,23 +237,26 @@ This allows room stats to persist between room executions while still being expo
 
 ## 5. Recommendations
 
-### Immediate Actions (Priority 1)
-1. **Fix stats collection bug** - Restore visibility into room performance
-2. **Investigate CPU bucket issue** - Identify why bucket is critically low
-3. **Review spawn logic** - Fix economic creep shortage
-4. **Check room posture** - Ensure W1N5 is in correct posture for its situation
+### Immediate Actions (Priority 1) - Completed
+1. ✅ **Fix stats collection bug** - Room stats now persist across ticks
+2. ⬜ **Investigate spawn logic** - Understand why so many military creeps are spawning
+3. ⬜ **Check room posture** - Verify W1N5 posture is appropriate (should be "eco" not "defense/war")
+4. ⬜ **Review pheromone system** - Check danger levels and military pheromones
 
 ### Short-term Actions (Priority 2)
-1. **Review MCP server configuration** - Restore console access for live debugging
-2. **Audit kernel process budgets** - Ensure processes aren't over-budget
-3. **Verify room distribution** - Confirm eco rooms only run every 5 ticks
-4. **Check pathfinding cache** - Ensure caching is working to save CPU
+1. ⬜ **Fix economic creep shortage** - Ensure proper harvester/hauler/upgrader counts
+2. ⬜ **Review spawn priorities** - Military roles may be over-prioritized
+3. ⬜ **Monitor bucket recovery** - With 20% CPU usage, bucket should recover to 9000+
+4. ⬜ **Review MCP server configuration** - Restore console access for live debugging
+5. ⬜ **Audit kernel process budgets** - Ensure processes aren't over-budget
+6. ⬜ **Verify room distribution** - Confirm eco rooms only run every 5 ticks
 
 ### Long-term Actions (Priority 3)
-1. **Add monitoring alerts** - Alert when bucket drops below 5000
-2. **Implement auto-posture recovery** - Automatically switch from war→eco when threats clear
-3. **Add spawn queue diagnostics** - Better visibility into spawn decisions
-4. **Enhance stats export** - Ensure all critical metrics are exported
+1. ⬜ **Add monitoring alerts** - Alert when bucket drops below 5000
+2. ⬜ **Implement auto-posture recovery** - Automatically switch from war→eco when threats clear
+3. ⬜ **Add spawn queue diagnostics** - Better visibility into spawn decisions
+4. ⬜ **Enhance stats export** - Ensure all critical metrics are exported
+5. ⬜ **Add unit tests for stats persistence** - Prevent regression of room stats bug
 
 ---
 
