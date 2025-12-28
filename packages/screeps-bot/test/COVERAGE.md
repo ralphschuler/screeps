@@ -56,7 +56,7 @@ Coverage reports are automatically generated and uploaded to Codecov on every pu
 
 ## High Priority Coverage Areas
 
-Based on ROADMAP.md Section 23, these areas need additional test coverage:
+Based on the general testing guidance in ROADMAP.md Section 23 and the detailed requirements from the originating GitHub issue, these areas need additional test coverage:
 
 1. **Pheromone Logic** (Section 7)
    - Current: ~50% coverage
@@ -132,4 +132,4 @@ The following are excluded from coverage metrics:
 
 - [TESTING_GUIDE.md](./TESTING_GUIDE.md) - How to write and run tests
 - [TEST_COVERAGE.md](./TEST_COVERAGE.md) - Detailed coverage by file
-- [ROADMAP.md](../../ROADMAP.md) - Section 23 on testing requirements
+- [ROADMAP.md](../../ROADMAP.md) - Section 23: Projektstruktur, Modularität & Tests (general guidance on structure & testability)

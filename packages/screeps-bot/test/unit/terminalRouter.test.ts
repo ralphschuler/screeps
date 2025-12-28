@@ -7,8 +7,29 @@
 import { expect } from "chai";
 import { TerminalRouter } from "@ralphschuler/screeps-economy";
 
+interface MockTerminal {
+  my: boolean;
+  isActive: () => boolean;
+  store: Record<string, unknown>;
+}
+
+interface MockRoom {
+  controller?: { my: boolean };
+  terminal?: MockTerminal;
+}
+
+interface MockMarket {
+  calcTransactionCost: (amount: number, from: string, to: string) => number;
+}
+
+interface MockGame {
+  time: number;
+  rooms: Record<string, MockRoom>;
+  market: MockMarket;
+}
+
 // Mock global objects
-const mockGame: any = {
+const mockGame: MockGame = {
   time: 1000,
   rooms: {},
   market: {

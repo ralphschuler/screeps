@@ -163,6 +163,12 @@ const stubs = {
   },
   
   '@bot/core/processDecorators': {
+    // NOTE: These decorator stubs are minimal no-op implementations.
+    // They return the original descriptor/target without modification.
+    // If tests depend on actual decorator behavior (e.g., process registration,
+    // priority assignment, metadata), those aspects will not be tested.
+    // This is acceptable for the current test suite as we primarily test
+    // business logic, not decorator infrastructure.
     Process: (config) => (target, propertyKey, descriptor) => descriptor,
     HighFrequencyProcess: (id, name, config) => (target, propertyKey, descriptor) => descriptor,
     MediumFrequencyProcess: (id, name, config) => (target, propertyKey, descriptor) => descriptor,
@@ -176,8 +182,9 @@ const stubs = {
 };
 
 Module._resolveFilename = function(request, parent, isMain) {
-  // Check if this is a @bot/* request and we have a stub for it
-  if (stubs[request]) {
+  // Only stub @bot/* imports to avoid affecting other modules
+  // This prevents unintended side effects if any dependency happens to use the same module names
+  if (request.startsWith('@bot/') && stubs[request]) {
     // Cache the stub module if not already cached
     if (!Module._cache[request]) {
       Module._cache[request] = {
