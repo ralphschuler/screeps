@@ -19,6 +19,7 @@
 
 import { createLogger } from "../core/logger";
 import { cachedFindSources } from "../utils/caching";
+import { memoryManager } from "../memory/manager";
 
 const logger = createLogger("TargetAssignmentManager");
 
@@ -294,9 +295,6 @@ function assignBuildersToTargets(
  * - Are not owned by enemies
  */
 function getRemoteConstructionSites(room: Room): ConstructionSite[] {
-  // Import memoryManager here to avoid circular dependencies
-  const { memoryManager } = require("../memory/manager");
-  
   // Get swarm state to find remote room assignments
   const swarm = memoryManager.getSwarmState(room.name);
   if (!swarm || !swarm.remoteAssignments || swarm.remoteAssignments.length === 0) {
