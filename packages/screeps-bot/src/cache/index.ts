@@ -1,5 +1,5 @@
 /**
- * Unified Cache System
+ * Unified Cache System with Cache Coherence Protocol
  *
  * Consolidated caching infrastructure that replaces 7 overlapping cache systems
  * with a single, well-designed cache manager and domain-specific wrappers.
@@ -7,11 +7,13 @@
  * Design Principles (from ROADMAP.md Section 2):
  * - Aggressive Caching + TTL
  * - Cache stored in global object (heap) or Memory (persistent)
- * - Event-driven invalidation
+ * - Event-driven invalidation via Cache Coherence Protocol
  * - Unified statistics and monitoring
+ * - Hierarchical cache layers (L1/L2/L3) for optimal performance
  *
  * Architecture:
  * - CacheManager: Core orchestration with pluggable strategies
+ * - CacheCoherence: Multi-cache coordination and invalidation
  * - CacheStore: Storage abstraction (HeapStore, MemoryStore)
  * - Domain Wrappers: Convenient APIs for specific use cases
  *
@@ -36,6 +38,40 @@
 export { CacheManager, globalCache } from "./CacheManager";
 export type { CacheStore } from "./CacheStore";
 export type { CacheEntry, CacheOptions, CacheStats } from "./CacheEntry";
+
+// Cache Coherence Protocol
+export {
+  CacheCoherenceManager,
+  cacheCoherence,
+  CacheLayer
+} from "./CacheCoherence";
+export type {
+  InvalidationScope,
+  RegisteredCache,
+  CacheCoherenceStats
+} from "./CacheCoherence";
+
+// Cache Event Integration
+export {
+  initializeCacheEvents,
+  invalidateRoomVisibility,
+  triggerCacheCleanup,
+  getCacheCoherenceStats
+} from "./cacheEvents";
+
+// Cache Registration
+export {
+  registerAllCaches,
+  getTotalCacheBudget,
+  setTotalCacheBudget
+} from "./cacheRegistration";
+
+// Cache Statistics for Grafana
+export {
+  collectCacheStats,
+  getCachePerformanceSummary,
+  logCacheStats
+} from "./cacheStats";
 
 // Storage backends
 export { HeapStore } from "./stores/HeapStore";
