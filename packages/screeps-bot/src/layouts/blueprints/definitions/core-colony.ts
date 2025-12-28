@@ -1,7 +1,7 @@
 /**
  * RCL 3-4: Core Colony Layout
  * 
- * Expanded checkerboard pattern with tower for defense.
+ * Expanded checkerboard pattern with tower for defense and storage (RCL 4+).
  * All extension positions satisfy |x|+|y| % 2 == 0 (even sum)
  * to ensure no two extensions are directly adjacent.
  * 
@@ -9,6 +9,7 @@
  * - All spawn-adjacent tiles are roads for creep exit
  * - Extensions are spaced with roads for movement
  * - Tower placed at safe distance from spawn
+ * - Storage positioned for easy hauler access (RCL 4+)
  */
 
 import type { Blueprint } from "../types";
@@ -23,6 +24,8 @@ export const CORE_COLONY_BLUEPRINT: Blueprint = {
     { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
     // Tower at safe distance
     { x: 0, y: -4, structureType: STRUCTURE_TOWER },
+    // Storage (available at RCL 4) - placed for easy access
+    { x: 4, y: 4, structureType: STRUCTURE_STORAGE },
     // Extensions in checkerboard pattern - all positions have |x|+|y| % 2 == 0
     // Ring 1: distance 2 from spawn
     { x: -2, y: 0, structureType: STRUCTURE_EXTENSION },
@@ -71,7 +74,11 @@ export const CORE_COLONY_BLUEPRINT: Blueprint = {
     { x: 0, y: -3 },
     { x: 0, y: 3 },
     { x: -3, y: 0 },
-    { x: 3, y: 0 }
+    { x: 3, y: 0 },
+    // Access road to storage (RCL 4+)
+    { x: 3, y: 3 },
+    { x: 4, y: 3 },
+    { x: 3, y: 4 }
   ],
   ramparts: []
 };
