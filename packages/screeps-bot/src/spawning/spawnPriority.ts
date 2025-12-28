@@ -6,15 +6,16 @@
  * - Pheromone levels (harvest, logistics, build, defense, etc.)
  * - Dynamic conditions (threats, focus rooms)
  * 
- * TODO: Investigate shard3 W1N5 military overallocation (Bug #3)
- * As of tick 67604806, W1N5 has 15 military creeps (62.5% of all creeps).
+ * TODO: Investigate military overallocation in defensive posture
+ * Analysis date: 2025-12-28
+ * Observed pattern: Rooms in defensive posture spawn excessive military creeps (60%+ of total)
  * Investigation needed:
  * 1. Check if room posture is stuck on "defensive"/"war" instead of "eco"
  * 2. Verify danger level and threat assessment in roomNode.ts
  * 3. Review pheromone.defense values - may be stuck high
  * 4. Consider adding auto-recovery: defensive→eco when no hostiles for N ticks
  * 5. Review getDefenderPriorityBoost() for excessive military spawn triggers
- * See SHARD3_INVESTIGATION.md for full analysis.
+ * Related: See SHARD3_INVESTIGATION.md for detailed analysis
  */
 
 import type { SwarmState } from "../memory/schemas";

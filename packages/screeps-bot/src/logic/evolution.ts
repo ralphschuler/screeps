@@ -291,10 +291,11 @@ export class PostureManager {
     if (pheromones.war > 25) {
       return "war";
     }
-    // TODO: Bug #3 - Defense pheromone threshold may be too low
+    // TODO: [P2, Est: 2h] Defense pheromone threshold may be too low
     // Currently: defense > 20 triggers defensive posture
     // Pheromones decay slowly, so defensive posture may persist long after threats clear
-    // Consider: Increase threshold to 30-40, or implement faster decay when hostiles gone
+    // Recommended: Increase threshold to 30-40, or implement faster decay when hostiles gone
+    // Related: SHARD3_INVESTIGATION.md - Military Overallocation Analysis
     if (pheromones.defense > 20) {
       return "defensive";
     }
@@ -306,16 +307,15 @@ export class PostureManager {
     }
 
     // Default based on danger level
-    // TODO: Bug #3 - Posture may be too aggressive in switching to defensive
+    // TODO: [P1, Est: 4h] Posture switching to defensive may be too aggressive
     // Currently: danger >= 1 (single hostile) triggers defensive posture
-    // This causes mass military spawn even for minor threats
-    // Observed on shard3 W1N5: 15 military creeps (62.5%) from defensive posture
-    // Consider:
-    // 1. Require danger >= 2 for defensive (or higher threshold)
-    // 2. Add cooldown period before dropping defensive → eco
-    // 3. Check if hostiles are actually threatening (near spawn/storage)
-    // 4. Implement auto-recovery when no hostiles for N ticks
-    // See SHARD3_INVESTIGATION.md for full analysis
+    // This causes mass military spawn even for minor threats (15 military creeps = 62% observed)
+    // Recommended fixes (priority order):
+    // 1. [P1] Require danger >= 2 for defensive (or add threat proximity check)
+    // 2. [P2] Add cooldown period before dropping defensive → eco (prevent oscillation)
+    // 3. [P2] Check if hostiles are actually threatening (near spawn/storage vs. just passing through)
+    // 4. [P3] Implement auto-recovery when no hostiles for N ticks (e.g., 50 ticks)
+    // Related: SHARD3_INVESTIGATION.md - Military Overallocation Root Cause
     if (danger >= 1) {
       return "defensive";
     }
