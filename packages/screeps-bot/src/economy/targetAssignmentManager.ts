@@ -18,7 +18,7 @@
  */
 
 import { createLogger } from "../core/logger";
-import { cachedFindSources } from "../utils/caching";
+import { cachedFindSources, cachedFindConstructionSites } from "../utils/caching";
 import { memoryManager } from "../memory/manager";
 
 const logger = createLogger("TargetAssignmentManager");
@@ -247,8 +247,9 @@ function assignBuildersToTargets(
   builders: Creep[],
   assignments: RoomAssignments
 ): void {
-  // Get local construction sites
-  const localSites = room.find(FIND_MY_CONSTRUCTION_SITES);
+  // Get local construction sites using cached find for performance
+  // Per ROADMAP Section 18: "Aggressives Caching + TTL"
+  const localSites = cachedFindConstructionSites(room);
   
   // Get remote construction sites (from visible remote rooms)
   const remoteSites = getRemoteConstructionSites(room);
@@ -314,8 +315,9 @@ function getRemoteConstructionSites(room: Room): ConstructionSite[] {
       continue;
     }
     
-    // Find construction sites in remote room
-    const sites = remoteRoom.find(FIND_CONSTRUCTION_SITES);
+    // Find construction sites in remote room using cached find for performance
+    // Per ROADMAP Section 18: "Aggressives Caching + TTL"
+    const sites = cachedFindConstructionSites(remoteRoom);
     remoteSites.push(...sites);
   }
   

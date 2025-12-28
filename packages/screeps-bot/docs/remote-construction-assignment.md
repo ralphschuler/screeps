@@ -69,14 +69,16 @@ The existing action executor (`executor.ts`) already supports cross-room movemen
 
 ### Unit Tests (`test/unit/remoteConstructionAssignment.test.ts`)
 
-Comprehensive test coverage for:
-- ✅ Remote site discovery from visible rooms
-- ✅ Handling of invisible remote rooms
-- ✅ Skipping enemy-owned rooms
-- ✅ Construction priority system
-- ✅ Builder distribution across local and remote sites
-- ✅ Edge cases (no remotes, undefined swarm state, mixed visibility)
-- ✅ Performance with many remote rooms
+**Note**: The current tests verify mock data setup and Game object structure but do not test the actual `targetAssignmentManager` implementation. Integration with the real implementation requires test infrastructure fixes.
+
+Planned test coverage for future implementation:
+- [ ] Remote site discovery from visible rooms
+- [ ] Handling of invisible remote rooms
+- [ ] Skipping enemy-owned rooms
+- [ ] Construction priority system
+- [ ] Builder distribution across local and remote sites
+- [ ] Edge cases (no remotes, undefined swarm state, mixed visibility)
+- [ ] Performance with many remote rooms
 
 ### Integration Testing
 
@@ -118,7 +120,7 @@ Potential improvements (marked as TODOs in issue comments):
 
 ## References
 
-- Issue: [we need to change how we distribute tasks to creeps](https://github.com/ralphschuler/screeps/issues/XXX)
+- Issue: [we need to change how we distribute tasks to creeps](https://github.com/ralphschuler/screeps/issues/863)
 - Related: `remoteInfrastructure.ts` - Places remote construction sites
 - Related: `builder.ts` - Builder behavior implementation
 - Related: `executor.ts` - Cross-room movement execution
