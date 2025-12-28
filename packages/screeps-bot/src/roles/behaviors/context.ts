@@ -136,11 +136,13 @@ function getRoomCache(room: Room): RoomCache {
 
 /**
  * Get dropped resources from cache (lazy evaluation)
+ * Includes all resource types with significant amounts (>50 for energy, >0 for others)
  */
 function getDroppedResources(cache: RoomCache): Resource[] {
   if (cache._droppedResources === undefined) {
     cache._droppedResources = cache.room.find(FIND_DROPPED_RESOURCES, {
-      filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 50
+      filter: r => (r.resourceType === RESOURCE_ENERGY && r.amount > 50) || 
+                   (r.resourceType !== RESOURCE_ENERGY && r.amount > 0)
     });
   }
   return cache._droppedResources;

@@ -3,6 +3,15 @@
  *
  * This module provides test registration and utilities that can be accessed
  * from within the bot code running in the Screeps server.
+ *
+ * TODO(P2): FEATURE - Add test timeout support to prevent infinite loops
+ * Long-running tests should fail gracefully after a configurable timeout
+ * TODO(P2): FEATURE - Implement test grouping with tags for selective execution
+ * Allow running subsets of tests by tag (e.g., "fast", "integration", "slow")
+ * TODO(P3): FEATURE - Add test result persistence across server restarts
+ * Save and resume test state for long-running test suites
+ * TODO(P2): DOC - Add comprehensive documentation for all test utilities
+ * Include examples and best practices for writing Screeps tests
  */
 import { TestRunner } from './test-runner';
 declare const globalRunner: TestRunner;

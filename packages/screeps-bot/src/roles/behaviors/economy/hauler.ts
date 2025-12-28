@@ -1,7 +1,10 @@
 /**
  * Hauler Behavior
  * 
- * Transport energy from harvesters to structures.
+ * Transport resources from various sources to appropriate destinations.
+ * - Energy: harvesters → spawns/extensions/towers/storage
+ * - Minerals: tombstones/dropped → terminal/storage
+ * - Comprehensively empties tombstones to recover all resources
  * Uses cached target finding to reduce CPU usage.
  */
 
@@ -14,7 +17,10 @@ import { createLogger } from "../../../core/logger";
 const logger = createLogger("HaulerBehavior");
 
 /**
- * Hauler - Transport energy from harvesters to structures.
+ * Hauler - Transport all resources to appropriate destinations.
+ * - Energy to spawns/extensions/towers/storage
+ * - Minerals to terminal/storage
+ * - Empties tombstones completely to recover all resources
  * Uses cached target finding to reduce CPU usage.
  */
 export function hauler(ctx: CreepContext): CreepAction {
@@ -102,9 +108,10 @@ export function hauler(ctx: CreepContext): CreepAction {
     }
   }
 
-  // Collect energy - priority order
+  // Collect resources - priority order
   // BUGFIX: Use distributed targets for containers to prevent clustering with larvaWorkers
   // 1. Dropped resources (use cached - transient and rarely contested)
+  // Collects all resource types, not just energy
   if (ctx.droppedResources.length > 0) {
     const closest = findCachedClosest(ctx.creep, ctx.droppedResources, "hauler_drop", 5);
     if (closest) return { type: "pickup", target: closest };
@@ -113,12 +120,24 @@ export function hauler(ctx: CreepContext): CreepAction {
   // 2. Tombstones (use cached - transient targets)
   // OPTIMIZATION: Use cached tombstones from room context to avoid expensive room.find()
   // BUGFIX: Filter by capacity HERE for fresh state, not in room cache
-  const tombstonesWithEnergy = ctx.tombstones.filter(
-    t => t.store.getUsedCapacity(RESOURCE_ENERGY) > 0
+  // Collect ALL resources from tombstones, not just energy, to fully empty them
+  const tombstonesWithResources = ctx.tombstones.filter(
+    t => t.store.getUsedCapacity() > 0
   );
-  if (tombstonesWithEnergy.length > 0) {
-    const tombstone = findCachedClosest(ctx.creep, tombstonesWithEnergy, "hauler_tomb", 10);
-    if (tombstone) return { type: "withdraw", target: tombstone, resourceType: RESOURCE_ENERGY };
+  if (tombstonesWithResources.length > 0) {
+    const tombstone = findCachedClosest(ctx.creep, tombstonesWithResources, "hauler_tomb", 10);
+    if (tombstone) {
+      // Prioritize energy first, then other resources
+      if (tombstone.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+        return { type: "withdraw", target: tombstone, resourceType: RESOURCE_ENERGY };
+      }
+      // If no energy, pick up any other resource type
+      const resourceTypes = Object.keys(tombstone.store) as ResourceConstant[];
+      const otherResource = resourceTypes.find(r => r !== RESOURCE_ENERGY && tombstone.store.getUsedCapacity(r) > 0);
+      if (otherResource) {
+        return { type: "withdraw", target: tombstone, resourceType: otherResource };
+      }
+    }
   }
 
   // 3. Containers with energy (use distributed - most contested!)
