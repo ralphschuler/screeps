@@ -246,7 +246,7 @@ export function createSuccessResponse(data: string | object): MCPSuccessResponse
 /**
  * Wrap an async handler with error handling
  */
-export function withErrorHandling<TInput, TOutput>(
+export function withErrorHandling<TInput, TOutput extends string | object>(
   handler: (input: TInput) => Promise<TOutput>,
   context?: string
 ): (input: TInput) => Promise<MCPResponse> {
