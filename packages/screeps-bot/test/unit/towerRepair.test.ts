@@ -5,7 +5,7 @@
 
 import { assert } from "chai";
 import "mocha";
-import { calculateWallRepairTarget } from "../../src/defense/wallRepairTargets";
+import { calculateWallRepairTarget } from "@ralphschuler/screeps-defense";
 
 describe("Tower Repair Target Calculation", () => {
   describe("RCL-based targeting", () => {

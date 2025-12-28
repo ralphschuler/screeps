@@ -8,7 +8,7 @@ import {
   calculateDangerLevel,
   calculateTowerDamage,
   estimateDefenderCost
-} from "../../src/defense/threatAssessment";
+} from "@ralphschuler/screeps-defense";
 
 describe("Threat Assessment", () => {
   describe("calculateDangerLevel", () => {

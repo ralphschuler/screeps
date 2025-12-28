@@ -5,9 +5,8 @@
  */
 
 import { expect } from "chai";
-import { SafeModeManager } from "../../src/defense/safeModeManager";
+import { SafeModeManager } from "@ralphschuler/screeps-defense";
 import { createDefaultSwarmState } from "../../src/memory/schemas";
-import type { SwarmState } from "../../src/memory/schemas";
 
 describe("Safe Mode Manager", () => {
   let safeModeManager: SafeModeManager;

@@ -5,7 +5,7 @@
  */
 
 import { expect } from "chai";
-import { EmergencyLevel } from "../../src/defense/emergencyResponse";
+import { EmergencyLevel } from "@ralphschuler/screeps-defense";
 
 describe("Emergency Response System", () => {
   describe("Emergency Level Calculation", () => {

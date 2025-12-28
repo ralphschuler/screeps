@@ -79,6 +79,126 @@ global.chai.use(require('sinon-chai'));
 // Override ts-node compiler options
 process.env.TS_NODE_PROJECT = 'tsconfig.test.json';
 
+// Register module aliases and stubs for @bot paths used in dependency packages
+// This allows packages like screeps-defense to resolve @bot/* imports during testing
+// 
+// NOTE: This module resolution override is intentionally scoped to the test environment.
+// It only affects imports during test execution and does not impact production builds.
+// The override is necessary because dependency packages use @bot/* path aliases that
+// are resolved during their build, but the compiled output still contains require('@bot/*')
+// statements that need runtime resolution in the test environment.
+const Module = require('module');
+const originalResolveFilename = Module._resolveFilename;
+
+// Create comprehensive stub modules for all @bot dependencies
+const stubs = {
+  '@bot/core/logger': {
+    logger: {
+      log: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+      debug: () => {}
+    },
+    createLogger: (name) => ({
+      log: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+      debug: () => {}
+    })
+  },
+  
+  '@bot/spawning/roleDefinitions': {
+    ROLE_DEFINITIONS: {
+      harvester: { body: [], priority: 1 },
+      hauler: { body: [], priority: 2 },
+      upgrader: { body: [], priority: 3 },
+      builder: { body: [], priority: 4 },
+      defender: { body: [], priority: 5 },
+      attacker: { body: [], priority: 6 },
+      healer: { body: [], priority: 7 },
+      claimer: { body: [], priority: 8 }
+    }
+  },
+  
+  '@bot/spawning/defenderManager': {
+    DefenseRequest: class {},
+    createDefenseRequest: () => ({}),
+    fulfillDefenseRequest: () => ({})
+  },
+  
+  '@bot/layouts/roadNetworkPlanner': {
+    getRoadNetwork: () => ({}),
+    planRoadNetwork: () => ({}),
+    buildRoadNetwork: () => ({})
+  },
+  
+  '@bot/memory/schemas': {
+    SwarmCreepMemory: {},
+    RoomMemory: {},
+    Memory: {}
+  },
+  
+  '@bot/memory/manager': {
+    getMemory: () => ({}),
+    setMemory: () => {},
+    clearMemory: () => {}
+  },
+  
+  '@bot/core/kernel': {
+    ProcessPriority: {
+      CRITICAL: 100,
+      HIGH: 75,
+      MEDIUM: 50,
+      LOW: 25,
+      IDLE: 10
+    },
+    kernel: {
+      addProcess: () => {},
+      removeProcess: () => {},
+      getProcess: () => ({}),
+      tick: () => {}
+    }
+  },
+  
+  '@bot/core/processDecorators': {
+    // NOTE: These decorator stubs are minimal no-op implementations.
+    // They return the original descriptor/target without modification.
+    // If tests depend on actual decorator behavior (e.g., process registration,
+    // priority assignment, metadata), those aspects will not be tested.
+    // This is acceptable for the current test suite as we primarily test
+    // business logic, not decorator infrastructure.
+    Process: (config) => (target, propertyKey, descriptor) => descriptor,
+    HighFrequencyProcess: (id, name, config) => (target, propertyKey, descriptor) => descriptor,
+    MediumFrequencyProcess: (id, name, config) => (target, propertyKey, descriptor) => descriptor,
+    LowFrequencyProcess: (id, name, config) => (target, propertyKey, descriptor) => descriptor,
+    CriticalProcess: (id, name, config) => (target, propertyKey, descriptor) => descriptor,
+    IdleProcess: (id, name, config) => (target, propertyKey, descriptor) => descriptor,
+    ProcessClass: () => (target) => target,
+    registerDecoratedProcesses: () => {},
+    registerAllDecoratedProcesses: () => {}
+  }
+};
+
+Module._resolveFilename = function(request, parent, isMain) {
+  // Only stub @bot/* imports to avoid affecting other modules
+  // This prevents unintended side effects if any dependency happens to use the same module names
+  if (request.startsWith('@bot/') && stubs[request]) {
+    // Cache the stub module if not already cached
+    if (!Module._cache[request]) {
+      Module._cache[request] = {
+        exports: stubs[request],
+        loaded: true,
+        id: request
+      };
+    }
+    return request;
+  }
+  
+  return originalResolveFilename.call(this, request, parent, isMain);
+};
+
 // Mock Screeps constants
 global.STRUCTURE_SPAWN = 'spawn';
 global.STRUCTURE_EXTENSION = 'extension';

@@ -1,0 +1,25 @@
+{
+  "all": true,
+  "src": ["src"],
+  "exclude": [
+    "**/*.d.ts",
+    "**/*.test.ts",
+    "**/test/**",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.mocharc.json"
+  ],
+  "reporter": [
+    "text",
+    "html",
+    "lcov"
+  ],
+  "reports-dir": "coverage",
+  "temp-directory": ".nyc_output",
+  "check-coverage": true,
+  "lines": 55,
+  "functions": 50,
+  "branches": 50,
+  "statements": 55,
+  "_comment": "Coverage thresholds - Baseline: 55% lines/statements, 50% functions/branches. Target: 60%+ per acceptance criteria. Plan: Increment by 1% every month until reaching 60%, then maintain. Next review: 2025-01-28 (increase to 56%)."
+}

@@ -2,6 +2,9 @@ name: Tests
 
 on:
   pull_request:
+  push:
+    branches:
+      - main
 
 jobs:
   test:
@@ -24,5 +27,28 @@ jobs:
       - name: Build dependencies
         run: npm run build
 
-      - name: Run tests
-        run: npm test
+      - name: Run tests with coverage
+        run: npm run test:coverage -w screeps-typescript-starter
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: ./packages/screeps-bot/coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Coverage Summary
+        if: always()
+        run: |
+          echo "## Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          if [ -f packages/screeps-bot/coverage/lcov.info ]; then
+            echo "✅ Coverage report generated successfully" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "View detailed coverage report in the Codecov upload above." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ No coverage report found" >> $GITHUB_STEP_SUMMARY
+          fi
+
