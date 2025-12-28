@@ -562,11 +562,15 @@ Implements path caching and traffic avoidance to reduce CPU usage.
 
 **Key Metrics to Track**:
 ```typescript
+const fortyEightHoursAgo = Date.now() - 48 * 60 * 60 * 1000;
+const now = Date.now();
+
 const metricsToMonitor = {
   before: {
-    cpu: await query_prometheus('screeps_cpu_used{time="-48h"}'),
-    gcl: await query_prometheus('screeps_gcl_progress{time="-48h"}'),
-    errors: await query_loki_logs('screeps_errors{time="-48h"}')
+    // Use time range parameters, not label selectors, to query historical data
+    cpu: await query_prometheus('screeps_cpu_used', { start: fortyEightHoursAgo, end: now }),
+    gcl: await query_prometheus('screeps_gcl_progress', { start: fortyEightHoursAgo, end: now }),
+    errors: await query_loki_logs('screeps_errors', { start: fortyEightHoursAgo, end: now })
   },
   after: {
     cpu: await query_prometheus('screeps_cpu_used'),
