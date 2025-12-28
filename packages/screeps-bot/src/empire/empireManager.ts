@@ -61,6 +61,12 @@ export interface EmpireConfig {
   minStableRcl: number;
   /** GCL progress notification threshold (%) */
   gclNotifyThreshold: number;
+  /** Interval to discover nearby rooms (ticks) */
+  roomDiscoveryInterval: number;
+  /** Maximum distance for room discovery */
+  maxRoomDiscoveryDistance: number;
+  /** Maximum number of rooms to discover per tick */
+  maxRoomsToDiscoverPerTick: number;
 }
 
 const DEFAULT_CONFIG: EmpireConfig = {
@@ -72,7 +78,10 @@ const DEFAULT_CONFIG: EmpireConfig = {
   minExpansionScore: 50,
   intelRefreshInterval: 100,
   minStableRcl: 4,
-  gclNotifyThreshold: 90 // Notify when GCL progress is at 90%
+  gclNotifyThreshold: 90, // Notify when GCL progress is at 90%
+  roomDiscoveryInterval: 100, // Discover rooms every 100 ticks
+  maxRoomDiscoveryDistance: 5, // Discover rooms up to 5 linear distance
+  maxRoomsToDiscoverPerTick: 50 // Limit memory spike from discovering too many rooms at once
 };
 
 /**
@@ -125,6 +134,11 @@ export class EmpireManager {
     // NEW: Automated room intel refresh
     unifiedStats.measureSubsystem("empire:intelRefresh", () => {
       this.refreshRoomIntel(empire);
+    });
+
+    // NEW: Automated nearby room discovery for expansion
+    unifiedStats.measureSubsystem("empire:roomDiscovery", () => {
+      this.discoverNearbyRooms(empire);
     });
 
     // NEW: Automated GCL progress tracking
@@ -489,6 +503,85 @@ export class EmpireManager {
     if (updatedCount > 0 && Game.time % 500 === 0) {
       logger.info(`Refreshed intel for ${updatedCount} rooms`, { subsystem: "Empire" });
     }
+  }
+
+  /**
+   * Discover nearby rooms for expansion
+   * Automatically adds adjacent/nearby rooms to knownRooms for scouting
+   */
+  private discoverNearbyRooms(empire: EmpireMemory): void {
+    // Only discover at configured interval for CPU efficiency
+    if (Game.time % this.config.roomDiscoveryInterval !== 0) {
+      return;
+    }
+
+    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+    if (ownedRooms.length === 0) {
+      return;
+    }
+
+    let discoveredCount = 0;
+
+    // Discover rooms near each owned room
+    for (const room of ownedRooms) {
+      const nearbyRooms = ExpansionScoring.getRoomsInRange(room.name, this.config.maxRoomDiscoveryDistance);
+      
+      for (const nearbyRoom of nearbyRooms) {
+        // Check if we've hit the discovery limit for this tick
+        if (discoveredCount >= this.config.maxRoomsToDiscoverPerTick) {
+          logger.debug(`Reached discovery limit of ${this.config.maxRoomsToDiscoverPerTick} rooms per tick`, { 
+            subsystem: "Empire" 
+          });
+          return;
+        }
+
+        // Skip if already known
+        if (empire.knownRooms[nearbyRoom]) {
+          continue;
+        }
+
+        // Create stub intel entry (will be filled in by scouts or when visible)
+        empire.knownRooms[nearbyRoom] = this.createStubIntel(nearbyRoom);
+        discoveredCount++;
+      }
+    }
+
+    if (discoveredCount > 0) {
+      logger.info(`Discovered ${discoveredCount} nearby rooms for scouting`, { subsystem: "Empire" });
+    }
+  }
+
+  /**
+   * Create stub room intel for discovered but not yet scouted rooms
+   * Uses same room type detection logic as IntelScanner for consistency
+   */
+  private createStubIntel(roomName: string): RoomIntel {
+    // Use existing room name parsing logic from expansionScoring
+    const parsed = ExpansionScoring.parseRoomName(roomName);
+    
+    // Highway detection (same logic as IntelScanner.isHighwayRoom)
+    const isHighway = parsed 
+      ? (parsed.x % 10 === 0 || parsed.y % 10 === 0)
+      : false;
+
+    // SK room detection (same logic as IntelScanner.isSourceKeeperRoom)
+    // SK rooms are at coordinates x,y where both x%10 and y%10 are in range [4,5,6]
+    const isSK = parsed
+      ? ((parsed.x % 10 === 4 || parsed.x % 10 === 5 || parsed.x % 10 === 6) &&
+         (parsed.y % 10 === 4 || parsed.y % 10 === 5 || parsed.y % 10 === 6))
+      : false;
+
+    return {
+      name: roomName,
+      lastSeen: 0, // Never seen yet
+      sources: 0, // Unknown
+      controllerLevel: 0,
+      threatLevel: 0,
+      scouted: false, // Not yet scouted - will be filled in when visible or scouted
+      terrain: "mixed",
+      isHighway,
+      isSK
+    };
   }
 
   /**
