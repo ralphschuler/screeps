@@ -5,7 +5,7 @@
  */
 
 import { expect } from "chai";
-import { TerminalRouter } from "../../src/economy/terminalRouter";
+import { TerminalRouter } from "@ralphschuler/screeps-economy";
 
 // Mock global objects
 const mockGame: any = {

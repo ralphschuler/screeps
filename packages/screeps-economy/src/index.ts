@@ -27,7 +27,7 @@ export type { LinkManagerConfig } from './links/linkManager';
 // Terminal management
 export { TerminalManager, terminalManager } from './terminals/terminalManager';
 export type { TerminalManagerConfig } from './terminals/terminalManager';
-export { terminalRouter } from './terminals/terminalRouter';
+export { TerminalRouter, terminalRouter } from './terminals/terminalRouter';
 export type { TerminalRoute, TerminalNode } from './terminals/terminalRouter';
 
 // Factory management
