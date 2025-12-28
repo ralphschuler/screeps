@@ -81,6 +81,12 @@ process.env.TS_NODE_PROJECT = 'tsconfig.test.json';
 
 // Register module aliases and stubs for @bot paths used in dependency packages
 // This allows packages like screeps-defense to resolve @bot/* imports during testing
+// 
+// NOTE: This module resolution override is intentionally scoped to the test environment.
+// It only affects imports during test execution and does not impact production builds.
+// The override is necessary because dependency packages use @bot/* path aliases that
+// are resolved during their build, but the compiled output still contains require('@bot/*')
+// statements that need runtime resolution in the test environment.
 const Module = require('module');
 const originalResolveFilename = Module._resolveFilename;
 
