@@ -16,7 +16,7 @@
  * ```typescript
  * // Subscribe to events
  * eventBus.on('hostile.detected', (event) => {
- *   console.log(`Hostile in ${event.roomName}!`);
+ *   logger.warn('Hostile detected', { room: event.roomName, subsystem: 'defense' });
  * });
  *
  * // Emit events
