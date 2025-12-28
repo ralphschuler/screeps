@@ -236,22 +236,30 @@ function assignHarvestersToSources(
  * Assign builders to construction sites with priority
  * 
  * Strategy:
- * 1. Prioritize critical structures (spawns, extensions, towers)
- * 2. Distribute builders across high-priority sites
- * 3. Assign remaining builders to other sites by proximity
+ * 1. Collect construction sites from local and remote rooms
+ * 2. Prioritize critical structures (spawns, extensions, towers)
+ * 3. Prioritize remote infrastructure (containers, roads) to enable economy
+ * 4. Distribute builders across high-priority sites
  */
 function assignBuildersToTargets(
   room: Room,
   builders: Creep[],
   assignments: RoomAssignments
 ): void {
-  const sites = room.find(FIND_MY_CONSTRUCTION_SITES);
-  if (sites.length === 0) return;
+  // Get local construction sites
+  const localSites = room.find(FIND_MY_CONSTRUCTION_SITES);
   
-  // Prioritize construction sites
-  const prioritizedSites = sites.map(site => ({
+  // Get remote construction sites (from visible remote rooms)
+  const remoteSites = getRemoteConstructionSites(room);
+  
+  // Combine all sites
+  const allSites = [...localSites, ...remoteSites];
+  if (allSites.length === 0) return;
+  
+  // Prioritize construction sites (remote infrastructure gets higher priority)
+  const prioritizedSites = allSites.map(site => ({
     site,
-    priority: getConstructionPriority(site)
+    priority: getConstructionPriority(site, room.name)
   })).sort((a, b) => b.priority - a.priority);
   
   // Create build target assignments
@@ -278,24 +286,88 @@ function assignBuildersToTargets(
 }
 
 /**
- * Get construction priority for a structure type
+ * Get construction sites from visible remote rooms
+ * 
+ * Returns construction sites from remote rooms that:
+ * - Are assigned to this room's colony
+ * - Are currently visible (Game.rooms[remoteName] exists)
+ * - Are not owned by enemies
  */
-function getConstructionPriority(site: ConstructionSite): number {
+function getRemoteConstructionSites(room: Room): ConstructionSite[] {
+  // Import memoryManager here to avoid circular dependencies
+  const { memoryManager } = require("../memory/manager");
+  
+  // Get swarm state to find remote room assignments
+  const swarm = memoryManager.getSwarmState(room.name);
+  if (!swarm || !swarm.remoteAssignments || swarm.remoteAssignments.length === 0) {
+    return [];
+  }
+  
+  const remoteSites: ConstructionSite[] = [];
+  
+  for (const remoteName of swarm.remoteAssignments) {
+    const remoteRoom = Game.rooms[remoteName];
+    
+    // Skip if room is not visible
+    if (!remoteRoom) continue;
+    
+    // Skip if room is owned by someone else
+    if (remoteRoom.controller?.owner && !remoteRoom.controller.my) {
+      continue;
+    }
+    
+    // Find construction sites in remote room
+    const sites = remoteRoom.find(FIND_CONSTRUCTION_SITES);
+    remoteSites.push(...sites);
+  }
+  
+  return remoteSites;
+}
+
+/**
+ * Get construction priority for a structure type
+ * 
+ * Remote infrastructure (containers, roads) gets higher priority than
+ * most local structures to enable remote mining economy faster.
+ * 
+ * @param site - The construction site
+ * @param homeRoomName - The home room name to determine if site is remote
+ */
+function getConstructionPriority(site: ConstructionSite, homeRoomName: string): number {
+  const isRemote = site.room?.name !== homeRoomName;
+  
+  // Remote infrastructure priorities (enable remote mining economy)
+  if (isRemote) {
+    switch (site.structureType) {
+      case STRUCTURE_CONTAINER:
+        return 100; // Critical for remote mining
+      case STRUCTURE_ROAD:
+        return 80; // Important for hauler efficiency
+      case STRUCTURE_RAMPART:
+        return 40; // Defense for remote infrastructure
+      case STRUCTURE_WALL:
+        return 30; // Defense for remote infrastructure
+      default:
+        return 60;
+    }
+  }
+  
+  // Local infrastructure priorities
   switch (site.structureType) {
     case STRUCTURE_SPAWN:
-      return 100;
+      return 95; // Slightly lower than remote containers
     case STRUCTURE_EXTENSION:
       return 90;
     case STRUCTURE_TOWER:
       return 85;
     case STRUCTURE_STORAGE:
-      return 80;
-    case STRUCTURE_LINK:
       return 75;
-    case STRUCTURE_CONTAINER:
+    case STRUCTURE_LINK:
       return 70;
+    case STRUCTURE_CONTAINER:
+      return 65; // Local containers lower priority than remote
     case STRUCTURE_ROAD:
-      return 50;
+      return 50; // Local roads lower priority than remote
     case STRUCTURE_RAMPART:
       return 40;
     case STRUCTURE_WALL:
