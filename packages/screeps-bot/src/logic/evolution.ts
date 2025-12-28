@@ -291,6 +291,10 @@ export class PostureManager {
     if (pheromones.war > 25) {
       return "war";
     }
+    // TODO: Bug #3 - Defense pheromone threshold may be too low
+    // Currently: defense > 20 triggers defensive posture
+    // Pheromones decay slowly, so defensive posture may persist long after threats clear
+    // Consider: Increase threshold to 30-40, or implement faster decay when hostiles gone
     if (pheromones.defense > 20) {
       return "defensive";
     }
@@ -302,6 +306,16 @@ export class PostureManager {
     }
 
     // Default based on danger level
+    // TODO: Bug #3 - Posture may be too aggressive in switching to defensive
+    // Currently: danger >= 1 (single hostile) triggers defensive posture
+    // This causes mass military spawn even for minor threats
+    // Observed on shard3 W1N5: 15 military creeps (62.5%) from defensive posture
+    // Consider:
+    // 1. Require danger >= 2 for defensive (or higher threshold)
+    // 2. Add cooldown period before dropping defensive → eco
+    // 3. Check if hostiles are actually threatening (near spawn/storage)
+    // 4. Implement auto-recovery when no hostiles for N ticks
+    // See SHARD3_INVESTIGATION.md for full analysis
     if (danger >= 1) {
       return "defensive";
     }
