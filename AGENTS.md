@@ -421,6 +421,7 @@ const gameState = {
 - [ ] Use TypeScript strict mode
 - [ ] Handle edge cases
 - [ ] Add TODO comments for future work
+- \[ \] Issue URL: https://github.com/ralphschuler/screeps/issues/910
 
 **After Writing Code**:
 - [ ] Run linter and fix issues
