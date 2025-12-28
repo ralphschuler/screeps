@@ -528,6 +528,130 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
 
     return lines.join("\n");
   }
+
+  @Command({
+    name: "cpuBudget",
+    description: "Show CPU budget status and violations for all rooms",
+    usage: "cpuBudget()",
+    examples: ["cpuBudget()"],
+    category: "Statistics"
+  })
+  public cpuBudget(): string {
+    const report = unifiedStats.validateBudgets();
+    
+    let result = `=== CPU Budget Report (Tick ${report.tick}) ===\n`;
+    result += `Rooms Evaluated: ${report.roomsEvaluated}\n`;
+    result += `Within Budget: ${report.roomsWithinBudget}\n`;
+    result += `Over Budget: ${report.roomsOverBudget}\n\n`;
+    
+    if (report.alerts.length === 0) {
+      result += "✓ All rooms within budget!\n";
+    } else {
+      result += `Alerts: ${report.alerts.length}\n`;
+      
+      const critical = report.alerts.filter(a => a.severity === "critical");
+      const warnings = report.alerts.filter(a => a.severity === "warning");
+      
+      if (critical.length > 0) {
+        result += "\n🔴 CRITICAL (≥100% of budget):\n";
+        for (const alert of critical) {
+          result += `  ${alert.target}: ${alert.cpuUsed.toFixed(3)} CPU / ${alert.budgetLimit.toFixed(3)} limit (${(alert.percentUsed * 100).toFixed(1)}%)\n`;
+        }
+      }
+      
+      if (warnings.length > 0) {
+        result += "\n⚠️  WARNING (≥80% of budget):\n";
+        for (const alert of warnings) {
+          result += `  ${alert.target}: ${alert.cpuUsed.toFixed(3)} CPU / ${alert.budgetLimit.toFixed(3)} limit (${(alert.percentUsed * 100).toFixed(1)}%)\n`;
+        }
+      }
+    }
+    
+    return result;
+  }
+
+  @Command({
+    name: "cpuAnomalies",
+    description: "Detect and show CPU usage anomalies (spikes and sustained high usage)",
+    usage: "cpuAnomalies()",
+    examples: ["cpuAnomalies()"],
+    category: "Statistics"
+  })
+  public cpuAnomalies(): string {
+    const anomalies = unifiedStats.detectAnomalies();
+    
+    if (anomalies.length === 0) {
+      return "✓ No CPU anomalies detected";
+    }
+    
+    let result = `=== CPU Anomalies Detected: ${anomalies.length} ===\n\n`;
+    
+    const spikes = anomalies.filter(a => a.type === "spike");
+    const sustained = anomalies.filter(a => a.type === "sustained_high");
+    
+    if (spikes.length > 0) {
+      result += `⚡ CPU Spikes (${spikes.length}):\n`;
+      for (const anomaly of spikes) {
+        result += `  ${anomaly.target}: ${anomaly.current.toFixed(3)} CPU (${anomaly.multiplier.toFixed(1)}x baseline ${anomaly.baseline.toFixed(3)})\n`;
+        if (anomaly.context) {
+          result += `    Context: ${anomaly.context}\n`;
+        }
+      }
+      result += "\n";
+    }
+    
+    if (sustained.length > 0) {
+      result += `📊 Sustained High Usage (${sustained.length}):\n`;
+      for (const anomaly of sustained) {
+        result += `  ${anomaly.target}: ${anomaly.current.toFixed(3)} CPU (${anomaly.multiplier.toFixed(1)}x budget ${anomaly.baseline.toFixed(3)})\n`;
+        if (anomaly.context) {
+          result += `    Context: ${anomaly.context}\n`;
+        }
+      }
+    }
+    
+    return result;
+  }
+
+  @Command({
+    name: "cpuProfile",
+    description: "Show comprehensive CPU profiling breakdown by room and subsystem",
+    usage: "cpuProfile(showAll?)",
+    examples: ["cpuProfile()", "cpuProfile(true)"],
+    category: "Statistics"
+  })
+  public cpuProfile(showAll = false): string {
+    const snapshot = unifiedStats.getCurrentSnapshot();
+    
+    let result = `=== CPU Profile (Tick ${snapshot.tick}) ===\n`;
+    result += `Total: ${snapshot.cpu.used.toFixed(2)} / ${snapshot.cpu.limit} (${snapshot.cpu.percent.toFixed(1)}%)\n`;
+    result += `Bucket: ${snapshot.cpu.bucket}\n`;
+    result += `Heap: ${snapshot.cpu.heapUsed.toFixed(2)} MB\n\n`;
+    
+    // Room breakdown
+    const rooms = Object.values(snapshot.rooms).sort((a, b) => b.profiler.avgCpu - a.profiler.avgCpu);
+    const topRooms = showAll ? rooms : rooms.slice(0, 10);
+    
+    result += `Top ${topRooms.length} Rooms by CPU:\n`;
+    for (const room of topRooms) {
+      const posture = ["eco", "expand", "defense", "war", "siege", "evacuate"][room.brain.postureCode] || "eco";
+      result += `  ${room.name} (RCL${room.rcl}, ${posture}): avg ${room.profiler.avgCpu.toFixed(3)} | peak ${room.profiler.peakCpu.toFixed(3)} | samples ${room.profiler.samples}\n`;
+    }
+    
+    // Process breakdown
+    result += `\nTop Kernel Processes by CPU:\n`;
+    const processes = Object.values(snapshot.processes)
+      .filter(p => p.avgCpu > 0.001)
+      .sort((a, b) => b.avgCpu - a.avgCpu)
+      .slice(0, showAll ? 999 : 10);
+    
+    for (const proc of processes) {
+      const budgetPct = proc.cpuBudget > 0 ? ((proc.avgCpu / proc.cpuBudget) * 100).toFixed(0) : "N/A";
+      result += `  ${proc.name} (${proc.frequency}): avg ${proc.avgCpu.toFixed(3)} / budget ${proc.cpuBudget.toFixed(3)} (${budgetPct}%)\n`;
+    }
+    
+    return result;
+  }
 }
 
 /**

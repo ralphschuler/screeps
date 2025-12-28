@@ -54,6 +54,31 @@ export interface UnifiedStatsConfig {
   segmentId: number;
   /** Maximum data points to keep in segment history */
   maxHistoryPoints: number;
+  /** CPU budget limits (from ROADMAP.md Section 18) */
+  budgetLimits: {
+    /** Eco room budget in CPU per tick */
+    ecoRoom: number;
+    /** War room budget in CPU per tick */
+    warRoom: number;
+    /** Global overmind budget in CPU (amortized) */
+    overmind: number;
+  };
+  /** Thresholds for budget alerts */
+  budgetAlertThresholds: {
+    /** Warning threshold (e.g., 0.8 for 80%) */
+    warning: number;
+    /** Critical threshold (e.g., 1.0 for 100%) */
+    critical: number;
+  };
+  /** Anomaly detection configuration */
+  anomalyDetection: {
+    /** Enable anomaly detection */
+    enabled: boolean;
+    /** CPU spike threshold multiplier (e.g., 2.0 = 2x average) */
+    spikeThreshold: number;
+    /** Minimum samples before anomaly detection activates */
+    minSamples: number;
+  };
 }
 
 const DEFAULT_CONFIG: UnifiedStatsConfig = {
@@ -63,7 +88,21 @@ const DEFAULT_CONFIG: UnifiedStatsConfig = {
   logInterval: 100,
   segmentUpdateInterval: 10,
   segmentId: 90,
-  maxHistoryPoints: 1000
+  maxHistoryPoints: 1000,
+  budgetLimits: {
+    ecoRoom: 0.1,    // ≤0.1 CPU per tick for eco rooms
+    warRoom: 0.25,   // ≤0.25 CPU per tick for war rooms
+    overmind: 1.0    // ≤1 CPU every 20-50 ticks for empire
+  },
+  budgetAlertThresholds: {
+    warning: 0.8,    // Alert at 80% of budget
+    critical: 1.0    // Alert at 100% of budget
+  },
+  anomalyDetection: {
+    enabled: true,
+    spikeThreshold: 2.0,  // 2x average CPU is anomalous
+    minSamples: 10        // Need 10 samples before detecting anomalies
+  }
 };
 
 // ============================================================================
@@ -357,6 +396,66 @@ export interface CreepStatsEntry {
 }
 
 /**
+ * CPU budget alert
+ */
+export interface CPUBudgetAlert {
+  /** Alert severity level */
+  severity: "warning" | "critical";
+  /** Room or subsystem name */
+  target: string;
+  /** Type of target */
+  targetType: "room" | "process" | "overmind";
+  /** Actual CPU used */
+  cpuUsed: number;
+  /** Budget limit */
+  budgetLimit: number;
+  /** Percentage of budget used */
+  percentUsed: number;
+  /** Game tick when alert was generated */
+  tick: number;
+}
+
+/**
+ * CPU anomaly detection result
+ */
+export interface CPUAnomaly {
+  /** Anomaly type */
+  type: "spike" | "sustained_high";
+  /** Room or subsystem name */
+  target: string;
+  /** Type of target */
+  targetType: "room" | "process" | "subsystem";
+  /** Current CPU usage */
+  current: number;
+  /** Baseline average CPU */
+  baseline: number;
+  /** Multiplier above baseline */
+  multiplier: number;
+  /** Game tick when detected */
+  tick: number;
+  /** Additional context */
+  context?: string;
+}
+
+/**
+ * CPU budget validation report
+ */
+export interface CPUBudgetReport {
+  /** Total rooms evaluated */
+  roomsEvaluated: number;
+  /** Rooms within budget */
+  roomsWithinBudget: number;
+  /** Rooms over budget */
+  roomsOverBudget: number;
+  /** Active budget alerts */
+  alerts: CPUBudgetAlert[];
+  /** Detected anomalies */
+  anomalies: CPUAnomaly[];
+  /** Report generation tick */
+  tick: number;
+}
+
+/**
  * Role-specific efficiency metrics stored in creep memory.
  * Used by creepMetrics.ts for tracking individual creep performance.
  * 
@@ -511,6 +610,55 @@ export class UnifiedStatsManager {
     // Finalize tick info
     this.currentSnapshot.tick = Game.time;
     this.currentSnapshot.timestamp = Date.now();
+
+    // Validate CPU budgets and detect anomalies
+    const budgetReport = this.validateBudgets();
+    const anomalies = this.detectAnomalies();
+
+    // Log critical budget violations
+    if (budgetReport.alerts.length > 0) {
+      const criticalAlerts = budgetReport.alerts.filter(a => a.severity === "critical");
+      const warningAlerts = budgetReport.alerts.filter(a => a.severity === "warning");
+      
+      if (criticalAlerts.length > 0) {
+        logger.error(
+          `CPU Budget: ${criticalAlerts.length} critical violations detected`,
+          {
+            subsystem: "CPUBudget",
+            meta: { 
+              violations: criticalAlerts.map(a => `${a.target}: ${(a.percentUsed * 100).toFixed(1)}% (${a.cpuUsed.toFixed(3)}/${a.budgetLimit})`)
+            }
+          }
+        );
+      }
+      
+      if (warningAlerts.length > 0) {
+        logger.warn(
+          `CPU Budget: ${warningAlerts.length} warnings (≥80% of limit)`,
+          {
+            subsystem: "CPUBudget",
+            meta: { 
+              warnings: warningAlerts.map(a => `${a.target}: ${(a.percentUsed * 100).toFixed(1)}%`)
+            }
+          }
+        );
+      }
+    }
+
+    // Log CPU anomalies
+    if (anomalies.length > 0) {
+      logger.warn(
+        `CPU Anomalies: ${anomalies.length} detected`,
+        {
+          subsystem: "CPUProfiler",
+          meta: {
+            anomalies: anomalies.map(a => 
+              `${a.target} (${a.type}): ${a.current.toFixed(3)} CPU (${a.multiplier.toFixed(1)}x baseline)${a.context ? ` - ${a.context}` : ""}`
+            )
+          }
+        }
+      );
+    }
 
     // Publish to Memory.stats first (console output reads from this)
     this.publishToMemory();
@@ -859,6 +1007,148 @@ export class UnifiedStatsManager {
       samples: roomStats.profiler.samples,
       lastTick: Game.time
     };
+  }
+
+  /**
+   * Validate CPU budgets for all rooms and generate alerts
+   * Returns a report with budget status and any violations
+   */
+  public validateBudgets(): CPUBudgetReport {
+    const report: CPUBudgetReport = {
+      roomsEvaluated: 0,
+      roomsWithinBudget: 0,
+      roomsOverBudget: 0,
+      alerts: [],
+      anomalies: [],
+      tick: Game.time
+    };
+
+    // Validate room budgets
+    for (const [roomName, roomStats] of Object.entries(this.currentSnapshot.rooms)) {
+      report.roomsEvaluated++;
+      
+      // Determine if this is a war room or eco room
+      const swarm = memoryManager.getSwarmState(roomName);
+      const isWarRoom = swarm ? (swarm.posture === "war" || swarm.posture === "siege" || swarm.danger >= 2) : false;
+      const budgetLimit = isWarRoom ? this.config.budgetLimits.warRoom : this.config.budgetLimits.ecoRoom;
+      
+      // Get current CPU (use average to smooth out spikes)
+      const cpuUsed = roomStats.profiler.avgCpu;
+      const percentUsed = cpuUsed / budgetLimit;
+      
+      // Check budget thresholds
+      if (percentUsed >= this.config.budgetAlertThresholds.critical) {
+        report.roomsOverBudget++;
+        report.alerts.push({
+          severity: "critical",
+          target: roomName,
+          targetType: "room",
+          cpuUsed,
+          budgetLimit,
+          percentUsed,
+          tick: Game.time
+        });
+      } else if (percentUsed >= this.config.budgetAlertThresholds.warning) {
+        report.alerts.push({
+          severity: "warning",
+          target: roomName,
+          targetType: "room",
+          cpuUsed,
+          budgetLimit,
+          percentUsed,
+          tick: Game.time
+        });
+        report.roomsWithinBudget++; // Warning but still functioning
+      } else {
+        report.roomsWithinBudget++;
+      }
+    }
+
+    return report;
+  }
+
+  /**
+   * Detect CPU anomalies (spikes and sustained high usage)
+   * Returns list of detected anomalies
+   */
+  public detectAnomalies(): CPUAnomaly[] {
+    if (!this.config.anomalyDetection.enabled) {
+      return [];
+    }
+
+    const anomalies: CPUAnomaly[] = [];
+
+    // Check room CPU for anomalies
+    for (const [roomName, roomStats] of Object.entries(this.currentSnapshot.rooms)) {
+      // Need enough samples for reliable anomaly detection
+      if (roomStats.profiler.samples < this.config.anomalyDetection.minSamples) {
+        continue;
+      }
+
+      const current = this.roomMeasurements.get(roomName) ?? 0;
+      const baseline = roomStats.profiler.avgCpu;
+      
+      // Skip if no meaningful baseline
+      if (baseline < 0.01) {
+        continue;
+      }
+
+      const multiplier = current / baseline;
+
+      // Detect CPU spike
+      if (multiplier >= this.config.anomalyDetection.spikeThreshold) {
+        const swarm = memoryManager.getSwarmState(roomName);
+        const context = swarm 
+          ? `RCL ${Game.rooms[roomName]?.controller?.level ?? 0}, posture: ${swarm.posture}, danger: ${swarm.danger}`
+          : undefined;
+
+        anomalies.push({
+          type: "spike",
+          target: roomName,
+          targetType: "room",
+          current,
+          baseline,
+          multiplier,
+          tick: Game.time,
+          context
+        });
+      }
+    }
+
+    // Check process CPU for anomalies
+    for (const [processId, processStats] of Object.entries(this.currentSnapshot.processes)) {
+      // Need enough samples
+      if (processStats.runCount < this.config.anomalyDetection.minSamples) {
+        continue;
+      }
+
+      const current = processStats.avgCpu;
+      const baseline = processStats.avgCpu; // Using historical average as baseline
+      
+      // Skip if process hasn't run recently or has negligible CPU
+      if (Game.time - processStats.lastRunTick > 100 || baseline < 0.01) {
+        continue;
+      }
+
+      // Check for sustained high CPU compared to budget
+      if (processStats.cpuBudget > 0) {
+        const utilizationRatio = current / processStats.cpuBudget;
+        if (utilizationRatio >= 1.5) { // 50% over budget is anomalous
+          anomalies.push({
+            type: "sustained_high",
+            target: processId,
+            targetType: "process",
+            current,
+            baseline: processStats.cpuBudget,
+            multiplier: utilizationRatio,
+            tick: Game.time,
+            context: `${processStats.name} (${processStats.frequency})`
+          });
+        }
+      }
+    }
+
+    return anomalies;
   }
 
   // ============================================================================
@@ -1667,6 +1957,13 @@ export class UnifiedStatsManager {
         lastUpdate: 0
       };
     }
+  }
+
+  /**
+   * Get current stats snapshot (for console commands)
+   */
+  public getCurrentSnapshot(): StatsSnapshot {
+    return { ...this.currentSnapshot };
   }
 }
 
