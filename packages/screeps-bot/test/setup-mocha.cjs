@@ -79,6 +79,113 @@ global.chai.use(require('sinon-chai'));
 // Override ts-node compiler options
 process.env.TS_NODE_PROJECT = 'tsconfig.test.json';
 
+// Register module aliases and stubs for @bot paths used in dependency packages
+// This allows packages like screeps-defense to resolve @bot/* imports during testing
+const Module = require('module');
+const originalResolveFilename = Module._resolveFilename;
+
+// Create comprehensive stub modules for all @bot dependencies
+const stubs = {
+  '@bot/core/logger': {
+    logger: {
+      log: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+      debug: () => {}
+    },
+    createLogger: (name) => ({
+      log: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+      debug: () => {}
+    })
+  },
+  
+  '@bot/spawning/roleDefinitions': {
+    ROLE_DEFINITIONS: {
+      harvester: { body: [], priority: 1 },
+      hauler: { body: [], priority: 2 },
+      upgrader: { body: [], priority: 3 },
+      builder: { body: [], priority: 4 },
+      defender: { body: [], priority: 5 },
+      attacker: { body: [], priority: 6 },
+      healer: { body: [], priority: 7 },
+      claimer: { body: [], priority: 8 }
+    }
+  },
+  
+  '@bot/spawning/defenderManager': {
+    DefenseRequest: class {},
+    createDefenseRequest: () => ({}),
+    fulfillDefenseRequest: () => ({})
+  },
+  
+  '@bot/layouts/roadNetworkPlanner': {
+    getRoadNetwork: () => ({}),
+    planRoadNetwork: () => ({}),
+    buildRoadNetwork: () => ({})
+  },
+  
+  '@bot/memory/schemas': {
+    SwarmCreepMemory: {},
+    RoomMemory: {},
+    Memory: {}
+  },
+  
+  '@bot/memory/manager': {
+    getMemory: () => ({}),
+    setMemory: () => {},
+    clearMemory: () => {}
+  },
+  
+  '@bot/core/kernel': {
+    ProcessPriority: {
+      CRITICAL: 100,
+      HIGH: 75,
+      MEDIUM: 50,
+      LOW: 25,
+      IDLE: 10
+    },
+    kernel: {
+      addProcess: () => {},
+      removeProcess: () => {},
+      getProcess: () => ({}),
+      tick: () => {}
+    }
+  },
+  
+  '@bot/core/processDecorators': {
+    Process: (config) => (target, propertyKey, descriptor) => descriptor,
+    HighFrequencyProcess: (id, name, config) => (target, propertyKey, descriptor) => descriptor,
+    MediumFrequencyProcess: (id, name, config) => (target, propertyKey, descriptor) => descriptor,
+    LowFrequencyProcess: (id, name, config) => (target, propertyKey, descriptor) => descriptor,
+    CriticalProcess: (id, name, config) => (target, propertyKey, descriptor) => descriptor,
+    IdleProcess: (id, name, config) => (target, propertyKey, descriptor) => descriptor,
+    ProcessClass: () => (target) => target,
+    registerDecoratedProcesses: () => {},
+    registerAllDecoratedProcesses: () => {}
+  }
+};
+
+Module._resolveFilename = function(request, parent, isMain) {
+  // Check if this is a @bot/* request and we have a stub for it
+  if (stubs[request]) {
+    // Cache the stub module if not already cached
+    if (!Module._cache[request]) {
+      Module._cache[request] = {
+        exports: stubs[request],
+        loaded: true,
+        id: request
+      };
+    }
+    return request;
+  }
+  
+  return originalResolveFilename.call(this, request, parent, isMain);
+};
+
 // Mock Screeps constants
 global.STRUCTURE_SPAWN = 'spawn';
 global.STRUCTURE_EXTENSION = 'extension';
