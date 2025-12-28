@@ -1181,7 +1181,7 @@ export class Kernel {
    * @example
    * ```typescript
    * kernel.on('hostile.detected', (event) => {
-   *   console.log(`Hostile in ${event.roomName}!`);
+   *   logger.warn('Hostile detected', { room: event.roomName, subsystem: 'defense' });
    * });
    * ```
    */

@@ -89,10 +89,12 @@ module.exports = {
     {
       // Allow console.log in specific files where it's intentional
       files: [
-        "src/core/logger.ts",
-        "src/utils/ErrorMapper.ts",
-        "src/core/unifiedStats.ts",
-        "src/standards/consoleCommands.ts"
+        "src/core/logger.ts",                    // Logger implementation uses console.log
+        "src/utils/legacy/ErrorMapper.ts",       // Error display with HTML formatting
+        "src/core/unifiedStats.ts",              // Stats JSON output
+        "src/standards/consoleCommands.ts",      // Console command notifications
+        "src/memory/memoryMonitor.ts",           // Console command for memory debugging
+        "src/cache/cacheStats.ts"                // Console command for cache debugging
       ],
       rules: {
         "no-console": "off"
