@@ -292,6 +292,7 @@ export class PostureManager {
       return "war";
     }
     // TODO: [P2, Est: 2h] Defense pheromone threshold may be too low
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/894
     // Currently: defense > 20 triggers defensive posture
     // Pheromones decay slowly, so defensive posture may persist long after threats clear
     // Recommended: Increase threshold to 30-40, or implement faster decay when hostiles gone
@@ -308,6 +309,7 @@ export class PostureManager {
 
     // Default based on danger level
     // TODO: [P1, Est: 4h] Posture switching to defensive may be too aggressive
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/893
     // Currently: danger >= 1 (single hostile) triggers defensive posture
     // This causes mass military spawn even for minor threats (15 military creeps = 62% observed)
     // Recommended fixes (priority order):
