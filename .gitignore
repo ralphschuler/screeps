@@ -110,3 +110,9 @@ wiki/
 # Copilot strategic planning reports
 reports/
 !reports/copilot/.gitkeep
+
+# Testing coverage
+.nyc_output/
+coverage/
+*.lcov
+
