@@ -77,7 +77,7 @@ Expected for eco room: 0-2 defenders (only if under active attack)
 
 #### Issue 1: Posture Switching Too Aggressive
 **File**: `packages/screeps-bot/src/logic/evolution.ts`
-**Line**: 305-307
+**Line**: 319-321
 
 ```typescript
 // Current code
@@ -90,7 +90,7 @@ if (danger >= 1) {
 
 #### Issue 2: Defense Pheromone Threshold Too Low
 **File**: `packages/screeps-bot/src/logic/evolution.ts`
-**Line**: 294-296
+**Line**: 299-301
 
 ```typescript
 // Current code

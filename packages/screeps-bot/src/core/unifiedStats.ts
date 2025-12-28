@@ -546,10 +546,27 @@ export class UnifiedStatsManager {
    * Preserve room stats from previous snapshot.
    * Room processes are distributed (eco rooms run every 5 ticks) but stats are exported every tick.
    * This method ensures room stats persist across ticks even when rooms don't execute.
-   * @returns Room stats object from previous snapshot, or empty object if none exists
+   *
+   * Stale data cleanup:
+   * - Only preserve stats for rooms that are still present in Game.rooms
+   * - This prevents unbounded accumulation of stats for lost or invisible rooms
+   *
+   * @returns Room stats object from previous snapshot (filtered to current rooms), or empty object if none exists
    */
   private preserveRoomStats(): Record<string, RoomStatsEntry> {
-    return this.currentSnapshot?.rooms ?? {};
+    const previousRooms = this.currentSnapshot?.rooms;
+    if (!previousRooms) {
+      return {};
+    }
+
+    const filteredRooms: Record<string, RoomStatsEntry> = {};
+    for (const roomName in previousRooms) {
+      if (Object.prototype.hasOwnProperty.call(previousRooms, roomName) && Game.rooms[roomName]) {
+        filteredRooms[roomName] = previousRooms[roomName];
+      }
+    }
+
+    return filteredRooms;
   }
 
   /**
