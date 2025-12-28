@@ -301,7 +301,7 @@ const gameState = {
 | Metric | Warning Threshold | Action Needed |
 |--------|------------------|---------------|
 | CPU Usage | > 80% | Optimize hot paths |
-| GCL Progress | < 0.01/tick | Improve upgrade efficiency |
+| GCL Progress | < 0.01/tick | Improve upgraders |
 | Error Rate | > 1/tick | Fix bugs immediately |
 | Creep Count | < 50 or > 200 | Adjust spawn logic |
 | Energy Efficiency | < 80% | Optimize harvesting |
