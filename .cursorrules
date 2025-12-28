@@ -1,0 +1,516 @@
+# AI Agent Instructions for Screeps Bot Development
+
+## Context
+
+You are an AI coding assistant working on a Screeps bot with swarm-based architecture. This file provides instructions for autonomous and manual development.
+
+**Primary Documentation**: See `AGENTS.md` for complete workflows and `ROADMAP.md` for architecture.
+
+---
+
+## Core Principles
+
+1. **Follow ROADMAP.md** - Single source of truth for architecture
+2. **Required Code Only** - Remove unused code completely, no dead code
+3. **Verify with MCP** - Always fact-check Screeps API using MCP servers
+4. **Document Decisions** - Use TODO comments for future work
+5. **Measure Impact** - Base decisions on metrics and data
+
+---
+
+## Code Philosophy
+
+### Required Code Only
+
+- ❌ No config flags to disable features - remove entirely
+- ❌ No commented-out code - use git history
+- ❌ No "just in case" implementations
+- ✅ Remove unused imports, functions, classes immediately
+- ✅ Delete entire subsystems if not used
+- ✅ Trust git history for removed functionality
+
+### Code Quality
+
+- Use TypeScript strict mode
+- Write comprehensive tests (>80% coverage)
+- Add JSDoc comments for public APIs
+- Handle all error cases
+- Validate inputs from external sources
+
+---
+
+## MCP Servers (MANDATORY)
+
+**ALWAYS verify Screeps API before coding**. Use these MCP servers:
+
+### 1. screeps-mcp (Live Game)
+- `screeps_console` - Execute commands
+- `screeps_memory_get/set` - Memory operations
+- `screeps_room_*` - Room data
+- `screeps_stats` - Performance metrics
+
+### 2. screeps-docs-mcp (Official Docs)
+- `screeps_docs_get_api` - API documentation
+- `screeps_docs_search` - Search docs
+- `screeps_docs_get_mechanics` - Game mechanics
+
+### 3. screeps-typescript-mcp (Types)
+- `screeps_types_get` - Type definitions
+- `screeps_types_search` - Search types
+- `screeps_types_related` - Type relationships
+
+### 4. screeps-wiki-mcp (Community)
+- `screeps_wiki_search` - Search strategies
+- `screeps_wiki_get_article` - Get articles
+- Community best practices
+
+### 5. grafana-mcp (Monitoring)
+- `query_prometheus` - Query metrics
+- `query_loki_logs` - Query logs
+- `get_dashboard_by_uid` - View dashboards
+
+### Verification Protocol
+
+```
+Before coding → Verify API (docs/types)
+During dev → Test with live tools
+For strategy → Research wiki
+For performance → Monitor Grafana
+When uncertain → Search MCP servers
+```
+
+---
+
+## TODO Comments
+
+TODO comments are **automatically converted to GitHub issues**. Use liberally!
+
+### When to Use
+
+- ✅ Placeholders for future implementation
+- ✅ Out of scope work
+- ✅ Error documentation
+- ✅ Future enhancements
+- ✅ Breaking down large features
+
+### Format
+
+```typescript
+// TODO: Brief description
+// Context: Additional details
+// See: ROADMAP.md Section X
+```
+
+### Examples
+
+```typescript
+// TODO: Implement advanced pathfinding with A*
+// Should consider terrain costs and traffic
+// See ROADMAP.md Section 20 for requirements
+
+// TODO: TypeError - Cannot read property 'pos' of undefined
+// Details: Structure destroyed before access
+// Suggested Fix: Add null check
+```
+
+---
+
+## Autonomous Development
+
+### When to Proceed Autonomously
+
+✅ **Safe to proceed**:
+- Bug fixes with clear root cause
+- Performance optimizations (proven techniques)
+- Code cleanup/refactoring (well-tested)
+- Implementing wiki patterns
+- Incremental improvements
+
+⚠️ **Require human review**:
+- New game mechanics
+- Major architectural changes
+- Multi-system changes
+- Experimental approaches
+- Unclear impact
+
+❌ **Never autonomous**:
+- Could cause global reset
+- Critical safety systems
+- No proper testing
+- During active combat
+- Violates ROADMAP.md
+
+### Autonomous Loop
+
+```
+1. OBSERVE - Gather metrics and game state
+2. ANALYZE - Identify opportunities (priority matrix)
+3. PLAN - Design solution (verify with MCP)
+4. IMPLEMENT - Write code (tests + docs)
+5. VALIDATE - Test thoroughly
+6. DEPLOY - Create PR
+7. MONITOR - Track impact (24-48h)
+```
+
+### Decision Matrix
+
+| Impact | Effort | Priority | Action |
+|--------|--------|----------|--------|
+| High | Low | P0 | Implement immediately |
+| High | Medium | P1 | Implement soon |
+| High | High | P2 | Plan carefully |
+| Medium | Low | P1 | Quick wins |
+| Medium | Medium | P2 | Schedule |
+| Low | Any | P3 | Defer |
+
+### Key Metrics
+
+Monitor these thresholds:
+
+| Metric | Warning | Action |
+|--------|---------|--------|
+| CPU Usage | >80% | Optimize hot paths |
+| GCL Progress | <0.01/tick | Improve upgraders |
+| Error Rate | >1/tick | Fix bugs immediately |
+| Creep Count | <50 or >200 | Adjust spawning |
+| Energy Efficiency | <80% | Optimize harvesting |
+| Bucket Level | <5000 | Reduce CPU urgently |
+
+---
+
+## Development Patterns
+
+### API Verification
+
+```typescript
+// ❌ DON'T assume
+creep.moveTo(target);
+
+// ✅ DO verify first
+// Verified with screeps_docs_get_api("Creep")
+const result = creep.moveTo(target, {
+  reusePath: 5,
+  visualizePathStyle: { stroke: '#ffffff' }
+});
+
+if (result === ERR_NOT_IN_RANGE) {
+  // Handle error
+}
+```
+
+### Performance-Critical Code
+
+```typescript
+/**
+ * Optimized pathfinding with caching
+ * Verified: screeps_docs_get_api, screeps_types_get
+ * Performance: ~0.1 CPU (cached), ~0.5 CPU (new)
+ */
+export function optimizedMoveTo(
+  creep: Creep,
+  target: RoomPosition
+): ScreepsReturnCode {
+  // Check cache
+  const cached = getPathFromCache(creep, target);
+  if (cached && isPathValid(cached)) {
+    return creep.moveByPath(cached);
+  }
+  
+  // Calculate new path
+  const result = creep.moveTo(target, {
+    reusePath: 5,
+    visualizePathStyle: { stroke: '#ffffff' }
+  });
+  
+  // Cache on success
+  if (result === OK) {
+    cachePathForCreep(creep, target);
+  }
+  
+  return result;
+}
+```
+
+### Error Handling
+
+```typescript
+try {
+  await ensureConnected();
+  const validated = schema.parse(args);
+  return await handler(client, validated);
+} catch (error) {
+  // TODO: [If bug in our code, document here]
+  console.error('Operation failed:', error);
+  throw error;
+}
+```
+
+### Testing
+
+```typescript
+describe('optimizedMoveTo', () => {
+  it('should use cached path', () => {
+    const creep = mockCreep();
+    const target = mockPosition();
+    
+    const result1 = optimizedMoveTo(creep, target);
+    expect(result1).toBe(OK);
+    
+    const result2 = optimizedMoveTo(creep, target);
+    expect(creep.moveByPath).toHaveBeenCalled();
+  });
+  
+  it('should handle blocked paths', () => {
+    const creep = mockCreep();
+    const target = mockPosition();
+    mockPathBlocked();
+    
+    const result = optimizedMoveTo(creep, target);
+    expect(result).toBe(ERR_NO_PATH);
+  });
+});
+```
+
+---
+
+## Autonomous Workflow Examples
+
+### Example 1: Fix High CPU
+
+```
+1. OBSERVE: Grafana shows CPU at 95%, bucket draining
+2. ANALYZE: Profiling shows pathfinding at 40% CPU
+3. PLAN: Implement path caching (proven from wiki)
+4. IMPLEMENT: Add caching layer with 5-tick reuse
+5. VALIDATE: Test shows 15% CPU reduction
+6. DEPLOY: Create PR, auto-merge after CI
+7. MONITOR: Confirm CPU drops to 80%, bucket recovering
+   → Success! Document pattern.
+```
+
+### Example 2: Improve GCL
+
+```
+1. OBSERVE: GCL at 0.008/tick (target: 0.015/tick)
+2. ANALYZE: Only 2 upgraders per room, energy surplus
+3. PLAN: Increase to 4 upgraders, optimize body parts
+4. IMPLEMENT: Adjust spawn logic, verify with MCP
+5. VALIDATE: Test in console, verify energy usage
+6. DEPLOY: Create PR with metrics
+7. MONITOR: GCL increases to 0.014/tick
+   → 75% improvement achieved!
+```
+
+### Example 3: Fix Critical Bug
+
+```
+1. OBSERVE: Errors: "Cannot read property 'pos' of undefined"
+2. ANALYZE: Creeps accessing destroyed structures
+3. PLAN: Add null checks, verify structure exists
+4. IMPLEMENT: Add validation, handle edge case
+5. VALIDATE: Error disappears in testing
+6. DEPLOY: Immediate PR for critical fix
+7. MONITOR: Zero errors for 48 hours
+   → Bug eliminated!
+```
+
+---
+
+## Validation Checklist
+
+Before every commit:
+
+- [ ] TypeScript compiles (`npm run build`)
+- [ ] All tests pass (`npm test`)
+- [ ] Linter passes (`npm run lint`)
+- [ ] API verified with MCP servers
+- [ ] ROADMAP.md compliant
+- [ ] No breaking changes
+- [ ] Tests added/updated
+- [ ] Documentation updated
+
+---
+
+## Git Workflow
+
+### Branch Naming
+
+```
+feature/optimize-pathfinding
+fix/creep-stuck-bug
+refactor/spawn-manager
+docs/update-readme
+```
+
+### Commit Messages
+
+```
+feat: Add path caching for creep movement
+
+- Implement 5-tick path reuse
+- Add cache invalidation on terrain changes
+- Reduces CPU usage by ~15%
+- Add comprehensive tests
+
+Fixes #123
+```
+
+### PR Template
+
+```markdown
+## Overview
+Brief description of changes
+
+## Changes
+- Bullet list of changes
+
+## Metrics
+- CPU impact: -15%
+- Test coverage: 85%
+- Breaking changes: None
+
+## Validation
+- ✅ All tests pass
+- ✅ TypeScript compiles
+- ✅ MCP verified
+- ✅ ROADMAP compliant
+```
+
+---
+
+## Monitoring and Rollback
+
+### Post-Deployment Monitoring
+
+**Duration**: 24-48 hours
+
+**Track**:
+- CPU usage trends
+- Error rates
+- GCL progress
+- Resource efficiency
+- Bucket level
+
+### Rollback Triggers
+
+Automatic rollback if:
+- ❌ CPU > 100 (bucket draining)
+- ❌ Error rate > 10/tick
+- ❌ Metric degradation > 20%
+- ❌ Bot stops functioning
+- ❌ Global reset triggered
+
+### Success Evaluation
+
+```typescript
+if (cpu_reduction > 10%) {
+  console.log('✅ Success: Significant improvement');
+  documentSuccess();
+} else if (cpu_reduction < -5%) {
+  console.log('❌ Regression: Rollback');
+  initiateRollback();
+} else {
+  console.log('⚠️ Neutral: Consider rollback');
+}
+```
+
+---
+
+## Learning and Improvement
+
+After each change, record:
+
+```typescript
+{
+  change: 'Implemented path caching',
+  predicted_impact: { cpu: '-15%' },
+  actual_impact: { cpu: '-17%' },
+  success: true,
+  lessons: [
+    'Caching more effective than predicted',
+    'No negative side effects',
+    'Pattern applicable to other movement'
+  ],
+  next_steps: [
+    'Apply to hauler movement',
+    'Consider tower targeting cache'
+  ]
+}
+```
+
+**Update Knowledge**:
+- ✅ Successful patterns → Document and reuse
+- ❌ Failed approaches → Avoid in future
+- 📊 Predictions → Refine estimates
+- 🎯 Criteria → Improve judgment
+
+---
+
+## Quick Reference
+
+### Common Commands
+
+```bash
+# Build
+npm run build
+
+# Test
+npm test
+npm run test:watch
+
+# Lint
+npm run lint
+npm run lint:fix
+
+# MCP Servers
+manus-mcp-cli list-servers
+manus-mcp-cli call screeps-mcp screeps_stats
+
+# Git
+git checkout -b feature/my-feature
+git commit -m "feat: description"
+gh pr create --title "feat: title" --body "description"
+```
+
+### Key Files
+
+- `AGENTS.md` - Complete agent instructions
+- `ROADMAP.md` - Architecture and design
+- `packages/screeps-bot/` - Bot code
+- `packages/screeps-mcp/` - Live game MCP server
+- `packages/screeps-docs-mcp/` - Docs MCP server
+- `packages/screeps-typescript-mcp/` - Types MCP server
+- `packages/screeps-wiki-mcp/` - Wiki MCP server
+
+### MCP Agent Guides
+
+- `packages/screeps-mcp/AI_AGENT_GUIDE.md`
+- `packages/screeps-docs-mcp/AI_AGENT_GUIDE.md`
+- `packages/screeps-typescript-mcp/AI_AGENT_GUIDE.md`
+- `packages/screeps-wiki-mcp/AI_AGENT_GUIDE.md`
+
+---
+
+## Summary
+
+**For Manual Development**:
+- Follow ROADMAP.md
+- Verify with MCP servers
+- Use TODO comments liberally
+- Test thoroughly
+
+**For Autonomous Development**:
+- Monitor metrics continuously
+- Identify high-impact improvements
+- Implement with safety checks
+- Deploy and monitor impact
+- Learn from outcomes
+
+**Always**:
+- Required code only
+- Fact-check with MCP
+- Document decisions
+- Measure impact
+- Iterate quickly
+
+See `AGENTS.md` for complete workflows and examples.

@@ -4,6 +4,22 @@
 
 This is a Screeps bot repository with a swarm-based architecture. The ROADMAP.md file at the repository root is the single source of truth for how this bot operates.
 
+**Important**: This repository supports both **manual development** (human-guided) and **autonomous development** (AI-driven continuous improvement). See AGENTS.md for complete autonomous development workflows.
+
+---
+
+## Table of Contents
+
+1. [Core Principles](#core-principles)
+2. [Code Philosophy](#code-philosophy)
+3. [TODO Comment Protocol](#todo-comment-protocol)
+4. [Error Handling Protocol](#error-handling-protocol)
+5. [MCP Servers](#mcp-servers-for-screeps)
+6. [**Autonomous Development Mode**](#autonomous-development-mode) ⭐
+7. [Development Patterns](#development-patterns)
+
+---
+
 ## Core Principles
 
 1. **Follow the Roadmap**: All code and documentation changes must align with the swarm architecture, lifecycle stages, and design principles defined in ROADMAP.md
@@ -12,21 +28,27 @@ This is a Screeps bot repository with a swarm-based architecture. The ROADMAP.md
 4. **Verify with MCP Servers**: Always fact-check Screeps-related decisions using the available MCP servers before implementing or documenting
 5. **Required Code Only**: Keep only code that is actively used. Remove disabled or unused features completely rather than keeping them with config flags
 
+---
+
 ## Code Philosophy: Required Code Only
 
 **Keep only code that is actively used and required.** When a feature is disabled or not needed:
+
 - **Remove it completely** - Don't just disable it with flags or comments
 - **No dead code** - Unused functions, classes, or modules should be deleted
 - **Reimplementation is acceptable** - If a feature is needed later, it can be reimplemented from scratch or from git history
 - **Simplicity over flexibility** - A smaller, focused codebase is easier to maintain and understand than one full of "just in case" code
 
-Examples:
+### Examples
+
 - ❌ Don't add config flags to disable features - remove the feature entirely
 - ❌ Don't keep "commented out" code for future reference - use git history
 - ❌ Don't implement features "just in case they're needed someday"
 - ✅ Remove unused imports, functions, and classes immediately
 - ✅ Delete entire subsystems if they're not being used
 - ✅ Trust that git history and documentation preserve removed functionality
+
+---
 
 ## TODO Comment Protocol
 
@@ -61,6 +83,7 @@ It is **acceptable and encouraged** to create comprehensive TODO comments in the
 ### Examples
 
 #### Example 1: Out of Scope Feature
+
 ```typescript
 function processRemoteMining(room: Room) {
   // TODO: Implement automatic road building for remote mining routes
@@ -73,6 +96,7 @@ function processRemoteMining(room: Room) {
 ```
 
 #### Example 2: Placeholder for Complex Logic
+
 ```typescript
 class DefenseCoordinator {
   assessThreat(hostiles: Creep[]): ThreatLevel {
@@ -86,6 +110,7 @@ class DefenseCoordinator {
 ```
 
 #### Example 3: Breaking Down Large Features
+
 ```typescript
 // TODO: Implement advanced spawn queue with priority system
 // Features needed:
@@ -98,6 +123,8 @@ class SpawnQueue {
   // ... minimal implementation
 }
 ```
+
+---
 
 ## Error Handling Protocol
 
@@ -121,6 +148,7 @@ When you encounter errors in source code that originates from this repository (i
 ### Examples
 
 #### Example 1: Null Reference Error
+
 ```typescript
 async function getRoomData(roomName: string) {
   // TODO: TypeError - Cannot read property 'controller' of undefined
@@ -137,6 +165,7 @@ async function getRoomData(roomName: string) {
 ```
 
 #### Example 2: API Error
+
 ```typescript
 try {
   await api.memory.get(path);
@@ -151,45 +180,409 @@ try {
 }
 ```
 
-#### Example 3: Logic Error
-```typescript
-function calculatePathCost(path: PathStep[]): number {
-  // TODO: Logic Error - Incorrect cost calculation for swamp terrain
-  // Details: Swamp terrain costs 5 not 10, causing suboptimal pathfinding
-  // Encountered: During remote mining route calculation
-  // Suggested Fix: Update terrain cost matrix to use correct swamp cost of 5
-  
-  return path.reduce((cost, step) => {
-    const terrain = step.terrain;
-    return cost + (terrain === TERRAIN_MASK_SWAMP ? 10 : 1); // Should be 5
-  }, 0);
-}
-```
-
-## When NOT to Add TODOs
+### When NOT to Add TODOs
 
 - **External Library Errors**: Don't add TODOs to third-party dependencies
 - **Expected Errors**: Don't add TODOs for intentional error handling (validation, user input errors)
 - **Fixed Errors**: Remove the TODO comment once the error is resolved
 
-## Best Practices
+---
 
-1. **Be Specific**: Include exact error messages and line numbers
-2. **Provide Context**: Explain when and how the error occurs
-3. **Suggest Solutions**: If you understand the fix, document it
-4. **Link Related Issues**: Reference GitHub issues if they exist
-5. **Update Regularly**: Remove TODOs when errors are fixed
+## MCP Servers for Screeps
 
-## Additional Guidelines
+This repository provides five MCP (Model Context Protocol) servers that you **MUST** use for fact-checking and verifying your decisions about Screeps. These servers provide authoritative information about the game API, documentation, TypeScript types, community strategies, and operational monitoring.
 
-- **Test MCP Servers**: When working on MCP server code, test error scenarios
-- **Validate Input**: Always validate inputs from external sources (API, user commands)
-- **Handle Async Errors**: Properly catch and handle async/await errors
-- **Log Appropriately**: Use structured logging for debugging errors
+### Mandatory Fact-Checking
 
-## Repository-Specific Patterns
+**ALWAYS** verify Screeps-related information using MCP servers before:
 
-### MCP Error Handling
+- Writing or modifying bot code that uses Screeps API
+- Making assertions about game mechanics, constants, or behavior  
+- Implementing features that interact with game objects (Creeps, Rooms, Structures, etc.)
+- Discussing or documenting Screeps API methods or properties
+- Making decisions about optimal strategies or approaches
+- Adding or modifying Screeps constants in code
+
+**NEVER** assume or guess Screeps API details - always verify with MCP tools first.
+
+### Available MCP Servers
+
+#### 1. screeps-mcp (Live Game API)
+
+**Purpose**: Real-time game state, memory inspection, console commands, and live data
+
+**Key Tools**:
+- `screeps_console` - Execute console commands and get responses
+- `screeps_memory_get` / `screeps_memory_set` - Read/write bot memory
+- `screeps_room_terrain` / `screeps_room_objects` / `screeps_room_status` - Room data
+- `screeps_market_orders` / `screeps_market_stats` - Market information
+- `screeps_game_time` - Current game tick
+- `screeps_stats` - Performance metrics (CPU, GCL, entity counts)
+
+**AI Agent Guide**: `packages/screeps-mcp/AI_AGENT_GUIDE.md`
+
+#### 2. screeps-docs-mcp (Official Documentation)
+
+**Purpose**: Official API documentation, game mechanics explanations, and authoritative references
+
+**Key Tools**:
+- `screeps_docs_search` - Search documentation by keyword
+- `screeps_docs_get_api` - Get API documentation for specific objects
+- `screeps_docs_get_mechanics` - Get game mechanics documentation
+- `screeps_docs_list_apis` - List all available API objects
+
+**AI Agent Guide**: `packages/screeps-docs-mcp/AI_AGENT_GUIDE.md`
+
+#### 3. screeps-typescript-mcp (Type Definitions)
+
+**Purpose**: TypeScript type checking, interface definitions, and type relationships
+
+**Key Tools**:
+- `screeps_types_search` - Search for TypeScript type definitions
+- `screeps_types_get` - Get complete type definition for a specific type
+- `screeps_types_list` - List all available types with optional filtering
+- `screeps_types_related` - Get types related through extends/implements
+
+**AI Agent Guide**: `packages/screeps-typescript-mcp/AI_AGENT_GUIDE.md`
+
+#### 4. screeps-wiki-mcp (Community Wiki)
+
+**Purpose**: Community strategies, bot architectures, optimization patterns, and best practices
+
+**Key Tools**:
+- `screeps_wiki_search` - Search wiki articles by keyword
+- `screeps_wiki_get_article` - Get full article content in markdown
+- `screeps_wiki_list_categories` - Browse wiki categories
+- `screeps_wiki_get_table` - Extract structured data from wiki tables
+
+**AI Agent Guide**: `packages/screeps-wiki-mcp/AI_AGENT_GUIDE.md`
+
+#### 5. grafana-mcp (Monitoring and Observability)
+
+**Purpose**: Performance monitoring, alerting, dashboard management, and operational visibility
+
+**Key Tools**:
+- `search_dashboards` / `get_dashboard_by_uid` - Access Grafana dashboards
+- `list_alert_rules` / `get_alert_rule_by_uid` - Monitor alert configurations
+- `query_prometheus` / `query_loki_logs` - Query metrics and logs
+- `get_sift_investigation` / `find_slow_requests` - AI-powered performance debugging
+
+### Fact-Checking Workflow
+
+```
+1. Before Coding → Verify API with screeps-docs-mcp or screeps-typescript-mcp
+2. During Development → Test with screeps-mcp live tools
+3. For Strategy → Research with screeps-wiki-mcp
+4. For Performance → Monitor with grafana-mcp
+5. When Uncertain → Search across all MCP servers
+```
+
+### Examples
+
+#### ❌ DON'T assume API details
+
+```typescript
+// Don't assume Creep.moveTo exists or how it works
+creep.moveTo(target);
+```
+
+#### ✅ DO verify with MCP servers first
+
+```typescript
+// First use: screeps_docs_get_api with objectName: "Creep"
+// Verify: moveTo method exists, accepts RoomPosition or object with pos
+// Verify: Returns ERR_* constants for error cases
+const result = creep.moveTo(target);
+if (result === ERR_NOT_IN_RANGE) {
+  // Handle error
+}
+```
+
+---
+
+## Autonomous Development Mode
+
+### Overview
+
+This repository supports **autonomous development** where AI agents can continuously improve the bot without human intervention. This mode enables:
+
+1. **Self-directed improvements** based on performance metrics
+2. **Automated testing and deployment** with safety checks
+3. **Continuous monitoring** of impact
+4. **Learning from outcomes** to improve future decisions
+
+See **AGENTS.md** for complete autonomous development workflows.
+
+### When to Use Autonomous Mode
+
+**Use Autonomous Mode** for:
+
+- ✅ Performance optimizations with proven techniques
+- ✅ Bug fixes with clear root cause
+- ✅ Code cleanup and refactoring (well-tested)
+- ✅ Implementing established patterns from wiki
+- ✅ Incremental improvements to existing systems
+
+**Require Human Review** for:
+
+- ⚠️ New game mechanics or strategies
+- ⚠️ Major architectural changes
+- ⚠️ Changes affecting multiple systems
+- ⚠️ Experimental or unproven approaches
+- ⚠️ Changes with unclear impact
+
+**Never Autonomous** for:
+
+- ❌ Changes that could cause global reset
+- ❌ Modifications to critical safety systems
+- ❌ Changes without proper testing
+- ❌ Deployments during active combat
+- ❌ Changes that violate ROADMAP.md
+
+### Autonomous Development Loop
+
+```
+OBSERVE → ANALYZE → PLAN → IMPLEMENT → VALIDATE → DEPLOY → MONITOR
+```
+
+#### 1. OBSERVE: Gather Data
+
+```typescript
+// Query performance metrics
+const metrics = {
+  cpu: await query_prometheus('screeps_cpu_used'),
+  gcl: await query_prometheus('screeps_gcl_progress'),
+  errors: await query_loki_logs('screeps_errors')
+};
+
+// Check game state
+const gameState = {
+  time: await screeps_game_time(),
+  rooms: await screeps_user_rooms(),
+  stats: await screeps_stats()
+};
+```
+
+**Look for**:
+- High CPU usage (> 80%)
+- Slow GCL progress (< 0.01/tick)
+- Errors in logs (> 1/tick)
+- Inefficient resource usage (< 80%)
+
+#### 2. ANALYZE: Identify Opportunities
+
+**Priority Matrix**:
+
+| Impact | Effort | Priority | Action |
+|--------|--------|----------|--------|
+| High | Low | **P0** | Implement immediately |
+| High | Medium | **P1** | Implement soon |
+| High | High | **P2** | Plan carefully |
+| Medium | Low | **P1** | Quick wins |
+
+**Common Improvements**:
+- Performance optimization (hot paths)
+- Feature gaps (remote mining, trading)
+- Bug fixes (errors, stuck creeps)
+- Strategic improvements (GCL, efficiency)
+
+#### 3. PLAN: Design Solution
+
+```typescript
+// Research best practices
+const strategies = await screeps_wiki_search('optimization techniques');
+const api = await screeps_docs_get_api('Creep');
+const types = await screeps_types_get('Creep');
+
+// Define success criteria
+const successCriteria = {
+  cpu_reduction: '> 10%',
+  test_coverage: '> 80%',
+  no_regressions: true
+};
+```
+
+**Decision Criteria**:
+- Problem well-defined? → Proceed
+- Solution proven? → Proceed
+- Low risk? → Proceed
+- High confidence? → Proceed
+- Aligned with roadmap? → Proceed
+- Otherwise → Create TODO/issue
+
+#### 4. IMPLEMENT: Write Code
+
+**Implementation Checklist**:
+
+Before:
+- [ ] Verify API with `screeps_docs_get_api`
+- [ ] Check types with `screeps_types_get`
+- [ ] Review patterns with `screeps_wiki_search`
+
+During:
+- [ ] Follow code philosophy (required code only)
+- [ ] Add comprehensive tests
+- [ ] Use TypeScript strict mode
+- [ ] Handle edge cases
+
+After:
+- [ ] Run linter
+- [ ] Verify compilation
+- [ ] Run all tests
+- [ ] Update documentation
+
+#### 5. VALIDATE: Test Changes
+
+```bash
+# Automated validation
+npm run build          # TypeScript compilation
+npm test               # Unit tests
+npm run lint           # Code quality
+```
+
+**Manual Testing**:
+```typescript
+// Test in game console
+await screeps_console(`
+  const creep = Game.creeps['Worker1'];
+  const result = optimizedMoveTo(creep, target);
+  console.log('Result:', result);
+`);
+```
+
+**Validation Criteria**:
+- [ ] All tests pass
+- [ ] TypeScript compiles
+- [ ] ROADMAP compliant
+- [ ] No breaking changes
+- [ ] Backward compatible
+
+#### 6. DEPLOY: Create PR
+
+```bash
+# Create feature branch
+git checkout -b feature/optimize-pathfinding
+
+# Commit changes
+git commit -m "feat: Optimize creep pathfinding with caching
+
+- Add path caching to reduce CPU usage
+- Implement traffic avoidance
+- Add unit tests for path validation
+- Reduces CPU usage by ~15% in testing
+
+Fixes #123"
+
+# Create PR
+gh pr create \
+  --title "feat: Optimize creep pathfinding with caching" \
+  --body "## Overview
+  
+Implements path caching to reduce CPU usage.
+
+## Metrics
+- CPU reduction: ~15%
+- Test coverage: 85%
+- No breaking changes
+
+## Validation
+- ✅ All tests pass
+- ✅ TypeScript compiles
+- ✅ ROADMAP compliant"
+```
+
+#### 7. MONITOR: Track Impact
+
+**Monitoring Period**: 24-48 hours
+
+```typescript
+// Compare metrics before/after
+const impact = {
+  cpu: calculateChange(before.cpu, after.cpu),
+  gcl: calculateChange(before.gcl, after.gcl),
+  errors: calculateChange(before.errors, after.errors)
+};
+
+// Evaluate success
+if (impact.cpu_reduction > 0.10) {
+  console.log('✅ Success: Significant improvement');
+  documentSuccess();
+} else if (impact.cpu_reduction < -0.05) {
+  console.log('❌ Regression: Initiating rollback');
+  initiateRollback();
+}
+```
+
+**Rollback Triggers**:
+- ❌ CPU usage > 100 (bucket draining)
+- ❌ Error rate > 10 per tick
+- ❌ Critical metric degradation > 20%
+- ❌ Bot stops functioning
+
+### Autonomous Workflow Examples
+
+#### Example 1: Fix High CPU Usage
+
+```
+1. OBSERVE: Grafana shows CPU at 95%
+2. ANALYZE: Pathfinding uses 40% of CPU
+3. PLAN: Implement path caching (proven from wiki)
+4. IMPLEMENT: Add caching with 5-tick reuse
+5. VALIDATE: Test shows 15% reduction
+6. DEPLOY: Create PR, auto-merge
+7. MONITOR: Confirm CPU drops to 80%
+   → Success!
+```
+
+#### Example 2: Improve GCL Progress
+
+```
+1. OBSERVE: GCL at 0.008/tick (target: 0.015)
+2. ANALYZE: Only 2 upgraders, energy surplus
+3. PLAN: Increase to 4 upgraders, optimize bodies
+4. IMPLEMENT: Adjust spawn logic
+5. VALIDATE: Test in console
+6. DEPLOY: Create PR with metrics
+7. MONITOR: GCL increases to 0.014/tick
+   → 75% improvement!
+```
+
+### Continuous Learning
+
+After each cycle, record outcomes:
+
+```typescript
+const outcome = {
+  change: 'Implemented path caching',
+  predicted_impact: { cpu: '-15%' },
+  actual_impact: { cpu: '-17%' },
+  success: true,
+  lessons: [
+    'Caching more effective than predicted',
+    'No negative side effects',
+    'Pattern applicable elsewhere'
+  ],
+  next_steps: [
+    'Apply to hauler movement',
+    'Consider tower targeting cache'
+  ]
+};
+```
+
+**Update Knowledge**:
+- ✅ Successful patterns → Document and reuse
+- ❌ Failed approaches → Avoid in future
+- 📊 Impact predictions → Refine estimates
+- 🎯 Decision criteria → Improve judgment
+
+---
+
+## Development Patterns
+
+### Repository-Specific Patterns
+
+#### MCP Error Handling
+
 ```typescript
 server.registerTool(
   "tool_name",
@@ -208,7 +601,8 @@ server.registerTool(
 );
 ```
 
-### Bot Code Error Handling
+#### Bot Code Error Handling
+
 ```typescript
 try {
   // Bot logic
@@ -219,454 +613,153 @@ try {
 }
 ```
 
-This protocol helps maintain code quality and makes debugging more efficient by documenting errors at their source.
+#### Performance-Critical Code
 
-## MCP Servers for Screeps
-
-This repository provides five MCP (Model Context Protocol) servers that you **MUST** use for fact-checking and verifying your decisions about Screeps. These servers provide authoritative information about the game API, documentation, TypeScript types, community strategies, and operational monitoring.
-
-### Mandatory Fact-Checking
-
-**ALWAYS** verify Screeps-related information using MCP servers before:
-- Writing or modifying bot code that uses Screeps API
-- Making assertions about game mechanics, constants, or behavior  
-- Implementing features that interact with game objects (Creeps, Rooms, Structures, etc.)
-- Discussing or documenting Screeps API methods or properties
-- Making decisions about optimal strategies or approaches
-- Adding or modifying Screeps constants in code
-
-**NEVER** assume or guess Screeps API details - always verify with MCP tools first.
-
-### Available MCP Servers
-
-#### 1. screeps-mcp (Live Game API)
-**Purpose**: Real-time game state, memory inspection, console commands, and live data
-
-**Key Tools**:
-- `screeps_console` - Execute console commands and get responses
-- `screeps_memory_get` / `screeps_memory_set` - Read/write bot memory
-- `screeps_room_terrain` / `screeps_room_objects` / `screeps_room_status` - Room data
-- `screeps_market_orders` / `screeps_market_stats` - Market information
-- `screeps_game_time` - Current game tick
-- `screeps_stats` - Performance metrics (CPU, GCL, entity counts)
-- Plus 20+ additional tools for comprehensive game data access
-
-**When to Use**:
-- Testing code behavior in the live game environment
-- Debugging memory or state issues
-- Checking current market conditions
-- Verifying room status and ownership
-- Monitoring performance and resource usage
-
-**Example**:
 ```typescript
-// Before implementing tower logic, verify structure properties
-// Use: screeps_room_objects with room: "W1N1"
-// Verify: Tower structure format, energy levels, etc.
-const towers = room.find(FIND_MY_STRUCTURES, {
-  filter: s => s.structureType === STRUCTURE_TOWER
+/**
+ * Optimized function for high-frequency operations
+ * Verified with: screeps_docs_get_api, screeps_types_get
+ * Benchmarked: ~0.05 CPU per call
+ */
+export function optimizedFunction() {
+  // Cache frequently accessed data
+  const cached = getCachedData();
+  if (cached) return cached;
+  
+  // Minimize object creation
+  // Avoid expensive operations in loops
+  // Use early returns
+  
+  const result = performCalculation();
+  setCachedData(result);
+  return result;
+}
+```
+
+### Code Quality Standards
+
+#### ✅ Good Code Example
+
+```typescript
+/**
+ * Optimizes creep pathfinding by caching paths and avoiding traffic
+ * @param creep - The creep to move
+ * @param target - The target position
+ * @returns Error code (OK, ERR_NOT_IN_RANGE, etc.)
+ * 
+ * Verified with screeps_docs_get_api("Creep")
+ * Performance: ~0.1 CPU per call (cached), ~0.5 CPU (new path)
+ */
+export function optimizedMoveTo(
+  creep: Creep, 
+  target: RoomPosition
+): ScreepsReturnCode {
+  // Check cache first
+  const cachedPath = getPathFromCache(creep, target);
+  if (cachedPath && isPathValid(cachedPath)) {
+    return creep.moveByPath(cachedPath);
+  }
+  
+  // Calculate new path with optimization options
+  const result = creep.moveTo(target, {
+    reusePath: 5,
+    visualizePathStyle: { stroke: '#ffffff' }
+  });
+  
+  // Cache successful paths
+  if (result === OK) {
+    cachePathForCreep(creep, target);
+  }
+  
+  return result;
+}
+```
+
+#### ❌ Bad Code Example
+
+```typescript
+// Don't do this: No verification, no error handling, no caching
+function moveCreep(creep, target) {
+  creep.moveTo(target); // What if this fails?
+}
+```
+
+### Testing Patterns
+
+#### Unit Test Example
+
+```typescript
+describe('optimizedMoveTo', () => {
+  it('should use cached path when available', () => {
+    const creep = mockCreep();
+    const target = mockPosition();
+    
+    // First call calculates path
+    const result1 = optimizedMoveTo(creep, target);
+    expect(result1).toBe(OK);
+    
+    // Second call uses cache
+    const result2 = optimizedMoveTo(creep, target);
+    expect(result2).toBe(OK);
+    expect(creep.moveByPath).toHaveBeenCalled();
+  });
+  
+  it('should handle invalid paths', () => {
+    const creep = mockCreep();
+    const target = mockPosition();
+    
+    // Simulate blocked path
+    mockPathBlocked();
+    
+    const result = optimizedMoveTo(creep, target);
+    expect(result).toBe(ERR_NO_PATH);
+  });
 });
 ```
 
-#### 2. screeps-docs-mcp (Official Documentation)
-**Purpose**: Official API documentation, game mechanics, and authoritative references
+---
 
-**Key Tools**:
-- `screeps_docs_search` - Search documentation by keyword
-- `screeps_docs_get_api` - Get API docs for Game, Room, Creep, Structures, etc.
-- `screeps_docs_get_mechanics` - Get game mechanics (control, market, power, etc.)
-- `screeps_docs_list_apis` - List all API objects
-- `screeps_docs_list_mechanics` - List all mechanics topics
+## Best Practices Summary
 
-**When to Use**:
-- Verifying API method signatures and return values
-- Understanding game mechanics and rules
-- Checking constant values and enums
-- Learning about object properties and methods
-- Confirming behavior of Screeps functions
+### For Manual Development
 
-**Example**:
-```typescript
-// Before using Creep.moveTo(), verify its signature
-// Use: screeps_docs_get_api with objectName: "Creep"
-// Verify: moveTo(x, y, [opts]) or moveTo(target, [opts])
-// Verify: Returns OK, ERR_NOT_OWNER, ERR_BUSY, ERR_NOT_FOUND, ERR_INVALID_TARGET
-const result = creep.moveTo(target, {
-  reusePath: 50,
-  visualizePathStyle: {stroke: '#ffffff'}
-});
-```
+- ✅ Use TODO comments liberally for out-of-scope work
+- ✅ Verify all Screeps API usage with MCP servers
+- ✅ Follow code philosophy (required code only)
+- ✅ Write comprehensive tests
+- ✅ Document decisions and rationale
 
-#### 3. screeps-typescript-mcp (Type Definitions)
-**Purpose**: TypeScript type checking, interfaces, and type relationships
+### For Autonomous Development
 
-**Key Tools**:
-- `screeps_types_search` - Search for type definitions by keyword
-- `screeps_types_get` - Get complete type definition for a specific type
-- `screeps_types_list` - List available types with optional filtering
-- `screeps_types_related` - Get related types through extends/implements
-- `screeps_types_by_file` - Get types from specific source files
+- ✅ Start with low-risk, high-confidence improvements
+- ✅ Measure everything (before/after metrics)
+- ✅ Learn from outcomes (document successes/failures)
+- ✅ Respect boundaries (know when to ask for review)
+- ✅ Maintain quality (never skip testing)
+- ✅ Stay aligned (always follow ROADMAP.md)
 
-**When to Use**:
-- Writing TypeScript bot code
-- Verifying structure/object interfaces
-- Checking available properties and methods
-- Understanding type hierarchies and relationships
-- Ensuring type safety in implementations
+### For All Development
 
-**Example**:
-```typescript
-// Before implementing spawn logic, verify StructureSpawn interface
-// Use: screeps_types_get with name: "StructureSpawn"
-// Verify: spawnCreep method signature and return type
-const spawn = Game.spawns['Spawn1'];
-const result = spawn.spawnCreep(
-  [WORK, CARRY, MOVE],
-  'Harvester1',
-  { memory: { role: 'harvester' } }
-);
-```
+- ✅ **Verify with MCP**: Always fact-check Screeps API usage
+- ✅ **Test thoroughly**: Write comprehensive tests
+- ✅ **Document decisions**: Explain why, not just what
+- ✅ **Monitor impact**: Track the effect of changes
+- ✅ **Iterate quickly**: Small, frequent improvements over large changes
 
-#### 4. screeps-wiki-mcp (Community Wiki)
-**Purpose**: Community strategies, bot architectures, optimization patterns, and best practices
+---
 
-**Key Tools**:
-- `screeps_wiki_search` - Search wiki articles by keyword
-- `screeps_wiki_get_article` - Get full article content as markdown
-- `screeps_wiki_list_categories` - Browse wiki categories (Bots, Strategies, etc.)
-- `screeps_wiki_get_table` - Extract structured data from wiki tables
+## Conclusion
 
-**When to Use**:
-- Researching proven bot architectures and patterns
-- Learning optimization techniques from the community
-- Understanding advanced strategies (remote harvesting, defense, etc.)
-- Discovering best practices for specific game scenarios
-- Avoiding common pitfalls documented by experienced players
+This repository supports both manual and autonomous development modes. Use the appropriate mode based on the task:
 
-**Example**:
-```typescript
-// Before implementing a new architecture, research community solutions
-// Use: screeps_wiki_search with query: "bot architecture"
-// Review: Articles about Overmind, other proven architectures
-// Use: screeps_wiki_get_article with title: "Overmind"
-// Learn: Established patterns before implementing your own
-```
+- **Manual Mode**: Human-guided development with AI assistance
+- **Autonomous Mode**: Self-directed continuous improvement
 
-#### 5. grafana-mcp (Monitoring and Observability)
-**Purpose**: Performance monitoring, alerting, dashboard management, and operational visibility for bot health and metrics
+Both modes follow the same core principles:
+- 📋 Follow ROADMAP.md
+- 🧹 Required code only
+- ✅ Verify with MCP servers
+- 📝 Document with TODOs
+- 📊 Measure impact
 
-**Key Tools**:
-- `search_dashboards` / `get_dashboard_by_uid` - Access Grafana dashboards displaying bot performance
-- `list_alert_rules` / `get_alert_rule_by_uid` - Monitor configured alerts for anomaly detection
-- `query_prometheus` - Query time-series metrics (CPU usage, memory, creep counts, etc.)
-- `query_loki_logs` - Search and analyze bot logs for errors and debugging
-- `list_datasources` / `get_datasource_by_uid` - Access configured Prometheus, Loki, and other data sources
-- `get_sift_investigation` / `find_slow_requests` / `find_error_pattern_logs` - AI-powered performance analysis
-- `list_incidents` / `get_incident` - Track operational incidents and outages
-- `generate_deeplink` - Create direct links to specific dashboards and panels
-- Plus 50+ additional tools for comprehensive observability and monitoring
-
-**When to Use**:
-- Investigating performance degradation or CPU usage spikes
-- Analyzing historical bot behavior and trends
-- Debugging errors by correlating logs with metrics
-- Monitoring alert status and incident response
-- Creating or updating dashboards for new metrics
-- Validating that code changes improve performance
-
-**Example**:
-```typescript
-// Before optimizing pathfinding, analyze current performance
-// Use: query_prometheus with expr: "screeps_cpu_usage" to check baseline CPU
-// Use: query_loki_logs with logql: '{job="screeps-bot"} |= "pathfinding"' to find bottlenecks
-// Use: get_dashboard_by_uid to view "CPU & Performance Monitor" dashboard
-// Verify: Current metrics before and after optimization
-
-class PathfindingOptimizer {
-  async analyzePerformance() {
-    // Implementation informed by Grafana metrics showing
-    // pathfinding consumes 40% of CPU budget
-  }
-}
-```
-
-### Fact-Checking Workflow
-
-#### Step 1: Identify Information Needs
-Before writing Screeps code or documentation, identify what you need to verify:
-- API methods and their parameters
-- Game constants and their values
-- Object properties and types
-- Game mechanics and rules
-- Community best practices
-- Performance metrics and operational health
-
-#### Step 2: Select Appropriate MCP Server
-Choose the right server for your needs:
-- **Uncertain about API?** → Use `screeps-docs-mcp`
-- **Need type definitions?** → Use `screeps-typescript-mcp`
-- **Want to test live?** → Use `screeps-mcp`
-- **Looking for strategies?** → Use `screeps-wiki-mcp`
-- **Debugging performance?** → Use `grafana-mcp`
-
-#### Step 3: Execute Verification
-Use the appropriate MCP tool to verify:
-```typescript
-// Example verification workflow:
-// 1. Check if Room.find() method exists and its signature
-//    Tool: screeps_docs_get_api with objectName: "Room"
-// 2. Verify FIND_MY_CREEPS constant value
-//    Tool: screeps_types_search with query: "FIND_"
-// 3. Test the actual implementation
-//    Tool: screeps_console with command: "Game.rooms['W1N1'].find(FIND_MY_CREEPS)"
-```
-
-#### Step 4: Apply Verified Information
-Only after verification, implement using the confirmed information:
-```typescript
-// Verified that Room.find(type, [opts]) exists
-// Verified that FIND_MY_CREEPS is a valid constant
-// Tested in console successfully
-const myCreeps = room.find(FIND_MY_CREEPS);
-```
-
-### Common Verification Scenarios
-
-#### Scenario 1: Implementing New Feature
-```typescript
-// Task: Implement tower defense logic
-
-// Step 1: Verify StructureTower exists and its methods
-// Tool: screeps_docs_get_api with objectName: "StructureTower"
-// Learn: attack(), heal(), repair() methods available
-
-// Step 2: Check TypeScript interface
-// Tool: screeps_types_get with name: "StructureTower"  
-// Verify: energy property, attack method signature
-
-// Step 3: Research best practices
-// Tool: screeps_wiki_search with query: "tower defense"
-// Learn: Optimal targeting strategies from community
-
-// Step 4: Implement with verified information
-class TowerDefense {
-  run(tower: StructureTower) {
-    const hostile = tower.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
-    if (hostile) {
-      tower.attack(hostile);
-    }
-  }
-}
-```
-
-#### Scenario 2: Debugging Existing Code
-```typescript
-// Problem: Code using Memory.creeps is failing
-
-// Step 1: Check live memory state
-// Tool: screeps_memory_get with path: "creeps"
-// Discover: Memory structure doesn't match assumptions
-
-// Step 2: Verify Memory interface
-// Tool: screeps_types_get with name: "Memory"
-// Confirm: Expected structure and types
-
-// Step 3: Test in console
-// Tool: screeps_console with command: "JSON.stringify(Memory.creeps)"
-// Validate: Actual runtime structure
-
-// Step 4: Fix based on verified information
-```
-
-#### Scenario 3: Optimizing Performance
-```typescript
-// Goal: Reduce CPU usage in creep logic
-
-// Step 1: Check current CPU usage with detailed historical context
-// Tool: query_prometheus with datasourceUid and expr: "screeps_cpu_usage"
-// Tool: get_dashboard_by_uid for "CPU & Performance Monitor"
-// Baseline: Historical CPU trends and current usage patterns
-
-// Step 2: Analyze logs for performance bottlenecks
-// Tool: query_loki_logs with logql: '{job="screeps-bot"} |= "CPU"'
-// Tool: find_slow_requests to identify performance issues
-// Discover: Specific functions consuming excessive CPU
-
-// Step 3: Research optimization techniques
-// Tool: screeps_wiki_search with query: "cpu optimization"
-// Learn: Community-tested optimization patterns
-
-// Step 4: Verify API for efficient alternatives
-// Tool: screeps_docs_get_api with objectName: "PathFinder"
-// Discover: More efficient pathfinding options
-
-// Step 5: Implement optimizations and validate improvements
-// Tool: query_prometheus again to measure impact
-// Tool: get_dashboard_by_uid to visualize performance gains
-// Validate: CPU reduction confirmed in Grafana metrics
-```
-
-### Error Prevention with MCP Servers
-
-Many common errors can be prevented by proper MCP server usage:
-
-#### Preventing Type Errors
-```typescript
-// ❌ BAD: Assuming property exists
-const controller = room.controller;
-const level = controller.level; // May crash if controller is undefined
-
-// ✅ GOOD: Verify with MCP first
-// Tool: screeps_types_get with name: "Room"
-// Verified: controller is Room['controller']?: StructureController
-const controller = room.controller;
-if (controller) {
-  const level = controller.level; // Safe
-}
-```
-
-#### Preventing Constant Errors
-```typescript
-// ❌ BAD: Guessing constant names
-if (creep.memory.role === 'HARVESTER') { } // Wrong: should be lowercase
-
-// ✅ GOOD: Verify constants
-// Tool: screeps_types_search with query: "ROLE"
-// Or use: screeps_docs_search with query: "constants"
-if (creep.memory.role === 'harvester') { } // Correct
-```
-
-#### Preventing Logic Errors
-```typescript
-// ❌ BAD: Assuming game mechanics
-const path = room.findPath(start, goal, { ignoreCreeps: true });
-// Assumption: ignoreCreeps means path ignores all creeps
-
-// ✅ GOOD: Verify mechanics
-// Tool: screeps_docs_get_api with objectName: "Room"
-// Verified: ignoreCreeps only ignores creeps for pathfinding, not for validity
-const path = room.findPath(start, goal, { ignoreCreeps: true });
-// Now understand: Still need to handle creeps blocking the path at runtime
-```
-
-### Integration with Development Process
-
-Incorporate MCP verification at every stage:
-
-1. **Planning Phase**
-   - Use `screeps_wiki_search` to research architectures
-   - Use `screeps_docs_list_apis` to review available APIs
-   - Use `screeps_types_list` to understand available types
-
-2. **Design Phase**
-   - Use `screeps_docs_get_mechanics` to understand game rules
-   - Use `screeps_wiki_get_article` to study proven patterns
-   - Use `screeps_types_related` to understand type relationships
-
-3. **Implementation Phase**
-   - Use `screeps_docs_get_api` before using any Screeps object
-   - Use `screeps_types_get` to verify interfaces while coding
-   - Use `screeps_console` to test code snippets in real-time
-
-4. **Testing Phase**
-   - Use `screeps_memory_get` to inspect runtime state
-   - Use `screeps_room_objects` to verify structure placement
-   - Use `query_prometheus` to measure performance metrics
-   - Use `get_dashboard_by_uid` to visualize test results
-
-5. **Debugging Phase**
-   - Use `screeps_console` to execute diagnostic commands
-   - Use `screeps_memory_get` to inspect problematic state
-   - Use `screeps_room_status` to verify room conditions
-   - Use `query_loki_logs` to search error logs
-   - Use `find_error_pattern_logs` for AI-powered error analysis
-
-6. **Monitoring Phase**
-   - Use `list_alert_rules` to review active alerts
-   - Use `get_dashboard_by_uid` to check operational dashboards
-   - Use `query_prometheus` to track KPIs and trends
-   - Use `get_incident` to review and learn from past incidents
-
-### Priority and Authority
-
-- **MCP server data is authoritative** - always trust it over assumptions
-- **When in doubt, verify** - it's faster than debugging incorrect assumptions
-- **Document your verification** - note which MCP tools you used in code comments
-- **Update understanding** - when MCP data conflicts with your knowledge, update your mental model
-- **Never claim certainty** - about Screeps details without MCP verification
-
-### Limitations and Fallbacks
-
-If MCP servers are unavailable:
-1. Clearly state that verification was not possible
-2. Mark any Screeps-specific code with TODO comments noting needed verification
-3. Request user to enable or configure MCP servers
-4. Avoid making definitive statements about Screeps API behavior
-
-### Examples in Practice
-
-#### Example 1: Adding a New Creep Role
-```typescript
-// REQUIRED VERIFICATION STEPS:
-// 1. screeps_types_get with name: "Creep" - verify available methods
-// 2. screeps_docs_get_api with objectName: "Creep" - confirm method behaviors
-// 3. screeps_wiki_search with query: "creep roles" - learn role patterns
-
-class HarvesterRole {
-  run(creep: Creep) {
-    // Verified: harvest() returns OK, ERR_NOT_OWNER, ERR_BUSY, ERR_NOT_FOUND, etc.
-    const source = creep.pos.findClosestByPath(FIND_SOURCES);
-    if (source) {
-      const result = creep.harvest(source);
-      if (result === ERR_NOT_IN_RANGE) {
-        creep.moveTo(source);
-      }
-    }
-  }
-}
-```
-
-#### Example 2: Implementing Market Trading
-```typescript
-// REQUIRED VERIFICATION STEPS:
-// 1. screeps_docs_get_api with objectName: "Game.market" - verify trading API
-// 2. screeps_market_orders - check current market state
-// 3. screeps_market_stats with resourceType: "energy" - analyze price trends
-// 4. screeps_wiki_search with query: "market trading" - learn strategies
-
-class MarketManager {
-  analyzeMarket() {
-    // Verified via screeps_market_orders and screeps_market_stats
-    const orders = Game.market.getAllOrders({ resourceType: RESOURCE_ENERGY });
-    // Implementation based on verified market structure...
-  }
-}
-```
-
-#### Example 3: Optimizing Pathfinding
-```typescript
-// REQUIRED VERIFICATION STEPS:
-// 1. screeps_docs_get_api with objectName: "PathFinder" - verify PathFinder API
-// 2. screeps_docs_get_mechanics with topic: "cpu" - understand CPU costs
-// 3. screeps_wiki_search with query: "pathfinding optimization" - learn techniques
-// 4. screeps_stats - measure current pathfinding CPU usage
-
-class PathOptimizer {
-  findOptimalPath(start: RoomPosition, goal: RoomPosition) {
-    // Verified: PathFinder.search() signature and CostMatrix usage
-    const result = PathFinder.search(start, goal, {
-      roomCallback: (roomName) => {
-        // Verified: CostMatrix methods via screeps_types_get
-        const costs = new PathFinder.CostMatrix();
-        // ... implementation based on verified API
-        return costs;
-      }
-    });
-    return result.path;
-  }
-}
-```
-
-### Conclusion
-
-The MCP servers are not optional tools - they are **required infrastructure** for responsible Screeps development in this repository. Treat them as you would official documentation, type checkers, or linters. Always verify, never assume.
+For complete autonomous development workflows, see **AGENTS.md**.
