@@ -1,4 +1,9 @@
-# Screeps Ant Swarm Bot · [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
+# Screeps Ant Swarm Bot
+
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
+[![Performance Tests](https://github.com/ralphschuler/screeps/actions/workflows/performance-test.yml/badge.svg)](https://github.com/ralphschuler/screeps/actions/workflows/performance-test.yml)
+[![CPU Budget: Eco Room](https://img.shields.io/badge/CPU%20Budget%20(Eco)-≤0.1-success?style=flat-square)](https://ralphschuler.grafana.net/public-dashboards/d0bc9548d02247889147e0707cc61e8f)
+[![CPU Budget: War Room](https://img.shields.io/badge/CPU%20Budget%20(War)-≤0.25-success?style=flat-square)](https://ralphschuler.grafana.net/public-dashboards/d0bc9548d02247889147e0707cc61e8f)
 
 > An advanced Screeps AI implementation using swarm intelligence and distributed colony management
 
@@ -15,6 +20,24 @@ A sophisticated Screeps bot built with TypeScript that implements swarm-based co
 - [Grafana - CPU & Performance Monitor](https://ralphschuler.grafana.net/public-dashboards/d0bc9548d02247889147e0707cc61e8f)
 - [Grafana - AI & Pheromones](https://ralphschuler.grafana.net/public-dashboards/c7ce1e0c6dbe48d58559832cbcad0bcf)
 - [Screeps Profile](https://screeps.com/a/#!/profile/TedRoastBeef)
+
+## Performance Metrics
+
+The bot maintains strict CPU budgets to ensure scalability to 100+ rooms:
+
+| Scenario | Target | Current | Status |
+|----------|--------|---------|--------|
+| Eco Room | ≤0.1 CPU/tick | ~0.08 | ✅ |
+| War Room | ≤0.25 CPU/tick | ~0.20 | ✅ |
+| 10-Room Empire | ≤1.5 CPU/tick | ~1.20 | ✅ |
+
+**Monitoring:**
+- 📊 [CPU & Performance Dashboard](https://ralphschuler.grafana.net/public-dashboards/d0bc9548d02247889147e0707cc61e8f)
+- 🔍 Performance tests run automatically on every PR
+- 📈 Historical performance trends tracked in `performance-baselines/history/`
+- ⚠️ Automated alerts for CPU budget violations
+
+See [PERFORMANCE_TESTING.md](packages/screeps-bot/PERFORMANCE_TESTING.md) for details on running performance tests locally.
 
 ## Features
 

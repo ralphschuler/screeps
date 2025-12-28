@@ -1,0 +1,275 @@
+{
+  "$schema": "https://grafana.com/docs/grafana/latest/alerting/fundamentals/alert-rules/",
+  "version": "1.0.0",
+  "description": "CPU budget monitoring alerts based on ROADMAP.md targets",
+  "alerts": [
+    {
+      "uid": "screeps-eco-room-cpu-budget",
+      "title": "Eco Room CPU Budget Violation",
+      "condition": "B",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "model": {
+            "expr": "avg by (room) (stats_room_cpu{room_type=\"eco\"})",
+            "interval": "",
+            "legendFormat": "{{room}}",
+            "refId": "A"
+          }
+        },
+        {
+          "refId": "B",
+          "queryType": "classic_conditions",
+          "model": {
+            "conditions": [
+              {
+                "evaluator": {
+                  "params": [0.1],
+                  "type": "gt"
+                },
+                "operator": {
+                  "type": "and"
+                },
+                "query": {
+                  "params": ["A"]
+                },
+                "reducer": {
+                  "params": [],
+                  "type": "avg"
+                },
+                "type": "query"
+              }
+            ],
+            "refId": "B"
+          }
+        }
+      ],
+      "noDataState": "NoData",
+      "execErrState": "Alerting",
+      "for": "5m",
+      "annotations": {
+        "description": "Room {{$labels.room}} is using {{$value | humanize}}% CPU, exceeding the eco room budget of 0.1 CPU per tick (ROADMAP.md Section 2)",
+        "summary": "Eco room CPU budget exceeded",
+        "runbook_url": "https://github.com/ralphschuler/screeps/blob/main/ROADMAP.md#2-design-prinzipien-ressourcen-effizienz",
+        "dashboard_url": "https://ralphschuler.grafana.net/public-dashboards/d0bc9548d02247889147e0707cc61e8f"
+      },
+      "labels": {
+        "severity": "warning",
+        "component": "performance",
+        "room_type": "eco",
+        "alert_type": "cpu_budget"
+      }
+    },
+    {
+      "uid": "screeps-war-room-cpu-budget",
+      "title": "War Room CPU Budget Violation",
+      "condition": "B",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "model": {
+            "expr": "avg by (room) (stats_room_cpu{room_type=\"war\"})",
+            "interval": "",
+            "legendFormat": "{{room}}",
+            "refId": "A"
+          }
+        },
+        {
+          "refId": "B",
+          "queryType": "classic_conditions",
+          "model": {
+            "conditions": [
+              {
+                "evaluator": {
+                  "params": [0.25],
+                  "type": "gt"
+                },
+                "operator": {
+                  "type": "and"
+                },
+                "query": {
+                  "params": ["A"]
+                },
+                "reducer": {
+                  "params": [],
+                  "type": "avg"
+                },
+                "type": "query"
+              }
+            ],
+            "refId": "B"
+          }
+        }
+      ],
+      "noDataState": "NoData",
+      "execErrState": "Alerting",
+      "for": "5m",
+      "annotations": {
+        "description": "Room {{$labels.room}} is using {{$value | humanize}}% CPU, exceeding the war room budget of 0.25 CPU per tick (ROADMAP.md Section 2)",
+        "summary": "War room CPU budget exceeded",
+        "runbook_url": "https://github.com/ralphschuler/screeps/blob/main/ROADMAP.md#2-design-prinzipien-ressourcen-effizienz",
+        "dashboard_url": "https://ralphschuler.grafana.net/public-dashboards/d0bc9548d02247889147e0707cc61e8f"
+      },
+      "labels": {
+        "severity": "warning",
+        "component": "performance",
+        "room_type": "war",
+        "alert_type": "cpu_budget"
+      }
+    },
+    {
+      "uid": "screeps-cpu-bucket-critical",
+      "title": "CPU Bucket Critical",
+      "condition": "B",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "model": {
+            "expr": "stats_cpu_bucket",
+            "interval": "",
+            "legendFormat": "CPU Bucket",
+            "refId": "A"
+          }
+        },
+        {
+          "refId": "B",
+          "queryType": "classic_conditions",
+          "model": {
+            "conditions": [
+              {
+                "evaluator": {
+                  "params": [2000],
+                  "type": "lt"
+                },
+                "operator": {
+                  "type": "and"
+                },
+                "query": {
+                  "params": ["A"]
+                },
+                "reducer": {
+                  "params": [],
+                  "type": "last"
+                },
+                "type": "query"
+              }
+            ],
+            "refId": "B"
+          }
+        }
+      ],
+      "noDataState": "Alerting",
+      "execErrState": "Alerting",
+      "for": "2m",
+      "annotations": {
+        "description": "CPU bucket has dropped to {{$value}}, below critical threshold of 2000. Bot may stop functioning if bucket reaches 0.",
+        "summary": "CPU bucket critically low",
+        "runbook_url": "https://docs.screeps.com/cpu-limit.html",
+        "dashboard_url": "https://ralphschuler.grafana.net/public-dashboards/d0bc9548d02247889147e0707cc61e8f"
+      },
+      "labels": {
+        "severity": "critical",
+        "component": "performance",
+        "alert_type": "cpu_bucket"
+      }
+    },
+    {
+      "uid": "screeps-global-kernel-cpu",
+      "title": "Global Kernel CPU Budget",
+      "condition": "B",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "model": {
+            "expr": "rate(stats_subsystem_cpu{subsystem=\"kernel\"}[1m])",
+            "interval": "",
+            "legendFormat": "Kernel CPU Rate",
+            "refId": "A"
+          }
+        },
+        {
+          "refId": "B",
+          "queryType": "classic_conditions",
+          "model": {
+            "conditions": [
+              {
+                "evaluator": {
+                  "params": [0.05],
+                  "type": "gt"
+                },
+                "operator": {
+                  "type": "and"
+                },
+                "query": {
+                  "params": ["A"]
+                },
+                "reducer": {
+                  "params": [],
+                  "type": "avg"
+                },
+                "type": "query"
+              }
+            ],
+            "refId": "B"
+          }
+        }
+      ],
+      "noDataState": "NoData",
+      "execErrState": "OK",
+      "for": "5m",
+      "annotations": {
+        "description": "Global kernel is consuming {{$value | humanize}}% CPU averaged per tick, exceeding budget of 1 CPU every 20-50 ticks (~0.02-0.05 CPU/tick)",
+        "summary": "Global kernel CPU budget exceeded",
+        "runbook_url": "https://github.com/ralphschuler/screeps/blob/main/ROADMAP.md#2-design-prinzipien-ressourcen-effizienz"
+      },
+      "labels": {
+        "severity": "warning",
+        "component": "performance",
+        "subsystem": "kernel",
+        "alert_type": "cpu_budget"
+      }
+    }
+  ],
+  "contact_points": [
+    {
+      "name": "github-issues",
+      "type": "webhook",
+      "settings": {
+        "url": "https://api.github.com/repos/ralphschuler/screeps/issues",
+        "httpMethod": "POST",
+        "authorization": "Bearer ${GITHUB_TOKEN}"
+      },
+      "note": "Requires GITHUB_TOKEN secret configured in Grafana"
+    },
+    {
+      "name": "slack-performance",
+      "type": "slack",
+      "settings": {
+        "url": "${SLACK_WEBHOOK_URL}",
+        "channel": "#performance",
+        "username": "Screeps Performance Bot"
+      },
+      "note": "Requires SLACK_WEBHOOK_URL secret configured in Grafana"
+    }
+  ],
+  "notification_policies": [
+    {
+      "receiver": "github-issues",
+      "group_by": ["alert_type", "severity"],
+      "group_wait": "30s",
+      "group_interval": "5m",
+      "repeat_interval": "24h",
+      "matchers": [
+        {
+          "label": "severity",
+          "value": "warning|critical",
+          "regex": true
+        }
+      ]
+    }
+  ]
+}

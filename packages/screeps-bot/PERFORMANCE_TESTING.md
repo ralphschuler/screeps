@@ -596,3 +596,283 @@ Updates performance baselines:
 - Updates baseline file
 - Only runs for main/develop branches
 
+
+## Interpreting Performance Reports
+
+### Understanding the Results
+
+When performance tests complete, you'll see reports in two formats:
+
+#### JSON Report (performance-report.json)
+
+```json
+{
+  "timestamp": "2025-12-28T12:00:00Z",
+  "commit": "abc123def456",
+  "branch": "feature/optimization",
+  "passed": true,
+  "summary": {
+    "avgCpu": "0.082",
+    "maxCpu": "0.095",
+    "p95Cpu": "0.090",
+    "p99Cpu": "0.093",
+    "avgBucket": "9500",
+    "minBucket": "8200",
+    "sampleCount": 5000
+  },
+  "regression": {
+    "detected": false
+  }
+}
+```
+
+#### Markdown Report (in PR comments)
+
+The PR comment shows:
+- **Summary Table**: Key metrics with pass/fail status
+- **Regression Details**: If detected, shows current vs baseline
+- **Milestones**: Bot achievements during the test
+
+### Key Metrics Explained
+
+| Metric | Description | Good Value | Warning Value |
+|--------|-------------|------------|---------------|
+| **Avg CPU** | Average CPU per tick | < 0.08 | > 0.10 |
+| **Max CPU** | Highest CPU usage | < 0.10 | > 0.12 |
+| **P95 CPU** | 95th percentile | < 0.09 | > 0.11 |
+| **P99 CPU** | 99th percentile | < 0.095 | > 0.115 |
+| **Avg Bucket** | Average bucket level | > 9000 | < 8000 |
+| **Min Bucket** | Lowest bucket level | > 5000 | < 2000 |
+
+### What Triggers a Regression?
+
+A performance regression is flagged when:
+1. **Average CPU** increases by more than 10% compared to baseline
+2. **Maximum CPU** increases by more than 10% compared to baseline
+
+Example:
+- Baseline avg CPU: 0.080
+- Current avg CPU: 0.089
+- Change: +11.25% → **Regression detected** ❌
+
+### Performance Trends
+
+Historical performance data is stored in `performance-baselines/history/`:
+- Each successful test creates a timestamped snapshot
+- Trends can be analyzed across commits
+- Long-term degradation can be detected
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Docker Container Fails to Start
+
+**Symptoms**: Performance test hangs or fails with Docker errors
+
+**Solutions**:
+```bash
+# Verify Docker is running
+docker ps
+
+# Check Docker Compose
+docker compose version
+
+# Reset Docker environment
+docker system prune -a
+```
+
+#### 2. No CPU Metrics in Logs
+
+**Symptoms**: Performance report shows 0 samples or missing CPU data
+
+**Solutions**:
+- Ensure bot is logging CPU usage (check `unifiedStats.ts`)
+- Verify log capture is working (check `logs/console.log`)
+- Increase test duration to allow more samples
+
+#### 3. Performance Test Times Out
+
+**Symptoms**: Test exceeds maximum duration
+
+**Solutions**:
+```bash
+# Increase timeout
+npm run test:performance -- --maxTimeDuration=60
+
+# Or reduce tick count
+npm run test:performance -- --maxTickCount=5000
+```
+
+#### 4. Baseline Comparison Fails
+
+**Symptoms**: No baseline found for comparison
+
+**Solutions**:
+```bash
+# Check if baseline exists
+ls -la ../../../performance-baselines/
+
+# Create initial baseline manually
+cp performance-report.json ../../../performance-baselines/develop.json
+```
+
+### Debugging Tips
+
+1. **Enable Debug Logging**:
+   ```bash
+   npm run test:performance -- --debug
+   ```
+
+2. **Check Server Logs**:
+   ```bash
+   cat logs/server.log
+   ```
+
+3. **Inspect Console Output**:
+   ```bash
+   cat logs/console.log | grep CPU
+   ```
+
+4. **Verify Bot Compilation**:
+   ```bash
+   npm run build
+   ls -la dist/
+   ```
+
+## Advanced Usage
+
+### Custom Performance Scenarios
+
+To add custom test scenarios, edit `test/performance/scenarios.ts`:
+
+```typescript
+export const myCustomScenario: PerformanceScenario = {
+  name: 'My Custom Test',
+  description: 'Tests specific bot behavior',
+  setup: {
+    rooms: ['W1N1'],
+    rcl: 5,
+    energy: 100000,
+    creeps: {
+      harvester: 3,
+      upgrader: 2
+    }
+  },
+  targets: {
+    maxCpuPerTick: 0.15,
+    avgCpuPerTick: 0.12
+  }
+};
+```
+
+### Comparing Baselines
+
+To compare performance between two commits:
+
+```bash
+# Compare current vs baseline
+node scripts/analyze-performance.js
+
+# Compare two specific baselines
+node scripts/compare-baselines.js \
+  performance-baselines/history/2025-12-01_main_abc123.json \
+  performance-baselines/history/2025-12-28_main_def456.json
+```
+
+### CI/CD Integration Examples
+
+#### GitHub Actions
+
+Already configured in `.github/workflows/performance-test.yml`
+
+#### GitLab CI
+
+```yaml
+performance-test:
+  stage: test
+  script:
+    - npm ci
+    - npm run build
+    - npm run test:performance
+  artifacts:
+    paths:
+      - packages/screeps-bot/logs/
+      - packages/screeps-bot/performance-report.json
+    expire_in: 30 days
+```
+
+#### Jenkins
+
+```groovy
+stage('Performance Test') {
+  steps {
+    sh 'npm ci'
+    sh 'npm run build'
+    sh 'npm run test:performance'
+  }
+  post {
+    always {
+      archiveArtifacts artifacts: '**/performance-report.json'
+    }
+  }
+}
+```
+
+## Performance Monitoring Integration
+
+### Grafana Alerts
+
+Automated alerts are configured for:
+- **CPU Budget Violations**: Eco rooms > 0.1, War rooms > 0.25
+- **CPU Bucket Critical**: Bucket < 2000
+- **Kernel Overhead**: Global kernel > 0.05 CPU/tick
+
+See `grafana-alerts/` directory for alert configuration.
+
+### Real-time Monitoring
+
+Monitor live performance via Grafana dashboards:
+- [CPU & Performance Monitor](https://ralphschuler.grafana.net/public-dashboards/d0bc9548d02247889147e0707cc61e8f)
+- Metrics updated every tick
+- Historical data retention: 90 days
+
+## Best Practices
+
+### Running Tests
+
+1. **Before Creating PR**: Run tests locally to catch issues early
+2. **After Optimization**: Compare before/after performance
+3. **Regular Benchmarks**: Run weekly to detect gradual degradation
+4. **Multiple Scenarios**: Test different room configurations
+
+### Baseline Management
+
+1. **Update Regularly**: Keep baselines current with main/develop
+2. **Document Changes**: Note significant performance improvements
+3. **Review History**: Check trends before major changes
+4. **Archive Milestones**: Save baselines for release versions
+
+### Performance Goals
+
+From ROADMAP.md Section 2:
+- **Eco Room**: ≤ 0.1 CPU per tick (target: 0.08)
+- **War Room**: ≤ 0.25 CPU per tick (target: 0.20)
+- **Global Kernel**: ≤ 1 CPU every 20-50 ticks (≤ 0.05 avg)
+- **Scalability**: Support 100+ rooms, 5000+ creeps
+
+## Contributing
+
+When submitting performance-related PRs:
+
+1. **Run Tests**: Include performance test results
+2. **Document Changes**: Explain optimization techniques
+3. **Baseline Impact**: Note expected baseline changes
+4. **Regression Analysis**: If regression occurs, justify why
+
+## Additional Resources
+
+- [ROADMAP.md](../../ROADMAP.md) - Performance targets and architecture
+- [grafana-alerts/](../../grafana-alerts/) - Alert configuration
+- [performance-baselines/](../../performance-baselines/) - Historical data
+- [Screeps Performance Guide](https://docs.screeps.com/contributed/modifying_prototypes.html)
