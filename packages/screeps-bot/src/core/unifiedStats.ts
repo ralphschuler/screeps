@@ -1010,6 +1010,15 @@ export class UnifiedStatsManager {
   }
 
   /**
+   * Check if a room is in war mode (war/siege posture or high danger)
+   */
+  private isWarRoom(roomName: string): boolean {
+    const swarm = memoryManager.getSwarmState(roomName);
+    if (!swarm) return false;
+    return swarm.posture === "war" || swarm.posture === "siege" || swarm.danger >= 2;
+  }
+
+  /**
    * Validate CPU budgets for all rooms and generate alerts
    * Returns a report with budget status and any violations
    */
@@ -1027,9 +1036,8 @@ export class UnifiedStatsManager {
     for (const [roomName, roomStats] of Object.entries(this.currentSnapshot.rooms)) {
       report.roomsEvaluated++;
       
-      // Determine if this is a war room or eco room
-      const swarm = memoryManager.getSwarmState(roomName);
-      const isWarRoom = swarm ? (swarm.posture === "war" || swarm.posture === "siege" || swarm.danger >= 2) : false;
+      // Determine budget limit based on room posture
+      const isWarRoom = this.isWarRoom(roomName);
       const budgetLimit = isWarRoom ? this.config.budgetLimits.warRoom : this.config.budgetLimits.ecoRoom;
       
       // Get current CPU (use average to smooth out spikes)
@@ -1122,8 +1130,9 @@ export class UnifiedStatsManager {
         continue;
       }
 
-      const current = processStats.avgCpu;
-      const baseline = processStats.avgCpu; // Using historical average as baseline
+      // Use maxCpu as the current spike indicator, avgCpu as baseline
+      const current = processStats.maxCpu;
+      const baseline = processStats.avgCpu;
       
       // Skip if process hasn't run recently or has negligible CPU
       if (Game.time - processStats.lastRunTick > 100 || baseline < 0.01) {
@@ -1132,13 +1141,13 @@ export class UnifiedStatsManager {
 
       // Check for sustained high CPU compared to budget
       if (processStats.cpuBudget > 0) {
-        const utilizationRatio = current / processStats.cpuBudget;
+        const utilizationRatio = baseline / processStats.cpuBudget;
         if (utilizationRatio >= 1.5) { // 50% over budget is anomalous
           anomalies.push({
             type: "sustained_high",
             target: processId,
             targetType: "process",
-            current,
+            current: baseline,
             baseline: processStats.cpuBudget,
             multiplier: utilizationRatio,
             tick: Game.time,
@@ -1905,6 +1914,26 @@ export class UnifiedStatsManager {
       nukePrep: 6
     };
     return mapping[posture] ?? -1;
+  }
+
+  /**
+   * Posture code to name mapping for console display
+   */
+  private static readonly POSTURE_NAMES: readonly string[] = [
+    "eco",
+    "expand", 
+    "defensive",
+    "war",
+    "siege",
+    "evacuate",
+    "nukePrep"
+  ] as const;
+
+  /**
+   * Convert posture code back to name
+   */
+  private postureCodeToName(code: number): string {
+    return UnifiedStatsManager.POSTURE_NAMES[code] ?? "eco";
   }
 
   /**

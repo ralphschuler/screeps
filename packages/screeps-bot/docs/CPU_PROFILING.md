@@ -35,9 +35,17 @@ The system automatically:
 
 | Type | Limit | Description |
 |------|-------|-------------|
-| **Eco Room** | 0.1 CPU/tick | Economic rooms (posture: eco, expand) |
-| **War Room** | 0.25 CPU/tick | Combat rooms (posture: war, siege, danger ≥2) |
+| **Eco Room** | 0.1 CPU/tick | Economic rooms (posture: eco, expand, defensive) |
+| **War Room** | 0.25 CPU/tick | Combat rooms (posture: war, siege) OR rooms with danger ≥2 |
 | **Overmind** | 1.0 CPU | Global empire logic (amortized over 20-50 ticks) |
+
+**War Room Detection**:
+A room is classified as a "war room" if ANY of the following conditions are met:
+- Posture is `war`
+- Posture is `siege`
+- Danger level is 2 or higher
+
+All other rooms (including `expand`, `defensive`, `evacuate`, `nukePrep`) use the eco room budget.
 
 ## Alert Thresholds
 
