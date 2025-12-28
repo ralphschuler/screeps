@@ -61,6 +61,10 @@ export interface EmpireConfig {
   minStableRcl: number;
   /** GCL progress notification threshold (%) */
   gclNotifyThreshold: number;
+  /** Interval to discover nearby rooms (ticks) */
+  roomDiscoveryInterval: number;
+  /** Maximum distance for room discovery */
+  maxRoomDiscoveryDistance: number;
 }
 
 const DEFAULT_CONFIG: EmpireConfig = {
@@ -72,7 +76,9 @@ const DEFAULT_CONFIG: EmpireConfig = {
   minExpansionScore: 50,
   intelRefreshInterval: 100,
   minStableRcl: 4,
-  gclNotifyThreshold: 90 // Notify when GCL progress is at 90%
+  gclNotifyThreshold: 90, // Notify when GCL progress is at 90%
+  roomDiscoveryInterval: 100, // Discover rooms every 100 ticks
+  maxRoomDiscoveryDistance: 5 // Discover rooms up to 5 linear distance
 };
 
 /**
@@ -501,8 +507,8 @@ export class EmpireManager {
    * Automatically adds adjacent/nearby rooms to knownRooms for scouting
    */
   private discoverNearbyRooms(empire: EmpireMemory): void {
-    // Only discover every 100 ticks for CPU efficiency
-    if (Game.time % 100 !== 0) {
+    // Only discover at configured interval for CPU efficiency
+    if (Game.time % this.config.roomDiscoveryInterval !== 0) {
       return;
     }
 
@@ -512,11 +518,10 @@ export class EmpireManager {
     }
 
     let discoveredCount = 0;
-    const maxDiscoveryDistance = 5; // Discover rooms up to 5 linear distance away
 
     // Discover rooms near each owned room
     for (const room of ownedRooms) {
-      const nearbyRooms = ExpansionScoring.getRoomsInRange(room.name, maxDiscoveryDistance);
+      const nearbyRooms = ExpansionScoring.getRoomsInRange(room.name, this.config.maxRoomDiscoveryDistance);
       
       for (const nearbyRoom of nearbyRooms) {
         // Skip if already known
@@ -539,10 +544,10 @@ export class EmpireManager {
    * Create stub room intel for discovered but not yet scouted rooms
    */
   private createStubIntel(roomName: string): RoomIntel {
-    // Parse room name to check for highway/SK rooms
-    const match = roomName.match(/^([WE])(\d+)([NS])(\d+)$/);
-    const isHighway = match 
-      ? (parseInt(match[2], 10) % 10 === 0 || parseInt(match[4], 10) % 10 === 0)
+    // Use existing room name parsing logic from expansionScoring
+    const parsed = ExpansionScoring.parseRoomName(roomName);
+    const isHighway = parsed 
+      ? (parsed.x % 10 === 0 || parsed.y % 10 === 0)
       : false;
 
     return {
