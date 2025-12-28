@@ -543,6 +543,33 @@ export class UnifiedStatsManager {
   }
 
   /**
+   * Preserve room stats from previous snapshot.
+   * Room processes are distributed (eco rooms run every 5 ticks) but stats are exported every tick.
+   * This method ensures room stats persist across ticks even when rooms don't execute.
+   *
+   * Stale data cleanup:
+   * - Only preserve stats for rooms that are still present in Game.rooms
+   * - This prevents unbounded accumulation of stats for lost or invisible rooms
+   *
+   * @returns Room stats object from previous snapshot (filtered to current rooms), or empty object if none exists
+   */
+  private preserveRoomStats(): Record<string, RoomStatsEntry> {
+    const previousRooms = this.currentSnapshot?.rooms;
+    if (!previousRooms) {
+      return {};
+    }
+
+    const filteredRooms: Record<string, RoomStatsEntry> = {};
+    for (const roomName in previousRooms) {
+      if (Object.prototype.hasOwnProperty.call(previousRooms, roomName) && Game.rooms[roomName]) {
+        filteredRooms[roomName] = previousRooms[roomName];
+      }
+    }
+
+    return filteredRooms;
+  }
+
+  /**
    * Start of tick - reset transient data
    */
   public startTick(): void {
@@ -552,7 +579,14 @@ export class UnifiedStatsManager {
     RawMemory.setActiveSegments([this.config.segmentId]);
     this.segmentRequested = true;
 
+    // BUGFIX: Preserve room stats across ticks for distributed room execution
+    // Room processes run every 5 ticks (eco rooms) but stats export every tick
+    // Solution: Keep previous room stats, update only when rooms execute
+    const previousRoomStats = this.preserveRoomStats();
+    
     this.currentSnapshot = this.createEmptySnapshot();
+    this.currentSnapshot.rooms = previousRoomStats;
+    
     this.nativeCallsThisTick = this.createEmptyNativeCalls();
     this.subsystemMeasurements.clear();
     this.roomMeasurements.clear();
