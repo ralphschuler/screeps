@@ -22,7 +22,9 @@ The `discoverNearbyRooms()` method runs every 100 ticks and automatically adds n
 - No manual intervention needed
 - Discovers rooms in expanding rings around owned rooms
 - Highway rooms are identified immediately (can't be claimed)
-- CPU cost: ~0.01 per tick
+- SK rooms are identified immediately (require special handling)
+- CPU efficient due to infrequent execution (every 100 ticks)
+- Memory spike protection (max 50 rooms discovered per tick)
 
 ### Phase 2: Room Scouting (intelScanner.ts)
 
@@ -55,10 +57,10 @@ Rooms are scored based on:
 3. **Distance** (-5 per linear distance)
 4. **Hostile proximity** (heavy penalty for adjacent hostiles)
 5. **Threat level** (-15 per threat level)
-6. **Terrain** (+10 for plains, -10 for swamp)
+6. **Terrain** (+15 for plains, -10 for swamp)
 7. **Highway proximity** (+10 strategic bonus)
 8. **Portal proximity** (+10 for cross-shard expansion)
-9. **Cluster proximity** (+100 for expansion near existing clusters)
+9. **Cluster proximity** (+25 for distance ≤ 2, +15 for distance ≤ 3, +5 for distance ≤ 5 from existing clusters)
 
 #### Claiming Process
 1. Top candidates added to `empire.claimQueue` (max 10)
@@ -98,8 +100,9 @@ expansion.removeRemote('W1N1', 'W2N1')  // Remove remote
 
 ### Discovery Settings (empireManager.ts)
 ```typescript
-const maxDiscoveryDistance = 5;  // How far to discover rooms
-const discoveryInterval = 100;   // How often to discover (ticks)
+const maxDiscoveryDistance = 5;      // How far to discover rooms
+const discoveryInterval = 100;       // How often to discover (ticks)
+const maxRoomsToDiscoverPerTick = 50; // Prevent memory spikes
 ```
 
 ### Expansion Settings (expansionManager.ts)
@@ -151,10 +154,13 @@ minExpansionScore: 50,           // Min score to be considered
 
 ## Performance
 
-- **Discovery CPU**: ~0.01 per tick (runs every 100 ticks)
-- **Scouting CPU**: ~0.02 per tick (3 rooms scanned)
-- **Expansion CPU**: ~0.05 per tick (runs every 30 ticks)
-- **Total**: ~0.08 CPU per tick maximum
+The room discovery system is designed to be CPU efficient:
+
+- **Discovery**: Runs every 100 ticks (configurable), limited to 50 rooms per tick
+- **Scouting**: Existing IntelScanner handles 3 rooms per tick
+- **Expansion**: Runs every 30 ticks with efficient scoring
+
+Actual CPU usage varies based on empire size, number of rooms being processed, and current game conditions. The infrequent execution and built-in limits ensure minimal impact on overall bot performance.
 
 ## Related Systems
 
