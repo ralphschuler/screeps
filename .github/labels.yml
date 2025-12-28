@@ -90,3 +90,9 @@
 - name: invalid
   color: E4E669
   description: This doesn't seem right or is not applicable.
+- name: work-in-progress
+  color: FEF2C0
+  description: PR is still being worked on; exempt from stale detection.
+- name: do-not-close
+  color: D93F0B
+  description: Prevent automatic closure by stale bot; requires manual review.
