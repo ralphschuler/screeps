@@ -127,6 +127,11 @@ export class EmpireManager {
       this.refreshRoomIntel(empire);
     });
 
+    // NEW: Automated nearby room discovery for expansion
+    unifiedStats.measureSubsystem("empire:roomDiscovery", () => {
+      this.discoverNearbyRooms(empire);
+    });
+
     // NEW: Automated GCL progress tracking
     unifiedStats.measureSubsystem("empire:gclTracking", () => {
       this.trackGCLProgress(empire);
@@ -489,6 +494,68 @@ export class EmpireManager {
     if (updatedCount > 0 && Game.time % 500 === 0) {
       logger.info(`Refreshed intel for ${updatedCount} rooms`, { subsystem: "Empire" });
     }
+  }
+
+  /**
+   * Discover nearby rooms for expansion
+   * Automatically adds adjacent/nearby rooms to knownRooms for scouting
+   */
+  private discoverNearbyRooms(empire: EmpireMemory): void {
+    // Only discover every 100 ticks for CPU efficiency
+    if (Game.time % 100 !== 0) {
+      return;
+    }
+
+    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+    if (ownedRooms.length === 0) {
+      return;
+    }
+
+    let discoveredCount = 0;
+    const maxDiscoveryDistance = 5; // Discover rooms up to 5 linear distance away
+
+    // Discover rooms near each owned room
+    for (const room of ownedRooms) {
+      const nearbyRooms = ExpansionScoring.getRoomsInRange(room.name, maxDiscoveryDistance);
+      
+      for (const nearbyRoom of nearbyRooms) {
+        // Skip if already known
+        if (empire.knownRooms[nearbyRoom]) {
+          continue;
+        }
+
+        // Create stub intel entry (will be filled in by scouts or when visible)
+        empire.knownRooms[nearbyRoom] = this.createStubIntel(nearbyRoom);
+        discoveredCount++;
+      }
+    }
+
+    if (discoveredCount > 0) {
+      logger.info(`Discovered ${discoveredCount} nearby rooms for scouting`, { subsystem: "Empire" });
+    }
+  }
+
+  /**
+   * Create stub room intel for discovered but not yet scouted rooms
+   */
+  private createStubIntel(roomName: string): RoomIntel {
+    // Parse room name to check for highway/SK rooms
+    const match = roomName.match(/^([WE])(\d+)([NS])(\d+)$/);
+    const isHighway = match 
+      ? (parseInt(match[2], 10) % 10 === 0 || parseInt(match[4], 10) % 10 === 0)
+      : false;
+
+    return {
+      name: roomName,
+      lastSeen: 0, // Never seen yet
+      sources: 0, // Unknown
+      controllerLevel: 0,
+      threatLevel: 0,
+      scouted: false, // Not yet scouted - will be filled in when visible or scouted
+      terrain: "mixed",
+      isHighway,
+      isSK: false // Will be updated when scouted
+    };
   }
 
   /**
