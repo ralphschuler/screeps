@@ -70,26 +70,38 @@ The bot is running on shard3 but experiencing several critical issues:
 ## 3. Identified Bugs
 
 ### Bug #1: Empty Room Stats in Output
-**Severity**: Medium
-**Status**: INVESTIGATING
+**Severity**: HIGH
+**Status**: ✅ **FIXED**
 
 **Symptoms**:
 - `stats.rooms` object is empty in console output
 - Should contain detailed stats for W1N5
 
-**Investigation**:
+**Root Cause**:
+Room process distribution causes rooms to only execute every 5 ticks (for economic rooms), but `startTick()` was clearing `currentSnapshot.rooms` at the start of EVERY tick. This meant:
+- Tick 0 (room executes): Room stats recorded in `currentSnapshot.rooms`
+- Tick 1: `startTick()` clears rooms → stats lost
+- Ticks 2-4: Still empty
+- Tick 5 (room executes): Stats recorded again
+- But stats are published EVERY tick, so 4 out of 5 ticks have empty room stats
+
+**Investigation Trail**:
 1. ✅ Verified `unifiedStats.recordRoom()` is called in `RoomNode.run()` (line 225 of roomNode.ts)
 2. ✅ Verified room processes are registered in `roomProcessManager.ts`
 3. ✅ Verified `finalizeEmpireStats()` reads from `this.currentSnapshot.rooms`
-4. ⚠️ Need to verify if room processes are actually executing
-5. ⚠️ Need to check if `publishToConsole()` is filtering out room stats
+4. ✅ Discovered room distribution: eco rooms run every 5 ticks (line 100-104 of roomProcessManager.ts)
+5. ✅ Found bug: `startTick()` was clearing room stats every tick (line 555 of unifiedStats.ts)
 
-**Hypothesis**: Room stats might be collected internally but not exported to console/stats output
+**Fix Applied**:
+Modified `startTick()` in `unifiedStats.ts` to preserve `currentSnapshot.rooms` across ticks:
+```typescript
+// Preserve room stats from previous snapshot
+const previousRoomStats = this.currentSnapshot?.rooms ?? {};
+this.currentSnapshot = this.createEmptySnapshot();
+this.currentSnapshot.rooms = previousRoomStats;  // Don't clear room stats
+```
 
-**Next Steps**:
-- Check `publishToConsole()` implementation in unifiedStats.ts
-- Verify room processes are actually running (not being skipped)
-- Check if stats format has changed and exporter needs update
+This allows room stats to persist between room executions while still being exported every tick.
 
 ### Bug #2: Low CPU Bucket (3310)
 **Severity**: HIGH

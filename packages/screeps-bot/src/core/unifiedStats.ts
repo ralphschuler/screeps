@@ -552,7 +552,14 @@ export class UnifiedStatsManager {
     RawMemory.setActiveSegments([this.config.segmentId]);
     this.segmentRequested = true;
 
+    // BUGFIX: Don't clear room stats - they persist across ticks since rooms don't run every tick
+    // Room processes are distributed (run every 5 ticks for eco rooms) but stats are exported every tick
+    // Solution: Preserve room stats from previous snapshot, only clear per-tick measurements
+    const previousRoomStats = this.currentSnapshot?.rooms ?? {};
+    
     this.currentSnapshot = this.createEmptySnapshot();
+    this.currentSnapshot.rooms = previousRoomStats;  // Preserve room stats across ticks
+    
     this.nativeCallsThisTick = this.createEmptyNativeCalls();
     this.subsystemMeasurements.clear();
     this.roomMeasurements.clear();
