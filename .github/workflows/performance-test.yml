@@ -196,7 +196,7 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: 'chore(performance): update baseline for ${{ github.ref_name }}'
-          file_pattern: 'performance-baselines/*.json'
+          file_pattern: 'performance-baselines/*.json performance-baselines/history/*.json'
           commit_user_name: 'github-actions[bot]'
           commit_user_email: 'github-actions[bot]@users.noreply.github.com'
           skip_dirty_check: false
