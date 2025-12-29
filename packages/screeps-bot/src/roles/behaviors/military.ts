@@ -35,6 +35,14 @@ interface PatrolWaypointMetadata {
 }
 
 /**
+ * Cached patrol waypoint data
+ */
+interface CachedPatrolWaypoints {
+  waypoints: { x: number; y: number; roomName: string }[];
+  metadata: PatrolWaypointMetadata;
+}
+
+/**
  * Get patrol waypoints for a room covering exits and spawn areas.
  * OPTIMIZATION: Cache waypoints per room and only regenerate if spawns change.
  * This saves CPU by avoiding repeated room.find() and terrain checks.
@@ -48,7 +56,7 @@ function getPatrolWaypoints(room: Room): RoomPosition[] {
   
   // Try to get cached waypoints with metadata
   const cacheKey = room.name;
-  const cached = globalCache.get<{ waypoints: { x: number; y: number; roomName: string }[]; metadata: PatrolWaypointMetadata }>(
+  const cached = globalCache.get<CachedPatrolWaypoints>(
     cacheKey, 
     { namespace: PATROL_CACHE_NAMESPACE }
   );
@@ -110,10 +118,12 @@ function getPatrolWaypoints(room: Room): RoomPosition[] {
     .map(pos => new RoomPosition(pos.x, pos.y, pos.roomName));
 
   // Cache with spawn count in metadata for invalidation
-  globalCache.set(cacheKey, {
+  const cacheData: CachedPatrolWaypoints = {
     waypoints: filtered.map(p => ({ x: p.x, y: p.y, roomName: p.roomName })),
     metadata: { spawnCount }
-  }, {
+  };
+  
+  globalCache.set(cacheKey, cacheData, {
     namespace: PATROL_CACHE_NAMESPACE,
     ttl: PATROL_WAYPOINT_TTL
   });

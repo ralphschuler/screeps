@@ -5,6 +5,7 @@
 import type { EvolutionStage, RoomPosture, SwarmState } from "../memory/schemas";
 import { logger } from "../core/logger";
 import { kernel } from "../core/kernel";
+import { globalCache } from "../cache";
 
 /** Evolution stage thresholds */
 export interface EvolutionThresholds {
@@ -188,9 +189,6 @@ export class EvolutionManager {
     return true;
   }
 
-  /**
-   * Snapshot relevant owned structure counts to avoid repeated lookups.
-   */
   /**
    * Get structure counts for a room with caching
    */
