@@ -29,6 +29,7 @@
  * TODO(P3): ARCH - Consider implementing process groups for coordinated batch execution
  * Related processes could be grouped and executed together for better cache locality
  * TODO(P2): TEST - Add unit tests for kernel process scheduling and wrap-around queue behavior
+ Issue URL: https://github.com/ralphschuler/screeps/issues/928
  * Critical system component needs comprehensive test coverage
  */
 
@@ -594,6 +595,7 @@ export class Kernel {
    * TODO(P2): PERF - Add jitter to intervals to prevent all processes running on the same tick
    * Spread process execution across ticks for more even CPU distribution
    * TODO(P2): ARCH - Implement priority decay for starved processes to prevent indefinite skipping
+   Issue URL: https://github.com/ralphschuler/screeps/issues/927
    * Long-skipped low-priority processes could temporarily boost priority
    */
   private shouldRunProcess(process: Process): boolean {
