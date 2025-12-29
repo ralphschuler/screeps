@@ -13,6 +13,7 @@ import type { CreepAction, CreepContext } from "./types";
 import { createLogger } from "../../core/logger";
 import { getCollectionPoint } from "../../utils/common";
 import { checkAndExecuteRetreat } from "@ralphschuler/screeps-defense";
+import { globalCache } from "../../cache";
 
 const logger = createLogger("MilitaryBehaviors");
 
@@ -20,17 +21,18 @@ const logger = createLogger("MilitaryBehaviors");
 // Patrol System
 // =============================================================================
 
+/** Cache namespace for patrol waypoints */
+const PATROL_CACHE_NAMESPACE = "patrol";
+
+/** TTL for patrol waypoints (1000 ticks - waypoints rarely change) */
+const PATROL_WAYPOINT_TTL = 1000;
+
 /**
- * Global cache for patrol waypoints (per room).
- * OPTIMIZATION: Cache waypoints indefinitely since spawns rarely change.
- * Waypoints are recalculated only when spawns count changes.
+ * Patrol waypoint cache metadata
  */
-interface PatrolWaypointCache {
-  waypoints: RoomPosition[];
+interface PatrolWaypointMetadata {
   spawnCount: number;
-  tick: number;
 }
-const patrolWaypointCache: Map<string, PatrolWaypointCache> = new Map();
 
 /**
  * Get patrol waypoints for a room covering exits and spawn areas.
@@ -44,10 +46,16 @@ function getPatrolWaypoints(room: Room): RoomPosition[] {
   const spawns = room.find(FIND_MY_SPAWNS);
   const spawnCount = spawns.length;
   
-  // Check cache first
-  const cached = patrolWaypointCache.get(room.name);
-  if (cached && cached.spawnCount === spawnCount && Game.time - cached.tick < 1000) {
-    return cached.waypoints;
+  // Try to get cached waypoints with metadata
+  const cacheKey = room.name;
+  const cached = globalCache.get<{ waypoints: { x: number; y: number; roomName: string }[]; metadata: PatrolWaypointMetadata }>(
+    cacheKey, 
+    { namespace: PATROL_CACHE_NAMESPACE }
+  );
+  
+  // Check if cached data is valid (same spawn count)
+  if (cached && cached.metadata.spawnCount === spawnCount) {
+    return cached.waypoints.map(w => new RoomPosition(w.x, w.y, w.roomName));
   }
 
   const roomName = room.name;
@@ -101,11 +109,13 @@ function getPatrolWaypoints(room: Room): RoomPosition[] {
     })
     .map(pos => new RoomPosition(pos.x, pos.y, pos.roomName));
 
-  // Cache with spawn count for invalidation
-  patrolWaypointCache.set(room.name, {
-    waypoints: filtered,
-    spawnCount,
-    tick: Game.time
+  // Cache with spawn count in metadata for invalidation
+  globalCache.set(cacheKey, {
+    waypoints: filtered.map(p => ({ x: p.x, y: p.y, roomName: p.roomName })),
+    metadata: { spawnCount }
+  }, {
+    namespace: PATROL_CACHE_NAMESPACE,
+    ttl: PATROL_WAYPOINT_TTL
   });
   
   return filtered;
