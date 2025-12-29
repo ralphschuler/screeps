@@ -125,10 +125,9 @@ export const POSTURE_RESOURCE_PRIORITIES: Record<RoomPosture, ResourcePriorities
  * Evolution Manager
  */
 export class EvolutionManager {
-  /** Structure count cache to avoid repeated expensive room scans */
-  private readonly structureCountsCache: Map<string, { counts: Partial<Record<BuildableStructureConstant, number>>; tick: number }> =
-    new Map();
-
+  /** Cache namespace for structure counts */
+  private readonly STRUCTURE_CACHE_NAMESPACE = "evolution:structures";
+  
   /** TTL for cached structure counts (in ticks) */
   private readonly structureCacheTtl: number = 20;
 
@@ -192,10 +191,20 @@ export class EvolutionManager {
   /**
    * Snapshot relevant owned structure counts to avoid repeated lookups.
    */
+  /**
+   * Get structure counts for a room with caching
+   */
   private getStructureCounts(room: Room): Partial<Record<BuildableStructureConstant, number>> {
-    const cached = this.structureCountsCache.get(room.name);
-    if (cached && Game.time - cached.tick <= this.structureCacheTtl) {
-      return cached.counts;
+    const cached = globalCache.get<Partial<Record<BuildableStructureConstant, number>>>(
+      room.name,
+      {
+        namespace: this.STRUCTURE_CACHE_NAMESPACE,
+        ttl: this.structureCacheTtl
+      }
+    );
+    
+    if (cached) {
+      return cached;
     }
 
     const counts: Partial<Record<BuildableStructureConstant, number>> = {};
@@ -206,7 +215,10 @@ export class EvolutionManager {
       counts[type] = (counts[type] ?? 0) + 1;
     }
 
-    this.structureCountsCache.set(room.name, { counts, tick: Game.time });
+    globalCache.set(room.name, counts, {
+      namespace: this.STRUCTURE_CACHE_NAMESPACE,
+      ttl: this.structureCacheTtl
+    });
 
     return counts;
   }
