@@ -36,6 +36,10 @@ interface PatrolWaypointMetadata {
 
 /**
  * Cached patrol waypoint data
+ * 
+ * Note: Waypoints are stored as plain objects instead of RoomPosition to avoid
+ * serialization issues and ensure efficient caching. RoomPosition objects are
+ * reconstructed on retrieval from the x, y, roomName properties.
  */
 interface CachedPatrolWaypoints {
   waypoints: { x: number; y: number; roomName: string }[];

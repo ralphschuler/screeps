@@ -31,6 +31,9 @@ const ASSIGNMENT_TTL = 1;
 
 /**
  * Tracks creep assignments to targets for the current tick
+ * 
+ * Assignment keys follow the format: `${typeKey}:${targetId}`
+ * Example: "source:5bbcabb39099fc012e6397c5" or "container:5bbcacc99099fc012e6397da"
  */
 interface TargetAssignmentData {
   /** Map of assignment key to array of creep names */

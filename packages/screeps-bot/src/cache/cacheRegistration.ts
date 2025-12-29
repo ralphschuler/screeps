@@ -12,7 +12,9 @@ import { cacheCoherence, CacheLayer } from "./CacheCoherence";
  * Register all caches with the coherence manager
  * Call this during bot initialization
  * 
- * Total allocated budgets: 38MB (5+2+10+8+3+5+1+2+1+1)
+ * Total allocated budgets: 38MB
+ *   Core caches: 5+2+10+8+3+5 = 33MB
+ *   Migrated caches: 1+2+1+1 = 5MB
  * Default total budget in CacheCoherence: 50MB
  * The 12MB difference allows for overhead and future expansion
  * 
