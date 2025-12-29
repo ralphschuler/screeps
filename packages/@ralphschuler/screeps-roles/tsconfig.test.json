@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "screeps", "mocha", "chai"]
+  },
+  "include": ["src/**/*", "test/**/*"],
+  "ts-node": {
+    "require": ["tsconfig-paths/register"]
+  }
+}

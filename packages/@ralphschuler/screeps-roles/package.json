@@ -1,0 +1,36 @@
+{
+  "name": "@ralphschuler/screeps-roles",
+  "version": "0.1.0",
+  "description": "Reusable role behaviors and framework for Screeps bots - composable behaviors, complete role implementations, and behavior execution system",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "private": false,
+  "scripts": {
+    "build": "tsc",
+    "test": "mocha test/**/*.test.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "screeps",
+    "roles",
+    "behaviors",
+    "framework",
+    "typescript"
+  ],
+  "author": "Ralph Schuler",
+  "license": "Unlicense",
+  "dependencies": {
+    "screeps-cartographer": "^1.8.13"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.1.6",
+    "@types/mocha": "^5.2.5",
+    "@types/node": "^20.14.9",
+    "@types/screeps": "^3.3.8",
+    "chai": "^4.2.0",
+    "mocha": "^11.7.5",
+    "ts-node": "^10.2.0",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.4.3"
+  }
+}
