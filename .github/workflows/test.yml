@@ -31,7 +31,7 @@ jobs:
         run: npm run test:coverage -w screeps-typescript-starter
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         if: always()
         with:
           file: ./packages/screeps-bot/coverage/lcov.info
