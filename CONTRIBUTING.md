@@ -109,3 +109,72 @@ Tests must pass before merging. The CI/CD pipeline runs:
 1. `npm ci` - Install dependencies
 2. `npm run build` - Build all packages
 3. `npm test` - Run test suite
+
+## Caching Patterns
+
+This codebase uses a unified cache system located in `packages/screeps-bot/src/cache/`. All new caches should use this system instead of creating independent `Map<>` implementations.
+
+### When to Use Unified Cache
+
+✅ **Use the unified cache system when**:
+- Data needs TTL-based expiration
+- Data should be tracked in observability metrics
+- Cache needs coordinated invalidation
+- Cache is performance-critical
+
+❌ **Don't use unified cache when**:
+- Using Map as a data structure (not a cache)
+- Need very specific eviction logic
+- Data structure requires Map-specific methods
+
+### Basic Usage
+
+```typescript
+import { globalCache } from "./cache";
+
+const CACHE_NAMESPACE = "myFeature";
+const TTL = 100; // ticks
+
+// Get from cache
+const value = globalCache.get<MyType>(key, {
+  namespace: CACHE_NAMESPACE,
+  ttl: TTL
+});
+
+// Set in cache
+globalCache.set(key, value, {
+  namespace: CACHE_NAMESPACE,
+  ttl: TTL
+});
+
+// Invalidate
+globalCache.invalidate(key, CACHE_NAMESPACE);
+```
+
+### TTL Guidelines
+
+- **1 tick**: Per-tick ephemeral data (e.g., target assignments)
+- **20-50 ticks**: Frequently changing data (e.g., structure counts)
+- **100-500 ticks**: Stable data (e.g., paths, waypoints)
+- **-1**: Permanent (use sparingly)
+
+### Cache Registration
+
+New caches should be registered in `packages/screeps-bot/src/cache/cacheRegistration.ts`:
+
+```typescript
+cacheCoherence.registerCache(
+  "myFeature",
+  globalCache,
+  CacheLayer.L2,
+  {
+    priority: 50,
+    maxMemory: 1 * 1024 * 1024 // 1MB
+  }
+);
+```
+
+### Documentation
+
+See `packages/screeps-bot/src/cache/CACHE_MIGRATION.md` for detailed migration patterns and best practices.
+
