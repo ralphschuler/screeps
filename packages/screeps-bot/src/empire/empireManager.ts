@@ -27,8 +27,13 @@
  * When one shard is overloaded, migrate operations to less crowded shards
  * TODO(P3): ARCH - Implement portal network graph for inter-shard travel optimization
  * Pre-compute best portal routes for expansion and resource sharing
- * TODO(P2): TEST - Add integration tests for empire decision-making logic
- * Verify expansion and war decisions are made correctly
+ * 
+ * Test Coverage: Tests exist in empireManager.test.ts covering:
+ * - Empire initialization and room tracking
+ * - Expansion candidate selection and scoring
+ * - War target prioritization
+ * - GCL-based empire decisions
+ * TODO(P2): TEST - Expand integration tests for complex multi-room scenarios
  */
 
 import { ProcessPriority } from "../core/kernel";

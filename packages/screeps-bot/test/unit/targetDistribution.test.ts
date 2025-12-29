@@ -277,6 +277,20 @@ describe("Target Distribution System", () => {
       assert.equal(getAssignmentCount("W1N1", container1.id, "container"), 0);
       assert.equal(getAssignmentCount("W1N1", container2.id, "container"), 0);
     });
+
+    it("should clear assignments across multiple rooms", () => {
+      const containerW1 = createMockContainer("container1", 20, 20, "W1N1");
+      const containerW2 = createMockContainer("container2", 30, 30, "W2N2");
+      
+      registerAssignment(createMockCreep("Creep1", 25, 25, "W1N1"), containerW1, "container");
+      registerAssignment(createMockCreep("Creep2", 25, 25, "W2N2"), containerW2, "container");
+      
+      clearTargetAssignments();
+      
+      // Both rooms should be cleared
+      assert.equal(getAssignmentCount("W1N1", containerW1.id, "container"), 0);
+      assert.equal(getAssignmentCount("W2N2", containerW2.id, "container"), 0);
+    });
   });
 
   describe("Bug Reproduction: larvaWorker + hauler deadlock", () => {

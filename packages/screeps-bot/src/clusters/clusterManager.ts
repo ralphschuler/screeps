@@ -26,8 +26,13 @@
  * Coordinate infrastructure projects across multiple rooms
  * TODO(P3): ARCH - Implement cluster hierarchy for nested clusters
  * Large empires could have clusters of clusters
- * TODO(P2): TEST - Add integration tests for cluster resource balancing
- * Verify resources are distributed correctly across cluster members
+ * 
+ * Test Coverage: Tests exist in clusterManager.test.ts covering:
+ * - Resource distribution algorithms
+ * - Transfer cost optimization
+ * - Emergency prioritization
+ * - Mineral balancing logic
+ * TODO(P2): TEST - Expand integration tests with full Game object mocking
  */
 
 import type { ClusterMemory, SquadDefinition } from "../memory/schemas";
