@@ -16,9 +16,13 @@
  * Harvesters and haulers use similar paths, could share
  * TODO(P3): ARCH - Add behavior composability for complex roles
  * Combine simple behaviors into more sophisticated strategies
- * TODO(P2): TEST - Add unit tests for behavior decision logic
- Issue URL: https://github.com/ralphschuler/screeps/issues/775
- * Verify correct actions are selected for various scenarios
+ * 
+ * Test Coverage: 53% (economy behaviors) - Tests exist for:
+ * - harvester.test.ts - Harvester behavior decision logic
+ * - hauler.test.ts - Hauler behavior and energy management
+ * - larvaWorker.test.ts - Bootstrap worker behavior
+ * - upgrader.test.ts - Controller upgrade logic
+ * TODO(P3): TEST - Add tests for builder, mineralHarvester, and depositHarvester behaviors
  */
 
 import type { CreepAction, CreepContext } from "../types";
