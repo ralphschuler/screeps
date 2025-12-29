@@ -190,3 +190,12 @@ export function getAssignedCreeps(
   const assignmentKey = `${typeKey}:${targetId}`;
   return data.assignments[assignmentKey] || [];
 }
+
+/**
+ * Clear all target assignments.
+ * This is primarily for testing purposes - in production, assignments
+ * automatically expire each tick due to TTL=1.
+ */
+export function clearTargetAssignments(): void {
+  globalCache.invalidateNamespace(ASSIGNMENT_CACHE_NAMESPACE);
+}
