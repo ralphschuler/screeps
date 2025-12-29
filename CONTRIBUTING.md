@@ -43,7 +43,9 @@ dist/
 {
   "compilerOptions": {
     "outDir": "dist",
-    // NO rootDir specified - allows cross-package imports
+    // NO rootDir specified - required for cross-package imports
+    // TypeScript enforces that all source files must be under rootDir when specified
+    // Cross-package imports reference files outside src/, so rootDir cannot be used
     "paths": {
       "@bot/*": ["../screeps-bot/src/*"]
     }
@@ -76,7 +78,7 @@ dist/
 
 **Pattern 1** is simpler and produces a clean output structure, but requires all code to be within the package's `src/` directory.
 
-**Pattern 2** is necessary when a package imports from other packages using path aliases (`@bot/*`). TypeScript needs to compile those imports too, which results in the nested directory structure. The `rootDir` option cannot be used because TypeScript enforces that all compiled files must be under the `rootDir`.
+**Pattern 2** is necessary when a package imports from other packages using path aliases (`@bot/*`). When `rootDir` is specified, TypeScript enforces that all source files must be located under that directory. Since cross-package imports reference files outside the package's `src/` directory, omitting `rootDir` allows TypeScript to compile these external dependencies into the output directory. This results in the nested directory structure where both the package's code and its cross-package dependencies are included in `dist/`.
 
 ### Test Environment
 
