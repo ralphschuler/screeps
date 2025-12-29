@@ -1,5 +1,11 @@
 name: "Run TODO to Issue"
-on: [ "push" ]
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    # Run weekly on Sunday at midnight UTC
+    - cron: '0 0 * * 0'
 jobs:
   build:
     runs-on: "ubuntu-latest"
