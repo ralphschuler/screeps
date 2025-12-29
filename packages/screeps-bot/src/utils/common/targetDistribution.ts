@@ -8,15 +8,22 @@
  * and distributes new assignments to balance the load.
  *
  * Key features:
- * - Per-tick target assignment tracking
+ * - Per-tick target assignment tracking using unified cache
  * - Automatic load balancing based on creep count per target
  * - Fallback to closest target when all targets are equally loaded
- * - Memory-efficient: stored in global cache, not Memory
+ * - Memory-efficient: stored in heap cache with single-tick TTL
  */
 
 import { createLogger } from "../../core/logger";
+import { globalCache } from "../../cache";
 
 const logger = createLogger("TargetDistribution");
+
+/** Cache namespace for target assignments */
+const ASSIGNMENT_CACHE_NAMESPACE = "targetAssignment";
+
+/** TTL for assignment cache (1 tick - assignments only valid for current tick) */
+const ASSIGNMENT_TTL = 1;
 
 // =============================================================================
 // Types
@@ -24,53 +31,45 @@ const logger = createLogger("TargetDistribution");
 
 /**
  * Tracks creep assignments to targets for the current tick
+ * 
+ * Assignment keys follow the format: `${typeKey}:${targetId}`
+ * Example: "source:5bbcabb39099fc012e6397c5" or "container:5bbcacc99099fc012e6397da"
  */
-interface TargetAssignment {
-  /** Map of target ID to array of creep names assigned to it */
-  assignments: Map<string, string[]>;
-  /** Tick when this assignment map was created */
-  tick: number;
-}
-
-// =============================================================================
-// Global Cache
-// =============================================================================
-
-/**
- * Per-room target assignment cache
- * Key: room name
- * Value: target assignment data
- */
-const roomAssignments = new Map<string, TargetAssignment>();
-
-/**
- * Clear stale assignment data at the start of each tick
- * Called from main loop
- */
-export function clearTargetAssignments(): void {
-  roomAssignments.clear();
-}
-
-/**
- * Get or create target assignment tracker for a room
- */
-function getAssignmentTracker(roomName: string): TargetAssignment {
-  let tracker = roomAssignments.get(roomName);
-  
-  if (!tracker || tracker.tick !== Game.time) {
-    tracker = {
-      assignments: new Map<string, string[]>(),
-      tick: Game.time
-    };
-    roomAssignments.set(roomName, tracker);
-  }
-  
-  return tracker;
+interface TargetAssignmentData {
+  /** Map of assignment key to array of creep names */
+  assignments: Record<string, string[]>;
 }
 
 // =============================================================================
 // Public API
 // =============================================================================
+
+/**
+ * Get or create assignment data for a room.
+ * Uses unified cache with single-tick TTL for automatic cleanup.
+ */
+function getAssignmentData(roomName: string): TargetAssignmentData {
+  const cached = globalCache.get<TargetAssignmentData>(roomName, {
+    namespace: ASSIGNMENT_CACHE_NAMESPACE,
+    ttl: ASSIGNMENT_TTL
+  });
+  
+  if (cached) {
+    return cached;
+  }
+  
+  // Create new assignment data
+  const data: TargetAssignmentData = {
+    assignments: {}
+  };
+  
+  globalCache.set(roomName, data, {
+    namespace: ASSIGNMENT_CACHE_NAMESPACE,
+    ttl: ASSIGNMENT_TTL
+  });
+  
+  return data;
+}
 
 /**
  * Find the best target from an array, considering current assignments.
@@ -103,7 +102,7 @@ export function findDistributedTarget<T extends RoomObject & _HasId>(
     return targets[0];
   }
 
-  const tracker = getAssignmentTracker(creep.room.name);
+  const data = getAssignmentData(creep.room.name);
   
   // Count assignments per target and track closest target with minimum assignments
   let bestTarget: T | null = null;
@@ -112,7 +111,7 @@ export function findDistributedTarget<T extends RoomObject & _HasId>(
   
   for (const target of targets) {
     const assignmentKey = `${typeKey}:${target.id}`;
-    const assignedCreeps = tracker.assignments.get(assignmentKey) || [];
+    const assignedCreeps = data.assignments[assignmentKey] || [];
     const assignmentCount = assignedCreeps.length;
     const distance = creep.pos.getRangeTo(target.pos);
     
@@ -146,14 +145,20 @@ export function registerAssignment<T extends _HasId>(
   target: T,
   typeKey: string
 ): void {
-  const tracker = getAssignmentTracker(creep.room.name);
+  const data = getAssignmentData(creep.room.name);
   const assignmentKey = `${typeKey}:${target.id}`;
   
-  const assigned = tracker.assignments.get(assignmentKey) || [];
+  const assigned = data.assignments[assignmentKey] || [];
   // Only add if not already assigned (prevent duplicates)
   if (!assigned.includes(creep.name)) {
     assigned.push(creep.name);
-    tracker.assignments.set(assignmentKey, assigned);
+    data.assignments[assignmentKey] = assigned;
+    
+    // Update cache with modified data
+    globalCache.set(creep.room.name, data, {
+      namespace: ASSIGNMENT_CACHE_NAMESPACE,
+      ttl: ASSIGNMENT_TTL
+    });
   }
 }
 
@@ -166,9 +171,9 @@ export function getAssignmentCount(
   targetId: Id<_HasId>,
   typeKey: string
 ): number {
-  const tracker = getAssignmentTracker(roomName);
+  const data = getAssignmentData(roomName);
   const assignmentKey = `${typeKey}:${targetId}`;
-  const assigned = tracker.assignments.get(assignmentKey) || [];
+  const assigned = data.assignments[assignmentKey] || [];
   return assigned.length;
 }
 
@@ -181,7 +186,7 @@ export function getAssignedCreeps(
   targetId: Id<_HasId>,
   typeKey: string
 ): string[] {
-  const tracker = getAssignmentTracker(roomName);
+  const data = getAssignmentData(roomName);
   const assignmentKey = `${typeKey}:${targetId}`;
-  return tracker.assignments.get(assignmentKey) || [];
+  return data.assignments[assignmentKey] || [];
 }

@@ -22,7 +22,6 @@ export {
 
 // Target Distribution - distributed target assignment
 export {
-  clearTargetAssignments,
   findDistributedTarget,
   registerAssignment,
   getAssignmentCount,

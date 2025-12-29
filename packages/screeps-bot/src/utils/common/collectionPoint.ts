@@ -13,6 +13,7 @@
 
 import type { SwarmState } from "../../memory/schemas";
 import { createLogger } from "../../core/logger";
+import { globalCache } from "../../cache";
 
 const logger = createLogger("CollectionPoint");
 
@@ -44,17 +45,8 @@ const ROAD_PENALTY = 5;
 /** Number of candidates to collect before early exit optimization kicks in */
 const EARLY_EXIT_CANDIDATE_COUNT = 50;
 
-// =============================================================================
-// Cache
-// =============================================================================
-
-interface CollectionPointCache {
-  pos: RoomPosition;
-  tick: number;
-}
-
-/** In-memory cache of collection points per room */
-const collectionPointCache: Map<string, CollectionPointCache> = new Map();
+/** Cache namespace for collection points */
+const CACHE_NAMESPACE = "collectionPoint";
 
 // =============================================================================
 // Public API
@@ -69,10 +61,14 @@ const collectionPointCache: Map<string, CollectionPointCache> = new Map();
  * @returns The collection point position, or null if none can be determined
  */
 export function getCollectionPoint(room: Room, swarmState: SwarmState): RoomPosition | null {
-  // Check in-memory cache first
-  const cached = collectionPointCache.get(room.name);
-  if (cached && Game.time - cached.tick < RECALCULATION_INTERVAL) {
-    return cached.pos;
+  // Check unified cache first
+  const cached = globalCache.get<{ x: number; y: number }>(room.name, {
+    namespace: CACHE_NAMESPACE,
+    ttl: RECALCULATION_INTERVAL
+  });
+  
+  if (cached) {
+    return new RoomPosition(cached.x, cached.y, room.name);
   }
 
   // Check memory for stored collection point
@@ -86,8 +82,11 @@ export function getCollectionPoint(room: Room, swarmState: SwarmState): RoomPosi
       const pos = new RoomPosition(x, y, room.name);
       // Validate the stored position is still valid
       if (isValidCollectionPoint(room, pos)) {
-        // Cache it for quick access
-        collectionPointCache.set(room.name, { pos, tick: Game.time });
+        // Cache it in unified cache for quick access
+        globalCache.set(room.name, { x, y }, {
+          namespace: CACHE_NAMESPACE,
+          ttl: RECALCULATION_INTERVAL
+        });
         return pos;
       }
     }
@@ -99,14 +98,17 @@ export function getCollectionPoint(room: Room, swarmState: SwarmState): RoomPosi
   if (newPos) {
     // Store in memory for persistence across ticks
     swarmState.collectionPoint = { x: newPos.x, y: newPos.y };
-    // Cache for fast access this tick
-    collectionPointCache.set(room.name, { pos: newPos, tick: Game.time });
+    // Cache in unified cache for fast access
+    globalCache.set(room.name, { x: newPos.x, y: newPos.y }, {
+      namespace: CACHE_NAMESPACE,
+      ttl: RECALCULATION_INTERVAL
+    });
     logger.info(`Calculated new collection point at ${newPos.x},${newPos.y}`, room.name);
   } else {
     // Clear invalid collection point from memory
     swarmState.collectionPoint = undefined;
-    // Also clear from cache
-    collectionPointCache.delete(room.name);
+    // Also clear from unified cache
+    globalCache.invalidate(room.name, CACHE_NAMESPACE);
     logger.warn(`Failed to calculate collection point for room`, room.name);
   }
 
@@ -120,7 +122,7 @@ export function getCollectionPoint(room: Room, swarmState: SwarmState): RoomPosi
  * @param roomName - The room name to invalidate
  */
 export function invalidateCollectionPoint(roomName: string): void {
-  collectionPointCache.delete(roomName);
+  globalCache.invalidate(roomName, CACHE_NAMESPACE);
   logger.debug(`Invalidated collection point cache for ${roomName}`, roomName);
 }
 
