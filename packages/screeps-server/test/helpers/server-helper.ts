@@ -257,6 +257,7 @@ export class ServerTestHelper {
       this._metrics.bucketLevel.push(bucketLevel);
       
       // TODO: Collect real memory parse time metric
+      // Issue URL: https://github.com/ralphschuler/screeps/issues/983
       // Memory parse time is not directly exposed by screeps-server-mockup.
       // This would require instrumenting the memory parsing process or
       // using performance profiling hooks if they become available.
