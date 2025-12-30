@@ -87,15 +87,19 @@
 - [ ] Extract lab supply behavior
 - [ ] Add helper module tests
 
-### Phase 9: Create Role Implementations
-- [ ] Create role wrapper classes/functions
-- [ ] Implement Harvester role
-- [ ] Implement Hauler role
-- [ ] Implement Builder role
-- [ ] Implement Upgrader role
-- [ ] Implement Guard role
-- [ ] Implement complete role catalog
-- [ ] Add role tests
+### Phase 9: Create Role Implementations (Partially Complete)
+- [x] Create role wrapper functions (minimal implementations)
+  - [x] `runEconomyRole()` - Creates context (behaviors pending)
+  - [x] `runMilitaryRole()` - Creates context (behaviors pending)
+  - [x] `runUtilityRole()` - Creates context (behaviors pending)
+- [x] Export role functions from package index
+- [x] Add basic role export tests
+- [ ] Implement full behavior execution (requires Phases 2-6)
+- [ ] Implement complete role catalog (requires Phases 4-6)
+- [ ] Add comprehensive role integration tests
+
+**Note**: Current implementations are placeholders that establish the API structure.
+Full functionality will be added as behaviors are extracted in Phases 2-8.
 
 ### Phase 10: Bot Integration
 - [ ] Update screeps-bot to import from @ralphschuler/screeps-roles
