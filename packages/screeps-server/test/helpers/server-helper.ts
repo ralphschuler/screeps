@@ -147,14 +147,10 @@ export class ServerTestHelper {
       if (typeof RawMemory !== 'undefined' && typeof Game !== 'undefined' && Game.cpu) {
         const parseStart = Game.cpu.getUsed();
         const rawMemory = RawMemory.get();
-        if (rawMemory) {
-          // Store the parsed result to prevent JS engine optimization
-          const parsedMemory = JSON.parse(rawMemory);
-          // Prevent unused variable warning by checking existence
-          if (parsedMemory !== undefined) {
-            memoryParseTime = Game.cpu.getUsed() - parseStart;
-          }
-        }
+        // Store the parsed result to prevent JS engine optimization
+        const parsedMemory = rawMemory ? JSON.parse(rawMemory) : {};
+        // Always measure CPU time, even for empty memory
+        memoryParseTime = Game.cpu.getUsed() - parseStart;
       }
     `;
     
