@@ -5,6 +5,8 @@ on:
     paths:
       - 'packages/screeps-bot/src/**'
       - 'packages/screeps-bot/package*.json'
+      - 'packages/screeps-server/test/**'
+      - 'packages/screeps-server/package*.json'
       - '.github/workflows/performance-test.yml'
   push:
     branches:
@@ -12,6 +14,7 @@ on:
       - develop
     paths:
       - 'packages/screeps-bot/src/**'
+      - 'packages/screeps-server/test/**'
   workflow_dispatch:
     inputs:
       maxTickCount:
@@ -64,6 +67,37 @@ jobs:
           docker --version
           docker compose version
           docker ps
+
+      - name: Run server integration tests
+        working-directory: packages/screeps-server
+        run: |
+          npm install
+          npm run test:integration
+        timeout-minutes: 15
+        continue-on-error: true
+
+      - name: Run server performance tests
+        working-directory: packages/screeps-server
+        run: npm run test:performance
+        timeout-minutes: 15
+        continue-on-error: true
+
+      - name: Run framework package tests
+        working-directory: packages/screeps-server
+        run: npm run test:packages
+        timeout-minutes: 10
+        continue-on-error: true
+
+      - name: Upload server test results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: server-test-results
+          path: |
+            packages/screeps-server/test-results.json
+            packages/screeps-server/coverage/
+          retention-days: 30
+          if-no-files-found: ignore
 
       - name: Run performance test
         working-directory: packages/screeps-bot
@@ -129,14 +163,26 @@ jobs:
             const fs = require('fs');
             const path = require('path');
             
-            const reportPath = path.join(process.cwd(), 'packages/screeps-bot/performance-report.md');
+            let commentBody = '';
             
-            if (!fs.existsSync(reportPath)) {
-              console.log('Performance report not found, skipping PR comment');
-              return;
+            // Add bot performance results
+            const botReportPath = path.join(process.cwd(), 'packages/screeps-bot/performance-report.md');
+            if (fs.existsSync(botReportPath)) {
+              const botReport = fs.readFileSync(botReportPath, 'utf-8');
+              commentBody += botReport + '\n\n';
             }
             
-            const report = fs.readFileSync(reportPath, 'utf-8');
+            // Add server test results
+            const serverReportPath = path.join(process.cwd(), 'packages/screeps-server/test-report.md');
+            if (fs.existsSync(serverReportPath)) {
+              const serverReport = fs.readFileSync(serverReportPath, 'utf-8');
+              commentBody += '---\n\n' + serverReport;
+            }
+            
+            if (!commentBody) {
+              console.log('No test reports found, skipping PR comment');
+              return;
+            }
             
             // Find existing comment
             const { data: comments } = await github.rest.issues.listComments({
@@ -149,8 +195,6 @@ jobs:
               comment.user.type === 'Bot' && 
               comment.body.includes('📊 Performance Test Results')
             );
-            
-            const commentBody = report;
             
             if (botComment) {
               // Update existing comment

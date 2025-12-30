@@ -1,0 +1,8 @@
+{
+  "require": ["tsx"],
+  "extensions": ["ts"],
+  "spec": ["test/**/*.test.ts"],
+  "timeout": 30000,
+  "recursive": true,
+  "color": true
+}
