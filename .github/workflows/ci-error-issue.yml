@@ -66,7 +66,8 @@ jobs:
             # Look for common error patterns (combined for efficiency)
             find logs/ -type f -name "*.txt" | while read -r log_file; do
               # Extract error messages using combined patterns
-              grep -iE "error:|failed:|failure:|test failed|build failed|×|✗|❌" "$log_file" | head -20 >> errors/raw_errors.txt || true
+              # -m 20 stops after 20 matches for efficiency
+              grep -m 20 -iE "error:|failed:|failure:|test failed|build failed|×|✗|❌" "$log_file" >> errors/raw_errors.txt || true
             done
           fi
           
@@ -123,13 +124,17 @@ jobs:
             local title="$1"
             
             # Use GitHub search API for efficient lookup
-            # Use printf %q for proper shell escaping
-            local search_query="repo:$GITHUB_REPOSITORY is:issue is:open in:title $(printf '%q' "$title")"
+            # Quote the title for safe searching
+            local quoted_title=$(printf '%q' "$title")
             
-            local count=$(gh api "/search/issues" \
-              --method GET \
-              -f "q=$search_query" \
-              --jq '.total_count')
+            # Search using gh issue list which is safer than raw API
+            local count=$(gh issue list \
+              --repo "$GITHUB_REPOSITORY" \
+              --state open \
+              --search "$quoted_title in:title" \
+              --limit 1 \
+              --json number \
+              --jq 'length')
             
             [ "$count" -gt 0 ]
           }
