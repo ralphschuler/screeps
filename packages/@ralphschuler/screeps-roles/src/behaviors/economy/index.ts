@@ -8,9 +8,7 @@
  * truly reusable and framework-independent.
  */
 
-import type { CreepContext, BehaviorResult } from "../../framework/types";
-import type { CreepAction } from "../types";
-import type { CreepContext as BehaviorCreepContext } from "../types";
+import type { CreepContext, BehaviorResult, BaseCreepMemory, CreepAction } from "../../framework/types";
 
 /**
  * Harvest behavior - Mining resources from sources.
@@ -18,20 +16,152 @@ import type { CreepContext as BehaviorCreepContext } from "../types";
  * A harvester sits at a source and harvests energy, transferring to nearby
  * containers or links when full.
  * 
+ * Logic extracted from screeps-bot/src/roles/behaviors/economy/harvester.ts
+ * and simplified for framework independence.
+ * 
  * @param ctx - The creep context
  * @returns Behavior result with action to execute
  */
 export function harvestBehavior(ctx: CreepContext): BehaviorResult {
-  // TODO: Implement standalone harvest behavior
-  // Issue URL: https://github.com/ralphschuler/screeps/issues/971
-  // For now, this is a placeholder that returns idle
-  // Full implementation requires extracting logic from screeps-bot
+  const creep = ctx.creep;
+  const room = ctx.room;
+  
+  // Get or assign a source
+  let source = ctx.assignedSource;
+  
+  if (!source) {
+    // Assign a source by finding the least loaded one
+    source = assignSource(ctx);
+  }
+  
+  if (!source) {
+    return {
+      action: { type: "idle" },
+      success: false,
+      error: "No source available to harvest",
+      context: "harvest"
+    };
+  }
+  
+  // Move to source if not nearby
+  if (!creep.pos.isNearTo(source)) {
+    return {
+      action: { type: "moveTo", target: source },
+      success: true,
+      context: "harvest"
+    };
+  }
+  
+  // At source - determine if we should harvest or transfer
+  const carryCapacity = creep.store.getCapacity();
+  const hasFreeCapacity = creep.store.getFreeCapacity() > 0;
+  
+  // Harvest if: no carry capacity (drop miner) OR has free space
+  if (!carryCapacity || hasFreeCapacity) {
+    return {
+      action: { type: "harvest", target: source },
+      success: true,
+      context: "harvest"
+    };
+  }
+  
+  // Full - try to transfer to nearby container or link
+  const container = findNearbyContainer(creep);
+  if (container && container.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+    return {
+      action: { type: "transfer", target: container, resourceType: RESOURCE_ENERGY },
+      success: true,
+      context: "harvest"
+    };
+  }
+  
+  const link = findNearbyLink(creep);
+  if (link && link.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+    return {
+      action: { type: "transfer", target: link, resourceType: RESOURCE_ENERGY },
+      success: true,
+      context: "harvest"
+    };
+  }
+  
+  // No transfer targets - drop on ground for haulers to pick up
   return {
-    action: { type: "idle" },
-    success: false,
-    error: "harvestBehavior not yet implemented",
+    action: { type: "drop", resourceType: RESOURCE_ENERGY },
+    success: true,
     context: "harvest"
   };
+}
+
+/**
+ * Type guard to check if a creep memory has harvester fields.
+ */
+function isHarvesterMemory(memory: CreepMemory): memory is BaseCreepMemory {
+  return 'role' in memory;
+}
+
+/**
+ * Assign a source to a harvester, trying to balance load.
+ * Simplified version from screeps-bot for framework independence.
+ */
+function assignSource(ctx: CreepContext): Source | null {
+  const sources = ctx.room.find(FIND_SOURCES);
+  if (sources.length === 0) return null;
+  
+  // Count creeps assigned to each source
+  const sourceCounts = new Map<string, number>();
+  for (const s of sources) {
+    sourceCounts.set(s.id, 0);
+  }
+  
+  // Count all harvesters with sourceId assigned to sources in this room
+  for (const name in Game.creeps) {
+    const c = Game.creeps[name];
+    const m = c.memory;
+    // Use type guard and explicit role check for clarity
+    if (isHarvesterMemory(m) && m.role === "harvester" && m.sourceId && sourceCounts.has(m.sourceId)) {
+      sourceCounts.set(m.sourceId, (sourceCounts.get(m.sourceId) ?? 0) + 1);
+    }
+  }
+  
+  // Find least assigned source
+  let bestSource: Source | null = null;
+  let minCount = Infinity;
+  for (const s of sources) {
+    const count = sourceCounts.get(s.id) ?? 0;
+    if (count < minCount) {
+      minCount = count;
+      bestSource = s;
+    }
+  }
+  
+  // Store assignment in memory
+  if (bestSource) {
+    ctx.memory.sourceId = bestSource.id;
+  }
+  
+  return bestSource;
+}
+
+/**
+ * Find a container adjacent to the creep (range 1).
+ */
+function findNearbyContainer(creep: Creep): StructureContainer | undefined {
+  const containers = creep.pos.findInRange(FIND_STRUCTURES, 1, {
+    filter: s => s.structureType === STRUCTURE_CONTAINER
+  }) as StructureContainer[];
+  
+  return containers[0];
+}
+
+/**
+ * Find a link adjacent to the creep (range 1).
+ */
+function findNearbyLink(creep: Creep): StructureLink | undefined {
+  const links = creep.pos.findInRange(FIND_MY_STRUCTURES, 1, {
+    filter: s => s.structureType === STRUCTURE_LINK
+  }) as StructureLink[];
+  
+  return links[0];
 }
 
 /**
@@ -647,10 +777,10 @@ export function upgradeBehavior(ctx: CreepContext): BehaviorResult {
  * NOTE: This is a placeholder implementation. Full implementations of
  * harvester, hauler, and builder behaviors are pending.
  * 
- * @param ctx - The creep context (must be BehaviorCreepContext with swarm-specific fields)
+ * @param ctx - The creep context
  * @returns The action for the creep to execute
  */
-export function evaluateEconomyBehavior(ctx: BehaviorCreepContext): CreepAction {
+export function evaluateEconomyBehavior(ctx: CreepContext): CreepAction {
   // For now, all economy roles return idle
   // Full implementations will be added in future updates
   return { type: "idle" };
