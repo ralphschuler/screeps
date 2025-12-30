@@ -28,7 +28,7 @@ Baselines are stored in `../../../performance-baselines/`:
 
 ```
 performance-baselines/
-├── README.md           # This file (symlinked from here)
+├── README.md           # Baseline directory documentation
 ├── main.json          # Production baseline (main branch)
 ├── develop.json       # Development baseline (develop branch)
 └── history/           # Historical snapshots
@@ -576,7 +576,7 @@ When reviewing PRs that update baselines:
 - **[PERFORMANCE_TESTING_GUIDE.md](./PERFORMANCE_TESTING_GUIDE.md)**: Comprehensive testing guide
 - **[PERFORMANCE_TESTING.md](./PERFORMANCE_TESTING.md)**: Technical reference
 - **[ROADMAP.md](../../ROADMAP.md)**: Performance targets and architecture
-- **[performance-baselines/README.md](../../performance-baselines/README.md)**: Baseline directory README
+- **[performance-baselines/](../../performance-baselines/)**: Baseline data files directory
 
 ---
 

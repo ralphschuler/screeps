@@ -1252,10 +1252,11 @@ stage('Performance Test') {
 ### In This Repository
 
 - **[PERFORMANCE_TESTING.md](./PERFORMANCE_TESTING.md)**: Detailed technical reference
-- **[PERFORMANCE_BASELINES.md](../../performance-baselines/README.md)**: Baseline documentation
+- **[PERFORMANCE_BASELINES.md](./PERFORMANCE_BASELINES.md)**: Baseline documentation
 - **[ROADMAP.md](../../ROADMAP.md)**: Performance targets and architecture
 - **[screepsmod-testing/QUICK_START.md](../screepsmod-testing/QUICK_START.md)**: Testing mod guide
 - **[screepsmod-testing/FEATURES.md](../screepsmod-testing/FEATURES.md)**: Testing mod features
+- **[performance-baselines/](../../performance-baselines/)**: Baseline data files directory
 
 ### External Resources
 
