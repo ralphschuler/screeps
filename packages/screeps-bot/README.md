@@ -217,21 +217,34 @@ Tests are located in the `test/` directory and use Mocha with Chai assertions.
 
 ### Performance Testing
 
-The bot includes automated performance testing using [ScreepsPerformanceServer](https://github.com/screepers/ScreepsPerformanceServer). This allows testing the bot's behavior in a controlled environment with milestone tracking and performance metrics.
+The bot includes comprehensive automated performance testing to ensure CPU efficiency and detect regressions.
 
-**Note:** Performance testing is self-contained within this package and independent of the `packages/screeps-server` production server setup.
-
-**Quick performance test:**
+**Quick Start:**
 ```bash
 npm run build
-npm run test:performance -- --maxTickCount=10000 --maxTimeDuration=30
+npm run test:performance
 ```
 
-Performance tests automatically run in GitHub Actions on pull requests and pushes to main branches. Results are saved as artifacts including:
-- Server logs and debug information
-- Milestone results and performance metrics
+**Documentation:**
+- 📘 **[Performance Testing Guide](PERFORMANCE_TESTING_GUIDE.md)** - Comprehensive guide for developers and AI agents
+- 📊 **[Performance Baselines](PERFORMANCE_BASELINES.md)** - Target vs. actual performance metrics
+- 🔧 **[Performance Testing Reference](PERFORMANCE_TESTING.md)** - Technical reference and detailed documentation
 
-For detailed documentation on performance testing, see [PERFORMANCE_TESTING.md](PERFORMANCE_TESTING.md).
+**Key Features:**
+- ✅ Automated CI/CD integration (runs on every PR)
+- ✅ Regression detection (>10% CPU increase blocks merges)
+- ✅ Performance baselines tracked in Git
+- ✅ Supports ROADMAP.md targets (≤0.1 CPU per eco room)
+- ✅ Grafana monitoring integration
+
+**CI/CD Integration:**
+Performance tests automatically run on pull requests and report results as PR comments. Baselines are automatically updated when changes merge to main/develop branches.
+
+**See**: [PERFORMANCE_TESTING_GUIDE.md](PERFORMANCE_TESTING_GUIDE.md) for complete documentation including:
+- Creating custom test scenarios
+- Interpreting performance reports
+- Troubleshooting common issues
+- Best practices for performance testing
 
 ## Code Style
 
@@ -256,10 +269,22 @@ Bot behavior can be tuned via configuration files in `src/config/`:
 
 ## Documentation
 
-- [State Machine Documentation](docs/STATE_MACHINE.md)
+### Bot Documentation
+- [ROADMAP Compliance](ROADMAP_COMPLIANCE.md) - Architecture compliance verification
+- [Performance Testing Guide](PERFORMANCE_TESTING_GUIDE.md) - Comprehensive performance testing documentation
+- [Performance Baselines](PERFORMANCE_BASELINES.md) - Target vs. actual performance metrics
+- [Performance Testing Reference](PERFORMANCE_TESTING.md) - Technical reference
+- [Integration Testing](INTEGRATION_TEST_GUIDE.md) - Integration test guide
+- [Test Coverage](TEST_COVERAGE.md) - Test coverage documentation
+- [Lazy Loading Commands](LAZY_LOADING_COMMANDS.md) - Console commands documentation
+- [Logging Guidelines](LOGGING_GUIDELINES.md) - Logging best practices
+- [State Machine Documentation](docs/STATE_MACHINE.md) - State machine patterns
+
+### Repository Documentation
 - [Main Repository README](../../README.md)
 - [Development Roadmap](../../ROADMAP.md)
 - [Contributing Guidelines](../../CONTRIBUTING.md)
+- [Agents Documentation](../../AGENTS.md) - AI agent workflows
 
 ## Type Definitions
 
