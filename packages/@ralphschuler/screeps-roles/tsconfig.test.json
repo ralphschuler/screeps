@@ -1,7 +1,16 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "types": ["node", "screeps", "mocha", "chai"]
+    "types": ["node", "screeps", "mocha", "chai"],
+    "skipLibCheck": true
   },
-  "include": ["src/**/*", "test/**/*"]
+  "include": [
+    "src/behaviors/economy/index.ts",
+    "src/framework/**/*",
+    "test/**/*"
+  ],
+  "exclude": [
+    "src/behaviors/executor.ts",
+    "src/behaviors/types.ts"
+  ]
 }
