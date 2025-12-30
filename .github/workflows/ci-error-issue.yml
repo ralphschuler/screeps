@@ -98,11 +98,13 @@ jobs:
           create_issue_title() {
             local error_msg="$1"
             local workflow_name="$2"
+            local MAX_TITLE_LENGTH=120
+            local ELLIPSIS_OFFSET=3
             
-            # Clean up the error message for title (max 120 chars with ellipsis)
+            # Clean up the error message for title
             local clean_error=$(echo "$error_msg" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-            if [ ${#clean_error} -gt 120 ]; then
-              clean_error="${clean_error:0:117}..."
+            if [ ${#clean_error} -gt $MAX_TITLE_LENGTH ]; then
+              clean_error="${clean_error:0:$((MAX_TITLE_LENGTH - ELLIPSIS_OFFSET))}..."
             fi
             
             echo "CI Error in $workflow_name: $clean_error"
@@ -113,11 +115,9 @@ jobs:
             local title="$1"
             
             # Use GitHub search API for efficient lookup
-            # URL-encode the title for search query
-            local search_query="repo:$GITHUB_REPOSITORY is:issue is:open in:title \"$title\""
-            
+            # The gh CLI properly escapes the query parameter
             local count=$(gh api "/search/issues" \
-              -f q="$search_query" \
+              -f "q=repo:$GITHUB_REPOSITORY is:issue is:open in:title $(printf '%q' "$title")" \
               --jq '.total_count')
             
             [ "$count" -gt 0 ]
@@ -130,16 +130,20 @@ jobs:
             local workflow_name="$3"
             local run_url="$4"
             
-            # Create issue body
+            # Sanitize inputs for markdown (escape backticks and prevent code injection)
+            local safe_workflow=$(echo "$workflow_name" | sed 's/`/\\`/g')
+            local safe_error=$(echo "$error_msg" | sed 's/`/\\`/g')
+            
+            # Create issue body with sanitized content
             local body="## CI Workflow Failed
           
-          **Workflow:** $workflow_name
+          **Workflow:** $safe_workflow
           **Run:** [View failed run]($run_url)
           
           ### Error Details
           
           \`\`\`
-          $error_msg
+          $safe_error
           \`\`\`
           
           ### Action Required
@@ -149,7 +153,7 @@ jobs:
           ---
           *This issue was automatically created by the CI Error Issue Creator workflow.*"
             
-            # Create the issue
+            # Create the issue using gh CLI which handles proper escaping
             gh issue create \
               --title "$title" \
               --body "$body" \
