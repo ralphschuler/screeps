@@ -56,6 +56,7 @@ describe("Behavior Exports", () => {
       const result: BehaviorResult = harvestBehavior(mockContext as CreepContext);
       expect(result).to.have.property("action");
       expect(result).to.have.property("success");
+      expect(result.success).to.be.true; // harvestBehavior is implemented
       expect(result.action.type).to.equal("idle");
     });
 
@@ -106,23 +107,22 @@ describe("Behavior Exports", () => {
       const result: BehaviorResult = healBehavior(mockContext as CreepContext);
       expect(result).to.have.property("action");
       expect(result).to.have.property("success");
+      expect(result.success).to.be.true; // healBehavior is now implemented
       expect(result.action.type).to.equal("idle");
     });
   });
 
   describe("Behavior Results", () => {
     it("should return BehaviorResult with expected structure for placeholder implementations", () => {
-      const behaviors = [
-        harvestBehavior,
+      const placeholderBehaviors = [
         haulBehavior,
         buildBehavior,
         upgradeBehavior,
         attackBehavior,
         defendBehavior,
-        healBehavior,
       ];
 
-      behaviors.forEach((behavior) => {
+      placeholderBehaviors.forEach((behavior) => {
         const result = behavior(mockContext as CreepContext);
         expect(result).to.have.property("action");
         expect(result).to.have.property("success");
@@ -130,6 +130,18 @@ describe("Behavior Exports", () => {
         expect(result).to.have.property("context");
         expect(result.success).to.equal(false); // Placeholder implementations return false
         expect(result.action.type).to.equal("idle");
+      });
+    });
+
+    it("should return BehaviorResult with expected structure for implemented behaviors", () => {
+      const implementedBehaviors = [harvestBehavior, healBehavior];
+
+      implementedBehaviors.forEach((behavior) => {
+        const result = behavior(mockContext as CreepContext);
+        expect(result).to.have.property("action");
+        expect(result).to.have.property("success");
+        expect(result).to.have.property("context");
+        expect(result.success).to.be.true; // Implemented behaviors should succeed
       });
     });
   });
