@@ -50,6 +50,11 @@ export interface PerformanceMetrics {
   tickTime: number[];
 }
 
+interface ServerNotification {
+  type: string;
+  message: string;
+}
+
 export class ServerTestHelper {
   private _server: any;
   private _player: any;
@@ -135,8 +140,8 @@ export class ServerTestHelper {
    * This allows us to collect real performance data from the game engine
    */
   private _wrapBotCodeWithMetrics(originalCode: string): string {
-    // Check if code is already module.exports format
-    if (originalCode.includes('module.exports.loop')) {
+    // Check if code is already module.exports format using precise regex
+    if (/module\.exports\.loop\s*=/.test(originalCode)) {
       // Extract the loop function and wrap it
       return `
         const originalModule = {};
@@ -160,7 +165,8 @@ export class ServerTestHelper {
         ${originalCode}
         
         // Wrap the loop to add metrics logging
-        const originalLoop = typeof loop !== 'undefined' ? loop : module.exports.loop;
+        const originalLoop = (typeof loop !== 'undefined') ? loop : 
+          ((typeof module !== 'undefined' && module.exports) ? module.exports.loop : undefined);
         const wrappedLoop = function() {
           if (originalLoop) {
             originalLoop();
@@ -202,10 +208,10 @@ export class ServerTestHelper {
       let bucketLevel = 10000; // Default fallback
       
       try {
-        const notifications = this._player.newNotifications || [];
+        const notifications: ServerNotification[] = this._player.newNotifications || [];
         const consoleMessages = notifications
-          .filter((n: any) => n.type === 'console')
-          .map((n: any) => n.message);
+          .filter((n) => n.type === 'console')
+          .map((n) => n.message);
         
         // Look for our special metric markers
         for (const message of consoleMessages) {
@@ -224,7 +230,10 @@ export class ServerTestHelper {
         }
       } catch (error) {
         // If console parsing fails, use default values
-        console.warn('Failed to collect CPU/bucket metrics, using defaults:', error);
+        // Only log in debug mode to avoid cluttering test output
+        if (process.env.DEBUG) {
+          console.warn('Failed to collect CPU/bucket metrics, using defaults:', error);
+        }
       }
       
       this._metrics.cpuHistory.push(cpuUsed);
@@ -243,10 +252,10 @@ export class ServerTestHelper {
     if (!this._player) throw new Error('Player not initialized');
     await this._player.console(command);
     await this._server.tick();
-    const notifications = this._player.newNotifications || [];
+    const notifications: ServerNotification[] = this._player.newNotifications || [];
     return notifications
-      .filter((n: any) => n.type === 'console')
-      .map((n: any) => n.message)
+      .filter((n) => n.type === 'console')
+      .map((n) => n.message)
       .join('\n');
   }
 
@@ -257,8 +266,8 @@ export class ServerTestHelper {
 
   async hasErrors(): Promise<boolean> {
     if (!this._player) return false;
-    const notifications = this._player.newNotifications || [];
-    return notifications.some((n: any) => 
+    const notifications: ServerNotification[] = this._player.newNotifications || [];
+    return notifications.some((n) => 
       n.type === 'error' || 
       (n.type === 'console' && n.message.toLowerCase().includes('error'))
     );
