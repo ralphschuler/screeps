@@ -123,10 +123,12 @@ jobs:
             local title="$1"
             
             # Use GitHub search API for efficient lookup
-            # gh CLI handles proper escaping internally with --field
+            # Use printf %q for proper shell escaping
+            local search_query="repo:$GITHUB_REPOSITORY is:issue is:open in:title $(printf '%q' "$title")"
+            
             local count=$(gh api "/search/issues" \
               --method GET \
-              --field "q=repo:$GITHUB_REPOSITORY is:issue is:open in:title $title" \
+              -f "q=$search_query" \
               --jq '.total_count')
             
             [ "$count" -gt 0 ]
@@ -162,11 +164,18 @@ jobs:
           ---
           *This issue was automatically created by the CI Error Issue Creator workflow.*"
             
-            # Create the issue using gh CLI which handles proper escaping
+            # Write body to temp file for robust handling of special characters
+            local body_file=$(mktemp)
+            echo "$body" > "$body_file"
+            
+            # Create the issue using body file
             gh issue create \
               --title "$title" \
-              --body "$body" \
+              --body-file "$body_file" \
               --label "bug,ci,automated"
+            
+            # Clean up temp file
+            rm -f "$body_file"
           }
           
           # Process unique errors
