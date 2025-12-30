@@ -11,7 +11,7 @@ import {
   getCachedCarryCapacity,
   getBodyPartCacheStats,
   clearBodyPartCache
-} from "../../src/utils/caching/bodyPartCache";
+} from "../../src/cache";
 
 describe("bodyPartCache", () => {
   beforeEach(() => {

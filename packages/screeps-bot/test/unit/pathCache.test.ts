@@ -12,7 +12,7 @@ import {
   getPathCacheStats,
   cleanupExpiredPaths,
   cacheCommonRoutes
-} from "../../src/utils/caching/pathCache.js";
+} from "../../src/cache";
 
 describe("pathCache", () => {
   beforeEach(() => {

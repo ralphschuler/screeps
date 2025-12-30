@@ -10,7 +10,7 @@ import {
   getObjectCacheStats,
   getPathCacheStats,
   getRoleCacheStats
-} from "../../src/utils/caching";
+} from "../../src/cache";
 
 describe("Unified Cache Stats Integration", () => {
   beforeEach(() => {

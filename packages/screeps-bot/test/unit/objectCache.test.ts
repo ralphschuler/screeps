@@ -16,7 +16,7 @@ import {
   resetCacheStats,
   warmCache,
   prefetchRoomObjects
-} from "../../src/utils/caching/objectCache";
+} from "../../src/cache";
 
 describe("objectCache", () => {
   beforeEach(() => {

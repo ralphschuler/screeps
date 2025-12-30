@@ -197,5 +197,6 @@ export function getAssignedCreeps(
  * automatically expire each tick due to TTL=1.
  */
 export function clearTargetAssignments(): void {
-  globalCache.invalidateNamespace(ASSIGNMENT_CACHE_NAMESPACE);
+  // Use invalidatePattern with a pattern that matches everything
+  globalCache.invalidatePattern(/.*/, ASSIGNMENT_CACHE_NAMESPACE);
 }
