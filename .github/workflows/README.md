@@ -43,9 +43,9 @@ The `ci-error-issue.yml` workflow automatically creates GitHub issues when CI wo
 
 1. **Trigger**: Runs when any monitored CI workflow completes with a failure status
 2. **Log Analysis**: Downloads and parses logs from failed jobs
-3. **Error Extraction**: Identifies error messages using common patterns:
+3. **Error Extraction**: Identifies error messages using specific patterns:
    - Lines containing "error:"
-   - Lines containing "fail" (excluding false positives)
+   - Lines containing "failed:", "failure:", "test failed", or "build failed"
    - Lines with error symbols (×, ✗, ❌)
 4. **Deduplication**: Checks for existing open issues with the same error message
 5. **Issue Creation**: Creates new issues only for unique errors
@@ -62,7 +62,7 @@ The `ci-error-issue.yml` workflow automatically creates GitHub issues when CI wo
 ### Issue Format
 
 Each created issue includes:
-- **Title**: `CI Error in [Workflow Name]: [Error Message]` (truncated to 100 chars)
+- **Title**: `CI Error in [Workflow Name]: [Error Message]` (truncated to 120 chars with ellipsis if needed)
 - **Labels**: `bug`, `ci`, `automated`
 - **Body**: Contains:
   - Workflow name
@@ -72,8 +72,9 @@ Each created issue includes:
 
 ### Duplicate Prevention
 
-The workflow uses exact title matching to prevent duplicate issues:
+The workflow uses GitHub's Search API for efficient duplicate checking:
 - Before creating an issue, it searches for open issues with the same title
+- Uses the `/search/issues` API endpoint for fast lookups
 - Only creates a new issue if no matching open issue exists
 - Multiple failures with the same error will not create multiple issues
 
