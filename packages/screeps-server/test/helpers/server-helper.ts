@@ -109,13 +109,16 @@ export class ServerTestHelper {
         };
       `;
     }
+    
+    // Wrap bot code to log CPU and bucket metrics at the end of each tick
+    const wrappedBotCode = this._wrapBotCodeWithMetrics(botCode);
 
     this._player = await this._server.world.addBot({
       username: 'player',
       room: 'W0N1',
       x: 25,
       y: 25,
-      modules: { main: botCode }
+      modules: { main: wrappedBotCode }
     });
 
     await this._server.start();
@@ -125,6 +128,58 @@ export class ServerTestHelper {
       bucketLevel: [],
       tickTime: []
     };
+  }
+  
+  /**
+   * Wraps bot code to log CPU and bucket metrics at the end of each tick
+   * This allows us to collect real performance data from the game engine
+   */
+  private _wrapBotCodeWithMetrics(originalCode: string): string {
+    // Check if code is already module.exports format
+    if (originalCode.includes('module.exports.loop')) {
+      // Extract the loop function and wrap it
+      return `
+        const originalModule = {};
+        ${originalCode.replace('module.exports', 'originalModule')}
+        
+        module.exports.loop = function() {
+          if (originalModule.loop) {
+            originalModule.loop();
+          }
+          
+          // Log metrics for test helper to collect
+          if (typeof Game !== 'undefined' && Game.cpu) {
+            console.log('__CPU_USED__:' + Game.cpu.getUsed());
+            console.log('__BUCKET_LEVEL__:' + Game.cpu.bucket);
+          }
+        };
+      `;
+    } else {
+      // Assume it's ES6 module format or plain code
+      return `
+        ${originalCode}
+        
+        // Wrap the loop to add metrics logging
+        const originalLoop = typeof loop !== 'undefined' ? loop : module.exports.loop;
+        const wrappedLoop = function() {
+          if (originalLoop) {
+            originalLoop();
+          }
+          
+          // Log metrics for test helper to collect
+          if (typeof Game !== 'undefined' && Game.cpu) {
+            console.log('__CPU_USED__:' + Game.cpu.getUsed());
+            console.log('__BUCKET_LEVEL__:' + Game.cpu.bucket);
+          }
+        };
+        
+        if (typeof module !== 'undefined' && module.exports) {
+          module.exports.loop = wrappedLoop;
+        } else {
+          loop = wrappedLoop;
+        }
+      `;
+    }
   }
 
   async afterEach() {
@@ -136,30 +191,39 @@ export class ServerTestHelper {
   async runTicks(count: number): Promise<PerformanceMetrics> {
     for (let i = 0; i < count; i++) {
       const startTime = Date.now();
+      
+      // Run the tick
       await this._server.tick();
       const tickTime = Date.now() - startTime;
       this._metrics.tickTime.push(tickTime);
       
-      // Collect real CPU and bucket metrics from Game.cpu via console commands
+      // Collect real CPU and bucket metrics from console output
       let cpuUsed = 0.05; // Default fallback
       let bucketLevel = 10000; // Default fallback
       
       try {
-        // Execute console command to get CPU used
-        const cpuResult = await this.executeConsole('Game.cpu.getUsed()');
-        const cpuMatch = cpuResult.match(/[\d.]+/);
-        if (cpuMatch) {
-          cpuUsed = parseFloat(cpuMatch[0]);
-        }
+        const notifications = this._player.newNotifications || [];
+        const consoleMessages = notifications
+          .filter((n: any) => n.type === 'console')
+          .map((n: any) => n.message);
         
-        // Execute console command to get bucket level
-        const bucketResult = await this.executeConsole('Game.cpu.bucket');
-        const bucketMatch = bucketResult.match(/\d+/);
-        if (bucketMatch) {
-          bucketLevel = parseInt(bucketMatch[0], 10);
+        // Look for our special metric markers
+        for (const message of consoleMessages) {
+          if (message.includes('__CPU_USED__:')) {
+            const cpuMatch = message.match(/__CPU_USED__:([\d.]+)/);
+            if (cpuMatch) {
+              cpuUsed = parseFloat(cpuMatch[1]);
+            }
+          }
+          if (message.includes('__BUCKET_LEVEL__:')) {
+            const bucketMatch = message.match(/__BUCKET_LEVEL__:(\d+)/);
+            if (bucketMatch) {
+              bucketLevel = parseInt(bucketMatch[1], 10);
+            }
+          }
         }
       } catch (error) {
-        // If console commands fail, use default values
+        // If console parsing fails, use default values
         console.warn('Failed to collect CPU/bucket metrics, using defaults:', error);
       }
       
