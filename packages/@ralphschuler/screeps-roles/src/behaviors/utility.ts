@@ -5,13 +5,13 @@
  * Includes scouting, claiming, engineering, and logistics.
  */
 
-import type { RoomIntel, EmpireMemory } from "../../memory/schemas";
-import { findCachedClosest } from "../../cache";
+import type { RoomIntel, EmpireMemory } from "../memory/schemas";
+import { findCachedClosest } from "../cache";
 import { isExit } from "screeps-cartographer";
-import { safeFind } from "../../utils/optimization";
+import { safeFind } from "../utils/optimization";
 import type { CreepAction, CreepContext } from "./types";
-import { createLogger } from "../../core/logger";
-import { memoryManager } from "../../memory/manager";
+import { createLogger } from "../core/logger";
+import { memoryManager } from "../memory/manager";
 
 const logger = createLogger("UtilityBehaviors");
 

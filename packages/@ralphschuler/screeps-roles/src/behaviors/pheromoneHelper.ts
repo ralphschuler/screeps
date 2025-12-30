@@ -13,8 +13,8 @@
  * ```
  */
 
-import type { PheromoneState } from "../../memory/schemas";
-import { memoryManager } from "../../memory/manager";
+import type { PheromoneState } from "../memory/schemas";
+import { memoryManager } from "../memory/manager";
 
 /**
  * Get pheromone levels for a creep's current room
