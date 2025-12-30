@@ -92,9 +92,7 @@ module.exports = {
         "src/core/logger.ts",                    // Logger implementation uses console.log
         "src/utils/legacy/ErrorMapper.ts",       // Error display with HTML formatting
         "src/core/unifiedStats.ts",              // Stats JSON output
-        "src/standards/consoleCommands.ts",      // Console command notifications
-        "src/memory/memoryMonitor.ts",           // Console command for memory debugging
-        "src/cache/cacheStats.ts"                // Console command for cache debugging
+        "src/standards/consoleCommands.ts"       // Console command notifications
       ],
       rules: {
         "no-console": "off"

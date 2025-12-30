@@ -7,7 +7,9 @@
  * ROADMAP Section 4: Memory-Limit ca. 2 MB monitoring and alerting
  */
 
-import { logger } from "../core/logger";
+import { createLogger } from "../core/logger";
+
+const logger = createLogger("MemoryMonitor");
 
 /** Memory limit in bytes (2MB) */
 const MEMORY_LIMIT_BYTES = 2 * 1024 * 1024;
@@ -166,15 +168,25 @@ export class MemoryMonitor {
     const breakdown = this.getMemoryBreakdown();
     const stats = this.checkMemoryUsage();
 
-    console.log(`Memory Usage: ${this.formatBytes(stats.used)} / ${this.formatBytes(stats.limit)} (${(stats.percentage * 100).toFixed(1)}%)`);
-    console.log(`Status: ${stats.status.toUpperCase()}`);
-    console.log("Breakdown:");
-    console.log(`  Empire:        ${this.formatBytes(breakdown.empire)} (${((breakdown.empire / breakdown.total) * 100).toFixed(1)}%)`);
-    console.log(`  Rooms:         ${this.formatBytes(breakdown.rooms)} (${((breakdown.rooms / breakdown.total) * 100).toFixed(1)}%)`);
-    console.log(`  Creeps:        ${this.formatBytes(breakdown.creeps)} (${((breakdown.creeps / breakdown.total) * 100).toFixed(1)}%)`);
-    console.log(`  Clusters:      ${this.formatBytes(breakdown.clusters)} (${((breakdown.clusters / breakdown.total) * 100).toFixed(1)}%)`);
-    console.log(`  SS2 Queue:     ${this.formatBytes(breakdown.ss2PacketQueue)} (${((breakdown.ss2PacketQueue / breakdown.total) * 100).toFixed(1)}%)`);
-    console.log(`  Other:         ${this.formatBytes(breakdown.other)} (${((breakdown.other / breakdown.total) * 100).toFixed(1)}%)`);
+    logger.info("Memory Usage", {
+      meta: {
+        used: this.formatBytes(stats.used),
+        limit: this.formatBytes(stats.limit),
+        percentage: `${(stats.percentage * 100).toFixed(1)}%`,
+        status: stats.status.toUpperCase()
+      }
+    });
+
+    logger.info("Memory Breakdown", {
+      meta: {
+        empire: `${this.formatBytes(breakdown.empire)} (${((breakdown.empire / breakdown.total) * 100).toFixed(1)}%)`,
+        rooms: `${this.formatBytes(breakdown.rooms)} (${((breakdown.rooms / breakdown.total) * 100).toFixed(1)}%)`,
+        creeps: `${this.formatBytes(breakdown.creeps)} (${((breakdown.creeps / breakdown.total) * 100).toFixed(1)}%)`,
+        clusters: `${this.formatBytes(breakdown.clusters)} (${((breakdown.clusters / breakdown.total) * 100).toFixed(1)}%)`,
+        ss2Queue: `${this.formatBytes(breakdown.ss2PacketQueue)} (${((breakdown.ss2PacketQueue / breakdown.total) * 100).toFixed(1)}%)`,
+        other: `${this.formatBytes(breakdown.other)} (${((breakdown.other / breakdown.total) * 100).toFixed(1)}%)`
+      }
+    });
   }
 
   /**
