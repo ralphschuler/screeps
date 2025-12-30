@@ -314,6 +314,10 @@ describe("OS-Style Process Architecture", () => {
 
     it("should handle process errors gracefully", () => {
       class ErrorProcess extends OSProcess {
+        constructor(parentPID: number) {
+          super(parentPID);
+        }
+        
         public run(memory: any): void {
           throw new Error("Test error");
         }
@@ -323,7 +327,7 @@ describe("OS-Style Process Architecture", () => {
       
       registerProcessClass("ErrorProcess", ErrorProcess);
       
-      const p1 = new ErrorProcess(0, -1);
+      const p1 = new ErrorProcess(-1);
       addProcess(p1);
       
       storeProcessTable();
@@ -392,8 +396,8 @@ describe("OS-Style Process Architecture", () => {
 
     it("should support parent-child relationships", () => {
       const parent = addProcess(new TestProcess(-1));
-      const child1 = addProcess(new TestProcess(0, parent.pid));
-      const child2 = addProcess(new AnotherTestProcess(0, parent.pid));
+      const child1 = addProcess(new TestProcess(parent.pid));
+      const child2 = addProcess(new AnotherTestProcess(parent.pid));
       
       expect(child1.parentPID).to.equal(parent.pid);
       expect(child2.parentPID).to.equal(parent.pid);

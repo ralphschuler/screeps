@@ -20,8 +20,8 @@ This architecture provides:
 import { OSProcess, ProcessStatus } from '@ralphschuler/screeps-kernel';
 
 class MiningProcess extends OSProcess {
-  constructor(pid: number, parentPID: number) {
-    super(pid, parentPID);
+  constructor(parentPID: number) {
+    super(parentPID);
   }
 
   public run(memory: any): void {
@@ -76,7 +76,7 @@ export function loop() {
   
   // Add new processes as needed
   if (Game.flags['mine-mineral']) {
-    const miningProcess = new MiningProcess(0, -1);
+    const miningProcess = new MiningProcess(-1);
     addProcess(miningProcess);
     
     // Initialize process memory
