@@ -2,8 +2,21 @@
 
 Process scheduler with CPU budget management and wrap-around queue for Screeps.
 
+## Dual Architecture
+
+This package provides **two kernel systems**:
+
+### 1. Task Kernel (Default)
+CPU-budgeted task scheduling with priorities, adaptive budgets, and event system.
+
+### 2. OS-Style Process Kernel (New!)
+Memory-persisted process architecture based on ["Writing an OS for Screeps"](https://gist.github.com/NhanHo/02949ea3a148c583d57570a1600b4d85).
+
+See [OS Architecture Documentation](docs/OS_ARCHITECTURE.md) for details on the process-based system.
+
 ## Features
 
+### Task Kernel
 - **Process Management**: Register and manage multiple processes with priorities
 - **CPU Budget Control**: Allocate and enforce CPU budgets per process
 - **Wrap-Around Queue**: Fair execution scheduling across ticks
@@ -13,6 +26,13 @@ Process scheduler with CPU budget management and wrap-around queue for Screeps.
 - **Statistics Tracking**: Built-in process performance monitoring
 - **Bucket-Aware**: Automatically adjusts behavior based on CPU bucket level
 
+### OS-Style Process Kernel
+- **Memory Persistence**: Processes survive global resets
+- **Process Lifecycle**: Add, kill, and manage processes with unique PIDs
+- **Parent-Child Relationships**: Hierarchical process organization
+- **Process Memory**: Isolated memory namespace per process
+- **Automatic Serialization**: Process table stored/loaded from Memory each tick
+
 ## Installation
 
 ```bash
@@ -20,6 +40,8 @@ npm install @ralphschuler/screeps-kernel
 ```
 
 ## Quick Start
+
+### Task Kernel (CPU Management)
 
 ```typescript
 import { kernel, ProcessPriority } from '@ralphschuler/screeps-kernel';
@@ -44,6 +66,55 @@ export function loop() {
   kernel.run();
 }
 ```
+
+### OS-Style Process Kernel (Memory Persistence)
+
+```typescript
+import {
+  OSProcess,
+  ProcessStatus,
+  registerProcessClass,
+  loadProcessTable,
+  runOSKernel,
+  storeProcessTable,
+  addProcess
+} from '@ralphschuler/screeps-kernel';
+
+// Define a process
+class MiningProcess extends OSProcess {
+  public run(memory: any): void {
+    const mineral = Game.getObjectById(memory.mineralId);
+    if (!mineral || mineral.mineralAmount === 0) {
+      this.status = ProcessStatus.DEAD; // Stop when done
+      return;
+    }
+    // Mining logic...
+  }
+  
+  public reloadFromMemory(memory: any): void {
+    // Restore state from memory
+  }
+}
+
+// Register process classes
+registerProcessClass('MiningProcess', MiningProcess);
+
+// Main game loop
+export function loop() {
+  loadProcessTable();
+  
+  // Add new processes as needed
+  if (Game.flags['mine-mineral']) {
+    const process = addProcess(new MiningProcess(0, -1));
+    Memory.processMemory![process.pid] = { mineralId: 'xyz' };
+  }
+  
+  runOSKernel();
+  storeProcessTable();
+}
+```
+
+See [OS Architecture Documentation](docs/OS_ARCHITECTURE.md) for more details.
 
 ## API
 
