@@ -147,8 +147,10 @@ export class ServerTestHelper {
       if (typeof RawMemory !== 'undefined' && typeof Game !== 'undefined' && Game.cpu) {
         const parseStart = Game.cpu.getUsed();
         const rawMemory = RawMemory.get();
-        // Store the parsed result to prevent JS engine optimization
+        // Store and use the parsed result to prevent JS engine optimization
         const parsedMemory = rawMemory ? JSON.parse(rawMemory) : {};
+        // Ensure the parse actually happens by using the result
+        const _memorySize = Object.keys(parsedMemory).length;
         // Always measure CPU time, even for empty memory
         memoryParseTime = Game.cpu.getUsed() - parseStart;
       }
