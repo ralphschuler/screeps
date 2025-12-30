@@ -94,6 +94,8 @@ export interface ProcessStats {
   suspendedUntil: number | null;
   /** Reason for suspension */
   suspensionReason: string | null;
+  /** Number of consecutive ticks process was ready but skipped due to CPU budget */
+  consecutiveCpuSkips: number;
 }
 
 /**
@@ -183,6 +185,26 @@ export interface KernelConfig {
    * Configuration for adaptive budget calculation
    */
   adaptiveBudgetConfig: AdaptiveBudgetConfig;
+  /**
+   * Enable priority decay for starved processes
+   * When enabled, processes that are repeatedly skipped due to CPU budget
+   * will gradually increase their effective priority to ensure eventual execution
+   */
+  enablePriorityDecay: boolean;
+  /**
+   * Priority boost per consecutive CPU skip (default: 1)
+   * Each time a process is ready but skipped due to CPU, its effective priority
+   * increases by this amount. Higher values make starved processes reach the front
+   * of the queue more quickly.
+   */
+  priorityDecayRate: number;
+  /**
+   * Maximum priority boost from decay (default: 50)
+   * Caps the total boost to prevent low-priority processes from becoming
+   * higher priority than critical processes. The effective priority will be
+   * clamped to basePriority + maxPriorityBoost.
+   */
+  maxPriorityBoost: number;
 }
 
 /**
@@ -202,7 +224,10 @@ const BASE_CONFIG: Omit<KernelConfig, "lowBucketThreshold" | "highBucketThreshol
   budgetWarningThreshold: 1.5,
   budgetWarningInterval: 500,
   enableAdaptiveBudgets: true,
-  adaptiveBudgetConfig: DEFAULT_ADAPTIVE_CONFIG
+  adaptiveBudgetConfig: DEFAULT_ADAPTIVE_CONFIG,
+  enablePriorityDecay: true,
+  priorityDecayRate: 1,
+  maxPriorityBoost: 50
 };
 
 const DEFAULT_CRITICAL_DIVISOR = 2;
@@ -351,7 +376,8 @@ export class Kernel {
         lastSuccessfulRunTick: 0,
         healthScore: 100,
         suspendedUntil: null,
-        suspensionReason: null
+        suspensionReason: null,
+        consecutiveCpuSkips: 0
       }
     };
 
@@ -559,13 +585,48 @@ export class Kernel {
   }
 
   /**
+   * Calculate priority boost from consecutive CPU skips
+   * 
+   * @param consecutiveCpuSkips - Number of consecutive CPU skips
+   * @returns The priority boost amount (capped at maxPriorityBoost)
+   */
+  private calculatePriorityBoost(consecutiveCpuSkips: number): number {
+    return Math.min(
+      consecutiveCpuSkips * this.config.priorityDecayRate,
+      this.config.maxPriorityBoost
+    );
+  }
+
+  /**
+   * Calculate effective priority for a process with priority decay
+   * 
+   * When priority decay is enabled, processes that are repeatedly skipped due to
+   * CPU budget exhaustion receive a temporary priority boost. This ensures that
+   * low-priority processes eventually execute even under sustained CPU pressure.
+   * 
+   * Effective priority = base priority + min(consecutiveCpuSkips * decayRate, maxBoost)
+   * 
+   * The boost is reset when the process successfully executes.
+   * 
+   * @param process - The process to calculate effective priority for
+   * @returns The effective priority (base + decay boost)
+   */
+  private getEffectivePriority(process: Process): number {
+    if (!this.config.enablePriorityDecay) {
+      return process.priority;
+    }
+
+    return process.priority + this.calculatePriorityBoost(process.stats.consecutiveCpuSkips);
+  }
+
+  /**
    * Rebuild the process queue sorted by priority.
    * Preserves execution fairness by finding the last executed process
    * in the new queue and continuing from the next one.
    */
   private rebuildProcessQueue(): void {
     this.processQueue = Array.from(this.processes.values())
-      .sort((a, b) => b.priority - a.priority);
+      .sort((a, b) => this.getEffectivePriority(b) - this.getEffectivePriority(a));
     this.queueDirty = false;
     
     // BUGFIX: Preserve wrap-around position across queue rebuilds
@@ -592,11 +653,11 @@ export class Kernel {
    * Bucket mode no longer affects process execution - the rolling index
    * and CPU budget checks provide sufficient protection against CPU overuse.
    * 
+   * Priority decay ensures that processes skipped due to CPU budget exhaustion
+   * will eventually execute by receiving temporary priority boosts.
+   * 
    * TODO(P2): PERF - Add jitter to intervals to prevent all processes running on the same tick
    * Spread process execution across ticks for more even CPU distribution
-   * TODO(P2): ARCH - Implement priority decay for starved processes to prevent indefinite skipping
-   Issue URL: https://github.com/ralphschuler/screeps/issues/927
-   * Long-skipped low-priority processes could temporarily boost priority
    */
   private shouldRunProcess(process: Process): boolean {
     // Check if suspended and if suspension has expired
@@ -713,8 +774,9 @@ export class Kernel {
       process.execute();
       process.state = "idle";
       
-      // Success: reset consecutive errors and update last successful run
+      // Success: reset consecutive errors, CPU skips, and update last successful run
       process.stats.consecutiveErrors = 0;
+      process.stats.consecutiveCpuSkips = 0;
       process.stats.lastSuccessfulRunTick = Game.time;
     } catch (err) {
       process.state = "error";
@@ -885,13 +947,32 @@ export class Kernel {
 
       // Check overall CPU budget
       if (!this.hasCpuBudget()) {
-        // CPU budget exhausted - stop processing
-        // Don't count remaining processes as "skipped" - they'll run next tick
+        // CPU budget exhausted - mark remaining processes as CPU-skipped
+        // This increments their consecutiveCpuSkips counter for priority decay
+        if (this.config.enablePriorityDecay) {
+          // Mark all remaining ready processes as CPU-skipped for priority decay
+          for (let j = i; j < this.processQueue.length; j++) {
+            const remainingIndex = (startIndex + j) % this.processQueue.length;
+            const remainingProcess = this.processQueue[remainingIndex];
+            
+            // Only increment CPU skips for processes that would have run
+            if (this.shouldRunProcess(remainingProcess)) {
+              remainingProcess.stats.consecutiveCpuSkips++;
+            }
+          }
+        }
+        
         processesSkippedByCpu = this.processQueue.length - processesRun - processesSkipped;
         logger.warn(
           `Kernel: CPU budget exhausted after ${processesRun} processes. ${processesSkippedByCpu} processes deferred to next tick. Used: ${Game.cpu.getUsed().toFixed(2)}/${this.getCpuLimit().toFixed(2)}`,
           { subsystem: "Kernel" }
         );
+        
+        // Mark queue as dirty to re-sort with updated priorities next tick
+        if (this.config.enablePriorityDecay && processesSkippedByCpu > 0) {
+          this.queueDirty = true;
+        }
+        
         break;
       }
 
@@ -931,6 +1012,23 @@ export class Kernel {
       `CPU: ${cpuUsed.toFixed(2)}/${cpuLimit.toFixed(2)} (${(cpuUsed/cpuLimit*100).toFixed(1)}%), bucket: ${bucket}/10000 (${bucketPercent}%), mode: ${this.bucketMode}`,
       { subsystem: "Kernel" }
     );
+    
+    // Log processes with significant priority decay
+    if (this.config.enablePriorityDecay && skippedByCpu > 0) {
+      const decayedProcesses = this.processQueue
+        .filter(p => p.stats.consecutiveCpuSkips >= 5)
+        .sort((a, b) => b.stats.consecutiveCpuSkips - a.stats.consecutiveCpuSkips)
+        .slice(0, 3);
+      
+      if (decayedProcesses.length > 0) {
+        logger.info(
+          `Kernel: Priority decay active: ${decayedProcesses.map(p => 
+            `${p.name}(base:${p.priority}, boost:+${this.calculatePriorityBoost(p.stats.consecutiveCpuSkips)}, skips:${p.stats.consecutiveCpuSkips})`
+          ).join(', ')}`,
+          { subsystem: "Kernel" }
+        );
+      }
+    }
     
     // Log top skipped processes if we have a high skip count
     if (processesSkipped > 10) {
@@ -1078,7 +1176,8 @@ export class Kernel {
         lastSuccessfulRunTick: 0,
         healthScore: 100,
         suspendedUntil: null,
-        suspensionReason: null
+        suspensionReason: null,
+        consecutiveCpuSkips: 0
       };
     }
     logger.info("Kernel: Reset all process statistics", { subsystem: "Kernel" });
