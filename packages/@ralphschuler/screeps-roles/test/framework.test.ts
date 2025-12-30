@@ -8,6 +8,7 @@ describe("@ralphschuler/screeps-roles", () => {
   });
 
   // TODO: Add proper tests with Screeps environment mocking
+  // Issue URL: https://github.com/ralphschuler/screeps/issues/936
   // Currently the package requires Screeps global constants (STRUCTURE_SPAWN, etc.)
   // which are not available in Node.js test environment
   it.skip("should export createContext function", () => {

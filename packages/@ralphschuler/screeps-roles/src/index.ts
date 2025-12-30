@@ -23,10 +23,12 @@ export type {
 } from "./framework/types";
 
 // TODO: Extract and export behaviors
+// Issue URL: https://github.com/ralphschuler/screeps/issues/935
 // export { harvestBehavior, haulBehavior, buildBehavior, upgradeBehavior } from "./behaviors/economy";
 // export { attackBehavior, defendBehavior, healBehavior } from "./behaviors/military";
 
 // TODO: Extract and export complete roles
+// Issue URL: https://github.com/ralphschuler/screeps/issues/934
 // export { runEconomyRole } from "./roles/economy";
 // export { runMilitaryRole } from "./roles/military";
 // export { runUtilityRole } from "./roles/utility";
