@@ -30,6 +30,7 @@ import { economyCommands } from "../economy/economyCommands";
 import { expansionCommands } from "../empire/expansionCommands";
 import { tooAngelCommands } from "../empire/tooangel/consoleCommands";
 import { memoryCommands } from "../memory/memoryCommands";
+import { UICommands } from "./uiCommands";
 
 /**
  * Logging commands
@@ -1074,5 +1075,6 @@ export {
   shardCommands,
   expansionCommands,
   tooAngelCommands,
-  memoryCommands
+  memoryCommands,
+  uiCommands: new UICommands()
 };
