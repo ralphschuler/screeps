@@ -41,7 +41,7 @@ export function runEconomyRole(creep: Creep): void {
   // executeAction(creep, action, ctx);
   
   // Placeholder: Log that context was created (will be replaced)
-  if (ctx && Game.time % 100 === 0) {
+  if (Game.time % 100 === 0) {
     console.log(`[Economy] ${creep.name} context ready (behaviors not yet implemented)`);
   }
 }
