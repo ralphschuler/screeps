@@ -4,7 +4,7 @@
   "description": "Defense subsystem for Screeps - threat assessment, tower control, rampart automation, and emergency response",
   "main": "dist/screeps-defense/src/index.js",
   "types": "dist/screeps-defense/src/index.d.ts",
-  "private": true,
+  "private": false,
   "scripts": {
     "build": "tsc",
     "test": "mocha test/**/*.test.ts",

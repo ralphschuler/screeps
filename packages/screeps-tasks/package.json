@@ -4,7 +4,7 @@
   "description": "Minimal task system for Screeps creeps",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "private": true,
+  "private": false,
   "scripts": {
     "build": "tsc",
     "test": "mocha test/**/*.test.ts",

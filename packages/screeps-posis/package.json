@@ -4,7 +4,7 @@
   "description": "Portable Operating System Interface for Screeps - A process-based kernel architecture",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "private": true,
+  "private": false,
   "scripts": {
     "build": "tsc",
     "test": "mocha test/**/*.test.ts",
