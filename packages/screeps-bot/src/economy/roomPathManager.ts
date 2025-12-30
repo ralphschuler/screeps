@@ -16,6 +16,7 @@
  */
 
 import { createLogger } from "../core/logger";
+import { cachedPathFinderSearch } from "../utils/movement";
 
 const logger = createLogger("RoomPathManager");
 
@@ -116,28 +117,33 @@ function calculateRoomPaths(room: Room): RoomPaths {
   
   // Calculate spawn → source paths
   for (const source of sources) {
-    const result = PathFinder.search(spawn.pos, { pos: source.pos, range: 1 }, {
-      roomCallback: (roomName) => {
-        const r = Game.rooms[roomName];
-        if (!r) return false;
-        
-        const costs = new PathFinder.CostMatrix();
-        
-        // Avoid creeps but don't block paths
-        r.find(FIND_CREEPS).forEach(creep => {
-          costs.set(creep.pos.x, creep.pos.y, 5);
-        });
-        
-        // Prefer roads
-        r.find(FIND_STRUCTURES).forEach(structure => {
-          if (structure.structureType === STRUCTURE_ROAD) {
-            costs.set(structure.pos.x, structure.pos.y, 1);
-          }
-        });
-        
-        return costs;
-      }
-    });
+    const result = cachedPathFinderSearch(
+      spawn.pos, 
+      { pos: source.pos, range: 1 }, 
+      {
+        roomCallback: (roomName) => {
+          const r = Game.rooms[roomName];
+          if (!r) return false;
+          
+          const costs = new PathFinder.CostMatrix();
+          
+          // Avoid creeps but don't block paths
+          r.find(FIND_CREEPS).forEach(creep => {
+            costs.set(creep.pos.x, creep.pos.y, 5);
+          });
+          
+          // Prefer roads
+          r.find(FIND_STRUCTURES).forEach(structure => {
+            if (structure.structureType === STRUCTURE_ROAD) {
+              costs.set(structure.pos.x, structure.pos.y, 1);
+            }
+          });
+          
+          return costs;
+        }
+      },
+      { ttl: 500 } // Static paths, long TTL
+    );
     
     if (!result.incomplete && result.path.length > 0) {
       const serialized = Room.serializePath(result.path);
@@ -147,9 +153,12 @@ function calculateRoomPaths(room: Room): RoomPaths {
   
   // Calculate spawn → controller path
   if (room.controller && room.controller.my) {
-    const result = PathFinder.search(spawn.pos, { pos: room.controller.pos, range: 3 }, {
-      roomCallback: getRoomCostMatrix
-    });
+    const result = cachedPathFinderSearch(
+      spawn.pos,
+      { pos: room.controller.pos, range: 3 },
+      { roomCallback: getRoomCostMatrix },
+      { ttl: 500 } // Static path, long TTL
+    );
     
     if (!result.incomplete && result.path.length > 0) {
       paths.spawnToController = Room.serializePath(result.path);
@@ -159,9 +168,12 @@ function calculateRoomPaths(room: Room): RoomPaths {
   // Calculate source → controller paths
   if (room.controller && room.controller.my) {
     for (const source of sources) {
-      const result = PathFinder.search(source.pos, { pos: room.controller.pos, range: 3 }, {
-        roomCallback: getRoomCostMatrix
-      });
+      const result = cachedPathFinderSearch(
+        source.pos,
+        { pos: room.controller.pos, range: 3 },
+        { roomCallback: getRoomCostMatrix },
+        { ttl: 500 } // Static path, long TTL
+      );
       
       if (!result.incomplete && result.path.length > 0) {
         paths.sourcesToController.set(source.id, Room.serializePath(result.path));
@@ -172,18 +184,24 @@ function calculateRoomPaths(room: Room): RoomPaths {
   // Calculate storage paths if storage exists
   if (room.storage) {
     // spawn → storage
-    const spawnToStorageResult = PathFinder.search(spawn.pos, { pos: room.storage.pos, range: 1 }, {
-      roomCallback: getRoomCostMatrix
-    });
+    const spawnToStorageResult = cachedPathFinderSearch(
+      spawn.pos,
+      { pos: room.storage.pos, range: 1 },
+      { roomCallback: getRoomCostMatrix },
+      { ttl: 500 } // Static path, long TTL
+    );
     if (!spawnToStorageResult.incomplete && spawnToStorageResult.path.length > 0) {
       paths.spawnToStorage = Room.serializePath(spawnToStorageResult.path);
     }
     
     // source → storage
     for (const source of sources) {
-      const result = PathFinder.search(source.pos, { pos: room.storage.pos, range: 1 }, {
-        roomCallback: getRoomCostMatrix
-      });
+      const result = cachedPathFinderSearch(
+        source.pos,
+        { pos: room.storage.pos, range: 1 },
+        { roomCallback: getRoomCostMatrix },
+        { ttl: 500 } // Static path, long TTL
+      );
       
       if (!result.incomplete && result.path.length > 0) {
         paths.sourcesToStorage.set(source.id, Room.serializePath(result.path));
@@ -192,9 +210,12 @@ function calculateRoomPaths(room: Room): RoomPaths {
     
     // storage → controller
     if (room.controller && room.controller.my) {
-      const result = PathFinder.search(room.storage.pos, { pos: room.controller.pos, range: 3 }, {
-        roomCallback: getRoomCostMatrix
-      });
+      const result = cachedPathFinderSearch(
+        room.storage.pos,
+        { pos: room.controller.pos, range: 3 },
+        { roomCallback: getRoomCostMatrix },
+        { ttl: 500 } // Static path, long TTL
+      );
       
       if (!result.incomplete && result.path.length > 0) {
         paths.storageToController = Room.serializePath(result.path);
