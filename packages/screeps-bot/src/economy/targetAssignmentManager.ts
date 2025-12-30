@@ -18,7 +18,7 @@
  */
 
 import { createLogger } from "../core/logger";
-import { cachedFindSources, cachedFindConstructionSites } from "../utils/caching";
+import { cachedFindSources, cachedFindConstructionSites } from "../cache";
 import { memoryManager } from "../memory/manager";
 
 const logger = createLogger("TargetAssignmentManager");

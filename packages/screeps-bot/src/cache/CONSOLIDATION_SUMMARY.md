@@ -71,32 +71,32 @@ stats.cache = {
 ### ✅ Fully Migrated (6 systems)
 
 1. **bodyPartCache** → `cache/domains/BodyPartCache.ts`
-   - Original: `utils/caching/bodyPartCache.ts` (now re-exports)
+   - Original: `utils/caching/bodyPartCache.ts` (removed)
    - Caches creep body part counts and combat/economy capabilities
    - Test coverage: 14 tests
 
 2. **cachedClosest** → `cache/domains/ClosestCache.ts`
-   - Original: `utils/caching/cachedClosest.ts` (now re-exports)
+   - Original: `utils/caching/cachedClosest.ts` (removed)
    - Caches findClosestByRange results
    - Test coverage: Integrated in cachedClosestRaceCondition.test.ts
 
 3. **objectCache** → `cache/domains/ObjectCache.ts`
-   - Original: `utils/caching/objectCache.ts` (now re-exports)
+   - Original: `utils/caching/objectCache.ts` (removed)
    - Caches Game.getObjectById() results
    - Test coverage: 27 tests including LRU eviction
 
 4. **pathCache** → `cache/domains/PathCache.ts`
-   - Original: `utils/caching/pathCache.ts` (now re-exports)
+   - Original: `utils/caching/pathCache.ts` (removed)
    - Caches pathfinding results
    - Test coverage: 17 tests including invalidation
 
 5. **roleCache** → `cache/domains/RoleCache.ts`
-   - Original: `utils/caching/roleCache.ts` (now re-exports)
+   - Original: `utils/caching/roleCache.ts` (removed)
    - Caches role-specific targets and assignments
    - Test coverage: 22 tests including invalidation
 
 6. **roomFindCache** → `cache/domains/RoomFindCache.ts`
-   - Original: `utils/caching/roomFindCache.ts` (now re-exports)
+   - Original: `utils/caching/roomFindCache.ts` (removed)
    - Caches room.find() results
    - Test coverage: 16 tests including invalidation tracking
 
@@ -133,8 +133,8 @@ stats.cache = {
 
 - **Before**: ~2000+ lines across 11 separate cache files
 - **After**: ~1986 lines in unified cache system (well-organized, tested, documented)
-- **Legacy files**: Now slim re-export wrappers (~10-20 lines each)
-- **Net improvement**: Reduced complexity, better organization, unified approach
+- **Legacy files removed**: Deleted old `utils/caching/` re-export wrappers (~140 lines total)
+- **Net improvement**: Reduced complexity, better organization, single source of truth
 
 ## Test Coverage
 
@@ -179,24 +179,26 @@ To verify >3% CPU improvement:
 
 ## API Compatibility
 
-All existing code continues to work without changes:
+**Migration Complete**: All imports now use the unified cache system:
 
 ```typescript
-// Still works - imports from legacy location
-import { getCachedDamagePotential } from './utils/caching/bodyPartCache';
-
-// Also works - imports from unified cache
+// ✅ Correct - imports from unified cache
 import { getCachedDamagePotential } from './cache';
+
+// ❌ Removed - old location no longer exists
+// import { getCachedDamagePotential } from './utils/caching/bodyPartCache';
 ```
 
-New code should prefer importing from `./cache` for clarity.
+All 22 import statements from the old `utils/caching/` location have been updated to use `cache/` directly.
 
 ## Documentation
 
 Updated documentation:
 - `src/cache/README.md` - Complete usage guide, stats integration
+- `src/cache/CONSOLIDATION_SUMMARY.md` - This document
+- `src/utils/README.md` - Removed references to old cache location
+- `test/COVERAGE.md` - Updated coverage references
 - `ROADMAP.md` - Marked caching principle as implemented
-- `CONSOLIDATION_SUMMARY.md` - This document
 
 ## Success Criteria
 

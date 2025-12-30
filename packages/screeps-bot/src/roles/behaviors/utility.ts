@@ -6,7 +6,7 @@
  */
 
 import type { RoomIntel, EmpireMemory } from "../../memory/schemas";
-import { findCachedClosest } from "../../utils/caching";
+import { findCachedClosest } from "../../cache";
 import { isExit } from "screeps-cartographer";
 import { safeFind } from "../../utils/optimization";
 import type { CreepAction, CreepContext } from "./types";

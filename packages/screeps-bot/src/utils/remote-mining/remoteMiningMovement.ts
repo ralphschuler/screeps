@@ -19,7 +19,7 @@ import { createLogger } from "../../core/logger";
 import { moveTo } from "screeps-cartographer";
 import { type RemoteRouteType, cacheRemoteMiningPath, getRemoteMiningPath } from "./remotePathCache";
 import { getRemoteMiningRoomCallback } from "./remoteRoomUtils";
-import { convertRoomPositionsToPathSteps } from "../caching/pathCache";
+import { convertRoomPositionsToPathSteps } from "../../cache";
 
 const logger = createLogger("RemoteMiningMovement");
 

@@ -7,7 +7,7 @@
 
 import type { SwarmCreepMemory } from "../../../memory/schemas";
 import type { CreepAction, CreepContext } from "../types";
-import { cachedFindSources } from "../../../utils/caching";
+import { cachedFindSources } from "../../../cache";
 import { createLogger } from "../../../core/logger";
 import { getAssignedSource } from "../../../economy/targetAssignmentManager";
 

@@ -9,7 +9,7 @@
  */
 
 import type { CreepAction, CreepContext } from "../types";
-import { findCachedClosest } from "../../../utils/caching";
+import { findCachedClosest } from "../../../cache";
 import { findDistributedTarget } from "../../../utils/common";
 import { updateWorkingState, switchToCollectionMode } from "./common/stateManagement";
 import { createLogger } from "../../../core/logger";

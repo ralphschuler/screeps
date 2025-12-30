@@ -13,7 +13,7 @@ import {
   cachedRoomFind,
   cachedFindMyStructures,
   cachedFindDroppedResources
-} from "../../utils/caching";
+} from "../../cache";
 
 // =============================================================================
 // Regular Creep Power Roles

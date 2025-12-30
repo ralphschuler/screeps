@@ -5,7 +5,7 @@
  */
 
 import type { CreepAction, CreepContext } from "../types";
-import { cachedRoomFind } from "../../../utils/caching";
+import { cachedRoomFind } from "../../../cache";
 
 /**
  * Type guard to check if an object is a Deposit.

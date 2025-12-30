@@ -31,7 +31,7 @@ import {
   getObjectCacheStats,
   getPathCacheStats,
   getRoleCacheStats
-} from "../utils/caching";
+} from "../cache";
 import { globalCache } from "../cache";
 import { calculateRoomScalingMultiplier, calculateBucketMultiplier, type AdaptiveBudgetConfig } from "./adaptiveBudgets";
 import type {

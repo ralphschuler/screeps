@@ -8,7 +8,7 @@
 
 import type { SwarmState } from "../memory/schemas";
 import { countCreepsByRole, needsRole } from "./spawnNeedsAnalyzer";
-import { cachedFindSources } from "../utils/caching";
+import { cachedFindSources } from "../cache";
 import { logger } from "../core/logger";
 
 /**

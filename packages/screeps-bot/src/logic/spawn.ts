@@ -17,7 +17,7 @@ import {
   cachedFindSources,
   cachedFindConstructionSites,
   cachedRoomFind
-} from "../utils/caching";
+} from "../cache";
 
 // ============================================================================
 // Re-exports from modular spawn system

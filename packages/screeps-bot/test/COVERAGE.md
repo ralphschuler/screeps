@@ -80,7 +80,7 @@ Based on the general testing guidance in ROADMAP.md Section 23 and the detailed 
 
 5. **Pathfinding & Caching**
    - Current: 100% coverage ✅
-   - Files: `src/utils/caching/*`
+   - Files: `src/cache/*`
 
 ## Coverage by System
 
