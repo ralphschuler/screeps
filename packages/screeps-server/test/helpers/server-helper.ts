@@ -143,13 +143,18 @@ export class ServerTestHelper {
     // Check if code is already module.exports format using precise regex
     if (/module\.exports\.loop\s*=/.test(originalCode)) {
       // Extract the loop function and wrap it
+      // Use precise regex to only replace module.exports.loop assignment
+      const wrappedCode = originalCode.replace(
+        /module\.exports\.loop\s*=/g,
+        'const originalLoop ='
+      );
+      
       return `
-        const originalModule = {};
-        ${originalCode.replace('module.exports', 'originalModule')}
+        ${wrappedCode}
         
         module.exports.loop = function() {
-          if (originalModule.loop) {
-            originalModule.loop();
+          if (originalLoop) {
+            originalLoop();
           }
           
           // Log metrics for test helper to collect
@@ -165,8 +170,14 @@ export class ServerTestHelper {
         ${originalCode}
         
         // Wrap the loop to add metrics logging
-        const originalLoop = (typeof loop !== 'undefined') ? loop : 
-          ((typeof module !== 'undefined' && module.exports) ? module.exports.loop : undefined);
+        // Try to find existing loop function from various sources
+        let originalLoop;
+        if (typeof loop !== 'undefined') {
+          originalLoop = loop;
+        } else if (typeof module !== 'undefined' && module.exports && module.exports.loop) {
+          originalLoop = module.exports.loop;
+        }
+        
         const wrappedLoop = function() {
           if (originalLoop) {
             originalLoop();
