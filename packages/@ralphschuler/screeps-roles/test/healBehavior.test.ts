@@ -68,17 +68,18 @@ describe("healBehavior", () => {
       expect(result.context).to.equal("heal:self-critical");
     });
 
-    it("should heal self when at exactly 50% health", () => {
+    it("should not self-heal when at exactly 50% health", () => {
       const ctx = createMockContext();
       ctx.creep.hits = 500; // 50% health
       ctx.creep.hitsMax = 1000;
 
       const result: BehaviorResult = healBehavior(ctx);
 
-      // At exactly 50%, should still heal (< 50% threshold)
+      // At exactly 50%, should NOT self-heal (threshold is < 50%, not <=)
       expect(result.success).to.be.true;
-      expect(result.action.type).to.equal("heal");
-      expect((result.action as any).target).to.equal(ctx.creep);
+      expect(result.action.type).to.not.equal("heal");
+      // Should move to next priority instead (idle in this case)
+      expect(result.action.type).to.equal("idle");
     });
 
     it("should not self-heal when health is above 50%", () => {

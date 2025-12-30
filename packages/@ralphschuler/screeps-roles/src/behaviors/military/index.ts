@@ -80,7 +80,6 @@ export function healBehavior(ctx: CreepContext): BehaviorResult {
   }
 
   // Priority 2: Heal nearby damaged allies (within range 3)
-  // Use pre-computed damagedAllies from context for efficiency
   const damagedNearby = ctx.creep.pos.findInRange(FIND_MY_CREEPS, 3, {
     filter: c => c.hits < c.hitsMax
   });
@@ -93,7 +92,16 @@ export function healBehavior(ctx: CreepContext): BehaviorResult {
       return ratioA - ratioB;
     });
     
-    const target = damagedNearby[0]!;
+    const target = damagedNearby[0];
+    if (!target) {
+      // Safety check: should never happen due to length check above
+      return {
+        action: { type: "idle" },
+        success: true,
+        context: "heal:idle"
+      };
+    }
+    
     const range = ctx.creep.pos.getRangeTo(target);
 
     // Use melee heal if adjacent, ranged heal otherwise
