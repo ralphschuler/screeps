@@ -141,6 +141,7 @@ export class ServerTestHelper {
       this._metrics.tickTime.push(tickTime);
       
       // TODO: Collect real CPU and bucket metrics from screeps-server-mockup
+      // Issue URL: https://github.com/ralphschuler/screeps/issues/947
       // Current implementation uses placeholder values because screeps-server-mockup
       // does not expose CPU/bucket metrics. This should be replaced with actual
       // metrics collection once the server provides this data.
