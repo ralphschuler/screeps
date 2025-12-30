@@ -21,7 +21,7 @@ import { logger } from "./logger";
  * Users must register their process classes here before the kernel
  * can instantiate them from Memory.
  */
-const processRegistry = new Map<string, new (pid: number, parentPID: number) => OSProcess>();
+const processRegistry = new Map<string, new (parentPID: number) => OSProcess>();
 
 /**
  * Register a process class for instantiation by className
@@ -31,7 +31,7 @@ const processRegistry = new Map<string, new (pid: number, parentPID: number) => 
  */
 export function registerProcessClass(
   className: string,
-  constructor: new (pid: number, parentPID: number) => OSProcess
+  constructor: new (parentPID: number) => OSProcess
 ): void {
   processRegistry.set(className, constructor);
   logger.debug(`OS Kernel: Registered process class "${className}"`, { subsystem: "OSKernel" });
@@ -45,7 +45,7 @@ export function registerProcessClass(
  */
 export function getProcessClass(
   className: string
-): (new (pid: number, parentPID: number) => OSProcess) | undefined {
+): (new (parentPID: number) => OSProcess) | undefined {
   return processRegistry.get(className);
 }
 
@@ -99,9 +99,8 @@ function getFreePid(): number {
 export function addProcess<T extends OSProcess>(process: T): T {
   const pid = getFreePid();
   
-  // Assign PID via object property mutation
-  // This is safe because pid is readonly only for external callers
-  (process as any).pid = pid;
+  // Assign PID (pid is mutable until first assignment)
+  process.pid = pid;
   
   processTable.set(pid, process);
   
@@ -232,7 +231,8 @@ export function loadProcessTable(): void {
         continue;
       }
       
-      const process = new ProcessClass(pid, parentPID);
+      const process = new ProcessClass(parentPID);
+      process.pid = pid; // Assign PID from storage
       process.reloadFromMemory(getProcessMemory(process));
       
       processTable.set(process.pid, process);

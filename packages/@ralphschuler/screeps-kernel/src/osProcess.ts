@@ -43,8 +43,8 @@ export interface SerializedProcess {
  * - reloadFromMemory(memory): Restore process state from memory
  */
 export abstract class OSProcess {
-  /** Process ID (readonly after construction) */
-  public readonly pid: number;
+  /** Process ID (set during addProcess, readonly after) */
+  public pid: number = -1;
   
   /** Parent process ID (readonly after construction) */
   public readonly parentPID: number;
@@ -58,11 +58,9 @@ export abstract class OSProcess {
   /**
    * Construct a new OS process
    * 
-   * @param pid - Process ID
    * @param parentPID - Parent process ID (or -1 for root processes)
    */
-  constructor(pid: number, parentPID: number) {
-    this.pid = pid;
+  constructor(parentPID: number) {
     this.parentPID = parentPID;
     this.className = this.constructor.name;
   }

@@ -28,8 +28,8 @@ import {
  * - When all work is done: Kill the process
  */
 class MineralMiningProcess extends OSProcess {
-  constructor(pid: number, parentPID: number) {
-    super(pid, parentPID);
+  constructor(parentPID: number) {
+    super(parentPID);
   }
 
   public run(memory: any): void {
@@ -176,7 +176,7 @@ export function exampleMainLoop(): void {
       }
       
       // Create a new mining process
-      const process = addProcess(new MineralMiningProcess(0, -1));
+      const process = addProcess(new MineralMiningProcess(-1));
       
       // Initialize process memory
       if (!Memory.processMemory) {

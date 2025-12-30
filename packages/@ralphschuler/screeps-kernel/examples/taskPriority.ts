@@ -26,8 +26,8 @@ import {
  * Expensive CPU operation that runs when there's sufficient CPU budget
  */
 class LabReactionsProcess extends OSProcess {
-  constructor(pid: number, parentPID: number) {
-    super(pid, parentPID);
+  constructor(parentPID: number) {
+    super(parentPID);
   }
 
   public run(memory: any): void {
@@ -80,8 +80,8 @@ class LabReactionsProcess extends OSProcess {
  * Can be high priority (war mode) or low priority (normal mode)
  */
 class InvasionProcess extends OSProcess {
-  constructor(pid: number, parentPID: number) {
-    super(pid, parentPID);
+  constructor(parentPID: number) {
+    super(parentPID);
   }
 
   public run(memory: any): void {
@@ -130,7 +130,7 @@ export function examplePrioritySwitch(): void {
   let invasionPid = Memory.taskPriorities?.invasionPid;
   
   if (labsPid === undefined) {
-    const labs = addProcess(new LabReactionsProcess(0, -1));
+    const labs = addProcess(new LabReactionsProcess(-1));
     labsPid = labs.pid;
     
     Memory.processMemory![labsPid] = {
@@ -141,7 +141,7 @@ export function examplePrioritySwitch(): void {
   }
   
   if (invasionPid === undefined) {
-    const invasion = addProcess(new InvasionProcess(0, -1));
+    const invasion = addProcess(new InvasionProcess(-1));
     invasionPid = invasion.pid;
     
     Memory.processMemory![invasionPid] = {

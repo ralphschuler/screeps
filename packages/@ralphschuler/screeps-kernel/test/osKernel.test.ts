@@ -23,8 +23,8 @@ class TestProcess extends OSProcess {
   public reloadCount = 0;
   public lastMemory: any = null;
 
-  constructor(pid: number, parentPID: number) {
-    super(pid, parentPID);
+  constructor(parentPID: number) {
+    super(parentPID);
   }
 
   public run(memory: any): void {
@@ -45,8 +45,8 @@ class TestProcess extends OSProcess {
 class AnotherTestProcess extends OSProcess {
   public data: string = "";
 
-  constructor(pid: number, parentPID: number) {
-    super(pid, parentPID);
+  constructor(parentPID: number) {
+    super(parentPID);
   }
 
   public run(memory: any): void {
@@ -75,22 +75,22 @@ describe("OS-Style Process Architecture", () => {
   });
 
   describe("OSProcess", () => {
-    it("should create a process with PID and parent PID", () => {
-      const process = new TestProcess(1, -1);
+    it("should create a process with parent PID", () => {
+      const process = new TestProcess(-1);
       
-      expect(process.pid).to.equal(1);
+      expect(process.pid).to.equal(-1); // Not yet assigned
       expect(process.parentPID).to.equal(-1);
       expect(process.status).to.equal(ProcessStatus.RUNNING);
       expect(process.className).to.equal("TestProcess");
     });
 
     it("should have RUNNING status by default", () => {
-      const process = new TestProcess(1, -1);
+      const process = new TestProcess(-1);
       expect(process.status).to.equal(ProcessStatus.RUNNING);
     });
 
     it("should allow status changes", () => {
-      const process = new TestProcess(1, -1);
+      const process = new TestProcess(-1);
       process.status = ProcessStatus.DEAD;
       expect(process.status).to.equal(ProcessStatus.DEAD);
     });
@@ -107,7 +107,7 @@ describe("OS-Style Process Architecture", () => {
 
   describe("addProcess", () => {
     it("should add a process and assign PID 0 for first process", () => {
-      const process = new TestProcess(0, -1);
+      const process = new TestProcess(-1);
       const added = addProcess(process);
       
       expect(added.pid).to.equal(0);
@@ -115,34 +115,36 @@ describe("OS-Style Process Architecture", () => {
     });
 
     it("should assign sequential PIDs", () => {
-      const p1 = addProcess(new TestProcess(0, -1));
-      const p2 = addProcess(new TestProcess(0, -1));
-      const p3 = addProcess(new TestProcess(0, -1));
+      const p1 = addProcess(new TestProcess(-1));
+      const p2 = addProcess(new TestProcess(-1));
+      const p3 = addProcess(new TestProcess(-1));
       
       expect(p1.pid).to.equal(0);
       expect(p2.pid).to.equal(1);
       expect(p3.pid).to.equal(2);
     });
 
-    it("should reuse PIDs after processes are killed", () => {
-      const p1 = addProcess(new TestProcess(0, -1));
-      const p2 = addProcess(new TestProcess(0, -1));
+    it("should reuse PIDs after processes are removed from storage", () => {
+      const p1 = addProcess(new TestProcess(-1));
+      const p2 = addProcess(new TestProcess(-1));
       
       expect(p1.pid).to.equal(0);
       expect(p2.pid).to.equal(1);
       
+      // Kill p1 and cycle through storage
       killProcess(0);
-      storeProcessTable();
-      loadProcessTable();
+      storeProcessTable(); // p1 is filtered out (it's dead)
+      loadProcessTable();   // p1 is not loaded back
       
-      const p3 = addProcess(new TestProcess(0, -1));
-      expect(p3.pid).to.equal(0); // Reuses killed PID
+      // Now PID 0 is available again
+      const p3 = addProcess(new TestProcess(-1));
+      expect(p3.pid).to.equal(0); // Reuses freed PID
     });
   });
 
   describe("killProcess", () => {
     it("should mark process as DEAD", () => {
-      const process = addProcess(new TestProcess(0, -1));
+      const process = addProcess(new TestProcess(-1));
       
       killProcess(process.pid);
       
@@ -150,7 +152,7 @@ describe("OS-Style Process Architecture", () => {
     });
 
     it("should clear process memory", () => {
-      const process = addProcess(new TestProcess(0, -1));
+      const process = addProcess(new TestProcess(-1));
       Memory.processMemory = { [process.pid]: { data: "test" } };
       
       killProcess(process.pid);
@@ -161,7 +163,7 @@ describe("OS-Style Process Architecture", () => {
 
   describe("getProcessById", () => {
     it("should return process by PID", () => {
-      const process = addProcess(new TestProcess(0, -1));
+      const process = addProcess(new TestProcess(-1));
       const retrieved = getProcessById(process.pid);
       
       expect(retrieved).to.equal(process);
@@ -175,8 +177,8 @@ describe("OS-Style Process Architecture", () => {
 
   describe("storeProcessTable", () => {
     it("should store alive processes to Memory", () => {
-      const p1 = addProcess(new TestProcess(0, -1));
-      const p2 = addProcess(new AnotherTestProcess(0, 0));
+      const p1 = addProcess(new TestProcess(-1));
+      const p2 = addProcess(new AnotherTestProcess(0));
       
       storeProcessTable();
       
@@ -194,8 +196,8 @@ describe("OS-Style Process Architecture", () => {
     });
 
     it("should exclude dead processes", () => {
-      const p1 = addProcess(new TestProcess(0, -1));
-      const p2 = addProcess(new AnotherTestProcess(0, -1));
+      const p1 = addProcess(new TestProcess(-1));
+      const p2 = addProcess(new AnotherTestProcess(-1));
       
       killProcess(p1.pid);
       storeProcessTable();
@@ -255,8 +257,8 @@ describe("OS-Style Process Architecture", () => {
 
   describe("runOSKernel", () => {
     it("should run all processes in queue", () => {
-      const p1 = addProcess(new TestProcess(0, -1));
-      const p2 = addProcess(new TestProcess(0, -1));
+      const p1 = addProcess(new TestProcess(-1));
+      const p2 = addProcess(new TestProcess(-1));
       
       // Store and reload to populate queue
       storeProcessTable();
@@ -272,7 +274,7 @@ describe("OS-Style Process Architecture", () => {
     });
 
     it("should skip dead processes", () => {
-      const p1 = addProcess(new TestProcess(0, -1));
+      const p1 = addProcess(new TestProcess(-1));
       p1.status = ProcessStatus.DEAD;
       
       storeProcessTable();
@@ -286,7 +288,7 @@ describe("OS-Style Process Architecture", () => {
     });
 
     it("should provide process memory to run method", () => {
-      const process = addProcess(new TestProcess(0, -1));
+      const process = addProcess(new TestProcess(-1));
       Memory.processMemory = {
         [process.pid]: { value: 42 }
       };
@@ -300,7 +302,7 @@ describe("OS-Style Process Architecture", () => {
     });
 
     it("should persist memory changes", () => {
-      const process = addProcess(new TestProcess(0, -1));
+      const process = addProcess(new TestProcess(-1));
       
       storeProcessTable();
       loadProcessTable();
@@ -334,9 +336,9 @@ describe("OS-Style Process Architecture", () => {
 
   describe("getProcessStats", () => {
     it("should return process statistics", () => {
-      addProcess(new TestProcess(0, -1));
-      addProcess(new TestProcess(0, -1));
-      addProcess(new AnotherTestProcess(0, -1));
+      addProcess(new TestProcess(-1));
+      addProcess(new TestProcess(-1));
+      addProcess(new AnotherTestProcess(-1));
       
       const stats = getProcessStats();
       
@@ -348,8 +350,8 @@ describe("OS-Style Process Architecture", () => {
     });
 
     it("should count dead processes correctly", () => {
-      const p1 = addProcess(new TestProcess(0, -1));
-      addProcess(new TestProcess(0, -1));
+      const p1 = addProcess(new TestProcess(-1));
+      addProcess(new TestProcess(-1));
       
       killProcess(p1.pid);
       
@@ -364,7 +366,7 @@ describe("OS-Style Process Architecture", () => {
   describe("Full lifecycle integration", () => {
     it("should support add -> run -> store -> load -> run cycle", () => {
       // Tick 1: Add process
-      const p1 = addProcess(new TestProcess(0, -1));
+      const p1 = addProcess(new TestProcess(-1));
       Memory.processMemory = { [p1.pid]: {} };
       
       // End of tick: store
@@ -389,7 +391,7 @@ describe("OS-Style Process Architecture", () => {
     });
 
     it("should support parent-child relationships", () => {
-      const parent = addProcess(new TestProcess(0, -1));
+      const parent = addProcess(new TestProcess(-1));
       const child1 = addProcess(new TestProcess(0, parent.pid));
       const child2 = addProcess(new AnotherTestProcess(0, parent.pid));
       
