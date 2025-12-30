@@ -145,11 +145,14 @@ export function buildBehavior(ctx: CreepContext): BehaviorResult {
 
     // 4. All critical structures filled - now build construction sites
     if (ctx.prioritizedSites.length > 0) {
-      return {
-        action: { type: "build", target: ctx.prioritizedSites[0]! },
-        success: true,
-        context: "build"
-      };
+      const site = ctx.prioritizedSites[0];
+      if (site) {
+        return {
+          action: { type: "build", target: site },
+          success: true,
+          context: "build"
+        };
+      }
     }
 
     // 5. No construction sites - help upgrade controller
