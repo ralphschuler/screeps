@@ -67,7 +67,7 @@ jobs:
             find logs/ -type f -name "*.txt" | while read -r log_file; do
               # Extract error messages (common patterns)
               grep -i "error:" "$log_file" | head -10 >> errors/raw_errors.txt || true
-              grep -i "fail" "$log_file" | grep -v "fail_ci_if_error" | head -10 >> errors/raw_errors.txt || true
+              grep -iE "failed:|failure:|test failed|build failed" "$log_file" | head -10 >> errors/raw_errors.txt || true
               grep -E "×|✗|❌" "$log_file" | head -10 >> errors/raw_errors.txt || true
             done
           fi
@@ -99,8 +99,11 @@ jobs:
             local error_msg="$1"
             local workflow_name="$2"
             
-            # Clean up the error message for title (max 100 chars)
-            local clean_error=$(echo "$error_msg" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | head -c 100)
+            # Clean up the error message for title (max 120 chars with ellipsis)
+            local clean_error=$(echo "$error_msg" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            if [ ${#clean_error} -gt 120 ]; then
+              clean_error="${clean_error:0:117}..."
+            fi
             
             echo "CI Error in $workflow_name: $clean_error"
           }
@@ -108,12 +111,14 @@ jobs:
           # Function to check if issue exists
           issue_exists() {
             local title="$1"
-            # Escape special characters for JSON
-            local escaped_title=$(echo "$title" | jq -Rs .)
             
-            # Search for open issues with this title
-            local count=$(gh api "/repos/$GITHUB_REPOSITORY/issues" \
-              --jq ".[] | select(.title == $escaped_title and .state == \"open\") | .number" | wc -l)
+            # Use GitHub search API for efficient lookup
+            # URL-encode the title for search query
+            local search_query="repo:$GITHUB_REPOSITORY is:issue is:open in:title \"$title\""
+            
+            local count=$(gh api "/search/issues" \
+              -f q="$search_query" \
+              --jq '.total_count')
             
             [ "$count" -gt 0 ]
           }
