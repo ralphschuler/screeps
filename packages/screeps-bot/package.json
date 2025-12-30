@@ -68,6 +68,7 @@
     "@ralphschuler/screeps-defense": "file:../screeps-defense",
     "@ralphschuler/screeps-economy": "file:../screeps-economy",
     "@ralphschuler/screeps-pathfinding": "file:../@ralphschuler/screeps-pathfinding",
+    "@ralphschuler/screeps-remote-mining": "file:../@ralphschuler/screeps-remote-mining",
     "@ralphschuler/screeps-spawn": "file:../screeps-spawn",
     "@ralphschuler/screeps-utils": "file:../screeps-utils",
     "lz-string": "^1.5.0",
