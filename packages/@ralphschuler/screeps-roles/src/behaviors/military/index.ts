@@ -26,7 +26,8 @@ import type { CreepContext, BehaviorResult } from "../../framework/types";
  * @returns Behavior result with action to execute
  */
 export function attackBehavior(ctx: CreepContext): BehaviorResult {
-  const targetRoom = ctx.memory.targetRoom ?? ctx.homeRoom;
+  // Access targetRoom with type assertion for framework flexibility
+  const targetRoom = (ctx.memory as any).targetRoom ?? ctx.homeRoom;
 
   // Priority 1: Move to target room if assigned and not there
   if (ctx.room.name !== targetRoom) {
