@@ -92,16 +92,7 @@ export function healBehavior(ctx: CreepContext): BehaviorResult {
       return ratioA - ratioB;
     });
     
-    const target = damagedNearby[0];
-    if (!target) {
-      // Safety check: should never happen due to length check above
-      return {
-        action: { type: "idle" },
-        success: true,
-        context: "heal:idle"
-      };
-    }
-    
+    const target = damagedNearby[0]!;
     const range = ctx.creep.pos.getRangeTo(target);
 
     // Use melee heal if adjacent, ranged heal otherwise
