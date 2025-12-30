@@ -1,0 +1,101 @@
+name: Publish Framework Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_scope:
+        description: 'Publish scope'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - kernel
+          - spawn
+          - chemistry
+          - defense
+          - economy
+          - utils
+          - tasks
+          - posis
+          - roles
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    
+    strategy:
+      matrix:
+        package:
+          - name: '@ralphschuler/screeps-kernel'
+            path: 'packages/@ralphschuler/screeps-kernel'
+          - name: '@ralphschuler/screeps-spawn'
+            path: 'packages/screeps-spawn'
+          - name: '@ralphschuler/screeps-chemistry'
+            path: 'packages/screeps-chemistry'
+          - name: '@ralphschuler/screeps-defense'
+            path: 'packages/screeps-defense'
+          - name: '@ralphschuler/screeps-economy'
+            path: 'packages/screeps-economy'
+          - name: '@ralphschuler/screeps-utils'
+            path: 'packages/screeps-utils'
+          - name: '@ralphschuler/screeps-tasks'
+            path: 'packages/screeps-tasks'
+          - name: '@ralphschuler/screeps-posis'
+            path: 'packages/screeps-posis'
+          - name: '@ralphschuler/screeps-roles'
+            path: 'packages/@ralphschuler/screeps-roles'
+
+    defaults:
+      run:
+        working-directory: ${{ matrix.package.path }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+        working-directory: .
+
+      - name: Build all dependencies
+        run: npm run build:all
+        working-directory: .
+
+      - name: Run tests
+        run: |
+          if [ -f "package.json" ] && grep -q '"test"' package.json; then
+            npm test
+          else
+            echo "No tests defined for ${{ matrix.package.name }}"
+          fi
+
+      - name: Check package is publishable
+        run: |
+          PRIVATE=$(node -p "require('./package.json').private || false")
+          if [ "$PRIVATE" = "true" ]; then
+            echo "Package ${{ matrix.package.name }} is marked as private, skipping publish"
+            exit 0
+          fi
+
+      - name: Publish to npm
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.publish_scope == 'all' || contains(matrix.package.name, github.event.inputs.publish_scope)))
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Dry run publish (for PRs and testing)
+        if: github.event_name != 'release' && github.event_name != 'workflow_dispatch'
+        run: npm publish --dry-run --access public

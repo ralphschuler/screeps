@@ -53,6 +53,8 @@ See [PERFORMANCE_TESTING.md](packages/screeps-bot/PERFORMANCE_TESTING.md) for de
   - **screeps-docs-mcp**: Access Screeps API documentation
   - **screeps-mcp**: Live game state and console integration
   - **screeps-wiki-mcp**: Community wiki search and retrieval
+- **Framework Packages**: Modular, reusable packages for building your own bots
+  - See [FRAMEWORK.md](FRAMEWORK.md) for framework documentation
 
 ## Installing / Getting Started
 

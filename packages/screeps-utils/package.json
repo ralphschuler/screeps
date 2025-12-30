@@ -4,7 +4,7 @@
   "description": "Utility functions for Screeps - caching, pathfinding, optimization, and more",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "private": true,
+  "private": false,
   "scripts": {
     "build": "tsc",
     "test": "mocha test/**/*.test.ts",

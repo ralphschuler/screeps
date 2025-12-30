@@ -4,7 +4,7 @@
   "description": "Economy subsystem for Screeps - link networks, terminal routing, factory management, and market trading",
   "main": "dist/screeps-economy/src/index.js",
   "types": "dist/screeps-economy/src/index.d.ts",
-  "private": true,
+  "private": false,
   "scripts": {
     "build": "tsc",
     "test": "mocha test/**/*.test.ts",
