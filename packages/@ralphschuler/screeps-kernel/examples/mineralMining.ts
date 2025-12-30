@@ -28,9 +28,6 @@ import {
  * - When all work is done: Kill the process
  */
 class MineralMiningProcess extends OSProcess {
-  constructor(parentPID: number) {
-    super(parentPID);
-  }
 
   public run(memory: any): void {
     const flagName = memory.flagName;

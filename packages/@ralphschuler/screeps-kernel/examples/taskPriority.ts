@@ -26,9 +26,6 @@ import {
  * Expensive CPU operation that runs when there's sufficient CPU budget
  */
 class LabReactionsProcess extends OSProcess {
-  constructor(parentPID: number) {
-    super(parentPID);
-  }
 
   public run(memory: any): void {
     // Check if we should run based on CPU and priority
@@ -80,9 +77,6 @@ class LabReactionsProcess extends OSProcess {
  * Can be high priority (war mode) or low priority (normal mode)
  */
 class InvasionProcess extends OSProcess {
-  constructor(parentPID: number) {
-    super(parentPID);
-  }
 
   public run(memory: any): void {
     const cpuUsed = Game.cpu.getUsed();

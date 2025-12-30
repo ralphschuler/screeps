@@ -79,7 +79,7 @@ if (priority < 75 && cpuUsed > cpuLimit * 0.5) {
 
 All processes follow this lifecycle:
 
-1. **Create**: `addProcess(new MyProcess(0, -1))`
+1. **Create**: `addProcess(new MyProcess(-1))`
 2. **Initialize Memory**: Set up `Memory.processMemory[pid]`
 3. **Run**: Process executes via `runOSKernel()`
 4. **Persist**: `storeProcessTable()` saves to Memory
@@ -124,9 +124,9 @@ public run(memory: any): void {
 Organize processes hierarchically:
 
 ```typescript
-const manager = addProcess(new RoomManager(0, -1));
-const harvester = addProcess(new HarvesterProcess(0, manager.pid));
-const builder = addProcess(new BuilderProcess(0, manager.pid));
+const manager = addProcess(new RoomManager(-1));
+const harvester = addProcess(new HarvesterProcess(manager.pid));
+const builder = addProcess(new BuilderProcess(manager.pid));
 
 // TODO: Auto-kill children when parent is killed
 ```

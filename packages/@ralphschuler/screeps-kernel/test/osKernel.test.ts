@@ -23,9 +23,6 @@ class TestProcess extends OSProcess {
   public reloadCount = 0;
   public lastMemory: any = null;
 
-  constructor(parentPID: number) {
-    super(parentPID);
-  }
 
   public run(memory: any): void {
     this.runCount++;
@@ -45,9 +42,6 @@ class TestProcess extends OSProcess {
 class AnotherTestProcess extends OSProcess {
   public data: string = "";
 
-  constructor(parentPID: number) {
-    super(parentPID);
-  }
 
   public run(memory: any): void {
     memory.value = (memory.value || 0) + 10;

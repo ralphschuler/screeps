@@ -105,7 +105,7 @@ export function loop() {
   
   // Add new processes as needed
   if (Game.flags['mine-mineral']) {
-    const process = addProcess(new MiningProcess(0, -1));
+    const process = addProcess(new MiningProcess(-1));
     Memory.processMemory![process.pid] = { mineralId: 'xyz' };
   }
   
