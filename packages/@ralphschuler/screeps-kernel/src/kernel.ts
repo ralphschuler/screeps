@@ -585,6 +585,19 @@ export class Kernel {
   }
 
   /**
+   * Calculate priority boost from consecutive CPU skips
+   * 
+   * @param consecutiveCpuSkips - Number of consecutive CPU skips
+   * @returns The priority boost amount (capped at maxPriorityBoost)
+   */
+  private calculatePriorityBoost(consecutiveCpuSkips: number): number {
+    return Math.min(
+      consecutiveCpuSkips * this.config.priorityDecayRate,
+      this.config.maxPriorityBoost
+    );
+  }
+
+  /**
    * Calculate effective priority for a process with priority decay
    * 
    * When priority decay is enabled, processes that are repeatedly skipped due to
@@ -603,12 +616,7 @@ export class Kernel {
       return process.priority;
     }
 
-    const boost = Math.min(
-      process.stats.consecutiveCpuSkips * this.config.priorityDecayRate,
-      this.config.maxPriorityBoost
-    );
-
-    return process.priority + boost;
+    return process.priority + this.calculatePriorityBoost(process.stats.consecutiveCpuSkips);
   }
 
   /**
@@ -941,7 +949,7 @@ export class Kernel {
       if (!this.hasCpuBudget()) {
         // CPU budget exhausted - mark remaining processes as CPU-skipped
         // This increments their consecutiveCpuSkips counter for priority decay
-        if (this.config.enablePriorityDecay && this.config.enableStats) {
+        if (this.config.enablePriorityDecay) {
           // Mark all remaining ready processes as CPU-skipped for priority decay
           for (let j = i; j < this.processQueue.length; j++) {
             const remainingIndex = (startIndex + j) % this.processQueue.length;
@@ -1015,7 +1023,7 @@ export class Kernel {
       if (decayedProcesses.length > 0) {
         logger.info(
           `Kernel: Priority decay active: ${decayedProcesses.map(p => 
-            `${p.name}(base:${p.priority}, boost:+${Math.min(p.stats.consecutiveCpuSkips * this.config.priorityDecayRate, this.config.maxPriorityBoost)}, skips:${p.stats.consecutiveCpuSkips})`
+            `${p.name}(base:${p.priority}, boost:+${this.calculatePriorityBoost(p.stats.consecutiveCpuSkips)}, skips:${p.stats.consecutiveCpuSkips})`
           ).join(', ')}`,
           { subsystem: "Kernel" }
         );

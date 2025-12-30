@@ -243,7 +243,7 @@ describe("Priority Decay", () => {
       Game.cpu.getUsed = originalGetUsed;
 
       const process = disabledKernel.getProcess("test-disabled");
-      // consecutiveCpuSkips should still be tracked, but won't affect priority
+      // When priority decay is disabled, consecutiveCpuSkips is not tracked
       expect(process!.stats.consecutiveCpuSkips).to.equal(0);
     });
 
