@@ -16,19 +16,108 @@ import type { CreepContext, BehaviorResult } from "../../framework/types";
  * An attacker seeks out and engages hostile creeps and structures,
  * using melee or ranged attacks based on body composition.
  * 
+ * Priority:
+ * 1. Move to target room if assigned and not there
+ * 2. Attack hostile creeps (prioritize high-value targets like healers and ranged attackers)
+ * 3. Attack hostile structures (excluding controllers)
+ * 4. Idle when no targets available
+ * 
  * @param ctx - The creep context
  * @returns Behavior result with action to execute
  */
 export function attackBehavior(ctx: CreepContext): BehaviorResult {
-  // TODO: Implement standalone attack behavior
-  // Issue URL: https://github.com/ralphschuler/screeps/issues/974
-  // For now, this is a placeholder that returns idle
-  // Full implementation requires extracting logic from screeps-bot
+  // Access targetRoom with type assertion for framework flexibility
+  const targetRoom = (ctx.memory as any).targetRoom ?? ctx.homeRoom;
+
+  // Priority 1: Move to target room if assigned and not there
+  if (ctx.room.name !== targetRoom) {
+    return {
+      action: { type: "moveToRoom", roomName: targetRoom },
+      success: true,
+      context: "attack:move-to-target"
+    };
+  }
+
+  // Priority 2: Find and attack hostile creeps (prioritize high-value targets)
+  const target = findPriorityTarget(ctx.hostiles);
+  
+  if (target) {
+    const range = ctx.creep.pos.getRangeTo(target);
+    const hasRanged = ctx.creep.getActiveBodyparts(RANGED_ATTACK) > 0;
+    const hasMelee = ctx.creep.getActiveBodyparts(ATTACK) > 0;
+
+    // Use ranged attack if available and in range
+    if (hasRanged && range <= 3) {
+      return {
+        action: { type: "rangedAttack", target },
+        success: true,
+        context: "attack:ranged-attack-creep"
+      };
+    }
+
+    // Use melee attack if available and adjacent
+    if (hasMelee && range <= 1) {
+      return {
+        action: { type: "attack", target },
+        success: true,
+        context: "attack:melee-attack-creep"
+      };
+    }
+
+    // Move towards target if out of range
+    return {
+      action: { type: "moveTo", target },
+      success: true,
+      context: "attack:approach-hostile"
+    };
+  }
+
+  // Priority 3: Attack hostile structures (excluding controllers)
+  const hostileStructures = ctx.room.find(FIND_HOSTILE_STRUCTURES, {
+    filter: s => s.structureType !== STRUCTURE_CONTROLLER
+  });
+
+  if (hostileStructures.length > 0) {
+    // Find closest hostile structure
+    const structure = ctx.creep.pos.findClosestByRange(hostileStructures);
+    
+    if (structure) {
+      const range = ctx.creep.pos.getRangeTo(structure);
+      const hasRanged = ctx.creep.getActiveBodyparts(RANGED_ATTACK) > 0;
+      const hasMelee = ctx.creep.getActiveBodyparts(ATTACK) > 0;
+
+      // Use ranged attack if available and in range
+      if (hasRanged && range <= 3) {
+        return {
+          action: { type: "rangedAttack", target: structure },
+          success: true,
+          context: "attack:ranged-attack-structure"
+        };
+      }
+
+      // Use melee attack if available and adjacent
+      if (hasMelee && range <= 1) {
+        return {
+          action: { type: "attack", target: structure },
+          success: true,
+          context: "attack:melee-attack-structure"
+        };
+      }
+
+      // Move towards structure if out of range
+      return {
+        action: { type: "moveTo", target: structure },
+        success: true,
+        context: "attack:approach-structure"
+      };
+    }
+  }
+
+  // Priority 4: No targets - idle
   return {
     action: { type: "idle" },
-    success: false,
-    error: "attackBehavior not yet implemented",
-    context: "attack"
+    success: true,
+    context: "attack:idle"
   };
 }
 
