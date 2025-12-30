@@ -22,10 +22,9 @@ export type {
   BehaviorResult
 } from "./framework/types";
 
-// TODO: Extract and export behaviors
-// Issue URL: https://github.com/ralphschuler/screeps/issues/935
-// export { harvestBehavior, haulBehavior, buildBehavior, upgradeBehavior } from "./behaviors/economy";
-// export { attackBehavior, defendBehavior, healBehavior } from "./behaviors/military";
+// Behavior exports
+export { harvestBehavior, haulBehavior, buildBehavior, upgradeBehavior } from "./behaviors/economy";
+export { attackBehavior, defendBehavior, healBehavior } from "./behaviors/military";
 
 // Role exports (Phase 9)
 // Note: These are minimal implementations that will be expanded as behaviors are extracted
