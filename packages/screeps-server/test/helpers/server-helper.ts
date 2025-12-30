@@ -140,15 +140,37 @@ export class ServerTestHelper {
       const tickTime = Date.now() - startTime;
       this._metrics.tickTime.push(tickTime);
       
-      // TODO: Collect real CPU and bucket metrics from screeps-server-mockup
-      // Issue URL: https://github.com/ralphschuler/screeps/issues/947
-      // Current implementation uses placeholder values because screeps-server-mockup
-      // does not expose CPU/bucket metrics. This should be replaced with actual
-      // metrics collection once the server provides this data.
-      // For now, tests will verify structure but not actual performance.
-      this._metrics.cpuHistory.push(0.05);
+      // Collect real CPU and bucket metrics from Game.cpu via console commands
+      let cpuUsed = 0.05; // Default fallback
+      let bucketLevel = 10000; // Default fallback
+      
+      try {
+        // Execute console command to get CPU used
+        const cpuResult = await this.executeConsole('Game.cpu.getUsed()');
+        const cpuMatch = cpuResult.match(/[\d.]+/);
+        if (cpuMatch) {
+          cpuUsed = parseFloat(cpuMatch[0]);
+        }
+        
+        // Execute console command to get bucket level
+        const bucketResult = await this.executeConsole('Game.cpu.bucket');
+        const bucketMatch = bucketResult.match(/\d+/);
+        if (bucketMatch) {
+          bucketLevel = parseInt(bucketMatch[0], 10);
+        }
+      } catch (error) {
+        // If console commands fail, use default values
+        console.warn('Failed to collect CPU/bucket metrics, using defaults:', error);
+      }
+      
+      this._metrics.cpuHistory.push(cpuUsed);
+      this._metrics.bucketLevel.push(bucketLevel);
+      
+      // TODO: Collect real memory parse time metric
+      // Memory parse time is not directly exposed by screeps-server-mockup.
+      // This would require instrumenting the memory parsing process or
+      // using performance profiling hooks if they become available.
       this._metrics.memoryParseTime.push(0.01);
-      this._metrics.bucketLevel.push(10000);
     }
     return this._metrics;
   }
