@@ -6,6 +6,7 @@ on:
       - 'packages/screeps-docs-mcp/**'
       - 'packages/screeps-mcp/**'
       - 'packages/screeps-wiki-mcp/**'
+      - 'packages/screeps-typescript-mcp/**'
       - '.github/workflows/mcp-ci.yml'
   push:
     branches:
@@ -14,6 +15,7 @@ on:
       - 'packages/screeps-docs-mcp/**'
       - 'packages/screeps-mcp/**'
       - 'packages/screeps-wiki-mcp/**'
+      - 'packages/screeps-typescript-mcp/**'
       - '.github/workflows/mcp-ci.yml'
 
 permissions:
@@ -28,6 +30,7 @@ jobs:
           - screeps-docs-mcp
           - screeps-mcp
           - screeps-wiki-mcp
+          - screeps-typescript-mcp
     env:
       CI: true
     steps:
@@ -46,11 +49,10 @@ jobs:
       - name: Build ${{ matrix.package }}
         run: npm run build -w @ralphschuler/${{ matrix.package }}
 
-      - name: Run tests for ${{ matrix.package }}
-        run: npm test -w @ralphschuler/${{ matrix.package }}
+      - name: Run coverage for ${{ matrix.package }}
+        run: npm run test:coverage -w @ralphschuler/${{ matrix.package }}
 
       - name: Upload coverage
-        if: matrix.package == 'screeps-docs-mcp'
         uses: actions/upload-artifact@v6
         with:
           name: coverage-${{ matrix.package }}
