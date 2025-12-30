@@ -21,6 +21,7 @@ import type { CreepContext, BehaviorResult } from "../../framework/types";
  */
 export function attackBehavior(ctx: CreepContext): BehaviorResult {
   // TODO: Implement standalone attack behavior
+  // Issue URL: https://github.com/ralphschuler/screeps/issues/974
   // For now, this is a placeholder that returns idle
   // Full implementation requires extracting logic from screeps-bot
   return {
@@ -42,6 +43,7 @@ export function attackBehavior(ctx: CreepContext): BehaviorResult {
  */
 export function defendBehavior(ctx: CreepContext): BehaviorResult {
   // TODO: Implement standalone defend behavior
+  // Issue URL: https://github.com/ralphschuler/screeps/issues/973
   // For now, this is a placeholder that returns idle
   // Full implementation requires extracting logic from screeps-bot
   return {
@@ -63,6 +65,7 @@ export function defendBehavior(ctx: CreepContext): BehaviorResult {
  */
 export function healBehavior(ctx: CreepContext): BehaviorResult {
   // TODO: Implement standalone heal behavior
+  // Issue URL: https://github.com/ralphschuler/screeps/issues/972
   // For now, this is a placeholder that returns idle
   // Full implementation requires extracting logic from screeps-bot
   return {

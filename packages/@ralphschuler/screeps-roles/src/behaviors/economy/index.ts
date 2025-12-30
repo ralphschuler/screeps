@@ -21,6 +21,7 @@ import type { CreepContext, BehaviorResult } from "../../framework/types";
  */
 export function harvestBehavior(ctx: CreepContext): BehaviorResult {
   // TODO: Implement standalone harvest behavior
+  // Issue URL: https://github.com/ralphschuler/screeps/issues/971
   // For now, this is a placeholder that returns idle
   // Full implementation requires extracting logic from screeps-bot
   return {
@@ -42,6 +43,7 @@ export function harvestBehavior(ctx: CreepContext): BehaviorResult {
  */
 export function haulBehavior(ctx: CreepContext): BehaviorResult {
   // TODO: Implement standalone haul behavior
+  // Issue URL: https://github.com/ralphschuler/screeps/issues/970
   // For now, this is a placeholder that returns idle
   // Full implementation requires extracting logic from screeps-bot
   return {
@@ -63,6 +65,7 @@ export function haulBehavior(ctx: CreepContext): BehaviorResult {
  */
 export function buildBehavior(ctx: CreepContext): BehaviorResult {
   // TODO: Implement standalone build behavior
+  // Issue URL: https://github.com/ralphschuler/screeps/issues/969
   // For now, this is a placeholder that returns idle
   // Full implementation requires extracting logic from screeps-bot
   return {
@@ -84,6 +87,7 @@ export function buildBehavior(ctx: CreepContext): BehaviorResult {
  */
 export function upgradeBehavior(ctx: CreepContext): BehaviorResult {
   // TODO: Implement standalone upgrade behavior
+  // Issue URL: https://github.com/ralphschuler/screeps/issues/968
   // For now, this is a placeholder that returns idle
   // Full implementation requires extracting logic from screeps-bot
   return {
