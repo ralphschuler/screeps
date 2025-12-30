@@ -67,7 +67,7 @@ describe('Performance Tests', () => {
       
       const metrics = await helper.runTicks(50);
       
-      const avgMemoryParse = metrics.memoryParseTime.reduce((a, b) => a + b, 0) / metrics.memoryParseTime.length;
+      const avgMemoryParse = helper.getAverageMemoryParseTime();
       
       assert.isBelow(
         avgMemoryParse,

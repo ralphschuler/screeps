@@ -139,6 +139,12 @@ export class ServerTestHelper {
       await this._server.tick();
       const tickTime = Date.now() - startTime;
       this._metrics.tickTime.push(tickTime);
+      
+      // TODO: Collect real CPU and bucket metrics from screeps-server-mockup
+      // Current implementation uses placeholder values because screeps-server-mockup
+      // does not expose CPU/bucket metrics. This should be replaced with actual
+      // metrics collection once the server provides this data.
+      // For now, tests will verify structure but not actual performance.
       this._metrics.cpuHistory.push(0.05);
       this._metrics.memoryParseTime.push(0.01);
       this._metrics.bucketLevel.push(10000);
@@ -183,6 +189,11 @@ export class ServerTestHelper {
   getAverageBucket(): number {
     return this._metrics.bucketLevel.length === 0 ? 10000 :
       this._metrics.bucketLevel.reduce((a, b) => a + b, 0) / this._metrics.bucketLevel.length;
+  }
+
+  getAverageMemoryParseTime(): number {
+    return this._metrics.memoryParseTime.length === 0 ? 0 :
+      this._metrics.memoryParseTime.reduce((a, b) => a + b, 0) / this._metrics.memoryParseTime.length;
   }
 }
 

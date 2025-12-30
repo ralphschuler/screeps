@@ -41,6 +41,7 @@ test -f packages/screeps-server/test/fixtures/scenarios.ts && echo "  ✓ scenar
 echo ""
 echo "✓ Checking scripts..."
 test -f packages/screeps-server/scripts/analyze-tests.js && echo "  ✓ analyze-tests.js"
+test -x packages/screeps-server/scripts/analyze-tests.js && echo "  ✓ analyze-tests.js is executable"
 
 # Check documentation
 echo ""
@@ -52,13 +53,6 @@ test -f packages/screeps-server/TESTING_GUIDE.md && echo "  ✓ TESTING_GUIDE.md
 echo ""
 echo "✓ Checking CI configuration..."
 test -f .github/workflows/performance-test.yml && echo "  ✓ performance-test.yml"
-
-# Verify package.json scripts
-echo ""
-echo "✓ Checking npm scripts..."
-cd packages/screeps-server
-npm run --silent || true  # List scripts
-cd ../..
 
 echo ""
 echo "✅ Test infrastructure validation complete!"
