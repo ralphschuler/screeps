@@ -3,8 +3,5 @@
   "compilerOptions": {
     "types": ["node", "screeps", "mocha", "chai"]
   },
-  "include": ["src/**/*", "test/**/*"],
-  "ts-node": {
-    "require": ["tsconfig-paths/register"]
-  }
+  "include": ["src/**/*", "test/**/*"]
 }
