@@ -24,7 +24,7 @@ export type {
 
 // Behavior exports
 export { harvestBehavior, haulBehavior, buildBehavior, upgradeBehavior } from "./behaviors/economy";
-export { attackBehavior, defendBehavior, healBehavior } from "./behaviors/military";
+export { attackBehavior, defendBehavior, healBehavior } from "./behaviors/military/index";
 
 // Role exports (Phase 9)
 // Note: These are minimal implementations that will be expanded as behaviors are extracted
