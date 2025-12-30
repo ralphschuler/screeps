@@ -27,8 +27,9 @@ export type {
 // export { harvestBehavior, haulBehavior, buildBehavior, upgradeBehavior } from "./behaviors/economy";
 // export { attackBehavior, defendBehavior, healBehavior } from "./behaviors/military";
 
-// TODO: Extract and export complete roles
-// Issue URL: https://github.com/ralphschuler/screeps/issues/934
-// export { runEconomyRole } from "./roles/economy";
-// export { runMilitaryRole } from "./roles/military";
-// export { runUtilityRole } from "./roles/utility";
+// Role exports (Phase 9)
+// Note: These are minimal implementations that will be expanded as behaviors are extracted
+// See docs/IMPLEMENTATION_STATUS.md for the full phased approach
+export { runEconomyRole } from "./roles/economy";
+export { runMilitaryRole } from "./roles/military";
+export { runUtilityRole } from "./roles/utility";
