@@ -5,9 +5,9 @@
  */
 
 import type { CreepAction, CreepContext } from "../../types";
-import { findCachedClosest } from "../../../../utils/caching";
+import { findCachedClosest } from "../../../../cache";
 import { findDistributedTarget } from "../../../../utils/common";
-import { cachedFindSources } from "../../../../utils/caching";
+import { cachedFindSources } from "../../../../cache";
 import { createLogger } from "../../../../core/logger";
 
 const logger = createLogger("EnergyCollection");

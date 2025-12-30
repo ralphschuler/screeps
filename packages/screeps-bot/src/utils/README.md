@@ -4,21 +4,16 @@ This directory contains utility functions and classes organized by functionality
 
 ## Directory Structure
 
-### `/caching`
-Re-export wrappers for the unified cache system (`src/cache/domains/`).
+### Caching
 
-**Files:**
-- `bodyPartCache.ts` - Creep body part analysis caching
-- `cachedClosest.ts` - Optimized closest object finding
-- `objectCache.ts` - Game object caching by ID
-- `pathCache.ts` - Pathfinding results caching
-- `roleCache.ts` - Role-specific data caching
-- `roomFindCache.ts` - Room.find() results caching
+The caching functionality has been migrated to the unified cache system in `src/cache/`. Import cache utilities directly from the cache package:
 
 **Usage:**
 ```typescript
-import { cachedFindSources, getCachedBodyPartCount } from "./utils/caching";
+import { cachedFindSources, getCachedBodyPartCount } from "./cache";
 ```
+
+See `src/cache/README.md` for comprehensive documentation on the unified cache system.
 
 ### `/remote-mining`
 Remote mining specific utilities for optimized remote harvesting operations.
@@ -114,9 +109,9 @@ All utilities have been reorganized but maintain backward compatibility through 
 
 ### Unified Cache System
 
-Most caching utilities are thin wrappers around the unified cache system located in `src/cache/domains/`. The re-export pattern maintains backward compatibility while the actual implementations live in the cache directory.
+All caching utilities are now in the unified cache system located in `src/cache/`. The old `utils/caching/` directory has been removed, and all imports should use `src/cache/` directly.
 
-For new cache-related features, consider adding them directly to `src/cache/domains/` rather than creating new files in `utils/caching/`.
+For new cache-related features, add them directly to `src/cache/domains/`.
 
 ## Related Issues
 

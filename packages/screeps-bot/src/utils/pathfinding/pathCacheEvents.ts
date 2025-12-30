@@ -14,7 +14,7 @@
 
 import { createLogger } from "../../core/logger";
 import { eventBus } from "../../core/events";
-import { cacheCommonRoutes, invalidateRoom } from "../caching/pathCache";
+import { cacheCommonRoutes, invalidateRoom } from "../../cache";
 import { precacheRemoteRoutes } from "../remote-mining/remotePathCache";
 import { getRemoteRoomsForRoom } from "../remote-mining/remoteRoomUtils";
 

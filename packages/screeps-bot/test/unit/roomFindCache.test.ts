@@ -16,7 +16,7 @@ import {
   cachedFindMyStructures,
   cachedFindConstructionSites,
   cachedFindDroppedResources
-} from "../../src/utils/caching/roomFindCache";
+} from "../../src/cache";
 
 describe("roomFindCache", () => {
   beforeEach(() => {

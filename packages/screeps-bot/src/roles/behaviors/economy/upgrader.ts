@@ -6,9 +6,9 @@
  */
 
 import type { CreepAction, CreepContext } from "../types";
-import { findCachedClosest } from "../../../utils/caching";
+import { findCachedClosest } from "../../../cache";
 import { updateWorkingState } from "./common/stateManagement";
-import { cachedFindSources } from "../../../utils/caching";
+import { cachedFindSources } from "../../../cache";
 
 /**
  * Upgrader - Upgrade the room controller.

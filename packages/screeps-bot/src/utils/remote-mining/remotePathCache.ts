@@ -36,7 +36,7 @@
  * ```
  */
 
-import { cachePath, getCachedPath, convertRoomPositionsToPathSteps } from "../caching/pathCache";
+import { cachePath, getCachedPath, convertRoomPositionsToPathSteps } from "../../cache";
 import { createLogger } from "../../core/logger";
 import { getRemoteMiningRoomCallback } from "./remoteRoomUtils";
 

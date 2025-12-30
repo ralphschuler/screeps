@@ -17,7 +17,7 @@ import { type WeightedEntry, weightedSelection } from "../utils/common";
 import { kernel } from "../core/kernel";
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
-import { cachedFindMyStructures } from "../utils/caching";
+import { cachedFindMyStructures } from "../cache";
 
 /**
  * Get best body template for a role based on available energy capacity

@@ -15,7 +15,7 @@ import {
   getCachedBuildTarget,
   getAssignedSource,
   clearTargetCaches
-} from "../../src/utils/caching/roleCache";
+} from "../../src/cache";
 
 describe("roleCache", () => {
   beforeEach(() => {
