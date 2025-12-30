@@ -101,13 +101,20 @@ jobs:
             local MAX_TITLE_LENGTH=120
             local ELLIPSIS_OFFSET=3
             
-            # Clean up the error message for title
+            # Calculate how much space we have for the error message
+            # Format: "CI Error in WORKFLOW: ERROR"
+            local prefix="CI Error in $workflow_name: "
+            local available_length=$((MAX_TITLE_LENGTH - ${#prefix} - ELLIPSIS_OFFSET))
+            
+            # Clean up the error message
             local clean_error=$(echo "$error_msg" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-            if [ ${#clean_error} -gt $MAX_TITLE_LENGTH ]; then
-              clean_error="${clean_error:0:$((MAX_TITLE_LENGTH - ELLIPSIS_OFFSET))}..."
+            
+            # Truncate if necessary
+            if [ ${#clean_error} -gt $available_length ]; then
+              clean_error="${clean_error:0:$available_length}..."
             fi
             
-            echo "CI Error in $workflow_name: $clean_error"
+            echo "${prefix}${clean_error}"
           }
           
           # Function to check if issue exists
