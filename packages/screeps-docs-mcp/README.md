@@ -272,3 +272,36 @@ MIT
 - [screeps-mcp](../screeps-mcp) - MCP server for live Screeps game API integration
 - [screeps-wiki-mcp](../screeps-wiki-mcp) - MCP server for accessing the Screeps community wiki
 - [screeps-bot](../screeps-bot) - Advanced Screeps AI using swarm intelligence
+
+## Testing
+
+This package has comprehensive test coverage including unit, integration, and inspector tests.
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run only inspector tests
+npm run test:inspector
+```
+
+### Test Structure
+
+- `tests/unit/` - Unit tests for handlers and index builder
+- `tests/integration/` - Integration tests for MCP server
+- `tests/inspector/` - MCP inspector integration tests
+
+### Coverage Requirements
+
+- Overall: >80%
+- Handlers: >90%
+- All tests must pass before merging
+

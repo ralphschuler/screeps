@@ -291,3 +291,37 @@ MIT
 ## Credits
 
 This MCP server provides access to TypeScript type definitions from [typed-screeps](https://github.com/screepers/typed-screeps), maintained by the Screepers community.
+
+## Testing
+
+This package has comprehensive test coverage with unit, integration, and inspector tests.
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run only inspector tests
+npm run test:inspector
+```
+
+### Test Structure
+
+- `tests/unit/` - Unit tests for type parser and handlers
+- `tests/integration/` - Integration tests for MCP server
+- `tests/inspector/` - MCP inspector integration tests
+
+### Coverage Requirements
+
+- Overall: >80%
+- Type parser: >80%
+- Handlers: >90%
+- All tests must pass before merging
+

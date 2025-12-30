@@ -1062,3 +1062,37 @@ MIT © OpenAI Automations
 ## Changelog
 
 See [CHANGELOG.md](../../CHANGELOG.md) for version history and updates.
+
+## Testing
+
+This package has comprehensive test coverage with unit, integration, and e2e tests.
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run only inspector tests
+npm run test:inspector
+```
+
+### Test Structure
+
+- `tests/unit/` - Unit tests for handlers and client
+- `tests/integration/` - Integration tests for MCP server
+- `tests/e2e/` - End-to-end protocol tests
+- `tests/inspector/` - MCP inspector integration tests
+
+### Coverage Requirements
+
+- Overall: >70%
+- Critical paths: >80%
+- All tests must pass before merging
+
