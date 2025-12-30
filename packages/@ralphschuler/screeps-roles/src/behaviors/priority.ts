@@ -18,9 +18,9 @@
  */
 
 import type { CreepContext } from "./types";
-import type { PheromoneState } from "../../memory/schemas";
+import type { PheromoneState } from "../memory/schemas";
 import { getPheromones } from "./pheromoneHelper";
-import { createLogger } from "../../core/logger";
+import { createLogger } from "../core/logger";
 
 const logger = createLogger("BehaviorPriority");
 

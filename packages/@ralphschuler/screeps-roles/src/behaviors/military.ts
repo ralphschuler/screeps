@@ -5,15 +5,15 @@
  * Includes defense, offense, and squad-based combat.
  */
 
-import type { SquadMemory, SwarmCreepMemory } from "../../memory/schemas";
-import { findCachedClosest } from "../../cache";
-import { safeFindClosestByRange } from "../../utils/optimization";
+import type { SquadMemory, SwarmCreepMemory } from "../memory/schemas";
+import { findCachedClosest } from "../cache";
+import { safeFindClosestByRange } from "../utils/optimization";
 import { registerMilitaryCacheClear } from "./context";
 import type { CreepAction, CreepContext } from "./types";
-import { createLogger } from "../../core/logger";
-import { getCollectionPoint } from "../../utils/common";
+import { createLogger } from "../core/logger";
+import { getCollectionPoint } from "../utils/common";
 import { checkAndExecuteRetreat } from "@ralphschuler/screeps-defense";
-import { globalCache } from "../../cache";
+import { globalCache } from "../cache";
 
 const logger = createLogger("MilitaryBehaviors");
 

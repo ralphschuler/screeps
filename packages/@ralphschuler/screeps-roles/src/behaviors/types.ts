@@ -5,7 +5,7 @@
  * This module provides a clean, human-readable interface for creep decision making.
  */
 
-import type { SquadMemory, SwarmCreepMemory, SwarmState } from "../../memory/schemas";
+import type { SquadMemory, SwarmCreepMemory, SwarmState } from "../memory/schemas";
 
 /**
  * All possible actions a creep can perform.

@@ -12,10 +12,10 @@
  *   pre-computing all positions (faster for small hostile counts).
  */
 
-import type { SquadMemory, SwarmCreepMemory, SwarmState } from "../../memory/schemas";
+import type { SquadMemory, SwarmCreepMemory, SwarmState } from "../memory/schemas";
 import type { CreepContext } from "./types";
-import { safeFind } from "../../utils/optimization";
-import { createLogger } from "../../core/logger";
+import { safeFind } from "../utils/optimization";
+import { createLogger } from "../core/logger";
 
 const logger = createLogger("CreepContext");
 

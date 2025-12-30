@@ -5,15 +5,15 @@
  * Includes power harvesting (regular creeps) and Power Creep abilities.
  */
 
-import type { SwarmCreepMemory } from "../../memory/schemas";
+import type { SwarmCreepMemory } from "../memory/schemas";
 import { moveTo } from "screeps-cartographer";
-import { safeFind } from "../../utils/optimization";
+import { safeFind } from "../utils/optimization";
 import type { CreepAction, CreepContext } from "./types";
 import {
   cachedRoomFind,
   cachedFindMyStructures,
   cachedFindDroppedResources
-} from "../../cache";
+} from "../cache";
 
 // =============================================================================
 // Regular Creep Power Roles
