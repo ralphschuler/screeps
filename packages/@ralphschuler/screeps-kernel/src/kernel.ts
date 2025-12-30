@@ -28,9 +28,6 @@
  * Some processes depend on others (e.g., intel must run before expansion decisions)
  * TODO(P3): ARCH - Consider implementing process groups for coordinated batch execution
  * Related processes could be grouped and executed together for better cache locality
- * TODO(P2): TEST - Add unit tests for kernel process scheduling and wrap-around queue behavior
- Issue URL: https://github.com/ralphschuler/screeps/issues/928
- * Critical system component needs comprehensive test coverage
  */
 
 import {
