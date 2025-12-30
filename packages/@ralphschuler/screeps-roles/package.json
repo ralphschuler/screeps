@@ -7,7 +7,7 @@
   "private": false,
   "scripts": {
     "build": "tsc",
-    "test": "mocha test/**/*.test.ts",
+    "test": "TS_NODE_PROJECT=tsconfig.test.json mocha test/**/*.test.ts",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
