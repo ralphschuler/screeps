@@ -427,6 +427,33 @@ export interface CreepMetrics {
 }
 
 /**
+ * Pathfinding performance metrics
+ */
+export interface PathfindingStats {
+  /** Total pathfinding-related calls this tick */
+  totalCalls: number;
+  /** Cache hits (path reused from cache) */
+  cacheHits: number;
+  /** Cache misses (new path calculated) */
+  cacheMisses: number;
+  /** Cache hit rate (0-1) */
+  cacheHitRate: number;
+  /** CPU spent on pathfinding this tick */
+  cpuUsed: number;
+  /** Average CPU per pathfinding call */
+  avgCpuPerCall: number;
+  /** Estimated CPU saved from caching */
+  cpuSaved: number;
+  /** Breakdown by call type */
+  callsByType: {
+    moveTo: number;
+    pathFinderSearch: number;
+    findPath: number;
+    moveByPath: number;
+  };
+}
+
+/**
  * Complete stats snapshot for a single tick
  */
 export interface StatsSnapshot {
@@ -443,6 +470,7 @@ export interface StatsSnapshot {
   processes: Record<string, ProcessStatsEntry>;
   creeps: Record<string, CreepStatsEntry>;
   cache: CacheStats;
+  pathfinding: PathfindingStats;
 }
 
 /**

@@ -23,6 +23,7 @@ export type {
   CPUAnomaly,
   CPUBudgetReport,
   CreepMetrics,
+  PathfindingStats,
   StatsSnapshot,
   ProfilerMemory
 } from "./types";

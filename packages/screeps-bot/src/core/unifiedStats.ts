@@ -19,6 +19,7 @@
  * - stats.subsystem.*  - Per-subsystem performance
  * - stats.native.*     - Native API call tracking
  * - stats.system.*     - System/tick information
+ * - stats.pathfinding.* - Pathfinding performance metrics
  */
 
 import { logger } from "./logger";
@@ -34,6 +35,7 @@ import {
 } from "../cache";
 import { globalCache } from "../cache";
 import { calculateRoomScalingMultiplier, calculateBucketMultiplier, type AdaptiveBudgetConfig } from "./adaptiveBudgets";
+import { pathfindingMetrics } from "./pathfindingMetrics";
 import type {
   UnifiedStatsConfig,
   CpuStats,
@@ -164,6 +166,9 @@ export class UnifiedStatsManager {
     this.subsystemMeasurements.clear();
     this.roomMeasurements.clear();
     this.skippedProcessesThisTick = 0;
+    
+    // Reset pathfinding metrics for new tick
+    pathfindingMetrics.reset();
   }
 
   /**
@@ -207,6 +212,9 @@ export class UnifiedStatsManager {
 
     // Finalize cache stats
     this.finalizeCacheStats();
+
+    // Finalize pathfinding stats
+    this.finalizePathfindingStats();
 
     // Finalize native calls
     this.currentSnapshot.native = { ...this.nativeCallsThisTick };
@@ -881,6 +889,21 @@ export class UnifiedStatsManager {
           size: 0,
           evictions: 0
         }
+      },
+      pathfinding: {
+        totalCalls: 0,
+        cacheHits: 0,
+        cacheMisses: 0,
+        cacheHitRate: 0,
+        cpuUsed: 0,
+        avgCpuPerCall: 0,
+        cpuSaved: 0,
+        callsByType: {
+          moveTo: 0,
+          pathFinderSearch: 0,
+          findPath: 0,
+          moveByPath: 0
+        }
       }
     };
   }
@@ -1129,6 +1152,13 @@ export class UnifiedStatsManager {
       role: roleStats,
       global: globalStats
     };
+  }
+
+  /**
+   * Finalize pathfinding performance stats
+   */
+  private finalizePathfindingStats(): void {
+    this.currentSnapshot.pathfinding = pathfindingMetrics.getMetrics();
   }
 
   /**
