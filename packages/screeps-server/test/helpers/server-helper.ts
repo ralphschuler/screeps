@@ -149,8 +149,8 @@ export class ServerTestHelper {
         const rawMemory = RawMemory.get();
         // Store and use the parsed result to prevent JS engine optimization
         const parsedMemory = rawMemory ? JSON.parse(rawMemory) : {};
-        // Ensure the parse actually happens by using the result
-        const _memorySize = Object.keys(parsedMemory).length;
+        // Lightweight operation to ensure parse happens without adding overhead
+        const _ensure = parsedMemory || 0;
         // Always measure CPU time, even for empty memory
         memoryParseTime = Game.cpu.getUsed() - parseStart;
       }
