@@ -8,6 +8,7 @@
  * - Pathfinding utilities
  * - Random selection and weighted selection
  * - Target distribution and load balancing
+ * - Console UI and help system
  * 
  * @packageDocumentation
  */
@@ -20,3 +21,4 @@ export * from "./monitoring";
 export * from "./optimization";
 export * from "./pathfinding";
 export * from "./selection";
+export * from "./console";
