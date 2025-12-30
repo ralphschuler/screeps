@@ -108,5 +108,19 @@ describe('Server Integration Tests', () => {
         assert.isBelow(time, 5000, 'Tick should complete in under 5 seconds');
       });
     });
+
+    it('should collect memory parse time metrics', async function() {
+      this.timeout(20000);
+      
+      const metrics = await helper.runTicks(20);
+      
+      assert.isArray(metrics.memoryParseTime);
+      assert.equal(metrics.memoryParseTime.length, 20);
+      // Memory parse time should be collected and be a reasonable value
+      // It should be greater than 0 (not the fallback) and less than 1 CPU
+      const avgMemoryParse = helper.getAverageMemoryParseTime();
+      assert.isAbove(avgMemoryParse, 0, 'Memory parse time should be greater than 0');
+      assert.isBelow(avgMemoryParse, 1.0, 'Memory parse time should be less than 1.0 CPU');
+    });
   });
 });
