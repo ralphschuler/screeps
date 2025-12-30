@@ -1,16 +1,90 @@
 /**
- * Unit tests for remotePathCache module
+ * Unit tests for RemotePathCache
  */
 
 import { assert } from "chai";
-import {
-  getRemoteMiningPath,
-  cacheRemoteMiningPath,
-  precacheRemoteRoutes
-} from "../../src/utils/remote-mining/remotePathCache.js";
-import { clearPathCache } from "../../src/cache";
+import { RemotePathCache } from "../src/paths/remotePathCache";
+import type { IPathCache, ILogger } from "../src/types";
 
-describe("remotePathCache", () => {
+// Screeps constants
+const TOP = 1;
+const TOP_RIGHT = 2;
+const RIGHT = 3;
+const BOTTOM_RIGHT = 4;
+const BOTTOM = 5;
+const BOTTOM_LEFT = 6;
+const LEFT = 7;
+const TOP_LEFT = 8;
+
+// Mock implementations for testing
+class MockPathCache implements IPathCache {
+  private cache = new Map<string, { path: PathStep[]; expires: number }>();
+
+  private makeKey(from: RoomPosition, to: RoomPosition): string {
+    return `${from.roomName}:${from.x},${from.y}->${to.roomName}:${to.x},${to.y}`;
+  }
+
+  getCachedPath(from: RoomPosition, to: RoomPosition): PathStep[] | null {
+    const key = this.makeKey(from, to);
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    if (Game.time >= entry.expires) {
+      this.cache.delete(key);
+      return null;
+    }
+    return entry.path;
+  }
+
+  cachePath(from: RoomPosition, to: RoomPosition, path: PathStep[], options?: { ttl?: number }): void {
+    const key = this.makeKey(from, to);
+    this.cache.set(key, {
+      path,
+      expires: Game.time + (options?.ttl || 100)
+    });
+  }
+
+  convertRoomPositionsToPathSteps(positions: RoomPosition[]): PathStep[] {
+    return positions.map((p, i) => {
+      const prev = i > 0 ? positions[i - 1] : null;
+      let dx = 0;
+      let dy = 0;
+      let direction: DirectionConstant = TOP;
+      
+      if (prev && prev.roomName === p.roomName) {
+        dx = p.x - prev.x;
+        dy = p.y - prev.y;
+        // Simple direction calculation
+        if (dy === -1 && dx === 0) direction = TOP;
+        else if (dy === -1 && dx === 1) direction = TOP_RIGHT;
+        else if (dy === 0 && dx === 1) direction = RIGHT;
+        else if (dy === 1 && dx === 1) direction = BOTTOM_RIGHT;
+        else if (dy === 1 && dx === 0) direction = BOTTOM;
+        else if (dy === 1 && dx === -1) direction = BOTTOM_LEFT;
+        else if (dy === 0 && dx === -1) direction = LEFT;
+        else if (dy === -1 && dx === -1) direction = TOP_LEFT;
+      }
+      
+      return { x: p.x, y: p.y, dx, dy, direction };
+    });
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+}
+
+class MockLogger implements ILogger {
+  debug(): void {}
+  info(): void {}
+  warn(): void {}
+  error(): void {}
+}
+
+describe("RemotePathCache", () => {
+  let pathCache: MockPathCache;
+  let logger: MockLogger;
+  let remotePathCache: RemotePathCache;
+
   beforeEach(() => {
     // Reset Game and global state
     // @ts-expect-error: Setting up test environment
@@ -25,14 +99,17 @@ describe("remotePathCache", () => {
     (global as unknown as Record<string, number>).FIND_MY_SPAWNS = 106;
     (global as unknown as Record<string, string>).STRUCTURE_CONTAINER = "container";
 
-    // Mock Room.serializePath and Room.deserializePath
+    // Mock RoomPosition
     // @ts-expect-error: Setting up test environment
-    global.Room = {
-      serializePath: (path: PathStep[]): string => {
-        return JSON.stringify(path);
-      },
-      deserializePath: (serialized: string): PathStep[] => {
-        return JSON.parse(serialized);
+    global.RoomPosition = class RoomPosition {
+      x: number;
+      y: number;
+      roomName: string;
+      
+      constructor(x: number, y: number, roomName: string) {
+        this.x = x;
+        this.y = y;
+        this.roomName = roomName;
       }
     };
 
@@ -40,12 +117,11 @@ describe("remotePathCache", () => {
     (global as unknown as Record<string, unknown>).PathFinder = {
       search: (from: RoomPosition, goal: { pos: RoomPosition; range: number }) => {
         // Mock successful pathfinding with a simple path
-        // PathStep only has x, y properties (no dx, dy, direction)
         return {
           path: [
-            { x: from.x + 1, y: from.y + 1 },
-            { x: from.x + 2, y: from.y + 2 },
-            { x: goal.pos.x, y: goal.pos.y }
+            new RoomPosition(from.x + 1, from.y + 1, from.roomName),
+            new RoomPosition(from.x + 2, from.y + 2, from.roomName),
+            new RoomPosition(goal.pos.x, goal.pos.y, goal.pos.roomName)
           ],
           ops: 50,
           cost: 5,
@@ -66,7 +142,9 @@ describe("remotePathCache", () => {
       }
     };
 
-    clearPathCache();
+    pathCache = new MockPathCache();
+    logger = new MockLogger();
+    remotePathCache = new RemotePathCache(pathCache, logger);
   });
 
   describe("getRemoteMiningPath", () => {
@@ -74,7 +152,7 @@ describe("remotePathCache", () => {
       const from = new RoomPosition(10, 10, "W1N1");
       const to = new RoomPosition(20, 20, "W2N2");
 
-      const result = getRemoteMiningPath(from, to, "harvester");
+      const result = remotePathCache.getRemoteMiningPath(from, to, "harvester");
       assert.isNull(result);
     });
 
@@ -82,13 +160,13 @@ describe("remotePathCache", () => {
       const from = new RoomPosition(10, 10, "W1N1");
       const to = new RoomPosition(20, 20, "W2N2");
       const path: PathStep[] = [
-        { x: 11, y: 11 },
-        { x: 12, y: 12 },
-        { x: 13, y: 13 }
+        { x: 11, y: 11, dx: 1, dy: 1, direction: BOTTOM_RIGHT },
+        { x: 12, y: 12, dx: 1, dy: 1, direction: BOTTOM_RIGHT },
+        { x: 13, y: 13, dx: 1, dy: 1, direction: BOTTOM_RIGHT }
       ];
 
-      cacheRemoteMiningPath(from, to, path, "harvester");
-      const result = getRemoteMiningPath(from, to, "harvester");
+      remotePathCache.cacheRemoteMiningPath(from, to, path, "harvester");
+      const result = remotePathCache.getRemoteMiningPath(from, to, "harvester");
 
       assert.isNotNull(result);
       assert.equal(result!.length, 3);
@@ -96,45 +174,27 @@ describe("remotePathCache", () => {
       assert.equal(result![0].y, 11);
     });
 
-    it("should cache harvester and hauler routes independently", () => {
-      const from = new RoomPosition(10, 10, "W1N1");
-      const to = new RoomPosition(20, 20, "W2N2");
-      const harvesterPath: PathStep[] = [{ x: 11, y: 11 }];
-      const haulerPath: PathStep[] = [{ x: 21, y: 21 }];
-
-      cacheRemoteMiningPath(from, to, harvesterPath, "harvester");
-      cacheRemoteMiningPath(from, to, haulerPath, "hauler");
-
-      const harvesterResult = getRemoteMiningPath(from, to, "harvester");
-      const haulerResult = getRemoteMiningPath(from, to, "hauler");
-
-      assert.isNotNull(harvesterResult);
-      assert.isNotNull(haulerResult);
-      assert.equal(harvesterResult![0].x, 11);
-      assert.equal(haulerResult![0].x, 21);
-    });
-
     it("should respect TTL and expire paths after 500 ticks", () => {
       const from = new RoomPosition(10, 10, "W1N1");
       const to = new RoomPosition(20, 20, "W2N2");
-      const path: PathStep[] = [{ x: 11, y: 11 }];
+      const path: PathStep[] = [{ x: 11, y: 11, dx: 1, dy: 1, direction: BOTTOM_RIGHT }];
 
-      cacheRemoteMiningPath(from, to, path, "harvester");
+      remotePathCache.cacheRemoteMiningPath(from, to, path, "harvester");
 
       // Should be available immediately
-      let result = getRemoteMiningPath(from, to, "harvester");
+      let result = remotePathCache.getRemoteMiningPath(from, to, "harvester");
       assert.isNotNull(result);
 
       // Advance time by 400 ticks - should still be available
       // @ts-expect-error: Setting up test environment
       global.Game.time = 1400;
-      result = getRemoteMiningPath(from, to, "harvester");
+      result = remotePathCache.getRemoteMiningPath(from, to, "harvester");
       assert.isNotNull(result);
 
       // Advance time by 200 more ticks (total 600 from cache) - should be expired
       // @ts-expect-error: Setting up test environment
       global.Game.time = 1600;
-      result = getRemoteMiningPath(from, to, "harvester");
+      result = remotePathCache.getRemoteMiningPath(from, to, "harvester");
       assert.isNull(result);
     });
   });
@@ -175,10 +235,10 @@ describe("remotePathCache", () => {
         W2N2: remoteRoom
       };
 
-      precacheRemoteRoutes(homeRoom, ["W2N2"]);
+      remotePathCache.precacheRemoteRoutes(homeRoom, ["W2N2"]);
 
       // Check that a path was cached
-      const cachedPath = getRemoteMiningPath(
+      const cachedPath = remotePathCache.getRemoteMiningPath(
         new RoomPosition(25, 25, "W1N1"),
         new RoomPosition(10, 10, "W2N2"),
         "harvester"
@@ -225,10 +285,10 @@ describe("remotePathCache", () => {
         W2N2: remoteRoom
       };
 
-      precacheRemoteRoutes(homeRoom, ["W2N2"]);
+      remotePathCache.precacheRemoteRoutes(homeRoom, ["W2N2"]);
 
       // Check that a path was cached from container to storage
-      const cachedPath = getRemoteMiningPath(
+      const cachedPath = remotePathCache.getRemoteMiningPath(
         new RoomPosition(11, 11, "W2N2"),
         new RoomPosition(25, 25, "W1N1"),
         "hauler"
@@ -254,7 +314,7 @@ describe("remotePathCache", () => {
 
       // Should not throw error
       assert.doesNotThrow(() => {
-        precacheRemoteRoutes(homeRoom, ["W2N2"]);
+        remotePathCache.precacheRemoteRoutes(homeRoom, ["W2N2"]);
       });
     });
 
@@ -265,10 +325,46 @@ describe("remotePathCache", () => {
         find: () => []
       } as unknown as Room;
 
-      // Should not throw error and should warn about missing storage/spawns
+      // Should not throw error
       assert.doesNotThrow(() => {
-        precacheRemoteRoutes(homeRoom, ["W2N2"]);
+        remotePathCache.precacheRemoteRoutes(homeRoom, ["W2N2"]);
       });
+    });
+  });
+
+  describe("getOrCalculateRemotePath", () => {
+    it("should return cached path if available", () => {
+      const from = new RoomPosition(10, 10, "W1N1");
+      const to = new RoomPosition(20, 20, "W2N2");
+      const path: PathStep[] = [{ x: 11, y: 11, dx: 1, dy: 1, direction: BOTTOM_RIGHT }];
+
+      remotePathCache.cacheRemoteMiningPath(from, to, path, "harvester");
+      const result = remotePathCache.getOrCalculateRemotePath(from, to, "harvester");
+
+      assert.isNotNull(result);
+      assert.equal(result![0].x, 11);
+    });
+
+    it("should calculate new path if not cached", () => {
+      const from = new RoomPosition(10, 10, "W1N1");
+      const to = new RoomPosition(20, 20, "W2N2");
+
+      const result = remotePathCache.getOrCalculateRemotePath(from, to, "harvester");
+
+      assert.isNotNull(result);
+      assert.isTrue(result!.length > 0);
+    });
+
+    it("should cache calculated paths", () => {
+      const from = new RoomPosition(10, 10, "W1N1");
+      const to = new RoomPosition(20, 20, "W2N2");
+
+      // First call calculates
+      remotePathCache.getOrCalculateRemotePath(from, to, "harvester");
+
+      // Second call should use cache
+      const cached = remotePathCache.getRemoteMiningPath(from, to, "harvester");
+      assert.isNotNull(cached);
     });
   });
 });

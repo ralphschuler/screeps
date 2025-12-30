@@ -2,12 +2,10 @@
  * Remote Room Utilities
  *
  * Shared utility functions for remote mining operations.
- * Extracted from duplicated code in remotePathScheduler and pathCacheEvents.
+ * Provides room analysis, distance calculation, and pathfinding callbacks.
  */
 
-import { createLogger } from "../../core/logger";
-
-const logger = createLogger("RemoteRoomUtils");
+import type { ILogger } from "../types";
 
 /**
  * Get list of remote rooms being mined by a home room.
@@ -45,9 +43,10 @@ export function getRemoteRoomsForRoom(room: Room): string[] {
  * Handles hostile structure avoidance, highway detection, and road preferencing.
  *
  * @param roomName - Room name being evaluated
+ * @param logger - Optional logger for debugging
  * @returns Cost matrix or false to avoid the room
  */
-export function getRemoteMiningRoomCallback(roomName: string): CostMatrix | boolean {
+export function getRemoteMiningRoomCallback(roomName: string, logger?: ILogger): CostMatrix | boolean {
   const room = Game.rooms[roomName];
   if (!room) {
     // Room not visible - allow pathfinding through it
@@ -69,6 +68,11 @@ export function getRemoteMiningRoomCallback(roomName: string): CostMatrix | bool
     });
     
     if (hostileStructures.length > 0) {
+      if (logger) {
+        logger.debug(`Avoiding room ${roomName} with hostile structures`, {
+          meta: { hostileCount: hostileStructures.length }
+        });
+      }
       // Avoid this room
       return false;
     }
