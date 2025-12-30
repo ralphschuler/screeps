@@ -40,18 +40,232 @@ export function harvestBehavior(ctx: CreepContext): BehaviorResult {
  * A hauler picks up energy from containers/storage and delivers it to
  * spawns, extensions, towers, or other structures.
  * 
+ * Priority for delivery: Spawns → Extensions → Towers → Storage → Containers
+ * Priority for collection: Dropped Resources → Tombstones → Containers → Storage
+ * 
  * @param ctx - The creep context
  * @returns Behavior result with action to execute
  */
 export function haulBehavior(ctx: CreepContext): BehaviorResult {
-  // TODO: Implement standalone haul behavior
-  // Issue URL: https://github.com/ralphschuler/screeps/issues/970
-  // For now, this is a placeholder that returns idle
-  // Full implementation requires extracting logic from screeps-bot
+  const creep = ctx.creep;
+  const room = ctx.room;
+  
+  // Determine working state based on energy levels
+  const isEmpty = creep.store.getUsedCapacity() === 0;
+  const isFull = creep.store.getFreeCapacity() === 0;
+  
+  // Initialize working state if undefined
+  if (ctx.memory.working === undefined) {
+    ctx.memory.working = !isEmpty;
+  }
+  
+  // Update working state based on energy levels
+  if (isEmpty) {
+    ctx.memory.working = false;
+  } else if (isFull) {
+    ctx.memory.working = true;
+  }
+  
+  const isWorking = ctx.memory.working;
+  
+  if (isWorking) {
+    // Check what resource we're carrying
+    const carriedResources = Object.keys(creep.store) as ResourceConstant[];
+    const resourceType = carriedResources[0];
+    const energyCarried = creep.store.getUsedCapacity(RESOURCE_ENERGY);
+    
+    // If carrying minerals (not energy), deliver to terminal or storage
+    if (energyCarried === 0 && resourceType && resourceType !== RESOURCE_ENERGY) {
+      const target = ctx.terminal ?? ctx.storage;
+      if (target) {
+        return {
+          action: { type: "transfer", target, resourceType },
+          success: true,
+          context: "haul"
+        };
+      }
+    }
+    
+    // Deliver energy with priority: spawn > extensions > towers > storage > containers
+    
+    // 1. Check spawns first (highest priority)
+    const spawns = ctx.spawnStructures.filter(
+      (s): s is StructureSpawn => 
+        s.structureType === STRUCTURE_SPAWN &&
+        s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+    );
+    if (spawns.length > 0) {
+      const closest = creep.pos.findClosestByPath(spawns);
+      if (closest) {
+        return {
+          action: { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY },
+          success: true,
+          context: "haul"
+        };
+      }
+    }
+
+    // 2. Check extensions second
+    const extensions = ctx.spawnStructures.filter(
+      (s): s is StructureExtension => 
+        s.structureType === STRUCTURE_EXTENSION &&
+        s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+    );
+    if (extensions.length > 0) {
+      const closest = creep.pos.findClosestByPath(extensions);
+      if (closest) {
+        return {
+          action: { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY },
+          success: true,
+          context: "haul"
+        };
+      }
+    }
+
+    // 3. Check towers third
+    const towersWithCapacity = ctx.towers.filter(
+      t => t.store.getFreeCapacity(RESOURCE_ENERGY) >= 100
+    );
+    if (towersWithCapacity.length > 0) {
+      const closest = creep.pos.findClosestByPath(towersWithCapacity);
+      if (closest) {
+        return {
+          action: { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY },
+          success: true,
+          context: "haul"
+        };
+      }
+    }
+
+    // 4. Storage fourth
+    if (ctx.storage && ctx.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+      return {
+        action: { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY },
+        success: true,
+        context: "haul"
+      };
+    }
+
+    // 5. Containers last
+    const depositContainersWithCapacity = ctx.depositContainers.filter(
+      c => c.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+    );
+    if (depositContainersWithCapacity.length > 0) {
+      const closest = creep.pos.findClosestByPath(depositContainersWithCapacity);
+      if (closest) {
+        return {
+          action: { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY },
+          success: true,
+          context: "haul"
+        };
+      }
+    }
+
+    // No valid delivery targets found, but creep still has energy
+    // Switch to collection mode to top off capacity instead of idling
+    if (!isEmpty) {
+      ctx.memory.working = false;
+      // Fall through to collection logic below
+    } else {
+      return {
+        action: { type: "idle" },
+        success: false,
+        error: "No delivery targets available",
+        context: "haul"
+      };
+    }
+  }
+
+  // Not working - need to collect resources
+  // Priority: dropped resources > tombstones > containers > storage
+  
+  // 1. Check for dropped resources first
+  if (ctx.droppedResources.length > 0) {
+    const closest = creep.pos.findClosestByPath(ctx.droppedResources);
+    if (closest) {
+      return {
+        action: { type: "pickup", target: closest },
+        success: true,
+        context: "haul"
+      };
+    }
+  }
+  
+  // 2. Check tombstones - collect all resources, not just energy
+  const tombstonesWithResources = ctx.tombstones.filter(
+    t => t.store.getUsedCapacity() > 0
+  );
+  if (tombstonesWithResources.length > 0) {
+    const tombstone = creep.pos.findClosestByPath(tombstonesWithResources);
+    if (tombstone) {
+      // Prioritize energy first, then other resources
+      if (tombstone.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+        return {
+          action: { type: "withdraw", target: tombstone, resourceType: RESOURCE_ENERGY },
+          success: true,
+          context: "haul"
+        };
+      }
+      // If no energy, pick up any other resource type
+      const resourceTypes = Object.keys(tombstone.store) as ResourceConstant[];
+      const otherResource = resourceTypes.find(r => r !== RESOURCE_ENERGY && tombstone.store.getUsedCapacity(r) > 0);
+      if (otherResource) {
+        return {
+          action: { type: "withdraw", target: tombstone, resourceType: otherResource },
+          success: true,
+          context: "haul"
+        };
+      }
+    }
+  }
+  
+  // 3. Check for containers with energy
+  const containersWithEnergy = ctx.containers.filter(
+    c => c.store.getUsedCapacity(RESOURCE_ENERGY) > 100
+  );
+  if (containersWithEnergy.length > 0) {
+    const closest = creep.pos.findClosestByPath(containersWithEnergy);
+    if (closest) {
+      return {
+        action: { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY },
+        success: true,
+        context: "haul"
+      };
+    }
+  }
+
+  // 4. Check for containers with minerals
+  if (ctx.mineralContainers.length > 0) {
+    const closest = creep.pos.findClosestByPath(ctx.mineralContainers);
+    if (closest) {
+      // Find first mineral type in container
+      const mineralType = Object.keys(closest.store).find(
+        r => r !== RESOURCE_ENERGY && closest.store.getUsedCapacity(r as ResourceConstant) > 0
+      ) as ResourceConstant | undefined;
+      
+      if (mineralType) {
+        return {
+          action: { type: "withdraw", target: closest, resourceType: mineralType },
+          success: true,
+          context: "haul"
+        };
+      }
+    }
+  }
+
+  // 5. Check storage last
+  if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+    return {
+      action: { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY },
+      success: true,
+      context: "haul"
+    };
+  }
+
   return {
     action: { type: "idle" },
     success: false,
-    error: "haulBehavior not yet implemented",
+    error: "No energy sources available",
     context: "haul"
   };
 }
