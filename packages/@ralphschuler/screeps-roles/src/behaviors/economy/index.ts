@@ -95,8 +95,8 @@ export function harvestBehavior(ctx: CreepContext): BehaviorResult {
 /**
  * Type guard to check if a creep memory has harvester fields.
  */
-function isHarvesterMemory(memory: CreepMemory): memory is BaseCreepMemory & { role: string; sourceId?: Id<Source> } {
-  return 'role' in memory && 'sourceId' in memory;
+function isHarvesterMemory(memory: CreepMemory): memory is BaseCreepMemory {
+  return 'role' in memory;
 }
 
 /**
@@ -117,6 +117,7 @@ function assignSource(ctx: CreepContext): Source | null {
   for (const name in Game.creeps) {
     const c = Game.creeps[name];
     const m = c.memory;
+    // Use type guard and explicit role check for clarity
     if (isHarvesterMemory(m) && m.role === "harvester" && m.sourceId && sourceCounts.has(m.sourceId)) {
       sourceCounts.set(m.sourceId, (sourceCounts.get(m.sourceId) ?? 0) + 1);
     }

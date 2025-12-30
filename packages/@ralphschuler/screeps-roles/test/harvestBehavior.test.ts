@@ -5,7 +5,7 @@
 import { expect } from "chai";
 import { harvestBehavior } from "../src/behaviors/economy/index";
 import { createContext } from "../src/framework/BehaviorContext";
-import type { CreepContext, BehaviorResult } from "../src/framework/types";
+import type { CreepContext } from "../src/framework/types";
 import { createMockCreep, createMockRoom, resetMockGame } from "./setup";
 
 describe("harvestBehavior", () => {
