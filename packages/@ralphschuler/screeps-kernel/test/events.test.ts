@@ -336,10 +336,10 @@ describe("EventBus", () => {
     it("should skip handlers when bucket < minBucket", () => {
       const executionOrder: string[] = [];
 
-      // Register handler with no minBucket requirement (default priority: NORMAL = 50)
+      // Register handler with priority 40 (lower than requires-1500 so it runs after)
       eventBus.on("cpu.spike", () => {
         executionOrder.push("no-requirement");
-      }, { priority: 40 }); // Lower priority so it runs after requires-1500
+      }, { priority: 40 });
 
       // Register handler with minBucket requirement (higher priority so it would run first if bucket allows)
       eventBus.on("cpu.spike", () => {
