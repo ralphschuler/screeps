@@ -136,10 +136,35 @@ export class ServerTestHelper {
   }
   
   /**
-   * Wraps bot code to log CPU and bucket metrics at the end of each tick
+   * Wraps bot code to log CPU, bucket, and memory parse time metrics
    * This allows us to collect real performance data from the game engine
    */
   private _wrapBotCodeWithMetrics(originalCode: string): string {
+    // Memory parse measurement code to be injected
+    const memoryParseCode = `
+      // Measure memory parse time at the start of the tick
+      let memoryParseTime = 0;
+      if (typeof RawMemory !== 'undefined' && typeof Game !== 'undefined' && Game.cpu) {
+        const parseStart = Game.cpu.getUsed();
+        const rawMemory = RawMemory.get();
+        // Store and use the parsed result to prevent JS engine optimization
+        const parsedMemory = rawMemory ? JSON.parse(rawMemory) : {};
+        // Lightweight operation to ensure parse happens without adding overhead
+        const _ensure = parsedMemory || 0;
+        // Always measure CPU time, even for empty memory
+        memoryParseTime = Game.cpu.getUsed() - parseStart;
+      }
+    `;
+    
+    const metricsLogging = `
+      // Log metrics for test helper to collect
+      if (typeof Game !== 'undefined' && Game.cpu) {
+        console.log('__CPU_USED__:' + Game.cpu.getUsed());
+        console.log('__BUCKET_LEVEL__:' + Game.cpu.bucket);
+        console.log('__MEMORY_PARSE_TIME__:' + memoryParseTime);
+      }
+    `;
+    
     // Check if code is already module.exports format using precise regex
     if (/module\.exports\.loop\s*=/.test(originalCode)) {
       // Extract the loop function and wrap it
@@ -153,15 +178,13 @@ export class ServerTestHelper {
         ${wrappedCode}
         
         module.exports.loop = function() {
+          ${memoryParseCode}
+          
           if (typeof originalLoop === 'function') {
             originalLoop();
           }
           
-          // Log metrics for test helper to collect
-          if (typeof Game !== 'undefined' && Game.cpu) {
-            console.log('__CPU_USED__:' + Game.cpu.getUsed());
-            console.log('__BUCKET_LEVEL__:' + Game.cpu.bucket);
-          }
+          ${metricsLogging}
         };
       `;
     } else {
@@ -185,15 +208,13 @@ export class ServerTestHelper {
         }
         
         const wrappedLoop = function() {
+          ${memoryParseCode}
+          
           if (typeof originalLoop === 'function') {
             originalLoop();
           }
           
-          // Log metrics for test helper to collect
-          if (typeof Game !== 'undefined' && Game.cpu) {
-            console.log('__CPU_USED__:' + Game.cpu.getUsed());
-            console.log('__BUCKET_LEVEL__:' + Game.cpu.bucket);
-          }
+          ${metricsLogging}
         };
         
         if (typeof module !== 'undefined' && module.exports) {
@@ -220,9 +241,10 @@ export class ServerTestHelper {
       const tickTime = Date.now() - startTime;
       this._metrics.tickTime.push(tickTime);
       
-      // Collect real CPU and bucket metrics from console output
+      // Collect real CPU, bucket, and memory parse time metrics from console output
       let cpuUsed = 0.05; // Default fallback
       let bucketLevel = 10000; // Default fallback
+      let memoryParseTime = 0.01; // Default fallback
       
       try {
         const notifications: ServerNotification[] = this._player.newNotifications || [];
@@ -244,24 +266,24 @@ export class ServerTestHelper {
               bucketLevel = parseInt(bucketMatch[1], 10);
             }
           }
+          if (message.includes('__MEMORY_PARSE_TIME__:')) {
+            const memoryParseMatch = message.match(/__MEMORY_PARSE_TIME__:([\d.]+)/);
+            if (memoryParseMatch) {
+              memoryParseTime = parseFloat(memoryParseMatch[1]);
+            }
+          }
         }
       } catch (error) {
         // If console parsing fails, use default values
         // Only log in debug mode to avoid cluttering test output
         if (process.env.DEBUG) {
-          console.warn('Failed to collect CPU/bucket metrics, using defaults:', error);
+          console.warn('Failed to collect metrics, using defaults:', error);
         }
       }
       
       this._metrics.cpuHistory.push(cpuUsed);
       this._metrics.bucketLevel.push(bucketLevel);
-      
-      // TODO: Collect real memory parse time metric
-      // Issue URL: https://github.com/ralphschuler/screeps/issues/983
-      // Memory parse time is not directly exposed by screeps-server-mockup.
-      // This would require instrumenting the memory parsing process or
-      // using performance profiling hooks if they become available.
-      this._metrics.memoryParseTime.push(0.01);
+      this._metrics.memoryParseTime.push(memoryParseTime);
     }
     return this._metrics;
   }
