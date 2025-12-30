@@ -242,7 +242,7 @@ describe("harvestBehavior", () => {
         store: {
           getUsedCapacity: () => 0,
           getFreeCapacity: () => 0,
-          getCapacity: () => null // No CARRY parts
+          getCapacity: () => 0 // No CARRY parts
         },
         body: [
           { type: WORK, hits: 100 },

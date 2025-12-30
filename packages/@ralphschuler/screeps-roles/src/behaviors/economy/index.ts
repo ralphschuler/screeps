@@ -57,7 +57,7 @@ export function harvestBehavior(ctx: CreepContext): BehaviorResult {
   const hasFreeCapacity = creep.store.getFreeCapacity() > 0;
   
   // Harvest if: no carry capacity (drop miner) OR has free space
-  if (carryCapacity === null || carryCapacity === 0 || hasFreeCapacity) {
+  if (!carryCapacity || hasFreeCapacity) {
     return {
       action: { type: "harvest", target: source },
       success: true,
@@ -93,6 +93,13 @@ export function harvestBehavior(ctx: CreepContext): BehaviorResult {
 }
 
 /**
+ * Type guard to check if a creep memory has harvester fields.
+ */
+function isHarvesterMemory(memory: CreepMemory): memory is BaseCreepMemory & { role: string; sourceId?: Id<Source> } {
+  return 'role' in memory && 'sourceId' in memory;
+}
+
+/**
  * Assign a source to a harvester, trying to balance load.
  * Simplified version from screeps-bot for framework independence.
  */
@@ -109,8 +116,8 @@ function assignSource(ctx: CreepContext): Source | null {
   // Count all harvesters with sourceId assigned to sources in this room
   for (const name in Game.creeps) {
     const c = Game.creeps[name];
-    const m = c.memory as unknown as BaseCreepMemory;
-    if (m.role === "harvester" && m.sourceId && sourceCounts.has(m.sourceId)) {
+    const m = c.memory;
+    if (isHarvesterMemory(m) && m.role === "harvester" && m.sourceId && sourceCounts.has(m.sourceId)) {
       sourceCounts.set(m.sourceId, (sourceCounts.get(m.sourceId) ?? 0) + 1);
     }
   }
