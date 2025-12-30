@@ -1,0 +1,17 @@
+{
+  "require": ["ts-node/register/transpile-only", "test/setup.ts"],
+  "ui": "bdd",
+  "reporter": "spec",
+  "bail": true,
+  "full-trace": true,
+  "watch-extensions": ["ts"],
+  "color": true,
+  "recursive": true,
+  "timeout": 5000,
+  "exit": true,
+  "spec": ["test/**/*.test.ts"],
+  "node-option": ["require=ts-node/register/transpile-only"],
+  "ts-node": {
+    "project": "./tsconfig.test.json"
+  }
+}

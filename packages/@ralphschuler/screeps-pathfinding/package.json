@@ -1,0 +1,38 @@
+{
+  "name": "@ralphschuler/screeps-pathfinding",
+  "version": "0.1.0",
+  "description": "Advanced pathfinding utilities for Screeps - portal management, path caching, and inter-shard routing",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "private": false,
+  "scripts": {
+    "build": "tsc",
+    "test": "mocha test/**/*.test.ts",
+    "test:watch": "mocha --watch test/**/*.test.ts"
+  },
+  "keywords": [
+    "screeps",
+    "pathfinding",
+    "portal",
+    "routing",
+    "cache",
+    "inter-shard",
+    "typescript"
+  ],
+  "author": "Ralph Schuler",
+  "license": "Unlicense",
+  "dependencies": {
+    "source-map": "~0.7.6"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.1.6",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^25.0.3",
+    "@types/screeps": "^3.3.8",
+    "chai": "^6.2.2",
+    "mocha": "^11.7.5",
+    "ts-node": "^10.2.0",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.4.3"
+  }
+}
