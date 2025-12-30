@@ -123,12 +123,10 @@ jobs:
             local title="$1"
             
             # Use GitHub search API for efficient lookup
-            # Use jq to properly escape the title for JSON
-            local escaped_title=$(echo "$title" | jq -Rs .)
-            
+            # gh CLI handles proper escaping internally with --field
             local count=$(gh api "/search/issues" \
               --method GET \
-              --field "q=repo:$GITHUB_REPOSITORY is:issue is:open in:title $escaped_title" \
+              --field "q=repo:$GITHUB_REPOSITORY is:issue is:open in:title $title" \
               --jq '.total_count')
             
             [ "$count" -gt 0 ]
