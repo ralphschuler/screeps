@@ -1,6 +1,88 @@
 # Screeps Server Setup
 
-This package contains a Docker Compose configuration for running a local Screeps private server with integrated monitoring via Grafana Cloud.
+This package contains a Docker Compose configuration for running a local Screeps private server with integrated monitoring via Grafana Cloud, **plus comprehensive test infrastructure** for validating bot performance and framework packages.
+
+## Quick Start
+
+### Local Development Server
+
+1. Copy `.env.example` to `.env` and configure the required values:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Set the required environment variables:
+   - `STEAM_KEY`: Your Steam API key
+   - `MAPTOOL_PASS`: Password for the map tool
+   - `GRAFANA_CLOUD_GRAPHITE_URL`: Your Grafana Cloud Graphite endpoint URL
+   - `GRAFANA_CLOUD_API_KEY`: Your Grafana Cloud API key
+   - Bot credentials: Either `SCREEPS_TOKEN` or `SCREEPS_BOT_USERNAME` + `SCREEPS_BOT_PASSWORD`
+
+3. Start the services:
+   ```bash
+   docker-compose up -d
+   ```
+
+4. Access the services:
+   - Screeps Server: http://localhost:21025
+   - Grafana Cloud: Access your Grafana Cloud instance to view dashboards
+
+### Test Infrastructure
+
+This package includes comprehensive test infrastructure for validating bot performance:
+
+```bash
+# Install dependencies
+npm install
+
+# Run all tests
+npm test
+
+# Run specific test suites
+npm run test:integration    # Bot lifecycle and functionality
+npm run test:performance    # CPU budget validation
+npm run test:packages       # Framework package tests
+
+# Run with coverage
+npm run test:coverage
+```
+
+See [TESTING_GUIDE.md](TESTING_GUIDE.md) for complete testing documentation.
+
+## Test Infrastructure
+
+### Overview
+
+The test infrastructure validates:
+
+- **Integration**: Bot spawns, runs, and performs expected behavior
+- **Performance**: CPU usage stays within ROADMAP.md targets (≤0.1 CPU for eco rooms)
+- **Packages**: Framework packages load and function correctly
+- **Regression**: Automated detection of performance degradation
+
+### Test Scenarios
+
+Predefined scenarios aligned with ROADMAP.md:
+
+| Scenario | Target | Description |
+|----------|--------|-------------|
+| Empty Room | ≤0.05 CPU | Fresh spawn initialization |
+| Single Eco Room | ≤0.1 CPU | Basic economy (RCL 4) |
+| Five Room Empire | ≤0.5 CPU | Multi-room coordination |
+| Combat | ≤0.25 CPU | Active defense |
+
+### CI Integration
+
+Tests run automatically on:
+- Pull requests
+- Pushes to main/develop
+- Manual workflow dispatch
+
+Results are posted as PR comments with:
+- Test pass/fail status
+- CPU metrics vs targets
+- Performance regression detection
+- Framework package validation
 
 ## Services
 
