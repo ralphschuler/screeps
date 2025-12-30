@@ -8,6 +8,12 @@
 import type { PathfindingStats } from "../stats/types";
 
 /**
+ * Estimated CPU cost for uncached pathfinding operation
+ * Used for calculating CPU savings from cache hits
+ */
+const ESTIMATED_UNCACHED_CPU_COST = 0.5;
+
+/**
  * Global pathfinding metrics for the current tick
  */
 class PathfindingMetricsTracker {
@@ -42,7 +48,7 @@ class PathfindingMetricsTracker {
     if (wasCached) {
       this.metrics.cacheHits++;
       // Estimate CPU saved: uncached would cost ~0.5 CPU, cached costs actual
-      const savedCpu = Math.max(0.5 - cpuCost, 0);
+      const savedCpu = Math.max(ESTIMATED_UNCACHED_CPU_COST - cpuCost, 0);
       this.metrics.cpuSaved += savedCpu;
     } else {
       this.metrics.cacheMisses++;

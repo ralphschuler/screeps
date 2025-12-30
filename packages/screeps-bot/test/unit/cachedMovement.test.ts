@@ -7,6 +7,11 @@ import { cachedMoveTo, cachedPathFinderSearch } from "../../src/utils/movement/c
 import { clearPathCache } from "../../src/cache";
 import { pathfindingMetrics } from "../../src/core/pathfindingMetrics.js";
 
+/**
+ * Mock path data for testing
+ */
+const MOCK_PATH_STEP = { x: 11, y: 11, dx: 1, dy: 1, direction: 5 };
+
 describe("cachedMovement", () => {
   beforeEach(() => {
     // Reset Game and global state
@@ -82,7 +87,7 @@ describe("cachedMovement", () => {
         pos: new RoomPosition(10, 10, "W1N1"),
         moveTo: () => OK,
         moveByPath: () => OK,
-        memory: { _move: { path: JSON.stringify([{ x: 11, y: 11, dx: 1, dy: 1, direction: 5 }]) } }
+        memory: { _move: { path: JSON.stringify([MOCK_PATH_STEP]) } }
       } as unknown as Creep;
 
       const target = new RoomPosition(20, 20, "W1N1");
@@ -99,7 +104,7 @@ describe("cachedMovement", () => {
         pos: new RoomPosition(10, 10, "W1N1"),
         moveTo: () => OK,
         moveByPath: () => OK,
-        memory: { _move: { path: JSON.stringify([{ x: 11, y: 11, dx: 1, dy: 1, direction: 5 }]) } }
+        memory: { _move: { path: JSON.stringify([MOCK_PATH_STEP]) } }
       } as unknown as Creep;
 
       const target = new RoomPosition(20, 20, "W1N1");
