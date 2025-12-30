@@ -50,6 +50,11 @@ export interface PerformanceMetrics {
   tickTime: number[];
 }
 
+interface ServerNotification {
+  type: string;
+  message: string;
+}
+
 export class ServerTestHelper {
   private _server: any;
   private _player: any;
@@ -109,13 +114,16 @@ export class ServerTestHelper {
         };
       `;
     }
+    
+    // Wrap bot code to log CPU and bucket metrics at the end of each tick
+    const wrappedBotCode = this._wrapBotCodeWithMetrics(botCode);
 
     this._player = await this._server.world.addBot({
       username: 'player',
       room: 'W0N1',
       x: 25,
       y: 25,
-      modules: { main: botCode }
+      modules: { main: wrappedBotCode }
     });
 
     await this._server.start();
@@ -125,6 +133,76 @@ export class ServerTestHelper {
       bucketLevel: [],
       tickTime: []
     };
+  }
+  
+  /**
+   * Wraps bot code to log CPU and bucket metrics at the end of each tick
+   * This allows us to collect real performance data from the game engine
+   */
+  private _wrapBotCodeWithMetrics(originalCode: string): string {
+    // Check if code is already module.exports format using precise regex
+    if (/module\.exports\.loop\s*=/.test(originalCode)) {
+      // Extract the loop function and wrap it
+      // Replace only the first occurrence to avoid multiple const declarations
+      const wrappedCode = originalCode.replace(
+        /module\.exports\.loop\s*=/,
+        'const originalLoop ='
+      );
+      
+      return `
+        ${wrappedCode}
+        
+        module.exports.loop = function() {
+          if (typeof originalLoop === 'function') {
+            originalLoop();
+          }
+          
+          // Log metrics for test helper to collect
+          if (typeof Game !== 'undefined' && Game.cpu) {
+            console.log('__CPU_USED__:' + Game.cpu.getUsed());
+            console.log('__BUCKET_LEVEL__:' + Game.cpu.bucket);
+          }
+        };
+      `;
+    } else {
+      // Assume it's ES6 module format or plain code
+      return `
+        ${originalCode}
+        
+        // Wrap the loop to add metrics logging
+        // Try to find existing loop function from various sources
+        let originalLoop;
+        try {
+          if (typeof loop !== 'undefined') {
+            originalLoop = loop;
+          }
+        } catch (e) {
+          // loop variable doesn't exist, try module.exports
+        }
+        
+        if (!originalLoop && typeof module !== 'undefined' && module.exports && module.exports.loop) {
+          originalLoop = module.exports.loop;
+        }
+        
+        const wrappedLoop = function() {
+          if (typeof originalLoop === 'function') {
+            originalLoop();
+          }
+          
+          // Log metrics for test helper to collect
+          if (typeof Game !== 'undefined' && Game.cpu) {
+            console.log('__CPU_USED__:' + Game.cpu.getUsed());
+            console.log('__BUCKET_LEVEL__:' + Game.cpu.bucket);
+          }
+        };
+        
+        if (typeof module !== 'undefined' && module.exports) {
+          module.exports.loop = wrappedLoop;
+        } else if (typeof globalThis !== 'undefined') {
+          globalThis.loop = wrappedLoop;
+        }
+      `;
+    }
   }
 
   async afterEach() {
@@ -136,19 +214,53 @@ export class ServerTestHelper {
   async runTicks(count: number): Promise<PerformanceMetrics> {
     for (let i = 0; i < count; i++) {
       const startTime = Date.now();
+      
+      // Run the tick
       await this._server.tick();
       const tickTime = Date.now() - startTime;
       this._metrics.tickTime.push(tickTime);
       
-      // TODO: Collect real CPU and bucket metrics from screeps-server-mockup
-      // Issue URL: https://github.com/ralphschuler/screeps/issues/947
-      // Current implementation uses placeholder values because screeps-server-mockup
-      // does not expose CPU/bucket metrics. This should be replaced with actual
-      // metrics collection once the server provides this data.
-      // For now, tests will verify structure but not actual performance.
-      this._metrics.cpuHistory.push(0.05);
+      // Collect real CPU and bucket metrics from console output
+      let cpuUsed = 0.05; // Default fallback
+      let bucketLevel = 10000; // Default fallback
+      
+      try {
+        const notifications: ServerNotification[] = this._player.newNotifications || [];
+        const consoleMessages = notifications
+          .filter((n) => n.type === 'console')
+          .map((n) => n.message);
+        
+        // Look for our special metric markers
+        for (const message of consoleMessages) {
+          if (message.includes('__CPU_USED__:')) {
+            const cpuMatch = message.match(/__CPU_USED__:([\d.]+)/);
+            if (cpuMatch) {
+              cpuUsed = parseFloat(cpuMatch[1]);
+            }
+          }
+          if (message.includes('__BUCKET_LEVEL__:')) {
+            const bucketMatch = message.match(/__BUCKET_LEVEL__:(\d+)/);
+            if (bucketMatch) {
+              bucketLevel = parseInt(bucketMatch[1], 10);
+            }
+          }
+        }
+      } catch (error) {
+        // If console parsing fails, use default values
+        // Only log in debug mode to avoid cluttering test output
+        if (process.env.DEBUG) {
+          console.warn('Failed to collect CPU/bucket metrics, using defaults:', error);
+        }
+      }
+      
+      this._metrics.cpuHistory.push(cpuUsed);
+      this._metrics.bucketLevel.push(bucketLevel);
+      
+      // TODO: Collect real memory parse time metric
+      // Memory parse time is not directly exposed by screeps-server-mockup.
+      // This would require instrumenting the memory parsing process or
+      // using performance profiling hooks if they become available.
       this._metrics.memoryParseTime.push(0.01);
-      this._metrics.bucketLevel.push(10000);
     }
     return this._metrics;
   }
@@ -157,10 +269,10 @@ export class ServerTestHelper {
     if (!this._player) throw new Error('Player not initialized');
     await this._player.console(command);
     await this._server.tick();
-    const notifications = this._player.newNotifications || [];
+    const notifications: ServerNotification[] = this._player.newNotifications || [];
     return notifications
-      .filter((n: any) => n.type === 'console')
-      .map((n: any) => n.message)
+      .filter((n) => n.type === 'console')
+      .map((n) => n.message)
       .join('\n');
   }
 
@@ -171,8 +283,8 @@ export class ServerTestHelper {
 
   async hasErrors(): Promise<boolean> {
     if (!this._player) return false;
-    const notifications = this._player.newNotifications || [];
-    return notifications.some((n: any) => 
+    const notifications: ServerNotification[] = this._player.newNotifications || [];
+    return notifications.some((n) => 
       n.type === 'error' || 
       (n.type === 'console' && n.message.toLowerCase().includes('error'))
     );
