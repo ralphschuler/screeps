@@ -1,0 +1,200 @@
+name: CI Error Issue Creator
+
+on:
+  workflow_run:
+    workflows:
+      - "Tests"
+      - "Lint"
+      - "Formatting"
+      - "MCP CI"
+      - "Screeps Exporter CI"
+      - "Performance Tests"
+    types:
+      - completed
+
+permissions:
+  issues: write
+  actions: read
+
+jobs:
+  create-error-issues:
+    runs-on: ubuntu-latest
+    # Only run if the workflow failed
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Get workflow run details
+        id: workflow-details
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Get workflow run jobs
+          WORKFLOW_RUN_ID="${{ github.event.workflow_run.id }}"
+          WORKFLOW_NAME="${{ github.event.workflow_run.name }}"
+          
+          echo "workflow_name=$WORKFLOW_NAME" >> $GITHUB_OUTPUT
+          echo "workflow_run_id=$WORKFLOW_RUN_ID" >> $GITHUB_OUTPUT
+          
+          # Get failed jobs
+          gh api "/repos/${{ github.repository }}/actions/runs/$WORKFLOW_RUN_ID/jobs" \
+            --jq '.jobs[] | select(.conclusion == "failure") | {name: .name, id: .id, conclusion: .conclusion}' \
+            > failed_jobs.json
+          
+          echo "Failed jobs:"
+          cat failed_jobs.json
+
+      - name: Download and parse job logs
+        id: parse-logs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          WORKFLOW_RUN_ID="${{ steps.workflow-details.outputs.workflow_run_id }}"
+          
+          # Create errors directory
+          mkdir -p errors
+          
+          # Download logs for failed jobs
+          gh api "/repos/${{ github.repository }}/actions/runs/$WORKFLOW_RUN_ID/logs" > logs.zip || true
+          
+          if [ -f logs.zip ]; then
+            unzip -q logs.zip -d logs/ || true
+            
+            # Parse logs to extract error messages
+            # Look for common error patterns
+            find logs/ -type f -name "*.txt" | while read -r log_file; do
+              # Extract error messages (common patterns)
+              grep -i "error:" "$log_file" | head -10 >> errors/raw_errors.txt || true
+              grep -i "fail" "$log_file" | grep -v "fail_ci_if_error" | head -10 >> errors/raw_errors.txt || true
+              grep -E "×|✗|❌" "$log_file" | head -10 >> errors/raw_errors.txt || true
+            done
+          fi
+          
+          # If no errors found in logs, create a generic error
+          if [ ! -f errors/raw_errors.txt ] || [ ! -s errors/raw_errors.txt ]; then
+            echo "Workflow failed but no specific error messages found" > errors/raw_errors.txt
+          fi
+
+      - name: Process errors and create issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          WORKFLOW_NAME="${{ steps.workflow-details.outputs.workflow_name }}"
+          WORKFLOW_RUN_ID="${{ steps.workflow-details.outputs.workflow_run_id }}"
+          RUN_URL="${{ github.event.workflow_run.html_url }}"
+          
+          # Create a script to process errors
+          cat > process_errors.sh << 'SCRIPT'
+          #!/bin/bash
+          set -e
+          
+          WORKFLOW_NAME="$1"
+          WORKFLOW_RUN_ID="$2"
+          RUN_URL="$3"
+          
+          # Function to create issue title from error
+          create_issue_title() {
+            local error_msg="$1"
+            local workflow_name="$2"
+            
+            # Clean up the error message for title (max 100 chars)
+            local clean_error=$(echo "$error_msg" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | head -c 100)
+            
+            echo "CI Error in $workflow_name: $clean_error"
+          }
+          
+          # Function to check if issue exists
+          issue_exists() {
+            local title="$1"
+            # Escape special characters for JSON
+            local escaped_title=$(echo "$title" | jq -Rs .)
+            
+            # Search for open issues with this title
+            local count=$(gh api "/repos/$GITHUB_REPOSITORY/issues" \
+              --jq ".[] | select(.title == $escaped_title and .state == \"open\") | .number" | wc -l)
+            
+            [ "$count" -gt 0 ]
+          }
+          
+          # Function to create an issue
+          create_issue() {
+            local title="$1"
+            local error_msg="$2"
+            local workflow_name="$3"
+            local run_url="$4"
+            
+            # Create issue body
+            local body="## CI Workflow Failed
+          
+          **Workflow:** $workflow_name
+          **Run:** [View failed run]($run_url)
+          
+          ### Error Details
+          
+          \`\`\`
+          $error_msg
+          \`\`\`
+          
+          ### Action Required
+          
+          Please investigate and fix this CI failure.
+          
+          ---
+          *This issue was automatically created by the CI Error Issue Creator workflow.*"
+            
+            # Create the issue
+            gh issue create \
+              --title "$title" \
+              --body "$body" \
+              --label "bug,ci,automated"
+          }
+          
+          # Process unique errors
+          if [ -f errors/raw_errors.txt ]; then
+            # Get unique error lines (deduplicate)
+            sort -u errors/raw_errors.txt > errors/unique_errors.txt
+            
+            # Process each unique error
+            while IFS= read -r error_line; do
+              # Skip empty lines
+              [ -z "$error_line" ] && continue
+              
+              # Create issue title
+              issue_title=$(create_issue_title "$error_line" "$WORKFLOW_NAME")
+              
+              echo "Processing error: $error_line"
+              echo "Issue title: $issue_title"
+              
+              # Check if issue already exists
+              if issue_exists "$issue_title"; then
+                echo "Issue already exists for: $issue_title"
+                echo "Skipping..."
+              else
+                echo "Creating new issue..."
+                create_issue "$issue_title" "$error_line" "$WORKFLOW_NAME" "$RUN_URL"
+                echo "Issue created successfully"
+              fi
+              
+              # Small delay to avoid rate limiting
+              sleep 2
+            done < errors/unique_errors.txt
+          else
+            echo "No errors file found"
+            
+            # Create a generic issue for the workflow failure
+            generic_title="CI Error in $WORKFLOW_NAME: Workflow failed"
+            if ! issue_exists "$generic_title"; then
+              create_issue "$generic_title" "Workflow failed but no specific error messages were found." "$WORKFLOW_NAME" "$RUN_URL"
+            fi
+          fi
+          SCRIPT
+          
+          chmod +x process_errors.sh
+          ./process_errors.sh "$WORKFLOW_NAME" "$WORKFLOW_RUN_ID" "$RUN_URL"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -rf logs logs.zip errors process_errors.sh failed_jobs.json || true
