@@ -32,13 +32,14 @@ describe("attackBehavior", () => {
   } as unknown as Creep;
 
   // Base mock context
-  const createMockContext = (overrides?: Partial<CreepContext>): CreepContext => ({
-    creep: mockAttackerCreep,
-    room: {
-      name: "W1N1",
-      find: (type: number, opts?: any) => [] as any[]
-    } as unknown as Room,
-    memory: { role: "soldier", homeRoom: "W1N1" },
+  const createMockContext = (overrides?: Partial<CreepContext>): CreepContext => {
+    const ctx: any = {
+      creep: mockAttackerCreep,
+      room: {
+        name: "W1N1",
+        find: (type: number, opts?: any) => [] as any[]
+      } as unknown as Room,
+      memory: { role: "soldier", homeRoom: "W1N1" },
     homeRoom: "W1N1",
     isInHomeRoom: true,
     isFull: false,
@@ -63,16 +64,18 @@ describe("attackBehavior", () => {
     repairTargets: [],
     labs: [],
     factory: undefined,
-    tombstones: [],
-    mineralContainers: [],
-    ...overrides
-  });
+      tombstones: [],
+      mineralContainers: [],
+      ...overrides
+    };
+    return ctx;
+  };
 
   describe("Priority 1: Move to target room", () => {
     it("should move to assigned target room when not there", () => {
       const ctx = createMockContext();
-      ctx.memory.targetRoom = "W2N1";
-      ctx.room.name = "W1N1"; // Different room
+      (ctx.memory as any).targetRoom = "W2N1";
+      (ctx.room as any).name = "W1N1"; // Different room
 
       const result: BehaviorResult = attackBehavior(ctx);
 
@@ -94,8 +97,8 @@ describe("attackBehavior", () => {
 
     it("should not move when already in target room", () => {
       const ctx = createMockContext();
-      ctx.memory.targetRoom = "W1N1";
-      ctx.room.name = "W1N1"; // Already in target room
+      (ctx.memory as any).targetRoom = "W1N1";
+      (ctx.room as any).name = "W1N1"; // Already in target room
 
       const result: BehaviorResult = attackBehavior(ctx);
 
