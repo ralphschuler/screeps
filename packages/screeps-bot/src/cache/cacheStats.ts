@@ -6,6 +6,9 @@
  */
 
 import { cacheCoherence } from "./CacheCoherence";
+import { createLogger } from "../core/logger";
+
+const logger = createLogger("CacheStats");
 
 /**
  * Collect cache coherence statistics for Grafana
@@ -105,14 +108,16 @@ export function logCacheStats(): void {
   const summary = getCachePerformanceSummary();
   const stats = cacheCoherence.getCacheStats();
 
-  console.log(`
-Cache Performance Summary:
-  Overall Hit Rate: ${(summary.overallHitRate * 100).toFixed(1)}% (${summary.cacheEfficiency})
-  L1 Hit Rate: ${(summary.l1HitRate * 100).toFixed(1)}%
-  L2 Hit Rate: ${(summary.l2HitRate * 100).toFixed(1)}%
-  L3 Hit Rate: ${(summary.l3HitRate * 100).toFixed(1)}%
-  Total Memory: ${summary.totalMemoryKB}KB
-  Total Evictions: ${stats.totalEvictions}
-  Total Invalidations: ${stats.totalInvalidations}
-  `);
+  logger.info("Cache Performance Summary", {
+    meta: {
+      overallHitRate: `${(summary.overallHitRate * 100).toFixed(1)}%`,
+      cacheEfficiency: summary.cacheEfficiency,
+      l1HitRate: `${(summary.l1HitRate * 100).toFixed(1)}%`,
+      l2HitRate: `${(summary.l2HitRate * 100).toFixed(1)}%`,
+      l3HitRate: `${(summary.l3HitRate * 100).toFixed(1)}%`,
+      totalMemoryKB: `${summary.totalMemoryKB}KB`,
+      totalEvictions: stats.totalEvictions,
+      totalInvalidations: stats.totalInvalidations
+    }
+  });
 }
