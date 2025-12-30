@@ -119,6 +119,7 @@ export function addProcess<T extends OSProcess>(process: T): T {
  * The process will be removed from Memory in storeProcessTable().
  * 
  * TODO: Kill child processes when parent is killed
+ Issue URL: https://github.com/ralphschuler/screeps/issues/995
  * 
  * @param pid - Process ID to kill
  * @returns The PID that was killed
@@ -139,6 +140,7 @@ export function killProcess(pid: number): number {
     });
     
     // TODO: Implement killing child processes
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/994
     // Find all processes with parentPID === pid and kill them recursively
   }
   
