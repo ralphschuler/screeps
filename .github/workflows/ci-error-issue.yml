@@ -63,12 +63,10 @@ jobs:
             unzip -q logs.zip -d logs/ || true
             
             # Parse logs to extract error messages
-            # Look for common error patterns
+            # Look for common error patterns (combined for efficiency)
             find logs/ -type f -name "*.txt" | while read -r log_file; do
-              # Extract error messages (common patterns)
-              grep -i "error:" "$log_file" | head -10 >> errors/raw_errors.txt || true
-              grep -iE "failed:|failure:|test failed|build failed" "$log_file" | head -10 >> errors/raw_errors.txt || true
-              grep -E "×|✗|❌" "$log_file" | head -10 >> errors/raw_errors.txt || true
+              # Extract error messages using combined patterns
+              grep -iE "error:|failed:|failure:|test failed|build failed|×|✗|❌" "$log_file" | head -20 >> errors/raw_errors.txt || true
             done
           fi
           
@@ -84,15 +82,17 @@ jobs:
           WORKFLOW_NAME="${{ steps.workflow-details.outputs.workflow_name }}"
           WORKFLOW_RUN_ID="${{ steps.workflow-details.outputs.workflow_run_id }}"
           RUN_URL="${{ github.event.workflow_run.html_url }}"
+          GITHUB_REPO="${{ github.repository }}"
           
           # Create a script to process errors
-          cat > process_errors.sh << 'SCRIPT'
+          cat > process_errors.sh << 'EOF'
           #!/bin/bash
           set -e
           
           WORKFLOW_NAME="$1"
           WORKFLOW_RUN_ID="$2"
           RUN_URL="$3"
+          GITHUB_REPOSITORY="$4"
           
           # Function to create issue title from error
           create_issue_title() {
@@ -216,10 +216,10 @@ jobs:
               create_issue "$generic_title" "Workflow failed but no specific error messages were found." "$WORKFLOW_NAME" "$RUN_URL"
             fi
           fi
-          SCRIPT
+          EOF
           
           chmod +x process_errors.sh
-          ./process_errors.sh "$WORKFLOW_NAME" "$WORKFLOW_RUN_ID" "$RUN_URL"
+          ./process_errors.sh "$WORKFLOW_NAME" "$WORKFLOW_RUN_ID" "$RUN_URL" "$GITHUB_REPO"
 
       - name: Cleanup
         if: always()
