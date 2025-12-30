@@ -56,6 +56,7 @@ describe("Behavior Exports", () => {
       const result: BehaviorResult = harvestBehavior(mockContext as CreepContext);
       expect(result).to.have.property("action");
       expect(result).to.have.property("success");
+      expect(result.success).to.be.true; // harvestBehavior is implemented
       expect(result.action.type).to.equal("idle");
     });
 
@@ -114,7 +115,6 @@ describe("Behavior Exports", () => {
   describe("Behavior Results", () => {
     it("should return BehaviorResult with expected structure for placeholder implementations", () => {
       const placeholderBehaviors = [
-        harvestBehavior,
         haulBehavior,
         buildBehavior,
         upgradeBehavior,
@@ -134,7 +134,7 @@ describe("Behavior Exports", () => {
     });
 
     it("should return BehaviorResult with expected structure for implemented behaviors", () => {
-      const implementedBehaviors = [healBehavior];
+      const implementedBehaviors = [harvestBehavior, healBehavior];
 
       implementedBehaviors.forEach((behavior) => {
         const result = behavior(mockContext as CreepContext);
