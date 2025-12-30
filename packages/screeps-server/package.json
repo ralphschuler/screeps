@@ -13,7 +13,8 @@
     "test:performance": "mocha test/performance/**/*.test.ts",
     "test:packages": "mocha test/packages/**/*.test.ts",
     "test:watch": "mocha --watch test/**/*.test.ts",
-    "test:coverage": "c8 --reporter=text --reporter=html --reporter=lcov npm run test:integration"
+    "test:coverage": "c8 --reporter=text --reporter=html --reporter=lcov npm run test:integration",
+    "posttest": "node scripts/analyze-tests.js"
   },
   "keywords": [
     "screeps",
