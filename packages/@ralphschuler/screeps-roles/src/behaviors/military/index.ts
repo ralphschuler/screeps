@@ -8,7 +8,7 @@
  * truly reusable and framework-independent.
  */
 
-import type { BehaviorFunction, CreepContext, BehaviorResult } from "../../framework/types";
+import type { CreepContext, BehaviorResult } from "../../framework/types";
 
 /**
  * Attack behavior - Offensive combat actions.

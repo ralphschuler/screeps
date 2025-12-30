@@ -8,7 +8,7 @@
  * truly reusable and framework-independent.
  */
 
-import type { BehaviorFunction, CreepContext, BehaviorResult } from "../../framework/types";
+import type { CreepContext, BehaviorResult } from "../../framework/types";
 
 /**
  * Harvest behavior - Mining resources from sources.
