@@ -99,19 +99,20 @@ jobs:
             local error_msg="$1"
             local workflow_name="$2"
             local MAX_TITLE_LENGTH=120
-            local ELLIPSIS_OFFSET=3
+            local ELLIPSIS="..."
             
             # Calculate how much space we have for the error message
             # Format: "CI Error in WORKFLOW: ERROR"
             local prefix="CI Error in $workflow_name: "
-            local available_length=$((MAX_TITLE_LENGTH - ${#prefix} - ELLIPSIS_OFFSET))
+            local available_length=$((MAX_TITLE_LENGTH - ${#prefix}))
             
             # Clean up the error message
             local clean_error=$(echo "$error_msg" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
             
-            # Truncate if necessary
+            # Truncate if necessary (accounting for ellipsis only when needed)
             if [ ${#clean_error} -gt $available_length ]; then
-              clean_error="${clean_error:0:$available_length}..."
+              local truncate_at=$((available_length - ${#ELLIPSIS}))
+              clean_error="${clean_error:0:$truncate_at}${ELLIPSIS}"
             fi
             
             echo "${prefix}${clean_error}"
@@ -122,9 +123,12 @@ jobs:
             local title="$1"
             
             # Use GitHub search API for efficient lookup
-            # The gh CLI properly escapes the query parameter
+            # Use jq to properly escape the title for JSON
+            local escaped_title=$(echo "$title" | jq -Rs .)
+            
             local count=$(gh api "/search/issues" \
-              -f "q=repo:$GITHUB_REPOSITORY is:issue is:open in:title $(printf '%q' "$title")" \
+              --method GET \
+              --field "q=repo:$GITHUB_REPOSITORY is:issue is:open in:title $escaped_title" \
               --jq '.total_count')
             
             [ "$count" -gt 0 ]
