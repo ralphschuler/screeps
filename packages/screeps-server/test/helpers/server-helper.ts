@@ -140,6 +140,33 @@ export class ServerTestHelper {
    * This allows us to collect real performance data from the game engine
    */
   private _wrapBotCodeWithMetrics(originalCode: string): string {
+    // Memory parse measurement code to be injected
+    const memoryParseCode = `
+      // Measure memory parse time at the start of the tick
+      let memoryParseTime = 0;
+      if (typeof RawMemory !== 'undefined' && typeof Game !== 'undefined' && Game.cpu) {
+        const parseStart = Game.cpu.getUsed();
+        const rawMemory = RawMemory.get();
+        if (rawMemory) {
+          // Store the parsed result to prevent JS engine optimization
+          const parsedMemory = JSON.parse(rawMemory);
+          // Prevent unused variable warning by checking existence
+          if (parsedMemory !== undefined) {
+            memoryParseTime = Game.cpu.getUsed() - parseStart;
+          }
+        }
+      }
+    `;
+    
+    const metricsLogging = `
+      // Log metrics for test helper to collect
+      if (typeof Game !== 'undefined' && Game.cpu) {
+        console.log('__CPU_USED__:' + Game.cpu.getUsed());
+        console.log('__BUCKET_LEVEL__:' + Game.cpu.bucket);
+        console.log('__MEMORY_PARSE_TIME__:' + memoryParseTime);
+      }
+    `;
+    
     // Check if code is already module.exports format using precise regex
     if (/module\.exports\.loop\s*=/.test(originalCode)) {
       // Extract the loop function and wrap it
@@ -153,27 +180,13 @@ export class ServerTestHelper {
         ${wrappedCode}
         
         module.exports.loop = function() {
-          // Measure memory parse time at the start of the tick
-          let memoryParseTime = 0;
-          if (typeof RawMemory !== 'undefined' && typeof Game !== 'undefined' && Game.cpu) {
-            const parseStart = Game.cpu.getUsed();
-            const rawMemory = RawMemory.get();
-            if (rawMemory) {
-              JSON.parse(rawMemory);
-            }
-            memoryParseTime = Game.cpu.getUsed() - parseStart;
-          }
+          ${memoryParseCode}
           
           if (typeof originalLoop === 'function') {
             originalLoop();
           }
           
-          // Log metrics for test helper to collect
-          if (typeof Game !== 'undefined' && Game.cpu) {
-            console.log('__CPU_USED__:' + Game.cpu.getUsed());
-            console.log('__BUCKET_LEVEL__:' + Game.cpu.bucket);
-            console.log('__MEMORY_PARSE_TIME__:' + memoryParseTime);
-          }
+          ${metricsLogging}
         };
       `;
     } else {
@@ -197,27 +210,13 @@ export class ServerTestHelper {
         }
         
         const wrappedLoop = function() {
-          // Measure memory parse time at the start of the tick
-          let memoryParseTime = 0;
-          if (typeof RawMemory !== 'undefined' && typeof Game !== 'undefined' && Game.cpu) {
-            const parseStart = Game.cpu.getUsed();
-            const rawMemory = RawMemory.get();
-            if (rawMemory) {
-              JSON.parse(rawMemory);
-            }
-            memoryParseTime = Game.cpu.getUsed() - parseStart;
-          }
+          ${memoryParseCode}
           
           if (typeof originalLoop === 'function') {
             originalLoop();
           }
           
-          // Log metrics for test helper to collect
-          if (typeof Game !== 'undefined' && Game.cpu) {
-            console.log('__CPU_USED__:' + Game.cpu.getUsed());
-            console.log('__BUCKET_LEVEL__:' + Game.cpu.bucket);
-            console.log('__MEMORY_PARSE_TIME__:' + memoryParseTime);
-          }
+          ${metricsLogging}
         };
         
         if (typeof module !== 'undefined' && module.exports) {
