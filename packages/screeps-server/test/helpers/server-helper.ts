@@ -143,9 +143,9 @@ export class ServerTestHelper {
     // Check if code is already module.exports format using precise regex
     if (/module\.exports\.loop\s*=/.test(originalCode)) {
       // Extract the loop function and wrap it
-      // Use precise regex to only replace module.exports.loop assignment
+      // Replace only the first occurrence to avoid multiple const declarations
       const wrappedCode = originalCode.replace(
-        /module\.exports\.loop\s*=/g,
+        /module\.exports\.loop\s*=/,
         'const originalLoop ='
       );
       
@@ -153,7 +153,7 @@ export class ServerTestHelper {
         ${wrappedCode}
         
         module.exports.loop = function() {
-          if (originalLoop) {
+          if (typeof originalLoop === 'function') {
             originalLoop();
           }
           
@@ -172,14 +172,20 @@ export class ServerTestHelper {
         // Wrap the loop to add metrics logging
         // Try to find existing loop function from various sources
         let originalLoop;
-        if (typeof loop !== 'undefined') {
-          originalLoop = loop;
-        } else if (typeof module !== 'undefined' && module.exports && module.exports.loop) {
+        try {
+          if (typeof loop !== 'undefined') {
+            originalLoop = loop;
+          }
+        } catch (e) {
+          // loop variable doesn't exist, try module.exports
+        }
+        
+        if (!originalLoop && typeof module !== 'undefined' && module.exports && module.exports.loop) {
           originalLoop = module.exports.loop;
         }
         
         const wrappedLoop = function() {
-          if (originalLoop) {
+          if (typeof originalLoop === 'function') {
             originalLoop();
           }
           
@@ -192,8 +198,8 @@ export class ServerTestHelper {
         
         if (typeof module !== 'undefined' && module.exports) {
           module.exports.loop = wrappedLoop;
-        } else {
-          loop = wrappedLoop;
+        } else if (typeof globalThis !== 'undefined') {
+          globalThis.loop = wrappedLoop;
         }
       `;
     }
