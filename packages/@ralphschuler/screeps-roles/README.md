@@ -33,20 +33,30 @@ console.log(ctx.containers.length);
 clearRoomCaches();
 ```
 
-### Coming Soon: Pre-Built Roles (Phase 9)
+### Pre-Built Roles (Phase 9 - Basic Implementation)
 
 ```typescript
-// NOT YET AVAILABLE - Planned for Phase 9
-import { runEconomyRole, runMilitaryRole } from '@ralphschuler/screeps-roles';
+// NOW AVAILABLE - Basic role implementations exported
+// Note: These are minimal implementations that will be expanded as behaviors are extracted (Phases 2-8)
+import { runEconomyRole, runMilitaryRole, runUtilityRole } from '@ralphschuler/screeps-roles';
 
 for (const creep of Object.values(Game.creeps)) {
   if (creep.memory.family === 'economy') {
     runEconomyRole(creep);
   } else if (creep.memory.family === 'military') {
     runMilitaryRole(creep);
+  } else if (creep.memory.family === 'utility') {
+    runUtilityRole(creep);
   }
 }
 ```
+
+**Important Note**: The current implementations are placeholders that create context but do not execute behaviors. Full functionality requires:
+- Phase 2: Behavior Executor
+- Phase 3: State Machine
+- Phases 4-6: Behavior Implementations
+
+These will be added in future updates. For now, the roles establish the API structure and can be used as a foundation.
 
 ### Coming Soon: Composing Custom Roles (Phases 2-8)
 
