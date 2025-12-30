@@ -62,18 +62,174 @@ export function haulBehavior(ctx: CreepContext): BehaviorResult {
  * A builder finds construction sites and builds them, prioritizing
  * critical structures like spawns and extensions.
  * 
+ * Priority: deliver energy to spawns/extensions/towers first, then build
+ * This ensures the room economy stays healthy while building
+ * 
  * @param ctx - The creep context
  * @returns Behavior result with action to execute
  */
 export function buildBehavior(ctx: CreepContext): BehaviorResult {
-  // TODO: Implement standalone build behavior
-  // Issue URL: https://github.com/ralphschuler/screeps/issues/969
-  // For now, this is a placeholder that returns idle
-  // Full implementation requires extracting logic from screeps-bot
+  const creep = ctx.creep;
+  const room = ctx.room;
+  
+  // Determine working state based on energy levels
+  const isEmpty = creep.store.getUsedCapacity() === 0;
+  const isFull = creep.store.getFreeCapacity() === 0;
+  
+  // Initialize working state if undefined
+  if (ctx.memory.working === undefined) {
+    ctx.memory.working = !isEmpty;
+  }
+  
+  // Update working state based on energy levels
+  if (isEmpty) {
+    ctx.memory.working = false;
+  } else if (isFull) {
+    ctx.memory.working = true;
+  }
+  
+  const isWorking = ctx.memory.working;
+  
+  if (isWorking) {
+    // Before building, check if critical structures need energy
+    // Priority: Spawns → Extensions → Towers → Build → Upgrade
+    
+    // 1. Check spawns first (highest priority)
+    const spawns = ctx.spawnStructures.filter(
+      (s): s is StructureSpawn => 
+        s.structureType === STRUCTURE_SPAWN &&
+        s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+    );
+    if (spawns.length > 0) {
+      const closest = creep.pos.findClosestByPath(spawns);
+      if (closest) {
+        return {
+          action: { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY },
+          success: true,
+          context: "build"
+        };
+      }
+    }
+
+    // 2. Check extensions second
+    const extensions = ctx.spawnStructures.filter(
+      (s): s is StructureExtension => 
+        s.structureType === STRUCTURE_EXTENSION &&
+        s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+    );
+    if (extensions.length > 0) {
+      const closest = creep.pos.findClosestByPath(extensions);
+      if (closest) {
+        return {
+          action: { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY },
+          success: true,
+          context: "build"
+        };
+      }
+    }
+
+    // 3. Check towers third
+    const towersWithCapacity = ctx.towers.filter(
+      t => t.store.getFreeCapacity(RESOURCE_ENERGY) >= 100
+    );
+    if (towersWithCapacity.length > 0) {
+      const closest = creep.pos.findClosestByPath(towersWithCapacity);
+      if (closest) {
+        return {
+          action: { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY },
+          success: true,
+          context: "build"
+        };
+      }
+    }
+
+    // 4. All critical structures filled - now build construction sites
+    if (ctx.prioritizedSites.length > 0) {
+      const site = ctx.prioritizedSites[0];
+      if (site) {
+        return {
+          action: { type: "build", target: site },
+          success: true,
+          context: "build"
+        };
+      }
+    }
+
+    // 5. No construction sites - help upgrade controller
+    if (room.controller && room.controller.my) {
+      return {
+        action: { type: "upgrade", target: room.controller },
+        success: true,
+        context: "build"
+      };
+    }
+    
+    return {
+      action: { type: "idle" },
+      success: false,
+      error: "No construction sites or controller available",
+      context: "build"
+    };
+  }
+
+  // Not working - need to collect energy
+  // Priority: dropped resources > containers > storage > harvest from source
+  
+  // 1. Check for dropped resources first
+  if (ctx.droppedResources.length > 0) {
+    const closest = creep.pos.findClosestByPath(ctx.droppedResources);
+    if (closest) {
+      return {
+        action: { type: "pickup", target: closest },
+        success: true,
+        context: "build"
+      };
+    }
+  }
+  
+  // 2. Check for containers with energy
+  const containersWithEnergy = ctx.containers.filter(
+    c => c.store.getUsedCapacity(RESOURCE_ENERGY) > 100
+  );
+  if (containersWithEnergy.length > 0) {
+    const closest = creep.pos.findClosestByPath(containersWithEnergy);
+    if (closest) {
+      return {
+        action: { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY },
+        success: true,
+        context: "build"
+      };
+    }
+  }
+
+  // 3. Check storage
+  if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+    return {
+      action: { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY },
+      success: true,
+      context: "build"
+    };
+  }
+
+  // 4. Last resort: harvest from source
+  const sources = room.find(FIND_SOURCES, {
+    filter: source => source.energy > 0
+  });
+  if (sources.length > 0) {
+    const closest = creep.pos.findClosestByPath(sources);
+    if (closest) {
+      return {
+        action: { type: "harvest", target: closest },
+        success: true,
+        context: "build"
+      };
+    }
+  }
+
   return {
     action: { type: "idle" },
     success: false,
-    error: "buildBehavior not yet implemented",
+    error: "No energy sources available",
     context: "build"
   };
 }
