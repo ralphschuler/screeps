@@ -17,12 +17,28 @@ npm install @ralphschuler/screeps-roles
 
 ## Quick Start
 
-### Using Pre-Built Roles
+### Phase 1: Currently Available
 
 ```typescript
+import { createContext, clearRoomCaches } from '@ralphschuler/screeps-roles';
+
+// Create context for behavior evaluation
+const ctx = createContext(creep);
+
+// Access cached room data (lazy-evaluated)
+console.log(ctx.droppedResources.length);
+console.log(ctx.containers.length);
+
+// Clear caches at start of tick
+clearRoomCaches();
+```
+
+### Coming Soon: Pre-Built Roles (Phase 9)
+
+```typescript
+// NOT YET AVAILABLE - Planned for Phase 9
 import { runEconomyRole, runMilitaryRole } from '@ralphschuler/screeps-roles';
 
-// Run economy roles
 for (const creep of Object.values(Game.creeps)) {
   if (creep.memory.family === 'economy') {
     runEconomyRole(creep);
@@ -32,21 +48,20 @@ for (const creep of Object.values(Game.creeps)) {
 }
 ```
 
-### Composing Custom Roles
+### Coming Soon: Composing Custom Roles (Phases 2-8)
 
 ```typescript
+// NOT YET AVAILABLE - Planned for Phases 2-8
 import { 
   createContext, 
-  executeAction,
-  harvestBehavior,
-  haulBehavior 
+  executeAction,        // Phase 2
+  harvestBehavior,      // Phase 4
+  haulBehavior          // Phase 4
 } from '@ralphschuler/screeps-roles';
 
-// Create a custom harvester-hauler role
 export function runCustomRole(creep: Creep): void {
   const ctx = createContext(creep);
   
-  // Compose behaviors
   let action;
   if (creep.store.getFreeCapacity() > 0) {
     action = harvestBehavior(ctx);
@@ -91,32 +106,36 @@ type CreepAction =
 
 ## API Reference
 
-### Framework
+### Framework (Phase 1 - Available Now)
 
 - `createContext(creep: Creep): CreepContext` - Creates a context for behavior evaluation
+- `clearRoomCaches(): void` - Clears per-tick room caches (call at tick start)
+
+### Planned API
+
+#### Phase 2: Executor
 - `executeAction(creep: Creep, action: CreepAction, ctx: CreepContext): void` - Executes an action
 
-### Economy Behaviors
-
+#### Phase 4: Economy Behaviors
 - `harvestBehavior(ctx: CreepContext): CreepAction` - Harvest energy from sources
 - `haulBehavior(ctx: CreepContext): CreepAction` - Transport energy
 - `buildBehavior(ctx: CreepContext): CreepAction` - Build construction sites
 - `upgradeBehavior(ctx: CreepContext): CreepAction` - Upgrade controller
 - And more...
 
-### Military Behaviors
-
+#### Phase 5: Military Behaviors
 - `attackBehavior(ctx: CreepContext): CreepAction` - Attack hostiles
 - `defendBehavior(ctx: CreepContext): CreepAction` - Defend room
 - `healBehavior(ctx: CreepContext): CreepAction` - Heal allies
 - And more...
 
-### Complete Roles
-
+#### Phase 9: Complete Roles
 - `runEconomyRole(creep: Creep): void` - Run economy role behavior
 - `runMilitaryRole(creep: Creep): void` - Run military role behavior
 - `runUtilityRole(creep: Creep): void` - Run utility role behavior
 - `runPowerRole(creep: Creep): void` - Run power creep role behavior
+
+See `docs/IMPLEMENTATION_STATUS.md` for the complete roadmap.
 
 ## License
 

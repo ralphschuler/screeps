@@ -143,10 +143,14 @@ function getContainers(cache: RoomCache): StructureContainer[] {
 
 /**
  * Get containers with free capacity from cache (lazy evaluation)
+ * Note: Returns all containers. Capacity should be checked by behavior functions
+ * for fresh state, as container capacity changes during the tick.
  */
 function getDepositContainers(cache: RoomCache): StructureContainer[] {
   if (cache._depositContainers === undefined) {
     ensureAllStructuresLoaded(cache);
+    // Return all containers - behaviors will check for free capacity as needed
+    // This prevents stale capacity data from cache
     cache._depositContainers = cache.allStructures.filter(
       (s): s is StructureContainer => s.structureType === STRUCTURE_CONTAINER
     );
@@ -298,6 +302,11 @@ export function clearRoomCaches(): void {
 /**
  * Create a context object for a creep.
  * Uses per-tick room caching with lazy evaluation to minimize CPU usage.
+ * 
+ * **Side Effect**: This function initializes `memory.working` if it's undefined,
+ * setting it based on the creep's current store state. This ensures creeps have
+ * a valid working state for behavior evaluation. This is a one-time initialization
+ * that only occurs when the field is truly undefined.
  */
 export function createContext<TMemory extends BaseCreepMemory = BaseCreepMemory>(
   creep: Creep
@@ -308,7 +317,7 @@ export function createContext<TMemory extends BaseCreepMemory = BaseCreepMemory>
   // Get cached room data
   const roomCache = getRoomCache(room);
 
-  // Initialize working state if undefined
+  // Initialize working state if undefined (one-time initialization)
   if (memory.working === undefined) {
     memory.working = creep.store.getUsedCapacity() > 0;
   }
