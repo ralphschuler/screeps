@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- OS-style process architecture based on "Writing an OS for Screeps" Gist
+- `OSProcess` base class with Memory serialization support
+- Process lifecycle management (add, kill, get by ID)
+- Memory-persisted process table with automatic storage/loading
+- Parent-child process relationships
+- Per-process memory namespaces in `Memory.processMemory[pid]`
+- Process class registration system for className-based instantiation
+- Comprehensive test suite for OS kernel (85 tests total)
+- OS architecture documentation with API reference
+- Example implementations for mineral mining and task priority scenarios
+- `resetOSKernel()` function for test isolation
 - Framework documentation and examples
 - npm publishing workflow
 

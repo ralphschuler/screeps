@@ -69,3 +69,24 @@ export {
   updateConfig,
   resetConfig
 } from './config';
+
+// Export OS-style process kernel (from Gist)
+export {
+  type SerializedProcess,
+  ProcessStatus,
+  OSProcess
+} from './osProcess';
+
+export {
+  registerProcessClass,
+  getProcessClass,
+  addProcess,
+  killProcess,
+  getProcessById,
+  storeProcessTable,
+  loadProcessTable,
+  run as runOSKernel,
+  getRegisteredProcessClasses,
+  getProcessStats as getOSProcessStats,
+  resetOSKernel
+} from './osKernel';
