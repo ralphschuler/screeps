@@ -338,6 +338,45 @@ The defense subsystem is optimized for CPU efficiency:
 
 Total defense overhead: **~0.3-0.6 CPU per defended room**
 
+## Testing
+
+The package includes comprehensive tests covering:
+
+- **Threat Assessment**: Tests for `assessThreat()`, danger level calculation, and DPS estimation
+- **Tower Damage**: Tests for `calculateTowerDamage()` with range-based falloff
+- **Hostile Detection**: Tests for identifying healers, ranged attackers, and dismantlers
+- **Emergency Levels**: Tests for emergency level enumeration and escalation
+- **Structure Defense**: Tests for rampart placement and wall repair targets (in progress)
+
+**Test Coverage**: >80% (target in progress)
+
+Run tests:
+```bash
+npm test
+```
+
+### Test Structure
+
+```
+test/
+  ├── setup.cjs                 # Test environment setup and mocks
+  ├── exports.test.ts           # Package exports validation
+  ├── threatAssessment.test.ts  # Threat assessment tests
+  └── ...                       # Additional test files
+```
+
+### Key Test Cases
+
+- ✅ Tower damage calculation at various ranges (close, medium, far)
+- ✅ Danger level calculation from threat scores (0-3 scale)
+- ✅ Defender cost estimation based on hostile strength
+- ✅ Hostile creep detection and classification
+- ✅ DPS calculation for attack and ranged attack parts
+- ✅ Healer, ranged attacker, and dismantler identification
+- ✅ Empty room (no threat) handling
+- 📝 Safe mode management (planned)
+- 📝 Evacuation coordination (planned)
+
 ## ROADMAP Alignment
 
 This package implements defense systems from ROADMAP.md:

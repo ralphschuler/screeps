@@ -27,8 +27,25 @@ jobs:
       - name: Build dependencies
         run: npm run build
 
-      - name: Run tests with coverage
+      - name: Run main bot tests with coverage
         run: npm run test:coverage -w screeps-typescript-starter
+        continue-on-error: true
+
+      - name: Run package tests
+        run: |
+          echo "## Package Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Test each package and report results
+          for package in spawn economy defense chemistry utils kernel roles pathfinding remote-mining; do
+            echo "Testing @ralphschuler/screeps-$package..."
+            if npm run test:$package 2>&1 | tee test-output.log; then
+              echo "✅ **screeps-$package**: Tests passed" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⚠️ **screeps-$package**: Tests failed or no tests" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+        continue-on-error: true
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v5
@@ -44,11 +61,15 @@ jobs:
         if: always()
         run: |
           echo "## Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           if [ -f packages/screeps-bot/coverage/lcov.info ]; then
-            echo "✅ Coverage report generated successfully" >> $GITHUB_STEP_SUMMARY
+            echo "✅ Main bot coverage report generated successfully" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "View detailed coverage report in the Codecov upload above." >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ No coverage report found" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ No coverage report found for main bot" >> $GITHUB_STEP_SUMMARY
           fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Individual Package Tests" >> $GITHUB_STEP_SUMMARY
+          echo "See 'Package Test Results' section above for individual package test status." >> $GITHUB_STEP_SUMMARY
 

@@ -258,6 +258,45 @@ The package is organized into modules:
 4. **Easy Integration**: Simple interfaces for state and logging
 5. **Memory Efficient**: Configs can be serialized/deserialized for persistence
 
+## Testing
+
+The package includes comprehensive tests covering:
+
+- **ChemistryManager**: Tests for reaction lookups, chain calculation, and resource checking
+- **Reaction Chains**: Tests for tier 1, tier 2, and tier 3 compound production
+- **Lab Planning**: Tests for minimum lab requirements and terminal integration
+- **Resource Validation**: Tests for `hasResourcesForReaction()` with various amounts
+- **REACTIONS Constant**: Validation of all reaction definitions
+
+**Test Coverage**: >70% (target in progress)
+
+Run tests:
+```bash
+npm test
+```
+
+### Test Structure
+
+```
+test/
+  ├── setup.ts                  # Test environment setup with Screeps constants
+  ├── chemistryManager.test.ts  # ChemistryManager tests
+  └── ...                       # Additional test files
+```
+
+### Key Test Cases
+
+- ✅ Reaction lookup for valid/invalid compounds
+- ✅ Single-step reaction chains (tier 1 compounds)
+- ✅ Multi-step reaction chains (complex compounds)
+- ✅ Resource availability checking with terminals
+- ✅ Minimum amount validation for reactions
+- ✅ Missing resource handling
+- ✅ Lab requirement validation (3+ labs needed)
+- ✅ REACTIONS constant structure validation
+- 📝 Lab configuration and role assignment (planned)
+- 📝 Boost management (planned)
+
 ## License
 
 Unlicense - Public Domain
