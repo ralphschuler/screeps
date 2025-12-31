@@ -19,8 +19,17 @@
     "military",
     "typescript"
   ],
-  "author": "",
+  "author": "Ralph Schuler",
   "license": "Unlicense",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ralphschuler/screeps.git",
+    "directory": "packages/screeps-defense"
+  },
+  "bugs": {
+    "url": "https://github.com/ralphschuler/screeps/issues"
+  },
+  "homepage": "https://github.com/ralphschuler/screeps/tree/main/packages/screeps-defense#readme",
   "peerDependencies": {
     "screeps-typescript-starter": "*"
   },

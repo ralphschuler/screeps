@@ -28,11 +28,62 @@ const UTILITY_PHEROMONE_WEIGHT = 2; // Average across 2 pheromone types for util
  * SpawnManager class
  * 
  * Manages spawn operations with clean separation from game state.
+ * Provides intelligent body selection, priority-based queue management,
+ * and pheromone-based dynamic priority adjustments.
+ * 
+ * @example
+ * ```typescript
+ * const spawnManager = new SpawnManager({
+ *   debug: true,
+ *   rolePriorities: {
+ *     harvester: 100,
+ *     hauler: 90
+ *   }
+ * });
+ * 
+ * const requests: SpawnRequest[] = [
+ *   { role: 'harvester', priority: 100, memory: { role: 'harvester' } }
+ * ];
+ * 
+ * const spawns = room.find(FIND_MY_SPAWNS);
+ * const results = spawnManager.processSpawnQueue(spawns, requests);
+ * ```
  */
 export class SpawnManager {
   private config: SpawnConfig;
   private roleDefs: Record<string, RoleSpawnDef>;
 
+  /**
+   * Create a new SpawnManager instance
+   * 
+   * @param config - Optional configuration for spawn behavior
+   * @param customRoles - Optional custom role definitions to override defaults
+   * 
+   * @example
+   * ```typescript
+   * // With default configuration
+   * const manager = new SpawnManager();
+   * 
+   * // With custom configuration
+   * const manager = new SpawnManager({
+   *   debug: true,
+   *   rolePriorities: { harvester: 100 }
+   * });
+   * 
+   * // With custom roles
+   * const customRoles = {
+   *   myRole: {
+   *     role: 'myRole',
+   *     family: 'economy',
+   *     bodies: [{ parts: [WORK, CARRY, MOVE], cost: 200, minCapacity: 200 }],
+   *     priority: 50,
+   *     maxPerRoom: 5,
+   *     remoteRole: false
+   *   }
+   * };
+   * const manager = new SpawnManager({}, customRoles);
+   * ```
+   */
   constructor(config: SpawnConfig = {}, customRoles?: Record<string, RoleSpawnDef>) {
     this.config = config;
     this.roleDefs = customRoles || DEFAULT_ROLE_DEFINITIONS;
@@ -40,6 +91,21 @@ export class SpawnManager {
 
   /**
    * Get the best body template for a role based on available energy
+   * 
+   * Selects the most expensive body template that fits within the energy budget.
+   * Returns null if no valid template is found.
+   * 
+   * @param role - The role name (e.g., 'harvester', 'upgrader')
+   * @param energyAvailable - Available energy for spawning
+   * @returns The best matching body template, or null if none found
+   * 
+   * @example
+   * ```typescript
+   * const body = spawnManager.getBestBody('harvester', 550);
+   * if (body) {
+   *   console.log(`Selected body: ${body.parts}, cost: ${body.cost}`);
+   * }
+   * ```
    */
   getBestBody(role: string, energyAvailable: number): BodyTemplate | null {
     const def = getRoleDefinition(role, this.roleDefs);
@@ -141,9 +207,32 @@ export class SpawnManager {
 
   /**
    * Process spawn queue for multiple spawns
-   * @param spawns Array of available spawns
-   * @param requests Array of spawn requests (sorted by priority)
-   * @returns Array of spawn results
+   * 
+   * Processes an array of spawn requests across multiple spawns, selecting
+   * the highest priority request that can be afforded. Requests are sorted
+   * by priority (highest first) and matched with available spawns.
+   * 
+   * @param spawns - Array of available spawns (non-spawning spawns will be used)
+   * @param requests - Array of spawn requests (will be sorted by priority internally)
+   * @returns Array of spawn results for each spawning attempt
+   * 
+   * @example
+   * ```typescript
+   * const spawns = room.find(FIND_MY_SPAWNS);
+   * const requests: SpawnRequest[] = [
+   *   { role: 'harvester', priority: 100, memory: { role: 'harvester' } },
+   *   { role: 'upgrader', priority: 80, memory: { role: 'upgrader' } }
+   * ];
+   * 
+   * const results = spawnManager.processSpawnQueue(spawns, requests);
+   * for (const result of results) {
+   *   if (result.success) {
+   *     console.log(`Spawned ${result.creepName}`);
+   *   } else {
+   *     console.log(`Failed: ${result.message}`);
+   *   }
+   * }
+   * ```
    */
   processSpawnQueue(spawns: StructureSpawn[], requests: SpawnRequest[]): SpawnResult[] {
     const results: SpawnResult[] = [];
@@ -188,7 +277,21 @@ export class SpawnManager {
 
   /**
    * Generate unique creep name
-   * Note: Uses Game.time if available, falls back to random if not
+   * 
+   * Creates a unique name by combining the role with the current game time
+   * and a random number. Falls back to Date.now() if Game.time is not available
+   * (useful for testing).
+   * 
+   * @param role - The role name to use as prefix
+   * @returns A unique creep name in format: `{role}_{time}_{random}`
+   * 
+   * @example
+   * ```typescript
+   * const name = spawnManager.generateCreepName('harvester');
+   * // Returns: "harvester_12345678_123"
+   * ```
+   * 
+   * @internal
    */
   generateCreepName(role: string): string {
     const time = (typeof Game !== 'undefined' && Game.time) ? Game.time : Date.now();
@@ -197,6 +300,33 @@ export class SpawnManager {
 
   /**
    * Check if a role should be spawned based on current counts
+   * 
+   * Determines whether more creeps of a given role are needed by comparing
+   * the current count against configured minimum and maximum values.
+   * 
+   * @param role - The role name to check
+   * @param currentCount - Current number of creeps with this role
+   * @param roomState - Current state of the room (for advanced logic)
+   * @returns True if the role should be spawned
+   * 
+   * @example
+   * ```typescript
+   * const roomState: RoomState = {
+   *   name: 'W1N1',
+   *   energyAvailable: 300,
+   *   energyCapacityAvailable: 550,
+   *   rcl: 3,
+   *   posture: 'eco',
+   *   pheromones: { harvest: 0.5, build: 0.3, upgrade: 0.2 },
+   *   danger: 0,
+   *   bootstrap: false
+   * };
+   * 
+   * const shouldSpawn = spawnManager.shouldSpawnRole('harvester', 2, roomState);
+   * if (shouldSpawn) {
+   *   console.log('Need more harvesters');
+   * }
+   * ```
    */
   shouldSpawnRole(role: string, currentCount: number, roomState: RoomState): boolean {
     const def = getRoleDefinition(role, this.roleDefs);
@@ -219,6 +349,37 @@ export class SpawnManager {
 
   /**
    * Calculate effective priority for a role based on room state
+   * 
+   * Computes the spawn priority by starting with the base priority,
+   * applying configuration overrides, adjusting for current creep count,
+   * and applying pheromone multipliers based on room posture.
+   * 
+   * @param role - The role name
+   * @param currentCount - Current number of creeps with this role
+   * @param roomState - Current state of the room including pheromones
+   * @returns The calculated priority value (higher = more important)
+   * 
+   * @example
+   * ```typescript
+   * const roomState: RoomState = {
+   *   name: 'W1N1',
+   *   energyAvailable: 300,
+   *   energyCapacityAvailable: 550,
+   *   rcl: 3,
+   *   posture: 'eco',
+   *   pheromones: { 
+   *     harvest: 0.8,  // High harvest pheromone
+   *     build: 0.3,
+   *     upgrade: 0.5
+   *   },
+   *   danger: 0,
+   *   bootstrap: false
+   * };
+   * 
+   * const priority = spawnManager.calculatePriority('harvester', 1, roomState);
+   * console.log(`Harvester priority: ${priority}`);
+   * // Higher priority due to high harvest pheromone
+   * ```
    */
   calculatePriority(role: string, currentCount: number, roomState: RoomState): number {
     const def = getRoleDefinition(role, this.roleDefs);

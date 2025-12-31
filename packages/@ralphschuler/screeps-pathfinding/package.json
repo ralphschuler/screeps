@@ -21,6 +21,15 @@
   ],
   "author": "Ralph Schuler",
   "license": "Unlicense",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ralphschuler/screeps.git",
+    "directory": "packages/@ralphschuler/screeps-pathfinding"
+  },
+  "bugs": {
+    "url": "https://github.com/ralphschuler/screeps/issues"
+  },
+  "homepage": "https://github.com/ralphschuler/screeps/tree/main/packages/@ralphschuler/screeps-pathfinding#readme",
   "dependencies": {
     "source-map": "~0.7.6"
   },
