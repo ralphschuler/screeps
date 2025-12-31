@@ -167,14 +167,14 @@ const isTight = analyzer.isMarketTight(RESOURCE_ENERGY);
 
 All components are automatically registered with the kernel via `@ProcessClass()` decorator and run on their configured intervals. They integrate seamlessly with existing systems:
 
-- **IntelScanner** updates the existing `Memory.overmind.roomIntel` database
+- **IntelScanner** updates the existing `Memory.empire.knownRooms` database
 - **ThreatPredictor** generates alerts and updates room threat levels
 - **CrossShardIntelCoordinator** syncs with `InterShardMemory`
 - **MarketTrendAnalyzer** enhances the existing `MarketManager`
 
 ## Memory Usage
 
-- **Room Intel**: Already tracked in `Memory.overmind.roomIntel`
+- **Room Intel**: Already tracked in `Memory.empire.knownRooms`
 - **Enemy Players**: Stored in-memory Map, not persisted
 - **Predictions**: Stored in-memory, regenerated each tick
 - **InterShard**: Uses compact serialization, ~5-10KB per shard

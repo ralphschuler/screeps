@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import type { OvermindMemory, RoomIntel, SwarmState } from "../../src/memory/schemas";
+import type { EmpireMemory, RoomIntel, SwarmState } from "../../src/memory/schemas";
 
 // Mock the global Game object
 declare const global: { Game: typeof Game; Memory: typeof Memory };
@@ -77,7 +77,7 @@ function createMockRoomIntel(name: string, sources = 2, scouted = true, owner?: 
 /**
  * Create mock overmind memory
  */
-function createMockOvermindMemory(): OvermindMemory {
+function createMockEmpireMemory(): EmpireMemory {
   return {
     roomsSeen: {},
     roomIntel: {},
@@ -122,7 +122,7 @@ describe("expansion manager concepts", () => {
 
   describe("remote room candidate evaluation", () => {
     it("should identify remote room candidates based on intel", () => {
-      const overmind = createMockOvermindMemory();
+      const empire = createMockEmpireMemory();
       overmind.roomIntel["E2N1"] = createMockRoomIntel("E2N1", 2, true);
       overmind.roomIntel["E3N1"] = createMockRoomIntel("E3N1", 1, true);
 
@@ -135,7 +135,7 @@ describe("expansion manager concepts", () => {
     });
 
     it("should exclude owned rooms from remote candidates", () => {
-      const overmind = createMockOvermindMemory();
+      const empire = createMockEmpireMemory();
       overmind.roomIntel["E2N1"] = createMockRoomIntel("E2N1", 2, true, "SomePlayer");
 
       // Room with an owner should not be considered for remote mining
@@ -145,7 +145,7 @@ describe("expansion manager concepts", () => {
     });
 
     it("should exclude SK rooms from remote candidates", () => {
-      const overmind = createMockOvermindMemory();
+      const empire = createMockEmpireMemory();
       const intel = createMockRoomIntel("E2N1", 2, true);
       intel.isSK = true;
       overmind.roomIntel["E2N1"] = intel;
@@ -155,7 +155,7 @@ describe("expansion manager concepts", () => {
     });
 
     it("should exclude highway rooms from remote candidates", () => {
-      const overmind = createMockOvermindMemory();
+      const empire = createMockEmpireMemory();
       const intel = createMockRoomIntel("E2N1", 2, true);
       intel.isHighway = true;
       overmind.roomIntel["E2N1"] = intel;
@@ -187,7 +187,7 @@ describe("expansion manager concepts", () => {
     });
 
     it("should track claimed status of expansion candidates", () => {
-      const overmind = createMockOvermindMemory();
+      const empire = createMockEmpireMemory();
       overmind.claimQueue = [
         { roomName: "E4N4", score: 80, distance: 2, claimed: false, lastEvaluated: 1000 },
         { roomName: "E5N5", score: 70, distance: 3, claimed: true, lastEvaluated: 1000 }
@@ -199,7 +199,7 @@ describe("expansion manager concepts", () => {
     });
 
     it("should remove claimed rooms from claim queue when they are now owned", () => {
-      const overmind = createMockOvermindMemory();
+      const empire = createMockEmpireMemory();
       overmind.claimQueue = [
         { roomName: "E1N1", score: 90, distance: 1, claimed: true, lastEvaluated: 1000 },
         { roomName: "E4N4", score: 80, distance: 2, claimed: false, lastEvaluated: 1000 },
@@ -416,7 +416,7 @@ describe("expansion manager concepts", () => {
 
   describe("cluster-based expansion strategy", () => {
     it("should prioritize expansion near existing clusters", () => {
-      const overmind = createMockOvermindMemory();
+      const empire = createMockEmpireMemory();
       overmind.claimQueue = [
         { roomName: "E2N1", score: 80, distance: 1, claimed: false, lastEvaluated: 1000 },
         { roomName: "E5N5", score: 85, distance: 10, claimed: false, lastEvaluated: 1000 }

@@ -1,12 +1,12 @@
 import { expect } from "chai";
 import { NukeManager } from "../../src/empire/nukeManager";
-import { createDefaultSwarmState, createDefaultOvermindMemory } from "../../src/memory/schemas";
+import { createDefaultSwarmState, createDefaultEmpireMemory } from "../../src/memory/schemas";
 import { Game, Memory } from "./mock";
 import * as sinon from "sinon";
 
 describe("Nuke Manager", () => {
   let nukeManager: NukeManager;
-  let getOvermindStub: sinon.SinonStub;
+  let getEmpireStub: sinon.SinonStub;
   let getSwarmStateStub: sinon.SinonStub;
   let getClustersStub: sinon.SinonStub;
 
@@ -30,7 +30,7 @@ describe("Nuke Manager", () => {
 
     // Setup stubs for memory manager
     const memoryManager = require("../../src/memory/manager").memoryManager;
-    getOvermindStub = sinon.stub(memoryManager, "getOvermind").returns(createDefaultOvermindMemory());
+    getOvermindStub = sinon.stub(memoryManager, "getEmpire").returns(createDefaultEmpireMemory());
     getSwarmStateStub = sinon.stub(memoryManager, "getSwarmState");
     getClustersStub = sinon.stub(memoryManager, "getClusters").returns({});
   });
@@ -102,7 +102,7 @@ describe("Nuke Manager", () => {
 
   describe("Nuke Candidate Scoring", () => {
     it("should score rooms based on threat level and structures", () => {
-      const overmind = createDefaultOvermindMemory();
+      const empire = createDefaultEmpireMemory();
       overmind.objectives.warMode = true;
       overmind.warTargets = ["W2N2"];
       overmind.roomIntel["W2N2"] = {
@@ -139,7 +139,7 @@ describe("Nuke Manager", () => {
     });
 
     it("should apply distance penalty", () => {
-      const overmind = createDefaultOvermindMemory();
+      const empire = createDefaultEmpireMemory();
       overmind.roomIntel["W10N10"] = {
         name: "W10N10",
         lastSeen: Game.time,
@@ -177,7 +177,7 @@ describe("Nuke Manager", () => {
 
   describe("Resource Management", () => {
     it("should detect nuker resource needs", () => {
-      const overmind = createDefaultOvermindMemory();
+      const empire = createDefaultEmpireMemory();
       overmind.objectives.warMode = true;
 
       getOvermindStub.returns(overmind);
@@ -232,7 +232,7 @@ describe("Nuke Manager", () => {
 
   describe("Siege Coordination", () => {
     it("should coordinate nuke launch with siege squad arrival", () => {
-      const overmind = createDefaultOvermindMemory();
+      const empire = createDefaultEmpireMemory();
       overmind.objectives.warMode = true;
       overmind.nukeCandidates = [
         {
@@ -343,7 +343,7 @@ describe("Nuke Manager", () => {
 
   describe("Nuke Impact Prediction", () => {
     it("should predict damage for structures in blast radius", () => {
-      const overmind = createDefaultOvermindMemory();
+      const empire = createDefaultEmpireMemory();
       getOvermindStub.returns(overmind);
 
       const mockStructure = {
@@ -370,7 +370,7 @@ describe("Nuke Manager", () => {
     });
 
     it("should estimate damage when room is not visible", () => {
-      const overmind = createDefaultOvermindMemory();
+      const empire = createDefaultEmpireMemory();
       overmind.roomIntel["W5N5"] = {
         name: "W5N5",
         lastSeen: Game.time - 1000,
@@ -398,7 +398,7 @@ describe("Nuke Manager", () => {
 
   describe("ROI Calculation", () => {
     it("should calculate positive ROI for valuable targets", () => {
-      const overmind = createDefaultOvermindMemory();
+      const empire = createDefaultEmpireMemory();
       getOvermindStub.returns(overmind);
 
       const mockStructure = {
@@ -426,7 +426,7 @@ describe("Nuke Manager", () => {
 
   describe("Counter-Nuke Strategies", () => {
     it("should identify counter-nuke opportunity", () => {
-      const overmind = createDefaultOvermindMemory();
+      const empire = createDefaultEmpireMemory();
       overmind.incomingNukes = [
         {
           roomName: "W1N1",
@@ -497,7 +497,7 @@ describe("Nuke Manager", () => {
 
   describe("Salvo Coordination", () => {
     it("should coordinate multiple nukes on same target", () => {
-      const overmind = createDefaultOvermindMemory();
+      const empire = createDefaultEmpireMemory();
       overmind.nukesInFlight = [
         {
           id: "nuke1",
@@ -527,7 +527,7 @@ describe("Nuke Manager", () => {
     });
 
     it("should detect desynchronized nukes", () => {
-      const overmind = createDefaultOvermindMemory();
+      const empire = createDefaultEmpireMemory();
       overmind.nukesInFlight = [
         {
           id: "nuke1",
@@ -563,7 +563,7 @@ describe("Nuke Manager", () => {
 
   describe("Cleanup Operations", () => {
     it("should remove impacted nukes from tracking", () => {
-      const overmind = createDefaultOvermindMemory();
+      const empire = createDefaultEmpireMemory();
       overmind.nukesInFlight = [
         {
           id: "nuke1",
@@ -595,7 +595,7 @@ describe("Nuke Manager", () => {
     });
 
     it("should remove old incoming nuke alerts", () => {
-      const overmind = createDefaultOvermindMemory();
+      const empire = createDefaultEmpireMemory();
       overmind.incomingNukes = [
         {
           roomName: "W1N1",
@@ -629,7 +629,7 @@ describe("Nuke Manager", () => {
 
   describe("Economics Tracking", () => {
     it("should initialize economics tracking", () => {
-      const overmind = createDefaultOvermindMemory();
+      const empire = createDefaultEmpireMemory();
       delete overmind.nukeEconomics;
 
       getOvermindStub.returns(overmind);
@@ -643,7 +643,7 @@ describe("Nuke Manager", () => {
     });
 
     it("should update economics tracking", () => {
-      const overmind = createDefaultOvermindMemory();
+      const empire = createDefaultEmpireMemory();
       overmind.nukeEconomics = {
         nukesLaunched: 2,
         totalEnergyCost: 600000,

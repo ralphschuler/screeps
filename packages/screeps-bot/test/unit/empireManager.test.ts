@@ -5,8 +5,8 @@
  */
 
 import { expect } from "chai";
-import type { OvermindMemory, RoomIntel } from "../../src/memory/schemas";
-import { createDefaultOvermindMemory } from "../../src/memory/schemas";
+import type { EmpireMemory, RoomIntel } from "../../src/memory/schemas";
+import { createDefaultEmpireMemory } from "../../src/memory/schemas";
 
 // Mock global objects
 const mockMemory: any = {};
@@ -60,11 +60,11 @@ function createMockRoomIntel(name: string, options: Partial<RoomIntel> = {}): Ro
 }
 
 describe("Empire Manager Automation", () => {
-  let overmind: OvermindMemory;
+  let empire: EmpireMemory;
 
   beforeEach(() => {
     // Reset overmind before each test
-    overmind = createDefaultOvermindMemory();
+    overmind = createDefaultEmpireMemory();
     mockGame.time = 1000;
     mockGame.rooms = {};
     mockGame.spawns = {};

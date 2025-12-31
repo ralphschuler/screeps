@@ -187,7 +187,7 @@ export class IntelScanner {
       }
 
       // Update room intel
-      this.updateRoomIntel(room, overmind);
+      this.updateRoomIntel(room, empire);
       scanned++;
     }
   }

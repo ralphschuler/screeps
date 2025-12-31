@@ -6,8 +6,8 @@
  */
 
 import { expect } from "chai";
-import type { RoomIntel, OvermindMemory } from "../../src/memory/schemas";
-import { createDefaultOvermindMemory } from "../../src/memory/schemas";
+import type { RoomIntel, EmpireMemory } from "../../src/memory/schemas";
+import { createDefaultEmpireMemory } from "../../src/memory/schemas";
 import * as ExpansionScoring from "../../src/empire/expansionScoring";
 
 // Mock the global Game object
@@ -108,10 +108,10 @@ function getAdjacentRoomNames(roomName: string): string[] {
 }
 
 describe("Expansion Safety Analysis", () => {
-  let overmind: OvermindMemory;
+  let empire: EmpireMemory;
 
   beforeEach(() => {
-    overmind = createDefaultOvermindMemory();
+    overmind = createDefaultEmpireMemory();
 
     global.Game = {
       time: 1000,
@@ -526,7 +526,7 @@ describe("Expansion Cancellation", () => {
 
   describe("Hostile Claim Detection", () => {
     it("should detect when room is claimed by hostile player", () => {
-      const overmind = createDefaultOvermindMemory();
+      const empire = createDefaultEmpireMemory();
       overmind.roomIntel["E5N5"] = createMockRoomIntel("E5N5", { owner: "HostilePlayer" });
 
       const intel = overmind.roomIntel["E5N5"];
@@ -536,7 +536,7 @@ describe("Expansion Cancellation", () => {
     });
 
     it("should not trigger if room is unclaimed", () => {
-      const overmind = createDefaultOvermindMemory();
+      const empire = createDefaultEmpireMemory();
       overmind.roomIntel["E5N5"] = createMockRoomIntel("E5N5", { owner: undefined });
 
       const intel = overmind.roomIntel["E5N5"];
