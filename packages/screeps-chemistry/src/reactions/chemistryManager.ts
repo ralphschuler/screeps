@@ -1,7 +1,28 @@
 /**
  * Chemistry Manager
  * 
- * Main coordination class for chemistry system
+ * Main coordination class for the chemistry system. Handles reaction planning,
+ * compound production scheduling, and resource validation.
+ * 
+ * @example
+ * ```typescript
+ * import { ChemistryManager } from '@ralphschuler/screeps-chemistry';
+ * 
+ * const chemistry = new ChemistryManager({ logger: console });
+ * 
+ * const gameState = {
+ *   currentTick: Game.time,
+ *   danger: 2,
+ *   posture: 'war',
+ *   pheromones: { war: 0.8, siege: 0 }
+ * };
+ * 
+ * // Plan reactions for a room
+ * const reaction = chemistry.planReactions(Game.rooms['W1N1'], gameState);
+ * if (reaction) {
+ *   console.log(`Produce ${reaction.product} from ${reaction.input1} + ${reaction.input2}`);
+ * }
+ * ```
  */
 
 import type { Reaction, ChemistryState, ChemistryLogger } from "../types";
@@ -10,27 +31,85 @@ import { calculateReactionChain, hasResourcesForReaction, REACTIONS } from "../r
 import { getTargetCompounds, getStockpileTarget } from "../compounds/targets";
 
 /**
- * Chemistry Manager Options
+ * Options for configuring ChemistryManager
  */
 export interface ChemistryManagerOptions {
-  /** Logger instance (optional) */
+  /** Optional logger instance for debugging and monitoring */
   logger?: ChemistryLogger;
 }
 
 /**
  * Chemistry Manager Class
  * 
- * Coordinates reaction planning and execution
+ * Coordinates reaction planning, production scheduling, and resource management
+ * for lab-based compound production. Supports just-in-time production based on
+ * game state (eco/war mode) and automatic reaction chain calculation.
+ * 
+ * @example
+ * ```typescript
+ * const chemistry = new ChemistryManager({ logger: myLogger });
+ * 
+ * // Get reaction for a specific compound
+ * const reaction = chemistry.getReaction(RESOURCE_HYDROXIDE);
+ * console.log(`${reaction.product} = ${reaction.input1} + ${reaction.input2}`);
+ * 
+ * // Calculate multi-step reaction chain
+ * const chain = chemistry.calculateReactionChain(
+ *   RESOURCE_CATALYZED_UTRIUM_ACID,
+ *   terminal.store
+ * );
+ * console.log(`Chain length: ${chain.length} steps`);
+ * ```
  */
 export class ChemistryManager {
   private logger: ChemistryLogger;
 
+  /**
+   * Create a new ChemistryManager instance
+   * 
+   * @param options - Configuration options
+   * 
+   * @example
+   * ```typescript
+   * // With default options (no logging)
+   * const manager = new ChemistryManager();
+   * 
+   * // With custom logger
+   * const manager = new ChemistryManager({
+   *   logger: {
+   *     info: (msg) => console.log(`[Chemistry] ${msg}`),
+   *     warn: (msg) => console.warn(`[Chemistry] ${msg}`),
+   *     error: (msg) => console.error(`[Chemistry] ${msg}`),
+   *     debug: (msg) => console.log(`[Chemistry DEBUG] ${msg}`)
+   *   }
+   * });
+   * ```
+   */
   constructor(options: ChemistryManagerOptions = {}) {
     this.logger = options.logger ?? noopLogger;
   }
 
   /**
-   * Get reaction for a compound (lookup in REACTIONS table)
+   * Get reaction definition for a compound
+   * 
+   * Looks up the reaction formula for producing a specific compound.
+   * Returns undefined if the compound cannot be produced via reactions
+   * (e.g., base minerals like hydrogen, oxygen).
+   * 
+   * @param compound - The compound to look up
+   * @returns The reaction definition, or undefined if not producible
+   * 
+   * @example
+   * ```typescript
+   * const reaction = chemistry.getReaction(RESOURCE_HYDROXIDE);
+   * if (reaction) {
+   *   console.log(`${reaction.product} = ${reaction.input1} + ${reaction.input2}`);
+   *   // Output: "OH = H + O"
+   * }
+   * 
+   * const baseMineral = chemistry.getReaction(RESOURCE_HYDROGEN);
+   * console.log(baseMineral); // undefined (base resource, not produced)
+   * ```
    */
   public getReaction(compound: ResourceConstant): Reaction | undefined {
     return REACTIONS[compound];
@@ -38,7 +117,33 @@ export class ChemistryManager {
 
   /**
    * Calculate full reaction chain for a target compound
-   * Returns array of reactions in order (dependencies first)
+   * 
+   * Recursively calculates all reactions needed to produce the target compound,
+   * taking into account available resources. Returns reactions in dependency order
+   * (prerequisites first, target last).
+   * 
+   * @param target - The target compound to produce
+   * @param availableResources - Currently available resources to use as inputs
+   * @returns Array of reactions in execution order (dependencies first)
+   * 
+   * @example
+   * ```typescript
+   * const terminal = room.terminal;
+   * const chain = chemistry.calculateReactionChain(
+   *   RESOURCE_CATALYZED_UTRIUM_ACID,
+   *   terminal.store
+   * );
+   * 
+   * // Chain might be:
+   * // 1. OH = H + O
+   * // 2. UH = U + H
+   * // 3. UA = UH + OH
+   * // 4. XUA = UA + X (catalyzed version)
+   * 
+   * for (const reaction of chain) {
+   *   console.log(`Step: ${reaction.product} = ${reaction.input1} + ${reaction.input2}`);
+   * }
+   * ```
    */
   public calculateReactionChain(
     target: ResourceConstant,
@@ -48,7 +153,31 @@ export class ChemistryManager {
   }
 
   /**
-   * Check if we have enough resources for a reaction
+   * Check if terminal has enough resources for a reaction
+   * 
+   * Validates that the terminal contains sufficient quantities of both input
+   * resources needed for a reaction. Useful for planning reaction execution.
+   * 
+   * @param terminal - The terminal structure to check
+   * @param reaction - The reaction to validate resources for
+   * @param minAmount - Minimum amount of each resource required (default: 100)
+   * @returns True if terminal has enough of both inputs
+   * 
+   * @example
+   * ```typescript
+   * const reaction = chemistry.getReaction(RESOURCE_HYDROXIDE);
+   * if (reaction && chemistry.hasResourcesForReaction(room.terminal, reaction, 500)) {
+   *   console.log('Can produce at least 500 OH');
+   *   labConfig.setActiveReaction(roomName, reaction.input1, reaction.input2, reaction.product);
+   * } else {
+   *   console.log('Insufficient resources for OH production');
+   * }
+   * 
+   * // Check with custom minimum
+   * if (chemistry.hasResourcesForReaction(room.terminal, reaction, 2000)) {
+   *   console.log('Can produce large batch of 2000+');
+   * }
+   * ```
    */
   public hasResourcesForReaction(
     terminal: StructureTerminal,
@@ -59,7 +188,43 @@ export class ChemistryManager {
   }
 
   /**
-   * Plan reactions for a room
+   * Plan reactions for a room based on current state
+   * 
+   * Analyzes room resources, game state, and stockpile targets to determine
+   * the best reaction to run. Returns null if no reactions are needed or possible.
+   * 
+   * Requires:
+   * - At least 3 labs in the room
+   * - A terminal for resource management
+   * - Sufficient resources for the chosen reaction
+   * 
+   * Priority order:
+   * 1. Compounds below stockpile targets
+   * 2. State-appropriate compounds (war boosts in war mode, etc.)
+   * 3. Compounds with available inputs
+   * 
+   * @param room - The room to plan reactions for
+   * @param state - Current game state (posture, danger level, pheromones)
+   * @returns The reaction to execute, or null if none appropriate
+   * 
+   * @example
+   * ```typescript
+   * const gameState: ChemistryState = {
+   *   currentTick: Game.time,
+   *   danger: 3,
+   *   posture: 'war',
+   *   pheromones: { war: 0.9, siege: 0.2 }
+   * };
+   * 
+   * const reaction = chemistry.planReactions(room, gameState);
+   * if (reaction) {
+   *   console.log(`Planning to produce ${reaction.product}`);
+   *   // War mode prioritizes combat boosts
+   *   // High danger level increases targets for defensive compounds
+   * } else {
+   *   console.log('No reactions needed or possible');
+   * }
+   * ```
    */
   public planReactions(room: Room, state: ChemistryState): Reaction | null {
     // Get available labs
