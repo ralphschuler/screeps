@@ -30,7 +30,7 @@ describe("Nuke Manager", () => {
 
     // Setup stubs for memory manager
     const memoryManager = require("../../src/memory/manager").memoryManager;
-    getOvermindStub = sinon.stub(memoryManager, "getEmpire").returns(createDefaultEmpireMemory());
+    getEmpireStub = sinon.stub(memoryManager, "getEmpire").returns(createDefaultEmpireMemory());
     getSwarmStateStub = sinon.stub(memoryManager, "getSwarmState");
     getClustersStub = sinon.stub(memoryManager, "getClusters").returns({});
   });
@@ -103,9 +103,9 @@ describe("Nuke Manager", () => {
   describe("Nuke Candidate Scoring", () => {
     it("should score rooms based on threat level and structures", () => {
       const empire = createDefaultEmpireMemory();
-      overmind.objectives.warMode = true;
-      overmind.warTargets = ["W2N2"];
-      overmind.roomIntel["W2N2"] = {
+      empire.objectives.warMode = true;
+      empire.warTargets = ["W2N2"];
+      empire.roomIntel["W2N2"] = {
         name: "W2N2",
         lastSeen: Game.time,
         sources: 2,
@@ -129,7 +129,7 @@ describe("Nuke Manager", () => {
       // @ts-ignore
       global.Game.rooms["W1N1"] = mockRoom;
 
-      getOvermindStub.returns(overmind);
+      getEmpireStub.returns(empire);
 
       const score = (nukeManager as any).scoreNukeCandidate("W2N2");
 
@@ -140,7 +140,7 @@ describe("Nuke Manager", () => {
 
     it("should apply distance penalty", () => {
       const empire = createDefaultEmpireMemory();
-      overmind.roomIntel["W10N10"] = {
+      empire.roomIntel["W10N10"] = {
         name: "W10N10",
         lastSeen: Game.time,
         sources: 2,
@@ -168,7 +168,7 @@ describe("Nuke Manager", () => {
         return 5;
       };
 
-      getOvermindStub.returns(overmind);
+      getEmpireStub.returns(empire);
 
       const score = (nukeManager as any).scoreNukeCandidate("W10N10");
       expect(score.reasons.some((r: string) => r.includes("rooms away"))).to.be.true;
@@ -178,9 +178,9 @@ describe("Nuke Manager", () => {
   describe("Resource Management", () => {
     it("should detect nuker resource needs", () => {
       const empire = createDefaultEmpireMemory();
-      overmind.objectives.warMode = true;
+      empire.objectives.warMode = true;
 
-      getOvermindStub.returns(overmind);
+      getEmpireStub.returns(empire);
 
       const mockNuker = {
         structureType: STRUCTURE_NUKER,
@@ -233,8 +233,8 @@ describe("Nuke Manager", () => {
   describe("Siege Coordination", () => {
     it("should coordinate nuke launch with siege squad arrival", () => {
       const empire = createDefaultEmpireMemory();
-      overmind.objectives.warMode = true;
-      overmind.nukeCandidates = [
+      empire.objectives.warMode = true;
+      empire.nukeCandidates = [
         {
           roomName: "W2N2",
           score: 75,
@@ -243,7 +243,7 @@ describe("Nuke Manager", () => {
         }
       ];
 
-      getOvermindStub.returns(overmind);
+      getEmpireStub.returns(empire);
 
       const mockSquad = {
         id: "siege_W2N2_1000",
@@ -344,7 +344,7 @@ describe("Nuke Manager", () => {
   describe("Nuke Impact Prediction", () => {
     it("should predict damage for structures in blast radius", () => {
       const empire = createDefaultEmpireMemory();
-      getOvermindStub.returns(overmind);
+      getEmpireStub.returns(empire);
 
       const mockStructure = {
         structureType: STRUCTURE_TOWER,
@@ -371,7 +371,7 @@ describe("Nuke Manager", () => {
 
     it("should estimate damage when room is not visible", () => {
       const empire = createDefaultEmpireMemory();
-      overmind.roomIntel["W5N5"] = {
+      empire.roomIntel["W5N5"] = {
         name: "W5N5",
         lastSeen: Game.time - 1000,
         sources: 2,
@@ -386,7 +386,7 @@ describe("Nuke Manager", () => {
         spawnCount: 1
       };
 
-      getOvermindStub.returns(overmind);
+      getEmpireStub.returns(empire);
 
       const targetPos = { x: 25, y: 25, roomName: "W5N5" } as RoomPosition;
       const prediction = (nukeManager as any).predictNukeImpact("W5N5", targetPos);
@@ -399,7 +399,7 @@ describe("Nuke Manager", () => {
   describe("ROI Calculation", () => {
     it("should calculate positive ROI for valuable targets", () => {
       const empire = createDefaultEmpireMemory();
-      getOvermindStub.returns(overmind);
+      getEmpireStub.returns(empire);
 
       const mockStructure = {
         structureType: STRUCTURE_SPAWN,
@@ -427,7 +427,7 @@ describe("Nuke Manager", () => {
   describe("Counter-Nuke Strategies", () => {
     it("should identify counter-nuke opportunity", () => {
       const empire = createDefaultEmpireMemory();
-      overmind.incomingNukes = [
+      empire.incomingNukes = [
         {
           roomName: "W1N1",
           landingPos: { x: 25, y: 25 },
@@ -438,7 +438,7 @@ describe("Nuke Manager", () => {
           sourceRoom: "W2N2"
         }
       ];
-      overmind.roomIntel["W2N2"] = {
+      empire.roomIntel["W2N2"] = {
         name: "W2N2",
         lastSeen: Game.time,
         sources: 2,
@@ -454,7 +454,7 @@ describe("Nuke Manager", () => {
       const swarm = createDefaultSwarmState();
       swarm.pheromones.war = 70; // Above threshold
 
-      getOvermindStub.returns(overmind);
+      getEmpireStub.returns(empire);
       getSwarmStateStub.withArgs("W1N1").returns(swarm);
 
       // Mock available resources
@@ -491,14 +491,14 @@ describe("Nuke Manager", () => {
       (nukeManager as any).processCounterNukeStrategies();
 
       // Should add enemy to war targets
-      expect(overmind.warTargets).to.include("W2N2");
+      expect(empire.warTargets).to.include("W2N2");
     });
   });
 
   describe("Salvo Coordination", () => {
     it("should coordinate multiple nukes on same target", () => {
       const empire = createDefaultEmpireMemory();
-      overmind.nukesInFlight = [
+      empire.nukesInFlight = [
         {
           id: "nuke1",
           sourceRoom: "W1N1",
@@ -517,18 +517,18 @@ describe("Nuke Manager", () => {
         }
       ];
 
-      getOvermindStub.returns(overmind);
+      getEmpireStub.returns(empire);
 
       (nukeManager as any).coordinateNukeSalvos();
 
       // Both nukes should have same salvo ID
-      expect(overmind.nukesInFlight[0].salvoId).to.equal(overmind.nukesInFlight[1].salvoId);
-      expect(overmind.nukesInFlight[0].salvoId).to.be.a("string");
+      expect(empire.nukesInFlight[0].salvoId).to.equal(empire.nukesInFlight[1].salvoId);
+      expect(empire.nukesInFlight[0].salvoId).to.be.a("string");
     });
 
     it("should detect desynchronized nukes", () => {
       const empire = createDefaultEmpireMemory();
-      overmind.nukesInFlight = [
+      empire.nukesInFlight = [
         {
           id: "nuke1",
           sourceRoom: "W1N1",
@@ -547,13 +547,13 @@ describe("Nuke Manager", () => {
         }
       ];
 
-      getOvermindStub.returns(overmind);
+      getEmpireStub.returns(empire);
 
       (nukeManager as any).coordinateNukeSalvos();
 
       // Nukes should not have matching salvo IDs (or undefined)
-      const salvo1 = overmind.nukesInFlight[0].salvoId;
-      const salvo2 = overmind.nukesInFlight[1].salvoId;
+      const salvo1 = empire.nukesInFlight[0].salvoId;
+      const salvo2 = empire.nukesInFlight[1].salvoId;
       
       if (salvo1 && salvo2) {
         expect(salvo1).to.not.equal(salvo2);
@@ -564,7 +564,7 @@ describe("Nuke Manager", () => {
   describe("Cleanup Operations", () => {
     it("should remove impacted nukes from tracking", () => {
       const empire = createDefaultEmpireMemory();
-      overmind.nukesInFlight = [
+      empire.nukesInFlight = [
         {
           id: "nuke1",
           sourceRoom: "W1N1",
@@ -586,17 +586,17 @@ describe("Nuke Manager", () => {
       // @ts-ignore
       global.Game.time = 10000;
 
-      getOvermindStub.returns(overmind);
+      getEmpireStub.returns(empire);
 
       (nukeManager as any).cleanupNukeTracking();
 
-      expect(overmind.nukesInFlight).to.have.lengthOf(1);
-      expect(overmind.nukesInFlight[0].id).to.equal("nuke2");
+      expect(empire.nukesInFlight).to.have.lengthOf(1);
+      expect(empire.nukesInFlight[0].id).to.equal("nuke2");
     });
 
     it("should remove old incoming nuke alerts", () => {
       const empire = createDefaultEmpireMemory();
-      overmind.incomingNukes = [
+      empire.incomingNukes = [
         {
           roomName: "W1N1",
           landingPos: { x: 25, y: 25 },
@@ -618,33 +618,33 @@ describe("Nuke Manager", () => {
       // @ts-ignore
       global.Game.time = 10000;
 
-      getOvermindStub.returns(overmind);
+      getEmpireStub.returns(empire);
 
       (nukeManager as any).cleanupNukeTracking();
 
-      expect(overmind.incomingNukes).to.have.lengthOf(1);
-      expect(overmind.incomingNukes[0].roomName).to.equal("W1N2");
+      expect(empire.incomingNukes).to.have.lengthOf(1);
+      expect(empire.incomingNukes[0].roomName).to.equal("W1N2");
     });
   });
 
   describe("Economics Tracking", () => {
     it("should initialize economics tracking", () => {
       const empire = createDefaultEmpireMemory();
-      delete overmind.nukeEconomics;
+      delete empire.nukeEconomics;
 
-      getOvermindStub.returns(overmind);
+      getEmpireStub.returns(empire);
 
       (nukeManager as any).initializeNukeTracking();
 
-      expect(overmind.nukeEconomics).to.exist;
-      expect(overmind.nukeEconomics.nukesLaunched).to.equal(0);
-      expect(overmind.nukeEconomics.totalEnergyCost).to.equal(0);
-      expect(overmind.nukeEconomics.totalGhodiumCost).to.equal(0);
+      expect(empire.nukeEconomics).to.exist;
+      expect(empire.nukeEconomics.nukesLaunched).to.equal(0);
+      expect(empire.nukeEconomics.totalEnergyCost).to.equal(0);
+      expect(empire.nukeEconomics.totalGhodiumCost).to.equal(0);
     });
 
     it("should update economics tracking", () => {
       const empire = createDefaultEmpireMemory();
-      overmind.nukeEconomics = {
+      empire.nukeEconomics = {
         nukesLaunched: 2,
         totalEnergyCost: 600000,
         totalGhodiumCost: 10000,
@@ -652,12 +652,12 @@ describe("Nuke Manager", () => {
         totalValueDestroyed: 2000000
       };
 
-      getOvermindStub.returns(overmind);
+      getEmpireStub.returns(empire);
 
       (nukeManager as any).updateNukeEconomics();
 
-      expect(overmind.nukeEconomics.lastROI).to.exist;
-      expect(overmind.nukeEconomics.lastROI).to.be.greaterThan(0);
+      expect(empire.nukeEconomics.lastROI).to.exist;
+      expect(empire.nukeEconomics.lastROI).to.be.greaterThan(0);
     });
   });
 });

@@ -63,8 +63,8 @@ describe("Empire Manager Automation", () => {
   let empire: EmpireMemory;
 
   beforeEach(() => {
-    // Reset overmind before each test
-    overmind = createDefaultEmpireMemory();
+    // Reset empire before each test
+    empire = createDefaultEmpireMemory();
     mockGame.time = 1000;
     mockGame.rooms = {};
     mockGame.spawns = {};
@@ -188,9 +188,9 @@ describe("Empire Manager Automation", () => {
     it("should update target room count based on GCL level", () => {
       mockGame.gcl.level = 5;
 
-      overmind.objectives.targetRoomCount = mockGame.gcl.level;
+      empire.objectives.targetRoomCount = mockGame.gcl.level;
 
-      expect(overmind.objectives.targetRoomCount).to.equal(5);
+      expect(empire.objectives.targetRoomCount).to.equal(5);
     });
   });
 
@@ -282,34 +282,34 @@ describe("Empire Manager Automation", () => {
 
   describe("War Mode Management", () => {
     it("should enable war mode when war targets exist", () => {
-      overmind.warTargets = ["W1N1", "W2N1"];
-      overmind.objectives.warMode = false;
+      empire.warTargets = ["W1N1", "W2N1"];
+      empire.objectives.warMode = false;
 
-      if (overmind.warTargets.length > 0 && !overmind.objectives.warMode) {
-        overmind.objectives.warMode = true;
+      if (empire.warTargets.length > 0 && !empire.objectives.warMode) {
+        empire.objectives.warMode = true;
       }
 
-      expect(overmind.objectives.warMode).to.be.true;
+      expect(empire.objectives.warMode).to.be.true;
     });
 
     it("should disable war mode when no war targets remain", () => {
-      overmind.warTargets = [];
-      overmind.objectives.warMode = true;
+      empire.warTargets = [];
+      empire.objectives.warMode = true;
 
-      if (overmind.warTargets.length === 0 && overmind.objectives.warMode) {
-        overmind.objectives.warMode = false;
+      if (empire.warTargets.length === 0 && empire.objectives.warMode) {
+        empire.objectives.warMode = false;
       }
 
-      expect(overmind.objectives.warMode).to.be.false;
+      expect(empire.objectives.warMode).to.be.false;
     });
 
     it("should add nuke candidates only when in war mode", () => {
-      overmind.objectives.warMode = false;
-      overmind.warTargets = ["W1N1"];
-      overmind.nukeCandidates = [];
+      empire.objectives.warMode = false;
+      empire.warTargets = ["W1N1"];
+      empire.nukeCandidates = [];
 
       // Nuke candidates should not be added when not in war mode
-      const shouldEvaluateNukes = overmind.objectives.warMode && overmind.warTargets.length > 0;
+      const shouldEvaluateNukes = empire.objectives.warMode && empire.warTargets.length > 0;
 
       expect(shouldEvaluateNukes).to.be.false;
     });
@@ -318,15 +318,15 @@ describe("Empire Manager Automation", () => {
   describe("Power Bank Management", () => {
     it("should remove expired power banks", () => {
       mockGame.time = 6000;
-      overmind.powerBanks = [
+      empire.powerBanks = [
         { roomName: "W1N1", pos: { x: 25, y: 25 }, power: 2000, decayTick: 5000, active: false },
         { roomName: "W2N1", pos: { x: 25, y: 25 }, power: 3000, decayTick: 7000, active: false }
       ];
 
-      overmind.powerBanks = overmind.powerBanks.filter(pb => pb.decayTick > mockGame.time);
+      empire.powerBanks = empire.powerBanks.filter(pb => pb.decayTick > mockGame.time);
 
-      expect(overmind.powerBanks.length).to.equal(1, "Should keep only non-expired power banks");
-      expect(overmind.powerBanks[0].roomName).to.equal("W2N1");
+      expect(empire.powerBanks.length).to.equal(1, "Should keep only non-expired power banks");
+      expect(empire.powerBanks[0].roomName).to.equal("W2N1");
     });
 
     it("should track power amount and decay tick", () => {
@@ -359,7 +359,7 @@ describe("Empire Manager Automation", () => {
 
   describe("Expansion Queue Management", () => {
     it("should clean up owned rooms from claim queue", () => {
-      overmind.claimQueue = [
+      empire.claimQueue = [
         { roomName: "W1N1", score: 100, distance: 1, claimed: true, lastEvaluated: 1000 },
         { roomName: "W2N1", score: 90, distance: 2, claimed: false, lastEvaluated: 1000 },
         { roomName: "W3N1", score: 80, distance: 3, claimed: false, lastEvaluated: 1000 }
@@ -368,30 +368,30 @@ describe("Empire Manager Automation", () => {
       // Simulate W1N1 is now owned
       const ownedRoomNames = new Set(["W1N1"]);
 
-      overmind.claimQueue = overmind.claimQueue.filter(candidate => !ownedRoomNames.has(candidate.roomName));
+      empire.claimQueue = empire.claimQueue.filter(candidate => !ownedRoomNames.has(candidate.roomName));
 
-      expect(overmind.claimQueue.length).to.equal(2);
-      expect(overmind.claimQueue.some(c => c.roomName === "W1N1")).to.be.false;
+      expect(empire.claimQueue.length).to.equal(2);
+      expect(empire.claimQueue.some(c => c.roomName === "W1N1")).to.be.false;
     });
 
     it("should sort claim queue by score", () => {
-      overmind.claimQueue = [
+      empire.claimQueue = [
         { roomName: "W1N1", score: 80, distance: 1, claimed: false, lastEvaluated: 1000 },
         { roomName: "W2N1", score: 100, distance: 2, claimed: false, lastEvaluated: 1000 },
         { roomName: "W3N1", score: 90, distance: 3, claimed: false, lastEvaluated: 1000 }
       ];
 
-      overmind.claimQueue.sort((a, b) => b.score - a.score);
+      empire.claimQueue.sort((a, b) => b.score - a.score);
 
-      expect(overmind.claimQueue[0].roomName).to.equal("W2N1", "Highest score should be first");
-      expect(overmind.claimQueue[1].roomName).to.equal("W3N1");
-      expect(overmind.claimQueue[2].roomName).to.equal("W1N1");
+      expect(empire.claimQueue[0].roomName).to.equal("W2N1", "Highest score should be first");
+      expect(empire.claimQueue[1].roomName).to.equal("W3N1");
+      expect(empire.claimQueue[2].roomName).to.equal("W1N1");
     });
 
     it("should keep only top candidates in queue", () => {
-      overmind.claimQueue = [];
+      empire.claimQueue = [];
       for (let i = 0; i < 15; i++) {
-        overmind.claimQueue.push({
+        empire.claimQueue.push({
           roomName: `W${i}N1`,
           score: 100 - i,
           distance: 2,
@@ -400,9 +400,9 @@ describe("Empire Manager Automation", () => {
         });
       }
 
-      overmind.claimQueue = overmind.claimQueue.slice(0, 10);
+      empire.claimQueue = empire.claimQueue.slice(0, 10);
 
-      expect(overmind.claimQueue.length).to.equal(10, "Should keep only top 10 candidates");
+      expect(empire.claimQueue.length).to.equal(10, "Should keep only top 10 candidates");
     });
   });
 
