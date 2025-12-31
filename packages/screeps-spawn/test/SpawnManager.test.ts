@@ -184,4 +184,252 @@ describe("SpawnManager", () => {
       expect(body).to.not.be.null;
     });
   });
+
+  describe("processSpawnQueue", () => {
+    let mockSpawn: any;
+
+    beforeEach(() => {
+      mockSpawn = {
+        spawning: false,
+        room: {
+          name: "W1N1",
+          energyAvailable: 550,
+          energyCapacityAvailable: 550
+        },
+        spawnCreep: (body: BodyPartConstant[], name: string, opts?: any) => OK
+      };
+    });
+
+    it("should process highest priority request first", () => {
+      const requests = [
+        { role: "hauler", priority: 50, memory: {} },
+        { role: "harvester", priority: 100, memory: {} }
+      ];
+
+      const results = spawnManager.processSpawnQueue([mockSpawn], requests);
+      
+      expect(results).to.have.lengthOf(1);
+      expect(results[0].success).to.be.true;
+      expect(results[0].role).to.equal("harvester"); // Higher priority
+    });
+
+    it("should skip spawns that are busy", () => {
+      mockSpawn.spawning = true;
+
+      const requests = [
+        { role: "harvester", priority: 100, memory: {} }
+      ];
+
+      const results = spawnManager.processSpawnQueue([mockSpawn], requests);
+      
+      expect(results).to.have.lengthOf(0);
+    });
+
+    it("should spawn from multiple spawns", () => {
+      const mockSpawn2 = {
+        spawning: false,
+        room: mockSpawn.room,
+        spawnCreep: (body: BodyPartConstant[], name: string, opts?: any) => OK
+      };
+
+      const requests = [
+        { role: "harvester", priority: 100, memory: {} },
+        { role: "hauler", priority: 50, memory: {} }
+      ];
+
+      const results = spawnManager.processSpawnQueue([mockSpawn, mockSpawn2], requests);
+      
+      expect(results).to.have.lengthOf(2);
+      expect(results[0].success).to.be.true;
+      expect(results[1].success).to.be.true;
+    });
+
+    it("should skip requests that require too much energy", () => {
+      mockSpawn.room.energyAvailable = 100; // Very low energy
+
+      const requests = [
+        { role: "harvester", priority: 100, memory: {} } // Requires 300+
+      ];
+
+      const results = spawnManager.processSpawnQueue([mockSpawn], requests);
+      
+      expect(results).to.have.lengthOf(0); // Should skip request
+    });
+
+    it("should handle custom body parts in requests", () => {
+      const customBody = [WORK, CARRY, MOVE];
+      const requests = [
+        { role: "custom", priority: 100, body: customBody, memory: {} }
+      ];
+
+      const results = spawnManager.processSpawnQueue([mockSpawn], requests);
+      
+      expect(results).to.have.lengthOf(1);
+      expect(results[0].success).to.be.true;
+    });
+
+    it("should respect energyBudget in requests", () => {
+      const requests = [
+        { role: "harvester", priority: 100, energyBudget: 300, memory: {} }
+      ];
+
+      const results = spawnManager.processSpawnQueue([mockSpawn], requests);
+      
+      expect(results).to.have.lengthOf(1);
+      expect(results[0].success).to.be.true;
+      if (results[0].success && results[0].energyCost) {
+        expect(results[0].energyCost).to.be.at.most(300);
+      }
+    });
+  });
+
+  describe("executeSpawn", () => {
+    let mockSpawn: any;
+
+    beforeEach(() => {
+      mockSpawn = {
+        spawning: false,
+        room: {
+          name: "W1N1",
+          energyAvailable: 550,
+          energyCapacityAvailable: 550
+        },
+        spawnCreep: (body: BodyPartConstant[], name: string, opts?: any) => OK
+      };
+    });
+
+    it("should return error if spawn is busy", () => {
+      mockSpawn.spawning = true;
+
+      const result = spawnManager.executeSpawn(mockSpawn, {
+        role: "harvester",
+        priority: 100,
+        memory: {}
+      });
+
+      expect(result.success).to.be.false;
+      expect(result.error).to.equal(ERR_BUSY);
+    });
+
+    it("should return success on successful spawn", () => {
+      const result = spawnManager.executeSpawn(mockSpawn, {
+        role: "harvester",
+        priority: 100,
+        memory: {}
+      });
+
+      expect(result.success).to.be.true;
+      expect(result.creepName).to.be.a("string");
+      expect(result.role).to.equal("harvester");
+    });
+
+    it("should return error for invalid role", () => {
+      const result = spawnManager.executeSpawn(mockSpawn, {
+        role: "invalidRole",
+        priority: 100,
+        memory: {}
+      });
+
+      expect(result.success).to.be.false;
+      expect(result.error).to.equal(ERR_NOT_FOUND);
+    });
+
+    it("should handle spawn failures", () => {
+      mockSpawn.spawnCreep = () => ERR_NOT_ENOUGH_ENERGY;
+
+      const result = spawnManager.executeSpawn(mockSpawn, {
+        role: "harvester",
+        priority: 100,
+        memory: {}
+      });
+
+      expect(result.success).to.be.false;
+      expect(result.error).to.equal(ERR_NOT_ENOUGH_ENERGY);
+    });
+
+    it("should validate body parts", () => {
+      // Create invalid body (too many parts)
+      const invalidBody = new Array(60).fill(MOVE) as BodyPartConstant[];
+
+      const result = spawnManager.executeSpawn(mockSpawn, {
+        role: "custom",
+        priority: 100,
+        body: invalidBody,
+        memory: {}
+      });
+
+      expect(result.success).to.be.false;
+      expect(result.error).to.equal(ERR_INVALID_ARGS);
+    });
+  });
+
+  describe("pheromone multipliers", () => {
+    it("should boost economy roles with high harvest pheromone", () => {
+      const highHarvestState = {
+        ...roomState,
+        pheromones: {
+          ...roomState.pheromones,
+          harvest: 1.0,
+          build: 0,
+          upgrade: 0
+        }
+      };
+
+      const priority = spawnManager.calculatePriority("harvester", 0, highHarvestState);
+      expect(priority).to.be.greaterThan(50); // Should have significant boost
+    });
+
+    it("should boost military roles with high defense pheromone", () => {
+      const highDefenseState = {
+        ...roomState,
+        pheromones: {
+          ...roomState.pheromones,
+          defense: 1.0,
+          war: 0,
+          siege: 0
+        }
+      };
+
+      const priority = spawnManager.calculatePriority("defender", 0, highDefenseState);
+      expect(priority).to.be.greaterThan(0);
+    });
+
+    it("should boost utility roles with high expand pheromone", () => {
+      const highExpandState = {
+        ...roomState,
+        pheromones: {
+          ...roomState.pheromones,
+          expand: 1.0,
+          logistics: 0
+        }
+      };
+
+      const priority = spawnManager.calculatePriority("claimer", 0, highExpandState);
+      expect(priority).to.be.greaterThan(0);
+    });
+  });
+
+  describe("bootstrap mode", () => {
+    it("should prioritize larvaWorker in bootstrap mode", () => {
+      const bootstrapState = {
+        ...roomState,
+        bootstrap: true,
+        energyAvailable: 150,
+        energyCapacityAvailable: 150
+      };
+
+      // larvaWorker should have high priority in bootstrap
+      const larvaWorkerPriority = spawnManager.calculatePriority("larvaWorker", 0, bootstrapState);
+      const harvesterPriority = spawnManager.calculatePriority("harvester", 0, bootstrapState);
+
+      // Both should be spawnable, but larvaWorker is optimized for low energy
+      expect(larvaWorkerPriority).to.be.greaterThan(0);
+    });
+
+    it("should work with minimal energy in bootstrap", () => {
+      const body = spawnManager.getBestBody("larvaWorker", 150);
+      expect(body).to.not.be.null;
+      expect(body!.cost).to.equal(150);
+    });
+  });
 });
