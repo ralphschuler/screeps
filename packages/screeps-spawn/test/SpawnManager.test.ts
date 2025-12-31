@@ -348,8 +348,11 @@ describe("SpawnManager", () => {
     });
 
     it("should validate body parts", () => {
-      // Create invalid body (too many parts)
-      const invalidBody = new Array(60).fill(MOVE) as BodyPartConstant[];
+      // Screeps maximum: 50 body parts per creep
+      const MAX_CREEP_SIZE = 50;
+      
+      // Create invalid body (too many parts - exceeds MAX_CREEP_SIZE)
+      const invalidBody = new Array(MAX_CREEP_SIZE + 10).fill(MOVE) as BodyPartConstant[];
 
       const result = spawnManager.executeSpawn(mockSpawn, {
         role: "custom",
