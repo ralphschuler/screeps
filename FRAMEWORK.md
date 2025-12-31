@@ -4,6 +4,18 @@
 
 The Screeps Framework provides a collection of high-quality, well-tested packages that handle common bot functionality - spawning, economy, defense, chemistry, and more. Focus on strategy and let the framework handle the implementation details.
 
+## 📚 Table of Contents
+
+- [Quick Start](#quick-start)
+- [Core Packages](#core-packages)
+- [Architecture Guide](#architecture-guide)
+- [Common Patterns](#common-patterns)
+- [API Reference](#api-reference)
+- [Examples](#examples)
+- [Development](#development)
+- [Publishing Status](#publishing-status)
+- [Support](#support)
+
 ## Quick Start
 
 Get started building your bot in under 10 minutes:
@@ -385,6 +397,213 @@ All framework packages follow [Semantic Versioning](https://semver.org/):
 - **Patch version** (x.x.1): Bug fixes, backward compatible
 
 Current target: **v1.0.0** for all packages
+
+### Package Compatibility Matrix
+
+| Package | Min Screeps | TypeScript | Node.js |
+|---------|-------------|------------|---------|
+| All packages | Any | >=4.0 | >=16.x |
+
+## Troubleshooting
+
+### Common Issues
+
+#### Spawn Not Working
+
+**Problem**: Creeps not spawning even though spawn is idle
+
+**Solutions**:
+1. Check energy availability:
+   ```typescript
+   console.log(`Energy: ${room.energyAvailable}/${room.energyCapacityAvailable}`);
+   ```
+2. Enable debug mode:
+   ```typescript
+   const spawnManager = new SpawnManager({ debug: true });
+   ```
+3. Verify spawn requests have valid roles:
+   ```typescript
+   const result = spawnManager.getBestBody('harvester', room.energyAvailable);
+   console.log('Body template:', result);
+   ```
+
+#### Link Network Not Functioning
+
+**Problem**: Links not transferring energy
+
+**Solutions**:
+1. Verify RCL >= 5:
+   ```typescript
+   if (room.controller.level < 5) {
+     console.log('Links require RCL 5+');
+   }
+   ```
+2. Check link placement (must be within range 2):
+   ```typescript
+   const links = room.find(FIND_MY_STRUCTURES, {
+     filter: s => s.structureType === STRUCTURE_LINK
+   });
+   console.log(`Found ${links.length} links`);
+   ```
+3. Ensure linkManager is being called each tick
+
+#### Chemistry Not Producing
+
+**Problem**: Labs not running reactions
+
+**Solutions**:
+1. Verify minimum requirements:
+   - At least 3 labs in room
+   - Terminal present and accessible
+   - Sufficient input resources
+2. Initialize lab configuration:
+   ```typescript
+   labConfig.initialize(room.name);
+   ```
+3. Check resource availability:
+   ```typescript
+   const reaction = chemistry.getReaction(RESOURCE_HYDROXIDE);
+   const hasResources = chemistry.hasResourcesForReaction(
+     room.terminal, 
+     reaction, 
+     500
+   );
+   console.log('Can produce:', hasResources);
+   ```
+
+#### Performance Issues
+
+**Problem**: CPU usage too high
+
+**Solutions**:
+1. Use the kernel for CPU budget management:
+   ```typescript
+   import { kernel } from '@ralphschuler/screeps-kernel';
+   
+   kernel.registerProcess({
+     id: 'spawning',
+     execute: () => spawnManager.processSpawnQueue(spawns, requests),
+     cpuBudget: 0.5,
+     priority: 90
+   });
+   ```
+2. Enable adaptive budgets:
+   ```typescript
+   import { updateConfig } from '@ralphschuler/screeps-kernel';
+   updateConfig({ enableAdaptiveBudgets: true });
+   ```
+3. Profile your code to find bottlenecks
+
+### Getting Help
+
+If you encounter issues not covered here:
+
+1. **Check package README**: Each package has detailed documentation
+2. **Review examples**: See [examples/](examples/) for working implementations
+3. **Enable debug logging**: Most packages support debug mode
+4. **Open an issue**: [GitHub Issues](https://github.com/ralphschuler/screeps/issues)
+
+## Migration Guide
+
+### From Other Frameworks
+
+#### From Overmind
+
+The Screeps Framework shares similar goals with Overmind but with a different architecture:
+
+**Overmind → Framework Mapping:**
+
+| Overmind | Framework Equivalent |
+|----------|---------------------|
+| `Overlord` | `Process` (kernel) or direct management |
+| `Zerg` | `Role` (screeps-roles) |
+| `Colony` | Room-level logic (custom) |
+| `DirectiveHarvest` | `SpawnRequest` (screeps-spawn) |
+
+**Migration steps:**
+
+1. **Replace spawn system**:
+   ```typescript
+   // Overmind
+   colony.spawner.spawn(protoCreep, {priority: 100});
+   
+   // Framework
+   spawnManager.processSpawnQueue(spawns, [
+     { role: 'harvester', priority: 100, memory: {...} }
+   ]);
+   ```
+
+2. **Replace link management**:
+   ```typescript
+   // Overmind
+   colony.linkNetwork.receive();
+   
+   // Framework
+   linkManager.run(room);
+   ```
+
+3. **Replace lab system**:
+   ```typescript
+   // Overmind
+   colony.evolutionChamber.run();
+   
+   // Framework
+   const reaction = chemistry.planReactions(room, gameState);
+   if (reaction) {
+     labConfig.setActiveReaction(roomName, reaction.input1, reaction.input2, reaction.product);
+   }
+   ```
+
+#### From Screeps TypeScript Starter
+
+The Framework can integrate directly with screeps-typescript-starter:
+
+1. **Install framework packages**:
+   ```bash
+   npm install @ralphschuler/screeps-spawn @ralphschuler/screeps-economy
+   ```
+
+2. **Replace role logic** (optional):
+   ```typescript
+   // Before: custom role implementations
+   import { roleHarvester } from './role.harvester';
+   
+   // After: use framework or keep custom
+   import { SpawnManager } from '@ralphschuler/screeps-spawn';
+   ```
+
+3. **Add advanced features**:
+   - Link management with `@ralphschuler/screeps-economy`
+   - Lab automation with `@ralphschuler/screeps-chemistry`
+   - Process scheduling with `@ralphschuler/screeps-kernel`
+
+### From Monolithic Bot
+
+If migrating from a single-file or monolithic bot:
+
+1. **Extract spawn logic** first:
+   ```typescript
+   // Before: inline spawn logic
+   if (harvesters.length < 2) {
+     spawn.spawnCreep([WORK,CARRY,MOVE], 'Harvester1');
+   }
+   
+   // After: use SpawnManager
+   const requests = [];
+   if (harvesters.length < 2) {
+     requests.push({ role: 'harvester', priority: 100, memory: {...} });
+   }
+   spawnManager.processSpawnQueue(spawns, requests);
+   ```
+
+2. **Add link management** (RCL 5+):
+   ```typescript
+   // Replace manual link code with:
+   import { linkManager } from '@ralphschuler/screeps-economy';
+   linkManager.run(room);
+   ```
+
+3. **Incrementally adopt** other packages as needed
 
 ## Support
 
