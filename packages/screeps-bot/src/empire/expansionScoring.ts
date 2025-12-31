@@ -287,18 +287,6 @@ export interface RemoteProfitability {
   roi: number;
   profitabilityScore: number;
   isProfitable: boolean;
-
-  /**
-   * @deprecated Use {@link energyPerTick} instead.
-   * Kept for backward compatibility with older expansion scoring consumers.
-   */
-  energyGain?: number;
-
-  /**
-   * @deprecated Prefer deriving cost from {@link carrierCostPerTick} and {@link infrastructureCost}.
-   * Kept for backward compatibility with older expansion scoring consumers.
-   */
-  energyCost?: number;
 }
 
 /**
@@ -438,11 +426,7 @@ export function calculateRemoteProfitability(
     netProfitPerTick,
     roi,
     profitabilityScore,
-    isProfitable: roi > 2.0 && netProfitPerTick > 0, // Must generate >2x energy vs cost AND be net positive
-    
-    // Deprecated fields for backward compatibility
-    energyGain: netProfitPerTick,
-    energyCost: carrierCostPerTick + infrastructureCostPerTick
+    isProfitable: roi > 2.0 && netProfitPerTick > 0 // Must generate >2x energy vs cost AND be net positive
   };
 }
 

@@ -186,35 +186,6 @@ export function requestReputation(fromRoomName?: string): boolean {
 }
 
 /**
- * Read public segments for reputation highscores
- * 
- * **NOT YET IMPLEMENTED**
- * 
- * Segment 1: Top 10 players (highest reputation)
- * Segment 2: Bottom 10 players (lowest reputation)
- * 
- * @returns Empty object - feature not yet implemented
- * @deprecated This feature requires RawMemory API access which is not yet implemented
- */
-export function readReputationHighscores(): {
-  top10?: Array<{ username: string; reputation: number }>;
-  bottom10?: Array<{ username: string; reputation: number }>;
-} {
-  // TODO: Implement when RawMemory segment reading is available
-  // Issue URL: https://github.com/ralphschuler/screeps/issues/785
-  // This requires:
-  // 1. RawMemory.setActiveSegments([1, 2])
-  // 2. Reading RawMemory.segments[1] and RawMemory.segments[2]
-  // 3. Parsing the segment data to extract highscore information
-  
-  logger.debug("readReputationHighscores not yet implemented", {
-    subsystem: "TooAngel"
-  });
-  
-  return {};
-}
-
-/**
  * Track reputation change from resource transfers
  * Called when sending resources to TooAngel NPC
  */

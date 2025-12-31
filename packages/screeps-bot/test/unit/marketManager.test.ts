@@ -6,8 +6,8 @@
 
 import { expect } from "chai";
 import { MarketManager } from "../../src/empire/marketManager";
-import type { MarketMemory, OvermindMemory, PriceDataPoint, ResourceMarketData } from "../../src/memory/schemas";
-import { createDefaultMarketMemory, createDefaultOvermindMemory } from "../../src/memory/schemas";
+import type { MarketMemory, EmpireMemory, PriceDataPoint, ResourceMarketData } from "../../src/memory/schemas";
+import { createDefaultMarketMemory, createDefaultEmpireMemory } from "../../src/memory/schemas";
 
 // Mock global objects
 const mockMemory: any = {};
@@ -44,7 +44,7 @@ const mockGame: any = {
 (global as any).RESOURCE_GHODIUM = "G";
 
 describe("Market Manager", () => {
-  let overmind: OvermindMemory;
+  let empire: EmpireMemory;
 
   beforeEach(() => {
     // Reset mocks
@@ -53,10 +53,10 @@ describe("Market Manager", () => {
     mockGame.market.orders = {};
     mockGame.rooms = {};
 
-    // Create overmind with market memory
-    overmind = createDefaultOvermindMemory();
-    overmind.market = createDefaultMarketMemory();
-    mockMemory.overmind = overmind;
+    // Create empire with market memory
+    empire = createDefaultEmpireMemory();
+    empire.market = createDefaultMarketMemory();
+    mockMemory.empire = empire;
   });
 
   describe("Price Tracking", () => {

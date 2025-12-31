@@ -7,7 +7,7 @@
 
 import { expect } from "chai";
 import { PixelBuyingManager, createDefaultPixelBuyingMemory } from "../../src/empire/pixelBuyingManager";
-import { createDefaultMarketMemory, createDefaultOvermindMemory } from "../../src/memory/schemas";
+import { createDefaultMarketMemory, createDefaultEmpireMemory } from "../../src/memory/schemas";
 
 // Mock global objects
 const mockMemory: any = {};
@@ -57,10 +57,10 @@ describe("Pixel Buying Manager", () => {
     mockGame.market.getAllOrders = () => [];
     mockGame.rooms = {};
 
-    // Create overmind with market memory
-    const overmind = createDefaultOvermindMemory();
-    overmind.market = createDefaultMarketMemory();
-    mockMemory.overmind = overmind;
+    // Create empire with market memory
+    const empire = createDefaultEmpireMemory();
+    empire.market = createDefaultMarketMemory();
+    mockMemory.empire = empire;
 
     // Create manager with test config
     manager = new PixelBuyingManager({
@@ -252,8 +252,8 @@ describe("Pixel Buying Manager", () => {
   describe("Cooldown Management", () => {
     it("should respect purchase cooldown", () => {
       // Setup pixel buying memory with recent purchase
-      const overmind = mockMemory.overmind;
-      (overmind.market as any).pixelBuying = {
+      const empire = mockMemory.empire;
+      (empire.market as any).pixelBuying = {
         lastPurchaseTick: 500, // Recent purchase at tick 500
         totalPixelsPurchased: 5,
         totalCreditsSpent: 10000,
@@ -271,8 +271,8 @@ describe("Pixel Buying Manager", () => {
 
     it("should allow purchase after cooldown", () => {
       // Setup pixel buying memory with old purchase
-      const overmind = mockMemory.overmind;
-      (overmind.market as any).pixelBuying = {
+      const empire = mockMemory.empire;
+      (empire.market as any).pixelBuying = {
         lastPurchaseTick: 0, // Old purchase at tick 0
         totalPixelsPurchased: 5,
         totalCreditsSpent: 10000,
@@ -303,8 +303,8 @@ describe("Pixel Buying Manager", () => {
 
   describe("Statistics", () => {
     it("should track purchase statistics", () => {
-      const overmind = mockMemory.overmind;
-      (overmind.market as any).pixelBuying = {
+      const empire = mockMemory.empire;
+      (empire.market as any).pixelBuying = {
         lastPurchaseTick: 1000,
         totalPixelsPurchased: 50,
         totalCreditsSpent: 100000,
@@ -325,8 +325,8 @@ describe("Pixel Buying Manager", () => {
     });
 
     it("should handle no purchases gracefully", () => {
-      const overmind = mockMemory.overmind;
-      (overmind.market as any).pixelBuying = createDefaultPixelBuyingMemory();
+      const empire = mockMemory.empire;
+      (empire.market as any).pixelBuying = createDefaultPixelBuyingMemory();
 
       const stats = manager.getStats();
 
