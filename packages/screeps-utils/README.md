@@ -183,6 +183,43 @@ npm test
 npm run test:watch
 ```
 
+## Testing
+
+The package includes comprehensive tests covering:
+
+- **Object Cache**: Tests for caching, TTL expiration, hit/miss tracking, and statistics
+- **Cache Helpers**: Tests for structure, creep, and source caching
+- **Cache Management**: Tests for warming and clearing cache
+- **ErrorMapper**: Placeholder tests (requires source map in production)
+- **Weighted Selection**: Tests for random weighted selection utilities
+
+**Test Coverage**: >85% (target in progress)
+
+### Test Structure
+
+```
+test/
+  ├── setup.ts                  # Test environment setup
+  ├── objectCache.test.ts       # Object caching tests
+  ├── ErrorMapper.test.ts       # Error mapping tests
+  └── selection/                # Weighted selection tests
+      ├── random.test.ts
+      └── weightedSelection.test.ts
+```
+
+### Key Test Cases
+
+- ✅ Object caching with configurable TTL
+- ✅ Cache hit/miss tracking and statistics
+- ✅ TTL expiration and cache refresh
+- ✅ Structure, creep, and source-specific caching
+- ✅ Cache warming from room objects
+- ✅ Cache clearing and reset
+- ✅ Hit rate calculation
+- ✅ CPU savings estimation
+- 📝 CPU efficiency monitoring (planned)
+- 📝 Computation scheduler (planned)
+
 ## Design Principles
 
 From ROADMAP.md Section 23:

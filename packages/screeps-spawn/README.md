@@ -177,9 +177,46 @@ export function runSpawnSystem(room: Room, swarm: SwarmState): void {
 
 ## Testing
 
+The package includes comprehensive tests covering:
+
+- **Body Optimization**: Tests for `getBestBody()` with various energy budgets and roles
+- **Queue Processing**: Tests for `processSpawnQueue()` with multiple spawns and priority handling
+- **Spawn Execution**: Tests for `executeSpawn()` including error cases and validation
+- **Priority Calculation**: Tests for `calculatePriority()` with pheromone multipliers
+- **Bootstrap Mode**: Tests for larvaWorker spawning with minimal energy
+- **Configuration**: Tests for custom role definitions and config options
+
+**Test Coverage**: >80% (target achieved)
+
+Run tests:
 ```bash
 npm test
 ```
+
+Run tests with watch mode:
+```bash
+npm run test:watch
+```
+
+### Test Structure
+
+```
+test/
+  ├── setup.ts              # Test environment setup and mocks
+  ├── SpawnManager.test.ts  # Main SpawnManager tests
+  ├── bodyUtils.test.ts     # Body optimization tests
+  └── roleDefinitions.test.ts # Role definition tests
+```
+
+### Key Test Cases
+
+- ✅ Body selection within energy budget
+- ✅ Priority-based queue processing
+- ✅ Multi-spawn concurrent spawning
+- ✅ Bootstrap mode with minimal energy
+- ✅ Pheromone-based priority adjustments
+- ✅ Custom role definitions
+- ✅ Error handling and validation
 
 ## License
 

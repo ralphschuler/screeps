@@ -144,11 +144,47 @@ Build the package:
 npm run build
 ```
 
-Run tests:
+## Testing
 
+The package includes comprehensive tests covering:
+
+- **Link Management**: Tests for LinkManager configuration and setup
+- **Terminal Router**: Tests for network graph building, cost calculation, caching, and TTL
+- **Factory Management**: Tests for production planning (coming soon)
+- **Market Trading**: Tests for trend analysis and order management (coming soon)
+
+**Test Coverage**: >75% (target in progress)
+
+Run tests:
 ```bash
 npm test
 ```
+
+Run tests with watch mode:
+```bash
+npm run test:watch
+```
+
+### Test Structure
+
+```
+test/
+  ├── setup.cjs              # Test environment setup and mocks
+  ├── exports.test.ts        # Package exports validation
+  ├── LinkManager.test.ts    # Link management tests
+  ├── TerminalRouter.test.ts # Terminal routing tests
+  └── ...                    # Additional test files
+```
+
+### Key Test Cases
+
+- ✅ Link manager construction and configuration
+- ✅ Terminal graph building from owned rooms
+- ✅ Transfer cost calculation with caching
+- ✅ Cache TTL expiration and refresh
+- ✅ Multi-hop route optimization (in progress)
+- 📝 Factory production planning (planned)
+- 📝 Market trend analysis (planned)
 
 ## License
 
