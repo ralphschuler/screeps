@@ -96,3 +96,9 @@
 - name: do-not-close
   color: D93F0B
   description: Prevent automatic closure by stale bot; requires manual review.
+- name: ci
+  color: 0E8A16
+  description: CI/CD pipeline related issues or changes.
+- name: automated
+  color: 5319E7
+  description: Issues or PRs created automatically by workflows or bots.
