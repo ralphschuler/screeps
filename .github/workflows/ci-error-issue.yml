@@ -177,7 +177,7 @@ jobs:
             gh issue create \
               --title "$title" \
               --body-file "$body_file" \
-              --label "bug,ci,automated"
+              --label "type/bug,ci,automated"
             
             # Clean up temp file
             rm -f "$body_file"
