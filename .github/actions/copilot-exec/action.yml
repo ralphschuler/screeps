@@ -102,16 +102,6 @@ runs:
         restore-keys: |
           copilot-cli-${{ runner.os }}-node20-
 
-    - name: Cache project dependencies
-      id: cache-deps
-      uses: actions/cache@v4
-      with:
-        path: |
-          node_modules
-        key: copilot-deps-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          copilot-deps-${{ runner.os }}-
-
     - name: Install Copilot CLI (npm global)
       shell: bash
       run: |
@@ -124,18 +114,6 @@ runs:
           npm install -g @github/copilot
         fi
         echo "$HOME/.npm/_global/bin" >> "$GITHUB_PATH"
-
-    - name: Install project dependencies (if package.json present)
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
-        set -euo pipefail
-        if [ -f package.json ]; then
-          echo "📦 Installing project dependencies"
-          npm ci || npm install
-        else
-          echo "ℹ️ No package.json found, skipping dependency install"
-        fi
 
     - name: Render prompt
       id: render
