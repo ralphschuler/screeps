@@ -393,24 +393,103 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release
 ```
 
+### Versioning Strategy
+
+The framework follows **Semantic Versioning (SemVer)** strictly:
+
+#### Version Format: MAJOR.MINOR.PATCH
+
+- **MAJOR** (1.0.0 → 2.0.0): Breaking API changes
+  - Incompatible API changes
+  - Removal of public APIs
+  - Changes to existing behavior that could break users
+  - Example: Changing function signatures, removing exports
+
+- **MINOR** (1.0.0 → 1.1.0): New features, backward compatible
+  - New public APIs
+  - New optional parameters
+  - Performance improvements
+  - Example: Adding new methods, new exports
+
+- **PATCH** (1.0.0 → 1.0.1): Bug fixes, backward compatible
+  - Bug fixes that don't change API
+  - Documentation updates
+  - Internal refactoring
+  - Example: Fixing calculation errors, correcting edge cases
+
+#### Pre-release Versions
+
+For packages still in initial development (version < 1.0.0):
+- 0.1.0 → 0.2.0: Minor breaking changes or major features
+- 0.1.0 → 0.1.1: Small features or bug fixes
+
+Once a package reaches 1.0.0, it's considered stable and breaking changes require a major version bump.
+
 ### Publishing
 
 Packages are published via GitHub Actions workflow:
 
-1. **Create Git Tag**: Tag the release
-   ```bash
-   git tag -a v0.2.0 -m "Release v0.2.0"
-   git push origin v0.2.0
-   ```
+#### Automatic Publishing (Recommended)
 
-2. **Create GitHub Release**: Create release from tag
-   - GitHub Actions will automatically publish to npm
-
-3. **Manual Publish** (if needed):
+1. **Update version in package.json**:
    ```bash
    cd packages/@ralphschuler/screeps-{name}
+   npm version patch  # or minor, or major
+   ```
+
+2. **Update CHANGELOG.md**:
+   - Move changes from [Unreleased] to new version section
+   - Add release date
+   - Create new [Unreleased] section
+
+3. **Commit changes**:
+   ```bash
+   git add .
+   git commit -m "chore(release): @ralphschuler/screeps-{name}@0.2.0"
+   git push
+   ```
+
+4. **Create GitHub Release**:
+   - Go to GitHub → Releases → Create new release
+   - Tag: `@ralphschuler/screeps-{name}@0.2.0`
+   - Title: `@ralphschuler/screeps-{name} v0.2.0`
+   - Description: Copy from CHANGELOG
+   - GitHub Actions will automatically publish to npm
+
+#### Manual Publishing (if needed)
+
+1. **Dry run first**:
+   ```bash
+   cd packages/@ralphschuler/screeps-{name}
+   npm publish --dry-run --access public
+   ```
+
+2. **Review what will be published**:
+   ```bash
+   npm pack
+   tar -tf *.tgz
+   rm *.tgz
+   ```
+
+3. **Publish to npm**:
+   ```bash
    npm publish --access public
    ```
+
+#### Testing the Workflow
+
+To test the publish workflow without actually publishing:
+
+```bash
+# Trigger workflow with dry-run
+gh workflow run publish-framework.yml \
+  -f publish_scope=spawn
+
+# Or use the GitHub UI:
+# Actions → Publish Framework Packages → Run workflow
+```
+
+The workflow includes automatic dry-run for PRs and testing.
 
 ## Publishing Checklist
 
