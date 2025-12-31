@@ -1,0 +1,37 @@
+# Source files (TypeScript gets compiled to dist/)
+src/
+test/
+
+# Development files
+*.test.ts
+.mocharc.json
+tsconfig.test.json
+
+# Build artifacts
+*.tsbuildinfo
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Documentation source (keep compiled docs only)
+docs/
+
+# Examples source (keep built examples only)
+examples/
+
+# Git
+.git/
+.gitignore
+.gitattributes
