@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.23.0",
-    "zod": "^4.1.13"
+    "zod": "^4.3.4"
   },
   "devDependencies": {
     "@modelcontextprotocol/inspector": "^0.18.0",
