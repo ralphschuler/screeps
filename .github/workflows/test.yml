@@ -61,6 +61,7 @@ jobs:
               echo "⚠️ Note: Coverage thresholds not met, but report was still generated and uploaded." >> $GITHUB_STEP_SUMMARY
             fi
           else
+            # Coverage file is truly missing - this is a real failure (e.g., c8 not installed)
             echo "⚠️ No coverage report found for main bot" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
