@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import type { OvermindMemory, RoomIntel, SwarmState } from "../../src/memory/schemas";
+import type { EmpireMemory, RoomIntel, SwarmState } from "../../src/memory/schemas";
 
 // Mock the global Game object
 declare const global: { Game: typeof Game; Memory: typeof Memory };
@@ -75,9 +75,9 @@ function createMockRoomIntel(name: string, sources = 2, scouted = true, owner?: 
 }
 
 /**
- * Create mock overmind memory
+ * Create mock empire memory
  */
-function createMockOvermindMemory(): OvermindMemory {
+function createMockEmpireMemory(): EmpireMemory {
   return {
     roomsSeen: {},
     roomIntel: {},
@@ -122,43 +122,43 @@ describe("expansion manager concepts", () => {
 
   describe("remote room candidate evaluation", () => {
     it("should identify remote room candidates based on intel", () => {
-      const overmind = createMockOvermindMemory();
-      overmind.roomIntel["E2N1"] = createMockRoomIntel("E2N1", 2, true);
-      overmind.roomIntel["E3N1"] = createMockRoomIntel("E3N1", 1, true);
+      const empire = createMockEmpireMemory();
+      empire.roomIntel["E2N1"] = createMockRoomIntel("E2N1", 2, true);
+      empire.roomIntel["E3N1"] = createMockRoomIntel("E3N1", 1, true);
 
       // E2N1 has 2 sources and is 1 distance away - better candidate
       // E3N1 has 1 source and is 2 distance away - worse candidate
-      const e2n1Score = overmind.roomIntel["E2N1"].sources * 50 - 1 * 20; // 100 - 20 = 80
-      const e3n1Score = overmind.roomIntel["E3N1"].sources * 50 - 2 * 20; // 50 - 40 = 10
+      const e2n1Score = empire.roomIntel["E2N1"].sources * 50 - 1 * 20; // 100 - 20 = 80
+      const e3n1Score = empire.roomIntel["E3N1"].sources * 50 - 2 * 20; // 50 - 40 = 10
 
       assert.isAbove(e2n1Score, e3n1Score, "E2N1 should have higher score than E3N1");
     });
 
     it("should exclude owned rooms from remote candidates", () => {
-      const overmind = createMockOvermindMemory();
-      overmind.roomIntel["E2N1"] = createMockRoomIntel("E2N1", 2, true, "SomePlayer");
+      const empire = createMockEmpireMemory();
+      empire.roomIntel["E2N1"] = createMockRoomIntel("E2N1", 2, true, "SomePlayer");
 
       // Room with an owner should not be considered for remote mining
-      const intel = overmind.roomIntel["E2N1"];
+      const intel = empire.roomIntel["E2N1"];
       assert.isNotNull(intel.owner, "Room should have an owner");
       // In real code, we'd filter out rooms with owners
     });
 
     it("should exclude SK rooms from remote candidates", () => {
-      const overmind = createMockOvermindMemory();
+      const empire = createMockEmpireMemory();
       const intel = createMockRoomIntel("E2N1", 2, true);
       intel.isSK = true;
-      overmind.roomIntel["E2N1"] = intel;
+      empire.roomIntel["E2N1"] = intel;
 
       // SK rooms should not be considered for remote mining
       assert.isTrue(intel.isSK, "Room should be marked as SK");
     });
 
     it("should exclude highway rooms from remote candidates", () => {
-      const overmind = createMockOvermindMemory();
+      const empire = createMockEmpireMemory();
       const intel = createMockRoomIntel("E2N1", 2, true);
       intel.isHighway = true;
-      overmind.roomIntel["E2N1"] = intel;
+      empire.roomIntel["E2N1"] = intel;
 
       // Highway rooms should not be considered for remote mining
       assert.isTrue(intel.isHighway, "Room should be marked as highway");
@@ -187,20 +187,20 @@ describe("expansion manager concepts", () => {
     });
 
     it("should track claimed status of expansion candidates", () => {
-      const overmind = createMockOvermindMemory();
-      overmind.claimQueue = [
+      const empire = createMockEmpireMemory();
+      empire.claimQueue = [
         { roomName: "E4N4", score: 80, distance: 2, claimed: false, lastEvaluated: 1000 },
         { roomName: "E5N5", score: 70, distance: 3, claimed: true, lastEvaluated: 1000 }
       ];
 
-      const unclaimed = overmind.claimQueue.filter(c => !c.claimed);
+      const unclaimed = empire.claimQueue.filter(c => !c.claimed);
       assert.lengthOf(unclaimed, 1, "Should have 1 unclaimed candidate");
       assert.equal(unclaimed[0].roomName, "E4N4");
     });
 
     it("should remove claimed rooms from claim queue when they are now owned", () => {
-      const overmind = createMockOvermindMemory();
-      overmind.claimQueue = [
+      const empire = createMockEmpireMemory();
+      empire.claimQueue = [
         { roomName: "E1N1", score: 90, distance: 1, claimed: true, lastEvaluated: 1000 },
         { roomName: "E4N4", score: 80, distance: 2, claimed: false, lastEvaluated: 1000 },
         { roomName: "E5N5", score: 70, distance: 3, claimed: true, lastEvaluated: 1000 }
@@ -218,21 +218,21 @@ describe("expansion manager concepts", () => {
       const ownedRoomNames = new Set(ownedRooms.map(r => r.name));
 
       // Simulate the cleanup logic that should be in EmpireManager.updateExpansionQueue
-      const initialLength = overmind.claimQueue.length;
-      overmind.claimQueue = overmind.claimQueue.filter(candidate => !ownedRoomNames.has(candidate.roomName));
+      const initialLength = empire.claimQueue.length;
+      empire.claimQueue = empire.claimQueue.filter(candidate => !ownedRoomNames.has(candidate.roomName));
 
       // E1N1 should be removed from the queue since it's now owned
-      assert.lengthOf(overmind.claimQueue, initialLength - 1, "Should have removed 1 room from claim queue");
+      assert.lengthOf(empire.claimQueue, initialLength - 1, "Should have removed 1 room from claim queue");
       assert.isFalse(
-        overmind.claimQueue.some(c => c.roomName === "E1N1"),
+        empire.claimQueue.some(c => c.roomName === "E1N1"),
         "E1N1 should not be in claim queue anymore"
       );
       assert.isTrue(
-        overmind.claimQueue.some(c => c.roomName === "E4N4"),
+        empire.claimQueue.some(c => c.roomName === "E4N4"),
         "E4N4 should still be in claim queue"
       );
       assert.isTrue(
-        overmind.claimQueue.some(c => c.roomName === "E5N5"),
+        empire.claimQueue.some(c => c.roomName === "E5N5"),
         "E5N5 should still be in claim queue"
       );
     });
@@ -416,23 +416,23 @@ describe("expansion manager concepts", () => {
 
   describe("cluster-based expansion strategy", () => {
     it("should prioritize expansion near existing clusters", () => {
-      const overmind = createMockOvermindMemory();
-      overmind.claimQueue = [
+      const empire = createMockEmpireMemory();
+      empire.claimQueue = [
         { roomName: "E2N1", score: 80, distance: 1, claimed: false, lastEvaluated: 1000 },
         { roomName: "E5N5", score: 85, distance: 10, claimed: false, lastEvaluated: 1000 }
       ];
 
       // Room closer to existing cluster should get bonus
       const clusterExpansionDistance = 5;
-      const nearCluster = overmind.claimQueue[0].distance <= clusterExpansionDistance;
-      const farFromCluster = overmind.claimQueue[1].distance > clusterExpansionDistance;
+      const nearCluster = empire.claimQueue[0].distance <= clusterExpansionDistance;
+      const farFromCluster = empire.claimQueue[1].distance > clusterExpansionDistance;
 
       assert.isTrue(nearCluster, "E2N1 should be near cluster");
       assert.isTrue(farFromCluster, "E5N5 should be far from cluster");
 
       // With cluster bonus of 100, E2N1 (80 + 100 = 180) beats E5N5 (85)
-      const e2n1ClusterScore = overmind.claimQueue[0].score + (nearCluster ? 100 : 0);
-      const e5n5ClusterScore = overmind.claimQueue[1].score + (farFromCluster ? 0 : 100);
+      const e2n1ClusterScore = empire.claimQueue[0].score + (nearCluster ? 100 : 0);
+      const e5n5ClusterScore = empire.claimQueue[1].score + (farFromCluster ? 0 : 100);
 
       assert.isAbove(e2n1ClusterScore, e5n5ClusterScore, "Nearby room should be prioritized");
     });

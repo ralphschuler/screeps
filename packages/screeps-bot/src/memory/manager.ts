@@ -16,7 +16,6 @@ import {
   type ClusterMemory,
   type EmpireMemory,
   type EventLogEntry,
-  type OvermindMemory,
   type SwarmCreepMemory,
   type SwarmState,
   createDefaultClusterMemory,

@@ -348,7 +348,7 @@ describe("Multi-Factor Expansion Scoring", () => {
 
   describe("Portal Proximity Bonus", () => {
     it("should give bonus for adjacent rooms with portals", () => {
-      // Set up mock overmind with room intel
+      // Set up mock empire with room intel
       const mockOvermind = {
         roomIntel: {
           "E2N1": createMockRoomIntel("E2N1", { hasPortal: true }),
@@ -382,7 +382,7 @@ describe("Multi-Factor Expansion Scoring", () => {
     });
 
     it("should return 0 for rooms without adjacent portals", () => {
-      // Set up mock overmind with no portal rooms
+      // Set up mock empire with no portal rooms
       const mockOvermind = {
         roomIntel: {
           "E2N1": createMockRoomIntel("E2N1", { hasPortal: false }),

@@ -277,42 +277,6 @@ export interface EmpireMemory {
 }
 
 /**
- * Global overmind memory
- * @deprecated Use EmpireMemory instead. This interface is kept for backward compatibility during migration.
- */
-export interface OvermindMemory {
-  /** Rooms seen with last seen time */
-  roomsSeen: Record<string, number>;
-  /** Room intel database */
-  roomIntel: Record<string, RoomIntel>;
-  /** Claim queue sorted by expansion score */
-  claimQueue: ExpansionCandidate[];
-  /** Active war targets (player usernames or room names) */
-  warTargets: string[];
-  /** Nuke candidates with scores */
-  nukeCandidates: { roomName: string; score: number; launched: boolean; launchTick: number }[];
-  /** Power bank locations */
-  powerBanks: PowerBankEntry[];
-  /** Nukes in flight for salvo coordination */
-  nukesInFlight?: NukeInFlight[];
-  /** Incoming nuke alerts for defense */
-  incomingNukes?: IncomingNukeAlert[];
-  /** Nuke economics tracking */
-  nukeEconomics?: NukeEconomics;
-  /** Market intelligence data */
-  market?: MarketMemory;
-  /** Global strategic objectives */
-  objectives: {
-    targetPowerLevel: number;
-    targetRoomCount: number;
-    warMode: boolean;
-    expansionPaused: boolean;
-  };
-  /** Last run tick */
-  lastRun: number;
-}
-
-/**
  * Owned room entry with role
  */
 export interface OwnedRoomEntry {
@@ -839,29 +803,6 @@ export function createDefaultEmpireMemory(): EmpireMemory {
       expansionPaused: false
     },
     lastUpdate: 0
-  };
-}
-
-/**
- * Create default overmind memory
- * @deprecated Use createDefaultEmpireMemory instead. This is kept for backward compatibility.
- */
-export function createDefaultOvermindMemory(): OvermindMemory {
-  return {
-    roomsSeen: {},
-    roomIntel: {},
-    claimQueue: [],
-    warTargets: [],
-    nukeCandidates: [],
-    powerBanks: [],
-    market: createDefaultMarketMemory(),
-    objectives: {
-      targetPowerLevel: 0,
-      targetRoomCount: 1,
-      warMode: false,
-      expansionPaused: false
-    },
-    lastRun: 0
   };
 }
 

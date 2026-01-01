@@ -88,7 +88,7 @@ stateDiagram-v2
         - Terrain (swamp/plain ratio)
         - Strategic value score
         
-        Stored in Memory.overmind.roomIntel
+        Stored in Memory.empire.knownRooms
     end note
     
     note right of TouchController

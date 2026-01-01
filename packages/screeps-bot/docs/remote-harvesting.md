@@ -56,7 +56,7 @@ The expansion manager can be configured via `ExpansionManagerConfig`:
 
 ### Phase 1: Scout & Identify
 1. Scout creeps explore neighboring rooms
-2. Room intel is stored in `Memory.overmind.roomIntel`
+2. Room intel is stored in `Memory.empire.knownRooms`
 3. Expansion manager evaluates rooms as remote candidates
 
 ### Phase 2: Reserve

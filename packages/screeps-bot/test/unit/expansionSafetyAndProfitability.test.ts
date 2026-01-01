@@ -6,8 +6,8 @@
  */
 
 import { expect } from "chai";
-import type { RoomIntel, OvermindMemory } from "../../src/memory/schemas";
-import { createDefaultOvermindMemory } from "../../src/memory/schemas";
+import type { RoomIntel, EmpireMemory } from "../../src/memory/schemas";
+import { createDefaultEmpireMemory } from "../../src/memory/schemas";
 import * as ExpansionScoring from "../../src/empire/expansionScoring";
 
 // Mock the global Game object
@@ -108,10 +108,10 @@ function getAdjacentRoomNames(roomName: string): string[] {
 }
 
 describe("Expansion Safety Analysis", () => {
-  let overmind: OvermindMemory;
+  let empire: EmpireMemory;
 
   beforeEach(() => {
-    overmind = createDefaultOvermindMemory();
+    empire = createDefaultEmpireMemory();
 
     global.Game = {
       time: 1000,
@@ -130,15 +130,15 @@ describe("Expansion Safety Analysis", () => {
   describe("Adjacent Room Scanning", () => {
     it("should detect hostile owned adjacent rooms", () => {
       // Setup: E1N1 with hostile-owned E2N1 adjacent
-      overmind.roomIntel["E1N1"] = createMockRoomIntel("E1N1");
-      overmind.roomIntel["E2N1"] = createMockRoomIntel("E2N1", { owner: "HostilePlayer" });
+      empire.roomIntel["E1N1"] = createMockRoomIntel("E1N1");
+      empire.roomIntel["E2N1"] = createMockRoomIntel("E2N1", { owner: "HostilePlayer" });
 
       const targetRoom = "E1N1";
       const adjacentRooms = getAdjacentRoomNames(targetRoom);
 
       let threatCount = 0;
       for (const adjRoom of adjacentRooms) {
-        const intel = overmind.roomIntel[adjRoom];
+        const intel = empire.roomIntel[adjRoom];
         if (intel?.owner) {
           threatCount++;
         }
@@ -148,15 +148,15 @@ describe("Expansion Safety Analysis", () => {
     });
 
     it("should detect towers in adjacent rooms", () => {
-      overmind.roomIntel["E1N1"] = createMockRoomIntel("E1N1");
-      overmind.roomIntel["E2N1"] = createMockRoomIntel("E2N1", { towerCount: 3 });
+      empire.roomIntel["E1N1"] = createMockRoomIntel("E1N1");
+      empire.roomIntel["E2N1"] = createMockRoomIntel("E2N1", { towerCount: 3 });
 
       const targetRoom = "E1N1";
       const adjacentRooms = getAdjacentRoomNames(targetRoom);
 
       let towerCount = 0;
       for (const adjRoom of adjacentRooms) {
-        const intel = overmind.roomIntel[adjRoom];
+        const intel = empire.roomIntel[adjRoom];
         if (intel?.towerCount) {
           towerCount += intel.towerCount;
         }
@@ -166,16 +166,16 @@ describe("Expansion Safety Analysis", () => {
     });
 
     it("should detect high threat levels in adjacent rooms", () => {
-      overmind.roomIntel["E1N1"] = createMockRoomIntel("E1N1");
-      overmind.roomIntel["E2N1"] = createMockRoomIntel("E2N1", { threatLevel: 3 });
-      overmind.roomIntel["E1N2"] = createMockRoomIntel("E1N2", { threatLevel: 2 });
+      empire.roomIntel["E1N1"] = createMockRoomIntel("E1N1");
+      empire.roomIntel["E2N1"] = createMockRoomIntel("E2N1", { threatLevel: 3 });
+      empire.roomIntel["E1N2"] = createMockRoomIntel("E1N2", { threatLevel: 2 });
 
       const targetRoom = "E1N1";
       const adjacentRooms = getAdjacentRoomNames(targetRoom);
 
       let maxThreat: 0 | 1 | 2 | 3 = 0;
       for (const adjRoom of adjacentRooms) {
-        const intel = overmind.roomIntel[adjRoom];
+        const intel = empire.roomIntel[adjRoom];
         if (intel && intel.threatLevel > maxThreat) {
           maxThreat = intel.threatLevel;
         }
@@ -187,16 +187,16 @@ describe("Expansion Safety Analysis", () => {
 
   describe("War Zone Detection", () => {
     it("should detect war zones between two hostile players", () => {
-      overmind.roomIntel["E1N1"] = createMockRoomIntel("E1N1");
-      overmind.roomIntel["E2N1"] = createMockRoomIntel("E2N1", { owner: "HostilePlayer1" });
-      overmind.roomIntel["E0N1"] = createMockRoomIntel("E0N1", { owner: "HostilePlayer2" });
+      empire.roomIntel["E1N1"] = createMockRoomIntel("E1N1");
+      empire.roomIntel["E2N1"] = createMockRoomIntel("E2N1", { owner: "HostilePlayer1" });
+      empire.roomIntel["E0N1"] = createMockRoomIntel("E0N1", { owner: "HostilePlayer2" });
 
       const targetRoom = "E1N1";
       const adjacentRooms = getAdjacentRoomNames(targetRoom);
 
       const hostilePlayers = new Set<string>();
       for (const adjRoom of adjacentRooms) {
-        const intel = overmind.roomIntel[adjRoom];
+        const intel = empire.roomIntel[adjRoom];
         if (intel?.owner) {
           hostilePlayers.add(intel.owner);
         }
@@ -207,16 +207,16 @@ describe("Expansion Safety Analysis", () => {
     });
 
     it("should not flag as war zone with only one hostile player", () => {
-      overmind.roomIntel["E1N1"] = createMockRoomIntel("E1N1");
-      overmind.roomIntel["E2N1"] = createMockRoomIntel("E2N1", { owner: "HostilePlayer1" });
-      overmind.roomIntel["E0N1"] = createMockRoomIntel("E0N1", { owner: "HostilePlayer1" });
+      empire.roomIntel["E1N1"] = createMockRoomIntel("E1N1");
+      empire.roomIntel["E2N1"] = createMockRoomIntel("E2N1", { owner: "HostilePlayer1" });
+      empire.roomIntel["E0N1"] = createMockRoomIntel("E0N1", { owner: "HostilePlayer1" });
 
       const targetRoom = "E1N1";
       const adjacentRooms = getAdjacentRoomNames(targetRoom);
 
       const hostilePlayers = new Set<string>();
       for (const adjRoom of adjacentRooms) {
-        const intel = overmind.roomIntel[adjRoom];
+        const intel = empire.roomIntel[adjRoom];
         if (intel?.owner) {
           hostilePlayers.add(intel.owner);
         }
@@ -229,16 +229,16 @@ describe("Expansion Safety Analysis", () => {
 
   describe("Safety Evaluation", () => {
     it("should consider room safe with no threats nearby", () => {
-      overmind.roomIntel["E1N1"] = createMockRoomIntel("E1N1");
-      overmind.roomIntel["E2N1"] = createMockRoomIntel("E2N1", { threatLevel: 0, owner: undefined });
-      overmind.roomIntel["E0N1"] = createMockRoomIntel("E0N1", { threatLevel: 0, owner: undefined });
+      empire.roomIntel["E1N1"] = createMockRoomIntel("E1N1");
+      empire.roomIntel["E2N1"] = createMockRoomIntel("E2N1", { threatLevel: 0, owner: undefined });
+      empire.roomIntel["E0N1"] = createMockRoomIntel("E0N1", { threatLevel: 0, owner: undefined });
 
       const targetRoom = "E1N1";
       const adjacentRooms = getAdjacentRoomNames(targetRoom);
 
       let threatCount = 0;
       for (const adjRoom of adjacentRooms) {
-        const intel = overmind.roomIntel[adjRoom];
+        const intel = empire.roomIntel[adjRoom];
         if (intel?.owner || (intel?.threatLevel ?? 0) >= 2) {
           threatCount++;
         }
@@ -249,15 +249,15 @@ describe("Expansion Safety Analysis", () => {
     });
 
     it("should consider room unsafe with hostile structures nearby", () => {
-      overmind.roomIntel["E1N1"] = createMockRoomIntel("E1N1");
-      overmind.roomIntel["E2N1"] = createMockRoomIntel("E2N1", { towerCount: 5, spawnCount: 2 });
+      empire.roomIntel["E1N1"] = createMockRoomIntel("E1N1");
+      empire.roomIntel["E2N1"] = createMockRoomIntel("E2N1", { towerCount: 5, spawnCount: 2 });
 
       const targetRoom = "E1N1";
       const adjacentRooms = getAdjacentRoomNames(targetRoom);
 
       let hasHostileStructures = false;
       for (const adjRoom of adjacentRooms) {
-        const intel = overmind.roomIntel[adjRoom];
+        const intel = empire.roomIntel[adjRoom];
         if ((intel?.towerCount ?? 0) > 0 || (intel?.spawnCount ?? 0) > 0) {
           hasHostileStructures = true;
           break;
@@ -526,20 +526,20 @@ describe("Expansion Cancellation", () => {
 
   describe("Hostile Claim Detection", () => {
     it("should detect when room is claimed by hostile player", () => {
-      const overmind = createDefaultOvermindMemory();
-      overmind.roomIntel["E5N5"] = createMockRoomIntel("E5N5", { owner: "HostilePlayer" });
+      const empire = createDefaultEmpireMemory();
+      empire.roomIntel["E5N5"] = createMockRoomIntel("E5N5", { owner: "HostilePlayer" });
 
-      const intel = overmind.roomIntel["E5N5"];
+      const intel = empire.roomIntel["E5N5"];
       const isHostileClaim = intel?.owner !== undefined && intel.owner !== "MyUsername";
 
       expect(isHostileClaim).to.be.true;
     });
 
     it("should not trigger if room is unclaimed", () => {
-      const overmind = createDefaultOvermindMemory();
-      overmind.roomIntel["E5N5"] = createMockRoomIntel("E5N5", { owner: undefined });
+      const empire = createDefaultEmpireMemory();
+      empire.roomIntel["E5N5"] = createMockRoomIntel("E5N5", { owner: undefined });
 
-      const intel = overmind.roomIntel["E5N5"];
+      const intel = empire.roomIntel["E5N5"];
       const isHostileClaim = intel?.owner !== undefined && intel.owner !== "MyUsername";
 
       expect(isHostileClaim).to.be.false;

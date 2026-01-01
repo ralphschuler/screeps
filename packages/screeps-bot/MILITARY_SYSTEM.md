@@ -273,8 +273,8 @@ Military operations update and respond to pheromones:
 Military state tracked in:
 - `ClusterMemory.squads[]` - Squad definitions
 - `ClusterMemory.rallyPoints[]` - Rally point locations
-- `OvermindMemory.warTargets[]` - Offensive targets
-- `OvermindMemory.nukeCandidates[]` - Nuke targets
+- `EmpireMemory.warTargets[]` - Offensive targets
+- `EmpireMemory.nukeCandidates[]` - Nuke targets
 - `SwarmCreepMemory.squadId` - Squad membership
 
 ## Testing

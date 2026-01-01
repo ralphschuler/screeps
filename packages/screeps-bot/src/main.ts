@@ -57,8 +57,6 @@ declare global {
       };
       lastUpdate: number;
     };
-    /** Overmind memory - deprecated, use empire instead */
-    overmind?: any;
     /** Clusters memory */
     clusters?: Record<string, any>;
     /** TooAngel diplomacy and quest system */
