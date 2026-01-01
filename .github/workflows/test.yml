@@ -58,7 +58,7 @@ jobs:
             echo "View detailed coverage report in the Codecov upload above." >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             if [ "${{ steps.coverage.outcome }}" == "failure" ]; then
-              echo "⚠️ Note: Coverage thresholds not met, but report was still generated and uploaded." >> $GITHUB_STEP_SUMMARY
+              echo "⚠️ Note: Coverage test step failed (possibly due to threshold requirements), but report was still generated and uploaded." >> $GITHUB_STEP_SUMMARY
             fi
           else
             # Coverage file is truly missing - this is a real failure (e.g., c8 not installed)
