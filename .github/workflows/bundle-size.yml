@@ -1,0 +1,125 @@
+name: Bundle Size Check
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  bundle-size:
+    name: Check Bundle Sizes
+    runs-on: ubuntu-latest
+    env:
+      CI: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build all packages
+        run: npm run build:all
+
+      - name: Check bundle sizes
+        run: |
+          echo "## Bundle Size Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Package | Size (KB) | Files |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          
+          # Check kernel package
+          if [ -d "packages/@ralphschuler/screeps-kernel/dist" ]; then
+            size=$(du -sk packages/@ralphschuler/screeps-kernel/dist | cut -f1)
+            files=$(find packages/@ralphschuler/screeps-kernel/dist -type f | wc -l)
+            echo "| screeps-kernel | $size | $files |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Check roles package
+          if [ -d "packages/@ralphschuler/screeps-roles/dist" ]; then
+            size=$(du -sk packages/@ralphschuler/screeps-roles/dist | cut -f1)
+            files=$(find packages/@ralphschuler/screeps-roles/dist -type f | wc -l)
+            echo "| screeps-roles | $size | $files |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Check pathfinding package
+          if [ -d "packages/@ralphschuler/screeps-pathfinding/dist" ]; then
+            size=$(du -sk packages/@ralphschuler/screeps-pathfinding/dist | cut -f1)
+            files=$(find packages/@ralphschuler/screeps-pathfinding/dist -type f | wc -l)
+            echo "| screeps-pathfinding | $size | $files |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Check remote-mining package
+          if [ -d "packages/@ralphschuler/screeps-remote-mining/dist" ]; then
+            size=$(du -sk packages/@ralphschuler/screeps-remote-mining/dist | cut -f1)
+            files=$(find packages/@ralphschuler/screeps-remote-mining/dist -type f | wc -l)
+            echo "| screeps-remote-mining | $size | $files |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Check spawn package
+          if [ -d "packages/screeps-spawn/dist" ]; then
+            size=$(du -sk packages/screeps-spawn/dist | cut -f1)
+            files=$(find packages/screeps-spawn/dist -type f | wc -l)
+            echo "| screeps-spawn | $size | $files |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Check economy package
+          if [ -d "packages/screeps-economy/dist" ]; then
+            size=$(du -sk packages/screeps-economy/dist | cut -f1)
+            files=$(find packages/screeps-economy/dist -type f | wc -l)
+            echo "| screeps-economy | $size | $files |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Check defense package
+          if [ -d "packages/screeps-defense/dist" ]; then
+            size=$(du -sk packages/screeps-defense/dist | cut -f1)
+            files=$(find packages/screeps-defense/dist -type f | wc -l)
+            echo "| screeps-defense | $size | $files |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Check chemistry package
+          if [ -d "packages/screeps-chemistry/dist" ]; then
+            size=$(du -sk packages/screeps-chemistry/dist | cut -f1)
+            files=$(find packages/screeps-chemistry/dist -type f | wc -l)
+            echo "| screeps-chemistry | $size | $files |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Check utils package
+          if [ -d "packages/screeps-utils/dist" ]; then
+            size=$(du -sk packages/screeps-utils/dist | cut -f1)
+            files=$(find packages/screeps-utils/dist -type f | wc -l)
+            echo "| screeps-utils | $size | $files |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Check tasks package
+          if [ -d "packages/screeps-tasks/dist" ]; then
+            size=$(du -sk packages/screeps-tasks/dist | cut -f1)
+            files=$(find packages/screeps-tasks/dist -type f | wc -l)
+            echo "| screeps-tasks | $size | $files |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Check posis package
+          if [ -d "packages/screeps-posis/dist" ]; then
+            size=$(du -sk packages/screeps-posis/dist | cut -f1)
+            files=$(find packages/screeps-posis/dist -type f | wc -l)
+            echo "| screeps-posis | $size | $files |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Check main bot bundle
+          if [ -d "packages/screeps-bot/dist" ]; then
+            size=$(du -sk packages/screeps-bot/dist | cut -f1)
+            files=$(find packages/screeps-bot/dist -type f | wc -l)
+            echo "| screeps-bot (main) | $size | $files |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "💡 **Note:** Size is reported in kilobytes (KB) for the entire dist directory." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Warning:** Watch for unexpected size increases that could indicate bloat or unintended dependencies." >> $GITHUB_STEP_SUMMARY

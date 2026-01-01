@@ -1,28 +1,56 @@
 version: 2
 
 updates:
+  # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 1
+    open-pull-requests-limit: 5
 
+  # Git Submodules
   - package-ecosystem: "gitsubmodule"
     directory: "/"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 1
 
+  # Root package dependencies
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 1
+    open-pull-requests-limit: 5
     groups:
-      all-npm:
+      dev-dependencies:
+        patterns:
+          - "@types/*"
+          - "typescript"
+          - "ts-node"
+          - "mocha"
+          - "chai"
+          - "eslint*"
+          - "prettier"
+        update-types:
+          - "minor"
+          - "patch"
+      production-dependencies:
         patterns:
           - "*"
+        exclude-patterns:
+          - "@types/*"
+          - "typescript"
+          - "ts-node"
+          - "mocha"
+          - "chai"
+          - "eslint*"
+          - "prettier"
+    # Auto-approve minor and patch updates for dev dependencies
+    labels:
+      - "dependencies"
+      - "automated"
 
+  # Docker images
   - package-ecosystem: "docker"
     directory: "/packages/screeps-grafana-exporter"
     schedule:
