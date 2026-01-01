@@ -76,14 +76,17 @@ jobs:
         run: npm ci
 
       - name: Build ${{ matrix.package-name }}
+        id: build-step
         run: npm run build -w ${{ matrix.workspace }}
+        continue-on-error: true
 
       - name: TypeCheck Summary
         if: always()
         run: |
           echo "## ${{ matrix.package-name }} TypeCheck Results" >> $GITHUB_STEP_SUMMARY
-          if [ $? -eq 0 ]; then
+          if [ "${{ steps.build-step.outcome }}" == "success" ]; then
             echo "✅ TypeScript compilation passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ TypeScript compilation failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
           fi

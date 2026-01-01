@@ -121,15 +121,18 @@ jobs:
         run: npm run build
 
       - name: Test ${{ matrix.package-name }}
+        id: test-step
         run: npm run ${{ matrix.test-script }}
+        continue-on-error: true
 
       - name: Test Summary
         if: always()
         run: |
           echo "## ${{ matrix.package-name }} Test Results" >> $GITHUB_STEP_SUMMARY
-          if [ $? -eq 0 ]; then
+          if [ "${{ steps.test-step.outcome }}" == "success" ]; then
             echo "✅ Tests passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ Tests failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
           fi
 
