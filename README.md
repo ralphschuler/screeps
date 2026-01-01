@@ -1,6 +1,9 @@
 # Screeps Ant Swarm Bot
 
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
+[![Tests](https://github.com/ralphschuler/screeps/actions/workflows/test.yml/badge.svg)](https://github.com/ralphschuler/screeps/actions/workflows/test.yml)
+[![Lint](https://github.com/ralphschuler/screeps/actions/workflows/lint.yml/badge.svg)](https://github.com/ralphschuler/screeps/actions/workflows/lint.yml)
+[![Bundle Size](https://github.com/ralphschuler/screeps/actions/workflows/bundle-size.yml/badge.svg)](https://github.com/ralphschuler/screeps/actions/workflows/bundle-size.yml)
 [![Performance Tests](https://github.com/ralphschuler/screeps/actions/workflows/performance-test.yml/badge.svg)](https://github.com/ralphschuler/screeps/actions/workflows/performance-test.yml)
 [![CPU Budget: Eco Room](https://img.shields.io/badge/CPU%20Budget%20(Eco)-≤0.1-success?style=flat-square)](https://ralphschuler.grafana.net/public-dashboards/d0bc9548d02247889147e0707cc61e8f)
 [![CPU Budget: War Room](https://img.shields.io/badge/CPU%20Budget%20(War)-≤0.25-success?style=flat-square)](https://ralphschuler.grafana.net/public-dashboards/d0bc9548d02247889147e0707cc61e8f)

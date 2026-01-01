@@ -6,8 +6,13 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
-  test:
+  # Main bot tests with coverage
+  test-bot:
+    name: Test Main Bot
     runs-on: ubuntu-latest
     env:
       CI: true
@@ -29,23 +34,6 @@ jobs:
 
       - name: Run main bot tests with coverage
         run: npm run test:coverage -w screeps-typescript-starter
-        continue-on-error: true
-
-      - name: Run package tests
-        run: |
-          echo "## Package Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          # Test each package and report results
-          for package in spawn economy defense chemistry utils kernel roles pathfinding remote-mining; do
-            echo "Testing @ralphschuler/screeps-$package..."
-            if npm run test:$package 2>&1 | tee test-output.log; then
-              echo "✅ **screeps-$package**: Tests passed" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "⚠️ **screeps-$package**: Tests failed or no tests" >> $GITHUB_STEP_SUMMARY
-            fi
-          done
-        continue-on-error: true
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v5
@@ -69,7 +57,85 @@ jobs:
           else
             echo "⚠️ No coverage report found for main bot" >> $GITHUB_STEP_SUMMARY
           fi
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Individual Package Tests" >> $GITHUB_STEP_SUMMARY
-          echo "See 'Package Test Results' section above for individual package test status." >> $GITHUB_STEP_SUMMARY
+
+  # Package tests using matrix strategy
+  test-packages:
+    name: Test ${{ matrix.package-name }}
+    runs-on: ubuntu-latest
+    env:
+      CI: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # @ralphschuler scoped packages
+          - package-name: screeps-kernel
+            workspace: "@ralphschuler/screeps-kernel"
+            test-script: "test:kernel"
+          - package-name: screeps-roles
+            workspace: "@ralphschuler/screeps-roles"
+            test-script: "test:roles"
+          - package-name: screeps-pathfinding
+            workspace: "@ralphschuler/screeps-pathfinding"
+            test-script: "test:pathfinding"
+          - package-name: screeps-remote-mining
+            workspace: "@ralphschuler/screeps-remote-mining"
+            test-script: "test:remote-mining"
+          # Non-scoped packages
+          - package-name: screeps-spawn
+            workspace: "@ralphschuler/screeps-spawn"
+            test-script: "test:spawn"
+          - package-name: screeps-economy
+            workspace: "@ralphschuler/screeps-economy"
+            test-script: "test:economy"
+          - package-name: screeps-defense
+            workspace: "@ralphschuler/screeps-defense"
+            test-script: "test:defense"
+          - package-name: screeps-chemistry
+            workspace: "@ralphschuler/screeps-chemistry"
+            test-script: "test:chemistry"
+          - package-name: screeps-utils
+            workspace: "@ralphschuler/screeps-utils"
+            test-script: "test:utils"
+          - package-name: screeps-tasks
+            workspace: "@ralphschuler/screeps-tasks"
+            test-script: "test:tasks"
+          - package-name: screeps-posis
+            workspace: "@ralphschuler/screeps-posis"
+            test-script: "test:posis"
+          - package-name: screeps-server
+            workspace: "@ralphschuler/screeps-server"
+            test-script: "test:server"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build dependencies
+        run: npm run build
+
+      - name: Test ${{ matrix.package-name }}
+        id: test-step
+        run: npm run ${{ matrix.test-script }}
+        continue-on-error: true
+
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "## ${{ matrix.package-name }} Test Results" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.test-step.outcome }}" == "success" ]; then
+            echo "✅ Tests passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Tests failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
 
