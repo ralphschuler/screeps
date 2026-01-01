@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     # Only run if the workflow failed
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -31,18 +31,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Get workflow run jobs
           WORKFLOW_RUN_ID="${{ github.event.workflow_run.id }}"
           WORKFLOW_NAME="${{ github.event.workflow_run.name }}"
-          
+
           echo "workflow_name=$WORKFLOW_NAME" >> $GITHUB_OUTPUT
           echo "workflow_run_id=$WORKFLOW_RUN_ID" >> $GITHUB_OUTPUT
-          
-          # Get failed jobs
+
           gh api "/repos/${{ github.repository }}/actions/runs/$WORKFLOW_RUN_ID/jobs" \
             --jq '.jobs[] | select(.conclusion == "failure") | {name: .name, id: .id, conclusion: .conclusion}' \
             > failed_jobs.json
-          
+
           echo "Failed jobs:"
           cat failed_jobs.json
 
@@ -52,26 +50,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           WORKFLOW_RUN_ID="${{ steps.workflow-details.outputs.workflow_run_id }}"
-          
-          # Create errors directory
+
           mkdir -p errors
-          
-          # Download logs for failed jobs
+
           gh api "/repos/${{ github.repository }}/actions/runs/$WORKFLOW_RUN_ID/logs" > logs.zip || true
-          
+
           if [ -f logs.zip ]; then
             unzip -q logs.zip -d logs/ || true
-            
-            # Parse logs to extract error messages
-            # Look for common error patterns (combined for efficiency)
+
             find logs/ -type f -name "*.txt" | while read -r log_file; do
-              # Extract error messages using combined patterns
-              # -m 20 stops after 20 matches for efficiency
-              grep -m 20 -iE "error:|failed:|failure:|test failed|build failed|×|✗|❌" "$log_file" >> errors/raw_errors.txt || true
+              grep -m 50 -iE "error:|failed:|failure:|test failed|build failed|×|✗|❌" "$log_file" >> errors/raw_errors.txt || true
             done
           fi
-          
-          # If no errors found in logs, create a generic error
+
           if [ ! -f errors/raw_errors.txt ] || [ ! -s errors/raw_errors.txt ]; then
             echo "Workflow failed but no specific error messages found" > errors/raw_errors.txt
           fi
@@ -84,145 +75,168 @@ jobs:
           WORKFLOW_RUN_ID="${{ steps.workflow-details.outputs.workflow_run_id }}"
           RUN_URL="${{ github.event.workflow_run.html_url }}"
           GITHUB_REPO="${{ github.repository }}"
-          
-          # Create a script to process errors
+
           cat > process_errors.sh << 'EOF'
           #!/bin/bash
-          set -e
-          
+          set -euo pipefail
+
           WORKFLOW_NAME="$1"
           WORKFLOW_RUN_ID="$2"
           RUN_URL="$3"
           GITHUB_REPOSITORY="$4"
-          
-          # Function to create issue title from error
-          create_issue_title() {
-            local error_msg="$1"
-            local workflow_name="$2"
-            local MAX_TITLE_LENGTH=120
-            local ELLIPSIS="..."
-            
-            # Calculate how much space we have for the error message
-            # Format: "CI Error in WORKFLOW: ERROR"
-            local prefix="CI Error in $workflow_name: "
-            local available_length=$((MAX_TITLE_LENGTH - ${#prefix}))
-            
-            # Clean up the error message
-            local clean_error=$(echo "$error_msg" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-            
-            # Truncate if necessary (accounting for ellipsis only when needed)
-            if [ ${#clean_error} -gt $available_length ]; then
-              local truncate_at=$((available_length - ${#ELLIPSIS}))
-              clean_error="${clean_error:0:$truncate_at}${ELLIPSIS}"
-            fi
-            
-            echo "${prefix}${clean_error}"
+
+          MAX_TITLE_LENGTH=240
+          ELLIPSIS="..."
+
+          normalize_error() {
+            local s="$1"
+
+            # Trim
+            s="$(echo "$s" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+
+            # Strip common timestamp prefixes (keep it conservative but useful)
+            # Examples:
+            #   2026-01-01T12:34:56Z ...
+            #   2026-01-01 12:34:56 ...
+            #   [12:34:56] ...
+            #   12:34:56 ...
+            s="$(echo "$s" | sed -E \
+              -e 's/^[[:space:]]*\[[0-9]{1,2}:[0-9]{2}:[0-9]{2}\][[:space:]]*//' \
+              -e 's/^[[:space:]]*[0-9]{1,2}:[0-9]{2}:[0-9]{2}[[:space:]]*//' \
+              -e 's/^[[:space:]]*[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})?[[:space:]]*//' \
+            )"
+
+            # Collapse repeated whitespace
+            s="$(echo "$s" | tr -s '[:space:]' ' ')"
+
+            # Final trim
+            s="$(echo "$s" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+
+            echo "$s"
           }
-          
-          # Function to check if issue exists
-          issue_exists() {
-            local title="$1"
-            
-            # Use GitHub search API for efficient lookup
-            # Quote the title for safe searching
-            local quoted_title=$(printf '%q' "$title")
-            
-            # Search using gh issue list which is safer than raw API
-            local count=$(gh issue list \
+
+          make_title() {
+            local normalized="$1"
+
+            if [ ${#normalized} -gt $MAX_TITLE_LENGTH ]; then
+              local cut_at=$((MAX_TITLE_LENGTH - ${#ELLIPSIS}))
+              normalized="${normalized:0:$cut_at}${ELLIPSIS}"
+            fi
+
+            echo "$normalized"
+          }
+
+          fetch_existing_titles() {
+            # Pull open issue titles once; exact-match locally for speed and predictability
+            gh issue list \
               --repo "$GITHUB_REPOSITORY" \
               --state open \
-              --search "$quoted_title in:title" \
-              --limit 1 \
-              --json number \
-              --jq 'length')
-            
-            [ "$count" -gt 0 ]
+              --limit 1000 \
+              --json title \
+              --jq '.[].title' \
+              > errors/existing_titles.txt
           }
-          
-          # Function to create an issue
+
+          issue_exists_exact() {
+            local title="$1"
+            # exact, full-line match
+            grep -Fxq -- "$title" errors/existing_titles.txt
+          }
+
           create_issue() {
             local title="$1"
             local error_msg="$2"
             local workflow_name="$3"
             local run_url="$4"
-            
-            # Sanitize inputs for markdown (escape backticks and prevent code injection)
-            local safe_workflow=$(echo "$workflow_name" | sed 's/`/\\`/g')
-            local safe_error=$(echo "$error_msg" | sed 's/`/\\`/g')
-            
-            # Create issue body with sanitized content
+
+            local safe_workflow
+            safe_workflow="$(echo "$workflow_name" | sed 's/`/\\`/g')"
+
+            # Keep raw error in the body (escaped for backticks only)
+            local safe_error
+            safe_error="$(echo "$error_msg" | sed 's/`/\\`/g')"
+
             local body="## CI Workflow Failed
-          
+
           **Workflow:** $safe_workflow
           **Run:** [View failed run]($run_url)
-          
+
           ### Error Details
-          
+
           \`\`\`
           $safe_error
           \`\`\`
-          
+
           ### Action Required
-          
+
           Please investigate and fix this CI failure.
-          
+
           ---
           *This issue was automatically created by the CI Error Issue Creator workflow.*"
-            
-            # Write body to temp file for robust handling of special characters
-            local body_file=$(mktemp)
+
+            local body_file
+            body_file="$(mktemp)"
             echo "$body" > "$body_file"
-            
-            # Create the issue using body file
+
             gh issue create \
+              --repo "$GITHUB_REPOSITORY" \
               --title "$title" \
               --body-file "$body_file" \
               --label "type/bug,ci,automated"
-            
-            # Clean up temp file
+
             rm -f "$body_file"
           }
-          
-          # Process unique errors
-          if [ -f errors/raw_errors.txt ]; then
-            # Get unique error lines (deduplicate)
-            sort -u errors/raw_errors.txt > errors/unique_errors.txt
-            
-            # Process each unique error
-            while IFS= read -r error_line; do
-              # Skip empty lines
-              [ -z "$error_line" ] && continue
-              
-              # Create issue title
-              issue_title=$(create_issue_title "$error_line" "$WORKFLOW_NAME")
-              
-              echo "Processing error: $error_line"
-              echo "Issue title: $issue_title"
-              
-              # Check if issue already exists
-              if issue_exists "$issue_title"; then
-                echo "Issue already exists for: $issue_title"
-                echo "Skipping..."
-              else
-                echo "Creating new issue..."
-                create_issue "$issue_title" "$error_line" "$WORKFLOW_NAME" "$RUN_URL"
-                echo "Issue created successfully"
-              fi
-              
-              # Small delay to avoid rate limiting
-              sleep 2
-            done < errors/unique_errors.txt
-          else
+
+          mkdir -p errors
+
+          if [ ! -f errors/raw_errors.txt ]; then
             echo "No errors file found"
-            
-            # Create a generic issue for the workflow failure
-            generic_title="CI Error in $WORKFLOW_NAME: Workflow failed"
-            if ! issue_exists "$generic_title"; then
-              create_issue "$generic_title" "Workflow failed but no specific error messages were found." "$WORKFLOW_NAME" "$RUN_URL"
-            fi
+            exit 0
           fi
+
+          # Build a list of *titles* (normalized + truncated) and keep one representative raw line per title.
+          # This makes dedupe deterministic.
+          : > errors/title_map.tsv
+          while IFS= read -r raw_line; do
+            [ -z "$raw_line" ] && continue
+
+            normalized="$(normalize_error "$raw_line")"
+            [ -z "$normalized" ] && continue
+
+            title="$(make_title "$normalized")"
+
+            # Only keep first occurrence per title
+            if ! awk -F'\t' -v t="$title" '($1==t){found=1} END{exit found?0:1}' errors/title_map.tsv; then
+              printf "%s\t%s\n" "$title" "$raw_line" >> errors/title_map.tsv
+            fi
+          done < errors/raw_errors.txt
+
+          # Sort titles deterministically
+          sort -t $'\t' -k1,1 -u errors/title_map.tsv > errors/title_map_sorted.tsv
+
+          # Fetch existing issues FIRST (once)
+          fetch_existing_titles
+
+          while IFS=$'\t' read -r title raw_line; do
+            [ -z "$title" ] && continue
+
+            echo "Considering issue title (exact error): $title"
+
+            if issue_exists_exact "$title"; then
+              echo "Issue already exists (exact title match). Skipping."
+              continue
+            fi
+
+            echo "Creating issue..."
+            create_issue "$title" "$raw_line" "$WORKFLOW_NAME" "$RUN_URL"
+
+            # Update local cache so multiple errors in same run don't double-create
+            echo "$title" >> errors/existing_titles.txt
+
+            sleep 2
+          done < errors/title_map_sorted.tsv
           EOF
-          
+
           chmod +x process_errors.sh
           ./process_errors.sh "$WORKFLOW_NAME" "$WORKFLOW_RUN_ID" "$RUN_URL" "$GITHUB_REPO"
 
