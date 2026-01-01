@@ -237,7 +237,7 @@ jobs:
 
       - name: Commit baseline update
         if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: 'chore(performance): update baseline for ${{ github.ref_name }}'
           file_pattern: 'performance-baselines/*.json performance-baselines/history/*.json'
