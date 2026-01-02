@@ -363,6 +363,7 @@ RoomVisual.prototype.connectRoads = function(_opts: StructureOpts = {}): void {
   // This is a placeholder implementation that does nothing
   // The previous implementation was broken and caused massive CPU waste
   // TODO: Implement proper road connection tracking if needed
+  // Issue URL: https://github.com/ralphschuler/screeps/issues/2683
   return;
 };
 
