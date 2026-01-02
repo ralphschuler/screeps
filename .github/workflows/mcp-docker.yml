@@ -43,7 +43,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: packages/${{ matrix.package }}
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Build TypeScript
         working-directory: packages/${{ matrix.package }}

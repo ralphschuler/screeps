@@ -27,7 +27,7 @@ jobs:
 
       - name: Install dependencies for screeps-spawn
         working-directory: packages/screeps-spawn
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Build screeps-spawn
         working-directory: packages/screeps-spawn
@@ -35,7 +35,7 @@ jobs:
 
       - name: Install dependencies for screeps-chemistry
         working-directory: packages/screeps-chemistry
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Build screeps-chemistry
         working-directory: packages/screeps-chemistry
@@ -43,7 +43,7 @@ jobs:
 
       - name: Install dependencies for screeps-utils
         working-directory: packages/screeps-utils
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Build screeps-utils
         working-directory: packages/screeps-utils
@@ -51,7 +51,7 @@ jobs:
 
       - name: Install dependencies for screeps-defense
         working-directory: packages/screeps-defense
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Build screeps-defense
         working-directory: packages/screeps-defense
@@ -59,14 +59,14 @@ jobs:
 
       - name: Install dependencies for screeps-economy
         working-directory: packages/screeps-economy
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Build screeps-economy
         working-directory: packages/screeps-economy
         run: npm run build
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Build
         run: npm run build
