@@ -11,6 +11,11 @@ on:
         options:
           - all
           - kernel
+          - pathfinding
+          - remote-mining
+          - roles
+          - console
+          - stats
           - spawn
           - chemistry
           - defense
@@ -18,7 +23,6 @@ on:
           - utils
           - tasks
           - posis
-          - roles
   release:
     types: [published]
 
@@ -34,6 +38,16 @@ jobs:
         package:
           - name: '@ralphschuler/screeps-kernel'
             path: 'packages/@ralphschuler/screeps-kernel'
+          - name: '@ralphschuler/screeps-pathfinding'
+            path: 'packages/@ralphschuler/screeps-pathfinding'
+          - name: '@ralphschuler/screeps-remote-mining'
+            path: 'packages/@ralphschuler/screeps-remote-mining'
+          - name: '@ralphschuler/screeps-roles'
+            path: 'packages/@ralphschuler/screeps-roles'
+          - name: '@ralphschuler/screeps-console'
+            path: 'packages/@ralphschuler/screeps-console'
+          - name: '@ralphschuler/screeps-stats'
+            path: 'packages/@ralphschuler/screeps-stats'
           - name: '@ralphschuler/screeps-spawn'
             path: 'packages/screeps-spawn'
           - name: '@ralphschuler/screeps-chemistry'
@@ -48,8 +62,6 @@ jobs:
             path: 'packages/screeps-tasks'
           - name: '@ralphschuler/screeps-posis'
             path: 'packages/screeps-posis'
-          - name: '@ralphschuler/screeps-roles'
-            path: 'packages/@ralphschuler/screeps-roles'
 
     defaults:
       run:

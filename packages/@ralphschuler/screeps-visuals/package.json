@@ -17,6 +17,15 @@
   ],
   "author": "Ralph Schuler",
   "license": "Unlicense",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ralphschuler/screeps.git",
+    "directory": "packages/@ralphschuler/screeps-visuals"
+  },
+  "bugs": {
+    "url": "https://github.com/ralphschuler/screeps/issues"
+  },
+  "homepage": "https://github.com/ralphschuler/screeps/tree/main/packages/@ralphschuler/screeps-visuals#readme",
   "devDependencies": {
     "@types/chai": "^4.1.6",
     "@types/mocha": "^5.2.5",
