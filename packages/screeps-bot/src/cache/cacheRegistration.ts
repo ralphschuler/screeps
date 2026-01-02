@@ -12,11 +12,12 @@ import { cacheCoherence, CacheLayer } from "./CacheCoherence";
  * Register all caches with the coherence manager
  * Call this during bot initialization
  * 
- * Total allocated budgets: 38MB
+ * Total allocated budgets: 43MB
  *   Core caches: 5+2+10+8+3+5 = 33MB
  *   Migrated caches: 1+2+1+1 = 5MB
+ *   New caches: 2+3 = 5MB (game objects + structures)
  * Default total budget in CacheCoherence: 50MB
- * The 12MB difference allows for overhead and future expansion
+ * The 7MB difference allows for overhead and future expansion
  * 
  * Note: All caches currently share the same globalCache CacheManager instance.
  * The namespace separation provides logical isolation while using shared storage.
@@ -128,6 +129,28 @@ export function registerAllCaches(): void {
     {
       priority: 50,
       maxMemory: 1 * 1024 * 1024 // 1MB - structure counts per room
+    }
+  );
+
+  // Game Object Cache: Per-tick Game.creeps and Game.rooms filtering
+  cacheCoherence.registerCache(
+    "game",
+    globalCache,
+    CacheLayer.L1,
+    {
+      priority: 98, // High priority - accessed frequently every tick
+      maxMemory: 2 * 1024 * 1024 // 2MB - creep/room subsets
+    }
+  );
+
+  // Structure Cache: Structure references per room
+  cacheCoherence.registerCache(
+    "structures",
+    globalCache,
+    CacheLayer.L2,
+    {
+      priority: 75, // Medium-high priority - structures change infrequently
+      maxMemory: 3 * 1024 * 1024 // 3MB - towers, spawns, links, etc.
     }
   );
 

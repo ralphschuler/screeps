@@ -112,6 +112,47 @@ import { findCachedClosest } from './cache';
 const closest = findCachedClosest(creep, targets, 'energy', 10);
 ```
 
+#### GameObjectCache
+```typescript
+import { getOwnedRooms, getCreepsByRole, getCreepsByRoom } from './cache';
+
+// Get all owned rooms (replaces manual caching)
+const ownedRooms = getOwnedRooms();
+
+// Get all creeps with specific role
+const harvesters = getCreepsByRole('harvester');
+
+// Get all creeps in a room
+const roomCreeps = getCreepsByRoom('W1N1');
+
+// Get creep counts (more efficient when you don't need the full array)
+const harvesterCount = getCreepCountByRole('harvester');
+const roomCreepCount = getCreepCountByRoom('W1N1');
+```
+
+#### StructureCache
+```typescript
+import { 
+  getRoomTowers, 
+  getRoomSpawns, 
+  getRoomLinks,
+  getRoomStorage,
+  getRoomSources 
+} from './cache';
+
+// Get all towers in room (cached for 10 ticks)
+const towers = getRoomTowers(room);
+
+// Get all spawns in room
+const spawns = getRoomSpawns(room);
+
+// Get storage (single structure)
+const storage = getRoomStorage(room);
+
+// Get sources (cached indefinitely - sources never change)
+const sources = getRoomSources(room);
+```
+
 ## Features
 
 ### TTL-Based Expiration
@@ -204,6 +245,34 @@ const sources = cachedRoomFind(room, FIND_SOURCES);
 3. Use compute-on-miss to simplify code
 4. Use pattern invalidation for bulk operations
 5. Choose the right storage backend (heap vs memory)
+
+### TTL Strategy Guide
+
+**Game Objects** (TTL = 1 tick):
+- `getOwnedRooms()` - Game.rooms changes every tick
+- `getCreepsByRole()` - Creep assignments change every tick
+- `getCreepsByRoom()` - Creep positions change every tick
+- **Rationale**: Game state regenerates completely each tick, so cache only within the same tick
+
+**Structures** (TTL = 10 ticks):
+- `getRoomTowers()` - Towers rarely destroyed
+- `getRoomSpawns()` - Spawns extremely stable
+- `getRoomLinks()` - Links stable after construction
+- **Rationale**: Structures change infrequently (construction/destruction), 10-tick cache balances freshness vs CPU
+
+**Controllers** (TTL = 100 ticks):
+- `getRoomController()` - Controllers never move
+- **Rationale**: Controllers are permanent room features, very long cache is safe
+
+**Immutable Data** (TTL = -1, indefinite):
+- `getRoomSources()` - Sources never change after discovery
+- `getRoomMineral()` - Minerals never change
+- **Rationale**: These game objects are permanent, infinite caching is safe and optimal
+
+**Performance Impact**:
+- Game object caching: ~0.2 CPU/tick saved (owned rooms, creep filtering)
+- Structure caching: ~0.5 CPU/tick saved (structure queries across 10 rooms)
+- **Total estimated savings: ~0.7 CPU/tick** at scale (10+ rooms)
 
 ## Debugging
 

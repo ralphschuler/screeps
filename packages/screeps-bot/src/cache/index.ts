@@ -159,3 +159,41 @@ export {
   clearCache as clearClosestCache,
   clearCacheOnStateChange
 } from "./domains/ClosestCache";
+
+// Domain-specific wrappers - Game Object Cache
+export {
+  getOwnedRooms,
+  getCreepsByRole,
+  getCreepsByRoom,
+  getMyCreeps,
+  getCreepCountByRole,
+  getCreepCountByRoom,
+  getVisibleRooms,
+  getGameObjectCacheStats,
+  clearGameObjectCache,
+  invalidateRoomCreepCache,
+  invalidateRoleCreepCache
+} from "./domains/GameObjectCache";
+
+// Domain-specific wrappers - Structure Cache
+export {
+  getRoomTowers,
+  getRoomSpawns,
+  getRoomLinks,
+  getRoomLabs,
+  getRoomStorage,
+  getRoomTerminal,
+  getRoomController,
+  getRoomExtensions,
+  getRoomContainers,
+  getRoomFactory,
+  getRoomPowerSpawn,
+  getRoomNuker,
+  getRoomObserver,
+  getRoomSources,
+  getRoomMineral,
+  invalidateRoomStructureCache,
+  invalidateStructureTypeCache,
+  getStructureCacheStats,
+  clearStructureCache
+} from "./domains/StructureCache";
