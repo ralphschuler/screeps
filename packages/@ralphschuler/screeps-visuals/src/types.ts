@@ -67,6 +67,7 @@ export interface SwarmState {
   posture?: string;
   remoteAssignments?: string[];
   collectionPoint?: { x: number; y: number };
+  colonyLevel?: string;
   [key: string]: unknown;
 }
 
