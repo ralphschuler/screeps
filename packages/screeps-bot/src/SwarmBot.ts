@@ -27,6 +27,7 @@ import { heapCache } from "./memory/heapCache";
 import { SS2TerminalComms } from "./standards/SS2TerminalComms";
 import { initializeRemotePathScheduler } from "./utils/remote-mining";
 import { shardManager } from "./intershard/shardManager";
+import { getOwnedRooms } from "./cache";
 
 // =============================================================================
 // Note: Creep and room management has been migrated to kernel processes
@@ -134,14 +135,8 @@ function runVisualizations(): void {
   const config = getConfig();
   if (!config.visualizations) return;
 
-  const cacheKey = "_ownedRooms";
-  const cacheTickKey = "_ownedRoomsTick";
-  const globalCache = global as unknown as Record<string, Room[] | number | undefined>;
-  const cachedRooms = globalCache[cacheKey] as Room[] | undefined;
-  const cachedTick = globalCache[cacheTickKey] as number | undefined;
-  const ownedRooms = (cachedRooms && cachedTick === Game.time)
-    ? cachedRooms
-    : Object.values(Game.rooms).filter(r => r.controller?.my);
+  // Use unified cache system for owned rooms
+  const ownedRooms = getOwnedRooms();
 
   // Draw room-level visualizations
   for (const room of ownedRooms) {
