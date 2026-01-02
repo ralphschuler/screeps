@@ -13,7 +13,7 @@
  */
 
 import { kernel } from "../core/kernel";
-import { getAdaptiveBudgetInfo } from "../core/adaptiveBudgets";
+import { getAdaptiveBudgetInfo } from "@ralphschuler/screeps-stats";
 
 export interface BudgetDashboardOptions {
   /** Room to display dashboard in (defaults to first owned room) */

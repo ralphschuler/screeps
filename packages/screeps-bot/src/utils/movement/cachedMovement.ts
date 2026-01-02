@@ -11,7 +11,25 @@
  */
 
 import { getCachedPath, cachePath, convertRoomPositionsToPathSteps } from "../../cache";
-import { trackPathfindingCall } from "../../core/pathfindingMetrics";
+import { pathfindingMetrics } from "@ralphschuler/screeps-stats";
+
+/**
+ * Helper to track pathfinding calls with CPU measurement
+ * Adapts to package's trackPathfindingCall signature
+ */
+function trackPathfindingCall<T>(
+  type: 'moveTo' | 'pathFinderSearch' | 'findPath' | 'moveByPath',
+  wasCached: boolean,
+  fn: () => T
+): T {
+  const startCpu = Game.cpu.getUsed();
+  const result = fn();
+  const cpuCost = Game.cpu.getUsed() - startCpu;
+  
+  pathfindingMetrics.recordCall(type, wasCached, cpuCost);
+  
+  return result;
+}
 import type { MoveToOpts } from "screeps-cartographer";
 
 /**

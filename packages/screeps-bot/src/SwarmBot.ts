@@ -16,7 +16,7 @@ import { mapVisualizer } from "./visuals/mapVisualizer";
 import { getConfig } from "./config";
 import { LogLevel, configureLogger, logger } from "./core/logger";
 import { initializeNativeCallsTracking } from "./core/nativeCallsTracker";
-import { unifiedStats } from "./core/unifiedStats";
+import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { creepProcessManager } from "./core/creepProcessManager";
 import { roomProcessManager } from "./core/roomProcessManager";
 import { runPowerRole } from "./roles/power";
@@ -307,7 +307,7 @@ export function loop(): void {
 // Re-export key modules
 export { memoryManager } from "./memory/manager";
 export { roomManager } from "./core/roomNode";
-export { unifiedStats } from "./core/unifiedStats";
+export { unifiedStats } from "@ralphschuler/screeps-stats";
 export { logger } from "./core/logger";
 export { kernel } from "./core/kernel";
 export { scheduler } from "./core/scheduler";
@@ -334,7 +334,7 @@ export type { RoomEvent, BucketThresholds, TTLConfig } from "./core/roomFindOpti
 /**
  * @deprecated memorySegmentStats is still available but consider using unifiedStats for most use cases.
  */
-export { memorySegmentStats } from "./core/memorySegmentStats";
+export { memorySegmentStats } from "@ralphschuler/screeps-stats";
 
 export * from "./memory/schemas";
 export * from "./config";
