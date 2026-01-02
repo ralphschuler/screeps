@@ -5,7 +5,7 @@
 import { assert } from "chai";
 import { cachedMoveTo, cachedPathFinderSearch } from "../../src/utils/movement/cachedMovement.js";
 import { clearPathCache } from "../../src/cache";
-import { pathfindingMetrics } from "../../src/core/pathfindingMetrics.js";
+import { pathfindingMetrics } from "@ralphschuler/screeps-stats";
 
 /**
  * Mock path data for testing

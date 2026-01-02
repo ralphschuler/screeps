@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { Kernel, ProcessPriority, buildKernelConfigFromCpu } from "../../src/core/kernel";
 import { getConfig, resetConfig } from "../../src/config";
-import { DEFAULT_ADAPTIVE_CONFIG } from "../../src/core/adaptiveBudgets";
+import { DEFAULT_ADAPTIVE_CONFIG } from "@ralphschuler/screeps-stats";
 
 describe("Kernel adaptive budget integration", () => {
   let kernel: Kernel;

@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import { UnifiedStatsManager } from "../../src/core/unifiedStats";
+import { UnifiedStatsManager } from "@ralphschuler/screeps-stats";
 
 // Body part constants from Screeps API
 const WORK = "work" as BodyPartConstant;
@@ -414,7 +414,7 @@ describe("UnifiedStatsManager", function () {
   describe("CreepMetrics Interface", function () {
     it("should validate CreepMetrics interface structure", function () {
       // Import the interface type to ensure it exists and has the correct structure
-      const mockMetrics: import("../../src/core/unifiedStats").CreepMetrics = {
+      const mockMetrics: import("@ralphschuler/screeps-stats").CreepMetrics = {
         tasksCompleted: 5,
         energyTransferred: 1000,
         energyHarvested: 500,
@@ -438,7 +438,7 @@ describe("UnifiedStatsManager", function () {
 
     it("should support CreepMetrics in creep memory", function () {
       // Simulate a creep with metrics in memory
-      const creepMemory: { _metrics?: import("../../src/core/unifiedStats").CreepMetrics } = {
+      const creepMemory: { _metrics?: import("@ralphschuler/screeps-stats").CreepMetrics } = {
         _metrics: {
           tasksCompleted: 3,
           energyTransferred: 500,
