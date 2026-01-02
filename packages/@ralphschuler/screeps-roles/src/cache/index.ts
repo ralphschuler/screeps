@@ -55,6 +55,18 @@ export function cachedFindDroppedResources(room: Room): Resource[] {
   return resources;
 }
 
+/**
+ * Simplified implementation of findCachedClosest for extracted roles package.
+ * 
+ * NOTE: This is a STUB implementation. The full implementation with proper caching
+ * exists in the main screeps-bot package (src/cache/domains/ClosestCache.ts).
+ * 
+ * TODO: Either copy the full caching implementation or make this package depend
+ * on a shared caching utility package.
+ * 
+ * Current behavior: Simple closest-by-range without caching or TTL.
+ * Parameters typeKey and ttl are accepted for API compatibility but not used.
+ */
 export function findCachedClosest<T extends RoomObject & _HasId>(
   creep: Creep,
   targets: T[],
