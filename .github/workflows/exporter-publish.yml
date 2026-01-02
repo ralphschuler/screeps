@@ -33,7 +33,7 @@ jobs:
           cache-dependency-path: packages/${{ matrix.package }}/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Build TypeScript
         run: npm run build

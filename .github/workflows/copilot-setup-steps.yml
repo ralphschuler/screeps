@@ -35,7 +35,4 @@ jobs:
           cache: "npm"
 
       - name: Install JavaScript dependencies
-        run: npm ci
-        env:
-          PYTHON: python3
-          CXXFLAGS: "-std=c++17"
+        run: npm ci --ignore-scripts
