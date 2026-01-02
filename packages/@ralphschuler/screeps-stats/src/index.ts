@@ -9,13 +9,17 @@ export { UnifiedStatsManager, unifiedStats } from './unifiedStats';
 export { MemorySegmentStats, memorySegmentStats } from './memorySegmentStats';
 
 // Export pathfinding metrics
-export { pathfindingMetrics } from './pathfindingMetrics';
+export { pathfindingMetrics, trackPathfindingCall } from './pathfindingMetrics';
 
 // Export adaptive budgets utilities
 export { 
   calculateRoomScalingMultiplier,
   calculateBucketMultiplier,
-  getAdaptiveBudgetInfo
+  getAdaptiveBudgetInfo,
+  getAdaptiveBudgets,
+  calculateAdaptiveBudget,
+  calculateAdaptiveBudgets,
+  DEFAULT_ADAPTIVE_CONFIG
 } from './adaptiveBudgets';
 
 // Export types

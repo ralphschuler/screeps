@@ -21,7 +21,7 @@ import { runMilitaryRole } from "../roles/military";
 import { runPowerCreepRole } from "../roles/power";
 import { runUtilityRole } from "../roles/utility";
 import { canSkipBehaviorEvaluation, executeIdleAction } from "../utils/optimization";
-import { unifiedStats } from "./unifiedStats";
+import { unifiedStats } from "@ralphschuler/screeps-stats";
 
 /**
  * Role priorities - higher values = run first

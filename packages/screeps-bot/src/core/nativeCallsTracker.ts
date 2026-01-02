@@ -9,7 +9,7 @@
  * This helps identify performance bottlenecks and optimize native call usage.
  */
 
-import { unifiedStats } from "./unifiedStats";
+import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { createLogger } from "./logger";
 
 const logger = createLogger("NativeCallsTracker");
@@ -92,7 +92,7 @@ export function wrapPathFinderSearch(): void {
 function wrapMethod(
   prototype: any,
   methodName: string,
-  statName: keyof Omit<import("./unifiedStats").NativeCallStats, "total">
+  statName: keyof Omit<import("@ralphschuler/screeps-stats").NativeCallStats, "total">
 ): void {
   const original = prototype[methodName];
   if (!original) return;

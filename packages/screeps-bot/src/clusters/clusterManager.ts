@@ -38,7 +38,7 @@
 import type { ClusterMemory, SquadDefinition } from "../memory/schemas";
 import { ProcessPriority } from "../core/kernel";
 import { logger } from "../core/logger";
-import { unifiedStats } from "../core/unifiedStats";
+import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { memoryManager } from "../memory/manager";
 import {

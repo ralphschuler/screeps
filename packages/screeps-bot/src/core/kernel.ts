@@ -46,7 +46,7 @@ import {
 import type { CPUConfig } from "../config";
 import { getConfig } from "../config";
 import { logger } from "./logger";
-import { getAdaptiveBudgets, type AdaptiveBudgetConfig, DEFAULT_ADAPTIVE_CONFIG } from "./adaptiveBudgets";
+import { getAdaptiveBudgets, type AdaptiveBudgetConfig, DEFAULT_ADAPTIVE_CONFIG } from "@ralphschuler/screeps-stats";
 
 /**
  * Process priority levels

@@ -39,7 +39,7 @@
 import { ProcessPriority } from "../core/kernel";
 import { logger } from "../core/logger";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { unifiedStats } from "../core/unifiedStats";
+import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { memoryManager } from "../memory/manager";
 import type { ExpansionCandidate, EmpireMemory, RoomIntel } from "../memory/schemas";
 import * as ExpansionScoring from "./expansionScoring";

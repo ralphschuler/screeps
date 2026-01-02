@@ -18,7 +18,7 @@ import type { SwarmState } from "../memory/schemas";
 import { memoryManager } from "../memory/manager";
 import { pheromoneManager } from "../logic/pheromone";
 import { labConfigManager } from "../labs/labConfig";
-import { memorySegmentStats } from "./memorySegmentStats";
+import { memorySegmentStats } from "@ralphschuler/screeps-stats";
 import { logger } from "./logger";
 
 /**

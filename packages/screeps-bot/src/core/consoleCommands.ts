@@ -17,8 +17,7 @@
 import { Command, commandRegistry, registerDecoratedCommands } from "./commandRegistry";
 import { kernel } from "./kernel";
 import { LogLevel, configureLogger, getLoggerConfig } from "./logger";
-import { memorySegmentStats } from "./memorySegmentStats";
-import { unifiedStats } from "./unifiedStats";
+import { memorySegmentStats, unifiedStats } from "@ralphschuler/screeps-stats";
 import { getConfig, updateConfig } from "../config";
 import { roomVisualizer } from "../visuals/roomVisualizer";
 import { mapVisualizer } from "../visuals/mapVisualizer";

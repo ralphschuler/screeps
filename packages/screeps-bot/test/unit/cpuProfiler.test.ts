@@ -5,7 +5,7 @@
  */
 
 import { assert } from "chai";
-import { UnifiedStatsManager } from "../../src/core/unifiedStats";
+import { UnifiedStatsManager } from "@ralphschuler/screeps-stats";
 import { memoryManager } from "../../src/memory/manager";
 
 describe("CPU Profiler Enhancement", () => {
