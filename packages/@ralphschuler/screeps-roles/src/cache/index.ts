@@ -55,17 +55,20 @@ export function cachedFindDroppedResources(room: Room): Resource[] {
   return resources;
 }
 
-export function findCachedClosest<T>(
-  pos: RoomPosition,
+export function findCachedClosest<T extends RoomObject & _HasId>(
+  creep: Creep,
   targets: T[],
-  opts?: { filter?: (target: T) => boolean }
+  typeKey: string,
+  ttl: number = 10
 ): T | null {
-  let filtered = targets;
-  if (opts?.filter) {
-    filtered = targets.filter(opts.filter);
+  if (targets.length === 0) {
+    return null;
   }
-  if (filtered.length === 0) return null;
-  return pos.findClosestByPath(filtered as any) as T | null;
+  if (targets.length === 1) {
+    return targets[0];
+  }
+  // Simple implementation: just find closest without complex caching
+  return creep.pos.findClosestByRange(targets);
 }
 
 export function clearClosestCache(creepName: string): void {
