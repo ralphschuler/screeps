@@ -7,7 +7,7 @@ import {
   getAdaptiveBudgetInfo,
   DEFAULT_ADAPTIVE_CONFIG,
   type AdaptiveBudgetConfig
-} from "../../src/core/adaptiveBudgets";
+} from "@ralphschuler/screeps-stats";
 
 describe("Adaptive CPU Budgets", () => {
   describe("calculateRoomScalingMultiplier", () => {

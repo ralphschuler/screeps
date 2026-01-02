@@ -92,7 +92,7 @@ export function wrapPathFinderSearch(): void {
 function wrapMethod(
   prototype: any,
   methodName: string,
-  statName: keyof Omit<import("./unifiedStats").NativeCallStats, "total">
+  statName: keyof Omit<import("@ralphschuler/screeps-stats").NativeCallStats, "total">
 ): void {
   const original = prototype[methodName];
   if (!original) return;

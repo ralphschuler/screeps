@@ -17,6 +17,8 @@ export {
   calculateBucketMultiplier,
   getAdaptiveBudgetInfo,
   getAdaptiveBudgets,
+  calculateAdaptiveBudget,
+  calculateAdaptiveBudgets,
   DEFAULT_ADAPTIVE_CONFIG
 } from './adaptiveBudgets';
 
