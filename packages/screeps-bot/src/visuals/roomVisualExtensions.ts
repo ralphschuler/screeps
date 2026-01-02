@@ -9,7 +9,6 @@
  * - Resource badges (minerals, compounds, energy)
  * - Speech bubbles
  * - Animated position markers
- * - Road connection visualization
  */
 
 /**
@@ -67,7 +66,6 @@ interface AnimatedOpts {
 declare global {
   interface RoomVisual {
     structure(x: number, y: number, type: StructureConstant, opts?: StructureOpts): void;
-    connectRoads(opts?: StructureOpts): void;
     speech(text: string, x: number, y: number, opts?: SpeechOpts): void;
     animatedPosition(x: number, y: number, opts?: AnimatedOpts): void;
     resource(type: ResourceConstant, x: number, y: number, size?: number): void;
@@ -343,41 +341,6 @@ if (typeof RoomVisual !== "undefined") {
         opacity: finalOpts.opacity
       });
       break;
-  }
-};
-
-/**
- * Connect roads drawn with .structure() method
- */
-RoomVisual.prototype.connectRoads = function(opts: StructureOpts = {}): void {
-  const finalOpts = { opacity: 1, ...opts };
-  const roadCoords: { x: number; y: number }[] = [];
-
-  // This would need to track roads drawn with .structure()
-  // For simplicity, we can search for actual roads in the room
-  // Note: This is a simplified implementation
-  for (let x = 0; x < 50; x++) {
-    for (let y = 0; y < 50; y++) {
-      roadCoords.push({ x, y });
-    }
-  }
-
-  // Draw connections between adjacent roads
-  for (const coord of roadCoords) {
-    const adjacent = [
-      { x: coord.x + 1, y: coord.y },
-      { x: coord.x, y: coord.y + 1 }
-    ];
-
-    for (const adj of adjacent) {
-      if (roadCoords.some(r => r.x === adj.x && r.y === adj.y)) {
-        this.line(coord.x, coord.y, adj.x, adj.y, {
-          color: colors.road,
-          width: 0.15,
-          opacity: finalOpts.opacity
-        });
-      }
-    }
   }
 };
 

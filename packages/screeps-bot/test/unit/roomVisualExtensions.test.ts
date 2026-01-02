@@ -155,16 +155,4 @@ describe("RoomVisual Extensions", () => {
       expect(calledMethods).to.include("circle");
     });
   });
-
-  describe("connectRoads() method", () => {
-    it("should exist on RoomVisual prototype", () => {
-      expect(RoomVisual.prototype.connectRoads).to.be.a("function");
-    });
-
-    it("should not throw when called", () => {
-      expect(() => {
-        RoomVisual.prototype.connectRoads.call(mockVisual);
-      }).to.not.throw();
-    });
-  });
 });

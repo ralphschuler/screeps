@@ -9,7 +9,6 @@
  * - Resource badges (minerals, compounds, energy)
  * - Speech bubbles
  * - Animated position markers
- * - Road connection visualization
  */
 
 /**
@@ -67,7 +66,6 @@ interface AnimatedOpts {
 declare global {
   interface RoomVisual {
     structure(x: number, y: number, type: StructureConstant, opts?: StructureOpts): void;
-    connectRoads(opts?: StructureOpts): void;
     speech(text: string, x: number, y: number, opts?: SpeechOpts): void;
     animatedPosition(x: number, y: number, opts?: AnimatedOpts): void;
     resource(type: ResourceConstant, x: number, y: number, size?: number): void;
@@ -351,20 +349,6 @@ if (typeof RoomVisual !== "undefined" && !extensionsInitialized) {
       });
       break;
   }
-};
-
-/**
- * Connect roads drawn with .structure() method
- * Note: This method is deprecated and not functional in the current implementation.
- * To properly connect roads, track road positions externally and pass them to this method,
- * or use the Screeps terrain API to find actual road structures.
- */
-RoomVisual.prototype.connectRoads = function(_opts: StructureOpts = {}): void {
-  // This is a placeholder implementation that does nothing
-  // The previous implementation was broken and caused massive CPU waste
-  // TODO: Implement proper road connection tracking if needed
-  // Issue URL: https://github.com/ralphschuler/screeps/issues/2683
-  return;
 };
 
 /**
