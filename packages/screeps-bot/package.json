@@ -72,6 +72,7 @@
     "@ralphschuler/screeps-spawn": "file:../screeps-spawn",
     "@ralphschuler/screeps-stats": "file:../@ralphschuler/screeps-stats",
     "@ralphschuler/screeps-utils": "file:../screeps-utils",
+    "@ralphschuler/screeps-visuals": "file:../@ralphschuler/screeps-visuals",
     "lz-string": "^1.5.0",
     "screeps-cartographer": "^1.8.13",
     "source-map": "~0.7.6"

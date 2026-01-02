@@ -11,8 +11,7 @@ import { preTick as initMovement, reconcileTraffic as finalizeMovement } from "s
 import { clearTargetAssignments as clearEconomyAssignments } from "./economy/targetAssignmentManager";
 import { kernel } from "./core/kernel";
 import { registerAllProcesses } from "./core/processRegistry";
-import { roomVisualizer } from "./visuals/roomVisualizer";
-import { mapVisualizer } from "./visuals/mapVisualizer";
+import { RoomVisualizer, MapVisualizer } from "@ralphschuler/screeps-visuals";
 import { getConfig } from "./config";
 import { LogLevel, configureLogger, logger } from "./core/logger";
 import { initializeNativeCallsTracking } from "./core/nativeCallsTracker";
@@ -28,6 +27,17 @@ import { SS2TerminalComms } from "./standards/SS2TerminalComms";
 import { initializeRemotePathScheduler } from "./utils/remote-mining";
 import { shardManager } from "./intershard/shardManager";
 import { getOwnedRooms } from "./cache";
+
+// =============================================================================
+// Visualization Setup
+// =============================================================================
+
+// Create visualization instances with memory manager integration
+const roomVisualizer = new RoomVisualizer({}, memoryManager);
+const mapVisualizer = new MapVisualizer({}, memoryManager);
+
+// Export for console commands
+export { roomVisualizer, mapVisualizer };
 
 // =============================================================================
 // Note: Creep and room management has been migrated to kernel processes
@@ -316,8 +326,6 @@ export { creepProcessManager } from "./core/creepProcessManager";
 export { roomProcessManager } from "./core/roomProcessManager";
 export { pheromoneManager } from "./logic/pheromone";
 export { evolutionManager, postureManager } from "./logic/evolution";
-export { roomVisualizer } from "./visuals/roomVisualizer";
-export { mapVisualizer } from "./visuals/mapVisualizer";
 export { eventBus } from "./core/events";
 
 // Re-export optimization layer

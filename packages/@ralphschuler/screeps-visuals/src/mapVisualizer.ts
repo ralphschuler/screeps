@@ -141,9 +141,9 @@ export class MapVisualizer {
       });
 
       // Draw posture indicator
-      if (swarm.posture !== "eco") {
-        const postureColor = POSTURE_COLORS[swarm.posture] ?? "#ffffff";
-        visual.text(swarm.posture.toUpperCase(), new RoomPosition(25, 30, room.name), {
+      if (swarm && swarm.posture && swarm.posture !== "eco") {
+        const postureColor = POSTURE_COLORS[swarm.posture as keyof typeof POSTURE_COLORS] ?? "#ffffff";
+        visual.text((swarm.posture as string).toUpperCase(), new RoomPosition(25, 30, room.name), {
           color: postureColor,
           fontSize: 6,
           align: "center"
@@ -160,6 +160,7 @@ export class MapVisualizer {
       if (!room.controller?.my) continue;
 
       const swarm = this.memoryManager?.getOrInitSwarmState(room.name);
+      if (!swarm) continue;
       
       // Draw connections to remote rooms
       if (swarm.remoteAssignments && swarm.remoteAssignments.length > 0) {
@@ -187,7 +188,7 @@ export class MapVisualizer {
       }
 
       // Draw military connections (war targets)
-      if (swarm.posture === "war" || swarm.posture === "siege") {
+      if (swarm && (swarm.posture === "war" || swarm.posture === "siege")) {
         // Note: In a full implementation, we'd track war targets in memory
         // For now, we just show rooms with hostiles
         const hostileRooms = Object.values(Game.rooms).filter(r => 
