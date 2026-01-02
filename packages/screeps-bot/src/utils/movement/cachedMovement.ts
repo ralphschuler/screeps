@@ -11,7 +11,7 @@
  */
 
 import { getCachedPath, cachePath, convertRoomPositionsToPathSteps } from "../../cache";
-import { pathfindingMetrics, trackPathfindingCall } from "@ralphschuler/screeps-stats";
+import { trackPathfindingCall } from "@ralphschuler/screeps-stats";
 import type { MoveToOpts } from "screeps-cartographer";
 
 /**
