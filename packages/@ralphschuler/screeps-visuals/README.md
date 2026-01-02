@@ -53,5 +53,3 @@ mapVisualizer.setMemoryManager(memoryManager);
 // In your main loop
 mapVisualizer.draw();
 ```
-
-For complete documentation, see the README.md in this package.

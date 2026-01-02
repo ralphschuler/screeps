@@ -4,7 +4,7 @@
   "description": "Self-contained visualization system for Screeps with optional theming and performance tracking",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "private": false,
+  "private": true,
   "scripts": {
     "build": "tsc",
     "test": "mocha test/**/*.test.ts",

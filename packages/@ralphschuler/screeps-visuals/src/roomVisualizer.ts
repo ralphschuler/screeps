@@ -26,7 +26,8 @@ import { VisualizationLayer } from "./types";
 import { createLogger } from "./logger";
 import { visualizationManager } from "./visualizationManager";
 
-const logger = createLogger("RoomVisualizer");
+// Logger is available for future use if needed
+const _logger = createLogger("RoomVisualizer");
 
 /**
  * Visualization configuration
@@ -278,7 +279,7 @@ export class RoomVisualizer {
     if (!swarm.pheromones) return;
 
     for (const [key, value] of Object.entries(swarm.pheromones) as [keyof PheromoneState, number][]) {
-      const color = PHEROMONE_COLORS[key];
+      const color = PHEROMONE_COLORS[key] ?? "#888888";
       const fillWidth = Math.min(1, value / maxValue) * barWidth;
 
       // Background bar
@@ -332,7 +333,7 @@ export class RoomVisualizer {
     if (!maxPheromone || maxValue < RoomVisualizer.HEATMAP_MIN_THRESHOLD) return;
 
     // TypeScript now knows maxPheromone is not null here
-    const color = PHEROMONE_COLORS[maxPheromone];
+    const color = PHEROMONE_COLORS[maxPheromone] ?? "#888888";
     const intensity = Math.min(1, maxValue / 100) * 0.15; // Scale opacity
 
     // Draw room-wide overlay in top-right corner

@@ -12,7 +12,7 @@
  * - Utilization ratio gauge
  */
 
-import type { Kernel, StatsIntegration, AdaptiveBudgetInfo, AdaptiveBudgetConfig } from "./types";
+import type { Kernel, StatsIntegration } from "./types";
 
 export interface BudgetDashboardOptions {
   /** Room to display dashboard in (defaults to first owned room) */

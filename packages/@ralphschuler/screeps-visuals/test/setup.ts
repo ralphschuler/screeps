@@ -2,11 +2,23 @@
  * Test setup and global mocks for Screeps tests
  */
 
+// Mock CPU usage tracking for tests
+let mockCpuUsed = 0;
+
+// Helpers to configure mocked CPU usage per test
+(global as typeof globalThis & { __resetMockCpuUsed?: () => void; __setMockCpuUsed?: (value: number) => void }).__resetMockCpuUsed = () => {
+  mockCpuUsed = 0;
+};
+
+(global as typeof globalThis & { __resetMockCpuUsed?: () => void; __setMockCpuUsed?: (value: number) => void }).__setMockCpuUsed = (value: number) => {
+  mockCpuUsed = value;
+};
+
 // Mock global Game object
-(global as any).Game = {
+(global as typeof globalThis & { Game?: unknown }).Game = {
   time: 1000,
   cpu: {
-    getUsed: () => 0,
+    getUsed: () => mockCpuUsed++,
     limit: 100,
     bucket: 10000
   },
@@ -23,21 +35,21 @@
 };
 
 // Mock Memory
-(global as any).Memory = {
+(global as typeof globalThis & { Memory?: unknown }).Memory = {
   stats: {},
   rooms: {},
   creeps: {}
 };
 
 // Mock RawMemory
-(global as any).RawMemory = {
+(global as typeof globalThis & { RawMemory?: unknown }).RawMemory = {
   segments: {},
   get: () => '',
   set: () => {}
 };
 
 // Mock InterShardMemory
-(global as any).InterShardMemory = {
+(global as typeof globalThis & { InterShardMemory?: unknown }).InterShardMemory = {
   getLocal: () => '',
   setLocal: () => {},
   getRemote: () => ''

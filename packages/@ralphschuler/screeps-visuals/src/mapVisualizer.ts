@@ -14,7 +14,8 @@
 import type { MemoryManager } from "./types";
 import { createLogger } from "./logger";
 
-const logger = createLogger("MapVisualizer");
+// Logger is available for future use if needed
+const _logger = createLogger("MapVisualizer");
 
 /**
  * Map visualization configuration

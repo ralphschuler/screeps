@@ -8,7 +8,7 @@
 export * from './types';
 
 // Export visualization manager
-export { visualizationManager, VisualizationManager } from './visualizationManager';
+export { visualizationManager, getVisualizationManager, VisualizationManager } from './visualizationManager';
 
 // Export room visualizer
 export { RoomVisualizer } from './roomVisualizer';

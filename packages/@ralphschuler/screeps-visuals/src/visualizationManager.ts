@@ -313,6 +313,24 @@ export class VisualizationManager {
 }
 
 /**
- * Global visualization manager instance
+ * Global visualization manager singleton (lazy-initialized)
  */
-export const visualizationManager = new VisualizationManager();
+let visualizationManagerSingleton: VisualizationManager | null = null;
+
+/**
+ * Get the global visualization manager instance.
+ * The instance is created on first use to avoid unnecessary
+ * initialization when visualizations are disabled.
+ */
+export function getVisualizationManager(): VisualizationManager {
+  if (visualizationManagerSingleton === null) {
+    visualizationManagerSingleton = new VisualizationManager();
+  }
+  return visualizationManagerSingleton;
+}
+
+/**
+ * Legacy export for backwards compatibility.
+ * Use getVisualizationManager() for new code.
+ */
+export const visualizationManager = getVisualizationManager();

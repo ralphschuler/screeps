@@ -75,9 +75,16 @@ declare global {
 }
 
 /**
+ * Track whether extensions have been initialized to prevent multiple assignments
+ */
+let extensionsInitialized = false;
+
+/**
  * Initialize extensions only if RoomVisual exists (i.e., in game environment)
  */
-if (typeof RoomVisual !== "undefined") {
+if (typeof RoomVisual !== "undefined" && !extensionsInitialized) {
+  extensionsInitialized = true;
+  
   /**
    * Draw a structure at the specified position
    */
@@ -348,37 +355,15 @@ if (typeof RoomVisual !== "undefined") {
 
 /**
  * Connect roads drawn with .structure() method
+ * Note: This method is deprecated and not functional in the current implementation.
+ * To properly connect roads, track road positions externally and pass them to this method,
+ * or use the Screeps terrain API to find actual road structures.
  */
-RoomVisual.prototype.connectRoads = function(opts: StructureOpts = {}): void {
-  const finalOpts = { opacity: 1, ...opts };
-  const roadCoords: { x: number; y: number }[] = [];
-
-  // This would need to track roads drawn with .structure()
-  // For simplicity, we can search for actual roads in the room
-  // Note: This is a simplified implementation
-  for (let x = 0; x < 50; x++) {
-    for (let y = 0; y < 50; y++) {
-      roadCoords.push({ x, y });
-    }
-  }
-
-  // Draw connections between adjacent roads
-  for (const coord of roadCoords) {
-    const adjacent = [
-      { x: coord.x + 1, y: coord.y },
-      { x: coord.x, y: coord.y + 1 }
-    ];
-
-    for (const adj of adjacent) {
-      if (roadCoords.some(r => r.x === adj.x && r.y === adj.y)) {
-        this.line(coord.x, coord.y, adj.x, adj.y, {
-          color: colors.road,
-          width: 0.15,
-          opacity: finalOpts.opacity
-        });
-      }
-    }
-  }
+RoomVisual.prototype.connectRoads = function(_opts: StructureOpts = {}): void {
+  // This is a placeholder implementation that does nothing
+  // The previous implementation was broken and caused massive CPU waste
+  // TODO: Implement proper road connection tracking if needed
+  return;
 };
 
 /**
