@@ -12,10 +12,10 @@
  * 5. Deliver resources to terminal/storage
  */
 
-import type { CrossShardTransferRequest } from "../intershard/resourceTransferCoordinator";
-import { logger } from "../core/logger";
-import { resourceTransferCoordinator } from "../intershard/resourceTransferCoordinator";
-import { cachedMoveTo } from "../utils/movement";
+import type { CrossShardTransferRequest } from "./intershard/resourceTransferCoordinator";
+import { logger } from "./core/logger";
+import { resourceTransferCoordinator } from "./intershard/resourceTransferCoordinator";
+import { cachedMoveTo, type ExtendedMoveToOpts } from "./utils/movement";
 
 /**
  * Cross-shard carrier memory
@@ -45,7 +45,7 @@ export function runCrossShardCarrier(creep: Creep): void {
   // Get transfer request
   let request: CrossShardTransferRequest | null = null;
   if (memory.transferRequestId) {
-    request = resourceTransferCoordinator.getCreepRequest(creep.name);
+    request = resourceTransferCoordinator.getCreepRequest(creep.name) || null;
   }
 
   // If no request, try to get one
@@ -53,7 +53,7 @@ export function runCrossShardCarrier(creep: Creep): void {
     const requests = resourceTransferCoordinator.getPrioritizedRequests();
     if (requests.length > 0) {
       request = requests[0];
-      if (request) {
+      if (request && request.taskId) {
         resourceTransferCoordinator.assignCreep(request.taskId, creep.name);
         memory.transferRequestId = request.taskId;
         memory.sourceRoom = request.sourceRoom;
