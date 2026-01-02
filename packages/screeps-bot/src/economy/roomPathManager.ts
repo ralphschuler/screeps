@@ -16,7 +16,7 @@
  */
 
 import { createLogger } from "../core/logger";
-import { cachedPathFinderSearch } from "../utils/movement";
+import { cachePath } from "screeps-cartographer";
 
 const logger = createLogger("RoomPathManager");
 
@@ -95,6 +95,9 @@ function getOrCreateRoomPaths(room: Room): RoomPaths {
  * 
  * OPTIMIZATION: This is called once every 100 ticks, amortizing the cost
  * across many creeps and ticks. Each creep then uses O(1) path lookup.
+ * 
+ * NOTE: Uses Cartographer's cachePath to store paths in Cartographer's cache.
+ * These paths can then be reused by creeps using Cartographer's moveTo.
  */
 function calculateRoomPaths(room: Room): RoomPaths {
   const paths: RoomPaths = {
@@ -117,66 +120,57 @@ function calculateRoomPaths(room: Room): RoomPaths {
   
   // Calculate spawn → source paths
   for (const source of sources) {
-    const result = cachedPathFinderSearch(
+    const key = `${room.name}_spawn_${source.id}`;
+    const path = cachePath(
+      key,
       spawn.pos, 
       { pos: source.pos, range: 1 }, 
       {
-        roomCallback: (roomName) => {
-          const r = Game.rooms[roomName];
-          if (!r) return false;
-          
-          const costs = new PathFinder.CostMatrix();
-          
-          // Avoid creeps but don't block paths
-          r.find(FIND_CREEPS).forEach(creep => {
-            costs.set(creep.pos.x, creep.pos.y, 5);
-          });
-          
-          // Prefer roads
-          r.find(FIND_STRUCTURES).forEach(structure => {
-            if (structure.structureType === STRUCTURE_ROAD) {
-              costs.set(structure.pos.x, structure.pos.y, 1);
-            }
-          });
-          
-          return costs;
-        }
-      },
-      { ttl: 500 } // Static paths, long TTL
+        reusePath: 500, // Long TTL for static paths
+        roomCallback: getRoomCostMatrix
+      }
     );
     
-    if (!result.incomplete && result.path.length > 0) {
-      const serialized = Room.serializePath(result.path);
+    if (path && path.length > 0) {
+      const serialized = Room.serializePath(path);
       paths.spawnToSources.set(source.id, serialized);
     }
   }
   
   // Calculate spawn → controller path
   if (room.controller && room.controller.my) {
-    const result = cachedPathFinderSearch(
+    const key = `${room.name}_spawn_controller`;
+    const path = cachePath(
+      key,
       spawn.pos,
       { pos: room.controller.pos, range: 3 },
-      { roomCallback: getRoomCostMatrix },
-      { ttl: 500 } // Static path, long TTL
+      { 
+        reusePath: 500,
+        roomCallback: getRoomCostMatrix 
+      }
     );
     
-    if (!result.incomplete && result.path.length > 0) {
-      paths.spawnToController = Room.serializePath(result.path);
+    if (path && path.length > 0) {
+      paths.spawnToController = Room.serializePath(path);
     }
   }
   
   // Calculate source → controller paths
   if (room.controller && room.controller.my) {
     for (const source of sources) {
-      const result = cachedPathFinderSearch(
+      const key = `${room.name}_${source.id}_controller`;
+      const path = cachePath(
+        key,
         source.pos,
         { pos: room.controller.pos, range: 3 },
-        { roomCallback: getRoomCostMatrix },
-        { ttl: 500 } // Static path, long TTL
+        { 
+          reusePath: 500,
+          roomCallback: getRoomCostMatrix 
+        }
       );
       
-      if (!result.incomplete && result.path.length > 0) {
-        paths.sourcesToController.set(source.id, Room.serializePath(result.path));
+      if (path && path.length > 0) {
+        paths.sourcesToController.set(source.id, Room.serializePath(path));
       }
     }
   }
@@ -184,41 +178,53 @@ function calculateRoomPaths(room: Room): RoomPaths {
   // Calculate storage paths if storage exists
   if (room.storage) {
     // spawn → storage
-    const spawnToStorageResult = cachedPathFinderSearch(
+    const spawnStorageKey = `${room.name}_spawn_storage`;
+    const spawnToStoragePath = cachePath(
+      spawnStorageKey,
       spawn.pos,
       { pos: room.storage.pos, range: 1 },
-      { roomCallback: getRoomCostMatrix },
-      { ttl: 500 } // Static path, long TTL
+      { 
+        reusePath: 500,
+        roomCallback: getRoomCostMatrix 
+      }
     );
-    if (!spawnToStorageResult.incomplete && spawnToStorageResult.path.length > 0) {
-      paths.spawnToStorage = Room.serializePath(spawnToStorageResult.path);
+    if (spawnToStoragePath && spawnToStoragePath.length > 0) {
+      paths.spawnToStorage = Room.serializePath(spawnToStoragePath);
     }
     
     // source → storage
     for (const source of sources) {
-      const result = cachedPathFinderSearch(
+      const key = `${room.name}_${source.id}_storage`;
+      const path = cachePath(
+        key,
         source.pos,
         { pos: room.storage.pos, range: 1 },
-        { roomCallback: getRoomCostMatrix },
-        { ttl: 500 } // Static path, long TTL
+        { 
+          reusePath: 500,
+          roomCallback: getRoomCostMatrix 
+        }
       );
       
-      if (!result.incomplete && result.path.length > 0) {
-        paths.sourcesToStorage.set(source.id, Room.serializePath(result.path));
+      if (path && path.length > 0) {
+        paths.sourcesToStorage.set(source.id, Room.serializePath(path));
       }
     }
     
     // storage → controller
     if (room.controller && room.controller.my) {
-      const result = cachedPathFinderSearch(
+      const key = `${room.name}_storage_controller`;
+      const path = cachePath(
+        key,
         room.storage.pos,
         { pos: room.controller.pos, range: 3 },
-        { roomCallback: getRoomCostMatrix },
-        { ttl: 500 } // Static path, long TTL
+        { 
+          reusePath: 500,
+          roomCallback: getRoomCostMatrix 
+        }
       );
       
-      if (!result.incomplete && result.path.length > 0) {
-        paths.storageToController = Room.serializePath(result.path);
+      if (path && path.length > 0) {
+        paths.storageToController = Room.serializePath(path);
       }
     }
   }
