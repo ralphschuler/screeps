@@ -386,7 +386,7 @@ See [PUBLISHING.md](PUBLISHING.md) for complete publishing guide and workflow do
 | @ralphschuler/screeps-pathfinding | 0.1.0 | ❌ Not yet | ✅ Pass | ✅ Pass | ✅ Complete | ✅ Unlicense |
 | @ralphschuler/screeps-remote-mining | 0.1.0 | ❌ Not yet | ✅ Pass | ✅ Pass | ✅ Complete | ✅ Unlicense |
 | @ralphschuler/screeps-roles | 0.1.0 | ❌ Not yet | ⚠️ Issues* | ✅ Pass | ✅ Complete | ✅ Unlicense |
-| @ralphschuler/screeps-console | 0.1.0 | ❌ Not yet | ✅ Pass | ✅ Pass | ✅ Complete | ✅ Unlicense |
+| @ralphschuler/screeps-console | 0.1.0 | ❌ Not yet | ⚠️ Issues** | ✅ Pass | ✅ Complete | ✅ Unlicense |
 | @ralphschuler/screeps-stats | 0.1.0 | ❌ Not yet | ✅ Pass | ✅ Pass | ✅ Complete | ✅ Unlicense |
 | @ralphschuler/screeps-visuals | 0.1.0 | N/A (private) | ✅ Pass | ✅ Pass | ✅ Complete | ✅ Unlicense |
 | @ralphschuler/screeps-spawn | 0.1.0 | ⏳ Ready | ✅ Pass | ✅ Pass | 📝 In Progress | ✅ Unlicense |
@@ -398,6 +398,8 @@ See [PUBLISHING.md](PUBLISHING.md) for complete publishing guide and workflow do
 | @ralphschuler/screeps-posis | 0.1.0 | ⏳ Ready | ✅ Pass | ✅ Pass | 📝 In Progress | ✅ Unlicense |
 
 *Build issues tracked in [#1010](https://github.com/ralphschuler/screeps/issues/1010)
+
+**TypeScript compilation errors due to missing dependencies and type mismatches
 
 ### Publishing Workflow
 

@@ -35,11 +35,13 @@ The Screeps framework consists of 7 reusable packages published under the `@ralp
 | screeps-pathfinding | ❌ Not yet | 0.1.0 | ✅ Working | ✅ Passing | Unlicense |
 | screeps-remote-mining | ❌ Not yet | 0.1.0 | ✅ Working | ✅ Passing | Unlicense |
 | screeps-roles | ❌ Not yet | 0.1.0 | ⚠️ Broken* | ✅ Passing | Unlicense |
-| screeps-console | ❌ Not yet | 0.1.0 | ✅ Working | ✅ Passing | Unlicense |
+| screeps-console | ❌ Not yet | 0.1.0 | ⚠️ Broken** | ✅ Passing | Unlicense |
 | screeps-stats | ❌ Not yet | 0.1.0 | ✅ Working | ✅ Passing | Unlicense |
 | screeps-visuals | N/A (private) | 0.1.0 | ✅ Working | ✅ Passing | Unlicense |
 
-*Note: Build issues tracked in [#1010](https://github.com/ralphschuler/screeps/issues/1010)
+*Note: screeps-roles build issues tracked in [#1010](https://github.com/ralphschuler/screeps/issues/1010)
+
+**Note: screeps-console has TypeScript compilation errors due to missing dependencies and type mismatches
 
 ## Prerequisites
 
