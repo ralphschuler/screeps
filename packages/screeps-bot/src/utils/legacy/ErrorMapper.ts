@@ -52,7 +52,7 @@ export class ErrorMapper {
         // and return null since we can't await in a getter
         try {
           // Try the old synchronous API (may work with some versions)
-          // @ts-ignore - Handling different SourceMapConsumer versions
+          // @ts-expect-error - Handling different SourceMapConsumer versions (sync vs async API)
           this._consumer = new SourceMapConsumer(sourceMapData);
           this._sourceMapAvailable = true;
         } catch (e) {
