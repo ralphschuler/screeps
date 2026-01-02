@@ -1076,5 +1076,5 @@ export {
   expansionCommands,
   tooAngelCommands,
   memoryCommands,
-  uiCommands: new UICommands()
+  UICommands
 };

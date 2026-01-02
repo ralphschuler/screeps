@@ -1,6 +1,6 @@
 {
   "require": [
-    "test/setup-mocha.cjs"
+    "test/setup-mocha.mjs"
   ],
   "extensions": ["ts"],
   "spec": ["test/unit/**/*.ts"],
