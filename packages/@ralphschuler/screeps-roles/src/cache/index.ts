@@ -62,6 +62,7 @@ export function cachedFindDroppedResources(room: Room): Resource[] {
  * exists in the main screeps-bot package (src/cache/domains/ClosestCache.ts).
  * 
  * TODO: Either copy the full caching implementation or make this package depend
+ Issue URL: https://github.com/ralphschuler/screeps/issues/2679
  * on a shared caching utility package.
  * 
  * Current behavior: Simple closest-by-range without caching or TTL.
