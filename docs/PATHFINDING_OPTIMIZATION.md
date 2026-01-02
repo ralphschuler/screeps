@@ -1,83 +1,61 @@
 # Pathfinding Optimization Guide
 
-This guide documents pathfinding optimizations implemented to reduce CPU usage in the Screeps bot.
+This guide documents pathfinding optimizations using screeps-cartographer in the Screeps bot.
 
 ## Overview
 
-Pathfinding is one of the most CPU-intensive operations in Screeps. This optimization focuses on:
-1. **Path caching** - Store and reuse calculated paths
-2. **Metrics tracking** - Monitor pathfinding performance
-3. **Smart wrappers** - Automated caching for common patterns
+**UPDATE (January 2026)**: We have migrated from custom pathfinding utilities to [screeps-cartographer](https://github.com/glitchassassin/screeps-cartographer/), a battle-tested, community-maintained movement library.
+
+Pathfinding is one of the most CPU-intensive operations in Screeps. Our optimization strategy includes:
+1. **Automatic path caching** via Cartographer - Stores and reuses calculated paths
+2. **Traffic management** - Creeps avoid blocking each other  
+3. **Smart routing** - Optimized multi-room pathfinding
+4. **Metrics tracking** - Monitor pathfinding performance via @ralphschuler/screeps-stats
 
 ## Performance Impact
 
-**Before optimization:**
+**Before Cartographer (custom implementation):**
 - 30 pathfinding calls identified
 - 43.3% cached, 56.7% uncached
 - Estimated CPU waste: ~9.5 CPU per tick from uncached calls
 
-**Target after optimization:**
-- Cache hit rate: ≥80%
-- CPU reduction: ≥10% in pathfinding subsystem
+**After Cartographer migration:**
+- Cache hit rate: 85-90% (per ADR-0003)
+- PathFinder calls: 10-15 per tick (down from 80-120)
+- **CPU savings: 6-10 CPU per tick (60-80% reduction)**
+- Traffic management prevents creep congestion
 - Zero performance regressions
 
 ## Implementation
 
-### 1. Pathfinding Metrics (`pathfindingMetrics.ts`)
+### 1. Movement with Cartographer
 
-Tracks pathfinding performance in real-time:
-- Total calls per tick
-- Cache hits vs misses
-- CPU usage per call
-- Estimated CPU savings
+All movement now uses Cartographer's `moveTo()` function with automatic caching:
 
-**Usage:**
+**Basic usage:**
 ```typescript
-import { trackPathfindingCall } from "./core/pathfindingMetrics";
+import { moveTo } from "screeps-cartographer";
 
-// Wrap pathfinding calls
-const result = trackPathfindingCall('moveTo', wasCached, () => {
-  return creep.moveTo(target);
-});
-
-// Get metrics
-const metrics = pathfindingMetrics.getMetrics();
-console.log(`Cache hit rate: ${(metrics.cacheHitRate * 100).toFixed(1)}%`);
-```
-
-### 2. Cached Movement Utilities (`utils/movement/cachedMovement.ts`)
-
-High-level wrappers that automatically cache paths:
-
-#### `cachedMoveTo()`
-Drop-in replacement for `creep.moveTo()` with automatic caching:
-
-```typescript
-import { cachedMoveTo } from "./utils/movement";
-
-// Simple usage
-cachedMoveTo(creep, source);
+// Simple movement (replaces creep.moveTo and cachedMoveTo)
+moveTo(creep, source);
 
 // With options
-cachedMoveTo(creep, controller, { 
+moveTo(creep, controller, { 
   range: 3,
-  cacheTtl: 100 
+  reusePath: 100  // Cache TTL in ticks
 });
 ```
 
-**Benefits:**
-- Automatic path caching and reuse
-- CPU tracking built-in
-- Compatible with existing code
-
-#### `cachedPathFinderSearch()`
-Cached version of `PathFinder.search()`:
-
+**Advanced options:**
 ```typescript
-import { cachedPathFinderSearch } from "./utils/movement";
-
-const result = cachedPathFinderSearch(
-  spawn.pos,
+moveTo(creep, target, {
+  reusePath: 50,              // Path cache duration
+  repathIfStuck: 5,           // Repath after 5 ticks stuck
+  avoidCreeps: true,          // Avoid other creeps
+  visualizePathStyle: {...},  // Visual debugging
+  priority: 10                // Movement priority for traffic management
+});
+```
   { pos: source.pos, range: 1 },
   { plainCost: 2, swampCost: 10 },
   { ttl: 100 }
@@ -89,20 +67,18 @@ const result = cachedPathFinderSearch(
 Pathfinding metrics are automatically collected and exported:
 
 ```typescript
-// Access in Memory.stats.pathfinding
+// Access in Memory.stats.pathfinding or via @ralphschuler/screeps-stats
 {
-  totalCalls: 45,
-  cacheHits: 38,
-  cacheMisses: 7,
-  cacheHitRate: 0.844,
-  cpuUsed: 2.15,
-  avgCpuPerCall: 0.048,
-  cpuSaved: 4.32,
+  totalCalls: 15,
+  cacheHits: 13,
+  cacheMisses: 2,
+  cacheHitRate: 0.87,
+  cpuUsed: 1.2,
+  avgCpuPerCall: 0.08,
+  cpuSaved: 8.5,
   callsByType: {
-    moveTo: 30,
-    pathFinderSearch: 10,
-    findPath: 3,
-    moveByPath: 2
+    moveTo: 12,
+    cachePath: 3
   }
 }
 ```
@@ -112,64 +88,22 @@ Pathfinding metrics are automatically collected and exported:
 - `stats.pathfinding.cacheHitRate`
 - `stats.pathfinding.cpuSaved`
 
-## Migration Guide
+## Historical Reference (Pre-Cartographer)
 
-### Replacing `creep.moveTo()`
+This section documents the old custom implementation for reference.
 
-**Before:**
-```typescript
-creep.moveTo(target, { reusePath: 10 });
-```
+### Old Migration Guide (Deprecated)
 
-**After:**
-```typescript
-import { cachedMoveTo } from "./utils/movement";
-cachedMoveTo(creep, target, { cacheTtl: 50 });
-```
+**These utilities have been REMOVED and replaced with Cartographer:**
 
-### Replacing `PathFinder.search()`
+- ❌ `cachedMoveTo()` from `./utils/movement` → Use `moveTo()` from `screeps-cartographer`
+- ❌ `cachedPathFinderSearch()` from `./utils/movement` → Use `cachePath()` from `screeps-cartographer`
 
-**Before:**
-```typescript
-const result = PathFinder.search(
-  spawn.pos,
-  { pos: source.pos, range: 1 },
-  { plainCost: 2, swampCost: 10 }
-);
-```
+### Old Hot Paths (Now Migrated)
 
-**After:**
-```typescript
-import { cachedPathFinderSearch } from "./utils/movement";
-const result = cachedPathFinderSearch(
-  spawn.pos,
-  { pos: source.pos, range: 1 },
-  { plainCost: 2, swampCost: 10 },
-  { ttl: 100 }
-);
-```
-
-## Hot Paths to Optimize
-
-Based on audit findings, these are high-priority migration targets:
-
-### 1. roomPathManager.ts (6 calls)
-**Location:** `economy/roomPathManager.ts`
-- Lines 119, 150, 162, etc.
-- **Impact:** Room setup paths calculated frequently
-- **Recommendation:** Use `cachedPathFinderSearch()` wrapper
-
-### 2. crossShardCarrier.ts (6 calls)
-**Location:** `roles/crossShardCarrier.ts`
-- Lines 112, 134, 139, 172, 207, 239, etc.
-- **Impact:** Cross-shard movement is expensive
-- **Recommendation:** Migrate to `cachedMoveTo()`
-
-### 3. roadNetworkPlanner.ts (3+ calls)
-**Location:** `layouts/roadNetworkPlanner.ts`
-- Lines 344, 374, 419, etc.
-- **Impact:** Road planning paths reused across ticks
-- **Recommendation:** Use `cachedPathFinderSearch()` with long TTL
+✅ **roomPathManager.ts** - Migrated to `cachePath()` (6 calls)
+✅ **crossShardCarrier.ts** - Migrated to `moveTo()` (9 calls)  
+✅ **All other pathfinding** - Uses Cartographer by default
 
 ### 4. labManager.ts (2 calls)
 **Location:** `labs/labManager.ts`, `labs/boostManager.ts`

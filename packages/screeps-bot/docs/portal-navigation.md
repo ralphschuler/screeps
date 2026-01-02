@@ -2,155 +2,91 @@
 
 ## Overview
 
-The portal navigation system provides comprehensive support for inter-shard and inter-room pathfinding via portals. It implements the TODO from `movement.ts` for "multi-room portal search using inter-shard memory" as outlined in Issue #33.
+**UPDATE (January 2026)**: Portal navigation is now handled by [screeps-cartographer](https://github.com/glitchassassin/screeps-cartographer/), which includes built-in portal support for both inter-room and inter-shard pathfinding.
+
+The portal navigation system provides comprehensive support for inter-shard and inter-room pathfinding via portals.
 
 ## Architecture
 
-### Components
+### Cartographer Portal Support
 
-1. **Portal Manager** (`src/utils/portalManager.ts`)
-   - Discovers and caches portal locations
-   - Manages InterShardMemory for cross-shard coordination
-   - Calculates optimal portal routes
+Cartographer automatically:
+- Discovers and tracks portal locations
+- Calculates optimal routes through portals
+- Handles both inter-room and inter-shard portals
+- Updates path cache when portals change
 
-2. **Movement Integration** (`src/utils/movement.ts`)
-   - `findPortalPathToShard()` - Updated with multi-room search
-   - `moveToShard()` - High-level API for cross-shard navigation
-   - `findPortalsInRoom()` - Cached portal discovery
+### Movement Integration
 
-3. **Traffic Visualization** (`src/utils/movement.ts`)
-   - `visualizeTraffic()` - Renders movement intents and priorities
-
-## Usage
-
-### Basic Portal Navigation
+Use Cartographer's `moveTo()` for automatic portal navigation:
 
 ```typescript
-// Move a creep to a different shard
-import { moveToShard } from "./utils/movement";
+import { moveTo } from "screeps-cartographer";
+
+// Cartographer automatically finds and uses portals if they're on the optimal path
+const creep = Game.creeps["MyCreep"];
+moveTo(creep, new RoomPosition(25, 25, "E10N10"), {
+  reusePath: 50
+});
+```
+
+### Portal-Specific Options
+
+```typescript
+import { moveTo } from "screeps-cartographer";
+
+// Avoid using portals even if they're shorter
+moveTo(creep, target, {
+  avoidPortals: true
+});
+
+// Ignore portals in cost matrix (don't avoid or use)
+moveTo(creep, target, {
+  ignorePortals: true
+});
+```
+
+### Cross-Shard Movement
+
+For explicit cross-shard carrier roles, see `src/roles/crossShardCarrier.ts` for production example:
+
+```typescript
+import { moveTo } from "screeps-cartographer";
 
 const creep = Game.creeps["MyCreep"];
-const result = moveToShard(creep, "shard1", "E10N10");
-```
 
-### Finding Portal Routes
+// Move to portal room
+moveTo(creep, new RoomPosition(25, 25, portalRoom));
 
-```typescript
-import { findRouteToPortal, findClosestPortalToShard } from "./utils/portalManager";
-
-// Find route to nearest portal for target shard
-const route = findRouteToPortal("E1N1", "shard1");
-if (route) {
-  console.log(`Route has ${route.rooms.length} rooms and ${route.portals.length} portals`);
-}
-
-// Find closest portal to a position
-const portalInfo = findClosestPortalToShard(creep.pos, "shard1");
-if (portalInfo) {
-  creep.moveTo(portalInfo.pos);
+// Move to portal (Cartographer handles portal entry automatically)
+const portal = Game.getObjectById(portalId);
+if (portal) {
+  moveTo(creep, portal);
 }
 ```
 
-### Portal Discovery
+## Additional Resources
 
-```typescript
-import { discoverPortalsInRoom } from "./utils/portalManager";
+- [Cartographer Documentation](https://glitchassassin.github.io/screeps-cartographer/) - Official API docs  
+- [ADR-0003: Cartographer Traffic Management](../../../docs/adr/0003-cartographer-traffic-management.md) - Architecture decision
+- `src/roles/crossShardCarrier.ts` - Production cross-shard movement example
+- `src/utils/README.md` - Migration guide
 
-// Get cached portal info for a room
-const portals = discoverPortalsInRoom("E1N1");
-if (portals) {
-  for (const portal of portals) {
-    console.log(`Portal to ${portal.destination.room} on shard ${portal.destination.shard || "local"}`);
-  }
-}
-```
+## Historical Reference (Pre-Cartographer)
 
-### InterShardMemory Integration
+This section documents the old custom portal management for reference.
 
-```typescript
-import { 
-  publishPortalsToInterShardMemory,
-  getPortalDataFromInterShardMemory 
-} from "./utils/portalManager";
+### Old Portal Manager (Deprecated)
 
-// Publish this shard's portals (call periodically)
-publishPortalsToInterShardMemory();
+**These utilities have been REMOVED and replaced with Cartographer's built-in portal support:**
 
-// Read another shard's portals
-const remotePortals = getPortalDataFromInterShardMemory("shard1");
-if (remotePortals) {
-  console.log(`Shard1 has portals in ${Object.keys(remotePortals.portals).length} rooms`);
-}
-```
+- ❌ `findPortalPathToShard()` - Cartographer handles automatically
+- ❌ `moveToShard()` - Use `moveTo()` with target position
+- ❌ `findPortalsInRoom()` - Cartographer tracks portals internally
+- ❌ `discoverPortalsInRoom()` - Cartographer discovers automatically
+- ❌ Portal Manager utilities - Cartographer has built-in portal management
 
-## Caching Strategy
-
-Following ROADMAP.md principles for "Aggressive caching + TTL":
-
-- **Portal Discovery**: 500 tick TTL
-  - Cached in heap memory via `memoryManager.getHeapCache()`
-  - Automatically expires after 500 ticks
-  - Null results cached to avoid repeated lookups for invisible rooms
-
-- **Portal Routes**: 1000 tick TTL
-  - Cached per source-destination pair
-  - Includes room list, portal positions, and distance metrics
-  
-- **Portal Age**: 10,000 tick max age
-  - Stale portals filtered out before publishing to InterShardMemory
-  - Ensures data accuracy across shards
-
-## Traffic Visualization
-
-The traffic visualization system provides real-time insight into creep movement:
-
-```typescript
-import { visualizeTraffic } from "./utils/movement";
-
-// Basic visualization
-visualizeTraffic("E1N1");
-
-// With priority numbers
-visualizeTraffic("E1N1", true);
-```
-
-**Visual Elements:**
-- **Arrows**: Show movement intent from creep to target position
-- **Colors**: 
-  - Red: High priority (>50)
-  - Green: Normal priority (≤50)
-- **Circles**: Mark target positions
-- **Priority Numbers**: Optional display of exact priority values
-
-## Performance Considerations
-
-### CPU Usage
-
-As per ROADMAP.md Section 20 (Movement, Pathfinding & Traffic-Management):
-
-1. **Pathfinding is expensive** - Portal discovery uses aggressive caching
-2. **Low-frequency updates** - Maintenance runs every 100-500 ticks
-3. **Heap cache** - Fast in-memory access avoids repeated Game API calls
-
-### Optimization Strategies
-
-1. **Cache First**: Always check cache before scanning rooms
-2. **Batch Updates**: Portal publishing happens in low-frequency maintenance
-3. **Lazy Loading**: Only discover portals when rooms are visible
-4. **TTL Management**: Automatic expiration prevents stale data
-
-## Integration with Main Loop
-
-Add to your main loop for optimal performance:
-
-```typescript
-import { maintainPortalCache } from "./utils/portalManager";
-import { initMovement, finalizeMovement } from "./utils/movement";
-
-// Start of tick
-initMovement();
-
-// Your creep logic here...
+**Note**: Cartographer automatically handles portal discovery, tracking, and routing. No manual management needed.
 
 // End of tick
 finalizeMovement();

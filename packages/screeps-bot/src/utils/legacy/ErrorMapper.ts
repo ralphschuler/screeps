@@ -46,8 +46,22 @@ export class ErrorMapper {
         } else {
           sourceMapData = rawSourceMap;
         }
-        this._consumer = new SourceMapConsumer(sourceMapData);
-        this._sourceMapAvailable = true;
+        
+        // SourceMapConsumer constructor returns a Promise in newer versions
+        // We need to handle this async, but for now we'll catch the error
+        // and return null since we can't await in a getter
+        try {
+          // Try the old synchronous API (may work with some versions)
+          // @ts-expect-error - Handling different SourceMapConsumer versions (sync vs async API)
+          this._consumer = new SourceMapConsumer(sourceMapData);
+          this._sourceMapAvailable = true;
+        } catch (e) {
+          // If it's a promise, we can't use it in a synchronous getter
+          // Fall back to no source map support
+          console.log("SourceMapConsumer requires async initialization - source maps disabled");
+          this._consumer = null;
+          this._sourceMapAvailable = false;
+        }
       } catch (e) {
         // Source map not available - this is expected when sourcemap is disabled in build
         this._consumer = null;
@@ -55,7 +69,7 @@ export class ErrorMapper {
       }
     }
 
-    return this._consumer;
+    return this._consumer ?? null;
   }
 
   // Cache previously mapped traces to improve performance

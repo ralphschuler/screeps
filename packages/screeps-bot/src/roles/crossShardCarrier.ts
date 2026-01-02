@@ -15,7 +15,7 @@
 import type { CrossShardTransferRequest } from "../intershard/resourceTransferCoordinator";
 import { logger } from "../core/logger";
 import { resourceTransferCoordinator } from "../intershard/resourceTransferCoordinator";
-import { cachedMoveTo } from "../utils/movement";
+import { moveTo } from "screeps-cartographer";
 
 /**
  * Cross-shard carrier memory
@@ -110,8 +110,8 @@ function handleGathering(
 
   // Move to source room if not there
   if (creep.room.name !== sourceRoom) {
-    cachedMoveTo(creep, new RoomPosition(25, 25, sourceRoom), {
-      cacheTtl: 100,
+    moveTo(creep, new RoomPosition(25, 25, sourceRoom), {
+      reusePath: 100,
       visualizePathStyle: { stroke: "#ffaa00" }
     });
     return;
@@ -132,12 +132,12 @@ function handleGathering(
   if (terminal && terminal.store.getUsedCapacity(request.resourceType) > 0) {
     const result = creep.withdraw(terminal, request.resourceType);
     if (result === ERR_NOT_IN_RANGE) {
-      cachedMoveTo(creep, terminal, { cacheTtl: 50 });
+      moveTo(creep, terminal, { reusePath: 50 });
     }
   } else if (storage && storage.store.getUsedCapacity(request.resourceType) > 0) {
     const result = creep.withdraw(storage, request.resourceType);
     if (result === ERR_NOT_IN_RANGE) {
-      cachedMoveTo(creep, storage, { cacheTtl: 50 });
+      moveTo(creep, storage, { reusePath: 50 });
     }
   } else {
     logger.warn(
@@ -170,8 +170,8 @@ function handleMovingToPortal(
   }
 
   // Move to portal room
-  cachedMoveTo(creep, new RoomPosition(25, 25, portalRoom), {
-    cacheTtl: 100,
+  moveTo(creep, new RoomPosition(25, 25, portalRoom), {
+    reusePath: 100,
     visualizePathStyle: { stroke: "#00ffaa" }
   });
 }
@@ -205,7 +205,7 @@ function handleEnteringPortal(
   }
 
   // Move to portal
-  cachedMoveTo(creep, targetPortal, { cacheTtl: 20 });
+  moveTo(creep, targetPortal, { reusePath: 20 });
 
   // Check if we're adjacent to portal (about to enter)
   if (creep.pos.isNearTo(targetPortal)) {
@@ -237,8 +237,8 @@ function handleDelivering(
 
   // Move to target room if not there
   if (creep.room.name !== targetRoom) {
-    cachedMoveTo(creep, new RoomPosition(25, 25, targetRoom), {
-      cacheTtl: 100,
+    moveTo(creep, new RoomPosition(25, 25, targetRoom), {
+      reusePath: 100,
       visualizePathStyle: { stroke: "#0000ff" }
     });
     return;
@@ -262,13 +262,13 @@ function handleDelivering(
     const resourceType = Object.keys(creep.store)[0] as ResourceConstant;
     const result = creep.transfer(terminal, resourceType);
     if (result === ERR_NOT_IN_RANGE) {
-      cachedMoveTo(creep, terminal, { cacheTtl: 50 });
+      moveTo(creep, terminal, { reusePath: 50 });
     }
   } else if (storage) {
     const resourceType = Object.keys(creep.store)[0] as ResourceConstant;
     const result = creep.transfer(storage, resourceType);
     if (result === ERR_NOT_IN_RANGE) {
-      cachedMoveTo(creep, storage, { cacheTtl: 50 });
+      moveTo(creep, storage, { reusePath: 50 });
     }
   }
 }
@@ -282,7 +282,7 @@ function recycleSelf(creep: Creep): void {
     if (creep.pos.isNearTo(spawn)) {
       spawn.recycleCreep(creep);
     } else {
-      cachedMoveTo(creep, spawn, { cacheTtl: 50 });
+      moveTo(creep, spawn, { reusePath: 50 });
     }
   } else {
     creep.suicide();
