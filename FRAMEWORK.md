@@ -374,19 +374,57 @@ See [CONTRIBUTING_FRAMEWORK.md](CONTRIBUTING_FRAMEWORK.md) for guidelines on:
 
 ## Publishing Status
 
-| Package | Version | Published | Status |
-|---------|---------|-----------|--------|
-| @ralphschuler/screeps-kernel | 0.1.0 | ⏳ Pending | Ready |
-| @ralphschuler/screeps-spawn | 0.1.0 | ⏳ Pending | Ready |
-| @ralphschuler/screeps-chemistry | 0.1.0 | ⏳ Pending | Ready |
-| @ralphschuler/screeps-defense | 0.1.0 | ⏳ Pending | In Progress |
-| @ralphschuler/screeps-economy | 0.1.0 | ⏳ Pending | In Progress |
-| @ralphschuler/screeps-utils | 0.1.0 | ⏳ Pending | In Progress |
-| @ralphschuler/screeps-tasks | 0.1.0 | ⏳ Pending | In Progress |
-| @ralphschuler/screeps-posis | 0.1.0 | ⏳ Pending | In Progress |
-| @ralphschuler/screeps-roles | 0.1.0 | ⏳ Pending | In Progress |
+**Current Status**: All packages are prepared for npm publishing with complete metadata, documentation, and licensing.
 
-**Note**: Packages are currently available through this repository. npm publishing will be enabled after initial testing and stabilization.
+See [PUBLISHING.md](PUBLISHING.md) for complete publishing guide and workflow documentation.
+
+### Package Publishing Readiness
+
+| Package | Version | Published | Build | Tests | Docs | License |
+|---------|---------|-----------|-------|-------|------|---------|
+| @ralphschuler/screeps-kernel | 0.1.0 | ❌ Not yet | ✅ Pass | ✅ Pass | ✅ Complete | ✅ Unlicense |
+| @ralphschuler/screeps-pathfinding | 0.1.0 | ❌ Not yet | ✅ Pass | ✅ Pass | ✅ Complete | ✅ Unlicense |
+| @ralphschuler/screeps-remote-mining | 0.1.0 | ❌ Not yet | ✅ Pass | ✅ Pass | ✅ Complete | ✅ Unlicense |
+| @ralphschuler/screeps-roles | 0.1.0 | ❌ Not yet | ⚠️ Issues* | ✅ Pass | ✅ Complete | ✅ Unlicense |
+| @ralphschuler/screeps-console | 0.1.0 | ❌ Not yet | ⚠️ Issues** | ✅ Pass | ✅ Complete | ✅ Unlicense |
+| @ralphschuler/screeps-stats | 0.1.0 | ❌ Not yet | ✅ Pass | ✅ Pass | ✅ Complete | ✅ Unlicense |
+| @ralphschuler/screeps-visuals | 0.1.0 | N/A (private) | ✅ Pass | ✅ Pass | ✅ Complete | ✅ Unlicense |
+| @ralphschuler/screeps-spawn | 0.1.0 | ⏳ Ready | ✅ Pass | ✅ Pass | 📝 In Progress | ✅ Unlicense |
+| @ralphschuler/screeps-chemistry | 0.1.0 | ⏳ Ready | ✅ Pass | ✅ Pass | 📝 In Progress | ✅ Unlicense |
+| @ralphschuler/screeps-defense | 0.1.0 | ⏳ Ready | ✅ Pass | ✅ Pass | 📝 In Progress | ✅ Unlicense |
+| @ralphschuler/screeps-economy | 0.1.0 | ⏳ Ready | ✅ Pass | ✅ Pass | 📝 In Progress | ✅ Unlicense |
+| @ralphschuler/screeps-utils | 0.1.0 | ⏳ Ready | ✅ Pass | ✅ Pass | 📝 In Progress | ✅ Unlicense |
+| @ralphschuler/screeps-tasks | 0.1.0 | ⏳ Ready | ✅ Pass | ✅ Pass | 📝 In Progress | ✅ Unlicense |
+| @ralphschuler/screeps-posis | 0.1.0 | ⏳ Ready | ✅ Pass | ✅ Pass | 📝 In Progress | ✅ Unlicense |
+
+*Build issues tracked in [#1010](https://github.com/ralphschuler/screeps/issues/1010)
+
+**TypeScript compilation errors due to missing dependencies and type mismatches
+
+### Publishing Workflow
+
+The repository includes automated publishing via GitHub Actions:
+
+- **Manual**: Use workflow dispatch to publish specific packages
+- **Automated**: Create GitHub release to publish all packages
+- **CI/CD**: Configured with npm provenance for supply chain security
+
+See [publish-framework.yml](.github/workflows/publish-framework.yml) for workflow details.
+
+### Next Steps for Publishing
+
+1. ✅ Package metadata complete (all packages)
+2. ✅ LICENSE files added (all packages)
+3. ✅ CHANGELOG.md created (all packages)
+4. ✅ Publishing documentation created (PUBLISHING.md)
+5. ✅ CI/CD workflow updated
+6. ⏳ Resolve build issues (#1010)
+7. ⏳ Complete documentation for remaining packages
+8. ⏳ Test manual publishing workflow
+9. ⏳ Configure npm organization access
+10. ⏳ First release (v1.0.0)
+
+**Note**: Packages are currently available through this repository. npm publishing will be enabled after resolving build issues and completing final validation.
 
 ## Version Compatibility
 
