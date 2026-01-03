@@ -56,6 +56,9 @@ export interface SwarmCreepMemory extends CreepMemory {
   nearbyContainerTick?: number;
   nearbyLinkId?: Id<StructureLink>;
   nearbyLinkTick?: number;
+  // Remote harvester-specific cache
+  remoteContainerId?: Id<StructureContainer>;
+  remoteContainerTick?: number;
   // Military-specific
   patrolIndex?: number;
   assistTarget?: string;

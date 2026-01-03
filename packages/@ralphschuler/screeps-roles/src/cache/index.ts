@@ -33,24 +33,38 @@ export function cachedRoomFind<T extends FindConstant>(
   return result;
 }
 
-export function cachedFindMyStructures(room: Room): OwnedStructure[] {
-  const key = `myStructures_${room.name}`;
+export function cachedFindMyStructures<T extends OwnedStructure = OwnedStructure>(
+  room: Room,
+  structureType?: StructureConstant
+): T[] {
+  const key = structureType 
+    ? `myStructures_${room.name}_${structureType}` 
+    : `myStructures_${room.name}`;
   const cached = cache.get(key);
   if (cached && cached.tick === Game.time) {
     return cached.data;
   }
-  const structures = room.find(FIND_MY_STRUCTURES);
+  const structures = structureType
+    ? room.find(FIND_MY_STRUCTURES, { filter: s => s.structureType === structureType }) as T[]
+    : room.find(FIND_MY_STRUCTURES) as T[];
   cache.set(key, { data: structures, tick: Game.time });
   return structures;
 }
 
-export function cachedFindDroppedResources(room: Room): Resource[] {
-  const key = `droppedResources_${room.name}`;
+export function cachedFindDroppedResources(
+  room: Room,
+  resourceType?: ResourceConstant
+): Resource[] {
+  const key = resourceType
+    ? `droppedResources_${room.name}_${resourceType}`
+    : `droppedResources_${room.name}`;
   const cached = cache.get(key);
   if (cached && cached.tick === Game.time) {
     return cached.data;
   }
-  const resources = room.find(FIND_DROPPED_RESOURCES);
+  const resources = resourceType
+    ? room.find(FIND_DROPPED_RESOURCES, { filter: r => r.resourceType === resourceType })
+    : room.find(FIND_DROPPED_RESOURCES);
   cache.set(key, { data: resources, tick: Game.time });
   return resources;
 }

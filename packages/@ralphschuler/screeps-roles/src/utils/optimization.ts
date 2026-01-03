@@ -15,10 +15,19 @@ export function safeFind<T extends FindConstant>(
   }
 }
 
-export function safeFindClosestByRange<T extends _HasRoomPosition>(
+export function safeFindClosestByRange<T extends FindConstant>(
   pos: RoomPosition,
-  targets: T[]
-): T | null {
-  if (targets.length === 0) return null;
-  return pos.findClosestByRange(targets);
+  type: T,
+  filter?: FilterOptions<T>
+): FindTypes[T] | null {
+  try {
+    const room = Game.rooms[pos.roomName];
+    if (!room) return null;
+    const targets = room.find(type, filter);
+    if (targets.length === 0) return null;
+    return pos.findClosestByRange(targets);
+  } catch (error) {
+    console.log(`Error in safeFindClosestByRange: ${error}`);
+    return null;
+  }
 }
