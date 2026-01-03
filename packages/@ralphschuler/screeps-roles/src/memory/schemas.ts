@@ -35,6 +35,7 @@ export interface PheromoneState {
   harvest?: number;
   war?: number;
   expand?: number;
+  siege?: number;
 }
 
 export interface SwarmCreepMemory extends CreepMemory {
@@ -85,6 +86,7 @@ export interface RoomIntel {
   threatLevel?: number;
   controllerLevel?: number;
   sources?: number;
+  scouted?: boolean;
 }
 
 export interface EmpireMemory {
@@ -94,4 +96,5 @@ export interface EmpireMemory {
     targetRoom?: string;
     priority?: number;
   };
+  pheromones?: Record<string, PheromoneState>;
 }
