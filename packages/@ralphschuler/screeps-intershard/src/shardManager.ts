@@ -185,6 +185,7 @@ export class ShardManager {
       economyIndex: Math.round(economyIndex),
       warIndex: Math.round(warIndex),
       commodityIndex: 0, // TODO: Calculate based on factory production
+                         // Issue URL: https://github.com/ralphschuler/screeps/issues/2697
       roomCount: ownedRooms.length,
       avgRCL: Math.round(avgRCL * 10) / 10,
       creepCount: Object.keys(Game.creeps).length,
