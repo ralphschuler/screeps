@@ -140,6 +140,69 @@ export class ShardManager {
   }
 
   /**
+   * Calculate commodity index (0-100) based on factory production
+   * Considers:
+   * - Number of active factories
+   * - Production levels (factory store usage)
+   * - Factory levels (1-5)
+   * - Advanced commodity types in storage
+   */
+  private calculateCommodityIndex(ownedRooms: Room[]): number {
+    let commodityIndex = 0;
+    let factoryCount = 0;
+    
+    for (const room of ownedRooms) {
+      const factories = room.find(FIND_MY_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_FACTORY
+      }) as StructureFactory[];
+      
+      if (factories.length === 0) continue;
+      
+      const factory = factories[0];
+      factoryCount++;
+      
+      // Check factory level (0-5)
+      const factoryLevel = factory.level ?? 0;
+      commodityIndex += factoryLevel * 5; // Max 25 per factory
+      
+      // Check if factory is producing (has resources)
+      if (factory.store.getUsedCapacity() > 0) {
+        commodityIndex += 10; // Active production bonus
+      }
+      
+      // Check for high-tier commodities in storage
+      const storage = room.storage;
+      if (storage) {
+        // Check for advanced commodities
+        const commodities: ResourceConstant[] = [
+          RESOURCE_COMPOSITE,
+          RESOURCE_CRYSTAL,
+          RESOURCE_LIQUID,
+          RESOURCE_GHODIUM_MELT,
+          RESOURCE_OXIDANT,
+          RESOURCE_REDUCTANT,
+          RESOURCE_PURIFIER
+        ];
+        
+        for (const commodity of commodities) {
+          const amount = storage.store.getUsedCapacity(commodity);
+          if (amount > 0) {
+            commodityIndex += Math.min(10, amount / 1000); // Max 10 per type
+          }
+        }
+      }
+    }
+    
+    // Normalize to 0-100 scale
+    if (factoryCount === 0) return 0;
+    
+    const maxPossible = factoryCount * 25 + factoryCount * 10 + 70; // Max theoretical
+    commodityIndex = Math.min(100, (commodityIndex / maxPossible) * 100);
+    
+    return Math.round(commodityIndex);
+  }
+
+  /**
    * Update current shard's health metrics
    */
   private updateCurrentShardHealth(): void {
@@ -185,7 +248,7 @@ export class ShardManager {
       bucketLevel: Game.cpu.bucket,
       economyIndex: Math.round(economyIndex),
       warIndex: Math.round(warIndex),
-      commodityIndex: 0, // TODO: Calculate based on factory production
+      commodityIndex: this.calculateCommodityIndex(ownedRooms),
       roomCount: ownedRooms.length,
       avgRCL: Math.round(avgRCL * 10) / 10,
       creepCount: Object.keys(Game.creeps).length,
