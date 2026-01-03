@@ -78,7 +78,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
 
-      - name: Install root dependencies
+      - name: Install workspace dependencies
         run: npm ci --ignore-scripts
         working-directory: .
 
