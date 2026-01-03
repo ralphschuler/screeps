@@ -87,6 +87,9 @@ export interface RoomIntel {
   controllerLevel?: number;
   sources?: number;
   scouted?: boolean;
+  terrain?: string;
+  isHighway?: boolean;
+  isSK?: boolean;
 }
 
 export interface EmpireMemory {

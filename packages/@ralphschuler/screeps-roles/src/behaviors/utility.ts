@@ -26,6 +26,7 @@ const logger = createLogger("UtilityBehaviors");
  */
 function recordRoomIntel(room: Room, empire: EmpireMemory): void {
   const knownRooms = empire.knownRooms;
+  if (!knownRooms) return;
 
   const existingIntel = knownRooms[room.name];
   const lastSeen = existingIntel?.lastSeen ?? 0;
@@ -109,6 +110,7 @@ function findNextExploreTarget(
   previousRoom?: string
 ): string | undefined {
   const knownRooms = empire.knownRooms;
+  if (!knownRooms) return undefined;
   const exits = Game.map.describeExits(currentRoom);
   if (!exits) return undefined;
 
