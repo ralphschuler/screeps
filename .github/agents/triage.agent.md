@@ -199,7 +199,7 @@ Each annotation must include: **file path + symbol/line range + problem + concre
 - Clearly mark hypotheses as hypotheses.
 - If information is missing: suggest `needs-info` and ask precise questions.
 - Do not require large refactors for a fix; propose larger changes only as Option 2 or follow-up.
-- **CRITICAL**: If an issue involves defense/combat, ensure any proposed solution **never** targets the player "TooAngel" - they are a permanent ally (see ROADMAP Section 25).
+- **CRITICAL**: If an issue involves defense/combat, ensure any proposed solution **never** targets allied players (TooAngel, TedRoastBeef) - they are permanent allies (see ROADMAP Section 25).
 
 ---
 

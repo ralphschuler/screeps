@@ -16,7 +16,7 @@
  * - Emergency response triggers (currently basic)
  * - Multi-room defense coordination (currently missing)
  * 
- * **IMPORTANT**: Automatically filters TooAngel entities (permanent ally, ROADMAP Section 25)
+ * **IMPORTANT**: Automatically filters allied entities (non-aggression pact, ROADMAP Section 25)
  */
 
 import { logger } from "@bot/core/logger";
@@ -29,7 +29,7 @@ import {
   getCurrentDefenders,
   needsDefenseAssistance
 } from "@bot/spawning/defenderManager";
-import { filterTooAngelCreeps } from "../tooangel/allyFilter";
+import { filterAllyCreeps } from "../alliance/nonAggressionPact";
 
 /**
  * Emergency response levels
@@ -133,9 +133,9 @@ export class EmergencyResponseManager {
       return EmergencyLevel.NONE;
     }
 
-    // Filter TooAngel entities - they are permanent allies (ROADMAP Section 25)
+    // Filter allied entities - non-aggression pact (ROADMAP Section 25)
     const allHostiles = room.find(FIND_HOSTILE_CREEPS);
-    const hostiles = filterTooAngelCreeps(allHostiles);
+    const hostiles = filterAllyCreeps(allHostiles);
     const needs = analyzeDefenderNeeds(room);
     const current = getCurrentDefenders(room);
 

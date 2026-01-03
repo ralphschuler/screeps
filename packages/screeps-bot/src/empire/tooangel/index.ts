@@ -12,16 +12,18 @@ export * from "./questExecutor";
 export * from "./tooAngelManager";
 export * from "./memoryInit";
 
-// Re-export ally filter from defense package
+// Re-export alliance system from defense package
 export {
-  isTooAngelCreep,
-  isTooAngelStructure,
-  filterTooAngelCreeps,
-  filterTooAngelStructures,
+  NON_AGGRESSION_PACT_PLAYERS,
+  isAllyPlayer,
+  isAllyCreep,
+  isAllyStructure,
+  filterAllyCreeps,
+  filterAllyStructures,
   getActualHostileCreeps,
   getActualHostileStructures,
   hasActualHostiles,
-  TOOANGEL_PLAYER_NAME
+  type AlliedPlayer
 } from "@ralphschuler/screeps-defense";
 
 // Re-export the main manager instance

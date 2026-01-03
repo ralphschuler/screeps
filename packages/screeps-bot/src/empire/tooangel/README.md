@@ -4,9 +4,13 @@ This module implements integration with the [TooAngel Screeps bot](https://githu
 
 ## ⚠️ CRITICAL NON-AGGRESSION POLICY
 
-**TooAngel is a permanent ally (ROADMAP Section 25).** This bot must **NEVER** attack or harm TooAngel or their entities under any circumstances.
+This bot has a **Non-Aggression Alliance System** (defined in `@ralphschuler/screeps-defense`) that prevents attacking certain players. The following players are covered by this non-aggression pact (ROADMAP Section 25):
+- **TooAngel**
+- **TedRoastBeef**
 
-All defense and combat systems **must** use the ally filter utilities from `allyFilter.ts` to ensure TooAngel creeps and structures are excluded from hostile targeting.
+The non-aggression system is **separate** from the TooAngel quest/diplomacy features. It's a minimal alliance filter that applies to all defense systems.
+
+All defense and combat systems **must** use the alliance filter utilities to ensure allied creeps and structures are excluded from hostile targeting.
 
 ## Overview
 

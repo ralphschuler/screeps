@@ -27,7 +27,7 @@ This document provides instructions for AI agents working on the Screeps bot rep
 3. **Fact-Check Everything**: Always verify Screeps API details using MCP servers
 4. **Document Decisions**: Use TODO comments for future work and architectural decisions
 5. **Measure Impact**: Base decisions on metrics and performance data
-6. **Non-Aggression with TooAngel**: **NEVER** attack or target the player "TooAngel" or their creeps/structures - this player is a permanent ally and cooperative partner (see ROADMAP Section 25)
+6. **Non-Aggression with Allies**: **NEVER** attack or target allied players (TooAngel, TedRoastBeef) or their creeps/structures - these players are permanent allies and cooperative partners (see ROADMAP Section 25)
 
 ---
 
@@ -711,7 +711,7 @@ const outcome = {
 - ❌ Changes without proper testing
 - ❌ Deployments during active combat
 - ❌ Changes that violate ROADMAP.md
-- ❌ **Any code that would attack or harm the player "TooAngel" or their entities**
+- ❌ **Any code that would attack or harm allied players (TooAngel, TedRoastBeef) or their entities**
 
 ---
 

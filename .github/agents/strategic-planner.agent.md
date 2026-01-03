@@ -435,7 +435,7 @@ At the end of your analysis, provide a JSON summary:
 - ❌ Modify code files
 - ❌ Change workflow configurations
 - ❌ Delete documentation
-- ❌ **Propose any military action against the player "TooAngel" - they are a permanent ally (ROADMAP Section 25)**
+- ❌ **Propose any military action against allied players (TooAngel, TedRoastBeef) - they are permanent allies (ROADMAP Section 25)**
 
 **RATE LIMITS**:
 - Comprehensive issues better than many small ones

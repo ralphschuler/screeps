@@ -8,12 +8,12 @@
  *
  * Addresses Issue: #21
  * 
- * **IMPORTANT**: Automatically filters TooAngel entities (permanent ally, ROADMAP Section 25)
+ * **IMPORTANT**: Automatically filters allied entities (non-aggression pact, ROADMAP Section 25)
  */
 
 import type { SwarmState } from "@bot/memory/schemas";
 import { logger } from "@bot/core/logger";
-import { filterTooAngelCreeps } from "../tooangel/allyFilter";
+import { filterAllyCreeps } from "../alliance/nonAggressionPact";
 
 /**
  * Safe Mode Manager Class
@@ -81,9 +81,9 @@ export class SafeModeManager {
     }
 
     // Check if we have enough defenders
-    // Filter TooAngel entities - they are permanent allies (ROADMAP Section 25)
+    // Filter allied entities - non-aggression pact (ROADMAP Section 25)
     const allHostiles = room.find(FIND_HOSTILE_CREEPS);
-    const hostiles = filterTooAngelCreeps(allHostiles);
+    const hostiles = filterAllyCreeps(allHostiles);
     const defenders = room.find(FIND_MY_CREEPS, {
       filter: c => {
         const memory = c.memory as unknown as { role?: string };

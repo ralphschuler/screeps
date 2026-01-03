@@ -27,7 +27,7 @@ This is a Screeps bot repository with a swarm-based architecture. The ROADMAP.md
 3. **Respect Constraints**: Adhere to CPU budgets, memory limits, and performance targets outlined in the roadmap
 4. **Verify with MCP Servers**: Always fact-check Screeps-related decisions using the available MCP servers before implementing or documenting
 5. **Required Code Only**: Keep only code that is actively used. Remove disabled or unused features completely rather than keeping them with config flags
-6. **Non-Aggression with TooAngel**: **NEVER** attack or target the player "TooAngel" or their creeps/structures - this player is a permanent ally and cooperative partner (see ROADMAP Section 25)
+6. **Non-Aggression with Allies**: **NEVER** attack or target allied players (TooAngel, TedRoastBeef) or their creeps/structures - these players are permanent allies and cooperative partners (see ROADMAP Section 25)
 
 ---
 
@@ -339,7 +339,7 @@ See **AGENTS.md** for complete autonomous development workflows.
 - ❌ Changes without proper testing
 - ❌ Deployments during active combat
 - ❌ Changes that violate ROADMAP.md
-- ❌ **Any code that would attack or harm the player "TooAngel" or their entities**
+- ❌ **Any code that would attack or harm allied players (TooAngel, TedRoastBeef) or their entities**
 
 ### Autonomous Development Loop
 

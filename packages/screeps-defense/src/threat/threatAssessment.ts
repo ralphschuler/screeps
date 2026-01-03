@@ -10,12 +10,12 @@
  * 
  * ROADMAP Reference: Section 12 - Threat-Level & Posture
  * 
- * **IMPORTANT**: Automatically filters TooAngel entities (permanent ally, ROADMAP Section 25)
+ * **IMPORTANT**: Automatically filters allied entities (non-aggression pact, ROADMAP Section 25)
  */
 
 import { logger } from "@bot/core/logger";
 import { ROLE_DEFINITIONS } from "@bot/spawning/roleDefinitions";
-import { filterTooAngelCreeps } from "../tooangel/allyFilter";
+import { filterAllyCreeps } from "../alliance/nonAggressionPact";
 
 /**
  * Comprehensive threat analysis for a room
@@ -56,15 +56,15 @@ export interface ThreatAnalysis {
 /**
  * Assess threat level in a room
  * 
- * **IMPORTANT**: Automatically excludes TooAngel entities (permanent ally)
+ * **IMPORTANT**: Automatically excludes allied entities (permanent allies)
  * 
  * @param room - Room to analyze
  * @returns Comprehensive threat analysis
  */
 export function assessThreat(room: Room): ThreatAnalysis {
   const allHostiles = room.find(FIND_HOSTILE_CREEPS);
-  // Filter TooAngel entities - they are permanent allies (ROADMAP Section 25)
-  const hostiles = filterTooAngelCreeps(allHostiles);
+  // Filter allied entities - non-aggression pact (ROADMAP Section 25)
+  const hostiles = filterAllyCreeps(allHostiles);
   
   // Early exit for no threats
   if (hostiles.length === 0) {
