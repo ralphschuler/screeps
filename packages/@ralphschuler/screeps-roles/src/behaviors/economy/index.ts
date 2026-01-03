@@ -9,6 +9,7 @@
  */
 
 import type { CreepContext, BehaviorResult, BaseCreepMemory, CreepAction } from "../../framework/types";
+import type { SwarmCreepMemory } from "../../memory/schemas";
 
 /**
  * Harvest behavior - Mining resources from sources.
@@ -95,7 +96,7 @@ export function harvestBehavior(ctx: CreepContext): BehaviorResult {
 /**
  * Type guard to check if a creep memory has harvester fields.
  */
-function isHarvesterMemory(memory: CreepMemory): memory is BaseCreepMemory {
+function isHarvesterMemory(memory: CreepMemory): memory is SwarmCreepMemory {
   return 'role' in memory;
 }
 

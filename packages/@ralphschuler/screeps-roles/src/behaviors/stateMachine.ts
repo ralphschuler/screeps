@@ -81,13 +81,15 @@ function getStateValidity(state: CreepState | undefined, ctx: CreepContext): Sta
   if (!state) return { valid: false, reason: "noState" };
 
   // Check timeout
-  const age = Game.time - state.startTick;
-  if (age > state.timeout) {
-    return {
-      valid: false,
-      reason: "expired",
-      meta: { age, timeout: state.timeout }
-    };
+  if (state.startTick !== undefined && state.timeout !== undefined) {
+    const age = Game.time - state.startTick;
+    if (age > state.timeout) {
+      return {
+        valid: false,
+        reason: "expired",
+        meta: { age, timeout: state.timeout }
+      };
+    }
   }
 
   // Validate target if present

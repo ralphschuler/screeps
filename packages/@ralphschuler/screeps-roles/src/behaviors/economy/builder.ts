@@ -9,10 +9,10 @@
  */
 
 import type { CreepAction, CreepContext } from "../types";
-import { findCachedClosest } from "../../../cache";
+import { findCachedClosest } from "../../cache";
 import { updateWorkingState } from "./common/stateManagement";
 import { findEnergy } from "./common/energyManagement";
-import { getAssignedBuildTarget } from "../../../economy/targetAssignmentManager";
+import { getAssignedBuildTarget } from "../../economy/targetAssignmentManager";
 
 /**
  * Builder - Construct and repair structures.

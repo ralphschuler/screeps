@@ -55,12 +55,28 @@ export function cachedFindDroppedResources(room: Room): Resource[] {
   return resources;
 }
 
-// Re-export cached closest utilities from screeps-utils
-export {
-  findCachedClosest,
-  clearCache as clearClosestCache,
-  clearCacheOnStateChange
-} from "@ralphschuler/screeps-utils";
+// Re-export cached closest utilities - provide simple fallback implementations
+export function findCachedClosest<T extends _HasRoomPosition>(
+  origin: RoomObject | RoomPosition,
+  targets: T[],
+  cacheKey?: string,
+  cacheDuration?: number
+): T | null {
+  if (targets.length === 0) return null;
+  const pos = 'pos' in origin ? origin.pos : origin;
+  return pos.findClosestByRange(targets);
+}
+
+export function clearCache(creepName?: string): void {
+  // Simple no-op for stub
+}
+
+export function clearCacheOnStateChange(creep: Creep): void {
+  // Simple no-op for stub
+}
+
+// Re-export for compatibility
+export { clearCache as clearClosestCache };
 
 export const globalCache = {
   get: (key: string) => cache.get(key)?.data,
