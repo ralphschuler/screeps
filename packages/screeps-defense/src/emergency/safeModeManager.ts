@@ -7,10 +7,13 @@
  * - Cooldown tracking
  *
  * Addresses Issue: #21
+ * 
+ * **IMPORTANT**: Automatically filters TooAngel entities (permanent ally, ROADMAP Section 25)
  */
 
 import type { SwarmState } from "@bot/memory/schemas";
 import { logger } from "@bot/core/logger";
+import { filterTooAngelCreeps } from "@bot/empire/tooangel/allyFilter";
 
 /**
  * Safe Mode Manager Class
@@ -78,7 +81,9 @@ export class SafeModeManager {
     }
 
     // Check if we have enough defenders
-    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    // Filter TooAngel entities - they are permanent allies (ROADMAP Section 25)
+    const allHostiles = room.find(FIND_HOSTILE_CREEPS);
+    const hostiles = filterTooAngelCreeps(allHostiles);
     const defenders = room.find(FIND_MY_CREEPS, {
       filter: c => {
         const memory = c.memory as unknown as { role?: string };

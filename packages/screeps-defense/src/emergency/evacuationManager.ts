@@ -8,12 +8,15 @@
  * - Creep recall mechanism
  *
  * Addresses Issue: #31
+ * 
+ * **IMPORTANT**: Automatically filters TooAngel entities (permanent ally, ROADMAP Section 25)
  */
 
 import { logger } from "@bot/core/logger";
 import { memoryManager } from "@bot/memory/manager";
 import { MediumFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
 import { ProcessPriority } from "@bot/core/kernel";
+import { filterTooAngelCreeps } from "@bot/empire/tooangel/allyFilter";
 
 /**
  * Evacuation configuration
@@ -164,7 +167,9 @@ export class EvacuationManager {
       // Check for siege (danger level 3)
       if (swarm.danger >= this.config.triggerDangerLevel && swarm.posture === "siege") {
         // Only evacuate if we're clearly losing
-        const hostiles = room.find(FIND_HOSTILE_CREEPS);
+        // Filter TooAngel entities - they are permanent allies (ROADMAP Section 25)
+        const allHostiles = room.find(FIND_HOSTILE_CREEPS);
+        const hostiles = filterTooAngelCreeps(allHostiles);
         const defenders = room.find(FIND_MY_CREEPS, {
           filter: c => {
             const body = c.body.map(p => p.type);
@@ -271,7 +276,9 @@ export class EvacuationManager {
         }
 
         // Avoid rooms under attack
-        const hostiles = room.find(FIND_HOSTILE_CREEPS);
+        // Filter TooAngel entities - they are permanent allies (ROADMAP Section 25)
+        const allHostiles = room.find(FIND_HOSTILE_CREEPS);
+        const hostiles = filterTooAngelCreeps(allHostiles);
         if (hostiles.length > 0) {
           score -= hostiles.length * 20;
         }
