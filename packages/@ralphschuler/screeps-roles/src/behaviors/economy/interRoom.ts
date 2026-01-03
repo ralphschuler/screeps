@@ -5,8 +5,8 @@
  */
 
 import type { CreepAction, CreepContext } from "../types";
-import { findCachedClosest } from "../../../cache";
-import { cachedRoomFind, cachedFindMyStructures } from "../../../cache";
+import { findCachedClosest } from "../../cache";
+import { cachedRoomFind, cachedFindMyStructures } from "../../cache";
 
 /**
  * InterRoomCarrier - Transfer resources between rooms in a cluster.
@@ -16,11 +16,18 @@ export function interRoomCarrier(ctx: CreepContext): CreepAction {
   const mem = ctx.memory;
 
   // If no transfer request, go idle (should be assigned by spawn logic)
-  if (!mem.transferRequest) {
+  if (!mem.transferRequest || typeof mem.transferRequest !== 'string') {
     return { type: "idle" };
   }
 
-  const { fromRoom, toRoom, resourceType } = mem.transferRequest;
+  // Parse transferRequest (expected format: "fromRoom:toRoom:resourceType")
+  const parts = mem.transferRequest.split(':');
+  if (parts.length !== 3) {
+    return { type: "idle" };
+  }
+  
+  const [fromRoom, toRoom, resourceTypeStr] = parts;
+  const resourceType = resourceTypeStr as ResourceConstant;
   const isCarrying = ctx.creep.store.getUsedCapacity(resourceType) > 0;
 
   if (isCarrying) {

@@ -8,6 +8,11 @@ export interface SquadMemory {
   members?: string[];
   targetRoom?: string;
   rallyPoint?: string;
+  state?: string;
+  rallyRoom?: string;
+  retreatThreshold?: number;
+  patrolIndex?: number;
+  assistTarget?: string;
 }
 
 export interface SwarmState {
@@ -15,6 +20,7 @@ export interface SwarmState {
   constructionSites?: number;
   repairTargets?: number;
   danger?: number;
+  posture?: string;
 }
 
 export interface PheromoneState {
@@ -22,6 +28,13 @@ export interface PheromoneState {
   needsUpgrading?: boolean;
   needsRepairing?: boolean;
   lastUpdated?: number;
+  logistics?: number;
+  defense?: number;
+  build?: number;
+  upgrade?: number;
+  harvest?: number;
+  war?: number;
+  expand?: number;
 }
 
 export interface SwarmCreepMemory extends CreepMemory {
@@ -42,6 +55,9 @@ export interface SwarmCreepMemory extends CreepMemory {
   nearbyContainerTick?: number;
   nearbyLinkId?: Id<StructureLink>;
   nearbyLinkTick?: number;
+  // Military-specific
+  patrolIndex?: number;
+  assistTarget?: string;
 }
 
 export interface CreepState {
@@ -68,6 +84,7 @@ export interface RoomIntel {
   mineralType?: MineralConstant;
   threatLevel?: number;
   controllerLevel?: number;
+  sources?: number;
 }
 
 export interface EmpireMemory {

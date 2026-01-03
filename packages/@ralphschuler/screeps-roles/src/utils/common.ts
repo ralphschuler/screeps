@@ -2,7 +2,9 @@
  * Common utilities stub for roles package
  */
 
-export function getCollectionPoint(room: Room): RoomPosition | null {
+import type { SwarmState } from "../memory/schemas";
+
+export function getCollectionPoint(room: Room, swarmState?: SwarmState): RoomPosition | null {
   // Return storage position if available, otherwise controller
   if (room.storage) {
     return room.storage.pos;
@@ -16,6 +18,7 @@ export function getCollectionPoint(room: Room): RoomPosition | null {
 export function findDistributedTarget<T extends _HasRoomPosition>(
   creep: Creep,
   targets: T[],
+  cacheKey?: string,
   opts?: { filter?: (target: T) => boolean }
 ): T | null {
   let filtered = targets;

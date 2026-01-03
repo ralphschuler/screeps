@@ -74,7 +74,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
   // OPTIMIZATION: Apply opportunistic actions (Phase 4)
   // This allows creeps to pick up dropped energy, repair structures, or transfer
   // to nearby critical structures while moving, improving overall efficiency
-  const optimizedAction = applyOpportunisticActions(creep, action);
+  const optimizedAction = applyOpportunisticActions(creep, action, ctx);
   
   // If action was modified, log it for monitoring
   if (action.type !== optimizedAction.type) {
@@ -376,7 +376,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
     // When multiple creeps target the same structure, one may fill it and clear state.
     // Without clearing the cache, the other creep will immediately re-select the same
     // now-full target, creating an infinite loop where both creeps get stuck.
-    clearAllCachedTargets(creep);
+    clearAllCachedTargets(creep.name);
   }
 
   // Update working state based on carry capacity

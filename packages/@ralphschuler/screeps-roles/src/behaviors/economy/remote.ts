@@ -4,11 +4,11 @@
  * Remote harvesting and hauling in external rooms.
  */
 
-import type { SwarmCreepMemory } from "../../../memory/schemas";
+import type { SwarmCreepMemory } from "../../memory/schemas";
 import type { CreepAction, CreepContext } from "../types";
-import { findCachedClosest } from "../../../cache";
+import { findCachedClosest } from "../../cache";
 import { updateWorkingState, switchToCollectionMode } from "./common/stateManagement";
-import { cachedRoomFind, cachedFindSources, cachedFindDroppedResources } from "../../../cache";
+import { cachedRoomFind, cachedFindSources, cachedFindDroppedResources } from "../../cache";
 
 /**
  * Cache duration for stationary harvester structures (containers, links).
@@ -52,7 +52,7 @@ export function remoteHarvester(ctx: CreepContext): CreepAction {
     if (dangerousHostiles.length > 0) {
       // If in remote room with hostiles, return home for safety
       if (ctx.room.name === targetRoom) {
-        return { type: "moveToRoom", roomName: ctx.memory.homeRoom };
+        return { type: "moveToRoom", roomName: ctx.memory.homeRoom || ctx.homeRoom };
       }
       // If in transit, flee from hostiles
       return { type: "flee", from: dangerousHostiles.map(h => h.pos) };
@@ -186,7 +186,7 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     if (dangerousHostiles.length > 0) {
       // If carrying energy, prioritize getting home
       if (isWorking && ctx.room.name !== homeRoom) {
-        return { type: "moveToRoom", roomName: homeRoom };
+        return { type: "moveToRoom", roomName: homeRoom || ctx.homeRoom };
       }
       // Otherwise flee from hostiles
       return { type: "flee", from: dangerousHostiles.map(h => h.pos) };
@@ -196,7 +196,7 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
   if (isWorking) {
     // Has energy - return to home room and deliver
     if (ctx.room.name !== homeRoom) {
-      return { type: "moveToRoom", roomName: homeRoom };
+      return { type: "moveToRoom", roomName: homeRoom || ctx.homeRoom };
     }
 
     // In home room - deliver with priority: spawn > extensions > towers > storage > containers
@@ -286,7 +286,7 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
 
     // Check for dropped energy (cache 3 ticks - they disappear quickly)
     // For dropped resources, collect even smaller amounts to prevent decay
-    const dropped = cachedFindDroppedResources(ctx.room, RESOURCE_ENERGY).filter(r => r.amount > 50);
+    const dropped = cachedFindDroppedResources(ctx.room).filter((r: Resource) => r.amount > 50);
 
     if (dropped.length > 0) {
       const closest = findCachedClosest(ctx.creep, dropped, "remoteHauler_remoteDrop", 3);
