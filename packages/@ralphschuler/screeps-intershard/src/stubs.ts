@@ -6,24 +6,25 @@
 
 // Stub for ProcessClass decorator
 export function ProcessClass() {
-  return function <T extends { new(...args: any[]): {} }>(constructor: T) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return function <T extends new (...args: any[]) => object>(constructor: T) {
     return constructor;
   };
 }
 
 // Stub for LowFrequencyProcess decorator
 export function LowFrequencyProcess(
-  id: string,
-  name: string,
-  options?: {
-    priority?: any;
+  _id: string,
+  _name: string,
+  _options?: {
+    priority?: ProcessPriority;
     frequency?: string;
     minBucket?: number;
     cpuBudget?: number;
     interval?: number;
   }
 ) {
-  return function (target: any, propertyKey: string, descriptor?: PropertyDescriptor) {
+  return function (_target: object, _propertyKey: string, _descriptor?: PropertyDescriptor) {
     // Stub implementation - returns void  
   };
 }
@@ -56,26 +57,26 @@ export interface SpawnRequest {
   role: string;
   priority: SpawnPriority;
   body?: BodyPartConstant[] | { parts: BodyPartConstant[] };
-  memory?: any;
+  memory?: Record<string, unknown>;
   name?: string;
   options?: SpawnOptions;
-  [key: string]: any; // Allow additional properties
+  [key: string]: unknown; // Allow additional properties
 }
 
 // Stub for spawnQueue
 export const spawnQueue = {
-  add: (roomName: string, request: SpawnRequest) => {
+  add: (_roomName: string, _request: SpawnRequest) => {
     // Stub implementation
   },
-  addRequest: (request: SpawnRequest) => {
+  addRequest: (_request: SpawnRequest) => {
     // Stub implementation
   }
 };
 
 // Stub for optimizeBody
 export function optimizeBody(
-  options: { role: string; energy?: number; maxEnergy?: number; preferRoads?: boolean } | string,
-  energy?: number
+  _options: { role: string; energy?: number; maxEnergy?: number; preferRoads?: boolean } | string,
+  _energy?: number
 ): { parts: BodyPartConstant[] } {
   return { parts: [WORK, CARRY, MOVE] };
 }

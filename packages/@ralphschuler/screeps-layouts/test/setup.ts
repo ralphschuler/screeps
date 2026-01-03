@@ -3,7 +3,7 @@
  */
 
 // Mock global Game object
-(global as any).Game = {
+(global as Record<string, unknown>).Game = {
   time: 1000,
   cpu: {
     getUsed: () => 0,
@@ -23,21 +23,21 @@
 };
 
 // Mock Memory
-(global as any).Memory = {
+(global as Record<string, unknown>).Memory = {
   stats: {},
   rooms: {},
   creeps: {}
 };
 
 // Mock RawMemory
-(global as any).RawMemory = {
+(global as Record<string, unknown>).RawMemory = {
   segments: {},
   get: () => '',
   set: () => {}
 };
 
 // Mock InterShardMemory
-(global as any).InterShardMemory = {
+(global as Record<string, unknown>).InterShardMemory = {
   getLocal: () => '',
   setLocal: () => {},
   getRemote: () => ''

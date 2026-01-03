@@ -2,4 +2,11 @@
  * Type definitions for @ralphschuler/screeps-layouts
  */
 
-// Add your types here
+// Re-export types from blueprints
+export type {
+  EvolutionStage,
+  StructurePlacement,
+  Blueprint,
+  MisplacedStructure,
+  BlueprintEfficiencyMetrics
+} from './blueprints/types';

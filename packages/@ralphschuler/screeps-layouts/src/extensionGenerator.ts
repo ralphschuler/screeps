@@ -12,9 +12,7 @@
  */
 
 import type { StructurePlacement } from "./blueprints/types";
-import { createLogger } from "../core/logger";
-
-const logger = createLogger("ExtensionGenerator");
+import { logger } from "@ralphschuler/screeps-kernel";
 
 /**
  * Maximum number of extension positions to generate.

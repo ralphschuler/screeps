@@ -271,7 +271,7 @@ export class ResourceTransferCoordinator {
     const carriersToSpawn = Math.min(carriersNeeded, maxCarriersPerRequest);
 
     // Map priority to spawn priority
-    let spawnPriority = SpawnPriority.NORMAL;
+    let spawnPriority: SpawnPriority;
     if (request.priority >= 80) {
       spawnPriority = SpawnPriority.HIGH;
     } else if (request.priority >= 50) {

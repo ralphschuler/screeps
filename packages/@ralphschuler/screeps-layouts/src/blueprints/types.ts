@@ -2,7 +2,15 @@
  * Shared types for the blueprint system
  */
 
-import type { EvolutionStage } from "../../memory/schemas";
+/**
+ * Evolution stage of a room (from RCL progression)
+ */
+export type EvolutionStage =
+  | "seedNest" // RCL 1-3
+  | "foragingExpansion" // RCL 3-4
+  | "matureColony" // RCL 4-6
+  | "fortifiedHive" // RCL 7-8
+  | "empireDominance"; // Multi-room/shard endgame
 
 /**
  * Structure placement entry
@@ -60,5 +68,3 @@ export interface BlueprintEfficiencyMetrics {
     linkCount: number;
   };
 }
-
-export type { EvolutionStage };
