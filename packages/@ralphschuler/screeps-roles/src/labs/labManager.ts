@@ -15,9 +15,9 @@ interface LabOverflow {
 }
 
 export const labManager = {
-  getLabsNeedingInput: (room: Room): StructureLab[] => [],
-  getLabsNeedingOutput: (room: Room): StructureLab[] => [],
-  getReactionTarget: (lab: StructureLab): { resource: ResourceConstant; amount: number } | null => null,
-  getLabResourceNeeds: (roomName: string): LabResourceNeed[] => [],
-  getLabOverflow: (roomName: string): LabOverflow[] => []
+  getLabsNeedingInput: (_room: Room): StructureLab[] => [],
+  getLabsNeedingOutput: (_room: Room): StructureLab[] => [],
+  getReactionTarget: (_lab: StructureLab): { resource: ResourceConstant; amount: number } | null => null,
+  getLabResourceNeeds: (_roomName: string): LabResourceNeed[] => [],
+  getLabOverflow: (_roomName: string): LabOverflow[] => []
 };
