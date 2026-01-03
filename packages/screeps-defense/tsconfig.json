@@ -16,7 +16,11 @@
     "allowUnreachableCode": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["node", "screeps"]
+    "types": ["node", "screeps"],
+    "baseUrl": ".",
+    "paths": {
+      "@bot/*": ["../screeps-bot/src/*"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "test"]
