@@ -12,10 +12,27 @@ import { registerMilitaryCacheClear } from "./context";
 import type { CreepAction, CreepContext } from "./types";
 import { createLogger } from "../core/logger";
 import { getCollectionPoint } from "../utils/common";
-import { checkAndExecuteRetreat } from "@ralphschuler/screeps-defense";
 import { globalCache } from "../cache";
 
 const logger = createLogger("MilitaryBehaviors");
+
+/**
+ * Stub for retreat protocol - checks if creep should retreat based on health
+ * Returns true if retreat was executed, false otherwise
+ */
+function checkAndExecuteRetreat(creep: Creep): boolean {
+  // Simple retreat logic: if below 30% health, return to home room
+  const hpPercent = creep.hits / creep.hitsMax;
+  if (hpPercent < 0.3) {
+    const memory = creep.memory as unknown as SwarmCreepMemory;
+    const homeRoom = memory.homeRoom || creep.room.name;
+    if (creep.room.name !== homeRoom) {
+      creep.moveTo(new RoomPosition(25, 25, homeRoom));
+      return true;
+    }
+  }
+  return false;
+}
 
 // =============================================================================
 // Patrol System
@@ -59,11 +76,8 @@ function getPatrolWaypoints(room: Room): RoomPosition[] {
   const spawnCount = spawns.length;
   
   // Try to get cached waypoints with metadata
-  const cacheKey = room.name;
-  const cached = globalCache.get<CachedPatrolWaypoints>(
-    cacheKey, 
-    { namespace: PATROL_CACHE_NAMESPACE }
-  );
+  const cacheKey = `${PATROL_CACHE_NAMESPACE}_${room.name}`;
+  const cached = globalCache.get(cacheKey) as CachedPatrolWaypoints | undefined;
   
   // Check if cached data is valid (same spawn count)
   if (cached && cached.metadata.spawnCount === spawnCount) {
@@ -127,10 +141,7 @@ function getPatrolWaypoints(room: Room): RoomPosition[] {
     metadata: { spawnCount }
   };
   
-  globalCache.set(cacheKey, cacheData, {
-    namespace: PATROL_CACHE_NAMESPACE,
-    ttl: PATROL_WAYPOINT_TTL
-  });
+  globalCache.set(cacheKey, cacheData);
   
   return filtered;
 }
@@ -928,6 +939,7 @@ function squadBehavior(ctx: CreepContext, squad: SquadMemory): CreepAction {
   // SQUAD COORDINATION: Check if we should wait for other squad members
   const shouldWaitForSquad = (state: string): boolean => {
     if (state !== "gathering" && state !== "moving") return false;
+    if (!squad.members) return false;
     
     // Count squad members in current room
     const membersInRoom = squad.members.filter(name => {

@@ -275,8 +275,7 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     const containers = cachedRoomFind(ctx.room, FIND_STRUCTURES, {
       filter: (s: Structure) => 
         s.structureType === STRUCTURE_CONTAINER && 
-        (s as StructureContainer).store.getUsedCapacity(RESOURCE_ENERGY) >= minEnergyThreshold,
-      filterKey: 'remoteContainers'
+        (s as StructureContainer).store.getUsedCapacity(RESOURCE_ENERGY) >= minEnergyThreshold
     }) as StructureContainer[];
 
     if (containers.length > 0) {
@@ -296,8 +295,7 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     // If no energy meets threshold, wait near a container for it to fill
     if (containers.length === 0) {
       const anyContainer = cachedRoomFind(ctx.room, FIND_STRUCTURES, {
-        filter: (s: Structure) => s.structureType === STRUCTURE_CONTAINER,
-        filterKey: 'containers'
+        filter: (s: Structure) => s.structureType === STRUCTURE_CONTAINER
       }) as StructureContainer[];
       
       if (anyContainer.length > 0) {

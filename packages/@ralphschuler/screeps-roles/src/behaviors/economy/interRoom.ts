@@ -48,8 +48,7 @@ export function interRoomCarrier(ctx: CreepContext): CreepAction {
     // Find containers with space
     const containers = cachedRoomFind(room, FIND_STRUCTURES, {
       filter: (s: Structure) =>
-        s.structureType === STRUCTURE_CONTAINER && (s as StructureContainer).store.getFreeCapacity(resourceType) > 0,
-      filterKey: `container_${resourceType}`
+        s.structureType === STRUCTURE_CONTAINER && (s as StructureContainer).store.getFreeCapacity(resourceType) > 0
     }) as StructureContainer[];
 
     if (containers.length > 0) {
@@ -84,8 +83,7 @@ export function interRoomCarrier(ctx: CreepContext): CreepAction {
 
     // Try containers
     const containers = cachedRoomFind(room, FIND_STRUCTURES, {
-      filter: (s: Structure) => s.structureType === STRUCTURE_CONTAINER && (s as StructureContainer).store.getUsedCapacity(resourceType) > 0,
-      filterKey: `container_${resourceType}`
+      filter: (s: Structure) => s.structureType === STRUCTURE_CONTAINER && (s as StructureContainer).store.getUsedCapacity(resourceType) > 0
     }) as StructureContainer[];
 
     if (containers.length > 0) {
