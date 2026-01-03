@@ -27,5 +27,8 @@
     "ts-node": "^10.2.0",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.4.3"
+  },
+  "dependencies": {
+    "@ralphschuler/screeps-kernel": "*"
   }
 }
