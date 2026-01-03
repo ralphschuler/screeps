@@ -170,7 +170,7 @@ export class ShardManager {
         commodityIndex += 10; // Active production bonus
       }
 
-      // Check for high-tier commodities in storage
+      // Check for high-tier commodities in storage (once per room)
       const storage = room.storage;
       if (storage) {
         // Check for advanced commodities
@@ -196,7 +196,8 @@ export class ShardManager {
     // Normalize to 0-100 scale
     if (factoryCount === 0) return 0;
 
-    const maxPossible = factoryCount * 25 + factoryCount * 10 + 70; // Max theoretical
+    // Max theoretical: 25 (factory level) + 10 (production) + 70 (7 commodities × 10) per factory
+    const maxPossible = factoryCount * (25 + 10 + 70);
     commodityIndex = Math.min(100, (commodityIndex / maxPossible) * 100);
 
     return Math.round(commodityIndex);
