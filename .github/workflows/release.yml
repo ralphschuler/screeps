@@ -23,11 +23,9 @@ jobs:
           cache: npm
 
       - name: Install workspace dependencies
-        working-directory: .
         run: npm ci --ignore-scripts
 
       - name: Build all packages
-        working-directory: .
         run: npm run build:all
 
       - name: Configure Git
