@@ -120,7 +120,10 @@ class VisualizationCommands {
     category: "Visualization"
   })
   public toggleVisualization(key: string): string {
-    const config = roomVisualizer.getConfig();
+    const config = roomVisualizer.getConfig?.();
+    if (!config) {
+      return "RoomVisualizer.getConfig is not implemented";
+    }
     const validKeys = Object.keys(config).filter(
       k => k.startsWith("show") && typeof config[k as keyof typeof config] === "boolean"
     );
@@ -130,9 +133,11 @@ class VisualizationCommands {
     }
 
     const validKey = key as keyof typeof config;
-    roomVisualizer.toggle(validKey);
-    const newConfig = roomVisualizer.getConfig();
-    const value = newConfig[validKey];
+    if (roomVisualizer.toggle) {
+      roomVisualizer.toggle(String(validKey));
+    }
+    const newConfig = roomVisualizer.getConfig?.();
+    const value = newConfig?.[validKey];
     return `Room visualization '${key}': ${value ? "ENABLED" : "DISABLED"}`;
   }
 
@@ -149,7 +154,10 @@ class VisualizationCommands {
     category: "Visualization"
   })
   public toggleMapVisualization(key: string): string {
-    const config = mapVisualizer.getConfig();
+    const config = mapVisualizer.getConfig?.();
+    if (!config) {
+      return "MapVisualizer.getConfig is not implemented";
+    }
     const validKeys = Object.keys(config).filter(
       k => k.startsWith("show") && typeof config[k as keyof typeof config] === "boolean"
     );
@@ -159,9 +167,11 @@ class VisualizationCommands {
     }
 
     const validKey = key as keyof typeof config;
-    mapVisualizer.toggle(validKey);
-    const newConfig = mapVisualizer.getConfig();
-    const value = newConfig[validKey];
+    if (mapVisualizer.toggle) {
+      mapVisualizer.toggle(String(validKey));
+    }
+    const newConfig = mapVisualizer.getConfig?.();
+    const value = newConfig?.[validKey];
     return `Map visualization '${key}': ${value ? "ENABLED" : "DISABLED"}`;
   }
 
@@ -173,7 +183,10 @@ class VisualizationCommands {
     category: "Visualization"
   })
   public showMapConfig(): string {
-    const config = mapVisualizer.getConfig();
+    const config = mapVisualizer.getConfig?.();
+    if (!config) {
+      return "MapVisualizer.getConfig is not implemented";
+    }
     return Object.entries(config)
       .map(([key, value]) => `${key}: ${String(value)}`)
       .join("\n");
@@ -330,7 +343,10 @@ class StatisticsCommands {
     category: "Statistics"
   })
   public showStats(): string {
-    const stats = memorySegmentStats.getLatestStats();
+    const stats = memorySegmentStats.getLatestStats?.();
+    if (!stats) {
+      return "MemorySegmentStats.getLatestStats is not implemented";
+    }
     if (!stats) {
       return "No stats available yet. Wait for a few ticks.";
     }
@@ -341,7 +357,7 @@ GCL: ${stats.gclLevel} (${(stats.gclProgress * 100).toFixed(1)}%)
 GPL: ${stats.gplLevel}
 Creeps: ${stats.totalCreeps}
 Rooms: ${stats.totalRooms}
-${stats.rooms.map(r => `  ${r.roomName}: RCL${r.rcl} | ${r.creepCount} creeps | ${r.storageEnergy}E`).join("\n")}`;
+${stats.rooms.map((r: any) => `  ${r.roomName}: RCL${r.rcl} | ${r.creepCount} creeps | ${r.storageEnergy}E`).join("\n")}`;
   }
 
   @Command({
@@ -436,7 +452,9 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
     const config = getConfig();
     const newValue = !config.profiling;
     updateConfig({ profiling: newValue });
-    unifiedStats.setEnabled(newValue);
+    if (unifiedStats.setEnabled) {
+      unifiedStats.setEnabled(newValue);
+    }
     configureLogger({ cpuLogging: newValue });
     return `Profiling: ${newValue ? "ENABLED" : "DISABLED"}`;
   }
@@ -545,7 +563,10 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
     category: "Statistics"
   })
   public cpuBudget(): string {
-    const report = unifiedStats.validateBudgets();
+    const report = unifiedStats.validateBudgets?.();
+    if (!report) {
+      return "unifiedStats.validateBudgets is not implemented";
+    }
     
     let result = `=== CPU Budget Report (Tick ${report.tick}) ===\n`;
     result += `Rooms Evaluated: ${report.roomsEvaluated}\n`;
@@ -557,8 +578,8 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
     } else {
       result += `Alerts: ${report.alerts.length}\n`;
       
-      const critical = report.alerts.filter(a => a.severity === "critical");
-      const warnings = report.alerts.filter(a => a.severity === "warning");
+      const critical = report.alerts.filter((a: any) => a.severity === "critical");
+      const warnings = report.alerts.filter((a: any) => a.severity === "warning");
       
       if (critical.length > 0) {
         result += "\n🔴 CRITICAL (≥100% of budget):\n";
@@ -586,7 +607,10 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
     category: "Statistics"
   })
   public cpuAnomalies(): string {
-    const anomalies = unifiedStats.detectAnomalies();
+    const anomalies = unifiedStats.detectAnomalies?.();
+    if (!anomalies) {
+      return "unifiedStats.detectAnomalies is not implemented";
+    }
     
     if (anomalies.length === 0) {
       return "✓ No CPU anomalies detected";
@@ -594,8 +618,8 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
     
     let result = `=== CPU Anomalies Detected: ${anomalies.length} ===\n\n`;
     
-    const spikes = anomalies.filter(a => a.type === "spike");
-    const sustained = anomalies.filter(a => a.type === "sustained_high");
+    const spikes = anomalies.filter((a: any) => a.type === "spike");
+    const sustained = anomalies.filter((a: any) => a.type === "sustained_high");
     
     if (spikes.length > 0) {
       result += `⚡ CPU Spikes (${spikes.length}):\n`;
@@ -629,7 +653,10 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
     category: "Statistics"
   })
   public cpuProfile(showAll = false): string {
-    const snapshot = unifiedStats.getCurrentSnapshot();
+    const snapshot = unifiedStats.getCurrentSnapshot?.();
+    if (!snapshot) {
+      return "unifiedStats.getCurrentSnapshot is not implemented";
+    }
     
     let result = `=== CPU Profile (Tick ${snapshot.tick}) ===\n`;
     result += `Total: ${snapshot.cpu.used.toFixed(2)} / ${snapshot.cpu.limit} (${snapshot.cpu.percent.toFixed(1)}%)\n`;
@@ -637,25 +664,25 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
     result += `Heap: ${snapshot.cpu.heapUsed.toFixed(2)} MB\n\n`;
     
     // Room breakdown
-    const rooms = Object.values(snapshot.rooms).sort((a, b) => b.profiler.avgCpu - a.profiler.avgCpu);
+    const rooms = Object.values(snapshot.rooms).sort((a: any, b: any) => b.profiler.avgCpu - a.profiler.avgCpu);
     const topRooms = showAll ? rooms : rooms.slice(0, 10);
     
     result += `Top ${topRooms.length} Rooms by CPU:\n`;
     for (const room of topRooms) {
-      const posture = unifiedStats.postureCodeToName(room.brain.postureCode);
-      result += `  ${room.name} (RCL${room.rcl}, ${posture}): avg ${room.profiler.avgCpu.toFixed(3)} | peak ${room.profiler.peakCpu.toFixed(3)} | samples ${room.profiler.samples}\n`;
+      const posture = unifiedStats.postureCodeToName?.((room as any).brain.postureCode) ?? 'unknown';
+      result += `  ${(room as any).name} (RCL${(room as any).rcl}, ${posture}): avg ${(room as any).profiler.avgCpu.toFixed(3)} | peak ${(room as any).profiler.peakCpu.toFixed(3)} | samples ${(room as any).profiler.samples}\n`;
     }
     
     // Process breakdown
     result += `\nTop Kernel Processes by CPU:\n`;
     const processes = Object.values(snapshot.processes)
-      .filter(p => p.avgCpu > 0.001)
-      .sort((a, b) => b.avgCpu - a.avgCpu)
+      .filter((p: any) => p.avgCpu > 0.001)
+      .sort((a: any, b: any) => b.avgCpu - a.avgCpu)
       .slice(0, showAll ? 999 : 10);
     
     for (const proc of processes) {
-      const budgetPct = proc.cpuBudget > 0 ? ((proc.avgCpu / proc.cpuBudget) * 100).toFixed(0) : "N/A";
-      result += `  ${proc.name} (${proc.frequency}): avg ${proc.avgCpu.toFixed(3)} / budget ${proc.cpuBudget.toFixed(3)} (${budgetPct}%)\n`;
+      const budgetPct = (proc as any).cpuBudget > 0 ? (((proc as any).avgCpu / (proc as any).cpuBudget) * 100).toFixed(0) : "N/A";
+      result += `  ${(proc as any).name} (${(proc as any).frequency}): avg ${(proc as any).avgCpu.toFixed(3)} / budget ${(proc as any).cpuBudget.toFixed(3)} (${budgetPct}%)\n`;
     }
     
     return result;
@@ -697,15 +724,18 @@ class KernelCommands {
     category: "Kernel"
   })
   public showKernelStats(): string {
-    const stats = kernel.getStatsSummary();
-    const config = kernel.getConfig();
-    const bucketMode = kernel.getBucketMode();
+    const stats = kernel.getStatsSummary?.();
+    if (!stats) {
+      return "kernel.getStatsSummary is not implemented";
+    }
+    const config = kernel.getConfig?.() ?? { targetCpuUsage: 0 };
+    const bucketMode = kernel.getBucketMode?.() ?? 'normal';
 
     let output = `=== Kernel Stats ===
 Bucket Mode: ${bucketMode.toUpperCase()}
 CPU Bucket: ${Game.cpu.bucket}
-CPU Limit: ${kernel.getCpuLimit().toFixed(2)} (${(config.targetCpuUsage * 100).toFixed(0)}% of ${Game.cpu.limit})
-Remaining CPU: ${kernel.getRemainingCpu().toFixed(2)}
+CPU Limit: ${(kernel.getCpuLimit?.() ?? 0).toFixed(2)} (${(config.targetCpuUsage * 100).toFixed(0)}% of ${Game.cpu.limit})
+Remaining CPU: ${(kernel.getRemainingCpu?.() ?? 0).toFixed(2)}
 
 Processes: ${stats.totalProcesses} total (${stats.activeProcesses} active, ${stats.suspendedProcesses} suspended)
 Total CPU Used: ${stats.totalCpuUsed.toFixed(3)}
@@ -749,10 +779,10 @@ Top CPU Consumers:`;
     const sorted = [...processes].sort((a, b) => b.priority - a.priority);
 
     for (const p of sorted) {
-      const avgCpu = p.stats.avgCpu.toFixed(4);
-      const health = p.stats.healthScore.toFixed(0);
-      const healthIndicator = p.stats.healthScore >= 80 ? "✓" : p.stats.healthScore >= 50 ? "⚠" : "✗";
-      output += `${p.id} | ${p.name} | ${p.priority} | ${p.frequency} | ${p.state} | ${p.stats.runCount} | ${avgCpu} | ${healthIndicator}${health} | ${p.stats.errorCount}(${p.stats.consecutiveErrors})\n`;
+      const avgCpu = (p.stats?.avgCpu ?? 0).toFixed(4);
+      const health = (p.stats?.healthScore ?? 0).toFixed(0);
+      const healthIndicator = (p.stats?.healthScore ?? 0) >= 80 ? "✓" : (p.stats?.healthScore ?? 0) >= 50 ? "⚠" : "✗";
+      output += `${p.id} | ${p.name} | ${p.priority} | ${p.frequency ?? 'N/A'} | ${p.state} | ${p.stats?.runCount ?? 0} | ${avgCpu} | ${healthIndicator}${health} | ${p.stats?.errorCount ?? 0}(${p.stats?.consecutiveErrors ?? 0})\n`;
     }
 
     return output;
@@ -796,8 +826,11 @@ Top CPU Consumers:`;
     category: "Kernel"
   })
   public resetKernelStats(): string {
-    kernel.resetStats();
-    return "Kernel statistics reset.";
+    if (kernel.resetStats) {
+      kernel.resetStats();
+      return "Kernel statistics reset.";
+    }
+    return "Kernel.resetStats is not implemented";
   }
 
   @Command({
@@ -815,26 +848,26 @@ Top CPU Consumers:`;
     }
 
     // Sort by health score (ascending - worst first)
-    const sorted = [...processes].sort((a, b) => a.stats.healthScore - b.stats.healthScore);
+    const sorted = [...processes].sort((a, b) => (a.stats?.healthScore ?? 0) - (b.stats?.healthScore ?? 0));
 
     let output = "=== Process Health Status ===\n";
     output += "Name | Health | Errors | Consecutive | Status | Last Success\n";
     output += "-".repeat(80) + "\n";
 
     for (const p of sorted) {
-      const health = p.stats.healthScore.toFixed(0);
-      const healthIcon = p.stats.healthScore >= 80 ? "✓" : p.stats.healthScore >= 50 ? "⚠" : "✗";
-      const ticksSinceSuccess = p.stats.lastSuccessfulRunTick > 0 
-        ? Game.time - p.stats.lastSuccessfulRunTick 
+      const health = (p.stats?.healthScore ?? 0).toFixed(0);
+      const healthIcon = (p.stats?.healthScore ?? 0) >= 80 ? "✓" : (p.stats?.healthScore ?? 0) >= 50 ? "⚠" : "✗";
+      const ticksSinceSuccess = (p.stats?.lastSuccessfulRunTick ?? 0) > 0 
+        ? Game.time - (p.stats?.lastSuccessfulRunTick ?? 0)
         : "never";
       const status = p.state === "suspended" 
-        ? `SUSPENDED (${p.stats.suspensionReason})` 
+        ? `SUSPENDED (${(p.stats as any)?.suspensionReason ?? 'unknown'})` 
         : p.state.toUpperCase();
       
-      output += `${p.name} | ${healthIcon} ${health}/100 | ${p.stats.errorCount} | ${p.stats.consecutiveErrors} | ${status} | ${ticksSinceSuccess}\n`;
+      output += `${p.name} | ${healthIcon} ${health}/100 | ${p.stats?.errorCount ?? 0} | ${p.stats?.consecutiveErrors ?? 0} | ${status} | ${ticksSinceSuccess}\n`;
     }
 
-    const stats = kernel.getStatsSummary();
+    const stats = kernel.getStatsSummary?.() ?? { avgHealthScore: 0, suspendedProcesses: 0 };
     output += `\nAverage Health: ${stats.avgHealthScore.toFixed(1)}/100`;
     output += `\nSuspended Processes: ${stats.suspendedProcesses}`;
 
@@ -874,7 +907,10 @@ Top CPU Consumers:`;
     category: "Kernel"
   })
   public showCreepStats(): string {
-    const stats = creepProcessManager.getStats();
+    const stats = creepProcessManager.getStats?.();
+    if (!stats) {
+      return "creepProcessManager.getStats is not implemented";
+    }
     
     let output = `=== Creep Process Stats ===
 Total Creeps: ${stats.totalCreeps}
@@ -897,7 +933,10 @@ Creeps by Priority:`;
     category: "Kernel"
   })
   public showRoomStats(): string {
-    const stats = roomProcessManager.getStats();
+    const stats = roomProcessManager.getStats?.();
+    if (!stats) {
+      return "roomProcessManager.getStats is not implemented";
+    }
     
     let output = `=== Room Process Stats ===
 Total Rooms: ${stats.totalRooms}
@@ -943,8 +982,8 @@ Rooms by Priority:`;
     const sorted = [...creepProcesses].sort((a, b) => b.priority - a.priority);
 
     for (const p of sorted) {
-      const avgCpu = p.stats.avgCpu.toFixed(4);
-      output += `${p.name} | ${p.priority} | ${p.stats.runCount} | ${avgCpu} | ${p.stats.errorCount}\n`;
+      const avgCpu = (p.stats?.avgCpu ?? 0).toFixed(4);
+      output += `${p.name} | ${p.priority} | ${p.stats?.runCount ?? 0} | ${avgCpu} | ${p.stats?.errorCount ?? 0}\n`;
     }
 
     output += `\nTotal: ${creepProcesses.length} creep processes`;
@@ -974,8 +1013,8 @@ Rooms by Priority:`;
     const sorted = [...roomProcesses].sort((a, b) => b.priority - a.priority);
 
     for (const p of sorted) {
-      const avgCpu = p.stats.avgCpu.toFixed(4);
-      output += `${p.name} | ${p.priority} | ${p.stats.runCount} | ${avgCpu} | ${p.stats.errorCount}\n`;
+      const avgCpu = (p.stats?.avgCpu ?? 0).toFixed(4);
+      output += `${p.name} | ${p.priority} | ${p.stats?.runCount ?? 0} | ${avgCpu} | ${p.stats?.errorCount ?? 0}\n`;
     }
 
     output += `\nTotal: ${roomProcesses.length} room processes`;

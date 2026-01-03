@@ -11,115 +11,75 @@
  * - tooangel.apply(questId, originRoom, fromRoom?) - Apply for a quest
  */
 
-import { tooAngelManager } from "./tooAngelManager";
-import { requestReputation, getReputation } from "./reputationManager";
-import { getActiveQuests, applyForQuest } from "./questManager";
-import { getNPCRooms } from "./npcDetector";
+// TODO: These modules are not available in this package
+// import { tooAngelManager } from "./tooAngelManager";
+// import { requestReputation, getReputation } from "./reputationManager";
+// import { getActiveQuests, applyForQuest } from "./questManager";
+// import { getNPCRooms } from "./npcDetector";
 
 export const tooAngelCommands = {
   /**
    * Show TooAngel status
    */
   status: (): string => {
-    return tooAngelManager.getStatus();
+    // TODO: Implement when tooAngelManager is available
+    return "TooAngel commands not yet implemented - missing dependencies";
   },
 
   /**
    * Enable TooAngel integration
    */
   enable: (): string => {
-    tooAngelManager.enable();
-    return "TooAngel integration enabled";
+    // TODO: Implement when tooAngelManager is available
+    return "TooAngel commands not yet implemented - missing dependencies";
   },
 
   /**
    * Disable TooAngel integration
    */
   disable: (): string => {
-    tooAngelManager.disable();
-    return "TooAngel integration disabled";
+    // TODO: Implement when tooAngelManager is available
+    return "TooAngel commands not yet implemented - missing dependencies";
   },
 
   /**
    * Get current reputation
    */
   reputation: (): string => {
-    const rep = getReputation();
-    return `Current TooAngel reputation: ${rep}`;
+    // TODO: Implement when getReputation is available
+    return "TooAngel commands not yet implemented - missing dependencies";
   },
 
   /**
    * Request reputation update
    */
   requestReputation: (fromRoom?: string): string => {
-    const success = requestReputation(fromRoom);
-    if (success) {
-      return `Reputation request sent${fromRoom ? ` from ${fromRoom}` : ""}`;
-    } else {
-      return "Failed to send reputation request (check logs for details)";
-    }
+    // TODO: Implement when requestReputation is available
+    return "TooAngel commands not yet implemented - missing dependencies";
   },
 
   /**
    * List active quests
    */
   quests: (): string => {
-    const activeQuests = getActiveQuests();
-    const lines: string[] = ["Active Quests:"];
-
-    if (Object.keys(activeQuests).length === 0) {
-      lines.push("  No active quests");
-    } else {
-      for (const questId in activeQuests) {
-        const quest = activeQuests[questId];
-        const timeLeft = quest.deadline - Game.time;
-        const creepCount = quest.assignedCreeps?.length || 0;
-        lines.push(
-          `  ${questId}:`
-        );
-        lines.push(`    Type: ${quest.type}`);
-        lines.push(`    Target: ${quest.targetRoom}`);
-        lines.push(`    Status: ${quest.status}`);
-        lines.push(`    Time left: ${timeLeft} ticks`);
-        lines.push(`    Assigned creeps: ${creepCount}`);
-      }
-    }
-
-    return lines.join("\n");
+    // TODO: Implement when getActiveQuests is available
+    return "TooAngel commands not yet implemented - missing dependencies";
   },
 
   /**
    * List discovered NPC rooms
    */
   npcs: (): string => {
-    const npcRooms = getNPCRooms();
-    const lines: string[] = ["TooAngel NPC Rooms:"];
-
-    if (Object.keys(npcRooms).length === 0) {
-      lines.push("  No NPC rooms discovered");
-    } else {
-      for (const roomName in npcRooms) {
-        const npc = npcRooms[roomName];
-        lines.push(`  ${roomName}:`);
-        lines.push(`    Has terminal: ${npc.hasTerminal}`);
-        lines.push(`    Available quests: ${npc.availableQuests.length}`);
-        lines.push(`    Last seen: ${Game.time - npc.lastSeen} ticks ago`);
-      }
-    }
-
-    return lines.join("\n");
+    // TODO: Implement when getNPCRooms is available
+    return "TooAngel commands not yet implemented - missing dependencies";
   },
 
   /**
    * Apply for a quest
    */
   apply: (questId: string, originRoom: string, fromRoom?: string): string => {
-    const success = applyForQuest(questId, originRoom, fromRoom);
-    if (success) {
-      return `Applied for quest ${questId}${fromRoom ? ` from ${fromRoom}` : ""}`;
-    } else {
-      return "Failed to apply for quest (check logs for details)";
-    }
+    // TODO: Implement when applyForQuest is available
+    return "TooAngel commands not yet implemented - missing dependencies";
   },
 
   /**

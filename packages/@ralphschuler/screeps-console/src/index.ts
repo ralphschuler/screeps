@@ -14,11 +14,12 @@ export {
 
 // Export command collections
 export {
-  LoggingCommands,
-  VisualizationCommands,
-  StatsCommands,
-  KernelCommands,
-  ConfigCommands
+  loggingCommands,
+  visualizationCommands,
+  statisticsCommands,
+  configurationCommands,
+  kernelCommands,
+  systemCommands
 } from './consoleCommands';
 
 // Export interfaces for external dependencies
