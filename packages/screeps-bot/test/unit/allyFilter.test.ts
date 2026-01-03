@@ -8,7 +8,7 @@ import {
   filterTooAngelCreeps,
   TOOANGEL_PLAYER_NAME,
   getActualHostileCreeps
-} from "../../src/empire/tooangel/allyFilter";
+} from "@ralphschuler/screeps-defense";
 
 describe("TooAngel Ally Filter", () => {
   describe("isTooAngelCreep", () => {

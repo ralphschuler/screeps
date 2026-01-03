@@ -26,7 +26,7 @@ import type { DefenseRequest } from "@bot/spawning/defenderManager";
 import { MediumFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
 import { ProcessPriority } from "@bot/core/kernel";
 import { assessThreat } from "../threat/threatAssessment";
-import { filterTooAngelCreeps } from "@bot/empire/tooangel/allyFilter";
+import { filterTooAngelCreeps } from "../tooangel/allyFilter";
 
 /**
  * Defense assistance assignment

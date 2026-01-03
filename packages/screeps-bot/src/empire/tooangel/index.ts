@@ -11,7 +11,18 @@ export * from "./questManager";
 export * from "./questExecutor";
 export * from "./tooAngelManager";
 export * from "./memoryInit";
-export * from "./allyFilter";
+
+// Re-export ally filter from defense package
+export {
+  isTooAngelCreep,
+  isTooAngelStructure,
+  filterTooAngelCreeps,
+  filterTooAngelStructures,
+  getActualHostileCreeps,
+  getActualHostileStructures,
+  hasActualHostiles,
+  TOOANGEL_PLAYER_NAME
+} from "@ralphschuler/screeps-defense";
 
 // Re-export the main manager instance
 export { tooAngelManager } from "./tooAngelManager";

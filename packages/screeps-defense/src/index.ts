@@ -11,9 +11,22 @@
  * - Multi-room defense coordination
  * - Emergency response and safe mode management
  * - Evacuation protocols
+ * - TooAngel ally filtering (non-aggression policy)
  * 
  * @packageDocumentation
  */
+
+// TooAngel Ally Filter (Non-Aggression Policy)
+export {
+  isTooAngelCreep,
+  isTooAngelStructure,
+  filterTooAngelCreeps,
+  filterTooAngelStructures,
+  getActualHostileCreeps,
+  getActualHostileStructures,
+  hasActualHostiles,
+  TOOANGEL_PLAYER_NAME
+} from "./tooangel/allyFilter";
 
 // Threat Assessment
 export {

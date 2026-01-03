@@ -29,7 +29,7 @@ import {
   getCurrentDefenders,
   needsDefenseAssistance
 } from "@bot/spawning/defenderManager";
-import { filterTooAngelCreeps } from "@bot/empire/tooangel/allyFilter";
+import { filterTooAngelCreeps } from "../tooangel/allyFilter";
 
 /**
  * Emergency response levels

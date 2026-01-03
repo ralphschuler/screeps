@@ -9,8 +9,6 @@
  * Based on: https://github.com/TooAngel/screeps/blob/master/doc/API.md
  */
 
-import { logger } from "../../core/logger";
-
 /**
  * Player name for TooAngel bot
  * This is the primary identifier for TooAngel's entities
@@ -51,10 +49,7 @@ export function filterTooAngelCreeps(hostiles: Creep[]): Creep[] {
   
   const tooAngelCount = hostiles.length - filtered.length;
   if (tooAngelCount > 0) {
-    logger.info(`Filtered ${tooAngelCount} TooAngel creeps from hostile detection`, {
-      subsystem: "TooAngel",
-      room: hostiles[0]?.room.name
-    });
+    console.log(`[TooAngel] Filtered ${tooAngelCount} TooAngel creeps from hostile detection in ${hostiles[0]?.room.name}`);
   }
   
   return filtered;
@@ -76,10 +71,7 @@ export function filterTooAngelStructures<T extends AnyOwnedStructure>(
   
   const tooAngelCount = structures.length - filtered.length;
   if (tooAngelCount > 0) {
-    logger.info(`Filtered ${tooAngelCount} TooAngel structures from hostile detection`, {
-      subsystem: "TooAngel",
-      room: structures[0]?.room.name
-    });
+    console.log(`[TooAngel] Filtered ${tooAngelCount} TooAngel structures from hostile detection in ${structures[0]?.room.name}`);
   }
   
   return filtered;

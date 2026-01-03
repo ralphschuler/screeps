@@ -13,7 +13,7 @@
 
 import type { SwarmState } from "@bot/memory/schemas";
 import { logger } from "@bot/core/logger";
-import { filterTooAngelCreeps } from "@bot/empire/tooangel/allyFilter";
+import { filterTooAngelCreeps } from "../tooangel/allyFilter";
 
 /**
  * Safe Mode Manager Class

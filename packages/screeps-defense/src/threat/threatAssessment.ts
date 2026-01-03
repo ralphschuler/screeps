@@ -15,7 +15,7 @@
 
 import { logger } from "@bot/core/logger";
 import { ROLE_DEFINITIONS } from "@bot/spawning/roleDefinitions";
-import { filterTooAngelCreeps } from "@bot/empire/tooangel/allyFilter";
+import { filterTooAngelCreeps } from "../tooangel/allyFilter";
 
 /**
  * Comprehensive threat analysis for a room
