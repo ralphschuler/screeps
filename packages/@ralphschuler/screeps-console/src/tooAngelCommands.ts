@@ -12,6 +12,7 @@
  */
 
 // TODO: These modules are not available in this package
+// Issue URL: https://github.com/ralphschuler/screeps/issues/2726
 // import { tooAngelManager } from "./tooAngelManager";
 // import { requestReputation, getReputation } from "./reputationManager";
 // import { getActiveQuests, applyForQuest } from "./questManager";
@@ -23,6 +24,7 @@ export const tooAngelCommands = {
    */
   status: (): string => {
     // TODO: Implement when tooAngelManager is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2725
     return "TooAngel commands not yet implemented - missing dependencies";
   },
 
@@ -31,6 +33,7 @@ export const tooAngelCommands = {
    */
   enable: (): string => {
     // TODO: Implement when tooAngelManager is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2724
     return "TooAngel commands not yet implemented - missing dependencies";
   },
 
@@ -39,6 +42,7 @@ export const tooAngelCommands = {
    */
   disable: (): string => {
     // TODO: Implement when tooAngelManager is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2723
     return "TooAngel commands not yet implemented - missing dependencies";
   },
 
@@ -47,6 +51,7 @@ export const tooAngelCommands = {
    */
   reputation: (): string => {
     // TODO: Implement when getReputation is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2722
     return "TooAngel commands not yet implemented - missing dependencies";
   },
 
@@ -55,6 +60,7 @@ export const tooAngelCommands = {
    */
   requestReputation: (fromRoom?: string): string => {
     // TODO: Implement when requestReputation is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2721
     return "TooAngel commands not yet implemented - missing dependencies";
   },
 
@@ -63,6 +69,7 @@ export const tooAngelCommands = {
    */
   quests: (): string => {
     // TODO: Implement when getActiveQuests is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2720
     return "TooAngel commands not yet implemented - missing dependencies";
   },
 
@@ -71,6 +78,7 @@ export const tooAngelCommands = {
    */
   npcs: (): string => {
     // TODO: Implement when getNPCRooms is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2719
     return "TooAngel commands not yet implemented - missing dependencies";
   },
 
@@ -79,6 +87,7 @@ export const tooAngelCommands = {
    */
   apply: (questId: string, originRoom: string, fromRoom?: string): string => {
     // TODO: Implement when applyForQuest is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2718
     return "TooAngel commands not yet implemented - missing dependencies";
   },
 

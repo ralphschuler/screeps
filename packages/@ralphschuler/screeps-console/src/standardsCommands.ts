@@ -4,6 +4,7 @@
  */
 
 // TODO: These modules are not available in this package
+// Issue URL: https://github.com/ralphschuler/screeps/issues/2717
 // import { ProtocolRegistry } from "./ProtocolRegistry";
 // import { SS1SegmentManager } from "./SS1SegmentManager";
 // import { PortalsProtocol } from "./segment-protocols/PortalsProtocol";
@@ -56,6 +57,7 @@ Examples:
    */
   metrics(): string {
     // TODO: Implement when SS1SegmentManager is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2716
     return "Standards commands not yet implemented - missing dependencies";
   },
 
@@ -64,6 +66,7 @@ Examples:
    */
   resetMetrics(): string {
     // TODO: Implement when SS1SegmentManager is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2715
     return "Standards commands not yet implemented - missing dependencies";
   },
 
@@ -72,6 +75,7 @@ Examples:
    */
   discover(maxDistance?: number): string {
     // TODO: Implement when SS1SegmentManager is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2714
     return "Standards commands not yet implemented - missing dependencies";
   },
 
@@ -80,6 +84,7 @@ Examples:
    */
   updateSegment(): string {
     // TODO: Implement when ProtocolRegistry is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2713
     return "Standards commands not yet implemented - missing dependencies";
   },
 
@@ -88,6 +93,7 @@ Examples:
    */
   listProtocols(): string {
     // TODO: Implement when ProtocolRegistry is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2712
     return "Standards commands not yet implemented - missing dependencies";
   },
 
@@ -96,6 +102,7 @@ Examples:
    */
   enableProtocol(name: string): string {
     // TODO: Implement when ProtocolRegistry is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2711
     return "Standards commands not yet implemented - missing dependencies";
   },
 
@@ -104,6 +111,7 @@ Examples:
    */
   disableProtocol(name: string): string {
     // TODO: Implement when ProtocolRegistry is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2710
     return "Standards commands not yet implemented - missing dependencies";
   },
 
@@ -112,6 +120,7 @@ Examples:
    */
   initProtocols(): string {
     // TODO: Implement when ProtocolRegistry is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2709
     return "Standards commands not yet implemented - missing dependencies";
   },
 
@@ -120,6 +129,7 @@ Examples:
    */
   advertisePortals(): string {
     // TODO: Implement when PortalsProtocol is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2708
     return "Standards commands not yet implemented - missing dependencies";
   },
 
@@ -128,6 +138,7 @@ Examples:
    */
   advertiseNeeds(): string {
     // TODO: Implement when RoomNeedsProtocol is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2707
     return "Standards commands not yet implemented - missing dependencies";
   },
 
@@ -136,6 +147,7 @@ Examples:
    */
   processTransfers(): string {
     // TODO: Implement when ResourceRequestProtocol is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2706
     return "Standards commands not yet implemented - missing dependencies";
   },
 
@@ -144,6 +156,7 @@ Examples:
    */
   listPlayerChannels(username: string): string {
     // TODO: Implement when SS1SegmentManager is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2705
     return "Standards commands not yet implemented - missing dependencies";
   },
 
@@ -152,6 +165,7 @@ Examples:
    */
   getPlayerPortals(username: string): string {
     // TODO: Implement when PortalsProtocol is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2704
     return "Standards commands not yet implemented - missing dependencies";
   },
 
@@ -160,6 +174,7 @@ Examples:
    */
   getPlayerNeeds(username: string): string {
     // TODO: Implement when RoomNeedsProtocol is available
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2703
     return "Standards commands not yet implemented - missing dependencies";
   }
 };
