@@ -26,7 +26,9 @@ All AI agent instruction documents now include explicit non-aggression policy:
 
 #### New Utility Module: `allyFilter.ts`
 
-Created `/packages/screeps-bot/src/empire/tooangel/allyFilter.ts` with utilities to filter TooAngel entities:
+Created `/packages/screeps-defense/src/tooangel/allyFilter.ts` with utilities to filter TooAngel entities:
+
+**Note**: Originally created in `screeps-bot` package but moved to `screeps-defense` to fix cross-package dependency. The bot package re-exports from defense for convenience.
 
 **Functions**:
 - `isTooAngelCreep(creep)` - Check if creep belongs to TooAngel
@@ -98,7 +100,9 @@ Created comprehensive unit tests in `packages/screeps-bot/test/unit/allyFilter.t
 ### ✅ CORRECT: Use filtered hostile detection
 
 ```typescript
-import { getActualHostileCreeps } from "@bot/empire/tooangel";
+import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
+// Or from bot package (re-exports from defense):
+// import { getActualHostileCreeps } from "@bot/empire/tooangel";
 
 // Get hostiles excluding TooAngel
 const hostiles = getActualHostileCreeps(room);
@@ -137,7 +141,7 @@ const structures = room.find(FIND_HOSTILE_STRUCTURES);
 
 Always use the ally filter utilities:
 
-1. Import the filter: `import { getActualHostileCreeps } from "@bot/empire/tooangel";`
+1. Import the filter: `import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";`
 2. Use filtered detection: `const hostiles = getActualHostileCreeps(room);`
 3. Add comment: `// Filter TooAngel entities - they are permanent allies (ROADMAP Section 25)`
 4. Test with TooAngel present
@@ -170,8 +174,9 @@ Check for:
 - `packages/screeps-bot/src/empire/tooangel/README.md`
 
 ### Code
-- `packages/screeps-bot/src/empire/tooangel/allyFilter.ts` (new)
-- `packages/screeps-bot/src/empire/tooangel/index.ts`
+- `packages/screeps-defense/src/tooangel/allyFilter.ts` (new - moved from bot package)
+- `packages/screeps-bot/src/empire/tooangel/index.ts` (updated to re-export from defense)
+- `packages/screeps-defense/src/index.ts` (updated to export ally filter)
 - `packages/screeps-defense/src/threat/threatAssessment.ts`
 - `packages/screeps-defense/src/coordination/defenseCoordinator.ts`
 - `packages/screeps-defense/src/emergency/emergencyResponse.ts`
@@ -190,5 +195,10 @@ The bot now has comprehensive protection against attacking TooAngel:
 3. **All defense systems** use filtered hostile detection
 4. **Tests verify** the filtering works correctly
 5. **Documentation** ensures future maintainers understand the policy
+6. **Proper architecture** - ally filter lives in defense package with no cross-package dependencies
 
 TooAngel is a **permanent ally** and this implementation ensures they are **never** targeted for attack under any circumstances.
+
+## Architectural Notes
+
+The ally filter was initially created in the `screeps-bot` package but was moved to `screeps-defense` to avoid cross-package dependencies (defense package importing from bot package). The bot package now re-exports the utilities from the defense package for convenience, maintaining backward compatibility while following proper package architecture.
