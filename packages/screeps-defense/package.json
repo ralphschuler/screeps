@@ -34,6 +34,7 @@
     "screeps-typescript-starter": "*"
   },
   "dependencies": {
+    "@ralphschuler/screeps-stats": "file:../@ralphschuler/screeps-stats",
     "lz-string": "^1.5.0"
   },
   "devDependencies": {

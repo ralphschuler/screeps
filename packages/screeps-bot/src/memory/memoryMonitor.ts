@@ -89,17 +89,14 @@ export class MemoryMonitor {
           `CRITICAL: Memory at ${(percentage * 100).toFixed(1)}% (${this.formatBytes(used)}/${this.formatBytes(MEMORY_LIMIT_BYTES)})`
         );
         logger.error("Memory usage critical", {
-          subsystem: "MemoryMonitor",
           meta: { used, limit: MEMORY_LIMIT_BYTES, percentage }
         });
       } else if (status === "warning") {
         logger.warn("Memory usage warning", {
-          subsystem: "MemoryMonitor",
           meta: { used, limit: MEMORY_LIMIT_BYTES, percentage }
         });
       } else {
         logger.info("Memory usage normal", {
-          subsystem: "MemoryMonitor",
           meta: { used, limit: MEMORY_LIMIT_BYTES, percentage }
         });
       }
