@@ -29,7 +29,7 @@ export class ErrorMapper {
   // Cache consumer
   private static _consumer?: SourceMapConsumer;
 
-  public static get consumer(): SourceMapConsumer {
+  public static async getConsumer(): Promise<SourceMapConsumer> {
     if (this._consumer == null) {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const rawSourceMap = require("main.js.map");
@@ -44,7 +44,7 @@ export class ErrorMapper {
       } else {
         sourceMapData = rawSourceMap;
       }
-      this._consumer = new SourceMapConsumer(sourceMapData);
+      this._consumer = await new SourceMapConsumer(sourceMapData);
     }
 
     return this._consumer;
@@ -60,9 +60,9 @@ export class ErrorMapper {
    * (Consecutive calls after a reset are more reasonable, ~0.1 CPU/ea)
    *
    * @param {Error | string} error The error or original stack trace
-   * @returns {string} The source-mapped stack trace
+   * @returns {Promise<string>} The source-mapped stack trace
    */
-  public static sourceMappedStackTrace(error: Error | string): string {
+  public static async sourceMappedStackTrace(error: Error | string): Promise<string> {
     const stack: string = error instanceof Error ? (error.stack as string) : error;
     if (Object.prototype.hasOwnProperty.call(this.cache, stack)) {
       return this.cache[stack];
@@ -73,9 +73,10 @@ export class ErrorMapper {
     let match: RegExpExecArray | null;
     let outStack = error.toString();
 
+    const consumer = await this.getConsumer();
     while ((match = re.exec(stack))) {
       if (match[2] === "main") {
-        const pos = this.consumer.originalPositionFor({
+        const pos = consumer.originalPositionFor({
           column: parseInt(match[4], 10),
           line: parseInt(match[3], 10)
         });
@@ -116,7 +117,13 @@ export class ErrorMapper {
             const message = `Source maps don't work in the simulator - displaying original error`;
             console.log(`<span style='color:red'>${message}<br>${escapeHtml(e.stack)}</span>`);
           } else {
-            console.log(`<span style='color:red'>${escapeHtml(this.sourceMappedStackTrace(e))}</span>`);
+            // Note: This will log a Promise, but we can't await in a sync wrapper
+            // Consider using async loop wrapper or handle Promise appropriately
+            this.sourceMappedStackTrace(e).then((trace) => {
+              console.log(`<span style='color:red'>${escapeHtml(trace)}</span>`);
+            }).catch((mapError) => {
+              console.log(`<span style='color:red'>Error mapping stack trace: ${mapError}<br>${escapeHtml(e.stack)}</span>`);
+            });
           }
         } else {
           // can't handle it
