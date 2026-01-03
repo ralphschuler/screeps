@@ -943,6 +943,7 @@ function squadBehavior(ctx: CreepContext, squad: SquadMemory): CreepAction {
   switch (squad.state) {
     case "gathering":
       // Move to rally point
+      if (!squad.rallyRoom) return { type: "idle" };
       if (ctx.room.name !== squad.rallyRoom) {
         return { type: "moveToRoom", roomName: squad.rallyRoom };
       }
@@ -956,7 +957,7 @@ function squadBehavior(ctx: CreepContext, squad: SquadMemory): CreepAction {
       return { type: "idle" };
 
     case "moving": {
-      const targetRoom = squad.targetRooms[0];
+      const targetRoom = squad.targetRoom;
       if (!targetRoom) return { type: "idle" };
       
       if (ctx.room.name !== targetRoom) {
@@ -974,7 +975,7 @@ function squadBehavior(ctx: CreepContext, squad: SquadMemory): CreepAction {
       // Default to 30% if retreatThreshold is not set
       const hpPercent = ctx.creep.hits / ctx.creep.hitsMax;
       const retreatThreshold = squad.retreatThreshold ?? 0.3;
-      if (hpPercent < retreatThreshold) {
+      if (hpPercent < retreatThreshold && squad.rallyRoom) {
         // Individual retreat to rally room
         if (ctx.room.name !== squad.rallyRoom) {
           return { type: "moveToRoom", roomName: squad.rallyRoom };
@@ -997,6 +998,7 @@ function squadBehavior(ctx: CreepContext, squad: SquadMemory): CreepAction {
       }
 
     case "retreating":
+      if (!squad.rallyRoom) return { type: "idle" };
       if (ctx.room.name !== squad.rallyRoom) {
         return { type: "moveToRoom", roomName: squad.rallyRoom };
       }
