@@ -403,7 +403,7 @@ export function Command(metadata: CommandMetadata) {
   return function <T>(
     target: object,
     propertyKey: string | symbol,
-    _descriptor: TypedPropertyDescriptor<T>
+    _descriptor?: TypedPropertyDescriptor<T>
   ): void {
     commandDecoratorStore.push({
       metadata,

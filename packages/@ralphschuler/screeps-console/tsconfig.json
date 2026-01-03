@@ -13,7 +13,8 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["node", "screeps"]
+    "types": ["node", "screeps"],
+    "experimentalDecorators": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "test"]

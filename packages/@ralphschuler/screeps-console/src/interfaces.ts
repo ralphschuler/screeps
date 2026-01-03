@@ -13,7 +13,8 @@ export enum LogLevel {
   DEBUG = 0,
   INFO = 1,
   WARN = 2,
-  ERROR = 3
+  ERROR = 3,
+  NONE = 4
 }
 
 export interface Logger {
@@ -26,6 +27,7 @@ export interface Logger {
 export interface LoggerConfig {
   level: LogLevel;
   categories: Record<string, LogLevel>;
+  cpuLogging?: boolean;
 }
 
 export function createLogger(category: string): Logger {
@@ -76,22 +78,47 @@ export interface ProcessInfo {
   priority: number;
   cpuUsed: number;
   state: string;
+  stats?: {
+    totalCpu?: number;
+    avgCpu?: number;
+    calls?: number;
+    lastRun?: number;
+    healthScore?: number;
+    runCount?: number;
+    errorCount?: number;
+    consecutiveErrors?: number;
+    lastSuccessfulRunTick?: number;
+    suspensionReason?: string;
+  };
+  frequency?: number;
 }
 
 export interface Kernel {
   getProcesses(): ProcessInfo[];
-  suspendProcess(id: string): void;
-  resumeProcess(id: string): void;
+  suspendProcess(id: string): boolean | void;
+  resumeProcess(id: string): boolean | void;
   killProcess(id: string): void;
   getProcessStats(): any;
+  getStatsSummary?(): any;
+  getConfig?(): any;
+  getBucketMode?(): string;
+  getCpuLimit?(): number;
+  getRemainingCpu?(): number;
+  resetStats?(): void;
 }
 
 export const kernel: Kernel = {
   getProcesses: () => [],
-  suspendProcess: (id: string) => {},
-  resumeProcess: (id: string) => {},
+  suspendProcess: (id: string) => true,
+  resumeProcess: (id: string) => true,
   killProcess: (id: string) => {},
-  getProcessStats: () => ({})
+  getProcessStats: () => ({}),
+  getStatsSummary: () => ({}),
+  getConfig: () => ({}),
+  getBucketMode: () => 'normal',
+  getCpuLimit: () => 0,
+  getRemainingCpu: () => 0,
+  resetStats: () => {}
 };
 
 // ============================================================================
@@ -101,21 +128,33 @@ export const kernel: Kernel = {
 export interface MemorySegmentStats {
   run(): void;
   getMetricSeries(name: string): any;
+  getLatestStats?(): any;
 }
 
 export const memorySegmentStats: MemorySegmentStats = {
   run: () => {},
-  getMetricSeries: (name: string) => null
+  getMetricSeries: (name: string) => null,
+  getLatestStats: () => ({})
 };
 
 export interface UnifiedStats {
   getSnapshot(): any;
   getBudgetReport(): any;
+  setEnabled?(enabled: boolean): void;
+  validateBudgets?(): any;
+  detectAnomalies?(): any;
+  getCurrentSnapshot?(): any;
+  postureCodeToName?(code: number): string;
 }
 
 export const unifiedStats: UnifiedStats = {
   getSnapshot: () => ({}),
-  getBudgetReport: () => ({})
+  getBudgetReport: () => ({}),
+  setEnabled: (enabled: boolean) => {},
+  validateBudgets: () => ({}),
+  detectAnomalies: () => ({}),
+  getCurrentSnapshot: () => ({}),
+  postureCodeToName: (code: number) => 'unknown'
 };
 
 // ============================================================================
@@ -126,22 +165,30 @@ export interface RoomVisualizer {
   setEnabled(enabled: boolean): void;
   isEnabled(): boolean;
   toggleLayer(layer: string): void;
+  getConfig?(): any;
+  toggle?(key: string): void;
 }
 
 export const roomVisualizer: RoomVisualizer = {
   setEnabled: (enabled: boolean) => {},
   isEnabled: () => false,
-  toggleLayer: (layer: string) => {}
+  toggleLayer: (layer: string) => {},
+  getConfig: () => ({}),
+  toggle: (key: string) => {}
 };
 
 export interface MapVisualizer {
   setEnabled(enabled: boolean): void;
   isEnabled(): boolean;
+  getConfig?(): any;
+  toggle?(key: string): void;
 }
 
 export const mapVisualizer: MapVisualizer = {
   setEnabled: (enabled: boolean) => {},
-  isEnabled: () => false
+  isEnabled: () => false,
+  getConfig: () => ({}),
+  toggle: (key: string) => {}
 };
 
 // ============================================================================
@@ -151,16 +198,19 @@ export const mapVisualizer: MapVisualizer = {
 export interface ProcessManager {
   getProcessInfo(processId: string): any;
   listProcesses(): any[];
+  getStats?(): any;
 }
 
 export const creepProcessManager: ProcessManager = {
   getProcessInfo: (id: string) => null,
-  listProcesses: () => []
+  listProcesses: () => [],
+  getStats: () => ({})
 };
 
 export const roomProcessManager: ProcessManager = {
   getProcessInfo: (id: string) => null,
-  listProcesses: () => []
+  listProcesses: () => [],
+  getStats: () => ({})
 };
 
 // ============================================================================

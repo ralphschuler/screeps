@@ -3,11 +3,12 @@
  * Provides easy interface for managing protocols and segments
  */
 
-import { ProtocolRegistry } from "./ProtocolRegistry";
-import { SS1SegmentManager } from "./SS1SegmentManager";
-import { PortalsProtocol } from "./segment-protocols/PortalsProtocol";
-import { RoomNeedsProtocol } from "./segment-protocols/RoomNeedsProtocol";
-import { ResourceRequestProtocol } from "./terminal-protocols/ResourceRequestProtocol";
+// TODO: These modules are not available in this package
+// import { ProtocolRegistry } from "./ProtocolRegistry";
+// import { SS1SegmentManager } from "./SS1SegmentManager";
+// import { PortalsProtocol } from "./segment-protocols/PortalsProtocol";
+// import { RoomNeedsProtocol } from "./segment-protocols/RoomNeedsProtocol";
+// import { ResourceRequestProtocol } from "./terminal-protocols/ResourceRequestProtocol";
 
 /**
  * Standards console commands
@@ -54,169 +55,113 @@ Examples:
    * Show current metrics
    */
   metrics(): string {
-    return SS1SegmentManager.getMetricsSummary();
+    // TODO: Implement when SS1SegmentManager is available
+    return "Standards commands not yet implemented - missing dependencies";
   },
 
   /**
    * Reset metrics
    */
   resetMetrics(): string {
-    SS1SegmentManager.resetMetrics();
-    return "Metrics reset successfully";
+    // TODO: Implement when SS1SegmentManager is available
+    return "Standards commands not yet implemented - missing dependencies";
   },
 
   /**
    * Discover nearby players
    */
   discover(maxDistance?: number): string {
-    const discovered = SS1SegmentManager.discoverNearbyPlayers(maxDistance);
-    
-    if (discovered.size === 0) {
-      return "No nearby players discovered";
-    }
-
-    let output = `Discovered ${discovered.size} nearby players:\n`;
-    for (const [username, channels] of discovered) {
-      output += `  ${username}: ${channels.join(", ")}\n`;
-    }
-    return output;
+    // TODO: Implement when SS1SegmentManager is available
+    return "Standards commands not yet implemented - missing dependencies";
   },
 
   /**
    * Update segment with active protocols
    */
   updateSegment(): string {
-    const success = ProtocolRegistry.updateSegment(true, true);
-    return success 
-      ? "Segment updated successfully" 
-      : "Segment update failed or throttled";
+    // TODO: Implement when ProtocolRegistry is available
+    return "Standards commands not yet implemented - missing dependencies";
   },
 
   /**
    * List all protocols
    */
   listProtocols(): string {
-    const protocols = ProtocolRegistry.listProtocols();
-    
-    if (protocols.length === 0) {
-      return "No protocols registered. Run standards.initProtocols() first.";
-    }
-
-    let output = "Registered Protocols:\n";
-    for (const protocol of protocols) {
-      const status = protocol.enabled ? "✓ enabled" : "✗ disabled";
-      output += `  ${protocol.name} (${protocol.version}) - ${status}\n`;
-    }
-    return output;
+    // TODO: Implement when ProtocolRegistry is available
+    return "Standards commands not yet implemented - missing dependencies";
   },
 
   /**
    * Enable a protocol
    */
   enableProtocol(name: string): string {
-    ProtocolRegistry.enableProtocol(name);
-    return `Protocol '${name}' enabled`;
+    // TODO: Implement when ProtocolRegistry is available
+    return "Standards commands not yet implemented - missing dependencies";
   },
 
   /**
    * Disable a protocol
    */
   disableProtocol(name: string): string {
-    ProtocolRegistry.disableProtocol(name);
-    return `Protocol '${name}' disabled`;
+    // TODO: Implement when ProtocolRegistry is available
+    return "Standards commands not yet implemented - missing dependencies";
   },
 
   /**
    * Initialize default protocols
    */
   initProtocols(): string {
-    ProtocolRegistry.initializeDefaults();
-    return "Default protocols initialized:\n" + this.listProtocols();
+    // TODO: Implement when ProtocolRegistry is available
+    return "Standards commands not yet implemented - missing dependencies";
   },
 
   /**
    * Auto-advertise portals
    */
   advertisePortals(): string {
-    const success = PortalsProtocol.autoAdvertisePortals();
-    return success 
-      ? "Portals advertised successfully" 
-      : "No portals found to advertise";
+    // TODO: Implement when PortalsProtocol is available
+    return "Standards commands not yet implemented - missing dependencies";
   },
 
   /**
    * Auto-advertise room needs
    */
   advertiseNeeds(): string {
-    const success = RoomNeedsProtocol.autoAdvertiseNeeds();
-    return success 
-      ? "Room needs advertised successfully" 
-      : "No needs found to advertise";
+    // TODO: Implement when RoomNeedsProtocol is available
+    return "Standards commands not yet implemented - missing dependencies";
   },
 
   /**
    * Process queued resource transfers
    */
   processTransfers(): string {
-    ResourceRequestProtocol.processQueuedTransfers();
-    const count = Memory.resourceTransfers?.length || 0;
-    return count > 0 
-      ? `Processed transfers, ${count} remaining in queue` 
-      : "All transfers processed";
+    // TODO: Implement when ResourceRequestProtocol is available
+    return "Standards commands not yet implemented - missing dependencies";
   },
 
   /**
    * List channels from a player
    */
   listPlayerChannels(username: string): string {
-    SS1SegmentManager.requestPlayerSegment(username);
-    const channels = SS1SegmentManager.listPlayerChannels(username);
-    
-    if (channels.length === 0) {
-      return `No channels found for ${username} (may need to wait a tick for segment data)`;
-    }
-
-    return `${username} channels:\n  ${channels.join("\n  ")}`;
+    // TODO: Implement when SS1SegmentManager is available
+    return "Standards commands not yet implemented - missing dependencies";
   },
 
   /**
    * Get portals from a player
    */
   getPlayerPortals(username: string): string {
-    const portals = PortalsProtocol.readPortals(username);
-    
-    if (!portals || portals.length === 0) {
-      return `No portals found for ${username}`;
-    }
-
-    let output = `${username} portals (${portals.length}):\n`;
-    for (const portal of portals) {
-      const dest = portal.destination || "unknown";
-      const unstable = portal.unstable ? " [UNSTABLE]" : "";
-      output += `  ${portal.room} (${portal.pos.x},${portal.pos.y}) -> ${dest}${unstable}\n`;
-    }
-    return output;
+    // TODO: Implement when PortalsProtocol is available
+    return "Standards commands not yet implemented - missing dependencies";
   },
 
   /**
    * Get needs from a player
    */
   getPlayerNeeds(username: string): string {
-    const needs = RoomNeedsProtocol.readNeeds(username);
-    
-    if (!needs || needs.length === 0) {
-      return `No needs found for ${username}`;
-    }
-
-    let output = `${username} needs (${needs.length}):\n`;
-    for (const need of needs) {
-      const type = need.amount > 0 ? "NEED" : "SURPLUS";
-      const amount = Math.abs(need.amount);
-      const priority = need.priority ? ` [P${need.priority}]` : "";
-      output += `  ${need.room}: ${type} ${amount} ${need.resource}${priority}\n`;
-    }
-    return output;
-  },
+    // TODO: Implement when RoomNeedsProtocol is available
+    return "Standards commands not yet implemented - missing dependencies";
+  }
 };
 
 /**
