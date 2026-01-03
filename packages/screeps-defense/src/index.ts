@@ -11,9 +11,24 @@
  * - Multi-room defense coordination
  * - Emergency response and safe mode management
  * - Evacuation protocols
+ * - Non-aggression alliance system
  * 
  * @packageDocumentation
  */
+
+// Non-Aggression Alliance System
+export {
+  NON_AGGRESSION_PACT_PLAYERS,
+  isAllyPlayer,
+  isAllyCreep,
+  isAllyStructure,
+  filterAllyCreeps,
+  filterAllyStructures,
+  getActualHostileCreeps,
+  getActualHostileStructures,
+  hasActualHostiles,
+  type AlliedPlayer
+} from "./alliance/nonAggressionPact";
 
 // Threat Assessment
 export {

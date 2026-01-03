@@ -113,6 +113,7 @@ Each comment must include a priority:
 
 - No large rewrites without justification. Propose major changes as `ARCH(FEATURE)` with a migration concept.
 - Avoid style-only discussions without value. Use `STYLE` only when it improves consistency and maintainability.
+- **CRITICAL**: Never suggest code that attacks or harms allied players (TooAngel, TedRoastBeef) - they are permanent allies (see ROADMAP Section 25).
 
 ---
 

@@ -2,6 +2,16 @@
 
 This module implements integration with the [TooAngel Screeps bot](https://github.com/TooAngel/screeps) for automated diplomacy and cooperative quests.
 
+## ⚠️ CRITICAL NON-AGGRESSION POLICY
+
+This bot has a **Non-Aggression Alliance System** (defined in `@ralphschuler/screeps-defense`) that prevents attacking certain players. The following players are covered by this non-aggression pact (ROADMAP Section 25):
+- **TooAngel**
+- **TedRoastBeef**
+
+The non-aggression system is **separate** from the TooAngel quest/diplomacy features. It's a minimal alliance filter that applies to all defense systems.
+
+All defense and combat systems **must** use the alliance filter utilities to ensure allied creeps and structures are excluded from hostile targeting.
+
 ## Overview
 
 The TooAngel bot provides a reputation-based diplomacy system and quest mechanism for player interaction. This module allows our bot to:
@@ -200,9 +210,42 @@ src/empire/tooangel/
 ├── questExecutor.ts        # Quest execution (buildcs)
 ├── tooAngelManager.ts      # Main coordinator
 ├── consoleCommands.ts      # Console interface
+├── allyFilter.ts           # **CRITICAL**: Ally filtering utilities
 ├── index.ts                # Module exports
 └── README.md               # This file
 ```
+
+### Ally Filter Utilities
+
+**CRITICAL**: All defense and combat code **must** use these utilities:
+
+```typescript
+import { 
+  getActualHostileCreeps,
+  getActualHostileStructures,
+  filterTooAngelCreeps,
+  isTooAngelCreep
+} from "@bot/empire/tooangel";
+
+// ✅ CORRECT: Use filtered hostile detection
+const hostiles = getActualHostileCreeps(room);
+
+// ❌ WRONG: Direct FIND_HOSTILE_CREEPS without filtering
+const hostiles = room.find(FIND_HOSTILE_CREEPS); // May include TooAngel!
+
+// Manual filtering when needed
+const unfilteredHostiles = room.find(FIND_HOSTILE_CREEPS);
+const actualHostiles = filterTooAngelCreeps(unfilteredHostiles);
+```
+
+**Available utilities**:
+- `getActualHostileCreeps(room)` - Safe wrapper for FIND_HOSTILE_CREEPS
+- `getActualHostileStructures(room)` - Safe wrapper for FIND_HOSTILE_STRUCTURES
+- `filterTooAngelCreeps(creeps[])` - Filter TooAngel from creep array
+- `filterTooAngelStructures(structures[])` - Filter TooAngel from structure array
+- `isTooAngelCreep(creep)` - Check if creep belongs to TooAngel
+- `isTooAngelStructure(structure)` - Check if structure belongs to TooAngel
+- `hasActualHostiles(room)` - Check for non-TooAngel hostiles
 
 ### Tests
 

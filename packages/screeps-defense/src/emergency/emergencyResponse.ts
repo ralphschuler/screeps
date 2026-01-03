@@ -15,6 +15,8 @@
  * Addresses Issue: #21 - Defense Systems
  * - Emergency response triggers (currently basic)
  * - Multi-room defense coordination (currently missing)
+ * 
+ * **IMPORTANT**: Automatically filters allied entities (non-aggression pact, ROADMAP Section 25)
  */
 
 import { logger } from "@bot/core/logger";
@@ -27,6 +29,7 @@ import {
   getCurrentDefenders,
   needsDefenseAssistance
 } from "@bot/spawning/defenderManager";
+import { filterAllyCreeps } from "../alliance/nonAggressionPact";
 
 /**
  * Emergency response levels
@@ -130,7 +133,9 @@ export class EmergencyResponseManager {
       return EmergencyLevel.NONE;
     }
 
-    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    // Filter allied entities - non-aggression pact (ROADMAP Section 25)
+    const allHostiles = room.find(FIND_HOSTILE_CREEPS);
+    const hostiles = filterAllyCreeps(allHostiles);
     const needs = analyzeDefenderNeeds(room);
     const current = getCurrentDefenders(room);
 

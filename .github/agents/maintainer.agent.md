@@ -219,6 +219,7 @@ When invoked without a specific PR:
 - Quality > speed
 - Consistency > individual preference
 - Respect existing architecture while clearly proposing improvements
+- **CRITICAL**: Never approve or merge code that attacks or harms allied players (TooAngel, TedRoastBeef) - they are permanent allies (see ROADMAP Section 25)
 
 ---
 

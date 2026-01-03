@@ -16,6 +16,8 @@
  * - Multi-room defense coordination
  * - Threat assessment integration
  * - Cluster-wide defense resource pooling
+ * 
+ * **IMPORTANT**: Uses threat assessment which automatically filters allied entities (non-aggression pact, ROADMAP Section 25)
  */
 
 import { logger } from "@bot/core/logger";
@@ -24,6 +26,7 @@ import type { DefenseRequest } from "@bot/spawning/defenderManager";
 import { MediumFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
 import { ProcessPriority } from "@bot/core/kernel";
 import { assessThreat } from "../threat/threatAssessment";
+import { filterAllyCreeps } from "../alliance/nonAggressionPact";
 
 /**
  * Defense assistance assignment
@@ -247,7 +250,9 @@ export class DefenseCoordinator {
         score += defenders.length * 20;
 
         // Prefer safer rooms (they can spare defenders)
-        const hostiles = room.find(FIND_HOSTILE_CREEPS);
+        // Filter allied entities - non-aggression pact (ROADMAP Section 25)
+        const allHostiles = room.find(FIND_HOSTILE_CREEPS);
+        const hostiles = filterAllyCreeps(allHostiles);
         score -= hostiles.length * 30;
 
         // Don't use rooms under active attack unless urgency is critical
@@ -303,7 +308,9 @@ export class DefenseCoordinator {
 
       // Remove if creep reached target room and no longer needs to assist
       if (creep.room.name === assignment.targetRoom) {
-        const hostiles = creep.room.find(FIND_HOSTILE_CREEPS);
+        // Filter allied entities - non-aggression pact (ROADMAP Section 25)
+        const allHostiles = creep.room.find(FIND_HOSTILE_CREEPS);
+        const hostiles = filterAllyCreeps(allHostiles);
         if (hostiles.length === 0) {
           // No more hostiles, release creep
           const memory = creep.memory as unknown as { assistTarget?: string };

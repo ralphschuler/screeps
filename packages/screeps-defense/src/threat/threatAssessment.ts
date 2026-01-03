@@ -9,10 +9,13 @@
  * - Tower effectiveness
  * 
  * ROADMAP Reference: Section 12 - Threat-Level & Posture
+ * 
+ * **IMPORTANT**: Automatically filters allied entities (non-aggression pact, ROADMAP Section 25)
  */
 
 import { logger } from "@bot/core/logger";
 import { ROLE_DEFINITIONS } from "@bot/spawning/roleDefinitions";
+import { filterAllyCreeps } from "../alliance/nonAggressionPact";
 
 /**
  * Comprehensive threat analysis for a room
@@ -53,11 +56,15 @@ export interface ThreatAnalysis {
 /**
  * Assess threat level in a room
  * 
+ * **IMPORTANT**: Automatically excludes allied entities (permanent allies)
+ * 
  * @param room - Room to analyze
  * @returns Comprehensive threat analysis
  */
 export function assessThreat(room: Room): ThreatAnalysis {
-  const hostiles = room.find(FIND_HOSTILE_CREEPS);
+  const allHostiles = room.find(FIND_HOSTILE_CREEPS);
+  // Filter allied entities - non-aggression pact (ROADMAP Section 25)
+  const hostiles = filterAllyCreeps(allHostiles);
   
   // Early exit for no threats
   if (hostiles.length === 0) {
