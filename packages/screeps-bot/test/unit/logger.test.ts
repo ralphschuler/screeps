@@ -268,6 +268,8 @@ describe("Logger Batching", () => {
   let sandbox: sinon.SinonSandbox;
   let consoleLogStub: sinon.SinonStub;
 
+  const TEST_BATCH_SIZE = 5;  // Smaller batch size for easier testing
+
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     consoleLogStub = sandbox.stub(console, "log");
@@ -277,7 +279,7 @@ describe("Logger Batching", () => {
       level: LogLevel.DEBUG,
       cpuLogging: false,
       enableBatching: true,
-      maxBatchSize: 5
+      maxBatchSize: TEST_BATCH_SIZE
     });
 
     (global as any).Game = { time: 12345 };
@@ -318,7 +320,7 @@ describe("Logger Batching", () => {
   });
 
   it("should auto-flush when batch size limit is reached", () => {
-    // maxBatchSize is 5, so 5th message should trigger auto-flush
+    // TEST_BATCH_SIZE is 5, so 5th message should trigger auto-flush
     logger.info("Message 1");
     logger.info("Message 2");
     logger.info("Message 3");
@@ -331,7 +333,7 @@ describe("Logger Batching", () => {
     expect(consoleLogStub.calledOnce).to.be.true;
     const output = consoleLogStub.firstCall.args[0];
     const lines = output.split('\n');
-    expect(lines).to.have.length(5);
+    expect(lines).to.have.length(TEST_BATCH_SIZE);
   });
 
   it("should support disabling batching", () => {

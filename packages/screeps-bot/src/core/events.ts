@@ -787,15 +787,19 @@ export class EventBus {
   }
 
   /**
+   * Start a new tick - clears tick-specific caches
+   * Call this at the beginning of each tick before processing
+   */
+  public startTick(): void {
+    // Clear tick events map for fresh coalescing
+    this.tickEvents.clear();
+  }
+
+  /**
    * Process queued events
    * Call this each tick to process deferred events
-   * Also clears the tick events map for coalescing
    */
   public processQueue(): void {
-    // Clear tick events map at the start of processing
-    // This resets coalescing for the new tick
-    this.tickEvents.clear();
-
     const bucket = Game.cpu.bucket;
     
     // Skip if bucket is too low

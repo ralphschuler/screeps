@@ -223,6 +223,9 @@ export function loop(): void {
   clearEconomyAssignments(); // Clear centralized economy target assignments
   clearRoomCaches();
 
+  // Clear event bus tick-specific caches for coalescing
+  eventBus.startTick();
+
   // Cache owned rooms list (used frequently, expensive to compute)
   // This cache is shared across all subsystems in the same tick
   const cacheKey = "_ownedRooms";

@@ -68,7 +68,7 @@ export class ErrorMapper {
         
         if (!sourceMapData) {
           // Not in heap cache, load from require
-          // @ts-ignore - require may fail if source map not bundled
+          // @ts-expect-error - require may fail if source map not bundled
           const rawSourceMap: unknown = require("main.js.map");
           
           // Parse the source map if it's a string, otherwise use it directly
