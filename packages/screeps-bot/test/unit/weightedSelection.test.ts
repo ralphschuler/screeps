@@ -470,5 +470,44 @@ describe("Weighted Selection Utilities", () => {
       assert.approximately(normalized[0]!.weight, 1/3, 0.0001);
       assert.approximately(normalized[1]!.weight, 2/3, 0.0001);
     });
+
+    it("should handle empty array in fromRecord", () => {
+      const record: Record<string, number> = {};
+      const entries = fromRecord(record);
+      assert.lengthOf(entries, 0);
+    });
+
+    it("should handle empty array in toRecord", () => {
+      const entries: WeightedEntry<string>[] = [];
+      const record = toRecord(entries);
+      assert.deepEqual(record, {});
+    });
+
+    it("should handle combineWeights with empty lists", () => {
+      const combined = combineWeights([]);
+      assert.lengthOf(combined, 0);
+    });
+
+    it("should handle combineWeights with empty nested lists", () => {
+      const combined = combineWeights([[], []]);
+      assert.lengthOf(combined, 0);
+    });
+
+    it("should handle scaleWeights with factor 0", () => {
+      const entries: WeightedEntry<string>[] = [
+        { key: "A", weight: 100 }
+      ];
+      const scaled = scaleWeights(entries, 0);
+      assert.equal(scaled[0]!.weight, 0);
+    });
+
+    it("should handle filterByMinWeight with all entries below threshold", () => {
+      const entries: WeightedEntry<string>[] = [
+        { key: "A", weight: 1 },
+        { key: "B", weight: 2 }
+      ];
+      const filtered = filterByMinWeight(entries, 10);
+      assert.lengthOf(filtered, 0);
+    });
   });
 });

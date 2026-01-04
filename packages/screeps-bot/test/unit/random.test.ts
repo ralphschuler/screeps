@@ -221,5 +221,60 @@ describe("Deterministic Random Utilities", () => {
       const value = random();
       assert.isNumber(value);
     });
+
+    it("should handle negative ranges gracefully in randomInt", () => {
+      const value = randomInt(-100, -50);
+      assert.isAtLeast(value, -100);
+      assert.isBelow(value, -50);
+    });
+
+    it("should handle pick with different data types", () => {
+      const numberArray = [1, 2, 3, 4, 5];
+      const pickedNumber = pick(numberArray);
+      assert.isDefined(pickedNumber);
+      
+      const stringArray = ["a", "b", "c"];
+      const pickedString = pick(stringArray);
+      assert.isDefined(pickedString);
+      
+      const objectArray = [{ id: 1 }, { id: 2 }];
+      const pickedObject = pick(objectArray);
+      assert.isDefined(pickedObject);
+    });
+
+    it("should shuffle array with duplicate elements", () => {
+      const arr = [1, 1, 2, 2, 3, 3];
+      const shuffled = shuffle(arr);
+      
+      assert.lengthOf(shuffled, 6);
+      // Count occurrences
+      const count = (arr: number[], val: number) => arr.filter(x => x === val).length;
+      assert.equal(count(shuffled, 1), 2);
+      assert.equal(count(shuffled, 2), 2);
+      assert.equal(count(shuffled, 3), 2);
+    });
+
+    it("should handle createSeededRandom with zero seed", () => {
+      const rng = createSeededRandom(0);
+      const value = rng.next();
+      assert.isNumber(value);
+      assert.isAtLeast(value, 0);
+      assert.isBelow(value, 1);
+    });
+
+    it("should handle createSeededRandom with negative seed", () => {
+      const rng = createSeededRandom(-12345);
+      const value = rng.next();
+      assert.isNumber(value);
+    });
+
+    it("should handle very large arrays in shuffle", () => {
+      const largeArray = Array.from({ length: 1000 }, (_, i) => i);
+      const shuffled = shuffle(largeArray);
+      
+      assert.lengthOf(shuffled, 1000);
+      // All elements should still be present
+      assert.deepEqual(shuffled.sort((a, b) => a - b), largeArray);
+    });
   });
 });
