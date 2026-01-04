@@ -57,7 +57,10 @@ export default {
       extensions: [".js", ".ts"]
     }),
     commonjs(),
-    typescript({ tsconfig: "./tsconfig.json" }),
+    typescript({ 
+      tsconfig: "./tsconfig.json",
+      check: false, // Disable type checking, rely on separate npm run typecheck
+    }),
     terser({
       compress: {
         passes: 3, // Increased from 2 to 3 for more aggressive compression

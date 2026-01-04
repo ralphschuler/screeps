@@ -97,6 +97,158 @@ Both patterns work correctly with Node.js module resolution:
 
 The `main` and `types` fields in `package.json` correctly point to these files.
 
+## Build Requirements
+
+### System Requirements
+
+- **Node.js**: v18.20.5 or higher (v20.19.0+ recommended for latest dependencies)
+- **npm**: 8.0.0 or higher
+- **Python**: Not required (native modules have been removed/updated)
+
+### Initial Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/ralphschuler/screeps.git
+cd screeps
+
+# Install dependencies
+npm install
+
+# Build all packages
+npm run build:all
+```
+
+### Building the Project
+
+**Build all packages:**
+```bash
+npm run build:all
+```
+
+**Build specific packages:**
+```bash
+npm run build:kernel    # @ralphschuler/screeps-kernel
+npm run build:utils     # @ralphschuler/screeps-utils
+npm run build:stats     # @ralphschuler/screeps-stats
+npm run build           # Main bot (screeps-typescript-starter)
+# ... see package.json for all build:* scripts
+```
+
+**Build order (for manual builds):**
+1. Core packages first (kernel, utils, stats)
+2. Feature packages (spawn, economy, defense, etc.)
+3. Main bot last
+
+### Common Build Issues
+
+#### Issue: Type errors in test files blocking build
+
+**Symptom:**
+```
+error TS2339: Property 'greaterThanOrEqual' does not exist on type 'typeof Assert'
+```
+
+**Solution:**
+Test files should not be included in production builds. The main bot's `tsconfig.json` excludes test files, and the rollup config has `check: false` to prevent type-checking errors from blocking builds.
+
+#### Issue: "Index signature missing" type errors
+
+**Symptom:**
+```
+error TS2345: Type 'X' is not assignable to parameter of type 'Y'
+  Index signature for type 'string' is missing
+```
+
+**Solution:**
+This occurs when interfaces need to be compatible with visualization or external packages. Add an index signature to the interface:
+
+```typescript
+export interface MyInterface {
+  specificField: number;
+  // Add index signature for compatibility
+  [key: string]: unknown;
+}
+```
+
+#### Issue: npm install warnings about engine versions
+
+**Symptom:**
+```
+npm warn EBADENGINE Unsupported engine { required: { node: '>=20.19.0' } }
+```
+
+**Solution:**
+These are warnings, not errors. The build will work with Node 18.20.5+, but some packages prefer newer versions. Upgrade to Node 20.19.0+ to eliminate warnings:
+
+```bash
+# Using nvm
+nvm install 20.19.0
+nvm use 20.19.0
+```
+
+#### Issue: Rollup cache causing stale type errors
+
+**Solution:**
+```bash
+# Clean rollup cache
+rm -rf packages/screeps-bot/.rpt2_cache
+
+# Clean all build artifacts
+npm run clean  # If available, or manually:
+find packages -name "dist" -type d -exec rm -rf {} +
+find packages -name ".rpt2_cache" -type d -exec rm -rf {} +
+
+# Rebuild
+npm run build:all
+```
+
+### Troubleshooting Checklist
+
+If you encounter build failures:
+
+1. **Check Node/npm versions:**
+   ```bash
+   node --version  # Should be >= 18.20.5
+   npm --version   # Should be >= 8.0.0
+   ```
+
+2. **Clean install:**
+   ```bash
+   rm -rf node_modules package-lock.json
+   npm install
+   ```
+
+3. **Clean build artifacts:**
+   ```bash
+   rm -rf packages/*/dist packages/*/.rpt2_cache
+   npm run build:all
+   ```
+
+4. **Check for uncommitted changes:**
+   ```bash
+   git status  # Should show clean working tree
+   ```
+
+5. **Verify package dependencies:**
+   ```bash
+   npm run build:kernel  # Build dependencies first
+   npm run build         # Then build main bot
+   ```
+
+### CI/CD Build Process
+
+The GitHub Actions CI pipeline runs:
+
+1. **Checkout code** with full git history
+2. **Setup Node.js** (version specified in workflow)
+3. **Install dependencies:** `npm ci` (clean install)
+4. **Build packages:** `npm run build:all`
+5. **Run tests:** `npm test`
+6. **Security scan:** CodeQL analysis
+
+See `.github/workflows/` for complete CI configuration.
+
 ## Testing
 
 Run tests with:

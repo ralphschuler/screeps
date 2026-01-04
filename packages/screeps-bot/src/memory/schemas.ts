@@ -444,6 +444,8 @@ export interface PheromoneState {
   siege: number;
   logistics: number;
   nukeTarget: number;
+  /** Index signature for compatibility with visualization packages */
+  [key: string]: number;
 }
 
 /**
@@ -518,6 +520,8 @@ export interface SwarmState {
   };
   /** Last full update tick */
   lastUpdate: number;
+  /** Index signature for compatibility with visualization packages */
+  [key: string]: unknown;
 }
 
 // ============================================================================
