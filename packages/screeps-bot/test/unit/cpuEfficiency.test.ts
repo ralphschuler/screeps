@@ -8,7 +8,12 @@ import {
   throttleWithDefault,
   filterWithMemoization,
   chebyshevDistance,
-  isWithinRange
+  isWithinRange,
+  findClosestByRangeFast,
+  sumValues,
+  groupBy,
+  isLowBucket,
+  hasCpuBudget
 } from "../../src/utils/optimization/cpuEfficiency";
 
 describe("CPU Efficiency Utilities", () => {
@@ -329,6 +334,241 @@ describe("CPU Efficiency Utilities", () => {
     });
   });
 
+  describe("findClosestByRangeFast", () => {
+    const createMockPos = (x: number, y: number, roomName = "W1N1"): RoomPosition => ({
+      x, y, roomName
+    } as RoomPosition);
+
+    it("should return null for empty array", () => {
+      const pos = createMockPos(25, 25);
+      const result = findClosestByRangeFast(pos, []);
+      assert.isNull(result);
+    });
+
+    it("should find closest item in same room", () => {
+      const pos = createMockPos(25, 25);
+      const items = [
+        { id: "1", pos: createMockPos(30, 30) },
+        { id: "2", pos: createMockPos(20, 20) },
+        { id: "3", pos: createMockPos(40, 40) }
+      ];
+      
+      const closest = findClosestByRangeFast(pos, items);
+      assert.equal(closest?.id, "2"); // (20,20) is closest
+    });
+
+    it("should skip items in different rooms", () => {
+      const pos = createMockPos(25, 25, "W1N1");
+      const items = [
+        { id: "1", pos: createMockPos(26, 26, "W2N2") },
+        { id: "2", pos: createMockPos(30, 30, "W1N1") }
+      ];
+      
+      const closest = findClosestByRangeFast(pos, items);
+      assert.equal(closest?.id, "2"); // Only item in same room
+    });
+
+    it("should return null when all items are in different rooms", () => {
+      const pos = createMockPos(25, 25, "W1N1");
+      const items = [
+        { id: "1", pos: createMockPos(26, 26, "W2N2") },
+        { id: "2", pos: createMockPos(30, 30, "E1S1") }
+      ];
+      
+      const closest = findClosestByRangeFast(pos, items);
+      assert.isNull(closest);
+    });
+
+    it("should handle tie by returning first found", () => {
+      const pos = createMockPos(25, 25);
+      const items = [
+        { id: "1", pos: createMockPos(20, 20) }, // Distance 5
+        { id: "2", pos: createMockPos(30, 30) }, // Distance 5
+        { id: "3", pos: createMockPos(20, 30) }  // Distance 5
+      ];
+      
+      const closest = findClosestByRangeFast(pos, items);
+      assert.equal(closest?.id, "1"); // First item at minimum distance
+    });
+  });
+
+  describe("sumValues", () => {
+    it("should sum numeric values", () => {
+      const array = [1, 2, 3, 4, 5];
+      const sum = sumValues(array, x => x);
+      assert.equal(sum, 15);
+    });
+
+    it("should sum extracted values from objects", () => {
+      const array = [
+        { value: 10 },
+        { value: 20 },
+        { value: 30 }
+      ];
+      const sum = sumValues(array, obj => obj.value);
+      assert.equal(sum, 60);
+    });
+
+    it("should return 0 for empty array", () => {
+      const sum = sumValues([], x => x);
+      assert.equal(sum, 0);
+    });
+
+    it("should handle negative values", () => {
+      const array = [10, -5, 3, -2];
+      const sum = sumValues(array, x => x);
+      assert.equal(sum, 6);
+    });
+
+    it("should handle floating point values", () => {
+      const array = [1.5, 2.3, 3.7];
+      const sum = sumValues(array, x => x);
+      assert.approximately(sum, 7.5, 0.0001);
+    });
+
+    it("should work with complex extraction logic", () => {
+      const array = [
+        { items: [1, 2, 3] },
+        { items: [4, 5] },
+        { items: [6] }
+      ];
+      const sum = sumValues(array, obj => obj.items.length);
+      assert.equal(sum, 6); // 3 + 2 + 1
+    });
+  });
+
+  describe("groupBy", () => {
+    it("should group items by key", () => {
+      const array = [
+        { type: "A", value: 1 },
+        { type: "B", value: 2 },
+        { type: "A", value: 3 },
+        { type: "C", value: 4 }
+      ];
+      
+      const groups = groupBy(array, item => item.type);
+      
+      assert.equal(groups.size, 3);
+      assert.lengthOf(groups.get("A")!, 2);
+      assert.lengthOf(groups.get("B")!, 1);
+      assert.lengthOf(groups.get("C")!, 1);
+    });
+
+    it("should handle empty array", () => {
+      const groups = groupBy([], x => x);
+      assert.equal(groups.size, 0);
+    });
+
+    it("should handle all items in same group", () => {
+      const array = [1, 2, 3, 4];
+      const groups = groupBy(array, () => "same");
+      
+      assert.equal(groups.size, 1);
+      assert.lengthOf(groups.get("same")!, 4);
+    });
+
+    it("should handle all items in different groups", () => {
+      const array = [1, 2, 3];
+      const groups = groupBy(array, x => x);
+      
+      assert.equal(groups.size, 3);
+      assert.lengthOf(groups.get(1)!, 1);
+      assert.lengthOf(groups.get(2)!, 1);
+      assert.lengthOf(groups.get(3)!, 1);
+    });
+
+    it("should work with numeric keys", () => {
+      const array = ["a", "bb", "ccc", "dd", "e"];
+      const groups = groupBy(array, s => s.length);
+      
+      assert.equal(groups.size, 3);
+      assert.deepEqual(groups.get(1), ["a", "e"]);
+      assert.deepEqual(groups.get(2), ["bb", "dd"]);
+      assert.deepEqual(groups.get(3), ["ccc"]);
+    });
+  });
+
+  describe("isLowBucket", () => {
+    beforeEach(() => {
+      (global as any).Game.cpu = { bucket: 5000 };
+    });
+
+    it("should return false when bucket is above default threshold", () => {
+      (global as any).Game.cpu.bucket = 5000;
+      assert.isFalse(isLowBucket());
+    });
+
+    it("should return true when bucket is below default threshold", () => {
+      (global as any).Game.cpu.bucket = 1000;
+      assert.isTrue(isLowBucket());
+    });
+
+    it("should use custom threshold", () => {
+      (global as any).Game.cpu.bucket = 3000;
+      
+      assert.isFalse(isLowBucket(2000)); // 3000 > 2000
+      assert.isTrue(isLowBucket(4000));  // 3000 < 4000
+    });
+
+    it("should handle bucket exactly at threshold", () => {
+      (global as any).Game.cpu.bucket = 2000;
+      assert.isFalse(isLowBucket(2000)); // Not below, equal
+    });
+  });
+
+  describe("hasCpuBudget", () => {
+    beforeEach(() => {
+      (global as any).Game.cpu = {
+        limit: 100,
+        getUsed: () => 50
+      };
+    });
+
+    it("should return true when enough CPU remaining", () => {
+      (global as any).Game.cpu.getUsed = () => 50;
+      (global as any).Game.cpu.limit = 100;
+      
+      // Used: 50, Limit: 100 * 0.8 = 80, Remaining: 30
+      assert.isTrue(hasCpuBudget(20)); // Need 20, have 30
+    });
+
+    it("should return false when not enough CPU remaining", () => {
+      (global as any).Game.cpu.getUsed = () => 70;
+      (global as any).Game.cpu.limit = 100;
+      
+      // Used: 70, Limit: 100 * 0.8 = 80, Remaining: 10
+      assert.isFalse(hasCpuBudget(20)); // Need 20, have 10
+    });
+
+    it("should use custom target usage", () => {
+      (global as any).Game.cpu.getUsed = () => 60;
+      (global as any).Game.cpu.limit = 100;
+      
+      // With 0.9: Used 60, Limit 90, Remaining 30
+      assert.isTrue(hasCpuBudget(20, 0.9));
+      
+      // With 0.7: Used 60, Limit 70, Remaining 10
+      assert.isFalse(hasCpuBudget(20, 0.7));
+    });
+
+    it("should default to no minimum CPU needed", () => {
+      (global as any).Game.cpu.getUsed = () => 79;
+      (global as any).Game.cpu.limit = 100;
+      
+      // Used: 79, Limit: 80, Remaining: 1
+      assert.isTrue(hasCpuBudget()); // Default minCpuNeeded = 0
+    });
+
+    it("should handle edge case of exactly at limit", () => {
+      (global as any).Game.cpu.getUsed = () => 80;
+      (global as any).Game.cpu.limit = 100;
+      
+      // Used: 80, Limit: 80, Remaining: 0
+      assert.isTrue(hasCpuBudget(0)); // Exactly 0 remaining
+      assert.isFalse(hasCpuBudget(1)); // Need 1, have 0
+    });
+  });
+
   describe("Integration scenarios", () => {
     it("should use throttle with distance calculations", () => {
       (global as any).Game.time = 100;
@@ -359,6 +599,22 @@ describe("CPU Efficiency Utilities", () => {
       );
       
       assert.lengthOf(nearby, 3); // First 3 positions are within range 5
+    });
+
+    it("should use groupBy with sumValues", () => {
+      const items = [
+        { type: "energy", amount: 100 },
+        { type: "mineral", amount: 50 },
+        { type: "energy", amount: 200 },
+        { type: "mineral", amount: 30 }
+      ];
+      
+      const groups = groupBy(items, item => item.type);
+      const energyTotal = sumValues(groups.get("energy")!, item => item.amount);
+      const mineralTotal = sumValues(groups.get("mineral")!, item => item.amount);
+      
+      assert.equal(energyTotal, 300);
+      assert.equal(mineralTotal, 80);
     });
   });
 });
