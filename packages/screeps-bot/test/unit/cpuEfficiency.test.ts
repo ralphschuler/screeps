@@ -16,33 +16,45 @@ import {
   hasCpuBudget
 } from "../../src/utils/optimization/cpuEfficiency";
 
+// Type for global with Game mock
+interface GlobalWithGame {
+  Game?: {
+    time: number;
+    cpu?: {
+      bucket: number;
+      limit: number;
+      getUsed: () => number;
+    };
+  };
+}
+
 describe("CPU Efficiency Utilities", () => {
   beforeEach(() => {
     // Mock Game.time for testing
-    (global as any).Game = { time: 100 };
+    (global as GlobalWithGame).Game = { time: 100 };
   });
 
   afterEach(() => {
-    delete (global as any).Game;
+    delete (global as GlobalWithGame).Game;
   });
 
   describe("throttle", () => {
     it("should execute function when tick is at interval", () => {
-      (global as any).Game.time = 100;
+      (global as GlobalWithGame).Game!.time = 100;
       
       const result = throttle(() => "executed", 10);
       assert.equal(result, "executed");
     });
 
     it("should return undefined when tick is not at interval", () => {
-      (global as any).Game.time = 101;
+      (global as GlobalWithGame).Game!.time = 101;
       
       const result = throttle(() => "executed", 10);
       assert.isUndefined(result);
     });
 
     it("should use offset to spread load", () => {
-      (global as any).Game.time = 105;
+      (global as GlobalWithGame).Game!.time = 105;
       
       // Without offset: 105 % 10 = 5, won't execute
       const result1 = throttle(() => "executed", 10);
@@ -54,7 +66,7 @@ describe("CPU Efficiency Utilities", () => {
     });
 
     it("should work with different intervals", () => {
-      (global as any).Game.time = 120;
+      (global as GlobalWithGame).Game!.time = 120;
       
       assert.isDefined(throttle(() => true, 1)); // Every tick
       assert.isDefined(throttle(() => true, 2)); // 120 % 2 = 0
@@ -65,14 +77,14 @@ describe("CPU Efficiency Utilities", () => {
 
     it("should handle interval of 1 (execute every tick)", () => {
       for (let tick = 0; tick < 10; tick++) {
-        (global as any).Game.time = tick;
+        (global as GlobalWithGame).Game!.time = tick;
         const result = throttle(() => tick, 1);
         assert.equal(result, tick);
       }
     });
 
     it("should preserve function return value", () => {
-      (global as any).Game.time = 200;
+      (global as GlobalWithGame).Game!.time = 200;
       
       const objectResult = throttle(() => ({ key: "value" }), 1);
       assert.deepEqual(objectResult, { key: "value" });
@@ -87,21 +99,21 @@ describe("CPU Efficiency Utilities", () => {
 
   describe("throttleWithDefault", () => {
     it("should execute function when tick is at interval", () => {
-      (global as any).Game.time = 100;
+      (global as GlobalWithGame).Game!.time = 100;
       
       const result = throttleWithDefault(() => "executed", 10, "default");
       assert.equal(result, "executed");
     });
 
     it("should return default value when tick is not at interval", () => {
-      (global as any).Game.time = 101;
+      (global as GlobalWithGame).Game!.time = 101;
       
       const result = throttleWithDefault(() => "executed", 10, "default");
       assert.equal(result, "default");
     });
 
     it("should use offset to spread load", () => {
-      (global as any).Game.time = 105;
+      (global as GlobalWithGame).Game!.time = 105;
       
       const result1 = throttleWithDefault(() => "executed", 10, "default");
       assert.equal(result1, "default");
@@ -111,7 +123,7 @@ describe("CPU Efficiency Utilities", () => {
     });
 
     it("should handle different default value types", () => {
-      (global as any).Game.time = 101; // Won't execute (101 % 10 != 0)
+      (global as GlobalWithGame).Game!.time = 101; // Won't execute (101 % 10 != 0)
       
       const stringResult = throttleWithDefault(() => "executed", 10, "default");
       assert.equal(stringResult, "default");
@@ -128,7 +140,7 @@ describe("CPU Efficiency Utilities", () => {
 
     it("should work with interval of 1", () => {
       for (let tick = 0; tick < 5; tick++) {
-        (global as any).Game.time = tick;
+        (global as GlobalWithGame).Game!.time = tick;
         const result = throttleWithDefault(() => "executed", 1, "default");
         assert.equal(result, "executed");
       }
@@ -490,59 +502,66 @@ describe("CPU Efficiency Utilities", () => {
 
   describe("isLowBucket", () => {
     beforeEach(() => {
-      (global as any).Game.cpu = { bucket: 5000 };
+      (global as GlobalWithGame).Game = {
+        time: 100,
+        cpu: { bucket: 5000, limit: 100, getUsed: () => 0 }
+      };
     });
 
     it("should return false when bucket is above default threshold", () => {
-      (global as any).Game.cpu.bucket = 5000;
+      (global as GlobalWithGame).Game!.cpu.bucket = 5000;
       assert.isFalse(isLowBucket());
     });
 
     it("should return true when bucket is below default threshold", () => {
-      (global as any).Game.cpu.bucket = 1000;
+      (global as GlobalWithGame).Game!.cpu.bucket = 1000;
       assert.isTrue(isLowBucket());
     });
 
     it("should use custom threshold", () => {
-      (global as any).Game.cpu.bucket = 3000;
+      (global as GlobalWithGame).Game!.cpu.bucket = 3000;
       
       assert.isFalse(isLowBucket(2000)); // 3000 > 2000
       assert.isTrue(isLowBucket(4000));  // 3000 < 4000
     });
 
     it("should handle bucket exactly at threshold", () => {
-      (global as any).Game.cpu.bucket = 2000;
+      (global as GlobalWithGame).Game!.cpu.bucket = 2000;
       assert.isFalse(isLowBucket(2000)); // Not below, equal
     });
   });
 
   describe("hasCpuBudget", () => {
     beforeEach(() => {
-      (global as any).Game.cpu = {
-        limit: 100,
-        getUsed: () => 50
+      (global as GlobalWithGame).Game = {
+        time: 100,
+        cpu: {
+          bucket: 10000,
+          limit: 100,
+          getUsed: () => 50
+        }
       };
     });
 
     it("should return true when enough CPU remaining", () => {
-      (global as any).Game.cpu.getUsed = () => 50;
-      (global as any).Game.cpu.limit = 100;
+      (global as GlobalWithGame).Game!.cpu.getUsed = () => 50;
+      (global as GlobalWithGame).Game!.cpu.limit = 100;
       
       // Used: 50, Limit: 100 * 0.8 = 80, Remaining: 30
       assert.isTrue(hasCpuBudget(20)); // Need 20, have 30
     });
 
     it("should return false when not enough CPU remaining", () => {
-      (global as any).Game.cpu.getUsed = () => 70;
-      (global as any).Game.cpu.limit = 100;
+      (global as GlobalWithGame).Game!.cpu.getUsed = () => 70;
+      (global as GlobalWithGame).Game!.cpu.limit = 100;
       
       // Used: 70, Limit: 100 * 0.8 = 80, Remaining: 10
       assert.isFalse(hasCpuBudget(20)); // Need 20, have 10
     });
 
     it("should use custom target usage", () => {
-      (global as any).Game.cpu.getUsed = () => 60;
-      (global as any).Game.cpu.limit = 100;
+      (global as GlobalWithGame).Game!.cpu.getUsed = () => 60;
+      (global as GlobalWithGame).Game!.cpu.limit = 100;
       
       // With 0.9: Used 60, Limit 90, Remaining 30
       assert.isTrue(hasCpuBudget(20, 0.9));
@@ -552,16 +571,16 @@ describe("CPU Efficiency Utilities", () => {
     });
 
     it("should default to no minimum CPU needed", () => {
-      (global as any).Game.cpu.getUsed = () => 79;
-      (global as any).Game.cpu.limit = 100;
+      (global as GlobalWithGame).Game!.cpu.getUsed = () => 79;
+      (global as GlobalWithGame).Game!.cpu.limit = 100;
       
       // Used: 79, Limit: 80, Remaining: 1
       assert.isTrue(hasCpuBudget()); // Default minCpuNeeded = 0
     });
 
     it("should handle edge case of exactly at limit", () => {
-      (global as any).Game.cpu.getUsed = () => 80;
-      (global as any).Game.cpu.limit = 100;
+      (global as GlobalWithGame).Game!.cpu.getUsed = () => 80;
+      (global as GlobalWithGame).Game!.cpu.limit = 100;
       
       // Used: 80, Limit: 80, Remaining: 0
       assert.isTrue(hasCpuBudget(0)); // Exactly 0 remaining
@@ -571,7 +590,7 @@ describe("CPU Efficiency Utilities", () => {
 
   describe("Integration scenarios", () => {
     it("should use throttle with distance calculations", () => {
-      (global as any).Game.time = 100;
+      (global as GlobalWithGame).Game!.time = 100;
       
       // Only calculate distance every 10 ticks
       const result = throttle(() => {

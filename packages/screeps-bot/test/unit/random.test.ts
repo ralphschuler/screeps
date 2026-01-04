@@ -12,6 +12,11 @@ import {
   resetRandom
 } from "../../src/utils/common/random";
 
+// Type for global with Game mock
+interface GlobalWithGame {
+  Game?: { time: number };
+}
+
 describe("Deterministic Random Utilities", () => {
   beforeEach(() => {
     // Reset random state before each test
@@ -28,7 +33,7 @@ describe("Deterministic Random Utilities", () => {
 
     it("should return the same sequence for the same tick", () => {
       // Mock Game.time to be consistent
-      (global as any).Game = { time: 100 };
+      (global as GlobalWithGame).Game = { time: 100 };
       
       const value1 = random();
       resetRandom(); // Reset to ensure we use the same tick seed
@@ -97,7 +102,7 @@ describe("Deterministic Random Utilities", () => {
     });
 
     it("should produce deterministic shuffles for same tick", () => {
-      (global as any).Game = { time: 100 };
+      (global as GlobalWithGame).Game = { time: 100 };
       
       const arr = [1, 2, 3, 4, 5];
       const shuffled1 = shuffle(arr);
@@ -128,7 +133,7 @@ describe("Deterministic Random Utilities", () => {
     });
 
     it("should produce deterministic picks for same tick", () => {
-      (global as any).Game = { time: 100 };
+      (global as GlobalWithGame).Game = { time: 100 };
       
       const arr = [1, 2, 3, 4, 5];
       const picked1 = pick(arr);
@@ -171,7 +176,7 @@ describe("Deterministic Random Utilities", () => {
     });
 
     it("should be independent from global random", () => {
-      (global as any).Game = { time: 100 };
+      (global as GlobalWithGame).Game = { time: 100 };
       
       const globalVal1 = random();
       const rng = createSeededRandom(99999);
@@ -186,7 +191,7 @@ describe("Deterministic Random Utilities", () => {
 
   describe("resetRandom", () => {
     it("should reset the global random state", () => {
-      (global as any).Game = { time: 100 };
+      (global as GlobalWithGame).Game = { time: 100 };
       
       const value1 = random();
       resetRandom();
@@ -199,7 +204,7 @@ describe("Deterministic Random Utilities", () => {
 
   describe("Edge cases", () => {
     it("should handle Game not being defined", () => {
-      delete (global as any).Game;
+      delete (global as GlobalWithGame).Game;
       
       // Should not throw
       const value = random();
@@ -207,7 +212,7 @@ describe("Deterministic Random Utilities", () => {
     });
 
     it("should handle very large tick values", () => {
-      (global as any).Game = { time: 999999999 };
+      (global as GlobalWithGame).Game = { time: 999999999 };
       
       const value = random();
       assert.isNumber(value);
@@ -216,7 +221,7 @@ describe("Deterministic Random Utilities", () => {
     });
 
     it("should handle zero tick", () => {
-      (global as any).Game = { time: 0 };
+      (global as GlobalWithGame).Game = { time: 0 };
       
       const value = random();
       assert.isNumber(value);

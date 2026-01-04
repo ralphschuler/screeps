@@ -11,10 +11,21 @@ import {
   setTestProperty
 } from "../../src/tests/test-helpers";
 
+// Type for global with Memory mock
+interface GlobalWithMemory {
+  Memory?: {
+    creeps: Record<string, unknown>;
+    rooms: Record<string, unknown>;
+    spawns: Record<string, unknown>;
+    flags: Record<string, unknown>;
+    [key: string]: unknown;
+  };
+}
+
 describe("Test Helper Utilities", () => {
   beforeEach(() => {
     // Setup minimal Memory mock
-    (global as any).Memory = {
+    (global as GlobalWithMemory).Memory = {
       creeps: {},
       rooms: {},
       spawns: {},
@@ -24,12 +35,12 @@ describe("Test Helper Utilities", () => {
 
   afterEach(() => {
     // Clean up
-    delete (global as any).Memory;
+    delete (global as GlobalWithMemory).Memory;
   });
 
   describe("getMemoryProperty", () => {
     it("should return property value when it exists", () => {
-      (global as any).Memory.testProp = "test value";
+      (global as GlobalWithMemory).Memory!.testProp = "test value";
       
       const result = getMemoryProperty("testProp");
       assert.equal(result, "test value");
@@ -41,10 +52,10 @@ describe("Test Helper Utilities", () => {
     });
 
     it("should handle different data types", () => {
-      (global as any).Memory.numberProp = 42;
-      (global as any).Memory.objectProp = { key: "value" };
-      (global as any).Memory.arrayProp = [1, 2, 3];
-      (global as any).Memory.boolProp = true;
+      (global as GlobalWithMemory).Memory!.numberProp = 42;
+      (global as GlobalWithMemory).Memory!.objectProp = { key: "value" };
+      (global as GlobalWithMemory).Memory!.arrayProp = [1, 2, 3];
+      (global as GlobalWithMemory).Memory!.boolProp = true;
       
       assert.equal(getMemoryProperty<number>("numberProp"), 42);
       assert.deepEqual(getMemoryProperty<object>("objectProp"), { key: "value" });
@@ -53,8 +64,8 @@ describe("Test Helper Utilities", () => {
     });
 
     it("should handle null and undefined values", () => {
-      (global as any).Memory.nullProp = null;
-      (global as any).Memory.undefinedProp = undefined;
+      (global as GlobalWithMemory).Memory!.nullProp = null;
+      (global as GlobalWithMemory).Memory!.undefinedProp = undefined;
       
       assert.isNull(getMemoryProperty("nullProp"));
       assert.isUndefined(getMemoryProperty("undefinedProp"));
@@ -63,7 +74,7 @@ describe("Test Helper Utilities", () => {
 
   describe("getRoomMemoryProperty", () => {
     it("should return room property when it exists", () => {
-      (global as any).Memory.rooms.W1N1 = {
+      (global as GlobalWithMemory).Memory!.rooms.W1N1 = {
         level: 5,
         sources: ["source1", "source2"]
       };
@@ -81,22 +92,22 @@ describe("Test Helper Utilities", () => {
     });
 
     it("should return undefined when property does not exist in room", () => {
-      (global as any).Memory.rooms.W1N1 = { level: 5 };
+      (global as GlobalWithMemory).Memory!.rooms.W1N1 = { level: 5 };
       
       const result = getRoomMemoryProperty("W1N1", "nonExistent");
       assert.isUndefined(result);
     });
 
     it("should handle missing rooms object", () => {
-      delete (global as any).Memory.rooms;
+      delete (global as GlobalWithMemory).Memory!.rooms;
       
       const result = getRoomMemoryProperty("W1N1", "level");
       assert.isUndefined(result);
     });
 
     it("should handle different room names", () => {
-      (global as any).Memory.rooms.E5S5 = { data: "east" };
-      (global as any).Memory.rooms.W10N10 = { data: "west" };
+      (global as GlobalWithMemory).Memory!.rooms.E5S5 = { data: "east" };
+      (global as GlobalWithMemory).Memory!.rooms.W10N10 = { data: "west" };
       
       assert.equal(getRoomMemoryProperty("E5S5", "data"), "east");
       assert.equal(getRoomMemoryProperty("W10N10", "data"), "west");
@@ -105,7 +116,7 @@ describe("Test Helper Utilities", () => {
 
   describe("getCreepMemoryProperty", () => {
     it("should return creep property when it exists", () => {
-      (global as any).Memory.creeps.Harvester1 = {
+      (global as GlobalWithMemory).Memory!.creeps.Harvester1 = {
         role: "harvester",
         task: "harvest"
       };
@@ -123,14 +134,14 @@ describe("Test Helper Utilities", () => {
     });
 
     it("should return undefined when property does not exist in creep", () => {
-      (global as any).Memory.creeps.Builder1 = { role: "builder" };
+      (global as GlobalWithMemory).Memory!.creeps.Builder1 = { role: "builder" };
       
       const result = getCreepMemoryProperty("Builder1", "nonExistent");
       assert.isUndefined(result);
     });
 
     it("should handle complex creep memory structures", () => {
-      (global as any).Memory.creeps.Worker1 = {
+      (global as GlobalWithMemory).Memory!.creeps.Worker1 = {
         role: "worker",
         tasks: ["build", "repair", "upgrade"],
         stats: { energy: 100, moves: 50 }
@@ -200,7 +211,7 @@ describe("Test Helper Utilities", () => {
     it("should set property in Memory with _test_ prefix", () => {
       const cleanup = setTestProperty("myProp", "myValue");
       
-      assert.equal((global as any).Memory._test_myProp, "myValue");
+      assert.equal((global as GlobalWithMemory).Memory!._test_myProp, "myValue");
       
       cleanup();
     });
@@ -208,11 +219,11 @@ describe("Test Helper Utilities", () => {
     it("should return cleanup function that removes property", () => {
       const cleanup = setTestProperty("tempProp", 123);
       
-      assert.equal((global as any).Memory._test_tempProp, 123);
+      assert.equal((global as GlobalWithMemory).Memory!._test_tempProp, 123);
       
       cleanup();
       
-      assert.isUndefined((global as any).Memory._test_tempProp);
+      assert.isUndefined((global as GlobalWithMemory).Memory!._test_tempProp);
     });
 
     it("should handle different data types", () => {
@@ -221,20 +232,20 @@ describe("Test Helper Utilities", () => {
       const cleanupBool = setTestProperty("bool", true);
       const cleanupNum = setTestProperty("num", 42);
       
-      assert.deepEqual((global as any).Memory._test_obj, { key: "value" });
-      assert.deepEqual((global as any).Memory._test_arr, [1, 2, 3]);
-      assert.equal((global as any).Memory._test_bool, true);
-      assert.equal((global as any).Memory._test_num, 42);
+      assert.deepEqual((global as GlobalWithMemory).Memory!._test_obj, { key: "value" });
+      assert.deepEqual((global as GlobalWithMemory).Memory!._test_arr, [1, 2, 3]);
+      assert.equal((global as GlobalWithMemory).Memory!._test_bool, true);
+      assert.equal((global as GlobalWithMemory).Memory!._test_num, 42);
       
       cleanupObj();
       cleanupArr();
       cleanupBool();
       cleanupNum();
       
-      assert.isUndefined((global as any).Memory._test_obj);
-      assert.isUndefined((global as any).Memory._test_arr);
-      assert.isUndefined((global as any).Memory._test_bool);
-      assert.isUndefined((global as any).Memory._test_num);
+      assert.isUndefined((global as GlobalWithMemory).Memory!._test_obj);
+      assert.isUndefined((global as GlobalWithMemory).Memory!._test_arr);
+      assert.isUndefined((global as GlobalWithMemory).Memory!._test_bool);
+      assert.isUndefined((global as GlobalWithMemory).Memory!._test_num);
     });
 
     it("should handle multiple test properties simultaneously", () => {
@@ -242,15 +253,15 @@ describe("Test Helper Utilities", () => {
       const cleanup2 = setTestProperty("prop2", "value2");
       const cleanup3 = setTestProperty("prop3", "value3");
       
-      assert.equal((global as any).Memory._test_prop1, "value1");
-      assert.equal((global as any).Memory._test_prop2, "value2");
-      assert.equal((global as any).Memory._test_prop3, "value3");
+      assert.equal((global as GlobalWithMemory).Memory!._test_prop1, "value1");
+      assert.equal((global as GlobalWithMemory).Memory!._test_prop2, "value2");
+      assert.equal((global as GlobalWithMemory).Memory!._test_prop3, "value3");
       
       cleanup2();
       
-      assert.equal((global as any).Memory._test_prop1, "value1");
-      assert.isUndefined((global as any).Memory._test_prop2);
-      assert.equal((global as any).Memory._test_prop3, "value3");
+      assert.equal((global as GlobalWithMemory).Memory!._test_prop1, "value1");
+      assert.isUndefined((global as GlobalWithMemory).Memory!._test_prop2);
+      assert.equal((global as GlobalWithMemory).Memory!._test_prop3, "value3");
       
       cleanup1();
       cleanup3();
@@ -259,26 +270,26 @@ describe("Test Helper Utilities", () => {
     it("should allow calling cleanup multiple times safely", () => {
       const cleanup = setTestProperty("safe", "value");
       
-      assert.equal((global as any).Memory._test_safe, "value");
+      assert.equal((global as GlobalWithMemory).Memory!._test_safe, "value");
       
       cleanup();
       cleanup(); // Should not throw
       
-      assert.isUndefined((global as any).Memory._test_safe);
+      assert.isUndefined((global as GlobalWithMemory).Memory!._test_safe);
     });
 
     it("should handle overwriting existing test property", () => {
       const cleanup1 = setTestProperty("overwrite", "first");
-      assert.equal((global as any).Memory._test_overwrite, "first");
+      assert.equal((global as GlobalWithMemory).Memory!._test_overwrite, "first");
       
       const cleanup2 = setTestProperty("overwrite", "second");
-      assert.equal((global as any).Memory._test_overwrite, "second");
+      assert.equal((global as GlobalWithMemory).Memory!._test_overwrite, "second");
       
       cleanup2();
-      assert.isUndefined((global as any).Memory._test_overwrite);
+      assert.isUndefined((global as GlobalWithMemory).Memory!._test_overwrite);
       
       cleanup1(); // Should not restore old value
-      assert.isUndefined((global as any).Memory._test_overwrite);
+      assert.isUndefined((global as GlobalWithMemory).Memory!._test_overwrite);
     });
   });
 
@@ -306,14 +317,14 @@ describe("Test Helper Utilities", () => {
     });
 
     it("should verify property existence before access", () => {
-      (global as any).Memory.rooms.W1N1 = { level: 5 };
+      (global as GlobalWithMemory).Memory!.rooms.W1N1 = { level: 5 };
       
-      if (hasProperty((global as any).Memory.rooms, "W1N1")) {
+      if (hasProperty((global as GlobalWithMemory).Memory!.rooms, "W1N1")) {
         const level = getRoomMemoryProperty("W1N1", "level");
         assert.equal(level, 5);
       }
       
-      if (!hasProperty((global as any).Memory.rooms, "W2N2")) {
+      if (!hasProperty((global as GlobalWithMemory).Memory!.rooms, "W2N2")) {
         const level = getRoomMemoryProperty("W2N2", "level");
         assert.isUndefined(level);
       }

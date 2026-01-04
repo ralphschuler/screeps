@@ -23,11 +23,16 @@ import {
 } from "../../src/utils/common/weightedSelection";
 import { resetRandom } from "../../src/utils/common/random";
 
+// Type for global with Game mock
+interface GlobalWithGame {
+  Game?: { time: number };
+}
+
 describe("Weighted Selection Utilities", () => {
   beforeEach(() => {
     // Reset random state for deterministic tests
     resetRandom();
-    (global as any).Game = { time: 100 };
+    (global as GlobalWithGame).Game = { time: 100 };
   });
 
   describe("weightedSelection", () => {

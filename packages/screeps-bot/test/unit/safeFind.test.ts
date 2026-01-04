@@ -11,10 +11,25 @@ import {
   safeFindClosestByPath
 } from "../../src/utils/optimization/safeFind";
 
+// Mock room interface
+interface MockRoom {
+  name: string;
+  find: sinon.SinonStub;
+}
+
+// Mock position interface
+interface MockPosition {
+  roomName: string;
+  x: number;
+  y: number;
+  findClosestByRange: sinon.SinonStub;
+  findInRange: sinon.SinonStub;
+  findClosestByPath: sinon.SinonStub;
+}
+
 describe("Safe Find Utilities", () => {
-  let mockRoom: any;
-  let mockPos: any;
-  let logWarnStub: sinon.SinonStub;
+  let mockRoom: MockRoom;
+  let mockPos: MockPosition;
 
   beforeEach(() => {
     // Create mock room
@@ -32,10 +47,6 @@ describe("Safe Find Utilities", () => {
       findInRange: sinon.stub(),
       findClosestByPath: sinon.stub()
     };
-
-    // Stub logger.warn to prevent console output during tests
-    // We need to stub the logger module, but for now let's just verify behavior
-    logWarnStub = sinon.stub(console, "warn");
   });
 
   afterEach(() => {
@@ -56,7 +67,7 @@ describe("Safe Find Utilities", () => {
 
     it("should pass options to room.find", () => {
       const mockResults = [{ id: "structure1" }];
-      const opts = { filter: (s: any) => s.structureType === STRUCTURE_SPAWN };
+      const opts = { filter: (s: Structure) => s.structureType === STRUCTURE_SPAWN };
       mockRoom.find.returns(mockResults);
 
       const results = safeFind(mockRoom, FIND_STRUCTURES, opts);
@@ -107,7 +118,7 @@ describe("Safe Find Utilities", () => {
 
     it("should pass options to findClosestByRange", () => {
       const mockResult = { id: "creep1" };
-      const opts = { filter: (c: any) => c.memory.role === "harvester" };
+      const opts = { filter: (c: Creep) => c.memory.role === "harvester" };
       mockPos.findClosestByRange.returns(mockResult);
 
       const result = safeFindClosestByRange(mockPos, FIND_MY_CREEPS, opts);
@@ -155,7 +166,7 @@ describe("Safe Find Utilities", () => {
 
     it("should pass options to findInRange", () => {
       const mockResults = [{ id: "source1" }];
-      const opts = { filter: (s: any) => s.energy > 0 };
+      const opts = { filter: (s: Source) => s.energy > 0 };
       mockPos.findInRange.returns(mockResults);
 
       const results = safeFindInRange(mockPos, FIND_SOURCES, 5, opts);
@@ -217,7 +228,7 @@ describe("Safe Find Utilities", () => {
     it("should pass options to findClosestByPath", () => {
       const mockResult = { id: "source1" };
       const opts = {
-        filter: (s: any) => s.energy > 0,
+        filter: (s: Source) => s.energy > 0,
         ignoreCreeps: true,
         maxOps: 2000
       };
