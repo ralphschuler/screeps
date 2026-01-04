@@ -140,6 +140,69 @@ export class ShardManager {
   }
 
   /**
+   * Calculate commodity index (0-100) based on factory production
+   * Considers:
+   * - Number of active factories
+   * - Production levels (factory store usage)
+   * - Factory levels (0-5)
+   * - Advanced commodity types in storage
+   */
+  private calculateCommodityIndex(ownedRooms: Room[]): number {
+    let commodityIndex = 0;
+    let roomsWithFactories = 0;
+
+    for (const room of ownedRooms) {
+      const factory = room.find(FIND_MY_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_FACTORY
+      })[0] as StructureFactory | undefined;
+
+      if (!factory) continue;
+
+      roomsWithFactories++;
+
+      // Check factory level (0-5)
+      const factoryLevel = factory.level ?? 0;
+      commodityIndex += factoryLevel * 5; // Max 25 per factory
+
+      // Check if factory is producing (has resources)
+      if (factory.store.getUsedCapacity() > 0) {
+        commodityIndex += 10; // Active production bonus
+      }
+
+      // Check for high-tier commodities in storage (once per room)
+      const storage = room.storage;
+      if (storage) {
+        // Check for advanced commodities
+        const commodities: ResourceConstant[] = [
+          RESOURCE_COMPOSITE,
+          RESOURCE_CRYSTAL,
+          RESOURCE_LIQUID,
+          RESOURCE_GHODIUM_MELT,
+          RESOURCE_OXIDANT,
+          RESOURCE_REDUCTANT,
+          RESOURCE_PURIFIER
+        ];
+
+        for (const commodity of commodities) {
+          const amount = storage.store.getUsedCapacity(commodity);
+          if (amount > 0) {
+            commodityIndex += Math.min(10, amount / 1000); // Max 10 per type
+          }
+        }
+      }
+    }
+
+    // Normalize to 0-100 scale
+    if (roomsWithFactories === 0) return 0;
+
+    // Max theoretical per room: 25 (factory level) + 10 (production) + 70 (7 commodities × 10)
+    const maxPossible = roomsWithFactories * (25 + 10 + 70);
+    commodityIndex = Math.min(100, (commodityIndex / maxPossible) * 100);
+
+    return Math.round(commodityIndex);
+  }
+
+  /**
    * Update current shard's health metrics
    */
   private updateCurrentShardHealth(): void {
@@ -185,7 +248,7 @@ export class ShardManager {
       bucketLevel: Game.cpu.bucket,
       economyIndex: Math.round(economyIndex),
       warIndex: Math.round(warIndex),
-      commodityIndex: 0, // TODO: Calculate based on factory production
+      commodityIndex: this.calculateCommodityIndex(ownedRooms),
       roomCount: ownedRooms.length,
       avgRCL: Math.round(avgRCL * 10) / 10,
       creepCount: Object.keys(Game.creeps).length,
@@ -214,9 +277,7 @@ export class ShardManager {
    */
   private processInterShardTasks(): void {
     const currentShard = Game.shard?.name ?? "shard0";
-    const tasks = this.interShardMemory.tasks.filter(
-      t => t.targetShard === currentShard && t.status === "pending"
-    );
+    const tasks = this.interShardMemory.tasks.filter(t => t.targetShard === currentShard && t.status === "pending");
 
     for (const task of tasks) {
       switch (task.type) {
@@ -247,7 +308,7 @@ export class ShardManager {
   private handleColonizeTask(task: InterShardTask): void {
     // Mark task as active
     task.status = "active";
-    const targetRoom = task.targetRoom ?? 'unknown';
+    const targetRoom = task.targetRoom ?? "unknown";
     logger.info(`Processing colonize task: ${targetRoom} from ${task.sourceShard}`, {
       subsystem: "Shard"
     });
@@ -258,7 +319,7 @@ export class ShardManager {
    */
   private handleReinforceTask(task: InterShardTask): void {
     task.status = "active";
-    const targetRoom = task.targetRoom ?? 'unknown';
+    const targetRoom = task.targetRoom ?? "unknown";
     logger.info(`Processing reinforce task: ${targetRoom} from ${task.sourceShard}`, {
       subsystem: "Shard"
     });
@@ -277,7 +338,7 @@ export class ShardManager {
    */
   private handleEvacuateTask(task: InterShardTask): void {
     task.status = "active";
-    const targetRoom = task.targetRoom ?? 'unknown';
+    const targetRoom = task.targetRoom ?? "unknown";
     logger.info(`Processing evacuate task: ${targetRoom} to ${task.targetShard}`, {
       subsystem: "Shard"
     });
@@ -309,9 +370,7 @@ export class ShardManager {
           const targetRoom = (destination as { room: string }).room;
 
           // Check if already tracked
-          const existing = shardState.portals.find(
-            p => p.sourceRoom === roomName && p.targetShard === targetShard
-          );
+          const existing = shardState.portals.find(p => p.sourceRoom === roomName && p.targetShard === targetShard);
 
           if (existing) {
             // Update existing portal
@@ -348,9 +407,7 @@ export class ShardManager {
     }
 
     // Clean up expired portals
-    shardState.portals = shardState.portals.filter(
-      p => !p.decayTick || p.decayTick > Game.time
-    );
+    shardState.portals = shardState.portals.filter(p => !p.decayTick || p.decayTick > Game.time);
   }
 
   /**
@@ -432,11 +489,7 @@ export class ShardManager {
   /**
    * Calculate weight for a shard based on role, load, and efficiency
    */
-  private calculateShardWeight(
-    shard: ShardState,
-    shardName: string,
-    currentShard: string
-  ): number {
+  private calculateShardWeight(shard: ShardState, shardName: string, currentShard: string): number {
     let weight = ROLE_CPU_WEIGHTS[shard.role];
 
     // Adjust weight based on bucket level
@@ -502,9 +555,7 @@ export class ShardManager {
       // Only update if different from current
       if (Game.cpu.shardLimits) {
         const currentLimits = Game.cpu.shardLimits;
-        const needsUpdate = shardNames.some(
-          name => Math.abs((currentLimits[name] ?? 0) - (newLimits[name] ?? 0)) > 1
-        );
+        const needsUpdate = shardNames.some(name => Math.abs((currentLimits[name] ?? 0) - (newLimits[name] ?? 0)) > 1);
 
         if (needsUpdate) {
           const result = Game.cpu.setShardLimits(newLimits);
@@ -533,10 +584,9 @@ export class ShardManager {
       // Validate before serialization
       const validationResult = this.validateInterShardMemory();
       if (!validationResult.valid) {
-        logger.warn(
-          `InterShardMemory validation failed: ${validationResult.errors.join(", ")}`,
-          { subsystem: "Shard" }
-        );
+        logger.warn(`InterShardMemory validation failed: ${validationResult.errors.join(", ")}`, {
+          subsystem: "Shard"
+        });
         // Attempt to fix validation issues
         this.repairInterShardMemory();
       }
@@ -545,13 +595,12 @@ export class ShardManager {
 
       // Check size limit
       if (serialized.length > INTERSHARD_MEMORY_LIMIT) {
-        logger.warn(
-          `InterShardMemory size exceeds limit: ${serialized.length}/${INTERSHARD_MEMORY_LIMIT}`,
-          { subsystem: "Shard" }
-        );
+        logger.warn(`InterShardMemory size exceeds limit: ${serialized.length}/${INTERSHARD_MEMORY_LIMIT}`, {
+          subsystem: "Shard"
+        });
         // Trim old data if needed
         this.trimInterShardMemory();
-        
+
         // Try serializing again after trim
         const trimmedSerialized = serializeInterShardMemory(this.interShardMemory);
         if (trimmedSerialized.length > INTERSHARD_MEMORY_LIMIT) {
@@ -563,13 +612,13 @@ export class ShardManager {
           this.emergencyTrim();
           return;
         }
-        
+
         InterShardMemory.setLocal(trimmedSerialized);
         return;
       }
 
       InterShardMemory.setLocal(serialized);
-      
+
       // Periodically verify sync succeeded
       if (Game.time % 50 === 0) {
         this.verifySyncIntegrity();
@@ -577,7 +626,7 @@ export class ShardManager {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       logger.error(`Failed to sync InterShardMemory: ${errorMessage}`, { subsystem: "Shard" });
-      
+
       // Attempt recovery
       this.attemptSyncRecovery();
     }
@@ -697,10 +746,9 @@ export class ShardManager {
       // Check if current shard is present
       const currentShard = Game.shard?.name ?? "shard0";
       if (!parsed.shards[currentShard]) {
-        logger.warn(
-          `InterShardMemory verification failed: current shard ${currentShard} not found`,
-          { subsystem: "Shard" }
-        );
+        logger.warn(`InterShardMemory verification failed: current shard ${currentShard} not found`, {
+          subsystem: "Shard"
+        });
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
@@ -762,9 +810,7 @@ export class ShardManager {
       );
 
       // Keep only most recent portals
-      currentShardState.portals = currentShardState.portals
-        .sort((a, b) => b.lastScouted - a.lastScouted)
-        .slice(0, 10);
+      currentShardState.portals = currentShardState.portals.sort((a, b) => b.lastScouted - a.lastScouted).slice(0, 10);
 
       logger.warn("Emergency trim applied to InterShardMemory", { subsystem: "Shard" });
     }
@@ -808,12 +854,7 @@ export class ShardManager {
   /**
    * Create a new inter-shard task
    */
-  public createTask(
-    type: InterShardTask["type"],
-    targetShard: string,
-    targetRoom?: string,
-    priority = 50
-  ): void {
+  public createTask(type: InterShardTask["type"], targetShard: string, targetRoom?: string, priority = 50): void {
     const currentShard = Game.shard?.name ?? "shard0";
 
     const task: InterShardTask = {
@@ -899,10 +940,9 @@ export class ShardManager {
     };
 
     this.interShardMemory.tasks.push(task);
-    logger.info(
-      `Created resource transfer task: ${amount} ${resourceType} to ${targetShard}/${targetRoom}`,
-      { subsystem: "Shard" }
-    );
+    logger.info(`Created resource transfer task: ${amount} ${resourceType} to ${targetShard}/${targetRoom}`, {
+      subsystem: "Shard"
+    });
   }
 
   /**
@@ -962,9 +1002,7 @@ export class ShardManager {
     const shardState = this.interShardMemory.shards[currentShard];
     if (!shardState) return;
 
-    const portal = shardState.portals.find(
-      p => p.sourceRoom === sourceRoom && p.targetShard === targetShard
-    );
+    const portal = shardState.portals.find(p => p.sourceRoom === sourceRoom && p.targetShard === targetShard);
 
     if (portal) {
       if (success) {
@@ -998,9 +1036,10 @@ export class ShardManager {
   public getActiveTransferTasks(): InterShardTask[] {
     const currentShard = Game.shard?.name ?? "shard0";
     return this.interShardMemory.tasks.filter(
-      t => t.type === "transfer" && 
-           (t.sourceShard === currentShard || t.targetShard === currentShard) &&
-           (t.status === "pending" || t.status === "active")
+      t =>
+        t.type === "transfer" &&
+        (t.sourceShard === currentShard || t.targetShard === currentShard) &&
+        (t.status === "pending" || t.status === "active")
     );
   }
 
@@ -1035,7 +1074,7 @@ export class ShardManager {
     const ticksSinceSync = Game.time - this.interShardMemory.lastSync;
 
     // Calculate health
-    const isHealthy = 
+    const isHealthy =
       memorySize < INTERSHARD_MEMORY_LIMIT * 0.9 && // Less than 90% full
       ticksSinceSync < 500; // Synced within last 500 ticks
 
@@ -1051,9 +1090,7 @@ export class ShardManager {
       memorySize,
       sizePercent: Math.round(sizePercent * 100) / 100,
       shardsTracked: Object.keys(this.interShardMemory.shards).length,
-      activeTasks: this.interShardMemory.tasks.filter(t => 
-        t.status === "pending" || t.status === "active"
-      ).length,
+      activeTasks: this.interShardMemory.tasks.filter(t => t.status === "pending" || t.status === "active").length,
       totalPortals,
       isHealthy
     };
