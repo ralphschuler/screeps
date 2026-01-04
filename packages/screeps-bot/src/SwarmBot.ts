@@ -27,6 +27,7 @@ import { SS2TerminalComms } from "./standards/SS2TerminalComms";
 import { initializeRemotePathScheduler } from "./utils/remote-mining";
 import { shardManager } from "./intershard/shardManager";
 import { getOwnedRooms } from "./cache";
+import { eventBus } from "./core/events";
 
 // =============================================================================
 // Visualization Setup
@@ -255,6 +256,12 @@ export function loop(): void {
   // The kernel's wrap-around queue ensures fair execution of all processes
   unifiedStats.measureSubsystem("kernel", () => {
     kernel.run();
+  });
+
+  // Process queued events from event bus
+  // This also clears tick events map for event coalescing
+  unifiedStats.measureSubsystem("eventQueue", () => {
+    eventBus.processQueue();
   });
 
   // Run spawns (high priority - always runs)
