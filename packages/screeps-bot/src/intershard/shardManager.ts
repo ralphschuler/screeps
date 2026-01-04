@@ -144,22 +144,21 @@ export class ShardManager {
    * Considers:
    * - Number of active factories
    * - Production levels (factory store usage)
-   * - Factory levels (1-5)
+   * - Factory levels (0-5)
    * - Advanced commodity types in storage
    */
   private calculateCommodityIndex(ownedRooms: Room[]): number {
     let commodityIndex = 0;
-    let factoryCount = 0;
+    let roomsWithFactories = 0;
 
     for (const room of ownedRooms) {
-      const factories = room.find(FIND_MY_STRUCTURES, {
+      const factory = room.find(FIND_MY_STRUCTURES, {
         filter: s => s.structureType === STRUCTURE_FACTORY
-      }) as StructureFactory[];
+      })[0] as StructureFactory | undefined;
 
-      if (factories.length === 0) continue;
+      if (!factory) continue;
 
-      const factory = factories[0];
-      factoryCount++;
+      roomsWithFactories++;
 
       // Check factory level (0-5)
       const factoryLevel = factory.level ?? 0;
@@ -194,10 +193,10 @@ export class ShardManager {
     }
 
     // Normalize to 0-100 scale
-    if (factoryCount === 0) return 0;
+    if (roomsWithFactories === 0) return 0;
 
-    // Max theoretical: 25 (factory level) + 10 (production) + 70 (7 commodities × 10) per factory
-    const maxPossible = factoryCount * (25 + 10 + 70);
+    // Max theoretical per room: 25 (factory level) + 10 (production) + 70 (7 commodities × 10)
+    const maxPossible = roomsWithFactories * (25 + 10 + 70);
     commodityIndex = Math.min(100, (commodityIndex / maxPossible) * 100);
 
     return Math.round(commodityIndex);

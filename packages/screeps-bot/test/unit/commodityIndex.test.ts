@@ -7,7 +7,7 @@ import { ShardManager } from "../../src/intershard/shardManager";
 
 describe("ShardManager - Commodity Index", () => {
   let shardManager: ShardManager;
-  let mockGame: any;
+  let mockGame: Partial<Game>;
 
   beforeEach(() => {
     shardManager = new ShardManager();
@@ -20,14 +20,14 @@ describe("ShardManager - Commodity Index", () => {
         bucket: 10000,
         limit: 50,
         getUsed: () => 10
-      },
+      } as CPU,
       rooms: {},
       creeps: {}
     };
 
-    // @ts-ignore - allow overriding global Game for testing
+    // @ts-expect-error - allow overriding global Game for testing
     global.Game = mockGame;
-    // @ts-ignore - mock InterShardMemory
+    // @ts-expect-error - mock InterShardMemory
     global.InterShardMemory = {
       getLocal: () => null,
       setLocal: () => {}
@@ -45,7 +45,7 @@ describe("ShardManager - Commodity Index", () => {
     mockGame.rooms = { W1N1: mockRoom };
 
     // Act
-    // @ts-ignore - accessing private method for testing
+    // @ts-expect-error - accessing private method for testing
     const commodityIndex = shardManager.calculateCommodityIndex([mockRoom]);
 
     // Assert
@@ -63,7 +63,7 @@ describe("ShardManager - Commodity Index", () => {
 
     // Act
     const ownedRooms: Room[] = [];
-    // @ts-ignore - accessing private method for testing
+    // @ts-expect-error - accessing private method for testing
     const commodityIndex = shardManager.calculateCommodityIndex(ownedRooms);
 
     // Assert
@@ -80,7 +80,7 @@ describe("ShardManager - Commodity Index", () => {
     mockGame.rooms = { W1N1: mockRoom };
 
     // Act
-    // @ts-ignore - accessing private method for testing
+    // @ts-expect-error - accessing private method for testing
     const commodityIndex = shardManager.calculateCommodityIndex([mockRoom]);
 
     // Assert
@@ -102,7 +102,7 @@ describe("ShardManager - Commodity Index", () => {
     mockGame.rooms = { W1N1: mockRoom };
 
     // Act
-    // @ts-ignore - accessing private method for testing
+    // @ts-expect-error - accessing private method for testing
     const commodityIndex = shardManager.calculateCommodityIndex([mockRoom]);
 
     // Assert
@@ -127,7 +127,7 @@ describe("ShardManager - Commodity Index", () => {
     mockGame.rooms = { W1N1: mockRoom };
 
     // Act
-    // @ts-ignore - accessing private method for testing
+    // @ts-expect-error - accessing private method for testing
     const commodityIndex = shardManager.calculateCommodityIndex([mockRoom]);
 
     // Assert
@@ -152,7 +152,7 @@ describe("ShardManager - Commodity Index", () => {
     mockGame.rooms = { W1N1: mockRoom };
 
     // Act
-    // @ts-ignore - accessing private method for testing
+    // @ts-expect-error - accessing private method for testing
     const commodityIndex = shardManager.calculateCommodityIndex([mockRoom]);
 
     // Assert
@@ -183,7 +183,7 @@ describe("ShardManager - Commodity Index", () => {
     mockGame.rooms = { W1N1: room1, W2N2: room2 };
 
     // Act
-    // @ts-ignore - accessing private method for testing
+    // @ts-expect-error - accessing private method for testing
     const commodityIndex = shardManager.calculateCommodityIndex([room1, room2]);
 
     // Assert
@@ -212,7 +212,7 @@ describe("ShardManager - Commodity Index", () => {
     mockGame.rooms = { W1N1: mockRoom };
 
     // Act
-    // @ts-ignore - accessing private method for testing
+    // @ts-expect-error - accessing private method for testing
     const commodityIndex = shardManager.calculateCommodityIndex([mockRoom]);
 
     // Assert
@@ -234,7 +234,7 @@ describe("ShardManager - Commodity Index", () => {
     mockGame.rooms = { W1N1: mockRoom };
 
     // Act
-    // @ts-ignore - calling private method
+    // @ts-expect-error - calling private method
     shardManager.updateCurrentShardHealth();
     const shardState = shardManager.getCurrentShardState();
 
@@ -255,7 +255,7 @@ describe("ShardManager - Commodity Index", () => {
     mockGame.rooms = { W1N1: mockRoom };
 
     // Act
-    // @ts-ignore - accessing private method for testing
+    // @ts-expect-error - accessing private method for testing
     const commodityIndex = shardManager.calculateCommodityIndex([mockRoom]);
 
     // Assert
@@ -275,7 +275,7 @@ describe("ShardManager - Commodity Index", () => {
     mockGame.rooms = { W1N1: mockRoom };
 
     // Act
-    // @ts-ignore - accessing private method for testing
+    // @ts-expect-error - accessing private method for testing
     const commodityIndex = shardManager.calculateCommodityIndex([mockRoom]);
 
     // Assert
@@ -298,20 +298,34 @@ function createMockRoom(
     hasController?: boolean;
   }
 ): Room {
-  const room: any = {
+  const room: Partial<Room> = {
     name,
-    controller: config.hasController !== false ? { my: true, level: 8 } : undefined,
-    find: (type: FindConstant) => {
+    controller: config.hasController !== false ? ({ my: true, level: 8 } as StructureController) : undefined,
+    find: (type: FindConstant, opts?: FilterOptions<any>) => {
       if (type === FIND_MY_STRUCTURES) {
         // Return factory if configured
         if (config.hasFactory) {
-          const factory: any = {
+          const factory = {
             structureType: STRUCTURE_FACTORY,
             level: config.factoryLevel ?? 0,
             store: {
               getUsedCapacity: () => config.factoryStoreUsed ?? 0
             }
-          };
+          } as unknown as StructureFactory;
+
+          // Respect filter if provided
+          if (opts?.filter) {
+            const filterFn =
+              typeof opts.filter === "function"
+                ? opts.filter
+                : (s: Structure) => {
+                    for (const key in opts.filter) {
+                      if ((s as any)[key] !== (opts.filter as any)[key]) return false;
+                    }
+                    return true;
+                  };
+            return filterFn(factory) ? [factory] : [];
+          }
           return [factory];
         }
         return [];
@@ -319,7 +333,7 @@ function createMockRoom(
       return [];
     },
     storage: config.hasStorage
-      ? {
+      ? ({
           store: {
             getUsedCapacity: (resource?: ResourceConstant) => {
               if (resource && config.storageCommodities) {
@@ -327,8 +341,8 @@ function createMockRoom(
               }
               return 0;
             }
-          }
-        }
+          } as StoreDefinition
+        } as StructureStorage)
       : undefined
   };
 
