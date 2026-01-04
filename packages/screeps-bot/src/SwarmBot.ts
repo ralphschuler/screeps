@@ -27,6 +27,7 @@ import { SS2TerminalComms } from "./standards/SS2TerminalComms";
 import { initializeRemotePathScheduler } from "./utils/remote-mining";
 import { shardManager } from "./intershard/shardManager";
 import { getOwnedRooms } from "./cache";
+import { eventBus } from "./core/events";
 
 // =============================================================================
 // Visualization Setup
@@ -96,7 +97,10 @@ function initializeSystems(): void {
   const config = getConfig();
   configureLogger({
     level: config.debug ? LogLevel.DEBUG : LogLevel.INFO,
-    cpuLogging: config.profiling
+    cpuLogging: config.profiling,
+    // Performance optimizations enabled by default
+    enableBatching: true,
+    maxBatchSize: 50
   });
   
   logger.info("Bot initialized", { subsystem: "SwarmBot", meta: { debug: config.debug, profiling: config.profiling } });
@@ -219,6 +223,9 @@ export function loop(): void {
   clearEconomyAssignments(); // Clear centralized economy target assignments
   clearRoomCaches();
 
+  // Clear event bus tick-specific caches for coalescing
+  eventBus.startTick();
+
   // Cache owned rooms list (used frequently, expensive to compute)
   // This cache is shared across all subsystems in the same tick
   const cacheKey = "_ownedRooms";
@@ -255,6 +262,12 @@ export function loop(): void {
   // The kernel's wrap-around queue ensures fair execution of all processes
   unifiedStats.measureSubsystem("kernel", () => {
     kernel.run();
+  });
+
+  // Process queued events from event bus
+  // This also clears tick events map for event coalescing
+  unifiedStats.measureSubsystem("eventQueue", () => {
+    eventBus.processQueue();
   });
 
   // Run spawns (high priority - always runs)
@@ -312,6 +325,10 @@ export function loop(): void {
 
   // Finalize unified stats for this tick - collects and exports all metrics
   unifiedStats.finalizeTick();
+
+  // Flush batched log messages to console
+  // This should be the last operation in the tick to capture all logs
+  logger.flush();
 }
 
 // Re-export key modules

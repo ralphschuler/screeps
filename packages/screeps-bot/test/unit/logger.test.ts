@@ -263,3 +263,147 @@ describe("Logger JSON Output", () => {
     expect(parsed.shard).to.equal("shard1");
   });
 });
+
+describe("Logger Batching", () => {
+  let sandbox: sinon.SinonSandbox;
+  let consoleLogStub: sinon.SinonStub;
+
+  const TEST_BATCH_SIZE = 5;  // Smaller batch size for easier testing
+
+  beforeEach(() => {
+    sandbox = sinon.createSandbox();
+    consoleLogStub = sandbox.stub(console, "log");
+    
+    // Configure logger for testing with batching enabled
+    configureLogger({
+      level: LogLevel.DEBUG,
+      cpuLogging: false,
+      enableBatching: true,
+      maxBatchSize: TEST_BATCH_SIZE
+    });
+
+    (global as any).Game = { time: 12345 };
+  });
+
+  afterEach(() => {
+    // Flush any pending logs
+    logger.flush();
+    sandbox.restore();
+  });
+
+  it("should batch multiple log messages", () => {
+    logger.info("Message 1");
+    logger.info("Message 2");
+    logger.info("Message 3");
+
+    // No console.log calls yet (batched)
+    expect(consoleLogStub.called).to.be.false;
+
+    // Flush the batch
+    logger.flush();
+
+    // Should have one console.log call with all messages
+    expect(consoleLogStub.calledOnce).to.be.true;
+    const output = consoleLogStub.firstCall.args[0];
+    
+    // Output should contain all three messages
+    const lines = output.split('\n');
+    expect(lines).to.have.length(3);
+    
+    const msg1 = JSON.parse(lines[0]);
+    const msg2 = JSON.parse(lines[1]);
+    const msg3 = JSON.parse(lines[2]);
+    
+    expect(msg1.message).to.equal("Message 1");
+    expect(msg2.message).to.equal("Message 2");
+    expect(msg3.message).to.equal("Message 3");
+  });
+
+  it("should auto-flush when batch size limit is reached", () => {
+    // TEST_BATCH_SIZE is 5, so 5th message should trigger auto-flush
+    logger.info("Message 1");
+    logger.info("Message 2");
+    logger.info("Message 3");
+    logger.info("Message 4");
+    
+    expect(consoleLogStub.called).to.be.false;
+    
+    logger.info("Message 5"); // This triggers auto-flush
+    
+    expect(consoleLogStub.calledOnce).to.be.true;
+    const output = consoleLogStub.firstCall.args[0];
+    const lines = output.split('\n');
+    expect(lines).to.have.length(TEST_BATCH_SIZE);
+  });
+
+  it("should support disabling batching", () => {
+    configureLogger({ enableBatching: false });
+
+    logger.info("Immediate message");
+
+    // Should output immediately
+    expect(consoleLogStub.calledOnce).to.be.true;
+    const output = consoleLogStub.firstCall.args[0];
+    const parsed = JSON.parse(output);
+    expect(parsed.message).to.equal("Immediate message");
+  });
+
+  it("should handle empty batch flush", () => {
+    // Flush with no messages
+    logger.flush();
+    
+    // Should not call console.log
+    expect(consoleLogStub.called).to.be.false;
+  });
+
+  it("should clear batch after flush", () => {
+    logger.info("Message 1");
+    logger.flush();
+    
+    expect(consoleLogStub.calledOnce).to.be.true;
+    consoleLogStub.resetHistory();
+    
+    // Second flush should not output anything
+    logger.flush();
+    expect(consoleLogStub.called).to.be.false;
+  });
+
+  it("should batch different log levels together", () => {
+    logger.debug("Debug message");
+    logger.info("Info message");
+    logger.warn("Warning message");
+    logger.error("Error message");
+
+    logger.flush();
+
+    expect(consoleLogStub.calledOnce).to.be.true;
+    const output = consoleLogStub.firstCall.args[0];
+    const lines = output.split('\n');
+    expect(lines).to.have.length(4);
+    
+    const levels = lines.map(line => JSON.parse(line).level);
+    expect(levels).to.deep.equal(["DEBUG", "INFO", "WARN", "ERROR"]);
+  });
+
+  it("should batch stats with logs", () => {
+    logger.info("Starting harvest");
+    logger.stat("energy.harvested", 100, "energy");
+    logger.info("Finished harvest");
+
+    logger.flush();
+
+    expect(consoleLogStub.calledOnce).to.be.true;
+    const output = consoleLogStub.firstCall.args[0];
+    const lines = output.split('\n');
+    expect(lines).to.have.length(3);
+    
+    const msg1 = JSON.parse(lines[0]);
+    const stat = JSON.parse(lines[1]);
+    const msg2 = JSON.parse(lines[2]);
+    
+    expect(msg1.type).to.equal("log");
+    expect(stat.type).to.equal("stat");
+    expect(msg2.type).to.equal("log");
+  });
+});
+
