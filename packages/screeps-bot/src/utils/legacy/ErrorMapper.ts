@@ -27,6 +27,20 @@ function escapeHtml(str: string | undefined): string {
     .replace(/'/g, "&#39;");
 }
 
+/**
+ * Source map data structure (simplified)
+ * Based on Source Map V3 specification
+ */
+interface SourceMapData {
+  version: number;
+  sources: string[];
+  names: string[];
+  mappings: string;
+  file?: string;
+  sourceRoot?: string;
+  sourcesContent?: string[];
+}
+
 export class ErrorMapper {
   // Cache consumer (in-tick cache)
   private static _consumer?: SourceMapConsumer | null;
@@ -50,17 +64,17 @@ export class ErrorMapper {
 
       try {
         // Try to get cached source map data from heap
-        let sourceMapData = heapCache.get<any>(SOURCE_MAP_DATA_KEY);
+        let sourceMapData = heapCache.get<SourceMapData>(SOURCE_MAP_DATA_KEY);
         
         if (!sourceMapData) {
           // Not in heap cache, load from require
           // @ts-ignore - require may fail if source map not bundled
-          const rawSourceMap = require("main.js.map");
+          const rawSourceMap: unknown = require("main.js.map");
           
           // Parse the source map if it's a string, otherwise use it directly
           if (typeof rawSourceMap === "string") {
             try {
-              sourceMapData = JSON.parse(rawSourceMap);
+              sourceMapData = JSON.parse(rawSourceMap) as SourceMapData;
             } catch (e) {
               console.error(`Failed to parse source map JSON: ${e instanceof Error ? e.message : String(e)}`);
               this._consumer = null;
@@ -69,7 +83,7 @@ export class ErrorMapper {
               return null;
             }
           } else {
-            sourceMapData = rawSourceMap;
+            sourceMapData = rawSourceMap as SourceMapData;
           }
           
           // Cache the parsed source map data in heap for future global resets

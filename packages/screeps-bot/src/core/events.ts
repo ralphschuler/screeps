@@ -592,18 +592,23 @@ export class EventBus {
     // This allows coalescing of duplicate events while preserving unique ones
     const key: string[] = [eventName];
     
+    // Type guard helper for checking property existence
+    const hasProperty = <K extends string>(obj: unknown, prop: K): obj is Record<K, unknown> => {
+      return typeof obj === 'object' && obj !== null && prop in obj;
+    };
+    
     // Add key fields based on event type
-    if ('roomName' in payload) {
-      key.push((payload as any).roomName);
+    if (hasProperty(payload, 'roomName') && typeof payload.roomName === 'string') {
+      key.push(payload.roomName);
     }
-    if ('processId' in payload) {
-      key.push((payload as any).processId);
+    if (hasProperty(payload, 'processId') && typeof payload.processId === 'string') {
+      key.push(payload.processId);
     }
-    if ('squadId' in payload) {
-      key.push((payload as any).squadId);
+    if (hasProperty(payload, 'squadId') && typeof payload.squadId === 'string') {
+      key.push(payload.squadId);
     }
-    if ('clusterId' in payload) {
-      key.push((payload as any).clusterId);
+    if (hasProperty(payload, 'clusterId') && typeof payload.clusterId === 'string') {
+      key.push(payload.clusterId);
     }
     
     return key.join(':');

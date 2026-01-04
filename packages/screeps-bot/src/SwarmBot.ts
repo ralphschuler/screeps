@@ -97,7 +97,10 @@ function initializeSystems(): void {
   const config = getConfig();
   configureLogger({
     level: config.debug ? LogLevel.DEBUG : LogLevel.INFO,
-    cpuLogging: config.profiling
+    cpuLogging: config.profiling,
+    // Performance optimizations enabled by default
+    enableBatching: true,
+    maxBatchSize: 50
   });
   
   logger.info("Bot initialized", { subsystem: "SwarmBot", meta: { debug: config.debug, profiling: config.profiling } });

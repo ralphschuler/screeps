@@ -52,8 +52,8 @@ export interface LoggerConfig {
 const DEFAULT_CONFIG: LoggerConfig = {
   level: LogLevel.INFO,
   cpuLogging: false,
-  enableBatching: true,
-  maxBatchSize: 50
+  enableBatching: true,  // Matches JSDoc comment above
+  maxBatchSize: 50       // Matches JSDoc comment above
 };
 
 /**
