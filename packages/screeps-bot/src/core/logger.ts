@@ -39,17 +39,28 @@ export enum LogLevel {
 export interface LoggerConfig {
   level: LogLevel;
   cpuLogging: boolean;
+  /** Enable log batching to reduce console.log overhead (default: true) */
+  enableBatching: boolean;
+  /** Maximum batch size before automatic flush (default: 50) */
+  maxBatchSize: number;
 }
 
 const DEFAULT_CONFIG: LoggerConfig = {
   level: LogLevel.INFO,
-  cpuLogging: false
+  cpuLogging: false,
+  enableBatching: true,
+  maxBatchSize: 50
 };
 
 /**
  * Global logger configuration
  */
 let globalConfig: LoggerConfig = { ...DEFAULT_CONFIG };
+
+/**
+ * Message batch for batched logging
+ */
+let messageBatch: string[] = [];
 
 /**
  * Set global logger configuration
@@ -63,6 +74,40 @@ export function configureLogger(config: Partial<LoggerConfig>): void {
  */
 export function getLoggerConfig(): LoggerConfig {
   return { ...globalConfig };
+}
+
+/**
+ * Add a message to the batch or output immediately if batching is disabled
+ */
+function addToBatch(message: string): void {
+  if (!globalConfig.enableBatching) {
+    console.log(message);
+    return;
+  }
+
+  messageBatch.push(message);
+
+  // Auto-flush if batch size limit reached
+  if (messageBatch.length >= globalConfig.maxBatchSize) {
+    flushLogs();
+  }
+}
+
+/**
+ * Flush all batched log messages to console
+ * This should be called at the end of each tick
+ */
+export function flushLogs(): void {
+  if (messageBatch.length === 0) {
+    return;
+  }
+
+  // Output all messages in a single console.log call
+  // Join with newlines for readability in console
+  console.log(messageBatch.join('\n'));
+  
+  // Clear the batch
+  messageBatch = [];
 }
 
 /**
@@ -142,7 +187,7 @@ function formatMessage(level: string, message: string, context?: LogContext, typ
  */
 export function debug(message: string, context?: LogContext): void {
   if (globalConfig.level <= LogLevel.DEBUG) {
-    console.log(formatMessage("DEBUG", message, context));
+    addToBatch(formatMessage("DEBUG", message, context));
   }
 }
 
@@ -151,7 +196,7 @@ export function debug(message: string, context?: LogContext): void {
  */
 export function info(message: string, context?: LogContext): void {
   if (globalConfig.level <= LogLevel.INFO) {
-    console.log(formatMessage("INFO", message, context));
+    addToBatch(formatMessage("INFO", message, context));
   }
 }
 
@@ -160,7 +205,7 @@ export function info(message: string, context?: LogContext): void {
  */
 export function warn(message: string, context?: LogContext): void {
   if (globalConfig.level <= LogLevel.WARN) {
-    console.log(formatMessage("WARN", message, context));
+    addToBatch(formatMessage("WARN", message, context));
   }
 }
 
@@ -169,7 +214,7 @@ export function warn(message: string, context?: LogContext): void {
  */
 export function error(message: string, context?: LogContext): void {
   if (globalConfig.level <= LogLevel.ERROR) {
-    console.log(formatMessage("ERROR", message, context));
+    addToBatch(formatMessage("ERROR", message, context));
   }
 }
 
@@ -245,7 +290,7 @@ export function stat(key: string, value: number, unit?: string, context?: LogCon
   }
   
   // Always output single-line JSON
-  console.log(JSON.stringify(statObject));
+  addToBatch(JSON.stringify(statObject));
 }
 
 /**
@@ -305,5 +350,6 @@ export const logger = {
   measureCpu,
   configure: configureLogger,
   getConfig: getLoggerConfig,
-  createLogger
+  createLogger,
+  flush: flushLogs
 };

@@ -312,6 +312,10 @@ export function loop(): void {
 
   // Finalize unified stats for this tick - collects and exports all metrics
   unifiedStats.finalizeTick();
+
+  // Flush batched log messages to console
+  // This should be the last operation in the tick to capture all logs
+  logger.flush();
 }
 
 // Re-export key modules

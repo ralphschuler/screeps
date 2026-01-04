@@ -330,6 +330,13 @@ export class Kernel {
       }
     }
 
+    // Apply jitter to interval to prevent all processes running on the same tick
+    // Jitter is ±10% of the base interval (randomized per process)
+    const baseInterval = options.interval ?? defaults.interval;
+    const jitterRange = Math.floor(baseInterval * 0.1);
+    const jitter = Math.floor(Math.random() * (jitterRange * 2 + 1)) - jitterRange;
+    const jitteredInterval = Math.max(1, baseInterval + jitter);
+
     const process: Process = {
       id: options.id,
       name: options.name,
@@ -337,7 +344,7 @@ export class Kernel {
       frequency,
       minBucket: options.minBucket ?? defaults.minBucket,
       cpuBudget: options.cpuBudget ?? defaults.cpuBudget,
-      interval: options.interval ?? defaults.interval,
+      interval: jitteredInterval,
       tickModulo: options.tickModulo,
       tickOffset: options.tickOffset,
       execute: options.execute,
@@ -360,7 +367,7 @@ export class Kernel {
 
     this.processes.set(options.id, process);
     this.queueDirty = true; // Mark queue for rebuild
-    logger.debug(`Kernel: Registered process "${process.name}" (${process.id})`, { subsystem: "Kernel" });
+    logger.debug(`Kernel: Registered process "${process.name}" (${process.id}) with interval ${jitteredInterval} (base: ${baseInterval}, jitter: ${jitter > 0 ? '+' : ''}${jitter})`, { subsystem: "Kernel" });
   }
 
   /**
@@ -595,8 +602,9 @@ export class Kernel {
    * Bucket mode no longer affects process execution - the rolling index
    * and CPU budget checks provide sufficient protection against CPU overuse.
    * 
-   * TODO(P2): PERF - Add jitter to intervals to prevent all processes running on the same tick
-   * Spread process execution across ticks for more even CPU distribution
+   * Note: Process intervals include jitter (±10%) applied during registration
+   * to spread execution across ticks and prevent CPU spikes.
+   * 
    * TODO(P2): ARCH - Implement priority decay for starved processes to prevent indefinite skipping
    * Long-skipped low-priority processes could temporarily boost priority
    */

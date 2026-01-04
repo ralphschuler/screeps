@@ -1,10 +1,15 @@
 /* eslint-disable */
 import { SourceMapConsumer } from "source-map";
+import { heapCache } from "../../memory/heapCache";
 
 // TODO(P2): STYLE - Re-enable eslint for this file and fix style issues
 // The eslint-disable was added to ignore initial issues but should be addressed
-// TODO(P2): PERF - Cache source map parsing to avoid expensive re-parsing on global resets
-// First call after reset uses >30 CPU which can impact startup performance
+
+/**
+ * Heap cache keys for ErrorMapper
+ */
+const SOURCE_MAP_DATA_KEY = "errorMapper_sourceMapData";
+const SOURCE_MAP_AVAILABLE_KEY = "errorMapper_sourceMapAvailable";
 
 /**
  * Converts special HTML characters to their entity equivalents.
@@ -23,28 +28,52 @@ function escapeHtml(str: string | undefined): string {
 }
 
 export class ErrorMapper {
-  // Cache consumer
+  // Cache consumer (in-tick cache)
   private static _consumer?: SourceMapConsumer | null;
   private static _sourceMapAvailable?: boolean;
 
+  /**
+   * Get or initialize the source map consumer
+   * Uses heap cache to persist across global resets and avoid expensive re-parsing
+   */
   public static get consumer(): SourceMapConsumer | null {
     if (this._consumer === undefined) {
+      // Check if we have cached source map availability status
+      const cachedAvailable = heapCache.get<boolean>(SOURCE_MAP_AVAILABLE_KEY);
+      
+      if (cachedAvailable === false) {
+        // Source map is known to be unavailable, skip trying to load it
+        this._consumer = null;
+        this._sourceMapAvailable = false;
+        return null;
+      }
+
       try {
-        // @ts-ignore - require may fail if source map not bundled
-        const rawSourceMap = require("main.js.map");
-        // Parse the source map if it's a string, otherwise use it directly
-        let sourceMapData;
-        if (typeof rawSourceMap === "string") {
-          try {
-            sourceMapData = JSON.parse(rawSourceMap);
-          } catch (e) {
-            console.error(`Failed to parse source map JSON: ${e instanceof Error ? e.message : String(e)}`);
-            this._consumer = null;
-            this._sourceMapAvailable = false;
-            return null;
+        // Try to get cached source map data from heap
+        let sourceMapData = heapCache.get<any>(SOURCE_MAP_DATA_KEY);
+        
+        if (!sourceMapData) {
+          // Not in heap cache, load from require
+          // @ts-ignore - require may fail if source map not bundled
+          const rawSourceMap = require("main.js.map");
+          
+          // Parse the source map if it's a string, otherwise use it directly
+          if (typeof rawSourceMap === "string") {
+            try {
+              sourceMapData = JSON.parse(rawSourceMap);
+            } catch (e) {
+              console.error(`Failed to parse source map JSON: ${e instanceof Error ? e.message : String(e)}`);
+              this._consumer = null;
+              this._sourceMapAvailable = false;
+              heapCache.set(SOURCE_MAP_AVAILABLE_KEY, false, Infinity);
+              return null;
+            }
+          } else {
+            sourceMapData = rawSourceMap;
           }
-        } else {
-          sourceMapData = rawSourceMap;
+          
+          // Cache the parsed source map data in heap for future global resets
+          heapCache.set(SOURCE_MAP_DATA_KEY, sourceMapData, Infinity);
         }
         
         // SourceMapConsumer constructor returns a Promise in newer versions
@@ -55,17 +84,20 @@ export class ErrorMapper {
           // @ts-expect-error - Handling different SourceMapConsumer versions (sync vs async API)
           this._consumer = new SourceMapConsumer(sourceMapData);
           this._sourceMapAvailable = true;
+          heapCache.set(SOURCE_MAP_AVAILABLE_KEY, true, Infinity);
         } catch (e) {
           // If it's a promise, we can't use it in a synchronous getter
           // Fall back to no source map support
           console.log("SourceMapConsumer requires async initialization - source maps disabled");
           this._consumer = null;
           this._sourceMapAvailable = false;
+          heapCache.set(SOURCE_MAP_AVAILABLE_KEY, false, Infinity);
         }
       } catch (e) {
         // Source map not available - this is expected when sourcemap is disabled in build
         this._consumer = null;
         this._sourceMapAvailable = false;
+        heapCache.set(SOURCE_MAP_AVAILABLE_KEY, false, Infinity);
       }
     }
 
