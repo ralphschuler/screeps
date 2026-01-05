@@ -8,7 +8,7 @@
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
-    "bundle:check": "node -e \"const fs=require('fs');const size=fs.statSync('dist/main.js').size;const maxSize=2*1024*1024;console.log('Bundle size:',Math.round(size/1024)+'KB','/ 2048KB');if(size>maxSize){console.error('ERROR: Bundle exceeds 2MB limit!');process.exit(1);}\"",
+    "bundle:check": "node scripts/check-bundle-size.js",
     "build": "rollup -c",
     "push": "rollup -c --environment DEST:screeps",
     "test": "npm run test:unit",
