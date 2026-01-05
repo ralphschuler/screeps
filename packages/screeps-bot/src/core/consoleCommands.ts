@@ -29,6 +29,10 @@ import { expansionCommands } from "../empire/expansionCommands";
 import { tooAngelCommands } from "../empire/tooangel/consoleCommands";
 import { memoryCommands } from "../memory/memoryCommands";
 import { UICommands } from "./uiCommands";
+import { visualizationManager } from "../visuals/visualizationManager";
+import { VisualizationLayer } from "../memory/schemas";
+import { getCacheStatistics, resetCacheStats } from "../cache/domains/ObjectCache";
+import { getRoomFindCacheStats, clearRoomFindCache } from "../cache/domains/RoomFindCache";
 
 /**
  * Logging commands
@@ -188,7 +192,6 @@ class VisualizationCommands {
       return `Invalid mode: ${mode}. Valid modes: ${validModes.join(", ")}`;
     }
 
-    const { visualizationManager } = require("../visuals/visualizationManager");
     visualizationManager.setMode(mode as "debug" | "presentation" | "minimal" | "performance");
     return `Visualization mode set to: ${mode}`;
   }
@@ -207,9 +210,6 @@ class VisualizationCommands {
     category: "Visualization"
   })
   public toggleVisLayer(layer: string): string {
-    const { visualizationManager } = require("../visuals/visualizationManager");
-    const { VisualizationLayer } = require("../memory/schemas");
-    
     const layerMap: Record<string, number> = {
       pheromones: VisualizationLayer.Pheromones,
       paths: VisualizationLayer.Paths,
@@ -238,7 +238,6 @@ class VisualizationCommands {
     category: "Visualization"
   })
   public showVisPerf(): string {
-    const { visualizationManager } = require("../visuals/visualizationManager");
     const metrics = visualizationManager.getPerformanceMetrics();
     
     let result = "=== Visualization Performance ===\n";
@@ -264,8 +263,6 @@ class VisualizationCommands {
     category: "Visualization"
   })
   public showVisConfig(): string {
-    const { visualizationManager } = require("../visuals/visualizationManager");
-    const { VisualizationLayer } = require("../memory/schemas");
     const config = visualizationManager.getConfig();
     
     let result = "=== Visualization Configuration ===\n";
@@ -299,7 +296,6 @@ class VisualizationCommands {
     category: "Visualization"
   })
   public clearVisCache(roomName?: string): string {
-    const { visualizationManager } = require("../visuals/visualizationManager");
     visualizationManager.clearCache(roomName);
     
     if (roomName) {
@@ -343,7 +339,6 @@ ${stats.rooms.map(r => `  ${r.roomName}: RCL${r.rcl} | ${r.creepCount} creeps | 
     category: "Statistics"
   })
   public cacheStats(): string {
-    const { getCacheStatistics } = require("../utils/objectCache");
     const stats = getCacheStatistics();
     
     return `=== Object Cache Statistics ===
@@ -364,7 +359,6 @@ Performance: ${stats.hitRate >= 80 ? "Excellent" : stats.hitRate >= 60 ? "Good" 
     category: "Statistics"
   })
   public resetCacheStats(): string {
-    const { resetCacheStats } = require("../utils/objectCache");
     resetCacheStats();
     return "Cache statistics reset";
   }
@@ -377,7 +371,6 @@ Performance: ${stats.hitRate >= 80 ? "Excellent" : stats.hitRate >= 60 ? "Good" 
     category: "Statistics"
   })
   public roomFindCacheStats(): string {
-    const { getRoomFindCacheStats } = require("../utils/roomFindCache");
     const stats = getRoomFindCacheStats();
     
     const hitRatePercent = (stats.hitRate * 100).toFixed(2);
@@ -411,7 +404,6 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
     category: "Statistics"
   })
   public clearRoomFindCache(): string {
-    const { clearRoomFindCache } = require("../utils/roomFindCache");
     clearRoomFindCache();
     return "Room.find() cache cleared and statistics reset";
   }

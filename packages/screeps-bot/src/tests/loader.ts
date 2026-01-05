@@ -6,11 +6,19 @@
  */
 
 import { createLogger } from "../core/logger";
+import "./basic-game-state.test";
+import "./spawn-system.test";
+import "./creep-management.test";
+import "./swarm-kernel.test";
+import "./pheromone-system.test";
+import "./stats-system.test";
 
 const logger = createLogger("TestLoader");
 
 /**
  * Loads all integration tests if screepsmod-testing is available
+ * Tests are now statically imported to ensure proper bundling
+ * This function only checks for screepsmod-testing availability
  */
 export function loadIntegrationTests(): void {
   try {
@@ -21,17 +29,9 @@ export function loadIntegrationTests(): void {
       return;
     }
 
-    logger.info('Loading integration tests...');
-
-    // Import test suites
-    require('./basic-game-state.test');
-    require('./spawn-system.test');
-    require('./creep-management.test');
-    require('./swarm-kernel.test');
-    require('./pheromone-system.test');
-    require('./stats-system.test');
-
     logger.info('Integration tests loaded successfully');
+    // Test files are already imported statically above
+    // They will register themselves when screepsmod-testing is available
   } catch (error) {
     logger.error('Error loading integration tests', { meta: { error: String(error) } });
   }

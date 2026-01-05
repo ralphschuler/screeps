@@ -56,7 +56,9 @@ export default {
       rootDir: path.resolve(__dirname, "src"),
       extensions: [".js", ".ts"],
       browser: true, // Use browser-compatible versions of packages (e.g., source-map)
-      preferBuiltins: false // Don't prefer Node.js built-ins over npm packages
+      preferBuiltins: false, // Don't prefer Node.js built-ins over npm packages
+      // Ignore Node.js built-ins that shouldn't be in the Screeps bundle
+      ignore: ["fs", "path"]
     }),
     commonjs(),
     typescript({ 
