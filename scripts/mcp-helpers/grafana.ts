@@ -37,6 +37,7 @@ import { CPUMetrics, MetricQuery, LogQuery } from './types.js';
  */
 export async function getRecentCPUMetrics(hours: number = 24): Promise<CPUMetrics> {
   // TODO: This is a placeholder implementation
+  // Issue URL: https://github.com/ralphschuler/screeps/issues/2771
   // AI agents should use grafana-mcp query_prometheus tool directly
   
   const grafanaUrl = process.env.GRAFANA_URL || 'https://ralphschuler.grafana.net';

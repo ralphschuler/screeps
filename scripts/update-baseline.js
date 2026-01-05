@@ -73,6 +73,7 @@ async function main() {
     
     // Extract metrics from results
     // TODO: Adjust based on actual performance-results.json structure
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2772
     metrics = {
       avg: results.cpu?.average || 50,
       p95: results.cpu?.p95 || 75,
