@@ -346,7 +346,7 @@ Cache Size: ${stats.size} entries
 Cache Hits: ${stats.hits}
 Cache Misses: ${stats.misses}
 Hit Rate: ${stats.hitRate.toFixed(2)}%
-Estimated CPU Saved: ${stats.cpuSaved.toFixed(3)} CPU
+Estimated CPU Saved: ${(stats.cpuSaved ?? 0).toFixed(3)} CPU
 
 Performance: ${stats.hitRate >= 80 ? "Excellent" : stats.hitRate >= 60 ? "Good" : stats.hitRate >= 40 ? "Fair" : "Poor"}`;
   }
