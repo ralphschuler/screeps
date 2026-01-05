@@ -19,9 +19,9 @@ import {
   getLowest,
   applyDecay,
   clampWeights,
+  resetRandom,
   type WeightedEntry
-} from "../../src/utils/common/weightedSelection";
-import { resetRandom } from "../../src/utils/common/random";
+} from "@ralphschuler/screeps-utils";
 
 // Type for global with Game mock
 interface GlobalWithGame {

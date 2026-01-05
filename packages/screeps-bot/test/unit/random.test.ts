@@ -10,7 +10,7 @@ import {
   pick,
   createSeededRandom,
   resetRandom
-} from "../../src/utils/common/random";
+} from "@ralphschuler/screeps-utils";
 
 // Type for global with Game mock
 interface GlobalWithGame {

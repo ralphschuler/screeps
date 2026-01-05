@@ -14,7 +14,7 @@ import {
   groupBy,
   isLowBucket,
   hasCpuBudget
-} from "../../src/utils/optimization/cpuEfficiency";
+} from "@ralphschuler/screeps-utils";
 
 // Type for global with Game mock
 interface GlobalWithGame {

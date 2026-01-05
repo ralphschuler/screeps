@@ -9,7 +9,7 @@ import {
   safeFindClosestByRange,
   safeFindInRange,
   safeFindClosestByPath
-} from "../../src/utils/optimization/safeFind";
+} from "@ralphschuler/screeps-utils";
 
 // Mock room interface
 interface MockRoom {
