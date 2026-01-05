@@ -2,10 +2,6 @@
 
 This directory contains bot-specific utility functions. Most utilities have been extracted to framework packages for reusability across projects.
 
-# Utils Directory Organization
-
-This directory contains bot-specific utility functions. Most utilities have been extracted to framework packages for reusability across projects.
-
 ## Current Structure
 
 ### `/common` - Collection Points
