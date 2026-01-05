@@ -9,11 +9,11 @@
  */
 
 import type { SwarmState, SwarmCreepMemory } from "../memory/schemas";
+import { type WeightedEntry, weightedSelection } from "@ralphschuler/screeps-utils";
 import { ROLE_DEFINITIONS, type BodyTemplate, type RoleSpawnDef } from "./roleDefinitions";
 import { getPostureSpawnWeights, getDynamicPriorityBoost, getPheromoneMult } from "./spawnPriority";
 import { countCreepsByRole, needsRole, assignRemoteTargetRoom } from "./spawnNeedsAnalyzer";
 import { isBootstrapMode, getBootstrapRole, isEmergencySpawnState, getEnergyProducerCount } from "./bootstrapManager";
-import { type WeightedEntry, weightedSelection } from "../utils/common";
 import { kernel } from "../core/kernel";
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";

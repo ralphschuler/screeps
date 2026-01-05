@@ -1,38 +1,13 @@
 /**
  * Common Utilities
  *
- * Generic utilities for random number generation, weighted selection,
- * target distribution, and collection points.
+ * Bot-specific utilities that are tightly coupled to the bot's
+ * memory schemas and cannot be easily extracted.
  */
 
-// Collection Point - rally point calculation for military units
+// Collection Point - rally point calculation for military units (uses SwarmState)
 export {
   getCollectionPoint,
   invalidateCollectionPoint
 } from "./collectionPoint";
 
-// Random - seeded and unseeded random number generation
-export {
-  random,
-  randomInt,
-  shuffle,
-  pick,
-  createSeededRandom
-} from "./random";
-
-// Target Distribution - distributed target assignment
-export {
-  findDistributedTarget,
-  registerAssignment,
-  getAssignmentCount,
-  getAssignedCreeps
-} from "./targetDistribution";
-
-// Weighted Selection - probabilistic selection from weighted entries
-export type { WeightedEntry } from "./weightedSelection";
-export {
-  weightedSelection,
-  weightedSelectionEntry,
-  selectTopN,
-  selectTopNEntries
-} from "./weightedSelection";

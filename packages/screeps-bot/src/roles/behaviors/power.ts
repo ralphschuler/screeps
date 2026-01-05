@@ -6,8 +6,8 @@
  */
 
 import type { SwarmCreepMemory } from "../../memory/schemas";
+import { safeFind } from "@ralphschuler/screeps-utils";
 import { moveTo } from "screeps-cartographer";
-import { safeFind } from "../../utils/optimization";
 import type { CreepAction, CreepContext } from "./types";
 import {
   cachedRoomFind,

@@ -12,13 +12,8 @@
  */
 
 import type { SwarmState } from "../memory/schemas";
-import { memoryManager } from "../memory/manager";
-import { pheromoneManager } from "../logic/pheromone";
-import { calculateDangerLevel, evolutionManager, postureManager } from "../logic/evolution";
+import { safeFind } from "@ralphschuler/screeps-utils";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
-import { destroyMisplacedStructures, getBlueprint, placeConstructionSites, selectBestBlueprint } from "../layouts/blueprints/index";
-import { placeRoadConstructionSites } from "../layouts/roadNetworkPlanner";
-import { safeFind } from "../utils/optimization";
 import {
   safeModeManager,
   placeRoadAwarePerimeterDefense,
@@ -27,6 +22,11 @@ import {
   placeRampartsOnCriticalStructures,
   assessThreat
 } from "@ralphschuler/screeps-defense";
+import { memoryManager } from "../memory/manager";
+import { pheromoneManager } from "../logic/pheromone";
+import { evolutionManager, postureManager } from "../logic/evolution";
+import { destroyMisplacedStructures, getBlueprint, placeConstructionSites, selectBestBlueprint } from "../layouts/blueprints/index";
+import { placeRoadConstructionSites } from "../layouts/roadNetworkPlanner";
 import { chemistryPlanner } from "../labs/chemistryPlanner";
 import { boostManager } from "../labs/boostManager";
 import { labManager } from "../labs/labManager";
