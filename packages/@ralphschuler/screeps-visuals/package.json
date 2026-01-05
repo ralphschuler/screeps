@@ -28,7 +28,7 @@
   "homepage": "https://github.com/ralphschuler/screeps/tree/main/packages/@ralphschuler/screeps-visuals#readme",
   "devDependencies": {
     "@types/chai": "^4.1.6",
-    "@types/mocha": "^5.2.5",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^20.14.9",
     "@types/screeps": "^3.3.8",
     "chai": "^4.2.0",
