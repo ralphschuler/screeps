@@ -71,7 +71,7 @@ async function main() {
     };
     
     console.log('\nDetecting Regression...\n');
-    const regression = await detectRegression(currentMetrics, branch);
+    const regression = detectRegression(currentMetrics, branch);
     
     // Display results
     const icons = {

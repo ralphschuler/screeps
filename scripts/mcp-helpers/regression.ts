@@ -44,10 +44,10 @@ export function getBaseline(branch: string = 'main'): PerformanceBaseline | null
  * @param branch - Branch name for baseline comparison
  * @returns Regression report
  */
-export async function detectRegression(
+export function detectRegression(
   current: CPUMetrics,
   branch: string = 'main'
-): Promise<RegressionReport> {
+): RegressionReport {
   const baseline = getBaseline(branch);
   
   if (!baseline) {

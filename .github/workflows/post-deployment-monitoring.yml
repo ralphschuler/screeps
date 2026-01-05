@@ -197,32 +197,20 @@ ${comparison.needsRollback ?
             const prNumber = context.payload.pull_request?.number || ${{ inputs.pr_number }};
             const comparison = ${{ steps.compare.outputs.result }};
             
-            // Create rollback branch
-            const { data: pr } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: prNumber
-            });
+            // TODO: Improve rollback implementation
+            // Current implementation creates a placeholder PR that requires manual revert
+            // Future enhancement: Use GitHub's revert API or implement proper git revert
             
             const rollbackBranch = `rollback/pr-${prNumber}`;
             
-            // Create revert commit
-            const { data: revert } = await github.rest.repos.createCommit({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              message: `revert: Rollback PR #${prNumber} due to performance degradation`,
-              tree: pr.base.sha, // Revert to base
-              parents: [context.sha]
-            });
-            
-            // Create rollback PR
+            // Create rollback PR with instructions
             const { data: rollbackPr } = await github.rest.pulls.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `revert: Rollback PR #${prNumber} (${comparison.cpuIncreasePercent}% CPU increase)`,
               head: rollbackBranch,
               base: context.ref,
-              body: `## 🔄 Automatic Rollback
+              body: `## 🔄 Automatic Rollback Required
               
 **Original PR:** #${prNumber}
 **Reason:** CPU increased by ${comparison.cpuIncreasePercent}% (threshold: 20%)
@@ -232,6 +220,14 @@ ${comparison.needsRollback ?
 - Post-deploy CPU: ${comparison.current.toFixed(2)}
 - Increase: ${comparison.cpuIncreasePercent}%
 
+### Action Required
+**Manual Revert Needed**: This PR creates a placeholder for the rollback.
+Please manually revert the changes from PR #${prNumber} using:
+\`\`\`bash
+git revert <commit-sha>
+git push
+\`\`\`
+
 ### Next Steps
 1. Review the changes in PR #${prNumber}
 2. Identify the cause of CPU increase
@@ -239,7 +235,7 @@ ${comparison.needsRollback ?
 4. Resubmit with performance improvements
 
 ---
-*Automatic rollback by post-deployment monitoring*`
+*Automatic rollback detection by post-deployment monitoring*`
             });
             
             // Add labels
@@ -247,10 +243,11 @@ ${comparison.needsRollback ?
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: rollbackPr.number,
-              labels: ['rollback', 'automation', 'performance-issue', 'priority:high']
+              labels: ['rollback', 'automation', 'performance-issue', 'priority:high', 'requires-manual-action']
             });
             
             console.log(`Created rollback PR #${rollbackPr.number}`);
+            console.log('Note: Manual revert required - see PR description for instructions');
 
       - name: Create incident if critical
         if: fromJSON(steps.compare.outputs.result).severity == 'critical'
