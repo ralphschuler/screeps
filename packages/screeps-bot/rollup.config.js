@@ -9,6 +9,7 @@ import terser from "@rollup/plugin-terser";
 import alias from "@rollup/plugin-alias";
 import path from "path";
 import { fileURLToPath } from "url";
+import stubNodeBuiltins from "./rollup-plugin-stub-node-builtins.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,6 +48,7 @@ export default {
 
   plugins: [
     clear({ targets: ["dist"] }),
+    stubNodeBuiltins(), // Stub out Node.js built-ins before other plugins
     alias({
       entries: [
         { find: "@bot", replacement: path.resolve(__dirname, "src") }

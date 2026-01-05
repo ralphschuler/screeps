@@ -4,6 +4,7 @@ import { registerAllConsoleCommands } from "./core/consoleCommands";
 import { loop as swarmLoop } from "./SwarmBot";
 import { createLogger } from "./core/logger";
 import { getConfig } from "./config";
+import { loadIntegrationTests } from "./tests/loader";
 
 const logger = createLogger("Main");
 
@@ -125,8 +126,9 @@ const config = getConfig();
 registerAllConsoleCommands(config.lazyLoadConsoleCommands);
 
 // Load integration tests if available
+// Tests are now statically imported to ensure proper bundling
+// The loader will check for screepsmod-testing availability at runtime
 try {
-  const { loadIntegrationTests } = require("./tests/loader");
   loadIntegrationTests();
   logger.info("Integration tests loaded successfully");
 } catch (error) {
