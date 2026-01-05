@@ -317,24 +317,28 @@ export class MemorySegmentStats {
         statsRoot[`${roomPrefix}.brain.colony_level_code`] = this.colonyLevelToCode(swarm.colonyLevel);
 
         // Pheromone levels with stats.pheromone category for swarm behavior tracking
-        for (const [pheromone, value] of Object.entries(swarm.pheromones)) {
-          statsRoot[`${roomPrefix}.pheromone.${pheromone}`] = value as number;
+        if (swarm.pheromones) {
+          for (const [pheromone, value] of Object.entries(swarm.pheromones)) {
+            statsRoot[`${roomPrefix}.pheromone.${pheromone}`] = value as number;
+          }
         }
 
         // Room metrics with stats.metrics category for performance tracking
         const metrics = swarm.metrics;
-        statsRoot[`${roomPrefix}.metrics.energy.harvested`] = metrics.energyHarvested;
-        statsRoot[`${roomPrefix}.metrics.energy.spawning`] = metrics.energySpawning;
-        statsRoot[`${roomPrefix}.metrics.energy.construction`] = metrics.energyConstruction;
-        statsRoot[`${roomPrefix}.metrics.energy.repair`] = metrics.energyRepair;
-        statsRoot[`${roomPrefix}.metrics.energy.tower`] = metrics.energyTower;
-        statsRoot[`${roomPrefix}.metrics.energy.available_for_sharing`] = metrics.energyAvailable;
-        statsRoot[`${roomPrefix}.metrics.energy.capacity_total`] = metrics.energyCapacity;
-        statsRoot[`${roomPrefix}.metrics.energy.need`] = metrics.energyNeed;
-        statsRoot[`${roomPrefix}.metrics.controller_progress`] = metrics.controllerProgress;
-        statsRoot[`${roomPrefix}.metrics.hostile_count`] = metrics.hostileCount;
-        statsRoot[`${roomPrefix}.metrics.damage_received`] = metrics.damageReceived;
-        statsRoot[`${roomPrefix}.metrics.construction_sites`] = metrics.constructionSites;
+        if (metrics) {
+          statsRoot[`${roomPrefix}.metrics.energy.harvested`] = metrics.energyHarvested;
+          statsRoot[`${roomPrefix}.metrics.energy.spawning`] = metrics.energySpawning;
+          statsRoot[`${roomPrefix}.metrics.energy.construction`] = metrics.energyConstruction;
+          statsRoot[`${roomPrefix}.metrics.energy.repair`] = metrics.energyRepair;
+          statsRoot[`${roomPrefix}.metrics.energy.tower`] = metrics.energyTower;
+          statsRoot[`${roomPrefix}.metrics.energy.available_for_sharing`] = metrics.energyAvailable;
+          statsRoot[`${roomPrefix}.metrics.energy.capacity_total`] = metrics.energyCapacity;
+          statsRoot[`${roomPrefix}.metrics.energy.need`] = metrics.energyNeed;
+          statsRoot[`${roomPrefix}.metrics.controller_progress`] = metrics.controllerProgress;
+          statsRoot[`${roomPrefix}.metrics.hostile_count`] = metrics.hostileCount;
+          statsRoot[`${roomPrefix}.metrics.damage_received`] = metrics.damageReceived;
+          statsRoot[`${roomPrefix}.metrics.construction_sites`] = metrics.constructionSites;
+        }
       }
     }
 
