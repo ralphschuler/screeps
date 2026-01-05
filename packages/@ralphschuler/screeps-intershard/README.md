@@ -461,7 +461,7 @@ import { shardManager, resourceTransferCoordinator } from '@ralphschuler/screeps
 import { runCrossShardCarrier, handleCrossShardArrival } from '@ralphschuler/screeps-intershard/roles/crossShardCarrier';
 
 // Initialize once
-shard Manager.initialize();
+shardManager.initialize();
 
 export function loop() {
   // Shard manager runs automatically via decorator
