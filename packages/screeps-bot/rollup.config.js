@@ -54,7 +54,9 @@ export default {
     }),
     resolve({ 
       rootDir: path.resolve(__dirname, "src"),
-      extensions: [".js", ".ts"]
+      extensions: [".js", ".ts"],
+      browser: true, // Use browser-compatible versions of packages (e.g., source-map)
+      preferBuiltins: false // Don't prefer Node.js built-ins over npm packages
     }),
     commonjs(),
     typescript({ 
