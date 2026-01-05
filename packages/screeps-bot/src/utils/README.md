@@ -2,20 +2,37 @@
 
 This directory contains bot-specific utility functions. Most utilities have been extracted to framework packages for reusability across projects.
 
+# Utils Directory Organization
+
+This directory contains bot-specific utility functions. Most utilities have been extracted to framework packages for reusability across projects.
+
 ## Current Structure
 
-### `/metrics` - Bot-Specific Creep Metrics
-Performance measurement and tracking for individual creeps.
+### `/common` - Collection Points
+Bot-specific utilities for idle creep management.
 
 **Files:**
-- `creepMetrics.ts` - Creep efficiency metrics tracking (bot-specific memory integration)
+- `collectionPoint.ts` - Collection point calculation for idle creeps (integrates with bot memory)
 
 **Usage:**
 ```typescript
-import { initializeMetrics, recordHarvest } from "./utils/metrics";
+import { getCollectionPoint, invalidateCollectionPoint } from "./utils/common";
 ```
 
-**Note:** This is bot-specific because it integrates with creep memory. The CreepMetrics type is defined in `@ralphschuler/screeps-stats`.
+**Note:** This is bot-specific because it integrates with SwarmState memory schema.
+
+### `/optimization` - Idle Detection
+Bot-specific optimization utilities for creep behavior.
+
+**Files:**
+- `idleDetection.ts` - Idle creep detection (integrates with SwarmCreepMemory)
+
+**Usage:**
+```typescript
+import { canSkipBehaviorEvaluation, executeIdleAction } from "./utils/optimization";
+```
+
+**Note:** This is bot-specific because it integrates with bot-specific memory types. A generic version exists in `@ralphschuler/screeps-utils`.
 
 ### `/legacy` - Deprecated Utilities
 Utilities kept for backward compatibility with known issues.
@@ -34,6 +51,23 @@ import { ErrorMapper } from "./utils/legacy";
 ## Migrated Utilities
 
 The following utilities have been extracted to framework packages:
+
+### → `@ralphschuler/screeps-stats`
+
+**Metrics Utilities:**
+- `initializeMetrics`, `getMetrics` - Creep metrics initialization and access
+- `recordHarvest`, `recordTransfer`, `recordBuild`, `recordRepair`, `recordUpgrade` - Performance tracking
+- `recordDamage`, `recordHealing`, `recordTaskComplete` - Combat and task tracking
+- `getEfficiencySummary`, `resetMetrics` - Metrics reporting and management
+
+**Usage:**
+```typescript
+import { 
+  initializeMetrics, 
+  recordHarvest, 
+  getEfficiencySummary 
+} from "@ralphschuler/screeps-stats";
+```
 
 ### → `@ralphschuler/screeps-utils`
 
@@ -58,8 +92,6 @@ import {
   runScheduledTasks
 } from "@ralphschuler/screeps-utils";
 ```
-
-**Note:** `getCollectionPoint` and `canSkipBehaviorEvaluation`/`executeIdleAction` remain in the bot's utils directory as they are tightly coupled to bot-specific memory schemas and cannot be easily extracted without breaking the API.
 
 ### → `@ralphschuler/screeps-pathfinding`
 

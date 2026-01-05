@@ -5,7 +5,7 @@
  * These metrics track creep performance for analysis and optimization.
  */
 
-import type { CreepMetrics } from "@ralphschuler/screeps-stats";
+import type { CreepMetrics } from "./statsTypes";
 
 // Type for creep memory with metrics support
 interface CreepMemoryWithMetrics {
