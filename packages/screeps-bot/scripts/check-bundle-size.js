@@ -19,6 +19,7 @@ const __dirname = path.dirname(__filename);
 const BUNDLE_PATH = path.join(__dirname, '../dist/main.js');
 const MAX_SIZE_MB = 2;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
+const WARNING_THRESHOLD = 0.8; // Warn if bundle uses >80% of limit
 
 // Check if bundle exists
 if (!fs.existsSync(BUNDLE_PATH)) {
@@ -50,8 +51,8 @@ if (sizeBytes > MAX_SIZE_BYTES) {
 }
 
 // Warning if close to limit (>80%)
-if (sizeBytes > MAX_SIZE_BYTES * 0.8) {
-  console.warn('\n⚠️  WARNING: Bundle is using more than 80% of the limit.');
+if (sizeBytes > MAX_SIZE_BYTES * WARNING_THRESHOLD) {
+  console.warn('\n⚠️  WARNING: Bundle is using more than ' + (WARNING_THRESHOLD * 100) + '% of the limit.');
   console.warn('Consider optimizing to maintain a safety margin.');
 }
 
