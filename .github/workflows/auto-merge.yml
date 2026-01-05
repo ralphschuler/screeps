@@ -1,0 +1,280 @@
+---
+name: Auto-Merge Low-Risk PRs
+
+on:
+  pull_request:
+    types: [opened, synchronize, labeled, unlabeled]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to evaluate for auto-merge'
+        required: true
+        type: number
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+jobs:
+  evaluate-risk:
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'auto-merge-candidate') || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 30
+    
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Get PR details
+        id: pr
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const prNumber = context.payload.pull_request?.number || ${{ inputs.pr_number }};
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+            
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+            
+            return { pr, files };
+
+      - name: Assess risk level
+        id: risk
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { pr, files } = ${{ steps.pr.outputs.result }};
+            
+            // Critical files that should never be auto-merged
+            const criticalFiles = [
+              'packages/screeps-bot/src/main.ts',
+              'packages/@ralphschuler/screeps-kernel/',
+              'packages/@ralphschuler/screeps-stats/',
+              '.github/workflows/',
+              'package.json',
+              'package-lock.json'
+            ];
+            
+            // Check for critical file changes
+            const hasCriticalChanges = files.some(file => 
+              criticalFiles.some(critical => file.filename.includes(critical))
+            );
+            
+            if (hasCriticalChanges) {
+              console.log('Critical files changed - HIGH RISK');
+              return { level: 'high', autoMergeAllowed: false, reason: 'Critical system files modified' };
+            }
+            
+            // Calculate change size
+            const additions = pr.additions || 0;
+            const deletions = pr.deletions || 0;
+            const totalChanges = additions + deletions;
+            const filesChanged = files.length;
+            
+            console.log(`Changes: ${totalChanges} lines in ${filesChanged} files`);
+            
+            // Size-based risk assessment
+            if (totalChanges > 200 || filesChanged > 10) {
+              console.log('Large change size - HIGH RISK');
+              return { level: 'high', autoMergeAllowed: false, reason: 'Change too large (>200 lines or >10 files)' };
+            }
+            
+            if (totalChanges > 100 || filesChanged > 5) {
+              console.log('Medium change size - MEDIUM RISK');
+              return { level: 'medium', autoMergeAllowed: false, reason: 'Moderate change size - requires review' };
+            }
+            
+            // Check file types
+            const onlyDocs = files.every(file => 
+              file.filename.endsWith('.md') || 
+              file.filename.includes('docs/') ||
+              file.filename.includes('README')
+            );
+            
+            if (onlyDocs) {
+              console.log('Documentation only - LOW RISK');
+              return { level: 'low', autoMergeAllowed: true, reason: 'Documentation changes only' };
+            }
+            
+            // Check for test changes
+            const hasTests = files.some(file => 
+              file.filename.includes('test') || 
+              file.filename.includes('spec')
+            );
+            
+            const onlyTestChanges = files.every(file =>
+              file.filename.includes('test') ||
+              file.filename.includes('spec') ||
+              file.filename.endsWith('.md')
+            );
+            
+            if (onlyTestChanges) {
+              console.log('Test/doc changes only - LOW RISK');
+              return { level: 'low', autoMergeAllowed: true, reason: 'Test and documentation changes only' };
+            }
+            
+            // Small code changes with tests
+            if (totalChanges < 50 && filesChanged < 3 && hasTests) {
+              console.log('Small change with tests - LOW RISK');
+              return { level: 'low', autoMergeAllowed: true, reason: 'Small change with test coverage' };
+            }
+            
+            // Default to medium risk
+            console.log('Default assessment - MEDIUM RISK');
+            return { level: 'medium', autoMergeAllowed: false, reason: 'Requires manual review' };
+
+      - name: Add risk label
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const risk = ${{ steps.risk.outputs.result }};
+            const prNumber = context.payload.pull_request?.number || ${{ inputs.pr_number }};
+            
+            // Remove old risk labels
+            const labels = ['risk:low', 'risk:medium', 'risk:high'];
+            for (const label of labels) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  name: label
+                });
+              } catch (error) {
+                // Label might not exist, ignore
+              }
+            }
+            
+            // Add new risk label
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              labels: [`risk:${risk.level}`]
+            });
+            
+            // Add comment with risk assessment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: `## 🤖 Auto-Merge Risk Assessment
+              
+**Risk Level:** ${risk.level.toUpperCase()}
+**Auto-Merge:** ${risk.autoMergeAllowed ? '✅ Allowed' : '❌ Not Allowed'}
+**Reason:** ${risk.reason}
+
+${risk.autoMergeAllowed ? 
+  'This PR is eligible for auto-merge after all checks pass.' : 
+  'This PR requires manual review before merging.'}
+              
+---
+*Auto-merge risk assessment by workflow*`
+            });
+
+      - name: Install dependencies
+        if: fromJSON(steps.risk.outputs.result).autoMergeAllowed
+        run: npm ci --ignore-scripts
+
+      - name: Run full test suite
+        if: fromJSON(steps.risk.outputs.result).autoMergeAllowed
+        run: |
+          npm run build
+          npm test
+        continue-on-error: false
+
+      - name: Run performance tests
+        if: fromJSON(steps.risk.outputs.result).autoMergeAllowed
+        working-directory: packages/screeps-bot
+        run: npm run test:performance:logs || true
+        timeout-minutes: 15
+        continue-on-error: true
+
+      - name: Wait for other checks
+        if: fromJSON(steps.risk.outputs.result).autoMergeAllowed && success()
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const prNumber = context.payload.pull_request?.number || ${{ inputs.pr_number }};
+            
+            // Wait up to 10 minutes for other checks
+            const maxWaitTime = 10 * 60 * 1000; // 10 minutes
+            const startTime = Date.now();
+            
+            while (Date.now() - startTime < maxWaitTime) {
+              const { data: checks } = await github.rest.checks.listForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: context.payload.pull_request.head.sha
+              });
+              
+              const allPassed = checks.check_runs.every(check => 
+                check.status === 'completed' && check.conclusion === 'success'
+              );
+              
+              if (allPassed) {
+                console.log('All checks passed!');
+                return;
+              }
+              
+              console.log('Waiting for checks to complete...');
+              await new Promise(resolve => setTimeout(resolve, 30000)); // Wait 30 seconds
+            }
+            
+            throw new Error('Timeout waiting for checks to complete');
+
+      - name: Auto-merge PR
+        if: fromJSON(steps.risk.outputs.result).autoMergeAllowed && success()
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const prNumber = context.payload.pull_request?.number || ${{ inputs.pr_number }};
+            
+            try {
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                merge_method: 'squash',
+                commit_title: `${context.payload.pull_request.title} (#${prNumber})`,
+                commit_message: 'Auto-merged by autonomous workflow after passing all checks'
+              });
+              
+              console.log(`Successfully auto-merged PR #${prNumber}`);
+              
+              // Add success comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: '✅ **Auto-merged successfully!**\n\nAll checks passed and risk assessment confirmed this as a low-risk change.'
+              });
+            } catch (error) {
+              console.error('Failed to auto-merge:', error);
+              
+              // Add failure comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `❌ **Auto-merge failed**\n\nError: ${error.message}\n\nPlease merge manually.`
+              });
+              
+              throw error;
+            }

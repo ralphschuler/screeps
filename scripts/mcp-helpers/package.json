@@ -1,0 +1,20 @@
+{
+  "name": "mcp-helpers",
+  "version": "1.0.0",
+  "description": "Helper utilities for MCP server integration in autonomous development workflow",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "mcp",
+    "screeps",
+    "grafana",
+    "performance",
+    "autonomous"
+  ],
+  "dependencies": {
+    "@types/node": "^20.0.0"
+  }
+}

@@ -56,6 +56,13 @@ See [PERFORMANCE_TESTING.md](packages/screeps-bot/PERFORMANCE_TESTING.md) for de
   - **screeps-docs-mcp**: Access Screeps API documentation
   - **screeps-mcp**: Live game state and console integration
   - **screeps-wiki-mcp**: Community wiki search and retrieval
+  - **grafana-mcp**: Performance monitoring and observability
+- **Autonomous Development**: Self-improving bot with automated optimization
+  - Daily strategic planning and performance analysis
+  - Automated low-risk improvements with safety checks
+  - Post-deployment monitoring with automatic rollback
+  - Learning from outcomes to improve over time
+  - See [docs/AUTONOMOUS_DEVELOPMENT.md](docs/AUTONOMOUS_DEVELOPMENT.md) for details
 - **Framework Packages**: Modular, reusable packages for building your own bots
   - See [FRAMEWORK.md](FRAMEWORK.md) for framework documentation
 
