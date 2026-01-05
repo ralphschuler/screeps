@@ -37,26 +37,26 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PersistenceManager = void 0;
-const fs = __importStar(require("fs"));
-const path = __importStar(require("path"));
-const PERSISTENCE_VERSION = '1.0.0';
-const DEFAULT_HISTORY_SIZE = 10;
+var fs = __importStar(require("fs"));
+var path = __importStar(require("path"));
+var PERSISTENCE_VERSION = '1.0.0';
+var DEFAULT_HISTORY_SIZE = 10;
 /**
  * Persistence manager for test results
  */
-class PersistenceManager {
-    constructor(filePath, maxHistorySize) {
+var PersistenceManager = /** @class */ (function () {
+    function PersistenceManager(filePath, maxHistorySize) {
         this.filePath = filePath || path.join(process.cwd(), '.screeps-test-results.json');
         this.maxHistorySize = maxHistorySize || DEFAULT_HISTORY_SIZE;
     }
     /**
      * Load persisted test data
      */
-    load() {
+    PersistenceManager.prototype.load = function () {
         try {
             if (fs.existsSync(this.filePath)) {
-                const data = fs.readFileSync(this.filePath, 'utf8');
-                const persistence = JSON.parse(data);
+                var data = fs.readFileSync(this.filePath, 'utf8');
+                var persistence = JSON.parse(data);
                 // Validate version
                 if (persistence.version !== PERSISTENCE_VERSION) {
                     console.log('[screepsmod-testing] Persistence version mismatch, starting fresh');
@@ -66,16 +66,16 @@ class PersistenceManager {
             }
         }
         catch (error) {
-            console.log(`[screepsmod-testing] Error loading persistence: ${error}`);
+            console.log("[screepsmod-testing] Error loading persistence: ".concat(error));
         }
         return null;
-    }
+    };
     /**
      * Save test results
      */
-    save(summary) {
+    PersistenceManager.prototype.save = function (summary) {
         try {
-            let persistence = this.load();
+            var persistence = this.load();
             if (!persistence) {
                 persistence = {
                     version: PERSISTENCE_VERSION,
@@ -95,25 +95,25 @@ class PersistenceManager {
                 persistence.summaries = persistence.summaries.slice(0, this.maxHistorySize);
             }
             // Write to file
-            const data = JSON.stringify(persistence, null, 2);
+            var data = JSON.stringify(persistence, null, 2);
             fs.writeFileSync(this.filePath, data, 'utf8');
-            console.log(`[screepsmod-testing] Test results persisted to ${this.filePath}`);
+            console.log("[screepsmod-testing] Test results persisted to ".concat(this.filePath));
         }
         catch (error) {
-            console.log(`[screepsmod-testing] Error saving persistence: ${error}`);
+            console.log("[screepsmod-testing] Error saving persistence: ".concat(error));
         }
-    }
+    };
     /**
      * Get test history
      */
-    getHistory() {
-        const persistence = this.load();
-        return persistence?.summaries || [];
-    }
+    PersistenceManager.prototype.getHistory = function () {
+        var persistence = this.load();
+        return (persistence === null || persistence === void 0 ? void 0 : persistence.summaries) || [];
+    };
     /**
      * Clear persisted data
      */
-    clear() {
+    PersistenceManager.prototype.clear = function () {
         try {
             if (fs.existsSync(this.filePath)) {
                 fs.unlinkSync(this.filePath);
@@ -121,27 +121,27 @@ class PersistenceManager {
             }
         }
         catch (error) {
-            console.log(`[screepsmod-testing] Error clearing persistence: ${error}`);
+            console.log("[screepsmod-testing] Error clearing persistence: ".concat(error));
         }
-    }
+    };
     /**
      * Get statistics from history
      */
-    getStatistics() {
-        const persistence = this.load();
+    PersistenceManager.prototype.getStatistics = function () {
+        var persistence = this.load();
         if (!persistence || persistence.summaries.length === 0) {
             return null;
         }
-        const summaries = persistence.summaries;
-        const totalRuns = persistence.totalRuns;
+        var summaries = persistence.summaries;
+        var totalRuns = persistence.totalRuns;
         // Calculate average pass rate
-        const passRates = summaries.map(s => s.total > 0 ? s.passed / s.total : 0);
-        const averagePassRate = passRates.reduce((sum, rate) => sum + rate, 0) / passRates.length;
+        var passRates = summaries.map(function (s) { return s.total > 0 ? s.passed / s.total : 0; });
+        var averagePassRate = passRates.reduce(function (sum, rate) { return sum + rate; }, 0) / passRates.length;
         // Calculate average duration
-        const averageDuration = summaries.reduce((sum, s) => sum + s.duration, 0) / summaries.length;
+        var averageDuration = summaries.reduce(function (sum, s) { return sum + s.duration; }, 0) / summaries.length;
         // Get most recent status
-        const recent = summaries[0];
-        let mostRecentStatus = 'partial';
+        var recent = summaries[0];
+        var mostRecentStatus = 'partial';
         if (recent.failed === 0) {
             mostRecentStatus = 'passed';
         }
@@ -149,12 +149,13 @@ class PersistenceManager {
             mostRecentStatus = 'failed';
         }
         return {
-            totalRuns,
-            averagePassRate,
-            averageDuration,
-            mostRecentStatus
+            totalRuns: totalRuns,
+            averagePassRate: averagePassRate,
+            averageDuration: averageDuration,
+            mostRecentStatus: mostRecentStatus
         };
-    }
-}
+    };
+    return PersistenceManager;
+}());
 exports.PersistenceManager = PersistenceManager;
 //# sourceMappingURL=persistence.js.map

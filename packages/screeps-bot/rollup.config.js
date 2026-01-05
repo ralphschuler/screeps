@@ -9,6 +9,7 @@ import terser from "@rollup/plugin-terser";
 import alias from "@rollup/plugin-alias";
 import path from "path";
 import { fileURLToPath } from "url";
+import stubNodeBuiltins from "./rollup-plugin-stub-node-builtins.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,6 +48,7 @@ export default {
 
   plugins: [
     clear({ targets: ["dist"] }),
+    stubNodeBuiltins(), // Stub out Node.js built-ins before other plugins
     alias({
       entries: [
         { find: "@bot", replacement: path.resolve(__dirname, "src") }
@@ -54,7 +56,9 @@ export default {
     }),
     resolve({ 
       rootDir: path.resolve(__dirname, "src"),
-      extensions: [".js", ".ts"]
+      extensions: [".js", ".ts"],
+      browser: true, // Use browser-compatible versions of packages (e.g., source-map)
+      preferBuiltins: false // Don't prefer Node.js built-ins over npm packages
     }),
     commonjs(),
     typescript({ 
@@ -66,15 +70,17 @@ export default {
         passes: 3, // Increased from 2 to 3 for more aggressive compression
         drop_console: false, // Keep console.log for Screeps debugging
         drop_debugger: true,
-        unsafe: true,
-        unsafe_arrows: true,
-        unsafe_comps: true,
-        unsafe_Function: true,
-        unsafe_math: true,
-        unsafe_methods: true,
-        unsafe_proto: true,
-        unsafe_regexp: true,
-        unsafe_undefined: true,
+        // Disabled unsafe optimizations that can create invalid syntax in Screeps environment
+        // unsafe_comps was causing ternary operators with decimals (x ? .5 : .3) to be misinterpreted as optional chaining (x?.5)
+        unsafe: false,
+        unsafe_arrows: false,
+        unsafe_comps: false,
+        unsafe_Function: false,
+        unsafe_math: false,
+        unsafe_methods: false,
+        unsafe_proto: false,
+        unsafe_regexp: false,
+        unsafe_undefined: false,
         booleans_as_integers: false, // Keep booleans as true/false to preserve types in memory
         dead_code: true,
         evaluate: true,
@@ -88,7 +94,14 @@ export default {
       format: {
         comments: false,
         semicolons: true,
-        preserve_annotations: false
+        preserve_annotations: false,
+        // CRITICAL FIX: beautify adds spaces around operators to prevent ternary with decimals
+        // from creating invalid syntax that looks like optional chaining
+        // Example: x ? .5 : .3 becomes x?.5:.3 (looks like optional chaining) without beautify
+        beautify: true,
+        // But disable indentation and formatting to keep size down
+        indent_level: 0,
+        wrap_func_args: false
       }
     }),
 

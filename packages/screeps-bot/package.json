@@ -5,6 +5,10 @@
   "main": "main.js",
   "scripts": {
     "lint": "eslint \"src/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "bundle:check": "node scripts/check-bundle-size.js",
     "build": "rollup -c",
     "push": "rollup -c --environment DEST:screeps",
     "test": "npm run test:unit",

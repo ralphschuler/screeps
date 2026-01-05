@@ -13,8 +13,8 @@
  */
 
 import type { SquadMemory, SwarmCreepMemory, SwarmState } from "../../memory/schemas";
+import { safeFind } from "@ralphschuler/screeps-utils";
 import type { CreepContext } from "./types";
-import { safeFind } from "../../utils/optimization";
 import { createLogger } from "../../core/logger";
 
 const logger = createLogger("CreepContext");

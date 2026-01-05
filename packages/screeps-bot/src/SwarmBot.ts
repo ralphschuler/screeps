@@ -3,6 +3,9 @@
  */
 
 import type { RoleFamily, SwarmCreepMemory } from "./memory/schemas";
+import { runScheduledTasks } from "@ralphschuler/screeps-utils";
+import { unifiedStats } from "@ralphschuler/screeps-stats";
+import { RoomVisualizer, MapVisualizer } from "@ralphschuler/screeps-visuals";
 import { roomManager } from "./core/roomNode";
 import { runSpawnManager } from "./logic/spawn";
 import { memoryManager } from "./memory/manager";
@@ -11,17 +14,14 @@ import { preTick as initMovement, reconcileTraffic as finalizeMovement } from "s
 import { clearTargetAssignments as clearEconomyAssignments } from "./economy/targetAssignmentManager";
 import { kernel } from "./core/kernel";
 import { registerAllProcesses } from "./core/processRegistry";
-import { RoomVisualizer, MapVisualizer } from "@ralphschuler/screeps-visuals";
 import { getConfig } from "./config";
 import { LogLevel, configureLogger, logger } from "./core/logger";
 import { initializeNativeCallsTracking } from "./core/nativeCallsTracker";
-import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { creepProcessManager } from "./core/creepProcessManager";
 import { roomProcessManager } from "./core/roomProcessManager";
 import { runPowerRole } from "./roles/power";
 import { initializePheromoneEventHandlers } from "./logic/pheromoneEventHandlers";
 import { initializePathCacheEvents } from "./utils/pathfinding";
-import { runScheduledTasks } from "./utils/scheduling";
 import { heapCache } from "./memory/heapCache";
 import { SS2TerminalComms } from "./standards/SS2TerminalComms";
 import { initializeRemotePathScheduler } from "./utils/remote-mining";

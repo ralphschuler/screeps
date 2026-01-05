@@ -29,12 +29,12 @@ import {
   clearCachedPath,
   isExit
 } from "screeps-cartographer";
-import { getCollectionPoint } from "../../utils/common";
 import { memoryManager } from "../../memory/manager";
 import { clearClosestCache as clearAllCachedTargets } from "../../cache";
 import { createLogger } from "../../core/logger";
 import * as metrics from "../../utils/metrics";
 import { applyOpportunisticActions } from "../../economy/opportunisticActions";
+import { getCollectionPoint } from "../../utils/common";
 
 const logger = createLogger("ActionExecutor");
 

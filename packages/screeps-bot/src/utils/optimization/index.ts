@@ -1,35 +1,13 @@
 /**
  * Optimization Utilities
  *
- * Performance optimization utilities including CPU efficiency,
- * find optimizations, safe find wrappers, and idle detection.
+ * Bot-specific optimization utilities that are tightly coupled to
+ * the bot's memory schemas and cannot be easily extracted.
  */
 
-// CPU Efficiency - throttling
-export {
-  throttle,
-  throttleWithDefault
-} from "./cpuEfficiency";
-
-// Find Optimizations - optimized room.find() variants
-export {
-  cachedFindInRange,
-  optimizedFindClosest,
-  findStructuresByType,
-  findPrioritizedConstructionSites,
-  findDamagedStructures
-} from "./findOptimizations";
-
-// Idle Detection - skip unnecessary behavior evaluations
+// Idle Detection - bot-specific idle detection with SwarmCreepMemory
 export {
   canSkipBehaviorEvaluation,
   executeIdleAction
 } from "./idleDetection";
 
-// Safe Find - null-safe wrappers for room.find() operations
-export {
-  safeFind,
-  safeFindClosestByRange,
-  safeFindInRange,
-  safeFindClosestByPath
-} from "./safeFind";

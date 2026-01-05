@@ -6,8 +6,8 @@
  */
 
 import { createLogger } from "../../core/logger";
+import { scheduleTask, TaskPriority } from "@ralphschuler/screeps-utils";
 import { cachePath, getCachedPath, convertRoomPositionsToPathSteps } from "../../cache";
-import { scheduleTask, TaskPriority } from "../scheduling";
 import { moveTo } from "screeps-cartographer";
 import {
   RemotePathCache,
