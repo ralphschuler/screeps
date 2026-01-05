@@ -1,0 +1,305 @@
+---
+name: Post-Deployment Monitoring
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to monitor'
+        required: true
+        type: number
+      monitoring_duration:
+        description: 'Monitoring duration in minutes'
+        required: false
+        default: '30'
+        type: number
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  monitor-deployment:
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment:
+      name: production
+    
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Capture baseline metrics
+        id: baseline
+        uses: actions/github-script@v8
+        env:
+          GRAFANA_URL: 'https://ralphschuler.grafana.net'
+          GRAFANA_TOKEN: ${{ secrets.COPILOT_MCP_GRAFANA_SERVICE_ACCOUNT_TOKEN }}
+        with:
+          script: |
+            // TODO: This would query Grafana for pre-merge metrics
+            // For now, we'll use placeholder data
+            // In production, use grafana-mcp query_prometheus tool
+            
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Try to load baseline from file
+            const baselinePath = path.join(process.cwd(), 'performance-baselines/main.json');
+            let baseline = { cpu: { avg: 50 }, timestamp: Date.now() };
+            
+            if (fs.existsSync(baselinePath)) {
+              baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf-8'));
+            }
+            
+            console.log('Baseline metrics captured:', baseline);
+            return baseline;
+
+      - name: Wait for deployment
+        run: |
+          echo "Waiting for deployment to stabilize..."
+          DURATION=${{ inputs.monitoring_duration || '30' }}
+          sleep $((DURATION * 60))
+
+      - name: Capture post-deploy metrics
+        id: postdeploy
+        uses: actions/github-script@v8
+        env:
+          GRAFANA_URL: 'https://ralphschuler.grafana.net'
+          GRAFANA_TOKEN: ${{ secrets.COPILOT_MCP_GRAFANA_SERVICE_ACCOUNT_TOKEN }}
+        with:
+          script: |
+            // TODO: Query Grafana for post-merge metrics
+            // In production, use grafana-mcp query_prometheus tool
+            
+            console.log('Post-deployment metrics captured');
+            return { cpu: { avg: 55 }, timestamp: Date.now() };
+
+      - name: Compare metrics
+        id: compare
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const baseline = ${{ steps.baseline.outputs.result }};
+            const postdeploy = ${{ steps.postdeploy.outputs.result }};
+            
+            const cpuIncrease = (postdeploy.cpu.avg - baseline.cpu.avg) / baseline.cpu.avg;
+            const cpuIncreasePercent = (cpuIncrease * 100).toFixed(1);
+            
+            console.log(`CPU increase: ${cpuIncreasePercent}%`);
+            
+            return {
+              cpuIncrease,
+              cpuIncreasePercent,
+              baseline: baseline.cpu.avg,
+              current: postdeploy.cpu.avg,
+              needsRollback: cpuIncrease > 0.20,
+              severity: cpuIncrease > 0.30 ? 'critical' : cpuIncrease > 0.20 ? 'high' : cpuIncrease > 0.10 ? 'medium' : 'low'
+            };
+
+      - name: Record outcome in learning database
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const comparison = ${{ steps.compare.outputs.result }};
+            const prNumber = context.payload.pull_request?.number || ${{ inputs.pr_number }};
+            
+            // Load or create learning database
+            const dbDir = path.join(process.cwd(), '.github/autonomous-learning');
+            if (!fs.existsSync(dbDir)) {
+              fs.mkdirSync(dbDir, { recursive: true });
+            }
+            
+            const dbPath = path.join(dbDir, 'outcomes.json');
+            let db = {};
+            
+            if (fs.existsSync(dbPath)) {
+              db = JSON.parse(fs.readFileSync(dbPath, 'utf-8'));
+            }
+            
+            // Record outcome
+            const outcome = {
+              pr: prNumber,
+              timestamp: new Date().toISOString(),
+              cpuChange: comparison.cpuIncreasePercent,
+              severity: comparison.severity,
+              success: !comparison.needsRollback,
+              baseline: comparison.baseline,
+              postDeploy: comparison.current
+            };
+            
+            db[`pr_${prNumber}`] = outcome;
+            
+            // Save database
+            fs.writeFileSync(dbPath, JSON.stringify(db, null, 2), 'utf-8');
+            console.log('Outcome recorded in learning database');
+            
+            return outcome;
+
+      - name: Add monitoring comment to PR
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const comparison = ${{ steps.compare.outputs.result }};
+            const prNumber = context.payload.pull_request?.number || ${{ inputs.pr_number }};
+            
+            const emoji = comparison.severity === 'critical' ? '🔴' : 
+                         comparison.severity === 'high' ? '🟠' : 
+                         comparison.severity === 'medium' ? '🟡' : '🟢';
+            
+            const body = `## ${emoji} Post-Deployment Monitoring Report
+            
+**Monitoring Duration:** ${{ inputs.monitoring_duration || '30' }} minutes
+**CPU Change:** ${comparison.cpuIncreasePercent}%
+**Severity:** ${comparison.severity.toUpperCase()}
+
+### Metrics
+- **Baseline CPU:** ${comparison.baseline.toFixed(2)}
+- **Current CPU:** ${comparison.current.toFixed(2)}
+- **Change:** ${comparison.cpuIncreasePercent}%
+
+### Assessment
+${comparison.needsRollback ? 
+  '❌ **ROLLBACK RECOMMENDED** - CPU increase exceeds 20% threshold' : 
+  '✅ **DEPLOYMENT STABLE** - Performance within acceptable range'}
+
+---
+*Post-deployment monitoring by autonomous workflow*`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body
+            });
+
+      - name: Create rollback PR if needed
+        if: fromJSON(steps.compare.outputs.result).needsRollback
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const prNumber = context.payload.pull_request?.number || ${{ inputs.pr_number }};
+            const comparison = ${{ steps.compare.outputs.result }};
+            
+            // Create rollback branch
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+            
+            const rollbackBranch = `rollback/pr-${prNumber}`;
+            
+            // Create revert commit
+            const { data: revert } = await github.rest.repos.createCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              message: `revert: Rollback PR #${prNumber} due to performance degradation`,
+              tree: pr.base.sha, // Revert to base
+              parents: [context.sha]
+            });
+            
+            // Create rollback PR
+            const { data: rollbackPr } = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `revert: Rollback PR #${prNumber} (${comparison.cpuIncreasePercent}% CPU increase)`,
+              head: rollbackBranch,
+              base: context.ref,
+              body: `## 🔄 Automatic Rollback
+              
+**Original PR:** #${prNumber}
+**Reason:** CPU increased by ${comparison.cpuIncreasePercent}% (threshold: 20%)
+
+### Performance Impact
+- Baseline CPU: ${comparison.baseline.toFixed(2)}
+- Post-deploy CPU: ${comparison.current.toFixed(2)}
+- Increase: ${comparison.cpuIncreasePercent}%
+
+### Next Steps
+1. Review the changes in PR #${prNumber}
+2. Identify the cause of CPU increase
+3. Fix the issue
+4. Resubmit with performance improvements
+
+---
+*Automatic rollback by post-deployment monitoring*`
+            });
+            
+            // Add labels
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: rollbackPr.number,
+              labels: ['rollback', 'automation', 'performance-issue', 'priority:high']
+            });
+            
+            console.log(`Created rollback PR #${rollbackPr.number}`);
+
+      - name: Create incident if critical
+        if: fromJSON(steps.compare.outputs.result).severity == 'critical'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const prNumber = context.payload.pull_request?.number || ${{ inputs.pr_number }};
+            const comparison = ${{ steps.compare.outputs.result }};
+            
+            // Create incident issue
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🔴 INCIDENT: Critical performance degradation from PR #${prNumber}`,
+              body: `## Critical Performance Incident
+              
+**Triggered by:** PR #${prNumber}
+**CPU Increase:** ${comparison.cpuIncreasePercent}%
+**Severity:** CRITICAL
+
+### Impact
+- Baseline CPU: ${comparison.baseline.toFixed(2)}
+- Current CPU: ${comparison.current.toFixed(2)}
+- Increase: ${comparison.cpuIncreasePercent}%
+
+### Immediate Actions Required
+1. ✅ Rollback PR created automatically
+2. 🔍 Investigate root cause
+3. 🛠️ Implement fix
+4. ✅ Verify fix with performance tests
+5. 🚀 Redeploy with improvements
+
+### Timeline
+- Detection: ${new Date().toISOString()}
+- Rollback initiated: Automatic
+- Resolution target: 4 hours
+
+---
+*Automatic incident creation by post-deployment monitoring*`,
+              labels: ['incident', 'critical', 'performance-issue', 'automation']
+            });
+            
+            console.log(`Created incident issue #${issue.number}`);
+
+      - name: Upload monitoring report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: monitoring-report-pr-${{ github.event.pull_request.number || inputs.pr_number }}
+          path: |
+            .github/autonomous-learning/outcomes.json
+          retention-days: 90

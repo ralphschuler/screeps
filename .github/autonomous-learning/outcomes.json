@@ -1,0 +1,7 @@
+{
+  "$schema": "./schema.json",
+  "version": "1.0.0",
+  "description": "Learning database for autonomous development outcomes",
+  "lastUpdated": "2025-01-05T00:00:00Z",
+  "outcomes": {}
+}

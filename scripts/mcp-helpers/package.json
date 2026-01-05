@@ -1,0 +1,21 @@
+{
+  "name": "mcp-helpers",
+  "version": "1.0.0",
+  "description": "Helper utilities for MCP server integration in autonomous development workflow",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --experimental-vm-modules --experimental-specifier-resolution=node --loader ts-node/esm test.ts"
+  },
+  "keywords": [
+    "mcp",
+    "screeps",
+    "grafana",
+    "performance",
+    "autonomous"
+  ],
+  "dependencies": {
+    "@types/node": "^20.0.0"
+  }
+}

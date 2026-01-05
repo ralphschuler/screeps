@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Autonomous Development Learning Database",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version"
+    },
+    "description": {
+      "type": "string"
+    },
+    "lastUpdated": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "outcomes": {
+      "type": "object",
+      "patternProperties": {
+        "^pr_[0-9]+$": {
+          "type": "object",
+          "properties": {
+            "pr": {
+              "type": "number",
+              "description": "Pull request number"
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["performance", "feature", "bugfix", "refactor", "documentation"]
+            },
+            "filesChanged": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "linesChanged": {
+              "type": "number"
+            },
+            "predicted": {
+              "type": "object",
+              "properties": {
+                "cpuImpact": {
+                  "type": "number",
+                  "description": "Predicted CPU change (negative = improvement)"
+                },
+                "confidence": {
+                  "type": "string",
+                  "enum": ["low", "medium", "high"]
+                },
+                "risk": {
+                  "type": "string",
+                  "enum": ["low", "medium", "high"]
+                }
+              }
+            },
+            "actual": {
+              "type": "object",
+              "properties": {
+                "cpuChange": {
+                  "type": "number",
+                  "description": "Actual CPU change percentage"
+                },
+                "baseline": {
+                  "type": "number"
+                },
+                "postDeploy": {
+                  "type": "number"
+                }
+              }
+            },
+            "success": {
+              "type": "boolean",
+              "description": "Whether deployment was successful (no rollback needed)"
+            },
+            "rolledBack": {
+              "type": "boolean",
+              "description": "Whether change was rolled back"
+            },
+            "severity": {
+              "type": "string",
+              "enum": ["low", "medium", "high", "critical"]
+            },
+            "lessons": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Lessons learned from this outcome"
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": ["pr", "timestamp", "success"]
+        }
+      }
+    }
+  },
+  "required": ["version", "outcomes"]
+}
