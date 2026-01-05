@@ -6,12 +6,26 @@
  * This script demonstrates how to use the regression detection module
  * to check for performance regressions after code changes.
  * 
+ * Prerequisites:
+ *   cd scripts/mcp-helpers && npx tsc
+ * 
  * Usage:
  *   node scripts/check-performance-regression.js [branch] [cpu-avg] [cpu-p95]
  * 
  * Example:
  *   node scripts/check-performance-regression.js main 52.3 78.5
  */
+
+const fs = require('fs');
+const path = require('path');
+
+// Check if compiled files exist
+const distPath = path.join(__dirname, 'mcp-helpers', 'dist', 'regression.js');
+if (!fs.existsSync(distPath)) {
+  console.error('❌ MCP helpers not compiled. Please run:');
+  console.error('   cd scripts/mcp-helpers && npx tsc');
+  process.exit(1);
+}
 
 const { detectRegression, getBaseline, getRegressionHistory } = require('./mcp-helpers/dist/regression');
 

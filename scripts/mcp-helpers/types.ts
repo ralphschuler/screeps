@@ -56,10 +56,22 @@ export interface PerformanceBaseline {
 export interface RegressionReport {
   severity: 'none' | 'low' | 'medium' | 'high' | 'critical';
   message: string;
-  baseline?: any;
-  current?: any;
+  baseline?: {
+    avg: number;
+    p95: number;
+  };
+  current?: {
+    avg: number;
+    p95: number;
+    max: number;
+  };
   recommendation?: string;
-  details?: Record<string, any>;
+  details?: {
+    cpuIncrease: string;
+    p95Increase: string;
+    baselineBranch: string;
+    baselineTimestamp: number;
+  };
 }
 
 export interface WikiArticle {
