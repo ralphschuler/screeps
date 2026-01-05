@@ -37,20 +37,20 @@ exports.beforeEach = beforeEach;
 exports.afterEach = afterEach;
 exports.beforeAll = beforeAll;
 exports.afterAll = afterAll;
-const test_runner_1 = require("./test-runner");
+var test_runner_1 = require("./test-runner");
 // Global test runner instance
-const globalRunner = new test_runner_1.TestRunner();
+var globalRunner = new test_runner_1.TestRunner();
 exports.testRunner = globalRunner;
 /**
  * Define a test suite
  */
 function describe(name, fn) {
-    const suite = {
-        name,
+    var suite = {
+        name: name,
         tests: [],
     };
     // Store current context
-    const previousContext = currentSuiteContext;
+    var previousContext = currentSuiteContext;
     currentSuiteContext = suite;
     // Execute the suite definition
     fn();
@@ -66,10 +66,10 @@ function it(name, fn, tags) {
     if (!currentSuiteContext) {
         throw new Error('it() can only be called within a describe() block');
     }
-    const test = {
-        name,
-        fn,
-        tags,
+    var test = {
+        name: name,
+        fn: fn,
+        tags: tags,
     };
     currentSuiteContext.tests.push(test);
 }
@@ -80,11 +80,11 @@ function xit(name, fn, tags) {
     if (!currentSuiteContext) {
         throw new Error('xit() can only be called within a describe() block');
     }
-    const test = {
-        name,
-        fn,
+    var test = {
+        name: name,
+        fn: fn,
         skip: true,
-        tags,
+        tags: tags,
     };
     currentSuiteContext.tests.push(test);
 }
@@ -125,7 +125,7 @@ function afterAll(fn) {
     currentSuiteContext.afterAll = fn;
 }
 // Track current suite context for nested describe blocks
-let currentSuiteContext = null;
+var currentSuiteContext = null;
 // Re-export types and assertions
 __exportStar(require("./types"), exports);
 __exportStar(require("./assertions"), exports);
