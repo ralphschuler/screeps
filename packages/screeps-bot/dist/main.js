@@ -5640,9 +5640,9 @@ l["".concat(d, ".controller.progress")] = p.controllerProgress, l["".concat(d, "
 l["".concat(d, ".controller.progress_percent")] = p.controllerProgressTotal > 0 ? p.controllerProgress / p.controllerProgressTotal * 100 : 0;
 var y = n.memoryManager.getSwarmState(p.roomName);
 if (y) {
-l["".concat(d, ".brain.danger")] = y.danger, l["".concat(d, ".brain.posture_code")] = this.postureToCode(y.posture), 
-l["".concat(d, ".brain.colony_level_code")] = this.colonyLevelToCode(y.colonyLevel);
-try {
+if (l["".concat(d, ".brain.danger")] = y.danger, l["".concat(d, ".brain.posture_code")] = this.postureToCode(y.posture), 
+l["".concat(d, ".brain.colony_level_code")] = this.colonyLevelToCode(y.colonyLevel), 
+y.pheromones) try {
 for (var g = (i = void 0, t(Object.entries(y.pheromones))), h = g.next(); !h.done; h = g.next()) {
 var v = r(h.value, 2), R = v[0], E = v[1];
 l["".concat(d, ".pheromone.").concat(R)] = E;
@@ -5659,12 +5659,12 @@ if (i) throw i.error;
 }
 }
 var T = y.metrics;
-l["".concat(d, ".metrics.energy.harvested")] = T.energyHarvested, l["".concat(d, ".metrics.energy.spawning")] = T.energySpawning, 
+T && (l["".concat(d, ".metrics.energy.harvested")] = T.energyHarvested, l["".concat(d, ".metrics.energy.spawning")] = T.energySpawning, 
 l["".concat(d, ".metrics.energy.construction")] = T.energyConstruction, l["".concat(d, ".metrics.energy.repair")] = T.energyRepair, 
 l["".concat(d, ".metrics.energy.tower")] = T.energyTower, l["".concat(d, ".metrics.energy.available_for_sharing")] = T.energyAvailable, 
 l["".concat(d, ".metrics.energy.capacity_total")] = T.energyCapacity, l["".concat(d, ".metrics.energy.need")] = T.energyNeed, 
 l["".concat(d, ".metrics.controller_progress")] = T.controllerProgress, l["".concat(d, ".metrics.hostile_count")] = T.hostileCount, 
-l["".concat(d, ".metrics.damage_received")] = T.damageReceived, l["".concat(d, ".metrics.construction_sites")] = T.constructionSites;
+l["".concat(d, ".metrics.damage_received")] = T.damageReceived, l["".concat(d, ".metrics.construction_sites")] = T.constructionSites);
 }
 }
 } catch (e) {
