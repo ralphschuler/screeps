@@ -24,12 +24,12 @@
  */
 
 import type { CreepAction, CreepContext } from "./types";
+import { getCollectionPoint } from "@ralphschuler/screeps-utils";
 import { 
   moveTo,
   clearCachedPath,
   isExit
 } from "screeps-cartographer";
-import { getCollectionPoint } from "../../utils/common";
 import { memoryManager } from "../../memory/manager";
 import { clearClosestCache as clearAllCachedTargets } from "../../cache";
 import { createLogger } from "../../core/logger";

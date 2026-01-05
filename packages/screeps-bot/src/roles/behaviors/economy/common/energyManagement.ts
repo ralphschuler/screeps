@@ -5,8 +5,8 @@
  */
 
 import type { CreepAction, CreepContext } from "../../types";
+import { findDistributedTarget } from "@ralphschuler/screeps-utils";
 import { findCachedClosest } from "../../../../cache";
-import { findDistributedTarget } from "../../../../utils/common";
 import { cachedFindSources } from "../../../../cache";
 import { createLogger } from "../../../../core/logger";
 
