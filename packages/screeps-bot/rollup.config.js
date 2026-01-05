@@ -70,15 +70,17 @@ export default {
         passes: 3, // Increased from 2 to 3 for more aggressive compression
         drop_console: false, // Keep console.log for Screeps debugging
         drop_debugger: true,
-        unsafe: true,
-        unsafe_arrows: true,
-        unsafe_comps: true,
-        unsafe_Function: true,
-        unsafe_math: true,
-        unsafe_methods: true,
-        unsafe_proto: true,
-        unsafe_regexp: true,
-        unsafe_undefined: true,
+        // Disabled unsafe optimizations that can create invalid syntax in Screeps environment
+        // unsafe_comps was causing ternary operators with decimals (x ? .5 : .3) to be misinterpreted as optional chaining (x?.5)
+        unsafe: false,
+        unsafe_arrows: false,
+        unsafe_comps: false,
+        unsafe_Function: false,
+        unsafe_math: false,
+        unsafe_methods: false,
+        unsafe_proto: false,
+        unsafe_regexp: false,
+        unsafe_undefined: false,
         booleans_as_integers: false, // Keep booleans as true/false to preserve types in memory
         dead_code: true,
         evaluate: true,
@@ -92,7 +94,14 @@ export default {
       format: {
         comments: false,
         semicolons: true,
-        preserve_annotations: false
+        preserve_annotations: false,
+        // CRITICAL FIX: beautify adds spaces around operators to prevent ternary with decimals
+        // from creating invalid syntax that looks like optional chaining
+        // Example: x ? .5 : .3 becomes x?.5:.3 (looks like optional chaining) without beautify
+        beautify: true,
+        // But disable indentation and formatting to keep size down
+        indent_level: 0,
+        wrap_func_args: false
       }
     }),
 

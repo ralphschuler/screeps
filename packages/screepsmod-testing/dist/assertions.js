@@ -2,122 +2,125 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Assert = void 0;
 exports.expect = expect;
-const types_1 = require("./types");
+var types_1 = require("./types");
 /**
  * Simple assertion library for use within Screeps mods
  */
-class Assert {
+var Assert = /** @class */ (function () {
+    function Assert() {
+    }
     /**
      * Assert that a value is truthy
      */
-    static isTrue(value, message) {
+    Assert.isTrue = function (value, message) {
         if (!value) {
-            throw new types_1.AssertionError(message || `Expected value to be truthy, but got ${value}`, true, value);
+            throw new types_1.AssertionError(message || "Expected value to be truthy, but got ".concat(value), true, value);
         }
-    }
+    };
     /**
      * Assert that a value is falsy
      */
-    static isFalse(value, message) {
+    Assert.isFalse = function (value, message) {
         if (value) {
-            throw new types_1.AssertionError(message || `Expected value to be falsy, but got ${value}`, false, value);
+            throw new types_1.AssertionError(message || "Expected value to be falsy, but got ".concat(value), false, value);
         }
-    }
+    };
     /**
      * Assert that two values are equal (using ===)
      */
-    static equal(actual, expected, message) {
+    Assert.equal = function (actual, expected, message) {
         if (actual !== expected) {
-            throw new types_1.AssertionError(message || `Expected ${actual} to equal ${expected}`, expected, actual);
+            throw new types_1.AssertionError(message || "Expected ".concat(actual, " to equal ").concat(expected), expected, actual);
         }
-    }
+    };
     /**
      * Assert that two values are not equal (using !==)
      */
-    static notEqual(actual, expected, message) {
+    Assert.notEqual = function (actual, expected, message) {
         if (actual === expected) {
-            throw new types_1.AssertionError(message || `Expected ${actual} to not equal ${expected}`, `not ${expected}`, actual);
+            throw new types_1.AssertionError(message || "Expected ".concat(actual, " to not equal ").concat(expected), "not ".concat(expected), actual);
         }
-    }
+    };
     /**
      * Assert deep equality for objects and arrays
      */
-    static deepEqual(actual, expected, message) {
-        const actualStr = JSON.stringify(actual);
-        const expectedStr = JSON.stringify(expected);
+    Assert.deepEqual = function (actual, expected, message) {
+        var actualStr = JSON.stringify(actual);
+        var expectedStr = JSON.stringify(expected);
         if (actualStr !== expectedStr) {
-            throw new types_1.AssertionError(message || `Expected ${actualStr} to deep equal ${expectedStr}`, expected, actual);
+            throw new types_1.AssertionError(message || "Expected ".concat(actualStr, " to deep equal ").concat(expectedStr), expected, actual);
         }
-    }
+    };
     /**
      * Assert that a value is null or undefined
      */
-    static isNullish(value, message) {
+    Assert.isNullish = function (value, message) {
         if (value != null) {
-            throw new types_1.AssertionError(message || `Expected value to be null or undefined, but got ${value}`, null, value);
+            throw new types_1.AssertionError(message || "Expected value to be null or undefined, but got ".concat(value), null, value);
         }
-    }
+    };
     /**
      * Assert that a value is not null or undefined
      */
-    static isNotNullish(value, message) {
+    Assert.isNotNullish = function (value, message) {
         if (value == null) {
-            throw new types_1.AssertionError(message || `Expected value to not be null or undefined`, 'not null', value);
+            throw new types_1.AssertionError(message || "Expected value to not be null or undefined", 'not null', value);
         }
-    }
+    };
     /**
      * Assert that a value is of a specific type
      */
-    static isType(value, type, message) {
-        const actualType = typeof value;
+    Assert.isType = function (value, type, message) {
+        var actualType = typeof value;
         if (actualType !== type) {
-            throw new types_1.AssertionError(message || `Expected value to be of type ${type}, but got ${actualType}`, type, actualType);
+            throw new types_1.AssertionError(message || "Expected value to be of type ".concat(type, ", but got ").concat(actualType), type, actualType);
         }
-    }
+    };
     /**
      * Assert that a value is an instance of a class
      */
-    static isInstanceOf(value, constructor, message) {
+    Assert.isInstanceOf = function (value, constructor, message) {
+        var _a;
         if (!(value instanceof constructor)) {
-            throw new types_1.AssertionError(message || `Expected value to be an instance of ${constructor.name}`, constructor.name, value.constructor?.name);
+            throw new types_1.AssertionError(message || "Expected value to be an instance of ".concat(constructor.name), constructor.name, (_a = value.constructor) === null || _a === void 0 ? void 0 : _a.name);
         }
-    }
+    };
     /**
      * Assert that an array or string contains a value
      */
-    static includes(container, value, message) {
+    Assert.includes = function (container, value, message) {
         if (!container.includes(value)) {
-            throw new types_1.AssertionError(message || `Expected ${container} to include ${value}`, `includes ${value}`, container);
+            throw new types_1.AssertionError(message || "Expected ".concat(container, " to include ").concat(value), "includes ".concat(value), container);
         }
-    }
+    };
     /**
      * Assert that a value is greater than another
      */
-    static greaterThan(actual, expected, message) {
+    Assert.greaterThan = function (actual, expected, message) {
         if (actual <= expected) {
-            throw new types_1.AssertionError(message || `Expected ${actual} to be greater than ${expected}`, `> ${expected}`, actual);
+            throw new types_1.AssertionError(message || "Expected ".concat(actual, " to be greater than ").concat(expected), "> ".concat(expected), actual);
         }
-    }
+    };
     /**
      * Assert that a value is less than another
      */
-    static lessThan(actual, expected, message) {
+    Assert.lessThan = function (actual, expected, message) {
         if (actual >= expected) {
-            throw new types_1.AssertionError(message || `Expected ${actual} to be less than ${expected}`, `< ${expected}`, actual);
+            throw new types_1.AssertionError(message || "Expected ".concat(actual, " to be less than ").concat(expected), "< ".concat(expected), actual);
         }
-    }
+    };
     /**
      * Assert that a value is within a range (inclusive)
      */
-    static inRange(actual, min, max, message) {
+    Assert.inRange = function (actual, min, max, message) {
         if (actual < min || actual > max) {
-            throw new types_1.AssertionError(message || `Expected ${actual} to be between ${min} and ${max}`, `${min} <= x <= ${max}`, actual);
+            throw new types_1.AssertionError(message || "Expected ".concat(actual, " to be between ").concat(min, " and ").concat(max), "".concat(min, " <= x <= ").concat(max), actual);
         }
-    }
+    };
     /**
      * Assert that a function throws an error
      */
-    static throws(fn, message) {
+    Assert.throws = function (fn, message) {
         try {
             fn();
             throw new types_1.AssertionError(message || 'Expected function to throw an error', 'throws', 'no error thrown');
@@ -128,38 +131,39 @@ class Assert {
             }
             // Function threw as expected
         }
-    }
+    };
     /**
      * Assert that an object has a specific property
      */
-    static hasProperty(obj, property, message) {
+    Assert.hasProperty = function (obj, property, message) {
         if (!(property in obj)) {
-            throw new types_1.AssertionError(message || `Expected object to have property '${property}'`, `has ${property}`, Object.keys(obj).join(', '));
+            throw new types_1.AssertionError(message || "Expected object to have property '".concat(property, "'"), "has ".concat(property), Object.keys(obj).join(', '));
         }
-    }
+    };
     /**
      * Fail immediately with a message
      */
-    static fail(message) {
+    Assert.fail = function (message) {
         throw new types_1.AssertionError(message);
-    }
-}
+    };
+    return Assert;
+}());
 exports.Assert = Assert;
 /**
  * Convenience function to create assertions
  */
 function expect(value) {
     return {
-        toBe: (expected, message) => Assert.equal(value, expected, message),
-        toEqual: (expected, message) => Assert.deepEqual(value, expected, message),
-        toBeTruthy: (message) => Assert.isTrue(value, message),
-        toBeFalsy: (message) => Assert.isFalse(value, message),
-        toBeNull: (message) => Assert.equal(value, null, message),
-        toBeUndefined: (message) => Assert.equal(value, undefined, message),
-        toBeGreaterThan: (expected, message) => Assert.greaterThan(value, expected, message),
-        toBeLessThan: (expected, message) => Assert.lessThan(value, expected, message),
-        toContain: (item, message) => Assert.includes(value, item, message),
-        toHaveProperty: (property, message) => Assert.hasProperty(value, property, message)
+        toBe: function (expected, message) { return Assert.equal(value, expected, message); },
+        toEqual: function (expected, message) { return Assert.deepEqual(value, expected, message); },
+        toBeTruthy: function (message) { return Assert.isTrue(value, message); },
+        toBeFalsy: function (message) { return Assert.isFalse(value, message); },
+        toBeNull: function (message) { return Assert.equal(value, null, message); },
+        toBeUndefined: function (message) { return Assert.equal(value, undefined, message); },
+        toBeGreaterThan: function (expected, message) { return Assert.greaterThan(value, expected, message); },
+        toBeLessThan: function (expected, message) { return Assert.lessThan(value, expected, message); },
+        toContain: function (item, message) { return Assert.includes(value, item, message); },
+        toHaveProperty: function (property, message) { return Assert.hasProperty(value, property, message); }
     };
 }
 //# sourceMappingURL=assertions.js.map
