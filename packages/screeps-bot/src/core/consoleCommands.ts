@@ -33,6 +33,7 @@ import { visualizationManager } from "../visuals/visualizationManager";
 import { VisualizationLayer } from "../memory/schemas";
 import { getCacheStatistics, resetCacheStats } from "../cache/domains/ObjectCache";
 import { getRoomFindCacheStats, clearRoomFindCache } from "../cache/domains/RoomFindCache";
+import { globalCache } from "../cache";
 
 /**
  * Logging commands
@@ -1033,6 +1034,14 @@ export function registerAllConsoleCommands(lazy = false): void {
 
     // Register TooAngel commands as global object
     (global as unknown as Record<string, unknown>).tooangel = tooAngelCommands;
+
+    // Expose utility modules to global for use in UI command strings
+    // These are needed because Screeps doesn't support require() at runtime
+    const g = global as unknown as Record<string, unknown>;
+    g.botConfig = { getConfig, updateConfig };
+    g.botLogger = { configureLogger };
+    g.botVisualizationManager = visualizationManager;
+    g.botCacheManager = globalCache;
 
     // Expose all commands to global scope
     commandRegistry.exposeToGlobal();

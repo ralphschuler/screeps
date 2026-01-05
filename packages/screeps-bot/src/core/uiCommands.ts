@@ -103,8 +103,8 @@ export class UICommands {
     html += createElement.button({
       content: '🔄 Toggle Visualizations',
       command: `() => {
-        const config = require('./config').getConfig();
-        require('./config').updateConfig({visualizations: !config.visualizations});
+        const config = global.botConfig.getConfig();
+        global.botConfig.updateConfig({visualizations: !config.visualizations});
         return 'Visualizations: ' + (!config.visualizations ? 'ON' : 'OFF');
       }`
     });
@@ -164,7 +164,7 @@ export class UICommands {
           none: 4
         };
         const logLevel = levelMap[level];
-        require('./core/logger').configureLogger({level: logLevel});
+        global.botLogger.configureLogger({level: logLevel});
         return 'Log level set to: ' + level.toUpperCase();
       }`
     });
@@ -193,8 +193,7 @@ export class UICommands {
     ], {
       content: 'Set Visualization Mode',
       command: `({mode}) => {
-        const { visualizationManager } = require('../visuals/visualizationManager');
-        visualizationManager.setMode(mode);
+        global.botVisualizationManager.setMode(mode);
         return 'Visualization mode set to: ' + mode;
       }`
     });
@@ -215,8 +214,8 @@ export class UICommands {
     html += createElement.button({
       content: '🚨 Emergency Mode',
       command: `() => {
-        const config = require('./config').getConfig();
-        require('./config').updateConfig({emergencyMode: !config.emergencyMode});
+        const config = global.botConfig.getConfig();
+        global.botConfig.updateConfig({emergencyMode: !config.emergencyMode});
         return 'Emergency Mode: ' + (!config.emergencyMode ? 'ON' : 'OFF');
       }`
     });
@@ -227,10 +226,10 @@ export class UICommands {
     html += createElement.button({
       content: '🐛 Toggle Debug',
       command: `() => {
-        const config = require('./config').getConfig();
+        const config = global.botConfig.getConfig();
         const newValue = !config.debug;
-        require('./config').updateConfig({debug: newValue});
-        require('./core/logger').configureLogger({level: newValue ? 0 : 1});
+        global.botConfig.updateConfig({debug: newValue});
+        global.botLogger.configureLogger({level: newValue ? 0 : 1});
         return 'Debug mode: ' + (newValue ? 'ON' : 'OFF');
       }`
     });
@@ -241,8 +240,7 @@ export class UICommands {
     html += createElement.button({
       content: '🗑️ Clear Cache',
       command: `() => {
-        const { cacheManager } = require('./cache/CacheManager');
-        cacheManager.clear();
+        global.botCacheManager.clear();
         return 'Cache cleared successfully';
       }`
     });
