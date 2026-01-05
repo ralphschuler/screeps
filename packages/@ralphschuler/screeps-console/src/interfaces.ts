@@ -228,6 +228,5 @@ export const powerCommands: CommandCollection = {};
 export const shardCommands: CommandCollection = {};
 export const economyCommands: CommandCollection = {};
 export const expansionCommands: CommandCollection = {};
-export const tooAngelCommands: CommandCollection = {};
 export const memoryCommands: CommandCollection = {};
 export const UICommands: CommandCollection = {};

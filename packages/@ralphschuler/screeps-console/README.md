@@ -24,10 +24,8 @@ Console command framework with decorators and plugin system for Screeps bots.
 **Extracted Files:**
 - `commandRegistry.ts` (492 LOC) - Command registration and decorator system
 - `consoleCommands.ts` (1,080 LOC) - Core console commands
-- `tooAngelCommands.ts` (144 LOC) - TooAngel integration commands
-- `standardsCommands.ts` (229 LOC) - Standards compliance commands
 
-**Total:** 1,945 LOC extracted
+**Total:** 1,572 LOC extracted
 
 ## Installation
 
