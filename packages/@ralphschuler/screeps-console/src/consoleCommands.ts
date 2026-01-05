@@ -34,7 +34,6 @@ import {
   shardCommands,
   economyCommands,
   expansionCommands,
-  tooAngelCommands,
   memoryCommands,
   UICommands
 } from "./interfaces";
@@ -1087,9 +1086,6 @@ export function registerAllConsoleCommands(lazy = false): void {
     registerDecoratedCommands(expansionCommands);
     registerDecoratedCommands(memoryCommands);
 
-    // Register TooAngel commands as global object
-    (global as unknown as Record<string, unknown>).tooangel = tooAngelCommands;
-
     // Expose all commands to global scope
     commandRegistry.exposeToGlobal();
   };
@@ -1120,7 +1116,6 @@ export {
   powerCommands,
   shardCommands,
   expansionCommands,
-  tooAngelCommands,
   memoryCommands,
   UICommands
 };
