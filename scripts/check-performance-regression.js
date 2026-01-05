@@ -13,7 +13,7 @@
  *   node scripts/check-performance-regression.js main 52.3 78.5
  */
 
-import { detectRegression, getBaseline, getRegressionHistory } from './mcp-helpers/regression.js';
+const { detectRegression, getBaseline, getRegressionHistory } = require('./mcp-helpers/dist/regression');
 
 // Parse command line arguments
 const args = process.argv.slice(2);

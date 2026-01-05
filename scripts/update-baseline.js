@@ -15,9 +15,9 @@
  * performance test results.
  */
 
-import { saveBaseline } from './mcp-helpers/regression.js';
-import * as fs from 'fs';
-import * as path from 'path';
+const { saveBaseline } = require('./mcp-helpers/dist/regression');
+const fs = require('fs');
+const path = require('path');
 
 const args = process.argv.slice(2);
 const branch = args[0] || process.env.GITHUB_REF_NAME || 'develop';

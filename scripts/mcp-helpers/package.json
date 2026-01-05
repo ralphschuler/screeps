@@ -2,11 +2,10 @@
   "name": "mcp-helpers",
   "version": "1.0.0",
   "description": "Helper utilities for MCP server integration in autonomous development workflow",
-  "type": "module",
-  "main": "index.ts",
+  "type": "commonjs",
+  "main": "index.js",
   "scripts": {
-    "build": "tsc",
-    "test": "node --experimental-vm-modules --experimental-specifier-resolution=node --loader ts-node/esm test.ts"
+    "build": "tsc"
   },
   "keywords": [
     "mcp",
