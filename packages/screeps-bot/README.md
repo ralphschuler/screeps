@@ -55,8 +55,11 @@ export SCREEPS_HOSTNAME=screeps.com  # or your private server
 ### Build and Deploy
 
 ```bash
-# Build the code (generates dist/main.js and dist/main.js.map.js)
+# Build the code (generates dist/main.js)
 npm run build
+
+# Check bundle size
+npm run bundle:check
 
 # Build and deploy to Screeps API
 npm run push
@@ -64,6 +67,8 @@ npm run push
 # Watch mode - auto-build and deploy on file changes
 npm run watch
 ```
+
+**Bundle Size**: The bot is automatically checked against the **2MB Screeps upload limit** during build and deployment. See [BUNDLE_SIZE_OPTIMIZATION.md](BUNDLE_SIZE_OPTIMIZATION.md) for details on size management and optimization strategies.
 
 **Note**: The `dist/` folder is tracked in git to support Screeps GitHub integration. After building, commit the updated dist files if you want Screeps to sync from GitHub.
 
