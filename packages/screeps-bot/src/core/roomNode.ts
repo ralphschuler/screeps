@@ -24,7 +24,7 @@ import {
 } from "@ralphschuler/screeps-defense";
 import { memoryManager } from "../memory/manager";
 import { pheromoneManager } from "../logic/pheromone";
-import { calculateDangerLevel, evolutionManager, postureManager } from "../logic/evolution";
+import { evolutionManager, postureManager } from "../logic/evolution";
 import { destroyMisplacedStructures, getBlueprint, placeConstructionSites, selectBestBlueprint } from "../layouts/blueprints/index";
 import { placeRoadConstructionSites } from "../layouts/roadNetworkPlanner";
 import { chemistryPlanner } from "../labs/chemistryPlanner";

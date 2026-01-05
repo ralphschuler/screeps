@@ -6,13 +6,14 @@
  */
 
 import type { SquadMemory, SwarmCreepMemory } from "../../memory/schemas";
-import { getCollectionPoint, safeFindClosestByRange } from "@ralphschuler/screeps-utils";
+import { safeFindClosestByRange } from "@ralphschuler/screeps-utils";
 import { checkAndExecuteRetreat } from "@ralphschuler/screeps-defense";
 import { findCachedClosest } from "../../cache";
 import { registerMilitaryCacheClear } from "./context";
 import type { CreepAction, CreepContext } from "./types";
 import { createLogger } from "../../core/logger";
 import { globalCache } from "../../cache";
+import { getCollectionPoint } from "../../utils/common";
 
 const logger = createLogger("MilitaryBehaviors");
 

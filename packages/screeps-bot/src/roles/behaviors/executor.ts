@@ -24,7 +24,6 @@
  */
 
 import type { CreepAction, CreepContext } from "./types";
-import { getCollectionPoint } from "@ralphschuler/screeps-utils";
 import { 
   moveTo,
   clearCachedPath,
@@ -35,6 +34,7 @@ import { clearClosestCache as clearAllCachedTargets } from "../../cache";
 import { createLogger } from "../../core/logger";
 import * as metrics from "../../utils/metrics";
 import { applyOpportunisticActions } from "../../economy/opportunisticActions";
+import { getCollectionPoint } from "../../utils/common";
 
 const logger = createLogger("ActionExecutor");
 

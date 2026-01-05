@@ -13,7 +13,6 @@
  * - Strict tick budget: CPU allocation per creep is managed by kernel
  */
 
-import { canSkipBehaviorEvaluation, executeIdleAction } from "@ralphschuler/screeps-utils";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { ProcessPriority, kernel } from "./kernel";
 import { logger } from "./logger";
@@ -22,6 +21,7 @@ import { runEconomyRole } from "../roles/economy";
 import { runMilitaryRole } from "../roles/military";
 import { runPowerCreepRole } from "../roles/power";
 import { runUtilityRole } from "../roles/utility";
+import { canSkipBehaviorEvaluation, executeIdleAction } from "../utils/optimization";
 
 /**
  * Role priorities - higher values = run first

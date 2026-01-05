@@ -41,14 +41,12 @@ The following utilities have been extracted to framework packages:
 - `safeFind`, `safeFindClosestByRange` - Null-safe room.find() wrappers
 - `throttle`, `throttleWithDefault` - CPU throttling
 - `findOptimizations` - Optimized room.find() variants
-- `idleDetection` - Skip unnecessary behavior evaluations
 - `computationScheduler` - Spread expensive operations across ticks
 
 **Common Utilities:**
 - `random`, `randomInt`, `shuffle`, `pick` - Random number generation
 - `weightedSelection` - Probabilistic selection
 - `findDistributedTarget` - Distributed target assignment
-- `getCollectionPoint` - Rally point calculation
 
 **Usage:**
 ```typescript
@@ -57,10 +55,11 @@ import {
   throttle, 
   weightedSelection, 
   findDistributedTarget,
-  getCollectionPoint,
   runScheduledTasks
 } from "@ralphschuler/screeps-utils";
 ```
+
+**Note:** `getCollectionPoint` and `canSkipBehaviorEvaluation`/`executeIdleAction` remain in the bot's utils directory as they are tightly coupled to bot-specific memory schemas and cannot be easily extracted without breaking the API.
 
 ### → `@ralphschuler/screeps-pathfinding`
 
