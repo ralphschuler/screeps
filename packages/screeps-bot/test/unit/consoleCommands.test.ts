@@ -5,7 +5,6 @@
 
 import { assert } from "chai";
 import { standardsCommands } from "../../src/standards/consoleCommands";
-import { ProtocolRegistry } from "../../src/standards/ProtocolRegistry";
 
 // Mock Memory for tests
 interface GlobalWithMemory {
@@ -277,11 +276,11 @@ describe("Standards Console Commands", () => {
   });
 
   describe("Installation Function", () => {
-    it("should have installStandardsCommands function", () => {
+    it("should have installStandardsCommands function", async () => {
       // Import the install function
-      const { installStandardsCommands } = require("../../src/standards/consoleCommands");
+      const module = await import("../../src/standards/consoleCommands");
       
-      assert.isFunction(installStandardsCommands);
+      assert.isFunction(module.installStandardsCommands);
     });
   });
 });
