@@ -235,5 +235,53 @@ describe("Standards Console Commands", () => {
       // Result depends on whether needs exist
       assert.isNotEmpty(result);
     });
+
+    it("should process resource transfers", () => {
+      const result = standardsCommands.processTransfers();
+      
+      assert.isString(result);
+      assert.isNotEmpty(result);
+      assert.isTrue(
+        result.includes("processed") || result.includes("All transfers")
+      );
+    });
+  });
+
+  describe("Player Discovery Commands", () => {
+    it("should list player channels", () => {
+      const result = standardsCommands.listPlayerChannels("TestPlayer");
+      
+      assert.isString(result);
+      assert.include(result, "TestPlayer");
+    });
+
+    it("should get player portals", () => {
+      const result = standardsCommands.getPlayerPortals("TestPlayer");
+      
+      assert.isString(result);
+      assert.include(result, "TestPlayer");
+      assert.isTrue(
+        result.includes("portals") || result.includes("No portals")
+      );
+    });
+
+    it("should get player needs", () => {
+      const result = standardsCommands.getPlayerNeeds("TestPlayer");
+      
+      assert.isString(result);
+      assert.include(result, "TestPlayer");
+      assert.isTrue(
+        result.includes("needs") || result.includes("No needs")
+      );
+    });
+  });
+
+  describe("Installation Function", () => {
+    it("should have installStandardsCommands function", () => {
+      // Import the install function
+      const { installStandardsCommands } = require("../../src/standards/consoleCommands");
+      
+      assert.isFunction(installStandardsCommands);
+    });
   });
 });
