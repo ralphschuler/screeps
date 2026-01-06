@@ -1,10 +1,11 @@
 /**
- * Grafana MCP Integration Documentation
+ * Grafana MCP Integration Documentation (Documentation Only - No Exports)
  * 
  * This module provides documentation and examples for AI agents on how to use
  * the grafana-mcp tools directly. These are MCP server tools that are only
  * available to AI agents at runtime, not callable from Node.js scripts.
  * 
+ * This file contains NO exported functions - it is purely for documentation.
  * AI agents should use grafana-mcp tools directly:
  * - query_prometheus() - Query Prometheus metrics
  * - query_loki_logs() - Search Loki logs  
@@ -14,6 +15,9 @@
  * - get_alert_rule_by_uid() - Get specific alert details
  * 
  * The examples below show the correct usage patterns.
+ * 
+ * Note: Type definitions (CPUMetrics, MetricQuery, LogQuery, etc.) are available
+ * from ./types.js for use in other modules if needed.
  */
 
 /**
