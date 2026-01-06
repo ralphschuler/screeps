@@ -5,7 +5,7 @@ import {
   getAssignmentCount,
   getAssignedCreeps,
   clearTargetAssignments
-} from "../../src/utils/common/targetDistribution";
+} from "@ralphschuler/screeps-utils";
 
 /**
  * Test suite for target distribution system

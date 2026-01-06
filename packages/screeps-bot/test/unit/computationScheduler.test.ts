@@ -10,7 +10,7 @@ import {
   unscheduleTask,
   runScheduledTasks,
   getSchedulerStats
-} from "../../src/utils/scheduling/computationScheduler";
+} from "@ralphschuler/screeps-utils";
 
 describe("computationScheduler", () => {
   beforeEach(() => {

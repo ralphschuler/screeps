@@ -22,6 +22,22 @@ export {
   DEFAULT_ADAPTIVE_CONFIG
 } from './adaptiveBudgets';
 
+// Export creep metrics utilities
+export {
+  initializeMetrics,
+  getMetrics,
+  recordHarvest,
+  recordTransfer,
+  recordBuild,
+  recordRepair,
+  recordUpgrade,
+  recordDamage,
+  recordHealing,
+  recordTaskComplete,
+  getEfficiencySummary,
+  resetMetrics
+} from './creepMetrics';
+
 // Export types
 export * from './statsTypes';
 export type { AdaptiveBudgetConfig } from './adaptiveBudgets';
