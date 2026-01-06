@@ -33,16 +33,8 @@ export type {
   LogQuery
 } from './types.js';
 
-// Grafana helpers (placeholders - agents use grafana-mcp tools)
-export {
-  getRecentCPUMetrics,
-  getGCLProgress,
-  getErrorLogs,
-  queryMetric,
-  searchLogs,
-  getDashboard,
-  getActiveAlerts
-} from './grafana.js';
+// Grafana documentation (see grafana.ts for MCP tool usage examples)
+// Note: No exports - AI agents should use grafana-mcp tools directly
 
 // Screeps helpers (placeholders - agents use screeps-mcp tools)
 export {
