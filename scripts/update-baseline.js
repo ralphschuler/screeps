@@ -26,6 +26,9 @@ const path = require('path');
 
 // Constants
 const DEFAULT_SCENARIO = 'default';
+const MAX_CPU_MULTIPLIER = 1.1;  // For estimating max CPU from p95
+const MIN_CPU_MULTIPLIER = 0.5;  // For estimating min CPU from avg
+const P99_CPU_MULTIPLIER = 1.05; // For estimating p99 from p95
 
 // Check if compiled files exist
 const distPath = path.join(__dirname, 'mcp-helpers', 'dist', 'regression.js');
@@ -58,9 +61,9 @@ async function main() {
     metrics = {
       avg: cpuAvg,
       p95: cpuP95,
-      max: cpuP95 * 1.1,
-      min: cpuAvg * 0.5,
-      p99: cpuP95 * 1.05,
+      max: cpuP95 * MAX_CPU_MULTIPLIER,
+      min: cpuAvg * MIN_CPU_MULTIPLIER,
+      p99: cpuP95 * P99_CPU_MULTIPLIER,
       timestamp: Date.now()
     };
   } else {
@@ -154,7 +157,7 @@ async function main() {
       baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf-8'));
     } catch (parseError) {
       console.error(`Error reading baseline file: ${parseError.message}`);
-      throw new Error('Failed to read baseline file after saving. File may be corrupted.');
+      throw new Error('Failed to read baseline file after initial save. The saveBaseline function may have failed or the file was not created properly.');
     }
     
     // Add scenarios structure if it doesn't exist
@@ -187,7 +190,7 @@ async function main() {
     console.log(`\nBaseline saved to: performance-baselines/${branch}.json`);
     console.log(`History saved to: performance-baselines/history/${branch}-${new Date().toISOString().split('T')[0]}.json`);
   } catch (error) {
-    console.error(`\n❌ Failed to save baseline: ${error.message}`);
+    // Re-throw to let main's error handler log it
     throw error;
   }
 }
