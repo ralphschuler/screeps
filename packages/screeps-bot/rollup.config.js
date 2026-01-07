@@ -83,8 +83,7 @@ export default {
       extensions: [".js", ".ts"],
       browser: true, // Use browser-compatible versions of packages (e.g., source-map)
       preferBuiltins: false, // Don't prefer Node.js built-ins over npm packages
-      // Explicitly resolve workspace packages
-      dedupe: ['source-map'] // Deduplicate source-map to avoid multiple copies
+      dedupe: ['source-map'] // Deduplicate source-map to avoid multiple copies in bundle
     }),
     commonjs(),
     typescript({ 
