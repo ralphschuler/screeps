@@ -30,10 +30,5 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.4.3"
   },
-  "dependencies": {
-    "@ralphschuler/screeps-defense": "*",
-    "@ralphschuler/screeps-economy": "*",
-    "@ralphschuler/screeps-stats": "*",
-    "@ralphschuler/screeps-utils": "*"
-  }
+  "dependencies": {}
 }
