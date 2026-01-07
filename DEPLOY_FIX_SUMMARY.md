@@ -154,7 +154,7 @@ For each server you want to deploy to (e.g., `screeps.com`):
 2. Check the workflow logs for:
    ```
    === Screeps Deploy Configuration ===
-   hasValidCredentials: [your-token]
+   hasValidCredentials: YES
    Credentials type: token
    dryRun will be: false
    ====================================

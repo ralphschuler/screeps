@@ -164,7 +164,7 @@ npm run push
 You should see:
 ```
 === Screeps Deploy Configuration ===
-hasValidCredentials: [your-token]
+hasValidCredentials: YES
 Credentials type: token
 dryRun will be: false
 ====================================
