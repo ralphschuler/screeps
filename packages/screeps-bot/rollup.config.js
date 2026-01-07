@@ -66,16 +66,9 @@ export default {
     sourcemap: false
   },
 
-  // Prevent workspace packages from being treated as external dependencies
-  external: (id) => {
-    // Bundle all @ralphschuler/* packages
-    if (id.startsWith('@ralphschuler/')) {
-      return false;
-    }
-    // Keep other node_modules as external if needed (though screeps needs everything bundled)
-    // For screeps, we want to bundle everything, so return false for all
-    return false;
-  },
+  // Bundle all dependencies into main.js (Screeps doesn't support require())
+  // Return false to include everything, including @ralphschuler/* workspace packages
+  external: () => false,
 
   plugins: [
     clear({ targets: ["dist"] }),
