@@ -10,7 +10,7 @@
     "format:check": "prettier --check \"src/**/*.ts\"",
     "bundle:check": "node scripts/check-bundle-size.js",
     "build": "rollup -c && npm run bundle:check",
-    "push": "npm run build && rollup -c",
+    "push": "npm run build",
     "test": "npm run test:unit",
     "test:unit": "mocha test/unit/**/*.ts",
     "test:coverage": "c8 --reporter=text --reporter=html --reporter=lcov npm run test:unit",
