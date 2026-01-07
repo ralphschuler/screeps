@@ -23,11 +23,26 @@ export interface Logger {
 }
 
 export function createLogger(category: string): Logger {
+  const stringifyArgs = (...args: any[]): any[] => {
+    return args.map(arg => {
+      // Keep primitives as-is
+      if (typeof arg === 'string' || typeof arg === 'number' || typeof arg === 'boolean' || arg === null || arg === undefined) {
+        return arg;
+      }
+      // Stringify objects/arrays, with error handling
+      try {
+        return JSON.stringify(arg);
+      } catch (error) {
+        return '[Unserializable Object]';
+      }
+    });
+  };
+  
   return {
-    debug: (msg: string, ...args: any[]) => console.log(`[${category}]`, msg, ...args),
-    info: (msg: string, ...args: any[]) => console.log(`[${category}]`, msg, ...args),
-    warn: (msg: string, ...args: any[]) => console.log(`[${category}] WARN:`, msg, ...args),
-    error: (msg: string, ...args: any[]) => console.log(`[${category}] ERROR:`, msg, ...args)
+    debug: (msg: string, ...args: any[]) => console.log(`[${category}]`, msg, ...stringifyArgs(...args)),
+    info: (msg: string, ...args: any[]) => console.log(`[${category}]`, msg, ...stringifyArgs(...args)),
+    warn: (msg: string, ...args: any[]) => console.log(`[${category}] WARN:`, msg, ...stringifyArgs(...args)),
+    error: (msg: string, ...args: any[]) => console.log(`[${category}] ERROR:`, msg, ...stringifyArgs(...args))
   };
 }
 
