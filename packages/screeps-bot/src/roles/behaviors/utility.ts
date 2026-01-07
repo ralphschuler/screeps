@@ -10,7 +10,7 @@ import { safeFind } from "@ralphschuler/screeps-utils";
 import { findCachedClosest } from "../../cache";
 import { isExit } from "screeps-cartographer";
 import type { CreepAction, CreepContext } from "./types";
-import { createLogger } from "../../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "../../memory/manager";
 
 const logger = createLogger("UtilityBehaviors");

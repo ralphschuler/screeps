@@ -9,7 +9,7 @@
  * 5. Completion - Report quest success/failure
  */
 
-import { logger } from "../../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import type {
   TooAngelQuest,
   TooAngelQuestMemory,

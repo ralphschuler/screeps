@@ -6,7 +6,7 @@
 import { SS1Channel, SS1SegmentManager } from "./SS1SegmentManager";
 import { PortalsProtocol } from "./segment-protocols/PortalsProtocol";
 import { RoomNeedsProtocol } from "./segment-protocols/RoomNeedsProtocol";
-import { createLogger } from "../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 
 const logger = createLogger("ProtocolRegistry");
 

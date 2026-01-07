@@ -6,7 +6,7 @@
  * - buildcs: Build all construction sites in target room
  */
 
-import { logger } from "../../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import type { TooAngelQuestMemory } from "./types";
 import { notifyQuestComplete } from "./questManager";
 

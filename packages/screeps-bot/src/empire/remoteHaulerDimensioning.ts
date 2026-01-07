@@ -11,7 +11,7 @@
  * Addresses remote mining gaps from Issue: Remote Mining
  */
 
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 
 /**
  * Source energy generation constants

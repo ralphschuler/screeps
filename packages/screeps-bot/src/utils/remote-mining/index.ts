@@ -5,7 +5,7 @@
  * the bot's internal systems (logger, cache, scheduler).
  */
 
-import { createLogger } from "../../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 import { scheduleTask, TaskPriority } from "@ralphschuler/screeps-utils";
 import { cachePath, getCachedPath, convertRoomPositionsToPathSteps } from "../../cache";
 import { moveTo } from "screeps-cartographer";

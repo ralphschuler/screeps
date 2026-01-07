@@ -16,7 +16,7 @@
  * - 90-99: Stats and monitoring data (used by memorySegmentStats)
  */
 
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 
 /**
  * Segment allocation map

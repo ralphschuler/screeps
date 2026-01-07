@@ -7,7 +7,7 @@
  * ROADMAP Section 4: Automatic memory pruning for old/stale data
  */
 
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import type { EmpireMemory, SwarmState } from "./schemas";
 
 /** Maximum event log entries per room */

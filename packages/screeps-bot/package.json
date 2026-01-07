@@ -68,7 +68,9 @@
     "typescript": "^5.4.3"
   },
   "dependencies": {
+    "@ralphschuler/screeps-cache": "*",
     "@ralphschuler/screeps-chemistry": "*",
+    "@ralphschuler/screeps-core": "*",
     "@ralphschuler/screeps-defense": "*",
     "@ralphschuler/screeps-economy": "*",
     "@ralphschuler/screeps-pathfinding": "*",

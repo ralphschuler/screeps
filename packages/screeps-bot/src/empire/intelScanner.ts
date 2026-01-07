@@ -12,7 +12,7 @@
 
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { ProcessPriority } from "../core/kernel";
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { memoryManager } from "../memory/manager";
 import type { RoomIntel } from "../memory/schemas";

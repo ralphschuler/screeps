@@ -15,7 +15,7 @@
  * - ±20% for predictions up to 100 ticks
  */
 
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 
 /**
  * Configuration for energy flow prediction

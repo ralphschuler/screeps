@@ -23,7 +23,7 @@ import {
   getRemoteRoomNeedingWorkers,
   isEmergencySpawnState
 } from "../logic/spawn";
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { 
   analyzeDefenderNeeds, 
   getCurrentDefenders, 

@@ -23,7 +23,7 @@
  * - Survives resets: data restored from Memory after global reset
  */
 
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 
 // Augment Memory interface with cache property
 declare global {

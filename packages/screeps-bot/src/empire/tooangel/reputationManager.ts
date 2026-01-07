@@ -11,7 +11,7 @@
  * - Failed quests
  */
 
-import { logger } from "../../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import type { TooAngelReputationMessage, TooAngelReputation } from "./types";
 import { findClosestNPCRoom } from "./npcDetector";
 import { getTooAngelMemory } from "./memoryInit";

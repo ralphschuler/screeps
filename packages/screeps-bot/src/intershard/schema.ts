@@ -4,7 +4,7 @@
  * Multi-shard meta layer schema and serialization.
  */
 
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 
 /**
  * Shard role in multi-shard empire

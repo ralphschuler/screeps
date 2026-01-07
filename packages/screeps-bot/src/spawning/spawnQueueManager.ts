@@ -15,9 +15,9 @@ import { getPostureSpawnWeights, getDynamicPriorityBoost, getPheromoneMult } fro
 import { countCreepsByRole, needsRole, assignRemoteTargetRoom } from "./spawnNeedsAnalyzer";
 import { isBootstrapMode, getBootstrapRole, isEmergencySpawnState, getEnergyProducerCount } from "./bootstrapManager";
 import { kernel } from "../core/kernel";
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "../memory/manager";
-import { cachedFindMyStructures } from "../cache";
+import { cachedFindMyStructures } from "@ralphschuler/screeps-cache";
 
 /**
  * Get best body template for a role based on available energy capacity

@@ -6,7 +6,7 @@
  * - Tracking terminal availability for communication
  */
 
-import { logger } from "../../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import type { TooAngelQuestSign, TooAngelNPCRoom } from "./types";
 
 /**

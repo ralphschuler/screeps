@@ -11,7 +11,7 @@ import { checkAndExecuteRetreat } from "@ralphschuler/screeps-defense";
 import { findCachedClosest } from "../../cache";
 import { registerMilitaryCacheClear } from "./context";
 import type { CreepAction, CreepContext } from "./types";
-import { createLogger } from "../../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 import { globalCache } from "../../cache";
 import { getCollectionPoint } from "../../utils/common";
 

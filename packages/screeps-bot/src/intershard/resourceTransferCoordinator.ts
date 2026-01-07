@@ -12,7 +12,7 @@
  */
 
 import type { InterShardTask } from "./schema";
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { optimizeBody } from "../spawning/bodyOptimizer";
 import { SpawnPriority, type SpawnRequest, spawnQueue } from "../spawning/spawnQueue";
 import { shardManager } from "./shardManager";

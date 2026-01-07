@@ -8,7 +8,7 @@
  */
 
 import type { SwarmCreepMemory, SwarmState } from "../memory/schemas";
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { calculateBoostCost, getBoostConfig } from "@ralphschuler/screeps-chemistry";
 
 /**

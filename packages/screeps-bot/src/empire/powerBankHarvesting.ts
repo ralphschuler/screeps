@@ -10,7 +10,7 @@
  * Addresses Issue: #26
  */
 
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "../memory/manager";
 import type { PowerBankEntry } from "../memory/schemas";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";

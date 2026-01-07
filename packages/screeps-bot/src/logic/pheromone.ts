@@ -4,7 +4,7 @@
 
 import type { PheromoneState, SwarmState } from "../memory/schemas";
 import { safeFind } from "@ralphschuler/screeps-utils";
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 
 /** Pheromone system configuration */
 export interface PheromoneConfig {

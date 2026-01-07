@@ -5,7 +5,7 @@
  * Tests are only loaded when running in the performance testing environment.
  */
 
-import { createLogger } from "../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 import "./basic-game-state.test";
 import "./spawn-system.test";
 import "./creep-management.test";

@@ -18,7 +18,7 @@
  */
 
 import { memoryManager } from "../memory/manager";
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { ProcessPriority } from "../core/kernel";
 import type { SquadDefinition, NukeInFlight, IncomingNukeAlert, NukeEconomics } from "../memory/schemas";
