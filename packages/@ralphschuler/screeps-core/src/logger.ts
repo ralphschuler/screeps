@@ -23,6 +23,7 @@
  * TODO(P3): FEATURE - Add structured error serialization
  * Include stack traces and error context in structured format
  * TODO(P3): FEATURE - Consider adding log rate limiting per subsystem
+ Issue URL: https://github.com/ralphschuler/screeps/issues/2801
  * Prevent any single subsystem from flooding the console
  */
 

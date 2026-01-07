@@ -33,6 +33,7 @@
  * - Emergency prioritization
  * - Mineral balancing logic
  * TODO(P2): TEST - Expand integration tests with full Game object mocking
+ Issue URL: https://github.com/ralphschuler/screeps/issues/2799
  */
 
 import type { ClusterMemory, SquadDefinition } from "../memory/schemas";

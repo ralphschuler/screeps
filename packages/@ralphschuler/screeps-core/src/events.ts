@@ -24,6 +24,7 @@
  * ```
  * 
  * TODO(P2): ARCH - Consider implementing event replay/persistence for debugging
+ Issue URL: https://github.com/ralphschuler/screeps/issues/2800
  * Store recent events in a ring buffer for post-mortem analysis of issues
  * 
  * Event Coalescing: IMPLEMENTED
