@@ -24,6 +24,9 @@
 const fs = require('fs');
 const path = require('path');
 
+// Constants
+const DEFAULT_SCENARIO = 'default';
+
 // Check if compiled files exist
 const distPath = path.join(__dirname, 'mcp-helpers', 'dist', 'regression.js');
 if (!fs.existsSync(distPath)) {
@@ -114,39 +117,56 @@ async function main() {
   // Save baseline
   console.log('\nSaving baseline...');
   
-  // Save using the regression module's saveBaseline function
-  // This saves the simple cpu/gcl structure
-  saveBaseline(metrics, branch, additionalData);
-  
-  // Also update the baseline with the full scenarios structure
-  // This is needed for analyze-performance.js compatibility
-  const baselinePath = path.join(process.cwd(), 'performance-baselines', `${branch}.json`);
-  const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf-8'));
-  
-  // Add scenarios structure if it doesn't exist
-  if (!baseline.scenarios) {
-    baseline.scenarios = {};
+  try {
+    // Save using the regression module's saveBaseline function
+    // This saves the simple cpu/gcl structure
+    saveBaseline(metrics, branch, additionalData);
+    
+    // Also update the baseline with the full scenarios structure
+    // This is needed for analyze-performance.js compatibility
+    const baselinePath = path.join(process.cwd(), 'performance-baselines', `${branch}.json`);
+    
+    let baseline;
+    try {
+      baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf-8'));
+    } catch (parseError) {
+      console.error(`Error reading baseline file: ${parseError.message}`);
+      throw new Error('Failed to read baseline file after saving. File may be corrupted.');
+    }
+    
+    // Add scenarios structure if it doesn't exist
+    if (!baseline.scenarios) {
+      baseline.scenarios = {};
+    }
+    
+    // Update the default scenario with current metrics
+    baseline.scenarios[DEFAULT_SCENARIO] = {
+      avgCpu: metrics.avg,
+      maxCpu: metrics.max,
+      p95Cpu: metrics.p95,
+      p99Cpu: metrics.p99
+    };
+    
+    // Add commit hash if available
+    if (process.env.GITHUB_SHA) {
+      baseline.commit = process.env.GITHUB_SHA;
+    }
+    
+    // Save updated baseline
+    try {
+      fs.writeFileSync(baselinePath, JSON.stringify(baseline, null, 2), 'utf-8');
+    } catch (writeError) {
+      console.error(`Error writing baseline file: ${writeError.message}`);
+      throw new Error('Failed to write updated baseline. Check file permissions and disk space.');
+    }
+    
+    console.log('\n✅ Baseline updated successfully');
+    console.log(`\nBaseline saved to: performance-baselines/${branch}.json`);
+    console.log(`History saved to: performance-baselines/history/${branch}-${new Date().toISOString().split('T')[0]}.json`);
+  } catch (error) {
+    console.error(`\n❌ Failed to save baseline: ${error.message}`);
+    throw error;
   }
-  
-  // Update the default scenario with current metrics
-  baseline.scenarios['default'] = {
-    avgCpu: metrics.avg,
-    maxCpu: metrics.max,
-    p95Cpu: metrics.p95,
-    p99Cpu: metrics.p99
-  };
-  
-  // Add commit hash if available
-  if (process.env.GITHUB_SHA) {
-    baseline.commit = process.env.GITHUB_SHA;
-  }
-  
-  // Save updated baseline
-  fs.writeFileSync(baselinePath, JSON.stringify(baseline, null, 2), 'utf-8');
-  
-  console.log('\n✅ Baseline updated successfully');
-  console.log(`\nBaseline saved to: performance-baselines/${branch}.json`);
-  console.log(`History saved to: performance-baselines/history/${branch}-${new Date().toISOString().split('T')[0]}.json`);
 }
 
 main().catch(error => {
