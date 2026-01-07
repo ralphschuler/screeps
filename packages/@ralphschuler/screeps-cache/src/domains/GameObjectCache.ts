@@ -35,7 +35,7 @@ export function getCreepsByRole(role: string): Creep[] {
   return globalCache.get<Creep[]>(`creeps_role_${role}`, {
     namespace: NAMESPACE,
     ttl: TTL_ONE_TICK,
-    compute: () => Object.values(Game.creeps).filter(c => c.memory.role === role)
+    compute: () => Object.values(Game.creeps).filter(c => (c.memory as any).role === role)
   }) ?? [];
 }
 
@@ -71,7 +71,7 @@ export function getCreepCountByRole(role: string): number {
   return globalCache.get<number>(`creeps_count_role_${role}`, {
     namespace: NAMESPACE,
     ttl: TTL_ONE_TICK,
-    compute: () => Object.values(Game.creeps).filter(c => c.memory.role === role).length
+    compute: () => Object.values(Game.creeps).filter(c => (c.memory as any).role === role).length
   }) ?? 0;
 }
 

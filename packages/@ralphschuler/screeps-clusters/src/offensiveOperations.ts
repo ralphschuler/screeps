@@ -14,7 +14,7 @@
  */
 
 import type { ClusterMemory, SquadDefinition } from "../memory/schemas";
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "../memory/manager";
 import { findAttackTargets, markRoomAttacked, validateTarget } from "./attackTargetSelector";
 import { type OffensiveDoctrine, canLaunchDoctrine, selectDoctrine } from "./offensiveDoctrine";

@@ -11,7 +11,7 @@
  */
 
 import type { ClusterMemory, SquadDefinition } from "../memory/schemas";
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { SpawnPriority, type SpawnRequest, spawnQueue } from "../spawning/spawnQueue";
 import { addCreepToSquad, getSquadReadiness } from "./squadCoordinator";
 import { DOCTRINE_CONFIGS, getDoctrineComposition } from "./offensiveDoctrine";

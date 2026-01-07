@@ -1,11 +1,11 @@
 /**
  * @ralphschuler/screeps-core
  * 
- * Core infrastructure for Screeps bot including:
+ * Minimal core infrastructure for Screeps bot including:
  * - Logger: Structured logging with Loki integration
- * - Kernel: Process scheduling and CPU budget management
- * - Console Commands: Interactive command system
  * - Events: Event bus for cross-module communication
+ * - Command Registry: Console command system
+ * - CPU Budget Manager: CPU allocation and tracking
  */
 
 // Logger
@@ -28,66 +28,25 @@ export {
   type CpuMeasurement
 } from "./logger";
 
-// Command Registry
-export {
-  commandRegistry,
-  Command,
-  type CommandHandler,
-  type CommandMetadata
-} from "./commandRegistry";
-
-// CPU Budget Manager
-export {
-  createCPUBudget,
-  type CPUBudget,
-  type CPUBudgetResult
-} from "./cpuBudgetManager";
-
 // Events
 export {
   eventBus,
   EventPriority,
   type EventBus,
-  type EventHandler,
-  type EventSubscription
+  type EventHandler
 } from "./events";
 
-// Native Calls Tracker
+// Command Registry
 export {
-  trackNativeCall,
-  getNativeCallStats,
-  resetNativeCallStats,
-  type NativeCallStats
-} from "./nativeCallsTracker";
+  commandRegistry,
+  Command,
+  type CommandMetadata
+} from "./commandRegistry";
 
-// Process Decorators
+// CPU Budget Manager
 export {
-  Process,
-  Priority,
-  type ProcessMetadata
-} from "./processDecorators";
-
-// Scheduler
-export {
-  createScheduler,
-  type Scheduler,
-  type ScheduledTask
-} from "./scheduler";
-
-// Room Process Manager
-export {
-  RoomProcessManager,
-  type RoomProcess
-} from "./roomProcessManager";
-
-// Kernel - exported but may need refactoring due to dependencies
-export { kernel } from "./kernel";
-
-// Console Commands - exported but may need refactoring due to dependencies
-export { registerAllConsoleCommands } from "./consoleCommands";
-
-// UI Help
-export {
-  generateInteractiveHelp,
-  generateCategoryHelp
-} from "./uiHelp";
+  cpuBudgetManager,
+  CpuBudgetManager,
+  type CpuBudgetConfig,
+  type SubsystemType
+} from "./cpuBudgetManager";

@@ -14,7 +14,7 @@
  */
 
 import type { ClusterMemory, ResourceTransferRequest, SwarmState } from "../memory/schemas";
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "../memory/manager";
 
 /**

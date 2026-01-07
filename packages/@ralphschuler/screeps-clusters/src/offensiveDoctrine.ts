@@ -10,7 +10,7 @@
  */
 
 import type { ClusterMemory } from "../memory/schemas";
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 
 /**
  * Offensive doctrine types (escalation levels)
