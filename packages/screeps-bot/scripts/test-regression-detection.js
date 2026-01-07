@@ -4,6 +4,10 @@
  * Test Regression Detection
  * 
  * This script tests the regression detection logic with various scenarios.
+ * 
+ * NOTE: This duplicates the detectRegression function from analyze-performance.js
+ * intentionally for integration testing. It verifies the logic works correctly
+ * in isolation with well-defined test cases before being used in production.
  */
 
 const REGRESSION_THRESHOLD = 0.10; // 10%

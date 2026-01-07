@@ -7,6 +7,11 @@
  * - Regression detection
  * - Report generation
  * - Baseline management
+ * 
+ * NOTE: This file contains simplified implementations of functions from
+ * analyze-performance.js for unit testing purposes. The duplication is
+ * intentional to allow testing the core logic independently without
+ * dependencies on the full script infrastructure.
  */
 
 import { expect } from "chai";

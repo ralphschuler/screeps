@@ -5,6 +5,10 @@
  * 
  * This script tests the memory parsing functionality by creating
  * a mock console log and verifying it's parsed correctly.
+ * 
+ * NOTE: This duplicates the parseCpuMetrics function from analyze-performance.js
+ * intentionally for integration testing. It verifies the logic works correctly
+ * in isolation before being used in the main analysis script.
  */
 
 import fs from 'fs';
