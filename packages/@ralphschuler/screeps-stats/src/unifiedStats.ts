@@ -225,25 +225,25 @@ export class UnifiedStatsManager {
       const warningAlerts = budgetReport.alerts.filter(a => a.severity === "warning");
       
       if (criticalAlerts.length > 0) {
+        const violationDetails = criticalAlerts.map(a => 
+          `${a.target}: ${(a.percentUsed * 100).toFixed(1)}% (${a.cpuUsed.toFixed(3)}/${a.budgetLimit})`
+        ).join(', ');
         logger.error(
-          `CPU Budget: ${criticalAlerts.length} critical violations detected`,
+          `CPU Budget: ${criticalAlerts.length} critical violations detected - ${violationDetails}`,
           {
-            subsystem: "CPUBudget",
-            meta: { 
-              violations: criticalAlerts.map(a => `${a.target}: ${(a.percentUsed * 100).toFixed(1)}% (${a.cpuUsed.toFixed(3)}/${a.budgetLimit})`)
-            }
+            subsystem: "CPUBudget"
           }
         );
       }
       
       if (warningAlerts.length > 0) {
+        const warningDetails = warningAlerts.map(a => 
+          `${a.target}: ${(a.percentUsed * 100).toFixed(1)}%`
+        ).join(', ');
         logger.warn(
-          `CPU Budget: ${warningAlerts.length} warnings (≥80% of limit)`,
+          `CPU Budget: ${warningAlerts.length} warnings (≥80% of limit) - ${warningDetails}`,
           {
-            subsystem: "CPUBudget",
-            meta: { 
-              warnings: warningAlerts.map(a => `${a.target}: ${(a.percentUsed * 100).toFixed(1)}%`)
-            }
+            subsystem: "CPUBudget"
           }
         );
       }
@@ -251,15 +251,13 @@ export class UnifiedStatsManager {
 
     // Log CPU anomalies
     if (anomalies.length > 0) {
+      const anomalyDetails = anomalies.map(a => 
+        `${a.target} (${a.type}): ${a.current.toFixed(3)} CPU (${a.multiplier.toFixed(1)}x baseline)${a.context ? ` - ${a.context}` : ""}`
+      ).join(', ');
       logger.warn(
-        `CPU Anomalies: ${anomalies.length} detected`,
+        `CPU Anomalies: ${anomalies.length} detected - ${anomalyDetails}`,
         {
-          subsystem: "CPUProfiler",
-          meta: {
-            anomalies: anomalies.map(a => 
-              `${a.target} (${a.type}): ${a.current.toFixed(3)} CPU (${a.multiplier.toFixed(1)}x baseline)${a.context ? ` - ${a.context}` : ""}`
-            )
-          }
+          subsystem: "CPUProfiler"
         }
       );
     }
