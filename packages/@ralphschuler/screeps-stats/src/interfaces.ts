@@ -23,11 +23,17 @@ export interface Logger {
 }
 
 export function createLogger(category: string): Logger {
+  const stringifyArgs = (...args: any[]): string[] => {
+    return args.map(arg => 
+      typeof arg === 'string' ? arg : JSON.stringify(arg)
+    );
+  };
+  
   return {
-    debug: (msg: string, ...args: any[]) => console.log(`[${category}]`, msg, ...args),
-    info: (msg: string, ...args: any[]) => console.log(`[${category}]`, msg, ...args),
-    warn: (msg: string, ...args: any[]) => console.log(`[${category}] WARN:`, msg, ...args),
-    error: (msg: string, ...args: any[]) => console.log(`[${category}] ERROR:`, msg, ...args)
+    debug: (msg: string, ...args: any[]) => console.log(`[${category}]`, msg, ...stringifyArgs(...args)),
+    info: (msg: string, ...args: any[]) => console.log(`[${category}]`, msg, ...stringifyArgs(...args)),
+    warn: (msg: string, ...args: any[]) => console.log(`[${category}] WARN:`, msg, ...stringifyArgs(...args)),
+    error: (msg: string, ...args: any[]) => console.log(`[${category}] ERROR:`, msg, ...stringifyArgs(...args))
   };
 }
 
