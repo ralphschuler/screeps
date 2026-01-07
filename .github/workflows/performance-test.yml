@@ -146,6 +146,17 @@ jobs:
         run: node scripts/analyze-performance.js
         continue-on-error: true
 
+      - name: Export metrics to Grafana
+        if: always()
+        working-directory: packages/screeps-bot
+        env:
+          METRICS_FORMAT: ${{ secrets.METRICS_FORMAT || 'prometheus' }}
+          PROMETHEUS_PUSHGATEWAY_URL: ${{ secrets.PROMETHEUS_PUSHGATEWAY_URL }}
+          GRAPHITE_HOST: ${{ secrets.GRAPHITE_HOST }}
+          GRAPHITE_PORT: ${{ secrets.GRAPHITE_PORT }}
+        run: node scripts/export-to-grafana.js
+        continue-on-error: true
+
       - name: Upload performance report
         if: always()
         uses: actions/upload-artifact@v6

@@ -59,9 +59,23 @@ function toPrometheusFormat(report) {
     metrics.push(`screeps_performance_min_bucket{${labelString}} ${report.analysis.bucket.min} ${timestamp}`);
   }
   
+  if (report.analysis && report.analysis.memory && report.analysis.memory.sampleCount > 0) {
+    metrics.push(`screeps_performance_avg_memory_bytes{${labelString}} ${report.analysis.memory.avg} ${timestamp}`);
+    metrics.push(`screeps_performance_max_memory_bytes{${labelString}} ${report.analysis.memory.max} ${timestamp}`);
+    metrics.push(`screeps_performance_p95_memory_bytes{${labelString}} ${report.analysis.memory.p95} ${timestamp}`);
+  }
+  
   if (report.regression) {
     const regressionValue = report.regression.detected ? 1 : 0;
     metrics.push(`screeps_performance_regression{${labelString}} ${regressionValue} ${timestamp}`);
+    
+    if (report.regression.avgCpuChange !== undefined) {
+      metrics.push(`screeps_performance_cpu_change_percent{${labelString}} ${report.regression.avgCpuChange} ${timestamp}`);
+    }
+    
+    if (report.regression.avgMemoryChange !== undefined) {
+      metrics.push(`screeps_performance_memory_change_percent{${labelString}} ${report.regression.avgMemoryChange} ${timestamp}`);
+    }
   }
   
   return metrics.join('\n');
@@ -89,9 +103,23 @@ function toGraphiteFormat(report) {
     metrics.push(`${prefix}.${branch}.bucket.min ${report.analysis.bucket.min} ${timestamp}`);
   }
   
+  if (report.analysis && report.analysis.memory && report.analysis.memory.sampleCount > 0) {
+    metrics.push(`${prefix}.${branch}.memory.avg ${report.analysis.memory.avg} ${timestamp}`);
+    metrics.push(`${prefix}.${branch}.memory.max ${report.analysis.memory.max} ${timestamp}`);
+    metrics.push(`${prefix}.${branch}.memory.p95 ${report.analysis.memory.p95} ${timestamp}`);
+  }
+  
   if (report.regression) {
     const regressionValue = report.regression.detected ? 1 : 0;
     metrics.push(`${prefix}.${branch}.regression ${regressionValue} ${timestamp}`);
+    
+    if (report.regression.avgCpuChange !== undefined) {
+      metrics.push(`${prefix}.${branch}.cpu_change ${report.regression.avgCpuChange} ${timestamp}`);
+    }
+    
+    if (report.regression.avgMemoryChange !== undefined) {
+      metrics.push(`${prefix}.${branch}.memory_change ${report.regression.avgMemoryChange} ${timestamp}`);
+    }
   }
   
   return metrics.join('\n');

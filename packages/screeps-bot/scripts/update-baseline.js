@@ -68,6 +68,15 @@ function updateBaseline(branch, report) {
       p95Cpu: report.analysis.cpu.p95 || 0,
       p99Cpu: report.analysis.cpu.p99 || 0
     };
+    
+    // Add memory metrics if available
+    if (report.analysis.memory && 
+        report.analysis.memory.sampleCount > 0 &&
+        typeof report.analysis.memory.avg === 'number') {
+      baseline.scenarios.default.avgMemory = report.analysis.memory.avg;
+      baseline.scenarios.default.maxMemory = report.analysis.memory.max || 0;
+      baseline.scenarios.default.p95Memory = report.analysis.memory.p95 || 0;
+    }
   } else {
     console.warn('Warning: Report missing CPU analysis data, baseline not updated');
     return;
@@ -80,6 +89,11 @@ function updateBaseline(branch, report) {
   console.log(`   Commit: ${baseline.commit}`);
   console.log(`   Avg CPU: ${baseline.scenarios.default.avgCpu.toFixed(3)}`);
   console.log(`   Max CPU: ${baseline.scenarios.default.maxCpu.toFixed(3)}`);
+  
+  if (baseline.scenarios.default.avgMemory) {
+    const formatMemory = (bytes) => bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(2)} MB` : `${(bytes / 1024).toFixed(2)} KB`;
+    console.log(`   Avg Memory: ${formatMemory(baseline.scenarios.default.avgMemory)}`);
+  }
   
   // Archive historical snapshot
   archiveHistoricalSnapshot(branch, baseline);
