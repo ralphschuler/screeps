@@ -66,6 +66,10 @@ export default {
     sourcemap: false
   },
 
+  // Bundle all dependencies into main.js (Screeps doesn't support require())
+  // Return false to include everything, including @ralphschuler/* workspace packages
+  external: () => false,
+
   plugins: [
     clear({ targets: ["dist"] }),
     stubNodeBuiltins(), // Stub out Node.js built-ins before other plugins
@@ -78,7 +82,8 @@ export default {
       rootDir: path.resolve(__dirname, "src"),
       extensions: [".js", ".ts"],
       browser: true, // Use browser-compatible versions of packages (e.g., source-map)
-      preferBuiltins: false // Don't prefer Node.js built-ins over npm packages
+      preferBuiltins: false, // Don't prefer Node.js built-ins over npm packages
+      dedupe: ['source-map'] // Deduplicate source-map to avoid multiple copies in bundle
     }),
     commonjs(),
     typescript({ 
