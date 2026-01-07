@@ -37,16 +37,15 @@ const hasValidCredentials = cfg.token || (cfg.email && cfg.password);
 
 // Debug logging for deployment troubleshooting
 console.log("=== Screeps Deploy Configuration ===");
-console.log("shouldPushToScreeps:", shouldPushToScreeps);
-console.log("hasValidCredentials:", hasValidCredentials ? "YES" : "NO");
+console.log("Credentials Valid:", hasValidCredentials ? "YES" : "NO");
 console.log("Credentials type:", cfg.token ? "token" : (cfg.email && cfg.password) ? "email+password" : "none");
 console.log("Target server:", cfg.hostname);
 console.log("Target branch:", cfg.branch);
-console.log("dryRun will be:", !hasValidCredentials);
+console.log("Is Dryrun:", !hasValidCredentials);
 console.log("====================================");
 
 // Warning if credentials are missing
-if (shouldPushToScreeps && !hasValidCredentials) {
+if (!hasValidCredentials) {
   console.warn("\n⚠️  WARNING: Credentials not configured!");
   console.warn("The code will be built but NOT uploaded to Screeps (dryRun mode).");
   console.warn("To fix this, set one of the following:");
@@ -129,7 +128,7 @@ export default {
     // Enable dryRun when not pushing to Screeps or when credentials are invalid
     screeps({
       config: cfg,
-      dryRun: !shouldPushToScreeps || !hasValidCredentials
+      dryRun: !hasValidCredentials
     })
   ]
 };
