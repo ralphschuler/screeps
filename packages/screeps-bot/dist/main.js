@@ -3232,7 +3232,8 @@ if (!1 === qr.get(Xr)) return this._consumer = null, this._sourceMapAvailable = 
 null;
 try {
 var t = qr.get("errorMapper_sourceMapData");
-if (!t) throw new Error("Source maps not available in production build");
+if (!t) return this._consumer = null, this._sourceMapAvailable = !1, qr.set(Xr, !1, 1 / 0), 
+null;
 try {
 this._consumer = new br.SourceMapConsumer(t), this._sourceMapAvailable = !0, qr.set(Xr, !0, 1 / 0);
 } catch (e) {

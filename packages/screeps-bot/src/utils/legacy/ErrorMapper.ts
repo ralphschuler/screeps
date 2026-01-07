@@ -69,8 +69,11 @@ export class ErrorMapper {
         if (!sourceMapData) {
           // Source maps are not included in production builds to comply with
           // strict no-require policy and minimize bundle size
-          // Source maps are only available in development/testing environments
-          throw new Error("Source maps not available in production build");
+          // Gracefully degrade to raw error output without source mapping
+          this._consumer = null;
+          this._sourceMapAvailable = false;
+          heapCache.set(SOURCE_MAP_AVAILABLE_KEY, false, Infinity);
+          return null;
         }
         
         // SourceMapConsumer constructor returns a Promise in newer versions
