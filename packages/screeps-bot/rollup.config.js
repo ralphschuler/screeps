@@ -77,14 +77,18 @@ export default {
       entries: [
         { find: "@bot", replacement: path.resolve(__dirname, "src") },
         // Resolve @ralphschuler workspace packages to their TypeScript source instead of dist
+        // Scoped packages (in packages/@ralphschuler/)
+        { find: "@ralphschuler/screeps-core", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-core/src/index.ts") },
+        { find: "@ralphschuler/screeps-cache", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-cache/src/index.ts") },
         { find: "@ralphschuler/screeps-stats", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-stats/src/index.ts") },
-        { find: "@ralphschuler/screeps-utils", replacement: path.resolve(__dirname, "../screeps-utils/src/index.ts") },
         { find: "@ralphschuler/screeps-visuals", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-visuals/src/index.ts") },
+        { find: "@ralphschuler/screeps-pathfinding", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-pathfinding/src/index.ts") },
+        { find: "@ralphschuler/screeps-remote-mining", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-remote-mining/src/index.ts") },
+        // Non-scoped packages (in packages/)
+        { find: "@ralphschuler/screeps-utils", replacement: path.resolve(__dirname, "../screeps-utils/src/index.ts") },
         { find: "@ralphschuler/screeps-defense", replacement: path.resolve(__dirname, "../screeps-defense/src/index.ts") },
         { find: "@ralphschuler/screeps-economy", replacement: path.resolve(__dirname, "../screeps-economy/src/index.ts") },
         { find: "@ralphschuler/screeps-chemistry", replacement: path.resolve(__dirname, "../screeps-chemistry/src/index.ts") },
-        { find: "@ralphschuler/screeps-pathfinding", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-pathfinding/src/index.ts") },
-        { find: "@ralphschuler/screeps-remote-mining", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-remote-mining/src/index.ts") },
         { find: "@ralphschuler/screeps-spawn", replacement: path.resolve(__dirname, "../screeps-spawn/src/index.ts") }
       ]
     }),
