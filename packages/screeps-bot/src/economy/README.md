@@ -263,8 +263,9 @@ for (const pathData of highTraffic) {
   roomPathManager.queueRoadConstruction(room.name, pathData.path);
 }
 
-// Build roads
-roomPathManager.buildRoads(room);
+// Build roads (returns number of construction sites created)
+const sitesCreated = roomPathManager.buildRoads(room);
+console.log(`Created ${sitesCreated} road construction sites`);
 ```
 
 ## Performance Characteristics

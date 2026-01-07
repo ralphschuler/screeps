@@ -132,7 +132,7 @@ Clusters group nearby rooms for coordinated operations:
 **Terminal-based** (RCL 6+):
 - Use terminals for instant resource transfers
 - Balance minerals and energy across cluster
-- Optimize transfer costs (< 1000 range preferred)
+- Optimize transfer costs (< 1000 tile distance preferred for lower energy cost)
 
 **Carrier-based** (RCL 1-5):
 - Spawn carrier creeps to transport energy
