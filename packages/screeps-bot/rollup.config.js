@@ -66,6 +66,17 @@ export default {
     sourcemap: false
   },
 
+  // Prevent workspace packages from being treated as external dependencies
+  external: (id) => {
+    // Bundle all @ralphschuler/* packages
+    if (id.startsWith('@ralphschuler/')) {
+      return false;
+    }
+    // Keep other node_modules as external if needed (though screeps needs everything bundled)
+    // For screeps, we want to bundle everything, so return false for all
+    return false;
+  },
+
   plugins: [
     clear({ targets: ["dist"] }),
     stubNodeBuiltins(), // Stub out Node.js built-ins before other plugins
@@ -78,7 +89,9 @@ export default {
       rootDir: path.resolve(__dirname, "src"),
       extensions: [".js", ".ts"],
       browser: true, // Use browser-compatible versions of packages (e.g., source-map)
-      preferBuiltins: false // Don't prefer Node.js built-ins over npm packages
+      preferBuiltins: false, // Don't prefer Node.js built-ins over npm packages
+      // Explicitly resolve workspace packages
+      dedupe: ['source-map'] // Deduplicate source-map to avoid multiple copies
     }),
     commonjs(),
     typescript({ 
