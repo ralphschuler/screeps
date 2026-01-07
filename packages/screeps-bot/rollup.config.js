@@ -38,6 +38,31 @@ const hasValidCredentials = cfg.token || (cfg.email && cfg.password);
 // Only push to Screeps when DEST=screeps is set (via npm run push)
 const shouldPushToScreeps = process.env.DEST === "screeps";
 
+// Debug logging for deployment troubleshooting
+console.log("=== Screeps Deploy Configuration ===");
+console.log("DEST environment:", process.env.DEST);
+console.log("shouldPushToScreeps:", shouldPushToScreeps);
+console.log("hasValidCredentials:", hasValidCredentials ? "YES" : "NO");
+console.log("Credentials type:", cfg.token ? "token" : (cfg.email && cfg.password) ? "email+password" : "none");
+console.log("Target server:", cfg.hostname);
+console.log("Target branch:", cfg.branch);
+console.log("dryRun will be:", !shouldPushToScreeps || !hasValidCredentials);
+console.log("====================================");
+
+// Warning if credentials are missing
+if (shouldPushToScreeps && !hasValidCredentials) {
+  console.warn("\n⚠️  WARNING: Credentials not configured!");
+  console.warn("The code will be built but NOT uploaded to Screeps (dryRun mode).");
+  console.warn("To fix this, set one of the following:");
+  console.warn("  - SCREEPS_TOKEN environment variable, OR");
+  console.warn("  - Both SCREEPS_USER and SCREEPS_PASS environment variables");
+  console.warn("Current values (showing if set, not actual values):");
+  console.warn("  SCREEPS_TOKEN:", process.env.SCREEPS_TOKEN ? "SET" : "NOT SET");
+  console.warn("  SCREEPS_USER:", process.env.SCREEPS_USER ? "SET" : "NOT SET");
+  console.warn("  SCREEPS_PASS:", process.env.SCREEPS_PASS ? "SET" : "NOT SET");
+  console.warn("");
+}
+
 export default {
   input: "src/main.ts",
   output: {

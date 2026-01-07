@@ -249,6 +249,29 @@ The GitHub Actions CI pipeline runs:
 
 See `.github/workflows/` for complete CI configuration.
 
+### Deployment to Screeps
+
+The repository includes automated deployment workflows that push built code to Screeps servers:
+
+- **Deploy Workflow** (`.github/workflows/deploy.yml`) - Deploys on release or manual trigger
+- **Supports multiple environments** - screeps.com, sim, season, ptr, and private servers
+
+**For repository maintainers**: To enable deployment, you must configure GitHub Environments with Screeps credentials. See [.github/ENVIRONMENT_SETUP.md](.github/ENVIRONMENT_SETUP.md) for detailed setup instructions.
+
+**For local development**: You can deploy manually using:
+```bash
+# Set credentials
+export SCREEPS_TOKEN=your-token-here
+# OR
+export SCREEPS_USER=your-username
+export SCREEPS_PASS=your-password
+
+# Deploy to Screeps
+npm run push
+```
+
+The build process will show diagnostic output indicating whether credentials are configured correctly. If you see "Credentials not configured" warnings, the code will build but won't upload (dryRun mode).
+
 ## Testing
 
 Run tests with:
