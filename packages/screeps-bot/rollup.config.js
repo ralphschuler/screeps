@@ -42,7 +42,7 @@ const shouldPushToScreeps = process.env.DEST === "screeps";
 console.log("=== Screeps Deploy Configuration ===");
 console.log("DEST environment:", process.env.DEST);
 console.log("shouldPushToScreeps:", shouldPushToScreeps);
-console.log("hasValidCredentials:", hasValidCredentials);
+console.log("hasValidCredentials:", hasValidCredentials ? "YES" : "NO");
 console.log("Credentials type:", cfg.token ? "token" : (cfg.email && cfg.password) ? "email+password" : "none");
 console.log("Target server:", cfg.hostname);
 console.log("Target branch:", cfg.branch);

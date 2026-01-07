@@ -54,7 +54,7 @@ Added diagnostic output showing:
 === Screeps Deploy Configuration ===
 DEST environment: screeps
 shouldPushToScreeps: true
-hasValidCredentials: undefined
+hasValidCredentials: NO
 Credentials type: none
 Target server: screeps.com
 Target branch: main
@@ -77,13 +77,15 @@ Current values (showing if set, not actual values):
 === Screeps Deploy Configuration ===
 DEST environment: screeps
 shouldPushToScreeps: true
-hasValidCredentials: [token-value]
+hasValidCredentials: YES
 Credentials type: token
 Target server: screeps.com
 Target branch: main
 dryRun will be: false
 ====================================
 ```
+
+**Security Note:** The diagnostic output shows WHETHER credentials are set (YES/NO) but never displays actual credential values to prevent accidental token exposure in logs.
 
 ### 3. Created Setup Documentation (`.github/ENVIRONMENT_SETUP.md`)
 
