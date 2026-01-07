@@ -194,8 +194,14 @@ function detectRegression(current, baseline, threshold = REGRESSION_THRESHOLD) {
   
   const avgCpuChange = (current.avgCpu - baseline.avgCpu) / avgCpuDenom;
   const maxCpuChange = (current.maxCpu - baseline.maxCpu) / maxCpuDenom;
-  const avgMemoryChange = (current.avgMemory - baseline.avgMemory) / avgMemoryDenom;
-  const maxMemoryChange = (current.maxMemory - baseline.maxMemory) / maxMemoryDenom;
+  
+  // Only calculate memory changes if both current and baseline have memory data
+  const avgMemoryChange = (current.avgMemory !== undefined && baseline.avgMemory !== undefined)
+    ? (current.avgMemory - baseline.avgMemory) / avgMemoryDenom
+    : 0;
+  const maxMemoryChange = (current.maxMemory !== undefined && baseline.maxMemory !== undefined)
+    ? (current.maxMemory - baseline.maxMemory) / maxMemoryDenom
+    : 0;
   
   const avgRegression = avgCpuChange > threshold;
   const maxRegression = maxCpuChange > threshold;

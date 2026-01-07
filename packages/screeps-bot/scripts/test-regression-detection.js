@@ -27,8 +27,14 @@ function detectRegression(current, baseline, threshold = REGRESSION_THRESHOLD) {
   
   const avgCpuChange = (current.avgCpu - baseline.avgCpu) / avgCpuDenom;
   const maxCpuChange = (current.maxCpu - baseline.maxCpu) / maxCpuDenom;
-  const avgMemoryChange = (current.avgMemory - baseline.avgMemory) / avgMemoryDenom;
-  const maxMemoryChange = (current.maxMemory - baseline.maxMemory) / maxMemoryDenom;
+  
+  // Only calculate memory changes if both current and baseline have memory data
+  const avgMemoryChange = (current.avgMemory !== undefined && baseline.avgMemory !== undefined)
+    ? (current.avgMemory - baseline.avgMemory) / avgMemoryDenom
+    : 0;
+  const maxMemoryChange = (current.maxMemory !== undefined && baseline.maxMemory !== undefined)
+    ? (current.maxMemory - baseline.maxMemory) / maxMemoryDenom
+    : 0;
   
   const avgRegression = avgCpuChange > threshold;
   const maxRegression = maxCpuChange > threshold;
@@ -118,9 +124,20 @@ console.log('Expected: false, Got:', test6.detected);
 console.log('Reason:', test6.reason);
 console.log();
 
+// Test 7: Memory undefined (should not cause error)
+console.log('Test 7: Memory undefined (should not cause error)');
+const test7 = detectRegression(
+  { avgCpu: 0.08, maxCpu: 0.1 }, // No memory
+  { avgCpu: 0.08, maxCpu: 0.1, avgMemory: 150000, maxMemory: 200000 }
+);
+console.log('Result:', test7.detected ? '❌ FAIL' : '✅ PASS');
+console.log('Expected: false, Got:', test7.detected);
+console.log('Memory Change:', test7.avgMemoryChange.toFixed(2) + '%');
+console.log();
+
 // Summary
-const tests = [test1, test2, test3, test4, test5, test6];
-const expectedResults = [false, false, true, true, false, false];
+const tests = [test1, test2, test3, test4, test5, test6, test7];
+const expectedResults = [false, false, true, true, false, false, false];
 let passed = 0;
 
 console.log('=== Summary ===');
