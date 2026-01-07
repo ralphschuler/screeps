@@ -213,6 +213,54 @@ describe("UnifiedStatsManager", function () {
       assert.equal(snapshot.rooms.W1N1.rcl, 3);
       assert.equal(snapshot.rooms.W1N1.energy.storage, 50000);
     });
+
+    it("should handle rooms with undefined pheromones and metrics", function () {
+      // Regression test for: TypeError: Cannot convert undefined or null to object
+      // This happens when swarm.pheromones or swarm.metrics is undefined/null
+      const mockRoom: any = {
+        name: "W1N1",
+        energyAvailable: 300,
+        energyCapacityAvailable: 550,
+        controller: {
+          level: 3,
+          progress: 5000,
+          progressTotal: 10000,
+          my: true
+        },
+        storage: {
+          store: {
+            getUsedCapacity: () => 50000
+          }
+        },
+        terminal: {
+          store: {
+            getUsedCapacity: () => 10000
+          }
+        },
+        find: () => [] // No hostiles
+      };
+
+      mockGame.rooms = { W1N1: mockRoom };
+      mockGame.creeps = {};
+
+      // The stub memoryManager returns {} which has no pheromones or metrics
+      statsManager.startTick();
+      const startCpu = statsManager.startRoom("W1N1");
+      
+      // This should not throw even though swarm.pheromones and swarm.metrics are undefined
+      statsManager.recordRoom(mockRoom, 0.5);
+      
+      statsManager.endRoom("W1N1", startCpu);
+      statsManager.finalizeTick();
+      
+      const snapshot = statsManager.getSnapshot();
+      assert.isDefined(snapshot.rooms.W1N1);
+      assert.equal(snapshot.rooms.W1N1.name, "W1N1");
+      assert.equal(snapshot.rooms.W1N1.rcl, 3);
+      // Should still have default pheromones and metrics from initialization
+      assert.isDefined(snapshot.rooms.W1N1.pheromones);
+      assert.isDefined(snapshot.rooms.W1N1.metrics);
+    });
   });
 
   describe("Memory Export", function () {
