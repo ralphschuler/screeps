@@ -1,20 +1,12 @@
 /**
  * Screepers Standards Integration
- * Implements protocols from https://github.com/screepers/screepers-standards
+ * Minimal implementation - only actively used protocols
+ * 
+ * Based on: https://github.com/screepers/screepers-standards
+ * 
+ * Currently implements:
+ * - SS2: Terminal Communications (multi-packet message transmission)
  */
 
-// Core standards
 export * from "./types";
-export * from "./SS1SegmentManager";
 export * from "./SS2TerminalComms";
-export * from "./ProtocolRegistry";
-export * from "./consoleCommands";
-
-// Segment protocols
-export * from "./segment-protocols/PortalsProtocol";
-export * from "./segment-protocols/RoomNeedsProtocol";
-export * from "./segment-protocols/TerminalComProtocol";
-
-// Terminal protocols
-export * from "./terminal-protocols/KeyExchangeProtocol";
-export * from "./terminal-protocols/ResourceRequestProtocol";
