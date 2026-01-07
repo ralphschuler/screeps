@@ -67,27 +67,13 @@ export class ErrorMapper {
         let sourceMapData = heapCache.get<SourceMapData>(SOURCE_MAP_DATA_KEY);
         
         if (!sourceMapData) {
-          // Not in heap cache, load from require
-          // @ts-expect-error - require may fail if source map not bundled
-          const rawSourceMap: unknown = require("main.js.map");
-          
-          // Parse the source map if it's a string, otherwise use it directly
-          if (typeof rawSourceMap === "string") {
-            try {
-              sourceMapData = JSON.parse(rawSourceMap) as SourceMapData;
-            } catch (e) {
-              console.error(`Failed to parse source map JSON: ${e instanceof Error ? e.message : String(e)}`);
-              this._consumer = null;
-              this._sourceMapAvailable = false;
-              heapCache.set(SOURCE_MAP_AVAILABLE_KEY, false, Infinity);
-              return null;
-            }
-          } else {
-            sourceMapData = rawSourceMap as SourceMapData;
-          }
-          
-          // Cache the parsed source map data in heap for future global resets
-          heapCache.set(SOURCE_MAP_DATA_KEY, sourceMapData, Infinity);
+          // Source maps are not included in production builds to comply with
+          // strict no-require policy and minimize bundle size
+          // Gracefully degrade to raw error output without source mapping
+          this._consumer = null;
+          this._sourceMapAvailable = false;
+          heapCache.set(SOURCE_MAP_AVAILABLE_KEY, false, Infinity);
+          return null;
         }
         
         // SourceMapConsumer constructor returns a Promise in newer versions
