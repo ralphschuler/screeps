@@ -4400,7 +4400,12 @@ Io = e(e({}, Io), t);
 var Lo, Do, Fo, Bo, Ho = (Lo = "stats", Do = function() {
 for (var e = [], t = 0; t < arguments.length; t++) e[t] = arguments[t];
 return e.map(function(e) {
-return "string" == typeof e ? e : JSON.stringify(e);
+if ("string" == typeof e || "number" == typeof e || "boolean" == typeof e || null == e) return e;
+try {
+return JSON.stringify(e);
+} catch (e) {
+return "[Unserializable Object]";
+}
 });
 }, {
 debug: function(e) {

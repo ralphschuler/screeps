@@ -23,10 +23,19 @@ export interface Logger {
 }
 
 export function createLogger(category: string): Logger {
-  const stringifyArgs = (...args: any[]): string[] => {
-    return args.map(arg => 
-      typeof arg === 'string' ? arg : JSON.stringify(arg)
-    );
+  const stringifyArgs = (...args: any[]): any[] => {
+    return args.map(arg => {
+      // Keep primitives as-is
+      if (typeof arg === 'string' || typeof arg === 'number' || typeof arg === 'boolean' || arg === null || arg === undefined) {
+        return arg;
+      }
+      // Stringify objects/arrays, with error handling
+      try {
+        return JSON.stringify(arg);
+      } catch (error) {
+        return '[Unserializable Object]';
+      }
+    });
   };
   
   return {
