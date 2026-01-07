@@ -573,26 +573,30 @@ export class UnifiedStatsManager {
 
     // Update swarm metrics if available
     if (swarm) {
-      // Pheromones
-      for (const [pheromone, value] of Object.entries(swarm.pheromones)) {
-        roomStats.pheromones[pheromone] = value as number;
+      // Pheromones - check if pheromones object exists before iterating
+      if (swarm.pheromones && typeof swarm.pheromones === 'object') {
+        for (const [pheromone, value] of Object.entries(swarm.pheromones)) {
+          roomStats.pheromones[pheromone] = value as number;
+        }
       }
 
-      // Metrics
-      roomStats.metrics = {
-        energyHarvested: swarm.metrics.energyHarvested,
-        energySpawning: swarm.metrics.energySpawning,
-        energyConstruction: swarm.metrics.energyConstruction,
-        energyRepair: swarm.metrics.energyRepair,
-        energyTower: swarm.metrics.energyTower,
-        energyAvailableForSharing: swarm.metrics.energyAvailable,
-        energyCapacityTotal: swarm.metrics.energyCapacity,
-        energyNeed: swarm.metrics.energyNeed,
-        controllerProgress: swarm.metrics.controllerProgress,
-        hostileCount: swarm.metrics.hostileCount,
-        damageReceived: swarm.metrics.damageReceived,
-        constructionSites: swarm.metrics.constructionSites
-      };
+      // Metrics - check if metrics object exists before accessing properties
+      if (swarm.metrics && typeof swarm.metrics === 'object') {
+        roomStats.metrics = {
+          energyHarvested: swarm.metrics.energyHarvested,
+          energySpawning: swarm.metrics.energySpawning,
+          energyConstruction: swarm.metrics.energyConstruction,
+          energyRepair: swarm.metrics.energyRepair,
+          energyTower: swarm.metrics.energyTower,
+          energyAvailableForSharing: swarm.metrics.energyAvailable,
+          energyCapacityTotal: swarm.metrics.energyCapacity,
+          energyNeed: swarm.metrics.energyNeed,
+          controllerProgress: swarm.metrics.controllerProgress,
+          hostileCount: swarm.metrics.hostileCount,
+          damageReceived: swarm.metrics.damageReceived,
+          constructionSites: swarm.metrics.constructionSites
+        };
+      }
     }
 
     // Update profiler data with EMA
@@ -918,11 +922,11 @@ export class UnifiedStatsManager {
   }
 
   private finalizeEmpireStats(): void {
-    const ownedRooms = Object.values(this.currentSnapshot.rooms);
+    const ownedRooms = Object.values(this.currentSnapshot.rooms || {});
     const totalCreeps = Object.keys(Game.creeps).length;
     
     // Count power creeps
-    const powerCreeps = Object.values(Game.powerCreeps);
+    const powerCreeps = Object.values(Game.powerCreeps || {});
     const spawnedPowerCreeps = powerCreeps.filter(pc => pc.ticksToLive !== undefined);
     const ecoPowerCreeps = powerCreeps.filter(pc => {
       const memory = pc.memory as { role?: string };
