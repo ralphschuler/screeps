@@ -75,7 +75,17 @@ export default {
     stubNodeBuiltins(), // Stub out Node.js built-ins before other plugins
     alias({
       entries: [
-        { find: "@bot", replacement: path.resolve(__dirname, "src") }
+        { find: "@bot", replacement: path.resolve(__dirname, "src") },
+        // Resolve @ralphschuler workspace packages to their TypeScript source instead of dist
+        { find: "@ralphschuler/screeps-stats", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-stats/src/index.ts") },
+        { find: "@ralphschuler/screeps-utils", replacement: path.resolve(__dirname, "../screeps-utils/src/index.ts") },
+        { find: "@ralphschuler/screeps-visuals", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-visuals/src/index.ts") },
+        { find: "@ralphschuler/screeps-defense", replacement: path.resolve(__dirname, "../screeps-defense/src/index.ts") },
+        { find: "@ralphschuler/screeps-economy", replacement: path.resolve(__dirname, "../screeps-economy/src/index.ts") },
+        { find: "@ralphschuler/screeps-chemistry", replacement: path.resolve(__dirname, "../screeps-chemistry/src/index.ts") },
+        { find: "@ralphschuler/screeps-pathfinding", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-pathfinding/src/index.ts") },
+        { find: "@ralphschuler/screeps-remote-mining", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-remote-mining/src/index.ts") },
+        { find: "@ralphschuler/screeps-spawn", replacement: path.resolve(__dirname, "../screeps-spawn/src/index.ts") }
       ]
     }),
     resolve({ 
