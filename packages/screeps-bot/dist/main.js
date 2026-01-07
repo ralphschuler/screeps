@@ -4583,7 +4583,7 @@ say: 0,
 total: 0
 };
 }, t.prototype.finalizeEmpireStats = function() {
-var e, t = Object.values(this.currentSnapshot.rooms), r = Object.keys(Game.creeps).length, o = Object.values(Game.powerCreeps), n = o.filter(function(e) {
+var e, t = Object.values(this.currentSnapshot.rooms || {}), r = Object.keys(Game.creeps).length, o = Object.values(Game.powerCreeps || {}), n = o.filter(function(e) {
 return void 0 !== e.ticksToLive;
 }), a = o.filter(function(e) {
 return "powerQueen" === e.memory.role;
