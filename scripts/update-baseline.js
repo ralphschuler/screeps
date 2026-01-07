@@ -77,7 +77,17 @@ async function main() {
     }
     
     console.log('\nLoading metrics from performance-report.json...');
-    const report = JSON.parse(fs.readFileSync(reportPath, 'utf-8'));
+    
+    let report;
+    try {
+      report = JSON.parse(fs.readFileSync(reportPath, 'utf-8'));
+    } catch (parseError) {
+      console.error(`\n❌ Error parsing performance-report.json: ${parseError.message}`);
+      console.log('The file may be corrupted or contain invalid JSON.');
+      console.log('Try running the performance analysis again:');
+      console.log('  cd packages/screeps-bot && node scripts/analyze-performance.js');
+      process.exit(1);
+    }
     
     // Extract metrics from performance report
     // The report structure is created by analyze-performance.js and contains:
@@ -89,12 +99,25 @@ async function main() {
       process.exit(1);
     }
     
+    // Validate CPU metrics are numeric
+    const cpu = report.analysis.cpu;
+    const requiredFields = ['avg', 'p95', 'max', 'min', 'p99'];
+    const missingFields = requiredFields.filter(field => 
+      typeof cpu[field] !== 'number' || isNaN(cpu[field])
+    );
+    
+    if (missingFields.length > 0) {
+      console.error(`\n❌ Missing or invalid CPU metrics: ${missingFields.join(', ')}`);
+      console.log('Expected numeric values for all CPU metrics.');
+      process.exit(1);
+    }
+    
     metrics = {
-      avg: report.analysis.cpu.avg,
-      p95: report.analysis.cpu.p95,
-      max: report.analysis.cpu.max,
-      min: report.analysis.cpu.min,
-      p99: report.analysis.cpu.p99,
+      avg: cpu.avg,
+      p95: cpu.p95,
+      max: cpu.max,
+      min: cpu.min,
+      p99: cpu.p99,
       timestamp: Date.now()
     };
     
