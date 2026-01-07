@@ -1,0 +1,39 @@
+{
+  "name": "@ralphschuler/screeps-core",
+  "version": "0.1.0",
+  "description": "Core infrastructure including logger, kernel, and console commands",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "private": false,
+  "scripts": {
+    "build": "tsc",
+    "test": "mocha test/**/*.test.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "screeps",
+    "core",
+    "kernel",
+    "logger",
+    "typescript"
+  ],
+  "author": "Ralph Schuler",
+  "license": "Unlicense",
+  "devDependencies": {
+    "@types/chai": "^4.1.6",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^25.0.3",
+    "@types/screeps": "^3.3.8",
+    "chai": "^6.2.2",
+    "mocha": "^11.7.5",
+    "ts-node": "^10.2.0",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.4.3"
+  },
+  "dependencies": {
+    "@ralphschuler/screeps-defense": "*",
+    "@ralphschuler/screeps-economy": "*",
+    "@ralphschuler/screeps-stats": "*",
+    "@ralphschuler/screeps-utils": "*"
+  }
+}
