@@ -5,7 +5,7 @@
  */
 
 import { SS2MessageBuffer, SS2TransactionMessage } from "./types";
-import { createLogger } from "../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 
 const logger = createLogger("SS2TerminalComms");
 

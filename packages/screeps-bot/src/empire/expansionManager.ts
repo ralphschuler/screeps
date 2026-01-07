@@ -18,7 +18,7 @@
 
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { ProcessPriority, kernel } from "../core/kernel";
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "../memory/manager";
 import type { EmpireMemory, RoomIntel } from "../memory/schemas";
 import * as ExpansionScoring from "./expansionScoring";

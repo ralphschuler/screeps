@@ -12,7 +12,7 @@
  */
 
 import type { StructurePlacement } from "./blueprints/types";
-import { createLogger } from "../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 
 const logger = createLogger("ExtensionGenerator");
 

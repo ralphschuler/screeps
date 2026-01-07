@@ -14,7 +14,7 @@
  * Based on: https://github.com/TooAngel/screeps/blob/master/doc/API.md
  */
 
-import { logger } from "../../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { ProcessPriority } from "../../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../../core/processDecorators";
 

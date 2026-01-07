@@ -6,7 +6,7 @@
 
 import { SS1Channel, SS1DefaultPublicSegment } from "./types";
 import * as LZString from "lz-string";
-import { createLogger } from "../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 
 const logger = createLogger("SS1SegmentManager");
 

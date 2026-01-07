@@ -6,7 +6,7 @@
 
 import { PortalInfo } from "../types";
 import { SS1SegmentManager } from "../SS1SegmentManager";
-import { createLogger } from "../../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 
 const logger = createLogger("PortalsProtocol");
 

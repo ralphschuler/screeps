@@ -8,8 +8,8 @@
 
 import type { SwarmState } from "../memory/schemas";
 import { countCreepsByRole, needsRole } from "./spawnNeedsAnalyzer";
-import { cachedFindSources } from "../cache";
-import { logger } from "../core/logger";
+import { cachedFindSources } from "@ralphschuler/screeps-cache";
+import { logger } from "@ralphschuler/screeps-core";
 
 /**
  * Get count of energy-producing creeps (harvesters + larvaWorkers)

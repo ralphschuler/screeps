@@ -31,7 +31,7 @@ import {
 } from "screeps-cartographer";
 import { memoryManager } from "../../memory/manager";
 import { clearClosestCache as clearAllCachedTargets } from "../../cache";
-import { createLogger } from "../../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 import * as metrics from "@ralphschuler/screeps-stats";
 import { applyOpportunisticActions } from "../../economy/opportunisticActions";
 import { getCollectionPoint } from "../../utils/common";

@@ -15,7 +15,7 @@
  * - Creeps use moveByPath() with pre-calculated paths instead of expensive moveTo()
  */
 
-import { createLogger } from "../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 import { cachePath } from "screeps-cartographer";
 
 const logger = createLogger("RoomPathManager");

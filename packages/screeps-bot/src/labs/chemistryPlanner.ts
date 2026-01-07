@@ -8,7 +8,7 @@
  */
 
 import type { SwarmState } from "../memory/schemas";
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import {
   ChemistryManager,
   type Reaction,

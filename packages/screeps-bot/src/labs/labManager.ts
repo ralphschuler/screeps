@@ -23,7 +23,7 @@
 
 import type { SwarmState } from "../memory/schemas";
 import { labConfigManager } from "./labConfig";
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 
 /**
  * Lab task types

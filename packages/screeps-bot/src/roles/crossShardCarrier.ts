@@ -13,7 +13,7 @@
  */
 
 import type { CrossShardTransferRequest } from "../intershard/resourceTransferCoordinator";
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { resourceTransferCoordinator } from "../intershard/resourceTransferCoordinator";
 import { moveTo } from "screeps-cartographer";
 

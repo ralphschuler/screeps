@@ -11,7 +11,7 @@
  */
 
 import type { BodyTemplate } from "../logic/spawn";
-import { createLogger } from "../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 
 const logger = createLogger("CarrierDimensioning");
 

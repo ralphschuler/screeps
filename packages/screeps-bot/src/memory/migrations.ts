@@ -7,7 +7,7 @@
  * ROADMAP Section 4: Memory migration system for schema changes
  */
 
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { memorySegmentManager } from "./memorySegmentManager";
 import { memoryCompressor } from "./memoryCompressor";
 import type { EmpireMemory } from "./schemas";

@@ -13,7 +13,7 @@
  */
 
 import { VisualizationConfig, VisualizationLayer, VisualizationMode } from "../memory/schemas";
-import { createLogger } from "../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 
 const logger = createLogger("VisualizationManager");
 

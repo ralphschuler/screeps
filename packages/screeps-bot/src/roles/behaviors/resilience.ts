@@ -19,7 +19,7 @@
  */
 
 import type { CreepAction, CreepContext, BehaviorFunction } from "./types";
-import { createLogger } from "../../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 
 const logger = createLogger("BehaviorResilience");
 

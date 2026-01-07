@@ -7,7 +7,7 @@
  * ROADMAP Section 4: Memory-Limit ca. 2 MB monitoring and alerting
  */
 
-import { createLogger } from "../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 
 const logger = createLogger("MemoryMonitor");
 

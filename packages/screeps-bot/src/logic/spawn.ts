@@ -17,7 +17,7 @@ import {
   cachedFindSources,
   cachedFindConstructionSites,
   cachedRoomFind
-} from "../cache";
+} from "@ralphschuler/screeps-cache";
 
 // ============================================================================
 // Re-exports from modular spawn system

@@ -17,8 +17,8 @@
  * - Reduces individual creep target searches from O(n) to O(1) lookup
  */
 
-import { createLogger } from "../core/logger";
-import { cachedFindSources, cachedFindConstructionSites } from "../cache";
+import { createLogger } from "@ralphschuler/screeps-core";
+import { cachedFindSources, cachedFindConstructionSites } from "@ralphschuler/screeps-cache";
 import { memoryManager } from "../memory/manager";
 
 const logger = createLogger("TargetAssignmentManager");

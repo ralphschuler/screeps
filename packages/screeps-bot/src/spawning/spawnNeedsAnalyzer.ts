@@ -13,7 +13,7 @@ import { ROLE_DEFINITIONS } from "./roleDefinitions";
 import { memoryManager } from "../memory/manager";
 import { calculateRemoteHaulerRequirement } from "../empire/remoteHaulerDimensioning";
 import { resourceTransferCoordinator, type CrossShardTransferRequest } from "../intershard/resourceTransferCoordinator";
-import { cachedFindSources, cachedRoomFind } from "../cache";
+import { cachedFindSources, cachedRoomFind } from "@ralphschuler/screeps-cache";
 
 /** Number of dangerous hostiles per remote guard needed */
 const THREATS_PER_GUARD = 2;

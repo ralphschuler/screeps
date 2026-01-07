@@ -7,7 +7,7 @@
  * Addresses Issue: #18
  */
 
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 
 /**
  * Layout scoring result

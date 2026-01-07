@@ -24,7 +24,7 @@
 import type { PheromoneState, SwarmState } from "../memory/schemas";
 import { VisualizationLayer } from "../memory/schemas";
 import { memoryManager } from "../memory/manager";
-import { createLogger } from "../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 import { visualizationManager } from "./visualizationManager";
 
 const logger = createLogger("RoomVisualizer");

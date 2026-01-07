@@ -10,7 +10,7 @@
  * Addresses Issue: #10
  */
 
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { INFINITE_TTL, heapCache } from "../memory/heapCache";
 
 /**

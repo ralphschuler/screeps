@@ -44,7 +44,7 @@
 
 import type { CreepAction, CreepContext } from "./types";
 import type { CreepState } from "../../memory/schemas";
-import { createLogger } from "../../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 
 const logger = createLogger("StateMachine");
 

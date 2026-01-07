@@ -19,7 +19,7 @@
  * - Upgrader picks up nearby energy while heading to controller
  */
 
-import { createLogger } from "../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 import type { CreepAction } from "../roles/behaviors/types";
 
 const logger = createLogger("OpportunisticActions");

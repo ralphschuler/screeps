@@ -7,7 +7,7 @@
 import { KeyExchangeRequest, KeyExchangeResponse } from "../types";
 import { SS2TerminalComms } from "../SS2TerminalComms";
 import { TerminalComProtocol } from "../segment-protocols/TerminalComProtocol";
-import { createLogger } from "../../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 
 const logger = createLogger("KeyExchangeProtocol");
 

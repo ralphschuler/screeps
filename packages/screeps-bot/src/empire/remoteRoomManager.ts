@@ -10,7 +10,7 @@
  * Addresses remote mining gaps from Issue: Remote Mining
  */
 
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "../memory/manager";
 import type { RoomIntel, SwarmState } from "../memory/schemas";
 

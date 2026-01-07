@@ -13,7 +13,7 @@
  */
 
 import * as LZString from "lz-string";
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import type { RoomIntel } from "./schemas";
 
 /**

@@ -7,8 +7,8 @@
 
 import type { ICache, ILogger, IEventBus, IPathCache, IRemoteMining } from "@ralphschuler/screeps-pathfinding";
 import { memoryManager } from "../../memory/manager";
-import { createLogger } from "../../core/logger";
-import { eventBus as botEventBus } from "../../core/events";
+import { createLogger } from "@ralphschuler/screeps-core";
+import { eventBus as botEventBus } from "@ralphschuler/screeps-core";
 import { cacheCommonRoutes, invalidateRoom as invalidatePathCacheRoom } from "../../cache";
 import { getRemoteRoomsForRoom as getRemoteRooms, precacheRemoteRoutes as precacheRemotes } from "../remote-mining";
 

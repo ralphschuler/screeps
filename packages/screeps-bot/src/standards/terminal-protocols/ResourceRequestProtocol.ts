@@ -6,7 +6,7 @@
 
 import { ResourceRequest, ResourceResponse } from "../types";
 import { SS2TerminalComms } from "../SS2TerminalComms";
-import { createLogger } from "../../core/logger";
+import { createLogger } from "@ralphschuler/screeps-core";
 
 const logger = createLogger("ResourceRequestProtocol");
 

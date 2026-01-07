@@ -26,7 +26,7 @@ import { heapCache } from "./memory/heapCache";
 import { SS2TerminalComms } from "./standards/SS2TerminalComms";
 import { initializeRemotePathScheduler } from "./utils/remote-mining";
 import { shardManager } from "./intershard/shardManager";
-import { getOwnedRooms } from "./cache";
+import { getOwnedRooms } from "@ralphschuler/screeps-cache";
 import { eventBus } from "./core/events";
 
 // =============================================================================

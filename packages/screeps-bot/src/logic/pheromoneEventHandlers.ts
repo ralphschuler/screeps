@@ -6,7 +6,7 @@
  */
 
 import { kernel } from "../core/kernel";
-import { logger } from "../core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "../memory/manager";
 import { pheromoneManager } from "./pheromone";
 
