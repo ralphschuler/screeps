@@ -26,9 +26,17 @@ const path = require('path');
 
 // Constants
 const DEFAULT_SCENARIO = 'default';
-const MAX_CPU_MULTIPLIER = 1.1;  // For estimating max CPU from p95
-const MIN_CPU_MULTIPLIER = 0.5;  // For estimating min CPU from avg
-const P99_CPU_MULTIPLIER = 1.05; // For estimating p99 from p95
+
+// CPU metric estimation multipliers
+// These are used when only avg/p95 metrics are provided manually via CLI
+// Rationale:
+// - MAX_CPU_MULTIPLIER (1.1): Assumes max CPU is ~10% higher than p95 (covers rare spikes)
+// - MIN_CPU_MULTIPLIER (0.5): Assumes min CPU is ~50% of average (idle/low-load periods)
+// - P99_CPU_MULTIPLIER (1.05): Assumes p99 is ~5% higher than p95 (narrow tail distribution)
+// These are conservative estimates based on typical Screeps bot behavior patterns
+const MAX_CPU_MULTIPLIER = 1.1;
+const MIN_CPU_MULTIPLIER = 0.5;
+const P99_CPU_MULTIPLIER = 1.05;
 
 // Check if compiled files exist
 const distPath = path.join(__dirname, 'mcp-helpers', 'dist', 'regression.js');
@@ -105,12 +113,21 @@ async function main() {
     // Validate CPU metrics are numeric
     const cpu = report.analysis.cpu;
     const requiredFields = ['avg', 'p95', 'max', 'min', 'p99'];
-    const missingFields = requiredFields.filter(field => 
+    
+    // Check for missing fields
+    const missingFields = requiredFields.filter(field => cpu[field] === undefined);
+    if (missingFields.length > 0) {
+      console.error(`\n❌ Missing CPU metrics: ${missingFields.join(', ')}`);
+      console.log('The performance report is incomplete. These fields are required.');
+      process.exit(1);
+    }
+    
+    // Check for non-numeric or NaN values
+    const invalidFields = requiredFields.filter(field => 
       typeof cpu[field] !== 'number' || isNaN(cpu[field])
     );
-    
-    if (missingFields.length > 0) {
-      console.error(`\n❌ Missing or invalid CPU metrics: ${missingFields.join(', ')}`);
+    if (invalidFields.length > 0) {
+      console.error(`\n❌ Invalid CPU metric values: ${invalidFields.join(', ')}`);
       console.log('Expected numeric values for all CPU metrics.');
       process.exit(1);
     }
