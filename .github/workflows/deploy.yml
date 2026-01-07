@@ -1,15 +1,17 @@
 name: Deploy
 
 on:
-  release:
+  workflow_run:
+    workflows: ["Release"]
     types:
-      - published
+      - completed
   workflow_dispatch:
 
 jobs:
   deploy:
     name: Deploy (${{ matrix.environment }})
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     environment: ${{ matrix.environment }}
     strategy:
       fail-fast: false
