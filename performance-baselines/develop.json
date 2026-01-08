@@ -26,6 +26,24 @@
       "maxCpu": 0.25,
       "p95Cpu": 0.24,
       "p99Cpu": 0.245
+    },
+    "Remote Mining": {
+      "avgCpu": 0.12,
+      "maxCpu": 0.15,
+      "p95Cpu": 0.14,
+      "p99Cpu": 0.145
+    },
+    "Defense Response": {
+      "avgCpu": 0.2,
+      "maxCpu": 0.25,
+      "p95Cpu": 0.24,
+      "p99Cpu": 0.245
+    },
+    "Multi-Room Scaling (25 Rooms)": {
+      "avgCpu": 3.0,
+      "maxCpu": 3.75,
+      "p95Cpu": 3.5,
+      "p99Cpu": 3.65
     }
   },
   "metadata": {
@@ -34,7 +52,10 @@
     "targets": {
       "eco_room": "≤0.1 CPU per tick",
       "combat_room": "≤0.25 CPU per tick",
-      "global_kernel": "≤1 CPU every 20-50 ticks"
+      "global_kernel": "≤1 CPU every 20-50 ticks",
+      "remote_mining": "≤0.15 CPU per tick, >5 energy/CPU",
+      "defense_response": "≤0.25 CPU per tick, <10 tick detection",
+      "multi_room_scaling": "≤0.15 CPU per room at 25 rooms"
     }
   }
 }

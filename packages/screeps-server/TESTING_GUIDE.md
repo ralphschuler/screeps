@@ -170,6 +170,21 @@ Predefined scenarios in `packages/screeps-server/test/fixtures/scenarios.ts`:
 - Tests military systems
 - Target: ≤0.25 CPU avg
 
+### Remote Mining
+- Remote harvesting from neutral rooms
+- Tests remote logistics efficiency
+- Target: ≤0.15 CPU avg, >5 energy/CPU efficiency
+
+### Defense Response
+- Hostile detection and defender spawning
+- Tests reaction time and defense coordination
+- Target: ≤0.25 CPU avg, <10 tick detection
+
+### Multi-Room Scaling (25 Rooms)
+- Large-scale empire with 25 rooms
+- Tests CPU scaling and per-room efficiency
+- Target: ≤0.15 CPU per room (3.75 total)
+
 ## CI/CD Integration
 
 ### Automated Testing

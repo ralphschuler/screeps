@@ -119,6 +119,22 @@ try {
     process.exit(1);
   } else {
     console.log('✅ All tests passed');
+    
+    // Run baseline comparison if in CI environment
+    if (process.env.CI && process.env.GITHUB_REF_NAME) {
+      console.log('\n📊 Running baseline comparison...');
+      try {
+        const { execSync } = await import('child_process');
+        execSync('node scripts/compare-baseline.js', { 
+          stdio: 'inherit',
+          cwd: __dirname + '/..'
+        });
+      } catch (error) {
+        console.warn('⚠️ Baseline comparison failed or detected regression');
+        process.exit(1);
+      }
+    }
+    
     process.exit(0);
   }
 } catch (error) {
