@@ -18,9 +18,15 @@
 // Context management
 export { 
   createContext, 
-  clearRoomCaches,
-  registerMilitaryCacheClear 
+  clearRoomCaches
 } from "./behaviors/context";
+
+/**
+ * Register a callback to clear military behavior caches.
+ * This is used by the military behavior module to hook into the cache clearing system.
+ * @see clearRoomCaches for the function that triggers all cache clearing
+ */
+export { registerMilitaryCacheClear } from "./behaviors/context";
 
 // Types
 export type { 
