@@ -10,6 +10,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -124,10 +125,9 @@ try {
     if (process.env.CI && process.env.GITHUB_REF_NAME) {
       console.log('\n📊 Running baseline comparison...');
       try {
-        const { execSync } = await import('child_process');
         execSync('node scripts/compare-baseline.js', { 
           stdio: 'inherit',
-          cwd: __dirname + '/..'
+          cwd: join(__dirname, '..')
         });
       } catch (error) {
         console.warn('⚠️ Baseline comparison failed or detected regression');

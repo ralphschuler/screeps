@@ -342,6 +342,35 @@ export const defenseResponseScenario: TestScenario = {
 };
 
 /**
+ * Generate room configuration for scaling scenario
+ */
+function createScalingRoomConfig(index: number): RoomFixture {
+  const rcl = index === 0 ? 8 : (index < 5 ? 7 : (index < 10 ? 6 : (index < 15 ? 5 : 4)));
+  const energy = index === 0 ? 500000 : (index < 5 ? 200000 : (index < 10 ? 100000 : 50000));
+  
+  const structures = index === 0 
+    ? { spawn: 3, extension: 60, tower: 6, storage: 1, terminal: 1 }
+    : (index < 5 
+      ? { spawn: 2, extension: 50, tower: 4, storage: 1 }
+      : (index < 10 
+        ? { spawn: 2, extension: 40, tower: 3, storage: 1 }
+        : (index < 15
+          ? { spawn: 1, extension: 30, tower: 2, storage: 1 }
+          : { spawn: 1, extension: 20 }
+        )
+      )
+    );
+  
+  return {
+    name: `W${index % 5}N${Math.floor(index / 5)}`,
+    rcl,
+    energy,
+    sources: 2,
+    structures
+  };
+}
+
+/**
  * Multi-room scaling scenario - 25 rooms
  * Tests CPU scaling with large number of rooms
  * Target: <0.15 CPU per room at 25 rooms
@@ -353,24 +382,7 @@ export const multiRoomScalingScenario: TestScenario = {
     name: 'scaling-bot',
     username: 'player',
     startRoom: 'W0N1',
-    rooms: Array.from({ length: 25 }, (_, i) => ({
-      name: `W${i % 5}N${Math.floor(i / 5)}`,
-      rcl: i === 0 ? 8 : (i < 5 ? 7 : (i < 10 ? 6 : (i < 15 ? 5 : 4))),
-      energy: i === 0 ? 500000 : (i < 5 ? 200000 : (i < 10 ? 100000 : 50000)),
-      sources: 2,
-      structures: i === 0 ? 
-        { spawn: 3, extension: 60, tower: 6, storage: 1, terminal: 1 } :
-        (i < 5 ? 
-          { spawn: 2, extension: 50, tower: 4, storage: 1 } :
-          (i < 10 ? 
-            { spawn: 2, extension: 40, tower: 3, storage: 1 } :
-            (i < 15 ?
-              { spawn: 1, extension: 30, tower: 2, storage: 1 } :
-              { spawn: 1, extension: 20 }
-            )
-          )
-        )
-    }))
+    rooms: Array.from({ length: 25 }, (_, i) => createScalingRoomConfig(i))
   },
   expectedBehavior: {
     spawnsCreeps: true,

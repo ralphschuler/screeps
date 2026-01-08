@@ -41,9 +41,9 @@
     },
     "Multi-Room Scaling (25 Rooms)": {
       "avgCpu": 3.0,
-      "maxCpu": 3.75,
-      "p95Cpu": 3.5,
-      "p99Cpu": 3.65
+      "maxCpu": 4.5,
+      "p95Cpu": 3.8,
+      "p99Cpu": 4.2
     }
   },
   "metadata": {

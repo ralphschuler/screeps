@@ -19,6 +19,10 @@ import {
   type TestScenario
 } from '../fixtures/scenarios.js';
 
+// CPU variance tolerance constants
+const CPU_VARIANCE_TOLERANCE = 0.5; // Standard tolerance for CPU consistency
+const CPU_VARIANCE_TOLERANCE_SCALING = 0.6; // Higher tolerance for multi-room scaling
+
 describe('Performance Tests', () => {
   describe('CPU Budget Validation', () => {
     it('should stay within CPU budget for empty room', async function() {
@@ -190,7 +194,7 @@ describe('Performance Tests', () => {
       const coefficientOfVariation = stdDev / avg;
       assert.isBelow(
         coefficientOfVariation,
-        0.5,
+        CPU_VARIANCE_TOLERANCE,
         `CPU variance too high: stddev ${stdDev.toFixed(3)}, avg ${avg.toFixed(3)}`
       );
     });
@@ -335,7 +339,7 @@ describe('Performance Tests', () => {
       const coefficientOfVariation = stdDev / avg;
       assert.isBelow(
         coefficientOfVariation,
-        0.6, // Slightly higher tolerance for multi-room
+        CPU_VARIANCE_TOLERANCE_SCALING,
         `CPU variance at scale too high: stddev ${stdDev.toFixed(3)}, avg ${avg.toFixed(3)}`
       );
     });

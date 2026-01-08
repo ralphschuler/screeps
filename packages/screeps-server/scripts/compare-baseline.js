@@ -179,21 +179,15 @@ function comparePerformance(results, baseline) {
     }
     
     // Bucket level
-    const bucketResult = classifyRegression(
-      'avgBucket',
-      current.avgBucket,
-      baselineMetrics.p95Cpu // Using p95Cpu as proxy since bucket not in old baseline
-    );
-    
-    if (bucketResult.severity === 'improvement') {
+    // Note: Bucket level not in old baseline format, skip comparison for now
+    // Will be tracked once real performance data is collected
+    if (current.avgBucket) {
       comparison.improvements.push({
         metric: 'Bucket Level',
-        baseline: 'N/A',
+        baseline: 'N/A (new metric)',
         current: current.avgBucket.toFixed(0),
         change: 'N/A'
       });
-      comparison.summary.improvement++;
-    } else {
       comparison.summary.pass++;
     }
   }
