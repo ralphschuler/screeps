@@ -11,24 +11,76 @@
  * @packageDocumentation
  */
 
-// Framework exports
-export { createContext, clearRoomCaches } from "./framework/BehaviorContext";
+// =============================================================================
+// Behavior Framework (from behaviors directory - the canonical implementation)
+// =============================================================================
+
+// Context management
+export { 
+  createContext, 
+  clearRoomCaches,
+  registerMilitaryCacheClear 
+} from "./behaviors/context";
+
+// Types
 export type { 
-  BaseCreepMemory,
-  CreepState,
-  CreepAction,
   CreepContext,
-  BehaviorFunction,
-  BehaviorResult
-} from "./framework/types";
+  CreepAction,
+  BehaviorFunction
+} from "./behaviors/types";
 
-// Behavior exports
-export { harvestBehavior, haulBehavior, buildBehavior, upgradeBehavior } from "./behaviors/economy";
-export { attackBehavior, defendBehavior, healBehavior } from "./behaviors/military/index";
+// Executor
+export { executeAction } from "./behaviors/executor";
 
-// Role exports (Phase 9)
-// Note: These are minimal implementations that will be expanded as behaviors are extracted
-// See docs/IMPLEMENTATION_STATUS.md for the full phased approach
+// State machine
+export { evaluateWithStateMachine } from "./behaviors/stateMachine";
+
+// =============================================================================
+// Economy Behaviors
+// =============================================================================
+
+export {
+  harvestBehavior,
+  haulBehavior,
+  buildBehavior,
+  upgradeBehavior,
+  evaluateEconomyBehavior
+} from "./behaviors/economy";
+
+// =============================================================================
+// Military Behaviors
+// =============================================================================
+
+export {
+  guard,
+  remoteGuard,
+  healer,
+  soldier,
+  siege,
+  harasser,
+  ranger,
+  evaluateMilitaryBehavior
+} from "./behaviors/military";
+
+// =============================================================================
+// Utility Behaviors
+// =============================================================================
+
+export {
+  scout,
+  claimer,
+  engineer,
+  remoteWorker,
+  linkManager,
+  terminalManager,
+  evaluateUtilityBehavior
+} from "./behaviors/utility";
+
+// =============================================================================
+// Role Implementations
+// =============================================================================
+
 export { runEconomyRole } from "./roles/economy";
 export { runMilitaryRole } from "./roles/military";
 export { runUtilityRole } from "./roles/utility";
+export { runPowerRole } from "./roles/power";
