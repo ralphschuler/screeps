@@ -13732,133 +13732,135 @@ enumerable: !0,
 get: function() {
 return t.clearRoomCaches;
 }
-}), Object.defineProperty(e, "registerMilitaryCacheClear", {
+});
+var r = ca();
+Object.defineProperty(e, "registerMilitaryCacheClear", {
 enumerable: !0,
 get: function() {
-return t.registerMilitaryCacheClear;
+return r.registerMilitaryCacheClear;
 }
 });
-var r = xa();
+var o = xa();
 Object.defineProperty(e, "executeAction", {
 enumerable: !0,
 get: function() {
-return r.executeAction;
+return o.executeAction;
 }
 });
-var o = Ma();
+var n = Ma();
 Object.defineProperty(e, "evaluateWithStateMachine", {
 enumerable: !0,
 get: function() {
-return o.evaluateWithStateMachine;
+return n.evaluateWithStateMachine;
 }
 });
-var n = Ia();
+var a = Ia();
 Object.defineProperty(e, "harvestBehavior", {
 enumerable: !0,
 get: function() {
-return n.harvestBehavior;
+return a.harvestBehavior;
 }
 }), Object.defineProperty(e, "haulBehavior", {
 enumerable: !0,
 get: function() {
-return n.haulBehavior;
+return a.haulBehavior;
 }
 }), Object.defineProperty(e, "buildBehavior", {
 enumerable: !0,
 get: function() {
-return n.buildBehavior;
+return a.buildBehavior;
 }
 }), Object.defineProperty(e, "upgradeBehavior", {
 enumerable: !0,
 get: function() {
-return n.upgradeBehavior;
+return a.upgradeBehavior;
 }
 }), Object.defineProperty(e, "evaluateEconomyBehavior", {
 enumerable: !0,
 get: function() {
-return n.evaluateEconomyBehavior;
+return a.evaluateEconomyBehavior;
 }
 });
-var a = La();
+var i = La();
 Object.defineProperty(e, "guard", {
 enumerable: !0,
 get: function() {
-return a.guard;
+return i.guard;
 }
 }), Object.defineProperty(e, "remoteGuard", {
 enumerable: !0,
 get: function() {
-return a.remoteGuard;
+return i.remoteGuard;
 }
 }), Object.defineProperty(e, "healer", {
 enumerable: !0,
 get: function() {
-return a.healer;
+return i.healer;
 }
 }), Object.defineProperty(e, "soldier", {
 enumerable: !0,
 get: function() {
-return a.soldier;
+return i.soldier;
 }
 }), Object.defineProperty(e, "siege", {
 enumerable: !0,
 get: function() {
-return a.siege;
+return i.siege;
 }
 }), Object.defineProperty(e, "harasser", {
 enumerable: !0,
 get: function() {
-return a.harasser;
+return i.harasser;
 }
 }), Object.defineProperty(e, "ranger", {
 enumerable: !0,
 get: function() {
-return a.ranger;
+return i.ranger;
 }
 }), Object.defineProperty(e, "evaluateMilitaryBehavior", {
 enumerable: !0,
 get: function() {
-return a.evaluateMilitaryBehavior;
+return i.evaluateMilitaryBehavior;
 }
 });
-var i = Ba();
+var s = Ba();
 Object.defineProperty(e, "scout", {
 enumerable: !0,
 get: function() {
-return i.scout;
+return s.scout;
 }
 }), Object.defineProperty(e, "claimer", {
 enumerable: !0,
 get: function() {
-return i.claimer;
+return s.claimer;
 }
 }), Object.defineProperty(e, "engineer", {
 enumerable: !0,
 get: function() {
-return i.engineer;
+return s.engineer;
 }
 }), Object.defineProperty(e, "remoteWorker", {
 enumerable: !0,
 get: function() {
-return i.remoteWorker;
+return s.remoteWorker;
 }
 }), Object.defineProperty(e, "linkManager", {
 enumerable: !0,
 get: function() {
-return i.linkManager;
+return s.linkManager;
 }
 }), Object.defineProperty(e, "terminalManager", {
 enumerable: !0,
 get: function() {
-return i.terminalManager;
+return s.terminalManager;
 }
 }), Object.defineProperty(e, "evaluateUtilityBehavior", {
 enumerable: !0,
 get: function() {
-return i.evaluateUtilityBehavior;
+return s.evaluateUtilityBehavior;
 }
 });
-var s = function() {
+var c = function() {
 if (Za) return Ya;
 Za = 1, Object.defineProperty(Ya, "__esModule", {
 value: !0
@@ -13872,10 +13874,10 @@ return Ya;
 Object.defineProperty(e, "runEconomyRole", {
 enumerable: !0,
 get: function() {
-return s.runEconomyRole;
+return c.runEconomyRole;
 }
 });
-var c = function() {
+var u = function() {
 if (ti) return si;
 ti = 1, Object.defineProperty(si, "__esModule", {
 value: !0
@@ -13889,10 +13891,10 @@ return si;
 Object.defineProperty(e, "runMilitaryRole", {
 enumerable: !0,
 get: function() {
-return c.runMilitaryRole;
+return u.runMilitaryRole;
 }
 });
-var u = function() {
+var l = function() {
 if (ri) return ci;
 ri = 1, Object.defineProperty(ci, "__esModule", {
 value: !0
@@ -13906,10 +13908,10 @@ return ci;
 Object.defineProperty(e, "runUtilityRole", {
 enumerable: !0,
 get: function() {
-return u.runUtilityRole;
+return l.runUtilityRole;
 }
 });
-var l = function() {
+var m = function() {
 if (oi) return ui;
 oi = 1, Object.defineProperty(ui, "__esModule", {
 value: !0
@@ -13934,7 +13936,7 @@ return ui;
 Object.defineProperty(e, "runPowerRole", {
 enumerable: !0,
 get: function() {
-return l.runPowerRole;
+return m.runPowerRole;
 }
 });
 }(ea)), ea), mi = function() {
