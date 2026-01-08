@@ -90,6 +90,17 @@ jobs:
         timeout-minutes: 10
         continue-on-error: true
 
+      - name: Analyze server test results
+        if: always()
+        working-directory: packages/screeps-server
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+          GITHUB_SHA: ${{ github.sha }}
+          CI: true
+        run: node scripts/analyze-tests.js
+        continue-on-error: true
+
       - name: Upload server test results
         if: always()
         uses: actions/upload-artifact@v6
@@ -97,6 +108,7 @@ jobs:
           name: server-test-results
           path: |
             packages/screeps-server/test-results.json
+            packages/screeps-server/test-report.md
             packages/screeps-server/coverage/
           retention-days: 30
           if-no-files-found: ignore
