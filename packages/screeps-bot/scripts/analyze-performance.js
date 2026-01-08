@@ -20,6 +20,7 @@ const __dirname = path.dirname(__filename);
 
 // Configuration
 const REGRESSION_THRESHOLD = 0.10; // 10% increase is considered a regression
+const MEMORY_REGRESSION_THRESHOLD = 0.10; // 10% increase in memory is considered a regression
 const LOGS_DIR = path.join(__dirname, '..', 'logs');
 const CONSOLE_LOG_FILE = path.join(LOGS_DIR, 'console.log');
 const RESULTS_FILE = path.join(__dirname, '..', 'performance-results.json');
@@ -27,14 +28,15 @@ const BASELINE_DIR = path.join(__dirname, '..', '..', '..', 'performance-baselin
 const REPORT_FILE = path.join(__dirname, '..', 'performance-report.json');
 
 /**
- * Parse CPU usage from console logs
+ * Parse CPU usage and memory metrics from console logs
  * Supports two formats:
- * 1. JSON stats output: {"type":"stats","tick":123,"data":{"cpu":{"used":0.5}}}
- * 2. Plain text: CPU: 0.5 Bucket: 9500
+ * 1. JSON stats output: {"type":"stats","tick":123,"data":{"cpu":{"used":0.5},"memory":{"used":150000}}}
+ * 2. Plain text: CPU: 0.5 Bucket: 9500 Memory: 150KB
  */
 function parseCpuMetrics(consoleLog) {
   const cpuHistory = [];
   const bucketHistory = [];
+  const memoryHistory = [];
   
   // Split into lines
   const lines = consoleLog.split('\n');
@@ -50,6 +52,12 @@ function parseCpuMetrics(consoleLog) {
           }
           if (typeof stats.data.cpu.bucket === 'number') {
             bucketHistory.push(stats.data.cpu.bucket);
+          }
+        }
+        // Parse memory usage
+        if (stats.data && stats.data.memory) {
+          if (typeof stats.data.memory.used === 'number') {
+            memoryHistory.push(stats.data.memory.used);
           }
         }
         continue; // Skip plain text parsing if JSON was successful
@@ -74,9 +82,27 @@ function parseCpuMetrics(consoleLog) {
         bucketHistory.push(bucket);
       }
     }
+    
+    // Parse memory in KB or bytes
+    const memoryMatch = line.match(/Memory:\s*([\d.]+)\s*(KB|MB|bytes)?/i);
+    if (memoryMatch) {
+      let memory = parseFloat(memoryMatch[1]);
+      const unit = memoryMatch[2] ? memoryMatch[2].toLowerCase() : 'kb';
+      
+      // Convert to bytes for consistent storage
+      if (unit === 'kb') {
+        memory = memory * 1024;
+      } else if (unit === 'mb') {
+        memory = memory * 1024 * 1024;
+      }
+      
+      if (!isNaN(memory)) {
+        memoryHistory.push(memory);
+      }
+    }
   }
   
-  return { cpuHistory, bucketHistory };
+  return { cpuHistory, bucketHistory, memoryHistory };
 }
 
 /**
@@ -163,20 +189,35 @@ function detectRegression(current, baseline, threshold = REGRESSION_THRESHOLD) {
   // Use safe denominators to avoid division by zero
   const avgCpuDenom = baseline.avgCpu || Number.EPSILON;
   const maxCpuDenom = baseline.maxCpu || Number.EPSILON;
+  const avgMemoryDenom = baseline.avgMemory || Number.EPSILON;
+  const maxMemoryDenom = baseline.maxMemory || Number.EPSILON;
   
   const avgCpuChange = (current.avgCpu - baseline.avgCpu) / avgCpuDenom;
   const maxCpuChange = (current.maxCpu - baseline.maxCpu) / maxCpuDenom;
   
+  // Only calculate memory changes if both current and baseline have memory data
+  const avgMemoryChange = (current.avgMemory !== undefined && baseline.avgMemory !== undefined)
+    ? (current.avgMemory - baseline.avgMemory) / avgMemoryDenom
+    : 0;
+  const maxMemoryChange = (current.maxMemory !== undefined && baseline.maxMemory !== undefined)
+    ? (current.maxMemory - baseline.maxMemory) / maxMemoryDenom
+    : 0;
+  
   const avgRegression = avgCpuChange > threshold;
   const maxRegression = maxCpuChange > threshold;
+  const memoryRegression = avgMemoryChange > MEMORY_REGRESSION_THRESHOLD || maxMemoryChange > MEMORY_REGRESSION_THRESHOLD;
   
   return {
-    detected: avgRegression || maxRegression,
+    detected: avgRegression || maxRegression || memoryRegression,
     avgCpuChange: avgCpuChange * 100,
     maxCpuChange: maxCpuChange * 100,
+    avgMemoryChange: avgMemoryChange * 100,
+    maxMemoryChange: maxMemoryChange * 100,
     avgRegression,
     maxRegression,
+    memoryRegression,
     threshold: threshold * 100,
+    memoryThreshold: MEMORY_REGRESSION_THRESHOLD * 100,
     current,
     baseline
   };
@@ -186,6 +227,30 @@ function detectRegression(current, baseline, threshold = REGRESSION_THRESHOLD) {
  * Generate performance report
  */
 function generateReport(analysis, regression, milestones) {
+  const formatMemory = (bytes) => {
+    if (!bytes || bytes === 0) return '0 KB';
+    if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+    return `${(bytes / 1024).toFixed(2)} KB`;
+  };
+  
+  const summary = {
+    avgCpu: analysis.cpu.avg.toFixed(3),
+    maxCpu: analysis.cpu.max.toFixed(3),
+    p95Cpu: analysis.cpu.p95.toFixed(3),
+    p99Cpu: analysis.cpu.p99.toFixed(3),
+    avgBucket: analysis.bucket.avg.toFixed(0),
+    minBucket: analysis.bucket.min.toFixed(0),
+    sampleCount: analysis.cpu.sampleCount
+  };
+  
+  // Add memory metrics if available
+  if (analysis.memory && analysis.memory.sampleCount > 0) {
+    summary.avgMemory = formatMemory(analysis.memory.avg);
+    summary.maxMemory = formatMemory(analysis.memory.max);
+    summary.avgMemoryBytes = analysis.memory.avg;
+    summary.maxMemoryBytes = analysis.memory.max;
+  }
+  
   const report = {
     timestamp: new Date().toISOString(),
     commit: process.env.GITHUB_SHA || 'unknown',
@@ -195,15 +260,7 @@ function generateReport(analysis, regression, milestones) {
     regression,
     milestones: milestones || {},
     passed: !regression.detected,
-    summary: {
-      avgCpu: analysis.cpu.avg.toFixed(3),
-      maxCpu: analysis.cpu.max.toFixed(3),
-      p95Cpu: analysis.cpu.p95.toFixed(3),
-      p99Cpu: analysis.cpu.p99.toFixed(3),
-      avgBucket: analysis.bucket.avg.toFixed(0),
-      minBucket: analysis.bucket.min.toFixed(0),
-      sampleCount: analysis.cpu.sampleCount
-    }
+    summary
   };
   
   return report;
@@ -225,6 +282,13 @@ function formatMarkdownReport(report) {
   markdown += `| Max CPU | ${report.summary.maxCpu} | ${regression.maxRegression === true ? '❌' : '✅'} |\n`;
   markdown += `| P95 CPU | ${report.summary.p95Cpu} | ℹ️ |\n`;
   markdown += `| P99 CPU | ${report.summary.p99Cpu} | ℹ️ |\n`;
+  
+  // Add memory metrics if available
+  if (report.summary.avgMemory) {
+    markdown += `| Avg Memory | ${report.summary.avgMemory} | ${regression.memoryRegression === true ? '❌' : '✅'} |\n`;
+    markdown += `| Max Memory | ${report.summary.maxMemory} | ℹ️ |\n`;
+  }
+  
   markdown += `| Avg Bucket | ${report.summary.avgBucket} | ${analysis.bucket.avg > 9000 ? '✅' : '⚠️'} |\n`;
   markdown += `| Min Bucket | ${report.summary.minBucket} | ${analysis.bucket.min > 5000 ? '✅' : '⚠️'} |\n`;
   markdown += `| Samples | ${report.summary.sampleCount} | ℹ️ |\n\n`;
@@ -243,7 +307,15 @@ function formatMarkdownReport(report) {
       markdown += `| Max CPU | ${regression.current.maxCpu.toFixed(3)} | ${regression.baseline.maxCpu.toFixed(3)} | +${regression.maxCpuChange.toFixed(1)}% |\n`;
     }
     
-    markdown += `\n⚠️ Regression threshold: ${regression.threshold}%\n\n`;
+    if (regression.memoryRegression === true && regression.current && regression.baseline) {
+      if (regression.current.avgMemory !== undefined && regression.baseline.avgMemory !== undefined) {
+        const formatMemory = (bytes) => bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(2)} MB` : `${(bytes / 1024).toFixed(2)} KB`;
+        markdown += `| Avg Memory | ${formatMemory(regression.current.avgMemory)} | ${formatMemory(regression.baseline.avgMemory)} | +${regression.avgMemoryChange.toFixed(1)}% |\n`;
+      }
+    }
+    
+    markdown += `\n⚠️ CPU Regression threshold: ${regression.threshold}%\n`;
+    markdown += `⚠️ Memory Regression threshold: ${regression.memoryThreshold}%\n\n`;
   } else if (regression.baseline) {
     markdown += '### ✅ No Performance Regression\n\n';
     markdown += 'Performance is within acceptable limits compared to baseline.\n\n';
@@ -334,12 +406,13 @@ async function main() {
   console.log('Reading console logs...');
   const consoleLog = fs.readFileSync(CONSOLE_LOG_FILE, 'utf-8');
   
-  // Parse CPU metrics
-  console.log('Parsing CPU metrics...');
-  const { cpuHistory, bucketHistory } = parseCpuMetrics(consoleLog);
+  // Parse CPU and memory metrics
+  console.log('Parsing CPU and memory metrics...');
+  const { cpuHistory, bucketHistory, memoryHistory } = parseCpuMetrics(consoleLog);
   
   console.log(`Found ${cpuHistory.length} CPU samples`);
   console.log(`Found ${bucketHistory.length} bucket samples`);
+  console.log(`Found ${memoryHistory.length} memory samples`);
   
   if (cpuHistory.length === 0) {
     console.warn('Warning: No CPU metrics found in logs');
@@ -350,6 +423,7 @@ async function main() {
   console.log('\nCalculating statistics...');
   const cpuStats = calculateStats(cpuHistory);
   const bucketStats = calculateStats(bucketHistory);
+  const memoryStats = calculateStats(memoryHistory);
   
   const analysis = {
     cpu: {
@@ -359,6 +433,10 @@ async function main() {
     bucket: {
       ...bucketStats,
       sampleCount: bucketHistory.length
+    },
+    memory: {
+      ...memoryStats,
+      sampleCount: memoryHistory.length
     }
   };
   
@@ -375,6 +453,14 @@ async function main() {
     console.log(`  Maximum: ${bucketStats.max.toFixed(0)}`);
   }
   
+  if (memoryHistory.length > 0) {
+    console.log('\nMemory Statistics:');
+    const formatMemory = (bytes) => bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(2)} MB` : `${(bytes / 1024).toFixed(2)} KB`;
+    console.log(`  Average: ${formatMemory(memoryStats.avg)}`);
+    console.log(`  Maximum: ${formatMemory(memoryStats.max)}`);
+    console.log(`  P95:     ${formatMemory(memoryStats.p95)}`);
+  }
+  
   // Load baseline and detect regression
   console.log('\nLoading baseline...');
   const branch = process.env.GITHUB_BASE_REF || process.env.GITHUB_REF_NAME || 'main';
@@ -383,12 +469,21 @@ async function main() {
   let regression;
   if (baseline && baseline.scenarios && baseline.scenarios['default']) {
     console.log(`Comparing against baseline for branch: ${branch}`);
+    
+    const currentMetrics = {
+      avgCpu: cpuStats.avg,
+      maxCpu: cpuStats.max,
+      p95Cpu: cpuStats.p95
+    };
+    
+    // Add memory metrics if available
+    if (memoryHistory.length > 0) {
+      currentMetrics.avgMemory = memoryStats.avg;
+      currentMetrics.maxMemory = memoryStats.max;
+    }
+    
     regression = detectRegression(
-      {
-        avgCpu: cpuStats.avg,
-        maxCpu: cpuStats.max,
-        p95Cpu: cpuStats.p95
-      },
+      currentMetrics,
       baseline.scenarios['default'],
       REGRESSION_THRESHOLD
     );
@@ -400,6 +495,9 @@ async function main() {
       }
       if (regression.maxRegression) {
         console.log(`   Max CPU increased by ${regression.maxCpuChange.toFixed(1)}%`);
+      }
+      if (regression.memoryRegression) {
+        console.log(`   Memory increased by ${regression.avgMemoryChange.toFixed(1)}%`);
       }
     } else {
       console.log('\n✅ No performance regression detected');
