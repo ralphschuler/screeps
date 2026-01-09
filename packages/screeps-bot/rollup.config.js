@@ -84,6 +84,7 @@ export default {
         { find: "@ralphschuler/screeps-visuals", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-visuals/src/index.ts") },
         { find: "@ralphschuler/screeps-pathfinding", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-pathfinding/src/index.ts") },
         { find: "@ralphschuler/screeps-remote-mining", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-remote-mining/src/index.ts") },
+        { find: "@ralphschuler/screeps-roles", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-roles/src/index.ts") },
         // Non-scoped packages (in packages/)
         { find: "@ralphschuler/screeps-utils", replacement: path.resolve(__dirname, "../screeps-utils/src/index.ts") },
         { find: "@ralphschuler/screeps-defense", replacement: path.resolve(__dirname, "../screeps-defense/src/index.ts") },
