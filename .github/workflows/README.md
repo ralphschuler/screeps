@@ -2,16 +2,25 @@
 
 This directory contains all GitHub Actions workflows for the Screeps repository.
 
-## CI/CD Workflows
+**Current Status**: 18 active workflows (consolidated from 22 - see [Consolidation Summary](../WORKFLOW_CONSOLIDATION_SUMMARY.md))
 
-### Core CI Workflows
+For complete documentation, see [WORKFLOWS.md](/WORKFLOWS.md) in the repository root.
 
-- **`test.yml`** - Runs unit and integration tests with coverage reporting
-- **`lint.yml`** - Runs ESLint to check code quality
-- **`format.yml`** - Validates code formatting with Prettier
-- **`mcp-ci.yml`** - CI for MCP (Model Context Protocol) packages
-- **`exporter-ci.yml`** - CI for Screeps exporter packages
-- **`performance-test.yml`** - Runs performance benchmarks
+## Quick Reference
+
+### CI/CD Workflows
+
+#### Core CI Workflow
+- **`ci.yml`** ⭐ **NEW** - Unified CI pipeline (replaces 6 workflows)
+  - Runs all tests (bot + 12 packages)
+  - Linting and type checking
+  - Code formatting validation
+  - Exporter tests (2 packages)
+  - MCP tests (4 packages)
+  - Bundle size reporting
+  
+#### Performance Testing
+- **`performance-test.yml`** - Performance benchmarks and regression detection
 
 ### Deployment Workflows
 
@@ -20,107 +29,92 @@ This directory contains all GitHub Actions workflows for the Screeps repository.
 - **`exporter-publish.yml`** - Publishes exporter Docker images
 - **`mcp-docker.yml`** - Builds and publishes MCP Docker images
 - **`release.yml`** - Creates releases and changelogs
+- **`post-deployment-monitoring.yml`** - Monitors deployment health
 
 ### Automation Workflows
 
-- **`ci-error-issue.yml`** - Automatically creates issues for CI failures (see below)
 - **`auto-todo-issue.yml`** - Converts TODO comments into GitHub issues
 - **`auto-issue-stale.yml`** - Manages stale issues
+- **`auto-merge.yml`** - Auto-merges approved Dependabot PRs
 - **`sync-labels.yml`** - Synchronizes repository labels
-
-### Maintenance Workflows
-
-- **`respawn.yml`** - Handles bot respawn operations
-- **`wiki-publish.yml`** - Publishes documentation to wiki
-- **`copilot-setup-steps.yml`** - Setup for GitHub Copilot
+- **`autonomous-improvement.yml`** - AI-driven code improvements
 - **`copilot-strategic-planner.yml`** - Strategic planning automation
+- **`wiki-publish.yml`** - Automatically publishes docs to wiki when changed
 
-## CI Error Issue Creator
+### Manual Operations
 
-The `ci-error-issue.yml` workflow automatically creates GitHub issues when CI workflows fail.
+- **`manual-ops.yml`** ⭐ **NEW** - Unified manual operations
+  - Respawn bot (manual trigger)
+  - Check bot status
+  
+- **`respawn.yml`** - Automated respawn (scheduled + post-deployment)
+- **`copilot-setup-steps.yml`** - Setup for GitHub Copilot agents
 
-### How It Works
+## Consolidated Workflows
 
-1. **Trigger**: Runs when any monitored CI workflow completes with a failure status
-2. **Log Analysis**: Downloads and parses logs from failed jobs
-3. **Error Extraction**: Identifies error messages using specific patterns:
-   - Lines containing "error:"
-   - Lines containing "failed:", "failure:", "test failed", or "build failed"
-   - Lines with error symbols (×, ✗, ❌)
-4. **Deduplication**: Checks for existing open issues with the same error message
-5. **Issue Creation**: Creates new issues only for unique errors
+The following workflows have been **consolidated** to improve maintainability:
 
-### Monitored Workflows
+### Into `ci.yml`:
+- ❌ `test.yml` → ✅ `ci.yml` (test-bot, test-packages jobs)
+- ❌ `lint.yml` → ✅ `ci.yml` (lint-bot, typecheck-packages jobs)
+- ❌ `format.yml` → ✅ `ci.yml` (format-check job)
+- ❌ `exporter-ci.yml` → ✅ `ci.yml` (test-exporters job)
+- ❌ `mcp-ci.yml` → ✅ `ci.yml` (test-mcp job)
+- ❌ `bundle-size.yml` → ✅ `ci.yml` (bundle-size job)
 
-- Tests
-- Lint
-- Formatting
-- MCP CI
-- Screeps Exporter CI
-- Performance Tests
+### Removed:
+- ❌ `ci-error-issue.yml.disabled` - Removed (was disabled, redundant functionality)
 
-### Issue Format
+## Key Features
 
-Each created issue includes:
-- **Title**: `CI Error in [Workflow Name]: [Error Message]` (truncated to 120 chars with ellipsis if needed)
-- **Labels**: `bug`, `ci`, `automated`
-- **Body**: Contains:
-  - Workflow name
-  - Link to failed workflow run
-  - Full error details in code block
-  - Action required note
+### Unified CI (`ci.yml`)
+- ✅ **Single status check** instead of 7 separate workflows
+- ✅ **Parallel job execution** for faster feedback
+- ✅ **Concurrency control** cancels stale runs
+- ✅ **Skip draft PRs** to save resources
+- ✅ **Shared setup** reduces overhead
 
-### Duplicate Prevention
+### Optimizations Applied
+- ✅ Concurrency controls on `ci.yml`, `performance-test.yml`, `deploy.yml`
+- ✅ Draft PR skipping on `ci.yml` and `performance-test.yml`
+- ✅ Path filters to skip unnecessary runs
+- ✅ Matrix strategies for parallel execution
 
-The workflow uses GitHub's Search API for efficient duplicate checking:
-- Before creating an issue, it searches for open issues with the same title
-- Uses the `/search/issues` API endpoint for fast lookups
-- Only creates a new issue if no matching open issue exists
-- Multiple failures with the same error will not create multiple issues
+## For Developers
 
-### Example Issue
+### Checking PR Status
+**Before**: Check 7 separate workflow statuses
+**Now**: Check 1 "Continuous Integration" workflow status
 
-```markdown
-## CI Workflow Failed
+### Running Manual Operations
+Use the "Manual Operations" workflow from the Actions tab:
+1. Go to Actions → Manual Operations
+2. Click "Run workflow"
+3. Select operation (respawn-bot, check-bot-status)
+4. Click "Run workflow"
 
-**Workflow:** Tests
-**Run:** [View failed run](https://github.com/ralphschuler/screeps/actions/runs/12345)
+### Publishing Wiki
+Wiki is automatically published when docs change on main branch via `wiki-publish.yml`.
+To manually trigger wiki publishing, use the `wiki-publish` workflow.
 
-### Error Details
+### Making Changes
 
-```
-Error: Cannot find module '@ralphschuler/screeps-kernel'
-```
+| Task | Location |
+|------|----------|
+| Add/update tests | `ci.yml` → test-bot or test-packages job |
+| Change linting rules | `ci.yml` → lint-bot job |
+| Update formatting | `ci.yml` → format-check job |
+| Modify exporter tests | `ci.yml` → test-exporters job |
+| Update MCP tests | `ci.yml` → test-mcp job |
+| Change bundle size checks | `ci.yml` → bundle-size job |
+| Update wiki build | `wiki-publish.yml` workflow |
 
-### Action Required
+## Documentation
 
-Please investigate and fix this CI failure.
+- **[WORKFLOWS.md](/WORKFLOWS.md)** - Complete workflow documentation
+- **[WORKFLOW_CONSOLIDATION_SUMMARY.md](../WORKFLOW_CONSOLIDATION_SUMMARY.md)** - Consolidation details and impact analysis
+- **[GitHub Actions Docs](https://docs.github.com/en/actions)** - Official documentation
 
 ---
-*This issue was automatically created by the CI Error Issue Creator workflow.*
-```
 
-### Customization
-
-To add more workflows to monitor, edit the `workflow_run.workflows` section in `ci-error-issue.yml`:
-
-```yaml
-on:
-  workflow_run:
-    workflows:
-      - "Tests"
-      - "Lint"
-      - "Your New Workflow Name"  # Add here
-    types:
-      - completed
-```
-
-### Permissions Required
-
-The workflow requires:
-- `issues: write` - To create issues
-- `actions: read` - To read workflow run data and logs
-
-### Rate Limiting
-
-The workflow includes a 2-second delay between issue creations to avoid GitHub API rate limiting.
+*Last Updated: 2026-01-09 - Post-consolidation (22 → 18 workflows)*
