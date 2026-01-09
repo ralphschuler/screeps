@@ -254,11 +254,160 @@ export const combatScenario: TestScenario = {
 };
 
 /**
+ * Remote mining scenario
+ * Tests remote harvesting efficiency and logistics
+ * Target: >5 energy/CPU efficiency
+ */
+export const remoteMiningScenario: TestScenario = {
+  name: 'Remote Mining',
+  description: 'Remote harvesting from neutral rooms',
+  bot: {
+    name: 'remote-mining-bot',
+    username: 'player',
+    startRoom: 'W0N1',
+    rooms: [
+      {
+        name: 'W0N1',
+        rcl: 7,
+        energy: 200000,
+        sources: 2,
+        structures: {
+          spawn: 2,
+          extension: 50,
+          tower: 4,
+          storage: 1,
+          terminal: 1,
+          road: 40
+        }
+      }
+    ]
+  },
+  expectedBehavior: {
+    spawnsCreeps: true,
+    harvestsEnergy: true,
+    upgradesController: true,
+    buildsStructures: true
+  },
+  performance: {
+    maxCpuPerTick: 0.2, // Remote mining overhead
+    avgCpuPerTick: 0.15,
+    maxMemoryParsing: 0.02,
+    minBucketLevel: 9500
+  },
+  ticks: 150
+};
+
+/**
+ * Defense response scenario
+ * Tests hostile detection and response time
+ * Target: <10 tick detection, <50 tick neutralization
+ */
+export const defenseResponseScenario: TestScenario = {
+  name: 'Defense Response',
+  description: 'Hostile detection and defender spawn',
+  bot: {
+    name: 'defense-response-bot',
+    username: 'player',
+    startRoom: 'W0N1',
+    rooms: [
+      {
+        name: 'W0N1',
+        rcl: 6,
+        energy: 150000,
+        sources: 2,
+        structures: {
+          spawn: 2,
+          extension: 40,
+          tower: 3,
+          storage: 1,
+          rampart: 15,
+          wall: 8
+        }
+      }
+    ]
+  },
+  expectedBehavior: {
+    spawnsCreeps: true,
+    harvestsEnergy: true,
+    upgradesController: true,
+    buildsStructures: true
+  },
+  performance: {
+    maxCpuPerTick: 0.3, // Defense overhead
+    avgCpuPerTick: 0.25,
+    maxMemoryParsing: 0.02,
+    minBucketLevel: 9000
+  },
+  ticks: 100
+};
+
+/**
+ * Generate room configuration for scaling scenario
+ */
+function createScalingRoomConfig(index: number): RoomFixture {
+  const rcl = index === 0 ? 8 : (index < 5 ? 7 : (index < 10 ? 6 : (index < 15 ? 5 : 4)));
+  const energy = index === 0 ? 500000 : (index < 5 ? 200000 : (index < 10 ? 100000 : 50000));
+  
+  const structures = index === 0 
+    ? { spawn: 3, extension: 60, tower: 6, storage: 1, terminal: 1 }
+    : (index < 5 
+      ? { spawn: 2, extension: 50, tower: 4, storage: 1 }
+      : (index < 10 
+        ? { spawn: 2, extension: 40, tower: 3, storage: 1 }
+        : (index < 15
+          ? { spawn: 1, extension: 30, tower: 2, storage: 1 }
+          : { spawn: 1, extension: 20 }
+        )
+      )
+    );
+  
+  return {
+    name: `W${index % 5}N${Math.floor(index / 5)}`,
+    rcl,
+    energy,
+    sources: 2,
+    structures
+  };
+}
+
+/**
+ * Multi-room scaling scenario - 25 rooms
+ * Tests CPU scaling with large number of rooms
+ * Target: <0.15 CPU per room at 25 rooms
+ */
+export const multiRoomScalingScenario: TestScenario = {
+  name: 'Multi-Room Scaling (25 Rooms)',
+  description: 'CPU scaling validation with 25 rooms',
+  bot: {
+    name: 'scaling-bot',
+    username: 'player',
+    startRoom: 'W0N1',
+    rooms: Array.from({ length: 25 }, (_, i) => createScalingRoomConfig(i))
+  },
+  expectedBehavior: {
+    spawnsCreeps: true,
+    harvestsEnergy: true,
+    upgradesController: true,
+    buildsStructures: true
+  },
+  performance: {
+    maxCpuPerTick: 4.0, // 25 rooms * 0.15 + overhead
+    avgCpuPerTick: 3.75, // 25 rooms * 0.15
+    maxMemoryParsing: 0.1, // More rooms = more memory
+    minBucketLevel: 8000 // Allow some bucket variation
+  },
+  ticks: 200
+};
+
+/**
  * All test scenarios
  */
 export const allScenarios: TestScenario[] = [
   emptyRoomScenario,
   singleRoomEcoScenario,
   fiveRoomScenario,
-  combatScenario
+  combatScenario,
+  remoteMiningScenario,
+  defenseResponseScenario,
+  multiRoomScalingScenario
 ];

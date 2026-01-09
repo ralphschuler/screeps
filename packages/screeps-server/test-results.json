@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-01-08T04:42:20.714Z",
+  "summary": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "duration": 0
+  },
+  "integration": {
+    "passed": true,
+    "tests": [],
+    "duration": 0
+  },
+  "performance": {
+    "passed": true,
+    "tests": [],
+    "cpuMetrics": {
+      "avgCpu": 0,
+      "maxCpu": 0,
+      "avgBucket": 10000
+    },
+    "duration": 0
+  },
+  "packages": {
+    "passed": true,
+    "tests": [],
+    "duration": 0
+  }
+}

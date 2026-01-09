@@ -13,8 +13,15 @@ import { helper } from '../helpers/server-helper.js';
 import { 
   singleRoomEcoScenario,
   emptyRoomScenario,
+  remoteMiningScenario,
+  defenseResponseScenario,
+  multiRoomScalingScenario,
   type TestScenario
 } from '../fixtures/scenarios.js';
+
+// CPU variance tolerance constants
+const CPU_VARIANCE_TOLERANCE = 0.5; // Standard tolerance for CPU consistency
+const CPU_VARIANCE_TOLERANCE_SCALING = 0.6; // Higher tolerance for multi-room scaling
 
 describe('Performance Tests', () => {
   describe('CPU Budget Validation', () => {
@@ -187,8 +194,153 @@ describe('Performance Tests', () => {
       const coefficientOfVariation = stdDev / avg;
       assert.isBelow(
         coefficientOfVariation,
-        0.5,
+        CPU_VARIANCE_TOLERANCE,
         `CPU variance too high: stddev ${stdDev.toFixed(3)}, avg ${avg.toFixed(3)}`
+      );
+    });
+  });
+
+  describe('Remote Mining Performance', () => {
+    it('should stay within CPU budget for remote mining', async function() {
+      this.timeout(90000);
+      
+      const scenario = remoteMiningScenario;
+      const metrics = await helper.runTicks(scenario.ticks);
+      
+      const avgCpu = helper.getAverageCpu();
+      const maxCpu = helper.getMaxCpu();
+      
+      assert.isBelow(
+        avgCpu,
+        scenario.performance.avgCpuPerTick,
+        `Average CPU ${avgCpu.toFixed(3)} should be below ${scenario.performance.avgCpuPerTick}`
+      );
+      
+      assert.isBelow(
+        maxCpu,
+        scenario.performance.maxCpuPerTick,
+        `Max CPU ${maxCpu.toFixed(3)} should be below ${scenario.performance.maxCpuPerTick}`
+      );
+    });
+
+    it('should maintain energy efficiency in remote mining', async function() {
+      this.timeout(90000);
+      
+      const scenario = remoteMiningScenario;
+      const metrics = await helper.runTicks(scenario.ticks);
+      
+      const avgBucket = helper.getAverageBucket();
+      
+      assert.isAbove(
+        avgBucket,
+        scenario.performance.minBucketLevel,
+        `Bucket ${avgBucket.toFixed(0)} should be above ${scenario.performance.minBucketLevel}`
+      );
+    });
+  });
+
+  describe('Defense Response Performance', () => {
+    it('should stay within CPU budget during defense response', async function() {
+      this.timeout(60000);
+      
+      const scenario = defenseResponseScenario;
+      const metrics = await helper.runTicks(scenario.ticks);
+      
+      const avgCpu = helper.getAverageCpu();
+      const maxCpu = helper.getMaxCpu();
+      
+      assert.isBelow(
+        avgCpu,
+        scenario.performance.avgCpuPerTick,
+        `Average CPU ${avgCpu.toFixed(3)} should be below ${scenario.performance.avgCpuPerTick}`
+      );
+      
+      assert.isBelow(
+        maxCpu,
+        scenario.performance.maxCpuPerTick,
+        `Max CPU ${maxCpu.toFixed(3)} should be below ${scenario.performance.maxCpuPerTick}`
+      );
+    });
+
+    it('should maintain bucket stability during defense', async function() {
+      this.timeout(60000);
+      
+      const scenario = defenseResponseScenario;
+      const metrics = await helper.runTicks(scenario.ticks);
+      
+      const avgBucket = helper.getAverageBucket();
+      
+      assert.isAbove(
+        avgBucket,
+        scenario.performance.minBucketLevel,
+        `Bucket ${avgBucket.toFixed(0)} should be above ${scenario.performance.minBucketLevel}`
+      );
+    });
+  });
+
+  describe('Multi-Room Scaling Performance', () => {
+    it('should scale CPU linearly with room count (25 rooms)', async function() {
+      this.timeout(180000); // 3 minutes for 25 rooms
+      
+      const scenario = multiRoomScalingScenario;
+      const metrics = await helper.runTicks(scenario.ticks);
+      
+      const avgCpu = helper.getAverageCpu();
+      const maxCpu = helper.getMaxCpu();
+      
+      assert.isBelow(
+        avgCpu,
+        scenario.performance.avgCpuPerTick,
+        `Average CPU ${avgCpu.toFixed(3)} should be below ${scenario.performance.avgCpuPerTick} for 25 rooms`
+      );
+      
+      assert.isBelow(
+        maxCpu,
+        scenario.performance.maxCpuPerTick,
+        `Max CPU ${maxCpu.toFixed(3)} should be below ${scenario.performance.maxCpuPerTick} for 25 rooms`
+      );
+      
+      // Verify per-room CPU is within target
+      const perRoomCpu = avgCpu / 25;
+      assert.isBelow(
+        perRoomCpu,
+        0.15,
+        `Per-room CPU ${perRoomCpu.toFixed(3)} should be below 0.15`
+      );
+    });
+
+    it('should maintain bucket stability with 25 rooms', async function() {
+      this.timeout(180000);
+      
+      const scenario = multiRoomScalingScenario;
+      const metrics = await helper.runTicks(scenario.ticks);
+      
+      const avgBucket = helper.getAverageBucket();
+      
+      assert.isAbove(
+        avgBucket,
+        scenario.performance.minBucketLevel,
+        `Bucket ${avgBucket.toFixed(0)} should be above ${scenario.performance.minBucketLevel}`
+      );
+    });
+
+    it('should have consistent CPU per tick at scale', async function() {
+      this.timeout(180000);
+      
+      const scenario = multiRoomScalingScenario;
+      const metrics = await helper.runTicks(scenario.ticks);
+      
+      // Calculate standard deviation
+      const avg = helper.getAverageCpu();
+      const squaredDiffs = metrics.cpuHistory.map(cpu => Math.pow(cpu - avg, 2));
+      const stdDev = Math.sqrt(squaredDiffs.reduce((a, b) => a + b, 0) / metrics.cpuHistory.length);
+      
+      // Standard deviation should be reasonable even at scale
+      const coefficientOfVariation = stdDev / avg;
+      assert.isBelow(
+        coefficientOfVariation,
+        CPU_VARIANCE_TOLERANCE_SCALING,
+        `CPU variance at scale too high: stddev ${stdDev.toFixed(3)}, avg ${avg.toFixed(3)}`
       );
     });
   });
