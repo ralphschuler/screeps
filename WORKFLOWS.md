@@ -25,7 +25,7 @@ These workflows run automatically on pull requests to ensure code quality and pr
 - **Required**: ✅ Yes (PR merge blocker)
 - **Concurrency**: Cancels stale runs automatically
 - **Jobs**:
-  - `test-bot`: Main bot tests with coverage (2,211+ tests)
+  - `test-bot`: Main bot tests with coverage (comprehensive test suite)
   - `test-packages`: Matrix testing for 12 framework packages
   - `lint-bot`: ESLint checks on main bot
   - `typecheck-packages`: TypeScript compilation for 11 packages

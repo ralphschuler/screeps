@@ -137,8 +137,15 @@ jobs:
           SCREEPS_TOKEN: ${{ secrets.SCREEPS_TOKEN }}
         run: |
           echo "📊 Checking bot status across all environments..."
-          echo "This is a placeholder - implement status checking logic here"
-          echo "TODO: Add status checking script to utils/"
+          echo ""
+          echo "⚠️ Note: This operation is a placeholder for future implementation."
+          echo "Planned features:"
+          echo "  - Check bot health across all environments"
+          echo "  - Report CPU usage and bucket levels"
+          echo "  - Identify rooms owned and GCL progress"
+          echo "  - Check for errors or stuck creeps"
+          echo ""
+          echo "See issue #TBD for implementation tracking."
 
       # ========================================================================
       # Summary

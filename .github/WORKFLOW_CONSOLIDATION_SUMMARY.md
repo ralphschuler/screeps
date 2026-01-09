@@ -6,7 +6,7 @@ This document summarizes the GitHub Actions workflow consolidation effort that r
 
 ## Before and After Comparison
 
-### Before Consolidation (22 workflows)
+### Before Consolidation (22 workflows + 1 disabled)
 
 **PR Checks (7 workflows)**:
 1. `test.yml` - Main bot tests
@@ -38,7 +38,7 @@ This document summarizes the GitHub Actions workflow consolidation effort that r
 21. `wiki-publish.yml`
 22. `copilot-setup-steps.yml`
 
-**Disabled (1 workflow)**:
+**Disabled (1 workflow)** - Not counted in active total:
 - `ci-error-issue.yml.disabled`
 
 ---
