@@ -80,6 +80,7 @@ export default {
         // Scoped packages (in packages/@ralphschuler/)
         { find: "@ralphschuler/screeps-core", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-core/src/index.ts") },
         { find: "@ralphschuler/screeps-cache", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-cache/src/index.ts") },
+        { find: "@ralphschuler/screeps-empire", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-empire/src/index.ts") },
         { find: "@ralphschuler/screeps-stats", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-stats/src/index.ts") },
         { find: "@ralphschuler/screeps-visuals", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-visuals/src/index.ts") },
         { find: "@ralphschuler/screeps-pathfinding", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-pathfinding/src/index.ts") },
