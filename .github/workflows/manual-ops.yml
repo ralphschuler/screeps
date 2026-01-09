@@ -9,7 +9,6 @@ on:
         type: choice
         options:
           - 'respawn-bot'
-          - 'publish-wiki'
           - 'check-bot-status'
         default: 'check-bot-status'
       
@@ -87,46 +86,6 @@ jobs:
         run: |
           echo "🔄 Running respawn check for ${{ github.event.inputs.environment }}..."
           node utils/respawner.js
-
-      # ========================================================================
-      # Publish Wiki Operation
-      # ========================================================================
-      - name: Build Documentation
-        if: github.event.inputs.operation == 'publish-wiki'
-        run: npm run build:docs
-
-      - name: Checkout Wiki Repository
-        if: github.event.inputs.operation == 'publish-wiki'
-        uses: actions/checkout@v6
-        with:
-          repository: ${{ github.repository }}.wiki
-          path: wiki-repo
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Copy Documentation to Wiki
-        if: github.event.inputs.operation == 'publish-wiki'
-        run: |
-          # Remove old wiki files (except .git)
-          find wiki-repo -type f ! -path 'wiki-repo/.git/*' -delete
-          
-          # Copy new documentation
-          cp -r wiki/*.md wiki-repo/
-
-      - name: Commit and Push to Wiki
-        if: github.event.inputs.operation == 'publish-wiki'
-        run: |
-          cd wiki-repo
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          
-          if git diff --staged --quiet; then
-            echo "📝 No changes to commit"
-          else
-            git commit -m "Update documentation (manual trigger from ${{ github.sha }})"
-            git push
-            echo "✅ Wiki published successfully"
-          fi
 
       # ========================================================================
       # Check Bot Status Operation

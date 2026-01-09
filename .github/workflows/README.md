@@ -2,7 +2,7 @@
 
 This directory contains all GitHub Actions workflows for the Screeps repository.
 
-**Current Status**: 17 active workflows (consolidated from 22 - see [Consolidation Summary](../WORKFLOW_CONSOLIDATION_SUMMARY.md))
+**Current Status**: 18 active workflows (consolidated from 22 - see [Consolidation Summary](../WORKFLOW_CONSOLIDATION_SUMMARY.md))
 
 For complete documentation, see [WORKFLOWS.md](/WORKFLOWS.md) in the repository root.
 
@@ -39,12 +39,12 @@ For complete documentation, see [WORKFLOWS.md](/WORKFLOWS.md) in the repository 
 - **`sync-labels.yml`** - Synchronizes repository labels
 - **`autonomous-improvement.yml`** - AI-driven code improvements
 - **`copilot-strategic-planner.yml`** - Strategic planning automation
+- **`wiki-publish.yml`** - Automatically publishes docs to wiki when changed
 
 ### Manual Operations
 
 - **`manual-ops.yml`** ⭐ **NEW** - Unified manual operations
   - Respawn bot (manual trigger)
-  - Publish wiki
   - Check bot status
   
 - **`respawn.yml`** - Automated respawn (scheduled + post-deployment)
@@ -61,9 +61,6 @@ The following workflows have been **consolidated** to improve maintainability:
 - ❌ `exporter-ci.yml` → ✅ `ci.yml` (test-exporters job)
 - ❌ `mcp-ci.yml` → ✅ `ci.yml` (test-mcp job)
 - ❌ `bundle-size.yml` → ✅ `ci.yml` (bundle-size job)
-
-### Into `manual-ops.yml`:
-- ❌ `wiki-publish.yml` → ✅ `manual-ops.yml` (publish-wiki operation)
 
 ### Removed:
 - ❌ `ci-error-issue.yml.disabled` - Removed (was disabled, redundant functionality)
@@ -93,8 +90,12 @@ The following workflows have been **consolidated** to improve maintainability:
 Use the "Manual Operations" workflow from the Actions tab:
 1. Go to Actions → Manual Operations
 2. Click "Run workflow"
-3. Select operation (respawn-bot, publish-wiki, check-bot-status)
+3. Select operation (respawn-bot, check-bot-status)
 4. Click "Run workflow"
+
+### Publishing Wiki
+Wiki is automatically published when docs change on main branch via `wiki-publish.yml`.
+To manually trigger wiki publishing, use the `wiki-publish` workflow.
 
 ### Making Changes
 
@@ -106,7 +107,7 @@ Use the "Manual Operations" workflow from the Actions tab:
 | Modify exporter tests | `ci.yml` → test-exporters job |
 | Update MCP tests | `ci.yml` → test-mcp job |
 | Change bundle size checks | `ci.yml` → bundle-size job |
-| Update wiki build | `manual-ops.yml` → publish-wiki operation |
+| Update wiki build | `wiki-publish.yml` workflow |
 
 ## Documentation
 
@@ -116,4 +117,4 @@ Use the "Manual Operations" workflow from the Actions tab:
 
 ---
 
-*Last Updated: 2026-01-09 - Post-consolidation (22 → 17 workflows)*
+*Last Updated: 2026-01-09 - Post-consolidation (22 → 18 workflows)*

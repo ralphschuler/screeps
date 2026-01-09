@@ -2,7 +2,7 @@
 
 This document provides a comprehensive overview of all GitHub Actions workflows in this repository, their purposes, triggers, and requirements.
 
-**Current Status**: 17 active workflows (down from 22 - 23% reduction)
+**Current Status**: 18 active workflows (down from 22 - 18% reduction)
 
 ## Table of Contents
 
@@ -138,6 +138,13 @@ These workflows handle automated maintenance tasks.
 - **Duration**: Variable (5-15 minutes)
 - **Features**: Analyzes bot performance and creates improvement issues
 
+### wiki-publish.yml
+- **Purpose**: Build and publish documentation wiki
+- **Trigger**: Pushes to main (when docs change), manual dispatch
+- **Duration**: ~2-3 minutes
+- **Path Filters**: `docs/**`, `packages/*/docs/**`, `scripts/build-docs.js`
+- **Features**: Automatically publishes docs to GitHub wiki when changed
+
 ---
 
 ## Manual Operations
@@ -150,10 +157,7 @@ These workflows are triggered manually for specific operations.
 - **Duration**: Variable (1-5 minutes)
 - **Operations**:
   - `respawn-bot`: Manual bot respawn (all or specific environment)
-  - `publish-wiki`: Build and publish documentation wiki
   - `check-bot-status`: Check bot status across environments (placeholder)
-
-**Consolidates**: Previously separate wiki-publish.yml workflow
 
 ### respawn.yml
 - **Purpose**: Check and respawn bot on death (automated)
@@ -181,9 +185,6 @@ These workflows are triggered manually for specific operations.
 - ❌ `mcp-ci.yml` → Now: `ci.yml` (test-mcp job)
 - ❌ `bundle-size.yml` → Now: `ci.yml` (bundle-size job)
 
-### Removed Workflows (Consolidated into manual-ops.yml)
-- ❌ `wiki-publish.yml` → Now: `manual-ops.yml` (publish-wiki operation)
-
 ### Removed Workflows (Disabled)
 - ❌ `ci-error-issue.yml.disabled` → Removed (was added as disabled, redundant functionality)
 
@@ -198,24 +199,25 @@ These workflows are triggered manually for specific operations.
 ## Workflow Statistics
 
 ### Active Workflows
-- **Total**: 17 active workflows (down from 22 - 23% reduction)
+- **Total**: 18 active workflows (down from 22 - 18% reduction)
 - **PR Checks**: 2 workflows (ci, performance-test)
 - **Deployment**: 6 workflows (deploy, exporter-publish, publish-framework, mcp-docker, release, post-deployment-monitoring)
-- **Automation**: 6 workflows (auto-todo-issue, auto-issue-stale, auto-merge, sync-labels, autonomous-improvement, copilot-strategic-planner)
+- **Automation**: 7 workflows (auto-todo-issue, auto-issue-stale, auto-merge, sync-labels, autonomous-improvement, copilot-strategic-planner, wiki-publish)
 - **Manual**: 3 workflows (manual-ops, respawn, copilot-setup-steps)
 
 ### Estimated Usage (Weekly)
 - **PR workflows**: ~20 runs/week (2 workflows × ~10 PRs) - **71% reduction** from 70
 - **Scheduled workflows**: ~14 runs/week (2 workflows × 7 days)
-- **Push workflows**: ~20 runs/week (4 workflows × ~5 pushes)
+- **Push workflows**: ~25 runs/week (5 workflows × ~5 pushes) - includes wiki-publish
 - **Manual workflows**: ~5 runs/week (ad-hoc)
-- **Total**: ~59 workflow runs/week - **46% reduction** from 109
+- **Total**: ~64 workflow runs/week - **41% reduction** from 109
 
 ### Benefits Achieved
 - ✅ **Single CI status**: Check 1 workflow instead of 7 for PR status
 - ✅ **Faster feedback**: Parallel job execution in unified workflow
-- ✅ **Reduced complexity**: 23% fewer workflows to maintain
+- ✅ **Reduced complexity**: 18% fewer workflows to maintain
 - ✅ **Better resource usage**: Concurrency controls prevent duplicate runs
+- ✅ **Automated docs**: Wiki publishes automatically when docs change
 - ✅ **Clear organization**: Grouped by purpose (CI, deployment, automation, manual)
 
 ---
@@ -227,18 +229,22 @@ These workflows are triggered manually for specific operations.
    - test.yml, lint.yml, format.yml, exporter-ci.yml, mcp-ci.yml, bundle-size.yml
    - Benefit: Single workflow status, faster feedback, 6 fewer workflows
 
-2. ✅ **Consolidated manual operations**:
-   - wiki-publish.yml → manual-ops.yml
+2. ✅ **Preserved automatic wiki publishing**:
+   - wiki-publish.yml remains as automated workflow (triggers on docs changes)
+   - Benefit: Automatic documentation updates, no manual intervention needed
+
+3. ✅ **Consolidated truly manual operations**:
+   - Created manual-ops.yml for respawn-bot and check-bot-status
    - Benefit: Unified interface for manual operations
 
-3. ✅ **Removed disabled workflows**:
+4. ✅ **Removed disabled workflows**:
    - ci-error-issue.yml.disabled
    - Benefit: Reduced confusion
 
-4. ✅ **Added optimizations**:
+5. ✅ **Added optimizations**:
    - Concurrency controls on ci.yml, performance-test.yml, deploy.yml
    - Skip draft PRs automatically
-   - Path filters already in place
+   - Path filters maintained
 
 ### Future Opportunities
 1. **Consider further consolidation**:
@@ -286,4 +292,4 @@ These workflows are triggered manually for specific operations.
 
 ---
 
-*Last Updated: 2026-01-09 - Post-consolidation (22 → 17 workflows)*
+*Last Updated: 2026-01-09 - Post-consolidation (22 → 18 workflows)*

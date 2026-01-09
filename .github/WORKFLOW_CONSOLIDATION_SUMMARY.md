@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document summarizes the GitHub Actions workflow consolidation effort that reduced workflows from 22 to 17 (23% reduction).
+This document summarizes the GitHub Actions workflow consolidation effort that reduced workflows from 22 to 18 (18% reduction).
 
 ## Before and After Comparison
 
@@ -57,18 +57,19 @@ This document summarizes the GitHub Actions workflow consolidation effort that r
 7. `release.yml`
 8. `post-deployment-monitoring.yml`
 
-**Automation (6 workflows)** ➡️ No change:
+**Automation (7 workflows)** ➡️ Includes wiki-publish:
 9. `auto-todo-issue.yml`
 10. `auto-issue-stale.yml`
 11. `auto-merge.yml`
 12. `sync-labels.yml`
 13. `autonomous-improvement.yml`
 14. `copilot-strategic-planner.yml`
+15. `wiki-publish.yml` - Automatic docs publishing
 
-**Manual (3 workflows)** ⬇️ 33% reduction:
-15. ⭐ `manual-ops.yml` - **NEW** Unified manual operations (includes wiki-publish)
-16. `respawn.yml` (kept for scheduled automation)
-17. `copilot-setup-steps.yml` (required by Copilot)
+**Manual (3 workflows)**:
+16. ⭐ `manual-ops.yml` - **NEW** Unified manual operations (respawn-bot, check-bot-status)
+17. `respawn.yml` (kept for scheduled automation)
+18. `copilot-setup-steps.yml` (required by Copilot)
 
 ---
 
@@ -101,12 +102,23 @@ This document summarizes the GitHub Actions workflow consolidation effort that r
 - ✅ Parallel job execution
 - ✅ Single status check for all CI
 
-### 2. Manual Operations Workflow (`manual-ops.yml`)
+### 2. Preserved Automatic Wiki Publishing
 
-**Consolidates manual operations**:
-- ❌ wiki-publish.yml → ✅ manual-ops.yml (publish-wiki operation)
-- ✅ Adds respawn-bot operation (for manual respawns)
-- ✅ Adds check-bot-status placeholder
+**Kept `wiki-publish.yml` as automated workflow**:
+- ✅ Triggers automatically on push to main when docs change
+- ✅ Also supports manual dispatch
+- ✅ Path filters: `docs/**`, `packages/*/docs/**`, `scripts/build-docs.js`
+
+**Rationale**:
+- Automatic documentation publishing is valuable automation
+- Reduces manual work and ensures docs stay up-to-date
+- Different purpose than other manual operations
+
+### 3. Manual Operations Workflow (`manual-ops.yml`)
+
+**Consolidates truly manual operations**:
+- ✅ `respawn-bot` operation (for manual respawns)
+- ✅ `check-bot-status` placeholder (for future implementation)
 
 **Operations**:
 ```yaml
@@ -114,11 +126,10 @@ workflow_dispatch:
   inputs:
     operation:
       - respawn-bot      # Manual respawn (all or specific env)
-      - publish-wiki     # Build and publish docs
       - check-bot-status # Check bot health (placeholder)
 ```
 
-### 3. Optimizations
+### 4. Optimizations
 
 **Concurrency Controls Added**:
 - ✅ `ci.yml`: Cancels stale runs on new push
@@ -153,10 +164,10 @@ Total:                                      109 runs/week
 ```
 PR workflows:    2 workflows × 10 PRs/week = 20 runs  (-71%)
 Scheduled:       2 workflows × 7 days      = 14 runs  (same)
-Push workflows:  4 workflows × 5 pushes    = 20 runs  (same)
+Push workflows:  5 workflows × 5 pushes    = 25 runs  (+25%)
 Manual:          Various                   =  5 runs  (same)
 ───────────────────────────────────────────────────
-Total:                                      59 runs/week (-46%)
+Total:                                      64 runs/week (-41%)
 ```
 
 ### Developer Experience
@@ -183,20 +194,21 @@ Total:                                      59 runs/week (-46%)
 - Hard to ensure consistency
 
 **After**:
-- 17 workflow files (-23%)
+- 18 workflow files (-18%)
 - Shared setup in unified workflows
 - Single source of truth for CI
 - Easier to maintain consistency
+- Automatic wiki publishing preserved
 
 ### Cost Savings
 
 **GitHub Actions Minutes**:
 - **Before**: ~109 workflow runs/week
-- **After**: ~59 workflow runs/week
-- **Savings**: ~50 runs/week (46% reduction)
+- **After**: ~64 workflow runs/week
+- **Savings**: ~45 runs/week (41% reduction)
 
 **Estimated Monthly Savings**:
-- ~200 workflow runs/month saved
+- ~180 workflow runs/month saved
 - Each run includes setup overhead (checkout, npm install, etc.)
 - Concurrency controls prevent duplicate work
 - Skip draft PRs saves additional minutes
@@ -209,14 +221,15 @@ Total:                                      59 runs/week (-46%)
 
 **What Changed**:
 1. **PR Status Checks**: Look for "Continuous Integration" instead of individual "Tests", "Lint", "Format" checks
-2. **Manual Wiki Publishing**: Use "Manual Operations" workflow with "publish-wiki" option instead of "Build and Publish Wiki"
-3. **Manual Respawn**: Use "Manual Operations" workflow with "respawn-bot" option
+2. **Wiki Publishing**: Now automatic on docs changes (wiki-publish.yml) - can also be triggered manually
+3. **Manual Operations**: Use "Manual Operations" workflow for respawn-bot and check-bot-status
 
 **What Stayed the Same**:
 1. All tests still run (same coverage)
 2. Same quality gates (nothing relaxed)
 3. Performance tests unchanged
 4. Deployment workflows unchanged
+5. Wiki publishing still works (now automatic!)
 5. Automation workflows unchanged
 
 ### For Workflow Maintainers
@@ -231,7 +244,7 @@ Total:                                      59 runs/week (-46%)
 | Update exporter tests | `exporter-ci.yml` | `ci.yml` (test-exporters job) |
 | Update MCP tests | `mcp-ci.yml` | `ci.yml` (test-mcp job) |
 | Update bundle size | `bundle-size.yml` | `ci.yml` (bundle-size job) |
-| Update wiki build | `wiki-publish.yml` | `manual-ops.yml` (publish-wiki operation) |
+| Update wiki build | `wiki-publish.yml` | `wiki-publish.yml` (still exists, now automatic) |
 
 ---
 

@@ -1,0 +1,59 @@
+name: Build and Publish Wiki
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'packages/*/docs/**'
+      - 'scripts/build-docs.js'
+      - '.github/workflows/wiki-publish.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Build documentation
+        run: npm run build:docs
+      
+      - name: Checkout wiki repository
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki-repo
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Copy documentation to wiki
+        run: |
+          # Remove old wiki files (except .git)
+          find wiki-repo -type f ! -path 'wiki-repo/.git/*' -delete
+          
+          # Copy new documentation
+          cp -r wiki/*.md wiki-repo/
+      
+      - name: Commit and push to wiki
+        run: |
+          cd wiki-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update documentation (automated build from ${{ github.sha }})"
+            git push
+          fi
