@@ -2,13 +2,15 @@
 
 This document provides a comprehensive overview of all GitHub Actions workflows in this repository, their purposes, triggers, and requirements.
 
+**Current Status**: 17 active workflows (down from 22 - 23% reduction)
+
 ## Table of Contents
 
 - [Continuous Integration (PR Checks)](#continuous-integration-pr-checks)
 - [Deployment & Publishing](#deployment--publishing)
 - [Automation & Maintenance](#automation--maintenance)
 - [Manual Operations](#manual-operations)
-- [Disabled Workflows](#disabled-workflows)
+- [Workflow Consolidation History](#workflow-consolidation-history)
 
 ---
 
@@ -16,63 +18,31 @@ This document provides a comprehensive overview of all GitHub Actions workflows 
 
 These workflows run automatically on pull requests to ensure code quality and prevent regressions.
 
-### test.yml
-- **Purpose**: Run all unit and integration tests
-- **Trigger**: PRs, pushes to main
-- **Duration**: ~2-3 minutes
+### ci.yml ⭐ NEW - Unified CI Workflow
+- **Purpose**: Consolidated CI pipeline for all code quality checks
+- **Trigger**: PRs (non-draft), pushes to main/develop
+- **Duration**: ~2-3 minutes (parallelized)
 - **Required**: ✅ Yes (PR merge blocker)
+- **Concurrency**: Cancels stale runs automatically
 - **Jobs**:
   - `test-bot`: Main bot tests with coverage (2,211+ tests)
-  - `test-packages`: Matrix testing for all framework packages (12 packages)
-- **Coverage**: Uploads to Codecov for main bot
+  - `test-packages`: Matrix testing for 12 framework packages
+  - `lint-bot`: ESLint checks on main bot
+  - `typecheck-packages`: TypeScript compilation for 11 packages
+  - `format-check`: Prettier formatting validation
+  - `test-exporters`: Exporter package tests + Docker validation (2 packages)
+  - `test-mcp`: MCP server tests with coverage (4 packages)
+  - `bundle-size`: Bundle size tracking and reporting
 
-### lint.yml
-- **Purpose**: ESLint and TypeScript compilation checks
-- **Trigger**: PRs, pushes to main
-- **Duration**: ~1-2 minutes
-- **Required**: ✅ Yes (PR merge blocker)
-- **Jobs**:
-  - `lint-bot`: ESLint checks on main bot code
-  - `typecheck-packages`: TypeScript compilation for all packages (11 packages)
-
-### format.yml
-- **Purpose**: Code formatting validation with Prettier
-- **Trigger**: PRs only
-- **Duration**: ~30 seconds
-- **Required**: ✅ Yes (PR merge blocker)
-- **Checks**: TypeScript, JSON, and config files in bot package
-
-### exporter-ci.yml
-- **Purpose**: Test and validate exporter packages
-- **Trigger**: PRs/pushes affecting exporter code
-- **Duration**: ~1-2 minutes
-- **Required**: ✅ Yes (when exporters are modified)
-- **Path Filters**: `packages/screeps-graphite-exporter/**`, `packages/screeps-loki-exporter/**`
-- **Jobs**:
-  - Build TypeScript
-  - Validate Docker builds
-
-### mcp-ci.yml
-- **Purpose**: Test MCP (Model Context Protocol) servers
-- **Trigger**: PRs/pushes affecting MCP code
-- **Duration**: ~1-2 minutes
-- **Required**: ✅ Yes (when MCP servers are modified)
-- **Path Filters**: `packages/screeps-*-mcp/**`
-- **Jobs**: Matrix testing for 4 MCP servers with coverage
-
-### bundle-size.yml
-- **Purpose**: Track and report bundle sizes
-- **Trigger**: PRs, pushes to main
-- **Duration**: ~2-3 minutes
-- **Required**: ⚠️ Optional (informational)
-- **Reports**: Bundle sizes for 12 packages + main bot
+**Consolidates**: Previously separate workflows for test.yml, lint.yml, format.yml, exporter-ci.yml, mcp-ci.yml, bundle-size.yml
 
 ### performance-test.yml
 - **Purpose**: Performance testing and regression detection
-- **Trigger**: PRs/pushes affecting bot code, manual dispatch
+- **Trigger**: PRs (non-draft)/pushes affecting bot code, manual dispatch
 - **Duration**: ~30-45 minutes
 - **Required**: ⚠️ Optional (long-running)
 - **Path Filters**: `packages/screeps-bot/**`, `packages/screeps-server/**`
+- **Concurrency**: Cancels stale runs automatically
 - **Features**:
   - Server integration tests (15 min)
   - Server performance tests (15 min)
@@ -92,6 +62,7 @@ These workflows handle deployment and package publishing.
 - **Purpose**: Deploy bot code to Screeps servers
 - **Trigger**: Workflow completion (from successful builds/tests)
 - **Duration**: ~1-2 minutes
+- **Concurrency**: Prevents simultaneous deployments
 - **Environments**: Multiple Screeps servers (official, private, seasonal)
 - **Secrets Required**: SCREEPS_TOKEN, SCREEPS_USER, SCREEPS_PASS
 
@@ -173,19 +144,23 @@ These workflows handle automated maintenance tasks.
 
 These workflows are triggered manually for specific operations.
 
+### manual-ops.yml ⭐ NEW - Unified Manual Operations
+- **Purpose**: Consolidated manual operations workflow
+- **Trigger**: Manual dispatch with operation selector
+- **Duration**: Variable (1-5 minutes)
+- **Operations**:
+  - `respawn-bot`: Manual bot respawn (all or specific environment)
+  - `publish-wiki`: Build and publish documentation wiki
+  - `check-bot-status`: Check bot status across environments (placeholder)
+
+**Consolidates**: Previously separate wiki-publish.yml workflow
+
 ### respawn.yml
-- **Purpose**: Check and respawn bot on death
-- **Trigger**: Manual dispatch, scheduled (every 6 hours), post-deployment
+- **Purpose**: Check and respawn bot on death (automated)
+- **Trigger**: Scheduled (every 6 hours), manual dispatch, post-deployment
 - **Duration**: ~1 minute
 - **Environments**: Matrix across 6 Screeps servers
 - **Features**: Automatic respawn detection and execution
-
-### wiki-publish.yml
-- **Purpose**: Build and publish documentation wiki
-- **Trigger**: Manual dispatch, pushes affecting docs
-- **Duration**: ~2-3 minutes
-- **Path Filters**: `docs/**`, `packages/*/docs/**`
-- **Features**: Builds docs and pushes to GitHub wiki
 
 ### copilot-setup-steps.yml
 - **Purpose**: Setup environment for GitHub Copilot agents
@@ -196,60 +171,84 @@ These workflows are triggered manually for specific operations.
 
 ---
 
+## Workflow Consolidation History
+
+### Removed Workflows (Consolidated into ci.yml)
+- ❌ `test.yml` → Now: `ci.yml` (test-bot, test-packages jobs)
+- ❌ `lint.yml` → Now: `ci.yml` (lint-bot, typecheck-packages jobs)
+- ❌ `format.yml` → Now: `ci.yml` (format-check job)
+- ❌ `exporter-ci.yml` → Now: `ci.yml` (test-exporters job)
+- ❌ `mcp-ci.yml` → Now: `ci.yml` (test-mcp job)
+- ❌ `bundle-size.yml` → Now: `ci.yml` (bundle-size job)
+
+### Removed Workflows (Consolidated into manual-ops.yml)
+- ❌ `wiki-publish.yml` → Now: `manual-ops.yml` (publish-wiki operation)
+
+### Removed Workflows (Disabled)
+- ❌ `ci-error-issue.yml.disabled` → Removed (was added as disabled, redundant functionality)
+
+---
+
 ## Disabled Workflows
 
-These workflows are currently disabled and not in use.
-
-### ci-error-issue.yml.disabled
-- **Purpose**: Create GitHub issues for CI failures
-- **Status**: Disabled (added as disabled in initial commit)
-- **Reason**: Functionality may be redundant or replaced by other mechanisms
-- **Recommendation**: Remove if not needed
+**None** - All disabled workflows have been removed.
 
 ---
 
 ## Workflow Statistics
 
 ### Active Workflows
-- **Total**: 22 active workflows
-- **PR Checks**: 7 workflows (test, lint, format, exporter-ci, mcp-ci, bundle-size, performance-test)
+- **Total**: 17 active workflows (down from 22 - 23% reduction)
+- **PR Checks**: 2 workflows (ci, performance-test)
 - **Deployment**: 6 workflows (deploy, exporter-publish, publish-framework, mcp-docker, release, post-deployment-monitoring)
 - **Automation**: 6 workflows (auto-todo-issue, auto-issue-stale, auto-merge, sync-labels, autonomous-improvement, copilot-strategic-planner)
-- **Manual**: 3 workflows (respawn, wiki-publish, copilot-setup-steps)
+- **Manual**: 3 workflows (manual-ops, respawn, copilot-setup-steps)
 
 ### Estimated Usage (Weekly)
-- **PR workflows**: ~70 runs/week (7 workflows × ~10 PRs)
+- **PR workflows**: ~20 runs/week (2 workflows × ~10 PRs) - **71% reduction** from 70
 - **Scheduled workflows**: ~14 runs/week (2 workflows × 7 days)
 - **Push workflows**: ~20 runs/week (4 workflows × ~5 pushes)
 - **Manual workflows**: ~5 runs/week (ad-hoc)
-- **Total**: ~109 workflow runs/week
+- **Total**: ~59 workflow runs/week - **46% reduction** from 109
+
+### Benefits Achieved
+- ✅ **Single CI status**: Check 1 workflow instead of 7 for PR status
+- ✅ **Faster feedback**: Parallel job execution in unified workflow
+- ✅ **Reduced complexity**: 23% fewer workflows to maintain
+- ✅ **Better resource usage**: Concurrency controls prevent duplicate runs
+- ✅ **Clear organization**: Grouped by purpose (CI, deployment, automation, manual)
 
 ---
 
 ## Consolidation Opportunities
 
-### High Priority
-1. **Merge PR CI workflows** into single `ci.yml`:
-   - test.yml, lint.yml, format.yml → CI jobs
-   - Benefit: Single workflow status, faster feedback
+### Completed ✅
+1. ✅ **Merged PR CI workflows** into single `ci.yml`:
+   - test.yml, lint.yml, format.yml, exporter-ci.yml, mcp-ci.yml, bundle-size.yml
+   - Benefit: Single workflow status, faster feedback, 6 fewer workflows
 
-2. **Consolidate test workflows**:
-   - exporter-ci.yml, mcp-ci.yml → Add to ci.yml as jobs
-   - Benefit: Unified testing, shared setup
+2. ✅ **Consolidated manual operations**:
+   - wiki-publish.yml → manual-ops.yml
+   - Benefit: Unified interface for manual operations
 
-### Medium Priority
-3. **Optimize performance-test.yml**:
-   - Add path filters
-   - Make more modular
-   - Consider separating server tests
+3. ✅ **Removed disabled workflows**:
+   - ci-error-issue.yml.disabled
+   - Benefit: Reduced confusion
 
-4. **Consolidate manual workflows**:
-   - wiki-publish.yml → Can be part of docs automation
-   - respawn.yml → Already has good automation
+4. ✅ **Added optimizations**:
+   - Concurrency controls on ci.yml, performance-test.yml, deploy.yml
+   - Skip draft PRs automatically
+   - Path filters already in place
 
-### Low Priority
-5. **Remove disabled workflows**:
-   - ci-error-issue.yml.disabled → Delete if not needed
+### Future Opportunities
+1. **Consider further consolidation**:
+   - Could move performance-test.yml into ci.yml as optional job
+   - Could create unified publishing workflow (exporter-publish, publish-framework, mcp-docker)
+
+2. **Monitor and optimize**:
+   - Track workflow durations and success rates
+   - Identify opportunities for caching improvements
+   - Consider reusable workflows for common patterns
 
 ---
 
@@ -287,4 +286,4 @@ These workflows are currently disabled and not in use.
 
 ---
 
-*Last Updated: 2026-01-09*
+*Last Updated: 2026-01-09 - Post-consolidation (22 → 17 workflows)*

@@ -1,0 +1,158 @@
+name: Manual Operations
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Operation to perform'
+        required: true
+        type: choice
+        options:
+          - 'respawn-bot'
+          - 'publish-wiki'
+          - 'check-bot-status'
+        default: 'check-bot-status'
+      
+      # Respawn-specific inputs
+      environment:
+        description: 'Environment for respawn (only used with respawn-bot)'
+        required: false
+        type: choice
+        options:
+          - 'all'
+          - 'sim.screeps.com'
+          - 'season.screeps.com'
+          - 'ptr.screeps.com'
+          - 'screeps.com'
+          - 'screeps.nyphon.de'
+          - 'screeps.newbieland.net'
+        default: 'all'
+
+permissions:
+  contents: write
+
+jobs:
+  execute-operation:
+    name: Execute ${{ github.event.inputs.operation }}
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # ========================================================================
+      # Respawn Bot Operation
+      # ========================================================================
+      - name: Respawn Bot (All Environments)
+        if: github.event.inputs.operation == 'respawn-bot' && github.event.inputs.environment == 'all'
+        env:
+          SCREEPS_TOKEN: ${{ secrets.SCREEPS_TOKEN }}
+          SCREEPS_USER: ${{ vars.SCREEPS_USER }}
+          SCREEPS_PASS: ${{ secrets.SCREEPS_PASS }}
+        run: |
+          echo "🔄 Running respawn check for all environments..."
+          
+          declare -a environments=(
+            "sim.screeps.com"
+            "season.screeps.com"
+            "ptr.screeps.com"
+            "screeps.com"
+            "screeps.nyphon.de"
+            "screeps.newbieland.net"
+          )
+          
+          for env in "${environments[@]}"; do
+            echo "Checking $env..."
+            SCREEPS_HOSTNAME="$env" node utils/respawner.js || echo "Failed for $env"
+          done
+
+      - name: Respawn Bot (Specific Environment)
+        if: github.event.inputs.operation == 'respawn-bot' && github.event.inputs.environment != 'all'
+        env:
+          SCREEPS_TOKEN: ${{ secrets.SCREEPS_TOKEN }}
+          SCREEPS_USER: ${{ vars.SCREEPS_USER }}
+          SCREEPS_PASS: ${{ secrets.SCREEPS_PASS }}
+          SCREEPS_HOSTNAME: ${{ github.event.inputs.environment }}
+        run: |
+          echo "🔄 Running respawn check for ${{ github.event.inputs.environment }}..."
+          node utils/respawner.js
+
+      # ========================================================================
+      # Publish Wiki Operation
+      # ========================================================================
+      - name: Build Documentation
+        if: github.event.inputs.operation == 'publish-wiki'
+        run: npm run build:docs
+
+      - name: Checkout Wiki Repository
+        if: github.event.inputs.operation == 'publish-wiki'
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki-repo
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Copy Documentation to Wiki
+        if: github.event.inputs.operation == 'publish-wiki'
+        run: |
+          # Remove old wiki files (except .git)
+          find wiki-repo -type f ! -path 'wiki-repo/.git/*' -delete
+          
+          # Copy new documentation
+          cp -r wiki/*.md wiki-repo/
+
+      - name: Commit and Push to Wiki
+        if: github.event.inputs.operation == 'publish-wiki'
+        run: |
+          cd wiki-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          
+          if git diff --staged --quiet; then
+            echo "📝 No changes to commit"
+          else
+            git commit -m "Update documentation (manual trigger from ${{ github.sha }})"
+            git push
+            echo "✅ Wiki published successfully"
+          fi
+
+      # ========================================================================
+      # Check Bot Status Operation
+      # ========================================================================
+      - name: Check Bot Status
+        if: github.event.inputs.operation == 'check-bot-status'
+        env:
+          SCREEPS_TOKEN: ${{ secrets.SCREEPS_TOKEN }}
+        run: |
+          echo "📊 Checking bot status across all environments..."
+          echo "This is a placeholder - implement status checking logic here"
+          echo "TODO: Add status checking script to utils/"
+
+      # ========================================================================
+      # Summary
+      # ========================================================================
+      - name: Operation Summary
+        if: always()
+        run: |
+          echo "## Manual Operation Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Operation:** ${{ github.event.inputs.operation }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ github.event.inputs.operation }}" == "respawn-bot" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Environment:** ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          fi
