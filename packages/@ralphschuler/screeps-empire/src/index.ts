@@ -5,3 +5,5 @@
  */
 
 export * from './types';
+export * from './pixel';
+export * from './threat';
