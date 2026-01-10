@@ -6,6 +6,8 @@
  */
 
 import { cacheCoherence } from "./CacheCoherence";
+import { globalCache } from "./CacheManager";
+import { HybridStore } from "./stores/HybridStore";
 import { createLogger } from "@ralphschuler/screeps-core";
 
 const logger = createLogger("CacheStats");
@@ -120,4 +122,81 @@ export function logCacheStats(): void {
       totalInvalidations: stats.totalInvalidations
     }
   });
+}
+
+/**
+ * Collect HybridStore recovery statistics for monitoring post-reset performance
+ * Returns metrics about cache recovery after global resets
+ */
+export function collectHybridStoreRecoveryStats(): Record<string, number> {
+  const result: Record<string, number> = {};
+  
+  // Get all HybridStore instances from CacheManager
+  const stores = (globalCache as any).stores as Map<string, any>;
+  
+  for (const [key, store] of stores.entries()) {
+    // Check if this is a HybridStore
+    if (store instanceof HybridStore) {
+      const recoveryStats = store.getRecoveryStats();
+      const namespace = key.split(':')[0]; // Extract namespace from "namespace:hybrid"
+      
+      result[`cache.hybrid.${namespace}.rehydratedEntries`] = recoveryStats.rehydratedEntries;
+      result[`cache.hybrid.${namespace}.memoryUsageBytes`] = recoveryStats.memoryUsageBytes;
+      result[`cache.hybrid.${namespace}.memoryBudgetBytes`] = recoveryStats.memoryBudgetBytes;
+      result[`cache.hybrid.${namespace}.budgetUtilization`] = recoveryStats.budgetUtilization;
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * Extended cache performance summary including hybrid store metrics
+ */
+export function getExtendedCachePerformanceSummary(): {
+  overallHitRate: number;
+  l1HitRate: number;
+  l2HitRate: number;
+  l3HitRate: number;
+  totalMemoryKB: number;
+  cacheEfficiency: string;
+  hybridStoreRecovery?: {
+    totalRehydratedEntries: number;
+    totalMemoryUsageKB: number;
+    averageBudgetUtilization: number;
+  };
+} {
+  const baseSummary = getCachePerformanceSummary();
+  const hybridStats = collectHybridStoreRecoveryStats();
+  
+  // Aggregate hybrid store stats
+  const hybridKeys = Object.keys(hybridStats);
+  if (hybridKeys.length > 0) {
+    let totalRehydrated = 0;
+    let totalMemoryUsage = 0;
+    let totalUtilization = 0;
+    let storeCount = 0;
+    
+    for (const key of hybridKeys) {
+      if (key.includes('.rehydratedEntries')) {
+        totalRehydrated += hybridStats[key];
+        storeCount++;
+      } else if (key.includes('.memoryUsageBytes')) {
+        totalMemoryUsage += hybridStats[key];
+      } else if (key.includes('.budgetUtilization')) {
+        totalUtilization += hybridStats[key];
+      }
+    }
+    
+    return {
+      ...baseSummary,
+      hybridStoreRecovery: {
+        totalRehydratedEntries: totalRehydrated,
+        totalMemoryUsageKB: Math.round(totalMemoryUsage / 1024),
+        averageBudgetUtilization: storeCount > 0 ? totalUtilization / storeCount : 0
+      }
+    };
+  }
+  
+  return baseSummary;
 }

@@ -70,7 +70,9 @@ export {
 export {
   collectCacheStats,
   getCachePerformanceSummary,
-  logCacheStats
+  logCacheStats,
+  collectHybridStoreRecoveryStats,
+  getExtendedCachePerformanceSummary
 } from "./cacheStats";
 
 // Storage backends
