@@ -36,6 +36,7 @@ import { getRoomFindCacheStats, clearRoomFindCache } from "../cache/domains/Room
 import { globalCache } from "../cache";
 import { LoggingCommands } from "./commands/LoggingCommands";
 import { SystemCommands } from "./commands/SystemCommands";
+import { ConfigurationCommands } from "./commands/ConfigurationCommands";
 
 /**
  * Logging commands - imported from commands/LoggingCommands.ts
