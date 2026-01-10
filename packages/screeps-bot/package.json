@@ -73,6 +73,7 @@
     "@ralphschuler/screeps-core": "*",
     "@ralphschuler/screeps-defense": "*",
     "@ralphschuler/screeps-economy": "*",
+    "@ralphschuler/screeps-empire": "*",
     "@ralphschuler/screeps-pathfinding": "*",
     "@ralphschuler/screeps-remote-mining": "*",
     "@ralphschuler/screeps-spawn": "*",
