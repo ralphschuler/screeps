@@ -131,7 +131,8 @@ export function logCacheStats(): void {
 export function collectHybridStoreRecoveryStats(): Record<string, number> {
   const result: Record<string, number> = {};
   
-  // Access stores from CacheManager (now public)
+  // Access stores from CacheManager
+  // Note: stores property was made public to enable type-safe access for metrics collection
   const stores = globalCache.stores;
   
   for (const [key, store] of stores.entries()) {

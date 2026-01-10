@@ -347,9 +347,11 @@ export class HybridStore implements CacheStore {
     // Approximate JSON serialization size
     try {
       return JSON.stringify(data).length;
-    } catch {
-      // Fallback to rough estimate
-      return Object.keys(data).length * FALLBACK_ENTRY_SIZE_BYTES;
+    } catch (error) {
+      // Fallback to rough estimate if serialization fails
+      // (e.g., circular references, non-serializable values)
+      const entryCount = Object.keys(data).length;
+      return entryCount * FALLBACK_ENTRY_SIZE_BYTES;
     }
   }
 
