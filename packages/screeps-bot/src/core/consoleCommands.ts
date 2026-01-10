@@ -34,57 +34,15 @@ import { VisualizationLayer } from "../memory/schemas";
 import { getCacheStatistics, resetCacheStats } from "../cache/domains/ObjectCache";
 import { getRoomFindCacheStats, clearRoomFindCache } from "../cache/domains/RoomFindCache";
 import { globalCache } from "../cache";
+import { LoggingCommands } from "./commands/LoggingCommands";
+import { SystemCommands } from "./commands/SystemCommands";
+import { ConfigurationCommands } from "./commands/ConfigurationCommands";
 
 /**
- * Logging commands
+ * Logging commands - imported from commands/LoggingCommands.ts
  */
-class LoggingCommands {
-  @Command({
-    name: "setLogLevel",
-    description: "Set the log level for the bot",
-    usage: "setLogLevel(level)",
-    examples: [
-      "setLogLevel('debug')",
-      "setLogLevel('info')",
-      "setLogLevel('warn')",
-      "setLogLevel('error')",
-      "setLogLevel('none')"
-    ],
-    category: "Logging"
-  })
-  public setLogLevel(level: string): string {
-    const levelMap: Record<string, LogLevel> = {
-      debug: LogLevel.DEBUG,
-      info: LogLevel.INFO,
-      warn: LogLevel.WARN,
-      error: LogLevel.ERROR,
-      none: LogLevel.NONE
-    };
-
-    const logLevel = levelMap[level.toLowerCase()];
-    if (logLevel === undefined) {
-      return `Invalid log level: ${level}. Valid levels: debug, info, warn, error, none`;
-    }
-
-    configureLogger({ level: logLevel });
-    return `Log level set to: ${level.toUpperCase()}`;
-  }
-
-  @Command({
-    name: "toggleDebug",
-    description: "Toggle debug mode on/off (affects log level and debug features)",
-    usage: "toggleDebug()",
-    examples: ["toggleDebug()"],
-    category: "Logging"
-  })
-  public toggleDebug(): string {
-    const config = getConfig();
-    const newValue = !config.debug;
-    updateConfig({ debug: newValue });
-    configureLogger({ level: newValue ? LogLevel.DEBUG : LogLevel.INFO });
-    return `Debug mode: ${newValue ? "ENABLED" : "DISABLED"} (Log level: ${newValue ? "DEBUG" : "INFO"})`;
-  }
-}
+// Re-export for backward compatibility
+export { LoggingCommands } from "./commands/LoggingCommands";
 
 /**
  * Visualization commands
@@ -647,27 +605,9 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
 }
 
 /**
- * Configuration commands
+ * Configuration commands - imported from commands/ConfigurationCommands.ts
  */
-class ConfigurationCommands {
-  @Command({
-    name: "showConfig",
-    description: "Show current bot configuration",
-    usage: "showConfig()",
-    examples: ["showConfig()"],
-    category: "Configuration"
-  })
-  public showConfig(): string {
-    const config = getConfig();
-    const loggerConfig = getLoggerConfig();
-    return `=== SwarmBot Config ===
-Debug: ${String(config.debug)}
-Profiling: ${String(config.profiling)}
-Visualizations: ${String(config.visualizations)}
-Logger Level: ${LogLevel[loggerConfig.level]}
-CPU Logging: ${String(loggerConfig.cpuLogging)}`;
-  }
-}
+export { ConfigurationCommands } from "./commands/ConfigurationCommands";
 
 /**
  * Kernel commands
@@ -969,31 +909,9 @@ Rooms by Priority:`;
 }
 
 /**
- * System commands
+ * System commands - imported from commands/SystemCommands.ts
  */
-class SystemCommands {
-  @Command({
-    name: "listCommands",
-    description: "List all available commands (alias for help)",
-    usage: "listCommands()",
-    examples: ["listCommands()"],
-    category: "System"
-  })
-  public listCommands(): string {
-    return commandRegistry.generateHelp();
-  }
-
-  @Command({
-    name: "commandHelp",
-    description: "Get detailed help for a specific command",
-    usage: "commandHelp(commandName)",
-    examples: ["commandHelp('setLogLevel')", "commandHelp('suspendProcess')"],
-    category: "System"
-  })
-  public commandHelp(commandName: string): string {
-    return commandRegistry.generateCommandHelp(commandName);
-  }
-}
+export { SystemCommands } from "./commands/SystemCommands";
 
 // =============================================================================
 // Command instances (singletons)
