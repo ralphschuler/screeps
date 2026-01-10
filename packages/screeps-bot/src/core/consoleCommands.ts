@@ -603,27 +603,9 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
 }
 
 /**
- * Configuration commands
+ * Configuration commands - imported from commands/ConfigurationCommands.ts
  */
-class ConfigurationCommands {
-  @Command({
-    name: "showConfig",
-    description: "Show current bot configuration",
-    usage: "showConfig()",
-    examples: ["showConfig()"],
-    category: "Configuration"
-  })
-  public showConfig(): string {
-    const config = getConfig();
-    const loggerConfig = getLoggerConfig();
-    return `=== SwarmBot Config ===
-Debug: ${String(config.debug)}
-Profiling: ${String(config.profiling)}
-Visualizations: ${String(config.visualizations)}
-Logger Level: ${LogLevel[loggerConfig.level]}
-CPU Logging: ${String(loggerConfig.cpuLogging)}`;
-  }
-}
+export { ConfigurationCommands } from "./commands/ConfigurationCommands";
 
 /**
  * Kernel commands

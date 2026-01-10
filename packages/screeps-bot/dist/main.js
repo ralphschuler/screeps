@@ -35429,7 +35429,23 @@ usage: "toggleDebug()",
 examples: [ "toggleDebug()" ],
 category: "Logging"
 }) ], e.prototype, "toggleDebug", null), e;
-}(), Uf = function() {
+}();
+
+!function() {
+function e() {}
+e.prototype.showConfig = function() {
+var e = Lo(), t = co();
+return "=== SwarmBot Config ===\nDebug: ".concat(String(e.debug), "\nProfiling: ").concat(String(e.profiling), "\nVisualizations: ").concat(String(e.visualizations), "\nLogger Level: ").concat(ro[t.level], "\nCPU Logging: ").concat(String(t.cpuLogging));
+}, o([ _o({
+name: "showConfig",
+description: "Show current bot configuration",
+usage: "showConfig()",
+examples: [ "showConfig()" ],
+category: "Configuration"
+}) ], e.prototype, "showConfig", null);
+}();
+
+var Uf = function() {
 function e() {}
 return e.prototype.toggleVisualizations = function() {
 var e = !Lo().visualizations;
@@ -35928,18 +35944,6 @@ category: "Statistics"
 }) ], e.prototype, "cpuProfile", null), e;
 }(), Mf = function() {
 function e() {}
-return e.prototype.showConfig = function() {
-var e = Lo(), t = co();
-return "=== SwarmBot Config ===\nDebug: ".concat(String(e.debug), "\nProfiling: ").concat(String(e.profiling), "\nVisualizations: ").concat(String(e.visualizations), "\nLogger Level: ").concat(ro[t.level], "\nCPU Logging: ").concat(String(t.cpuLogging));
-}, o([ _o({
-name: "showConfig",
-description: "Show current bot configuration",
-usage: "showConfig()",
-examples: [ "showConfig()" ],
-category: "Configuration"
-}) ], e.prototype, "showConfig", null), e;
-}(), kf = function() {
-function e() {}
 return e.prototype.showKernelStats = function() {
 var e, t, r, o, a = dn.getStatsSummary(), i = dn.getConfig(), s = dn.getBucketMode(), c = "=== Kernel Stats ===\nBucket Mode: ".concat(s.toUpperCase(), "\nCPU Bucket: ").concat(Game.cpu.bucket, "\nCPU Limit: ").concat(dn.getCpuLimit().toFixed(2), " (").concat((100 * i.targetCpuUsage).toFixed(0), "% of ").concat(Game.cpu.limit, ")\nRemaining CPU: ").concat(dn.getRemainingCpu().toFixed(2), "\n\nProcesses: ").concat(a.totalProcesses, " total (").concat(a.activeProcesses, " active, ").concat(a.suspendedProcesses, " suspended)\nTotal CPU Used: ").concat(a.totalCpuUsed.toFixed(3), "\nAvg CPU/Process: ").concat(a.avgCpuPerProcess.toFixed(4), "\nAvg Health Score: ").concat(a.avgHealthScore.toFixed(1), "/100\n\nTop CPU Consumers:");
 try {
@@ -36219,7 +36223,7 @@ usage: "listRoomProcesses()",
 examples: [ "listRoomProcesses()" ],
 category: "Kernel"
 }) ], e.prototype, "listRoomProcesses", null), e;
-}(), Nf = function() {
+}(), kf = function() {
 function e() {}
 return e.prototype.listCommands = function() {
 return Oo.generateHelp();
@@ -36238,12 +36242,12 @@ usage: "commandHelp(commandName)",
 examples: [ "commandHelp('setLogLevel')", "commandHelp('suspendProcess')" ],
 category: "System"
 }) ], e.prototype, "commandHelp", null), e;
-}(), If = new xf, Pf = new Uf, Gf = new Af, Lf = new Mf, Df = new kf, Ff = new Nf, Bf = To("Main");
+}(), Nf = new xf, If = new Uf, Pf = new Af, Gf = new ConfigurationCommands, Lf = new Mf, Df = new kf, Ff = To("Main");
 
 !function(e) {
 void 0 === e && (e = !1);
 var t = function() {
-Oo.initialize(), xo(If), xo(Pf), xo(Gf), xo(Lf), xo(Df), xo(Ff), xo(uf), xo(mf), 
+Oo.initialize(), xo(Nf), xo(If), xo(Pf), xo(Gf), xo(Lf), xo(Df), xo(uf), xo(mf), 
 xo(pf), xo(df), xo(vf), xo(Ef), xo(Sf), global.tooangel = Tf;
 var e = global;
 e.botConfig = {
@@ -36256,11 +36260,11 @@ configureLogger: so
 e ? (Oo.initialize(), Oo.enableLazyLoading(t), Oo.exposeToGlobal()) : t();
 }(Lo().lazyLoadConsoleCommands);
 
-var Hf = oo.wrapLoop(function() {
+var Bf = oo.wrapLoop(function() {
 try {
 af();
 } catch (e) {
-throw Bf.error("Critical error in main loop: ".concat(String(e)), {
+throw Ff.error("Critical error in main loop: ".concat(String(e)), {
 meta: {
 stack: e instanceof Error ? e.stack : void 0,
 tick: Game.time
@@ -36269,4 +36273,4 @@ tick: Game.time
 }
 });
 
-exports.loop = Hf;
+exports.loop = Bf;
