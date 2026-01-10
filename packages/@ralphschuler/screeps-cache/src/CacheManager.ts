@@ -9,6 +9,7 @@ import { CacheEntry, CacheOptions, CacheStats } from "./CacheEntry";
 import { CacheStore } from "./CacheStore";
 import { HeapStore } from "./stores/HeapStore";
 import { MemoryStore } from "./stores/MemoryStore";
+import { HybridStore } from "./stores/HybridStore";
 
 /**
  * Central cache manager with pluggable strategies
@@ -16,9 +17,9 @@ import { MemoryStore } from "./stores/MemoryStore";
 export class CacheManager {
   private readonly stores: Map<string, CacheStore>;
   private readonly stats: Map<string, { hits: number; misses: number; evictions: number }>;
-  private readonly defaultStore: 'heap' | 'memory';
+  private readonly defaultStore: 'heap' | 'memory' | 'hybrid';
 
-  constructor(defaultStore: 'heap' | 'memory' = 'heap') {
+  constructor(defaultStore: 'heap' | 'memory' | 'hybrid' = 'heap') {
     this.stores = new Map();
     this.stats = new Map();
     this.defaultStore = defaultStore;
@@ -27,15 +28,19 @@ export class CacheManager {
   /**
    * Get or create a store for the given namespace
    */
-  private getStore(namespace: string, storeType?: 'heap' | 'memory'): CacheStore {
+  private getStore(namespace: string, storeType?: 'heap' | 'memory' | 'hybrid'): CacheStore {
     const type = storeType ?? this.defaultStore;
     const key = `${namespace}:${type}`;
     
     let store = this.stores.get(key);
     if (!store) {
-      store = type === 'memory' 
-        ? new MemoryStore(namespace)
-        : new HeapStore(namespace);
+      if (type === 'memory') {
+        store = new MemoryStore(namespace);
+      } else if (type === 'hybrid') {
+        store = new HybridStore(namespace);
+      } else {
+        store = new HeapStore(namespace);
+      }
       this.stores.set(key, store);
     }
     
@@ -151,6 +156,7 @@ export class CacheManager {
   invalidate(key: string, namespace: string = 'default'): boolean {
     const heapKey = `${namespace}:heap`;
     const memoryKey = `${namespace}:memory`;
+    const hybridKey = `${namespace}:hybrid`;
     const fullKey = this.makeKey(namespace, key);
     
     let deleted = false;
@@ -165,6 +171,11 @@ export class CacheManager {
       deleted = memoryStore.delete(fullKey) || deleted;
     }
     
+    const hybridStore = this.stores.get(hybridKey);
+    if (hybridStore) {
+      deleted = hybridStore.delete(fullKey) || deleted;
+    }
+    
     return deleted;
   }
 
@@ -174,9 +185,14 @@ export class CacheManager {
   invalidatePattern(pattern: RegExp, namespace: string = 'default'): number {
     const heapKey = `${namespace}:heap`;
     const memoryKey = `${namespace}:memory`;
+    const hybridKey = `${namespace}:hybrid`;
     let count = 0;
 
-    const stores = [this.stores.get(heapKey), this.stores.get(memoryKey)].filter(Boolean);
+    const stores = [
+      this.stores.get(heapKey),
+      this.stores.get(memoryKey),
+      this.stores.get(hybridKey)
+    ].filter(Boolean);
     
     for (const store of stores) {
       if (!store) continue;
@@ -207,9 +223,11 @@ export class CacheManager {
     if (namespace) {
       const heapKey = `${namespace}:heap`;
       const memoryKey = `${namespace}:memory`;
+      const hybridKey = `${namespace}:hybrid`;
       
       this.stores.get(heapKey)?.clear();
       this.stores.get(memoryKey)?.clear();
+      this.stores.get(hybridKey)?.clear();
       this.stats.delete(namespace);
     } else {
       // Clear all
@@ -228,9 +246,11 @@ export class CacheManager {
       const stats = this.getStats(namespace);
       const heapKey = `${namespace}:heap`;
       const memoryKey = `${namespace}:memory`;
+      const hybridKey = `${namespace}:hybrid`;
       
       const heapSize = this.stores.get(heapKey)?.size() ?? 0;
       const memorySize = this.stores.get(memoryKey)?.size() ?? 0;
+      const hybridSize = this.stores.get(hybridKey)?.size() ?? 0;
       
       const total = stats.hits + stats.misses;
       const hitRate = total > 0 ? stats.hits / total : 0;
@@ -239,7 +259,7 @@ export class CacheManager {
         hits: stats.hits,
         misses: stats.misses,
         hitRate,
-        size: heapSize + memorySize,
+        size: heapSize + memorySize + hybridSize,
         evictions: stats.evictions
       };
     } else {

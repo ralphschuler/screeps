@@ -76,6 +76,8 @@ export {
 // Storage backends
 export { HeapStore } from "./stores/HeapStore";
 export { MemoryStore } from "./stores/MemoryStore";
+export { HybridStore } from "./stores/HybridStore";
+export type { HybridStoreConfig } from "./stores/HybridStore";
 
 // Domain-specific wrappers - Body Part Cache
 export {
