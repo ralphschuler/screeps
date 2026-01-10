@@ -10501,12 +10501,14 @@ lastSync: Game.time,
 memoryUsageBytes: 0,
 data: {}
 }), Memory._hybridCache[this.namespace];
+}, e.prototype.isExpirable = function(e) {
+return void 0 !== e.ttl && -1 !== e.ttl;
 }, e.prototype.rehydrate = function(e) {
 var t, r, o, i, s = this.getMemory(), c = 0, l = [];
 try {
 for (var u = n(Object.entries(s.data)), m = u.next(); !m.done; m = u.next()) {
 var p = a(m.value, 2), f = p[0], d = p[1];
-void 0 !== d.ttl && -1 !== d.ttl && Game.time - d.cachedAt > d.ttl ? l.push(f) : (e.entries.set(f, {
+this.isExpirable(d) && Game.time - d.cachedAt > d.ttl ? l.push(f) : (e.entries.set(f, {
 value: d.value,
 cachedAt: d.cachedAt,
 lastAccessed: Game.time,
@@ -10569,8 +10571,8 @@ var e, t, r, o, i = this.getHeap(), s = this.getMemory(), c = 0;
 try {
 for (var l = n(i.entries), u = l.next(); !u.done; u = l.next()) {
 var m = a(u.value, 2), p = m[0], f = m[1];
-void 0 !== f.ttl && -1 !== f.ttl && Game.time - f.cachedAt > f.ttl && (i.entries.delete(p), 
-i.dirtyKeys.delete(p), c++);
+this.isExpirable(f) && Game.time - f.cachedAt > f.ttl && (i.entries.delete(p), i.dirtyKeys.delete(p), 
+c++);
 }
 } catch (t) {
 e = {
@@ -10586,8 +10588,7 @@ if (e) throw e.error;
 try {
 for (var d = n(Object.entries(s.data)), y = d.next(); !y.done; y = d.next()) {
 var h = a(y.value, 2), g = (p = h[0], h[1]);
-void 0 !== g.ttl && -1 !== g.ttl && Game.time - g.cachedAt > g.ttl && (delete s.data[p], 
-c++);
+this.isExpirable(g) && Game.time - g.cachedAt > g.ttl && (delete s.data[p], c++);
 }
 } catch (e) {
 r = {

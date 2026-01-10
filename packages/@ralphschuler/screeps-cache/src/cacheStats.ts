@@ -131,8 +131,8 @@ export function logCacheStats(): void {
 export function collectHybridStoreRecoveryStats(): Record<string, number> {
   const result: Record<string, number> = {};
   
-  // Get all HybridStore instances from CacheManager
-  const stores = (globalCache as any).stores as Map<string, any>;
+  // Access stores from CacheManager (now public)
+  const stores = globalCache.stores;
   
   for (const [key, store] of stores.entries()) {
     // Check if this is a HybridStore

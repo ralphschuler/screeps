@@ -16,6 +16,10 @@
 import { CacheStore } from "../CacheStore";
 import { CacheEntry } from "../CacheEntry";
 
+// Constants
+const PERMANENT_TTL = -1;
+const FALLBACK_ENTRY_SIZE_BYTES = 1024;
+
 // Augment Memory interface
 declare global {
   interface Memory {
@@ -136,6 +140,13 @@ export class HybridStore implements CacheStore {
   }
 
   /**
+   * Check if an entry is expirable (has TTL and is not permanent)
+   */
+  private isExpirable(entry: { ttl?: number }): boolean {
+    return entry.ttl !== undefined && entry.ttl !== PERMANENT_TTL;
+  }
+
+  /**
    * Rehydrate heap from Memory after global reset
    */
   private rehydrate(heap: HeapLayer): void {
@@ -148,9 +159,9 @@ export class HybridStore implements CacheStore {
     
     for (const [key, memEntry] of Object.entries(memory.data)) {
       // Check TTL
-      if (memEntry.ttl !== undefined && memEntry.ttl !== -1) {
+      if (this.isExpirable(memEntry)) {
         const age = Game.time - memEntry.cachedAt;
-        if (age > memEntry.ttl) {
+        if (age > memEntry.ttl!) {
           keysToDelete.push(key);
           expired++;
           continue; // Skip expired
@@ -256,9 +267,9 @@ export class HybridStore implements CacheStore {
 
     // Clean heap
     for (const [key, entry] of heap.entries) {
-      if (entry.ttl !== undefined && entry.ttl !== -1) {
+      if (this.isExpirable(entry)) {
         const age = Game.time - entry.cachedAt;
-        if (age > entry.ttl) {
+        if (age > entry.ttl!) {
           heap.entries.delete(key);
           heap.dirtyKeys.delete(key);
           cleaned++;
@@ -268,9 +279,9 @@ export class HybridStore implements CacheStore {
 
     // Clean Memory
     for (const [key, memEntry] of Object.entries(memory.data)) {
-      if (memEntry.ttl !== undefined && memEntry.ttl !== -1) {
+      if (this.isExpirable(memEntry)) {
         const age = Game.time - memEntry.cachedAt;
-        if (age > memEntry.ttl) {
+        if (age > memEntry.ttl!) {
           delete memory.data[key];
           cleaned++;
         }
@@ -338,7 +349,7 @@ export class HybridStore implements CacheStore {
       return JSON.stringify(data).length;
     } catch {
       // Fallback to rough estimate
-      return Object.keys(data).length * 1024; // ~1KB per entry
+      return Object.keys(data).length * FALLBACK_ENTRY_SIZE_BYTES;
     }
   }
 

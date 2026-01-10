@@ -15,7 +15,8 @@ import { HybridStore } from "./stores/HybridStore";
  * Central cache manager with pluggable strategies
  */
 export class CacheManager {
-  private readonly stores: Map<string, CacheStore>;
+  // Make stores accessible for advanced use cases (e.g., recovery stats)
+  public readonly stores: Map<string, CacheStore>;
   private readonly stats: Map<string, { hits: number; misses: number; evictions: number }>;
   private readonly defaultStore: 'heap' | 'memory' | 'hybrid';
 
