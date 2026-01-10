@@ -30,8 +30,8 @@ export interface CacheOptions<T = any> {
   ttl?: number;
   /** Eviction strategy: 'ttl' (time-based), 'lru' (least recently used), 'tick' (per-tick), 'event' (manual) */
   strategy?: 'ttl' | 'lru' | 'tick' | 'event';
-  /** Storage backend: 'heap' (global object, fast), 'memory' (persistent, slower) */
-  store?: 'heap' | 'memory';
+  /** Storage backend: 'heap' (fast, volatile), 'memory' (persistent, slower), 'hybrid' (heap + selective persistence) */
+  store?: 'heap' | 'memory' | 'hybrid';
   /** Maximum cache size before eviction */
   maxSize?: number;
   /** Callback when entry is evicted */
