@@ -131,6 +131,12 @@ The framework consists of several specialized packages:
   - Energy-efficient implementations
   - Remote mining support
 
+- **[@ralphschuler/screeps-standards](packages/@ralphschuler/screeps-standards)** - Communication protocols ✨ **NEW**
+  - SS2 Terminal Communications
+  - Multi-packet message transmission
+  - Inter-player messaging
+  - Protocol standardization
+
 ## Architecture Guide
 
 ### Framework Design Philosophy
@@ -322,6 +328,7 @@ Each package has comprehensive API documentation in its README:
 - [Tasks API](packages/screeps-tasks/README.md)
 - [POSIS API](packages/screeps-posis/README.md)
 - [Roles API](packages/@ralphschuler/screeps-roles/README.md)
+- [Standards API](packages/@ralphschuler/screeps-standards/README.md) ✨ **NEW**
 
 ## Examples
 
@@ -386,9 +393,10 @@ See [PUBLISHING.md](PUBLISHING.md) for complete publishing guide and workflow do
 | @ralphschuler/screeps-pathfinding | 0.1.0 | ❌ Not yet | ✅ Pass | ✅ Pass | ✅ Complete | ✅ Unlicense |
 | @ralphschuler/screeps-remote-mining | 0.1.0 | ❌ Not yet | ✅ Pass | ✅ Pass | ✅ Complete | ✅ Unlicense |
 | @ralphschuler/screeps-roles | 0.1.0 | ❌ Not yet | ⚠️ Issues* | ✅ Pass | ✅ Complete | ✅ Unlicense |
-| @ralphschuler/screeps-console | 0.1.0 | ❌ Not yet | ⚠️ Issues** | ✅ Pass | ✅ Complete | ✅ Unlicense |
+| @ralphschuler/screeps-console | 0.1.0 | ❌ Not yet | ✅ Pass | ✅ Pass | ✅ Complete | ✅ Unlicense |
 | @ralphschuler/screeps-stats | 0.1.0 | ❌ Not yet | ✅ Pass | ✅ Pass | ✅ Complete | ✅ Unlicense |
 | @ralphschuler/screeps-visuals | 0.1.0 | N/A (private) | ✅ Pass | ✅ Pass | ✅ Complete | ✅ Unlicense |
+| @ralphschuler/screeps-standards | 0.1.0 | ⏳ Ready | ✅ Pass | ⏳ Pending | ✅ Complete | ✅ Unlicense |
 | @ralphschuler/screeps-spawn | 0.1.0 | ⏳ Ready | ✅ Pass | ✅ Pass | 📝 In Progress | ✅ Unlicense |
 | @ralphschuler/screeps-chemistry | 0.1.0 | ⏳ Ready | ✅ Pass | ✅ Pass | 📝 In Progress | ✅ Unlicense |
 | @ralphschuler/screeps-defense | 0.1.0 | ⏳ Ready | ✅ Pass | ✅ Pass | 📝 In Progress | ✅ Unlicense |
@@ -398,8 +406,6 @@ See [PUBLISHING.md](PUBLISHING.md) for complete publishing guide and workflow do
 | @ralphschuler/screeps-posis | 0.1.0 | ⏳ Ready | ✅ Pass | ✅ Pass | 📝 In Progress | ✅ Unlicense |
 
 *Build issues tracked in [#1010](https://github.com/ralphschuler/screeps/issues/1010)
-
-**TypeScript compilation errors due to missing dependencies and type mismatches
 
 ### Publishing Workflow
 
