@@ -35,6 +35,7 @@ import { getCacheStatistics, resetCacheStats } from "../cache/domains/ObjectCach
 import { getRoomFindCacheStats, clearRoomFindCache } from "../cache/domains/RoomFindCache";
 import { globalCache } from "../cache";
 import { LoggingCommands } from "./commands/LoggingCommands";
+import { SystemCommands } from "./commands/SystemCommands";
 
 /**
  * Logging commands - imported from commands/LoggingCommands.ts
@@ -907,31 +908,9 @@ Rooms by Priority:`;
 }
 
 /**
- * System commands
+ * System commands - imported from commands/SystemCommands.ts
  */
-class SystemCommands {
-  @Command({
-    name: "listCommands",
-    description: "List all available commands (alias for help)",
-    usage: "listCommands()",
-    examples: ["listCommands()"],
-    category: "System"
-  })
-  public listCommands(): string {
-    return commandRegistry.generateHelp();
-  }
-
-  @Command({
-    name: "commandHelp",
-    description: "Get detailed help for a specific command",
-    usage: "commandHelp(commandName)",
-    examples: ["commandHelp('setLogLevel')", "commandHelp('suspendProcess')"],
-    category: "System"
-  })
-  public commandHelp(commandName: string): string {
-    return commandRegistry.generateCommandHelp(commandName);
-  }
-}
+export { SystemCommands } from "./commands/SystemCommands";
 
 // =============================================================================
 // Command instances (singletons)

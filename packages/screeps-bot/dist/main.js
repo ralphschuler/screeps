@@ -35429,6 +35429,25 @@ usage: "toggleDebug()",
 examples: [ "toggleDebug()" ],
 category: "Logging"
 }) ], e.prototype, "toggleDebug", null), e;
+}(), Uf = function() {
+function e() {}
+return e.prototype.listCommands = function() {
+return Oo.generateHelp();
+}, e.prototype.commandHelp = function(e) {
+return Oo.generateCommandHelp(e);
+}, o([ _o({
+name: "listCommands",
+description: "List all available commands (alias for help)",
+usage: "listCommands()",
+examples: [ "listCommands()" ],
+category: "System"
+}) ], e.prototype, "listCommands", null), o([ _o({
+name: "commandHelp",
+description: "Get detailed help for a specific command",
+usage: "commandHelp(commandName)",
+examples: [ "commandHelp('setLogLevel')", "commandHelp('suspendProcess')" ],
+category: "System"
+}) ], e.prototype, "commandHelp", null), e;
 }();
 
 !function() {
@@ -35445,7 +35464,7 @@ category: "Configuration"
 }) ], e.prototype, "showConfig", null);
 }();
 
-var Uf = function() {
+var Af = function() {
 function e() {}
 return e.prototype.toggleVisualizations = function() {
 var e = !Lo().visualizations;
@@ -35594,7 +35613,7 @@ usage: "clearVisCache(roomName?)",
 examples: [ "clearVisCache()", "clearVisCache('W1N1')" ],
 category: "Visualization"
 }) ], e.prototype, "clearVisCache", null), e;
-}(), Af = function() {
+}(), Mf = function() {
 function e() {}
 return e.prototype.showStats = function() {
 var e = on.getLatestStats();
@@ -35942,7 +35961,7 @@ usage: "cpuProfile(showAll?)",
 examples: [ "cpuProfile()", "cpuProfile(true)" ],
 category: "Statistics"
 }) ], e.prototype, "cpuProfile", null), e;
-}(), Mf = function() {
+}(), kf = function() {
 function e() {}
 return e.prototype.showKernelStats = function() {
 var e, t, r, o, a = dn.getStatsSummary(), i = dn.getConfig(), s = dn.getBucketMode(), c = "=== Kernel Stats ===\nBucket Mode: ".concat(s.toUpperCase(), "\nCPU Bucket: ").concat(Game.cpu.bucket, "\nCPU Limit: ").concat(dn.getCpuLimit().toFixed(2), " (").concat((100 * i.targetCpuUsage).toFixed(0), "% of ").concat(Game.cpu.limit, ")\nRemaining CPU: ").concat(dn.getRemainingCpu().toFixed(2), "\n\nProcesses: ").concat(a.totalProcesses, " total (").concat(a.activeProcesses, " active, ").concat(a.suspendedProcesses, " suspended)\nTotal CPU Used: ").concat(a.totalCpuUsed.toFixed(3), "\nAvg CPU/Process: ").concat(a.avgCpuPerProcess.toFixed(4), "\nAvg Health Score: ").concat(a.avgHealthScore.toFixed(1), "/100\n\nTop CPU Consumers:");
@@ -36223,26 +36242,7 @@ usage: "listRoomProcesses()",
 examples: [ "listRoomProcesses()" ],
 category: "Kernel"
 }) ], e.prototype, "listRoomProcesses", null), e;
-}(), kf = function() {
-function e() {}
-return e.prototype.listCommands = function() {
-return Oo.generateHelp();
-}, e.prototype.commandHelp = function(e) {
-return Oo.generateCommandHelp(e);
-}, o([ _o({
-name: "listCommands",
-description: "List all available commands (alias for help)",
-usage: "listCommands()",
-examples: [ "listCommands()" ],
-category: "System"
-}) ], e.prototype, "listCommands", null), o([ _o({
-name: "commandHelp",
-description: "Get detailed help for a specific command",
-usage: "commandHelp(commandName)",
-examples: [ "commandHelp('setLogLevel')", "commandHelp('suspendProcess')" ],
-category: "System"
-}) ], e.prototype, "commandHelp", null), e;
-}(), Nf = new xf, If = new Uf, Pf = new Af, Gf = new ConfigurationCommands, Lf = new Mf, Df = new kf, Ff = To("Main");
+}(), Nf = new xf, If = new Af, Pf = new Mf, Gf = new ConfigurationCommands, Lf = new kf, Df = new Uf, Ff = To("Main");
 
 !function(e) {
 void 0 === e && (e = !1);
