@@ -34,57 +34,13 @@ import { VisualizationLayer } from "../memory/schemas";
 import { getCacheStatistics, resetCacheStats } from "../cache/domains/ObjectCache";
 import { getRoomFindCacheStats, clearRoomFindCache } from "../cache/domains/RoomFindCache";
 import { globalCache } from "../cache";
+import { LoggingCommands } from "./commands/LoggingCommands";
 
 /**
- * Logging commands
+ * Logging commands - imported from commands/LoggingCommands.ts
  */
-class LoggingCommands {
-  @Command({
-    name: "setLogLevel",
-    description: "Set the log level for the bot",
-    usage: "setLogLevel(level)",
-    examples: [
-      "setLogLevel('debug')",
-      "setLogLevel('info')",
-      "setLogLevel('warn')",
-      "setLogLevel('error')",
-      "setLogLevel('none')"
-    ],
-    category: "Logging"
-  })
-  public setLogLevel(level: string): string {
-    const levelMap: Record<string, LogLevel> = {
-      debug: LogLevel.DEBUG,
-      info: LogLevel.INFO,
-      warn: LogLevel.WARN,
-      error: LogLevel.ERROR,
-      none: LogLevel.NONE
-    };
-
-    const logLevel = levelMap[level.toLowerCase()];
-    if (logLevel === undefined) {
-      return `Invalid log level: ${level}. Valid levels: debug, info, warn, error, none`;
-    }
-
-    configureLogger({ level: logLevel });
-    return `Log level set to: ${level.toUpperCase()}`;
-  }
-
-  @Command({
-    name: "toggleDebug",
-    description: "Toggle debug mode on/off (affects log level and debug features)",
-    usage: "toggleDebug()",
-    examples: ["toggleDebug()"],
-    category: "Logging"
-  })
-  public toggleDebug(): string {
-    const config = getConfig();
-    const newValue = !config.debug;
-    updateConfig({ debug: newValue });
-    configureLogger({ level: newValue ? LogLevel.DEBUG : LogLevel.INFO });
-    return `Debug mode: ${newValue ? "ENABLED" : "DISABLED"} (Log level: ${newValue ? "DEBUG" : "INFO"})`;
-  }
-}
+// Re-export for backward compatibility
+export { LoggingCommands } from "./commands/LoggingCommands";
 
 /**
  * Visualization commands
