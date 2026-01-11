@@ -1,0 +1,29 @@
+{
+  "name": "@ralphschuler/screeps-standards",
+  "version": "0.1.0",
+  "description": "Screeps SS2 terminal communication standard",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "private": false,
+  "scripts": {
+    "build": "tsc",
+    "test": "echo 'TODO: Add tests' && exit 0",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "screeps",
+    "standards",
+    "protocols",
+    "typescript"
+  ],
+  "author": "Ralph Schuler",
+  "license": "Unlicense",
+  "dependencies": {
+    "@ralphschuler/screeps-core": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "@types/screeps": "^3.3.8",
+    "typescript": "^5.4.3"
+  }
+}
