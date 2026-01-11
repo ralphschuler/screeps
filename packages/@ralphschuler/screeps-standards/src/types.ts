@@ -44,5 +44,20 @@ export interface SS2PacketQueue {
 declare global {
   interface Memory {
     ss2PacketQueue?: SS2PacketQueue;
+    ss2TerminalComms?: {
+      messageBuffers?: { [key: string]: SS2MessageBufferSerialized };
+      nextMessageId?: number;
+    };
   }
+}
+
+/**
+ * Serialized version of SS2MessageBuffer for Memory storage
+ */
+export interface SS2MessageBufferSerialized {
+  msgId: string;
+  sender: string;
+  finalPacket: number;
+  packets: { [packetId: number]: string }; // Converted from Map for serialization
+  receivedAt: number;
 }

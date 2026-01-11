@@ -27,7 +27,7 @@ import { SS2TerminalComms } from '@ralphschuler/screeps-standards';
 const terminal = Game.getObjectById('terminalId') as StructureTerminal;
 const message = 'Your long message here...';
 
-SS2TerminalComms.queueMessage(
+SS2TerminalComms.sendMessage(
   terminal,
   'W1N1', // Target room
   RESOURCE_ENERGY,
@@ -36,24 +36,13 @@ SS2TerminalComms.queueMessage(
 );
 
 // Process packet queue each tick
-SS2TerminalComms.processPacketQueue();
+SS2TerminalComms.processQueue();
 
 // Handle incoming terminal transactions
-for (const transaction of Game.market.incomingTransactions) {
-  if (transaction.description) {
-    const message = SS2TerminalComms.parseTransaction(transaction.description);
-    if (message) {
-      const complete = SS2TerminalComms.receivePacket(transaction.from, message);
-      if (complete) {
-        console.log('Received complete message:', complete);
-      }
-    }
-  }
+const incomingMessages = SS2TerminalComms.processIncomingTransactions();
+for (const { sender, message } of incomingMessages) {
+  console.log(`Received complete message from ${sender}:`, message);
 }
-
-// Clean up expired messages
-SS2TerminalComms.cleanupExpiredMessages();
-SS2TerminalComms.cleanupExpiredQueueItems();
 ```
 
 ## API
@@ -63,11 +52,12 @@ SS2TerminalComms.cleanupExpiredQueueItems();
 **Static Methods:**
 
 - `parseTransaction(description: string)` - Parse SS2 transaction description
-- `queueMessage(terminal, targetRoom, resourceType, amount, message)` - Queue multi-packet message
-- `processPacketQueue()` - Send next queued packets
-- `receivePacket(sender, message)` - Process received packet, returns complete message if done
-- `cleanupExpiredMessages()` - Remove timed-out incomplete messages
-- `cleanupExpiredQueueItems()` - Remove timed-out queue items
+- `processIncomingTransactions()` - Process all incoming transactions and return complete messages
+- `splitMessage(message: string)` - Split message into chunks for multi-packet transmission
+- `sendMessage(terminal, targetRoom, resourceType, amount, message)` - Send message (single or multi-packet)
+- `processQueue()` - Send next queued packets for multi-packet messages
+- `parseJSON<T>(message: string)` - Parse JSON message content
+- `formatJSON<T>(data: T)` - Format data as JSON string
 
 **Configuration:**
 

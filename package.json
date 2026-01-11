@@ -64,6 +64,7 @@
     "test:visuals": "npm test -w @ralphschuler/screeps-visuals",
     "test:roles": "npm test -w @ralphschuler/screeps-roles",
     "test:chemistry": "npm test -w @ralphschuler/screeps-chemistry",
+    "test:standards": "npm test -w @ralphschuler/screeps-standards",
     "test:defense": "npm test -w @ralphschuler/screeps-defense",
     "test:spawn": "npm test -w @ralphschuler/screeps-spawn",
     "test:utils": "npm test -w @ralphschuler/screeps-utils",

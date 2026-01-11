@@ -1,7 +1,7 @@
 {
   "name": "@ralphschuler/screeps-standards",
   "version": "0.1.0",
-  "description": "Screeps communication standards (SS1, SS2, SS3) and segment protocols",
+  "description": "Screeps SS2 terminal communication standard",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "private": false,

@@ -4,7 +4,7 @@
  * Based on: https://github.com/screepers/screepers-standards/blob/master/SS2-Terminal_Communications.md
  */
 
-import { SS2MessageBuffer, SS2TransactionMessage } from "./types";
+import { SS2MessageBuffer, SS2TransactionMessage, SS2MessageBufferSerialized } from "./types";
 import { createLogger } from "@ralphschuler/screeps-core";
 
 const logger = createLogger("SS2TerminalComms");
@@ -16,8 +16,126 @@ export class SS2TerminalComms {
   private static readonly QUEUE_TIMEOUT = 1000; // Ticks before queued packets expire
   private static readonly MESSAGE_ID_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
   
-  private static messageBuffers: Map<string, SS2MessageBuffer> = new Map();
-  private static nextMessageId = 0;
+  // State persistence to survive global resets
+  private static _messageBuffers: Map<string, SS2MessageBuffer> | null = null;
+  private static _nextMessageId: number | null = null;
+  private static _stateInitialized: boolean = false;
+
+  /**
+   * Load state from Memory (called automatically on first access)
+   */
+  private static loadStateFromMemory(): void {
+    if (this._stateInitialized) {
+      return;
+    }
+
+    if (!Memory.ss2TerminalComms) {
+      Memory.ss2TerminalComms = {};
+    }
+
+    const persisted = Memory.ss2TerminalComms;
+
+    // Load message buffers
+    const buffersMap = new Map<string, SS2MessageBuffer>();
+    if (persisted.messageBuffers) {
+      for (const key in persisted.messageBuffers) {
+        const serialized = persisted.messageBuffers[key];
+        const packetsMap = new Map<number, string>();
+        for (const packetIdStr in serialized.packets) {
+          packetsMap.set(parseInt(packetIdStr, 10), serialized.packets[packetIdStr]);
+        }
+        buffersMap.set(key, {
+          msgId: serialized.msgId,
+          sender: serialized.sender,
+          finalPacket: serialized.finalPacket,
+          packets: packetsMap,
+          receivedAt: serialized.receivedAt
+        });
+      }
+    }
+
+    this._messageBuffers = buffersMap;
+    this._nextMessageId = typeof persisted.nextMessageId === "number" ? persisted.nextMessageId : 0;
+    this._stateInitialized = true;
+  }
+
+  /**
+   * Save state to Memory
+   */
+  private static saveStateToMemory(): void {
+    if (!this._stateInitialized) {
+      this.loadStateFromMemory();
+    }
+
+    if (!Memory.ss2TerminalComms) {
+      Memory.ss2TerminalComms = {};
+    }
+
+    // Save message buffers
+    const buffersObject: { [key: string]: SS2MessageBufferSerialized } = {};
+    if (this._messageBuffers) {
+      this._messageBuffers.forEach((buffer, key) => {
+        const packetsObject: { [packetId: number]: string } = {};
+        buffer.packets.forEach((chunk, packetId) => {
+          packetsObject[packetId] = chunk;
+        });
+        buffersObject[key] = {
+          msgId: buffer.msgId,
+          sender: buffer.sender,
+          finalPacket: buffer.finalPacket,
+          packets: packetsObject,
+          receivedAt: buffer.receivedAt
+        };
+      });
+    }
+
+    Memory.ss2TerminalComms.messageBuffers = buffersObject;
+    Memory.ss2TerminalComms.nextMessageId = this._nextMessageId ?? 0;
+  }
+
+  /**
+   * Get message buffers (lazy-loads from Memory)
+   */
+  private static get messageBuffers(): Map<string, SS2MessageBuffer> {
+    if (!this._stateInitialized) {
+      this.loadStateFromMemory();
+    }
+    if (!this._messageBuffers) {
+      this._messageBuffers = new Map<string, SS2MessageBuffer>();
+    }
+    return this._messageBuffers;
+  }
+
+  /**
+   * Set message buffers (automatically saves to Memory)
+   */
+  private static set messageBuffers(value: Map<string, SS2MessageBuffer>) {
+    this._messageBuffers = value;
+    this._stateInitialized = true;
+    this.saveStateToMemory();
+  }
+
+  /**
+   * Get next message ID (lazy-loads from Memory)
+   */
+  private static get nextMessageId(): number {
+    if (!this._stateInitialized) {
+      this.loadStateFromMemory();
+    }
+    if (this._nextMessageId === null) {
+      this._nextMessageId = 0;
+    }
+    return this._nextMessageId;
+  }
+
+  /**
+   * Set next message ID (automatically saves to Memory)
+   */
+  private static set nextMessageId(value: number) {
+    this._nextMessageId = value;
+    this._stateInitialized = true;
+    this.saveStateToMemory();
+  }
 
   /**
    * Parse SS2 transaction description
@@ -109,10 +227,12 @@ export class SS2TerminalComms {
           receivedAt: Game.time,
         };
         this.messageBuffers.set(bufferKey, buffer);
+        this.saveStateToMemory();
       }
 
       // Store packet
       buffer.packets.set(parsed.packetId, parsed.messageChunk);
+      this.saveStateToMemory();
 
       // Check if message is complete
       if (buffer.packets.size === buffer.finalPacket + 1) {
@@ -140,6 +260,7 @@ export class SS2TerminalComms {
             message: fullMessage,
           });
           this.messageBuffers.delete(bufferKey);
+          this.saveStateToMemory();
           logger.info(`Received complete multi-packet message from ${transaction.sender.username}`, {
             meta: { 
               messageId: parsed.msgId, 
@@ -190,12 +311,17 @@ export class SS2TerminalComms {
 
   /**
    * Send a message via terminal
+   * 
+   * For single-packet messages, sends immediately and returns the result.
+   * For multi-packet messages, queues packets for transmission in future ticks
+   * and returns OK immediately. Use processQueue() each tick to send queued packets.
+   * 
    * @param terminal Terminal to send from
    * @param targetRoom Target room
    * @param resourceType Resource to send (typically energy)
-   * @param amount Amount to send
+   * @param amount Amount to send per packet
    * @param message Message to include
-   * @returns Success status
+   * @returns OK for queued multi-packet messages or terminal.send() result for single packets
    */
   public static sendMessage(
     terminal: StructureTerminal,
@@ -227,6 +353,7 @@ export class SS2TerminalComms {
         targetRoom 
       }
     });
+    // Note: Returns OK immediately; actual sending happens via processQueue()
     return OK;
   }
 
@@ -456,6 +583,7 @@ export class SS2TerminalComms {
           } 
         });
         this.messageBuffers.delete(key);
+        this.saveStateToMemory();
       }
     }
   }
@@ -465,7 +593,7 @@ export class SS2TerminalComms {
    * @param message Raw message
    * @returns Parsed object or null
    */
-  public static parseJSON<T = any>(message: string): T | null {
+  public static parseJSON<T = unknown>(message: string): T | null {
     try {
       if (message.startsWith("{") || message.startsWith("[")) {
         return JSON.parse(message) as T;
@@ -482,7 +610,7 @@ export class SS2TerminalComms {
    * @param data Object to serialize
    * @returns JSON string
    */
-  public static formatJSON(data: any): string {
+  public static formatJSON<T>(data: T): string {
     return JSON.stringify(data);
   }
 }
