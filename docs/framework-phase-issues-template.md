@@ -195,9 +195,7 @@ rm -rf packages/screeps-bot/src/roles/power
 
 ---
 
-**Estimated Timeline**: 5 working days  
-**Assignee**: TBD  
-**Due Date**: 2026-02-08 (end of Phase 2)
+**Estimated Timeline**: 2 weeks (2026-01-18 to 2026-02-01)
 ```
 
 ---
@@ -425,9 +423,7 @@ npm run test:all
 
 ---
 
-**Estimated Timeline**: 6-7 working days  
-**Assignee**: TBD  
-**Due Date**: 2026-02-22 (end of Phase 3)
+**Estimated Timeline**: 2 weeks (2026-02-01 to 2026-02-15)
 ```
 
 ---
@@ -674,9 +670,7 @@ find packages/@ralphschuler -name "*.ts" \
 
 ---
 
-**Estimated Timeline**: 2 working days  
-**Assignee**: TBD  
-**Due Date**: 2026-02-22 (end of Phase 3)
+**Estimated Timeline**: Part of Phase 3 (2026-02-01 to 2026-02-15)
 ```
 
 ---
