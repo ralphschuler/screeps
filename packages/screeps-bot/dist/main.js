@@ -4585,7 +4585,7 @@ this.nativeCallsThisTick = this.createEmptyNativeCalls(), this.subsystemMeasurem
 this.roomMeasurements.clear(), this.skippedProcessesThisTick = 0, Zo.reset();
 }
 }, e.prototype.finalizeTick = function() {
-var e, t, o, n, a, i, s, c, l, u, m, p, f, d, y, h;
+var e, t, o, n, a, i, s, c, l, u, m, p, f, d, y, h, g = this;
 if (this.config.enabled) {
 this.currentSnapshot.cpu = {
 used: Game.cpu.getUsed(),
@@ -4609,35 +4609,37 @@ progressPercent: (null !== (p = null === (m = Game.gpl) || void 0 === m ? void 0
 }, this.finalizeEmpireStats(), this.finalizeSubsystemStats(), this.finalizeCacheStats(), 
 this.finalizePathfindingStats(), this.currentSnapshot.native = r({}, this.nativeCallsThisTick), 
 this.finalizeCreepStats(), this.currentSnapshot.tick = Game.time, this.currentSnapshot.timestamp = Date.now();
-var g = this.validateBudgets(), v = this.detectAnomalies();
-if (g.alerts.length > 0) {
-var R = g.alerts.filter(function(e) {
+var v = this.validateBudgets(), R = this.detectAnomalies();
+if (v.alerts.length > 0) {
+var E = v.alerts.filter(function(e) {
 return "critical" === e.severity;
-}), E = g.alerts.filter(function(e) {
+}), T = v.alerts.filter(function(e) {
 return "warning" === e.severity;
 });
-if (R.length > 0) {
-var T = R.map(function(e) {
-return "".concat(e.target, ": ").concat((100 * e.percentUsed).toFixed(1), "% (").concat(e.cpuUsed.toFixed(3), "/").concat(e.budgetLimit, ")");
-}).join(", ");
-Yo.error("CPU Budget: ".concat(R.length, " critical violations detected - ").concat(T), {
-subsystem: "CPUBudget"
-});
-}
 if (E.length > 0) {
 var C = E.map(function(e) {
-return "".concat(e.target, ": ").concat((100 * e.percentUsed).toFixed(1), "%");
+var t, r = "room:".concat(e.target), o = g.currentSnapshot.processes[r], n = null !== (t = null == o ? void 0 : o.tickModulo) && void 0 !== t ? t : 1, a = n > 1 ? " [runs every ".concat(n, " ticks]") : "";
+return "".concat(e.target, ": ").concat((100 * e.percentUsed).toFixed(1), "% (").concat(e.cpuUsed.toFixed(3), "/").concat(e.budgetLimit.toFixed(3), " CPU)").concat(a);
 }).join(", ");
-Yo.warn("CPU Budget: ".concat(E.length, " warnings (≥80% of limit) - ").concat(C), {
+Yo.error("CPU Budget: ".concat(E.length, " critical violations detected - ").concat(C), {
+subsystem: "CPUBudget"
+});
+}
+if (T.length > 0) {
+var S = T.map(function(e) {
+var t, r = "room:".concat(e.target), o = g.currentSnapshot.processes[r], n = null !== (t = null == o ? void 0 : o.tickModulo) && void 0 !== t ? t : 1, a = n > 1 ? " [runs every ".concat(n, " ticks]") : "";
+return "".concat(e.target, ": ").concat((100 * e.percentUsed).toFixed(1), "%").concat(a);
+}).join(", ");
+Yo.warn("CPU Budget: ".concat(T.length, " warnings (≥80% of limit) - ").concat(S), {
 subsystem: "CPUBudget"
 });
 }
 }
-if (v.length > 0) {
-var S = v.map(function(e) {
+if (R.length > 0) {
+var b = R.map(function(e) {
 return "".concat(e.target, " (").concat(e.type, "): ").concat(e.current.toFixed(3), " CPU (").concat(e.multiplier.toFixed(1), "x baseline)").concat(e.context ? " - ".concat(e.context) : "");
 }).join(", ");
-Yo.warn("CPU Anomalies: ".concat(v.length, " detected - ").concat(S), {
+Yo.warn("CPU Anomalies: ".concat(R.length, " detected - ").concat(b), {
 subsystem: "CPUProfiler"
 });
 }
@@ -4836,7 +4838,7 @@ lastTick: Game.time
 var t = {};
 return !!t && ("war" === t.posture || "siege" === t.posture || t.danger >= 2);
 }, e.prototype.validateBudgets = function() {
-var e, t, r = {
+var e, t, r, o = {
 roomsEvaluated: 0,
 roomsWithinBudget: 0,
 roomsOverBudget: 0,
@@ -4845,27 +4847,27 @@ anomalies: [],
 tick: Game.time
 };
 try {
-for (var o = n(Object.entries(this.currentSnapshot.rooms)), i = o.next(); !i.done; i = o.next()) {
-var s = a(i.value, 2), c = s[0], l = s[1];
-r.roomsEvaluated++;
-var u = this.isWarRoom(c) ? this.config.budgetLimits.warRoom : this.config.budgetLimits.ecoRoom, m = l.profiler.avgCpu, p = m / u;
-p >= this.config.budgetAlertThresholds.critical ? (r.roomsOverBudget++, r.alerts.push({
+for (var i = n(Object.entries(this.currentSnapshot.rooms)), s = i.next(); !s.done; s = i.next()) {
+var c = a(s.value, 2), l = c[0], u = c[1];
+o.roomsEvaluated++;
+var m = this.isWarRoom(l) ? this.config.budgetLimits.warRoom : this.config.budgetLimits.ecoRoom, p = "room:".concat(l), f = this.currentSnapshot.processes[p], d = m * (null !== (r = null == f ? void 0 : f.tickModulo) && void 0 !== r ? r : 1), y = u.profiler.avgCpu, h = y / d;
+h >= this.config.budgetAlertThresholds.critical ? (o.roomsOverBudget++, o.alerts.push({
 severity: "critical",
-target: c,
+target: l,
 targetType: "room",
-cpuUsed: m,
-budgetLimit: u,
-percentUsed: p,
+cpuUsed: y,
+budgetLimit: d,
+percentUsed: h,
 tick: Game.time
-})) : p >= this.config.budgetAlertThresholds.warning ? (r.alerts.push({
+})) : h >= this.config.budgetAlertThresholds.warning ? (o.alerts.push({
 severity: "warning",
-target: c,
+target: l,
 targetType: "room",
-cpuUsed: m,
-budgetLimit: u,
-percentUsed: p,
+cpuUsed: y,
+budgetLimit: d,
+percentUsed: h,
 tick: Game.time
-}), r.roomsWithinBudget++) : r.roomsWithinBudget++;
+}), o.roomsWithinBudget++) : o.roomsWithinBudget++;
 }
 } catch (t) {
 e = {
@@ -4873,12 +4875,12 @@ error: t
 };
 } finally {
 try {
-i && !i.done && (t = o.return) && t.call(o);
+s && !s.done && (t = i.return) && t.call(i);
 } finally {
 if (e) throw e.error;
 }
 }
-return r;
+return o;
 }, e.prototype.detectAnomalies = function() {
 var e, t, r, o, i, s, c, l;
 if (!this.config.anomalyDetection.enabled) return [];
@@ -35896,6 +35898,66 @@ if (o) throw o.error;
 }
 }
 return s;
+}, e.prototype.diagnoseRoom = function(e) {
+var t, r, o;
+if (!e) return "Error: Room name required. Usage: diagnoseRoom('W16S52')";
+if (!Game.rooms[e]) return "Error: Room ".concat(e, " not visible. Make sure you have vision in this room.");
+var i = en.getCurrentSnapshot(), s = i.rooms[e];
+if (!s) return "Error: No stats available for ".concat(e, ". The room may not have been processed yet.");
+var c = "room:".concat(e), l = i.processes[c], u = Qa.getSwarmState(e), m = u && ("war" === u.posture || "siege" === u.posture || u.danger >= 2), p = m ? .25 : .1, f = null !== (o = null == l ? void 0 : l.tickModulo) && void 0 !== o ? o : 1, d = p * f, y = "═══════════════════════════════════════════════\n";
+y += "  Room Diagnostic: ".concat(e, "\n"), y += "═══════════════════════════════════════════════\n\n", 
+y += "📊 Basic Info:\n", y += "  RCL: ".concat(s.rcl, "\n"), y += "  Controller Progress: ".concat(s.controller.progressPercent.toFixed(1), "%\n"), 
+y += "  Posture: ".concat(en.postureCodeToName(s.brain.postureCode), "\n"), y += "  Danger Level: ".concat(s.brain.dangerLevel, "\n"), 
+y += "  Hostiles: ".concat(s.metrics.hostileCount, "\n\n"), y += "⚡ CPU Analysis:\n", 
+y += "  Average CPU: ".concat(s.profiler.avgCpu.toFixed(3), "\n"), y += "  Peak CPU: ".concat(s.profiler.peakCpu.toFixed(3), "\n"), 
+y += "  Samples: ".concat(s.profiler.samples, "\n"), y += "  Budget: ".concat(d.toFixed(3), " (base ").concat(p, ", modulo ").concat(f, ")\n");
+var h = s.profiler.avgCpu / d * 100;
+y += "  Status: ".concat(h >= 100 ? "🔴 CRITICAL" : h >= 80 ? "⚠️  WARNING" : "✅ OK", " (").concat(h.toFixed(1), "% of budget)\n"), 
+f > 1 && (y += "  Note: Room runs every ".concat(f, " ticks (distributed execution)\n")), 
+y += "\n", l && (y += "🔧 Process Info:\n", y += "  Process ID: ".concat(l.id, "\n"), 
+y += "  State: ".concat(l.state, "\n"), y += "  Priority: ".concat(l.priority, "\n"), 
+y += "  Run Count: ".concat(l.runCount, "\n"), y += "  Skipped: ".concat(l.skippedCount, "\n"), 
+y += "  Errors: ".concat(l.errorCount, "\n"), y += "  Last Run: Tick ".concat(l.lastRunTick, " (").concat(Game.time - l.lastRunTick, " ticks ago)\n\n"));
+var g = Object.values(Game.creeps).filter(function(t) {
+return t.room.name === e;
+});
+y += "👥 Creeps: ".concat(g.length, " total\n");
+var v = {};
+try {
+for (var R = n(g), E = R.next(); !E.done; E = R.next()) {
+var T = E.value.memory.role || "unknown";
+v[T] = (v[T] || 0) + 1;
+}
+} catch (e) {
+t = {
+error: e
+};
+} finally {
+try {
+E && !E.done && (r = R.return) && r.call(R);
+} finally {
+if (t) throw t.error;
+}
+}
+var C = Object.entries(v).sort(function(e, t) {
+return t[1] - e[1];
+}).map(function(e) {
+var t = a(e, 2), r = t[0], o = t[1];
+return "".concat(r, ": ").concat(o);
+}).join(", ");
+return y += "  By Role: ".concat(C, "\n\n"), y += "📈 Metrics:\n", y += "  Energy Harvested: ".concat(s.metrics.energyHarvested, "\n"), 
+y += "  Energy in Storage: ".concat(s.energy.storage, "\n"), y += "  Energy Capacity: ".concat(s.metrics.energyCapacityTotal, "\n"), 
+y += "  Construction Sites: ".concat(s.metrics.constructionSites, "\n\n"), y += "💡 Recommendations:\n", 
+h >= 150 ? (y += "  ⚠️  CRITICAL: CPU usage is ".concat(h.toFixed(0), "% of budget!\n"), 
+y += "     - Check for infinite loops or stuck creeps\n", y += "     - Review construction sites (".concat(s.metrics.constructionSites, " active)\n"), 
+y += "     - Consider reducing creep count (".concat(g.length, " creeps)\n")) : h >= 100 ? (y += "  ⚠️  Room is over budget. Consider optimizations:\n", 
+y += "     - Reduce creep count if excessive (currently ".concat(g.length, ")\n"), 
+y += "     - Limit construction sites (currently ".concat(s.metrics.constructionSites, ")\n"), 
+y += "     - Review pathfinding (check for recalculation issues)\n") : h >= 80 ? (y += "  ℹ️  Room is nearing budget limit (".concat(h.toFixed(1), "%)\n"), 
+y += "     - Monitor for increases in CPU usage\n") : y += "  ✅ Room is performing well within budget\n", 
+s.metrics.hostileCount > 0 && (y += "  ⚠️  ".concat(s.metrics.hostileCount, " hostiles detected - defense active\n"), 
+y += "     - War mode increases CPU budget to ".concat(m ? d.toFixed(3) : (.25 * f).toFixed(3), "\n")), 
+y += "\n", (y += "Use cpuBreakdown('room') to see all rooms\n") + "Use cpuProfile() for detailed profiling";
 }, o([ _o({
 name: "showStats",
 description: "Show current bot statistics from memory segment",
@@ -35956,7 +36018,13 @@ description: "Show comprehensive CPU profiling breakdown by room and subsystem",
 usage: "cpuProfile(showAll?)",
 examples: [ "cpuProfile()", "cpuProfile(true)" ],
 category: "Statistics"
-}) ], e.prototype, "cpuProfile", null), e;
+}) ], e.prototype, "cpuProfile", null), o([ _o({
+name: "diagnoseRoom",
+description: "Comprehensive diagnostic for a specific room showing CPU usage, budget status, and potential issues",
+usage: "diagnoseRoom(roomName)",
+examples: [ "diagnoseRoom('W16S52')", "diagnoseRoom('E1S1')" ],
+category: "Statistics"
+}) ], e.prototype, "diagnoseRoom", null), e;
 }(), Nf = function() {
 function e() {}
 return e.prototype.showKernelStats = function() {
