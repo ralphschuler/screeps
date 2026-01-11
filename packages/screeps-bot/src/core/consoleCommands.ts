@@ -685,7 +685,8 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
     
     const creepsByRole: Record<string, number> = {};
     for (const creep of creepsInRoom) {
-      const role = (creep.memory as any).role || 'unknown';
+      const creepMemory = creep.memory as { role?: string };
+      const role = creepMemory.role ?? 'unknown';
       creepsByRole[role] = (creepsByRole[role] || 0) + 1;
     }
     
