@@ -23,6 +23,7 @@
  * - larvaWorker.test.ts - Bootstrap worker behavior
  * - upgrader.test.ts - Controller upgrade logic
  * TODO(P3): TEST - Add tests for builder, mineralHarvester, and depositHarvester behaviors
+ Issue URL: https://github.com/ralphschuler/screeps/issues/2860
  */
 
 import type { CreepAction, CreepContext } from "../types";
