@@ -225,9 +225,14 @@ export class UnifiedStatsManager {
       const warningAlerts = budgetReport.alerts.filter(a => a.severity === "warning");
       
       if (criticalAlerts.length > 0) {
-        const violationDetails = criticalAlerts.map(a => 
-          `${a.target}: ${(a.percentUsed * 100).toFixed(1)}% (${a.cpuUsed.toFixed(3)}/${a.budgetLimit})`
-        ).join(', ');
+        // Enhanced logging with distribution info
+        const violationDetails = criticalAlerts.map(a => {
+          const processId = `room:${a.target}`;
+          const process = this.currentSnapshot.processes[processId];
+          const modulo = process?.tickModulo ?? 1;
+          const moduloInfo = modulo > 1 ? ` [runs every ${modulo} ticks]` : '';
+          return `${a.target}: ${(a.percentUsed * 100).toFixed(1)}% (${a.cpuUsed.toFixed(3)}/${a.budgetLimit.toFixed(3)} CPU)${moduloInfo}`;
+        }).join(', ');
         logger.error(
           `CPU Budget: ${criticalAlerts.length} critical violations detected - ${violationDetails}`,
           {
@@ -237,9 +242,13 @@ export class UnifiedStatsManager {
       }
       
       if (warningAlerts.length > 0) {
-        const warningDetails = warningAlerts.map(a => 
-          `${a.target}: ${(a.percentUsed * 100).toFixed(1)}%`
-        ).join(', ');
+        const warningDetails = warningAlerts.map(a => {
+          const processId = `room:${a.target}`;
+          const process = this.currentSnapshot.processes[processId];
+          const modulo = process?.tickModulo ?? 1;
+          const moduloInfo = modulo > 1 ? ` [runs every ${modulo} ticks]` : '';
+          return `${a.target}: ${(a.percentUsed * 100).toFixed(1)}%${moduloInfo}`;
+        }).join(', ');
         logger.warn(
           `CPU Budget: ${warningAlerts.length} warnings (≥80% of limit) - ${warningDetails}`,
           {
@@ -627,6 +636,10 @@ export class UnifiedStatsManager {
   /**
    * Validate CPU budgets for all rooms and generate alerts
    * Returns a report with budget status and any violations
+   * 
+   * BUGFIX: Accounts for distributed execution (tickModulo) when validating budgets.
+   * Rooms that run every N ticks should use ≤ (budget * N) CPU per execution.
+   * For example: eco room with tickModulo=5 can use up to 0.1 * 5 = 0.5 CPU per execution.
    */
   public validateBudgets(): CPUBudgetReport {
     const report: CPUBudgetReport = {
@@ -642,13 +655,23 @@ export class UnifiedStatsManager {
     for (const [roomName, roomStats] of Object.entries(this.currentSnapshot.rooms)) {
       report.roomsEvaluated++;
       
-      // Determine budget limit based on room posture
+      // Determine base budget limit based on room posture (per-tick budget)
       const isWarRoom = this.isWarRoom(roomName);
-      const budgetLimit = isWarRoom ? this.config.budgetLimits.warRoom : this.config.budgetLimits.ecoRoom;
+      const baseBudgetLimit = isWarRoom ? this.config.budgetLimits.warRoom : this.config.budgetLimits.ecoRoom;
+      
+      // BUGFIX: Adjust budget for distributed execution
+      // Room processes are registered as "room:ROOMNAME" in the kernel
+      const processId = `room:${roomName}`;
+      const roomProcess = this.currentSnapshot.processes[processId];
+      
+      // If the room uses distributed execution (tickModulo), multiply budget by modulo factor
+      // This accounts for the fact that the room runs less frequently but uses more CPU per execution
+      const tickModulo = roomProcess?.tickModulo ?? 1;
+      const adjustedBudgetLimit = baseBudgetLimit * tickModulo;
       
       // Get current CPU (use average to smooth out spikes)
       const cpuUsed = roomStats.profiler.avgCpu;
-      const percentUsed = cpuUsed / budgetLimit;
+      const percentUsed = cpuUsed / adjustedBudgetLimit;
       
       // Check budget thresholds
       if (percentUsed >= this.config.budgetAlertThresholds.critical) {
@@ -658,7 +681,7 @@ export class UnifiedStatsManager {
           target: roomName,
           targetType: "room",
           cpuUsed,
-          budgetLimit,
+          budgetLimit: adjustedBudgetLimit,
           percentUsed,
           tick: Game.time
         });
@@ -668,7 +691,7 @@ export class UnifiedStatsManager {
           target: roomName,
           targetType: "room",
           cpuUsed,
-          budgetLimit,
+          budgetLimit: adjustedBudgetLimit,
           percentUsed,
           tick: Game.time
         });

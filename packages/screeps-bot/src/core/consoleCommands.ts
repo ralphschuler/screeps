@@ -28,6 +28,7 @@ import { economyCommands } from "../economy/economyCommands";
 import { expansionCommands } from "../empire/expansionCommands";
 import { tooAngelCommands } from "../empire/tooangel/consoleCommands";
 import { memoryCommands } from "../memory/memoryCommands";
+import { memoryManager } from "../memory/manager";
 import { UICommands } from "./uiCommands";
 import { visualizationManager } from "../visuals/visualizationManager";
 import { VisualizationLayer } from "../memory/schemas";
@@ -599,6 +600,137 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
       const budgetPct = proc.cpuBudget > 0 ? ((proc.avgCpu / proc.cpuBudget) * 100).toFixed(0) : "N/A";
       result += `  ${proc.name} (${proc.frequency}): avg ${proc.avgCpu.toFixed(3)} / budget ${proc.cpuBudget.toFixed(3)} (${budgetPct}%)\n`;
     }
+    
+    return result;
+  }
+
+  @Command({
+    name: "diagnoseRoom",
+    description: "Comprehensive diagnostic for a specific room showing CPU usage, budget status, and potential issues",
+    usage: "diagnoseRoom(roomName)",
+    examples: ["diagnoseRoom('W16S52')", "diagnoseRoom('E1S1')"],
+    category: "Statistics"
+  })
+  public diagnoseRoom(roomName: string): string {
+    if (!roomName) {
+      return "Error: Room name required. Usage: diagnoseRoom('W16S52')";
+    }
+
+    const room = Game.rooms[roomName];
+    if (!room) {
+      return `Error: Room ${roomName} not visible. Make sure you have vision in this room.`;
+    }
+
+    const snapshot = unifiedStats.getCurrentSnapshot();
+    const roomStats = snapshot.rooms[roomName];
+    
+    if (!roomStats) {
+      return `Error: No stats available for ${roomName}. The room may not have been processed yet.`;
+    }
+
+    // Get room process info
+    const processId = `room:${roomName}`;
+    const roomProcess = snapshot.processes[processId];
+    
+    // Get budget limit
+    const swarm = memoryManager.getSwarmState(roomName);
+    const isWarRoom = swarm && (swarm.posture === "war" || swarm.posture === "siege" || swarm.danger >= 2);
+    const baseBudget = isWarRoom ? 0.25 : 0.1;
+    const tickModulo = roomProcess?.tickModulo ?? 1;
+    const adjustedBudget = baseBudget * tickModulo;
+    
+    let result = `═══════════════════════════════════════════════\n`;
+    result += `  Room Diagnostic: ${roomName}\n`;
+    result += `═══════════════════════════════════════════════\n\n`;
+    
+    // Basic Info
+    result += `📊 Basic Info:\n`;
+    result += `  RCL: ${roomStats.rcl}\n`;
+    result += `  Controller Progress: ${roomStats.controller.progressPercent.toFixed(1)}%\n`;
+    result += `  Posture: ${unifiedStats.postureCodeToName(roomStats.brain.postureCode)}\n`;
+    result += `  Danger Level: ${roomStats.brain.dangerLevel}\n`;
+    result += `  Hostiles: ${roomStats.metrics.hostileCount}\n\n`;
+    
+    // CPU Analysis
+    result += `⚡ CPU Analysis:\n`;
+    result += `  Average CPU: ${roomStats.profiler.avgCpu.toFixed(3)}\n`;
+    result += `  Peak CPU: ${roomStats.profiler.peakCpu.toFixed(3)}\n`;
+    result += `  Samples: ${roomStats.profiler.samples}\n`;
+    result += `  Budget: ${adjustedBudget.toFixed(3)} (base ${baseBudget}, modulo ${tickModulo})\n`;
+    
+    const cpuPercent = (roomStats.profiler.avgCpu / adjustedBudget) * 100;
+    const status = cpuPercent >= 100 ? "🔴 CRITICAL" : cpuPercent >= 80 ? "⚠️  WARNING" : "✅ OK";
+    result += `  Status: ${status} (${cpuPercent.toFixed(1)}% of budget)\n`;
+    
+    if (tickModulo > 1) {
+      result += `  Note: Room runs every ${tickModulo} ticks (distributed execution)\n`;
+    }
+    result += `\n`;
+    
+    // Process Info
+    if (roomProcess) {
+      result += `🔧 Process Info:\n`;
+      result += `  Process ID: ${roomProcess.id}\n`;
+      result += `  State: ${roomProcess.state}\n`;
+      result += `  Priority: ${roomProcess.priority}\n`;
+      result += `  Run Count: ${roomProcess.runCount}\n`;
+      result += `  Skipped: ${roomProcess.skippedCount}\n`;
+      result += `  Errors: ${roomProcess.errorCount}\n`;
+      result += `  Last Run: Tick ${roomProcess.lastRunTick} (${Game.time - roomProcess.lastRunTick} ticks ago)\n\n`;
+    }
+    
+    // Creeps Analysis
+    const creepsInRoom = Object.values(Game.creeps).filter(c => c.room.name === roomName);
+    result += `👥 Creeps: ${creepsInRoom.length} total\n`;
+    
+    const creepsByRole: Record<string, number> = {};
+    for (const creep of creepsInRoom) {
+      const creepMemory = creep.memory as { role?: string };
+      const role = creepMemory.role ?? 'unknown';
+      creepsByRole[role] = (creepsByRole[role] || 0) + 1;
+    }
+    
+    const roleList = Object.entries(creepsByRole)
+      .sort((a, b) => b[1] - a[1])
+      .map(([role, count]) => `${role}: ${count}`)
+      .join(', ');
+    result += `  By Role: ${roleList}\n\n`;
+    
+    // Metrics
+    result += `📈 Metrics:\n`;
+    result += `  Energy Harvested: ${roomStats.metrics.energyHarvested}\n`;
+    result += `  Energy in Storage: ${roomStats.energy.storage}\n`;
+    result += `  Energy Capacity: ${roomStats.metrics.energyCapacityTotal}\n`;
+    result += `  Construction Sites: ${roomStats.metrics.constructionSites}\n\n`;
+    
+    // Recommendations
+    result += `💡 Recommendations:\n`;
+    
+    if (cpuPercent >= 150) {
+      result += `  ⚠️  CRITICAL: CPU usage is ${cpuPercent.toFixed(0)}% of budget!\n`;
+      result += `     - Check for infinite loops or stuck creeps\n`;
+      result += `     - Review construction sites (${roomStats.metrics.constructionSites} active)\n`;
+      result += `     - Consider reducing creep count (${creepsInRoom.length} creeps)\n`;
+    } else if (cpuPercent >= 100) {
+      result += `  ⚠️  Room is over budget. Consider optimizations:\n`;
+      result += `     - Reduce creep count if excessive (currently ${creepsInRoom.length})\n`;
+      result += `     - Limit construction sites (currently ${roomStats.metrics.constructionSites})\n`;
+      result += `     - Review pathfinding (check for recalculation issues)\n`;
+    } else if (cpuPercent >= 80) {
+      result += `  ℹ️  Room is nearing budget limit (${cpuPercent.toFixed(1)}%)\n`;
+      result += `     - Monitor for increases in CPU usage\n`;
+    } else {
+      result += `  ✅ Room is performing well within budget\n`;
+    }
+    
+    if (roomStats.metrics.hostileCount > 0) {
+      result += `  ⚠️  ${roomStats.metrics.hostileCount} hostiles detected - defense active\n`;
+      result += `     - War mode increases CPU budget to ${isWarRoom ? adjustedBudget.toFixed(3) : (0.25 * tickModulo).toFixed(3)}\n`;
+    }
+    
+    result += `\n`;
+    result += `Use cpuBreakdown('room') to see all rooms\n`;
+    result += `Use cpuProfile() for detailed profiling`;
     
     return result;
   }
