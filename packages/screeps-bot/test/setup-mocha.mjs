@@ -81,6 +81,24 @@ global.chai = chai;
 global.sinon = sinon;
 global.chai.use(sinonChai);
 
+// Mock LZ-String for compression tests
+global.LZString = {
+  compressToUTF16: (str) => btoa(str),
+  decompressFromUTF16: (str) => atob(str),
+  compress: (str) => btoa(str),
+  decompress: (str) => atob(str),
+  compressToBase64: (str) => btoa(str),
+  decompressFromBase64: (str) => atob(str)
+};
+
+// Mock require for tests that use CommonJS
+global.require = function(module) {
+  if (module === 'lz-string') {
+    return global.LZString;
+  }
+  throw new Error(`Module ${module} not mocked`);
+};
+
 // Override ts-node compiler options
 process.env.TS_NODE_PROJECT = 'tsconfig.test.json';
 
@@ -647,14 +665,14 @@ global.PWR_OPERATE_FACTORY = 19;
 
 // Mock RawMemory
 global.RawMemory = {
-  get: () => JSON.stringify(global.Memory),
-  set: (value) => { global.Memory = JSON.parse(value); },
-  setActiveSegments: () => undefined,
+  get: function() { return JSON.stringify(global.Memory); },
+  set: function(value) { global.Memory = JSON.parse(value); },
+  setActiveSegments: function() { return undefined; },
   segments: {},
   foreignSegment: undefined,
-  setActiveForeignSegment: () => undefined,
-  setDefaultPublicSegment: () => undefined,
-  setPublicSegments: () => undefined
+  setActiveForeignSegment: function() { return undefined; },
+  setDefaultPublicSegment: function() { return undefined; },
+  setPublicSegments: function() { return undefined; }
 };
 
 // Mock PathFinder
