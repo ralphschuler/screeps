@@ -65,23 +65,53 @@ class MemoryManager {
     const roomMemory = Memory.rooms[roomName] as unknown as { swarm?: SwarmState };
     if (!roomMemory.swarm) {
       roomMemory.swarm = {
+        colonyLevel: 1 as any, // EvolutionStage 
+        posture: 'peaceful' as any, // RoomPosture
+        danger: 0,
         pheromones: {
-          needsBuilding: false,
-          needsUpgrading: false,
-          needsRepairing: false,
-          lastUpdated: Game.time,
-          logistics: 0,
-          defense: 0,
+          expand: 0,
+          harvest: 0,
           build: 0,
           upgrade: 0,
-          harvest: 0,
+          defense: 0,
           war: 0,
-          expand: 0,
-          siege: 0
-        }
+          siege: 0,
+          logistics: 0,
+          nukeTarget: 0
+        },
+        nextUpdateTick: Game.time + 100,
+        eventLog: [],
+        missingStructures: {
+          spawn: true,
+          storage: true,
+          terminal: true,
+          labs: true,
+          nuker: true,
+          factory: true,
+          extractor: true,
+          powerSpawn: true,
+          observer: true
+        },
+        role: 'capital' as any, // RoomRole
+        remoteAssignments: [],
+        metrics: {
+          energyHarvested: 0,
+          energySpawning: 0,
+          energyConstruction: 0,
+          energyRepair: 0,
+          energyTower: 0,
+          controllerProgress: 0,
+          hostileCount: 0,
+          damageReceived: 0,
+          constructionSites: 0,
+          energyAvailable: 0,
+          energyCapacity: 0,
+          energyNeed: 0 as 0 | 1 | 2 | 3
+        },
+        lastUpdate: Game.time
       };
     }
-    return roomMemory.swarm;
+    return roomMemory.swarm!; // Non-null assertion since we just created it
   }
   
   /**

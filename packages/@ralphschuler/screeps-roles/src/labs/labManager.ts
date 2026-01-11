@@ -5,11 +5,21 @@
  * Full implementation should be provided by consuming application.
  */
 
+interface LabResourceNeed {
+  labId: Id<StructureLab>;
+  resourceType: ResourceConstant;
+  amount: number;
+  priority: number;
+}
+
 export const labManager = {
-  getLabSupplyNeeds: (roomName: string) => {
+  getLabResourceNeeds: (roomName: string): LabResourceNeed[] => {
     return [];
   },
-  getLabOverflow: (roomName: string) => {
+  getLabSupplyNeeds: (roomName: string): LabResourceNeed[] => {
+    return [];
+  },
+  getLabOverflow: (roomName: string): LabResourceNeed[] => {
     return [];
   }
 };

@@ -337,7 +337,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
       const room = Game.rooms[creep.pos.roomName];
       if (room && room.controller?.my) {
         const swarmState = memoryManager.getOrInitSwarmState(room.name);
-        const collectionPoint = getCollectionPoint(room, swarmState);
+        const collectionPoint = getCollectionPoint(room.name);
         if (collectionPoint) {
           // Move to collection point if not already there
           if (!creep.pos.isEqualTo(collectionPoint)) {

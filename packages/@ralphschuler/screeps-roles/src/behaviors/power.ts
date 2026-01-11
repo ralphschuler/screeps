@@ -70,7 +70,7 @@ export function powerHarvester(ctx: CreepContext): CreepAction {
   if (ctx.creep.hits < ctx.creep.hitsMax * POWER_HARVESTER_RETREAT_THRESHOLD) {
     // Find nearby healer
     const healers = cachedRoomFind(ctx.room, FIND_MY_CREEPS, {
-      filter: (c: Creep) => c.memory.role === "healer" && c.memory.targetRoom === targetRoom,
+      filter: (c: Creep) => (c.memory as any).role === "healer" && (c.memory as any).targetRoom === targetRoom,
       filterKey: `healer_${targetRoom}`
     }) as Creep[];
 

@@ -7,7 +7,7 @@
 
 import type { CreepAction } from "../behaviors/types";
 
-export function applyOpportunisticActions(creep: Creep): CreepAction | null {
-  // Stub - no opportunistic actions performed
-  return null;
+export function applyOpportunisticActions(creep: Creep, action: CreepAction): CreepAction {
+  // Stub - return action unchanged
+  return action;
 }

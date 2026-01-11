@@ -234,7 +234,7 @@ function hasBodyPart(creep: Creep, part: BodyPartConstant): boolean {
 function moveToCollectionPoint(ctx: CreepContext, debugLabel: string): CreepAction | null {
   if (!ctx.swarmState) return null;
   
-  const collectionPoint = getCollectionPoint(ctx.room, ctx.swarmState);
+  const collectionPoint = getCollectionPoint(ctx.room.name);
   if (!collectionPoint) return null;
   
   // Only move if not already near collection point
