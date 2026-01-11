@@ -35899,34 +35899,34 @@ if (o) throw o.error;
 }
 return s;
 }, e.prototype.diagnoseRoom = function(e) {
-var t, r, o;
+var t, r, o, i;
 if (!e) return "Error: Room name required. Usage: diagnoseRoom('W16S52')";
 if (!Game.rooms[e]) return "Error: Room ".concat(e, " not visible. Make sure you have vision in this room.");
-var i = en.getCurrentSnapshot(), s = i.rooms[e];
-if (!s) return "Error: No stats available for ".concat(e, ". The room may not have been processed yet.");
-var c = "room:".concat(e), l = i.processes[c], u = Qa.getSwarmState(e), m = u && ("war" === u.posture || "siege" === u.posture || u.danger >= 2), p = m ? .25 : .1, f = null !== (o = null == l ? void 0 : l.tickModulo) && void 0 !== o ? o : 1, d = p * f, y = "═══════════════════════════════════════════════\n";
-y += "  Room Diagnostic: ".concat(e, "\n"), y += "═══════════════════════════════════════════════\n\n", 
-y += "📊 Basic Info:\n", y += "  RCL: ".concat(s.rcl, "\n"), y += "  Controller Progress: ".concat(s.controller.progressPercent.toFixed(1), "%\n"), 
-y += "  Posture: ".concat(en.postureCodeToName(s.brain.postureCode), "\n"), y += "  Danger Level: ".concat(s.brain.dangerLevel, "\n"), 
-y += "  Hostiles: ".concat(s.metrics.hostileCount, "\n\n"), y += "⚡ CPU Analysis:\n", 
-y += "  Average CPU: ".concat(s.profiler.avgCpu.toFixed(3), "\n"), y += "  Peak CPU: ".concat(s.profiler.peakCpu.toFixed(3), "\n"), 
-y += "  Samples: ".concat(s.profiler.samples, "\n"), y += "  Budget: ".concat(d.toFixed(3), " (base ").concat(p, ", modulo ").concat(f, ")\n");
-var h = s.profiler.avgCpu / d * 100;
-y += "  Status: ".concat(h >= 100 ? "🔴 CRITICAL" : h >= 80 ? "⚠️  WARNING" : "✅ OK", " (").concat(h.toFixed(1), "% of budget)\n"), 
-f > 1 && (y += "  Note: Room runs every ".concat(f, " ticks (distributed execution)\n")), 
-y += "\n", l && (y += "🔧 Process Info:\n", y += "  Process ID: ".concat(l.id, "\n"), 
-y += "  State: ".concat(l.state, "\n"), y += "  Priority: ".concat(l.priority, "\n"), 
-y += "  Run Count: ".concat(l.runCount, "\n"), y += "  Skipped: ".concat(l.skippedCount, "\n"), 
-y += "  Errors: ".concat(l.errorCount, "\n"), y += "  Last Run: Tick ".concat(l.lastRunTick, " (").concat(Game.time - l.lastRunTick, " ticks ago)\n\n"));
-var g = Object.values(Game.creeps).filter(function(t) {
+var s = en.getCurrentSnapshot(), c = s.rooms[e];
+if (!c) return "Error: No stats available for ".concat(e, ". The room may not have been processed yet.");
+var l = "room:".concat(e), u = s.processes[l], m = Qa.getSwarmState(e), p = m && ("war" === m.posture || "siege" === m.posture || m.danger >= 2), f = p ? .25 : .1, d = null !== (o = null == u ? void 0 : u.tickModulo) && void 0 !== o ? o : 1, y = f * d, h = "═══════════════════════════════════════════════\n";
+h += "  Room Diagnostic: ".concat(e, "\n"), h += "═══════════════════════════════════════════════\n\n", 
+h += "📊 Basic Info:\n", h += "  RCL: ".concat(c.rcl, "\n"), h += "  Controller Progress: ".concat(c.controller.progressPercent.toFixed(1), "%\n"), 
+h += "  Posture: ".concat(en.postureCodeToName(c.brain.postureCode), "\n"), h += "  Danger Level: ".concat(c.brain.dangerLevel, "\n"), 
+h += "  Hostiles: ".concat(c.metrics.hostileCount, "\n\n"), h += "⚡ CPU Analysis:\n", 
+h += "  Average CPU: ".concat(c.profiler.avgCpu.toFixed(3), "\n"), h += "  Peak CPU: ".concat(c.profiler.peakCpu.toFixed(3), "\n"), 
+h += "  Samples: ".concat(c.profiler.samples, "\n"), h += "  Budget: ".concat(y.toFixed(3), " (base ").concat(f, ", modulo ").concat(d, ")\n");
+var g = c.profiler.avgCpu / y * 100;
+h += "  Status: ".concat(g >= 100 ? "🔴 CRITICAL" : g >= 80 ? "⚠️  WARNING" : "✅ OK", " (").concat(g.toFixed(1), "% of budget)\n"), 
+d > 1 && (h += "  Note: Room runs every ".concat(d, " ticks (distributed execution)\n")), 
+h += "\n", u && (h += "🔧 Process Info:\n", h += "  Process ID: ".concat(u.id, "\n"), 
+h += "  State: ".concat(u.state, "\n"), h += "  Priority: ".concat(u.priority, "\n"), 
+h += "  Run Count: ".concat(u.runCount, "\n"), h += "  Skipped: ".concat(u.skippedCount, "\n"), 
+h += "  Errors: ".concat(u.errorCount, "\n"), h += "  Last Run: Tick ".concat(u.lastRunTick, " (").concat(Game.time - u.lastRunTick, " ticks ago)\n\n"));
+var v = Object.values(Game.creeps).filter(function(t) {
 return t.room.name === e;
 });
-y += "👥 Creeps: ".concat(g.length, " total\n");
-var v = {};
+h += "👥 Creeps: ".concat(v.length, " total\n");
+var R = {};
 try {
-for (var R = n(g), E = R.next(); !E.done; E = R.next()) {
-var T = E.value.memory.role || "unknown";
-v[T] = (v[T] || 0) + 1;
+for (var E = n(v), T = E.next(); !T.done; T = E.next()) {
+var C = null !== (i = T.value.memory.role) && void 0 !== i ? i : "unknown";
+R[C] = (R[C] || 0) + 1;
 }
 } catch (e) {
 t = {
@@ -35934,30 +35934,30 @@ error: e
 };
 } finally {
 try {
-E && !E.done && (r = R.return) && r.call(R);
+T && !T.done && (r = E.return) && r.call(E);
 } finally {
 if (t) throw t.error;
 }
 }
-var C = Object.entries(v).sort(function(e, t) {
+var S = Object.entries(R).sort(function(e, t) {
 return t[1] - e[1];
 }).map(function(e) {
 var t = a(e, 2), r = t[0], o = t[1];
 return "".concat(r, ": ").concat(o);
 }).join(", ");
-return y += "  By Role: ".concat(C, "\n\n"), y += "📈 Metrics:\n", y += "  Energy Harvested: ".concat(s.metrics.energyHarvested, "\n"), 
-y += "  Energy in Storage: ".concat(s.energy.storage, "\n"), y += "  Energy Capacity: ".concat(s.metrics.energyCapacityTotal, "\n"), 
-y += "  Construction Sites: ".concat(s.metrics.constructionSites, "\n\n"), y += "💡 Recommendations:\n", 
-h >= 150 ? (y += "  ⚠️  CRITICAL: CPU usage is ".concat(h.toFixed(0), "% of budget!\n"), 
-y += "     - Check for infinite loops or stuck creeps\n", y += "     - Review construction sites (".concat(s.metrics.constructionSites, " active)\n"), 
-y += "     - Consider reducing creep count (".concat(g.length, " creeps)\n")) : h >= 100 ? (y += "  ⚠️  Room is over budget. Consider optimizations:\n", 
-y += "     - Reduce creep count if excessive (currently ".concat(g.length, ")\n"), 
-y += "     - Limit construction sites (currently ".concat(s.metrics.constructionSites, ")\n"), 
-y += "     - Review pathfinding (check for recalculation issues)\n") : h >= 80 ? (y += "  ℹ️  Room is nearing budget limit (".concat(h.toFixed(1), "%)\n"), 
-y += "     - Monitor for increases in CPU usage\n") : y += "  ✅ Room is performing well within budget\n", 
-s.metrics.hostileCount > 0 && (y += "  ⚠️  ".concat(s.metrics.hostileCount, " hostiles detected - defense active\n"), 
-y += "     - War mode increases CPU budget to ".concat(m ? d.toFixed(3) : (.25 * f).toFixed(3), "\n")), 
-y += "\n", (y += "Use cpuBreakdown('room') to see all rooms\n") + "Use cpuProfile() for detailed profiling";
+return h += "  By Role: ".concat(S, "\n\n"), h += "📈 Metrics:\n", h += "  Energy Harvested: ".concat(c.metrics.energyHarvested, "\n"), 
+h += "  Energy in Storage: ".concat(c.energy.storage, "\n"), h += "  Energy Capacity: ".concat(c.metrics.energyCapacityTotal, "\n"), 
+h += "  Construction Sites: ".concat(c.metrics.constructionSites, "\n\n"), h += "💡 Recommendations:\n", 
+g >= 150 ? (h += "  ⚠️  CRITICAL: CPU usage is ".concat(g.toFixed(0), "% of budget!\n"), 
+h += "     - Check for infinite loops or stuck creeps\n", h += "     - Review construction sites (".concat(c.metrics.constructionSites, " active)\n"), 
+h += "     - Consider reducing creep count (".concat(v.length, " creeps)\n")) : g >= 100 ? (h += "  ⚠️  Room is over budget. Consider optimizations:\n", 
+h += "     - Reduce creep count if excessive (currently ".concat(v.length, ")\n"), 
+h += "     - Limit construction sites (currently ".concat(c.metrics.constructionSites, ")\n"), 
+h += "     - Review pathfinding (check for recalculation issues)\n") : g >= 80 ? (h += "  ℹ️  Room is nearing budget limit (".concat(g.toFixed(1), "%)\n"), 
+h += "     - Monitor for increases in CPU usage\n") : h += "  ✅ Room is performing well within budget\n", 
+c.metrics.hostileCount > 0 && (h += "  ⚠️  ".concat(c.metrics.hostileCount, " hostiles detected - defense active\n"), 
+h += "     - War mode increases CPU budget to ".concat(p ? y.toFixed(3) : (.25 * d).toFixed(3), "\n")), 
+h += "\n", (h += "Use cpuBreakdown('room') to see all rooms\n") + "Use cpuProfile() for detailed profiling";
 }, o([ _o({
 name: "showStats",
 description: "Show current bot statistics from memory segment",
