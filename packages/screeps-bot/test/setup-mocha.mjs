@@ -230,6 +230,19 @@ const stubs = {
   '@ralphschuler/screeps-kernel': {
     Kernel: class {},
     Process: class {}
+  },
+  
+  '@ralphschuler/screeps-core': {
+    createLogger: (name) => ({
+      log: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+      debug: () => {}
+    }),
+    EventBus: class {},
+    CommandRegistry: class {},
+    CPUBudgetManager: class {}
   }
 };
 
