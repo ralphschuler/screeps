@@ -2,12 +2,10 @@
  * SwarmBot main entry point coordinating all subsystems via kernel-based process management.
  */
 
-import type { RoleFamily, SwarmCreepMemory } from "./memory/schemas";
 import { runScheduledTasks } from "@ralphschuler/screeps-utils";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { RoomVisualizer, MapVisualizer } from "@ralphschuler/screeps-visuals";
 import { clearRoomCaches, runPowerRole } from "@ralphschuler/screeps-roles";
-import { roomManager } from "./core/roomNode";
 import { runSpawnManager } from "./logic/spawn";
 import { memoryManager } from "./memory/manager";
 import { preTick as initMovement, reconcileTraffic as finalizeMovement } from "screeps-cartographer";
@@ -354,11 +352,6 @@ export {
   ObjectIdOptimizer
 } from "./core/roomFindOptimizer";
 export type { RoomEvent, BucketThresholds, TTLConfig } from "./core/roomFindOptimizer";
-
-/**
- * @deprecated memorySegmentStats is still available but consider using unifiedStats for most use cases.
- */
-export { memorySegmentStats } from "@ralphschuler/screeps-stats";
 
 export * from "./memory/schemas";
 export * from "./config";
