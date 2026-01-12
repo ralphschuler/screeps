@@ -87,96 +87,96 @@ describe("Console Commands", () => {
 
   describe("Command classes", () => {
     describe("LoggingCommands", () => {
-      it("should set log level", () => {
-        const { LoggingCommands } = require("../../src/core/commands/LoggingCommands");
-        const loggingCmd = new LoggingCommands();
+      it("should create LoggingCommands instance", async () => {
+        const module = await import("../../src/core/commands/LoggingCommands");
+        const loggingCmd = new module.LoggingCommands();
         
         expect(loggingCmd).to.not.be.undefined;
       });
 
-      it("should handle invalid log levels", () => {
-        const { LoggingCommands } = require("../../src/core/commands/LoggingCommands");
-        const loggingCmd = new LoggingCommands();
+      it("should create LoggingCommands instance successfully", async () => {
+        const module = await import("../../src/core/commands/LoggingCommands");
+        const loggingCmd = new module.LoggingCommands();
         
         expect(loggingCmd).to.not.be.undefined;
       });
     });
 
     describe("VisualizationCommands", () => {
-      it("should toggle visualizations", () => {
-        const { VisualizationCommands } = require("../../src/core/commands/VisualizationCommands");
-        const vizCmd = new VisualizationCommands();
+      it("should create VisualizationCommands instance", async () => {
+        const module = await import("../../src/core/commands/VisualizationCommands");
+        const vizCmd = new module.VisualizationCommands();
         
         expect(vizCmd).to.not.be.undefined;
       });
 
-      it("should handle visualization layers", () => {
-        const { VisualizationCommands } = require("../../src/core/commands/VisualizationCommands");
-        const vizCmd = new VisualizationCommands();
+      it("should create VisualizationCommands instance successfully", async () => {
+        const module = await import("../../src/core/commands/VisualizationCommands");
+        const vizCmd = new module.VisualizationCommands();
         
         expect(vizCmd).to.not.be.undefined;
       });
     });
 
     describe("StatisticsCommands", () => {
-      it("should display statistics summary", () => {
-        const { StatisticsCommands } = require("../../src/core/commands/StatisticsCommands");
-        const statsCmd = new StatisticsCommands();
+      it("should create StatisticsCommands instance", async () => {
+        const module = await import("../../src/core/commands/StatisticsCommands");
+        const statsCmd = new module.StatisticsCommands();
         
         expect(statsCmd).to.not.be.undefined;
       });
 
-      it("should format statistics output", () => {
-        const { StatisticsCommands } = require("../../src/core/commands/StatisticsCommands");
-        const statsCmd = new StatisticsCommands();
+      it("should create StatisticsCommands instance successfully", async () => {
+        const module = await import("../../src/core/commands/StatisticsCommands");
+        const statsCmd = new module.StatisticsCommands();
         
         expect(statsCmd).to.not.be.undefined;
       });
     });
 
     describe("ConfigurationCommands", () => {
-      it("should get configuration values", () => {
-        const { ConfigurationCommands } = require("../../src/core/commands/ConfigurationCommands");
-        const configCmd = new ConfigurationCommands();
+      it("should create ConfigurationCommands instance", async () => {
+        const module = await import("../../src/core/commands/ConfigurationCommands");
+        const configCmd = new module.ConfigurationCommands();
         
         expect(configCmd).to.not.be.undefined;
       });
 
-      it("should update configuration", () => {
-        const { ConfigurationCommands } = require("../../src/core/commands/ConfigurationCommands");
-        const configCmd = new ConfigurationCommands();
+      it("should create ConfigurationCommands instance successfully", async () => {
+        const module = await import("../../src/core/commands/ConfigurationCommands");
+        const configCmd = new module.ConfigurationCommands();
         
         expect(configCmd).to.not.be.undefined;
       });
     });
 
     describe("KernelCommands", () => {
-      it("should list kernel processes", () => {
-        const { KernelCommands } = require("../../src/core/commands/KernelCommands");
-        const kernelCmd = new KernelCommands();
+      it("should create KernelCommands instance", async () => {
+        const module = await import("../../src/core/commands/KernelCommands");
+        const kernelCmd = new module.KernelCommands();
         
         expect(kernelCmd).to.not.be.undefined;
       });
 
-      it("should show process statistics", () => {
-        const { KernelCommands } = require("../../src/core/commands/KernelCommands");
-        const kernelCmd = new KernelCommands();
+      it("should create KernelCommands instance successfully", async () => {
+        const module = await import("../../src/core/commands/KernelCommands");
+        const kernelCmd = new module.KernelCommands();
         
         expect(kernelCmd).to.not.be.undefined;
       });
     });
 
     describe("SystemCommands", () => {
-      it("should provide system information", () => {
-        const { SystemCommands } = require("../../src/core/commands/SystemCommands");
-        const sysCmd = new SystemCommands();
+      it("should create SystemCommands instance", async () => {
+        const module = await import("../../src/core/commands/SystemCommands");
+        const sysCmd = new module.SystemCommands();
         
         expect(sysCmd).to.not.be.undefined;
       });
 
-      it("should handle system queries", () => {
-        const { SystemCommands } = require("../../src/core/commands/SystemCommands");
-        const sysCmd = new SystemCommands();
+      it("should create SystemCommands instance successfully", async () => {
+        const module = await import("../../src/core/commands/SystemCommands");
+        const sysCmd = new module.SystemCommands();
         
         expect(sysCmd).to.not.be.undefined;
       });
@@ -363,8 +363,8 @@ describe("Console Commands", () => {
     it("should catch and report command errors", () => {
       registerAllConsoleCommands();
       
-      // Errors should be caught and logged
-      expect(consoleStub.called || !consoleStub.called).to.be.true;
+      // Command registration should complete without throwing
+      expect(true).to.be.true;
     });
 
     it("should handle missing dependencies", () => {
