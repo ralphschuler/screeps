@@ -4,7 +4,7 @@
 
 import { runScheduledTasks } from "@ralphschuler/screeps-utils";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
-import { MapVisualizer, RoomVisualizer } from "@ralphschuler/screeps-visuals";
+import { RoomVisualizer, MapVisualizer } from "@ralphschuler/screeps-visuals";
 import { clearRoomCaches, runPowerRole } from "@ralphschuler/screeps-roles";
 import { runSpawnManager } from "./logic/spawn";
 import { memoryManager } from "./memory/manager";
