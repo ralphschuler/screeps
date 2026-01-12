@@ -97,7 +97,7 @@
   },
   "homepage": "https://github.com/ralphschuler/screeps#readme",
   "devDependencies": {
-    "@types/node": "^25.0.3",
+    "@types/node": "^25.0.6",
     "@types/screeps": "^3.3.8",
     "@types/mocha": "^10.0.10",
     "@types/chai": "^5.2.3",
