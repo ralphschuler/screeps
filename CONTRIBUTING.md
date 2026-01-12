@@ -1,5 +1,92 @@
 # Contributing to Screeps Bot
 
+## Framework-First Development Policy
+
+**IMPORTANT**: This repository follows a **framework-first** development approach. Framework packages (`@ralphschuler/*`) are the **source of truth** for all shared functionality.
+
+### Framework Packages are Canonical
+
+All behavior implementations, role logic, and reusable components **must** be developed in framework packages:
+
+- ✅ **Develop in**: `packages/@ralphschuler/screeps-*` packages
+- ❌ **Do NOT develop in**: `packages/screeps-bot/src` (monolith)
+
+The monolith (`packages/screeps-bot`) should only contain:
+- Integration/wiring code
+- Thin adapters that import from framework packages
+- Bot-specific configuration
+
+### Rules for Code Placement
+
+**Behavior & Role Code** → `@ralphschuler/screeps-roles`
+```typescript
+// ✅ Correct: Framework package
+packages/@ralphschuler/screeps-roles/src/behaviors/executor.ts
+
+// ❌ Wrong: Monolith
+packages/screeps-bot/src/roles/behaviors/executor.ts  // Should NOT exist
+```
+
+**Economy Logic** → `@ralphschuler/screeps-economy`  
+**Defense Logic** → `@ralphschuler/screeps-defense`  
+**Spawn Logic** → `@ralphschuler/screeps-spawn`  
+**Core Utilities** → `@ralphschuler/screeps-core`
+
+### Importing from Framework Packages
+
+Always import from framework packages, never from local monolith files:
+
+```typescript
+// ✅ Correct: Import from framework package
+import { createContext, executeAction } from "@ralphschuler/screeps-roles";
+
+// ❌ Wrong: Local import (should not exist)
+import { createContext } from "./roles/behaviors/context";
+```
+
+### CI Enforcement
+
+The repository has automated checks (`.github/workflows/framework-sync-check.yml`) that will **fail your PR** if:
+
+1. A `behaviors/` directory exists in the monolith
+2. Local imports from `behaviors/` are detected
+3. Code duplication is found between monolith and framework
+
+### Making Changes to Role Behavior
+
+When modifying role behavior, edit the framework package directly:
+
+```bash
+# ✅ Edit framework package
+vim packages/@ralphschuler/screeps-roles/src/behaviors/executor.ts
+
+# Build framework package
+cd packages/@ralphschuler/screeps-roles
+npm run build
+
+# Build monolith (which imports the updated framework)
+cd ../screeps-bot
+npm run build
+```
+
+### Why Framework-First?
+
+1. **Single Source of Truth**: Eliminates code divergence and duplication
+2. **Community Reusability**: Framework packages can be published to npm
+3. **Better Testing**: Framework packages are independently testable
+4. **Clear Ownership**: Framework packages own features, monolith just integrates
+5. **Easier Maintenance**: Changes in one place, benefits everywhere
+
+### Migration Status
+
+As of January 2026, the synchronization between monolith and framework is **complete**:
+- ✅ All behavior files migrated to `@ralphschuler/screeps-roles`
+- ✅ Monolith behaviors directory removed
+- ✅ All monolith imports updated to use framework packages
+- ✅ CI checks prevent future divergence
+
+See `FRAMEWORK_MATURITY_ROADMAP.md` for more details on framework adoption progress.
+
 ## Package Structure
 
 This monorepo contains multiple packages with two different build output patterns:

@@ -2,6 +2,27 @@
 
 Reusable role behaviors and framework for Screeps bots.
 
+## 🎯 Canonical Source of Truth
+
+**This package is the authoritative source** for all role behavior implementations, creep actions, and the behavior framework.
+
+### For Developers
+
+- ✅ **All behavior changes must be made here** - not in consuming projects
+- ✅ **This package is independently maintained and tested**
+- ✅ **Breaking changes follow semantic versioning**
+
+### For Consumers
+
+If you're using this package in your bot:
+- Import from `@ralphschuler/screeps-roles` - never copy code locally
+- Report bugs and request features via GitHub issues
+- Contribute improvements via pull requests to this package
+
+### Related Documentation
+
+See the main repository's [CONTRIBUTING.md](../../CONTRIBUTING.md) for the framework-first development policy.
+
 ## Overview
 
 This package provides a composable behavior system and complete role implementations for Screeps. It allows you to:

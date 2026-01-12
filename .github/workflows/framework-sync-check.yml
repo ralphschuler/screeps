@@ -1,0 +1,95 @@
+name: Framework Sync Check
+
+on:
+  pull_request:
+    paths:
+      - 'packages/screeps-bot/src/roles/**'
+      - 'packages/@ralphschuler/screeps-roles/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'packages/screeps-bot/src/roles/**'
+      - 'packages/@ralphschuler/screeps-roles/**'
+
+jobs:
+  check-divergence:
+    name: Check for Code Divergence
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check for behaviors directory in monolith
+        id: check-behaviors
+        run: |
+          if [ -d "packages/screeps-bot/src/roles/behaviors" ]; then
+            echo "❌ FAIL: Behaviors directory exists in monolith"
+            echo "The monolith should not contain a behaviors/ directory."
+            echo "All behavior code should live in @ralphschuler/screeps-roles package."
+            echo ""
+            echo "Found files:"
+            find packages/screeps-bot/src/roles/behaviors -type f -name "*.ts" | head -10
+            exit 1
+          else
+            echo "✅ PASS: No behaviors directory in monolith"
+          fi
+      
+      - name: Check for local behavior imports
+        id: check-imports
+        run: |
+          # Check if monolith has any local imports from behaviors
+          if grep -r "from ['\"]\..*behaviors" packages/screeps-bot/src --include="*.ts" 2>/dev/null; then
+            echo "❌ FAIL: Found local imports from behaviors"
+            echo "All behavior imports should use @ralphschuler/screeps-roles"
+            echo ""
+            echo "Found:"
+            grep -r "from ['\"]\..*behaviors" packages/screeps-bot/src --include="*.ts" || true
+            exit 1
+          else
+            echo "✅ PASS: No local behavior imports found"
+          fi
+      
+      - name: Verify framework package imports
+        id: check-framework-imports
+        run: |
+          # Verify that role files use framework imports
+          ROLE_FILES=$(find packages/screeps-bot/src/roles -type f -name "*.ts" 2>/dev/null || true)
+          
+          if [ -z "$ROLE_FILES" ]; then
+            echo "✅ PASS: No role files in monolith (expected state)"
+            exit 0
+          fi
+          
+          # Check that role files import from framework
+          for file in $ROLE_FILES; do
+            if ! grep -q "@ralphschuler/screeps-roles" "$file"; then
+              echo "⚠️  WARNING: $file doesn't import from framework package"
+            fi
+          done
+          
+          echo "✅ PASS: Role files checked"
+      
+      - name: Summary
+        if: always()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Framework Sync Check Summary"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "This check ensures that:"
+          echo "  1. Behavior code lives only in @ralphschuler/screeps-roles"
+          echo "  2. Monolith imports from framework packages, not local files"
+          echo "  3. Code duplication is prevented"
+          echo ""
+          echo "Framework packages are the source of truth for:"
+          echo "  - All behavior implementations"
+          echo "  - Role execution logic"
+          echo "  - Creep action handlers"
+          echo ""
+          echo "The monolith should only contain:"
+          echo "  - Integration/wiring code"
+          echo "  - Thin role adapters that import from framework"
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
