@@ -261,6 +261,13 @@ const stubs = {
     EventBus: class {},
     CommandRegistry: class {},
     CPUBudgetManager: class {}
+  },
+  
+  '@ralphschuler/screeps-stats': {
+    StatsCollector: class {},
+    StatsManager: class {},
+    recordStat: () => {},
+    getStat: () => ({})
   }
 };
 
