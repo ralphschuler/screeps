@@ -355,11 +355,6 @@ export {
 } from "./core/roomFindOptimizer";
 export type { RoomEvent, BucketThresholds, TTLConfig } from "./core/roomFindOptimizer";
 
-/**
- * @deprecated memorySegmentStats is still available but consider using unifiedStats for most use cases.
- */
-export { memorySegmentStats } from "@ralphschuler/screeps-stats";
-
 export * from "./memory/schemas";
 export * from "./config";
 export * from "./core/processDecorators";
