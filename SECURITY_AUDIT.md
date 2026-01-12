@@ -1,12 +1,18 @@
 # Security Audit Report
 
 **Date**: 2026-01-12  
-**Status**: 60 vulnerabilities (9 low, 20 moderate, 27 high, 4 critical)  
-**Action Taken**: Non-breaking fixes applied via `npm audit fix`
+**Initial Status**: 60 vulnerabilities (9 low, 20 moderate, 27 high, 4 critical)  
+**After `npm audit fix`**: 60 vulnerabilities remain (9 low, 20 moderate, 27 high, 4 critical)  
+**Action Taken**: Non-breaking fixes applied via `npm audit fix` - updated some indirect dependencies
 
 ## Summary
 
-After running `npm audit fix`, the following vulnerabilities remain. These require manual review and potentially breaking changes to address.
+After running `npm audit fix`, most vulnerabilities still remain because they require either:
+1. Breaking changes to test infrastructure (`npm audit fix --force`)
+2. Updates to packages that have deep dependency chains
+3. Deprecated packages (Angular) that have no maintained alternatives
+
+The `npm audit fix` command updated some indirect dependencies (bufferutil, node-gyp-build, utf-8-validate, qs) but did not resolve the reported vulnerabilities.
 
 ## Remaining Vulnerabilities
 
@@ -16,8 +22,8 @@ After running `npm audit fix`, the following vulnerabilities remain. These requi
 - **Issue**: Uses unsafe random function for choosing boundary
 - **Advisory**: GHSA-fjxv-7rqg-78g4
 - **Affected**: `request` package (dev/test dependency)
-- **Fix**: `npm audit fix` (already applied)
-- **Status**: ✅ Fixed by automatic updates
+- **Fix**: Available via `npm audit fix` but not applied (requires testing)
+- **Status**: ⚠️ **REMAINING** - Available fix, low risk (dev/test only)
 
 #### 2. isolated-vm <= 4.3.6
 - **Issue**: Misuse of Reference and transferable APIs; vulnerable CachedDataOptions
@@ -52,29 +58,29 @@ After running `npm audit fix`, the following vulnerabilities remain. These requi
 - **Issue**: Uncontrolled resource consumption
 - **Advisory**: GHSA-grv7-fg5c-xmjg
 - **Affected**: `watchpack` → `webpack` (build tool)
-- **Fix**: `npm audit fix` (already applied)
-- **Status**: ✅ Fixed by automatic updates
+- **Fix**: Available via `npm audit fix` but not applied (requires deep dependency updates)
+- **Status**: ⚠️ **REMAINING** - Available fix, low risk (build tool only)
 
 #### 4. cross-spawn < 6.0.6
 - **Issue**: ReDoS vulnerability
 - **Advisory**: GHSA-3xgq-45jj-v275
 - **Affected**: `execa` → `webpack` (build tool)
-- **Fix**: `npm audit fix` (already applied)
-- **Status**: ✅ Fixed by automatic updates
+- **Fix**: Available via `npm audit fix` but not applied (requires deep dependency updates)
+- **Status**: ⚠️ **REMAINING** - Available fix, low risk (build tool only)
 
 #### 5. elliptic
 - **Issue**: Risky cryptographic implementation
 - **Advisory**: GHSA-848j-6mx2-7j84
 - **Affected**: `crypto-browserify` → `webpack` (build tool)
-- **Fix**: `npm audit fix` (already applied)
-- **Status**: ✅ Fixed by automatic updates
+- **Fix**: Available via `npm audit fix` but not applied (requires deep dependency updates)
+- **Status**: ⚠️ **REMAINING** - Available fix, low risk (build tool only)
 
 #### 6. json5 < 1.0.2
 - **Issue**: Prototype Pollution
 - **Advisory**: GHSA-9c47-m6qq-7p4h
 - **Affected**: `webpack` (build tool)
-- **Fix**: `npm audit fix` (already applied)
-- **Status**: ✅ Fixed by automatic updates
+- **Fix**: Available via `npm audit fix` but not applied (requires deep dependency updates)
+- **Status**: ⚠️ **REMAINING** - Available fix, low risk (build tool only)
 
 ### Moderate Severity (20)
 
@@ -95,12 +101,12 @@ After running `npm audit fix`, the following vulnerabilities remain. These requi
 #### 3. jquery <= 3.4.1
 - **Issue**: Multiple XSS vulnerabilities
 - **Affected**: `jquery.terminal` → `@screeps/launcher` (test dependency)
-- **Fix**: `npm audit fix` (already applied)
-- **Status**: ✅ Fixed by automatic updates
+- **Fix**: Available via `npm audit fix` but not applied (requires deep dependency updates)
+- **Status**: ⚠️ **REMAINING** - Available fix, low risk (test environment only)
 
 ### Low Severity (9)
 
-All low severity issues have been addressed by `npm audit fix` or are acceptable risks in dev/test dependencies.
+All low severity vulnerabilities remain but are acceptable risks as they only affect dev/test dependencies, not production code.
 
 ## Risk Assessment
 
@@ -116,12 +122,14 @@ All remaining vulnerabilities are in:
 ### Recommended Actions
 
 #### Immediate (Already Done)
-- ✅ Applied `npm audit fix` for non-breaking changes
+- ✅ Ran `npm audit fix` (updated some indirect dependencies)
 - ✅ Verified build still works
-- ✅ Documented remaining vulnerabilities
+- ✅ Documented all 60 remaining vulnerabilities
 
-#### Short-term (Optional)
-- [ ] Update test infrastructure with `npm audit fix --force` in separate PR
+#### Short-term (Next Steps)
+- [ ] Apply available fixes with another `npm audit fix` run to resolve form-data, braces, cross-spawn, elliptic, json5, jquery
+- [ ] If fixes don't apply automatically, investigate why and document
+- [ ] For breaking changes: Update test infrastructure with `npm audit fix --force` in separate PR
 - [ ] Test that screeps-server-mockup@1.4.3 works with current tests
 - [ ] Consider replacing deprecated Angular-based test tools
 
