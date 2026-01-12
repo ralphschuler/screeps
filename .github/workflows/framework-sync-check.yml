@@ -16,11 +16,11 @@ jobs:
   check-divergence:
     name: Check for Code Divergence
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Check for behaviors directory in monolith
         id: check-behaviors
         run: |
@@ -35,7 +35,7 @@ jobs:
           else
             echo "✅ PASS: No behaviors directory in monolith"
           fi
-      
+
       - name: Check for local behavior imports
         id: check-imports
         run: |
@@ -50,27 +50,27 @@ jobs:
           else
             echo "✅ PASS: No local behavior imports found"
           fi
-      
+
       - name: Verify framework package imports
         id: check-framework-imports
         run: |
           # Verify that role files use framework imports
           ROLE_FILES=$(find packages/screeps-bot/src/roles -type f -name "*.ts" 2>/dev/null || true)
-          
+
           if [ -z "$ROLE_FILES" ]; then
             echo "✅ PASS: No role files in monolith (expected state)"
             exit 0
           fi
-          
+
           # Check that role files import from framework
           for file in $ROLE_FILES; do
             if ! grep -q "@ralphschuler/screeps-roles" "$file"; then
               echo "⚠️  WARNING: $file doesn't import from framework package"
             fi
           done
-          
+
           echo "✅ PASS: Role files checked"
-      
+
       - name: Summary
         if: always()
         run: |
