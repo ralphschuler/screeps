@@ -4,7 +4,6 @@
  * Coordinates all nuke operations: detection, targeting, launching, defense, and logistics
  */
 
-import { logger } from "@ralphschuler/screeps-core";
 import { terminalManager } from "@ralphschuler/screeps-economy";
 import type { NukeConfig } from "./types";
 import { DEFAULT_NUKE_CONFIG } from "./types";
