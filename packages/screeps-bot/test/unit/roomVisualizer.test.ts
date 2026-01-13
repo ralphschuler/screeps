@@ -97,6 +97,11 @@ describe("RoomVisualizer", () => {
     it("should merge custom config with defaults", () => {
       const viz = new RoomVisualizer({ showPheromones: false });
       expect(viz).to.be.instanceOf(RoomVisualizer);
+      
+      // Verify that the custom config was applied while defaults remain
+      // Note: Since config is private, we can only verify through behavior,
+      // but we can at least ensure the instance was created successfully
+      // with the merged configuration
     });
   });
 

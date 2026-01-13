@@ -93,24 +93,10 @@ describe("Console Commands", () => {
         
         expect(loggingCmd).to.not.be.undefined;
       });
-
-      it("should create LoggingCommands instance successfully", async () => {
-        const module = await import("../../src/core/commands/LoggingCommands");
-        const loggingCmd = new module.LoggingCommands();
-        
-        expect(loggingCmd).to.not.be.undefined;
-      });
     });
 
     describe("VisualizationCommands", () => {
       it("should create VisualizationCommands instance", async () => {
-        const module = await import("../../src/core/commands/VisualizationCommands");
-        const vizCmd = new module.VisualizationCommands();
-        
-        expect(vizCmd).to.not.be.undefined;
-      });
-
-      it("should create VisualizationCommands instance successfully", async () => {
         const module = await import("../../src/core/commands/VisualizationCommands");
         const vizCmd = new module.VisualizationCommands();
         
@@ -125,24 +111,10 @@ describe("Console Commands", () => {
         
         expect(statsCmd).to.not.be.undefined;
       });
-
-      it("should create StatisticsCommands instance successfully", async () => {
-        const module = await import("../../src/core/commands/StatisticsCommands");
-        const statsCmd = new module.StatisticsCommands();
-        
-        expect(statsCmd).to.not.be.undefined;
-      });
     });
 
     describe("ConfigurationCommands", () => {
       it("should create ConfigurationCommands instance", async () => {
-        const module = await import("../../src/core/commands/ConfigurationCommands");
-        const configCmd = new module.ConfigurationCommands();
-        
-        expect(configCmd).to.not.be.undefined;
-      });
-
-      it("should create ConfigurationCommands instance successfully", async () => {
         const module = await import("../../src/core/commands/ConfigurationCommands");
         const configCmd = new module.ConfigurationCommands();
         
@@ -157,24 +129,10 @@ describe("Console Commands", () => {
         
         expect(kernelCmd).to.not.be.undefined;
       });
-
-      it("should create KernelCommands instance successfully", async () => {
-        const module = await import("../../src/core/commands/KernelCommands");
-        const kernelCmd = new module.KernelCommands();
-        
-        expect(kernelCmd).to.not.be.undefined;
-      });
     });
 
     describe("SystemCommands", () => {
       it("should create SystemCommands instance", async () => {
-        const module = await import("../../src/core/commands/SystemCommands");
-        const sysCmd = new module.SystemCommands();
-        
-        expect(sysCmd).to.not.be.undefined;
-      });
-
-      it("should create SystemCommands instance successfully", async () => {
         const module = await import("../../src/core/commands/SystemCommands");
         const sysCmd = new module.SystemCommands();
         

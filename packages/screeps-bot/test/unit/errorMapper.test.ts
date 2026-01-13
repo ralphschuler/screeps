@@ -24,6 +24,7 @@ describe("ErrorMapper", () => {
     consoleStub = sinon.stub(console, "log");
     
     // Clear the error cache between tests
+    // Note: ErrorMapper.cache is intentionally a public property for test access
     ErrorMapper.cache = {};
   });
 
