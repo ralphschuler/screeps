@@ -133,13 +133,15 @@ const summary = collectedData.summary;
 Since live MCP queries are not available, load the pre-collected metrics:
 
 ```typescript
+import { readFileSync } from "node:fs";
+
 // Load pre-collected metrics from file
 const metricsFilePath = process.env.COLLECTED_METRICS_FILE || 
   'performance-baselines/strategic/collected-metrics.json';
 
 let collectedData;
 try {
-  collectedData = JSON.parse(fs.readFileSync(metricsFilePath, 'utf-8'));
+  collectedData = JSON.parse(readFileSync(metricsFilePath, 'utf-8'));
   console.log('✅ Loaded pre-collected metrics');
 } catch (error) {
   console.error('❌ Failed to load pre-collected metrics:', error);
@@ -202,6 +204,8 @@ const snapshot: PerformanceSnapshot = {
 Save the snapshot to `performance-baselines/strategic/`:
 
 ```typescript
+import { execSync } from "node:child_process";
+
 const filename = `${new Date().toISOString().replace(/[:.]/g, '-')}_${process.env.RUN_ID}.json`;
 const baseline: PerformanceBaseline = {
   timestamp: snapshot.timestamp,

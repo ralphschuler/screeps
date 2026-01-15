@@ -1,14 +1,14 @@
 # Strategic Metrics Collection Scripts
 
-This directory contains scripts for collecting live performance data from Screeps MCP and Grafana MCP servers. These scripts solve the issue where Docker-based MCP servers cannot be accessed directly by the GitHub Copilot CLI during workflow runs.
+This directory contains a script for collecting live performance data from Screeps MCP and Grafana MCP servers. This script solves the issue where Docker-based MCP servers cannot be accessed directly by the GitHub Copilot CLI during workflow runs.
 
-## Scripts
+## Script
 
-### `collect-strategic-metrics.mjs` (Primary)
+### `collect-strategic-metrics.mjs`
 
 **Node.js-based data collection using the MCP SDK**
 
-This is the **recommended** script used in the strategic planner workflow.
+This script uses the official `@modelcontextprotocol/sdk` to properly communicate with Docker-based MCP servers.
 
 **Features:**
 - Uses `@modelcontextprotocol/sdk` for proper MCP protocol communication
@@ -80,22 +80,6 @@ npm install @modelcontextprotocol/sdk
 - Docker images available:
   - `ghcr.io/ralphschuler/screeps-mcp:latest`
   - `mcp/grafana`
-
----
-
-### `collect-strategic-metrics.sh` (Legacy)
-
-**Bash-based data collection using raw JSON-RPC**
-
-⚠️ **Note**: This script attempts to use raw JSON-RPC over stdin/stdout, which may not work correctly with the MCP protocol. It is kept for reference but is **not recommended** for production use.
-
-The MCP protocol requires proper SDK communication, which is why the Node.js version using `@modelcontextprotocol/sdk` is preferred.
-
-**Usage:**
-```bash
-# Set environment variables (same as above)
-bash scripts/collect-strategic-metrics.sh [output-file]
-```
 
 ---
 

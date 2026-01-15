@@ -26,7 +26,6 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import { spawn } from "node:child_process";
 
 // Configuration
 const OUTPUT_FILE = process.argv[2] || 'performance-baselines/strategic/collected-metrics.json';
@@ -168,11 +167,12 @@ async function collectMetrics() {
       collectedData.dataSourcesUsed.screeps_user_rooms = roomsResult.success;
       collectedData.rawData.screeps.rooms = parseToolResult(roomsResult);
     }
-
-    await screepsClient.close();
   } catch (error) {
     console.error('❌ Screeps data collection failed:', error.message);
     collectedData.dataSourcesUsed.screeps_stats = false;
+    collectedData.dataSourcesUsed.screeps_game_time = false;
+    collectedData.dataSourcesUsed.screeps_user_info = false;
+    collectedData.dataSourcesUsed.screeps_user_rooms = false;
   } finally {
     if (screepsClient) {
       try { await screepsClient.close(); } catch {}
@@ -229,8 +229,6 @@ async function collectMetrics() {
     });
     collectedData.dataSourcesUsed.grafana_error_logs = errorLogsResult.success;
     collectedData.rawData.grafana.errorLogs = parseToolResult(errorLogsResult);
-
-    await grafanaClient.close();
   } catch (error) {
     console.error('❌ Grafana data collection failed:', error.message);
     collectedData.dataSourcesUsed.grafana_cpu_metrics = false;
