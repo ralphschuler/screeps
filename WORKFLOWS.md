@@ -116,9 +116,9 @@ These workflows handle automated maintenance tasks.
 
 ### auto-merge.yml
 - **Purpose**: Auto-merge low-risk PRs with `auto-merge-candidate` label
-- **Trigger**: PR labels
+- **Trigger**: PR labeled with `auto-merge-candidate`
 - **Duration**: ~30 seconds
-- **Safety**: Requires passing CI and risk assessment
+- **Safety**: Requires passing CI checks
 
 ### auto-merge-dependabot.yml ⭐ NEW
 - **Purpose**: Automated review and merge for Dependabot dependency updates

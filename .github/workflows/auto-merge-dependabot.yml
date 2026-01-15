@@ -89,7 +89,11 @@ jobs:
         with:
           script: |
             const risk = ${{ steps.risk.outputs.result }};
-            const prNumber = context.payload.pull_request?.number || parseInt('${{ inputs.pr_number }}' || '0', 10);
+            const prNumber = context.payload.pull_request?.number || parseInt('${{ inputs.pr_number }}', 10);
+            
+            if (!prNumber || isNaN(prNumber)) {
+              throw new Error('No valid PR number available');
+            }
             
             // Remove old risk labels
             const labels = ['risk:low', 'risk:medium', 'risk:high'];
@@ -173,7 +177,12 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            const prNumber = context.payload.pull_request?.number || parseInt('${{ inputs.pr_number }}' || '0', 10);
+            const prNumber = context.payload.pull_request?.number || parseInt('${{ inputs.pr_number }}', 10);
+            
+            if (!prNumber || isNaN(prNumber)) {
+              throw new Error('No valid PR number available');
+            }
+            
             const maxWaitTime = 30 * 60 * 1000; // 30 minutes
             const pollInterval = 30000; // 30 seconds
             const startTime = Date.now();
@@ -206,21 +215,41 @@ jobs:
               console.log(`Combined status state: ${status.state}`);
               
               // Check if all check runs have completed successfully
-              const checkRunsComplete = checks.check_runs.length === 0 || 
+              // Don't consider it complete if there are no checks AND we haven't waited at least 2 minutes
+              const hasChecks = checks.check_runs.length > 0 || status.statuses.length > 0;
+              const elapsedTime = Date.now() - startTime;
+              const minWaitTime = 2 * 60 * 1000; // 2 minutes minimum wait
+              
+              const checkRunsComplete = checks.check_runs.length > 0 && 
                 checks.check_runs.every(check => 
                   check.status === 'completed' && 
                   (check.conclusion === 'success' || check.conclusion === 'skipped')
                 );
               
               // Check if combined status is success
-              const statusSuccess = status.state === 'success' || status.statuses.length === 0;
+              const statusSuccess = status.state === 'success';
               
               // Check if PR is mergeable
               const mergeable = pr.mergeable !== false && pr.mergeable_state !== 'blocked';
               
+              console.log(`Has checks: ${hasChecks}`);
+              console.log(`Elapsed time: ${Math.round(elapsedTime / 1000)}s`);
               console.log(`Check runs complete: ${checkRunsComplete}`);
               console.log(`Status success: ${statusSuccess}`);
               console.log(`Mergeable: ${mergeable} (state: ${pr.mergeable_state})`);
+              
+              // Wait at least the minimum time to ensure CI has started
+              if (!hasChecks && elapsedTime < minWaitTime) {
+                console.log(`Waiting for CI checks to start (${Math.round((minWaitTime - elapsedTime) / 1000)}s remaining)...`);
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+                continue;
+              }
+              
+              // If we still have no checks after minimum wait, something might be wrong
+              if (!hasChecks && elapsedTime >= minWaitTime) {
+                console.log('⚠️ No CI checks detected after minimum wait time');
+                throw new Error('No CI checks detected - cannot verify PR safety');
+              }
               
               if (checkRunsComplete && statusSuccess && mergeable) {
                 console.log('✅ All checks passed and PR is mergeable!');
@@ -253,7 +282,11 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            const prNumber = context.payload.pull_request?.number || parseInt('${{ inputs.pr_number }}' || '0', 10);
+            const prNumber = context.payload.pull_request?.number || parseInt('${{ inputs.pr_number }}', 10);
+            
+            if (!prNumber || isNaN(prNumber)) {
+              throw new Error('No valid PR number available');
+            }
             
             try {
               // Enable auto-merge on the PR (will merge when all checks pass)
@@ -325,8 +358,12 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            const prNumber = context.payload.pull_request?.number || parseInt('${{ inputs.pr_number }}' || '0', 10);
+            const prNumber = context.payload.pull_request?.number || parseInt('${{ inputs.pr_number }}', 10);
             const risk = ${{ steps.risk.outputs.result }};
+            
+            if (!prNumber || isNaN(prNumber)) {
+              throw new Error('No valid PR number available');
+            }
             
             console.log(`PR #${prNumber} requires manual review: ${risk.reason}`);
             
