@@ -42,7 +42,7 @@ mkdirSync(dirname(OUTPUT_FILE), { recursive: true });
 /**
  * Create an MCP client connected to a Docker-based server
  */
-async function createDockerMCPClient(serverName, dockerImage, envVars) {
+async function createDockerMCPClient(dockerImage, envVars) {
   const dockerArgs = [
     'run', '--rm', '-i',
     ...Object.entries(envVars).flatMap(([key, value]) => ['-e', `${key}=${value}`]),
@@ -56,7 +56,7 @@ async function createDockerMCPClient(serverName, dockerImage, envVars) {
   });
 
   const client = new Client(
-    { name: `collector-${serverName}`, version: '1.0.0' },
+    { name: `metrics-collector`, version: '1.0.0' },
     { capabilities: {} }
   );
 
@@ -130,7 +130,6 @@ async function collectMetrics() {
   let screepsClient = null;
   try {
     screepsClient = await createDockerMCPClient(
-      'screeps-mcp',
       'ghcr.io/ralphschuler/screeps-mcp:latest',
       {
         SCREEPS_TOKEN: process.env.SCREEPS_TOKEN,
@@ -188,7 +187,6 @@ async function collectMetrics() {
   let grafanaClient = null;
   try {
     grafanaClient = await createDockerMCPClient(
-      'grafana-mcp',
       'mcp/grafana',
       {
         GRAFANA_URL: 'https://ralphschuler.grafana.net',
