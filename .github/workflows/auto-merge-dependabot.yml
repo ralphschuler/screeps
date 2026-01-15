@@ -9,7 +9,7 @@ on:
       pr_number:
         description: 'PR number to evaluate for auto-merge'
         required: true
-        type: number
+        type: string
 
 permissions:
   contents: write
@@ -89,7 +89,7 @@ jobs:
         with:
           script: |
             const risk = ${{ steps.risk.outputs.result }};
-            const prNumber = context.payload.pull_request?.number || ${{ inputs.pr_number }};
+            const prNumber = context.payload.pull_request?.number || parseInt('${{ inputs.pr_number }}' || '0', 10);
             
             // Remove old risk labels
             const labels = ['risk:low', 'risk:medium', 'risk:high'];
@@ -173,7 +173,7 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            const prNumber = context.payload.pull_request?.number || ${{ inputs.pr_number }};
+            const prNumber = context.payload.pull_request?.number || parseInt('${{ inputs.pr_number }}' || '0', 10);
             const maxWaitTime = 30 * 60 * 1000; // 30 minutes
             const pollInterval = 30000; // 30 seconds
             const startTime = Date.now();
@@ -253,7 +253,7 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            const prNumber = context.payload.pull_request?.number || ${{ inputs.pr_number }};
+            const prNumber = context.payload.pull_request?.number || parseInt('${{ inputs.pr_number }}' || '0', 10);
             
             try {
               // Enable auto-merge on the PR (will merge when all checks pass)
@@ -325,7 +325,7 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            const prNumber = context.payload.pull_request?.number || ${{ inputs.pr_number }};
+            const prNumber = context.payload.pull_request?.number || parseInt('${{ inputs.pr_number }}' || '0', 10);
             const risk = ${{ steps.risk.outputs.result }};
             
             console.log(`PR #${prNumber} requires manual review: ${risk.reason}`);
