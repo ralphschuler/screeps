@@ -197,8 +197,8 @@ function parseExpandedMetrics(consoleLog) {
           
           if (cacheData.path) {
             expandedMetrics.cache.pathCache = {
-              hitRate: cacheData.path.hitRate || 0,
-              avgPathLength: 0 // Would need to track this separately
+              hitRate: cacheData.path.hitRate || 0
+              // Note: avgPathLength would require tracking in the cache system itself
             };
           }
           
@@ -240,7 +240,8 @@ function parseExpandedMetrics(consoleLog) {
         }
       }
     } catch (error) {
-      // Skip invalid JSON lines
+      // Skip invalid JSON lines - this is expected for non-JSON console output
+      // Uncomment for debugging: console.debug('Skipping non-JSON line:', line.substring(0, 50));
       continue;
     }
   }

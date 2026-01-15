@@ -167,7 +167,6 @@ export interface PerformanceBaseline {
     };
     pathCache?: {
       hitRate: number;
-      avgPathLength?: number;
     };
     objectCache?: {
       hitRate: number;
