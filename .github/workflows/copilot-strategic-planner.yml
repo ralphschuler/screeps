@@ -45,21 +45,15 @@ jobs:
         run: |
           set -euo pipefail
           
-          # Install jq if not available
-          if ! command -v jq &> /dev/null; then
-            sudo apt-get update -qq && sudo apt-get install -y -qq jq
-          fi
-          
           # Create output directory
           mkdir -p performance-baselines/strategic
           
-          # Run data collection script
-          chmod +x scripts/collect-strategic-metrics.sh
-          scripts/collect-strategic-metrics.sh "performance-baselines/strategic/collected-metrics-${{ github.run_id }}.json"
+          # Install MCP SDK dependencies for data collection
+          npm install --no-save @modelcontextprotocol/sdk
           
-          # Display collected data summary
-          echo "📊 Collected metrics summary:"
-          jq -r '.summary' "performance-baselines/strategic/collected-metrics-${{ github.run_id }}.json" || true
+          # Run Node.js-based data collection script
+          chmod +x scripts/collect-strategic-metrics.mjs
+          node scripts/collect-strategic-metrics.mjs "performance-baselines/strategic/collected-metrics-${{ github.run_id }}.json"
 
       - name: Run strategic planning analysis
         uses: ./.github/actions/copilot-exec
