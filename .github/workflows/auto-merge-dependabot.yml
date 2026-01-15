@@ -157,6 +157,8 @@ jobs:
 
       - name: Install dependencies
         if: fromJSON(steps.risk.outputs.result).autoMerge
+        # Skip scripts to avoid potential issues with dev dependency postinstall hooks
+        # Security audit runs separately in the next step
         run: npm ci --ignore-scripts
 
       - name: Run security audit
@@ -183,6 +185,7 @@ jobs:
               throw new Error('No valid PR number available');
             }
             
+            // Workflow timeout is 45 minutes; allocate 30 minutes for CI checks, leaving ~15 minutes for other steps
             const maxWaitTime = 30 * 60 * 1000; // 30 minutes
             const pollInterval = 30000; // 30 seconds
             const startTime = Date.now();
@@ -289,13 +292,20 @@ jobs:
             }
             
             try {
+              // Fetch PR details to get title (needed for workflow_dispatch mode)
+              const { data: pr } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber
+              });
+              
               // Enable auto-merge on the PR (will merge when all checks pass)
               await github.rest.pulls.merge({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 pull_number: prNumber,
                 merge_method: 'squash',
-                commit_title: context.payload.pull_request?.title,
+                commit_title: pr.title,
                 commit_message: 'Auto-merged by Dependabot workflow after passing all checks and security audit'
               });
               
@@ -354,7 +364,7 @@ jobs:
             }
 
       - name: Report manual review needed
-        if: fromJSON(steps.risk.outputs.result).autoMerge == false
+        if: '!fromJSON(steps.risk.outputs.result).autoMerge'
         uses: actions/github-script@v8
         with:
           script: |
