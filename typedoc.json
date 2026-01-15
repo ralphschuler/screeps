@@ -1,0 +1,57 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "Screeps Framework",
+  "entryPoints": [
+    "packages/@ralphschuler/screeps-kernel",
+    "packages/@ralphschuler/screeps-roles",
+    "packages/@ralphschuler/screeps-cache",
+    "packages/@ralphschuler/screeps-clusters",
+    "packages/@ralphschuler/screeps-console",
+    "packages/@ralphschuler/screeps-core",
+    "packages/@ralphschuler/screeps-empire",
+    "packages/@ralphschuler/screeps-intershard",
+    "packages/@ralphschuler/screeps-layouts",
+    "packages/@ralphschuler/screeps-pathfinding",
+    "packages/@ralphschuler/screeps-remote-mining",
+    "packages/@ralphschuler/screeps-stats",
+    "packages/@ralphschuler/screeps-standards",
+    "packages/@ralphschuler/screeps-visuals",
+    "packages/screeps-spawn",
+    "packages/screeps-chemistry",
+    "packages/screeps-economy",
+    "packages/screeps-defense",
+    "packages/screeps-tasks",
+    "packages/screeps-posis",
+    "packages/screeps-utils"
+  ],
+  "entryPointStrategy": "packages",
+  "out": "docs/api",
+  "plugin": ["typedoc-plugin-markdown"],
+  "readme": "none",
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeInternal": true,
+  "categorizeByGroup": true,
+  "defaultCategory": "Other",
+  "categoryOrder": [
+    "Core",
+    "Process Management",
+    "Economy & Resources",
+    "Combat & Defense",
+    "Architecture & Utilities",
+    "*"
+  ],
+  "sort": ["source-order"],
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "notDocumented": false
+  },
+  "includeVersion": true,
+  "githubPages": false,
+  "hideGenerator": false,
+  "navigationLinks": {
+    "GitHub": "https://github.com/ralphschuler/screeps",
+    "Framework Guide": "https://github.com/ralphschuler/screeps/blob/main/FRAMEWORK.md"
+  }
+}
