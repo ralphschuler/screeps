@@ -34,6 +34,33 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
+      - name: Collect live metrics from MCP servers
+        env:
+          SCREEPS_TOKEN: ${{ secrets.COPILOT_MCP_SCREEPS_TOKEN }}
+          SCREEPS_HOST: ${{ vars.COPILOT_MCP_SCREEPS_HOST || 'screeps.com' }}
+          SCREEPS_SHARD: ${{ vars.COPILOT_MCP_SCREEPS_SHARD || 'shard1' }}
+          GRAFANA_SERVICE_ACCOUNT_TOKEN: ${{ secrets.COPILOT_MCP_GRAFANA_SERVICE_ACCOUNT_TOKEN }}
+          RUN_ID: "${{ github.run_id }}"
+          RUN_URL: "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        run: |
+          set -euo pipefail
+          
+          # Install jq if not available
+          if ! command -v jq &> /dev/null; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq jq
+          fi
+          
+          # Create output directory
+          mkdir -p performance-baselines/strategic
+          
+          # Run data collection script
+          chmod +x scripts/collect-strategic-metrics.sh
+          scripts/collect-strategic-metrics.sh "performance-baselines/strategic/collected-metrics-${{ github.run_id }}.json"
+          
+          # Display collected data summary
+          echo "📊 Collected metrics summary:"
+          jq -r '.summary' "performance-baselines/strategic/collected-metrics-${{ github.run_id }}.json" || true
+
       - name: Run strategic planning analysis
         uses: ./.github/actions/copilot-exec
         env:
@@ -48,6 +75,7 @@ jobs:
           SCREEPS_WIKI_CACHE_TTL: ${{ vars.SCREEPS_WIKI_CACHE_TTL || '3600' }}
           SCREEPS_TYPES_CACHE_TTL: ${{ vars.SCREEPS_TYPES_CACHE_TTL || '3600' }}
           GRAFANA_SERVICE_ACCOUNT_TOKEN: ${{ secrets.COPILOT_MCP_GRAFANA_SERVICE_ACCOUNT_TOKEN }}
+          COLLECTED_METRICS_FILE: "performance-baselines/strategic/collected-metrics-${{ github.run_id }}.json"
         with:
           copilot-token: ${{ secrets.COPILOT_TOKEN }}
           prompt-path: .github/agents/strategic-planner.agent.md
