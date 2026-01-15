@@ -13,7 +13,7 @@
 
 #### 1. TypeDoc Integration
 
-- **Installed**: TypeDoc v0.26+ with markdown plugin
+- **Installed**: TypeDoc v0.28.16 with markdown plugin
 - **Configured**: `typedoc.json` for monorepo structure
 - **Scripts Added**: `npm run docs` and `npm run docs:serve`
 - **Status**: Configured but has TypeScript compilation errors (expected with complex monorepo)
