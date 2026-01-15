@@ -106,6 +106,171 @@ function parseCpuMetrics(consoleLog) {
 }
 
 /**
+ * Parse expanded performance metrics from console logs
+ * Extracts room stats, kernel stats, cache stats, and creep role distribution
+ */
+function parseExpandedMetrics(consoleLog) {
+  const expandedMetrics = {
+    rooms: {},
+    kernel: {
+      processes: {},
+      totalBudget: 0,
+      actualUsage: 0
+    },
+    cache: {},
+    creeps: {
+      byRole: {},
+      total: 0,
+      idle: 0
+    },
+    memory: {
+      used: 0,
+      limit: 0,
+      usagePercent: 0
+    }
+  };
+
+  const lines = consoleLog.split('\n');
+  
+  for (const line of lines) {
+    try {
+      // Try parsing JSON stats format
+      if (line.includes('"type":"stats"') || line.includes('"type": "stats"')) {
+        const stats = JSON.parse(line);
+        
+        // Extract room metrics
+        if (stats.data && stats.data.rooms) {
+          for (const [roomName, roomData] of Object.entries(stats.data.rooms)) {
+            if (!expandedMetrics.rooms[roomName]) {
+              expandedMetrics.rooms[roomName] = {
+                rcl: roomData.rcl || 0,
+                cpu: { avg: 0, p95: 0, max: 0, samples: [] },
+                creepCount: roomData.creeps || 0,
+                energy: {
+                  income: roomData.metrics?.energyHarvested || 0,
+                  expenses: (roomData.metrics?.energySpawning || 0) + (roomData.metrics?.energyConstruction || 0)
+                }
+              };
+            }
+            
+            // Track room CPU samples for averaging
+            if (roomData.profiler && roomData.profiler.avgCpu) {
+              expandedMetrics.rooms[roomName].cpu.samples.push(roomData.profiler.avgCpu);
+            }
+          }
+        }
+        
+        // Extract kernel process metrics
+        if (stats.data && stats.data.processes) {
+          for (const [processId, processData] of Object.entries(stats.data.processes)) {
+            const processName = processData.name || processId;
+            if (!expandedMetrics.kernel.processes[processName]) {
+              expandedMetrics.kernel.processes[processName] = {
+                cpu: 0,
+                frequency: processData.frequency || 'unknown',
+                samples: []
+              };
+            }
+            
+            if (processData.avgCpu !== undefined) {
+              expandedMetrics.kernel.processes[processName].samples.push(processData.avgCpu);
+            }
+          }
+        }
+        
+        // Extract kernel budget info
+        if (stats.data && stats.data.kernelBudgets) {
+          expandedMetrics.kernel.totalBudget = stats.data.kernelBudgets.totalAllocated || 0;
+          expandedMetrics.kernel.actualUsage = stats.data.kernelBudgets.totalUsed || 0;
+        }
+        
+        // Extract cache metrics
+        if (stats.data && stats.data.cache) {
+          const cacheData = stats.data.cache;
+          
+          if (cacheData.roomFind) {
+            expandedMetrics.cache.roomFind = {
+              hitRate: cacheData.roomFind.hitRate || 0,
+              evictions: cacheData.roomFind.invalidations || 0
+            };
+          }
+          
+          if (cacheData.path) {
+            expandedMetrics.cache.pathCache = {
+              hitRate: cacheData.path.hitRate || 0,
+              avgPathLength: 0 // Would need to track this separately
+            };
+          }
+          
+          if (cacheData.object) {
+            expandedMetrics.cache.objectCache = {
+              hitRate: cacheData.object.hitRate || 0,
+              size: cacheData.object.size || 0
+            };
+          }
+          
+          if (cacheData.global) {
+            expandedMetrics.cache.global = {
+              hitRate: cacheData.global.hitRate || 0,
+              totalHits: cacheData.global.hits || 0,
+              totalMisses: cacheData.global.misses || 0
+            };
+          }
+        }
+        
+        // Extract creep role distribution
+        if (stats.data && stats.data.roles) {
+          expandedMetrics.creeps.total = 0;
+          expandedMetrics.creeps.idle = 0;
+          
+          for (const [role, roleData] of Object.entries(stats.data.roles)) {
+            expandedMetrics.creeps.byRole[role] = roleData.count || 0;
+            expandedMetrics.creeps.total += roleData.count || 0;
+            expandedMetrics.creeps.idle += roleData.idleCount || 0;
+          }
+        }
+        
+        // Extract memory metrics
+        if (stats.data && stats.data.memory) {
+          expandedMetrics.memory = {
+            used: stats.data.memory.used || 0,
+            limit: stats.data.memory.limit || 0,
+            usagePercent: stats.data.memory.usagePercent || 0
+          };
+        }
+      }
+    } catch (error) {
+      // Skip invalid JSON lines
+      continue;
+    }
+  }
+  
+  // Calculate averages for room CPU
+  for (const [roomName, roomData] of Object.entries(expandedMetrics.rooms)) {
+    if (roomData.cpu.samples.length > 0) {
+      const samples = roomData.cpu.samples;
+      roomData.cpu.avg = samples.reduce((a, b) => a + b, 0) / samples.length;
+      roomData.cpu.max = Math.max(...samples);
+      // Calculate p95
+      const sorted = [...samples].sort((a, b) => a - b);
+      const p95Index = Math.floor(sorted.length * 0.95);
+      roomData.cpu.p95 = sorted[p95Index] || 0;
+      delete roomData.cpu.samples; // Remove temporary data
+    }
+  }
+  
+  // Calculate averages for kernel processes
+  for (const [processName, processData] of Object.entries(expandedMetrics.kernel.processes)) {
+    if (processData.samples.length > 0) {
+      processData.cpu = processData.samples.reduce((a, b) => a + b, 0) / processData.samples.length;
+      delete processData.samples; // Remove temporary data
+    }
+  }
+  
+  return expandedMetrics;
+}
+
+/**
  * Calculate statistics from array of numbers
  */
 function calculateStats(values) {
@@ -226,7 +391,7 @@ function detectRegression(current, baseline, threshold = REGRESSION_THRESHOLD) {
 /**
  * Generate performance report
  */
-function generateReport(analysis, regression, milestones) {
+function generateReport(analysis, regression, milestones, expandedMetrics) {
   const formatMemory = (bytes) => {
     if (!bytes || bytes === 0) return '0 KB';
     if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
@@ -260,7 +425,15 @@ function generateReport(analysis, regression, milestones) {
     regression,
     milestones: milestones || {},
     passed: !regression.detected,
-    summary
+    summary,
+    // Include expanded metrics for baseline tracking
+    expandedMetrics: {
+      rooms: expandedMetrics.rooms,
+      kernel: expandedMetrics.kernel,
+      cache: expandedMetrics.cache,
+      creeps: expandedMetrics.creeps,
+      memory: expandedMetrics.memory
+    }
   };
   
   return report;
@@ -414,6 +587,14 @@ async function main() {
   console.log(`Found ${bucketHistory.length} bucket samples`);
   console.log(`Found ${memoryHistory.length} memory samples`);
   
+  // Parse expanded metrics
+  console.log('Parsing expanded performance metrics...');
+  const expandedMetrics = parseExpandedMetrics(consoleLog);
+  
+  console.log(`  Rooms tracked: ${Object.keys(expandedMetrics.rooms).length}`);
+  console.log(`  Kernel processes: ${Object.keys(expandedMetrics.kernel.processes).length}`);
+  console.log(`  Creep roles: ${Object.keys(expandedMetrics.creeps.byRole).length}`);
+  
   if (cpuHistory.length === 0) {
     console.warn('Warning: No CPU metrics found in logs');
     console.log('The bot may not be logging CPU usage. Consider adding CPU logging.');
@@ -515,7 +696,7 @@ async function main() {
   
   // Generate report
   console.log('\nGenerating report...');
-  const report = generateReport(analysis, regression, milestones);
+  const report = generateReport(analysis, regression, milestones, expandedMetrics);
   
   // Write report to file
   fs.writeFileSync(REPORT_FILE, JSON.stringify(report, null, 2));
