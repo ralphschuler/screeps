@@ -74,6 +74,17 @@
   color: E4E4E4
   description: No specific priority assigned.
 
+# Risk Labels - Auto-merge risk assessment
+- name: risk:low
+  color: 0E8A16
+  description: Low-risk changes eligible for auto-merge (patch dev dependencies).
+- name: risk:medium
+  color: FBCA04
+  description: Medium-risk changes eligible for auto-merge with tests (minor dev dependencies).
+- name: risk:high
+  color: D93F0B
+  description: High-risk changes requiring manual review (major updates or production deps).
+
 # Workflow Labels - Common GitHub labels
 - name: good-first-issue
   color: 7057FF

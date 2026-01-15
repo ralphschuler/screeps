@@ -2,7 +2,7 @@
 
 This document provides a comprehensive overview of all GitHub Actions workflows in this repository, their purposes, triggers, and requirements.
 
-**Current Status**: 18 active workflows (down from 22 - 18% reduction)
+**Current Status**: 19 active workflows (added Dependabot auto-merge)
 
 ## Table of Contents
 
@@ -115,10 +115,30 @@ These workflows handle automated maintenance tasks.
 - **Configuration**: 60 days stale, 7 days until close
 
 ### auto-merge.yml
-- **Purpose**: Auto-merge approved Dependabot PRs
-- **Trigger**: PR labels
+- **Purpose**: Auto-merge low-risk PRs with `auto-merge-candidate` label
+- **Trigger**: PR labeled with `auto-merge-candidate`
 - **Duration**: ~30 seconds
-- **Safety**: Requires passing CI and approvals
+- **Safety**: Requires passing CI checks
+
+### auto-merge-dependabot.yml ⭐ NEW
+- **Purpose**: Automated review and merge for Dependabot dependency updates
+- **Trigger**: Dependabot PRs (opened, synchronize, reopened), manual dispatch
+- **Duration**: ~5-30 minutes (waits for CI checks)
+- **Features**:
+  - **Risk Classification**: Automatic assessment based on update type and dependency type
+    - `risk:low` - Patch updates to dev dependencies → Auto-merge
+    - `risk:medium` - Minor updates to dev dependencies → Auto-merge
+    - `risk:high` - Major updates or production dependencies → Manual review
+  - **Quality Gates**:
+    - All CI checks must pass
+    - Security audit (`npm audit`) must pass
+    - No merge conflicts
+  - **Auto-Merge Criteria**:
+    - ✅ Patch updates (`1.2.3` → `1.2.4`) to dev dependencies
+    - ✅ Minor updates (`1.2.3` → `1.3.0`) to dev dependencies
+    - ❌ Major updates (`1.2.3` → `2.0.0`) - requires manual review
+    - ❌ Production dependencies - requires manual review
+  - **Safety**: Uses Dependabot metadata API, waits for all checks, posts assessment comments
 
 ### sync-labels.yml
 - **Purpose**: Synchronize GitHub labels
@@ -199,10 +219,10 @@ These workflows are triggered manually for specific operations.
 ## Workflow Statistics
 
 ### Active Workflows
-- **Total**: 18 active workflows (down from 22 - 18% reduction)
+- **Total**: 19 active workflows (includes new Dependabot auto-merge)
 - **PR Checks**: 2 workflows (ci, performance-test)
 - **Deployment**: 6 workflows (deploy, exporter-publish, publish-framework, mcp-docker, release, post-deployment-monitoring)
-- **Automation**: 7 workflows (auto-todo-issue, auto-issue-stale, auto-merge, sync-labels, autonomous-improvement, copilot-strategic-planner, wiki-publish)
+- **Automation**: 8 workflows (auto-todo-issue, auto-issue-stale, auto-merge, auto-merge-dependabot, sync-labels, autonomous-improvement, copilot-strategic-planner, wiki-publish)
 - **Manual**: 3 workflows (manual-ops, respawn, copilot-setup-steps)
 
 ### Estimated Usage (Weekly)
