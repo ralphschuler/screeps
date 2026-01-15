@@ -119,3 +119,6 @@ coverage/
 # Performance baselines - keep example files but exclude them from commits
 performance-baselines/strategic/.example-*.json
 
+# Collected metrics files from workflow runs (temporary data)
+performance-baselines/strategic/collected-metrics*.json
+

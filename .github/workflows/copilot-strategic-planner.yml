@@ -85,4 +85,6 @@ jobs:
           name: strategic-planner-report-${{ github.run_id }}
           path: |
             reports/copilot/strategic-planner-${{ github.run_id }}.log
+            performance-baselines/strategic/collected-metrics-${{ github.run_id }}.json
+            performance-baselines/strategic/*-${{ github.run_id }}.json
           retention-days: 30
