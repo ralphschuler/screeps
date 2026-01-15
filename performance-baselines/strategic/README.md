@@ -14,10 +14,12 @@ Strategic planning baselines serve a different purpose than test scenario baseli
 Baselines are stored as JSON files with the naming convention:
 
 ```
-YYYY-MM-DD_HH-MM-SS_<run-id>.json
+YYYY-MM-DDTHH-MM-SS-sssZ_<run-id>.json
 ```
 
-Example: `2026-01-15_10-30-00_12345678.json`
+Example: `2026-01-15T10-30-00-000Z_12345678.json`
+
+The filename is generated using `new Date().toISOString().replace(/[:.]/g, '-')` which converts the ISO timestamp (e.g., `2026-01-15T10:30:00.000Z`) to a filesystem-safe format by replacing colons and periods with hyphens.
 
 ## Format
 

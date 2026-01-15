@@ -166,17 +166,17 @@ const snapshot: PerformanceSnapshot = {
   rooms: {
     total: rooms.length,
     byRCL: groupByRCL(rooms),
-    avgCPU: stats.cpu.current / rooms.length,
+    avgCPU: rooms.length > 0 ? stats.cpu.current / rooms.length : 0,
     avgRCL: calculateAverageRCL(rooms)
   },
   creeps: {
     total: stats.creeps.total,
     byRole: stats.creeps.byRole,
-    avgPerRoom: stats.creeps.total / rooms.length
+    avgPerRoom: rooms.length > 0 ? stats.creeps.total / rooms.length : 0
   },
   errors: {
     last24h: errors.length,
-    currentRate: errors.length / (24 * 60 * 60 / Game.TICK_TIME),
+    currentRate: errors.length / (24 * 3600 / 3),  // 3 seconds per tick in Screeps
     topErrors: aggregateErrors(errors)
   }
 };

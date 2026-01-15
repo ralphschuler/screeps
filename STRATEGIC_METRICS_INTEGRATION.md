@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document summarizes the implementation of live game performance metrics integration into the strategic planning workflow, addressing issue #[number].
+This document summarizes the implementation of live game performance metrics integration into the strategic planning workflow, addressing issue #2882.
 
 **Goal**: Enable data-driven strategic planning using real-time game metrics and monitoring data from screeps-mcp and grafana-mcp servers.
 
