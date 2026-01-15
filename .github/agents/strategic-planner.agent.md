@@ -80,104 +80,121 @@ Use to analyze performance trends and operational health:
 
 ## STRATEGIC ANALYSIS WORKFLOW
 
-### ⚠️ MANDATORY DATA COLLECTION (REQUIRED FIRST STEP)
+### 🔄 PRE-COLLECTED METRICS AVAILABLE
+
+**IMPORTANT**: Due to GitHub Actions environment limitations, live metrics have been **pre-collected** for you before this agent started. The Docker-based MCP servers (screeps-mcp, grafana-mcp) cannot be accessed directly from Copilot CLI.
+
+**Pre-collected metrics file**: `${COLLECTED_METRICS_FILE}`
+
+This file contains:
+- `screeps_stats` - Current CPU, GCL, rooms, creeps, bucket
+- `screeps_game_time` - Current game tick
+- `screeps_user_info` - User account information
+- `screeps_user_rooms` - Owned rooms with RCL levels
+- Grafana CPU metrics (24h trend)
+- Grafana GCL progress metrics
+- Grafana error logs (last 24h)
+
+**To access the pre-collected data:**
+
+```typescript
+// Read the collected metrics file
+const metricsFile = process.env.COLLECTED_METRICS_FILE || 'performance-baselines/strategic/collected-metrics.json';
+const collectedData = JSON.parse(fs.readFileSync(metricsFile, 'utf-8'));
+
+// Access pre-collected data
+const stats = collectedData.rawData.screeps.stats;
+const gameTime = collectedData.rawData.screeps.gameTime;
+const rooms = collectedData.rawData.screeps.rooms;
+const cpuMetrics = collectedData.rawData.grafana.cpuQuery;
+const gclMetrics = collectedData.rawData.grafana.gclQuery;
+const errorLogs = collectedData.rawData.grafana.errorLogs;
+
+// Quick summary is also available
+const summary = collectedData.summary;
+```
+
+**Available MCP Tools** (non-Docker based):
+- ✅ `github-*` - GitHub API integration (available)
+- ✅ `screeps-docs-mcp` - Official documentation (available via npx)
+- ✅ `screeps-wiki-mcp` - Community wiki (available via npx)
+- ✅ `screeps-typescript-mcp` - TypeScript types (available via npx)
+- ❌ `screeps-mcp` - Live game state (pre-collected, use file)
+- ❌ `grafana-mcp` - Monitoring metrics (pre-collected, use file)
+
+**Fallback**: If `COLLECTED_METRICS_FILE` is not set or the file doesn't exist, you should still attempt to create issues based on code analysis and documentation review, but note in the issues that live metrics were unavailable.
+
+### ⚠️ MANDATORY DATA COLLECTION (UPDATED)
 
 **Before proceeding with any analysis, you MUST collect the following live performance data:**
 
-#### Required screeps-mcp Queries
+**STEP 1: Load Pre-Collected Metrics**
 
-1. **`screeps_stats`** - Get current game state:
-   ```typescript
-   const stats = await screeps_stats();
-   // Returns: { cpu, gcl, rooms, creeps, memory, bucket }
-   ```
-   
-2. **`screeps_user_rooms`** - Get room ownership:
-   ```typescript
-   const rooms = await screeps_user_rooms({ userId: "<user-id>" });
-   // Returns: Array<{ name, rcl, owner, lastSeen }>
-   ```
-   
-3. **`screeps_game_time`** - Get current tick:
-   ```typescript
-   const gameTime = await screeps_game_time();
-   // Returns: { time: number }
-   ```
+Since live MCP queries are not available, load the pre-collected metrics:
 
-#### Required grafana-mcp Queries
+```typescript
+import { readFileSync } from "node:fs";
 
-1. **CPU Trend (24h)** - Query Prometheus:
-   ```typescript
-   const cpuTrend = await query_prometheus({
-     datasourceUid: "<prometheus-uid>",
-     query: "screeps_cpu_used",
-     startTime: "now-24h",
-     endTime: "now",
-     queryType: "range",
-     stepSeconds: 300
-   });
-   ```
+// Load pre-collected metrics from file
+const metricsFilePath = process.env.COLLECTED_METRICS_FILE || 
+  'performance-baselines/strategic/collected-metrics.json';
 
-2. **GCL Progress Rate** - Query Prometheus:
-   ```typescript
-   const gclProgress = await query_prometheus({
-     datasourceUid: "<prometheus-uid>",
-     query: "screeps_gcl_progress",
-     startTime: "now-24h",
-     endTime: "now",
-     queryType: "range",
-     stepSeconds: 300
-   });
-   ```
+let collectedData;
+try {
+  collectedData = JSON.parse(readFileSync(metricsFilePath, 'utf-8'));
+  console.log('✅ Loaded pre-collected metrics');
+} catch (error) {
+  console.error('❌ Failed to load pre-collected metrics:', error);
+  // Fallback: Proceed with code-only analysis
+  collectedData = null;
+}
 
-3. **Error Logs (24h)** - Query Loki:
-   ```typescript
-   const errors = await query_loki_logs({
-     datasourceUid: "<loki-uid>",
-     logql: '{job="screeps-bot"} |= "error"',
-     startRfc3339: "<24h-ago>",
-     endRfc3339: "<now>",
-     limit: 100
-   });
-   ```
+// Extract data from pre-collected metrics
+const stats = collectedData?.rawData?.screeps?.stats || {};
+const gameTime = collectedData?.rawData?.screeps?.gameTime?.time || 0;
+const rooms = collectedData?.rawData?.screeps?.rooms || [];
+const cpuTrend = collectedData?.rawData?.grafana?.cpuQuery || {};
+const gclProgress = collectedData?.rawData?.grafana?.gclQuery || {};
+const errors = collectedData?.rawData?.grafana?.errorLogs || [];
+```
 
 #### Create Performance Snapshot
 
-After collecting the required data, create a performance snapshot using the schema from `packages/screeps-bot/test/performance/strategic-types.ts`:
+Using the pre-collected data, create a performance snapshot using the schema from `packages/screeps-bot/test/performance/strategic-types.ts`:
 
 ```typescript
 const snapshot: PerformanceSnapshot = {
-  timestamp: new Date().toISOString(),
-  gameTime: gameTime.time,
+  timestamp: collectedData?.timestamp || new Date().toISOString(),
+  gameTime: gameTime,
   cpu: {
-    current: stats.cpu.current,
-    limit: stats.cpu.limit,
-    bucket: stats.cpu.bucket,
-    avg24h: calculateAverage(cpuTrend.data),
-    p95_24h: calculateP95(cpuTrend.data),
-    peak24h: calculateMax(cpuTrend.data)
+    current: stats.cpu?.used || 0,
+    limit: stats.cpu?.limit || 100,
+    bucket: stats.cpu?.bucket || 0,
+    avg24h: collectedData?.summary?.cpu?.current || 0,  // Simplified from trend
+    p95_24h: 0,  // Not available in pre-collected data
+    peak24h: 0   // Not available in pre-collected data
   },
   gcl: {
-    level: stats.gcl.level,
-    progress: stats.gcl.progress,
-    progressRate: calculateRate(gclProgress.data),
-    estimatedTicksToNext: calculateEstimate(stats.gcl.progress, gclProgress.data)
+    level: stats.gcl?.level || 0,
+    progress: stats.gcl?.progress || 0,
+    progressRate: 0,  // Calculate from trend if available
+    estimatedTicksToNext: 0  // Calculate if data available
   },
   rooms: {
-    total: rooms.length,
-    byRCL: groupByRCL(rooms),
-    avgCPU: rooms.length > 0 ? stats.cpu.current / rooms.length : 0,
-    avgRCL: calculateAverageRCL(rooms)
+    total: Array.isArray(rooms) ? rooms.length : 0,
+    byRCL: {},  // Group rooms by RCL from rooms array
+    avgCPU: 0,  // Calculate if possible
+    avgRCL: 0   // Calculate from rooms array
   },
   creeps: {
-    total: stats.creeps.total,
-    byRole: stats.creeps.byRole,
-    avgPerRoom: rooms.length > 0 ? stats.creeps.total / rooms.length : 0
+    total: stats.creeps?.total || 0,
+    byRole: stats.creeps?.byRole || {},
+    avgPerRoom: 0  // Calculate from totals
   },
   errors: {
-    last24h: errors.length,
-    currentRate: errors.length / (24 * 3600 / 3),  // 3 seconds per tick in Screeps
-    topErrors: aggregateErrors(errors)
+    last24h: Array.isArray(errors) ? errors.length : 0,
+    currentRate: 0,  // Calculate from error count
+    topErrors: []    // Aggregate from error logs
   }
 };
 ```
@@ -187,18 +204,20 @@ const snapshot: PerformanceSnapshot = {
 Save the snapshot to `performance-baselines/strategic/`:
 
 ```typescript
-const filename = `${new Date().toISOString().replace(/[:.]/g, '-')}_${RUN_ID}.json`;
+import { execSync } from "node:child_process";
+
+const filename = `${new Date().toISOString().replace(/[:.]/g, '-')}_${process.env.RUN_ID}.json`;
 const baseline: PerformanceBaseline = {
   timestamp: snapshot.timestamp,
   gameTime: snapshot.gameTime,
-  commit: getCurrentCommit(),
-  branch: getCurrentBranch(),
+  commit: execSync('git rev-parse HEAD').toString().trim(),
+  branch: execSync('git rev-parse --abbrev-ref HEAD').toString().trim(),
   metrics: snapshot,
   issuesCreated: [],  // Will be populated later
   issuesUpdated: [],
   recommendations: [],
-  runId: RUN_ID,
-  runUrl: RUN_URL
+  runId: process.env.RUN_ID,
+  runUrl: process.env.RUN_URL
 };
 
 // Save to file
@@ -208,87 +227,66 @@ fs.writeFileSync(
 );
 ```
 
-**If any required MCP query fails, you MUST:**
-1. Document the failure in your output
-2. Attempt to proceed with partial data
-3. Note the missing data in all created issues
-4. Create a high-priority infrastructure issue about the MCP server failure
+**If pre-collected metrics are unavailable or incomplete:**
+1. Document the missing data in your analysis output
+2. Proceed with code-based analysis using available MCP tools (docs, wiki, typescript)
+3. Note the data limitations in all created issues
+4. Create a high-priority infrastructure issue about data collection failure
+5. Use historical baselines if available in `performance-baselines/strategic/`
 
 ---
 
 ### PHASE 1: PERFORMANCE ANALYSIS
 
-**A. Live Bot Health Check**
+**A. Load and Validate Pre-Collected Metrics**
 
-Use `screeps_stats` to get current performance metrics:
-- CPU usage patterns and bucket health
-- GCL progression rate
-- Room count and RCL distribution
-- Creep population and efficiency
-
-Use `screeps_user_rooms` to get room ownership and status.
-
-**B. Grafana Performance Analysis**
-
-Use `search_dashboards` to find relevant dashboards:
-- CPU & Performance Monitor
-- Room Management
-- Creeps & Roles Monitor
-- Empire & Economy
-- AI & Pheromones
-
-Use `query_prometheus` to analyze trends (correct tool name):
-- CPU usage over time: `screeps_cpu_used`
-- Energy income/spending: `screeps_energy_income`, `screeps_energy_spending`
-- Creep counts by role: `screeps_creep_count`
-- Room metrics: `screeps_room_rcl`, `screeps_room_energy`
-- GCL progression: `screeps_gcl_progress`
-
-Use `query_loki_logs` to investigate issues:
-- Error patterns: `{job="screeps-bot"} |= "error"`
-- Performance warnings: `{job="screeps-bot"} |= "CPU"`
-- Specific subsystem logs
-
-**C. Generate Grafana Dashboard Links**
-
-For each issue created, include relevant Grafana dashboard links using the `generate_deeplink` tool:
+First, load the pre-collected metrics file and validate data quality:
 
 ```typescript
-// Example: CPU Dashboard Link
-const cpuDashboardLink = await generate_deeplink({
-  resourceType: 'dashboard',
-  dashboardUid: '<cpu-dashboard-uid>',
-  timeRange: {
-    from: 'now-24h',
-    to: 'now'
-  }
-});
+const metricsFile = process.env.COLLECTED_METRICS_FILE;
+const collectedData = JSON.parse(fs.readFileSync(metricsFile, 'utf-8'));
 
-// Example: Error Logs Explore Link
-const errorLogsLink = await generate_deeplink({
-  resourceType: 'explore',
-  datasourceUid: '<loki-datasource-uid>',
-  timeRange: {
-    from: 'now-24h',
-    to: 'now'
-  },
-  queryParams: {
-    'orgId': '1',
-    'left': JSON.stringify({
-      'queries': [
-        {
-          'refId': 'A',
-          'expr': '{job="screeps-bot"} |= "error"',
-          'queryType': 'range'
-        }
-      ]
-    })
-  }
-});
+// Validate data sources
+const dataSources = collectedData.dataSourcesUsed;
+console.log('Data sources available:', dataSources);
+
+// Check data quality
+if (!dataSources.screeps_stats) {
+  console.warn('⚠️ screeps_stats unavailable - limited analysis possible');
+}
+if (!dataSources.grafana_cpu_metrics) {
+  console.warn('⚠️ Grafana CPU metrics unavailable - no trend analysis');
+}
 ```
 
-Common dashboards to link:
-- **CPU & Performance**: Overall CPU usage, bucket health, memory parsing
+**B. Analyze Bot Health from Pre-Collected Data**
+
+Extract and analyze current bot performance:
+- CPU usage patterns and bucket health from `collectedData.summary.cpu`
+- GCL progression rate from `collectedData.summary.gcl`
+- Room count and distribution from `collectedData.summary.rooms`
+- Creep population from `collectedData.summary.creeps`
+
+**C. Research Best Practices (Available MCP Tools)**
+
+Use documentation and wiki MCP servers to research improvements:
+- Use `screeps_wiki_search` for proven optimization strategies
+- Use `screeps_docs_get_api` to verify API usage patterns
+- Use `screeps_types_get` to check TypeScript type definitions
+
+**D. Code Analysis**
+
+Use GitHub tools and file inspection to analyze code quality:
+- Use `grep` to search for inefficient patterns
+- Use `glob` to find relevant code files
+- Use `view` to inspect specific implementations
+- Use `github-mcp` tools to review recent changes and issues
+
+**Note on Grafana**: Pre-collected Grafana data is in `collectedData.rawData.grafana` but real-time queries via `query_prometheus` and `query_loki_logs` are **not available** in this environment.
+
+---
+
+### PHASE 2: CODE QUALITY REVIEW
 - **Error Logs**: Recent errors filtered by severity and component
 - **Room Overview**: Per-room metrics, RCL distribution, energy flow
 - **Creep Population**: Creep counts by role, idle creeps, spawn queue

@@ -34,6 +34,31 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Collect live metrics from MCP servers
+        env:
+          SCREEPS_TOKEN: ${{ secrets.COPILOT_MCP_SCREEPS_TOKEN }}
+          SCREEPS_HOST: ${{ vars.COPILOT_MCP_SCREEPS_HOST || 'screeps.com' }}
+          SCREEPS_SHARD: ${{ vars.COPILOT_MCP_SCREEPS_SHARD || 'shard3' }}
+          GRAFANA_SERVICE_ACCOUNT_TOKEN: ${{ secrets.COPILOT_MCP_GRAFANA_SERVICE_ACCOUNT_TOKEN }}
+          RUN_ID: "${{ github.run_id }}"
+          RUN_URL: "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        run: |
+          set -euo pipefail
+          
+          # Create output directory
+          mkdir -p performance-baselines/strategic
+          
+          # Install MCP SDK dependencies for data collection
+          npm install --no-save @modelcontextprotocol/sdk
+          
+          # Run Node.js-based data collection script
+          node scripts/collect-strategic-metrics.mjs "performance-baselines/strategic/collected-metrics-${{ github.run_id }}.json"
+
       - name: Run strategic planning analysis
         uses: ./.github/actions/copilot-exec
         env:
@@ -43,11 +68,12 @@ jobs:
           RUN_URL: "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           SCREEPS_TOKEN: ${{ secrets.COPILOT_MCP_SCREEPS_TOKEN }}
           SCREEPS_HOST: ${{ vars.COPILOT_MCP_SCREEPS_HOST || 'screeps.com' }}
-          SCREEPS_SHARD: ${{ vars.COPILOT_MCP_SCREEPS_SHARD || 'shard1' }}
+          SCREEPS_SHARD: ${{ vars.COPILOT_MCP_SCREEPS_SHARD || 'shard3' }}
           SCREEPS_DOCS_CACHE_TTL: ${{ vars.SCREEPS_DOCS_CACHE_TTL || '3600' }}
           SCREEPS_WIKI_CACHE_TTL: ${{ vars.SCREEPS_WIKI_CACHE_TTL || '3600' }}
           SCREEPS_TYPES_CACHE_TTL: ${{ vars.SCREEPS_TYPES_CACHE_TTL || '3600' }}
           GRAFANA_SERVICE_ACCOUNT_TOKEN: ${{ secrets.COPILOT_MCP_GRAFANA_SERVICE_ACCOUNT_TOKEN }}
+          COLLECTED_METRICS_FILE: "performance-baselines/strategic/collected-metrics-${{ github.run_id }}.json"
         with:
           copilot-token: ${{ secrets.COPILOT_TOKEN }}
           prompt-path: .github/agents/strategic-planner.agent.md
@@ -63,4 +89,6 @@ jobs:
           name: strategic-planner-report-${{ github.run_id }}
           path: |
             reports/copilot/strategic-planner-${{ github.run_id }}.log
+            performance-baselines/strategic/collected-metrics-${{ github.run_id }}.json
+            performance-baselines/strategic/*-${{ github.run_id }}.json
           retention-days: 30
