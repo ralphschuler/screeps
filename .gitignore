@@ -116,3 +116,6 @@ reports/
 coverage/
 *.lcov
 
+# Performance baselines - keep example files but exclude them from commits
+performance-baselines/strategic/.example-*.json
+

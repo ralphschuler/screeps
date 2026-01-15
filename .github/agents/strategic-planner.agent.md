@@ -784,6 +784,122 @@ At the end of your analysis, provide a JSON summary following the `StrategicAnal
 
 **IMPORTANT**: The `performance_snapshot` field is **MANDATORY**. If MCP queries fail, document the failure but still provide whatever data was successfully collected.
 
+## CONTINUOUS MONITORING & IMPACT TRACKING
+
+### Baseline Comparison
+
+Every analysis run should compare current metrics against the 7-day rolling average baseline:
+
+1. **Load Recent Baselines**:
+   ```bash
+   # Get last 7 days of strategic baselines
+   find performance-baselines/strategic -name "*.json" -mtime -7 -type f | sort -r
+   ```
+
+2. **Calculate 7-Day Averages**:
+   ```typescript
+   const baselines = loadLast7Days();
+   const avg7d = {
+     cpu: average(baselines.map(b => b.metrics.cpu.avg24h)),
+     gclRate: average(baselines.map(b => b.metrics.gcl.progressRate)),
+     errorRate: average(baselines.map(b => b.metrics.errors.currentRate)),
+     energyNet: average(baselines.map(b => b.metrics.energy?.netPerTick || 0))
+   };
+   ```
+
+3. **Detect Trends**:
+   ```typescript
+   const trends: PerformanceTrend = {
+     baseline: avg7d,
+     current: snapshot,
+     cpuTrend: analyzeTrend(avg7d.cpu, snapshot.cpu.avg24h, 0.10),
+     gclTrend: analyzeTrend(avg7d.gclRate, snapshot.gcl.progressRate, 0.15),
+     errorTrend: analyzeTrend(avg7d.errorRate, snapshot.errors.currentRate, 0.20),
+     healthScore: calculateHealthScore(snapshot, avg7d),
+     regressions: detectRegressions(snapshot, avg7d),
+     improvements: detectImprovements(snapshot, avg7d)
+   };
+   ```
+
+### Impact Measurement
+
+For issues created in previous runs, track their impact:
+
+1. **Find Related Issues**:
+   ```bash
+   # Search for issues created by strategic planner
+   gh issue list --label "strategic-planning" --state all --json number,title,createdAt,closedAt
+   ```
+
+2. **Measure Before/After**:
+   ```typescript
+   // For each closed issue from last 7 days
+   const issue = getIssue(issueNumber);
+   const createdBaseline = findBaselineNear(issue.createdAt);
+   const closedBaseline = findBaselineNear(issue.closedAt);
+   
+   const impact = {
+     issueNumber: issue.number,
+     title: issue.title,
+     category: extractCategory(issue.labels),
+     beforeMetrics: createdBaseline.metrics,
+     afterMetrics: closedBaseline.metrics,
+     cpuChange: closedBaseline.metrics.cpu.avg24h - createdBaseline.metrics.cpu.avg24h,
+     gclChange: closedBaseline.metrics.gcl.progressRate - createdBaseline.metrics.gcl.progressRate,
+     successful: determineSuccess(issue, createdBaseline, closedBaseline)
+   };
+   ```
+
+3. **Update Knowledge Base**:
+   - **Successful optimizations** (CPU reduced >5%): Document approach for reuse
+   - **Failed attempts** (no improvement or regression): Note what didn't work
+   - **Unexpected outcomes**: Investigate and learn
+
+### ROI Calculation
+
+Calculate return on investment for strategic planning:
+
+```typescript
+const roi = {
+  totalIssuesCreated: issues_created.length,
+  totalIssuesClosed: closedIssues.length,
+  cpuSavingsTotal: sumCPUSavings(impactMeasurements),
+  gclAccelerationTotal: sumGCLAcceleration(impactMeasurements),
+  errorReductionTotal: sumErrorReduction(impactMeasurements),
+  successRate: closedIssues.length / issues_created.length,
+  avgTimeToClose: averageTimeToClose(closedIssues),
+  highImpactRatio: highImpactIssues.length / issues_created.length
+};
+```
+
+### Learning & Refinement
+
+After each analysis run, update strategic planning effectiveness:
+
+1. **Pattern Recognition**:
+   - Which types of issues get addressed fastest?
+   - Which categories have highest success rate?
+   - Which performance metrics correlate with issue creation?
+
+2. **Threshold Tuning**:
+   - Are regression thresholds too sensitive/loose?
+   - Should priority assignment be adjusted?
+   - Are certain issue categories over/under-represented?
+
+3. **Next Focus Areas**:
+   Based on trends and impact measurements, recommend focus areas for next run:
+   ```typescript
+   const nextFocus = [
+     cpuTrend.direction === 'degrading' ? 'CPU optimization deep dive' : null,
+     gclTrend.direction === 'degrading' ? 'GCL progression investigation' : null,
+     errorTrend.direction === 'degrading' ? 'Error pattern analysis' : null,
+     improvements.length > 3 ? 'Document successful optimizations' : null,
+     regressions.length > 2 ? 'Regression root cause analysis' : null
+   ].filter(Boolean);
+   ```
+
+Include these in your output JSON summary under `next_focus_areas`.
+
 ## CONSTRAINTS & SAFETY
 
 **ALLOWED**:
