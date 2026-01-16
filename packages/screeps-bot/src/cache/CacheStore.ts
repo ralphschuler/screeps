@@ -13,22 +13,22 @@ export interface CacheStore {
   /**
    * Get an entry from the store
    */
-  get<T>(key: string): CacheEntry<T> | undefined;
+  get<T>(_key: string): CacheEntry<T> | undefined;
 
   /**
    * Set an entry in the store
    */
-  set<T>(key: string, entry: CacheEntry<T>): void;
+  set<T>(_key: string, _entry: CacheEntry<T>): void;
 
   /**
    * Delete an entry from the store
    */
-  delete(key: string): boolean;
+  delete(_key: string): boolean;
 
   /**
    * Check if a key exists in the store
    */
-  has(key: string): boolean;
+  has(_key: string): boolean;
 
   /**
    * Get all keys in the store

@@ -35,7 +35,7 @@
  * TODO(P2): TEST - Expand integration tests with full Game object mocking
  */
 
-import type { ClusterMemory, SquadDefinition } from "../memory/schemas";
+import type { ClusterMemory } from "../memory/schemas";
 import { ProcessPriority } from "../core/kernel";
 import { logger } from "../core/logger";
 import { unifiedStats } from "@ralphschuler/screeps-stats";

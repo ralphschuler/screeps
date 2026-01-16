@@ -208,23 +208,26 @@ export default [
     rules: {
       // TypeScript ESLint rules - relaxed for framework packages
       "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-unused-vars": ["warn", { 
+      "@typescript-eslint/no-unused-vars": ["error", { 
         argsIgnorePattern: "^_",
-        varsIgnorePattern: "^_"
+        varsIgnorePattern: "^_",
+        caughtErrorsIgnorePattern: "^_"
       }],
       "@typescript-eslint/explicit-function-return-type": "off",
       
-      // General rules - relaxed for gradual adoption
+      // General rules - enforced to prevent dead code
       "no-console": "off", // Allow console for framework packages
       "no-undef": "off", // Disable for Screeps - TypeScript handles this better
       "no-unused-vars": "off", // Use @typescript-eslint/no-unused-vars instead
       "no-var": "error",
-      "prefer-const": "warn",
+      "prefer-const": "error", // Upgraded from warn to error
       "no-throw-literal": "error",
+      "no-unreachable": "error", // Prevent unreachable code after return/throw
+      "no-constant-condition": "error", // Prevent if(false) and similar patterns
       
-      // Import rules - warn only for now
+      // Import rules - upgraded to errors for required code only philosophy
       "import/no-unresolved": "off", // Disable until we configure resolvers
-      "import/no-duplicates": "warn"
+      "import/no-duplicates": "error" // Upgraded from warn to error
     }
   }
 ];
