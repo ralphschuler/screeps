@@ -22,7 +22,7 @@ import { expansionCommands } from "../empire/expansionCommands";
 import { tooAngelCommands } from "../empire/tooangel/consoleCommands";
 import { memoryCommands } from "../memory/memoryCommands";
 import { UICommands } from "./uiCommands";
-import { globalCache } from "../cache";
+import { globalCache } from "@ralphschuler/screeps-cache";
 import { LoggingCommands } from "./commands/LoggingCommands";
 import { SystemCommands } from "./commands/SystemCommands";
 import { ConfigurationCommands } from "./commands/ConfigurationCommands";
@@ -31,7 +31,7 @@ import { StatisticsCommands } from "./commands/StatisticsCommands";
 import { KernelCommands } from "./commands/KernelCommands";
 import { getConfig, updateConfig } from "../config";
 import { configureLogger } from "./logger";
-import { visualizationManager } from "../visuals/visualizationManager";
+import { visualizationManager } from "@ralphschuler/screeps-visuals";
 
 /**
  * Command classes - imported from commands/

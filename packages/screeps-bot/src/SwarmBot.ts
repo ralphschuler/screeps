@@ -20,7 +20,7 @@ import { roomProcessManager } from "./core/roomProcessManager";
 import { initializePheromoneEventHandlers } from "./logic/pheromoneEventHandlers";
 import { initializePathCacheEvents } from "./utils/pathfinding";
 import { heapCache } from "./memory/heapCache";
-import { SS2TerminalComms } from "./standards/SS2TerminalComms";
+import { SS2TerminalComms } from "@ralphschuler/screeps-standards";
 import { initializeRemotePathScheduler } from "./utils/remote-mining";
 import { shardManager } from "./intershard/shardManager";
 import { getOwnedRooms } from "@ralphschuler/screeps-cache";

@@ -8,7 +8,7 @@
 import { Command } from "../commandRegistry";
 import { getConfig, updateConfig } from "../../config";
 import { roomVisualizer, mapVisualizer } from "../../SwarmBot";
-import { visualizationManager } from "../../visuals/visualizationManager";
+import { visualizationManager } from "@ralphschuler/screeps-visuals";
 import { VisualizationLayer } from "../../memory/schemas";
 
 /**

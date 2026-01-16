@@ -33,7 +33,7 @@ import { labManager } from "../labs/labManager";
 import { labConfigManager } from "../labs/labConfig";
 import { kernel } from "./kernel";
 import { logger } from "./logger";
-import { prefetchRoomObjects } from "../cache";
+import { prefetchRoomObjects } from "@ralphschuler/screeps-cache";
 
 /**
  * Perimeter defense configuration constants

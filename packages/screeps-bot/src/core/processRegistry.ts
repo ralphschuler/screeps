@@ -30,7 +30,7 @@
  * Addresses Issues: #5, #26, #30
  */
 
-import { clusterManager } from "../clusters/clusterManager";
+import { clusterManager } from "@ralphschuler/screeps-clusters";
 import { defenseCoordinator, evacuationManager } from "@ralphschuler/screeps-defense";
 import { terminalManager, factoryManager, linkManager, marketManager } from "@ralphschuler/screeps-economy";
 import { empireManager } from "../empire/empireManager";
