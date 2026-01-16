@@ -46,33 +46,52 @@ import { logger } from "./logger";
 /**
  * Build kernel configuration from CPU config
  * Maps the monolith's CPU config to the framework's kernel config
+ * 
+ * Uses framework's default derivation logic to compute frequency intervals,
+ * min bucket thresholds, and CPU budgets from the monolith's CPUConfig.
  */
 export function buildKernelConfigFromCpu(cpuConfig: CPUConfig) {
+  // Derive critical threshold from low bucket (framework uses lowBucket / 2)
+  const criticalBucketThreshold = Math.floor(cpuConfig.bucketThresholds.lowMode / 2);
+  
+  // Derive frequency intervals from task frequencies
+  const frequencyIntervals = {
+    high: 1,
+    medium: Math.max(1, Math.min(cpuConfig.taskFrequencies.clusterLogic, cpuConfig.taskFrequencies.pheromoneUpdate)),
+    low: Math.max(cpuConfig.taskFrequencies.marketScan, cpuConfig.taskFrequencies.nukeEvaluation, cpuConfig.taskFrequencies.memoryCleanup)
+  };
+  
+  // Derive CPU budgets from configured subsystem budgets
+  const frequencyCpuBudgets = {
+    high: cpuConfig.budgets.rooms,
+    medium: cpuConfig.budgets.strategic,
+    low: Math.max(cpuConfig.budgets.market, cpuConfig.budgets.visualization)
+  };
+  
   return {
     lowBucketThreshold: cpuConfig.bucketThresholds.lowMode,
     highBucketThreshold: cpuConfig.bucketThresholds.highMode,
-    criticalBucketThreshold: 1000, // Conservative critical threshold
-    targetCpuUsage: 0.95, // Target 95% of CPU limit
+    criticalBucketThreshold,
+    // NOTE: Framework BASE_CONFIG uses targetCpuUsage = 0.98 to minimize CPU waste.
+    // We intentionally run slightly lower at 0.95 to align with the monolith's strict
+    // tick-budget policy in ROADMAP.md and to leave extra headroom for spikey ticks
+    // and finalization work. This is a deliberate divergence from the framework default.
+    targetCpuUsage: 0.95, // Target 95% of CPU limit (more conservative than framework default)
     reservedCpuFraction: 0.02, // Reserve 2% for finalization
     enableStats: true,
     statsLogInterval: 100,
-    frequencyIntervals: {
-      high: 1,
-      medium: 5,
-      low: 20
-    },
+    frequencyIntervals,
     frequencyMinBucket: {
-      high: 0,
-      medium: 0,
-      low: 0
+      high: 0, // No bucket requirement
+      medium: 0, // No bucket requirement
+      low: 0 // No bucket requirement
     },
-    frequencyCpuBudgets: {
-      high: 0.3,
-      medium: 0.15,
-      low: 0.1
-    },
+    frequencyCpuBudgets,
+    // Explicitly configure adaptive budgets instead of relying on framework defaults.
+    // The monolith currently uses fixed per-frequency CPU budgets.
+    enableAdaptiveBudgets: false,
     enablePriorityDecay: true, // Use framework's priority decay feature
-    priorityDecayRate: 0.1,
+    priorityDecayRate: 1, // Framework default (processes gain 1 priority per CPU skip)
     maxPriorityBoost: 50
   };
 }
