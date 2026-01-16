@@ -8,9 +8,10 @@ This guide explains how to run performance tests locally and in CI, analyze resu
 2. [Running Performance Tests Locally](#running-performance-tests-locally)
 3. [Understanding Test Results](#understanding-test-results)
 4. [Baseline Management](#baseline-management)
-5. [CI Integration](#ci-integration)
-6. [Grafana Integration](#grafana-integration)
-7. [Troubleshooting](#troubleshooting)
+5. [Expanded Metrics Tracking](#expanded-metrics-tracking)
+6. [CI Integration](#ci-integration)
+7. [Grafana Integration](#grafana-integration)
+8. [Troubleshooting](#troubleshooting)
 
 ## Overview
 
@@ -268,6 +269,82 @@ performance-baselines/
       "maxMemory": 200000,
       "p95Memory": 180000
     }
+  },
+  "cpu": {
+    "avg": 5.655,
+    "p95": 15.447,
+    "max": 18.88,
+    "bucket": 9500
+  },
+  "gcl": {
+    "progressPerTick": 0.012,
+    "level": 15,
+    "progress": 45000
+  },
+  "energy": {
+    "incomePerTick": 150
+  },
+  "rooms": {
+    "W1N1": {
+      "rcl": 8,
+      "cpu": {
+        "avg": 0.08,
+        "p95": 0.12,
+        "max": 0.15
+      },
+      "creepCount": 25,
+      "energy": {
+        "income": 150,
+        "expenses": 120
+      }
+    }
+  },
+  "kernel": {
+    "processes": {
+      "spawn": {
+        "cpu": 0.15,
+        "frequency": "high"
+      },
+      "defense": {
+        "cpu": 0.05,
+        "frequency": "high"
+      }
+    },
+    "totalBudget": 1.0,
+    "actualUsage": 0.85
+  },
+  "cache": {
+    "roomFind": {
+      "hitRate": 0.95,
+      "evictions": 12
+    },
+    "pathCache": {
+      "hitRate": 0.88
+    },
+    "objectCache": {
+      "hitRate": 0.92,
+      "size": 1500
+    },
+    "global": {
+      "hitRate": 0.93,
+      "totalHits": 5000,
+      "totalMisses": 350
+    }
+  },
+  "creeps": {
+    "byRole": {
+      "harvester": 15,
+      "upgrader": 8,
+      "builder": 3,
+      "carrier": 12
+    },
+    "total": 38,
+    "idle": 2
+  },
+  "memory": {
+    "used": 150000,
+    "limit": 2097152,
+    "usagePercent": 7.15
   }
 }
 ```
@@ -529,6 +606,180 @@ cp performance-baselines/main.json performance-baselines/main.json.backup
 
 # Restore from develop.json (has ROADMAP targets)
 cp performance-baselines/develop.json performance-baselines/main.json
+```
+
+## Expanded Metrics Tracking
+
+The performance baseline system now tracks comprehensive metrics beyond basic CPU and memory:
+
+### Per-Room CPU Breakdown
+
+Track CPU usage on a per-room basis to identify expensive rooms:
+
+```json
+"rooms": {
+  "W1N1": {
+    "rcl": 8,
+    "cpu": {
+      "avg": 0.08,    // Average CPU per tick
+      "p95": 0.12,    // 95th percentile
+      "max": 0.15     // Peak usage
+    },
+    "creepCount": 25,
+    "energy": {
+      "income": 150,    // Energy harvested per tick
+      "expenses": 120   // Energy spent per tick
+    }
+  }
+}
+```
+
+**Use Cases:**
+- Identify rooms exceeding the 0.1 CPU target
+- Prioritize optimization efforts on highest-CPU rooms
+- Track scaling efficiency as rooms are added
+
+### Kernel Process CPU Allocation
+
+Monitor CPU usage by kernel processes to identify bottlenecks:
+
+```json
+"kernel": {
+  "processes": {
+    "spawn": {
+      "cpu": 0.15,
+      "frequency": "high"  // Runs every tick
+    },
+    "defense": {
+      "cpu": 0.05,
+      "frequency": "high"
+    },
+    "expansion": {
+      "cpu": 0.20,
+      "frequency": "low"   // Runs every 50 ticks
+    }
+  },
+  "totalBudget": 1.0,
+  "actualUsage": 0.85
+}
+```
+
+**Use Cases:**
+- Validate kernel budget allocation (target: ≤1 CPU amortized)
+- Identify processes exceeding their budget
+- Optimize high-frequency processes first
+
+### Cache Performance Metrics
+
+Track cache hit rates to validate caching effectiveness:
+
+```json
+"cache": {
+  "roomFind": {
+    "hitRate": 0.95,     // 95% cache hits
+    "evictions": 12
+  },
+  "pathCache": {
+    "hitRate": 0.88
+  },
+  "objectCache": {
+    "hitRate": 0.92,
+    "size": 1500
+  },
+  "global": {
+    "hitRate": 0.93,
+    "totalHits": 5000,
+    "totalMisses": 350
+  }
+}
+```
+
+**Use Cases:**
+- Validate cache effectiveness (target: >90% hit rate)
+- Identify cache thrashing or undersized caches
+- Measure impact of cache optimizations
+
+### Creep Role Distribution
+
+Track creep population by role:
+
+```json
+"creeps": {
+  "byRole": {
+    "harvester": 15,
+    "upgrader": 8,
+    "builder": 3,
+    "carrier": 12
+  },
+  "total": 38,
+  "idle": 2
+}
+```
+
+**Use Cases:**
+- Detect spawn queue imbalances
+- Identify idle creeps indicating logic issues
+- Validate role distribution matches strategy
+
+### Memory Usage
+
+Track memory footprint and usage:
+
+```json
+"memory": {
+  "used": 150000,      // Bytes used
+  "limit": 2097152,    // Byte limit
+  "usagePercent": 7.15 // Percentage
+}
+```
+
+**Use Cases:**
+- Monitor memory growth over time
+- Detect memory leaks
+- Ensure headroom for scaling
+
+### Viewing Expanded Metrics
+
+Expanded metrics are automatically collected when the bot logs stats in JSON format. The bot already implements this via the `unifiedStats` system in `packages/@ralphschuler/screeps-stats`.
+
+**Example stats output format** (for reference):
+
+```javascript
+// This format is already produced by unifiedStats - no manual implementation needed
+{
+  "type": "stats",
+  "tick": 12345,
+  "data": {
+    "cpu": { "used": 5.5, "bucket": 9800 },
+    "rooms": { /* room metrics */ },
+    "processes": { /* kernel process metrics */ },
+    "cache": { /* cache performance metrics */ }
+  }
+}
+```
+
+The `analyze-performance.js` script automatically parses these logs and includes the metrics in baselines.
+
+### Weekly Baseline Updates
+
+A GitHub Actions workflow runs weekly to update baselines with fresh data:
+
+```yaml
+# .github/workflows/update-baselines.yml
+# Runs: Sunday at midnight UTC
+# Action: Updates main.json and develop.json with latest performance data
+```
+
+**Process:**
+1. Runs full performance test suite
+2. Analyzes results with expanded metrics
+3. Archives current baseline to history/
+4. Updates baseline if tests pass without regression
+5. Commits changes to repository
+
+**Manual Trigger:**
+```bash
+# Via GitHub UI: Actions > Update Performance Baselines > Run workflow
 ```
 
 ### Getting Help

@@ -1,0 +1,171 @@
+name: Update Performance Baselines
+
+on:
+  # Run weekly on Sunday at midnight UTC
+  schedule:
+    - cron: '0 0 * * 0'
+  
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to update baseline for (main or develop)'
+        required: false
+        default: 'main'
+        type: choice
+        options:
+          - main
+          - develop
+
+# Only allow one baseline update at a time
+concurrency:
+  group: update-baselines
+  cancel-in-progress: false
+
+jobs:
+  update-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment:
+      name: testing
+    permissions:
+      contents: write
+      actions: read
+    
+    env:
+      TARGET_BRANCH: ${{ github.event.inputs.branch || 'main' }}
+    
+    steps:
+      - name: Checkout ${{ env.TARGET_BRANCH }} branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          submodules: recursive
+          # Need full history to archive properly
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build all packages
+        run: npm run build
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Add docker-compose shim
+        run: |
+          echo '#!/usr/bin/env bash' | sudo tee /usr/local/bin/docker-compose > /dev/null
+          echo 'exec docker compose "$@"' | sudo tee -a /usr/local/bin/docker-compose > /dev/null
+          sudo chmod +x /usr/local/bin/docker-compose
+
+      - name: Run performance tests
+        working-directory: packages/screeps-bot
+        env:
+          MAX_TICK_COUNT: '10000'
+          MAX_TIME_DURATION: '30'
+          STEAM_KEY: ${{ secrets.STEAM_API_KEY }}
+        run: |
+          npm run test:performance:logs -- \
+            --maxTickCount=${MAX_TICK_COUNT} \
+            --maxTimeDuration=${MAX_TIME_DURATION} \
+            --serverPort=21025 \
+            --cliPort=21026 \
+            --deleteLogs \
+            --force
+        timeout-minutes: 60
+
+      - name: Analyze performance results
+        working-directory: packages/screeps-bot
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF_NAME: ${{ env.TARGET_BRANCH }}
+          GITHUB_EVENT_NAME: 'workflow_dispatch'
+        run: node scripts/analyze-performance.js
+
+      - name: Check if baseline should be updated
+        id: check_baseline
+        working-directory: packages/screeps-bot
+        run: |
+          if [ -f performance-report.json ]; then
+            PASSED=$(node -e "const report = require('./performance-report.json'); console.log(report.passed);")
+            REGRESSION=$(node -e "const report = require('./performance-report.json'); console.log(report.regression?.detected || false);")
+            
+            if [ "$PASSED" = "true" ] && [ "$REGRESSION" = "false" ]; then
+              echo "should_update=true" >> $GITHUB_OUTPUT
+              echo "✅ Tests passed without regression - baseline will be updated"
+            else
+              echo "should_update=false" >> $GITHUB_OUTPUT
+              echo "⚠️ Tests failed or regression detected - baseline will NOT be updated"
+            fi
+          else
+            echo "should_update=false" >> $GITHUB_OUTPUT
+            echo "❌ No performance report found"
+          fi
+
+      - name: Archive current baseline
+        if: steps.check_baseline.outputs.should_update == 'true'
+        working-directory: performance-baselines
+        run: |
+          # Create history directory if it doesn't exist
+          mkdir -p history
+          
+          # Archive current baseline if it exists
+          if [ -f "${{ env.TARGET_BRANCH }}.json" ]; then
+            DATE=$(date +%Y-%m-%d)
+            COMMIT=$(git rev-parse --short HEAD)
+            cp "${{ env.TARGET_BRANCH }}.json" "history/${DATE}_${{ env.TARGET_BRANCH }}_${COMMIT}.json"
+            echo "📊 Archived current baseline as history/${DATE}_${{ env.TARGET_BRANCH }}_${COMMIT}.json"
+          fi
+
+      - name: Update baseline
+        if: steps.check_baseline.outputs.should_update == 'true'
+        working-directory: packages/screeps-bot
+        env:
+          GITHUB_REF_NAME: ${{ env.TARGET_BRANCH }}
+        run: node scripts/update-baseline.js
+
+      - name: Upload performance artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: performance-baseline-update-${{ env.TARGET_BRANCH }}
+          path: |
+            packages/screeps-bot/performance-report.json
+            packages/screeps-bot/performance-report.md
+            packages/screeps-bot/logs/
+            performance-baselines/${{ env.TARGET_BRANCH }}.json
+            performance-baselines/history/
+          retention-days: 90
+
+      - name: Commit and push baseline updates
+        if: steps.check_baseline.outputs.should_update == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: 'chore(performance): weekly baseline update for ${{ env.TARGET_BRANCH }}'
+          file_pattern: 'performance-baselines/*.json performance-baselines/history/*.json'
+          commit_user_name: 'github-actions[bot]'
+          commit_user_email: 'github-actions[bot]@users.noreply.github.com'
+          skip_dirty_check: false
+
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## Performance Baseline Update" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ env.TARGET_BRANCH }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f packages/screeps-bot/performance-report.md ]; then
+            cat packages/screeps-bot/performance-report.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ No performance report generated" >> $GITHUB_STEP_SUMMARY
+          fi

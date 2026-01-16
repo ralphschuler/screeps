@@ -8,8 +8,11 @@ Each file corresponds to a Git branch:
 - `main.json` - Production baseline
 - `develop.json` - Development baseline
 - `<branch>.json` - Feature branch baselines (optional)
+- `history/` - Historical baseline snapshots
 
 ## Format
+
+### Basic Structure
 
 ```json
 {
@@ -22,14 +25,96 @@ Each file corresponds to a Git branch:
       "maxCpu": 0.1,
       "p95Cpu": 0.095,
       "p99Cpu": 0.098
-    },
-    "Single Room Economy": { ... },
-    "Remote Mining": { ... },
-    "Defense Response": { ... },
-    "Multi-Room Scaling (25 Rooms)": { ... }
+    }
   }
 }
 ```
+
+### Expanded Metrics (New)
+
+Since 2026-01-15, baselines include comprehensive performance tracking:
+
+```json
+{
+  "commit": "abc123",
+  "timestamp": "2026-01-15T00:00:00Z",
+  "branch": "main",
+  "scenarios": { /* ... */ },
+  
+  "cpu": {
+    "avg": 5.655,
+    "p95": 15.447,
+    "max": 18.88,
+    "bucket": 9500
+  },
+  
+  "gcl": {
+    "progressPerTick": 0.012,
+    "level": 15,
+    "progress": 45000
+  },
+  
+  "energy": {
+    "incomePerTick": 150
+  },
+  
+  "rooms": {
+    "W1N1": {
+      "rcl": 8,
+      "cpu": { "avg": 0.08, "p95": 0.12, "max": 0.15 },
+      "creepCount": 25,
+      "energy": { "income": 150, "expenses": 120 }
+    }
+  },
+  
+  "kernel": {
+    "processes": {
+      "spawn": { "cpu": 0.15, "frequency": "high" },
+      "defense": { "cpu": 0.05, "frequency": "high" }
+    },
+    "totalBudget": 1.0,
+    "actualUsage": 0.85
+  },
+  
+  "cache": {
+    "roomFind": { "hitRate": 0.95, "evictions": 12 },
+    "pathCache": { "hitRate": 0.88 },
+    "objectCache": { "hitRate": 0.92, "size": 1500 },
+    "global": { "hitRate": 0.93, "totalHits": 5000, "totalMisses": 350 }
+  },
+  
+  "creeps": {
+    "byRole": {
+      "harvester": 15,
+      "upgrader": 8,
+      "builder": 3,
+      "carrier": 12
+    },
+    "total": 38,
+    "idle": 2
+  },
+  
+  "memory": {
+    "used": 150000,
+    "limit": 2097152,
+    "usagePercent": 7.15
+  }
+}
+```
+
+## Metrics Tracked
+
+### Core Metrics (Always Present)
+- **CPU**: avg, max, p95, p99 percentiles
+- **Bucket**: Average bucket level
+- **Memory**: Usage in bytes (if available)
+
+### Expanded Metrics (When Available)
+- **Per-Room Breakdown**: CPU, energy income/expenses, creep count per room
+- **Kernel Processes**: CPU allocation per process, budget vs actual usage
+- **Cache Performance**: Hit rates for room.find(), pathfinding, object lookups
+- **Creep Distribution**: Population by role, idle count
+- **Memory Usage**: Total used, limit, percentage
 
 ## Test Scenarios
 

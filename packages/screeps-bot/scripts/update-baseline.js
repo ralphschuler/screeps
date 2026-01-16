@@ -82,6 +82,90 @@ function updateBaseline(branch, report) {
     return;
   }
   
+  // Add expanded metrics for comprehensive tracking
+  if (report.expandedMetrics) {
+    // Add CPU metrics summary
+    baseline.cpu = {
+      avg: report.analysis.cpu.avg,
+      p95: report.analysis.cpu.p95,
+      max: report.analysis.cpu.max,
+      bucket: report.analysis.bucket && typeof report.analysis.bucket.avg === 'number'
+        ? report.analysis.bucket.avg
+        : 0
+    };
+    
+    // Add GCL metrics if available
+    if (report.expandedMetrics.gcl) {
+      baseline.gcl = report.expandedMetrics.gcl;
+    }
+    
+    // Add energy metrics
+    baseline.energy = {
+      incomePerTick: 0 // Default, will be populated from room data if available
+    };
+    
+    // Add room-level metrics
+    if (report.expandedMetrics.rooms && Object.keys(report.expandedMetrics.rooms).length > 0) {
+      baseline.rooms = {};
+      let totalEnergyIncome = 0;
+      
+      for (const [roomName, roomData] of Object.entries(report.expandedMetrics.rooms)) {
+        baseline.rooms[roomName] = {
+          rcl: roomData.rcl,
+          cpu: {
+            avg: roomData.cpu.avg || 0,
+            p95: roomData.cpu.p95 || 0,
+            max: roomData.cpu.max || 0
+          },
+          creepCount: roomData.creepCount || 0,
+          energy: {
+            income: roomData.energy.income || 0,
+            expenses: roomData.energy.expenses || 0
+          }
+        };
+        
+        totalEnergyIncome += roomData.energy.income || 0;
+      }
+      
+      baseline.energy.incomePerTick = totalEnergyIncome;
+    }
+    
+    // Add kernel process metrics
+    if (report.expandedMetrics.kernel && Object.keys(report.expandedMetrics.kernel.processes).length > 0) {
+      baseline.kernel = {
+        processes: {},
+        totalBudget: report.expandedMetrics.kernel.totalBudget || 0,
+        actualUsage: report.expandedMetrics.kernel.actualUsage || 0
+      };
+      
+      for (const [processName, processData] of Object.entries(report.expandedMetrics.kernel.processes)) {
+        baseline.kernel.processes[processName] = {
+          cpu: processData.cpu || 0,
+          frequency: processData.frequency || 'unknown'
+        };
+      }
+    }
+    
+    // Add cache metrics
+    if (report.expandedMetrics.cache) {
+      baseline.cache = report.expandedMetrics.cache;
+    }
+    
+    // Add creep role distribution
+    if (report.expandedMetrics.creeps && Object.keys(report.expandedMetrics.creeps.byRole).length > 0) {
+      baseline.creeps = {
+        byRole: report.expandedMetrics.creeps.byRole,
+        total: report.expandedMetrics.creeps.total || 0,
+        idle: report.expandedMetrics.creeps.idle
+      };
+    }
+    
+    // Add memory metrics
+    if (report.expandedMetrics.memory && report.expandedMetrics.memory.used > 0) {
+      baseline.memory = report.expandedMetrics.memory;
+    }
+  }
+  
   // Write updated baseline
   fs.writeFileSync(baselineFile, JSON.stringify(baseline, null, 2));
   console.log(`✅ Updated baseline for branch: ${branch}`);

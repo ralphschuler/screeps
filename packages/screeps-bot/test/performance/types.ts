@@ -114,6 +114,84 @@ export interface PerformanceBaseline {
       p99Cpu: number;
     };
   };
+  /** CPU usage metrics */
+  cpu?: {
+    avg: number;
+    p95: number;
+    max?: number;
+    bucket?: number;
+  };
+  /** GCL progression metrics */
+  gcl?: {
+    progressPerTick: number;
+    level?: number;
+    progress?: number;
+  };
+  /** Energy metrics */
+  energy?: {
+    incomePerTick: number;
+    storage?: number;
+  };
+  /** Per-room CPU breakdown */
+  rooms?: {
+    [roomName: string]: {
+      rcl: number;
+      cpu: {
+        avg: number;
+        p95: number;
+        max: number;
+      };
+      creepCount: number;
+      energy: {
+        income: number;
+        expenses: number;
+      };
+    };
+  };
+  /** Kernel process CPU allocation */
+  kernel?: {
+    processes: {
+      [processName: string]: {
+        cpu: number;
+        frequency: string;
+      };
+    };
+    totalBudget: number;
+    actualUsage: number;
+  };
+  /** Cache performance metrics */
+  cache?: {
+    roomFind?: {
+      hitRate: number;
+      evictions: number;
+    };
+    pathCache?: {
+      hitRate: number;
+    };
+    objectCache?: {
+      hitRate: number;
+      size: number;
+    };
+    global?: {
+      hitRate: number;
+      totalHits: number;
+      totalMisses: number;
+    };
+  };
+  /** Creep role distribution */
+  creeps?: {
+    byRole: {
+      [role: string]: number;
+    };
+    total: number;
+    idle?: number;
+  };
+  /** Memory usage metrics */
+  memory?: {
+    used: number;
+    limit: number;
+    usagePercent: number;
+  };
 }
 
 export interface RegressionResult {
