@@ -29,7 +29,8 @@ The intershard package provides comprehensive multi-shard coordination for Scree
 - **CPU Distribution**: Dynamically allocate CPU limits based on shard needs
 - **Portal Navigation**: Track portals and find optimal inter-shard routes
 - **Resource Transfers**: Move resources between shards via portals
-- **Health Monitoring**: Track CPU, bucket, economy, and war metrics per shard
+- **Health Monitoring**: Track CPU, bucket, economy, war, and commodity metrics per shard
+- **Commodity Index**: Monitor factory production and commodity levels across shards
 
 ### When to Use This Package
 

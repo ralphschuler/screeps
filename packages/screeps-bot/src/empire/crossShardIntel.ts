@@ -13,8 +13,8 @@ import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { ProcessPriority } from "../core/kernel";
 import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "../memory/manager";
-import { deserializeInterShardMemory, serializeInterShardMemory } from "../intershard/schema";
-import type { SharedEnemyIntel } from "../intershard/schema";
+import { deserializeInterShardMemory, serializeInterShardMemory } from "@ralphschuler/screeps-intershard";
+import type { SharedEnemyIntel } from "@ralphschuler/screeps-intershard";
 
 /**
  * Cross-Shard Intel Configuration
