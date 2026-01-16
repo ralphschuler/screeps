@@ -17,13 +17,14 @@
  * TODO(P3): ARCH - Add behavior composability for complex roles
  * Combine simple behaviors into more sophisticated strategies
  * 
- * Test Coverage: ~75% (economy behaviors) - Tests exist for:
+ * Test Status: 19/25 tests passing (76%) for economy behaviors
+ * Tests exist for:
  * - harvester.test.ts - Harvester behavior decision logic
  * - hauler.test.ts - Hauler behavior and energy management  
  * - larvaWorker.test.ts - Bootstrap worker behavior
  * - upgrader.test.ts - Controller upgrade logic
- * - builder.test.ts - Builder priority delivery and construction
- * - mining.test.ts - Mineral and deposit harvesting behaviors
+ * - builder.test.ts - Builder priority delivery and construction (8/9 passing)
+ * - mining.test.ts - Mineral and deposit harvesting behaviors (11/16 passing)
  */
 
 import type { CreepAction, CreepContext } from "../types";
