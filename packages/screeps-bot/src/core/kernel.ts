@@ -49,22 +49,27 @@ import { logger } from "./logger";
  */
 export function buildKernelConfigFromCpu(cpuConfig: CPUConfig) {
   return {
-    maxCpuPerTick: cpuConfig.limit,
-    bucketThresholds: {
-      critical: cpuConfig.bucket.critical,
-      low: cpuConfig.bucket.low,
-      normal: cpuConfig.bucket.normal,
-      high: cpuConfig.bucket.high
+    lowBucketThreshold: cpuConfig.bucketThresholds.lowMode,
+    highBucketThreshold: cpuConfig.bucketThresholds.highMode,
+    criticalBucketThreshold: 1000, // Conservative critical threshold
+    targetCpuUsage: 0.95, // Target 95% of CPU limit
+    reservedCpuFraction: 0.02, // Reserve 2% for finalization
+    enableStats: true,
+    statsLogInterval: 100,
+    frequencyIntervals: {
+      high: 1,
+      medium: 5,
+      low: 20
     },
-    defaultCpuBudgets: {
-      high: cpuConfig.processDefaults.high.cpuBudget,
-      medium: cpuConfig.processDefaults.medium.cpuBudget,
-      low: cpuConfig.processDefaults.low.cpuBudget
+    frequencyMinBucket: {
+      high: 0,
+      medium: 0,
+      low: 0
     },
-    minBucketDefaults: {
-      high: cpuConfig.processDefaults.high.minBucket,
-      medium: cpuConfig.processDefaults.medium.minBucket,
-      low: cpuConfig.processDefaults.low.minBucket
+    frequencyCpuBudgets: {
+      high: 0.3,
+      medium: 0.15,
+      low: 0.1
     },
     enablePriorityDecay: true, // Use framework's priority decay feature
     priorityDecayRate: 0.1,
@@ -93,114 +98,3 @@ export const kernel = new Proxy({} as Kernel, {
     return true;
   }
 });
-
-/**
- * Apply execution jitter to interval
- * Adds ±10% random jitter to prevent all processes running on the same tick
- * This helps avoid thundering herd problems
- */
-function applyJitter(baseInterval: number): { interval: number; jitter: number } {
-  const jitterRange = Math.floor(baseInterval * 0.1);
-  const jitter = Math.floor(Math.random() * (jitterRange * 2 + 1)) - jitterRange;
-  const interval = Math.max(1, baseInterval + jitter);
-  return { interval, jitter };
-}
-
-/**
- * Helper function to create a high frequency process with jitter
- * @deprecated Use processDecorators.ts instead
- */
-export function createHighFrequencyProcess(
-  id: string,
-  name: string,
-  execute: () => void,
-  options: {
-    cpuBudget?: number;
-    minBucket?: number;
-    interval?: number;
-  } = {}
-) {
-  const baseInterval = options.interval ?? 1;
-  const { interval, jitter } = applyJitter(baseInterval);
-  
-  logger.debug(
-    `Kernel: Creating high frequency process "${name}" (${id}) with interval ${interval} (base: ${baseInterval}, jitter: ${jitter > 0 ? '+' : ''}${jitter})`,
-    { subsystem: "Kernel" }
-  );
-  
-  return {
-    id,
-    name,
-    frequency: "high" as ProcessFrequency,
-    cpuBudget: options.cpuBudget ?? 0.3,
-    minBucket: options.minBucket ?? 0,
-    interval,
-    execute
-  };
-}
-
-/**
- * Helper function to create a medium frequency process with jitter
- * @deprecated Use processDecorators.ts instead
- */
-export function createMediumFrequencyProcess(
-  id: string,
-  name: string,
-  execute: () => void,
-  options: {
-    cpuBudget?: number;
-    minBucket?: number;
-    interval?: number;
-  } = {}
-) {
-  const baseInterval = options.interval ?? 5;
-  const { interval, jitter } = applyJitter(baseInterval);
-  
-  logger.debug(
-    `Kernel: Creating medium frequency process "${name}" (${id}) with interval ${interval} (base: ${baseInterval}, jitter: ${jitter > 0 ? '+' : ''}${jitter})`,
-    { subsystem: "Kernel" }
-  );
-  
-  return {
-    id,
-    name,
-    frequency: "medium" as ProcessFrequency,
-    cpuBudget: options.cpuBudget ?? 0.15,
-    minBucket: options.minBucket ?? 0,
-    interval,
-    execute
-  };
-}
-
-/**
- * Helper function to create a low frequency process with jitter
- * @deprecated Use processDecorators.ts instead
- */
-export function createLowFrequencyProcess(
-  id: string,
-  name: string,
-  execute: () => void,
-  options: {
-    cpuBudget?: number;
-    minBucket?: number;
-    interval?: number;
-  } = {}
-) {
-  const baseInterval = options.interval ?? 20;
-  const { interval, jitter } = applyJitter(baseInterval);
-  
-  logger.debug(
-    `Kernel: Creating low frequency process "${name}" (${id}) with interval ${interval} (base: ${baseInterval}, jitter: ${jitter > 0 ? '+' : ''}${jitter})`,
-    { subsystem: "Kernel" }
-  );
-  
-  return {
-    id,
-    name,
-    frequency: "low" as ProcessFrequency,
-    cpuBudget: options.cpuBudget ?? 0.1,
-    minBucket: options.minBucket ?? 0,
-    interval,
-    execute
-  };
-}

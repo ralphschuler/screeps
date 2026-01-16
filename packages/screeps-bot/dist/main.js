@@ -8038,22 +8038,27 @@ Yn = r(r({}, Yn), e);
 
 function qn(e) {
 return {
-maxCpuPerTick: e.limit,
-bucketThresholds: {
-critical: e.bucket.critical,
-low: e.bucket.low,
-normal: e.bucket.normal,
-high: e.bucket.high
+lowBucketThreshold: e.bucketThresholds.lowMode,
+highBucketThreshold: e.bucketThresholds.highMode,
+criticalBucketThreshold: 1e3,
+targetCpuUsage: .95,
+reservedCpuFraction: .02,
+enableStats: !0,
+statsLogInterval: 100,
+frequencyIntervals: {
+high: 1,
+medium: 5,
+low: 20
 },
-defaultCpuBudgets: {
-high: e.processDefaults.high.cpuBudget,
-medium: e.processDefaults.medium.cpuBudget,
-low: e.processDefaults.low.cpuBudget
+frequencyMinBucket: {
+high: 0,
+medium: 0,
+low: 0
 },
-minBucketDefaults: {
-high: e.processDefaults.high.minBucket,
-medium: e.processDefaults.medium.minBucket,
-low: e.processDefaults.low.minBucket
+frequencyCpuBudgets: {
+high: .3,
+medium: .15,
+low: .1
 },
 enablePriorityDecay: !0,
 priorityDecayRate: .1,
