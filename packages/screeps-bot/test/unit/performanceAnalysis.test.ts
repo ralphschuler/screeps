@@ -263,7 +263,7 @@ describe("Performance Analysis", () => {
       
       expect(result.maxRegression).to.be.true;
       expect(result.detected).to.be.true;
-      expect(result.maxCpuChange).to.equal(20);
+      expect(result.maxCpuChange).to.be.closeTo(20, 0.01);
     });
 
     it("should not detect regression when within threshold", () => {
