@@ -10,8 +10,8 @@
 import { Command } from "./commandRegistry";
 import { shardManager } from "../intershard/shardManager";
 import { resourceTransferCoordinator } from "../intershard/resourceTransferCoordinator";
-import type { ShardRole } from "../intershard/schema";
-import { INTERSHARD_MEMORY_LIMIT } from "../intershard/schema";
+import type { ShardRole } from "@ralphschuler/screeps-intershard";
+import { INTERSHARD_MEMORY_LIMIT } from "@ralphschuler/screeps-intershard";
 
 /**
  * Shard management commands
