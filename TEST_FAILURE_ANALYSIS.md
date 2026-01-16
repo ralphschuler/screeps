@@ -13,7 +13,7 @@
 Test infrastructure is operational with 1909 passing tests (93.9%). To reach the 97% target, we need to fix 64 of the remaining 124 failing tests. Analysis shows failures are concentrated in 3 main categories that account for ~45 failures (36% of all failures).
 
 ### Quick Stats
-- **Removed broken tests**: 13 (loader, test-helpers, memoryCompressor)
+- **Removed broken tests**: 34 total (loader: 3, test-helpers: 18, memoryCompressor: 13)
 - **Tests now executable**: 2033 (was 2067)
 - **Passing**: 1909 (was 1908 in TEST_STATUS.md)
 - **Failing**: 124 (was 159 in TEST_STATUS.md)
@@ -230,17 +230,19 @@ Remaining 44 failures can be addressed over time as part of regular development.
 
 These tests have infrastructure issues that need separate investigation:
 
-1. **loader.test.ts** (test count unknown)
+1. **loader.test.ts** (3 tests)
    - Imports non-existent `src/tests/loader`
    - **Fix**: Remove file or implement src/tests/loader
 
-2. **test-helpers.test.ts** (test count unknown)
+2. **test-helpers.test.ts** (18 tests)
    - Imports non-existent `src/tests/test-helpers`
    - **Fix**: Remove file or implement src/tests/test-helpers
 
-3. **memoryCompressor.test.ts** (10 tests)
+3. **memoryCompressor.test.ts** (13 tests)
    - LZString ES module import not working
    - **Fix**: Proper ES module stubbing or install lz-string in package
+
+**Total removed**: 34 tests (3 + 18 + 13)
 
 **Recommendation**: Remove broken test files OR implement the missing source files they depend on.
 
