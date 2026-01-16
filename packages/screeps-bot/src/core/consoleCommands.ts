@@ -31,7 +31,7 @@ import { StatisticsCommands } from "./commands/StatisticsCommands";
 import { KernelCommands } from "./commands/KernelCommands";
 import { getConfig, updateConfig } from "../config";
 import { configureLogger } from "./logger";
-import { visualizationManager } from "../visuals/visualizationManager";
+import { visualizationManager } from "@ralphschuler/screeps-visuals";
 
 /**
  * Command classes - imported from commands/
