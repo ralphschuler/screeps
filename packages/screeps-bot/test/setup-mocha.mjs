@@ -475,6 +475,12 @@ global.RESOURCE_SPIRIT = 'spirit';
 global.RESOURCE_EMANATION = 'emanation';
 global.RESOURCE_ESSENCE = 'essence';
 
+// Deposit resources
+global.RESOURCE_MIST = 'mist';
+global.RESOURCE_BIOMASS = 'biomass';
+global.RESOURCE_METAL = 'metal';
+global.RESOURCE_SILICON = 'silicon';
+
 // Mock body part constants
 global.MOVE = 'move';
 global.WORK = 'work';
