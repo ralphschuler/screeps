@@ -178,13 +178,22 @@ Tests run using mocha with `setup-mocha.cjs` which provides stub implementations
 
 ## Framework Package Dependencies
 
-All framework packages (`packages/@ralphschuler/*`) share the same `devDependencies` configuration. This is **automatically synchronized** to ensure consistency across all packages.
+All framework packages with names starting with `@ralphschuler/screeps-*` share the same `devDependencies` configuration. This is **automatically synchronized** to ensure consistency across those packages.
+
+**Included framework packages:**
+- All packages under `packages/@ralphschuler/*` (e.g., `screeps-core`, `screeps-cache`, `screeps-kernel`)
+- Framework packages under `packages/screeps-*/` with `@ralphschuler/screeps-*` names (e.g., `screeps-spawn`, `screeps-chemistry`, `screeps-defense`, `screeps-economy`, `screeps-utils`)
+
+**Excluded packages** (managed separately):
+- MCP packages (`@ralphschuler/screeps-mcp`, `@ralphschuler/screeps-docs-mcp`, etc.) - use different testing framework
+- Server packages (`@ralphschuler/screeps-server`, `@ralphschuler/screeps-tasks`, `@ralphschuler/screeps-posis`) - have different dependency requirements
 
 ### How It Works
 
 - **Single source of truth**: `scripts/shared-dependencies.json` defines all shared devDependencies
 - **Automated sync**: Run `npm run sync:deps` to update all framework packages
 - **CI enforcement**: PR checks fail if packages have inconsistent dependencies
+- **Scope**: Applies to all `@ralphschuler/screeps-*` packages except MCP and server packages
 
 ### Updating Dependencies
 
@@ -208,9 +217,17 @@ All framework packages (`packages/@ralphschuler/*`) share the same `devDependenc
 
 3. Commit all changes:
    ```bash
-   git add scripts/shared-dependencies.json packages/@ralphschuler/*/package.json
+   git add scripts/shared-dependencies.json 'packages/@ralphschuler/*/package.json' 'packages/screeps-*/package.json'
    git commit -m "chore: Update TypeScript to 5.5.0"
    ```
+
+### Removing a Shared Dependency
+
+If you remove a dependency from `scripts/shared-dependencies.json`, it will persist in individual `package.json` files. To fully remove it:
+
+1. Remove it from `scripts/shared-dependencies.json`
+2. Manually delete it from each affected `package.json` file
+3. Or modify the sync script to track and remove explicitly removed dependencies
 
 ### Checking for Drift
 

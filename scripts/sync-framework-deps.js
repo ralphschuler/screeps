@@ -51,32 +51,80 @@ if (!sharedDepsConfig.framework || !sharedDepsConfig.framework.devDependencies) 
 
 const sharedDevDeps = sharedDepsConfig.framework.devDependencies;
 
-// Find all framework packages
-const packagesDir = path.join(__dirname, '..', 'packages', '@ralphschuler');
+// Find all framework packages: any package.json under packages/ whose name starts with @ralphschuler/screeps-
+// Excludes MCP packages, server, tasks, and posis which have different dependency requirements
+const packagesDir = path.join(__dirname, '..', 'packages');
 
 if (!fs.existsSync(packagesDir)) {
-  exitWithError(`Framework packages directory not found: ${packagesDir}\nExpected directory structure: packages/@ralphschuler/`);
+  exitWithError(`Packages directory not found: ${packagesDir}\nExpected directory structure: packages/ containing @ralphschuler/screeps-* packages.`);
+}
+
+/**
+ * Recursively find all package.json files under a root directory whose
+ * package name starts with @ralphschuler/screeps- but exclude non-framework packages.
+ */
+function findFrameworkPackageJsons(rootDir) {
+  const results = [];
+  const excludedPackages = [
+    '@ralphschuler/screeps-mcp',
+    '@ralphschuler/screeps-docs-mcp',
+    '@ralphschuler/screeps-wiki-mcp',
+    '@ralphschuler/screeps-typescript-mcp',
+    '@ralphschuler/screeps-server',
+    '@ralphschuler/screeps-tasks',
+    '@ralphschuler/screeps-posis'
+  ];
+
+  function walk(dir) {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      // Silently ignore directories we cannot read
+      return;
+    }
+
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+
+      // Skip node_modules directories
+      if (entry.isDirectory() && entry.name === 'node_modules') {
+        continue;
+      }
+
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else if (entry.isFile() && entry.name === 'package.json') {
+        try {
+          const pkgContent = fs.readFileSync(fullPath, 'utf8');
+          const pkgJson = JSON.parse(pkgContent);
+          if (
+            typeof pkgJson.name === 'string' &&
+            pkgJson.name.startsWith('@ralphschuler/screeps-') &&
+            !excludedPackages.includes(pkgJson.name)
+          ) {
+            results.push(fullPath);
+          }
+        } catch {
+          // Silently ignore unreadable or invalid package.json files
+        }
+      }
+    }
+  }
+
+  walk(rootDir);
+  return results;
 }
 
 let packageDirs;
 try {
-  packageDirs = fs.readdirSync(packagesDir)
-    .filter(dir => {
-      try {
-        return fs.statSync(path.join(packagesDir, dir)).isDirectory();
-      } catch {
-        // Silently ignore stat failures (e.g., broken symlinks, permission issues)
-        return false;
-      }
-    })
-    .map(dir => path.join(packagesDir, dir, 'package.json'))
-    .filter(pkgPath => fs.existsSync(pkgPath));
+  packageDirs = findFrameworkPackageJsons(packagesDir);
 } catch (error) {
-  exitWithError(`Failed to read framework packages directory: ${error.message}`);
+  exitWithError(`Failed to scan packages directory: ${error.message}`);
 }
 
 if (packageDirs.length === 0) {
-  exitWithError(`No framework packages found in: ${packagesDir}\nExpected at least one package.json file.`);
+  exitWithError(`No framework packages found in: ${packagesDir}\nExpected at least one package with name starting with @ralphschuler/screeps-.`);
 }
 
 // Check if running in check-only mode
@@ -118,6 +166,7 @@ packageDirs.forEach(pkgPath => {
   // Check for inconsistencies
   const inconsistencies = [];
   
+  // Check for missing or outdated shared dependencies
   for (const [depName, depVersion] of Object.entries(sharedDevDeps)) {
     const currentVersion = pkg.devDependencies[depName];
     
@@ -125,6 +174,16 @@ packageDirs.forEach(pkgPath => {
       inconsistencies.push(`  + ${depName}: ${depVersion} (missing)`);
     } else if (currentVersion !== depVersion) {
       inconsistencies.push(`  ~ ${depName}: ${currentVersion} → ${depVersion} (outdated)`);
+    }
+  }
+  
+  // Check for dependencies that are in package but not in shared config
+  // These might be package-specific dependencies or removed shared dependencies
+  const sharedDepNames = Object.keys(sharedDevDeps);
+  for (const depName of Object.keys(pkg.devDependencies)) {
+    if (!sharedDepNames.includes(depName)) {
+      // This is either a package-specific dependency (keep it) or a removed shared dependency
+      // We don't flag this as an inconsistency since we preserve package-specific deps
     }
   }
   
@@ -136,7 +195,11 @@ packageDirs.forEach(pkgPath => {
     console.log('');
     
     if (!checkOnly) {
-      // Merge shared devDependencies (preserving other deps)
+      // Merge shared devDependencies (preserving package-specific deps)
+      // Note: If a dependency is removed from shared-dependencies.json,
+      // it will persist in package.json files as a package-specific dependency.
+      // To fully remove a shared dependency, manually delete it from each package.json
+      // or modify this script to track and remove explicitly removed dependencies.
       pkg.devDependencies = {
         ...pkg.devDependencies,
         ...sharedDevDeps

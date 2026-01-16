@@ -309,6 +309,9 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
       - name: Check dependency synchronization
         run: npm run sync:deps:check
 
@@ -323,7 +326,7 @@ jobs:
           echo "**To fix locally:**" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
           echo "npm run sync:deps" >> $GITHUB_STEP_SUMMARY
-          echo "git add packages/@ralphschuler/*/package.json" >> $GITHUB_STEP_SUMMARY
+          echo "git add scripts/shared-dependencies.json 'packages/@ralphschuler/*/package.json' 'packages/screeps-*/package.json'" >> $GITHUB_STEP_SUMMARY
           echo "git commit -m 'chore: Sync framework dependencies'" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
