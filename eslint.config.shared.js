@@ -101,9 +101,49 @@ export default [
         STRUCTURE_FACTORY: "readonly",
         STRUCTURE_INVADER_CORE: "readonly",
         
+        // Structure classes
+        StructureSpawn: "readonly",
+        StructureExtension: "readonly",
+        StructureRoad: "readonly",
+        StructureWall: "readonly",
+        StructureRampart: "readonly",
+        StructureKeeperLair: "readonly",
+        StructurePortal: "readonly",
+        StructureController: "readonly",
+        StructureLink: "readonly",
+        StructureStorage: "readonly",
+        StructureTower: "readonly",
+        StructureObserver: "readonly",
+        StructurePowerBank: "readonly",
+        StructurePowerSpawn: "readonly",
+        StructureExtractor: "readonly",
+        StructureLab: "readonly",
+        StructureTerminal: "readonly",
+        StructureContainer: "readonly",
+        StructureNuker: "readonly",
+        StructureFactory: "readonly",
+        StructureInvaderCore: "readonly",
+        
         // Resource constants
         RESOURCE_ENERGY: "readonly",
         RESOURCE_POWER: "readonly",
+        RESOURCE_HYDROGEN: "readonly",
+        RESOURCE_OXYGEN: "readonly",
+        RESOURCE_UTRIUM: "readonly",
+        RESOURCE_LEMERGIUM: "readonly",
+        RESOURCE_KEANIUM: "readonly",
+        RESOURCE_ZYNTHIUM: "readonly",
+        RESOURCE_CATALYST: "readonly",
+        RESOURCE_GHODIUM: "readonly",
+        RESOURCE_UTRIUM_BAR: "readonly",
+        RESOURCE_LEMERGIUM_BAR: "readonly",
+        RESOURCE_KEANIUM_BAR: "readonly",
+        RESOURCE_ZYNTHIUM_BAR: "readonly",
+        RESOURCE_GHODIUM_MELT: "readonly",
+        RESOURCE_OXIDANT: "readonly",
+        RESOURCE_REDUCTANT: "readonly",
+        RESOURCE_PURIFIER: "readonly",
+        RESOURCE_BATTERY: "readonly",
         
         // Body part constants
         MOVE: "readonly",
@@ -144,6 +184,8 @@ export default [
         FindConstant: "readonly",
         LookConstant: "readonly",
         ScreepsReturnCode: "readonly",
+        CommodityConstant: "readonly",
+        MineralConstant: "readonly",
         
         // Test globals
         describe: "readonly",
@@ -174,7 +216,7 @@ export default [
       
       // General rules - relaxed for gradual adoption
       "no-console": "off", // Allow console for framework packages
-      "no-undef": "error",
+      "no-undef": "off", // Disable for Screeps - TypeScript handles this better
       "no-unused-vars": "off", // Use @typescript-eslint/no-unused-vars instead
       "no-var": "error",
       "prefer-const": "warn",
