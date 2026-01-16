@@ -29,8 +29,8 @@ import {
   invalidateRoomCache,
   invalidateFindType,
   invalidateStructureCache
-} from "../cache/domains/RoomFindCache";
-import { getCachedObjectById } from "../cache/domains/ObjectCache";
+} from "@ralphschuler/screeps-cache";
+import { getCachedObjectById } from "@ralphschuler/screeps-cache";
 
 // =============================================================================
 // Types

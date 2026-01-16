@@ -9,8 +9,8 @@ import { Command } from "../commandRegistry";
 import { memorySegmentStats, unifiedStats } from "@ralphschuler/screeps-stats";
 import { getConfig, updateConfig } from "../../config";
 import { configureLogger } from "../logger";
-import { getCacheStatistics, resetCacheStats } from "../../cache/domains/ObjectCache";
-import { getRoomFindCacheStats, clearRoomFindCache } from "../../cache/domains/RoomFindCache";
+import { getCacheStatistics, resetCacheStats } from "@ralphschuler/screeps-cache";
+import { getRoomFindCacheStats, clearRoomFindCache } from "@ralphschuler/screeps-cache";
 import { memoryManager } from "../../memory/manager";
 
 /**

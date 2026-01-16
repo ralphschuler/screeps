@@ -13,7 +13,7 @@
 
 import type { SwarmState } from "../../memory/schemas";
 import { createLogger } from "@ralphschuler/screeps-core";
-import { globalCache } from "../../cache";
+import { globalCache } from "@ralphschuler/screeps-cache";
 
 const logger = createLogger("CollectionPoint");
 
