@@ -12,7 +12,6 @@ const { execSync } = require('child_process');
 // Configuration
 const MAX_FILE_LINES = 300;
 const MAX_FUNCTION_COMPLEXITY_WARNING = 15;
-const MAX_FUNCTION_COMPLEXITY_ERROR = 25;
 
 async function analyzeComplexity() {
   console.log('🔍 Analyzing code complexity...\n');
@@ -79,12 +78,12 @@ async function analyzeComplexity() {
 
   // Generate report
   console.log('📊 Complexity Analysis Results\n');
-  console.log('=' .repeat(80));
+  console.log('='.repeat(80));
   console.log(`Total Files Analyzed: ${results.totalFiles}`);
   console.log(`Total Lines of Code: ${results.totalLines.toLocaleString()}`);
   console.log(`Average Lines per File: ${results.averageLines}`);
   console.log(`Files over ${MAX_FILE_LINES} lines: ${results.filesOverLimit} (${Math.round(results.filesOverLimit / results.totalFiles * 100)}%)`);
-  console.log('=' .repeat(80));
+  console.log('='.repeat(80));
   console.log('');
 
   if (results.largeFiles.length > 0) {
