@@ -666,3 +666,107 @@ cacheCoherence.registerCache(
 
 See `packages/screeps-bot/src/cache/CACHE_MIGRATION.md` for detailed migration patterns and best practices.
 
+## Code Quality Standards
+
+### Dead Code Prevention
+
+This repository follows a **"required code only"** philosophy to maintain a clean, maintainable codebase:
+
+#### What to Remove Immediately
+
+- ❌ **Unused imports** - Remove imports that are never used
+- ❌ **Unused variables** - Remove variables that are never read
+- ❌ **Commented-out code** - Use git history instead of keeping old code as comments
+- ❌ **Unreachable code** - Remove code after return/throw statements
+- ❌ **Dead feature flags** - If a feature is permanently disabled, remove it entirely
+
+#### What NOT to Remove
+
+- ✅ **Runtime feature flags** - Features that can be toggled at runtime (e.g., `tooangel.enabled`)
+- ✅ **Framework exports** - Types and functions exported from `@ralphschuler/*` packages for reusability
+- ✅ **Test utilities** - Helper functions used only in tests
+- ✅ **Type definitions** - TypeScript types used for type checking
+
+#### ESLint Enforcement
+
+The codebase uses strict ESLint rules to prevent dead code:
+
+```javascript
+{
+  "@typescript-eslint/no-unused-vars": ["error", {
+    "argsIgnorePattern": "^_",       // Allow _unused for intentionally unused params
+    "varsIgnorePattern": "^_",       // Allow _temp for intentionally unused vars
+    "caughtErrorsIgnorePattern": "^_" // Allow catch (_error) for ignored errors
+  }],
+  "no-unreachable": "error",         // Prevent code after return/throw
+  "no-constant-condition": "error",  // Prevent if(false) and similar patterns
+  "prefer-const": "error",           // Require const for non-reassigned variables
+  "import/no-duplicates": "error"    // Prevent duplicate imports
+}
+```
+
+#### Prefixing Intentionally Unused Variables
+
+When you need to accept a parameter but don't use it (e.g., to match an interface), prefix it with underscore:
+
+```typescript
+// ✅ Good: Unused parameter prefixed with _
+function processCreep(_creep: Creep, room: Room) {
+  // Only using room, not creep
+  return room.energyAvailable;
+}
+
+// ❌ Bad: Unused parameter not prefixed (ESLint error)
+function processCreep(creep: Creep, room: Room) {
+  return room.energyAvailable; // Error: 'creep' is defined but never used
+}
+```
+
+#### Pre-Commit Checks
+
+Before committing code:
+
+1. **Run linter**: `npm run lint` (must pass with no errors)
+2. **Build code**: `npm run build` (must compile successfully)
+3. **Run tests**: `npm test` (all tests must pass)
+
+#### Regular Maintenance
+
+- **Quarterly audit**: Run `npx ts-prune` to find unused exports
+- **Review TODO comments**: Evaluate if TODOs should be implemented or removed
+- **Update dependencies**: Remove unused npm packages with `npx depcheck`
+
+#### Tools for Dead Code Detection
+
+- **ts-prune**: Finds unused TypeScript exports
+  ```bash
+  npx ts-prune --project tsconfig.json
+  ```
+
+- **ESLint**: Detects unused variables and imports
+  ```bash
+  npm run lint
+  ```
+
+- **depcheck**: Finds unused npm dependencies
+  ```bash
+  npx depcheck
+  ```
+
+#### Why Required Code Only?
+
+1. **Performance**: Unused code increases bundle size and memory usage
+2. **Maintainability**: Less code means easier understanding and modification
+3. **Security**: Fewer lines of code means smaller attack surface
+4. **Build speed**: Faster compilation with less code to process
+
+## Additional Resources
+
+- [Framework Maturity Roadmap](FRAMEWORK_MATURITY_ROADMAP.md) - Framework adoption strategy
+- [ROADMAP.md](ROADMAP.md) - Bot architecture and design principles
+- [Workflows Documentation](WORKFLOWS.md) - CI/CD pipeline details
+- [Quality Gates](QUALITY_GATES.md) - Code quality requirements
+- [Quality Metrics](QUALITY_METRICS.md) - Measurement and tracking
+- [Testing Guide](TEST_INFRASTRUCTURE_SUMMARY.md) - Test infrastructure overview
+- [Package Publishing](PUBLISHING.md) - Framework package publishing guide
+

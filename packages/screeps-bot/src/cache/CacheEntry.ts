@@ -35,7 +35,7 @@ export interface CacheOptions<T = any> {
   /** Maximum cache size before eviction */
   maxSize?: number;
   /** Callback when entry is evicted */
-  onEvict?: (key: string, value: T) => void;
+  onEvict?: (_key: string, _value: T) => void;
   /** Compute function to generate value if cache miss */
   compute?: () => T;
 }
