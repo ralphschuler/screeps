@@ -228,6 +228,18 @@ export function ProcessClass(): <T extends new (...args: any[]) => any>(construc
 }
 
 /**
+ * Apply execution jitter to interval
+ * Adds ±10% random jitter to prevent all processes running on the same tick
+ * This helps avoid thundering herd problems
+ */
+function applyJitter(baseInterval: number): { interval: number; jitter: number } {
+  const jitterRange = Math.floor(baseInterval * 0.1);
+  const jitter = Math.floor(Math.random() * (jitterRange * 2 + 1)) - jitterRange;
+  const interval = Math.max(1, baseInterval + jitter);
+  return { interval, jitter };
+}
+
+/**
  * Register all decorated processes from an instance
  * Call this after creating an instance of a class with @Process decorated methods
  *
@@ -253,6 +265,10 @@ export function registerDecoratedProcesses(instance: object): void {
       if (typeof method === "function") {
         const boundMethod = (method as (...args: unknown[]) => unknown).bind(instance);
         
+        // Apply jitter to interval to prevent all processes running on the same tick
+        const baseInterval = metadata.options.interval ?? 5;
+        const { interval, jitter } = applyJitter(baseInterval);
+        
         kernel.registerProcess({
           id: metadata.options.id,
           name: metadata.options.name,
@@ -260,12 +276,12 @@ export function registerDecoratedProcesses(instance: object): void {
           frequency: metadata.options.frequency ?? "medium",
           minBucket: metadata.options.minBucket,
           cpuBudget: metadata.options.cpuBudget,
-          interval: metadata.options.interval,
+          interval,
           execute: boundMethod as () => void
         });
 
         logger.debug(
-          `Registered decorated process "${metadata.options.name}" (${metadata.options.id})`,
+          `Registered decorated process "${metadata.options.name}" (${metadata.options.id}) with interval ${interval} (base: ${baseInterval}, jitter: ${jitter > 0 ? '+' : ''}${jitter})`,
           { subsystem: "ProcessDecorators" }
         );
       }
