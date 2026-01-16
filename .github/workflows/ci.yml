@@ -291,6 +291,48 @@ jobs:
             tsconfig*.json
 
   # ============================================================================
+  # Framework Dependency Sync Check
+  # ============================================================================
+  check-framework-deps:
+    name: Check Framework Package Dependencies
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false || github.event_name != 'pull_request'
+    env:
+      CI: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Check dependency synchronization
+        run: npm run sync:deps:check
+
+      - name: Report inconsistencies
+        if: failure()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >> $GITHUB_STEP_SUMMARY
+          echo "## ❌ Framework Dependency Drift Detected" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Framework packages have inconsistent devDependencies." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**To fix locally:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "npm run sync:deps" >> $GITHUB_STEP_SUMMARY
+          echo "git add packages/@ralphschuler/*/package.json" >> $GITHUB_STEP_SUMMARY
+          echo "git commit -m 'chore: Sync framework dependencies'" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**To update shared dependencies:**" >> $GITHUB_STEP_SUMMARY
+          echo "Edit \`scripts/shared-dependencies.json\` and run \`npm run sync:deps\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
   # Exporter Tests
   # ============================================================================
   test-exporters:
