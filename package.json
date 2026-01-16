@@ -16,6 +16,8 @@
   "scripts": {
     "postinstall": "git submodule update --init --recursive || echo 'Note: Git submodules not initialized. This is normal in CI environments.'",
     "check-versions": "node scripts/check-versions.js",
+    "sync:deps": "node scripts/sync-framework-deps.js",
+    "sync:deps:check": "node scripts/sync-framework-deps.js --check",
     "build": "npm run build:core && npm run build:cache && npm run build:kernel && npm run build:stats && npm run build:console && npm run build:empire && npm run build:layouts && npm run build:intershard && npm run build:visuals && npm run build:spawn && npm run build:chemistry && npm run build:standards && npm run build:utils && npm run build:pathfinding && npm run build:remote-mining && npm run build:defense && npm run build:roles && npm run build:economy && npm run build -w screeps-typescript-starter",
     "build:exporters": "npm run build -w screeps-graphite-exporter && npm run build -w screeps-loki-exporter",
     "build:mcp": "npm run build -w @ralphschuler/screeps-docs-mcp -w @ralphschuler/screeps-mcp -w @ralphschuler/screeps-wiki-mcp -w @ralphschuler/screeps-typescript-mcp",

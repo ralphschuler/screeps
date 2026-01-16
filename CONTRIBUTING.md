@@ -176,6 +176,90 @@ Tests run using mocha with `setup-mocha.cjs` which provides stub implementations
 1. **If your package doesn't import from other packages:** Use Pattern 1
 2. **If your package imports from `@bot/*` or other packages:** Use Pattern 2
 
+## Framework Package Dependencies
+
+All framework packages with names starting with `@ralphschuler/screeps-*` share the same `devDependencies` configuration. This is **automatically synchronized** to ensure consistency across those packages.
+
+**Included framework packages:**
+- All packages under `packages/@ralphschuler/*` (e.g., `screeps-core`, `screeps-cache`, `screeps-kernel`)
+- Framework packages under `packages/screeps-*/` with `@ralphschuler/screeps-*` names (e.g., `screeps-spawn`, `screeps-chemistry`, `screeps-defense`, `screeps-economy`, `screeps-utils`)
+
+**Excluded packages** (managed separately):
+- MCP packages (`@ralphschuler/screeps-mcp`, `@ralphschuler/screeps-docs-mcp`, etc.) - use different testing framework
+- Server packages (`@ralphschuler/screeps-server`, `@ralphschuler/screeps-tasks`, `@ralphschuler/screeps-posis`) - have different dependency requirements
+
+### How It Works
+
+- **Single source of truth**: `scripts/shared-dependencies.json` defines all shared devDependencies
+- **Automated sync**: Run `npm run sync:deps` to update all framework packages
+- **CI enforcement**: PR checks fail if packages have inconsistent dependencies
+- **Scope**: Applies to all `@ralphschuler/screeps-*` packages except MCP and server packages
+
+### Updating Dependencies
+
+**To update a dependency version** (e.g., TypeScript, @types/node):
+
+1. Edit `scripts/shared-dependencies.json`:
+   ```json
+   {
+     "framework": {
+       "devDependencies": {
+         "typescript": "^5.5.0"  // Update version here
+       }
+     }
+   }
+   ```
+
+2. Run the sync script:
+   ```bash
+   npm run sync:deps
+   ```
+
+3. Commit all changes:
+   ```bash
+   git add scripts/shared-dependencies.json 'packages/@ralphschuler/*/package.json' 'packages/screeps-*/package.json'
+   git commit -m "chore: Update TypeScript to 5.5.0"
+   ```
+
+### Removing a Shared Dependency
+
+If you remove a dependency from `scripts/shared-dependencies.json`, it will persist in individual `package.json` files. To fully remove it:
+
+1. Remove it from `scripts/shared-dependencies.json`
+2. Manually delete it from each affected `package.json` file
+3. Or modify the sync script to track and remove explicitly removed dependencies
+
+### Checking for Drift
+
+To verify all packages are synchronized:
+
+```bash
+npm run sync:deps:check
+```
+
+This is automatically run in CI and will fail the build if packages have drifted.
+
+### Adding New Framework Packages
+
+When creating a new `@ralphschuler/screeps-*` package:
+
+1. Create the package directory and files
+2. Add minimal `package.json` (without devDependencies)
+3. Run `npm run sync:deps` to add shared devDependencies
+4. The package will automatically have consistent dependencies
+
+### Why Automated Synchronization?
+
+**Before** (manual):
+- 14 files to edit for each dependency update
+- High risk of inconsistencies
+- Manual verification required
+
+**After** (automated):
+- 1 file edit → 14 packages updated
+- Zero drift (enforced by CI)
+- Self-healing on `npm install`
+
 ## Module Resolution
 
 Both patterns work correctly with Node.js module resolution:
