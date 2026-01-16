@@ -89,7 +89,9 @@ function updateBaseline(branch, report) {
       avg: report.analysis.cpu.avg,
       p95: report.analysis.cpu.p95,
       max: report.analysis.cpu.max,
-      bucket: report.analysis.bucket.avg
+      bucket: report.analysis.bucket && typeof report.analysis.bucket.avg === 'number'
+        ? report.analysis.bucket.avg
+        : 0
     };
     
     // Add GCL metrics if available

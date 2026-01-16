@@ -240,14 +240,14 @@ function parseExpandedMetrics(consoleLog) {
         }
       }
     } catch (error) {
-      // Skip invalid JSON lines - this is expected for non-JSON console output
+      // Expected: Non-JSON lines (plain text logs) are skipped during parsing
+      // Only lines matching the JSON stats format are processed
       // Uncomment for debugging: console.debug('Skipping non-JSON line:', line.substring(0, 50));
-      continue;
     }
   }
   
   // Calculate averages for room CPU
-  for (const [roomName, roomData] of Object.entries(expandedMetrics.rooms)) {
+  for (const roomData of Object.values(expandedMetrics.rooms)) {
     if (roomData.cpu.samples.length > 0) {
       const samples = roomData.cpu.samples;
       roomData.cpu.avg = samples.reduce((a, b) => a + b, 0) / samples.length;
@@ -261,7 +261,7 @@ function parseExpandedMetrics(consoleLog) {
   }
   
   // Calculate averages for kernel processes
-  for (const [processName, processData] of Object.entries(expandedMetrics.kernel.processes)) {
+  for (const processData of Object.values(expandedMetrics.kernel.processes)) {
     if (processData.samples.length > 0) {
       processData.cpu = processData.samples.reduce((a, b) => a + b, 0) / processData.samples.length;
       delete processData.samples; // Remove temporary data

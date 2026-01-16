@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-01-16T00:12:28.423Z",
+  "commit": "83167ec7a0ec522be96d771f7cb601cacd7306b8",
+  "branch": "copilot/implement-performance-baseline-tracking",
+  "passed": false,
+  "error": "Console logs not found - test may have failed",
+  "summary": {
+    "avgCpu": 0,
+    "maxCpu": 0,
+    "p95Cpu": 0,
+    "sampleCount": 0
+  }
+}

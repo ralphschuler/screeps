@@ -32,16 +32,14 @@ jobs:
       contents: write
       actions: read
     
-    strategy:
-      matrix:
-        branch: 
-          - ${{ github.event.inputs.branch || 'main' }}
+    env:
+      TARGET_BRANCH: ${{ github.event.inputs.branch || 'main' }}
     
     steps:
-      - name: Checkout ${{ matrix.branch }} branch
+      - name: Checkout ${{ env.TARGET_BRANCH }} branch
         uses: actions/checkout@v6
         with:
-          ref: ${{ matrix.branch }}
+          ref: ${{ env.TARGET_BRANCH }}
           submodules: recursive
           # Need full history to archive properly
           fetch-depth: 0
@@ -87,7 +85,7 @@ jobs:
         working-directory: packages/screeps-bot
         env:
           GITHUB_SHA: ${{ github.sha }}
-          GITHUB_REF_NAME: ${{ matrix.branch }}
+          GITHUB_REF_NAME: ${{ env.TARGET_BRANCH }}
           GITHUB_EVENT_NAME: 'workflow_dispatch'
         run: node scripts/analyze-performance.js
 
@@ -119,30 +117,30 @@ jobs:
           mkdir -p history
           
           # Archive current baseline if it exists
-          if [ -f "${{ matrix.branch }}.json" ]; then
+          if [ -f "${{ env.TARGET_BRANCH }}.json" ]; then
             DATE=$(date +%Y-%m-%d)
             COMMIT=$(git rev-parse --short HEAD)
-            cp "${{ matrix.branch }}.json" "history/${DATE}_${{ matrix.branch }}_${COMMIT}.json"
-            echo "📊 Archived current baseline as history/${DATE}_${{ matrix.branch }}_${COMMIT}.json"
+            cp "${{ env.TARGET_BRANCH }}.json" "history/${DATE}_${{ env.TARGET_BRANCH }}_${COMMIT}.json"
+            echo "📊 Archived current baseline as history/${DATE}_${{ env.TARGET_BRANCH }}_${COMMIT}.json"
           fi
 
       - name: Update baseline
         if: steps.check_baseline.outputs.should_update == 'true'
         working-directory: packages/screeps-bot
         env:
-          GITHUB_REF_NAME: ${{ matrix.branch }}
+          GITHUB_REF_NAME: ${{ env.TARGET_BRANCH }}
         run: node scripts/update-baseline.js
 
       - name: Upload performance artifacts
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: performance-baseline-update-${{ matrix.branch }}
+          name: performance-baseline-update-${{ env.TARGET_BRANCH }}
           path: |
             packages/screeps-bot/performance-report.json
             packages/screeps-bot/performance-report.md
             packages/screeps-bot/logs/
-            performance-baselines/${{ matrix.branch }}.json
+            performance-baselines/${{ env.TARGET_BRANCH }}.json
             performance-baselines/history/
           retention-days: 90
 
@@ -150,7 +148,7 @@ jobs:
         if: steps.check_baseline.outputs.should_update == 'true'
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          commit_message: 'chore(performance): weekly baseline update for ${{ matrix.branch }}'
+          commit_message: 'chore(performance): weekly baseline update for ${{ env.TARGET_BRANCH }}'
           file_pattern: 'performance-baselines/*.json performance-baselines/history/*.json'
           commit_user_name: 'github-actions[bot]'
           commit_user_email: 'github-actions[bot]@users.noreply.github.com'
@@ -161,7 +159,7 @@ jobs:
         run: |
           echo "## Performance Baseline Update" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Branch:** ${{ matrix.branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ env.TARGET_BRANCH }}" >> $GITHUB_STEP_SUMMARY
           echo "**Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

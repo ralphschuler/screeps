@@ -740,23 +740,25 @@ Track memory footprint and usage:
 
 ### Viewing Expanded Metrics
 
-Expanded metrics are automatically collected when the bot logs stats in JSON format:
+Expanded metrics are automatically collected when the bot logs stats in JSON format. The bot already implements this via the `unifiedStats` system in `packages/@ralphschuler/screeps-stats`.
+
+**Example stats output format** (for reference):
 
 ```javascript
-// In bot code (already implemented via unifiedStats)
-console.log(JSON.stringify({
-  type: "stats",
-  tick: Game.time,
-  data: {
-    cpu: { used: Game.cpu.getUsed() },
-    rooms: { /* room data */ },
-    processes: { /* kernel data */ },
-    cache: { /* cache stats */ }
+// This format is already produced by unifiedStats - no manual implementation needed
+{
+  "type": "stats",
+  "tick": 12345,
+  "data": {
+    "cpu": { "used": 5.5, "bucket": 9800 },
+    "rooms": { /* room metrics */ },
+    "processes": { /* kernel process metrics */ },
+    "cache": { /* cache performance metrics */ }
   }
-}));
+}
 ```
 
-The analyze-performance.js script automatically parses these logs and includes the metrics in baselines.
+The `analyze-performance.js` script automatically parses these logs and includes the metrics in baselines.
 
 ### Weekly Baseline Updates
 
