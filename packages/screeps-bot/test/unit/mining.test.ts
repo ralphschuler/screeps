@@ -46,24 +46,42 @@ function createMockCreep(options: {
   storeContents?: Record<string, number>;
 }): Creep {
   const storeContents = options.storeContents ?? {};
+  
+  // Create store object with non-enumerable methods
+  const store: any = {};
+  
+  // Add resource contents as enumerable properties
+  Object.keys(storeContents).forEach(key => {
+    store[key] = storeContents[key];
+  });
+  
+  // Add methods as non-enumerable properties
+  Object.defineProperty(store, 'getCapacity', {
+    value: () => options.freeCapacity + options.usedCapacity,
+    enumerable: false
+  });
+  Object.defineProperty(store, 'getFreeCapacity', {
+    value: (resource?: string) => {
+      if (resource && storeContents[resource]) {
+        return options.freeCapacity;
+      }
+      return options.freeCapacity;
+    },
+    enumerable: false
+  });
+  Object.defineProperty(store, 'getUsedCapacity', {
+    value: (resource?: string) => {
+      if (resource && storeContents[resource]) {
+        return storeContents[resource];
+      }
+      return options.usedCapacity;
+    },
+    enumerable: false
+  });
+  
   const mockCreep: MockCreep = {
     name: "TestMiner",
-    store: {
-      getCapacity: () => options.freeCapacity + options.usedCapacity,
-      getFreeCapacity: (resource?: string) => {
-        if (resource && storeContents[resource]) {
-          return options.freeCapacity;
-        }
-        return options.freeCapacity;
-      },
-      getUsedCapacity: (resource?: string) => {
-        if (resource && storeContents[resource]) {
-          return storeContents[resource];
-        }
-        return options.usedCapacity;
-      },
-      ...storeContents
-    },
+    store,
     pos: {
       findInRange: () => [],
       lookFor: () => [],
@@ -580,13 +598,17 @@ describe("depositHarvester behavior", () => {
 
   describe("when full and returning home", () => {
     it("should transfer to terminal in home room when full", () => {
+      const deposit = createMockDeposit({
+        cooldown: 50,
+        depositType: RESOURCE_MIST
+      });
       const terminal = createMockTerminal();
       const creep = createMockCreep({
         freeCapacity: 0,
         usedCapacity: 50,
         storeContents: { [RESOURCE_MIST]: 50 }
       });
-      const room = createMockRoom({});
+      const room = createMockRoom({ deposits: [deposit] });
       
       // Mock Game.rooms to return home room with terminal
       const originalRooms = Game.rooms;
@@ -596,6 +618,8 @@ describe("depositHarvester behavior", () => {
           storage: undefined
         }
       };
+
+      const restoreGetObjectById = mockGetObjectById("mockDepositId", deposit);
 
       const ctx = createMockContext(creep, room, {
         role: "depositHarvester",
@@ -611,17 +635,22 @@ describe("depositHarvester behavior", () => {
         assert.equal(action.resourceType, RESOURCE_MIST);
       }
 
+      restoreGetObjectById();
       (Game as any).rooms = originalRooms;
     });
 
     it("should transfer to storage in home room when full and no terminal", () => {
+      const deposit = createMockDeposit({
+        cooldown: 50,
+        depositType: RESOURCE_MIST
+      });
       const storage = createMockStorage();
       const creep = createMockCreep({
         freeCapacity: 0,
         usedCapacity: 50,
         storeContents: { [RESOURCE_MIST]: 50 }
       });
-      const room = createMockRoom({});
+      const room = createMockRoom({ deposits: [deposit] });
       
       // Mock Game.rooms to return home room with storage
       const originalRooms = Game.rooms;
@@ -631,6 +660,8 @@ describe("depositHarvester behavior", () => {
           storage
         }
       };
+
+      const restoreGetObjectById = mockGetObjectById("mockDepositId", deposit);
 
       const ctx = createMockContext(creep, room, {
         role: "depositHarvester",
@@ -646,20 +677,27 @@ describe("depositHarvester behavior", () => {
         assert.equal(action.resourceType, RESOURCE_MIST);
       }
 
+      restoreGetObjectById();
       (Game as any).rooms = originalRooms;
     });
 
     it("should move to home room when full but home room not visible", () => {
+      const deposit = createMockDeposit({
+        cooldown: 50,
+        depositType: RESOURCE_MIST
+      });
       const creep = createMockCreep({
         freeCapacity: 0,
         usedCapacity: 50,
         storeContents: { [RESOURCE_MIST]: 50 }
       });
-      const room = createMockRoom({});
+      const room = createMockRoom({ deposits: [deposit] });
       
       // Mock Game.rooms with no home room
       const originalRooms = Game.rooms;
       (Game as any).rooms = {};
+
+      const restoreGetObjectById = mockGetObjectById("mockDepositId", deposit);
 
       const ctx = createMockContext(creep, room, {
         role: "depositHarvester",
@@ -674,6 +712,7 @@ describe("depositHarvester behavior", () => {
         assert.equal(action.roomName, "E1N1");
       }
 
+      restoreGetObjectById();
       (Game as any).rooms = originalRooms;
     });
   });
