@@ -101,11 +101,10 @@ packageDirs.forEach(pkgPath => {
   } catch (error) {
     if (error instanceof SyntaxError) {
       console.error(`⚠️  Skipping ${pkgPath}: Invalid JSON - ${error.message}`);
-      return;
     } else {
       console.error(`⚠️  Skipping ${pkgPath}: ${error.message}`);
-      return;
     }
+    return;
   }
   
   const packageName = pkg.name;
