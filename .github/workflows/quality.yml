@@ -1,0 +1,215 @@
+name: Code Quality
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches:
+      - main
+
+# Cancel in-progress runs for the same workflow and ref
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  # ============================================================================
+  # Linting - All Packages
+  # ============================================================================
+  lint-packages:
+    name: Lint ${{ matrix.package-name }}
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false || github.event_name != 'pull_request'
+    env:
+      CI: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Framework packages
+          - package-name: screeps-kernel
+            workspace: "@ralphschuler/screeps-kernel"
+            lint-script: "lint:kernel"
+          - package-name: screeps-roles
+            workspace: "@ralphschuler/screeps-roles"
+            lint-script: "lint:roles"
+          - package-name: screeps-pathfinding
+            workspace: "@ralphschuler/screeps-pathfinding"
+            lint-script: "lint:pathfinding"
+          - package-name: screeps-remote-mining
+            workspace: "@ralphschuler/screeps-remote-mining"
+            lint-script: "lint:remote-mining"
+          - package-name: screeps-spawn
+            workspace: "@ralphschuler/screeps-spawn"
+            lint-script: "lint:spawn"
+          - package-name: screeps-economy
+            workspace: "@ralphschuler/screeps-economy"
+            lint-script: "lint:economy"
+          - package-name: screeps-defense
+            workspace: "@ralphschuler/screeps-defense"
+            lint-script: "lint:defense"
+          - package-name: screeps-chemistry
+            workspace: "@ralphschuler/screeps-chemistry"
+            lint-script: "lint:chemistry"
+          - package-name: screeps-utils
+            workspace: "@ralphschuler/screeps-utils"
+            lint-script: "lint:utils"
+          - package-name: screeps-tasks
+            workspace: "@ralphschuler/screeps-tasks"
+            lint-script: "lint:tasks"
+          - package-name: screeps-posis
+            workspace: "@ralphschuler/screeps-posis"
+            lint-script: "lint:posis"
+          # Main bot (already has linting in ci.yml but included for completeness)
+          - package-name: screeps-bot
+            workspace: "screeps-typescript-starter"
+            lint-script: "lint"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Lint ${{ matrix.package-name }}
+        id: lint-step
+        run: npm run ${{ matrix.lint-script }}
+        continue-on-error: true
+
+      - name: Lint Summary
+        if: always()
+        run: |
+          echo "## ${{ matrix.package-name }} Lint Results" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.lint-step.outcome }}" == "success" ]; then
+            echo "✅ No lint errors" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Lint warnings or errors found" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Run \`npm run ${{ matrix.lint-script }}\` locally to see details." >> $GITHUB_STEP_SUMMARY
+            # Don't fail the job for now, just warn
+          fi
+
+  # ============================================================================
+  # Code Duplication Detection
+  # ============================================================================
+  duplication-check:
+    name: Check Code Duplication
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false || github.event_name != 'pull_request'
+    env:
+      CI: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run duplication detection
+        id: duplication
+        run: npm run quality:duplication || true
+        continue-on-error: true
+
+      - name: Upload duplication report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: duplication-report
+          path: reports/duplication/
+          retention-days: 30
+
+      - name: Duplication Summary
+        if: always()
+        run: |
+          echo "## Code Duplication Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f reports/duplication/jscpd-report.json ]; then
+            # Parse the JSON report
+            TOTAL_DUPLICATION=$(jq -r '.statistics.total.percentage' reports/duplication/jscpd-report.json 2>/dev/null || echo "N/A")
+            CLONES_FOUND=$(jq -r '.statistics.total.duplicatedLines' reports/duplication/jscpd-report.json 2>/dev/null || echo "N/A")
+            
+            echo "📊 **Baseline**: 18.85% duplication (278 clones)" >> $GITHUB_STEP_SUMMARY
+            echo "📊 **Current**: ${TOTAL_DUPLICATION}% duplication (${CLONES_FOUND} duplicated lines)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "🎯 **Target**: < 5% duplication" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "View full report in the uploaded artifacts." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Duplication report not found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ============================================================================
+  # Complexity Analysis
+  # ============================================================================
+  complexity-check:
+    name: Check Code Complexity
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false || github.event_name != 'pull_request'
+    env:
+      CI: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run complexity analysis
+        id: complexity
+        run: npm run quality:complexity
+        continue-on-error: true
+
+      - name: Upload complexity report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: complexity-report
+          path: reports/complexity-baseline.json
+          retention-days: 30
+
+      - name: Complexity Summary
+        if: always()
+        run: |
+          echo "## Code Complexity Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f reports/complexity-baseline.json ]; then
+            # Parse the JSON report
+            TOTAL_FILES=$(jq -r '.totalFiles' reports/complexity-baseline.json 2>/dev/null || echo "N/A")
+            FILES_OVER_LIMIT=$(jq -r '.filesOverLimit' reports/complexity-baseline.json 2>/dev/null || echo "N/A")
+            AVG_LINES=$(jq -r '.averageLines' reports/complexity-baseline.json 2>/dev/null || echo "N/A")
+            
+            echo "📊 **Total Files**: ${TOTAL_FILES}" >> $GITHUB_STEP_SUMMARY
+            echo "📊 **Files Over 300 Lines**: ${FILES_OVER_LIMIT}" >> $GITHUB_STEP_SUMMARY
+            echo "📊 **Average Lines per File**: ${AVG_LINES}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "🎯 **Target**: < 20% files over 300 lines" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "View full report in the uploaded artifacts." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Complexity report not found" >> $GITHUB_STEP_SUMMARY
+          fi

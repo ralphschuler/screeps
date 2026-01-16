@@ -8,7 +8,9 @@
   "scripts": {
     "build": "tsc",
     "test": "echo 'TODO: Add tests with proper mocha/ts-node configuration' && exit 0",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "lint": "eslint \"src/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" --fix"
   },
   "keywords": [
     "screeps",
@@ -31,5 +33,6 @@
     "ts-node": "^10.2.0",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.4.3"
-  }
+  },
+  "type": "module"
 }

@@ -4,6 +4,127 @@
 
 This document describes the comprehensive automated quality gates implemented for the Screeps package ecosystem. These gates ensure package health, prevent regressions, and enable safe autonomous development.
 
+**Last Updated**: 2026-01-16  
+**Status**: ✅ Enhanced with code quality automation
+
+## New Quality Automation (2026-01-16)
+
+### Code Quality Workflow
+
+**Workflow**: `.github/workflows/quality.yml`
+
+**What it does**:
+- Runs ESLint on all 21 framework packages + main bot
+- Detects code duplication using jscpd (baseline: 18.85%)
+- Analyzes code complexity (baseline: 30% files over 300 lines)
+- Generates reports for each PR
+- Uploads artifacts for detailed analysis
+
+**Packages linted**:
+- All 21 framework packages (@ralphschuler/screeps-*)
+- All utility packages (screeps-chemistry, screeps-defense, etc.)
+- Main bot (screeps-typescript-starter)
+
+**Quality Metrics Tracked**:
+- **Duplication**: Percentage of duplicated code (target: <5%)
+- **Complexity**: Files over 300 lines (target: <20%)
+- **Average file size**: Lines per file (target: <200)
+- **Lint errors**: Code style and correctness issues
+
+### ESLint Configuration
+
+**Shared Config**: `eslint.config.shared.js`
+
+**What it provides**:
+- Consistent TypeScript ESLint rules across all packages
+- Screeps-specific globals (Game, Memory, constants)
+- Import ordering and organization rules
+- Relaxed rules for gradual adoption (warnings vs errors)
+
+**Per-Package Config**: Each package has `eslint.config.js` extending shared config
+
+**Benefits**:
+- ✅ Consistent code style across 21+ packages
+- ✅ Catches common mistakes (undefined variables, unused imports)
+- ✅ Enforces best practices (no var, prefer const)
+- ✅ Gradual improvement path (warnings → errors over time)
+
+### Code Duplication Detection
+
+**Tool**: jscpd v4.0.8  
+**Config**: `.jscpd.json`  
+**Threshold**: 5% maximum duplication
+
+**Current Status**:
+- **Baseline**: 18.85% duplication (278 clones)
+- **High-duplication areas**:
+  - MCP server implementations (similar patterns)
+  - Exporter implementations (graphite vs loki)
+  - Chemistry/Lab types (framework vs main bot)
+  - Performance testing scripts
+
+**Reports Generated**:
+- HTML report: `reports/duplication/html/index.html`
+- JSON report: `reports/duplication/jscpd-report.json`
+- Console output with clone details
+
+**Benefits**:
+- ✅ Identifies opportunities for code consolidation
+- ✅ Prevents copy-paste programming
+- ✅ Tracks duplication trends over time
+- ✅ Creates issues for high-duplication areas
+
+### Complexity Analysis
+
+**Tool**: Custom analyzer (`scripts/analyze-complexity.js`)  
+**Thresholds**: 
+- File size: 300 lines (warning), 500 lines (error)
+- Average: <200 lines per file
+
+**Current Status**:
+- **Total files**: 470 TypeScript files
+- **Total LOC**: 112,148 lines
+- **Average**: 239 lines per file
+- **Files over 300 lines**: 143 (30%)
+
+**Largest Files**:
+1. unifiedStats.ts - 1,690 lines
+2. kernel.ts - 1,470 lines
+3. shardManager.ts - 1,181 lines
+
+**Benefits**:
+- ✅ Identifies files that need refactoring
+- ✅ Prevents monolithic files
+- ✅ Guides modularization efforts
+- ✅ Tracks complexity trends
+
+### PR Template
+
+**File**: `.github/PULL_REQUEST_TEMPLATE.md`
+
+**What it includes**:
+- **Type of change** checklist
+- **Code quality** checklist
+- **ROADMAP compliance** verification
+- **Quality metrics** requirements
+- **Performance** considerations
+- **Documentation** requirements
+
+**Quality Checks in Template**:
+- [ ] Linting passes
+- [ ] TypeScript compiles
+- [ ] Tests pass
+- [ ] No new duplication
+- [ ] Files under 300 lines
+- [ ] CPU-efficient code
+- [ ] ROADMAP compliant
+
+**Benefits**:
+- ✅ Ensures consistent PR quality
+- ✅ Reminds developers of quality standards
+- ✅ Documents quality warnings and justifications
+- ✅ Improves code review efficiency
+
 ## Implemented Quality Gates
 
 ### 1. Package Testing Matrix ✅

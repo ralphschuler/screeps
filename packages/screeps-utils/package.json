@@ -8,7 +8,9 @@
   "scripts": {
     "build": "tsc",
     "test": "mocha test/**/*.test.ts",
-    "test:watch": "mocha --watch test/**/*.test.ts"
+    "test:watch": "mocha --watch test/**/*.test.ts",
+    "lint": "eslint \"src/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" --fix"
   },
   "keywords": [
     "screeps",
@@ -42,5 +44,6 @@
     "ts-node": "^10.2.0",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.4.3"
-  }
+  },
+  "type": "module"
 }
