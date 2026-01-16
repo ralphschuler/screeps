@@ -1,7 +1,7 @@
 # Framework Extraction Status
 
 **Last Updated**: 2026-01-16  
-**Issue**: #2869 - Extract remaining 157 bot source files into framework packages  
+**Issue**: #2876 - Extract remaining 157 bot source files into framework packages  
 **Current Phase**: Phase 1 Complete ✅, Phase 2 Ready
 
 ---
@@ -262,15 +262,24 @@ import { clusterManager } from "@ralphschuler/screeps-clusters";
 ```
 
 ### Build Configuration
-Framework packages are marked as external dependencies in rollup:
+Framework packages are **bundled** via rollup. The config sets `external: () => false` so all dependencies are included in the output bundle, and uses the alias plugin to resolve framework package imports to their TypeScript source directories:
 ```javascript
-external: [
-  '@ralphschuler/screeps-cache',
-  '@ralphschuler/screeps-clusters',
-  '@ralphschuler/screeps-standards',
-  '@ralphschuler/screeps-visuals',
-  // ... other framework packages
-]
+export default {
+  // Bundle everything (no externalized framework packages)
+  external: () => false,
+
+  plugins: [
+    alias({
+      entries: [
+        { find: '@ralphschuler/screeps-cache',    replacement: 'packages/@ralphschuler/screeps-cache/src' },
+        { find: '@ralphschuler/screeps-clusters', replacement: 'packages/@ralphschuler/screeps-clusters/src' },
+        { find: '@ralphschuler/screeps-standards', replacement: 'packages/@ralphschuler/screeps-standards/src' },
+        { find: '@ralphschuler/screeps-visuals',   replacement: 'packages/@ralphschuler/screeps-visuals/src' },
+        // ... other framework packages
+      ],
+    }),
+  ],
+};
 ```
 
 ### Known Issues
