@@ -1,0 +1,25 @@
+{
+  "threshold": 5,
+  "reporters": ["html", "json", "console"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/test/**",
+    "**/*.d.ts",
+    "**/docs/**",
+    "**/*.md",
+    "**/examples/**",
+    "**/.git/**"
+  ],
+  "format": ["typescript", "javascript"],
+  "min-lines": 5,
+  "min-tokens": 50,
+  "output": "./reports/duplication",
+  "gitignore": true,
+  "absolute": true,
+  "skipLocal": false,
+  "exitCode": 1
+}
