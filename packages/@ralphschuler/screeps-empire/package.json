@@ -21,6 +21,7 @@
   "license": "Unlicense",
   "dependencies": {
     "@ralphschuler/screeps-core": "*",
+    "@ralphschuler/screeps-economy": "*",
     "@ralphschuler/screeps-stats": "*"
   },
   "devDependencies": {
