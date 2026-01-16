@@ -65,6 +65,7 @@ try {
       try {
         return fs.statSync(path.join(packagesDir, dir)).isDirectory();
       } catch {
+        // Silently ignore stat failures (e.g., broken symlinks, permission issues)
         return false;
       }
     })
