@@ -9,7 +9,7 @@
 
 import { Command } from "./commandRegistry";
 import { shardManager } from "../intershard/shardManager";
-import { resourceTransferCoordinator } from "../intershard/resourceTransferCoordinator";
+import { resourceTransferCoordinator } from "@ralphschuler/screeps-intershard";
 import type { ShardRole } from "@ralphschuler/screeps-intershard";
 import { INTERSHARD_MEMORY_LIMIT } from "@ralphschuler/screeps-intershard";
 

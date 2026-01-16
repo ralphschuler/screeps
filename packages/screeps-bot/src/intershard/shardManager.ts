@@ -41,19 +41,6 @@ export class ShardManager extends FrameworkShardManager {
   public run(): void {
     super.run();
   }
-
-  // Backward compatibility aliases
-  public getAllShards() {
-    return this.getAllShardStates();
-  }
-
-  public getMemoryStats() {
-    return this.getInterShardMemoryUsage();
-  }
-
-  public getSyncStatus() {
-    return this.getInterShardHealth();
-  }
 }
 
 /**
