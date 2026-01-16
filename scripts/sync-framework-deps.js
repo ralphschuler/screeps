@@ -16,17 +16,67 @@
 const fs = require('fs');
 const path = require('path');
 
+// Helper function to exit with error
+function exitWithError(message) {
+  console.error('');
+  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.error('❌ ERROR');
+  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.error('');
+  console.error(message);
+  console.error('');
+  process.exit(1);
+}
+
 // Load shared dependencies configuration
 const sharedDepsPath = path.join(__dirname, 'shared-dependencies.json');
-const sharedDepsConfig = JSON.parse(fs.readFileSync(sharedDepsPath, 'utf8'));
+
+let sharedDepsConfig;
+try {
+  const configContent = fs.readFileSync(sharedDepsPath, 'utf8');
+  sharedDepsConfig = JSON.parse(configContent);
+} catch (error) {
+  if (error.code === 'ENOENT') {
+    exitWithError(`Shared dependencies file not found: ${sharedDepsPath}\nPlease create this file with framework devDependencies.`);
+  } else if (error instanceof SyntaxError) {
+    exitWithError(`Invalid JSON in shared dependencies file: ${sharedDepsPath}\n${error.message}`);
+  } else {
+    exitWithError(`Failed to read shared dependencies file: ${error.message}`);
+  }
+}
+
+if (!sharedDepsConfig.framework || !sharedDepsConfig.framework.devDependencies) {
+  exitWithError(`Invalid shared dependencies config: ${sharedDepsPath}\nMissing framework.devDependencies property.`);
+}
+
 const sharedDevDeps = sharedDepsConfig.framework.devDependencies;
 
 // Find all framework packages
 const packagesDir = path.join(__dirname, '..', 'packages', '@ralphschuler');
-const packageDirs = fs.readdirSync(packagesDir)
-  .filter(dir => fs.statSync(path.join(packagesDir, dir)).isDirectory())
-  .map(dir => path.join(packagesDir, dir, 'package.json'))
-  .filter(pkgPath => fs.existsSync(pkgPath));
+
+if (!fs.existsSync(packagesDir)) {
+  exitWithError(`Framework packages directory not found: ${packagesDir}\nExpected directory structure: packages/@ralphschuler/`);
+}
+
+let packageDirs;
+try {
+  packageDirs = fs.readdirSync(packagesDir)
+    .filter(dir => {
+      try {
+        return fs.statSync(path.join(packagesDir, dir)).isDirectory();
+      } catch {
+        return false;
+      }
+    })
+    .map(dir => path.join(packagesDir, dir, 'package.json'))
+    .filter(pkgPath => fs.existsSync(pkgPath));
+} catch (error) {
+  exitWithError(`Failed to read framework packages directory: ${error.message}`);
+}
+
+if (packageDirs.length === 0) {
+  exitWithError(`No framework packages found in: ${packagesDir}\nExpected at least one package.json file.`);
+}
 
 // Check if running in check-only mode
 const checkOnly = process.argv.includes('--check');
@@ -43,7 +93,20 @@ console.log(`Found ${packageDirs.length} framework packages`);
 console.log('');
 
 packageDirs.forEach(pkgPath => {
-  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+  let pkg;
+  try {
+    const pkgContent = fs.readFileSync(pkgPath, 'utf8');
+    pkg = JSON.parse(pkgContent);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      console.error(`⚠️  Skipping ${pkgPath}: Invalid JSON - ${error.message}`);
+      return;
+    } else {
+      console.error(`⚠️  Skipping ${pkgPath}: ${error.message}`);
+      return;
+    }
+  }
+  
   const packageName = pkg.name;
   const relativePath = path.relative(process.cwd(), pkgPath);
   
@@ -87,10 +150,15 @@ packageDirs.forEach(pkgPath => {
       pkg.devDependencies = sortedDevDeps;
       
       // Write back to file with consistent formatting
-      fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
-      updatedCount++;
-      console.log(`   ✅ Updated`);
-      console.log('');
+      try {
+        fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+        updatedCount++;
+        console.log(`   ✅ Updated`);
+        console.log('');
+      } catch (error) {
+        console.error(`   ❌ Failed to write: ${error.message}`);
+        console.error('');
+      }
     }
   }
 });
