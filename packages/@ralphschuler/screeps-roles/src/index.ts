@@ -58,6 +58,8 @@ export { larvaWorker } from "./behaviors/economy/larvaWorker";
 export { harvester } from "./behaviors/economy/harvester";
 export { hauler } from "./behaviors/economy/hauler";
 export { upgrader } from "./behaviors/economy/upgrader";
+export { builder } from "./behaviors/economy/builder";
+export { mineralHarvester, depositHarvester } from "./behaviors/economy/mining";
 export { remoteHauler } from "./behaviors/economy/remote";
 
 // =============================================================================

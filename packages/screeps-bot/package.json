@@ -76,6 +76,7 @@
     "@ralphschuler/screeps-empire": "*",
     "@ralphschuler/screeps-pathfinding": "*",
     "@ralphschuler/screeps-remote-mining": "*",
+    "@ralphschuler/screeps-roles": "*",
     "@ralphschuler/screeps-spawn": "*",
     "@ralphschuler/screeps-stats": "*",
     "@ralphschuler/screeps-utils": "*",
