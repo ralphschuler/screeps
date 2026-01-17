@@ -8,5 +8,5 @@
  * - SS2: Terminal Communications (multi-packet message transmission)
  */
 
-export * from "./types";
-export * from "./SS2TerminalComms";
+export * from "./types.js";
+export * from "./SS2TerminalComms.js";

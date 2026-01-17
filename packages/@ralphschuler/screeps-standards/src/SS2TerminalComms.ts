@@ -4,7 +4,7 @@
  * Based on: https://github.com/screepers/screepers-standards/blob/master/SS2-Terminal_Communications.md
  */
 
-import { SS2MessageBuffer, SS2TransactionMessage, SS2MessageBufferSerialized } from "./types";
+import { SS2MessageBuffer, SS2TransactionMessage, SS2MessageBufferSerialized } from "./types.js";
 import { createLogger } from "@ralphschuler/screeps-core";
 
 const logger = createLogger("SS2TerminalComms");
@@ -76,7 +76,7 @@ export class SS2TerminalComms {
     if (this._messageBuffers) {
       this._messageBuffers.forEach((buffer, key) => {
         const packetsObject: { [packetId: number]: string } = {};
-        buffer.packets.forEach((chunk, packetId) => {
+        buffer.packets.forEach((chunk: string, packetId: number) => {
           packetsObject[packetId] = chunk;
         });
         buffersObject[key] = {
