@@ -1,0 +1,10 @@
+diff --git a/node_modules/isolated-vm/src/isolate/functor_runners.h b/node_modules/isolated-vm/src/isolate/functor_runners.h
+index f43a04a..cf2b252 100644
+--- a/node_modules/isolated-vm/src/isolate/functor_runners.h
++++ b/node_modules/isolated-vm/src/isolate/functor_runners.h
+@@ -1,4 +1,5 @@
+ #pragma once
++#include <stdexcept>
+ #include "util.h"
+ #include "../external_copy.h"
+ 

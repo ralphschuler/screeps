@@ -1,0 +1,11 @@
+diff --git a/node_modules/@screeps/driver/native/src/pf.h b/node_modules/@screeps/driver/native/src/pf.h
+index 833e6a6..8de1f50 100644
+--- a/node_modules/@screeps/driver/native/src/pf.h
++++ b/node_modules/@screeps/driver/native/src/pf.h
+@@ -1,5 +1,6 @@
+ // Author: Marcel Laverdet <https://github.com/laverdet>
+ #include <nan.h>
++#include <limits>
+ #include <array>
+ #include <iostream>
+ #include <memory>
