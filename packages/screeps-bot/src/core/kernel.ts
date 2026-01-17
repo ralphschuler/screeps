@@ -38,7 +38,7 @@ export {
   Kernel
 } from "@ralphschuler/screeps-kernel";
 
-import { Kernel, type ProcessFrequency } from "@ralphschuler/screeps-kernel";
+import { Kernel, type ProcessFrequency, DEFAULT_ADAPTIVE_CONFIG } from "@ralphschuler/screeps-kernel";
 import type { CPUConfig } from "../config";
 import { getConfig } from "../config";
 import { logger } from "./logger";
@@ -87,9 +87,12 @@ export function buildKernelConfigFromCpu(cpuConfig: CPUConfig) {
       low: 0 // No bucket requirement
     },
     frequencyCpuBudgets,
+    budgetWarningThreshold: 1.5, // Warn when process exceeds budget by 50%
+    budgetWarningInterval: 100, // Log warnings every 100 ticks
     // Explicitly configure adaptive budgets instead of relying on framework defaults.
     // The monolith currently uses fixed per-frequency CPU budgets.
     enableAdaptiveBudgets: false,
+    adaptiveBudgetConfig: DEFAULT_ADAPTIVE_CONFIG, // Use framework defaults for adaptive config
     enablePriorityDecay: true, // Use framework's priority decay feature
     priorityDecayRate: 1, // Framework default (processes gain 1 priority per CPU skip)
     maxPriorityBoost: 50
