@@ -80,7 +80,6 @@
 - [ ] Updated inline code comments for complex logic
 - [ ] Updated QUALITY_METRICS.md if changing quality infrastructure
 - [ ] Added TODO comments for future work (if applicable)
-- \[ \] Issue URL: https://github.com/ralphschuler/screeps/issues/2896
 
 ## Quality Warnings (if any)
 
