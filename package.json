@@ -15,8 +15,7 @@
     "npm": ">=8.0.0"
   },
   "scripts": {
-    "postinstall": "patch-package && git submodule update --init --recursive || echo 'Note: Git submodules not initialized. This is normal in CI environments.'",
-    "rebuild-native": "cd node_modules/@screeps/driver && node-gyp rebuild -C native && cd ../../isolated-vm && node-gyp rebuild --release -j 4",
+    "postinstall": "git submodule update --init --recursive || echo 'Note: Git submodules not initialized. This is normal in CI environments.'",
     "check-versions": "node scripts/check-versions.js",
     "sync:deps": "node scripts/sync-framework-deps.js",
     "sync:deps:check": "node scripts/sync-framework-deps.js --check",
@@ -126,9 +125,6 @@
     "chai": "^6.2.2",
     "jscpd": "^4.0.7",
     "mocha": "^11.7.5",
-    "node-gyp": "^10.0.0",
-    "patch-package": "^8.0.1",
-    "proc-log": "^4.2.0",
     "sinon": "^21.0.1",
     "ts-node": "^10.9.2",
     "ts-prune": "^0.10.3",
@@ -136,8 +132,5 @@
     "typedoc": "^0.28.16",
     "typedoc-plugin-markdown": "^4.9.0",
     "typescript": "^5.4.3"
-  },
-  "overrides": {
-    "node-gyp": "^10.0.0"
   }
 }
