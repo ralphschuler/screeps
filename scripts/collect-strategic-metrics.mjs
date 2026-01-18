@@ -17,6 +17,7 @@
  *   SCREEPS_TOKEN - Screeps API authentication token
  *   SCREEPS_HOST - Screeps server host (default: screeps.com)
  *   SCREEPS_SHARD - Target shard (default: shard3)
+ *   SCREEPS_USERNAME - Screeps username (default: ralphschuler)
  *   GRAFANA_SERVICE_ACCOUNT_TOKEN - Grafana API token (optional)
  *   RUN_ID - GitHub Actions run ID (optional)
  *   RUN_URL - GitHub Actions run URL (optional)
@@ -34,6 +35,7 @@ const OUTPUT_FILE = process.argv[2] || 'performance-baselines/strategic/collecte
 const TIMESTAMP = new Date().toISOString();
 const VERBOSE = process.env.VERBOSE === 'true' || process.env.VERBOSE === '1';
 const MCP_TIMEOUT = 30000; // 30 seconds per MCP call
+const SCREEPS_USERNAME = process.env.SCREEPS_USERNAME || 'ralphschuler'; // Configurable username
 
 // Logging helper
 function log(message, level = 'info') {
@@ -235,7 +237,7 @@ async function callScreepsAPIDirectly(endpoint, params = {}) {
         method: 'GET',
         headers: {
           'X-Token': token,
-          'X-Username': 'ralphschuler' // Fixed: Use actual username instead of token
+          'X-Username': SCREEPS_USERNAME
         }
       }, (res) => {
         let data = '';
@@ -368,7 +370,7 @@ async function collectMetrics() {
 
       log('→ screeps_user_info (via MCP)', 'info');
       const userInfoResult = await callMCPTool(screepsClient, 'screeps_user_info', {
-        username: 'ralphschuler'
+        username: SCREEPS_USERNAME
       });
       collectedData.dataSourcesUsed.screeps_user_info = userInfoResult.success;
       let userInfo = parseToolResult(userInfoResult);
@@ -379,7 +381,7 @@ async function collectMetrics() {
         log('MCP user info failed, trying direct API fallback...', 'warn');
         collectedData.diagnostics.fallbacks.screepsApi = true;
         
-        userInfo = await getUserInfoDirect('ralphschuler');
+        userInfo = await getUserInfoDirect(SCREEPS_USERNAME);
         if (userInfo) {
           collectedData.rawData.screeps.userInfo = userInfo;
           collectedData.dataSourcesUsed.screeps_user_info = true;
@@ -401,7 +403,7 @@ async function collectMetrics() {
       collectedData.diagnostics.fallbacks.screepsApi = true;
       
       // Fallback to direct API
-      const userInfo = await getUserInfoDirect('ralphschuler');
+      const userInfo = await getUserInfoDirect(SCREEPS_USERNAME);
       if (userInfo) {
         collectedData.rawData.screeps.userInfo = userInfo;
         collectedData.dataSourcesUsed.screeps_user_info = true;
