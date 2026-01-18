@@ -30,10 +30,14 @@
  * Addresses Issues: #5, #26, #30
  */
 
-// TODO: Fix screeps-clusters package - it has broken imports referencing ../core/kernel
-// which don't exist in that package structure. These imports should either:
-// 1. Import from @ralphschuler/screeps-kernel instead, OR
-// 2. The cluster code should be moved into screeps-bot/src/clusters/
+// TODO: Fix screeps-clusters package - it has broken relative imports that don't exist in its package structure:
+// - "../core/kernel" (should import from @ralphschuler/screeps-kernel)
+// - "../memory/schemas" and "../memory/manager" (package doesn't have a memory/ directory)
+// - "../spawning/defenderManager" and "../spawning/spawnQueue" (package doesn't have a spawning/ directory)
+// - "../core/processDecorators" (should import from @ralphschuler/screeps-kernel)
+// These imports suggest the code was copied from screeps-bot without updating the import paths.
+// Options to fix: 1) Update imports to use proper @ralphschuler/* packages, OR
+//                 2) Move this code into screeps-bot/src/clusters/ where the relative paths would work
 // Temporarily commented out to fix runtime error with missing @ralphschuler/screeps-kernel
 // import { clusterManager } from "@ralphschuler/screeps-clusters";
 import { defenseCoordinator, evacuationManager } from "@ralphschuler/screeps-defense";
