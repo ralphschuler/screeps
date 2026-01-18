@@ -362,8 +362,21 @@ async function collectMetrics() {
         username: 'ralphschuler'
       });
       collectedData.dataSourcesUsed.screeps_user_info = userInfoResult.success;
-      const userInfo = parseToolResult(userInfoResult);
+      let userInfo = parseToolResult(userInfoResult);
       collectedData.rawData.screeps.userInfo = userInfo;
+
+      // Fallback to direct API if MCP user info failed
+      if (!userInfoResult.success || !userInfo) {
+        log('MCP user info failed, trying direct API fallback...', 'warn');
+        collectedData.diagnostics.fallbacks.screepsApi = true;
+        
+        userInfo = await getUserInfoDirect('ralphschuler');
+        if (userInfo) {
+          collectedData.rawData.screeps.userInfo = userInfo;
+          collectedData.dataSourcesUsed.screeps_user_info = true;
+          log('Successfully retrieved user info via direct API', 'success');
+        }
+      }
 
       // Get user rooms if we have user ID
       if (userInfo?._id) {
