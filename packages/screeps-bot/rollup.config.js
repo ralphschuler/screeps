@@ -79,11 +79,17 @@ export default {
         // Resolve @ralphschuler workspace packages to their TypeScript source instead of dist
         // Scoped packages (in packages/@ralphschuler/)
         { find: "@ralphschuler/screeps-cache", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-cache/src/index.ts") },
+        { find: "@ralphschuler/screeps-clusters", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-clusters/src/index.ts") },
+        { find: "@ralphschuler/screeps-console", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-console/src/index.ts") },
         { find: "@ralphschuler/screeps-core", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-core/src/index.ts") },
         { find: "@ralphschuler/screeps-empire", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-empire/src/index.ts") },
+        { find: "@ralphschuler/screeps-intershard", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-intershard/src/index.ts") },
+        { find: "@ralphschuler/screeps-kernel", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-kernel/src/index.ts") },
+        { find: "@ralphschuler/screeps-layouts", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-layouts/src/index.ts") },
         { find: "@ralphschuler/screeps-pathfinding", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-pathfinding/src/index.ts") },
         { find: "@ralphschuler/screeps-remote-mining", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-remote-mining/src/index.ts") },
         { find: "@ralphschuler/screeps-roles", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-roles/src/index.ts") },
+        { find: "@ralphschuler/screeps-standards", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-standards/src/index.ts") },
         { find: "@ralphschuler/screeps-stats", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-stats/src/index.ts") },
         { find: "@ralphschuler/screeps-visuals", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-visuals/src/index.ts") },
         // Non-scoped packages (in packages/)

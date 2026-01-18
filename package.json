@@ -16,7 +16,6 @@
   },
   "scripts": {
     "postinstall": "git submodule update --init --recursive || echo 'Note: Git submodules not initialized. This is normal in CI environments.'",
-    "prepare": "npm run build:all",
     "check-versions": "node scripts/check-versions.js",
     "sync:deps": "node scripts/sync-framework-deps.js",
     "sync:deps:check": "node scripts/sync-framework-deps.js --check",
