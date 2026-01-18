@@ -31,6 +31,7 @@
  */
 
 // TODO: Fix screeps-clusters package - it has broken relative imports that don't exist in its package structure:
+// Issue URL: https://github.com/ralphschuler/screeps/issues/2921
 // - "../core/kernel" (should import from @ralphschuler/screeps-kernel)
 // - "../memory/schemas" and "../memory/manager" (package doesn't have a memory/ directory)
 // - "../spawning/defenderManager" and "../spawning/spawnQueue" (package doesn't have a spawning/ directory)
@@ -87,6 +88,7 @@ export function registerAllProcesses(): void {
     tooAngelManager,
     // Cluster processes
     // TODO: Re-enable clusterManager after fixing @ralphschuler/screeps-clusters package
+    // Issue URL: https://github.com/ralphschuler/screeps/issues/2920
     // clusterManager,
     // Defense processes
     evacuationManager,
