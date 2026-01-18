@@ -169,8 +169,9 @@ Expected response:
 
 2. **Verify API endpoint**:
 ```javascript
-// Direct API test
-const https = require('https');
+// Direct API test (ES modules)
+import https from 'https';
+
 https.get('https://screeps.com/api/user/find?username=ralphschuler', {
   headers: { 'X-Token': process.env.SCREEPS_TOKEN }
 }, (res) => {

@@ -235,7 +235,7 @@ async function callScreepsAPIDirectly(endpoint, params = {}) {
         method: 'GET',
         headers: {
           'X-Token': token,
-          'X-Username': token
+          'X-Username': 'ralphschuler' // Fixed: Use actual username instead of token
         }
       }, (res) => {
         let data = '';
@@ -277,6 +277,15 @@ async function getUserInfoDirect(username) {
   } catch (error) {
     log(`Failed to get user info: ${error.message}`, 'error');
     return null;
+  }
+}
+
+/**
+ * Set default false values for data sources
+ */
+function setDefaultDataSources(dataSourcesUsed, sources) {
+  for (const source of sources) {
+    dataSourcesUsed[source] = dataSourcesUsed[source] || false;
   }
 }
 
@@ -405,10 +414,12 @@ async function collectMetrics() {
   } catch (error) {
     log(`Screeps data collection failed: ${error.message}`, 'error');
     collectedData.diagnostics.screeps = { error: error.message };
-    collectedData.dataSourcesUsed.screeps_stats = collectedData.dataSourcesUsed.screeps_stats || false;
-    collectedData.dataSourcesUsed.screeps_game_time = collectedData.dataSourcesUsed.screeps_game_time || false;
-    collectedData.dataSourcesUsed.screeps_user_info = collectedData.dataSourcesUsed.screeps_user_info || false;
-    collectedData.dataSourcesUsed.screeps_user_rooms = collectedData.dataSourcesUsed.screeps_user_rooms || false;
+    setDefaultDataSources(collectedData.dataSourcesUsed, [
+      'screeps_stats',
+      'screeps_game_time',
+      'screeps_user_info',
+      'screeps_user_rooms'
+    ]);
   } finally {
     if (screepsClient) {
       try { 
@@ -445,7 +456,7 @@ async function collectMetrics() {
         if (imageAvailable) {
           try {
             grafanaClient = await createDockerMCPClient(
-              'mcp/grafana',
+              'mcp/grafana:latest', // Fixed: Added :latest tag for consistency
               {
                 GRAFANA_URL: 'https://ralphschuler.grafana.net',
                 GRAFANA_SERVICE_ACCOUNT_TOKEN: process.env.GRAFANA_SERVICE_ACCOUNT_TOKEN
@@ -506,9 +517,11 @@ async function collectMetrics() {
     } catch (error) {
       log(`Grafana data collection failed: ${error.message}`, 'error');
       collectedData.diagnostics.grafana = { error: error.message };
-      collectedData.dataSourcesUsed.grafana_cpu_metrics = collectedData.dataSourcesUsed.grafana_cpu_metrics || false;
-      collectedData.dataSourcesUsed.grafana_gcl_metrics = collectedData.dataSourcesUsed.grafana_gcl_metrics || false;
-      collectedData.dataSourcesUsed.grafana_error_logs = collectedData.dataSourcesUsed.grafana_error_logs || false;
+      setDefaultDataSources(collectedData.dataSourcesUsed, [
+        'grafana_cpu_metrics',
+        'grafana_gcl_metrics',
+        'grafana_error_logs'
+      ]);
     } finally {
       if (grafanaClient) {
         try { 
