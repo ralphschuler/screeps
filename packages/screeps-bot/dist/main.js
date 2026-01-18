@@ -6552,7 +6552,7 @@ queuedAt: Game.time
 this.eventQueue.push(n), this.eventQueue.sort(function(e, t) {
 return t.priority !== e.priority ? t.priority - e.priority : e.queuedAt - t.queuedAt;
 }), this.stats.eventsDeferred++;
-}, e.prototype.processQueue = function() {
+}, e.prototype.startTick = function() {}, e.prototype.processQueue = function() {
 var e = this, t = Game.cpu.bucket;
 if (!(t < this.config.criticalBucketThreshold)) {
 var r = this.config.maxEventsPerTick;

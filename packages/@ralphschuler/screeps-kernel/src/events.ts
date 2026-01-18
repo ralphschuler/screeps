@@ -710,6 +710,15 @@ export class EventBus {
   }
 
   /**
+   * Start a new tick - clears tick-specific caches
+   * Call this at the beginning of each tick before processing
+   */
+  public startTick(): void {
+    // Currently no tick-specific caches to clear in this implementation
+    // This method exists for API compatibility with other EventBus implementations
+  }
+
+  /**
    * Process queued events
    * Call this each tick to process deferred events
    */
