@@ -24,55 +24,18 @@
 import type { SwarmState } from "../memory/schemas";
 import { labConfigManager } from "./labConfig";
 import { logger } from "@ralphschuler/screeps-core";
+import type {
+  LabTaskType as ChemistryLabTaskType,
+  LabResourceNeed as ChemistryLabResourceNeed,
+  LabOverflow as ChemistryLabOverflow,
+  ReactionStep as ChemistryReactionStep
+} from "@ralphschuler/screeps-chemistry";
 
-/**
- * Lab task types
- */
-export type LabTaskType = "idle" | "reacting" | "boosting" | "loading" | "unloading";
-
-/**
- * Lab resource need
- */
-export interface LabResourceNeed {
-  /** Lab ID */
-  labId: Id<StructureLab>;
-  /** Needed resource */
-  resourceType: MineralConstant | MineralCompoundConstant;
-  /** Amount needed */
-  amount: number;
-  /** Priority (higher = more urgent) */
-  priority: number;
-}
-
-/**
- * Lab overflow (needs emptying)
- */
-export interface LabOverflow {
-  /** Lab ID */
-  labId: Id<StructureLab>;
-  /** Resource to remove */
-  resourceType: MineralConstant | MineralCompoundConstant;
-  /** Amount to remove */
-  amount: number;
-  /** Priority (higher = more urgent) */
-  priority: number;
-}
-
-/**
- * Reaction chain step
- */
-export interface ReactionStep {
-  /** Product */
-  product: MineralCompoundConstant;
-  /** Input 1 */
-  input1: MineralConstant | MineralCompoundConstant;
-  /** Input 2 */
-  input2: MineralConstant | MineralCompoundConstant;
-  /** Amount needed to produce */
-  amountNeeded: number;
-  /** Priority (higher = more important) */
-  priority: number;
-}
+// Re-export types from chemistry package for backward compatibility
+export type LabTaskType = ChemistryLabTaskType;
+export type LabResourceNeed = ChemistryLabResourceNeed;
+export type LabOverflow = ChemistryLabOverflow;
+export type ReactionStep = ChemistryReactionStep;
 
 /**
  * Lab Manager Class
