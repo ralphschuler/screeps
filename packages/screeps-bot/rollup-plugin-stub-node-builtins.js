@@ -1,9 +1,11 @@
 /**
  * Rollup plugin to stub out Node.js built-ins that shouldn't be in browser/Screeps bundles
  * 
- * This plugin intercepts require() calls to Node.js built-ins (fs, path, etc.) and replaces
+ * This plugin intercepts require() calls to Node.js built-ins (fs, path, url, etc.) and replaces
  * them with empty objects. This prevents runtime errors when dependencies try to require
  * these modules.
+ * 
+ * Note: The 'url' module is required by source-map library when global URL is not available.
  */
 
 export default function stubNodeBuiltins() {
