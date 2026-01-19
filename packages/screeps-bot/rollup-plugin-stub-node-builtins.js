@@ -7,7 +7,7 @@
  */
 
 export default function stubNodeBuiltins() {
-  const builtins = new Set(['fs', 'path', 'main.js.map', '../main']);
+  const builtins = new Set(['fs', 'path', 'url', 'main.js.map', '../main']);
   
   return {
     name: 'stub-node-builtins',
