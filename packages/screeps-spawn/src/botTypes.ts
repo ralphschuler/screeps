@@ -138,4 +138,6 @@ export interface SwarmCreepMemory extends CreepMemory {
     resourceType: ResourceConstant;
     amount: number;
   };
+  /** Creep version/generation */
+  version?: number;
 }

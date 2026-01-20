@@ -6,6 +6,24 @@
  */
 
 /**
+ * Cross-shard transfer request
+ */
+export interface CrossShardTransferRequest {
+  fromRoom: string;
+  toRoom: string;
+  resourceType: ResourceConstant;
+  amount: number;
+}
+
+/**
+ * Resource transfer coordinator interface
+ */
+export interface IResourceTransferCoordinator {
+  getPendingTransfers(roomName: string): CrossShardTransferRequest[];
+  needsCarrier(roomName: string): boolean;
+}
+
+/**
  * Kernel interface for process management
  */
 export interface IKernel {
@@ -48,6 +66,11 @@ export interface IPowerBankHarvestingManager {
 /**
  * Default stub implementations (will be replaced by actual bot)
  */
+export const resourceTransferCoordinator: IResourceTransferCoordinator = {
+  getPendingTransfers: () => [],
+  needsCarrier: () => false
+};
+
 export const kernel: IKernel = {
   data: {},
   emit: () => {}
