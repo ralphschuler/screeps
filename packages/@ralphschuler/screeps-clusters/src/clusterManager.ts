@@ -36,17 +36,17 @@
  Issue URL: https://github.com/ralphschuler/screeps/issues/2799
  */
 
-import type { ClusterMemory, SquadDefinition } from "../memory/schemas";
-import { ProcessPriority } from "../core/kernel";
+import type { ClusterMemory, SquadDefinition } from "./types";
+import { ProcessPriority } from "@ralphschuler/screeps-kernel";
 import { logger } from "@ralphschuler/screeps-core";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
-import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { memoryManager } from "../memory/manager";
+import { MediumFrequencyProcess, ProcessClass } from "@ralphschuler/screeps-kernel";
+import { memoryManager } from "./adapters/memoryAdapter";
 import {
   type DefenseRequest,
   createDefenseRequest,
   needsDefenseAssistance
-} from "../spawning/defenderManager";
+} from "./adapters/defenderAdapter";
 import { resourceSharingManager } from "./resourceSharing";
 import {
   createDefenseSquad,

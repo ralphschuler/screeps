@@ -18,6 +18,14 @@ declare global {
   interface CreepMemory {
     role?: string;
   }
+
+  /**
+   * Extend Memory to include empire property
+   * Used for cluster management data storage
+   */
+  interface Memory {
+    empire?: EmpireMemory;
+  }
 }
 
 // ============================================================================
@@ -193,6 +201,8 @@ export interface ClusterMemory {
 export interface EmpireMemory {
   /** All clusters keyed by cluster ID */
   clusters: Record<string, ClusterMemory>;
+  /** Known rooms for attack target selection */
+  knownRooms?: Record<string, RoomIntel>;
   /** Other empire-level data */
   [key: string]: unknown;
 }
@@ -224,6 +234,21 @@ export interface SwarmState {
   danger: 0 | 1 | 2 | 3;
   /** Cluster ID */
   clusterId?: string;
+  /** Room metrics */
+  metrics?: {
+    energyHarvested?: number;
+    energySpawning?: number;
+    energyConstruction?: number;
+    energyRepair?: number;
+    energyTower?: number;
+    controllerProgress?: number;
+    hostileCount?: number;
+    damageReceived?: number;
+    constructionSites?: number;
+    energyAvailable?: number;
+    energyCapacity?: number;
+    energyNeed?: 0 | 1 | 2 | 3;
+  };
   /** Other swarm state data */
   [key: string]: unknown;
 }

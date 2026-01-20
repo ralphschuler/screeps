@@ -10,9 +10,9 @@
  * Addresses Issue: #36 - Squad formation and coordination
  */
 
-import type { ClusterMemory, DefenseAssistanceRequest, SquadDefinition } from "../memory/schemas";
+import type { ClusterMemory, DefenseAssistanceRequest, SquadDefinition } from "./types";
 import { logger } from "@ralphschuler/screeps-core";
-import { memoryManager } from "../memory/manager";
+import { memoryManager } from "./adapters/memoryAdapter";
 
 /**
  * Squad composition recommendation

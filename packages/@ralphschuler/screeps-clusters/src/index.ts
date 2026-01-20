@@ -6,18 +6,26 @@
  */
 
 // Cluster Manager
-export { clusterManager } from "./clusterManager";
+export { clusterManager, ClusterManager } from "./clusterManager";
 
 // Military Coordination
-export { squadCoordinator } from "./squadCoordinator";
-export { squadFormationManager } from "./squadFormationManager";
-export { attackTargetSelector } from "./attackTargetSelector";
-export { rallyPointManager } from "./rallyPointManager";
+export * from "./squadCoordinator";
+export * from "./squadFormationManager";
+export * from "./attackTargetSelector";
+export * from "./rallyPointManager";
 
 // Resource Management
-export { resourceSharing } from "./resourceSharing";
-export { militaryResourcePooling } from "./militaryResourcePooling";
+export { resourceSharingManager, ResourceSharingManager } from "./resourceSharing";
+export * from "./militaryResourcePooling";
 
 // Offensive Operations
-export { offensiveOperations } from "./offensiveOperations";
-export { offensiveDoctrine } from "./offensiveDoctrine";
+export * from "./offensiveOperations";
+export * from "./offensiveDoctrine";
+
+// Types
+export * from "./types";
+
+// Adapters (for advanced usage)
+export * from "./adapters/memoryAdapter";
+export * from "./adapters/defenderAdapter";
+export * from "./adapters/spawnQueueAdapter";

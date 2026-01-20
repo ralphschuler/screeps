@@ -29,7 +29,13 @@ export {
 export {
   type ProcessOptions,
   Process as ProcessDecorator,
-  registerDecoratedProcesses
+  registerDecoratedProcesses,
+  HighFrequencyProcess,
+  MediumFrequencyProcess,
+  LowFrequencyProcess,
+  CriticalProcess,
+  IdleProcess,
+  ProcessClass
 } from './processDecorators';
 
 // Export adaptive budgets

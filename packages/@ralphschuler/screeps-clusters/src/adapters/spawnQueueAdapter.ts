@@ -5,7 +5,9 @@
  * The actual spawn queue should be injected by the consuming bot code.
  */
 
-import { SpawnPriority, type SpawnRequest } from "../types";
+// Re-export types from the types module
+export { SpawnPriority, type SpawnRequest } from "../types";
+import type { SpawnRequest } from "../types";
 
 /**
  * Spawn Queue Manager
