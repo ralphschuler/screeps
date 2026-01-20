@@ -9,7 +9,7 @@
  * Each doctrine defines squad composition, tactics, and target priorities.
  */
 
-import type { ClusterMemory } from "../memory/schemas";
+import type { ClusterMemory } from "./types";
 import { logger } from "@ralphschuler/screeps-core";
 
 /**

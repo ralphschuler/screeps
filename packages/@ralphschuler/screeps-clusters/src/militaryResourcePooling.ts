@@ -10,9 +10,9 @@
  * Addresses Issue: #36 - Resource coordination for military operations
  */
 
-import type { ClusterMemory } from "../memory/schemas";
+import type { ClusterMemory } from "./types";
 import { logger } from "@ralphschuler/screeps-core";
-import { memoryManager } from "../memory/manager";
+import { memoryManager } from "./adapters/memoryAdapter";
 
 /**
  * Military resource reservation per room
@@ -74,7 +74,7 @@ export function calculateEnergyReservation(
   for (const clusterId in clusters) {
     const cluster = clusters[clusterId];
     const hasDefenseRequest = cluster.defenseRequests.some(
-      req => req.roomName === roomName && req.urgency >= 2
+      (req: any) => req.roomName === roomName && req.urgency >= 2
     );
 
     if (hasDefenseRequest) {
