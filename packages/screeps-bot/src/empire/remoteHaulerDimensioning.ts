@@ -5,5 +5,15 @@
  * The framework implementation calculates optimal number and size of haulers for remote mining operations.
  */
 
-export * from "@ralphschuler/screeps-empire";
+// Re-export only the remote hauler utilities
+export {
+  calculateRemoteHaulerRequirement,
+  calculatePathDistance,
+  estimateRoundTripTicks,
+  getCurrentRemoteHaulerCount,
+  needsMoreHaulers,
+  getRecommendedHaulerBody,
+  HAULER_TIERS,
+  type RemoteHaulerRequirement
+} from "@ralphschuler/screeps-empire";
 

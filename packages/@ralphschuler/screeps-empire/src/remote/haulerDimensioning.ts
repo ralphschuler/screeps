@@ -15,8 +15,12 @@ import { logger } from "@ralphschuler/screeps-core";
 
 /**
  * Source energy generation constants
+ * 
+ * ASSUMPTION: Remote harvesters are assumed to have 5 WORK parts, harvesting at maximum
+ * efficiency (2 energy per WORK per tick = 10 energy/tick per source).
+ * If actual harvesters have fewer WORK parts, actual energy generation will be lower.
  */
-const ENERGY_PER_SOURCE_TICK = 10; // 5 WORK parts harvest 10 energy/tick
+const ENERGY_PER_SOURCE_TICK = 10; // Assumes 5 WORK parts (optimal harvester)
 
 /**
  * Hauler energy calculation
