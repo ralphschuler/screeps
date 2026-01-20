@@ -13,9 +13,9 @@
  * Implements ROADMAP Section 12: Offensive Combat
  */
 
-import type { ClusterMemory, SquadDefinition } from "../memory/schemas";
+import type { ClusterMemory, SquadDefinition } from "./types";
 import { logger } from "@ralphschuler/screeps-core";
-import { memoryManager } from "../memory/manager";
+import { memoryManager } from "./adapters/memoryAdapter";
 import { findAttackTargets, markRoomAttacked, validateTarget } from "./attackTargetSelector";
 import { type OffensiveDoctrine, canLaunchDoctrine, selectDoctrine } from "./offensiveDoctrine";
 import { createOffensiveSquad, shouldDissolveSquad, validateSquadState } from "./squadCoordinator";
@@ -116,7 +116,8 @@ export function launchOffensiveOperation(
   
   // Determine doctrine if not specified
   const empire = memoryManager.getEmpire();
-  const intel = empire.knownRooms[targetRoom];
+  const knownRooms = empire.knownRooms || {};
+  const intel = knownRooms[targetRoom];
   const finalDoctrine = doctrine ?? selectDoctrine(targetRoom, {
     towerCount: intel?.towerCount,
     spawnCount: intel?.spawnCount,
