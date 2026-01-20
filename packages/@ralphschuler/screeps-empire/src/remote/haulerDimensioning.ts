@@ -17,8 +17,6 @@ import { logger } from "@ralphschuler/screeps-core";
  * Source energy generation constants
  */
 const ENERGY_PER_SOURCE_TICK = 10; // 5 WORK parts harvest 10 energy/tick
-const SOURCE_ENERGY_CAPACITY = 3000; // With reservation
-const SOURCE_REGEN_TIME = 300; // Ticks
 
 /**
  * Hauler energy calculation
