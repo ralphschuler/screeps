@@ -274,6 +274,7 @@ class SpawnQueueManager {
     const memory: SwarmCreepMemory = {
       role: request.role,
       family: request.family,
+      home: request.roomName,
       homeRoom: request.roomName,
       version: 1,
       ...request.additionalMemory

@@ -216,6 +216,7 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
     const memory: SwarmCreepMemory = {
       role: def.role,
       family: def.family,
+      home: room.name,
       homeRoom: room.name,
       version: 1
     };
@@ -319,6 +320,7 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
     const memory: SwarmCreepMemory = {
       role: def.role,
       family: def.family,
+      home: room.name,
       homeRoom: room.name,
       version: 1
     };

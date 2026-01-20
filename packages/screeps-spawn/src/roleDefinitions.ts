@@ -476,8 +476,9 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
 /**
  * Get role definition by role name
  */
-export function getRoleDefinition(role: string): RoleSpawnDef | undefined {
-  return ROLE_DEFINITIONS[role];
+export function getRoleDefinition(role: string, defs?: Record<string, RoleSpawnDef>): RoleSpawnDef | undefined {
+  const definitions = defs || ROLE_DEFINITIONS;
+  return definitions[role];
 }
 
 /**
