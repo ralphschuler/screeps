@@ -12,7 +12,6 @@
 
 import type { ClusterMemory, DefenseAssistanceRequest, SquadDefinition } from "./types";
 import { logger } from "@ralphschuler/screeps-core";
-import { memoryManager } from "./adapters/memoryAdapter";
 
 /**
  * Squad composition recommendation

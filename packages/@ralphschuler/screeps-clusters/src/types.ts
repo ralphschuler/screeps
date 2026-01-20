@@ -256,40 +256,6 @@ export interface SwarmState {
 }
 
 // ============================================================================
-// Offensive Doctrine Types
-// ============================================================================
-
-/**
- * Offensive doctrine types
- */
-export type OffensiveDoctrine = 
-  | "harass" 
-  | "raid" 
-  | "siege" 
-  | "nuke" 
-  | "drain";
-
-/**
- * Offensive operation structure
- */
-export interface OffensiveOperation {
-  /** Operation ID */
-  id: string;
-  /** Target room */
-  targetRoom: string;
-  /** Operation type/doctrine */
-  doctrine: OffensiveDoctrine;
-  /** Operation state */
-  state: "planning" | "staging" | "active" | "completed" | "aborted";
-  /** Associated squad IDs */
-  squadIds: string[];
-  /** Creation tick */
-  createdAt: number;
-  /** Completion tick */
-  completedAt?: number;
-}
-
-// ============================================================================
 // Spawn Queue Types
 // ============================================================================
 

@@ -21,7 +21,6 @@ export class SpawnQueueAdapter {
   public addRequest(request: SpawnRequest): void {
     // Stub implementation
     // Real implementation should add to Memory-based queue
-    console.log(`[SpawnQueue] Stub: Would add spawn request for ${request.role} in ${request.roomName}`);
   }
 
   /**

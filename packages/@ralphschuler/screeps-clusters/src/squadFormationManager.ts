@@ -247,11 +247,10 @@ export function onCreepSpawned(creep: Creep): void {
   const formation = activeFormations.get(squadId);
   if (!formation) return;
   
-  // Update composition
+  // Update composition - only track roles that are in the target composition
   const role = creep.memory.role;
-  if (role) {
-    formation.currentComposition[role as keyof typeof formation.currentComposition] = 
-      (formation.currentComposition[role as keyof typeof formation.currentComposition] ?? 0) + 1;
+  if (role && role in formation.targetComposition) {
+    formation.currentComposition[role] = (formation.currentComposition[role] ?? 0) + 1;
   }
   
   // Add creep to squad
