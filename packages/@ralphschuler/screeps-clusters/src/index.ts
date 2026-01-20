@@ -18,9 +18,24 @@ export * from "./rallyPointManager";
 export { resourceSharingManager, ResourceSharingManager } from "./resourceSharing";
 export * from "./militaryResourcePooling";
 
-// Offensive Operations
-export * from "./offensiveOperations";
-export * from "./offensiveDoctrine";
+// Offensive Operations - explicit exports to avoid conflicts
+export { 
+  planOffensiveOperations,
+  updateOffensiveOperations,
+  type OffensiveOperation
+} from "./offensiveOperations";
+export {
+  type OffensiveDoctrine,
+  type DoctrineComposition,
+  type TargetPriority,
+  type DoctrineConfig,
+  DOCTRINE_CONFIGS,
+  selectDoctrine,
+  canLaunchDoctrine,
+  getTargetPriority,
+  getDoctrineComposition,
+  getEngagementRules
+} from "./offensiveDoctrine";
 
 // Types
 export * from "./types";

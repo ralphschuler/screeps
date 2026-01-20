@@ -203,6 +203,8 @@ export interface EmpireMemory {
   clusters: Record<string, ClusterMemory>;
   /** Known rooms for attack target selection */
   knownRooms?: Record<string, RoomIntel>;
+  /** War targets (rooms currently under attack or marked for attack) */
+  warTargets?: string[];
   /** Other empire-level data */
   [key: string]: unknown;
 }

@@ -137,7 +137,7 @@ export class ResourceSharingManager {
       const toRoom = Game.rooms[req.toRoom];
       if (toRoom) {
         const swarm = memoryManager.getSwarmState(req.toRoom);
-        if (swarm && swarm.metrics.energyNeed === 0) {
+        if (swarm && (swarm.metrics?.energyNeed || 0) === 0) {
           logger.debug(`Resource request from ${req.fromRoom} to ${req.toRoom} no longer needed`, {
             subsystem: "ResourceSharing"
           });
@@ -206,10 +206,12 @@ export class ResourceSharingManager {
         needsAmount
       });
 
-      // Update swarm metrics
-      swarm.metrics.energyAvailable = energyAvailable;
-      swarm.metrics.energyCapacity = energyCapacity;
-      swarm.metrics.energyNeed = energyNeed;
+      // Update swarm metrics if they exist
+      if (swarm.metrics) {
+        swarm.metrics.energyAvailable = energyAvailable;
+        swarm.metrics.energyCapacity = energyCapacity;
+        swarm.metrics.energyNeed = energyNeed;
+      }
     }
 
     return statuses;

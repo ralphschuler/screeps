@@ -358,9 +358,9 @@ export function getSquadReadiness(squad: SquadDefinition): {
   };
 
   for (const creep of members) {
-    const role = creep.memory.role ;
-    if (role in roleCount) {
-      roleCount[role]++;
+    const role = creep.memory.role;
+    if (role && role in roleCount) {
+      roleCount[role as keyof typeof roleCount]++;
     }
   }
 
