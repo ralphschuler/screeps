@@ -9,12 +9,12 @@
  * - Hostile detection and event emission
  */
 
-import type { SwarmState } from "../../memory/schemas";
+import { assessThreat, calculateWallRepairTarget } from "@ralphschuler/screeps-defense";
 import { safeFind } from "@ralphschuler/screeps-utils";
-import { calculateWallRepairTarget, assessThreat } from "@ralphschuler/screeps-defense";
-import { memoryManager } from "../../memory/manager";
-import { pheromoneManager } from "../../logic/pheromone";
 import { postureManager } from "../../logic/evolution";
+import { pheromoneManager } from "../../logic/pheromone";
+import { memoryManager } from "../../memory/manager";
+import type { SwarmState } from "../../memory/schemas";
 import { kernel } from "../kernel";
 
 /**
@@ -88,15 +88,6 @@ export class RoomDefenseManager {
 
     // Use safeFind to handle engine errors with corrupted owner data
     const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
-
-    // Only check enemy structures if we have hostiles or existing danger
-    // This avoids expensive find() calls when room is peaceful
-    const enemyStructures =
-      hostiles.length > 0 || swarm.danger > 0
-        ? safeFind(room, FIND_HOSTILE_STRUCTURES, {
-            filter: s => s.structureType !== STRUCTURE_CONTROLLER
-          })
-        : [];
 
     // Use threat assessment for accurate danger level calculation
     if (hostiles.length > 0) {

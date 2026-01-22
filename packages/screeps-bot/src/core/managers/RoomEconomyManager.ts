@@ -8,12 +8,13 @@
  * - Link transfers (source -> storage -> controller)
  */
 
-import type { SwarmState } from "../../memory/schemas";
-import { memoryManager } from "../../memory/manager";
-import { chemistryPlanner } from "../../labs/chemistryPlanner";
+/* eslint-disable no-undef */
 import { boostManager } from "../../labs/boostManager";
-import { labManager } from "../../labs/labManager";
+import { chemistryPlanner } from "../../labs/chemistryPlanner";
 import { labConfigManager } from "../../labs/labConfig";
+import { labManager } from "../../labs/labManager";
+import { memoryManager } from "../../memory/manager";
+import type { SwarmState } from "../../memory/schemas";
 import { logger } from "../logger";
 
 /**

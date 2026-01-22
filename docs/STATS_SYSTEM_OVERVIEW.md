@@ -70,8 +70,14 @@ Wraps Screeps API methods to track usage.
 - Can be enabled/disabled
 - Initialized once at bot startup
 
-### 3. Room Integration (`core/roomNode.ts`)
-Each room records its stats at end of tick.
+### 3. Room Integration (`core/roomNode.ts` and `core/managers/`)
+Each room records its stats at end of tick through coordinated manager modules.
+
+**Architecture:**
+- `RoomNode` - Orchestration layer for room processing
+- `RoomDefenseManager` - Threat assessment and tower control
+- `RoomConstructionManager` - Blueprint-based construction
+- `RoomEconomyManager` - Labs, factory, power spawn, links
 
 **Collected Metrics:**
 - Controller level and progress

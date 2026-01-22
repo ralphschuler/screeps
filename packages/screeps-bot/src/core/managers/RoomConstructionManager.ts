@@ -9,13 +9,10 @@
  * - Misplaced structure cleanup
  */
 
-import type { SwarmState } from "../../memory/schemas";
 import {
-  placeRoadAwarePerimeterDefense,
-  placeRampartsOnCriticalStructures
+  placeRampartsOnCriticalStructures,
+  placeRoadAwarePerimeterDefense
 } from "@ralphschuler/screeps-defense";
-import { memoryManager } from "../../memory/manager";
-import { postureManager } from "../../logic/evolution";
 import {
   destroyMisplacedStructures,
   getBlueprint,
@@ -23,6 +20,9 @@ import {
   selectBestBlueprint
 } from "../../layouts/blueprints/index";
 import { placeRoadConstructionSites } from "../../layouts/roadNetworkPlanner";
+import { postureManager } from "../../logic/evolution";
+import { memoryManager } from "../../memory/manager";
+import type { SwarmState } from "../../memory/schemas";
 
 /**
  * Perimeter defense configuration constants
@@ -86,26 +86,27 @@ export class RoomConstructionManager {
 
     // Get blueprint for current RCL using dynamic selection
     // This will try bunker layout first, fall back to spread layout if terrain doesn't allow
-    const blueprintSelection = selectBestBlueprint(room, rcl);
-    if (!blueprintSelection) {
+    const selectedBlueprint = selectBestBlueprint(room, rcl);
+    let finalBlueprint;
+    if (!selectedBlueprint) {
       // Fallback to traditional method if dynamic selection fails
-      const blueprint = getBlueprint(rcl);
-      if (!blueprint) return;
+      finalBlueprint = getBlueprint(rcl);
+      if (!finalBlueprint) return;
       anchor = spawn.pos;
     } else {
       // Use dynamically selected blueprint and anchor
       // Update anchor if the dynamic selection found a better position
-      anchor = blueprintSelection.anchor;
+      anchor = selectedBlueprint.anchor;
+      finalBlueprint = selectedBlueprint.blueprint;
     }
 
-    const blueprint = blueprintSelection?.blueprint ?? getBlueprint(rcl);
-    if (!blueprint || !anchor) return;
+    if (!finalBlueprint || !anchor) return;
 
     // Destroy misplaced structures that don't match the blueprint
     // Runs every construction tick (10 ticks) in non-combat postures for faster cleanup
     // Pass remote room assignments to preserve roads leading to remote mining rooms
     if (!postureManager.isCombatPosture(swarm.posture)) {
-      const destroyed = destroyMisplacedStructures(room, anchor, blueprint, 1, swarm.remoteAssignments);
+      const destroyed = destroyMisplacedStructures(room, anchor, finalBlueprint, 1, swarm.remoteAssignments);
       if (destroyed > 0) {
         const structureWord = destroyed === 1 ? "structure" : "structures";
         memoryManager.addRoomEvent(
@@ -128,7 +129,7 @@ export class RoomConstructionManager {
       perimeterResult = placeRoadAwarePerimeterDefense(
         room,
         anchor,
-        blueprint.roads,
+        finalBlueprint.roads,
         rcl,
         maxPerimeterSites,
         swarm.remoteAssignments
@@ -145,7 +146,7 @@ export class RoomConstructionManager {
     }
 
     // Priority 2: Place construction sites using blueprint
-    const placed = placeConstructionSites(room, anchor, blueprint);
+    const placed = placeConstructionSites(room, anchor, finalBlueprint);
 
     // Priority 3: Place road construction sites for infrastructure routes (sources, controller, mineral)
     // Only place 1-2 road sites per tick to avoid overwhelming builders
