@@ -7,6 +7,7 @@
  * - Dynamic conditions (threats, focus rooms)
  * 
  * TODO: Investigate military overallocation in defensive posture
+ Issue URL: https://github.com/ralphschuler/screeps/issues/2951
  * Analysis date: 2025-12-28
  * Observed pattern: Rooms in defensive posture spawn excessive military creeps (60%+ of total)
  * Investigation needed:
