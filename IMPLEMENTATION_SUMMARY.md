@@ -1,7 +1,7 @@
 # Performance Regression Detection - Implementation Summary
 
 **Date**: 2026-01-23  
-**Issue**: #910 - test(performance): implement automated performance regression detection  
+**Issue**: ralphschuler/screeps#2917 (internal tracking: #910) - test(performance): implement automated performance regression detection  
 **Status**: ✅ **COMPLETE**
 
 ---
