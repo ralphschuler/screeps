@@ -1,0 +1,105 @@
+name: Deploy Documentation to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'packages/*/README.md'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeDoc API Documentation
+        run: |
+          # Build packages that don't have errors
+          npm run build:core || true
+          npm run build:cache || true
+          npm run build:kernel || true
+          npm run build:utils || true
+          npm run build:stats || true
+          npm run build:console || true
+          npm run build:pathfinding || true
+          npm run build:remote-mining || true
+          npm run build:chemistry || true
+          npm run build:economy || true
+          npm run build:tasks || true
+          npm run build:posis || true
+          npm run build:layouts || true
+          npm run build:intershard || true
+          npm run build:clusters || true
+          npm run build:visuals || true
+          npm run build:standards || true
+          
+          # Generate TypeDoc (ignore errors for packages with build issues)
+          npm run docs || true
+
+      - name: Create docs site structure
+        run: |
+          mkdir -p _site
+          
+          # Copy framework documentation
+          cp -r docs/framework _site/
+          cp -r docs/guides _site/
+          
+          # Copy API docs if generated
+          if [ -d "docs/api" ]; then
+            cp -r docs/api _site/
+          fi
+          
+          # Copy main docs index
+          cp docs/index.md _site/index.md || echo "# Screeps Framework Documentation" > _site/index.md
+          
+          # Create navigation
+          cat > _site/_config.yml << 'EOF'
+          theme: jekyll-theme-cayman
+          title: Screeps Framework
+          description: Modular, tested packages for powerful Screeps bots
+          show_downloads: true
+          github:
+            repository_url: https://github.com/ralphschuler/screeps
+          EOF
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
