@@ -27,15 +27,15 @@
     "docker:push": "docker tag screeps-wiki-mcp:latest ghcr.io/ralphschuler/screeps-wiki-mcp:latest && docker push ghcr.io/ralphschuler/screeps-wiki-mcp:latest"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.25.2",
-    "cheerio": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.25.3",
+    "cheerio": "^1.1.2",
     "node-fetch": "^3.3.2",
-    "zod": "^4.3.5"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@modelcontextprotocol/inspector": "^0.18.0",
     "@types/node": "^25.0.9",
-    "@vitest/coverage-v8": "^4.0.17",
+    "@vitest/coverage-v8": "^4.0.18",
     "typescript": "^5.4.3",
     "vitest": "^4.0.14"
   },
