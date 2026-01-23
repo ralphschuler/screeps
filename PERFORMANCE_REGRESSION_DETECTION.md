@@ -14,6 +14,66 @@ This document describes the automated performance regression detection system th
 
 ## Overview
 
+The performance regression detection system provides automated quality gates to prevent performance degradations from being merged into the codebase.
+
+### System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Performance Regression Detection             │
+└─────────────────────────────────────────────────────────────────┘
+
+    PR Created/Updated
+           │
+           ▼
+    ┌──────────────┐
+    │ Build & Test │
+    │   Bot Code   │
+    └──────┬───────┘
+           │
+           ▼
+    ┌──────────────┐         ┌────────────────┐
+    │ Run Perf     │────────▶│ Capture Logs   │
+    │ Tests        │         │ (CPU, Memory)  │
+    └──────┬───────┘         └────────────────┘
+           │
+           ▼
+    ┌──────────────┐         ┌────────────────┐
+    │ Analyze      │────────▶│ Load Baseline  │
+    │ Metrics      │         │ (main/develop) │
+    └──────┬───────┘         └────────────────┘
+           │
+           ▼
+    ┌──────────────┐
+    │ Compare vs   │
+    │ Baseline     │
+    └──────┬───────┘
+           │
+           ├─────────────────────────────────┐
+           │                                 │
+           ▼                                 ▼
+    ✅ No Regression                  ❌ Regression > 10%
+           │                                 │
+           ▼                                 ▼
+    ┌──────────────┐              ┌──────────────┐
+    │ Post PR      │              │ Post PR      │
+    │ Comment      │              │ Comment      │
+    │ (Success)    │              │ (Warning)    │
+    └──────┬───────┘              └──────┬───────┘
+           │                                 │
+           ▼                                 ▼
+    ┌──────────────┐              ┌──────────────┐
+    │ Merge OK     │              │ CI Fails     │
+    │              │              │ Block Merge  │
+    └──────┬───────┘              └──────────────┘
+           │
+           ▼ (on main/develop only)
+    ┌──────────────┐
+    │ Update       │
+    │ Baseline     │
+    └──────────────┘
+```
+
 The performance regression detection system automatically:
 
 1. **Runs performance tests** on every PR
@@ -511,6 +571,86 @@ DOCKER_DEFAULT_PLATFORM=linux/amd64 screeps-performance-server --botFilePath=dis
 
 ## Advanced Topics
 
+### End-to-End Testing
+
+To test the complete regression detection system:
+
+#### 1. Create Test Baseline
+
+```bash
+# Create a baseline with current performance
+cd packages/screeps-bot
+npm run build
+npm run test:performance:logs
+node scripts/update-baseline.js test-branch
+
+# This creates: performance-baselines/test-branch.json
+```
+
+#### 2. Simulate Regression
+
+Modify code to introduce a performance regression:
+
+```typescript
+// Example: Add an inefficient loop in main.ts
+export function loop() {
+  // Intentional regression for testing
+  for (let i = 0; i < 10000; i++) {
+    Math.random(); // Waste CPU
+  }
+  
+  // ... rest of your code
+}
+```
+
+#### 3. Run Tests Against Baseline
+
+```bash
+# Rebuild with regression
+npm run build
+
+# Run performance tests
+npm run test:performance:logs
+
+# Analyze (should detect regression)
+GITHUB_BASE_REF=test-branch node scripts/analyze-performance.js
+```
+
+Expected output:
+```
+⚠️  PERFORMANCE REGRESSION DETECTED
+   Avg CPU increased by 15.2%
+❌ Exiting with error due to performance regression
+```
+
+#### 4. Verify CI Behavior
+
+Create a PR to see the full workflow:
+
+```bash
+# Commit the regression
+git add .
+git commit -m "test: simulate performance regression"
+git push
+
+# Open PR on GitHub
+# CI should:
+# 1. Run performance tests
+# 2. Detect regression
+# 3. Post warning comment
+# 4. Fail the workflow
+```
+
+#### 5. Clean Up
+
+```bash
+# Remove test baseline
+rm performance-baselines/test-branch.json
+
+# Revert regression
+git revert HEAD
+```
+
 ### Custom Test Scenarios
 
 Add custom scenarios in `packages/screeps-server/test/fixtures/scenarios.ts`:
@@ -591,3 +731,73 @@ The performance regression detection system ensures:
 ✅ **Local Testing**: Test before pushing with `npm run test:perf:compare`
 
 By maintaining strict performance budgets and automated regression detection, the bot maintains consistent, predictable performance as it scales.
+
+---
+
+## Quick Reference Card
+
+### Common Commands
+
+```bash
+# Local performance testing
+npm run test:perf:compare           # Run tests and compare to baseline
+npm run test:perf:baseline          # Create new baseline from current run
+
+# Manual workflow
+npm run build                       # Build bot code first
+cd packages/screeps-bot
+npm run test:performance:logs       # Run performance tests
+node scripts/analyze-performance.js # Analyze results
+node scripts/update-baseline.js     # Update baseline (main/develop only)
+
+# Validation
+node scripts/test-regression-detection.js  # Test regression logic
+```
+
+### File Locations
+
+| File | Purpose |
+|------|---------|
+| `performance-baselines/main.json` | Production baseline |
+| `performance-baselines/develop.json` | Development baseline |
+| `performance-baselines/history/` | Historical snapshots |
+| `packages/screeps-bot/performance-report.json` | Latest test results |
+| `packages/screeps-bot/performance-report.md` | PR comment content |
+| `packages/screeps-bot/logs/console.log` | Bot console output |
+
+### Thresholds
+
+| Metric | Warning | Critical | Target |
+|--------|---------|----------|--------|
+| Avg CPU | +10% | +20% | ≤0.1 per room |
+| Max CPU | +10% | +20% | ≤0.15 per room |
+| Memory | +10% | +20% | ≤2MB total |
+| Bucket | -10% | -20% | ≥9500 |
+
+### CI Workflow
+
+1. **Trigger**: PR opened/updated or push to main/develop
+2. **Build**: Compile bot code
+3. **Test**: Run performance tests (up to 45 min)
+4. **Analyze**: Compare against baseline
+5. **Comment**: Post results on PR
+6. **Check**: Fail if regression > 10%
+7. **Update**: Update baseline if on main/develop
+
+### Troubleshooting Quick Fixes
+
+| Problem | Quick Fix |
+|---------|-----------|
+| No baseline | `npm run test:perf:baseline` |
+| False regression | Check logs, optimize code, or update baseline |
+| CI timeout | Reduce maxTickCount or check for infinite loops |
+| Docker error | Restart Docker, check docker compose version |
+| No CPU metrics | Verify bot logs CPU stats in JSON format |
+
+### Support
+
+- 📖 [Full Documentation](./PERFORMANCE_REGRESSION_DETECTION.md)
+- 📊 [Performance Testing Guide](./PERFORMANCE_TESTING.md)
+- 🎯 [Baselines README](./performance-baselines/README.md)
+- 🏗️ [ROADMAP.md](./ROADMAP.md) - Performance targets
+- 🔧 [CI Workflow](./.github/workflows/performance-test.yml)
