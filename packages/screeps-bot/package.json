@@ -18,6 +18,8 @@
     "test:integration": "npm run build && DOCKER_DEFAULT_PLATFORM=linux/amd64 screeps-performance-server --botFilePath=dist",
     "test:performance": "DOCKER_DEFAULT_PLATFORM=linux/amd64 screeps-performance-server --botFilePath=dist",
     "test:performance:logs": "node scripts/performance-test-with-logs.js",
+    "test:perf:baseline": "npm run test:performance:logs && node scripts/update-baseline.js",
+    "test:perf:compare": "npm run test:performance:logs && node scripts/analyze-performance.js",
     "watch": "rollup -cw --environment DEST:screeps"
   },
   "type": "module",
