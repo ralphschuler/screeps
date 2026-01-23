@@ -157,8 +157,8 @@ A regression is detected when:
 |--------|-----------|--------|
 | Average CPU | > 10% increase | ❌ Fail CI |
 | Max CPU | > 10% increase | ❌ Fail CI |
-| Memory | > 10% increase | ⚠️ Warning (doesn't fail) |
-| Bucket | < 5000 | ⚠️ Warning |
+| Memory | > 10% increase | ❌ Fail CI |
+| Bucket | < 5000 | ⚠️ Warning (doesn't fail) |
 
 ### 5. CI Failure
 
