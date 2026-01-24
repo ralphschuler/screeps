@@ -2,8 +2,8 @@
  * CPU scheduler implementing bucket-based CPU management and task scheduling.
  */
 
-import { logger } from "./logger";
 import { kernel } from "./kernel";
+import { logger } from "./logger";
 
 /**
  * Bucket mode enum

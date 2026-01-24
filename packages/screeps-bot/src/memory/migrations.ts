@@ -8,8 +8,8 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import { memorySegmentManager } from "./memorySegmentManager";
 import { memoryCompressor } from "./memoryCompressor";
+import { memorySegmentManager } from "./memorySegmentManager";
 import type { EmpireMemory } from "./schemas";
 
 /**

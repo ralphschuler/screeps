@@ -36,12 +36,12 @@
  * TODO(P2): TEST - Expand integration tests for complex multi-room scenarios
  */
 
-import { ProcessPriority } from "../core/kernel";
 import { logger } from "@ralphschuler/screeps-core";
-import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
+import { ProcessPriority } from "../core/kernel";
+import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { memoryManager } from "../memory/manager";
-import type { ExpansionCandidate, EmpireMemory, RoomIntel } from "../memory/schemas";
+import type { EmpireMemory, ExpansionCandidate, RoomIntel } from "../memory/schemas";
 import * as ExpansionScoring from "./expansionScoring";
 
 /**

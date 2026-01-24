@@ -11,8 +11,8 @@
  * Complements RoomVisualizer which handles room-specific details.
  */
 
-import { memoryManager } from "../memory/manager";
 import { createLogger } from "@ralphschuler/screeps-core";
+import { memoryManager } from "../memory/manager";
 
 const logger = createLogger("MapVisualizer");
 

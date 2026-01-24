@@ -21,21 +21,21 @@ import { LowFrequencyProcess, ProcessClass } from "../../core/processDecorators"
 // TooAngel modules
 import { scanForNPCRooms, updateNPCRoom } from "./npcDetector";
 import {
-  processReputationUpdates,
-  requestReputation,
-  getReputation
-} from "./reputationManager";
+  cleanupQuestCreeps,
+  executeQuests
+} from "./questExecutor";
 import {
-  processQuestMessages,
-  cleanupExpiredQuests,
+  applyForQuest,
   autoDiscoverQuests,
+  cleanupExpiredQuests,
   getActiveQuests,
-  applyForQuest
+  processQuestMessages
 } from "./questManager";
 import {
-  executeQuests,
-  cleanupQuestCreeps
-} from "./questExecutor";
+  getReputation,
+  processReputationUpdates,
+  requestReputation
+} from "./reputationManager";
 
 /**
  * Configuration for TooAngel manager

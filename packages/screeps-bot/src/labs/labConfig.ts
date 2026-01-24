@@ -9,15 +9,15 @@
  * Addresses Issue: #10
  */
 
-import { logger } from "@ralphschuler/screeps-core";
-import { INFINITE_TTL, heapCache } from "../memory/heapCache";
 import {
   LabConfigManager as ChemistryLabConfigManager,
-  type LabRole,
+  type ChemistryLogger,
   type LabConfigEntry,
-  type RoomLabConfig,
-  type ChemistryLogger
+  type LabRole,
+  type RoomLabConfig
 } from "@ralphschuler/screeps-chemistry";
+import { logger } from "@ralphschuler/screeps-core";
+import { INFINITE_TTL, heapCache } from "../memory/heapCache";
 
 // Re-export types for backward compatibility
 export type { LabRole, LabConfigEntry, RoomLabConfig };

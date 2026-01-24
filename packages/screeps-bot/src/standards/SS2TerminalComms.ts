@@ -4,8 +4,8 @@
  * Based on: https://github.com/screepers/screepers-standards/blob/master/SS2-Terminal_Communications.md
  */
 
-import { SS2MessageBuffer, SS2TransactionMessage } from "./types";
 import { createLogger } from "@ralphschuler/screeps-core";
+import { SS2MessageBuffer, SS2TransactionMessage } from "./types";
 
 const logger = createLogger("SS2TerminalComms");
 
@@ -62,11 +62,11 @@ export class SS2TerminalComms {
    * Process incoming terminal transactions
    * @returns Array of completed messages
    */
-  public static processIncomingTransactions(): Array<{
+  public static processIncomingTransactions(): {
     sender: string;
     message: string;
-  }> {
-    const completedMessages: Array<{ sender: string; message: string }> = [];
+  }[] {
+    const completedMessages: { sender: string; message: string }[] = [];
 
     // Clean up expired message buffers
     this.cleanupExpiredBuffers();

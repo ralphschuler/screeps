@@ -12,12 +12,12 @@
  * - spawning/spawnQueueManager.ts - Main spawn coordination
  */
 
-import type { SwarmCreepMemory } from "../memory/schemas";
 import {
-  cachedFindSources,
   cachedFindConstructionSites,
+  cachedFindSources,
   cachedRoomFind
 } from "@ralphschuler/screeps-cache";
+import type { SwarmCreepMemory } from "../memory/schemas";
 
 // ============================================================================
 // Re-exports from modular spawn system

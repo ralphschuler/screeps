@@ -10,8 +10,7 @@
  * - TerminalManager
  */
 
-import { createContext, evaluateUtilityBehavior, executeAction } from "@ralphschuler/screeps-roles";
-import { evaluateWithStateMachine } from "@ralphschuler/screeps-roles";
+import { createContext, evaluateUtilityBehavior, evaluateWithStateMachine , executeAction } from "@ralphschuler/screeps-roles";
 
 /**
  * Run utility role behavior with state machine.

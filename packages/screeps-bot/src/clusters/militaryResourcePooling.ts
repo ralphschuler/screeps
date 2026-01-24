@@ -10,9 +10,9 @@
  * Addresses Issue: #36 - Resource coordination for military operations
  */
 
-import type { ClusterMemory } from "../memory/schemas";
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
+import type { ClusterMemory } from "../memory/schemas";
 
 /**
  * Military resource reservation per room

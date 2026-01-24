@@ -14,8 +14,8 @@
  * - Combat: Balance ATTACK/RANGED_ATTACK/HEAL with TOUGH and MOVE
  */
 
-import type { BodyTemplate } from "../logic/spawn";
 import { createLogger } from "@ralphschuler/screeps-core";
+import type { BodyTemplate } from "../logic/spawn";
 
 const logger = createLogger("BodyOptimizer");
 

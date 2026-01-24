@@ -5,8 +5,8 @@
  * Tracks cache performance, hit rates, memory usage, and invalidation events.
  */
 
-import { cacheCoherence } from "./CacheCoherence";
 import { createLogger } from "../core/logger";
+import { cacheCoherence } from "./CacheCoherence";
 
 const logger = createLogger("CacheStats");
 

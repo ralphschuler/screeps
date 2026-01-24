@@ -7,14 +7,14 @@
  * Addresses Issue: #28
  */
 
-import type { SwarmState } from "../memory/schemas";
-import { logger } from "@ralphschuler/screeps-core";
 import {
+  type ChemistryLogger,
   ChemistryManager,
-  type Reaction,
   type ChemistryState,
-  type ChemistryLogger
+  type Reaction
 } from "@ralphschuler/screeps-chemistry";
+import { logger } from "@ralphschuler/screeps-core";
+import type { SwarmState } from "../memory/schemas";
 
 /**
  * Convert SwarmState to ChemistryState

@@ -12,9 +12,10 @@
  * spawn queue and body optimizer systems.
  */
 
-import type { SwarmState } from "../memory/schemas";
-import { SpawnPriority, type SpawnRequest, spawnQueue } from "./spawnQueue";
-import { optimizeBody } from "./bodyOptimizer";
+import { logger } from "@ralphschuler/screeps-core";
+import { emergencyResponseManager } from "@ralphschuler/screeps-defense";
+import { energyFlowPredictor } from "../economy/energyFlowPredictor";
+import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
 import { 
   type BodyTemplate, 
   ROLE_DEFINITIONS, 
@@ -23,15 +24,14 @@ import {
   getRemoteRoomNeedingWorkers,
   isEmergencySpawnState
 } from "../logic/spawn";
-import { logger } from "@ralphschuler/screeps-core";
+import type { SwarmState } from "../memory/schemas";
+import { optimizeBody } from "./bodyOptimizer";
 import { 
   analyzeDefenderNeeds, 
   getCurrentDefenders, 
   getDefenderPriorityBoost 
 } from "./defenderManager";
-import { emergencyResponseManager } from "@ralphschuler/screeps-defense";
-import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
-import { energyFlowPredictor } from "../economy/energyFlowPredictor";
+import { SpawnPriority, type SpawnRequest, spawnQueue } from "./spawnQueue";
 
 /**
  * Populate spawn queue for a room

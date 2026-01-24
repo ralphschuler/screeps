@@ -12,8 +12,8 @@
  * - Multi-room coordination
  */
 
-import type { ClusterMemory } from "../memory/schemas";
 import { logger } from "../core/logger";
+import type { ClusterMemory } from "../memory/schemas";
 
 /**
  * Rally point definition

@@ -13,10 +13,9 @@ import {
   createPowerCreepContext,
   evaluatePowerBehavior,
   evaluatePowerCreepBehavior,
-  executeAction,
-  executePowerCreepAction
-} from "@ralphschuler/screeps-roles";
-import { evaluateWithStateMachine } from "@ralphschuler/screeps-roles";
+  evaluateWithStateMachine,
+  executeAction
+, executePowerCreepAction } from "@ralphschuler/screeps-roles";
 
 /**
  * Run power-related creep role (PowerHarvester, PowerCarrier) with state machine.

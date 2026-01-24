@@ -13,9 +13,9 @@
  * Implements ROADMAP Section 12: Offensive Combat
  */
 
-import type { ClusterMemory, SquadDefinition } from "../memory/schemas";
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
+import type { ClusterMemory, SquadDefinition } from "../memory/schemas";
 import { findAttackTargets, markRoomAttacked, validateTarget } from "./attackTargetSelector";
 import { type OffensiveDoctrine, canLaunchDoctrine, selectDoctrine } from "./offensiveDoctrine";
 import { createOffensiveSquad, shouldDissolveSquad, validateSquadState } from "./squadCoordinator";

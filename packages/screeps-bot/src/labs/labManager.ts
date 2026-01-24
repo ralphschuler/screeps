@@ -21,15 +21,15 @@
  * - Cluster compound network via terminal manager
  */
 
-import type { SwarmState } from "../memory/schemas";
-import { labConfigManager } from "./labConfig";
-import { logger } from "@ralphschuler/screeps-core";
 import type {
-  LabTaskType as ChemistryLabTaskType,
-  LabResourceNeed as ChemistryLabResourceNeed,
   LabOverflow as ChemistryLabOverflow,
+  LabResourceNeed as ChemistryLabResourceNeed,
+  LabTaskType as ChemistryLabTaskType,
   ReactionStep as ChemistryReactionStep
 } from "@ralphschuler/screeps-chemistry";
+import { logger } from "@ralphschuler/screeps-core";
+import type { SwarmState } from "../memory/schemas";
+import { labConfigManager } from "./labConfig";
 
 // Re-export types from chemistry package for backward compatibility
 export type LabTaskType = ChemistryLabTaskType;

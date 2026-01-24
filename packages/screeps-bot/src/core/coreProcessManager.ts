@@ -12,14 +12,14 @@
  * All processes use decorators for declarative registration with the kernel.
  */
 
-import { HighFrequencyProcess, IdleProcess, LowFrequencyProcess, MediumFrequencyProcess, ProcessClass } from "./processDecorators";
-import { ProcessPriority, kernel } from "./kernel";
-import type { SwarmState } from "../memory/schemas";
-import { memoryManager } from "../memory/manager";
-import { pheromoneManager } from "../logic/pheromone";
-import { labConfigManager } from "../labs/labConfig";
 import { memorySegmentStats } from "@ralphschuler/screeps-stats";
+import { labConfigManager } from "../labs/labConfig";
+import { pheromoneManager } from "../logic/pheromone";
+import { memoryManager } from "../memory/manager";
+import type { SwarmState } from "../memory/schemas";
+import { ProcessPriority, kernel } from "./kernel";
 import { logger } from "./logger";
+import { HighFrequencyProcess, IdleProcess, LowFrequencyProcess, MediumFrequencyProcess, ProcessClass } from "./processDecorators";
 
 /**
  * Core Process Manager Class

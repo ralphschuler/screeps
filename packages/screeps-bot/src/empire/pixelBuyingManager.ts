@@ -4,8 +4,6 @@
  * Wraps the framework PixelBuyingManager with bot-specific process decorators and memory access
  */
 
-import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { ProcessPriority } from "../core/kernel";
 import {
   PixelBuyingManager as FrameworkPixelBuyingManager,
   PixelBuyingConfig,
@@ -13,6 +11,8 @@ import {
   PixelBuyingMemoryAccessor,
   createDefaultPixelBuyingMemory
 } from "@ralphschuler/screeps-empire";
+import { ProcessPriority } from "../core/kernel";
+import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { memoryManager } from "../memory/manager";
 
 /**

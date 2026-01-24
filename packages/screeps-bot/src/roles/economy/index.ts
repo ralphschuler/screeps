@@ -14,8 +14,7 @@
  * - FactoryWorker
  */
 
-import { createContext, evaluateEconomyBehavior, executeAction } from "@ralphschuler/screeps-roles";
-import { evaluateWithStateMachine } from "@ralphschuler/screeps-roles";
+import { createContext, evaluateEconomyBehavior, evaluateWithStateMachine , executeAction } from "@ralphschuler/screeps-roles";
 
 /**
  * Run economy role behavior with state machine.

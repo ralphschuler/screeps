@@ -5,11 +5,11 @@
  * Extracted from consoleCommands.ts for better modularity.
  */
 
-import { Command } from "../commandRegistry";
-import { getConfig, updateConfig } from "../../config";
-import { roomVisualizer, mapVisualizer } from "../../SwarmBot";
 import { visualizationManager } from "@ralphschuler/screeps-visuals";
+import { getConfig, updateConfig } from "../../config";
 import { VisualizationLayer } from "../../memory/schemas";
+import { mapVisualizer, roomVisualizer } from "../../SwarmBot";
+import { Command } from "../commandRegistry";
 
 /**
  * Visualization commands

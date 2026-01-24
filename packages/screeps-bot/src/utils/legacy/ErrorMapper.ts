@@ -130,7 +130,7 @@ export class ErrorMapper {
       return result;
     }
 
-    // eslint-disable-next-line no-useless-escape
+     
     const re = /^\s+at\s+(.+?\s+)?\(?([0-z._\-\\\/]+):(\d+):(\d+)\)?$/gm;
     let match: RegExpExecArray | null;
     let outStack = error.toString();

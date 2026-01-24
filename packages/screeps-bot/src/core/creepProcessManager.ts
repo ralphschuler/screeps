@@ -14,14 +14,14 @@
  */
 
 import { unifiedStats } from "@ralphschuler/screeps-stats";
-import { ProcessPriority, kernel } from "./kernel";
-import { logger } from "./logger";
 import type { RoleFamily, SwarmCreepMemory } from "../memory/schemas";
 import { runEconomyRole } from "../roles/economy";
 import { runMilitaryRole } from "../roles/military";
 import { runPowerCreepRole } from "../roles/power";
 import { runUtilityRole } from "../roles/utility";
 import { canSkipBehaviorEvaluation, executeIdleAction } from "../utils/optimization";
+import { ProcessPriority, kernel } from "./kernel";
+import { logger } from "./logger";
 
 /**
  * Role priorities - higher values = run first

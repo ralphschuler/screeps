@@ -198,6 +198,81 @@ export default [
         ConstructionSite: "readonly",
         PowerCreep: "readonly",
         RoomPosition: "readonly",
+        RoomVisual: "readonly",
+        MapVisual: "readonly",
+        RoomTerrain: "readonly",
+        RoomObject: "readonly",
+        CostMatrix: "readonly",
+        PathFinder: "readonly",
+        
+        // Screeps type constants
+        StructureConstant: "readonly",
+        ResourceConstant: "readonly",
+        BodyPartConstant: "readonly",
+        DirectionConstant: "readonly",
+        FindConstant: "readonly",
+        LookConstant: "readonly",
+        ScreepsReturnCode: "readonly",
+        CommodityConstant: "readonly",
+        MineralConstant: "readonly",
+        MineralBoostConstant: "readonly",
+        MineralCompoundConstant: "readonly",
+        PowerConstant: "readonly",
+        PowerClassConstant: "readonly",
+        BuildableStructureConstant: "readonly",
+        
+        // Screeps utility types
+        Id: "readonly",
+        PathStep: "readonly",
+        MoveToOpts: "readonly",
+        PathFinderPath: "readonly",
+        LineStyle: "readonly",
+        CircleStyle: "readonly",
+        
+        // Screeps structure types
+        AnyStoreStructure: "readonly",
+        AnyOwnedStructure: "readonly",
+        OwnedStructure: "readonly",
+        
+        // Screeps memory types
+        CreepMemory: "readonly",
+        RoomMemory: "readonly",
+        
+        // Screeps internal types
+        _HasId: "readonly",
+        
+        // Power constants
+        POWER_INFO: "readonly",
+        POWER_CLASS: "readonly",
+        PWR_GENERATE_OPS: "readonly",
+        PWR_OPERATE_SPAWN: "readonly",
+        PWR_OPERATE_TOWER: "readonly",
+        PWR_OPERATE_STORAGE: "readonly",
+        PWR_OPERATE_LAB: "readonly",
+        PWR_OPERATE_EXTENSION: "readonly",
+        PWR_OPERATE_FACTORY: "readonly",
+        PWR_DISRUPT_SPAWN: "readonly",
+        PWR_DISRUPT_TOWER: "readonly",
+        PWR_DISRUPT_TERMINAL: "readonly",
+        PWR_SHIELD: "readonly",
+        PWR_REGEN_SOURCE: "readonly",
+        PWR_FORTIFY: "readonly",
+        
+        // Market constants
+        ORDER_BUY: "readonly",
+        ORDER_SELL: "readonly",
+        
+        // Advanced resource constants
+        RESOURCE_CATALYZED_GHODIUM_ACID: "readonly",
+        RESOURCE_CATALYZED_GHODIUM_ALKALIDE: "readonly",
+        RESOURCE_CATALYZED_KEANIUM_ACID: "readonly",
+        RESOURCE_CATALYZED_KEANIUM_ALKALIDE: "readonly",
+        RESOURCE_CATALYZED_LEMERGIUM_ACID: "readonly",
+        RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE: "readonly",
+        RESOURCE_CATALYZED_UTRIUM_ACID: "readonly",
+        RESOURCE_CATALYZED_UTRIUM_ALKALIDE: "readonly",
+        RESOURCE_CATALYZED_ZYNTHIUM_ACID: "readonly",
+        RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE: "readonly",
         
         // Other globals
         console: "readonly",
@@ -223,33 +298,30 @@ export default [
       "@typescript-eslint/consistent-type-assertions": "error",
       "@typescript-eslint/consistent-type-definitions": "error",
       "@typescript-eslint/explicit-function-return-type": "off",
-      "@typescript-eslint/explicit-member-accessibility": [
-        "error",
-        {
-          accessibility: "explicit"
-        }
-      ],
+      "@typescript-eslint/explicit-member-accessibility": "off", // Allow implicit public
       "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-shadow": [
-        "error",
-        {
-          hoist: "all"
-        }
-      ],
+      "@typescript-eslint/no-unused-vars": ["warn", { 
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+        caughtErrorsIgnorePattern: "^_"
+      }],
+      "@typescript-eslint/no-shadow": "warn", // Downgrade to warning
       "@typescript-eslint/no-unused-expressions": "error",
       "@typescript-eslint/no-use-before-define": ["error", { functions: false }],
-      "@typescript-eslint/prefer-for-of": "error",
+      "@typescript-eslint/prefer-for-of": "off", // Allow traditional for loops
       "@typescript-eslint/unified-signatures": "error",
 
       // General rules
-      camelcase: "error",
+      camelcase: ["error", {
+        allow: ["^viz_", "^debug_", "^ranged_attack$"]
+      }],
       complexity: "off",
       "dot-notation": "error",
       eqeqeq: ["error", "smart"],
       "guard-for-in": "off",
       "id-match": "error",
-      "max-classes-per-file": ["error", 1],
-      "no-bitwise": "error",
+      "max-classes-per-file": "off", // Allow multiple helper classes in one file
+      "no-bitwise": "off", // Allow bitwise for Screeps flag operations
       "no-caller": "error",
       "no-cond-assign": "error",
       "no-console": "error",
@@ -257,14 +329,15 @@ export default [
       "no-invalid-this": "off",
       "no-new-wrappers": "error",
       "no-shadow": "off", // Use @typescript-eslint/no-shadow instead
+      "no-unused-vars": "off", // Use @typescript-eslint/no-unused-vars instead
       "no-throw-literal": "error",
       "no-undef-init": "error",
-      "no-underscore-dangle": "warn",
+      "no-underscore-dangle": "off", // Allow underscore prefix for private members
       "no-var": "error",
       "object-shorthand": "error",
       "one-var": ["error", "never"],
       radix: "error",
-      "sort-imports": "warn",
+      "sort-imports": "off", // Disable sort-imports, using import/order instead
       "spaced-comment": "error",
 
       // Import plugin rules

@@ -12,9 +12,9 @@
  * Addresses ROADMAP Section 12: Attack target selection
  */
 
-import type { ClusterMemory, RoomIntel } from "../memory/schemas";
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
+import type { ClusterMemory, RoomIntel } from "../memory/schemas";
 import type { OffensiveDoctrine } from "./offensiveDoctrine";
 import { selectDoctrine } from "./offensiveDoctrine";
 

@@ -10,13 +10,13 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
+import { getTooAngelMemory } from "./memoryInit";
+import { getNPCRooms } from "./npcDetector";
 import type {
   TooAngelQuest,
   TooAngelQuestMemory,
   TooAngelQuestType
 } from "./types";
-import { getNPCRooms } from "./npcDetector";
-import { getTooAngelMemory } from "./memoryInit";
 
 /**
  * Quest configuration
@@ -183,7 +183,7 @@ export function applyForQuest(
       type: "buildcs", // Placeholder - will be updated when quest is received
       status: "applied",
       targetRoom: "", // Will be updated when quest is received
-      originRoom: originRoom,
+      originRoom,
       deadline: 0, // Will be updated when quest is received
       appliedAt: Game.time
     };

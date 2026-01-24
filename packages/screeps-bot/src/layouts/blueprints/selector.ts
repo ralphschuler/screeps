@@ -2,15 +2,15 @@
  * Blueprint selection logic - chooses the best blueprint for a room based on RCL and terrain
  */
 
-import type { Blueprint, EvolutionStage, StructurePlacement } from "./types";
-import { EARLY_COLONY_BLUEPRINT } from "./definitions/early-colony";
+import { addExtensionsToBlueprint } from "../extensionGenerator";
+import { getStructureLimits } from "./constants";
+import { COMPACT_BUNKER_BLUEPRINT } from "./definitions/compact-bunker";
 import { CORE_COLONY_BLUEPRINT } from "./definitions/core-colony";
+import { EARLY_COLONY_BLUEPRINT } from "./definitions/early-colony";
 import { ECONOMIC_MATURITY_BLUEPRINT } from "./definitions/economic-maturity";
 import { WAR_READY_BLUEPRINT } from "./definitions/war-ready";
-import { COMPACT_BUNKER_BLUEPRINT } from "./definitions/compact-bunker";
+import type { Blueprint, EvolutionStage, StructurePlacement } from "./types";
 import { findBestBlueprintAnchor, findBestSpawnPosition } from "./validator";
-import { getStructureLimits } from "./constants";
-import { addExtensionsToBlueprint } from "../extensionGenerator";
 
 /**
  * Get blueprint for evolution stage

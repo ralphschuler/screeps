@@ -879,7 +879,7 @@ export interface VisualizationConfig {
     /** Cached terrain data per room */
     terrain: Record<string, { data: string; ttl: number }>;
     /** Cached structure positions per room */
-    structures: Record<string, { data: Array<{ x: number; y: number; type: StructureConstant }>; ttl: number }>;
+    structures: Record<string, { data: { x: number; y: number; type: StructureConstant }[]; ttl: number }>;
   };
   /** Last cache clear tick */
   lastCacheClear: number;

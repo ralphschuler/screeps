@@ -10,8 +10,8 @@
  * Addresses Issue: #22
  */
 
-import type { SwarmState } from "../memory/schemas";
 import { logger } from "@ralphschuler/screeps-core";
+import type { SwarmState } from "../memory/schemas";
 
 /**
  * Defender requirement analysis

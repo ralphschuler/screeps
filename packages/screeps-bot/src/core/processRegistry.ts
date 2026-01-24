@@ -32,7 +32,8 @@
 
 import { clusterManager } from "@ralphschuler/screeps-clusters";
 import { defenseCoordinator, evacuationManager } from "@ralphschuler/screeps-defense";
-import { terminalManager, factoryManager, linkManager, marketManager } from "@ralphschuler/screeps-economy";
+import { factoryManager, linkManager, marketManager, terminalManager } from "@ralphschuler/screeps-economy";
+import { crossShardIntelCoordinator } from "../empire/crossShardIntel";
 import { empireManager } from "../empire/empireManager";
 import { expansionManager } from "../empire/expansionManager";
 import { nukeManager } from "../empire/nukeManager";
@@ -41,9 +42,8 @@ import { pixelGenerationManager } from "../empire/pixelGenerationManager";
 import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
 import { powerCreepManager } from "../empire/powerCreepManager";
 import { remoteInfrastructureManager } from "../empire/remoteInfrastructure";
-import { shardManager } from "../intershard/shardManager";
-import { crossShardIntelCoordinator } from "../empire/crossShardIntel";
 import { tooAngelManager } from "../empire/tooangel/tooAngelManager";
+import { shardManager } from "../intershard/shardManager";
 import { coreProcessManager } from "./coreProcessManager";
 import { kernel } from "./kernel";
 import { logger } from "./logger";

@@ -35,23 +35,18 @@
  * TODO(P2): TEST - Expand integration tests with full Game object mocking
  */
 
-import type { ClusterMemory } from "../memory/schemas";
+import { coordinateClusterDefense } from "@ralphschuler/screeps-defense";
+import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { ProcessPriority } from "../core/kernel";
 import { logger } from "../core/logger";
-import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { memoryManager } from "../memory/manager";
+import type { ClusterMemory } from "../memory/schemas";
 import {
   type DefenseRequest,
   createDefenseRequest,
   needsDefenseAssistance
 } from "../spawning/defenderManager";
-import { resourceSharingManager } from "./resourceSharing";
-import {
-  createDefenseSquad,
-  shouldDissolveSquad,
-  validateSquadState
-} from "./squadCoordinator";
 import {
   routeEmergencyEnergy,
   updateMilitaryReservations
@@ -61,7 +56,12 @@ import {
   updateOffensiveOperations as updateGlobalOffensiveOps
 } from "./offensiveOperations";
 import { updateClusterRallyPoints } from "./rallyPointManager";
-import { coordinateClusterDefense } from "@ralphschuler/screeps-defense";
+import { resourceSharingManager } from "./resourceSharing";
+import {
+  createDefenseSquad,
+  shouldDissolveSquad,
+  validateSquadState
+} from "./squadCoordinator";
 
 /**
  * Cluster Manager Configuration

@@ -7,7 +7,7 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import type { TooAngelQuestSign, TooAngelNPCRoom } from "./types";
+import type { TooAngelNPCRoom, TooAngelQuestSign } from "./types";
 
 /**
  * Check if a controller sign is a TooAngel quest advertisement
