@@ -36,6 +36,5 @@
     "@ralphschuler/screeps-defense": "*",
     "@ralphschuler/screeps-kernel": "*",
     "@ralphschuler/screeps-stats": "*"
-  },
-  "type": "module"
+  }
 }
