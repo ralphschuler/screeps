@@ -9,11 +9,9 @@ import {
   RoomState,
   SpawnRequest,
   SpawnResult,
-  SpawnConfig,
-  BodyTemplate,
-  RoleSpawnDef
+  SpawnConfig
 } from "./types";
-import { ROLE_DEFINITIONS, getRoleDefinition } from "./roleDefinitions";
+import { ROLE_DEFINITIONS, getRoleDefinition, type BodyTemplate, type RoleSpawnDef } from "./roleDefinitions";
 import { calculateBodyCost, validateBody, sortBodyParts } from "./bodyUtils";
 
 /**

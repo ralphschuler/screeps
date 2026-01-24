@@ -33,6 +33,5 @@
   },
   "dependencies": {
     "@ralphschuler/screeps-core": "*"
-  },
-  "type": "module"
+  }
 }

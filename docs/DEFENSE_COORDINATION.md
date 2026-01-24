@@ -155,16 +155,20 @@ Triggers safe mode when defense fails, per ROADMAP Section 12.
 
 ## Integration Points
 
-### Room Node Integration (`roomNode.ts`)
+### Room Node Integration (`core/roomNode.ts` and `core/managers/RoomDefenseManager.ts`)
 
-The room processing loop integrates defense systems:
+The room processing loop integrates defense systems through the defense manager:
 
 ```typescript
-// Safe mode checking
+// In RoomNode.run()
+roomDefenseManager.updateThreatAssessment(room, swarm, cache);
+
+// In RoomDefenseManager.updateThreatAssessment()
+const threat = assessThreat(room);
 safeModeManager.checkSafeMode(room, swarm);
 
-// Threat assessment for danger level updates
-const threat = assessThreat(room);
+// Tower control handled by defense manager
+roomDefenseManager.runTowerControl(room, swarm, towers);
 ```
 
 ### Cluster Manager Integration (`clusterManager.ts`)
