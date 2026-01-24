@@ -198,6 +198,81 @@ export default [
         ConstructionSite: "readonly",
         PowerCreep: "readonly",
         RoomPosition: "readonly",
+        RoomVisual: "readonly",
+        MapVisual: "readonly",
+        RoomTerrain: "readonly",
+        RoomObject: "readonly",
+        CostMatrix: "readonly",
+        PathFinder: "readonly",
+        
+        // Screeps type constants
+        StructureConstant: "readonly",
+        ResourceConstant: "readonly",
+        BodyPartConstant: "readonly",
+        DirectionConstant: "readonly",
+        FindConstant: "readonly",
+        LookConstant: "readonly",
+        ScreepsReturnCode: "readonly",
+        CommodityConstant: "readonly",
+        MineralConstant: "readonly",
+        MineralBoostConstant: "readonly",
+        MineralCompoundConstant: "readonly",
+        PowerConstant: "readonly",
+        PowerClassConstant: "readonly",
+        BuildableStructureConstant: "readonly",
+        
+        // Screeps utility types
+        Id: "readonly",
+        PathStep: "readonly",
+        MoveToOpts: "readonly",
+        PathFinderPath: "readonly",
+        LineStyle: "readonly",
+        CircleStyle: "readonly",
+        
+        // Screeps structure types
+        AnyStoreStructure: "readonly",
+        AnyOwnedStructure: "readonly",
+        OwnedStructure: "readonly",
+        
+        // Screeps memory types
+        CreepMemory: "readonly",
+        RoomMemory: "readonly",
+        
+        // Screeps internal types
+        _HasId: "readonly",
+        
+        // Power constants
+        POWER_INFO: "readonly",
+        POWER_CLASS: "readonly",
+        PWR_GENERATE_OPS: "readonly",
+        PWR_OPERATE_SPAWN: "readonly",
+        PWR_OPERATE_TOWER: "readonly",
+        PWR_OPERATE_STORAGE: "readonly",
+        PWR_OPERATE_LAB: "readonly",
+        PWR_OPERATE_EXTENSION: "readonly",
+        PWR_OPERATE_FACTORY: "readonly",
+        PWR_DISRUPT_SPAWN: "readonly",
+        PWR_DISRUPT_TOWER: "readonly",
+        PWR_DISRUPT_TERMINAL: "readonly",
+        PWR_SHIELD: "readonly",
+        PWR_REGEN_SOURCE: "readonly",
+        PWR_FORTIFY: "readonly",
+        
+        // Market constants
+        ORDER_BUY: "readonly",
+        ORDER_SELL: "readonly",
+        
+        // Advanced resource constants
+        RESOURCE_CATALYZED_GHODIUM_ACID: "readonly",
+        RESOURCE_CATALYZED_GHODIUM_ALKALIDE: "readonly",
+        RESOURCE_CATALYZED_KEANIUM_ACID: "readonly",
+        RESOURCE_CATALYZED_KEANIUM_ALKALIDE: "readonly",
+        RESOURCE_CATALYZED_LEMERGIUM_ACID: "readonly",
+        RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE: "readonly",
+        RESOURCE_CATALYZED_UTRIUM_ACID: "readonly",
+        RESOURCE_CATALYZED_UTRIUM_ALKALIDE: "readonly",
+        RESOURCE_CATALYZED_ZYNTHIUM_ACID: "readonly",
+        RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE: "readonly",
         
         // Other globals
         console: "readonly",
@@ -242,14 +317,16 @@ export default [
       "@typescript-eslint/unified-signatures": "error",
 
       // General rules
-      camelcase: "error",
+      camelcase: ["error", {
+        allow: ["^viz_", "^debug_", "^ranged_attack$"]
+      }],
       complexity: "off",
       "dot-notation": "error",
       eqeqeq: ["error", "smart"],
       "guard-for-in": "off",
       "id-match": "error",
       "max-classes-per-file": ["error", 1],
-      "no-bitwise": "error",
+      "no-bitwise": "off", // Allow bitwise for Screeps flag operations
       "no-caller": "error",
       "no-cond-assign": "error",
       "no-console": "error",
