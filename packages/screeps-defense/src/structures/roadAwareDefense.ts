@@ -18,7 +18,7 @@
  */
 
 import { logger } from "@bot/core/logger";
-import { calculateRoadNetwork, getValidRoadPositions } from "@bot/layouts/roadNetworkPlanner";
+import { calculateRoadNetwork, getValidRoadPositions } from "@ralphschuler/screeps-layouts";
 import type { ExitPosition, PerimeterPlan } from "./perimeterDefense";
 import { calculatePerimeterPositions } from "./perimeterDefense";
 

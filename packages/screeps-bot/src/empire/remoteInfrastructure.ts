@@ -12,7 +12,7 @@
 import { logger } from "@ralphschuler/screeps-core";
 import { ProcessPriority } from "../core/kernel";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { calculateRemoteRoads } from "../layouts/roadNetworkPlanner";
+import { calculateRemoteRoads } from "@ralphschuler/screeps-layouts";
 import { memoryManager } from "../memory/manager";
 import { checkRemoteRoomStatus } from "./remoteRoomManager";
 

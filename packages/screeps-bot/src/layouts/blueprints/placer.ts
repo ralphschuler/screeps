@@ -3,7 +3,7 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import { getValidRoadPositions } from "../roadNetworkPlanner";
+import { getValidRoadPositions } from "@ralphschuler/screeps-layouts";
 import { getStructureLimits } from "./constants";
 import { getStructuresForRCL } from "./selector";
 import type { Blueprint, MisplacedStructure, StructurePlacement } from "./types";

@@ -12,7 +12,7 @@
  */
 
 import type { StructurePlacement } from "./blueprints/types";
-import { logger } from "@ralphschuler/screeps-kernel";
+import { logger } from "@ralphschuler/screeps-core";
 
 /**
  * Maximum number of extension positions to generate.
