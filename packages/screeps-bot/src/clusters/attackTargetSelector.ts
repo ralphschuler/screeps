@@ -14,7 +14,7 @@
 
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
-import type { ClusterMemory, RoomIntel } from "../memory/schemas";
+import type { ClusterMemory, RoomIntel } from "@ralphschuler/screeps-memory";
 import type { OffensiveDoctrine } from "./offensiveDoctrine";
 import { selectDoctrine } from "./offensiveDoctrine";
 

@@ -19,7 +19,7 @@
  */
 
 import { memoryManager } from "../memory/manager";
-import type { SwarmState } from "../memory/schemas";
+import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { getDefenderPriorityBoost } from "./defenderManager";
 
 /** Priority boost for upgraders in focus rooms */

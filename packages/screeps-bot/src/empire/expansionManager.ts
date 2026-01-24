@@ -20,7 +20,7 @@ import { logger } from "@ralphschuler/screeps-core";
 import { ProcessPriority, kernel } from "../core/kernel";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { memoryManager } from "../memory/manager";
-import type { EmpireMemory, RoomIntel } from "../memory/schemas";
+import type { EmpireMemory, RoomIntel } from "@ralphschuler/screeps-memory";
 import * as ExpansionScoring from "./expansionScoring";
 
 /**

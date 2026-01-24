@@ -9,7 +9,7 @@
  * - Whether it's a remote role or home room role
  */
 
-import type { CreepRole, RoleFamily } from "../memory/schemas";
+import type { CreepRole, RoleFamily } from "@ralphschuler/screeps-memory";
 
 /** Body template definition */
 export interface BodyTemplate {

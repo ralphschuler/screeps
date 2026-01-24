@@ -7,7 +7,7 @@
 
 import { getConfig } from "../config";
 import { memoryManager } from "../memory/manager";
-import type { RoomIntel } from "../memory/schemas";
+import type { RoomIntel } from "@ralphschuler/screeps-memory";
 
 /**
  * Remote mining configuration constants

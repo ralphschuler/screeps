@@ -14,7 +14,7 @@ import {
   type Reaction
 } from "@ralphschuler/screeps-chemistry";
 import { logger } from "@ralphschuler/screeps-core";
-import type { SwarmState } from "../memory/schemas";
+import type { SwarmState } from "@ralphschuler/screeps-memory";
 
 /**
  * Convert SwarmState to ChemistryState

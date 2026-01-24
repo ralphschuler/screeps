@@ -77,6 +77,7 @@
     "@ralphschuler/screeps-economy": "*",
     "@ralphschuler/screeps-empire": "*",
     "@ralphschuler/screeps-kernel": "*",
+    "@ralphschuler/screeps-memory": "*",
     "@ralphschuler/screeps-pathfinding": "*",
     "@ralphschuler/screeps-remote-mining": "*",
     "@ralphschuler/screeps-roles": "*",

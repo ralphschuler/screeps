@@ -12,7 +12,7 @@ import { cachedFindSources, cachedRoomFind } from "@ralphschuler/screeps-cache";
 import { type CrossShardTransferRequest, resourceTransferCoordinator } from "@ralphschuler/screeps-intershard";
 import { calculateRemoteHaulerRequirement } from "../empire/remoteHaulerDimensioning";
 import { memoryManager } from "../memory/manager";
-import type { SwarmCreepMemory, SwarmState } from "../memory/schemas";
+import type { SwarmCreepMemory, SwarmState } from "@ralphschuler/screeps-memory";
 import { ROLE_DEFINITIONS } from "./roleDefinitions";
 
 /** Number of dangerous hostiles per remote guard needed */

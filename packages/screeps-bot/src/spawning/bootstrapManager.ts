@@ -8,7 +8,7 @@
 
 import { cachedFindSources } from "@ralphschuler/screeps-cache";
 import { logger } from "@ralphschuler/screeps-core";
-import type { SwarmState } from "../memory/schemas";
+import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { countCreepsByRole, needsRole } from "./spawnNeedsAnalyzer";
 
 /**

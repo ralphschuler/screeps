@@ -14,7 +14,7 @@ import { safeFind } from "@ralphschuler/screeps-utils";
 import { postureManager } from "../../logic/evolution";
 import { pheromoneManager } from "../../logic/pheromone";
 import { memoryManager } from "../../memory/manager";
-import type { SwarmState } from "../../memory/schemas";
+import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { kernel } from "../kernel";
 
 /**

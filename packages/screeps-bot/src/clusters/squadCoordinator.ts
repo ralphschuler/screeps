@@ -12,7 +12,7 @@
 
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
-import type { ClusterMemory, DefenseAssistanceRequest, SquadDefinition } from "../memory/schemas";
+import type { ClusterMemory, DefenseAssistanceRequest, SquadDefinition } from "@ralphschuler/screeps-memory";
 
 /**
  * Squad composition recommendation

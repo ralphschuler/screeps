@@ -41,7 +41,7 @@ import { ProcessPriority } from "../core/kernel";
 import { logger } from "../core/logger";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { memoryManager } from "../memory/manager";
-import type { ClusterMemory } from "../memory/schemas";
+import type { ClusterMemory } from "@ralphschuler/screeps-memory";
 import {
   type DefenseRequest,
   createDefenseRequest,

@@ -9,7 +9,7 @@
  */
 
 import { RoomState, SpawnManager } from "@ralphschuler/screeps-spawn";
-import type { SwarmState } from "../memory/schemas";
+import type { SwarmState } from "@ralphschuler/screeps-memory";
 
 /**
  * Example: Convert bot's SwarmState to spawn package's RoomState

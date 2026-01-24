@@ -13,7 +13,7 @@
  */
 
 import { logger } from "../core/logger";
-import type { ClusterMemory } from "../memory/schemas";
+import type { ClusterMemory } from "@ralphschuler/screeps-memory";
 
 /**
  * Rally point definition

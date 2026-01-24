@@ -22,7 +22,7 @@ import {
 import { placeRoadConstructionSites } from "../../layouts/roadNetworkPlanner";
 import { postureManager } from "../../logic/evolution";
 import { memoryManager } from "../../memory/manager";
-import type { SwarmState } from "../../memory/schemas";
+import type { SwarmState } from "@ralphschuler/screeps-memory";
 
 /**
  * Perimeter defense configuration constants
