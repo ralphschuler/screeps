@@ -121,6 +121,9 @@ export class RoomNode {
 
     // Get or initialize swarm state
     const swarm = memoryManager.getOrInitSwarmState(this.roomName);
+    
+    // Get cached room structures to avoid repeated room.find() calls
+    const cache = getStructureCache(room);
 
     // Update metrics (only every 5 ticks to match pheromone update interval)
     // This avoids expensive room.find() calls every tick

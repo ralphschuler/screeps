@@ -305,6 +305,11 @@ export default [
         }
       ],
       "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": ["error", { 
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+        caughtErrorsIgnorePattern: "^_"
+      }],
       "@typescript-eslint/no-shadow": [
         "error",
         {
@@ -334,6 +339,7 @@ export default [
       "no-invalid-this": "off",
       "no-new-wrappers": "error",
       "no-shadow": "off", // Use @typescript-eslint/no-shadow instead
+      "no-unused-vars": "off", // Use @typescript-eslint/no-unused-vars instead
       "no-throw-literal": "error",
       "no-undef-init": "error",
       "no-underscore-dangle": "warn",
