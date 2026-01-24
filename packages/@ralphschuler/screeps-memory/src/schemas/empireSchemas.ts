@@ -298,6 +298,9 @@ export function createDefaultMarketMemory(): MarketMemory {
   return {
     resources: {},
     lastScan: 0,
+    orders: {},
+    totalProfit: 0,
+    lastBalance: 0,
     pendingArbitrage: [],
     completedArbitrage: 0,
     arbitrageProfit: 0

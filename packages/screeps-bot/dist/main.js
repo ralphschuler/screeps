@@ -24669,6 +24669,9 @@ value: !0
 return {
 resources: {},
 lastScan: 0,
+orders: {},
+totalProfit: 0,
+lastBalance: 0,
 pendingArbitrage: [],
 completedArbitrage: 0,
 arbitrageProfit: 0
@@ -24685,6 +24688,9 @@ powerBanks: [],
 market: {
 resources: {},
 lastScan: 0,
+orders: {},
+totalProfit: 0,
+lastBalance: 0,
 pendingArbitrage: [],
 completedArbitrage: 0,
 arbitrageProfit: 0

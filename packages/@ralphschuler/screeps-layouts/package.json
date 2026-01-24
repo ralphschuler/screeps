@@ -31,7 +31,6 @@
     "typescript": "^5.4.3"
   },
   "dependencies": {
-    "@ralphschuler/screeps-core": "*",
-    "@ralphschuler/screeps-kernel": "*"
+    "@ralphschuler/screeps-core": "*"
   }
 }
