@@ -14,17 +14,17 @@ import { creepProcessManager } from "./core/creepProcessManager";
 import { eventBus } from "./core/events";
 import { kernel } from "./core/kernel";
 import { LogLevel, configureLogger, logger } from "./core/logger";
-import { registerAllProcesses } from "./core/processRegistry";
-import { clearTargetAssignments as clearEconomyAssignments } from "./economy/targetAssignmentManager";
-import { runSpawnManager } from "./logic/spawn";
-import { memoryManager } from "./memory/manager";
 import { initializeNativeCallsTracking } from "./core/nativeCallsTracker";
+import { registerAllProcesses } from "./core/processRegistry";
 import { roomProcessManager } from "./core/roomProcessManager";
-import { initializePheromoneEventHandlers } from "./logic/pheromoneEventHandlers";
-import { initializePathCacheEvents } from "./utils/pathfinding";
-import { heapCache } from "./memory/heapCache";
-import { initializeRemotePathScheduler } from "./utils/remote-mining";
+import { clearTargetAssignments as clearEconomyAssignments } from "./economy/targetAssignmentManager";
 import { shardManager } from "./intershard/shardManager";
+import { initializePheromoneEventHandlers } from "./logic/pheromoneEventHandlers";
+import { runSpawnManager } from "./logic/spawn";
+import { heapCache } from "./memory/heapCache";
+import { memoryManager } from "./memory/manager";
+import { initializePathCacheEvents } from "./utils/pathfinding";
+import { initializeRemotePathScheduler } from "./utils/remote-mining";
 
 // =============================================================================
 // Visualization Setup

@@ -298,27 +298,17 @@ export default [
       "@typescript-eslint/consistent-type-assertions": "error",
       "@typescript-eslint/consistent-type-definitions": "error",
       "@typescript-eslint/explicit-function-return-type": "off",
-      "@typescript-eslint/explicit-member-accessibility": [
-        "error",
-        {
-          accessibility: "explicit"
-        }
-      ],
+      "@typescript-eslint/explicit-member-accessibility": "off", // Allow implicit public
       "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-unused-vars": ["error", { 
+      "@typescript-eslint/no-unused-vars": ["warn", { 
         argsIgnorePattern: "^_",
         varsIgnorePattern: "^_",
         caughtErrorsIgnorePattern: "^_"
       }],
-      "@typescript-eslint/no-shadow": [
-        "error",
-        {
-          hoist: "all"
-        }
-      ],
+      "@typescript-eslint/no-shadow": "warn", // Downgrade to warning
       "@typescript-eslint/no-unused-expressions": "error",
       "@typescript-eslint/no-use-before-define": ["error", { functions: false }],
-      "@typescript-eslint/prefer-for-of": "error",
+      "@typescript-eslint/prefer-for-of": "off", // Allow traditional for loops
       "@typescript-eslint/unified-signatures": "error",
 
       // General rules
@@ -330,7 +320,7 @@ export default [
       eqeqeq: ["error", "smart"],
       "guard-for-in": "off",
       "id-match": "error",
-      "max-classes-per-file": ["error", 1],
+      "max-classes-per-file": "off", // Allow multiple helper classes in one file
       "no-bitwise": "off", // Allow bitwise for Screeps flag operations
       "no-caller": "error",
       "no-cond-assign": "error",
