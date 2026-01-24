@@ -9,11 +9,9 @@ import {
   RoomState,
   SpawnRequest,
   SpawnResult,
-  SpawnConfig,
-  BodyTemplate,
-  RoleSpawnDef
+  SpawnConfig
 } from "./types";
-import { DEFAULT_ROLE_DEFINITIONS, getRoleDefinition } from "./roleDefinitions";
+import { ROLE_DEFINITIONS, getRoleDefinition, type BodyTemplate, type RoleSpawnDef } from "./roleDefinitions";
 import { calculateBodyCost, validateBody, sortBodyParts } from "./bodyUtils";
 
 /**
@@ -86,7 +84,7 @@ export class SpawnManager {
    */
   constructor(config: SpawnConfig = {}, customRoles?: Record<string, RoleSpawnDef>) {
     this.config = config;
-    this.roleDefs = customRoles || DEFAULT_ROLE_DEFINITIONS;
+    this.roleDefs = customRoles || ROLE_DEFINITIONS;
   }
 
   /**

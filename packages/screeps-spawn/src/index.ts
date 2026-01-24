@@ -1,26 +1,41 @@
 /**
  * @ralphschuler/screeps-spawn
  * 
- * Modular spawn system for Screeps with clean interfaces and no Game object dependencies.
+ * Spawn system for ralphschuler/screeps bot.
+ * Handles creep spawning, body optimization, queue management, and role prioritization.
  * 
  * @packageDocumentation
  */
 
-// Type exports
-export {
+// Bot-specific types
+export type {
+  CreepRole,
+  EconomyRole,
+  MilitaryRole,
+  UtilityRole,
+  PowerRole,
+  PowerBankRole,
   RoleFamily,
+  ColonyLevel,
   RoomPosture,
-  BodyTemplate,
-  RoleSpawnDef,
-  PheromoneState,
+  Pheromones,
+  SwarmState,
+  SwarmCreepMemory
+} from "./botTypes";
+
+// Type exports
+export type {
   RoomState,
   RoleCount,
-  SpawnRequest,
+  SpawnRequest as SpawnRequestType,
   SpawnResult,
   SpawnConfig,
   BodyOptimizationOptions,
-  PostureWeights
+  PostureWeights,
+  PheromoneState
 } from "./types";
+
+export type { BodyTemplate, RoleSpawnDef } from "./roleDefinitions";
 
 // Body utilities
 export {
@@ -34,7 +49,7 @@ export {
 
 // Role definitions
 export {
-  DEFAULT_ROLE_DEFINITIONS,
+  ROLE_DEFINITIONS,
   getRoleDefinition,
   getAllRoles,
   getRolesByFamily
@@ -42,3 +57,65 @@ export {
 
 // Main spawn manager
 export { SpawnManager } from "./SpawnManager";
+
+// Body optimizer
+export { optimizeBody, optimizeHarvesterBody, optimizeHaulerBody } from "./bodyOptimizer";
+
+// Spawn queue
+export { SpawnPriority, type SpawnRequest, spawnQueue } from "./spawnQueue";
+
+// Spawn queue manager
+export { getBestBody, determineNextRole } from "./spawnQueueManager";
+
+// Spawn needs analyzer
+export { 
+  countCreepsByRole, 
+  needsRole, 
+  assignRemoteTargetRoom,
+  getRemoteRoomNeedingWorkers
+} from "./spawnNeedsAnalyzer";
+
+// Bootstrap manager
+export {
+  isBootstrapMode,
+  getBootstrapRole,
+  isEmergencySpawnState,
+  getEnergyProducerCount
+} from "./bootstrapManager";
+
+// Spawn priority
+export {
+  getPostureSpawnWeights,
+  getDynamicPriorityBoost,
+  getPheromoneMult
+} from "./spawnPriority";
+
+// Defender manager
+export {
+  analyzeDefenderNeeds,
+  getCurrentDefenders,
+  getDefenderPriorityBoost
+} from "./defenderManager";
+
+// Spawn coordinator
+export {
+  populateSpawnQueue,
+  processSpawnQueue
+} from "./spawnCoordinator";
+
+// Bot integration (interfaces for bot-specific dependencies)
+export type {
+  IKernel,
+  IMemoryManager,
+  IEnergyFlowPredictor,
+  IPowerBankHarvestingManager
+} from "./botIntegration";
+
+export {
+  kernel,
+  memoryManager,
+  energyFlowPredictor,
+  powerBankHarvestingManager,
+  calculateRemoteHaulerRequirement
+} from "./botIntegration";
+

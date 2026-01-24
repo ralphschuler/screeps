@@ -4,7 +4,6 @@
   "description": "Model Context Protocol (MCP) server for accessing the Screeps community wiki at wiki.screepspl.us",
   "license": "MIT",
   "author": "OpenAI Automations",
-  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": "./dist/server.js",

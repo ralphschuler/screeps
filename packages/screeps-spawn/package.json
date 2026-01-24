@@ -1,10 +1,10 @@
 {
   "name": "@ralphschuler/screeps-spawn",
   "version": "0.1.0",
-  "description": "Modular spawn system for Screeps - body optimization, queue management, and role prioritization",
+  "description": "Spawn system for ralphschuler/screeps bot - body optimization, queue management, and role prioritization",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "private": false,
+  "private": true,
   "scripts": {
     "build": "tsc",
     "test": "mocha test/**/*.test.ts",
@@ -31,6 +31,13 @@
     "url": "https://github.com/ralphschuler/screeps/issues"
   },
   "homepage": "https://github.com/ralphschuler/screeps/tree/main/packages/screeps-spawn#readme",
+  "dependencies": {
+    "@ralphschuler/screeps-cache": "*",
+    "@ralphschuler/screeps-core": "*",
+    "@ralphschuler/screeps-defense": "*",
+    "@ralphschuler/screeps-intershard": "*",
+    "@ralphschuler/screeps-utils": "*"
+  },
   "devDependencies": {
     "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
@@ -41,6 +48,5 @@
     "ts-node": "^10.2.0",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.4.3"
-  },
-  "type": "module"
+  }
 }

@@ -47,6 +47,5 @@
   },
   "peerDependencies": {
     "screeps-cartographer": "^1.8.13"
-  },
-  "type": "module"
+  }
 }

@@ -8,3 +8,4 @@ export * from './types';
 export * from './pixel';
 export * from './threat';
 export * from './nuke';
+export * from './remote';

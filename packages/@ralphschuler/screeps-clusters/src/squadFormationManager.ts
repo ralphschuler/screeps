@@ -10,9 +10,9 @@
  * Addresses Issue: Squad formation logic and role composition
  */
 
-import type { ClusterMemory, SquadDefinition } from "../memory/schemas";
+import type { ClusterMemory, SquadDefinition } from "./types";
 import { logger } from "@ralphschuler/screeps-core";
-import { SpawnPriority, type SpawnRequest, spawnQueue } from "../spawning/spawnQueue";
+import { SpawnPriority, type SpawnRequest, spawnQueue } from "./adapters/spawnQueueAdapter";
 import { addCreepToSquad, getSquadReadiness } from "./squadCoordinator";
 import { DOCTRINE_CONFIGS, getDoctrineComposition } from "./offensiveDoctrine";
 
@@ -152,22 +152,13 @@ function createSquadSpawnRequests(
         id: `${squad.id}_${role}_${i}_${Game.time}`,
         roomName: room.name,
         role: role as any,
-        family: "military",
-        body: {
-          parts: bodyParts,
-          cost: bodyCost,
-          minCapacity: bodyCost
-        },
+        body: bodyParts,  // Just the array of body parts
         priority,
         targetRoom: squad.targetRooms[0],
-        boostRequirements: boostReqs.length > 0 ? boostReqs.map(boost => ({
-          resourceType: boost.compound,
-          bodyParts: bodyParts.filter(part => boost.parts.includes(part))
-        })) : undefined,
         createdAt: Game.time,
         additionalMemory: {
           squadId: squad.id
-        }
+        } as any  // Cast to any since SpawnRequest additionalMemory is Partial<CreepMemory>
       };
       
       spawnQueue.addRequest(request);
@@ -256,9 +247,11 @@ export function onCreepSpawned(creep: Creep): void {
   const formation = activeFormations.get(squadId);
   if (!formation) return;
   
-  // Update composition
-  const role = creep.memory.role ;
-  formation.currentComposition[role] = (formation.currentComposition[role] ?? 0) + 1;
+  // Update composition - only track roles that are in the target composition
+  const role = creep.memory.role;
+  if (role && role in formation.targetComposition) {
+    formation.currentComposition[role] = (formation.currentComposition[role] ?? 0) + 1;
+  }
   
   // Add creep to squad
   addCreepToSquad(creep.name, squadId);

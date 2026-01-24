@@ -32,7 +32,9 @@
     "typescript": "^5.4.3"
   },
   "dependencies": {
-    "@ralphschuler/screeps-core": "*"
-  },
-  "type": "module"
+    "@ralphschuler/screeps-core": "*",
+    "@ralphschuler/screeps-defense": "*",
+    "@ralphschuler/screeps-kernel": "*",
+    "@ralphschuler/screeps-stats": "*"
+  }
 }

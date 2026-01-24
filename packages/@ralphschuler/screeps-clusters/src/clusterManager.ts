@@ -36,17 +36,17 @@
  Issue URL: https://github.com/ralphschuler/screeps/issues/2799
  */
 
-import type { ClusterMemory, SquadDefinition } from "../memory/schemas";
-import { ProcessPriority } from "../core/kernel";
+import type { ClusterMemory, SquadDefinition } from "./types";
+import { ProcessPriority } from "@ralphschuler/screeps-kernel";
 import { logger } from "@ralphschuler/screeps-core";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
-import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { memoryManager } from "../memory/manager";
+import { MediumFrequencyProcess, ProcessClass } from "@ralphschuler/screeps-kernel";
+import { memoryManager } from "./adapters/memoryAdapter";
 import {
   type DefenseRequest,
   createDefenseRequest,
   needsDefenseAssistance
-} from "../spawning/defenderManager";
+} from "./adapters/defenderAdapter";
 import { resourceSharingManager } from "./resourceSharing";
 import {
   createDefenseSquad,
@@ -215,10 +215,10 @@ export class ClusterManager {
 
     for (const roomName of cluster.memberRooms) {
       const swarm = memoryManager.getSwarmState(roomName);
-      if (!swarm) continue;
+      if (!swarm || !swarm.metrics) continue;
 
-      totalEnergyIncome += swarm.metrics.energyHarvested;
-      totalEnergyConsumption += swarm.metrics.energySpawning + swarm.metrics.energyConstruction + swarm.metrics.energyRepair;
+      totalEnergyIncome += swarm.metrics.energyHarvested || 0;
+      totalEnergyConsumption += (swarm.metrics.energySpawning || 0) + (swarm.metrics.energyConstruction || 0) + (swarm.metrics.energyRepair || 0);
       totalWarIndex += swarm.danger * 25; // Convert danger (0-3) to index (0-75)
       
       // Economy index based on storage and energy income
@@ -227,7 +227,7 @@ export class ClusterManager {
         const storageRatio = room.storage.store.getUsedCapacity(RESOURCE_ENERGY) / room.storage.store.getCapacity();
         totalEconomyIndex += storageRatio * 100;
       } else {
-        totalEconomyIndex += swarm.metrics.energyHarvested > 0 ? 50 : 0;
+        totalEconomyIndex += (swarm.metrics.energyHarvested || 0) > 0 ? 50 : 0;
       }
 
       roomCount++;

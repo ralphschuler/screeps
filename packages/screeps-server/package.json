@@ -2,7 +2,6 @@
   "name": "@ralphschuler/screeps-server",
   "version": "1.0.0",
   "description": "Local Screeps private server with test infrastructure for integration and performance testing",
-  "type": "module",
   "directories": {
     "doc": "docs",
     "test": "test"

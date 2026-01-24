@@ -12,9 +12,9 @@
  * Addresses ROADMAP Section 12: Attack target selection
  */
 
-import type { ClusterMemory, RoomIntel } from "../memory/schemas";
+import type { ClusterMemory, RoomIntel } from "./types";
 import { logger } from "@ralphschuler/screeps-core";
-import { memoryManager } from "../memory/manager";
+import { memoryManager } from "./adapters/memoryAdapter";
 import type { OffensiveDoctrine } from "./offensiveDoctrine";
 import { selectDoctrine } from "./offensiveDoctrine";
 
@@ -85,8 +85,8 @@ export function findAttackTargets(
   const targets: AttackTarget[] = [];
   
   const empire = memoryManager.getEmpire();
-  const roomIntel = empire.knownRooms;
-  const warTargets = new Set(empire.warTargets);
+  const roomIntel = empire.knownRooms || {};
+  const warTargets = new Set(empire.warTargets || []);
 
   // Get all known rooms
   for (const roomName in roomIntel) {
@@ -249,7 +249,8 @@ export function selectTargetForDoctrine(
  */
 export function validateTarget(targetRoom: string): boolean {
   const empire = memoryManager.getEmpire();
-  const intel = empire.knownRooms[targetRoom];
+  const knownRooms = empire.knownRooms || {};
+  const intel = knownRooms[targetRoom];
   
   if (!intel) {
     logger.warn(`No intel for target ${targetRoom}`, { subsystem: "AttackTarget" });
