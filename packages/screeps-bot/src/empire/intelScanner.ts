@@ -10,10 +10,10 @@
  * Addresses Issue: Intelligence & Coordination (continuous enemy scanning)
  */
 
-import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { ProcessPriority } from "../core/kernel";
 import { logger } from "@ralphschuler/screeps-core";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
+import { ProcessPriority } from "../core/kernel";
+import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { memoryManager } from "../memory/manager";
 import type { RoomIntel } from "../memory/schemas";
 

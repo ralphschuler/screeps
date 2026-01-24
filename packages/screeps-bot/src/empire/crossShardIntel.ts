@@ -9,12 +9,12 @@
  * Addresses Issue: Intelligence & Coordination (cross-shard coordination)
  */
 
-import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { ProcessPriority } from "../core/kernel";
 import { logger } from "@ralphschuler/screeps-core";
-import { memoryManager } from "../memory/manager";
 import { deserializeInterShardMemory, serializeInterShardMemory } from "@ralphschuler/screeps-intershard";
 import type { SharedEnemyIntel } from "@ralphschuler/screeps-intershard";
+import { ProcessPriority } from "../core/kernel";
+import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import { memoryManager } from "../memory/manager";
 
 /**
  * Cross-Shard Intel Configuration

@@ -5,9 +5,9 @@
  * Extracted from consoleCommands.ts for better modularity.
  */
 
+import { getConfig, updateConfig } from "../../config";
 import { Command } from "../commandRegistry";
 import { LogLevel, configureLogger } from "../logger";
-import { getConfig, updateConfig } from "../../config";
 
 /**
  * Logging commands

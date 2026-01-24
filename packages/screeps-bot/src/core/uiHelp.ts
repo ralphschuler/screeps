@@ -5,7 +5,7 @@
  * to provide a rich, interactive help interface.
  */
 
-import { createHelp, ModuleDescribe, FunctionDescribe } from '@ralphschuler/screeps-utils';
+import { FunctionDescribe, ModuleDescribe, createHelp } from '@ralphschuler/screeps-utils';
 import { commandRegistry } from './commandRegistry';
 
 /**
@@ -93,7 +93,7 @@ export function generateCategoryHelp(category: string): string {
  * @param usage - Usage string (e.g., "command(arg1, arg2)")
  * @returns Array of parameter descriptions
  */
-function parseParamsFromUsage(usage: string): Array<{ name: string; desc: string }> | undefined {
+function parseParamsFromUsage(usage: string): { name: string; desc: string }[] | undefined {
   const paramMatch = usage.match(/\((.*?)\)/);
   if (!paramMatch || !paramMatch[1]) {
     return undefined;

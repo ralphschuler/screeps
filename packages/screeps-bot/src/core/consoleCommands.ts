@@ -12,26 +12,26 @@
  * - Configuration: Commands for viewing/modifying bot configuration
  */
 
-/* eslint-disable max-classes-per-file */
+ 
 
-import { commandRegistry, registerDecoratedCommands } from "./commandRegistry";
-import { labCommands, marketCommands, powerCommands } from "./advancedSystemCommands";
-import { shardCommands } from "./shardCommands";
+import { globalCache } from "@ralphschuler/screeps-cache";
+import { visualizationManager } from "@ralphschuler/screeps-visuals";
+import { getConfig, updateConfig } from "../config";
 import { economyCommands } from "../economy/economyCommands";
 import { expansionCommands } from "../empire/expansionCommands";
 import { tooAngelCommands } from "../empire/tooangel/consoleCommands";
 import { memoryCommands } from "../memory/memoryCommands";
-import { UICommands } from "./uiCommands";
-import { globalCache } from "@ralphschuler/screeps-cache";
-import { LoggingCommands } from "./commands/LoggingCommands";
-import { SystemCommands } from "./commands/SystemCommands";
+import { labCommands, marketCommands, powerCommands } from "./advancedSystemCommands";
+import { commandRegistry, registerDecoratedCommands } from "./commandRegistry";
 import { ConfigurationCommands } from "./commands/ConfigurationCommands";
-import { VisualizationCommands } from "./commands/VisualizationCommands";
 import { StatisticsCommands } from "./commands/StatisticsCommands";
 import { KernelCommands } from "./commands/KernelCommands";
-import { getConfig, updateConfig } from "../config";
+import { LoggingCommands } from "./commands/LoggingCommands";
+import { SystemCommands } from "./commands/SystemCommands";
+import { VisualizationCommands } from "./commands/VisualizationCommands";
 import { configureLogger } from "./logger";
-import { visualizationManager } from "@ralphschuler/screeps-visuals";
+import { shardCommands } from "./shardCommands";
+import { UICommands } from "./uiCommands";
 
 /**
  * Command classes - imported from commands/

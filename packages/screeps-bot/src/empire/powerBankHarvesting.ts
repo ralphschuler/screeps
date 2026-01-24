@@ -11,10 +11,10 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
+import { ProcessPriority } from "../core/kernel";
+import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { memoryManager } from "../memory/manager";
 import type { PowerBankEntry } from "../memory/schemas";
-import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { ProcessPriority } from "../core/kernel";
 
 /**
  * Power bank harvesting configuration

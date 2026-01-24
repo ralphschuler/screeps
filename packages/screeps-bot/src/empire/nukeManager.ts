@@ -20,11 +20,11 @@
  * Addresses Issue: #24
  */
 
-import { memoryManager } from "../memory/manager";
-import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { ProcessPriority } from "../core/kernel";
 import { NukeCoordinator } from "@ralphschuler/screeps-empire";
 import type { NukeConfig } from "@ralphschuler/screeps-empire";
+import { ProcessPriority } from "../core/kernel";
+import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import { memoryManager } from "../memory/manager";
 
 /**
  * Nuke Manager Configuration

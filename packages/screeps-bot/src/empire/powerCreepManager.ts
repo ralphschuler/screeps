@@ -12,9 +12,9 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import { memoryManager } from "../memory/manager";
-import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { ProcessPriority } from "../core/kernel";
+import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import { memoryManager } from "../memory/manager";
 
 /**
  * Power creep configuration

@@ -7,8 +7,8 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import type { TooAngelQuestMemory } from "./types";
 import { notifyQuestComplete } from "./questManager";
+import type { TooAngelQuestMemory } from "./types";
 
 /**
  * Quest executor configuration

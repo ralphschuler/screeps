@@ -148,7 +148,7 @@ export class MemoryPruner {
 
     // Check if priceHistory exists (it may not be in the type but could be in memory)
     const marketRecord = empire.market as unknown as Record<string, unknown>;
-    const priceHistory = marketRecord.priceHistory as Record<string, Array<{ time: number }>> | undefined;
+    const priceHistory = marketRecord.priceHistory as Record<string, { time: number }[]> | undefined;
     
     if (!priceHistory) return 0;
 

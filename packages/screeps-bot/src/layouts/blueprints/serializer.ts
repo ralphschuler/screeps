@@ -2,8 +2,8 @@
  * Blueprint serialization - import/export functionality
  */
 
-import type { Blueprint } from "./types";
 import { logger } from "@ralphschuler/screeps-core";
+import type { Blueprint } from "./types";
 
 /**
  * Export blueprint to JSON format for sharing

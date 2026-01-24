@@ -7,11 +7,11 @@
  * to integrate with the bot's existing systems.
  */
 
-import { PortalManager, PathCacheEventManager } from "@ralphschuler/screeps-pathfinding";
+import { PathCacheEventManager, PortalManager } from "@ralphschuler/screeps-pathfinding";
 import {
   BotCacheAdapter,
-  BotLoggerAdapter,
   BotEventBusAdapter,
+  BotLoggerAdapter,
   BotPathCacheAdapter,
   BotRemoteMiningAdapter
 } from "./pathfindingAdapter";

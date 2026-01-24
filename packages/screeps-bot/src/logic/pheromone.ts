@@ -2,9 +2,9 @@
  * Pheromone-based coordination system with metrics collection, periodic updates, and diffusion.
  */
 
-import type { PheromoneState, SwarmState } from "../memory/schemas";
-import { safeFind } from "@ralphschuler/screeps-utils";
 import { logger } from "@ralphschuler/screeps-core";
+import { safeFind } from "@ralphschuler/screeps-utils";
+import type { PheromoneState, SwarmState } from "../memory/schemas";
 
 /** Pheromone system configuration */
 export interface PheromoneConfig {

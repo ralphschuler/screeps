@@ -12,6 +12,10 @@
  * - Layer 5: Schema migration system (migrations.ts)
  */
 
+import { INFINITE_TTL, heapCache } from "./heapCache";
+import { memoryMonitor } from "./memoryMonitor";
+import { memoryPruner } from "./memoryPruner";
+import { migrationRunner } from "./migrations";
 import {
   type ClusterMemory,
   type EmpireMemory,
@@ -22,10 +26,6 @@ import {
   createDefaultEmpireMemory,
   createDefaultSwarmState
 } from "./schemas";
-import { INFINITE_TTL, heapCache } from "./heapCache";
-import { memoryMonitor } from "./memoryMonitor";
-import { memoryPruner } from "./memoryPruner";
-import { migrationRunner } from "./migrations";
 
 // Extend RoomMemory interface to add hostile property
 // Used by memoryManager to cache whether a room contains hostile structures/creeps

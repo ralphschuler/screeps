@@ -5,13 +5,12 @@
  * Extracted from consoleCommands.ts for better modularity.
  */
 
-import { Command } from "../commandRegistry";
+import { clearRoomFindCache, getCacheStatistics , getRoomFindCacheStats, resetCacheStats } from "@ralphschuler/screeps-cache";
 import { memorySegmentStats, unifiedStats } from "@ralphschuler/screeps-stats";
 import { getConfig, updateConfig } from "../../config";
-import { configureLogger } from "../logger";
-import { getCacheStatistics, resetCacheStats } from "@ralphschuler/screeps-cache";
-import { getRoomFindCacheStats, clearRoomFindCache } from "@ralphschuler/screeps-cache";
 import { memoryManager } from "../../memory/manager";
+import { Command } from "../commandRegistry";
+import { configureLogger } from "../logger";
 
 /**
  * Statistics commands

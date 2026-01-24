@@ -21,10 +21,10 @@
  * Addresses Issue: #34
  */
 
+import { createLogger } from "@ralphschuler/screeps-core";
+import { memoryManager } from "../memory/manager";
 import type { PheromoneState, SwarmState } from "../memory/schemas";
 import { VisualizationLayer } from "../memory/schemas";
-import { memoryManager } from "../memory/manager";
-import { createLogger } from "@ralphschuler/screeps-core";
 import { visualizationManager } from "./visualizationManager";
 
 const logger = createLogger("RoomVisualizer");
@@ -584,7 +584,7 @@ export class RoomVisualizer {
     visual.circle(flowX, flowY, {
       radius: 0.15,
       fill: color,
-      opacity: opacity
+      opacity
     });
   }
 
@@ -623,7 +623,7 @@ export class RoomVisualizer {
     } else {
       // Draw and cache
       const structures = room.find(FIND_STRUCTURES);
-      const structureData: Array<{ x: number; y: number; type: StructureConstant }> = [];
+      const structureData: { x: number; y: number; type: StructureConstant }[] = [];
       
       for (const structure of structures) {
         const opacity = this.getStructureDepthOpacity(structure.structureType);

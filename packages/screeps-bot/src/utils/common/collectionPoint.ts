@@ -11,9 +11,9 @@
  * - CPU-efficient: calculate once per room, reuse until invalidated
  */
 
-import type { SwarmState } from "../../memory/schemas";
-import { createLogger } from "@ralphschuler/screeps-core";
 import { globalCache } from "@ralphschuler/screeps-cache";
+import { createLogger } from "@ralphschuler/screeps-core";
+import type { SwarmState } from "../../memory/schemas";
 
 const logger = createLogger("CollectionPoint");
 

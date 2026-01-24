@@ -2,8 +2,8 @@
  * Blueprint efficiency metrics calculation
  */
 
-import type { Blueprint, BlueprintEfficiencyMetrics } from "./types";
 import { getStructuresForRCL } from "./selector";
+import type { Blueprint, BlueprintEfficiencyMetrics } from "./types";
 
 /**
  * Blueprint efficiency scoring constants

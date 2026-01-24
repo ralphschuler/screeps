@@ -10,11 +10,11 @@
  * Addresses Issue: Squad formation logic and role composition
  */
 
-import type { ClusterMemory, SquadDefinition } from "../memory/schemas";
 import { logger } from "../core/logger";
+import type { ClusterMemory, SquadDefinition } from "../memory/schemas";
 import { SpawnPriority, type SpawnRequest, spawnQueue } from "../spawning/spawnQueue";
-import { addCreepToSquad, getSquadReadiness } from "./squadCoordinator";
 import { DOCTRINE_CONFIGS, getDoctrineComposition } from "./offensiveDoctrine";
+import { addCreepToSquad, getSquadReadiness } from "./squadCoordinator";
 
 /**
  * Screeps BODYPART_COST constants

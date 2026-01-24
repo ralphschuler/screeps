@@ -4,13 +4,13 @@
  * Wraps the framework ThreatPredictor with bot-specific process decorators and memory access
  */
 
-import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { ProcessPriority } from "../core/kernel";
 import {
   ThreatPredictor as FrameworkThreatPredictor,
-  ThreatPredictorConfig,
-  RoomIntelAccessor
+  RoomIntelAccessor,
+  ThreatPredictorConfig
 } from "@ralphschuler/screeps-empire";
+import { ProcessPriority } from "../core/kernel";
+import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { memoryManager } from "../memory/manager";
 
 /**

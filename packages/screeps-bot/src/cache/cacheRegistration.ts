@@ -5,8 +5,8 @@
  * This establishes the cache hierarchy and enables coordinated invalidation.
  */
 
+import { CacheLayer, cacheCoherence } from "./CacheCoherence";
 import { globalCache } from "./CacheManager";
-import { cacheCoherence, CacheLayer } from "./CacheCoherence";
 
 /**
  * Register all caches with the coherence manager

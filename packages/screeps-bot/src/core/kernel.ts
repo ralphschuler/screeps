@@ -38,7 +38,7 @@ export {
   Kernel
 } from "@ralphschuler/screeps-kernel";
 
-import { Kernel, type ProcessFrequency, DEFAULT_ADAPTIVE_CONFIG } from "@ralphschuler/screeps-kernel";
+import { DEFAULT_ADAPTIVE_CONFIG, Kernel, type ProcessFrequency } from "@ralphschuler/screeps-kernel";
 import type { CPUConfig } from "../config";
 import { getConfig } from "../config";
 import { logger } from "./logger";

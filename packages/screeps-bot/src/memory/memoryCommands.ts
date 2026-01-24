@@ -5,12 +5,12 @@
  */
 
 import { Command } from "../core/commandRegistry";
+import { memoryManager } from "./manager";
+import { memoryCompressor } from "./memoryCompressor";
 import { memoryMonitor } from "./memoryMonitor";
 import { memoryPruner } from "./memoryPruner";
-import { memorySegmentManager, SEGMENT_ALLOCATION } from "./memorySegmentManager";
-import { memoryCompressor } from "./memoryCompressor";
+import { SEGMENT_ALLOCATION, memorySegmentManager } from "./memorySegmentManager";
 import { migrationRunner } from "./migrations";
-import { memoryManager } from "./manager";
 
 /**
  * Memory management commands

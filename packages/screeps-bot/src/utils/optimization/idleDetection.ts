@@ -302,7 +302,7 @@ function isBuilderIdle(creep: Creep, state: NonNullable<SwarmCreepMemory["state"
  * NOTE: Currently unused as "repairer" is not a defined role in this bot.
  * Kept for future use when repairer role is added.
  */
-/* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+ 
 function isRepairerIdle(creep: Creep, state: NonNullable<SwarmCreepMemory["state"]>): boolean {
   // Must be repairing
   if (state.action !== "repair") {

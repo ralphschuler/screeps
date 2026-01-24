@@ -5,8 +5,8 @@
  * Data is lost on global reset but provides fastest access.
  */
 
-import { CacheStore } from "../CacheStore";
 import { CacheEntry } from "../CacheEntry";
+import { CacheStore } from "../CacheStore";
 
 /**
  * Global heap storage structure

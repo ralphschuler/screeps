@@ -8,7 +8,7 @@
  * The actual spawn system integration will be done incrementally.
  */
 
-import { SpawnManager, RoomState } from "@ralphschuler/screeps-spawn";
+import { RoomState, SpawnManager } from "@ralphschuler/screeps-spawn";
 import type { SwarmState } from "../memory/schemas";
 
 /**

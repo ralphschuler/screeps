@@ -9,8 +9,8 @@
  * Each doctrine defines squad composition, tactics, and target priorities.
  */
 
-import type { ClusterMemory } from "../memory/schemas";
 import { logger } from "../core/logger";
+import type { ClusterMemory } from "../memory/schemas";
 
 /**
  * Offensive doctrine types (escalation levels)

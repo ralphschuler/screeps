@@ -12,8 +12,8 @@
  * - Utilization ratio gauge
  */
 
-import { kernel } from "../core/kernel";
 import { getAdaptiveBudgetInfo } from "@ralphschuler/screeps-stats";
+import { kernel } from "../core/kernel";
 
 export interface BudgetDashboardOptions {
   /** Room to display dashboard in (defaults to first owned room) */

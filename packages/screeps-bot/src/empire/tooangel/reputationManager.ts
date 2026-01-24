@@ -12,9 +12,9 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import type { TooAngelReputationMessage, TooAngelReputation } from "./types";
-import { findClosestNPCRoom } from "./npcDetector";
 import { getTooAngelMemory } from "./memoryInit";
+import { findClosestNPCRoom } from "./npcDetector";
+import type { TooAngelReputation, TooAngelReputationMessage } from "./types";
 
 /**
  * Configuration for reputation system

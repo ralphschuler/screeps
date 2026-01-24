@@ -219,7 +219,7 @@ export function IdleProcess(
  * Class decorator to mark a class as containing process methods
  * This enables automatic discovery and registration of decorated methods
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export function ProcessClass(): <T extends new (...args: any[]) => any>(constructor: T) => T {
   return function<T extends new (...args: any[]) => any>(constructor: T): T {
     registeredClasses.add(constructor as unknown as new () => unknown);

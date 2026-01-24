@@ -10,15 +10,15 @@
  * to dedicated manager modules for better separation of concerns.
  */
 
-import type { SwarmState } from "../memory/schemas";
-import { unifiedStats } from "@ralphschuler/screeps-stats";
-import { safeModeManager, emergencyResponseManager } from "@ralphschuler/screeps-defense";
-import { memoryManager } from "../memory/manager";
-import { pheromoneManager } from "../logic/pheromone";
-import { evolutionManager, postureManager } from "../logic/evolution";
-import { logger } from "./logger";
 import { prefetchRoomObjects } from "@ralphschuler/screeps-cache";
-import { roomDefenseManager, roomConstructionManager, roomEconomyManager } from "./managers";
+import { emergencyResponseManager, safeModeManager } from "@ralphschuler/screeps-defense";
+import { unifiedStats } from "@ralphschuler/screeps-stats";
+import { evolutionManager, postureManager } from "../logic/evolution";
+import { pheromoneManager } from "../logic/pheromone";
+import { memoryManager } from "../memory/manager";
+import type { SwarmState } from "../memory/schemas";
+import { logger } from "./logger";
+import { roomConstructionManager, roomDefenseManager, roomEconomyManager } from "./managers";
 
 /**
  * Room node configuration

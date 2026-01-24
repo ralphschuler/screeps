@@ -1,9 +1,9 @@
 import "./visuals/roomVisualExtensions";
 import { ErrorMapper } from "utils/legacy";
-import { registerAllConsoleCommands } from "./core/consoleCommands";
-import { loop as swarmLoop } from "./SwarmBot";
-import { createLogger } from "./core/logger";
 import { getConfig } from "./config";
+import { registerAllConsoleCommands } from "./core/consoleCommands";
+import { createLogger } from "./core/logger";
+import { loop as swarmLoop } from "./SwarmBot";
 
 const logger = createLogger("Main");
 
@@ -18,13 +18,13 @@ declare global {
       data: Record<string, { value: any; lastModified: number; ttl?: number }>;
     };
     /** Resource transfer queue for Screepers Standards SS2 protocol */
-    resourceTransfers?: Array<{
+    resourceTransfers?: {
       from: string;
       to: string;
       resource: ResourceConstant;
       amount: number;
       scheduledTick: number;
-    }>;
+    }[];
     /** SS2 Terminal Communications multi-packet queue */
     ss2PacketQueue?: Record<string, {
       terminalId: Id<StructureTerminal>;

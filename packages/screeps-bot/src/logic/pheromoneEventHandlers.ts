@@ -5,8 +5,8 @@
  * This completes the event-driven pheromone system as specified in ROADMAP section 5.
  */
 
-import { kernel } from "../core/kernel";
 import { logger } from "@ralphschuler/screeps-core";
+import { kernel } from "../core/kernel";
 import { memoryManager } from "../memory/manager";
 import { pheromoneManager } from "./pheromone";
 

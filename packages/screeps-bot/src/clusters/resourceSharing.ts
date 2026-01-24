@@ -13,9 +13,9 @@
  * Addresses Issue: Allow rooms to share resources between each other
  */
 
-import type { ClusterMemory, ResourceTransferRequest, SwarmState } from "../memory/schemas";
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
+import type { ClusterMemory, ResourceTransferRequest, SwarmState } from "../memory/schemas";
 
 /**
  * Resource sharing configuration

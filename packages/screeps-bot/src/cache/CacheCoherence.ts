@@ -16,8 +16,8 @@
  * - L3 (memory-based): Cross-tick persistent data
  */
 
-import { CacheManager } from "./CacheManager";
 import { CacheStats } from "./CacheEntry";
+import { CacheManager } from "./CacheManager";
 
 /**
  * Cache layer designation for hierarchical caching

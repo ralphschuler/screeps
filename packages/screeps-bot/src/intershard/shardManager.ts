@@ -15,8 +15,8 @@
 
 import { ShardManager as FrameworkShardManager } from "@ralphschuler/screeps-intershard";
 import type { ShardManagerConfig } from "@ralphschuler/screeps-intershard";
-import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { ProcessPriority } from "../core/kernel";
+import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 
 /**
  * Shard Manager Wrapper Class - Wraps framework ShardManager

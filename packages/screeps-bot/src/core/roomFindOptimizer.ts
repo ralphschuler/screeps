@@ -26,11 +26,10 @@
 
 import {
   cachedRoomFind,
-  invalidateRoomCache,
+  getCachedObjectById,
   invalidateFindType,
-  invalidateStructureCache
-} from "@ralphschuler/screeps-cache";
-import { getCachedObjectById } from "@ralphschuler/screeps-cache";
+  invalidateRoomCache
+, invalidateStructureCache } from "@ralphschuler/screeps-cache";
 
 // =============================================================================
 // Types

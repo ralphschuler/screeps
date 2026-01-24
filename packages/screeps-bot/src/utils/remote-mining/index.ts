@@ -5,21 +5,21 @@
  * the bot's internal systems (logger, cache, scheduler).
  */
 
+import { cachePath, convertRoomPositionsToPathSteps, getCachedPath } from "@ralphschuler/screeps-cache";
 import { createLogger } from "@ralphschuler/screeps-core";
-import { scheduleTask, TaskPriority } from "@ralphschuler/screeps-utils";
-import { cachePath, getCachedPath, convertRoomPositionsToPathSteps } from "@ralphschuler/screeps-cache";
-import { moveTo } from "screeps-cartographer";
 import {
-  RemotePathCache,
-  RemotePathScheduler,
-  RemoteMiningMovement,
-  getRemoteRoomsForRoom as getRemoteRooms,
-  getRemoteMiningRoomCallback,
   type ILogger,
   type IPathCache,
   type IScheduler,
-  type RemoteRouteType
+  RemoteMiningMovement,
+  RemotePathCache,
+  RemotePathScheduler,
+  type RemoteRouteType,
+  getRemoteMiningRoomCallback,
+  getRemoteRoomsForRoom as getRemoteRooms
 } from "@ralphschuler/screeps-remote-mining";
+import { TaskPriority, scheduleTask } from "@ralphschuler/screeps-utils";
+import { moveTo } from "screeps-cartographer";
 
 // =============================================================================
 // Adapters for dependency injection

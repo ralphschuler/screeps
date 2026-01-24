@@ -2,11 +2,11 @@
  * Blueprint placement logic - handles construction site placement and misplaced structure detection
  */
 
-import type { Blueprint, MisplacedStructure, StructurePlacement } from "./types";
-import { getStructuresForRCL } from "./selector";
-import { getValidRoadPositions } from "../roadNetworkPlanner";
 import { logger } from "@ralphschuler/screeps-core";
+import { getValidRoadPositions } from "../roadNetworkPlanner";
 import { getStructureLimits } from "./constants";
+import { getStructuresForRCL } from "./selector";
+import type { Blueprint, MisplacedStructure, StructurePlacement } from "./types";
 
 /**
  * Structure types that can be destroyed for blueprint rearrangement.

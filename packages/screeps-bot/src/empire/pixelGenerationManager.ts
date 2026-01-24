@@ -4,8 +4,6 @@
  * Wraps the framework PixelGenerationManager with bot-specific process decorators and memory access
  */
 
-import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { ProcessPriority } from "../core/kernel";
 import {
   PixelGenerationManager as FrameworkPixelGenerationManager,
   PixelGenerationConfig,
@@ -13,6 +11,8 @@ import {
   PixelGenerationMemoryAccessor,
   createDefaultPixelGenerationMemory
 } from "@ralphschuler/screeps-empire";
+import { ProcessPriority } from "../core/kernel";
+import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 
 /**
  * Memory accessor implementation using global memory

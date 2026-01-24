@@ -13,9 +13,9 @@
  * - Emergency detection and fast-track spawning
  */
 
-import type { CreepRole, RoleFamily, SwarmCreepMemory } from "../memory/schemas";
-import type { BodyTemplate } from "../logic/spawn";
 import { logger } from "@ralphschuler/screeps-core";
+import type { BodyTemplate } from "../logic/spawn";
+import type { CreepRole, RoleFamily, SwarmCreepMemory } from "../memory/schemas";
 
 /**
  * Spawn priority levels

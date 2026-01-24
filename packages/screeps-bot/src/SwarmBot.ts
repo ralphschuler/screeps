@@ -2,29 +2,29 @@
  * SwarmBot main entry point coordinating all subsystems via kernel-based process management.
  */
 
-import { runScheduledTasks } from "@ralphschuler/screeps-utils";
-import { unifiedStats } from "@ralphschuler/screeps-stats";
-import { RoomVisualizer, MapVisualizer } from "@ralphschuler/screeps-visuals";
+import { getOwnedRooms } from "@ralphschuler/screeps-cache";
 import { clearRoomCaches, runPowerRole } from "@ralphschuler/screeps-roles";
+import { SS2TerminalComms } from "@ralphschuler/screeps-standards";
+import { unifiedStats } from "@ralphschuler/screeps-stats";
+import { runScheduledTasks } from "@ralphschuler/screeps-utils";
+import { MapVisualizer, RoomVisualizer } from "@ralphschuler/screeps-visuals";
+import { reconcileTraffic as finalizeMovement, preTick as initMovement } from "screeps-cartographer";
+import { getConfig } from "./config";
+import { creepProcessManager } from "./core/creepProcessManager";
+import { eventBus } from "./core/events";
+import { kernel } from "./core/kernel";
+import { LogLevel, configureLogger, logger } from "./core/logger";
+import { registerAllProcesses } from "./core/processRegistry";
+import { clearTargetAssignments as clearEconomyAssignments } from "./economy/targetAssignmentManager";
 import { runSpawnManager } from "./logic/spawn";
 import { memoryManager } from "./memory/manager";
-import { preTick as initMovement, reconcileTraffic as finalizeMovement } from "screeps-cartographer";
-import { clearTargetAssignments as clearEconomyAssignments } from "./economy/targetAssignmentManager";
-import { kernel } from "./core/kernel";
-import { registerAllProcesses } from "./core/processRegistry";
-import { getConfig } from "./config";
-import { LogLevel, configureLogger, logger } from "./core/logger";
 import { initializeNativeCallsTracking } from "./core/nativeCallsTracker";
-import { creepProcessManager } from "./core/creepProcessManager";
 import { roomProcessManager } from "./core/roomProcessManager";
 import { initializePheromoneEventHandlers } from "./logic/pheromoneEventHandlers";
 import { initializePathCacheEvents } from "./utils/pathfinding";
 import { heapCache } from "./memory/heapCache";
-import { SS2TerminalComms } from "@ralphschuler/screeps-standards";
 import { initializeRemotePathScheduler } from "./utils/remote-mining";
 import { shardManager } from "./intershard/shardManager";
-import { getOwnedRooms } from "@ralphschuler/screeps-cache";
-import { eventBus } from "./core/events";
 
 // =============================================================================
 // Visualization Setup

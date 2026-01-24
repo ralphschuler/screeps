@@ -11,10 +11,10 @@
  * - tooangel.apply(questId, originRoom, fromRoom?) - Apply for a quest
  */
 
-import { tooAngelManager } from "./tooAngelManager";
-import { requestReputation, getReputation } from "./reputationManager";
-import { getActiveQuests, applyForQuest } from "./questManager";
 import { getNPCRooms } from "./npcDetector";
+import { applyForQuest, getActiveQuests } from "./questManager";
+import { getReputation, requestReputation } from "./reputationManager";
+import { tooAngelManager } from "./tooAngelManager";
 
 export const tooAngelCommands = {
   /**

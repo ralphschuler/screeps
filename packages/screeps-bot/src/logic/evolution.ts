@@ -2,10 +2,10 @@
  * Evolution & Posture System managing room lifecycle stages and state transitions.
  */
 
-import type { EvolutionStage, RoomPosture, SwarmState } from "../memory/schemas";
+import { globalCache } from "@ralphschuler/screeps-cache";
 import { logger } from "@ralphschuler/screeps-core";
 import { kernel } from "../core/kernel";
-import { globalCache } from "@ralphschuler/screeps-cache";
+import type { EvolutionStage, RoomPosture, SwarmState } from "../memory/schemas";
 
 /** Evolution stage thresholds */
 export interface EvolutionThresholds {

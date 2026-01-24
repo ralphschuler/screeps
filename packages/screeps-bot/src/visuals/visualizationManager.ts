@@ -12,8 +12,8 @@
  * - Visualization presets
  */
 
-import { VisualizationConfig, VisualizationLayer, VisualizationMode } from "../memory/schemas";
 import { createLogger } from "@ralphschuler/screeps-core";
+import { VisualizationConfig, VisualizationLayer, VisualizationMode } from "../memory/schemas";
 
 const logger = createLogger("VisualizationManager");
 
@@ -243,7 +243,7 @@ export class VisualizationManager {
   /**
    * Get cached structure positions
    */
-  public getCachedStructures(roomName: string): Array<{ x: number; y: number; type: StructureConstant }> | null {
+  public getCachedStructures(roomName: string): { x: number; y: number; type: StructureConstant }[] | null {
     const cached = this.config.cache.structures[roomName];
     if (!cached || Game.time > cached.ttl) {
       return null;
@@ -254,7 +254,7 @@ export class VisualizationManager {
   /**
    * Cache structure positions
    */
-  public cacheStructures(roomName: string, data: Array<{ x: number; y: number; type: StructureConstant }>): void {
+  public cacheStructures(roomName: string, data: { x: number; y: number; type: StructureConstant }[]): void {
     this.config.cache.structures[roomName] = {
       data,
       ttl: Game.time + CACHE_TTL

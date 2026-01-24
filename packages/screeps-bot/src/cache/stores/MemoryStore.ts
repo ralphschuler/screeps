@@ -5,8 +5,8 @@
  * Uses a write-ahead pattern: heap cache with periodic Memory sync.
  */
 
-import { CacheStore } from "../CacheStore";
 import { CacheEntry } from "../CacheEntry";
+import { CacheStore } from "../CacheStore";
 
 // Augment Memory interface
 declare global {

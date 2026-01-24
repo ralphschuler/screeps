@@ -6,8 +6,8 @@
  */
 
 import { Command } from "../commandRegistry";
-import { kernel } from "../kernel";
 import { creepProcessManager } from "../creepProcessManager";
+import { kernel } from "../kernel";
 import { roomProcessManager } from "../roomProcessManager";
 
 /**

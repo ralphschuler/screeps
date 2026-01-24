@@ -13,9 +13,9 @@
  * - spawn.completed, rcl.upgrade
  */
 
-import { eventBus, EventPriority } from "../core/events";
-import { cacheCoherence, InvalidationScope } from "./CacheCoherence";
+import { EventPriority, eventBus } from "../core/events";
 import { createLogger } from "../core/logger";
+import { InvalidationScope, cacheCoherence } from "./CacheCoherence";
 
 const logger = createLogger("CacheEvents");
 

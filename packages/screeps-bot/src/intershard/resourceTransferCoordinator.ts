@@ -11,10 +11,10 @@
  * - Prioritizes transfers based on task priority and shard needs
  */
 
-import type { InterShardTask } from "./schema";
 import { logger } from "@ralphschuler/screeps-core";
 import { optimizeBody } from "../spawning/bodyOptimizer";
 import { SpawnPriority, type SpawnRequest, spawnQueue } from "../spawning/spawnQueue";
+import type { InterShardTask } from "./schema";
 import { shardManager } from "./shardManager";
 
 /**
@@ -301,7 +301,7 @@ export class ResourceTransferCoordinator {
         priority: spawnPriority,
         createdAt: Game.time,
         targetRoom: request.targetRoom, // Standard field, not in additionalMemory
-        additionalMemory: additionalMemory
+        additionalMemory
       };
 
       spawnQueue.addRequest(spawnRequest);

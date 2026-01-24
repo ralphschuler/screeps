@@ -11,8 +11,8 @@
  * Addresses Issue: #17
  */
 
-import type { StructurePlacement } from "./blueprints/types";
 import { createLogger } from "@ralphschuler/screeps-core";
+import type { StructurePlacement } from "./blueprints/types";
 
 const logger = createLogger("ExtensionGenerator");
 

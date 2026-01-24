@@ -5,13 +5,13 @@
  * Provides easy access to system status, configuration, and manual control.
  */
 
-import { Command } from "./commandRegistry";
-import { labManager } from "../labs/labManager";
-import { labConfigManager } from "../labs/labConfig";
-import { chemistryPlanner } from "../labs/chemistryPlanner";
-import { boostManager } from "../labs/boostManager";
-import { powerCreepManager } from "../empire/powerCreepManager";
 import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
+import { powerCreepManager } from "../empire/powerCreepManager";
+import { boostManager } from "../labs/boostManager";
+import { chemistryPlanner } from "../labs/chemistryPlanner";
+import { labConfigManager } from "../labs/labConfig";
+import { labManager } from "../labs/labManager";
+import { Command } from "./commandRegistry";
 
 /**
  * Lab system commands

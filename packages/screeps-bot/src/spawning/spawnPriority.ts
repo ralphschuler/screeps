@@ -18,8 +18,8 @@
  * Related: See SHARD3_INVESTIGATION.md for detailed analysis
  */
 
-import type { SwarmState } from "../memory/schemas";
 import { memoryManager } from "../memory/manager";
+import type { SwarmState } from "../memory/schemas";
 import { getDefenderPriorityBoost } from "./defenderManager";
 
 /** Priority boost for upgraders in focus rooms */

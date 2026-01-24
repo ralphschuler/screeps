@@ -17,8 +17,8 @@
  * - Reduces individual creep target searches from O(n) to O(1) lookup
  */
 
+import { cachedFindConstructionSites, cachedFindSources } from "@ralphschuler/screeps-cache";
 import { createLogger } from "@ralphschuler/screeps-core";
-import { cachedFindSources, cachedFindConstructionSites } from "@ralphschuler/screeps-cache";
 import { memoryManager } from "../memory/manager";
 
 const logger = createLogger("TargetAssignmentManager");
@@ -191,7 +191,7 @@ function assignHarvestersToSources(
   }
   
   // Sort harvesters by existing assignment to maintain continuity
-  const harvestersWithAssignment: Array<{ creep: Creep; currentSource: Id<Source> | null }> = [];
+  const harvestersWithAssignment: { creep: Creep; currentSource: Id<Source> | null }[] = [];
   
   for (const harvester of harvesters) {
     // Check if harvester already has a target in memory
