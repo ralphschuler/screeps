@@ -79,9 +79,7 @@ export default {
         // Resolve @ralphschuler workspace packages to their TypeScript source instead of dist
         // Scoped packages (in packages/@ralphschuler/)
         { find: "@ralphschuler/screeps-cache", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-cache/src/index.ts") },
-        // TODO: Fix screeps-clusters package before enabling this alias
-        // Issue URL: https://github.com/ralphschuler/screeps/issues/2919
-        // { find: "@ralphschuler/screeps-clusters", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-clusters/src/index.ts") },
+        { find: "@ralphschuler/screeps-clusters", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-clusters/src/index.ts") },
         { find: "@ralphschuler/screeps-console", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-console/src/index.ts") },
         { find: "@ralphschuler/screeps-core", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-core/src/index.ts") },
         { find: "@ralphschuler/screeps-empire", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-empire/src/index.ts") },
