@@ -332,12 +332,12 @@ export default [
       "no-unused-vars": "off", // Use @typescript-eslint/no-unused-vars instead
       "no-throw-literal": "error",
       "no-undef-init": "error",
-      "no-underscore-dangle": "warn",
+      "no-underscore-dangle": "off", // Allow underscore prefix for private members
       "no-var": "error",
       "object-shorthand": "error",
       "one-var": ["error", "never"],
       radix: "error",
-      "sort-imports": "warn",
+      "sort-imports": "off", // Disable sort-imports, using import/order instead
       "spaced-comment": "error",
 
       // Import plugin rules
