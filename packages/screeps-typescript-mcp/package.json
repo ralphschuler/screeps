@@ -4,7 +4,6 @@
   "description": "Model Context Protocol (MCP) server for browsing and querying TypeScript type definitions from typed-screeps",
   "license": "MIT",
   "author": "OpenAI Automations",
-  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": "./dist/server.js",
