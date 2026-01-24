@@ -5,12 +5,12 @@
     "rootDir": "./src",
     "declaration": true,
     "declarationMap": true,
-    "target": "ES5",
+    "target": "ES2020",
     // Using commonjs for compatibility with Screeps runtime and existing packages
     // The root tsconfig uses node16, but this package needs to be compatible with
     // the Screeps game environment which expects CommonJS modules
-    "module": "commonjs",
-    "lib": ["ES2018"],
+    "module": "ES2020",
+    "lib": ["ES2020"],
     "downlevelIteration": true,
     "moduleResolution": "node",
     "strict": true,
