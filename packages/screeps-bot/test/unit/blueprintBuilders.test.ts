@@ -9,6 +9,9 @@ import {
   createSpawnRoadRing,
   createRadialRoads,
   createStructureProtection,
+  createCheckerboardExtensions,
+  createConnectorRoads,
+  createExtensionMovementRoads,
   type Position
 } from "../../src/layouts/blueprints/builders";
 
@@ -110,6 +113,111 @@ describe("Blueprint Builder Helpers", () => {
     it("should handle empty structure list", () => {
       const ramparts = createStructureProtection([], [STRUCTURE_SPAWN]);
       assert.equal(ramparts.length, 0, "Should return empty array for empty structures");
+    });
+  });
+  
+  describe("createCheckerboardExtensions", () => {
+    it("should create extensions in checkerboard pattern", () => {
+      const center: Position = { x: 0, y: 0 };
+      const extensions = createCheckerboardExtensions(center, 5, 2, 2);
+      
+      assert.equal(extensions.length, 5, "Should create exactly 5 extensions");
+      
+      // Verify all extensions follow checkerboard pattern (|x|+|y| % 2 == 0)
+      for (const ext of extensions) {
+        const sum = Math.abs(ext.x) + Math.abs(ext.y);
+        assert.equal(sum % 2, 0, `Extension at (${ext.x},${ext.y}) should follow checkerboard pattern`);
+        assert.equal(ext.structureType, STRUCTURE_EXTENSION, "Should be extension type");
+      }
+    });
+    
+    it("should respect center offset", () => {
+      const center: Position = { x: 10, y: 5 };
+      const extensions = createCheckerboardExtensions(center, 3, 2, 2);
+      
+      assert.equal(extensions.length, 3, "Should create 3 extensions");
+      
+      // Verify positions are offset from center
+      for (const ext of extensions) {
+        const dx = ext.x - center.x;
+        const dy = ext.y - center.y;
+        assert.equal((Math.abs(dx) + Math.abs(dy)) % 2, 0, "Should maintain checkerboard pattern relative to center");
+      }
+    });
+    
+    it("should limit count to requested amount", () => {
+      const center: Position = { x: 0, y: 0 };
+      const extensions = createCheckerboardExtensions(center, 3, 2, 10);
+      
+      assert.equal(extensions.length, 3, "Should create exactly 3 extensions even with larger radius");
+    });
+  });
+  
+  describe("createConnectorRoads", () => {
+    it("should create roads between two positions", () => {
+      const from: Position = { x: 0, y: 0 };
+      const to: Position = { x: 5, y: 0 };
+      const roads = createConnectorRoads(from, to, false);
+      
+      // Should create roads at x: 1, 2, 3, 4 (not including ends)
+      assert.equal(roads.length, 4, "Should create 4 intermediate roads");
+      
+      assert.exists(roads.find(r => r.x === 1 && r.y === 0), "Road at (1, 0)");
+      assert.exists(roads.find(r => r.x === 2 && r.y === 0), "Road at (2, 0)");
+      assert.exists(roads.find(r => r.x === 3 && r.y === 0), "Road at (3, 0)");
+      assert.exists(roads.find(r => r.x === 4 && r.y === 0), "Road at (4, 0)");
+    });
+    
+    it("should include end positions when requested", () => {
+      const from: Position = { x: 0, y: 0 };
+      const to: Position = { x: 3, y: 0 };
+      const roads = createConnectorRoads(from, to, true);
+      
+      // Should include start and end positions
+      assert.exists(roads.find(r => r.x === 0 && r.y === 0), "Road at start (0, 0)");
+      assert.exists(roads.find(r => r.x === 3 && r.y === 0), "Road at end (3, 0)");
+    });
+    
+    it("should create L-shaped path for diagonal connections", () => {
+      const from: Position = { x: 0, y: 0 };
+      const to: Position = { x: 3, y: 3 };
+      const roads = createConnectorRoads(from, to, false);
+      
+      // Should create horizontal then vertical path
+      assert.isAbove(roads.length, 0, "Should create connector roads");
+    });
+  });
+  
+  describe("createExtensionMovementRoads", () => {
+    it("should create movement roads in odd-sum pattern", () => {
+      const center: Position = { x: 0, y: 0 };
+      const roads = createExtensionMovementRoads(center, 3);
+      
+      // All roads should have odd sum (complement to checkerboard extensions)
+      for (const road of roads) {
+        const dx = road.x - center.x;
+        const dy = road.y - center.y;
+        const dist = Math.max(Math.abs(dx), Math.abs(dy));
+        
+        if (dist > 1 && dist <= 3) {
+          const sum = Math.abs(dx) + Math.abs(dy);
+          assert.equal(sum % 2, 1, `Road at (${road.x},${road.y}) should have odd sum for movement between extensions`);
+        }
+      }
+    });
+    
+    it("should create roads within specified radius", () => {
+      const center: Position = { x: 0, y: 0 };
+      const radius = 2;
+      const roads = createExtensionMovementRoads(center, radius);
+      
+      for (const road of roads) {
+        const dx = road.x - center.x;
+        const dy = road.y - center.y;
+        const dist = Math.max(Math.abs(dx), Math.abs(dy));
+        
+        assert.isAtMost(dist, radius, `Road at (${road.x},${road.y}) should be within radius ${radius}`);
+      }
     });
   });
 });

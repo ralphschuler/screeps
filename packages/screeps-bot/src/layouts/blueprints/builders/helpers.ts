@@ -62,8 +62,8 @@ export function createCheckerboardExtensions(
         // Check checkerboard pattern: |x|+|y| % 2 == 0
         if ((Math.abs(dx) + Math.abs(dy)) % 2 === 0) {
           extensions.push({
-            x: dx,
-            y: dy,
+            x: center.x + dx,
+            y: center.y + dy,
             structureType: STRUCTURE_EXTENSION
           });
         }
