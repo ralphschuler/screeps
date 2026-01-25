@@ -16,8 +16,8 @@
  *       . E .
  */
 
-import type { Blueprint } from "../types";
 import { createSpawnRoadRing } from "../builders";
+import type { Blueprint } from "../types";
 
 const anchor = { x: 25, y: 25 };
 const spawnPos = { x: 0, y: 0 };

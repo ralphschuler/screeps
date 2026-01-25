@@ -12,12 +12,13 @@
  * - Extensions in strict checkerboard pattern
  */
 
-import type { Blueprint } from "../types";
 import { createSpawnRoadRing, createRadialRoads, createStructureProtection } from "../builders";
+import type { Blueprint } from "../types";
 
 const anchor = { x: 25, y: 25 };
 const primarySpawn = { x: 0, y: 0 };
-const secondarySpawn = { x: 4, y: 0 };
+// Secondary spawn position (for documentation purposes)
+const _secondarySpawn = { x: 4, y: 0 };
 
 export const ECONOMIC_MATURITY_BLUEPRINT: Blueprint = {
   name: "matureColony",

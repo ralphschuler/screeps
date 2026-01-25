@@ -18,8 +18,8 @@
  * - Requires minimal terrain walls: ≤10% of footprint
  */
 
-import type { Blueprint } from "../types";
 import { createStructureProtection } from "../builders";
+import type { Blueprint } from "../types";
 
 export const COMPACT_BUNKER_BLUEPRINT: Blueprint = {
   name: "compactBunker",

@@ -55,9 +55,6 @@ export function createCheckerboardExtensions(
   for (let radius = minRadius; radius <= maxRadius && extensions.length < count; radius++) {
     for (let dx = -radius; dx <= radius && extensions.length < count; dx++) {
       for (let dy = -radius; dy <= radius && extensions.length < count; dy++) {
-        const x = center.x + dx;
-        const y = center.y + dy;
-        
         // Check if this position is at the current radius (approximately)
         const dist = Math.max(Math.abs(dx), Math.abs(dy));
         if (dist !== radius) continue;

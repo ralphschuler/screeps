@@ -12,8 +12,8 @@
  * - Extensions in strict checkerboard pattern
  */
 
-import type { Blueprint } from "../types";
 import { createSpawnRoadRing, createStructureProtection } from "../builders";
+import type { Blueprint } from "../types";
 
 const anchor = { x: 25, y: 25 };
 const primarySpawn = { x: 0, y: 0 };
