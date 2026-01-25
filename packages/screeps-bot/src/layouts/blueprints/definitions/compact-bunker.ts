@@ -18,6 +18,7 @@
  * - Requires minimal terrain walls: ≤10% of footprint
  */
 
+import { createStructureProtection } from "../builders";
 import type { Blueprint } from "../types";
 
 export const COMPACT_BUNKER_BLUEPRINT: Blueprint = {
@@ -169,35 +170,50 @@ export const COMPACT_BUNKER_BLUEPRINT: Blueprint = {
     { x: -3, y: 3 },
     { x: 3, y: 3 }
   ],
-  ramparts: [
-    // Protect central core
-    { x: 0, y: 0 },
-    { x: -1, y: 1 },
-    { x: 1, y: 1 },
-    // Protect spawns
-    { x: 0, y: -2 },
-    { x: -2, y: 1 },
-    { x: 2, y: 1 },
-    // Protect special structures
-    { x: 0, y: 2 },
-    { x: -2, y: -1 },
-    { x: 2, y: -1 },
-    // Protect towers
-    { x: -3, y: -2 },
-    { x: 3, y: -2 },
-    { x: -4, y: 0 },
-    { x: 4, y: 0 },
-    { x: -3, y: 3 },
-    { x: 3, y: 3 },
-    // Protect labs (input labs)
-    { x: -2, y: 3 },
-    { x: -1, y: 3 },
-    // Key perimeter protection
-    { x: -4, y: -2 },
-    { x: 4, y: -2 },
-    { x: -4, y: 2 },
-    { x: 4, y: 2 },
-    { x: -2, y: -2 },
-    { x: 2, y: -2 }
-  ]
+  ramparts: (() => {
+    const criticalStructures = [
+      // Central core
+      { x: 0, y: 0, structureType: STRUCTURE_STORAGE },
+      { x: -1, y: 1, structureType: STRUCTURE_TERMINAL },
+      { x: 1, y: 1, structureType: STRUCTURE_FACTORY },
+      // Spawns
+      { x: 0, y: -2, structureType: STRUCTURE_SPAWN },
+      { x: -2, y: 1, structureType: STRUCTURE_SPAWN },
+      { x: 2, y: 1, structureType: STRUCTURE_SPAWN },
+      // Special structures
+      { x: 0, y: 2, structureType: STRUCTURE_POWER_SPAWN },
+      { x: -2, y: -1, structureType: STRUCTURE_NUKER },
+      { x: 2, y: -1, structureType: STRUCTURE_OBSERVER },
+      // Towers
+      { x: -3, y: -2, structureType: STRUCTURE_TOWER },
+      { x: 3, y: -2, structureType: STRUCTURE_TOWER },
+      { x: -4, y: 0, structureType: STRUCTURE_TOWER },
+      { x: 4, y: 0, structureType: STRUCTURE_TOWER },
+      { x: -3, y: 3, structureType: STRUCTURE_TOWER },
+      { x: 3, y: 3, structureType: STRUCTURE_TOWER },
+      // Labs (input labs)
+      { x: -2, y: 3, structureType: STRUCTURE_LAB },
+      { x: -1, y: 3, structureType: STRUCTURE_LAB }
+    ];
+    
+    // Use helper for core protection
+    const coreRamparts = createStructureProtection(
+      criticalStructures,
+      [STRUCTURE_STORAGE, STRUCTURE_TERMINAL, STRUCTURE_FACTORY,
+       STRUCTURE_SPAWN, STRUCTURE_POWER_SPAWN, STRUCTURE_NUKER,
+       STRUCTURE_OBSERVER, STRUCTURE_TOWER, STRUCTURE_LAB]
+    );
+    
+    // Add key perimeter protection manually
+    const perimeterRamparts = [
+      { x: -4, y: -2 },
+      { x: 4, y: -2 },
+      { x: -4, y: 2 },
+      { x: 4, y: 2 },
+      { x: -2, y: -2 },
+      { x: 2, y: -2 }
+    ];
+    
+    return [...coreRamparts, ...perimeterRamparts];
+  })()
 };

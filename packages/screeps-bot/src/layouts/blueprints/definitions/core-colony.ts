@@ -12,14 +12,18 @@
  * - Storage positioned for easy hauler access (RCL 4+)
  */
 
+import { createSpawnRoadRing, createRadialRoads } from "../builders";
 import type { Blueprint } from "../types";
+
+const anchor = { x: 25, y: 25 };
+const spawnPos = { x: 0, y: 0 };
 
 export const CORE_COLONY_BLUEPRINT: Blueprint = {
   name: "foragingExpansion",
   rcl: 3,
   type: "spread",
   minSpaceRadius: 4,
-  anchor: { x: 25, y: 25 },
+  anchor,
   structures: [
     { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
     // Tower at safe distance
@@ -54,14 +58,7 @@ export const CORE_COLONY_BLUEPRINT: Blueprint = {
   ],
   roads: [
     // Core roads around spawn (all 8 adjacent tiles)
-    { x: -1, y: -1 },
-    { x: 0, y: -1 },
-    { x: 1, y: -1 },
-    { x: -1, y: 0 },
-    { x: 1, y: 0 },
-    { x: -1, y: 1 },
-    { x: 0, y: 1 },
-    { x: 1, y: 1 },
+    ...createSpawnRoadRing(spawnPos),
     // Radial roads for movement to extensions
     { x: -2, y: -1 },
     { x: 2, y: -1 },
@@ -71,10 +68,7 @@ export const CORE_COLONY_BLUEPRINT: Blueprint = {
     { x: 1, y: -2 },
     { x: -1, y: 2 },
     { x: 1, y: 2 },
-    { x: 0, y: -3 },
-    { x: 0, y: 3 },
-    { x: -3, y: 0 },
-    { x: 3, y: 0 },
+    ...createRadialRoads(spawnPos, 3, ['north', 'south', 'east', 'west']),
     // Access road to storage (RCL 4+)
     { x: 3, y: 3 },
     { x: 4, y: 3 },

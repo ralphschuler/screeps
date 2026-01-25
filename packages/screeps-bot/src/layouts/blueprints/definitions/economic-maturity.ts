@@ -12,14 +12,20 @@
  * - Extensions in strict checkerboard pattern
  */
 
+import { createSpawnRoadRing, createRadialRoads, createStructureProtection } from "../builders";
 import type { Blueprint } from "../types";
+
+const anchor = { x: 25, y: 25 };
+const primarySpawn = { x: 0, y: 0 };
+// Secondary spawn position (for documentation purposes)
+const _secondarySpawn = { x: 4, y: 0 };
 
 export const ECONOMIC_MATURITY_BLUEPRINT: Blueprint = {
   name: "matureColony",
   rcl: 5,
   type: "spread",
   minSpaceRadius: 6,
-  anchor: { x: 25, y: 25 },
+  anchor,
   structures: [
     // Primary spawn at center
     { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
@@ -73,14 +79,7 @@ export const ECONOMIC_MATURITY_BLUEPRINT: Blueprint = {
   ],
   roads: [
     // Core roads around primary spawn (all 8 adjacent tiles)
-    { x: -1, y: -1 },
-    { x: 0, y: -1 },
-    { x: 1, y: -1 },
-    { x: -1, y: 0 },
-    { x: 1, y: 0 },
-    { x: -1, y: 1 },
-    { x: 0, y: 1 },
-    { x: 1, y: 1 },
+    ...createSpawnRoadRing(primarySpawn),
     // Roads around secondary spawn
     { x: 3, y: -1 },
     { x: 3, y: 0 },
@@ -99,15 +98,18 @@ export const ECONOMIC_MATURITY_BLUEPRINT: Blueprint = {
     { x: 1, y: -2 },
     { x: -1, y: 2 },
     { x: 1, y: 2 },
-    { x: 0, y: -3 },
-    { x: 0, y: 3 },
-    { x: -3, y: 0 },
-    { x: 3, y: 0 }
+    ...createRadialRoads(primarySpawn, 3, ['north', 'south', 'east', 'west'])
   ],
-  ramparts: [
-    { x: 0, y: 0 },
-    { x: 4, y: 0 },
-    { x: 0, y: 4 },
-    { x: 1, y: 4 }
-  ]
+  ramparts: (() => {
+    const allStructures = [
+      { x: 0, y: 0, structureType: STRUCTURE_SPAWN },
+      { x: 4, y: 0, structureType: STRUCTURE_SPAWN },
+      { x: 0, y: 4, structureType: STRUCTURE_STORAGE },
+      { x: 2, y: 4, structureType: STRUCTURE_TERMINAL }
+    ];
+    return createStructureProtection(
+      allStructures,
+      [STRUCTURE_SPAWN, STRUCTURE_STORAGE, STRUCTURE_TERMINAL]
+    );
+  })()
 };
