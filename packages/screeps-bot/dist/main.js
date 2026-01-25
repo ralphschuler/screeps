@@ -722,7 +722,7 @@ return n.prototype._version = 3, R.SourceMapGenerator = n, R;
 
 var D, F = {}, B = {};
 
-function H() {
+function W() {
 return D || (D = 1, function(e) {
 function t(r, o, n, a, i, s) {
 const c = Math.floor((o - r) / 2) + r, l = i(n, a[c], !0);
@@ -738,13 +738,13 @@ return i;
 }(B)), B;
 }
 
-var W, Y, K, V, q = {
+var H, Y, K, V, q = {
 exports: {}
 };
 
 function j() {
-if (W) return q.exports;
-W = 1;
+if (H) return q.exports;
+H = 1;
 let e = null;
 return q.exports = function() {
 if ("string" == typeof e) return fetch(e).then(e => e.arrayBuffer());
@@ -838,7 +838,7 @@ var X, Q, Z = {}, J = (Q || (Q = 1, v.SourceMapGenerator = L().SourceMapGenerato
 v.SourceMapConsumer = function() {
 if (V) return F;
 V = 1;
-const e = A(), t = H(), r = N().ArraySet;
+const e = A(), t = W(), r = N().ArraySet;
 S();
 const o = j(), n = z(), a = Symbol("smcInternal");
 class i {
@@ -2626,13 +2626,13 @@ new Le;
 
 var De, Fe = "object", Be = "path";
 
-function He(e, t) {
+function We(e, t) {
 return "".concat(e.roomName, ":").concat(e.x, ",").concat(e.y, ":").concat(t.roomName, ":").concat(t.x, ",").concat(t.y);
 }
 
-function We(e, t, r, o) {
+function He(e, t, r, o) {
 void 0 === o && (o = {});
-var n = He(e, t), a = Room.serializePath(r);
+var n = We(e, t), a = Room.serializePath(r);
 fe.set(n, a, {
 namespace: Be,
 ttl: o.ttl,
@@ -4229,7 +4229,7 @@ configure: Ot,
 getConfig: bt,
 createLogger: Dt,
 flush: Ut
-}, Bt = [], Ht = function() {
+}, Bt = [], Wt = function() {
 function e() {
 this.commands = new Map, this.initialized = !1, this.lazyLoadEnabled = !1, this.commandsRegistered = !1, 
 this.commandsExposed = !1;
@@ -4450,7 +4450,7 @@ return this.initialized;
 this.commands.clear(), this.initialized = !1, this.lazyLoadEnabled = !1, this.commandsRegistered = !1, 
 this.commandsExposed = !1, this.registrationCallback = void 0;
 }, e;
-}(), Wt = new Ht;
+}(), Ht = new Wt;
 
 function Yt(e) {
 return function(t, r, o) {
@@ -4471,7 +4471,7 @@ if (Vt(s.target, o)) {
 var c = e[s.methodName];
 if ("function" == typeof c) {
 var l = c.bind(e);
-Wt.register(s.metadata, l), Ft.debug('Registered decorated command "'.concat(s.metadata.name, '"'), {
+Ht.register(s.metadata, l), Ft.debug('Registered decorated command "'.concat(s.metadata.name, '"'), {
 subsystem: "CommandRegistry"
 });
 }
@@ -6515,7 +6515,7 @@ category: "Empire"
 }) ], t.prototype, "clearQueue", null), t;
 }(), Br = new Fr;
 
-function Hr(e) {
+function Wr(e) {
 var t;
 if (!e.controller) return null;
 var r = function(e) {
@@ -6536,7 +6536,7 @@ availableQuests: [ r.id ]
 };
 }
 
-function Wr() {
+function Hr() {
 var e;
 return (null === (e = Memory.tooangel) || void 0 === e ? void 0 : e.npcRooms) || {};
 }
@@ -6685,7 +6685,7 @@ if (!o || !o.terminal || !o.terminal.my) return Me.warn("No terminal available t
 subsystem: "TooAngel"
 }), !1;
 var c = function(e) {
-var t = Wr(), r = null, o = 1 / 0;
+var t = Hr(), r = null, o = 1 / 0;
 for (var n in t) {
 var a = Game.map.getRoomLinearDistance(e, n);
 a < o && (o = a, r = t[n]);
@@ -6947,7 +6947,7 @@ subsystem: "TooAngel"
 var e, t, r = function() {
 var e = [];
 for (var t in Game.rooms) {
-var r = Hr(Game.rooms[t]);
+var r = Wr(Game.rooms[t]);
 r && (Me.info("Detected TooAngel NPC room: ".concat(t), {
 subsystem: "TooAngel"
 }), e.push(r));
@@ -6976,7 +6976,7 @@ eo();
 !function() {
 var e, t;
 if (zr()) {
-var r = Wr(), o = jr();
+var r = Hr(), o = jr();
 for (var n in r) {
 var i = r[n];
 try {
@@ -7051,7 +7051,7 @@ r.push("    Assigned creeps: ".concat(i));
 return r.join("\n");
 },
 npcs: function() {
-var e = Wr(), t = [ "TooAngel NPC Rooms:" ];
+var e = Hr(), t = [ "TooAngel NPC Rooms:" ];
 if (0 === Object.keys(e).length) t.push("  No NPC rooms discovered"); else for (var r in e) {
 var o = e[r];
 t.push("  ".concat(r, ":")), t.push("    Has terminal: ".concat(o.hasTerminal)), 
@@ -9473,7 +9473,7 @@ usage: "power.upgrade(powerCreepName, power)",
 examples: [ "power.upgrade('operator_eco', PWR_OPERATE_SPAWN)", "power.upgrade('operator_eco', PWR_OPERATE_TOWER)" ],
 category: "Power"
 }) ], e.prototype, "upgrade", null), e;
-}(), Ho = new Do, Wo = new Fo, Yo = new Bo, Ko = function() {
+}(), Wo = new Do, Ho = new Fo, Yo = new Bo, Ko = function() {
 function e() {}
 return e.prototype.showConfig = function() {
 var e = ae(), t = bt();
@@ -11660,8 +11660,8 @@ return G(L(e));
 return "function" == typeof e || e === F;
 } : function(e) {
 return "function" == typeof e;
-}, H = B, W = function(e) {
-return "object" == typeof e ? null !== e : H(e);
+}, W = B, H = function(e) {
+return "object" == typeof e ? null !== e : W(e);
 }, Y = r, K = B, V = function(e, t) {
 return arguments.length < 2 ? (r = Y[e], K(r) ? r : void 0) : Y[e] && Y[e][t];
 var r;
@@ -11684,7 +11684,7 @@ return me(e);
 return "Object";
 }
 }(e) + " is not a function");
-}, ye = fe, ge = k, he = l, ve = B, Re = W, Ee = TypeError, Te = {
+}, ye = fe, ge = k, he = l, ve = B, Re = H, Ee = TypeError, Te = {
 exports: {}
 }, Ce = r, Se = Object.defineProperty, _e = function(e, t) {
 try {
@@ -11711,11 +11711,11 @@ return Ae[e] || (Ae[e] = t || {});
 return Ne(ke(e));
 }, Pe = Ie, Ge = C({}.hasOwnProperty), Le = Object.hasOwn || function(e, t) {
 return Ge(Pe(e), t);
-}, De = C, Fe = 0, Be = Math.random(), He = De(1..toString), We = function(e) {
-return "Symbol(" + (void 0 === e ? "" : e) + ")_" + He(++Fe + Be, 36);
-}, Ye = Me, Ke = Le, Ve = We, qe = ne, je = ae, ze = r.Symbol, Xe = Ye("wks"), Qe = je ? ze.for || ze : ze && ze.withoutSetter || Ve, Ze = function(e) {
+}, De = C, Fe = 0, Be = Math.random(), We = De(1..toString), He = function(e) {
+return "Symbol(" + (void 0 === e ? "" : e) + ")_" + We(++Fe + Be, 36);
+}, Ye = Me, Ke = Le, Ve = He, qe = ne, je = ae, ze = r.Symbol, Xe = Ye("wks"), Qe = je ? ze.for || ze : ze && ze.withoutSetter || Ve, Ze = function(e) {
 return Ke(Xe, e) || (Xe[e] = qe && Ke(ze, e) ? ze[e] : Qe("Symbol." + e)), Xe[e];
-}, Je = l, $e = W, et = ue, tt = TypeError, rt = Ze("toPrimitive"), ot = ue, nt = function(e) {
+}, Je = l, $e = H, et = ue, tt = TypeError, rt = Ze("toPrimitive"), ot = ue, nt = function(e) {
 var t = function(e, t) {
 if (!$e(e) || et(e)) return e;
 var r, o, n = (o = e[rt], ge(o) ? void 0 : ye(o));
@@ -11732,7 +11732,7 @@ throw new Ee("Can't convert object to primitive value");
 }(e, t);
 }(e, "string");
 return ot(t) ? t : t + "";
-}, at = W, it = r.document, st = at(it) && at(it.createElement), ct = function(e) {
+}, at = H, it = r.document, st = at(it) && at(it.createElement), ct = function(e) {
 return st ? it.createElement(e) : {};
 }, lt = ct, ut = !a && !n(function() {
 return 7 !== Object.defineProperty(lt("div"), "a", {
@@ -11752,7 +11752,7 @@ return 42 !== Object.defineProperty(function() {}, "prototype", {
 value: 42,
 writable: !1
 }).prototype;
-}), Ct = W, St = String, _t = TypeError, Ot = function(e) {
+}), Ct = H, St = String, _t = TypeError, Ot = function(e) {
 if (Ct(e)) return e;
 throw new _t(St(e) + " is not an object");
 }, bt = a, wt = ut, Ut = Tt, xt = Ot, At = nt, Mt = TypeError, kt = Object.defineProperty, Nt = Object.getOwnPropertyDescriptor, It = "enumerable", Pt = "configurable", Gt = "writable";
@@ -11779,13 +11779,13 @@ return Lt.f(e, t, Dt(1, r));
 return e[t] = r, e;
 }, Bt = {
 exports: {}
-}, Ht = a, Wt = Le, Yt = Function.prototype, Kt = Ht && Object.getOwnPropertyDescriptor, Vt = {
-CONFIGURABLE: Wt(Yt, "name") && (!Ht || Ht && Kt(Yt, "name").configurable)
+}, Wt = a, Ht = Le, Yt = Function.prototype, Kt = Wt && Object.getOwnPropertyDescriptor, Vt = {
+CONFIGURABLE: Ht(Yt, "name") && (!Wt || Wt && Kt(Yt, "name").configurable)
 }, qt = B, jt = xe, zt = C(Function.toString);
 qt(jt.inspectSource) || (jt.inspectSource = function(e) {
 return zt(e);
 });
-var Xt, Qt, Zt, Jt = jt.inspectSource, $t = B, er = r.WeakMap, tr = $t(er) && /native code/.test(String(er)), rr = We, or = Me("keys"), nr = function(e) {
+var Xt, Qt, Zt, Jt = jt.inspectSource, $t = B, er = r.WeakMap, tr = $t(er) && /native code/.test(String(er)), rr = He, or = Me("keys"), nr = function(e) {
 return or[e] || (or[e] = rr(e));
 }, ar = {}, ir = tr, sr = r, cr = Ft, lr = Le, ur = xe, mr = nr, pr = ar, dr = "Object already initialized", fr = sr.TypeError, yr = sr.WeakMap;
 if (ir || ur.state) {
@@ -11837,9 +11837,9 @@ return Cr(o, "source") || (o.source = kr(Ir, "string" == typeof t ? t : "")), e;
 Function.prototype.toString = Pr(function() {
 return Tr(this) && wr(this).source || Or(this);
 }, "toString");
-var Gr = Bt.exports, Lr = B, Dr = Et, Fr = Gr, Br = _e, Hr = {}, Wr = Math.ceil, Yr = Math.floor, Kr = Math.trunc || function(e) {
+var Gr = Bt.exports, Lr = B, Dr = Et, Fr = Gr, Br = _e, Wr = {}, Hr = Math.ceil, Yr = Math.floor, Kr = Math.trunc || function(e) {
 var t = +e;
-return (t > 0 ? Yr : Wr)(t);
+return (t > 0 ? Yr : Hr)(t);
 }, Vr = function(e) {
 var t = +e;
 return t != t || 0 === t ? 0 : Kr(t);
@@ -11862,12 +11862,12 @@ for (r in o) !to(no, r) && to(o, r) && ao(a, r);
 for (;t.length > n; ) to(o, r = t[n++]) && (~oo(a, r) || ao(a, r));
 return a;
 }, so = [ "constructor", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString", "toString", "valueOf" ], co = io, lo = so.concat("length", "prototype");
-Hr.f = Object.getOwnPropertyNames || function(e) {
+Wr.f = Object.getOwnPropertyNames || function(e) {
 return co(e, lo);
 };
 var uo = {};
 uo.f = Object.getOwnPropertySymbols;
-var mo = V, po = Hr, fo = uo, yo = Ot, go = C([].concat), ho = mo("Reflect", "ownKeys") || function(e) {
+var mo = V, po = Wr, fo = uo, yo = Ot, go = C([].concat), ho = mo("Reflect", "ownKeys") || function(e) {
 var t = po.f(yo(e)), r = fo.f;
 return r ? go(t, r(e)) : t;
 }, vo = Le, Ro = ho, Eo = o, To = Et, Co = n, So = B, _o = /#|\.prototype\./, Oo = function(e, t) {
@@ -11906,10 +11906,10 @@ Go(a, n);
 }
 }, Fo = b, Bo = Array.isArray || function(e) {
 return "Array" === Fo(e);
-}, Ho = TypeError, Wo = b, Yo = C, Ko = function(e) {
-if ("Function" === Wo(e)) return Yo(e);
+}, Wo = TypeError, Ho = b, Yo = C, Ko = function(e) {
+if ("Function" === Ho(e)) return Yo(e);
 }, Vo = fe, qo = i, jo = Ko(Ko.bind), zo = Bo, Xo = Zr, Qo = function(e) {
-if (e > 9007199254740991) throw Ho("Maximum allowed index exceeded");
+if (e > 9007199254740991) throw Wo("Maximum allowed index exceeded");
 return e;
 }, Zo = function(e, t, r, o, n, a, i, s) {
 for (var c, l, u = n, m = 0, p = !!i && function(e, t) {
@@ -11957,7 +11957,7 @@ var e;
 return hn(hn.call) || !hn(Object) || !hn(function() {
 e = !0;
 }) || e;
-}) ? vn : hn, En = Bo, Tn = Rn, Cn = W, Sn = Ze("species"), _n = Array, On = function(e, t) {
+}) ? vn : hn, En = Bo, Tn = Rn, Cn = H, Sn = Ze("species"), _n = Array, On = function(e, t) {
 return new (function(e) {
 var t;
 return En(e) && (t = e.constructor, (Tn(t) && (t === _n || En(t.prototype)) || Cn(t) && null === (t = t[Sn])) && (t = void 0)), 
@@ -11976,10 +11976,10 @@ t;
 });
 var Mn = {}, kn = io, Nn = so, In = Object.keys || function(e) {
 return kn(e, Nn);
-}, Pn = a, Dn = Tt, Fn = Et, Bn = Ot, Hn = D, Wn = In;
+}, Pn = a, Dn = Tt, Fn = Et, Bn = Ot, Wn = D, Hn = In;
 Mn.f = Pn && !Dn ? Object.defineProperties : function(e, t) {
 Bn(e);
-for (var r, o = Hn(t), n = Wn(t), a = n.length, i = 0; a > i; ) Fn.f(e, r = n[i++], o[r]);
+for (var r, o = Wn(t), n = Hn(t), a = n.length, i = 0; a > i; ) Fn.f(e, r = n[i++], o[r]);
 return e;
 };
 var Yn, Kn = V("document", "documentElement"), Vn = Ot, qn = Mn, jn = so, zn = ar, Xn = Kn, Qn = ct, Zn = "prototype", Jn = "script", $n = nr("IE_PROTO"), ea = function() {}, ta = function(e) {
@@ -12279,10 +12279,10 @@ array: !0
 }), Fa = new Ca.Codec({
 array: !0,
 depth: 16
-}), Ba = [ "WN", "EN", "WS", "ES" ], Ha = e => {
+}), Ba = [ "WN", "EN", "WS", "ES" ], Wa = e => {
 const t = (65280 & e.__packedPos) >> 8, r = 255 & e.__packedPos, o = e.__packedPos >>> 4 & 4294963200 | t << 6 | r;
 return Ga.encode(o);
-}, Wa = function(e) {
+}, Ha = function(e) {
 const t = Ga.decode(e), r = t << 4 & 4294901760 | (4032 & t) >> 6 << 8 | 63 & t, o = Object.create(RoomPosition.prototype);
 if (o.__packedPos = r, o.x > 49 || o.y > 49) throw new Error("Invalid room position");
 return o;
@@ -12293,9 +12293,9 @@ y: 63 & e
 };
 if (t.x > 49 || t.y > 49) throw new Error("Invalid packed coord");
 return t;
-}), ja = e => e.map(e => Ha(e)).join(""), za = e => {
+}), ja = e => e.map(e => Wa(e)).join(""), za = e => {
 var t;
-return null === (t = e.match(/.{1,2}/g)) || void 0 === t ? void 0 : t.map(e => Wa(e));
+return null === (t = e.match(/.{1,2}/g)) || void 0 === t ? void 0 : t.map(e => Ha(e));
 }, Xa = e => {
 let t = e.match(/^([WE])([0-9]+)([NS])([0-9]+)$/);
 if (!t) throw new Error("Invalid room name");
@@ -12378,11 +12378,11 @@ depth: 15
 }), ii = {
 key: "mts",
 serialize(e) {
-if (void 0 !== e) return `${Ha(e.pos)}${ai.encode(e.range)}`;
+if (void 0 !== e) return `${Wa(e.pos)}${ai.encode(e.range)}`;
 },
 deserialize(e) {
 if (void 0 !== e) return {
-pos: Wa(e.slice(0, 2)),
+pos: Ha(e.slice(0, 2)),
 range: ai.decode(e.slice(2))
 };
 }
@@ -12403,10 +12403,10 @@ return t;
 }, ci = {
 key: "ps",
 serialize(e) {
-if (void 0 !== e) return Ha(e);
+if (void 0 !== e) return Wa(e);
 },
 deserialize(e) {
-if (void 0 !== e) return Wa(e);
+if (void 0 !== e) return Ha(e);
 }
 }, li = {
 key: "pls",
@@ -12681,22 +12681,22 @@ if (!o) return [ ...r ];
 for (const e of o.values()) r.add(e.room2);
 return [ ...r ];
 }
-const Hi = new Ca.Codec({
+const Wi = new Ca.Codec({
 array: !1,
 depth: 15
-}), Wi = (e, t) => {
+}), Hi = (e, t) => {
 var r;
 if (!e || !e.length) throw new Error("Empty id");
 let o = e;
 o.length % 3 != 0 && (o = o.padStart(3 * Math.ceil(o.length / 3), "0"));
 let n = "";
-for (let e = 0; e < o.length; e += 3) n += Hi.encode(parseInt(o.slice(e, e + 3), 16));
+for (let e = 0; e < o.length; e += 3) n += Wi.encode(parseInt(o.slice(e, e + 3), 16));
 return null !== (r = n + t) && void 0 !== r ? r : "";
-}, Yi = (e, t) => Wi(e.id, t);
+}, Yi = (e, t) => Hi(e.id, t);
 var Ki = Object.freeze({
 __proto__: null,
 creepKey: Yi,
-objectIdKey: Wi,
+objectIdKey: Hi,
 roomKey: (e, t) => oi(e) + (null != t ? t : "")
 });
 const Vi = (e, t) => r => {
@@ -12976,7 +12976,7 @@ null !== (t = e.targetCount) && void 0 !== t || (e.targetCount = e.targets.lengt
 const a = ts(e.creep.pos.roomName);
 a.creep.delete(e.creep.id), null === (o = null === (r = a.priority.get(e.priority)) || void 0 === r ? void 0 : r.get(e.targets.length)) || void 0 === o || o.delete(e.creep.id);
 for (const t of e.targets) {
-const r = Ha(t);
+const r = Wa(t);
 null === (n = a.targets.get(r)) || void 0 === n || n.delete(e.creep.id);
 }
 }(i.creep.get(e.creep.id)), i.creep.set(e.creep.id, e);
@@ -12985,10 +12985,10 @@ i.priority.set(e.priority, s);
 const c = null !== (n = s.get(e.targets.length)) && void 0 !== n ? n : new Map;
 s.set(e.targets.length, c), c.set(e.creep.id, e);
 for (const t of e.targets) {
-const r = Ha(t), o = null !== (a = i.targets.get(r)) && void 0 !== a ? a : new Map;
+const r = Wa(t), o = null !== (a = i.targets.get(r)) && void 0 !== a ? a : new Map;
 i.targets.set(r, o), o.set(e.creep.id, e);
 }
-e.targets.length && e.targets[0].isEqualTo(e.creep.pos) && i.prefersToStay.add(Ha(e.creep.pos));
+e.targets.length && e.targets[0].isEqualTo(e.creep.pos) && i.prefersToStay.add(Wa(e.creep.pos));
 }
 function os(e, t, r) {
 var o, n, a;
@@ -13032,7 +13032,7 @@ fill: "transparent "
 for (const e of p.pullers) {
 const t = Game.getObjectById(e);
 if (!t) continue;
-const a = Ha(t.pos);
+const a = Wa(t.pos);
 d.add(a);
 for (const t of null !== (o = null === (r = p.targets.get(a)) || void 0 === r ? void 0 : r.values()) && void 0 !== o ? o : []) {
 if (t.creep.id === e) continue;
@@ -13068,7 +13068,7 @@ width: .2
 });
 });
 for (const t of e.targets) {
-const o = Ha(t);
+const o = Wa(t);
 if (!d.has(o) || e.creep.pos.isEqualTo(t) && p.pullers.has(e.creep.id)) {
 if (e.creep.pos.isEqualTo(t) || !p.prefersToStay.has(o)) {
 r = t;
@@ -13089,7 +13089,7 @@ m += ns(() => e.creep.move(e.creep.pos.getDirectionTo(r))), e.resolved = !0, (nu
 color: "green",
 width: .5
 });
-const u = Ha(r);
+const u = Wa(r);
 d.add(u);
 for (const e of null !== (i = null === (a = p.targets.get(u)) || void 0 === a ? void 0 : a.values()) && void 0 !== i ? i : []) {
 if (e.resolved) continue;
@@ -13098,7 +13098,7 @@ const t = e.targetCount;
 e.targetCount -= 1, os(e, t, e.targetCount);
 }
 if (!r.isEqualTo(e.creep.pos) && !p.pullers.has(e.creep.id)) {
-const o = Ha(e.creep.pos), a = [ ...null !== (l = null === (c = p.targets.get(o)) || void 0 === c ? void 0 : c.values()) && void 0 !== l ? l : [] ].filter(t => t !== e && t.targets.length < 2), i = a.find(e => !e.resolved && (null == r ? void 0 : r.isEqualTo(e.creep.pos)) && !p.pullers.has(e.creep.id));
+const o = Wa(e.creep.pos), a = [ ...null !== (l = null === (c = p.targets.get(o)) || void 0 === c ? void 0 : c.values()) && void 0 !== l ? l : [] ].filter(t => t !== e && t.targets.length < 2), i = a.find(e => !e.resolved && (null == r ? void 0 : r.isEqualTo(e.creep.pos)) && !p.pullers.has(e.creep.id));
 i && ((null == t ? void 0 : t.visualize) && Game.rooms[i.creep.pos.roomName].visual.circle(i.creep.pos, {
 radius: .2,
 fill: "green"
@@ -13280,7 +13280,7 @@ return Ln.CachingStrategies = di, Ln.CoordListSerializer = mi, Ln.CoordSerialize
 Ln.Keys = Ki, Ln.MoveTargetListSerializer = si, Ln.MoveTargetSerializer = ii, Ln.NumberSerializer = _a, 
 Ln.PositionListSerializer = li, Ln.PositionSerializer = ci, Ln.adjacentWalkablePositions = Ci, 
 Ln.blockSquare = function(e) {
-ts(e.roomName).blockedSquares.add(Ha(e));
+ts(e.roomName).blockedSquares.add(Wa(e));
 }, Ln.cachePath = ps, Ln.cachedPathKey = us, Ln.calculateAdjacencyMatrix = vi, Ln.calculateAdjacentPositions = Ri, 
 Ln.calculateNearbyPositions = Ei, Ln.calculatePositionsAtRange = Ti, Ln.cleanAllCaches = pi, 
 Ln.clearCachedPath = Os, Ln.compressPath = e => {
@@ -13291,9 +13291,9 @@ for (const r of e.slice(1)) {
 if (1 !== $a(o, r)) throw new Error("Cannot compress path unless each RoomPosition is adjacent to the previous one");
 t.push(o.getDirectionTo(r)), o = r;
 }
-return Ha(r) + Da.encode(t);
+return Wa(r) + Da.encode(t);
 }, Ln.config = va, Ln.decompressPath = e => {
-let t = Wa(e.slice(0, 2));
+let t = Ha(e.slice(0, 2));
 const r = [ t ], o = Da.decode(e.slice(2));
 for (const e of o) t = ei(t, e), r.push(t);
 return r;
@@ -13323,7 +13323,7 @@ void 0 !== t && (l = (null == r ? void 0 : r.reverse) ? t - 1 : t + 2, Ta.set(Yi
 let p = ds(t, r);
 return p ? (void 0 !== l && (p = bi(p, l, null == r ? void 0 : r.reverse)), 0 === p.length ? ERR_NO_PATH : bs(e, p, r)) : ERR_NO_PATH;
 }, Ln.moveTo = bs, Ln.normalizeTargets = gi, Ln.offsetRoomPosition = Pa, Ln.packCoord = Ya, 
-Ln.packCoordList = Va, Ln.packPos = Ha, Ln.packPosList = ja, Ln.packRoomName = oi, 
+Ln.packCoordList = Va, Ln.packPos = Wa, Ln.packPosList = ja, Ln.packRoomName = oi, 
 Ln.packRoomNames = ti, Ln.posAtDirection = ei, Ln.preTick = function() {
 pi(), function() {
 for (const e in Game.rooms) Ui(e), Li(e);
@@ -13341,7 +13341,7 @@ for (const t of [ ...$i.keys() ]) Game.rooms[t] && cs(t, e);
 xa.with(_a).set(as, Game.time);
 }, Ln.reconciledRecently = is, Ln.resetCachedPath = fs, Ln.roomNameFromCoords = Qa, 
 Ln.roomNameToCoords = Xa, Ln.sameRoomPosition = Ia, Ln.unpackCoord = Ka, Ln.unpackCoordList = qa, 
-Ln.unpackPos = Wa, Ln.unpackPosList = za, Ln.unpackRoomName = ni, Ln.unpackRoomNames = ri, 
+Ln.unpackPos = Ha, Ln.unpackPosList = za, Ln.unpackRoomName = ni, Ln.unpackRoomNames = ri, 
 Ln;
 }(), Fn = function() {
 function e() {}
@@ -13438,24 +13438,24 @@ lastUpdate: Game.time
 }, e;
 }(), Bn = new Fn;
 
-function Hn(e) {
+function Wn(e) {
 var t = Game.rooms[e];
 if (!t) return null;
 var r = t.find(FIND_MY_SPAWNS);
 return r.length > 0 ? r[0].pos : new RoomPosition(25, 25, e);
 }
 
-var Wn = xe("ActionExecutor"), Yn = "#ffaa00", Kn = "#ffffff", Vn = "#ff0000", qn = "#00ff00", jn = "#0000ff";
+var Hn = xe("ActionExecutor"), Yn = "#ffaa00", Kn = "#ffffff", Vn = "#ff0000", qn = "#00ff00", jn = "#0000ff";
 
 function zn(e, t, r) {
 var o, n;
-if (!t || !t.type) return Wn.warn("".concat(e.name, " received invalid action, clearing state")), 
+if (!t || !t.type) return Hn.warn("".concat(e.name, " received invalid action, clearing state")), 
 void delete r.memory.state;
 var a = function(e, t) {
 return t;
 }(0, t);
-t.type !== a.type && Wn.debug("".concat(e.name, " opportunistic action: ").concat(t.type, " → ").concat(a.type)), 
-"idle" === a.type ? Wn.warn("".concat(e.name, " (").concat(r.memory.role, ") executing IDLE action")) : Wn.debug("".concat(e.name, " (").concat(r.memory.role, ") executing ").concat(a.type));
+t.type !== a.type && Hn.debug("".concat(e.name, " opportunistic action: ").concat(t.type, " → ").concat(a.type)), 
+"idle" === a.type ? Hn.warn("".concat(e.name, " (").concat(r.memory.role, ") executing IDLE action")) : Hn.debug("".concat(e.name, " (").concat(r.memory.role, ") executing ").concat(a.type));
 var i = !1;
 switch (a.type) {
 case "harvest":
@@ -13631,7 +13631,7 @@ break;
 var u = Game.rooms[e.pos.roomName];
 if (u && (null === (o = u.controller) || void 0 === o ? void 0 : o.my)) {
 Bn.getOrInitSwarmState(u.name);
-var m = Hn(u.name);
+var m = Wn(u.name);
 if (m && !e.pos.isEqualTo(m)) {
 Dn.moveTo(e, m, {
 visualizePathStyle: {
@@ -13668,7 +13668,7 @@ visualizePathStyle: {
 stroke: o
 }
 });
-return s !== OK && Wn.info("Movement attempt returned non-OK result", {
+return s !== OK && Hn.info("Movement attempt returned non-OK result", {
 room: e.pos.roomName,
 creep: e.name,
 meta: {
@@ -13744,7 +13744,7 @@ return e.type === WORK && e.hits > 0;
 sn(e).upgradeProgress += t;
 }(e.memory, R);
 }
-}(e, n, r, a), (i === ERR_FULL || i === ERR_NOT_ENOUGH_RESOURCES || i === ERR_INVALID_TARGET) && (Wn.info("Clearing state after action error", {
+}(e, n, r, a), (i === ERR_FULL || i === ERR_NOT_ENOUGH_RESOURCES || i === ERR_INVALID_TARGET) && (Hn.info("Clearing state after action error", {
 room: e.pos.roomName,
 creep: e.name,
 meta: {
@@ -15668,8 +15668,8 @@ if (m) throw m.error;
 }
 if (!U) {
 try {
-for (var H = a(b), W = H.next(); !W.done; W = H.next()) {
-N = Ma(t, W.value.pos, e.name, C.maxPathOps);
+for (var W = a(b), H = W.next(); !H.done; H = W.next()) {
+N = Ma(t, H.value.pos, e.name, C.maxPathOps);
 try {
 for (var Y = (y = void 0, a(N)), K = Y.next(); !K.done; K = Y.next()) G = K.value, 
 _.add("".concat(G.x, ",").concat(G.y));
@@ -15691,7 +15691,7 @@ error: e
 };
 } finally {
 try {
-W && !W.done && (f = H.return) && f.call(H);
+H && !H.done && (f = W.return) && f.call(W);
 } finally {
 if (d) throw d.error;
 }
@@ -16549,7 +16549,7 @@ errorCode: a
 }, t;
 }(), Ba = new Fa;
 
-function Ha(e) {
+function Wa(e) {
 var t, r, o, n, i, s, c = {
 guards: 0,
 rangers: 0,
@@ -16614,7 +16614,7 @@ subsystem: "Defense"
 }), c;
 }
 
-function Wa(e) {
+function Ha(e) {
 var t = e.find(FIND_MY_CREEPS);
 return {
 guards: t.filter(function(e) {
@@ -16632,7 +16632,7 @@ return "healer" === e.memory.role;
 function Ya(e, t) {
 var r, o;
 if (t.danger < 1) return !1;
-var n = Ha(e), a = Wa(e), i = n.guards - a.guards + (n.rangers - a.rangers);
+var n = Wa(e), a = Ha(e), i = n.guards - a.guards + (n.rangers - a.rangers);
 if (i <= 0) return !1;
 var s = e.find(FIND_MY_SPAWNS);
 if (0 === s.length) return !0;
@@ -16676,7 +16676,7 @@ lastEscalation: 0
 };
 }, e.prototype.calculateEmergencyLevel = function(e, t) {
 if (0 === t.danger) return Da.NONE;
-var r = ua(e.find(FIND_HOSTILE_CREEPS)), o = Ha(e), n = Wa(e);
+var r = ua(e.find(FIND_HOSTILE_CREEPS)), o = Wa(e), n = Ha(e);
 if (e.find(FIND_MY_STRUCTURES, {
 filter: function(e) {
 return (e.structureType === STRUCTURE_SPAWN || e.structureType === STRUCTURE_STORAGE || e.structureType === STRUCTURE_TERMINAL) && e.hits < .3 * e.hitsMax;
@@ -16697,7 +16697,7 @@ var r;
 if (!Ya(e, t)) return !1;
 var o = function(e, t) {
 if (!Ya(e, t)) return null;
-var r = Ha(e), o = Wa(e), n = {
+var r = Wa(e), o = Ha(e), n = {
 roomName: e.name,
 guardsNeeded: Math.max(0, r.guards - o.guards),
 rangersNeeded: Math.max(0, r.rangers - o.rangers),
@@ -17230,7 +17230,7 @@ return e.getActiveBodyparts(t) > 0;
 
 function oi(e, t) {
 if (!e.swarmState) return null;
-var r = Hn(e.room.name);
+var r = Wn(e.room.name);
 return r && e.creep.pos.getRangeTo(r) > 2 ? (Za.debug("".concat(e.creep.name, " ").concat(t, " moving to collection point at ").concat(r.x, ",").concat(r.y)), 
 {
 type: "moveTo",
@@ -19493,7 +19493,7 @@ if (t) throw t.error;
 }
 return o;
 }, e;
-}(), Fi = new Di, Bi = new Map, Hi = function() {
+}(), Fi = new Di, Bi = new Map, Wi = function() {
 function t() {}
 return t.prototype.updateThreatAssessment = function(t, r, o) {
 var n, c, l, u, m, p;
@@ -19654,7 +19654,7 @@ if (t) throw t.error;
 }
 return o;
 }, t;
-}(), Wi = new Hi;
+}(), Hi = new Wi;
 
 function Yi(e) {
 var t, r = {
@@ -20953,58 +20953,75 @@ y: 3
 x: 3,
 y: 3
 } ],
-ramparts: [ {
+ramparts: s(s([], i(Vi([ {
 x: 0,
-y: 0
+y: 0,
+structureType: STRUCTURE_STORAGE
 }, {
 x: -1,
-y: 1
+y: 1,
+structureType: STRUCTURE_TERMINAL
 }, {
 x: 1,
-y: 1
+y: 1,
+structureType: STRUCTURE_FACTORY
 }, {
 x: 0,
-y: -2
+y: -2,
+structureType: STRUCTURE_SPAWN
 }, {
 x: -2,
-y: 1
+y: 1,
+structureType: STRUCTURE_SPAWN
 }, {
 x: 2,
-y: 1
+y: 1,
+structureType: STRUCTURE_SPAWN
 }, {
 x: 0,
-y: 2
+y: 2,
+structureType: STRUCTURE_POWER_SPAWN
 }, {
 x: -2,
-y: -1
+y: -1,
+structureType: STRUCTURE_NUKER
 }, {
 x: 2,
-y: -1
+y: -1,
+structureType: STRUCTURE_OBSERVER
 }, {
 x: -3,
-y: -2
+y: -2,
+structureType: STRUCTURE_TOWER
 }, {
 x: 3,
-y: -2
+y: -2,
+structureType: STRUCTURE_TOWER
 }, {
 x: -4,
-y: 0
+y: 0,
+structureType: STRUCTURE_TOWER
 }, {
 x: 4,
-y: 0
+y: 0,
+structureType: STRUCTURE_TOWER
 }, {
 x: -3,
-y: 3
+y: 3,
+structureType: STRUCTURE_TOWER
 }, {
 x: 3,
-y: 3
+y: 3,
+structureType: STRUCTURE_TOWER
 }, {
 x: -2,
-y: 3
+y: 3,
+structureType: STRUCTURE_LAB
 }, {
 x: -1,
-y: 3
-}, {
+y: 3,
+structureType: STRUCTURE_LAB
+} ], [ STRUCTURE_STORAGE, STRUCTURE_TERMINAL, STRUCTURE_FACTORY, STRUCTURE_SPAWN, STRUCTURE_POWER_SPAWN, STRUCTURE_NUKER, STRUCTURE_OBSERVER, STRUCTURE_TOWER, STRUCTURE_LAB ])), !1), i([ {
 x: -4,
 y: -2
 }, {
@@ -21022,7 +21039,7 @@ y: -2
 }, {
 x: 2,
 y: -2
-} ]
+} ]), !1)
 };
 
 function ts(e, t, r) {
@@ -21992,14 +22009,14 @@ return e.pos.x === o && e.pos.y === n && e.structureType === STRUCTURE_ROAD;
 }) ? "continue" : e.createConstructionSite(o, n, STRUCTURE_ROAD) === OK && (++w >= 3 || U.length + w >= 10) ? "break" : void 0;
 };
 try {
-for (var H = a(r.roads), W = H.next(); !W.done && "break" !== B(W.value); W = H.next()) ;
+for (var W = a(r.roads), H = W.next(); !H.done && "break" !== B(H.value); H = W.next()) ;
 } catch (e) {
 p = {
 error: e
 };
 } finally {
 try {
-W && !W.done && (d = H.return) && d.call(H);
+H && !H.done && (d = W.return) && d.call(W);
 } finally {
 if (p) throw p.error;
 }
@@ -22370,12 +22387,12 @@ constructionSites: e.find(FIND_MY_CONSTRUCTION_SITES)
 return hs.set(e.name, o), o;
 }(s);
 if (this.config.enablePheromones && Game.time % 5 == 0 && Fi.updateMetrics(s, c), 
-Wi.updateThreatAssessment(s, c, {
+Hi.updateThreatAssessment(s, c, {
 spawns: l.spawns,
 towers: l.towers
 }), Va.assess(s, c), ja.checkSafeMode(s, c), this.config.enableEvolution && (Ii.updateEvolutionStage(c, s, t), 
 Ii.updateMissingStructures(c, s)), Pi.updatePosture(c), this.config.enablePheromones && Fi.updatePheromones(c, s), 
-this.config.enableTowers && Wi.runTowerControl(s, c, l.towers), this.config.enableConstruction && Pi.allowsBuilding(c.posture)) {
+this.config.enableTowers && Hi.runTowerControl(s, c, l.towers), this.config.enableConstruction && Pi.allowsBuilding(c.posture)) {
 var u = null !== (n = null === (o = s.controller) || void 0 === o ? void 0 : o.level) && void 0 !== n ? n : 1, m = us.getConstructionInterval(u);
 Game.time % m === 0 && us.runConstruction(s, c, l.constructionSites, l.spawns);
 }
@@ -23369,9 +23386,9 @@ category: "Statistics"
 }(), As = function() {
 function e() {}
 return e.prototype.listCommands = function() {
-return Wt.generateHelp();
+return Ht.generateHelp();
 }, e.prototype.commandHelp = function(e) {
-return Wt.generateCommandHelp(e);
+return Ht.generateCommandHelp(e);
 }, n([ Yt({
 name: "listCommands",
 description: "List all available commands (alias for help)",
@@ -23833,7 +23850,7 @@ threat: "Danger level ".concat(r)
 };
 }
 
-var Ds, Fs, Bs, Hs = {
+var Ds, Fs, Bs, Ws = {
 minBucket: 0,
 criticalEnergyThreshold: 300,
 mediumEnergyThreshold: 1e3,
@@ -23844,9 +23861,9 @@ maxRequestsPerRoom: 3,
 requestTimeout: 500,
 focusRoomMediumThreshold: 5e3,
 focusRoomLowThreshold: 15e3
-}, Ws = function() {
+}, Hs = function() {
 function e(e) {
-void 0 === e && (e = {}), this.config = o(o({}, Hs), e);
+void 0 === e && (e = {}), this.config = o(o({}, Ws), e);
 }
 return e.prototype.processCluster = function(e) {
 if (!(Game.cpu.bucket < this.config.minBucket)) {
@@ -24022,7 +24039,7 @@ subsystem: "ResourceSharing"
 });
 }
 }, e;
-}(), Ys = new Ws, Ks = {
+}(), Ys = new Hs, Ks = {
 1: {
 guards: 1,
 rangers: 1,
@@ -26836,12 +26853,12 @@ interval: 20,
 minBucket: 0,
 cpuBudget: .1
 }) ], t.prototype, "run", null), n([ Cr() ], t);
-}(), Bc = new Fc, Hc = {
+}(), Bc = new Fc, Wc = {
 minBucket: 0,
 minStorageEnergy: 8e4,
 inputBufferAmount: 2e3,
 outputBufferAmount: 5e3
-}, Wc = ((Ec = {})[RESOURCE_UTRIUM_BAR] = ((Tc = {})[RESOURCE_UTRIUM] = 500, Tc[RESOURCE_ENERGY] = 200, 
+}, Hc = ((Ec = {})[RESOURCE_UTRIUM_BAR] = ((Tc = {})[RESOURCE_UTRIUM] = 500, Tc[RESOURCE_ENERGY] = 200, 
 Tc), Ec[RESOURCE_LEMERGIUM_BAR] = ((Cc = {})[RESOURCE_LEMERGIUM] = 500, Cc[RESOURCE_ENERGY] = 200, 
 Cc), Ec[RESOURCE_ZYNTHIUM_BAR] = ((Sc = {})[RESOURCE_ZYNTHIUM] = 500, Sc[RESOURCE_ENERGY] = 200, 
 Sc), Ec[RESOURCE_KEANIUM_BAR] = ((_c = {})[RESOURCE_KEANIUM] = 500, _c[RESOURCE_ENERGY] = 200, 
@@ -26854,7 +26871,7 @@ Ac[RESOURCE_UTRIUM_BAR] = 5, Ac[RESOURCE_LEMERGIUM_BAR] = 5, Ac[RESOURCE_ZYNTHIU
 Ac[RESOURCE_KEANIUM_BAR] = 5, Ac[RESOURCE_GHODIUM_MELT] = 4, Ac[RESOURCE_OXIDANT] = 3, 
 Ac[RESOURCE_REDUCTANT] = 3, Ac[RESOURCE_PURIFIER] = 3, Ac), Kc = function() {
 function e(e) {
-void 0 === e && (e = {}), this.config = o(o({}, Hc), e);
+void 0 === e && (e = {}), this.config = o(o({}, Wc), e);
 }
 return e.prototype.run = function() {
 var e, t;
@@ -26897,7 +26914,7 @@ var s = e.storage;
 if (s && !(s.store.getUsedCapacity(RESOURCE_ENERGY) < this.config.minStorageEnergy)) {
 var c = this.selectProduction(e, n, s);
 if (c) {
-var l = Wc[c];
+var l = Hc[c];
 if (l) {
 var u = !0;
 try {
@@ -26935,7 +26952,7 @@ subsystem: "Factory"
 }, e.prototype.selectProduction = function(e, t, r) {
 var o, n, s, c, l, u = [];
 try {
-for (var m = a(Object.entries(Wc)), p = m.next(); !p.done; p = m.next()) {
+for (var m = a(Object.entries(Hc)), p = m.next(); !p.done; p = m.next()) {
 var d = i(p.value, 2), f = d[0], y = d[1], g = f, h = !0, v = 0;
 try {
 for (var R = (s = void 0, a(Object.entries(y))), E = R.next(); !E.done; E = R.next()) {
@@ -26988,7 +27005,7 @@ var r, o, n = t.storage;
 if (!n) return [];
 var s = this.selectProduction(t, e, n);
 if (!s) return [];
-var c = Wc[s];
+var c = Hc[s];
 if (!c) return [];
 var l = [];
 try {
@@ -27014,7 +27031,7 @@ return l;
 }, e.prototype.hasOutputsToRemove = function(e) {
 var t, r;
 try {
-for (var o = a(Object.keys(Wc)), n = o.next(); !n.done; n = o.next()) {
+for (var o = a(Object.keys(Hc)), n = o.next(); !n.done; n = o.next()) {
 var i = n.value;
 if (e.store.getUsedCapacity(i) > 0) return !0;
 }
@@ -30090,7 +30107,7 @@ subsystem: "RemoteRoomManager"
 }
 }
 
-function Hl(t) {
+function Wl(t) {
 var r, o, n, i = e.memoryManager.getSwarmState(t);
 if (i) {
 var s = null !== (n = i.remoteAssignments) && void 0 !== n ? n : [];
@@ -30116,13 +30133,13 @@ if (r) throw r.error;
 }
 }
 
-var Wl = {
+var Hl = {
 updateInterval: 50,
 minBucket: 0,
 maxSitesPerRemotePerTick: 2
 }, Yl = function() {
 function t(e) {
-void 0 === e && (e = {}), this.config = o(o({}, Wl), e);
+void 0 === e && (e = {}), this.config = o(o({}, Hl), e);
 }
 return t.prototype.run = function() {
 var t, r, o, n, i, s = Object.values(Game.rooms).filter(function(e) {
@@ -30133,7 +30150,7 @@ try {
 for (var c = a(s), l = c.next(); !l.done; l = c.next()) {
 var u = l.value, m = e.memoryManager.getSwarmState(u.name);
 if (m) {
-Hl(u.name);
+Wl(u.name);
 var p = null !== (i = m.remoteAssignments) && void 0 !== i ? i : [];
 if (0 !== p.length) {
 try {
@@ -30400,7 +30417,7 @@ cpuBudget: .01
 function Xl(t, r, o) {
 var n = 0;
 if ("guard" !== o && "ranger" !== o && "healer" !== o || (n += function(e, t, r) {
-var o = Ha(e), n = Wa(e);
+var o = Wa(e), n = Ha(e);
 if (0 === o.guards && 0 === o.rangers && 0 === o.healers) return 0;
 var a = 0;
 return ("guard" === r && n.guards < o.guards || "ranger" === r && n.rangers < o.rangers || "healer" === r && n.healers < o.healers) && (a = 100 * o.urgency), 
@@ -31490,7 +31507,7 @@ skippable: o !== Zo.CRITICAL
 }
 }, Eu = new gu({
 getCachedPath: function(e, t) {
-var r = He(e, t), o = fe.get(r, {
+var r = We(e, t), o = fe.get(r, {
 namespace: Be
 });
 if (!o) return null;
@@ -31500,7 +31517,7 @@ return Room.deserializePath(o);
 return fe.invalidate(r, Be), null;
 }
 },
-cachePath: We,
+cachePath: He,
 convertRoomPositionsToPathSteps: function(e) {
 for (var t = [], r = 0; r < e.length; r++) {
 var o = e[r], n = r > 0 ? e[r - 1] : null, a = TOP, i = 0, s = 0;
@@ -31553,7 +31570,7 @@ var l = c.value, u = e.findPath(n.pos, l.pos, {
 ignoreCreeps: !0,
 serialize: !1
 });
-u.length > 0 && (We(n.pos, l.pos, u), We(l.pos, n.pos, u));
+u.length > 0 && (He(n.pos, l.pos, u), He(l.pos, n.pos, u));
 }
 } catch (e) {
 t = {
@@ -31572,7 +31589,7 @@ ignoreCreeps: !0,
 range: 3,
 serialize: !1
 });
-m.length > 0 && We(n.pos, e.controller.pos, m);
+m.length > 0 && He(n.pos, e.controller.pos, m);
 }
 }
 }
@@ -32389,7 +32406,7 @@ desc: "Parameter: ".concat(e)
 function e() {}
 e.prototype.uiHelp = function(e) {
 return e ? function(e) {
-var t = Wt.getCommandsByCategory(), r = t.get(e);
+var t = Ht.getCommandsByCategory(), r = t.get(e);
 if (!r || 0 === r.length) return 'Category "'.concat(e, '" not found. Available categories: ').concat(Array.from(t.keys()).join(", "));
 var o = r.map(function(e) {
 var t, r;
@@ -32407,7 +32424,7 @@ describe: "".concat(e, " commands"),
 api: o
 });
 }(e) : function() {
-var e, t, r = Wt.getCommandsByCategory(), o = [];
+var e, t, r = Ht.getCommandsByCategory(), o = [];
 try {
 for (var n = a(r), c = n.next(); !c.done; c = n.next()) {
 var l = i(c.value, 2), u = l[0], m = l[1].map(function(e) {
@@ -32611,12 +32628,12 @@ category: "System"
 }) ], e.prototype, "colorDemo", null);
 }();
 
-var Du = new Us, Fu = new Iu, Bu = new xs, Hu = new Ko, Wu = new ws, Yu = new As, Ku = Dt("Main");
+var Du = new Us, Fu = new Iu, Bu = new xs, Wu = new Ko, Hu = new ws, Yu = new As, Ku = Dt("Main");
 
 !function(e) {
 void 0 === e && (e = !1);
 var t = function() {
-Wt.initialize(), Kt(Du), Kt(Fu), Kt(Bu), Kt(Hu), Kt(Wu), Kt(Yu), Kt(Ho), Kt(Wo), 
+Ht.initialize(), Kt(Du), Kt(Fu), Kt(Bu), Kt(Wu), Kt(Hu), Kt(Yu), Kt(Wo), Kt(Ho), 
 Kt(Yo), Kt(Gu), Kt(Qt), Kt(Br), Kt(co), global.tooangel = io;
 var e = global;
 e.botConfig = {
@@ -32624,9 +32641,9 @@ getConfig: ae,
 updateConfig: ie
 }, e.botLogger = {
 configureLogger: Ot
-}, e.botVisualizationManager = it, e.botCacheManager = fe, Wt.exposeToGlobal();
+}, e.botVisualizationManager = it, e.botCacheManager = fe, Ht.exposeToGlobal();
 };
-e ? (Wt.initialize(), Wt.enableLazyLoading(t), Wt.exposeToGlobal()) : t();
+e ? (Ht.initialize(), Ht.enableLazyLoading(t), Ht.exposeToGlobal()) : t();
 }(ae().lazyLoadConsoleCommands);
 
 var Vu = re.wrapLoop(function() {
