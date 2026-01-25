@@ -8,9 +8,9 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import { memoryCompressor } from "./memoryCompressor";
-import { memorySegmentManager } from "./memorySegmentManager";
-import type { EmpireMemory } from "./schemas";
+import { memoryCompressor } from "./compressor";
+import { memorySegmentManager } from "./segments";
+import type { EmpireMemory } from "./schemas/empireSchemas";
 
 /**
  * Migration definition

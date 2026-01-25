@@ -11,7 +11,7 @@
  */
 
 import { logger } from "../core/logger";
-import { memoryManager } from "../memory/manager";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { ClusterMemory } from "@ralphschuler/screeps-memory";
 
 /**

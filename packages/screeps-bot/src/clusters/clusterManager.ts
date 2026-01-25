@@ -40,7 +40,7 @@ import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { ProcessPriority } from "../core/kernel";
 import { logger } from "../core/logger";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { memoryManager } from "../memory/manager";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { ClusterMemory } from "@ralphschuler/screeps-memory";
 import {
   type DefenseRequest,

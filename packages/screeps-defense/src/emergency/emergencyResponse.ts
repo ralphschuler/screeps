@@ -20,8 +20,8 @@
  */
 
 import { logger } from "@bot/core/logger";
-import type { SwarmState } from "@bot/memory/schemas";
-import { memoryManager } from "@bot/memory/manager";
+import type { SwarmState } from "@ralphschuler/screeps-memory";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 import {
   type DefenseRequest,
   analyzeDefenderNeeds,

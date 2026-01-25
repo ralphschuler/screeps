@@ -5,27 +5,26 @@
  * Integrates memory compression, segmentation, monitoring, and automatic pruning.
  * 
  * Memory Management Strategy (ROADMAP Section 4):
- * - Layer 1: Memory monitoring with alerts (memoryMonitor.ts)
- * - Layer 2: Automatic data pruning (memoryPruner.ts)
- * - Layer 3: Memory segmentation for rarely-accessed data (memorySegmentManager.ts)
- * - Layer 4: Data compression using LZ-String (memoryCompressor.ts)
+ * - Layer 1: Memory monitoring with alerts (monitor.ts)
+ * - Layer 2: Automatic data pruning (pruner.ts)
+ * - Layer 3: Memory segmentation for rarely-accessed data (segments.ts)
+ * - Layer 4: Data compression using LZ-String (compressor.ts)
  * - Layer 5: Schema migration system (migrations.ts)
  */
 
-import { INFINITE_TTL, heapCache } from "./heapCache";
-import { memoryMonitor } from "./memoryMonitor";
-import { memoryPruner } from "./memoryPruner";
+import { INFINITE_TTL, heapCache } from "./heap-cache";
+import { memoryMonitor } from "./monitor";
+import { memoryPruner } from "./pruner";
 import { migrationRunner } from "./migrations";
+import type { EmpireMemory } from "./schemas/empireSchemas";
+import type { ClusterMemory } from "./schemas/clusterSchemas";
+import type { SwarmCreepMemory } from "./schemas/creepSchemas";
+import type { EventLogEntry, SwarmState } from "./schemas/roomSchemas";
 import {
-  type ClusterMemory,
-  type EmpireMemory,
-  type EventLogEntry,
-  type SwarmCreepMemory,
-  type SwarmState,
-  createDefaultClusterMemory,
-  createDefaultEmpireMemory,
-  createDefaultSwarmState
-} from "./schemas";
+  createDefaultEmpireMemory
+} from "./schemas/empireSchemas";
+import { createDefaultClusterMemory } from "./schemas/clusterSchemas";
+import { createDefaultSwarmState } from "./schemas/roomSchemas";
 
 // Extend RoomMemory interface to add hostile property
 // Used by memoryManager to cache whether a room contains hostile structures/creeps

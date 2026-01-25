@@ -14,7 +14,7 @@
 
 import { logger } from "@ralphschuler/screeps-core";
 import * as LZString from "lz-string";
-import type { RoomIntel } from "./schemas";
+import type { RoomIntel } from "./schemas/empireSchemas";
 
 /**
  * Compressed data wrapper

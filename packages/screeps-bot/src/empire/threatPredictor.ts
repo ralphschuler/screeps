@@ -11,7 +11,7 @@ import {
 } from "@ralphschuler/screeps-empire";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { memoryManager } from "../memory/manager";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 
 /**
  * Room intel accessor implementation for bot's memory system

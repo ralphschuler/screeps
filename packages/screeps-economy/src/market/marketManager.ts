@@ -29,12 +29,12 @@
  * Verify trading decisions are made correctly based on price data
  */
 
-import { memoryManager } from "@bot/memory/manager";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 import { logger } from "@bot/core/logger";
 import { LowFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
 import { ProcessPriority } from "@bot/core/kernel";
-import type { PendingArbitrageTrade, PriceDataPoint, ResourceMarketData } from "@bot/memory/schemas";
-import { createDefaultMarketMemory } from "@bot/memory/schemas";
+import type { PendingArbitrageTrade, PriceDataPoint, ResourceMarketData } from "@ralphschuler/screeps-memory";
+import { createDefaultMarketMemory } from "@ralphschuler/screeps-memory";
 
 /**
  * Market Manager Configuration

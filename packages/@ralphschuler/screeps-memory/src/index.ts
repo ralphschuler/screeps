@@ -19,3 +19,12 @@ export * from './schemas/creepSchemas';
 
 // Utility schemas - Visualization and misc
 export * from './schemas/utilitySchemas';
+
+// Memory management utilities
+export * from './heap-cache';
+export * from './monitor';
+export * from './segments';
+export * from './compressor';
+export * from './pruner';
+export * from './migrations';
+export * from './manager';

@@ -5,7 +5,7 @@
  */
 
 import { Command } from "../core/commandRegistry";
-import { memoryManager } from "../memory/manager";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 import { expansionManager } from "./expansionManager";
 
 /**

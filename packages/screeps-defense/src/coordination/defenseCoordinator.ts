@@ -21,7 +21,7 @@
  */
 
 import { logger } from "@bot/core/logger";
-import { memoryManager } from "@bot/memory/manager";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { DefenseRequest } from "@bot/spawning/defenderManager";
 import { MediumFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
 import { ProcessPriority } from "@bot/core/kernel";

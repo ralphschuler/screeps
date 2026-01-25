@@ -18,7 +18,7 @@
  * Related: See SHARD3_INVESTIGATION.md for detailed analysis
  */
 
-import { memoryManager } from "../memory/manager";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { getDefenderPriorityBoost } from "./defenderManager";
 

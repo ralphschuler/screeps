@@ -14,7 +14,7 @@
 import { LowFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
 import { ProcessPriority } from "@bot/core/kernel";
 import { logger } from "@bot/core/logger";
-import { memoryManager } from "@bot/memory/manager";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 
 /**
  * Supply/demand analysis result
