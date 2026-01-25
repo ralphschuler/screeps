@@ -8,7 +8,8 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import type { EmpireMemory, SwarmState } from "./schemas/empireSchemas";
+import type { EmpireMemory } from "./schemas/empireSchemas";
+import type { SwarmState } from "./schemas/roomSchemas";
 
 /** Maximum event log entries per room */
 const MAX_EVENT_LOG_ENTRIES = 20;

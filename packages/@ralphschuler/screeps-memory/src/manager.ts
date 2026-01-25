@@ -16,16 +16,15 @@ import { INFINITE_TTL, heapCache } from "./heap-cache";
 import { memoryMonitor } from "./monitor";
 import { memoryPruner } from "./pruner";
 import { migrationRunner } from "./migrations";
+import type { EmpireMemory } from "./schemas/empireSchemas";
+import type { ClusterMemory } from "./schemas/clusterSchemas";
+import type { SwarmCreepMemory } from "./schemas/creepSchemas";
+import type { EventLogEntry, SwarmState } from "./schemas/roomSchemas";
 import {
-  type ClusterMemory,
-  type EmpireMemory,
-  type EventLogEntry,
-  type SwarmCreepMemory,
-  type SwarmState,
-  createDefaultClusterMemory,
-  createDefaultEmpireMemory,
-  createDefaultSwarmState
+  createDefaultEmpireMemory
 } from "./schemas/empireSchemas";
+import { createDefaultClusterMemory } from "./schemas/clusterSchemas";
+import { createDefaultSwarmState } from "./schemas/roomSchemas";
 
 // Extend RoomMemory interface to add hostile property
 // Used by memoryManager to cache whether a room contains hostile structures/creeps

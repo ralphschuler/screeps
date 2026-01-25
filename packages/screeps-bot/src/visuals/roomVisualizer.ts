@@ -22,7 +22,7 @@
  */
 
 import { createLogger } from "@ralphschuler/screeps-core";
-import { memoryManager } from "../memory/manager";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { PheromoneState, SwarmState } from "@ralphschuler/screeps-memory";
 import { VisualizationLayer } from "@ralphschuler/screeps-memory";
 import { visualizationManager } from "./visualizationManager";

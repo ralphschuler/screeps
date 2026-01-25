@@ -12,7 +12,7 @@
  */
 
 import { createLogger } from "@ralphschuler/screeps-core";
-import { memoryManager } from "../memory/manager";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 
 const logger = createLogger("MapVisualizer");
 

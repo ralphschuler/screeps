@@ -14,7 +14,7 @@ import { logger } from "@ralphschuler/screeps-core";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { memoryManager } from "../memory/manager";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { RoomIntel } from "@ralphschuler/screeps-memory";
 
 /**

@@ -14,7 +14,7 @@ import { deserializeInterShardMemory, serializeInterShardMemory } from "@ralphsc
 import type { SharedEnemyIntel } from "@ralphschuler/screeps-intershard";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { memoryManager } from "../memory/manager";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 
 /**
  * Cross-Shard Intel Configuration

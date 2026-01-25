@@ -1,6 +1,6 @@
 /* eslint-disable */
 import { SourceMapConsumer } from "source-map";
-import { heapCache } from "../../memory/heapCache";
+import { heapCache } from "@ralphschuler/screeps-memory";
 
 // TODO(P2): STYLE - Re-enable eslint for this file and fix style issues
 // The eslint-disable was added to ignore initial issues but should be addressed

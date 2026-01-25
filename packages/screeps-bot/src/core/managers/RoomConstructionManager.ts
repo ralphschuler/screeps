@@ -21,7 +21,7 @@ import {
 } from "../../layouts/blueprints/index";
 import { placeRoadConstructionSites } from "@ralphschuler/screeps-layouts";
 import { postureManager } from "../../logic/evolution";
-import { memoryManager } from "../../memory/manager";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
 
 /**

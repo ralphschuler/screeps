@@ -13,7 +13,7 @@ import { boostManager } from "../../labs/boostManager";
 import { chemistryPlanner } from "../../labs/chemistryPlanner";
 import { labConfigManager } from "../../labs/labConfig";
 import { labManager } from "../../labs/labManager";
-import { memoryManager } from "../../memory/manager";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { logger } from "../logger";
 

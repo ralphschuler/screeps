@@ -21,8 +21,7 @@ import { clearTargetAssignments as clearEconomyAssignments } from "./economy/tar
 import { shardManager } from "./intershard/shardManager";
 import { initializePheromoneEventHandlers } from "./logic/pheromoneEventHandlers";
 import { runSpawnManager } from "./logic/spawn";
-import { heapCache } from "./memory/heapCache";
-import { memoryManager } from "./memory/manager";
+import { heapCache, memoryManager } from "@ralphschuler/screeps-memory";
 import { initializePathCacheEvents } from "./utils/pathfinding";
 import { initializeRemotePathScheduler } from "./utils/remote-mining";
 
@@ -329,7 +328,7 @@ export function loop(): void {
 }
 
 // Re-export key modules
-export { memoryManager } from "./memory/manager";
+export { memoryManager } from "@ralphschuler/screeps-memory";
 export { roomManager } from "./core/roomNode";
 export { unifiedStats } from "@ralphschuler/screeps-stats";
 export { logger } from "./core/logger";
