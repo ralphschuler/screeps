@@ -2,7 +2,7 @@
  * Shared types for the blueprint system
  */
 
-import type { EvolutionStage } from "../../memory/schemas";
+import type { EvolutionStage } from "@ralphschuler/screeps-memory";
 
 /**
  * Structure placement entry

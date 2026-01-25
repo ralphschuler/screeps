@@ -1,7 +1,7 @@
 {
-  "name": "@ralphschuler/screeps-layouts",
+  "name": "@ralphschuler/screeps-memory",
   "version": "0.1.0",
-  "description": "Room layout planning and blueprint system",
+  "description": "Memory schemas and types for Screeps swarm architecture",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "private": false,
@@ -14,7 +14,9 @@
   },
   "keywords": [
     "screeps",
-    "layouts",
+    "memory",
+    "schemas",
+    "types",
     "typescript"
   ],
   "author": "Ralph Schuler",
@@ -29,8 +31,5 @@
     "ts-node": "^10.2.0",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.4.3"
-  },
-  "dependencies": {
-    "@ralphschuler/screeps-core": "*"
   }
 }

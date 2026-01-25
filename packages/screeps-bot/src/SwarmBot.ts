@@ -353,7 +353,7 @@ export {
 } from "./core/roomFindOptimizer";
 export type { RoomEvent, BucketThresholds, TTLConfig } from "./core/roomFindOptimizer";
 
-export * from "./memory/schemas";
+export * from "@ralphschuler/screeps-memory";
 export * from "./config";
 export * from "./core/processDecorators";
 export * from "./core/commandRegistry";

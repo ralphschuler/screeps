@@ -9,7 +9,7 @@
 
 import { calculateBoostCost, getBoostConfig } from "@ralphschuler/screeps-chemistry";
 import { logger } from "@ralphschuler/screeps-core";
-import type { SwarmCreepMemory, SwarmState } from "../memory/schemas";
+import type { SwarmCreepMemory, SwarmState } from "@ralphschuler/screeps-memory";
 
 /**
  * Map error codes to readable strings

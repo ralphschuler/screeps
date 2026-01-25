@@ -17,7 +17,7 @@ import {
   cachedFindSources,
   cachedRoomFind
 } from "@ralphschuler/screeps-cache";
-import type { SwarmCreepMemory } from "../memory/schemas";
+import type { SwarmCreepMemory } from "@ralphschuler/screeps-memory";
 
 // ============================================================================
 // Re-exports from modular spawn system

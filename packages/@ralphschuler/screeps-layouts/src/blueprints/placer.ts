@@ -5,7 +5,7 @@
 import type { Blueprint, MisplacedStructure, StructurePlacement } from "./types";
 import { getStructuresForRCL } from "./selector";
 import { getValidRoadPositions } from "../roadNetworkPlanner";
-import { logger } from "@ralphschuler/screeps-kernel";
+import { logger } from "@ralphschuler/screeps-core";
 import { getStructureLimits } from "./constants";
 
 /**

@@ -14,7 +14,7 @@ import { chemistryPlanner } from "../../labs/chemistryPlanner";
 import { labConfigManager } from "../../labs/labConfig";
 import { labManager } from "../../labs/labManager";
 import { memoryManager } from "../../memory/manager";
-import type { SwarmState } from "../../memory/schemas";
+import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { logger } from "../logger";
 
 /**

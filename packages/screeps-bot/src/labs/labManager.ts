@@ -28,7 +28,7 @@ import type {
   ReactionStep as ChemistryReactionStep
 } from "@ralphschuler/screeps-chemistry";
 import { logger } from "@ralphschuler/screeps-core";
-import type { SwarmState } from "../memory/schemas";
+import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { labConfigManager } from "./labConfig";
 
 // Re-export types from chemistry package for backward compatibility

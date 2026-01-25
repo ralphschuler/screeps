@@ -15,7 +15,7 @@ import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { memoryManager } from "../memory/manager";
-import type { RoomIntel } from "../memory/schemas";
+import type { RoomIntel } from "@ralphschuler/screeps-memory";
 
 /**
  * Enemy player tracking

@@ -13,7 +13,7 @@
  * does not destroy all roads.
  */
 
-import { logger } from "@ralphschuler/screeps-kernel";
+import { logger } from "@ralphschuler/screeps-core";
 
 /**
  * Room center coordinates for pathfinding targets

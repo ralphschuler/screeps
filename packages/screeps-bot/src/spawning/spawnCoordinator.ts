@@ -24,7 +24,7 @@ import {
   getRemoteRoomNeedingWorkers,
   isEmergencySpawnState
 } from "../logic/spawn";
-import type { SwarmState } from "../memory/schemas";
+import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { optimizeBody } from "./bodyOptimizer";
 import { 
   analyzeDefenderNeeds, 

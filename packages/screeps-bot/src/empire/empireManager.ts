@@ -41,7 +41,7 @@ import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { memoryManager } from "../memory/manager";
-import type { EmpireMemory, ExpansionCandidate, RoomIntel } from "../memory/schemas";
+import type { EmpireMemory, ExpansionCandidate, RoomIntel } from "@ralphschuler/screeps-memory";
 import * as ExpansionScoring from "./expansionScoring";
 
 /**

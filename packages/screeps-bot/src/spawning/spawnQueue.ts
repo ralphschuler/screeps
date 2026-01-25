@@ -15,7 +15,7 @@
 
 import { logger } from "@ralphschuler/screeps-core";
 import type { BodyTemplate } from "../logic/spawn";
-import type { CreepRole, RoleFamily, SwarmCreepMemory } from "../memory/schemas";
+import type { CreepRole, RoleFamily, SwarmCreepMemory } from "@ralphschuler/screeps-memory";
 
 /**
  * Spawn priority levels

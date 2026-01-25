@@ -14,7 +14,7 @@
  */
 
 import { unifiedStats } from "@ralphschuler/screeps-stats";
-import type { RoleFamily, SwarmCreepMemory } from "../memory/schemas";
+import type { RoleFamily, SwarmCreepMemory } from "@ralphschuler/screeps-memory";
 import { runEconomyRole } from "../roles/economy";
 import { runMilitaryRole } from "../roles/military";
 import { runPowerCreepRole } from "../roles/power";

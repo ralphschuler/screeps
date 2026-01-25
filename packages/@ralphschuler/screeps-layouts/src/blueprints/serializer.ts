@@ -3,7 +3,7 @@
  */
 
 import type { Blueprint } from "./types";
-import { logger } from "@ralphschuler/screeps-kernel";
+import { logger } from "@ralphschuler/screeps-core";
 
 /**
  * Export blueprint to JSON format for sharing

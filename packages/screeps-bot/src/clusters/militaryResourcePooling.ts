@@ -12,7 +12,7 @@
 
 import { logger } from "../core/logger";
 import { memoryManager } from "../memory/manager";
-import type { ClusterMemory } from "../memory/schemas";
+import type { ClusterMemory } from "@ralphschuler/screeps-memory";
 
 /**
  * Military resource reservation per room

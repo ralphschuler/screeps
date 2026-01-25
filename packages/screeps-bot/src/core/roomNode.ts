@@ -16,7 +16,7 @@ import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { evolutionManager, postureManager } from "../logic/evolution";
 import { pheromoneManager } from "../logic/pheromone";
 import { memoryManager } from "../memory/manager";
-import type { SwarmState } from "../memory/schemas";
+import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { logger } from "./logger";
 import { roomConstructionManager, roomDefenseManager, roomEconomyManager } from "./managers";
 
