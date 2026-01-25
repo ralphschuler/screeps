@@ -1,6 +1,9 @@
 /* eslint-disable */
 import { SourceMapConsumer } from "source-map";
 import { heapCache } from "@ralphschuler/screeps-memory";
+import { createLogger } from "@ralphschuler/screeps-core";
+
+const logger = createLogger("ErrorMapper");
 
 // TODO(P2): STYLE - Re-enable eslint for this file and fix style issues
 // The eslint-disable was added to ignore initial issues but should be addressed
@@ -88,7 +91,7 @@ export class ErrorMapper {
         } catch (e) {
           // If it's a promise, we can't use it in a synchronous getter
           // Fall back to no source map support
-          console.log("SourceMapConsumer requires async initialization - source maps disabled");
+          logger.warn("SourceMapConsumer requires async initialization - source maps disabled");
           this._consumer = null;
           this._sourceMapAvailable = false;
           heapCache.set(SOURCE_MAP_AVAILABLE_KEY, false, Infinity);
