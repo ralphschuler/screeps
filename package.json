@@ -49,7 +49,7 @@
     "build:remote-mining": "npm run build -w @ralphschuler/screeps-remote-mining",
     "build:pheromones": "npm run build -w @ralphschuler/screeps-pheromones",
     "build:all": "npm run build:core && npm run build:cache && npm run build:kernel && npm run build:stats && npm run build:console && npm run build:economy && npm run build:empire && npm run build:layouts && npm run build:intershard && npm run build:visuals && npm run build:roles && npm run build:chemistry && npm run build:utils && npm run build:pathfinding && npm run build:remote-mining && npm run build:pheromones && npm run build:defense && npm run build && npm run build:exporters && npm run build:mod && npm run build:tasks && npm run build:posis",
-    "pretest": "npm run build:core && npm run build:kernel && npm run build:stats && npm run build:cache && npm run build:roles && npm run build:visuals && npm run build:layouts && npm run build:economy && npm run build:empire && npm run build:intershard && npm run build:chemistry && npm run build:utils && npm run build:pathfinding && npm run build:remote-mining",
+    "pretest": "npm run build:core && npm run build:kernel && npm run build:stats && npm run build:cache && npm run build:roles && npm run build:visuals && npm run build:layouts && npm run build:economy && npm run build:empire && npm run build:intershard && npm run build:chemistry && npm run build:utils && npm run build:pathfinding && npm run build:remote-mining && npm run build:pheromones",
     "test": "npm test -w screeps-typescript-starter",
     "test:unit": "npm run test:unit -w screeps-typescript-starter",
     "test:integration": "npm run test:integration -w screeps-typescript-starter",
