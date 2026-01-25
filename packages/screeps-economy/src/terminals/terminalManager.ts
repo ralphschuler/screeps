@@ -21,7 +21,7 @@
 import { logger } from "@bot/core/logger";
 import { ProcessPriority } from "@bot/core/kernel";
 import { MediumFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
-import { memoryManager } from "@bot/memory/manager";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 import { marketManager } from "../market/marketManager";
 import { terminalRouter } from "./terminalRouter";
 import type { TerminalRoute } from "./terminalRouter";

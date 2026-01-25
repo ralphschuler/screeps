@@ -11,7 +11,7 @@
  * **IMPORTANT**: Automatically filters allied entities (non-aggression pact, ROADMAP Section 25)
  */
 
-import type { SwarmState } from "@bot/memory/schemas";
+import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { logger } from "@bot/core/logger";
 import { filterAllyCreeps } from "../alliance/nonAggressionPact";
 
