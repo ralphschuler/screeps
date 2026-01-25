@@ -12,7 +12,7 @@
 import { assessThreat, calculateWallRepairTarget } from "@ralphschuler/screeps-defense";
 import { safeFind } from "@ralphschuler/screeps-utils";
 import { postureManager } from "../../logic/evolution";
-import { pheromoneManager } from "../../logic/pheromone";
+import { pheromoneManager } from "@ralphschuler/screeps-pheromones";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { kernel } from "../kernel";

@@ -1,109 +1,12 @@
 /**
- * Pheromone-based coordination system with metrics collection, periodic updates, and diffusion.
+ * Pheromone Manager - Main orchestration for pheromone system
  */
 
 import { logger } from "@ralphschuler/screeps-core";
 import { safeFind } from "@ralphschuler/screeps-utils";
 import type { PheromoneState, SwarmState } from "@ralphschuler/screeps-memory";
-
-/** Pheromone system configuration */
-export interface PheromoneConfig {
-  updateInterval: number;
-  decayFactors: Record<keyof PheromoneState, number>;
-  diffusionRates: Record<keyof PheromoneState, number>;
-  maxValue: number;
-  minValue: number;
-}
-
-/** Default pheromone configuration */
-export const DEFAULT_PHEROMONE_CONFIG: PheromoneConfig = {
-  updateInterval: 5,
-  decayFactors: {
-    expand: 0.95,
-    harvest: 0.9,
-    build: 0.92,
-    upgrade: 0.93,
-    defense: 0.97,
-    war: 0.98,
-    siege: 0.99,
-    logistics: 0.91,
-    nukeTarget: 0.99
-  },
-  diffusionRates: {
-    expand: 0.3,
-    harvest: 0.1,
-    build: 0.15,
-    upgrade: 0.1,
-    defense: 0.4,
-    war: 0.5,
-    siege: 0.6,
-    logistics: 0.2,
-    nukeTarget: 0.1
-  },
-  maxValue: 100,
-  minValue: 0
-};
-
-/**
- * Rolling average tracker for metrics
- */
-export class RollingAverage {
-  private values: number[] = [];
-  private sum = 0;
-
-  public constructor(private maxSamples: number = 10) {}
-
-  public add(value: number): number {
-    this.values.push(value);
-    this.sum += value;
-
-    if (this.values.length > this.maxSamples) {
-      const removed = this.values.shift();
-      this.sum -= removed ?? 0;
-    }
-
-    return this.get();
-  }
-
-  public get(): number {
-    return this.values.length > 0 ? this.sum / this.values.length : 0;
-  }
-
-  public reset(): void {
-    this.values = [];
-    this.sum = 0;
-  }
-}
-
-/** Room metrics tracker */
-export interface RoomMetricsTracker {
-  energyHarvested: RollingAverage;
-  energySpawning: RollingAverage;
-  energyConstruction: RollingAverage;
-  energyRepair: RollingAverage;
-  energyTower: RollingAverage;
-  controllerProgress: RollingAverage;
-  hostileCount: RollingAverage;
-  damageReceived: RollingAverage;
-  idleWorkers: RollingAverage;
-  lastControllerProgress: number;
-}
-
-/** Create a new metrics tracker */
-export function createMetricsTracker(): RoomMetricsTracker {
-  return {
-    energyHarvested: new RollingAverage(10),
-    energySpawning: new RollingAverage(10),
-    energyConstruction: new RollingAverage(10),
-    energyRepair: new RollingAverage(10),
-    energyTower: new RollingAverage(10),
-    controllerProgress: new RollingAverage(10),
-    hostileCount: new RollingAverage(5),
-    damageReceived: new RollingAverage(5),
-    idleWorkers: new RollingAverage(10),
-    lastControllerProgress: 0
-  };
-}
+import { DEFAULT_PHEROMONE_CONFIG, type PheromoneConfig } from "./config";
+import { createMetricsTracker, type RoomMetricsTracker } from "./rollingAverage";
 
 /** Pheromone Manager */
 export class PheromoneManager {
@@ -527,8 +430,3 @@ export class PheromoneManager {
     return maxKey;
   }
 }
-
-/**
- * Global pheromone manager instance
- */
-export const pheromoneManager = new PheromoneManager();

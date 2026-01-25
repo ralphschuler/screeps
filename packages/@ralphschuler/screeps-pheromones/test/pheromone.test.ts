@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { PheromoneManager, DEFAULT_PHEROMONE_CONFIG } from "../../src/logic/pheromone";
-import { createDefaultSwarmState } from "../../src/memory/schemas";
+import { PheromoneManager, DEFAULT_PHEROMONE_CONFIG } from "../src/manager";
+import { createDefaultSwarmState } from "@ralphschuler/screeps-memory";
 import { Game, Memory } from "./mock";
 
 describe("Pheromone System", () => {

@@ -19,7 +19,7 @@ import { registerAllProcesses } from "./core/processRegistry";
 import { roomProcessManager } from "./core/roomProcessManager";
 import { clearTargetAssignments as clearEconomyAssignments } from "./economy/targetAssignmentManager";
 import { shardManager } from "./intershard/shardManager";
-import { initializePheromoneEventHandlers } from "./logic/pheromoneEventHandlers";
+import { initializePheromoneEventHandlers, pheromoneManager } from "@ralphschuler/screeps-pheromones";
 import { runSpawnManager } from "./logic/spawn";
 import { heapCache, memoryManager } from "@ralphschuler/screeps-memory";
 import { initializePathCacheEvents } from "./utils/pathfinding";
@@ -110,7 +110,7 @@ function initializeSystems(): void {
   }
 
   // Initialize pheromone event handlers for event-driven updates
-  initializePheromoneEventHandlers();
+  initializePheromoneEventHandlers(kernel, memoryManager, pheromoneManager);
 
   // Initialize path cache event handlers for automatic invalidation
   initializePathCacheEvents();
@@ -337,7 +337,7 @@ export { scheduler } from "./core/scheduler";
 export { coreProcessManager } from "./core/coreProcessManager";
 export { creepProcessManager } from "./core/creepProcessManager";
 export { roomProcessManager } from "./core/roomProcessManager";
-export { pheromoneManager } from "./logic/pheromone";
+export { pheromoneManager } from "@ralphschuler/screeps-pheromones";
 export { evolutionManager, postureManager } from "./logic/evolution";
 export { eventBus } from "./core/events";
 
