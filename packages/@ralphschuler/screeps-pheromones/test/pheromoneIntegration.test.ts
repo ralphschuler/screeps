@@ -17,7 +17,7 @@ import {
   needsHarvesting,
   needsUpgrading
 } from "@ralphschuler/screeps-roles";
-import type { PheromoneState } from "../../src/memory/schemas";
+import type { PheromoneState } from "@ralphschuler/screeps-memory";
 
 describe("Pheromone Integration", () => {
   describe("getPriorityMultiplier", () => {

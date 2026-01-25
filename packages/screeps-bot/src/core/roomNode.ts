@@ -14,7 +14,7 @@ import { prefetchRoomObjects } from "@ralphschuler/screeps-cache";
 import { emergencyResponseManager, safeModeManager } from "@ralphschuler/screeps-defense";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { evolutionManager, postureManager } from "../logic/evolution";
-import { pheromoneManager } from "../logic/pheromone";
+import { pheromoneManager } from "@ralphschuler/screeps-pheromones";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { logger } from "./logger";

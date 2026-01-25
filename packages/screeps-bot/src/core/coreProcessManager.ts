@@ -14,7 +14,7 @@
 
 import { memorySegmentStats } from "@ralphschuler/screeps-stats";
 import { labConfigManager } from "../labs/labConfig";
-import { pheromoneManager } from "../logic/pheromone";
+import { pheromoneManager } from "@ralphschuler/screeps-pheromones";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { ProcessPriority, kernel } from "./kernel";

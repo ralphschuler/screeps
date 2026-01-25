@@ -6,15 +6,19 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import { kernel } from "../core/kernel";
-import { memoryManager } from "@ralphschuler/screeps-memory";
-import { pheromoneManager } from "./pheromone";
+import type { Kernel } from "@ralphschuler/screeps-kernel";
+import type { MemoryManager } from "@ralphschuler/screeps-memory";
+import type { PheromoneManager } from "./manager";
 
 /**
  * Initialize pheromone event handlers
  * Should be called once during bot initialization
  */
-export function initializePheromoneEventHandlers(): void {
+export function initializePheromoneEventHandlers(
+  kernel: Kernel,
+  memoryManager: MemoryManager,
+  pheromoneManager: PheromoneManager
+): void {
   // Handle structure destroyed events
   kernel.on("structure.destroyed", (event) => {
     const swarm = memoryManager.getSwarmState(event.roomName);
