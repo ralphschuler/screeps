@@ -361,7 +361,7 @@ function profileRooms() {
 
 ```typescript
 function profileCreeps() {
-  const roleCP U = new Map<string, { total: number, count: number }>();
+  const roleCPU = new Map<string, { total: number, count: number }>();
   
   for (const creep of Object.values(Game.creeps)) {
     const start = Game.cpu.getUsed();

@@ -147,7 +147,7 @@ function getSpawnPriority(role: string, pheromones: Pheromones): number {
 }
 
 // Creep behavior based on pheromones
-function upgaderBehavior(creep: Creep) {
+function upgraderBehavior(creep: Creep) {
   const pheromones = creep.room.memory.swarm.pheromones;
   
   if (pheromones.defense > 0.5) {
