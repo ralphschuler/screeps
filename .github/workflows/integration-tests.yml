@@ -1,0 +1,158 @@
+name: Integration Tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'packages/screeps-bot/src/**'
+      - 'packages/screeps-bot/package*.json'
+      - 'packages/screeps-server/test/**'
+      - 'packages/screeps-server/package*.json'
+      - 'packages/screepsmod-testing/**'
+      - '.github/workflows/integration-tests.yml'
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'packages/screeps-bot/src/**'
+      - 'packages/screeps-server/test/**'
+  workflow_dispatch:
+    inputs:
+      maxTicks:
+        description: 'Maximum number of ticks to run per test'
+        required: false
+        default: '1000'
+
+# Cancel in-progress runs for the same workflow and ref
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+jobs:
+  integration-tests:
+    name: Run Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Skip draft PRs
+    if: github.event.pull_request.draft == false || github.event_name != 'pull_request'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build all packages
+        run: npm run build
+        timeout-minutes: 10
+
+      - name: Build screepsmod-testing
+        run: npm run build:mod
+        timeout-minutes: 2
+
+      - name: Run integration tests
+        working-directory: packages/screeps-server
+        run: |
+          npm install
+          npm run test:integration
+        timeout-minutes: 15
+        env:
+          MAX_TICKS: ${{ github.event.inputs.maxTicks || '1000' }}
+
+      - name: Collect test results
+        if: always()
+        run: |
+          if [ -f packages/screeps-server/test-results.json ]; then
+            echo "Test results found"
+            cat packages/screeps-server/test-results.json
+          else
+            echo "No test results file found"
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: |
+            packages/screeps-server/test-results.json
+            packages/screeps-server/test-report.md
+          retention-days: 30
+
+      - name: Comment PR with results
+        if: always() && github.event_name == 'pull_request' && hashFiles('packages/screeps-server/test-report.md') != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reportPath = 'packages/screeps-server/test-report.md';
+            
+            if (fs.existsSync(reportPath)) {
+              const report = fs.readFileSync(reportPath, 'utf8');
+              
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## 🧪 Integration Test Results\n\n${report}`
+              });
+            }
+
+      - name: Check for regressions
+        if: always()
+        run: |
+          if [ -f packages/screeps-server/test-results.json ]; then
+            node scripts/check-test-regressions.js
+          fi
+
+  baseline-update:
+    name: Update Performance Baselines
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          name: integration-test-results
+          path: packages/screeps-server/
+
+      - name: Update baselines
+        run: |
+          if [ -f packages/screeps-server/test-results.json ]; then
+            node scripts/update-integration-baselines.js
+          fi
+
+      - name: Commit baseline updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          if [ -n "$(git status --porcelain performance-baselines/integration/)" ]; then
+            git add performance-baselines/integration/
+            git commit -m "chore: update integration test baselines [skip ci]"
+            git push
+          else
+            echo "No baseline changes to commit"
+          fi
