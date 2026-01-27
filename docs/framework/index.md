@@ -7,16 +7,20 @@ The Screeps Framework provides a collection of high-quality, well-tested package
 ## Quick Navigation
 
 ### 📚 Getting Started
-- [Framework Overview](overview.md) - Architecture and design philosophy
-- [Quick Start Guide](quickstart.md) - Get running in 5 minutes
-- [Installation](installation.md) - Setting up the framework
+- [**Framework Overview**](README.md) - What is the framework?
+- [**Getting Started Tutorial**](getting-started.md) - **NEW!** Complete step-by-step guide
+- [**Quick Start Guide**](quickstart.md) - Get running in 10 minutes
+- [**Installation Guide**](installation.md) - Setting up the framework
 
-### 📦 Core Packages
-- [Kernel](packages/kernel.md) - Process scheduler with CPU budget management
-- [Spawn](packages/spawn.md) - Spawning and body optimization
-- [Economy](packages/economy.md) - Resource management and trading
-- [Chemistry](packages/chemistry.md) - Lab automation and reactions
-- [Defense](packages/defense.md) - Defense systems
+### 🏗️ Architecture & Concepts
+- [**Architecture**](architecture.md) - **NEW!** Five-layer swarm architecture with diagrams
+- [**Core Concepts**](core-concepts.md) - **NEW!** Pheromones, Kernel, Memory, Caching
+- [**Performance Guide**](performance.md) - **NEW!** CPU optimization and profiling
+
+### 📦 Packages & Integration
+- [Package Overview](overview.md) - All framework packages
+- [Package Index](packages.md) - Detailed package list
+- [Migration Guide](migration.md) - Moving to the framework
 
 ### 🎓 Developer Guides
 - [Role System](guides/roles.md) - Creating and using roles
@@ -27,14 +31,20 @@ The Screeps Framework provides a collection of high-quality, well-tested package
 - [Economy Systems](guides/economy.md) - Economic management
 - [Defense Coordination](guides/defense.md) - Coordinated defense
 
-### 🔄 Migration & Examples
-- [Migration Guide](migration.md) - Moving to the framework
-- [Examples](examples.md) - Complete bot examples
-- [Best Practices](best-practices.md) - Tips and patterns
+### 🚀 Advanced Topics
+- [**Custom Processes**](advanced/custom-processes.md) - **NEW!** Extend the kernel
+- [**Blueprint Development**](advanced/blueprint-development.md) - **NEW!** Create room layouts
+- [**Multi-Shard Coordination**](advanced/multi-shard.md) - **NEW!** Cross-shard strategies
+- [**Debugging & Profiling**](advanced/debugging.md) - **NEW!** Performance analysis
+
+### 🤝 Contributing
+- [**Package Development**](contributing/package-development.md) - **NEW!** Create new packages
+- [**Testing Guide**](contributing/testing.md) - **NEW!** Testing requirements
+- [**Release Process**](contributing/release-process.md) - **NEW!** Publishing workflow
 
 ### 📖 API Reference
-- [Complete API Documentation](../api/index.md) - Auto-generated API docs
-- [Package Index](packages.md) - All framework packages
+- [Complete API Documentation](../api/index.md) - Auto-generated API docs (coming soon)
+- [Package READMEs](../../packages/@ralphschuler/) - Individual package documentation
 
 ## Framework Packages
 
