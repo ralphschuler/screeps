@@ -12,35 +12,42 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Mock screeps-server-mockup for now since it may not be available
+// Lazy-load screeps-server-mockup to avoid top-level await
 let ScreepsServer: any;
 let stdHooks: any;
+let mockupLoaded = false;
 
-try {
-  const mockup = await import('screeps-server-mockup');
-  ScreepsServer = mockup.ScreepsServer;
-  stdHooks = mockup.stdHooks;
-} catch (e) {
-  console.warn('screeps-server-mockup not available, using mock implementation');
+async function loadMockup() {
+  if (mockupLoaded) return;
   
-  ScreepsServer = class {
-    world = {
-      reset: async () => {},
-      stubWorld: async () => {},
-      addBot: async () => ({ 
-        username: 'player',
-        console: async () => {},
-        memory: '{}',
-        newNotifications: []
-      }),
-      gameTime: 1
+  try {
+    const mockup = await import('screeps-server-mockup');
+    ScreepsServer = mockup.ScreepsServer;
+    stdHooks = mockup.stdHooks;
+    mockupLoaded = true;
+  } catch (e) {
+    console.warn('screeps-server-mockup not available, using mock implementation');
+    
+    ScreepsServer = class {
+      world = {
+        reset: async () => {},
+        stubWorld: async () => {},
+        addBot: async () => ({ 
+          username: 'player',
+          console: async () => {},
+          memory: '{}',
+          newNotifications: []
+        }),
+        gameTime: 1
+      };
+      start = async () => {};
+      stop = async () => {};
+      tick = async () => { this.world.gameTime++; };
     };
-    start = async () => {};
-    stop = async () => {};
-    tick = async () => { this.world.gameTime++; };
-  };
-  
-  stdHooks = { hookWrite: () => {} };
+    
+    stdHooks = { hookWrite: () => {} };
+    mockupLoaded = true;
+  }
 }
 
 export interface PerformanceMetrics {
@@ -78,6 +85,7 @@ export class ServerTestHelper {
   }
 
   async beforeEach(botPath?: string) {
+    await loadMockup();
     this._server = new ScreepsServer();
     await this._server.world.reset();
     await this._server.world.stubWorld();
@@ -350,7 +358,8 @@ if (typeof afterEach !== 'undefined') {
 }
 
 if (typeof before !== 'undefined') {
-  before(() => {
+  before(async () => {
+    await loadMockup();
     if (stdHooks?.hookWrite) stdHooks.hookWrite();
   });
 }
