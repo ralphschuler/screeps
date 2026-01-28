@@ -1,13 +1,96 @@
 # Strategic Planning Performance Baselines
 
-This directory contains performance baseline snapshots captured during strategic planning analysis runs. These baselines enable trend analysis, regression detection, and evidence-based strategic decision making.
+This directory contains performance baseline snapshots captured during strategic planning analysis runs. These baselines enable **7-day rolling baseline comparison**, trend analysis, regression detection, and evidence-based strategic decision making.
 
 ## Purpose
 
 Strategic planning baselines serve a different purpose than test scenario baselines:
 
 - **Test Baselines** (`../main.json`, `../develop.json`): Controlled test scenarios with predictable conditions
-- **Strategic Baselines**: Real-world production metrics from live game state
+- **Strategic Baselines**: Real-world production metrics from live game state with rolling baseline analysis
+
+## 7-Day Rolling Baseline System
+
+The rolling baseline system provides:
+- **Contextual Analysis**: Understand if changes are significant vs normal variance
+- **Automated Detection**: Catch regressions without manual comparison  
+- **Trend Visibility**: See performance drift over time
+- **Health Scoring**: Single metric (0-100) for bot health
+
+### How It Works
+
+1. **Baseline Collection**: Each strategic planning run saves a performance snapshot
+2. **Rolling Calculation**: The system loads the last 7 days of baselines and calculates:
+   - Mean (μ) - Average value across window
+   - Standard Deviation (σ) - Measure of variance
+   - Percentiles (P50, P95, P99) - Distribution understanding
+3. **Regression Detection**: Compares current metrics against rolling baseline using statistical thresholds:
+   - **Warning**: μ ± 1σ
+   - **Critical**: μ ± 2σ
+4. **Health Score**: Calculates overall bot health (0-100) based on detected regressions
+5. **Trend Analysis**: Determines if performance is improving, degrading, or stable
+
+### Enhanced Baseline Format
+
+Baselines now include comparison data:
+
+```json
+{
+  "timestamp": "2026-01-28T21:00:00.000Z",
+  "gameTime": 45123456,
+  "commit": "abc123...",
+  "branch": "main",
+  "metrics": { /* PerformanceSnapshot */ },
+  
+  "comparisonBaseline": {
+    "avg7d": {
+      "cpu": { "avg": 85.0, "stdDev": 3.0, "p50": 84.5, "p95": 90.0, "p99": 92.0 },
+      "gcl": { "avgRate": 0.015, "minRate": 0.013, "maxRate": 0.017 },
+      "errors": { "avgRate": 0.02, "minRate": 0.01, "maxRate": 0.05 }
+    },
+    "stdDev": { /* Standard deviations for all metrics */ },
+    "trend": "improving|degrading|stable"
+  },
+  
+  "detectedChanges": {
+    "regressions": [
+      {
+        "type": "cpu",
+        "severity": "high",
+        "description": "CPU usage 15.2% above threshold",
+        "current": 95.0,
+        "baseline": 85.0,
+        "percentChange": 11.8,
+        "threshold": 88.0
+      }
+    ],
+    "improvements": [ /* Improvement[] */ ],
+    "healthScore": 85
+  }
+}
+```
+
+### Regression Detection Thresholds
+
+- **CPU Regression**: avg + 1σ, critical if >15% above threshold
+- **GCL Stall**: avg - 1σ, critical if >20% below baseline
+- **Error Rate**: avg + 2σ, critical if >1.0/tick
+- **Room Loss**: >10% drop with 2σ threshold
+- **Creep Loss**: >20% drop with 2σ threshold
+
+### Trend Reports
+
+Each baseline includes a markdown trend report:
+
+**File**: `{timestamp}_{runId}_report.md`
+
+**Contents**:
+- 7-Day Rolling Average Summary (CPU, GCL, Errors, Rooms, Creeps)
+- Current vs Baseline Comparison
+- Detected Regressions (by severity: Critical, High, Medium, Low)
+- Detected Improvements
+- Overall Trend Analysis
+- Health Score
 
 ## Structure
 
@@ -168,6 +251,67 @@ The agent uses baselines to:
 3. **Prioritize issues**: Focus on areas with degrading performance
 4. **Measure impact**: Track before/after metrics for improvements
 5. **Learn patterns**: Refine strategic decisions based on outcomes
+
+## Running Rolling Baseline Analysis
+
+The 7-day rolling baseline analysis is integrated into the strategic metrics collection workflow. It can also be run standalone:
+
+### Automatic Integration
+
+The rolling baseline analysis runs automatically during strategic planning:
+
+```bash
+# Collect metrics (saves to performance-baselines/strategic/collected-metrics.json)
+node scripts/collect-strategic-metrics.mjs
+
+# Run rolling baseline analysis (generates enhanced baseline + trend report)
+node scripts/strategic/integrate-rolling-baseline.mjs
+```
+
+**Output Files**:
+- `{timestamp}_{runId}.json` - Enhanced baseline with comparison data
+- `{timestamp}_{runId}_report.md` - Markdown trend report
+
+### Manual Analysis
+
+Run analysis on any baseline file:
+
+```bash
+# Analyze specific baseline
+ROLLING_DAYS=7 node scripts/strategic/integrate-rolling-baseline.mjs \
+  performance-baselines/strategic/collected-metrics.json
+
+# Use different rolling window
+ROLLING_DAYS=30 node scripts/strategic/integrate-rolling-baseline.mjs \
+  performance-baselines/strategic/collected-metrics.json
+```
+
+### Environment Variables
+
+- `BASELINES_DIR` - Directory containing baselines (default: `performance-baselines/strategic`)
+- `ROLLING_DAYS` - Rolling window size in days (default: 7)
+- `GITHUB_SHA` - Git commit hash (for metadata)
+- `GITHUB_REF_NAME` - Git branch name (for metadata)
+- `VERBOSE` - Enable verbose logging
+
+### Interpreting Results
+
+**Health Score**:
+- **90-100** 🟢 Excellent - All metrics within expected range
+- **75-89** 🟡 Good - Minor variations, no action needed
+- **50-74** 🟠 Concerning - Some regressions detected, investigate
+- **0-49** 🔴 Critical - Significant regressions, immediate action required
+
+**Trend Analysis**:
+- **Improving** 📈 - Overall performance getting better
+- **Stable** ➡️ - Performance consistent with baseline
+- **Degrading** 📉 - Overall performance declining
+
+**Regression Severity**:
+- **Critical** - Immediate action required (e.g., CPU >95, bucket draining)
+- **High** - Should be addressed soon (e.g., GCL stall, significant CPU increase)
+- **Medium** - Monitor and address when convenient
+- **Low** - Informational, may not require action
 
 ## Example Queries
 

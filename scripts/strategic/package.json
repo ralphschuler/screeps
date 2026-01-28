@@ -1,0 +1,19 @@
+{
+  "name": "@ralphschuler/screeps-strategic-analysis",
+  "version": "1.0.0",
+  "description": "Strategic performance analysis with 7-day rolling baseline comparison",
+  "type": "module",
+  "scripts": {
+    "test": "mocha __tests__/**/*.test.ts",
+    "analyze": "node integrate-rolling-baseline.mjs"
+  },
+  "keywords": [
+    "screeps",
+    "performance",
+    "analysis",
+    "baseline",
+    "monitoring"
+  ],
+  "author": "Ralph Schuler",
+  "license": "MIT"
+}

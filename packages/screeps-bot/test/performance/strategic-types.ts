@@ -163,6 +163,116 @@ export interface PerformanceBaseline {
   runId?: string;
   /** GitHub Actions run URL */
   runUrl?: string;
+  
+  /** Rolling baseline comparison (7-day average) */
+  comparisonBaseline?: {
+    /** 7-day rolling average metrics */
+    avg7d: PerformanceMetrics;
+    /** Standard deviation for metrics */
+    stdDev: PerformanceMetrics;
+    /** Overall performance trend */
+    trend: 'improving' | 'degrading' | 'stable';
+  };
+  
+  /** Detected performance changes */
+  detectedChanges?: {
+    /** Detected performance regressions */
+    regressions: Regression[];
+    /** Detected performance improvements */
+    improvements: Improvement[];
+    /** Overall health score (0-100) */
+    healthScore: number;
+  };
+}
+
+/**
+ * Aggregated performance metrics for statistical analysis
+ */
+export interface PerformanceMetrics {
+  /** CPU metrics */
+  cpu: {
+    avg: number;
+    min: number;
+    max: number;
+    stdDev: number;
+    p50: number;
+    p95: number;
+    p99: number;
+  };
+  /** GCL metrics */
+  gcl: {
+    avgRate: number;
+    minRate: number;
+    maxRate: number;
+  };
+  /** Error metrics */
+  errors: {
+    avgRate: number;
+    minRate: number;
+    maxRate: number;
+  };
+  /** Room metrics */
+  rooms?: {
+    avgTotal: number;
+    avgCPU: number;
+  };
+  /** Creep metrics */
+  creeps?: {
+    avgTotal: number;
+    avgPerRoom: number;
+  };
+}
+
+/**
+ * Rolling baseline for trend analysis
+ */
+export interface RollingBaseline {
+  /** Time period (e.g., '7d', '30d') */
+  period: string;
+  /** Start date of baseline window */
+  startDate: string;
+  /** End date of baseline window */
+  endDate: string;
+  /** Number of samples in baseline */
+  sampleCount: number;
+  /** Aggregated metrics */
+  metrics: PerformanceMetrics;
+}
+
+/**
+ * Performance regression detected by automated analysis
+ */
+export interface Regression {
+  /** Type of regression */
+  type: 'cpu' | 'gcl' | 'error' | 'energy' | 'room' | 'creep';
+  /** Severity level */
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  /** Human-readable description */
+  description: string;
+  /** Current value */
+  current: number;
+  /** Baseline value (7-day average) */
+  baseline: number;
+  /** Percentage change from baseline */
+  percentChange: number;
+  /** Statistical threshold that was exceeded */
+  threshold?: number;
+}
+
+/**
+ * Performance improvement detected by automated analysis
+ */
+export interface Improvement {
+  /** Type of improvement */
+  type: 'cpu' | 'gcl' | 'error' | 'energy' | 'room' | 'creep';
+  /** Human-readable description */
+  description: string;
+  /** Current value */
+  current: number;
+  /** Baseline value (7-day average) */
+  baseline: number;
+  /** Percentage change from baseline */
+  percentChange: number;
 }
 
 /**

@@ -1,0 +1,7 @@
+# Compiled JavaScript files
+*.js
+!integrate-rolling-baseline.mjs
+!smoke-test.mjs
+
+# Test artifacts
+__tests__/*.js
