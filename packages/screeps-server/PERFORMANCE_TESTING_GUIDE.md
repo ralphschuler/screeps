@@ -78,7 +78,14 @@ it('should not regress CPU usage >15% from baseline', async function() {
   );
   
   const failures = results.filter(r => !r.passed);
-  assert.isEmpty(failures, 'No regressions detected');
+  if (failures.length > 0) {
+    const failureMsg = failures
+      .map(f => `${f.metric}: ${formatRegression(f.regression)}`)
+      .join(', ');
+    assert.fail(`CPU regression detected: ${failureMsg}`);
+  }
+  
+  assert.ok(true, 'All metrics within acceptable thresholds');
 });
 ```
 
@@ -195,9 +202,9 @@ npm run test:perf:baseline
 ### Severity Levels
 
 - **Improvement**: < -10% (better than baseline)
-- **Pass**: -10% to +10% (acceptable variance)
-- **Warning**: +10% to +15% (review recommended)
-- **Critical**: > +15% (blocks merge)
+- **Pass**: ≤ ±10% (acceptable variance)
+- **Warning**: +10% to +20% (review recommended)
+- **Critical**: > +20% (blocks merge)
 
 ### Configuring Thresholds
 
@@ -487,9 +494,9 @@ cat performance-baselines/history/2026-01-28_main_abc123.json
 ## References
 
 - [ROADMAP.md](../../../ROADMAP.md) - CPU budget targets
-- [Test Scenarios](../test/fixtures/scenarios.ts) - Pre-defined test scenarios
+- [Test Scenarios](../test/fixtures/scenarios.ts) - Pre-defined test scenarios (if available)
 - [Performance Baselines](../../../performance-baselines/README.md) - Baseline documentation
-- [CI Workflow](.github/workflows/performance-test.yml) - Workflow configuration
+- [CI Workflow](../../../.github/workflows/performance-test.yml) - Workflow configuration
 
 ## Support
 

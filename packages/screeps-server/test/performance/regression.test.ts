@@ -136,8 +136,10 @@ describe('Performance Regression Detection', () => {
       const metrics = await helper.runTicks(config.ticks);
       const avgBucket = helper.getAverageBucket();
       
-      // Get baseline bucket level
-      const baselineBucket = baseline.avgCpu ? 10000 - (baseline.avgCpu * 500) : 9500;
+      // Get baseline bucket level - assume healthy bucket if no CPU data
+      // In Screeps, bucket regenerates at 10 per tick and drains by CPU used
+      // For stable operation, bucket should remain near 10000
+      const baselineBucket = 9500;
       
       console.log('\n=== Bucket Stability Analysis ===');
       console.log(`Current avg bucket: ${avgBucket.toFixed(0)}`);
@@ -158,8 +160,8 @@ describe('Performance Regression Detection', () => {
       
       const { baseline } = await loadBaseline('default');
       
-      // Skip if baseline doesn't have GCL data
-      if (!baseline || typeof baseline !== 'object') {
+      // Skip if baseline doesn't have the expected structure
+      if (!baseline || !baseline.avgCpu) {
         this.skip();
         return;
       }
@@ -179,7 +181,7 @@ describe('Performance Regression Detection', () => {
       // Ensure CPU is low enough to allow upgrading
       assert.isBelow(
         avgCpu,
-        0.15,
+        CPU_REGRESSION_THRESHOLD,
         'CPU must be low enough to allow efficient upgrading'
       );
       

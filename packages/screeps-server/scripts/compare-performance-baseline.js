@@ -82,9 +82,13 @@ function calculateRegression(baseline, current) {
  * Get severity level based on regression
  */
 function getSeverity(regression, threshold) {
+  // Improvement: More than 10% better
   if (regression < -0.10) return 'improvement';
-  if (regression <= threshold) return 'pass';
+  // Pass: Within threshold range
+  if (Math.abs(regression) <= threshold) return 'pass';
+  // Warning: Between threshold and 1.5x threshold
   if (regression <= threshold * 1.5) return 'warning';
+  // Critical: Above 1.5x threshold
   return 'critical';
 }
 
@@ -112,7 +116,11 @@ function compareMetrics(baseline, current, options) {
     const cpuMetrics = [
       { name: 'avgCpu', baseline: baseline.scenarios.default.avgCpu, current: current.analysis.cpu.avg },
       { name: 'maxCpu', baseline: baseline.scenarios.default.maxCpu, current: current.analysis.cpu.max },
-      { name: 'p95Cpu', baseline: baseline.scenarios.default.p95Cpu || baseline.scenarios.default.avgCpu * 1.2, current: current.analysis.cpu.p95 }
+      { 
+        name: 'p95Cpu', 
+        baseline: baseline.scenarios.default.p95Cpu || baseline.scenarios.default.avgCpu, 
+        current: current.analysis.cpu.p95 
+      }
     ];
     
     for (const metric of cpuMetrics) {
@@ -171,7 +179,11 @@ function compareMetrics(baseline, current, options) {
   
   // Compare GCL if available
   if (baseline.gcl?.progressPerTick && current.expandedMetrics?.gcl?.progressPerTick) {
-    const regression = -calculateRegression(baseline.gcl.progressPerTick, current.expandedMetrics.gcl.progressPerTick);
+    // For GCL, lower progress is a regression, so we invert the comparison
+    // A decrease in GCL progress per tick should be treated as a negative impact
+    const gclChange = (current.expandedMetrics.gcl.progressPerTick - baseline.gcl.progressPerTick) / baseline.gcl.progressPerTick;
+    // Negate so that a decrease shows as positive regression
+    const regression = -gclChange;
     const severity = getSeverity(regression, options.thresholdGcl);
     
     const result = {

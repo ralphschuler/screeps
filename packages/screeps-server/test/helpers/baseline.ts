@@ -143,9 +143,13 @@ export function formatRegression(regression: number): string {
  * Get regression severity level
  */
 export function getRegressionSeverity(regression: number): 'improvement' | 'pass' | 'warning' | 'critical' {
+  // Improvement: More than 10% better
   if (regression < -10) return 'improvement';
-  if (regression <= 10) return 'pass';
+  // Pass: Within 10% range
+  if (Math.abs(regression) <= 10) return 'pass';
+  // Warning: 10-20% regression
   if (regression <= 20) return 'warning';
+  // Critical: More than 20% regression
   return 'critical';
 }
 
