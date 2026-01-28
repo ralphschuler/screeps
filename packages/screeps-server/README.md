@@ -40,14 +40,20 @@ npm test
 
 # Run specific test suites
 npm run test:integration    # Bot lifecycle and functionality
-npm run test:performance    # CPU budget validation
+npm run test:performance    # CPU budget validation and regression detection
 npm run test:packages       # Framework package tests
 
 # Run with coverage
 npm run test:coverage
+
+# Compare performance against baseline
+node scripts/compare-performance-baseline.js \
+  --current ../screeps-bot/performance-report.json \
+  --threshold-cpu 0.15 \
+  --threshold-gcl 0.20
 ```
 
-See [TESTING_GUIDE.md](TESTING_GUIDE.md) for complete testing documentation.
+See [PERFORMANCE_TESTING_GUIDE.md](PERFORMANCE_TESTING_GUIDE.md) for complete testing documentation.
 
 ## Test Infrastructure
 
@@ -57,8 +63,19 @@ The test infrastructure validates:
 
 - **Integration**: Bot spawns, runs, and performs expected behavior
 - **Performance**: CPU usage stays within ROADMAP.md targets (≤0.1 CPU for eco rooms)
+- **Regression**: Automated detection of performance degradation against baselines
 - **Packages**: Framework packages load and function correctly
-- **Regression**: Automated detection of performance degradation
+
+### Performance Regression Detection
+
+The test suite includes automated regression detection:
+
+- **Baseline Comparison**: Current metrics vs historical baselines
+- **Regression Thresholds**: CPU (+15%), Memory (+15%), GCL (-20%)
+- **Severity Levels**: Improvement, Pass, Warning, Critical
+- **Quality Gates**: Block merges on critical regressions
+
+See [PERFORMANCE_TESTING_GUIDE.md](PERFORMANCE_TESTING_GUIDE.md) for detailed documentation.
 
 ### Test Scenarios
 
