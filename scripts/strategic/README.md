@@ -272,8 +272,10 @@ Detect correlations between metrics:
 
 **Community Approaches**:
 - **Overmind**: Rolling 24h averages for CPU monitoring
-- **TooAngel**: 7-day trend analysis with outlier rejection
+- **TooAngel**: 7-day trend analysis with outlier rejection (not yet implemented in this system)
 - **Industry Standard**: 7-day rolling window for change detection
+
+**Note**: This implementation does not yet include outlier rejection/filtering. See "Future Enhancements" section for planned outlier detection features.
 
 ## Troubleshooting
 

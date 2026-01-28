@@ -37,7 +37,7 @@ export function loadRecentBaselines(
   }
 
   const files = readdirSync(baselinesDir)
-    .filter(f => f.endsWith('.json') && f !== 'README.md')
+    .filter(f => f.endsWith('.json'))
     .sort()
     .reverse(); // Most recent first
 
@@ -57,10 +57,9 @@ export function loadRecentBaselines(
       const baselineTime = new Date(baseline.timestamp).getTime();
       if (baselineTime >= cutoffTime) {
         baselines.push(baseline);
-      } else {
-        // Files are sorted newest first, so we can stop once we hit old data
-        break;
       }
+      // Note: Continue checking all files in case there are gaps in the data
+      // rather than breaking early on old files
     } catch (error) {
       console.warn(`Failed to load baseline file ${file}:`, error);
     }
@@ -88,7 +87,6 @@ export function calculateRollingBaseline(
 
   // Extract metric arrays for statistical calculations
   const cpuValues = baselines.map(b => b.metrics.cpu.avg24h || b.metrics.cpu.current);
-  const cpuBuckets = baselines.map(b => b.metrics.cpu.bucket);
   const gclRates = baselines.map(b => b.metrics.gcl.progressRate);
   const errorRates = baselines.map(b => b.metrics.errors.currentRate);
   const roomTotals = baselines.map(b => b.metrics.rooms.total);

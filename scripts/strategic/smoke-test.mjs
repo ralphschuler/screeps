@@ -27,6 +27,8 @@ console.log('✅ Test directory created');
 // Generate mock baseline data
 function generateMockBaseline(daysAgo, gameTime, cpuAvg, gclRate, errorRate) {
   const timestamp = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString();
+  const totalCreeps = 450 + Math.floor(Math.random() * 50);
+  const totalRooms = 12;
   
   return {
     timestamp,
@@ -48,14 +50,14 @@ function generateMockBaseline(daysAgo, gameTime, cpuAvg, gclRate, errorRate) {
         progressRate: gclRate
       },
       rooms: {
-        total: 12,
+        total: totalRooms,
         byRCL: { '8': 4, '7': 4, '6': 2, '5': 2 },
-        avgCPU: cpuAvg / 12
+        avgCPU: cpuAvg / totalRooms
       },
       creeps: {
-        total: 450 + Math.floor(Math.random() * 50),
+        total: totalCreeps,
         byRole: { harvester: 120, hauler: 90 },
-        avgPerRoom: 37.5
+        avgPerRoom: totalCreeps / totalRooms
       },
       errors: {
         last24h: 5,
