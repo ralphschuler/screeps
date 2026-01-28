@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "screeps-api": "^1.13.0",
-    "axios": "^1.13.3"
+    "axios": "^1.13.4"
   },
   "devDependencies": {
     "@types/node": "^25.0.10",
