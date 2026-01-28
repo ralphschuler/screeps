@@ -92,6 +92,25 @@ jobs:
         timeout-minutes: 15
         continue-on-error: true
 
+      - name: Compare against baseline
+        if: always()
+        working-directory: packages/screeps-server
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ -f ../screeps-bot/performance-report.json ]; then
+            node scripts/compare-performance-baseline.js \
+              --current ../screeps-bot/performance-report.json \
+              --threshold-cpu 0.15 \
+              --threshold-gcl 0.20 \
+              --threshold-memory 0.15 \
+              --no-fail
+          else
+            echo "⚠️ Performance report not found, skipping baseline comparison"
+          fi
+        continue-on-error: true
+
       - name: Run framework package tests
         working-directory: packages/screeps-server
         run: npm run test:packages
