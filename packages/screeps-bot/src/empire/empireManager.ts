@@ -43,6 +43,9 @@ import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { EmpireMemory, ExpansionCandidate, RoomIntel } from "@ralphschuler/screeps-memory";
 import * as ExpansionScoring from "./expansionScoring";
+import { roomIntelManager } from "./roomIntelManager";
+import { warCoordinator } from "./warCoordinator";
+import { clusterMonitor } from "./clusterMonitor";
 
 /**
  * Empire Manager Configuration
@@ -129,7 +132,7 @@ export class EmpireManager {
     });
 
     unifiedStats.measureSubsystem("empire:warTargets", () => {
-      this.updateWarTargets(empire);
+      warCoordinator.updateWarTargets(empire);
     });
 
     unifiedStats.measureSubsystem("empire:objectives", () => {
@@ -138,12 +141,12 @@ export class EmpireManager {
 
     // NEW: Automated room intel refresh
     unifiedStats.measureSubsystem("empire:intelRefresh", () => {
-      this.refreshRoomIntel(empire);
+      roomIntelManager.refreshRoomIntel(empire);
     });
 
     // NEW: Automated nearby room discovery for expansion
     unifiedStats.measureSubsystem("empire:roomDiscovery", () => {
-      this.discoverNearbyRooms(empire);
+      roomIntelManager.discoverNearbyRooms(empire);
     });
 
     // NEW: Automated GCL progress tracking
@@ -163,7 +166,7 @@ export class EmpireManager {
 
     // NEW: Automated cluster health monitoring
     unifiedStats.measureSubsystem("empire:clusterHealth", () => {
-      this.monitorClusterHealth();
+      clusterMonitor.monitorClusterHealth();
     });
 
     // NEW: Automated power bank profitability assessment
@@ -406,34 +409,6 @@ export class EmpireManager {
   /**
    * Update war targets
    */
-  private updateWarTargets(empire: EmpireMemory): void {
-    // Remove war targets that are no longer valid
-    empire.warTargets = empire.warTargets.filter(target => {
-      // Check if target still exists and is hostile
-      const intel = empire.knownRooms[target];
-      if (!intel) return false;
-
-      // Remove if room is now owned by us
-      if (intel.owner === (Object.values(Game.spawns)[0]?.owner.username ?? "")) {
-        return false;
-      }
-
-      return true;
-    });
-
-    // Auto-add war targets based on threat
-    if (empire.objectives.warMode) {
-      for (const roomName in empire.knownRooms) {
-        const intel = empire.knownRooms[roomName];
-
-        // Add high-threat rooms as war targets
-        if (intel.threatLevel >= 2 && !empire.warTargets.includes(roomName)) {
-          empire.warTargets.push(roomName);
-          logger.warn(`Added war target: ${roomName} (threat level ${intel.threatLevel})`, { subsystem: "Empire" });
-        }
-      }
-    }
-  }
 
   /**
    * Update global objectives
@@ -481,190 +456,6 @@ export class EmpireManager {
     }
   }
 
-  /**
-   * Automated room intel refresh system
-   * Updates intel for owned and nearby rooms periodically
-   */
-  private refreshRoomIntel(empire: EmpireMemory): void {
-    // Only refresh every N ticks
-    if (Game.time % this.config.intelRefreshInterval !== 0) {
-      return;
-    }
-
-    let updatedCount = 0;
-
-    // Update intel for all visible rooms
-    for (const roomName in Game.rooms) {
-      const room = Game.rooms[roomName];
-      if (!empire.knownRooms[roomName]) {
-        empire.knownRooms[roomName] = this.createRoomIntel(room);
-        updatedCount++;
-      } else {
-        this.updateRoomIntel(empire.knownRooms[roomName], room);
-        updatedCount++;
-      }
-    }
-
-    if (updatedCount > 0 && Game.time % 500 === 0) {
-      logger.info(`Refreshed intel for ${updatedCount} rooms`, { subsystem: "Empire" });
-    }
-  }
-
-  /**
-   * Discover nearby rooms for expansion
-   * Automatically adds adjacent/nearby rooms to knownRooms for scouting
-   */
-  private discoverNearbyRooms(empire: EmpireMemory): void {
-    // Only discover at configured interval for CPU efficiency
-    if (Game.time % this.config.roomDiscoveryInterval !== 0) {
-      return;
-    }
-
-    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
-    if (ownedRooms.length === 0) {
-      return;
-    }
-
-    let discoveredCount = 0;
-
-    // Discover rooms near each owned room
-    for (const room of ownedRooms) {
-      const nearbyRooms = ExpansionScoring.getRoomsInRange(room.name, this.config.maxRoomDiscoveryDistance);
-      
-      for (const nearbyRoom of nearbyRooms) {
-        // Check if we've hit the discovery limit for this tick
-        if (discoveredCount >= this.config.maxRoomsToDiscoverPerTick) {
-          logger.debug(`Reached discovery limit of ${this.config.maxRoomsToDiscoverPerTick} rooms per tick`, { 
-            subsystem: "Empire" 
-          });
-          return;
-        }
-
-        // Skip if already known
-        if (empire.knownRooms[nearbyRoom]) {
-          continue;
-        }
-
-        // Create stub intel entry (will be filled in by scouts or when visible)
-        empire.knownRooms[nearbyRoom] = this.createStubIntel(nearbyRoom);
-        discoveredCount++;
-      }
-    }
-
-    if (discoveredCount > 0) {
-      logger.info(`Discovered ${discoveredCount} nearby rooms for scouting`, { subsystem: "Empire" });
-    }
-  }
-
-  /**
-   * Create stub room intel for discovered but not yet scouted rooms
-   * Uses same room type detection logic as IntelScanner for consistency
-   */
-  private createStubIntel(roomName: string): RoomIntel {
-    // Use existing room name parsing logic from expansionScoring
-    const parsed = ExpansionScoring.parseRoomName(roomName);
-    
-    // Highway detection (same logic as IntelScanner.isHighwayRoom)
-    const isHighway = parsed 
-      ? (parsed.x % 10 === 0 || parsed.y % 10 === 0)
-      : false;
-
-    // SK room detection (same logic as IntelScanner.isSourceKeeperRoom)
-    // SK rooms are at coordinates x,y where both x%10 and y%10 are in range [4,5,6]
-    const isSK = parsed
-      ? ((parsed.x % 10 === 4 || parsed.x % 10 === 5 || parsed.x % 10 === 6) &&
-         (parsed.y % 10 === 4 || parsed.y % 10 === 5 || parsed.y % 10 === 6))
-      : false;
-
-    return {
-      name: roomName,
-      lastSeen: 0, // Never seen yet
-      sources: 0, // Unknown
-      controllerLevel: 0,
-      threatLevel: 0,
-      scouted: false, // Not yet scouted - will be filled in when visible or scouted
-      terrain: "mixed",
-      isHighway,
-      isSK
-    };
-  }
-
-  /**
-   * Create room intel from a Room object
-   */
-  private createRoomIntel(room: Room): RoomIntel {
-    const sources = room.find(FIND_SOURCES);
-    const mineral = room.find(FIND_MINERALS)[0];
-    const controller = room.controller;
-    
-    // Calculate terrain type
-    let plainCount = 0;
-    let swampCount = 0;
-    const terrain = new Room.Terrain(room.name);
-    for (let x = 0; x < 50; x++) {
-      for (let y = 0; y < 50; y++) {
-        const tile = terrain.get(x, y);
-        if (tile === TERRAIN_MASK_SWAMP) swampCount++;
-        else if (tile === 0) plainCount++;
-      }
-    }
-    const terrainType = swampCount > plainCount ? "swamp" : plainCount > swampCount ? "plains" : "mixed";
-
-    return {
-      name: room.name,
-      lastSeen: Game.time,
-      sources: sources.length,
-      controllerLevel: controller?.level ?? 0,
-      owner: controller?.owner?.username,
-      reserver: controller?.reservation?.username,
-      mineralType: mineral?.mineralType,
-      threatLevel: 0,
-      scouted: true,
-      terrain: terrainType,
-      isHighway: false,
-      isSK: false,
-      towerCount: room.find(FIND_STRUCTURES, { filter: s => s.structureType === STRUCTURE_TOWER }).length,
-      spawnCount: room.find(FIND_STRUCTURES, { filter: s => s.structureType === STRUCTURE_SPAWN }).length
-    };
-  }
-
-  /**
-   * Update existing room intel from a Room object
-   */
-  private updateRoomIntel(intel: RoomIntel, room: Room): void {
-    intel.lastSeen = Game.time;
-    
-    const controller = room.controller;
-    if (controller) {
-      intel.controllerLevel = controller.level ?? 0;
-      intel.owner = controller.owner?.username;
-      intel.reserver = controller.reservation?.username;
-    }
-
-    // Update threat level based on hostiles
-    const hostiles = room.find(FIND_HOSTILE_CREEPS);
-    const dangerousHostiles = hostiles.filter(h => 
-      h.body.some(p => p.type === ATTACK || p.type === RANGED_ATTACK || p.type === WORK)
-    );
-    
-    if (dangerousHostiles.length >= 5) {
-      intel.threatLevel = 3;
-    } else if (dangerousHostiles.length >= 2) {
-      intel.threatLevel = 2;
-    } else if (dangerousHostiles.length > 0) {
-      intel.threatLevel = 1;
-    } else {
-      intel.threatLevel = 0;
-    }
-
-    // Update structure counts
-    intel.towerCount = room.find(FIND_STRUCTURES, { filter: s => s.structureType === STRUCTURE_TOWER }).length;
-    intel.spawnCount = room.find(FIND_STRUCTURES, { filter: s => s.structureType === STRUCTURE_SPAWN }).length;
-  }
-
-  /**
-   * Track GCL progress and notify when approaching next level
-   */
   private trackGCLProgress(empire: EmpireMemory): void {
     const gclProgress = (Game.gcl.progress / Game.gcl.progressTotal) * 100;
     
@@ -680,10 +471,6 @@ export class EmpireManager {
     empire.objectives.targetRoomCount = Game.gcl.level;
   }
 
-  /**
-   * Check if owned rooms are ready for expansion
-   * Automatically unpause expansion when conditions are met
-   */
   private checkExpansionReadiness(empire: EmpireMemory): void {
     const allRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
     
@@ -817,78 +604,6 @@ export class EmpireManager {
    * Monitor cluster health and detect issues
    * Automatically triggers rebalancing when clusters are unhealthy
    */
-  private monitorClusterHealth(): void {
-    // Only check every 50 ticks
-    if (Game.time % 50 !== 0) {
-      return;
-    }
-
-    const clusters = memoryManager.getClusters();
-    const allOwnedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
-
-    for (const clusterId in clusters) {
-      const cluster = clusters[clusterId];
-      
-      // Calculate cluster health metrics
-      const clusterRooms = allOwnedRooms.filter(r => cluster.memberRooms.includes(r.name));
-      
-      if (clusterRooms.length === 0) {
-        continue;
-      }
-
-      // Check energy availability across cluster
-      const totalEnergy = clusterRooms.reduce((sum, r) => {
-        return sum + (r.storage?.store[RESOURCE_ENERGY] ?? 0) + (r.terminal?.store[RESOURCE_ENERGY] ?? 0);
-      }, 0);
-      const avgEnergy = totalEnergy / clusterRooms.length;
-
-      // Check CPU usage per room
-      const avgCpuPerRoom = Game.cpu.getUsed() / allOwnedRooms.length;
-
-      // Detect unhealthy conditions
-      const lowEnergy = avgEnergy < 30000;
-      const highCpu = avgCpuPerRoom > 2.0;
-
-      // Log warnings for unhealthy clusters
-      if (lowEnergy && Game.time % 500 === 0) {
-        logger.warn(
-          `Cluster ${clusterId} has low energy: ${avgEnergy.toFixed(0)} avg (threshold: 30000)`,
-          { subsystem: "Empire" }
-        );
-      }
-
-      if (highCpu && Game.time % 500 === 0) {
-        logger.warn(
-          `Cluster ${clusterId} has high CPU usage: ${avgCpuPerRoom.toFixed(2)} per room`,
-          { subsystem: "Empire" }
-        );
-      }
-
-      // Update cluster metrics
-      if (!cluster.metrics) {
-        cluster.metrics = {
-          energyIncome: 0,
-          energyConsumption: 0,
-          energyBalance: 0,
-          warIndex: 0,
-          economyIndex: 0
-        };
-      }
-
-      // Calculate economy health index (0-100)
-      const energyScore = Math.min(100, (avgEnergy / 100000) * 100);
-      const roomCountScore = (clusterRooms.length / cluster.memberRooms.length) * 100;
-      cluster.metrics.economyIndex = Math.round((energyScore + roomCountScore) / 2);
-
-      // Trigger rebalancing if economy index is low
-      if (cluster.metrics.economyIndex < 40 && Game.time % 500 === 0) {
-        logger.warn(
-          `Cluster ${clusterId} economy index low: ${cluster.metrics.economyIndex} - consider rebalancing`,
-          { subsystem: "Empire" }
-        );
-      }
-    }
-  }
 
   /**
    * Assess power bank profitability based on distance, power amount, and decay time
