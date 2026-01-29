@@ -130,7 +130,7 @@ export class RoomIntelManager {
     const x = parseInt(parsed[2], 10);
     const y = parseInt(parsed[4], 10);
     const isHighway = x % 10 === 0 || y % 10 === 0;
-    const isSK = !isHighway && (x % 10 === 5 || y % 10 === 5);
+    const isSK = !isHighway && ((x % 10 >= 4 && x % 10 <= 6) || (y % 10 >= 4 && y % 10 <= 6));
 
     return {
       name: roomName,
@@ -168,7 +168,7 @@ export class RoomIntelManager {
     const x = parsed ? parseInt(parsed[2], 10) : 0;
     const y = parsed ? parseInt(parsed[4], 10) : 0;
     const isHighway = x % 10 === 0 || y % 10 === 0;
-    const isSK = !isHighway && (x % 10 === 5 || y % 10 === 5);
+    const isSK = !isHighway && ((x % 10 >= 4 && x % 10 <= 6) || (y % 10 >= 4 && y % 10 <= 6));
 
     // Determine terrain type
     const terrain = room.getTerrain();
@@ -184,7 +184,7 @@ export class RoomIntelManager {
         }
       }
     }
-    const terrainType = swampCount > plainCount ? "swamp" : swampCount > 100 ? "mixed" : "plains";
+    const terrainType = swampCount > plainCount ? "swamp" : plainCount > swampCount ? "plains" : "mixed";
 
     return {
       name: room.name,

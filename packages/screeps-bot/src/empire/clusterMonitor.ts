@@ -53,6 +53,30 @@ export class ClusterMonitor {
           highCpu
         });
       }
+      
+      // Update cluster metrics
+      if (!cluster.metrics) {
+        cluster.metrics = {
+          energyIncome: 0,
+          energyConsumption: 0,
+          energyBalance: 0,
+          warIndex: 0,
+          economyIndex: 0
+        };
+      }
+
+      // Calculate economy health index (0-100)
+      const energyScore = Math.min(100, (avgEnergy / 100000) * 100);
+      const roomCountScore = (clusterRooms.length / cluster.memberRooms.length) * 100;
+      cluster.metrics.economyIndex = Math.round((energyScore + roomCountScore) / 2);
+
+      // Trigger rebalancing if economy index is low
+      if (cluster.metrics.economyIndex < 40 && Game.time % 500 === 0) {
+        logger.warn(
+          `Cluster ${clusterId} economy index low: ${cluster.metrics.economyIndex} - consider rebalancing`,
+          { subsystem: "Cluster" }
+        );
+      }
     }
   }
 }

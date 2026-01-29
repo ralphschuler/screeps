@@ -15,21 +15,37 @@ export class WarCoordinator {
    * Update war targets based on threats and strategic goals
    */
   public updateWarTargets(empire: EmpireMemory): void {
-    // Placeholder: War target logic can be implemented here
-    // For now, we just maintain the existing war targets
-    // Future: Add logic to identify hostile players, evaluate threats, etc.
+    const myUsername = Object.values(Game.spawns)[0]?.owner.username ?? "";
     
-    // Clean up war targets that no longer exist or are no longer threats
+    // Remove war targets that are no longer valid
     empire.warTargets = empire.warTargets.filter(target => {
-      // Keep target if it's still in known rooms and is hostile
+      // Check if target still exists
       const intel = empire.knownRooms[target];
       if (!intel) {
         return false; // Remove unknown targets
       }
       
+      // Remove if room is now owned by us
+      if (intel.owner === myUsername) {
+        return false;
+      }
+      
       // Keep if owned by someone else
       return !!intel.owner;
     });
+    
+    // Auto-add war targets based on threat (if in war mode)
+    if (empire.objectives.warMode) {
+      for (const roomName in empire.knownRooms) {
+        const intel = empire.knownRooms[roomName];
+        
+        // Add high-threat rooms as war targets
+        if (intel.threatLevel >= 2 && !empire.warTargets.includes(roomName)) {
+          empire.warTargets.push(roomName);
+          logger.warn(`Added war target: ${roomName} (threat level ${intel.threatLevel})`, { subsystem: "War" });
+        }
+      }
+    }
   }
 }
 

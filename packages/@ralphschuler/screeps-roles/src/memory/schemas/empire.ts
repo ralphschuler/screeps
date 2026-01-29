@@ -233,7 +233,7 @@ export function createDefaultEmpireMemory(): EmpireMemory {
     claimQueue: [],
     nukeCandidates: [],
     powerBanks: [],
-    market: undefined, // Initialized lazily
+    market: { resources: {}, lastScan: 0, pendingArbitrage: [], completedArbitrage: 0, arbitrageProfit: 0 },
     objectives: {
       targetPowerLevel: 0,
       targetRoomCount: 1,
