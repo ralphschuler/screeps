@@ -48,9 +48,7 @@ export class ClusterMonitor {
 
       if (lowEnergy || highCpu) {
         logger.warn(`Cluster ${clusterId} health issue detected - avgEnergy: ${avgEnergy.toFixed(0)}, avgCPU: ${avgCpuPerRoom.toFixed(2)}`, {
-          subsystem: "Cluster",
-          lowEnergy,
-          highCpu
+          subsystem: "Cluster"
         });
       }
       
