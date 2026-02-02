@@ -1,0 +1,108 @@
+{
+  "run_id": "${RUN_ID:-unknown}",
+  "run_url": "${RUN_URL:-unknown}",
+  "timestamp": "2026-02-02T11:19:21.293Z",
+  "bot_health_score": 75,
+  "data_sources_used": {
+    "screeps_stats": false,
+    "screeps_user_rooms": false,
+    "screeps_game_time": false,
+    "grafana_dashboards": false,
+    "screeps_memory": false,
+    "screeps_wiki": false,
+    "code_analysis": true,
+    "documentation_review": true,
+    "workflow_analysis": true
+  },
+  "metrics_analyzed": {
+    "cpu_usage": null,
+    "gcl_level": null,
+    "gcl_progress": null,
+    "room_count": null,
+    "creep_count": null,
+    "error_rate": null,
+    "source_files": 207,
+    "test_files": 136,
+    "packages": 16,
+    "todo_comments": 30
+  },
+  "opportunities_identified": 12,
+  "issues_created": [],
+  "issues_updated": [],
+  "priority_breakdown": {
+    "critical": 0,
+    "high": 4,
+    "medium": 6,
+    "low": 2
+  },
+  "category_breakdown": {
+    "testing": 2,
+    "framework": 3,
+    "performance": 1,
+    "documentation": 3,
+    "infrastructure": 2,
+    "architecture": 1
+  },
+  "top_recommendations": [
+    "Establish test coverage baselines and expand to 75% overall, 85%+ for critical packages (kernel, cache, economy, spawn)",
+    "Complete framework package publishing roadmap - stabilize APIs, create migration guides, publish stable versions",
+    "Fix metrics collection for strategic planning - investigate collected-metrics.json generation failure",
+    "Implement architectural improvements from TODO comments - cluster formation, adaptive budgets, priority task assignment",
+    "Generate and deploy API documentation website using TypeDoc for all 16 framework packages"
+  ],
+  "grafana_insights": [
+    "No Grafana data available - metrics collection failed or not configured",
+    "Need to investigate COLLECTED_METRICS_FILE environment variable setup",
+    "Performance baselines directory exists but no historical data to compare"
+  ],
+  "next_focus_areas": [
+    "Restore metrics collection pipeline for future strategic planning runs",
+    "Establish performance regression detection with working baselines",
+    "Track test coverage improvements over time",
+    "Monitor framework package adoption and gather user feedback",
+    "Review and prioritize TODO comments by business impact"
+  ],
+  "performance_snapshot": null,
+  "performance_trend": null,
+  "analysis_notes": [
+    "Live metrics unavailable - COLLECTED_METRICS_FILE not set",
+    "Analysis based on code review, documentation, and static analysis only",
+    "Repository shows excellent modularization with 16 well-structured packages",
+    "Strong test infrastructure foundation but coverage metrics needed",
+    "Framework maturity high - most packages at stable interfaces",
+    "30+ TODO comments indicate clear roadmap for incremental improvements"
+  ],
+  "code_quality_findings": {
+    "strengths": [
+      "Excellent package modularization following single responsibility",
+      "Comprehensive documentation in ROADMAP.md and FRAMEWORK.md",
+      "Well-configured CI/CD pipelines with quality gates",
+      "TypeScript strict mode enabled",
+      "ESLint configuration per package",
+      "Dual kernel architecture (task + OS-style) for flexibility"
+    ],
+    "improvements_needed": [
+      "Measure and track test coverage across all packages",
+      "Resolve 30+ TODO comments (P1-P3 priorities)",
+      "Generate and deploy API documentation website",
+      "Create more example projects for framework adoption",
+      "Add automated quality gates for coverage thresholds",
+      "Improve metrics collection reliability"
+    ]
+  },
+  "framework_status": {
+    "packages_published": "unknown",
+    "packages_total": 16,
+    "version_status": {
+      "stable": 0,
+      "beta": 16,
+      "alpha": 0
+    },
+    "documentation_completeness": {
+      "readme": 36,
+      "api_docs": 0,
+      "examples": "limited",
+      "migration_guides": 0
+    }
+  }
+}
