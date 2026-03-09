@@ -127,10 +127,7 @@ export class CacheManager {
     if (options?.maxSize && store.size() >= options.maxSize) {
       // Evict 10% of cache to reduce eviction frequency
       const toEvict = Math.max(1, Math.floor(options.maxSize * 0.1));
-      for (let i = 0; i < toEvict; i++) {
-        this.evictLRU(namespace, store);
-      }
-      this.getStats(namespace).evictions += toEvict;
+      this.evictLRU(namespace, toEvict);
     }
 
     const entry: CacheEntry<T> = {
@@ -273,26 +270,51 @@ export class CacheManager {
   }
 
   /**
-   * Evict least recently used entry
+   * Evict a specified number of least recently used entries from a namespace.
+   * Called by CacheCoherenceManager when enforcing memory budgets.
+   *
+   * @param namespace - The cache namespace to evict from
+   * @param count - Number of entries to evict
+   * @returns Number of entries actually evicted
    */
-  private evictLRU(namespace: string, store: CacheStore): void {
-    const keys = store.keys();
-    if (keys.length === 0) return;
+  public evictLRU(namespace: string, count: number): number {
+    const heapKey = `${namespace}:heap`;
+    const memoryKey = `${namespace}:memory`;
+    const stores = [this.stores.get(heapKey), this.stores.get(memoryKey)].filter(Boolean) as CacheStore[];
+    let evicted = 0;
 
-    let oldestKey: string | null = null;
-    let oldestTime = Infinity;
+    for (let i = 0; i < count; i++) {
+      let evictedOne = false;
+      for (const store of stores) {
+        const keys = store.keys();
+        if (keys.length === 0) continue;
 
-    for (const key of keys) {
-      const entry = store.get(key);
-      if (entry && entry.lastAccessed < oldestTime) {
-        oldestTime = entry.lastAccessed;
-        oldestKey = key;
+        let oldestKey: string | null = null;
+        let oldestTime = Infinity;
+
+        for (const key of keys) {
+          const entry = store.get(key);
+          if (entry && entry.lastAccessed < oldestTime) {
+            oldestTime = entry.lastAccessed;
+            oldestKey = key;
+          }
+        }
+
+        if (oldestKey) {
+          store.delete(oldestKey);
+          evicted++;
+          evictedOne = true;
+          break;
+        }
       }
+      if (!evictedOne) break;
     }
 
-    if (oldestKey) {
-      store.delete(oldestKey);
+    if (evicted > 0) {
+      this.getStats(namespace).evictions += evicted;
     }
+
+    return evicted;
   }
 
   /**
