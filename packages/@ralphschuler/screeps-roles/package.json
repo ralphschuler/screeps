@@ -31,7 +31,7 @@
   },
   "homepage": "https://github.com/ralphschuler/screeps/tree/main/packages/@ralphschuler/screeps-roles#readme",
   "dependencies": {
-    "screeps-cartographer": "^1.8.13",
+    "screeps-cartographer": "^1.8.15",
     "@ralphschuler/screeps-core": "*",
     "@ralphschuler/screeps-defense": "*",
     "@ralphschuler/screeps-utils": "*"
