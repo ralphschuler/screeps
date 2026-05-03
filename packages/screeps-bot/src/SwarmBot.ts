@@ -179,38 +179,47 @@ function runVisualizations(): void {
  * Main loop for SwarmBot
  */
 export function loop(): void {
-  // Shard abandonment guard: if no owned rooms and marked abandoned, skip all processing
+  // Initialize systems on first tick so logger, stats, caches, and inter-shard state are ready
+  // even on respawning or temporarily abandoned shards.
+  if (!systemsInitialized) {
+    initializeSystems();
+  }
+
+  // Keep lightweight maintenance ahead of the no-owned-room guard. Dead creep cleanup,
+  // migrations, and memory pruning still matter on respawn/abandoned shards, while the
+  // MemoryManager internally gates expensive work by tick interval.
+  memoryManager.initialize();
+
+  // Sync kernel CPU configuration with runtime config so bucket-mode checks are accurate.
+  kernel.updateFromCpuConfig(getConfig().cpu);
+
+  const bucketMode = kernel.getBucketMode();
+  if (bucketMode === "critical" && Game.time % 10 === 0) {
+    logger.warn(`CRITICAL: CPU bucket at ${Game.cpu.bucket}, running core work and deferring optional work`, {
+      subsystem: "SwarmBot"
+    });
+  }
+
+  // Shard abandonment guard: if no owned rooms, skip colony processing but retain the
+  // lightweight global maintenance above.
   const ownedRoomCount = Object.values(Game.rooms).filter(r => r.controller?.my).length;
   if (ownedRoomCount === 0) {
     // No rooms owned — either respawning, first tick, or abandoned shard.
-    // Minimal work only: clear stale caches so they don't accumulate.
-    if (systemsInitialized && Game.time % 100 === 0) {
+    if (Game.time % 100 === 0) {
       logger.info(`Shard idle (no owned rooms) at tick ${Game.time}`, { subsystem: "SwarmBot" });
     }
-    // Still need to set systemsInitialized on first tick for logger setup
-    if (!systemsInitialized) {
-      initializeSystems();
-    }
-    // Skip everything else to save CPU on abandoned shards
+    // Skip colony work to save CPU on abandoned shards
     logger.flush();
     return;
   }
 
   // Log every 10 ticks to confirm main loop is running
-  if (!systemsInitialized || Game.time % 10 === 0) {
+  if (Game.time % 10 === 0) {
     logger.info(`SwarmBot loop executing at tick ${Game.time}`, {
       subsystem: "SwarmBot",
       meta: { systemsInitialized }
     });
   }
-
-  // Initialize systems on first tick
-  if (!systemsInitialized) {
-    initializeSystems();
-  }
-
-  // Sync kernel CPU configuration with runtime config
-  kernel.updateFromCpuConfig(getConfig().cpu);
 
   // Initialize kernel and register processes on first tick
   if (!kernelInitialized) {
@@ -221,15 +230,6 @@ export function loop(): void {
 
   // Start stats collection for this tick
   unifiedStats.startTick();
-
-  // Log bucket mode for monitoring. Low/critical bucket now defers optional work
-  // through per-process minBucket requirements and explicit guards below.
-  const bucketMode = kernel.getBucketMode();
-  if (bucketMode === "critical" && Game.time % 10 === 0) {
-    logger.warn(`CRITICAL: CPU bucket at ${Game.cpu.bucket}, running core work and deferring optional work`, {
-      subsystem: "SwarmBot"
-    });
-  }
 
   // Clear per-tick caches at the start of each tick
   // Note: Target assignment cache in targetDistribution.ts now uses unified cache with TTL=1
@@ -259,9 +259,6 @@ export function loop(): void {
 
   // Initialize movement system (traffic management preTick)
   initMovement();
-
-  // Initialize memory structures
-  memoryManager.initialize();
 
   // Synchronize creep and room processes with kernel
   // This must happen before kernel.run() to ensure all processes are registered

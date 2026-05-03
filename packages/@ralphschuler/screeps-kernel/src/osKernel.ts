@@ -118,16 +118,21 @@ export function addProcess<T extends OSProcess>(process: T): T {
  * Marks the process as DEAD and clears its memory.
  * The process will be removed from Memory in storeProcessTable().
  * 
- * TODO: Kill child processes when parent is killed
- Issue URL: https://github.com/ralphschuler/screeps/issues/995
- * 
  * @param pid - Process ID to kill
  * @returns The PID that was killed
  */
 export function killProcess(pid: number): number {
   const process = processTable.get(pid);
   
-  if (process) {
+  if (process && process.status !== ProcessStatus.DEAD) {
+    const childPids = Array.from(processTable.values())
+      .filter((child) => child.parentPID === pid && child.status !== ProcessStatus.DEAD)
+      .map((child) => child.pid);
+
+    for (const childPid of childPids) {
+      killProcess(childPid);
+    }
+
     process.status = ProcessStatus.DEAD;
     
     // Clear process memory
@@ -135,13 +140,9 @@ export function killProcess(pid: number): number {
       Memory.processMemory[pid] = undefined;
     }
     
-    logger.debug(`OS Kernel: Killed process PID ${pid} ("${process.className}")`, {
+    logger.debug(`OS Kernel: Killed process PID ${pid} ("${process.className}") and ${childPids.length} child process(es)`, {
       subsystem: "OSKernel"
     });
-    
-    // TODO: Implement killing child processes
-    // Issue URL: https://github.com/ralphschuler/screeps/issues/994
-    // Find all processes with parentPID === pid and kill them recursively
   }
   
   return pid;

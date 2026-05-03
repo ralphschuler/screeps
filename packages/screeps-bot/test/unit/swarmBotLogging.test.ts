@@ -46,6 +46,14 @@ describe("SwarmBot logging", () => {
     global.Game.creeps = {};
     // @ts-ignore: test setup for Game globals
     global.Game.time = 12300;
+    // @ts-ignore: test setup for Game globals
+    global.Game.rooms = {
+      W1N1: {
+        name: "W1N1",
+        controller: { my: true } as any,
+        find: () => []
+      } as any
+    };
 
     bot.loop();
 

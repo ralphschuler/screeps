@@ -153,6 +153,30 @@ describe("OS-Style Process Architecture", () => {
       
       expect(Memory.processMemory![process.pid]).to.be.undefined;
     });
+
+    it("should recursively kill child processes and clear their memory", () => {
+      const parent = addProcess(new TestProcess(-1));
+      const child = addProcess(new AnotherTestProcess(parent.pid));
+      const grandchild = addProcess(new TestProcess(child.pid));
+      const sibling = addProcess(new TestProcess(-1));
+      Memory.processMemory = {
+        [parent.pid]: { data: "parent" },
+        [child.pid]: { data: "child" },
+        [grandchild.pid]: { data: "grandchild" },
+        [sibling.pid]: { data: "sibling" }
+      };
+      
+      killProcess(parent.pid);
+      
+      expect(parent.status).to.equal(ProcessStatus.DEAD);
+      expect(child.status).to.equal(ProcessStatus.DEAD);
+      expect(grandchild.status).to.equal(ProcessStatus.DEAD);
+      expect(sibling.status).to.equal(ProcessStatus.RUNNING);
+      expect(Memory.processMemory![parent.pid]).to.be.undefined;
+      expect(Memory.processMemory![child.pid]).to.be.undefined;
+      expect(Memory.processMemory![grandchild.pid]).to.be.undefined;
+      expect(Memory.processMemory![sibling.pid]).to.deep.equal({ data: "sibling" });
+    });
   });
 
   describe("getProcessById", () => {

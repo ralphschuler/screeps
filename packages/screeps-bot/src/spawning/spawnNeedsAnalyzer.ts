@@ -32,6 +32,9 @@ const FOCUS_ROOM_UPGRADER_LIMITS = {
   LATE: 6
 } as const;
 
+/** Maximum idle military creeps to keep when there are no visible hostiles. */
+const IDLE_MILITARY_RESERVE = 1;
+
 function hasHealthyRemoteReservation(room: Room): boolean {
   const reservationTicks = room.controller?.reservation?.ticksToEnd ?? 0;
   return reservationTicks >= RESERVATION_THRESHOLD_TICKS;
@@ -319,16 +322,24 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
   const def = ROLE_DEFINITIONS[role];
   if (!def) return false;
 
-  // MILITARY SPAWN RESTRICTION: In eco posture with no danger, only allow
-  // minimal defensive creeps. Prevents energy drain on idle military.
+  // MILITARY SPAWN RESTRICTION: When no hostile creeps are visible, only keep
+  // a minimal defensive reserve. This prevents rooms whose posture/danger
+  // pheromones are stale from spending most of their energy on idle soldiers.
   const isMilitary = def.family === "military";
-  if (isMilitary && swarm.posture === "eco" && swarm.danger === 0) {
-    // Allow at most 1 guard OR 1 ranger for basic perimeter watch
-    const counts = countCreepsByRole(roomName);
-    const militaryCount = Array.from(counts.entries()).filter(([r]) => ROLE_DEFINITIONS[r]?.family === "military").reduce((sum, [,c]) => sum + c, 0);
-    if (militaryCount >= 1) return false; // Already have 1 military creep, don't spawn more
-    // Only allow guard or ranger as the single military creep
-    if (role !== "guard" && role !== "ranger") return false;
+  if (isMilitary) {
+    const room = Game.rooms[roomName];
+    const visibleHostiles = room ? getActualHostileCreeps(room).length : 0;
+    const shouldLimitIdleMilitary = visibleHostiles === 0 && (swarm.danger === 0 || swarm.posture !== "eco");
+
+    if (shouldLimitIdleMilitary) {
+      const counts = countCreepsByRole(roomName);
+      const militaryCount = Array.from(counts.entries())
+        .filter(([r]) => ROLE_DEFINITIONS[r]?.family === "military")
+        .reduce((sum, [, c]) => sum + c, 0);
+      if (militaryCount >= IDLE_MILITARY_RESERVE) return false;
+      // Only allow guard or ranger as the single idle reserve creep.
+      if (role !== "guard" && role !== "ranger") return false;
+    }
   }
 
   // SPECIAL: larvaWorker should ONLY be spawned during bootstrap/emergency
