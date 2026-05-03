@@ -223,6 +223,7 @@ function isStateComplete(state: CreepState | undefined, ctx: CreepContext): bool
       return ctx.isEmpty;
 
     case "moveToRoom":
+    case "remoteMoveToRoom":
       // Movement complete when in target room
       // Uses state.targetRoom which is the temporary movement destination.
       // For remote creeps, memory.targetRoom is the permanent assignment (e.g., remote room)
@@ -230,6 +231,7 @@ function isStateComplete(state: CreepState | undefined, ctx: CreepContext): bool
       return state.targetRoom !== undefined && ctx.room.name === state.targetRoom;
 
     case "moveTo":
+    case "remoteMoveTo":
       // Movement complete when adjacent to or at target
       // OPTIMIZATION: Only validate target if we have a targetId
       // This avoids unnecessary Game.getObjectById calls
@@ -278,12 +280,12 @@ function actionToState(action: CreepAction, _ctx: CreepContext): CreepState {
   }
 
   // Extract room name for room movement
-  if (action.type === "moveToRoom") {
+  if (action.type === "moveToRoom" || action.type === "remoteMoveToRoom") {
     state.targetRoom = action.roomName;
   }
 
   // Store serialized target position for moveTo actions without stable IDs (e.g., RoomPosition)
-  if (action.type === "moveTo") {
+  if (action.type === "moveTo" || action.type === "remoteMoveTo") {
     const pos = "pos" in action.target ? action.target.pos : action.target;
     state.targetPos = { x: pos.x, y: pos.y, roomName: pos.roomName };
   }
@@ -291,6 +293,10 @@ function actionToState(action: CreepAction, _ctx: CreepContext): CreepState {
   // Store additional data based on action type
   if (action.type === "withdraw" || action.type === "transfer") {
     state.data = { resourceType: action.resourceType };
+  }
+
+  if (action.type === "remoteMoveTo" || action.type === "remoteMoveToRoom") {
+    state.data = { ...(state.data ?? {}), routeType: action.routeType };
   }
 
   return state;
@@ -377,6 +383,36 @@ function stateToAction(state: CreepState): CreepAction | null {
 
     case "moveToRoom":
       return state.targetRoom ? { type: "moveToRoom", roomName: state.targetRoom } : null;
+
+    case "remoteMoveTo": {
+      const routeType = state.data?.routeType;
+      if (routeType !== "harvester" && routeType !== "hauler" && routeType !== "reserver" && routeType !== "guard") {
+        return null;
+      }
+
+      if (target) {
+        return { type: "remoteMoveTo", target, routeType };
+      }
+
+      if (state.targetPos) {
+        const targetPos = new RoomPosition(
+          state.targetPos.x,
+          state.targetPos.y,
+          state.targetPos.roomName
+        );
+        return { type: "remoteMoveTo", target: targetPos, routeType };
+      }
+
+      return null;
+    }
+
+    case "remoteMoveToRoom": {
+      const routeType = state.data?.routeType;
+      if (routeType !== "harvester" && routeType !== "hauler" && routeType !== "reserver" && routeType !== "guard") {
+        return null;
+      }
+      return state.targetRoom ? { type: "remoteMoveToRoom", roomName: state.targetRoom, routeType } : null;
+    }
 
     case "idle":
       return { type: "idle" };

@@ -102,7 +102,7 @@ export class MemoryStore implements CacheStore {
       // Check TTL
       if (memEntry.ttl !== undefined && memEntry.ttl !== -1) {
         const age = Game.time - memEntry.cachedAt;
-        if (age > memEntry.ttl) {
+        if (memEntry.ttl === 0 ? age > 0 : age >= memEntry.ttl) {
           keysToDelete.push(key);
           continue; // Skip expired
         }
@@ -192,7 +192,7 @@ export class MemoryStore implements CacheStore {
     for (const [key, entry] of heap.entries) {
       if (entry.ttl !== undefined && entry.ttl !== -1) {
         const age = Game.time - entry.cachedAt;
-        if (age > entry.ttl) {
+        if (entry.ttl === 0 ? age > 0 : age >= entry.ttl) {
           heap.entries.delete(key);
           cleaned++;
         }
@@ -203,7 +203,7 @@ export class MemoryStore implements CacheStore {
     for (const [key, memEntry] of Object.entries(memory.data)) {
       if (memEntry.ttl !== undefined && memEntry.ttl !== -1) {
         const age = Game.time - memEntry.cachedAt;
-        if (age > memEntry.ttl) {
+        if (memEntry.ttl === 0 ? age > 0 : age >= memEntry.ttl) {
           delete memory.data[key];
           cleaned++;
         }

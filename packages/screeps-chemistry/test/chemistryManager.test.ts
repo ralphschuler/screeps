@@ -204,6 +204,10 @@ describe('ChemistryManager', () => {
       };
 
       mockState = {
+        currentTick: Game.time,
+        danger: 0,
+        posture: 'eco' as const,
+        pheromones: {},
         mode: 'idle' as const,
         targetCompound: null
       };

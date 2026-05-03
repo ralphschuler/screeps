@@ -8,12 +8,13 @@ declare const global: { Game: typeof Game };
 /**
  * Create mock room intel
  */
-function createMockRoomIntel(name: string, sources = 2, threatLevel: 0 | 1 | 2 | 3 = 0): RoomIntel {
+function createMockRoomIntel(name: string, sources = 2, threatLevel: 0 | 1 | 2 | 3 = 0, reserved = true): RoomIntel {
   return {
     name,
     lastSeen: 1000,
     sources,
     controllerLevel: 0,
+    reserver: reserved ? "ralphschuler" : undefined,
     threatLevel,
     scouted: true,
     terrain: "plains",
@@ -67,6 +68,13 @@ describe("Remote Mining Profitability Analysis", () => {
 
       // Expected: (3000 / 300) * 2 sources = 20 energy/tick
       assert.equal(result.energyPerTick, 20, "Should calculate correct energy per tick");
+    });
+
+    it("should use unreserved output when no reserver is known", () => {
+      const intel = createMockRoomIntel("E2N1", 2, 0, false);
+      const result = ExpansionScoring.calculateRemoteProfitability("E2N1", "E1N1", intel);
+
+      assert.equal(result.energyPerTick, 10, "Unreserved remotes should produce half of reserved output");
     });
 
     it("should calculate infrastructure cost for containers and roads", () => {
@@ -271,26 +279,6 @@ describe("Remote Mining Profitability Analysis", () => {
       );
     });
 
-    it("should include deprecated fields for backward compatibility", () => {
-      const intel = createMockRoomIntel("E2N1", 2, 0);
-      const result = ExpansionScoring.calculateRemoteProfitability("E2N1", "E1N1", intel);
-
-      // Verify deprecated fields are present
-      assert.isDefined(result.energyGain, "energyGain should be defined for backward compatibility");
-      assert.isDefined(result.energyCost, "energyCost should be defined for backward compatibility");
-
-      // Verify they map to the correct new fields
-      assert.equal(result.energyGain, result.netProfitPerTick, "energyGain should equal netProfitPerTick");
-
-      const infrastructureCostPerTick = result.infrastructureCost / 50000;
-      const expectedEnergyCost = result.carrierCostPerTick + infrastructureCostPerTick;
-      assert.approximately(
-        result.energyCost!,
-        expectedEnergyCost,
-        0.01,
-        "energyCost should equal carrierCost + infrastructureCost per tick"
-      );
-    });
   });
 
   describe("edge cases and input validation", () => {

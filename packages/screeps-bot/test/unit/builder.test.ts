@@ -41,6 +41,7 @@ interface MockCreep {
   name: string;
   store: MockStore;
   pos: MockPosition;
+  room: { name: string; find: () => never[] };
 }
 
 /**
@@ -52,6 +53,7 @@ function createMockCreep(options: {
 }): Creep {
   const mockCreep: MockCreep = {
     name: "TestBuilder",
+    room: { name: "E1N1", find: () => [] },
     store: {
       getCapacity: () => options.freeCapacity + options.usedCapacity,
       getFreeCapacity: () => options.freeCapacity,

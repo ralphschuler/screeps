@@ -36,7 +36,8 @@ export type {
 } from "./behaviors/types";
 
 // Executor
-export { executeAction } from "./behaviors/executor";
+export { executeAction, setRemoteMoveHandler } from "./behaviors/executor";
+export type { RemoteMoveHandler } from "./behaviors/executor";
 
 // State machine
 export { evaluateWithStateMachine } from "./behaviors/stateMachine";
@@ -60,7 +61,7 @@ export { hauler } from "./behaviors/economy/hauler";
 export { upgrader } from "./behaviors/economy/upgrader";
 export { builder } from "./behaviors/economy/builder";
 export { mineralHarvester, depositHarvester } from "./behaviors/economy/mining";
-export { remoteHauler } from "./behaviors/economy/remote";
+export { remoteHarvester, remoteHauler } from "./behaviors/economy/remote";
 
 // =============================================================================
 // Pheromone System

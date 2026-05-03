@@ -51,7 +51,7 @@ export function remoteHarvester(ctx: CreepContext): CreepAction {
     if (dangerousHostiles.length > 0) {
       // If in remote room with hostiles, return home for safety
       if (ctx.room.name === targetRoom) {
-        return { type: "moveToRoom", roomName: ctx.memory.homeRoom };
+        return { type: "remoteMoveToRoom", roomName: ctx.memory.homeRoom, routeType: "harvester" };
       }
       // If in transit, flee from hostiles
       return { type: "flee", from: dangerousHostiles.map(h => h.pos) };
@@ -60,7 +60,7 @@ export function remoteHarvester(ctx: CreepContext): CreepAction {
 
   // If not in target room, move there
   if (ctx.room.name !== targetRoom) {
-    return { type: "moveToRoom", roomName: targetRoom };
+    return { type: "remoteMoveToRoom", roomName: targetRoom, routeType: "harvester" };
   }
 
   // In target room - find or assign source
@@ -74,7 +74,7 @@ export function remoteHarvester(ctx: CreepContext): CreepAction {
 
   // Move to source if not nearby
   if (!ctx.creep.pos.isNearTo(source)) {
-    return { type: "moveTo", target: source };
+    return { type: "remoteMoveTo", target: source, routeType: "harvester" };
   }
 
   // At source - harvest or transfer to container
@@ -104,9 +104,38 @@ function assignRemoteSource(ctx: CreepContext): Source | null {
   const sources = cachedFindSources(ctx.room);
   if (sources.length === 0) return null;
 
-  // For remote harvesters, just assign the first available source
-  // More sophisticated load balancing can be added later
-  const source = sources[0];
+  if (ctx.memory.sourceId) {
+    const assigned = sources.find(source => source.id === ctx.memory.sourceId);
+    if (assigned) return assigned;
+  }
+
+  const targetRoom = ctx.memory.targetRoom;
+  const assignmentCounts = new Map<Id<Source>, number>();
+  for (const source of sources) {
+    assignmentCounts.set(source.id, 0);
+  }
+
+  for (const creep of Object.values(Game.creeps)) {
+    if (creep.name === ctx.creep.name) continue;
+    const memory = creep.memory as Partial<SwarmCreepMemory>;
+    if (
+      memory.role === "remoteHarvester" &&
+      memory.targetRoom === targetRoom &&
+      memory.sourceId &&
+      assignmentCounts.has(memory.sourceId as Id<Source>)
+    ) {
+      const sourceId = memory.sourceId as Id<Source>;
+      assignmentCounts.set(sourceId, (assignmentCounts.get(sourceId) ?? 0) + 1);
+    }
+  }
+
+  const source = sources
+    .slice()
+    .sort((a, b) => {
+      const assignedDelta = (assignmentCounts.get(a.id) ?? 0) - (assignmentCounts.get(b.id) ?? 0);
+      return assignedDelta !== 0 ? assignedDelta : a.id.localeCompare(b.id);
+    })[0];
+
   if (source) {
     ctx.memory.sourceId = source.id;
   }
@@ -185,7 +214,7 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     if (dangerousHostiles.length > 0) {
       // If carrying energy, prioritize getting home
       if (isWorking && ctx.room.name !== homeRoom) {
-        return { type: "moveToRoom", roomName: homeRoom };
+        return { type: "remoteMoveToRoom", roomName: homeRoom, routeType: "hauler" };
       }
       // Otherwise flee from hostiles
       return { type: "flee", from: dangerousHostiles.map(h => h.pos) };
@@ -195,7 +224,7 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
   if (isWorking) {
     // Has energy - return to home room and deliver
     if (ctx.room.name !== homeRoom) {
-      return { type: "moveToRoom", roomName: homeRoom };
+      return { type: "remoteMoveToRoom", roomName: homeRoom, routeType: "hauler" };
     }
 
     // In home room - deliver with priority: spawn > extensions > towers > storage > containers
@@ -256,14 +285,14 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     if (!ctx.isEmpty && ctx.room.name === homeRoom) {
       switchToCollectionMode(ctx);
       // Switch to collection mode and return to remote room
-      return { type: "moveToRoom", roomName: targetRoom };
+      return { type: "remoteMoveToRoom", roomName: targetRoom, routeType: "hauler" };
     }
 
     return { type: "idle" };
   } else {
     // Empty - go to remote room and collect
     if (ctx.room.name !== targetRoom) {
-      return { type: "moveToRoom", roomName: targetRoom };
+      return { type: "remoteMoveToRoom", roomName: targetRoom, routeType: "hauler" };
     }
 
     // ENERGY EFFICIENCY: Only collect if there's sufficient energy to justify the trip
@@ -302,7 +331,7 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
       if (anyContainer.length > 0) {
         const closest = findCachedClosest(ctx.creep, anyContainer, "remoteHauler_waitCont", 20);
         if (closest && ctx.creep.pos.getRangeTo(closest) > 2) {
-          return { type: "moveTo", target: closest };
+          return { type: "remoteMoveTo", target: closest, routeType: "hauler" };
         }
       }
     }

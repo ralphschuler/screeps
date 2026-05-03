@@ -5,7 +5,7 @@
  */
 
 import { expect } from "chai";
-import { MemoryManager } from "../../src/memory/manager";
+import { MemoryManager, migrationRunner } from "../../src/memory/manager";
 import type { EmpireMemory, RoomIntel, OwnedRoomEntry } from "../../src/memory/schemas";
 import { createDefaultEmpireMemory } from "../../src/memory/schemas";
 import { Game as GameMock, Memory as MemoryMock } from "./mock";
@@ -133,14 +133,14 @@ describe("Empire Memory", () => {
   });
 
   describe("Memory Versioning", () => {
-    it("should update memory version to 2 after migration", () => {
+    it("should update memory version to the latest migration", () => {
       // @ts-ignore: Set old version
       global.Memory.memoryVersion = 0;
 
       manager.initialize();
 
       // @ts-ignore: Accessing mocked memory
-      expect(global.Memory.memoryVersion).to.equal(2);
+      expect(global.Memory.memoryVersion).to.equal(migrationRunner.getLatestVersion());
     });
   });
 

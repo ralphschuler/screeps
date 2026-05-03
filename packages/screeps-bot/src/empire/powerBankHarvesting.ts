@@ -39,7 +39,7 @@ const DEFAULT_CONFIG: PowerBankConfig = {
   maxDistance: 5,
   minTicksRemaining: 3000,
   healerRatio: 0.5,
-  minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
+  minBucket: 2000,
   maxConcurrentOps: 2
 };
 
@@ -95,7 +95,7 @@ export class PowerBankHarvestingManager {
   @LowFrequencyProcess("empire:powerBank", "Power Bank Harvesting", {
     priority: ProcessPriority.LOW,
     interval: 50,
-    minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
+    minBucket: 2000,
     cpuBudget: 0.02
   })
   public run(): void {

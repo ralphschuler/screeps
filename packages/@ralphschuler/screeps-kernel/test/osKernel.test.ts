@@ -4,7 +4,7 @@
 
 import { describe, it, beforeEach } from "mocha";
 import { expect } from "chai";
-import { OSProcess, ProcessStatus } from "../src/osProcess";
+import { OSProcess, ProcessStatus } from "../src/osProcess.ts";
 import {
   registerProcessClass,
   addProcess,
@@ -15,7 +15,7 @@ import {
   run as runOSKernel,
   getProcessStats,
   resetOSKernel
-} from "../src/osKernel";
+} from "../src/osKernel.ts";
 
 // Test process implementation
 class TestProcess extends OSProcess {

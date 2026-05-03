@@ -14,10 +14,4 @@ describe("Role Exports", () => {
   it("should export runUtilityRole function", () => {
     expect(runUtilityRole).to.be.a("function");
   });
-
-  // Note: Cannot actually execute these functions without Screeps environment
-  // Full integration tests will be added when Screeps test environment is available
-  it.skip("should execute runEconomyRole without errors", () => {
-    // Requires Screeps environment with Game global
-  });
 });

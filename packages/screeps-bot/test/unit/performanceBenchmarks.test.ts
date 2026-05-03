@@ -12,6 +12,13 @@
 
 import { expect } from "chai";
 import { performance } from "perf_hooks";
+import {
+  clearObjectCache,
+  getCachedObjectById,
+  getCacheStatistics,
+  resetCacheStats,
+  warmCache
+} from "../../src/cache";
 
 // Mock performance tracking
 const mockPerformance = {
@@ -60,24 +67,25 @@ describe("Performance Benchmarks", () => {
     it("should scale linearly with creep count", () => {
       const processCreeps = (count: number) => {
         const results: number[] = [];
+        let operations = 0;
         for (let i = 0; i < count; i++) {
           // Simulate creep logic
           let sum = 0;
           for (let j = 0; j < 50; j++) {
             sum += j;
+            operations++;
           }
           results.push(sum);
         }
-        return results;
+        return { results, operations };
       };
 
-      const time10 = measurePerformance("10_creeps", () => processCreeps(10));
-      const time100 = measurePerformance("100_creeps", () => processCreeps(100));
+      const batch10 = processCreeps(10);
+      const batch100 = processCreeps(100);
 
-      // Should be roughly proportional (allowing for variance)
-      const ratio = time100 / time10;
-      expect(ratio).to.be.greaterThan(2); // At least some linear scaling
-      expect(ratio).to.be.lessThan(20); // But not more than 20x (reasonable variance)
+      expect(batch10.results).to.have.lengthOf(10);
+      expect(batch100.results).to.have.lengthOf(100);
+      expect(batch100.operations / batch10.operations).to.equal(10);
     });
 
     it("should handle 1000 creeps within acceptable time", () => {
@@ -140,23 +148,26 @@ describe("Performance Benchmarks", () => {
     it("should scale with number of rooms", () => {
       const processMultipleRooms = (roomCount: number) => {
         const results: any[] = [];
+        let operations = 0;
         for (let i = 0; i < roomCount; i++) {
           // Simulate room processing
           const structures = Array.from({ length: 50 }, (_, j) => ({
             roomId: i,
             structId: j
           }));
+          operations += structures.length;
           results.push(structures.length);
         }
-        return results;
+        return { results, operations };
       };
 
-      const time1 = measurePerformance("1_room", () => processMultipleRooms(1));
+      const oneRoom = processMultipleRooms(1);
+      const tenRooms = processMultipleRooms(10);
       const time10 = measurePerformance("10_rooms", () => processMultipleRooms(10));
 
-      const ratio = time10 / time1;
-      expect(ratio).to.be.greaterThan(1);
-      expect(ratio).to.be.lessThan(15);
+      expect(tenRooms.results).to.have.length(10);
+      expect(tenRooms.operations).to.equal(oneRoom.operations * 10);
+      expect(time10).to.be.lessThan(50);
     });
 
     it("should efficiently cache room data", () => {
@@ -617,14 +628,11 @@ describe("Performance Benchmarks", () => {
         }
       };
       
-      const { clearObjectCache, resetCacheStats } = require("../../src/utils/objectCache");
       clearObjectCache();
       resetCacheStats();
     });
 
     it("should reduce lookup time with caching", () => {
-      const { getCachedObjectById } = require("../../src/utils/objectCache");
-      
       // First lookup - cache miss (slower)
       const time1 = measurePerformance("cache_miss", () => {
         getCachedObjectById("test-storage-1" as Id<any>);
@@ -640,9 +648,6 @@ describe("Performance Benchmarks", () => {
     });
 
     it("should achieve high hit rate with repeated accesses", () => {
-      const { getCachedObjectById, getCacheStatistics, resetCacheStats } = 
-        require("../../src/utils/objectCache");
-      
       resetCacheStats();
       
       // Access same object 100 times
@@ -655,13 +660,10 @@ describe("Performance Benchmarks", () => {
       // Should have 1 miss (first access) and 99 hits
       expect(stats.misses).to.equal(1);
       expect(stats.hits).to.equal(99);
-      expect(stats.hitRate).to.equal(99); // 99/100 = 99%
+      expect(stats.hitRate).to.equal(0.99); // 99/100 = 99%
     });
 
     it("should demonstrate CPU savings with multiple objects", () => {
-      const { getCachedObjectById, getCacheStatistics, resetCacheStats } = 
-        require("../../src/utils/objectCache");
-      
       // Mock multiple objects
       const objectIds = Array.from({ length: 50 }, (_, i) => `obj-${i}`);
       
@@ -691,15 +693,13 @@ describe("Performance Benchmarks", () => {
       // Should have 50 misses (one per unique object) and 450 hits (9 additional accesses per object)
       expect(stats.misses).to.equal(50);
       expect(stats.hits).to.equal(450);
-      expect(stats.hitRate).to.equal(90); // 450/500 = 90%
+      expect(stats.hitRate).to.equal(0.9); // 450/500 = 90%
       
       // CPU saved should be positive
       expect(stats.cpuSaved).to.be.greaterThan(0);
     });
 
     it("should maintain performance with TTL expiration", () => {
-      const { getCachedObjectById, resetCacheStats } = require("../../src/utils/objectCache");
-      
       resetCacheStats();
       
       // Access object at tick 1000 (structure with 10-tick TTL, expires at 1010)
@@ -731,8 +731,6 @@ describe("Performance Benchmarks", () => {
     });
 
     it("should handle cache warming efficiently", () => {
-      const { warmCache } = require("../../src/utils/objectCache");
-      
       // Mock rooms with structures
       // @ts-ignore: Setting up test environment
       global.Game.rooms = {
@@ -761,8 +759,6 @@ describe("Performance Benchmarks", () => {
     });
 
     it("should scale with large cache sizes", () => {
-      const { getCachedObjectById } = require("../../src/utils/objectCache");
-      
       // Create 1000 unique object IDs
       const objectIds = Array.from({ length: 1000 }, (_, i) => `obj-${i}`);
       

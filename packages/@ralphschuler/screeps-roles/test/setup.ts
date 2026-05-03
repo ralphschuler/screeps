@@ -26,16 +26,18 @@
 (global as any).FIND_HOSTILE_STRUCTURES = 109;
 (global as any).FIND_FLAGS = 110;
 (global as any).FIND_CONSTRUCTION_SITES = 111;
-(global as any).FIND_MY_CONSTRUCTION_SITES = 112;
-(global as any).FIND_HOSTILE_CONSTRUCTION_SITES = 113;
-(global as any).FIND_MINERALS = 114;
-(global as any).FIND_NUKES = 115;
-(global as any).FIND_TOMBSTONES = 116;
-(global as any).FIND_POWER_CREEPS = 117;
-(global as any).FIND_MY_POWER_CREEPS = 118;
-(global as any).FIND_HOSTILE_POWER_CREEPS = 119;
-(global as any).FIND_DEPOSITS = 120;
-(global as any).FIND_RUINS = 121;
+(global as any).FIND_MY_SPAWNS = 112;
+(global as any).FIND_HOSTILE_SPAWNS = 113;
+(global as any).FIND_MY_CONSTRUCTION_SITES = 114;
+(global as any).FIND_HOSTILE_CONSTRUCTION_SITES = 115;
+(global as any).FIND_MINERALS = 116;
+(global as any).FIND_NUKES = 117;
+(global as any).FIND_TOMBSTONES = 118;
+(global as any).FIND_POWER_CREEPS = 119;
+(global as any).FIND_MY_POWER_CREEPS = 120;
+(global as any).FIND_HOSTILE_POWER_CREEPS = 121;
+(global as any).FIND_DEPOSITS = 122;
+(global as any).FIND_RUINS = 123;
 
 // Structure type constants
 (global as any).STRUCTURE_SPAWN = 'spawn';
@@ -71,6 +73,15 @@
 (global as any).RESOURCE_ZYNTHIUM = 'Z';
 (global as any).RESOURCE_CATALYST = 'X';
 (global as any).RESOURCE_GHODIUM = 'G';
+(global as any).RESOURCE_CATALYZED_GHODIUM_ACID = 'XGH2O';
+(global as any).RESOURCE_CATALYZED_UTRIUM_ACID = 'XUH2O';
+(global as any).RESOURCE_CATALYZED_LEMERGIUM_ACID = 'XLH2O';
+(global as any).RESOURCE_CATALYZED_KEANIUM_ACID = 'XKH2O';
+(global as any).RESOURCE_CATALYZED_ZYNTHIUM_ACID = 'XZH2O';
+(global as any).RESOURCE_OPS = 'ops';
+(global as any).RESOURCE_BATTERY = 'battery';
+(global as any).RESOURCE_KEANIUM_BAR = 'keanium_bar';
+(global as any).RESOURCE_OXIDANT = 'oxidant';
 
 // Return codes
 (global as any).OK = 0;

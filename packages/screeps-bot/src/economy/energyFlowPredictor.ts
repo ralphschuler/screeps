@@ -99,6 +99,10 @@ export class EnergyFlowPredictor {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
+  private findMyCreeps(room: Room, filter: (creep: Creep) => boolean): Creep[] {
+    return (room.find(FIND_MY_CREEPS) as Creep[]).filter(filter);
+  }
+
   /**
    * Predict energy available in N ticks
    * 
@@ -196,9 +200,10 @@ export class EnergyFlowPredictor {
    * Verified via screeps-docs-mcp: WORK part harvests 2 energy/tick (Creep.harvest)
    */
   private calculateHarvesterIncome(room: Room): number {
-    const creeps = room.find(FIND_MY_CREEPS, {
-      filter: c => c.memory.role === "harvester" || c.memory.role === "larvaWorker"
-    });
+    const creeps = this.findMyCreeps(
+      room,
+      creep => creep.memory.role === "harvester" || creep.memory.role === "larvaWorker"
+    );
 
     let totalWorkParts = 0;
     for (const creep of creeps) {
@@ -220,9 +225,10 @@ export class EnergyFlowPredictor {
    * Verified via screeps-docs-mcp: WORK part harvests 2 energy/tick (Creep.harvest)
    */
   private calculateMinerIncome(room: Room): number {
-    const creeps = room.find(FIND_MY_CREEPS, {
-      filter: c => c.memory.role === "staticMiner" || c.memory.role === "miner"
-    });
+    const creeps = this.findMyCreeps(
+      room,
+      creep => creep.memory.role === "staticMiner" || creep.memory.role === "miner"
+    );
 
     let totalWorkParts = 0;
     for (const creep of creeps) {
@@ -254,9 +260,7 @@ export class EnergyFlowPredictor {
    * Verified via screeps-docs-mcp: WORK part uses 1 energy/tick when upgrading (Creep.upgradeController)
    */
   private calculateUpgraderConsumption(room: Room): number {
-    const creeps = room.find(FIND_MY_CREEPS, {
-      filter: c => c.memory.role === "upgrader"
-    });
+    const creeps = this.findMyCreeps(room, creep => creep.memory.role === "upgrader");
 
     let totalWorkParts = 0;
     for (const creep of creeps) {
@@ -277,9 +281,10 @@ export class EnergyFlowPredictor {
    * Verified via screeps-docs-mcp: WORK part builds for 5 energy/tick (Creep.build)
    */
   private calculateBuilderConsumption(room: Room): number {
-    const creeps = room.find(FIND_MY_CREEPS, {
-      filter: c => c.memory.role === "builder" || c.memory.role === "repairer"
-    });
+    const creeps = this.findMyCreeps(
+      room,
+      creep => creep.memory.role === "builder" || creep.memory.role === "repairer"
+    );
 
     const constructionSites = room.find(FIND_MY_CONSTRUCTION_SITES);
     

@@ -95,7 +95,7 @@ export class HeapStore implements CacheStore {
     for (const [key, entry] of store.entries) {
       if (entry.ttl !== undefined && entry.ttl !== -1) {
         const age = Game.time - entry.cachedAt;
-        if (age > entry.ttl) {
+        if (entry.ttl === 0 ? age > 0 : age >= entry.ttl) {
           store.entries.delete(key);
           cleaned++;
         }

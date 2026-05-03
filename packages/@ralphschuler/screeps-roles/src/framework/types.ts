@@ -41,6 +41,8 @@ export interface CreepState {
  * All possible actions a creep can perform.
  * Each action is a simple object describing what the creep should do.
  */
+export type RemoteMoveRouteType = "harvester" | "hauler" | "reserver" | "guard";
+
 export type CreepAction =
   // Resource gathering actions
   | { type: "harvest"; target: Source }
@@ -73,6 +75,8 @@ export type CreepAction =
   // Movement actions
   | { type: "moveTo"; target: RoomPosition | RoomObject }
   | { type: "moveToRoom"; roomName: string }
+  | { type: "remoteMoveTo"; target: RoomPosition | RoomObject; routeType: RemoteMoveRouteType }
+  | { type: "remoteMoveToRoom"; roomName: string; routeType: RemoteMoveRouteType }
   | { type: "flee"; from: RoomPosition[] }
   | { type: "wait"; position: RoomPosition }
 

@@ -75,7 +75,7 @@ export class NukeManager {
   @LowFrequencyProcess("empire:nuke", "Nuke Manager", {
     priority: ProcessPriority.LOW,
     interval: 500,
-    minBucket: 0,
+    minBucket: 2000,
     cpuBudget: 0.01
   })
   public run(): void {

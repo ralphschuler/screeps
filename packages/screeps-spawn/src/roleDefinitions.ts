@@ -422,21 +422,6 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
       createBody(
         [
           TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,
-          ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
-          ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
-          ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
-          ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
-          MOVE, MOVE, MOVE, MOVE, MOVE,
-          MOVE, MOVE, MOVE, MOVE, MOVE,
-          MOVE, MOVE, MOVE, MOVE, MOVE,
-          MOVE, MOVE, MOVE, MOVE, MOVE,
-          MOVE, MOVE, MOVE, MOVE, MOVE
-        ],
-        2300
-      ),
-      createBody(
-        [
-          TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,
           TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,
           ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
           ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
@@ -448,6 +433,21 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
           MOVE, MOVE, MOVE, MOVE, MOVE
         ],
         3000
+      ),
+      createBody(
+        [
+          TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,
+          ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
+          ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
+          ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
+          ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
+          MOVE, MOVE, MOVE, MOVE, MOVE,
+          MOVE, MOVE, MOVE, MOVE, MOVE,
+          MOVE, MOVE, MOVE, MOVE, MOVE,
+          MOVE, MOVE, MOVE, MOVE, MOVE,
+          MOVE, MOVE, MOVE, MOVE, MOVE
+        ],
+        2300
       )
     ],
     priority: 30,

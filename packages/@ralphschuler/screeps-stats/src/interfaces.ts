@@ -72,7 +72,7 @@ export const memoryManager: MemoryManager = {
     }
     return map;
   },
-  getSwarmState: (roomName: string) => ({})
+  getSwarmState: (roomName: string) => (Memory as { swarm?: Record<string, unknown> }).swarm?.[roomName] || {}
 };
 
 // ============================================================================

@@ -32,6 +32,11 @@ const FOCUS_ROOM_UPGRADER_LIMITS = {
   LATE: 6
 } as const;
 
+function hasHealthyRemoteReservation(room: Room): boolean {
+  const reservationTicks = room.controller?.reservation?.ticksToEnd ?? 0;
+  return reservationTicks >= RESERVATION_THRESHOLD_TICKS;
+}
+
 /**
  * Creep count cache (cleared each tick) to avoid repeated iteration.
  * OPTIMIZATION: With multiple spawns per room, this prevents redundant creep iteration.
@@ -153,15 +158,20 @@ export function getRemoteRoomNeedingWorkers(homeRoom: string, role: string, swar
         maxPerRemote = 2;
       }
     } else if (role === "remoteHauler") {
+      const energyCapacity = Game.rooms[homeRoom]?.energyCapacityAvailable ?? 800;
+
       if (room) {
         const sources = cachedFindSources(room);
         const sourceCount = sources.length;
-        
-        const energyCapacity = Game.rooms[homeRoom]?.energyCapacityAvailable ?? 800;
-        const requirement = calculateRemoteHaulerRequirement(homeRoom, remoteRoom, sourceCount, energyCapacity);
+        const requirement = calculateRemoteHaulerRequirement(homeRoom, remoteRoom, sourceCount, energyCapacity, {
+          reserved: hasHealthyRemoteReservation(room)
+        });
         maxPerRemote = requirement.recommendedHaulers;
       } else {
-        maxPerRemote = 2;
+        const requirement = calculateRemoteHaulerRequirement(homeRoom, remoteRoom, 2, energyCapacity, {
+          reserved: false
+        });
+        maxPerRemote = Math.min(2, requirement.recommendedHaulers);
       }
     } else {
       maxPerRemote = 2;
@@ -408,12 +418,15 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
     
     // Never spawn scouts in war/siege/defensive postures
     if (swarm.posture === "defensive" || swarm.posture === "war" || swarm.posture === "siege") return false;
-    
-    // Always allow scouts if we don't have one (up to max per room) and room is safe
-    if (current === 0) return true;
-    
-    // In expand posture, allow more scouts
+
+    const hasRemoteAssignments = (swarm.remoteAssignments ?? []).length > 0;
+
+    // In expand posture, allow scouts to discover and score candidate rooms.
     if (swarm.posture === "expand" && current < def.maxPerRoom) return true;
+
+    // In normal eco mode, scouts are optional; only keep one when there are
+    // active remote rooms whose intel may need refreshing.
+    if (hasRemoteAssignments && current === 0) return true;
     
     return false;
   }

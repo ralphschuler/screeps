@@ -89,11 +89,24 @@ export function clearAllRoleCache(): void {
 
 export function getRoleCacheStats() {
   const stats = globalCache.getCacheStats(NAMESPACE);
+  const roles = new Set<string>();
+  const creeps = new Set<string>();
+  const entriesByRole: Record<string, number> = {};
+
+  for (const key of globalCache.keys(NAMESPACE)) {
+    const [roleType, creepName] = key.split(":");
+    if (!roleType || !creepName) continue;
+
+    roles.add(roleType);
+    creeps.add(creepName);
+    entriesByRole[roleType] = (entriesByRole[roleType] ?? 0) + 1;
+  }
+
   return {
-    roles: 0, // Not tracked separately
-    creeps: 0, // Not tracked separately
+    roles: roles.size,
+    creeps: creeps.size,
     totalEntries: stats.size,
-    entriesByRole: {} as Record<string, number>
+    entriesByRole
   };
 }
 

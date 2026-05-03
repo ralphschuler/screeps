@@ -13,7 +13,7 @@
 import { globalCache } from "../CacheManager";
 
 const NAMESPACE = "game";
-const TTL_ONE_TICK = 1; // Game objects change every tick
+const TTL_SAME_TICK = 0; // Game objects change every tick
 
 /**
  * Get all owned rooms (rooms with controller.my === true)
@@ -22,7 +22,7 @@ const TTL_ONE_TICK = 1; // Game objects change every tick
 export function getOwnedRooms(): Room[] {
   return globalCache.get<Room[]>("ownedRooms", {
     namespace: NAMESPACE,
-    ttl: TTL_ONE_TICK,
+    ttl: TTL_SAME_TICK,
     compute: () => Object.values(Game.rooms).filter(r => r.controller?.my)
   }) ?? [];
 }
@@ -34,7 +34,7 @@ export function getOwnedRooms(): Room[] {
 export function getCreepsByRole(role: string): Creep[] {
   return globalCache.get<Creep[]>(`creeps_role_${role}`, {
     namespace: NAMESPACE,
-    ttl: TTL_ONE_TICK,
+    ttl: TTL_SAME_TICK,
     compute: () => Object.values(Game.creeps).filter(c => (c.memory as any).role === role)
   }) ?? [];
 }
@@ -46,7 +46,7 @@ export function getCreepsByRole(role: string): Creep[] {
 export function getCreepsByRoom(roomName: string): Creep[] {
   return globalCache.get<Creep[]>(`creeps_room_${roomName}`, {
     namespace: NAMESPACE,
-    ttl: TTL_ONE_TICK,
+    ttl: TTL_SAME_TICK,
     compute: () => Object.values(Game.creeps).filter(c => c.room.name === roomName)
   }) ?? [];
 }
@@ -58,7 +58,7 @@ export function getCreepsByRoom(roomName: string): Creep[] {
 export function getMyCreeps(): Creep[] {
   return globalCache.get<Creep[]>("myCreeps", {
     namespace: NAMESPACE,
-    ttl: TTL_ONE_TICK,
+    ttl: TTL_SAME_TICK,
     compute: () => Object.values(Game.creeps)
   }) ?? [];
 }
@@ -70,7 +70,7 @@ export function getMyCreeps(): Creep[] {
 export function getCreepCountByRole(role: string): number {
   return globalCache.get<number>(`creeps_count_role_${role}`, {
     namespace: NAMESPACE,
-    ttl: TTL_ONE_TICK,
+    ttl: TTL_SAME_TICK,
     compute: () => Object.values(Game.creeps).filter(c => (c.memory as any).role === role).length
   }) ?? 0;
 }
@@ -82,7 +82,7 @@ export function getCreepCountByRole(role: string): number {
 export function getCreepCountByRoom(roomName: string): number {
   return globalCache.get<number>(`creeps_count_room_${roomName}`, {
     namespace: NAMESPACE,
-    ttl: TTL_ONE_TICK,
+    ttl: TTL_SAME_TICK,
     compute: () => Object.values(Game.creeps).filter(c => c.room.name === roomName).length
   }) ?? 0;
 }
@@ -93,7 +93,7 @@ export function getCreepCountByRoom(roomName: string): number {
 export function getVisibleRooms(): Room[] {
   return globalCache.get<Room[]>("visibleRooms", {
     namespace: NAMESPACE,
-    ttl: TTL_ONE_TICK,
+    ttl: TTL_SAME_TICK,
     compute: () => Object.values(Game.rooms)
   }) ?? [];
 }

@@ -59,8 +59,8 @@ export const DEFAULT_ADAPTIVE_CONFIG: AdaptiveBudgetConfig = {
   roomScaling: {
     minRooms: 1,
     // Logarithmic scale factor: budget increases with log(rooms)
-    // This ensures smooth scaling from 1 to 100+ rooms
-    scaleFactor: 20, // Higher value = slower scaling (was 10)
+    // This keeps medium and large empires under the intended CPU budget envelope.
+    scaleFactor: 100, // Higher value = slower scaling
     maxMultiplier: 2.5 // Cap at 2.5x base budget even with many rooms (was 3.0)
   },
   bucketMultipliers: {
@@ -79,11 +79,11 @@ export const DEFAULT_ADAPTIVE_CONFIG: AdaptiveBudgetConfig = {
  * Formula: 1 + log(rooms / minRooms) / log(scaleFactor)
  * This provides smooth, sublinear growth as empire expands
  *
- * Examples with scaleFactor=20 (default):
+ * Examples with scaleFactor=100 (default):
  * - 1 room:   1.0x (baseline)
- * - 10 rooms: ~1.8x
- * - 50 rooms: ~1.6x
- * - 100 rooms: ~1.8x
+ * - 10 rooms: ~1.5x
+ * - 50 rooms: ~1.85x
+ * - 100 rooms: ~2.0x
  *
  * @param roomCount - Current number of controlled rooms
  * @param config - Budget configuration

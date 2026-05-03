@@ -298,6 +298,13 @@ describe("EnergyFlowPredictor", () => {
     });
 
     it("should calculate spawning consumption based on RCL", () => {
+      mockRoom.find = (type: FindConstant) => {
+        if (type === FIND_MY_STRUCTURES) {
+          return [{ structureType: STRUCTURE_SPAWN }] as Structure[];
+        }
+        return [];
+      };
+
       const consumption = predictor.calculateEnergyConsumption(mockRoom);
       
       assert.isAbove(consumption.spawning, 0, "Should have spawning consumption");
@@ -447,4 +454,3 @@ describe("EnergyFlowPredictor", () => {
     });
   });
 });
-

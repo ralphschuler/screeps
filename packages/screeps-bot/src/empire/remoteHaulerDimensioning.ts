@@ -14,6 +14,6 @@ export {
   needsMoreHaulers,
   getRecommendedHaulerBody,
   HAULER_TIERS,
+  type RemoteHaulerOptions,
   type RemoteHaulerRequirement
 } from "@ralphschuler/screeps-empire";
-

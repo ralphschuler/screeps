@@ -5,7 +5,7 @@
 import { getOwnedRooms } from "@ralphschuler/screeps-cache";
 import { heapCache, memoryManager } from "@ralphschuler/screeps-memory";
 import { initializePheromoneEventHandlers, pheromoneManager } from "@ralphschuler/screeps-pheromones";
-import { clearRoomCaches, runPowerRole } from "@ralphschuler/screeps-roles";
+import { clearRoomCaches, runPowerRole, setRemoteMoveHandler } from "@ralphschuler/screeps-roles";
 import { SS2TerminalComms } from "@ralphschuler/screeps-standards";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { runScheduledTasks } from "@ralphschuler/screeps-utils";
@@ -23,7 +23,7 @@ import { clearTargetAssignments as clearEconomyAssignments } from "./economy/tar
 import { shardManager } from "./intershard/shardManager";
 import { runSpawnManager } from "./logic/spawn";
 import { initializePathCacheEvents } from "./utils/pathfinding";
-import { initializeRemotePathScheduler } from "./utils/remote-mining";
+import { initializeRemotePathScheduler, moveToWithRemoteCache } from "./utils/remote-mining";
 
 // =============================================================================
 // Visualization Setup
@@ -117,6 +117,7 @@ function initializeSystems(): void {
 
   // Initialize remote path cache scheduler for periodic precaching
   initializeRemotePathScheduler();
+  setRemoteMoveHandler(moveToWithRemoteCache);
 
   // Initialize heap cache system for memory persistence
   heapCache.initialize();
@@ -204,11 +205,11 @@ export function loop(): void {
   // Start stats collection for this tick
   unifiedStats.startTick();
 
-  // Log bucket mode for monitoring (informational only - does not affect execution)
-  // Per BUCKET_MANAGEMENT.md: bucket mode is informational only and does not affect CPU limits or which processes run
+  // Log bucket mode for monitoring. Low/critical bucket now defers optional work
+  // through per-process minBucket requirements and explicit guards below.
   const bucketMode = kernel.getBucketMode();
   if (bucketMode === "critical" && Game.time % 10 === 0) {
-    logger.warn(`CRITICAL: CPU bucket at ${Game.cpu.bucket}, continuing normal processing`, {
+    logger.warn(`CRITICAL: CPU bucket at ${Game.cpu.bucket}, running core work and deferring optional work`, {
       subsystem: "SwarmBot"
     });
   }
@@ -284,8 +285,8 @@ export function loop(): void {
     });
   }
 
-  // Run visualizations (if enabled and budget allows)
-  if (kernel.hasCpuBudget()) {
+  // Run visualizations only when bucket health is normal/high.
+  if (kernel.hasCpuBudget() && bucketMode !== "low" && bucketMode !== "critical") {
     unifiedStats.measureSubsystem("visualizations", () => {
       runVisualizations();
     });
@@ -294,9 +295,8 @@ export function loop(): void {
   // Finalize movement system (traffic reconciliation)
   finalizeMovement();
 
-  // Run scheduled tasks (computation spreading)
-  // This runs low-priority tasks when CPU budget allows
-  if (kernel.hasCpuBudget()) {
+  // Run scheduled tasks (computation spreading) when bucket health allows optional work.
+  if (kernel.hasCpuBudget() && bucketMode !== "low" && bucketMode !== "critical") {
     unifiedStats.measureSubsystem("scheduledTasks", () => {
       const availableCpu = Math.max(0, Game.cpu.limit - Game.cpu.getUsed());
       runScheduledTasks(availableCpu);

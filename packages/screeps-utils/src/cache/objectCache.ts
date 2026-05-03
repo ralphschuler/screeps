@@ -148,12 +148,17 @@ function getTTL(
   }
 
   // Check for sources and minerals
-  if (roomObj instanceof Source || roomObj instanceof Mineral) {
+  if (
+    (typeof Source !== "undefined" && roomObj instanceof Source) ||
+    (typeof Mineral !== "undefined" && roomObj instanceof Mineral) ||
+    "energy" in obj ||
+    "mineralAmount" in obj
+  ) {
     return RESOURCE_TTL;
   }
 
   // Check for creeps
-  if (roomObj instanceof Creep) {
+  if (typeof Creep !== "undefined" && roomObj instanceof Creep) {
     return CREEP_TTL;
   }
 

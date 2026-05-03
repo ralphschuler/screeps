@@ -15,8 +15,11 @@ describe("Logger JSON Output", () => {
     // Configure logger for testing
     configureLogger({
       level: LogLevel.DEBUG,
-      cpuLogging: false
+      cpuLogging: false,
+      enableBatching: false
     });
+    logger.flush();
+    consoleLogStub.resetHistory();
   });
 
   afterEach(() => {
@@ -281,6 +284,8 @@ describe("Logger Batching", () => {
       enableBatching: true,
       maxBatchSize: TEST_BATCH_SIZE
     });
+    logger.flush();
+    consoleLogStub.resetHistory();
 
     (global as any).Game = { time: 12345 };
   });
@@ -406,4 +411,3 @@ describe("Logger Batching", () => {
     expect(msg2.type).to.equal("log");
   });
 });
-

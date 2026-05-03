@@ -30,6 +30,22 @@ function escapeHtml(str: string | undefined): string {
     .replace(/'/g, "&#39;");
 }
 
+function formatUnknownError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.stack ?? error.message;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
 /**
  * Source map data structure (simplified)
  * Based on Source Map V3 specification
@@ -176,16 +192,18 @@ export class ErrorMapper {
       try {
         loop();
       } catch (e) {
-        if (e instanceof Error) {
-          if ("sim" in Game.rooms) {
-            const message = `Source maps don't work in the simulator - displaying original error`;
-            console.log(`<span style='color:red'>${message}<br>${escapeHtml(e.stack)}</span>`);
-          } else {
-            console.log(`<span style='color:red'>${escapeHtml(this.sourceMappedStackTrace(e))}</span>`);
-          }
-        } else {
-          // can't handle it
+        if (e == null) {
           throw e;
+        }
+
+        if ("sim" in Game.rooms) {
+          const message = `Source maps don't work in the simulator - displaying original error`;
+          console.log(`<span style='color:red'>${message}<br>${escapeHtml(formatUnknownError(e))}</span>`);
+        } else {
+          const mappedError = e instanceof Error
+            ? this.sourceMappedStackTrace(e)
+            : this.sourceMappedStackTrace(formatUnknownError(e));
+          console.log(`<span style='color:red'>${escapeHtml(mappedError)}</span>`);
         }
       }
     };

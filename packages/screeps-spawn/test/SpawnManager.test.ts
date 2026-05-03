@@ -393,7 +393,7 @@ describe("SpawnManager", () => {
         }
       };
 
-      const priority = spawnManager.calculatePriority("defender", 0, highDefenseState);
+      const priority = spawnManager.calculatePriority("guard", 0, highDefenseState);
       expect(priority).to.be.greaterThan(0);
     });
 

@@ -65,11 +65,25 @@ describe("remote hauler dimensioning", () => {
 
   describe("calculateRemoteHaulerRequirement", () => {
     it("should calculate minimum haulers for short distance", () => {
-      const result = calculateRemoteHaulerRequirement("E1N1", "E2N1", 2, 800);
+      const result = calculateRemoteHaulerRequirement("E1N1", "E2N1", 2, 800, { reserved: true });
       
       assert.isAtLeast(result.minHaulers, 1, "Should need at least 1 hauler");
       assert.equal(result.distance, 1, "Should calculate correct distance");
       assert.equal(result.energyPerTick, 20, "Should calculate energy per tick (2 sources * 10)");
+    });
+
+    it("should use unreserved source output by default", () => {
+      const result = calculateRemoteHaulerRequirement("E1N1", "E2N1", 2, 800);
+
+      assert.equal(result.energyPerTick, 10, "Unreserved remote output should be 1500 energy per source per 300 ticks");
+    });
+
+    it("should prefer cached path length when available", () => {
+      const estimated = calculateRemoteHaulerRequirement("E1N1", "E2N1", 2, 800);
+      const cachedPath = calculateRemoteHaulerRequirement("E1N1", "E2N1", 2, 800, { pathLength: 40 });
+
+      assert.isBelow(cachedPath.roundTripTicks, estimated.roundTripTicks, "Cached path length should override room-distance estimate");
+      assert.equal(cachedPath.roundTripTicks, 80, "Path length is one-way and should be doubled for round trip");
     });
 
     it("should scale haulers with distance", () => {
@@ -173,14 +187,18 @@ describe("remote hauler dimensioning", () => {
       assert.isAtLeast(result.recommendedHaulers, 2, "Long distance should need multiple haulers");
     });
 
-    it("should cap recommended haulers reasonably", () => {
+    it("should not hide unprofitable long-route hauler needs behind a fixed cap", () => {
       const result = calculateRemoteHaulerRequirement("E1N1", "E10N1", 3, 2400);
       
-      // Even for very long distances, should cap at reasonable limit (sources * 2)
-      assert.isAtMost(
+      assert.isAtLeast(
         result.recommendedHaulers,
-        result.energyPerTick / 10 * 2,
-        "Should cap haulers at reasonable limit"
+        result.minHaulers,
+        "Recommended haulers should preserve the true minimum requirement"
+      );
+      assert.isAbove(
+        result.recommendedHaulers,
+        3 * 2,
+        "Very long remotes should expose bad economics instead of being capped"
       );
     });
   });

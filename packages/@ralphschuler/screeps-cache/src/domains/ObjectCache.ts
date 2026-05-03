@@ -24,11 +24,16 @@ function getTTL(obj: any): number {
     return STRUCTURE_TTL;
   }
   
-  if (obj instanceof Source || obj instanceof Mineral) {
+  if (
+    (typeof Source !== "undefined" && obj instanceof Source) ||
+    (typeof Mineral !== "undefined" && obj instanceof Mineral) ||
+    'energy' in obj ||
+    'mineralAmount' in obj
+  ) {
     return RESOURCE_TTL;
   }
   
-  if (obj instanceof Creep) {
+  if (typeof Creep !== "undefined" && obj instanceof Creep) {
     return CREEP_TTL;
   }
   
@@ -44,23 +49,16 @@ export function getCachedObjectById<T extends _HasId>(
 ): T | null {
   if (!id) return null;
 
-  return globalCache.get<T | null>(id, {
+  const cached = globalCache.get<T | null>(id, { namespace: NAMESPACE });
+  if (cached !== undefined) return cached;
+
+  const obj = Game.getObjectById(id);
+  globalCache.set(id, obj, {
     namespace: NAMESPACE,
-    ttl: ttl ?? DEFAULT_TTL, // Will use automatic TTL if not provided via compute callback
-    compute: () => {
-      const obj = Game.getObjectById(id);
-      // Use automatic TTL determination if ttl was not explicitly provided
-      if (ttl === undefined && obj) {
-        const autoTTL = getTTL(obj);
-        // Store with automatic TTL by updating the cache entry
-        globalCache.set(id, obj, {
-          namespace: NAMESPACE,
-          ttl: autoTTL
-        });
-      }
-      return obj;
-    }
-  }) ?? null;
+    ttl: ttl ?? getTTL(obj)
+  });
+
+  return obj ?? null;
 }
 
 /**

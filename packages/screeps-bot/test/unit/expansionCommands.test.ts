@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { expansionCommands } from "../../src/empire/expansionCommands";
+import { heapCache } from "../../src/memory/manager";
 
 // Mock the global Game object
 declare const global: { Game: typeof Game; Memory: typeof Memory };
@@ -23,9 +24,11 @@ describe("expansion console commands", () => {
     // Setup minimal Memory mock
     // @ts-ignore test setup
     global.Memory = {
-      overmind: {
+      empire: {
         roomsSeen: {},
         roomIntel: {},
+        knownRooms: {},
+        clusters: [],
         claimQueue: [
           {
             roomName: "W1N1",
@@ -45,6 +48,7 @@ describe("expansion console commands", () => {
         warTargets: [],
         nukeCandidates: [],
         powerBanks: [],
+        ownedRooms: {},
         objectives: {
           targetPowerLevel: 0,
           targetRoomCount: 1,
@@ -54,6 +58,8 @@ describe("expansion console commands", () => {
         lastRun: 0
       }
     };
+
+    heapCache.clear();
   });
 
   describe("expansion.status()", () => {

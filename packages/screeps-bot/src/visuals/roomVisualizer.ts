@@ -411,7 +411,7 @@ export class RoomVisualizer {
    */
   private calculateCreepThreat(creep: Creep): number {
     let threat = 0;
-    for (const part of creep.body) {
+    for (const part of creep.body ?? []) {
       if (!part.hits) continue;
       switch (part.type) {
         case ATTACK:

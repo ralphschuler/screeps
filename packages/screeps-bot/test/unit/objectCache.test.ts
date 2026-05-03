@@ -133,10 +133,10 @@ describe("objectCache", () => {
 
     it("should cache sources for 5 ticks", () => {
       // Mock Source object
-      const mockSource = { id: "test-source-1", energy: 3000 };
+      let fetchCount = 0;
       // @ts-ignore: Modifying test environment
       global.Game.getObjectById = (id: Id<any>) => {
-        if (id === "test-source-1") return mockSource;
+        if (id === "test-source-1") return { id, energy: 3000, fetchCount: ++fetchCount };
         return null;
       };
       
@@ -213,7 +213,7 @@ describe("objectCache", () => {
       getCachedObjectById("test-storage-1" as Id<any>);
       
       const stats = getCacheStatistics();
-      assert.equal(stats.hitRate, 75); // 3/4 = 75%
+      assert.equal(stats.hitRate, 0.75); // 3/4 = 75%
     });
 
     it("should calculate CPU savings", () => {

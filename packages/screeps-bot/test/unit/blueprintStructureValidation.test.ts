@@ -11,7 +11,8 @@ import {
   CORE_COLONY_BLUEPRINT,
   ECONOMIC_MATURITY_BLUEPRINT,
   WAR_READY_BLUEPRINT,
-  COMPACT_BUNKER_BLUEPRINT
+  COMPACT_BUNKER_BLUEPRINT,
+  getStructuresForRCL
 } from "../../src/layouts/blueprints/index";
 
 describe("Blueprint Structure Validation (Post-Refactoring)", () => {
@@ -43,8 +44,8 @@ describe("Blueprint Structure Validation (Post-Refactoring)", () => {
     it("should have correct structure counts", () => {
       const blueprint = CORE_COLONY_BLUEPRINT;
       
-      // 1 spawn + 1 tower + 1 storage + 19 extensions = 22 structures
-      assert.equal(blueprint.structures.length, 22, "Should have 22 total structures");
+      // 1 spawn + 1 tower + 1 storage + 20 extensions = 23 structures
+      assert.equal(blueprint.structures.length, 23, "Should have 23 total structures");
       
       const spawns = blueprint.structures.filter(s => s.structureType === STRUCTURE_SPAWN);
       assert.equal(spawns.length, 1, "Should have 1 spawn");
@@ -53,14 +54,14 @@ describe("Blueprint Structure Validation (Post-Refactoring)", () => {
       assert.equal(towers.length, 1, "Should have 1 tower");
       
       const extensions = blueprint.structures.filter(s => s.structureType === STRUCTURE_EXTENSION);
-      assert.equal(extensions.length, 19, "Should have 19 extensions");
+      assert.equal(extensions.length, 20, "Should have 20 extensions");
     });
     
     it("should have roads including spawn ring and connectors", () => {
       const roads = CORE_COLONY_BLUEPRINT.roads;
       
-      // 8 spawn ring + 8 diagonal + 4 radial + 3 storage access = 23 roads
-      assert.equal(roads.length, 23, "Should have 23 total roads");
+      // 8 spawn ring + 8 diagonal + 12 radial + 3 storage access = 31 roads
+      assert.equal(roads.length, 31, "Should have 31 total roads");
     });
   });
   
@@ -142,6 +143,7 @@ describe("Blueprint Structure Validation (Post-Refactoring)", () => {
   describe("Compact Bunker Blueprint", () => {
     it("should have correct structure counts for RCL 8", () => {
       const blueprint = COMPACT_BUNKER_BLUEPRINT;
+      const rcl8Structures = getStructuresForRCL(blueprint, 8);
       
       // 3 spawns + 6 towers + storage + terminal + factory + 10 labs + 60 extensions + special structures + 6 links
       const spawns = blueprint.structures.filter(s => s.structureType === STRUCTURE_SPAWN);
@@ -153,7 +155,7 @@ describe("Blueprint Structure Validation (Post-Refactoring)", () => {
       const labs = blueprint.structures.filter(s => s.structureType === STRUCTURE_LAB);
       assert.equal(labs.length, 10, "Should have 10 labs");
       
-      const extensions = blueprint.structures.filter(s => s.structureType === STRUCTURE_EXTENSION);
+      const extensions = rcl8Structures.filter(s => s.structureType === STRUCTURE_EXTENSION);
       assert.equal(extensions.length, 60, "Should have 60 extensions (maximum)");
     });
     

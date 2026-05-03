@@ -7,6 +7,7 @@ import {
   determineNextRole,
   countCreepsByRole
 } from "../../src/logic/spawn";
+import { clearRoomFindCache } from "@ralphschuler/screeps-cache";
 import type { SwarmState } from "../../src/memory/schemas";
 import { memoryManager } from "../../src/memory/manager";
 
@@ -125,6 +126,7 @@ describe("spawn bootstrap system", () => {
         progressTotal: 1000000
       }
     } as unknown as typeof Game;
+    clearRoomFindCache();
 
     // Mock memoryManager.getOvermind() for claimer tests
     (memoryManager as any).getOvermind = () => ({
@@ -353,7 +355,8 @@ describe("spawn bootstrap system", () => {
       createMockCreeps({
         larvaWorker: 1,
         harvester: 1,
-        hauler: 1
+        hauler: 1,
+        upgrader: 1
       });
       const room = createMockRoom("E1N1", false, 1); // Single source room
       global.Game.rooms["E1N1"] = room;
@@ -397,7 +400,7 @@ describe("spawn bootstrap system", () => {
         harvester: 1,
         hauler: 1,
         upgrader: 1
-      });
+      }, "E2N2");
       const twoSourceRoom = createMockRoom("E2N2", false, 2);
       global.Game.rooms["E2N2"] = twoSourceRoom;
       const result2 = isBootstrapMode("E2N2", twoSourceRoom);
@@ -409,9 +412,7 @@ describe("spawn bootstrap system", () => {
         harvester: 2,
         hauler: 1,
         upgrader: 1
-      });
-      global.Game.creeps["harvester_0"].memory.homeRoom = "E2N2";
-      global.Game.creeps["harvester_1"].memory.homeRoom = "E2N2";
+      }, "E2N2");
       const result3 = isBootstrapMode("E2N2", twoSourceRoom);
       assert.isFalse(result3, "2-source room should exit bootstrap with 2 harvesters");
     });

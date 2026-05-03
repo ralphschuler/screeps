@@ -68,11 +68,19 @@ export class MemoryMonitor {
   private lastCheckTick = 0;
   private lastStatus: MemoryStatus = "normal";
 
+  private getRawMemorySize(): number {
+    const rawMemory = (globalThis as unknown as { RawMemory?: { get?: () => string } }).RawMemory;
+    if (typeof rawMemory?.get === "function") {
+      return rawMemory.get().length;
+    }
+    return JSON.stringify(Memory ?? {}).length;
+  }
+
   /**
    * Check memory usage and return status
    */
   public checkMemoryUsage(): MemoryStats {
-    const used = RawMemory.get().length;
+    const used = this.getRawMemorySize();
     const percentage = used / MEMORY_LIMIT_BYTES;
     
     let status: MemoryStatus = "normal";
@@ -126,7 +134,7 @@ export class MemoryMonitor {
     const clustersSize = this.getObjectSize(mem.clusters);
     const ss2Size = this.getObjectSize(mem.ss2PacketQueue);
 
-    const total = RawMemory.get().length;
+    const total = this.getRawMemorySize();
     const accounted = empireSize + roomsSize + creepsSize + clustersSize + ss2Size;
     const other = Math.max(0, total - accounted);
 

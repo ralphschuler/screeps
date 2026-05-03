@@ -30,16 +30,42 @@
 (global as any).RESOURCE_HYDROXIDE = 'OH' as ResourceConstant;
 (global as any).RESOURCE_ZYNTHIUM_KEANITE = 'ZK' as ResourceConstant;
 (global as any).RESOURCE_UTRIUM_LEMERGITE = 'UL' as ResourceConstant;
+(global as any).RESOURCE_UTRIUM_HYDRIDE = 'UH' as ResourceConstant;
+(global as any).RESOURCE_UTRIUM_OXIDE = 'UO' as ResourceConstant;
+(global as any).RESOURCE_KEANIUM_HYDRIDE = 'KH' as ResourceConstant;
+(global as any).RESOURCE_KEANIUM_OXIDE = 'KO' as ResourceConstant;
+(global as any).RESOURCE_LEMERGIUM_HYDRIDE = 'LH' as ResourceConstant;
+(global as any).RESOURCE_LEMERGIUM_OXIDE = 'LO' as ResourceConstant;
+(global as any).RESOURCE_ZYNTHIUM_HYDRIDE = 'ZH' as ResourceConstant;
+(global as any).RESOURCE_ZYNTHIUM_OXIDE = 'ZO' as ResourceConstant;
 (global as any).RESOURCE_GHODIUM_HYDRIDE = 'GH' as ResourceConstant;
 (global as any).RESOURCE_GHODIUM_OXIDE = 'GO' as ResourceConstant;
+(global as any).RESOURCE_UTRIUM_ACID = 'UH2O' as ResourceConstant;
+(global as any).RESOURCE_UTRIUM_ALKALIDE = 'UHO2' as ResourceConstant;
+(global as any).RESOURCE_KEANIUM_ACID = 'KH2O' as ResourceConstant;
+(global as any).RESOURCE_KEANIUM_ALKALIDE = 'KHO2' as ResourceConstant;
+(global as any).RESOURCE_LEMERGIUM_ACID = 'LH2O' as ResourceConstant;
+(global as any).RESOURCE_LEMERGIUM_ALKALIDE = 'LHO2' as ResourceConstant;
+(global as any).RESOURCE_ZYNTHIUM_ACID = 'ZH2O' as ResourceConstant;
+(global as any).RESOURCE_ZYNTHIUM_ALKALIDE = 'ZHO2' as ResourceConstant;
 (global as any).RESOURCE_GHODIUM_ACID = 'GH2O' as ResourceConstant;
 (global as any).RESOURCE_GHODIUM_ALKALIDE = 'GHO2' as ResourceConstant;
+(global as any).RESOURCE_CATALYZED_UTRIUM_ACID = 'XUH2O' as ResourceConstant;
+(global as any).RESOURCE_CATALYZED_UTRIUM_ALKALIDE = 'XUHO2' as ResourceConstant;
+(global as any).RESOURCE_CATALYZED_KEANIUM_ACID = 'XKH2O' as ResourceConstant;
+(global as any).RESOURCE_CATALYZED_KEANIUM_ALKALIDE = 'XKHO2' as ResourceConstant;
+(global as any).RESOURCE_CATALYZED_LEMERGIUM_ACID = 'XLH2O' as ResourceConstant;
+(global as any).RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE = 'XLHO2' as ResourceConstant;
+(global as any).RESOURCE_CATALYZED_ZYNTHIUM_ACID = 'XZH2O' as ResourceConstant;
+(global as any).RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE = 'XZHO2' as ResourceConstant;
+(global as any).RESOURCE_CATALYZED_GHODIUM_ACID = 'XGH2O' as ResourceConstant;
+(global as any).RESOURCE_CATALYZED_GHODIUM_ALKALIDE = 'XGHO2' as ResourceConstant;
 
 // Structure constants
 (global as any).STRUCTURE_LAB = 'lab' as StructureConstant;
 
 // Find constants
-(global as any).FIND_MY_STRUCTURES = 104;
+(global as any).FIND_MY_STRUCTURES = 108;
 (global as any).FIND_STRUCTURES = 107;
 
 // Game object mock

@@ -161,7 +161,7 @@ export class VisualizationManager {
    * Use console commands to disable layers
    */
   public updateFromFlags(): void {
-    const flags = Game.flags;
+    const flags = Game.flags ?? {};
     const flagLayers: Record<string, VisualizationLayer> = {
       viz_pheromones: VisualizationLayer.Pheromones,
       viz_paths: VisualizationLayer.Paths,

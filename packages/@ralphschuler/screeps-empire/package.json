@@ -7,7 +7,7 @@
   "private": false,
   "scripts": {
     "build": "tsc",
-    "test": "echo 'TODO: Add tests with proper mocha/ts-node configuration' && exit 0",
+    "test": "mocha test/**/*.test.ts",
     "prepublishOnly": "npm run build",
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" --fix"

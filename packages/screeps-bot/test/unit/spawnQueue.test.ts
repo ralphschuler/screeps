@@ -10,6 +10,7 @@ describe("SpawnQueue", () => {
       creeps: {},
       getObjectById: () => null
     };
+    spawnQueue.clearQueue("W1N1");
   });
 
   afterEach(() => {

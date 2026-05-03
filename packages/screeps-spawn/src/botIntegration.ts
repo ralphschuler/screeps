@@ -5,6 +5,12 @@
  * The actual bot (screeps-bot) should provide concrete implementations of these.
  */
 
+import {
+  calculateRemoteHaulerRequirement as calculateEmpireRemoteHaulerRequirement,
+  type RemoteHaulerOptions,
+  type RemoteHaulerRequirement as EmpireRemoteHaulerRequirement
+} from "@ralphschuler/screeps-empire";
+
 /**
  * Cross-shard transfer request
  */
@@ -34,16 +40,7 @@ export interface PowerBankSpawnRequests {
   powerCarriers: number;
 }
 
-/**
- * Remote hauler requirement calculation result
- */
-export interface RemoteHaulerRequirement {
-  minHaulers: number;
-  recommendedHaulers: number;
-  distance: number;
-  roundTripTicks: number;
-  energyPerTick: number;
-}
+export type RemoteHaulerRequirement = EmpireRemoteHaulerRequirement;
 
 /**
  * Resource transfer coordinator interface
@@ -143,28 +140,12 @@ export const powerBankHarvestingManager: IPowerBankHarvestingManager = {
   })
 };
 
-/**
- * Calculate remote hauler requirement
- * Stub implementation - actual bot should provide better logic
- */
 export function calculateRemoteHaulerRequirement(
   homeRoom: string,
   targetRoom: string,
   sourceCount: number,
-  availableEnergy: number
+  availableEnergy: number,
+  options?: RemoteHaulerOptions
 ): RemoteHaulerRequirement {
-  const distance = Game.map.getRoomLinearDistance(homeRoom, targetRoom);
-  const roundTripTicks = Math.max(50, distance * 100);
-  const energyPerTick = sourceCount * 10;
-  const carryParts = Math.max(4, Math.min(16, Math.floor(availableEnergy / 100)));
-  const haulerCapacity = carryParts * CARRY_CAPACITY;
-  const minHaulers = Math.max(1, Math.ceil((energyPerTick * roundTripTicks) / haulerCapacity));
-
-  return {
-    minHaulers,
-    recommendedHaulers: Math.min(sourceCount * 2, minHaulers + 1),
-    distance,
-    roundTripTicks,
-    energyPerTick
-  };
+  return calculateEmpireRemoteHaulerRequirement(homeRoom, targetRoom, sourceCount, availableEnergy, options);
 }

@@ -71,11 +71,7 @@ export function buildKernelConfigFromCpu(cpuConfig: CPUConfig) {
     lowBucketThreshold: cpuConfig.bucketThresholds.lowMode,
     highBucketThreshold: cpuConfig.bucketThresholds.highMode,
     criticalBucketThreshold,
-    // NOTE: Framework BASE_CONFIG uses targetCpuUsage = 0.98 to minimize CPU waste.
-    // We intentionally run slightly lower at 0.95 to align with the monolith's strict
-    // tick-budget policy in ROADMAP.md and to leave extra headroom for spikey ticks
-    // and finalization work. This is a deliberate divergence from the framework default.
-    targetCpuUsage: 0.95, // Target 95% of CPU limit (more conservative than framework default)
+    targetCpuUsage: 0.98, // Target 98% of CPU limit while keeping a percentage reserve
     reservedCpuFraction: 0.02, // Reserve 2% for finalization
     enableStats: true,
     statsLogInterval: 100,
@@ -83,14 +79,13 @@ export function buildKernelConfigFromCpu(cpuConfig: CPUConfig) {
     frequencyMinBucket: {
       high: 0, // No bucket requirement
       medium: 0, // No bucket requirement
-      low: 0 // No bucket requirement
+      low: cpuConfig.bucketThresholds.lowMode // Defer optional/background work below low bucket
     },
     frequencyCpuBudgets,
     budgetWarningThreshold: 1.5, // Warn when process exceeds budget by 50%
     budgetWarningInterval: 100, // Log warnings every 100 ticks
-    // Explicitly configure adaptive budgets instead of relying on framework defaults.
-    // The monolith currently uses fixed per-frequency CPU budgets.
-    enableAdaptiveBudgets: false,
+    // Keep process budgets adaptive so the kernel scales with room count and bucket health.
+    enableAdaptiveBudgets: true,
     adaptiveBudgetConfig: DEFAULT_ADAPTIVE_CONFIG, // Use framework defaults for adaptive config
     enablePriorityDecay: true, // Use framework's priority decay feature
     priorityDecayRate: 1, // Framework default (processes gain 1 priority per CPU skip)

@@ -30,7 +30,7 @@ export interface CrossShardIntelConfig {
 
 const DEFAULT_CONFIG: CrossShardIntelConfig = {
   updateInterval: 50,
-  minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
+  minBucket: 2000,
   maxCpuBudget: 0.01 // 1% of CPU limit
 };
 
@@ -53,7 +53,7 @@ export class CrossShardIntelCoordinator {
   @LowFrequencyProcess("empire:crossShardIntel", "Cross-Shard Intel", {
     priority: ProcessPriority.LOW,
     interval: 50,
-    minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
+    minBucket: 2000,
     cpuBudget: 0.01
   })
   public run(): void {

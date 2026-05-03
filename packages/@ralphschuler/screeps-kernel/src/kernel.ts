@@ -244,17 +244,20 @@ function deriveFrequencyIntervals(taskFrequencies: CPUConfig["taskFrequencies"])
 /**
  * Derive frequency min bucket thresholds
  * 
- * REMOVED: All bucket requirements - user regularly depletes bucket and doesn't
- * want minBucket limitations blocking processes. Returns 0 for all frequencies.
+ * Derive bucket requirements by frequency.
+ *
+ * High and medium frequency work is core survival and room control work, so it
+ * can run in all bucket modes. Low frequency work is optional empire/background
+ * work and should wait while the bucket is below the low threshold.
  */
 function deriveFrequencyMinBucket(
-  _bucketThresholds: CPUConfig["bucketThresholds"],
+  bucketThresholds: CPUConfig["bucketThresholds"],
   _highBucketThreshold: number
 ): Record<ProcessFrequency, number> {
   return {
-    high: 0, // No bucket requirement
-    medium: 0, // No bucket requirement
-    low: 0 // No bucket requirement
+    high: 0,
+    medium: 0,
+    low: bucketThresholds.lowMode
   };
 }
 
@@ -343,7 +346,7 @@ export class Kernel {
         throw new Error(`Invalid tickModulo: ${options.tickModulo} (must be >= 0)`);
       }
       
-      if (options.tickOffset !== undefined && options.tickOffset >= options.tickModulo) {
+      if (options.tickModulo > 0 && options.tickOffset !== undefined && options.tickOffset >= options.tickModulo) {
         logger.error(
           `Kernel: Cannot register process "${options.name}" - tickOffset (${options.tickOffset}) must be less than tickModulo (${options.tickModulo})`,
           { subsystem: "Kernel" }
@@ -448,13 +451,13 @@ export class Kernel {
     
     // FEATURE: Periodic bucket status logging for user visibility
     // Log bucket status every 100 ticks to help users monitor bucket health
-    // Bucket mode is informational only - it doesn't affect process execution
     if (Game.time % 100 === 0 && (this.bucketMode === "low" || this.bucketMode === "critical")) {
       const totalProcesses = this.processes.size;
       
       logger.info(
         `Bucket ${this.bucketMode.toUpperCase()} mode: ${bucket}/10000 bucket. ` +
-        `Running all ${totalProcesses} processes normally (bucket mode is informational only)`,
+        `Core work remains enabled; optional processes below their minBucket are deferred. ` +
+        `${totalProcesses} processes registered.`,
         { subsystem: "Kernel" }
       );
     }
@@ -645,13 +648,11 @@ export class Kernel {
   /**
    * Check if process should run this tick
    * 
-   * Processes are only skipped based on:
+   * Processes are skipped based on:
+   * - Minimum bucket requirement for optional work
    * - Tick distribution (tickModulo/tickOffset for distributed execution)
    * - Interval timing (process hasn't reached its next scheduled run)
    * - Suspension state (process is explicitly suspended)
-   * 
-   * Bucket mode no longer affects process execution - the rolling index
-   * and CPU budget checks provide sufficient protection against CPU overuse.
    * 
    * Priority decay ensures that processes skipped due to CPU budget exhaustion
    * will eventually execute by receiving temporary priority boosts.
@@ -660,8 +661,23 @@ export class Kernel {
    * Spread process execution across ticks for more even CPU distribution
    */
   private shouldRunProcess(process: Process): boolean {
+    if (Game.cpu.bucket < process.minBucket) {
+      if (Game.time % 100 === 0) {
+        logger.debug(
+          `Kernel: Process "${process.name}" skipped (bucket: ${Game.cpu.bucket}/${process.minBucket})`,
+          { subsystem: "Kernel" }
+        );
+      }
+      return false;
+    }
+
     // Check if suspended and if suspension has expired
-    if (process.state === "suspended" && process.stats.suspendedUntil !== null) {
+    if (process.state === "suspended") {
+      if (process.stats.suspendedUntil === null) {
+        // Manual suspension: stay paused until resumeProcess is called.
+        return false;
+      }
+
       // Check if suspension period has expired
       if (Game.time >= process.stats.suspendedUntil) {
         // Automatic recovery: resume process
@@ -687,7 +703,9 @@ export class Kernel {
           consecutiveErrors: process.stats.consecutiveErrors
         }, { priority: 50 });
         
-        // Process can now run
+        // Resume state this tick, but wait until the next eligible tick before
+        // executing so a still-broken process does not immediately re-suspend.
+        return false;
       } else {
         // Still suspended
         if (Game.time % 100 === 0) {
@@ -940,8 +958,6 @@ export class Kernel {
         if (process.stats.runCount > 0 && (Game.time - process.stats.lastRunTick) < process.interval) {
           processesSkippedByInterval++;
         }
-        // Note: processesSkippedByBucketMode is no longer incremented as bucket mode
-        // no longer affects process execution
         continue;
       }
 

@@ -16,11 +16,11 @@
  */
 
 import { expect } from "chai";
-import { Kernel, ProcessPriority, buildKernelConfigFromCpu } from "../src/kernel";
-import { getConfig } from "../src/config";
+import { Kernel, ProcessPriority, buildKernelConfigFromCpu } from "../src/kernel.ts";
+import { getConfig } from "../src/config.ts";
 
 describe("Kernel Process Scheduling", () => {
-  let kernel: Kernel;
+  let kernel: InstanceType<typeof Kernel>;
 
   beforeEach(() => {
     // Create fresh kernel for each test
@@ -587,10 +587,18 @@ describe("Kernel Process Scheduling", () => {
       }
       expect(executionCount).to.equal(1); // Still only 1
 
-      // Run once more (suspension expires)
+      // Run once more (suspension expires and process is resumed)
       Game.time++;
       kernel.run();
-      expect(executionCount).to.equal(2); // Should execute again
+      expect(executionCount).to.equal(1);
+      expect(process.state).to.equal("idle");
+      expect(process.stats.suspendedUntil).to.be.null;
+
+      // Resumed processes execute on the next eligible tick, avoiding
+      // same-tick re-entry after automatic recovery.
+      Game.time++;
+      kernel.run();
+      expect(executionCount).to.equal(2);
     });
   });
 

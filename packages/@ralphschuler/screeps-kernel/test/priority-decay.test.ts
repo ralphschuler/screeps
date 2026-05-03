@@ -10,11 +10,11 @@
  */
 
 import { expect } from "chai";
-import { Kernel, ProcessPriority, buildKernelConfigFromCpu } from "../src/kernel";
-import { getConfig } from "../src/config";
+import { Kernel, ProcessPriority, buildKernelConfigFromCpu } from "../src/kernel.ts";
+import { getConfig } from "../src/config.ts";
 
 describe("Priority Decay", () => {
-  let kernel: Kernel;
+  let kernel: InstanceType<typeof Kernel>;
 
   beforeEach(() => {
     // Create fresh kernel for each test with priority decay enabled

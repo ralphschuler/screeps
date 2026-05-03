@@ -7,7 +7,7 @@
  */
 
 import { assert } from "chai";
-import { findCachedClosest, clearClosestCache as clearCache } from "../../src/cache";
+import { findCachedClosest, clearClosestCache as clearCache, globalCache } from "../../src/cache";
 
 // Mock creep memory interface
 interface MockCreepMemory {
@@ -70,6 +70,7 @@ function setupMockGame(time: number): void {
 describe("CachedClosest Race Condition Fix", () => {
   beforeEach(() => {
     setupMockGame(1000);
+    globalCache.clear("closest");
   });
 
   afterEach(() => {
@@ -111,7 +112,14 @@ describe("CachedClosest Race Condition Fix", () => {
     // Creep 1 finds and caches extension 1
     const target1 = findCachedClosest(creep1 as unknown as Creep, targets, "deliver_ext", 10);
     assert.equal(target1?.id, "ext1", "Creep 1 should target extension 1");
-    assert.exists(creep1.memory._ct?.["deliver_ext"], "Creep 1 should have cached target");
+
+    const target1Cached = findCachedClosest(
+      creep1 as unknown as Creep,
+      [extension2!, extension1!] as (RoomObject & _HasId)[],
+      "deliver_ext",
+      10
+    );
+    assert.equal(target1Cached?.id, "ext1", "Creep 1 should use cached target while valid");
 
     // Simulate creep 1 filling extension 1 - remove it from targets array
     targets = [extension2!] as (RoomObject & _HasId)[];
@@ -150,14 +158,25 @@ describe("CachedClosest Race Condition Fix", () => {
 
     // Find and cache target
     findCachedClosest(creep as unknown as Creep, targets, "deliver_ext", 10);
-    assert.exists(creep.memory._ct?.["deliver_ext"], "Cache should exist after find");
+
+    const cachedBeforeClear = findCachedClosest(
+      creep as unknown as Creep,
+      [extension2!, extension1!] as (RoomObject & _HasId)[],
+      "deliver_ext",
+      10
+    );
+    assert.equal(cachedBeforeClear?.id, "ext1", "Cache should return the original target before clear");
 
     // Clear cache
     clearCache(creep as unknown as Creep);
-    assert.notExists(
-      creep.memory._ct,
-      "Cache should be cleared after clearCache() is called"
+
+    const targetAfterClear = findCachedClosest(
+      creep as unknown as Creep,
+      [extension2!, extension1!] as (RoomObject & _HasId)[],
+      "deliver_ext",
+      10
     );
+    assert.equal(targetAfterClear?.id, "ext2", "Cache should be cleared after clearCache() is called");
   });
 
   it("should find new target after clearing specific cache key", () => {
@@ -174,7 +193,7 @@ describe("CachedClosest Race Condition Fix", () => {
 
     const extension1 = Game.getObjectById("ext1" as Id<StructureExtension>);
     const extension2 = Game.getObjectById("ext2" as Id<StructureExtension>);
-    let targets = [extension1!] as (RoomObject & _HasId)[];
+    let targets = [extension1!, extension2!] as (RoomObject & _HasId)[];
 
     // Find and cache extension 1
     const target1 = findCachedClosest(creep as unknown as Creep, targets, "deliver_ext", 10);
@@ -183,8 +202,8 @@ describe("CachedClosest Race Condition Fix", () => {
     // Clear cache for specific key
     clearCache(creep as unknown as Creep, "deliver_ext");
 
-    // Change targets to only extension 2
-    targets = [extension2!] as (RoomObject & _HasId)[];
+    // Put extension 2 first so a stale cache would be visible.
+    targets = [extension2!, extension1!] as (RoomObject & _HasId)[];
 
     // Should find extension 2 now (cache was cleared)
     const target2 = findCachedClosest(creep as unknown as Creep, targets, "deliver_ext", 10);
@@ -215,10 +234,17 @@ describe("CachedClosest Race Condition Fix", () => {
 
     // Cache extension 1 with TTL of 10
     findCachedClosest(creep as unknown as Creep, targets, "deliver_ext", 10);
-    assert.equal(creep.memory._ct?.["deliver_ext"]?.i, "ext1", "Should cache extension 1");
+    const cachedTarget = findCachedClosest(
+      creep as unknown as Creep,
+      [extension2!, extension1!] as (RoomObject & _HasId)[],
+      "deliver_ext",
+      10
+    );
+    assert.equal(cachedTarget?.id, "ext1", "Should cache extension 1");
 
     // Advance time by 5 ticks - cache still valid
     setupMockGame(1005);
+    targets = [extension2!, extension1!] as (RoomObject & _HasId)[];
     const targetStillCached = findCachedClosest(
       creep as unknown as Creep,
       targets,

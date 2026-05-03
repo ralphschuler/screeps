@@ -93,8 +93,15 @@ export function invalidateStructureCache(roomName: string): void {
 
 export function getRoomFindCacheStats() {
   const stats = globalCache.getCacheStats(NAMESPACE);
+  const rooms = new Set<string>();
+
+  for (const key of globalCache.keys(NAMESPACE)) {
+    const [roomName] = key.split(":");
+    if (roomName) rooms.add(roomName);
+  }
+
   return {
-    rooms: 0, // Not tracked separately anymore
+    rooms: rooms.size,
     totalEntries: stats.size,
     hits: stats.hits,
     misses: stats.misses,

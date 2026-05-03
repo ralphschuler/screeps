@@ -205,6 +205,51 @@ const stubs = {
   
   // Stub @ralphschuler scoped packages
   '@ralphschuler/screeps-defense': {
+    NON_AGGRESSION_PACT_PLAYERS: ['TooAngel', 'TedRoastBeef'],
+    isAllyPlayer: (username) => username === 'TooAngel' || username === 'TedRoastBeef',
+    isAllyCreep: (creep) => {
+      const username = creep?.owner?.username;
+      return username === 'TooAngel' || username === 'TedRoastBeef';
+    },
+    isAllyPowerCreep: (powerCreep) => {
+      const username = powerCreep?.owner?.username;
+      return username === 'TooAngel' || username === 'TedRoastBeef';
+    },
+    isAllyStructure: (structure) => {
+      const username = structure?.owner?.username;
+      return username === 'TooAngel' || username === 'TedRoastBeef';
+    },
+    filterAllyCreeps: (creeps) => creeps.filter(creep => {
+      const username = creep?.owner?.username;
+      return username !== 'TooAngel' && username !== 'TedRoastBeef';
+    }),
+    filterAllyPowerCreeps: (powerCreeps) => powerCreeps.filter(powerCreep => {
+      const username = powerCreep?.owner?.username;
+      return username !== 'TooAngel' && username !== 'TedRoastBeef';
+    }),
+    filterAllyStructures: (structures) => structures.filter(structure => {
+      const username = structure?.owner?.username;
+      return username !== 'TooAngel' && username !== 'TedRoastBeef';
+    }),
+    getActualHostileCreeps: (room) => room.find(global.FIND_HOSTILE_CREEPS).filter(creep => {
+      const username = creep?.owner?.username;
+      return username !== 'TooAngel' && username !== 'TedRoastBeef';
+    }),
+    getActualHostilePowerCreeps: (room) => room.find(global.FIND_HOSTILE_POWER_CREEPS).filter(powerCreep => {
+      const username = powerCreep?.owner?.username;
+      return username !== 'TooAngel' && username !== 'TedRoastBeef';
+    }),
+    getActualHostileStructures: (room) => room.find(global.FIND_HOSTILE_STRUCTURES).filter(structure => {
+      const username = structure?.owner?.username;
+      return username !== 'TooAngel' && username !== 'TedRoastBeef';
+    }),
+    hasActualHostiles: (room) => {
+      const hostiles = room.find(global.FIND_HOSTILE_CREEPS).filter(creep => {
+        const username = creep?.owner?.username;
+        return username !== 'TooAngel' && username !== 'TedRoastBeef';
+      });
+      return hostiles.length > 0;
+    },
     ThreatLevel: {},
     TowerManager: class {},
     RampartManager: class {},
@@ -236,13 +281,6 @@ const stubs = {
   '@ralphschuler/screeps-chemistry': {
     LabManager: class {},
     ReactionPlanner: class {}
-  },
-  
-  '@ralphschuler/screeps-utils': {
-    Logger: class {},
-    ErrorMapper: {
-      wrapLoop: (fn) => fn
-    }
   },
   
   '@ralphschuler/screeps-kernel': {

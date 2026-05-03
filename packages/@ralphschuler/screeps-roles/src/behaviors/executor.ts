@@ -23,7 +23,7 @@
  * traveling back to the home room when other valid targets may be available nearby.
  */
 
-import type { CreepAction, CreepContext } from "./types";
+import type { CreepAction, CreepContext, RemoteMoveRouteType } from "./types";
 import { 
   moveTo,
   clearCachedPath,
@@ -36,6 +36,20 @@ import { applyOpportunisticActions } from "../economy/opportunisticActions";
 import { getCollectionPoint } from "../utils/common";
 
 const logger = createLogger("ActionExecutor");
+
+type RemoteMoveTarget = RoomPosition | RoomObject | { pos: RoomPosition; range?: number };
+export type RemoteMoveHandler = (
+  creep: Creep,
+  target: RemoteMoveTarget,
+  routeType: RemoteMoveRouteType,
+  options?: MoveToOpts
+) => ScreepsReturnCode;
+
+let remoteMoveHandler: RemoteMoveHandler | undefined;
+
+export function setRemoteMoveHandler(handler: RemoteMoveHandler | undefined): void {
+  remoteMoveHandler = handler;
+}
 
 /**
  * Path visualization colors for different action types.
@@ -283,6 +297,36 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
       break;
     }
 
+    case "remoteMoveTo": {
+      const moveResult = executeRemoteMove(
+        creep,
+        optimizedAction.target,
+        optimizedAction.routeType,
+        { visualizePathStyle: { stroke: PATH_COLORS.move } }
+      );
+      if (moveResult === ERR_NO_PATH) {
+        shouldClearState = true;
+      }
+      break;
+    }
+
+    case "remoteMoveToRoom": {
+      const targetPos = new RoomPosition(25, 25, optimizedAction.roomName);
+      const moveResult = executeRemoteMove(
+        creep,
+        { pos: targetPos, range: 20 },
+        optimizedAction.routeType,
+        {
+          visualizePathStyle: { stroke: PATH_COLORS.move },
+          maxRooms: 16
+        }
+      );
+      if (moveResult === ERR_NO_PATH) {
+        shouldClearState = true;
+      }
+      break;
+    }
+
     case "flee": {
       // Convert positions to MoveTargets with range
       const fleeTargets = optimizedAction.from.map(pos => ({ pos, range: 10 }));
@@ -379,6 +423,31 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
 
   // Update working state based on carry capacity
   updateWorkingState(ctx);
+}
+
+function executeRemoteMove(
+  creep: Creep,
+  target: RemoteMoveTarget,
+  routeType: RemoteMoveRouteType,
+  options?: MoveToOpts
+): ScreepsReturnCode {
+  if (!remoteMoveHandler) {
+    return moveTo(creep, target, options);
+  }
+
+  try {
+    return remoteMoveHandler(creep, target, routeType, options);
+  } catch (err) {
+    logger.warn("Remote movement handler failed; falling back to default movement", {
+      room: creep.pos.roomName,
+      creep: creep.name,
+      meta: {
+        routeType,
+        error: err instanceof Error ? err.message : String(err)
+      }
+    });
+    return moveTo(creep, target, options);
+  }
 }
 
 /**

@@ -359,7 +359,7 @@ export function remoteGuard(ctx: CreepContext): CreepAction {
   if (!mem.targetRoom) {
     // No target room - return to home
     if (ctx.creep.room.name !== ctx.homeRoom) {
-      return { type: "moveToRoom", roomName: ctx.homeRoom };
+      return { type: "remoteMoveToRoom", roomName: ctx.homeRoom, routeType: "guard" };
     }
     // In home room with no assignment - patrol for home defense
     const waypoints = getPatrolWaypoints(ctx.room);
@@ -372,7 +372,7 @@ export function remoteGuard(ctx: CreepContext): CreepAction {
 
   // Move to target room if not there
   if (ctx.creep.room.name !== mem.targetRoom) {
-    return { type: "moveToRoom", roomName: mem.targetRoom };
+    return { type: "remoteMoveToRoom", roomName: mem.targetRoom, routeType: "guard" };
   }
 
   // In target room - check for hostiles
@@ -386,7 +386,7 @@ export function remoteGuard(ctx: CreepContext): CreepAction {
   if (dangerousHostiles.length === 0) {
     // Remote is secure - return to home room
     if (ctx.creep.room.name !== ctx.homeRoom) {
-      return { type: "moveToRoom", roomName: ctx.homeRoom };
+      return { type: "remoteMoveToRoom", roomName: ctx.homeRoom, routeType: "guard" };
     }
     // In home room - patrol for home defense
     const waypoints = getPatrolWaypoints(ctx.room);

@@ -280,7 +280,7 @@ describe("Remote Construction Assignment", () => {
       // Test that the system scales reasonably with many remote rooms
       const remoteRooms: string[] = [];
       for (let i = 0; i < 10; i++) {
-        const remoteName = `W${i}N1`;
+        const remoteName = `W${i + 2}N1`;
         remoteRooms.push(remoteName);
         
         // Make half of them visible with 2 sites each

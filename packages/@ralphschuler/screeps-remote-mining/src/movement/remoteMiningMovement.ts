@@ -29,7 +29,7 @@ export class RemoteMiningMovement {
     private readonly logger: ILogger,
     private readonly pathCache: IPathCache,
     private readonly remotePaths: RemotePathCache,
-    private readonly moveTo: (creep: Creep, target: RoomPosition | { pos: RoomPosition }, options?: MoveToOpts) => ScreepsReturnCode
+    private readonly moveTo: (creep: Creep, target: RoomPosition | { pos: RoomPosition; range?: number }, options?: MoveToOpts) => ScreepsReturnCode
   ) {}
 
   /**
@@ -49,7 +49,7 @@ export class RemoteMiningMovement {
    */
   moveToWithRemoteCache(
     creep: Creep,
-    target: RoomPosition | { pos: RoomPosition },
+    target: RoomPosition | { pos: RoomPosition; range?: number },
     routeType: RemoteRouteType,
     options: MoveToOpts = {}
   ): ScreepsReturnCode {

@@ -7,6 +7,7 @@
 
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { RoomIntel } from "@ralphschuler/screeps-memory";
+import { calculateRemoteHaulerRequirement } from "./remoteHaulerDimensioning";
 
 /**
  * Remote mining configuration constants
@@ -332,40 +333,31 @@ export function calculateRemoteProfitability(
   }
 
   // === Energy Harvest Rate ===
-  // Source output verified via screeps-docs-mcp:
+  // Source output verified via local Screeps type constants when MCP tools were unavailable:
   // - Reserved rooms: 3000 energy per 300 ticks
   // - Non-reserved rooms: 1500 energy per 300 ticks
   // 
-  // ASSUMPTION: We assume reservation since remote mining should include a reserver.
-  // This is a critical assumption - without reservation, actual output would be 50% lower
-  // (1500 energy per 300 ticks), which could make unprofitable remotes that appear profitable.
-  // Callers should ensure reservers are spawned to match this assumption.
-  const sourceOutput = REMOTE_MINING_CONSTANTS.SOURCE_OUTPUT_RESERVED;
+  const hasReservationIntel = Boolean(intel.reserver);
+  const sourceOutput = hasReservationIntel
+    ? REMOTE_MINING_CONSTANTS.SOURCE_OUTPUT_RESERVED
+    : REMOTE_MINING_CONSTANTS.SOURCE_OUTPUT_UNRESERVED;
   const energyPerTick = (sourceOutput / REMOTE_MINING_CONSTANTS.SOURCE_REGEN_TIME) * intel.sources;
 
   // === Carrier (Hauler) Cost Per Tick ===
-  // Body costs verified via screeps-docs-mcp:
+  // Body costs verified via local Screeps type constants when MCP tools were unavailable:
   // WORK: 100, CARRY: 50, MOVE: 50
   // Remote harvester: 5 WORK (500) + 3 MOVE (150) = 650
-  // Remote hauler: 6 CARRY (300) + 3 MOVE (150) = 450
   const harvesterCost = 650;
-  const haulerCost = 450;
-  const totalBodyCost = harvesterCost + haulerCost * intel.sources;
+  const haulerRequirement = calculateRemoteHaulerRequirement(homeRoom, roomName, intel.sources, 800, {
+    reserved: hasReservationIntel
+  });
+  const activeHarvesterCost = harvesterCost * intel.sources;
+  const activeHaulerCost = haulerRequirement.haulerConfig.cost * haulerRequirement.recommendedHaulers;
+  const totalBodyCost = activeHarvesterCost + activeHaulerCost;
 
-  // Trip frequency: haulers make round trips
-  // Round trip time: distance * TICKS_PER_ROOM_DISTANCE * 2 (to remote and back)
-  // NOTE: This is an approximation that doesn't account for:
-  // - Loading/unloading time at containers and storage
-  // - Spawn time before creep becomes operational
-  // - Partial trips at end of creep lifetime
-  // These optimistic assumptions may underestimate actual carrier costs.
-  const oneWayTripTime = distance * REMOTE_MINING_CONSTANTS.TICKS_PER_ROOM_DISTANCE;
-  const roundTripTime = oneWayTripTime * 2;
-  const tripsPerLifetime = REMOTE_MINING_CONSTANTS.CREEP_LIFETIME / roundTripTime;
-  const energyCostPerTrip = totalBodyCost / tripsPerLifetime;
-
-  // Energy cost per tick (amortized over creep lifetime)
-  const carrierCostPerTick = energyCostPerTrip / roundTripTime;
+  // Active hauler count comes from canonical remote-hauler dimensioning so long routes
+  // carry higher ongoing creep replacement costs.
+  const carrierCostPerTick = totalBodyCost / REMOTE_MINING_CONSTANTS.CREEP_LIFETIME;
 
   // === Infrastructure Cost (one-time, amortized over expected lifetime) ===
   // Container: 5000 energy (verified via screeps-docs-mcp)

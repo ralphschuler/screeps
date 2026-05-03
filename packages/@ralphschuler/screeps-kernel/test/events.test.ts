@@ -9,10 +9,10 @@
  */
 
 import { expect } from "chai";
-import { EventBus, EventPriority } from "../src/events";
+import { EventBus, EventPriority } from "../src/events.ts";
 
 describe("EventBus", () => {
-  let eventBus: EventBus;
+  let eventBus: InstanceType<typeof EventBus>;
   let originalBucket: number;
 
   beforeEach(() => {

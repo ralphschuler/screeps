@@ -112,12 +112,9 @@ class CommandRegistry {
 
   /**
    * Get a registered command
-   * Triggers lazy loading if needed
+   * Does not trigger lazy loading; execute/help paths load commands on demand.
    */
   public getCommand(name: string): RegisteredCommand | undefined {
-    if (this.lazyLoadEnabled && !this.commandsRegistered) {
-      this.triggerLazyLoad();
-    }
     return this.commands.get(name);
   }
 
@@ -366,6 +363,14 @@ class CommandRegistry {
     this.commandsRegistered = false;
     this.commandsExposed = false;
     this.registrationCallback = undefined;
+  }
+
+  /**
+   * Clear all registered commands.
+   * Kept as a compatibility alias for older console command setup/tests.
+   */
+  public clear(): void {
+    this.reset();
   }
 }
 

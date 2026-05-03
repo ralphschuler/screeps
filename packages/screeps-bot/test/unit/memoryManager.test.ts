@@ -45,13 +45,19 @@ describe("MemoryManager", () => {
     // @ts-ignore: Accessing mocked memory
     global.Memory.memoryVersion = (currentVersion as number) - 1;
     // @ts-ignore: Accessing mocked memory
-    global.Memory.creeps = { needsMigration: {} };
+    global.Memory.clusters = { alpha: {} };
 
     manager.initialize();
 
     // @ts-ignore: Accessing mocked memory
     expect(global.Memory.memoryVersion).to.equal(currentVersion);
     // @ts-ignore: Accessing mocked memory
-    expect(global.Memory.creeps.needsMigration.version).to.equal(1);
+    expect(global.Memory.clusters.alpha.squads).to.deep.equal([]);
+    // @ts-ignore: Accessing mocked memory
+    expect(global.Memory.clusters.alpha.defenseRequests).to.deep.equal([]);
+    // @ts-ignore: Accessing mocked memory
+    expect(global.Memory.clusters.alpha.resourceRequests).to.deep.equal([]);
+    // @ts-ignore: Accessing mocked memory
+    expect(global.Memory.clusters.alpha.rallyPoints).to.deep.equal([]);
   });
 });

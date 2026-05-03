@@ -88,7 +88,7 @@ export class CacheManager {
     // Check TTL
     if (entry.ttl !== undefined && entry.ttl !== -1) {
       const age = Game.time - entry.cachedAt;
-      if (age > entry.ttl) {
+      if (entry.ttl === 0 ? age > 0 : age >= entry.ttl) {
         // Expired
         store.delete(fullKey);
         stats.evictions++;
@@ -164,6 +164,10 @@ export class CacheManager {
     if (memoryStore) {
       deleted = memoryStore.delete(fullKey) || deleted;
     }
+
+    if (deleted) {
+      this.getStats(namespace).evictions++;
+    }
     
     return deleted;
   }
@@ -197,6 +201,10 @@ export class CacheManager {
       }
     }
 
+    if (count > 0) {
+      this.getStats(namespace).evictions += count;
+    }
+
     return count;
   }
 
@@ -221,6 +229,30 @@ export class CacheManager {
   }
 
   /**
+   * List cache keys. When a namespace is provided, returned keys omit the namespace prefix.
+   */
+  keys(namespace?: string): string[] {
+    if (namespace) {
+      const heapKey = `${namespace}:heap`;
+      const memoryKey = `${namespace}:memory`;
+      const prefix = `${namespace}:`;
+      const keys: string[] = [];
+
+      for (const store of [this.stores.get(heapKey), this.stores.get(memoryKey)]) {
+        if (!store) continue;
+
+        for (const key of store.keys()) {
+          keys.push(key.startsWith(prefix) ? key.substring(prefix.length) : key);
+        }
+      }
+
+      return keys;
+    }
+
+    return Array.from(this.stores.values()).flatMap(store => store.keys());
+  }
+
+  /**
    * Get cache statistics
    */
   getCacheStats(namespace?: string): CacheStats {
@@ -240,7 +272,8 @@ export class CacheManager {
         misses: stats.misses,
         hitRate,
         size: heapSize + memorySize,
-        evictions: stats.evictions
+        evictions: stats.evictions,
+        cpuSaved: stats.hits * 0.001
       };
     } else {
       // Aggregate all namespaces
@@ -267,7 +300,8 @@ export class CacheManager {
         misses: totalMisses,
         hitRate,
         size: totalSize,
-        evictions: totalEvictions
+        evictions: totalEvictions,
+        cpuSaved: totalHits * 0.001
       };
     }
   }
@@ -301,9 +335,16 @@ export class CacheManager {
   cleanup(): number {
     let total = 0;
     
-    for (const store of this.stores.values()) {
+    for (const [storeKey, store] of this.stores.entries()) {
       if (store.cleanup) {
-        total += store.cleanup();
+        const removed = store.cleanup();
+        total += removed;
+
+        if (removed > 0) {
+          const namespaceEnd = storeKey.lastIndexOf(':');
+          const namespace = namespaceEnd === -1 ? storeKey : storeKey.substring(0, namespaceEnd);
+          this.getStats(namespace).evictions += removed;
+        }
       }
     }
     

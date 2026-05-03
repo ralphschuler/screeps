@@ -115,8 +115,11 @@ export function analyzeDefenderNeeds(room: Room): DefenderRequirement {
     result.reasons.push(`${boostedCount} boosted enemies (high threat)`);
   }
 
-  result.guards = Math.max(result.guards, 2);
-  result.rangers = Math.max(result.rangers, 2);
+  const needsHeavyResponse = hostiles.length >= 2 || boostedCount > 0 || healerCount > 0 || dismantlerCount > 0;
+  if (needsHeavyResponse) {
+    result.guards = Math.max(result.guards, 2);
+    result.rangers = Math.max(result.rangers, 2);
+  }
 
   if (hostiles.length >= 3) {
     result.healers = Math.max(result.healers, 1);
@@ -205,13 +208,16 @@ export function needsEmergencyDefenders(room: Room, _swarm: SwarmState): boolean
  * Check if room needs external defense assistance
  */
 export function needsDefenseAssistance(room: Room, swarm: SwarmState): boolean {
-  if (swarm.danger < 1) {
+  if (swarm.danger < 2) {
     return false;
   }
 
   const needs = analyzeDefenderNeeds(room);
   const current = getCurrentDefenders(room);
-  const defenderDeficit = (needs.guards - current.guards) + (needs.rangers - current.rangers);
+  const defenderDeficit =
+    Math.max(0, needs.guards - current.guards) +
+    Math.max(0, needs.rangers - current.rangers) +
+    Math.max(0, needs.healers - current.healers);
 
   if (defenderDeficit <= 0) {
     return false;

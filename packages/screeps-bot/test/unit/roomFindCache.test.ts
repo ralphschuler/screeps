@@ -49,17 +49,17 @@ describe("roomFindCache", () => {
       find: (type: FindConstant, opts?: any) => {
         findCallCount++;
         if (type === FIND_SOURCES) {
-          return sources;
+          return sources.slice();
         } else if (type === FIND_STRUCTURES) {
           if (opts?.filter) {
             return structures.filter(opts.filter);
           }
-          return structures;
+          return structures.slice();
         } else if (type === FIND_MY_STRUCTURES) {
           if (opts?.filter) {
             return structures.filter(opts.filter);
           }
-          return structures;
+          return structures.slice();
         } else if (type === FIND_HOSTILE_CREEPS) {
           return [];
         } else if (type === FIND_DROPPED_RESOURCES) {

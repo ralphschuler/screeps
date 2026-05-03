@@ -52,7 +52,7 @@ class BotPixelGenerationManager extends FrameworkPixelGenerationManager {
   @LowFrequencyProcess("empire:pixelGeneration", "Pixel Generation Manager", {
     priority: ProcessPriority.IDLE, // Very low priority - only when everything else is fine
     interval: 1, // Must check every tick to track consecutive ticks accurately
-    minBucket: 0,
+    minBucket: 10000,
     cpuBudget: 0.01
   })
   public run(): void {

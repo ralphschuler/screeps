@@ -8,7 +8,7 @@
 /**
  * Remote route type for semantic identification
  */
-export type RemoteRouteType = "harvester" | "hauler";
+export type RemoteRouteType = "harvester" | "hauler" | "reserver" | "guard";
 
 /**
  * Remote route identifier

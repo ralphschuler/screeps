@@ -11,11 +11,19 @@
  * Get assigned source for a harvester
  * Falls back to finding closest available source
  */
+function getMutableCreepMemory<T extends Record<string, unknown>>(creep: Creep): T {
+  const creepWithMemory = creep as Creep & { memory?: T };
+  if (!creepWithMemory.memory) {
+    creepWithMemory.memory = {} as T;
+  }
+  return creepWithMemory.memory;
+}
+
 export function getAssignedSource(creep: Creep): Source | null {
   if (!creep.room) return null;
   
   // Check if creep has assigned source in memory
-  const memory = creep.memory as { sourceId?: Id<Source> };
+  const memory = getMutableCreepMemory<{ sourceId?: Id<Source> }>(creep);
   if (memory.sourceId) {
     const source = Game.getObjectById(memory.sourceId);
     if (source) return source;
@@ -39,7 +47,7 @@ export function getAssignedSource(creep: Creep): Source | null {
 export function getAssignedBuildTarget(creep: Creep): ConstructionSite | null {
   if (!creep.room) return null;
   
-  const memory = creep.memory as { targetId?: Id<ConstructionSite> };
+  const memory = getMutableCreepMemory<{ targetId?: Id<ConstructionSite> }>(creep);
   if (memory.targetId) {
     const site = Game.getObjectById(memory.targetId);
     if (site) return site;
@@ -62,7 +70,7 @@ export function getAssignedBuildTarget(creep: Creep): ConstructionSite | null {
 export function getAssignedRepairTarget(creep: Creep): Structure | null {
   if (!creep.room) return null;
   
-  const memory = creep.memory as { targetId?: Id<Structure> };
+  const memory = getMutableCreepMemory<{ targetId?: Id<Structure> }>(creep);
   if (memory.targetId) {
     const structure = Game.getObjectById(memory.targetId);
     if (structure && structure.hits < structure.hitsMax) {

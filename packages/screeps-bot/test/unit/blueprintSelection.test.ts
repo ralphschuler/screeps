@@ -1,6 +1,7 @@
 import { assert } from "chai";
 import {
   selectBestBlueprint,
+  getStructuresForRCL,
   validateBlueprintFit,
   findBestBlueprintAnchor,
   calculateBlueprintEfficiency,
@@ -305,19 +306,19 @@ describe("Blueprint Selection and Validation", () => {
     
     it("should have incremental structure additions per RCL", () => {
       // Early colony (RCL 1-2) should have minimal structures
-      const earlyCount = EARLY_COLONY_BLUEPRINT.structures.length;
+      const earlyCount = getStructuresForRCL(EARLY_COLONY_BLUEPRINT, 1).length;
       assert.isBelow(earlyCount, 10, "Early colony should have few structures");
       
       // Core colony (RCL 3-4) should add tower and more extensions
-      const coreCount = CORE_COLONY_BLUEPRINT.structures.length;
+      const coreCount = getStructuresForRCL(CORE_COLONY_BLUEPRINT, 3).length;
       assert.isAbove(coreCount, earlyCount, "Core colony should have more structures than early");
       
       // Economic maturity (RCL 5-6) should add storage, terminal, labs
-      const economicCount = ECONOMIC_MATURITY_BLUEPRINT.structures.length;
+      const economicCount = getStructuresForRCL(ECONOMIC_MATURITY_BLUEPRINT, 6).length;
       assert.isAbove(economicCount, coreCount, "Economic should have more structures than core");
       
       // War-ready (RCL 7-8) should add full tower array and special structures
-      const warCount = WAR_READY_BLUEPRINT.structures.length;
+      const warCount = getStructuresForRCL(WAR_READY_BLUEPRINT, 8).length;
       assert.isAbove(warCount, economicCount, "War-ready should have more structures than economic");
     });
     

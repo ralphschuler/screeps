@@ -360,7 +360,7 @@ describe("CPU Efficiency Utilities", () => {
     it("should find closest item in same room", () => {
       const pos = createMockPos(25, 25);
       const items = [
-        { id: "1", pos: createMockPos(30, 30) },
+        { id: "1", pos: createMockPos(31, 31) },
         { id: "2", pos: createMockPos(20, 20) },
         { id: "3", pos: createMockPos(40, 40) }
       ];

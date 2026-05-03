@@ -13,14 +13,9 @@
 
 import { logger } from "@ralphschuler/screeps-core";
 
-/**
- * Source energy generation constants
- * 
- * ASSUMPTION: Remote harvesters are assumed to have 5 WORK parts, harvesting at maximum
- * efficiency (2 energy per WORK per tick = 10 energy/tick per source).
- * If actual harvesters have fewer WORK parts, actual energy generation will be lower.
- */
-const ENERGY_PER_SOURCE_TICK = 10; // Assumes 5 WORK parts (optimal harvester)
+const ENERGY_REGEN_TICKS = 300;
+const RESERVED_SOURCE_ENERGY = 3000;
+const UNRESERVED_SOURCE_ENERGY = 1500;
 
 /**
  * Hauler energy calculation
@@ -58,6 +53,17 @@ export interface RemoteHaulerRequirement {
   roundTripTicks: number;
   /** Energy generation per tick for all sources */
   energyPerTick: number;
+}
+
+export interface RemoteHaulerOptions {
+  /** Whether the remote has a healthy reservation and therefore full source output */
+  reserved?: boolean;
+  /** One-way cached path length in tiles, when available */
+  pathLength?: number;
+  /** Multiplier for estimated terrain cost when no cached path length exists */
+  terrainFactor?: number;
+  /** Safety multiplier applied to the raw minimum hauler count */
+  safetyBuffer?: number;
 }
 
 /**
@@ -129,6 +135,11 @@ export function estimateRoundTripTicks(distance: number, terrainFactor = 1.2): n
   return Math.ceil(onewayTicks * 2);
 }
 
+function calculateEnergyPerTick(sourceCount: number, reserved: boolean): number {
+  const energyPerSource = reserved ? RESERVED_SOURCE_ENERGY : UNRESERVED_SOURCE_ENERGY;
+  return (sourceCount * energyPerSource) / ENERGY_REGEN_TICKS;
+}
+
 /**
  * Calculate optimal hauler configuration for a remote room
  */
@@ -136,16 +147,26 @@ export function calculateRemoteHaulerRequirement(
   homeRoom: string,
   remoteRoom: string,
   sourceCount: number,
-  availableEnergy: number
+  availableEnergy: number,
+  options: RemoteHaulerOptions = {}
 ): RemoteHaulerRequirement {
+  const {
+    reserved = false,
+    pathLength,
+    terrainFactor = 1.2,
+    safetyBuffer = HAULER_SAFETY_BUFFER
+  } = options;
+
   // Calculate distance
   const distance = calculatePathDistance(homeRoom, remoteRoom);
 
-  // Estimate round trip time (assuming mixed terrain)
-  const roundTripTicks = estimateRoundTripTicks(distance);
+  // Prefer real cached path length when the caller has it; otherwise use room-distance estimate.
+  const roundTripTicks = pathLength !== undefined
+    ? Math.ceil(pathLength * 2)
+    : estimateRoundTripTicks(distance, terrainFactor);
 
   // Calculate energy generation rate for all sources
-  const energyPerTick = sourceCount * ENERGY_PER_SOURCE_TICK;
+  const energyPerTick = calculateEnergyPerTick(sourceCount, reserved);
 
   // Select appropriate hauler size based on available energy
   let haulerConfig = HAULER_TIERS[0];
@@ -161,15 +182,14 @@ export function calculateRemoteHaulerRequirement(
   // Energy generated during round trip
   const energyGeneratedPerTrip = energyPerTick * roundTripTicks;
 
-  // Minimum haulers = energy generated per trip / hauler capacity
-  // Add safety buffer for reliability
-  const minHaulers = Math.max(1, Math.ceil((energyGeneratedPerTrip / haulerConfig.capacity) * HAULER_SAFETY_BUFFER));
+  // Minimum haulers = energy generated per trip / hauler capacity.
+  const minHaulers = Math.max(1, Math.ceil(energyGeneratedPerTrip / haulerConfig.capacity));
 
-  // Recommended haulers = add one extra for reliability
-  const recommendedHaulers = Math.min(sourceCount * 2, minHaulers + 1);
+  // Recommended haulers apply a reliability buffer but never hide the true minimum.
+  const recommendedHaulers = Math.max(minHaulers, Math.ceil(minHaulers * safetyBuffer));
 
   logger.debug(
-    `Remote hauler calculation: ${homeRoom} -> ${remoteRoom} (${sourceCount} sources, ${distance} rooms away) - RT: ${roundTripTicks} ticks, E/tick: ${energyPerTick}, Min: ${minHaulers}, Rec: ${recommendedHaulers}, Cap: ${haulerConfig.capacity}`,
+    `Remote hauler calculation: ${homeRoom} -> ${remoteRoom} (${sourceCount} sources, ${distance} rooms away, reserved=${reserved}) - RT: ${roundTripTicks} ticks, E/tick: ${energyPerTick}, Min: ${minHaulers}, Rec: ${recommendedHaulers}, Cap: ${haulerConfig.capacity}`,
     { subsystem: "HaulerDimensioning" }
   );
 
@@ -200,8 +220,14 @@ export function getCurrentRemoteHaulerCount(homeRoom: string, remoteRoom: string
 /**
  * Check if more haulers are needed for a remote room
  */
-export function needsMoreHaulers(homeRoom: string, remoteRoom: string, sourceCount: number, availableEnergy: number): boolean {
-  const requirement = calculateRemoteHaulerRequirement(homeRoom, remoteRoom, sourceCount, availableEnergy);
+export function needsMoreHaulers(
+  homeRoom: string,
+  remoteRoom: string,
+  sourceCount: number,
+  availableEnergy: number,
+  options?: RemoteHaulerOptions
+): boolean {
+  const requirement = calculateRemoteHaulerRequirement(homeRoom, remoteRoom, sourceCount, availableEnergy, options);
   const currentCount = getCurrentRemoteHaulerCount(homeRoom, remoteRoom);
 
   return currentCount < requirement.recommendedHaulers;
@@ -210,8 +236,14 @@ export function needsMoreHaulers(homeRoom: string, remoteRoom: string, sourceCou
 /**
  * Get recommended hauler body for a remote room
  */
-export function getRecommendedHaulerBody(homeRoom: string, remoteRoom: string, sourceCount: number, availableEnergy: number): BodyPartConstant[] {
-  const requirement = calculateRemoteHaulerRequirement(homeRoom, remoteRoom, sourceCount, availableEnergy);
+export function getRecommendedHaulerBody(
+  homeRoom: string,
+  remoteRoom: string,
+  sourceCount: number,
+  availableEnergy: number,
+  options?: RemoteHaulerOptions
+): BodyPartConstant[] {
+  const requirement = calculateRemoteHaulerRequirement(homeRoom, remoteRoom, sourceCount, availableEnergy, options);
   const config = requirement.haulerConfig;
 
   // Build body: alternating CARRY and MOVE for balanced movement

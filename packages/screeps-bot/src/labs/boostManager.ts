@@ -262,6 +262,7 @@ export class BoostManager {
     // Energy-to-mineral ratio: configurable, conservative estimate
     // 1 mineral ≈ 10 energy in value for boost compounds
     const totalCost = cost.mineral + cost.energy * 0.1;
+    const belowDangerThreshold = dangerLevel < config.minDanger;
 
     // Calculate expected gains based on actual Screeps mechanics
     let expectedGain = 0;
@@ -272,28 +273,28 @@ export class BoostManager {
         const attackParts = Math.floor(bodySize / 3);
         const baseDamage = 30;
         const boostMultiplier = 4; // XUH2O
-        expectedGain = attackParts * baseDamage * boostMultiplier * expectedLifetime;
+        expectedGain = attackParts * baseDamage * (boostMultiplier - 1) * expectedLifetime;
         break;
       }
       case "ranger": {
         const rangedParts = Math.floor(bodySize / 3);
         const baseDamage = 10;
         const boostMultiplier = 4; // XKHO2
-        expectedGain = rangedParts * baseDamage * boostMultiplier * expectedLifetime;
+        expectedGain = rangedParts * baseDamage * (boostMultiplier - 1) * expectedLifetime;
         break;
       }
       case "healer": {
         const healParts = Math.floor(bodySize / 3);
         const baseHeal = 12;
         const boostMultiplier = 4; // XLHO2
-        expectedGain = healParts * baseHeal * boostMultiplier * expectedLifetime;
+        expectedGain = healParts * baseHeal * (boostMultiplier - 1) * expectedLifetime;
         break;
       }
       case "siegeUnit": {
         const workParts = Math.floor(bodySize / 3);
         const baseDismantle = 50;
         const boostMultiplier = 4; // XGH2O
-        expectedGain = workParts * baseDismantle * boostMultiplier * expectedLifetime;
+        expectedGain = workParts * baseDismantle * (boostMultiplier - 1) * expectedLifetime;
         break;
       }
       default: {
@@ -305,9 +306,11 @@ export class BoostManager {
     expectedGain *= 1 + dangerLevel * 0.5;
 
     const roi = expectedGain / totalCost;
-    const worthwhile = roi > 1.5; // Need at least 1.5x return
+    const worthwhile = !belowDangerThreshold && roi > 1.5; // Need current need plus at least 1.5x return
 
-    const reasoning = worthwhile
+    const reasoning = belowDangerThreshold
+      ? `Below danger threshold: ${dangerLevel}/${config.minDanger} (ROI: ${roi.toFixed(2)}x)`
+      : worthwhile
       ? `High ROI: ${roi.toFixed(2)}x (gain: ${expectedGain.toFixed(0)}, cost: ${totalCost.toFixed(0)})`
       : `Low ROI: ${roi.toFixed(2)}x (gain: ${expectedGain.toFixed(0)}, cost: ${totalCost.toFixed(0)})`;
 

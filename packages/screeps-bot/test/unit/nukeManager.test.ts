@@ -1,6 +1,22 @@
 import { expect } from "chai";
 import { NukeManager } from "../../src/empire/nukeManager";
 import { createDefaultSwarmState, createDefaultEmpireMemory } from "../../src/memory/schemas";
+import { memoryManager } from "../../src/memory/manager";
+import {
+  calculateNukeROI,
+  canAffordNuke,
+  cleanupNukeTracking,
+  coordinateNukeSalvos,
+  coordinateWithSieges,
+  detectIncomingNukes,
+  estimateSquadEta,
+  initializeNukeTracking,
+  manageNukeResources,
+  predictNukeImpact,
+  processCounterNukeStrategies,
+  scoreNukeCandidate,
+  updateNukeEconomics
+} from "@ralphschuler/screeps-empire";
 import { Game, Memory } from "./mock";
 import * as sinon from "sinon";
 
@@ -29,7 +45,6 @@ describe("Nuke Manager", () => {
     nukeManager = new NukeManager();
 
     // Setup stubs for memory manager
-    const memoryManager = require("../../src/memory/manager").memoryManager;
     getEmpireStub = sinon.stub(memoryManager, "getEmpire").returns(createDefaultEmpireMemory());
     getSwarmStateStub = sinon.stub(memoryManager, "getSwarmState");
     getClustersStub = sinon.stub(memoryManager, "getClusters").returns({});
@@ -57,6 +72,7 @@ describe("Nuke Manager", () => {
       const mockRoom = {
         name: "W1N1",
         controller: { my: true },
+        lookForAtArea: () => [],
         find: (type: FindConstant) => {
           if (type === FIND_NUKES) return [mockNuke];
           return [];
@@ -69,8 +85,7 @@ describe("Nuke Manager", () => {
       // Setup memory manager to return our swarm
       getSwarmStateStub.withArgs("W1N1").returns(swarm);
 
-      // Run detection - use private method via any cast
-      (nukeManager as any).detectIncomingNukes();
+      detectIncomingNukes(memoryManager.getEmpire() as any, getSwarmStateStub as any);
 
       // Verify detection
       expect(swarm.nukeDetected).to.be.true;
@@ -94,7 +109,7 @@ describe("Nuke Manager", () => {
 
       getSwarmStateStub.withArgs("W1N1").returns(swarm);
 
-      (nukeManager as any).detectIncomingNukes();
+      detectIncomingNukes(memoryManager.getEmpire() as any, getSwarmStateStub as any);
 
       expect(swarm.nukeDetected).to.be.false;
     });
@@ -105,8 +120,8 @@ describe("Nuke Manager", () => {
       const empire = createDefaultEmpireMemory();
       empire.objectives.warMode = true;
       empire.warTargets = ["W2N2"];
-      empire.roomIntel["W2N2"] = {
-        name: "W2N2",
+      empire.knownRooms["W2N2"] = {
+        roomName: "W2N2",
         lastSeen: Game.time,
         sources: 2,
         controllerLevel: 7,
@@ -131,7 +146,7 @@ describe("Nuke Manager", () => {
 
       getEmpireStub.returns(empire);
 
-      const score = (nukeManager as any).scoreNukeCandidate("W2N2");
+      const score = scoreNukeCandidate("W2N2", empire as any, nukeManager.getConfig(), getSwarmStateStub as any);
 
       expect(score.score).to.be.greaterThan(0);
       expect(score.reasons).to.include("Owned room");
@@ -140,8 +155,8 @@ describe("Nuke Manager", () => {
 
     it("should apply distance penalty", () => {
       const empire = createDefaultEmpireMemory();
-      empire.roomIntel["W10N10"] = {
-        name: "W10N10",
+      empire.knownRooms["W10N10"] = {
+        roomName: "W10N10",
         lastSeen: Game.time,
         sources: 2,
         controllerLevel: 5,
@@ -170,7 +185,7 @@ describe("Nuke Manager", () => {
 
       getEmpireStub.returns(empire);
 
-      const score = (nukeManager as any).scoreNukeCandidate("W10N10");
+      const score = scoreNukeCandidate("W10N10", empire as any, nukeManager.getConfig(), getSwarmStateStub as any);
       expect(score.reasons.some((r: string) => r.includes("rooms away"))).to.be.true;
     });
   });
@@ -225,7 +240,7 @@ describe("Nuke Manager", () => {
 
       // Should identify resource needs without error
       expect(() => {
-        (nukeManager as any).manageNukeResources();
+        manageNukeResources(empire as any, nukeManager.getConfig(), new Set(), () => undefined);
       }).to.not.throw();
     });
   });
@@ -289,7 +304,7 @@ describe("Nuke Manager", () => {
 
       // Should process without error
       expect(() => {
-        (nukeManager as any).coordinateWithSieges();
+        coordinateWithSieges(empire as any, nukeManager.getConfig(), getClustersStub as any, getSwarmStateStub as any);
       }).to.not.throw();
     });
   });
@@ -315,7 +330,7 @@ describe("Nuke Manager", () => {
       // @ts-ignore
       global.Game.map.getRoomLinearDistance = (from: string, to: string) => 2;
 
-      const eta = (nukeManager as any).estimateSquadEta(mockSquad, "W3N3");
+      const eta = estimateSquadEta(mockSquad as any, "W3N3");
 
       expect(eta).to.be.greaterThan(0);
       expect(eta).to.equal(100); // 2 rooms * 50 ticks
@@ -335,7 +350,7 @@ describe("Nuke Manager", () => {
       // @ts-ignore
       global.Game.map.getRoomLinearDistance = (from: string, to: string) => 3;
 
-      const eta = (nukeManager as any).estimateSquadEta(mockSquad, "W4N4");
+      const eta = estimateSquadEta(mockSquad as any, "W4N4");
 
       expect(eta).to.equal(150); // 3 rooms * 50 ticks
     });
@@ -362,7 +377,7 @@ describe("Nuke Manager", () => {
       global.Game.rooms["W2N2"] = mockRoom;
 
       const targetPos = { x: 25, y: 25, roomName: "W2N2" } as RoomPosition;
-      const prediction = (nukeManager as any).predictNukeImpact("W2N2", targetPos);
+      const prediction = predictNukeImpact("W2N2", targetPos, empire as any);
 
       expect(prediction.estimatedDamage).to.be.greaterThan(0);
       expect(prediction.estimatedValue).to.be.greaterThan(0);
@@ -371,8 +386,8 @@ describe("Nuke Manager", () => {
 
     it("should estimate damage when room is not visible", () => {
       const empire = createDefaultEmpireMemory();
-      empire.roomIntel["W5N5"] = {
-        name: "W5N5",
+      empire.knownRooms["W5N5"] = {
+        roomName: "W5N5",
         lastSeen: Game.time - 1000,
         sources: 2,
         controllerLevel: 6,
@@ -389,7 +404,7 @@ describe("Nuke Manager", () => {
       getEmpireStub.returns(empire);
 
       const targetPos = { x: 25, y: 25, roomName: "W5N5" } as RoomPosition;
-      const prediction = (nukeManager as any).predictNukeImpact("W5N5", targetPos);
+      const prediction = predictNukeImpact("W5N5", targetPos, empire as any);
 
       expect(prediction.estimatedDamage).to.be.greaterThan(0);
       expect(prediction.estimatedValue).to.be.greaterThan(0);
@@ -417,7 +432,7 @@ describe("Nuke Manager", () => {
       global.Game.rooms["W2N2"] = mockRoom;
 
       const targetPos = { x: 25, y: 25, roomName: "W2N2" } as RoomPosition;
-      const roi = (nukeManager as any).calculateNukeROI("W2N2", targetPos);
+      const roi = calculateNukeROI("W2N2", targetPos, empire as any);
 
       expect(roi).to.be.a("number");
       expect(roi).to.be.greaterThan(0);
@@ -438,8 +453,8 @@ describe("Nuke Manager", () => {
           sourceRoom: "W2N2"
         }
       ];
-      empire.roomIntel["W2N2"] = {
-        name: "W2N2",
+      empire.knownRooms["W2N2"] = {
+        roomName: "W2N2",
         lastSeen: Game.time,
         sources: 2,
         controllerLevel: 8, // RCL 8 = has nuker
@@ -488,7 +503,7 @@ describe("Nuke Manager", () => {
       global.Game.rooms["W1N1"] = mockRoom;
 
       // Process counter-nukes
-      (nukeManager as any).processCounterNukeStrategies();
+      processCounterNukeStrategies(empire as any, nukeManager.getConfig(), getSwarmStateStub as any, canAffordNuke);
 
       // Should add enemy to war targets
       expect(empire.warTargets).to.include("W2N2");
@@ -519,7 +534,7 @@ describe("Nuke Manager", () => {
 
       getEmpireStub.returns(empire);
 
-      (nukeManager as any).coordinateNukeSalvos();
+      coordinateNukeSalvos(empire as any, nukeManager.getConfig());
 
       // Both nukes should have same salvo ID
       expect(empire.nukesInFlight[0].salvoId).to.equal(empire.nukesInFlight[1].salvoId);
@@ -549,7 +564,7 @@ describe("Nuke Manager", () => {
 
       getEmpireStub.returns(empire);
 
-      (nukeManager as any).coordinateNukeSalvos();
+      coordinateNukeSalvos(empire as any, nukeManager.getConfig());
 
       // Nukes should not have matching salvo IDs (or undefined)
       const salvo1 = empire.nukesInFlight[0].salvoId;
@@ -588,7 +603,7 @@ describe("Nuke Manager", () => {
 
       getEmpireStub.returns(empire);
 
-      (nukeManager as any).cleanupNukeTracking();
+      cleanupNukeTracking(empire as any);
 
       expect(empire.nukesInFlight).to.have.lengthOf(1);
       expect(empire.nukesInFlight[0].id).to.equal("nuke2");
@@ -620,7 +635,7 @@ describe("Nuke Manager", () => {
 
       getEmpireStub.returns(empire);
 
-      (nukeManager as any).cleanupNukeTracking();
+      cleanupNukeTracking(empire as any);
 
       expect(empire.incomingNukes).to.have.lengthOf(1);
       expect(empire.incomingNukes[0].roomName).to.equal("W1N2");
@@ -634,7 +649,7 @@ describe("Nuke Manager", () => {
 
       getEmpireStub.returns(empire);
 
-      (nukeManager as any).initializeNukeTracking();
+      initializeNukeTracking(empire as any);
 
       expect(empire.nukeEconomics).to.exist;
       expect(empire.nukeEconomics.nukesLaunched).to.equal(0);
@@ -654,7 +669,7 @@ describe("Nuke Manager", () => {
 
       getEmpireStub.returns(empire);
 
-      (nukeManager as any).updateNukeEconomics();
+      updateNukeEconomics(empire as any);
 
       expect(empire.nukeEconomics.lastROI).to.exist;
       expect(empire.nukeEconomics.lastROI).to.be.greaterThan(0);

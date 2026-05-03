@@ -74,6 +74,8 @@ const DEFAULT_CONFIG: UnifiedStatsConfig = {
   }
 };
 
+const BUDGET_THRESHOLD_EPSILON = 1e-9;
+
 // ============================================================================
 // Unified Stats Manager
 // ============================================================================
@@ -672,9 +674,16 @@ export class UnifiedStatsManager {
       // Get current CPU (use average to smooth out spikes)
       const cpuUsed = roomStats.profiler.avgCpu;
       const percentUsed = cpuUsed / adjustedBudgetLimit;
+      const warningThreshold = this.config.budgetAlertThresholds.warning;
+      const criticalThreshold = this.config.budgetAlertThresholds.critical;
+      const reportedPercentUsed = Math.abs(percentUsed - criticalThreshold) <= BUDGET_THRESHOLD_EPSILON
+        ? criticalThreshold
+        : Math.abs(percentUsed - warningThreshold) <= BUDGET_THRESHOLD_EPSILON
+          ? warningThreshold
+          : percentUsed;
       
       // Check budget thresholds
-      if (percentUsed >= this.config.budgetAlertThresholds.critical) {
+      if (percentUsed + BUDGET_THRESHOLD_EPSILON >= criticalThreshold) {
         report.roomsOverBudget++;
         report.alerts.push({
           severity: "critical",
@@ -682,17 +691,17 @@ export class UnifiedStatsManager {
           targetType: "room",
           cpuUsed,
           budgetLimit: adjustedBudgetLimit,
-          percentUsed,
+          percentUsed: reportedPercentUsed,
           tick: Game.time
         });
-      } else if (percentUsed >= this.config.budgetAlertThresholds.warning) {
+      } else if (percentUsed + BUDGET_THRESHOLD_EPSILON >= warningThreshold) {
         report.alerts.push({
           severity: "warning",
           target: roomName,
           targetType: "room",
           cpuUsed,
           budgetLimit: adjustedBudgetLimit,
-          percentUsed,
+          percentUsed: reportedPercentUsed,
           tick: Game.time
         });
         report.roomsWithinBudget++; // Warning but still functioning
@@ -996,7 +1005,7 @@ export class UnifiedStatsManager {
         available: ownedRooms.reduce((sum, r) => sum + r.energy.available, 0),
         capacity: ownedRooms.reduce((sum, r) => sum + r.energy.capacity, 0)
       },
-      credits: Game.market.credits,
+      credits: Game.market?.credits ?? 0,
       skippedProcesses: this.skippedProcessesThisTick,
       shard: shardStats
     };

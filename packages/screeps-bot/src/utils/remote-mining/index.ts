@@ -91,7 +91,7 @@ export function precacheRemoteRoutes(homeRoom: Room, remoteRooms: string[]): voi
 
 export function moveToWithRemoteCache(
   creep: Creep,
-  target: RoomPosition | { pos: RoomPosition },
+  target: RoomPosition | { pos: RoomPosition; range?: number },
   routeType: RemoteRouteType,
   options?: MoveToOpts
 ): ScreepsReturnCode {

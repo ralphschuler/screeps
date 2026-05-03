@@ -1,16 +1,14 @@
-import { expect, assert } from "chai";
+import { assert } from "chai";
 import { Game as MockGame, Memory as MockMemory } from "./mock";
+import * as loggerModule from "../../src/core/logger";
+import { Kernel } from "../../src/core/kernel";
 
 // Use global sinon from test setup (setup-mocha.js)
 declare const sinon: typeof import("sinon");
 
-function reloadSwarmBot() {
-  delete require.cache[require.resolve("../../src/core/kernel")];
-  // Note: We intentionally don't delete logger cache here so spies can work correctly
-  delete require.cache[require.resolve("../../src/core/processRegistry")];
-  delete require.cache[require.resolve("../../src/SwarmBot")];
-
-  return require("../../src/SwarmBot") as typeof import("../../src/SwarmBot");
+async function reloadSwarmBot() {
+  const cacheKey = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return import(`../../src/SwarmBot.ts?swarmBotLogging=${cacheKey}`) as Promise<typeof import("../../src/SwarmBot")>;
 }
 
 describe("SwarmBot logging", () => {
@@ -30,22 +28,17 @@ describe("SwarmBot logging", () => {
     sandbox.restore();
   });
 
-  it("logs critical bucket mode through the logger but continues normal processing", () => {
-    // Per BUCKET_MANAGEMENT.md: bucket mode is informational only and does not affect execution
-    // Test that critical bucket mode is logged for monitoring but bot continues normal processing
+  it("logs critical bucket mode through the logger while core processing continues", async () => {
+    // Critical bucket should still run the core kernel path while optional work is deferred.
     
-    const loggerModule = require("../../src/core/logger");
     const warnSpy = sandbox.spy(loggerModule.logger, "warn");
 
-    const processRegistry = require("../../src/core/processRegistry");
-    sandbox.stub(processRegistry, "registerAllProcesses");
+    const bot = await reloadSwarmBot();
 
-    const bot = reloadSwarmBot();
-
-    sandbox.stub(bot.kernel, "initialize");
-    sandbox.stub(bot.kernel, "getBucketMode").returns("critical");
-    sandbox.stub(bot.kernel, "hasCpuBudget").returns(true);
-    const kernelRunStub = sandbox.stub(bot.kernel, "run");
+    sandbox.stub(Kernel.prototype, "initialize");
+    sandbox.stub(Kernel.prototype, "getBucketMode").returns("critical");
+    sandbox.stub(Kernel.prototype, "hasCpuBudget").returns(true);
+    const kernelRunStub = sandbox.stub(Kernel.prototype, "run");
     sandbox.stub(bot.roomManager, "run");
     sandbox.stub(bot.unifiedStats, "measureSubsystem").callsFake((_, fn: () => void) => fn());
 
@@ -59,27 +52,23 @@ describe("SwarmBot logging", () => {
     // Verify critical bucket warning is logged
     sinon.assert.called(warnSpy);
     const warnCall = warnSpy.getCalls().find((call: any) => 
-      call.args[0] && call.args[0].includes("CRITICAL") && call.args[0].includes("CPU bucket") && call.args[0].includes("continuing normal processing")
+      call.args[0] && call.args[0].includes("CRITICAL") && call.args[0].includes("CPU bucket") && call.args[0].includes("deferring optional work")
     );
-    assert.isDefined(warnCall, "Should log critical bucket warning with 'continuing normal processing' message");
+    assert.isDefined(warnCall, "Should log critical bucket warning with 'deferring optional work' message");
     
     // Verify kernel.run() was called (normal processing continues despite critical bucket)
     sinon.assert.called(kernelRunStub);
   });
 
-  it("logs visualization errors through the logger", () => {
+  it("logs visualization errors through the logger", async () => {
     // Set up spies/stubs before reloading modules to ensure they're properly intercepted
-    const loggerModule = require("../../src/core/logger");
     const errorSpy = sandbox.spy(loggerModule.logger, "error");
 
-    const processRegistry = require("../../src/core/processRegistry");
-    sandbox.stub(processRegistry, "registerAllProcesses");
+    const bot = await reloadSwarmBot();
 
-    const bot = reloadSwarmBot();
-
-    sandbox.stub(bot.kernel, "initialize");
-    sandbox.stub(bot.kernel, "getBucketMode").returns("normal");
-    sandbox.stub(bot.kernel, "hasCpuBudget").returns(true);
+    sandbox.stub(Kernel.prototype, "initialize");
+    sandbox.stub(Kernel.prototype, "getBucketMode").returns("normal");
+    sandbox.stub(Kernel.prototype, "hasCpuBudget").returns(true);
     sandbox.stub(bot.roomManager, "run");
     sandbox.stub(bot.unifiedStats, "measureSubsystem").callsFake((_, fn: () => void) => fn());
 
@@ -87,6 +76,9 @@ describe("SwarmBot logging", () => {
 
     // @ts-ignore: test setup for Game globals
     global.Game.creeps = {}; // No creeps for this test
+    // Avoid same-tick owned-room cache entries left by earlier suites.
+    // @ts-ignore: test setup for Game globals
+    global.Game.time = 12346;
     
     // @ts-ignore: test setup for Game globals
     global.Game.rooms = {

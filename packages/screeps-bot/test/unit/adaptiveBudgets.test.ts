@@ -8,8 +8,13 @@ import {
   DEFAULT_ADAPTIVE_CONFIG,
   type AdaptiveBudgetConfig
 } from "@ralphschuler/screeps-stats";
+import { DEFAULT_ADAPTIVE_CONFIG as KERNEL_DEFAULT_ADAPTIVE_CONFIG } from "@ralphschuler/screeps-kernel";
 
 describe("Adaptive CPU Budgets", () => {
+  it("should keep stats and kernel adaptive defaults in parity", () => {
+    expect(KERNEL_DEFAULT_ADAPTIVE_CONFIG).to.deep.equal(DEFAULT_ADAPTIVE_CONFIG);
+  });
+
   describe("calculateRoomScalingMultiplier", () => {
     it("should return 1.0x for single room", () => {
       const multiplier = calculateRoomScalingMultiplier(1, DEFAULT_ADAPTIVE_CONFIG);
@@ -63,7 +68,7 @@ describe("Adaptive CPU Budgets", () => {
       const m100 = calculateRoomScalingMultiplier(100, DEFAULT_ADAPTIVE_CONFIG);
 
       // Verify specific ranges for predictability
-      // With scaleFactor=20, scaling is more conservative
+      // With scaleFactor=100, scaling stays inside the intended budget envelope.
       expect(m1).to.be.closeTo(1.0, 0.01);
       expect(m10).to.be.within(1.0, 1.8); // Allow for current scaling behavior
       expect(m50).to.be.within(1.3, 2.0); // More conservative

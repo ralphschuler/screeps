@@ -41,15 +41,39 @@ class MockRoomVisual {
     this.calls.push({ method: "poly", args: [points, style] });
     return this;
   }
+
+  speech(text: string, x: number, y: number, opts?: any) {
+    this.calls.push({ method: "speech", args: [text, x, y, opts] });
+    return this;
+  }
+
+  animatedPosition(x: number, y: number, opts?: any) {
+    this.calls.push({ method: "animatedPosition", args: [x, y, opts] });
+    return this;
+  }
+
+  resource(resourceType: ResourceConstant, x: number, y: number, size?: number) {
+    this.calls.push({ method: "resource", args: [resourceType, x, y, size] });
+    return this;
+  }
+
+  structure(x: number, y: number, structureType: StructureConstant, opts?: any) {
+    this.calls.push({ method: "structure", args: [x, y, structureType, opts] });
+    return this;
+  }
 }
 
 describe("RoomVisualizer", () => {
   let visualizer: RoomVisualizer;
   let mockRoom: any;
-  let roomVisualStub: sinon.SinonStub;
+  let roomVisualStub: { called: boolean; calledOnce: boolean; calledWith: (roomName: string) => boolean };
   let mockVisual: MockRoomVisual;
+  let originalRoomVisual: any;
+  let originalGame: any;
 
   beforeEach(() => {
+    originalGame = (global as any).Game;
+
     // Create mock room
     mockRoom = {
       name: "W1N1",
@@ -65,18 +89,59 @@ describe("RoomVisualizer", () => {
       memory: {}
     };
 
+    (global as any).Game = {
+      ...originalGame,
+      time: 1000,
+      flags: {},
+      rooms: { W1N1: mockRoom },
+      creeps: {},
+      spawns: {},
+      cpu: {
+        ...(originalGame?.cpu ?? {}),
+        getUsed: () => 0.1,
+        bucket: 10000,
+        limit: 20
+      },
+      map: {
+        ...(originalGame?.map ?? {}),
+        visual: originalGame?.map?.visual ?? {}
+      }
+    };
+
     // Create mock visual
     mockVisual = new MockRoomVisual("W1N1");
-
-    // Stub RoomVisual constructor
-    roomVisualStub = sinon.stub(global as any, "RoomVisual").returns(mockVisual);
+    originalRoomVisual = (global as any).RoomVisual;
+    const roomVisualCalls: string[] = [];
+    roomVisualStub = {
+      get called() {
+        return roomVisualCalls.length > 0;
+      },
+      get calledOnce() {
+        return roomVisualCalls.length === 1;
+      },
+      calledWith: (roomName: string) => roomVisualCalls.includes(roomName)
+    };
+    (global as any).RoomVisual = function(roomName: string) {
+      roomVisualCalls.push(roomName);
+      return mockVisual;
+    };
 
     // Create visualizer instance with default config
     visualizer = new RoomVisualizer();
   });
 
   afterEach(() => {
-    roomVisualStub.restore();
+    if (originalRoomVisual) {
+      (global as any).RoomVisual = originalRoomVisual;
+    } else {
+      delete (global as any).RoomVisual;
+    }
+
+    if (originalGame) {
+      (global as any).Game = originalGame;
+    } else {
+      delete (global as any).Game;
+    }
   });
 
   describe("constructor", () => {

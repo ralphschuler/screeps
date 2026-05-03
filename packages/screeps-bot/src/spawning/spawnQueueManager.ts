@@ -8,7 +8,6 @@
  * - Handles both bootstrap and normal spawning modes
  */
 
-import { cachedFindMyStructures } from "@ralphschuler/screeps-cache";
 import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmCreepMemory, SwarmState } from "@ralphschuler/screeps-memory";
@@ -125,7 +124,7 @@ export function getAllSpawnableRoles(room: Room, swarm: SwarmState): string[] {
  * Main spawn manager - coordinates all spawning for a room
  */
 export function runSpawnManager(room: Room, swarm: SwarmState): void {
-  const spawns = cachedFindMyStructures<StructureSpawn>(room, STRUCTURE_SPAWN);
+  const spawns = room.find(FIND_MY_SPAWNS);
   const availableSpawn = spawns.find(s => !s.spawning);
 
   if (!availableSpawn) return;

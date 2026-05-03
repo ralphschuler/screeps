@@ -58,7 +58,7 @@ export interface IntelScannerConfig {
 
 const DEFAULT_CONFIG: IntelScannerConfig = {
   updateInterval: 10,
-  minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
+  minBucket: 2000,
   maxCpuBudget: 0.02, // 2% of CPU limit
   roomsPerTick: 3,
   rescanInterval: 1000, // Rescan every 1000 ticks
@@ -87,7 +87,7 @@ export class IntelScanner {
   @LowFrequencyProcess("empire:intelScanner", "Intel Scanner", {
     priority: ProcessPriority.MEDIUM,
     interval: 10,
-    minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
+    minBucket: 2000,
     cpuBudget: 0.02
   })
   public run(): void {

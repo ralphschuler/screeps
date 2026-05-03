@@ -40,11 +40,19 @@ export interface PruningStats {
  * Memory Pruner class
  */
 export class MemoryPruner {
+  private getRawMemorySize(): number {
+    const rawMemory = (globalThis as unknown as { RawMemory?: { get?: () => string } }).RawMemory;
+    if (typeof rawMemory?.get === "function") {
+      return rawMemory.get().length;
+    }
+    return JSON.stringify(Memory ?? {}).length;
+  }
+
   /**
    * Run all pruning operations
    */
   public pruneAll(): PruningStats {
-    const sizeBefore = RawMemory.get().length;
+    const sizeBefore = this.getRawMemorySize();
 
     const stats: PruningStats = {
       deadCreeps: 0,
@@ -60,7 +68,7 @@ export class MemoryPruner {
     stats.staleIntel = this.pruneStaleIntel(MAX_INTEL_AGE);
     stats.marketHistory = this.pruneMarketHistory(MAX_MARKET_HISTORY_AGE);
 
-    const sizeAfter = RawMemory.get().length;
+    const sizeAfter = this.getRawMemorySize();
     stats.bytesSaved = Math.max(0, sizeBefore - sizeAfter);
 
     if (stats.bytesSaved > 0) {

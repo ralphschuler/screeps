@@ -53,19 +53,18 @@ function getBootstrapSpawnOrder(room: Room): { role: string; minCount: number; c
   const sourceCount = Math.max(sources.length, 1); // Ensure at least 1
   
   return [
-    // 1. Energy production first - can't do anything without energy
-    { role: "larvaWorker", minCount: 1 },
-    // 2. First harvester (always needed, regardless of source count)
+    // 1. First harvester (always needed, regardless of source count)
+    // larvaWorkers are emergency-only and are handled before this order.
     { role: "harvester", minCount: 1 },
-    // 3. Transport to distribute energy (1 is enough with bigger bodies)
+    // 2. Transport to distribute energy (1 is enough with bigger bodies)
     { role: "hauler", minCount: 1 },
-    // 4. Additional harvesters for remaining sources (1 per source)
+    // 3. Additional harvesters for remaining sources (1 per source)
     // FIXED: Dynamic harvester count based on actual sources in room
     // This ensures single-source rooms don't get stuck waiting for 2nd harvester
     { role: "harvester", minCount: sourceCount },
-    // 5. Queen carrier when storage exists (manages spawns/extensions)
+    // 4. Queen carrier when storage exists (manages spawns/extensions)
     { role: "queenCarrier", minCount: 1, condition: (room: Room) => Boolean(room.storage) },
-    // 6. Upgrader for controller progress
+    // 5. Upgrader for controller progress
     { role: "upgrader", minCount: 1 }
   ];
 }

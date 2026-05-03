@@ -161,7 +161,7 @@ export class HybridStore implements CacheStore {
       // Check TTL
       if (this.isExpirable(memEntry)) {
         const age = Game.time - memEntry.cachedAt;
-        if (age > memEntry.ttl!) {
+        if (memEntry.ttl === 0 ? age > 0 : age >= memEntry.ttl!) {
           keysToDelete.push(key);
           expired++;
           continue; // Skip expired
@@ -269,7 +269,7 @@ export class HybridStore implements CacheStore {
     for (const [key, entry] of heap.entries) {
       if (this.isExpirable(entry)) {
         const age = Game.time - entry.cachedAt;
-        if (age > entry.ttl!) {
+        if (entry.ttl === 0 ? age > 0 : age >= entry.ttl!) {
           heap.entries.delete(key);
           heap.dirtyKeys.delete(key);
           cleaned++;
@@ -281,7 +281,7 @@ export class HybridStore implements CacheStore {
     for (const [key, memEntry] of Object.entries(memory.data)) {
       if (this.isExpirable(memEntry)) {
         const age = Game.time - memEntry.cachedAt;
-        if (age > memEntry.ttl!) {
+        if (memEntry.ttl === 0 ? age > 0 : age >= memEntry.ttl!) {
           delete memory.data[key];
           cleaned++;
         }

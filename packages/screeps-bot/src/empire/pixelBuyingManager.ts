@@ -56,7 +56,7 @@ class BotPixelBuyingManager extends FrameworkPixelBuyingManager {
   @LowFrequencyProcess("empire:pixelBuying", "Pixel Buying Manager", {
     priority: ProcessPriority.IDLE, // Very low priority - only runs when everything else is fine
     interval: 200,
-    minBucket: 0,
+    minBucket: 9000,
     cpuBudget: 0.01
   })
   public run(): void {

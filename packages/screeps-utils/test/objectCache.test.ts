@@ -5,12 +5,12 @@
 
 import { expect } from 'chai';
 import {
-  getCachedObject,
+  getCachedObjectById,
   getCachedStructure,
   getCachedCreep,
   getCachedSource,
   getCacheStatistics,
-  warmObjectCache,
+  prefetchRoomObjects,
   clearObjectCache
 } from '../src/cache/objectCache';
 
@@ -23,11 +23,11 @@ describe('Object Cache', () => {
     (global as any).Game.time = 1000;
   });
 
-  describe('getCachedObject', () => {
+  describe('getCachedObjectById', () => {
     it('should return null for non-existent object', () => {
       (global as any).Game.getObjectById = () => null;
       
-      const obj = getCachedObject('test123' as Id<any>);
+      const obj = getCachedObjectById('test123' as Id<any>);
       expect(obj).to.be.null;
     });
 
@@ -37,7 +37,7 @@ describe('Object Cache', () => {
         return id === 'obj1' ? mockObject : null;
       };
       
-      const obj1 = getCachedObject('obj1' as Id<any>);
+      const obj1 = getCachedObjectById('obj1' as Id<any>);
       expect(obj1).to.equal(mockObject);
     });
 
@@ -50,9 +50,9 @@ describe('Object Cache', () => {
         return id === 'obj1' ? mockObject : null;
       };
       
-      getCachedObject('obj1' as Id<any>, 5);
-      getCachedObject('obj1' as Id<any>, 5);
-      getCachedObject('obj1' as Id<any>, 5);
+      getCachedObjectById('obj1' as Id<any>, 5);
+      getCachedObjectById('obj1' as Id<any>, 5);
+      getCachedObjectById('obj1' as Id<any>, 5);
       
       // Should only call getObjectById once (first time)
       expect(callCount).to.equal(1);
@@ -68,17 +68,17 @@ describe('Object Cache', () => {
       };
       
       // First access at tick 1000
-      getCachedObject('obj1' as Id<any>, 5);
+      getCachedObjectById('obj1' as Id<any>, 5);
       expect(callCount).to.equal(1);
       
       // Access at tick 1003 (within TTL)
       (global as any).Game.time = 1003;
-      getCachedObject('obj1' as Id<any>, 5);
+      getCachedObjectById('obj1' as Id<any>, 5);
       expect(callCount).to.equal(1); // Still cached
       
       // Access at tick 1006 (beyond TTL of 5)
       (global as any).Game.time = 1006;
-      getCachedObject('obj1' as Id<any>, 5);
+      getCachedObjectById('obj1' as Id<any>, 5);
       expect(callCount).to.equal(2); // Re-fetched
     });
 
@@ -88,16 +88,16 @@ describe('Object Cache', () => {
       (global as any).Game.getObjectById = () => mockObject;
       
       // Cache with TTL of 10
-      getCachedObject('obj1' as Id<any>, 10);
+      getCachedObjectById('obj1' as Id<any>, 10);
       
       // Should still be cached at tick 1009
       (global as any).Game.time = 1009;
-      const obj1 = getCachedObject('obj1' as Id<any>, 10);
+      const obj1 = getCachedObjectById('obj1' as Id<any>, 10);
       expect(obj1).to.equal(mockObject);
       
       // Should expire at tick 1011
       (global as any).Game.time = 1011;
-      const obj2 = getCachedObject('obj1' as Id<any>, 10);
+      const obj2 = getCachedObjectById('obj1' as Id<any>, 10);
       expect(obj2).to.equal(mockObject);
     });
   });
@@ -186,11 +186,11 @@ describe('Object Cache', () => {
       };
       
       // First access - miss
-      getCachedObject('obj1' as Id<any>, 5);
+      getCachedObjectById('obj1' as Id<any>, 5);
       
       // Second access - hit
-      getCachedObject('obj1' as Id<any>, 5);
-      getCachedObject('obj1' as Id<any>, 5);
+      getCachedObjectById('obj1' as Id<any>, 5);
+      getCachedObjectById('obj1' as Id<any>, 5);
       
       const stats = getCacheStatistics();
       expect(stats.hits).to.equal(2);
@@ -204,10 +204,10 @@ describe('Object Cache', () => {
       (global as any).Game.getObjectById = () => mockObject;
       
       // 1 miss, 3 hits
-      getCachedObject('obj1' as Id<any>, 5);
-      getCachedObject('obj1' as Id<any>, 5);
-      getCachedObject('obj1' as Id<any>, 5);
-      getCachedObject('obj1' as Id<any>, 5);
+      getCachedObjectById('obj1' as Id<any>, 5);
+      getCachedObjectById('obj1' as Id<any>, 5);
+      getCachedObjectById('obj1' as Id<any>, 5);
+      getCachedObjectById('obj1' as Id<any>, 5);
       
       const stats = getCacheStatistics();
       expect(stats.hitRate).to.equal(75); // 3/4 = 75%
@@ -225,20 +225,20 @@ describe('Object Cache', () => {
         return null;
       };
       
-      getCachedObject('obj1' as Id<any>, 5);
-      getCachedObject('obj2' as Id<any>, 5);
-      getCachedObject('obj3' as Id<any>, 5);
+      getCachedObjectById('obj1' as Id<any>, 5);
+      getCachedObjectById('obj2' as Id<any>, 5);
+      getCachedObjectById('obj3' as Id<any>, 5);
       
       const stats = getCacheStatistics();
       expect(stats.size).to.equal(3);
     });
   });
 
-  describe('warmObjectCache', () => {
+  describe('prefetchRoomObjects', () => {
     it('should pre-populate cache with room objects', () => {
       const mockRoom = {
         name: 'W1N1',
-        controller: { id: 'ctrl1' },
+        controller: { id: 'ctrl1', my: true },
         storage: { id: 'storage1' },
         terminal: { id: 'terminal1' },
         find: (type: number) => {
@@ -264,7 +264,7 @@ describe('Object Cache', () => {
         return objects[id] || null;
       };
       
-      warmObjectCache(mockRoom as any);
+      prefetchRoomObjects(mockRoom as any);
       
       const stats = getCacheStatistics();
       expect(stats.size).to.be.greaterThan(0);
@@ -277,7 +277,7 @@ describe('Object Cache', () => {
       
       (global as any).Game.getObjectById = () => mockObject;
       
-      getCachedObject('obj1' as Id<any>, 5);
+      getCachedObjectById('obj1' as Id<any>, 5);
       
       let stats = getCacheStatistics();
       expect(stats.size).to.be.greaterThan(0);

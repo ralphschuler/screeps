@@ -16,7 +16,6 @@ import { countCreepsByRole, needsRole, assignRemoteTargetRoom } from "./spawnNee
 import { isBootstrapMode, getBootstrapRole, isEmergencySpawnState, getEnergyProducerCount } from "./bootstrapManager";
 import { logger } from "@ralphschuler/screeps-core";
 import { kernel, memoryManager } from "./botIntegration";
-import { cachedFindMyStructures } from "@ralphschuler/screeps-cache";
 
 interface ResourceTransferRequest {
   fromRoom: string;
@@ -133,7 +132,7 @@ export function getAllSpawnableRoles(room: Room, swarm: SwarmState): string[] {
  * Main spawn manager - coordinates all spawning for a room
  */
 export function runSpawnManager(room: Room, swarm: SwarmState): void {
-  const spawns = cachedFindMyStructures<StructureSpawn>(room, STRUCTURE_SPAWN);
+  const spawns = room.find(FIND_MY_SPAWNS);
   const availableSpawn = spawns.find(s => !s.spawning);
 
   if (!availableSpawn) return;

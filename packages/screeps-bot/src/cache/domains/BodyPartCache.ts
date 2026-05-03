@@ -7,6 +7,14 @@
 import { globalCache } from "../CacheManager";
 
 const NAMESPACE = "bodyPart";
+let lastCacheTick = -1;
+
+function ensureCurrentTick(): void {
+  if (lastCacheTick === Game.time) return;
+
+  globalCache.clear(NAMESPACE);
+  lastCacheTick = Game.time;
+}
 
 /**
  * Cached body part data for a creep
@@ -72,9 +80,11 @@ function computeBodyPartData(creep: Creep): BodyPartData {
  * Get body part data from cache or compute
  */
 function getBodyPartData(creep: Creep): BodyPartData {
+  ensureCurrentTick();
+
   const result = globalCache.get<BodyPartData>(creep.name, {
     namespace: NAMESPACE,
-    ttl: 1, // Per-tick cache
+    ttl: 0,
     compute: () => computeBodyPartData(creep)
   });
   
@@ -151,6 +161,8 @@ export function getBodyPartCacheStats(): {
   size: number;
   tick: number;
 } {
+  ensureCurrentTick();
+
   const stats = globalCache.getCacheStats(NAMESPACE);
   return {
     size: stats.size,
@@ -163,4 +175,5 @@ export function getBodyPartCacheStats(): {
  */
 export function clearBodyPartCache(): void {
   globalCache.clear(NAMESPACE);
+  lastCacheTick = Game.time;
 }

@@ -54,7 +54,7 @@ class MemoryManager {
    * Get swarm state for a room
    */
   getSwarmState(roomName: string): SwarmState | undefined {
-    const roomMemory = Memory.rooms[roomName] as unknown as { swarm?: SwarmState };
+    const roomMemory = Memory.rooms?.[roomName] as unknown as { swarm?: SwarmState } | undefined;
     return roomMemory?.swarm;
   }
   
@@ -62,7 +62,10 @@ class MemoryManager {
    * Get or initialize swarm state for a room
    */
   getOrInitSwarmState(roomName: string): SwarmState {
-    const roomMemory = Memory.rooms[roomName] as unknown as { swarm?: SwarmState };
+    if (!Memory.rooms) {
+      Memory.rooms = {};
+    }
+    const roomMemory = (Memory.rooms[roomName] ??= {}) as unknown as { swarm?: SwarmState };
     if (!roomMemory.swarm) {
       roomMemory.swarm = {
         colonyLevel: 1 as any, // EvolutionStage 

@@ -249,7 +249,7 @@ describe("Cluster Resource Balancing", () => {
         const TERMINAL_SEND_COST = 0.1;
         const cost = Math.ceil(amount * distance * TERMINAL_SEND_COST);
         const netBenefit = amount - cost;
-        const threshold = priority * 1000; // Higher priority = lower threshold
+        const threshold = (11 - priority) * 1000; // Higher priority = lower threshold
 
         return netBenefit > threshold;
       };

@@ -114,7 +114,7 @@ describe("Memory Pruner", () => {
         knownRooms: {
           W1N1: {
             name: "W1N1",
-            lastSeen: 100, // Very old
+            lastSeen: -1, // Older than the 10000-tick max age at Game.time 10000
             sources: 2,
             controllerLevel: 0,
             threatLevel: 0,
@@ -136,7 +136,7 @@ describe("Memory Pruner", () => {
           },
           W3N3: {
             name: "W3N3",
-            lastSeen: 100, // Old but highway
+            lastSeen: -1, // Old but highway
             sources: 2,
             controllerLevel: 0,
             threatLevel: 0,
@@ -163,7 +163,7 @@ describe("Memory Pruner", () => {
         knownRooms: {
           W1N1: {
             name: "W1N1",
-            lastSeen: 100, // Very old
+            lastSeen: -1, // Older than the 10000-tick max age at Game.time 10000
             sources: 2,
             controllerLevel: 5,
             owner: "me",
@@ -216,7 +216,7 @@ describe("Memory Pruner", () => {
         knownRooms: {
           W1N1: {
             name: "W1N1",
-            lastSeen: 100,
+            lastSeen: -1,
             sources: 2,
             controllerLevel: 0,
             threatLevel: 0,

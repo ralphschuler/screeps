@@ -262,7 +262,7 @@ export function claimer(ctx: CreepContext): CreepAction {
 
   // Move to target room
   if (ctx.room.name !== targetRoom) {
-    return { type: "moveToRoom", roomName: targetRoom };
+    return { type: "remoteMoveToRoom", roomName: targetRoom, routeType: "reserver" };
   }
 
   // Act on controller
@@ -393,7 +393,7 @@ export function remoteWorker(ctx: CreepContext): CreepAction {
 
   // Go to remote room and harvest
   if (ctx.room.name !== targetRoom) {
-    return { type: "moveToRoom", roomName: targetRoom };
+    return { type: "remoteMoveToRoom", roomName: targetRoom, routeType: "hauler" };
   }
 
   const source = ctx.creep.pos.findClosestByRange(FIND_SOURCES_ACTIVE);

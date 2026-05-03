@@ -5,6 +5,7 @@ import {
   countCreepsByRole,
   getAllSpawnableRoles
 } from "../../src/logic/spawn";
+import { clearRoomFindCache } from "@ralphschuler/screeps-cache";
 import type { SwarmState } from "../../src/memory/schemas";
 import { kernel } from "../../src/core/kernel";
 
@@ -74,6 +75,7 @@ function createMockRoom(
 ): Room {
   const mockSpawn = {
     name: `Spawn1`,
+    structureType: STRUCTURE_SPAWN,
     spawning: false,
     spawnCreep: (body: BodyPartConstant[], creepName: string, opts?: SpawnOptions) => {
       // Calculate cost of body
@@ -113,7 +115,7 @@ function createMockRoom(
     storage: hasStorage ? { store: { [RESOURCE_ENERGY]: 10000 } } : undefined,
     controller: { level: 4, my: true },
     find: (type: FindConstant) => {
-      if (type === FIND_MY_SPAWNS) {
+      if (type === FIND_MY_SPAWNS || type === FIND_MY_STRUCTURES) {
         return [mockSpawn];
       }
       if (type === FIND_SOURCES) {
@@ -127,9 +129,6 @@ function createMockRoom(
         return [];
       }
       if (type === FIND_MINERALS) {
-        return [];
-      }
-      if (type === FIND_MY_STRUCTURES) {
         return [];
       }
       return [];
@@ -180,6 +179,7 @@ describe("spawn energy constraints", () => {
         getUsed: () => 10
       }
     } as unknown as typeof Game;
+    clearRoomFindCache();
 
     // Mock kernel.emit to prevent errors
     if (!kernel.emit) {

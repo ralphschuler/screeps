@@ -25,6 +25,7 @@ describe("Kernel process health monitoring", () => {
     };
 
     kernel = new Kernel(buildKernelConfigFromCpu(getConfig().cpu));
+    kernel.getEventBus().clear();
 
     // Subscribe to process events for testing
     kernel.on('process.suspended', (event) => {
