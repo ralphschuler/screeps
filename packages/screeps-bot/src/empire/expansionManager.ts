@@ -109,10 +109,17 @@ export class ExpansionManager {
     // Update remote room assignments for all owned rooms
     this.updateRemoteAssignments(empire);
 
-    // Check if we're ready for expansion
+    // === CONQUEST: assign claimers for freshly conquered rooms FIRST ===
+    // These are high-priority targets added by offensiveOperations.ts after
+    // clearing an enemy room. They bypass normal readiness limits so we
+    // capture before the enemy respawns.
+    this.assignConquestClaimers(empire);
+
+    // Check if we're ready for normal expansion
     const expansionReady = this.isExpansionReady(empire);
 
     // Assign targets to claimers from expansion queue (only if ready)
+    // Normal expansion follows stability/GCL rules; conquest is handled above.
     if (expansionReady) {
       this.assignClaimerTargets(empire);
     }
@@ -440,6 +447,51 @@ export class ExpansionManager {
     }
 
     return false;
+  }
+
+  /**
+   * Assign claimers for rooms freshly conquered by offensive operations.
+   * These bypass normal expansion readiness checks because the window to
+   * claim before the enemy respawns is narrow.
+   */
+  private assignConquestClaimers(empire: EmpireMemory): void {
+    const store = (empire as any).offensiveOperations as Record<string, any> | undefined;
+    if (!store) return;
+
+    for (const op of Object.values(store)) {
+      if (!op || op.state !== "executing" || !op.readyForClaim) continue;
+      if (op.targetRoom !== op.targetRoom) continue; // sanity
+
+      // Skip if room already owned by us
+      const room = Game.rooms[op.targetRoom];
+      if (room?.controller?.my) continue;
+
+      // Skip if claimer already assigned
+      const hasClaimer = Object.values(Game.creeps).some(c => {
+        const m = c.memory as ClaimerMemory;
+        return m.role === "claimer" && m.targetRoom === op.targetRoom && m.task === "claim";
+      });
+      if (hasClaimer) continue;
+
+      // Find an idle claimer
+      let assigned = false;
+      for (const creep of Object.values(Game.creeps)) {
+        const m = creep.memory as ClaimerMemory;
+        if (m.role === "claimer" && !m.targetRoom) {
+          m.targetRoom = op.targetRoom;
+          m.task = "claim";
+          logger.info(`Assigned conquering claimer to ${op.targetRoom}`, {
+            subsystem: "Expansion"
+          });
+          assigned = true;
+          break;
+        }
+      }
+
+      if (!assigned) {
+        this.requestClaimerSpawn(op.targetRoom, empire);
+      }
+    }
   }
 
   /**

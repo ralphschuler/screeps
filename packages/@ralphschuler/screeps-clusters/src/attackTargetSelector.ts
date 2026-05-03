@@ -95,8 +95,15 @@ export function findAttackTargets(
     // Skip if not scouted
     if (!intel.scouted) continue;
     
-    // Skip our own rooms
-    if (intel.owner === "self") continue;
+    // Skip rooms owned by us
+    const myUsername = Object.values(Game.spawns)[0]?.owner.username ?? "";
+    if (intel.owner === myUsername) continue;
+    
+    // Skip allied rooms (Defenders never attack allies per ROADMAP Section 25)
+    if (intel.owner) {
+      const allies = ["TooAngel", "TedRoastBeef"];
+      if (allies.includes(intel.owner)) continue;
+    }
     
     // Skip highway and SK rooms
     if (intel.isHighway || intel.isSK) continue;

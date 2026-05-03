@@ -8,7 +8,10 @@
  * 3. Squad creation
  * 4. Squad formation
  * 5. Operation execution
- * 6. Multi-room coordination
+ * 6. Conquest handoff to ExpansionManager after target is cleared
+ *
+ * CRITICAL: Operations are stored in Memory.empire.offensiveOperations so they
+ * survive global resets. Module-level Maps get wiped after any reset.
  *
  * Implements ROADMAP Section 12: Offensive Combat
  */
@@ -21,73 +24,85 @@ import { type OffensiveDoctrine, canLaunchDoctrine, selectDoctrine } from "./off
 import { createOffensiveSquad, shouldDissolveSquad, validateSquadState } from "./squadCoordinator";
 import { isSquadForming, startSquadFormation, updateSquadFormations } from "./squadFormationManager";
 
-/**
- * Offensive operation tracking
- */
-export interface OffensiveOperation {
-  /** Operation ID */
+const MAX_CONCURRENT_OPS = 2;
+const FORMATION_TIMEOUT = 1000;
+const COMPLETED_OP_RETENTION = 5000;
+
+// ---------------------------------------------------------------------------
+// Memory persistence helpers
+// ---------------------------------------------------------------------------
+
+export interface StoredOffensiveOperation {
   id: string;
-  /** Cluster executing the operation */
   clusterId: string;
-  /** Target room */
   targetRoom: string;
-  /** Operation doctrine */
   doctrine: OffensiveDoctrine;
-  /** Squads involved */
   squadIds: string[];
-  /** Operation state */
   state: "planning" | "forming" | "executing" | "complete" | "failed";
-  /** Creation tick */
   createdAt: number;
-  /** Last update tick */
   lastUpdate: number;
-  /** Whether this operation is assisting an ally */
   isAllyAssist?: boolean;
-  /** Name of the ally being assisted (if isAllyAssist is true) */
   allyName?: string;
+  /** True when the target room is clear and ready for a claimer. */
+  readyForClaim?: boolean;
 }
 
-/**
- * Active operations (stored in global)
- */
-const activeOperations = new Map<string, OffensiveOperation>();
-
-/**
- * Plan and launch offensive operations for a cluster
- */
-export function planOffensiveOperations(cluster: ClusterMemory): void {
-  // Check if cluster is in war mode
-  if (cluster.role !== "war" && cluster.role !== "mixed") {
-    return;
+function getOpsStore(): Record<string, StoredOffensiveOperation> {
+  const empire = memoryManager.getEmpire();
+  if (!empire.offensiveOperations) {
+    empire.offensiveOperations = {} as any;
   }
-  
-  // Check if we have capacity for more operations
-  const activeOps = Array.from(activeOperations.values()).filter(
-    op => op.clusterId === cluster.id && op.state !== "complete" && op.state !== "failed"
+  return empire.offensiveOperations as Record<string, StoredOffensiveOperation>;
+}
+
+function getActiveOps(): StoredOffensiveOperation[] {
+  return Object.values(getOpsStore()).filter(
+    op => op.state !== "complete" && op.state !== "failed"
   );
-  
-  const MAX_CONCURRENT_OPS = 2;
+}
+
+function getClusterActiveOps(clusterId: string): StoredOffensiveOperation[] {
+  return getActiveOps().filter(op => op.clusterId === clusterId);
+}
+
+function getStoredOp(id: string): StoredOffensiveOperation | undefined {
+  return getOpsStore()[id];
+}
+
+function saveOp(op: StoredOffensiveOperation): void {
+  getOpsStore()[op.id] = op;
+}
+
+function _deleteOp(id: string): void {
+  delete getOpsStore()[id];
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+export function planOffensiveOperations(cluster: ClusterMemory): void {
+  if (cluster.role !== "war" && cluster.role !== "mixed") return;
+
+  const activeOps = getClusterActiveOps(cluster.id);
+
   if (activeOps.length >= MAX_CONCURRENT_OPS) {
     logger.debug(`Cluster ${cluster.id} at max operations (${activeOps.length})`, {
       subsystem: "Offensive"
     });
     return;
   }
-  
-  // Find potential targets
+
   const targets = findAttackTargets(cluster, 10, 3);
-  
   if (targets.length === 0) {
     logger.debug(`No attack targets found for cluster ${cluster.id}`, {
       subsystem: "Offensive"
     });
     return;
   }
-  
-  // Select best target
+
   const target = targets[0]!;
-  
-  // Check if we can launch the doctrine
+
   if (!canLaunchDoctrine(cluster, target.doctrine)) {
     logger.info(
       `Cluster ${cluster.id} cannot launch ${target.doctrine} doctrine (insufficient resources)`,
@@ -95,36 +110,31 @@ export function planOffensiveOperations(cluster: ClusterMemory): void {
     );
     return;
   }
-  
-  // Launch operation
+
   launchOffensiveOperation(cluster, target.roomName, target.doctrine);
 }
 
-/**
- * Launch an offensive operation
- */
 export function launchOffensiveOperation(
   cluster: ClusterMemory,
   targetRoom: string,
   doctrine?: OffensiveDoctrine
-): OffensiveOperation | null {
-  // Validate target
+): StoredOffensiveOperation | null {
   if (!validateTarget(targetRoom)) {
     logger.warn(`Invalid target ${targetRoom}`, { subsystem: "Offensive" });
     return null;
   }
-  
-  // Determine doctrine if not specified
+
   const empire = memoryManager.getEmpire();
   const intel = empire.knownRooms[targetRoom];
-  const finalDoctrine = doctrine ?? selectDoctrine(targetRoom, {
-    towerCount: intel?.towerCount,
-    spawnCount: intel?.spawnCount,
-    rcl: intel?.controllerLevel,
-    owner: intel?.owner
-  });
-  
-  // Check if we can launch
+  const finalDoctrine =
+    doctrine ??
+    selectDoctrine(targetRoom, {
+      towerCount: intel?.towerCount,
+      spawnCount: intel?.spawnCount,
+      rcl: intel?.controllerLevel,
+      owner: intel?.owner
+    });
+
   if (!canLaunchDoctrine(cluster, finalDoctrine)) {
     logger.warn(
       `Cannot launch ${finalDoctrine} operation on ${targetRoom} - insufficient resources`,
@@ -132,10 +142,9 @@ export function launchOffensiveOperation(
     );
     return null;
   }
-  
-  // Create operation
+
   const opId = `op_${cluster.id}_${targetRoom}_${Game.time}`;
-  const operation: OffensiveOperation = {
+  const op: StoredOffensiveOperation = {
     id: opId,
     clusterId: cluster.id,
     targetRoom,
@@ -145,179 +154,204 @@ export function launchOffensiveOperation(
     createdAt: Game.time,
     lastUpdate: Game.time
   };
-  
-  activeOperations.set(opId, operation);
-  
-  // Create squad (map doctrine type to squad type)
+
+  saveOp(op);
+
   const squadType = finalDoctrine === "harassment" ? "harass" : finalDoctrine;
   const squad = createOffensiveSquad(cluster, targetRoom, squadType, {
     towerCount: intel?.towerCount,
     spawnCount: intel?.spawnCount
   });
-  
-  // Add squad to cluster memory
+
   cluster.squads.push(squad);
-  operation.squadIds.push(squad.id);
-  
-  // Start forming squad
+  op.squadIds.push(squad.id);
+  saveOp(op);
+
   startSquadFormation(cluster, squad);
-  operation.state = "forming";
-  
-  // Mark room as being attacked
+  op.state = "forming";
+  op.lastUpdate = Game.time;
+  saveOp(op);
+
   markRoomAttacked(targetRoom);
-  
+
   logger.info(
     `Launched ${finalDoctrine} operation ${opId} on ${targetRoom} with squad ${squad.id}`,
     { subsystem: "Offensive" }
   );
-  
-  return operation;
+
+  return op;
 }
 
-/**
- * Update active offensive operations
- */
 export function updateOffensiveOperations(): void {
-  // Update squad formations
   updateSquadFormations();
-  
-  for (const operation of activeOperations.values()) {
-    updateOperation(operation);
+
+  const store = getOpsStore();
+  for (const id in store) {
+    const op = store[id]!;
+    updateSingleOperation(op);
   }
-  
-  // Clean up old operations
+
   cleanupOperations();
 }
 
-/**
- * Update a single operation
- */
-function updateOperation(operation: OffensiveOperation): void {
-  operation.lastUpdate = Game.time;
-  
-  const cluster = memoryManager.getCluster(operation.clusterId);
+// ---------------------------------------------------------------------------
+// Update helpers
+// ---------------------------------------------------------------------------
+
+function updateSingleOperation(op: StoredOffensiveOperation): void {
+  op.lastUpdate = Game.time;
+
+  const cluster = memoryManager.getCluster(op.clusterId);
   if (!cluster) {
-    operation.state = "failed";
-    logger.error(`Cluster ${operation.clusterId} not found for operation ${operation.id}`, {
+    op.state = "failed";
+    saveOp(op);
+    logger.error(`Cluster ${op.clusterId} not found for operation ${op.id}`, {
       subsystem: "Offensive"
     });
     return;
   }
-  
-  switch (operation.state) {
+
+  switch (op.state) {
     case "forming":
-      updateFormingOperation(operation, cluster);
+      updateFormingOperation(op, cluster);
       break;
     case "executing":
-      updateExecutingOperation(operation, cluster);
+      updateExecutingOperation(op, cluster);
       break;
   }
 }
 
-/**
- * Update an operation in forming state
- */
-function updateFormingOperation(operation: OffensiveOperation, _cluster: ClusterMemory): void {
-  // Check if all squads have finished forming
-  const allFormed = operation.squadIds.every(squadId => !isSquadForming(squadId));
-  
+function updateFormingOperation(op: StoredOffensiveOperation, _cluster: ClusterMemory): void {
+  const allFormed = op.squadIds.every(squadId => !isSquadForming(squadId));
+
   if (allFormed) {
-    operation.state = "executing";
-    logger.info(`Operation ${operation.id} entering execution phase`, {
-      subsystem: "Offensive"
-    });
+    op.state = "executing";
+    logger.info(`Operation ${op.id} entering execution phase`, { subsystem: "Offensive" });
   }
-  
-  // Check for formation timeout
-  const age = Game.time - operation.createdAt;
-  if (age > 1000) {
-    operation.state = "failed";
-    logger.warn(`Operation ${operation.id} formation timed out`, {
-      subsystem: "Offensive"
-    });
+
+  if (Game.time - op.createdAt > FORMATION_TIMEOUT) {
+    op.state = "failed";
+    logger.warn(`Operation ${op.id} formation timed out`, { subsystem: "Offensive" });
   }
+
+  saveOp(op);
 }
 
-/**
- * Update an operation in executing state
- */
-function updateExecutingOperation(operation: OffensiveOperation, cluster: ClusterMemory): void {
-  // Update squad states
-  for (const squadId of operation.squadIds) {
+function updateExecutingOperation(op: StoredOffensiveOperation, cluster: ClusterMemory): void {
+  for (const squadId of op.squadIds) {
     const squad = cluster.squads.find(s => s.id === squadId);
     if (!squad) continue;
-    
+
     validateSquadState(squad);
-    
-    // Check if squad should be dissolved
+
     if (shouldDissolveSquad(squad)) {
-      logger.info(`Squad ${squadId} dissolving, operation ${operation.id} may complete`, {
+      logger.info(`Squad ${squadId} dissolving, operation ${op.id} may complete`, {
         subsystem: "Offensive"
       });
-      // Remove from cluster
       const index = cluster.squads.findIndex(s => s.id === squadId);
       if (index >= 0) cluster.squads.splice(index, 1);
     }
   }
-  
-  // Check if all squads are dissolved
-  const activeSquads = operation.squadIds.filter(squadId =>
+
+  const activeSquads = op.squadIds.filter(squadId =>
     cluster.squads.some(s => s.id === squadId)
   );
-  
+
+  checkAndHandleConquest(op);
+
   if (activeSquads.length === 0) {
-    operation.state = "complete";
-    logger.info(`Operation ${operation.id} complete`, { subsystem: "Offensive" });
+    op.state = "complete";
+    logger.info(`Operation ${op.id} complete`, { subsystem: "Offensive" });
   }
+
+  saveOp(op);
 }
 
 /**
- * Clean up completed/failed operations
+ * After clearing a room, prepare it for claiming.
+ * Clears intel ownership flags and injects into the claim queue.
  */
-function cleanupOperations(): void {
-  const MAX_AGE = 5000; // Keep for 5000 ticks for debugging
-  
-  for (const [opId, operation] of activeOperations.entries()) {
-    const age = Game.time - operation.createdAt;
-    
-    if ((operation.state === "complete" || operation.state === "failed") && age > MAX_AGE) {
-      activeOperations.delete(opId);
-      logger.debug(`Cleaned up operation ${opId}`, { subsystem: "Offensive" });
+function checkAndHandleConquest(op: StoredOffensiveOperation): void {
+  const empire = memoryManager.getEmpire();
+  const intel = empire.knownRooms?.[op.targetRoom];
+
+  if (!intel) return;
+
+  const room = Game.rooms[op.targetRoom];
+  if (!room || !room.controller) return;
+
+  const myUsername = getMyUsername();
+
+  const isCleared =
+    !room.controller.owner &&
+    (!room.controller.reservation || room.controller.reservation.username === myUsername);
+
+  if (isCleared && !op.readyForClaim) {
+    op.readyForClaim = true;
+
+    intel.owner = undefined;
+    intel.reserver = undefined;
+    intel.threatLevel = 0;
+
+    logger.info(
+      `Room ${op.targetRoom} cleared by operation ${op.id} — flagged for claiming`,
+      { subsystem: "Offensive" }
+    );
+
+    const candidate = empire.claimQueue?.find(c => c.roomName === op.targetRoom);
+    if (!candidate) {
+      if (!empire.claimQueue) empire.claimQueue = [];
+      empire.claimQueue.push({
+        roomName: op.targetRoom,
+        score: 100,
+        distance: 0,
+        claimed: false,
+        lastEvaluated: Game.time
+      });
+      empire.claimQueue.sort((a, b) => b.score - a.score);
     }
   }
 }
 
-/**
- * Get operation status
- */
-export function getOperationStatus(operationId: string): OffensiveOperation | null {
-  return activeOperations.get(operationId) ?? null;
+function cleanupOperations(): void {
+  const store = getOpsStore();
+  for (const id in store) {
+    const op = store[id]!;
+    if (
+      (op.state === "complete" || op.state === "failed") &&
+      Game.time - op.createdAt > COMPLETED_OP_RETENTION
+    ) {
+      delete store[id];
+      logger.debug(`Cleaned up operation ${id}`, { subsystem: "Offensive" });
+    }
+  }
 }
 
-/**
- * Get all active operations for a cluster
- */
-export function getClusterOperations(clusterId: string): OffensiveOperation[] {
-  return Array.from(activeOperations.values()).filter(
-    op => op.clusterId === clusterId && op.state !== "complete" && op.state !== "failed"
-  );
+// ---------------------------------------------------------------------------
+// Utility exports
+// ---------------------------------------------------------------------------
+
+export function getOperationStatus(operationId: string): StoredOffensiveOperation | null {
+  return getStoredOp(operationId) ?? null;
 }
 
-/**
- * Cancel an operation
- */
+export function getClusterOperations(clusterId: string): StoredOffensiveOperation[] {
+  return getActiveOps().filter(op => op.clusterId === clusterId);
+}
+
+export function getAllOperations(): StoredOffensiveOperation[] {
+  return Object.values(getOpsStore());
+}
+
 export function cancelOperation(operationId: string): void {
-  const operation = activeOperations.get(operationId);
-  if (!operation) return;
-  
-  operation.state = "failed";
-  
+  const op = getStoredOp(operationId);
+  if (!op) return;
+  op.state = "failed";
+  saveOp(op);
   logger.info(`Cancelled operation ${operationId}`, { subsystem: "Offensive" });
 }
 
-/**
- * Get all active operations (for debugging/stats)
- */
-export function getAllOperations(): OffensiveOperation[] {
-  return Array.from(activeOperations.values());
+function getMyUsername(): string {
+  const spawns = Object.values(Game.spawns);
+  return spawns.length > 0 ? spawns[0].owner.username : "";
 }

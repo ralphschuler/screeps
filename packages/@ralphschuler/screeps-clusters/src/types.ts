@@ -205,6 +205,10 @@ export interface EmpireMemory {
   knownRooms?: Record<string, RoomIntel>;
   /** War targets (rooms currently under attack or marked for attack) */
   warTargets?: string[];
+  /** Claim queue for expansion candidates (may be undefined in older packages) */
+  claimQueue?: any[];
+  /** Active offensive operations keyed by operation ID. */
+  offensiveOperations?: any;
   /** Other empire-level data */
   [key: string]: unknown;
 }

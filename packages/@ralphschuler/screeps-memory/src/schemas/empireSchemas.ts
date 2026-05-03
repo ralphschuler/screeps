@@ -287,6 +287,8 @@ export interface EmpireMemory {
     warMode: boolean;
     expansionPaused: boolean;
   };
+  /** Active offensive operations keyed by operation ID. Survives global resets. */
+  offensiveOperations?: any;
   /** Last update tick */
   lastUpdate: number;
 }
@@ -320,6 +322,7 @@ export function createDefaultEmpireMemory(): EmpireMemory {
     nukeCandidates: [],
     powerBanks: [],
     market: createDefaultMarketMemory(),
+    offensiveOperations: {},
     objectives: {
       targetPowerLevel: 0,
       targetRoomCount: 1,

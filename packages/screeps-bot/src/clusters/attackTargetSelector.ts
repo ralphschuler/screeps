@@ -96,8 +96,9 @@ export function findAttackTargets(
     // Skip if not scouted
     if (!intel.scouted) continue;
     
-    // Skip our own rooms
-    if (intel.owner === "self") continue;
+    // Skip rooms owned by us
+    const myUsername = Object.values(Game.spawns)[0]?.owner.username ?? "";
+    if (intel.owner === myUsername) continue;
 
     // Permanent allies are never attack targets, even if stale intel marked them dangerous.
     if ((intel.owner && isAllyPlayer(intel.owner)) || (intel.reserver && isAllyPlayer(intel.reserver))) {
