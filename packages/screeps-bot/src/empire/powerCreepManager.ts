@@ -12,9 +12,9 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { memoryManager } from "@ralphschuler/screeps-memory";
 
 /**
  * Power creep configuration
@@ -357,7 +357,6 @@ export class PowerCreepManager {
    */
   private createAssignment(pc: PowerCreep): PowerCreepAssignment {
     // Determine role based on powers
-    const hasOperateSpawn = pc.powers[PWR_OPERATE_SPAWN] !== undefined;
     const hasDisruptSpawn = pc.powers[PWR_DISRUPT_SPAWN] !== undefined;
     const role: "powerQueen" | "powerWarrior" = hasDisruptSpawn ? "powerWarrior" : "powerQueen";
 

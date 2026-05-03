@@ -20,11 +20,9 @@
  * **IMPORTANT**: Uses threat assessment which automatically filters allied entities (non-aggression pact, ROADMAP Section 25)
  */
 
-import { logger } from "@bot/core/logger";
-import { memoryManager } from "@ralphschuler/screeps-memory";
-import type { DefenseRequest } from "@bot/spawning/defenderManager";
-import { MediumFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
-import { ProcessPriority } from "@bot/core/kernel";
+import { logger } from "@ralphschuler/screeps-core";
+import { MediumFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
+import type { DefenseRequest } from "../analysis/defenderNeeds";
 import { assessThreat } from "../threat/threatAssessment";
 import { filterAllyCreeps } from "../alliance/nonAggressionPact";
 

@@ -10,9 +10,9 @@
  * Addresses Issue: #36 - Resource coordination for military operations
  */
 
-import { logger } from "../core/logger";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { ClusterMemory } from "@ralphschuler/screeps-memory";
+import { logger } from "../core/logger";
 
 /**
  * Military resource reservation per room

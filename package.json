@@ -11,8 +11,8 @@
     "packages/@ralphschuler/*"
   ],
   "engines": {
-    "node": ">=22.0.0",
-    "npm": ">=8.0.0"
+    "node": ">=24 <25",
+    "npm": ">=10.0.0"
   },
   "scripts": {
     "postinstall": "git submodule update --init --recursive || echo 'Note: Git submodules not initialized. This is normal in CI environments.'",
@@ -22,7 +22,11 @@
     "quality:duplication": "jscpd . --config .jscpd.json",
     "quality:complexity": "node scripts/analyze-complexity.cjs",
     "quality:baseline": "npm run quality:duplication && npm run quality:complexity",
-    "build": "npm run build:core && npm run build:cache && npm run build:kernel && npm run build:stats && npm run build:memory && npm run build:console && npm run build:economy && npm run build:empire && npm run build:layouts && npm run build:intershard && npm run build:visuals && npm run build:spawn && npm run build:chemistry && npm run build:standards && npm run build:utils && npm run build:pathfinding && npm run build:remote-mining && npm run build:pheromones && npm run build:defense && npm run build:roles && npm run build -w screeps-typescript-starter",
+    "check:alliance-safety": "node scripts/check-alliance-safety.js",
+    "verify": "npm run build && npm run lint:all && npm run test:all && npm run check:alliance-safety && npm audit --omit=dev --audit-level=high",
+    "build": "npm run build:framework && npm run build:bot",
+    "build:bot": "npm run build -w screeps-typescript-starter",
+    "build:framework": "npm run build:core && npm run build:stats && npm run build:kernel && npm run build:utils && npm run build:cache && npm run build:console && npm run build:layouts && npm run build:pathfinding && npm run build:remote-mining && npm run build:visuals && npm run build:chemistry && npm run build:standards && npm run build:memory && npm run build:economy && npm run build:intershard && npm run build:defense && npm run build:empire && npm run build:pheromones && npm run build:spawn && npm run build:clusters && npm run build:roles",
     "build:exporters": "npm run build -w screeps-graphite-exporter && npm run build -w screeps-loki-exporter",
     "build:mcp": "npm run build -w @ralphschuler/screeps-docs-mcp -w @ralphschuler/screeps-mcp -w @ralphschuler/screeps-wiki-mcp -w @ralphschuler/screeps-typescript-mcp",
     "build:mod": "npm run build -w screepsmod-testing",
@@ -49,8 +53,9 @@
     "build:pathfinding": "npm run build -w @ralphschuler/screeps-pathfinding",
     "build:remote-mining": "npm run build -w @ralphschuler/screeps-remote-mining",
     "build:pheromones": "npm run build -w @ralphschuler/screeps-pheromones",
-    "build:all": "npm run build:core && npm run build:cache && npm run build:kernel && npm run build:stats && npm run build:memory && npm run build:console && npm run build:economy && npm run build:empire && npm run build:layouts && npm run build:intershard && npm run build:visuals && npm run build:roles && npm run build:chemistry && npm run build:utils && npm run build:pathfinding && npm run build:remote-mining && npm run build:pheromones && npm run build:defense && npm run build && npm run build:exporters && npm run build:mod && npm run build:tasks && npm run build:posis",
-    "pretest": "npm run build:core && npm run build:cache && npm run build:kernel && npm run build:stats && npm run build:memory && npm run build:layouts && npm run build:defense && npm run build:clusters && npm run build:console && npm run build:economy && npm run build:empire && npm run build:intershard && npm run build:pathfinding && npm run build:utils && npm run build:pheromones && npm run build:remote-mining && npm run build:roles && npm run build:standards && npm run build:visuals && npm run build:chemistry",
+    "build:tools": "npm run build:mcp && npm run build:tasks && npm run build:posis && npm run build:mod",
+    "build:all": "npm run build && npm run build:tools && npm run build:exporters",
+    "pretest": "npm run build:framework",
     "test": "npm test -w screeps-typescript-starter",
     "test:unit": "npm run test:unit -w screeps-typescript-starter",
     "test:integration": "npm run test:integration -w screeps-typescript-starter",
@@ -83,7 +88,7 @@
     "test:remote-mining": "npm test -w @ralphschuler/screeps-remote-mining",
     "test:economy": "npm test -w @ralphschuler/screeps-economy",
     "test:all": "npm run test && npm run test:kernel && npm run test:stats && npm run test:console && npm run test:empire && npm run test:layouts && npm run test:intershard && npm run test:visuals && npm run test:roles && npm run test:spawn && npm run test:chemistry && npm run test:defense && npm run test:economy && npm run test:tasks && npm run test:posis && npm run test:utils && npm run test:pathfinding && npm run test:remote-mining",
-    "lint": "npm run lint -w screeps-typescript-starter",
+    "lint": "npm run lint -w screeps-typescript-starter -- --max-warnings=0",
     "lint:kernel": "npm run lint -w @ralphschuler/screeps-kernel",
     "lint:roles": "npm run lint -w @ralphschuler/screeps-roles",
     "lint:pathfinding": "npm run lint -w @ralphschuler/screeps-pathfinding",
@@ -96,7 +101,8 @@
     "lint:tasks": "npm run lint -w @ralphschuler/screeps-tasks",
     "lint:posis": "npm run lint -w @ralphschuler/screeps-posis",
     "lint:all": "npm run lint && npm run lint:kernel && npm run lint:roles && npm run lint:pathfinding && npm run lint:remote-mining && npm run lint:spawn && npm run lint:economy && npm run lint:defense && npm run lint:chemistry && npm run lint:utils && npm run lint:tasks && npm run lint:posis",
-    "push": "npm run push -w screeps-typescript-starter",
+    "deploy": "npm run push",
+    "push": "DEPLOY=true npm run push -w screeps-typescript-starter",
     "watch": "npm run watch -w screeps-typescript-starter",
     "respawn": "node utils/respawner.js",
     "build:docs": "node scripts/build-docs.js",
@@ -121,12 +127,35 @@
     "url": "https://github.com/ralphschuler/screeps/issues"
   },
   "homepage": "https://github.com/ralphschuler/screeps#readme",
+  "overrides": {
+    "@eslint/eslintrc": {
+      "ajv": "^6.12.6"
+    },
+    "@hono/node-server": "^1.19.13",
+    "@modelcontextprotocol/inspector-client": {
+      "ajv": "^6.12.6"
+    },
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "eslint": {
+      "ajv": "^6.12.6"
+    },
+    "axios": "^1.15.2",
+    "brace-expansion": "^1.1.13",
+    "follow-redirects": "^1.16.0",
+    "path-to-regexp": "^8.4.2",
+    "qs": "^6.15.1",
+    "serve-handler": {
+      "minimatch": "3.1.5"
+    },
+    "undici": "^8.1.0"
+  },
   "devDependencies": {
     "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
     "@types/node": "^25.0.10",
     "@types/screeps": "^3.3.8",
     "@types/sinon": "^21.0.0",
+    "ajv": "^6.12.6",
     "chai": "^6.2.2",
     "jscpd": "^4.0.7",
     "mocha": "^11.7.5",

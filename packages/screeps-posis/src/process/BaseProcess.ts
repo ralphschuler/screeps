@@ -143,7 +143,7 @@ export abstract class BaseProcess implements IPosisProcess {
   /**
    * Handle incoming messages - override in subclass
    */
-  protected handleMessage(message: unknown, senderId: string): void {
+  protected handleMessage(_message: unknown, _senderId: string): void {
     // Override in subclass
   }
 
@@ -157,7 +157,7 @@ export abstract class BaseProcess implements IPosisProcess {
   /**
    * Deserialize custom state - override in subclass
    */
-  protected deserializeState(state: Record<string, unknown>): void {
+  protected deserializeState(_state: Record<string, unknown>): void {
     // Override in subclass
   }
 

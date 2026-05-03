@@ -11,10 +11,8 @@
  * Complements RoomVisualizer which handles room-specific details.
  */
 
-import { createLogger } from "@ralphschuler/screeps-core";
+import { getActualHostileCreeps, getActualHostileStructures } from "@ralphschuler/screeps-defense";
 import { memoryManager } from "@ralphschuler/screeps-memory";
-
-const logger = createLogger("MapVisualizer");
 
 /**
  * Map visualization configuration
@@ -182,7 +180,7 @@ export class MapVisualizer {
         // Note: In a full implementation, we'd track war targets in memory
         // For now, we just show rooms with hostiles
         const hostileRooms = Object.values(Game.rooms).filter(r => 
-          r.find(FIND_HOSTILE_CREEPS).length > 0 && 
+          getActualHostileCreeps(r).length > 0 && 
           Game.map.getRoomLinearDistance(room.name, r.name) <= 5
         );
 
@@ -207,8 +205,8 @@ export class MapVisualizer {
    */
   private drawThreats(visual: MapVisual): void {
     for (const room of Object.values(Game.rooms)) {
-      const hostiles = room.find(FIND_HOSTILE_CREEPS);
-      const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES);
+      const hostiles = getActualHostileCreeps(room);
+      const hostileStructures = getActualHostileStructures(room);
 
       if (hostiles.length > 0 || hostileStructures.length > 0) {
         const threatLevel = hostiles.length + hostileStructures.length * 2;

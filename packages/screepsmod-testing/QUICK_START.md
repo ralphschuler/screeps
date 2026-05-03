@@ -5,7 +5,7 @@ Get started with screepsmod-testing in 5 minutes!
 ## Prerequisites
 
 - Working Screeps performance server setup
-- Node.js 16+ installed
+- Node.js 24 installed
 - Basic understanding of Screeps API
 
 ## Step 1: Build the Mod

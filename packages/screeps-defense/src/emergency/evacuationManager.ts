@@ -12,10 +12,9 @@
  * **IMPORTANT**: Automatically filters allied entities (non-aggression pact, ROADMAP Section 25)
  */
 
-import { logger } from "@bot/core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
-import { MediumFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
-import { ProcessPriority } from "@bot/core/kernel";
+import { MediumFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
 import { filterAllyCreeps } from "../alliance/nonAggressionPact";
 
 /**

@@ -21,13 +21,9 @@
  * Addresses Issue: #34
  */
 
-import { createLogger } from "@ralphschuler/screeps-core";
-import { memoryManager } from "@ralphschuler/screeps-memory";
-import type { PheromoneState, SwarmState } from "@ralphschuler/screeps-memory";
-import { VisualizationLayer } from "@ralphschuler/screeps-memory";
+import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
+import { memoryManager, type PheromoneState, type SwarmState, VisualizationLayer } from "@ralphschuler/screeps-memory";
 import { visualizationManager } from "./visualizationManager";
-
-const logger = createLogger("RoomVisualizer");
 
 /**
  * Visualization configuration
@@ -223,7 +219,7 @@ export class RoomVisualizer {
 
     // Creep count
     const creeps = room.find(FIND_MY_CREEPS).length;
-    const hostiles = room.find(FIND_HOSTILE_CREEPS).length;
+    const hostiles = getActualHostileCreeps(room).length;
     visual.text(`Creeps: ${creeps} | Hostiles: ${hostiles}`, x, y, {
       align: "left",
       font: "0.4 monospace",
@@ -346,7 +342,7 @@ export class RoomVisualizer {
    * Draw combat information with animated markers and 3D depth effects
    */
   private drawCombatInfo(visual: RoomVisual, room: Room): void {
-    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    const hostiles = getActualHostileCreeps(room);
 
     // Draw circles around hostiles with threat level
     for (const hostile of hostiles) {

@@ -4,6 +4,7 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
+import { getActualHostileCreeps, getActualHostileStructures } from "@ralphschuler/screeps-defense";
 import type { EmpireMemory, RoomIntel } from "@ralphschuler/screeps-memory";
 
 /**
@@ -88,8 +89,8 @@ export class RoomIntelManager {
     // Find nearby rooms around owned rooms
     for (const owned of ownedRooms) {
       const exits = Game.map.describeExits(owned.name);
-      for (const direction in exits) {
-        const exitRoomName = exits[direction as ExitKey];
+      for (const exitRoomName of Object.values(exits)) {
+        if (!exitRoomName) continue;
         
         // Skip if already known
         if (empire.knownRooms[exitRoomName]) {
@@ -152,13 +153,10 @@ export class RoomIntelManager {
     const sources = room.find(FIND_SOURCES);
     const mineral = room.find(FIND_MINERALS)[0];
     const controller = room.controller;
-    const hostiles = room.find(FIND_HOSTILE_CREEPS);
-    const towers = room.find(FIND_HOSTILE_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_TOWER
-    });
-    const spawns = room.find(FIND_HOSTILE_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_SPAWN
-    });
+    const hostiles = getActualHostileCreeps(room);
+    const hostileStructures = getActualHostileStructures(room);
+    const towers = hostileStructures.filter(s => s.structureType === STRUCTURE_TOWER);
+    const spawns = hostileStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
     const portals = room.find(FIND_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_PORTAL
     });
@@ -174,9 +172,9 @@ export class RoomIntelManager {
     const terrain = room.getTerrain();
     let plainCount = 0;
     let swampCount = 0;
-    for (let x = 0; x < 50; x++) {
-      for (let y = 0; y < 50; y++) {
-        const tile = terrain.get(x, y);
+    for (let terrainX = 0; terrainX < 50; terrainX++) {
+      for (let terrainY = 0; terrainY < 50; terrainY++) {
+        const tile = terrain.get(terrainX, terrainY);
         if (tile === TERRAIN_MASK_SWAMP) {
           swampCount++;
         } else if (tile === 0) {
@@ -212,13 +210,10 @@ export class RoomIntelManager {
     const sources = room.find(FIND_SOURCES);
     const mineral = room.find(FIND_MINERALS)[0];
     const controller = room.controller;
-    const hostiles = room.find(FIND_HOSTILE_CREEPS);
-    const towers = room.find(FIND_HOSTILE_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_TOWER
-    });
-    const spawns = room.find(FIND_HOSTILE_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_SPAWN
-    });
+    const hostiles = getActualHostileCreeps(room);
+    const hostileStructures = getActualHostileStructures(room);
+    const towers = hostileStructures.filter(s => s.structureType === STRUCTURE_TOWER);
+    const spawns = hostileStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
     const portals = room.find(FIND_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_PORTAL
     });

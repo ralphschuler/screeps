@@ -22,6 +22,10 @@ export interface MCPServerConfig {
   name: string;
   version: string;
   screeps: ScreepsConfig;
+  permissions?: {
+    enableWrites?: boolean;
+    enableConsole?: boolean;
+  };
 }
 
 /**

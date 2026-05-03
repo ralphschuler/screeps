@@ -4,7 +4,7 @@
  * Provides interactive UI elements for common bot operations using the new console UI system.
  */
 
-import { colorful, createElement, log } from '@ralphschuler/screeps-utils';
+import { colorful, createElement } from '@ralphschuler/screeps-utils';
 import { Command } from './commandRegistry';
 import { generateCategoryHelp, generateInteractiveHelp } from './uiHelp';
 

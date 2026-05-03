@@ -285,9 +285,9 @@ export function stat(key: string, value: number, unit?: string, context?: LogCon
     }
     if (context.meta) {
       // Flatten meta object into the stat object, but skip reserved fields
-      for (const key in context.meta) {
-        if (!RESERVED_STAT_FIELDS.has(key)) {
-          statObject[key] = context.meta[key];
+      for (const metaKey in context.meta) {
+        if (!RESERVED_STAT_FIELDS.has(metaKey)) {
+          statObject[metaKey] = context.meta[metaKey];
         }
       }
     }

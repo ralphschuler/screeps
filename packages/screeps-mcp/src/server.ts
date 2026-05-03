@@ -5,8 +5,7 @@
  * Model Context Protocol server integration for Screeps bot development.
  * Exposes Screeps game data, memory, and operations via MCP protocol.
  * 
- * TODO(P1): SECURITY - Add authentication and authorization for sensitive operations
- * Memory writes and console commands should be protected
+ * TODO(P1): SECURITY - Add per-client authentication for sensitive operations
  * TODO(P2): PERF - Implement request rate limiting to prevent API abuse
  * Too many requests could impact game performance
  * TODO(P2): PERF - Add caching layer for frequently accessed data
@@ -95,6 +94,29 @@ import {
  * ```
  */
 export function createMCPServer(config: MCPServerConfig) {
+  const permissions = {
+    enableWrites: process.env.SCREEPS_MCP_ENABLE_WRITES === "true",
+    enableConsole: process.env.SCREEPS_MCP_ENABLE_CONSOLE === "true",
+    ...config.permissions
+  };
+
+  const permissionDenied = (toolName: string, envFlag: string) => ({
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            success: false,
+            error: `${toolName} is disabled by default. Set ${envFlag}=true to enable this mutating capability.`
+          },
+          null,
+          2
+        )
+      }
+    ],
+    isError: true
+  });
+
   const server = new McpServer(
     {
       name: config.name,
@@ -184,6 +206,9 @@ export function createMCPServer(config: MCPServerConfig) {
       inputSchema: toolSchemas.console as unknown as any
     },
     async (args: unknown) => {
+      if (!permissions.enableConsole) {
+        return permissionDenied("screeps_console", "SCREEPS_MCP_ENABLE_CONSOLE");
+      }
       await ensureConnected();
       const validated = toolSchemas.console.parse(args);
       return await handleConsole(client, validated);
@@ -212,6 +237,9 @@ export function createMCPServer(config: MCPServerConfig) {
       inputSchema: toolSchemas.memorySet as unknown as any
     },
     async (args: unknown) => {
+      if (!permissions.enableWrites) {
+        return permissionDenied("screeps_memory_set", "SCREEPS_MCP_ENABLE_WRITES");
+      }
       await ensureConnected();
       const validated = toolSchemas.memorySet.parse(args);
       return await handleMemorySet(client, validated);
@@ -253,6 +281,9 @@ export function createMCPServer(config: MCPServerConfig) {
       inputSchema: toolSchemas.segmentSet as unknown as any
     },
     async (args: unknown) => {
+      if (!permissions.enableWrites) {
+        return permissionDenied("screeps_segment_set", "SCREEPS_MCP_ENABLE_WRITES");
+      }
       await ensureConnected();
       const validated = toolSchemas.segmentSet.parse(args);
       return await handleSegmentSet(client, validated);
@@ -564,6 +595,8 @@ export function createMCPServer(config: MCPServerConfig) {
  * - `SCREEPS_PORT`: Server port (default: 443)
  * - `SCREEPS_PROTOCOL`: Protocol (default: https)
  * - `SCREEPS_SHARD`: Target shard (default: shard3)
+ * - `SCREEPS_MCP_ENABLE_WRITES`: Enable Memory and segment writes (default: false)
+ * - `SCREEPS_MCP_ENABLE_CONSOLE`: Enable console execution (default: false)
  */
 async function main() {
   // Load configuration from environment variables
@@ -578,6 +611,10 @@ async function main() {
       port: process.env.SCREEPS_PORT ? parseInt(process.env.SCREEPS_PORT) : 443,
       protocol: (process.env.SCREEPS_PROTOCOL as "http" | "https") ?? "https",
       shard: process.env.SCREEPS_SHARD ?? "shard3"
+    },
+    permissions: {
+      enableWrites: process.env.SCREEPS_MCP_ENABLE_WRITES === "true",
+      enableConsole: process.env.SCREEPS_MCP_ENABLE_CONSOLE === "true"
     }
   };
 

@@ -14,8 +14,8 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import type { BodyTemplate } from "../logic/spawn";
 import type { CreepRole, RoleFamily, SwarmCreepMemory } from "@ralphschuler/screeps-memory";
+import type { BodyTemplate } from "../logic/spawn";
 
 /**
  * Spawn priority levels
@@ -238,7 +238,6 @@ class SpawnQueueManager {
     const availableSpawns = this.getAvailableSpawns(roomName);
     if (availableSpawns.length === 0) return 0;
 
-    const queue = this.getQueue(roomName);
     let spawnsInitiated = 0;
 
     // Try to spawn using each available spawn

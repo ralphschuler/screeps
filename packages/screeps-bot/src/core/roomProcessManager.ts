@@ -14,6 +14,7 @@
  * - Frequency tiers: Critical (every tick), Economic (every 5 ticks distributed)
  */
 
+import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 import { ProcessPriority, kernel } from "./kernel";
 import { logger } from "./logger";
 import { roomManager } from "./roomNode";
@@ -35,7 +36,7 @@ const ROOM_DISTRIBUTION_CONFIG = {
  */
 function getRoomProcessPriority(room: Room): ProcessPriority {
   // Rooms under attack get critical priority
-  const hostiles = room.find(FIND_HOSTILE_CREEPS);
+  const hostiles = getActualHostileCreeps(room);
   if (hostiles.length > 0) {
     return ProcessPriority.CRITICAL;
   }
@@ -63,7 +64,7 @@ function getRoomCpuBudget(room: Room): number {
   }
 
   const rcl = room.controller.level;
-  const hostiles = room.find(FIND_HOSTILE_CREEPS);
+  const hostiles = getActualHostileCreeps(room);
   
   // War mode: higher budget
   // Typical war room usage: 2-6 CPU (budget set at upper end for safety)
@@ -300,7 +301,7 @@ export class RoomProcessManager {
    * want minBucket limitations blocking processes. Returns 0 for all priorities.
    * Bucket mode in kernel still provides priority-based filtering during low bucket.
    */
-  private getMinBucketForPriority(priority: ProcessPriority): number {
+  private getMinBucketForPriority(_priority: ProcessPriority): number {
     return 0; // No bucket requirements - processes run regardless of bucket level
   }
 

@@ -10,10 +10,10 @@
 
 import { cachedFindMyStructures } from "@ralphschuler/screeps-cache";
 import { logger } from "@ralphschuler/screeps-core";
-import { type WeightedEntry, weightedSelection } from "@ralphschuler/screeps-utils";
-import { kernel } from "../core/kernel";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmCreepMemory, SwarmState } from "@ralphschuler/screeps-memory";
+import { type WeightedEntry, weightedSelection } from "@ralphschuler/screeps-utils";
+import { kernel } from "../core/kernel";
 import { getBootstrapRole, getEnergyProducerCount, isBootstrapMode, isEmergencySpawnState } from "./bootstrapManager";
 import { type BodyTemplate, ROLE_DEFINITIONS, type RoleSpawnDef } from "./roleDefinitions";
 import { assignRemoteTargetRoom, countCreepsByRole, needsRole } from "./spawnNeedsAnalyzer";

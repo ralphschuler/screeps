@@ -265,7 +265,7 @@ function calculateUpgradePriority(
 
 function calculateRepairPriority(
   ctx: CreepContext,
-  pheromones: PheromoneState | null
+  _pheromones: PheromoneState | null
 ): PriorityScore {
   let priority = 35;
   

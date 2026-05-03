@@ -4,6 +4,7 @@
   "description": "Model Context Protocol (MCP) server integration for Screeps bot development",
   "license": "MIT",
   "author": "OpenAI Automations",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": "./dist/server.js",
@@ -26,7 +27,7 @@
     "docker:push": "docker tag screeps-mcp:latest ghcr.io/ralphschuler/screeps-mcp:latest && docker push ghcr.io/ralphschuler/screeps-mcp:latest"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.25.3",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "screeps-api": "^1.16.1",
     "zod": "^4.3.6"
   },
@@ -38,6 +39,6 @@
     "vitest": "^4.0.14"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=24 <25"
   }
 }

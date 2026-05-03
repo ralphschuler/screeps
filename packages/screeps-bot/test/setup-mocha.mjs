@@ -247,10 +247,37 @@ const stubs = {
   
   '@ralphschuler/screeps-kernel': {
     Kernel: class {},
-    Process: class {}
+    Process: class {},
+    ProcessPriority: {
+      CRITICAL: 100,
+      HIGH: 75,
+      MEDIUM: 50,
+      LOW: 25,
+      IDLE: 10
+    },
+    kernel: {
+      addProcess: () => {},
+      removeProcess: () => {},
+      getProcess: () => ({}),
+      tick: () => {}
+    },
+    ProcessClass: () => (target) => target,
+    HighFrequencyProcess: () => (_target, _propertyKey, descriptor) => descriptor,
+    MediumFrequencyProcess: () => (_target, _propertyKey, descriptor) => descriptor,
+    LowFrequencyProcess: () => (_target, _propertyKey, descriptor) => descriptor,
+    CriticalProcess: () => (_target, _propertyKey, descriptor) => descriptor,
+    IdleProcess: () => (_target, _propertyKey, descriptor) => descriptor,
+    registerDecoratedProcesses: () => {}
   },
   
   '@ralphschuler/screeps-core': {
+    logger: {
+      log: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+      debug: () => {}
+    },
     createLogger: (name) => ({
       log: () => {},
       info: () => {},

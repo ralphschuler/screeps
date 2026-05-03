@@ -37,15 +37,15 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
+import { memoryManager } from "@ralphschuler/screeps-memory";
+import type { EmpireMemory, ExpansionCandidate, RoomIntel } from "@ralphschuler/screeps-memory";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { memoryManager } from "@ralphschuler/screeps-memory";
-import type { EmpireMemory, ExpansionCandidate, RoomIntel } from "@ralphschuler/screeps-memory";
+import { clusterMonitor } from "./clusterMonitor";
 import * as ExpansionScoring from "./expansionScoring";
 import { roomIntelManager } from "./roomIntelManager";
 import { warCoordinator } from "./warCoordinator";
-import { clusterMonitor } from "./clusterMonitor";
 
 /**
  * Empire Manager Configuration

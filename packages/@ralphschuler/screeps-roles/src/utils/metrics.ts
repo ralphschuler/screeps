@@ -3,42 +3,42 @@
  * Provides no-op metrics collection
  */
 
-export function recordMetric(name: string, value: number): void {
+export function recordMetric(_name: string, _value: number): void {
   // No-op stub
 }
 
-export function incrementCounter(name: string): void {
+export function incrementCounter(_name: string): void {
   // No-op stub
 }
 
-export function initializeMetrics(memory: any): void {
+export function initializeMetrics(_memory: any): void {
   // No-op stub
 }
 
-export function recordHarvest(memory: any, amount: number): void {
+export function recordHarvest(_memory: any, _amount: number): void {
   // No-op stub
 }
 
-export function recordTransfer(memory: any, amount: number): void {
+export function recordTransfer(_memory: any, _amount: number): void {
   // No-op stub
 }
 
-export function recordBuild(memory: any, amount: number): void {
+export function recordBuild(_memory: any, _amount: number): void {
   // No-op stub
 }
 
-export function recordRepair(memory: any, amount: number): void {
+export function recordRepair(_memory: any, _amount: number): void {
   // No-op stub
 }
 
-export function recordDamage(memory: any, amount: number): void {
+export function recordDamage(_memory: any, _amount: number): void {
   // No-op stub
 }
 
-export function recordHealing(memory: any, amount: number): void {
+export function recordHealing(_memory: any, _amount: number): void {
   // No-op stub
 }
 
-export function recordUpgrade(memory: any, amount: number): void {
+export function recordUpgrade(_memory: any, _amount: number): void {
   // No-op stub
 }

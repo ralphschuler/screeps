@@ -36,6 +36,7 @@
     "screeps-typescript-starter": "*"
   },
   "dependencies": {
+    "@ralphschuler/screeps-memory": "*",
     "lz-string": "^1.5.0"
   },
   "devDependencies": {

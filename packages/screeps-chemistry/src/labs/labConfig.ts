@@ -4,7 +4,7 @@
  * Manages lab role assignments and configuration
  */
 
-import type { LabRole, LabConfigEntry, RoomLabConfig, ChemistryLogger } from "../types";
+import type { LabRole, RoomLabConfig, ChemistryLogger } from "../types";
 import { noopLogger } from "../types";
 
 /**

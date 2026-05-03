@@ -4,6 +4,7 @@
   "description": "Model Context Protocol (MCP) server for browsing and querying TypeScript type definitions from typed-screeps",
   "license": "MIT",
   "author": "OpenAI Automations",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": "./dist/server.js",
@@ -28,7 +29,7 @@
     "docker:push": "docker tag screeps-typescript-mcp:latest ghcr.io/ralphschuler/screeps-typescript-mcp:latest && docker push ghcr.io/ralphschuler/screeps-typescript-mcp:latest"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.25.3",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -42,6 +43,6 @@
     "vitest": "^4.0.14"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=24 <25"
   }
 }

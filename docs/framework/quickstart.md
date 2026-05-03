@@ -4,7 +4,7 @@ Get your Screeps bot running with the framework in under 10 minutes.
 
 ## Prerequisites
 
-- Node.js 16+ installed
+- Node.js 24 installed
 - TypeScript knowledge
 - Screeps account (official or private server)
 

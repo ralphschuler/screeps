@@ -6,14 +6,11 @@
  */
 
 import type { RoomIntel, EmpireMemory } from "../memory/schemas";
-import { safeFind } from "@ralphschuler/screeps-utils";
+import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 import { findCachedClosest } from "../cache";
 import { isExit } from "screeps-cartographer";
 import type { CreepAction, CreepContext } from "./types";
-import { createLogger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "../memory/manager";
-
-const logger = createLogger("UtilityBehaviors");
 
 // =============================================================================
 // Empire / Intel Helpers
@@ -38,8 +35,7 @@ function recordRoomIntel(room: Room, empire: EmpireMemory): void {
     existingIntel.lastSeen = Game.time;
     
     // Only update threat level (dynamic data)
-    // Use safeFind to handle engine errors with corrupted owner data
-    const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
+    const hostiles = getActualHostileCreeps(room);
     existingIntel.threatLevel = hostiles.length > 5 ? 3 : hostiles.length > 2 ? 2 : hostiles.length > 0 ? 1 : 0;
     
     // Update controller level if it changed
@@ -56,8 +52,7 @@ function recordRoomIntel(room: Room, empire: EmpireMemory): void {
   const sources = room.find(FIND_SOURCES);
   const mineral = room.find(FIND_MINERALS)[0];
   const controller = room.controller;
-  // Use safeFind to handle engine errors with corrupted owner data
-  const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
+  const hostiles = getActualHostileCreeps(room);
 
   // Classify terrain (expensive operation, only do once per 2000 ticks)
   // OPTIMIZATION: Sample fewer tiles (every 10 instead of every 5) to reduce CPU cost

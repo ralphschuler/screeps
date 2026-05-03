@@ -17,8 +17,6 @@
 import { logger } from "@ralphschuler/screeps-core";
 import { ProcessPriority } from "../../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../../core/processDecorators";
-
-// TooAngel modules
 import { scanForNPCRooms, updateNPCRoom } from "./npcDetector";
 import {
   cleanupQuestCreeps,

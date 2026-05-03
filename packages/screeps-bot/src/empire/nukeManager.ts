@@ -22,9 +22,9 @@
 
 import { NukeCoordinator } from "@ralphschuler/screeps-empire";
 import type { NukeConfig } from "@ralphschuler/screeps-empire";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { memoryManager } from "@ralphschuler/screeps-memory";
 
 /**
  * Nuke Manager Configuration

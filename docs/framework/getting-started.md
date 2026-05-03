@@ -20,7 +20,7 @@ By the end of this tutorial, you'll have a **working Screeps bot** that:
 ## Prerequisites
 
 Before starting:
-- [x] Node.js 16+ installed
+- [x] Node.js 24 installed
 - [x] TypeScript basics
 - [x] Screeps account (official or private server)
 - [x] Completed [Installation Guide](installation.md)

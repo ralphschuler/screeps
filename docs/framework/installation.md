@@ -4,8 +4,8 @@
 
 Before installing the Screeps Framework, ensure you have:
 
-- **Node.js** 16.x or higher
-- **npm** 7.x or higher (comes with Node.js)
+- **Node.js** 24.x
+- **npm** 10.x or higher (comes with Node.js 24)
 - **TypeScript** 4.0 or higher
 - **Screeps account** (official server or private server)
 

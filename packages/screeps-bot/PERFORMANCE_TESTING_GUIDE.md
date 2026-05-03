@@ -22,7 +22,7 @@ Get started with performance testing in under 5 minutes:
 
 ### Prerequisites
 
-- Node.js 18.x or 20.x (LTS versions)
+- Node.js 24.x
 - Docker and Docker Compose installed and running
 - Built bot code
 
@@ -586,7 +586,7 @@ Performance tests are automatically triggered by `.github/workflows/performance-
 
 ```yaml
 1. Checkout code
-2. Setup Node.js 20
+2. Setup Node.js 24
 3. Install dependencies (npm ci)
 4. Build all packages (npm run build)
 5. Setup Docker

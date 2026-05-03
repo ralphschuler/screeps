@@ -14,10 +14,7 @@
  * - Combat: Balance ATTACK/RANGED_ATTACK/HEAL with TOUGH and MOVE
  */
 
-import { createLogger } from "@ralphschuler/screeps-core";
 import type { BodyTemplate } from "../logic/spawn";
-
-const logger = createLogger("BodyOptimizer");
 
 /**
  * Body optimization options
@@ -373,7 +370,7 @@ export function optimizeRangedBody(options: BodyOptimizationOptions): BodyTempla
  * Optimize healer body
  */
 export function optimizeHealerBody(options: BodyOptimizationOptions): BodyTemplate {
-  const { maxEnergy, willBoost = false } = options;
+  const { maxEnergy } = options;
 
   // Pattern: HEAL, MOVE (1:1 for speed)
   // With boost: more HEAL (boosted healing is very effective)

@@ -34,28 +34,33 @@ const cfg = {
 
 // Check if we have valid credentials (either token or email+password)
 const hasValidCredentials = cfg.token || (cfg.email && cfg.password);
+const shouldDeploy = process.env.DEPLOY === "true";
 
 // Debug logging for deployment troubleshooting
 console.log("=== Screeps Deploy Configuration ===");
+console.log("Deploy enabled:", shouldDeploy ? "YES" : "NO");
 console.log("Credentials Valid:", hasValidCredentials ? "YES" : "NO");
 console.log("Credentials type:", cfg.token ? "token" : (cfg.email && cfg.password) ? "email+password" : "none");
 console.log("Target server:", cfg.hostname);
 console.log("Target branch:", cfg.branch);
-console.log("Is Dryrun:", !hasValidCredentials);
 console.log("====================================");
 
-// Warning if credentials are missing
-if (!hasValidCredentials) {
-  console.warn("\n⚠️  WARNING: Credentials not configured!");
-  console.warn("The code will be built but NOT uploaded to Screeps (dryRun mode).");
-  console.warn("To fix this, set one of the following:");
-  console.warn("  - SCREEPS_TOKEN environment variable, OR");
-  console.warn("  - Both SCREEPS_USER and SCREEPS_PASS environment variables");
-  console.warn("Current values (showing if set, not actual values):");
-  console.warn("  SCREEPS_TOKEN:", process.env.SCREEPS_TOKEN ? "SET" : "NOT SET");
-  console.warn("  SCREEPS_USER:", process.env.SCREEPS_USER ? "SET" : "NOT SET");
-  console.warn("  SCREEPS_PASS:", process.env.SCREEPS_PASS ? "SET" : "NOT SET");
-  console.warn("");
+if (shouldDeploy && !hasValidCredentials) {
+  console.error("\nERROR: DEPLOY=true was set, but Screeps credentials are not configured.");
+  console.error("Set one of the following:");
+  console.error("  - SCREEPS_TOKEN environment variable, OR");
+  console.error("  - Both SCREEPS_USER and SCREEPS_PASS environment variables");
+  process.exit(1);
+}
+
+if (!shouldDeploy) {
+  console.log("Build-only mode: Screeps upload is disabled. Use npm run push or DEPLOY=true to deploy.");
+  if (!hasValidCredentials) {
+    console.warn("Credentials are not configured. This is fine for local build/test.");
+    console.warn("To deploy, set one of the following:");
+    console.warn("  - SCREEPS_TOKEN environment variable, OR");
+    console.warn("  - Both SCREEPS_USER and SCREEPS_PASS environment variables");
+  }
 }
 
 export default {
@@ -86,7 +91,9 @@ export default {
         { find: "@ralphschuler/screeps-intershard", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-intershard/src/index.ts") },
         { find: "@ralphschuler/screeps-kernel", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-kernel/src/index.ts") },
         { find: "@ralphschuler/screeps-layouts", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-layouts/src/index.ts") },
+        { find: "@ralphschuler/screeps-memory", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-memory/src/index.ts") },
         { find: "@ralphschuler/screeps-pathfinding", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-pathfinding/src/index.ts") },
+        { find: "@ralphschuler/screeps-pheromones", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-pheromones/src/index.ts") },
         { find: "@ralphschuler/screeps-remote-mining", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-remote-mining/src/index.ts") },
         { find: "@ralphschuler/screeps-roles", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-roles/src/index.ts") },
         { find: "@ralphschuler/screeps-standards", replacement: path.resolve(__dirname, "../@ralphschuler/screeps-standards/src/index.ts") },
@@ -152,10 +159,13 @@ export default {
       }
     }),
 
-    // Enable dryRun when not pushing to Screeps or when credentials are invalid
-    screeps({
-      config: cfg,
-      dryRun: !hasValidCredentials
-    })
+    ...(shouldDeploy
+      ? [
+          screeps({
+            config: cfg,
+            dryRun: false
+          })
+        ]
+      : [])
   ]
 };

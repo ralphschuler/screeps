@@ -10,11 +10,11 @@
  * Addresses Issue: Squad formation logic and role composition
  */
 
-import { logger } from "../core/logger";
 import type { ClusterMemory, SquadDefinition } from "@ralphschuler/screeps-memory";
+import { logger } from "../core/logger";
 import { SpawnPriority, type SpawnRequest, spawnQueue } from "../spawning/spawnQueue";
-import { DOCTRINE_CONFIGS, getDoctrineComposition } from "./offensiveDoctrine";
-import { addCreepToSquad, getSquadReadiness } from "./squadCoordinator";
+import { DOCTRINE_CONFIGS } from "./offensiveDoctrine";
+import { addCreepToSquad } from "./squadCoordinator";
 
 /**
  * Screeps BODYPART_COST constants

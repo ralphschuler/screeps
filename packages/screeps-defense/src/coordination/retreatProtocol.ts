@@ -8,7 +8,7 @@
  * - Retreat when overwhelmed to preserve resources
  */
 
-import { logger } from "@bot/core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { type ThreatAnalysis, assessThreat } from "../threat/threatAssessment";
 
 /**

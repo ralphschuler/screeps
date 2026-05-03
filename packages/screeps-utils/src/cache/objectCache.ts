@@ -388,8 +388,6 @@ export function getCachedSource(id: Id<Source> | null | undefined): Source | nul
  * Pre-populates cache with frequently accessed objects across all owned rooms.
  */
 export function warmCache(): void {
-  const startCpu = Game.cpu.getUsed();
-  
   // Warm cache for all owned rooms
   for (const roomName in Game.rooms) {
     const room = Game.rooms[roomName];

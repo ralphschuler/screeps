@@ -95,7 +95,7 @@ export interface SwarmState {
   /** Reserved rooms for expansion */
   reservedRooms?: string[];
   /** Remote mining assignments */
-  remoteAssignments?: Record<string, { harvesters: number; haulers: number; guards: number }>;
+  remoteAssignments?: string[];
   /** Cluster ID for multi-room coordination */
   clusterId?: string;
 }

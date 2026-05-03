@@ -9,12 +9,11 @@
  * - Hostile detection and event emission
  */
 
-import { assessThreat, calculateWallRepairTarget } from "@ralphschuler/screeps-defense";
-import { safeFind } from "@ralphschuler/screeps-utils";
-import { postureManager } from "../../logic/evolution";
-import { pheromoneManager } from "@ralphschuler/screeps-pheromones";
+import { assessThreat, calculateWallRepairTarget, getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
+import { pheromoneManager } from "@ralphschuler/screeps-pheromones";
+import { postureManager } from "../../logic/evolution";
 import { kernel } from "../kernel";
 
 /**
@@ -86,8 +85,7 @@ export class RoomDefenseManager {
       });
     }
 
-    // Use safeFind to handle engine errors with corrupted owner data
-    const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
+    const hostiles = getActualHostileCreeps(room);
 
     // Use threat assessment for accurate danger level calculation
     if (hostiles.length > 0) {
@@ -173,8 +171,7 @@ export class RoomDefenseManager {
   public runTowerControl(room: Room, swarm: SwarmState, towers: StructureTower[]): void {
     if (towers.length === 0) return;
 
-    // Find targets - use safeFind to handle engine errors with corrupted owner data
-    const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
+    const hostiles = getActualHostileCreeps(room);
 
     // Select primary target once for all towers to focus fire
     const primaryTarget = hostiles.length > 0 ? this.selectTowerTarget(hostiles) : null;

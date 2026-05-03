@@ -29,7 +29,6 @@ import {
   clearCachedPath,
   isExit
 } from "screeps-cartographer";
-import { memoryManager } from "../memory/manager";
 import { clearClosestCache as clearAllCachedTargets } from "../cache";
 import { createLogger } from "@ralphschuler/screeps-core";
 import * as metrics from "@ralphschuler/screeps-stats";
@@ -336,7 +335,6 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
       // Try to move to collection point if available
       const room = Game.rooms[creep.pos.roomName];
       if (room && room.controller?.my) {
-        const swarmState = memoryManager.getOrInitSwarmState(room.name);
         const collectionPoint = getCollectionPoint(room.name);
         if (collectionPoint) {
           // Move to collection point if not already there

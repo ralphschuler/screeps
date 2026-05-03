@@ -8,11 +8,12 @@
  * - Special role requirements
  */
 
-import { cachedFindSources, cachedRoomFind } from "@ralphschuler/screeps-cache";
+import { cachedFindSources } from "@ralphschuler/screeps-cache";
+import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 import { type CrossShardTransferRequest, resourceTransferCoordinator } from "@ralphschuler/screeps-intershard";
-import { calculateRemoteHaulerRequirement } from "../empire/remoteHaulerDimensioning";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmCreepMemory, SwarmState } from "@ralphschuler/screeps-memory";
+import { calculateRemoteHaulerRequirement } from "../empire/remoteHaulerDimensioning";
 import { ROLE_DEFINITIONS } from "./roleDefinitions";
 
 /** Number of dangerous hostiles per remote guard needed */
@@ -349,7 +350,7 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
       if (!remoteRoom) continue; // Can't check rooms without vision
       
       // Check for hostile creeps with combat parts
-      const hostiles = cachedRoomFind(remoteRoom, FIND_HOSTILE_CREEPS) as Creep[];
+      const hostiles = getActualHostileCreeps(remoteRoom);
       const dangerousHostiles = hostiles.filter(h =>
         h.body.some(p => p.type === ATTACK || p.type === RANGED_ATTACK || p.type === WORK)
       );

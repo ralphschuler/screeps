@@ -4,8 +4,8 @@
  * Commands for monitoring and managing autonomous expansion.
  */
 
-import { Command } from "../core/commandRegistry";
 import { memoryManager } from "@ralphschuler/screeps-memory";
+import { Command } from "../core/commandRegistry";
 import { expansionManager } from "./expansionManager";
 
 /**

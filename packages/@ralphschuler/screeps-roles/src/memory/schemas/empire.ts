@@ -3,9 +3,8 @@
  * Tracks empire-wide state, expansion, and owned rooms
  */
 
-import type { NukeInFlight, IncomingNukeAlert, NukeEconomics } from "./military";
+import type { NukeInFlight, IncomingNukeAlert, NukeEconomics , SquadDefinition } from "./military";
 import type { MarketMemory } from "./economy";
-import type { SquadDefinition } from "./military";
 
 /** Room intel entry for known rooms */
 export interface RoomIntel {

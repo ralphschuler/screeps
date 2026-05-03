@@ -1010,7 +1010,7 @@ This package includes integration tests that use the MCP SDK client to validate 
 **Interactive inspection:**
 
 ```bash
-# Launch the MCP Inspector UI (requires Node.js 22.7.5+)
+# Launch the MCP Inspector UI (Node.js 24 baseline)
 npm run inspect
 
 # CLI mode for quick testing
@@ -1095,4 +1095,3 @@ npm run test:inspector
 - Overall: >70%
 - Critical paths: >80%
 - All tests must pass before merging
-

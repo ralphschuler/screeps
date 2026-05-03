@@ -1,0 +1,7 @@
+interface:
+  display_name: "Screeps World"
+  short_description: "Verify Screeps APIs and live-world state"
+  default_prompt: "Use $screeps-world to verify Screeps API details and inspect live game state safely."
+
+policy:
+  allow_implicit_invocation: true

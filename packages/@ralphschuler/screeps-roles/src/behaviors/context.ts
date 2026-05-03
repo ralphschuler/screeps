@@ -13,7 +13,7 @@
  */
 
 import type { SquadMemory, SwarmCreepMemory, SwarmState } from "../memory/schemas";
-import { safeFind } from "@ralphschuler/screeps-utils";
+import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 import type { CreepContext } from "./types";
 import { createLogger } from "@ralphschuler/screeps-core";
 
@@ -118,11 +118,10 @@ function getRoomCache(room: Room): RoomCache {
   }
 
   // Build minimal core cache - only load what's always needed
-  // Use safeFind for hostile creeps to handle engine errors with corrupted owner data
   const cache: RoomCache = {
     tick: Game.time,
     room,
-    hostiles: safeFind(room, FIND_HOSTILE_CREEPS),
+    hostiles: getActualHostileCreeps(room),
     // OPTIMIZATION: Load myStructures instead of allStructures initially.
     // Most creeps only need myStructures. allStructures will be loaded lazily if needed.
     myStructures: room.find(FIND_MY_STRUCTURES),

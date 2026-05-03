@@ -74,7 +74,8 @@ global.Memory = {
 global.mocha = require('mocha');
 global.chai = require('chai');
 global.sinon = require('sinon');
-global.chai.use(require('sinon-chai'));
+const sinonChai = require('sinon-chai');
+global.chai.use(sinonChai.default ?? sinonChai);
 
 // Override ts-node compiler options
 process.env.TS_NODE_PROJECT = 'tsconfig.test.json';

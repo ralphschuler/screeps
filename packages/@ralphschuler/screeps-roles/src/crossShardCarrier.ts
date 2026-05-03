@@ -15,7 +15,7 @@
 import type { CrossShardTransferRequest } from "./intershard/resourceTransferCoordinator";
 import { logger } from "./core/logger";
 import { resourceTransferCoordinator } from "./intershard/resourceTransferCoordinator";
-import { cachedMoveTo, type ExtendedMoveToOpts } from "./utils/movement";
+import { cachedMoveTo } from "./utils/movement";
 
 /**
  * Cross-shard carrier memory

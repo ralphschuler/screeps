@@ -4,6 +4,7 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
+import { isAllyPlayer } from "@ralphschuler/screeps-defense";
 import type { EmpireMemory } from "@ralphschuler/screeps-memory";
 
 /**
@@ -24,6 +25,10 @@ export class WarCoordinator {
       if (!intel) {
         return false; // Remove unknown targets
       }
+
+      if (isAllyPlayer(target) || (intel.owner && isAllyPlayer(intel.owner))) {
+        return false;
+      }
       
       // Remove if room is now owned by us
       if (intel.owner === myUsername) {
@@ -38,6 +43,9 @@ export class WarCoordinator {
     if (empire.objectives.warMode) {
       for (const roomName in empire.knownRooms) {
         const intel = empire.knownRooms[roomName];
+        if ((intel.owner && isAllyPlayer(intel.owner)) || (intel.reserver && isAllyPlayer(intel.reserver))) {
+          continue;
+        }
         
         // Add high-threat rooms as war targets
         if (intel.threatLevel >= 2 && !empire.warTargets.includes(roomName)) {

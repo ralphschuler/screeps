@@ -11,11 +11,12 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
+import { getActualHostileCreeps, isAllyPlayer } from "@ralphschuler/screeps-defense";
+import { memoryManager } from "@ralphschuler/screeps-memory";
+import type { RoomIntel } from "@ralphschuler/screeps-memory";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { memoryManager } from "@ralphschuler/screeps-memory";
-import type { RoomIntel } from "@ralphschuler/screeps-memory";
 
 /**
  * Enemy player tracking
@@ -319,11 +320,10 @@ export class IntelScanner {
       const room = Game.rooms[roomName];
       if (!room) continue;
 
-      // Find hostile creeps
-      const hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+      const hostileCreeps = getActualHostileCreeps(room);
       for (const creep of hostileCreeps) {
         const owner: string = creep.owner.username;
-        if (this.config.allies.includes(owner)) continue;
+        if (this.config.allies.includes(owner) || isAllyPlayer(owner)) continue;
 
         let enemy = this.enemyPlayers.get(owner);
         if (!enemy) {
@@ -352,7 +352,7 @@ export class IntelScanner {
       // Check for hostile structures (owned by other players)
       if (room.controller?.owner && !room.controller.my) {
         const owner = room.controller.owner.username;
-        if (this.config.allies.includes(owner)) continue;
+        if (this.config.allies.includes(owner) || isAllyPlayer(owner)) continue;
 
         let enemy = this.enemyPlayers.get(owner);
         if (!enemy) {
@@ -412,8 +412,7 @@ export class IntelScanner {
       const intel = empire.knownRooms[roomName];
       if (!intel) continue;
 
-      // Detect hostile creeps
-      const hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+      const hostileCreeps = getActualHostileCreeps(room);
       const aggressiveHostiles = hostileCreeps.filter(c => this.isAggressiveCreep(c));
 
       // Detect incoming nukes
@@ -456,6 +455,7 @@ export class IntelScanner {
     // Update war targets based on enemy tracking
     const warTargets: string[] = [];
     for (const [username, enemy] of this.enemyPlayers) {
+      if (isAllyPlayer(username)) continue;
       if (enemy.threatLevel >= 2) {
         warTargets.push(username);
       }

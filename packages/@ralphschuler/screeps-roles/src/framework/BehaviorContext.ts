@@ -12,6 +12,7 @@
  */
 
 import type { BaseCreepMemory, CreepContext } from "./types";
+import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 
 /**
  * Priority order for construction sites.
@@ -96,7 +97,7 @@ function getRoomCache(room: Room): RoomCache {
   const cache: RoomCache = {
     tick: Game.time,
     room,
-    hostiles: room.find(FIND_HOSTILE_CREEPS),
+    hostiles: getActualHostileCreeps(room),
     myStructures: room.find(FIND_MY_STRUCTURES),
     allStructures: []
   };

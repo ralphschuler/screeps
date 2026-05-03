@@ -6,7 +6,7 @@
  */
 
 import type { SwarmCreepMemory } from "../memory/schemas";
-import { safeFind } from "@ralphschuler/screeps-utils";
+import { getActualHostileCreeps, getActualHostileStructures } from "@ralphschuler/screeps-defense";
 import { moveTo } from "screeps-cartographer";
 import type { CreepAction, CreepContext } from "./types";
 import {
@@ -18,12 +18,6 @@ import {
 // =============================================================================
 // Regular Creep Power Roles
 // =============================================================================
-
-/**
- * Power bank damage reflection constant
- * Power banks reflect this percentage of damage back to attackers
- */
-const POWER_BANK_DAMAGE_REFLECTION = 0.5;
 
 /**
  * Health threshold for power harvester retreat
@@ -291,7 +285,7 @@ export function powerQueen(ctx: PowerCreepContext): PowerCreepAction {
 
   // Priority 4: Boost towers (high impact for defense, 10 ops = 2x effectiveness)
   if (powers.includes(PWR_OPERATE_TOWER) && ctx.ops >= 10) {
-    const hostiles = cachedRoomFind(ctx.room, FIND_HOSTILE_CREEPS);
+    const hostiles = getActualHostileCreeps(ctx.room);
     if (hostiles.length > 0) {
       const towers = cachedRoomFind(ctx.room, FIND_MY_STRUCTURES, {
         filter: (s: Structure) => s.structureType === STRUCTURE_TOWER && !hasActiveEffect(s, PWR_OPERATE_TOWER),
@@ -372,8 +366,8 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
   }
 
   const powers = ctx.availablePowers;
-  const hostiles = safeFind(ctx.room, FIND_HOSTILE_CREEPS);
-  const hostileStructures = safeFind(ctx.room, FIND_HOSTILE_STRUCTURES);
+  const hostiles = getActualHostileCreeps(ctx.room);
+  const hostileStructures = getActualHostileStructures(ctx.room);
 
   // Enable room power if not yet enabled
   if (ctx.room.controller && !ctx.room.controller.isPowerEnabled) {
@@ -401,20 +395,22 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
 
   // Priority 3: Disrupt enemy spawns (high impact, 10 ops = spawn pause)
   if (powers.includes(PWR_DISRUPT_SPAWN) && ctx.ops >= 10) {
-    const enemySpawns = safeFind(ctx.room, FIND_HOSTILE_SPAWNS, {
-      filter: s => !hasActiveEffect(s, PWR_DISRUPT_SPAWN)
-    });
+    const enemySpawns = hostileStructures.filter(
+      (s): s is StructureSpawn =>
+        s.structureType === STRUCTURE_SPAWN &&
+        !hasActiveEffect(s, PWR_DISRUPT_SPAWN)
+    );
     const enemySpawn = enemySpawns[0];
     if (enemySpawn) return { type: "usePower", power: PWR_DISRUPT_SPAWN, target: enemySpawn };
   }
 
   // Priority 4: Disrupt enemy towers (10 ops = disable tower)
   if (powers.includes(PWR_DISRUPT_TOWER) && ctx.ops >= 10) {
-    const enemyTowers = safeFind(ctx.room, FIND_HOSTILE_STRUCTURES, {
-      filter: (s): s is StructureTower => 
+    const enemyTowers = hostileStructures.filter(
+      (s): s is StructureTower =>
         s.structureType === STRUCTURE_TOWER &&
         !hasActiveEffect(s, PWR_DISRUPT_TOWER)
-    });
+    );
     const enemyTower = enemyTowers[0];
     if (enemyTower) return { type: "usePower", power: PWR_DISRUPT_TOWER, target: enemyTower };
   }

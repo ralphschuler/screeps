@@ -35,13 +35,13 @@
  * TODO(P2): TEST - Expand integration tests with full Game object mocking
  */
 
-import { coordinateClusterDefense } from "@ralphschuler/screeps-defense";
+import { coordinateClusterDefense, getActualHostileCreeps } from "@ralphschuler/screeps-defense";
+import { memoryManager } from "@ralphschuler/screeps-memory";
+import type { ClusterMemory } from "@ralphschuler/screeps-memory";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { ProcessPriority } from "../core/kernel";
 import { logger } from "../core/logger";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { memoryManager } from "@ralphschuler/screeps-memory";
-import type { ClusterMemory } from "@ralphschuler/screeps-memory";
 import {
   type DefenseRequest,
   createDefenseRequest,
@@ -571,7 +571,7 @@ export class ClusterManager {
       const room = Game.rooms[req.roomName];
       if (!room) return false;
       
-      const hostiles = room.find(FIND_HOSTILE_CREEPS);
+      const hostiles = getActualHostileCreeps(room);
       if (hostiles.length === 0) {
         logger.info(`Defense request for ${req.roomName} resolved - no more hostiles`, { subsystem: "Cluster" });
         return false;

@@ -19,10 +19,6 @@
   ],
   "author": "",
   "license": "Unlicense",
-  "peerDependencies": {
-    "@screeps/common": "*",
-    "@screeps/backend": "*"
-  },
   "devDependencies": {
     "@types/node": "^25.0.10",
     "typescript": "^5.4.3"

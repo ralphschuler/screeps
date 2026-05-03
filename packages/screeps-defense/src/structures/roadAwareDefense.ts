@@ -17,9 +17,9 @@
  * - Remove walls at strategic positions to extend road network
  */
 
-import { logger } from "@bot/core/logger";
-import { calculateRoadNetwork, getValidRoadPositions } from "@ralphschuler/screeps-layouts";
-import type { ExitPosition, PerimeterPlan } from "./perimeterDefense";
+import { logger } from "@ralphschuler/screeps-core";
+import { getValidRoadPositions } from "@ralphschuler/screeps-layouts";
+import type { ExitPosition } from "./perimeterDefense";
 import { calculatePerimeterPositions } from "./perimeterDefense";
 
 /**

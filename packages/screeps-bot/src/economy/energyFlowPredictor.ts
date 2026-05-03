@@ -241,7 +241,7 @@ export class EnergyFlowPredictor {
    * Calculate income from link transfers
    * Links provide instantaneous energy transfer
    */
-  private calculateLinkIncome(room: Room): number {
+  private calculateLinkIncome(_room: Room): number {
     // Links are handled separately and provide instant transfer
     // For prediction purposes, we assume they're already factored into miner income
     // or are instantaneous enough to not affect predictions
@@ -372,7 +372,7 @@ export class EnergyFlowPredictor {
    * Calculate energy consumption from repairs
    * This is separate from tower repairs and includes builder repairs
    */
-  private calculateRepairConsumption(room: Room): number {
+  private calculateRepairConsumption(_room: Room): number {
     // Repairs are mostly handled by towers (calculated separately)
     // Builders only repair when there are damaged structures and no construction
     // This is a minimal baseline

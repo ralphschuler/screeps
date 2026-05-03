@@ -203,7 +203,7 @@ export const createElement = {
       const form = document.forms['${formName}']
       let formDatas = {}
       [${details.map(detail => `'${detail.name}'`).toString()}].map(eleName => formDatas[eleName] = form[eleName].value)
-      angular.element(document.body).injector().get('Console').sendCommand(\`(${buttonDetail.command})(\${JSON.stringify(formDatas)\})\`, 1)
+      angular.element(document.body).injector().get('Console').sendCommand(\`(${buttonDetail.command})(\${JSON.stringify(formDatas)})\`, 1)
     })()`;
 
     // Add submit button

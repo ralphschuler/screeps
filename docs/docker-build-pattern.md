@@ -49,7 +49,7 @@ docker build -t my-package:latest .
 All TypeScript packages should use this Dockerfile template:
 
 ```dockerfile
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
@@ -68,7 +68,7 @@ CMD ["node", "dist/index.js"]
 ### For MCP Servers (requiring git)
 
 ```dockerfile
-FROM node:20.19-slim
+FROM node:24-slim
 
 # Add OCI labels for GitHub Container Registry
 LABEL org.opencontainers.image.source=https://github.com/<your-org>/<your-repo> \
@@ -129,14 +129,14 @@ coverage
 ### Simple Exporters/Services
 
 Packages like `screeps-loki-exporter` and `screeps-graphite-exporter`:
-- Use `node:20-alpine` base image (~140MB final size)
+- Use `node:24-alpine` base image (~140MB final size)
 - Only need Node.js runtime
 - Minimal dependencies
 
 ### MCP Servers
 
 Packages like `screeps-mcp`, `screeps-docs-mcp`, etc.:
-- Use `node:20.19-slim` base image
+- Use `node:24-slim` base image
 - May need additional tools (git, etc.)
 - Larger due to dependencies (~230-320MB final size)
 
@@ -149,7 +149,7 @@ To convert an existing package to this pattern:
 Replace multi-stage build:
 ```dockerfile
 # OLD - Multi-stage build
-FROM node:20-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -157,7 +157,7 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
-FROM node:20-alpine
+FROM node:24-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package*.json ./
@@ -169,7 +169,7 @@ CMD ["node", "dist/index.js"]
 With single-stage build:
 ```dockerfile
 # NEW - Expects pre-built dist/
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 

@@ -16,7 +16,7 @@
  * - Rampart placement automation (currently weak)
  */
 
-import { logger } from "@bot/core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { calculateWallRepairTarget } from "./wallRepairTargets";
 
 /**

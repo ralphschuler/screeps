@@ -46,7 +46,17 @@ export function isAllyPlayer(username: string): boolean {
  * @returns True if the creep belongs to an allied player
  */
 export function isAllyCreep(creep: Creep): boolean {
-  return isAllyPlayer(creep.owner.username);
+  return creep.owner?.username ? isAllyPlayer(creep.owner.username) : false;
+}
+
+/**
+ * Check if a power creep belongs to an allied player
+ * 
+ * @param powerCreep - Power creep to check
+ * @returns True if the power creep belongs to an allied player
+ */
+export function isAllyPowerCreep(powerCreep: PowerCreep): boolean {
+  return powerCreep.owner?.username ? isAllyPlayer(powerCreep.owner.username) : false;
 }
 
 /**
@@ -55,8 +65,9 @@ export function isAllyCreep(creep: Creep): boolean {
  * @param structure - Structure to check
  * @returns True if the structure belongs to an allied player
  */
-export function isAllyStructure(structure: AnyOwnedStructure): boolean {
-  return structure.owner?.username ? isAllyPlayer(structure.owner.username) : false;
+export function isAllyStructure(structure: Structure): boolean {
+  const owner = (structure as Partial<OwnedStructure>).owner;
+  return owner?.username ? isAllyPlayer(owner.username) : false;
 }
 
 /**
@@ -73,7 +84,24 @@ export function filterAllyCreeps(hostiles: Creep[]): Creep[] {
   
   const allyCount = hostiles.length - filtered.length;
   if (allyCount > 0) {
-    console.log(`[Alliance] Filtered ${allyCount} allied creeps from hostile detection in ${hostiles[0]?.room.name}`);
+    console.log(`[Alliance] Filtered ${allyCount} allied creeps from hostile detection in ${hostiles[0]?.room?.name}`);
+  }
+  
+  return filtered;
+}
+
+/**
+ * Filter allied power creeps from a list of hostile power creeps
+ * 
+ * @param hostiles - Array of hostile power creeps
+ * @returns Filtered array excluding allied power creeps
+ */
+export function filterAllyPowerCreeps(hostiles: PowerCreep[]): PowerCreep[] {
+  const filtered = hostiles.filter(powerCreep => !isAllyPowerCreep(powerCreep));
+  
+  const allyCount = hostiles.length - filtered.length;
+  if (allyCount > 0) {
+    console.log(`[Alliance] Filtered ${allyCount} allied power creeps from hostile detection in ${hostiles[0]?.room?.name}`);
   }
   
   return filtered;
@@ -88,14 +116,14 @@ export function filterAllyCreeps(hostiles: Creep[]): Creep[] {
  * @param structures - Array of hostile structures
  * @returns Filtered array excluding allied structures
  */
-export function filterAllyStructures<T extends AnyOwnedStructure>(
+export function filterAllyStructures<T extends Structure>(
   structures: T[]
 ): T[] {
   const filtered = structures.filter(structure => !isAllyStructure(structure));
   
   const allyCount = structures.length - filtered.length;
   if (allyCount > 0) {
-    console.log(`[Alliance] Filtered ${allyCount} allied structures from hostile detection in ${structures[0]?.room.name}`);
+    console.log(`[Alliance] Filtered ${allyCount} allied structures from hostile detection in ${structures[0]?.room?.name}`);
   }
   
   return filtered;
@@ -116,6 +144,17 @@ export function getActualHostileCreeps(room: Room): Creep[] {
 }
 
 /**
+ * Get hostile power creeps in a room, excluding allies
+ * 
+ * @param room - Room to search
+ * @returns Array of hostile power creeps (excluding allies)
+ */
+export function getActualHostilePowerCreeps(room: Room): PowerCreep[] {
+  const hostiles = room.find(FIND_HOSTILE_POWER_CREEPS);
+  return filterAllyPowerCreeps(hostiles);
+}
+
+/**
  * Get hostile structures in a room, excluding allies
  * 
  * This is a safe wrapper that automatically filters out allied entities.
@@ -123,7 +162,7 @@ export function getActualHostileCreeps(room: Room): Creep[] {
  * @param room - Room to search
  * @returns Array of hostile structures (excluding allies)
  */
-export function getActualHostileStructures(room: Room): AnyOwnedStructure[] {
+export function getActualHostileStructures(room: Room): Structure[] {
   const structures = room.find(FIND_HOSTILE_STRUCTURES);
   return filterAllyStructures(structures);
 }
@@ -136,7 +175,8 @@ export function getActualHostileStructures(room: Room): AnyOwnedStructure[] {
  */
 export function hasActualHostiles(room: Room): boolean {
   const hostileCreeps = getActualHostileCreeps(room);
+  const hostilePowerCreeps = getActualHostilePowerCreeps(room);
   const hostileStructures = getActualHostileStructures(room);
   
-  return hostileCreeps.length > 0 || hostileStructures.length > 0;
+  return hostileCreeps.length > 0 || hostilePowerCreeps.length > 0 || hostileStructures.length > 0;
 }

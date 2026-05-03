@@ -3,7 +3,7 @@
  * Adapted from HoPGoldy/my-screeps-ai
  */
 
-import { colorful, ConsoleColor } from './ui';
+import { colorful } from './ui';
 
 /**
  * Parameter description for a function
@@ -95,9 +95,9 @@ const createApiHelp = function(func: FunctionDescribe): string {
   }
 
   // Build function call example
-  let paramInFunc = func.params ? func.params.map(param => colorful(param.name, 'blue')).join(', ') : '';
+  const paramInFunc = func.params ? func.params.map(param => colorful(param.name, 'blue')).join(', ') : '';
   // If it's a command type, ignore parameters
-  let funcCall = colorful(func.functionName, 'yellow') + (func.commandType ? '' : `(${paramInFunc})`);
+  const funcCall = colorful(func.functionName, 'yellow') + (func.commandType ? '' : `(${paramInFunc})`);
 
   // Add function example
   contents.push(funcCall);

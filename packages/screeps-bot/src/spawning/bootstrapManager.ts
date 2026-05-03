@@ -64,7 +64,7 @@ function getBootstrapSpawnOrder(room: Room): { role: string; minCount: number; c
     // This ensures single-source rooms don't get stuck waiting for 2nd harvester
     { role: "harvester", minCount: sourceCount },
     // 5. Queen carrier when storage exists (manages spawns/extensions)
-    { role: "queenCarrier", minCount: 1, condition: (room: Room) => Boolean(room.storage) },
+    { role: "queenCarrier", minCount: 1, condition: (candidateRoom: Room) => Boolean(candidateRoom.storage) },
     // 6. Upgrader for controller progress
     { role: "upgrader", minCount: 1 }
   ];

@@ -14,7 +14,7 @@ An advanced Screeps AI implementation using swarm intelligence, pheromone-based 
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/en/download) (v16.x or v18.x recommended)
+- [Node.js](https://nodejs.org/en/download) v24.x
 - Package Manager: [npm](https://docs.npmjs.com/getting-started/installing-node) or [Yarn](https://yarnpkg.com/en/docs/getting-started)
 - A Screeps account (official server or private server)
 

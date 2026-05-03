@@ -9,6 +9,7 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
+import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
 
 /**
@@ -161,7 +162,7 @@ export class ThreatPredictor {
       const room = Game.rooms[roomName];
       if (!room) continue;
 
-      const hostiles = room.find(FIND_HOSTILE_CREEPS);
+      const hostiles = getActualHostileCreeps(room);
       for (const hostile of hostiles) {
         const existingTrack = this.hostileTracks.get(hostile.id);
         const pos = { x: hostile.pos.x, y: hostile.pos.y, roomName: hostile.pos.roomName };

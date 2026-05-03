@@ -19,16 +19,15 @@
  * **IMPORTANT**: Automatically filters allied entities (non-aggression pact, ROADMAP Section 25)
  */
 
-import { logger } from "@bot/core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
-import { memoryManager } from "@ralphschuler/screeps-memory";
 import {
   type DefenseRequest,
   analyzeDefenderNeeds,
   createDefenseRequest,
   getCurrentDefenders,
   needsDefenseAssistance
-} from "@bot/spawning/defenderManager";
+} from "../analysis/defenderNeeds";
 import { filterAllyCreeps } from "../alliance/nonAggressionPact";
 
 /**
@@ -246,7 +245,7 @@ export class EmergencyResponseManager {
   /**
    * Allocate boosts for defensive creeps
    */
-  private allocateBoostsForDefense(room: Room, swarm: SwarmState): void {
+  private allocateBoostsForDefense(room: Room, _swarm: SwarmState): void {
     // Mark swarm state to prioritize boosting defenders
     // The boost manager will read this flag and prioritize defense boosts
     const mem = Memory as unknown as Record<string, unknown>;

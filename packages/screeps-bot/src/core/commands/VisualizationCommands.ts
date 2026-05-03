@@ -5,9 +5,9 @@
  * Extracted from consoleCommands.ts for better modularity.
  */
 
+import { VisualizationLayer } from "@ralphschuler/screeps-memory";
 import { visualizationManager } from "@ralphschuler/screeps-visuals";
 import { getConfig, updateConfig } from "../../config";
-import { VisualizationLayer } from "@ralphschuler/screeps-memory";
 import { mapVisualizer, roomVisualizer } from "../../SwarmBot";
 import { Command } from "../commandRegistry";
 

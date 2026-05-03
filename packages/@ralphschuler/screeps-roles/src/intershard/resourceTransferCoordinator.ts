@@ -19,11 +19,11 @@ export interface CrossShardTransferRequest {
 export const resourceTransferCoordinator = {
   getPendingTransfers: (): CrossShardTransferRequest[] => [],
   getPrioritizedRequests: (): CrossShardTransferRequest[] => [],
-  getCreepRequest: (creepName: string): CrossShardTransferRequest | undefined => undefined,
-  assignCreep: (taskId: string, creepName: string): void => {
+  getCreepRequest: (_creepName: string): CrossShardTransferRequest | undefined => undefined,
+  assignCreep: (_taskId: string, _creepName: string): void => {
     // No-op stub
   },
-  markTransferComplete: (id: string): void => {
+  markTransferComplete: (_id: string): void => {
     // No-op stub
   }
 };

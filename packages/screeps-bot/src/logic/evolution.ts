@@ -4,8 +4,8 @@
 
 import { globalCache } from "@ralphschuler/screeps-cache";
 import { logger } from "@ralphschuler/screeps-core";
-import { kernel } from "../core/kernel";
 import type { EvolutionStage, RoomPosture, SwarmState } from "@ralphschuler/screeps-memory";
+import { kernel } from "../core/kernel";
 
 /** Evolution stage thresholds */
 export interface EvolutionThresholds {

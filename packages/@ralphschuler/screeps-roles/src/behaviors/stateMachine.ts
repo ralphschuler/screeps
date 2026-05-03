@@ -77,7 +77,7 @@ interface StateValidityResult {
  * Check if a state is still valid (target exists, not expired, etc.)
  * Note: Stuck detection is handled by Cartographer's traffic management
  */
-function getStateValidity(state: CreepState | undefined, ctx: CreepContext): StateValidityResult {
+function getStateValidity(state: CreepState | undefined, _ctx: CreepContext): StateValidityResult {
   if (!state) return { valid: false, reason: "noState" };
 
   // Check timeout

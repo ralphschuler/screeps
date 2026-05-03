@@ -292,47 +292,6 @@ function isBuilderIdle(creep: Creep, state: NonNullable<SwarmCreepMemory["state"
 }
 
 /**
- * Check if a repairer is idle (actively repairing structure).
- * Repairer is idle when:
- * - State is "repair"
- * - Has valid target (structure)
- * - Is in range of target (range 3)
- * - Has energy to repair
- * 
- * NOTE: Currently unused as "repairer" is not a defined role in this bot.
- * Kept for future use when repairer role is added.
- */
- 
-function isRepairerIdle(creep: Creep, state: NonNullable<SwarmCreepMemory["state"]>): boolean {
-  // Must be repairing
-  if (state.action !== "repair") {
-    return false;
-  }
-  
-  // Validate target
-  if (!state.targetId) {
-    return false;
-  }
-  
-  const target = Game.getObjectById(state.targetId);
-  if (!target || !isRoomObject(target)) {
-    return false;
-  }
-  
-  // Must be in range (repair range is 3)
-  if (!creep.pos.inRangeTo(target.pos, 3)) {
-    return false;
-  }
-  
-  // Must have energy
-  if (creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0) {
-    return false;
-  }
-  
-  return true;
-}
-
-/**
  * Execute the creep's current action without re-evaluating behavior.
  * This is called for idle creeps that can skip behavior evaluation.
  * 

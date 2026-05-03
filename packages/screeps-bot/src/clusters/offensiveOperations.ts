@@ -13,9 +13,9 @@
  * Implements ROADMAP Section 12: Offensive Combat
  */
 
-import { logger } from "../core/logger";
 import { memoryManager } from "@ralphschuler/screeps-memory";
-import type { ClusterMemory, SquadDefinition } from "@ralphschuler/screeps-memory";
+import type { ClusterMemory } from "@ralphschuler/screeps-memory";
+import { logger } from "../core/logger";
 import { findAttackTargets, markRoomAttacked, validateTarget } from "./attackTargetSelector";
 import { type OffensiveDoctrine, canLaunchDoctrine, selectDoctrine } from "./offensiveDoctrine";
 import { createOffensiveSquad, shouldDissolveSquad, validateSquadState } from "./squadCoordinator";
@@ -181,7 +181,7 @@ export function updateOffensiveOperations(): void {
   // Update squad formations
   updateSquadFormations();
   
-  for (const [opId, operation] of activeOperations.entries()) {
+  for (const operation of activeOperations.values()) {
     updateOperation(operation);
   }
   
@@ -217,7 +217,7 @@ function updateOperation(operation: OffensiveOperation): void {
 /**
  * Update an operation in forming state
  */
-function updateFormingOperation(operation: OffensiveOperation, cluster: ClusterMemory): void {
+function updateFormingOperation(operation: OffensiveOperation, _cluster: ClusterMemory): void {
   // Check if all squads have finished forming
   const allFormed = operation.squadIds.every(squadId => !isSquadForming(squadId));
   

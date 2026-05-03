@@ -13,13 +13,13 @@ interface LabResourceNeed {
 }
 
 export const labManager = {
-  getLabResourceNeeds: (roomName: string): LabResourceNeed[] => {
+  getLabResourceNeeds: (_roomName: string): LabResourceNeed[] => {
     return [];
   },
-  getLabSupplyNeeds: (roomName: string): LabResourceNeed[] => {
+  getLabSupplyNeeds: (_roomName: string): LabResourceNeed[] => {
     return [];
   },
-  getLabOverflow: (roomName: string): LabResourceNeed[] => {
+  getLabOverflow: (_roomName: string): LabResourceNeed[] => {
     return [];
   }
 };

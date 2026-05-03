@@ -11,9 +11,9 @@ import {
   PixelBuyingMemoryAccessor,
   createDefaultPixelBuyingMemory
 } from "@ralphschuler/screeps-empire";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import { memoryManager } from "@ralphschuler/screeps-memory";
 
 /**
  * Memory accessor implementation for bot's memory system

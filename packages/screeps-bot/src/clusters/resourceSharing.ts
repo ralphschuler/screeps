@@ -13,9 +13,9 @@
  * Addresses Issue: Allow rooms to share resources between each other
  */
 
-import { logger } from "../core/logger";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { ClusterMemory, ResourceTransferRequest, SwarmState } from "@ralphschuler/screeps-memory";
+import { logger } from "../core/logger";
 
 /**
  * Resource sharing configuration

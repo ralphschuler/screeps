@@ -326,7 +326,7 @@ export class SpawnManager {
    * }
    * ```
    */
-  shouldSpawnRole(role: string, currentCount: number, roomState: RoomState): boolean {
+  shouldSpawnRole(role: string, currentCount: number, _roomState: RoomState): boolean {
     const def = getRoleDefinition(role, this.roleDefs);
     if (!def) return false;
 

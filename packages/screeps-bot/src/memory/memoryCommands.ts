@@ -4,7 +4,6 @@
  * Commands for monitoring and managing memory usage, compression, and segmentation.
  */
 
-import { Command } from "../core/commandRegistry";
 import { 
   memoryManager,
   memoryCompressor,
@@ -14,6 +13,7 @@ import {
   memorySegmentManager,
   migrationRunner
 } from "@ralphschuler/screeps-memory";
+import { Command } from "../core/commandRegistry";
 
 /**
  * Memory management commands

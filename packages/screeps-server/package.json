@@ -41,9 +41,6 @@
     "tsx": "^4.21.0",
     "typescript": "^5.4.3"
   },
-  "optionalDependencies": {
-    "screeps-server-mockup": "^1.5.1"
-  },
   "ts-node": {
     "esm": true,
     "experimentalSpecifierResolution": "node",

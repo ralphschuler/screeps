@@ -10,9 +10,9 @@
  * Addresses Issue: #36 - Squad formation and coordination
  */
 
-import { logger } from "../core/logger";
-import { memoryManager } from "@ralphschuler/screeps-memory";
+import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 import type { ClusterMemory, DefenseAssistanceRequest, SquadDefinition } from "@ralphschuler/screeps-memory";
+import { logger } from "../core/logger";
 
 /**
  * Squad composition recommendation
@@ -37,11 +37,6 @@ const THREAT_SQUAD_SIZE: Record<number, SquadComposition> = {
  * Squad formation timeout in ticks (5 minutes)
  */
 const SQUAD_FORMATION_TIMEOUT = 300;
-
-/**
- * Squad idle timeout in ticks (10 minutes)
- */
-const SQUAD_IDLE_TIMEOUT = 600;
 
 /**
  * Calculate optimal squad composition for a defense request
@@ -220,7 +215,7 @@ export function shouldDissolveSquad(squad: SquadDefinition): boolean {
     if (targetRoom) {
       const room = Game.rooms[targetRoom];
       if (room) {
-        const hostiles = room.find(FIND_HOSTILE_CREEPS);
+        const hostiles = getActualHostileCreeps(room);
         // If no hostiles and been attacking for a while, mission complete
         if (hostiles.length === 0 && age > 100) {
           logger.info(`Squad ${squad.id} mission complete, no more hostiles`, {

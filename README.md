@@ -70,10 +70,12 @@ See [PERFORMANCE_TESTING.md](packages/screeps-bot/PERFORMANCE_TESTING.md) for de
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/en/download) (v16.x - v20.x, v18.x recommended)
+- [Node.js](https://nodejs.org/en/download) v24.x
   - Use [nvm](https://github.com/nvm-sh/nvm) for easy version management: `nvm use`
-- Package Manager: [npm](https://docs.npmjs.com/getting-started/installing-node) >=8.0.0
+- Package Manager: [npm](https://docs.npmjs.com/getting-started/installing-node) >=10.0.0
 - A Screeps account (official server or private server)
+
+Screeps: World runtime servers moved to Node.js v24 on April 1, 2026, so this repository now treats Node 24 as the local, CI, and deploy baseline.
 
 ### Quick Setup
 
@@ -275,7 +277,7 @@ Browse and query Screeps API documentation and game mechanics via MCP.
 cd packages/screeps-docs-mcp
 npm install
 npm run build
-npm run inspect  # Launch MCP Inspector (requires Node.js 22.7.5+)
+npm run inspect  # Launch MCP Inspector (Node.js 24 baseline)
 ```
 
 [Read more →](./packages/screeps-docs-mcp/README.md)
@@ -296,6 +298,8 @@ export SCREEPS_SHARD="shard3"
 
 [Read more →](./packages/screeps-mcp/README.md)
 
+By default, the live MCP server is read-only. Set `SCREEPS_MCP_ENABLE_CONSOLE=true` for console execution and `SCREEPS_MCP_ENABLE_WRITES=true` for Memory or segment writes.
+
 ### screeps-wiki-mcp
 
 Access the Screeps community wiki with search, article retrieval, and table extraction.
@@ -304,10 +308,14 @@ Access the Screeps community wiki with search, article retrieval, and table extr
 cd packages/screeps-wiki-mcp
 npm install
 npm run build
-npm run inspect  # Launch MCP Inspector (requires Node.js 22.7.5+)
+npm run inspect  # Launch MCP Inspector (Node.js 24 baseline)
 ```
 
 [Read more →](./packages/screeps-wiki-mcp/README.md)
+
+## Agent Skills
+
+Use [skills/screeps-world](./skills/screeps-world/SKILL.md) for AI-agent work that touches Screeps APIs, live world state, gameplay docs, Memory, market data, or deployment safety. It captures the repo workflow for fact-checking game mechanics, respecting allies, and keeping live-world writes explicit.
 
 ## Auto-Respawn System
 

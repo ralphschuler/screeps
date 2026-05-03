@@ -12,20 +12,33 @@
 import { z } from "zod";
 import type { ScreepsClient } from "../screeps/client.js";
 
+const ROOM_NAME_PATTERN = /^[WE][0-9]+[NS][0-9]+$/;
+const MEMORY_PATH_PATTERN = /^$|^[A-Za-z0-9_$-]+(\.[A-Za-z0-9_$-]+)*$/;
+const RESOURCE_NAME_PATTERN = /^[A-Za-z0-9_-]{1,50}$/;
+const SHARD_NAME_PATTERN = /^shard[0-9]+$/;
+const USER_ID_PATTERN = /^[A-Za-z0-9_-]{1,100}$/;
+const SEGMENT_MAX_BYTES = 100 * 1024;
+
+const roomNameSchema = z.string().min(4).max(12).regex(ROOM_NAME_PATTERN);
+const memoryPathSchema = z.string().max(200).regex(MEMORY_PATH_PATTERN);
+const resourceNameSchema = z.string().max(50).regex(RESOURCE_NAME_PATTERN);
+const shardNameSchema = z.string().max(16).regex(SHARD_NAME_PATTERN);
+const userIdSchema = z.string().min(1).max(100).regex(USER_ID_PATTERN);
+
 /**
  * Tool schemas
  */
 export const toolSchemas = {
   console: z.object({
-    command: z.string().describe("Console command to execute")
+    command: z.string().min(1).max(5000).describe("Console command to execute")
   }),
 
   memoryGet: z.object({
-    path: z.string().describe("Memory path to read (e.g., 'rooms.W1N1')")
+    path: memoryPathSchema.describe("Memory path to read (e.g., 'rooms.W1N1')")
   }),
 
   memorySet: z.object({
-    path: z.string().describe("Memory path to write (e.g., 'myData.config')"),
+    path: memoryPathSchema.describe("Memory path to write (e.g., 'myData.config')"),
     value: z.unknown().describe("Value to set at the path")
   }),
 
@@ -37,63 +50,63 @@ export const toolSchemas = {
 
   segmentSet: z.object({
     segment: z.number().int().min(0).max(99).describe("Memory segment number (0-99)"),
-    data: z.string().describe("Segment data (max 100KB)")
+    data: z.string().max(SEGMENT_MAX_BYTES).describe("Segment data (max 100KB)")
   }),
 
   gameTime: z.object({}),
 
   roomTerrain: z.object({
-    room: z.string().describe("Room name (e.g., 'W1N1')")
+    room: roomNameSchema.describe("Room name (e.g., 'W1N1')")
   }),
 
   roomObjects: z.object({
-    room: z.string().describe("Room name (e.g., 'W1N1')")
+    room: roomNameSchema.describe("Room name (e.g., 'W1N1')")
   }),
 
   roomStatus: z.object({
-    room: z.string().describe("Room name (e.g., 'W1N1')")
+    room: roomNameSchema.describe("Room name (e.g., 'W1N1')")
   }),
 
   marketOrders: z.object({
-    resourceType: z.string().optional().describe("Resource type filter (optional)")
+    resourceType: resourceNameSchema.optional().describe("Resource type filter (optional)")
   }),
 
   myMarketOrders: z.object({}),
 
   userInfo: z.object({
-    username: z.string().describe("Username to look up")
+    username: userIdSchema.describe("Username to look up")
   }),
 
   shardInfo: z.object({}),
 
   userWorldStatus: z.object({
-    shard: z.string().optional().describe("Shard name (optional, uses configured shard if not provided)")
+    shard: shardNameSchema.optional().describe("Shard name (optional, uses configured shard if not provided)")
   }),
 
   userWorldStartRoom: z.object({}),
 
   userRooms: z.object({
-    userId: z.string().describe("User ID to get rooms for")
+    userId: userIdSchema.describe("User ID to get rooms for")
   }),
 
   marketStats: z.object({
-    resourceType: z.string().describe("Resource type (e.g., 'energy', 'H')"),
-    shard: z.string().optional().describe("Shard name (optional, uses configured shard if not provided)")
+    resourceType: resourceNameSchema.describe("Resource type (e.g., 'energy', 'H')"),
+    shard: shardNameSchema.optional().describe("Shard name (optional, uses configured shard if not provided)")
   }),
 
   leaderboardSeasons: z.object({}),
 
   leaderboardFind: z.object({
-    username: z.string().describe("Username to find in leaderboard"),
-    season: z.string().optional().describe("Season ID (optional)"),
-    mode: z.string().optional().describe("Leaderboard mode (optional)")
+    username: userIdSchema.describe("Username to find in leaderboard"),
+    season: z.string().max(40).optional().describe("Season ID (optional)"),
+    mode: z.string().max(40).optional().describe("Leaderboard mode (optional)")
   }),
 
   leaderboardList: z.object({
-    season: z.string().optional().describe("Season ID (optional)"),
+    season: z.string().max(40).optional().describe("Season ID (optional)"),
     limit: z.number().int().min(1).max(100).optional().describe("Number of results to return (default: 20)"),
     offset: z.number().int().min(0).optional().describe("Offset for pagination (default: 0)"),
-    mode: z.string().optional().describe("Leaderboard mode (optional)")
+    mode: z.string().max(40).optional().describe("Leaderboard mode (optional)")
   }),
 
   experimentalPvp: z.object({
@@ -109,13 +122,13 @@ export const toolSchemas = {
   }),
 
   roomDecorations: z.object({
-    room: z.string().describe("Room name (e.g., 'W1N1')"),
-    shard: z.string().optional().describe("Shard name (optional, uses configured shard if not provided)")
+    room: roomNameSchema.describe("Room name (e.g., 'W1N1')"),
+    shard: shardNameSchema.optional().describe("Shard name (optional, uses configured shard if not provided)")
   }),
 
   userOverview: z.object({
     interval: z.number().int().optional().describe("Interval: 8 for 1 hour, 180 for 24 hours, 1440 for 7 days (default: 8)"),
-    statName: z.string().optional().describe("Stat name filter (optional)")
+    statName: z.string().max(100).optional().describe("Stat name filter (optional)")
   }),
 
   respawnProhibitedRooms: z.object({})

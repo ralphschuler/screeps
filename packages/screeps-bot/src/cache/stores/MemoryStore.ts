@@ -94,8 +94,6 @@ export class MemoryStore implements CacheStore {
    */
   private rehydrate(heap: HeapLayer): void {
     const memory = this.getMemory();
-    let count = 0;
-    let expired = 0;
 
     // Clean up expired entries during rehydration
     const keysToDelete: string[] = [];
@@ -106,7 +104,6 @@ export class MemoryStore implements CacheStore {
         const age = Game.time - memEntry.cachedAt;
         if (age > memEntry.ttl) {
           keysToDelete.push(key);
-          expired++;
           continue; // Skip expired
         }
       }
@@ -119,7 +116,6 @@ export class MemoryStore implements CacheStore {
         hits: memEntry.hits,
         dirty: false
       });
-      count++;
     }
     
     // Clean up expired entries from Memory

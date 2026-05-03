@@ -31,7 +31,7 @@ export class ErrorMapper {
 
   public static async getConsumer(): Promise<SourceMapConsumer> {
     if (this._consumer == null) {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+       
       const rawSourceMap = require("main.js.map");
       // Parse the source map if it's a string, otherwise use it directly
       let sourceMapData;
@@ -68,7 +68,7 @@ export class ErrorMapper {
       return this.cache[stack];
     }
 
-    // eslint-disable-next-line no-useless-escape
+     
     const re = /^\s+at\s+(.+?\s+)?\(?([0-z._\-\\\/]+):(\d+):(\d+)\)?$/gm;
     let match: RegExpExecArray | null;
     let outStack = error.toString();

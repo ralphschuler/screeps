@@ -2,8 +2,8 @@
   "name": "@ralphschuler/screeps-defense",
   "version": "0.1.0",
   "description": "Defense subsystem for Screeps - threat assessment, tower control, rampart automation, and emergency response",
-  "main": "dist/screeps-defense/src/index.js",
-  "types": "dist/screeps-defense/src/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "private": false,
   "scripts": {
     "build": "tsc",
@@ -32,11 +32,10 @@
     "url": "https://github.com/ralphschuler/screeps/issues"
   },
   "homepage": "https://github.com/ralphschuler/screeps/tree/main/packages/screeps-defense#readme",
-  "peerDependencies": {
-    "screeps-typescript-starter": "*"
-  },
   "dependencies": {
     "@ralphschuler/screeps-core": "*",
+    "@ralphschuler/screeps-kernel": "*",
+    "@ralphschuler/screeps-memory": "*",
     "@ralphschuler/screeps-stats": "*",
     "lz-string": "^1.5.0"
   },

@@ -817,7 +817,7 @@ Get performance metrics and statistics.
 
 - **Server Version**: 0.1.0
 - **MCP SDK Version**: 1.23.0
-- **Node.js Requirement**: >=18.0.0
+- **Node.js Requirement**: >=24 <25
 
 ## Support
 

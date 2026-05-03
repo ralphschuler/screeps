@@ -11,10 +11,10 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import { ProcessPriority } from "../core/kernel";
-import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { PowerBankEntry } from "@ralphschuler/screeps-memory";
+import { ProcessPriority } from "../core/kernel";
+import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 
 /**
  * Power bank harvesting configuration
@@ -601,7 +601,6 @@ export class PowerBankHarvestingManager {
     profitPerTick: number;
   } {
     const distance = Game.map.getRoomLinearDistance(pb.roomName, homeRoom);
-    const ticksRemaining = pb.decayTick - Game.time;
 
     // Estimate creep costs (assume 2 attackers, 1 healer, 1 carrier)
     const attackerCost = 2300; // Mid-tier attacker body

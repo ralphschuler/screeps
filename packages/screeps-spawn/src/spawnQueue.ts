@@ -238,7 +238,6 @@ class SpawnQueueManager {
     const availableSpawns = this.getAvailableSpawns(roomName);
     if (availableSpawns.length === 0) return 0;
 
-    const queue = this.getQueue(roomName);
     let spawnsInitiated = 0;
 
     // Try to spawn using each available spawn

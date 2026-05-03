@@ -254,8 +254,6 @@ export function invalidateStructureCache(roomName: string): void {
   const roomCache = cache.entries.get(roomName);
   if (!roomCache) return;
   
-  let invalidatedCount = 0;
-  
   // Invalidate all structure-related find types
   const structureTypes = [
     FIND_STRUCTURES,
@@ -272,12 +270,8 @@ export function invalidateStructureCache(roomName: string): void {
       if (key.startsWith(String(findType))) {
         roomCache.delete(key);
         cache.stats.invalidations++;
-        invalidatedCount++;
       }
     }
-  }
-  
-  if (invalidatedCount > 0) {
   }
 }
 

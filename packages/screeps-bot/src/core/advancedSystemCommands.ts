@@ -8,7 +8,6 @@
 import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
 import { powerCreepManager } from "../empire/powerCreepManager";
 import { boostManager } from "../labs/boostManager";
-import { chemistryPlanner } from "../labs/chemistryPlanner";
 import { labConfigManager } from "../labs/labConfig";
 import { labManager } from "../labs/labManager";
 import { Command } from "./commandRegistry";

@@ -4,7 +4,7 @@
  * Centralizes memory initialization to avoid duplication across modules
  */
 
-import type { TooAngelMemory, TooAngelReputation } from "./types";
+import type { TooAngelMemory } from "./types";
 
 /**
  * Get or initialize TooAngel memory

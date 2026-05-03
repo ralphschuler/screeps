@@ -15,9 +15,6 @@
  */
 
 import type { BodyTemplate } from "./types";
-import { createLogger } from "@ralphschuler/screeps-core";
-
-const logger = createLogger("BodyOptimizer");
 
 /**
  * Body optimization options
@@ -373,7 +370,7 @@ export function optimizeRangedBody(options: BodyOptimizationOptions): BodyTempla
  * Optimize healer body
  */
 export function optimizeHealerBody(options: BodyOptimizationOptions): BodyTemplate {
-  const { maxEnergy, willBoost = false } = options;
+  const { maxEnergy } = options;
 
   // Pattern: HEAL, MOVE (1:1 for speed)
   // With boost: more HEAL (boosted healing is very effective)

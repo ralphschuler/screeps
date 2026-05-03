@@ -12,7 +12,7 @@
  */
 
 import type { SwarmState } from "@ralphschuler/screeps-memory";
-import { logger } from "@bot/core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { filterAllyCreeps } from "../alliance/nonAggressionPact";
 
 /**

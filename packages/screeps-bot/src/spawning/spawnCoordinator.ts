@@ -14,17 +14,16 @@
 
 import { logger } from "@ralphschuler/screeps-core";
 import { emergencyResponseManager } from "@ralphschuler/screeps-defense";
+import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { energyFlowPredictor } from "../economy/energyFlowPredictor";
 import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
 import { 
   type BodyTemplate, 
   ROLE_DEFINITIONS, 
   countCreepsByRole,
-  determineNextRole,
   getRemoteRoomNeedingWorkers,
   isEmergencySpawnState
 } from "../logic/spawn";
-import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { optimizeBody } from "./bodyOptimizer";
 import { 
   analyzeDefenderNeeds, 

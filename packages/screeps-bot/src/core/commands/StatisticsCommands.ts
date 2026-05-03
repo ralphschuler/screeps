@@ -6,9 +6,9 @@
  */
 
 import { clearRoomFindCache, getCacheStatistics , getRoomFindCacheStats, resetCacheStats } from "@ralphschuler/screeps-cache";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 import { memorySegmentStats, unifiedStats } from "@ralphschuler/screeps-stats";
 import { getConfig, updateConfig } from "../../config";
-import { memoryManager } from "@ralphschuler/screeps-memory";
 import { Command } from "../commandRegistry";
 import { configureLogger } from "../logger";
 

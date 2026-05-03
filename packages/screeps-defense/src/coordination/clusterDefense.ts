@@ -12,7 +12,7 @@
  * - Inter-Room-Logistik
  */
 
-import { logger } from "@bot/core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import { type ThreatAnalysis, assessThreat, logThreatAnalysis } from "../threat/threatAssessment";
 

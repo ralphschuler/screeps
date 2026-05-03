@@ -9,6 +9,7 @@
  */
 
 import type { CreepContext, BehaviorResult } from "../../framework/types";
+import { getActualHostileStructures } from "@ralphschuler/screeps-defense";
 
 /**
  * Attack behavior - Offensive combat actions.
@@ -73,9 +74,9 @@ export function attackBehavior(ctx: CreepContext): BehaviorResult {
   }
 
   // Priority 3: Attack hostile structures (excluding controllers)
-  const hostileStructures = ctx.room.find(FIND_HOSTILE_STRUCTURES, {
-    filter: s => s.structureType !== STRUCTURE_CONTROLLER
-  });
+  const hostileStructures = getActualHostileStructures(ctx.room).filter(
+    s => s.structureType !== STRUCTURE_CONTROLLER
+  );
 
   if (hostileStructures.length > 0) {
     // Find closest hostile structure

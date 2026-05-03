@@ -6,16 +6,28 @@
  */
 
 import type { SquadMemory, SwarmCreepMemory } from "../memory/schemas";
-import { safeFindClosestByRange } from "@ralphschuler/screeps-utils";
-import { checkAndExecuteRetreat } from "@ralphschuler/screeps-defense";
-import { findCachedClosest } from "../cache";
+import {
+  checkAndExecuteRetreat,
+  getActualHostileCreeps,
+  getActualHostileStructures,
+  isAllyPlayer
+} from "@ralphschuler/screeps-defense";
+import { findCachedClosest , globalCache } from "../cache";
 import { registerMilitaryCacheClear } from "./context";
 import type { CreepAction, CreepContext } from "./types";
 import { createLogger } from "@ralphschuler/screeps-core";
-import { globalCache } from "../cache";
 import { getCollectionPoint } from "../utils/common";
 
 const logger = createLogger("MilitaryBehaviors");
+
+function isAllyControlledRoom(room: Room): boolean {
+  const controllerOwner = room.controller?.owner?.username;
+  const controllerReserver = room.controller?.reservation?.username;
+  return Boolean(
+    (controllerOwner && isAllyPlayer(controllerOwner)) ||
+      (controllerReserver && isAllyPlayer(controllerReserver))
+  );
+}
 
 // =============================================================================
 // Patrol System
@@ -364,7 +376,7 @@ export function remoteGuard(ctx: CreepContext): CreepAction {
   }
 
   // In target room - check for hostiles
-  const hostiles = ctx.room.find(FIND_HOSTILE_CREEPS);
+  const hostiles = getActualHostileCreeps(ctx.room);
   
   // Filter to dangerous hostiles (with combat parts)
   const dangerousHostiles = hostiles.filter(h =>
@@ -507,7 +519,7 @@ export function healer(ctx: CreepContext): CreepAction {
   if (mem.assistTarget) {
     const assistRoom = Game.rooms[mem.assistTarget];
     if (assistRoom) {
-      const hostiles = assistRoom.find(FIND_HOSTILE_CREEPS);
+      const hostiles = getActualHostileCreeps(assistRoom);
       if (hostiles.length === 0) {
         // Threat resolved, clear assignment
         delete mem.assistTarget;
@@ -615,10 +627,9 @@ export function soldier(ctx: CreepContext): CreepAction {
     return { type: "moveTo", target };
   }
 
-  // Attack hostile structures - use safeFindClosestByRange to handle engine errors
-  const hostileStructure = safeFindClosestByRange(ctx.creep.pos, FIND_HOSTILE_STRUCTURES, {
-    filter: s => s.structureType !== STRUCTURE_CONTROLLER
-  });
+  const hostileStructure = ctx.creep.pos.findClosestByRange(
+    getActualHostileStructures(ctx.room).filter(s => s.structureType !== STRUCTURE_CONTROLLER)
+  );
   if (hostileStructure) return { type: "attack", target: hostileStructure };
 
   // No targets - patrol the room
@@ -677,40 +688,43 @@ export function siege(ctx: CreepContext): CreepAction {
     return { type: "moveToRoom", roomName: targetRoom };
   }
 
-  // Priority targets for dismantling - use safeFindClosestByRange to handle engine errors
-  const spawn = safeFindClosestByRange(ctx.creep.pos, FIND_HOSTILE_SPAWNS);
+  const hostileStructures = getActualHostileStructures(ctx.room);
+  const spawn = ctx.creep.pos.findClosestByRange(
+    hostileStructures.filter((s): s is StructureSpawn => s.structureType === STRUCTURE_SPAWN)
+  );
   if (spawn) return { type: "dismantle", target: spawn };
 
-  const tower = safeFindClosestByRange(ctx.creep.pos, FIND_HOSTILE_STRUCTURES, {
-    filter: s => s.structureType === STRUCTURE_TOWER
-  });
+  const tower = ctx.creep.pos.findClosestByRange(
+    hostileStructures.filter((s): s is StructureTower => s.structureType === STRUCTURE_TOWER)
+  );
   if (tower) return { type: "dismantle", target: tower };
 
   // OPTIMIZATION: Use room.find() once and filter, then cache the result
   // Walls/ramparts don't change often, cache for 10 ticks
   // IMPORTANT: Only target enemy walls/ramparts, not our own
   // Walls are neutral structures, ramparts have ownership
-  const walls = ctx.room.find(FIND_STRUCTURES, {
-    filter: s => {
-      if (s.structureType === STRUCTURE_WALL) {
-        // Walls are neutral, only dismantle if in hostile room
-        return s.hits < 100000 && !ctx.room.controller?.my;
-      }
-      if (s.structureType === STRUCTURE_RAMPART) {
-        // Ramparts have ownership - only dismantle enemy ramparts
-        return s.hits < 100000 && !(s ).my;
-      }
-      return false;
-    }
-  });
+  const walls = [
+    ...ctx.room.find(FIND_STRUCTURES, {
+      filter: s =>
+        s.structureType === STRUCTURE_WALL &&
+        s.hits < 100000 &&
+        !ctx.room.controller?.my &&
+        !isAllyControlledRoom(ctx.room)
+    }),
+    ...hostileStructures.filter(
+      (s): s is StructureRampart =>
+        s.structureType === STRUCTURE_RAMPART &&
+        s.hits < 100000
+    )
+  ];
   if (walls.length > 0) {
     const wall = findCachedClosest(ctx.creep, walls, "siege_wall", 10);
     if (wall) return { type: "dismantle", target: wall };
   }
 
-  const structure = safeFindClosestByRange(ctx.creep.pos, FIND_HOSTILE_STRUCTURES, {
-    filter: s => s.structureType !== STRUCTURE_CONTROLLER
-  });
+  const structure = ctx.creep.pos.findClosestByRange(
+    hostileStructures.filter(s => s.structureType !== STRUCTURE_CONTROLLER)
+  );
   if (structure) return { type: "dismantle", target: structure };
 
   // No targets - move to collection point to avoid blocking spawns
@@ -851,7 +865,7 @@ export function ranger(ctx: CreepContext): CreepAction {
   if (mem.assistTarget) {
     const assistRoom = Game.rooms[mem.assistTarget];
     if (assistRoom) {
-      const hostiles = assistRoom.find(FIND_HOSTILE_CREEPS);
+      const hostiles = getActualHostileCreeps(assistRoom);
       if (hostiles.length === 0) {
         // Threat resolved, clear assignment
         delete mem.assistTarget;
@@ -941,7 +955,7 @@ function squadBehavior(ctx: CreepContext, squad: SquadMemory): CreepAction {
   };
 
   switch (squad.state) {
-    case "gathering":
+    case "gathering": {
       // Move to rally point
       if (ctx.room.name !== squad.rallyRoom) {
         return { type: "moveToRoom", roomName: squad.rallyRoom };
@@ -954,6 +968,7 @@ function squadBehavior(ctx: CreepContext, squad: SquadMemory): CreepAction {
       }
       
       return { type: "idle" };
+    }
 
     case "moving": {
       const targetRoom = squad.targetRooms[0];
@@ -969,7 +984,7 @@ function squadBehavior(ctx: CreepContext, squad: SquadMemory): CreepAction {
       return { type: "idle" };
     }
 
-    case "attacking":
+    case "attacking": {
       // RETREAT CHECK: Squad members should retreat if HP is too low
       // Default to 30% if retreatThreshold is not set
       const hpPercent = ctx.creep.hits / ctx.creep.hitsMax;
@@ -995,6 +1010,7 @@ function squadBehavior(ctx: CreepContext, squad: SquadMemory): CreepAction {
         default:
           return soldier(ctx);
       }
+    }
 
     case "retreating":
       if (ctx.room.name !== squad.rallyRoom) {

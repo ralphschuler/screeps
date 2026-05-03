@@ -12,6 +12,7 @@
 
 import type { SwarmState } from "./botTypes";
 import { logger } from "@ralphschuler/screeps-core";
+import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 
 /**
  * Defender requirement analysis
@@ -51,8 +52,8 @@ export function analyzeDefenderNeeds(room: Room): DefenderRequirement {
     result.reasons.push(`Baseline defense force for RCL ${rcl}`);
   }
 
-  // Find all hostile creeps
-  const hostiles = room.find(FIND_HOSTILE_CREEPS);
+  // Find all hostile creeps, excluding permanent allies.
+  const hostiles = getActualHostileCreeps(room);
   if (hostiles.length === 0) {
     return result; // Return baseline requirements if no active threats
   }
@@ -196,7 +197,7 @@ export function getDefenderPriorityBoost(room: Room, swarm: SwarmState, role: st
 /**
  * Check if emergency defender spawning is needed
  */
-export function needsEmergencyDefenders(room: Room, swarm: SwarmState): boolean {
+export function needsEmergencyDefenders(room: Room, _swarm: SwarmState): boolean {
   const needs = analyzeDefenderNeeds(room);
   const current = getCurrentDefenders(room);
 

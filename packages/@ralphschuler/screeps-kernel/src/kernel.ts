@@ -247,7 +247,10 @@ function deriveFrequencyIntervals(taskFrequencies: CPUConfig["taskFrequencies"])
  * REMOVED: All bucket requirements - user regularly depletes bucket and doesn't
  * want minBucket limitations blocking processes. Returns 0 for all frequencies.
  */
-function deriveFrequencyMinBucket(bucketThresholds: CPUConfig["bucketThresholds"], highBucketThreshold: number): Record<ProcessFrequency, number> {
+function deriveFrequencyMinBucket(
+  _bucketThresholds: CPUConfig["bucketThresholds"],
+  _highBucketThreshold: number
+): Record<ProcessFrequency, number> {
   return {
     high: 0, // No bucket requirement
     medium: 0, // No bucket requirement

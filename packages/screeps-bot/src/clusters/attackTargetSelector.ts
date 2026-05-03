@@ -12,9 +12,10 @@
  * Addresses ROADMAP Section 12: Attack target selection
  */
 
-import { logger } from "../core/logger";
+import { isAllyPlayer } from "@ralphschuler/screeps-defense";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { ClusterMemory, RoomIntel } from "@ralphschuler/screeps-memory";
+import { logger } from "../core/logger";
 import type { OffensiveDoctrine } from "./offensiveDoctrine";
 import { selectDoctrine } from "./offensiveDoctrine";
 
@@ -86,7 +87,7 @@ export function findAttackTargets(
   
   const empire = memoryManager.getEmpire();
   const roomIntel = empire.knownRooms;
-  const warTargets = new Set(empire.warTargets);
+  const warTargets = new Set(empire.warTargets.filter(target => !isAllyPlayer(target)));
 
   // Get all known rooms
   for (const roomName in roomIntel) {
@@ -97,6 +98,11 @@ export function findAttackTargets(
     
     // Skip our own rooms
     if (intel.owner === "self") continue;
+
+    // Permanent allies are never attack targets, even if stale intel marked them dangerous.
+    if ((intel.owner && isAllyPlayer(intel.owner)) || (intel.reserver && isAllyPlayer(intel.reserver))) {
+      continue;
+    }
     
     // Skip highway and SK rooms
     if (intel.isHighway || intel.isSK) continue;

@@ -13,8 +13,8 @@
  * - Strict tick budget: CPU allocation per creep is managed by kernel
  */
 
-import { unifiedStats } from "@ralphschuler/screeps-stats";
 import type { RoleFamily, SwarmCreepMemory } from "@ralphschuler/screeps-memory";
+import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { runEconomyRole } from "../roles/economy";
 import { runMilitaryRole } from "../roles/military";
 import { runPowerCreepRole } from "../roles/power";
@@ -329,7 +329,7 @@ export class CreepProcessManager {
    * want minBucket limitations blocking processes. Returns 0 for all priorities.
    * Bucket mode in kernel still provides priority-based filtering during low bucket.
    */
-  private getMinBucketForPriority(priority: ProcessPriority): number {
+  private getMinBucketForPriority(_priority: ProcessPriority): number {
     return 0; // No bucket requirements - processes run regardless of bucket level
   }
 

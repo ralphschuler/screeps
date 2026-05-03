@@ -209,13 +209,14 @@ function generateFallbackAction(ctx: CreepContext, strategy: FallbackStrategy): 
       }
       return { type: "idle" };
       
-    case "harvest":
+    case "harvest": {
       // Try to find energy
       const sources = ctx.room.find(FIND_SOURCES_ACTIVE);
       if (sources.length > 0 && sources[0]) {
         return { type: "harvest", target: sources[0] };
       }
       return { type: "idle" };
+    }
       
     case "idle":
     default:

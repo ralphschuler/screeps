@@ -21,14 +21,29 @@ export {
   NON_AGGRESSION_PACT_PLAYERS,
   isAllyPlayer,
   isAllyCreep,
+  isAllyPowerCreep,
   isAllyStructure,
   filterAllyCreeps,
+  filterAllyPowerCreeps,
   filterAllyStructures,
   getActualHostileCreeps,
+  getActualHostilePowerCreeps,
   getActualHostileStructures,
   hasActualHostiles,
   type AlliedPlayer
 } from "./alliance/nonAggressionPact";
+
+// Defender analysis and assistance requests
+export {
+  analyzeDefenderNeeds,
+  createDefenseRequest,
+  getCurrentDefenders,
+  getDefenderPriorityBoost,
+  needsDefenseAssistance,
+  needsEmergencyDefenders,
+  type DefenderRequirement,
+  type DefenseRequest
+} from "./analysis/defenderNeeds";
 
 // Threat Assessment
 export {

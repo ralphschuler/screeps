@@ -10,10 +10,9 @@
 
 import type { SwarmState, SwarmCreepMemory } from "./botTypes";
 import { ROLE_DEFINITIONS } from "./roleDefinitions";
-import { memoryManager } from "./botIntegration";
-import { calculateRemoteHaulerRequirement } from "./botIntegration";
-import { resourceTransferCoordinator, type CrossShardTransferRequest } from "./botIntegration";
-import { cachedFindSources, cachedRoomFind } from "@ralphschuler/screeps-cache";
+import { calculateRemoteHaulerRequirement, memoryManager, resourceTransferCoordinator } from "./botIntegration";
+import { cachedFindSources } from "@ralphschuler/screeps-cache";
+import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 
 /** Number of dangerous hostiles per remote guard needed */
 const THREATS_PER_GUARD = 2;
@@ -23,6 +22,15 @@ const RESERVATION_THRESHOLD_TICKS = 3000;
 
 /** Maximum number of carriers that can be assigned to a single cross-shard transfer request */
 export const MAX_CARRIERS_PER_CROSS_SHARD_REQUEST = 3;
+
+interface ResourceTransferRequest {
+  fromRoom: string;
+  toRoom: string;
+  resourceType: ResourceConstant;
+  amount: number;
+  delivered: number;
+  assignedCreeps: string[];
+}
 
 /** Focus room upgrader limits by RCL */
 const FOCUS_ROOM_UPGRADER_LIMITS = {
@@ -349,7 +357,7 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
       if (!remoteRoom) continue; // Can't check rooms without vision
       
       // Check for hostile creeps with combat parts
-      const hostiles = cachedRoomFind(remoteRoom, FIND_HOSTILE_CREEPS) as Creep[];
+      const hostiles = getActualHostileCreeps(remoteRoom);
       const dangerousHostiles = hostiles.filter(h =>
         h.body.some(p => p.type === ATTACK || p.type === RANGED_ATTACK || p.type === WORK)
       );
@@ -424,7 +432,8 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
     
     // Check if we have unclaimed expansion targets and can expand
     const canExpand = ownedRooms.length < Game.gcl.level;
-    const hasExpansionTarget = empire.claimQueue.some(c => !c.claimed);
+    const claimQueue = (empire.claimQueue ?? []) as Array<{ claimed?: boolean }>;
+    const hasExpansionTarget = claimQueue.some(c => !c.claimed);
     
     // Check if we have remote rooms that need reserving (no reserver assigned)
     const hasUnreservedRemote = needsReserver(roomName, swarm);
@@ -479,7 +488,8 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
     }
     
     // Check if there are requests that need more carriers
-    const needsCarriers = cluster.resourceRequests.some(req => {
+    const resourceRequests = (cluster.resourceRequests ?? []) as ResourceTransferRequest[];
+    const needsCarriers = resourceRequests.some(req => {
       // Only spawn for requests from this room
       if (req.fromRoom !== room.name) return false;
       
@@ -496,36 +506,12 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
 
   // Cross-shard carrier needs active cross-shard transfer requests
   if (role === "crossShardCarrier") {
-    // Check if there are any active cross-shard transfer requests
-    const activeRequests = resourceTransferCoordinator.getActiveRequests();
-    if (activeRequests.length === 0) {
+    const pendingTransfers = resourceTransferCoordinator.getPendingTransfers(room.name);
+    if (pendingTransfers.length === 0) {
       return false;
     }
-    
-    // Check if any request originates from this room and needs carriers
-    const needsCarriers = activeRequests.some((req: CrossShardTransferRequest) => {
-      // Only spawn for requests from this room
-      if (req.sourceRoom !== room.name) return false;
-      
-      const assignedCreeps = req.assignedCreeps || [];
-      const neededCarryCapacity = req.amount - req.transferred;
-      
-      // Get alive creeps and calculate their capacity
-      let currentCapacity = 0;
-      let aliveCreepCount = 0;
-      for (const creepName of assignedCreeps) {
-        const creep = Game.creeps[creepName];
-        if (creep) {
-          currentCapacity += creep.carryCapacity;
-          aliveCreepCount++;
-        }
-      }
-      
-      // Need carriers if we need more capacity and haven't hit the max carriers per request
-      return currentCapacity < neededCarryCapacity && aliveCreepCount < MAX_CARRIERS_PER_CROSS_SHARD_REQUEST;
-    });
-    
-    if (!needsCarriers) return false;
+
+    if (!resourceTransferCoordinator.needsCarrier(room.name)) return false;
   }
 
   return true;

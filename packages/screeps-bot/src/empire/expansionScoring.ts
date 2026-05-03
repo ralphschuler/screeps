@@ -5,7 +5,6 @@
  * EmpireManager and ExpansionManager to maintain consistency and avoid duplication.
  */
 
-import { getConfig } from "../config";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { RoomIntel } from "@ralphschuler/screeps-memory";
 
@@ -210,7 +209,7 @@ export function parseRoomName(roomName: string): { x: number; y: number; xDir: s
  * @param username - The username to check for alliance status
  * @returns Always returns false since alliance system has been removed
  */
-export function isAlly(username: string): boolean {
+export function isAlly(_username: string): boolean {
   // Alliance system removed - no allies
   return false;
 }

@@ -1,6 +1,5 @@
 import { assert } from "chai";
 import {
-  Blueprint,
   selectBestBlueprint,
   validateBlueprintFit,
   findBestBlueprintAnchor,

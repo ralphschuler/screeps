@@ -11,8 +11,8 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
+import { getActualHostileCreeps, isAllyPlayer } from "@ralphschuler/screeps-defense";
 import { memoryManager } from "@ralphschuler/screeps-memory";
-import type { RoomIntel, SwarmState } from "@ralphschuler/screeps-memory";
 
 /**
  * Constants for remote room management
@@ -51,20 +51,24 @@ export type RemoteRoomLossReason = "enemyOwned" | "enemyReserved" | "hostile" | 
 /**
  * Check if a remote room has been lost
  */
-export function isRemoteRoomLost(room: Room, homeRoomName: string): { lost: boolean; reason?: RemoteRoomLossReason } {
+export function isRemoteRoomLost(room: Room, _homeRoomName: string): { lost: boolean; reason?: RemoteRoomLossReason } {
   // Check if room is owned by someone else
-  if (room.controller?.owner && !room.controller.my) {
+  if (room.controller?.owner && !room.controller.my && !isAllyPlayer(room.controller.owner.username)) {
     return { lost: true, reason: "enemyOwned" };
   }
 
   // Check if room is reserved by someone else
   const myUsername = getMyUsername();
-  if (room.controller?.reservation && room.controller.reservation.username !== myUsername) {
+  if (
+    room.controller?.reservation &&
+    room.controller.reservation.username !== myUsername &&
+    !isAllyPlayer(room.controller.reservation.username)
+  ) {
     return { lost: true, reason: "enemyReserved" };
   }
 
   // Check for hostile threats (aggressive hostiles with ATTACK or RANGED_ATTACK)
-  const hostiles = room.find(FIND_HOSTILE_CREEPS);
+  const hostiles = getActualHostileCreeps(room);
   const dangerousHostiles = hostiles.filter(h =>
     h.body.some(p => p.type === ATTACK || p.type === RANGED_ATTACK || p.type === WORK)
   );
@@ -80,7 +84,7 @@ export function isRemoteRoomLost(room: Room, homeRoomName: string): { lost: bool
 /**
  * Get remote room status
  */
-export function getRemoteRoomStatus(roomName: string, homeRoomName: string): RemoteRoomStatus | null {
+export function getRemoteRoomStatus(roomName: string, _homeRoomName: string): RemoteRoomStatus | null {
   const room = Game.rooms[roomName];
   if (!room) {
     // Can't see the room
@@ -101,9 +105,15 @@ export function getRemoteRoomStatus(roomName: string, homeRoomName: string): Rem
   const controller = room.controller;
 
   // Check if room is owned or reserved by enemy
-  const enemyOwned = Boolean(controller?.owner && controller.owner.username !== myUsername);
+  const enemyOwned = Boolean(
+    controller?.owner &&
+      controller.owner.username !== myUsername &&
+      !isAllyPlayer(controller.owner.username)
+  );
   const enemyReserved = Boolean(
-    controller?.reservation && controller.reservation.username !== myUsername
+    controller?.reservation &&
+      controller.reservation.username !== myUsername &&
+      !isAllyPlayer(controller.reservation.username)
   );
 
   // Get reservation status
@@ -111,7 +121,7 @@ export function getRemoteRoomStatus(roomName: string, homeRoomName: string): Rem
   const needsReservation = controller && !enemyOwned && reservationTicks < RESERVATION_THRESHOLD_TICKS;
 
   // Check for threats
-  const hostiles = room.find(FIND_HOSTILE_CREEPS);
+  const hostiles = getActualHostileCreeps(room);
   const dangerousHostiles = hostiles.filter(h =>
     h.body.some(p => p.type === ATTACK || p.type === RANGED_ATTACK || p.type === WORK)
   );

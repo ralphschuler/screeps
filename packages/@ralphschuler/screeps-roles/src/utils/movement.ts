@@ -19,6 +19,6 @@ export function cachedMoveTo(
   opts?: ExtendedMoveToOpts
 ): ScreepsReturnCode {
   // Strip out cacheTtl since cartographer doesn't support it
-  const { cacheTtl, ...cartographerOpts } = opts || {};
+  const { cacheTtl: _cacheTtl, ...cartographerOpts } = opts || {};
   return cartographerMoveTo(creep, target, cartographerOpts);
 }

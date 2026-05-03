@@ -251,14 +251,14 @@ This package includes integration tests that use the MCP SDK client to validate 
 **Interactive inspection:**
 
 ```bash
-# Launch the MCP Inspector UI (requires Node.js 22.7.5+)
+# Launch the MCP Inspector UI (Node.js 24 baseline)
 npm run inspect
 
 # CLI mode for quick testing
 npm run inspect:cli
 ```
 
-**Note:** The `inspect` command requires Node.js 22.7.5 or higher. The automated tests (`test:inspector`) work with Node.js 18+.
+**Note:** This package follows the repository Node.js 24 baseline for local development, tests, and Docker builds.
 
 ## License
 
@@ -301,4 +301,3 @@ npm run test:inspector
 - Parser: >95%
 - Handlers: >70%
 - All tests must pass before merging
-

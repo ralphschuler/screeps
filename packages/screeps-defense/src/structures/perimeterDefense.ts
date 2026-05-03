@@ -9,7 +9,7 @@
  * - Core-Shell & Perimeter protection strategy
  */
 
-import { logger } from "@bot/core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 
 /**
  * Minimum size of an exit group to warrant a rampart gap for friendly passage.

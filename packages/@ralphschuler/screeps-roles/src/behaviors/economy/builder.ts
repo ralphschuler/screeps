@@ -61,7 +61,7 @@ export function builder(ctx: CreepContext): CreepAction {
     // 4. All critical structures filled - now build construction sites
     // OPTIMIZATION: Use centralized assignment manager (O(1) lookup)
     // instead of per-creep construction site search
-    let assignedSite = getAssignedBuildTarget(ctx.creep);
+    const assignedSite = getAssignedBuildTarget(ctx.creep);
     
     // Use assigned site if available, otherwise fall back to prioritized sites
     if (assignedSite) {

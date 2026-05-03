@@ -3,6 +3,8 @@
  */
 
 import { getOwnedRooms } from "@ralphschuler/screeps-cache";
+import { heapCache, memoryManager } from "@ralphschuler/screeps-memory";
+import { initializePheromoneEventHandlers, pheromoneManager } from "@ralphschuler/screeps-pheromones";
 import { clearRoomCaches, runPowerRole } from "@ralphschuler/screeps-roles";
 import { SS2TerminalComms } from "@ralphschuler/screeps-standards";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
@@ -19,9 +21,7 @@ import { registerAllProcesses } from "./core/processRegistry";
 import { roomProcessManager } from "./core/roomProcessManager";
 import { clearTargetAssignments as clearEconomyAssignments } from "./economy/targetAssignmentManager";
 import { shardManager } from "./intershard/shardManager";
-import { initializePheromoneEventHandlers, pheromoneManager } from "@ralphschuler/screeps-pheromones";
 import { runSpawnManager } from "./logic/spawn";
-import { heapCache, memoryManager } from "@ralphschuler/screeps-memory";
 import { initializePathCacheEvents } from "./utils/pathfinding";
 import { initializeRemotePathScheduler } from "./utils/remote-mining";
 

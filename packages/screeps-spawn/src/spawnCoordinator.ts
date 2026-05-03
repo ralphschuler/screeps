@@ -18,7 +18,6 @@ import { optimizeBody } from "./bodyOptimizer";
 import { type BodyTemplate } from "./types";
 import { ROLE_DEFINITIONS } from "./roleDefinitions";
 import { countCreepsByRole, getRemoteRoomNeedingWorkers } from "./spawnNeedsAnalyzer";
-import { determineNextRole } from "./spawnQueueManager";
 import { isEmergencySpawnState } from "./bootstrapManager";
 import { logger } from "@ralphschuler/screeps-core";
 import { 
@@ -27,8 +26,7 @@ import {
   getDefenderPriorityBoost 
 } from "./defenderManager";
 import { emergencyResponseManager } from "@ralphschuler/screeps-defense";
-import { powerBankHarvestingManager } from "./botIntegration";
-import { energyFlowPredictor } from "./botIntegration";
+import { energyFlowPredictor, powerBankHarvestingManager } from "./botIntegration";
 
 /**
  * Populate spawn queue for a room

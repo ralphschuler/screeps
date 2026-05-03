@@ -14,10 +14,18 @@ import { ROLE_DEFINITIONS, type BodyTemplate, type RoleSpawnDef } from "./roleDe
 import { getPostureSpawnWeights, getDynamicPriorityBoost, getPheromoneMult } from "./spawnPriority";
 import { countCreepsByRole, needsRole, assignRemoteTargetRoom } from "./spawnNeedsAnalyzer";
 import { isBootstrapMode, getBootstrapRole, isEmergencySpawnState, getEnergyProducerCount } from "./bootstrapManager";
-import { kernel } from "./botIntegration";
 import { logger } from "@ralphschuler/screeps-core";
-import { memoryManager } from "./botIntegration";
+import { kernel, memoryManager } from "./botIntegration";
 import { cachedFindMyStructures } from "@ralphschuler/screeps-cache";
+
+interface ResourceTransferRequest {
+  fromRoom: string;
+  toRoom: string;
+  resourceType: ResourceConstant;
+  amount: number;
+  delivered: number;
+  assignedCreeps: string[];
+}
 
 /**
  * Get best body template for a role based on available energy capacity
@@ -336,7 +344,8 @@ export function runSpawnManager(room: Room, swarm: SwarmState): void {
       const cluster = memoryManager.getCluster(swarm.clusterId);
       if (cluster) {
         // Find request from this room that needs carriers
-        const request = cluster.resourceRequests.find(req => {
+        const resourceRequests = (cluster.resourceRequests ?? []) as ResourceTransferRequest[];
+        const request = resourceRequests.find(req => {
           if (req.fromRoom !== room.name) return false;
           const assignedCount = req.assignedCreeps.filter(n => Game.creeps[n]).length;
           const remaining = req.amount - req.delivered;

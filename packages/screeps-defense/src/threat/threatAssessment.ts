@@ -13,8 +13,7 @@
  * **IMPORTANT**: Automatically filters allied entities (non-aggression pact, ROADMAP Section 25)
  */
 
-import { logger } from "@bot/core/logger";
-import { ROLE_DEFINITIONS } from "@bot/spawning/roleDefinitions";
+import { logger } from "@ralphschuler/screeps-core";
 import { filterAllyCreeps } from "../alliance/nonAggressionPact";
 
 /**
@@ -163,9 +162,13 @@ export function assessThreat(room: Room): ThreatAnalysis {
   // See ROADMAP.md Section 12 - Threat-Level & Posture: "Range-Falloff beachten"
   const towerDPS = towers.reduce((sum, tower) => {
     const structureTower = tower as StructureTower;
+
+    if (structureTower.structureType !== STRUCTURE_TOWER) {
+      return sum;
+    }
     
     // Skip towers without enough energy to shoot (10 energy per shot)
-    if (structureTower.store.getUsedCapacity(RESOURCE_ENERGY) < 10) {
+    if ((structureTower.store?.getUsedCapacity(RESOURCE_ENERGY) ?? 0) < 10) {
       return sum;
     }
     
@@ -189,7 +192,7 @@ export function assessThreat(room: Room): ThreatAnalysis {
   const estimatedDefenderCost = estimateDefenderCost(totalDPS);
 
   // Determine danger level (0-3)
-  let dangerLevel = calculateDangerLevel(threatScore);
+  let dangerLevel = Math.max(1, calculateDangerLevel(threatScore)) as 1 | 2 | 3;
 
   // Recommend response strategy
   let recommendedResponse: ThreatAnalysis["recommendedResponse"];
@@ -267,8 +270,9 @@ export function calculateTowerDamage(distance: number): number {
 /**
  * Threat score thresholds for danger level calculation
  */
-const THREAT_THRESHOLD_HOSTILE_SIGHTED = 300;  // Danger level 1: Minor threat
-const THREAT_THRESHOLD_ACTIVE_ATTACK = 800;     // Danger level 2: Significant threat
+const THREAT_THRESHOLD_HOSTILE_SIGHTED = 100;  // Danger level 1: Minor threat
+const THREAT_THRESHOLD_ACTIVE_ATTACK = 500;     // Danger level 2: Significant threat
+const THREAT_THRESHOLD_SIEGE = 1000;            // Danger level 3: Siege or overwhelming attack
 
 /**
  * Calculate danger level from threat score
@@ -280,8 +284,10 @@ export function calculateDangerLevel(threatScore: number): 0 | 1 | 2 | 3 {
   if (threatScore === 0) {
     return 0; // ruhig (calm)
   } else if (threatScore < THREAT_THRESHOLD_HOSTILE_SIGHTED) {
-    return 1; // Hostile gesichtet (hostile sighted)
+    return 0; // Below actionable threshold
   } else if (threatScore < THREAT_THRESHOLD_ACTIVE_ATTACK) {
+    return 1; // Hostile gesichtet (hostile sighted)
+  } else if (threatScore < THREAT_THRESHOLD_SIEGE) {
     return 2; // aktiver Angriff (active attack)
   } else {
     return 3; // Belagerung/Nuke (siege/nuke)
@@ -322,24 +328,73 @@ interface DefenderTemplate {
   dps: number;
 }
 
+function calculateBodyCost(parts: BodyPartConstant[]): number {
+  const costs: Record<BodyPartConstant, number> = {
+    [MOVE]: 50,
+    [WORK]: 100,
+    [CARRY]: 50,
+    [ATTACK]: 80,
+    [RANGED_ATTACK]: 150,
+    [HEAL]: 250,
+    [CLAIM]: 600,
+    [TOUGH]: 10
+  };
+
+  return parts.reduce((sum, part) => sum + costs[part], 0);
+}
+
+function createDefenderTemplate(parts: BodyPartConstant[]): DefenderTemplate {
+  return {
+    parts,
+    cost: calculateBodyCost(parts),
+    dps: calculateBodyDPS(parts)
+  };
+}
+
+const DEFENDER_TEMPLATES: Record<"guard" | "ranger", DefenderTemplate[]> = {
+  guard: [
+    createDefenderTemplate([TOUGH, ATTACK, ATTACK, MOVE, MOVE, MOVE]),
+    createDefenderTemplate([TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE]),
+    createDefenderTemplate([
+      TOUGH, TOUGH, TOUGH, TOUGH,
+      ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
+      RANGED_ATTACK,
+      MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE
+    ]),
+    createDefenderTemplate([
+      TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,
+      ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK,
+      RANGED_ATTACK, RANGED_ATTACK,
+      HEAL,
+      MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE,
+      MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE
+    ])
+  ],
+  ranger: [
+    createDefenderTemplate([TOUGH, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE]),
+    createDefenderTemplate([TOUGH, TOUGH, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE]),
+    createDefenderTemplate([
+      TOUGH, TOUGH, TOUGH,
+      RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK,
+      MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE
+    ]),
+    createDefenderTemplate([
+      TOUGH, TOUGH, TOUGH, TOUGH,
+      RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK,
+      RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK,
+      MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE
+    ])
+  ]
+};
+
 /**
- * Get defender templates from role definitions for a specific role.
- * Returns all available body templates with their DPS and cost calculated.
+ * Get defender templates for a specific role.
  * 
  * @param role - Defender role ('guard' or 'ranger')
  * @returns Array of defender templates sorted by cost (ascending)
  */
 function getDefenderTemplates(role: "guard" | "ranger"): DefenderTemplate[] {
-  const roleDef = ROLE_DEFINITIONS[role];
-  if (!roleDef) {
-    return [];
-  }
-
-  return roleDef.bodies.map(template => ({
-    parts: template.parts,
-    cost: template.cost,
-    dps: calculateBodyDPS(template.parts)
-  })).sort((a, b) => a.cost - b.cost);
+  return [...DEFENDER_TEMPLATES[role]].sort((a, b) => a.cost - b.cost);
 }
 
 /**
@@ -385,10 +440,20 @@ function calculateAverageDefenderStats(templates: DefenderTemplate[]): { dpsPerE
  * @returns Estimated total energy required to spawn enough defenders
  */
 export function estimateDefenderCost(
-  totalDPS: number,
+  totalDPS: number | Creep[],
   defenderDpsPerCreep?: number,
   energyPerDefender?: number
 ): number {
+  if (Array.isArray(totalDPS)) {
+    const hostileDPS = totalDPS.reduce((sum, hostile) => {
+      const activeParts = hostile.body
+        .filter(part => part.hits > 0)
+        .map(part => part.type);
+      return sum + calculateBodyDPS(activeParts);
+    }, 0);
+    return Math.ceil(hostileDPS / 30) * 300;
+  }
+
   // If no overrides provided, calculate from actual defender templates
   if (defenderDpsPerCreep === undefined || energyPerDefender === undefined) {
     // Get templates for both guard and ranger roles

@@ -8,8 +8,8 @@
  * The actual spawn system integration will be done incrementally.
  */
 
-import { RoomState, SpawnManager } from "@ralphschuler/screeps-spawn";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
+import { RoomState, SpawnManager } from "@ralphschuler/screeps-spawn";
 
 /**
  * Example: Convert bot's SwarmState to spawn package's RoomState
