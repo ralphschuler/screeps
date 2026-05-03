@@ -61,7 +61,10 @@ export function placeConstructionSites(room: Room, anchor: RoomPosition, bluepri
   const existingSites = room.find(FIND_MY_CONSTRUCTION_SITES);
   const existingStructures = room.find(FIND_STRUCTURES);
 
-  if (existingSites.length >= 10) return 0;
+  // Use a higher site limit for RCL 5+ rooms that need many structures built
+  const maxSites = rcl >= 5 ? 15 : 10;
+  const sitesPerTick = rcl >= 5 ? 5 : 3;
+  if (existingSites.length >= maxSites) return 0;
 
   const structureCounts: Record<string, number> = {};
   for (const structure of existingStructures) {
@@ -102,7 +105,7 @@ export function placeConstructionSites(room: Room, anchor: RoomPosition, bluepri
       placed++;
       structureCounts[s.structureType] = currentCount + 1;
 
-      if (placed >= 3 || existingSites.length + placed >= 10) break;
+      if (placed >= sitesPerTick || existingSites.length + placed >= maxSites) break;
     }
   }
 
@@ -127,7 +130,7 @@ export function placeConstructionSites(room: Room, anchor: RoomPosition, bluepri
       const result = room.createConstructionSite(x, y, STRUCTURE_ROAD);
       if (result === OK) {
         placed++;
-        if (placed >= 3 || existingSites.length + placed >= 10) break;
+        if (placed >= sitesPerTick || existingSites.length + placed >= maxSites) break;
       }
     }
   }
