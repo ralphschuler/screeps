@@ -411,10 +411,30 @@ export class EmpireManager {
    */
 
   /**
-   * Update global objectives
+   * Update global objectives and sync empire.ownedRooms
    */
   private updateObjectives(empire: EmpireMemory): void {
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+
+    // Sync empire.ownedRooms — always current
+    empire.ownedRooms = {};
+    for (const room of ownedRooms) {
+      empire.ownedRooms[room.name] = {
+        name: room.name,
+        rcl: room.controller?.level ?? 0,
+        energyAvailable: room.energyAvailable,
+        energyCapacityAvailable: room.energyCapacityAvailable
+      };
+    }
+
+    // Remove stale room entries from memory (rooms no longer owned)
+    for (const roomName in empire.knownRooms) {
+      const intel = empire.knownRooms[roomName];
+      if (intel.owner === "TedRoastBeef" && !ownedRooms.some(r => r.name === roomName)) {
+        // Clean up stale ownership entries if room is no longer owned
+        delete intel.owner;
+      }
+    }
 
     // Update target room count (GCL level)
     empire.objectives.targetRoomCount = Game.gcl.level;
@@ -479,9 +499,11 @@ export class EmpireManager {
       return;
     }
 
-    // Count stable rooms (RCL >= minStableRcl with storage)
+    // Count stable rooms (RCL >= minStableRcl OR RCL >= 5 with storage)
+    // Single-room RCL 5 bases are inherently stable enough to expand
     const stableRooms = allRooms.filter(r => {
       const rcl = r.controller?.level ?? 0;
+      if (rcl >= 5) return true;                       // RCL 5+ is always stable
       const hasStorage = r.storage !== undefined;
       return rcl >= this.config.minStableRcl && hasStorage;
     });

@@ -2545,7 +2545,7 @@ marketHistory: 0,
 bytesSaved: 0
 };
 t.deadCreeps = this.pruneDeadCreeps(), t.eventLogs = this.pruneEventLogs(20), t.staleIntel = this.pruneStaleIntel(He), 
-t.marketHistory = this.pruneMarketHistory(5e3);
+t.marketHistory = this.pruneMarketHistory(5e3), this.pruneStaleRoomMemory();
 var r = this.getRawMemorySize();
 return t.bytesSaved = Math.max(0, e - r), t.bytesSaved > 0 && ge.info("Memory pruning complete", {
 subsystem: "MemoryPruner",
@@ -2625,6 +2625,17 @@ return e.impactTick >= Game.time;
 }), t += o - e.incomingNukes.length;
 }
 return t;
+}, e.prototype.pruneStaleRoomMemory = function() {
+var e, t, r, o;
+if (!Memory.rooms) return 0;
+var n = 0, a = Game.time - He;
+for (var i in Memory.rooms) {
+var s = Memory.rooms[i], c = null == s ? void 0 : s.swarm, l = null !== (r = null === (t = null === (e = Game.rooms[i]) || void 0 === e ? void 0 : e.controller) || void 0 === t ? void 0 : t.my) && void 0 !== r && r, u = null !== (o = null == c ? void 0 : c.lastUpdate) && void 0 !== o ? o : 0;
+!l && u < a && (delete Memory.rooms[i], n++);
+}
+return n > 0 && ge.info("Pruned ".concat(n, " stale room memory entries"), {
+subsystem: "MemoryPruner"
+}), n;
 }, e.prototype.getRecommendations = function() {
 var e = [], t = Memory.empire;
 if (Memory.rooms) for (var r in Memory.rooms) {
@@ -23556,7 +23567,7 @@ function e() {}
 return e.prototype.determinePosture = function(e, t) {
 if (t) return t;
 var r = e.pheromones, o = e.danger;
-return o >= 3 ? "siege" : o >= 2 ? "war" : r.siege > 30 ? "siege" : r.war > 25 ? "war" : r.defense > 20 ? "defensive" : r.nukeTarget > 40 ? "nukePrep" : r.expand > 30 && 0 === o ? "expand" : o >= 1 ? "defensive" : "eco";
+return o >= 3 ? "siege" : o >= 2 ? "war" : r.siege > 30 ? "siege" : r.war > 25 ? "war" : r.defense > 35 ? "defensive" : r.nukeTarget > 40 ? "nukePrep" : r.expand > 30 && 0 === o ? "expand" : o >= 2 ? "defensive" : "eco";
 }, e.prototype.updatePosture = function(e, t, r) {
 var o = this.determinePosture(e, t);
 if (o !== e.posture) {
@@ -31143,11 +31154,40 @@ if (o) throw o.error;
 };
 for (var o in Game.rooms) r(o);
 }, e.prototype.updateObjectives = function(e) {
-var t = Object.values(Game.rooms).filter(function(e) {
+var t, r, o, a, i = Object.values(Game.rooms).filter(function(e) {
 var t;
 return null === (t = e.controller) || void 0 === t ? void 0 : t.my;
 });
-e.objectives.targetRoomCount = Game.gcl.level, e.objectives.targetPowerLevel = Math.min(25, 3 * t.length), 
+e.ownedRooms = {};
+try {
+for (var s = n(i), c = s.next(); !c.done; c = s.next()) {
+var l = c.value;
+e.ownedRooms[l.name] = {
+name: l.name,
+rcl: null !== (a = null === (o = l.controller) || void 0 === o ? void 0 : o.level) && void 0 !== a ? a : 0,
+energyAvailable: l.energyAvailable,
+energyCapacityAvailable: l.energyCapacityAvailable
+};
+}
+} catch (e) {
+t = {
+error: e
+};
+} finally {
+try {
+c && !c.done && (r = s.return) && r.call(s);
+} finally {
+if (t) throw t.error;
+}
+}
+var u = function(t) {
+var r = e.knownRooms[t];
+"TedRoastBeef" !== r.owner || i.some(function(e) {
+return e.name === t;
+}) || delete r.owner;
+};
+for (var m in e.knownRooms) u(m);
+e.objectives.targetRoomCount = Game.gcl.level, e.objectives.targetPowerLevel = Math.min(25, 3 * i.length), 
 e.warTargets.length > 0 && !e.objectives.warMode && (e.objectives.warMode = !0, 
 ge.warn("War mode enabled due to active war targets", {
 subsystem: "Empire"
@@ -31179,7 +31219,9 @@ return null === (t = e.controller) || void 0 === t ? void 0 : t.my;
 });
 if (!(r.length >= Game.gcl.level)) {
 var o = r.filter(function(e) {
-var r, o, n = null !== (o = null === (r = e.controller) || void 0 === r ? void 0 : r.level) && void 0 !== o ? o : 0, a = void 0 !== e.storage;
+var r, o, n = null !== (o = null === (r = e.controller) || void 0 === r ? void 0 : r.level) && void 0 !== o ? o : 0;
+if (n >= 5) return !0;
+var a = void 0 !== e.storage;
 return n >= t.config.minStableRcl && a;
 });
 if (0 !== o.length) {

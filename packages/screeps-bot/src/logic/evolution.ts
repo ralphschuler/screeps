@@ -301,13 +301,11 @@ export class PostureManager {
     if (pheromones.war > 25) {
       return "war";
     }
-    // TODO: [P2, Est: 2h] Defense pheromone threshold may be too low
-    // Issue URL: https://github.com/ralphschuler/screeps/issues/894
-    // Currently: defense > 20 triggers defensive posture
-    // Pheromones decay slowly, so defensive posture may persist long after threats clear
-    // Recommended: Increase threshold to 30-40, or implement faster decay when hostiles gone
-    // Related: SHARD3_INVESTIGATION.md - Military Overallocation Analysis
-    if (pheromones.defense > 20) {
+    // Defense pheromone threshold raised from 20 to 35 to prevent
+    // defensive posture from persisting after minor threats clear.
+    // Pheromones decay slowly (0.9-0.99 factor), so a higher threshold
+    // prevents prolonged military over-allocation.
+    if (pheromones.defense > 35) {
       return "defensive";
     }
     if (pheromones.nukeTarget > 40) {
@@ -317,18 +315,13 @@ export class PostureManager {
       return "expand";
     }
 
-    // Default based on danger level
-    // TODO: [P1, Est: 4h] Posture switching to defensive may be too aggressive
-    // Issue URL: https://github.com/ralphschuler/screeps/issues/893
-    // Currently: danger >= 1 (single hostile) triggers defensive posture
-    // This causes mass military spawn even for minor threats (15 military creeps = 62% observed)
-    // Recommended fixes (priority order):
-    // 1. [P1] Require danger >= 2 for defensive (or add threat proximity check)
-    // 2. [P2] Add cooldown period before dropping defensive → eco (prevent oscillation)
-    // 3. [P2] Check if hostiles are actually threatening (near spawn/storage vs. just passing through)
-    // 4. [P3] Implement auto-recovery when no hostiles for N ticks (e.g., 50 ticks)
-    // Related: SHARD3_INVESTIGATION.md - Military Overallocation Root Cause
-    if (danger >= 1) {
+    // Default: danger >= 2 required for defensive posture.
+    // danger === 1 is typically a scout or passing NPC — not worth
+    // diverting 35%+ spawn capacity to military. Only escalate to
+    // defensive when there are multiple hostiles or confirmed attacks.
+    // This aligns with POSTURE_PROFILES: defensive allocates 35% military
+    // vs eco's 5%, so the threshold must be meaningful.
+    if (danger >= 2) {
       return "defensive";
     }
 

@@ -170,8 +170,16 @@ export class ScreepsClient {
       await this.socket.subscribe(`user:${userID}/console`);
 
       // Set up console message handler
-      this.socket.on(`user:${userID}/console`, (msg: [string, ConsoleMessage]) => {
-        const [, data] = msg;
+      this.socket.on(`user:${userID}/console`, (msg: unknown) => {
+        let data: ConsoleMessage;
+        if (Array.isArray(msg) && msg.length >= 2) {
+          [, data] = msg as [string, ConsoleMessage];
+        } else if (typeof msg === "object" && msg !== null) {
+          data = msg as ConsoleMessage;
+        } else {
+          console.warn("Malformed console message received:", msg);
+          return; // Malformed message, ignore
+        }
         this.handleConsoleMessage(data);
       });
     } catch (error) {

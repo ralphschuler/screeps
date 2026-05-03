@@ -67,6 +67,7 @@ export class MemoryPruner {
     stats.eventLogs = this.pruneEventLogs(MAX_EVENT_LOG_ENTRIES);
     stats.staleIntel = this.pruneStaleIntel(MAX_INTEL_AGE);
     stats.marketHistory = this.pruneMarketHistory(MAX_MARKET_HISTORY_AGE);
+    this.pruneStaleRoomMemory();
 
     const sizeAfter = this.getRawMemorySize();
     stats.bytesSaved = Math.max(0, sizeBefore - sizeAfter);
@@ -257,6 +258,38 @@ export class MemoryPruner {
       pruned += initialCount - empire.incomingNukes.length;
     }
 
+    return pruned;
+  }
+
+  /**
+   * Prune stale room memory entries for rooms that are no longer owned.
+   * Removes rooms from Memory.rooms that haven't been visible for 10000 ticks
+   * and aren't currently owned.
+   */
+  public pruneStaleRoomMemory(): number {
+    if (!Memory.rooms) return 0;
+
+    let pruned = 0;
+    const cutoffTime = Game.time - MAX_INTEL_AGE;
+
+    for (const roomName in Memory.rooms) {
+      const roomMem = Memory.rooms[roomName] as unknown as { swarm?: SwarmState };
+      const swarm = roomMem?.swarm;
+      const isOwned = Game.rooms[roomName]?.controller?.my ?? false;
+      const lastUpdate = swarm?.lastUpdate ?? 0;
+
+      // Remove room memory if:
+      // 1. Not currently owned, AND
+      // 2. Last update was more than MAX_INTEL_AGE ticks ago (or never updated)
+      if (!isOwned && lastUpdate < cutoffTime) {
+        delete Memory.rooms[roomName];
+        pruned++;
+      }
+    }
+
+    if (pruned > 0) {
+      logger.info(`Pruned ${pruned} stale room memory entries`, { subsystem: "MemoryPruner" });
+    }
     return pruned;
   }
 
