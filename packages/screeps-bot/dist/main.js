@@ -13605,29 +13605,34 @@ reason: a,
 source: r
 }), !1);
 });
-}, e.prototype.findRemoteCandidates = function(e, t, r) {
-var o = [], n = this.getMyUsername();
-for (var a in t.knownRooms) if (!r.includes(a) && !this.isRemoteAssignedElsewhere(a, e)) {
-var i = t.knownRooms[a];
-if (i.scouted && !i.owner && !(i.reserver && i.reserver !== n || i.isHighway || i.isSK || i.sources < this.config.minRemoteSources || i.threatLevel >= 2)) {
-var s = Game.map.getRoomLinearDistance(e, a);
-if (!(s < 1 || s > this.config.maxRemoteDistance)) {
-var c = Ca(a, e, i);
-if (c.isProfitable) {
-var l = this.scoreRemoteCandidate(i, s);
-o.push({
-roomName: a,
-score: l
+}, e.prototype.findRemoteCandidates = function(e, t, o) {
+var n = [], a = this.getMyUsername();
+for (var i in t.knownRooms) if (!o.includes(i) && !this.isRemoteAssignedElsewhere(i, e)) {
+var s = t.knownRooms[i], c = Game.map.getRoomLinearDistance(e, i);
+if ((s.scouted || !(c > 1)) && !s.owner && !(s.reserver && s.reserver !== a || s.isHighway || s.isSK || s.sources < this.config.minRemoteSources || s.threatLevel >= 2 || c < 1 || c > this.config.maxRemoteDistance)) if (s.scouted) {
+var l = Ca(i, e, s);
+if (l.isProfitable) {
+var u = this.scoreRemoteCandidate(s, c);
+n.push({
+roomName: i,
+score: u
 });
-} else Game.time % 1e3 == 0 && ge.debug("Skipping remote ".concat(a, " - not profitable (ROI: ").concat(c.roi.toFixed(2), ")"), {
+} else Game.time % 1e3 == 0 && ge.debug("Skipping remote ".concat(i, " - not profitable (ROI: ").concat(l.roi.toFixed(2), ")"), {
 subsystem: "Expansion"
 });
+} else {
+var m = this.scoreRemoteCandidate(r(r({}, s), {
+sources: 2
+}), c);
+n.push({
+roomName: i,
+score: m
+});
 }
 }
-}
-return o.sort(function(e, t) {
+return n.sort(function(e, t) {
 return t.score - e.score;
-}), o.map(function(e) {
+}), n.map(function(e) {
 return e.roomName;
 });
 }, e.prototype.scoreRemoteCandidate = function(e, t) {

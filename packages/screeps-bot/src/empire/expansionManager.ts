@@ -288,8 +288,11 @@ export class ExpansionManager {
 
       const intel = empire.knownRooms[roomName];
 
-      // Skip if not scouted
-      if (!intel.scouted) continue;
+      // Skip if not scouted AND not adjacent (distance 1)
+      // Adjacent unscouted rooms are safe to assume as candidates:
+      // they would be visible from our room if hostile/owned, so un-owned = likely empty
+      const distance = Game.map.getRoomLinearDistance(homeRoom, roomName);
+      if (!intel.scouted && distance > 1) continue;
 
       // Skip if owned or reserved by someone else
       if (intel.owner) continue;
@@ -304,9 +307,16 @@ export class ExpansionManager {
       // Skip if too dangerous
       if (intel.threatLevel >= 2) continue;
 
-      // Check distance (skip same room with distance 0, and rooms too far)
-      const distance = Game.map.getRoomLinearDistance(homeRoom, roomName);
+      // Distance already calculated above; disallow self (distance 0)
       if (distance < 1 || distance > this.config.maxRemoteDistance) continue;
+
+      // For unscouted adjacent rooms, assume 2 sources (typical) and skip profitability check
+      // since we can't calculate without real data. Profitability validated after first scout.
+      if (!intel.scouted) {
+        const score = this.scoreRemoteCandidate({ ...intel, sources: 2 }, distance);
+        candidates.push({ roomName, score });
+        continue;
+      }
 
       // Check profitability (must have >2x ROI)
       const profitability = ExpansionScoring.calculateRemoteProfitability(roomName, homeRoom, intel);
