@@ -179,6 +179,23 @@ function runVisualizations(): void {
  * Main loop for SwarmBot
  */
 export function loop(): void {
+  // Shard abandonment guard: if no owned rooms and marked abandoned, skip all processing
+  const ownedRoomCount = Object.values(Game.rooms).filter(r => r.controller?.my).length;
+  if (ownedRoomCount === 0) {
+    // No rooms owned — either respawning, first tick, or abandoned shard.
+    // Minimal work only: clear stale caches so they don't accumulate.
+    if (systemsInitialized && Game.time % 100 === 0) {
+      logger.info(`Shard idle (no owned rooms) at tick ${Game.time}`, { subsystem: "SwarmBot" });
+    }
+    // Still need to set systemsInitialized on first tick for logger setup
+    if (!systemsInitialized) {
+      initializeSystems();
+    }
+    // Skip everything else to save CPU on abandoned shards
+    logger.flush();
+    return;
+  }
+
   // Log every 10 ticks to confirm main loop is running
   if (!systemsInitialized || Game.time % 10 === 0) {
     logger.info(`SwarmBot loop executing at tick ${Game.time}`, {
@@ -186,7 +203,7 @@ export function loop(): void {
       meta: { systemsInitialized }
     });
   }
-  
+
   // Initialize systems on first tick
   if (!systemsInitialized) {
     initializeSystems();
