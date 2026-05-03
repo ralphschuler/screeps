@@ -20,7 +20,7 @@
   "author": "",
   "license": "Unlicense",
   "devDependencies": {
-    "@types/node": "^25.0.10",
+    "@types/node": "^25.6.0",
     "typescript": "^5.4.3"
   },
   "screepsmod": {
