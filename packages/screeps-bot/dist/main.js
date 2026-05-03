@@ -31840,9 +31840,9 @@ remoteRole: !1
 queenCarrier: {
 role: "queenCarrier",
 family: "economy",
-bodies: [ Du([ CARRY, CARRY, CARRY, CARRY, MOVE, MOVE ], 300), Du([ CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE ], 450), Du([ CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE ], 600) ],
+bodies: [ Du([ CARRY, CARRY, CARRY, CARRY, MOVE, MOVE ], 300), Du([ CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE ], 450), Du([ CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE ], 600), Du([ CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE ], 750), Du([ CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE ], 900) ],
 priority: 85,
-maxPerRoom: 1,
+maxPerRoom: 2,
 remoteRole: !1
 },
 mineralHarvester: {
@@ -32218,27 +32218,24 @@ if (i) throw i.error;
 }
 return !1;
 }
-var S = null !== (u = qu(e).get(t)) && void 0 !== u ? u : 0, w = p.maxPerRoom;
-if ("upgrader" === t && r.clusterId && (null == (I = Qe.getCluster(r.clusterId)) ? void 0 : I.focusRoom) === e) {
-var O = Game.rooms[e];
-(null == O ? void 0 : O.controller) && (w = O.controller.level <= 3 ? 2 : O.controller.level <= 6 ? 4 : 6);
-}
-if (S >= w) return !1;
-var b = Game.rooms[e];
-if (!b) return !1;
+var S = null !== (u = qu(e).get(t)) && void 0 !== u ? u : 0, w = p.maxPerRoom, O = Game.rooms[e];
+if ("upgrader" === t && r.clusterId && (null == (N = Qe.getCluster(r.clusterId)) ? void 0 : N.focusRoom) === e && (null == O ? void 0 : O.controller) && (w = O.controller.level <= 3 ? 2 : O.controller.level <= 6 ? 4 : 6), 
+"queenCarrier" === t && (w = (null == O ? void 0 : O.storage) && O.controller && O.controller.level >= 5 ? p.maxPerRoom : 1), 
+S >= w) return !1;
+if (!O) return !1;
 if ("scout" === t) {
 if (r.danger >= 1) return !1;
 if ("defensive" === r.posture || "war" === r.posture || "siege" === r.posture) return !1;
-var _ = (null !== (m = r.remoteAssignments) && void 0 !== m ? m : []).length > 0;
-return "expand" === r.posture && S < p.maxPerRoom || !(!_ || 0 !== S);
+var b = (null !== (m = r.remoteAssignments) && void 0 !== m ? m : []).length > 0;
+return "expand" === r.posture && S < p.maxPerRoom || !(!b || 0 !== S);
 }
 if ("claimer" === t) {
-var U = Qe.getEmpire(), x = Object.values(Game.rooms).filter(function(e) {
+var _ = Qe.getEmpire(), U = Object.values(Game.rooms).filter(function(e) {
 var t;
 return null === (t = e.controller) || void 0 === t ? void 0 : t.my;
-}), M = x.length < Game.gcl.level, A = U.claimQueue.some(function(e) {
+}), x = U.length < Game.gcl.level, M = _.claimQueue.some(function(e) {
 return !e.claimed;
-}), k = function(e, t) {
+}), A = function(e, t) {
 var r, o, a, i, s, c, l = null !== (a = t.remoteAssignments) && void 0 !== a ? a : [];
 if (0 === l.length) return !1;
 var u, m = (u = Object.values(Game.spawns)).length > 0 ? u[0].owner.username : "", p = function(e) {
@@ -32278,47 +32275,47 @@ if (r) throw r.error;
 }
 return !1;
 }(0, r);
-return !(!M || !A) || !!k;
+return !(!x || !M) || !!A;
 }
 if ("mineralHarvester" === t) {
-var N = b.find(FIND_MINERALS)[0];
-if (!N) return !1;
-if (!N.pos.lookFor(LOOK_STRUCTURES).find(function(e) {
+var k = O.find(FIND_MINERALS)[0];
+if (!k) return !1;
+if (!k.pos.lookFor(LOOK_STRUCTURES).find(function(e) {
 return e.structureType === STRUCTURE_EXTRACTOR;
 })) return !1;
-if (0 === N.mineralAmount) return !1;
+if (0 === k.mineralAmount) return !1;
 }
-if ("labTech" === t && b.find(FIND_MY_STRUCTURES, {
+if ("labTech" === t && O.find(FIND_MY_STRUCTURES, {
 filter: function(e) {
 return e.structureType === STRUCTURE_LAB;
 }
 }).length < 3) return !1;
-if ("factoryWorker" === t && 0 === b.find(FIND_MY_STRUCTURES, {
+if ("factoryWorker" === t && 0 === O.find(FIND_MY_STRUCTURES, {
 filter: function(e) {
 return e.structureType === STRUCTURE_FACTORY;
 }
 }).length) return !1;
-if ("queenCarrier" === t && !b.storage) return !1;
-if ("builder" === t && 0 === b.find(FIND_MY_CONSTRUCTION_SITES).length && S > 0) return !1;
+if ("queenCarrier" === t && !O.storage) return !1;
+if ("builder" === t && 0 === O.find(FIND_MY_CONSTRUCTION_SITES).length && S > 0) return !1;
 if ("interRoomCarrier" === t) {
 if (!r.clusterId) return !1;
-var I;
-if (!(I = Qe.getCluster(r.clusterId)) || !I.resourceRequests || 0 === I.resourceRequests.length) return !1;
-var P = I.resourceRequests.some(function(e) {
-if (e.fromRoom !== b.name) return !1;
+var N;
+if (!(N = Qe.getCluster(r.clusterId)) || !N.resourceRequests || 0 === N.resourceRequests.length) return !1;
+var I = N.resourceRequests.some(function(e) {
+if (e.fromRoom !== O.name) return !1;
 var t = e.assignedCreeps.filter(function(e) {
 return Game.creeps[e];
 }).length;
 return e.amount - e.delivered > 500 && t < 2;
 });
-if (!P) return !1;
+if (!I) return !1;
 }
 if ("crossShardCarrier" === t) {
-var G = su.getActiveRequests();
-if (0 === G.length) return !1;
-if (P = G.some(function(e) {
+var P = su.getActiveRequests();
+if (0 === P.length) return !1;
+if (I = P.some(function(e) {
 var t, r;
-if (e.sourceRoom !== b.name) return !1;
+if (e.sourceRoom !== O.name) return !1;
 var o = e.assignedCreeps || [], a = e.amount - e.transferred, i = 0, s = 0;
 try {
 for (var c = n(o), l = c.next(); !l.done; l = c.next()) {
@@ -32337,7 +32334,7 @@ if (t) throw t.error;
 }
 }
 return i < a && s < 3;
-}), !P) return !1;
+}), !I) return !1;
 }
 return !0;
 }

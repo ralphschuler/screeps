@@ -135,10 +135,12 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     bodies: [
       createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE], 300),
       createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE], 450),
-      createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 600)
+      createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 600),
+      createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE], 750),
+      createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 900)
     ],
     priority: 85,
-    maxPerRoom: 1,
+    maxPerRoom: 2,
     remoteRole: false
   },
   mineralHarvester: {

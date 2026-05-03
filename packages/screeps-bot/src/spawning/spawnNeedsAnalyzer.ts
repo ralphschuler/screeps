@@ -407,11 +407,11 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
 
   // Check max per room (with special handling for upgraders in focus room)
   let maxForRoom = def.maxPerRoom;
+  const room = Game.rooms[roomName];
   if (role === "upgrader" && swarm.clusterId) {
     const cluster = memoryManager.getCluster(swarm.clusterId);
     if (cluster?.focusRoom === roomName) {
       // Allow more upgraders in focus room to accelerate upgrading
-      const room = Game.rooms[roomName];
       if (room?.controller) {
         // Scale upgraders based on RCL
         if (room.controller.level <= 3) {
@@ -425,10 +425,16 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
     }
   }
 
+  if (role === "queenCarrier") {
+    // One queen is enough before storage logistics mature. At RCL5+ with large
+    // extension/tower capacity, allow a second queen so stored energy can refill
+    // spawn structures quickly after expensive creep spawns.
+    maxForRoom = room?.storage && room.controller && room.controller.level >= 5 ? def.maxPerRoom : 1;
+  }
+
   if (current >= maxForRoom) return false;
 
   // Special conditions
-  const room = Game.rooms[roomName];
   if (!room) return false;
 
   // Scout: Spawn if we have remote rooms without full intel
