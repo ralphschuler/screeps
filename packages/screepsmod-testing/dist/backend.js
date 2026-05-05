@@ -71,6 +71,7 @@ var testFiles = [];
  */
 module.exports = function (config) {
     var _a;
+    console.log('[screepsmod-testing] Mod loaded');
     // Read configuration
     var modConfig = ((_a = config.screepsmod) === null || _a === void 0 ? void 0 : _a.testing) || {};
     testInterval = modConfig.testInterval || 0;
@@ -98,7 +99,6 @@ module.exports = function (config) {
         onServerStart: function () {
             return __awaiter(this, void 0, void 0, function () {
                 return __generator(this, function (_a) {
-                    console.log('[screepsmod-testing] Mod loaded');
                     if (testInterval > 0) {
                         console.log("[screepsmod-testing] Tests will run every ".concat(testInterval, " ticks"));
                     }

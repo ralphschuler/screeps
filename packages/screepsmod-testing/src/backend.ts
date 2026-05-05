@@ -25,6 +25,8 @@ let testFiles: string[] = [];
  * Backend module export for screepsmod
  */
 module.exports = function (config: any) {
+  console.log('[screepsmod-testing] Mod loaded');
+
   // Read configuration
   const modConfig = config.screepsmod?.testing || {};
   testInterval = modConfig.testInterval || 0;
@@ -58,7 +60,6 @@ module.exports = function (config: any) {
      * Called when the backend starts
      */
     async onServerStart() {
-      console.log('[screepsmod-testing] Mod loaded');
       if (testInterval > 0) {
         console.log(`[screepsmod-testing] Tests will run every ${testInterval} ticks`);
       } else if (autoRunTests) {
