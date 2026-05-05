@@ -46,6 +46,6 @@
     "typescript": "^5.4.3"
   },
   "peerDependencies": {
-    "screeps-cartographer": "^1.8.13"
+    "screeps-cartographer": "^1.8.15"
   }
 }

@@ -158,17 +158,17 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^25.0.10",
     "@types/screeps": "^3.3.8",
-    "@types/sinon": "^21.0.0",
-    "ajv": "^6.12.6",
+    "@types/sinon": "^21.0.1",
+    "ajv": "^8.20.0",
     "chai": "^6.2.2",
-    "jscpd": "^4.0.7",
+    "jscpd": "^4.0.9",
     "mocha": "^11.7.5",
-    "sinon": "^21.0.1",
+    "sinon": "^21.1.2",
     "ts-node": "^10.9.2",
     "ts-prune": "^0.10.3",
     "tsx": "^4.21.0",
-    "typedoc": "^0.28.16",
-    "typedoc-plugin-markdown": "^4.9.0",
+    "typedoc": "^0.28.19",
+    "typedoc-plugin-markdown": "^4.11.0",
     "typescript": "^5.4.3"
   }
 }
