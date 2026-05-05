@@ -10,6 +10,31 @@ npm run build:mod
 npm run test:server:smoke
 ```
 
+## Local Client Connection
+
+Default local server bind is localhost-only:
+
+```text
+http://127.0.0.1:21025
+User: swarm-bot
+Password: ci-password
+Server password: ci-password
+```
+
+Use LAN binding only when needed:
+
+```bash
+npm run server:local:up -- --serverHost=0.0.0.0
+```
+
+If a running container still exposes `0.0.0.0`, recreate/reset it:
+
+```bash
+npm run server:local:down
+npm run server:local:up
+npm run server:local:reset
+```
+
 ## CI
 
 Pull requests run a short private-server smoke workflow. Long simulations run from the dedicated manual/nightly workflow.

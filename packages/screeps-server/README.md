@@ -28,7 +28,40 @@ Long run:
 npm run test:server:long
 ```
 
-Manual stack control:
+Manual local stack control:
+
+```bash
+npm run server:local:up
+npm run server:local:down
+npm run server:local:reset
+npm run server:local:logs
+```
+
+Default local bind is localhost-only:
+
+```text
+http://127.0.0.1:21025
+User: swarm-bot
+Password: ci-password
+Server password: ci-password
+```
+
+LAN access is explicit opt-in:
+
+```bash
+npm run server:local:up -- --serverHost=0.0.0.0
+```
+
+If Docker still shows a stale `0.0.0.0` bind, recreate or reset the local stack:
+
+```bash
+npm run server:local:down
+npm run server:local:up
+# or discard volumes:
+npm run server:local:reset
+```
+
+Manual CI stack control:
 
 ```bash
 npm run server:ci:up

@@ -27,6 +27,15 @@ let testFiles: string[] = [];
 module.exports = function (config: any) {
   console.log('[screepsmod-testing] Mod loaded');
 
+  // The Docker CI world can start with incomplete terrain data for NPC stronghold
+  // generation on Screeps 4.3.0 + Node 22. Disable these optional NPC cronjobs
+  // so auth/upload smoke tests are not interrupted by backend reset loops.
+  if (config.cronjobs) {
+    delete config.cronjobs.genStrongholds;
+    delete config.cronjobs.expandStrongholds;
+    console.log('[screepsmod-testing] Disabled NPC stronghold cronjobs for test server stability');
+  }
+
   // Read configuration
   const modConfig = config.screepsmod?.testing || {};
   testInterval = modConfig.testInterval || 0;

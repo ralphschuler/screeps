@@ -7,6 +7,7 @@ ARG SCREEPSMOD_BOTS_VERSION=0.1.1
 ARG SCREEPSMOD_MONGO_VERSION=2.13.0
 
 ENV NODE_ENV=production \
+    NODE_PATH=/usr/local/lib/node_modules/screeps/node_modules:/usr/local/lib/node_modules \
     SCREEPS_HOME=/screeps \
     SCREEPS_CONFIG=/screeps/config.ci.yml \
     SCREEPS_MODFILE=/screeps/mods.ci.json
@@ -19,6 +20,7 @@ RUN apt-get update \
     screepsmod-admin-utils@${SCREEPSMOD_ADMIN_UTILS_VERSION} \
     screepsmod-bots@${SCREEPSMOD_BOTS_VERSION} \
     screepsmod-mongo@${SCREEPSMOD_MONGO_VERSION} \
+  && rm -rf /usr/local/lib/node_modules/screepsmod-*/node_modules/@screeps \
   && npm cache clean --force \
   && apt-get purge -y git \
   && apt-get autoremove -y \

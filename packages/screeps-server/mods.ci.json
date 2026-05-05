@@ -1,5 +1,13 @@
 {
   "mods": [
+    "/usr/local/lib/node_modules/screepsmod-auth",
+    "/usr/local/lib/node_modules/screepsmod-admin-utils",
+    "/usr/local/lib/node_modules/screepsmod-mongo",
+    "/usr/local/lib/node_modules/screepsmod-bots",
     "/workspace/packages/screepsmod-testing/dist/backend.js"
-  ]
+  ],
+  "bots": {
+    "simplebot": "/usr/local/lib/node_modules/screeps/node_modules/@screeps/launcher/init_dist/node_modules/@screeps/simplebot/src",
+    "swarm-bot": "/usr/local/lib/node_modules/screeps/node_modules/@screeps/launcher/init_dist/node_modules/@screeps/simplebot/src"
+  }
 }

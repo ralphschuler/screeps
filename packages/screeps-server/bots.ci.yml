@@ -1,15 +1,2 @@
 version: 1
-bots:
-  - username: simplebot
-    botName: simplebot
-    position: 22,22,W2N2
-    cpu: 100
-    gcl: 1
-    log_console: false
-
-  - username: swarm-bot
-    botName: swarm-bot
-    position: 25,25,W1N1
-    cpu: 100
-    gcl: 1
-    log_console: true
+bots: []

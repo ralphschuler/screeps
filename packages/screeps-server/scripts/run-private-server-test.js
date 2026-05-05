@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import net from 'node:net';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -22,6 +23,9 @@ const durationMinutes = Number(args.get('durationMinutes') ?? (mode === 'long' ?
 const maxTicks = Number(args.get('maxTicks') ?? (mode === 'long' ? 72000 : 1000));
 const tickPollMs = Number(args.get('tickPollMs') ?? 10000);
 const serverPort = Number(args.get('serverPort') ?? 21025);
+const cliPort = Number(args.get('cliPort') ?? 21026);
+const serverPassword = args.get('serverPassword') ?? process.env.SCREEPS_SERVER_PASSWORD ?? 'ci-password';
+const shardName = args.get('shardName') ?? process.env.SHARD_NAME ?? 'shard0';
 const username = args.get('username') ?? 'swarm-bot';
 const password = args.get('password') ?? 'ci-password';
 const roomName = args.get('room') ?? 'W1N1';
@@ -74,7 +78,10 @@ function run(command, commandArgs, options = {}) {
 }
 
 async function compose(...composeArgs) {
-  return run('docker', ['compose', '-f', 'docker-compose.ci.yml', '-p', projectName, ...composeArgs], { cwd: serverRoot });
+  return run('docker', ['compose', '-f', 'docker-compose.ci.yml', '-p', projectName, ...composeArgs], {
+    cwd: serverRoot,
+    env: { SHARD_NAME: shardName }
+  });
 }
 
 async function waitForServer(timeoutMs = 180000) {
@@ -89,29 +96,89 @@ async function waitForServer(timeoutMs = 180000) {
   throw new Error('Timed out waiting for Screeps HTTP server readiness');
 }
 
-async function createApi() {
-  const api = new ScreepsAPI({
-    email: username,
-    password,
-    protocol: 'http',
-    hostname: '127.0.0.1',
-    port: serverPort,
-    path: '/'
+function cliEval(command, timeoutMs = 30000) {
+  return new Promise((resolve, reject) => {
+    const socket = net.createConnection({ host: '127.0.0.1', port: cliPort });
+    let output = '';
+    const timeout = setTimeout(() => {
+      socket.destroy();
+      reject(new Error(`Timed out waiting for CLI command result. Output:\n${output}`));
+    }, timeoutMs);
+
+    socket.on('data', chunk => {
+      output += chunk.toString();
+      if (output.includes('__PI_CLI_DONE_')) {
+        clearTimeout(timeout);
+        socket.end();
+        resolve(output);
+      }
+    });
+    socket.on('error', error => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+    socket.on('connect', () => {
+      socket.write(`${command}\n`);
+    });
   });
-  try {
-    await api.raw.register.submit(username, `${username}@local.invalid`, password, { main: 'module.exports.loop = function() {};' });
-    summary.checks.userRegistered = true;
-  } catch (error) {
-    summary.errors.push(`registration skipped/failed: ${error.message}`);
+}
+
+async function ensureTerrainData() {
+  const command = `Promise.resolve().then(async () => { await storage.env.set('shardName', ${JSON.stringify(shardName)}); await map.updateTerrainData(); }).then(() => print('__PI_CLI_DONE_OK__')).catch(error => print('__PI_CLI_DONE_ERR__', error.stack || error.message || String(error)))`;
+  const output = await cliEval(command, 60000);
+  if (!output.includes('__PI_CLI_DONE_OK__') || output.includes('__PI_CLI_DONE_ERR__')) {
+    throw new Error(`Failed to ensure world terrain cache. CLI output:\n${output}`);
   }
-  await api.auth();
-  return api;
+  summary.checks.terrainDataReady = true;
+}
+
+async function ensureBotUser() {
+  const command = `Promise.resolve().then(async () => { let user = await storage.db.users.findOne({ username: ${JSON.stringify(username)} }); if (!user) { const controllers = await storage.db['rooms.objects'].find({ type: 'controller', user: null }); const controller = controllers.find(item => item && item.room); if (!controller) throw new Error('No unowned controller room found for bot spawn'); await bots.spawn('swarm-bot', controller.room, { username: ${JSON.stringify(username)}, cpu: 100, gcl: 1, x: 25, y: 25 }); } await setPassword(${JSON.stringify(username)}, ${JSON.stringify(password)}); }).then(() => print('__PI_CLI_DONE_OK__')).catch(error => print('__PI_CLI_DONE_ERR__', error.stack || error.message || String(error)))`;
+  const output = await cliEval(command);
+  if (!output.includes('__PI_CLI_DONE_OK__') || output.includes('__PI_CLI_DONE_ERR__')) {
+    throw new Error(`Failed to ensure bot user ${username}. CLI output:\n${output}`);
+  }
+  summary.checks.userReady = true;
+}
+
+async function createApi(timeoutMs = 300000) {
+  const deadline = Date.now() + timeoutMs;
+  let lastError = null;
+
+  while (Date.now() < deadline) {
+    const api = new ScreepsAPI({
+      email: username,
+      password,
+      protocol: 'http',
+      hostname: '127.0.0.1',
+      port: serverPort,
+      path: '/'
+    });
+    api.http.defaults.headers.common['X-Server-Password'] = serverPassword;
+
+    try {
+      await ensureBotUser();
+      const auth = await api.auth();
+      if (auth?.ok && auth.token) {
+        summary.checks.apiAuthenticated = true;
+        return api;
+      }
+      lastError = new Error(`Screeps API authentication failed: ${JSON.stringify(auth)}`);
+    } catch (error) {
+      lastError = error;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 5000));
+  }
+
+  throw lastError ?? new Error(`Timed out authenticating ${username}`);
 }
 
 async function uploadBot(api) {
   if (!fs.existsSync(botBundle)) throw new Error(`Bot bundle missing: ${botBundle}`);
   const code = fs.readFileSync(botBundle, 'utf8');
-  await api.raw.user.code.set('default', { main: code });
+  const result = await api.raw.user.code.set('$activeWorld', { main: code });
+  if (!result?.ok) throw new Error(`Bot upload failed: ${JSON.stringify(result)}`);
   summary.checks.botUploaded = true;
 }
 
@@ -210,9 +277,9 @@ async function main() {
     await compose('up', '--build', '-d');
     await waitForServer();
     summary.checks.serverReady = true;
+    await ensureTerrainData();
 
     api = await createApi();
-    summary.checks.apiAuthenticated = true;
     await uploadBot(api);
 
     let polls = 0;
