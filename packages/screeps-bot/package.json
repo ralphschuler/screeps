@@ -56,7 +56,7 @@
     "minimist": "^1.2.8",
     "mocha": "^11.7.5",
     "prettier": "^3.8.1",
-    "rollup": "^4.56.0",
+    "rollup": "^4.60.3",
     "rollup-plugin-clear": "^2.0.7",
     "rollup-plugin-screeps": "^1.0.1",
     "rollup-plugin-typescript2": "^0.36.0",
