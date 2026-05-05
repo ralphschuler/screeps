@@ -1,0 +1,90 @@
+name: Screeps Long Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      durationMinutes:
+        description: 'Wall-clock runtime in minutes'
+        required: false
+        default: '120'
+      tickDurationMs:
+        description: 'Initial server tick duration in milliseconds'
+        required: false
+        default: '100'
+  schedule:
+    - cron: '17 2 * * *'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  long-run:
+    name: 2h private-server simulation
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build framework, bot, and testing mod
+        run: |
+          npm run build
+          npm run build:mod
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run long private-server simulation
+        working-directory: packages/screeps-server
+        env:
+          SCREEPS_TICK_DURATION_MS: ${{ github.event.inputs.tickDurationMs || '100' }}
+        run: |
+          node scripts/run-private-server-test.js \
+            --mode=long \
+            --durationMinutes=${{ github.event.inputs.durationMinutes || '120' }} \
+            --maxTicks=72000 \
+            --project=screeps-long-run-${{ github.run_id }}
+        timeout-minutes: 170
+
+      - name: Upload sanitized long-run summary
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: screeps-long-run-summary
+          path: |
+            packages/screeps-server/artifacts/long/summary.json
+            packages/screeps-server/artifacts/long/summary.md
+            packages/screeps-server/artifacts/long/harness.log
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload raw Docker logs
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: screeps-long-run-raw-logs
+          path: packages/screeps-server/artifacts/long/docker.log
+          retention-days: 3
+          if-no-files-found: ignore
+
+      - name: Cleanup Docker
+        if: always()
+        working-directory: packages/screeps-server
+        run: docker compose -f docker-compose.ci.yml -p screeps-long-run-${{ github.run_id }} down -v --remove-orphans || true

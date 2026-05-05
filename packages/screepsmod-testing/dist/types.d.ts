@@ -16,7 +16,7 @@ export declare class AssertionError extends Error {
 export interface TestCase {
     name: string;
     description?: string;
-    fn: () => void | Promise<void>;
+    fn: (context?: TestContext) => void | Promise<void>;
     timeout?: number;
     skip?: boolean;
     tags?: string[];
@@ -28,10 +28,10 @@ export interface TestSuite {
     name: string;
     description?: string;
     tests: TestCase[];
-    beforeEach?: () => void | Promise<void>;
-    afterEach?: () => void | Promise<void>;
-    beforeAll?: () => void | Promise<void>;
-    afterAll?: () => void | Promise<void>;
+    beforeEach?: (context?: TestContext) => void | Promise<void>;
+    afterEach?: (context?: TestContext) => void | Promise<void>;
+    beforeAll?: (context?: TestContext) => void | Promise<void>;
+    afterAll?: (context?: TestContext) => void | Promise<void>;
 }
 /**
  * Test result for a single test

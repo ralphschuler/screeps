@@ -22,6 +22,9 @@ export {
   clearTerrainCache
 } from './layoutPlanner';
 
+// Blueprints
+export * from './blueprints/index';
+
 // Road Network Planning
 export type {
   RoadSegment,

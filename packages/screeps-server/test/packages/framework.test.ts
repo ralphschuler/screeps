@@ -100,12 +100,9 @@ describe('Framework Package Tests', () => {
 
   describe('Peer Dependencies', () => {
     it('should have compatible TypeScript types', async function() {
-      // Verify that @types/screeps is available
-      try {
-        await import('@types/screeps');
-      } catch (error) {
-        assert.fail('@types/screeps should be available');
-      }
+      // Verify that @types/screeps is installed; type-only packages do not expose runtime modules.
+      const packageJson = await import('@types/screeps/package.json', { with: { type: 'json' } });
+      assert.isString(packageJson.default.version, '@types/screeps should be available');
     });
   });
 

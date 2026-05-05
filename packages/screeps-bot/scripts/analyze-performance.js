@@ -3,7 +3,7 @@
 /**
  * Performance Analysis Script
  * 
- * Analyzes performance test results from screeps-performance-server:
+ * Analyzes performance test results from the Dockerized Screeps private-server harness:
  * 1. Parses console logs and milestone results
  * 2. Calculates CPU metrics (avg, max, p95, p99)
  * 3. Compares against baselines

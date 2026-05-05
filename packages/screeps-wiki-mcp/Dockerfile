@@ -31,4 +31,5 @@ COPY dist/ ./dist/
 # - WIKI_CACHE_TTL: Cache time-to-live in seconds (default: 3600)
 
 # Run the MCP server
+USER node
 CMD ["node", "dist/server.js"]

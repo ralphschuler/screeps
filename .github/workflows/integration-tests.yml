@@ -6,8 +6,7 @@ on:
     paths:
       - 'packages/screeps-bot/src/**'
       - 'packages/screeps-bot/package*.json'
-      - 'packages/screeps-server/test/**'
-      - 'packages/screeps-server/package*.json'
+      - 'packages/screeps-server/**'
       - 'packages/screepsmod-testing/**'
       - '.github/workflows/integration-tests.yml'
   push:
@@ -16,32 +15,25 @@ on:
       - develop
     paths:
       - 'packages/screeps-bot/src/**'
-      - 'packages/screeps-server/test/**'
+      - 'packages/screeps-server/**'
+      - 'packages/screepsmod-testing/**'
   workflow_dispatch:
-    inputs:
-      maxTicks:
-        description: 'Maximum number of ticks to run per test'
-        required: false
-        default: '1000'
 
-# Cancel in-progress runs for the same workflow and ref
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
   actions: read
 
 jobs:
-  integration-tests:
-    name: Run Integration Tests
+  private-server-smoke:
+    name: Real private-server smoke
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    # Skip draft PRs
+    timeout-minutes: 45
     if: github.event.pull_request.draft == false || github.event_name != 'pull_request'
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -57,102 +49,42 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      - name: Build all packages
-        run: npm run build
-        timeout-minutes: 10
-
-      - name: Build screepsmod-testing
-        run: npm run build:mod
-        timeout-minutes: 2
-
-      - name: Run integration tests
-        working-directory: packages/screeps-server
+      - name: Build framework, bot, and testing mod
         run: |
-          npm install
-          npm run test:integration
+          npm run build
+          npm run build:mod
         timeout-minutes: 15
-        env:
-          MAX_TICKS: ${{ github.event.inputs.maxTicks || '1000' }}
 
-      - name: Collect test results
-        if: always()
-        run: |
-          if [ -f packages/screeps-server/test-results.json ]; then
-            echo "Test results found"
-            cat packages/screeps-server/test-results.json
-          else
-            echo "No test results file found"
-          fi
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Upload test results
+      - name: Run private-server smoke test
+        working-directory: packages/screeps-server
+        run: node scripts/run-private-server-test.js --mode=smoke --durationMinutes=5 --maxTicks=1000 --project=screeps-smoke-${{ github.run_id }}
+        timeout-minutes: 25
+
+      - name: Upload smoke summary
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
-          name: integration-test-results
+          name: screeps-smoke-summary
           path: |
-            packages/screeps-server/test-results.json
-            packages/screeps-server/test-report.md
+            packages/screeps-server/artifacts/smoke/summary.json
+            packages/screeps-server/artifacts/smoke/summary.md
+            packages/screeps-server/artifacts/smoke/harness.log
           retention-days: 30
+          if-no-files-found: warn
 
-      - name: Comment PR with results
-        if: always() && github.event_name == 'pull_request' && hashFiles('packages/screeps-server/test-report.md') != ''
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const reportPath = 'packages/screeps-server/test-report.md';
-            
-            if (fs.existsSync(reportPath)) {
-              const report = fs.readFileSync(reportPath, 'utf8');
-              
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: `## 🧪 Integration Test Results\n\n${report}`
-              });
-            }
-
-      - name: Check for regressions
+      - name: Upload raw smoke logs
         if: always()
-        run: |
-          if [ -f packages/screeps-server/test-results.json ]; then
-            node scripts/check-test-regressions.js
-          fi
-
-  baseline-update:
-    name: Update Performance Baselines
-    runs-on: ubuntu-latest
-    needs: integration-tests
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: write
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Download test results
-        uses: actions/download-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
-          name: integration-test-results
-          path: packages/screeps-server/
+          name: screeps-smoke-raw-logs
+          path: packages/screeps-server/artifacts/smoke/docker.log
+          retention-days: 3
+          if-no-files-found: ignore
 
-      - name: Update baselines
-        run: |
-          if [ -f packages/screeps-server/test-results.json ]; then
-            node scripts/update-integration-baselines.js
-          fi
-
-      - name: Commit baseline updates
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          if [ -n "$(git status --porcelain performance-baselines/integration/)" ]; then
-            git add performance-baselines/integration/
-            git commit -m "chore: update integration test baselines [skip ci]"
-            git push
-          else
-            echo "No baseline changes to commit"
-          fi
+      - name: Cleanup Docker
+        if: always()
+        working-directory: packages/screeps-server
+        run: docker compose -f docker-compose.ci.yml -p screeps-smoke-${{ github.run_id }} down -v --remove-orphans || true

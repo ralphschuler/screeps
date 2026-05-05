@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import express from 'express';
 
 const port = Number.parseInt(process.env.PORT ?? '3000', 10);
@@ -9,53 +10,65 @@ const ntfyPassword = process.env.NTFY_PASSWORD;
 const defaultTags = parseTags(process.env.NTFY_TAGS);
 const webhookSecret = process.env.GRAFANA_WEBHOOK_SECRET ?? process.env.WEBHOOK_SECRET;
 
-const app = express();
-app.use(express.json({ limit: '1mb' }));
+if (!webhookSecret) {
+  throw new Error('GRAFANA_WEBHOOK_SECRET or WEBHOOK_SECRET is required');
+}
 
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok' });
-});
+export function createApp() {
+  const app = express();
+  app.use(express.json({ limit: '1mb' }));
 
-app.post('/webhook', async (req, res) => {
-  if (webhookSecret && !validateWebhookSecret(req, webhookSecret)) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
-  }
+  app.get('/health', (_req, res) => {
+    res.json({ status: 'ok' });
+  });
 
-  if (!ntfyTopic) {
-    res.status(500).json({ error: 'NTFY_TOPIC is not configured' });
-    return;
-  }
-
-  const payload = req.body ?? {};
-  const notification = formatNotification(payload);
-
-  try {
-    const response = await sendNotification(notification);
-    if (!response.ok) {
-      const body = await response.text();
-      console.error('ntfy responded with non-OK status', response.status, body);
-      res.status(502).json({ error: 'Failed to deliver notification to ntfy' });
+  app.post('/webhook', async (req, res) => {
+    if (!validateWebhookSecret(req, webhookSecret)) {
+      res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
-    res.json({ status: 'delivered' });
-  } catch (error) {
-    console.error('Failed to forward Grafana webhook', error);
-    res.status(500).json({ error: 'Failed to process webhook' });
-  }
-});
+    if (!ntfyTopic) {
+      res.status(500).json({ error: 'NTFY_TOPIC is not configured' });
+      return;
+    }
 
-// NOTE: Register all route handlers and middleware BEFORE this error handler.
-// Any routes or middleware added after this will NOT be covered by the error handler.
-app.use((err, _req, res, _next) => {
-  console.error('Unexpected error', err);
-  res.status(500).json({ error: 'Unexpected server error' });
-});
+    const payload = req.body ?? {};
+    const notification = formatNotification(payload);
 
-app.listen(port, () => {
-  console.log(`Grafana to ntfy webhook bridge listening on port ${port}`);
-});
+    try {
+      const response = await sendNotification(notification);
+      if (!response.ok) {
+        const body = await response.text();
+        console.error('ntfy responded with non-OK status', response.status, body);
+        res.status(502).json({ error: 'Failed to deliver notification to ntfy' });
+        return;
+      }
+
+      res.json({ status: 'delivered' });
+    } catch (error) {
+      console.error('Failed to forward Grafana webhook', error);
+      res.status(500).json({ error: 'Failed to process webhook' });
+    }
+  });
+
+  // NOTE: Register all route handlers and middleware BEFORE this error handler.
+  // Any routes or middleware added after this will NOT be covered by the error handler.
+  app.use((err, _req, res, _next) => {
+    console.error('Unexpected error', err);
+    res.status(500).json({ error: 'Unexpected server error' });
+  });
+
+  return app;
+}
+
+export const app = createApp();
+
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(port, () => {
+    console.log(`Grafana to ntfy webhook bridge listening on port ${port}`);
+  });
+}
 
 function formatNotification(payload) {
   const state = (payload.state ?? payload.status ?? 'unknown').toString();
@@ -149,9 +162,17 @@ function formatTagsArray(tags) {
   return undefined;
 }
 
-function validateWebhookSecret(req, expectedSecret) {
+export function validateWebhookSecret(req, expectedSecret) {
   const providedSecret = extractProvidedSecret(req);
-  return Boolean(providedSecret && providedSecret === expectedSecret);
+  return timingSafeStringEqual(providedSecret, expectedSecret);
+}
+
+export function timingSafeStringEqual(actual, expected) {
+  if (!actual || !expected) return false;
+  const actualBuffer = Buffer.from(actual);
+  const expectedBuffer = Buffer.from(expected);
+  if (actualBuffer.length !== expectedBuffer.length) return false;
+  return crypto.timingSafeEqual(actualBuffer, expectedBuffer);
 }
 
 function extractProvidedSecret(req) {

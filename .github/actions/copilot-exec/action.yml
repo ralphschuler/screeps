@@ -47,7 +47,7 @@ inputs:
   allow-all-paths:
     description: Whether to allow Copilot CLI access to any file path
     required: false
-    default: "true"
+    default: "false"
   model:
     description: Optional model identifier to pass to Copilot CLI. If not provided or empty, no model flag is passed to Copilot CLI.
     required: false
@@ -283,7 +283,6 @@ runs:
         WORKING_DIR: ${{ inputs.working-directory }}
         EXTRA_ARGS: ${{ inputs.extra-args }}
         ALLOW_ALL_PATHS: ${{ inputs.allow-all-paths }}
-        COPILOT_ALLOW_ALL: "1"
         COPILOT_TELEMETRY_OPTOUT: "1"
         MODEL: ${{ steps.resolve-model.outputs.model }}
         VERBOSE: ${{ inputs.verbose }}
@@ -322,7 +321,7 @@ runs:
           echo "🔧 Model: ${MODEL:-default}"
         fi
 
-        copilot --allow-all-tools "${args[@]}" < "$PROMPT_FILE" > "$OUTPUT_PATH" 2>&1 || {
+        copilot "${args[@]}" < "$PROMPT_FILE" > "$OUTPUT_PATH" 2>&1 || {
           exit_code=$?
           echo "❌ Copilot CLI failed with exit code: $exit_code"
           if [ -f "$OUTPUT_PATH" ]; then

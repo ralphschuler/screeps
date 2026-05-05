@@ -19,6 +19,7 @@ let jsonReporter: JSONReporter | null = null;
 let consoleReporter: ConsoleReporter | null = null;
 let outputFormat: 'console' | 'json' | 'junit' | 'all' = 'console';
 let testFilter: TestFilter | undefined;
+let testFiles: string[] = [];
 
 /**
  * Backend module export for screepsmod
@@ -29,6 +30,7 @@ module.exports = function (config: any) {
   testInterval = modConfig.testInterval || 0;
   autoRunTests = modConfig.autoRun !== false; // Default to true
   outputFormat = modConfig.outputFormat || 'console';
+  testFiles = Array.isArray(modConfig.testFiles) ? modConfig.testFiles : [];
   
   // Initialize managers based on configuration
   if (modConfig.persistence !== false) {
@@ -91,12 +93,16 @@ module.exports = function (config: any) {
     async loadTests(gameData: any) {
       console.log('[screepsmod-testing] Loading tests...');
 
-      // Tests are registered via the global describe/it functions
-      // They should be loaded from the bot's code or separate test modules
-      
-      // For now, tests need to be registered by the bot code itself
-      // The bot can require/import test modules that use describe/it
-      
+      for (const file of testFiles) {
+        try {
+          console.log(`[screepsmod-testing] Loading test file ${file}`);
+          require(file);
+        } catch (error) {
+          console.log(`[screepsmod-testing] Failed to load test file ${file}: ${error}`);
+          throw error;
+        }
+      }
+
       const suites = testRunner.getSuites();
       console.log(`[screepsmod-testing] Loaded ${suites.length} test suites`);
       for (const suite of suites) {
@@ -131,11 +137,14 @@ module.exports = function (config: any) {
       
       const summary = testRunner.getSummary(tick);
       
-      // Store results in a safe location (not in bot memory)
+      // Store results in backend data and bot-accessible Memory for CI polling.
       if (!gameData.__testResults) {
         gameData.__testResults = {};
       }
       gameData.__testResults = summary;
+      if (gameData.Memory && typeof gameData.Memory === 'object') {
+        gameData.Memory.screepsmodTesting = summary;
+      }
       
       // Persist results if enabled
       if (persistenceManager) {

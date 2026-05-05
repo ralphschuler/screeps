@@ -20,7 +20,6 @@
     "packages/screeps-chemistry",
     "packages/screeps-economy",
     "packages/screeps-defense",
-    "packages/screeps-tasks",
     "packages/screeps-posis",
     "packages/screeps-utils"
   ],

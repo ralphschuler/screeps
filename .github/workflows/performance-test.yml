@@ -1,4 +1,4 @@
-name: Performance Tests
+name: Performance Smoke
 
 on:
   pull_request:
@@ -6,8 +6,8 @@ on:
     paths:
       - 'packages/screeps-bot/src/**'
       - 'packages/screeps-bot/package*.json'
-      - 'packages/screeps-server/test/**'
-      - 'packages/screeps-server/package*.json'
+      - 'packages/screeps-server/**'
+      - 'packages/screepsmod-testing/**'
       - '.github/workflows/performance-test.yml'
   push:
     branches:
@@ -15,36 +15,25 @@ on:
       - develop
     paths:
       - 'packages/screeps-bot/src/**'
-      - 'packages/screeps-server/test/**'
+      - 'packages/screeps-server/**'
+      - 'packages/screepsmod-testing/**'
   workflow_dispatch:
-    inputs:
-      maxTickCount:
-        description: 'Maximum number of ticks to run'
-        required: false
-        default: '10000'
-      maxTimeDuration:
-        description: 'Maximum duration in minutes'
-        required: false
-        default: '30'
 
-# Cancel in-progress runs for the same workflow and ref
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
-  performance-test:
+  smoke:
+    name: Private-server performance smoke
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    # Skip draft PRs
+    timeout-minutes: 45
     if: github.event.pull_request.draft == false || github.event_name != 'pull_request'
-    environment:
-      name: testing
-    permissions:
-      contents: write
-      actions: read
-      pull-requests: write
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -60,239 +49,41 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      - name: Build all packages
-        run: npm run build
+      - name: Build all packages and testing mod
+        run: |
+          npm run build
+          npm run build:mod
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Add docker-compose shim
-        run: |
-          echo '#!/usr/bin/env bash' | sudo tee /usr/local/bin/docker-compose > /dev/null
-          echo 'exec docker compose "$@"' | sudo tee -a /usr/local/bin/docker-compose > /dev/null
-          sudo chmod +x /usr/local/bin/docker-compose
-
-      - name: Verify Docker setup
-        run: |
-          docker --version
-          docker compose version
-          docker ps
-
-      - name: Run server integration tests
+      - name: Run performance smoke
         working-directory: packages/screeps-server
-        run: |
-          npm install
-          npm run test:integration
-        timeout-minutes: 15
-        continue-on-error: true
+        run: node scripts/run-private-server-test.js --mode=smoke --durationMinutes=5 --maxTicks=1000 --project=screeps-perf-smoke-${{ github.run_id }}
+        timeout-minutes: 25
 
-      - name: Run server performance tests
-        working-directory: packages/screeps-server
-        run: npm run test:performance
-        timeout-minutes: 15
-        continue-on-error: true
-
-      - name: Compare against baseline
-        if: always()
-        working-directory: packages/screeps-server
-        env:
-          GITHUB_REF_NAME: ${{ github.ref_name }}
-          GITHUB_BASE_REF: ${{ github.base_ref }}
-        run: |
-          if [ -f ../screeps-bot/performance-report.json ]; then
-            node scripts/compare-performance-baseline.js \
-              --current ../screeps-bot/performance-report.json \
-              --threshold-cpu 0.15 \
-              --threshold-gcl 0.20 \
-              --threshold-memory 0.15 \
-              --no-fail
-          else
-            echo "⚠️ Performance report not found, skipping baseline comparison"
-          fi
-        continue-on-error: true
-
-      - name: Run framework package tests
-        working-directory: packages/screeps-server
-        run: npm run test:packages
-        timeout-minutes: 10
-        continue-on-error: true
-
-      - name: Analyze server test results
-        if: always()
-        working-directory: packages/screeps-server
-        env:
-          GITHUB_REF_NAME: ${{ github.ref_name }}
-          GITHUB_BASE_REF: ${{ github.base_ref }}
-          GITHUB_SHA: ${{ github.sha }}
-          CI: true
-        run: node scripts/analyze-tests.js
-        continue-on-error: true
-
-      - name: Upload server test results
+      - name: Upload performance smoke summary
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: server-test-results
+          name: performance-smoke-summary
           path: |
-            packages/screeps-server/test-results.json
-            packages/screeps-server/test-report.md
-            packages/screeps-server/coverage/
+            packages/screeps-server/artifacts/smoke/summary.json
+            packages/screeps-server/artifacts/smoke/summary.md
+            packages/screeps-server/artifacts/smoke/harness.log
           retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload raw performance smoke logs
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: performance-smoke-raw-logs
+          path: packages/screeps-server/artifacts/smoke/docker.log
+          retention-days: 3
           if-no-files-found: ignore
 
-      - name: Run performance test
-        working-directory: packages/screeps-bot
-        env:
-          MAX_TICK_COUNT: ${{ github.event.inputs.maxTickCount || '10000' }}
-          MAX_TIME_DURATION: ${{ github.event.inputs.maxTimeDuration || '30' }}
-          STEAM_KEY: ${{ secrets.STEAM_API_KEY }}
-        run: |
-          npm run test:performance:logs -- \
-            --maxTickCount=${MAX_TICK_COUNT} \
-            --maxTimeDuration=${MAX_TIME_DURATION} \
-            --serverPort=21025 \
-            --cliPort=21026 \
-            --deleteLogs \
-            --force
-        timeout-minutes: 45
-
-      - name: Upload performance test logs
+      - name: Cleanup Docker
         if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: performance-test-logs
-          path: packages/screeps-bot/logs/
-          retention-days: 7
-
-      - name: Upload performance test results
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: performance-test-results
-          path: packages/screeps-bot/performance-results.json
-          retention-days: 30
-          if-no-files-found: warn
-
-      - name: Analyze performance results
-        if: always()
-        working-directory: packages/screeps-bot
-        env:
-          GITHUB_SHA: ${{ github.sha }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
-          GITHUB_BASE_REF: ${{ github.base_ref }}
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          GITHUB_EVENT_NUMBER: ${{ github.event.number }}
-        run: node scripts/analyze-performance.js
-        continue-on-error: true
-
-      - name: Export metrics to Grafana
-        if: always()
-        working-directory: packages/screeps-bot
-        env:
-          METRICS_FORMAT: ${{ secrets.METRICS_FORMAT || 'prometheus' }}
-          PROMETHEUS_PUSHGATEWAY_URL: ${{ secrets.PROMETHEUS_PUSHGATEWAY_URL }}
-          GRAPHITE_HOST: ${{ secrets.GRAPHITE_HOST }}
-          GRAPHITE_PORT: ${{ secrets.GRAPHITE_PORT }}
-        run: node scripts/export-to-grafana.js
-        continue-on-error: true
-
-      - name: Upload performance report
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: performance-report
-          path: |
-            packages/screeps-bot/performance-report.json
-            packages/screeps-bot/performance-report.md
-          retention-days: 30
-          if-no-files-found: warn
-
-      - name: Comment PR with performance results
-        if: github.event_name == 'pull_request' && always()
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const fs = require('fs');
-            const path = require('path');
-            
-            let commentBody = '';
-            
-            // Add bot performance results
-            const botReportPath = path.join(process.cwd(), 'packages/screeps-bot/performance-report.md');
-            if (fs.existsSync(botReportPath)) {
-              const botReport = fs.readFileSync(botReportPath, 'utf-8');
-              commentBody += botReport + '\n\n';
-            }
-            
-            // Add server test results
-            const serverReportPath = path.join(process.cwd(), 'packages/screeps-server/test-report.md');
-            if (fs.existsSync(serverReportPath)) {
-              const serverReport = fs.readFileSync(serverReportPath, 'utf-8');
-              commentBody += '---\n\n' + serverReport;
-            }
-            
-            if (!commentBody) {
-              console.log('No test reports found, skipping PR comment');
-              return;
-            }
-            
-            // Find existing comment
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            
-            const botComment = comments.find(comment => 
-              comment.user.type === 'Bot' && 
-              comment.body.includes('📊 Performance Test Results')
-            );
-            
-            if (botComment) {
-              // Update existing comment
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: commentBody
-              });
-              console.log('Updated existing PR comment');
-            } else {
-              // Create new comment
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: commentBody
-              });
-              console.log('Created new PR comment');
-            }
-
-      - name: Check for performance regression
-        if: always()
-        working-directory: packages/screeps-bot
-        run: |
-          if [ -f performance-report.json ]; then
-            PASSED=$(node -e "const report = require('./performance-report.json'); console.log(report.passed);")
-            if [ "$PASSED" = "false" ]; then
-              echo "::error::Performance regression detected"
-              exit 1
-            fi
-          fi
-
-      - name: Update performance baseline
-        if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
-        working-directory: packages/screeps-bot
-        env:
-          GITHUB_REF_NAME: ${{ github.ref_name }}
-        run: node scripts/update-baseline.js
-
-      - name: Commit baseline update
-        if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
-        uses: stefanzweifel/git-auto-commit-action@v7
-        with:
-          commit_message: 'chore(performance): update baseline for ${{ github.ref_name }}'
-          file_pattern: 'performance-baselines/*.json performance-baselines/history/*.json'
-          commit_user_name: 'github-actions[bot]'
-          commit_user_email: 'github-actions[bot]@users.noreply.github.com'
-          skip_dirty_check: false
+        working-directory: packages/screeps-server
+        run: docker compose -f docker-compose.ci.yml -p screeps-perf-smoke-${{ github.run_id }} down -v --remove-orphans || true

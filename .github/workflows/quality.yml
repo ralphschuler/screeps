@@ -58,9 +58,6 @@ jobs:
           - package-name: screeps-utils
             workspace: "@ralphschuler/screeps-utils"
             lint-script: "lint:utils"
-          - package-name: screeps-tasks
-            workspace: "@ralphschuler/screeps-tasks"
-            lint-script: "lint:tasks"
           - package-name: screeps-posis
             workspace: "@ralphschuler/screeps-posis"
             lint-script: "lint:posis"

@@ -197,6 +197,16 @@ export interface RoomStatsEntry {
     constructionSites: number;
   };
   
+  // Creep task board reservations
+  taskBoard?: {
+    tasks: number;
+    openTasks: number;
+    assignedTasks: number;
+    reservations: number;
+    staleReservations: number;
+    blockedReservations: number;
+  };
+
   // CPU profiling
   profiler: {
     avgCpu: number;

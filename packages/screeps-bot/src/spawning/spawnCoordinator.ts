@@ -8,8 +8,6 @@
  * - Emergency priority handling
  * - Boost integration
  *
- * This module bridges the existing spawn.ts logic with the new
- * spawn queue and body optimizer systems.
  */
 
 import { logger } from "@ralphschuler/screeps-core";
@@ -17,19 +15,15 @@ import { emergencyResponseManager } from "@ralphschuler/screeps-defense";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { energyFlowPredictor } from "../economy/energyFlowPredictor";
 import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
-import { 
-  type BodyTemplate, 
-  ROLE_DEFINITIONS, 
-  countCreepsByRole,
-  getRemoteRoomNeedingWorkers,
-  isEmergencySpawnState
-} from "../logic/spawn";
 import { optimizeBody } from "./bodyOptimizer";
-import { 
-  analyzeDefenderNeeds, 
-  getCurrentDefenders, 
-  getDefenderPriorityBoost 
+import { isEmergencySpawnState } from "./bootstrapManager";
+import {
+  analyzeDefenderNeeds,
+  getCurrentDefenders,
+  getDefenderPriorityBoost
 } from "./defenderManager";
+import { type BodyTemplate, ROLE_DEFINITIONS } from "./roleDefinitions";
+import { countCreepsByRole, getRemoteRoomNeedingWorkers } from "./spawnNeedsAnalyzer";
 import { SpawnPriority, type SpawnRequest, spawnQueue } from "./spawnQueue";
 
 /**

@@ -1,5 +1,4 @@
 import "./visuals/roomVisualExtensions";
-import { ErrorMapper } from "utils/legacy";
 import { getConfig } from "./config";
 import { registerAllConsoleCommands } from "./core/consoleCommands";
 import { createLogger } from "./core/logger";
@@ -7,15 +6,23 @@ import { loop as swarmLoop } from "./SwarmBot";
 
 const logger = createLogger("Main");
 
+type ScreepsMemoryRecord = Record<string, unknown>;
+
+interface HeapCacheEntry {
+  value: unknown;
+  lastModified: number;
+  ttl?: number;
+}
+
 declare global {
   interface Memory {
     uuid: number;
-    log: any;
+    log: unknown;
     /** Heap cache persistence storage */
     _heapCache?: {
       version: number;
       lastSync: number;
-      data: Record<string, { value: any; lastModified: number; ttl?: number }>;
+      data: Record<string, HeapCacheEntry>;
     };
     /** Resource transfer queue for Screepers Standards SS2 protocol */
     resourceTransfers?: {
@@ -41,14 +48,14 @@ declare global {
     // See src/intershard/shardManager.ts for implementation
     /** Global empire state for tracking all colonies and clusters (ROADMAP Section 4) */
     empire?: {
-      knownRooms: Record<string, any>;
+      knownRooms: Record<string, ScreepsMemoryRecord>;
       clusters: string[];
       warTargets: string[];
-      ownedRooms: Record<string, any>;
-      claimQueue: any[];
-      nukeCandidates: any[];
-      powerBanks: any[];
-      market?: any;
+      ownedRooms: Record<string, ScreepsMemoryRecord>;
+      claimQueue: ScreepsMemoryRecord[];
+      nukeCandidates: ScreepsMemoryRecord[];
+      powerBanks: ScreepsMemoryRecord[];
+      market?: ScreepsMemoryRecord;
       objectives: {
         targetPowerLevel: number;
         targetRoomCount: number;
@@ -58,7 +65,7 @@ declare global {
       lastUpdate: number;
     };
     /** Clusters memory */
-    clusters?: Record<string, any>;
+    clusters?: Record<string, ScreepsMemoryRecord>;
     /** TooAngel diplomacy and quest system */
     tooangel?: {
       enabled: boolean;
@@ -128,7 +135,7 @@ registerAllConsoleCommands(config.lazyLoadConsoleCommands);
 // Tests are located in src/tests/ and can be loaded separately in test environments
 // See packages/screeps-bot/test/ for unit tests and integration testing setup
 
-export const loop = ErrorMapper.wrapLoop(() => {
+export const loop = (): void => {
   try {
     swarmLoop();
   } catch (error) {
@@ -140,4 +147,4 @@ export const loop = ErrorMapper.wrapLoop(() => {
     });
     throw error;
   }
-});
+};

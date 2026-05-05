@@ -199,11 +199,10 @@ ${risk.autoMergeAllowed ?
           npm test
         continue-on-error: false
 
-      - name: Run performance tests
+      - name: Run private-server smoke
         if: fromJSON(steps.risk.outputs.result).autoMergeAllowed
-        working-directory: packages/screeps-bot
-        run: npm run test:performance:logs || true
-        timeout-minutes: 15
+        run: npm run test:server:smoke || true
+        timeout-minutes: 30
         continue-on-error: true
 
       - name: Wait for other checks

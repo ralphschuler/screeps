@@ -65,6 +65,7 @@ var jsonReporter = null;
 var consoleReporter = null;
 var outputFormat = 'console';
 var testFilter;
+var testFiles = [];
 /**
  * Backend module export for screepsmod
  */
@@ -75,6 +76,7 @@ module.exports = function (config) {
     testInterval = modConfig.testInterval || 0;
     autoRunTests = modConfig.autoRun !== false; // Default to true
     outputFormat = modConfig.outputFormat || 'console';
+    testFiles = Array.isArray(modConfig.testFiles) ? modConfig.testFiles : [];
     // Initialize managers based on configuration
     if (modConfig.persistence !== false) {
         persistenceManager = new persistence_1.PersistenceManager(modConfig.persistencePath, modConfig.historySize);
@@ -150,10 +152,30 @@ module.exports = function (config) {
          */
         loadTests: function (gameData) {
             return __awaiter(this, void 0, void 0, function () {
-                var suites, suites_1, suites_1_1, suite_1;
-                var e_1, _a;
-                return __generator(this, function (_b) {
+                var testFiles_1, testFiles_1_1, file, suites, suites_1, suites_1_1, suite_1;
+                var e_1, _a, e_2, _b;
+                return __generator(this, function (_c) {
                     console.log('[screepsmod-testing] Loading tests...');
+                    try {
+                        for (testFiles_1 = __values(testFiles), testFiles_1_1 = testFiles_1.next(); !testFiles_1_1.done; testFiles_1_1 = testFiles_1.next()) {
+                            file = testFiles_1_1.value;
+                            try {
+                                console.log("[screepsmod-testing] Loading test file ".concat(file));
+                                require(file);
+                            }
+                            catch (error) {
+                                console.log("[screepsmod-testing] Failed to load test file ".concat(file, ": ").concat(error));
+                                throw error;
+                            }
+                        }
+                    }
+                    catch (e_1_1) { e_1 = { error: e_1_1 }; }
+                    finally {
+                        try {
+                            if (testFiles_1_1 && !testFiles_1_1.done && (_a = testFiles_1.return)) _a.call(testFiles_1);
+                        }
+                        finally { if (e_1) throw e_1.error; }
+                    }
                     suites = index_1.testRunner.getSuites();
                     console.log("[screepsmod-testing] Loaded ".concat(suites.length, " test suites"));
                     try {
@@ -162,12 +184,12 @@ module.exports = function (config) {
                             console.log("[screepsmod-testing]   - ".concat(suite_1.name, " (").concat(suite_1.tests.length, " tests)"));
                         }
                     }
-                    catch (e_1_1) { e_1 = { error: e_1_1 }; }
+                    catch (e_2_1) { e_2 = { error: e_2_1 }; }
                     finally {
                         try {
-                            if (suites_1_1 && !suites_1_1.done && (_a = suites_1.return)) _a.call(suites_1);
+                            if (suites_1_1 && !suites_1_1.done && (_b = suites_1.return)) _b.call(suites_1);
                         }
-                        finally { if (e_1) throw e_1.error; }
+                        finally { if (e_2) throw e_2.error; }
                     }
                     return [2 /*return*/];
                 });
@@ -205,11 +227,14 @@ module.exports = function (config) {
                             // Run tests with filter
                             _a.sent();
                             summary = index_1.testRunner.getSummary(tick);
-                            // Store results in a safe location (not in bot memory)
+                            // Store results in backend data and bot-accessible Memory for CI polling.
                             if (!gameData.__testResults) {
                                 gameData.__testResults = {};
                             }
                             gameData.__testResults = summary;
+                            if (gameData.Memory && typeof gameData.Memory === 'object') {
+                                gameData.Memory.screepsmodTesting = summary;
+                            }
                             // Persist results if enabled
                             if (persistenceManager) {
                                 persistenceManager.save(summary);
@@ -253,7 +278,7 @@ module.exports = function (config) {
                              * List all registered tests
                              */
                             listTests: function () {
-                                var e_2, _a, e_3, _b;
+                                var e_3, _a, e_4, _b;
                                 var suites = index_1.testRunner.getSuites();
                                 console.log("[screepsmod-testing] Registered test suites: ".concat(suites.length));
                                 try {
@@ -261,27 +286,27 @@ module.exports = function (config) {
                                         var suite_2 = suites_2_1.value;
                                         console.log("  ".concat(suite_2.name, ":"));
                                         try {
-                                            for (var _c = (e_3 = void 0, __values(suite_2.tests)), _d = _c.next(); !_d.done; _d = _c.next()) {
+                                            for (var _c = (e_4 = void 0, __values(suite_2.tests)), _d = _c.next(); !_d.done; _d = _c.next()) {
                                                 var test_1 = _d.value;
                                                 var status = test_1.skip ? '[SKIPPED]' : '';
                                                 console.log("    - ".concat(test_1.name, " ").concat(status));
                                             }
                                         }
-                                        catch (e_3_1) { e_3 = { error: e_3_1 }; }
+                                        catch (e_4_1) { e_4 = { error: e_4_1 }; }
                                         finally {
                                             try {
                                                 if (_d && !_d.done && (_b = _c.return)) _b.call(_c);
                                             }
-                                            finally { if (e_3) throw e_3.error; }
+                                            finally { if (e_4) throw e_4.error; }
                                         }
                                     }
                                 }
-                                catch (e_2_1) { e_2 = { error: e_2_1 }; }
+                                catch (e_3_1) { e_3 = { error: e_3_1 }; }
                                 finally {
                                     try {
                                         if (suites_2_1 && !suites_2_1.done && (_a = suites_2.return)) _a.call(suites_2);
                                     }
-                                    finally { if (e_2) throw e_2.error; }
+                                    finally { if (e_3) throw e_3.error; }
                                 }
                                 return "Found ".concat(suites.length, " test suites");
                             },

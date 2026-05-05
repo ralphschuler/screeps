@@ -11,4 +11,5 @@ RUN npm ci --omit=dev
 # Copy pre-built application
 COPY dist/ ./dist/
 
+USER node
 CMD ["node", "dist/index.js"]

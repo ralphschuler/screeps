@@ -36,7 +36,6 @@ const pathCacheEventManager = new PathCacheEventManager(
   new BotRemoteMiningAdapter()
 );
 
-// Export singleton instance methods for backward compatibility
 export function discoverPortalsInRoom(roomName: string) {
   return portalManager.discoverPortalsInRoom(roomName);
 }

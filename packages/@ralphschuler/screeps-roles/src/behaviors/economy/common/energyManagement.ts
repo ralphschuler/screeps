@@ -8,6 +8,7 @@ import type { CreepAction, CreepContext } from "../../types";
 import { findDistributedTarget } from "@ralphschuler/screeps-utils";
 import { findCachedClosest , cachedFindSources } from "../../../cache";
 import { createLogger } from "../../../core/logger";
+import { taskBoard } from "../../../tasks";
 
 const logger = createLogger("EnergyCollection");
 
@@ -93,6 +94,9 @@ export function findEnergy(ctx: CreepContext): CreepAction {
  * Multiple creeps can fill structures in the same tick, making cached capacity stale.
  */
 export function deliverEnergy(ctx: CreepContext): CreepAction | null {
+  const assignedDelivery = taskBoard.getAssignedDeliveryAction(ctx);
+  if (assignedDelivery) return assignedDelivery;
+
   // 1. Spawns first (highest priority, cache for 5 ticks - they fill quickly)
   // BUGFIX: Filter by free capacity HERE for fresh state, not in room cache
   const spawns = ctx.spawnStructures.filter(

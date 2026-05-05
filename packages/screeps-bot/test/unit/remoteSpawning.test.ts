@@ -1,10 +1,6 @@
 import { assert } from "chai";
-import {
-  countRemoteCreepsByTargetRoom,
-  getRemoteRoomNeedingWorkers,
-  needsRole,
-  ROLE_DEFINITIONS
-} from "../../src/logic/spawn";
+import { ROLE_DEFINITIONS } from "../../src/spawning/roleDefinitions";
+import { countRemoteCreepsByTargetRoom, getRemoteRoomNeedingWorkers, needsRole } from "../../src/spawning/spawnNeedsAnalyzer";
 import type { SwarmState } from "../../src/memory/schemas";
 
 // Mock the global Game object

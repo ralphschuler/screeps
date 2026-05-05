@@ -193,7 +193,7 @@ var TestRunner = /** @class */ (function () {
                         _d.label = 1;
                     case 1:
                         _d.trys.push([1, 3, , 4]);
-                        return [4 /*yield*/, suite.beforeAll()];
+                        return [4 /*yield*/, suite.beforeAll(context)];
                     case 2:
                         _d.sent();
                         return [3 /*break*/, 4];
@@ -222,7 +222,7 @@ var TestRunner = /** @class */ (function () {
                         _d.label = 6;
                     case 6:
                         _d.trys.push([6, 8, , 9]);
-                        return [4 /*yield*/, suite.beforeEach()];
+                        return [4 /*yield*/, suite.beforeEach(context)];
                     case 7:
                         _d.sent();
                         return [3 /*break*/, 9];
@@ -240,7 +240,7 @@ var TestRunner = /** @class */ (function () {
                         _d.label = 11;
                     case 11:
                         _d.trys.push([11, 13, , 14]);
-                        return [4 /*yield*/, suite.afterEach()];
+                        return [4 /*yield*/, suite.afterEach(context)];
                     case 12:
                         _d.sent();
                         return [3 /*break*/, 14];
@@ -267,7 +267,7 @@ var TestRunner = /** @class */ (function () {
                         _d.label = 19;
                     case 19:
                         _d.trys.push([19, 21, , 22]);
-                        return [4 /*yield*/, suite.afterAll()];
+                        return [4 /*yield*/, suite.afterAll(context)];
                     case 20:
                         _d.sent();
                         return [3 /*break*/, 22];
@@ -307,7 +307,7 @@ var TestRunner = /** @class */ (function () {
                         cpuTracker.start();
                         memoryTracker.start();
                         timeout = test.timeout || 5000;
-                        return [4 /*yield*/, this.runWithTimeout(test.fn, timeout)];
+                        return [4 /*yield*/, this.runWithTimeout(function () { return test.fn(context); }, timeout)];
                     case 2:
                         _a.sent();
                         // Stop performance tracking

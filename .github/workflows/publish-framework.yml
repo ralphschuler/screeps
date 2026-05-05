@@ -58,8 +58,6 @@ jobs:
             path: 'packages/screeps-economy'
           - name: '@ralphschuler/screeps-utils'
             path: 'packages/screeps-utils'
-          - name: '@ralphschuler/screeps-tasks'
-            path: 'packages/screeps-tasks'
           - name: '@ralphschuler/screeps-posis'
             path: 'packages/screeps-posis'
 

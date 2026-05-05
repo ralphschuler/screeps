@@ -332,6 +332,31 @@ export class UnifiedStatsManager {
     return result;
   }
 
+  private getRoomTaskBoardStats(roomName: string): RoomStatsEntry["taskBoard"] {
+    const memory = Memory as unknown as {
+      creepTaskBoard?: {
+        rooms?: Record<string, {
+          tasks?: Record<string, { status?: string; reservations?: Record<string, unknown> }>;
+          stats?: { staleReservations?: number; blockedReservations?: number };
+        }>;
+      };
+    };
+    const board = memory.creepTaskBoard?.rooms?.[roomName];
+    if (!board) {
+      return { tasks: 0, openTasks: 0, assignedTasks: 0, reservations: 0, staleReservations: 0, blockedReservations: 0 };
+    }
+
+    const tasks = Object.values(board.tasks ?? {});
+    return {
+      tasks: tasks.length,
+      openTasks: tasks.filter(task => task.status === "open").length,
+      assignedTasks: tasks.filter(task => task.status === "assigned").length,
+      reservations: tasks.reduce((total, task) => total + Object.keys(task.reservations ?? {}).length, 0),
+      staleReservations: board.stats?.staleReservations ?? 0,
+      blockedReservations: board.stats?.blockedReservations ?? 0
+    };
+  }
+
   /**
    * Record a native API call
    */
@@ -525,6 +550,7 @@ export class UnifiedStatsManager {
     const swarm = memoryManager.getSwarmState(room.name);
     const creepsInRoom = Object.values(Game.creeps).filter(c => c.room.name === room.name).length;
     const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    const taskBoardStats = this.getRoomTaskBoardStats(room.name);
 
     // Get or create room stats entry
     let roomStats = this.currentSnapshot.rooms[room.name];
@@ -565,6 +591,7 @@ export class UnifiedStatsManager {
           damageReceived: 0,
           constructionSites: 0
         },
+        taskBoard: taskBoardStats,
         profiler: {
           avgCpu: cpuUsed,
           peakCpu: cpuUsed,
@@ -574,6 +601,8 @@ export class UnifiedStatsManager {
 
       this.currentSnapshot.rooms[room.name] = roomStats;
     }
+
+    roomStats.taskBoard = taskBoardStats;
 
     // Update controller progress percent
     roomStats.controller.progressPercent = roomStats.controller.progressTotal > 0

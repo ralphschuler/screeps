@@ -4,8 +4,6 @@
  * Simple, human-readable behavior functions for economy roles.
  * Each function evaluates the situation and returns an action.
  * 
- * TODO(P2): ARCH - Implement priority-based task assignment for economy roles
- * Critical tasks (spawn refill) should override normal tasks
  * TODO(P3): FEATURE - Add behavior efficiency tracking per role
  * Measure resource throughput and optimize behaviors
  * TODO(P3): PERF - Consider implementing opportunistic multi-tasking
@@ -38,6 +36,7 @@ import { remoteHarvester, remoteHauler } from "./remote";
 import { queenCarrier, labTech, factoryWorker } from "./specialized";
 import { interRoomCarrier } from "./interRoom";
 import { labSupply } from "../labSupply";
+import { taskBoard } from "../../tasks";
 
 const economyBehaviors: Record<string, (ctx: CreepContext) => CreepAction> = {
   larvaWorker,
@@ -60,6 +59,9 @@ const economyBehaviors: Record<string, (ctx: CreepContext) => CreepAction> = {
  * Evaluate and return an action for an economy role creep.
  */
 export function evaluateEconomyBehavior(ctx: CreepContext): CreepAction {
+  const assignedAction = taskBoard.getAssignedAction(ctx);
+  if (assignedAction) return assignedAction;
+
   const behavior = economyBehaviors[ctx.memory.role] ?? larvaWorker;
   return behavior(ctx);
 }

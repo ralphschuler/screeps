@@ -30,7 +30,6 @@ import type {
 import { logger } from "@ralphschuler/screeps-core";
 import { labConfigManager } from "./labConfig";
 
-// Re-export types from chemistry package for backward compatibility
 export type LabTaskType = ChemistryLabTaskType;
 export type LabResourceNeed = ChemistryLabResourceNeed;
 export type LabOverflow = ChemistryLabOverflow;

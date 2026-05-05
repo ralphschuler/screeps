@@ -19,7 +19,6 @@ import {
 import { logger } from "@ralphschuler/screeps-core";
 import { INFINITE_TTL, heapCache } from "@ralphschuler/screeps-memory";
 
-// Re-export types for backward compatibility
 export type { LabRole, LabConfigEntry, RoomLabConfig };
 
 /**

@@ -1,221 +1,70 @@
-# Screeps Server Setup
+# Screeps Private Server Testing
 
-This package contains a Docker Compose configuration for running a local Screeps private server with integrated monitoring via Grafana Cloud, **plus comprehensive test infrastructure** for validating bot performance and framework packages.
+This package owns the real Dockerized Screeps private-server test stack used by local smoke tests and CI long-run simulations.
 
-## Quick Start
+## Runtime Model
 
-### Local Development Server
+- Server container: Node 22 + pinned `screeps@4.3.0`
+- Bot build/runtime in this repo: Node from `.nvmrc`
+- CI server stack: `docker-compose.ci.yml`
+- CI config: `config.ci.yml`
+- Test mod: `../screepsmod-testing` is required and loaded by the server
 
-1. Copy `.env.example` to `.env` and configure the required values:
-   ```bash
-   cp .env.example .env
-   ```
+Old mock/performance-server runners are intentionally not supported.
 
-2. Set the required environment variables:
-   - `STEAM_KEY`: Your Steam API key
-   - `MAPTOOL_PASS`: Password for the map tool
-   - `GRAFANA_CLOUD_GRAPHITE_URL`: Your Grafana Cloud Graphite endpoint URL
-   - `GRAFANA_CLOUD_API_KEY`: Your Grafana Cloud API key
-   - Bot credentials: Either `SCREEPS_TOKEN` or `SCREEPS_BOT_USERNAME` + `SCREEPS_BOT_PASSWORD`
+## Local Commands
 
-3. Start the services:
-   ```bash
-   docker-compose up -d
-   ```
-
-4. Access the services:
-   - Screeps Server: http://localhost:21025
-   - Grafana Cloud: Access your Grafana Cloud instance to view dashboards
-
-### Test Infrastructure
-
-This package includes comprehensive test infrastructure for validating bot performance:
+From repo root:
 
 ```bash
-# Install dependencies
-npm install
-
-# Run all tests
-npm test
-
-# Run specific test suites
-npm run test:integration    # Bot lifecycle and functionality
-npm run test:performance    # CPU budget validation and regression detection
-npm run test:packages       # Framework package tests
-
-# Run with coverage
-npm run test:coverage
-
-# Compare performance against baseline
-node scripts/compare-performance-baseline.js \
-  --current ../screeps-bot/performance-report.json \
-  --threshold-cpu 0.15 \
-  --threshold-gcl 0.20
+npm run build
+npm run build:mod
+npm run test:server:smoke
 ```
 
-See [PERFORMANCE_TESTING_GUIDE.md](PERFORMANCE_TESTING_GUIDE.md) for complete testing documentation.
+Long run:
 
-## Test Infrastructure
-
-### Overview
-
-The test infrastructure validates:
-
-- **Integration**: Bot spawns, runs, and performs expected behavior
-- **Performance**: CPU usage stays within ROADMAP.md targets (≤0.1 CPU for eco rooms)
-- **Regression**: Automated detection of performance degradation against baselines
-- **Packages**: Framework packages load and function correctly
-
-### Performance Regression Detection
-
-The test suite includes automated regression detection:
-
-- **Baseline Comparison**: Current metrics vs historical baselines
-- **Regression Thresholds**: CPU (+15%), Memory (+15%), GCL (-20%)
-- **Severity Levels**: Improvement, Pass, Warning, Critical
-- **Quality Gates**: Block merges on critical regressions
-
-See [PERFORMANCE_TESTING_GUIDE.md](PERFORMANCE_TESTING_GUIDE.md) for detailed documentation.
-
-### Test Scenarios
-
-Predefined scenarios aligned with ROADMAP.md:
-
-| Scenario | Target | Description |
-|----------|--------|-------------|
-| Empty Room | ≤0.05 CPU | Fresh spawn initialization |
-| Single Eco Room | ≤0.1 CPU | Basic economy (RCL 4) |
-| Five Room Empire | ≤0.5 CPU | Multi-room coordination |
-| Combat | ≤0.25 CPU | Active defense |
-
-### CI Integration
-
-Tests run automatically on:
-- Pull requests
-- Pushes to main/develop
-- Manual workflow dispatch
-
-Results are posted as PR comments with:
-- Test pass/fail status
-- CPU metrics vs targets
-- Performance regression detection
-- Framework package validation
-
-## Services
-
-- **screeps**: Screeps private server using screeps-launcher
-- **mongo**: MongoDB database for Screeps
-- **redis**: Redis for Screeps caching
-- **screeps-exporter**: Exports Screeps stats from Memory to Grafana Cloud Graphite
-
-## Getting Started
-
-1. Copy `.env.example` to `.env` and configure the required values:
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Set the required environment variables:
-   - `STEAM_KEY`: Your Steam API key
-   - `MAPTOOL_PASS`: Password for the map tool
-   - `GRAFANA_CLOUD_GRAPHITE_URL`: Your Grafana Cloud Graphite endpoint URL
-   - `GRAFANA_CLOUD_API_KEY`: Your Grafana Cloud API key
-   - Bot credentials: Either `SCREEPS_TOKEN` or `SCREEPS_BOT_USERNAME` + `SCREEPS_BOT_PASSWORD`
-
-3. Start the services:
-   ```bash
-   docker-compose up -d
-   ```
-
-4. Access the services:
-   - Screeps Server: http://localhost:21025
-   - Grafana Cloud: Access your Grafana Cloud instance to view dashboards
-
-## Monitoring Setup
-
-### Grafana Cloud Dashboards
-
-Create dashboards in your Grafana Cloud instance to visualize:
-
-- **CPU Performance**: CPU usage, bucket level, and percentage
-- **Profiler Subsystems**: Stacked CPU usage by subsystem (rooms, kernel, spawns, creeps, etc.)
-- **Profiler Rooms**: Per-room CPU usage tracking
-- **Empire Statistics**: Total creeps, rooms, GCL, GPL levels
-- **Energy Statistics**: Storage and terminal energy across all rooms
-- **Controller Progress**: Per-room controller upgrade progress
-
-Example Graphite queries:
-- CPU usage: `screeps.stats.cpu.used`
-- Room energy: `screeps.stats.room.*.energy.storage`
-- Subsystem CPU: `screeps.stats.profiler.subsystem.*.avg_cpu`
-
-### Stats Format
-
-The Screeps bot publishes stats to `Memory.stats` in a flat format with dot-separated keys:
-
-```javascript
-Memory.stats = {
-  "cpu.used": 15.5,
-  "cpu.bucket": 9500,
-  "cpu.percent": 77.5,
-  "gcl.level": 8,
-  "empire.creeps": 45,
-  "room.W1N1.rcl": 8,
-  "room.W1N1.storage.energy": 500000,
-  "profiler.subsystem.kernel.avg_cpu": 2.3,
-  // ... etc
-};
+```bash
+npm run test:server:long
 ```
 
-## Configuration
+Manual stack control:
 
-### Grafana Cloud Settings
+```bash
+npm run server:ci:up
+npm run server:ci:down
+```
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `GRAFANA_CLOUD_GRAPHITE_URL` | - | Grafana Cloud Graphite endpoint (required) |
-| `GRAFANA_CLOUD_API_KEY` | - | Grafana Cloud API key (required) |
-| `GRAFANA_CLOUD_GRAPHITE_PREFIX` | screeps | Prefix for all metrics |
+## CI Behavior
 
-### Exporter Settings
+- Pull requests run short real-server smoke tests.
+- Manual and nightly workflow runs execute a 2-hour accelerated simulation.
+- Raw Docker logs are retained briefly.
+- Sanitized summaries and mod results are retained longer.
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `EXPORTER_MODE` | memory | Mode: `memory` or `console` |
-| `EXPORTER_POLL_INTERVAL_MS` | 15000 | Poll interval in milliseconds |
-| `EXPORTER_MEMORY_PATH` | stats | Memory path to read stats from |
-| `EXPORTER_SHARD` | shard0 | Shard to read from |
+## Required In-Game Checks
 
-## Creating Dashboards in Grafana Cloud
+`screepsmod-testing` must assert server and bot state from inside the game runtime, including:
 
-To create dashboards:
-1. Log into your Grafana Cloud instance
-2. Add a Graphite data source if not already configured
-3. Create a new dashboard
-4. Add panels with Graphite queries (see examples above)
-5. Save and share your dashboard
+- ticks advancing
+- our bot user/room/spawn exists
+- no reset loop
+- creep population after warmup
+- CPU bucket health
+- `Memory.creepTaskBoard` exists and records room task boards
+- critical console error counter below threshold
 
-## Volumes
+## Artifacts
 
-The following Docker volumes are used for persistence:
+Harness artifacts are written under:
 
-- `redis-data`: Redis data
-- `mongo-data`: MongoDB data  
-- `screeps-data`: Screeps server data
+```text
+packages/screeps-server/artifacts/<mode>/
+```
 
-## Troubleshooting
+Expected files:
 
-### No data in Grafana Cloud
-1. Check that the bot is running and publishing to `Memory.stats`
-2. Verify exporter logs: `docker-compose logs screeps-exporter`
-3. Check Grafana Cloud API key and endpoint URL are correct
-4. Verify metrics are being sent by checking exporter logs for "Sent X metrics"
-
-### Exporter failing to connect to Screeps
-1. Ensure bot credentials are set in `.env`
-2. For private servers, set `SCREEPS_PROTOCOL=http` and correct host/port
-
-### Exporter failing to send to Grafana Cloud
-1. Verify `GRAFANA_CLOUD_GRAPHITE_URL` is correct
-2. Check `GRAFANA_CLOUD_API_KEY` is valid
-3. Review exporter logs for specific error messages
+- `summary.json`
+- `summary.md`
+- `harness.log`
+- `docker.log`

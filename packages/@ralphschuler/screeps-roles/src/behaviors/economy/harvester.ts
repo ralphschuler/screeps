@@ -40,7 +40,7 @@ export function harvester(ctx: CreepContext): CreepAction {
     source = ctx.assignedSource;
   }
 
-  // Final fallback to manual assignment (for backward compatibility)
+  // Final fallback to manual assignment.
   if (!source) {
     source = assignSource(ctx);
     logger.debug(`${ctx.creep.name} harvester assigned to source ${source?.id}`);

@@ -1,0 +1,8 @@
+[
+  "node_modules/@screeps/simplebot/src/index.js",
+  "screepsmod-auth",
+  "screepsmod-admin-utils",
+  "screepsmod-bots",
+  "screepsmod-mongo",
+  "/workspace/packages/screepsmod-testing"
+]

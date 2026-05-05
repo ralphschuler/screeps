@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { MAX_CARRIERS_PER_CROSS_SHARD_REQUEST } from "../../src/logic/spawn";
+import { MAX_CARRIERS_PER_CROSS_SHARD_REQUEST } from "../../src/spawning/spawnNeedsAnalyzer";
 
 /**
  * Tests for Cross-Shard Resource Transfer functionality

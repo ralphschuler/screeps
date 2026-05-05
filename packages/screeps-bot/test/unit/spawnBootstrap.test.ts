@@ -1,12 +1,7 @@
 import { assert } from "chai";
-import {
-  getEnergyProducerCount,
-  getTransportCount,
-  isBootstrapMode,
-  getBootstrapRole,
-  determineNextRole,
-  countCreepsByRole
-} from "../../src/logic/spawn";
+import { getEnergyProducerCount, getTransportCount, isBootstrapMode, getBootstrapRole } from "../../src/spawning/bootstrapManager";
+import { determineNextRole } from "../../src/spawning/spawnQueueManager";
+import { countCreepsByRole } from "../../src/spawning/spawnNeedsAnalyzer";
 import { clearRoomFindCache } from "@ralphschuler/screeps-cache";
 import type { SwarmState } from "../../src/memory/schemas";
 import { memoryManager } from "../../src/memory/manager";

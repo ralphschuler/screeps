@@ -31,4 +31,5 @@ COPY dist/ ./dist/
 COPY typed-screeps/ ./typed-screeps/
 
 # Run the server
+USER node
 ENTRYPOINT ["node", "dist/server.js"]

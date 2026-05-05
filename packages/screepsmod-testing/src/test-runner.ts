@@ -109,7 +109,7 @@ export class TestRunner {
     // Run beforeAll hook
     if (suite.beforeAll) {
       try {
-        await suite.beforeAll();
+        await suite.beforeAll(context);
       } catch (error) {
         console.log(`[screepsmod-testing] Suite beforeAll failed: ${error}`);
         return;
@@ -132,7 +132,7 @@ export class TestRunner {
       // Run beforeEach hook
       if (suite.beforeEach) {
         try {
-          await suite.beforeEach();
+          await suite.beforeEach(context);
         } catch (error) {
           console.log(`[screepsmod-testing] beforeEach failed: ${error}`);
         }
@@ -144,7 +144,7 @@ export class TestRunner {
       // Run afterEach hook
       if (suite.afterEach) {
         try {
-          await suite.afterEach();
+          await suite.afterEach(context);
         } catch (error) {
           console.log(`[screepsmod-testing] afterEach failed: ${error}`);
         }
@@ -154,7 +154,7 @@ export class TestRunner {
     // Run afterAll hook
     if (suite.afterAll) {
       try {
-        await suite.afterAll();
+        await suite.afterAll(context);
       } catch (error) {
         console.log(`[screepsmod-testing] Suite afterAll failed: ${error}`);
       }
@@ -185,7 +185,7 @@ export class TestRunner {
 
       // Run test with timeout
       const timeout = test.timeout || 5000;
-      await this.runWithTimeout(test.fn, timeout);
+      await this.runWithTimeout(() => test.fn(context), timeout);
       
       // Stop performance tracking
       result.cpuUsed = cpuTracker.stop();

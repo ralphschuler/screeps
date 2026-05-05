@@ -46,7 +46,7 @@ export function describe(name: string, fn: () => void): void {
 /**
  * Define a test case
  */
-export function it(name: string, fn: () => void | Promise<void>, tags?: string[]): void {
+export function it(name: string, fn: (context?: TestContext) => void | Promise<void>, tags?: string[]): void {
   if (!currentSuiteContext) {
     throw new Error('it() can only be called within a describe() block');
   }
@@ -63,7 +63,7 @@ export function it(name: string, fn: () => void | Promise<void>, tags?: string[]
 /**
  * Skip a test case
  */
-export function xit(name: string, fn: () => void | Promise<void>, tags?: string[]): void {
+export function xit(name: string, fn: (context?: TestContext) => void | Promise<void>, tags?: string[]): void {
   if (!currentSuiteContext) {
     throw new Error('xit() can only be called within a describe() block');
   }
@@ -81,7 +81,7 @@ export function xit(name: string, fn: () => void | Promise<void>, tags?: string[
 /**
  * Define a beforeEach hook
  */
-export function beforeEach(fn: () => void | Promise<void>): void {
+export function beforeEach(fn: (context?: TestContext) => void | Promise<void>): void {
   if (!currentSuiteContext) {
     throw new Error('beforeEach() can only be called within a describe() block');
   }
@@ -91,7 +91,7 @@ export function beforeEach(fn: () => void | Promise<void>): void {
 /**
  * Define an afterEach hook
  */
-export function afterEach(fn: () => void | Promise<void>): void {
+export function afterEach(fn: (context?: TestContext) => void | Promise<void>): void {
   if (!currentSuiteContext) {
     throw new Error('afterEach() can only be called within a describe() block');
   }
@@ -101,7 +101,7 @@ export function afterEach(fn: () => void | Promise<void>): void {
 /**
  * Define a beforeAll hook
  */
-export function beforeAll(fn: () => void | Promise<void>): void {
+export function beforeAll(fn: (context?: TestContext) => void | Promise<void>): void {
   if (!currentSuiteContext) {
     throw new Error('beforeAll() can only be called within a describe() block');
   }
@@ -111,7 +111,7 @@ export function beforeAll(fn: () => void | Promise<void>): void {
 /**
  * Define an afterAll hook
  */
-export function afterAll(fn: () => void | Promise<void>): void {
+export function afterAll(fn: (context?: TestContext) => void | Promise<void>): void {
   if (!currentSuiteContext) {
     throw new Error('afterAll() can only be called within a describe() block');
   }

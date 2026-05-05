@@ -1,12 +1,7 @@
 import { assert } from "chai";
-import {
-  runSpawnManager,
-  ROLE_DEFINITIONS,
-  getBestBody,
-  isEmergencySpawnState,
-  isBootstrapMode,
-  getBootstrapRole
-} from "../../src/logic/spawn";
+import { ROLE_DEFINITIONS } from "../../src/spawning/roleDefinitions";
+import { isEmergencySpawnState, isBootstrapMode, getBootstrapRole } from "../../src/spawning/bootstrapManager";
+import { runSpawnManager, getBestBody } from "../../src/spawning/spawnQueueManager";
 import type { SwarmState } from "../../src/memory/schemas";
 import { kernel } from "../../src/core/kernel";
 

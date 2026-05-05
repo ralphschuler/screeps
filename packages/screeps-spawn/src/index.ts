@@ -59,17 +59,31 @@ export {
 export { SpawnManager } from "./SpawnManager";
 
 // Body optimizer
-export { optimizeBody, optimizeHarvesterBody, optimizeHaulerBody } from "./bodyOptimizer";
+export {
+  generateBodyTiers,
+  optimizeBody,
+  optimizeBuilderBody,
+  optimizeCombatBody,
+  optimizeHarvesterBody,
+  optimizeHaulerBody,
+  optimizeHealerBody,
+  optimizeRangedBody,
+  optimizeUpgraderBody,
+  validateBody as validateOptimizedBody
+} from "./bodyOptimizer";
 
 // Spawn queue
 export { SpawnPriority, type SpawnRequest, spawnQueue } from "./spawnQueue";
 
 // Spawn queue manager
-export { getBestBody, determineNextRole } from "./spawnQueueManager";
+export { getBestBody, determineNextRole, generateCreepName, getAllSpawnableRoles, runSpawnManager } from "./spawnQueueManager";
 
 // Spawn needs analyzer
 export { 
-  countCreepsByRole, 
+  MAX_CARRIERS_PER_CROSS_SHARD_REQUEST,
+  countCreepsByRole,
+  countCreepsOfRole,
+  countRemoteCreepsByTargetRoom,
   needsRole, 
   assignRemoteTargetRoom,
   getRemoteRoomNeedingWorkers
@@ -80,7 +94,8 @@ export {
   isBootstrapMode,
   getBootstrapRole,
   isEmergencySpawnState,
-  getEnergyProducerCount
+  getEnergyProducerCount,
+  getTransportCount
 } from "./bootstrapManager";
 
 // Spawn priority
@@ -93,8 +108,11 @@ export {
 // Defender manager
 export {
   analyzeDefenderNeeds,
+  createDefenseRequest,
   getCurrentDefenders,
-  getDefenderPriorityBoost
+  getDefenderPriorityBoost,
+  needsDefenseAssistance,
+  type DefenseRequest
 } from "./defenderManager";
 
 // Spawn coordinator

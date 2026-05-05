@@ -34,6 +34,7 @@ import { createLogger } from "@ralphschuler/screeps-core";
 import * as metrics from "@ralphschuler/screeps-stats";
 import { applyOpportunisticActions } from "../economy/opportunisticActions";
 import { getCollectionPoint } from "../utils/common";
+import { taskBoard } from "../tasks";
 
 const logger = createLogger("ActionExecutor");
 
@@ -419,6 +420,11 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
     // Without clearing the cache, the other creep will immediately re-select the same
     // now-full target, creating an infinite loop where both creeps get stuck.
     clearAllCachedTargets(creep);
+    taskBoard.releaseCreep(creep.name, creep.room.name);
+  }
+
+  if ((optimizedAction.type === "transfer" || optimizedAction.type === "build" || optimizedAction.type === "repair" || optimizedAction.type === "upgrade") && creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0) {
+    taskBoard.releaseCreep(creep.name, creep.room.name);
   }
 
   // Update working state based on carry capacity

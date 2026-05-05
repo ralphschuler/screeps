@@ -14,6 +14,7 @@
  * Include examples and best practices for writing Screeps tests
  */
 import { TestRunner } from './test-runner';
+import { TestContext } from './types';
 declare const globalRunner: TestRunner;
 /**
  * Define a test suite
@@ -22,27 +23,27 @@ export declare function describe(name: string, fn: () => void): void;
 /**
  * Define a test case
  */
-export declare function it(name: string, fn: () => void | Promise<void>, tags?: string[]): void;
+export declare function it(name: string, fn: (context?: TestContext) => void | Promise<void>, tags?: string[]): void;
 /**
  * Skip a test case
  */
-export declare function xit(name: string, fn: () => void | Promise<void>, tags?: string[]): void;
+export declare function xit(name: string, fn: (context?: TestContext) => void | Promise<void>, tags?: string[]): void;
 /**
  * Define a beforeEach hook
  */
-export declare function beforeEach(fn: () => void | Promise<void>): void;
+export declare function beforeEach(fn: (context?: TestContext) => void | Promise<void>): void;
 /**
  * Define an afterEach hook
  */
-export declare function afterEach(fn: () => void | Promise<void>): void;
+export declare function afterEach(fn: (context?: TestContext) => void | Promise<void>): void;
 /**
  * Define a beforeAll hook
  */
-export declare function beforeAll(fn: () => void | Promise<void>): void;
+export declare function beforeAll(fn: (context?: TestContext) => void | Promise<void>): void;
 /**
  * Define an afterAll hook
  */
-export declare function afterAll(fn: () => void | Promise<void>): void;
+export declare function afterAll(fn: (context?: TestContext) => void | Promise<void>): void;
 export { globalRunner as testRunner };
 export * from './types';
 export * from './assertions';

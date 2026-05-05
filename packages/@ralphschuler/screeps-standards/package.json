@@ -7,7 +7,7 @@
   "private": false,
   "scripts": {
     "build": "tsc",
-    "test": "echo 'TODO: Add tests' && exit 0",
+    "test": "npm run build -w @ralphschuler/screeps-core && npm run build && node --test test/*.test.mjs",
     "prepublishOnly": "npm run build",
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" --fix"

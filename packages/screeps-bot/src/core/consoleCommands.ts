@@ -28,22 +28,11 @@ import { KernelCommands } from "./commands/KernelCommands";
 import { LoggingCommands } from "./commands/LoggingCommands";
 import { StatisticsCommands } from "./commands/StatisticsCommands";
 import { SystemCommands } from "./commands/SystemCommands";
+import { TaskCommands } from "./commands/TaskCommands";
 import { VisualizationCommands } from "./commands/VisualizationCommands";
 import { configureLogger } from "./logger";
 import { shardCommands } from "./shardCommands";
 import { UICommands } from "./uiCommands";
-
-/**
- * Command classes - imported from commands/
- */
-// Re-export for backward compatibility
-export { LoggingCommands } from "./commands/LoggingCommands";
-export { VisualizationCommands } from "./commands/VisualizationCommands";
-export { StatisticsCommands } from "./commands/StatisticsCommands";
-export { ConfigurationCommands } from "./commands/ConfigurationCommands";
-export { KernelCommands } from "./commands/KernelCommands";
-export { SystemCommands } from "./commands/SystemCommands";
-
 
 // =============================================================================
 // Command instances (singletons)
@@ -55,6 +44,7 @@ const statisticsCommands = new StatisticsCommands();
 const configurationCommands = new ConfigurationCommands();
 const kernelCommands = new KernelCommands();
 const systemCommands = new SystemCommands();
+const taskCommands = new TaskCommands();
 
 /**
  * Register all console commands with the command registry
@@ -72,6 +62,7 @@ export function registerAllConsoleCommands(lazy = false): void {
     registerDecoratedCommands(configurationCommands);
     registerDecoratedCommands(kernelCommands);
     registerDecoratedCommands(systemCommands);
+    registerDecoratedCommands(taskCommands);
 
     // Register advanced system commands
     registerDecoratedCommands(labCommands);

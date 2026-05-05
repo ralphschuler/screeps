@@ -27,12 +27,6 @@ import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 
 /**
- * Nuke Manager Configuration
- * Re-exported from framework for backward compatibility
- */
-export type { NukeConfig } from "@ralphschuler/screeps-empire";
-
-/**
  * Default configuration
  */
 const DEFAULT_CONFIG: Partial<NukeConfig> = {

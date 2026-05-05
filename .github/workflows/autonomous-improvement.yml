@@ -62,20 +62,18 @@ jobs:
         id: identify
         uses: ./.github/actions/copilot-exec
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO_NAME: "${{ github.repository }}"
           RUN_ID: "${{ github.run_id }}"
           OPPORTUNITY_TYPE: "${{ inputs.opportunity_type || 'auto' }}"
           CONFIDENCE_THRESHOLD: "${{ inputs.confidence_threshold || 'high' }}"
-          SCREEPS_TOKEN: ${{ secrets.COPILOT_MCP_SCREEPS_TOKEN }}
-          SCREEPS_HOST: ${{ vars.COPILOT_MCP_SCREEPS_HOST || 'screeps.com' }}
-          SCREEPS_SHARD: ${{ vars.COPILOT_MCP_SCREEPS_SHARD || 'shard1' }}
-          GRAFANA_SERVICE_ACCOUNT_TOKEN: ${{ secrets.COPILOT_MCP_GRAFANA_SERVICE_ACCOUNT_TOKEN }}
+          # Secrets intentionally not exposed to autonomous code-editing step.
+          # Live Screeps/Grafana analysis should run in a separate read-only workflow/job.
         with:
           copilot-token: ${{ secrets.COPILOT_TOKEN }}
           prompt-path: .github/agents/autonomous-improvement.agent.md
           output-path: "reports/copilot/autonomous-improvement-${{ github.run_id }}.log"
           additional-mcp-config: '@.github/mcp/all-servers.json'
+          allow-all-paths: false
           force-response: true
         continue-on-error: true
 

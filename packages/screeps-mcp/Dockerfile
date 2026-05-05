@@ -33,4 +33,5 @@ COPY dist/ ./dist/
 # - SCREEPS_SHARD: Shard name (default: shard3)
 
 # Run the MCP server
+USER node
 CMD ["node", "dist/server.js"]

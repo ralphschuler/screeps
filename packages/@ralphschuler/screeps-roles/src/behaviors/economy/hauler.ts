@@ -13,6 +13,7 @@ import { findDistributedTarget } from "@ralphschuler/screeps-utils";
 import { findCachedClosest } from "../../cache";
 import { updateWorkingState, switchToCollectionMode } from "./common/stateManagement";
 import { createLogger } from "@ralphschuler/screeps-core";
+import { taskBoard } from "../../tasks";
 
 const logger = createLogger("HaulerBehavior");
 
@@ -39,6 +40,9 @@ export function hauler(ctx: CreepContext): CreepAction {
       if (target) return { type: "transfer", target, resourceType };
     }
     
+    const assignedDelivery = taskBoard.getAssignedDeliveryAction(ctx);
+    if (assignedDelivery) return assignedDelivery;
+
     // Deliver energy with priority: spawn > extensions > towers > storage > containers
     // OPTIMIZATION: Increased cache times to reduce pathfinding overhead
     // BUGFIX: Filter by capacity HERE for fresh state, not in room cache

@@ -56,7 +56,6 @@ class BotThreatPredictor extends FrameworkThreatPredictor {
  */
 export const threatPredictor = new BotThreatPredictor();
 
-// Re-export types for backward compatibility
 export type {
   ThreatPredictorConfig,
   HostileCreepTrack,

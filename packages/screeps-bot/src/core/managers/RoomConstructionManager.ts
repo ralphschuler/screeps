@@ -13,15 +13,15 @@ import {
   placeRampartsOnCriticalStructures,
   placeRoadAwarePerimeterDefense
 } from "@ralphschuler/screeps-defense";
-import { placeRoadConstructionSites } from "@ralphschuler/screeps-layouts";
-import { memoryManager } from "@ralphschuler/screeps-memory";
-import type { SwarmState } from "@ralphschuler/screeps-memory";
 import {
   destroyMisplacedStructures,
   getBlueprint,
   placeConstructionSites,
+  placeRoadConstructionSites,
   selectBestBlueprint
-} from "../../layouts/blueprints/index";
+} from "@ralphschuler/screeps-layouts";
+import { memoryManager } from "@ralphschuler/screeps-memory";
+import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { postureManager } from "../../logic/evolution";
 
 /**

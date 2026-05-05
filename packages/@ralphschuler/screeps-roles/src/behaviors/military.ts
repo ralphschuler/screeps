@@ -17,6 +17,7 @@ import { registerMilitaryCacheClear } from "./context";
 import type { CreepAction, CreepContext } from "./types";
 import { createLogger } from "@ralphschuler/screeps-core";
 import { getCollectionPoint } from "../utils/common";
+import { taskBoard } from "../tasks";
 
 const logger = createLogger("MilitaryBehaviors");
 
@@ -1048,6 +1049,9 @@ const militaryBehaviors: Record<string, (ctx: CreepContext) => CreepAction> = {
  * Evaluate and return an action for a military role creep.
  */
 export function evaluateMilitaryBehavior(ctx: CreepContext): CreepAction {
+  const assignedAction = taskBoard.getAssignedAction(ctx);
+  if (assignedAction) return assignedAction;
+
   const behavior = militaryBehaviors[ctx.memory.role] ?? guard;
   return behavior(ctx);
 }

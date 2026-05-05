@@ -43,6 +43,22 @@ export type { RemoteMoveHandler } from "./behaviors/executor";
 export { evaluateWithStateMachine } from "./behaviors/stateMachine";
 
 // =============================================================================
+// Persistent Creep Task Assignment
+// =============================================================================
+
+export { taskBoard, TaskBoard, TaskPriority } from "./tasks";
+export type {
+  CreepTask,
+  RoomTaskBoardMemory,
+  TaskAssignmentOptions,
+  TaskBoardMemory,
+  TaskBoardStats,
+  TaskReservation,
+  TaskStatus,
+  TaskType
+} from "./tasks";
+
+// =============================================================================
 // Economy Behaviors
 // =============================================================================
 

@@ -15,7 +15,7 @@ services:
       - ./config.yml:/screeps/config.yml
       - screeps-data:/screeps
     ports:
-      - "${SCREEPS_LAUNCHER_HOST:-0.0.0.0}:21025:21025/tcp"
+      - "${SCREEPS_LAUNCHER_HOST:-127.0.0.1}:21025:21025/tcp"
     environment:
       MAPTOOL_PASS: ${MAPTOOL_PASS:?Maptool password is required}
       STEAM_KEY: ${STEAM_KEY:?Steam API key is required}

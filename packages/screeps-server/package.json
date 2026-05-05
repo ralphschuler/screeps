@@ -8,12 +8,16 @@
     "test": "test"
   },
   "scripts": {
-    "test": "npm run test:integration && npm run test:performance",
-    "test:integration": "mocha test/integration/**/*.test.ts",
-    "test:performance": "mocha test/performance/**/*.test.ts",
-    "test:packages": "mocha test/packages/**/*.test.ts",
-    "test:watch": "mocha --watch test/**/*.test.ts",
-    "test:coverage": "c8 --reporter=text --reporter=html --reporter=lcov npm run test:integration",
+    "test": "npm run test:smoke",
+    "server:ci:up": "docker compose -f docker-compose.ci.yml -p screeps-ci up --build -d",
+    "server:ci:down": "docker compose -f docker-compose.ci.yml -p screeps-ci down -v --remove-orphans",
+    "test:smoke": "node scripts/run-private-server-test.js --mode=smoke --durationMinutes=5 --maxTicks=1000",
+    "test:long": "node scripts/run-private-server-test.js --mode=long --durationMinutes=120 --maxTicks=72000",
+    "test:integration": "npm run test:smoke",
+    "test:performance": "npm run test:long",
+    "test:packages": "mocha --no-config --require tsx \"test/packages/**/*.test.ts\"",
+    "test:watch": "mocha --watch --require tsx test/**/*.test.ts",
+    "test:coverage": "c8 --reporter=text --reporter=html --reporter=lcov npm run test:smoke",
     "posttest": "node scripts/analyze-tests.js"
   },
   "keywords": [
@@ -36,6 +40,7 @@
     "chai": "^6.2.2",
     "mocha": "^11.7.5",
     "sinon": "^21.0.1",
+    "screeps-api": "^1.10.0",
     "sinon-chai": "^4.0.1",
     "ts-node": "^10.2.0",
     "tsx": "^4.21.0",

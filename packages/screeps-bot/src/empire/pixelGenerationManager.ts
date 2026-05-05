@@ -65,7 +65,6 @@ class BotPixelGenerationManager extends FrameworkPixelGenerationManager {
  */
 export const pixelGenerationManager = new BotPixelGenerationManager();
 
-// Re-export types for backward compatibility
 export type {
   PixelGenerationConfig,
   PixelGenerationMemory,

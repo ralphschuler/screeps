@@ -5,7 +5,7 @@
 import { getOwnedRooms } from "@ralphschuler/screeps-cache";
 import { heapCache, memoryManager } from "@ralphschuler/screeps-memory";
 import { initializePheromoneEventHandlers, pheromoneManager } from "@ralphschuler/screeps-pheromones";
-import { clearRoomCaches, runPowerRole, setRemoteMoveHandler } from "@ralphschuler/screeps-roles";
+import { clearRoomCaches, runPowerRole, setRemoteMoveHandler, taskBoard } from "@ralphschuler/screeps-roles";
 import { SS2TerminalComms } from "@ralphschuler/screeps-standards";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { runScheduledTasks } from "@ralphschuler/screeps-utils";
@@ -19,9 +19,8 @@ import { LogLevel, configureLogger, logger } from "./core/logger";
 import { initializeNativeCallsTracking } from "./core/nativeCallsTracker";
 import { registerAllProcesses } from "./core/processRegistry";
 import { roomProcessManager } from "./core/roomProcessManager";
-import { clearTargetAssignments as clearEconomyAssignments } from "./economy/targetAssignmentManager";
 import { shardManager } from "./intershard/shardManager";
-import { runSpawnManager } from "./logic/spawn";
+import { runSpawnManager } from "./spawning/spawnQueueManager";
 import { initializePathCacheEvents } from "./utils/pathfinding";
 import { initializeRemotePathScheduler, moveToWithRemoteCache } from "./utils/remote-mining";
 
@@ -231,10 +230,8 @@ export function loop(): void {
   // Start stats collection for this tick
   unifiedStats.startTick();
 
-  // Clear per-tick caches at the start of each tick
-  // Note: Target assignment cache in targetDistribution.ts now uses unified cache with TTL=1
-  // so it's automatically cleared each tick without manual intervention
-  clearEconomyAssignments(); // Clear centralized economy target assignments
+  // Clear per-tick caches at the start of each tick.
+  // Target assignment cache in targetDistribution.ts uses unified cache with TTL=1.
   clearRoomCaches();
 
   // Clear event bus tick-specific caches for coalescing
@@ -256,6 +253,11 @@ export function loop(): void {
     globalCache[cacheKey] = ownedRooms;
     globalCache[cacheTickKey] = Game.time;
   }
+
+  // Refresh persistent room task boards before creep processes request work.
+  unifiedStats.measureSubsystem("taskBoard", () => {
+    for (const room of ownedRooms) taskBoard.refreshRoom(room);
+  });
 
   // Initialize movement system (traffic management preTick)
   initMovement();

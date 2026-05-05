@@ -48,7 +48,6 @@ jobs:
           npm run build:remote-mining || true
           npm run build:chemistry || true
           npm run build:economy || true
-          npm run build:tasks || true
           npm run build:posis || true
           npm run build:layouts || true
           npm run build:intershard || true

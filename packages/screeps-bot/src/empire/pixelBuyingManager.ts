@@ -69,7 +69,6 @@ class BotPixelBuyingManager extends FrameworkPixelBuyingManager {
  */
 export const pixelBuyingManager = new BotPixelBuyingManager();
 
-// Re-export types for backward compatibility
 export type {
   PixelBuyingConfig,
   PixelBuyingMemory,

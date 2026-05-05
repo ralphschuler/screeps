@@ -1,0 +1,99 @@
+services:
+  screeps:
+    build:
+      context: ../..
+      dockerfile: packages/screeps-server/Dockerfile
+      args:
+        SCREEPS_VERSION: "4.3.0"
+        SCREEPSMOD_AUTH_VERSION: "2.8.2"
+        SCREEPSMOD_ADMIN_UTILS_VERSION: "1.36.0"
+        SCREEPSMOD_BOTS_VERSION: "0.1.1"
+        SCREEPSMOD_MONGO_VERSION: "2.13.0"
+    image: screeps-private-server-ci:4.3.0-node22
+    platform: linux/amd64
+    init: true
+    ports:
+      - "${SCREEPS_LAUNCHER_HOST:-127.0.0.1}:21025:21025/tcp"
+      - "${SCREEPS_LAUNCHER_HOST:-127.0.0.1}:21026:21026/tcp"
+    environment:
+      NODE_ENV: production
+      SCREEPS_PORT: "21025"
+      SCREEPS_CLI_PORT: "21026"
+      SCREEPS_CLI_PASSWORD: ci-password
+      STEAM_KEY: ${STEAM_KEY:-ci-offline-private-server-key}
+      MONGO_HOST: mongo
+      REDIS_HOST: redis
+    volumes:
+      - ./config.ci.yml:/screeps/config.ci.yml:ro
+      - ./mods.ci.json:/screeps/mods.ci.json:ro
+      - ./bots.ci.yml:/screeps/bots.yml:ro
+      - ../screepsmod-testing:/workspace/packages/screepsmod-testing:ro
+      - screeps-ci-data:/screeps
+      - screeps-ci-artifacts:/screeps/artifacts
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:21025/ >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 12
+    cpus: "2.0"
+    mem_limit: 3g
+    pids_limit: 512
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  mongo:
+    image: mongo:8.0.4
+    platform: linux/amd64
+    command: ["mongod", "--quiet", "--bind_ip_all"]
+    volumes:
+      - mongo-ci-data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'db.runCommand({ ping: 1 }).ok' | mongosh localhost:27017/test --quiet | grep 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 12
+    cpus: "1.0"
+    mem_limit: 1g
+    pids_limit: 256
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  redis:
+    image: redis:7.4.2-alpine
+    platform: linux/amd64
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    volumes:
+      - redis-ci-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 12
+    cpus: "0.5"
+    mem_limit: 512m
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+volumes:
+  screeps-ci-data:
+  screeps-ci-artifacts:
+  mongo-ci-data:
+  redis-ci-data:

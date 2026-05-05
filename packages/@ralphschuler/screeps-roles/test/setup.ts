@@ -235,6 +235,11 @@ export function createMockCreep(name: string, options: {
     rangedAttack: (target: any) => OK,
     heal: (target: any) => OK,
     upgradeController: (controller: any) => OK,
+    getActiveBodyparts: (type: BodyPartConstant) => (options.body || [
+      { type: WORK, hits: 100 },
+      { type: CARRY, hits: 100 },
+      { type: MOVE, hits: 100 }
+    ]).filter(part => part.type === type && part.hits > 0).length,
     say: (message: string, public_?: boolean) => OK,
     suicide: () => OK
   } as any;
