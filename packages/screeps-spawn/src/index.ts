@@ -112,13 +112,17 @@ export {
   getCurrentDefenders,
   getDefenderPriorityBoost,
   needsDefenseAssistance,
+  needsEmergencyDefenders,
+  type DefenderRequirement,
   type DefenseRequest
 } from "./defenderManager";
 
 // Spawn coordinator
 export {
   populateSpawnQueue,
-  processSpawnQueue
+  processSpawnQueue,
+  planSpawnDemand,
+  type SpawnDemand
 } from "./spawnCoordinator";
 
 // Bot integration (interfaces for bot-specific dependencies)
@@ -126,7 +130,9 @@ export type {
   IKernel,
   IMemoryManager,
   IEnergyFlowPredictor,
-  IPowerBankHarvestingManager
+  IPowerBankHarvestingManager,
+  IEmergencyResponseManager,
+  SpawnIntegrationOverrides
 } from "./botIntegration";
 
 export {
@@ -134,6 +140,8 @@ export {
   memoryManager,
   energyFlowPredictor,
   powerBankHarvestingManager,
-  calculateRemoteHaulerRequirement
+  emergencyResponseManager,
+  calculateRemoteHaulerRequirement,
+  configureSpawnIntegration
 } from "./botIntegration";
 

@@ -37,6 +37,7 @@
     "@ralphschuler/screeps-defense": "*",
     "@ralphschuler/screeps-empire": "*",
     "@ralphschuler/screeps-intershard": "*",
+    "@ralphschuler/screeps-memory": "*",
     "@ralphschuler/screeps-utils": "*"
   },
   "devDependencies": {

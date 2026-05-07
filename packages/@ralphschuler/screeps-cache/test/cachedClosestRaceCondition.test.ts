@@ -7,7 +7,10 @@
  */
 
 import { assert } from "chai";
-import { findCachedClosest, clearClosestCache as clearCache } from "../../src/cache";
+import { globalCache } from "../src/CacheManager.ts";
+import { findCachedClosest, clearCache } from "../src/domains/ClosestCache.ts";
+
+(global as any).STRUCTURE_EXTENSION = "extension";
 
 // Mock creep memory interface
 interface MockCreepMemory {
@@ -74,6 +77,7 @@ describe("CachedClosest Race Condition Fix", () => {
 
   afterEach(() => {
     delete (global as any).Game;
+    delete (global as any)._cacheHeap_closest;
   });
 
   it("should return different targets for two creeps when first target is no longer in array", () => {
@@ -111,7 +115,7 @@ describe("CachedClosest Race Condition Fix", () => {
     // Creep 1 finds and caches extension 1
     const target1 = findCachedClosest(creep1 as unknown as Creep, targets, "deliver_ext", 10);
     assert.equal(target1?.id, "ext1", "Creep 1 should target extension 1");
-    assert.exists(creep1.memory._ct?.["deliver_ext"], "Creep 1 should have cached target");
+    assert.equal(globalCache.get("larvaWorker1:deliver_ext", { namespace: "closest" }), "ext1", "Creep 1 should have cached target");
 
     // Simulate creep 1 filling extension 1 - remove it from targets array
     targets = [extension2!] as (RoomObject & _HasId)[];
@@ -150,12 +154,12 @@ describe("CachedClosest Race Condition Fix", () => {
 
     // Find and cache target
     findCachedClosest(creep as unknown as Creep, targets, "deliver_ext", 10);
-    assert.exists(creep.memory._ct?.["deliver_ext"], "Cache should exist after find");
+    assert.equal(globalCache.get("testCreep:deliver_ext", { namespace: "closest" }), "ext1", "Cache should exist after find");
 
     // Clear cache
     clearCache(creep as unknown as Creep);
-    assert.notExists(
-      creep.memory._ct,
+    assert.isUndefined(
+      globalCache.get("testCreep:deliver_ext", { namespace: "closest" }),
       "Cache should be cleared after clearCache() is called"
     );
   });
@@ -215,7 +219,7 @@ describe("CachedClosest Race Condition Fix", () => {
 
     // Cache extension 1 with TTL of 10
     findCachedClosest(creep as unknown as Creep, targets, "deliver_ext", 10);
-    assert.equal(creep.memory._ct?.["deliver_ext"]?.i, "ext1", "Should cache extension 1");
+    assert.equal(globalCache.get("testCreep:deliver_ext", { namespace: "closest" }), "ext1", "Should cache extension 1");
 
     // Advance time by 5 ticks - cache still valid
     setupMockGame(1005);

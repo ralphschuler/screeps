@@ -5,8 +5,8 @@
  * This establishes the cache hierarchy and enables coordinated invalidation.
  */
 
-import { globalCache } from "./CacheManager";
-import { cacheCoherence, CacheLayer } from "./CacheCoherence";
+import { CacheLayer } from "./CacheCoherence";
+import { defaultCacheRuntime, type CacheRuntime } from "./CacheRuntime";
 
 /**
  * Register all caches with the coherence manager
@@ -23,13 +23,14 @@ import { cacheCoherence, CacheLayer } from "./CacheCoherence";
  * The namespace separation provides logical isolation while using shared storage.
  * Future enhancement: Use separate CacheManager instances per layer.
  */
-export function registerAllCaches(): void {
+export function registerAllCaches(runtime: CacheRuntime = defaultCacheRuntime): void {
+  const { cacheManager, coherenceManager } = runtime;
   // L1 Cache: Fast, short-lived data (object references, body parts)
   // Highest priority - keep these in cache longest
   
-  cacheCoherence.registerCache(
+  coherenceManager.registerCache(
     "object",
-    globalCache,
+    cacheManager,
     CacheLayer.L1,
     {
       priority: 100,
@@ -37,9 +38,9 @@ export function registerAllCaches(): void {
     }
   );
 
-  cacheCoherence.registerCache(
+  coherenceManager.registerCache(
     "bodypart",
-    globalCache,
+    cacheManager,
     CacheLayer.L1,
     {
       priority: 95,
@@ -50,9 +51,9 @@ export function registerAllCaches(): void {
   // L2 Cache: Medium-lived data (paths, find results, roles)
   // Medium priority
   
-  cacheCoherence.registerCache(
+  coherenceManager.registerCache(
     "path",
-    globalCache,
+    cacheManager,
     CacheLayer.L2,
     {
       priority: 70,
@@ -60,9 +61,9 @@ export function registerAllCaches(): void {
     }
   );
 
-  cacheCoherence.registerCache(
+  coherenceManager.registerCache(
     "roomFind",
-    globalCache,
+    cacheManager,
     CacheLayer.L2,
     {
       priority: 65,
@@ -70,9 +71,9 @@ export function registerAllCaches(): void {
     }
   );
 
-  cacheCoherence.registerCache(
+  coherenceManager.registerCache(
     "role",
-    globalCache,
+    cacheManager,
     CacheLayer.L2,
     {
       priority: 60,
@@ -80,9 +81,9 @@ export function registerAllCaches(): void {
     }
   );
 
-  cacheCoherence.registerCache(
+  coherenceManager.registerCache(
     "closest",
-    globalCache,
+    cacheManager,
     CacheLayer.L2,
     {
       priority: 55,
@@ -92,9 +93,9 @@ export function registerAllCaches(): void {
 
   // Additional application caches (migrated from duplicate implementations)
   
-  cacheCoherence.registerCache(
+  coherenceManager.registerCache(
     "collectionPoint",
-    globalCache,
+    cacheManager,
     CacheLayer.L2,
     {
       priority: 50,
@@ -102,9 +103,9 @@ export function registerAllCaches(): void {
     }
   );
 
-  cacheCoherence.registerCache(
+  coherenceManager.registerCache(
     "patrol",
-    globalCache,
+    cacheManager,
     CacheLayer.L2,
     {
       priority: 50,
@@ -112,9 +113,9 @@ export function registerAllCaches(): void {
     }
   );
 
-  cacheCoherence.registerCache(
+  coherenceManager.registerCache(
     "targetAssignment",
-    globalCache,
+    cacheManager,
     CacheLayer.L1,
     {
       priority: 90,
@@ -122,9 +123,9 @@ export function registerAllCaches(): void {
     }
   );
 
-  cacheCoherence.registerCache(
+  coherenceManager.registerCache(
     "evolution:structures",
-    globalCache,
+    cacheManager,
     CacheLayer.L2,
     {
       priority: 50,
@@ -133,9 +134,9 @@ export function registerAllCaches(): void {
   );
 
   // Game Object Cache: Per-tick Game.creeps and Game.rooms filtering
-  cacheCoherence.registerCache(
+  coherenceManager.registerCache(
     "game",
-    globalCache,
+    cacheManager,
     CacheLayer.L1,
     {
       priority: 98, // High priority - accessed frequently every tick
@@ -144,9 +145,9 @@ export function registerAllCaches(): void {
   );
 
   // Structure Cache: Structure references per room
-  cacheCoherence.registerCache(
+  coherenceManager.registerCache(
     "structures",
-    globalCache,
+    cacheManager,
     CacheLayer.L2,
     {
       priority: 75, // Medium-high priority - structures change infrequently
@@ -166,12 +167,12 @@ export function registerAllCaches(): void {
  * Get total memory budget for all caches
  */
 export function getTotalCacheBudget(): number {
-  return cacheCoherence.getMemoryBudget();
+  return defaultCacheRuntime.coherenceManager.getMemoryBudget();
 }
 
 /**
  * Set total memory budget for all caches
  */
 export function setTotalCacheBudget(bytes: number): void {
-  cacheCoherence.setMemoryBudget(bytes);
+  defaultCacheRuntime.coherenceManager.setMemoryBudget(bytes);
 }

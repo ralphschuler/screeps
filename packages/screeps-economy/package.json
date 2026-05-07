@@ -36,6 +36,8 @@
     "screeps-typescript-starter": "*"
   },
   "dependencies": {
+    "@ralphschuler/screeps-core": "*",
+    "@ralphschuler/screeps-kernel": "*",
     "@ralphschuler/screeps-memory": "*",
     "lz-string": "^1.5.0"
   },

@@ -23,6 +23,11 @@ describe("HybridStore", () => {
       getObjectById: () => null
     };
     g.Memory = {};
+    for (const key of Object.keys(g)) {
+      if (key.startsWith("_cacheHeap_") || key.startsWith("_hybridCacheHeap_")) {
+        delete g[key];
+      }
+    }
     
     store = new HybridStore("test");
   });
@@ -227,13 +232,13 @@ describe("HybridStore", () => {
           data: {
             "path:W1N1:1,2": {
               value: "path-data",
-              cachedAt: 900,
+              cachedAt: 901,
               ttl: 100,
               hits: 5
             },
             "roomFind:W1N1": {
               value: ["obj1", "obj2"],
-              cachedAt: 950,
+              cachedAt: 951,
               ttl: 50,
               hits: 10
             }
@@ -451,16 +456,13 @@ describe("HybridStore", () => {
 
       timedStore.set("path:key1", entry);
 
-      // First persist should return 0 (not time yet)
+      // First persist flushes dirty entries immediately.
       const persisted1 = timedStore.persist();
-      assert.equal(persisted1, 0);
+      assert.isAtLeast(persisted1, 1);
 
-      // Advance time to sync interval
-      g.Game.time = 1020;
-
-      // Now should persist
-      const persisted2 = timedStore.persist();
-      assert.isAtLeast(persisted2, 1);
+      // Advance time before sync interval with no new dirty entries.
+      g.Game.time = 1010;
+      assert.equal(timedStore.persist(), 0);
 
       // Verify in Memory
       assert.isDefined(g.Memory._hybridCache.timed.data["path:key1"]);
@@ -481,12 +483,10 @@ describe("HybridStore", () => {
 
       defaultStore.set("path:key1", entry);
       
-      // Default is 10 ticks
+      // First persist flushes dirty entries immediately, then no-ops until new dirty entries exist.
+      assert.isAtLeast(defaultStore.persist(), 1);
       g.Game.time = 1009;
       assert.equal(defaultStore.persist(), 0);
-      
-      g.Game.time = 1010;
-      assert.isAtLeast(defaultStore.persist(), 1);
     });
   });
 

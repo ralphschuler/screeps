@@ -36,6 +36,8 @@
 
 // Core cache system
 export { CacheManager, globalCache } from "./CacheManager";
+export { createCacheRuntime, defaultCacheRuntime } from "./CacheRuntime";
+export type { CacheRuntime } from "./CacheRuntime";
 export type { CacheStore } from "./CacheStore";
 export type { CacheEntry, CacheOptions, CacheStats } from "./CacheEntry";
 
