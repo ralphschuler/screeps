@@ -2,10 +2,11 @@
   "name": "@ralphschuler/screeps-economy",
   "version": "0.1.0",
   "description": "Economy subsystem for Screeps - link networks, terminal routing, factory management, and market trading",
-  "main": "dist/screeps-economy/src/index.js",
-  "types": "dist/screeps-economy/src/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "private": false,
   "scripts": {
+    "prebuild": "npm run build -w @ralphschuler/screeps-core -w @ralphschuler/screeps-kernel -w @ralphschuler/screeps-memory --if-present",
     "build": "tsc",
     "test": "mocha test/**/*.test.ts",
     "test:watch": "mocha --watch test/**/*.test.ts",
