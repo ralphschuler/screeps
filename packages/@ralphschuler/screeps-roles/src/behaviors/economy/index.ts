@@ -36,7 +36,6 @@ import { remoteHarvester, remoteHauler } from "./remote";
 import { queenCarrier, labTech, factoryWorker } from "./specialized";
 import { interRoomCarrier } from "./interRoom";
 import { labSupply } from "../labSupply";
-import { taskBoard } from "../../tasks";
 
 const economyBehaviors: Record<string, (ctx: CreepContext) => CreepAction> = {
   larvaWorker,
@@ -59,9 +58,6 @@ const economyBehaviors: Record<string, (ctx: CreepContext) => CreepAction> = {
  * Evaluate and return an action for an economy role creep.
  */
 export function evaluateEconomyBehavior(ctx: CreepContext): CreepAction {
-  const assignedAction = taskBoard.getAssignedAction(ctx);
-  if (assignedAction) return assignedAction;
-
   const behavior = economyBehaviors[ctx.memory.role] ?? larvaWorker;
   return behavior(ctx);
 }

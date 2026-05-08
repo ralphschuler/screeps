@@ -8,8 +8,7 @@
  */
 
 /**
- * Get assigned source for a harvester
- * Falls back to finding closest available source
+ * Get assigned source for a harvester.
  */
 function getMutableCreepMemory<T extends Record<string, unknown>>(creep: Creep): T {
   const creepWithMemory = creep as Creep & { memory?: T };
@@ -20,24 +19,9 @@ function getMutableCreepMemory<T extends Record<string, unknown>>(creep: Creep):
 }
 
 export function getAssignedSource(creep: Creep): Source | null {
-  if (!creep.room) return null;
-  
-  // Check if creep has assigned source in memory
   const memory = getMutableCreepMemory<{ sourceId?: Id<Source> }>(creep);
-  if (memory.sourceId) {
-    const source = Game.getObjectById(memory.sourceId);
-    if (source) return source;
-  }
-  
-  // Find closest source as fallback
-  const sources = creep.room.find(FIND_SOURCES);
-  if (sources.length === 0) return null;
-  
-  const closest = creep.pos.findClosestByRange(sources);
-  if (closest) {
-    memory.sourceId = closest.id;
-  }
-  return closest;
+  if (!memory.sourceId) return null;
+  return Game.getObjectById(memory.sourceId);
 }
 
 /**
