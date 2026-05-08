@@ -10,7 +10,8 @@
     "test": "mocha test/**/*.test.ts",
     "prepublishOnly": "npm run build",
     "lint": "eslint \"src/**/*.ts\"",
-    "lint:fix": "eslint \"src/**/*.ts\" --fix"
+    "lint:fix": "eslint \"src/**/*.ts\" --fix",
+    "prebuild": "npm run build -w @ralphschuler/screeps-core -w @ralphschuler/screeps-defense -w @ralphschuler/screeps-economy -w @ralphschuler/screeps-stats --if-present"
   },
   "keywords": [
     "screeps",
@@ -28,7 +29,7 @@
   "devDependencies": {
     "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^25.0.10",
+    "@types/node": "^25.0.3",
     "@types/screeps": "^3.3.8",
     "chai": "^6.2.2",
     "mocha": "^11.7.5",

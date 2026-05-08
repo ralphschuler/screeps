@@ -18,9 +18,8 @@
  * - Market integration for surplus/deficit handling
  */
 
-import { logger } from "@bot/core/logger";
-import { ProcessPriority } from "@bot/core/kernel";
-import { MediumFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
+import { logger } from "@ralphschuler/screeps-core";
+import { MediumFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import { marketManager } from "../market/marketManager";
 import { terminalRouter } from "./terminalRouter";

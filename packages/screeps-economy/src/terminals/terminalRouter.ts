@@ -11,7 +11,7 @@
  * Reduces transfer costs by 30-50% compared to always using direct transfers.
  */
 
-import { logger } from "@bot/core/logger";
+import { logger } from "@ralphschuler/screeps-core";
 
 /**
  * Terminal node in the network graph

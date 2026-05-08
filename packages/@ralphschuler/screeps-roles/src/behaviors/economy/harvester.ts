@@ -7,7 +7,6 @@
 
 import type { SwarmCreepMemory } from "../../memory/schemas";
 import type { CreepAction, CreepContext } from "../types";
-import { cachedFindSources } from "../../cache";
 import { createLogger } from "@ralphschuler/screeps-core";
 import { getAssignedSource } from "../../economy/targetAssignmentManager";
 
@@ -96,7 +95,7 @@ export function harvester(ctx: CreepContext): CreepAction {
  * harvesters spawning in the same tick.
  */
 function assignSource(ctx: CreepContext): Source | null {
-  const sources = cachedFindSources(ctx.room);
+  const sources = ctx.room.find(FIND_SOURCES);
   if (sources.length === 0) return null;
 
   // Cache source counts per room per tick
@@ -151,6 +150,7 @@ function assignSource(ctx: CreepContext): Source | null {
 
   if (bestSource) {
     ctx.memory.sourceId = bestSource.id;
+    sourceCounts.set(bestSource.id, (sourceCounts.get(bestSource.id) ?? 0) + 1);
   }
 
   return bestSource;

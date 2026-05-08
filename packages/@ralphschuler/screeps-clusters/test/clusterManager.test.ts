@@ -1,4 +1,10 @@
 import { expect } from "chai";
+import {
+  calculateMilitaryReadinessRatio,
+  decideClusterRole,
+  decideFocusRoom,
+  expectedMilitaryCapacityForRcl
+} from "../src/clusterPolicy.ts";
 
 /**
  * Cluster Manager Algorithm Tests
@@ -19,6 +25,45 @@ import { expect } from "chai";
  * For full integration testing of ClusterManager with Game objects, see the
  * integration test suite (when available).
  */
+
+describe("Cluster Policy", () => {
+  it("should decide cluster role from war and economy metrics", () => {
+    expect(decideClusterRole({ warIndex: 60, economyIndex: 90 })).to.equal("war");
+    expect(decideClusterRole({ warIndex: 10, economyIndex: 80 })).to.equal("economic");
+    expect(decideClusterRole({ warIndex: 20, economyIndex: 30 })).to.equal("frontier");
+    expect(decideClusterRole({ warIndex: 25, economyIndex: 55 })).to.equal("mixed");
+  });
+
+  it("should calculate military readiness from expected capacity", () => {
+    expect(expectedMilitaryCapacityForRcl(1)).to.equal(2);
+    expect(expectedMilitaryCapacityForRcl(8)).to.equal(4);
+    expect(calculateMilitaryReadinessRatio(2, 4)).to.equal(50);
+    expect(calculateMilitaryReadinessRatio(10, 4)).to.equal(100);
+    expect(calculateMilitaryReadinessRatio(1, 0)).to.equal(0);
+  });
+
+  it("should select the lowest-RCL focus room deterministically", () => {
+    const decision = decideFocusRoom(undefined, undefined, [
+      { roomName: "W2N1", rcl: 4 },
+      { roomName: "W1N1", rcl: 4 },
+      { roomName: "W3N1", rcl: 7 }
+    ]);
+
+    expect(decision).to.deep.equal({ focusRoom: "W1N1", reason: "selected" });
+  });
+
+  it("should retain valid focus room and clear completed focus room", () => {
+    expect(decideFocusRoom("W1N1", 7, [{ roomName: "W2N1", rcl: 3 }])).to.deep.equal({
+      focusRoom: "W1N1",
+      reason: "unchanged"
+    });
+
+    expect(decideFocusRoom("W1N1", 8, [{ roomName: "W2N1", rcl: 3 }])).to.deep.equal({
+      focusRoom: "W2N1",
+      reason: "selected"
+    });
+  });
+});
 
 describe("Cluster Resource Balancing", () => {
   describe("Resource Distribution", () => {

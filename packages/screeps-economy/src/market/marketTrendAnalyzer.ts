@@ -11,9 +11,8 @@
  * Addresses Issue: Intelligence & Coordination (market trend analysis)
  */
 
-import { LowFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
-import { ProcessPriority } from "@bot/core/kernel";
-import { logger } from "@bot/core/logger";
+import { LowFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
+import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 
 /**

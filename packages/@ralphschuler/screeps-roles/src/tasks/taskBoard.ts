@@ -1,3 +1,4 @@
+import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 import type { CreepAction, CreepContext } from "../behaviors/types";
 import { TaskPriority, type CreepTask, type RoomTaskBoardMemory, type TaskBoardMemory, type TaskBoardStats, type TaskType, type TaskAssignmentOptions } from "./types";
 
@@ -243,7 +244,7 @@ function generateTasks(room: Room, board: RoomTaskBoardMemory): void {
     });
   }
 
-  const hostiles = room.find(FIND_HOSTILE_CREEPS);
+  const hostiles = getActualHostileCreeps(room);
   for (const hostile of hostiles.slice(0, 5)) {
     updateOrCreateTask(board, {
       id: taskId(room.name, "defend", hostile.id),

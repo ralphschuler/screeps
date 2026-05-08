@@ -11,9 +11,8 @@
  * Addresses Issue: Factory automation missing
  */
 
-import { logger } from "@bot/core/logger";
-import { ProcessPriority } from "@bot/core/kernel";
-import { MediumFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
+import { logger } from "@ralphschuler/screeps-core";
+import { MediumFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
 
 /**
  * Factory manager configuration

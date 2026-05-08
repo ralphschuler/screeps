@@ -5,8 +5,8 @@
  */
 
 import { assert } from "chai";
-import { CacheCoherenceManager, CacheLayer, InvalidationScope } from "../../src/cache/CacheCoherence";
-import { CacheManager } from "../../src/cache/CacheManager";
+import { CacheCoherenceManager, CacheLayer, InvalidationScope } from "../src/CacheCoherence.ts";
+import { CacheManager } from "../src/CacheManager.ts";
 
 describe("CacheCoherence", () => {
   let coherence: CacheCoherenceManager;

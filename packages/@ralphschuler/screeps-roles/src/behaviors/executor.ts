@@ -35,6 +35,10 @@ import * as metrics from "@ralphschuler/screeps-stats";
 import { applyOpportunisticActions } from "../economy/opportunisticActions";
 import { getCollectionPoint } from "../utils/common";
 import { taskBoard } from "../tasks";
+import {
+  shouldClearStateForActionResult,
+  shouldClearStateForMoveResult
+} from "./actionExecutionPolicy";
 
 const logger = createLogger("ActionExecutor");
 
@@ -237,7 +241,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
       creep.rangedHeal(optimizedAction.target);
       const healMoveResult = moveTo(creep, optimizedAction.target, { visualizePathStyle: { stroke: PATH_COLORS.heal } });
       // Clear state if pathfinding fails
-      if (healMoveResult === ERR_NO_PATH) {
+      if (shouldClearStateForMoveResult(healMoveResult)) {
         shouldClearState = true;
       }
       break;
@@ -278,7 +282,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
     case "moveTo": {
       const moveResult = moveTo(creep, optimizedAction.target, { visualizePathStyle: { stroke: PATH_COLORS.move } });
       // Clear state if pathfinding fails so the behavior can re-evaluate
-      if (moveResult === ERR_NO_PATH) {
+      if (shouldClearStateForMoveResult(moveResult)) {
         shouldClearState = true;
       }
       break;
@@ -292,7 +296,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         maxRooms: 16
       });
       // Clear state if pathfinding fails so the behavior can re-evaluate
-      if (moveResult === ERR_NO_PATH) {
+      if (shouldClearStateForMoveResult(moveResult)) {
         shouldClearState = true;
       }
       break;
@@ -305,7 +309,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         optimizedAction.routeType,
         { visualizePathStyle: { stroke: PATH_COLORS.move } }
       );
-      if (moveResult === ERR_NO_PATH) {
+      if (shouldClearStateForMoveResult(moveResult)) {
         shouldClearState = true;
       }
       break;
@@ -322,7 +326,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
           maxRooms: 16
         }
       );
-      if (moveResult === ERR_NO_PATH) {
+      if (shouldClearStateForMoveResult(moveResult)) {
         shouldClearState = true;
       }
       break;
@@ -333,7 +337,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
       const fleeTargets = optimizedAction.from.map(pos => ({ pos, range: 10 }));
       const fleeResult = moveTo(creep, fleeTargets, { flee: true });
       // Clear state if pathfinding fails so the behavior can re-evaluate
-      if (fleeResult === ERR_NO_PATH) {
+      if (shouldClearStateForMoveResult(fleeResult)) {
         shouldClearState = true;
       }
       break;
@@ -350,7 +354,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
       if (!creep.pos.isEqualTo(optimizedAction.position)) {
         const waitMoveResult = moveTo(creep, optimizedAction.position);
         // Clear state if pathfinding fails
-        if (waitMoveResult === ERR_NO_PATH) {
+        if (shouldClearStateForMoveResult(waitMoveResult)) {
           shouldClearState = true;
         }
       }
@@ -364,7 +368,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         priority: 5 // Higher priority to help unblock
       });
       // Clear state if pathfinding fails
-      if (requestMoveResult === ERR_NO_PATH) {
+      if (shouldClearStateForMoveResult(requestMoveResult)) {
         shouldClearState = true;
       }
       break;
@@ -389,7 +393,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
               priority: 2
             });
             // Clear state if pathfinding fails
-            if (idleMoveResult === ERR_NO_PATH) {
+            if (shouldClearStateForMoveResult(idleMoveResult)) {
               shouldClearState = true;
             }
             break;
@@ -488,7 +492,7 @@ function executeWithRange(
       });
     }
     // If movement fails with ERR_NO_PATH, indicate state should be cleared
-    if (moveResult === ERR_NO_PATH) {
+    if (shouldClearStateForMoveResult(moveResult)) {
       return true;
     }
     return false;
@@ -501,7 +505,7 @@ function executeWithRange(
 
   // Check for errors that indicate the target is invalid and state should be cleared
   // This allows the creep to immediately find a new target instead of being stuck
-  if (result === ERR_FULL || result === ERR_NOT_ENOUGH_RESOURCES || result === ERR_INVALID_TARGET) {
+  if (shouldClearStateForActionResult(result)) {
     logger.info("Clearing state after action error", {
       room: creep.pos.roomName,
       creep: creep.name,

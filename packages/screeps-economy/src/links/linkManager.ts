@@ -15,9 +15,8 @@
  * - Each link has 800 energy capacity and cooldown after transfer
  */
 
-import { logger } from "@bot/core/logger";
-import { ProcessPriority } from "@bot/core/kernel";
-import { MediumFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
+import { logger } from "@ralphschuler/screeps-core";
+import { MediumFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
 
 /**
  * Link manager configuration

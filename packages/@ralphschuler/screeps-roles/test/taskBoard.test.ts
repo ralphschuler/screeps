@@ -1,7 +1,8 @@
 import { expect } from "chai";
 import { taskBoard } from "../src/tasks";
+import { evaluateEconomyBehavior } from "../src/behaviors/economy";
 import { createMockCreep, createMockRoom, resetMockGame, MockGame } from "./setup";
-import type { CreepContext } from "../src";
+import type { CreepAction, CreepContext } from "../src";
 
 function makeStore(used: number, capacity: number) {
   return {
@@ -19,6 +20,32 @@ function makeSpawn(id: Id<StructureSpawn>, freeCapacity: number): StructureSpawn
     pos: { x: 10, y: 10, roomName: "W1N1" },
     store: makeStore(300 - freeCapacity, 300)
   } as unknown as StructureSpawn;
+}
+
+function makeStorage(id: Id<StructureStorage>, used: number, capacity: number): StructureStorage {
+  return {
+    id,
+    structureType: STRUCTURE_STORAGE,
+    pos: { x: 20, y: 20, roomName: "W1N1" },
+    store: makeStore(used, capacity)
+  } as unknown as StructureStorage;
+}
+
+function makeController(id: Id<StructureController>): StructureController {
+  return {
+    id,
+    structureType: STRUCTURE_CONTROLLER,
+    my: true,
+    pos: { x: 40, y: 40, roomName: "W1N1" }
+  } as unknown as StructureController;
+}
+
+function makeSource(id: Id<Source>, x: number, y: number): Source {
+  return {
+    id,
+    energy: 3000,
+    pos: { x, y, roomName: "W1N1" }
+  } as unknown as Source;
 }
 
 function makeContext(creep: Creep, room: Room): CreepContext {
@@ -123,5 +150,62 @@ describe("TaskBoard", () => {
     const room = createMockRoom("W1N1");
     const creep = createMockCreep("hauler1", { room, memory: { role: "hauler", family: "economy", homeRoom: room.name, version: 1 }, store: makeStore(100, 100) });
     expect(taskBoard.getAssignedDeliveryAction(makeContext(creep, room))).to.equal(null);
+  });
+
+  it("does not divert a full upgrader into storage when the controller can be upgraded", () => {
+    const controller = makeController("controller1" as Id<StructureController>);
+    const storage = makeStorage("storage1" as Id<StructureStorage>, 0, 1000000);
+    const room = createMockRoom("W1N1", { controller, storage });
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [];
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [];
+      if (type === FIND_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => {
+      if (id === controller.id) return controller;
+      if (id === storage.id) return storage;
+      return null;
+    };
+
+    const creep = createMockCreep("upgrader1", {
+      room,
+      memory: { role: "upgrader", family: "economy", homeRoom: room.name, version: 1, working: true },
+      store: makeStore(100, 100),
+      pos: { x: 21, y: 20, roomName: room.name, getRangeTo: (target: RoomPosition) => target.x === 20 ? 1 : 30, isNearTo: () => false, findInRange: () => [] }
+    });
+    MockGame.creeps[creep.name] = creep;
+
+    const action = evaluateEconomyBehavior(makeContext(creep, room));
+
+    expect(action.type).to.equal("upgrade");
+    expect((action as Extract<CreepAction, { type: "upgrade" }>).target.id).to.equal(controller.id);
+  });
+
+  it("balances new harvesters across room sources instead of assigning all to the closest source", () => {
+    const sourceA = makeSource("sourceA" as Id<Source>, 10, 10);
+    const sourceB = makeSource("sourceB" as Id<Source>, 40, 40);
+    const room = createMockRoom("W1N1");
+    (room as any).find = (type: number) => type === FIND_SOURCES ? [sourceA, sourceB] : [];
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => {
+      if (id === sourceA.id) return sourceA;
+      if (id === sourceB.id) return sourceB;
+      return null;
+    };
+
+    const posNearA = { x: 11, y: 10, roomName: room.name, isNearTo: (target: Source) => target.id === sourceA.id, getRangeTo: (target: Source) => target.id === sourceA.id ? 1 : 20, findClosestByRange: () => sourceA, findInRange: () => [] };
+    const harvester1 = createMockCreep("harvester1", { room, memory: { role: "harvester", family: "economy", homeRoom: room.name, version: 1 }, pos: posNearA });
+    const harvester2 = createMockCreep("harvester2", { room, memory: { role: "harvester", family: "economy", homeRoom: room.name, version: 1 }, pos: posNearA });
+    MockGame.creeps[harvester1.name] = harvester1;
+    MockGame.creeps[harvester2.name] = harvester2;
+
+    evaluateEconomyBehavior(makeContext(harvester1, room));
+    evaluateEconomyBehavior(makeContext(harvester2, room));
+
+    expect((harvester1.memory as { sourceId?: Id<Source> }).sourceId).to.equal(sourceA.id);
+    expect((harvester2.memory as { sourceId?: Id<Source> }).sourceId).to.equal(sourceB.id);
   });
 });

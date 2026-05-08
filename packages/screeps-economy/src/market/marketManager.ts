@@ -31,9 +31,8 @@
 
 import { createDefaultMarketMemory, memoryManager } from "@ralphschuler/screeps-memory";
 import type { PendingArbitrageTrade, PriceDataPoint, ResourceMarketData } from "@ralphschuler/screeps-memory";
-import { logger } from "@bot/core/logger";
-import { LowFrequencyProcess, ProcessClass } from "@bot/core/processDecorators";
-import { ProcessPriority } from "@bot/core/kernel";
+import { logger } from "@ralphschuler/screeps-core";
+import { LowFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
 
 /**
  * Market Manager Configuration

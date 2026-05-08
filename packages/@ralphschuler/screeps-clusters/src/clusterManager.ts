@@ -63,6 +63,12 @@ import {
 } from "./offensiveOperations";
 import { updateClusterRallyPoints } from "./rallyPointManager";
 import { coordinateClusterDefense } from "@ralphschuler/screeps-defense";
+import {
+  calculateMilitaryReadinessRatio,
+  decideClusterRole,
+  decideFocusRoom,
+  expectedMilitaryCapacityForRcl
+} from "./clusterPolicy";
 
 /**
  * Cluster Manager Configuration
@@ -266,14 +272,10 @@ export class ClusterManager {
       militaryCreeps += creeps.length;
 
       // Expected military capacity based on RCL
-      const rcl = room.controller.level;
-      const expectedMilitary = Math.max(2, Math.floor(rcl / 2));
-      totalRoomCapacity += expectedMilitary;
+      totalRoomCapacity += expectedMilitaryCapacityForRcl(room.controller.level);
     }
 
-    // Calculate readiness as percentage of expected capacity
-    if (totalRoomCapacity === 0) return 0;
-    return Math.min(100, Math.round((militaryCreeps / totalRoomCapacity) * 100));
+    return calculateMilitaryReadinessRatio(militaryCreeps, totalRoomCapacity);
   }
 
   /**
@@ -428,18 +430,7 @@ export class ClusterManager {
    * Update cluster role based on metrics
    */
   private updateClusterRole(cluster: ClusterMemory): void {
-    const { warIndex, economyIndex } = cluster.metrics;
-
-    // Determine role based on metrics
-    if (warIndex > 50) {
-      cluster.role = "war";
-    } else if (economyIndex > 70 && warIndex < 20) {
-      cluster.role = "economic";
-    } else if (economyIndex < 40) {
-      cluster.role = "frontier";
-    } else {
-      cluster.role = "mixed";
-    }
+    cluster.role = decideClusterRole(cluster.metrics);
   }
 
   /**
@@ -491,25 +482,17 @@ export class ClusterManager {
       }
     }
 
-    // Select new focus room if needed
-    if (!cluster.focusRoom) {
-      // Find room with lowest RCL that's not yet 8
-      const eligibleRooms = roomsWithRcl.filter(r => r.rcl < 8);
-      
-      if (eligibleRooms.length === 0) {
-        // All rooms are RCL 8, no focus needed
-        return;
-      }
+    const currentFocusRcl = cluster.focusRoom ? Game.rooms[cluster.focusRoom]?.controller?.level : undefined;
+    const decision = decideFocusRoom(cluster.focusRoom, currentFocusRcl, roomsWithRcl);
 
-      // Sort by RCL (lowest first), then by room name for determinism
-      eligibleRooms.sort((a, b) => {
-        if (a.rcl !== b.rcl) return a.rcl - b.rcl;
-        return a.roomName.localeCompare(b.roomName);
-      });
+    if (decision.focusRoom !== cluster.focusRoom) {
+      cluster.focusRoom = decision.focusRoom;
+    }
 
-      cluster.focusRoom = eligibleRooms[0].roomName;
+    if (decision.reason === "selected" && cluster.focusRoom) {
+      const selected = roomsWithRcl.find(room => room.roomName === cluster.focusRoom);
       logger.info(
-        `Selected ${cluster.focusRoom} (RCL ${eligibleRooms[0].rcl}) as focus room for upgrading`,
+        `Selected ${cluster.focusRoom} (RCL ${selected?.rcl ?? "unknown"}) as focus room for upgrading`,
         { subsystem: "Cluster" }
       );
     }

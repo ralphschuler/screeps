@@ -16,8 +16,8 @@ import type { SwarmState } from "./botTypes";
 import { SpawnPriority, type SpawnRequest, spawnQueue } from "./spawnQueue";
 import { optimizeBody } from "./bodyOptimizer";
 import { type BodyTemplate } from "./types";
-import { ROLE_DEFINITIONS } from "./roleDefinitions";
-import { countCreepsByRole, getRemoteRoomNeedingWorkers } from "./spawnNeedsAnalyzer";
+import { ROLE_DEFINITIONS, type RoleSpawnDef } from "./roleDefinitions";
+import { countCreepsByRole, getRemoteRoomNeedingWorkers, needsRole } from "./spawnNeedsAnalyzer";
 import { isEmergencySpawnState } from "./bootstrapManager";
 import { logger } from "@ralphschuler/screeps-core";
 import { 
@@ -25,8 +25,67 @@ import {
   getCurrentDefenders, 
   getDefenderPriorityBoost 
 } from "./defenderManager";
-import { emergencyResponseManager } from "@ralphschuler/screeps-defense";
-import { energyFlowPredictor, powerBankHarvestingManager } from "./botIntegration";
+import { emergencyResponseManager, energyFlowPredictor, powerBankHarvestingManager } from "./botIntegration";
+
+export interface SpawnDemand {
+  roleName: string;
+  def: RoleSpawnDef;
+  current: number;
+  priority: number;
+  targetRoom?: string;
+}
+
+function mapSpawnPriority(basePriority: number): SpawnPriority {
+  if (basePriority >= 90) return SpawnPriority.HIGH;
+  if (basePriority >= 60) return SpawnPriority.NORMAL;
+  return SpawnPriority.LOW;
+}
+
+function priorityForDemand(room: Room, swarm: SwarmState, roleName: string, basePriority: number, isEmergency: boolean): number {
+  if (isEmergency && (roleName === "larvaWorker" || roleName === "harvester")) {
+    return SpawnPriority.EMERGENCY;
+  }
+
+  const emergencyState = emergencyResponseManager.getEmergencyState(room.name);
+  if (emergencyState && (roleName === "guard" || roleName === "ranger" || roleName === "healer")) {
+    const boost = getDefenderPriorityBoost(room, swarm, roleName);
+    if (boost >= 100) return SpawnPriority.EMERGENCY;
+    if (boost > 0) return SpawnPriority.HIGH;
+  }
+
+  return mapSpawnPriority(basePriority);
+}
+
+/**
+ * Plan room spawn demand without mutating the queue.
+ */
+export function planSpawnDemand(room: Room, swarm: SwarmState): SpawnDemand[] {
+  const counts = countCreepsByRole(room.name);
+  const isEmergency = isEmergencySpawnState(room.name);
+  const demands: SpawnDemand[] = [];
+
+  for (const [roleName, def] of Object.entries(ROLE_DEFINITIONS)) {
+    const current = counts.get(roleName) ?? 0;
+    if (!needsRole(room.name, roleName, swarm, isEmergency)) continue;
+
+    const demand: SpawnDemand = {
+      roleName,
+      def,
+      current,
+      priority: priorityForDemand(room, swarm, roleName, def.priority, isEmergency)
+    };
+
+    if (roleName === "remoteHarvester" || roleName === "remoteHauler") {
+      const targetRoom = getRemoteRoomNeedingWorkers(room.name, roleName, swarm);
+      if (!targetRoom) continue;
+      demand.targetRoom = targetRoom;
+    }
+
+    demands.push(demand);
+  }
+
+  return demands;
+}
 
 /**
  * Populate spawn queue for a room
@@ -39,13 +98,9 @@ export function populateSpawnQueue(room: Room, swarm: SwarmState): void {
     return;
   }
 
-  const counts = countCreepsByRole(room.name);
-  const isEmergency = isEmergencySpawnState(room.name);
-
   // Check if we need emergency defenders
   const defenderNeeds = analyzeDefenderNeeds(room);
   const currentDefenders = getCurrentDefenders(room);
-  const emergencyState = emergencyResponseManager.getEmergencyState(room.name);
 
   // Add defender requests first if there's a threat
   if (defenderNeeds.guards > 0 || defenderNeeds.rangers > 0 || defenderNeeds.healers > 0) {
@@ -55,46 +110,7 @@ export function populateSpawnQueue(room: Room, swarm: SwarmState): void {
   // Add power bank operation requests
   addPowerBankRequests(room);
 
-  // Determine what roles are needed
-  for (const [roleName, def] of Object.entries(ROLE_DEFINITIONS)) {
-    const current = counts.get(roleName) ?? 0;
-    
-    // Check if we need more of this role
-    if (current >= def.maxPerRoom) {
-      continue;
-    }
-
-    // Calculate priority
-    let priority = def.priority;
-
-    // Emergency boost for critical economy roles
-    if (isEmergency && (roleName === "larvaWorker" || roleName === "harvester")) {
-      priority = SpawnPriority.EMERGENCY;
-    } else if (emergencyState && (roleName === "guard" || roleName === "ranger" || roleName === "healer")) {
-      // Boost defender priority during emergencies
-      // getDefenderPriorityBoost returns a numeric boost (e.g., 100 * urgency)
-      // We need to check if we actually need this defender role
-      const boost = getDefenderPriorityBoost(room, swarm, roleName);
-      if (boost >= 100) {
-        // High urgency (urgency >= 1.0), use EMERGENCY priority
-        priority = SpawnPriority.EMERGENCY;
-      } else if (boost > 0) {
-        // Some urgency, use HIGH priority
-        priority = SpawnPriority.HIGH;
-      }
-      // else keep original priority
-    } else {
-      // Map base priorities to queue priorities
-      if (priority >= 90) {
-        priority = SpawnPriority.HIGH;
-      } else if (priority >= 60) {
-        priority = SpawnPriority.NORMAL;
-      } else {
-        priority = SpawnPriority.LOW;
-      }
-    }
-
-    // Create spawn request with optimized body
+  for (const demand of planSpawnDemand(room, swarm)) {
     const maxEnergy = room.energyCapacityAvailable;
     let body: BodyTemplate;
 
@@ -110,40 +126,29 @@ export function populateSpawnQueue(room: Room, swarm: SwarmState): void {
       const CREEP_SPAWN_TIME = 3; // Ticks per body part (Screeps constant)
       const ticksToSpawn = estimatedBodyParts * CREEP_SPAWN_TIME;
       const predictedEnergy = energyFlowPredictor.getMaxAffordableInTicks(room, ticksToSpawn);
-      
-      // Use the higher of current capacity or predicted energy
-      // This allows spawning larger bodies when we know energy will be available
       const effectiveMaxEnergy = Math.max(maxEnergy, predictedEnergy);
 
       body = optimizeBody({
         maxEnergy: effectiveMaxEnergy,
-        role: roleName
+        role: demand.roleName
       });
     } catch (error) {
-      logger.error(`Failed to optimize body for ${roleName}: ${error}`, {
+      logger.error(`Failed to optimize body for ${demand.roleName}: ${error}`, {
         subsystem: "SpawnCoordinator"
       });
       continue;
     }
 
-    // Add request to queue
     const request: SpawnRequest = {
-      id: `${roleName}_${Game.time}_${Math.random().toString(36).substring(2, 11)}`,
+      id: `${demand.roleName}_${Game.time}_${Math.random().toString(36).substring(2, 11)}`,
       roomName: room.name,
-      role: def.role,
-      family: def.family,
+      role: demand.def.role,
+      family: demand.def.family,
       body,
-      priority,
+      priority: demand.priority,
+      targetRoom: demand.targetRoom,
       createdAt: Game.time
     };
-
-    // Add target room for remote roles
-    if (roleName === "remoteHarvester" || roleName === "remoteHauler") {
-      const targetRoom = getRemoteRoomNeedingWorkers(room.name, roleName, swarm);
-      if (targetRoom) {
-        request.targetRoom = targetRoom;
-      }
-    }
 
     spawnQueue.addRequest(request);
   }
