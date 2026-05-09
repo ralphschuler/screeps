@@ -12,8 +12,9 @@ import { runScheduledTasks } from "@ralphschuler/screeps-utils";
 import { MapVisualizer, RoomVisualizer } from "@ralphschuler/screeps-visuals";
 import { reconcileTraffic as finalizeMovement, preTick as initMovement } from "screeps-cartographer";
 import { getConfig } from "./config";
-import { creepProcessManager } from "./core/creepProcessManager";
 import { botKernelRuntime } from "./core/botKernelRuntime";
+import { getOwnedRoomsForTick, shouldRunOptionalTickWork } from "./core/botTickLifecycle";
+import { creepProcessManager } from "./core/creepProcessManager";
 import { kernel } from "./core/kernel";
 import { LogLevel, configureLogger, logger } from "./core/logger";
 import { initializeNativeCallsTracking } from "./core/nativeCallsTracker";
@@ -95,7 +96,7 @@ function initializeSystems(): void {
     enableBatching: true,
     maxBatchSize: 50
   });
-  
+
   logger.info("Bot initialized", { subsystem: "SwarmBot", meta: { debug: config.debug, profiling: config.profiling } });
 
   // Initialize unified stats system
@@ -130,7 +131,7 @@ function initializeSystems(): void {
 /**
  * Run visualizations for all owned rooms and map-level visuals
  * OPTIMIZATION: Use cached owned rooms list
- * 
+ *
  * TODO(P3): PERF - Visualization optimization improvements:
  * - Add CPU budget for visualizations to prevent them consuming too much
  *   (in low bucket, skip or simplify visualizations to preserve CPU)
@@ -229,22 +230,11 @@ export function loop(): void {
   // Clear event bus tick-specific caches for coalescing
   botKernelRuntime.startEventTick();
 
-  // Cache owned rooms list (used frequently, expensive to compute)
-  // This cache is shared across all subsystems in the same tick
-  const cacheKey = "_ownedRooms";
-  const cacheTickKey = "_ownedRoomsTick";
-  const globalCache = global as unknown as Record<string, Room[] | number | undefined>;
-  const cachedRooms = globalCache[cacheKey] as Room[] | undefined;
-  const cachedTick = globalCache[cacheTickKey] as number | undefined;
-
-  let ownedRooms: Room[];
-  if (cachedRooms && cachedTick === Game.time) {
-    ownedRooms = cachedRooms;
-  } else {
-    ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
-    globalCache[cacheKey] = ownedRooms;
-    globalCache[cacheTickKey] = Game.time;
-  }
+  const ownedRooms = getOwnedRoomsForTick({
+    tick: Game.time,
+    rooms: () => Object.values(Game.rooms),
+    cache: global as unknown as Record<string, unknown>
+  });
 
   // Refresh persistent room task boards before creep processes request work.
   unifiedStats.measureSubsystem("taskBoard", () => {
@@ -294,7 +284,7 @@ export function loop(): void {
   }
 
   // Run visualizations only when bucket health is normal/high.
-  if (kernel.hasCpuBudget() && bucketMode !== "low" && bucketMode !== "critical") {
+  if (shouldRunOptionalTickWork({ hasCpuBudget: kernel.hasCpuBudget(), bucketMode })) {
     unifiedStats.measureSubsystem("visualizations", () => {
       runVisualizations();
     });
@@ -304,7 +294,7 @@ export function loop(): void {
   finalizeMovement();
 
   // Run scheduled tasks (computation spreading) when bucket health allows optional work.
-  if (kernel.hasCpuBudget() && bucketMode !== "low" && bucketMode !== "critical") {
+  if (shouldRunOptionalTickWork({ hasCpuBudget: kernel.hasCpuBudget(), bucketMode })) {
     unifiedStats.measureSubsystem("scheduledTasks", () => {
       const availableCpu = Math.max(0, Game.cpu.limit - Game.cpu.getUsed());
       runScheduledTasks(availableCpu);
@@ -316,10 +306,12 @@ export function loop(): void {
   memoryManager.persistHeapCache();
 
   // Collect kernel process stats before finalizing
-  unifiedStats.collectProcessStats(kernel.getProcesses().reduce((map, p) => {
-    map.set(p.id, p);
-    return map;
-  }, new Map()));
+  unifiedStats.collectProcessStats(
+    kernel.getProcesses().reduce((map, p) => {
+      map.set(p.id, p);
+      return map;
+    }, new Map())
+  );
 
   // Collect kernel budget stats (adaptive budgets)
   unifiedStats.collectKernelBudgetStats(kernel);

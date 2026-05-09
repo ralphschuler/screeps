@@ -137,7 +137,7 @@ export class LabManager {
 
       const entry = config.labs.find(l => l.labId === lab.id);
       const expectedResource = entry?.resourceType;
-      
+
       // Wrong resource in input lab
       if (expectedResource && mineralType !== expectedResource) {
         const amount = lab.store[mineralType] ?? 0;
@@ -232,15 +232,12 @@ export class LabManager {
   /**
    * Prepare boost lab with compound
    */
-  public prepareBoostLab(
-    roomName: string,
-    compound: MineralCompoundConstant
-  ): Id<StructureLab> | null {
+  public prepareBoostLab(roomName: string, compound: MineralCompoundConstant): Id<StructureLab> | null {
     const config = labConfigManager.getConfig(roomName);
     if (!config) return null;
 
     const boostLabs = labConfigManager.getBoostLabs(roomName);
-    
+
     // Find lab already with this compound
     for (const lab of boostLabs) {
       if (lab.mineralType === compound && (lab.store[compound] ?? 0) >= 30) {

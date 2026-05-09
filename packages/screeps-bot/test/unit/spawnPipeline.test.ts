@@ -84,7 +84,7 @@ describe("spawn pipeline", () => {
       energyCapacityAvailable: 800,
       energyAvailable: 800,
       controller: { my: true, level: 4 },
-      find: (type: number) => type === FIND_MY_SPAWNS ? [spawn] : []
+      find: (type: number) => (type === FIND_MY_SPAWNS ? [spawn] : [])
     } as unknown as Room;
     Game.rooms.W1N1 = room;
     Game.creeps = {

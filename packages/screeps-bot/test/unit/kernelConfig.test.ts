@@ -107,11 +107,11 @@ describe("Kernel CPU configuration", () => {
     const expectedReserved20 = 20 * 0.02; // 0.4 CPU
     const effectiveLimit20 = 20 * 0.98; // 19.6 CPU (targetCpuUsage = 0.98)
     const stopAt20 = effectiveLimit20 - expectedReserved20; // 19.2 CPU
-    
+
     // Mock Game.cpu.getUsed to be just under the stop threshold
     Game.cpu.getUsed = () => stopAt20 - 0.1;
     expect(kernel.hasCpuBudget()).to.be.true;
-    
+
     // Mock Game.cpu.getUsed to be over the stop threshold
     Game.cpu.getUsed = () => stopAt20 + 0.1;
     expect(kernel.hasCpuBudget()).to.be.false;
@@ -121,10 +121,10 @@ describe("Kernel CPU configuration", () => {
     const expectedReserved50 = 50 * 0.02; // 1.0 CPU
     const effectiveLimit50 = 50 * 0.98; // 49.0 CPU
     const stopAt50 = effectiveLimit50 - expectedReserved50; // 48.0 CPU
-    
+
     Game.cpu.getUsed = () => stopAt50 - 0.1;
     expect(kernel.hasCpuBudget()).to.be.true;
-    
+
     Game.cpu.getUsed = () => stopAt50 + 0.1;
     expect(kernel.hasCpuBudget()).to.be.false;
 
@@ -133,10 +133,10 @@ describe("Kernel CPU configuration", () => {
     const expectedReserved100 = 100 * 0.02; // 2.0 CPU
     const effectiveLimit100 = 100 * 0.98; // 98 CPU
     const stopAt100 = effectiveLimit100 - expectedReserved100; // 96 CPU
-    
+
     Game.cpu.getUsed = () => stopAt100 - 0.1;
     expect(kernel.hasCpuBudget()).to.be.true;
-    
+
     Game.cpu.getUsed = () => stopAt100 + 0.1;
     expect(kernel.hasCpuBudget()).to.be.false;
 

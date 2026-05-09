@@ -26,11 +26,11 @@ describe("Cluster Resource Balancing", () => {
       // Mock cluster with one room having excess energy
       const cluster = {
         rooms: {
-          "W1N1": {
+          W1N1: {
             storage: { store: { energy: 900000 } }, // Surplus
             terminal: { store: { energy: 50000 } }
           },
-          "W1N2": {
+          W1N2: {
             storage: { store: { energy: 100000 } }, // Deficit
             terminal: { store: { energy: 10000 } }
           }
@@ -51,11 +51,11 @@ describe("Cluster Resource Balancing", () => {
     it("should identify resource deficit in rooms", () => {
       const cluster = {
         rooms: {
-          "W1N1": {
+          W1N1: {
             storage: { store: { energy: 500000 } },
             terminal: { store: { energy: 50000 } }
           },
-          "W1N2": {
+          W1N2: {
             storage: { store: { energy: 50000 } }, // Deficit
             terminal: { store: { energy: 5000 } }
           }
@@ -111,21 +111,18 @@ describe("Cluster Resource Balancing", () => {
     it("should identify cluster member rooms", () => {
       const empire = {
         clusters: {
-          "cluster1": {
+          cluster1: {
             homeRooms: ["W1N1", "W1N2"],
             remotes: ["W2N1", "W2N2"]
           },
-          "cluster2": {
+          cluster2: {
             homeRooms: ["E1S1"],
             remotes: ["E2S1"]
           }
         }
       };
 
-      const cluster1Rooms = [
-        ...empire.clusters.cluster1.homeRooms,
-        ...empire.clusters.cluster1.remotes
-      ];
+      const cluster1Rooms = [...empire.clusters.cluster1.homeRooms, ...empire.clusters.cluster1.remotes];
 
       expect(cluster1Rooms).to.have.lengthOf(4);
       expect(cluster1Rooms).to.include.members(["W1N1", "W1N2", "W2N1", "W2N2"]);
@@ -139,11 +136,11 @@ describe("Cluster Resource Balancing", () => {
 
       const cluster = {
         rooms: {
-          "W1N1": {
+          W1N1: {
             storage: { store: { energy: 500000, H: 1000 } },
             terminal: { store: { energy: 50000, H: 500 } }
           },
-          "W1N2": {
+          W1N2: {
             storage: { store: { energy: 300000, H: 800 } },
             terminal: { store: { energy: 30000, H: 200 } }
           }
@@ -165,11 +162,11 @@ describe("Cluster Resource Balancing", () => {
 
     it("should distribute resources based on room needs", () => {
       const rooms = {
-        "W1N1": {
+        W1N1: {
           needs: { energy: 0, H: 5000 }, // Needs minerals
           has: { energy: 800000, H: 0 }
         },
-        "W1N2": {
+        W1N2: {
           needs: { energy: 200000, H: 0 }, // Needs energy
           has: { energy: 100000, H: 10000 }
         }
@@ -200,8 +197,8 @@ describe("Cluster Resource Balancing", () => {
       const parseRoomName = (roomName: string) => {
         const match = roomName.match(/([WE])(\d+)([NS])(\d+)/);
         if (!match) return { x: 0, y: 0 };
-        const x = (match[1] === 'W' ? -1 : 1) * parseInt(match[2]);
-        const y = (match[3] === 'N' ? 1 : -1) * parseInt(match[4]);
+        const x = (match[1] === "W" ? -1 : 1) * parseInt(match[2]);
+        const y = (match[3] === "N" ? 1 : -1) * parseInt(match[4]);
         return { x, y };
       };
 
@@ -277,7 +274,7 @@ describe("Cluster Resource Balancing", () => {
         spawns: [{ energy: 100 }] as MockSpawn[]
       };
 
-      const totalEnergy = 
+      const totalEnergy =
         (room.storage?.store.energy || 0) +
         (room.terminal?.store.energy || 0) +
         room.spawns.reduce((sum: number, s: MockSpawn) => sum + (s.energy || 0), 0);
@@ -310,7 +307,7 @@ describe("Cluster Resource Balancing", () => {
   describe("Mineral Distribution", () => {
     it("should balance base minerals across cluster", () => {
       const baseMinerals = ["H", "O", "U", "L", "K", "Z", "X"];
-      
+
       interface ClusterMinerals {
         [mineral: string]: number;
       }
@@ -318,10 +315,10 @@ describe("Cluster Resource Balancing", () => {
       interface ClusterRooms {
         [roomName: string]: ClusterMinerals;
       }
-      
+
       const cluster: ClusterRooms = {
-        "W1N1": { H: 50000, O: 0, U: 5000, L: 10000, K: 20000, Z: 0, X: 5000 },
-        "W1N2": { H: 0, O: 40000, U: 0, L: 5000, K: 0, Z: 30000, X: 0 }
+        W1N1: { H: 50000, O: 0, U: 5000, L: 10000, K: 20000, Z: 0, X: 5000 },
+        W1N2: { H: 0, O: 40000, U: 0, L: 5000, K: 0, Z: 30000, X: 0 }
       };
 
       // Calculate which minerals to share
@@ -355,7 +352,7 @@ describe("Cluster Resource Balancing", () => {
 
     it("should maintain minimum reserves per room", () => {
       const MIN_MINERAL_RESERVE = 3000;
-      
+
       const roomMinerals = { H: 5000, O: 2000, U: 10000 };
 
       const canShare = (mineral: string, amount: number) => {
@@ -372,9 +369,9 @@ describe("Cluster Resource Balancing", () => {
 describe("Cluster Performance", () => {
   it("should track cluster-wide CPU usage", () => {
     const roomCPU = {
-      "W1N1": 5.2,
-      "W1N2": 3.8,
-      "W2N1": 2.1 // Remote
+      W1N1: 5.2,
+      W1N2: 3.8,
+      W2N1: 2.1 // Remote
     };
 
     const totalCPU = Object.values(roomCPU).reduce((sum, cpu) => sum + cpu, 0);
@@ -386,10 +383,10 @@ describe("Cluster Performance", () => {
 
   it("should identify high CPU rooms in cluster", () => {
     const roomCPU = {
-      "W1N1": 5.2,
-      "W1N2": 3.8,
-      "W2N1": 8.5, // High CPU
-      "W2N2": 2.1
+      W1N1: 5.2,
+      W1N2: 3.8,
+      W2N1: 8.5, // High CPU
+      W2N2: 2.1
     };
 
     const CPU_THRESHOLD = 5.0;

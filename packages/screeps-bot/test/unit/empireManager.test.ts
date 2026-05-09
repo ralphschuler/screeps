@@ -479,11 +479,7 @@ describe("Empire Manager Automation", () => {
       const harvestTime = power / 2;
       const totalTime = travelTime * 2 + harvestTime;
 
-      const isProfitable =
-        timeRemaining > totalTime * 1.5 &&
-        distance <= 5 &&
-        power >= 1000 &&
-        closestRoomRcl >= 7;
+      const isProfitable = timeRemaining > totalTime * 1.5 && distance <= 5 && power >= 1000 && closestRoomRcl >= 7;
 
       expect(isProfitable).to.be.true;
     });

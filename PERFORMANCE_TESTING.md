@@ -480,13 +480,11 @@ Performance metrics can be exported to Grafana:
 # Export to Prometheus Pushgateway
 METRICS_FORMAT=prometheus \
 PROMETHEUS_PUSHGATEWAY_URL=http://localhost:9091 \
-node scripts/export-to-grafana.js
 
 # Export to Graphite
 METRICS_FORMAT=graphite \
 GRAPHITE_HOST=localhost \
 GRAPHITE_PORT=2003 \
-node scripts/export-to-grafana.js
 ```
 
 ### Metrics Exported

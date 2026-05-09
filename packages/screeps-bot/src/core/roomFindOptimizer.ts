@@ -28,8 +28,9 @@ import {
   cachedRoomFind,
   getCachedObjectById,
   invalidateFindType,
-  invalidateRoomCache
-, invalidateStructureCache } from "@ralphschuler/screeps-cache";
+  invalidateRoomCache,
+  invalidateStructureCache
+} from "@ralphschuler/screeps-cache";
 
 // =============================================================================
 // Types
@@ -261,7 +262,7 @@ export class RoomFindOptimizer {
       normal: 20,
       highBucket: 5
     };
-    
+
     this.ttlConfig[type] = {
       ...existing,
       ...config
@@ -290,7 +291,7 @@ export class ObjectIdOptimizer {
 
   /**
    * Batch get objects by IDs with caching
-   * 
+   *
    * Note: This is a convenience wrapper that processes each ID individually.
    * It provides a cleaner API but is not a performance optimization over
    * calling getById multiple times.
@@ -336,9 +337,6 @@ export function optimizedFind<T>(
 /**
  * Optimized Game.getObjectById() with caching (convenience function)
  */
-export function optimizedGetById<T extends _HasId>(
-  id: Id<T> | null | undefined,
-  ttl?: number
-): T | null {
+export function optimizedGetById<T extends _HasId>(id: Id<T> | null | undefined, ttl?: number): T | null {
   return objectIdOptimizer.getById(id, ttl);
 }

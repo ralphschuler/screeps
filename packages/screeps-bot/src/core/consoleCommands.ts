@@ -12,8 +12,6 @@
  * - Configuration: Commands for viewing/modifying bot configuration
  */
 
- 
-
 import { globalCache } from "@ralphschuler/screeps-cache";
 import { visualizationManager } from "@ralphschuler/screeps-visuals";
 import { getConfig, updateConfig } from "../config";

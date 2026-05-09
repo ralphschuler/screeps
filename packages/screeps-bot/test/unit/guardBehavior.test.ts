@@ -123,7 +123,7 @@ describe("Guard Behavior", () => {
           delete mockMemory.assistTarget;
         }
         expect(mockMemory.assistTarget).to.be.undefined;
-        
+
         // Simulate it being set again (shouldn't persist)
         mockMemory.assistTarget = "W3N1";
       }

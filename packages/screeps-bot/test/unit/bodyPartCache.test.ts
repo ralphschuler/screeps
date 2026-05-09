@@ -18,7 +18,7 @@ describe("bodyPartCache", () => {
     // Reset Game
     // @ts-ignore: Setting up test environment
     global.Game = { time: 1000 };
-    
+
     clearBodyPartCache();
   });
 
@@ -40,7 +40,7 @@ describe("bodyPartCache", () => {
         { type: CARRY, hits: 100 },
         { type: MOVE, hits: 100 }
       ]);
-      
+
       assert.equal(getCachedBodyPartCount(creep, WORK), 2);
       assert.equal(getCachedBodyPartCount(creep, CARRY), 1);
       assert.equal(getCachedBodyPartCount(creep, MOVE), 1);
@@ -54,7 +54,7 @@ describe("bodyPartCache", () => {
         { type: CARRY, hits: 100 },
         { type: MOVE, hits: 0 } // damaged
       ]);
-      
+
       assert.equal(getCachedBodyPartCount(creep, WORK, false), 2);
       assert.equal(getCachedBodyPartCount(creep, WORK, true), 1);
       assert.equal(getCachedBodyPartCount(creep, MOVE, false), 1);
@@ -66,13 +66,13 @@ describe("bodyPartCache", () => {
         { type: WORK, hits: 100 },
         { type: CARRY, hits: 100 }
       ]);
-      
+
       const count1 = getCachedBodyPartCount(creep, WORK);
       const count2 = getCachedBodyPartCount(creep, WORK);
-      
+
       assert.equal(count1, count2);
       assert.equal(count1, 1);
-      
+
       // Should be in cache
       const stats = getBodyPartCacheStats();
       assert.equal(stats.size, 1);
@@ -85,7 +85,7 @@ describe("bodyPartCache", () => {
         { type: ATTACK, hits: 100 },
         { type: MOVE, hits: 100 }
       ]);
-      
+
       assert.isTrue(hasCachedBodyPart(creep, ATTACK));
       assert.isTrue(hasCachedBodyPart(creep, MOVE));
       assert.isFalse(hasCachedBodyPart(creep, HEAL));
@@ -96,7 +96,7 @@ describe("bodyPartCache", () => {
         { type: ATTACK, hits: 100 },
         { type: HEAL, hits: 0 } // damaged
       ]);
-      
+
       assert.isTrue(hasCachedBodyPart(creep, ATTACK, true));
       assert.isFalse(hasCachedBodyPart(creep, HEAL, true));
       assert.isTrue(hasCachedBodyPart(creep, HEAL, false));
@@ -110,7 +110,7 @@ describe("bodyPartCache", () => {
         { type: ATTACK, hits: 100 },
         { type: MOVE, hits: 100 }
       ]);
-      
+
       const damage = getCachedDamagePotential(creep);
       assert.equal(damage, 60); // 2 * 30
     });
@@ -121,7 +121,7 @@ describe("bodyPartCache", () => {
         { type: RANGED_ATTACK, hits: 100 },
         { type: RANGED_ATTACK, hits: 100 }
       ]);
-      
+
       const damage = getCachedDamagePotential(creep);
       assert.equal(damage, 30); // 3 * 10
     });
@@ -132,7 +132,7 @@ describe("bodyPartCache", () => {
         { type: RANGED_ATTACK, hits: 100 },
         { type: MOVE, hits: 100 }
       ]);
-      
+
       const damage = getCachedDamagePotential(creep);
       assert.equal(damage, 40); // 30 + 10
     });
@@ -143,7 +143,7 @@ describe("bodyPartCache", () => {
         { type: ATTACK, hits: 0 }, // damaged
         { type: RANGED_ATTACK, hits: 0 } // damaged
       ]);
-      
+
       const damage = getCachedDamagePotential(creep);
       assert.equal(damage, 30); // Only 1 ATTACK
     });
@@ -156,7 +156,7 @@ describe("bodyPartCache", () => {
         { type: HEAL, hits: 100 },
         { type: MOVE, hits: 100 }
       ]);
-      
+
       const heal = getCachedHealPotential(creep);
       assert.equal(heal, 24); // 2 * 12
     });
@@ -166,7 +166,7 @@ describe("bodyPartCache", () => {
         { type: HEAL, hits: 100 },
         { type: HEAL, hits: 0 } // damaged
       ]);
-      
+
       const heal = getCachedHealPotential(creep);
       assert.equal(heal, 12); // Only 1 HEAL
     });
@@ -179,7 +179,7 @@ describe("bodyPartCache", () => {
         { type: CARRY, hits: 100 },
         { type: MOVE, hits: 100 }
       ]);
-      
+
       const capacity = getCachedCarryCapacity(creep);
       assert.equal(capacity, 100); // 2 * 50
     });
@@ -189,7 +189,7 @@ describe("bodyPartCache", () => {
         { type: CARRY, hits: 100 },
         { type: CARRY, hits: 0 } // damaged
       ]);
-      
+
       const capacity = getCachedCarryCapacity(creep);
       assert.equal(capacity, 50); // Only 1 CARRY
     });
@@ -197,19 +197,17 @@ describe("bodyPartCache", () => {
 
   describe("cache invalidation", () => {
     it("should clear cache on new tick", () => {
-      const creep = createMockCreep("test14", [
-        { type: WORK, hits: 100 }
-      ]);
-      
+      const creep = createMockCreep("test14", [{ type: WORK, hits: 100 }]);
+
       getCachedBodyPartCount(creep, WORK);
-      
+
       const stats1 = getBodyPartCacheStats();
       assert.equal(stats1.size, 1);
-      
+
       // Advance game time
       // @ts-ignore: Modifying test environment
       global.Game.time = 1001;
-      
+
       // Cache should be cleared
       const stats2 = getBodyPartCacheStats();
       assert.equal(stats2.size, 0);

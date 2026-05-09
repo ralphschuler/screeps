@@ -30,7 +30,7 @@ describe("SwarmBot logging", () => {
 
   it("logs critical bucket mode through the logger while core processing continues", async () => {
     // Critical bucket should still run the core kernel path while optional work is deferred.
-    
+
     const warnSpy = sandbox.spy(loggerModule.logger, "warn");
 
     const bot = await reloadSwarmBot();
@@ -59,11 +59,17 @@ describe("SwarmBot logging", () => {
 
     // Verify critical bucket warning is logged
     sinon.assert.called(warnSpy);
-    const warnCall = warnSpy.getCalls().find((call: any) => 
-      call.args[0] && call.args[0].includes("CRITICAL") && call.args[0].includes("CPU bucket") && call.args[0].includes("deferring optional work")
-    );
+    const warnCall = warnSpy
+      .getCalls()
+      .find(
+        (call: any) =>
+          call.args[0] &&
+          call.args[0].includes("CRITICAL") &&
+          call.args[0].includes("CPU bucket") &&
+          call.args[0].includes("deferring optional work")
+      );
     assert.isDefined(warnCall, "Should log critical bucket warning with 'deferring optional work' message");
-    
+
     // Verify kernel.run() was called (normal processing continues despite critical bucket)
     sinon.assert.called(kernelRunStub);
   });
@@ -87,11 +93,11 @@ describe("SwarmBot logging", () => {
     // Avoid same-tick owned-room cache entries left by earlier suites.
     // @ts-ignore: test setup for Game globals
     global.Game.time = 12346;
-    
+
     // @ts-ignore: test setup for Game globals
     global.Game.rooms = {
-      W1N1: { 
-        name: "W1N1", 
+      W1N1: {
+        name: "W1N1",
         controller: { my: true } as any,
         find: () => [] // Mock find method to return empty array
       } as any
@@ -100,9 +106,9 @@ describe("SwarmBot logging", () => {
     bot.loop();
 
     sinon.assert.called(errorSpy);
-    const errorCall = errorSpy.getCalls().find((call: any) =>
-      call.args[0] && call.args[0].includes("Visualization error in W1N1")
-    );
+    const errorCall = errorSpy
+      .getCalls()
+      .find((call: any) => call.args[0] && call.args[0].includes("Visualization error in W1N1"));
     assert.isDefined(errorCall);
   });
 });

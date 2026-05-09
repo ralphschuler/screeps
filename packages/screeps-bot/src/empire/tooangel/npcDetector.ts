@@ -1,6 +1,6 @@
 /**
  * TooAngel NPC Detector
- * 
+ *
  * Scans for TooAngel NPC rooms by:
  * - Looking for quest advertisements on controller signs
  * - Tracking terminal availability for communication
@@ -19,11 +19,8 @@ export function parseQuestSign(sign: string | undefined): TooAngelQuestSign | nu
 
   try {
     const parsed = JSON.parse(sign);
-    
-    if (parsed.type === "quest" && 
-        parsed.id && 
-        parsed.origin && 
-        typeof parsed.info === "string") {
+
+    if (parsed.type === "quest" && parsed.id && parsed.origin && typeof parsed.info === "string") {
       return parsed as TooAngelQuestSign;
     }
   } catch {
@@ -42,17 +39,17 @@ export function scanRoomForNPC(room: Room): TooAngelNPCRoom | null {
   }
 
   const controller = room.controller;
-  
+
   // Check for quest sign
   const questSign = parseQuestSign(controller.sign?.text);
-  
+
   if (!questSign) {
     return null;
   }
 
   // Found a TooAngel NPC room!
   const terminal = room.terminal;
-  
+
   return {
     roomName: room.name,
     lastSeen: Game.time,
@@ -70,7 +67,7 @@ export function scanForNPCRooms(): TooAngelNPCRoom[] {
   for (const roomName in Game.rooms) {
     const room = Game.rooms[roomName];
     const npcRoom = scanRoomForNPC(room);
-    
+
     if (npcRoom) {
       logger.info(`Detected TooAngel NPC room: ${roomName}`, {
         subsystem: "TooAngel"
@@ -95,11 +92,11 @@ export function getNPCRooms(): Record<string, TooAngelNPCRoom> {
  */
 export function updateNPCRoom(npcRoom: TooAngelNPCRoom): void {
   const mem = Memory as { tooangel?: { npcRooms?: Record<string, TooAngelNPCRoom> } };
-  
+
   if (!mem.tooangel) {
     mem.tooangel = {};
   }
-  
+
   if (!mem.tooangel.npcRooms) {
     mem.tooangel.npcRooms = {};
   }

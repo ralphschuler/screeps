@@ -46,7 +46,7 @@ describe("Creep Metrics", () => {
   describe("initializeMetrics", () => {
     it("should initialize metrics with zero values", () => {
       initializeMetrics(mockMemory);
-      
+
       assert.isDefined(mockMemory._metrics);
       assert.equal(mockMemory._metrics!.tasksCompleted, 0);
       assert.equal(mockMemory._metrics!.energyTransferred, 0);
@@ -71,7 +71,7 @@ describe("Creep Metrics", () => {
       };
 
       initializeMetrics(mockMemory);
-      
+
       assert.equal(mockMemory._metrics.tasksCompleted, 5);
       assert.equal(mockMemory._metrics.energyHarvested, 200);
     });
@@ -80,7 +80,7 @@ describe("Creep Metrics", () => {
   describe("getMetrics", () => {
     it("should return metrics and initialize if needed", () => {
       const metrics = getMetrics(mockMemory);
-      
+
       assert.isDefined(metrics);
       assert.equal(metrics.tasksCompleted, 0);
     });
@@ -98,7 +98,7 @@ describe("Creep Metrics", () => {
       };
 
       const metrics = getMetrics(mockMemory);
-      
+
       assert.equal(metrics.tasksCompleted, 10);
       assert.equal(metrics.energyTransferred, 500);
     });
@@ -108,7 +108,7 @@ describe("Creep Metrics", () => {
     it("should increment energyHarvested", () => {
       recordHarvest(mockMemory, 10);
       assert.equal(mockMemory._metrics!.energyHarvested, 10);
-      
+
       recordHarvest(mockMemory, 5);
       assert.equal(mockMemory._metrics!.energyHarvested, 15);
     });
@@ -118,7 +118,7 @@ describe("Creep Metrics", () => {
     it("should increment energyTransferred", () => {
       recordTransfer(mockMemory, 50);
       assert.equal(mockMemory._metrics!.energyTransferred, 50);
-      
+
       recordTransfer(mockMemory, 25);
       assert.equal(mockMemory._metrics!.energyTransferred, 75);
     });
@@ -128,7 +128,7 @@ describe("Creep Metrics", () => {
     it("should increment buildProgress", () => {
       recordBuild(mockMemory, 100);
       assert.equal(mockMemory._metrics!.buildProgress, 100);
-      
+
       recordBuild(mockMemory, 50);
       assert.equal(mockMemory._metrics!.buildProgress, 150);
     });
@@ -138,7 +138,7 @@ describe("Creep Metrics", () => {
     it("should increment repairProgress", () => {
       recordRepair(mockMemory, 200);
       assert.equal(mockMemory._metrics!.repairProgress, 200);
-      
+
       recordRepair(mockMemory, 100);
       assert.equal(mockMemory._metrics!.repairProgress, 300);
     });
@@ -148,7 +148,7 @@ describe("Creep Metrics", () => {
     it("should increment upgradeProgress", () => {
       recordUpgrade(mockMemory, 150);
       assert.equal(mockMemory._metrics!.upgradeProgress, 150);
-      
+
       recordUpgrade(mockMemory, 75);
       assert.equal(mockMemory._metrics!.upgradeProgress, 225);
     });
@@ -158,7 +158,7 @@ describe("Creep Metrics", () => {
     it("should increment damageDealt", () => {
       recordDamage(mockMemory, 30);
       assert.equal(mockMemory._metrics!.damageDealt, 30);
-      
+
       recordDamage(mockMemory, 40);
       assert.equal(mockMemory._metrics!.damageDealt, 70);
     });
@@ -168,7 +168,7 @@ describe("Creep Metrics", () => {
     it("should increment healingDone", () => {
       recordHealing(mockMemory, 12);
       assert.equal(mockMemory._metrics!.healingDone, 12);
-      
+
       recordHealing(mockMemory, 8);
       assert.equal(mockMemory._metrics!.healingDone, 20);
     });
@@ -178,7 +178,7 @@ describe("Creep Metrics", () => {
     it("should increment tasksCompleted", () => {
       recordTaskComplete(mockMemory);
       assert.equal(mockMemory._metrics!.tasksCompleted, 1);
-      
+
       recordTaskComplete(mockMemory);
       recordTaskComplete(mockMemory);
       assert.equal(mockMemory._metrics!.tasksCompleted, 3);
@@ -201,7 +201,7 @@ describe("Creep Metrics", () => {
       initializeMetrics(mockMemory);
       recordHarvest(mockMemory, 100);
       recordTransfer(mockMemory, 50);
-      
+
       const summary = getEfficiencySummary(mockMemory);
       assert.include(summary, "100 harvested");
       assert.include(summary, "50 transferred");
@@ -212,7 +212,7 @@ describe("Creep Metrics", () => {
       recordBuild(mockMemory, 500);
       recordTaskComplete(mockMemory);
       recordTaskComplete(mockMemory);
-      
+
       const summary = getEfficiencySummary(mockMemory);
       assert.include(summary, "2 tasks");
       assert.include(summary, "500 built");
@@ -222,7 +222,7 @@ describe("Creep Metrics", () => {
       initializeMetrics(mockMemory);
       recordDamage(mockMemory, 300);
       recordHealing(mockMemory, 150);
-      
+
       const summary = getEfficiencySummary(mockMemory);
       assert.include(summary, "300 damage");
       assert.include(summary, "150 healing");
@@ -231,7 +231,7 @@ describe("Creep Metrics", () => {
     it("should summarize repair activity", () => {
       initializeMetrics(mockMemory);
       recordRepair(mockMemory, 1000);
-      
+
       const summary = getEfficiencySummary(mockMemory);
       assert.include(summary, "1000 repaired");
     });
@@ -239,7 +239,7 @@ describe("Creep Metrics", () => {
     it("should summarize upgrade activity", () => {
       initializeMetrics(mockMemory);
       recordUpgrade(mockMemory, 500);
-      
+
       const summary = getEfficiencySummary(mockMemory);
       assert.include(summary, "500 upgraded");
     });
@@ -250,7 +250,7 @@ describe("Creep Metrics", () => {
       recordHarvest(mockMemory, 200);
       recordTransfer(mockMemory, 150);
       recordBuild(mockMemory, 75);
-      
+
       const summary = getEfficiencySummary(mockMemory);
       assert.include(summary, "1 tasks");
       assert.include(summary, "200 harvested");
@@ -273,7 +273,7 @@ describe("Creep Metrics", () => {
       };
 
       resetMetrics(mockMemory);
-      
+
       assert.equal(mockMemory._metrics.tasksCompleted, 0);
       assert.equal(mockMemory._metrics.energyTransferred, 0);
       assert.equal(mockMemory._metrics.energyHarvested, 0);
@@ -289,21 +289,21 @@ describe("Creep Metrics", () => {
     it("should track a complete harvester lifecycle", () => {
       // Simulate a harvester's work over several ticks
       initializeMetrics(mockMemory);
-      
+
       // Harvest energy
       recordHarvest(mockMemory, 10);
       recordHarvest(mockMemory, 10);
       recordHarvest(mockMemory, 10);
-      
+
       // Transfer to spawn
       recordTransfer(mockMemory, 30);
       recordTaskComplete(mockMemory);
-      
+
       // Verify metrics
       assert.equal(mockMemory._metrics!.energyHarvested, 30);
       assert.equal(mockMemory._metrics!.energyTransferred, 30);
       assert.equal(mockMemory._metrics!.tasksCompleted, 1);
-      
+
       const summary = getEfficiencySummary(mockMemory);
       assert.include(summary, "1 tasks");
       assert.include(summary, "30 harvested");
@@ -312,10 +312,10 @@ describe("Creep Metrics", () => {
 
     it("should track a complete builder lifecycle", () => {
       initializeMetrics(mockMemory);
-      
+
       // Collect energy
       recordHarvest(mockMemory, 50);
-      
+
       // Build structure
       recordBuild(mockMemory, 10);
       recordBuild(mockMemory, 10);
@@ -323,7 +323,7 @@ describe("Creep Metrics", () => {
       recordBuild(mockMemory, 10);
       recordBuild(mockMemory, 10);
       recordTaskComplete(mockMemory); // Construction complete
-      
+
       // Verify metrics
       assert.equal(mockMemory._metrics!.energyHarvested, 50);
       assert.equal(mockMemory._metrics!.buildProgress, 50);
@@ -332,15 +332,15 @@ describe("Creep Metrics", () => {
 
     it("should track a complete combat creep lifecycle", () => {
       initializeMetrics(mockMemory);
-      
+
       // Deal damage
       recordDamage(mockMemory, 30);
       recordDamage(mockMemory, 30);
       recordDamage(mockMemory, 30);
-      
+
       // Get healed
       recordHealing(mockMemory, 12);
-      
+
       // Verify metrics
       assert.equal(mockMemory._metrics!.damageDealt, 90);
       assert.equal(mockMemory._metrics!.healingDone, 12);

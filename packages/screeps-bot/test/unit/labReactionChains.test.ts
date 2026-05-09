@@ -73,7 +73,7 @@ describe("Lab Reaction Chains", () => {
 
     it("should validate chain dependencies", () => {
       const compound = RESOURCE_UTRIUM_ACID;
-      
+
       // Check if we have all dependencies
       const dependencies = {
         base: [RESOURCE_HYDROGEN, RESOURCE_OXYGEN, RESOURCE_UTRIUM],
@@ -129,7 +129,7 @@ describe("Lab Reaction Chains", () => {
       const requiredPerReaction = 5;
       const minReactions = 100;
 
-      const canProduce = 
+      const canProduce =
         resources[RESOURCE_HYDROGEN] >= requiredPerReaction * minReactions &&
         resources[RESOURCE_OXYGEN] >= requiredPerReaction * minReactions;
 
@@ -158,10 +158,7 @@ describe("Lab Reaction Chains", () => {
       const lab1 = { x: 25, y: 25 };
       const lab2 = { x: 27, y: 25 };
 
-      const distance = Math.max(
-        Math.abs(lab1.x - lab2.x),
-        Math.abs(lab1.y - lab2.y)
-      );
+      const distance = Math.max(Math.abs(lab1.x - lab2.x), Math.abs(lab1.y - lab2.y));
 
       const withinRange = distance <= 2;
 
@@ -172,10 +169,7 @@ describe("Lab Reaction Chains", () => {
       const lab1 = { x: 25, y: 25 };
       const lab2 = { x: 30, y: 25 };
 
-      const distance = Math.max(
-        Math.abs(lab1.x - lab2.x),
-        Math.abs(lab1.y - lab2.y)
-      );
+      const distance = Math.max(Math.abs(lab1.x - lab2.x), Math.abs(lab1.y - lab2.y));
 
       const withinRange = distance <= 2;
 
@@ -364,7 +358,7 @@ describe("Lab Reaction Chains", () => {
 
       // Calculate urgency as percentage of target
       compounds.forEach(c => {
-        c.urgency = 1 - (c.current / c.target);
+        c.urgency = 1 - c.current / c.target;
       });
 
       compounds.sort((a, b) => b.urgency - a.urgency);

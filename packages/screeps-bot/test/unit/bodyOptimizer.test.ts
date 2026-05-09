@@ -98,7 +98,8 @@ describe("BodyOptimizer", () => {
 
       // With roads, should have more CARRY per MOVE
       const noRoadsRatio = noRoads.parts.filter(p => p === CARRY).length / noRoads.parts.filter(p => p === MOVE).length;
-      const withRoadsRatio = withRoads.parts.filter(p => p === CARRY).length / withRoads.parts.filter(p => p === MOVE).length;
+      const withRoadsRatio =
+        withRoads.parts.filter(p => p === CARRY).length / withRoads.parts.filter(p => p === MOVE).length;
 
       assert.isTrue(withRoadsRatio > noRoadsRatio, "Roads should allow higher CARRY:MOVE ratio");
     });

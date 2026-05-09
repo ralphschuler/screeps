@@ -13,7 +13,7 @@ describe("Kernel wrap-around process queue", () => {
   beforeEach(() => {
     resetConfig();
     executionLog = [];
-    
+
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore: Allow setting test values
     global.Game = {
@@ -107,7 +107,7 @@ describe("Kernel wrap-around process queue", () => {
       // Return high CPU usage after p1 has executed to block p2 and p3
       return p1Executed ? 100 : cpuUsage;
     };
-    
+
     kernel.run();
 
     expect(executionLog).to.deep.equal(["p1"]);
@@ -127,7 +127,7 @@ describe("Kernel wrap-around process queue", () => {
     // Register 5 processes
     const executionCounts = new Map<string, number>();
     let currentExecutions = 0;
-    
+
     for (let i = 1; i <= 5; i++) {
       const id = `p${i}`;
       executionCounts.set(id, 0);
@@ -477,7 +477,7 @@ describe("Kernel wrap-around process queue", () => {
     // NOT restart from the beginning. Order by priority, then continue wrap-around.
     cpuUsage = 1;
     kernel.run();
-    
+
     // Should start after hauler1 (last executed), wrapping around
     // All have same priority, so sorted order is stable, new process added at end
     // Expected: [harvester1, larvaWorker1, hauler1, larvaWorker2]
@@ -489,7 +489,7 @@ describe("Kernel wrap-around process queue", () => {
     Game.time += 1;
     cpuUsage = 1;
     kernel.run();
-    
+
     // Should start after hauler1 (last executed), wrap to beginning
     expect(executionLog).to.deep.equal(["larvaWorker2", "harvester1", "larvaWorker1", "hauler1"]);
   });

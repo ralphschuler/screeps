@@ -23,26 +23,26 @@ describe("RoomVisual Extensions", () => {
 
   beforeEach(() => {
     calledMethods = [];
-    
+
     // Create a mock RoomVisual with tracking
     mockVisual = {
-      circle: function(...args: any[]) {
+      circle: function (...args: any[]) {
         calledMethods.push("circle");
         return mockVisual;
       },
-      rect: function(...args: any[]) {
+      rect: function (...args: any[]) {
         calledMethods.push("rect");
         return mockVisual;
       },
-      poly: function(...args: any[]) {
+      poly: function (...args: any[]) {
         calledMethods.push("poly");
         return mockVisual;
       },
-      text: function(...args: any[]) {
+      text: function (...args: any[]) {
         calledMethods.push("text");
         return mockVisual;
       },
-      line: function(...args: any[]) {
+      line: function (...args: any[]) {
         calledMethods.push("line");
         return mockVisual;
       }
@@ -57,7 +57,7 @@ describe("RoomVisual Extensions", () => {
     it("should call drawing methods for STRUCTURE_SPAWN", () => {
       // Apply the extension method to our mock
       RoomVisual.prototype.structure.call(mockVisual, 25, 25, STRUCTURE_SPAWN);
-      
+
       // Verify that circle was called (spawns use circles)
       expect(calledMethods).to.include("circle");
       expect(calledMethods.length).to.be.greaterThan(0);
@@ -65,7 +65,7 @@ describe("RoomVisual Extensions", () => {
 
     it("should call drawing methods for STRUCTURE_TOWER", () => {
       RoomVisual.prototype.structure.call(mockVisual, 25, 25, STRUCTURE_TOWER);
-      
+
       // Towers use circles and rects
       expect(calledMethods).to.include("circle");
       expect(calledMethods).to.include("rect");
@@ -73,7 +73,7 @@ describe("RoomVisual Extensions", () => {
 
     it("should call drawing methods for STRUCTURE_STORAGE", () => {
       RoomVisual.prototype.structure.call(mockVisual, 25, 25, STRUCTURE_STORAGE);
-      
+
       // Storage uses poly and rect
       expect(calledMethods).to.include("poly");
       expect(calledMethods).to.include("rect");
@@ -94,7 +94,7 @@ describe("RoomVisual Extensions", () => {
 
     it("should draw resource badge", () => {
       RoomVisual.prototype.resource.call(mockVisual, RESOURCE_ENERGY, 10, 10);
-      
+
       // Resource badges use circles and text
       expect(calledMethods).to.include("circle");
       expect(calledMethods).to.include("text");
@@ -102,7 +102,7 @@ describe("RoomVisual Extensions", () => {
 
     it("should accept custom size parameter", () => {
       RoomVisual.prototype.resource.call(mockVisual, RESOURCE_ENERGY, 10, 10, 0.5);
-      
+
       expect(calledMethods).to.include("circle");
       expect(calledMethods).to.include("text");
     });
@@ -115,7 +115,7 @@ describe("RoomVisual Extensions", () => {
 
     it("should draw speech bubble", () => {
       RoomVisual.prototype.speech.call(mockVisual, "Hello", 25, 25);
-      
+
       // Speech bubbles use rect, poly, and text
       expect(calledMethods).to.include("rect");
       expect(calledMethods).to.include("poly");
@@ -128,7 +128,7 @@ describe("RoomVisual Extensions", () => {
         textcolor: "#ffffff",
         opacity: 0.8
       });
-      
+
       expect(calledMethods.length).to.be.greaterThan(0);
     });
   });
@@ -140,7 +140,7 @@ describe("RoomVisual Extensions", () => {
 
     it("should draw animated marker", () => {
       RoomVisual.prototype.animatedPosition.call(mockVisual, 25, 25);
-      
+
       // Animated markers use circles
       expect(calledMethods).to.include("circle");
     });
@@ -151,7 +151,7 @@ describe("RoomVisual Extensions", () => {
         radius: 1.0,
         frames: 10
       });
-      
+
       expect(calledMethods).to.include("circle");
     });
   });

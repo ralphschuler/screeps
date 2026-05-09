@@ -1,6 +1,6 @@
 /**
  * RoomDefenseManager - Handles all defense-related operations
- * 
+ *
  * Responsibilities:
  * - Tower control (attack, heal, repair)
  * - Threat assessment
@@ -9,7 +9,12 @@
  * - Hostile detection and event emission
  */
 
-import { assessThreat, calculateWallRepairTarget, getActualHostileCreeps } from "@ralphschuler/screeps-defense";
+import {
+  assessThreat,
+  calculateWallRepairTarget,
+  getActualHostileCreeps,
+  selectTowerAction
+} from "@ralphschuler/screeps-defense";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { pheromoneManager } from "@ralphschuler/screeps-pheromones";
@@ -142,7 +147,11 @@ export class RoomDefenseManager {
         if (!swarm.nukeDetected) {
           pheromoneManager.onNukeDetected(swarm);
           const launchSource = nukes[0]?.launchRoomName ?? "unidentified source";
-          memoryManager.addRoomEvent(room.name, "nukeDetected", `${nukes.length} nuke(s) incoming from ${launchSource}`);
+          memoryManager.addRoomEvent(
+            room.name,
+            "nukeDetected",
+            `${nukes.length} nuke(s) incoming from ${launchSource}`
+          );
           swarm.nukeDetected = true;
 
           // Emit nuke detected events through kernel event system
@@ -173,104 +182,31 @@ export class RoomDefenseManager {
 
     const hostiles = getActualHostileCreeps(room);
 
-    // Select primary target once for all towers to focus fire
-    const primaryTarget = hostiles.length > 0 ? this.selectTowerTarget(hostiles) : null;
+    const isCombatPosture = postureManager.isCombatPosture(swarm.posture);
+    const rcl = room.controller?.level ?? 1;
+    const wallRepairTarget = calculateWallRepairTarget(rcl, swarm.danger);
 
     for (const tower of towers) {
       if (tower.store.getUsedCapacity(RESOURCE_ENERGY) < 10) continue;
 
-      // Priority 1: Attack hostiles (all towers focus fire on same target)
-      if (primaryTarget) {
-        tower.attack(primaryTarget);
-        continue;
-      }
+      const action = selectTowerAction({
+        tower,
+        hostiles,
+        posture: swarm.posture,
+        rcl,
+        danger: swarm.danger,
+        isCombatPosture,
+        wallRepairTarget
+      });
 
-      // Priority 2: Heal damaged creeps (only in non-siege)
-      if (swarm.posture !== "siege") {
-        const damaged = tower.pos.findClosestByRange(FIND_MY_CREEPS, {
-          filter: c => c.hits < c.hitsMax
-        });
-        if (damaged) {
-          tower.heal(damaged);
-          continue;
-        }
-      }
-
-      // Priority 3: Repair structures (only in non-war postures)
-      if (!postureManager.isCombatPosture(swarm.posture)) {
-        const damaged = tower.pos.findClosestByRange(FIND_STRUCTURES, {
-          filter: s =>
-            s.hits < s.hitsMax * 0.8 && s.structureType !== STRUCTURE_WALL && s.structureType !== STRUCTURE_RAMPART
-        });
-        if (damaged) {
-          tower.repair(damaged);
-          continue;
-        }
-      }
-
-      // Priority 4: Repair walls and ramparts based on RCL and danger level
-      // Only repair in peaceful conditions (no hostiles, non-combat posture)
-      if (!postureManager.isCombatPosture(swarm.posture) && hostiles.length === 0) {
-        const rcl = room.controller?.level ?? 1;
-        const repairTarget = calculateWallRepairTarget(rcl, swarm.danger);
-        const wallOrRampart = tower.pos.findClosestByRange(FIND_STRUCTURES, {
-          filter: s =>
-            (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) && s.hits < repairTarget
-        });
-        if (wallOrRampart) {
-          tower.repair(wallOrRampart);
-        }
+      if (action.type === "attack") {
+        tower.attack(action.target);
+      } else if (action.type === "heal") {
+        tower.heal(action.target);
+      } else if (action.type === "repair") {
+        tower.repair(action.target);
       }
     }
-  }
-
-  /**
-   * Select tower attack target
-   */
-  private selectTowerTarget(hostiles: Creep[]): Creep | null {
-    // Sort by priority: healers > boosted > ranged > melee > others
-    const sorted = hostiles.sort((a, b) => {
-      const scoreA = this.getHostilePriority(a);
-      const scoreB = this.getHostilePriority(b);
-      return scoreB - scoreA;
-    });
-
-    return sorted[0] ?? null;
-  }
-
-  /**
-   * Get priority score for hostile targeting
-   * OPTIMIZATION: Use getActiveBodyparts() for faster priority calculation
-   * Consistent with military.ts findPriorityTarget implementation
-   */
-  private getHostilePriority(hostile: Creep): number {
-    let score = 0;
-
-    // Use getActiveBodyparts() for faster body part counting (O(1) per type vs O(n) for all parts)
-    const healParts = hostile.getActiveBodyparts(HEAL);
-    const rangedParts = hostile.getActiveBodyparts(RANGED_ATTACK);
-    const attackParts = hostile.getActiveBodyparts(ATTACK);
-    const claimParts = hostile.getActiveBodyparts(CLAIM);
-    const workParts = hostile.getActiveBodyparts(WORK);
-
-    // Calculate score based on body composition (same priority as military.ts)
-    score += healParts * 100;
-    score += rangedParts * 50;
-    score += attackParts * 40;
-    score += claimParts * 60;
-    score += workParts * 30;
-
-    // Check for any boosted parts (only if score is high to avoid unnecessary iteration)
-    if (score > 0) {
-      for (const part of hostile.body) {
-        if (part.boost) {
-          score += 20;
-          break; // Only add boost bonus once
-        }
-      }
-    }
-
-    return score;
   }
 }
 

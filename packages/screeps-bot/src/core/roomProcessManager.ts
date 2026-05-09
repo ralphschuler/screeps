@@ -2,7 +2,7 @@
  * Room Process Manager
  *
  * Manages room operations as kernel processes with distributed execution.
- * 
+ *
  * Critical rooms (under attack) run every tick.
  * Economic rooms are distributed across multiple ticks using tick modulo/offset
  * for better CPU efficiency at scale.
@@ -65,7 +65,7 @@ function getRoomCpuBudget(room: Room): number {
 
   const rcl = room.controller.level;
   const hostiles = getActualHostileCreeps(room);
-  
+
   // War mode: higher budget
   // Typical war room usage: 2-6 CPU (budget set at upper end for safety)
   if (hostiles.length > 0) {
@@ -76,7 +76,7 @@ function getRoomCpuBudget(room: Room): number {
   // Typical eco room usage: 0.5-2 CPU for small rooms, 2-6 CPU for large rooms
   // Budgets are set at the upper end of observed usage to avoid false positives
   // RCL 1-3: Allow up to 2 CPU (4% of 50 CPU limit)
-  // RCL 4-6: Allow up to 3 CPU (6% of 50 CPU limit)  
+  // RCL 4-6: Allow up to 3 CPU (6% of 50 CPU limit)
   // RCL 7-8: Allow up to 4 CPU (8% of 50 CPU limit)
   if (rcl <= 3) {
     return 0.04; // 4% (2 CPU for 50 CPU limit)
@@ -91,7 +91,11 @@ function getRoomCpuBudget(room: Room): number {
  * Get tick distribution parameters for a room based on its priority
  * Returns { tickModulo, tickOffset } or undefined for non-distributed execution
  */
-function getRoomDistribution(room: Room, priority: ProcessPriority, roomIndex: number): { tickModulo?: number; tickOffset?: number } {
+function getRoomDistribution(
+  room: Room,
+  priority: ProcessPriority,
+  roomIndex: number
+): { tickModulo?: number; tickOffset?: number } {
   // CRITICAL priority rooms (under attack) always run every tick - no distribution
   if (priority === ProcessPriority.CRITICAL) {
     return { tickModulo: undefined, tickOffset: undefined };
@@ -130,7 +134,7 @@ function getRoomDistribution(room: Room, priority: ProcessPriority, roomIndex: n
  *
  * Manages registration and lifecycle of room processes with the kernel.
  * Implements distributed execution to spread room processing across ticks.
- * 
+ *
  * Distribution Strategy:
  * - Critical rooms (under attack): Every tick
  * - Economic rooms (owned): Every 5 ticks, distributed
@@ -185,9 +189,10 @@ export class RoomProcessManager {
       if (!this.registeredRooms.has(roomName)) {
         // Register new room
         this.registerRoomProcess(room);
-      } else if (existingProcess && 
-                 (existingProcess.priority !== newPriority || 
-                  Math.abs(existingProcess.cpuBudget - newCpuBudget) > 0.0001)) {
+      } else if (
+        existingProcess &&
+        (existingProcess.priority !== newPriority || Math.abs(existingProcess.cpuBudget - newCpuBudget) > 0.0001)
+      ) {
         // Update priority/budget if changed significantly
         this.updateRoomProcess(room, newPriority, newCpuBudget);
       }
@@ -233,13 +238,12 @@ export class RoomProcessManager {
 
     this.registeredRooms.add(room.name);
 
-    const distributionInfo = distribution.tickModulo 
+    const distributionInfo = distribution.tickModulo
       ? `(mod=${distribution.tickModulo}, offset=${distribution.tickOffset})`
       : "(every tick)";
-    logger.debug(
-      `Registered room process: ${room.name} with priority ${priority} ${distributionInfo}`,
-      { subsystem: "RoomProcessManager" }
-    );
+    logger.debug(`Registered room process: ${room.name} with priority ${priority} ${distributionInfo}`, {
+      subsystem: "RoomProcessManager"
+    });
   }
 
   /**
@@ -249,10 +253,10 @@ export class RoomProcessManager {
     const processId = `room:${room.name}`;
     const roomIndex = this.getRoomIndex(room.name);
     const distribution = getRoomDistribution(room, priority, roomIndex);
-    
+
     // Unregister and re-register with new parameters
     kernel.unregisterProcess(processId);
-    
+
     kernel.registerProcess({
       id: processId,
       name: `Room ${room.name}${room.controller?.my ? " (owned)" : ""}`,
@@ -274,10 +278,9 @@ export class RoomProcessManager {
     const distributionInfo = distribution.tickModulo
       ? `mod=${distribution.tickModulo}, offset=${distribution.tickOffset}`
       : "every tick";
-    logger.debug(
-      `Updated room process: ${room.name} priority=${priority} budget=${cpuBudget} (${distributionInfo})`,
-      { subsystem: "RoomProcessManager" }
-    );
+    logger.debug(`Updated room process: ${room.name} priority=${priority} budget=${cpuBudget} (${distributionInfo})`, {
+      subsystem: "RoomProcessManager"
+    });
   }
 
   /**
@@ -296,7 +299,7 @@ export class RoomProcessManager {
 
   /**
    * Get minimum bucket requirement based on priority
-   * 
+   *
    * REMOVED: All bucket requirements - user regularly depletes bucket and doesn't
    * want minBucket limitations blocking processes. Returns 0 for all priorities.
    * Bucket mode in kernel still provides priority-based filtering during low bucket.
@@ -323,7 +326,7 @@ export class RoomProcessManager {
         const priority = getRoomProcessPriority(room);
         const priorityName = ProcessPriority[priority] ?? "UNKNOWN";
         roomsByPriority[priorityName] = (roomsByPriority[priorityName] ?? 0) + 1;
-        
+
         if (room.controller?.my) {
           ownedRooms++;
         }

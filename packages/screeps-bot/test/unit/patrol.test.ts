@@ -10,7 +10,7 @@ describe("Defense Unit Patrol Functionality", () => {
   /**
    * Simulates the getPatrolWaypoints logic that generates waypoints
    * around exits and spawns for defense units to patrol.
-   * 
+   *
    * UPDATED: Enhanced patrol coverage to match military.ts implementation
    */
   function getPatrolWaypoints(
@@ -89,10 +89,7 @@ describe("Defense Unit Patrol Functionality", () => {
 
     if (currentWaypoint) {
       // Check if within arrival threshold (Chebyshev distance)
-      const distance = Math.max(
-        Math.abs(creepPos.x - currentWaypoint.x),
-        Math.abs(creepPos.y - currentWaypoint.y)
-      );
+      const distance = Math.max(Math.abs(creepPos.x - currentWaypoint.x), Math.abs(creepPos.y - currentWaypoint.y));
 
       if (distance <= arrivalThreshold) {
         // Advance to next waypoint

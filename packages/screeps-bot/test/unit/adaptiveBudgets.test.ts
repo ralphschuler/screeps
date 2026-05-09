@@ -357,17 +357,15 @@ describe("Adaptive CPU Budgets", () => {
       const budgets = calculateAdaptiveBudgets(10, -100, DEFAULT_ADAPTIVE_CONFIG);
 
       // Should apply critical multiplier
-      expect(budgets.high).to.be.lessThan(
-        calculateAdaptiveBudget("high", 10, 5000, DEFAULT_ADAPTIVE_CONFIG) * 0.5
-      );
+      expect(budgets.high).to.be.lessThan(calculateAdaptiveBudget("high", 10, 5000, DEFAULT_ADAPTIVE_CONFIG) * 0.5);
     });
 
     it("should handle very large room counts", () => {
       const budgets = calculateAdaptiveBudgets(1000, 5000, DEFAULT_ADAPTIVE_CONFIG);
 
       // Should cap at maxMultiplier
-      const maxExpected = DEFAULT_ADAPTIVE_CONFIG.baseFrequencyBudgets.high * 
-                         DEFAULT_ADAPTIVE_CONFIG.roomScaling.maxMultiplier;
+      const maxExpected =
+        DEFAULT_ADAPTIVE_CONFIG.baseFrequencyBudgets.high * DEFAULT_ADAPTIVE_CONFIG.roomScaling.maxMultiplier;
       expect(budgets.high).to.be.at.most(Math.min(1.0, maxExpected));
     });
 

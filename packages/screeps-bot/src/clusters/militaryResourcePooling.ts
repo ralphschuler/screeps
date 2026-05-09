@@ -31,7 +31,7 @@ export interface MilitaryResourceReservation {
 const BOOST_REQUIREMENTS: Record<string, Partial<Record<ResourceConstant, number>>> = {
   defense: {
     [RESOURCE_CATALYZED_GHODIUM_ALKALIDE]: 300, // Tough boost
-    [RESOURCE_CATALYZED_UTRIUM_ACID]: 300,      // Attack boost
+    [RESOURCE_CATALYZED_UTRIUM_ACID]: 300, // Attack boost
     [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE]: 300 // Heal boost
   },
   raid: {
@@ -43,7 +43,7 @@ const BOOST_REQUIREMENTS: Record<string, Partial<Record<ResourceConstant, number
   siege: {
     [RESOURCE_CATALYZED_GHODIUM_ALKALIDE]: 900,
     [RESOURCE_CATALYZED_UTRIUM_ACID]: 600,
-    [RESOURCE_CATALYZED_ZYNTHIUM_ACID]: 900,    // Dismantle boost
+    [RESOURCE_CATALYZED_ZYNTHIUM_ACID]: 900, // Dismantle boost
     [RESOURCE_CATALYZED_KEANIUM_ALKALIDE]: 600,
     [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE]: 900
   }
@@ -53,19 +53,16 @@ const BOOST_REQUIREMENTS: Record<string, Partial<Record<ResourceConstant, number
  * Minimum energy to reserve for emergency military spawning per threat level
  */
 const EMERGENCY_ENERGY_RESERVE = {
-  0: 0,      // No threat
-  1: 5000,   // Low threat - 1 defender
-  2: 15000,  // Medium threat - small squad
-  3: 50000   // High threat - large squad
+  0: 0, // No threat
+  1: 5000, // Low threat - 1 defender
+  2: 15000, // Medium threat - small squad
+  3: 50000 // High threat - large squad
 };
 
 /**
  * Calculate energy reservation needed for a room based on threat
  */
-export function calculateEnergyReservation(
-  roomName: string,
-  dangerLevel: 0 | 1 | 2 | 3
-): number {
+export function calculateEnergyReservation(roomName: string, dangerLevel: 0 | 1 | 2 | 3): number {
   // Base reservation on danger level
   let reservation = EMERGENCY_ENERGY_RESERVE[dangerLevel];
 
@@ -73,9 +70,7 @@ export function calculateEnergyReservation(
   const clusters = memoryManager.getClusters();
   for (const clusterId in clusters) {
     const cluster = clusters[clusterId];
-    const hasDefenseRequest = cluster.defenseRequests.some(
-      req => req.roomName === roomName && req.urgency >= 2
-    );
+    const hasDefenseRequest = cluster.defenseRequests.some(req => req.roomName === roomName && req.urgency >= 2);
 
     if (hasDefenseRequest) {
       reservation += 10000; // Additional reserve for active defense
@@ -111,9 +106,7 @@ export function calculateBoostNeeds(
 /**
  * Get available boost materials in cluster
  */
-export function getAvailableBoostMaterials(
-  cluster: ClusterMemory
-): Partial<Record<ResourceConstant, number>> {
+export function getAvailableBoostMaterials(cluster: ClusterMemory): Partial<Record<ResourceConstant, number>> {
   const available: Partial<Record<ResourceConstant, number>> = {};
 
   for (const roomName of cluster.memberRooms) {
@@ -161,10 +154,9 @@ export function allocateBoostMaterials(
     const have = available[resource as ResourceConstant] ?? 0;
 
     if (have < needed) {
-      logger.warn(
-        `Insufficient boost material ${resource} for squad ${squadId}: need ${needed}, have ${have}`,
-        { subsystem: "MilitaryPool" }
-      );
+      logger.warn(`Insufficient boost material ${resource} for squad ${squadId}: need ${needed}, have ${have}`, {
+        subsystem: "MilitaryPool"
+      });
       return { success: false, allocated: [] };
     }
   }
@@ -175,10 +167,7 @@ export function allocateBoostMaterials(
     allocated.push(`${amount} ${resource}`);
   }
 
-  logger.info(
-    `Allocated boost materials for squad ${squadId}: ${allocated.join(", ")}`,
-    { subsystem: "MilitaryPool" }
-  );
+  logger.info(`Allocated boost materials for squad ${squadId}: ${allocated.join(", ")}`, { subsystem: "MilitaryPool" });
 
   return { success: true, allocated };
 }
@@ -217,10 +206,9 @@ export function routeEmergencyEnergy(
   }
 
   if (!bestSource) {
-    logger.warn(
-      `No available energy source for emergency routing to ${targetRoom} (need ${amount})`,
-      { subsystem: "MilitaryPool" }
-    );
+    logger.warn(`No available energy source for emergency routing to ${targetRoom} (need ${amount})`, {
+      subsystem: "MilitaryPool"
+    });
     return { success: false };
   }
 
@@ -232,18 +220,16 @@ export function routeEmergencyEnergy(
     // Terminal transfer
     const result = sourceRoom.terminal.send(RESOURCE_ENERGY, amount, targetRoom);
     if (result === OK) {
-      logger.info(
-        `Emergency energy routed: ${amount} from ${bestSource} to ${targetRoom}`,
-        { subsystem: "MilitaryPool" }
-      );
+      logger.info(`Emergency energy routed: ${amount} from ${bestSource} to ${targetRoom}`, {
+        subsystem: "MilitaryPool"
+      });
       return { success: true, sourceRoom: bestSource };
     }
   } else {
     // Create hauler transfer request
-    logger.info(
-      `Creating hauler transfer request: ${amount} energy from ${bestSource} to ${targetRoom}`,
-      { subsystem: "MilitaryPool" }
-    );
+    logger.info(`Creating hauler transfer request: ${amount} energy from ${bestSource} to ${targetRoom}`, {
+      subsystem: "MilitaryPool"
+    });
 
     // Add to resource requests (will be handled by resource sharing manager)
     cluster.resourceRequests.push({
@@ -275,10 +261,9 @@ export function updateMilitaryReservations(cluster: ClusterMemory): void {
 
     // Log significant reservations
     if (reservation > 0 && Game.time % 100 === 0) {
-      logger.debug(
-        `Military energy reservation for ${roomName}: ${reservation} (danger ${swarm.danger})`,
-        { subsystem: "MilitaryPool" }
-      );
+      logger.debug(`Military energy reservation for ${roomName}: ${reservation} (danger ${swarm.danger})`, {
+        subsystem: "MilitaryPool"
+      });
     }
   }
 }
@@ -286,10 +271,7 @@ export function updateMilitaryReservations(cluster: ClusterMemory): void {
 /**
  * Check if room has sufficient energy for military operations
  */
-export function hasSufficientMilitaryEnergy(
-  roomName: string,
-  requiredAmount: number
-): boolean {
+export function hasSufficientMilitaryEnergy(roomName: string, requiredAmount: number): boolean {
   const room = Game.rooms[roomName];
   if (!room || !room.storage) return false;
 

@@ -33,7 +33,7 @@ const chemistryLogger: ChemistryLogger = {
 
 /**
  * Lab Configuration Manager (Adapter)
- * 
+ *
  * Wraps ChemistryLabConfigManager and adds Memory/heapCache integration
  */
 export class LabConfigManager {
@@ -81,8 +81,8 @@ export class LabConfigManager {
     const input2Entry = config.labs.find(l => l.role === "input2");
 
     return {
-      input1: input1Entry ? Game.getObjectById(input1Entry.labId) ?? undefined : undefined,
-      input2: input2Entry ? Game.getObjectById(input2Entry.labId) ?? undefined : undefined
+      input1: input1Entry ? (Game.getObjectById(input1Entry.labId) ?? undefined) : undefined,
+      input2: input2Entry ? (Game.getObjectById(input2Entry.labId) ?? undefined) : undefined
     };
   }
 
@@ -122,11 +122,7 @@ export class LabConfigManager {
   /**
    * Set lab role manually
    */
-  public setLabRole(
-    roomName: string,
-    labId: Id<StructureLab>,
-    role: LabRole
-  ): boolean {
+  public setLabRole(roomName: string, labId: Id<StructureLab>, role: LabRole): boolean {
     const config = this.manager.exportConfig(roomName);
     if (!config) return false;
 
@@ -162,7 +158,7 @@ export class LabConfigManager {
     const roomMem = Memory.rooms[roomName];
     if (roomMem) {
       (roomMem as unknown as { labConfig: RoomLabConfig }).labConfig = config;
-      
+
       // Cache a reference to the Memory object
       const cacheKey = `memory:room:${roomName}:labConfig`;
       heapCache.set(cacheKey, config, INFINITE_TTL);
@@ -176,7 +172,7 @@ export class LabConfigManager {
   public loadFromMemory(roomName: string): void {
     const cacheKey = `memory:room:${roomName}:labConfig`;
     let config = heapCache.get<RoomLabConfig>(cacheKey);
-    
+
     if (!config) {
       const roomMem = Memory.rooms[roomName] as unknown as { labConfig?: RoomLabConfig };
       const memConfig = roomMem?.labConfig;
@@ -186,7 +182,7 @@ export class LabConfigManager {
         config = memConfig;
       }
     }
-    
+
     if (config) {
       this.manager.importConfig(config);
     }

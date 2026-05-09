@@ -115,10 +115,9 @@ class SpawnQueueManager {
     // Sort by priority (highest first)
     queue.requests.sort((a, b) => b.priority - a.priority);
 
-    logger.debug(
-      `Added spawn request: ${request.role} (priority: ${request.priority}) for room ${request.roomName}`,
-      { subsystem: "SpawnQueue" }
-    );
+    logger.debug(`Added spawn request: ${request.role} (priority: ${request.priority}) for room ${request.roomName}`, {
+      subsystem: "SpawnQueue"
+    });
   }
 
   /**
@@ -244,10 +243,9 @@ class SpawnQueueManager {
       } else if (result !== ERR_NOT_ENOUGH_ENERGY) {
         // If spawn failed for non-energy reason, remove from queue
         this.removeRequest(roomName, request.id);
-        logger.warn(
-          `Spawn request failed: ${request.role} in ${roomName} (error: ${result})`,
-          { subsystem: "SpawnQueue" }
-        );
+        logger.warn(`Spawn request failed: ${request.role} in ${roomName} (error: ${result})`, {
+          subsystem: "SpawnQueue"
+        });
       }
     }
 

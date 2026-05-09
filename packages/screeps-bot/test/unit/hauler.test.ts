@@ -32,10 +32,7 @@ interface MockCreep {
 /**
  * Create a mock creep for testing
  */
-function createMockCreep(options: {
-  freeCapacity: number;
-  usedCapacity: number;
-}): Creep {
+function createMockCreep(options: { freeCapacity: number; usedCapacity: number }): Creep {
   const mockCreep: MockCreep = {
     name: "TestHauler",
     store: {
@@ -434,8 +431,8 @@ describe("remoteHauler behavior - delivery priority", () => {
         repairTargets: [],
         labs: [],
         factory: undefined,
-    tombstones: [],
-    mineralContainers: []
+        tombstones: [],
+        mineralContainers: []
       };
 
       const action = remoteHauler(ctx);
@@ -490,15 +487,19 @@ describe("remoteHauler behavior - delivery priority", () => {
         repairTargets: [],
         labs: [],
         factory: undefined,
-    tombstones: [],
-    mineralContainers: []
+        tombstones: [],
+        mineralContainers: []
       };
 
       const action = remoteHauler(ctx);
 
       assert.equal(action.type, "transfer");
       if (action.type === "transfer") {
-        assert.equal(action.target, storage, "Remote hauler should deliver to storage when higher priority targets full");
+        assert.equal(
+          action.target,
+          storage,
+          "Remote hauler should deliver to storage when higher priority targets full"
+        );
       }
     });
   });
@@ -547,8 +548,8 @@ describe("remoteHauler behavior - delivery priority", () => {
         repairTargets: [],
         labs: [],
         factory: undefined,
-    tombstones: [],
-    mineralContainers: []
+        tombstones: [],
+        mineralContainers: []
       };
 
       const action = remoteHauler(ctx);
@@ -599,8 +600,8 @@ describe("remoteHauler behavior - delivery priority", () => {
         repairTargets: [],
         labs: [],
         factory: undefined,
-    tombstones: [],
-    mineralContainers: []
+        tombstones: [],
+        mineralContainers: []
       };
 
       const action = remoteHauler(ctx);
@@ -651,13 +652,17 @@ describe("remoteHauler behavior - delivery priority", () => {
         repairTargets: [],
         labs: [],
         factory: undefined,
-    tombstones: [],
-    mineralContainers: []
+        tombstones: [],
+        mineralContainers: []
       };
 
       const action = remoteHauler(ctx);
 
-      assert.equal(action.type, "idle", "Remote hauler with energy but no targetRoom should idle instead of delivering locally");
+      assert.equal(
+        action.type,
+        "idle",
+        "Remote hauler with energy but no targetRoom should idle instead of delivering locally"
+      );
     });
   });
 });

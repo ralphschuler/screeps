@@ -1,6 +1,6 @@
 /**
  * Mining Behavior Tests (mineralHarvester and depositHarvester)
- * 
+ *
  * Tests clear the shared room-find cache before each case because all mock rooms
  * reuse the same room name while runtime caches are keyed by room and find type.
  */
@@ -25,11 +25,7 @@ interface MockStore {
  * Minimal interface for mock position object
  */
 interface MockPosition {
-  findInRange<T>(
-    type: number,
-    range: number,
-    opts?: { filter: (obj: unknown) => boolean }
-  ): T[];
+  findInRange<T>(type: number, range: number, opts?: { filter: (obj: unknown) => boolean }): T[];
   lookFor(type: string): Structure[];
   x: number;
   y: number;
@@ -54,21 +50,21 @@ function createMockCreep(options: {
   storeContents?: Record<string, number>;
 }): Creep {
   const storeContents = options.storeContents ?? {};
-  
+
   // Create store object with non-enumerable methods
   const store: any = {};
-  
+
   // Add resource contents as enumerable properties
   Object.keys(storeContents).forEach(key => {
     store[key] = storeContents[key];
   });
-  
+
   // Add methods as non-enumerable properties
-  Object.defineProperty(store, 'getCapacity', {
+  Object.defineProperty(store, "getCapacity", {
     value: () => options.freeCapacity + options.usedCapacity,
     enumerable: false
   });
-  Object.defineProperty(store, 'getFreeCapacity', {
+  Object.defineProperty(store, "getFreeCapacity", {
     value: (resource?: string) => {
       if (resource && storeContents[resource]) {
         return options.freeCapacity;
@@ -77,7 +73,7 @@ function createMockCreep(options: {
     },
     enumerable: false
   });
-  Object.defineProperty(store, 'getUsedCapacity', {
+  Object.defineProperty(store, "getUsedCapacity", {
     value: (resource?: string) => {
       if (resource && storeContents[resource]) {
         return storeContents[resource];
@@ -86,7 +82,7 @@ function createMockCreep(options: {
     },
     enumerable: false
   });
-  
+
   const mockCreep: MockCreep = {
     name: "TestMiner",
     store,
@@ -170,10 +166,7 @@ function createMockTerminal(): StructureTerminal {
 /**
  * Create a mock deposit for testing
  */
-function createMockDeposit(options: {
-  cooldown: number;
-  depositType: DepositConstant;
-}): Deposit {
+function createMockDeposit(options: { cooldown: number; depositType: DepositConstant }): Deposit {
   return {
     id: "mockDepositId" as Id<Deposit>,
     cooldown: options.cooldown,
@@ -197,10 +190,7 @@ interface MockRoom {
 /**
  * Create a mock room for testing
  */
-function createMockRoom(options: {
-  minerals?: Mineral[];
-  deposits?: Deposit[];
-}): Room {
+function createMockRoom(options: { minerals?: Mineral[]; deposits?: Deposit[] }): Room {
   const mockRoom: MockRoom = {
     find: (type: number) => {
       if (type === FIND_MINERALS) {
@@ -329,7 +319,7 @@ describe("mineralHarvester behavior", () => {
         usedCapacity: 50,
         storeContents: { [RESOURCE_HYDROGEN]: 50 }
       });
-      
+
       // Mock findInRange to return the container
       (creep.pos as any).findInRange = () => [container];
 
@@ -625,7 +615,7 @@ describe("depositHarvester behavior", () => {
         storeContents: { [RESOURCE_MIST]: 50 }
       });
       const room = createMockRoom({ deposits: [deposit] });
-      
+
       // Mock Game.rooms to return home room with terminal
       const originalRooms = Game.rooms;
       (Game as any).rooms = {
@@ -667,7 +657,7 @@ describe("depositHarvester behavior", () => {
         storeContents: { [RESOURCE_MIST]: 50 }
       });
       const room = createMockRoom({ deposits: [deposit] });
-      
+
       // Mock Game.rooms to return home room with storage
       const originalRooms = Game.rooms;
       (Game as any).rooms = {
@@ -708,7 +698,7 @@ describe("depositHarvester behavior", () => {
         storeContents: { [RESOURCE_MIST]: 50 }
       });
       const room = createMockRoom({ deposits: [deposit] });
-      
+
       // Mock Game.rooms with no home room
       const originalRooms = Game.rooms;
       (Game as any).rooms = {};

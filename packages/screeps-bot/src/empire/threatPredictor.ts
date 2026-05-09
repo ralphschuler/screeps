@@ -1,6 +1,6 @@
 /**
  * Threat Predictor - Bot Integration
- * 
+ *
  * Wraps the framework ThreatPredictor with bot-specific process decorators and memory access
  */
 

@@ -217,7 +217,6 @@ node scripts/analyze-performance.js
   - `performance-baselines/README.md` (baseline docs)
 
 - [x] **Grafana dashboard for trends** (Optional/Future)
-  - Export script exists: `scripts/export-to-grafana.js`
   - Supports Prometheus and Graphite formats
   - Documented in PERFORMANCE_REGRESSION_DETECTION.md
 

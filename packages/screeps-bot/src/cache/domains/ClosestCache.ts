@@ -30,7 +30,7 @@ export function findCachedClosest<T extends RoomObject & _HasId>(
   }
 
   const key = getCacheKey(creep.name, typeKey);
-  
+
   const cachedId = globalCache.get<Id<T>>(key, {
     namespace: NAMESPACE,
     ttl

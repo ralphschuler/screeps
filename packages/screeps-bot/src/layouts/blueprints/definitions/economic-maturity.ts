@@ -1,10 +1,10 @@
 /**
  * RCL 5-6: Economic Maturity Layout
- * 
+ *
  * Expanded layout with storage, terminal, and labs.
  * All extension positions satisfy |x|+|y| % 2 == 0 (even sum)
  * to ensure no two extensions are directly adjacent.
- * 
+ *
  * Key features:
  * - Second spawn at distance 4 (with its own road ring)
  * - Storage and terminal placed with road access
@@ -98,7 +98,7 @@ export const ECONOMIC_MATURITY_BLUEPRINT: Blueprint = {
     { x: 1, y: -2 },
     { x: -1, y: 2 },
     { x: 1, y: 2 },
-    ...createRadialRoads(primarySpawn, 3, ['north', 'south', 'east', 'west'])
+    ...createRadialRoads(primarySpawn, 3, ["north", "south", "east", "west"])
   ],
   ramparts: (() => {
     const allStructures = [
@@ -107,9 +107,6 @@ export const ECONOMIC_MATURITY_BLUEPRINT: Blueprint = {
       { x: 0, y: 4, structureType: STRUCTURE_STORAGE },
       { x: 2, y: 4, structureType: STRUCTURE_TERMINAL }
     ];
-    return createStructureProtection(
-      allStructures,
-      [STRUCTURE_SPAWN, STRUCTURE_STORAGE, STRUCTURE_TERMINAL]
-    );
+    return createStructureProtection(allStructures, [STRUCTURE_SPAWN, STRUCTURE_STORAGE, STRUCTURE_TERMINAL]);
   })()
 };

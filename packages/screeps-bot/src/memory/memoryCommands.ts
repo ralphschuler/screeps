@@ -4,7 +4,7 @@
  * Commands for monitoring and managing memory usage, compression, and segmentation.
  */
 
-import { 
+import {
   memoryManager,
   memoryCompressor,
   memoryMonitor,
@@ -110,7 +110,7 @@ export class MemoryCommands {
     output += `Allocation Strategy:\n`;
     for (const [type, range] of Object.entries(SEGMENT_ALLOCATION)) {
       output += `  ${type.padEnd(20)} ${range.start.toString().padStart(2)}-${range.end.toString().padEnd(2)}`;
-      
+
       // Check if any segments in this range are active
       const activeInRange = activeSegments.filter(s => s >= range.start && s <= range.end);
       if (activeInRange.length > 0) {
@@ -137,7 +137,7 @@ export class MemoryCommands {
     // Get data from memory path
     const parts = path.split(".");
     let data: unknown = Memory as unknown as Record<string, unknown>;
-    
+
     for (const part of parts) {
       if (data && typeof data === "object" && part in data) {
         data = (data as Record<string, unknown>)[part];
@@ -151,7 +151,7 @@ export class MemoryCommands {
     }
 
     const stats = memoryCompressor.getCompressionStats(data);
-    
+
     let output = `Compression Test for: ${path}\n`;
     output += `  Original size:    ${memoryMonitor.formatBytes(stats.originalSize)}\n`;
     output += `  Compressed size:  ${memoryMonitor.formatBytes(stats.compressedSize)}\n`;

@@ -9,7 +9,7 @@ describe("Kernel tick distribution", () => {
   beforeEach(() => {
     resetConfig();
     executionLog = new Map();
-    
+
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-expect-error: Allow setting test values
     global.Game = {
@@ -93,7 +93,7 @@ describe("Kernel tick distribution", () => {
     expect(executionLog.has(10)).to.be.true;
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     expect(executionLog.has(15)).to.be.true;
-    
+
     // Should NOT execute on other ticks
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     expect(executionLog.has(1)).to.be.false;
@@ -167,7 +167,7 @@ describe("Kernel tick distribution", () => {
 
     // Each tick should have exactly one process execution (distributed round-robin)
     expect(executionLog.size).to.equal(10);
-    
+
     // When (tick + offset) % modulo === 0:
     // Tick 0: (0+0)%5=0 -> process-0
     expect(executionLog.get(0)).to.deep.equal(["process-0"]);
@@ -179,7 +179,7 @@ describe("Kernel tick distribution", () => {
     expect(executionLog.get(3)).to.deep.equal(["process-2"]);
     // Tick 4: (4+1)%5=0 -> process-1
     expect(executionLog.get(4)).to.deep.equal(["process-1"]);
-    
+
     // Pattern repeats for ticks 5-9
     expect(executionLog.get(5)).to.deep.equal(["process-0"]);
     expect(executionLog.get(6)).to.deep.equal(["process-4"]);
@@ -253,7 +253,7 @@ describe("Kernel tick distribution", () => {
 
   it("should enable CPU reduction through distribution", () => {
     const processesPerTick = new Map<number, number>();
-    
+
     // Register 20 processes without distribution
     for (let i = 0; i < 20; i++) {
       kernel.registerProcess({
@@ -271,13 +271,13 @@ describe("Kernel tick distribution", () => {
     // Run for 1 tick
     Game.time = 0;
     kernel.run();
-    
+
     const withoutDistribution = processesPerTick.get(0) || 0;
-    
+
     // Reset and register with distribution
     kernel = new Kernel(buildKernelConfigFromCpu(getConfig().cpu));
     processesPerTick.clear();
-    
+
     for (let i = 0; i < 20; i++) {
       kernel.registerProcess({
         id: `with-dist-${i}`,
@@ -296,16 +296,16 @@ describe("Kernel tick distribution", () => {
     // Run for 1 tick
     Game.time = 0;
     kernel.run();
-    
+
     const withDistribution = processesPerTick.get(0) || 0;
-    
+
     // With distribution modulo=5 and offsets 0-4:
     // Tick 0 executes processes where (0 + offset) % 5 === 0
     // Only offset=0 matches: 4 processes execute (20 processes / 5 offset groups = 4 per group)
     // Without distribution, all 20 processes run
     expect(withoutDistribution).to.equal(20);
     expect(withDistribution).to.equal(4);
-    
+
     // This represents an 80% reduction in processes per tick
     const reduction = ((withoutDistribution - withDistribution) / withoutDistribution) * 100;
     expect(reduction).to.equal(80);
@@ -336,7 +336,7 @@ describe("Kernel tick distribution", () => {
         execute: () => {}
       });
     }).to.throw("Invalid tickOffset: 5 (must be < tickModulo 5)");
-    
+
     expect(() => {
       kernel.registerProcess({
         id: "invalid-offset-2",

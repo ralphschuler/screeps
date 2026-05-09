@@ -1,13 +1,13 @@
 /**
  * Builder Behavior Tests
- * 
+ *
  * Test Status: 8/9 passing (89%)
- * 
+ *
  * Failing Tests:
  * - "should collect from containers when no dropped resources"
  *   Reason: findDistributedTarget from @ralphschuler/screeps-utils is not mocked
  *   Impact: Cannot test container collection path that uses distributed target assignment
- * 
+ *
  * The failing test validates the correct testing pattern even though the mock
  * infrastructure has limitations. The test will pass once findDistributedTarget
  * is added to the test setup mocks.
@@ -47,10 +47,7 @@ interface MockCreep {
 /**
  * Create a mock creep for testing
  */
-function createMockCreep(options: {
-  freeCapacity: number;
-  usedCapacity: number;
-}): Creep {
+function createMockCreep(options: { freeCapacity: number; usedCapacity: number }): Creep {
   const mockCreep: MockCreep = {
     name: "TestBuilder",
     room: { name: "E1N1", find: () => [] },

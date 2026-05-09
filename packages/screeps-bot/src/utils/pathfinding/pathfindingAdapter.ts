@@ -1,12 +1,12 @@
 /**
  * Adapter for @ralphschuler/screeps-pathfinding
- * 
+ *
  * Provides implementations of the pathfinding package's dependency interfaces
  * using the bot's existing systems.
  */
 
 import { cacheCommonRoutes, invalidateRoom as invalidatePathCacheRoom } from "@ralphschuler/screeps-cache";
-import { eventBus as botEventBus , createLogger } from "@ralphschuler/screeps-core";
+import { eventBus as botEventBus, createLogger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { ICache, IEventBus, ILogger, IPathCache, IRemoteMining } from "@ralphschuler/screeps-pathfinding";
 import { getRemoteRoomsForRoom as getRemoteRooms, precacheRemoteRoutes as precacheRemotes } from "../remote-mining";

@@ -146,7 +146,7 @@ describe("Tower Logic", () => {
 
       friendlies.sort((a, b) => {
         if (a.priority !== b.priority) return a.priority - b.priority;
-        return (a.hits / a.hitsMax) - (b.hits / b.hitsMax);
+        return a.hits / a.hitsMax - b.hits / b.hitsMax;
       });
 
       expect(friendlies[0].role).to.equal("guard");
@@ -180,9 +180,7 @@ describe("Tower Logic", () => {
     });
 
     it("should not repair structures above threshold to save energy", () => {
-      const structures = [
-        { id: "1", structureType: STRUCTURE_RAMPART, hits: 90000, hitsMax: 100000 }
-      ];
+      const structures = [{ id: "1", structureType: STRUCTURE_RAMPART, hits: 90000, hitsMax: 100000 }];
 
       const threshold = 0.8;
       const needsRepair = structures.filter(s => s.hits / s.hitsMax < threshold);
@@ -249,7 +247,7 @@ describe("Tower Logic", () => {
         { id: "tower1", energy: 800 },
         { id: "tower2", energy: 750 }
       ];
-      
+
       const hostiles = [
         { id: "hostile1", hits: 2000 },
         { id: "hostile2", hits: 1500 }
@@ -263,13 +261,8 @@ describe("Tower Logic", () => {
     });
 
     it("should distribute targets when towers are plentiful", () => {
-      const towers = [
-        { id: "tower1" },
-        { id: "tower2" },
-        { id: "tower3" },
-        { id: "tower4" }
-      ];
-      
+      const towers = [{ id: "tower1" }, { id: "tower2" }, { id: "tower3" }, { id: "tower4" }];
+
       const hostiles = [
         { id: "hostile1", threat: 10 },
         { id: "hostile2", threat: 8 }
@@ -287,7 +280,7 @@ describe("Tower Logic", () => {
         { id: "tower2", energy: 800, pos: { x: 30, y: 25 } },
         { id: "tower3", energy: 700, pos: { x: 25, y: 30 } }
       ];
-      
+
       const structures = [
         { id: "rampart1", pos: { x: 20, y: 25 }, hits: 50000, hitsMax: 100000 },
         { id: "rampart2", pos: { x: 35, y: 25 }, hits: 45000, hitsMax: 100000 }
@@ -369,11 +362,8 @@ describe("Tower Logic", () => {
         workParts: 0
       };
 
-      const threatScore = 
-        hostile.attackParts * 80 +
-        hostile.rangedParts * 150 +
-        hostile.healParts * 250 +
-        hostile.workParts * 50;
+      const threatScore =
+        hostile.attackParts * 80 + hostile.rangedParts * 150 + hostile.healParts * 250 + hostile.workParts * 50;
 
       expect(threatScore).to.equal(800); // 10 * 80
     });

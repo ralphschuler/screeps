@@ -10,7 +10,12 @@
  * - Ranger (ranged combat)
  */
 
-import { createContext, evaluateMilitaryBehavior, evaluateWithStateMachine , executeAction } from "@ralphschuler/screeps-roles";
+import {
+  createContext,
+  evaluateMilitaryBehavior,
+  evaluateWithStateMachine,
+  executeAction
+} from "@ralphschuler/screeps-roles";
 
 /**
  * Run military role behavior with state machine.

@@ -1,6 +1,6 @@
 /**
  * Pixel Buying Manager - Bot Integration
- * 
+ *
  * Wraps the framework PixelBuyingManager with bot-specific process decorators and memory access
  */
 
@@ -69,9 +69,5 @@ class BotPixelBuyingManager extends FrameworkPixelBuyingManager {
  */
 export const pixelBuyingManager = new BotPixelBuyingManager();
 
-export type {
-  PixelBuyingConfig,
-  PixelBuyingMemory,
-  PixelBuyingMemoryAccessor
-} from "@ralphschuler/screeps-empire";
+export type { PixelBuyingConfig, PixelBuyingMemory, PixelBuyingMemoryAccessor } from "@ralphschuler/screeps-empire";
 export { createDefaultPixelBuyingMemory } from "@ralphschuler/screeps-empire";

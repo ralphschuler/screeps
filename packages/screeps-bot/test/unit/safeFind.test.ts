@@ -4,12 +4,7 @@
 
 import { assert } from "chai";
 import sinon from "sinon";
-import {
-  safeFind,
-  safeFindClosestByRange,
-  safeFindInRange,
-  safeFindClosestByPath
-} from "@ralphschuler/screeps-utils";
+import { safeFind, safeFindClosestByRange, safeFindInRange, safeFindClosestByPath } from "@ralphschuler/screeps-utils";
 
 // Mock room interface
 interface MockRoom {
@@ -282,7 +277,7 @@ describe("Safe Find Utilities", () => {
   describe("Error handling consistency", () => {
     it("should handle TypeError consistently across all functions", () => {
       const error = new TypeError("Cannot read property 'username' of undefined");
-      
+
       mockRoom.find.throws(error);
       mockPos.findClosestByRange.throws(error);
       mockPos.findInRange.throws(error);

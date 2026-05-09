@@ -283,9 +283,7 @@ describe("Rally Point Manager", () => {
       expect(result).to.not.be.null;
 
       // Should have added it to cluster rally points
-      const defensePoint = mockCluster.rallyPoints.find(
-        rp => rp.roomName === "W1N1" && rp.purpose === "defense"
-      );
+      const defensePoint = mockCluster.rallyPoints.find(rp => rp.roomName === "W1N1" && rp.purpose === "defense");
       expect(defensePoint).to.exist;
     });
 

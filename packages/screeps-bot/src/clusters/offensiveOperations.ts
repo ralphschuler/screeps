@@ -56,9 +56,7 @@ function getOpsStore(): Record<string, StoredOffensiveOperation> {
 }
 
 function getActiveOps(): StoredOffensiveOperation[] {
-  return Object.values(getOpsStore()).filter(
-    op => op.state !== "complete" && op.state !== "failed"
-  );
+  return Object.values(getOpsStore()).filter(op => op.state !== "complete" && op.state !== "failed");
 }
 
 function getClusterActiveOps(clusterId: string): StoredOffensiveOperation[] {
@@ -104,10 +102,9 @@ export function planOffensiveOperations(cluster: ClusterMemory): void {
   const target = targets[0]!;
 
   if (!canLaunchDoctrine(cluster, target.doctrine)) {
-    logger.info(
-      `Cluster ${cluster.id} cannot launch ${target.doctrine} doctrine (insufficient resources)`,
-      { subsystem: "Offensive" }
-    );
+    logger.info(`Cluster ${cluster.id} cannot launch ${target.doctrine} doctrine (insufficient resources)`, {
+      subsystem: "Offensive"
+    });
     return;
   }
 
@@ -136,10 +133,9 @@ export function launchOffensiveOperation(
     });
 
   if (!canLaunchDoctrine(cluster, finalDoctrine)) {
-    logger.warn(
-      `Cannot launch ${finalDoctrine} operation on ${targetRoom} - insufficient resources`,
-      { subsystem: "Offensive" }
-    );
+    logger.warn(`Cannot launch ${finalDoctrine} operation on ${targetRoom} - insufficient resources`, {
+      subsystem: "Offensive"
+    });
     return null;
   }
 
@@ -174,10 +170,9 @@ export function launchOffensiveOperation(
 
   markRoomAttacked(targetRoom);
 
-  logger.info(
-    `Launched ${finalDoctrine} operation ${opId} on ${targetRoom} with squad ${squad.id}`,
-    { subsystem: "Offensive" }
-  );
+  logger.info(`Launched ${finalDoctrine} operation ${opId} on ${targetRoom} with squad ${squad.id}`, {
+    subsystem: "Offensive"
+  });
 
   return op;
 }
@@ -253,9 +248,7 @@ function updateExecutingOperation(op: StoredOffensiveOperation, cluster: Cluster
     }
   }
 
-  const activeSquads = op.squadIds.filter(squadId =>
-    cluster.squads.some(s => s.id === squadId)
-  );
+  const activeSquads = op.squadIds.filter(squadId => cluster.squads.some(s => s.id === squadId));
 
   checkAndHandleConquest(op);
 
@@ -283,8 +276,7 @@ function checkAndHandleConquest(op: StoredOffensiveOperation): void {
   const myUsername = getMyUsername();
 
   const isCleared =
-    !room.controller.owner &&
-    (!room.controller.reservation || room.controller.reservation.username === myUsername);
+    !room.controller.owner && (!room.controller.reservation || room.controller.reservation.username === myUsername);
 
   if (isCleared && !op.readyForClaim) {
     op.readyForClaim = true;
@@ -293,10 +285,9 @@ function checkAndHandleConquest(op: StoredOffensiveOperation): void {
     intel.reserver = undefined;
     intel.threatLevel = 0;
 
-    logger.info(
-      `Room ${op.targetRoom} cleared by operation ${op.id} — flagged for claiming`,
-      { subsystem: "Offensive" }
-    );
+    logger.info(`Room ${op.targetRoom} cleared by operation ${op.id} — flagged for claiming`, {
+      subsystem: "Offensive"
+    });
 
     const candidate = empire.claimQueue?.find(c => c.roomName === op.targetRoom);
     if (!candidate) {
@@ -317,10 +308,7 @@ function cleanupOperations(): void {
   const store = getOpsStore();
   for (const id in store) {
     const op = store[id]!;
-    if (
-      (op.state === "complete" || op.state === "failed") &&
-      Game.time - op.createdAt > COMPLETED_OP_RETENTION
-    ) {
+    if ((op.state === "complete" || op.state === "failed") && Game.time - op.createdAt > COMPLETED_OP_RETENTION) {
       delete store[id];
       logger.debug(`Cleaned up operation ${id}`, { subsystem: "Offensive" });
     }

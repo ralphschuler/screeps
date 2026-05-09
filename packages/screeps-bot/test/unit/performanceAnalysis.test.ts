@@ -7,7 +7,7 @@
  * - Regression detection
  * - Report generation
  * - Baseline management
- * 
+ *
  * NOTE: This file contains simplified implementations of functions from
  * analyze-performance.js for unit testing purposes. The duplication is
  * intentional to allow testing the core logic independently without
@@ -26,13 +26,13 @@ describe("Performance Analysis", () => {
   describe("CPU Metrics Parsing", () => {
     it("should parse JSON stats format", () => {
       const logLine = '{"type":"stats","tick":123,"data":{"cpu":{"used":5.5,"bucket":9500},"memory":{"used":150000}}}';
-      
+
       // This would require importing the actual parsing function
       // For now, we'll test the expected behavior
       const expectedCpu = 5.5;
       const expectedBucket = 9500;
       const expectedMemory = 150000;
-      
+
       expect(expectedCpu).to.equal(5.5);
       expect(expectedBucket).to.equal(9500);
       expect(expectedMemory).to.equal(150000);
@@ -40,17 +40,17 @@ describe("Performance Analysis", () => {
 
     it("should parse plain text format", () => {
       const logLine = "CPU: 3.2 Bucket: 9800 Memory: 125KB";
-      
+
       const cpuMatch = logLine.match(/CPU:\s*([\d.]+)/i);
       const bucketMatch = logLine.match(/Bucket:\s*(\d+)/i);
       const memoryMatch = logLine.match(/Memory:\s*([\d.]+)\s*(KB|MB)?/i);
-      
+
       expect(cpuMatch).to.not.be.null;
       expect(parseFloat(cpuMatch![1])).to.equal(3.2);
-      
+
       expect(bucketMatch).to.not.be.null;
       expect(parseInt(bucketMatch![1])).to.equal(9800);
-      
+
       expect(memoryMatch).to.not.be.null;
       expect(parseFloat(memoryMatch![1])).to.equal(125);
     });
@@ -61,20 +61,20 @@ describe("Performance Analysis", () => {
         { input: "Memory: 2MB", expectedBytes: 2 * 1024 * 1024 },
         { input: "Memory: 150000 bytes", expectedBytes: 150000 }
       ];
-      
+
       for (const testCase of testCases) {
         const memoryMatch = testCase.input.match(/Memory:\s*([\d.]+)\s*(KB|MB|bytes)?/i);
         expect(memoryMatch).to.not.be.null;
-        
+
         let memory = parseFloat(memoryMatch![1]);
         const unit = memoryMatch![2] ? memoryMatch![2].toLowerCase() : "kb";
-        
+
         if (unit === "kb") {
           memory = memory * 1024;
         } else if (unit === "mb") {
           memory = memory * 1024 * 1024;
         }
-        
+
         expect(memory).to.equal(testCase.expectedBytes);
       }
     });
@@ -92,30 +92,30 @@ describe("Performance Analysis", () => {
           p99: 0
         };
       }
-      
+
       const sorted = [...values].sort((a, b) => a - b);
       const sum = values.reduce((a, b) => a + b, 0);
       const len = sorted.length;
-      
+
       let median;
       if (len % 2 === 0) {
         median = (sorted[len / 2 - 1] + sorted[len / 2]) / 2;
       } else {
         median = sorted[Math.floor(len / 2)];
       }
-      
+
       const percentile = (p: number) => {
         const index = (p / 100) * (len - 1);
         const lower = Math.floor(index);
         const upper = Math.ceil(index);
         const weight = index - lower;
-        
+
         if (lower === upper) {
           return sorted[lower];
         }
         return sorted[lower] * (1 - weight) + sorted[upper] * weight;
       };
-      
+
       return {
         avg: sum / values.length,
         max: Math.max(...values),
@@ -129,14 +129,14 @@ describe("Performance Analysis", () => {
     it("should calculate average correctly", () => {
       const values = [1, 2, 3, 4, 5];
       const stats = calculateStats(values);
-      
+
       expect(stats.avg).to.equal(3);
     });
 
     it("should calculate max and min correctly", () => {
       const values = [5, 2, 8, 1, 9];
       const stats = calculateStats(values);
-      
+
       expect(stats.max).to.equal(9);
       expect(stats.min).to.equal(1);
     });
@@ -144,28 +144,28 @@ describe("Performance Analysis", () => {
     it("should calculate median for odd-length array", () => {
       const values = [1, 2, 3, 4, 5];
       const stats = calculateStats(values);
-      
+
       expect(stats.median).to.equal(3);
     });
 
     it("should calculate median for even-length array", () => {
       const values = [1, 2, 3, 4];
       const stats = calculateStats(values);
-      
+
       expect(stats.median).to.equal(2.5);
     });
 
     it("should calculate percentiles correctly", () => {
       const values = Array.from({ length: 100 }, (_, i) => i + 1);
       const stats = calculateStats(values);
-      
+
       expect(stats.p95).to.be.closeTo(95.05, 0.1);
       expect(stats.p99).to.be.closeTo(99.01, 0.1);
     });
 
     it("should handle empty array", () => {
       const stats = calculateStats([]);
-      
+
       expect(stats.avg).to.equal(0);
       expect(stats.max).to.equal(0);
       expect(stats.min).to.equal(0);
@@ -174,39 +174,38 @@ describe("Performance Analysis", () => {
   });
 
   describe("Regression Detection", () => {
-    const REGRESSION_THRESHOLD = 0.10;
-    const MEMORY_REGRESSION_THRESHOLD = 0.10;
+    const REGRESSION_THRESHOLD = 0.1;
+    const MEMORY_REGRESSION_THRESHOLD = 0.1;
 
-    const detectRegression = (
-      current: any,
-      baseline: any,
-      threshold = REGRESSION_THRESHOLD
-    ) => {
+    const detectRegression = (current: any, baseline: any, threshold = REGRESSION_THRESHOLD) => {
       if (!baseline) {
         return {
           detected: false,
           reason: "No baseline available for comparison"
         };
       }
-      
+
       const avgCpuDenom = baseline.avgCpu || Number.EPSILON;
       const maxCpuDenom = baseline.maxCpu || Number.EPSILON;
       const avgMemoryDenom = baseline.avgMemory || Number.EPSILON;
       const maxMemoryDenom = baseline.maxMemory || Number.EPSILON;
-      
+
       const avgCpuChange = (current.avgCpu - baseline.avgCpu) / avgCpuDenom;
       const maxCpuChange = (current.maxCpu - baseline.maxCpu) / maxCpuDenom;
-      const avgMemoryChange = current.avgMemory !== undefined && baseline.avgMemory !== undefined
-        ? (current.avgMemory - baseline.avgMemory) / avgMemoryDenom
-        : 0;
-      const maxMemoryChange = current.maxMemory !== undefined && baseline.maxMemory !== undefined
-        ? (current.maxMemory - baseline.maxMemory) / maxMemoryDenom
-        : 0;
-      
+      const avgMemoryChange =
+        current.avgMemory !== undefined && baseline.avgMemory !== undefined
+          ? (current.avgMemory - baseline.avgMemory) / avgMemoryDenom
+          : 0;
+      const maxMemoryChange =
+        current.maxMemory !== undefined && baseline.maxMemory !== undefined
+          ? (current.maxMemory - baseline.maxMemory) / maxMemoryDenom
+          : 0;
+
       const avgRegression = avgCpuChange > threshold;
       const maxRegression = maxCpuChange > threshold;
-      const memoryRegression = avgMemoryChange > MEMORY_REGRESSION_THRESHOLD || maxMemoryChange > MEMORY_REGRESSION_THRESHOLD;
-      
+      const memoryRegression =
+        avgMemoryChange > MEMORY_REGRESSION_THRESHOLD || maxMemoryChange > MEMORY_REGRESSION_THRESHOLD;
+
       return {
         detected: avgRegression || maxRegression || memoryRegression,
         avgCpuChange: avgCpuChange * 100,
@@ -226,9 +225,9 @@ describe("Performance Analysis", () => {
     it("should detect no regression when metrics are equal", () => {
       const current = { avgCpu: 0.08, maxCpu: 0.1 };
       const baseline = { avgCpu: 0.08, maxCpu: 0.1 };
-      
+
       const result = detectRegression(current, baseline);
-      
+
       expect(result.detected).to.be.false;
       expect(result.avgRegression).to.be.false;
       expect(result.maxRegression).to.be.false;
@@ -237,9 +236,9 @@ describe("Performance Analysis", () => {
     it("should detect no regression when improvement", () => {
       const current = { avgCpu: 0.07, maxCpu: 0.09 };
       const baseline = { avgCpu: 0.08, maxCpu: 0.1 };
-      
+
       const result = detectRegression(current, baseline);
-      
+
       expect(result.detected).to.be.false;
       expect(result.avgCpuChange).to.be.lessThan(0);
     });
@@ -247,9 +246,9 @@ describe("Performance Analysis", () => {
     it("should detect regression when avg CPU exceeds threshold", () => {
       const current = { avgCpu: 0.09, maxCpu: 0.1 };
       const baseline = { avgCpu: 0.08, maxCpu: 0.1 };
-      
+
       const result = detectRegression(current, baseline);
-      
+
       expect(result.avgRegression).to.be.true;
       expect(result.detected).to.be.true;
       expect(result.avgCpuChange).to.be.closeTo(12.5, 0.1);
@@ -258,9 +257,9 @@ describe("Performance Analysis", () => {
     it("should detect regression when max CPU exceeds threshold", () => {
       const current = { avgCpu: 0.08, maxCpu: 0.12 };
       const baseline = { avgCpu: 0.08, maxCpu: 0.1 };
-      
+
       const result = detectRegression(current, baseline);
-      
+
       expect(result.maxRegression).to.be.true;
       expect(result.detected).to.be.true;
       expect(result.maxCpuChange).to.be.closeTo(20, 0.01);
@@ -269,30 +268,30 @@ describe("Performance Analysis", () => {
     it("should not detect regression when within threshold", () => {
       const current = { avgCpu: 0.085, maxCpu: 0.105 };
       const baseline = { avgCpu: 0.08, maxCpu: 0.1 };
-      
+
       const result = detectRegression(current, baseline);
-      
+
       expect(result.detected).to.be.false;
       expect(result.avgCpuChange).to.be.lessThan(10);
       expect(result.maxCpuChange).to.be.lessThan(10);
     });
 
     it("should detect memory regression", () => {
-      const current = { 
-        avgCpu: 0.08, 
+      const current = {
+        avgCpu: 0.08,
         maxCpu: 0.1,
         avgMemory: 200000,
         maxMemory: 250000
       };
-      const baseline = { 
-        avgCpu: 0.08, 
+      const baseline = {
+        avgCpu: 0.08,
         maxCpu: 0.1,
         avgMemory: 150000,
         maxMemory: 180000
       };
-      
+
       const result = detectRegression(current, baseline);
-      
+
       expect(result.memoryRegression).to.be.true;
       expect(result.detected).to.be.true;
       expect(result.avgMemoryChange).to.be.greaterThan(10);
@@ -301,9 +300,9 @@ describe("Performance Analysis", () => {
     it("should handle missing baseline", () => {
       const current = { avgCpu: 0.08, maxCpu: 0.1 };
       const baseline = null;
-      
+
       const result = detectRegression(current, baseline);
-      
+
       expect(result.detected).to.be.false;
       expect(result.reason).to.equal("No baseline available for comparison");
     });
@@ -311,9 +310,9 @@ describe("Performance Analysis", () => {
     it("should handle zero baseline values safely", () => {
       const current = { avgCpu: 0.08, maxCpu: 0.1 };
       const baseline = { avgCpu: 0, maxCpu: 0 };
-      
+
       const result = detectRegression(current, baseline);
-      
+
       // Should not throw division by zero error
       expect(result).to.have.property("avgCpuChange");
       expect(result).to.have.property("maxCpuChange");
@@ -327,16 +326,16 @@ describe("Performance Analysis", () => {
         bucket: { avg: 9500, min: 9000, max: 10000, sampleCount: 100 },
         memory: { avg: 150000, max: 200000, p95: 180000, sampleCount: 100 }
       };
-      
+
       const regression = {
         detected: false,
         avgRegression: false,
         maxRegression: false,
         memoryRegression: false
       };
-      
+
       const milestones = { "RCL 4 reached": true };
-      
+
       // Simplified report generation
       const report = {
         timestamp: new Date().toISOString(),
@@ -356,7 +355,7 @@ describe("Performance Analysis", () => {
           sampleCount: analysis.cpu.sampleCount
         }
       };
-      
+
       expect(report).to.have.property("timestamp");
       expect(report).to.have.property("commit");
       expect(report).to.have.property("branch");
@@ -374,9 +373,9 @@ describe("Performance Analysis", () => {
         maxRegression: false,
         memoryRegression: false
       };
-      
+
       const passed = !regression.detected;
-      
+
       expect(passed).to.be.false;
     });
   });

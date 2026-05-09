@@ -72,7 +72,7 @@ describe("Market System Integration", () => {
     it("should detect price trends (rising/falling/stable)", () => {
       const detectTrend = (prices: number[], threshold: number = 0.05): string => {
         if (prices.length < 2) return "stable";
-        
+
         const recent = prices[prices.length - 1];
         const previous = prices[prices.length - 2];
         const change = (recent - previous) / previous;
@@ -90,7 +90,7 @@ describe("Market System Integration", () => {
     it("should calculate price volatility", () => {
       const calculateVolatility = (prices: number[]): number => {
         if (prices.length < 2) return 0;
-        
+
         const avg = prices.reduce((sum, p) => sum + p, 0) / prices.length;
         const variance = prices.reduce((sum, p) => sum + Math.pow(p - avg, 2), 0) / prices.length;
         return Math.sqrt(variance);
@@ -106,9 +106,7 @@ describe("Market System Integration", () => {
     it("should update price data with new market information", () => {
       const marketData: ResourceMarketData = {
         resource: "energy" as ResourceConstant,
-        priceHistory: [
-          { tick: 9000, avgPrice: 1.0, lowPrice: 0.95, highPrice: 1.05 }
-        ],
+        priceHistory: [{ tick: 9000, avgPrice: 1.0, lowPrice: 0.95, highPrice: 1.05 }],
         avgPrice: 1.0,
         trend: 0,
         lastUpdate: 9000
@@ -137,14 +135,14 @@ describe("Market System Integration", () => {
 
       // Add 35 price points
       for (let i = 0; i < 35; i++) {
-        const price = 1.0 + (i * 0.01);
-        history.push({ 
-          tick: 10000 + (i * 100), 
-          avgPrice: price, 
-          lowPrice: price - 0.05, 
-          highPrice: price + 0.05 
+        const price = 1.0 + i * 0.01;
+        history.push({
+          tick: 10000 + i * 100,
+          avgPrice: price,
+          lowPrice: price - 0.05,
+          highPrice: price + 0.05
         });
-        
+
         // Trim to max length
         if (history.length > MAX_HISTORY) {
           history.shift();
@@ -162,7 +160,7 @@ describe("Market System Integration", () => {
       const avgPrice = 1.0;
       const threshold = 0.85; // Buy if below 85% of average
 
-      const isBuyOpportunity = currentPrice < (avgPrice * threshold);
+      const isBuyOpportunity = currentPrice < avgPrice * threshold;
       expect(isBuyOpportunity).to.be.true;
     });
 
@@ -171,7 +169,7 @@ describe("Market System Integration", () => {
       const avgPrice = 1.0;
       const threshold = 1.15; // Sell if above 115% of average
 
-      const isSellOpportunity = currentPrice > (avgPrice * threshold);
+      const isSellOpportunity = currentPrice > avgPrice * threshold;
       expect(isSellOpportunity).to.be.true;
     });
 
@@ -181,8 +179,8 @@ describe("Market System Integration", () => {
       const buyThreshold = 0.85;
       const sellThreshold = 1.15;
 
-      const shouldBuy = currentPrice < (avgPrice * buyThreshold);
-      const shouldSell = currentPrice > (avgPrice * sellThreshold);
+      const shouldBuy = currentPrice < avgPrice * buyThreshold;
+      const shouldSell = currentPrice > avgPrice * sellThreshold;
 
       expect(shouldBuy).to.be.false;
       expect(shouldSell).to.be.false;
@@ -218,11 +216,7 @@ describe("Market System Integration", () => {
         return ["energy", "power"].includes(resource);
       };
 
-      const shouldBuyEvenIfExpensive = (
-        resource: string,
-        currentAmount: number,
-        criticalThreshold: number
-      ) => {
+      const shouldBuyEvenIfExpensive = (resource: string, currentAmount: number, criticalThreshold: number) => {
         return isCriticalResource(resource) && currentAmount < criticalThreshold;
       };
 
@@ -348,8 +342,8 @@ describe("Market System Integration", () => {
   describe("Resource Optimization", () => {
     it("should calculate total empire resource amounts", () => {
       const rooms = {
-        "W1N1": { storage: { store: { energy: 100000, H: 5000 } }, terminal: { store: { energy: 50000 } } },
-        "W2N2": { storage: { store: { energy: 80000, O: 3000 } }, terminal: { store: { energy: 30000 } } }
+        W1N1: { storage: { store: { energy: 100000, H: 5000 } }, terminal: { store: { energy: 50000 } } },
+        W2N2: { storage: { store: { energy: 80000, O: 3000 } }, terminal: { store: { energy: 30000 } } }
       };
 
       const calculateTotalResource = (resource: string): number => {
@@ -466,12 +460,8 @@ describe("Market System Integration", () => {
     });
 
     it("should maintain emergency credit reserve even in war mode", () => {
-      const canSpendCredits = (
-        currentCredits: number,
-        cost: number,
-        emergencyReserve: number
-      ): boolean => {
-        return (currentCredits - cost) >= emergencyReserve;
+      const canSpendCredits = (currentCredits: number, cost: number, emergencyReserve: number): boolean => {
+        return currentCredits - cost >= emergencyReserve;
       };
 
       expect(canSpendCredits(100000, 90000, 5000)).to.be.true;
@@ -505,7 +495,7 @@ describe("Market System Integration", () => {
       // Calculate total cost including transfer
       const withTotalCost = deals.map(d => ({
         ...d,
-        totalCost: (d.price * 10000) + (d.transferCost * 1) // Transfer cost in energy value
+        totalCost: d.price * 10000 + d.transferCost * 1 // Transfer cost in energy value
       }));
 
       // Sort by total cost
@@ -516,11 +506,8 @@ describe("Market System Integration", () => {
     it("should avoid deals with excessive transfer costs", () => {
       const maxTransportCostRatio = 0.1; // 10% of deal value
 
-      const isTransferCostAcceptable = (
-        dealValue: number,
-        transferCost: number
-      ): boolean => {
-        return (transferCost / dealValue) <= maxTransportCostRatio;
+      const isTransferCostAcceptable = (dealValue: number, transferCost: number): boolean => {
+        return transferCost / dealValue <= maxTransportCostRatio;
       };
 
       expect(isTransferCostAcceptable(10000, 500)).to.be.true;
@@ -557,7 +544,7 @@ describe("Market System Integration", () => {
       const lastUpdate = 9500;
       const currentTick = 10000;
 
-      const shouldUpdate = (currentTick - lastUpdate) >= UPDATE_INTERVAL;
+      const shouldUpdate = currentTick - lastUpdate >= UPDATE_INTERVAL;
       expect(shouldUpdate).to.be.true;
     });
 
@@ -575,7 +562,7 @@ describe("Market System Integration", () => {
       };
 
       const isCacheValid = (cache: OrderCache, currentTick: number): boolean => {
-        return (currentTick - cache.cachedAt) < cache.ttl;
+        return currentTick - cache.cachedAt < cache.ttl;
       };
 
       expect(isCacheValid(cache, 9950)).to.be.true;
@@ -610,9 +597,9 @@ describe("Market System Integration", () => {
       // Calculate profit
       const bought = transactions.filter(t => t.type === "buy");
       const sold = transactions.filter(t => t.type === "sell");
-      
-      const totalSpent = bought.reduce((sum, t) => sum + (t.amount * t.price), 0);
-      const totalEarned = sold.reduce((sum, t) => sum + (t.amount * t.price), 0);
+
+      const totalSpent = bought.reduce((sum, t) => sum + t.amount * t.price, 0);
+      const totalEarned = sold.reduce((sum, t) => sum + t.amount * t.price, 0);
       const profit = totalEarned - totalSpent;
 
       expect(profit).to.be.greaterThan(0);
@@ -622,9 +609,8 @@ describe("Market System Integration", () => {
   describe("Edge Cases and Error Handling", () => {
     it("should handle missing price history gracefully", () => {
       const priceHistory: PriceDataPoint[] = [];
-      const avgPrice = priceHistory.length > 0
-        ? priceHistory.reduce((sum, p) => sum + p.avgPrice, 0) / priceHistory.length
-        : 1.0; // Default price
+      const avgPrice =
+        priceHistory.length > 0 ? priceHistory.reduce((sum, p) => sum + p.avgPrice, 0) / priceHistory.length : 1.0; // Default price
 
       expect(avgPrice).to.equal(1.0);
     });
@@ -666,9 +652,7 @@ describe("Market System Integration", () => {
         type: "buy" | "sell";
       }
 
-      const activeOrders: ActiveOrder[] = [
-        { resourceType: "energy", type: "buy" }
-      ];
+      const activeOrders: ActiveOrder[] = [{ resourceType: "energy", type: "buy" }];
 
       const canCreateOrder = (resource: string, type: "buy" | "sell"): boolean => {
         // Don't create opposite order for same resource

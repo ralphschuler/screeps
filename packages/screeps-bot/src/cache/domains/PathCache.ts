@@ -22,9 +22,9 @@ function getCacheKey(from: RoomPosition, to: RoomPosition): string {
 export function getCachedPath(from: RoomPosition, to: RoomPosition): PathStep[] | null {
   const key = getCacheKey(from, to);
   const serialized = globalCache.get<string>(key, { namespace: NAMESPACE });
-  
+
   if (!serialized) return null;
-  
+
   try {
     return Room.deserializePath(serialized);
   } catch {
@@ -38,19 +38,19 @@ export function getCachedPath(from: RoomPosition, to: RoomPosition): PathStep[] 
  */
 export function convertRoomPositionsToPathSteps(positions: RoomPosition[]): PathStep[] {
   const steps: PathStep[] = [];
-  
+
   for (let i = 0; i < positions.length; i++) {
     const pos = positions[i];
     const prevPos = i > 0 ? positions[i - 1] : null;
-    
+
     let direction: DirectionConstant = TOP;
     let dx = 0;
     let dy = 0;
-    
+
     if (prevPos && prevPos.roomName === pos.roomName) {
       dx = pos.x - prevPos.x;
       dy = pos.y - prevPos.y;
-      
+
       if (dy === -1 && dx === 0) direction = TOP;
       else if (dy === -1 && dx === 1) direction = TOP_RIGHT;
       else if (dy === 0 && dx === 1) direction = RIGHT;
@@ -60,10 +60,10 @@ export function convertRoomPositionsToPathSteps(positions: RoomPosition[]): Path
       else if (dy === 0 && dx === -1) direction = LEFT;
       else if (dy === -1 && dx === -1) direction = TOP_LEFT;
     }
-    
+
     steps.push({ x: pos.x, y: pos.y, dx, dy, direction });
   }
-  
+
   return steps;
 }
 
@@ -78,7 +78,7 @@ export function cachePath(
 ): void {
   const key = getCacheKey(from, to);
   const serialized = Room.serializePath(path);
-  
+
   globalCache.set(key, serialized, {
     namespace: NAMESPACE,
     ttl: options.ttl,
@@ -99,7 +99,7 @@ export function invalidatePath(from: RoomPosition, to: RoomPosition): void {
  */
 export function invalidateRoom(roomName: string): void {
   // Escape special regex characters in room name (though unlikely in Screeps)
-  const escapedRoom = roomName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escapedRoom = roomName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   // Match room name at start, middle, or end of path key
   const pattern = new RegExp(`^${escapedRoom}:|:${escapedRoom}:|:${escapedRoom}$`);
   globalCache.invalidatePattern(pattern, NAMESPACE);

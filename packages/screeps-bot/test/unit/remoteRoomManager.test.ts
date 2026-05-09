@@ -157,10 +157,7 @@ describe("remote room manager", () => {
 
   describe("remote worker dimensioning", () => {
     it("should dimension harvesters based on source count", () => {
-      const sources = [
-        { id: "source1" as Id<Source> },
-        { id: "source2" as Id<Source> }
-      ];
+      const sources = [{ id: "source1" as Id<Source> }, { id: "source2" as Id<Source> }];
 
       const harvestersNeeded = sources.length; // 1 per source
       assert.equal(harvestersNeeded, 2, "Should need 1 harvester per source");
@@ -206,10 +203,7 @@ describe("remote room manager", () => {
     });
 
     it("should track threat levels", () => {
-      const dangerousHostiles = [
-        { body: [{ type: ATTACK }] },
-        { body: [{ type: RANGED_ATTACK }] }
-      ];
+      const dangerousHostiles = [{ body: [{ type: ATTACK }] }, { body: [{ type: RANGED_ATTACK }] }];
 
       const threatLevel = Math.min(3, Math.ceil(dangerousHostiles.length / 2));
       assert.equal(threatLevel, 1, "Should calculate threat level based on hostiles");

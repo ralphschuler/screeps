@@ -48,7 +48,13 @@ function mapSpawnPriority(basePriority: number): SpawnPriority {
   return SpawnPriority.LOW;
 }
 
-function priorityForDemand(room: Room, swarm: SwarmState, roleName: string, basePriority: number, isEmergency: boolean): number {
+function priorityForDemand(
+  room: Room,
+  swarm: SwarmState,
+  roleName: string,
+  basePriority: number,
+  isEmergency: boolean
+): number {
   if (isEmergency && (roleName === "larvaWorker" || roleName === "harvester")) {
     return SpawnPriority.EMERGENCY;
   }
@@ -96,9 +102,10 @@ export function planSpawnDemand(room: Room, swarm: SwarmState): SpawnDemand[] {
       continue;
     }
 
-    const targetRoom = roleName === "remoteHarvester" || roleName === "remoteHauler"
-      ? getRemoteRoomNeedingWorkers(room.name, roleName, swarm)
-      : null;
+    const targetRoom =
+      roleName === "remoteHarvester" || roleName === "remoteHauler"
+        ? getRemoteRoomNeedingWorkers(room.name, roleName, swarm)
+        : null;
 
     if ((roleName === "remoteHarvester" || roleName === "remoteHauler") && !targetRoom) {
       continue;
@@ -148,13 +155,16 @@ export function compileSpawnDemandToRequest(room: Room, demand: SpawnDemand): Sp
     const estimatedBodyParts = Math.max(3, Math.min(50, Math.floor(maxEnergy / 100)));
     const ticksToSpawn = estimatedBodyParts * TICKS_PER_BODY_PART;
     const predictedEnergy = energyFlowPredictor.getMaxAffordableInTicks(room, ticksToSpawn);
-    const effectiveMaxEnergy = demand.priority >= SpawnPriority.EMERGENCY || demand.bootstrap
-      ? room.energyAvailable
-      : Math.max(maxEnergy, predictedEnergy);
-    const body = getBestDefinedBody(demand.def, effectiveMaxEnergy) ?? optimizeBody({
-      maxEnergy: effectiveMaxEnergy,
-      role: demand.roleName
-    });
+    const effectiveMaxEnergy =
+      demand.priority >= SpawnPriority.EMERGENCY || demand.bootstrap
+        ? room.energyAvailable
+        : Math.max(maxEnergy, predictedEnergy);
+    const body =
+      getBestDefinedBody(demand.def, effectiveMaxEnergy) ??
+      optimizeBody({
+        maxEnergy: effectiveMaxEnergy,
+        role: demand.roleName
+      });
 
     if (!body) return null;
 

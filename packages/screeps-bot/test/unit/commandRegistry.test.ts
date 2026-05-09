@@ -89,18 +89,9 @@ describe("CommandRegistry", () => {
 
   describe("getCommandsByCategory", () => {
     it("should group commands by category", () => {
-      commandRegistry.register(
-        { name: "cmd1", description: "Cmd 1", category: "A" },
-        () => "1"
-      );
-      commandRegistry.register(
-        { name: "cmd2", description: "Cmd 2", category: "B" },
-        () => "2"
-      );
-      commandRegistry.register(
-        { name: "cmd3", description: "Cmd 3", category: "A" },
-        () => "3"
-      );
+      commandRegistry.register({ name: "cmd1", description: "Cmd 1", category: "A" }, () => "1");
+      commandRegistry.register({ name: "cmd2", description: "Cmd 2", category: "B" }, () => "2");
+      commandRegistry.register({ name: "cmd3", description: "Cmd 3", category: "A" }, () => "3");
 
       const categories = commandRegistry.getCommandsByCategory();
       expect(categories.get("A")).to.have.length(2);
@@ -108,14 +99,8 @@ describe("CommandRegistry", () => {
     });
 
     it("should sort commands within categories alphabetically", () => {
-      commandRegistry.register(
-        { name: "zebra", description: "Zebra", category: "Test" },
-        () => "z"
-      );
-      commandRegistry.register(
-        { name: "alpha", description: "Alpha", category: "Test" },
-        () => "a"
-      );
+      commandRegistry.register({ name: "zebra", description: "Zebra", category: "Test" }, () => "z");
+      commandRegistry.register({ name: "alpha", description: "Alpha", category: "Test" }, () => "a");
 
       const categories = commandRegistry.getCommandsByCategory();
       const testCommands = categories.get("Test");
@@ -142,12 +127,9 @@ describe("CommandRegistry", () => {
     });
 
     it("should handle errors gracefully", () => {
-      commandRegistry.register(
-        { name: "error", description: "Throws error" },
-        (): never => {
-          throw new Error("Test error");
-        }
-      );
+      commandRegistry.register({ name: "error", description: "Throws error" }, (): never => {
+        throw new Error("Test error");
+      });
 
       const result = commandRegistry.execute("error");
       expect(result).to.include("Error:");
@@ -157,14 +139,8 @@ describe("CommandRegistry", () => {
 
   describe("generateHelp", () => {
     it("should generate help output with all commands", () => {
-      commandRegistry.register(
-        { name: "cmd1", description: "First command", category: "General" },
-        () => "1"
-      );
-      commandRegistry.register(
-        { name: "cmd2", description: "Second command", category: "Kernel" },
-        () => "2"
-      );
+      commandRegistry.register({ name: "cmd1", description: "First command", category: "General" }, () => "1");
+      commandRegistry.register({ name: "cmd2", description: "Second command", category: "Kernel" }, () => "2");
 
       const help = commandRegistry.generateHelp();
       expect(help).to.include("Available Console Commands");
@@ -242,10 +218,7 @@ describe("CommandRegistry", () => {
 
   describe("exposeToGlobal", () => {
     it("should expose commands to global scope", () => {
-      commandRegistry.register(
-        { name: "globalTest", description: "Test" },
-        () => "global test result"
-      );
+      commandRegistry.register({ name: "globalTest", description: "Test" }, () => "global test result");
 
       commandRegistry.exposeToGlobal();
 
@@ -335,10 +308,7 @@ describe("Lazy Loading", () => {
     let registrationCalled = false;
     const registrationCallback = (): void => {
       registrationCalled = true;
-      commandRegistry.register(
-        { name: "lazyCmd", description: "Lazy command" },
-        () => "lazy result"
-      );
+      commandRegistry.register({ name: "lazyCmd", description: "Lazy command" }, () => "lazy result");
     };
 
     commandRegistry.initialize();
@@ -353,10 +323,7 @@ describe("Lazy Loading", () => {
     let registrationCalled = false;
     const registrationCallback = (): void => {
       registrationCalled = true;
-      commandRegistry.register(
-        { name: "lazyCmd", description: "Lazy command" },
-        () => "lazy result"
-      );
+      commandRegistry.register({ name: "lazyCmd", description: "Lazy command" }, () => "lazy result");
     };
 
     commandRegistry.initialize();
@@ -373,10 +340,7 @@ describe("Lazy Loading", () => {
     let registrationCount = 0;
     const registrationCallback = (): void => {
       registrationCount++;
-      commandRegistry.register(
-        { name: "lazyCmd", description: "Lazy command" },
-        () => "lazy result"
-      );
+      commandRegistry.register({ name: "lazyCmd", description: "Lazy command" }, () => "lazy result");
     };
 
     commandRegistry.initialize();
@@ -393,10 +357,7 @@ describe("Lazy Loading", () => {
 
   it("should work without lazy loading when not enabled", () => {
     commandRegistry.initialize();
-    commandRegistry.register(
-      { name: "normalCmd", description: "Normal command" },
-      () => "normal result"
-    );
+    commandRegistry.register({ name: "normalCmd", description: "Normal command" }, () => "normal result");
 
     const result = commandRegistry.execute("normalCmd");
     expect(result).to.equal("normal result");

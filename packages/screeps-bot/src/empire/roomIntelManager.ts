@@ -53,7 +53,7 @@ export class RoomIntelManager {
 
     for (const room of visibleRooms) {
       const existing = empire.knownRooms[room.name];
-      
+
       if (existing) {
         // Update existing intel
         this.updateRoomIntel(existing, room);
@@ -91,7 +91,7 @@ export class RoomIntelManager {
       const exits = Game.map.describeExits(owned.name);
       for (const exitRoomName of Object.values(exits)) {
         if (!exitRoomName) continue;
-        
+
         // Skip if already known
         if (empire.knownRooms[exitRoomName]) {
           continue;
@@ -107,7 +107,7 @@ export class RoomIntelManager {
 
     // Limit discovery to avoid memory spikes
     const toDiscover = roomsToDiscover.slice(0, this.config.maxRoomsToDiscoverPerTick);
-    
+
     for (const roomName of toDiscover) {
       // Create stub intel entry (will be updated when room becomes visible)
       empire.knownRooms[roomName] = this.createStubIntel(roomName);

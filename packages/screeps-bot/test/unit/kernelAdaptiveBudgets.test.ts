@@ -8,7 +8,7 @@ describe("Kernel adaptive budget integration", () => {
 
   beforeEach(() => {
     resetConfig();
-    
+
     // Mock Game global
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-expect-error: Allow setting test values
@@ -108,7 +108,7 @@ describe("Kernel adaptive budget integration", () => {
 
       // High bucket should have higher budget than normal
       expect(highBudget).to.be.greaterThan(normalBudget);
-      
+
       // Low bucket should have lower budget than normal
       expect(lowBudget).to.be.lessThan(normalBudget);
     });
@@ -287,7 +287,7 @@ describe("Kernel adaptive budget integration", () => {
       const originalLog = console.log;
       console.log = (...args: unknown[]) => {
         const logMessage = args[0];
-        if (typeof logMessage === 'string') {
+        if (typeof logMessage === "string") {
           try {
             const parsed = JSON.parse(logMessage);
             if (parsed.message && parsed.message.includes("Adaptive budgets updated")) {

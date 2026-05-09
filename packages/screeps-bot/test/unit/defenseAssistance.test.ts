@@ -5,11 +5,7 @@
  */
 
 import { assert } from "chai";
-import {
-  needsDefenseAssistance,
-  createDefenseRequest,
-  analyzeDefenderNeeds
-} from "../../src/spawning/defenderManager";
+import { needsDefenseAssistance, createDefenseRequest, analyzeDefenderNeeds } from "../../src/spawning/defenderManager";
 import type { SwarmState } from "../../src/memory/schemas";
 import { createDefaultSwarmState } from "../../src/memory/schemas";
 
@@ -113,10 +109,7 @@ describe("Defense Assistance System", () => {
           return [{ spawning: null }] as StructureSpawn[];
         } else if (type === FIND_MY_CREEPS) {
           // Has sufficient defenders
-          return [
-            { memory: { role: "guard" } },
-            { memory: { role: "ranger" } }
-          ] as unknown as Creep[];
+          return [{ memory: { role: "guard" } }, { memory: { role: "ranger" } }] as unknown as Creep[];
         }
         return [];
       };
@@ -131,7 +124,12 @@ describe("Defense Assistance System", () => {
         if (type === FIND_HOSTILE_CREEPS) {
           // Multiple powerful hostiles
           return [
-            { body: [{ type: ATTACK, hits: 100 }, { type: ATTACK, hits: 100 }] },
+            {
+              body: [
+                { type: ATTACK, hits: 100 },
+                { type: ATTACK, hits: 100 }
+              ]
+            },
             { body: [{ type: RANGED_ATTACK, hits: 100 }] },
             { body: [{ type: HEAL, hits: 100 }] }
           ] as Creep[];
@@ -152,7 +150,7 @@ describe("Defense Assistance System", () => {
   describe("createDefenseRequest", () => {
     it("should create a defense request when assistance is needed", () => {
       const request = createDefenseRequest(mockRoom as Room, mockSwarm);
-      
+
       assert.isNotNull(request, "Should create a defense request");
       if (request) {
         assert.equal(request.roomName, "W1N1");
@@ -182,7 +180,7 @@ describe("Defense Assistance System", () => {
                 { type: ATTACK, hits: 100 },
                 { type: ATTACK, hits: 100 }
               ],
-              getActiveBodyparts: (type: BodyPartConstant) => type === ATTACK ? 3 : 0
+              getActiveBodyparts: (type: BodyPartConstant) => (type === ATTACK ? 3 : 0)
             }
           ] as Creep[];
         } else if (type === FIND_MY_SPAWNS) {
@@ -194,7 +192,7 @@ describe("Defense Assistance System", () => {
       };
 
       const request = createDefenseRequest(mockRoom as Room, mockSwarm);
-      
+
       assert.isNotNull(request);
       if (request) {
         assert.isAtLeast(request.guardsNeeded, 1, "Should need guards for melee attackers");
@@ -206,7 +204,7 @@ describe("Defense Assistance System", () => {
     it("should return zero needs when no hostiles present", () => {
       mockRoom.find = () => [];
       const needs = analyzeDefenderNeeds(mockRoom as Room);
-      
+
       assert.equal(needs.guards, 0);
       assert.equal(needs.rangers, 0);
       assert.equal(needs.healers, 0);
@@ -216,7 +214,7 @@ describe("Defense Assistance System", () => {
 
     it("should calculate needs based on hostile body composition", () => {
       const needs = analyzeDefenderNeeds(mockRoom as Room);
-      
+
       assert.isAtLeast(needs.guards, 1, "Should need guards for attack parts");
       assert.isAtLeast(needs.rangers, 1, "Should need rangers for ranged attack parts");
       assert.isArray(needs.reasons);
@@ -232,7 +230,7 @@ describe("Defense Assistance System", () => {
                 { type: ATTACK, hits: 100, boost: "UH2O" }, // Boosted
                 { type: MOVE, hits: 50 }
               ],
-              getActiveBodyparts: (type: BodyPartConstant) => type === ATTACK ? 1 : 1
+              getActiveBodyparts: (type: BodyPartConstant) => (type === ATTACK ? 1 : 1)
             }
           ] as Creep[];
         }
@@ -240,7 +238,7 @@ describe("Defense Assistance System", () => {
       };
 
       const needs = analyzeDefenderNeeds(mockRoom as Room);
-      
+
       assert.isAtLeast(needs.urgency, 2.0, "Should have high urgency for boosted enemies");
       assert.include(needs.reasons.join(" "), "boosted", "Should mention boosted threat");
     });
@@ -258,7 +256,7 @@ describe("Defense Assistance System", () => {
       };
 
       const needs = analyzeDefenderNeeds(mockRoom as Room);
-      
+
       assert.isAtLeast(needs.urgency, 1.5, "Should have elevated urgency for large attacks");
       assert.include(needs.reasons.join(" "), "large attack", "Should mention large attack");
     });

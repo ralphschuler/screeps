@@ -15,18 +15,7 @@ export { boostManager } from "./boostManager";
 export { chemistryPlanner } from "./chemistryPlanner";
 
 // Lab manager (bot-specific orchestration)
-export { 
-  labManager, 
-  type LabTaskType, 
-  type LabResourceNeed, 
-  type LabOverflow, 
-  type ReactionStep 
-} from "./labManager";
+export { labManager, type LabTaskType, type LabResourceNeed, type LabOverflow, type ReactionStep } from "./labManager";
 
 // Re-export commonly used types from chemistry package
-export type {
-  BoostConfig,
-  Reaction,
-  ChemistryState,
-  ChemistryLogger
-} from "@ralphschuler/screeps-chemistry";
+export type { BoostConfig, Reaction, ChemistryState, ChemistryLogger } from "@ralphschuler/screeps-chemistry";

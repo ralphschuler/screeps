@@ -479,42 +479,9 @@ export function loop() {
 
 ---
 
-## Exporting to Grafana
+## Local Stats Consumption
 
-### Using Console Output (Recommended)
-
-The graphite exporter should be configured to use console mode:
-
-**In the exporter's `.env` file:**
-```bash
-EXPORTER_MODE=console
-```
-
-The exporter will:
-1. Connect to the Screeps console via WebSocket
-2. Subscribe to console events
-3. Parse JSON stat lines in the format `{"type": "stat", "key": "metric.name", "value": 123}`
-4. Send metrics to Grafana Cloud Graphite
-
-### Using Memory Polling (Legacy)
-
-Alternatively, the exporter can poll `Memory.stats`:
-
-**In the exporter's `.env` file:**
-```bash
-EXPORTER_MODE=memory
-EXPORTER_POLL_INTERVAL_MS=90000  # 90 seconds (respects API rate limits)
-```
-
-The exporter will:
-1. Poll the Screeps API for `Memory.stats`
-2. Flatten nested objects into dot-separated keys
-3. Send metrics to Grafana Cloud Graphite
-
-For detailed Grafana integration examples, see:
-- [GRAFANA_DASHBOARD_EXAMPLE.md](./GRAFANA_DASHBOARD_EXAMPLE.md)
-- [STATS_SYSTEM_OVERVIEW.md](./STATS_SYSTEM_OVERVIEW.md)
-- [Graphite Exporter README](../packages/screeps-graphite-exporter/README.md)
+Stats are available in `Memory.stats` and as console output for local inspection and private-server validation. The repository no longer ships Grafana Graphite or Loki exporter packages.
 
 ---
 
@@ -589,7 +556,6 @@ Enable or disable stats collection.
 - [PHEROMONES_GUIDE.md](./PHEROMONES_GUIDE.md) - Detailed pheromone system documentation
 - [GAME_VARIABLES.md](./GAME_VARIABLES.md) - Game constants and variables reference
 - [STATS_SYSTEM_OVERVIEW.md](./STATS_SYSTEM_OVERVIEW.md) - High-level stats system overview
-- [GRAFANA_DASHBOARD_EXAMPLE.md](./GRAFANA_DASHBOARD_EXAMPLE.md) - Grafana dashboard setup
 
 ---
 

@@ -1,10 +1,10 @@
 /**
  * RCL 7-8: War Ready / End Game Layout
- * 
+ *
  * Full end-game layout with 3 spawns, 6 towers, full labs, and all special structures.
  * All extension positions satisfy |x|+|y| % 2 == 0 (even sum)
  * to ensure no two extensions are directly adjacent.
- * 
+ *
  * Key features:
  * - 3 spawns spaced apart, each with full road ring
  * - Towers positioned for optimal coverage
@@ -117,10 +117,13 @@ export const WAR_READY_BLUEPRINT: Blueprint = {
       { x: 4, y: 4, structureType: STRUCTURE_NUKER },
       { x: -1, y: 5, structureType: STRUCTURE_POWER_SPAWN }
     ];
-    return createStructureProtection(
-      criticalStructures,
-      [STRUCTURE_SPAWN, STRUCTURE_STORAGE, STRUCTURE_TERMINAL, 
-       STRUCTURE_TOWER, STRUCTURE_NUKER, STRUCTURE_POWER_SPAWN]
-    );
+    return createStructureProtection(criticalStructures, [
+      STRUCTURE_SPAWN,
+      STRUCTURE_STORAGE,
+      STRUCTURE_TERMINAL,
+      STRUCTURE_TOWER,
+      STRUCTURE_NUKER,
+      STRUCTURE_POWER_SPAWN
+    ]);
   })()
 };

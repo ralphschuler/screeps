@@ -42,14 +42,14 @@ describe("Attack Target Selector", () => {
 
     it("should mark a room as attacked", () => {
       markRoomAttacked("W1N1");
-      
+
       const lastAttacked = (Memory as any).lastAttacked?.["W1N1"];
       assert.isDefined(lastAttacked, "Room should be marked as attacked");
     });
 
     it("should prevent attacking recently attacked rooms", () => {
       markRoomAttacked("W1N1");
-      
+
       const canAttack = canAttackRoom("W1N1", 100);
       assert.isFalse(canAttack, "Should not be able to attack recently attacked room");
     });
@@ -68,7 +68,7 @@ describe("Attack Target Selector", () => {
       // For now, test that the function exists and can be called
       const cluster = createMockCluster();
       const targets = findAttackTargets(cluster, 10, 5);
-      
+
       assert.isArray(targets, "Should return array of targets");
     });
 
@@ -76,7 +76,7 @@ describe("Attack Target Selector", () => {
       const cluster = createMockCluster();
       const maxDistance = 5;
       const targets = findAttackTargets(cluster, maxDistance, 10);
-      
+
       // All targets should be within max distance
       for (const target of targets) {
         assert.isTrue(
@@ -90,11 +90,8 @@ describe("Attack Target Selector", () => {
       const cluster = createMockCluster();
       const maxTargets = 3;
       const targets = findAttackTargets(cluster, 10, maxTargets);
-      
-      assert.isTrue(
-        targets.length <= maxTargets,
-        `Should return at most ${maxTargets} targets`
-      );
+
+      assert.isTrue(targets.length <= maxTargets, `Should return at most ${maxTargets} targets`);
     });
   });
 

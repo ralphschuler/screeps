@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import type { EmpireMemory, RoomIntel } from "@ralphschuler/screeps-memory";
-import { evaluateExpansionOpportunities } from "../../src/empire/expansionOpportunityModule";
+import { evaluateExpansionOpportunities, planExpansionClaimQueue } from "../../src/empire/expansionOpportunityModule";
 
 function roomIntel(name: string, overrides: Partial<RoomIntel> = {}): RoomIntel {
   return {
@@ -91,6 +91,35 @@ describe("Expansion opportunity evaluation", () => {
     });
 
     expect(opportunities.map(candidate => candidate.roomName)).to.deep.equal(["E5N1"]);
+  });
+
+  it("preserves already-claimed active targets while refreshing new opportunities", () => {
+    const empire = empireWithRooms({
+      E1N1: roomIntel("E1N1", { sources: 2 }),
+      E2N1: roomIntel("E2N1", { sources: 2 })
+    });
+    empire.claimQueue = [
+      {
+        roomName: "E9N1",
+        score: 999,
+        distance: 9,
+        claimed: true,
+        lastEvaluated: 1000
+      }
+    ];
+
+    const plan = planExpansionClaimQueue(empire, [ownedRoom("E0N1")], {
+      maxExpansionDistance: 10,
+      minExpansionScore: 1,
+      maxCandidates: 3
+    });
+
+    expect(plan.claimQueue.map(candidate => [candidate.roomName, candidate.claimed])).to.deep.equal([
+      ["E9N1", true],
+      ["E1N1", false],
+      ["E2N1", false]
+    ]);
+    expect(plan.preservedActiveTargets).to.equal(1);
   });
 
   it("caps output to the requested number of strongest opportunities", () => {

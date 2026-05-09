@@ -33,10 +33,7 @@ interface MockCreep {
 /**
  * Create a mock creep for testing
  */
-function createMockCreep(options: {
-  freeCapacity: number;
-  usedCapacity: number;
-}): Creep {
+function createMockCreep(options: { freeCapacity: number; usedCapacity: number }): Creep {
   const mockCreep: MockCreep = {
     name: "TestUpgrader",
     store: {

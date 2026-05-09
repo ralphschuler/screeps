@@ -206,7 +206,7 @@ export function parseRoomName(roomName: string): { x: number; y: number; xDir: s
 
 /**
  * Check if a player is an ally
- * 
+ *
  * @param username - The username to check for alliance status
  * @returns Always returns false since alliance system has been removed
  */
@@ -293,7 +293,7 @@ export interface RemoteProfitability {
  * Calculate comprehensive remote mining profitability
  * Implements detailed analysis with infrastructure and threat costs
  * Energy costs and mechanics verified via Screeps official docs
- * 
+ *
  * @param roomName - The remote room to analyze
  * @param homeRoom - The home room that would manage this remote
  * @param intel - Room intelligence data for the remote room
@@ -311,9 +311,7 @@ export function calculateRemoteProfitability(
 
   // Input validation to prevent invalid calculations or division by zero
   if (!Number.isFinite(distance) || distance <= 0) {
-    throw new Error(
-      `calculateRemoteProfitability: invalid distance ${distance} between ${homeRoom} and ${roomName}`
-    );
+    throw new Error(`calculateRemoteProfitability: invalid distance ${distance} between ${homeRoom} and ${roomName}`);
   }
 
   if (intel.sources <= 0) {
@@ -336,7 +334,7 @@ export function calculateRemoteProfitability(
   // Source output verified via local Screeps type constants for local verification:
   // - Reserved rooms: 3000 energy per 300 ticks
   // - Non-reserved rooms: 1500 energy per 300 ticks
-  // 
+  //
   const hasReservationIntel = Boolean(intel.reserver);
   const sourceOutput = hasReservationIntel
     ? REMOTE_MINING_CONSTANTS.SOURCE_OUTPUT_RESERVED
@@ -363,7 +361,7 @@ export function calculateRemoteProfitability(
   // Container: 5000 energy (verified via Screeps official docs)
   // Road: 300 energy per tile (verified via Screeps official docs)
   // Road tiles estimate: distance * 50 tiles
-  // 
+  //
   // APPROXIMATION: This uses a rough estimate that may not match actual pathfinding results.
   // Rationale: Each room is 50x50, and paths are typically ~50 tiles per room distance
   // accounting for obstacles and optimal routing. Actual costs may vary significantly
@@ -373,7 +371,7 @@ export function calculateRemoteProfitability(
   const roadTiles = distance * REMOTE_MINING_CONSTANTS.TICKS_PER_ROOM_DISTANCE;
   const roadCost = roadTiles * 300;
   const totalInfrastructureCost = containerCost + roadCost;
-  
+
   // Amortize over infrastructure lifetime (50000 ticks ≈ 33 hours)
   const infrastructureCostPerTick = totalInfrastructureCost / REMOTE_MINING_CONSTANTS.INFRASTRUCTURE_LIFETIME_TICKS;
 
@@ -423,14 +421,14 @@ export function calculateRemoteProfitability(
 
 /**
  * Calculate profitability score (0-100) based on multiple factors
- * 
+ *
  * Scoring algorithm as specified in issue requirements:
  * - Base score: 50 points
  * - Distance penalty: -2 points per room distance
  * - Revenue bonus/penalty: +1 point per 10 energy/tick net profit (can be negative for unprofitable remotes)
  * - Threat penalty: -10 points if hostile activity detected
  * - ROI bonus: +5 points per 1.0 ROI (e.g., ROI of 2.0 = 10 bonus points)
- * 
+ *
  * Final score is clamped to [0, 100] range.
  */
 function calculateProfitabilityScore(metrics: {

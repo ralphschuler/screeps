@@ -40,13 +40,13 @@ function computeBodyPartData(creep: Creep): BodyPartData {
   let moveParts = 0;
   let nonMoveParts = 0;
   let carryCapacity = 0;
-  
+
   for (const part of creep.body) {
     counts.set(part.type, (counts.get(part.type) ?? 0) + 1);
-    
+
     if (part.hits > 0) {
       activeCounts.set(part.type, (activeCounts.get(part.type) ?? 0) + 1);
-      
+
       if (part.type === ATTACK) {
         damagePotential += 30;
       } else if (part.type === RANGED_ATTACK) {
@@ -56,7 +56,7 @@ function computeBodyPartData(creep: Creep): BodyPartData {
       } else if (part.type === CARRY) {
         carryCapacity += 50;
       }
-      
+
       if (part.type === MOVE) {
         moveParts++;
       } else {
@@ -64,7 +64,7 @@ function computeBodyPartData(creep: Creep): BodyPartData {
       }
     }
   }
-  
+
   return {
     counts,
     activeCounts,
@@ -87,7 +87,7 @@ function getBodyPartData(creep: Creep): BodyPartData {
     ttl: 0,
     compute: () => computeBodyPartData(creep)
   });
-  
+
   // Should always return a value due to compute function
   return result ?? computeBodyPartData(creep);
 }
@@ -95,11 +95,7 @@ function getBodyPartData(creep: Creep): BodyPartData {
 /**
  * Get the count of body parts of a specific type
  */
-export function getCachedBodyPartCount(
-  creep: Creep,
-  partType: BodyPartConstant,
-  activeOnly = false
-): number {
+export function getCachedBodyPartCount(creep: Creep, partType: BodyPartConstant, activeOnly = false): number {
   const data = getBodyPartData(creep);
   const map = activeOnly ? data.activeCounts : data.counts;
   return map.get(partType) ?? 0;
@@ -108,11 +104,7 @@ export function getCachedBodyPartCount(
 /**
  * Check if a creep has any body parts of a specific type
  */
-export function hasCachedBodyPart(
-  creep: Creep,
-  partType: BodyPartConstant,
-  activeOnly = false
-): boolean {
+export function hasCachedBodyPart(creep: Creep, partType: BodyPartConstant, activeOnly = false): boolean {
   return getCachedBodyPartCount(creep, partType, activeOnly) > 0;
 }
 

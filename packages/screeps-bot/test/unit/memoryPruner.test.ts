@@ -82,7 +82,7 @@ describe("Memory Pruner", () => {
       expect(pruned).to.equal(30);
       const roomSwarm = (Memory.rooms.W1N1 as RoomMemory).swarm!;
       expect(roomSwarm.eventLog).to.have.lengthOf(20);
-      
+
       // Verify we kept the most recent entries
       expect(roomSwarm.eventLog[0].time).to.equal(1030);
       expect(roomSwarm.eventLog[19].time).to.equal(1049);

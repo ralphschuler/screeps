@@ -1,6 +1,11 @@
 import { assert } from "chai";
 import type { SwarmState } from "../../src/memory/schemas";
-import { compileSpawnDemandToRequest, createSpawnPlan, planSpawnDemand, populateSpawnQueue } from "../../src/spawning/spawnCoordinator";
+import {
+  compileSpawnDemandToRequest,
+  createSpawnPlan,
+  planSpawnDemand,
+  populateSpawnQueue
+} from "../../src/spawning/spawnCoordinator";
 import { spawnQueue } from "../../src/spawning/spawnQueue";
 
 function createSwarm(remoteAssignments: string[] = []): SwarmState {

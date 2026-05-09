@@ -16,9 +16,9 @@ import { MemoryStore } from "./stores/MemoryStore";
 export class CacheManager {
   private readonly stores: Map<string, CacheStore>;
   private readonly stats: Map<string, { hits: number; misses: number; evictions: number }>;
-  private readonly defaultStore: 'heap' | 'memory';
+  private readonly defaultStore: "heap" | "memory";
 
-  constructor(defaultStore: 'heap' | 'memory' = 'heap') {
+  constructor(defaultStore: "heap" | "memory" = "heap") {
     this.stores = new Map();
     this.stats = new Map();
     this.defaultStore = defaultStore;
@@ -27,18 +27,16 @@ export class CacheManager {
   /**
    * Get or create a store for the given namespace
    */
-  private getStore(namespace: string, storeType?: 'heap' | 'memory'): CacheStore {
+  private getStore(namespace: string, storeType?: "heap" | "memory"): CacheStore {
     const type = storeType ?? this.defaultStore;
     const key = `${namespace}:${type}`;
-    
+
     let store = this.stores.get(key);
     if (!store) {
-      store = type === 'memory' 
-        ? new MemoryStore(namespace)
-        : new HeapStore(namespace);
+      store = type === "memory" ? new MemoryStore(namespace) : new HeapStore(namespace);
       this.stores.set(key, store);
     }
-    
+
     return store;
   }
 
@@ -65,23 +63,23 @@ export class CacheManager {
    * Get a value from the cache
    */
   get<T>(key: string, options?: CacheOptions & { namespace?: string }): T | undefined {
-    const namespace = options?.namespace ?? 'default';
+    const namespace = options?.namespace ?? "default";
     const store = this.getStore(namespace, options?.store);
     const stats = this.getStats(namespace);
     const fullKey = this.makeKey(namespace, key);
 
     const entry = store.get<T>(fullKey);
-    
+
     if (!entry) {
       stats.misses++;
-      
+
       // If compute function provided, compute and cache
       if (options?.compute) {
         const value = options.compute();
         this.set(key, value, options);
         return value;
       }
-      
+
       return undefined;
     }
 
@@ -93,14 +91,14 @@ export class CacheManager {
         store.delete(fullKey);
         stats.evictions++;
         stats.misses++;
-        
+
         // Try compute if provided
         if (options?.compute) {
           const value = options.compute();
           this.set(key, value, options);
           return value;
         }
-        
+
         return undefined;
       }
     }
@@ -119,7 +117,7 @@ export class CacheManager {
    * Set a value in the cache
    */
   set<T>(key: string, value: T, options?: CacheOptions & { namespace?: string }): void {
-    const namespace = options?.namespace ?? 'default';
+    const namespace = options?.namespace ?? "default";
     const store = this.getStore(namespace, options?.store);
     const fullKey = this.makeKey(namespace, key);
 
@@ -148,18 +146,18 @@ export class CacheManager {
   /**
    * Delete a value from the cache
    */
-  invalidate(key: string, namespace: string = 'default'): boolean {
+  invalidate(key: string, namespace: string = "default"): boolean {
     const heapKey = `${namespace}:heap`;
     const memoryKey = `${namespace}:memory`;
     const fullKey = this.makeKey(namespace, key);
-    
+
     let deleted = false;
-    
+
     const heapStore = this.stores.get(heapKey);
     if (heapStore) {
       deleted = heapStore.delete(fullKey) || deleted;
     }
-    
+
     const memoryStore = this.stores.get(memoryKey);
     if (memoryStore) {
       deleted = memoryStore.delete(fullKey) || deleted;
@@ -168,31 +166,31 @@ export class CacheManager {
     if (deleted) {
       this.getStats(namespace).evictions++;
     }
-    
+
     return deleted;
   }
 
   /**
    * Invalidate all keys matching a pattern
    */
-  invalidatePattern(pattern: RegExp, namespace: string = 'default'): number {
+  invalidatePattern(pattern: RegExp, namespace: string = "default"): number {
     const heapKey = `${namespace}:heap`;
     const memoryKey = `${namespace}:memory`;
     let count = 0;
 
     const stores = [this.stores.get(heapKey), this.stores.get(memoryKey)].filter(Boolean);
-    
+
     for (const store of stores) {
       if (!store) continue;
-      
+
       const keys = store.keys();
       for (const key of keys) {
         // Extract the actual key after namespace prefix
         // Keys are formatted as "namespace:actualKey" where actualKey may contain colons
         // (e.g., "path:W1N1:1,2:W2N2:3,4"). We skip the first colon to get actualKey.
-        const colonIndex = key.indexOf(':');
+        const colonIndex = key.indexOf(":");
         if (colonIndex === -1) continue;
-        
+
         const actualKey = key.substring(colonIndex + 1);
         if (pattern.test(actualKey)) {
           store.delete(key);
@@ -215,7 +213,7 @@ export class CacheManager {
     if (namespace) {
       const heapKey = `${namespace}:heap`;
       const memoryKey = `${namespace}:memory`;
-      
+
       this.stores.get(heapKey)?.clear();
       this.stores.get(memoryKey)?.clear();
       this.stats.delete(namespace);
@@ -260,10 +258,10 @@ export class CacheManager {
       const stats = this.getStats(namespace);
       const heapKey = `${namespace}:heap`;
       const memoryKey = `${namespace}:memory`;
-      
+
       const heapSize = this.stores.get(heapKey)?.size() ?? 0;
       const memorySize = this.stores.get(memoryKey)?.size() ?? 0;
-      
+
       const total = stats.hits + stats.misses;
       const hitRate = total > 0 ? stats.hits / total : 0;
 
@@ -334,20 +332,20 @@ export class CacheManager {
    */
   cleanup(): number {
     let total = 0;
-    
+
     for (const [storeKey, store] of this.stores.entries()) {
       if (store.cleanup) {
         const removed = store.cleanup();
         total += removed;
 
         if (removed > 0) {
-          const namespaceEnd = storeKey.lastIndexOf(':');
+          const namespaceEnd = storeKey.lastIndexOf(":");
           const namespace = namespaceEnd === -1 ? storeKey : storeKey.substring(0, namespaceEnd);
           this.getStats(namespace).evictions += removed;
         }
       }
     }
-    
+
     return total;
   }
 
@@ -356,13 +354,13 @@ export class CacheManager {
    */
   persist(): number {
     let total = 0;
-    
+
     for (const store of this.stores.values()) {
       if (store.persist) {
         total += store.persist();
       }
     }
-    
+
     return total;
   }
 }
@@ -370,4 +368,4 @@ export class CacheManager {
 /**
  * Global cache manager instance
  */
-export const globalCache = new CacheManager('heap');
+export const globalCache = new CacheManager("heap");

@@ -159,16 +159,16 @@ jobs:
         run: |
           echo "## Code Duplication Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ -f reports/duplication/jscpd-report.json ]; then
             # Parse the JSON report
             TOTAL_DUPLICATION=$(jq -r '.statistics.total.percentage' reports/duplication/jscpd-report.json 2>/dev/null || echo "N/A")
             CLONES_FOUND=$(jq -r '.statistics.total.duplicatedLines' reports/duplication/jscpd-report.json 2>/dev/null || echo "N/A")
             
-            echo "📊 **Baseline**: 18.85% duplication (278 clones)" >> $GITHUB_STEP_SUMMARY
+            echo "📊 **Baseline**: transitional gate allows up to 22% duplication while framework extraction removes copied bot code" >> $GITHUB_STEP_SUMMARY
             echo "📊 **Current**: ${TOTAL_DUPLICATION}% duplication (${CLONES_FOUND} duplicated lines)" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "🎯 **Target**: < 5% duplication" >> $GITHUB_STEP_SUMMARY
+            echo "🎯 **Long-term target**: < 5% duplication" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "View full report in the uploaded artifacts." >> $GITHUB_STEP_SUMMARY
           else
@@ -214,7 +214,7 @@ jobs:
         run: |
           echo "## Code Complexity Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ -f reports/complexity-baseline.json ]; then
             # Parse the JSON report
             TOTAL_FILES=$(jq -r '.totalFiles' reports/complexity-baseline.json 2>/dev/null || echo "N/A")

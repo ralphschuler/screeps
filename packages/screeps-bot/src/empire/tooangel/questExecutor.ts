@@ -1,6 +1,6 @@
 /**
  * TooAngel Quest Executor
- * 
+ *
  * Executes specific quest types by coordinating creeps and actions.
  * Currently supports:
  * - buildcs: Build all construction sites in target room
@@ -23,7 +23,7 @@ const EXECUTOR_CONFIG = {
  */
 export function checkBuildcsComplete(targetRoom: string): boolean {
   const room = Game.rooms[targetRoom];
-  
+
   if (!room) {
     // Can't check if we can't see the room
     return false;
@@ -41,19 +41,17 @@ export function executeBuildcsQuest(quest: TooAngelQuestMemory): void {
   const targetRoom = Game.rooms[quest.targetRoom];
 
   if (!targetRoom) {
-    logger.debug(
-      `Cannot execute buildcs quest ${quest.id}: room ${quest.targetRoom} not visible`,
-      { subsystem: "TooAngel" }
-    );
+    logger.debug(`Cannot execute buildcs quest ${quest.id}: room ${quest.targetRoom} not visible`, {
+      subsystem: "TooAngel"
+    });
     return;
   }
 
   // Check if already complete
   if (checkBuildcsComplete(quest.targetRoom)) {
-    logger.info(
-      `Quest ${quest.id} (buildcs) completed! All construction sites built in ${quest.targetRoom}`,
-      { subsystem: "TooAngel" }
-    );
+    logger.info(`Quest ${quest.id} (buildcs) completed! All construction sites built in ${quest.targetRoom}`, {
+      subsystem: "TooAngel"
+    });
 
     // Notify TooAngel of completion
     notifyQuestComplete(quest.id, true);
@@ -88,16 +86,14 @@ export function executeBuildcsQuest(quest: TooAngelQuestMemory): void {
       if (!room.controller?.my) continue;
 
       const availableBuilders = room.find(FIND_MY_CREEPS, {
-        filter: (c) => {
-          const memory = c.memory as unknown as { 
-            role?: string; 
+        filter: c => {
+          const memory = c.memory as unknown as {
+            role?: string;
             questId?: string;
             assistTarget?: string;
           };
           const role = memory.role;
-          return (role === "larvaWorker" || role === "builder") &&
-                 !memory.questId &&
-                 !memory.assistTarget;
+          return (role === "larvaWorker" || role === "builder") && !memory.questId && !memory.assistTarget;
         }
       });
 
@@ -107,10 +103,7 @@ export function executeBuildcsQuest(quest: TooAngelQuestMemory): void {
         builders.push(builder);
         assignedCreeps.push(builder.name);
 
-        logger.info(
-          `Assigned ${builder.name} to quest ${quest.id} (buildcs)`,
-          { subsystem: "TooAngel" }
-        );
+        logger.info(`Assigned ${builder.name} to quest ${quest.id} (buildcs)`, { subsystem: "TooAngel" });
 
         if (builders.length >= EXECUTOR_CONFIG.MAX_BUILDERS_PER_QUEST) break;
       }
@@ -143,7 +136,7 @@ export function executeQuests(): void {
   const mem = Memory as {
     tooangel?: {
       activeQuests?: Record<string, TooAngelQuestMemory>;
-    }
+    };
   };
 
   const activeQuests = mem.tooangel?.activeQuests || {};
@@ -158,10 +151,7 @@ export function executeQuests(): void {
 
     // Check deadline (use > to allow execution on the deadline tick itself)
     if (quest.deadline > 0 && Game.time > quest.deadline) {
-      logger.warn(
-        `Quest ${questId} missed deadline (${quest.deadline})`,
-        { subsystem: "TooAngel" }
-      );
+      logger.warn(`Quest ${questId} missed deadline (${quest.deadline})`, { subsystem: "TooAngel" });
       quest.status = "failed";
       quest.completedAt = Game.time;
       continue;
@@ -174,10 +164,7 @@ export function executeQuests(): void {
         break;
 
       default:
-        logger.warn(
-          `Unsupported quest type for execution: ${quest.type}`,
-          { subsystem: "TooAngel" }
-        );
+        logger.warn(`Unsupported quest type for execution: ${quest.type}`, { subsystem: "TooAngel" });
         quest.status = "failed";
         quest.completedAt = Game.time;
     }
@@ -191,7 +178,7 @@ export function cleanupQuestCreeps(): void {
   const mem = Memory as {
     tooangel?: {
       activeQuests?: Record<string, TooAngelQuestMemory>;
-    }
+    };
   };
 
   const activeQuests = mem.tooangel?.activeQuests || {};
@@ -204,8 +191,6 @@ export function cleanupQuestCreeps(): void {
     }
 
     // Remove dead creeps
-    quest.assignedCreeps = quest.assignedCreeps.filter(
-      creepName => Game.creeps[creepName] !== undefined
-    );
+    quest.assignedCreeps = quest.assignedCreeps.filter(creepName => Game.creeps[creepName] !== undefined);
   }
 }

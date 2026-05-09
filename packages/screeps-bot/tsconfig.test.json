@@ -4,11 +4,6 @@
     "module": "CommonJS",
     "types": ["node", "mocha", "@types/screeps"]
   },
-  "include": [
-    "src/**/*",
-    "test/**/*"
-  ],
-  "files": [
-    "test/types.d.ts"
-  ]
+  "include": ["src/**/*", "test/**/*"],
+  "files": ["test/types.d.ts"]
 }

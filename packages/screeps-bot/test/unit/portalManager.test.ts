@@ -2,7 +2,7 @@ import { expect } from "chai";
 
 /**
  * Tests for Portal Manager functionality
- * 
+ *
  * Since we can't easily mock the full Game object, we test the logic and algorithms
  * that power the portal management system.
  */
@@ -20,7 +20,9 @@ describe("Portal Manager", () => {
       roomName?: string;
     }
 
-    function parsePortalDestination(dest: PortalDest): { type: "inter-shard" | "intra-shard" | "unknown"; shard?: string; room: string } | null {
+    function parsePortalDestination(
+      dest: PortalDest
+    ): { type: "inter-shard" | "intra-shard" | "unknown"; shard?: string; room: string } | null {
       // Inter-shard portal (has shard and room)
       if (dest.shard && dest.room) {
         return {
@@ -44,7 +46,7 @@ describe("Portal Manager", () => {
     it("should parse inter-shard portal destination", () => {
       const dest = { shard: "shard1", room: "E10N10" };
       const result = parsePortalDestination(dest);
-      
+
       expect(result).to.not.be.null;
       expect(result!.type).to.equal("inter-shard");
       expect(result!.shard).to.equal("shard1");
@@ -54,7 +56,7 @@ describe("Portal Manager", () => {
     it("should parse intra-shard portal destination", () => {
       const dest = { x: 25, y: 25, roomName: "E5N5" };
       const result = parsePortalDestination(dest);
-      
+
       expect(result).to.not.be.null;
       expect(result!.type).to.equal("intra-shard");
       expect(result!.room).to.equal("E5N5");
@@ -63,14 +65,14 @@ describe("Portal Manager", () => {
     it("should return null for invalid destination", () => {
       const dest = { x: 25, y: 25 }; // Missing roomName
       const result = parsePortalDestination(dest);
-      
+
       expect(result).to.be.null;
     });
 
     it("should handle empty destination", () => {
       const dest = {};
       const result = parsePortalDestination(dest);
-      
+
       expect(result).to.be.null;
     });
   });
@@ -130,7 +132,7 @@ describe("Portal Manager", () => {
     it("should calculate metrics for single room route", () => {
       const route = { rooms: ["E1N1"], distance: 0 };
       const metrics = calculateRouteMetrics(route);
-      
+
       expect(metrics.totalDistance).to.equal(0);
       expect(metrics.roomCount).to.equal(1);
       expect(metrics.avgRoomDistance).to.equal(0);
@@ -139,7 +141,7 @@ describe("Portal Manager", () => {
     it("should calculate metrics for multi-room route", () => {
       const route = { rooms: ["E1N1", "E2N1", "E3N1"], distance: 10 };
       const metrics = calculateRouteMetrics(route);
-      
+
       expect(metrics.totalDistance).to.equal(10);
       expect(metrics.roomCount).to.equal(3);
       expect(metrics.avgRoomDistance).to.be.closeTo(3.33, 0.01);
@@ -148,7 +150,7 @@ describe("Portal Manager", () => {
     it("should handle empty route", () => {
       const route = { rooms: [], distance: 0 };
       const metrics = calculateRouteMetrics(route);
-      
+
       expect(metrics.roomCount).to.equal(0);
       expect(metrics.avgRoomDistance).to.equal(0);
     });
@@ -182,28 +184,28 @@ describe("Portal Manager", () => {
     it("should prefer routes with fewer portals", () => {
       const routeA = { distance: 5, portals: 1, calculatedAt: 100 };
       const routeB = { distance: 3, portals: 2, calculatedAt: 100 };
-      
+
       expect(compareRoutes(routeA, routeB, 100)).to.be.lessThan(0);
     });
 
     it("should prefer shorter routes when portal count is equal", () => {
       const routeA = { distance: 3, portals: 1, calculatedAt: 100 };
       const routeB = { distance: 5, portals: 1, calculatedAt: 100 };
-      
+
       expect(compareRoutes(routeA, routeB, 100)).to.be.lessThan(0);
     });
 
     it("should prefer more recent routes when distance and portals are equal", () => {
       const routeA = { distance: 5, portals: 1, calculatedAt: 200 };
       const routeB = { distance: 5, portals: 1, calculatedAt: 100 };
-      
+
       expect(compareRoutes(routeA, routeB, 200)).to.be.lessThan(0);
     });
 
     it("should return 0 for identical routes", () => {
       const routeA = { distance: 5, portals: 1, calculatedAt: 100 };
       const routeB = { distance: 5, portals: 1, calculatedAt: 100 };
-      
+
       expect(compareRoutes(routeA, routeB, 100)).to.equal(0);
     });
   });
@@ -234,10 +236,7 @@ describe("Portal Manager", () => {
       const data: InterShardPortalData = {
         shard: "shard0",
         portals: {
-          "E1N1": [
-            { shard: "shard1", room: "E10N10" },
-            { room: "E2N1" }
-          ]
+          E1N1: [{ shard: "shard1", room: "E10N10" }, { room: "E2N1" }]
         },
         lastUpdate: 12345
       };
@@ -268,7 +267,7 @@ describe("Portal Manager", () => {
     it("should return null for invalid JSON", () => {
       const invalid = "{invalid json";
       const result = deserializePortalData(invalid);
-      
+
       expect(result).to.be.null;
     });
 
@@ -276,9 +275,9 @@ describe("Portal Manager", () => {
       const data: InterShardPortalData = {
         shard: "shard0",
         portals: {
-          "E1N1": [{ shard: "shard1", room: "W1N1" }],
-          "E2N2": [{ shard: "shard2", room: "W2N2" }],
-          "E3N3": [{ room: "E4N3" }]
+          E1N1: [{ shard: "shard1", room: "W1N1" }],
+          E2N2: [{ shard: "shard2", room: "W2N2" }],
+          E3N3: [{ room: "E4N3" }]
         },
         lastUpdate: 100
       };
@@ -306,14 +305,14 @@ describe("Portal Manager", () => {
     it("should generate unique cache keys for different rooms", () => {
       const key1 = generatePortalCacheKey("E1N1");
       const key2 = generatePortalCacheKey("E2N1");
-      
+
       expect(key1).to.not.equal(key2);
     });
 
     it("should generate consistent cache keys for same room", () => {
       const key1 = generatePortalCacheKey("E1N1");
       const key2 = generatePortalCacheKey("E1N1");
-      
+
       expect(key1).to.equal(key2);
     });
 
@@ -321,7 +320,7 @@ describe("Portal Manager", () => {
       const key1 = generateRouteCacheKey("E1N1", "shard1");
       const key2 = generateRouteCacheKey("E1N1", "shard2");
       const key3 = generateRouteCacheKey("E2N1", "shard1");
-      
+
       expect(key1).to.not.equal(key2);
       expect(key1).to.not.equal(key3);
       expect(key2).to.not.equal(key3);
@@ -330,7 +329,7 @@ describe("Portal Manager", () => {
     it("should generate consistent route cache keys", () => {
       const key1 = generateRouteCacheKey("E1N1", "shard1");
       const key2 = generateRouteCacheKey("E1N1", "shard1");
-      
+
       expect(key1).to.equal(key2);
     });
   });
@@ -419,7 +418,7 @@ describe("Portal Manager", () => {
       ];
 
       const filtered = filterPortalsByShard(portals, "shard1");
-      
+
       expect(filtered).to.have.lengthOf(1);
       expect(filtered[0].destination.shard).to.equal("shard1");
     });
@@ -430,17 +429,15 @@ describe("Portal Manager", () => {
       ];
 
       const filtered = filterPortalsByShard(portals, "shard2");
-      
+
       expect(filtered).to.have.lengthOf(0);
     });
 
     it("should handle portals without shard (intra-shard)", () => {
-      const portals: PortalInfo[] = [
-        { pos: { x: 10, y: 10, roomName: "E1N1" }, destination: { room: "E2N1" } }
-      ];
+      const portals: PortalInfo[] = [{ pos: { x: 10, y: 10, roomName: "E1N1" }, destination: { room: "E2N1" } }];
 
       const filtered = filterPortalsByShard(portals, "shard1");
-      
+
       expect(filtered).to.have.lengthOf(0);
     });
 
@@ -452,7 +449,7 @@ describe("Portal Manager", () => {
       ];
 
       const filtered = filterPortalsByShard(portals, "shard1");
-      
+
       expect(filtered).to.have.lengthOf(2);
     });
   });
@@ -489,7 +486,7 @@ describe("Portal Manager", () => {
       ];
 
       const closest = findClosestPortal(from, portals);
-      
+
       expect(closest).to.not.be.null;
       expect(closest!.distance).to.equal(2);
     });
@@ -497,18 +494,16 @@ describe("Portal Manager", () => {
     it("should return null for empty portal list", () => {
       const from = { x: 25, y: 25, roomName: "E1N1" };
       const closest = findClosestPortal(from, []);
-      
+
       expect(closest).to.be.null;
     });
 
     it("should return single portal when only one available", () => {
       const from = { x: 25, y: 25, roomName: "E1N1" };
-      const portals: PortalInfo[] = [
-        { pos: { x: 10, y: 10, roomName: "E2N1" }, distance: 5 }
-      ];
+      const portals: PortalInfo[] = [{ pos: { x: 10, y: 10, roomName: "E2N1" }, distance: 5 }];
 
       const closest = findClosestPortal(from, portals);
-      
+
       expect(closest).to.not.be.null;
       expect(closest!.distance).to.equal(5);
     });
@@ -521,7 +516,7 @@ describe("Portal Manager", () => {
       ];
 
       const closest = findClosestPortal(from, portals);
-      
+
       expect(closest).to.not.be.null;
       expect(closest!.distance).to.equal(3);
     });

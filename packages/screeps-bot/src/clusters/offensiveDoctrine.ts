@@ -223,44 +223,37 @@ export function selectDoctrine(
 /**
  * Check if cluster has resources to launch a doctrine
  */
-export function canLaunchDoctrine(
-  cluster: ClusterMemory,
-  doctrine: OffensiveDoctrine
-): boolean {
+export function canLaunchDoctrine(cluster: ClusterMemory, doctrine: OffensiveDoctrine): boolean {
   const config = DOCTRINE_CONFIGS[doctrine];
-  
+
   // Calculate total energy available across cluster rooms
   let totalEnergy = 0;
   for (const roomName of cluster.memberRooms) {
     const room = Game.rooms[roomName];
     if (!room || !room.controller?.my) continue;
-    
+
     const storage = room.storage;
     const terminal = room.terminal;
-    
+
     if (storage) totalEnergy += storage.store.energy;
     if (terminal) totalEnergy += terminal.store.energy;
   }
 
   const canLaunch = totalEnergy >= config.minEnergy;
-  
+
   if (!canLaunch) {
-    logger.debug(
-      `Cannot launch ${doctrine}: insufficient energy (${totalEnergy}/${config.minEnergy})`,
-      { subsystem: "Doctrine" }
-    );
+    logger.debug(`Cannot launch ${doctrine}: insufficient energy (${totalEnergy}/${config.minEnergy})`, {
+      subsystem: "Doctrine"
+    });
   }
-  
+
   return canLaunch;
 }
 
 /**
  * Get target priority for a specific structure/creep type
  */
-export function getTargetPriority(
-  doctrine: OffensiveDoctrine,
-  targetType: keyof TargetPriority
-): number {
+export function getTargetPriority(doctrine: OffensiveDoctrine, targetType: keyof TargetPriority): number {
   return DOCTRINE_CONFIGS[doctrine].targetPriority[targetType];
 }
 

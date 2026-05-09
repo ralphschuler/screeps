@@ -224,9 +224,9 @@ function calculateChecksum(data: string): number {
   let hash = 0;
   for (let i = 0; i < data.length; i++) {
     const char = data.charCodeAt(i);
-     
+
     hash = (hash << 5) - hash + char;
-     
+
     hash = hash & hash;
   }
   return Math.abs(hash);
@@ -364,7 +364,18 @@ export function deserializeInterShardMemory(data: string): InterShardMemorySchem
     const shardsData = compact.s as {
       n: string;
       r: string;
-      h: { c: string; cu: number; b: number; e: number; w: number; m: number; rc: number; rl: number; cc: number; u: number };
+      h: {
+        c: string;
+        cu: number;
+        b: number;
+        e: number;
+        w: number;
+        m: number;
+        rc: number;
+        rl: number;
+        cc: number;
+        u: number;
+      };
       t: string[];
       p: { sr: string; sp: string; ts: string; tr: string; th: number; s: number; tc: number }[];
       cl?: number;

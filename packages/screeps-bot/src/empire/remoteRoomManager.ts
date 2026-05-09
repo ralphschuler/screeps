@@ -106,14 +106,12 @@ export function getRemoteRoomStatus(roomName: string, _homeRoomName: string): Re
 
   // Check if room is owned or reserved by enemy
   const enemyOwned = Boolean(
-    controller?.owner &&
-      controller.owner.username !== myUsername &&
-      !isAllyPlayer(controller.owner.username)
+    controller?.owner && controller.owner.username !== myUsername && !isAllyPlayer(controller.owner.username)
   );
   const enemyReserved = Boolean(
     controller?.reservation &&
-      controller.reservation.username !== myUsername &&
-      !isAllyPlayer(controller.reservation.username)
+    controller.reservation.username !== myUsername &&
+    !isAllyPlayer(controller.reservation.username)
   );
 
   // Get reservation status
@@ -164,10 +162,9 @@ export function removeRemoteRoom(homeRoomName: string, remoteRoomName: string, r
       intel.lastSeen = Game.time;
     }
 
-    logger.warn(
-      `Removed remote room ${remoteRoomName} from ${homeRoomName} due to: ${reason}`,
-      { subsystem: "RemoteRoomManager" }
-    );
+    logger.warn(`Removed remote room ${remoteRoomName} from ${homeRoomName} due to: ${reason}`, {
+      subsystem: "RemoteRoomManager"
+    });
   }
 }
 

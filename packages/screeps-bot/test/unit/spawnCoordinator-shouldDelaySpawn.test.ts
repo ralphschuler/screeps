@@ -55,11 +55,8 @@ describe("SpawnCoordinator - shouldDelaySpawn logic", () => {
       // Based on the shouldDelaySpawn logic:
       // - Emergency priority (>= SpawnPriority.HIGH) returns false immediately
       // Expected: Emergency spawns proceed regardless of energy state
-      
-      assert.isTrue(
-        SpawnPriority.EMERGENCY >= SpawnPriority.HIGH,
-        "Emergency priority should be >= High priority"
-      );
+
+      assert.isTrue(SpawnPriority.EMERGENCY >= SpawnPriority.HIGH, "Emergency priority should be >= High priority");
     });
 
     it("High priority spawns should never be delayed", () => {
@@ -70,11 +67,8 @@ describe("SpawnCoordinator - shouldDelaySpawn logic", () => {
       // Based on the shouldDelaySpawn logic:
       // - High priority (>= SpawnPriority.HIGH) returns false immediately
       // Expected: High priority spawns proceed regardless of energy state
-      
-      assert.isTrue(
-        SpawnPriority.HIGH >= SpawnPriority.HIGH,
-        "High priority should be >= High priority threshold"
-      );
+
+      assert.isTrue(SpawnPriority.HIGH >= SpawnPriority.HIGH, "High priority should be >= High priority threshold");
     });
 
     it("Normal priority spawns delayed when energy < 30% and positive flow", () => {
@@ -86,7 +80,7 @@ describe("SpawnCoordinator - shouldDelaySpawn logic", () => {
       // With positive energy flow (income > consumption):
       // shouldDelaySpawn should return true for Normal priority
       // Expected: Delay when energy < 30% and flow is positive
-      
+
       const energyPercent = mockRoom.energyAvailable / mockRoom.energyCapacityAvailable;
       assert.isBelow(energyPercent, 0.3, "Energy should be below 30%");
     });
@@ -109,11 +103,8 @@ describe("SpawnCoordinator - shouldDelaySpawn logic", () => {
       // With negative energy flow (consumption > income):
       // shouldDelaySpawn should return true for Low priority
       // Expected: Delay when net flow < 0
-      
-      assert.isTrue(
-        SpawnPriority.LOW < SpawnPriority.NORMAL,
-        "Low priority should be less than Normal"
-      );
+
+      assert.isTrue(SpawnPriority.LOW < SpawnPriority.NORMAL, "Low priority should be less than Normal");
     });
 
     it("Low priority spawns delayed when energy < 50% capacity", () => {
@@ -140,7 +131,7 @@ describe("SpawnCoordinator - shouldDelaySpawn logic", () => {
     it("Spawns not delayed if cannot afford at all", () => {
       // If current energy < body cost, don't delay (let normal queue logic handle)
       mockRoom.energyAvailable = 100;
-      
+
       const bodyCost = 500; // More than available
 
       // Expected: shouldDelaySpawn returns false when currentEnergy < bodyCost
@@ -182,21 +173,9 @@ describe("SpawnCoordinator - shouldDelaySpawn logic", () => {
   describe("Priority enum values", () => {
     it("should have correct priority ordering", () => {
       // Verify priority enum is ordered correctly
-      assert.isAbove(
-        SpawnPriority.EMERGENCY,
-        SpawnPriority.HIGH,
-        "Emergency should be higher than High"
-      );
-      assert.isAbove(
-        SpawnPriority.HIGH,
-        SpawnPriority.NORMAL,
-        "High should be higher than Normal"
-      );
-      assert.isAbove(
-        SpawnPriority.NORMAL,
-        SpawnPriority.LOW,
-        "Normal should be higher than Low"
-      );
+      assert.isAbove(SpawnPriority.EMERGENCY, SpawnPriority.HIGH, "Emergency should be higher than High");
+      assert.isAbove(SpawnPriority.HIGH, SpawnPriority.NORMAL, "High should be higher than Normal");
+      assert.isAbove(SpawnPriority.NORMAL, SpawnPriority.LOW, "Normal should be higher than Low");
     });
   });
 });

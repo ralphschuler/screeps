@@ -9,10 +9,7 @@
  * - Misplaced structure cleanup
  */
 
-import {
-  placeRampartsOnCriticalStructures,
-  placeRoadAwarePerimeterDefense
-} from "@ralphschuler/screeps-defense";
+import { placeRampartsOnCriticalStructures, placeRoadAwarePerimeterDefense } from "@ralphschuler/screeps-defense";
 import {
   destroyMisplacedStructures,
   getBlueprint,
@@ -51,7 +48,9 @@ export interface EconomyFirstConstructionPolicy {
  * Economy-first construction gate: peaceful young rooms spend early energy on
  * extensions, roads, source/controller containers, and storage before perimeter.
  */
-export function getEconomyFirstConstructionPolicy(input: EconomyFirstConstructionInput): EconomyFirstConstructionPolicy {
+export function getEconomyFirstConstructionPolicy(
+  input: EconomyFirstConstructionInput
+): EconomyFirstConstructionPolicy {
   if (input.danger >= 1) {
     return { allowPerimeter: true, allowRamparts: true };
   }

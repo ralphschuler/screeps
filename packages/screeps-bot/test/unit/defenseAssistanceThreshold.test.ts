@@ -14,20 +14,19 @@ describe("Defense Assistance Thresholds", () => {
       const spawnsAvailable = 0;
       const energyAvailable = 100;
       const minDefenderCost = 250;
-      
+
       // Room has threat but can't spawn defenders
-      const needsHelp = dangerLevel >= 1 && 
-                       defenderDeficit > 0 && 
-                       (spawnsAvailable === 0 || energyAvailable < minDefenderCost);
-      
+      const needsHelp =
+        dangerLevel >= 1 && defenderDeficit > 0 && (spawnsAvailable === 0 || energyAvailable < minDefenderCost);
+
       expect(needsHelp).to.be.true;
     });
 
     it("should NOT request assistance at danger 0", () => {
       const dangerLevel = 0;
-      
+
       const needsHelp = dangerLevel >= 1;
-      
+
       expect(needsHelp).to.be.false;
     });
 
@@ -37,9 +36,9 @@ describe("Defense Assistance Thresholds", () => {
       const currentGuards = 2;
       const needsRangers = 1;
       const currentRangers = 1;
-      
-      const defenderDeficit = (needsGuards - currentGuards) + (needsRangers - currentRangers);
-      
+
+      const defenderDeficit = needsGuards - currentGuards + (needsRangers - currentRangers);
+
       expect(defenderDeficit).to.equal(0);
     });
   });
@@ -48,9 +47,9 @@ describe("Defense Assistance Thresholds", () => {
     it("should request help when no spawns available", () => {
       const spawnsCount = 0;
       const defenderDeficit = 1;
-      
+
       const needsHelp = spawnsCount === 0 && defenderDeficit > 0;
-      
+
       expect(needsHelp).to.be.true;
     });
 
@@ -58,9 +57,9 @@ describe("Defense Assistance Thresholds", () => {
       const totalSpawns = 2;
       const availableSpawns = 0;
       const defenderDeficit = 1;
-      
+
       const needsHelp = totalSpawns > 0 && availableSpawns === 0 && defenderDeficit >= 1;
-      
+
       expect(needsHelp).to.be.true;
     });
 
@@ -68,9 +67,9 @@ describe("Defense Assistance Thresholds", () => {
       const energyAvailable = 200;
       const minDefenderCost = 250;
       const defenderDeficit = 1;
-      
+
       const needsHelp = energyAvailable < minDefenderCost && defenderDeficit >= 1;
-      
+
       expect(needsHelp).to.be.true;
     });
 
@@ -82,14 +81,15 @@ describe("Defense Assistance Thresholds", () => {
       const defenderDeficit = 1;
       const urgency = 1.0;
       const dangerLevel = 1;
-      
+
       // Has spawns, energy, but threat is manageable
-      const needsHelp = spawnsCount === 0 || 
-                       (availableSpawns === 0 && defenderDeficit >= 1) ||
-                       (energyAvailable < minDefenderCost && defenderDeficit >= 1) ||
-                       (urgency >= 2.0 && defenderDeficit >= 2) ||
-                       (dangerLevel >= 3 && defenderDeficit >= 1);
-      
+      const needsHelp =
+        spawnsCount === 0 ||
+        (availableSpawns === 0 && defenderDeficit >= 1) ||
+        (energyAvailable < minDefenderCost && defenderDeficit >= 1) ||
+        (urgency >= 2.0 && defenderDeficit >= 2) ||
+        (dangerLevel >= 3 && defenderDeficit >= 1);
+
       expect(needsHelp).to.be.false;
     });
   });
@@ -98,18 +98,18 @@ describe("Defense Assistance Thresholds", () => {
     it("should request help for critical urgency with multiple deficit", () => {
       const urgency = 2.0;
       const defenderDeficit = 2;
-      
+
       const needsHelp = urgency >= 2.0 && defenderDeficit >= 2;
-      
+
       expect(needsHelp).to.be.true;
     });
 
     it("should request help for critical danger level", () => {
       const dangerLevel = 3;
       const defenderDeficit = 1;
-      
+
       const needsHelp = dangerLevel >= 3 && defenderDeficit >= 1;
-      
+
       expect(needsHelp).to.be.true;
     });
 
@@ -117,9 +117,9 @@ describe("Defense Assistance Thresholds", () => {
       const dangerLevel = 2;
       const rcl = 3;
       const defenderDeficit = 1;
-      
+
       const needsHelp = dangerLevel >= 2 && (defenderDeficit >= 2 || rcl <= 3);
-      
+
       expect(needsHelp).to.be.true;
     });
 
@@ -127,9 +127,9 @@ describe("Defense Assistance Thresholds", () => {
       const dangerLevel = 2;
       const rcl = 5;
       const defenderDeficit = 2;
-      
+
       const needsHelp = dangerLevel >= 2 && (defenderDeficit >= 2 || rcl <= 3);
-      
+
       expect(needsHelp).to.be.true;
     });
 
@@ -141,18 +141,20 @@ describe("Defense Assistance Thresholds", () => {
       const spawnsCount = 3;
       const availableSpawns = 2;
       const energyAvailable = 1000;
-      
+
       // High level room can handle minor threats
-      const criticalHelp = (urgency >= 2.0 && defenderDeficit >= 2) ||
-                          (dangerLevel >= 3 && defenderDeficit >= 1) ||
-                          (dangerLevel >= 2 && (defenderDeficit >= 2 || rcl <= 3));
-      
-      const cannotSpawn = spawnsCount === 0 ||
-                         (availableSpawns === 0 && defenderDeficit >= 1) ||
-                         (energyAvailable < 250 && defenderDeficit >= 1);
-      
+      const criticalHelp =
+        (urgency >= 2.0 && defenderDeficit >= 2) ||
+        (dangerLevel >= 3 && defenderDeficit >= 1) ||
+        (dangerLevel >= 2 && (defenderDeficit >= 2 || rcl <= 3));
+
+      const cannotSpawn =
+        spawnsCount === 0 ||
+        (availableSpawns === 0 && defenderDeficit >= 1) ||
+        (energyAvailable < 250 && defenderDeficit >= 1);
+
       const needsHelp = criticalHelp || cannotSpawn;
-      
+
       expect(needsHelp).to.be.false;
     });
   });
@@ -161,10 +163,10 @@ describe("Defense Assistance Thresholds", () => {
     it("should prioritize helping low RCL rooms under attack", () => {
       const room1 = { rcl: 3, dangerLevel: 2, defenderDeficit: 1 };
       const room2 = { rcl: 7, dangerLevel: 2, defenderDeficit: 1 };
-      
+
       const room1NeedsHelp = room1.dangerLevel >= 2 && (room1.defenderDeficit >= 2 || room1.rcl <= 3);
       const room2NeedsHelp = room2.dangerLevel >= 2 && (room2.defenderDeficit >= 2 || room2.rcl <= 3);
-      
+
       expect(room1NeedsHelp).to.be.true;
       expect(room2NeedsHelp).to.be.false;
     });
@@ -173,9 +175,9 @@ describe("Defense Assistance Thresholds", () => {
       const rcl = 8;
       const dangerLevel = 2;
       const defenderDeficit = 3;
-      
+
       const needsHelp = dangerLevel >= 2 && (defenderDeficit >= 2 || rcl <= 3);
-      
+
       expect(needsHelp).to.be.true;
     });
   });
@@ -191,7 +193,7 @@ describe("Defense Assistance Thresholds", () => {
         createdAt: 1000,
         threat: "Multiple hostiles detected"
       };
-      
+
       expect(request.roomName).to.equal("W1N1");
       expect(request.guardsNeeded).to.be.greaterThan(0);
       expect(request.urgency).to.be.greaterThan(0);
@@ -202,7 +204,7 @@ describe("Defense Assistance Thresholds", () => {
       const needsGuards = 3;
       const currentGuards = 1;
       const guardsNeeded = Math.max(0, needsGuards - currentGuards);
-      
+
       expect(guardsNeeded).to.equal(2);
     });
   });

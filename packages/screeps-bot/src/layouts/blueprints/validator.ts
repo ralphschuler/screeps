@@ -78,7 +78,7 @@ export function findBestSpawnPosition(room: Room): RoomPosition | null {
 
 /**
  * Validate if a blueprint can fit in the room at the given anchor position
- * 
+ *
  * @param room The room to check
  * @param anchor The anchor position for the blueprint
  * @param blueprint The blueprint to validate
@@ -91,55 +91,54 @@ export function validateBlueprintFit(
 ): { fits: boolean; reason?: string; wallCount?: number; totalTiles?: number } {
   const terrain = room.getTerrain();
   const minRadius = blueprint.minSpaceRadius ?? DEFAULT_MIN_SPACE_RADIUS;
-  
+
   let wallCount = 0;
   let totalTiles = 0;
-  
+
   // Check if anchor is in valid range
-  if (anchor.x < minRadius || anchor.x > 49 - minRadius ||
-      anchor.y < minRadius || anchor.y > 49 - minRadius) {
-    return { 
-      fits: false, 
-      reason: `Anchor too close to room edge (needs ${minRadius} tile margin)` 
+  if (anchor.x < minRadius || anchor.x > 49 - minRadius || anchor.y < minRadius || anchor.y > 49 - minRadius) {
+    return {
+      fits: false,
+      reason: `Anchor too close to room edge (needs ${minRadius} tile margin)`
     };
   }
-  
+
   // Check all structure positions
   for (const structure of blueprint.structures) {
     const x = anchor.x + structure.x;
     const y = anchor.y + structure.y;
-    
+
     if (x < 1 || x > 48 || y < 1 || y > 48) {
-      return { 
-        fits: false, 
-        reason: `Structure ${structure.structureType} at (${structure.x},${structure.y}) would be outside room bounds` 
+      return {
+        fits: false,
+        reason: `Structure ${structure.structureType} at (${structure.x},${structure.y}) would be outside room bounds`
       };
     }
-    
+
     totalTiles++;
     if (terrain.get(x, y) === TERRAIN_MASK_WALL) {
       wallCount++;
     }
   }
-  
+
   // Check road positions
   for (const road of blueprint.roads) {
     const x = anchor.x + road.x;
     const y = anchor.y + road.y;
-    
+
     if (x < 1 || x > 48 || y < 1 || y > 48) {
       continue; // Roads outside bounds are okay, just skip them
     }
-    
+
     totalTiles++;
     if (terrain.get(x, y) === TERRAIN_MASK_WALL) {
       wallCount++;
     }
   }
-  
+
   // Calculate wall percentage
   const wallPercentage = totalTiles > 0 ? (wallCount / totalTiles) * 100 : 0;
-  
+
   // Bunker blueprints are strict - require mostly open terrain
   if (blueprint.type === "bunker" && wallPercentage > MAX_BUNKER_WALL_PERCENTAGE) {
     return {
@@ -149,7 +148,7 @@ export function validateBlueprintFit(
       totalTiles
     };
   }
-  
+
   // Spread blueprints are more flexible with terrain obstacles
   if (blueprint.type === "spread" && wallPercentage > MAX_SPREAD_WALL_PERCENTAGE) {
     return {
@@ -159,26 +158,23 @@ export function validateBlueprintFit(
       totalTiles
     };
   }
-  
+
   return { fits: true, wallCount, totalTiles };
 }
 
 /**
  * Find the best anchor position for a blueprint in a room
- * 
+ *
  * @param room The room to search
  * @param blueprint The blueprint to place
  * @returns Best anchor position or null if blueprint doesn't fit anywhere
  */
-export function findBestBlueprintAnchor(
-  room: Room,
-  blueprint: Blueprint
-): RoomPosition | null {
+export function findBestBlueprintAnchor(room: Room, blueprint: Blueprint): RoomPosition | null {
   const controller = room.controller;
   if (!controller) return null;
-  
+
   const sources = room.find(FIND_SOURCES);
-  
+
   // Calculate ideal center point (between controller and sources)
   let sumX = controller.pos.x;
   let sumY = controller.pos.y;
@@ -188,32 +184,32 @@ export function findBestBlueprintAnchor(
   }
   const idealX = Math.round(sumX / (sources.length + 1));
   const idealY = Math.round(sumY / (sources.length + 1));
-  
+
   const minRadius = blueprint.minSpaceRadius ?? DEFAULT_MIN_SPACE_RADIUS;
   const candidates: { pos: RoomPosition; score: number }[] = [];
-  
+
   // Search in expanding rings from ideal center
   for (let radius = 0; radius <= MAX_ANCHOR_SEARCH_RADIUS; radius++) {
     for (let dx = -radius; dx <= radius; dx++) {
       for (let dy = -radius; dy <= radius; dy++) {
         // Only check positions on the current ring
         if (Math.abs(dx) !== radius && Math.abs(dy) !== radius && radius > 0) continue;
-        
+
         const x = idealX + dx;
         const y = idealY + dy;
-        
+
         // Skip if too close to edge
         if (x < minRadius || x > 49 - minRadius || y < minRadius || y > 49 - minRadius) {
           continue;
         }
-        
+
         const pos = new RoomPosition(x, y, room.name);
         const validation = validateBlueprintFit(room, pos, blueprint);
-        
+
         if (validation.fits) {
           // Score based on distance to key positions
           let score = 1000;
-          
+
           // Prefer positions closer to controller (but not too close)
           const controllerDist = pos.getRangeTo(controller);
           if (controllerDist >= 4 && controllerDist <= 8) {
@@ -223,7 +219,7 @@ export function findBestBlueprintAnchor(
           } else if (controllerDist > 12) {
             score -= 30;
           }
-          
+
           // Prefer positions with good source access
           let totalSourceDist = 0;
           for (const source of sources) {
@@ -235,7 +231,7 @@ export function findBestBlueprintAnchor(
           } else if (avgSourceDist < 5) {
             score -= 20;
           }
-          
+
           // Prefer positions closer to room center
           const centerDist = Math.abs(x - 25) + Math.abs(y - 25);
           if (centerDist < 10) {
@@ -243,24 +239,24 @@ export function findBestBlueprintAnchor(
           } else if (centerDist > 20) {
             score -= 30;
           }
-          
+
           // Bonus for fewer walls in blueprint area
           if (validation.wallCount !== undefined && validation.totalTiles !== undefined) {
             const wallPercentage = (validation.wallCount / validation.totalTiles) * 100;
             score += Math.max(0, 50 - wallPercentage * 2);
           }
-          
+
           candidates.push({ pos, score });
         }
       }
     }
-    
+
     // If we found candidates, return the best one
     if (candidates.length > 0) {
       candidates.sort((a, b) => b.score - a.score);
       return candidates[0].pos;
     }
   }
-  
+
   return null;
 }

@@ -49,21 +49,18 @@ const activeFormations = new Map<string, SquadFormation>();
 /**
  * Start forming a squad by creating spawn requests
  */
-export function startSquadFormation(
-  cluster: ClusterMemory,
-  squad: SquadDefinition
-): void {
+export function startSquadFormation(cluster: ClusterMemory, squad: SquadDefinition): void {
   const squadId = squad.id;
-  
+
   // Check if already forming
   if (activeFormations.has(squadId)) {
     logger.debug(`Squad ${squadId} already forming`, { subsystem: "SquadFormation" });
     return;
   }
-  
+
   // Get composition from doctrine (map squad type to doctrine)
   let composition: { harassers: number; soldiers: number; rangers: number; healers: number; siegeUnits: number };
-  
+
   if (squad.type === "defense") {
     // Defense squads use a default composition (will be enhanced by defense manager)
     composition = {
@@ -78,7 +75,7 @@ export function startSquadFormation(
     const config = DOCTRINE_CONFIGS[doctrineType];
     composition = config.composition;
   }
-  
+
   // Convert composition to role map
   const targetComposition: Record<string, number> = {};
   if (composition.harassers > 0) targetComposition.harasser = composition.harassers;
@@ -86,7 +83,7 @@ export function startSquadFormation(
   if (composition.rangers > 0) targetComposition.ranger = composition.rangers;
   if (composition.healers > 0) targetComposition.healer = composition.healers;
   if (composition.siegeUnits > 0) targetComposition.siegeUnit = composition.siegeUnits;
-  
+
   // Create formation tracker
   const formation: SquadFormation = {
     squadId,
@@ -95,9 +92,9 @@ export function startSquadFormation(
     spawnRequests: new Set(),
     formationStarted: Game.time
   };
-  
+
   activeFormations.set(squadId, formation);
-  
+
   // Create spawn requests for each role
   const rallyRoom = Game.rooms[squad.rallyRoom];
   if (!rallyRoom) {
@@ -106,13 +103,12 @@ export function startSquadFormation(
     });
     return;
   }
-  
+
   createSquadSpawnRequests(rallyRoom, squad, composition, formation);
-  
-  logger.info(
-    `Started forming squad ${squadId}: ${JSON.stringify(targetComposition)}`,
-    { subsystem: "SquadFormation" }
-  );
+
+  logger.info(`Started forming squad ${squadId}: ${JSON.stringify(targetComposition)}`, {
+    subsystem: "SquadFormation"
+  });
 }
 
 /**
@@ -131,7 +127,7 @@ function createSquadSpawnRequests(
     const config = DOCTRINE_CONFIGS[doctrineType];
     useBoosts = config.useBoosts;
   }
-  
+
   // Determine priority based on squad type
   let priority = SpawnPriority.NORMAL;
   if (squad.type === "siege") {
@@ -139,15 +135,15 @@ function createSquadSpawnRequests(
   } else if (squad.type === "defense") {
     priority = SpawnPriority.EMERGENCY;
   }
-  
+
   // Helper to create a spawn request
   const createRequest = (role: string, count: number) => {
     for (let i = 0; i < count; i++) {
       const bodyParts = getBodyForRole(role, "medium", room.energyCapacityAvailable);
       const bodyCost = bodyParts.reduce((sum, part) => sum + BODYPART_COST[part], 0);
-      
+
       const boostReqs = useBoosts ? getBoostsForRole(role) : [];
-      
+
       const request: SpawnRequest = {
         id: `${squad.id}_${role}_${i}_${Game.time}`,
         roomName: room.name,
@@ -160,21 +156,24 @@ function createSquadSpawnRequests(
         },
         priority,
         targetRoom: squad.targetRooms[0],
-        boostRequirements: boostReqs.length > 0 ? boostReqs.map(boost => ({
-          resourceType: boost.compound,
-          bodyParts: bodyParts.filter(part => boost.parts.includes(part))
-        })) : undefined,
+        boostRequirements:
+          boostReqs.length > 0
+            ? boostReqs.map(boost => ({
+                resourceType: boost.compound,
+                bodyParts: bodyParts.filter(part => boost.parts.includes(part))
+              }))
+            : undefined,
         createdAt: Game.time,
         additionalMemory: {
           squadId: squad.id
         }
       };
-      
+
       spawnQueue.addRequest(request);
       formation.spawnRequests.add(request.id);
     }
   };
-  
+
   // Create requests for each role
   if (composition.harassers > 0) createRequest("harasser", composition.harassers);
   if (composition.soldiers > 0) createRequest("soldier", composition.soldiers);
@@ -189,7 +188,7 @@ function createSquadSpawnRequests(
 function getBodyForRole(role: string, size: "small" | "medium" | "large", maxEnergy: number): BodyPartConstant[] {
   // Simple body generation - can be enhanced later
   const budget = Math.min(maxEnergy, size === "small" ? 1500 : size === "medium" ? 3000 : 5000);
-  
+
   switch (role) {
     case "harasser":
       return generateBody([MOVE, ATTACK], budget, [MOVE, ATTACK]);
@@ -209,17 +208,21 @@ function getBodyForRole(role: string, size: "small" | "medium" | "large", maxEne
 /**
  * Generate body with a pattern up to budget
  */
-function generateBody(pattern: BodyPartConstant[], budget: number, repeatPattern: BodyPartConstant[]): BodyPartConstant[] {
+function generateBody(
+  pattern: BodyPartConstant[],
+  budget: number,
+  repeatPattern: BodyPartConstant[]
+): BodyPartConstant[] {
   const body: BodyPartConstant[] = [...pattern];
   let cost = pattern.reduce((sum, part) => sum + BODYPART_COST[part], 0);
-  
+
   const repeatCost = repeatPattern.reduce((sum, part) => sum + BODYPART_COST[part], 0);
-  
+
   while (cost + repeatCost <= budget && body.length < 50) {
     body.push(...repeatPattern);
     cost += repeatCost;
   }
-  
+
   return body.slice(0, 50); // Max 50 parts
 }
 
@@ -252,21 +255,21 @@ function getBoostsForRole(role: string): { compound: MineralBoostConstant; parts
 export function onCreepSpawned(creep: Creep): void {
   const squadId = (creep.memory as any).squadId;
   if (!squadId) return;
-  
+
   const formation = activeFormations.get(squadId);
   if (!formation) return;
-  
+
   // Update composition
-  const role = creep.memory.role ;
+  const role = creep.memory.role;
   formation.currentComposition[role] = (formation.currentComposition[role] ?? 0) + 1;
-  
+
   // Add creep to squad
   addCreepToSquad(creep.name, squadId);
-  
+
   logger.debug(`Added ${creep.name} (${role}) to squad ${squadId}`, {
     subsystem: "SquadFormation"
   });
-  
+
   // Check if formation is complete
   checkFormationComplete(squadId, formation);
 }
@@ -278,12 +281,11 @@ function checkFormationComplete(squadId: string, formation: SquadFormation): voi
   const isComplete = Object.entries(formation.targetComposition).every(
     ([role, target]) => (formation.currentComposition[role] ?? 0) >= target
   );
-  
+
   if (isComplete) {
-    logger.info(
-      `Squad ${squadId} formation complete: ${JSON.stringify(formation.currentComposition)}`,
-      { subsystem: "SquadFormation" }
-    );
+    logger.info(`Squad ${squadId} formation complete: ${JSON.stringify(formation.currentComposition)}`, {
+      subsystem: "SquadFormation"
+    });
     activeFormations.delete(squadId);
   }
 }
@@ -295,10 +297,10 @@ function checkFormationComplete(squadId: string, formation: SquadFormation): voi
 export function updateSquadFormations(): void {
   const now = Game.time;
   const FORMATION_TIMEOUT = 500; // 500 ticks = ~25 minutes at 20 ticks/sec
-  
+
   for (const [squadId, formation] of activeFormations.entries()) {
     const age = now - formation.formationStarted;
-    
+
     if (age > FORMATION_TIMEOUT) {
       logger.warn(`Squad ${squadId} formation timed out after ${age} ticks`, {
         subsystem: "SquadFormation"
@@ -314,7 +316,7 @@ export function updateSquadFormations(): void {
 export function cancelSquadFormation(squadId: string): void {
   const formation = activeFormations.get(squadId);
   if (!formation) return;
-  
+
   // Cancel all pending spawn requests
   for (const requestId of formation.spawnRequests) {
     // Note: spawnQueue would need a cancel method - for now just log
@@ -322,7 +324,7 @@ export function cancelSquadFormation(squadId: string): void {
       subsystem: "SquadFormation"
     });
   }
-  
+
   activeFormations.delete(squadId);
   logger.info(`Cancelled formation for squad ${squadId}`, { subsystem: "SquadFormation" });
 }

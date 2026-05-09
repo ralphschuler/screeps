@@ -66,7 +66,7 @@ export function getCollectionPoint(room: Room, swarmState: SwarmState): RoomPosi
     namespace: CACHE_NAMESPACE,
     ttl: RECALCULATION_INTERVAL
   });
-  
+
   if (cached) {
     return new RoomPosition(cached.x, cached.y, room.name);
   }
@@ -76,17 +76,29 @@ export function getCollectionPoint(room: Room, swarmState: SwarmState): RoomPosi
     // Validate coordinates are valid numbers before constructing RoomPosition
     const x = swarmState.collectionPoint.x;
     const y = swarmState.collectionPoint.y;
-    
-    if (typeof x === 'number' && typeof y === 'number' && !isNaN(x) && !isNaN(y) && 
-        x >= 0 && x < 50 && y >= 0 && y < 50) {
+
+    if (
+      typeof x === "number" &&
+      typeof y === "number" &&
+      !isNaN(x) &&
+      !isNaN(y) &&
+      x >= 0 &&
+      x < 50 &&
+      y >= 0 &&
+      y < 50
+    ) {
       const pos = new RoomPosition(x, y, room.name);
       // Validate the stored position is still valid
       if (isValidCollectionPoint(room, pos)) {
         // Cache it in unified cache for quick access
-        globalCache.set(room.name, { x, y }, {
-          namespace: CACHE_NAMESPACE,
-          ttl: RECALCULATION_INTERVAL
-        });
+        globalCache.set(
+          room.name,
+          { x, y },
+          {
+            namespace: CACHE_NAMESPACE,
+            ttl: RECALCULATION_INTERVAL
+          }
+        );
         return pos;
       }
     }
@@ -99,10 +111,14 @@ export function getCollectionPoint(room: Room, swarmState: SwarmState): RoomPosi
     // Store in memory for persistence across ticks
     swarmState.collectionPoint = { x: newPos.x, y: newPos.y };
     // Cache in unified cache for fast access
-    globalCache.set(room.name, { x: newPos.x, y: newPos.y }, {
-      namespace: CACHE_NAMESPACE,
-      ttl: RECALCULATION_INTERVAL
-    });
+    globalCache.set(
+      room.name,
+      { x: newPos.x, y: newPos.y },
+      {
+        namespace: CACHE_NAMESPACE,
+        ttl: RECALCULATION_INTERVAL
+      }
+    );
     logger.info(`Calculated new collection point at ${newPos.x},${newPos.y}`, room.name);
   } else {
     // Clear invalid collection point from memory
@@ -175,18 +191,18 @@ function calculateCollectionPoint(room: Room): RoomPosition | null {
   const structures = room.find(FIND_STRUCTURES);
   for (const struct of structures) {
     const key = `${struct.pos.x},${struct.pos.y}`;
-    
+
     // Track roads separately for scoring
     if (struct.structureType === STRUCTURE_ROAD) {
       roadMap.set(key, true);
     }
-    
+
     // Track blocking structures
-    const isBlocking = 
+    const isBlocking =
       struct.structureType !== STRUCTURE_ROAD &&
       struct.structureType !== STRUCTURE_CONTAINER &&
-      !(struct.structureType === STRUCTURE_RAMPART && (struct ).my);
-    
+      !(struct.structureType === STRUCTURE_RAMPART && struct.my);
+
     if (isBlocking) {
       blockingMap.set(key, true);
     }
@@ -281,11 +297,7 @@ function calculateCollectionPoint(room: Room): RoomPosition | null {
  * @param blockingMap - Pre-built map of blocking structures
  * @returns true if the position is walkable
  */
-function isWalkableWithMap(
-  pos: RoomPosition, 
-  terrain: RoomTerrain, 
-  blockingMap: Map<string, boolean>
-): boolean {
+function isWalkableWithMap(pos: RoomPosition, terrain: RoomTerrain, blockingMap: Map<string, boolean>): boolean {
   // Check terrain
   if (terrain.get(pos.x, pos.y) === TERRAIN_MASK_WALL) {
     return false;
@@ -294,7 +306,7 @@ function isWalkableWithMap(
   // Check for blocking structures using pre-built map
   const key = `${pos.x},${pos.y}`;
   const isBlocked = blockingMap.get(key) ?? false;
-  
+
   return !isBlocked;
 }
 

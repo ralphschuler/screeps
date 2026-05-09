@@ -59,7 +59,7 @@ describe("Market Order Management", () => {
     it("should calculate energy cost for transactions", () => {
       const distance = 10;
       const amount = 1000;
-      
+
       // Energy cost = amount * distance * 0.1
       const energyCost = Math.ceil(amount * distance * 0.1);
 
@@ -129,7 +129,7 @@ describe("Market Order Management", () => {
       };
 
       const isCompleted = order.remainingAmount === 0;
-      const fillPercent = 1 - (order.remainingAmount / order.totalAmount);
+      const fillPercent = 1 - order.remainingAmount / order.totalAmount;
 
       expect(isCompleted).to.be.true;
       expect(fillPercent).to.equal(1.0);
@@ -142,7 +142,7 @@ describe("Market Order Management", () => {
         remainingAmount: 3000
       };
 
-      const fillPercent = 1 - (order.remainingAmount / order.totalAmount);
+      const fillPercent = 1 - order.remainingAmount / order.totalAmount;
 
       expect(fillPercent).to.equal(0.7);
     });
@@ -161,7 +161,7 @@ describe("Market Order Management", () => {
       const fillThreshold = 0.1;
 
       const age = currentTime - order.createdAt;
-      const fillPercent = 1 - (order.remainingAmount / 10000);
+      const fillPercent = 1 - order.remainingAmount / 10000;
 
       const shouldCancel = age > staleThreshold && fillPercent < fillThreshold;
 
@@ -195,7 +195,7 @@ describe("Market Order Management", () => {
       const currentTime = 10000;
       const fillThreshold = 0.5;
 
-      const fillPercent = 1 - (order.remainingAmount / order.totalAmount);
+      const fillPercent = 1 - order.remainingAmount / order.totalAmount;
       const shouldCancel = fillPercent < fillThreshold;
 
       expect(shouldCancel).to.be.false;
@@ -221,7 +221,7 @@ describe("Market Order Management", () => {
       // Sell slightly below best buy to get filled faster
       const sellPrice = bestBuyPrice * (1 - margin);
 
-      expect(sellPrice).to.be.closeTo(1.90, 0.01);
+      expect(sellPrice).to.be.closeTo(1.9, 0.01);
     });
 
     it("should adjust prices based on urgency", () => {

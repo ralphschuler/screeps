@@ -3,7 +3,7 @@ import { RoomConstructionManager } from "../../src/core/managers/RoomConstructio
 
 /**
  * Test suite for RoomConstructionManager
- * 
+ *
  * Tests the implementation of:
  * - Blueprint-based construction
  * - Perimeter defense placement
@@ -22,7 +22,7 @@ describe("RoomConstructionManager", () => {
     it("should return faster interval for early game defense (RCL 2-3)", () => {
       const interval = manager.getConstructionInterval(2);
       assert.equal(interval, 5, "Early game should have 5 tick interval");
-      
+
       const interval3 = manager.getConstructionInterval(3);
       assert.equal(interval3, 5, "RCL 3 should have 5 tick interval");
     });
@@ -30,7 +30,7 @@ describe("RoomConstructionManager", () => {
     it("should return regular interval for mid-late game (RCL 4+)", () => {
       const interval = manager.getConstructionInterval(4);
       assert.equal(interval, 10, "RCL 4+ should have 10 tick interval");
-      
+
       const interval8 = manager.getConstructionInterval(8);
       assert.equal(interval8, 10, "RCL 8 should have 10 tick interval");
     });

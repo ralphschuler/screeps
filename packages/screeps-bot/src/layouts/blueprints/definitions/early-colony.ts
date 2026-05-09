@@ -1,13 +1,13 @@
 /**
  * RCL 1-2: Early Colony Layout
- * 
+ *
  * Uses a checkerboard pattern to ensure creeps can:
  * - Spawn and move away in any direction
  * - Access all extensions without blocking each other
- * 
+ *
  * All extension positions satisfy |x|+|y| % 2 == 0 (even sum)
  * to ensure no two extensions are directly adjacent.
- * 
+ *
  * Layout (E=Extension, S=Spawn, r=Road):
  *       . E .
  *     E r r r E

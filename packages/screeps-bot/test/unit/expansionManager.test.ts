@@ -136,9 +136,11 @@ describe("expansion manager concepts", () => {
       };
 
       const manager = new ExpansionManager();
-      const candidates = (manager as unknown as {
-        findRemoteCandidates(homeRoom: string, empire: EmpireMemory, currentRemotes: string[]): string[];
-      }).findRemoteCandidates("E1N1", empire, []);
+      const candidates = (
+        manager as unknown as {
+          findRemoteCandidates(homeRoom: string, empire: EmpireMemory, currentRemotes: string[]): string[];
+        }
+      ).findRemoteCandidates("E1N1", empire, []);
 
       assert.deepEqual(candidates, ["E2N1"], "adjacent stub intel must not be filtered by sources=0 before scouting");
     });

@@ -137,7 +137,7 @@ class CommandRegistry {
     if (this.lazyLoadEnabled && !this.commandsRegistered) {
       this.triggerLazyLoad();
     }
-    
+
     const categories = new Map<string, RegisteredCommand[]>();
 
     for (const cmd of this.commands.values()) {
@@ -149,7 +149,10 @@ class CommandRegistry {
 
     // Sort commands within each category
     for (const [category, cmds] of categories) {
-      categories.set(category, cmds.sort((a, b) => a.metadata.name.localeCompare(b.metadata.name)));
+      categories.set(
+        category,
+        cmds.sort((a, b) => a.metadata.name.localeCompare(b.metadata.name))
+      );
     }
 
     return categories;
@@ -226,7 +229,7 @@ class CommandRegistry {
     if (this.lazyLoadEnabled && !this.commandsRegistered) {
       this.triggerLazyLoad();
     }
-    
+
     const command = this.commands.get(name);
     if (!command) {
       return `Command "${name}" not found. Use help() to see available commands.`;
@@ -405,11 +408,7 @@ export const commandRegistry = new CommandRegistry();
  * ```
  */
 export function Command(metadata: CommandMetadata) {
-  return function <T>(
-    target: object,
-    propertyKey: string | symbol,
-    _descriptor: TypedPropertyDescriptor<T>
-  ): void {
+  return function <T>(target: object, propertyKey: string | symbol, _descriptor: TypedPropertyDescriptor<T>): void {
     commandDecoratorStore.push({
       metadata,
       methodName: String(propertyKey),

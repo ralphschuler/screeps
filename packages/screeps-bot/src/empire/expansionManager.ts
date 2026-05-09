@@ -219,11 +219,7 @@ export class ExpansionManager {
   /**
    * Validate existing remote assignments (remove invalid ones)
    */
-  private validateRemoteAssignments(
-    remotes: string[],
-    empire: EmpireMemory,
-    homeRoom: string
-  ): string[] {
+  private validateRemoteAssignments(remotes: string[], empire: EmpireMemory, homeRoom: string): string[] {
     return remotes.filter(remoteName => {
       const intel = empire.knownRooms[remoteName];
 
@@ -278,11 +274,7 @@ export class ExpansionManager {
   /**
    * Find remote mining candidates for a room
    */
-  private findRemoteCandidates(
-    homeRoom: string,
-    empire: EmpireMemory,
-    currentRemotes: string[]
-  ): string[] {
+  private findRemoteCandidates(homeRoom: string, empire: EmpireMemory, currentRemotes: string[]): string[] {
     const candidates: { roomName: string; score: number }[] = [];
     const myUsername = this.getMyUsername();
 
@@ -318,7 +310,10 @@ export class ExpansionManager {
       // so scouts/miners break the chicken-and-egg loop; real intel validation will
       // remove bad remotes after first vision.
       if (!intel.scouted) {
-        const score = this.scoreRemoteCandidate({ ...intel, sources: Math.max(2, this.config.minRemoteSources) }, distance);
+        const score = this.scoreRemoteCandidate(
+          { ...intel, sources: Math.max(2, this.config.minRemoteSources) },
+          distance
+        );
         candidates.push({ roomName, score });
         continue;
       }
@@ -330,10 +325,9 @@ export class ExpansionManager {
       const profitability = ExpansionScoring.calculateRemoteProfitability(roomName, homeRoom, intel);
       if (!profitability.isProfitable) {
         if (Game.time % 1000 === 0) {
-          logger.debug(
-            `Skipping remote ${roomName} - not profitable (ROI: ${profitability.roi.toFixed(2)})`,
-            { subsystem: "Expansion" }
-          );
+          logger.debug(`Skipping remote ${roomName} - not profitable (ROI: ${profitability.roi.toFixed(2)})`, {
+            subsystem: "Expansion"
+          });
         }
         continue;
       }
@@ -755,7 +749,10 @@ export class ExpansionManager {
    * Perform safety analysis for a room expansion candidate
    * Scans 2-range radius for hostile structures and threats
    */
-  private performSafetyAnalysis(roomName: string, empire: EmpireMemory): {
+  private performSafetyAnalysis(
+    roomName: string,
+    empire: EmpireMemory
+  ): {
     isSafe: boolean;
     threatDescription: string;
   } {
@@ -863,9 +860,12 @@ export class ExpansionManager {
       const avgStoredEnergy = roomsWithStorage.length > 0 ? totalStoredEnergy / roomsWithStorage.length : Infinity;
 
       if (avgStoredEnergy < 10000) {
-        logger.warn(`Cancelling expansion to ${candidate.roomName} due to low stored energy (avg: ${avgStoredEnergy})`, {
-          subsystem: "Expansion"
-        });
+        logger.warn(
+          `Cancelling expansion to ${candidate.roomName} due to low stored energy (avg: ${avgStoredEnergy})`,
+          {
+            subsystem: "Expansion"
+          }
+        );
         this.cancelExpansion(empire, candidate.roomName, "low_energy");
         continue;
       }

@@ -122,11 +122,7 @@ describe("Remote Mining Profitability Analysis", () => {
       assert.isAbove(dangerousResult.threatCost, 0, "Dangerous remote should have threat cost");
 
       // Threat should reduce net profit
-      assert.isBelow(
-        dangerousResult.netProfitPerTick,
-        safeResult.netProfitPerTick,
-        "Threat should reduce net profit"
-      );
+      assert.isBelow(dangerousResult.netProfitPerTick, safeResult.netProfitPerTick, "Threat should reduce net profit");
 
       // Threat should reduce profitability score
       assert.isBelow(
@@ -210,12 +206,7 @@ describe("Remote Mining Profitability Analysis", () => {
 
       // Threat level 1 should cause 10% loss
       const expectedThreatCost = result.energyPerTick * 0.1;
-      assert.approximately(
-        result.threatCost,
-        expectedThreatCost,
-        0.01,
-        "Threat level 1 should cause 10% loss"
-      );
+      assert.approximately(result.threatCost, expectedThreatCost, 0.01, "Threat level 1 should cause 10% loss");
     });
 
     it("should handle threat level 2 with appropriate penalty", () => {
@@ -224,12 +215,7 @@ describe("Remote Mining Profitability Analysis", () => {
 
       // Threat level 2 should cause 30% loss
       const expectedThreatCost = result.energyPerTick * 0.3;
-      assert.approximately(
-        result.threatCost,
-        expectedThreatCost,
-        0.01,
-        "Threat level 2 should cause 30% loss"
-      );
+      assert.approximately(result.threatCost, expectedThreatCost, 0.01, "Threat level 2 should cause 30% loss");
     });
 
     it("should handle threat level 3 with appropriate penalty", () => {
@@ -238,12 +224,7 @@ describe("Remote Mining Profitability Analysis", () => {
 
       // Threat level 3 should cause 60% loss
       const expectedThreatCost = result.energyPerTick * 0.6;
-      assert.approximately(
-        result.threatCost,
-        expectedThreatCost,
-        0.01,
-        "Threat level 3 should cause 60% loss"
-      );
+      assert.approximately(result.threatCost, expectedThreatCost, 0.01, "Threat level 3 should cause 60% loss");
     });
 
     it("should calculate ROI as net profit to investment cost ratio", () => {
@@ -278,7 +259,6 @@ describe("Remote Mining Profitability Analysis", () => {
         "Infrastructure should be amortized correctly"
       );
     });
-
   });
 
   describe("edge cases and input validation", () => {

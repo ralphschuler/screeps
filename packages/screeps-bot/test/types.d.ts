@@ -19,15 +19,18 @@ declare global {
       data: Record<string, { value: any; lastModified: number; ttl?: number }>;
     };
     /** SS2 Terminal Communications multi-packet queue */
-    ss2PacketQueue?: Record<string, {
-      terminalId: Id<StructureTerminal>;
-      targetRoom: string;
-      resourceType: ResourceConstant;
-      amount: number;
-      packets: string[];
-      nextPacketIndex: number;
-      queuedAt: number;
-    }>;
+    ss2PacketQueue?: Record<
+      string,
+      {
+        terminalId: Id<StructureTerminal>;
+        targetRoom: string;
+        resourceType: ResourceConstant;
+        amount: number;
+        packets: string[];
+        nextPacketIndex: number;
+        queuedAt: number;
+      }
+    >;
   }
 }
 

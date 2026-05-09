@@ -35,12 +35,12 @@ export function isNativeCallsTrackingEnabled(): boolean {
 
 /**
  * Wrap PathFinder.search to track calls
- * 
+ *
  * Note: Uses 'any' types to handle the complex overloaded signature of PathFinder.search.
  * The TypeScript definitions for PathFinder.search have multiple overloads that are
  * difficult to preserve when wrapping. Using 'any' here allows the wrapper to work
  * correctly while maintaining runtime type safety through the original method.
- * 
+ *
  * Uses Object.defineProperty to override read-only properties that may exist in some
  * Screeps environments (e.g., private servers with strict property descriptors).
  */
@@ -62,7 +62,7 @@ export function wrapPathFinderSearch(): void {
   }
 
   const originalSearch = PathFinder.search;
-  
+
   try {
     const wrappedFunction = function (...args: any[]): PathFinderPath {
       if (trackingEnabled) {
@@ -70,10 +70,10 @@ export function wrapPathFinderSearch(): void {
       }
       return (originalSearch as any).apply(PathFinder, args);
     };
-    
+
     // Mark the wrapped function so we can detect it later
     (wrappedFunction as any).__nativeCallsTrackerWrapped = true;
-    
+
     Object.defineProperty(PathFinder, "search", {
       value: wrappedFunction,
       writable: true,
@@ -117,10 +117,10 @@ function wrapMethod(
       }
       return original.apply(this, args);
     };
-    
+
     // Mark the wrapped function so we can detect it later
     (wrappedFunction as any).__nativeCallsTrackerWrapped = true;
-    
+
     Object.defineProperty(prototype, methodName, {
       value: wrappedFunction,
       writable: true,
@@ -134,13 +134,13 @@ function wrapMethod(
 
 /**
  * Wrap Creep.prototype methods to track calls
- * 
+ *
  * Note: Uses 'any' types to handle the various overloaded method signatures on Creep.prototype.
  * Many Creep methods have multiple overloads (e.g., moveTo has 2-3 different signatures).
  * Using 'any' allows the wrappers to work correctly with all overloads while maintaining
  * runtime type safety through the original methods. This is a common pattern for method
  * wrapping in JavaScript/TypeScript.
- * 
+ *
  * Uses Object.defineProperty to override read-only properties that may exist in some
  * Screeps environments (e.g., private servers with strict property descriptors).
  */

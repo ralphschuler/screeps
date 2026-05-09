@@ -1,6 +1,6 @@
 /**
  * Spawn Queue Manager Module
- * 
+ *
  * Main spawn coordination system that:
  * - Determines which role to spawn next
  * - Selects optimal body templates

@@ -7,6 +7,12 @@ export interface ExpansionOpportunityConfig {
   maxCandidates: number;
 }
 
+export interface ExpansionClaimQueuePlan {
+  claimQueue: ExpansionCandidate[];
+  evaluatedCandidates: number;
+  preservedActiveTargets: number;
+}
+
 function getMinDistanceToOwned(roomName: string, ownedRooms: Room[]): number {
   if (ownedRooms.length === 0) return Infinity;
 
@@ -92,4 +98,22 @@ export function evaluateExpansionOpportunities(
 
   candidates.sort((a, b) => b.score - a.score);
   return candidates.slice(0, config.maxCandidates);
+}
+
+export function planExpansionClaimQueue(
+  empire: EmpireMemory,
+  ownedRooms: Room[],
+  config: ExpansionOpportunityConfig
+): ExpansionClaimQueuePlan {
+  const activeTargets = empire.claimQueue.filter(candidate => candidate.claimed);
+  const activeRoomNames = new Set(activeTargets.map(candidate => candidate.roomName));
+  const candidates = evaluateExpansionOpportunities(empire, ownedRooms, config).filter(
+    candidate => !activeRoomNames.has(candidate.roomName)
+  );
+
+  return {
+    claimQueue: [...activeTargets, ...candidates].slice(0, config.maxCandidates),
+    evaluatedCandidates: candidates.length,
+    preservedActiveTargets: activeTargets.length
+  };
 }

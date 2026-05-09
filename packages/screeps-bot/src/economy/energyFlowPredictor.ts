@@ -105,7 +105,7 @@ export class EnergyFlowPredictor {
 
   /**
    * Predict energy available in N ticks
-   * 
+   *
    * @param room - The room to predict for
    * @param ticks - Number of ticks to predict into future
    * @returns Energy prediction result
@@ -116,10 +116,9 @@ export class EnergyFlowPredictor {
     }
 
     if (ticks > this.config.maxPredictionTicks) {
-      logger.warn(
-        `Prediction horizon ${ticks} exceeds max ${this.config.maxPredictionTicks}, clamping`,
-        { subsystem: "EnergyFlowPredictor" }
-      );
+      logger.warn(`Prediction horizon ${ticks} exceeds max ${this.config.maxPredictionTicks}, clamping`, {
+        subsystem: "EnergyFlowPredictor"
+      });
       ticks = this.config.maxPredictionTicks;
     }
 
@@ -153,7 +152,7 @@ export class EnergyFlowPredictor {
 
   /**
    * Calculate energy income per tick
-   * 
+   *
    * @param room - The room to analyze
    * @returns Breakdown of energy income sources
    */
@@ -172,7 +171,7 @@ export class EnergyFlowPredictor {
 
   /**
    * Calculate energy consumption per tick
-   * 
+   *
    * @param room - The room to analyze
    * @returns Breakdown of energy consumption
    */
@@ -196,7 +195,7 @@ export class EnergyFlowPredictor {
   /**
    * Calculate income from harvester creeps
    * Harvesters move between source and storage, so they have lower efficiency
-   * 
+   *
    * Verified via Screeps official docs: WORK part harvests 2 energy/tick (Creep.harvest)
    */
   private calculateHarvesterIncome(room: Room): number {
@@ -221,7 +220,7 @@ export class EnergyFlowPredictor {
   /**
    * Calculate income from static miner creeps
    * Static miners sit on source, so they have very high efficiency
-   * 
+   *
    * Verified via Screeps official docs: WORK part harvests 2 energy/tick (Creep.harvest)
    */
   private calculateMinerIncome(room: Room): number {
@@ -256,7 +255,7 @@ export class EnergyFlowPredictor {
 
   /**
    * Calculate energy consumption from upgraders
-   * 
+   *
    * Verified via Screeps official docs: WORK part uses 1 energy/tick when upgrading (Creep.upgradeController)
    */
   private calculateUpgraderConsumption(room: Room): number {
@@ -277,7 +276,7 @@ export class EnergyFlowPredictor {
 
   /**
    * Calculate energy consumption from builders
-   * 
+   *
    * Verified via Screeps official docs: WORK part builds for 5 energy/tick (Creep.build)
    */
   private calculateBuilderConsumption(room: Room): number {
@@ -287,7 +286,7 @@ export class EnergyFlowPredictor {
     );
 
     const constructionSites = room.find(FIND_MY_CONSTRUCTION_SITES);
-    
+
     // If no construction sites, builders consume minimal energy (only repairs)
     if (constructionSites.length === 0) {
       return 0.1;
@@ -308,7 +307,7 @@ export class EnergyFlowPredictor {
 
   /**
    * Calculate energy consumption from towers
-   * 
+   *
    * Verified via local Screeps TypeScript types: Tower actions consume 10 energy per action
    */
   private calculateTowerConsumption(room: Room): number {
@@ -364,7 +363,7 @@ export class EnergyFlowPredictor {
 
     // Average spawn time: body size dependent, assume ~20 ticks average
     const avgSpawnTime = 20;
-    
+
     // Amortize spawn cost over spawn time
     const energyPerTick = avgSpawnCost / avgSpawnTime;
 
@@ -387,20 +386,20 @@ export class EnergyFlowPredictor {
   /**
    * Get recommended spawn delay for a body cost
    * Returns number of ticks to wait before spawning to ensure energy will be available
-   * 
+   *
    * @param room - The room to check
    * @param bodyCost - Cost of the body to spawn
    * @returns Ticks to wait (0 if can spawn now)
    */
   public getRecommendedSpawnDelay(room: Room, bodyCost: number): number {
     const current = room.energyAvailable;
-    
+
     if (current >= bodyCost) {
       return 0; // Can spawn now
     }
 
     const prediction = this.predictEnergyInTicks(room, 1);
-    
+
     if (prediction.netFlow <= 0) {
       // Negative flow, energy will decrease
       // Don't recommend spawning (return large delay)
@@ -416,7 +415,7 @@ export class EnergyFlowPredictor {
 
   /**
    * Check if room can afford to spawn a body within N ticks
-   * 
+   *
    * @param room - The room to check
    * @param bodyCost - Cost of the body to spawn
    * @param maxWaitTicks - Maximum ticks willing to wait
@@ -430,7 +429,7 @@ export class EnergyFlowPredictor {
   /**
    * Get maximum affordable body cost in N ticks
    * Useful for optimizing body size selection
-   * 
+   *
    * @param room - The room to check
    * @param ticks - Number of ticks to look ahead
    * @returns Maximum energy that will be available

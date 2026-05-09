@@ -141,15 +141,15 @@ export function placeConstructionSites(room: Room, anchor: RoomPosition, bluepri
 /**
  * Find structures that are at invalid positions according to the blueprint.
  * This allows the system to destroy structures when blueprints are updated.
- * 
+ *
  * Only considers structures that are safe to destroy - excludes spawns, storage,
  * terminal, containers, walls, and ramparts as these are critical or player-controlled.
- * 
+ *
  * Roads are special: they are only considered misplaced if they are not part of:
  * - The blueprint's static road positions
  * - Calculated roads to sources, controller, and mineral
  * - Routes to remote mining rooms
- * 
+ *
  * @param room The room to check
  * @param anchor The blueprint anchor position (usually spawn)
  * @param blueprint The blueprint to validate against
@@ -165,25 +165,25 @@ export function findMisplacedStructures(
   const structures = getStructuresForRCL(blueprint, rcl);
   const terrain = room.getTerrain();
   const misplaced: MisplacedStructure[] = [];
-  
+
   // Build a set of valid blueprint positions for each structure type
   const validPositions = new Map<BuildableStructureConstant, Set<string>>();
-  
+
   for (const s of structures) {
     const x = anchor.x + s.x;
     const y = anchor.y + s.y;
-    
+
     // Skip positions on room border (1-48 valid range) or on walls
     if (x < 1 || x > 48 || y < 1 || y > 48) continue;
     if (terrain.get(x, y) === TERRAIN_MASK_WALL) continue;
-    
+
     const posKey = `${x},${y}`;
     if (!validPositions.has(s.structureType)) {
       validPositions.set(s.structureType, new Set());
     }
     validPositions.get(s.structureType)?.add(posKey);
   }
-  
+
   // Add road positions using the road network planner
   // This includes:
   // - Blueprint roads (static positions around spawn)
@@ -191,7 +191,7 @@ export function findMisplacedStructures(
   // - Roads to remote mining rooms
   const validRoadPositions = getValidRoadPositions(room, anchor, blueprint.roads, remoteRooms);
   validPositions.set(STRUCTURE_ROAD, validRoadPositions);
-  
+
   // Add extractor position at mineral if RCL 6+
   if (rcl >= 6) {
     const minerals = room.find(FIND_MINERALS);
@@ -202,26 +202,24 @@ export function findMisplacedStructures(
       validPositions.set(STRUCTURE_EXTRACTOR, extractorPositions);
     }
   }
-  
+
   // Find existing structures of destroyable types using Set for O(1) lookup
   // Use FIND_STRUCTURES to include roads (which are unowned) and filter to our structures
   const existingStructures = room.find(FIND_STRUCTURES, {
     filter: s =>
       DESTROYABLE_STRUCTURE_SET.has(s.structureType as BuildableStructureConstant) &&
-      (
-        // Owned by us
-        (s as OwnedStructure).my === true ||
+      // Owned by us
+      ((s as OwnedStructure).my === true ||
         // Roads have no owner, so include them if they exist
-        s.structureType === STRUCTURE_ROAD
-      )
+        s.structureType === STRUCTURE_ROAD)
   });
-  
+
   // Check each existing structure against blueprint positions
   for (const structure of existingStructures) {
     const posKey = `${structure.pos.x},${structure.pos.y}`;
     const structType = structure.structureType as BuildableStructureConstant;
     const validPosForType = validPositions.get(structType);
-    
+
     // If this structure type is not in the blueprint, or this position is not valid
     if (!validPosForType || !validPosForType.has(posKey)) {
       misplaced.push({
@@ -230,20 +228,20 @@ export function findMisplacedStructures(
       });
     }
   }
-  
+
   return misplaced;
 }
 
 /**
  * Destroy structures at invalid positions according to the blueprint.
  * Returns the number of structures destroyed.
- * 
+ *
  * This is used when blueprints are updated and structures need to be rearranged
  * to meet the new requirements.
- * 
+ *
  * Roads are preserved if they are part of the road network (routes to sources,
  * controller, mineral, or remote rooms).
- * 
+ *
  * @param room The room to check
  * @param anchor The anchor position (usually the spawn)
  * @param blueprint The blueprint to validate against
@@ -259,10 +257,10 @@ export function destroyMisplacedStructures(
 ): number {
   const misplaced = findMisplacedStructures(room, anchor, blueprint, remoteRooms);
   let destroyed = 0;
-  
+
   for (const { structure, reason } of misplaced) {
     if (destroyed >= maxDestroy) break;
-    
+
     // Attempt to destroy the structure
     const result = structure.destroy();
     if (result === OK) {
@@ -270,14 +268,14 @@ export function destroyMisplacedStructures(
       logger.info(`Destroyed misplaced structure: ${reason}`, {
         subsystem: "Blueprint",
         room: structure.room.name,
-        meta: { 
-          structureType: structure.structureType, 
+        meta: {
+          structureType: structure.structureType,
           pos: structure.pos.toString(),
-          reason 
+          reason
         }
       });
     }
   }
-  
+
   return destroyed;
 }

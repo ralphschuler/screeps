@@ -1181,14 +1181,7 @@ The framework consists of 15+ specialized packages organized by responsibility:
 
 ### Monitoring & Debugging
 
-**[@ralphschuler/screeps-loki-exporter](../../packages/screeps-loki-exporter)**
-- Export logs to Grafana Loki
-- Structured logging
-- Label-based filtering
-
-**[@ralphschuler/screeps-graphite-exporter](../../packages/screeps-graphite-exporter)**
-- Export metrics to Graphite
-- Time-series data collection
+Monitoring now stays inside bot stats, local logs, and private-server validation. External Grafana Graphite/Loki exporter packages were removed from this repository.
 
 ### Agent Skills and Private-Server Validation
 

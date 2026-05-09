@@ -3,7 +3,7 @@
  *
  * Provides optimized caching for Game.rooms, Game.creeps, and related
  * collections that are accessed multiple times per tick.
- * 
+ *
  * Design Principles (from ROADMAP.md Section 2):
  * - Aggressive Caching + TTL
  * - Cache stored in global object (heap)
@@ -20,11 +20,13 @@ const TTL_SAME_TICK = 0; // Game objects change every tick
  * Replaces manual caching in SwarmBot.ts
  */
 export function getOwnedRooms(): Room[] {
-  return globalCache.get<Room[]>("ownedRooms", {
-    namespace: NAMESPACE,
-    ttl: TTL_SAME_TICK,
-    compute: () => Object.values(Game.rooms).filter(r => r.controller?.my)
-  }) ?? [];
+  return (
+    globalCache.get<Room[]>("ownedRooms", {
+      namespace: NAMESPACE,
+      ttl: TTL_SAME_TICK,
+      compute: () => Object.values(Game.rooms).filter(r => r.controller?.my)
+    }) ?? []
+  );
 }
 
 /**
@@ -32,11 +34,13 @@ export function getOwnedRooms(): Room[] {
  * @param role - The role to filter by (e.g., "harvester", "builder")
  */
 export function getCreepsByRole(role: string): Creep[] {
-  return globalCache.get<Creep[]>(`creeps_role_${role}`, {
-    namespace: NAMESPACE,
-    ttl: TTL_SAME_TICK,
-    compute: () => Object.values(Game.creeps).filter(c => c.memory.role === role)
-  }) ?? [];
+  return (
+    globalCache.get<Creep[]>(`creeps_role_${role}`, {
+      namespace: NAMESPACE,
+      ttl: TTL_SAME_TICK,
+      compute: () => Object.values(Game.creeps).filter(c => c.memory.role === role)
+    }) ?? []
+  );
 }
 
 /**
@@ -44,11 +48,13 @@ export function getCreepsByRole(role: string): Creep[] {
  * @param roomName - The room name to filter by
  */
 export function getCreepsByRoom(roomName: string): Creep[] {
-  return globalCache.get<Creep[]>(`creeps_room_${roomName}`, {
-    namespace: NAMESPACE,
-    ttl: TTL_SAME_TICK,
-    compute: () => Object.values(Game.creeps).filter(c => c.room.name === roomName)
-  }) ?? [];
+  return (
+    globalCache.get<Creep[]>(`creeps_room_${roomName}`, {
+      namespace: NAMESPACE,
+      ttl: TTL_SAME_TICK,
+      compute: () => Object.values(Game.creeps).filter(c => c.room.name === roomName)
+    }) ?? []
+  );
 }
 
 /**
@@ -56,11 +62,13 @@ export function getCreepsByRoom(roomName: string): Creep[] {
  * Useful for iteration when you need all creeps
  */
 export function getMyCreeps(): Creep[] {
-  return globalCache.get<Creep[]>("myCreeps", {
-    namespace: NAMESPACE,
-    ttl: TTL_SAME_TICK,
-    compute: () => Object.values(Game.creeps)
-  }) ?? [];
+  return (
+    globalCache.get<Creep[]>("myCreeps", {
+      namespace: NAMESPACE,
+      ttl: TTL_SAME_TICK,
+      compute: () => Object.values(Game.creeps)
+    }) ?? []
+  );
 }
 
 /**
@@ -68,11 +76,13 @@ export function getMyCreeps(): Creep[] {
  * More efficient than getCreepsByRole().length when you only need the count
  */
 export function getCreepCountByRole(role: string): number {
-  return globalCache.get<number>(`creeps_count_role_${role}`, {
-    namespace: NAMESPACE,
-    ttl: TTL_SAME_TICK,
-    compute: () => Object.values(Game.creeps).filter(c => c.memory.role === role).length
-  }) ?? 0;
+  return (
+    globalCache.get<number>(`creeps_count_role_${role}`, {
+      namespace: NAMESPACE,
+      ttl: TTL_SAME_TICK,
+      compute: () => Object.values(Game.creeps).filter(c => c.memory.role === role).length
+    }) ?? 0
+  );
 }
 
 /**
@@ -80,22 +90,26 @@ export function getCreepCountByRole(role: string): number {
  * More efficient than getCreepsByRoom().length when you only need the count
  */
 export function getCreepCountByRoom(roomName: string): number {
-  return globalCache.get<number>(`creeps_count_room_${roomName}`, {
-    namespace: NAMESPACE,
-    ttl: TTL_SAME_TICK,
-    compute: () => Object.values(Game.creeps).filter(c => c.room.name === roomName).length
-  }) ?? 0;
+  return (
+    globalCache.get<number>(`creeps_count_room_${roomName}`, {
+      namespace: NAMESPACE,
+      ttl: TTL_SAME_TICK,
+      compute: () => Object.values(Game.creeps).filter(c => c.room.name === roomName).length
+    }) ?? 0
+  );
 }
 
 /**
  * Get all visible rooms (includes owned, remote, and visible rooms)
  */
 export function getVisibleRooms(): Room[] {
-  return globalCache.get<Room[]>("visibleRooms", {
-    namespace: NAMESPACE,
-    ttl: TTL_SAME_TICK,
-    compute: () => Object.values(Game.rooms)
-  }) ?? [];
+  return (
+    globalCache.get<Room[]>("visibleRooms", {
+      namespace: NAMESPACE,
+      ttl: TTL_SAME_TICK,
+      compute: () => Object.values(Game.rooms)
+    }) ?? []
+  );
 }
 
 /**

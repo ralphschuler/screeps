@@ -53,20 +53,10 @@ export {
 } from "./validator";
 
 // Blueprint placement
-export {
-  placeConstructionSites,
-  findMisplacedStructures,
-  destroyMisplacedStructures
-} from "./placer";
+export { placeConstructionSites, findMisplacedStructures, destroyMisplacedStructures } from "./placer";
 
 // Blueprint metrics
-export {
-  calculateBlueprintEfficiency,
-  compareBlueprintEfficiency
-} from "./metrics";
+export { calculateBlueprintEfficiency, compareBlueprintEfficiency } from "./metrics";
 
 // Blueprint serialization
-export {
-  exportBlueprint,
-  importBlueprint
-} from "./serializer";
+export { exportBlueprint, importBlueprint } from "./serializer";

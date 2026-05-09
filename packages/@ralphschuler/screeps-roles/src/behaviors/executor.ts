@@ -3,20 +3,20 @@
  *
  * Executes creep actions returned by behavior functions.
  * Handles all action types and movement when targets are out of range.
- * 
+ *
  * Invalid Target Detection:
  * When an action fails due to an invalid target (ERR_FULL, ERR_NOT_ENOUGH_RESOURCES,
  * ERR_INVALID_TARGET, ERR_NO_PATH), the executor immediately clears the creep's state.
  * This allows the behavior function to re-evaluate and find a new valid target on the
  * same tick, preventing creeps from appearing "idle" between actions.
- * 
+ *
  * Example: Hauler with 200 energy transferring to extensions (50 capacity each):
  * - Transfer 50 to extension A → OK, state persists
  * - Try transfer to extension A again → ERR_FULL, state cleared
  * - Behavior re-evaluates → finds extension B
  * - Transfer 50 to extension B → OK
  * This happens seamlessly without the creep appearing idle.
- * 
+ *
  * ERR_NO_PATH Handling:
  * When a target becomes unreachable (ERR_NO_PATH), the creep's state is cleared and it
  * immediately re-evaluates to find a new accessible target. This prevents wasted time
@@ -24,35 +24,33 @@
  */
 
 import type { CreepAction, CreepContext, RemoteMoveRouteType } from "./types";
-import { 
-  moveTo,
-  clearCachedPath,
-  isExit
-} from "screeps-cartographer";
+import { moveTo, clearCachedPath, isExit } from "screeps-cartographer";
 import { clearClosestCache as clearAllCachedTargets } from "../cache";
 import { createLogger } from "@ralphschuler/screeps-core";
 import * as metrics from "@ralphschuler/screeps-stats";
 import { applyOpportunisticActions } from "../economy/opportunisticActions";
 import { getCollectionPoint } from "../utils/common";
 import { taskBoard } from "../tasks";
-import {
-  shouldClearStateForActionResult,
-  shouldClearStateForMoveResult
-} from "./actionExecutionPolicy";
+import { decideRangeActionExecution, shouldClearStateForMoveResult } from "./actionExecutionPolicy";
 
 const logger = createLogger("ActionExecutor");
 
-type RemoteMoveTarget = RoomPosition | RoomObject | { pos: RoomPosition; range?: number };
+type RemoteMoveTarget =
+  | RoomPosition
+  | RoomObject
+  | { pos: RoomPosition; range?: number };
 export type RemoteMoveHandler = (
   creep: Creep,
   target: RemoteMoveTarget,
   routeType: RemoteMoveRouteType,
-  options?: MoveToOpts
+  options?: MoveToOpts,
 ) => ScreepsReturnCode;
 
 let remoteMoveHandler: RemoteMoveHandler | undefined;
 
-export function setRemoteMoveHandler(handler: RemoteMoveHandler | undefined): void {
+export function setRemoteMoveHandler(
+  handler: RemoteMoveHandler | undefined,
+): void {
   remoteMoveHandler = handler;
 }
 
@@ -68,46 +66,54 @@ const PATH_COLORS = {
   repair: "#ffff00",
   attack: "#ff0000",
   heal: "#00ff00",
-  move: "#0000ff"
+  move: "#0000ff",
 };
 
 /**
  * Execute a creep action.
  * Handles all action types including automatic movement when out of range.
- * 
+ *
  * OPTIMIZATION: Applies opportunistic actions to improve efficiency
  * Creeps can pick up dropped resources, repair structures, or transfer energy
  * to nearby structures while executing their primary action.
- * 
+ *
  * REFACTORED: Added defensive checks for invalid actions
  */
-export function executeAction(creep: Creep, action: CreepAction, ctx: CreepContext): void {
+export function executeAction(
+  creep: Creep,
+  action: CreepAction,
+  ctx: CreepContext,
+): void {
   // REFACTORED: Safety check - if action is invalid, clear state and return
   if (!action || !action.type) {
     logger.warn(`${creep.name} received invalid action, clearing state`);
     delete ctx.memory.state;
     return;
   }
-  
+
   // OPTIMIZATION: Apply opportunistic actions (Phase 4)
   // This allows creeps to pick up dropped energy, repair structures, or transfer
   // to nearby critical structures while moving, improving overall efficiency
   const optimizedAction = applyOpportunisticActions(creep, action);
-  
+
   // If action was modified, log it for monitoring
   if (action.type !== optimizedAction.type) {
-    logger.debug(`${creep.name} opportunistic action: ${action.type} → ${optimizedAction.type}`);
+    logger.debug(
+      `${creep.name} opportunistic action: ${action.type} → ${optimizedAction.type}`,
+    );
   }
 
   // Log the action being executed for debugging
   if (optimizedAction.type === "idle") {
     logger.warn(`${creep.name} (${ctx.memory.role}) executing IDLE action`);
   } else {
-    logger.debug(`${creep.name} (${ctx.memory.role}) executing ${optimizedAction.type}`);
+    logger.debug(
+      `${creep.name} (${ctx.memory.role}) executing ${optimizedAction.type}`,
+    );
   }
 
   let shouldClearState = false;
-  
+
   switch (optimizedAction.type) {
     // Resource gathering
     case "harvest":
@@ -116,7 +122,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         () => creep.harvest(optimizedAction.target),
         optimizedAction.target,
         PATH_COLORS.harvest,
-        optimizedAction.type
+        optimizedAction.type,
       );
       break;
 
@@ -126,7 +132,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         () => creep.harvest(optimizedAction.target),
         optimizedAction.target,
         PATH_COLORS.mineral,
-        optimizedAction.type
+        optimizedAction.type,
       );
       break;
 
@@ -136,7 +142,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         () => creep.harvest(optimizedAction.target),
         optimizedAction.target,
         PATH_COLORS.deposit,
-        optimizedAction.type
+        optimizedAction.type,
       );
       break;
 
@@ -146,17 +152,18 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         () => creep.pickup(optimizedAction.target),
         optimizedAction.target,
         PATH_COLORS.harvest,
-        optimizedAction.type
+        optimizedAction.type,
       );
       break;
 
     case "withdraw":
       shouldClearState = executeWithRange(
         creep,
-        () => creep.withdraw(optimizedAction.target, optimizedAction.resourceType),
+        () =>
+          creep.withdraw(optimizedAction.target, optimizedAction.resourceType),
         optimizedAction.target,
         PATH_COLORS.harvest,
-        optimizedAction.type
+        optimizedAction.type,
       );
       break;
 
@@ -164,11 +171,12 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
     case "transfer":
       shouldClearState = executeWithRange(
         creep,
-        () => creep.transfer(optimizedAction.target, optimizedAction.resourceType),
+        () =>
+          creep.transfer(optimizedAction.target, optimizedAction.resourceType),
         optimizedAction.target,
         PATH_COLORS.transfer,
         optimizedAction.type,
-        { resourceType: optimizedAction.resourceType }
+        { resourceType: optimizedAction.resourceType },
       );
       break;
 
@@ -183,7 +191,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         () => creep.build(optimizedAction.target),
         optimizedAction.target,
         PATH_COLORS.build,
-        optimizedAction.type
+        optimizedAction.type,
       );
       break;
 
@@ -193,7 +201,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         () => creep.repair(optimizedAction.target),
         optimizedAction.target,
         PATH_COLORS.repair,
-        optimizedAction.type
+        optimizedAction.type,
       );
       break;
 
@@ -203,7 +211,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         () => creep.upgradeController(optimizedAction.target),
         optimizedAction.target,
         PATH_COLORS.transfer,
-        optimizedAction.type
+        optimizedAction.type,
       );
       break;
 
@@ -213,13 +221,19 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         () => creep.dismantle(optimizedAction.target),
         optimizedAction.target,
         PATH_COLORS.attack,
-        optimizedAction.type
+        optimizedAction.type,
       );
       break;
 
     // Combat
     case "attack":
-      executeWithRange(creep, () => creep.attack(optimizedAction.target), optimizedAction.target, PATH_COLORS.attack, optimizedAction.type);
+      executeWithRange(
+        creep,
+        () => creep.attack(optimizedAction.target),
+        optimizedAction.target,
+        PATH_COLORS.attack,
+        optimizedAction.type,
+      );
       break;
 
     case "rangedAttack":
@@ -228,18 +242,26 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         () => creep.rangedAttack(optimizedAction.target),
         optimizedAction.target,
         PATH_COLORS.attack,
-        optimizedAction.type
+        optimizedAction.type,
       );
       break;
 
     case "heal":
-      executeWithRange(creep, () => creep.heal(optimizedAction.target), optimizedAction.target, PATH_COLORS.heal, optimizedAction.type);
+      executeWithRange(
+        creep,
+        () => creep.heal(optimizedAction.target),
+        optimizedAction.target,
+        PATH_COLORS.heal,
+        optimizedAction.type,
+      );
       break;
 
     case "rangedHeal": {
       // Ranged heal always involves movement toward the target
       creep.rangedHeal(optimizedAction.target);
-      const healMoveResult = moveTo(creep, optimizedAction.target, { visualizePathStyle: { stroke: PATH_COLORS.heal } });
+      const healMoveResult = moveTo(creep, optimizedAction.target, {
+        visualizePathStyle: { stroke: PATH_COLORS.heal },
+      });
       // Clear state if pathfinding fails
       if (shouldClearStateForMoveResult(healMoveResult)) {
         shouldClearState = true;
@@ -254,7 +276,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         () => creep.claimController(optimizedAction.target),
         optimizedAction.target,
         PATH_COLORS.heal,
-        optimizedAction.type
+        optimizedAction.type,
       );
       break;
 
@@ -264,7 +286,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         () => creep.reserveController(optimizedAction.target),
         optimizedAction.target,
         PATH_COLORS.heal,
-        optimizedAction.type
+        optimizedAction.type,
       );
       break;
 
@@ -274,13 +296,15 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         () => creep.attackController(optimizedAction.target),
         optimizedAction.target,
         PATH_COLORS.attack,
-        optimizedAction.type
+        optimizedAction.type,
       );
       break;
 
     // Movement
     case "moveTo": {
-      const moveResult = moveTo(creep, optimizedAction.target, { visualizePathStyle: { stroke: PATH_COLORS.move } });
+      const moveResult = moveTo(creep, optimizedAction.target, {
+        visualizePathStyle: { stroke: PATH_COLORS.move },
+      });
       // Clear state if pathfinding fails so the behavior can re-evaluate
       if (shouldClearStateForMoveResult(moveResult)) {
         shouldClearState = true;
@@ -291,10 +315,14 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
     case "moveToRoom": {
       // Move to room center with range 20
       const targetPos = new RoomPosition(25, 25, optimizedAction.roomName);
-      const moveResult = moveTo(creep, { pos: targetPos, range: 20 }, { 
-        visualizePathStyle: { stroke: PATH_COLORS.move },
-        maxRooms: 16
-      });
+      const moveResult = moveTo(
+        creep,
+        { pos: targetPos, range: 20 },
+        {
+          visualizePathStyle: { stroke: PATH_COLORS.move },
+          maxRooms: 16,
+        },
+      );
       // Clear state if pathfinding fails so the behavior can re-evaluate
       if (shouldClearStateForMoveResult(moveResult)) {
         shouldClearState = true;
@@ -307,7 +335,7 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         creep,
         optimizedAction.target,
         optimizedAction.routeType,
-        { visualizePathStyle: { stroke: PATH_COLORS.move } }
+        { visualizePathStyle: { stroke: PATH_COLORS.move } },
       );
       if (shouldClearStateForMoveResult(moveResult)) {
         shouldClearState = true;
@@ -323,8 +351,8 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         optimizedAction.routeType,
         {
           visualizePathStyle: { stroke: PATH_COLORS.move },
-          maxRooms: 16
-        }
+          maxRooms: 16,
+        },
       );
       if (shouldClearStateForMoveResult(moveResult)) {
         shouldClearState = true;
@@ -334,7 +362,10 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
 
     case "flee": {
       // Convert positions to MoveTargets with range
-      const fleeTargets = optimizedAction.from.map(pos => ({ pos, range: 10 }));
+      const fleeTargets = optimizedAction.from.map((pos) => ({
+        pos,
+        range: 10,
+      }));
       const fleeResult = moveTo(creep, fleeTargets, { flee: true });
       // Clear state if pathfinding fails so the behavior can re-evaluate
       if (shouldClearStateForMoveResult(fleeResult)) {
@@ -363,9 +394,9 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
     case "requestMove": {
       // Move toward the target position with higher priority
       // Cartographer's traffic management will handle asking blocking creeps to move
-      const requestMoveResult = moveTo(creep, optimizedAction.target, { 
+      const requestMoveResult = moveTo(creep, optimizedAction.target, {
         visualizePathStyle: { stroke: PATH_COLORS.move },
-        priority: 5 // Higher priority to help unblock
+        priority: 5, // Higher priority to help unblock
       });
       // Clear state if pathfinding fails
       if (shouldClearStateForMoveResult(requestMoveResult)) {
@@ -388,9 +419,9 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
         if (collectionPoint) {
           // Move to collection point if not already there
           if (!creep.pos.isEqualTo(collectionPoint)) {
-            const idleMoveResult = moveTo(creep, collectionPoint, { 
+            const idleMoveResult = moveTo(creep, collectionPoint, {
               visualizePathStyle: { stroke: "#888888" },
-              priority: 2
+              priority: 2,
             });
             // Clear state if pathfinding fails
             if (shouldClearStateForMoveResult(idleMoveResult)) {
@@ -402,10 +433,16 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
       }
       // Fallback: move away from spawns to prevent blocking new creeps
       const spawns = Game.rooms[creep.pos.roomName]?.find(FIND_MY_SPAWNS) || [];
-      const nearbySpawn = spawns.find(spawn => creep.pos.inRangeTo(spawn.pos, 1));
+      const nearbySpawn = spawns.find((spawn) =>
+        creep.pos.inRangeTo(spawn.pos, 1),
+      );
       if (nearbySpawn) {
         // Flee from spawn
-        moveTo(creep, { pos: nearbySpawn.pos, range: 3 }, { flee: true, priority: 2 });
+        moveTo(
+          creep,
+          { pos: nearbySpawn.pos, range: 3 },
+          { flee: true, priority: 2 },
+        );
       }
       break;
     }
@@ -427,7 +464,13 @@ export function executeAction(creep: Creep, action: CreepAction, ctx: CreepConte
     taskBoard.releaseCreep(creep.name, creep.room.name);
   }
 
-  if ((optimizedAction.type === "transfer" || optimizedAction.type === "build" || optimizedAction.type === "repair" || optimizedAction.type === "upgrade") && creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0) {
+  if (
+    (optimizedAction.type === "transfer" ||
+      optimizedAction.type === "build" ||
+      optimizedAction.type === "repair" ||
+      optimizedAction.type === "upgrade") &&
+    creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0
+  ) {
     taskBoard.releaseCreep(creep.name, creep.room.name);
   }
 
@@ -439,7 +482,7 @@ function executeRemoteMove(
   creep: Creep,
   target: RemoteMoveTarget,
   routeType: RemoteMoveRouteType,
-  options?: MoveToOpts
+  options?: MoveToOpts,
 ): ScreepsReturnCode {
   if (!remoteMoveHandler) {
     return moveTo(creep, target, options);
@@ -448,14 +491,17 @@ function executeRemoteMove(
   try {
     return remoteMoveHandler(creep, target, routeType, options);
   } catch (err) {
-    logger.warn("Remote movement handler failed; falling back to default movement", {
-      room: creep.pos.roomName,
-      creep: creep.name,
-      meta: {
-        routeType,
-        error: err instanceof Error ? err.message : String(err)
-      }
-    });
+    logger.warn(
+      "Remote movement handler failed; falling back to default movement",
+      {
+        room: creep.pos.roomName,
+        creep: creep.name,
+        meta: {
+          routeType,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      },
+    );
     return moveTo(creep, target, options);
   }
 }
@@ -465,7 +511,7 @@ function executeRemoteMove(
  * Automatically moves toward target if out of range.
  * Clears creep state if action fails due to invalid target (full, empty, etc.).
  * Tracks metrics for successful actions.
- * 
+ *
  * @returns true if action should clear state (due to failure)
  */
 function executeWithRange(
@@ -474,12 +520,14 @@ function executeWithRange(
   target: RoomObject,
   pathColor: string,
   actionLabel?: string,
-  actionData?: { resourceType?: ResourceConstant }
+  actionData?: { resourceType?: ResourceConstant },
 ): boolean {
   const result = action();
 
   if (result === ERR_NOT_IN_RANGE) {
-    const moveResult = moveTo(creep, target, { visualizePathStyle: { stroke: pathColor } });
+    const moveResult = moveTo(creep, target, {
+      visualizePathStyle: { stroke: pathColor },
+    });
     if (moveResult !== OK) {
       logger.info("Movement attempt returned non-OK result", {
         room: creep.pos.roomName,
@@ -487,33 +535,35 @@ function executeWithRange(
         meta: {
           action: actionLabel ?? "rangeAction",
           moveResult,
-          target: target.pos.toString()
-        }
+          target: target.pos.toString(),
+        },
       });
     }
-    // If movement fails with ERR_NO_PATH, indicate state should be cleared
-    if (shouldClearStateForMoveResult(moveResult)) {
-      return true;
-    }
-    return false;
+    const decision = decideRangeActionExecution({
+      actionResult: result,
+      moveResult,
+    });
+    return decision.clearState;
   }
 
+  const decision = decideRangeActionExecution({ actionResult: result });
+
   // Track successful actions in metrics
-  if (result === OK && actionLabel) {
+  if (decision.trackMetrics && actionLabel) {
     trackActionMetrics(creep, actionLabel, target, actionData);
   }
 
   // Check for errors that indicate the target is invalid and state should be cleared
   // This allows the creep to immediately find a new target instead of being stuck
-  if (shouldClearStateForActionResult(result)) {
+  if (decision.clearState) {
     logger.info("Clearing state after action error", {
       room: creep.pos.roomName,
       creep: creep.name,
       meta: {
         action: actionLabel ?? "rangeAction",
         result,
-        target: target.pos.toString()
-      }
+        target: target.pos.toString(),
+      },
     });
     return true;
   }
@@ -525,10 +575,10 @@ function executeWithRange(
  * Track metrics for a successful action.
  */
 function trackActionMetrics(
-  creep: Creep, 
-  actionType: string, 
+  creep: Creep,
+  actionType: string,
   target: RoomObject,
-  actionData?: { resourceType?: ResourceConstant }
+  actionData?: { resourceType?: ResourceConstant },
 ): void {
   // Initialize metrics if needed (cast to allow structural compatibility)
   metrics.initializeMetrics(creep.memory as any);
@@ -540,7 +590,9 @@ function trackActionMetrics(
     case "harvestDeposit": {
       // For harvest, we track the amount harvested
       // Estimate based on WORK parts (2 energy per WORK part per tick)
-      const workParts = creep.body.filter(p => p.type === WORK && p.hits > 0).length;
+      const workParts = creep.body.filter(
+        (p) => p.type === WORK && p.hits > 0,
+      ).length;
       const harvestAmount = workParts * 2;
       metrics.recordHarvest(creep.memory as any, harvestAmount);
       break;
@@ -552,7 +604,7 @@ function trackActionMetrics(
       const resourceType = actionData?.resourceType ?? RESOURCE_ENERGY;
       const transferAmount = Math.min(
         creep.store.getUsedCapacity(resourceType),
-        (target as AnyStoreStructure).store?.getFreeCapacity(resourceType) ?? 0
+        (target as AnyStoreStructure).store?.getFreeCapacity(resourceType) ?? 0,
       );
       if (transferAmount > 0) {
         metrics.recordTransfer(creep.memory as any, transferAmount);
@@ -563,10 +615,12 @@ function trackActionMetrics(
     case "build": {
       // For build, track build progress
       // WORK parts contribute 5 build power per tick
-      const workParts = creep.body.filter(p => p.type === WORK && p.hits > 0).length;
+      const workParts = creep.body.filter(
+        (p) => p.type === WORK && p.hits > 0,
+      ).length;
       const buildPower = workParts * 5;
       metrics.recordBuild(creep.memory as any, buildPower);
-      
+
       // Note: Task completion is tracked separately when construction finishes
       // to avoid false positives from partial progress
       break;
@@ -574,7 +628,9 @@ function trackActionMetrics(
 
     case "repair": {
       // For repair, track repair progress
-      const workParts = creep.body.filter(p => p.type === WORK && p.hits > 0).length;
+      const workParts = creep.body.filter(
+        (p) => p.type === WORK && p.hits > 0,
+      ).length;
       const repairPower = workParts * 100;
       metrics.recordRepair(creep.memory as any, repairPower);
       break;
@@ -582,7 +638,9 @@ function trackActionMetrics(
 
     case "attack": {
       // For attack, track damage dealt
-      const attackParts = creep.body.filter(p => p.type === ATTACK && p.hits > 0).length;
+      const attackParts = creep.body.filter(
+        (p) => p.type === ATTACK && p.hits > 0,
+      ).length;
       const damage = attackParts * 30;
       metrics.recordDamage(creep.memory as any, damage);
       break;
@@ -590,7 +648,9 @@ function trackActionMetrics(
 
     case "rangedAttack": {
       // For ranged attack, track damage dealt (damage depends on range)
-      const rangedParts = creep.body.filter(p => p.type === RANGED_ATTACK && p.hits > 0).length;
+      const rangedParts = creep.body.filter(
+        (p) => p.type === RANGED_ATTACK && p.hits > 0,
+      ).length;
       const range = creep.pos.getRangeTo(target);
       let damage = 0;
       if (range <= 1) damage = rangedParts * 10;
@@ -603,7 +663,9 @@ function trackActionMetrics(
     case "heal":
     case "rangedHeal": {
       // For heal, track healing done
-      const healParts = creep.body.filter(p => p.type === HEAL && p.hits > 0).length;
+      const healParts = creep.body.filter(
+        (p) => p.type === HEAL && p.hits > 0,
+      ).length;
       const healing = actionType === "heal" ? healParts * 12 : healParts * 4;
       metrics.recordHealing(creep.memory as any, healing);
       break;
@@ -612,7 +674,9 @@ function trackActionMetrics(
     case "upgrade": {
       // For upgrade, track controller progress
       // WORK parts contribute 1 energy per tick to controller
-      const workParts = creep.body.filter(p => p.type === WORK && p.hits > 0).length;
+      const workParts = creep.body.filter(
+        (p) => p.type === WORK && p.hits > 0,
+      ).length;
       metrics.recordUpgrade(creep.memory as any, workParts);
       break;
     }
@@ -622,7 +686,7 @@ function trackActionMetrics(
 /**
  * Update the working state based on creep's store capacity.
  * Working = true when full (should deliver), false when empty (should collect).
- * 
+ *
  * Note: We use creep.store directly instead of ctx.isFull/isEmpty because context
  * values are calculated once at tick start, before actions execute. This ensures
  * we always have fresh capacity state after transfer/withdraw actions.

@@ -1,5 +1,5 @@
-import {assert} from "chai";
-import {helper} from "./helper";
+import { assert } from "chai";
+import { helper } from "./helper";
 
 describe("main", () => {
   it("runs a server and matches the game tick", async function () {
@@ -13,6 +13,6 @@ describe("main", () => {
     await helper.player.console(`Memory.foo = 'bar'`);
     await helper.server.tick();
     const memory = JSON.parse(await helper.player.memory);
-    assert.equal(memory.foo, 'bar');
+    assert.equal(memory.foo, "bar");
   });
 });

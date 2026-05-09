@@ -210,10 +210,7 @@ export class PowerBankHarvestingManager {
 
     // Check if power bank still exists
     const powerBank = room.find(FIND_STRUCTURES, {
-      filter: s =>
-        s.structureType === STRUCTURE_POWER_BANK &&
-        s.pos.x === op.pos.x &&
-        s.pos.y === op.pos.y
+      filter: s => s.structureType === STRUCTURE_POWER_BANK && s.pos.x === op.pos.x && s.pos.y === op.pos.y
     })[0] as StructurePowerBank | undefined;
 
     if (!powerBank) {
@@ -255,10 +252,7 @@ export class PowerBankHarvestingManager {
 
     // Check if power bank is destroyed
     const powerBank = room.find(FIND_STRUCTURES, {
-      filter: s =>
-        s.structureType === STRUCTURE_POWER_BANK &&
-        s.pos.x === op.pos.x &&
-        s.pos.y === op.pos.y
+      filter: s => s.structureType === STRUCTURE_POWER_BANK && s.pos.x === op.pos.x && s.pos.y === op.pos.y
     })[0] as StructurePowerBank | undefined;
 
     if (!powerBank) {
@@ -323,10 +317,9 @@ export class PowerBankHarvestingManager {
     if (droppedPower.length === 0 && ruins.length === 0) {
       // All power collected
       op.state = "complete";
-      logger.info(
-        `Power bank operation complete in ${op.roomName}: ${op.powerCollected} power collected`,
-        { subsystem: "PowerBank" }
-      );
+      logger.info(`Power bank operation complete in ${op.roomName}: ${op.powerCollected} power collected`, {
+        subsystem: "PowerBank"
+      });
     }
   }
 
@@ -457,10 +450,9 @@ export class PowerBankHarvestingManager {
     this.operations.set(pb.roomName, op);
     pb.active = true;
 
-    logger.info(
-      `Started power bank operation in ${pb.roomName} (${pb.power} power, home: ${bestRoom.name})`,
-      { subsystem: "PowerBank" }
-    );
+    logger.info(`Started power bank operation in ${pb.roomName} (${pb.power} power, home: ${bestRoom.name})`, {
+      subsystem: "PowerBank"
+    });
   }
 
   /**
@@ -505,9 +497,7 @@ export class PowerBankHarvestingManager {
    * Get active operations
    */
   public getActiveOperations(): PowerBankOperation[] {
-    return Array.from(this.operations.values()).filter(
-      op => op.state !== "complete" && op.state !== "failed"
-    );
+    return Array.from(this.operations.values()).filter(op => op.state !== "complete" && op.state !== "failed");
   }
 
   /**
@@ -594,7 +584,10 @@ export class PowerBankHarvestingManager {
   /**
    * Get profitability estimate for a power bank operation
    */
-  public getProfitability(pb: PowerBankEntry, homeRoom: string): {
+  public getProfitability(
+    pb: PowerBankEntry,
+    homeRoom: string
+  ): {
     power: number;
     energyCost: number;
     netProfit: number;
@@ -618,7 +611,7 @@ export class PowerBankHarvestingManager {
     const totalTicks = travelTime + ticksToDestroy;
 
     // Energy cost including creep upkeep during operation
-    const energyCost = totalCreepCost + (totalTicks * 0.1); // Small upkeep cost
+    const energyCost = totalCreepCost + totalTicks * 0.1; // Small upkeep cost
 
     // Net profit
     const powerValue = pb.power * 10; // Assume 10 energy value per power (market dependent)

@@ -41,16 +41,3 @@ updates:
     labels:
       - "dependencies"
       - "automated"
-
-  # Docker images
-  - package-ecosystem: "docker"
-    directory: "/packages/screeps-graphite-exporter"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 1
-
-  - package-ecosystem: "docker"
-    directory: "/packages/screeps-loki-exporter"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 1

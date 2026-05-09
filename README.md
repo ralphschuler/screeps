@@ -105,8 +105,7 @@ screeps/
 ├── packages/
 │   ├── screeps-bot/          # Main bot implementation
 │   ├── screeps-tasks/        # Optional task-based creep management system
-│   ├── screeps-server/       # Docker setup for private server
-│   └── screeps-graphite-exporter/ # Metrics exporter to Grafana Cloud
+│   └── screeps-server/       # Docker setup for private server
 ├── ROADMAP.md                # Complete swarm architecture specification (24 sections)
 └── package.json              # Root package configuration
 ```
@@ -225,9 +224,8 @@ Edit `packages/screeps-bot/src/config/` files to customize:
 
 ### Environment Variables
 
-For the private server setup and metrics exporter, see:
+For the private server setup, see:
 - `packages/screeps-server/.env.example`
-- `packages/screeps-graphite-exporter/.env.example`
 
 ## Architecture
 

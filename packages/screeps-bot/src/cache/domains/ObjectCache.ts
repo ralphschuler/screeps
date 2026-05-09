@@ -19,34 +19,31 @@ const DEFAULT_TTL = 1;
  */
 function getTTL(obj: any): number {
   if (!obj) return DEFAULT_TTL;
-  
-  if ('structureType' in obj) {
+
+  if ("structureType" in obj) {
     return STRUCTURE_TTL;
   }
-  
+
   if (
     (typeof Source !== "undefined" && obj instanceof Source) ||
     (typeof Mineral !== "undefined" && obj instanceof Mineral) ||
-    'energy' in obj ||
-    'mineralAmount' in obj
+    "energy" in obj ||
+    "mineralAmount" in obj
   ) {
     return RESOURCE_TTL;
   }
-  
+
   if (typeof Creep !== "undefined" && obj instanceof Creep) {
     return CREEP_TTL;
   }
-  
+
   return DEFAULT_TTL;
 }
 
 /**
  * Get an object by ID with caching
  */
-export function getCachedObjectById<T extends _HasId>(
-  id: Id<T> | null | undefined,
-  ttl?: number
-): T | null {
+export function getCachedObjectById<T extends _HasId>(id: Id<T> | null | undefined, ttl?: number): T | null {
   if (!id) return null;
 
   const cached = globalCache.get<T | null>(id, { namespace: NAMESPACE });

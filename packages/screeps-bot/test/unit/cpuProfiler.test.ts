@@ -295,7 +295,7 @@ describe("CPU Profiler Enhancement", () => {
         const cpuStart = statsManager.startRoom("W1N1");
         statsManager.recordRoom(mockRoom, 0.05); // Normal baseline
         statsManager.endRoom("W1N1", cpuStart);
-        
+
         // Advance profiler memory to simulate accumulated samples
         mockMemory.stats.profiler.rooms["W1N1"] = {
           avgCpu: 0.05,
@@ -308,7 +308,7 @@ describe("CPU Profiler Enhancement", () => {
 
     it("should detect CPU spikes (2x baseline)", () => {
       // Mock current measurement as 2x baseline
-      (statsManager as any).roomMeasurements.set("W1N1", 0.10); // 2x baseline of 0.05
+      (statsManager as any).roomMeasurements.set("W1N1", 0.1); // 2x baseline of 0.05
 
       const anomalies = statsManager.detectAnomalies();
 
@@ -377,7 +377,7 @@ describe("CPU Profiler Enhancement", () => {
 
       const anomalies = statsManager.detectAnomalies();
       const newRoomAnomalies = anomalies.filter(a => a.target === "W2N2");
-      
+
       assert.equal(newRoomAnomalies.length, 0);
     });
 
@@ -440,7 +440,7 @@ describe("CPU Profiler Enhancement", () => {
       const cpuStart = statsManager.startRoom("W1N1");
       statsManager.recordRoom(mockRoom, 0.15); // Over budget and spike
       statsManager.endRoom("W1N1", cpuStart);
-      
+
       // Set current measurement for anomaly detection
       (statsManager as any).roomMeasurements.set("W1N1", 0.15);
 

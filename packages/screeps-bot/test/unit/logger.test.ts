@@ -11,7 +11,7 @@ describe("Logger JSON Output", () => {
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     consoleLogStub = sandbox.stub(console, "log");
-    
+
     // Configure logger for testing
     configureLogger({
       level: LogLevel.DEBUG,
@@ -34,7 +34,7 @@ describe("Logger JSON Output", () => {
 
     expect(consoleLogStub.calledOnce).to.be.true;
     const output = consoleLogStub.firstCall.args[0];
-    
+
     // Should be valid JSON
     const parsed = JSON.parse(output);
     expect(parsed).to.deep.include({
@@ -52,22 +52,22 @@ describe("Logger JSON Output", () => {
 
     const output = consoleLogStub.firstCall.args[0];
     const parsed = JSON.parse(output);
-    
+
     expect(parsed.subsystem).to.equal("TestSubsystem");
   });
 
   it("should include room and creep context", () => {
     (global as any).Game = { time: 12345 };
 
-    logger.warn("Creep stuck", { 
-      subsystem: "Movement", 
-      room: "W1N1", 
-      creep: "harvester1" 
+    logger.warn("Creep stuck", {
+      subsystem: "Movement",
+      room: "W1N1",
+      creep: "harvester1"
     });
 
     const output = consoleLogStub.firstCall.args[0];
     const parsed = JSON.parse(output);
-    
+
     expect(parsed).to.deep.include({
       subsystem: "Movement",
       room: "W1N1",
@@ -78,18 +78,18 @@ describe("Logger JSON Output", () => {
   it("should include meta fields in output", () => {
     (global as any).Game = { time: 12345 };
 
-    logger.error("CPU overload", { 
-      subsystem: "Kernel", 
-      meta: { 
-        cpuUsed: 25.5, 
+    logger.error("CPU overload", {
+      subsystem: "Kernel",
+      meta: {
+        cpuUsed: 25.5,
         cpuLimit: 20,
         bucket: 1500
-      } 
+      }
     });
 
     const output = consoleLogStub.firstCall.args[0];
     const parsed = JSON.parse(output);
-    
+
     expect(parsed.cpuUsed).to.equal(25.5);
     expect(parsed.cpuLimit).to.equal(20);
     expect(parsed.bucket).to.equal(1500);
@@ -98,14 +98,14 @@ describe("Logger JSON Output", () => {
   it("should output stats with tick", () => {
     (global as any).Game = { time: 12345 };
 
-    logger.stat("energy.harvested", 1000, "energy", { 
-      subsystem: "Economy", 
-      room: "W1N1" 
+    logger.stat("energy.harvested", 1000, "energy", {
+      subsystem: "Economy",
+      room: "W1N1"
     });
 
     const output = consoleLogStub.firstCall.args[0];
     const parsed = JSON.parse(output);
-    
+
     expect(parsed).to.deep.include({
       type: "stat",
       key: "energy.harvested",
@@ -124,13 +124,13 @@ describe("Logger JSON Output", () => {
 
     const output = consoleLogStub.firstCall.args[0];
     const parsed = JSON.parse(output);
-    
+
     expect(parsed.tick).to.equal(0);
   });
 
   it("should respect log level filtering", () => {
     (global as any).Game = { time: 12345 };
-    
+
     configureLogger({ level: LogLevel.WARN });
 
     logger.debug("Debug message");
@@ -150,23 +150,23 @@ describe("Logger JSON Output", () => {
     logger.info("Test message", {
       subsystem: "TestSubsystem",
       meta: {
-        type: "malicious",  // Should be ignored
-        level: "CRITICAL",  // Should be ignored
-        message: "evil",    // Should be ignored
-        tick: 99999,        // Should be ignored
-        customField: "ok"   // Should be included
+        type: "malicious", // Should be ignored
+        level: "CRITICAL", // Should be ignored
+        message: "evil", // Should be ignored
+        tick: 99999, // Should be ignored
+        customField: "ok" // Should be included
       }
     });
 
     const output = consoleLogStub.firstCall.args[0];
     const parsed = JSON.parse(output);
-    
+
     // Reserved fields should not be overwritten
     expect(parsed.type).to.equal("log");
     expect(parsed.level).to.equal("INFO");
     expect(parsed.message).to.equal("Test message");
     expect(parsed.tick).to.equal(12345);
-    
+
     // Custom field should be included
     expect(parsed.customField).to.equal("ok");
   });
@@ -177,25 +177,25 @@ describe("Logger JSON Output", () => {
     logger.stat("test.metric", 100, "units", {
       subsystem: "TestSubsystem",
       meta: {
-        type: "malicious",   // Should be ignored
-        key: "evil.key",     // Should be ignored
-        value: 999,          // Should be ignored
-        tick: 99999,         // Should be ignored
-        unit: "bad",         // Should be ignored
-        customField: "ok"    // Should be included
+        type: "malicious", // Should be ignored
+        key: "evil.key", // Should be ignored
+        value: 999, // Should be ignored
+        tick: 99999, // Should be ignored
+        unit: "bad", // Should be ignored
+        customField: "ok" // Should be included
       }
     });
 
     const output = consoleLogStub.firstCall.args[0];
     const parsed = JSON.parse(output);
-    
+
     // Reserved fields should not be overwritten
     expect(parsed.type).to.equal("stat");
     expect(parsed.key).to.equal("test.metric");
     expect(parsed.value).to.equal(100);
     expect(parsed.tick).to.equal(12345);
     expect(parsed.unit).to.equal("units");
-    
+
     // Custom field should be included
     expect(parsed.customField).to.equal("ok");
   });
@@ -207,7 +207,7 @@ describe("Logger JSON Output", () => {
 
     const output = consoleLogStub.firstCall.args[0];
     const parsed = JSON.parse(output);
-    
+
     expect(parsed.shard).to.equal("shard2");
   });
 
@@ -218,7 +218,7 @@ describe("Logger JSON Output", () => {
 
     const output = consoleLogStub.firstCall.args[0];
     const parsed = JSON.parse(output);
-    
+
     expect(parsed.shard).to.equal("shard0");
   });
 
@@ -229,7 +229,7 @@ describe("Logger JSON Output", () => {
 
     const output = consoleLogStub.firstCall.args[0];
     const parsed = JSON.parse(output);
-    
+
     expect(parsed.shard).to.equal("shard3");
   });
 
@@ -240,7 +240,7 @@ describe("Logger JSON Output", () => {
 
     const output = consoleLogStub.firstCall.args[0];
     const parsed = JSON.parse(output);
-    
+
     expect(parsed).to.deep.include({
       type: "stat",
       key: "cpu.used",
@@ -255,13 +255,13 @@ describe("Logger JSON Output", () => {
 
     logger.info("Test message", {
       meta: {
-        shard: "malicious"  // Should be ignored
+        shard: "malicious" // Should be ignored
       }
     });
 
     const output = consoleLogStub.firstCall.args[0];
     const parsed = JSON.parse(output);
-    
+
     // Shard from Game.shard.name should be preserved
     expect(parsed.shard).to.equal("shard1");
   });
@@ -271,12 +271,12 @@ describe("Logger Batching", () => {
   let sandbox: sinon.SinonSandbox;
   let consoleLogStub: sinon.SinonStub;
 
-  const TEST_BATCH_SIZE = 5;  // Smaller batch size for easier testing
+  const TEST_BATCH_SIZE = 5; // Smaller batch size for easier testing
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     consoleLogStub = sandbox.stub(console, "log");
-    
+
     // Configure logger for testing with batching enabled
     configureLogger({
       level: LogLevel.DEBUG,
@@ -310,15 +310,15 @@ describe("Logger Batching", () => {
     // Should have one console.log call with all messages
     expect(consoleLogStub.calledOnce).to.be.true;
     const output = consoleLogStub.firstCall.args[0];
-    
+
     // Output should contain all three messages
-    const lines = output.split('\n');
+    const lines = output.split("\n");
     expect(lines).to.have.length(3);
-    
+
     const msg1 = JSON.parse(lines[0]);
     const msg2 = JSON.parse(lines[1]);
     const msg3 = JSON.parse(lines[2]);
-    
+
     expect(msg1.message).to.equal("Message 1");
     expect(msg2.message).to.equal("Message 2");
     expect(msg3.message).to.equal("Message 3");
@@ -330,14 +330,14 @@ describe("Logger Batching", () => {
     logger.info("Message 2");
     logger.info("Message 3");
     logger.info("Message 4");
-    
+
     expect(consoleLogStub.called).to.be.false;
-    
+
     logger.info("Message 5"); // This triggers auto-flush
-    
+
     expect(consoleLogStub.calledOnce).to.be.true;
     const output = consoleLogStub.firstCall.args[0];
-    const lines = output.split('\n');
+    const lines = output.split("\n");
     expect(lines).to.have.length(TEST_BATCH_SIZE);
   });
 
@@ -356,7 +356,7 @@ describe("Logger Batching", () => {
   it("should handle empty batch flush", () => {
     // Flush with no messages
     logger.flush();
-    
+
     // Should not call console.log
     expect(consoleLogStub.called).to.be.false;
   });
@@ -364,10 +364,10 @@ describe("Logger Batching", () => {
   it("should clear batch after flush", () => {
     logger.info("Message 1");
     logger.flush();
-    
+
     expect(consoleLogStub.calledOnce).to.be.true;
     consoleLogStub.resetHistory();
-    
+
     // Second flush should not output anything
     logger.flush();
     expect(consoleLogStub.called).to.be.false;
@@ -383,9 +383,9 @@ describe("Logger Batching", () => {
 
     expect(consoleLogStub.calledOnce).to.be.true;
     const output = consoleLogStub.firstCall.args[0];
-    const lines = output.split('\n');
+    const lines = output.split("\n");
     expect(lines).to.have.length(4);
-    
+
     const levels = lines.map(line => JSON.parse(line).level);
     expect(levels).to.deep.equal(["DEBUG", "INFO", "WARN", "ERROR"]);
   });
@@ -399,13 +399,13 @@ describe("Logger Batching", () => {
 
     expect(consoleLogStub.calledOnce).to.be.true;
     const output = consoleLogStub.firstCall.args[0];
-    const lines = output.split('\n');
+    const lines = output.split("\n");
     expect(lines).to.have.length(3);
-    
+
     const msg1 = JSON.parse(lines[0]);
     const stat = JSON.parse(lines[1]);
     const msg2 = JSON.parse(lines[2]);
-    
+
     expect(msg1.type).to.equal("log");
     expect(stat.type).to.equal("stat");
     expect(msg2.type).to.equal("log");

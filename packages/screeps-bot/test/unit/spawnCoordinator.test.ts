@@ -384,7 +384,7 @@ describe("SpawnCoordinator", () => {
       };
 
       populateSpawnQueue(mockRoom, mockSwarm);
-      
+
       // Should create spawn requests optimized for available energy
       const queueSize = spawnQueue.getQueueSize("W1N1");
       assert.isTrue(queueSize >= 0, "Should handle body optimization");
@@ -448,7 +448,7 @@ describe("SpawnCoordinator", () => {
       };
 
       populateSpawnQueue(mockRoom, mockSwarm);
-      
+
       // Harvesters should be prioritized when harvest pheromone is high
       const stats = spawnQueue.getQueueStats("W1N1");
       assert.isTrue(stats.total > 0, "Should create harvester spawn requests");
@@ -461,13 +461,15 @@ describe("SpawnCoordinator", () => {
         energyAvailable: 300,
         find: sinon.stub().callsFake((findConstant: number) => {
           if (findConstant === FIND_HOSTILE_CREEPS) {
-            return [{
-              pos: { x: 25, y: 25 },
-              owner: { username: "enemy" },
-              hits: 100,
-              hitsMax: 100,
-              body: [{ type: ATTACK }]
-            }];
+            return [
+              {
+                pos: { x: 25, y: 25 },
+                owner: { username: "enemy" },
+                hits: 100,
+                hitsMax: 100,
+                body: [{ type: ATTACK }]
+              }
+            ];
           }
           return [];
         })
@@ -521,7 +523,7 @@ describe("SpawnCoordinator", () => {
       };
 
       populateSpawnQueue(mockRoom, defensiveSwarm);
-      
+
       // Should prioritize defenders when under threat
       const stats = spawnQueue.getQueueStats("W1N1");
       assert.isTrue(stats.total > 0, "Should create defender spawn requests");
@@ -587,7 +589,7 @@ describe("SpawnCoordinator", () => {
       };
 
       populateSpawnQueue(earlyColonyRoom, earlySwarm);
-      
+
       // Should adjust priorities for early colony
       const stats = spawnQueue.getQueueStats("W1N1");
       assert.isTrue(stats.total >= 0, "Should handle early colony priorities");

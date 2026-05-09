@@ -1,9 +1,9 @@
 /**
  * Spawn System Adapter
- * 
+ *
  * Demonstrates integration of @ralphschuler/screeps-spawn package with the bot.
  * This file shows how to bridge the new spawn package with existing bot code.
- * 
+ *
  * NOTE: This is an example adapter for demonstration purposes.
  * The actual spawn system integration will be done incrementally.
  */

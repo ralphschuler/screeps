@@ -4,14 +4,8 @@ import { energyFlowPredictor } from "../economy/energyFlowPredictor";
 import { powerBankHarvestingManager } from "../empire/powerBankHarvesting";
 import { optimizeBody } from "./bodyOptimizer";
 import { isBootstrapMode, isEmergencySpawnState } from "./bootstrapManager";
-import {
-  analyzeDefenderNeeds,
-  getCurrentDefenders
-} from "./defenderManager";
-import {
-  createSpawnPlan,
-  ensureRoomVisibleForSpawnAnalysis
-} from "./spawnIntentCompiler";
+import { analyzeDefenderNeeds, getCurrentDefenders } from "./defenderManager";
+import { createSpawnPlan, ensureRoomVisibleForSpawnAnalysis } from "./spawnIntentCompiler";
 import { SpawnPriority, type SpawnRequest, spawnQueue } from "./spawnQueue";
 import { executeSpawnRequest } from "./spawnRequestExecution";
 
@@ -105,10 +99,7 @@ export function processSpawnQueue(room: Room): number {
       );
     } else if (result !== ERR_NOT_ENOUGH_ENERGY) {
       spawnQueue.removeRequest(room.name, request.id);
-      logger.warn(
-        `Spawn failed for ${request.role} in ${room.name}: ${result}`,
-        { subsystem: "SpawnPipeline" }
-      );
+      logger.warn(`Spawn failed for ${request.role} in ${room.name}: ${result}`, { subsystem: "SpawnPipeline" });
     }
   }
 
@@ -124,17 +115,13 @@ export function runSpawnPipeline(room: Room, swarm: SwarmState): SpawnPipelineRe
   const stats = spawnQueue.getQueueStats(room.name);
 
   if (spawned > 0) {
-    logger.debug(
-      `Spawned ${spawned} creeps in ${room.name}`,
-      { subsystem: "SpawnPipeline" }
-    );
+    logger.debug(`Spawned ${spawned} creeps in ${room.name}`, { subsystem: "SpawnPipeline" });
   }
 
   if (Game.time % 100 === 0) {
-    logger.debug(
-      `Spawn queue stats for ${room.name}: ${stats.total} pending (${stats.inProgress} in progress)`,
-      { subsystem: "SpawnPipeline" }
-    );
+    logger.debug(`Spawn queue stats for ${room.name}: ${stats.total} pending (${stats.inProgress} in progress)`, {
+      subsystem: "SpawnPipeline"
+    });
   }
 
   return {
@@ -156,18 +143,39 @@ function addDefenderRequests(
 
   const guardsNeeded = Math.max(0, needs.guards - current.guards);
   for (let i = 0; i < guardsNeeded; i++) {
-    addOptimizedRequest(room, "guard", "military", priority, priority === SpawnPriority.EMERGENCY ? emergencyEnergy : maxEnergy, `guard_defense_${Game.time}_${i}`);
+    addOptimizedRequest(
+      room,
+      "guard",
+      "military",
+      priority,
+      priority === SpawnPriority.EMERGENCY ? emergencyEnergy : maxEnergy,
+      `guard_defense_${Game.time}_${i}`
+    );
   }
 
   const rangersNeeded = Math.max(0, needs.rangers - current.rangers);
   for (let i = 0; i < rangersNeeded; i++) {
-    addOptimizedRequest(room, "ranger", "military", priority, priority === SpawnPriority.EMERGENCY ? emergencyEnergy : maxEnergy, `ranger_defense_${Game.time}_${i}`);
+    addOptimizedRequest(
+      room,
+      "ranger",
+      "military",
+      priority,
+      priority === SpawnPriority.EMERGENCY ? emergencyEnergy : maxEnergy,
+      `ranger_defense_${Game.time}_${i}`
+    );
   }
 
   const healersNeeded = Math.max(0, needs.healers - current.healers);
   if (healersNeeded > 0 && needs.urgency >= 1.5) {
     for (let i = 0; i < healersNeeded; i++) {
-      addOptimizedRequest(room, "healer", "military", SpawnPriority.HIGH, maxEnergy, `healer_defense_${Game.time}_${i}`);
+      addOptimizedRequest(
+        room,
+        "healer",
+        "military",
+        SpawnPriority.HIGH,
+        maxEnergy,
+        `healer_defense_${Game.time}_${i}`
+      );
     }
   }
 

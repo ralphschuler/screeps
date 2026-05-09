@@ -288,7 +288,7 @@ export interface EventMap {
   // System events
   "cpu.spike": CpuSpikeEvent;
   "bucket.modeChange": BucketModeChangeEvent;
-  
+
   // Process events
   "process.suspended": ProcessSuspendedEvent;
   "process.recovered": ProcessRecoveredEvent;

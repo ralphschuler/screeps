@@ -5,7 +5,7 @@
  * - RoomDefenseManager: Tower control, threat assessment, hostile detection
  * - RoomConstructionManager: Blueprints, perimeter defense, roads, ramparts
  * - RoomEconomyManager: Labs, factory, power spawn, links
- * 
+ *
  * This file provides orchestration only, delegating specific responsibilities
  * to dedicated manager modules for better separation of concerns.
  */
@@ -61,8 +61,6 @@ interface RoomStructureCache {
 }
 
 const structureCache = new Map<string, RoomStructureCache>();
-
-
 
 /**
  * Get or create structure cache for a room
@@ -120,7 +118,7 @@ export class RoomNode {
 
     // Get or initialize swarm state
     const swarm = memoryManager.getOrInitSwarmState(this.roomName);
-    
+
     // Get cached room structures to avoid repeated room.find() calls
     const cache = getStructureCache(room);
 

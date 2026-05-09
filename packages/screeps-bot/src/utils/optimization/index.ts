@@ -6,8 +6,4 @@
  */
 
 // Idle Detection - bot-specific idle detection with SwarmCreepMemory
-export {
-  canSkipBehaviorEvaluation,
-  executeIdleAction
-} from "./idleDetection";
-
+export { canSkipBehaviorEvaluation, executeIdleAction } from "./idleDetection";

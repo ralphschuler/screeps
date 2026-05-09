@@ -1,6 +1,6 @@
 /**
  * Console commands for TooAngel integration
- * 
+ *
  * Available commands:
  * - tooangel.status() - Show current status
  * - tooangel.enable() - Enable TooAngel integration
@@ -74,9 +74,7 @@ export const tooAngelCommands = {
         const quest = activeQuests[questId];
         const timeLeft = quest.deadline - Game.time;
         const creepCount = quest.assignedCreeps?.length || 0;
-        lines.push(
-          `  ${questId}:`
-        );
+        lines.push(`  ${questId}:`);
         lines.push(`    Type: ${quest.type}`);
         lines.push(`    Target: ${quest.targetRoom}`);
         lines.push(`    Status: ${quest.status}`);

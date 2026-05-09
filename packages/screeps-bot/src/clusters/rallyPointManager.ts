@@ -368,9 +368,7 @@ export function updateClusterRallyPoints(cluster: ClusterMemory): void {
     const room = Game.rooms[roomName];
     if (!room) continue;
 
-    const existingDefense = cluster.rallyPoints.find(
-      rp => rp.roomName === roomName && rp.purpose === "defense"
-    );
+    const existingDefense = cluster.rallyPoints.find(rp => rp.roomName === roomName && rp.purpose === "defense");
 
     if (!existingDefense) {
       const rallyPoint = findOptimalRallyPoint(room, "defense");
@@ -394,9 +392,7 @@ export function getSquadRallyPoint(
 ): RallyPoint | null {
   // For defense squads, use defense rally point in target room
   if (squadType === "defense" && targetRoom) {
-    let rallyPoint = cluster.rallyPoints.find(
-      rp => rp.roomName === targetRoom && rp.purpose === "defense"
-    );
+    let rallyPoint = cluster.rallyPoints.find(rp => rp.roomName === targetRoom && rp.purpose === "defense");
 
     if (!rallyPoint) {
       const room = Game.rooms[targetRoom];
@@ -419,9 +415,7 @@ export function getSquadRallyPoint(
   const coreRoom = Game.rooms[cluster.coreRoom];
   if (!coreRoom) return null;
 
-  let rallyPoint = cluster.rallyPoints.find(
-    rp => rp.roomName === cluster.coreRoom && rp.purpose === "staging"
-  );
+  let rallyPoint = cluster.rallyPoints.find(rp => rp.roomName === cluster.coreRoom && rp.purpose === "staging");
 
   if (!rallyPoint) {
     const newRally = findOptimalRallyPoint(coreRoom, "staging");
@@ -446,12 +440,13 @@ export function visualizeRallyPoints(room: Room, cluster: ClusterMemory): void {
   const rallyPoints = cluster.rallyPoints.filter(rp => rp.roomName === room.name);
 
   for (const rp of rallyPoints) {
-    const color = {
-      defense: "#00ff00",
-      offense: "#ff0000",
-      staging: "#ffff00",
-      retreat: "#0000ff"
-    }[rp.purpose] || "#ffffff";
+    const color =
+      {
+        defense: "#00ff00",
+        offense: "#ff0000",
+        staging: "#ffff00",
+        retreat: "#0000ff"
+      }[rp.purpose] || "#ffffff";
 
     room.visual.circle(rp.x, rp.y, {
       radius: 0.5,

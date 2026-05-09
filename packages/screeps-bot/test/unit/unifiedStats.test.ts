@@ -45,10 +45,10 @@ describe("UnifiedStatsManager", function () {
       setActiveSegments: () => {},
       segments: {}
     };
-    
+
     // Reset memory stats
     delete mockMemory.stats;
-    
+
     // Create fresh stats manager
     statsManager = new UnifiedStatsManager();
   });
@@ -62,7 +62,7 @@ describe("UnifiedStatsManager", function () {
     it("should allow enabling/disabling", function () {
       statsManager.setEnabled(false);
       assert.isFalse(statsManager.isEnabled());
-      
+
       statsManager.setEnabled(true);
       assert.isTrue(statsManager.isEnabled());
     });
@@ -72,7 +72,7 @@ describe("UnifiedStatsManager", function () {
     it("should collect CPU stats", function () {
       statsManager.startTick();
       statsManager.finalizeTick();
-      
+
       const snapshot = statsManager.getSnapshot();
       assert.isDefined(snapshot.cpu);
       assert.equal(snapshot.cpu.used, 5.5);
@@ -84,7 +84,7 @@ describe("UnifiedStatsManager", function () {
     it("should collect progression stats", function () {
       statsManager.startTick();
       statsManager.finalizeTick();
-      
+
       const snapshot = statsManager.getSnapshot();
       assert.isDefined(snapshot.progression);
       assert.equal(snapshot.progression.gcl.level, 3);
@@ -99,7 +99,7 @@ describe("UnifiedStatsManager", function () {
       statsManager.recordNativeCall("harvest");
       statsManager.recordNativeCall("moveTo");
       statsManager.finalizeTick();
-      
+
       const snapshot = statsManager.getSnapshot();
       assert.equal(snapshot.native.harvest, 2);
       assert.equal(snapshot.native.moveTo, 1);
@@ -108,14 +108,14 @@ describe("UnifiedStatsManager", function () {
 
     it("should measure subsystems", function () {
       statsManager.startTick();
-      
+
       const result = statsManager.measureSubsystem("testSubsystem", () => {
         return 42;
       });
-      
+
       assert.equal(result, 42);
       statsManager.finalizeTick();
-      
+
       const snapshot = statsManager.getSnapshot();
       assert.isDefined(snapshot.subsystems.testSubsystem);
     });
@@ -152,20 +152,20 @@ describe("UnifiedStatsManager", function () {
       };
 
       statsManager.startTick();
-      
+
       // Measure role execution (simulating what creepProcessManager does)
       statsManager.measureSubsystem("role:harvester", () => {
         // Simulate creep execution (no-op for test)
       });
-      
+
       statsManager.finalizeTick();
-      
+
       const snapshot = statsManager.getSnapshot();
       assert.isDefined(snapshot.roles.harvester, "Role stats should exist for harvester");
       assert.equal(snapshot.roles.harvester.count, 2, "Should count 2 harvester creeps");
       assert.isDefined(snapshot.roles.harvester.avgCpu, "Should have avgCpu");
       assert.isDefined(snapshot.roles.harvester.peakCpu, "Should have peakCpu");
-      
+
       // Enhanced stats
       assert.equal(snapshot.roles.harvester.spawningCount, 0, "Should have 0 spawning creeps");
       assert.equal(snapshot.roles.harvester.idleCount, 1, "Should have 1 idle creep");
@@ -206,7 +206,7 @@ describe("UnifiedStatsManager", function () {
       statsManager.recordRoom(mockRoom, 0.5);
       statsManager.endRoom("W1N1", startCpu);
       statsManager.finalizeTick();
-      
+
       const snapshot = statsManager.getSnapshot();
       assert.isDefined(snapshot.rooms.W1N1);
       assert.equal(snapshot.rooms.W1N1.name, "W1N1");
@@ -246,13 +246,13 @@ describe("UnifiedStatsManager", function () {
       // The stub memoryManager returns {} which has no pheromones or metrics
       statsManager.startTick();
       const startCpu = statsManager.startRoom("W1N1");
-      
+
       // This should not throw even though swarm.pheromones and swarm.metrics are undefined
       statsManager.recordRoom(mockRoom, 0.5);
-      
+
       statsManager.endRoom("W1N1", startCpu);
       statsManager.finalizeTick();
-      
+
       const snapshot = statsManager.getSnapshot();
       assert.isDefined(snapshot.rooms.W1N1);
       assert.equal(snapshot.rooms.W1N1.name, "W1N1");
@@ -267,7 +267,7 @@ describe("UnifiedStatsManager", function () {
     it("should export stats to Memory.stats as nested objects", function () {
       statsManager.startTick();
       statsManager.finalizeTick();
-      
+
       const mem = Memory as unknown as Record<string, any>;
       assert.isDefined(mem.stats);
       assert.isDefined(mem.stats.cpu);
@@ -299,14 +299,14 @@ describe("UnifiedStatsManager", function () {
       statsManager.startTick();
       statsManager.measureSubsystem("role:upgrader", () => {});
       statsManager.finalizeTick();
-      
+
       const mem = Memory as unknown as Record<string, any>;
       assert.isDefined(mem.stats.roles);
       assert.isDefined(mem.stats.roles.upgrader);
       assert.equal(mem.stats.roles.upgrader.count, 1);
       assert.isDefined(mem.stats.roles.upgrader.avg_cpu);
       assert.isDefined(mem.stats.roles.upgrader.peak_cpu);
-      
+
       // Enhanced role stats
       assert.isDefined(mem.stats.roles.upgrader.spawning_count);
       assert.isDefined(mem.stats.roles.upgrader.idle_count);
@@ -334,7 +334,7 @@ describe("UnifiedStatsManager", function () {
       statsManager.startTick();
       statsManager.recordRoom(mockRoom, 0.5);
       statsManager.finalizeTick();
-      
+
       const mem = Memory as unknown as Record<string, any>;
       assert.isDefined(mem.stats.rooms);
       assert.isDefined(mem.stats.rooms.W1N1);
@@ -360,7 +360,7 @@ describe("UnifiedStatsManager", function () {
       statsManager.startTick();
       statsManager.recordRoom(mockRoom, 0.5);
       statsManager.finalizeTick();
-      
+
       const mem = Memory as unknown as Record<string, any>;
       assert.isDefined(mem.stats.rooms);
       assert.isDefined(mem.stats.rooms.W1N1);
@@ -375,9 +375,9 @@ describe("UnifiedStatsManager", function () {
       statsManager.startTick();
       statsManager.recordNativeCall("harvest");
       statsManager.finalizeTick();
-      
+
       statsManager.reset();
-      
+
       const snapshot = statsManager.getSnapshot();
       assert.equal(snapshot.native.harvest, 0);
       assert.equal(snapshot.native.total, 0);
@@ -388,7 +388,7 @@ describe("UnifiedStatsManager", function () {
     it("should calculate per-creep average CPU, not total CPU for all creeps", function () {
       // Regression test for issue: metrics showing avgCpu = 39.1 when actual per-creep usage < 1
       // Root cause: totalCpu for all creeps was stored as avgCpu, not divided by creep count
-      
+
       // Setup: 5 larvaWorker creeps
       const mockCreeps: any = {};
       for (let i = 1; i <= 5; i++) {
@@ -407,46 +407,46 @@ describe("UnifiedStatsManager", function () {
       mockGame.creeps = mockCreeps;
 
       statsManager.startTick();
-      
+
       // Simulate each creep execution using 0.2 CPU (total = 1.0 CPU)
       let cpuUsed = 0;
       mockGame.cpu.getUsed = () => cpuUsed;
-      
+
       for (let i = 1; i <= 5; i++) {
         statsManager.measureSubsystem("role:larvaWorker", () => {
           cpuUsed += 0.2;
         });
       }
-      
+
       statsManager.finalizeTick();
-      
+
       const snapshot = statsManager.getSnapshot();
       assert.isDefined(snapshot.roles.larvaWorker, "Role stats should exist");
-      
+
       // CRITICAL: avgCpu should be per-creep average (1.0 / 5 = 0.2), NOT total (1.0)
       assert.approximately(
-        snapshot.roles.larvaWorker.avgCpu, 
-        0.2, 
-        0.001, 
+        snapshot.roles.larvaWorker.avgCpu,
+        0.2,
+        0.001,
         "avgCpu should be per-creep average (0.2), not total CPU (1.0)"
       );
-      
+
       assert.equal(snapshot.roles.larvaWorker.count, 5, "Should count 5 creeps");
       assert.equal(snapshot.roles.larvaWorker.calls, 5, "Should track 5 calls (one per creep)");
-      
+
       // Verify the fix prevents the EMA from accumulating incorrectly
       // Second tick: only 1 creep remains, uses 0.2 CPU
       mockGame.creeps = {
         larvaWorker1: mockCreeps.larvaWorker1
       };
-      
+
       statsManager.startTick();
       cpuUsed = 0;
       statsManager.measureSubsystem("role:larvaWorker", () => {
         cpuUsed += 0.2;
       });
       statsManager.finalizeTick();
-      
+
       const snapshot2 = statsManager.getSnapshot();
       // With smoothing factor 0.1: avgCpu = 0.2 * 0.9 + 0.2 * 0.1 = 0.2
       // Without fix: avgCpu = 1.0 * 0.9 + 0.2 * 0.1 = 0.92 (WRONG!)

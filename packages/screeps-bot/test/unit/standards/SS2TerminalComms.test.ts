@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { SS2TerminalComms } from "../../../src/standards/SS2TerminalComms";
+import { SS2TerminalComms } from "@ralphschuler/screeps-standards";
 
 describe("SS2TerminalComms", () => {
   // Mock Game.time
@@ -50,7 +50,7 @@ describe("SS2TerminalComms", () => {
 
     it("should handle alphanumeric message IDs", () => {
       const testCases = ["a1b|0|test", "123|0|test", "XYZ|0|test"];
-      
+
       testCases.forEach(desc => {
         const parsed = SS2TerminalComms.parseTransaction(desc);
         expect(parsed).to.not.be.null;
@@ -69,14 +69,15 @@ describe("SS2TerminalComms", () => {
 
     it("should split long messages into multiple packets", () => {
       // Create a message longer than 100 characters
-      const message = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur iaculis libero erat, sed laoreet nisl lobortis a. Suspendisse dignissim.";
+      const message =
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur iaculis libero erat, sed laoreet nisl lobortis a. Suspendisse dignissim.";
       const packets = SS2TerminalComms.splitMessage(message);
 
       expect(packets.length).to.be.greaterThan(1);
-      
+
       // First packet should have finalPacket indicator
       expect(packets[0]).to.match(/^[\da-zA-Z]{3}\|0\|\d+\|/);
-      
+
       // Subsequent packets should not
       if (packets.length > 1) {
         expect(packets[1]).to.match(/^[\da-zA-Z]{3}\|1\|/);
@@ -126,7 +127,7 @@ describe("SS2TerminalComms", () => {
       // @ts-ignore: allow adding Memory to global
       global.Memory = { ss2PacketQueue: {} };
       // @ts-ignore: allow adding Game to global
-      global.Game = { 
+      global.Game = {
         time: 1000,
         // @ts-ignore: partial CPU mock
         cpu: {
@@ -177,7 +178,7 @@ describe("SS2TerminalComms", () => {
 
       it("should queue multi-packet messages", () => {
         const message = "A".repeat(300); // Long message requiring multiple packets
-        
+
         const result = SS2TerminalComms.sendMessage(
           mockTerminal as StructureTerminal,
           "W1N1",
@@ -188,11 +189,11 @@ describe("SS2TerminalComms", () => {
 
         expect(result).to.equal(OK);
         expect(Memory.ss2PacketQueue).to.not.be.empty;
-        
+
         // Check queue item structure
         const queueKeys = Object.keys(Memory.ss2PacketQueue!);
         expect(queueKeys.length).to.equal(1);
-        
+
         const queueItem = Memory.ss2PacketQueue![queueKeys[0]];
         expect(queueItem.terminalId).to.equal("terminal1");
         expect(queueItem.targetRoom).to.equal("W1N1");
@@ -223,7 +224,7 @@ describe("SS2TerminalComms", () => {
             amount: 100,
             packets: packets,
             nextPacketIndex: 0,
-            queuedAt: Game.time,
+            queuedAt: Game.time
           }
         };
 
@@ -265,7 +266,7 @@ describe("SS2TerminalComms", () => {
             amount: 100,
             packets: packets,
             nextPacketIndex: 0,
-            queuedAt: Game.time,
+            queuedAt: Game.time
           }
         };
 
@@ -285,7 +286,7 @@ describe("SS2TerminalComms", () => {
             amount: 100,
             packets: ["abc|0|test"],
             nextPacketIndex: 0,
-            queuedAt: Game.time,
+            queuedAt: Game.time
           }
         };
 
@@ -304,7 +305,7 @@ describe("SS2TerminalComms", () => {
             amount: 100,
             packets: ["abc|0|test"],
             nextPacketIndex: 0,
-            queuedAt: Game.time,
+            queuedAt: Game.time
           }
         };
 
@@ -325,7 +326,7 @@ describe("SS2TerminalComms", () => {
             amount: 100,
             packets: ["abc|0|test"],
             nextPacketIndex: 0,
-            queuedAt: Game.time,
+            queuedAt: Game.time
           }
         };
 
@@ -343,7 +344,7 @@ describe("SS2TerminalComms", () => {
             amount: 100,
             packets: ["abc|0|test"],
             nextPacketIndex: 0,
-            queuedAt: Game.time - 1001, // Expired
+            queuedAt: Game.time - 1001 // Expired
           }
         };
 

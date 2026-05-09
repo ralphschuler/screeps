@@ -27,10 +27,7 @@ describe("Lab System", () => {
         [RESOURCE_OXYGEN]: 5000
       };
 
-      const chain = chemistryPlanner.calculateReactionChain(
-        RESOURCE_HYDROXIDE,
-        availableResources
-      );
+      const chain = chemistryPlanner.calculateReactionChain(RESOURCE_HYDROXIDE, availableResources);
 
       expect(chain).to.have.length(1);
       expect(chain[0]?.product).to.equal(RESOURCE_HYDROXIDE);
@@ -45,14 +42,11 @@ describe("Lab System", () => {
         [RESOURCE_UTRIUM]: 5000
       };
 
-      const chain = chemistryPlanner.calculateReactionChain(
-        RESOURCE_UTRIUM_ACID,
-        availableResources
-      );
+      const chain = chemistryPlanner.calculateReactionChain(RESOURCE_UTRIUM_ACID, availableResources);
 
       // Should include: hydroxide -> utrium_hydride -> utrium_acid
       expect(chain.length).to.be.greaterThan(1);
-      
+
       // Check chain includes intermediate steps
       const products = chain.map(r => r.product);
       expect(products).to.include(RESOURCE_HYDROXIDE);
@@ -66,10 +60,7 @@ describe("Lab System", () => {
         [RESOURCE_OXYGEN]: 5000
       };
 
-      const chain = chemistryPlanner.calculateReactionChain(
-        RESOURCE_HYDROXIDE,
-        availableResources
-      );
+      const chain = chemistryPlanner.calculateReactionChain(RESOURCE_HYDROXIDE, availableResources);
 
       // Chain should be empty if base resources are missing
       expect(chain).to.be.empty;
@@ -77,7 +68,7 @@ describe("Lab System", () => {
 
     it("should get reaction for a compound", () => {
       const reaction = chemistryPlanner.getReaction(RESOURCE_HYDROXIDE);
-      
+
       expect(reaction).to.not.be.undefined;
       expect(reaction?.product).to.equal(RESOURCE_HYDROXIDE);
       expect(reaction?.input1).to.equal(RESOURCE_HYDROGEN);
@@ -97,11 +88,7 @@ describe("Lab System", () => {
       const reaction = chemistryPlanner.getReaction(RESOURCE_HYDROXIDE);
       expect(reaction).to.not.be.undefined;
 
-      const hasResources = chemistryPlanner.hasResourcesForReaction(
-        mockTerminal,
-        reaction!,
-        1000
-      );
+      const hasResources = chemistryPlanner.hasResourcesForReaction(mockTerminal, reaction!, 1000);
 
       expect(hasResources).to.be.true;
     });
@@ -117,11 +104,7 @@ describe("Lab System", () => {
       const reaction = chemistryPlanner.getReaction(RESOURCE_HYDROXIDE);
       expect(reaction).to.not.be.undefined;
 
-      const hasResources = chemistryPlanner.hasResourcesForReaction(
-        mockTerminal,
-        reaction!,
-        1000
-      );
+      const hasResources = chemistryPlanner.hasResourcesForReaction(mockTerminal, reaction!, 1000);
 
       expect(hasResources).to.be.false;
     });
@@ -228,7 +211,7 @@ describe("Lab System", () => {
       } as unknown as Room;
 
       labConfigManager.initialize(mockRoom.name);
-      
+
       const config = labConfigManager.getConfig(mockRoom.name);
       expect(config).to.be.undefined;
     });
@@ -274,7 +257,7 @@ describe("Lab System", () => {
   describe("Boost Cost Analysis", () => {
     it("should calculate boost cost for a creep", () => {
       const cost = boostManager.calculateBoostCost("soldier", 10);
-      
+
       // Soldier has 2 boosts (XUH2O and XLHO2) based on BOOST_CONFIGS
       // 10 parts * 30 mineral per part * 2 boosts = 600 mineral
       // 10 parts * 20 energy per part * 2 boosts = 400 energy
@@ -285,14 +268,14 @@ describe("Lab System", () => {
 
     it("should handle unknown role gracefully", () => {
       const cost = boostManager.calculateBoostCost("unknownRole", 10);
-      
+
       expect(cost.mineral).to.equal(0);
       expect(cost.energy).to.equal(0);
     });
 
     it("should analyze boost ROI", () => {
       const analysis = boostManager.analyzeBoostROI("soldier", 10, 1500, 3);
-      
+
       expect(analysis).to.have.property("worthwhile");
       expect(analysis).to.have.property("roi");
       expect(analysis).to.have.property("reasoning");
@@ -301,7 +284,7 @@ describe("Lab System", () => {
 
     it("should recommend boosting for high danger operations", () => {
       const analysis = boostManager.analyzeBoostROI("soldier", 20, 1500, 3);
-      
+
       // High danger (3) and large creep (20 parts) should have good ROI
       expect(analysis.worthwhile).to.be.true;
       expect(analysis.roi).to.be.greaterThan(1.5);
@@ -309,7 +292,7 @@ describe("Lab System", () => {
 
     it("should not recommend boosting for low value operations", () => {
       const analysis = boostManager.analyzeBoostROI("soldier", 5, 100, 0);
-      
+
       // Low danger (0) and small/short-lived creep should have poor ROI
       expect(analysis.worthwhile).to.be.false;
     });

@@ -104,7 +104,7 @@ describe("Offensive Doctrine", () => {
         assert.isNumber(config.minEnergy, `${doctrine} should have min energy`);
         assert.isBoolean(config.useBoosts, `${doctrine} should have useBoosts flag`);
         assert.isNumber(config.retreatThreshold, `${doctrine} should have retreat threshold`);
-        
+
         // Validate retreat threshold is between 0 and 1
         assert.isTrue(
           config.retreatThreshold >= 0 && config.retreatThreshold <= 1,

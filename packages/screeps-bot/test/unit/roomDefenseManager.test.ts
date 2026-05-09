@@ -4,7 +4,7 @@ import type { SwarmState } from "../../src/memory/schemas";
 
 /**
  * Test suite for RoomDefenseManager
- * 
+ *
  * Tests the implementation of:
  * - Threat assessment and hostile detection
  * - Tower control (attack, heal, repair)

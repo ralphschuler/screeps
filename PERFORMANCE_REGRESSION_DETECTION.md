@@ -681,7 +681,6 @@ export METRICS_FORMAT=prometheus
 
 # Export metrics after test
 cd packages/screeps-bot
-node scripts/export-to-grafana.js
 ```
 
 ### Historical Analysis

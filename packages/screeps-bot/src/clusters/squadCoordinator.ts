@@ -30,7 +30,7 @@ export interface SquadComposition {
 const THREAT_SQUAD_SIZE: Record<number, SquadComposition> = {
   1: { guards: 1, rangers: 1, healers: 0, siegeUnits: 0 }, // Low threat
   2: { guards: 2, rangers: 2, healers: 1, siegeUnits: 0 }, // Medium threat
-  3: { guards: 3, rangers: 3, healers: 2, siegeUnits: 1 }  // High threat
+  3: { guards: 3, rangers: 3, healers: 2, siegeUnits: 1 } // High threat
 };
 
 /**
@@ -97,10 +97,7 @@ export function calculateOffensiveSquadComposition(
 /**
  * Find the best rally room for a squad targeting a specific room
  */
-export function selectRallyRoom(
-  cluster: ClusterMemory,
-  targetRoom: string
-): string {
+export function selectRallyRoom(cluster: ClusterMemory, targetRoom: string): string {
   let bestRoom = cluster.coreRoom;
   let minDistance = Infinity;
 
@@ -119,10 +116,7 @@ export function selectRallyRoom(
 /**
  * Create a new squad for a defense request
  */
-export function createDefenseSquad(
-  cluster: ClusterMemory,
-  request: DefenseAssistanceRequest
-): SquadDefinition {
+export function createDefenseSquad(cluster: ClusterMemory, request: DefenseAssistanceRequest): SquadDefinition {
   const composition = calculateSquadComposition(request);
   const squadId = `defense_${request.roomName}_${Game.time}`;
   const rallyRoom = selectRallyRoom(cluster, request.roomName);
@@ -139,7 +133,7 @@ export function createDefenseSquad(
 
   logger.info(
     `Created defense squad ${squadId} for ${request.roomName}: ` +
-    `${composition.guards}G/${composition.rangers}R/${composition.healers}H rally at ${rallyRoom}`,
+      `${composition.guards}G/${composition.rangers}R/${composition.healers}H rally at ${rallyRoom}`,
     { subsystem: "Squad" }
   );
 
@@ -182,7 +176,7 @@ export function createOffensiveSquad(
 
   logger.info(
     `Created ${type} squad ${squadId} for ${targetRoom}: ` +
-    `${composition.guards}G/${composition.rangers}R/${composition.healers}H/${composition.siegeUnits}S rally at ${rallyRoom}`,
+      `${composition.guards}G/${composition.rangers}R/${composition.healers}H/${composition.siegeUnits}S rally at ${rallyRoom}`,
     { subsystem: "Squad" }
   );
 
@@ -266,17 +260,14 @@ export function validateSquadState(squad: SquadDefinition): void {
   // Remove dead members
   const aliveMembersBefore = squad.members.length;
   squad.members = squad.members.filter(name => Game.creeps[name]);
-  
+
   if (squad.members.length < aliveMembersBefore) {
-    logger.debug(
-      `Squad ${squad.id} lost ${aliveMembersBefore - squad.members.length} members`,
-      { subsystem: "Squad" }
-    );
+    logger.debug(`Squad ${squad.id} lost ${aliveMembersBefore - squad.members.length} members`, { subsystem: "Squad" });
   }
 
   // Get alive member creeps
   const members = squad.members.map(name => Game.creeps[name]).filter((c): c is Creep => !!c);
-  
+
   if (members.length === 0) return;
 
   // Update state based on member positions
@@ -343,7 +334,7 @@ export function getSquadReadiness(squad: SquadDefinition): {
   missingRoles: string[];
 } {
   const members = squad.members.map(name => Game.creeps[name]).filter((c): c is Creep => !!c);
-  
+
   // Count roles
   const roleCount: Record<string, number> = {
     guard: 0,
@@ -353,7 +344,7 @@ export function getSquadReadiness(squad: SquadDefinition): {
   };
 
   for (const creep of members) {
-    const role = creep.memory.role ;
+    const role = creep.memory.role;
     if (role in roleCount) {
       roleCount[role]++;
     }

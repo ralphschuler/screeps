@@ -40,16 +40,8 @@ export type { CacheStore } from "./CacheStore";
 export type { CacheEntry, CacheOptions, CacheStats } from "./CacheEntry";
 
 // Cache Coherence Protocol
-export {
-  CacheCoherenceManager,
-  cacheCoherence,
-  CacheLayer
-} from "./CacheCoherence";
-export type {
-  InvalidationScope,
-  RegisteredCache,
-  CacheCoherenceStats
-} from "./CacheCoherence";
+export { CacheCoherenceManager, cacheCoherence, CacheLayer } from "./CacheCoherence";
+export type { InvalidationScope, RegisteredCache, CacheCoherenceStats } from "./CacheCoherence";
 
 // Cache Event Integration
 export {
@@ -60,18 +52,10 @@ export {
 } from "./cacheEvents";
 
 // Cache Registration
-export {
-  registerAllCaches,
-  getTotalCacheBudget,
-  setTotalCacheBudget
-} from "./cacheRegistration";
+export { registerAllCaches, getTotalCacheBudget, setTotalCacheBudget } from "./cacheRegistration";
 
 // Cache Statistics for Grafana
-export {
-  collectCacheStats,
-  getCachePerformanceSummary,
-  logCacheStats
-} from "./cacheStats";
+export { collectCacheStats, getCachePerformanceSummary, logCacheStats } from "./cacheStats";
 
 // Storage backends
 export { HeapStore } from "./stores/HeapStore";
@@ -154,11 +138,7 @@ export {
 } from "./domains/RoleCache";
 
 // Domain-specific wrappers - Closest Cache
-export {
-  findCachedClosest,
-  clearCache as clearClosestCache,
-  clearCacheOnStateChange
-} from "./domains/ClosestCache";
+export { findCachedClosest, clearCache as clearClosestCache, clearCacheOnStateChange } from "./domains/ClosestCache";
 
 // Domain-specific wrappers - Game Object Cache
 export {
