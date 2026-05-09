@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import zlib from 'node:zlib';
 import {
+  buildEnsureBotUserCommand,
   createInitialSummary,
   decodeMemoryData,
   inspectMemorySnapshot,
@@ -83,6 +84,16 @@ describe('private-server harness module', () => {
     expect(summary.metrics.screepsmodTesting).to.deep.equal({ total: 3, passed: 3, failed: 0 });
     expect(summary.metrics.taskBoardRooms).to.equal(2);
     expect(summary.metrics.criticalConsoleErrors).to.equal(1);
+  });
+
+  it('builds a bot-user bootstrap command that spawns in the configured room without pre-scanning controllers', () => {
+    const options = parseHarnessArgs(['--room=E1N1', '--username=test-bot'], {});
+    const command = buildEnsureBotUserCommand(options);
+
+    expect(command).to.include('const room=\"E1N1\"');
+    expect(command).to.include("bots.spawn('swarm-bot',room");
+    expect(command).to.not.include('No unowned controller room found');
+    expect(command).to.not.include("find({ type: 'controller', user: null })");
   });
 
   it('fails the run when screepsmod-testing reports failed tests', () => {

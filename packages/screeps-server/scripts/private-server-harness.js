@@ -174,8 +174,12 @@ async function ensureTerrainData(options, summary) {
   summary.checks.terrainDataReady = true;
 }
 
+export function buildEnsureBotUserCommand(options) {
+  return `Promise.resolve().then(async()=>{ const username=${JSON.stringify(options.username)}; const room=${JSON.stringify(options.roomName)}; let user=await storage.db.users.findOne({username}); if(!user){ const controller=await storage.db['rooms.objects'].findOne({type:'controller',room}); if(controller&&controller.user) throw new Error('Room '+room+' is already owned by '+controller.user); await bots.spawn('swarm-bot',room,{username,cpu:100,gcl:1,x:25,y:25}); user=await storage.db.users.findOne({username}); } await storage.db.users.update({_id:user._id},{$set:{active:10000,cpu:100,bot:username}}); await setPassword(username,${JSON.stringify(options.password)}); const activeCode=await storage.db['users.code'].findOne({user:''+user._id,activeWorld:true}); if(!activeCode){ await storage.db['users.code'].insert({user:''+user._id,modules:{main:''},branch:'default',activeWorld:true,activeSim:true}); } }).then(()=>print('__PI_CLI_DONE_OK__')).catch(error=>print('__PI_CLI_DONE_ERR__',error.stack||error.message||String(error)))`;
+}
+
 async function ensureBotUser(options, summary) {
-  const command = `Promise.resolve().then(async () => { let user = await storage.db.users.findOne({ username: ${JSON.stringify(options.username)} }); if (!user) { const controllers = await storage.db['rooms.objects'].find({ type: 'controller', user: null }); const controller = controllers.find(item => item && item.room); if (!controller) throw new Error('No unowned controller room found for bot spawn'); await bots.spawn('swarm-bot', controller.room, { username: ${JSON.stringify(options.username)}, cpu: 100, gcl: 1, x: 25, y: 25 }); } await setPassword(${JSON.stringify(options.username)}, ${JSON.stringify(options.password)}); }).then(() => print('__PI_CLI_DONE_OK__')).catch(error => print('__PI_CLI_DONE_ERR__', error.stack || error.message || String(error)))`;
+  const command = buildEnsureBotUserCommand(options);
   const output = await cliEval(options, command);
   if (!output.includes('__PI_CLI_DONE_OK__') || output.includes('__PI_CLI_DONE_ERR__')) {
     throw new Error(`Failed to ensure bot user ${options.username}. CLI output:\n${output}`);
