@@ -44,6 +44,7 @@ import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { clusterMonitor } from "./clusterMonitor";
 import * as ExpansionScoring from "./expansionScoring";
+import { evaluateExpansionOpportunities } from "./expansionOpportunityModule";
 import { roomIntelManager } from "./roomIntelManager";
 import { warCoordinator } from "./warCoordinator";
 
@@ -243,41 +244,13 @@ export class EmpireManager {
       return;
     }
 
-    // Score all scouted rooms
-    const candidates: ExpansionCandidate[] = [];
+    const candidates = evaluateExpansionOpportunities(empire, ownedRooms, {
+      maxExpansionDistance: this.config.maxExpansionDistance,
+      minExpansionScore: this.config.minExpansionScore,
+      maxCandidates: 10
+    });
 
-    for (const roomName in empire.knownRooms) {
-      const intel = empire.knownRooms[roomName];
-
-      // Skip if already owned or claimed
-      if (intel.owner || intel.reserver) {
-        continue;
-      }
-
-      // Skip if not scouted
-      if (!intel.scouted) {
-        continue;
-      }
-
-      // Calculate score
-      const score = this.scoreExpansionCandidate(intel, ownedRooms);
-
-      if (score >= this.config.minExpansionScore) {
-        candidates.push({
-          roomName: intel.name,
-          score,
-          distance: this.getMinDistanceToOwned(intel.name, ownedRooms),
-          claimed: false,
-          lastEvaluated: Game.time
-        });
-      }
-    }
-
-    // Sort by score (highest first)
-    candidates.sort((a, b) => b.score - a.score);
-
-    // Update claim queue (keep top 10)
-    empire.claimQueue = candidates.slice(0, 10);
+    empire.claimQueue = candidates;
 
     if (candidates.length > 0 && Game.time % 100 === 0) {
       logger.info(`Expansion queue updated: ${candidates.length} candidates, top score: ${candidates[0].score}`, {

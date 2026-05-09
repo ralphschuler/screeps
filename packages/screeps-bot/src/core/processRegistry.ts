@@ -36,6 +36,7 @@ import { factoryManager, linkManager, marketManager, terminalManager } from "@ra
 import { crossShardIntelCoordinator } from "../empire/crossShardIntel";
 import { empireManager } from "../empire/empireManager";
 import { expansionManager } from "../empire/expansionManager";
+import { intelScanner } from "../empire/intelScanner";
 import { nukeManager } from "../empire/nukeManager";
 import { pixelBuyingManager } from "../empire/pixelBuyingManager";
 import { pixelGenerationManager } from "../empire/pixelGenerationManager";
@@ -66,6 +67,7 @@ export function registerAllProcesses(): void {
     // Empire processes
     empireManager,
     expansionManager,
+    intelScanner,
     remoteInfrastructureManager,
     marketManager,
     pixelBuyingManager,

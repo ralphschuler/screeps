@@ -520,19 +520,11 @@ Set these secrets in GitHub repository settings:
 
 ### Dashboard Setup
 
-Use the grafana-mcp tools to create dashboards:
+Create Grafana dashboards through the Grafana UI or HTTP API. Recommended panels:
 
-```typescript
-// Example: Create performance dashboard
-await create_dashboard({
-  title: "Performance Test Trends",
-  panels: [
-    { metric: "screeps_performance_avg_cpu", title: "Average CPU Usage" },
-    { metric: "screeps_performance_avg_memory_bytes", title: "Memory Usage" },
-    { metric: "screeps_performance_regression", title: "Regression Status" }
-  ]
-});
-```
+- `screeps_performance_avg_cpu` - Average CPU Usage
+- `screeps_performance_avg_memory_bytes` - Memory Usage
+- `screeps_performance_regression` - Regression Status
 
 ## Troubleshooting
 

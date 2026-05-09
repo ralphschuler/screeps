@@ -4,7 +4,7 @@
  * Grafana Alert Setup Script
  * 
  * Creates or updates Grafana alert rules for CPU budget monitoring
- * using the grafana-mcp server.
+ * using the Grafana HTTP API.
  * 
  * Note: This is a reference implementation. Actual alert creation
  * requires Grafana API credentials and may need to be done manually
@@ -155,7 +155,7 @@ async function main() {
     console.log('⚠️  Automated alert creation via API is not yet implemented.');
     console.log('This would require:');
     console.log('  1. Using Grafana HTTP API directly');
-    console.log('  2. Or using grafana-mcp create_alert_rule tool');
+    console.log('  2. Or import cpu-budget-alerts.json through the Grafana UI');
     console.log('  3. Proper authentication and permissions\n');
     
     generateManualInstructions(config);

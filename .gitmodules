@@ -1,3 +1,0 @@
-[submodule "packages/screeps-docs-mcp/docs-repo"]
-	path = packages/screeps-docs-mcp/docs-repo
-	url = https://github.com/screeps/docs.git

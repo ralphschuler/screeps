@@ -1,7 +1,0 @@
-# Screeps TypeScript MCP Documentation
-
-This directory contains documentation for the Screeps TypeScript MCP Server package.
-
-## Overview
-
-Add documentation files here to be included in the project's combined documentation.

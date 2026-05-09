@@ -3,7 +3,7 @@
 import clear from "rollup-plugin-clear";
 import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
-import typescript from "rollup-plugin-typescript2";
+import typescript from "@rollup/plugin-typescript";
 import screeps from "rollup-plugin-screeps";
 import terser from "@rollup/plugin-terser";
 import alias from "@rollup/plugin-alias";
@@ -107,7 +107,14 @@ export default {
         { find: "@ralphschuler/screeps-utils", replacement: path.resolve(__dirname, "../screeps-utils/src/index.ts") }
       ]
     }),
-    resolve({ 
+    typescript({
+      tsconfig: "./tsconfig.json",
+      include: ["**/*.ts"],
+      filterRoot: path.resolve(__dirname, ".."),
+      noEmitOnError: false,
+      noForceEmit: true
+    }),
+    resolve({
       rootDir: path.resolve(__dirname, "src"),
       extensions: [".js", ".ts"],
       browser: true, // Use browser-compatible versions of packages (e.g., source-map)
@@ -115,10 +122,6 @@ export default {
       dedupe: ['source-map'] // Deduplicate source-map to avoid multiple copies in bundle
     }),
     commonjs(),
-    typescript({ 
-      tsconfig: "./tsconfig.json",
-      check: false, // Disable type checking, rely on separate npm run typecheck
-    }),
     terser({
       compress: {
         passes: 3, // Increased from 2 to 3 for more aggressive compression

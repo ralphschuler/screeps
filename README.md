@@ -52,17 +52,12 @@ See [PERFORMANCE_TESTING.md](packages/screeps-bot/PERFORMANCE_TESTING.md) for de
 - **Auto-Respawn System**: Automatic respawn detection and optimal shard selection
 - **Advanced Combat**: Defensive and offensive capabilities with boost system
 - **Market Integration**: Automated trading and resource management
-- **MCP Integration**: Model Context Protocol servers for AI-assisted development
-  - **screeps-docs-mcp**: Access Screeps API documentation
-  - **screeps-mcp**: Live game state and console integration
-  - **screeps-wiki-mcp**: Community wiki search and retrieval
-  - **grafana-mcp**: Performance monitoring and observability
+- **Agent Skills**: Local skills for Screeps API reference and private-server workflows
 - **Autonomous Development**: Self-improving bot with automated optimization
   - Daily strategic planning and performance analysis
   - Automated low-risk improvements with safety checks
   - Post-deployment monitoring with automatic rollback
   - Learning from outcomes to improve over time
-  - See [docs/AUTONOMOUS_DEVELOPMENT.md](docs/AUTONOMOUS_DEVELOPMENT.md) for details
 - **Framework Packages**: Modular, reusable packages for building your own bots
   - See [FRAMEWORK.md](FRAMEWORK.md) for framework documentation
 
@@ -110,9 +105,6 @@ screeps/
 ├── packages/
 │   ├── screeps-bot/          # Main bot implementation
 │   ├── screeps-tasks/        # Optional task-based creep management system
-│   ├── screeps-docs-mcp/     # MCP server for Screeps API documentation
-│   ├── screeps-mcp/          # MCP server for live Screeps game integration
-│   ├── screeps-wiki-mcp/     # MCP server for Screeps community wiki
 │   ├── screeps-server/       # Docker setup for private server
 │   └── screeps-graphite-exporter/ # Metrics exporter to Grafana Cloud
 ├── ROADMAP.md                # Complete swarm architecture specification (24 sections)
@@ -207,7 +199,7 @@ npm test
 npm run test:utils
 npm run test:spawn
 npm run test:chemistry
-npm run test:mcp
+npm run test:server:smoke
 
 # Run all tests across all packages
 npm run test:all
@@ -265,57 +257,21 @@ Key design principles:
 - **Aggressive caching**: Minimize CPU with TTL-based caching
 - **CPU bucket management**: Adaptive behavior based on CPU availability
 
-## MCP Servers
+## Agent Skills and Private Server
 
-The repository includes three Model Context Protocol (MCP) servers for AI-assisted development:
+This repository uses local agent skills plus the Dockerized private-server harness instead of repo-local protocol servers.
 
-### screeps-docs-mcp
+- [screeps-world](./skills/screeps-world/SKILL.md) - general Screeps workflow, safety, and validation
+- [screeps-api-reference](./skills/screeps-api-reference/SKILL.md) - API/type/mechanics fact-checking
+- [screeps-private-server](./skills/screeps-private-server/SKILL.md) - local/CI server startup, smoke/long tests, artifacts, auth, and binding
 
-Browse and query Screeps API documentation and game mechanics via MCP.
-
-```shell
-cd packages/screeps-docs-mcp
-npm install
-npm run build
-npm run inspect  # Launch MCP Inspector (Node.js 24 baseline)
-```
-
-[Read more →](./packages/screeps-docs-mcp/README.md)
-
-### screeps-mcp
-
-Live Screeps game API integration with console commands, memory operations, and stats.
+Private-server quick check:
 
 ```shell
-cd packages/screeps-mcp
-npm install
 npm run build
-# Configure with environment variables:
-export SCREEPS_TOKEN="your-token"
-export SCREEPS_HOST="screeps.com"
-export SCREEPS_SHARD="shard3"
+npm run build:mod
+npm run test:server:smoke
 ```
-
-[Read more →](./packages/screeps-mcp/README.md)
-
-By default, the live MCP server is read-only. Set `SCREEPS_MCP_ENABLE_CONSOLE=true` for console execution and `SCREEPS_MCP_ENABLE_WRITES=true` for Memory or segment writes.
-
-### screeps-wiki-mcp
-
-Access the Screeps community wiki with search, article retrieval, and table extraction.
-
-```shell
-cd packages/screeps-wiki-mcp
-npm install
-npm run build
-npm run inspect  # Launch MCP Inspector (Node.js 24 baseline)
-```
-
-[Read more →](./packages/screeps-wiki-mcp/README.md)
-
-## Agent Skills
-
-Use [skills/screeps-world](./skills/screeps-world/SKILL.md) for AI-agent work that touches Screeps APIs, live world state, gameplay docs, Memory, market data, or deployment safety. It captures the repo workflow for fact-checking game mechanics, respecting allies, and keeping live-world writes explicit.
 
 ## Auto-Respawn System
 

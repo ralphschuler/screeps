@@ -185,15 +185,14 @@ All framework packages with names starting with `@ralphschuler/screeps-*` share 
 - Framework packages under `packages/screeps-*/` with `@ralphschuler/screeps-*` names (e.g., `screeps-spawn`, `screeps-chemistry`, `screeps-defense`, `screeps-economy`, `screeps-utils`)
 
 **Excluded packages** (managed separately):
-- MCP packages (`@ralphschuler/screeps-mcp`, `@ralphschuler/screeps-docs-mcp`, etc.) - use different testing framework
-- Server packages (`@ralphschuler/screeps-server`, `@ralphschuler/screeps-tasks`, `@ralphschuler/screeps-posis`) - have different dependency requirements
+- Server/tooling packages (`@ralphschuler/screeps-server`, `@ralphschuler/screeps-tasks`, `@ralphschuler/screeps-posis`) - have different dependency requirements
 
 ### How It Works
 
 - **Single source of truth**: `scripts/shared-dependencies.json` defines all shared devDependencies
 - **Automated sync**: Run `npm run sync:deps` to update all framework packages
 - **CI enforcement**: PR checks fail if packages have inconsistent dependencies
-- **Scope**: Applies to all `@ralphschuler/screeps-*` packages except MCP and server packages
+- **Scope**: Applies to framework `@ralphschuler/screeps-*` packages except server/tooling packages
 
 ### Updating Dependencies
 

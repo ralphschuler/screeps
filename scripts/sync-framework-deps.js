@@ -65,7 +65,7 @@ if (
 const sharedDevDeps = sharedDepsConfig.framework.devDependencies;
 
 // Find all framework packages: any package.json under packages/ whose name starts with @ralphschuler/screeps-
-// Excludes MCP packages, server, tasks, and posis which have different dependency requirements
+// Excludes server, tasks, and posis packages which have different dependency requirements
 const packagesDir = path.join(__dirname, "..", "packages");
 
 if (!fs.existsSync(packagesDir)) {
@@ -81,10 +81,6 @@ if (!fs.existsSync(packagesDir)) {
 function findFrameworkPackageJsons(rootDir) {
   const results = [];
   const excludedPackages = [
-    "@ralphschuler/screeps-mcp",
-    "@ralphschuler/screeps-docs-mcp",
-    "@ralphschuler/screeps-wiki-mcp",
-    "@ralphschuler/screeps-typescript-mcp",
     "@ralphschuler/screeps-server",
     "@ralphschuler/screeps-tasks",
     "@ralphschuler/screeps-posis",

@@ -1,56 +1,51 @@
 ---
 name: screeps-world
-description: Use when working with Screeps gameplay, live world state, bot strategy, Screeps API documentation, TypeScript types, community wiki patterns, or this repo's Screeps MCP servers. This skill is for fact-checking game mechanics, inspecting rooms, memory, market data, console output, and making safe bot development decisions.
+description: Use when working with Screeps gameplay, bot strategy, local/private-server validation, Screeps API docs/types, community patterns, or safe bot development decisions in this repo.
 ---
 
 # Screeps World
 
-Use this skill for Screeps bot work that touches game mechanics, live game state, API calls, strategy, room operations, memory, market behavior, combat, expansion, or MCP-backed documentation.
+Use this skill for Screeps bot work that touches game mechanics, API calls, strategy, room ops, memory, market behavior, combat, expansion, or runtime validation.
 
 ## Core Rule
 
-Before writing Screeps gameplay code or making claims about Screeps APIs, verify the relevant detail with the most authoritative available source:
+Before writing Screeps gameplay code or making API/mechanics claims, verify the detail with the most authoritative available local/reference source:
 
-1. Official docs MCP for API methods, constants, and mechanics.
-2. TypeScript MCP for exact interfaces, return types, and overloads.
-3. Live Screeps MCP for current world, room, memory, market, and console state.
-4. Wiki MCP for community strategy patterns, only after official docs/types are checked.
-5. Local package docs and `AI_AGENT_GUIDE.md` files if MCP tools are unavailable in the current session.
+1. Local TypeScript definitions: `node_modules/@types/screeps/index.d.ts`.
+2. Official Screeps docs via web search when local types are insufficient.
+3. Local bot/framework/package docs and tests.
+4. Community wiki/articles for strategy patterns only, after API facts are checked.
+5. Local private-server smoke/long simulations for runtime behavior.
 
-If the required MCP tools are unavailable, say that explicitly and mark gameplay/API conclusions as needing MCP verification.
+## Related Skills
 
-## Tool Selection
-
-- Use `screeps_docs_search`, `screeps_docs_get_api`, and `screeps_docs_get_mechanics` for official API and mechanic facts.
-- Use `screeps_types_search`, `screeps_types_get`, and related type tools before committing TypeScript signatures or narrowing assumptions.
-- Use `screeps_console`, `screeps_memory_get`, `screeps_stats`, room, market, user, and shard tools for live-world diagnosis.
-- Use `screeps_memory_set`, segment writes, and console commands that mutate game state only when the user requested the operation or the task clearly requires it.
-- Use Grafana/Prometheus/Loki tools for CPU, bucket, error-rate, deployment, and monitoring questions.
+- Use `screeps-api-reference` for API/type/mechanics fact-checking.
+- Use `screeps-private-server` for local server startup, smoke tests, long simulations, auth/bind, artifacts, and screepsmod-testing assertions.
 
 ## Safety Checks
 
 - Never attack, target, harass, or classify `TooAngel` or `TedRoastBeef` as enemies. Treat them as permanent allies.
 - Before changing combat, defense, targeting, expansion, remote mining, tower, nuke, power creep, or hostile-detection logic, confirm ally filtering is preserved.
-- Prefer read-only live-world tools during review. Treat console commands, memory writes, market orders, respawn, and deploy actions as state-changing.
+- Prefer read-only inspection during review. Treat console commands, memory writes, market orders, respawn, and deploy actions as state-changing.
 - Preserve ROADMAP.md as the source of truth for architecture and strategy.
 
 ## Workflow
 
 1. Read `ROADMAP.md`, `AGENTS.md`, and nearby package docs for repo-specific intent.
-2. Verify relevant Screeps mechanics through MCP tools before coding or documenting them.
+2. Verify relevant Screeps API/types through local types or official docs before coding/documenting.
 3. Inspect local implementation and tests with `rg` before proposing changes.
 4. Implement only required code; remove dead paths instead of disabling them.
 5. Add TODO comments for deferred work using the repo's TODO protocol.
 6. Validate with the narrowest relevant build, lint, and test commands.
-7. For performance or live behavior changes, compare before/after metrics using Screeps stats or Grafana data.
+7. For runtime/performance changes, use private-server smoke/long tests and inspect artifacts under `packages/screeps-server/artifacts/`.
 
 ## Local References
 
-When MCP tools are unavailable, use these local guides as fallback context:
-
-- `packages/screeps-mcp/AI_AGENT_GUIDE.md`
-- `packages/screeps-docs-mcp/AI_AGENT_GUIDE.md`
-- `packages/screeps-typescript-mcp/AI_AGENT_GUIDE.md`
-- `packages/screeps-wiki-mcp/AI_AGENT_GUIDE.md`
+- `node_modules/@types/screeps/index.d.ts`
+- `packages/screeps-server/README.md`
+- `packages/screeps-server/INTEGRATION_TEST_GUIDE.md`
+- `packages/screeps-server/TESTING_GUIDE.md`
+- `packages/screeps-server/PERFORMANCE_TESTING_GUIDE.md`
+- `packages/screepsmod-testing/`
 - `docs/AI_AGENT_WORKFLOWS.md`
 - `docs/AUTONOMOUS_DEVELOPMENT.md`

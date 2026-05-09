@@ -109,7 +109,7 @@ describe("SpawnQueue", () => {
       spawnQueue.clearQueue("W1N1");
     });
 
-    it("should return highest priority request that fits energy budget", () => {
+    it("should wait for the highest priority request instead of bypassing it", () => {
       const cheap: SpawnRequest = {
         id: "cheap",
         roomName: "W1N1",
@@ -133,9 +133,9 @@ describe("SpawnQueue", () => {
       spawnQueue.addRequest(cheap);
       spawnQueue.addRequest(expensive);
 
-      // With only 200 energy, should get cheap request even though expensive has higher priority
+      // With only 200 energy, lower-priority requests should not bypass the expensive priority head.
       const next = spawnQueue.getNextRequest("W1N1", 200);
-      assert.equal(next?.id, "cheap");
+      assert.isNull(next);
     });
 
     it("should return null when no affordable requests exist", () => {

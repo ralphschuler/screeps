@@ -60,15 +60,32 @@ export interface ExpansionManagerConfig {
   minStableRoomPercentage: number;
 }
 
+export function getRemoteSourceTargetByRcl(rcl: number): number {
+  if (rcl <= 1) return 1;
+  if (rcl === 2) return 2;
+  if (rcl === 3) return 3;
+  if (rcl === 4) return 4;
+  if (rcl === 5) return 5;
+  if (rcl === 6) return 6;
+  if (rcl === 7) return 7;
+  return 9;
+}
+
+function getRemoteRoomCapacityForSourceTarget(rcl: number, maxRemoteRooms: number): number {
+  const targetSources = getRemoteSourceTargetByRcl(rcl);
+  const expectedSourcesPerRemoteRoom = 2;
+  return Math.min(Math.ceil(targetSources / expectedSourcesPerRemoteRoom), maxRemoteRooms);
+}
+
 const DEFAULT_CONFIG: ExpansionManagerConfig = {
   updateInterval: 20,
   minBucket: 2000,
   maxRemoteDistance: 2,
-  maxRemotesPerRoom: 4, // Increased from 3 to support energy needs at RCL 5-6
+  maxRemotesPerRoom: 5, // Supports up to ~9 remote sources in mature rooms
   minRemoteSources: 1,
   minRclForRemotes: 3,
   minRclForClaiming: 4,
-  minGclProgressForClaim: 0.7, // 70% GCL progress before next claim
+  minGclProgressForClaim: 0, // Claim any already-unlocked GCL room slot; stability checks still gate overspend
   clusterExpansionDistance: 5,
   minStableRoomPercentage: 0.6 // 60% of rooms must be RCL 4+ to expand
 };
@@ -196,24 +213,7 @@ export class ExpansionManager {
       return Math.min(1, this.config.maxRemotesPerRoom);
     }
 
-    // Early-stage rooms (RCL < 4) get limited remotes
-    if (rcl < 4) {
-      return Math.min(1, this.config.maxRemotesPerRoom);
-    }
-
-    // RCL 4 gets 2 remotes - still developing infrastructure
-    if (rcl === 4) {
-      return Math.min(2, this.config.maxRemotesPerRoom);
-    }
-
-    // RCL 5-6 get 3 remotes - need extra energy for development
-    // At RCL 5, rooms often have only 2 local sources which is insufficient
-    if (rcl < 7) {
-      return Math.min(3, this.config.maxRemotesPerRoom);
-    }
-
-    // Mature rooms (RCL 7-8) with good energy get full capacity
-    return this.config.maxRemotesPerRoom;
+    return getRemoteRoomCapacityForSourceTarget(rcl, this.config.maxRemotesPerRoom);
   }
 
   /**
@@ -308,22 +308,23 @@ export class ExpansionManager {
       // Skip if it's a highway or SK room
       if (intel.isHighway || intel.isSK) continue;
 
-      // Skip if too few sources
-      if (intel.sources < this.config.minRemoteSources) continue;
-
       // Skip if too dangerous
       if (intel.threatLevel >= 2) continue;
 
       // Distance already calculated above; disallow self (distance 0)
       if (distance < 1 || distance > this.config.maxRemoteDistance) continue;
 
-      // For unscouted adjacent rooms, assume 2 sources (typical) and skip profitability check
-      // since we can't calculate without real data. Profitability validated after first scout.
+      // Adjacent stub intel starts with sources=0. Treat it as a provisional remote
+      // so scouts/miners break the chicken-and-egg loop; real intel validation will
+      // remove bad remotes after first vision.
       if (!intel.scouted) {
-        const score = this.scoreRemoteCandidate({ ...intel, sources: 2 }, distance);
+        const score = this.scoreRemoteCandidate({ ...intel, sources: Math.max(2, this.config.minRemoteSources) }, distance);
         candidates.push({ roomName, score });
         continue;
       }
+
+      // Skip scouted rooms with too few sources
+      if (intel.sources < this.config.minRemoteSources) continue;
 
       // Check profitability (must have >2x ROI)
       const profitability = ExpansionScoring.calculateRemoteProfitability(roomName, homeRoom, intel);
@@ -642,17 +643,20 @@ export class ExpansionManager {
       return false;
     }
 
-    // Check GCL progress threshold (70% by default)
-    // Only expand when we're close to the next GCL level
-    const gclProgress = Game.gcl.progress / Game.gcl.progressTotal;
-    if (gclProgress < this.config.minGclProgressForClaim) {
-      if (Game.time % 500 === 0) {
-        logger.info(
-          `Waiting for GCL progress: ${(gclProgress * 100).toFixed(1)}% (need ${(this.config.minGclProgressForClaim * 100).toFixed(0)}%)`,
-          { subsystem: "Expansion" }
-        );
+    // Check GCL progress threshold only if configured. Default is 0 because
+    // ownedRooms < Game.gcl.level already means a room slot is unlocked; waiting
+    // for progress toward the next slot wastes parallel growth time.
+    if (this.config.minGclProgressForClaim > 0) {
+      const gclProgress = Game.gcl.progress / Game.gcl.progressTotal;
+      if (gclProgress < this.config.minGclProgressForClaim) {
+        if (Game.time % 500 === 0) {
+          logger.info(
+            `Waiting for GCL progress: ${(gclProgress * 100).toFixed(1)}% (need ${(this.config.minGclProgressForClaim * 100).toFixed(0)}%)`,
+            { subsystem: "Expansion" }
+          );
+        }
+        return false;
       }
-      return false;
     }
 
     // Check room stability - ensure existing rooms are mature enough
@@ -848,14 +852,18 @@ export class ExpansionManager {
         continue;
       }
 
-      // Check if energy reserves dropped below threshold
+      // Check stored reserves only for rooms that actually have storage. Early
+      // empires without storage should not cancel every expansion as avg 0.
       const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
-      const totalEnergy = ownedRooms.reduce((sum, r) => sum + (r.storage?.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0), 0);
-      const avgEnergy = ownedRooms.length > 0 ? totalEnergy / ownedRooms.length : 0;
+      const roomsWithStorage = ownedRooms.filter(r => r.storage);
+      const totalStoredEnergy = roomsWithStorage.reduce(
+        (sum, r) => sum + (r.storage?.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0),
+        0
+      );
+      const avgStoredEnergy = roomsWithStorage.length > 0 ? totalStoredEnergy / roomsWithStorage.length : Infinity;
 
-      if (avgEnergy < 20000) {
-        // Low energy - cancel expansion to focus on economy
-        logger.warn(`Cancelling expansion to ${candidate.roomName} due to low energy (avg: ${avgEnergy})`, {
+      if (avgStoredEnergy < 10000) {
+        logger.warn(`Cancelling expansion to ${candidate.roomName} due to low stored energy (avg: ${avgStoredEnergy})`, {
           subsystem: "Expansion"
         });
         this.cancelExpansion(empire, candidate.roomName, "low_energy");

@@ -5,9 +5,6 @@
  * 
  * Updates the performance baseline for a branch with current metrics.
  * 
- * Prerequisites:
- *   cd scripts/mcp-helpers && npx tsc
- * 
  * Usage:
  *   node scripts/update-baseline.js [branch] [cpu-avg] [cpu-p95] [gcl-progress]
  * 
@@ -21,8 +18,13 @@
  * CPU metrics come from analyzing console logs via analyze-performance.js.
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { saveBaseline } from './regression-baseline.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Constants
 const DEFAULT_SCENARIO = 'default';
@@ -37,16 +39,6 @@ const DEFAULT_SCENARIO = 'default';
 const MAX_CPU_MULTIPLIER = 1.1;
 const MIN_CPU_MULTIPLIER = 0.5;
 const P99_CPU_MULTIPLIER = 1.05;
-
-// Check if compiled files exist
-const distPath = path.join(__dirname, 'mcp-helpers', 'dist', 'regression.js');
-if (!fs.existsSync(distPath)) {
-  console.error('❌ MCP helpers not compiled. Please run:');
-  console.error('   cd scripts/mcp-helpers && npx tsc');
-  process.exit(1);
-}
-
-const { saveBaseline } = require('./mcp-helpers/dist/regression');
 
 const args = process.argv.slice(2);
 const branch = args[0] || process.env.GITHUB_REF_NAME || 'develop';

@@ -8,13 +8,6 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 5
 
-  # Git Submodules
-  - package-ecosystem: "gitsubmodule"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 1
-
   # Root package dependencies
   - package-ecosystem: "npm"
     directory: "/"
@@ -45,44 +38,19 @@ updates:
           - "chai"
           - "eslint*"
           - "prettier"
-    # Auto-approve minor and patch updates for dev dependencies
     labels:
       - "dependencies"
       - "automated"
 
   # Docker images
   - package-ecosystem: "docker"
-    directory: "/packages/screeps-grafana-exporter"
+    directory: "/packages/screeps-graphite-exporter"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 1
 
   - package-ecosystem: "docker"
     directory: "/packages/screeps-loki-exporter"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 1
-
-  - package-ecosystem: "docker"
-    directory: "/packages/screeps-mcp"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 1
-
-  - package-ecosystem: "docker"
-    directory: "/packages/screeps-docs-mcp"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 1
-
-  - package-ecosystem: "docker"
-    directory: "/packages/screeps-wiki-mcp"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 1
-
-  - package-ecosystem: "docker"
-    directory: "/packages/screeps-types-mcp"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 1

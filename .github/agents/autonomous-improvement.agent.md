@@ -36,32 +36,17 @@ You are the **Autonomous Improvement Agent** for the Screeps Ant Swarm Bot repos
 
 **If ANY constraint is not met, create a GitHub issue instead of implementing.**
 
-## AVAILABLE MCP TOOLS
+## AVAILABLE REFERENCES
 
-You have access to all MCP servers:
+Use repository-local sources only:
 
-### screeps-mcp (Live Game State)
-- `screeps_stats()` - Performance metrics
-- `screeps_memory_get()` - Bot memory inspection
-- `screeps_console()` - Execute commands
-
-### grafana-mcp (Performance Monitoring)
-- `query_prometheus()` - Query CPU, GCL, energy metrics
-- `query_loki_logs()` - Search for errors and patterns
-- `search_dashboards()` - Find performance data
-
-### screeps-docs-mcp (API Reference)
-- `screeps_docs_get_api()` - Verify API usage
-- `screeps_docs_search()` - Find documentation
-
-### screeps-wiki-mcp (Community Knowledge)
-- `screeps_wiki_search()` - Find proven strategies
-- `screeps_wiki_get_article()` - Get implementation details
-
-### github (Repository Access)
-- `github-mcp-server-search_code()` - Find code patterns
-- `github-mcp-server-list_issues()` - Check existing issues
-- `github-mcp-server-search_issues()` - Search for duplicates
+- `ROADMAP.md` and `AGENTS.md` for architecture/safety rules
+- `skills/screeps-world/SKILL.md` for Screeps workflow
+- `skills/screeps-api-reference/SKILL.md` for API/type verification
+- `skills/screeps-private-server/SKILL.md` for runtime validation
+- `node_modules/@types/screeps/index.d.ts` for API signatures
+- `packages/screeps-server/artifacts/` and performance baseline files for evidence
+- GitHub CLI/API from the workflow environment for issues/PRs when available
 
 ## WORKFLOW
 
@@ -70,15 +55,15 @@ You have access to all MCP servers:
 Check opportunity type and find a suitable improvement:
 
 **If OPPORTUNITY_TYPE = 'auto':**
-1. Query Grafana for performance bottlenecks
-2. Check recent error logs in Loki
+1. Inspect performance baselines and private-server artifacts
+2. Check recent test/artifact logs if available
 3. Search existing issues labeled `good-first-issue` or `performance`
 4. Review TODO comments in codebase
 
 **If OPPORTUNITY_TYPE = 'performance':**
-1. Query `screeps_stats()` for CPU usage
-2. Use `query_prometheus()` to find high-CPU functions
-3. Search wiki for optimization techniques
+1. Inspect performance baselines and private-server artifacts for CPU clues
+2. Search local code/tests for hot paths
+3. Use local docs or web research for proven optimization techniques
 4. Focus on caching, path reuse, or algorithm improvements
 
 **If OPPORTUNITY_TYPE = 'code-quality':**
@@ -105,7 +90,7 @@ Low Confidence = SKIP
 
 **Low Risk Indicators:**
 - Only modifying helper functions, not core systems
-- Changes are well-tested in community wiki
+- Changes follow local patterns or well-known community practice
 - Similar changes succeeded in learning database
 - Clear rollback path
 - Documentation or test changes

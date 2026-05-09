@@ -29,7 +29,7 @@ const REMOTE_MINING_CONSTANTS = {
 
 /**
  * Get mineral value bonus based on mineral rarity
- * Values verified via screeps-docs-mcp for mineral resource constants
+ * Values verified via Screeps official docs for mineral resource constants
  */
 export function getMineralBonus(mineralType?: MineralConstant): number {
   if (!mineralType) return 0;
@@ -93,7 +93,7 @@ export function getTerrainBonus(terrain: "plains" | "swamp" | "mixed"): number {
 
 /**
  * Check if room is near a highway (within 1 room distance)
- * Highway rooms verified via screeps-docs-mcp: coordinates divisible by 10
+ * Highway rooms verified via Screeps official docs: coordinates divisible by 10
  */
 export function isNearHighway(roomName: string): boolean {
   const adjacentRooms = getAdjacentRoomNames(roomName);
@@ -292,7 +292,7 @@ export interface RemoteProfitability {
 /**
  * Calculate comprehensive remote mining profitability
  * Implements detailed analysis with infrastructure and threat costs
- * Energy costs and mechanics verified via screeps-docs-mcp
+ * Energy costs and mechanics verified via Screeps official docs
  * 
  * @param roomName - The remote room to analyze
  * @param homeRoom - The home room that would manage this remote
@@ -333,7 +333,7 @@ export function calculateRemoteProfitability(
   }
 
   // === Energy Harvest Rate ===
-  // Source output verified via local Screeps type constants when MCP tools were unavailable:
+  // Source output verified via local Screeps type constants for local verification:
   // - Reserved rooms: 3000 energy per 300 ticks
   // - Non-reserved rooms: 1500 energy per 300 ticks
   // 
@@ -344,7 +344,7 @@ export function calculateRemoteProfitability(
   const energyPerTick = (sourceOutput / REMOTE_MINING_CONSTANTS.SOURCE_REGEN_TIME) * intel.sources;
 
   // === Carrier (Hauler) Cost Per Tick ===
-  // Body costs verified via local Screeps type constants when MCP tools were unavailable:
+  // Body costs verified via local Screeps type constants for local verification:
   // WORK: 100, CARRY: 50, MOVE: 50
   // Remote harvester: 5 WORK (500) + 3 MOVE (150) = 650
   const harvesterCost = 650;
@@ -360,8 +360,8 @@ export function calculateRemoteProfitability(
   const carrierCostPerTick = totalBodyCost / REMOTE_MINING_CONSTANTS.CREEP_LIFETIME;
 
   // === Infrastructure Cost (one-time, amortized over expected lifetime) ===
-  // Container: 5000 energy (verified via screeps-docs-mcp)
-  // Road: 300 energy per tile (verified via screeps-docs-mcp)
+  // Container: 5000 energy (verified via Screeps official docs)
+  // Road: 300 energy per tile (verified via Screeps official docs)
   // Road tiles estimate: distance * 50 tiles
   // 
   // APPROXIMATION: This uses a rough estimate that may not match actual pathfinding results.

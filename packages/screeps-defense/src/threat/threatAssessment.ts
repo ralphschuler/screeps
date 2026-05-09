@@ -239,7 +239,7 @@ export function assessThreat(room: Room): ThreatAnalysis {
 /**
  * Calculate tower attack damage based on distance to target.
  * 
- * Verified via screeps-docs-mcp:
+ * Verified via Screeps official docs:
  * - Tower attack effectiveness: 600 damage at range ≤5 to 150 damage at range ≥20
  * - Linear falloff between min and max range
  * 
@@ -297,7 +297,7 @@ export function calculateDangerLevel(threatScore: number): 0 | 1 | 2 | 3 {
 /**
  * Calculate DPS from body parts composition
  * 
- * Damage values verified via screeps-docs-mcp:
+ * Damage values verified via Screeps official docs:
  * - ATTACK: 30 hits per tick (short-ranged attack)
  * - RANGED_ATTACK: 10 hits per tick (long-range attack, single target)
  * 

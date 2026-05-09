@@ -1,4 +1,5 @@
 import { assert } from "chai";
+import { ExpansionManager } from "../../src/empire/expansionManager";
 import type { EmpireMemory, RoomIntel, SwarmState } from "../../src/memory/schemas";
 
 // Mock the global Game object
@@ -104,6 +105,7 @@ describe("expansion manager concepts", () => {
       spawns: {},
       time: 1000,
       gcl: { level: 2, progress: 0, progressTotal: 1000000 },
+      creeps: {},
       map: {
         getRoomLinearDistance: (room1: string, room2: string) => {
           // Simple mock: assume E1N1 and E2N1 are 1 apart
@@ -121,6 +123,26 @@ describe("expansion manager concepts", () => {
   });
 
   describe("remote room candidate evaluation", () => {
+    it("should include adjacent unscouted stub intel as a provisional remote candidate", () => {
+      const empire = createMockEmpireMemory();
+      empire.knownRooms = {
+        E2N1: createMockRoomIntel("E2N1", 0, false)
+      } as unknown as EmpireMemory["knownRooms"];
+      global.Game.rooms = {
+        E1N1: {
+          name: "E1N1",
+          controller: { my: true, level: 3 }
+        } as unknown as Room
+      };
+
+      const manager = new ExpansionManager();
+      const candidates = (manager as unknown as {
+        findRemoteCandidates(homeRoom: string, empire: EmpireMemory, currentRemotes: string[]): string[];
+      }).findRemoteCandidates("E1N1", empire, []);
+
+      assert.deepEqual(candidates, ["E2N1"], "adjacent stub intel must not be filtered by sources=0 before scouting");
+    });
+
     it("should identify remote room candidates based on intel", () => {
       const empire = createMockEmpireMemory();
       empire.roomIntel["E2N1"] = createMockRoomIntel("E2N1", 2, true);

@@ -14,7 +14,7 @@ Based on ROADMAP.md Section 2 targets:
 ### Alert Configuration Files
 
 - `cpu-budget-alerts.json`: Alert rules for CPU budget monitoring
-- `setup-alerts.js`: Script to create/update alerts using grafana-mcp
+- `setup-alerts.js`: Script to create/update alerts using Grafana HTTP API
 
 ## Setting Up Alerts
 
@@ -22,7 +22,7 @@ Based on ROADMAP.md Section 2 targets:
 
 1. Grafana Cloud instance (already configured at https://ralphschuler.grafana.net)
 2. Grafana API key with alerting permissions
-3. `grafana-mcp` server running
+3. Grafana API access from the local environment
 
 ### Manual Setup via Grafana UI
 
@@ -31,7 +31,7 @@ Based on ROADMAP.md Section 2 targets:
 3. Configure notification channels (Slack, email, GitHub, etc.)
 4. Set up contact points for each severity level
 
-### Automated Setup via MCP
+### Automated Setup via Grafana API
 
 ```bash
 # Set Grafana API key
@@ -90,4 +90,4 @@ Performance tests in CI/CD also check these thresholds:
 Alert history is stored in Grafana and can be queried via:
 - Grafana UI: Alerting → Alert history
 - API: `/api/v1/rules/history`
-- MCP: `list_incidents` tool via grafana-mcp
+- API: Grafana alerting/history endpoints

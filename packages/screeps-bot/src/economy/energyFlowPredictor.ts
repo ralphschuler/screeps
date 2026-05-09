@@ -197,7 +197,7 @@ export class EnergyFlowPredictor {
    * Calculate income from harvester creeps
    * Harvesters move between source and storage, so they have lower efficiency
    * 
-   * Verified via screeps-docs-mcp: WORK part harvests 2 energy/tick (Creep.harvest)
+   * Verified via Screeps official docs: WORK part harvests 2 energy/tick (Creep.harvest)
    */
   private calculateHarvesterIncome(room: Room): number {
     const creeps = this.findMyCreeps(
@@ -222,7 +222,7 @@ export class EnergyFlowPredictor {
    * Calculate income from static miner creeps
    * Static miners sit on source, so they have very high efficiency
    * 
-   * Verified via screeps-docs-mcp: WORK part harvests 2 energy/tick (Creep.harvest)
+   * Verified via Screeps official docs: WORK part harvests 2 energy/tick (Creep.harvest)
    */
   private calculateMinerIncome(room: Room): number {
     const creeps = this.findMyCreeps(
@@ -257,7 +257,7 @@ export class EnergyFlowPredictor {
   /**
    * Calculate energy consumption from upgraders
    * 
-   * Verified via screeps-docs-mcp: WORK part uses 1 energy/tick when upgrading (Creep.upgradeController)
+   * Verified via Screeps official docs: WORK part uses 1 energy/tick when upgrading (Creep.upgradeController)
    */
   private calculateUpgraderConsumption(room: Room): number {
     const creeps = this.findMyCreeps(room, creep => creep.memory.role === "upgrader");
@@ -278,7 +278,7 @@ export class EnergyFlowPredictor {
   /**
    * Calculate energy consumption from builders
    * 
-   * Verified via screeps-docs-mcp: WORK part builds for 5 energy/tick (Creep.build)
+   * Verified via Screeps official docs: WORK part builds for 5 energy/tick (Creep.build)
    */
   private calculateBuilderConsumption(room: Room): number {
     const creeps = this.findMyCreeps(
@@ -309,7 +309,7 @@ export class EnergyFlowPredictor {
   /**
    * Calculate energy consumption from towers
    * 
-   * Verified via screeps-typescript-mcp: Tower actions consume 10 energy per action
+   * Verified via local Screeps TypeScript types: Tower actions consume 10 energy per action
    */
   private calculateTowerConsumption(room: Room): number {
     const towers = room.find(FIND_MY_STRUCTURES, {

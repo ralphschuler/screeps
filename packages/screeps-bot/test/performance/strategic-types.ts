@@ -4,7 +4,7 @@
  * These types define the data structures for capturing live game performance
  * metrics during strategic planning analysis runs. They are used by the
  * strategic-planner agent to collect evidence-based performance data from
- * screeps-mcp and grafana-mcp servers.
+ * private-server artifacts and exported monitoring data.
  */
 
 /**
@@ -358,7 +358,7 @@ export interface StrategicAnalysisOutput {
     screeps_game_time: boolean;
     grafana_dashboards: boolean;
     screeps_memory: boolean;
-    screeps_wiki: boolean;
+    strategy_research: boolean;
   };
   /** Key metrics that were analyzed */
   metrics_analyzed: {

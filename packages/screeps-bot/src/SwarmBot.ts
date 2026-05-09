@@ -13,14 +13,13 @@ import { MapVisualizer, RoomVisualizer } from "@ralphschuler/screeps-visuals";
 import { reconcileTraffic as finalizeMovement, preTick as initMovement } from "screeps-cartographer";
 import { getConfig } from "./config";
 import { creepProcessManager } from "./core/creepProcessManager";
-import { eventBus } from "./core/events";
+import { botKernelRuntime } from "./core/botKernelRuntime";
 import { kernel } from "./core/kernel";
 import { LogLevel, configureLogger, logger } from "./core/logger";
 import { initializeNativeCallsTracking } from "./core/nativeCallsTracker";
-import { registerAllProcesses } from "./core/processRegistry";
 import { roomProcessManager } from "./core/roomProcessManager";
 import { shardManager } from "./intershard/shardManager";
-import { runSpawnManager } from "./spawning/spawnQueueManager";
+import { coordinateSpawning } from "./spawning/spawnCoordinator";
 import { initializePathCacheEvents } from "./utils/pathfinding";
 import { initializeRemotePathScheduler, moveToWithRemoteCache } from "./utils/remote-mining";
 
@@ -62,7 +61,7 @@ function runSpawns(): void {
   for (const room of Object.values(Game.rooms)) {
     if (room.controller?.my) {
       const swarm = memoryManager.getOrInitSwarmState(room.name);
-      runSpawnManager(room, swarm);
+      coordinateSpawning(room, swarm);
     }
   }
 }
@@ -80,8 +79,7 @@ function syncKernelProcesses(): void {
 // Main Loop
 // =============================================================================
 
-// Initialize kernel and processes on first tick
-let kernelInitialized = false;
+// Initialize systems on first tick
 let systemsInitialized = false;
 
 /**
@@ -190,9 +188,7 @@ export function loop(): void {
   memoryManager.initialize();
 
   // Sync kernel CPU configuration with runtime config so bucket-mode checks are accurate.
-  kernel.updateFromCpuConfig(getConfig().cpu);
-
-  const bucketMode = kernel.getBucketMode();
+  const bucketMode = botKernelRuntime.configureForCurrentTick();
   if (bucketMode === "critical" && Game.time % 10 === 0) {
     logger.warn(`CRITICAL: CPU bucket at ${Game.cpu.bucket}, running core work and deferring optional work`, {
       subsystem: "SwarmBot"
@@ -220,12 +216,8 @@ export function loop(): void {
     });
   }
 
-  // Initialize kernel and register processes on first tick
-  if (!kernelInitialized) {
-    registerAllProcesses();
-    kernel.initialize();
-    kernelInitialized = true;
-  }
+  // Initialize kernel and register processes on first owned-room tick.
+  botKernelRuntime.ensureProcessesRegistered();
 
   // Start stats collection for this tick
   unifiedStats.startTick();
@@ -235,7 +227,7 @@ export function loop(): void {
   clearRoomCaches();
 
   // Clear event bus tick-specific caches for coalescing
-  eventBus.startTick();
+  botKernelRuntime.startEventTick();
 
   // Cache owned rooms list (used frequently, expensive to compute)
   // This cache is shared across all subsystems in the same tick
@@ -274,13 +266,13 @@ export function loop(): void {
   // - Empire, cluster, market, nuke, pheromone managers (registered by processRegistry)
   // The kernel's wrap-around queue ensures fair execution of all processes
   unifiedStats.measureSubsystem("kernel", () => {
-    kernel.run();
+    botKernelRuntime.runProcesses();
   });
 
   // Process queued events from event bus
   // This also clears tick events map for event coalescing
   unifiedStats.measureSubsystem("eventQueue", () => {
-    eventBus.processQueue();
+    botKernelRuntime.processQueuedEvents();
   });
 
   // Run spawns (high priority - always runs)

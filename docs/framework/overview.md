@@ -1190,28 +1190,11 @@ The framework consists of 15+ specialized packages organized by responsibility:
 - Export metrics to Graphite
 - Time-series data collection
 
-### MCP Servers (AI Agent Integration)
+### Agent Skills and Private-Server Validation
 
-**[@ralphschuler/screeps-mcp](../../packages/screeps-mcp)**
-- Live game state access
-- Memory inspection
-- Console command execution
-- Real-time monitoring
-
-**[@ralphschuler/screeps-docs-mcp](../../packages/screeps-docs-mcp)**
-- Official API documentation
-- Game mechanics reference
-- Best practices
-
-**[@ralphschuler/screeps-typescript-mcp](../../packages/screeps-typescript-mcp)**
-- TypeScript type definitions
-- Type relationships
-- Interface documentation
-
-**[@ralphschuler/screeps-wiki-mcp](../../packages/screeps-wiki-mcp)**
-- Community strategies
-- Bot architectures
-- Optimization patterns
+- `skills/screeps-api-reference` - API/type/mechanics fact-checking through local types and official docs
+- `skills/screeps-private-server` - local/CI Dockerized Screeps server workflow
+- `skills/screeps-world` - general gameplay workflow, ROADMAP alignment, and ally safety
 
 ---
 

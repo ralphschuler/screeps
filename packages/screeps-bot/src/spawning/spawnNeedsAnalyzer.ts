@@ -35,6 +35,20 @@ const FOCUS_ROOM_UPGRADER_LIMITS = {
 /** Maximum idle military creeps to keep when there are no visible hostiles. */
 const IDLE_MILITARY_RESERVE = 1;
 
+/** Scout nearby stub intel so remotes do not stall forever without vision. */
+function hasUnscoutedNearbyRoom(homeRoom: string, maxDistance = 2): boolean {
+  const empire = memoryManager.getEmpire();
+  for (const roomName in empire.knownRooms) {
+    const intel = empire.knownRooms[roomName];
+    if (!intel || intel.scouted) continue;
+    const distance = Game.map.getRoomLinearDistance(homeRoom, roomName);
+    if (distance >= 1 && distance <= maxDistance && !intel.owner && !intel.reserver && !intel.isHighway && !intel.isSK) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function hasHealthyRemoteReservation(room: Room): boolean {
   const reservationTicks = room.controller?.reservation?.ticksToEnd ?? 0;
   return reservationTicks >= RESERVATION_THRESHOLD_TICKS;
@@ -453,9 +467,9 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
     // In expand posture, allow scouts to discover and score candidate rooms.
     if (swarm.posture === "expand" && current < def.maxPerRoom) return true;
 
-    // In normal eco mode, scouts are optional; only keep one when there are
-    // active remote rooms whose intel may need refreshing.
-    if (hasRemoteAssignments && current === 0) return true;
+    // Keep one scout when we have assigned remotes or adjacent stub intel.
+    // This feeds remote validation, reservation, and expansion scoring.
+    if (current === 0 && (hasRemoteAssignments || hasUnscoutedNearbyRoom(roomName))) return true;
     
     return false;
   }
@@ -466,7 +480,7 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
     
     // Check if we have unclaimed expansion targets and can expand
-    const canExpand = ownedRooms.length < Game.gcl.level;
+    const canExpand = ownedRooms.length < (Game.gcl?.level ?? 1);
     const hasExpansionTarget = empire.claimQueue.some(c => !c.claimed);
     
     // Check if we have remote rooms that need reserving (no reserver assigned)
