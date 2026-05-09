@@ -26346,11 +26346,10 @@ var li,
       Oe = "__core-js_shared__",
       xe = (Ee.exports = we[Oe] || be(Oe, {}));
     (xe.versions || (xe.versions = [])).push({
-      version: "3.48.0",
+      version: "3.42.0",
       mode: "global",
-      copyright:
-        "© 2013–2025 Denis Pushkarev (zloirock.ru), 2025–2026 CoreJS Company (core-js.io). All rights reserved.",
-      license: "https://github.com/zloirock/core-js/blob/v3.48.0/LICENSE",
+      copyright: "© 2014-2025 Denis Pushkarev (zloirock.ru)",
+      license: "https://github.com/zloirock/core-js/blob/v3.42.0/LICENSE",
       source: "https://github.com/zloirock/core-js"
     });
     var _e = Ee.exports,
@@ -26373,7 +26372,7 @@ var li,
       Le = T,
       De = 0,
       Fe = Math.random(),
-      Be = Le((1.1).toString),
+      Be = Le((1).toString),
       He = function (e) {
         return "Symbol(" + (void 0 === e ? "" : e) + ")_" + Be(++De + Fe, 36);
       },
@@ -26831,19 +26830,13 @@ var li,
       Vo = de,
       qo = i,
       jo = Ko(Ko.bind),
-      zo = a,
-      Qo = Et,
-      Xo = g,
-      Zo = Bo,
-      Jo = Zr,
-      $o = function (e) {
+      zo = Bo,
+      Qo = Zr,
+      Xo = function (e) {
         if (e > 9007199254740991) throw Ho("Maximum allowed index exceeded");
         return e;
       },
-      en = function (e, t, r) {
-        zo ? Qo.f(e, t, Xo(0, r)) : (e[t] = r);
-      },
-      tn = function (e, t, r, o, n, a, i, s) {
+      Zo = function (e, t, r, o, n, a, i, s) {
         for (
           var c,
             l,
@@ -26867,31 +26860,31 @@ var li,
         )
           (m in r &&
             ((c = p ? p(r[m], m, t) : r[m]),
-            a > 0 && Zo(c) ? ((l = Jo(c)), (u = tn(e, t, c, l, u, a - 1) - 1)) : ($o(u + 1), en(e, u, c)),
+            a > 0 && zo(c) ? ((l = Qo(c)), (u = Zo(e, t, c, l, u, a - 1) - 1)) : (Xo(u + 1), (e[u] = c)),
             u++),
             m++);
         return u;
       },
-      rn = tn,
-      on = {};
-    on[Xe("toStringTag")] = "z";
-    var nn = "[object z]" === String(on),
-      an = F,
-      sn = b,
-      cn = Xe("toStringTag"),
-      ln = Object,
-      un =
+      Jo = Zo,
+      $o = {};
+    $o[Xe("toStringTag")] = "z";
+    var en = "[object z]" === String($o),
+      tn = F,
+      rn = b,
+      on = Xe("toStringTag"),
+      nn = Object,
+      an =
         "Arguments" ===
-        sn(
+        rn(
           (function () {
             return arguments;
           })()
         ),
-      mn = T,
-      pn = n,
-      dn = F,
-      fn = nn
-        ? sn
+      sn = T,
+      cn = n,
+      ln = F,
+      un = en
+        ? rn
         : function (e) {
             var t, r, o;
             return void 0 === e
@@ -26903,79 +26896,79 @@ var li,
                       try {
                         return e[t];
                       } catch (e) {}
-                    })((t = ln(e)), cn))
+                    })((t = nn(e)), on))
                   ? r
-                  : un
-                    ? sn(t)
-                    : "Object" === (o = sn(t)) && an(t.callee)
+                  : an
+                    ? rn(t)
+                    : "Object" === (o = rn(t)) && tn(t.callee)
                       ? "Arguments"
                       : o;
           },
-      yn = Jt,
-      gn = function () {},
-      hn = K("Reflect", "construct"),
-      vn = /^\s*(?:class|function)\b/,
-      Rn = mn(vn.exec),
-      En = !vn.test(gn),
-      Tn = function (e) {
-        if (!dn(e)) return !1;
+      mn = Jt,
+      pn = function () {},
+      dn = K("Reflect", "construct"),
+      fn = /^\s*(?:class|function)\b/,
+      yn = sn(fn.exec),
+      gn = !fn.test(pn),
+      hn = function (e) {
+        if (!ln(e)) return !1;
         try {
-          return (hn(gn, [], e), !0);
+          return (dn(pn, [], e), !0);
         } catch (e) {
           return !1;
         }
       },
-      Cn = function (e) {
-        if (!dn(e)) return !1;
-        switch (fn(e)) {
+      vn = function (e) {
+        if (!ln(e)) return !1;
+        switch (un(e)) {
           case "AsyncFunction":
           case "GeneratorFunction":
           case "AsyncGeneratorFunction":
             return !1;
         }
         try {
-          return En || !!Rn(vn, yn(e));
+          return gn || !!yn(fn, mn(e));
         } catch (e) {
           return !0;
         }
       };
-    Cn.sham = !0;
-    var Sn =
-        !hn ||
-        pn(function () {
+    vn.sham = !0;
+    var Rn =
+        !dn ||
+        cn(function () {
           var e;
           return (
-            Tn(Tn.call) ||
-            !Tn(Object) ||
-            !Tn(function () {
+            hn(hn.call) ||
+            !hn(Object) ||
+            !hn(function () {
               e = !0;
             }) ||
             e
           );
         })
-          ? Cn
-          : Tn,
-      wn = Bo,
-      bn = Sn,
-      On = H,
-      xn = Xe("species"),
-      _n = Array,
-      Un = function (e, t) {
+          ? vn
+          : hn,
+      En = Bo,
+      Tn = Rn,
+      Cn = H,
+      Sn = Xe("species"),
+      wn = Array,
+      bn = function (e, t) {
         return new ((function (e) {
           var t;
           return (
-            wn(e) &&
+            En(e) &&
               ((t = e.constructor),
-              ((bn(t) && (t === _n || wn(t.prototype))) || (On(t) && null === (t = t[xn]))) && (t = void 0)),
-            void 0 === t ? _n : t
+              ((Tn(t) && (t === wn || En(t.prototype))) || (Cn(t) && null === (t = t[Sn]))) && (t = void 0)),
+            void 0 === t ? wn : t
           );
         })(e))(0 === t ? 0 : t);
       },
-      Mn = rn,
-      An = de,
-      kn = Ne,
-      Nn = Zr,
-      In = Un;
+      On = Jo,
+      xn = de,
+      _n = Ne,
+      Un = Zr,
+      Mn = bn;
     Do(
       {
         target: "Array",
@@ -26984,110 +26977,114 @@ var li,
       {
         flatMap: function (e) {
           var t,
-            r = kn(this),
-            o = Nn(r);
-          return (An(e), (t = In(r, 0)), Mn(t, r, r, o, 0, 1, e, arguments.length > 1 ? arguments[1] : void 0), t);
+            r = _n(this),
+            o = Un(r);
+          return (
+            xn(e),
+            ((t = Mn(r, 0)).length = On(t, r, r, o, 0, 1, e, arguments.length > 1 ? arguments[1] : void 0)),
+            t
+          );
         }
       }
     );
-    var Pn = {},
-      Gn = io,
-      Ln = so,
-      Dn =
+    var An = {},
+      kn = io,
+      Nn = so,
+      In =
         Object.keys ||
         function (e) {
-          return Gn(e, Ln);
+          return kn(e, Nn);
         },
-      Fn = a,
-      Bn = Tt,
-      Hn = Et,
-      Wn = bt,
-      Yn = L,
-      Kn = Dn;
-    Pn.f =
-      Fn && !Bn
+      Pn = a,
+      Gn = Tt,
+      Ln = Et,
+      Dn = bt,
+      Fn = L,
+      Bn = In;
+    An.f =
+      Pn && !Gn
         ? Object.defineProperties
         : function (e, t) {
-            Wn(e);
-            for (var r, o = Yn(t), n = Kn(t), a = n.length, i = 0; a > i; ) Hn.f(e, (r = n[i++]), o[r]);
+            Dn(e);
+            for (var r, o = Fn(t), n = Bn(t), a = n.length, i = 0; a > i; ) Ln.f(e, (r = n[i++]), o[r]);
             return e;
           };
-    var Vn,
-      qn = K("document", "documentElement"),
-      jn = bt,
-      zn = Pn,
-      Qn = so,
-      Xn = ar,
-      Zn = qn,
-      Jn = st,
-      $n = "prototype",
-      ea = "script",
-      ta = nr("IE_PROTO"),
-      ra = function () {},
-      oa = function (e) {
-        return "<" + ea + ">" + e + "</" + ea + ">";
+    var Hn,
+      Wn = K("document", "documentElement"),
+      Yn = bt,
+      Kn = An,
+      Vn = so,
+      qn = ar,
+      jn = Wn,
+      zn = st,
+      Qn = "prototype",
+      Xn = "script",
+      Zn = nr("IE_PROTO"),
+      Jn = function () {},
+      $n = function (e) {
+        return "<" + Xn + ">" + e + "</" + Xn + ">";
       },
-      na = function (e) {
-        (e.write(oa("")), e.close());
+      ea = function (e) {
+        (e.write($n("")), e.close());
         var t = e.parentWindow.Object;
         return ((e = null), t);
       },
-      aa = function () {
+      ta = function () {
         try {
-          Vn = new ActiveXObject("htmlfile");
+          Hn = new ActiveXObject("htmlfile");
         } catch (e) {}
         var e, t, r;
-        aa =
+        ta =
           "undefined" != typeof document
-            ? document.domain && Vn
-              ? na(Vn)
-              : ((t = Jn("iframe")),
-                (r = "java" + ea + ":"),
+            ? document.domain && Hn
+              ? ea(Hn)
+              : ((t = zn("iframe")),
+                (r = "java" + Xn + ":"),
                 (t.style.display = "none"),
-                Zn.appendChild(t),
+                jn.appendChild(t),
                 (t.src = String(r)),
                 (e = t.contentWindow.document).open(),
-                e.write(oa("document.F=Object")),
+                e.write($n("document.F=Object")),
                 e.close(),
                 e.F)
-            : na(Vn);
-        for (var o = Qn.length; o--; ) delete aa[$n][Qn[o]];
-        return aa();
+            : ea(Hn);
+        for (var o = Vn.length; o--; ) delete ta[Qn][Vn[o]];
+        return ta();
       };
-    Xn[ta] = !0;
-    var ia = Xe,
-      sa =
+    qn[Zn] = !0;
+    var ra = Xe,
+      oa =
         Object.create ||
         function (e, t) {
           var r;
           return (
-            null !== e ? ((ra[$n] = jn(e)), (r = new ra()), (ra[$n] = null), (r[ta] = e)) : (r = aa()),
-            void 0 === t ? r : zn.f(r, t)
+            null !== e ? ((Jn[Qn] = Yn(e)), (r = new Jn()), (Jn[Qn] = null), (r[Zn] = e)) : (r = ta()),
+            void 0 === t ? r : Kn.f(r, t)
           );
         },
-      ca = Et.f,
-      la = ia("unscopables"),
-      ua = Array.prototype;
-    void 0 === ua[la] &&
-      ca(ua, la, {
+      na = Et.f,
+      aa = ra("unscopables"),
+      ia = Array.prototype;
+    void 0 === ia[aa] &&
+      na(ia, aa, {
         configurable: !0,
-        value: sa(null)
+        value: oa(null)
       });
-    var ma = function (e) {
-      ua[la][e] = !0;
+    var sa = function (e) {
+      ia[aa][e] = !0;
     };
-    ma("flatMap");
-    var pa = r,
-      da = T,
-      fa = function (e, t) {
-        return da(pa[e].prototype[t]);
+    sa("flatMap");
+    var ca = r,
+      la = T,
+      ua = function (e, t) {
+        return la(ca[e].prototype[t]);
       };
-    fa("Array", "flatMap");
-    var ya = rn,
-      ga = Ne,
-      ha = Zr,
-      va = Vr,
-      Ra = Un;
+    ua("Array", "flatMap");
+    var ma = Jo,
+      pa = Ne,
+      da = Zr,
+      fa = Vr,
+      ya = bn;
     (Do(
       {
         target: "Array",
@@ -27096,16 +27093,16 @@ var li,
       {
         flat: function () {
           var e = arguments.length ? arguments[0] : void 0,
-            t = ga(this),
-            r = ha(t),
-            o = Ra(t, 0);
-          return (ya(o, t, t, r, 0, void 0 === e ? 1 : va(e)), o);
+            t = pa(this),
+            r = da(t),
+            o = ya(t, 0);
+          return ((o.length = ma(o, t, t, r, 0, void 0 === e ? 1 : fa(e))), o);
         }
       }
     ),
-      ma("flat"),
-      fa("Array", "flat"));
-    const Ea = {
+      sa("flat"),
+      ua("Array", "flat"));
+    const ga = {
         DEFAULT_MOVE_OPTS: {
           avoidCreeps: !1,
           avoidObstacleStructures: !0,
@@ -27134,23 +27131,23 @@ var li,
         MEMORY_CACHE_EXPIRATION_PATH: "_cge",
         MEMORY_PORTAL_PATH: "_cgp"
       },
-      Ta = new Map(),
-      Ca = new Map(),
-      Sa = {
+      ha = new Map(),
+      va = new Map(),
+      Ra = {
         set(e, t, r) {
-          (Ta.set(e, t), void 0 !== r && Ca.set(e, r));
+          (ha.set(e, t), void 0 !== r && va.set(e, r));
         },
-        get: e => Ta.get(e),
-        expires: e => Ca.get(e),
+        get: e => ha.get(e),
+        expires: e => va.get(e),
         delete(e) {
-          Ta.delete(e);
+          ha.delete(e);
         },
-        with: () => Sa,
+        with: () => Ra,
         clean() {
-          for (const [e, t] of Ca) Game.time >= t && (Sa.delete(e), Ca.delete(e));
+          for (const [e, t] of va) Game.time >= t && (Ra.delete(e), va.delete(e));
         }
       };
-    var wa = (() => {
+    var Ea = (() => {
       const e = 15,
         t = [
           1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288,
@@ -27325,80 +27322,80 @@ var li,
         MAX_DEPTH: 53
       };
     })();
-    const ba = new wa.Codec({
+    const Ta = new Ea.Codec({
         array: !1
       }),
-      Oa = {
+      Ca = {
         key: "ns",
         serialize(e) {
-          if (void 0 !== e) return ba.encode(e);
+          if (void 0 !== e) return Ta.encode(e);
         },
         deserialize(e) {
-          if (void 0 !== e) return ba.decode(e);
+          if (void 0 !== e) return Ta.decode(e);
         }
       },
-      xa = (e, t) => `cg_${e.key}_${t}`,
-      _a = (e, t) =>
+      Sa = (e, t) => `cg_${e.key}_${t}`,
+      wa = (e, t) =>
         Object.assign(Object.assign({}, e), {
           get(r) {
             var o;
             const n = e.get(r);
             if (n)
               try {
-                const e = null !== (o = Sa.get(xa(t, n))) && void 0 !== o ? o : t.deserialize(n);
-                return (void 0 !== e && Sa.set(xa(t, n), e, Game.time + CREEP_LIFE_TIME), e);
+                const e = null !== (o = Ra.get(Sa(t, n))) && void 0 !== o ? o : t.deserialize(n);
+                return (void 0 !== e && Ra.set(Sa(t, n), e, Game.time + CREEP_LIFE_TIME), e);
               } catch (o) {
-                return (e.delete(r), void Sa.delete(xa(t, n)));
+                return (e.delete(r), void Ra.delete(Sa(t, n)));
               }
           },
           set(r, o, n) {
             const a = e.get(r);
-            a && Sa.delete(xa(t, a));
+            a && Ra.delete(Sa(t, a));
             const i = t.serialize(o);
-            i ? (e.set(r, i, n), Sa.set(xa(t, i), o, Game.time + CREEP_LIFE_TIME)) : e.delete(r);
+            i ? (e.set(r, i, n), Ra.set(Sa(t, i), o, Game.time + CREEP_LIFE_TIME)) : e.delete(r);
           },
           delete(r) {
             const o = e.get(r);
-            (o && Sa.delete(xa(t, o)), e.delete(r));
+            (o && Ra.delete(Sa(t, o)), e.delete(r));
           },
-          with: t => _a(e, t)
+          with: t => wa(e, t)
         });
-    function Ua() {
+    function ba() {
       var e, t;
       return (
-        (null !== (e = Memory[(t = Ea.MEMORY_CACHE_PATH)]) && void 0 !== e) || (Memory[t] = {}),
-        Memory[Ea.MEMORY_CACHE_PATH]
+        (null !== (e = Memory[(t = ga.MEMORY_CACHE_PATH)]) && void 0 !== e) || (Memory[t] = {}),
+        Memory[ga.MEMORY_CACHE_PATH]
       );
     }
-    function Ma() {
+    function Oa() {
       var e, t;
       return (
-        (null !== (e = Memory[(t = Ea.MEMORY_CACHE_EXPIRATION_PATH)]) && void 0 !== e) || (Memory[t] = {}),
-        Memory[Ea.MEMORY_CACHE_EXPIRATION_PATH]
+        (null !== (e = Memory[(t = ga.MEMORY_CACHE_EXPIRATION_PATH)]) && void 0 !== e) || (Memory[t] = {}),
+        Memory[ga.MEMORY_CACHE_EXPIRATION_PATH]
       );
     }
-    const Aa = {
+    const xa = {
         set(e, t, r) {
-          if (((Ua()[e] = t), void 0 !== r)) {
-            const t = Oa.serialize(r);
-            t && (Ma()[e] = t);
+          if (((ba()[e] = t), void 0 !== r)) {
+            const t = Ca.serialize(r);
+            t && (Oa()[e] = t);
           }
         },
-        get: e => Ua()[e],
-        expires: e => Oa.deserialize(Ma()[e]),
+        get: e => ba()[e],
+        expires: e => Ca.deserialize(Oa()[e]),
         delete(e) {
-          delete Ua()[e];
+          delete ba()[e];
         },
-        with: e => _a(Aa, e),
+        with: e => wa(xa, e),
         clean() {
-          const e = Ma();
+          const e = Oa();
           for (const t in e) {
-            const r = Oa.deserialize(e[t]);
-            void 0 !== r && Game.time >= r && (Aa.delete(t), delete e[t]);
+            const r = Ca.deserialize(e[t]);
+            void 0 !== r && Game.time >= r && (xa.delete(t), delete e[t]);
           }
         }
       },
-      ka = (e, t, r = 1 / 0) => {
+      _a = (e, t, r = 1 / 0) => {
         let o = new Map(),
           n = Game.time;
         return (...a) => {
@@ -27407,8 +27404,8 @@ var li,
           return (o.has(i) || o.set(i, t(...a)), o.get(i));
         };
       },
-      Na = (e, t) => ka(e, t, 1),
-      Ia = ka(
+      Ua = (e, t) => _a(e, t, 1),
+      Ma = _a(
         e => e,
         e => {
           for (let t = 2; t < e.length; t++)
@@ -27422,55 +27419,55 @@ var li,
           throw new Error(`Invalid room name ${e}`);
         }
       ),
-      Pa = (e, t, r) => {
+      Aa = (e, t, r) => {
         const o = Object.create(RoomPosition.prototype);
-        return ((o.__packedPos = (Ia(r) << 16) | (e << 8) | t), o);
+        return ((o.__packedPos = (Ma(r) << 16) | (e << 8) | t), o);
       },
-      Ga = (e, t, r) => {
+      ka = (e, t, r) => {
         const o = Object.create(RoomPosition.prototype);
         return ((o.__packedPos = (4294901760 & e.__packedPos) | (t << 8) | r), o);
       },
-      La = (e, t, r) => {
+      Na = (e, t, r) => {
         const o = (e.__packedPos >> 8) & 255,
           n = 255 & e.__packedPos,
           a = Object.create(RoomPosition.prototype);
         return ((a.__packedPos = (4294901760 & e.__packedPos) | ((o + t) << 8) | (n + r)), a);
       },
-      Da = new wa.Codec({
+      Ia = new Ea.Codec({
         array: !1,
         depth: 28
       }),
-      Fa = new wa.Codec({
+      Pa = new Ea.Codec({
         array: !0,
         depth: 12
       }),
-      Ba = new wa.Codec({
+      Ga = new Ea.Codec({
         depth: 3,
         array: !0
       }),
-      Ha = new wa.Codec({
+      La = new Ea.Codec({
         array: !0,
         depth: 16
       }),
-      Wa = ["WN", "EN", "WS", "ES"],
-      Ya = e => {
+      Da = ["WN", "EN", "WS", "ES"],
+      Fa = e => {
         const t = (65280 & e.__packedPos) >> 8,
           r = 255 & e.__packedPos,
           o = ((e.__packedPos >>> 4) & 4294963200) | (t << 6) | r;
-        return Da.encode(o);
+        return Ia.encode(o);
       },
-      Ka = function (e) {
-        const t = Da.decode(e),
+      Ba = function (e) {
+        const t = Ia.decode(e),
           r = ((t << 4) & 4294901760) | (((4032 & t) >> 6) << 8) | (63 & t),
           o = Object.create(RoomPosition.prototype);
         if (((o.__packedPos = r), o.x > 49 || o.y > 49)) throw new Error("Invalid room position");
         return o;
       },
-      Va = e => ja([e]),
-      qa = e => za(e)[0],
-      ja = e => Fa.encode(e.map(e => (e.x << 6) | e.y)),
-      za = e =>
-        Fa.decode(e).map(e => {
+      Ha = e => Ya([e]),
+      Wa = e => Ka(e)[0],
+      Ya = e => Pa.encode(e.map(e => (e.x << 6) | e.y)),
+      Ka = e =>
+        Pa.decode(e).map(e => {
           const t = {
             x: (4032 & e) >> 6,
             y: 63 & e
@@ -27478,12 +27475,12 @@ var li,
           if (t.x > 49 || t.y > 49) throw new Error("Invalid packed coord");
           return t;
         }),
-      Qa = e => e.map(e => Ya(e)).join(""),
-      Xa = e => {
+      Va = e => e.map(e => Fa(e)).join(""),
+      qa = e => {
         var t;
-        return null === (t = e.match(/.{1,2}/g)) || void 0 === t ? void 0 : t.map(e => Ka(e));
+        return null === (t = e.match(/.{1,2}/g)) || void 0 === t ? void 0 : t.map(e => Ba(e));
       },
-      Za = e => {
+      ja = e => {
         let t = e.match(/^([WE])([0-9]+)([NS])([0-9]+)$/);
         if (!t) throw new Error("Invalid room name");
         let [, r, o, n, a] = t;
@@ -27492,32 +27489,32 @@ var li,
           wy: "N" == n ? ~Number(a) : Number(a)
         };
       },
-      Ja = (e, t) => `${e < 0 ? "W" : "E"}${(e = e < 0 ? ~e : e)}${t < 0 ? "N" : "S"}${(t = t < 0 ? ~t : t)}`,
-      $a = e => {
+      za = (e, t) => `${e < 0 ? "W" : "E"}${(e = e < 0 ? ~e : e)}${t < 0 ? "N" : "S"}${(t = t < 0 ? ~t : t)}`,
+      Qa = e => {
         let { x: t, y: r, roomName: o } = e;
         if (t < 0 || t >= 50) throw new RangeError("x value " + t + " not in range");
         if (r < 0 || r >= 50) throw new RangeError("y value " + r + " not in range");
         if ("sim" == o) throw new RangeError("Sim room does not have world position");
-        let { wx: n, wy: a } = Za(o);
+        let { wx: n, wy: a } = ja(o);
         return {
           x: 50 * Number(n) + t,
           y: 50 * Number(a) + r
         };
       },
-      ei = e => {
+      Xa = e => {
         let [t, r] = [Math.floor(e.x / 50), e.x % 50],
           [o, n] = [Math.floor(e.y / 50), e.y % 50];
         (t < 0 && r < 0 && (r = 49 - ~r), o < 0 && n < 0 && (n = 49 - ~n));
-        let a = Ja(t, o);
-        return Pa(r, n, a);
+        let a = za(t, o);
+        return Aa(r, n, a);
       },
-      ti = (e, t) => {
+      Za = (e, t) => {
         if (e.roomName === t.roomName) return e.getRangeTo(t);
-        let r = $a(e),
-          o = $a(t);
+        let r = Qa(e),
+          o = Qa(t);
         return Math.max(Math.abs(r.x - o.x), Math.abs(r.y - o.y));
       };
-    function ri(e, t) {
+    function Ja(e, t) {
       const r = [
         {
           x: 0,
@@ -27556,89 +27553,80 @@ var li,
         n = e.y + r.y,
         a = e.roomName;
       if (o < 0) {
-        const { wx: t, wy: r } = Za(e.roomName);
-        ((a = Ja(t - 1, r)), (o = 49));
+        const { wx: t, wy: r } = ja(e.roomName);
+        ((a = za(t - 1, r)), (o = 49));
       } else if (o > 49) {
-        const { wx: t, wy: r } = Za(e.roomName);
-        ((a = Ja(t + 1, r)), (o = 0));
+        const { wx: t, wy: r } = ja(e.roomName);
+        ((a = za(t + 1, r)), (o = 0));
       } else if (n < 0) {
-        const { wx: t, wy: r } = Za(e.roomName);
-        ((a = Ja(t, r - 1)), (n = 49));
+        const { wx: t, wy: r } = ja(e.roomName);
+        ((a = za(t, r - 1)), (n = 49));
       } else if (n > 49) {
-        const { wx: t, wy: r } = Za(e.roomName);
-        ((a = Ja(t, r + 1)), (n = 0));
+        const { wx: t, wy: r } = ja(e.roomName);
+        ((a = za(t, r + 1)), (n = 0));
       }
-      return a === e.roomName ? Ga(e, o, n) : Pa(o, n, a);
+      return a === e.roomName ? ka(e, o, n) : Aa(o, n, a);
     }
-    const oi = e =>
-        Ha.encode(
+    const $a = e =>
+        La.encode(
           e.map(e => {
             const [t, r, o, n, a] = e.split(/([A-Z])([0-9]+)([A-Z])([0-9]+)/);
-            return (Wa.indexOf(r + n) << 14) | (parseInt(o) << 7) | parseInt(a);
+            return (Da.indexOf(r + n) << 14) | (parseInt(o) << 7) | parseInt(a);
           })
         ),
-      ni = e =>
-        Ha.decode(e).map(e => {
+      ei = e =>
+        La.decode(e).map(e => {
           const t = e >> 14,
             r = (e >> 7) & 127,
             o = 127 & e,
-            [n, a] = Wa[t].split("");
+            [n, a] = Da[t].split("");
           return `${n}${r}${a}${o}`;
         }),
-      ai = e => oi([e]),
-      ii = e => ni(e)[0],
-      si = new wa.Codec({
+      ti = e => $a([e]),
+      ri = e => ei(e)[0],
+      oi = new Ea.Codec({
         array: !1,
         depth: 15
       }),
-      ci = {
+      ni = {
         key: "mts",
         serialize(e) {
-          if (void 0 !== e) return `${Ya(e.pos)}${si.encode(e.range)}`;
+          if (void 0 !== e) return `${Fa(e.pos)}${oi.encode(e.range)}`;
         },
         deserialize(e) {
           if (void 0 !== e)
             return {
-              pos: Ka(e.slice(0, 2)),
-              range: si.decode(e.slice(2))
+              pos: Ba(e.slice(0, 2)),
+              range: oi.decode(e.slice(2))
             };
         }
       },
-      ui = {
+      ai = {
         key: "mtls",
         serialize(e) {
-          if (void 0 !== e) return e.map(e => ci.serialize(e)).join("");
+          if (void 0 !== e) return e.map(e => ni.serialize(e)).join("");
         },
         deserialize(e) {
           if (void 0 === e) return;
           const t = [];
           for (let r = 0; r < e.length; r += 3) {
-            const o = ci.deserialize(e.slice(r, r + 3));
+            const o = ni.deserialize(e.slice(r, r + 3));
             o && t.push(o);
           }
           return t;
         }
       },
-      pi = {
+      ii = {
         key: "ps",
         serialize(e) {
-          if (void 0 !== e) return Ya(e);
+          if (void 0 !== e) return Fa(e);
         },
         deserialize(e) {
-          if (void 0 !== e) return Ka(e);
+          if (void 0 !== e) return Ba(e);
         }
       },
-      di = {
+      si = {
         key: "pls",
-        serialize(e) {
-          if (void 0 !== e) return Qa(e);
-        },
-        deserialize(e) {
-          if (void 0 !== e) return Xa(e);
-        }
-      },
-      fi = {
-        key: "cs",
         serialize(e) {
           if (void 0 !== e) return Va(e);
         },
@@ -27646,23 +27634,32 @@ var li,
           if (void 0 !== e) return qa(e);
         }
       },
-      yi = {
-        key: "cls",
+      ci = {
+        key: "cs",
         serialize(e) {
-          if (void 0 !== e) return ja(e);
+          if (void 0 !== e) return Ha(e);
         },
         deserialize(e) {
-          if (void 0 !== e) return za(e);
+          if (void 0 !== e) return Wa(e);
+        }
+      },
+      ui = {
+        key: "cls",
+        serialize(e) {
+          if (void 0 !== e) return Ya(e);
+        },
+        deserialize(e) {
+          if (void 0 !== e) return Ka(e);
         }
       };
-    function gi() {
-      (Aa.clean(), Sa.clean());
+    function pi() {
+      (xa.clean(), Ra.clean());
     }
-    const hi = {
-      HeapCache: Sa,
-      MemoryCache: Aa
+    const di = {
+      HeapCache: Ra,
+      MemoryCache: xa
     };
-    class vi extends Set {
+    class fi extends Set {
       constructor() {
         (super(...arguments), (this.map = new Map()));
       }
@@ -27694,8 +27691,8 @@ var li,
         return this.map.size;
       }
     }
-    const Ri = e => 0 === e.x || 0 === e.y || 49 === e.x || 49 === e.y,
-      Ei = ka(
+    const yi = e => 0 === e.x || 0 === e.y || 49 === e.x || 49 === e.y,
+      gi = _a(
         (e, t = !0, r = !1) => {
           let o = `${t}${r}`;
           return (
@@ -27735,13 +27732,13 @@ var li,
                     pos: e,
                     range: 1
                   }),
-            t && (o = o.flatMap(Ti)),
+            t && (o = o.flatMap(hi)),
             r)
           ) {
-            const e = new vi();
+            const e = new fi();
             for (const { pos: r, range: n } of o)
-              bi(r, n + 1)
-                .filter(e => !!xi(e, !0, !1) && (!t || (e.roomName === r.roomName && !Ri(e))))
+              Ti(r, n + 1)
+                .filter(e => !!Si(e, !0, !1) && (!t || (e.roomName === r.roomName && !yi(e))))
                 .forEach(t => e.add(t));
             for (const t of e) o.some(e => e.pos.inRangeTo(t, e.range)) && e.delete(t);
             o = [...e].map(e => ({
@@ -27752,7 +27749,7 @@ var li,
           return o;
         }
       );
-    function Ti({ pos: e, range: t }) {
+    function hi({ pos: e, range: t }) {
       if (0 === t || (e.x > t && 49 - e.x > t && e.y > t && 49 - e.y > t))
         return [
           {
@@ -27783,12 +27780,12 @@ var li,
       for (const t of m)
         for (const r of p)
           d.push({
-            pos: Ga(e, t, r),
+            pos: ka(e, t, r),
             range: c
           });
       return d;
     }
-    const Ci = (e = 1) => {
+    const vi = (e = 1) => {
         let t = new Array(2 * e + 1).fill(0).map((t, r) => r - e);
         return t
           .flatMap(e =>
@@ -27799,51 +27796,51 @@ var li,
           )
           .filter(e => !(0 === e.x && 0 === e.y));
       },
-      Si = e => wi(e, 1),
-      wi = (e, t, r = !1) => {
+      Ri = e => Ei(e, 1),
+      Ei = (e, t, r = !1) => {
         if (0 === t) return [e];
         let o = [];
         return (
-          (o = Ci(t)
-            .map(t => (e.x + t.x < 0 || e.x + t.x > 49 || e.y + t.y < 0 || e.y + t.y > 49 ? null : La(e, t.x, t.y)))
+          (o = vi(t)
+            .map(t => (e.x + t.x < 0 || e.x + t.x > 49 || e.y + t.y < 0 || e.y + t.y > 49 ? null : Na(e, t.x, t.y)))
             .filter(e => null !== e)),
           r && o.push(e),
           o
         );
       },
-      bi = (e, t) => {
-        const r = $a(e);
+      Ti = (e, t) => {
+        const r = Qa(e);
         let o = [];
         for (let e = r.x - t; e <= r.x + t; e++)
           (o.push(
-            ei({
+            Xa({
               x: e,
               y: r.y - t
             })
           ),
             o.push(
-              ei({
+              Xa({
                 x: e,
                 y: r.y + t
               })
             ));
         for (let e = r.y - t + 1; e <= r.y + t - 1; e++)
           (o.push(
-            ei({
+            Xa({
               x: r.x - t,
               y: e
             })
           ),
             o.push(
-              ei({
+              Xa({
                 x: r.x + t,
                 y: e
               })
             ));
         return o;
       },
-      Oi = (e, t = !1) => Si(e).filter(e => xi(e, t)),
-      xi = (e, t = !1, r = !1) => {
+      Ci = (e, t = !1) => Ri(e).filter(e => Si(e, t)),
+      Si = (e, t = !1, r = !1) => {
         let o;
         try {
           o = Game.map.getRoomTerrain(e.roomName);
@@ -27875,29 +27872,29 @@ var li,
               ))
         );
       },
-      _i = e => {
+      wi = e => {
         let t = e.match(/^[WE]([0-9]+)[NS]([0-9]+)$/);
         if (!t) throw new Error("Invalid room name");
         return Number(t[1]) % 10 == 0 || Number(t[2]) % 10 == 0;
       },
-      Ui = e => {
+      bi = e => {
         let t = e.match(/^[WE]([0-9]+)[NS]([0-9]+)$/);
         if (!t) throw new Error("Invalid room name");
         let r = Number(t[1]) % 10,
           o = Number(t[2]) % 10;
         return !(5 === r && 5 === o) && r >= 4 && r <= 6 && o >= 4 && o <= 6;
       },
-      Mi = (e, t, r) => (r ? e.slice(0, t) : e.slice(t + 1)),
-      Ai = e => "_ck" + e;
-    function ki(e) {
-      Ui(e) &&
-        !Aa.get(Ai(e)) &&
-        Aa.with(di).set(
-          Ai(e),
+      Oi = (e, t, r) => (r ? e.slice(0, t) : e.slice(t + 1)),
+      xi = e => "_ck" + e;
+    function _i(e) {
+      bi(e) &&
+        !xa.get(xi(e)) &&
+        xa.with(si).set(
+          xi(e),
           [...Game.rooms[e].find(FIND_SOURCES), ...Game.rooms[e].find(FIND_MINERALS)].map(e => e.pos)
         );
     }
-    class Ni extends Map {
+    class Ui extends Map {
       get(e) {
         return super.get((e.x << 6) | e.y);
       }
@@ -27935,9 +27932,9 @@ var li,
         return this.entries();
       }
     }
-    class Ii extends Ni {
+    class Mi extends Ui {
       constructor() {
-        (super(...arguments), (this.reversed = new Ni()));
+        (super(...arguments), (this.reversed = new Ui()));
       }
       set(e, t) {
         return (this.reversed.set(t, e), super.set(e, t));
@@ -27950,24 +27947,24 @@ var li,
         (this.reversed.clear(), super.clear());
       }
     }
-    var Pi, Gi, Li, Di;
-    const Fi = new wa.Codec({
+    var Ai, ki, Ni, Ii;
+    const Pi = new Ea.Codec({
         array: !1,
         depth: 30
       }),
-      Bi = new Map();
-    (null !== (Pi = Memory[(Di = Ea.MEMORY_PORTAL_PATH)]) && void 0 !== Pi) || (Memory[Di] = []);
-    for (const e of Memory[Ea.MEMORY_PORTAL_PATH]) {
-      const t = Yi(e),
-        r = null !== (Gi = Bi.get(t.room1)) && void 0 !== Gi ? Gi : new Map();
-      (r.set(t.room2, t), Bi.set(t.room1, r));
-      const o = null !== (Li = Bi.get(t.room2)) && void 0 !== Li ? Li : new Map();
-      (o.set(t.room1, t), Bi.set(t.room2, o));
+      Gi = new Map();
+    (null !== (Ai = Memory[(Ii = ga.MEMORY_PORTAL_PATH)]) && void 0 !== Ai) || (Memory[Ii] = []);
+    for (const e of Memory[ga.MEMORY_PORTAL_PATH]) {
+      const t = Fi(e),
+        r = null !== (ki = Gi.get(t.room1)) && void 0 !== ki ? ki : new Map();
+      (r.set(t.room2, t), Gi.set(t.room1, r));
+      const o = null !== (Ni = Gi.get(t.room2)) && void 0 !== Ni ? Ni : new Map();
+      (o.set(t.room1, t), Gi.set(t.room2, o));
     }
-    function Hi(e) {
+    function Li(e) {
       var t, r, o, n, a;
       if (
-        !_i(e) &&
+        !wi(e) &&
         !(e => {
           let t = e.match(/^[WE]([0-9]+)[NS]([0-9]+)$/);
           if (!t) throw new Error("Invalid room name");
@@ -27992,7 +27989,7 @@ var li,
               : {
                   room1: e,
                   room2: o.destination.roomName,
-                  portalMap: new Ii()
+                  portalMap: new Mi()
                 };
           (r.set(o.destination.roomName, n),
             n.portalMap.set(o.pos, o.destination),
@@ -28000,32 +27997,32 @@ var li,
         }
         return [...r.values()];
       })(e))
-        ((null !== (t = Bi.get(o.room1)) && void 0 !== t ? t : new Map()).set(o.room2, o),
-          (null !== (r = Bi.get(o.room2)) && void 0 !== r ? r : new Map()).set(o.room1, o),
+        ((null !== (t = Gi.get(o.room1)) && void 0 !== t ? t : new Map()).set(o.room2, o),
+          (null !== (r = Gi.get(o.room2)) && void 0 !== r ? r : new Map()).set(o.room1, o),
           i.add(o.room2));
-      const s = Bi.get(e);
+      const s = Gi.get(e);
       for (const t of null !== (o = null == s ? void 0 : s.keys()) && void 0 !== o ? o : [])
         i.has(t) ||
-          (null === (n = Bi.get(e)) || void 0 === n || n.delete(t),
-          null === (a = Bi.get(t)) || void 0 === a || a.delete(e));
+          (null === (n = Gi.get(e)) || void 0 === n || n.delete(t),
+          null === (a = Gi.get(t)) || void 0 === a || a.delete(e));
     }
-    function Wi(e) {
+    function Di(e) {
       var t;
       let r = "";
       return (
-        (r += ai(e.room1)),
-        (r += ai(e.room2)),
-        (r += Fi.encode(null !== (t = e.expires) && void 0 !== t ? t : 0)),
-        (r += ja([...e.portalMap.entries()].flat())),
+        (r += ti(e.room1)),
+        (r += ti(e.room2)),
+        (r += Pi.encode(null !== (t = e.expires) && void 0 !== t ? t : 0)),
+        (r += Ya([...e.portalMap.entries()].flat())),
         r
       );
     }
-    function Yi(e) {
-      const t = ii(e.slice(0, 3)),
-        r = ii(e.slice(3, 6)),
-        o = Fi.decode(e.slice(6, 8)),
-        n = new Ii(),
-        a = za(e.slice(8));
+    function Fi(e) {
+      const t = ri(e.slice(0, 3)),
+        r = ri(e.slice(3, 6)),
+        o = Pi.decode(e.slice(6, 8)),
+        n = new Mi(),
+        a = Ka(e.slice(8));
       for (let e = 0; e < a.length; e += 2) n.set(a[e], a[e + 1]);
       return {
         room1: t,
@@ -28034,35 +28031,35 @@ var li,
         portalMap: n
       };
     }
-    function Ki(e) {
+    function Bi(e) {
       var t;
       const r = new Set(Object.values(null !== (t = Game.map.describeExits(e)) && void 0 !== t ? t : {})),
-        o = Bi.get(e);
+        o = Gi.get(e);
       if (!o) return [...r];
       for (const e of o.values()) r.add(e.room2);
       return [...r];
     }
-    const Vi = new wa.Codec({
+    const Hi = new Ea.Codec({
         array: !1,
         depth: 15
       }),
-      qi = (e, t) => {
+      Wi = (e, t) => {
         var r;
         if (!e || !e.length) throw new Error("Empty id");
         let o = e;
         o.length % 3 != 0 && (o = o.padStart(3 * Math.ceil(o.length / 3), "0"));
         let n = "";
-        for (let e = 0; e < o.length; e += 3) n += Vi.encode(parseInt(o.slice(e, e + 3), 16));
+        for (let e = 0; e < o.length; e += 3) n += Hi.encode(parseInt(o.slice(e, e + 3), 16));
         return null !== (r = n + t) && void 0 !== r ? r : "";
       },
-      ji = (e, t) => qi(e.id, t);
-    var zi = Object.freeze({
+      Yi = (e, t) => Wi(e.id, t);
+    var Ki = Object.freeze({
       __proto__: null,
-      creepKey: ji,
-      objectIdKey: qi,
-      roomKey: (e, t) => ai(e) + (null != t ? t : "")
+      creepKey: Yi,
+      objectIdKey: Wi,
+      roomKey: (e, t) => ti(e) + (null != t ? t : "")
     });
-    const Qi = (e, t) => r => {
+    const Vi = (e, t) => r => {
       var o;
       if (t && !t.includes(r)) return !1;
       let n = null === (o = e.roomCallback) || void 0 === o ? void 0 : o.call(e, r);
@@ -28081,8 +28078,8 @@ var li,
               r.avoidSourceKeepers &&
                 (function (e, t) {
                   var r;
-                  const o = null !== (r = Aa.with(di).get(Ai(e))) && void 0 !== r ? r : [];
-                  for (const e of o) wi(e, 5, !0).forEach(e => t.set(e.x, e.y, 255));
+                  const o = null !== (r = xa.with(si).get(xi(e))) && void 0 !== r ? r : [];
+                  for (const e of o) Ei(e, 5, !0).forEach(e => t.set(e.x, e.y, 255));
                 })(t, e),
               (r.avoidObstacleStructures || r.roadCost) &&
                 (r.avoidObstacleStructures &&
@@ -28107,7 +28104,7 @@ var li,
             ) {
               const o = Game.map.getRoomTerrain(t);
               for (const n of r.avoidTargets(t))
-                for (const t of wi(n.pos, n.range, !0))
+                for (const t of Ei(n.pos, n.range, !0))
                   if (o.get(t.x, t.y) !== TERRAIN_MASK_WALL) {
                     const o =
                       254 - t.getRangeTo(n.pos) * (null !== (s = r.avoidTargetGradient) && void 0 !== s ? s : 0);
@@ -28117,7 +28114,7 @@ var li,
             return (
               r.ignorePortals ||
                 [
-                  ...(null !== (l = null === (c = Bi.get(t)) || void 0 === c ? void 0 : c.values()) && void 0 !== l
+                  ...(null !== (l = null === (c = Gi.get(t)) || void 0 === c ? void 0 : c.values()) && void 0 !== l
                     ? l
                     : [])
                 ]
@@ -28127,11 +28124,11 @@ var li,
             );
           })(n instanceof PathFinder.CostMatrix ? n.clone() : new PathFinder.CostMatrix(), r, e);
     };
-    function Xi(e, t) {
+    function qi(e, t) {
       const r = Game.map.getRoomTerrain(e);
       let o = !1;
       for (let e = 0; e < 25; e++) {
-        const { x: n, y: a } = Zi(t, e);
+        const { x: n, y: a } = ji(t, e);
         if (r.get(n, a) !== TERRAIN_MASK_WALL) {
           o = !0;
           break;
@@ -28139,7 +28136,7 @@ var li,
       }
       let n = !1;
       for (let e = 25; e < 49; e++) {
-        const { x: o, y: a } = Zi(t, e);
+        const { x: o, y: a } = ji(t, e);
         if (r.get(o, a) !== TERRAIN_MASK_WALL) {
           n = !0;
           break;
@@ -28147,7 +28144,7 @@ var li,
       }
       return [o, n];
     }
-    function Zi(e, t) {
+    function ji(e, t) {
       return e === FIND_EXIT_TOP
         ? {
             x: t,
@@ -28168,7 +28165,7 @@ var li,
                 y: t
               };
     }
-    class Ji {
+    class zi {
       constructor() {
         this.queue = [];
       }
@@ -28184,36 +28181,36 @@ var li,
         for (const [e, t] of this.queue) yield t;
       }
     }
-    const $i = Na(
+    const Qi = Ua(
         (e, t) => e + t,
         (e, t) => {
-          const { wx: r, wy: o } = Za(e),
-            { wx: n, wy: a } = Za(t);
+          const { wx: r, wy: o } = ja(e),
+            { wx: n, wy: a } = ja(t);
           return Math.abs(r - n) + Math.abs(o - a);
         }
       ),
-      es = Na(
+      Xi = Ua(
         e => e,
         e => {
           let t = 1 / 0;
-          for (const r of Bi.keys()) t = Math.min(t, $i(e, r));
+          for (const r of Gi.keys()) t = Math.min(t, Qi(e, r));
           return t;
         }
       );
-    function ts(e, t) {
-      return Math.min($i(e, t), es(e) + es(t));
+    function Zi(e, t) {
+      return Math.min(Qi(e, t), Xi(e) + Xi(t));
     }
-    function rs(e, t, r) {
+    function Ji(e, t, r) {
       var o, n, a, i, s, c, l, u;
-      let m = Object.assign(Object.assign({}, Ea.DEFAULT_MOVE_OPTS), r);
+      let m = Object.assign(Object.assign({}, ga.DEFAULT_MOVE_OPTS), r);
       (null == r ? void 0 : r.creepMovementInfo) &&
         (m = Object.assign(
           Object.assign({}, m),
           (function (e) {
             const t = {
-              roadCost: Ea.DEFAULT_MOVE_OPTS.roadCost || 1,
-              plainCost: Ea.DEFAULT_MOVE_OPTS.plainCost || 2,
-              swampCost: Ea.DEFAULT_MOVE_OPTS.swampCost || 10
+              roadCost: ga.DEFAULT_MOVE_OPTS.roadCost || 1,
+              plainCost: ga.DEFAULT_MOVE_OPTS.plainCost || 2,
+              swampCost: ga.DEFAULT_MOVE_OPTS.swampCost || 10
             };
             let r = e.usedCapacity,
               o = 0,
@@ -28253,31 +28250,31 @@ var li,
         ));
       const p = t.reduce((e, { pos: t }) => (e.includes(t.roomName) ? e : [t.roomName, ...e]), []);
       let d = (function (e, t, r) {
-        const o = Object.assign(Object.assign({}, Ea.DEFAULT_MOVE_OPTS), r),
-          n = ka(
+        const o = Object.assign(Object.assign({}, ga.DEFAULT_MOVE_OPTS), r),
+          n = _a(
             (e, t) => e + t,
             (e, t) => {
               var r;
               const n = null === (r = o.routeCallback) || void 0 === r ? void 0 : r.call(o, e, t);
-              return void 0 !== n ? n : _i(e) ? o.highwayRoomCost : Ui(e) ? o.sourceKeeperRoomCost : o.defaultRoomCost;
+              return void 0 !== n ? n : wi(e) ? o.highwayRoomCost : bi(e) ? o.sourceKeeperRoomCost : o.defaultRoomCost;
             }
           ),
           a = (function (e, t, r, o) {
             var n, a;
             if (t.includes(e)) return [];
             const i = null !== (n = null == r ? void 0 : r.routeCallback) && void 0 !== n ? n : () => 1,
-              s = new Ji();
+              s = new zi();
             s.put(e, 0);
             const c = new Map(),
               l = new Map();
             (c.set(e, e), l.set(e, 0));
             let u = s.take();
             for (; u && !t.includes(u); ) {
-              for (const e of Ki(u)) {
+              for (const e of Bi(u)) {
                 const r = l.get(u) + i(u, e);
                 if (r !== 1 / 0 && (!l.has(e) || r < l.get(e))) {
                   l.set(e, r);
-                  const o = r + Math.min(...t.map(t => ts(e, t)));
+                  const o = r + Math.min(...t.map(t => Zi(e, t)));
                   (s.put(e, o), c.set(e, u));
                 }
               }
@@ -28292,7 +28289,7 @@ var li,
               ];
               for (; u !== e; ) {
                 const e = c.get(u),
-                  n = null === (a = Bi.get(e)) || void 0 === a ? void 0 : a.get(u);
+                  n = null === (a = Gi.get(e)) || void 0 === a ? void 0 : a.get(u);
                 if (n && !o)
                   (t.unshift(r),
                     (r = [
@@ -28340,7 +28337,7 @@ var li,
                   )
                 ) {
                   if (n.size >= r.maxRooms - 1) continue;
-                  const o = Xi(e[i].room, e[i].exit);
+                  const o = qi(e[i].room, e[i].exit);
                   if (o.every(e => e)) continue;
                   let a;
                   if (
@@ -28401,7 +28398,7 @@ var li,
                     null !== (l = m.maxOps) && void 0 !== l ? l : 1e5,
                     (null !== (u = m.maxOpsPerRoom) && void 0 !== u ? u : 2e3) * e.rooms.length
                   ),
-                  roomCallback: Qi(m, e.rooms)
+                  roomCallback: Vi(m, e.rooms)
                 })
               );
             if (!a.path.length || a.incomplete) return;
@@ -28424,7 +28421,7 @@ var li,
                   null !== (s = m.maxOps) && void 0 !== s ? s : 1e5,
                   (null !== (c = m.maxOpsPerRoom) && void 0 !== c ? c : 2e3) * e.rooms.length
                 ),
-                roomCallback: Qi(m, e.rooms)
+                roomCallback: Vi(m, e.rooms)
               })
             );
             if (!n.path.length || n.incomplete) return;
@@ -28443,22 +28440,22 @@ var li,
                 (null !== (a = m.maxOpsPerRoom) && void 0 !== a ? a : 2e3) *
                   (null !== (i = null == r ? void 0 : r.length) && void 0 !== i ? i : 1)
               ),
-              roomCallback: Qi(m, r)
+              roomCallback: Vi(m, r)
             })
           );
         if (!s.path.length || s.incomplete) return;
         return s.path;
       }
     }
-    let os = new Map(),
-      ns = 0;
-    function as(e) {
+    let $i = new Map(),
+      es = 0;
+    function ts(e) {
       var t;
       return (
-        Game.time !== ns && ((ns = Game.time), (os = new Map())),
-        os.set(
+        Game.time !== es && ((es = Game.time), ($i = new Map())),
+        $i.set(
           e,
-          null !== (t = os.get(e)) && void 0 !== t
+          null !== (t = $i.get(e)) && void 0 !== t
             ? t
             : {
                 creep: new Map(),
@@ -28470,25 +28467,25 @@ var li,
                 blockedSquares: new Set()
               }
         ),
-        os.get(e)
+        $i.get(e)
       );
     }
-    function is(e, t = !1) {
+    function rs(e, t = !1) {
       var r, o, n, a;
       ("fatigue" in e.creep && e.creep.fatigue && !t && (e.targets = [e.creep.pos]),
         (null !== (r = e.targetCount) && void 0 !== r) || (e.targetCount = e.targets.length));
-      const i = as(e.creep.pos.roomName);
+      const i = ts(e.creep.pos.roomName);
       (!(function (e) {
         var t, r, o, n;
         if (!e) return;
         (null !== (t = e.targetCount) && void 0 !== t) || (e.targetCount = e.targets.length);
-        const a = as(e.creep.pos.roomName);
+        const a = ts(e.creep.pos.roomName);
         (a.creep.delete(e.creep.id),
           null === (o = null === (r = a.priority.get(e.priority)) || void 0 === r ? void 0 : r.get(e.targets.length)) ||
             void 0 === o ||
             o.delete(e.creep.id));
         for (const t of e.targets) {
-          const r = Ya(t);
+          const r = Fa(t);
           null === (n = a.targets.get(r)) || void 0 === n || n.delete(e.creep.id);
         }
       })(i.creep.get(e.creep.id)),
@@ -28498,35 +28495,35 @@ var li,
       const c = null !== (n = s.get(e.targets.length)) && void 0 !== n ? n : new Map();
       (s.set(e.targets.length, c), c.set(e.creep.id, e));
       for (const t of e.targets) {
-        const r = Ya(t),
+        const r = Fa(t),
           o = null !== (a = i.targets.get(r)) && void 0 !== a ? a : new Map();
         (i.targets.set(r, o), o.set(e.creep.id, e));
       }
-      e.targets.length && e.targets[0].isEqualTo(e.creep.pos) && i.prefersToStay.add(Ya(e.creep.pos));
+      e.targets.length && e.targets[0].isEqualTo(e.creep.pos) && i.prefersToStay.add(Fa(e.creep.pos));
     }
-    function ss(e, t, r) {
+    function os(e, t, r) {
       var o, n, a;
-      const i = as(e.creep.pos.roomName),
+      const i = ts(e.creep.pos.roomName),
         s = null !== (o = i.priority.get(e.priority)) && void 0 !== o ? o : new Map();
       (null === (n = s.get(t)) || void 0 === n || n.delete(e.creep.id), i.priority.set(e.priority, s));
       const c = null !== (a = s.get(r)) && void 0 !== a ? a : new Map();
       (s.set(r, c), c.set(e.creep.id, e));
     }
-    const cs = e => {
+    const ns = e => {
         const t = Game.cpu.getUsed();
         return (e(), Math.max(0, Game.cpu.getUsed() - t));
       },
-      ls = "_crr";
-    function us() {
-      const e = Aa.with(Oa).get(ls);
+      as = "_crr";
+    function is() {
+      const e = xa.with(Ca).get(as);
       return Boolean(e && Game.time - 2 <= e);
     }
-    let ms = [];
-    function ps(e, t) {
+    let ss = [];
+    function cs(e, t) {
       var r, o, n, a, i, s, c, l;
       const u = Game.cpu.getUsed();
       let m = 0;
-      const p = as(e),
+      const p = ts(e),
         d = p.blockedSquares;
       if (null == t ? void 0 : t.visualize)
         for (const { creep: e, targets: t, priority: r } of p.creep.values())
@@ -28545,10 +28542,10 @@ var li,
         p.creep.has(r.id) ||
           p.pullees.has(r.id) ||
           p.pullers.has(r.id) ||
-          (is({
+          (rs({
             creep: r,
             priority: 0,
-            targets: [r.pos, ...Oi(r.pos, !0)]
+            targets: [r.pos, ...Ci(r.pos, !0)]
           }),
           (null == t ? void 0 : t.visualize) &&
             Game.rooms[r.pos.roomName].visual.circle(r.pos, {
@@ -28559,7 +28556,7 @@ var li,
       for (const e of p.pullers) {
         const t = Game.getObjectById(e);
         if (!t) continue;
-        const a = Ya(t.pos);
+        const a = Fa(t.pos);
         d.add(a);
         for (const t of null !== (o = null === (r = p.targets.get(a)) || void 0 === r ? void 0 : r.values()) &&
         void 0 !== o
@@ -28568,7 +28565,7 @@ var li,
           if (t.creep.id === e) continue;
           (null !== (n = t.targetCount) && void 0 !== n) || (t.targetCount = t.targets.length);
           const r = t.targetCount;
-          ((t.targetCount -= 1), ss(t, r, t.targetCount));
+          ((t.targetCount -= 1), os(t, r, t.targetCount));
         }
       }
       const f = [...p.priority.entries()].sort((e, t) => t[0] - e[0]);
@@ -28603,7 +28600,7 @@ var li,
                     });
               });
             for (const t of e.targets) {
-              const o = Ya(t);
+              const o = Fa(t);
               if (!d.has(o) || (e.creep.pos.isEqualTo(t) && p.pullers.has(e.creep.id))) {
                 if (e.creep.pos.isEqualTo(t) || !p.prefersToStay.has(o)) {
                   r = t;
@@ -28623,14 +28620,14 @@ var li,
                   });
               continue;
             }
-            ((m += cs(() => e.creep.move(e.creep.pos.getDirectionTo(r)))),
+            ((m += ns(() => e.creep.move(e.creep.pos.getDirectionTo(r)))),
               (e.resolved = !0),
               (null == t ? void 0 : t.visualize) &&
                 Game.rooms[e.creep.pos.roomName].visual.line(e.creep.pos, r, {
                   color: "green",
                   width: 0.5
                 }));
-            const u = Ya(r);
+            const u = Fa(r);
             d.add(u);
             for (const e of null !== (i = null === (a = p.targets.get(u)) || void 0 === a ? void 0 : a.values()) &&
             void 0 !== i
@@ -28639,10 +28636,10 @@ var li,
               if (e.resolved) continue;
               (null !== (s = e.targetCount) && void 0 !== s) || (e.targetCount = e.targets.length);
               const t = e.targetCount;
-              ((e.targetCount -= 1), ss(e, t, e.targetCount));
+              ((e.targetCount -= 1), os(e, t, e.targetCount));
             }
             if (!r.isEqualTo(e.creep.pos) && !p.pullers.has(e.creep.id)) {
-              const o = Ya(e.creep.pos),
+              const o = Fa(e.creep.pos),
                 a = [
                   ...(null !== (l = null === (c = p.targets.get(o)) || void 0 === c ? void 0 : c.values()) &&
                   void 0 !== l
@@ -28673,12 +28670,12 @@ var li,
           }
         }
       const y = Math.max(0, Game.cpu.getUsed() - u);
-      (ms.push(m / y), ms.length > 1500 && (ms = ms.slice(-1500)));
+      (ss.push(m / y), ss.length > 1500 && (ss = ss.slice(-1500)));
     }
-    function ds(e, t, r = 1) {
+    function ls(e, t, r = 1) {
       return e.pos
-        ? us()
-          ? (is({
+        ? is()
+          ? (rs({
               creep: e,
               targets: t,
               priority: r
@@ -28689,15 +28686,15 @@ var li,
             : e.move(e.pos.getDirectionTo(t[0]))
         : ERR_INVALID_ARGS;
     }
-    const fs = e => `_poi_${e}`,
-      ys = "_cpi";
-    function gs(e, t, r, o) {
+    const us = e => `_poi_${e}`,
+      ms = "_cpi";
+    function ps(e, t, r, o) {
       var n;
-      const a = Object.assign(Object.assign({}, Ea.DEFAULT_MOVE_OPTS), o),
-        i = null !== (n = a.cache) && void 0 !== n ? n : Aa,
-        s = Ei(r, null == o ? void 0 : o.keepTargetInRoom, null == o ? void 0 : o.flee);
+      const a = Object.assign(Object.assign({}, ga.DEFAULT_MOVE_OPTS), o),
+        i = null !== (n = a.cache) && void 0 !== n ? n : xa,
+        s = gi(r, null == o ? void 0 : o.keepTargetInRoom, null == o ? void 0 : o.flee);
       if (null == o ? void 0 : o.visualizePathStyle) {
-        const e = Object.assign(Object.assign({}, Ea.DEFAULT_VISUALIZE_OPTS), o.visualizePathStyle);
+        const e = Object.assign(Object.assign({}, ga.DEFAULT_VISUALIZE_OPTS), o.visualizePathStyle);
         for (const t of s)
           new RoomVisual(t.pos.roomName).rect(
             t.pos.x - t.range - 0.5,
@@ -28707,9 +28704,9 @@ var li,
             e
           );
       }
-      const c = i.with(di).get(fs(e));
+      const c = i.with(si).get(us(e));
       if (c) return c;
-      const l = rs(
+      const l = Ji(
         t,
         s,
         Object.assign(Object.assign({}, a), {
@@ -28718,21 +28715,21 @@ var li,
       );
       if (l) {
         const t = a.reusePath ? Game.time + a.reusePath + 1 : void 0;
-        i.with(di).set(fs(e), l, t);
+        i.with(si).set(us(e), l, t);
       }
       return l;
     }
-    function hs(e, t) {
+    function ds(e, t) {
       var r;
-      return (null !== (r = null == t ? void 0 : t.cache) && void 0 !== r ? r : Aa).with(di).get(fs(e));
+      return (null !== (r = null == t ? void 0 : t.cache) && void 0 !== r ? r : xa).with(si).get(us(e));
     }
-    function vs(e, t) {
+    function fs(e, t) {
       var r;
-      (null !== (r = null == t ? void 0 : t.cache) && void 0 !== r ? r : Aa).delete(fs(e));
+      (null !== (r = null == t ? void 0 : t.cache) && void 0 !== r ? r : xa).delete(us(e));
     }
-    function Rs(e, t, r) {
+    function ys(e, t, r) {
       var o, n, a, i;
-      const s = (null !== (o = null == r ? void 0 : r.cache) && void 0 !== o ? o : Aa).with(di).get(fs(t));
+      const s = (null !== (o = null == r ? void 0 : r.cache) && void 0 !== o ? o : xa).with(si).get(us(t));
       if (!e.pos) return ERR_INVALID_ARGS;
       if (!s) return ERR_NO_PATH;
       if (
@@ -28740,7 +28737,7 @@ var li,
         (!(null == r ? void 0 : r.reverse) && e.pos.isEqualTo(s[s.length - 1]))
       )
         return OK;
-      let c = Sa.get(ji(e, ys));
+      let c = Ra.get(Yi(e, ms));
       if (void 0 !== c) {
         let t = Math.max(0, Math.min(s.length - 1, (null == r ? void 0 : r.reverse) ? c - 1 : c + 1));
         (null === (n = s[t]) || void 0 === n ? void 0 : n.isEqualTo(e.pos))
@@ -28752,16 +28749,16 @@ var li,
         -1 !== t && (c = t);
       }
       if (
-        (void 0 === c && !(null == r ? void 0 : r.reverse) && ti(s[0], e.pos) <= 1 && (c = -1),
-        void 0 === c && (null == r ? void 0 : r.reverse) && ti(s[s.length - 1], e.pos) <= 1 && (c = s.length),
+        (void 0 === c && !(null == r ? void 0 : r.reverse) && Za(s[0], e.pos) <= 1 && (c = -1),
+        void 0 === c && (null == r ? void 0 : r.reverse) && Za(s[s.length - 1], e.pos) <= 1 && (c = s.length),
         void 0 === c)
       )
         return ERR_NOT_FOUND;
-      Sa.set(ji(e, ys), c);
+      Ra.set(Yi(e, ms), c);
       let l = Math.max(0, Math.min(s.length - 1, (null == r ? void 0 : r.reverse) ? c - 1 : c + 1));
       if (null == r ? void 0 : r.visualizePathStyle) {
-        const t = Object.assign(Object.assign({}, Ea.DEFAULT_VISUALIZE_OPTS), r.visualizePathStyle),
-          o = Mi(s, c, null == r ? void 0 : r.reverse);
+        const t = Object.assign(Object.assign({}, ga.DEFAULT_VISUALIZE_OPTS), r.visualizePathStyle),
+          o = Oi(s, c, null == r ? void 0 : r.reverse);
         null === (i = e.room) ||
           void 0 === i ||
           i.visual.poly(
@@ -28772,22 +28769,22 @@ var li,
             t
           );
       }
-      return ds(e, [s[l]], null == r ? void 0 : r.priority);
+      return ls(e, [s[l]], null == r ? void 0 : r.priority);
     }
-    const Es = (e, t) => 0 !== e.length && 0 !== t.length && e.some(e => t.some(t => e.inRangeTo(t.pos, t.range))),
-      Ts = "_csp",
-      Cs = "_cst",
-      Ss = (e, t) => {
+    const gs = (e, t) => 0 !== e.length && 0 !== t.length && e.some(e => t.some(t => e.inRangeTo(t.pos, t.range))),
+      hs = "_csp",
+      vs = "_cst",
+      Rs = (e, t) => {
         if (!e.pos) return !1;
         if ("fatigue" in e && e.fatigue > 0) return !1;
-        const r = Sa.get(ji(e, Ts)),
-          o = Sa.get(ji(e, Cs));
+        const r = Ra.get(Yi(e, hs)),
+          o = Ra.get(Yi(e, vs));
         return (
-          Sa.set(ji(e, Ts), e.pos),
-          r && o && e.pos.isEqualTo(r) ? o + t < Game.time : (Sa.set(ji(e, Cs), Game.time), !1)
+          Ra.set(Yi(e, hs), e.pos),
+          r && o && e.pos.isEqualTo(r) ? o + t < Game.time : (Ra.set(Yi(e, vs), Game.time), !1)
         );
       },
-      ws = {
+      Es = {
         key: "js",
         serialize(e) {
           if (void 0 !== e) return JSON.stringify(e);
@@ -28796,18 +28793,18 @@ var li,
           if (void 0 !== e) return JSON.parse(e);
         }
       },
-      bs = "_cp",
-      Os = "_ct",
-      xs = "_co",
-      _s = ["avoidCreeps", "avoidObstacleStructures", "flee", "plainCost", "swampCost", "roadCost"];
-    function Us(e, t = hi.HeapCache) {
-      (vs(ji(e, bs), {
+      Ts = "_cp",
+      Cs = "_ct",
+      Ss = "_co",
+      ws = ["avoidCreeps", "avoidObstacleStructures", "flee", "plainCost", "swampCost", "roadCost"];
+    function bs(e, t = di.HeapCache) {
+      (fs(Yi(e, Ts), {
         cache: t
       }),
-        t.delete(ji(e, Os)),
-        t.delete(ji(e, xs)));
+        t.delete(Yi(e, Cs)),
+        t.delete(Yi(e, Ss)));
     }
-    const Ms = (
+    const Os = (
         e,
         t,
         r,
@@ -28817,22 +28814,22 @@ var li,
       ) => {
         var n, a, i, s;
         if (!e.pos) return ERR_INVALID_ARGS;
-        let c = Object.assign(Object.assign({}, Ea.DEFAULT_MOVE_OPTS), r);
-        const l = null !== (n = null == r ? void 0 : r.cache) && void 0 !== n ? n : hi.HeapCache;
-        let u = Ei(t, c.keepTargetInRoom, c.flee),
+        let c = Object.assign(Object.assign({}, ga.DEFAULT_MOVE_OPTS), r);
+        const l = null !== (n = null == r ? void 0 : r.cache) && void 0 !== n ? n : di.HeapCache;
+        let u = gi(t, c.keepTargetInRoom, c.flee),
           m = !1,
-          p = l.with(ui).get(ji(e, Os));
+          p = l.with(ai).get(Yi(e, Cs));
         for (const { pos: t, range: o } of u) {
           if (!m && t.inRangeTo(e.pos, o) && e.pos.roomName === t.roomName) {
             if (!(null == r ? void 0 : r.flee)) {
-              Us(e, l);
-              const t = Qi(c)(e.pos.roomName);
+              bs(e, l);
+              const t = Vi(c)(e.pos.roomName);
               return (
-                ds(
+                ls(
                   e,
                   [
                     e.pos,
-                    ...Oi(e.pos, !0).filter(
+                    ...Ci(e.pos, !0).filter(
                       e => u.some(t => t.pos.inRangeTo(e, t.range)) && (!t || 255 !== t.get(e.x, e.y))
                     )
                   ],
@@ -28843,10 +28840,10 @@ var li,
             }
             m = !0;
           }
-          p && !p.some(e => e && t.isEqualTo(e.pos) && o === e.range) && (Us(e, l), (p = void 0));
+          p && !p.some(e => e && t.isEqualTo(e.pos) && o === e.range) && (bs(e, l), (p = void 0));
         }
-        const d = l.with(ws).get(ji(e, xs));
-        (d && !_s.some(e => c[e] !== d[e])) || Us(e, l);
+        const d = l.with(Es).get(Yi(e, Ss));
+        (d && !ws.some(e => c[e] !== d[e])) || bs(e, l);
         const f = [
           null == r ? void 0 : r.roadCost,
           null == r ? void 0 : r.plainCost,
@@ -28854,44 +28851,41 @@ var li,
         ].some(e => void 0 !== e);
         "body" in e &&
           !f &&
-          (c = Object.assign(
-            {
-              creepMovementInfo: {
-                usedCapacity: e.store.getUsedCapacity(),
-                body: e.body
-              }
-            },
-            c
-          ));
+          (c = Object.assign(Object.assign({}, c), {
+            creepMovementInfo: {
+              usedCapacity: e.store.getUsedCapacity(),
+              body: e.body
+            }
+          }));
         const y = c.reusePath ? Game.time + c.reusePath + 1 : void 0;
-        (l.with(ui).set(ji(e, Os), u, y),
-          l.with(ws).set(
-            ji(e, xs),
-            _s.reduce((e, t) => ((e[t] = c[t]), e), {}),
+        (l.with(ai).set(Yi(e, Cs), u, y),
+          l.with(Es).set(
+            Yi(e, Ss),
+            ws.reduce((e, t) => ((e[t] = c[t]), e), {}),
             y
           ));
-        const g = hs(ji(e, bs), {
+        const g = ds(Yi(e, Ts), {
             cache: l
           }),
-          h = Sa.get(ji(e, "_cpi")),
-          v = g && Mi(g, null != h ? h : 0),
+          h = Ra.get(Yi(e, "_cpi")),
+          v = g && Oi(g, null != h ? h : 0),
           R =
             null !== (i = null === (a = c.avoidTargets) || void 0 === a ? void 0 : a.call(c, e.pos.roomName)) &&
             void 0 !== i
               ? i
               : [];
-        if (c.repathIfStuck && g && Ss(e, c.repathIfStuck))
-          (vs(ji(e, bs), {
+        if (c.repathIfStuck && g && Rs(e, c.repathIfStuck))
+          (fs(Yi(e, Ts), {
             cache: l
           }),
             (c = Object.assign(Object.assign({}, c), o)));
-        else if ((null == v ? void 0 : v.length) && Es(v, R)) {
+        else if ((null == v ? void 0 : v.length) && gs(v, R)) {
           let t = 0;
           v.forEach((e, r) => {
             R.some(t => t.pos.inRangeTo(e, t.range)) && (t = r);
           });
           const r = v.slice(t),
-            o = rs(
+            o = Ji(
               e.pos,
               r.map(e => ({
                 pos: e,
@@ -28908,17 +28902,17 @@ var li,
               if (o[o.length - 1].inRangeTo(r[e], 1)) t = e;
               else if (void 0 !== t) break;
             void 0 === t
-              ? vs(ji(e, bs), {
+              ? fs(Yi(e, Ts), {
                   cache: l
                 })
-              : l.with(di).set(fs(ji(e, bs)), o.concat(r.slice(t)), y);
+              : l.with(si).set(us(Yi(e, Ts)), o.concat(r.slice(t)), y);
           } else
-            vs(ji(e, bs), {
+            fs(Yi(e, Ts), {
               cache: l
             });
         }
-        const E = gs(
-          ji(e, bs),
+        const E = ps(
+          Yi(e, Ts),
           e.pos,
           t,
           Object.assign(Object.assign({}, c), {
@@ -28927,17 +28921,17 @@ var li,
         );
         if (!E) return ERR_NO_PATH;
         if (E && (null === (s = E[E.length - 2]) || void 0 === s ? void 0 : s.isEqualTo(e.pos))) {
-          let t = Qi(c)(e.pos.roomName);
+          let t = Vi(c)(e.pos.roomName);
           const o = t instanceof PathFinder.CostMatrix ? e => t.get(e.x, e.y) < 254 : () => !0,
             n = (null == r ? void 0 : r.flee)
               ? e => u.every(t => t.pos.getRangeTo(e) >= t.range)
               : e => u.some(t => t.pos.inRangeTo(e, t.range)),
-            a = Oi(e.pos, !0).filter(e => n(e) && o(e));
-          if (a.length) return (ds(e, a, c.priority), OK);
+            a = Ci(e.pos, !0).filter(e => n(e) && o(e));
+          if (a.length) return (ls(e, a, c.priority), OK);
         }
-        let T = Rs(
+        let T = ys(
           e,
-          ji(e, bs),
+          Yi(e, Ts),
           Object.assign(Object.assign({}, c), {
             reverse: !1,
             cache: l
@@ -28945,18 +28939,18 @@ var li,
         );
         return (
           T === ERR_NOT_FOUND &&
-            (Us(e, l),
-            gs(
-              ji(e, bs),
+            (bs(e, l),
+            ps(
+              Yi(e, Ts),
               e.pos,
               u,
               Object.assign(Object.assign({}, c), {
                 cache: l
               })
             ),
-            (T = Rs(
+            (T = ys(
               e,
-              ji(e, bs),
+              Yi(e, Ts),
               Object.assign(Object.assign({}, c), {
                 reverse: !1,
                 cache: l
@@ -28965,75 +28959,75 @@ var li,
           T
         );
       },
-      As = "_rsi";
+      xs = "_rsi";
     return (
-      (mi.CachingStrategies = hi),
-      (mi.CoordListSerializer = yi),
-      (mi.CoordSerializer = fi),
-      (mi.Keys = zi),
-      (mi.MoveTargetListSerializer = ui),
-      (mi.MoveTargetSerializer = ci),
-      (mi.NumberSerializer = Oa),
-      (mi.PositionListSerializer = di),
-      (mi.PositionSerializer = pi),
-      (mi.adjacentWalkablePositions = Oi),
+      (mi.CachingStrategies = di),
+      (mi.CoordListSerializer = ui),
+      (mi.CoordSerializer = ci),
+      (mi.Keys = Ki),
+      (mi.MoveTargetListSerializer = ai),
+      (mi.MoveTargetSerializer = ni),
+      (mi.NumberSerializer = Ca),
+      (mi.PositionListSerializer = si),
+      (mi.PositionSerializer = ii),
+      (mi.adjacentWalkablePositions = Ci),
       (mi.blockSquare = function (e) {
-        as(e.roomName).blockedSquares.add(Ya(e));
+        ts(e.roomName).blockedSquares.add(Fa(e));
       }),
-      (mi.cachePath = gs),
-      (mi.cachedPathKey = fs),
-      (mi.calculateAdjacencyMatrix = Ci),
-      (mi.calculateAdjacentPositions = Si),
-      (mi.calculateNearbyPositions = wi),
-      (mi.calculatePositionsAtRange = bi),
-      (mi.cleanAllCaches = gi),
-      (mi.clearCachedPath = Us),
+      (mi.cachePath = ps),
+      (mi.cachedPathKey = us),
+      (mi.calculateAdjacencyMatrix = vi),
+      (mi.calculateAdjacentPositions = Ri),
+      (mi.calculateNearbyPositions = Ei),
+      (mi.calculatePositionsAtRange = Ti),
+      (mi.cleanAllCaches = pi),
+      (mi.clearCachedPath = bs),
       (mi.compressPath = e => {
         const t = [],
           r = e[0];
         if (!r) return "";
         let o = r;
         for (const r of e.slice(1)) {
-          if (1 !== ti(o, r))
+          if (1 !== Za(o, r))
             throw new Error("Cannot compress path unless each RoomPosition is adjacent to the previous one");
           (t.push(o.getDirectionTo(r)), (o = r));
         }
-        return Ya(r) + Ba.encode(t);
+        return Fa(r) + Ga.encode(t);
       }),
-      (mi.config = Ea),
+      (mi.config = ga),
       (mi.decompressPath = e => {
-        let t = Ka(e.slice(0, 2));
+        let t = Ba(e.slice(0, 2));
         const r = [t],
-          o = Ba.decode(e.slice(2));
-        for (const e of o) ((t = ri(t, e)), r.push(t));
+          o = Ga.decode(e.slice(2));
+        for (const e of o) ((t = Ja(t, e)), r.push(t));
         return r;
       }),
-      (mi.fastRoomPosition = Pa),
-      (mi.fixEdgePosition = Ti),
+      (mi.fastRoomPosition = Aa),
+      (mi.fixEdgePosition = hi),
       (mi.follow = function (e, t) {
         (e.move(t),
           t.pull(e),
           (function (e, t) {
-            const r = as(e.pos.roomName);
+            const r = ts(e.pos.roomName);
             (r.pullers.add(e.id), r.pullees.add(t.id));
           })(t, e));
       }),
-      (mi.followPath = Rs),
-      (mi.fromGlobalPosition = ei),
-      (mi.generatePath = rs),
-      (mi.getCachedPath = hs),
-      (mi.getMoveIntents = as),
-      (mi.getRangeTo = ti),
-      (mi.globalPosition = $a),
-      (mi.isExit = Ri),
-      (mi.isPositionWalkable = xi),
-      (mi.move = ds),
+      (mi.followPath = ys),
+      (mi.fromGlobalPosition = Xa),
+      (mi.generatePath = Ji),
+      (mi.getCachedPath = ds),
+      (mi.getMoveIntents = ts),
+      (mi.getRangeTo = Za),
+      (mi.globalPosition = Qa),
+      (mi.isExit = yi),
+      (mi.isPositionWalkable = Si),
+      (mi.move = ls),
       (mi.moveByPath = function (e, t, r) {
         var o, n, a, i;
         const s =
             null !== (o = null == r ? void 0 : r.repathIfStuck) && void 0 !== o
               ? o
-              : Ea.DEFAULT_MOVE_OPTS.repathIfStuck,
+              : ga.DEFAULT_MOVE_OPTS.repathIfStuck,
           c =
             null !==
               (i =
@@ -29041,88 +29035,75 @@ var li,
                   (a =
                     null !== (n = null == r ? void 0 : r.avoidTargets) && void 0 !== n
                       ? n
-                      : Ea.DEFAULT_MOVE_OPTS.avoidTargets) || void 0 === a
+                      : ga.DEFAULT_MOVE_OPTS.avoidTargets) || void 0 === a
                   ? void 0
                   : a(e.pos.roomName)) && void 0 !== i
               ? i
               : [];
-        let l = Sa.get(ji(e, As));
-        const u = hs(t, r);
+        let l = Ra.get(Yi(e, xs));
+        const u = ds(t, r);
         if ((s || c.length) && void 0 !== l) {
-          let t = u
-            ? (function (e, t, r = !1) {
-                const o = e.__packedPos >>> 16;
-                for (let n = r ? t.length - 1 : 0; r ? n > -1 : n < t.length; r ? n-- : n++) {
-                  const a = t[n];
-                  if (a.isEqualTo(e)) return n;
-                  if (t[n].__packedPos >>> 16 === o) {
-                    const t = a.getRangeTo(e);
-                    t > 1 && (n += r ? 1 - t : t - 1);
-                  }
-                }
-                return -1;
-              })(e.pos, u, (null == r ? void 0 : r.reverse) || !1)
-            : void 0;
+          let t = null == u ? void 0 : u.findIndex(t => t.isEqualTo(e.pos));
           (-1 === t && (t = void 0),
             void 0 !== t &&
               ((null == r ? void 0 : r.reverse) ? t <= l : t >= l) &&
-              (Sa.delete(ji(e, As)), (l = void 0)));
+              (Ra.delete(Yi(e, xs)), (l = void 0)));
         }
         let m = ERR_NOT_FOUND;
-        if ((void 0 === l && (m = Rs(e, t, r)), m !== ERR_NOT_FOUND)) {
-          const t = Sa.get(ji(e, "_cpi"));
-          if (!((s && Ss(e, s)) || (u && Es(Mi(u, null != t ? t : 0, null == r ? void 0 : r.reverse), c)))) return m;
-          void 0 !== t && ((l = (null == r ? void 0 : r.reverse) ? t - 1 : t + 2), Sa.set(ji(e, As), l));
+        if ((void 0 === l && (m = ys(e, t, r)), m !== ERR_NOT_FOUND)) {
+          const t = Ra.get(Yi(e, "_cpi"));
+          if (!((s && Rs(e, s)) || (u && gs(Oi(u, null != t ? t : 0, null == r ? void 0 : r.reverse), c)))) return m;
+          void 0 !== t && ((l = (null == r ? void 0 : r.reverse) ? t - 1 : t + 2), Ra.set(Yi(e, xs), l));
         }
-        let p = hs(t, r);
+        let p = ds(t, r);
         return p
-          ? (void 0 !== l && (p = Mi(p, l, null == r ? void 0 : r.reverse)), 0 === p.length ? ERR_NO_PATH : Ms(e, p, r))
+          ? (void 0 !== l && (p = Oi(p, l, null == r ? void 0 : r.reverse)), 0 === p.length ? ERR_NO_PATH : Os(e, p, r))
           : ERR_NO_PATH;
       }),
-      (mi.moveTo = Ms),
-      (mi.normalizeTargets = Ei),
-      (mi.offsetRoomPosition = La),
-      (mi.packCoord = Va),
-      (mi.packCoordList = ja),
-      (mi.packPos = Ya),
-      (mi.packPosList = Qa),
-      (mi.packRoomName = ai),
-      (mi.packRoomNames = oi),
-      (mi.posAtDirection = ri),
+      (mi.moveTo = Os),
+      (mi.normalizeTargets = gi),
+      (mi.offsetRoomPosition = Na),
+      (mi.packCoord = Ha),
+      (mi.packCoordList = Ya),
+      (mi.packPos = Fa),
+      (mi.packPosList = Va),
+      (mi.packRoomName = ti),
+      (mi.packRoomNames = $a),
+      (mi.posAtDirection = Ja),
       (mi.preTick = function () {
-        (gi(),
+        (pi(),
           (function () {
-            for (const e in Game.rooms) (ki(e), Hi(e));
+            for (const e in Game.rooms) (_i(e), Li(e));
             !(function () {
               var e, t;
               const r = new Set();
-              Memory[Ea.MEMORY_PORTAL_PATH] = [];
-              for (const o of Bi.values())
+              Memory[ga.MEMORY_PORTAL_PATH] = [];
+              for (const o of Gi.values())
                 for (const n of o.values())
                   r.has(n) ||
                     (r.add(n),
                     n.expires && n.expires < Game.time
-                      ? (null === (e = Bi.get(n.room1)) || void 0 === e || e.delete(n.room2),
-                        null === (t = Bi.get(n.room2)) || void 0 === t || t.delete(n.room1))
-                      : Memory[Ea.MEMORY_PORTAL_PATH].push(Wi(n)));
+                      ? (null === (e = Gi.get(n.room1)) || void 0 === e || e.delete(n.room2),
+                        null === (t = Gi.get(n.room2)) || void 0 === t || t.delete(n.room1))
+                      : Memory[ga.MEMORY_PORTAL_PATH].push(Di(n)));
             })();
           })());
       }),
       (mi.reconcileTraffic = function (e) {
-        for (const t of [...os.keys()]) Game.rooms[t] && ps(t, e);
-        Aa.with(Oa).set(ls, Game.time);
+        for (const t of [...$i.keys()]) Game.rooms[t] && cs(t, e);
+        xa.with(Ca).set(as, Game.time);
       }),
-      (mi.reconciledRecently = us),
-      (mi.resetCachedPath = vs),
-      (mi.roomNameFromCoords = Ja),
-      (mi.roomNameToCoords = Za),
-      (mi.sameRoomPosition = Ga),
-      (mi.unpackCoord = qa),
-      (mi.unpackCoordList = za),
-      (mi.unpackPos = Ka),
-      (mi.unpackPosList = Xa),
-      (mi.unpackRoomName = ii),
-      (mi.unpackRoomNames = ni),
+      (mi.reconciledRecently = is),
+      (mi.resetCachedPath = fs),
+      (mi.roomNameFromCoords = za),
+      (mi.roomNameToCoords = ja),
+      (mi.sameRoomPosition = ka),
+      (mi.unpackCoord = Wa),
+      (mi.unpackCoordList = Ka),
+      (mi.unpackPos = Ba),
+      (mi.unpackPosList = qa),
+      (mi.unpackRoomName = ri),
+      (mi.unpackRoomNames = ei),
       mi
     );
   })();
