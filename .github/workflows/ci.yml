@@ -51,7 +51,7 @@ jobs:
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v5
-        if: always()
+        if: always() && secrets.CODECOV_TOKEN != ''
         with:
           file: ./packages/screeps-bot/coverage/lcov.info
           flags: unittests
@@ -391,7 +391,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Package | Size (KB) | Files |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|-----------|-------|" >> $GITHUB_STEP_SUMMARY
-          
+
           # Define packages to check
           declare -a packages=(
             "@ralphschuler/screeps-kernel:packages/@ralphschuler/screeps-kernel/dist:screeps-kernel"
@@ -406,7 +406,7 @@ jobs:
             "@ralphschuler/screeps-posis:packages/screeps-posis/dist:screeps-posis"
             "screeps-bot:packages/screeps-bot/dist:screeps-bot (main)"
           )
-          
+
           # Check each package
           for package_info in "${packages[@]}"; do
             IFS=':' read -r package_name dist_path display_name <<< "$package_info"
@@ -416,7 +416,7 @@ jobs:
               echo "| $display_name | $size | $files |" >> $GITHUB_STEP_SUMMARY
             fi
           done
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "💡 **Note:** Size is reported in kilobytes (KB) for the entire dist directory." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

@@ -408,13 +408,39 @@ export const commandRegistry = new CommandRegistry();
  * ```
  */
 export function Command(metadata: CommandMetadata) {
-  return function <T>(target: object, propertyKey: string | symbol, _descriptor: TypedPropertyDescriptor<T>): void {
+  return function <T>(
+    targetOrMethod: object,
+    propertyKeyOrContext: string | symbol | ClassMethodDecoratorContext,
+    _descriptor?: TypedPropertyDescriptor<T>
+  ): void {
+    if (typeof propertyKeyOrContext === "object") {
+      const context = propertyKeyOrContext;
+      const methodName = String(context.name);
+
+      context.addInitializer(function (this: unknown) {
+        if (typeof this === "object" && this !== null) {
+          storeCommandDecoratorMetadata(metadata, methodName, Object.getPrototypeOf(this) as object);
+        }
+      });
+      return;
+    }
+
+    storeCommandDecoratorMetadata(metadata, String(propertyKeyOrContext), targetOrMethod);
+  };
+}
+
+function storeCommandDecoratorMetadata(metadata: CommandMetadata, methodName: string, target: object): void {
+  const alreadyStored = commandDecoratorStore.some(
+    entry => entry.target === target && entry.methodName === methodName && entry.metadata.name === metadata.name
+  );
+
+  if (!alreadyStored) {
     commandDecoratorStore.push({
       metadata,
-      methodName: String(propertyKey),
+      methodName,
       target
     });
-  };
+  }
 }
 
 /**
