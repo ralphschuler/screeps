@@ -167,8 +167,7 @@ export function renderBudgetDashboard(options: BudgetDashboardOptions = {}): num
     opacity: 0.5
   });
 
-  const utilizationColor =
-    utilizationRatio > 0.9 ? "#FF0000" : utilizationRatio > 0.7 ? "#FFD93D" : "#00FF00";
+  const utilizationColor = utilizationRatio > 0.9 ? "#FF0000" : utilizationRatio > 0.7 ? "#FFD93D" : "#00FF00";
   const utilizationWidth = (barWidth + 6) * Math.min(utilizationRatio, 1.0);
   visual.rect(x, currentY - 0.2, utilizationWidth, barHeight, {
     fill: utilizationColor,
@@ -224,28 +223,18 @@ export function renderBudgetDashboard(options: BudgetDashboardOptions = {}): num
     } else {
       for (const process of unhealthyProcesses) {
         const healthColor =
-          process.stats.healthScore < 30
-            ? "#FF0000"
-            : process.stats.healthScore < 60
-            ? "#FFA500"
-            : "#FFD93D";
+          process.stats.healthScore < 30 ? "#FF0000" : process.stats.healthScore < 60 ? "#FFA500" : "#FFD93D";
 
         const statusIcon = process.state === "suspended" ? "⚠" : "○";
         const maxNameLength = options.maxProcessNameLength ?? 15;
-        const displayName = process.name.length > maxNameLength 
-          ? process.name.substring(0, maxNameLength - 1) + "…"
-          : process.name;
-          
-        visual.text(
-          `${statusIcon} ${displayName}: ${process.stats.healthScore.toFixed(0)}%`,
-          x,
-          currentY,
-          {
-            color: healthColor,
-            font: 0.4,
-            align: "left"
-          }
-        );
+        const displayName =
+          process.name.length > maxNameLength ? process.name.substring(0, maxNameLength - 1) + "…" : process.name;
+
+        visual.text(`${statusIcon} ${displayName}: ${process.stats.healthScore.toFixed(0)}%`, x, currentY, {
+          color: healthColor,
+          font: 0.4,
+          align: "left"
+        });
 
         currentY += 0.6;
       }
@@ -296,11 +285,16 @@ export function renderCompactBudgetStatus(roomName?: string): number {
   // Compact status at top right
   const statusColor = utilizationRatio > 0.9 ? "#FF0000" : utilizationRatio > 0.7 ? "#FFD93D" : "#00FF00";
 
-  visual.text(`CPU: ${(utilizationRatio * 100).toFixed(0)}% | ${budgetInfo.roomCount}R | ${budgetInfo.bucket}B`, 49, 1, {
-    color: statusColor,
-    font: 0.4,
-    align: "right"
-  });
+  visual.text(
+    `CPU: ${(utilizationRatio * 100).toFixed(0)}% | ${budgetInfo.roomCount}R | ${budgetInfo.bucket}B`,
+    49,
+    1,
+    {
+      color: statusColor,
+      font: 0.4,
+      align: "right"
+    }
+  );
 
   return Game.cpu.getUsed() - startCpu;
 }

@@ -1,6 +1,6 @@
 /**
  * Pixel Generation Manager - Bot Integration
- * 
+ *
  * Wraps the framework PixelGenerationManager with bot-specific process decorators and memory access
  */
 
@@ -45,7 +45,7 @@ class BotPixelGenerationManager extends FrameworkPixelGenerationManager {
   /**
    * Main pixel generation tick
    * Registered as kernel process via decorator
-   * 
+   *
    * Note: Uses interval: 1 to check every tick for accurate consecutive tick counting
    * The IDLE priority ensures this only runs when bot has excess CPU
    */

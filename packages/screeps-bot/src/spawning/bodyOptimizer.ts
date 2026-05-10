@@ -73,27 +73,27 @@ export function optimizeHarvesterBody(options: BodyOptimizationOptions): BodyTem
   // Pattern: N * WORK + 1 CARRY + M * MOVE
   // Goal: Maximize WORK parts while keeping cost <= maxEnergy and having at least 1 MOVE
   // Static harvesters don't move much, but need at least 1 MOVE
-  
+
   const carry = 1; // Always 1 CARRY for flexibility
-  
+
   // Start with max WORK we could theoretically afford
   let work = Math.min(10, Math.floor(maxEnergy / 100)); // Cap at 10 WORK
   work = Math.max(2, work); // Minimum 2 WORK
-  
+
   // Calculate how many MOVE we need (at least 1, ideally enough to move reasonably)
   // For static miners: 1 MOVE per 2 body parts is sufficient
   let move = Math.max(1, Math.ceil((work + carry) / 2));
-  
+
   // Check if this fits in budget
   let totalCost = work * 100 + carry * 50 + move * 50;
-  
+
   // If over budget, reduce WORK parts
   while (totalCost > maxEnergy && work > 2) {
     work--;
     move = Math.max(1, Math.ceil((work + carry) / 2));
     totalCost = work * 100 + carry * 50 + move * 50;
   }
-  
+
   // Final safety check: if still over budget with minimum work, reduce move
   if (totalCost > maxEnergy) {
     while (move > 1 && totalCost > maxEnergy) {

@@ -19,7 +19,7 @@ import { shardManager } from "./shardManager";
 
 /**
  * Additional memory fields for cross-shard carrier creeps
- * 
+ *
  * NOTE: This interface is intended to be composed with the base SwarmCreepMemory.
  * Only fields that are unique to cross-shard behavior should be defined here.
  */
@@ -171,9 +171,7 @@ export class ResourceTransferCoordinator {
    * Find a room with sufficient resources for transfer
    */
   private findSourceRoom(resourceType: ResourceConstant, amount: number): string | null {
-    const ownedRooms = Object.values(Game.rooms).filter(
-      r => r.controller?.my && r.terminal && r.storage
-    );
+    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my && r.terminal && r.storage);
 
     // Prefer rooms with terminals and sufficient resources
     for (const room of ownedRooms) {
@@ -222,9 +220,7 @@ export class ResourceTransferCoordinator {
   private handleQueuedRequest(request: CrossShardTransferRequest): void {
     // Check if we need to spawn carriers
     const neededCarryCapacity = request.amount - request.transferred;
-    const existingCreeps = request.assignedCreeps
-      .map(name => Game.creeps[name])
-      .filter(c => c !== undefined);
+    const existingCreeps = request.assignedCreeps.map(name => Game.creeps[name]).filter(c => c !== undefined);
 
     const currentCapacity = existingCreeps.reduce((sum, c) => sum + c.carryCapacity, 0);
 
@@ -305,10 +301,9 @@ export class ResourceTransferCoordinator {
       };
 
       spawnQueue.addRequest(spawnRequest);
-      logger.info(
-        `Requested spawn of crossShardCarrier for transfer ${request.taskId} (${i + 1}/${carriersToSpawn})`,
-        { subsystem: "CrossShardTransfer" }
-      );
+      logger.info(`Requested spawn of crossShardCarrier for transfer ${request.taskId} (${i + 1}/${carriersToSpawn})`, {
+        subsystem: "CrossShardTransfer"
+      });
     }
 
     logger.debug(
@@ -321,9 +316,7 @@ export class ResourceTransferCoordinator {
    * Handle gathering request - collect resources from source
    */
   private handleGatheringRequest(request: CrossShardTransferRequest): void {
-    const creeps = request.assignedCreeps
-      .map(name => Game.creeps[name])
-      .filter(c => c !== undefined);
+    const creeps = request.assignedCreeps.map(name => Game.creeps[name]).filter(c => c !== undefined);
 
     if (creeps.length === 0) {
       // No creeps available, go back to queued
@@ -332,9 +325,7 @@ export class ResourceTransferCoordinator {
     }
 
     // Check if all creeps have gathered resources
-    const allGathered = creeps.every(
-      c => c.store.getUsedCapacity(request.resourceType) > 0
-    );
+    const allGathered = creeps.every(c => c.store.getUsedCapacity(request.resourceType) > 0);
 
     if (allGathered) {
       request.status = "moving";
@@ -348,9 +339,7 @@ export class ResourceTransferCoordinator {
    * Handle moving request - move to portal
    */
   private handleMovingRequest(request: CrossShardTransferRequest): void {
-    const creeps = request.assignedCreeps
-      .map(name => Game.creeps[name])
-      .filter(c => c !== undefined);
+    const creeps = request.assignedCreeps.map(name => Game.creeps[name]).filter(c => c !== undefined);
 
     if (creeps.length === 0) {
       request.status = "failed";
@@ -373,9 +362,7 @@ export class ResourceTransferCoordinator {
    * Handle transferring request - go through portal
    */
   private handleTransferringRequest(request: CrossShardTransferRequest): void {
-    const creeps = request.assignedCreeps
-      .map(name => Game.creeps[name])
-      .filter(c => c !== undefined);
+    const creeps = request.assignedCreeps.map(name => Game.creeps[name]).filter(c => c !== undefined);
 
     // Check if creeps have gone through portal (they disappear from this shard)
     const creepsGone = creeps.length === 0;
@@ -385,10 +372,10 @@ export class ResourceTransferCoordinator {
       request.status = "complete";
       request.transferred = request.amount;
       shardManager.updateTaskProgress(request.taskId, 100, "complete");
-      
+
       // Record successful portal traversal
       shardManager.recordPortalTraversal(request.portalRoom, request.targetShard, true);
-      
+
       logger.info(`Transfer request ${request.taskId} completed`, {
         subsystem: "CrossShardTransfer"
       });
@@ -400,7 +387,7 @@ export class ResourceTransferCoordinator {
    */
   private cleanupOldRequests(): void {
     const cleanupAge = 5000; // 5000 ticks
-    
+
     for (const requestId in this.memory.requests) {
       const request = this.memory.requests[requestId];
       if (!request) continue;
@@ -444,9 +431,7 @@ export class ResourceTransferCoordinator {
    * Get all active transfer requests
    */
   public getActiveRequests(): CrossShardTransferRequest[] {
-    return Object.values(this.memory.requests).filter(
-      r => r.status !== "complete" && r.status !== "failed"
-    );
+    return Object.values(this.memory.requests).filter(r => r.status !== "complete" && r.status !== "failed");
   }
 
   /**

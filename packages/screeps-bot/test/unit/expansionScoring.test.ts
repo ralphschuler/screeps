@@ -62,7 +62,7 @@ describe("Multi-Factor Expansion Scoring", () => {
       creeps: {},
       rooms: {}
     } as typeof Memory;
-    
+
     // Reset config to default before each test
     resetConfig();
   });
@@ -351,8 +351,8 @@ describe("Multi-Factor Expansion Scoring", () => {
       // Set up mock empire with room intel
       const mockOvermind = {
         roomIntel: {
-          "E2N1": createMockRoomIntel("E2N1", { hasPortal: true }),
-          "E1N2": createMockRoomIntel("E1N2", { hasPortal: false })
+          E2N1: createMockRoomIntel("E2N1", { hasPortal: true }),
+          E1N2: createMockRoomIntel("E1N2", { hasPortal: false })
         },
         roomsSeen: {},
         claimQueue: [],
@@ -372,10 +372,10 @@ describe("Multi-Factor Expansion Scoring", () => {
       const memoryManager = {
         getOvermind: () => mockOvermind
       };
-      
+
       // Inject the mock (this is simplified - in practice you'd use proper dependency injection)
       const bonus = ExpansionScoring.getPortalProximityBonus("E1N1");
-      
+
       // Since E1N1 is adjacent to E2N1 which has a portal, it should get a bonus
       // Note: This test assumes the function works, actual value depends on implementation
       expect(bonus).to.be.a("number");
@@ -385,8 +385,8 @@ describe("Multi-Factor Expansion Scoring", () => {
       // Set up mock empire with no portal rooms
       const mockOvermind = {
         roomIntel: {
-          "E2N1": createMockRoomIntel("E2N1", { hasPortal: false }),
-          "E1N2": createMockRoomIntel("E1N2", { hasPortal: false })
+          E2N1: createMockRoomIntel("E2N1", { hasPortal: false }),
+          E1N2: createMockRoomIntel("E1N2", { hasPortal: false })
         },
         roomsSeen: {},
         claimQueue: [],
@@ -401,7 +401,7 @@ describe("Multi-Factor Expansion Scoring", () => {
         },
         lastRun: 0
       };
-      
+
       const bonus = ExpansionScoring.getPortalProximityBonus("E1N1");
       expect(bonus).to.be.a("number");
     });

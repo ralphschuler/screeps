@@ -64,7 +64,7 @@ describe("EventBus", () => {
       let called = false;
       let receivedPayload: any = null;
 
-      eventBus.on("hostile.detected", (event) => {
+      eventBus.on("hostile.detected", event => {
         called = true;
         receivedPayload = event;
       });
@@ -105,7 +105,7 @@ describe("EventBus", () => {
     it("should add tick to payload automatically", () => {
       let receivedTick: number | undefined;
 
-      eventBus.on("spawn.completed", (event) => {
+      eventBus.on("spawn.completed", event => {
         receivedTick = event.tick;
       });
 
@@ -224,13 +224,17 @@ describe("EventBus", () => {
       });
 
       // Critical events should still be processed
-      eventBus.emit("hostile.detected", {
-        roomName: "W1N1",
-        hostileId: "123abc" as Id<Creep>,
-        hostileOwner: "Invader",
-        bodyParts: 5,
-        threatLevel: 2
-      }, { immediate: true });
+      eventBus.emit(
+        "hostile.detected",
+        {
+          roomName: "W1N1",
+          hostileId: "123abc" as Id<Creep>,
+          hostileOwner: "Invader",
+          bodyParts: 5,
+          threatLevel: 2
+        },
+        { immediate: true }
+      );
 
       expect(called).to.be.true;
     });
@@ -284,17 +288,29 @@ describe("EventBus", () => {
     it("should continue calling handlers after one throws", () => {
       const callOrder: number[] = [];
 
-      eventBus.on("hostile.detected", () => {
-        callOrder.push(1);
-      }, { priority: EventPriority.CRITICAL });
+      eventBus.on(
+        "hostile.detected",
+        () => {
+          callOrder.push(1);
+        },
+        { priority: EventPriority.CRITICAL }
+      );
 
-      eventBus.on("hostile.detected", () => {
-        throw new Error("Test error");
-      }, { priority: EventPriority.HIGH });
+      eventBus.on(
+        "hostile.detected",
+        () => {
+          throw new Error("Test error");
+        },
+        { priority: EventPriority.HIGH }
+      );
 
-      eventBus.on("hostile.detected", () => {
-        callOrder.push(3);
-      }, { priority: EventPriority.NORMAL });
+      eventBus.on(
+        "hostile.detected",
+        () => {
+          callOrder.push(3);
+        },
+        { priority: EventPriority.NORMAL }
+      );
 
       // Should not throw
       eventBus.emit("hostile.detected", {

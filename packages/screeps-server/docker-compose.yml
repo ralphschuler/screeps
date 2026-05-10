@@ -75,31 +75,6 @@ services:
       start_interval: 5s
       retries: 3
 
-  # Screeps to Grafana Cloud Graphite exporter
-  screeps-exporter:
-    build:
-      context: ../screeps-graphite-exporter
-      dockerfile: Dockerfile
-    environment:
-      EXPORTER_MODE: ${EXPORTER_MODE:-memory}
-      EXPORTER_POLL_INTERVAL_MS: ${EXPORTER_POLL_INTERVAL_MS:-15000}
-      EXPORTER_MEMORY_PATH: ${EXPORTER_MEMORY_PATH:-stats}
-      EXPORTER_SHARD: ${EXPORTER_SHARD:-shard0}
-      SCREEPS_PROTOCOL: http
-      SCREEPS_HOST: screeps
-      SCREEPS_PORT: 21025
-      SCREEPS_PATH: /
-      SCREEPS_USERNAME: ${SCREEPS_BOT_USERNAME:-}
-      SCREEPS_PASSWORD: ${SCREEPS_BOT_PASSWORD:-}
-      SCREEPS_TOKEN: ${SCREEPS_TOKEN:-}
-      GRAFANA_CLOUD_GRAPHITE_URL: ${GRAFANA_CLOUD_GRAPHITE_URL:?Grafana Cloud Graphite URL is required}
-      GRAFANA_CLOUD_API_KEY: ${GRAFANA_CLOUD_API_KEY:?Grafana Cloud API key is required}
-      GRAFANA_CLOUD_GRAPHITE_PREFIX: ${GRAFANA_CLOUD_GRAPHITE_PREFIX:-screeps}
-    depends_on:
-      screeps:
-        condition: service_healthy
-    restart: unless-stopped
-
 volumes:
   redis-data:
   mongo-data:

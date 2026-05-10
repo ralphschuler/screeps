@@ -8,7 +8,7 @@
  */
 
 import type { ShardRole } from "@ralphschuler/screeps-intershard";
-import { INTERSHARD_MEMORY_LIMIT , resourceTransferCoordinator } from "@ralphschuler/screeps-intershard";
+import { INTERSHARD_MEMORY_LIMIT, resourceTransferCoordinator } from "@ralphschuler/screeps-intershard";
 import { shardManager } from "../intershard/shardManager";
 import { Command } from "./commandRegistry";
 
@@ -72,8 +72,8 @@ export class ShardCommands {
       const h = shard.health;
       lines.push(
         `${shard.name} [${shard.role}]: ${h.roomCount} rooms, RCL ${h.avgRCL}, ` +
-        `CPU ${h.cpuCategory} (${Math.round(h.cpuUsage * 100)}%), ` +
-        `Eco ${h.economyIndex}%, War ${h.warIndex}%`
+          `CPU ${h.cpuCategory} (${Math.round(h.cpuUsage * 100)}%), ` +
+          `Eco ${h.economyIndex}%, War ${h.warIndex}%`
       );
     }
 
@@ -108,10 +108,7 @@ export class ShardCommands {
     name: "shard.portals",
     description: "List all known portals from the current shard",
     usage: "shard.portals(targetShard?)",
-    examples: [
-      "shard.portals()",
-      "shard.portals('shard1')"
-    ],
+    examples: ["shard.portals()", "shard.portals('shard1')"],
     category: "Shard"
   })
   public portals(targetShard?: string): string {
@@ -129,17 +126,11 @@ export class ShardCommands {
     }
 
     if (portals.length === 0) {
-      const msg = targetShard
-        ? `No portals to ${targetShard}`
-        : "No portals discovered yet";
+      const msg = targetShard ? `No portals to ${targetShard}` : "No portals discovered yet";
       return msg;
     }
 
-    const lines = [
-      targetShard
-        ? `=== Portals to ${targetShard} ===`
-        : "=== All Portals ==="
-    ];
+    const lines = [targetShard ? `=== Portals to ${targetShard} ===` : "=== All Portals ==="];
 
     for (const portal of portals) {
       const stable = portal.isStable ? "✓" : "✗";
@@ -149,7 +140,7 @@ export class ShardCommands {
 
       lines.push(
         `${portal.sourceRoom} → ${portal.targetShard}/${portal.targetRoom} ` +
-        `[${stable}] ${threat || "○"} (${traversals} uses, ${ticksAgo}t ago)`
+          `[${stable}] ${threat || "○"} (${traversals} uses, ${ticksAgo}t ago)`
       );
     }
 
@@ -160,10 +151,7 @@ export class ShardCommands {
     name: "shard.bestPortal",
     description: "Find the optimal portal route to a target shard",
     usage: "shard.bestPortal(targetShard, fromRoom?)",
-    examples: [
-      "shard.bestPortal('shard1')",
-      "shard.bestPortal('shard2', 'E1N1')"
-    ],
+    examples: ["shard.bestPortal('shard1')", "shard.bestPortal('shard2', 'E1N1')"],
     category: "Shard"
   })
   public bestPortal(targetShard: string, fromRoom?: string): string {
@@ -197,12 +185,7 @@ export class ShardCommands {
     ],
     category: "Shard"
   })
-  public createTask(
-    type: string,
-    targetShard: string,
-    targetRoom?: string,
-    priority = 50
-  ): string {
+  public createTask(type: string, targetShard: string, targetRoom?: string, priority = 50): string {
     const validTypes = ["colonize", "reinforce", "transfer", "evacuate"];
 
     if (!validTypes.includes(type)) {
@@ -273,9 +256,9 @@ export class ShardCommands {
 
       lines.push(
         `${req.taskId}: ${req.amount} ${req.resourceType}\n` +
-        `  ${req.sourceRoom} → ${req.targetShard}/${req.targetRoom}\n` +
-        `  Status: ${req.status.toUpperCase()} (${progress}%)\n` +
-        `  Creeps: ${creeps}, Priority: ${req.priority}`
+          `  ${req.sourceRoom} → ${req.targetShard}/${req.targetRoom}\n` +
+          `  Status: ${req.status.toUpperCase()} (${progress}%)\n` +
+          `  Creeps: ${creeps}, Priority: ${req.priority}`
       );
     }
 
@@ -302,7 +285,7 @@ export class ShardCommands {
       const usage = Math.round((entry.cpuUsed / entry.cpuLimit) * 100);
       lines.push(
         `Tick ${entry.tick}: ${entry.cpuUsed.toFixed(2)}/${entry.cpuLimit} (${usage}%) ` +
-        `Bucket: ${entry.bucketLevel}`
+          `Bucket: ${entry.bucketLevel}`
       );
     }
 
@@ -329,9 +312,9 @@ export class ShardCommands {
       const progress = task.progress ?? 0;
       lines.push(
         `${task.id} [${task.type.toUpperCase()}]\n` +
-        `  ${task.sourceShard} → ${task.targetShard}${task.targetRoom ? `/${task.targetRoom}` : ""}\n` +
-        `  Status: ${task.status.toUpperCase()} (${progress}%)\n` +
-        `  Priority: ${task.priority}`
+          `  ${task.sourceShard} → ${task.targetShard}${task.targetRoom ? `/${task.targetRoom}` : ""}\n` +
+          `  Status: ${task.status.toUpperCase()} (${progress}%)\n` +
+          `  Priority: ${task.priority}`
       );
     }
 

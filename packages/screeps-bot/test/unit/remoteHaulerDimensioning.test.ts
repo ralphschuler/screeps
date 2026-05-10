@@ -44,7 +44,7 @@ describe("remote hauler dimensioning", () => {
     it("should scale with distance", () => {
       const ticks1 = estimateRoundTripTicks(1, 1.0);
       const ticks2 = estimateRoundTripTicks(2, 1.0);
-      
+
       assert.isAbove(ticks2, ticks1, "More distance should take more ticks");
       assert.approximately(ticks2, ticks1 * 2, 10, "Should scale roughly linearly");
     });
@@ -52,7 +52,7 @@ describe("remote hauler dimensioning", () => {
     it("should account for terrain factor", () => {
       const plainsTrip = estimateRoundTripTicks(1, 1.0);
       const swampTrip = estimateRoundTripTicks(1, 1.5);
-      
+
       assert.isAbove(swampTrip, plainsTrip, "Swampy terrain should take longer");
     });
 
@@ -66,7 +66,7 @@ describe("remote hauler dimensioning", () => {
   describe("calculateRemoteHaulerRequirement", () => {
     it("should calculate minimum haulers for short distance", () => {
       const result = calculateRemoteHaulerRequirement("E1N1", "E2N1", 2, 800, { reserved: true });
-      
+
       assert.isAtLeast(result.minHaulers, 1, "Should need at least 1 hauler");
       assert.equal(result.distance, 1, "Should calculate correct distance");
       assert.equal(result.energyPerTick, 20, "Should calculate energy per tick (2 sources * 10)");
@@ -82,14 +82,18 @@ describe("remote hauler dimensioning", () => {
       const estimated = calculateRemoteHaulerRequirement("E1N1", "E2N1", 2, 800);
       const cachedPath = calculateRemoteHaulerRequirement("E1N1", "E2N1", 2, 800, { pathLength: 40 });
 
-      assert.isBelow(cachedPath.roundTripTicks, estimated.roundTripTicks, "Cached path length should override room-distance estimate");
+      assert.isBelow(
+        cachedPath.roundTripTicks,
+        estimated.roundTripTicks,
+        "Cached path length should override room-distance estimate"
+      );
       assert.equal(cachedPath.roundTripTicks, 80, "Path length is one-way and should be doubled for round trip");
     });
 
     it("should scale haulers with distance", () => {
       const shortDistance = calculateRemoteHaulerRequirement("E1N1", "E2N1", 2, 800);
       const longDistance = calculateRemoteHaulerRequirement("E1N1", "E5N1", 2, 800);
-      
+
       assert.isAtLeast(
         longDistance.recommendedHaulers,
         shortDistance.recommendedHaulers,
@@ -100,7 +104,7 @@ describe("remote hauler dimensioning", () => {
     it("should select appropriate hauler size based on energy", () => {
       const lowEnergy = calculateRemoteHaulerRequirement("E1N1", "E2N1", 2, 400);
       const highEnergy = calculateRemoteHaulerRequirement("E1N1", "E2N1", 2, 1600);
-      
+
       assert.isBelow(
         lowEnergy.haulerConfig.capacity,
         highEnergy.haulerConfig.capacity,
@@ -111,7 +115,7 @@ describe("remote hauler dimensioning", () => {
     it("should scale haulers with source count", () => {
       const oneSource = calculateRemoteHaulerRequirement("E1N1", "E2N1", 1, 800);
       const twoSources = calculateRemoteHaulerRequirement("E1N1", "E2N1", 2, 800);
-      
+
       assert.isAbove(
         twoSources.recommendedHaulers,
         oneSource.recommendedHaulers,
@@ -121,18 +125,14 @@ describe("remote hauler dimensioning", () => {
 
     it("should calculate round trip ticks", () => {
       const result = calculateRemoteHaulerRequirement("E1N1", "E2N1", 2, 800);
-      
+
       assert.isAbove(result.roundTripTicks, 0, "Should have positive round trip time");
     });
 
     it("should add buffer to minimum haulers", () => {
       const result = calculateRemoteHaulerRequirement("E1N1", "E2N1", 2, 800);
-      
-      assert.isAtLeast(
-        result.recommendedHaulers,
-        result.minHaulers,
-        "Recommended should be at least minimum"
-      );
+
+      assert.isAtLeast(result.recommendedHaulers, result.minHaulers, "Recommended should be at least minimum");
     });
   });
 
@@ -149,11 +149,7 @@ describe("remote hauler dimensioning", () => {
 
     it("should have balanced CARRY and MOVE parts", () => {
       for (const tier of HAULER_TIERS) {
-        assert.equal(
-          tier.carryParts,
-          tier.moveParts,
-          "Should have equal CARRY and MOVE parts for optimal speed"
-        );
+        assert.equal(tier.carryParts, tier.moveParts, "Should have equal CARRY and MOVE parts for optimal speed");
       }
     });
 
@@ -175,21 +171,21 @@ describe("remote hauler dimensioning", () => {
   describe("hauler efficiency calculations", () => {
     it("should handle very short distances efficiently", () => {
       const result = calculateRemoteHaulerRequirement("E1N1", "E2N1", 1, 1600);
-      
+
       // For very short distances, shouldn't need many haulers
       assert.isAtMost(result.recommendedHaulers, 3, "Short distance should need few haulers");
     });
 
     it("should handle very long distances", () => {
       const result = calculateRemoteHaulerRequirement("E1N1", "E6N1", 2, 1600);
-      
+
       // Long distances should need more haulers
       assert.isAtLeast(result.recommendedHaulers, 2, "Long distance should need multiple haulers");
     });
 
     it("should not hide unprofitable long-route hauler needs behind a fixed cap", () => {
       const result = calculateRemoteHaulerRequirement("E1N1", "E10N1", 3, 2400);
-      
+
       assert.isAtLeast(
         result.recommendedHaulers,
         result.minHaulers,

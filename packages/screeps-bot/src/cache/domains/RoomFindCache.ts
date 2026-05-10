@@ -44,7 +44,7 @@ export function cachedRoomFind<T>(
   }
 ): T[] {
   const key = getCacheKey(room.name, findType, opts?.filterKey);
-  
+
   const result = globalCache.get<T[]>(key, {
     namespace: NAMESPACE,
     ttl: opts?.ttl ?? DEFAULT_TTL[findType] ?? 20,
@@ -56,7 +56,7 @@ export function cachedRoomFind<T>(
       }
     }
   });
-  
+
   // Return empty array if undefined (shouldn't happen with compute function)
   return result ?? [];
 }
@@ -66,11 +66,7 @@ export function invalidateRoomCache(roomName: string): void {
   globalCache.invalidatePattern(pattern, NAMESPACE);
 }
 
-export function invalidateFindType(
-  roomName: string,
-  findType: FindConstant,
-  filterKey?: string
-): void {
+export function invalidateFindType(roomName: string, findType: FindConstant, filterKey?: string): void {
   const key = getCacheKey(roomName, findType, filterKey);
   globalCache.invalidate(key, NAMESPACE);
 }
@@ -84,7 +80,7 @@ export function invalidateStructureCache(roomName: string): void {
     FIND_MY_CONSTRUCTION_SITES,
     FIND_CONSTRUCTION_SITES
   ];
-  
+
   for (const findType of structureTypes) {
     const pattern = new RegExp(`^${roomName}:${findType}`);
     globalCache.invalidatePattern(pattern, NAMESPACE);
@@ -123,10 +119,7 @@ export function cachedFindHostileCreeps(room: Room): Creep[] {
   return cachedRoomFind(room, FIND_HOSTILE_CREEPS);
 }
 
-export function cachedFindStructures(
-  room: Room,
-  structureType?: StructureConstant
-): Structure[] {
+export function cachedFindStructures(room: Room, structureType?: StructureConstant): Structure[] {
   if (structureType) {
     return cachedRoomFind(room, FIND_STRUCTURES, {
       filter: (s: Structure) => s.structureType === structureType,
@@ -136,10 +129,7 @@ export function cachedFindStructures(
   return cachedRoomFind(room, FIND_STRUCTURES);
 }
 
-export function cachedFindMyStructures<T extends Structure>(
-  room: Room,
-  structureType?: StructureConstant
-): T[] {
+export function cachedFindMyStructures<T extends Structure>(room: Room, structureType?: StructureConstant): T[] {
   if (structureType) {
     return cachedRoomFind(room, FIND_MY_STRUCTURES, {
       filter: (s: Structure) => s.structureType === structureType,
@@ -149,17 +139,11 @@ export function cachedFindMyStructures<T extends Structure>(
   return cachedRoomFind(room, FIND_MY_STRUCTURES);
 }
 
-export function cachedFindConstructionSites(
-  room: Room,
-  my = true
-): ConstructionSite[] {
+export function cachedFindConstructionSites(room: Room, my = true): ConstructionSite[] {
   return cachedRoomFind(room, my ? FIND_MY_CONSTRUCTION_SITES : FIND_CONSTRUCTION_SITES);
 }
 
-export function cachedFindDroppedResources(
-  room: Room,
-  resourceType?: ResourceConstant
-): Resource[] {
+export function cachedFindDroppedResources(room: Room, resourceType?: ResourceConstant): Resource[] {
   if (resourceType) {
     return cachedRoomFind(room, FIND_DROPPED_RESOURCES, {
       filter: (r: Resource) => r.resourceType === resourceType,

@@ -87,11 +87,7 @@ const registeredClasses: Set<new () => unknown> = new Set();
  * ```
  */
 export function Process(options: ProcessOptions) {
-  return function<T>(
-    target: object,
-    propertyKey: string | symbol,
-    _descriptor: TypedPropertyDescriptor<T>
-  ): void {
+  return function <T>(target: object, propertyKey: string | symbol, _descriptor: TypedPropertyDescriptor<T>): void {
     processMetadataStore.push({
       options,
       methodName: String(propertyKey),
@@ -205,9 +201,9 @@ export function IdleProcess(
  * Class decorator to mark a class as containing process methods
  * This enables automatic discovery and registration of decorated methods
  */
- 
+
 export function ProcessClass(): <T extends new (...args: any[]) => any>(constructor: T) => T {
-  return function<T extends new (...args: any[]) => any>(constructor: T): T {
+  return function <T extends new (...args: any[]) => any>(constructor: T): T {
     registeredClasses.add(constructor as unknown as new () => unknown);
     return constructor;
   };
@@ -242,19 +238,20 @@ export function registerDecoratedProcesses(instance: object): void {
 
   for (const metadata of processMetadataStore) {
     // Check if this metadata belongs to the instance's prototype chain
-    if (metadata.target === instancePrototype || 
-        Object.getPrototypeOf(metadata.target) === instancePrototype ||
-        metadata.target === Object.getPrototypeOf(instancePrototype)) {
-      
+    if (
+      metadata.target === instancePrototype ||
+      Object.getPrototypeOf(metadata.target) === instancePrototype ||
+      metadata.target === Object.getPrototypeOf(instancePrototype)
+    ) {
       const method = (instance as Record<string, unknown>)[metadata.methodName];
-      
+
       if (typeof method === "function") {
         const boundMethod = (method as (...args: unknown[]) => unknown).bind(instance);
-        
+
         // Apply jitter to interval to prevent all processes running on the same tick
         const baseInterval = metadata.options.interval ?? 5;
         const { interval, jitter } = applyJitter(baseInterval);
-        
+
         kernel.registerProcess({
           id: metadata.options.id,
           name: metadata.options.name,
@@ -267,7 +264,7 @@ export function registerDecoratedProcesses(instance: object): void {
         });
 
         logger.debug(
-          `Registered decorated process "${metadata.options.name}" (${metadata.options.id}) with interval ${interval} (base: ${baseInterval}, jitter: ${jitter > 0 ? '+' : ''}${jitter})`,
+          `Registered decorated process "${metadata.options.name}" (${metadata.options.id}) with interval ${interval} (base: ${baseInterval}, jitter: ${jitter > 0 ? "+" : ""}${jitter})`,
           { subsystem: "ProcessDecorators" }
         );
       }
@@ -284,11 +281,10 @@ export function registerAllDecoratedProcesses(...instances: object[]): void {
   for (const instance of instances) {
     registerDecoratedProcesses(instance);
   }
-  
-  logger.info(
-    `Registered decorated processes from ${instances.length} instance(s)`,
-    { subsystem: "ProcessDecorators" }
-  );
+
+  logger.info(`Registered decorated processes from ${instances.length} instance(s)`, {
+    subsystem: "ProcessDecorators"
+  });
 }
 
 /**

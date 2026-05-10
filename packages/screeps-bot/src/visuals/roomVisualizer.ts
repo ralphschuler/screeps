@@ -350,7 +350,7 @@ export class RoomVisualizer {
       const color = threat > 30 ? "#ff0000" : threat > 10 ? "#ff8800" : "#ffff00";
 
       // 3D effect: Size variation based on threat level
-      const radius = 0.4 + (threat / 100);
+      const radius = 0.4 + threat / 100;
       const opacity = 0.2 + (threat / 100) * 0.3; // Higher threat = more visible
 
       visual.circle(hostile.pos, {
@@ -381,7 +381,7 @@ export class RoomVisualizer {
     if (hostiles.length > 0) {
       const towers = room.find(FIND_MY_STRUCTURES, {
         filter: s => s.structureType === STRUCTURE_TOWER
-      }) ;
+      });
 
       for (const tower of towers) {
         // 3D effect: Layer ranges with decreasing opacity
@@ -519,14 +519,14 @@ export class RoomVisualizer {
     if (storage.store.getUsedCapacity() > 0) {
       let offsetX = 0.8;
       const offsetY = -0.8;
-      
+
       // Show top 3 resources by quantity
       const resources = Object.keys(storage.store) as ResourceConstant[];
       const sorted = resources
         .filter(r => storage.store[r] > 1000)
         .sort((a, b) => storage.store[b] - storage.store[a])
         .slice(0, 3);
-      
+
       for (const resource of sorted) {
         visual.resource(resource, storage.pos.x + offsetX, storage.pos.y + offsetY, 0.3);
         offsetX += 0.6;
@@ -538,14 +538,14 @@ export class RoomVisualizer {
     if (terminal && terminal.store.getUsedCapacity() > 0) {
       let offsetX = 0.8;
       const offsetY = -0.8;
-      
+
       // Show top 3 resources by quantity
       const resources = Object.keys(terminal.store) as ResourceConstant[];
       const sorted = resources
         .filter(r => terminal.store[r] > 1000)
         .sort((a, b) => terminal.store[b] - terminal.store[a])
         .slice(0, 3);
-      
+
       for (const resource of sorted) {
         visual.resource(resource, terminal.pos.x + offsetX, terminal.pos.y + offsetY, 0.3);
         offsetX += 0.6;
@@ -587,13 +587,7 @@ export class RoomVisualizer {
   /**
    * Draw an arrow between two positions
    */
-  private drawArrow(
-    visual: RoomVisual,
-    from: RoomPosition,
-    to: RoomPosition,
-    color: string,
-    opacity: number
-  ): void {
+  private drawArrow(visual: RoomVisual, from: RoomPosition, to: RoomPosition, color: string, opacity: number): void {
     visual.line(from, to, {
       color,
       opacity,
@@ -609,7 +603,7 @@ export class RoomVisualizer {
   private drawEnhancedStructures(visual: RoomVisual, room: Room): void {
     // Use cached structure positions if available
     const cached = visualizationManager.getCachedStructures(room.name);
-    
+
     if (cached) {
       // Draw from cache
       for (const struct of cached) {
@@ -620,7 +614,7 @@ export class RoomVisualizer {
       // Draw and cache
       const structures = room.find(FIND_STRUCTURES);
       const structureData: { x: number; y: number; type: StructureConstant }[] = [];
-      
+
       for (const structure of structures) {
         const opacity = this.getStructureDepthOpacity(structure.structureType);
         visual.structure(structure.pos.x, structure.pos.y, structure.structureType, { opacity });
@@ -630,7 +624,7 @@ export class RoomVisualizer {
           type: structure.structureType
         });
       }
-      
+
       // Cache for next time
       visualizationManager.cacheStructures(room.name, structureData);
     }
@@ -735,7 +729,7 @@ export class RoomVisualizer {
     // Draw roads with usage intensity
     const roads = room.find(FIND_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_ROAD
-    }) ;
+    });
 
     for (const road of roads) {
       // Color based on hits (more traffic = more damage)
@@ -755,7 +749,10 @@ export class RoomVisualizer {
    * Draw blueprint overlay for planned structures
    * Now uses enhanced structure visualization from roomVisualExtensions
    */
-  public drawBlueprint(visual: RoomVisual, blueprint: { type: StructureConstant; pos: { x: number; y: number } }[]): void {
+  public drawBlueprint(
+    visual: RoomVisual,
+    blueprint: { type: StructureConstant; pos: { x: number; y: number } }[]
+  ): void {
     for (const item of blueprint) {
       // Use the enhanced structure drawing from RoomVisual extensions
       visual.structure(item.pos.x, item.pos.y, item.type, { opacity: 0.4 });

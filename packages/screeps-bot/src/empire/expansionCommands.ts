@@ -1,6 +1,6 @@
 /**
  * Expansion Console Commands
- * 
+ *
  * Commands for monitoring and managing autonomous expansion.
  */
 
@@ -22,27 +22,27 @@ export class ExpansionCommands {
   public status(): string {
     const empire = memoryManager.getEmpire();
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
-    
+
     // GCL Status
     const gclProgress = Game.gcl.progress / Game.gcl.progressTotal;
     const gclPercent = (gclProgress * 100).toFixed(1);
     const roomsAvailable = Game.gcl.level - ownedRooms.length;
-    
+
     // Expansion readiness
     const canExpand = roomsAvailable > 0;
     const expansionPaused = empire.objectives.expansionPaused;
-    
+
     // Queue status
     const totalCandidates = empire.claimQueue.length;
     const unclaimedCandidates = empire.claimQueue.filter(c => !c.claimed).length;
     const activeClaims = empire.claimQueue.filter(c => c.claimed).length;
-    
+
     // Active claimers
     const activeClaimers = Object.values(Game.creeps).filter(creep => {
       const memory = creep.memory as any;
       return memory.role === "claimer" && memory.task === "claim";
     });
-    
+
     let output = `=== Expansion System Status ===
 
 GCL: Level ${Game.gcl.level} (${gclPercent}% to next)
@@ -65,7 +65,7 @@ Active Claimers: ${activeClaimers.length}
       }
       output += "\n";
     }
-    
+
     // Show active expansions
     if (activeClaims > 0) {
       output += "=== Active Expansion Attempts ===\n";
@@ -78,7 +78,7 @@ Active Claimers: ${activeClaimers.length}
       }
       output += "\n";
     }
-    
+
     // Show owned room RCL distribution
     output += "=== Owned Room Distribution ===\n";
     const rclCounts = new Map<number, number>();
@@ -93,7 +93,7 @@ Active Claimers: ${activeClaimers.length}
         output += `  RCL ${rcl}: ${bar} (${count})\n`;
       }
     }
-    
+
     return output;
   }
 

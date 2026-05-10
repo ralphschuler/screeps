@@ -60,9 +60,7 @@ export class BoostManager {
     const hasDefensePriority = boostPriority[creep.room.name] === true;
 
     // Lower threshold if defense priority is set
-    const effectiveMinDanger = hasDefensePriority 
-      ? Math.max(1, config.minDanger - 1) 
-      : config.minDanger;
+    const effectiveMinDanger = hasDefensePriority ? Math.max(1, config.minDanger - 1) : config.minDanger;
 
     // Check danger level
     if (swarm.danger < effectiveMinDanger) {
@@ -311,8 +309,8 @@ export class BoostManager {
     const reasoning = belowDangerThreshold
       ? `Below danger threshold: ${dangerLevel}/${config.minDanger} (ROI: ${roi.toFixed(2)}x)`
       : worthwhile
-      ? `High ROI: ${roi.toFixed(2)}x (gain: ${expectedGain.toFixed(0)}, cost: ${totalCost.toFixed(0)})`
-      : `Low ROI: ${roi.toFixed(2)}x (gain: ${expectedGain.toFixed(0)}, cost: ${totalCost.toFixed(0)})`;
+        ? `High ROI: ${roi.toFixed(2)}x (gain: ${expectedGain.toFixed(0)}, cost: ${totalCost.toFixed(0)})`
+        : `Low ROI: ${roi.toFixed(2)}x (gain: ${expectedGain.toFixed(0)}, cost: ${totalCost.toFixed(0)})`;
 
     return { worthwhile, roi, reasoning };
   }

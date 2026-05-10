@@ -44,7 +44,7 @@ export function findOptimalAnchor(room: Room): RoomPosition | null {
     for (let y = 10; y < 40; y += 2) {
       const pos = new RoomPosition(x, y, room.name);
       const score = scorePosition(pos, controller, sources, mineral, terrainCache);
-      
+
       if (score.score > 0) {
         candidates.push(score);
       }
@@ -61,10 +61,9 @@ export function findOptimalAnchor(room: Room): RoomPosition | null {
 
   const best = candidates[0];
   const posStr = `${best.pos.x},${best.pos.y}`;
-  logger.info(
-    `Optimal anchor for ${room.name}: ${posStr} (score: ${best.score}) - ${best.reasons.join(", ")}`,
-    { subsystem: "Layout" }
-  );
+  logger.info(`Optimal anchor for ${room.name}: ${posStr} (score: ${best.score}) - ${best.reasons.join(", ")}`, {
+    subsystem: "Layout"
+  });
 
   return best.pos;
 }
@@ -85,19 +84,19 @@ function scorePosition(
   // Check if area is buildable (7x7 around anchor)
   let wallCount = 0;
   let swampCount = 0;
-  
+
   for (let dx = -7; dx <= 7; dx++) {
     for (let dy = -7; dy <= 7; dy++) {
       const x = pos.x + dx;
       const y = pos.y + dy;
-      
+
       if (x < 0 || x >= 50 || y < 0 || y >= 50) {
         score -= 100; // Out of bounds
         return { pos, score, reasons: ["Out of bounds"] };
       }
-      
+
       const tile = terrainCache.get(`${x},${y}`) ?? TERRAIN_MASK_WALL;
-      
+
       if (tile === TERRAIN_MASK_WALL) {
         wallCount++;
       } else if (tile === TERRAIN_MASK_SWAMP) {
@@ -140,7 +139,7 @@ function scorePosition(
     totalSourceDist += pos.getRangeTo(source);
   }
   const avgSourceDist = totalSourceDist / sources.length;
-  
+
   if (avgSourceDist >= 4 && avgSourceDist <= 8) {
     score += 15;
     reasons.push(`Sources avg ${avgSourceDist.toFixed(1)} tiles`);
@@ -175,13 +174,8 @@ function scorePosition(
   }
 
   // Check for nearby exits (prefer some distance from exits)
-  const exitDist = Math.min(
-    pos.x,
-    pos.y,
-    49 - pos.x,
-    49 - pos.y
-  );
-  
+  const exitDist = Math.min(pos.x, pos.y, 49 - pos.x, 49 - pos.y);
+
   if (exitDist < 5) {
     score -= 30;
     reasons.push("Too close to exit");
@@ -205,9 +199,9 @@ export function hasEnoughSpace(pos: RoomPosition, radius = 7): boolean {
     for (let dy = -radius; dy <= radius; dy++) {
       const x = pos.x + dx;
       const y = pos.y + dy;
-      
+
       if (x < 0 || x >= 50 || y < 0 || y >= 50) continue;
-      
+
       total++;
       if (terrain.get(x, y) !== TERRAIN_MASK_WALL) {
         buildable++;
@@ -226,20 +220,20 @@ const terrainCacheByRoom = new Map<string, Map<string, number>>();
 
 export function getCachedTerrain(roomName: string): Map<string, number> {
   let cache = terrainCacheByRoom.get(roomName);
-  
+
   if (!cache) {
     cache = new Map<string, number>();
     const terrain = Game.map.getRoomTerrain(roomName);
-    
+
     for (let x = 0; x < 50; x++) {
       for (let y = 0; y < 50; y++) {
         cache.set(`${x},${y}`, terrain.get(x, y));
       }
     }
-    
+
     terrainCacheByRoom.set(roomName, cache);
   }
-  
+
   return cache;
 }
 

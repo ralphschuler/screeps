@@ -45,14 +45,14 @@ const DEFAULT_CONFIG: PowerCreepConfig = {
  * Prioritizes economic boosts: spawn speed, tower effectiveness, labs, storage
  */
 const ECO_OPERATOR_POWERS: PowerConstant[] = [
-  PWR_GENERATE_OPS,        // Level 0: Generate ops for other powers
-  PWR_OPERATE_SPAWN,       // Level 2: 50% faster spawning
-  PWR_OPERATE_EXTENSION,   // Level 0: Instant extension fill
-  PWR_OPERATE_TOWER,       // Level 10: 50% tower effectiveness
-  PWR_OPERATE_LAB,         // Level 20: Faster reactions
-  PWR_OPERATE_STORAGE,     // Level 25: +500K storage capacity
-  PWR_REGEN_SOURCE,        // Level 10: Instant source regeneration
-  PWR_OPERATE_FACTORY      // Level 0: Instant factory production
+  PWR_GENERATE_OPS, // Level 0: Generate ops for other powers
+  PWR_OPERATE_SPAWN, // Level 2: 50% faster spawning
+  PWR_OPERATE_EXTENSION, // Level 0: Instant extension fill
+  PWR_OPERATE_TOWER, // Level 10: 50% tower effectiveness
+  PWR_OPERATE_LAB, // Level 20: Faster reactions
+  PWR_OPERATE_STORAGE, // Level 25: +500K storage capacity
+  PWR_REGEN_SOURCE, // Level 10: Instant source regeneration
+  PWR_OPERATE_FACTORY // Level 0: Instant factory production
 ];
 
 /**
@@ -60,14 +60,14 @@ const ECO_OPERATOR_POWERS: PowerConstant[] = [
  * Prioritizes combat powers: disruption, shielding, and spawning
  */
 const COMBAT_OPERATOR_POWERS: PowerConstant[] = [
-  PWR_GENERATE_OPS,        // Level 0: Generate ops for other powers
-  PWR_OPERATE_SPAWN,       // Level 2: Still useful for military
-  PWR_SHIELD,              // Level 0: Mobile ramparts for allies
-  PWR_DISRUPT_SPAWN,       // Level 2: Disable enemy spawns
-  PWR_DISRUPT_TOWER,       // Level 14: Disable enemy towers
-  PWR_FORTIFY,             // Level 0: Boost rampart HP
-  PWR_OPERATE_TOWER,       // Level 10: Boost friendly towers
-  PWR_DISRUPT_TERMINAL     // Level 20: Disable enemy terminals
+  PWR_GENERATE_OPS, // Level 0: Generate ops for other powers
+  PWR_OPERATE_SPAWN, // Level 2: Still useful for military
+  PWR_SHIELD, // Level 0: Mobile ramparts for allies
+  PWR_DISRUPT_SPAWN, // Level 2: Disable enemy spawns
+  PWR_DISRUPT_TOWER, // Level 14: Disable enemy towers
+  PWR_FORTIFY, // Level 0: Boost rampart HP
+  PWR_OPERATE_TOWER, // Level 10: Boost friendly towers
+  PWR_DISRUPT_TERMINAL // Level 20: Disable enemy terminals
 ];
 
 /**
@@ -205,8 +205,7 @@ export class PowerCreepManager {
     const ticksToNextLevel = avgProcessingRate > 0 ? Math.ceil(remaining / avgProcessingRate) : Infinity;
 
     // Find next milestone
-    const targetMilestone =
-      this.config.gplMilestones.find(m => m > currentLevel) ?? currentLevel + 1;
+    const targetMilestone = this.config.gplMilestones.find(m => m > currentLevel) ?? currentLevel + 1;
 
     this.gplState = {
       currentLevel,
@@ -270,9 +269,11 @@ export class PowerCreepManager {
 
     // Get all owned rooms with power spawns
     const roomsWithPowerSpawn = Object.values(Game.rooms).filter(
-      r => r.controller?.my && r.find(FIND_MY_STRUCTURES, {
-        filter: s => s.structureType === STRUCTURE_POWER_SPAWN
-      }).length > 0
+      r =>
+        r.controller?.my &&
+        r.find(FIND_MY_STRUCTURES, {
+          filter: s => s.structureType === STRUCTURE_POWER_SPAWN
+        }).length > 0
     );
 
     for (const room of roomsWithPowerSpawn) {
@@ -281,8 +282,8 @@ export class PowerCreepManager {
 
       if (!storage && !terminal) continue;
 
-      const powerAvailable = (storage?.store.getUsedCapacity(RESOURCE_POWER) ?? 0) +
-        (terminal?.store.getUsedCapacity(RESOURCE_POWER) ?? 0);
+      const powerAvailable =
+        (storage?.store.getUsedCapacity(RESOURCE_POWER) ?? 0) + (terminal?.store.getUsedCapacity(RESOURCE_POWER) ?? 0);
       const energyAvailable = storage?.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0;
 
       let shouldProcess = false;
@@ -369,10 +370,8 @@ export class PowerCreepManager {
       const economyRoom = ownedRooms
         .filter(r => r.controller && r.controller.level >= 7)
         .sort((a, b) => {
-          const aScore = (a.controller?.level ?? 0) * 100 +
-            a.find(FIND_MY_STRUCTURES).length;
-          const bScore = (b.controller?.level ?? 0) * 100 +
-            b.find(FIND_MY_STRUCTURES).length;
+          const aScore = (a.controller?.level ?? 0) * 100 + a.find(FIND_MY_STRUCTURES).length;
+          const bScore = (b.controller?.level ?? 0) * 100 + b.find(FIND_MY_STRUCTURES).length;
           return bScore - aScore;
         })[0];
       if (economyRoom) bestRoom = economyRoom.name;
@@ -425,7 +424,7 @@ export class PowerCreepManager {
    */
   private generatePowerPath(role: "powerQueen" | "powerWarrior"): PowerConstant[] {
     const basePowers = role === "powerQueen" ? ECO_OPERATOR_POWERS : COMBAT_OPERATOR_POWERS;
-    
+
     // Filter to powers available at current GPL level
     // POWER_INFO is globally available in Screeps runtime
     // powerInfo.level is an array of GPL requirements for each tier
@@ -476,7 +475,7 @@ export class PowerCreepManager {
    */
   private selectNextPower(pc: PowerCreep, assignment: PowerCreepAssignment): PowerConstant | null {
     const powerPath = assignment.powerPath ?? this.generatePowerPath(assignment.role);
-    
+
     // Find first power in path that we don't have yet
     // POWER_INFO is globally available in Screeps runtime
     for (const power of powerPath) {
@@ -509,12 +508,8 @@ export class PowerCreepManager {
     }
 
     // Create new power creeps based on needs
-    const economyOperatorCount = Array.from(this.assignments.values()).filter(
-      a => a.role === "powerQueen"
-    ).length;
-    const combatOperatorCount = Array.from(this.assignments.values()).filter(
-      a => a.role === "powerWarrior"
-    ).length;
+    const economyOperatorCount = Array.from(this.assignments.values()).filter(a => a.role === "powerQueen").length;
+    const combatOperatorCount = Array.from(this.assignments.values()).filter(a => a.role === "powerWarrior").length;
 
     // Strategy: 70% economy, 30% combat
     const shouldCreateEconomy = economyOperatorCount < Math.ceil(maxAllowed * 0.7);

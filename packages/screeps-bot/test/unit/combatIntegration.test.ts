@@ -170,7 +170,7 @@ describe("Combat System Integration", () => {
 
     it("should transition squad to active when fully formed", () => {
       const isFullyFormed = (required: number, current: number) => current >= required;
-      
+
       expect(isFullyFormed(4, 4)).to.be.true;
       expect(isFullyFormed(4, 3)).to.be.false;
     });
@@ -185,15 +185,12 @@ describe("Combat System Integration", () => {
 
   describe("Multi-Room Defense Coordination", () => {
     it("should select optimal helper room based on distance", () => {
-      const selectHelperRoom = (
-        targetRoom: string,
-        availableRooms: string[]
-      ): string | null => {
+      const selectHelperRoom = (targetRoom: string, availableRooms: string[]): string | null => {
         // Simple mock distance calculation
         const distances: Record<string, number> = {
-          "W1N1": 1,
-          "W2N2": 3,
-          "W3N3": 5
+          W1N1: 1,
+          W2N2: 3,
+          W3N3: 5
         };
 
         let closest = null;
@@ -297,10 +294,12 @@ describe("Combat System Integration", () => {
       }
 
       const validateTarget = (validation: TargetValidation) => {
-        return validation.hasRecentIntel &&
-               validation.notRecentlyAttacked &&
-               validation.withinMaxDistance &&
-               validation.sufficientResources;
+        return (
+          validation.hasRecentIntel &&
+          validation.notRecentlyAttacked &&
+          validation.withinMaxDistance &&
+          validation.sufficientResources
+        );
       };
 
       const validTarget: TargetValidation = {
@@ -371,7 +370,7 @@ describe("Combat System Integration", () => {
       const canAttackRoom = (roomName: string) => {
         const lastAttack = attackHistory[roomName];
         if (!lastAttack) return true;
-        return (mockGame.time - lastAttack) > ATTACK_COOLDOWN;
+        return mockGame.time - lastAttack > ATTACK_COOLDOWN;
       };
 
       markRoomAttacked("W2N2");
@@ -392,7 +391,7 @@ describe("Combat System Integration", () => {
 
       // Should process all threats
       expect(threats).to.have.lengthOf(3);
-      
+
       // Should prioritize by threat level
       const sorted = [...threats].sort((a, b) => b.threatLevel - a.threatLevel);
       expect(sorted[0].roomName).to.equal("W3N3");
@@ -410,11 +409,14 @@ describe("Combat System Integration", () => {
       }
 
       // Group by squad efficiently
-      const squads = combatCreeps.reduce((acc, creep) => {
-        if (!acc[creep.squadId]) acc[creep.squadId] = [];
-        acc[creep.squadId].push(creep);
-        return acc;
-      }, {} as Record<string, typeof combatCreeps>);
+      const squads = combatCreeps.reduce(
+        (acc, creep) => {
+          if (!acc[creep.squadId]) acc[creep.squadId] = [];
+          acc[creep.squadId].push(creep);
+          return acc;
+        },
+        {} as Record<string, typeof combatCreeps>
+      );
 
       expect(Object.keys(squads)).to.have.lengthOf(10);
       expect(squads["squad_0"]).to.have.lengthOf(10);

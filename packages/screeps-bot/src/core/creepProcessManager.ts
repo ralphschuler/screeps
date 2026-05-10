@@ -31,7 +31,7 @@ const ROLE_PRIORITY_MAP: Record<string, ProcessPriority> = {
   // Critical economy roles (CRITICAL = 100)
   harvester: ProcessPriority.CRITICAL,
   queenCarrier: ProcessPriority.CRITICAL,
-  
+
   // High priority roles (HIGH = 75)
   hauler: ProcessPriority.HIGH,
   guard: ProcessPriority.HIGH,
@@ -43,7 +43,7 @@ const ROLE_PRIORITY_MAP: Record<string, ProcessPriority> = {
   powerQueen: ProcessPriority.HIGH,
   powerWarrior: ProcessPriority.HIGH,
   larvaWorker: ProcessPriority.HIGH,
-  
+
   // Medium priority roles (MEDIUM = 50)
   builder: ProcessPriority.MEDIUM,
   upgrader: ProcessPriority.MEDIUM,
@@ -54,14 +54,14 @@ const ROLE_PRIORITY_MAP: Record<string, ProcessPriority> = {
   remoteHarvester: ProcessPriority.MEDIUM,
   powerHarvester: ProcessPriority.MEDIUM,
   powerCarrier: ProcessPriority.MEDIUM,
-  
+
   // Low priority roles (LOW = 25)
   remoteHauler: ProcessPriority.LOW,
   remoteWorker: ProcessPriority.LOW,
   linkManager: ProcessPriority.LOW,
   terminalManager: ProcessPriority.LOW,
   mineralHarvester: ProcessPriority.LOW,
-  
+
   // Idle priority roles (IDLE = 10)
   labTech: ProcessPriority.IDLE,
   factoryWorker: ProcessPriority.IDLE
@@ -84,7 +84,7 @@ function getCreepProcessPriority(role: string): ProcessPriority {
 
 /**
  * Execute a creep's role behavior
- * 
+ *
  * OPTIMIZATION (Phase 6): Early exit optimizations to skip unnecessary processing
  * - Skip spawning creeps (can't act yet)
  * - Skip dying creeps with no resources (can't contribute)
@@ -92,42 +92,44 @@ function getCreepProcessPriority(role: string): ProcessPriority {
  */
 function executeCreepRole(creep: Creep): void {
   const memory = creep.memory as unknown as SwarmCreepMemory;
-  
+
   // OPTIMIZATION: Early exit for spawning creeps
   // Spawning creeps can't perform actions, so skip all processing
   if (creep.spawning) {
     return;
   }
-  
+
   // OPTIMIZATION: Early exit for dying creeps with no resources
   // Creeps with <50 TTL and no stored resources can't meaningfully contribute
   // Exception: Military creeps can still attack/heal even while dying
-  if (memory.family !== 'military' && 
-      creep.ticksToLive !== undefined && 
-      creep.ticksToLive < 50 && 
-      creep.store.getUsedCapacity() === 0) {
+  if (
+    memory.family !== "military" &&
+    creep.ticksToLive !== undefined &&
+    creep.ticksToLive < 50 &&
+    creep.store.getUsedCapacity() === 0
+  ) {
     return;
   }
-  
+
   // BUGFIX: Log EVERY tick during bootstrap to track creep execution
   // This helps diagnose why creeps stop working after spawn attempts
   const room = Game.rooms[memory.homeRoom];
   const isBootstrap = room && isBootstrapMode(room);
-  
+
   if (Game.time % 10 === 0 || isBootstrap) {
     logger.info(`Executing role for creep ${creep.name} (${memory.role})`, {
       subsystem: "CreepProcessManager",
       creep: creep.name
     });
   }
-  
+
   // OPTIMIZATION: Skip behavior evaluation for idle creeps
   // Idle creeps are stationary workers (harvesters, upgraders) that are actively
   // working at their station and don't need to make new decisions.
   // This saves ~0.1-0.2 CPU per skipped creep.
   if (canSkipBehaviorEvaluation(creep)) {
     const success = executeIdleAction(creep);
-    
+
     // BUGFIX: If idle action fails, clear state and fall through to normal behavior
     // This prevents creeps from getting stuck in an infinite loop of trying
     // the same failed action. Common failure scenarios:
@@ -167,20 +169,17 @@ function executeCreepRole(creep: Creep): void {
       }
     });
   } catch (error) {
-    logger.error(
-      `EXCEPTION in role execution for ${creep.name} (${roleName}/${family}): ${error}`,
-      {
-        subsystem: "CreepProcessManager",
-        creep: creep.name,
-        meta: {
-          error: String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-          role: roleName,
-          family,
-          pos: `${creep.pos.x},${creep.pos.y} in ${creep.room.name}`
-        }
+    logger.error(`EXCEPTION in role execution for ${creep.name} (${roleName}/${family}): ${error}`, {
+      subsystem: "CreepProcessManager",
+      creep: creep.name,
+      meta: {
+        error: String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        role: roleName,
+        family,
+        pos: `${creep.pos.x},${creep.pos.y} in ${creep.room.name}`
       }
-    );
+    });
   }
 }
 
@@ -221,22 +220,22 @@ export class CreepProcessManager {
     let registeredCount = 0;
     let unregisteredCount = 0;
     let spawningCount = 0;
-    
+
     // Count total creeps for visibility
     const totalCreeps = Object.keys(Game.creeps).length;
-    
+
     // Register all living creeps as processes
     for (const name in Game.creeps) {
       const creep = Game.creeps[name];
-      
+
       // Skip spawning creeps
       if (creep.spawning) {
         spawningCount++;
         continue;
       }
-      
+
       currentCreeps.add(name);
-      
+
       // Register if not already registered
       if (!this.registeredCreeps.has(name)) {
         this.registerCreepProcess(creep);
@@ -257,11 +256,11 @@ export class CreepProcessManager {
     // BUGFIX: Always log when total creeps < 5 (bootstrap mode) for debugging
     const isBootstrapLikelyActive = totalCreeps < 5;
     const shouldLog = registeredCount > 0 || unregisteredCount > 0 || Game.time % 10 === 0 || isBootstrapLikelyActive;
-    
+
     if (shouldLog) {
       logger.info(
         `CreepProcessManager: ${currentCreeps.size} active, ${spawningCount} spawning, ${totalCreeps} total (registered: ${registeredCount}, unregistered: ${unregisteredCount})`,
-        { 
+        {
           subsystem: "CreepProcessManager",
           meta: {
             activeCreeps: currentCreeps.size,
@@ -282,9 +281,9 @@ export class CreepProcessManager {
     const memory = creep.memory as unknown as SwarmCreepMemory;
     const role = memory.role;
     const priority = getCreepProcessPriority(role);
-    
+
     const processId = `creep:${creep.name}`;
-    
+
     kernel.registerProcess({
       id: processId,
       name: `Creep ${creep.name} (${role})`,
@@ -303,7 +302,7 @@ export class CreepProcessManager {
     });
 
     this.registeredCreeps.add(creep.name);
-    
+
     logger.info(`Registered creep process: ${creep.name} (${role}) with priority ${priority}`, {
       subsystem: "CreepProcessManager"
     });
@@ -316,7 +315,7 @@ export class CreepProcessManager {
     const processId = `creep:${name}`;
     kernel.unregisterProcess(processId);
     this.registeredCreeps.delete(name);
-    
+
     logger.info(`Unregistered creep process: ${name}`, {
       subsystem: "CreepProcessManager"
     });
@@ -324,7 +323,7 @@ export class CreepProcessManager {
 
   /**
    * Get minimum bucket requirement based on priority
-   * 
+   *
    * REMOVED: All bucket requirements - user regularly depletes bucket and doesn't
    * want minBucket limitations blocking processes. Returns 0 for all priorities.
    * Bucket mode in kernel still provides priority-based filtering during low bucket.
@@ -335,14 +334,14 @@ export class CreepProcessManager {
 
   /**
    * Get CPU budget based on priority
-   * 
+   *
    * These budgets are fractions of the total CPU limit allocated per creep process.
    * For a 50 CPU limit:
    * - Critical: 1.2% = 0.6 CPU budget per creep
    * - High: 1.0% = 0.5 CPU budget per creep
    * - Medium: 0.8% = 0.4 CPU budget per creep
    * - Low: 0.6% = 0.3 CPU budget per creep
-   * 
+   *
    * These are generous to accommodate complex behaviors while still catching outliers.
    */
   private getCpuBudgetForPriority(priority: ProcessPriority): number {
@@ -367,7 +366,7 @@ export class CreepProcessManager {
     creepsByPriority: Record<string, number>;
   } {
     const creepsByPriority: Record<string, number> = {};
-    
+
     for (const name of this.registeredCreeps) {
       const creep = Game.creeps[name];
       if (creep) {

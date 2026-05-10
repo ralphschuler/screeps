@@ -59,7 +59,7 @@ describe("Defense Coordinator", () => {
     it("should calculate ETA based on distance", () => {
       const distance = 10; // rooms
       const ticksPerRoom = 50;
-      const eta = Game.time + (distance * ticksPerRoom);
+      const eta = Game.time + distance * ticksPerRoom;
 
       expect(eta).to.be.greaterThan(Game.time);
     });
@@ -142,9 +142,7 @@ describe("Defense Coordinator", () => {
       ];
 
       const timeout = 500;
-      const validAssignments = assignments.filter(
-        a => (currentTime - a.assignedAt) < timeout
-      );
+      const validAssignments = assignments.filter(a => currentTime - a.assignedAt < timeout);
 
       expect(validAssignments).to.have.lengthOf(1);
       expect(validAssignments[0].creepName).to.equal("defender2");
@@ -154,9 +152,33 @@ describe("Defense Coordinator", () => {
   describe("Urgency Prioritization", () => {
     it("should process high urgency requests first", () => {
       const requests = [
-        { roomName: "W1N1", urgency: 1, guardsNeeded: 1, rangersNeeded: 0, healersNeeded: 0, createdAt: 1000, threat: "minor" },
-        { roomName: "W2N2", urgency: 3, guardsNeeded: 2, rangersNeeded: 1, healersNeeded: 1, createdAt: 1000, threat: "severe" },
-        { roomName: "W3N3", urgency: 2, guardsNeeded: 1, rangersNeeded: 1, healersNeeded: 0, createdAt: 1000, threat: "moderate" }
+        {
+          roomName: "W1N1",
+          urgency: 1,
+          guardsNeeded: 1,
+          rangersNeeded: 0,
+          healersNeeded: 0,
+          createdAt: 1000,
+          threat: "minor"
+        },
+        {
+          roomName: "W2N2",
+          urgency: 3,
+          guardsNeeded: 2,
+          rangersNeeded: 1,
+          healersNeeded: 1,
+          createdAt: 1000,
+          threat: "severe"
+        },
+        {
+          roomName: "W3N3",
+          urgency: 2,
+          guardsNeeded: 1,
+          rangersNeeded: 1,
+          healersNeeded: 0,
+          createdAt: 1000,
+          threat: "moderate"
+        }
       ];
 
       // Sort by urgency descending
@@ -168,8 +190,24 @@ describe("Defense Coordinator", () => {
 
     it("should handle equal urgency requests", () => {
       const requests = [
-        { roomName: "W1N1", urgency: 2, guardsNeeded: 1, rangersNeeded: 0, healersNeeded: 0, createdAt: 1010, threat: "moderate" },
-        { roomName: "W2N2", urgency: 2, guardsNeeded: 1, rangersNeeded: 0, healersNeeded: 0, createdAt: 1000, threat: "moderate" }
+        {
+          roomName: "W1N1",
+          urgency: 2,
+          guardsNeeded: 1,
+          rangersNeeded: 0,
+          healersNeeded: 0,
+          createdAt: 1010,
+          threat: "moderate"
+        },
+        {
+          roomName: "W2N2",
+          urgency: 2,
+          guardsNeeded: 1,
+          rangersNeeded: 0,
+          healersNeeded: 0,
+          createdAt: 1000,
+          threat: "moderate"
+        }
       ];
 
       // Sort by urgency then by createdAt
@@ -191,9 +229,7 @@ describe("Defense Coordinator", () => {
         { name: "ranger1", role: "ranger", assigned: false }
       ];
 
-      const availableGuards = defenders.filter(
-        d => d.role === "guard" && !d.assigned
-      );
+      const availableGuards = defenders.filter(d => d.role === "guard" && !d.assigned);
 
       expect(availableGuards).to.have.lengthOf(1);
       expect(availableGuards[0].name).to.equal("guard1");
@@ -201,9 +237,7 @@ describe("Defense Coordinator", () => {
 
     it("should check if creep is already assigned", () => {
       const creepName = "defender1";
-      const assignments = [
-        { creepName: "defender1", targetRoom: "W1N1", assignedAt: 1000, eta: 1050 }
-      ];
+      const assignments = [{ creepName: "defender1", targetRoom: "W1N1", assignedAt: 1000, eta: 1050 }];
 
       const isAssigned = assignments.some(a => a.creepName === creepName);
 
@@ -212,15 +246,13 @@ describe("Defense Coordinator", () => {
 
     it("should allow same creep to help different rooms sequentially", () => {
       const currentTime = 2000;
-      const assignments = [
-        { creepName: "defender1", targetRoom: "W1N1", assignedAt: 1000, eta: 1050 }
-      ];
+      const assignments = [{ creepName: "defender1", targetRoom: "W1N1", assignedAt: 1000, eta: 1050 }];
 
       const creepName = "defender1";
       const oldAssignment = assignments.find(a => a.creepName === creepName);
-      
+
       // Check if assignment is expired/completed
-      const isCompleted = oldAssignment && (currentTime > oldAssignment.eta + 100);
+      const isCompleted = oldAssignment && currentTime > oldAssignment.eta + 100;
 
       expect(isCompleted).to.be.true;
     });
@@ -231,13 +263,19 @@ describe("Defense Coordinator", () => {
       const cluster = {
         rooms: ["W1N1", "W2N1", "W3N1"],
         defenseRequests: [
-          { roomName: "W1N1", urgency: 3, guardsNeeded: 2, rangersNeeded: 1, healersNeeded: 1, createdAt: 1000, threat: "attack" }
+          {
+            roomName: "W1N1",
+            urgency: 3,
+            guardsNeeded: 2,
+            rangersNeeded: 1,
+            healersNeeded: 1,
+            createdAt: 1000,
+            threat: "attack"
+          }
         ]
       };
 
-      const helperRooms = cluster.rooms.filter(
-        r => r !== cluster.defenseRequests[0].roomName
-      );
+      const helperRooms = cluster.rooms.filter(r => r !== cluster.defenseRequests[0].roomName);
 
       expect(helperRooms).to.have.lengthOf(2);
       expect(helperRooms).to.include("W2N1");

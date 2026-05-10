@@ -11,11 +11,14 @@ import { CacheStore } from "../CacheStore";
 // Augment Memory interface
 declare global {
   interface Memory {
-    _cacheMemory?: Record<string, {
-      version: number;
-      lastSync: number;
-      data: Record<string, { value: any; cachedAt: number; ttl?: number; hits: number }>;
-    }>;
+    _cacheMemory?: Record<
+      string,
+      {
+        version: number;
+        lastSync: number;
+        data: Record<string, { value: any; cachedAt: number; ttl?: number; hits: number }>;
+      }
+    >;
   }
 }
 
@@ -48,7 +51,7 @@ export class MemoryStore implements CacheStore {
   private getHeap(): HeapLayer {
     const g = global as any;
     const key = `_cacheMemoryHeap_${this.namespace}`;
-    
+
     if (!g[key] || g[key].tick !== Game.time) {
       if (g[key]) {
         g[key].tick = Game.time;
@@ -60,15 +63,15 @@ export class MemoryStore implements CacheStore {
         };
       }
     }
-    
+
     const heap = g[key] as HeapLayer;
-    
+
     // Rehydrate from Memory if needed
     if (!heap.rehydrated) {
       this.rehydrate(heap);
       heap.rehydrated = true;
     }
-    
+
     return heap;
   }
 
@@ -97,7 +100,7 @@ export class MemoryStore implements CacheStore {
 
     // Clean up expired entries during rehydration
     const keysToDelete: string[] = [];
-    
+
     for (const [key, memEntry] of Object.entries(memory.data)) {
       // Check TTL
       if (memEntry.ttl !== undefined && memEntry.ttl !== -1) {
@@ -117,7 +120,7 @@ export class MemoryStore implements CacheStore {
         dirty: false
       });
     }
-    
+
     // Clean up expired entries from Memory
     for (const key of keysToDelete) {
       delete memory.data[key];
@@ -127,7 +130,7 @@ export class MemoryStore implements CacheStore {
   get<T>(key: string): CacheEntry<T> | undefined {
     const heap = this.getHeap();
     const entry = heap.entries.get(key);
-    
+
     if (entry) {
       // Update last accessed and mark dirty so it can be persisted.
       // Only mark dirty once per tick for this entry to reduce persistence overhead.
@@ -137,7 +140,7 @@ export class MemoryStore implements CacheStore {
       }
       return entry as CacheEntry<T>;
     }
-    
+
     return undefined;
   }
 
@@ -149,11 +152,11 @@ export class MemoryStore implements CacheStore {
   delete(key: string): boolean {
     const heap = this.getHeap();
     const deleted = heap.entries.delete(key);
-    
+
     // Also remove from Memory
     const memory = this.getMemory();
     delete memory.data[key];
-    
+
     return deleted;
   }
 
@@ -175,7 +178,7 @@ export class MemoryStore implements CacheStore {
   clear(): void {
     const heap = this.getHeap();
     heap.entries.clear();
-    
+
     const memory = this.getMemory();
     memory.data = {};
   }

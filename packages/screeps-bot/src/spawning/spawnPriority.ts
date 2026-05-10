@@ -1,11 +1,11 @@
 /**
  * Spawn Priority Module
- * 
+ *
  * Calculates dynamic spawn priorities based on:
  * - Room posture (eco, expand, defensive, war, siege, evacuate, nukePrep)
  * - Pheromone levels (harvest, logistics, build, defense, etc.)
  * - Dynamic conditions (threats, focus rooms)
- * 
+ *
  * TODO: Investigate military overallocation in defensive posture
  * Analysis date: 2025-12-28
  * Observed pattern: Rooms in defensive posture spawn excessive military creeps (60%+ of total)
@@ -28,7 +28,7 @@ const FOCUS_ROOM_UPGRADER_PRIORITY_BOOST = 40;
 /**
  * Get spawn weight multipliers based on room posture.
  * These weights adjust role priorities based on the room's current strategic stance.
- * 
+ *
  * @param posture - Current room posture (eco, expand, defensive, war, siege, evacuate, nukePrep)
  * @returns Record mapping role names to weight multipliers
  */
@@ -157,7 +157,7 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
 
 /**
  * Get dynamic priority boost for specific roles based on current conditions.
- * 
+ *
  * @param room - The room to check
  * @param swarm - Swarm state with threat and cluster info
  * @param role - Role name to calculate boost for
@@ -185,7 +185,7 @@ export function getDynamicPriorityBoost(room: Room, swarm: SwarmState, role: str
 /**
  * Get pheromone-based multiplier for a role.
  * Pheromones represent the swarm's emergent focus areas and adjust spawn priorities accordingly.
- * 
+ *
  * @param role - Role name to get multiplier for
  * @param pheromones - Current pheromone levels
  * @returns Multiplier value (0.5 to 2.0 range)

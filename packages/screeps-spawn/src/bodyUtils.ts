@@ -7,7 +7,7 @@
 /**
  * Standard Screeps body part costs
  * 
- * Verified with MCP (screeps-docs-mcp: StructureSpawn API, screeps-typescript-mcp: Creep interface):
+ * Verified with local Screeps types and official docs:
  * - MOVE: 50 ✓
  * - WORK: 100 ✓
  * - CARRY: 50 ✓
@@ -31,7 +31,7 @@ export const BODY_PART_COSTS: Record<BodyPartConstant, number> = {
 /**
  * Maximum body parts per creep
  * 
- * Verified with MCP (screeps-docs-mcp: Creep API, screeps-typescript-mcp: Creep interface):
+ * Verified with local Screeps types and official docs:
  * "Each creep consists of up to 50 body parts"
  */
 export const MAX_BODY_PARTS = 50;
@@ -73,7 +73,7 @@ export function calculateBodyCost(
  * - Does not exceed 50 parts maximum
  * - Contains at least one MOVE part (practical requirement)
  * 
- * Verified with MCP (screeps-docs-mcp, screeps-typescript-mcp):
+ * Verified with local Screeps types and official docs:
  * - MAX_BODY_PARTS = 50 (confirmed from Creep interface docs)
  * - Body part costs verified against official Screeps API
  * - MOVE requirement is a practical necessity (without MOVE, creeps cannot move),

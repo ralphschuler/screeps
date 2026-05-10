@@ -4,7 +4,7 @@
  * Provides structured logging with levels (debug/info/warn/error).
  * All logs are output as single-line JSON objects for Loki ingestion.
  * Each log includes the current game tick for traceability.
- * 
+ *
  * Key features:
  * - Single-line JSON output (Loki-compatible)
  * - Automatic tick tracking for all logs
@@ -12,12 +12,12 @@
  * - Log level filtering
  * - CPU measurement utilities
  * - Log batching for reduced console.log overhead
- * 
+ *
  * Log Batching: IMPLEMENTED
  * Multiple logs are batched and output once per tick to reduce console.log overhead.
  * Configurable batch size with auto-flush when limit is reached.
  * Expected CPU savings: 1-2%.
- * 
+ *
  * TODO(P3): FEATURE - Add log sampling to reduce output volume in production
  * Only log a percentage of debug messages to reduce console spam
  * TODO(P3): FEATURE - Add structured error serialization
@@ -52,8 +52,8 @@ export interface LoggerConfig {
 const DEFAULT_CONFIG: LoggerConfig = {
   level: LogLevel.INFO,
   cpuLogging: false,
-  enableBatching: true,  // Matches JSDoc comment above
-  maxBatchSize: 50       // Matches JSDoc comment above
+  enableBatching: true, // Matches JSDoc comment above
+  maxBatchSize: 50 // Matches JSDoc comment above
 };
 
 /**
@@ -108,8 +108,8 @@ export function flushLogs(): void {
 
   // Output all messages in a single console.log call
   // Join with newlines for readability in console
-  console.log(messageBatch.join('\n'));
-  
+  console.log(messageBatch.join("\n"));
+
   // Clear the batch
   messageBatch = [];
 }
@@ -140,7 +140,17 @@ export type LogType = "log" | "stat";
 /**
  * Reserved log field names that cannot be overwritten by meta
  */
-const RESERVED_LOG_FIELDS = new Set(["type", "level", "message", "tick", "subsystem", "room", "creep", "processId", "shard"]);
+const RESERVED_LOG_FIELDS = new Set([
+  "type",
+  "level",
+  "message",
+  "tick",
+  "subsystem",
+  "room",
+  "creep",
+  "processId",
+  "shard"
+]);
 
 /**
  * Format log message as single-line JSON with tick information
@@ -266,11 +276,11 @@ export function stat(key: string, value: number, unit?: string, context?: LogCon
     tick: typeof Game !== "undefined" ? Game.time : 0,
     shard: typeof Game !== "undefined" && Game.shard ? Game.shard.name : "shard0"
   };
-  
+
   if (unit) {
     statObject.unit = unit;
   }
-  
+
   // Add context fields if provided
   if (context) {
     // Allow explicit shard override from context
@@ -292,7 +302,7 @@ export function stat(key: string, value: number, unit?: string, context?: LogCon
       }
     }
   }
-  
+
   // Always output single-line JSON
   addToBatch(JSON.stringify(statObject));
 }
@@ -304,39 +314,33 @@ export function stat(key: string, value: number, unit?: string, context?: LogCon
 export function createLogger(subsystem: string) {
   return {
     debug: (message: string, contextOrRoom?: string | Omit<LogContext, "subsystem">) => {
-      const context = typeof contextOrRoom === "string" 
-        ? { subsystem, room: contextOrRoom }
-        : { subsystem, ...contextOrRoom };
+      const context =
+        typeof contextOrRoom === "string" ? { subsystem, room: contextOrRoom } : { subsystem, ...contextOrRoom };
       debug(message, context);
     },
     info: (message: string, contextOrRoom?: string | Omit<LogContext, "subsystem">) => {
-      const context = typeof contextOrRoom === "string" 
-        ? { subsystem, room: contextOrRoom }
-        : { subsystem, ...contextOrRoom };
+      const context =
+        typeof contextOrRoom === "string" ? { subsystem, room: contextOrRoom } : { subsystem, ...contextOrRoom };
       info(message, context);
     },
     warn: (message: string, contextOrRoom?: string | Omit<LogContext, "subsystem">) => {
-      const context = typeof contextOrRoom === "string" 
-        ? { subsystem, room: contextOrRoom }
-        : { subsystem, ...contextOrRoom };
+      const context =
+        typeof contextOrRoom === "string" ? { subsystem, room: contextOrRoom } : { subsystem, ...contextOrRoom };
       warn(message, context);
     },
     error: (message: string, contextOrRoom?: string | Omit<LogContext, "subsystem">) => {
-      const context = typeof contextOrRoom === "string" 
-        ? { subsystem, room: contextOrRoom }
-        : { subsystem, ...contextOrRoom };
+      const context =
+        typeof contextOrRoom === "string" ? { subsystem, room: contextOrRoom } : { subsystem, ...contextOrRoom };
       error(message, context);
     },
     stat: (key: string, value: number, unit?: string, contextOrRoom?: string | Omit<LogContext, "subsystem">) => {
-      const context = typeof contextOrRoom === "string" 
-        ? { subsystem, room: contextOrRoom }
-        : { subsystem, ...contextOrRoom };
+      const context =
+        typeof contextOrRoom === "string" ? { subsystem, room: contextOrRoom } : { subsystem, ...contextOrRoom };
       stat(key, value, unit, context);
     },
     measureCpu: <T>(name: string, fn: () => T, contextOrRoom?: string | Omit<LogContext, "subsystem">) => {
-      const context = typeof contextOrRoom === "string" 
-        ? { subsystem, room: contextOrRoom }
-        : { subsystem, ...contextOrRoom };
+      const context =
+        typeof contextOrRoom === "string" ? { subsystem, room: contextOrRoom } : { subsystem, ...contextOrRoom };
       return measureCpu(name, fn, context);
     }
   };

@@ -63,12 +63,7 @@ function createMockSwarmState(): SwarmState {
 /**
  * Create a mock Room with spawn
  */
-function createMockRoom(
-  name: string,
-  energyAvailable: number,
-  energyCapacity: number,
-  hasStorage = false
-): Room {
+function createMockRoom(name: string, energyAvailable: number, energyCapacity: number, hasStorage = false): Room {
   const mockSpawn = {
     name: `Spawn1`,
     spawning: false,
@@ -172,11 +167,7 @@ describe("workforce collapse recovery", () => {
       // Check for 150 energy body
       const ultraMinimalBody = larvaWorkerDef.bodies.find(b => b.cost === 150);
       assert.isNotNull(ultraMinimalBody, "Should have 150 energy body");
-      assert.deepEqual(
-        ultraMinimalBody!.parts,
-        [WORK, CARRY],
-        "Ultra-minimal body should be [WORK, CARRY]"
-      );
+      assert.deepEqual(ultraMinimalBody!.parts, [WORK, CARRY], "Ultra-minimal body should be [WORK, CARRY]");
     });
 
     it("should spawn ultra-minimal larvaWorker with exactly 150 energy", () => {

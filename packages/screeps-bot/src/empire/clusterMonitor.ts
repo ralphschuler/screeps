@@ -25,10 +25,10 @@ export class ClusterMonitor {
 
     for (const clusterId in clusters) {
       const cluster = clusters[clusterId];
-      
+
       // Calculate cluster health metrics
       const clusterRooms = allOwnedRooms.filter(r => cluster.memberRooms.includes(r.name));
-      
+
       if (clusterRooms.length === 0) {
         continue;
       }
@@ -47,11 +47,14 @@ export class ClusterMonitor {
       const highCpu = avgCpuPerRoom > 2.0;
 
       if (lowEnergy || highCpu) {
-        logger.warn(`Cluster ${clusterId} health issue detected - avgEnergy: ${avgEnergy.toFixed(0)}, avgCPU: ${avgCpuPerRoom.toFixed(2)}`, {
-          subsystem: "Cluster"
-        });
+        logger.warn(
+          `Cluster ${clusterId} health issue detected - avgEnergy: ${avgEnergy.toFixed(0)}, avgCPU: ${avgCpuPerRoom.toFixed(2)}`,
+          {
+            subsystem: "Cluster"
+          }
+        );
       }
-      
+
       // Update cluster metrics
       if (!cluster.metrics) {
         cluster.metrics = {
@@ -70,10 +73,9 @@ export class ClusterMonitor {
 
       // Trigger rebalancing if economy index is low
       if (cluster.metrics.economyIndex < 40 && Game.time % 500 === 0) {
-        logger.warn(
-          `Cluster ${clusterId} economy index low: ${cluster.metrics.economyIndex} - consider rebalancing`,
-          { subsystem: "Cluster" }
-        );
+        logger.warn(`Cluster ${clusterId} economy index low: ${cluster.metrics.economyIndex} - consider rebalancing`, {
+          subsystem: "Cluster"
+        });
       }
     }
   }

@@ -107,11 +107,11 @@ export class MapVisualizer {
 
       const swarm = memoryManager.getOrInitSwarmState(room.name);
       const rcl = room.controller.level;
-      
+
       // Color based on danger level (bounds-checked)
       const dangerIndex = Math.min(Math.max(swarm.danger, 0), 3);
       const color = DANGER_COLORS[dangerIndex] ?? "#ffffff";
-      
+
       // Draw circle indicator
       const circleStyle: CircleStyle = {
         radius: 10,
@@ -149,7 +149,7 @@ export class MapVisualizer {
       if (!room.controller?.my) continue;
 
       const swarm = memoryManager.getOrInitSwarmState(room.name);
-      
+
       // Draw connections to remote rooms
       if (swarm.remoteAssignments && swarm.remoteAssignments.length > 0) {
         for (const remoteName of swarm.remoteAssignments) {
@@ -159,11 +159,7 @@ export class MapVisualizer {
             opacity: this.config.opacity * 0.8,
             width: 0.5
           };
-          visual.line(
-            new RoomPosition(25, 25, room.name),
-            new RoomPosition(25, 25, remoteName),
-            lineStyle
-          );
+          visual.line(new RoomPosition(25, 25, room.name), new RoomPosition(25, 25, remoteName), lineStyle);
 
           // Draw remote indicator
           const remoteCircleStyle: CircleStyle = {
@@ -179,9 +175,8 @@ export class MapVisualizer {
       if (swarm.posture === "war" || swarm.posture === "siege") {
         // Note: In a full implementation, we'd track war targets in memory
         // For now, we just show rooms with hostiles
-        const hostileRooms = Object.values(Game.rooms).filter(r => 
-          getActualHostileCreeps(r).length > 0 && 
-          Game.map.getRoomLinearDistance(room.name, r.name) <= 5
+        const hostileRooms = Object.values(Game.rooms).filter(
+          r => getActualHostileCreeps(r).length > 0 && Game.map.getRoomLinearDistance(room.name, r.name) <= 5
         );
 
         for (const hostileRoom of hostileRooms) {
@@ -257,14 +252,12 @@ export class MapVisualizer {
     // In a full implementation, this would query expansion manager
     // For now, we show rooms with neutral controllers near our rooms
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
-    
+
     for (const room of Object.values(Game.rooms)) {
       if (!room.controller || room.controller.my || room.controller.owner) continue;
 
       // Check if near any owned room
-      const nearOwnedRoom = ownedRooms.some(
-        owned => Game.map.getRoomLinearDistance(owned.name, room.name) <= 3
-      );
+      const nearOwnedRoom = ownedRooms.some(owned => Game.map.getRoomLinearDistance(owned.name, room.name) <= 3);
 
       if (nearOwnedRoom) {
         visual.circle(new RoomPosition(25, 25, room.name), {
@@ -349,7 +342,7 @@ export class MapVisualizer {
   public drawRoomOverlay(roomName: string): void {
     const visual = Game.map.visual;
     const room = Game.rooms[roomName];
-    
+
     if (!room) return;
 
     // Draw detailed border

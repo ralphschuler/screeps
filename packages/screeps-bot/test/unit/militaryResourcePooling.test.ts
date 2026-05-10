@@ -75,7 +75,7 @@ describe("Military Resource Pooling", () => {
 
     it("should return empty for unknown squad type", () => {
       const needs = calculateBoostNeeds("unknown" as any, 3);
-      
+
       assert.isEmpty(Object.keys(needs), "Unknown type returns empty needs");
     });
   });
@@ -97,7 +97,7 @@ describe("Military Resource Pooling", () => {
       };
 
       const available = getAvailableBoostMaterials(cluster as ClusterMemory);
-      
+
       // All counts should be 0 or undefined
       const total = Object.values(available).reduce((sum, val) => sum + (val ?? 0), 0);
       assert.equal(total, 0, "No materials available");
@@ -130,12 +130,8 @@ describe("Military Resource Pooling", () => {
       };
 
       const available = getAvailableBoostMaterials(cluster as ClusterMemory);
-      
-      assert.equal(
-        available[RESOURCE_CATALYZED_GHODIUM_ALKALIDE],
-        500,
-        "Should sum terminal and storage"
-      );
+
+      assert.equal(available[RESOURCE_CATALYZED_GHODIUM_ALKALIDE], 500, "Should sum terminal and storage");
     });
 
     it("should aggregate across multiple rooms", () => {
@@ -167,12 +163,8 @@ describe("Military Resource Pooling", () => {
       };
 
       const available = getAvailableBoostMaterials(cluster as ClusterMemory);
-      
-      assert.equal(
-        available[RESOURCE_CATALYZED_GHODIUM_ALKALIDE],
-        700,
-        "Should aggregate across rooms"
-      );
+
+      assert.equal(available[RESOURCE_CATALYZED_GHODIUM_ALKALIDE], 700, "Should aggregate across rooms");
     });
   });
 
@@ -183,7 +175,7 @@ describe("Military Resource Pooling", () => {
       };
 
       const result = hasSufficientMilitaryEnergy("W1N1", 10000);
-      
+
       assert.isFalse(result, "No storage means insufficient");
     });
 
@@ -199,14 +191,14 @@ describe("Military Resource Pooling", () => {
     // - Calculates reserved energy based on danger levels
     // - Aggregates boost materials from terminals and storages
     // This is better tested at integration level with proper memory/game setup
-    
+
     it("should return proper structure", () => {
       const cluster: Partial<ClusterMemory> = {
         memberRooms: []
       };
 
       const summary = getMilitaryResourceSummary(cluster as ClusterMemory);
-      
+
       assert.isDefined(summary.totalEnergy, "Has totalEnergy field");
       assert.isDefined(summary.reservedEnergy, "Has reservedEnergy field");
       assert.isDefined(summary.availableEnergy, "Has availableEnergy field");

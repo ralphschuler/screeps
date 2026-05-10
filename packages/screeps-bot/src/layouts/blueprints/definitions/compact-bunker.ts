@@ -1,9 +1,9 @@
 /**
  * Compact Bunker Blueprint (RCL 8)
- * 
+ *
  * Ultra-efficient 11x11 bunker design that fits all critical structures
  * within rampart range. Optimized for defense and minimal footprint.
- * 
+ *
  * Key features:
  * - All structures within 11x11 grid for compact rampart coverage
  * - Spawns positioned for optimal coverage
@@ -11,7 +11,7 @@
  * - Towers positioned for overlapping fields of fire
  * - Storage, terminal, and factory in tight cluster
  * - Full 60 extensions in efficient pattern
- * 
+ *
  * Space requirements:
  * - minSpaceRadius: 6 (ensures 13x13 buildable area around anchor)
  * - Actual footprint: structures span from -6 to +6 on both axes
@@ -32,16 +32,16 @@ export const COMPACT_BUNKER_BLUEPRINT: Blueprint = {
     { x: 0, y: 0, structureType: STRUCTURE_STORAGE },
     { x: -1, y: 1, structureType: STRUCTURE_TERMINAL },
     { x: 1, y: 1, structureType: STRUCTURE_FACTORY },
-    
+
     // 3 Spawns surrounding core
     { x: 0, y: -2, structureType: STRUCTURE_SPAWN },
     { x: -2, y: 1, structureType: STRUCTURE_SPAWN },
     { x: 2, y: 1, structureType: STRUCTURE_SPAWN },
-    
+
     // Power spawn and nuker near core
     { x: 0, y: 2, structureType: STRUCTURE_POWER_SPAWN },
     { x: -2, y: -1, structureType: STRUCTURE_NUKER },
-    
+
     // 6 Towers for overlapping coverage
     { x: -3, y: -2, structureType: STRUCTURE_TOWER },
     { x: 3, y: -2, structureType: STRUCTURE_TOWER },
@@ -49,7 +49,7 @@ export const COMPACT_BUNKER_BLUEPRINT: Blueprint = {
     { x: 4, y: 0, structureType: STRUCTURE_TOWER },
     { x: -3, y: 3, structureType: STRUCTURE_TOWER },
     { x: 3, y: 3, structureType: STRUCTURE_TOWER },
-    
+
     // Lab cluster: 10 labs total (2 input + 8 output) in proper reaction range <=2
     // Input labs (receive minerals for reactions)
     { x: -2, y: 3, structureType: STRUCTURE_LAB },
@@ -63,10 +63,10 @@ export const COMPACT_BUNKER_BLUEPRINT: Blueprint = {
     { x: 1, y: 3, structureType: STRUCTURE_LAB },
     { x: 1, y: 4, structureType: STRUCTURE_LAB },
     { x: 2, y: 3, structureType: STRUCTURE_LAB },
-    
+
     // Observer
     { x: 2, y: -1, structureType: STRUCTURE_OBSERVER },
-    
+
     // 6 Links (source, storage, controller links)
     { x: -1, y: -1, structureType: STRUCTURE_LINK },
     { x: 1, y: -1, structureType: STRUCTURE_LINK },
@@ -74,7 +74,7 @@ export const COMPACT_BUNKER_BLUEPRINT: Blueprint = {
     { x: 3, y: 1, structureType: STRUCTURE_LINK },
     { x: -1, y: -3, structureType: STRUCTURE_LINK },
     { x: 1, y: -3, structureType: STRUCTURE_LINK },
-    
+
     // Extensions in checkerboard pattern (60 total)
     // Inner ring
     { x: -2, y: -2, structureType: STRUCTURE_EXTENSION },
@@ -195,15 +195,20 @@ export const COMPACT_BUNKER_BLUEPRINT: Blueprint = {
       { x: -2, y: 3, structureType: STRUCTURE_LAB },
       { x: -1, y: 3, structureType: STRUCTURE_LAB }
     ];
-    
+
     // Use helper for core protection
-    const coreRamparts = createStructureProtection(
-      criticalStructures,
-      [STRUCTURE_STORAGE, STRUCTURE_TERMINAL, STRUCTURE_FACTORY,
-       STRUCTURE_SPAWN, STRUCTURE_POWER_SPAWN, STRUCTURE_NUKER,
-       STRUCTURE_OBSERVER, STRUCTURE_TOWER, STRUCTURE_LAB]
-    );
-    
+    const coreRamparts = createStructureProtection(criticalStructures, [
+      STRUCTURE_STORAGE,
+      STRUCTURE_TERMINAL,
+      STRUCTURE_FACTORY,
+      STRUCTURE_SPAWN,
+      STRUCTURE_POWER_SPAWN,
+      STRUCTURE_NUKER,
+      STRUCTURE_OBSERVER,
+      STRUCTURE_TOWER,
+      STRUCTURE_LAB
+    ]);
+
     // Add key perimeter protection manually
     const perimeterRamparts = [
       { x: -4, y: -2 },
@@ -213,7 +218,7 @@ export const COMPACT_BUNKER_BLUEPRINT: Blueprint = {
       { x: -2, y: -2 },
       { x: 2, y: -2 }
     ];
-    
+
     return [...coreRamparts, ...perimeterRamparts];
   })()
 };

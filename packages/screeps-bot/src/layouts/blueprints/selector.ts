@@ -78,18 +78,15 @@ export function getBlueprint(rcl: number): Blueprint {
 
 /**
  * Select the best blueprint for a room based on terrain and RCL
- * 
+ *
  * Tries bunker layout first (most efficient), falls back to spread layout if terrain doesn't allow.
  * This implements the dynamic blueprint selection system.
- * 
+ *
  * @param room The room to select a blueprint for
  * @param rcl The room control level
  * @returns Selected blueprint and anchor position, or null if no valid layout found
  */
-export function selectBestBlueprint(
-  room: Room,
-  rcl: number
-): { blueprint: Blueprint; anchor: RoomPosition } | null {
+export function selectBestBlueprint(room: Room, rcl: number): { blueprint: Blueprint; anchor: RoomPosition } | null {
   // For RCL 8, try compact bunker first
   if (rcl >= 8) {
     const bunkerAnchor = findBestBlueprintAnchor(room, COMPACT_BUNKER_BLUEPRINT);
@@ -102,7 +99,7 @@ export function selectBestBlueprint(
       return { blueprint: WAR_READY_BLUEPRINT, anchor: warAnchor };
     }
   }
-  
+
   // For RCL 7, try war-ready layout
   if (rcl >= 7) {
     const warAnchor = findBestBlueprintAnchor(room, WAR_READY_BLUEPRINT);
@@ -110,7 +107,7 @@ export function selectBestBlueprint(
       return { blueprint: WAR_READY_BLUEPRINT, anchor: warAnchor };
     }
   }
-  
+
   // For RCL 5-6, try economic maturity
   if (rcl >= 5) {
     const economicAnchor = findBestBlueprintAnchor(room, ECONOMIC_MATURITY_BLUEPRINT);
@@ -118,7 +115,7 @@ export function selectBestBlueprint(
       return { blueprint: ECONOMIC_MATURITY_BLUEPRINT, anchor: economicAnchor };
     }
   }
-  
+
   // For RCL 3-4, try core colony
   if (rcl >= 3) {
     const coreAnchor = findBestBlueprintAnchor(room, CORE_COLONY_BLUEPRINT);
@@ -126,18 +123,18 @@ export function selectBestBlueprint(
       return { blueprint: CORE_COLONY_BLUEPRINT, anchor: coreAnchor };
     }
   }
-  
+
   // For RCL 1-2, use early colony (should almost always fit)
   const earlyAnchor = findBestBlueprintAnchor(room, EARLY_COLONY_BLUEPRINT);
   if (earlyAnchor) {
     return { blueprint: EARLY_COLONY_BLUEPRINT, anchor: earlyAnchor };
   }
-  
+
   // Last resort: find ANY suitable spawn position
   const fallbackAnchor = findBestSpawnPosition(room);
   if (fallbackAnchor) {
     return { blueprint: EARLY_COLONY_BLUEPRINT, anchor: fallbackAnchor };
   }
-  
+
   return null;
 }

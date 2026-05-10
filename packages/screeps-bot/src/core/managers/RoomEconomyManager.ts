@@ -103,10 +103,10 @@ export class RoomEconomyManager {
         chemistryPlanner.executeReaction(room, reaction);
       } else {
         // Labs not ready, resource logistics needs to supply them
-        logger.debug(
-          `Labs not ready for reaction: ${reaction.input1} + ${reaction.input2} -> ${reaction.product}`,
-          { subsystem: "Labs", room: room.name }
-        );
+        logger.debug(`Labs not ready for reaction: ${reaction.input1} + ${reaction.input2} -> ${reaction.product}`, {
+          subsystem: "Labs",
+          room: room.name
+        });
       }
     }
 

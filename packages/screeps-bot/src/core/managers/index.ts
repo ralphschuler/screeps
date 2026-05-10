@@ -1,6 +1,6 @@
 /**
  * Room Managers - Focused modules for room operations
- * 
+ *
  * Exports all room manager modules for orchestration by RoomNode
  */
 

@@ -17,6 +17,9 @@ import { logger } from "@ralphschuler/screeps-core";
  */
 const MIN_GROUP_SIZE_FOR_GAP = 4;
 
+/** One extra tile on each side prevents diagonal bypass around an exit seal. */
+const EXIT_SHOULDER_WIDTH = 1;
+
 /**
  * Exit direction type
  */
@@ -172,6 +175,25 @@ export function calculatePerimeterPositions(roomName: string): PerimeterPlan {
   const terrain = Game.map.getRoomTerrain(roomName);
   const walls: ExitPosition[] = [];
   const ramparts: ExitPosition[] = [];
+  const plannedPositions = new Set<string>();
+
+  const addWall = (x: number, y: number, direction: ExitDirection): void => {
+    if (x < 1 || x > 48 || y < 1 || y > 48) return;
+    if (terrain.get(x, y) === TERRAIN_MASK_WALL) return;
+    const key = `${x},${y}`;
+    if (plannedPositions.has(key)) return;
+    plannedPositions.add(key);
+    walls.push({ x, y, exitDirection: direction, isChokePoint: false });
+  };
+
+  const addRampart = (x: number, y: number, direction: ExitDirection): void => {
+    if (x < 1 || x > 48 || y < 1 || y > 48) return;
+    if (terrain.get(x, y) === TERRAIN_MASK_WALL) return;
+    const key = `${x},${y}`;
+    if (plannedPositions.has(key)) return;
+    plannedPositions.add(key);
+    ramparts.push({ x, y, exitDirection: direction, isChokePoint: false });
+  };
 
   // Find all exit tiles (actual room exits)
   const exits = findRoomExits(roomName);
@@ -220,6 +242,48 @@ export function calculatePerimeterPositions(roomName: string): PerimeterPlan {
     
     // For each group of continuous exits, place walls 2 tiles inside with a gap in the center
     for (const group of groups) {
+      // Add side shoulders so creeps cannot diagonally route around the first/last
+      // defended tile in an entrance. Without these, only tiles directly in front
+      // of exit tiles were sealed, leaving gaps beside the entrance.
+      const first = group[0];
+      const last = group[group.length - 1];
+      if (first && last) {
+        switch (direction) {
+          case "top":
+            for (let dx = 1; dx <= EXIT_SHOULDER_WIDTH; dx++) {
+              addWall(first.x - dx, 2, direction);
+              addWall(last.x + dx, 2, direction);
+              addWall(first.x - dx, 1, direction);
+              addWall(last.x + dx, 1, direction);
+            }
+            break;
+          case "bottom":
+            for (let dx = 1; dx <= EXIT_SHOULDER_WIDTH; dx++) {
+              addWall(first.x - dx, 47, direction);
+              addWall(last.x + dx, 47, direction);
+              addWall(first.x - dx, 48, direction);
+              addWall(last.x + dx, 48, direction);
+            }
+            break;
+          case "left":
+            for (let dy = 1; dy <= EXIT_SHOULDER_WIDTH; dy++) {
+              addWall(2, first.y - dy, direction);
+              addWall(2, last.y + dy, direction);
+              addWall(1, first.y - dy, direction);
+              addWall(1, last.y + dy, direction);
+            }
+            break;
+          case "right":
+            for (let dy = 1; dy <= EXIT_SHOULDER_WIDTH; dy++) {
+              addWall(47, first.y - dy, direction);
+              addWall(47, last.y + dy, direction);
+              addWall(48, first.y - dy, direction);
+              addWall(48, last.y + dy, direction);
+            }
+            break;
+        }
+      }
+
       // Determine the center of the group for gap placement
       const centerIndex = Math.floor(group.length / 2);
       
@@ -245,17 +309,14 @@ export function calculatePerimeterPositions(roomName: string): PerimeterPlan {
             break;
         }
         
-        // Skip if terrain is wall at wall position
-        if (terrain.get(wallX, wallY) === TERRAIN_MASK_WALL) continue;
-        
-        // Create a 2-tile wide gap in the center of each exit group
-        // Gap is placed at center ± 1 for groups large enough to warrant friendly passage
-        const isGap = group.length >= MIN_GROUP_SIZE_FOR_GAP && (i === centerIndex || i === centerIndex - 1);
+        // Create a single rampart passage in the center of each exit group.
+        // Keep all other entrance/shoulder positions as walls so exits close tightly.
+        const isGap = group.length >= MIN_GROUP_SIZE_FOR_GAP && i === centerIndex;
         
         if (isGap) {
-          ramparts.push({ x: wallX, y: wallY, exitDirection: direction, isChokePoint: false });
+          addRampart(wallX, wallY, direction);
         } else {
-          walls.push({ x: wallX, y: wallY, exitDirection: direction, isChokePoint: false });
+          addWall(wallX, wallY, direction);
         }
       }
     }

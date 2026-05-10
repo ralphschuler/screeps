@@ -2,7 +2,7 @@ import { assert } from "chai";
 
 /**
  * Test suite for remote construction site assignment
- * 
+ *
  * Verifies that builders can be assigned to construction sites in remote rooms,
  * addressing the issue where remote harvesting infrastructure was never built.
  */
@@ -38,19 +38,21 @@ describe("Remote Construction Assignment", () => {
     roomName: string,
     x: number = 25,
     y: number = 25
-  ): ConstructionSite => ({
-    id: id as Id<ConstructionSite>,
-    structureType,
-    room: { name: roomName } as Room,
-    pos: { x, y, roomName } as RoomPosition
-  } as ConstructionSite);
+  ): ConstructionSite =>
+    ({
+      id: id as Id<ConstructionSite>,
+      structureType,
+      room: { name: roomName } as Room,
+      pos: { x, y, roomName } as RoomPosition
+    }) as ConstructionSite;
 
-  const createMockCreep = (name: string, role: string, roomName: string): Creep => ({
-    name,
-    id: name as Id<Creep>,
-    room: { name: roomName } as Room,
-    memory: { role }
-  } as unknown as Creep);
+  const createMockCreep = (name: string, role: string, roomName: string): Creep =>
+    ({
+      name,
+      id: name as Id<Creep>,
+      room: { name: roomName } as Room,
+      memory: { role }
+    }) as unknown as Creep;
 
   beforeEach(() => {
     // Mock Game object
@@ -68,13 +70,9 @@ describe("Remote Construction Assignment", () => {
   describe("Remote Construction Site Discovery", () => {
     it("should find construction sites in visible remote rooms", () => {
       // Setup: Home room W1N1 with remote room W2N1
-      const remoteContainer = createMockConstructionSite(
-        "container1",
-        STRUCTURE_CONTAINER,
-        "W2N1"
-      );
+      const remoteContainer = createMockConstructionSite("container1", STRUCTURE_CONTAINER, "W2N1");
       const remoteRoom = createMockRoom("W2N1", [remoteContainer]);
-      
+
       const homeRoom = createMockRoom("W1N1", [], {
         remoteAssignments: ["W2N1"]
       });
@@ -85,7 +83,7 @@ describe("Remote Construction Assignment", () => {
 
       // Import and test (we'll need to expose the getRemoteConstructionSites function)
       // For now, we'll test the integration through the assignment manager
-      
+
       // The test verifies that remote sites are discovered and included in assignments
       assert.isOk(remoteRoom, "Remote room should be accessible");
       assert.equal(remoteRoom.find(FIND_CONSTRUCTION_SITES).length, 1);
@@ -126,7 +124,7 @@ describe("Remote Construction Assignment", () => {
     it("should prioritize remote containers above local structures", () => {
       // This test verifies the priority system gives remote infrastructure
       // higher priority than most local structures
-      
+
       const priorities: Array<{ structure: StructureConstant; isRemote: boolean; expectedPriority: number }> = [
         { structure: STRUCTURE_CONTAINER, isRemote: true, expectedPriority: 100 },
         { structure: STRUCTURE_ROAD, isRemote: true, expectedPriority: 80 },
@@ -137,15 +135,11 @@ describe("Remote Construction Assignment", () => {
       ];
 
       // Verify remote containers have highest priority
-      const remoteContainer = priorities.find(
-        p => p.structure === STRUCTURE_CONTAINER && p.isRemote
-      );
+      const remoteContainer = priorities.find(p => p.structure === STRUCTURE_CONTAINER && p.isRemote);
       assert.equal(remoteContainer?.expectedPriority, 100, "Remote containers should have priority 100");
 
       // Verify remote containers prioritized over spawns
-      const spawn = priorities.find(
-        p => p.structure === STRUCTURE_SPAWN && !p.isRemote
-      );
+      const spawn = priorities.find(p => p.structure === STRUCTURE_SPAWN && !p.isRemote);
       assert.isBelow(
         spawn!.expectedPriority,
         remoteContainer!.expectedPriority,
@@ -156,7 +150,7 @@ describe("Remote Construction Assignment", () => {
     it("should prioritize remote roads above local roads", () => {
       const remoteRoadPriority = 80;
       const localRoadPriority = 50;
-      
+
       assert.isAbove(
         remoteRoadPriority,
         localRoadPriority,
@@ -168,16 +162,8 @@ describe("Remote Construction Assignment", () => {
   describe("Builder Assignment Integration", () => {
     it("should assign builder to remote container when it has highest priority", () => {
       // Setup: Home room with local extension site and remote container site
-      const localExtension = createMockConstructionSite(
-        "ext1",
-        STRUCTURE_EXTENSION,
-        "W1N1"
-      );
-      const remoteContainer = createMockConstructionSite(
-        "container1",
-        STRUCTURE_CONTAINER,
-        "W2N1"
-      );
+      const localExtension = createMockConstructionSite("ext1", STRUCTURE_EXTENSION, "W1N1");
+      const remoteContainer = createMockConstructionSite("container1", STRUCTURE_CONTAINER, "W2N1");
 
       const homeRoom = createMockRoom("W1N1", [localExtension], {
         remoteAssignments: ["W2N1"]
@@ -194,7 +180,7 @@ describe("Remote Construction Assignment", () => {
       // - Remote container: 100
       // - Local extension: 90
       // Builder should be assigned to remote container
-      
+
       // Note: Full integration would require importing and calling the assignment manager
       // For now, we verify the priority values are correct
       assert.isOk(builder);
@@ -225,7 +211,7 @@ describe("Remote Construction Assignment", () => {
       // With 3 builders and 3 sites (2 remote containers + 1 spawn):
       // Expected distribution: Each builder gets one site
       // Priorities: container1 (100), container2 (100), spawn (95)
-      
+
       assert.equal(Object.keys(Game.creeps).length, 3);
     });
   });
@@ -253,12 +239,8 @@ describe("Remote Construction Assignment", () => {
     });
 
     it("should handle multiple remote rooms with mixed visibility", () => {
-      const remoteContainer = createMockConstructionSite(
-        "container1",
-        STRUCTURE_CONTAINER,
-        "W2N1"
-      );
-      
+      const remoteContainer = createMockConstructionSite("container1", STRUCTURE_CONTAINER, "W2N1");
+
       const homeRoom = createMockRoom("W1N1", [], {
         remoteAssignments: ["W2N1", "W3N1", "W2N2"] // 3 remotes, only 1 visible
       });
@@ -282,7 +264,7 @@ describe("Remote Construction Assignment", () => {
       for (let i = 0; i < 10; i++) {
         const remoteName = `W${i + 2}N1`;
         remoteRooms.push(remoteName);
-        
+
         // Make half of them visible with 2 sites each
         if (i % 2 === 0) {
           const site1 = createMockConstructionSite(`${remoteName}_1`, STRUCTURE_CONTAINER, remoteName);

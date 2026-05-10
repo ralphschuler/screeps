@@ -6,8 +6,4 @@
  */
 
 // Collection Point - rally point calculation for military units (uses SwarmState)
-export {
-  getCollectionPoint,
-  invalidateCollectionPoint
-} from "./collectionPoint";
-
+export { getCollectionPoint, invalidateCollectionPoint } from "./collectionPoint";

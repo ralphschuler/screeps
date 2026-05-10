@@ -2,7 +2,7 @@
  * Pathfinding Utilities
  *
  * Path-related utilities including portal management and path cache events.
- * 
+ *
  * This module now uses @ralphschuler/screeps-pathfinding package with adapters
  * to integrate with the bot's existing systems.
  */
@@ -17,17 +17,10 @@ import {
 } from "./pathfindingAdapter";
 
 // Re-export types from the package
-export type {
-  PortalDestination,
-  PortalInfo,
-  PortalRoute
-} from "@ralphschuler/screeps-pathfinding";
+export type { PortalDestination, PortalInfo, PortalRoute } from "@ralphschuler/screeps-pathfinding";
 
 // Create singleton instances with adapters
-const portalManager = new PortalManager(
-  new BotCacheAdapter(),
-  new BotLoggerAdapter()
-);
+const portalManager = new PortalManager(new BotCacheAdapter(), new BotLoggerAdapter());
 
 const pathCacheEventManager = new PathCacheEventManager(
   new BotLoggerAdapter(),
@@ -60,12 +53,7 @@ export function findRouteToPortal(fromRoom: string, targetShard: string) {
   return portalManager.findRouteToPortal(fromRoom, targetShard);
 }
 
-export function findInterShardRoute(
-  fromRoom: string,
-  fromShard: string,
-  toRoom: string,
-  toShard: string
-) {
+export function findInterShardRoute(fromRoom: string, fromShard: string, toRoom: string, toShard: string) {
   return portalManager.findInterShardRoute(fromRoom, fromShard, toRoom, toShard);
 }
 
@@ -76,4 +64,3 @@ export function maintainPortalCache() {
 export function initializePathCacheEvents() {
   return pathCacheEventManager.initializePathCacheEvents();
 }
-

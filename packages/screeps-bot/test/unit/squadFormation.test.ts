@@ -5,10 +5,7 @@
  */
 
 import { expect } from "chai";
-import {
-  calculateSquadComposition,
-  calculateOffensiveSquadComposition
-} from "../../src/clusters/squadCoordinator";
+import { calculateSquadComposition, calculateOffensiveSquadComposition } from "../../src/clusters/squadCoordinator";
 import type { DefenseAssistanceRequest } from "../../src/memory/schemas";
 
 describe("Squad Formation", () => {
@@ -161,7 +158,7 @@ describe("Squad Formation", () => {
         { role: "healer" }
       ];
 
-      const isComplete = 
+      const isComplete =
         currentMembers.filter(m => m.role === "guard").length >= targetComposition.guards &&
         currentMembers.filter(m => m.role === "ranger").length >= targetComposition.rangers &&
         currentMembers.filter(m => m.role === "healer").length >= targetComposition.healers;
@@ -175,11 +172,11 @@ describe("Squad Formation", () => {
         state: "forming",
         createdAt: 1000
       };
-      
+
       const currentTime = 1400;
       const timeout = 300;
 
-      const hasTimedOut = (currentTime - squad.createdAt) > timeout;
+      const hasTimedOut = currentTime - squad.createdAt > timeout;
 
       expect(hasTimedOut).to.be.true;
     });
@@ -190,11 +187,11 @@ describe("Squad Formation", () => {
         state: "active",
         lastActionTick: 1000
       };
-      
+
       const currentTime = 1700;
       const idleTimeout = 600;
 
-      const isIdle = (currentTime - squad.lastActionTick) > idleTimeout;
+      const isIdle = currentTime - squad.lastActionTick > idleTimeout;
 
       expect(isIdle).to.be.true;
     });
@@ -244,12 +241,7 @@ describe("Squad Formation", () => {
     });
 
     it("should count members by role", () => {
-      const members = [
-        { role: "guard" },
-        { role: "guard" },
-        { role: "ranger" },
-        { role: "healer" }
-      ];
+      const members = [{ role: "guard" }, { role: "guard" }, { role: "ranger" }, { role: "healer" }];
 
       const guards = members.filter(m => m.role === "guard").length;
       const rangers = members.filter(m => m.role === "ranger").length;
@@ -300,7 +292,7 @@ describe("Squad Formation", () => {
       const currentTime = 1150;
       const timeout = 100;
 
-      const hasTimedOut = (currentTime - rallyStartTime) > timeout;
+      const hasTimedOut = currentTime - rallyStartTime > timeout;
       const hasMinimum = membersAtRally >= Math.ceil(totalMembers * 0.6);
 
       const canAdvance = hasTimedOut && hasMinimum;
@@ -320,12 +312,7 @@ describe("Squad Formation", () => {
     });
 
     it("should validate squad composition balance", () => {
-      const members = [
-        { role: "guard" },
-        { role: "guard" },
-        { role: "guard" },
-        { role: "healer" }
-      ];
+      const members = [{ role: "guard" }, { role: "guard" }, { role: "guard" }, { role: "healer" }];
 
       const guards = members.filter(m => m.role === "guard").length;
       const healers = members.filter(m => m.role === "healer").length;
@@ -338,18 +325,12 @@ describe("Squad Formation", () => {
     });
 
     it("should detect unbalanced squads", () => {
-      const members = [
-        { role: "guard" },
-        { role: "guard" },
-        { role: "guard" },
-        { role: "guard" },
-        { role: "guard" }
-      ];
+      const members = [{ role: "guard" }, { role: "guard" }, { role: "guard" }, { role: "guard" }, { role: "guard" }];
 
       const guards = members.filter(m => m.role === "guard").length;
       const healers = members.filter(m => m.role === "healer").length;
 
-      const isBalanced = healers > 0 && (guards / Math.max(1, healers)) <= 4;
+      const isBalanced = healers > 0 && guards / Math.max(1, healers) <= 4;
 
       expect(isBalanced).to.be.false;
     });
@@ -374,7 +355,7 @@ describe("Squad Formation", () => {
       const currentSize = 2;
 
       const casualtyThreshold = 0.5;
-      const shouldDissolve = (currentSize / originalSize) < casualtyThreshold;
+      const shouldDissolve = currentSize / originalSize < casualtyThreshold;
 
       expect(shouldDissolve).to.be.true;
     });
@@ -384,10 +365,10 @@ describe("Squad Formation", () => {
         createdAt: 1000,
         maxLifetime: 1000
       };
-      
+
       const currentTime = 2100;
 
-      const shouldDissolve = (currentTime - squad.createdAt) > squad.maxLifetime;
+      const shouldDissolve = currentTime - squad.createdAt > squad.maxLifetime;
 
       expect(shouldDissolve).to.be.true;
     });
@@ -415,7 +396,7 @@ describe("Squad Formation", () => {
       ];
 
       const targetComposition = { guards: 3, rangers: 2, healers: 1, siegeUnits: 0 };
-      
+
       // Distribute spawning load
       const totalUnits = 6;
       const unitsPerRoom = Math.ceil(totalUnits / rooms.length);
@@ -444,10 +425,7 @@ describe("Squad Formation", () => {
       const leader = { x: 25, y: 25 };
       const member = { x: 24, y: 25 };
 
-      const distance = Math.max(
-        Math.abs(leader.x - member.x),
-        Math.abs(leader.y - member.y)
-      );
+      const distance = Math.max(Math.abs(leader.x - member.x), Math.abs(leader.y - member.y));
 
       const maxFormationDistance = 3;
       const inFormation = distance <= maxFormationDistance;

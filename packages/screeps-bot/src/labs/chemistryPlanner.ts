@@ -85,11 +85,7 @@ export class ChemistryPlanner {
   /**
    * Check if we have enough resources for a reaction
    */
-  public hasResourcesForReaction(
-    terminal: StructureTerminal,
-    reaction: Reaction,
-    minAmount = 100
-  ): boolean {
+  public hasResourcesForReaction(terminal: StructureTerminal, reaction: Reaction, minAmount = 100): boolean {
     return this.manager.hasResourcesForReaction(terminal, reaction, minAmount);
   }
 

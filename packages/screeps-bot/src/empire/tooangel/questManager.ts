@@ -1,6 +1,6 @@
 /**
  * TooAngel Quest Manager
- * 
+ *
  * Manages quest lifecycle:
  * 1. Detection - Scan for quests advertised on controller signs
  * 2. Application - Apply for quests via terminal transfer
@@ -12,11 +12,7 @@
 import { logger } from "@ralphschuler/screeps-core";
 import { getTooAngelMemory } from "./memoryInit";
 import { getNPCRooms } from "./npcDetector";
-import type {
-  TooAngelQuest,
-  TooAngelQuestMemory,
-  TooAngelQuestType
-} from "./types";
+import type { TooAngelQuest, TooAngelQuestMemory, TooAngelQuestType } from "./types";
 
 /**
  * Quest configuration
@@ -39,21 +35,15 @@ export function parseQuestMessage(description: string): TooAngelQuest | null {
   try {
     const parsed = JSON.parse(description);
 
-    if (parsed.type === "quest" &&
-        parsed.id &&
-        parsed.room &&
-        parsed.quest &&
-        typeof parsed.end === "number") {
-      
+    if (parsed.type === "quest" && parsed.id && parsed.room && parsed.quest && typeof parsed.end === "number") {
       // Validate deadline is in the future (if not a completion message)
       if (!parsed.result && parsed.end <= Game.time) {
-        logger.debug(
-          `Ignoring quest ${parsed.id} with past deadline: ${parsed.end} (current: ${Game.time})`,
-          { subsystem: "TooAngel" }
-        );
+        logger.debug(`Ignoring quest ${parsed.id} with past deadline: ${parsed.end} (current: ${Game.time})`, {
+          subsystem: "TooAngel"
+        });
         return null;
       }
-      
+
       return parsed as TooAngelQuest;
     }
   } catch {
@@ -84,9 +74,7 @@ export function getQuest(questId: string): TooAngelQuestMemory | null {
  */
 export function canAcceptQuest(): boolean {
   const activeQuests = getActiveQuests();
-  const activeCount = Object.values(activeQuests).filter(
-    q => q.status === "active" || q.status === "applied"
-  ).length;
+  const activeCount = Object.values(activeQuests).filter(q => q.status === "active" || q.status === "applied").length;
 
   return activeCount < QUEST_CONFIG.MAX_ACTIVE_QUESTS;
 }
@@ -100,17 +88,13 @@ export function isSupportedQuestType(questType: TooAngelQuestType): boolean {
 
 /**
  * Apply for a quest
- * 
+ *
  * @param questId - Quest ID from controller sign
  * @param originRoom - TooAngel NPC room advertising the quest
  * @param fromRoomName - Our room to send application from
  * @returns true if application was sent
  */
-export function applyForQuest(
-  questId: string,
-  originRoom: string,
-  fromRoomName?: string
-): boolean {
+export function applyForQuest(questId: string, originRoom: string, fromRoomName?: string): boolean {
   if (!canAcceptQuest()) {
     logger.debug("Cannot accept more quests (at max capacity)", {
       subsystem: "TooAngel"
@@ -171,10 +155,7 @@ export function applyForQuest(
   );
 
   if (result === OK) {
-    logger.info(
-      `Applied for quest ${questId} from ${sourceRoom.name} to ${originRoom}`,
-      { subsystem: "TooAngel" }
-    );
+    logger.info(`Applied for quest ${questId} from ${sourceRoom.name} to ${originRoom}`, { subsystem: "TooAngel" });
 
     // Track application in memory (will be updated when quest details are received)
     const memory = getTooAngelMemory();
@@ -220,10 +201,9 @@ export function processQuestMessages(): void {
     const quest = parseQuestMessage(transaction.description);
 
     if (quest) {
-      logger.info(
-        `Received quest ${quest.id}: ${quest.quest} in ${quest.room} (deadline: ${quest.end})`,
-        { subsystem: "TooAngel" }
-      );
+      logger.info(`Received quest ${quest.id}: ${quest.quest} in ${quest.room} (deadline: ${quest.end})`, {
+        subsystem: "TooAngel"
+      });
 
       // Check if this is a quest completion confirmation
       if (quest.result) {
@@ -237,9 +217,7 @@ export function processQuestMessages(): void {
       memory.activeQuests![quest.id] = {
         id: quest.id,
         type: quest.quest,
-        status: existing?.status === "completed" || existing?.status === "failed" 
-          ? existing.status 
-          : "active",
+        status: existing?.status === "completed" || existing?.status === "failed" ? existing.status : "active",
         targetRoom: quest.room,
         originRoom: quest.origin || transaction.from,
         deadline: quest.end,
@@ -250,10 +228,7 @@ export function processQuestMessages(): void {
 
       // Check if we support this quest type
       if (!isSupportedQuestType(quest.quest)) {
-        logger.warn(
-          `Received unsupported quest type: ${quest.quest}`,
-          { subsystem: "TooAngel" }
-        );
+        logger.warn(`Received unsupported quest type: ${quest.quest}`, { subsystem: "TooAngel" });
         memory.activeQuests![quest.id].status = "failed";
       }
     }
@@ -333,18 +308,10 @@ export function notifyQuestComplete(questId: string, won: boolean): boolean {
     result: won ? "won" : "lost"
   };
 
-  const result = sourceRoom.terminal.send(
-    RESOURCE_ENERGY,
-    100,
-    quest.originRoom,
-    JSON.stringify(message)
-  );
+  const result = sourceRoom.terminal.send(RESOURCE_ENERGY, 100, quest.originRoom, JSON.stringify(message));
 
   if (result === OK) {
-    logger.info(
-      `Notified quest completion: ${questId} (${won ? "won" : "lost"})`,
-      { subsystem: "TooAngel" }
-    );
+    logger.info(`Notified quest completion: ${questId} (${won ? "won" : "lost"})`, { subsystem: "TooAngel" });
     return true;
   }
 
@@ -364,19 +331,20 @@ export function cleanupExpiredQuests(): void {
     // Mark as failed if past deadline
     if (quest.deadline > 0 && Game.time >= quest.deadline - QUEST_CONFIG.DEADLINE_BUFFER) {
       if (quest.status === "active" || quest.status === "applied") {
-        logger.warn(
-          `Quest ${questId} expired (deadline: ${quest.deadline}, current: ${Game.time})`,
-          { subsystem: "TooAngel" }
-        );
+        logger.warn(`Quest ${questId} expired (deadline: ${quest.deadline}, current: ${Game.time})`, {
+          subsystem: "TooAngel"
+        });
         quest.status = "failed";
         quest.completedAt = Game.time;
       }
     }
 
     // Clean up old completed/failed quests
-    if ((quest.status === "completed" || quest.status === "failed") &&
-        quest.completedAt &&
-        Game.time - quest.completedAt > 10000) {
+    if (
+      (quest.status === "completed" || quest.status === "failed") &&
+      quest.completedAt &&
+      Game.time - quest.completedAt > 10000
+    ) {
       delete activeQuests[questId];
     }
   }

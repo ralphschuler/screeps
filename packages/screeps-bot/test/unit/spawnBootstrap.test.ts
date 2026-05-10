@@ -1,5 +1,10 @@
 import { assert } from "chai";
-import { getEnergyProducerCount, getTransportCount, isBootstrapMode, getBootstrapRole } from "../../src/spawning/bootstrapManager";
+import {
+  getEnergyProducerCount,
+  getTransportCount,
+  isBootstrapMode,
+  getBootstrapRole
+} from "../../src/spawning/bootstrapManager";
 import { determineNextRole } from "../../src/spawning/spawnQueueManager";
 import { countCreepsByRole } from "../../src/spawning/spawnNeedsAnalyzer";
 import { clearRoomFindCache } from "@ralphschuler/screeps-cache";
@@ -65,11 +70,13 @@ function createMockSwarmState(): SwarmState {
  * Create a mock Room object
  */
 function createMockRoom(name: string, hasStorage = false, sourceCount = 2): Room {
-  const mockSources = Array(sourceCount).fill(null).map((_, i) => ({
-    id: `source_${i}` as Id<Source>,
-    pos: { x: 25 + i, y: 25, roomName: name }
-  }));
-  
+  const mockSources = Array(sourceCount)
+    .fill(null)
+    .map((_, i) => ({
+      id: `source_${i}` as Id<Source>,
+      pos: { x: 25 + i, y: 25, roomName: name }
+    }));
+
   return {
     name,
     storage: hasStorage ? { store: { [RESOURCE_ENERGY]: 10000 } } : undefined,
@@ -356,7 +363,7 @@ describe("spawn bootstrap system", () => {
       const room = createMockRoom("E1N1", false, 1); // Single source room
       global.Game.rooms["E1N1"] = room;
       const result = isBootstrapMode("E1N1", room);
-      
+
       // FIXED: Should not be in bootstrap mode with 1 harvester in a 1-source room
       // Previously would get stuck requiring 2 harvesters regardless of source count
       assert.isFalse(result, "Bootstrap mode should exit with 1 harvester in 1-source room");
@@ -371,7 +378,7 @@ describe("spawn bootstrap system", () => {
       const room = createMockRoom("E1N1", false, 2); // Two source room
       global.Game.rooms["E1N1"] = room;
       const result = isBootstrapMode("E1N1", room);
-      
+
       // Should still be in bootstrap mode, needing 2nd harvester
       assert.isTrue(result, "Bootstrap mode should continue until 2nd harvester in 2-source room");
     });
@@ -390,24 +397,30 @@ describe("spawn bootstrap system", () => {
       assert.isFalse(result1, "1-source room should exit bootstrap with 1 harvester");
 
       // Room with 2 sources - still needs 2nd harvester
-      createMockCreeps({
-        larvaWorker: 1,
-        harvester: 1,
-        hauler: 1,
-        upgrader: 1
-      }, "E2N2");
+      createMockCreeps(
+        {
+          larvaWorker: 1,
+          harvester: 1,
+          hauler: 1,
+          upgrader: 1
+        },
+        "E2N2"
+      );
       const twoSourceRoom = createMockRoom("E2N2", false, 2);
       global.Game.rooms["E2N2"] = twoSourceRoom;
       const result2 = isBootstrapMode("E2N2", twoSourceRoom);
       assert.isTrue(result2, "2-source room should stay in bootstrap with only 1 harvester");
 
       // Room with 2 sources - both harvesters spawned
-      createMockCreeps({
-        larvaWorker: 1,
-        harvester: 2,
-        hauler: 1,
-        upgrader: 1
-      }, "E2N2");
+      createMockCreeps(
+        {
+          larvaWorker: 1,
+          harvester: 2,
+          hauler: 1,
+          upgrader: 1
+        },
+        "E2N2"
+      );
       const result3 = isBootstrapMode("E2N2", twoSourceRoom);
       assert.isFalse(result3, "2-source room should exit bootstrap with 2 harvesters");
     });

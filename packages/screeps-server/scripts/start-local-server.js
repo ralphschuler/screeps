@@ -9,6 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const serverRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(serverRoot, '../..');
+const DEFAULT_LOCAL_PASSWORD = 'ci-password';
 
 const args = new Map(process.argv.slice(2).map(arg => {
   const [key, ...rest] = arg.replace(/^--/, '').split('=');
@@ -20,9 +21,40 @@ const serverHost = args.get('serverHost') ?? process.env.SCREEPS_SERVER_HOST ?? 
 const apiHost = serverHost === '0.0.0.0' ? '127.0.0.1' : serverHost;
 const serverPort = Number(args.get('serverPort') ?? process.env.SCREEPS_SERVER_PORT ?? 21025);
 const cliPort = Number(args.get('cliPort') ?? process.env.SCREEPS_CLI_PORT ?? 21026);
-const serverPassword = args.get('serverPassword') ?? process.env.SCREEPS_SERVER_PASSWORD ?? 'ci-password';
+const serverPassword = args.get('serverPassword') ?? process.env.SCREEPS_SERVER_PASSWORD ?? DEFAULT_LOCAL_PASSWORD;
 const shardName = args.get('shardName') ?? process.env.SHARD_NAME ?? 'shard0';
-const password = args.get('password') ?? 'ci-password';
+const password = args.get('password') ?? DEFAULT_LOCAL_PASSWORD;
+
+export function isLoopbackHost(host) {
+  const normalizedHost = String(host ?? '').trim().toLowerCase().replace(/^\[|\]$/g, '');
+  if (normalizedHost === 'localhost') return true;
+  if (normalizedHost === '::1') return true;
+
+  if (net.isIP(normalizedHost) === 4) {
+    return normalizedHost.startsWith('127.');
+  }
+
+  return false;
+}
+
+export function validateLocalServerCredentials({ host, serverPassword: configuredServerPassword, password: configuredPassword }) {
+  if (isLoopbackHost(host)) return;
+
+  const defaultCredentialNames = [];
+  if (configuredServerPassword === DEFAULT_LOCAL_PASSWORD) defaultCredentialNames.push('serverPassword');
+  if (configuredPassword === DEFAULT_LOCAL_PASSWORD) defaultCredentialNames.push('password');
+  if (defaultCredentialNames.length === 0) return;
+
+  throw new Error([
+    'Refusing to bind the local Screeps server to a shared-network interface with default credentials.',
+    `Host: ${host}`,
+    `Default credentials still in use: ${defaultCredentialNames.join(', ')}`,
+    'Loopback development remains allowed with defaults: npm run server:local:up',
+    'Safe LAN opt-in requires explicit non-default passwords:',
+    '  npm run server:local:up -- --serverHost=0.0.0.0 --serverPassword=<strong-server-password> --password=<strong-bot-password>',
+    'Shared-network risk: anyone who can reach this host/port may access the local Screeps server.'
+  ].join('\n'));
+}
 
 function log(message) {
   console.log(`[${new Date().toISOString()}] ${message}`);
@@ -110,6 +142,7 @@ async function setupBotArena() {
 }
 
 async function main() {
+  validateLocalServerCredentials({ host: serverHost, serverPassword, password });
   await run('npm', ['run', 'build:mod'], { cwd: repoRoot });
   await run('npm', ['run', 'build:bot'], { cwd: repoRoot });
   log(`using host bind ${serverHost}:${serverPort} and CLI ${serverHost}:${cliPort}`);
@@ -123,14 +156,17 @@ async function main() {
   console.log(`Users: swarm-bot-current, swarm-bot-prev1, swarm-bot-prev2, github-screeps-ai, github-nooby-guide`);
   console.log(`Password: ${password}`);
   console.log(`Server password: ${serverPassword}`);
-  console.log(`LAN opt-in: npm run server:local:up -- --serverHost=0.0.0.0`);
+  console.log('LAN opt-in: npm run server:local:up -- --serverHost=0.0.0.0 --serverPassword=<strong-server-password> --password=<strong-bot-password>');
+  console.log('Warning: LAN mode exposes the local server to other devices on the shared network. Use non-default passwords.');
   console.log(`\nStop:`);
   console.log(`  npm run server:local:down`);
   console.log(`Logs:`);
   console.log(`  npm run server:local:logs`);
 }
 
-main().catch(error => {
-  console.error(error.stack || error.message || String(error));
-  process.exitCode = 1;
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  main().catch(error => {
+    console.error(error.stack || error.message || String(error));
+    process.exitCode = 1;
+  });
+}

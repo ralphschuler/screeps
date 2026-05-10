@@ -130,7 +130,6 @@ From issue #910:
   - ✅ Quick reference cards and troubleshooting
 
 - [x] **Grafana dashboard for trends** (Optional)
-  - ✅ Export script: `scripts/export-to-grafana.js`
   - ✅ Supports Prometheus and Graphite
   - ✅ Documented integration steps
 

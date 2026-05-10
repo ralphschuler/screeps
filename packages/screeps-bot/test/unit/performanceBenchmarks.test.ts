@@ -12,13 +12,7 @@
 
 import { expect } from "chai";
 import { performance } from "perf_hooks";
-import {
-  clearObjectCache,
-  getCachedObjectById,
-  getCacheStatistics,
-  resetCacheStats,
-  warmCache
-} from "../../src/cache";
+import { clearObjectCache, getCachedObjectById, getCacheStatistics, resetCacheStats, warmCache } from "../../src/cache";
 
 // Mock performance tracking
 const mockPerformance = {
@@ -36,19 +30,19 @@ describe("Performance Benchmarks", () => {
     fn();
     const end = performance.now();
     const duration = end - start;
-    
+
     if (!mockPerformance.measurements.has(name)) {
       mockPerformance.measurements.set(name, []);
     }
     mockPerformance.measurements.get(name)!.push(duration);
-    
+
     return duration;
   };
 
   describe("Creep Processing Performance", () => {
     it("should process single creep within CPU budget", () => {
       const CPU_BUDGET_PER_CREEP = 0.5;
-      
+
       const processCreep = () => {
         // Simulate creep processing
         let sum = 0;
@@ -59,7 +53,7 @@ describe("Performance Benchmarks", () => {
       };
 
       const time = measurePerformance("single_creep", processCreep);
-      
+
       // Time should be minimal (< 1ms in tests)
       expect(time).to.be.lessThan(10);
     });
@@ -102,7 +96,7 @@ describe("Performance Benchmarks", () => {
       };
 
       const time = measurePerformance("1000_creeps", processLargeSwarm);
-      
+
       // Should complete in reasonable time (< 100ms in test environment)
       expect(time).to.be.lessThan(100);
     });
@@ -118,7 +112,7 @@ describe("Performance Benchmarks", () => {
       };
 
       const time = measurePerformance("filter_creeps", () => filterCreeps(1000, "harvester"));
-      
+
       // Filtering should be fast
       expect(time).to.be.lessThan(20);
     });
@@ -137,7 +131,7 @@ describe("Performance Benchmarks", () => {
 
         const spawns = structures.filter(s => s.type === "spawn");
         const towers = structures.filter(s => s.type === "tower");
-        
+
         return { spawns: spawns.length, towers: towers.length };
       };
 
@@ -181,7 +175,7 @@ describe("Performance Benchmarks", () => {
       const cache: RoomCache = {};
 
       const getCachedRoomData = (roomName: string, tick: number) => {
-        if (cache[roomName] && (tick - cache[roomName].cachedAt) < 10) {
+        if (cache[roomName] && tick - cache[roomName].cachedAt < 10) {
           return cache[roomName].data;
         }
 
@@ -193,7 +187,7 @@ describe("Performance Benchmarks", () => {
 
       // First call - cache miss
       const time1 = measurePerformance("cache_miss", () => getCachedRoomData("W1N1", 100));
-      
+
       // Second call - cache hit
       const time2 = measurePerformance("cache_hit", () => getCachedRoomData("W1N1", 101));
 
@@ -215,8 +209,8 @@ describe("Performance Benchmarks", () => {
 
       const findPath = (from: string, to: string, tick: number) => {
         const cacheKey = `${from}_${to}`;
-        
-        if (pathCache[cacheKey] && (tick - pathCache[cacheKey].cachedAt) < 50) {
+
+        if (pathCache[cacheKey] && tick - pathCache[cacheKey].cachedAt < 50) {
           return pathCache[cacheKey].path;
         }
 
@@ -326,10 +320,10 @@ describe("Performance Benchmarks", () => {
     it("should clean up dead creep memory", () => {
       const memory = {
         creeps: {
-          "creep_1": { role: "harvester", alive: true },
-          "creep_2": { role: "hauler", alive: false },
-          "creep_3": { role: "upgrader", alive: true },
-          "creep_4": { role: "builder", alive: false }
+          creep_1: { role: "harvester", alive: true },
+          creep_2: { role: "hauler", alive: false },
+          creep_3: { role: "upgrader", alive: true },
+          creep_4: { role: "builder", alive: false }
         }
       };
 
@@ -347,7 +341,7 @@ describe("Performance Benchmarks", () => {
 
     it("should limit pheromone history length", () => {
       const MAX_HISTORY = 20;
-      
+
       interface EventLog {
         events: Array<{ type: string; tick: number }>;
       }
@@ -359,7 +353,7 @@ describe("Performance Benchmarks", () => {
       // Add 30 events
       for (let i = 0; i < 30; i++) {
         log.events.push({ type: "event", tick: i });
-        
+
         // Trim to max length
         if (log.events.length > MAX_HISTORY) {
           log.events.shift();
@@ -377,10 +371,13 @@ describe("Performance Benchmarks", () => {
         value: i
       }));
 
-      const objectData = arrayData.reduce((acc, item) => {
-        acc[item.id] = item.value;
-        return acc;
-      }, {} as Record<string, number>);
+      const objectData = arrayData.reduce(
+        (acc, item) => {
+          acc[item.id] = item.value;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
 
       // Array search
       const timeArray = measurePerformance("array_search", () => {
@@ -536,7 +533,7 @@ describe("Performance Benchmarks", () => {
         id: `order_${i}`,
         resource: ["energy", "H", "O", "U", "L"][i % 5],
         price: 1.0 + (i % 10) * 0.1,
-        amount: 1000 + (i * 100)
+        amount: 1000 + i * 100
       }));
 
       const processOrders = () => {
@@ -557,11 +554,14 @@ describe("Performance Benchmarks", () => {
       }));
 
       const processCreeps = () => {
-        const byRoom = creeps.reduce((acc, c) => {
-          if (!acc[c.room]) acc[c.room] = 0;
-          acc[c.room]++;
-          return acc;
-        }, {} as Record<string, number>);
+        const byRoom = creeps.reduce(
+          (acc, c) => {
+            if (!acc[c.room]) acc[c.room] = 0;
+            acc[c.room]++;
+            return acc;
+          },
+          {} as Record<string, number>
+        );
         return Object.keys(byRoom).length;
       };
 
@@ -576,19 +576,19 @@ describe("Performance Benchmarks", () => {
       const current = 75; // ms
       const threshold = 1.3; // 30% degradation allowed
 
-      const hasRegression = current > (baseline * threshold);
+      const hasRegression = current > baseline * threshold;
       expect(hasRegression).to.be.true;
     });
 
     it("should track performance trends over multiple runs", () => {
       const measurements = [45, 48, 47, 50, 52, 55, 60, 65];
-      
+
       const trend = (arr: number[]): "improving" | "degrading" | "stable" => {
         if (arr.length < 2) return "stable";
         const first = arr[0];
         const last = arr[arr.length - 1];
         const change = (last - first) / first;
-        
+
         if (change > 0.1) return "degrading";
         if (change < -0.1) return "improving";
         return "stable";
@@ -620,14 +620,14 @@ describe("Performance Benchmarks", () => {
           for (let i = 0; i < 10; i++) {
             sum += i;
           }
-          
+
           if (id === "test-storage-1") {
             return { id, structureType: STRUCTURE_STORAGE };
           }
           return null;
         }
       };
-      
+
       clearObjectCache();
       resetCacheStats();
     });
@@ -637,26 +637,26 @@ describe("Performance Benchmarks", () => {
       const time1 = measurePerformance("cache_miss", () => {
         getCachedObjectById("test-storage-1" as Id<any>);
       });
-      
+
       // Second lookup - cache hit (faster)
       const time2 = measurePerformance("cache_hit", () => {
         getCachedObjectById("test-storage-1" as Id<any>);
       });
-      
+
       // Cache hit should be faster than cache miss
       expect(time2).to.be.at.most(time1);
     });
 
     it("should achieve high hit rate with repeated accesses", () => {
       resetCacheStats();
-      
+
       // Access same object 100 times
       for (let i = 0; i < 100; i++) {
         getCachedObjectById("test-storage-1" as Id<any>);
       }
-      
+
       const stats = getCacheStatistics();
-      
+
       // Should have 1 miss (first access) and 99 hits
       expect(stats.misses).to.equal(1);
       expect(stats.hits).to.equal(99);
@@ -666,7 +666,7 @@ describe("Performance Benchmarks", () => {
     it("should demonstrate CPU savings with multiple objects", () => {
       // Mock multiple objects
       const objectIds = Array.from({ length: 50 }, (_, i) => `obj-${i}`);
-      
+
       // @ts-ignore: Mock getObjectById
       global.Game.getObjectById = (id: Id<any>) => {
         // Simulate lookup cost
@@ -676,9 +676,9 @@ describe("Performance Benchmarks", () => {
         }
         return { id };
       };
-      
+
       resetCacheStats();
-      
+
       // Access each object 10 times
       const time = measurePerformance("cached_multi_access", () => {
         for (let i = 0; i < 10; i++) {
@@ -687,44 +687,44 @@ describe("Performance Benchmarks", () => {
           }
         }
       });
-      
+
       const stats = getCacheStatistics();
-      
+
       // Should have 50 misses (one per unique object) and 450 hits (9 additional accesses per object)
       expect(stats.misses).to.equal(50);
       expect(stats.hits).to.equal(450);
       expect(stats.hitRate).to.equal(0.9); // 450/500 = 90%
-      
+
       // CPU saved should be positive
       expect(stats.cpuSaved).to.be.greaterThan(0);
     });
 
     it("should maintain performance with TTL expiration", () => {
       resetCacheStats();
-      
+
       // Access object at tick 1000 (structure with 10-tick TTL, expires at 1010)
       const obj1 = getCachedObjectById("test-storage-1" as Id<any>);
-      
+
       // Advance 5 ticks (structure still cached, expires at 1010)
       // @ts-ignore: Modifying test environment
       global.Game.time = 1005;
-      
+
       const time1 = measurePerformance("within_ttl", () => {
         const obj2 = getCachedObjectById("test-storage-1" as Id<any>);
         // Should be same cached object
         expect(obj1).to.equal(obj2);
       });
-      
+
       // Advance past TTL (to tick 1010 - entry expires)
-      // @ts-ignore: Modifying test environment  
+      // @ts-ignore: Modifying test environment
       global.Game.time = 1010;
-      
+
       const time2 = measurePerformance("after_ttl", () => {
         const obj3 = getCachedObjectById("test-storage-1" as Id<any>);
         // Should be freshly fetched, different object
         expect(obj1).to.not.equal(obj3);
       });
-      
+
       // Both should complete quickly (no performance degradation)
       expect(time1).to.be.lessThan(10);
       expect(time2).to.be.lessThan(10);
@@ -749,11 +749,11 @@ describe("Performance Benchmarks", () => {
           find: () => []
         }
       };
-      
+
       const time = measurePerformance("cache_warm", () => {
         warmCache();
       });
-      
+
       // Cache warming should be fast (< 50ms in test environment)
       expect(time).to.be.lessThan(50);
     });
@@ -761,15 +761,15 @@ describe("Performance Benchmarks", () => {
     it("should scale with large cache sizes", () => {
       // Create 1000 unique object IDs
       const objectIds = Array.from({ length: 1000 }, (_, i) => `obj-${i}`);
-      
+
       // @ts-ignore: Mock getObjectById
       global.Game.getObjectById = (id: Id<any>) => ({ id });
-      
+
       // Populate cache
       for (const id of objectIds) {
         getCachedObjectById(id as Id<any>);
       }
-      
+
       // Access random objects (should be fast due to Map lookup)
       const time = measurePerformance("large_cache_access", () => {
         for (let i = 0; i < 100; i++) {
@@ -777,7 +777,7 @@ describe("Performance Benchmarks", () => {
           getCachedObjectById(randomId as Id<any>);
         }
       });
-      
+
       // Should still be fast with large cache
       expect(time).to.be.lessThan(20);
     });

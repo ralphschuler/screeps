@@ -72,7 +72,6 @@ jobs:
           copilot-token: ${{ secrets.COPILOT_TOKEN }}
           prompt-path: .github/agents/autonomous-improvement.agent.md
           output-path: "reports/copilot/autonomous-improvement-${{ github.run_id }}.log"
-          additional-mcp-config: '@.github/mcp/all-servers.json'
           allow-all-paths: false
           force-response: true
         continue-on-error: true

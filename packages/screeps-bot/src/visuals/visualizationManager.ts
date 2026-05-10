@@ -121,7 +121,7 @@ export class VisualizationManager {
     switch (mode) {
       case "debug":
         // All layers enabled
-        this.config.enabledLayers = 
+        this.config.enabledLayers =
           VisualizationLayer.Pheromones |
           VisualizationLayer.Paths |
           VisualizationLayer.Traffic |
@@ -133,10 +133,8 @@ export class VisualizationManager {
 
       case "presentation":
         // Clean visuals, no debug info
-        this.config.enabledLayers = 
-          VisualizationLayer.Pheromones |
-          VisualizationLayer.Defense |
-          VisualizationLayer.Economy;
+        this.config.enabledLayers =
+          VisualizationLayer.Pheromones | VisualizationLayer.Defense | VisualizationLayer.Economy;
         break;
 
       case "minimal":
@@ -175,7 +173,7 @@ export class VisualizationManager {
     // Check each flag type
     for (const [flagName, layer] of Object.entries(flagLayers)) {
       const flagExists = Object.values(flags).some(f => f.name === flagName);
-      
+
       // Only enable if flag exists and layer not already enabled
       if (flagExists && !this.isLayerEnabled(layer)) {
         this.enableLayer(layer);

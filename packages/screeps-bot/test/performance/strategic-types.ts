@@ -1,10 +1,10 @@
 /**
  * Strategic Planning Performance Snapshot Types
- * 
+ *
  * These types define the data structures for capturing live game performance
  * metrics during strategic planning analysis runs. They are used by the
  * strategic-planner agent to collect evidence-based performance data from
- * screeps-mcp and grafana-mcp servers.
+ * private-server artifacts and exported monitoring data.
  */
 
 /**
@@ -163,7 +163,7 @@ export interface PerformanceBaseline {
   runId?: string;
   /** GitHub Actions run URL */
   runUrl?: string;
-  
+
   /** Rolling baseline comparison (7-day average) */
   comparisonBaseline?: {
     /** 7-day rolling average metrics */
@@ -171,9 +171,9 @@ export interface PerformanceBaseline {
     /** Standard deviation for metrics */
     stdDev: PerformanceMetrics;
     /** Overall performance trend */
-    trend: 'improving' | 'degrading' | 'stable';
+    trend: "improving" | "degrading" | "stable";
   };
-  
+
   /** Detected performance changes */
   detectedChanges?: {
     /** Detected performance regressions */
@@ -244,9 +244,9 @@ export interface RollingBaseline {
  */
 export interface Regression {
   /** Type of regression */
-  type: 'cpu' | 'gcl' | 'error' | 'energy' | 'room' | 'creep';
+  type: "cpu" | "gcl" | "error" | "energy" | "room" | "creep";
   /** Severity level */
-  severity: 'critical' | 'high' | 'medium' | 'low';
+  severity: "critical" | "high" | "medium" | "low";
   /** Human-readable description */
   description: string;
   /** Current value */
@@ -264,7 +264,7 @@ export interface Regression {
  */
 export interface Improvement {
   /** Type of improvement */
-  type: 'cpu' | 'gcl' | 'error' | 'energy' | 'room' | 'creep';
+  type: "cpu" | "gcl" | "error" | "energy" | "room" | "creep";
   /** Human-readable description */
   description: string;
   /** Current value */
@@ -310,7 +310,7 @@ export interface TrendAnalysis {
   /** Percentage change */
   percentChange: number;
   /** Trend direction */
-  direction: 'improving' | 'degrading' | 'stable';
+  direction: "improving" | "degrading" | "stable";
   /** Whether trend is concerning */
   isConcerning: boolean;
 }
@@ -320,9 +320,9 @@ export interface TrendAnalysis {
  */
 export interface RegressionAlert {
   /** Type of regression */
-  type: 'cpu' | 'gcl' | 'error' | 'energy' | 'room';
+  type: "cpu" | "gcl" | "error" | "energy" | "room";
   /** Severity level */
-  severity: 'critical' | 'high' | 'medium' | 'low';
+  severity: "critical" | "high" | "medium" | "low";
   /** Human-readable description */
   description: string;
   /** Baseline value */
@@ -358,7 +358,7 @@ export interface StrategicAnalysisOutput {
     screeps_game_time: boolean;
     grafana_dashboards: boolean;
     screeps_memory: boolean;
-    screeps_wiki: boolean;
+    strategy_research: boolean;
   };
   /** Key metrics that were analyzed */
   metrics_analyzed: {

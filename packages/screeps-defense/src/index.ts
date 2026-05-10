@@ -1,9 +1,9 @@
 /**
  * @ralphschuler/screeps-defense
- * 
+ *
  * Defense subsystem for Screeps bot - comprehensive threat assessment,
  * tower control, rampart automation, and emergency response coordination.
- * 
+ *
  * This package provides a complete defense solution including:
  * - Threat assessment and danger level calculation
  * - Tower targeting and optimization
@@ -12,7 +12,7 @@
  * - Emergency response and safe mode management
  * - Evacuation protocols
  * - Non-aggression alliance system
- * 
+ *
  * @packageDocumentation
  */
 
@@ -30,7 +30,7 @@ export {
   getActualHostilePowerCreeps,
   getActualHostileStructures,
   hasActualHostiles,
-  type AlliedPlayer
+  type AlliedPlayer,
 } from "./alliance/nonAggressionPact";
 
 // Defender analysis and assistance requests
@@ -42,7 +42,7 @@ export {
   needsDefenseAssistance,
   needsEmergencyDefenders,
   type DefenderRequirement,
-  type DefenseRequest
+  type DefenseRequest,
 } from "./analysis/defenderNeeds";
 
 // Threat Assessment
@@ -52,42 +52,43 @@ export {
   calculateDangerLevel,
   estimateDefenderCost,
   logThreatAnalysis,
-  type ThreatAnalysis
+  type ThreatAnalysis,
 } from "./threat/threatAssessment";
+
+// Tower action policy
+export {
+  getHostilePriority,
+  selectTowerAction,
+  selectTowerTarget,
+  type TowerAction,
+  type TowerActionPolicyInput,
+} from "./towerActionPolicy";
 
 // Structure Defense (Ramparts, Walls, Perimeter)
 export {
   placeRampartsOnCriticalStructures,
-  type RampartPlacementResult
+  type RampartPlacementResult,
 } from "./structures/rampartAutomation";
 
-export {
-  calculateWallRepairTarget
-} from "./structures/wallRepairTargets";
+export { calculateWallRepairTarget } from "./structures/wallRepairTargets";
 
-export {
-  placePerimeterDefense
-} from "./structures/perimeterDefense";
+export { placePerimeterDefense } from "./structures/perimeterDefense";
 
-export {
-  placeRoadAwarePerimeterDefense
-} from "./structures/roadAwareDefense";
+export { placeRoadAwarePerimeterDefense } from "./structures/roadAwareDefense";
 
 // Coordination (Multi-room, Cluster)
 export {
   defenseCoordinator,
   DefenseCoordinator,
-  type DefenseAssignment
+  type DefenseAssignment,
 } from "./coordination/defenseCoordinator";
 
-export {
-  checkAndExecuteRetreat
-} from "./coordination/retreatProtocol";
+export { checkAndExecuteRetreat } from "./coordination/retreatProtocol";
 
 export {
   ClusterDefenseCoordinator,
   clusterDefenseCoordinator,
-  coordinateClusterDefense
+  coordinateClusterDefense,
 } from "./coordination/clusterDefense";
 
 // Emergency Response
@@ -95,16 +96,13 @@ export {
   emergencyResponseManager,
   EmergencyResponseManager,
   EmergencyLevel,
-  type EmergencyState
+  type EmergencyState,
 } from "./emergency/emergencyResponse";
 
-export {
-  safeModeManager,
-  SafeModeManager
-} from "./emergency/safeModeManager";
+export { safeModeManager, SafeModeManager } from "./emergency/safeModeManager";
 
 export {
   evacuationManager,
   EvacuationManager,
-  type EvacuationState
+  type EvacuationState,
 } from "./emergency/evacuationManager";

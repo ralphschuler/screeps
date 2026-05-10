@@ -381,7 +381,7 @@ describe("Remote Mining Profitability", () => {
     it("should show close remotes are more profitable", () => {
       const closeIntel = createMockRoomIntel("E2N1", { sources: 2, reserver: "ralphschuler" });
       const farIntel = createMockRoomIntel("E6N1", { sources: 2, reserver: "ralphschuler" });
-      
+
       const closeProfit = ExpansionScoring.calculateRemoteProfitability("E2N1", "E1N1", closeIntel);
       const farProfit = ExpansionScoring.calculateRemoteProfitability("E6N1", "E1N1", farIntel);
 

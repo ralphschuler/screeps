@@ -34,7 +34,7 @@ export class HeapStore implements CacheStore {
   private getStore(): HeapStoreData {
     const g = global as any;
     const key = `_cacheHeap_${this.namespace}`;
-    
+
     if (!g[key] || g[key].tick !== Game.time) {
       // Preserve entries across ticks, only update tick
       if (g[key]) {
@@ -46,7 +46,7 @@ export class HeapStore implements CacheStore {
         };
       }
     }
-    
+
     return g[key] as HeapStoreData;
   }
 

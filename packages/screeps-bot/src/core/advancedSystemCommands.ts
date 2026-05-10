@@ -149,7 +149,7 @@ export class MarketCommands {
     }
 
     const latest = history[history.length - 1];
-    
+
     let output = `=== Market Data: ${resource} ===\n`;
     output += `Current Price: ${latest.avgPrice.toFixed(3)} credits\n`;
     output += `Volume: ${latest.volume}\n`;
@@ -176,7 +176,7 @@ export class MarketCommands {
   })
   public orders(): string {
     const orders = Object.values(Game.market.orders);
-    
+
     if (orders.length === 0) {
       return "No active market orders";
     }
@@ -234,11 +234,12 @@ export class PowerCommands {
     output += `Progress: ${gplState.currentProgress} / ${gplState.progressNeeded}\n`;
     output += `Completion: ${((gplState.currentProgress / gplState.progressNeeded) * 100).toFixed(1)}%\n`;
     output += `Target Milestone: ${gplState.targetMilestone}\n`;
-    
+
     // Format estimated time for better readability
-    const timeEstimate = gplState.ticksToNextLevel === Infinity 
-      ? "N/A (no progress yet)" 
-      : `${gplState.ticksToNextLevel.toLocaleString()} ticks`;
+    const timeEstimate =
+      gplState.ticksToNextLevel === Infinity
+        ? "N/A (no progress yet)"
+        : `${gplState.ticksToNextLevel.toLocaleString()} ticks`;
     output += `Estimated Time: ${timeEstimate}\n`;
     output += `\nTotal Power Processed: ${gplState.totalPowerProcessed.toLocaleString()}\n`;
 
@@ -254,7 +255,7 @@ export class PowerCommands {
   })
   public creeps(): string {
     const assignments = powerCreepManager.getAssignments();
-    
+
     if (assignments.length === 0) {
       return "No power creeps created yet";
     }
@@ -280,7 +281,7 @@ export class PowerCommands {
   })
   public operations(): string {
     const ops = powerBankHarvestingManager.getActiveOperations();
-    
+
     if (ops.length === 0) {
       return "No active power bank operations";
     }
@@ -323,17 +324,15 @@ export class PowerCommands {
     name: "power.create",
     description: "Manually create a new power creep (automatic creation is also enabled)",
     usage: "power.create(name, className)",
-    examples: [
-      "power.create('operator_eco', POWER_CLASS.OPERATOR)",
-      "power.create('my_operator', 'operator')"
-    ],
+    examples: ["power.create('operator_eco', POWER_CLASS.OPERATOR)", "power.create('my_operator', 'operator')"],
     category: "Power"
   })
   public create(name: string, className: PowerClassConstant | string): string {
     // Normalize className
-    const powerClass = typeof className === "string" && className.toLowerCase() === "operator"
-      ? POWER_CLASS.OPERATOR
-      : className as PowerClassConstant;
+    const powerClass =
+      typeof className === "string" && className.toLowerCase() === "operator"
+        ? POWER_CLASS.OPERATOR
+        : (className as PowerClassConstant);
 
     // Check if power creep already exists
     if (Game.powerCreeps[name]) {
@@ -363,10 +362,7 @@ export class PowerCommands {
     name: "power.spawn",
     description: "Manually spawn a power creep at a power spawn",
     usage: "power.spawn(powerCreepName, roomName?)",
-    examples: [
-      "power.spawn('operator_eco')",
-      "power.spawn('operator_eco', 'E2S2')"
-    ],
+    examples: ["power.spawn('operator_eco')", "power.spawn('operator_eco', 'E2S2')"],
     category: "Power"
   })
   public spawn(powerCreepName: string, roomName?: string): string {
@@ -384,7 +380,7 @@ export class PowerCommands {
     const memory = pc.memory as { homeRoom?: string };
     const targetRoom = roomName ?? memory.homeRoom ?? Object.keys(Game.rooms)[0];
     const room = Game.rooms[targetRoom];
-    
+
     if (!room) {
       return `Room "${targetRoom}" not visible`;
     }
@@ -409,10 +405,7 @@ export class PowerCommands {
     name: "power.upgrade",
     description: "Manually upgrade a power creep with a specific power",
     usage: "power.upgrade(powerCreepName, power)",
-    examples: [
-      "power.upgrade('operator_eco', PWR_OPERATE_SPAWN)",
-      "power.upgrade('operator_eco', PWR_OPERATE_TOWER)"
-    ],
+    examples: ["power.upgrade('operator_eco', PWR_OPERATE_SPAWN)", "power.upgrade('operator_eco', PWR_OPERATE_TOWER)"],
     category: "Power"
   })
   public upgrade(powerCreepName: string, power: PowerConstant): string {
@@ -432,7 +425,6 @@ export class PowerCommands {
     if (!powerInfo) {
       return `Invalid power: ${power}`;
     }
-
 
     // Check if creep can level up
     if (pc.level >= Game.gpl.level) {

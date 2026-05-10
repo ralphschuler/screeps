@@ -15,10 +15,7 @@ export class EconomyCommands {
     name: "economy.energy.predict",
     description: "Predict energy availability for a room in N ticks",
     usage: "economy.energy.predict(roomName, ticks)",
-    examples: [
-      "economy.energy.predict('W1N1', 50)",
-      "economy.energy.predict('E1S1', 100)"
-    ],
+    examples: ["economy.energy.predict('W1N1', 50)", "economy.energy.predict('E1S1', 100)"],
     category: "Economy"
   })
   public predictEnergy(roomName: string, ticks: number = 50): string {
@@ -32,7 +29,7 @@ export class EconomyCommands {
     }
 
     const prediction = energyFlowPredictor.predictEnergyInTicks(room, ticks);
-    
+
     let output = `=== Energy Prediction: ${roomName} ===\n`;
     output += `Current Energy: ${prediction.current}\n`;
     output += `Predicted (${ticks} ticks): ${Math.round(prediction.predicted)}\n`;
@@ -109,10 +106,7 @@ export class EconomyCommands {
     name: "economy.energy.canAfford",
     description: "Check if a room can afford a certain energy cost within N ticks",
     usage: "economy.energy.canAfford(roomName, cost, ticks)",
-    examples: [
-      "economy.energy.canAfford('W1N1', 1000, 50)",
-      "economy.energy.canAfford('E1S1', 500, 25)"
-    ],
+    examples: ["economy.energy.canAfford('W1N1', 1000, 50)", "economy.energy.canAfford('E1S1', 500, 25)"],
     category: "Economy"
   })
   public canAfford(roomName: string, cost: number, ticks: number = 50): string {
@@ -139,10 +133,7 @@ export class EconomyCommands {
     name: "economy.energy.spawnDelay",
     description: "Get recommended spawn delay for a body cost",
     usage: "economy.energy.spawnDelay(roomName, cost)",
-    examples: [
-      "economy.energy.spawnDelay('W1N1', 1000)",
-      "economy.energy.spawnDelay('E1S1', 500)"
-    ],
+    examples: ["economy.energy.spawnDelay('W1N1', 1000)", "economy.energy.spawnDelay('E1S1', 500)"],
     category: "Economy"
   })
   public getSpawnDelay(roomName: string, cost: number): string {

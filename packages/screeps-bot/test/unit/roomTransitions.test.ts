@@ -30,27 +30,33 @@ describe("Room Coordinate Transitions and Path Serialization", () => {
     let yDir = ns;
 
     // Direction constants
-    const LEFT = 7, RIGHT = 3, TOP = 1, BOTTOM = 5;
-    const TOP_LEFT = 8, TOP_RIGHT = 2, BOTTOM_LEFT = 6, BOTTOM_RIGHT = 4;
+    const LEFT = 7,
+      RIGHT = 3,
+      TOP = 1,
+      BOTTOM = 5;
+    const TOP_LEFT = 8,
+      TOP_RIGHT = 2,
+      BOTTOM_LEFT = 6,
+      BOTTOM_RIGHT = 4;
 
     // Adjust X coordinate based on direction
     if (direction === LEFT || direction === TOP_LEFT || direction === BOTTOM_LEFT) {
-      if (ew === 'W') {
+      if (ew === "W") {
         xCoord++;
       } else {
         if (xCoord === 0) {
-          xDir = 'W';
+          xDir = "W";
           xCoord = 0;
         } else {
           xCoord--;
         }
       }
     } else if (direction === RIGHT || direction === TOP_RIGHT || direction === BOTTOM_RIGHT) {
-      if (ew === 'E') {
+      if (ew === "E") {
         xCoord++;
       } else {
         if (xCoord === 0) {
-          xDir = 'E';
+          xDir = "E";
           xCoord = 0;
         } else {
           xCoord--;
@@ -60,22 +66,22 @@ describe("Room Coordinate Transitions and Path Serialization", () => {
 
     // Adjust Y coordinate based on direction
     if (direction === TOP || direction === TOP_LEFT || direction === TOP_RIGHT) {
-      if (ns === 'N') {
+      if (ns === "N") {
         yCoord++;
       } else {
         if (yCoord === 0) {
-          yDir = 'N';
+          yDir = "N";
           yCoord = 0;
         } else {
           yCoord--;
         }
       }
     } else if (direction === BOTTOM || direction === BOTTOM_LEFT || direction === BOTTOM_RIGHT) {
-      if (ns === 'S') {
+      if (ns === "S") {
         yCoord++;
       } else {
         if (yCoord === 0) {
-          yDir = 'S';
+          yDir = "S";
           yCoord = 0;
         } else {
           yCoord--;
@@ -105,7 +111,10 @@ describe("Room Coordinate Transitions and Path Serialization", () => {
     let roomName = origin.roomName;
 
     // Direction constants
-    const LEFT = 7, RIGHT = 3, TOP = 1, BOTTOM = 5;
+    const LEFT = 7,
+      RIGHT = 3,
+      TOP = 1,
+      BOTTOM = 5;
 
     // Handle room transitions
     if (x < 0) {
@@ -134,10 +143,16 @@ describe("Room Coordinate Transitions and Path Serialization", () => {
     startPos: { x: number; y: number; roomName: string },
     path: Array<{ x: number; y: number; roomName: string }>
   ): string {
-    const LEFT = 7, RIGHT = 3, TOP = 1, BOTTOM = 5;
-    const TOP_LEFT = 8, TOP_RIGHT = 2, BOTTOM_LEFT = 6, BOTTOM_RIGHT = 4;
+    const LEFT = 7,
+      RIGHT = 3,
+      TOP = 1,
+      BOTTOM = 5;
+    const TOP_LEFT = 8,
+      TOP_RIGHT = 2,
+      BOTTOM_LEFT = 6,
+      BOTTOM_RIGHT = 4;
 
-    let serializedPath = '';
+    let serializedPath = "";
     let lastPosition = startPos;
 
     for (const position of path) {
@@ -357,10 +372,10 @@ describe("Room Coordinate Transitions and Path Serialization", () => {
     it("should handle complex path with multiple room transitions", () => {
       const startPos = { x: 48, y: 48, roomName: "E1N1" };
       const path = [
-        { x: 49, y: 49, roomName: "E1N1" },     // Move to corner
-        { x: 0, y: 0, roomName: "E2N0" },       // Cross diagonally to E2N0
-        { x: 1, y: 1, roomName: "E2N0" },       // Move inward
-        { x: 2, y: 2, roomName: "E2N0" }        // Continue
+        { x: 49, y: 49, roomName: "E1N1" }, // Move to corner
+        { x: 0, y: 0, roomName: "E2N0" }, // Cross diagonally to E2N0
+        { x: 1, y: 1, roomName: "E2N0" }, // Move inward
+        { x: 2, y: 2, roomName: "E2N0" } // Continue
       ];
 
       const serialized = serializePathToString(startPos, path);

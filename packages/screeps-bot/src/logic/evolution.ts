@@ -128,7 +128,7 @@ export const POSTURE_RESOURCE_PRIORITIES: Record<RoomPosture, ResourcePriorities
 export class EvolutionManager {
   /** Cache namespace for structure counts */
   private readonly STRUCTURE_CACHE_NAMESPACE = "evolution:structures";
-  
+
   /** TTL for cached structure counts (in ticks) */
   private readonly structureCacheTtl: number = 20;
 
@@ -193,14 +193,11 @@ export class EvolutionManager {
    * Get structure counts for a room with caching
    */
   private getStructureCounts(room: Room): Partial<Record<BuildableStructureConstant, number>> {
-    const cached = globalCache.get<Partial<Record<BuildableStructureConstant, number>>>(
-      room.name,
-      {
-        namespace: this.STRUCTURE_CACHE_NAMESPACE,
-        ttl: this.structureCacheTtl
-      }
-    );
-    
+    const cached = globalCache.get<Partial<Record<BuildableStructureConstant, number>>>(room.name, {
+      namespace: this.STRUCTURE_CACHE_NAMESPACE,
+      ttl: this.structureCacheTtl
+    });
+
     if (cached) {
       return cached;
     }
@@ -248,7 +245,7 @@ export class EvolutionManager {
     const thresholds = EVOLUTION_STAGES[swarm.colonyLevel];
 
     const requiresLabs = thresholds.requiresLabs && rcl >= 6;
-    const minLabCount = requiresLabs ? thresholds.minLabCount ?? 3 : 0;
+    const minLabCount = requiresLabs ? (thresholds.minLabCount ?? 3) : 0;
 
     const requiresFactory = thresholds.requiresFactory && rcl >= 7;
     const requiresTerminal = thresholds.requiresTerminal && rcl >= 6;
@@ -341,7 +338,7 @@ export class PostureManager {
     if (newPosture !== swarm.posture) {
       const oldPosture = swarm.posture;
       const eventRoomName = roomName ?? swarm.role;
-      
+
       logger.info(`Posture change: ${oldPosture} -> ${newPosture}`, {
         room: eventRoomName,
         subsystem: "Posture"

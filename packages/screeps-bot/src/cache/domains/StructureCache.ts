@@ -3,7 +3,7 @@
  *
  * Provides type-safe accessors for frequently accessed structures with
  * intelligent TTL values based on structure change frequency.
- * 
+ *
  * Design Principles (from ROADMAP.md Section 2):
  * - Aggressive Caching + TTL
  * - Cache stored in global object (heap)
@@ -20,50 +20,61 @@ const CONTROLLER_TTL = 100; // Controllers never move
  * Get all towers in a room
  */
 export function getRoomTowers(room: Room): StructureTower[] {
-  return globalCache.get<StructureTower[]>(`towers_${room.name}`, {
-    namespace: NAMESPACE,
-    ttl: DEFAULT_STRUCTURE_TTL,
-    compute: () => room.find(FIND_MY_STRUCTURES, {
-      filter: { structureType: STRUCTURE_TOWER }
-    }) as StructureTower[]
-  }) ?? [];
+  return (
+    globalCache.get<StructureTower[]>(`towers_${room.name}`, {
+      namespace: NAMESPACE,
+      ttl: DEFAULT_STRUCTURE_TTL,
+      compute: () =>
+        room.find(FIND_MY_STRUCTURES, {
+          filter: { structureType: STRUCTURE_TOWER }
+        }) as StructureTower[]
+    }) ?? []
+  );
 }
 
 /**
  * Get all spawns in a room
  */
 export function getRoomSpawns(room: Room): StructureSpawn[] {
-  return globalCache.get<StructureSpawn[]>(`spawns_${room.name}`, {
-    namespace: NAMESPACE,
-    ttl: DEFAULT_STRUCTURE_TTL,
-    compute: () => room.find(FIND_MY_SPAWNS)
-  }) ?? [];
+  return (
+    globalCache.get<StructureSpawn[]>(`spawns_${room.name}`, {
+      namespace: NAMESPACE,
+      ttl: DEFAULT_STRUCTURE_TTL,
+      compute: () => room.find(FIND_MY_SPAWNS)
+    }) ?? []
+  );
 }
 
 /**
  * Get all links in a room
  */
 export function getRoomLinks(room: Room): StructureLink[] {
-  return globalCache.get<StructureLink[]>(`links_${room.name}`, {
-    namespace: NAMESPACE,
-    ttl: DEFAULT_STRUCTURE_TTL,
-    compute: () => room.find(FIND_MY_STRUCTURES, {
-      filter: { structureType: STRUCTURE_LINK }
-    }) as StructureLink[]
-  }) ?? [];
+  return (
+    globalCache.get<StructureLink[]>(`links_${room.name}`, {
+      namespace: NAMESPACE,
+      ttl: DEFAULT_STRUCTURE_TTL,
+      compute: () =>
+        room.find(FIND_MY_STRUCTURES, {
+          filter: { structureType: STRUCTURE_LINK }
+        }) as StructureLink[]
+    }) ?? []
+  );
 }
 
 /**
  * Get all labs in a room
  */
 export function getRoomLabs(room: Room): StructureLab[] {
-  return globalCache.get<StructureLab[]>(`labs_${room.name}`, {
-    namespace: NAMESPACE,
-    ttl: DEFAULT_STRUCTURE_TTL,
-    compute: () => room.find(FIND_MY_STRUCTURES, {
-      filter: { structureType: STRUCTURE_LAB }
-    }) as StructureLab[]
-  }) ?? [];
+  return (
+    globalCache.get<StructureLab[]>(`labs_${room.name}`, {
+      namespace: NAMESPACE,
+      ttl: DEFAULT_STRUCTURE_TTL,
+      compute: () =>
+        room.find(FIND_MY_STRUCTURES, {
+          filter: { structureType: STRUCTURE_LAB }
+        }) as StructureLab[]
+    }) ?? []
+  );
 }
 
 /**
@@ -103,26 +114,32 @@ export function getRoomController(room: Room): StructureController | undefined {
  * Get all extensions in a room
  */
 export function getRoomExtensions(room: Room): StructureExtension[] {
-  return globalCache.get<StructureExtension[]>(`extensions_${room.name}`, {
-    namespace: NAMESPACE,
-    ttl: DEFAULT_STRUCTURE_TTL,
-    compute: () => room.find(FIND_MY_STRUCTURES, {
-      filter: { structureType: STRUCTURE_EXTENSION }
-    }) as StructureExtension[]
-  }) ?? [];
+  return (
+    globalCache.get<StructureExtension[]>(`extensions_${room.name}`, {
+      namespace: NAMESPACE,
+      ttl: DEFAULT_STRUCTURE_TTL,
+      compute: () =>
+        room.find(FIND_MY_STRUCTURES, {
+          filter: { structureType: STRUCTURE_EXTENSION }
+        }) as StructureExtension[]
+    }) ?? []
+  );
 }
 
 /**
  * Get all containers in a room
  */
 export function getRoomContainers(room: Room): StructureContainer[] {
-  return globalCache.get<StructureContainer[]>(`containers_${room.name}`, {
-    namespace: NAMESPACE,
-    ttl: DEFAULT_STRUCTURE_TTL,
-    compute: () => room.find(FIND_STRUCTURES, {
-      filter: { structureType: STRUCTURE_CONTAINER }
-    }) as StructureContainer[]
-  }) ?? [];
+  return (
+    globalCache.get<StructureContainer[]>(`containers_${room.name}`, {
+      namespace: NAMESPACE,
+      ttl: DEFAULT_STRUCTURE_TTL,
+      compute: () =>
+        room.find(FIND_STRUCTURES, {
+          filter: { structureType: STRUCTURE_CONTAINER }
+        }) as StructureContainer[]
+    }) ?? []
+  );
 }
 
 /**
@@ -132,9 +149,10 @@ export function getRoomFactory(room: Room): StructureFactory | undefined {
   return globalCache.get<StructureFactory | undefined>(`factory_${room.name}`, {
     namespace: NAMESPACE,
     ttl: DEFAULT_STRUCTURE_TTL,
-    compute: () => room.find(FIND_MY_STRUCTURES, {
-      filter: { structureType: STRUCTURE_FACTORY }
-    })[0] as StructureFactory | undefined
+    compute: () =>
+      room.find(FIND_MY_STRUCTURES, {
+        filter: { structureType: STRUCTURE_FACTORY }
+      })[0] as StructureFactory | undefined
   });
 }
 
@@ -145,9 +163,10 @@ export function getRoomPowerSpawn(room: Room): StructurePowerSpawn | undefined {
   return globalCache.get<StructurePowerSpawn | undefined>(`powerSpawn_${room.name}`, {
     namespace: NAMESPACE,
     ttl: DEFAULT_STRUCTURE_TTL,
-    compute: () => room.find(FIND_MY_STRUCTURES, {
-      filter: { structureType: STRUCTURE_POWER_SPAWN }
-    })[0] as StructurePowerSpawn | undefined
+    compute: () =>
+      room.find(FIND_MY_STRUCTURES, {
+        filter: { structureType: STRUCTURE_POWER_SPAWN }
+      })[0] as StructurePowerSpawn | undefined
   });
 }
 
@@ -158,9 +177,10 @@ export function getRoomNuker(room: Room): StructureNuker | undefined {
   return globalCache.get<StructureNuker | undefined>(`nuker_${room.name}`, {
     namespace: NAMESPACE,
     ttl: DEFAULT_STRUCTURE_TTL,
-    compute: () => room.find(FIND_MY_STRUCTURES, {
-      filter: { structureType: STRUCTURE_NUKER }
-    })[0] as StructureNuker | undefined
+    compute: () =>
+      room.find(FIND_MY_STRUCTURES, {
+        filter: { structureType: STRUCTURE_NUKER }
+      })[0] as StructureNuker | undefined
   });
 }
 
@@ -171,9 +191,10 @@ export function getRoomObserver(room: Room): StructureObserver | undefined {
   return globalCache.get<StructureObserver | undefined>(`observer_${room.name}`, {
     namespace: NAMESPACE,
     ttl: DEFAULT_STRUCTURE_TTL,
-    compute: () => room.find(FIND_MY_STRUCTURES, {
-      filter: { structureType: STRUCTURE_OBSERVER }
-    })[0] as StructureObserver | undefined
+    compute: () =>
+      room.find(FIND_MY_STRUCTURES, {
+        filter: { structureType: STRUCTURE_OBSERVER }
+      })[0] as StructureObserver | undefined
   });
 }
 
@@ -181,11 +202,13 @@ export function getRoomObserver(room: Room): StructureObserver | undefined {
  * Get all sources in a room (never change after discovery)
  */
 export function getRoomSources(room: Room): Source[] {
-  return globalCache.get<Source[]>(`sources_${room.name}`, {
-    namespace: NAMESPACE,
-    ttl: -1, // Sources never change, cache indefinitely
-    compute: () => room.find(FIND_SOURCES)
-  }) ?? [];
+  return (
+    globalCache.get<Source[]>(`sources_${room.name}`, {
+      namespace: NAMESPACE,
+      ttl: -1, // Sources never change, cache indefinitely
+      compute: () => room.find(FIND_SOURCES)
+    }) ?? []
+  );
 }
 
 /**

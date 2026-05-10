@@ -149,13 +149,9 @@ Top CPU Consumers:`;
     for (const p of sorted) {
       const health = p.stats.healthScore.toFixed(0);
       const healthIcon = p.stats.healthScore >= 80 ? "✓" : p.stats.healthScore >= 50 ? "⚠" : "✗";
-      const ticksSinceSuccess = p.stats.lastSuccessfulRunTick > 0 
-        ? Game.time - p.stats.lastSuccessfulRunTick 
-        : "never";
-      const status = p.state === "suspended" 
-        ? `SUSPENDED (${p.stats.suspensionReason})` 
-        : p.state.toUpperCase();
-      
+      const ticksSinceSuccess = p.stats.lastSuccessfulRunTick > 0 ? Game.time - p.stats.lastSuccessfulRunTick : "never";
+      const status = p.state === "suspended" ? `SUSPENDED (${p.stats.suspensionReason})` : p.state.toUpperCase();
+
       output += `${p.name} | ${healthIcon} ${health}/100 | ${p.stats.errorCount} | ${p.stats.consecutiveErrors} | ${status} | ${ticksSinceSuccess}\n`;
     }
 
@@ -176,7 +172,7 @@ Top CPU Consumers:`;
   public resumeAllProcesses(): string {
     const processes = kernel.getProcesses();
     const suspended = processes.filter(p => p.state === "suspended");
-    
+
     if (suspended.length === 0) {
       return "No suspended processes to resume.";
     }
@@ -200,7 +196,7 @@ Top CPU Consumers:`;
   })
   public showCreepStats(): string {
     const stats = creepProcessManager.getStats();
-    
+
     let output = `=== Creep Process Stats ===
 Total Creeps: ${stats.totalCreeps}
 Registered Processes: ${stats.registeredCreeps}
@@ -223,7 +219,7 @@ Creeps by Priority:`;
   })
   public showRoomStats(): string {
     const stats = roomProcessManager.getStats();
-    
+
     let output = `=== Room Process Stats ===
 Total Rooms: ${stats.totalRooms}
 Registered Processes: ${stats.registeredRooms}
@@ -248,20 +244,16 @@ Rooms by Priority:`;
   public listCreepProcesses(role?: string): string {
     const allProcesses = kernel.getProcesses();
     let creepProcesses = allProcesses.filter(p => p.id.startsWith("creep:"));
-    
+
     if (role) {
       creepProcesses = creepProcesses.filter(p => p.name.includes(`(${role})`));
     }
 
     if (creepProcesses.length === 0) {
-      return role 
-        ? `No creep processes found with role: ${role}`
-        : "No creep processes registered.";
+      return role ? `No creep processes found with role: ${role}` : "No creep processes registered.";
     }
 
-    let output = role 
-      ? `=== Creep Processes (Role: ${role}) ===\n`
-      : "=== All Creep Processes ===\n";
+    let output = role ? `=== Creep Processes (Role: ${role}) ===\n` : "=== All Creep Processes ===\n";
     output += "Name | Priority | Runs | Avg CPU | Errors\n";
     output += "-".repeat(70) + "\n";
 

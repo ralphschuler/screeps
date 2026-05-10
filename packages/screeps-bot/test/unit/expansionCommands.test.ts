@@ -65,7 +65,7 @@ describe("expansion console commands", () => {
   describe("expansion.status()", () => {
     it("should return formatted status string", () => {
       const result = expansionCommands.status();
-      
+
       expect(result).to.be.a("string");
       expect(result).to.include("Expansion System Status");
       expect(result).to.include("GCL: Level 2");
@@ -76,7 +76,7 @@ describe("expansion console commands", () => {
     it("should show expansion readiness when slots available", () => {
       // 0 owned rooms, GCL 2 = 2 slots available
       const result = expansionCommands.status();
-      
+
       expect(result).to.include("Available Room Slots: 2");
       expect(result).to.include("READY");
     });
@@ -88,16 +88,16 @@ describe("expansion console commands", () => {
         W1N1: { controller: { my: true, level: 4 } },
         W2N2: { controller: { my: true, level: 5 } }
       };
-      
+
       const result = expansionCommands.status();
-      
+
       expect(result).to.include("Available Room Slots: 0");
       expect(result).to.include("AT GCL LIMIT");
     });
 
     it("should list top expansion candidates", () => {
       const result = expansionCommands.status();
-      
+
       expect(result).to.include("Top Expansion Candidates");
       expect(result).to.include("W1N1"); // First unclaimed candidate
       expect(result).to.include("Score 85");
@@ -106,7 +106,7 @@ describe("expansion console commands", () => {
 
     it("should show active expansion attempts", () => {
       const result = expansionCommands.status();
-      
+
       expect(result).to.include("Active Expansion Attempts");
       expect(result).to.include("W2N2"); // Claimed candidate
     });
@@ -115,7 +115,7 @@ describe("expansion console commands", () => {
   describe("expansion.pause()", () => {
     it("should return confirmation message", () => {
       const result = expansionCommands.pause();
-      
+
       expect(result).to.include("paused");
       expect(result).to.include("expansion.resume()");
     });
@@ -124,7 +124,7 @@ describe("expansion console commands", () => {
   describe("expansion.resume()", () => {
     it("should return confirmation message", () => {
       const result = expansionCommands.resume();
-      
+
       expect(result).to.include("resumed");
     });
   });
@@ -132,7 +132,7 @@ describe("expansion console commands", () => {
   describe("expansion.clearQueue()", () => {
     it("should return count of cleared candidates", () => {
       const result = expansionCommands.clearQueue();
-      
+
       // Should report clearing candidates
       expect(result).to.include("Cleared");
       expect(result).to.include("candidates");
@@ -141,10 +141,10 @@ describe("expansion console commands", () => {
     it("should handle empty queue", () => {
       // Clear queue first
       expansionCommands.clearQueue();
-      
+
       // Clear again - should handle gracefully
       const result = expansionCommands.clearQueue();
-      
+
       expect(result).to.include("Cleared");
     });
   });

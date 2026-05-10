@@ -15,7 +15,7 @@ describe("Console Commands", () => {
   beforeEach(() => {
     // Stub console methods
     consoleStub = sinon.stub(console, "log");
-    
+
     // Reset command registry
     commandRegistry.clear();
   });
@@ -35,21 +35,21 @@ describe("Console Commands", () => {
 
     it("should expose commands to global scope", () => {
       registerAllConsoleCommands();
-      
+
       // Commands should be available
       expect(commandRegistry).to.not.be.undefined;
     });
 
     it("should register multiple command types", () => {
       registerAllConsoleCommands();
-      
+
       // Should have registered various command categories
       expect(commandRegistry).to.not.be.undefined;
     });
 
     it("should handle repeated registration gracefully", () => {
       registerAllConsoleCommands();
-      
+
       // Second registration should not break
       expect(() => registerAllConsoleCommands()).to.not.throw();
     });
@@ -67,14 +67,14 @@ describe("Console Commands", () => {
 
     it("should expose registered commands to global", () => {
       commandRegistry.exposeToGlobal();
-      
+
       // Global scope should have commands
       expect(commandRegistry).to.not.be.undefined;
     });
 
     it("should clear all commands", () => {
       commandRegistry.clear();
-      
+
       // Registry should be empty
       expect(commandRegistry).to.not.be.undefined;
     });
@@ -90,7 +90,7 @@ describe("Console Commands", () => {
       it("should create LoggingCommands instance", async () => {
         const module = await import("../../src/core/commands/LoggingCommands");
         const loggingCmd = new module.LoggingCommands();
-        
+
         expect(loggingCmd).to.not.be.undefined;
       });
     });
@@ -99,7 +99,7 @@ describe("Console Commands", () => {
       it("should create VisualizationCommands instance", async () => {
         const module = await import("../../src/core/commands/VisualizationCommands");
         const vizCmd = new module.VisualizationCommands();
-        
+
         expect(vizCmd).to.not.be.undefined;
       });
     });
@@ -108,7 +108,7 @@ describe("Console Commands", () => {
       it("should create StatisticsCommands instance", async () => {
         const module = await import("../../src/core/commands/StatisticsCommands");
         const statsCmd = new module.StatisticsCommands();
-        
+
         expect(statsCmd).to.not.be.undefined;
       });
     });
@@ -117,7 +117,7 @@ describe("Console Commands", () => {
       it("should create ConfigurationCommands instance", async () => {
         const module = await import("../../src/core/commands/ConfigurationCommands");
         const configCmd = new module.ConfigurationCommands();
-        
+
         expect(configCmd).to.not.be.undefined;
       });
     });
@@ -126,7 +126,7 @@ describe("Console Commands", () => {
       it("should create KernelCommands instance", async () => {
         const module = await import("../../src/core/commands/KernelCommands");
         const kernelCmd = new module.KernelCommands();
-        
+
         expect(kernelCmd).to.not.be.undefined;
       });
     });
@@ -135,7 +135,7 @@ describe("Console Commands", () => {
       it("should create SystemCommands instance", async () => {
         const module = await import("../../src/core/commands/SystemCommands");
         const sysCmd = new module.SystemCommands();
-        
+
         expect(sysCmd).to.not.be.undefined;
       });
     });
@@ -144,39 +144,39 @@ describe("Console Commands", () => {
   describe("Command parsing", () => {
     it("should parse commands with no arguments", () => {
       const commandString = "help";
-      
+
       // Command parsing should work
       expect(commandString).to.be.a("string");
     });
 
     it("should parse commands with single argument", () => {
       const commandString = "setLogLevel debug";
-      
+
       expect(commandString).to.include("debug");
     });
 
     it("should parse commands with multiple arguments", () => {
       const commandString = "config set key value";
-      
+
       expect(commandString).to.include("key");
       expect(commandString).to.include("value");
     });
 
     it("should handle commands with quoted arguments", () => {
       const commandString = 'echo "Hello World"';
-      
+
       expect(commandString).to.include("Hello World");
     });
 
     it("should handle empty command string", () => {
       const commandString = "";
-      
+
       expect(commandString).to.equal("");
     });
 
     it("should handle commands with special characters", () => {
       const commandString = "search @#$%";
-      
+
       expect(commandString).to.be.a("string");
     });
   });
@@ -193,13 +193,13 @@ describe("Console Commands", () => {
     it("should suggest similar commands", () => {
       // Typo in command should potentially suggest correct one
       const typoCmd = "hlep"; // instead of "help"
-      
+
       expect(typoCmd).to.be.a("string");
     });
 
     it("should handle commands with invalid syntax", () => {
       const invalidCmd = "command (incomplete";
-      
+
       expect(invalidCmd).to.be.a("string");
     });
   });
@@ -221,7 +221,7 @@ describe("Console Commands", () => {
 
     it("should return command results", () => {
       registerAllConsoleCommands();
-      
+
       // Commands should return values
       expect(true).to.be.true;
     });
@@ -230,7 +230,7 @@ describe("Console Commands", () => {
       // Multiple commands in sequence
       registerAllConsoleCommands();
       registerAllConsoleCommands();
-      
+
       expect(true).to.be.true;
     });
   });
@@ -238,14 +238,14 @@ describe("Console Commands", () => {
   describe("Global command exposure", () => {
     it("should expose tooangel commands", () => {
       registerAllConsoleCommands();
-      
+
       const g = global as any;
       expect(g.tooangel).to.not.be.undefined;
     });
 
     it("should expose utility modules", () => {
       registerAllConsoleCommands();
-      
+
       const g = global as any;
       expect(g.botConfig).to.not.be.undefined;
       expect(g.botLogger).to.not.be.undefined;
@@ -255,7 +255,7 @@ describe("Console Commands", () => {
 
     it("should expose config utilities", () => {
       registerAllConsoleCommands();
-      
+
       const g = global as any;
       expect(g.botConfig).to.have.property("getConfig");
       expect(g.botConfig).to.have.property("updateConfig");
@@ -263,7 +263,7 @@ describe("Console Commands", () => {
 
     it("should expose logger utilities", () => {
       registerAllConsoleCommands();
-      
+
       const g = global as any;
       expect(g.botLogger).to.have.property("configureLogger");
     });
@@ -272,21 +272,21 @@ describe("Console Commands", () => {
   describe("Command help system", () => {
     it("should provide help for all commands", () => {
       registerAllConsoleCommands();
-      
+
       // Help system should be available
       expect(commandRegistry).to.not.be.undefined;
     });
 
     it("should provide help for specific commands", () => {
       registerAllConsoleCommands();
-      
+
       // Individual command help
       expect(commandRegistry).to.not.be.undefined;
     });
 
     it("should list available commands", () => {
       registerAllConsoleCommands();
-      
+
       // Command list should be accessible
       expect(commandRegistry).to.not.be.undefined;
     });
@@ -295,19 +295,19 @@ describe("Console Commands", () => {
   describe("Performance", () => {
     it("should register commands efficiently", () => {
       const startTime = Date.now();
-      
+
       registerAllConsoleCommands();
-      
+
       const endTime = Date.now();
       const duration = endTime - startTime;
-      
+
       // Should complete in reasonable time (< 100ms)
       expect(duration).to.be.lessThan(100);
     });
 
     it("should handle rapid command execution", () => {
       registerAllConsoleCommands();
-      
+
       expect(() => {
         // Rapid fire commands
         for (let i = 0; i < 10; i++) {
@@ -320,7 +320,7 @@ describe("Console Commands", () => {
   describe("Error handling", () => {
     it("should catch and report command errors", () => {
       registerAllConsoleCommands();
-      
+
       // Command registration should complete without throwing
       expect(true).to.be.true;
     });
@@ -334,7 +334,7 @@ describe("Console Commands", () => {
       // Multiple initializations should not break
       commandRegistry.initialize();
       commandRegistry.initialize();
-      
+
       expect(true).to.be.true;
     });
   });
@@ -342,32 +342,32 @@ describe("Console Commands", () => {
   describe("Edge cases", () => {
     it("should handle null/undefined arguments", () => {
       registerAllConsoleCommands();
-      
+
       expect(true).to.be.true;
     });
 
     it("should handle very long command strings", () => {
       const longCommand = "a".repeat(1000);
-      
+
       expect(longCommand.length).to.equal(1000);
     });
 
     it("should handle commands with newlines", () => {
       const multilineCommand = "command\nwith\nnewlines";
-      
+
       expect(multilineCommand).to.include("\n");
     });
 
     it("should handle commands with unicode", () => {
       const unicodeCommand = "emoji 😀🎉";
-      
+
       expect(unicodeCommand).to.include("😀");
     });
 
     it("should handle commands during global reset", () => {
       // Commands should survive reset
       registerAllConsoleCommands();
-      
+
       expect(true).to.be.true;
     });
   });

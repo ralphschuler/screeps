@@ -88,14 +88,8 @@ Each room records its stats at end of tick through coordinated manager modules.
 - Pheromone levels
 - Danger level
 
-### 4. Graphite Exporter (`screeps-graphite-exporter`)
-Scrapes stats from Memory and exports to Grafana Cloud using the Graphite HTTP API.
-
-**Enhanced Features:**
-- Recognizes new stats categories
-- Tags stats with category for filtering
-- Parses room names, role names, subsystem names
-- Supports time-series analysis in Grafana Cloud
+### 4. Local Stats Consumers
+Stats are published to `Memory.stats` and console output for local inspection and private-server validation. External Graphite/Loki exporter packages are no longer part of this repository.
 
 ## Data Flow
 
@@ -121,7 +115,7 @@ Tick Start
         ├─> Finalize Stats (publish to Memory)
         └─> Finalize Profiler
             │
-Tick Complete → Memory.stats populated → Graphite Exporter scrapes → Grafana Cloud displays
+Tick Complete → Memory.stats populated → local inspection/private-server validation
 ```
 
 ## Statistics Categories
@@ -280,7 +274,6 @@ const nativeCallsStats = snapshot.native;
 ## Integration with External Tools
 
 ### Grafana Dashboards
-See `GRAFANA_DASHBOARD_EXAMPLE.md` for:
 - Example Flux queries for all stat types
 - Recommended dashboard layouts
 - Alert configurations

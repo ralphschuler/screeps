@@ -12,7 +12,7 @@
  * Runs every 20-50 ticks depending on CPU availability.
  *
  * Addresses Issues: #6, #20, #36
- * 
+ *
  * TODO(P2): ARCH - Implement multi-shard coordination via InterShardMemory (ROADMAP Section 3)
  * Track shard roles, resources, and portal networks across shards
  * TODO(P2): FEATURE - Add expansion candidate scoring with multiple factors
@@ -27,7 +27,7 @@
  * When one shard is overloaded, migrate operations to less crowded shards
  * TODO(P3): ARCH - Implement portal network graph for inter-shard travel optimization
  * Pre-compute best portal routes for expansion and resource sharing
- * 
+ *
  * Test Coverage: Tests exist in empireManager.test.ts covering:
  * - Empire initialization and room tracking
  * - Expansion candidate selection and scoring
@@ -43,6 +43,7 @@ import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { clusterMonitor } from "./clusterMonitor";
+import { planExpansionClaimQueue } from "./expansionOpportunityModule";
 import * as ExpansionScoring from "./expansionScoring";
 import { roomIntelManager } from "./roomIntelManager";
 import { warCoordinator } from "./warCoordinator";
@@ -194,7 +195,7 @@ export class EmpireManager {
       }
       return true;
     });
-    
+
     if (empire.claimQueue.length < initialQueueLength) {
       logger.info(`Cleaned up claim queue: removed ${initialQueueLength - empire.claimQueue.length} owned room(s)`, {
         subsystem: "Empire"
@@ -243,46 +244,21 @@ export class EmpireManager {
       return;
     }
 
-    // Score all scouted rooms
-    const candidates: ExpansionCandidate[] = [];
+    const plan = planExpansionClaimQueue(empire, ownedRooms, {
+      maxExpansionDistance: this.config.maxExpansionDistance,
+      minExpansionScore: this.config.minExpansionScore,
+      maxCandidates: 10
+    });
 
-    for (const roomName in empire.knownRooms) {
-      const intel = empire.knownRooms[roomName];
+    empire.claimQueue = plan.claimQueue;
 
-      // Skip if already owned or claimed
-      if (intel.owner || intel.reserver) {
-        continue;
-      }
-
-      // Skip if not scouted
-      if (!intel.scouted) {
-        continue;
-      }
-
-      // Calculate score
-      const score = this.scoreExpansionCandidate(intel, ownedRooms);
-
-      if (score >= this.config.minExpansionScore) {
-        candidates.push({
-          roomName: intel.name,
-          score,
-          distance: this.getMinDistanceToOwned(intel.name, ownedRooms),
-          claimed: false,
-          lastEvaluated: Game.time
-        });
-      }
-    }
-
-    // Sort by score (highest first)
-    candidates.sort((a, b) => b.score - a.score);
-
-    // Update claim queue (keep top 10)
-    empire.claimQueue = candidates.slice(0, 10);
-
-    if (candidates.length > 0 && Game.time % 100 === 0) {
-      logger.info(`Expansion queue updated: ${candidates.length} candidates, top score: ${candidates[0].score}`, {
-        subsystem: "Empire"
-      });
+    if (plan.claimQueue.length > 0 && Game.time % 100 === 0) {
+      logger.info(
+        `Expansion queue updated: ${plan.claimQueue.length} candidates, top score: ${plan.claimQueue[0].score}`,
+        {
+          subsystem: "Empire"
+        }
+      );
     }
   }
 
@@ -478,7 +454,7 @@ export class EmpireManager {
 
   private trackGCLProgress(empire: EmpireMemory): void {
     const gclProgress = (Game.gcl.progress / Game.gcl.progressTotal) * 100;
-    
+
     // Notify when approaching next GCL level
     if (gclProgress >= this.config.gclNotifyThreshold && Game.time % 500 === 0) {
       logger.info(
@@ -493,7 +469,7 @@ export class EmpireManager {
 
   private checkExpansionReadiness(empire: EmpireMemory): void {
     const allRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
-    
+
     // Don't expand if at GCL limit
     if (allRooms.length >= Game.gcl.level) {
       return;
@@ -503,7 +479,7 @@ export class EmpireManager {
     // Single-room RCL 5 bases are inherently stable enough to expand
     const stableRooms = allRooms.filter(r => {
       const rcl = r.controller?.level ?? 0;
-      if (rcl >= 5) return true;                       // RCL 5+ is always stable
+      if (rcl >= 5) return true; // RCL 5+ is always stable
       const hasStorage = r.storage !== undefined;
       return rcl >= this.config.minStableRcl && hasStorage;
     });
@@ -525,9 +501,12 @@ export class EmpireManager {
     if (avgEnergy < minEnergyForExpansion) {
       if (!empire.objectives.expansionPaused) {
         empire.objectives.expansionPaused = true;
-        logger.info(`Expansion paused: insufficient energy reserves (${avgEnergy.toFixed(0)} < ${minEnergyForExpansion})`, {
-          subsystem: "Empire"
-        });
+        logger.info(
+          `Expansion paused: insufficient energy reserves (${avgEnergy.toFixed(0)} < ${minEnergyForExpansion})`,
+          {
+            subsystem: "Empire"
+          }
+        );
       }
       return;
     }
@@ -535,10 +514,9 @@ export class EmpireManager {
     // All conditions met - ready to expand
     if (empire.objectives.expansionPaused) {
       empire.objectives.expansionPaused = false;
-      logger.info(
-        `Expansion resumed: ${stableRooms.length} stable rooms with ${avgEnergy.toFixed(0)} avg energy`,
-        { subsystem: "Empire" }
-      );
+      logger.info(`Expansion resumed: ${stableRooms.length} stable rooms with ${avgEnergy.toFixed(0)} avg energy`, {
+        subsystem: "Empire"
+      });
     }
   }
 
@@ -579,7 +557,7 @@ export class EmpireManager {
 
       // Calculate nuke score
       const score = this.scoreNukeCandidate(intel);
-      
+
       if (score >= 50) {
         empire.nukeCandidates.push({
           roomName,
@@ -671,7 +649,7 @@ export class EmpireManager {
       const totalTime = travelTime * 2 + harvestTime; // Round trip + harvest
 
       // Power bank is profitable if we have enough time and it's reasonably close
-      const isProfitable = 
+      const isProfitable =
         timeRemaining > totalTime * 1.5 && // Need 50% time buffer
         minDistance <= 5 && // Max 5 rooms away
         pb.power >= 1000 && // Minimum 1000 power
@@ -681,14 +659,14 @@ export class EmpireManager {
       if (!isProfitable && Game.time % 500 === 0) {
         logger.debug(
           `Power bank in ${pb.roomName} not profitable: ` +
-          `power=${pb.power}, distance=${minDistance}, timeRemaining=${timeRemaining}, ` +
-          `requiredTime=${totalTime.toFixed(0)}`,
+            `power=${pb.power}, distance=${minDistance}, timeRemaining=${timeRemaining}, ` +
+            `requiredTime=${totalTime.toFixed(0)}`,
           { subsystem: "Empire" }
         );
       } else if (isProfitable && Game.time % 500 === 0) {
         logger.info(
           `Profitable power bank in ${pb.roomName}: ` +
-          `power=${pb.power}, distance=${minDistance}, timeRemaining=${timeRemaining}`,
+            `power=${pb.power}, distance=${minDistance}, timeRemaining=${timeRemaining}`,
           { subsystem: "Empire" }
         );
       }

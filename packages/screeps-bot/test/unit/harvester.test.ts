@@ -34,11 +34,7 @@ interface MockCreep {
  * freeCapacity is automatically calculated from capacity - usedCapacity.
  * When capacity is null (no CARRY parts), freeCapacity is also null.
  */
-function createMockCreep(options: {
-  capacity: number | null;
-  usedCapacity: number;
-  isNearToSource: boolean;
-}): Creep {
+function createMockCreep(options: { capacity: number | null; usedCapacity: number; isNearToSource: boolean }): Creep {
   const freeCapacity = options.capacity === null ? null : options.capacity - options.usedCapacity;
   const mockCreep: MockCreep = {
     name: "TestHarvester",
@@ -85,11 +81,7 @@ function createMockRoom(): Room {
 /**
  * Create a mock context for testing harvester behavior
  */
-function createMockContext(
-  creep: Creep,
-  source: Source | null,
-  memory: Partial<SwarmCreepMemory> = {}
-): CreepContext {
+function createMockContext(creep: Creep, source: Source | null, memory: Partial<SwarmCreepMemory> = {}): CreepContext {
   const fullMemory: SwarmCreepMemory = {
     role: "harvester",
     family: "economy",

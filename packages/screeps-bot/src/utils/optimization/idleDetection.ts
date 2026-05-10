@@ -23,7 +23,7 @@ function isRoomObject(obj: unknown): obj is RoomObject {
 /**
  * Roles that can benefit from idle detection (stationary workers).
  * Mobile roles like haulers and military units are excluded.
- * 
+ *
  * OPTIMIZATION: Extended in performance optimization to include more roles.
  * With 100+ creeps, extending idle detection to builders can save 1-2 CPU.
  * Note: "repairer" is not a defined role in this bot, so it's excluded.
@@ -47,14 +47,14 @@ const HARVESTER_WORKING_THRESHOLD = 40;
 /**
  * Minimum ticks a creep must have a valid state to be considered idle.
  * This prevents false positives for creeps that just started a task.
- * 
+ *
  * BUGFIX: Increased from 1 to 3 ticks to prevent premature idle detection.
  * When set to 1, creeps that just started moving toward a target would be
  * considered "idle" immediately, causing executeIdleAction to run before
  * they reach their destination. If multiple creeps target the same resource,
  * this causes race conditions where both try to execute the idle action,
  * leading to stuck states.
- * 
+ *
  * With 3 ticks, creeps have time to start moving before idle optimization kicks in.
  */
 const MIN_STATE_AGE_FOR_IDLE = 3;
@@ -76,44 +76,44 @@ const MIN_STATE_AGE_FOR_IDLE = 3;
  */
 export function canSkipBehaviorEvaluation(creep: Creep): boolean {
   const memory = creep.memory as unknown as SwarmCreepMemory;
-  
+
   // Only certain roles are eligible
   if (!IDLE_ELIGIBLE_ROLES.has(memory.role)) {
     return false;
   }
-  
+
   // Must have a valid state that's been active for a few ticks
   const state = memory.state;
   if (!state || !state.startTick) {
     return false;
   }
-  
+
   const stateAge = Game.time - state.startTick;
   if (stateAge < MIN_STATE_AGE_FOR_IDLE) {
     return false;
   }
-  
+
   // Role-specific checks
   switch (memory.role) {
     case "harvester":
       return isHarvesterIdle(creep, state);
-    
+
     case "upgrader":
       return isUpgraderIdle(creep, state);
-    
+
     case "mineralHarvester":
       return isMineralHarvesterIdle(creep, state);
-    
+
     case "builder":
       return isBuilderIdle(creep, state);
-    
+
     case "depositHarvester":
     case "factoryWorker":
     case "labTech":
       // These roles can be idle if they have a valid state
       // The state machine will handle checking if state is still valid
       return true;
-    
+
     default:
       return false;
   }
@@ -136,22 +136,22 @@ function isHarvesterIdle(creep: Creep, state: NonNullable<SwarmCreepMemory["stat
   if (state.action !== "harvest" && state.action !== "transfer") {
     return false;
   }
-  
+
   // Validate target still exists
   if (!state.targetId) {
     return false;
   }
-  
+
   const target = Game.getObjectById(state.targetId);
   if (!target || !isRoomObject(target)) {
     return false;
   }
-  
+
   // Must be adjacent to target
   if (!creep.pos.isNearTo(target.pos)) {
     return false;
   }
-  
+
   // If harvesting, must not be full
   if (state.action === "harvest") {
     const carryCapacity = creep.store.getCapacity();
@@ -163,14 +163,14 @@ function isHarvesterIdle(creep: Creep, state: NonNullable<SwarmCreepMemory["stat
     }
     // Drop miners (no carry) are always idle when harvesting
   }
-  
+
   // If transferring, must have energy to transfer
   if (state.action === "transfer") {
     if (creep.store.getUsedCapacity(RESOURCE_ENERGY) < HARVESTER_WORKING_THRESHOLD) {
       return false; // Not enough energy, needs to harvest
     }
   }
-  
+
   return true;
 }
 
@@ -187,37 +187,37 @@ function isUpgraderIdle(creep: Creep, state: NonNullable<SwarmCreepMemory["state
   if (state.action !== "upgrade" && state.action !== "withdraw") {
     return false;
   }
-  
+
   // Validate target
   if (!state.targetId) {
     return false;
   }
-  
+
   const target = Game.getObjectById(state.targetId);
   if (!target || !isRoomObject(target)) {
     return false;
   }
-  
+
   // Must be in range
   const inRange = creep.pos.inRangeTo(target.pos, 3);
   if (!inRange) {
     return false;
   }
-  
+
   // If upgrading, must have energy
   if (state.action === "upgrade") {
     if (creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0) {
       return false;
     }
   }
-  
+
   // If withdrawing, must have space
   if (state.action === "withdraw") {
     if (creep.store.getFreeCapacity(RESOURCE_ENERGY) === 0) {
       return false;
     }
   }
-  
+
   return true;
 }
 
@@ -230,27 +230,27 @@ function isMineralHarvesterIdle(creep: Creep, state: NonNullable<SwarmCreepMemor
   if (state.action !== "harvestMineral") {
     return false;
   }
-  
+
   // Validate target
   if (!state.targetId) {
     return false;
   }
-  
+
   const target = Game.getObjectById(state.targetId);
   if (!target || !isRoomObject(target)) {
     return false;
   }
-  
+
   // Must be adjacent
   if (!creep.pos.isNearTo(target.pos)) {
     return false;
   }
-  
+
   // Must not be full
   if (creep.store.getFreeCapacity() === 0) {
     return false;
   }
-  
+
   return true;
 }
 
@@ -267,50 +267,50 @@ function isBuilderIdle(creep: Creep, state: NonNullable<SwarmCreepMemory["state"
   if (state.action !== "build") {
     return false;
   }
-  
+
   // Validate target
   if (!state.targetId) {
     return false;
   }
-  
+
   const target = Game.getObjectById(state.targetId);
   if (!target || !isRoomObject(target)) {
     return false;
   }
-  
+
   // Must be in range (build range is 3)
   if (!creep.pos.inRangeTo(target.pos, 3)) {
     return false;
   }
-  
+
   // Must have energy
   if (creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0) {
     return false;
   }
-  
+
   return true;
 }
 
 /**
  * Execute the creep's current action without re-evaluating behavior.
  * This is called for idle creeps that can skip behavior evaluation.
- * 
+ *
  * @param creep - The creep to execute action for
  * @returns true if action was executed successfully
  */
 export function executeIdleAction(creep: Creep): boolean {
   const memory = creep.memory as unknown as SwarmCreepMemory;
   const state = memory.state;
-  
+
   if (!state || !state.targetId) {
     return false;
   }
-  
+
   const target = Game.getObjectById(state.targetId);
   if (!target || !isRoomObject(target)) {
     return false;
   }
-  
+
   // Execute the action based on state with proper type validation
   switch (state.action) {
     case "harvest":
@@ -319,49 +319,49 @@ export function executeIdleAction(creep: Creep): boolean {
         return creep.harvest(target as Source) === OK;
       }
       return false;
-    
+
     case "harvestMineral":
       // Validate target is a Mineral
       if ("mineralType" in target && "mineralAmount" in target && "ticksToRegeneration" in target) {
         return creep.harvest(target as Mineral) === OK;
       }
       return false;
-    
+
     case "transfer":
       // Validate target has store property (structures with storage)
       if ("store" in target && target.store && typeof target.store === "object") {
         return creep.transfer(target as AnyStoreStructure, RESOURCE_ENERGY) === OK;
       }
       return false;
-    
+
     case "withdraw":
       // Validate target has store property (structures with storage)
       if ("store" in target && target.store && typeof target.store === "object") {
         return creep.withdraw(target as AnyStoreStructure, RESOURCE_ENERGY) === OK;
       }
       return false;
-    
+
     case "upgrade":
       // Validate target is a Controller
       if ("level" in target && "progress" in target && "my" in target) {
         return creep.upgradeController(target as StructureController) === OK;
       }
       return false;
-    
+
     case "build":
       // Validate target is a ConstructionSite
       if ("progressTotal" in target && "progress" in target) {
         return creep.build(target as ConstructionSite) === OK;
       }
       return false;
-    
+
     case "repair":
       // Validate target is a Structure
       if ("hits" in target && "hitsMax" in target) {
         return creep.repair(target as Structure) === OK;
       }
       return false;
-    
+
     default:
       return false;
   }

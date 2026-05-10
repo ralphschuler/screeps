@@ -9,10 +9,7 @@
  * - Misplaced structure cleanup
  */
 
-import {
-  placeRampartsOnCriticalStructures,
-  placeRoadAwarePerimeterDefense
-} from "@ralphschuler/screeps-defense";
+import { placeRampartsOnCriticalStructures, placeRoadAwarePerimeterDefense } from "@ralphschuler/screeps-defense";
 import {
   destroyMisplacedStructures,
   getBlueprint,
@@ -30,10 +27,41 @@ import { postureManager } from "../../logic/evolution";
  */
 const EARLY_GAME_RCL_MIN = 2;
 const EARLY_GAME_RCL_MAX = 3;
-const MAX_EARLY_PERIMETER_SITES = 5; // RCL 2-3: Aggressive defense buildup
+const MAX_EARLY_PERIMETER_SITES = 2; // RCL 2-3: only threat/economy-gated early defense
 const MAX_REGULAR_PERIMETER_SITES = 3; // RCL 4+: Maintenance rate
 const EARLY_GAME_CONSTRUCTION_INTERVAL = 5; // Ticks between construction checks
 const REGULAR_CONSTRUCTION_INTERVAL = 10; // Ticks between construction checks
+
+export interface EconomyFirstConstructionInput {
+  rcl: number;
+  danger: number;
+  hasStorage: boolean;
+  remoteAssignments: string[];
+}
+
+export interface EconomyFirstConstructionPolicy {
+  allowPerimeter: boolean;
+  allowRamparts: boolean;
+}
+
+/**
+ * Economy-first construction gate: peaceful young rooms spend early energy on
+ * extensions, roads, source/controller containers, and storage before perimeter.
+ */
+export function getEconomyFirstConstructionPolicy(
+  input: EconomyFirstConstructionInput
+): EconomyFirstConstructionPolicy {
+  if (input.danger >= 1) {
+    return { allowPerimeter: true, allowRamparts: true };
+  }
+
+  const stableEconomy = input.hasStorage || input.remoteAssignments.length > 0 || input.rcl >= 5;
+
+  return {
+    allowPerimeter: stableEconomy,
+    allowRamparts: stableEconomy || input.rcl >= 4
+  };
+}
 
 /**
  * Check if a room is in early game and needs aggressive defense
@@ -117,15 +145,19 @@ export class RoomConstructionManager {
       }
     }
 
-    // Priority 1: Place road-aware perimeter defense (RCL 2+)
-    // Road-aware system ensures roads aren't blocked by walls
-    // Roads are calculated BEFORE walls are placed, and ramparts are used at road crossings
+    const constructionPolicy = getEconomyFirstConstructionPolicy({
+      rcl,
+      danger: swarm.danger,
+      hasStorage: Boolean(room.storage),
+      remoteAssignments: swarm.remoteAssignments ?? []
+    });
+
+    // Priority 1: Place road-aware perimeter defense (RCL 2+) only after economy stabilizes or during danger.
+    // Road-aware system ensures roads aren't blocked by walls.
     let perimeterResult = { sitesPlaced: 0, wallsRemoved: 0 };
-    if (rcl >= EARLY_GAME_RCL_MIN && existingSites.length < 8) {
-      // Place more sites in early game for faster fortification
+    if (constructionPolicy.allowPerimeter && rcl >= EARLY_GAME_RCL_MIN && existingSites.length < 8) {
       const maxPerimeterSites = isEarlyGameDefense(rcl) ? MAX_EARLY_PERIMETER_SITES : MAX_REGULAR_PERIMETER_SITES;
 
-      // Use road-aware defense system that plans roads first
       perimeterResult = placeRoadAwarePerimeterDefense(
         room,
         anchor,
@@ -155,7 +187,7 @@ export class RoomConstructionManager {
     // Priority 4: Place ramparts on critical structures (RCL 2+)
     // Automated rampart placement for spawn, storage, towers, labs, etc.
     let rampartResult = { placed: 0, needsRepair: 0, totalCritical: 0, protected: 0 };
-    if (rcl >= 2 && existingSites.length < 9) {
+    if (constructionPolicy.allowRamparts && rcl >= 2 && existingSites.length < 9) {
       const maxRampartSites = swarm.danger >= 2 ? 3 : 2; // More aggressive during attacks
       rampartResult = placeRampartsOnCriticalStructures(room, rcl, swarm.danger, maxRampartSites);
 

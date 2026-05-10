@@ -188,7 +188,7 @@ export class ResourceSharingManager {
       } else if (energyNeed === 1) {
         needsAmount = this.config.lowEnergyThreshold - energyAvailable;
       }
-      
+
       // Focus room gets more aggressive about requesting resources
       if (isFocusRoom && energyNeed > 0) {
         needsAmount = Math.max(needsAmount, this.config.minTransferAmount * 2);
@@ -245,7 +245,12 @@ export class ResourceSharingManager {
    * Calculate energy need level for a room
    * Focus rooms have higher thresholds to ensure they get priority for upgrading
    */
-  private calculateEnergyNeed(room: Room, energyAvailable: number, _swarm: SwarmState, isFocusRoom = false): 0 | 1 | 2 | 3 {
+  private calculateEnergyNeed(
+    room: Room,
+    energyAvailable: number,
+    _swarm: SwarmState,
+    isFocusRoom = false
+  ): 0 | 1 | 2 | 3 {
     // Critical: spawn in danger of not being able to spawn
     if (energyAvailable < this.config.criticalEnergyThreshold) {
       // Extra critical if spawn is low on energy and can't spawn
@@ -372,9 +377,12 @@ export class ResourceSharingManager {
       const request = cluster.resourceRequests[requestIndex];
       request.delivered += amount;
 
-      logger.debug(`Updated transfer progress: ${request.delivered}/${request.amount} from ${request.fromRoom} to ${request.toRoom}`, {
-        subsystem: "ResourceSharing"
-      });
+      logger.debug(
+        `Updated transfer progress: ${request.delivered}/${request.amount} from ${request.fromRoom} to ${request.toRoom}`,
+        {
+          subsystem: "ResourceSharing"
+        }
+      );
     }
   }
 }

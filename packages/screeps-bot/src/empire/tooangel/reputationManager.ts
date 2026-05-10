@@ -1,11 +1,11 @@
 /**
  * TooAngel Reputation Manager
- * 
+ *
  * Manages reputation tracking and API communication with TooAngel NPC.
  * Reputation is gained by:
  * - Sending resources via terminal
  * - Completing quests
- * 
+ *
  * Reputation is reduced by:
  * - Attacking TooAngel NPC with nukes
  * - Failed quests
@@ -42,7 +42,7 @@ export function getReputation(): number {
 export function parseReputationResponse(description: string): number | null {
   try {
     const parsed: TooAngelReputationMessage = JSON.parse(description);
-    
+
     if (parsed.type === "reputation" && typeof parsed.reputation === "number") {
       return parsed.reputation;
     }
@@ -75,7 +75,7 @@ export function processReputationUpdates(): void {
     }
 
     const reputation = parseReputationResponse(transaction.description);
-    
+
     if (reputation !== null) {
       logger.info(`Received reputation update from TooAngel: ${reputation}`, {
         subsystem: "TooAngel"
@@ -91,10 +91,10 @@ export function processReputationUpdates(): void {
 
 /**
  * Request current reputation from TooAngel NPC
- * 
+ *
  * Sends a terminal transfer with JSON message: {"type": "reputation"}
  * TooAngel NPC will respond with: {"type": "reputation", "reputation": REPUTATION}
- * 
+ *
  * @param fromRoomName - Room to send request from (must have terminal)
  * @returns true if request was sent successfully
  */
@@ -113,7 +113,7 @@ export function requestReputation(fromRoomName?: string): boolean {
 
   // Find a room to send from
   let sourceRoom: Room | undefined;
-  
+
   if (fromRoomName) {
     sourceRoom = Game.rooms[fromRoomName];
   } else {
@@ -136,7 +136,7 @@ export function requestReputation(fromRoomName?: string): boolean {
 
   // Find closest TooAngel NPC room
   const npcRoom = findClosestNPCRoom(sourceRoom.name);
-  
+
   if (!npcRoom || !npcRoom.hasTerminal) {
     logger.warn("No TooAngel NPC room with terminal found", {
       subsystem: "TooAngel"
@@ -147,7 +147,7 @@ export function requestReputation(fromRoomName?: string): boolean {
   // Check if we have enough energy
   const terminal = sourceRoom.terminal;
   const energyAvailable = terminal.store[RESOURCE_ENERGY];
-  
+
   if (energyAvailable < REPUTATION_CONFIG.MIN_REQUEST_ENERGY) {
     logger.warn(
       `Insufficient energy for reputation request: ${energyAvailable} < ${REPUTATION_CONFIG.MIN_REQUEST_ENERGY}`,
@@ -169,18 +169,12 @@ export function requestReputation(fromRoomName?: string): boolean {
   );
 
   if (result === OK) {
-    logger.info(
-      `Sent reputation request to ${npcRoom.roomName} from ${sourceRoom.name}`,
-      { subsystem: "TooAngel" }
-    );
+    logger.info(`Sent reputation request to ${npcRoom.roomName} from ${sourceRoom.name}`, { subsystem: "TooAngel" });
 
     memory.reputation!.lastRequestedAt = Game.time;
     return true;
   } else {
-    logger.warn(
-      `Failed to send reputation request: ${result}`,
-      { subsystem: "TooAngel" }
-    );
+    logger.warn(`Failed to send reputation request: ${result}`, { subsystem: "TooAngel" });
     return false;
   }
 }
@@ -192,12 +186,7 @@ export function requestReputation(fromRoomName?: string): boolean {
 export function trackReputationGain(resourceType: ResourceConstant, amount: number): void {
   // Reputation increases based on market value
   // For now, we'll estimate based on energy value
-  const energyValue = resourceType === RESOURCE_ENERGY ? 
-    amount : 
-    amount * 0.5; // Rough estimate for other resources
+  const energyValue = resourceType === RESOURCE_ENERGY ? amount : amount * 0.5; // Rough estimate for other resources
 
-  logger.debug(
-    `Estimated reputation gain: +${energyValue} from ${amount} ${resourceType}`,
-    { subsystem: "TooAngel" }
-  );
+  logger.debug(`Estimated reputation gain: +${energyValue} from ${amount} ${resourceType}`, { subsystem: "TooAngel" });
 }

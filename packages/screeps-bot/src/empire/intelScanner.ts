@@ -477,3 +477,5 @@ export class IntelScanner {
     return Array.from(this.enemyPlayers.values());
   }
 }
+
+export const intelScanner = new IntelScanner();

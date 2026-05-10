@@ -12,15 +12,15 @@ import { runScheduledTasks } from "@ralphschuler/screeps-utils";
 import { MapVisualizer, RoomVisualizer } from "@ralphschuler/screeps-visuals";
 import { reconcileTraffic as finalizeMovement, preTick as initMovement } from "screeps-cartographer";
 import { getConfig } from "./config";
+import { botKernelRuntime } from "./core/botKernelRuntime";
+import { getOwnedRoomsForTick, shouldRunOptionalTickWork } from "./core/botTickLifecycle";
 import { creepProcessManager } from "./core/creepProcessManager";
-import { eventBus } from "./core/events";
 import { kernel } from "./core/kernel";
 import { LogLevel, configureLogger, logger } from "./core/logger";
 import { initializeNativeCallsTracking } from "./core/nativeCallsTracker";
-import { registerAllProcesses } from "./core/processRegistry";
 import { roomProcessManager } from "./core/roomProcessManager";
 import { shardManager } from "./intershard/shardManager";
-import { runSpawnManager } from "./spawning/spawnQueueManager";
+import { coordinateSpawning } from "./spawning/spawnCoordinator";
 import { initializePathCacheEvents } from "./utils/pathfinding";
 import { initializeRemotePathScheduler, moveToWithRemoteCache } from "./utils/remote-mining";
 
@@ -62,7 +62,7 @@ function runSpawns(): void {
   for (const room of Object.values(Game.rooms)) {
     if (room.controller?.my) {
       const swarm = memoryManager.getOrInitSwarmState(room.name);
-      runSpawnManager(room, swarm);
+      coordinateSpawning(room, swarm);
     }
   }
 }
@@ -80,8 +80,7 @@ function syncKernelProcesses(): void {
 // Main Loop
 // =============================================================================
 
-// Initialize kernel and processes on first tick
-let kernelInitialized = false;
+// Initialize systems on first tick
 let systemsInitialized = false;
 
 /**
@@ -97,7 +96,7 @@ function initializeSystems(): void {
     enableBatching: true,
     maxBatchSize: 50
   });
-  
+
   logger.info("Bot initialized", { subsystem: "SwarmBot", meta: { debug: config.debug, profiling: config.profiling } });
 
   // Initialize unified stats system
@@ -132,7 +131,7 @@ function initializeSystems(): void {
 /**
  * Run visualizations for all owned rooms and map-level visuals
  * OPTIMIZATION: Use cached owned rooms list
- * 
+ *
  * TODO(P3): PERF - Visualization optimization improvements:
  * - Add CPU budget for visualizations to prevent them consuming too much
  *   (in low bucket, skip or simplify visualizations to preserve CPU)
@@ -190,9 +189,7 @@ export function loop(): void {
   memoryManager.initialize();
 
   // Sync kernel CPU configuration with runtime config so bucket-mode checks are accurate.
-  kernel.updateFromCpuConfig(getConfig().cpu);
-
-  const bucketMode = kernel.getBucketMode();
+  const bucketMode = botKernelRuntime.configureForCurrentTick();
   if (bucketMode === "critical" && Game.time % 10 === 0) {
     logger.warn(`CRITICAL: CPU bucket at ${Game.cpu.bucket}, running core work and deferring optional work`, {
       subsystem: "SwarmBot"
@@ -220,12 +217,8 @@ export function loop(): void {
     });
   }
 
-  // Initialize kernel and register processes on first tick
-  if (!kernelInitialized) {
-    registerAllProcesses();
-    kernel.initialize();
-    kernelInitialized = true;
-  }
+  // Initialize kernel and register processes on first owned-room tick.
+  botKernelRuntime.ensureProcessesRegistered();
 
   // Start stats collection for this tick
   unifiedStats.startTick();
@@ -235,24 +228,13 @@ export function loop(): void {
   clearRoomCaches();
 
   // Clear event bus tick-specific caches for coalescing
-  eventBus.startTick();
+  botKernelRuntime.startEventTick();
 
-  // Cache owned rooms list (used frequently, expensive to compute)
-  // This cache is shared across all subsystems in the same tick
-  const cacheKey = "_ownedRooms";
-  const cacheTickKey = "_ownedRoomsTick";
-  const globalCache = global as unknown as Record<string, Room[] | number | undefined>;
-  const cachedRooms = globalCache[cacheKey] as Room[] | undefined;
-  const cachedTick = globalCache[cacheTickKey] as number | undefined;
-
-  let ownedRooms: Room[];
-  if (cachedRooms && cachedTick === Game.time) {
-    ownedRooms = cachedRooms;
-  } else {
-    ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
-    globalCache[cacheKey] = ownedRooms;
-    globalCache[cacheTickKey] = Game.time;
-  }
+  const ownedRooms = getOwnedRoomsForTick({
+    tick: Game.time,
+    rooms: () => Object.values(Game.rooms),
+    cache: global as unknown as Record<string, unknown>
+  });
 
   // Refresh persistent room task boards before creep processes request work.
   unifiedStats.measureSubsystem("taskBoard", () => {
@@ -274,13 +256,13 @@ export function loop(): void {
   // - Empire, cluster, market, nuke, pheromone managers (registered by processRegistry)
   // The kernel's wrap-around queue ensures fair execution of all processes
   unifiedStats.measureSubsystem("kernel", () => {
-    kernel.run();
+    botKernelRuntime.runProcesses();
   });
 
   // Process queued events from event bus
   // This also clears tick events map for event coalescing
   unifiedStats.measureSubsystem("eventQueue", () => {
-    eventBus.processQueue();
+    botKernelRuntime.processQueuedEvents();
   });
 
   // Run spawns (high priority - always runs)
@@ -302,7 +284,7 @@ export function loop(): void {
   }
 
   // Run visualizations only when bucket health is normal/high.
-  if (kernel.hasCpuBudget() && bucketMode !== "low" && bucketMode !== "critical") {
+  if (shouldRunOptionalTickWork({ hasCpuBudget: kernel.hasCpuBudget(), bucketMode })) {
     unifiedStats.measureSubsystem("visualizations", () => {
       runVisualizations();
     });
@@ -312,7 +294,7 @@ export function loop(): void {
   finalizeMovement();
 
   // Run scheduled tasks (computation spreading) when bucket health allows optional work.
-  if (kernel.hasCpuBudget() && bucketMode !== "low" && bucketMode !== "critical") {
+  if (shouldRunOptionalTickWork({ hasCpuBudget: kernel.hasCpuBudget(), bucketMode })) {
     unifiedStats.measureSubsystem("scheduledTasks", () => {
       const availableCpu = Math.max(0, Game.cpu.limit - Game.cpu.getUsed());
       runScheduledTasks(availableCpu);
@@ -324,10 +306,12 @@ export function loop(): void {
   memoryManager.persistHeapCache();
 
   // Collect kernel process stats before finalizing
-  unifiedStats.collectProcessStats(kernel.getProcesses().reduce((map, p) => {
-    map.set(p.id, p);
-    return map;
-  }, new Map()));
+  unifiedStats.collectProcessStats(
+    kernel.getProcesses().reduce((map, p) => {
+      map.set(p.id, p);
+      return map;
+    }, new Map())
+  );
 
   // Collect kernel budget stats (adaptive budgets)
   unifiedStats.collectKernelBudgetStats(kernel);

@@ -1,6 +1,6 @@
 /**
  * TooAngel Diplomacy/Quest Module
- * 
+ *
  * Export all TooAngel functionality
  */
 

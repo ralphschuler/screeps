@@ -1,10 +1,15 @@
 import { assert } from "chai";
+import { heapCache } from "@ralphschuler/screeps-memory";
 import { ROLE_DEFINITIONS } from "../../src/spawning/roleDefinitions";
-import { countRemoteCreepsByTargetRoom, getRemoteRoomNeedingWorkers, needsRole } from "../../src/spawning/spawnNeedsAnalyzer";
+import {
+  countRemoteCreepsByTargetRoom,
+  getRemoteRoomNeedingWorkers,
+  needsRole
+} from "../../src/spawning/spawnNeedsAnalyzer";
 import type { SwarmState } from "../../src/memory/schemas";
 
 // Mock the global Game object
-declare const global: { Game: typeof Game };
+declare const global: { Game: typeof Game; Memory: typeof Memory };
 
 /**
  * Create a mock SwarmState with remote assignments
@@ -64,8 +69,34 @@ describe("remote worker spawning", () => {
     global.Game = {
       creeps: {},
       rooms: {},
-      time: 1000
+      time: 1000,
+      map: {
+        getRoomLinearDistance: (room1: string, room2: string) => {
+          if (room1 === room2) return 0;
+          if ((room1 === "E1N1" && room2 === "E2N1") || (room1 === "E2N1" && room2 === "E1N1")) return 1;
+          return 3;
+        }
+      }
     } as unknown as typeof Game;
+    global.Memory = {
+      creeps: {},
+      rooms: {},
+      empire: {
+        knownRooms: {},
+        claimQueue: [],
+        warTargets: [],
+        nukeCandidates: [],
+        powerBanks: [],
+        objectives: {
+          targetRoomCount: 1,
+          targetPowerLevel: 0,
+          warMode: false,
+          expansionPaused: false
+        },
+        lastUpdate: 0
+      }
+    } as unknown as typeof Memory;
+    heapCache.clear();
   });
 
   describe("ROLE_DEFINITIONS", () => {
@@ -203,6 +234,28 @@ describe("remote worker spawning", () => {
   });
 
   describe("needsRole for remote roles", () => {
+    it("should request a scout for nearby unscouted intel before remotes are assigned", () => {
+      (global.Memory as unknown as { empire: { knownRooms: Record<string, unknown> } }).empire.knownRooms.E2N1 = {
+        name: "E2N1",
+        lastSeen: 0,
+        sources: 0,
+        controllerLevel: 0,
+        threatLevel: 0,
+        scouted: false,
+        terrain: "mixed",
+        isHighway: false,
+        isSK: false
+      };
+
+      global.Game.rooms = {
+        E1N1: { name: "E1N1", controller: { my: true, level: 3 } } as unknown as Room
+      };
+
+      const swarm = createMockSwarmState([]);
+      const result = needsRole("E1N1", "scout", swarm);
+      assert.isTrue(result, "nearby stub intel should trigger one scout to unlock remote assignment");
+    });
+
     it("should return true when remote room needs workers", () => {
       global.Game.creeps = {};
       const swarm = createMockSwarmState(["E2N1"]);

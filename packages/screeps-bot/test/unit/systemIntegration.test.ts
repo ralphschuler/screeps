@@ -63,10 +63,7 @@ describe("System Integration Tests", () => {
     });
 
     it("should reserve energy for military operations in war mode", () => {
-      const calculateEnergyAllocation = (
-        totalEnergy: number,
-        mode: "eco" | "war"
-      ) => {
+      const calculateEnergyAllocation = (totalEnergy: number, mode: "eco" | "war") => {
         if (mode === "war") {
           return {
             military: totalEnergy * 0.6,
@@ -144,8 +141,8 @@ describe("System Integration Tests", () => {
       };
 
       const storage: Storage = {
-        "X": 500, // Insufficient
-        "LH2O": 1200 // Sufficient
+        X: 500, // Insufficient
+        LH2O: 1200 // Sufficient
       };
 
       const missingResources = labQueue.requiredInputs.filter(input => {
@@ -158,16 +155,16 @@ describe("System Integration Tests", () => {
 
     it("should sell excess minerals not needed for production", () => {
       const productionNeeds: Record<string, number> = {
-        "H": 5000,
-        "O": 5000,
-        "U": 3000
+        H: 5000,
+        O: 5000,
+        U: 3000
       };
 
       const currentStorage: Record<string, number> = {
-        "H": 50000,
-        "O": 6000,
-        "U": 2000,
-        "L": 40000
+        H: 50000,
+        O: 6000,
+        U: 2000,
+        L: 40000
       };
 
       const excessResources = Object.keys(currentStorage).filter(resource => {
@@ -229,7 +226,7 @@ describe("System Integration Tests", () => {
       ];
 
       const sorted = [...requests].sort((a, b) => b.priority - a.priority);
-      
+
       expect(sorted[0].role).to.be.oneOf(["defender", "ranger"]);
       expect(sorted[1].role).to.be.oneOf(["defender", "ranger"]);
     });
@@ -273,14 +270,8 @@ describe("System Integration Tests", () => {
       }
 
       const queue: SpawnQueue = {
-        essential: [
-          { role: "defender" },
-          { role: "harvester" }
-        ],
-        nonEssential: [
-          { role: "upgrader" },
-          { role: "builder" }
-        ]
+        essential: [{ role: "defender" }, { role: "harvester" }],
+        nonEssential: [{ role: "upgrader" }, { role: "builder" }]
       };
 
       const isEmergency = true;
@@ -297,7 +288,7 @@ describe("System Integration Tests", () => {
       const ownedRooms = 4;
       const stableRooms = 3;
 
-      const canExpand = ownedRooms < gclLevel && stableRooms >= (ownedRooms * 0.75);
+      const canExpand = ownedRooms < gclLevel && stableRooms >= ownedRooms * 0.75;
       expect(canExpand).to.be.true;
     });
 
@@ -438,14 +429,14 @@ describe("System Integration Tests", () => {
 
       const rooms: RoomPheromones[] = [
         { roomName: "W1N1", danger: 100 }, // Under attack
-        { roomName: "W1N2", danger: 0 },   // Neighbor
-        { roomName: "W2N1", danger: 0 }    // Neighbor
+        { roomName: "W1N2", danger: 0 }, // Neighbor
+        { roomName: "W2N1", danger: 0 } // Neighbor
       ];
 
       // Propagate danger to neighbors (reduced)
       const PROPAGATION_FACTOR = 0.3;
       const attackedRoom = rooms[0];
-      
+
       for (let i = 1; i < rooms.length; i++) {
         rooms[i].danger = attackedRoom.danger * PROPAGATION_FACTOR;
       }
@@ -482,7 +473,7 @@ describe("System Integration Tests", () => {
       const rooms: RoomCPU[] = [
         { roomName: "W1N1", priority: 1, allocation: 0 }, // Under attack
         { roomName: "W2N2", priority: 0.5, allocation: 0 }, // Stable
-        { roomName: "W3N3", priority: 0.5, allocation: 0 }  // Stable
+        { roomName: "W3N3", priority: 0.5, allocation: 0 } // Stable
       ];
 
       const totalCPU = 200;
@@ -511,7 +502,7 @@ describe("System Integration Tests", () => {
       };
 
       const currentTick = 9950;
-      const isCacheValid = (currentTick - cache.cachedAt) < cache.ttl;
+      const isCacheValid = currentTick - cache.cachedAt < cache.ttl;
 
       expect(isCacheValid).to.be.true;
     });

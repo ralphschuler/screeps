@@ -151,7 +151,7 @@ describe("Perimeter Defense Logic", () => {
     it("should build both walls and ramparts at RCL 3+", () => {
       assert.isTrue(shouldBuildPerimeter(3), "Walls at RCL 3");
       assert.isTrue(shouldBuildRamparts(3), "Ramparts at RCL 3");
-      
+
       assert.isTrue(shouldBuildPerimeter(8), "Walls at RCL 8");
       assert.isTrue(shouldBuildRamparts(8), "Ramparts at RCL 8");
     });
@@ -198,15 +198,15 @@ describe("Perimeter Defense Logic", () => {
       // This test validates the new behavior where walls are only placed
       // at room exit positions (2 tiles inside from actual exits)
       // rather than creating a continuous square around the entire room
-      
+
       // The key difference:
       // OLD: All tiles at x=2, x=47, y=2, y=47 (complete square)
       // NEW: Only tiles at x=2, x=47, y=2, y=47 where there's an actual exit
-      
+
       // Example: If a room has terrain walls blocking most of the top edge,
       // we should only place defensive walls at the actual exit gaps,
       // not along the entire top perimeter.
-      
+
       assert.isTrue(true, "Strategy validated: walls only at exits");
     });
 
@@ -226,12 +226,12 @@ describe("Perimeter Defense Logic", () => {
       // New behavior: If a barrier structure (wall or rampart) already exists at the room edge,
       // that position is not considered an exit (it's already blocked)
       // and we don't need to place our defensive wall there.
-      
+
       // This prevents redundant wall placement when:
       // - Players manually build walls or ramparts at room edges
       // - Other systems build barriers at exits
       // - We're rebuilding after barrier destruction
-      
+
       // The system should detect existing barrier structures and skip those positions
       assert.isTrue(true, "Barrier structure detection at room edges validated");
     });

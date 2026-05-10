@@ -11,7 +11,7 @@
  * - Offensive operations
  *
  * Addresses Issues: #8, #20, #36
- * 
+ *
  * TODO(P2): ARCH - Implement automatic cluster formation based on room proximity
  * Rooms within N tiles should automatically form clusters
  * TODO(P2): FEATURE - Add cluster efficiency metrics (total energy, military strength)
@@ -26,7 +26,7 @@
  * Coordinate infrastructure projects across multiple rooms
  * TODO(P3): ARCH - Implement cluster hierarchy for nested clusters
  * Large empires could have clusters of clusters
- * 
+ *
  * Test Coverage: Tests exist in clusterManager.test.ts covering:
  * - Resource distribution algorithms
  * - Transfer cost optimization
@@ -42,26 +42,12 @@ import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { ProcessPriority } from "../core/kernel";
 import { logger } from "../core/logger";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import {
-  type DefenseRequest,
-  createDefenseRequest,
-  needsDefenseAssistance
-} from "../spawning/defenderManager";
-import {
-  routeEmergencyEnergy,
-  updateMilitaryReservations
-} from "./militaryResourcePooling";
-import {
-  planOffensiveOperations,
-  updateOffensiveOperations as updateGlobalOffensiveOps
-} from "./offensiveOperations";
+import { type DefenseRequest, createDefenseRequest, needsDefenseAssistance } from "../spawning/defenderManager";
+import { routeEmergencyEnergy, updateMilitaryReservations } from "./militaryResourcePooling";
+import { planOffensiveOperations, updateOffensiveOperations as updateGlobalOffensiveOps } from "./offensiveOperations";
 import { updateClusterRallyPoints } from "./rallyPointManager";
 import { resourceSharingManager } from "./resourceSharing";
-import {
-  createDefenseSquad,
-  shouldDissolveSquad,
-  validateSquadState
-} from "./squadCoordinator";
+import { createDefenseSquad, shouldDissolveSquad, validateSquadState } from "./squadCoordinator";
 
 /**
  * Cluster Manager Configuration
@@ -149,7 +135,7 @@ export class ClusterManager {
     // Handle defense requests
     unifiedStats.measureSubsystem(`cluster:${cluster.id}:defense`, () => {
       this.processDefenseRequests(cluster);
-      
+
       // Coordinate cluster-wide defense (threat assessment and defender sharing)
       coordinateClusterDefense(cluster.id);
     });
@@ -217,9 +203,10 @@ export class ClusterManager {
       if (!swarm) continue;
 
       totalEnergyIncome += swarm.metrics.energyHarvested;
-      totalEnergyConsumption += swarm.metrics.energySpawning + swarm.metrics.energyConstruction + swarm.metrics.energyRepair;
+      totalEnergyConsumption +=
+        swarm.metrics.energySpawning + swarm.metrics.energyConstruction + swarm.metrics.energyRepair;
       totalWarIndex += swarm.danger * 25; // Convert danger (0-3) to index (0-75)
-      
+
       // Economy index based on storage and energy income
       const room = Game.rooms[roomName];
       if (room?.storage) {
@@ -317,10 +304,7 @@ export class ClusterManager {
   /**
    * Balance a specific resource across terminals
    */
-  private balanceResource(
-    terminals: { room: Room; terminal: StructureTerminal }[],
-    resource: ResourceConstant
-  ): void {
+  private balanceResource(terminals: { room: Room; terminal: StructureTerminal }[], resource: ResourceConstant): void {
     // Calculate average
     let total = 0;
     for (const { terminal } of terminals) {
@@ -329,8 +313,12 @@ export class ClusterManager {
     const average = total / terminals.length;
 
     // Find surplus and deficit terminals
-    const surplus = terminals.filter(t => t.terminal.store.getUsedCapacity(resource) > average + this.config.resourceBalanceThreshold);
-    const deficit = terminals.filter(t => t.terminal.store.getUsedCapacity(resource) < average - this.config.resourceBalanceThreshold);
+    const surplus = terminals.filter(
+      t => t.terminal.store.getUsedCapacity(resource) > average + this.config.resourceBalanceThreshold
+    );
+    const deficit = terminals.filter(
+      t => t.terminal.store.getUsedCapacity(resource) < average - this.config.resourceBalanceThreshold
+    );
 
     if (surplus.length === 0 || deficit.length === 0) {
       return;
@@ -342,7 +330,10 @@ export class ClusterManager {
 
       // Don't send if it would drop below minimum energy
       if (resource === RESOURCE_ENERGY) {
-        if (source.terminal.store.getUsedCapacity(RESOURCE_ENERGY) < this.config.minTerminalEnergy + this.config.resourceBalanceThreshold) {
+        if (
+          source.terminal.store.getUsedCapacity(RESOURCE_ENERGY) <
+          this.config.minTerminalEnergy + this.config.resourceBalanceThreshold
+        ) {
           continue;
         }
       }
@@ -357,10 +348,9 @@ export class ClusterManager {
         if (amount > 1000) {
           const result = source.terminal.send(resource, amount, target.room.name);
           if (result === OK) {
-            logger.debug(
-              `Transferred ${amount} ${resource} from ${source.room.name} to ${target.room.name}`,
-              { subsystem: "Cluster" }
-            );
+            logger.debug(`Transferred ${amount} ${resource} from ${source.room.name} to ${target.room.name}`, {
+              subsystem: "Cluster"
+            });
             break; // One transfer per terminal per tick
           }
         }
@@ -418,7 +408,7 @@ export class ClusterManager {
     if (Game.time % 100 === 0) {
       planOffensiveOperations(cluster);
     }
-    
+
     // Always update existing operations
     updateGlobalOffensiveOps();
   }
@@ -445,7 +435,6 @@ export class ClusterManager {
    * Update rally points based on current threats and operations
    */
 
-
   /**
    * Update focus room for sequential upgrading strategy.
    * Prioritizes one room to upgrade to RCL 8, then moves to the next room.
@@ -454,11 +443,11 @@ export class ClusterManager {
   private updateFocusRoom(cluster: ClusterMemory): void {
     // Get all member rooms with their RCL
     const roomsWithRcl: { roomName: string; rcl: number }[] = [];
-    
+
     for (const roomName of cluster.memberRooms) {
       const room = Game.rooms[roomName];
       if (!room || !room.controller?.my) continue;
-      
+
       roomsWithRcl.push({
         roomName,
         rcl: room.controller.level
@@ -470,22 +459,16 @@ export class ClusterManager {
     // Check if current focus room still valid
     if (cluster.focusRoom) {
       const focusRoom = Game.rooms[cluster.focusRoom];
-      
+
       // If focus room reached RCL 8, clear it
       if (focusRoom?.controller?.level === 8) {
-        logger.info(
-          `Focus room ${cluster.focusRoom} reached RCL 8, selecting next room`,
-          { subsystem: "Cluster" }
-        );
+        logger.info(`Focus room ${cluster.focusRoom} reached RCL 8, selecting next room`, { subsystem: "Cluster" });
         cluster.focusRoom = undefined;
       }
-      
+
       // If focus room no longer exists or not in cluster, clear it
       if (!focusRoom) {
-        logger.warn(
-          `Focus room ${cluster.focusRoom} no longer valid, selecting new focus`,
-          { subsystem: "Cluster" }
-        );
+        logger.warn(`Focus room ${cluster.focusRoom} no longer valid, selecting new focus`, { subsystem: "Cluster" });
         cluster.focusRoom = undefined;
       }
     }
@@ -494,7 +477,7 @@ export class ClusterManager {
     if (!cluster.focusRoom) {
       // Find room with lowest RCL that's not yet 8
       const eligibleRooms = roomsWithRcl.filter(r => r.rcl < 8);
-      
+
       if (eligibleRooms.length === 0) {
         // All rooms are RCL 8, no focus needed
         return;
@@ -507,10 +490,9 @@ export class ClusterManager {
       });
 
       cluster.focusRoom = eligibleRooms[0].roomName;
-      logger.info(
-        `Selected ${cluster.focusRoom} (RCL ${eligibleRooms[0].rcl}) as focus room for upgrading`,
-        { subsystem: "Cluster" }
-      );
+      logger.info(`Selected ${cluster.focusRoom} (RCL ${eligibleRooms[0].rcl}) as focus room for upgrading`, {
+        subsystem: "Cluster"
+      });
     }
   }
 
@@ -557,7 +539,6 @@ export class ClusterManager {
    * Coordinates assistance to rooms that need defense help
    */
   private processDefenseRequests(cluster: ClusterMemory): void {
-
     // Clean up old/expired requests (older than 500 ticks)
     cluster.defenseRequests = cluster.defenseRequests.filter(req => {
       const age = Game.time - req.createdAt;
@@ -566,17 +547,17 @@ export class ClusterManager {
         logger.debug(`Defense request for ${req.roomName} expired (${age} ticks old)`, { subsystem: "Cluster" });
         return false;
       }
-      
+
       // Check if threat is still present
       const room = Game.rooms[req.roomName];
       if (!room) return false;
-      
+
       const hostiles = getActualHostileCreeps(room);
       if (hostiles.length === 0) {
         logger.info(`Defense request for ${req.roomName} resolved - no more hostiles`, { subsystem: "Cluster" });
         return false;
       }
-      
+
       return true;
     });
 
@@ -652,14 +633,14 @@ export class ClusterManager {
       // Find available defenders in cluster
       for (const roomName of cluster.memberRooms) {
         if (roomName === request.roomName) continue; // Don't use defenders from the room under attack
-        
+
         const room = Game.rooms[roomName];
         if (!room) continue;
 
         const creeps = room.find(FIND_MY_CREEPS);
         for (const creep of creeps) {
           const mem = creep.memory as { role?: string; family?: string; assistTarget?: string };
-          
+
           // Check if creep is a military role and not already assigned
           if (mem.family !== "military") continue;
           if (mem.assistTarget) continue; // Already assigned
@@ -677,7 +658,7 @@ export class ClusterManager {
           if ((needsGuards && isGuard) || (needsRangers && isRanger) || (needsHealers && isHealer)) {
             // Calculate distance (rough estimate)
             const distance = Game.map.getRoomLinearDistance(roomName, request.roomName);
-            
+
             availableDefenders.push({
               creep,
               room,

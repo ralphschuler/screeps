@@ -106,28 +106,28 @@ export class CacheCoherenceManager {
   private registeredCaches: Map<string, RegisteredCache> = new Map();
   private invalidationCount = 0;
   private lastCleanupTick = 0;
-  
+
   /** Cleanup interval in ticks */
   private readonly CLEANUP_INTERVAL = 10;
-  
+
   /** Default memory budget in bytes (approximate) */
   private readonly DEFAULT_MEMORY_BUDGET = 50 * 1024 * 1024; // 50MB
-  
+
   /** Total memory budget across all caches */
   private totalMemoryBudget = this.DEFAULT_MEMORY_BUDGET;
-  
+
   /** Cached regex patterns for common invalidations */
   private regexCache = new Map<string, RegExp>();
-  
+
   /** Estimated bytes per cache entry by namespace (configurable) */
   private estimatedBytesPerEntry: Record<string, number> = {
-    object: 512,      // Small - mostly object references
-    bodypart: 256,    // Very small - just numbers
-    path: 2048,       // Large - serialized paths
-    roomFind: 1024,   // Medium - array of objects
-    role: 512,        // Small - role assignments
-    closest: 256,     // Small - single object reference
-    default: 1024     // Default estimate
+    object: 512, // Small - mostly object references
+    bodypart: 256, // Very small - just numbers
+    path: 2048, // Large - serialized paths
+    roomFind: 1024, // Medium - array of objects
+    role: 512, // Small - role assignments
+    closest: 256, // Small - single object reference
+    default: 1024 // Default estimate
   };
 
   /**
@@ -161,9 +161,9 @@ export class CacheCoherenceManager {
       case CacheLayer.L1:
         return 100; // Highest priority - keep longest
       case CacheLayer.L2:
-        return 50;  // Medium priority
+        return 50; // Medium priority
       case CacheLayer.L3:
-        return 25;  // Lower priority - evict first
+        return 25; // Lower priority - evict first
     }
   }
 
@@ -239,16 +239,16 @@ export class CacheCoherenceManager {
    */
   private getCachedRegex(pattern: string): RegExp {
     let regex = this.regexCache.get(pattern);
-    
+
     if (regex) {
       // Refresh entry to maintain LRU ordering (most recently used at the end)
       this.regexCache.delete(pattern);
     } else {
       regex = new RegExp(pattern);
     }
-    
+
     this.regexCache.set(pattern, regex);
-    
+
     // Limit cache size to prevent memory leak
     if (this.regexCache.size > 100) {
       // Remove least recently used entry (first in Map due to insertion order)
@@ -257,7 +257,7 @@ export class CacheCoherenceManager {
         this.regexCache.delete(firstKey);
       }
     }
-    
+
     return regex;
   }
 
@@ -265,7 +265,7 @@ export class CacheCoherenceManager {
    * Escape special regex characters
    */
   private escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
   /**
@@ -291,7 +291,7 @@ export class CacheCoherenceManager {
   public enforceMemoryLimits(): number {
     // Get current memory usage estimate
     const currentMemory = this.estimateTotalMemory();
-    
+
     if (currentMemory <= this.totalMemoryBudget) {
       return 0; // Within budget
     }
@@ -301,8 +301,7 @@ export class CacheCoherenceManager {
     let totalEvicted = 0;
 
     // Sort caches by priority (lower priority evicted first)
-    const sortedCaches = Array.from(this.registeredCaches.values())
-      .sort((a, b) => a.priority - b.priority);
+    const sortedCaches = Array.from(this.registeredCaches.values()).sort((a, b) => a.priority - b.priority);
 
     // Evict from lowest priority caches first using LRU
     for (const cache of sortedCaches) {
@@ -310,22 +309,18 @@ export class CacheCoherenceManager {
 
       const stats = cache.manager.getCacheStats(cache.namespace);
       const cacheSize = stats.size;
-      
+
       if (cacheSize === 0) continue;
 
       // Calculate how many entries to evict (10% or enough to meet target)
-      const bytesPerEntry = this.estimatedBytesPerEntry[cache.namespace] 
-        ?? this.estimatedBytesPerEntry.default;
+      const bytesPerEntry = this.estimatedBytesPerEntry[cache.namespace] ?? this.estimatedBytesPerEntry.default;
       const entriesNeeded = Math.ceil((targetReduction - totalEvicted) / bytesPerEntry);
-      const toEvict = Math.min(
-        Math.max(1, Math.floor(cacheSize * 0.1)),
-        entriesNeeded
-      );
-      
+      const toEvict = Math.min(Math.max(1, Math.floor(cacheSize * 0.1)), entriesNeeded);
+
       // Evict using the cache manager's LRU eviction when available
       const managerAny = cache.manager as any;
       let actuallyEvicted = 0;
-      
+
       if (typeof managerAny.evictLRU === "function") {
         // Use proper LRU eviction if available
         managerAny.evictLRU(cache.namespace, toEvict);
@@ -357,14 +352,13 @@ export class CacheCoherenceManager {
    */
   private estimateTotalMemory(): number {
     let total = 0;
-    
+
     for (const cache of this.registeredCaches.values()) {
       const stats = cache.manager.getCacheStats(cache.namespace);
-      const bytesPerEntry = this.estimatedBytesPerEntry[cache.namespace] 
-        ?? this.estimatedBytesPerEntry.default;
+      const bytesPerEntry = this.estimatedBytesPerEntry[cache.namespace] ?? this.estimatedBytesPerEntry.default;
       total += stats.size * bytesPerEntry;
     }
-    
+
     return total;
   }
 
@@ -383,30 +377,30 @@ export class CacheCoherenceManager {
     let totalHits = 0;
     let totalMisses = 0;
     let totalEvictions = 0;
-    
-    const layerStats: CacheCoherenceStats['layers'] = {
+
+    const layerStats: CacheCoherenceStats["layers"] = {
       [CacheLayer.L1]: { size: 0, hits: 0, misses: 0, hitRate: 0, evictions: 0 },
       [CacheLayer.L2]: { size: 0, hits: 0, misses: 0, hitRate: 0, evictions: 0 },
       [CacheLayer.L3]: { size: 0, hits: 0, misses: 0, hitRate: 0, evictions: 0 }
     };
-    
+
     const namespaceStats: Record<string, CacheStats> = {};
 
     for (const cache of this.registeredCaches.values()) {
       const stats = cache.manager.getCacheStats(cache.namespace);
-      
+
       // Aggregate totals
       totalHits += stats.hits;
       totalMisses += stats.misses;
       totalEvictions += stats.evictions;
-      
+
       // Aggregate by layer
       const layer = cache.layer;
       layerStats[layer].size += stats.size;
       layerStats[layer].hits += stats.hits;
       layerStats[layer].misses += stats.misses;
       layerStats[layer].evictions += stats.evictions;
-      
+
       // Per-namespace stats
       namespaceStats[cache.namespace] = stats;
     }
@@ -414,12 +408,10 @@ export class CacheCoherenceManager {
     // Calculate hit rates
     const total = totalHits + totalMisses;
     const hitRate = total > 0 ? totalHits / total : 0;
-    
+
     for (const layer of Object.values(CacheLayer)) {
       const layerTotal = layerStats[layer].hits + layerStats[layer].misses;
-      layerStats[layer].hitRate = layerTotal > 0 
-        ? layerStats[layer].hits / layerTotal 
-        : 0;
+      layerStats[layer].hitRate = layerTotal > 0 ? layerStats[layer].hits / layerTotal : 0;
     }
 
     return {
@@ -445,16 +437,16 @@ export class CacheCoherenceManager {
     }
 
     let totalCleaned = 0;
-    
+
     for (const cache of this.registeredCaches.values()) {
       totalCleaned += cache.manager.cleanup();
     }
 
     this.lastCleanupTick = Game.time;
-    
+
     // Also enforce memory limits during cleanup
     totalCleaned += this.enforceMemoryLimits();
-    
+
     return totalCleaned;
   }
 
@@ -463,14 +455,14 @@ export class CacheCoherenceManager {
    */
   public persist(): number {
     let totalPersisted = 0;
-    
+
     for (const cache of this.registeredCaches.values()) {
       // Only persist L3 (memory-backed) caches
       if (cache.layer === CacheLayer.L3) {
         totalPersisted += cache.manager.persist();
       }
     }
-    
+
     return totalPersisted;
   }
 

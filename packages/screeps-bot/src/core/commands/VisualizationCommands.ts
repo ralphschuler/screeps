@@ -165,19 +165,19 @@ export class VisualizationCommands {
   })
   public showVisPerf(): string {
     const metrics = visualizationManager.getPerformanceMetrics();
-    
+
     let result = "=== Visualization Performance ===\n";
     result += `Total CPU: ${metrics.totalCost.toFixed(3)}\n`;
     result += `% of Budget: ${metrics.percentOfBudget.toFixed(2)}%\n`;
     result += "\nPer-Layer Costs:\n";
-    
+
     for (const [layer, cost] of Object.entries(metrics.layerCosts)) {
       const costValue = cost as number;
       if (costValue > 0) {
         result += `  ${layer}: ${costValue.toFixed(3)} CPU\n`;
       }
     }
-    
+
     return result;
   }
 
@@ -190,11 +190,11 @@ export class VisualizationCommands {
   })
   public showVisConfig(): string {
     const config = visualizationManager.getConfig();
-    
+
     let result = "=== Visualization Configuration ===\n";
     result += `Mode: ${config.mode}\n`;
     result += "\nEnabled Layers:\n";
-    
+
     const layerNames: Record<number, string> = {
       [VisualizationLayer.Pheromones]: "Pheromones",
       [VisualizationLayer.Paths]: "Paths",
@@ -210,7 +210,7 @@ export class VisualizationCommands {
       const enabled = (config.enabledLayers & layer) !== 0;
       result += `  ${name}: ${enabled ? "✓" : "✗"}\n`;
     }
-    
+
     return result;
   }
 
@@ -223,7 +223,7 @@ export class VisualizationCommands {
   })
   public clearVisCache(roomName?: string): string {
     visualizationManager.clearCache(roomName);
-    
+
     if (roomName) {
       return `Visualization cache cleared for room: ${roomName}`;
     }

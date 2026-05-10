@@ -1,9 +1,9 @@
 /**
  * Stats System Distributed Budget Validation Tests
- * 
+ *
  * Tests for the fix that accounts for distributed execution (tickModulo)
  * when validating room CPU budgets.
- * 
+ *
  * Issue: @ralphschuler/screeps#2821
  * Fix: Budget validation should multiply budget limit by tickModulo factor
  */
@@ -18,7 +18,7 @@ describe("Stats System - Distributed Budget Validation", () => {
       const baseBudget = 0.1; // Per-tick budget
       const tickModulo = 5;
       const adjustedBudget = baseBudget * tickModulo; // Should be 0.5 CPU
-      
+
       assert.equal(adjustedBudget, 0.5, "Adjusted budget should be 0.5 CPU for eco room with tickModulo=5");
     });
 
@@ -28,9 +28,9 @@ describe("Stats System - Distributed Budget Validation", () => {
       const baseBudget = 0.1;
       const tickModulo = 5;
       const adjustedBudget = baseBudget * tickModulo; // 0.5 CPU
-      
+
       const percentUsed = cpuUsed / adjustedBudget;
-      
+
       assert.isAbove(percentUsed, 1.0, "Room should be over budget");
       assert.approximately(percentUsed, 6.132, 0.01, "Room should be at ~613% of budget (not 3066%)");
     });
@@ -41,9 +41,9 @@ describe("Stats System - Distributed Budget Validation", () => {
       const baseBudget = 0.1;
       const tickModulo = 5;
       const adjustedBudget = baseBudget * tickModulo; // 0.5 CPU
-      
+
       const percentUsed = cpuUsed / adjustedBudget;
-      
+
       assert.isBelow(percentUsed, 1.0, "Room should be within budget");
       assert.approximately(percentUsed, 0.8, 0.01, "Room should be at 80% of budget");
     });
@@ -53,7 +53,7 @@ describe("Stats System - Distributed Budget Validation", () => {
       const baseBudget = 0.1;
       const tickModulo = 1;
       const adjustedBudget = baseBudget * tickModulo;
-      
+
       assert.equal(adjustedBudget, 0.1, "Adjusted budget should equal base budget when tickModulo=1");
     });
 
@@ -62,7 +62,7 @@ describe("Stats System - Distributed Budget Validation", () => {
       const baseBudget = 0.25; // War room budget
       const tickModulo = 1; // War rooms run every tick
       const adjustedBudget = baseBudget * tickModulo;
-      
+
       assert.equal(adjustedBudget, 0.25, "War rooms should maintain base budget when running every tick");
     });
 
@@ -70,10 +70,10 @@ describe("Stats System - Distributed Budget Validation", () => {
       // Test the percentage calculation used in logging
       const cpuUsed = 3.066;
       const adjustedBudget = 0.5; // 0.1 * 5
-      
+
       const percentUsed = cpuUsed / adjustedBudget;
       const percentDisplay = percentUsed * 100;
-      
+
       assert.approximately(percentDisplay, 613.2, 1, "Should display ~613% not 3066%");
     });
   });
@@ -84,7 +84,7 @@ describe("Stats System - Distributed Budget Validation", () => {
       const baseBudget = 0.1;
       const tickModulo = undefined;
       const adjustedBudget = baseBudget * (tickModulo ?? 1);
-      
+
       assert.equal(adjustedBudget, 0.1, "Should default to base budget when tickModulo is undefined");
     });
 
@@ -93,7 +93,7 @@ describe("Stats System - Distributed Budget Validation", () => {
       const baseBudget = 0.1;
       const tickModulo = 20;
       const adjustedBudget = baseBudget * tickModulo;
-      
+
       assert.equal(adjustedBudget, 2.0, "Remote rooms with tickModulo=20 should get 2.0 CPU budget");
     });
 
@@ -103,9 +103,9 @@ describe("Stats System - Distributed Budget Validation", () => {
       const baseBudget = 0.1;
       const tickModulo = 5;
       const adjustedBudget = baseBudget * tickModulo;
-      
+
       const percentUsed = cpuUsed / adjustedBudget;
-      
+
       // Should be precise enough for meaningful comparisons
       assert.isNumber(percentUsed);
       assert.isFinite(percentUsed);
@@ -115,15 +115,15 @@ describe("Stats System - Distributed Budget Validation", () => {
   describe("Budget validation scenarios", () => {
     it("should correctly classify critical violations", () => {
       const criticalThreshold = 1.0; // 100% of budget
-      
+
       // Scenario 1: Severely over budget
       const severe = 3.066 / 0.5; // 613% - CRITICAL
       assert.isAbove(severe, criticalThreshold);
-      
+
       // Scenario 2: Just over budget
       const justOver = 0.51 / 0.5; // 102% - CRITICAL
       assert.isAbove(justOver, criticalThreshold);
-      
+
       // Scenario 3: Within budget
       const within = 0.4 / 0.5; // 80% - OK
       assert.isBelow(within, criticalThreshold);
@@ -131,12 +131,12 @@ describe("Stats System - Distributed Budget Validation", () => {
 
     it("should correctly classify warning thresholds", () => {
       const warningThreshold = 0.8; // 80% of budget
-      
+
       // Scenario 1: Warning level
       const warning = 0.45 / 0.5; // 90% - WARNING
       assert.isAbove(warning, warningThreshold);
       assert.isBelow(warning, 1.0);
-      
+
       // Scenario 2: Below warning
       const ok = 0.3 / 0.5; // 60% - OK
       assert.isBelow(ok, warningThreshold);

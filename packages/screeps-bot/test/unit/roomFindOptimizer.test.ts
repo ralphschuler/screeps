@@ -1,20 +1,25 @@
 import { expect } from "chai";
-import { RoomFindOptimizer, ObjectIdOptimizer, roomFindOptimizer, objectIdOptimizer } from "../../src/core/roomFindOptimizer";
+import {
+  RoomFindOptimizer,
+  ObjectIdOptimizer,
+  roomFindOptimizer,
+  objectIdOptimizer
+} from "../../src/core/roomFindOptimizer";
 import { clearRoomFindCache } from "../../src/cache/domains/RoomFindCache";
 import { clearObjectCache } from "../../src/cache/domains/ObjectCache";
 
 // Define global Screeps classes for testing
 interface SourceClass {
-  new(): Source;
+  new (): Source;
 }
 interface MineralClass {
-  new(): Mineral;
+  new (): Mineral;
 }
 interface CreepClass {
-  new(): Creep;
+  new (): Creep;
 }
 interface StructureClass {
-  new(): Structure;
+  new (): Structure;
 }
 
 (global as typeof global & { Source: SourceClass }).Source = class Source {} as SourceClass;
@@ -70,9 +75,9 @@ describe("RoomFindOptimizer", () => {
             { id: "struct1" as Id<Structure>, structureType: STRUCTURE_SPAWN },
             { id: "struct2" as Id<Structure>, structureType: STRUCTURE_TOWER }
           ] as FindTypes[K][];
-          
+
           // Apply filter if provided
-          if (opts?.filter && typeof opts.filter === 'function') {
+          if (opts?.filter && typeof opts.filter === "function") {
             return allStructures.filter(opts.filter as (obj: FindTypes[K]) => boolean);
           }
           return allStructures;
@@ -238,7 +243,7 @@ describe("RoomFindOptimizer", () => {
         if (type === FIND_MY_CREEPS) return initialCreeps as FindTypes[K][];
         return [];
       };
-      
+
       const result1 = optimizer.find(mockRoom, FIND_MY_CREEPS);
       expect(result1).to.have.length(1);
 
@@ -263,7 +268,7 @@ describe("RoomFindOptimizer", () => {
         if (type === FIND_HOSTILE_CREEPS) return initialHostiles as FindTypes[K][];
         return [];
       };
-      
+
       const result1 = optimizer.find(mockRoom, FIND_HOSTILE_CREEPS);
       expect(result1).to.have.length(1);
 

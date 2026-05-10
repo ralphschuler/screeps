@@ -1,23 +1,23 @@
 /**
  * UI-Enhanced Console Commands
- * 
+ *
  * Provides interactive UI elements for common bot operations using the new console UI system.
  */
 
-import { colorful, createElement } from '@ralphschuler/screeps-utils';
-import { Command } from './commandRegistry';
-import { generateCategoryHelp, generateInteractiveHelp } from './uiHelp';
+import { colorful, createElement } from "@ralphschuler/screeps-utils";
+import { Command } from "./commandRegistry";
+import { generateCategoryHelp, generateInteractiveHelp } from "./uiHelp";
 
 /**
  * UI-enhanced commands for better user experience
  */
 export class UICommands {
   @Command({
-    name: 'uiHelp',
-    description: 'Show interactive help interface with expandable sections',
-    usage: 'uiHelp()',
-    examples: ['uiHelp()', 'uiHelp("Logging")', 'uiHelp("Visualization")'],
-    category: 'System'
+    name: "uiHelp",
+    description: "Show interactive help interface with expandable sections",
+    usage: "uiHelp()",
+    examples: ["uiHelp()", 'uiHelp("Logging")', 'uiHelp("Visualization")'],
+    category: "System"
   })
   public uiHelp(category?: string): string {
     if (category) {
@@ -27,41 +27,44 @@ export class UICommands {
   }
 
   @Command({
-    name: 'spawnForm',
-    description: 'Show interactive form for spawning creeps',
-    usage: 'spawnForm(roomName)',
+    name: "spawnForm",
+    description: "Show interactive form for spawning creeps",
+    usage: "spawnForm(roomName)",
     examples: ['spawnForm("W1N1")', 'spawnForm("E2S3")'],
-    category: 'Spawning'
+    category: "Spawning"
   })
   public spawnForm(roomName: string): string {
     const room = Game.rooms[roomName];
     if (!room) {
-      return colorful(`Room ${roomName} not found or not visible`, 'red', true);
+      return colorful(`Room ${roomName} not found or not visible`, "red", true);
     }
 
-    return createElement.form('spawnCreep', [
+    return createElement.form(
+      "spawnCreep",
+      [
+        {
+          type: "select",
+          name: "role",
+          label: "Role:",
+          options: [
+            { value: "harvester", label: "Harvester" },
+            { value: "upgrader", label: "Upgrader" },
+            { value: "builder", label: "Builder" },
+            { value: "hauler", label: "Hauler" },
+            { value: "repairer", label: "Repairer" },
+            { value: "defender", label: "Defender" }
+          ]
+        },
+        {
+          type: "input",
+          name: "name",
+          label: "Name (optional):",
+          placeholder: "Auto-generated if empty"
+        }
+      ],
       {
-        type: 'select',
-        name: 'role',
-        label: 'Role:',
-        options: [
-          { value: 'harvester', label: 'Harvester' },
-          { value: 'upgrader', label: 'Upgrader' },
-          { value: 'builder', label: 'Builder' },
-          { value: 'hauler', label: 'Hauler' },
-          { value: 'repairer', label: 'Repairer' },
-          { value: 'defender', label: 'Defender' }
-        ]
-      },
-      {
-        type: 'input',
-        name: 'name',
-        label: 'Name (optional):',
-        placeholder: 'Auto-generated if empty'
-      }
-    ], {
-      content: 'Spawn Creep',
-      command: `({role, name}) => {
+        content: "Spawn Creep",
+        command: `({role, name}) => {
         const room = Game.rooms['${roomName}'];
         if (!room) return 'Room not found';
         const spawns = room.find(FIND_MY_SPAWNS);
@@ -72,20 +75,21 @@ export class UICommands {
         const result = spawn.spawnCreep(body, creepName, {memory: {role: role}});
         return result === OK ? 'Spawning ' + creepName : 'Error: ' + result;
       }`
-    });
+      }
+    );
   }
 
   @Command({
-    name: 'roomControl',
-    description: 'Show interactive room control panel',
-    usage: 'roomControl(roomName)',
+    name: "roomControl",
+    description: "Show interactive room control panel",
+    usage: "roomControl(roomName)",
     examples: ['roomControl("W1N1")'],
-    category: 'Room Management'
+    category: "Room Management"
   })
   public roomControl(roomName: string): string {
     const room = Game.rooms[roomName];
     if (!room) {
-      return colorful(`Room ${roomName} not found or not visible`, 'red', true);
+      return colorful(`Room ${roomName} not found or not visible`, "red", true);
     }
 
     let html = `<div style="background: #2b2b2b; padding: 10px; margin: 5px;">`;
@@ -93,15 +97,19 @@ export class UICommands {
 
     // Room stats
     html += `<div style="margin-bottom: 10px;">`;
-    html += colorful(`Energy: ${room.energyAvailable}/${room.energyCapacityAvailable}`, 'green') + '<br>';
+    html += colorful(`Energy: ${room.energyAvailable}/${room.energyCapacityAvailable}`, "green") + "<br>";
     if (room.controller) {
-      html += colorful(`Controller Level: ${room.controller.level} (${room.controller.progress}/${room.controller.progressTotal})`, 'blue') + '<br>';
+      html +=
+        colorful(
+          `Controller Level: ${room.controller.level} (${room.controller.progress}/${room.controller.progressTotal})`,
+          "blue"
+        ) + "<br>";
     }
     html += `</div>`;
 
     // Quick action buttons
     html += createElement.button({
-      content: '🔄 Toggle Visualizations',
+      content: "🔄 Toggle Visualizations",
       command: `() => {
         const config = global.botConfig.getConfig();
         global.botConfig.updateConfig({visualizations: !config.visualizations});
@@ -109,10 +117,10 @@ export class UICommands {
       }`
     });
 
-    html += ' ';
+    html += " ";
 
     html += createElement.button({
-      content: '📊 Room Stats',
+      content: "📊 Room Stats",
       command: `() => {
         const room = Game.rooms['${roomName}'];
         if (!room) return 'Room not found';
@@ -133,29 +141,32 @@ export class UICommands {
   }
 
   @Command({
-    name: 'logForm',
-    description: 'Show interactive form for configuring logging',
-    usage: 'logForm()',
-    examples: ['logForm()'],
-    category: 'Logging'
+    name: "logForm",
+    description: "Show interactive form for configuring logging",
+    usage: "logForm()",
+    examples: ["logForm()"],
+    category: "Logging"
   })
   public logForm(): string {
-    return createElement.form('configureLogging', [
+    return createElement.form(
+      "configureLogging",
+      [
+        {
+          type: "select",
+          name: "level",
+          label: "Log Level:",
+          options: [
+            { value: "debug", label: "Debug (Verbose)" },
+            { value: "info", label: "Info (Normal)" },
+            { value: "warn", label: "Warning (Important)" },
+            { value: "error", label: "Error (Critical Only)" },
+            { value: "none", label: "None (Disabled)" }
+          ]
+        }
+      ],
       {
-        type: 'select',
-        name: 'level',
-        label: 'Log Level:',
-        options: [
-          { value: 'debug', label: 'Debug (Verbose)' },
-          { value: 'info', label: 'Info (Normal)' },
-          { value: 'warn', label: 'Warning (Important)' },
-          { value: 'error', label: 'Error (Critical Only)' },
-          { value: 'none', label: 'None (Disabled)' }
-        ]
-      }
-    ], {
-      content: 'Set Log Level',
-      command: `({level}) => {
+        content: "Set Log Level",
+        command: `({level}) => {
         const levelMap = {
           debug: 0,
           info: 1,
@@ -167,44 +178,49 @@ export class UICommands {
         global.botLogger.configureLogger({level: logLevel});
         return 'Log level set to: ' + level.toUpperCase();
       }`
-    });
+      }
+    );
   }
 
   @Command({
-    name: 'visForm',
-    description: 'Show interactive form for visualization settings',
-    usage: 'visForm()',
-    examples: ['visForm()'],
-    category: 'Visualization'
+    name: "visForm",
+    description: "Show interactive form for visualization settings",
+    usage: "visForm()",
+    examples: ["visForm()"],
+    category: "Visualization"
   })
   public visForm(): string {
-    return createElement.form('configureVisualization', [
+    return createElement.form(
+      "configureVisualization",
+      [
+        {
+          type: "select",
+          name: "mode",
+          label: "Visualization Mode:",
+          options: [
+            { value: "debug", label: "Debug (All layers)" },
+            { value: "presentation", label: "Presentation (Clean)" },
+            { value: "minimal", label: "Minimal (Basic only)" },
+            { value: "performance", label: "Performance (Disabled)" }
+          ]
+        }
+      ],
       {
-        type: 'select',
-        name: 'mode',
-        label: 'Visualization Mode:',
-        options: [
-          { value: 'debug', label: 'Debug (All layers)' },
-          { value: 'presentation', label: 'Presentation (Clean)' },
-          { value: 'minimal', label: 'Minimal (Basic only)' },
-          { value: 'performance', label: 'Performance (Disabled)' }
-        ]
-      }
-    ], {
-      content: 'Set Visualization Mode',
-      command: `({mode}) => {
+        content: "Set Visualization Mode",
+        command: `({mode}) => {
         global.botVisualizationManager.setMode(mode);
         return 'Visualization mode set to: ' + mode;
       }`
-    });
+      }
+    );
   }
 
   @Command({
-    name: 'quickActions',
-    description: 'Show quick action buttons for common operations',
-    usage: 'quickActions()',
-    examples: ['quickActions()'],
-    category: 'System'
+    name: "quickActions",
+    description: "Show quick action buttons for common operations",
+    usage: "quickActions()",
+    examples: ["quickActions()"],
+    category: "System"
   })
   public quickActions(): string {
     let html = `<div style="background: #2b2b2b; padding: 10px; margin: 5px;">`;
@@ -212,7 +228,7 @@ export class UICommands {
 
     // Emergency mode button
     html += createElement.button({
-      content: '🚨 Emergency Mode',
+      content: "🚨 Emergency Mode",
       command: `() => {
         const config = global.botConfig.getConfig();
         global.botConfig.updateConfig({emergencyMode: !config.emergencyMode});
@@ -220,11 +236,11 @@ export class UICommands {
       }`
     });
 
-    html += ' ';
+    html += " ";
 
     // Toggle debug button
     html += createElement.button({
-      content: '🐛 Toggle Debug',
+      content: "🐛 Toggle Debug",
       command: `() => {
         const config = global.botConfig.getConfig();
         const newValue = !config.debug;
@@ -234,11 +250,11 @@ export class UICommands {
       }`
     });
 
-    html += ' ';
+    html += " ";
 
     // Clear cache button
     html += createElement.button({
-      content: '🗑️ Clear Cache',
+      content: "🗑️ Clear Cache",
       command: `() => {
         global.botCacheManager.clear();
         return 'Cache cleared successfully';
@@ -251,20 +267,20 @@ export class UICommands {
   }
 
   @Command({
-    name: 'colorDemo',
-    description: 'Show color demonstration for console output',
-    usage: 'colorDemo()',
-    examples: ['colorDemo()'],
-    category: 'System'
+    name: "colorDemo",
+    description: "Show color demonstration for console output",
+    usage: "colorDemo()",
+    examples: ["colorDemo()"],
+    category: "System"
   })
   public colorDemo(): string {
-    let output = '=== Console Color Demo ===\n\n';
-    output += colorful('✓ Success message', 'green', true) + '\n';
-    output += colorful('⚠ Warning message', 'yellow', true) + '\n';
-    output += colorful('✗ Error message', 'red', true) + '\n';
-    output += colorful('ℹ Info message', 'blue', true) + '\n';
-    output += '\nNormal text: ' + colorful('colored text', 'green') + ' normal text\n';
-    output += 'Bold text: ' + colorful('important', null, true) + '\n';
+    let output = "=== Console Color Demo ===\n\n";
+    output += colorful("✓ Success message", "green", true) + "\n";
+    output += colorful("⚠ Warning message", "yellow", true) + "\n";
+    output += colorful("✗ Error message", "red", true) + "\n";
+    output += colorful("ℹ Info message", "blue", true) + "\n";
+    output += "\nNormal text: " + colorful("colored text", "green") + " normal text\n";
+    output += "Bold text: " + colorful("important", null, true) + "\n";
     return output;
   }
 }

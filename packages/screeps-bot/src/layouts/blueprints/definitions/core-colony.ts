@@ -1,10 +1,10 @@
 /**
  * RCL 3-4: Core Colony Layout
- * 
+ *
  * Expanded checkerboard pattern with tower for defense and storage (RCL 4+).
  * All extension positions satisfy |x|+|y| % 2 == 0 (even sum)
  * to ensure no two extensions are directly adjacent.
- * 
+ *
  * Key features:
  * - All spawn-adjacent tiles are roads for creep exit
  * - Extensions are spaced with roads for movement
@@ -68,7 +68,7 @@ export const CORE_COLONY_BLUEPRINT: Blueprint = {
     { x: 1, y: -2 },
     { x: -1, y: 2 },
     { x: 1, y: 2 },
-    ...createRadialRoads(spawnPos, 3, ['north', 'south', 'east', 'west']),
+    ...createRadialRoads(spawnPos, 3, ["north", "south", "east", "west"]),
     // Access road to storage (RCL 4+)
     { x: 3, y: 3 },
     { x: 4, y: 3 },

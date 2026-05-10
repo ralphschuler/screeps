@@ -147,7 +147,7 @@ export class Scheduler {
 
   /**
    * Check if task should run this tick
-   * 
+   *
    * REMOVED: Bucket requirement check - tasks run regardless of bucket level.
    * Bucket mode still affects frequency filtering (low mode skips non-high frequency tasks).
    */
@@ -257,7 +257,7 @@ export const scheduler = new Scheduler();
 
 /**
  * Create a high-frequency task (every tick)
- * 
+ *
  * REMOVED: minBucket requirement set to 0 - tasks run regardless of bucket level
  */
 export function createHighFrequencyTask(
@@ -278,7 +278,7 @@ export function createHighFrequencyTask(
 
 /**
  * Create a medium-frequency task (every 5-10 ticks)
- * 
+ *
  * REMOVED: minBucket requirement set to 0 - tasks run regardless of bucket level
  */
 export function createMediumFrequencyTask(
@@ -299,7 +299,7 @@ export function createMediumFrequencyTask(
 
 /**
  * Create a low-frequency task (every 20-50 ticks)
- * 
+ *
  * REMOVED: minBucket requirement set to 0 - tasks run regardless of bucket level
  */
 export function createLowFrequencyTask(

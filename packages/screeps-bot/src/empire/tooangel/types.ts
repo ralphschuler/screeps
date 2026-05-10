@@ -6,38 +6,38 @@
 /**
  * Quest types supported by TooAngel
  */
-export type TooAngelQuestType = 
-  | "buildcs"      // Build all construction sites in the given room
-  | "defend"       // Defend specific room for some time
-  | "attack"       // Attack a room
-  | "sign"         // Sign controller in room
-  | "dismantle"    // Dismantle structure in room
-  | "transport"    // Bring resource to room
-  | "terminal"     // Send resource via terminal to room
-  | "harvest";     // Get resource via creep from room
+export type TooAngelQuestType =
+  | "buildcs" // Build all construction sites in the given room
+  | "defend" // Defend specific room for some time
+  | "attack" // Attack a room
+  | "sign" // Sign controller in room
+  | "dismantle" // Dismantle structure in room
+  | "transport" // Bring resource to room
+  | "terminal" // Send resource via terminal to room
+  | "harvest"; // Get resource via creep from room
 
 /**
  * Quest status
  */
-export type QuestStatus = 
-  | "available"    // Quest detected but not applied
-  | "applied"      // Applied for quest
-  | "active"       // Quest received and in progress
-  | "completed"    // Quest completed
-  | "failed"       // Quest failed or expired
-  | "cancelled";   // Quest cancelled
+export type QuestStatus =
+  | "available" // Quest detected but not applied
+  | "applied" // Applied for quest
+  | "active" // Quest received and in progress
+  | "completed" // Quest completed
+  | "failed" // Quest failed or expired
+  | "cancelled"; // Quest cancelled
 
 /**
  * Quest message format (sent/received via terminal)
  */
 export interface TooAngelQuest {
   type: "quest";
-  id: string;              // Unique quest identifier
-  room: string;            // Room where quest needs to be solved
+  id: string; // Unique quest identifier
+  room: string; // Room where quest needs to be solved
   quest: TooAngelQuestType; // Type of quest
-  end: number;             // Game.time when quest needs to be finished
-  origin?: string;         // Origin room for quest communication
-  action?: "apply";        // Action for quest application
+  end: number; // Game.time when quest needs to be finished
+  origin?: string; // Origin room for quest communication
+  action?: "apply"; // Action for quest application
   result?: "won" | "lost"; // Quest completion result
 }
 

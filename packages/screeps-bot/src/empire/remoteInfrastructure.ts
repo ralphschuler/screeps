@@ -102,7 +102,7 @@ export class RemoteInfrastructureManager {
     // Check if we have controller reservation to avoid conflicts
     const controller = remoteRoom.controller;
     const myUsername = this.getMyUsername();
-    
+
     // Only build in neutral rooms or rooms reserved by us
     if (controller) {
       if (controller.owner && controller.owner.username !== myUsername) {

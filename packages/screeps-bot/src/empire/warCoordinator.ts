@@ -31,7 +31,9 @@ export class WarCoordinator {
     });
 
     // === 2. Proactive: always add nearby enemy rooms (offensive expansion) ===
-    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my).map(r => r.name);
+    const ownedRooms = Object.values(Game.rooms)
+      .filter(r => r.controller?.my)
+      .map(r => r.name);
     const enemyRooms: { roomName: string; distance: number }[] = [];
 
     for (const roomName in empire.knownRooms) {

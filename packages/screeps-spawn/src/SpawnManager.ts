@@ -125,7 +125,7 @@ export class SpawnManager {
   /**
    * Execute a spawn request on a specific spawn
    * 
-   * Verified with MCP (screeps-docs-mcp: StructureSpawn.spawnCreep):
+   * Verified with local Screeps types and official docs:
    * - API signature: spawnCreep(body, name, {memory}) ✓
    * - Return codes: OK, ERR_BUSY, ERR_NOT_ENOUGH_ENERGY, ERR_INVALID_ARGS, etc. ✓
    * - Body constraints: 1-50 body parts ✓

@@ -4,12 +4,12 @@ import { getConfig, resetConfig } from "../../src/config";
 
 describe("Kernel process health monitoring", () => {
   let kernel: Kernel;
-  let eventLog: Array<{ event: 'suspended' | 'recovered'; data: unknown }>;
+  let eventLog: Array<{ event: "suspended" | "recovered"; data: unknown }>;
 
   beforeEach(() => {
     resetConfig();
     eventLog = [];
-    
+
     // Mock Game global
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-expect-error: Allow setting test values
@@ -28,12 +28,12 @@ describe("Kernel process health monitoring", () => {
     kernel.getEventBus().clear();
 
     // Subscribe to process events for testing
-    kernel.on('process.suspended', (event) => {
-      eventLog.push({ event: 'suspended', data: event });
+    kernel.on("process.suspended", event => {
+      eventLog.push({ event: "suspended", data: event });
     });
 
-    kernel.on('process.recovered', (event) => {
-      eventLog.push({ event: 'recovered', data: event });
+    kernel.on("process.recovered", event => {
+      eventLog.push({ event: "recovered", data: event });
     });
   });
 
@@ -213,7 +213,7 @@ describe("Kernel process health monitoring", () => {
       expect(process?.state).to.equal("suspended");
       expect(process?.stats.suspendedUntil).to.not.equal(null);
       expect(process?.stats.suspensionReason).to.include("3 consecutive failures");
-      
+
       // Should emit suspension event
       expect(eventLog).to.have.lengthOf(1);
       expect(eventLog[0].event).to.equal("suspended");
@@ -265,7 +265,7 @@ describe("Kernel process health monitoring", () => {
       }
 
       const runCountBeforeSuspension = runCount;
-      
+
       // Try to run again - should be skipped due to suspension
       Game.time++;
       kernel.run();
@@ -289,13 +289,13 @@ describe("Kernel process health monitoring", () => {
       // Fail 10 times
       for (let i = 0; i < 10; i++) {
         Game.time = i * 1000; // Large time gaps to avoid suspension blocking
-        
+
         // If suspended, manually resume to continue testing
         const process = kernel.getProcess("test");
         if (process && process.state === "suspended") {
           kernel.resumeProcess("test");
         }
-        
+
         kernel.run();
       }
 
@@ -304,7 +304,7 @@ describe("Kernel process health monitoring", () => {
       expect(process?.stats.suspendedUntil).to.equal(Number.MAX_SAFE_INTEGER);
       expect(process?.stats.suspensionReason).to.include("Circuit breaker");
       expect(process?.stats.suspensionReason).to.include("permanent");
-      
+
       // Should emit permanent suspension event
       const suspensionEvents = eventLog.filter(e => e.event === "suspended");
       const permanentSuspension = suspensionEvents.find(e => (e.data as any).permanent === true);
@@ -333,9 +333,9 @@ describe("Kernel process health monitoring", () => {
 
       const process = kernel.getProcess("test");
       const resumeTime = process?.stats.suspendedUntil || 0;
-      
+
       expect(process?.state).to.equal("suspended");
-      
+
       // Advance time past suspension period
       Game.time = resumeTime + 1;
       kernel.run();
@@ -345,7 +345,7 @@ describe("Kernel process health monitoring", () => {
       expect(processAfter?.state).to.not.equal("suspended");
       expect(processAfter?.stats.suspendedUntil).to.equal(null);
       expect(processAfter?.stats.suspensionReason).to.equal(null);
-      
+
       // Should emit recovery event
       const recoveryEvents = eventLog.filter(e => e.event === "recovered");
       expect(recoveryEvents).to.have.lengthOf(1);
@@ -371,7 +371,7 @@ describe("Kernel process health monitoring", () => {
 
       const process = kernel.getProcess("test");
       const resumeTime = process?.stats.suspendedUntil || 0;
-      
+
       // Try to run before suspension expires
       Game.time = resumeTime - 1;
       kernel.run();
@@ -401,10 +401,10 @@ describe("Kernel process health monitoring", () => {
       }
 
       expect(kernel.getProcess("test")?.state).to.equal("suspended");
-      
+
       // Clear event log before manual resume
       eventLog = [];
-      
+
       // Manually resume
       const result = kernel.resumeProcess("test");
       expect(result).to.equal(true);
@@ -413,7 +413,7 @@ describe("Kernel process health monitoring", () => {
       expect(process?.state).to.not.equal("suspended");
       expect(process?.stats.suspendedUntil).to.equal(null);
       expect(process?.stats.suspensionReason).to.equal(null);
-      
+
       // Should emit recovery event with manual flag
       expect(eventLog).to.have.lengthOf(1);
       expect(eventLog[0].event).to.equal("recovered");
@@ -467,7 +467,7 @@ describe("Kernel process health monitoring", () => {
       kernel.run();
 
       const stats = kernel.getStatsSummary();
-      
+
       expect(stats.avgHealthScore).to.be.lessThan(100);
       expect(stats.avgHealthScore).to.be.greaterThan(0);
       expect(stats.unhealthyProcesses).to.have.lengthOf(1);

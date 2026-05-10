@@ -1,16 +1,16 @@
 /**
  * TooAngel Manager
- * 
+ *
  * Main coordination module for TooAngel diplomacy and quest system.
  * Integrates with the bot's kernel as a process.
- * 
+ *
  * Features:
  * - Automatic NPC room detection via controller signs
  * - Reputation tracking and API
  * - Quest lifecycle management (discover, apply, execute, complete)
  * - Terminal-based communication
  * - Player-to-player coordination protocol
- * 
+ *
  * Based on: https://github.com/TooAngel/screeps/blob/master/doc/API.md
  */
 
@@ -18,10 +18,7 @@ import { logger } from "@ralphschuler/screeps-core";
 import { ProcessPriority } from "../../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../../core/processDecorators";
 import { scanForNPCRooms, updateNPCRoom } from "./npcDetector";
-import {
-  cleanupQuestCreeps,
-  executeQuests
-} from "./questExecutor";
+import { cleanupQuestCreeps, executeQuests } from "./questExecutor";
 import {
   applyForQuest,
   autoDiscoverQuests,
@@ -29,11 +26,7 @@ import {
   getActiveQuests,
   processQuestMessages
 } from "./questManager";
-import {
-  getReputation,
-  processReputationUpdates,
-  requestReputation
-} from "./reputationManager";
+import { getReputation, processReputationUpdates, requestReputation } from "./reputationManager";
 
 /**
  * Configuration for TooAngel manager
@@ -142,7 +135,6 @@ export class TooAngelManager {
         this.discoverQuests();
         this.lastQuestDiscoveryTick = Game.time;
       }
-
     } catch (error) {
       // Track error count to prevent log spam
       const errorKey = `tooangel_error_${Game.time % 100}`;
@@ -166,10 +158,7 @@ export class TooAngelManager {
     }
 
     if (npcRooms.length > 0) {
-      logger.info(
-        `Scanned ${npcRooms.length} TooAngel NPC rooms`,
-        { subsystem: "TooAngel" }
-      );
+      logger.info(`Scanned ${npcRooms.length} TooAngel NPC rooms`, { subsystem: "TooAngel" });
     }
   }
 
@@ -214,12 +203,8 @@ export class TooAngelManager {
   public getStatus(): string {
     const reputation = this.getReputation();
     const activeQuests = this.getActiveQuests();
-    const activeCount = Object.values(activeQuests).filter(
-      q => q.status === "active"
-    ).length;
-    const appliedCount = Object.values(activeQuests).filter(
-      q => q.status === "applied"
-    ).length;
+    const activeCount = Object.values(activeQuests).filter(q => q.status === "active").length;
+    const appliedCount = Object.values(activeQuests).filter(q => q.status === "applied").length;
 
     const lines: string[] = [];
     lines.push("=== TooAngel Integration ===");
@@ -234,9 +219,7 @@ export class TooAngelManager {
       for (const questId in activeQuests) {
         const quest = activeQuests[questId];
         const timeLeft = quest.deadline - Game.time;
-        lines.push(
-          `  ${questId}: ${quest.type} in ${quest.targetRoom} (${quest.status}, ${timeLeft} ticks left)`
-        );
+        lines.push(`  ${questId}: ${quest.type} in ${quest.targetRoom} (${quest.status}, ${timeLeft} ticks left)`);
       }
     }
 

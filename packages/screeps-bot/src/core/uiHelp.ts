@@ -1,16 +1,16 @@
 /**
  * UI-Enhanced Help System
- * 
+ *
  * Integrates the new console UI system with the existing command registry
  * to provide a rich, interactive help interface.
  */
 
-import { FunctionDescribe, ModuleDescribe, createHelp } from '@ralphschuler/screeps-utils';
-import { commandRegistry } from './commandRegistry';
+import { FunctionDescribe, ModuleDescribe, createHelp } from "@ralphschuler/screeps-utils";
+import { commandRegistry } from "./commandRegistry";
 
 /**
  * Generate an interactive help interface using the new UI system
- * 
+ *
  * @returns HTML string with interactive help interface
  */
 export function generateInteractiveHelp(): string {
@@ -23,7 +23,7 @@ export function generateInteractiveHelp(): string {
       const func: FunctionDescribe = {
         title: cmd.metadata.description,
         functionName: cmd.metadata.name,
-        commandType: !cmd.metadata.usage?.includes('(')
+        commandType: !cmd.metadata.usage?.includes("(")
       };
 
       // Add detailed description if available
@@ -35,7 +35,10 @@ export function generateInteractiveHelp(): string {
       if (cmd.metadata.usage) {
         const paramMatch = cmd.metadata.usage.match(/\((.*?)\)/);
         if (paramMatch && paramMatch[1]) {
-          const paramNames = paramMatch[1].split(',').map(p => p.trim()).filter(p => p);
+          const paramNames = paramMatch[1]
+            .split(",")
+            .map(p => p.trim())
+            .filter(p => p);
           if (paramNames.length > 0) {
             func.params = paramNames.map(name => ({
               name,
@@ -60,7 +63,7 @@ export function generateInteractiveHelp(): string {
 
 /**
  * Generate help for a specific category
- * 
+ *
  * @param category - The category to show help for
  * @returns HTML string with category help
  */
@@ -69,14 +72,14 @@ export function generateCategoryHelp(category: string): string {
   const commands = commandsByCategory.get(category);
 
   if (!commands || commands.length === 0) {
-    return `Category "${category}" not found. Available categories: ${Array.from(commandsByCategory.keys()).join(', ')}`;
+    return `Category "${category}" not found. Available categories: ${Array.from(commandsByCategory.keys()).join(", ")}`;
   }
 
   const api: FunctionDescribe[] = commands.map(cmd => ({
     title: cmd.metadata.description,
     describe: cmd.metadata.examples?.[0],
     functionName: cmd.metadata.name,
-    commandType: !cmd.metadata.usage?.includes('('),
+    commandType: !cmd.metadata.usage?.includes("("),
     params: cmd.metadata.usage ? parseParamsFromUsage(cmd.metadata.usage) : undefined
   }));
 
@@ -89,7 +92,7 @@ export function generateCategoryHelp(category: string): string {
 
 /**
  * Parse parameter information from usage string
- * 
+ *
  * @param usage - Usage string (e.g., "command(arg1, arg2)")
  * @returns Array of parameter descriptions
  */
@@ -99,7 +102,10 @@ function parseParamsFromUsage(usage: string): { name: string; desc: string }[] |
     return undefined;
   }
 
-  const paramNames = paramMatch[1].split(',').map(p => p.trim()).filter(p => p);
+  const paramNames = paramMatch[1]
+    .split(",")
+    .map(p => p.trim())
+    .filter(p => p);
   if (paramNames.length === 0) {
     return undefined;
   }

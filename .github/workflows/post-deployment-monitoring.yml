@@ -48,12 +48,12 @@ jobs:
         uses: actions/github-script@v8
         env:
           GRAFANA_URL: 'https://ralphschuler.grafana.net'
-          GRAFANA_TOKEN: ${{ secrets.COPILOT_MCP_GRAFANA_SERVICE_ACCOUNT_TOKEN }}
+          GRAFANA_TOKEN: ${{ secrets.GRAFANA_SERVICE_ACCOUNT_TOKEN }}
         with:
           script: |
             // TODO: This would query Grafana for pre-merge metrics
             // For now, we'll use placeholder data
-            // In production, use grafana-mcp query_prometheus tool
+            // In production, query Grafana HTTP API or exported metrics directly
             
             const fs = require('fs');
             const path = require('path');
@@ -80,11 +80,11 @@ jobs:
         uses: actions/github-script@v8
         env:
           GRAFANA_URL: 'https://ralphschuler.grafana.net'
-          GRAFANA_TOKEN: ${{ secrets.COPILOT_MCP_GRAFANA_SERVICE_ACCOUNT_TOKEN }}
+          GRAFANA_TOKEN: ${{ secrets.GRAFANA_SERVICE_ACCOUNT_TOKEN }}
         with:
           script: |
             // TODO: Query Grafana for post-merge metrics
-            // In production, use grafana-mcp query_prometheus tool
+            // In production, query Grafana HTTP API or exported metrics directly
             
             console.log('Post-deployment metrics captured');
             return { cpu: { avg: 55 }, timestamp: Date.now() };

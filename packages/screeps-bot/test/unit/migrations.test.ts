@@ -45,21 +45,21 @@ describe("MigrationRunner", () => {
   describe("Version Tracking", () => {
     it("should get current version from memory", () => {
       const version = runner.getCurrentVersion();
-      
+
       assert.isNumber(version);
       assert.equal(version, 0);
     });
 
     it("should handle missing memory version", () => {
       delete (global as GlobalWithMocks).Memory!.memoryVersion;
-      
+
       const version = runner.getCurrentVersion();
       assert.equal(version, 0);
     });
 
     it("should get latest migration version", () => {
       const latestVersion = runner.getLatestVersion();
-      
+
       assert.isNumber(latestVersion);
       assert.isAtLeast(latestVersion, 0);
     });
@@ -67,7 +67,7 @@ describe("MigrationRunner", () => {
     it("should handle no migrations", () => {
       // When there are no migrations, latest version should be 0
       const latestVersion = runner.getLatestVersion();
-      
+
       // Either there are migrations (latestVersion > 0) or not (latestVersion = 0)
       assert.isAtLeast(latestVersion, 0);
     });
@@ -78,9 +78,9 @@ describe("MigrationRunner", () => {
       // Set memory version to latest
       const latestVersion = runner.getLatestVersion();
       (global as GlobalWithMocks).Memory!.memoryVersion = latestVersion;
-      
+
       const hasPending = runner.hasPendingMigrations();
-      
+
       if (latestVersion > 0) {
         assert.isFalse(hasPending);
       } else {
@@ -92,10 +92,10 @@ describe("MigrationRunner", () => {
     it("should detect when migrations are pending", () => {
       // Set memory version to 0
       (global as GlobalWithMocks).Memory!.memoryVersion = 0;
-      
+
       const hasPending = runner.hasPendingMigrations();
       const latestVersion = runner.getLatestVersion();
-      
+
       if (latestVersion > 0) {
         assert.isTrue(hasPending);
       } else {
@@ -106,11 +106,11 @@ describe("MigrationRunner", () => {
     it("should get list of pending migrations", () => {
       // Set memory version to 0
       (global as GlobalWithMocks).Memory!.memoryVersion = 0;
-      
+
       const pending = runner.getPendingMigrations();
-      
+
       assert.isArray(pending);
-      
+
       // All pending migrations should have version > 0
       pending.forEach(migration => {
         assert.isAbove(migration.version, 0);
@@ -120,9 +120,9 @@ describe("MigrationRunner", () => {
     it("should return empty array when no migrations pending", () => {
       const latestVersion = runner.getLatestVersion();
       (global as GlobalWithMocks).Memory!.memoryVersion = latestVersion;
-      
+
       const pending = runner.getPendingMigrations();
-      
+
       assert.isArray(pending);
       assert.lengthOf(pending, 0);
     });
@@ -138,11 +138,11 @@ describe("MigrationRunner", () => {
 
     it("should update memory version after migrations", () => {
       const initialVersion = runner.getCurrentVersion();
-      
+
       runner.runMigrations();
-      
+
       const finalVersion = runner.getCurrentVersion();
-      
+
       // Version should either stay the same (no migrations) or increase
       assert.isAtLeast(finalVersion, initialVersion);
     });
@@ -150,11 +150,11 @@ describe("MigrationRunner", () => {
     it("should not run migrations if already up to date", () => {
       const latestVersion = runner.getLatestVersion();
       (global as GlobalWithMocks).Memory!.memoryVersion = latestVersion;
-      
+
       const initialVersion = runner.getCurrentVersion();
       runner.runMigrations();
       const finalVersion = runner.getCurrentVersion();
-      
+
       // Version should stay the same
       assert.equal(finalVersion, initialVersion);
     });
@@ -178,7 +178,7 @@ describe("MigrationRunner", () => {
     it("should have unique migration versions", () => {
       const versions = migrations.map(m => m.version);
       const uniqueVersions = new Set(versions);
-      
+
       assert.equal(versions.length, uniqueVersions.size);
     });
 

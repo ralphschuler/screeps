@@ -3,7 +3,7 @@
     "module": "esnext",
     "lib": ["es2018"],
     "target": "es5",
-    "moduleResolution": "node16",
+    "moduleResolution": "node",
     "outDir": "dist",
     "baseUrl": "src/",
     "sourceMap": false,
@@ -14,5 +14,6 @@
     "allowSyntheticDefaultImports": true,
     "allowUnreachableCode": false
   },
-  "exclude": ["node_modules", "src/tests/**/*"]
+  "include": ["src/**/*.ts", "../**/src/**/*.ts"],
+  "exclude": ["node_modules", "test/**/*", "scripts/**/*", "src/tests/**/*"]
 }

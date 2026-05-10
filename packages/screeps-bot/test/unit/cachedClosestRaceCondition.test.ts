@@ -11,11 +11,14 @@ import { findCachedClosest, clearClosestCache as clearCache, globalCache } from 
 
 // Mock creep memory interface
 interface MockCreepMemory {
-  _ct?: Record<string, { 
-    i: Id<_HasId>;  // Target ID
-    t: number;      // Cache tick (Game.time when cached)
-    k: string;      // Type key for validation
-  }>;
+  _ct?: Record<
+    string,
+    {
+      i: Id<_HasId>; // Target ID
+      t: number; // Cache tick (Game.time when cached)
+      k: string; // Type key for validation
+    }
+  >;
 }
 
 // Mock creep interface
@@ -126,11 +129,7 @@ describe("CachedClosest Race Condition Fix", () => {
 
     // Creep 1 tries to use cached target - should fail validation and find new target
     const target1Again = findCachedClosest(creep1 as unknown as Creep, targets, "deliver_ext", 10);
-    assert.equal(
-      target1Again?.id,
-      "ext2",
-      "Creep 1 should get extension 2 after extension 1 is no longer valid"
-    );
+    assert.equal(target1Again?.id, "ext2", "Creep 1 should get extension 2 after extension 1 is no longer valid");
 
     // Creep 2 should also get extension 2 (the only available target)
     const target2 = findCachedClosest(creep2 as unknown as Creep, targets, "deliver_ext", 10);
@@ -207,11 +206,7 @@ describe("CachedClosest Race Condition Fix", () => {
 
     // Should find extension 2 now (cache was cleared)
     const target2 = findCachedClosest(creep as unknown as Creep, targets, "deliver_ext", 10);
-    assert.equal(
-      target2?.id,
-      "ext2",
-      "Should find extension 2 after cache was cleared and targets changed"
-    );
+    assert.equal(target2?.id, "ext2", "Should find extension 2 after cache was cleared and targets changed");
   });
 
   it("should respect cache TTL", () => {
@@ -245,28 +240,14 @@ describe("CachedClosest Race Condition Fix", () => {
     // Advance time by 5 ticks - cache still valid
     setupMockGame(1005);
     targets = [extension2!, extension1!] as (RoomObject & _HasId)[];
-    const targetStillCached = findCachedClosest(
-      creep as unknown as Creep,
-      targets,
-      "deliver_ext",
-      10
-    );
+    const targetStillCached = findCachedClosest(creep as unknown as Creep, targets, "deliver_ext", 10);
     assert.equal(targetStillCached?.id, "ext1", "Cache should still return extension 1");
 
     // Advance time by 11 ticks total - cache expired
     setupMockGame(1011);
     targets = [extension2!] as (RoomObject & _HasId)[]; // Only extension 2 available now
 
-    const targetAfterExpiry = findCachedClosest(
-      creep as unknown as Creep,
-      targets,
-      "deliver_ext",
-      10
-    );
-    assert.equal(
-      targetAfterExpiry?.id,
-      "ext2",
-      "Should find new target after cache expires"
-    );
+    const targetAfterExpiry = findCachedClosest(creep as unknown as Creep, targets, "deliver_ext", 10);
+    assert.equal(targetAfterExpiry?.id, "ext2", "Should find new target after cache expires");
   });
 });

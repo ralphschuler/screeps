@@ -44,13 +44,9 @@ interface MockRoom {
 /**
  * Create a mock creep for testing
  */
-function createMockCreep(options: {
-  name: string;
-  freeCapacity: number;
-  usedCapacity: number;
-}): Creep {
+function createMockCreep(options: { name: string; freeCapacity: number; usedCapacity: number }): Creep {
   const mockRoom = createMockRoom();
-  
+
   const mockCreep: MockCreep = {
     name: options.name,
     room: mockRoom,
@@ -77,14 +73,14 @@ function createMockCreep(options: {
  */
 function createMockRoom(): Room {
   // Setup minimal global Game mock if needed
-  if (typeof global.Game === 'undefined') {
+  if (typeof global.Game === "undefined") {
     (global as any).Game = {
       time: 1000,
       rooms: {},
       creeps: {}
     };
   }
-  
+
   const mockRoom: MockRoom = {
     name: "E1N1",
     controller: undefined,
@@ -96,10 +92,7 @@ function createMockRoom(): Room {
 /**
  * Create a mock context for testing economy behavior evaluation
  */
-function createMockContext(
-  creep: Creep,
-  memory: Partial<SwarmCreepMemory> = {}
-): CreepContext {
+function createMockContext(creep: Creep, memory: Partial<SwarmCreepMemory> = {}): CreepContext {
   const fullMemory: SwarmCreepMemory = {
     role: "larvaWorker",
     family: "economy",

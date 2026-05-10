@@ -92,7 +92,7 @@ export class TerminalRouter {
     }
 
     // Calculate cost using Game.market API
-    // Verified via screeps-docs-mcp: Game.market.calcTransactionCost exists
+    // Verified via Screeps official docs: Game.market.calcTransactionCost exists
     const cost = Game.market.calcTransactionCost(amount, fromRoom, toRoom);
 
     // Cache the result

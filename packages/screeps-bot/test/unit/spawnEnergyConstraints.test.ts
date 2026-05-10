@@ -64,12 +64,7 @@ function createMockSwarmState(): SwarmState {
 /**
  * Create a mock Room with spawn
  */
-function createMockRoom(
-  name: string,
-  energyAvailable: number,
-  energyCapacity: number,
-  hasStorage = false
-): Room {
+function createMockRoom(name: string, energyAvailable: number, energyCapacity: number, hasStorage = false): Room {
   const mockSpawn = {
     name: `Spawn1`,
     structureType: STRUCTURE_SPAWN,
@@ -216,11 +211,7 @@ describe("spawn energy constraints", () => {
       // With 300 energy available and 800 capacity, system should wait for more energy
       // to spawn optimal-sized creeps instead of small inefficient ones
       const creepsAfter = Object.keys(global.Game.creeps);
-      assert.equal(
-        creepsAfter.length,
-        creepsBefore,
-        "Should wait for optimal energy instead of spawning small creep"
-      );
+      assert.equal(creepsAfter.length, creepsBefore, "Should wait for optimal energy instead of spawning small creep");
     });
 
     it("should not spawn anything if no affordable roles exist", () => {
@@ -271,11 +262,7 @@ describe("spawn energy constraints", () => {
 
       // Should have spawned something since we have full energy capacity available
       const creepsAfter = Object.keys(global.Game.creeps).length;
-      assert.isAbove(
-        creepsAfter,
-        creepsBefore,
-        "Should spawn optimal body when full energy is available"
-      );
+      assert.isAbove(creepsAfter, creepsBefore, "Should spawn optimal body when full energy is available");
     });
 
     it("should spawn in bootstrap mode with limited energy", () => {
@@ -298,7 +285,7 @@ describe("spawn energy constraints", () => {
       const memory = creeps[0].memory as unknown as Record<string, unknown>;
       assert.equal(memory.role, "larvaWorker", "Should spawn larvaWorker in bootstrap mode");
     });
-    
+
     it("should spawn smaller bodies in bootstrap mode even when capacity is higher", () => {
       // Setup: Room in bootstrap mode with limited energy but higher capacity
       const room = createMockRoom("E1N1", 250, 800);
@@ -346,11 +333,7 @@ describe("spawn energy constraints", () => {
       const creepsAfter = Object.keys(global.Game.creeps).length;
 
       // Should not spawn when we can't afford optimal bodies
-      assert.equal(
-        creepsAfter,
-        creepsBefore,
-        "Should wait for optimal energy instead of spawning minimal creeps"
-      );
+      assert.equal(creepsAfter, creepsBefore, "Should wait for optimal energy instead of spawning minimal creeps");
     });
   });
 
@@ -464,7 +447,7 @@ describe("spawn energy constraints", () => {
 
       // Check that if a creep was spawned, it's NOT a larvaWorker
       const creepsAfter = Object.values(global.Game.creeps);
-      
+
       // Find any newly spawned creeps
       const newCreeps = creepsAfter.filter(c => {
         const creepName = c.name;
@@ -474,11 +457,7 @@ describe("spawn energy constraints", () => {
       // If a new creep was spawned, verify it's not a larvaWorker
       if (newCreeps.length > 0) {
         const memory = newCreeps[0].memory as unknown as Record<string, unknown>;
-        assert.notEqual(
-          memory.role,
-          "larvaWorker",
-          "Should NOT spawn larvaWorker in normal mode"
-        );
+        assert.notEqual(memory.role, "larvaWorker", "Should NOT spawn larvaWorker in normal mode");
       }
       // Otherwise, no spawn occurred which is also fine
     });
@@ -500,10 +479,7 @@ describe("spawn energy constraints", () => {
       const spawnableRoles = getAllSpawnableRoles(room, swarm);
 
       // larvaWorker should NOT be in the list
-      assert.isFalse(
-        spawnableRoles.includes("larvaWorker"),
-        "larvaWorker should not be spawnable in normal mode"
-      );
+      assert.isFalse(spawnableRoles.includes("larvaWorker"), "larvaWorker should not be spawnable in normal mode");
     });
   });
 });

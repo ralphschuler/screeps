@@ -108,19 +108,19 @@ describe("ERR_NO_PATH Handling", () => {
 
     // Get an action from state machine - should call behavior function
     const action = evaluateWithStateMachine(mockContext, mockBehaviorFn);
-    
+
     // Action should be harvest (from behavior function)
     expect(action.type).to.equal("harvest");
-    
+
     // State should be set
     expect(mockContext.memory.state).to.not.be.undefined;
-    
+
     // Simulate ERR_NO_PATH by clearing state (as executor would do)
     delete mockContext.memory.state;
-    
+
     // Call state machine again - should call behavior function again for re-evaluation
     const newAction = evaluateWithStateMachine(mockContext, mockBehaviorFn);
-    
+
     // Should get a new action from behavior function, not moveToRoom
     expect(newAction.type).to.equal("harvest");
   });
@@ -129,8 +129,8 @@ describe("ERR_NO_PATH Handling", () => {
     let behaviorCallCount = 0;
     const trackingBehaviorFn = (ctx: CreepContext): CreepAction => {
       behaviorCallCount++;
-      return { 
-        type: "transfer", 
+      return {
+        type: "transfer",
         target: { id: "spawn1", store: { getFreeCapacity: () => 100 } } as any,
         resourceType: RESOURCE_ENERGY
       };
@@ -156,14 +156,14 @@ describe("ERR_NO_PATH Handling", () => {
       callCount++;
       if (callCount === 1) {
         // First call: return target that will fail with ERR_NO_PATH
-        return { 
-          type: "moveTo", 
+        return {
+          type: "moveTo",
           target: { id: "unreachable", pos: { x: 0, y: 0, roomName: "W3N3" } } as any
         };
       } else {
         // After state clear: return accessible alternative
-        return { 
-          type: "moveTo", 
+        return {
+          type: "moveTo",
           target: { id: "accessible", pos: { x: 10, y: 10, roomName: "W2N2" } } as any
         };
       }
@@ -206,8 +206,8 @@ describe("ERR_NO_PATH Handling", () => {
     let evaluationCount = 0;
     const behaviorFn = (ctx: CreepContext): CreepAction => {
       evaluationCount++;
-      return { 
-        type: "build", 
+      return {
+        type: "build",
         target: { id: "site1", pos: { x: 5, y: 5, roomName: "W2N2" } } as any
       };
     };
@@ -236,7 +236,7 @@ describe("ERR_NO_PATH Handling", () => {
 
     for (const role of roles) {
       mockContext.memory.role = role as any;
-      
+
       // Call behavior - should return action
       const action = evaluateWithStateMachine(mockContext, mockBehaviorFn);
       expect(action.type).to.equal("harvest");
@@ -261,10 +261,10 @@ describe("ERR_NO_PATH Handling", () => {
 
     // Should call behavior function and get action, not auto-return home
     expect(action.type).to.equal("harvest");
-    
+
     // Simulate ERR_NO_PATH clearing state
     delete mockContext.memory.state;
-    
+
     // Should still re-evaluate in same location
     const action2 = evaluateWithStateMachine(mockContext, mockBehaviorFn);
     expect(action2.type).to.equal("harvest");

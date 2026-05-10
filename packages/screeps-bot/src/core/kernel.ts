@@ -45,28 +45,32 @@ import { getConfig } from "../config";
 /**
  * Build kernel configuration from CPU config
  * Maps the monolith's CPU config to the framework's kernel config
- * 
+ *
  * Uses framework's default derivation logic to compute frequency intervals,
  * min bucket thresholds, and CPU budgets from the monolith's CPUConfig.
  */
 export function buildKernelConfigFromCpu(cpuConfig: CPUConfig) {
   // Derive critical threshold from low bucket (framework uses lowBucket / 2)
   const criticalBucketThreshold = Math.floor(cpuConfig.bucketThresholds.lowMode / 2);
-  
+
   // Derive frequency intervals from task frequencies
   const frequencyIntervals = {
     high: 1,
     medium: Math.max(1, Math.min(cpuConfig.taskFrequencies.clusterLogic, cpuConfig.taskFrequencies.pheromoneUpdate)),
-    low: Math.max(cpuConfig.taskFrequencies.marketScan, cpuConfig.taskFrequencies.nukeEvaluation, cpuConfig.taskFrequencies.memoryCleanup)
+    low: Math.max(
+      cpuConfig.taskFrequencies.marketScan,
+      cpuConfig.taskFrequencies.nukeEvaluation,
+      cpuConfig.taskFrequencies.memoryCleanup
+    )
   };
-  
+
   // Derive CPU budgets from configured subsystem budgets
   const frequencyCpuBudgets = {
     high: cpuConfig.budgets.rooms,
     medium: cpuConfig.budgets.strategic,
     low: Math.max(cpuConfig.budgets.market, cpuConfig.budgets.visualization)
   };
-  
+
   return {
     lowBucketThreshold: cpuConfig.bucketThresholds.lowMode,
     highBucketThreshold: cpuConfig.bucketThresholds.highMode,

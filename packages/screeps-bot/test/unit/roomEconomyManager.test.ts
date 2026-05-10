@@ -3,7 +3,7 @@ import { RoomEconomyManager } from "../../src/core/managers/RoomEconomyManager";
 
 /**
  * Test suite for RoomEconomyManager
- * 
+ *
  * Tests the implementation of:
  * - Lab reactions and boosting
  * - Factory production

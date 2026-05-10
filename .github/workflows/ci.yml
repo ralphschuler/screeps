@@ -51,7 +51,7 @@ jobs:
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v5
-        if: always()
+        if: always() && secrets.CODECOV_TOKEN != ''
         with:
           file: ./packages/screeps-bot/coverage/lcov.info
           flags: unittests
@@ -359,88 +359,6 @@ jobs:
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >> $GITHUB_STEP_SUMMARY
 
   # ============================================================================
-  # Exporter Tests
-  # ============================================================================
-  test-exporters:
-    name: Test ${{ matrix.package }}
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false || github.event_name != 'pull_request'
-    strategy:
-      matrix:
-        package:
-          - screeps-graphite-exporter
-          - screeps-loki-exporter
-    env:
-      CI: true
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Build TypeScript for ${{ matrix.package }}
-        run: npm run build -w ${{ matrix.package }}
-
-      - name: Validate Docker build
-        uses: docker/build-push-action@v6
-        with:
-          context: packages/${{ matrix.package }}
-          push: false
-          load: true
-          tags: ${{ matrix.package }}:ci
-
-  # ============================================================================
-  # MCP Server Tests
-  # ============================================================================
-  test-mcp:
-    name: Test MCP ${{ matrix.package }}
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false || github.event_name != 'pull_request'
-    strategy:
-      matrix:
-        package:
-          - screeps-docs-mcp
-          - screeps-mcp
-          - screeps-wiki-mcp
-          - screeps-typescript-mcp
-    env:
-      CI: true
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          submodules: recursive
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Build ${{ matrix.package }}
-        run: npm run build -w @ralphschuler/${{ matrix.package }}
-
-      - name: Run coverage for ${{ matrix.package }}
-        run: npm run test:coverage -w @ralphschuler/${{ matrix.package }}
-
-      - name: Upload coverage
-        uses: actions/upload-artifact@v6
-        with:
-          name: coverage-${{ matrix.package }}
-          path: packages/${{ matrix.package }}/coverage
-          retention-days: 7
-
-  # ============================================================================
   # Bundle Size Check
   # ============================================================================
   bundle-size:
@@ -473,7 +391,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Package | Size (KB) | Files |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|-----------|-------|" >> $GITHUB_STEP_SUMMARY
-          
+
           # Define packages to check
           declare -a packages=(
             "@ralphschuler/screeps-kernel:packages/@ralphschuler/screeps-kernel/dist:screeps-kernel"
@@ -488,7 +406,7 @@ jobs:
             "@ralphschuler/screeps-posis:packages/screeps-posis/dist:screeps-posis"
             "screeps-bot:packages/screeps-bot/dist:screeps-bot (main)"
           )
-          
+
           # Check each package
           for package_info in "${packages[@]}"; do
             IFS=':' read -r package_name dist_path display_name <<< "$package_info"
@@ -498,7 +416,7 @@ jobs:
               echo "| $display_name | $size | $files |" >> $GITHUB_STEP_SUMMARY
             fi
           done
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "💡 **Note:** Size is reported in kilobytes (KB) for the entire dist directory." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

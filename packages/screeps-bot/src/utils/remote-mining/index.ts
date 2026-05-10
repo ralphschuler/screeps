@@ -1,6 +1,6 @@
 /**
  * Remote Mining Integration
- * 
+ *
  * This file integrates @ralphschuler/screeps-remote-mining package with
  * the bot's internal systems (logger, cache, scheduler).
  */
@@ -98,24 +98,15 @@ export function moveToWithRemoteCache(
   return remoteMiningMovement.moveToWithRemoteCache(creep, target, routeType, options);
 }
 
-export function moveRemoteHarvesterToSource(
-  creep: Creep,
-  source: Source
-): ScreepsReturnCode {
+export function moveRemoteHarvesterToSource(creep: Creep, source: Source): ScreepsReturnCode {
   return remoteMiningMovement.moveRemoteHarvesterToSource(creep, source);
 }
 
-export function moveRemoteHaulerToStorage(
-  creep: Creep,
-  storage: StructureStorage
-): ScreepsReturnCode {
+export function moveRemoteHaulerToStorage(creep: Creep, storage: StructureStorage): ScreepsReturnCode {
   return remoteMiningMovement.moveRemoteHaulerToStorage(creep, storage);
 }
 
-export function moveRemoteHaulerToRemote(
-  creep: Creep,
-  roomName: string
-): ScreepsReturnCode {
+export function moveRemoteHaulerToRemote(creep: Creep, roomName: string): ScreepsReturnCode {
   return remoteMiningMovement.moveRemoteHaulerToRemote(creep, roomName);
 }
 

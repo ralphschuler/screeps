@@ -1,7 +1,7 @@
-import {assert} from "chai";
-import {loop} from "../../src/main";
-import {Game, Memory} from "./mock";
-import {memoryManager} from "../../src/SwarmBot";
+import { assert } from "chai";
+import { loop } from "../../src/main";
+import { Game, Memory } from "./mock";
+import { memoryManager } from "../../src/SwarmBot";
 
 describe("main", () => {
   before(() => {
@@ -37,7 +37,7 @@ describe("main", () => {
 
     // @ts-ignore: Allow setting test values
     global.Game.creeps.persistValue = { memory: {}, spawning: false };
-    
+
     // Advance game time to trigger cleanup (cleanup runs every 10 ticks)
     // @ts-ignore: Allow setting test values
     global.Game.time = 10;

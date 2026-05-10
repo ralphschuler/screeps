@@ -33,15 +33,18 @@ declare global {
       scheduledTick: number;
     }[];
     /** SS2 Terminal Communications multi-packet queue */
-    ss2PacketQueue?: Record<string, {
-      terminalId: Id<StructureTerminal>;
-      targetRoom: string;
-      resourceType: ResourceConstant;
-      amount: number;
-      packets: string[];
-      nextPacketIndex: number;
-      queuedAt: number;
-    }>;
+    ss2PacketQueue?: Record<
+      string,
+      {
+        terminalId: Id<StructureTerminal>;
+        targetRoom: string;
+        resourceType: ResourceConstant;
+        amount: number;
+        packets: string[];
+        nextPacketIndex: number;
+        queuedAt: number;
+      }
+    >;
     memoryVersion?: number;
     // Multi-shard coordination memory (ROADMAP Section 11 - IMPLEMENTED)
     // Note: InterShardMemory is used for cross-shard coordination, not Memory
@@ -74,24 +77,30 @@ declare global {
         lastUpdated: number;
         lastRequestedAt?: number;
       };
-      npcRooms: Record<string, {
-        roomName: string;
-        lastSeen: number;
-        hasTerminal: boolean;
-        availableQuests: string[];
-      }>;
-      activeQuests: Record<string, {
-        id: string;
-        type: string;
-        status: string;
-        targetRoom: string;
-        originRoom: string;
-        deadline: number;
-        appliedAt?: number;
-        receivedAt?: number;
-        completedAt?: number;
-        assignedCreeps?: string[];
-      }>;
+      npcRooms: Record<
+        string,
+        {
+          roomName: string;
+          lastSeen: number;
+          hasTerminal: boolean;
+          availableQuests: string[];
+        }
+      >;
+      activeQuests: Record<
+        string,
+        {
+          id: string;
+          type: string;
+          status: string;
+          targetRoom: string;
+          originRoom: string;
+          deadline: number;
+          appliedAt?: number;
+          receivedAt?: number;
+          completedAt?: number;
+          assignedCreeps?: string[];
+        }
+      >;
       completedQuests: string[];
       lastProcessedTick: number;
     };
@@ -124,7 +133,6 @@ declare global {
   interface RoomMemory {
     hostile?: boolean;
   }
-
 }
 
 // Console commands registered via @Command decorator (see consoleCommands.ts)

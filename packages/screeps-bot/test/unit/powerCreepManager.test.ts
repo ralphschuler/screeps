@@ -41,10 +41,8 @@ describe("PowerCreepManager", () => {
       const energyAvailable = 200000;
       const minEnergyReserve = 100000;
 
-      const shouldProcess = 
-        powerAvailable >= 100 &&
-        energyAvailable >= minEnergyReserve &&
-        powerAvailable > minPowerReserve;
+      const shouldProcess =
+        powerAvailable >= 100 && energyAvailable >= minEnergyReserve && powerAvailable > minPowerReserve;
 
       expect(shouldProcess).to.be.true;
     });
@@ -55,10 +53,8 @@ describe("PowerCreepManager", () => {
       const energyAvailable = 50000;
       const minEnergyReserve = 100000;
 
-      const shouldProcess = 
-        powerAvailable >= 100 &&
-        energyAvailable >= minEnergyReserve &&
-        powerAvailable > minPowerReserve;
+      const shouldProcess =
+        powerAvailable >= 100 && energyAvailable >= minEnergyReserve && powerAvailable > minPowerReserve;
 
       expect(shouldProcess).to.be.false;
     });
@@ -69,10 +65,7 @@ describe("PowerCreepManager", () => {
       const powerAvailable = 5000;
       const energyAvailable = 200000;
 
-      const shouldProcess =
-        powerAvailable >= 100 &&
-        energyAvailable >= 100000 &&
-        currentLevel < targetMilestone;
+      const shouldProcess = powerAvailable >= 100 && energyAvailable >= 100000 && currentLevel < targetMilestone;
 
       expect(shouldProcess).to.be.true;
     });
@@ -101,14 +94,14 @@ describe("PowerCreepManager", () => {
       // Note: POWER_INFO is a global constant provided by Screeps game engine
       // In tests, we simulate the filtering logic that uses POWER_INFO
       const ECO_OPERATOR_POWERS = [
-        PWR_GENERATE_OPS,        // Level 0
-        PWR_OPERATE_SPAWN,       // Level 2
-        PWR_OPERATE_TOWER,       // Level 10
-        PWR_OPERATE_LAB,         // Level 20
+        PWR_GENERATE_OPS, // Level 0
+        PWR_OPERATE_SPAWN, // Level 2
+        PWR_OPERATE_TOWER, // Level 10
+        PWR_OPERATE_LAB // Level 20
       ];
-      
+
       const currentGPL = 5;
-      
+
       // In actual game environment, POWER_INFO would be used to filter
       // For testing, we verify the filtering logic concept
       const powerLevels = {
@@ -117,7 +110,7 @@ describe("PowerCreepManager", () => {
         [PWR_OPERATE_TOWER]: 10,
         [PWR_OPERATE_LAB]: 20
       };
-      
+
       const availablePowers = ECO_OPERATOR_POWERS.filter(power => {
         const levelRequired = powerLevels[power];
         return levelRequired !== undefined && levelRequired <= currentGPL;

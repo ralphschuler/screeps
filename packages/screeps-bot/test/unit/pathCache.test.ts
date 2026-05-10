@@ -384,11 +384,7 @@ describe("pathCache", () => {
       // Cache many paths (more than limit would allow in production)
       // For testing, we'll just cache a few
       for (let i = 0; i < 10; i++) {
-        cachePath(
-          new RoomPosition(i, i, "W1N1"),
-          new RoomPosition(i + 10, i + 10, "W1N1"),
-          path
-        );
+        cachePath(new RoomPosition(i, i, "W1N1"), new RoomPosition(i + 10, i + 10, "W1N1"), path);
       }
 
       const stats = getPathCacheStats();

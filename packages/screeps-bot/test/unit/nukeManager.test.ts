@@ -569,7 +569,7 @@ describe("Nuke Manager", () => {
       // Nukes should not have matching salvo IDs (or undefined)
       const salvo1 = empire.nukesInFlight[0].salvoId;
       const salvo2 = empire.nukesInFlight[1].salvoId;
-      
+
       if (salvo1 && salvo2) {
         expect(salvo1).to.not.equal(salvo2);
       }

@@ -5,18 +5,9 @@ description: |
   Features:
   - Automatic caching based on prompt content and model
   - Verbose logging for debugging
-  - MCP (Model Context Protocol) server configuration support with environment variable substitution
   - Conditional repository checkout (skips if already present)
   - Dependency caching for npm global packages and project node_modules
   - Performance optimizations for faster workflow execution
-
-  MCP Server Integration:
-  - Supports multiple MCP servers via JSON configuration
-  - Environment variables in MCP configs (e.g., ${SCREEPS_TOKEN}) are automatically substituted
-  - Use @path syntax to reference MCP config files (e.g., '@.github/mcp/all-servers.json')
-  - Base GitHub MCP server is included by default
-  - MCP config is written to ~/.config/github-copilot/servers.json (the standard Copilot CLI config path)
-  - If MCP config file is not found, action continues with base GitHub MCP server (warning logged)
   
   Note: Set timeout-minutes at the job level in your workflow, not via the 'timeout' input (which is deprecated).
 author: "ralph@nyphon.de"
@@ -34,14 +25,6 @@ inputs:
     default: copilot-output.txt
   extra-args:
     description: Additional arguments to append to the Copilot CLI invocation
-    required: false
-    default: ""
-  additional-mcp-config:
-    description: |
-      Optional MCP configuration JSON or @path to extend Copilot's capabilities.
-      Environment variables using ${VAR} or ${VAR:-default} syntax are automatically substituted.
-      Example file reference: '@.github/mcp/all-servers.json'
-      Example inline: '{"mcpServers": {"custom": {"command": "npx", "args": ["-y", "my-server"]}}}'
     required: false
     default: ""
   allow-all-paths:
@@ -144,14 +127,6 @@ runs:
           echo "✅ Prompt rendered in ${elapsed}s (size: ${rendered_size} bytes, sha256: $prompt_sha)"
         fi
 
-    - name: Install jq
-      shell: bash
-      run: |
-        set -euo pipefail
-        if ! command -v jq >/dev/null 2>&1; then
-          sudo apt-get update -qq && sudo apt-get install -y -qq jq
-        fi
-
     - name: Resolve model configuration
       id: resolve-model
       shell: bash
@@ -177,63 +152,6 @@ runs:
           else
             echo "ℹ️ No model specified, using Copilot CLI default"
           fi
-        fi
-
-    - name: Configure MCP servers
-      shell: bash
-      env:
-        MCP_CONFIG_INPUT: ${{ inputs.additional-mcp-config }}
-        VERBOSE: ${{ inputs.verbose }}
-      run: |
-        set -euo pipefail
-
-        mkdir -p ~/.config/github-copilot
-
-        base_config='{
-          "mcpServers": {
-            "github": {
-              "command": "npx",
-              "args": ["-y", "@modelcontextprotocol/server-github"]
-            }
-          }
-        }'
-
-        if [ -z "$MCP_CONFIG_INPUT" ]; then
-          echo "$base_config" > ~/.config/github-copilot/servers.json
-          if [ "$VERBOSE" = "true" ]; then
-            echo "ℹ️ Using base GitHub MCP server only"
-          fi
-          exit 0
-        fi
-
-        if [[ "$MCP_CONFIG_INPUT" == @* ]]; then
-          config_file="${MCP_CONFIG_INPUT#@}"
-          if [ ! -f "$config_file" ]; then
-            echo "⚠️ MCP config file not found: $config_file"
-            echo "⚠️ Continuing with base GitHub MCP server only"
-            echo "$base_config" > ~/.config/github-copilot/servers.json
-            exit 0
-          fi
-          
-          if [ "$VERBOSE" = "true" ]; then
-            echo "📖 Reading MCP config from: $config_file"
-          fi
-          
-          config_content=$(cat "$config_file")
-        else
-          config_content="$MCP_CONFIG_INPUT"
-        fi
-
-        config_content=$(echo "$config_content" | envsubst)
-        
-        merged_config=$(echo "$base_config" "$config_content" | jq -s '.[0] * .[1]')
-        
-        echo "$merged_config" > ~/.config/github-copilot/servers.json
-
-        if [ "$VERBOSE" = "true" ]; then
-          echo "✅ MCP configuration written to ~/.config/github-copilot/servers.json"
-          echo "MCP servers configured:"
-          jq -r '.mcpServers | keys[]' ~/.config/github-copilot/servers.json
         fi
 
     - name: Restore cached response

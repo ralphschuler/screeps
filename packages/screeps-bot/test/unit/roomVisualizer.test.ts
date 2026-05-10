@@ -121,7 +121,7 @@ describe("RoomVisualizer", () => {
       },
       calledWith: (roomName: string) => roomVisualCalls.includes(roomName)
     };
-    (global as any).RoomVisual = function(roomName: string) {
+    (global as any).RoomVisual = function (roomName: string) {
       roomVisualCalls.push(roomName);
       return mockVisual;
     };
@@ -162,7 +162,7 @@ describe("RoomVisualizer", () => {
     it("should merge custom config with defaults", () => {
       const viz = new RoomVisualizer({ showPheromones: false });
       expect(viz).to.be.instanceOf(RoomVisualizer);
-      
+
       // Verify that the custom config was applied while defaults remain
       // Note: Since config is private, we can only verify through behavior,
       // but we can at least ensure the instance was created successfully
@@ -173,14 +173,14 @@ describe("RoomVisualizer", () => {
   describe("draw", () => {
     it("should create RoomVisual for the room", () => {
       visualizer.draw(mockRoom);
-      
+
       expect(roomVisualStub.calledOnce).to.be.true;
       expect(roomVisualStub.calledWith("W1N1")).to.be.true;
     });
 
     it("should handle missing room gracefully", () => {
       const nullRoom = null as any;
-      
+
       expect(() => visualizer.draw(nullRoom)).to.throw();
     });
 
@@ -208,18 +208,18 @@ describe("RoomVisualizer", () => {
   describe("pheromone visualization", () => {
     it("should visualize pheromones when enabled", () => {
       const vizWithPheromones = new RoomVisualizer({ showPheromones: true });
-      
+
       vizWithPheromones.draw(mockRoom);
-      
+
       // RoomVisual should be created
       expect(roomVisualStub.called).to.be.true;
     });
 
     it("should skip pheromones when disabled", () => {
       const vizWithoutPheromones = new RoomVisualizer({ showPheromones: false });
-      
+
       vizWithoutPheromones.draw(mockRoom);
-      
+
       // Visual should still be created but no pheromone-specific calls
       expect(roomVisualStub.called).to.be.true;
     });
@@ -234,13 +234,13 @@ describe("RoomVisualizer", () => {
     });
 
     it("should use correct opacity setting", () => {
-      const vizWithOpacity = new RoomVisualizer({ 
+      const vizWithOpacity = new RoomVisualizer({
         showPheromones: true,
         opacity: 0.3
       });
-      
+
       vizWithOpacity.draw(mockRoom);
-      
+
       expect(roomVisualStub.called).to.be.true;
     });
   });
@@ -253,7 +253,7 @@ describe("RoomVisualizer", () => {
         spawning: null,
         room: mockRoom
       };
-      
+
       mockRoom.find = sinon.stub().callsFake((findConstant: number) => {
         if (findConstant === FIND_MY_SPAWNS) {
           return [mockSpawn];
@@ -264,23 +264,23 @@ describe("RoomVisualizer", () => {
 
     it("should visualize spawn queue when enabled", () => {
       const vizWithSpawnQueue = new RoomVisualizer({ showSpawnQueue: true });
-      
+
       vizWithSpawnQueue.draw(mockRoom);
-      
+
       expect(roomVisualStub.called).to.be.true;
     });
 
     it("should skip spawn queue when disabled", () => {
       const vizWithoutSpawnQueue = new RoomVisualizer({ showSpawnQueue: false });
-      
+
       vizWithoutSpawnQueue.draw(mockRoom);
-      
+
       expect(roomVisualStub.called).to.be.true;
     });
 
     it("should handle room with no spawns", () => {
       mockRoom.find = sinon.stub().returns([]);
-      
+
       expect(() => visualizer.draw(mockRoom)).to.not.throw();
     });
 
@@ -293,9 +293,9 @@ describe("RoomVisualizer", () => {
         },
         room: mockRoom
       };
-      
+
       mockRoom.find = sinon.stub().returns([spawningMockSpawn]);
-      
+
       expect(() => visualizer.draw(mockRoom)).to.not.throw();
     });
   });
@@ -303,25 +303,25 @@ describe("RoomVisualizer", () => {
   describe("CPU budget visualization", () => {
     it("should visualize room stats when enabled", () => {
       const vizWithStats = new RoomVisualizer({ showRoomStats: true });
-      
+
       vizWithStats.draw(mockRoom);
-      
+
       expect(roomVisualStub.called).to.be.true;
     });
 
     it("should skip room stats when disabled", () => {
       const vizWithoutStats = new RoomVisualizer({ showRoomStats: false });
-      
+
       vizWithoutStats.draw(mockRoom);
-      
+
       expect(roomVisualStub.called).to.be.true;
     });
 
     it("should display controller level and progress", () => {
       const vizWithStats = new RoomVisualizer({ showRoomStats: true });
-      
+
       vizWithStats.draw(mockRoom);
-      
+
       // Should create visual for stats display
       expect(roomVisualStub.called).to.be.true;
     });
@@ -333,7 +333,7 @@ describe("RoomVisualizer", () => {
       };
 
       const vizWithStats = new RoomVisualizer({ showRoomStats: true });
-      
+
       expect(() => vizWithStats.draw(roomWithoutController)).to.not.throw();
     });
   });
@@ -341,7 +341,7 @@ describe("RoomVisualizer", () => {
   describe("combat visualization", () => {
     it("should visualize combat info when enabled", () => {
       const vizWithCombat = new RoomVisualizer({ showCombat: true });
-      
+
       // Add hostile creeps
       const mockHostile = {
         pos: { x: 30, y: 30 },
@@ -349,32 +349,32 @@ describe("RoomVisualizer", () => {
         hits: 100,
         hitsMax: 100
       };
-      
+
       mockRoom.find = sinon.stub().callsFake((findConstant: number) => {
         if (findConstant === FIND_HOSTILE_CREEPS) {
           return [mockHostile];
         }
         return [];
       });
-      
+
       vizWithCombat.draw(mockRoom);
-      
+
       expect(roomVisualStub.called).to.be.true;
     });
 
     it("should skip combat info when disabled", () => {
       const vizWithoutCombat = new RoomVisualizer({ showCombat: false });
-      
+
       vizWithoutCombat.draw(mockRoom);
-      
+
       expect(roomVisualStub.called).to.be.true;
     });
 
     it("should handle room with no hostiles", () => {
       mockRoom.find = sinon.stub().returns([]);
-      
+
       const vizWithCombat = new RoomVisualizer({ showCombat: true });
-      
+
       expect(() => vizWithCombat.draw(mockRoom)).to.not.throw();
     });
   });
@@ -382,17 +382,17 @@ describe("RoomVisualizer", () => {
   describe("resource flow visualization", () => {
     it("should visualize resource flow when enabled", () => {
       const vizWithFlow = new RoomVisualizer({ showResourceFlow: true });
-      
+
       vizWithFlow.draw(mockRoom);
-      
+
       expect(roomVisualStub.called).to.be.true;
     });
 
     it("should skip resource flow when disabled", () => {
       const vizWithoutFlow = new RoomVisualizer({ showResourceFlow: false });
-      
+
       vizWithoutFlow.draw(mockRoom);
-      
+
       expect(roomVisualStub.called).to.be.true;
     });
   });
@@ -400,17 +400,17 @@ describe("RoomVisualizer", () => {
   describe("path visualization", () => {
     it("should visualize paths when enabled", () => {
       const vizWithPaths = new RoomVisualizer({ showPaths: true });
-      
+
       vizWithPaths.draw(mockRoom);
-      
+
       expect(roomVisualStub.called).to.be.true;
     });
 
     it("should skip paths when disabled", () => {
       const vizWithoutPaths = new RoomVisualizer({ showPaths: false });
-      
+
       vizWithoutPaths.draw(mockRoom);
-      
+
       expect(roomVisualStub.called).to.be.true;
     });
   });
@@ -418,7 +418,7 @@ describe("RoomVisualizer", () => {
   describe("structure visualization", () => {
     it("should visualize structures when enabled", () => {
       const vizWithStructures = new RoomVisualizer({ showStructures: true });
-      
+
       // Add structures
       const mockStructure = {
         structureType: STRUCTURE_TOWER,
@@ -426,24 +426,24 @@ describe("RoomVisualizer", () => {
         hits: 3000,
         hitsMax: 3000
       };
-      
+
       mockRoom.find = sinon.stub().callsFake((findConstant: number) => {
         if (findConstant === FIND_MY_STRUCTURES) {
           return [mockStructure];
         }
         return [];
       });
-      
+
       vizWithStructures.draw(mockRoom);
-      
+
       expect(roomVisualStub.called).to.be.true;
     });
 
     it("should skip structures when disabled", () => {
       const vizWithoutStructures = new RoomVisualizer({ showStructures: false });
-      
+
       vizWithoutStructures.draw(mockRoom);
-      
+
       expect(roomVisualStub.called).to.be.true;
     });
   });
@@ -459,9 +459,9 @@ describe("RoomVisualizer", () => {
         showRoomStats: false,
         showStructures: false
       });
-      
+
       vizAllDisabled.draw(mockRoom);
-      
+
       // Should still create visual but with minimal rendering
       expect(roomVisualStub.called).to.be.true;
     });
@@ -476,21 +476,21 @@ describe("RoomVisualizer", () => {
         showRoomStats: true,
         showStructures: true
       });
-      
+
       vizAllEnabled.draw(mockRoom);
-      
+
       expect(roomVisualStub.called).to.be.true;
     });
 
     it("should handle invalid opacity values gracefully", () => {
       const vizInvalidOpacity = new RoomVisualizer({ opacity: -1 });
-      
+
       expect(() => vizInvalidOpacity.draw(mockRoom)).to.not.throw();
     });
 
     it("should handle very high opacity values", () => {
       const vizHighOpacity = new RoomVisualizer({ opacity: 2.0 });
-      
+
       expect(() => vizHighOpacity.draw(mockRoom)).to.not.throw();
     });
 

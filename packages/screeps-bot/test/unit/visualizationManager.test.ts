@@ -29,11 +29,11 @@ describe("VisualizationManager", function () {
     // Set up global mocks
     (global as Record<string, unknown>).Game = mockGame;
     (global as Record<string, unknown>).Memory = mockMemory;
-    
+
     // Reset memory
     delete mockMemory.visualConfig;
     mockGame.time = 100;
-    
+
     // Create fresh manager
     manager = new VisualizationManager();
   });
@@ -83,9 +83,7 @@ describe("VisualizationManager", function () {
 
     it("should return null for expired structure cache", function () {
       const roomName = "W1N1";
-      const structures = [
-        { x: 10, y: 10, type: STRUCTURE_SPAWN as StructureConstant }
-      ];
+      const structures = [{ x: 10, y: 10, type: STRUCTURE_SPAWN as StructureConstant }];
 
       // Cache structures at tick 100
       manager.cacheStructures(roomName, structures);
@@ -131,11 +129,11 @@ describe("VisualizationManager", function () {
     it("should enable and disable layers", function () {
       // Initially pheromones and defense are enabled (presentation mode)
       assert.isTrue(manager.isLayerEnabled(VisualizationLayer.Pheromones));
-      
+
       // Disable pheromones
       manager.disableLayer(VisualizationLayer.Pheromones);
       assert.isFalse(manager.isLayerEnabled(VisualizationLayer.Pheromones));
-      
+
       // Enable paths
       manager.enableLayer(VisualizationLayer.Paths);
       assert.isTrue(manager.isLayerEnabled(VisualizationLayer.Paths));
@@ -143,14 +141,14 @@ describe("VisualizationManager", function () {
 
     it("should toggle layers", function () {
       const layer = VisualizationLayer.Economy;
-      
+
       // Get initial state
       const initialState = manager.isLayerEnabled(layer);
-      
+
       // Toggle
       manager.toggleLayer(layer);
       assert.equal(manager.isLayerEnabled(layer), !initialState);
-      
+
       // Toggle again
       manager.toggleLayer(layer);
       assert.equal(manager.isLayerEnabled(layer), initialState);
@@ -158,7 +156,7 @@ describe("VisualizationManager", function () {
 
     it("should apply debug mode preset", function () {
       manager.setMode("debug");
-      
+
       // All layers should be enabled in debug mode
       assert.isTrue(manager.isLayerEnabled(VisualizationLayer.Pheromones));
       assert.isTrue(manager.isLayerEnabled(VisualizationLayer.Paths));
@@ -171,7 +169,7 @@ describe("VisualizationManager", function () {
 
     it("should apply performance mode preset", function () {
       manager.setMode("performance");
-      
+
       // No layers should be enabled in performance mode
       assert.isFalse(manager.isLayerEnabled(VisualizationLayer.Pheromones));
       assert.isFalse(manager.isLayerEnabled(VisualizationLayer.Paths));
@@ -184,7 +182,7 @@ describe("VisualizationManager", function () {
 
     it("should apply minimal mode preset", function () {
       manager.setMode("minimal");
-      
+
       // Only defense should be enabled
       assert.isFalse(manager.isLayerEnabled(VisualizationLayer.Pheromones));
       assert.isTrue(manager.isLayerEnabled(VisualizationLayer.Defense));
@@ -200,7 +198,7 @@ describe("VisualizationManager", function () {
       manager.trackLayerCost("defense", 0.3);
 
       const metrics = manager.getPerformanceMetrics();
-      
+
       // Should have averaged pheromones cost
       assert.approximately(metrics.layerCosts.pheromones, 0.15, 0.01);
       // Should have defense cost
@@ -216,17 +214,17 @@ describe("VisualizationManager", function () {
       }
 
       const metrics = manager.getPerformanceMetrics();
-      
+
       // Average of last 10 samples (5-14) = 9.5
       assert.approximately(metrics.layerCosts.pheromones, 9.5, 0.1);
     });
 
     it("should calculate percent of CPU budget", function () {
       mockGame.cpu = { getUsed: () => 5.5, limit: 20 };
-      
+
       manager.trackLayerCost("pheromones", 2.0);
       const metrics = manager.getPerformanceMetrics();
-      
+
       // 2.0 / 20 = 10%
       assert.approximately(metrics.percentOfBudget, 10, 0.1);
     });
@@ -239,7 +237,7 @@ describe("VisualizationManager", function () {
       };
 
       const { result, cost } = manager.measureCost(testFn);
-      
+
       assert.equal(result, "result");
       assert.equal(callCount, 1);
       assert.isNumber(cost);
@@ -251,14 +249,14 @@ describe("VisualizationManager", function () {
     it("should enable layers based on flags", function () {
       // Start with minimal mode
       manager.setMode("minimal");
-      
+
       // Add flag for pheromones
       mockGame.flags = {
         flag1: { name: "viz_pheromones" }
       };
 
       manager.updateFromFlags();
-      
+
       // Pheromones should now be enabled
       assert.isTrue(manager.isLayerEnabled(VisualizationLayer.Pheromones));
     });
@@ -266,12 +264,12 @@ describe("VisualizationManager", function () {
     it("should disable layers when flags removed", function () {
       // Start with debug mode (all enabled)
       manager.setMode("debug");
-      
+
       // No flags present
       mockGame.flags = {};
 
       manager.updateFromFlags();
-      
+
       // Layers should be disabled (no flags to keep them on)
       // Note: This depends on implementation - flags might only enable, not disable
     });
@@ -285,7 +283,7 @@ describe("VisualizationManager", function () {
 
       manager.setMode("performance"); // Start with nothing
       manager.updateFromFlags();
-      
+
       assert.isTrue(manager.isLayerEnabled(VisualizationLayer.Pheromones));
       assert.isTrue(manager.isLayerEnabled(VisualizationLayer.Defense));
       assert.isTrue(manager.isLayerEnabled(VisualizationLayer.Economy));
@@ -297,10 +295,10 @@ describe("VisualizationManager", function () {
     it("should persist configuration to Memory", function () {
       manager.setMode("debug");
       manager.enableLayer(VisualizationLayer.Paths);
-      
+
       // Create new manager instance
       const newManager = new VisualizationManager();
-      
+
       // Should load persisted configuration
       assert.isTrue(newManager.isLayerEnabled(VisualizationLayer.Pheromones));
     });

@@ -32,10 +32,7 @@ interface MockCreep {
 /**
  * Create a mock creep for testing
  */
-function createMockCreep(options: {
-  freeCapacity: number;
-  usedCapacity: number;
-}): Creep {
+function createMockCreep(options: { freeCapacity: number; usedCapacity: number }): Creep {
   const mockCreep: MockCreep = {
     name: "TestLarvaWorker",
     store: {
@@ -230,13 +227,13 @@ describe("larvaWorker behavior - working state initialization", () => {
     it("should initialize working=true when creep has partial energy", () => {
       const creep = createMockCreep({ freeCapacity: 50, usedCapacity: 50 }); // Partial energy
       const spawn = createMockSpawn(100);
-      
+
       // Create context without isWorking set (simulating undefined state)
       const ctx = createMockContext(creep, {
         isWorking: undefined,
         spawnStructures: [spawn]
       });
-      
+
       // Memory working should be undefined initially
       ctx.memory.working = undefined;
 
@@ -253,11 +250,11 @@ describe("larvaWorker behavior - working state initialization", () => {
 
     it("should initialize working=false when creep is empty", () => {
       const creep = createMockCreep({ freeCapacity: 100, usedCapacity: 0 }); // Empty
-      
+
       const ctx = createMockContext(creep, {
         isWorking: undefined
       });
-      
+
       // Memory working should be undefined initially
       ctx.memory.working = undefined;
 
@@ -381,7 +378,11 @@ describe("larvaWorker behavior - delivery priority", () => {
 
       assert.equal(action.type, "transfer");
       if (action.type === "transfer") {
-        assert.equal(action.target, container, "Should deliver to container when spawn/extensions/towers/storage are full");
+        assert.equal(
+          action.target,
+          container,
+          "Should deliver to container when spawn/extensions/towers/storage are full"
+        );
         assert.equal(action.resourceType, RESOURCE_ENERGY);
       }
     });
@@ -477,7 +478,7 @@ describe("larvaWorker behavior - delivery priority", () => {
     it("should switch to collection mode when has energy but no targets and no controller", () => {
       const creep = createMockCreep({ freeCapacity: 50, usedCapacity: 50 }); // Has partial energy
       const mockRoom = createMockRoom(undefined); // No controller
-      
+
       const ctx = createMockContext(creep, {
         isWorking: true,
         spawnStructures: [],
@@ -486,7 +487,7 @@ describe("larvaWorker behavior - delivery priority", () => {
         prioritizedSites: [],
         controller: undefined // No controller
       });
-      
+
       // Mock room.find to return empty sources for findEnergy fallback
       (mockRoom as any).find = () => [];
       (creep as any).room = mockRoom;

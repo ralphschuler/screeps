@@ -3,7 +3,7 @@ import * as cartographer from "screeps-cartographer";
 
 /**
  * Movement System Tests (Screeps Cartographer)
- * 
+ *
  * These tests verify the integration with screeps-cartographer.
  * The library is fully integrated directly, replacing our custom movement implementation.
  */

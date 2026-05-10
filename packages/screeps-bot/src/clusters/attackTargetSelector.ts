@@ -84,7 +84,7 @@ export function findAttackTargets(
 ): AttackTarget[] {
   const finalWeights = { ...DEFAULT_WEIGHTS, ...weights };
   const targets: AttackTarget[] = [];
-  
+
   const empire = memoryManager.getEmpire();
   const roomIntel = empire.knownRooms;
   const warTargets = new Set(empire.warTargets.filter(target => !isAllyPlayer(target)));
@@ -92,10 +92,10 @@ export function findAttackTargets(
   // Get all known rooms
   for (const roomName in roomIntel) {
     const intel = roomIntel[roomName];
-    
+
     // Skip if not scouted
     if (!intel.scouted) continue;
-    
+
     // Skip rooms owned by us
     const myUsername = Object.values(Game.spawns)[0]?.owner.username ?? "";
     if (intel.owner === myUsername) continue;
@@ -104,27 +104,27 @@ export function findAttackTargets(
     if ((intel.owner && isAllyPlayer(intel.owner)) || (intel.reserver && isAllyPlayer(intel.reserver))) {
       continue;
     }
-    
+
     // Skip highway and SK rooms
     if (intel.isHighway || intel.isSK) continue;
-    
+
     // Calculate distance from cluster
     const distance = getMinDistanceFromCluster(cluster, roomName);
     if (distance > maxDistance) continue;
-    
+
     // Skip if too recent (avoid spam attacks)
     const lastAttacked = (Memory as any).lastAttacked?.[roomName] ?? 0;
     if (Game.time - lastAttacked < ATTACK_COOLDOWN_TICKS) continue;
-    
+
     // Calculate score
     const score = scoreTarget(intel, distance, warTargets.has(roomName), finalWeights);
-    
+
     // Determine target type
     let type: AttackTarget["type"] = "neutral";
     if (intel.owner) {
       type = warTargets.has(intel.owner) || warTargets.has(roomName) ? "enemy" : "hostile";
     }
-    
+
     // Select doctrine
     const doctrine = selectDoctrine(roomName, {
       towerCount: intel.towerCount,
@@ -132,7 +132,7 @@ export function findAttackTargets(
       rcl: intel.controllerLevel,
       owner: intel.owner
     });
-    
+
     targets.push({
       roomName,
       score,
@@ -142,54 +142,49 @@ export function findAttackTargets(
       intel
     });
   }
-  
+
   // Sort by score (descending) and return top N
   targets.sort((a, b) => b.score - a.score);
-  
+
   const selectedTargets = targets.slice(0, maxTargets);
-  
+
   if (selectedTargets.length > 0) {
     logger.info(
       `Found ${selectedTargets.length} attack targets for cluster ${cluster.id}: ` +
-      selectedTargets.map(t => `${t.roomName}(${t.score.toFixed(0)})`).join(", "),
+        selectedTargets.map(t => `${t.roomName}(${t.score.toFixed(0)})`).join(", "),
       { subsystem: "AttackTarget" }
     );
   }
-  
+
   return selectedTargets;
 }
 
 /**
  * Score a potential target room
  */
-function scoreTarget(
-  intel: RoomIntel,
-  distance: number,
-  isWarTarget: boolean,
-  weights: ScoringWeights
-): number {
+function scoreTarget(intel: RoomIntel, distance: number, isWarTarget: boolean, weights: ScoringWeights): number {
   let score = 0;
-  
+
   // Base value from RCL
   score += intel.controllerLevel * weights.rclWeight;
-  
+
   // Resource value (presence of storage/terminal indicators)
   if (intel.controllerLevel >= 6) {
     score += weights.resourceWeight * 5;
   } else if (intel.controllerLevel >= 4) {
     score += weights.resourceWeight * 2;
   }
-  
+
   // Strategic position (rooms with many sources are valuable)
   score += intel.sources * weights.strategicWeight;
-  
+
   // Distance penalty
   score -= distance * weights.distancePenalty;
-  
+
   // Defense scoring
   const towers = intel.towerCount ?? 0;
   const spawns = intel.spawnCount ?? 0;
-  
+
   if (towers === 0 && spawns <= 1) {
     // Weak defense bonus
     score += weights.weakDefenseBonus;
@@ -197,17 +192,17 @@ function scoreTarget(
     // Strong defense penalty
     score -= weights.strongDefensePenalty;
   }
-  
+
   // War target bonus
   if (isWarTarget) {
     score += weights.warTargetBonus;
   }
-  
+
   // Threat level penalty (dangerous rooms are less attractive unless war target)
   if (intel.threatLevel >= 2 && !isWarTarget) {
     score -= intel.threatLevel * 10;
   }
-  
+
   return Math.max(0, score);
 }
 
@@ -216,14 +211,14 @@ function scoreTarget(
  */
 function getMinDistanceFromCluster(cluster: ClusterMemory, targetRoom: string): number {
   let minDistance = Infinity;
-  
+
   for (const roomName of cluster.memberRooms) {
     const distance = Game.map.getRoomLinearDistance(roomName, targetRoom);
     if (distance < minDistance) {
       minDistance = distance;
     }
   }
-  
+
   return minDistance;
 }
 
@@ -236,17 +231,17 @@ export function selectTargetForDoctrine(
   maxDistance = 10
 ): AttackTarget | null {
   const targets = findAttackTargets(cluster, maxDistance, 10);
-  
+
   // Filter targets that match the doctrine
   const matchingTargets = targets.filter(t => t.doctrine === doctrine);
-  
+
   if (matchingTargets.length === 0) {
     logger.debug(`No targets found for doctrine ${doctrine}`, {
       subsystem: "AttackTarget"
     });
     return null;
   }
-  
+
   // Return highest scoring target
   return matchingTargets[0]!;
 }
@@ -257,12 +252,12 @@ export function selectTargetForDoctrine(
 export function validateTarget(targetRoom: string): boolean {
   const empire = memoryManager.getEmpire();
   const intel = empire.knownRooms[targetRoom];
-  
+
   if (!intel) {
     logger.warn(`No intel for target ${targetRoom}`, { subsystem: "AttackTarget" });
     return false;
   }
-  
+
   // Check if target was recently seen (use same cooldown constant for consistency)
   if (Game.time - intel.lastSeen > ATTACK_COOLDOWN_TICKS) {
     logger.warn(`Intel for ${targetRoom} is stale (${Game.time - intel.lastSeen} ticks old)`, {
@@ -270,7 +265,7 @@ export function validateTarget(targetRoom: string): boolean {
     });
     return false;
   }
-  
+
   return true;
 }
 
@@ -282,7 +277,7 @@ export function markRoomAttacked(roomName: string): void {
     (Memory as any).lastAttacked = {};
   }
   (Memory as any).lastAttacked[roomName] = Game.time;
-  
+
   logger.info(`Marked ${roomName} as attacked at tick ${Game.time}`, {
     subsystem: "AttackTarget"
   });

@@ -16,6 +16,7 @@
 import { logger } from "@ralphschuler/screeps-core";
 import type { CreepRole, RoleFamily, SwarmCreepMemory } from "@ralphschuler/screeps-memory";
 import type { BodyTemplate } from "./roleDefinitions";
+import { executeSpawnRequest } from "./spawnRequestExecution";
 
 /**
  * Spawn priority levels
@@ -114,15 +115,15 @@ class SpawnQueueManager {
     // Sort by priority (highest first)
     queue.requests.sort((a, b) => b.priority - a.priority);
 
-    logger.debug(
-      `Added spawn request: ${request.role} (priority: ${request.priority}) for room ${request.roomName}`,
-      { subsystem: "SpawnQueue" }
-    );
+    logger.debug(`Added spawn request: ${request.role} (priority: ${request.priority}) for room ${request.roomName}`, {
+      subsystem: "SpawnQueue"
+    });
   }
 
   /**
-   * Get next spawn request for a room
-   * Returns the highest priority request that can be spawned
+   * Get next spawn request for a room.
+   * Returns only the highest-priority pending request when affordable.
+   * Lower-priority requests do not bypass an unaffordable higher-priority request.
    */
   getNextRequest(roomName: string, availableEnergy: number): SpawnRequest | null {
     const queue = this.getQueue(roomName);
@@ -130,22 +131,10 @@ class SpawnQueueManager {
     // Clean up completed spawns
     this.cleanupInProgress(queue);
 
-    // Find first request that fits energy budget
-    for (let i = 0; i < queue.requests.length; i++) {
-      const request = queue.requests[i];
+    const request = queue.requests.find(candidate => !this.isRequestInProgress(queue, candidate.id));
+    if (!request) return null;
 
-      // Check if already in progress
-      if (this.isRequestInProgress(queue, request.id)) {
-        continue;
-      }
-
-      // Check energy requirement
-      if (request.body.cost <= availableEnergy) {
-        return request;
-      }
-    }
-
-    return null;
+    return request.body.cost <= availableEnergy ? request : null;
   }
 
   /**
@@ -179,7 +168,7 @@ class SpawnQueueManager {
     const toRemove: string[] = [];
 
     for (const [requestId, { spawnId }] of queue.inProgress) {
-      const spawn = Game.getObjectById(spawnId);
+      const spawn = typeof Game.getObjectById === "function" ? Game.getObjectById(spawnId) : null;
       if (!spawn || !spawn.spawning) {
         toRemove.push(requestId);
       }
@@ -246,7 +235,7 @@ class SpawnQueueManager {
       if (!request) break; // No more spawnable requests
 
       // Attempt to spawn
-      const result = this.executeSpawn(spawn, request);
+      const result = executeSpawnRequest(spawn, request);
       if (result === OK) {
         spawnsInitiated++;
         this.markInProgress(roomName, request.id, spawn.id);
@@ -254,51 +243,13 @@ class SpawnQueueManager {
       } else if (result !== ERR_NOT_ENOUGH_ENERGY) {
         // If spawn failed for non-energy reason, remove from queue
         this.removeRequest(roomName, request.id);
-        logger.warn(
-          `Spawn request failed: ${request.role} in ${roomName} (error: ${result})`,
-          { subsystem: "SpawnQueue" }
-        );
+        logger.warn(`Spawn request failed: ${request.role} in ${roomName} (error: ${result})`, {
+          subsystem: "SpawnQueue"
+        });
       }
     }
 
     return spawnsInitiated;
-  }
-
-  /**
-   * Execute a spawn request
-   */
-  private executeSpawn(spawn: StructureSpawn, request: SpawnRequest): ScreepsReturnCode {
-    const name = this.generateCreepName(request.role);
-
-    const memory: SwarmCreepMemory = {
-      role: request.role,
-      family: request.family,
-      homeRoom: request.roomName,
-      version: 1,
-      ...request.additionalMemory
-    };
-
-    // Add optional fields
-    if (request.targetRoom) {
-      memory.targetRoom = request.targetRoom;
-    }
-    if (request.sourceId) {
-      memory.sourceId = request.sourceId;
-    }
-    if (request.boostRequirements) {
-      memory.boostRequirements = request.boostRequirements;
-    }
-
-    return spawn.spawnCreep(request.body.parts, name, {
-      memory: memory as unknown as CreepMemory
-    });
-  }
-
-  /**
-   * Generate unique creep name
-   */
-  private generateCreepName(role: CreepRole): string {
-    return `${role}_${Game.time}_${Math.random().toString(36).substring(2, 11)}`;
   }
 
   /**
