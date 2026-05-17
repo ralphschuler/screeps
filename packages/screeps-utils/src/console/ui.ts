@@ -56,8 +56,16 @@ export function createLink(content: string, url: string, newTab: boolean = true)
  * @param command - The command to execute in the console
  * @returns JavaScript code to execute the command
  */
+function escapeHtmlAttribute(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 function sendCommandToConsole(command: string): string {
-  return `angular.element(document.body).injector().get('Console').sendCommand('(${command})()', 1)`;
+  return `angular.element(document.body).injector().get('Console').sendCommand(${JSON.stringify(`(${command})()`)}, 1)`;
 }
 
 /**
@@ -161,7 +169,7 @@ export const createElement = {
    * @returns HTML button element
    */
   button(detail: ButtonDetail): string {
-    return `<button onclick="${sendCommandToConsole(detail.command)}">${detail.content}</button>`;
+    return `<button onclick="${escapeHtmlAttribute(sendCommandToConsole(detail.command))}">${detail.content}</button>`;
   },
 
   /**
@@ -207,7 +215,7 @@ export const createElement = {
     })()`;
 
     // Add submit button
-    parts.push(`<button type="button" onclick="${commandWrap.replace(/\n/g, ';')}">${buttonDetail.content}</button>`);
+    parts.push(`<button type="button" onclick="${escapeHtmlAttribute(commandWrap.replace(/\n/g, ';'))}">${buttonDetail.content}</button>`);
     parts.push(`</form>`);
 
     // Compress to single line

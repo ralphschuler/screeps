@@ -397,11 +397,14 @@ async function writeSummary(options, summary, status) {
   );
 }
 
+export function createPollingDeadline(options, now = Date.now()) {
+  return now + options.durationMinutes * 60 * 1000;
+}
+
 export async function runPrivateServerTest(options = parseHarnessArgs()) {
   fs.mkdirSync(options.artifactsDir, { recursive: true });
   const summary = createInitialSummary(options);
   const log = createLogger(options);
-  const endAt = Date.now() + options.durationMinutes * 60 * 1000;
 
   try {
     await runShell("npm", ["run", "build:mod"], options, log, {
@@ -418,6 +421,7 @@ export async function runPrivateServerTest(options = parseHarnessArgs()) {
     const api = await createApi(options, summary);
     await uploadBot(options, summary, api);
 
+    const endAt = createPollingDeadline(options);
     let polls = 0;
     while (Date.now() < endAt && polls < options.maxTicks) {
       await queueInlineAssertions(options, summary, api);
