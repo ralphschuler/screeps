@@ -3,6 +3,7 @@ import zlib from "node:zlib";
 import {
   buildEnsureBotUserCommand,
   createInitialSummary,
+  createPollingDeadline,
   decodeMemoryData,
   inspectMemorySnapshot,
   parseHarnessArgs,
@@ -65,6 +66,15 @@ describe("private-server harness module", () => {
     expect(summary.checks).to.deep.equal({});
     expect(summary.metrics).to.deep.equal({});
     expect(summary.errors).to.deep.equal([]);
+  });
+
+  it("starts the polling deadline after server setup finishes", () => {
+    const options = parseHarnessArgs(["--durationMinutes=5"], {});
+    const setupFinishedAt = new Date("2026-05-09T00:10:00.000Z").getTime();
+
+    expect(createPollingDeadline(options, setupFinishedAt)).to.equal(
+      new Date("2026-05-09T00:15:00.000Z").getTime(),
+    );
   });
 
   it("decodes plain, object, empty, and gzipped Memory payloads", () => {

@@ -2,12 +2,18 @@
  * CPU efficiency utilities with throttled execution and lazy evaluation.
  */
 
+/** Normalize throttle intervals to avoid modulo edge cases. */
+function normalizeInterval(interval: number): number {
+  if (!Number.isFinite(interval) || interval < 1) return 1;
+  return Math.floor(interval);
+}
+
 /**
  * Execute a function only every N ticks.
  * @param offset - Optional offset to spread load across ticks
  */
 export function throttle<T>(fn: () => T, interval: number, offset = 0): T | undefined {
-  if ((Game.time + offset) % interval === 0) {
+  if ((Game.time + offset) % normalizeInterval(interval) === 0) {
     return fn();
   }
   return undefined;
@@ -20,7 +26,7 @@ export function throttleWithDefault<T>(
   defaultValue: T,
   offset = 0
 ): T {
-  if ((Game.time + offset) % interval === 0) {
+  if ((Game.time + offset) % normalizeInterval(interval) === 0) {
     return fn();
   }
   return defaultValue;

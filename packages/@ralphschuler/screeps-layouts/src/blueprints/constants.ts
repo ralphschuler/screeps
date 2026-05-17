@@ -6,6 +6,8 @@
  * Get structure limits per RCL
  */
 export function getStructureLimits(rcl: number): Record<BuildableStructureConstant, number> {
+  const finiteRcl = Number.isFinite(rcl) ? rcl : 1;
+  const normalizedRcl = Math.min(8, Math.max(1, Math.floor(finiteRcl)));
   const limits: Record<number, Partial<Record<BuildableStructureConstant, number>>> = {
     1: { spawn: 1, extension: 0, road: 2500, constructedWall: 0 },
     2: { spawn: 1, extension: 5, road: 2500, constructedWall: 2500, rampart: 2500, container: 5 },
@@ -80,5 +82,5 @@ export function getStructureLimits(rcl: number): Record<BuildableStructureConsta
     }
   };
 
-  return (limits[rcl] ?? limits[1]) as Record<BuildableStructureConstant, number>;
+  return limits[normalizedRcl] as Record<BuildableStructureConstant, number>;
 }

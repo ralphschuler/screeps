@@ -21,7 +21,8 @@ export function shouldClearStateForActionResult(
   return (
     result === ERR_FULL ||
     result === ERR_NOT_ENOUGH_RESOURCES ||
-    result === ERR_INVALID_TARGET
+    result === ERR_INVALID_TARGET ||
+    result === ERR_NO_BODYPART
   );
 }
 

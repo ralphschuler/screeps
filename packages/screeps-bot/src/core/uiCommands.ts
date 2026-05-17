@@ -38,6 +38,7 @@ export class UICommands {
     if (!room) {
       return colorful(`Room ${roomName} not found or not visible`, "red", true);
     }
+    const roomNameLiteral = JSON.stringify(roomName);
 
     return createElement.form(
       "spawnCreep",
@@ -65,7 +66,7 @@ export class UICommands {
       {
         content: "Spawn Creep",
         command: `({role, name}) => {
-        const room = Game.rooms['${roomName}'];
+        const room = Game.rooms[${roomNameLiteral}];
         if (!room) return 'Room not found';
         const spawns = room.find(FIND_MY_SPAWNS);
         if (spawns.length === 0) return 'No spawns found';
@@ -91,6 +92,7 @@ export class UICommands {
     if (!room) {
       return colorful(`Room ${roomName} not found or not visible`, "red", true);
     }
+    const roomNameLiteral = JSON.stringify(roomName);
 
     let html = `<div style="background: #2b2b2b; padding: 10px; margin: 5px;">`;
     html += `<h3 style="color: #c5c599; margin: 0 0 10px 0;">Room Control: ${roomName}</h3>`;
@@ -122,11 +124,11 @@ export class UICommands {
     html += createElement.button({
       content: "📊 Room Stats",
       command: `() => {
-        const room = Game.rooms['${roomName}'];
+        const room = Game.rooms[${roomNameLiteral}];
         if (!room) return 'Room not found';
         let stats = '=== Room Stats ===\\n';
         stats += 'Energy: ' + room.energyAvailable + '/' + room.energyCapacityAvailable + '\\n';
-        stats += 'Creeps: ' + Object.values(Game.creeps).filter(c => c.room.name === '${roomName}').length + '\\n';
+        stats += 'Creeps: ' + Object.values(Game.creeps).filter(c => c.room.name === ${roomNameLiteral}).length + '\\n';
         if (room.controller) {
           stats += 'RCL: ' + room.controller.level + '\\n';
           stats += 'Progress: ' + room.controller.progress + '/' + room.controller.progressTotal + '\\n';
