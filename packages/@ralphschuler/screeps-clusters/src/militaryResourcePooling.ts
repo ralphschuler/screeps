@@ -10,9 +10,10 @@
  * Addresses Issue: #36 - Resource coordination for military operations
  */
 
-import type { ClusterMemory } from "./types";
 import { logger } from "@ralphschuler/screeps-core";
+import type { ClusterMemory } from "./types";
 import { memoryManager } from "./adapters/memoryAdapter";
+import { planEmergencyEnergyRoute, planMilitaryBoostAllocation } from "./militaryResourcePoolingIntent";
 
 /**
  * Military resource reservation per room
@@ -31,7 +32,7 @@ export interface MilitaryResourceReservation {
 const BOOST_REQUIREMENTS: Record<string, Partial<Record<ResourceConstant, number>>> = {
   defense: {
     [RESOURCE_CATALYZED_GHODIUM_ALKALIDE]: 300, // Tough boost
-    [RESOURCE_CATALYZED_UTRIUM_ACID]: 300,      // Attack boost
+    [RESOURCE_CATALYZED_UTRIUM_ACID]: 300, // Attack boost
     [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE]: 300 // Heal boost
   },
   raid: {
@@ -43,7 +44,7 @@ const BOOST_REQUIREMENTS: Record<string, Partial<Record<ResourceConstant, number
   siege: {
     [RESOURCE_CATALYZED_GHODIUM_ALKALIDE]: 900,
     [RESOURCE_CATALYZED_UTRIUM_ACID]: 600,
-    [RESOURCE_CATALYZED_ZYNTHIUM_ACID]: 900,    // Dismantle boost
+    [RESOURCE_CATALYZED_ZYNTHIUM_ACID]: 900, // Dismantle boost
     [RESOURCE_CATALYZED_KEANIUM_ALKALIDE]: 600,
     [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE]: 900
   }
@@ -53,19 +54,16 @@ const BOOST_REQUIREMENTS: Record<string, Partial<Record<ResourceConstant, number
  * Minimum energy to reserve for emergency military spawning per threat level
  */
 const EMERGENCY_ENERGY_RESERVE = {
-  0: 0,      // No threat
-  1: 5000,   // Low threat - 1 defender
-  2: 15000,  // Medium threat - small squad
-  3: 50000   // High threat - large squad
+  0: 0, // No threat
+  1: 5000, // Low threat - 1 defender
+  2: 15000, // Medium threat - small squad
+  3: 50000 // High threat - large squad
 };
 
 /**
  * Calculate energy reservation needed for a room based on threat
  */
-export function calculateEnergyReservation(
-  roomName: string,
-  dangerLevel: 0 | 1 | 2 | 3
-): number {
+export function calculateEnergyReservation(roomName: string, dangerLevel: 0 | 1 | 2 | 3): number {
   // Base reservation on danger level
   let reservation = EMERGENCY_ENERGY_RESERVE[dangerLevel];
 
@@ -73,9 +71,7 @@ export function calculateEnergyReservation(
   const clusters = memoryManager.getClusters();
   for (const clusterId in clusters) {
     const cluster = clusters[clusterId];
-    const hasDefenseRequest = cluster.defenseRequests.some(
-      (req: any) => req.roomName === roomName && req.urgency >= 2
-    );
+    const hasDefenseRequest = cluster.defenseRequests.some(req => req.roomName === roomName && req.urgency >= 2);
 
     if (hasDefenseRequest) {
       reservation += 10000; // Additional reserve for active defense
@@ -111,9 +107,7 @@ export function calculateBoostNeeds(
 /**
  * Get available boost materials in cluster
  */
-export function getAvailableBoostMaterials(
-  cluster: ClusterMemory
-): Partial<Record<ResourceConstant, number>> {
+export function getAvailableBoostMaterials(cluster: ClusterMemory): Partial<Record<ResourceConstant, number>> {
   const available: Partial<Record<ResourceConstant, number>> = {};
 
   for (const roomName of cluster.memberRooms) {
@@ -152,35 +146,23 @@ export function allocateBoostMaterials(
   squadId: string,
   needs: Partial<Record<ResourceConstant, number>>
 ): { success: boolean; allocated: string[] } {
-  const available = getAvailableBoostMaterials(cluster);
-  const allocated: string[] = [];
+  const intent = planMilitaryBoostAllocation({ squadId, needs, available: getAvailableBoostMaterials(cluster) });
 
-  // Check if we have enough materials
-  for (const resource in needs) {
-    const needed = needs[resource as ResourceConstant] ?? 0;
-    const have = available[resource as ResourceConstant] ?? 0;
-
-    if (have < needed) {
+  if (!intent.success) {
+    for (const missing of intent.missing) {
       logger.warn(
-        `Insufficient boost material ${resource} for squad ${squadId}: need ${needed}, have ${have}`,
+        `Insufficient boost material ${missing.resourceType} for squad ${squadId}: need ${missing.needed}, have ${missing.available}`,
         { subsystem: "MilitaryPool" }
       );
-      return { success: false, allocated: [] };
     }
+    return { success: false, allocated: [] };
   }
 
-  // All materials available - log allocation
-  for (const resource in needs) {
-    const amount = needs[resource as ResourceConstant] ?? 0;
-    allocated.push(`${amount} ${resource}`);
-  }
+  logger.info(`Allocated boost materials for squad ${squadId}: ${intent.allocated.join(", ")}`, {
+    subsystem: "MilitaryPool"
+  });
 
-  logger.info(
-    `Allocated boost materials for squad ${squadId}: ${allocated.join(", ")}`,
-    { subsystem: "MilitaryPool" }
-  );
-
-  return { success: true, allocated };
+  return { success: true, allocated: intent.allocated };
 }
 
 /**
@@ -191,59 +173,52 @@ export function routeEmergencyEnergy(
   targetRoom: string,
   amount: number
 ): { success: boolean; sourceRoom?: string } {
-  // Find best source room with excess energy
-  let bestSource: string | undefined;
-  let maxExcess = 0;
-
-  for (const roomName of cluster.memberRooms) {
-    if (roomName === targetRoom) continue;
-
+  const sources = cluster.memberRooms.flatMap(roomName => {
     const room = Game.rooms[roomName];
-    if (!room || !room.storage) continue;
-
     const swarm = memoryManager.getSwarmState(roomName);
-    if (!swarm) continue;
+    if (!room?.storage || !swarm) return [];
+    return [
+      {
+        roomName,
+        availableEnergy: room.storage.store.getUsedCapacity(RESOURCE_ENERGY),
+        reservedEnergy: calculateEnergyReservation(roomName, swarm.danger),
+        hasTerminal: Boolean(room.terminal)
+      }
+    ];
+  });
 
-    // Calculate excess energy (available - reserved)
-    const available = room.storage.store.getUsedCapacity(RESOURCE_ENERGY);
-    const dangerLevel = swarm.danger;
-    const reserved = calculateEnergyReservation(roomName, dangerLevel);
-    const excess = available - reserved;
+  const routeIntent = planEmergencyEnergyRoute({
+    targetRoom,
+    amount,
+    targetHasTerminal: Boolean(Game.rooms[targetRoom]?.terminal),
+    sources
+  });
 
-    if (excess > amount && excess > maxExcess) {
-      maxExcess = excess;
-      bestSource = roomName;
-    }
-  }
-
-  if (!bestSource) {
-    logger.warn(
-      `No available energy source for emergency routing to ${targetRoom} (need ${amount})`,
-      { subsystem: "MilitaryPool" }
-    );
+  if (!routeIntent.success) {
+    logger.warn(`No available energy source for emergency routing to ${targetRoom} (need ${amount})`, {
+      subsystem: "MilitaryPool"
+    });
     return { success: false };
   }
 
-  // Check if both rooms have terminals
+  const bestSource = routeIntent.sourceRoom;
   const sourceRoom = Game.rooms[bestSource];
   const targetRoomObj = Game.rooms[targetRoom];
 
-  if (sourceRoom?.terminal && targetRoomObj?.terminal) {
+  if (routeIntent.delivery === "terminal" && sourceRoom?.terminal && targetRoomObj?.terminal) {
     // Terminal transfer
     const result = sourceRoom.terminal.send(RESOURCE_ENERGY, amount, targetRoom);
     if (result === OK) {
-      logger.info(
-        `Emergency energy routed: ${amount} from ${bestSource} to ${targetRoom}`,
-        { subsystem: "MilitaryPool" }
-      );
+      logger.info(`Emergency energy routed: ${amount} from ${bestSource} to ${targetRoom}`, {
+        subsystem: "MilitaryPool"
+      });
       return { success: true, sourceRoom: bestSource };
     }
   } else {
     // Create hauler transfer request
-    logger.info(
-      `Creating hauler transfer request: ${amount} energy from ${bestSource} to ${targetRoom}`,
-      { subsystem: "MilitaryPool" }
-    );
+    logger.info(`Creating hauler transfer request: ${amount} energy from ${bestSource} to ${targetRoom}`, {
+      subsystem: "MilitaryPool"
+    });
 
     // Add to resource requests (will be handled by resource sharing manager)
     cluster.resourceRequests.push({
@@ -275,10 +250,9 @@ export function updateMilitaryReservations(cluster: ClusterMemory): void {
 
     // Log significant reservations
     if (reservation > 0 && Game.time % 100 === 0) {
-      logger.debug(
-        `Military energy reservation for ${roomName}: ${reservation} (danger ${swarm.danger})`,
-        { subsystem: "MilitaryPool" }
-      );
+      logger.debug(`Military energy reservation for ${roomName}: ${reservation} (danger ${swarm.danger})`, {
+        subsystem: "MilitaryPool"
+      });
     }
   }
 }
@@ -286,10 +260,7 @@ export function updateMilitaryReservations(cluster: ClusterMemory): void {
 /**
  * Check if room has sufficient energy for military operations
  */
-export function hasSufficientMilitaryEnergy(
-  roomName: string,
-  requiredAmount: number
-): boolean {
+export function hasSufficientMilitaryEnergy(roomName: string, requiredAmount: number): boolean {
   const room = Game.rooms[roomName];
   if (!room || !room.storage) return false;
 

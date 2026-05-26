@@ -34,7 +34,7 @@ Relevante Doku
 - Periodische Routinen (Scans, Pheromon-Updates, Markt-Analysen) laufen nur alle N Ticks.
 - Aggressives Caching + TTL ✅ **IMPLEMENTED**
 - Pfade, Scans, Analyseergebnisse werden mit TTL gecacht (im globalen Objekt, nicht in Memory) und nur bei Bedarf neu berechnet.
-- **Unified Cache System** in `src/cache/` konsolidiert alle Caching-Operationen:
+- **Unified Cache System** in `@ralphschuler/screeps-cache` konsolidiert alle Caching-Operationen:
   - Room.find() cache, Object cache (Game.getObjectById), Path cache, Role cache, Body part cache
   - TTL-based expiration, LRU eviction, namespace isolation
   - Integriert mit unified stats system für Monitoring (hit rate, evictions, etc.)
@@ -170,8 +170,8 @@ Stage 2 – Foraging Expansion (RCL 3–4)
 
 **Autonomous Expansion System (IMPLEMENTED)**
 The bot includes a fully autonomous expansion system that operates without manual intervention:
-- **GCL-Aware Expansion**: Automatically claims new rooms when GCL level increases and GCL progress reaches 70%
-- **Room Stability Requirements**: Only expands when 60% of existing rooms are RCL 4+ (stable)
+- **GCL-Aware Max Growth Expansion**: Automatically claims new rooms as soon as an unlocked GCL room slot and a viable claim target exist
+- **Safety-Gated Growth**: Expansion is not gated by maturity percentage in max-growth mode, but danger/war/siege and target viability checks still block unsafe claims
 - **Multi-Factor Scoring**: Expansion candidates scored by:
   - Source count (2 sources preferred)
   - Mineral type (rare minerals get higher scores)

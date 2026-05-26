@@ -1,7 +1,8 @@
 import { assert } from "chai";
 import type { SwarmState } from "../../src/memory/schemas";
-import { runSpawnPipeline } from "../../src/spawning/spawnPipeline";
-import { SpawnPriority, spawnQueue } from "../../src/spawning/spawnQueue";
+import { coordinateSpawning } from "@ralphschuler/screeps-spawn";
+import { runSpawnPipeline } from "@ralphschuler/screeps-spawn";
+import { SpawnPriority, spawnQueue } from "@ralphschuler/screeps-spawn";
 
 function createSwarm(): SwarmState {
   return {
@@ -66,6 +67,30 @@ describe("spawn pipeline", () => {
 
   afterEach(() => {
     delete (global as any).Game;
+  });
+
+  it("coordinates planning, queueing, and execution through the room-level Interface", () => {
+    const spawn = {
+      id: "spawn1" as Id<StructureSpawn>,
+      name: "Spawn1",
+      spawning: null,
+      spawnCreep: () => OK
+    } as unknown as StructureSpawn;
+    const room = {
+      name: "W1N1",
+      energyCapacityAvailable: 800,
+      energyAvailable: 800,
+      controller: { my: true, level: 4 },
+      find: (type: number) => (type === FIND_MY_SPAWNS ? [spawn] : [])
+    } as unknown as Room;
+    Game.rooms.W1N1 = room;
+
+    const result = coordinateSpawning(room, createSwarm());
+
+    assert.equal(result.roomName, "W1N1");
+    assert.equal(result.spawned, 1);
+    assert.isAtLeast(result.queued, 0);
+    assert.equal(result.stats.total, spawnQueue.getQueueStats("W1N1").total);
   });
 
   it("processes queued spawn requests through one Interface while preserving request memory", () => {

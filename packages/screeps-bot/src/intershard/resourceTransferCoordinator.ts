@@ -12,8 +12,7 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import { optimizeBody } from "../spawning/bodyOptimizer";
-import { SpawnPriority, type SpawnRequest, spawnQueue } from "../spawning/spawnQueue";
+import { optimizeBody, SpawnPriority, type SpawnRequest, spawnQueue } from "@ralphschuler/screeps-spawn";
 import type { InterShardTask } from "./schema";
 import { shardManager } from "./shardManager";
 

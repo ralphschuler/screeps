@@ -5,10 +5,10 @@ import {
   optimizeHaulerBody,
   optimizeUpgraderBody,
   optimizeCombatBody,
-  validateBody,
+  validateOptimizedBody as validateBody,
   calculateBodyCost,
   generateBodyTiers
-} from "../../src/spawning/bodyOptimizer";
+} from "@ralphschuler/screeps-spawn";
 
 describe("BodyOptimizer", () => {
   describe("calculateBodyCost", () => {

@@ -5,8 +5,8 @@ import {
   roomFindOptimizer,
   objectIdOptimizer
 } from "../../src/core/roomFindOptimizer";
-import { clearRoomFindCache } from "../../src/cache/domains/RoomFindCache";
-import { clearObjectCache } from "../../src/cache/domains/ObjectCache";
+import { clearRoomFindCache } from "@ralphschuler/screeps-cache";
+import { clearObjectCache } from "@ralphschuler/screeps-cache";
 
 // Define global Screeps classes for testing
 interface SourceClass {
@@ -264,26 +264,33 @@ describe("RoomFindOptimizer", () => {
     it("should invalidate hostile cache on hostile events", () => {
       // Cache some hostiles first
       const initialHostiles = [{ id: "hostile1" as Id<Creep>, name: "invader1" }];
+      const initialHostilePowerCreeps = [{ id: "hostilePower1" as Id<PowerCreep>, name: "operator1" }];
       mockRoom.find = <K extends FindConstant>(type: K): FindTypes[K][] => {
         if (type === FIND_HOSTILE_CREEPS) return initialHostiles as FindTypes[K][];
+        if (type === FIND_HOSTILE_POWER_CREEPS) return initialHostilePowerCreeps as FindTypes[K][];
         return [];
       };
 
       const result1 = optimizer.find(mockRoom, FIND_HOSTILE_CREEPS);
+      const powerResult1 = optimizer.find(mockRoom, FIND_HOSTILE_POWER_CREEPS);
       expect(result1).to.have.length(1);
+      expect(powerResult1).to.have.length(1);
 
       // Change the mock to return different results (hostile left)
       mockRoom.find = <K extends FindConstant>(type: K): FindTypes[K][] => {
         if (type === FIND_HOSTILE_CREEPS) return [] as FindTypes[K][];
+        if (type === FIND_HOSTILE_POWER_CREEPS) return [] as FindTypes[K][];
         return [];
       };
 
       // Invalidate
       optimizer.invalidate("W1N1", "hostile_left");
 
-      // Should get new results (empty array)
+      // Should get new results (empty arrays)
       const result2 = optimizer.find(mockRoom, FIND_HOSTILE_CREEPS);
+      const powerResult2 = optimizer.find(mockRoom, FIND_HOSTILE_POWER_CREEPS);
       expect(result2).to.have.length(0);
+      expect(powerResult2).to.have.length(0);
     });
 
     it("should invalidate entire room cache on unknown event", () => {

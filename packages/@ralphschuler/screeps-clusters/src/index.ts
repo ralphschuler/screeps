@@ -7,6 +7,7 @@
 
 // Cluster Manager
 export { clusterManager, ClusterManager } from "./clusterManager";
+export * from "./clusterIntent";
 
 // Military Coordination
 export * from "./squadCoordinator";
@@ -16,7 +17,9 @@ export * from "./rallyPointManager";
 
 // Resource Management
 export { resourceSharingManager, ResourceSharingManager } from "./resourceSharing";
+export * from "./resourceSharingIntent";
 export * from "./militaryResourcePooling";
+export * from "./militaryResourcePoolingIntent";
 
 // Offensive Operations - explicit exports to avoid conflicts
 export { 

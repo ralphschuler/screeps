@@ -292,6 +292,7 @@ export class CreepProcessManager {
       interval: 1,
       minBucket: this.getMinBucketForPriority(priority),
       cpuBudget: this.getCpuBudgetForPriority(priority),
+      topology: { parentId: memory.homeRoom ? `room:${memory.homeRoom}` : undefined, group: "creep", layer: "creep" },
       execute: () => {
         // Check if creep still exists
         const currentCreep = Game.creeps[creep.name];

@@ -8,7 +8,7 @@ import {
   validateTarget,
   markRoomAttacked,
   canAttackRoom
-} from "../../src/clusters/attackTargetSelector";
+} from "@ralphschuler/screeps-clusters";
 import type { ClusterMemory, RoomIntel } from "../../src/memory/schemas";
 
 describe("Attack Target Selector", () => {

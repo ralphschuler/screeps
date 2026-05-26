@@ -226,6 +226,18 @@ describe("CommandRegistry", () => {
       expect(typeof g.globalTest).to.equal("function");
       expect((g.globalTest as () => string)()).to.equal("global test result");
     });
+
+    it("should expose commands registered after a previous exposure", () => {
+      commandRegistry.register({ name: "firstGlobal", description: "First" }, () => "first");
+      commandRegistry.exposeToGlobal();
+
+      commandRegistry.register({ name: "secondGlobal", description: "Second" }, () => "second");
+      commandRegistry.exposeToGlobal();
+
+      const g = global as unknown as Record<string, unknown>;
+      expect(typeof g.secondGlobal).to.equal("function");
+      expect((g.secondGlobal as () => string)()).to.equal("second");
+    });
   });
 });
 

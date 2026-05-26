@@ -32,6 +32,8 @@ export interface LinkManagerConfig {
   transferThreshold: number;
   /** Reserve energy in storage link for emergencies */
   storageLinkReserve: number;
+  /** Minimum reserve to keep in storage before storage link pushes to spawn link */
+  storageEnergyReserveForSpawnLink: number;
 }
 
 const DEFAULT_CONFIG: LinkManagerConfig = {
@@ -39,7 +41,8 @@ const DEFAULT_CONFIG: LinkManagerConfig = {
   minSourceLinkEnergy: 400, // Transfer when source link is at least half full
   controllerLinkMaxEnergy: 700, // Keep controller link nearly full
   transferThreshold: 100, // Min energy to justify transfer
-  storageLinkReserve: 100 // Keep some energy in storage link for flexibility
+  storageLinkReserve: 100, // Keep some energy in storage link for flexibility
+  storageEnergyReserveForSpawnLink: 10000
 };
 
 /**
@@ -49,6 +52,7 @@ enum LinkRole {
   SOURCE = "source",       // Near energy sources
   CONTROLLER = "controller", // Near controller for upgraders
   STORAGE = "storage",      // Near storage for general distribution
+  SPAWN = "spawn",          // Near spawn/extension core for fast refill
   UNKNOWN = "unknown"
 }
 
@@ -100,7 +104,7 @@ export class LinkManager {
   /**
    * Process links in a single room
    */
-  private processRoomLinks(room: Room): void {
+  public processRoomLinks(room: Room): void {
     const links = room.find(FIND_MY_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_LINK
     }) as StructureLink[];
@@ -117,9 +121,10 @@ export class LinkManager {
     const sourceLinks = linkMetas.filter(m => m.role === LinkRole.SOURCE);
     const controllerLinks = linkMetas.filter(m => m.role === LinkRole.CONTROLLER);
     const storageLinks = linkMetas.filter(m => m.role === LinkRole.STORAGE);
+    const spawnLinks = linkMetas.filter(m => m.role === LinkRole.SPAWN);
 
-    // Execute transfers: source links → controller/storage links
-    this.executeTransfers(room, sourceLinks, controllerLinks, storageLinks);
+    // Execute transfers: source links → controller/storage links, storage → spawn/controller links
+    this.executeTransfers(room, sourceLinks, controllerLinks, storageLinks, spawnLinks);
   }
 
   /**
@@ -129,6 +134,7 @@ export class LinkManager {
     const controller = room.controller;
     const storage = room.storage;
     const sources = room.find(FIND_SOURCES);
+    const spawns = room.find(FIND_MY_SPAWNS);
 
     return links.map(link => {
       // Check if near controller (within range 2)
@@ -146,6 +152,15 @@ export class LinkManager {
           link,
           role: LinkRole.STORAGE,
           priority: 50 // Medium priority - general distribution
+        };
+      }
+
+      // Check if near spawn core (within range 2)
+      if (spawns.some(spawn => link.pos.getRangeTo(spawn) <= 2)) {
+        return {
+          link,
+          role: LinkRole.SPAWN,
+          priority: 75 // High priority only when spawn refill is urgent
         };
       }
 
@@ -176,8 +191,11 @@ export class LinkManager {
     room: Room,
     sourceLinks: LinkMeta[],
     controllerLinks: LinkMeta[],
-    storageLinks: LinkMeta[]
+    storageLinks: LinkMeta[],
+    spawnLinks: LinkMeta[] = []
   ): void {
+    this.executeStorageLinkTransfers(room, storageLinks, controllerLinks, spawnLinks);
+
     // Sort source links by energy (highest first - they want to send)
     const readySourceLinks = sourceLinks
       .filter(m => 
@@ -240,8 +258,13 @@ export class LinkManager {
 
       if (!bestReceiver) continue;
 
-      // Execute transfer
-      const amount = sourceMeta.link.store.getUsedCapacity(RESOURCE_ENERGY);
+      // Execute transfer without asking the receiver to accept more energy than it can hold.
+      const amount = Math.min(
+        sourceMeta.link.store.getUsedCapacity(RESOURCE_ENERGY),
+        bestReceiver.link.store.getFreeCapacity(RESOURCE_ENERGY)
+      );
+      if (amount < this.config.transferThreshold) continue;
+
       const result = sourceMeta.link.transferEnergy(bestReceiver.link, amount);
 
       if (result === OK) {
@@ -258,6 +281,57 @@ export class LinkManager {
     }
   }
 
+  private executeStorageLinkTransfers(
+    room: Room,
+    storageLinks: LinkMeta[],
+    controllerLinks: LinkMeta[],
+    spawnLinks: LinkMeta[]
+  ): void {
+    const storage = room.storage;
+    if (!storage) return;
+
+    const storageLink = storageLinks
+      .map(meta => meta.link)
+      .find(link =>
+        link.cooldown === 0 &&
+        link.store.getUsedCapacity(RESOURCE_ENERGY) >= this.config.transferThreshold &&
+        storage.store.getUsedCapacity(RESOURCE_ENERGY) >= this.config.storageEnergyReserveForSpawnLink
+      );
+    if (!storageLink) return;
+
+    const spawnNeedsEnergy = room.energyAvailable < room.energyCapacityAvailable;
+    const spawnBusy = room.find(FIND_MY_SPAWNS).some(spawn => Boolean(spawn.spawning));
+    const shouldFillSpawn = spawnNeedsEnergy || spawnBusy;
+
+    if (shouldFillSpawn) {
+      const spawnLink = spawnLinks
+        .map(meta => meta.link)
+        .find(link => link.store.getFreeCapacity(RESOURCE_ENERGY) >= this.config.transferThreshold);
+      if (spawnLink) {
+        const amount = Math.min(
+          storageLink.store.getUsedCapacity(RESOURCE_ENERGY),
+          spawnLink.store.getFreeCapacity(RESOURCE_ENERGY)
+        );
+        storageLink.transferEnergy(spawnLink, amount);
+        return;
+      }
+    }
+
+    const controllerLink = controllerLinks
+      .map(meta => meta.link)
+      .find(link =>
+        link.store.getUsedCapacity(RESOURCE_ENERGY) < this.config.controllerLinkMaxEnergy &&
+        link.store.getFreeCapacity(RESOURCE_ENERGY) >= this.config.transferThreshold
+      );
+    if (controllerLink) {
+      const amount = Math.min(
+        storageLink.store.getUsedCapacity(RESOURCE_ENERGY),
+        controllerLink.store.getFreeCapacity(RESOURCE_ENERGY)
+      );
+      storageLink.transferEnergy(controllerLink, amount);
+    }
+  }
+
   /**
    * Get link role for a specific link (utility method)
    */
@@ -266,6 +340,7 @@ export class LinkManager {
     const controller = room.controller;
     const storage = room.storage;
     const sources = room.find(FIND_SOURCES);
+    const spawns = room.find(FIND_MY_SPAWNS);
 
     if (controller && link.pos.getRangeTo(controller) <= 2) {
       return LinkRole.CONTROLLER;
@@ -273,6 +348,10 @@ export class LinkManager {
 
     if (storage && link.pos.getRangeTo(storage) <= 2) {
       return LinkRole.STORAGE;
+    }
+
+    if (spawns.some(spawn => link.pos.getRangeTo(spawn) <= 2)) {
+      return LinkRole.SPAWN;
     }
 
     for (const source of sources) {

@@ -84,10 +84,10 @@ const DEFAULT_CONFIG: ExpansionManagerConfig = {
   maxRemotesPerRoom: 5, // Supports up to ~9 remote sources in mature rooms
   minRemoteSources: 1,
   minRclForRemotes: 3,
-  minRclForClaiming: 4,
-  minGclProgressForClaim: 0, // Claim any already-unlocked GCL room slot; stability checks still gate overspend
+  minRclForClaiming: 1,
+  minGclProgressForClaim: 0, // Claim any already-unlocked GCL room slot immediately
   clusterExpansionDistance: 5,
-  minStableRoomPercentage: 0.6 // 60% of rooms must be RCL 4+ to expand
+  minStableRoomPercentage: 0 // Max growth: no maturity percentage gate beyond safety checks
 };
 
 /**
@@ -631,6 +631,18 @@ export class ExpansionManager {
     }
 
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+
+    if (ownedRooms.length === 0) {
+      return false;
+    }
+
+    const anyOwnedRoomInDanger = ownedRooms.some(room => {
+      const swarm = memoryManager.getSwarmState(room.name);
+      return (swarm?.danger ?? 0) >= 2 || swarm?.posture === "war" || swarm?.posture === "siege";
+    });
+    if (anyOwnedRoomInDanger) {
+      return false;
+    }
 
     // Check GCL limit
     if (ownedRooms.length >= Game.gcl.level) {

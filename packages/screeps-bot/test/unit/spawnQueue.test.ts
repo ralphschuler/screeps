@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import { spawnQueue, SpawnPriority, type SpawnRequest } from "../../src/spawning/spawnQueue";
+import { spawnQueue, SpawnPriority, type SpawnRequest } from "@ralphschuler/screeps-spawn";
 
 describe("SpawnQueue", () => {
   beforeEach(() => {

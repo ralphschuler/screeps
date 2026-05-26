@@ -9,7 +9,7 @@ import {
   selectRallyRoom,
   shouldDissolveSquad,
   getSquadReadiness
-} from "../../src/clusters/squadCoordinator";
+} from "@ralphschuler/screeps-clusters";
 import type { ClusterMemory, DefenseAssistanceRequest, SquadDefinition } from "../../src/memory/schemas";
 
 describe("Squad Coordinator", () => {

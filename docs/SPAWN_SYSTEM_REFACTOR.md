@@ -1,5 +1,7 @@
 # Spawn System Refactoring - Summary
 
+> Current canonical owner: `@ralphschuler/screeps-spawn` (`packages/screeps-spawn/src`). The old `packages/screeps-spawn/src/` duplicate has been removed; bot runtime configures adapters in `packages/screeps-bot/src/SwarmBot.ts`.
+
 ## Overview
 Successfully refactored the monolithic `spawn.ts` file (1,783 lines) into a modular spawn system consisting of 5 focused modules plus a backward-compatibility layer.
 
@@ -12,11 +14,11 @@ packages/screeps-bot/src/logic/spawn.ts (1,783 lines)
 
 After:
 packages/screeps-bot/src/logic/spawn.ts (145 lines) - Re-export layer
-packages/screeps-bot/src/spawning/roleDefinitions.ts (474 lines)
-packages/screeps-bot/src/spawning/spawnPriority.ts (204 lines)
-packages/screeps-bot/src/spawning/spawnNeedsAnalyzer.ts (484 lines)
-packages/screeps-bot/src/spawning/bootstrapManager.ts (202 lines)
-packages/screeps-bot/src/spawning/spawnQueueManager.ts (430 lines)
+packages/screeps-spawn/src/roleDefinitions.ts (474 lines)
+packages/screeps-spawn/src/spawnPriority.ts (204 lines)
+packages/screeps-spawn/src/spawnNeedsAnalyzer.ts (484 lines)
+packages/screeps-spawn/src/bootstrapManager.ts (202 lines)
+packages/screeps-spawn/src/spawnQueueManager.ts (430 lines)
 ```
 
 ### Module Responsibilities
@@ -237,9 +239,9 @@ These were dormant type errors revealed during build validation.
 import { runSpawnManager, ROLE_DEFINITIONS } from "../logic/spawn";
 
 // Option 2: Import from specific modules (better tree-shaking)
-import { runSpawnManager } from "../spawning/spawnQueueManager";
-import { ROLE_DEFINITIONS } from "../spawning/roleDefinitions";
-import { needsRole } from "../spawning/spawnNeedsAnalyzer";
+import { runSpawnManager } from "@ralphschuler/screeps-spawn";
+import { ROLE_DEFINITIONS } from "@ralphschuler/screeps-spawn";
+import { needsRole } from "@ralphschuler/screeps-spawn";
 ```
 
 **Adding new roles**:

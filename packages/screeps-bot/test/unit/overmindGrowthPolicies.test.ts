@@ -1,8 +1,8 @@
 import { assert } from "chai";
 import { getEconomyFirstConstructionPolicy } from "../../src/core/managers/RoomConstructionManager";
 import { getRemoteSourceTargetByRcl } from "../../src/empire/expansionManager";
-import { populateSpawnQueue } from "../../src/spawning/spawnCoordinator";
-import { spawnQueue } from "../../src/spawning/spawnQueue";
+import { populateSpawnQueue } from "@ralphschuler/screeps-spawn";
+import { spawnQueue } from "@ralphschuler/screeps-spawn";
 import type { SwarmState } from "../../src/memory/schemas";
 
 function createSwarm(remoteAssignments: string[] = []): SwarmState {

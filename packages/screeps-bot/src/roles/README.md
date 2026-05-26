@@ -708,7 +708,7 @@ npm run test:unit -- packages/screeps-bot/test/unit/executor.test.ts
 ## Related Documentation
 
 - [ROADMAP.md](../../../../ROADMAP.md) - Section 5: Creep-/Squad-Ebene, Section 9: Rollenlogik
-- [Spawning Subsystem](../spawning/README.md) - Role definitions and spawning
+- `@ralphschuler/screeps-spawn` - Role definitions and spawning
 - [Core Subsystem](../core/README.md) - Process scheduling for role execution
 - [Memory Subsystem](../memory/README.md) - CreepMemory and CreepState schemas
-- [Clusters Subsystem](../clusters/README.md) - Squad coordination
+- `@ralphschuler/screeps-clusters` - Squad coordination

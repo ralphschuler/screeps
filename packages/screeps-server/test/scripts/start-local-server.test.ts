@@ -1,10 +1,19 @@
 import { expect } from 'chai';
 import {
+  buildComposeEnv,
   isLoopbackHost,
+  parseTickRate,
+  redactCommandArgs,
   validateLocalServerCredentials
 } from '../../scripts/start-local-server.js';
 
 describe('start-local-server credential validation', () => {
+  it('validates tick rate inputs', () => {
+    expect(parseTickRate('20')).to.equal(20);
+    expect(() => parseTickRate('fast')).to.throw(/positive integer/);
+    expect(() => parseTickRate('-1')).to.throw(/positive integer/);
+  });
+
   it('allows loopback hosts with default local credentials', () => {
     expect(() => validateLocalServerCredentials({
       host: '127.0.0.1',
@@ -43,6 +52,23 @@ describe('start-local-server credential validation', () => {
       serverPassword: 'server-secret',
       password: 'bot-secret'
     })).not.to.throw();
+  });
+
+  it('passes the validated server password into compose env', () => {
+    expect(buildComposeEnv({
+      host: '0.0.0.0',
+      shardName: 'shard0',
+      serverPort: 21025,
+      cliPort: 21026,
+      serverPassword: 'server-secret'
+    })).to.deep.include({ SCREEPS_CLI_PASSWORD: 'server-secret' });
+  });
+
+  it('redacts passwords from command logging', () => {
+    expect(redactCommandArgs(['--serverPassword=server-secret', '--password=bot-secret'])).to.deep.equal([
+      '--serverPassword=<redacted>',
+      '--password=<redacted>'
+    ]);
   });
 
   it('classifies non-loopback bind hosts as shared-network hosts', () => {

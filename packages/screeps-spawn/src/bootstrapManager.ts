@@ -1,15 +1,15 @@
 /**
  * Bootstrap Manager Module
- * 
+ *
  * Handles early game and emergency recovery logic.
  * When the economy collapses (all energy producers die), this module
  * takes over with deterministic priority spawning to rebuild the workforce.
  */
 
-import type { SwarmState } from "./botTypes";
-import { countCreepsByRole, needsRole } from "./spawnNeedsAnalyzer";
 import { cachedFindSources } from "@ralphschuler/screeps-cache";
 import { logger } from "@ralphschuler/screeps-core";
+import type { SwarmState } from "@ralphschuler/screeps-memory";
+import { countCreepsByRole, needsRole } from "./spawnNeedsAnalyzer";
 
 /**
  * Get count of energy-producing creeps (harvesters + larvaWorkers)
@@ -28,7 +28,7 @@ export function getTransportCount(counts: Map<string, number>): number {
 /**
  * Check if room is in emergency state (no ACTIVE energy-producing creeps)
  * This happens when all creeps die and extensions are empty.
- * 
+ *
  * IMPORTANT: Only counts ACTIVE (non-spawning) creeps. This ensures we continue
  * spawning bootstrap creeps even while one is already spawning, allowing
  * faster recovery from total workforce collapse.
@@ -42,7 +42,7 @@ export function isEmergencySpawnState(roomName: string): boolean {
  * Bootstrap spawn order - deterministic priority-based spawning.
  * This defines the order in which critical roles should be spawned during
  * recovery from a bad state, ensuring the economy can bootstrap properly.
- * 
+ *
  * DYNAMIC: Harvester count is determined by the number of sources in the room.
  * Each room needs 1 harvester per source for optimal energy production.
  */
@@ -51,7 +51,7 @@ function getBootstrapSpawnOrder(room: Room): { role: string; minCount: number; c
   // Most rooms have 2 sources, but some have only 1
   const sources = cachedFindSources(room);
   const sourceCount = Math.max(sources.length, 1); // Ensure at least 1
-  
+
   return [
     // 1. First harvester (always needed, regardless of source count)
     // larvaWorkers are emergency-only and are handled before this order.
@@ -63,7 +63,7 @@ function getBootstrapSpawnOrder(room: Room): { role: string; minCount: number; c
     // This ensures single-source rooms don't get stuck waiting for 2nd harvester
     { role: "harvester", minCount: sourceCount },
     // 4. Queen carrier when storage exists (manages spawns/extensions)
-    { role: "queenCarrier", minCount: 1, condition: (room: Room) => Boolean(room.storage) },
+    { role: "queenCarrier", minCount: 1, condition: (candidateRoom: Room) => Boolean(candidateRoom.storage) },
     // 5. Upgrader for controller progress
     { role: "upgrader", minCount: 1 }
   ];
@@ -77,7 +77,7 @@ function getBootstrapSpawnOrder(room: Room): { role: string; minCount: number; c
  * - Zero ACTIVE energy producers exist, OR
  * - We have energy producers but no transport (energy can't be distributed), OR
  * - We have fewer than minimum critical roles
- * 
+ *
  * IMPORTANT: Uses activeOnly counts for emergency detection but total counts for
  * role minimums. This ensures we aggressively spawn multiple small creeps during
  * workforce collapse while still allowing spawning creeps to count towards role limits.
@@ -85,7 +85,7 @@ function getBootstrapSpawnOrder(room: Room): { role: string; minCount: number; c
 export function isBootstrapMode(roomName: string, room: Room): boolean {
   // Check ACTIVE creeps for emergency detection
   const activeCounts = countCreepsByRole(roomName, true);
-  
+
   // Critical: no ACTIVE energy production at all
   // This ensures we keep spawning even while a larvaWorker is spawning
   if (getEnergyProducerCount(activeCounts) === 0) {
@@ -101,7 +101,7 @@ export function isBootstrapMode(roomName: string, room: Room): boolean {
   // For minimum role checks, use total counts (including spawning)
   // This prevents spawning duplicates when one is already spawning
   const totalCounts = countCreepsByRole(roomName, false);
-  
+
   // Check minimum counts against bootstrap order
   // FIXED: Use dynamic bootstrap order based on room's source count
   const bootstrapOrder = getBootstrapSpawnOrder(room);
@@ -123,14 +123,14 @@ export function isBootstrapMode(roomName: string, room: Room): boolean {
 /**
  * Get the next role to spawn in bootstrap mode.
  * Uses deterministic priority order instead of weighted random selection.
- * 
+ *
  * IMPORTANT: Checks active counts for emergency, but total counts for role minimums.
  * This allows spawning additional larvaWorkers if none are active, even if one is spawning.
  */
 export function getBootstrapRole(roomName: string, room: Room, swarm: SwarmState): string | null {
   // Check ACTIVE energy producers for emergency
   const activeCounts = countCreepsByRole(roomName, true);
-  
+
   // First check emergency: zero ACTIVE energy producers
   // This ensures we can spawn multiple larvaWorkers if needed for faster recovery
   if (getEnergyProducerCount(activeCounts) === 0) {
@@ -143,11 +143,11 @@ export function getBootstrapRole(roomName: string, room: Room, swarm: SwarmState
 
   // For role minimums, use total counts (including spawning)
   const totalCounts = countCreepsByRole(roomName, false);
-  
+
   // Follow bootstrap order
   // FIXED: Use dynamic bootstrap order based on room's source count
   const bootstrapOrder = getBootstrapSpawnOrder(room);
-  
+
   logger.info(`Bootstrap: Checking ${bootstrapOrder.length} roles in order`, {
     subsystem: "spawn",
     room: roomName,
@@ -156,7 +156,7 @@ export function getBootstrapRole(roomName: string, room: Room, swarm: SwarmState
       creepCounts: Array.from(totalCounts.entries())
     }
   });
-  
+
   for (const req of bootstrapOrder) {
     // Skip conditional roles if condition not met
     if (req.condition && !req.condition(room)) {
@@ -182,13 +182,10 @@ export function getBootstrapRole(roomName: string, room: Room, swarm: SwarmState
       if (canSpawn) {
         return req.role;
       } else {
-        logger.warn(
-          `Bootstrap: Role ${req.role} blocked by needsRole check (current: ${current}/${req.minCount})`,
-          {
-            subsystem: "spawn",
-            room: roomName
-          }
-        );
+        logger.warn(`Bootstrap: Role ${req.role} blocked by needsRole check (current: ${current}/${req.minCount})`, {
+          subsystem: "spawn",
+          room: roomName
+        });
       }
     }
   }

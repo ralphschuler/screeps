@@ -5,6 +5,7 @@
 
 import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
+import { planClusterHealthIntent } from "./clusterHealthIntent";
 
 /**
  * Cluster Monitor
@@ -33,26 +34,22 @@ export class ClusterMonitor {
         continue;
       }
 
-      // Check energy availability across cluster
-      const totalEnergy = clusterRooms.reduce((sum, r) => {
-        return sum + (r.storage?.store[RESOURCE_ENERGY] ?? 0) + (r.terminal?.store[RESOURCE_ENERGY] ?? 0);
-      }, 0);
-      const avgEnergy = totalEnergy / clusterRooms.length;
+      const healthIntent = planClusterHealthIntent({
+        clusterId,
+        memberRooms: cluster.memberRooms,
+        visibleRooms: clusterRooms.map(room => ({
+          roomName: room.name,
+          energy: (room.storage?.store[RESOURCE_ENERGY] ?? 0) + (room.terminal?.store[RESOURCE_ENERGY] ?? 0)
+        })),
+        cpuUsed: Game.cpu.getUsed(),
+        ownedRoomCount: allOwnedRooms.length,
+        time: Game.time
+      });
 
-      // Check CPU usage per room
-      const avgCpuPerRoom = Game.cpu.getUsed() / allOwnedRooms.length;
+      if (!healthIntent) continue;
 
-      // Detect unhealthy conditions
-      const lowEnergy = avgEnergy < 30000;
-      const highCpu = avgCpuPerRoom > 2.0;
-
-      if (lowEnergy || highCpu) {
-        logger.warn(
-          `Cluster ${clusterId} health issue detected - avgEnergy: ${avgEnergy.toFixed(0)}, avgCPU: ${avgCpuPerRoom.toFixed(2)}`,
-          {
-            subsystem: "Cluster"
-          }
-        );
+      for (const warning of healthIntent.warnings) {
+        logger.warn(warning.message, { subsystem: "Cluster" });
       }
 
       // Update cluster metrics
@@ -66,17 +63,7 @@ export class ClusterMonitor {
         };
       }
 
-      // Calculate economy health index (0-100)
-      const energyScore = Math.min(100, (avgEnergy / 100000) * 100);
-      const roomCountScore = (clusterRooms.length / cluster.memberRooms.length) * 100;
-      cluster.metrics.economyIndex = Math.round((energyScore + roomCountScore) / 2);
-
-      // Trigger rebalancing if economy index is low
-      if (cluster.metrics.economyIndex < 40 && Game.time % 500 === 0) {
-        logger.warn(`Cluster ${clusterId} economy index low: ${cluster.metrics.economyIndex} - consider rebalancing`, {
-          subsystem: "Cluster"
-        });
-      }
+      cluster.metrics.economyIndex = healthIntent.economyIndex;
     }
   }
 }

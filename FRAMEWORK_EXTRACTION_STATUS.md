@@ -81,12 +81,13 @@ packages/screeps-bot/test/unit/structureCache.test.ts
 ```
 
 ### 2.2: Remove Duplicate Directories
-- [ ] Delete `packages/screeps-bot/src/cache/` (18 files)
-- [ ] Delete `packages/screeps-bot/src/clusters/` (9 files)
+- [x] Delete `packages/screeps-bot/src/cache/` (canonical: `@ralphschuler/screeps-cache`)
+- [x] Delete `packages/screeps-bot/src/clusters/` (canonical: `@ralphschuler/screeps-clusters`)
+- [x] Delete `packages/screeps-bot/src/spawning/` (canonical: `@ralphschuler/screeps-spawn`)
 - [ ] Delete `packages/screeps-bot/src/standards/` (3 files)
 - [ ] Delete `packages/screeps-bot/src/visuals/` (5 files)
-- [ ] Verify builds pass
-- [ ] Verify tests pass
+- [x] Verify builds pass for cache/clusters/spawn/bot
+- [x] Verify unit tests pass
 
 **Expected Impact**:
 - Remove 35 duplicate files from monolith

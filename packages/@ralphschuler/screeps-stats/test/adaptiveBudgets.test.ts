@@ -26,6 +26,26 @@ describe("Adaptive CPU Budgets", () => {
     expect(hundredRooms).to.be.at.most(2.2);
   });
 
+  it("keeps room scaling finite when custom configs contain unsafe values", () => {
+    const unsafeConfig = {
+      ...DEFAULT_ADAPTIVE_CONFIG,
+      roomScaling: {
+        minRooms: 0,
+        scaleFactor: -1,
+        maxMultiplier: 2.5
+      }
+    };
+
+    const multiplier = calculateRoomScalingMultiplier(10, unsafeConfig);
+
+    expect(multiplier).to.be.closeTo(1.5, 0.001);
+    expect(Number.isFinite(multiplier)).to.equal(true);
+    expect(calculateAdaptiveBudget("high", 10, 5000, unsafeConfig)).to.be.closeTo(
+      DEFAULT_ADAPTIVE_CONFIG.baseFrequencyBudgets.high * multiplier,
+      0.001
+    );
+  });
+
   it("applies bucket multipliers at the configured thresholds", () => {
     expect(calculateBucketMultiplier(9500, DEFAULT_ADAPTIVE_CONFIG)).to.equal(1.2);
     expect(calculateBucketMultiplier(5000, DEFAULT_ADAPTIVE_CONFIG)).to.equal(1.0);

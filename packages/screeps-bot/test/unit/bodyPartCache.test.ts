@@ -11,7 +11,7 @@ import {
   getCachedCarryCapacity,
   getBodyPartCacheStats,
   clearBodyPartCache
-} from "../../src/cache";
+} from "@ralphschuler/screeps-cache";
 
 describe("bodyPartCache", () => {
   beforeEach(() => {

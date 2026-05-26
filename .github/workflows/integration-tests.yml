@@ -6,6 +6,8 @@ on:
     paths:
       - 'packages/screeps-bot/src/**'
       - 'packages/screeps-bot/package*.json'
+      - 'packages/@ralphschuler/**'
+      - 'packages/screeps-*/**'
       - 'packages/screeps-server/**'
       - 'packages/screepsmod-testing/**'
       - '.github/workflows/integration-tests.yml'
@@ -15,6 +17,9 @@ on:
       - develop
     paths:
       - 'packages/screeps-bot/src/**'
+      - 'packages/screeps-bot/package*.json'
+      - 'packages/@ralphschuler/**'
+      - 'packages/screeps-*/**'
       - 'packages/screeps-server/**'
       - 'packages/screepsmod-testing/**'
   workflow_dispatch:

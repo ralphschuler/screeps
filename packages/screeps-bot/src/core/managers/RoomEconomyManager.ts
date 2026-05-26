@@ -5,22 +5,61 @@
  * - Lab reactions and boosting
  * - Factory production
  * - Power spawn processing
- * - Link transfers (source -> storage -> controller)
+ * - Labs, factory, and power spawn processing
+ *
+ * Link transfers are centralized in @ralphschuler/screeps-economy LinkManager.
  */
 
 /* eslint-disable no-undef */
-import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
-import { boostManager } from "../../labs/boostManager";
-import { chemistryPlanner } from "../../labs/chemistryPlanner";
-import { labConfigManager } from "../../labs/labConfig";
-import { labManager } from "../../labs/labManager";
-import { logger } from "../logger";
+import { labEconomyWorkflow, type LabWorkflowResult } from "../../labs/labEconomyWorkflow";
+
+interface LabWorkflowPort {
+  run(room: Room, swarm: SwarmState): LabWorkflowResult;
+}
+
+export interface RoomEconomyIntent {
+  roomName: string;
+  rcl: number;
+  processing: {
+    labs: boolean;
+    factory: boolean;
+    powerSpawn: boolean;
+  };
+  links: {
+    count: number;
+    hasNetwork: boolean;
+  };
+}
 
 /**
  * Room Economy Manager
  */
 export class RoomEconomyManager {
+  public constructor(private readonly labWorkflow: LabWorkflowPort = labEconomyWorkflow) {}
+
+  /**
+   * Describe room-level economy intent without mutating game state.
+   */
+  public getRoomEconomyIntent(room: Room, cache: { links: StructureLink[] }): RoomEconomyIntent {
+    const rcl = room.controller?.level ?? 0;
+    const linkCount = cache.links.length;
+
+    return {
+      roomName: room.name,
+      rcl,
+      processing: {
+        labs: rcl >= 6,
+        factory: rcl >= 7,
+        powerSpawn: rcl >= 8
+      },
+      links: {
+        count: linkCount,
+        hasNetwork: linkCount >= 2
+      }
+    };
+  }
+
   /**
    * Run resource processing (labs, factory, power spawn)
    */
@@ -34,84 +73,21 @@ export class RoomEconomyManager {
       sources: Source[];
     }
   ): void {
-    const rcl = room.controller?.level ?? 0;
+    const intent = this.getRoomEconomyIntent(room, cache);
 
-    // Run labs (RCL 6+)
-    if (rcl >= 6) {
-      this.runLabs(room);
+    if (intent.processing.labs) {
+      this.labWorkflow.run(room, swarm);
     }
 
-    // Run factory (RCL 7+)
-    if (rcl >= 7) {
+    if (intent.processing.factory) {
       this.runFactory(room, cache.factory);
     }
 
-    // Run power spawn (RCL 8)
-    if (rcl >= 8) {
+    if (intent.processing.powerSpawn) {
       this.runPowerSpawn(room, cache.powerSpawn);
     }
 
-    // Run links
-    this.runLinks(room, cache.links, cache.sources);
-  }
-
-  /**
-   * Run lab reactions
-   */
-  private runLabs(room: Room): void {
-    const swarm = memoryManager.getSwarmState(room.name);
-    if (!swarm) return;
-
-    // Initialize lab manager for this room (loads config from memory)
-    labManager.initialize(room.name);
-
-    // Prepare labs for boosting when danger is high
-    boostManager.prepareLabs(room, swarm);
-
-    // Plan reactions using chemistry planner
-    const reaction = chemistryPlanner.planReactions(room, swarm);
-    if (reaction) {
-      // Check if labs are ready for this reaction
-      const reactionStep = {
-        product: reaction.product as MineralCompoundConstant,
-        input1: reaction.input1 as MineralConstant | MineralCompoundConstant,
-        input2: reaction.input2 as MineralConstant | MineralCompoundConstant,
-        amountNeeded: 1000,
-        priority: reaction.priority
-      };
-
-      if (labManager.areLabsReady(room.name, reactionStep)) {
-        // Set active reaction if not already set or different
-        const config = labConfigManager.getConfig(room.name);
-        const currentReaction = config?.activeReaction;
-
-        if (
-          !currentReaction ||
-          currentReaction.input1 !== reaction.input1 ||
-          currentReaction.input2 !== reaction.input2 ||
-          currentReaction.output !== reaction.product
-        ) {
-          labManager.setActiveReaction(
-            room.name,
-            reaction.input1 as MineralConstant | MineralCompoundConstant,
-            reaction.input2 as MineralConstant | MineralCompoundConstant,
-            reaction.product as MineralCompoundConstant
-          );
-        }
-
-        // Execute reaction
-        chemistryPlanner.executeReaction(room, reaction);
-      } else {
-        // Labs not ready, resource logistics needs to supply them
-        logger.debug(`Labs not ready for reaction: ${reaction.input1} + ${reaction.input2} -> ${reaction.product}`, {
-          subsystem: "Labs",
-          room: room.name
-        });
-      }
-    }
-
-    // Save lab state to memory
-    labManager.save(room.name);
+    // Link transfers are handled by the decorated LinkManager process.
   }
 
   /**
@@ -151,50 +127,6 @@ export class RoomEconomyManager {
       powerSpawn.store.getUsedCapacity(RESOURCE_ENERGY) >= 50
     ) {
       powerSpawn.processPower();
-    }
-  }
-
-  /**
-   * Run link transfers with bidirectional support
-   * Enhanced logic supports: source→storage, storage→controller
-   */
-  private runLinks(room: Room, links: StructureLink[], sources: Source[]): void {
-    if (links.length < 2) return;
-
-    const storage = room.storage;
-    if (!storage) return;
-
-    // Find storage link (within 2 of storage)
-    const storageLink = links.find(l => l.pos.getRangeTo(storage) <= 2);
-    if (!storageLink) return;
-
-    // Find source links (links near sources)
-    const sourceLinks = links.filter(l => sources.some(s => l.pos.getRangeTo(s) <= 2));
-
-    // Find controller link (within 3 of controller for upgrader access)
-    const controller = room.controller;
-    const controllerLink = controller
-      ? links.find(l => l.pos.getRangeTo(controller) <= 3 && l.id !== storageLink.id)
-      : undefined;
-
-    // Priority 1: Transfer from source links to storage link
-    for (const sourceLink of sourceLinks) {
-      if (sourceLink.store.getUsedCapacity(RESOURCE_ENERGY) >= 400 && sourceLink.cooldown === 0) {
-        if (storageLink.store.getFreeCapacity(RESOURCE_ENERGY) >= 400) {
-          sourceLink.transferEnergy(storageLink);
-          return; // One transfer per tick to avoid conflicts
-        }
-      }
-    }
-
-    // Priority 2: Transfer from storage link to controller link (if controller needs energy)
-    if (controllerLink && storageLink.cooldown === 0) {
-      const controllerNeedsEnergy = controllerLink.store.getUsedCapacity(RESOURCE_ENERGY) < 400;
-      const storageLinkHasEnergy = storageLink.store.getUsedCapacity(RESOURCE_ENERGY) >= 400;
-
-      if (controllerNeedsEnergy && storageLinkHasEnergy) {
-        storageLink.transferEnergy(controllerLink);
-      }
     }
   }
 }

@@ -4,9 +4,9 @@ import {
   getTransportCount,
   isBootstrapMode,
   getBootstrapRole
-} from "../../src/spawning/bootstrapManager";
-import { determineNextRole } from "../../src/spawning/spawnQueueManager";
-import { countCreepsByRole } from "../../src/spawning/spawnNeedsAnalyzer";
+} from "@ralphschuler/screeps-spawn";
+import { determineNextRole } from "@ralphschuler/screeps-spawn";
+import { countCreepsByRole } from "@ralphschuler/screeps-spawn";
 import { clearRoomFindCache } from "@ralphschuler/screeps-cache";
 import type { SwarmState } from "../../src/memory/schemas";
 import { memoryManager } from "../../src/memory/manager";

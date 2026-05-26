@@ -225,6 +225,6 @@ invalidateRoom("W1N1");
 ## References
 
 - [PATHFINDING_AUDIT.md](../PATHFINDING_AUDIT.md) - Audit results
-- [PathCache.ts](../packages/screeps-bot/src/cache/domains/PathCache.ts) - Core caching system
+- [PathCache.ts](../packages/@ralphschuler/screeps-cache/src/domains/PathCache.ts) - Core caching system
 - [pathfindingMetrics.ts](../packages/screeps-bot/src/core/pathfindingMetrics.ts) - Metrics tracker
 - [cachedMovement.ts](../packages/screeps-bot/src/utils/movement/cachedMovement.ts) - Movement wrappers

@@ -7,6 +7,7 @@
 
 import { expect } from "chai";
 import type { RoomIntel } from "../../src/memory/schemas";
+import { heapCache } from "@ralphschuler/screeps-memory";
 import * as ExpansionScoring from "../../src/empire/expansionScoring";
 import { updateConfig, resetConfig } from "../../src/config";
 
@@ -62,6 +63,7 @@ describe("Multi-Factor Expansion Scoring", () => {
       creeps: {},
       rooms: {}
     } as typeof Memory;
+    heapCache.clear();
 
     // Reset config to default before each test
     resetConfig();
@@ -333,16 +335,32 @@ describe("Multi-Factor Expansion Scoring", () => {
     });
   });
 
-  describe("isAlly (alliance system removed)", () => {
-    it("should always return false", () => {
-      const result = ExpansionScoring.isAlly("SomePlayer");
-      expect(result).to.be.false;
+  describe("alliance-aware hostile scoring", () => {
+    function setAdjacentOwner(owner: string): void {
+      (global.Memory as unknown as { empire: { knownRooms: Record<string, RoomIntel> } }).empire = {
+        knownRooms: {
+          E2N1: createMockRoomIntel("E2N1", { owner })
+        }
+      };
+      heapCache.clear();
+    }
+
+    it("recognizes permanent non-aggression allies", () => {
+      expect(ExpansionScoring.isAlly("TooAngel")).to.be.true;
+      expect(ExpansionScoring.isAlly("TedRoastBeef")).to.be.true;
+      expect(ExpansionScoring.isAlly("EnemyPlayer")).to.be.false;
     });
 
-    it("should return false for any player name", () => {
-      expect(ExpansionScoring.isAlly("EnemyPlayer")).to.be.false;
-      expect(ExpansionScoring.isAlly("FriendlyPlayer")).to.be.false;
-      expect(ExpansionScoring.isAlly("AllyPlayer")).to.be.false;
+    it("does not penalize expansion near allied owned rooms", () => {
+      setAdjacentOwner("TooAngel");
+
+      expect(ExpansionScoring.calculateHostilePenalty("E1N1")).to.equal(0);
+    });
+
+    it("still penalizes expansion near hostile owned rooms", () => {
+      setAdjacentOwner("EnemyPlayer");
+
+      expect(ExpansionScoring.calculateHostilePenalty("E1N1")).to.equal(30);
     });
   });
 

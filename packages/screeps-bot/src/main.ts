@@ -58,6 +58,7 @@ declare global {
       claimQueue: ScreepsMemoryRecord[];
       nukeCandidates: ScreepsMemoryRecord[];
       powerBanks: ScreepsMemoryRecord[];
+      playerPostures?: ScreepsMemoryRecord;
       market?: ScreepsMemoryRecord;
       objectives: {
         targetPowerLevel: number;

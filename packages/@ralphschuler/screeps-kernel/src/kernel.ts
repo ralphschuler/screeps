@@ -66,6 +66,55 @@ export type ProcessState = "idle" | "running" | "suspended" | "error";
 /**
  * Process statistics
  */
+export interface ProcessTopologyMetadata {
+  parentId?: string;
+  group?: string;
+  layer?: string;
+}
+
+export interface ProcessTopologyNode {
+  id: string;
+  name: string;
+  parentId?: string;
+  group?: string;
+  layer?: string;
+  priority: ProcessPriority;
+  frequency: ProcessFrequency;
+  minBucket: number;
+  cpuBudget: number;
+  interval: number;
+  tickModulo?: number;
+  tickOffset?: number;
+  state: ProcessState;
+  runCount: number;
+  avgCpu: number;
+  maxCpu: number;
+  lastRunTick: number;
+  skippedCount: number;
+  consecutiveCpuSkips: number;
+  errorCount: number;
+  consecutiveErrors: number;
+  healthScore: number;
+}
+
+export interface ProcessTopologySummary {
+  total: number;
+  roots: number;
+  edges: number;
+  byLayer: Record<string, number>;
+  byGroup: Record<string, number>;
+  byState: Record<ProcessState, number>;
+}
+
+export interface ProcessTopologySnapshot {
+  nodes: ProcessTopologyNode[];
+  childrenByParent: Record<string, string[]>;
+  nodesByLayer: Record<string, string[]>;
+  nodesByGroup: Record<string, string[]>;
+  rootIds: string[];
+  summary: ProcessTopologySummary;
+}
+
 export interface ProcessStats {
   /** Total CPU used across all runs */
   totalCpu: number;
@@ -125,6 +174,8 @@ export interface Process {
    * Must be less than tickModulo (enforced by validation)
    */
   tickOffset?: number;
+  /** Optional read-only topology metadata */
+  topology?: ProcessTopologyMetadata;
   /** Process execution function */
   execute: () => void;
   /** Current state */
@@ -331,6 +382,7 @@ export class Kernel {
     interval?: number;
     tickModulo?: number;
     tickOffset?: number;
+    topology?: ProcessTopologyMetadata;
     execute: () => void;
   }): void {
     const frequency = options.frequency ?? "medium";
@@ -365,6 +417,7 @@ export class Kernel {
       interval: options.interval ?? defaults.interval,
       tickModulo: options.tickModulo,
       tickOffset: options.tickOffset,
+      topology: options.topology ? { ...options.topology } : undefined,
       execute: options.execute,
       state: "idle",
       stats: {
@@ -413,6 +466,90 @@ export class Kernel {
    */
   public getProcesses(): Process[] {
     return Array.from(this.processes.values());
+  }
+
+  /**
+   * Get read-only process topology metadata for debugging and tests.
+   */
+  public getProcessTopology(): ProcessTopologySnapshot {
+    const nodes: ProcessTopologyNode[] = [];
+    const childrenByParent: Record<string, string[]> = {};
+    const nodesByLayer: Record<string, string[]> = {};
+    const nodesByGroup: Record<string, string[]> = {};
+    const rootIds: string[] = [];
+    const byLayer: Record<string, number> = {};
+    const byGroup: Record<string, number> = {};
+    const byState: Record<ProcessState, number> = {
+      idle: 0,
+      running: 0,
+      suspended: 0,
+      error: 0
+    };
+
+    for (const process of this.processes.values()) {
+      const node: ProcessTopologyNode = {
+        id: process.id,
+        name: process.name,
+        parentId: process.topology?.parentId,
+        group: process.topology?.group,
+        layer: process.topology?.layer,
+        priority: process.priority,
+        frequency: process.frequency,
+        minBucket: process.minBucket,
+        cpuBudget: process.cpuBudget,
+        interval: process.interval,
+        tickModulo: process.tickModulo,
+        tickOffset: process.tickOffset,
+        state: process.state,
+        runCount: process.stats.runCount,
+        avgCpu: process.stats.avgCpu,
+        maxCpu: process.stats.maxCpu,
+        lastRunTick: process.stats.lastRunTick,
+        skippedCount: process.stats.skippedCount,
+        consecutiveCpuSkips: process.stats.consecutiveCpuSkips,
+        errorCount: process.stats.errorCount,
+        consecutiveErrors: process.stats.consecutiveErrors,
+        healthScore: process.stats.healthScore
+      };
+      nodes.push(node);
+
+      if (node.parentId) {
+        childrenByParent[node.parentId] ??= [];
+        childrenByParent[node.parentId].push(process.id);
+      } else {
+        rootIds.push(process.id);
+      }
+
+      if (node.layer) {
+        nodesByLayer[node.layer] ??= [];
+        nodesByLayer[node.layer].push(process.id);
+        byLayer[node.layer] = (byLayer[node.layer] ?? 0) + 1;
+      }
+
+      if (node.group) {
+        nodesByGroup[node.group] ??= [];
+        nodesByGroup[node.group].push(process.id);
+        byGroup[node.group] = (byGroup[node.group] ?? 0) + 1;
+      }
+
+      byState[node.state] = (byState[node.state] ?? 0) + 1;
+    }
+
+    return {
+      nodes,
+      childrenByParent,
+      nodesByLayer,
+      nodesByGroup,
+      rootIds,
+      summary: {
+        total: nodes.length,
+        roots: rootIds.length,
+        edges: Object.values(childrenByParent).reduce((total, children) => total + children.length, 0),
+        byLayer,
+        byGroup,
+        byState
+      }
+    };
   }
 
   /**

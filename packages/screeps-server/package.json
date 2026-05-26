@@ -18,6 +18,7 @@
     "test:smoke": "node scripts/run-private-server-test.js --mode=smoke --durationMinutes=5 --maxTicks=1000",
     "test:long": "node scripts/run-private-server-test.js --mode=long --durationMinutes=120 --maxTicks=72000",
     "test:integration": "npm run test:smoke",
+    "test:integration:legacy": "mocha --no-config --require tsx \"test/integration/**/*.test.ts\"",
     "test:performance": "npm run test:long",
     "test:packages": "mocha --no-config --require tsx \"test/packages/**/*.test.ts\" \"test/scripts/**/*.test.ts\"",
     "test:watch": "mocha --watch --require tsx test/**/*.test.ts",

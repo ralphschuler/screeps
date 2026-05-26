@@ -51,9 +51,9 @@ The bot implements a **swarm-based architecture** with pheromone coordination, k
 **Implementation**:
 1. **Global Meta-Layer**: `src/empire/empireManager.ts`, `src/intershard/shardManager.ts`
 2. **Shard-Strategic Layer**: InterShardMemory support in `src/intershard/`
-3. **Cluster-/Kolonie-Ebene**: `src/clusters/clusterManager.ts`
+3. **Cluster-/Kolonie-Ebene**: `@ralphschuler/screeps-clusters clusterManager.ts`
 4. **Raum-Ebene**: `src/core/roomNode.ts`, room processes registered by `src/core/roomProcessManager.ts`
-5. **Creep-/Squad-Ebene**: Roles in `src/roles/`, squad coordination in `src/clusters/squadCoordinator.ts`
+5. **Creep-/Squad-Ebene**: Roles in `src/roles/`, squad coordination in `@ralphschuler/screeps-clusters squadCoordinator.ts`
 
 **Evidence**:
 - SwarmBot.ts orchestrates all layers
@@ -207,7 +207,7 @@ export enum EvolutionStage {
 - **Wirtschaft**: worker, staticMiner, carrier, upgrader, builder, mineralMiner (all in `src/roles/economy/`)
 - **Scouting & Expansion**: scout, claimer (in `src/roles/utility/`)
 - **Verteidigung**: defender, rangedDefender, healer (in `src/roles/military/`)
-- **Offensive**: soldier, siegeDismantler, harasser, squads (in `src/roles/military/` and `src/clusters/`)
+- **Offensive**: soldier, siegeDismantler, harasser, squads (in `src/roles/military/` and `@ralphschuler/screeps-clusters`)
 - **Utility**: Various utility roles
 - **Power Creeps**: `src/roles/power/`
 - **Architecture**: State machine-based with behaviors (see `docs/STATE_MACHINES.md`)
@@ -252,12 +252,12 @@ The ROADMAP envisions a **job-market system** where:
 **Status**: COMPLIANT
 
 **Implementation**:
-- **Cluster Manager**: `src/clusters/clusterManager.ts`
+- **Cluster Manager**: `@ralphschuler/screeps-clusters clusterManager.ts`
 - **Empire Manager**: `src/empire/empireManager.ts`
 - **Terminal logistics**: `src/economy/terminalManager.ts`
-- **Squad formation**: `src/clusters/squadFormationManager.ts`, `src/clusters/squadCoordinator.ts`
-- **Rally points**: `src/clusters/rallyPointManager.ts`
-- **Military pooling**: `src/clusters/militaryResourcePooling.ts`
+- **Squad formation**: `@ralphschuler/screeps-clusters squadFormationManager.ts`, `@ralphschuler/screeps-clusters squadCoordinator.ts`
+- **Rally points**: `@ralphschuler/screeps-clusters rallyPointManager.ts`
+- **Military pooling**: `@ralphschuler/screeps-clusters militaryResourcePooling.ts`
 
 **Evidence**:
 - Cluster aggregates metrics from multiple rooms
@@ -274,7 +274,7 @@ The ROADMAP envisions a **job-market system** where:
 - **Tower control**: `src/defense/defenseCoordinator.ts`
 - **Defense coordinator**: Complete implementation with target prioritization
 - **Safe mode**: `src/defense/safeModeManager.ts`
-- **Offensive doctrine**: `src/clusters/offensiveDoctrine.ts`
+- **Offensive doctrine**: `@ralphschuler/screeps-clusters offensiveDoctrine.ts`
 - **Emergency response**: `src/defense/emergencyResponse.ts`
 
 **Evidence**:
@@ -475,7 +475,7 @@ The ROADMAP envisions a **job-market system** where:
   - `src/memory/` - Memory schemas and management
   - `src/rooms/` - Room-level logic (via roomNode.ts)
   - `src/creeps/` - Creep roles (via roles/)
-  - `src/clusters/` - Cluster management
+  - `@ralphschuler/screeps-clusters` - Cluster management
   - `src/empire/` - Empire-wide coordination
   - `src/labs/` - Lab and chemistry systems
   - `src/defense/` - Defense and combat

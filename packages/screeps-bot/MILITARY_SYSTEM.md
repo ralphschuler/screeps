@@ -71,7 +71,7 @@ Implemented guard types:
 - **Efficient Repair**: Uses builders in peacetime, towers in emergencies
 
 ### 5. Squad Formation System
-**Location**: `src/clusters/squadFormationManager.ts`
+**Location**: `@ralphschuler/screeps-clusters squadFormationManager.ts`
 **Status**: ✅ COMPLETE
 
 - **Composition Management**: Tracks target vs current squad composition
@@ -129,7 +129,7 @@ All offensive roles fully implemented with specialized behaviors:
 - Solo and squad operation modes
 
 ### 7. Rally Point Management
-**Location**: `src/clusters/rallyPointManager.ts`
+**Location**: `@ralphschuler/screeps-clusters rallyPointManager.ts`
 **Status**: ✅ COMPLETE
 
 - **Dynamic Selection**: Terrain and threat-aware positioning
@@ -143,7 +143,7 @@ All offensive roles fully implemented with specialized behaviors:
 - **Visual Indicators**: In-game visualization with purpose markers
 
 ### 8. Multi-Room Coordination
-**Location**: `src/defense/defenseCoordinator.ts`, `src/clusters/offensiveOperations.ts`
+**Location**: `src/defense/defenseCoordinator.ts`, `@ralphschuler/screeps-clusters offensiveOperations.ts`
 **Status**: ✅ COMPLETE
 
 #### Defense Coordination
@@ -212,7 +212,7 @@ All offensive roles fully implemented with specialized behaviors:
 
 ## Offensive Doctrine System
 
-**Location**: `src/clusters/offensiveDoctrine.ts`
+**Location**: `@ralphschuler/screeps-clusters offensiveDoctrine.ts`
 
 The system implements three-tier escalation:
 

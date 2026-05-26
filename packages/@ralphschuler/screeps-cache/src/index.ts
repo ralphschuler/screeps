@@ -81,6 +81,12 @@ export {
 export { HeapStore } from "./stores/HeapStore";
 export { MemoryStore } from "./stores/MemoryStore";
 export { HybridStore } from "./stores/HybridStore";
+export {
+  fromMemoryCacheEntry,
+  isCacheEntryExpired,
+  toMemoryCacheEntry,
+  type MemoryCacheEntry
+} from "./stores/memoryStorePolicy";
 export type { HybridStoreConfig } from "./stores/HybridStore";
 
 // Domain-specific wrappers - Body Part Cache

@@ -117,7 +117,7 @@ function getCachedFind(room: Room, type: FindConstant, ttl = 10): any[] {
 
 **2. Unified Cache System**
 
-Use the unified cache system (`packages/screeps-bot/src/cache/`) for all caching:
+Use the unified cache package (`packages/@ralphschuler/screeps-cache/src`) for all caching:
 - Automatic TTL handling
 - LRU eviction when cache grows too large
 - Namespace isolation (prevents key collisions)
@@ -306,7 +306,7 @@ Acceptable overhead; resets are infrequent (6-24 hours in MMO).
   - [Screeps API: Memory Segments](https://docs.screeps.com/api/#RawMemory.segments)
 - **Internal Documentation**:
   - `docs/MEMORY_ARCHITECTURE.md` - Detailed memory management guide
-  - `src/cache/README.md` - Cache system documentation
+  - `packages/@ralphschuler/screeps-cache/src/README.md` - Cache system documentation
   - `src/memory/memoryMonitor.ts` - Memory usage tracking
   - `src/memory/memoryPruner.ts` - Automatic cleanup
 

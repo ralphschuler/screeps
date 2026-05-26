@@ -10,14 +10,18 @@ export interface WeightedEntry<T> {
   weight: number;
 }
 
+function hasFinitePositiveWeight<T>(entry: WeightedEntry<T>): boolean {
+  return Number.isFinite(entry.weight) && entry.weight > 0;
+}
+
 /**
  * Perform weighted random selection (deterministic)
  * @param entries Array of {key, weight} objects
  * @returns Selected key or undefined if no valid entries
  */
 export function weightedSelection<T>(entries: WeightedEntry<T>[]): T | undefined {
-  // Filter out zero and negative weights
-  const validEntries = entries.filter(e => e.weight > 0);
+  // Filter out zero, negative, NaN, and infinite weights
+  const validEntries = entries.filter(hasFinitePositiveWeight);
 
   if (validEntries.length === 0) {
     return undefined;
@@ -73,7 +77,7 @@ export function selectTopNEntries<T>(entries: WeightedEntry<T>[], n: number): We
  * Normalize weights to sum to 1
  */
 export function normalizeWeights<T>(entries: WeightedEntry<T>[]): WeightedEntry<T>[] {
-  const validEntries = entries.filter(e => e.weight > 0);
+  const validEntries = entries.filter(hasFinitePositiveWeight);
   const totalWeight = validEntries.reduce((sum, e) => sum + e.weight, 0);
 
   if (totalWeight <= 0) return [];
@@ -172,7 +176,7 @@ export function getHighest<T>(entries: WeightedEntry<T>[]): WeightedEntry<T> | u
  * Get entry with lowest positive weight
  */
 export function getLowest<T>(entries: WeightedEntry<T>[]): WeightedEntry<T> | undefined {
-  const positiveEntries = entries.filter(e => e.weight > 0);
+  const positiveEntries = entries.filter(hasFinitePositiveWeight);
   if (positiveEntries.length === 0) return undefined;
 
   return positiveEntries.reduce((min, e) => (e.weight < min.weight ? e : min));

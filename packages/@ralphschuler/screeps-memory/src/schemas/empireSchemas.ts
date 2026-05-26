@@ -253,6 +253,29 @@ export interface OwnedRoomEntry {
   rcl: number;
 }
 
+export type PlayerAttackIncidentSeverity = "hostileCombat" | "structureDamage" | "structureDestroyed";
+
+export interface PlayerAttackIncident {
+  tick: number;
+  roomName: string;
+  severity: PlayerAttackIncidentSeverity;
+}
+
+export interface PlayerPostureEntry {
+  username: string;
+  incidents: PlayerAttackIncident[];
+  lastIncidentTick: number;
+  attackCount: number;
+  state: "neutral" | "war";
+  warDeclaredAt?: number;
+}
+
+export interface PlayerPostureMemory {
+  players: Record<string, PlayerPostureEntry>;
+  threshold: number;
+  windowTicks: number;
+}
+
 /**
  * Empire memory - Global meta-layer state (ROADMAP Section 4)
  * Tracks all colonies, clusters, and empire-wide strategic decisions
@@ -272,6 +295,8 @@ export interface EmpireMemory {
   nukeCandidates: { roomName: string; score: number; launched: boolean; launchTick: number }[];
   /** Power bank locations */
   powerBanks: PowerBankEntry[];
+  /** Per-player attack memory for escalation to war posture. */
+  playerPostures?: PlayerPostureMemory;
   /** Nukes in flight for salvo coordination */
   nukesInFlight?: NukeInFlight[];
   /** Incoming nuke alerts for defense */

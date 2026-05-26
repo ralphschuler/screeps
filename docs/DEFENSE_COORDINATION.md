@@ -200,7 +200,7 @@ if (checkAndExecuteRetreat(creep)) {
 Defense requests are created by `defenderManager.ts` when a room needs assistance:
 
 ```typescript
-import { createDefenseRequest, needsDefenseAssistance } from "../spawning/defenderManager";
+import { createDefenseRequest, needsDefenseAssistance } from "@ralphschuler/screeps-spawn";
 
 if (needsDefenseAssistance(room, swarm)) {
   const request = createDefenseRequest(room, swarm);

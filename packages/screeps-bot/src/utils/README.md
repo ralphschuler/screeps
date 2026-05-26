@@ -118,9 +118,9 @@ import { moveTo, cachePath } from "screeps-cartographer";
 moveTo(creep, target, { reusePath: 50 });
 ```
 
-### → Unified Cache System (`src/cache/`)
+### → Unified Cache System (`@ralphschuler/screeps-cache`)
 
-All caching utilities are in the unified cache system at `src/cache/`.
+All caching utilities are in the unified cache system in `@ralphschuler/screeps-cache`.
 
 **Usage:**
 ```typescript

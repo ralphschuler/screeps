@@ -5,7 +5,7 @@
  */
 
 import { expect } from "chai";
-import type { DefenseRequest } from "../../src/spawning/defenderManager";
+import type { DefenseRequest } from "@ralphschuler/screeps-spawn";
 
 describe("Defense Coordinator", () => {
   describe("Defense Request Processing", () => {

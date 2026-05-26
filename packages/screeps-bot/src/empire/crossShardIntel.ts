@@ -10,11 +10,13 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
+import { isAllyPlayer } from "@ralphschuler/screeps-defense";
 import { deserializeInterShardMemory, serializeInterShardMemory } from "@ralphschuler/screeps-intershard";
 import type { SharedEnemyIntel } from "@ralphschuler/screeps-intershard";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import { mergeCrossShardEnemyIntel } from "./crossShardIntelMerge";
 
 /**
  * Cross-Shard Intel Configuration
@@ -80,64 +82,23 @@ export class CrossShardIntelCoordinator {
   private updateEnemyIntelligence(interShardMemory: ReturnType<typeof deserializeInterShardMemory>): void {
     if (!interShardMemory) return;
 
-    // Get current shard's enemy data using memoryManager
     const empire = memoryManager.getEmpire();
-    const enemyMap = new Map<string, SharedEnemyIntel>();
+    const knownRooms = Object.entries(empire.knownRooms ?? {}).map(([roomName, intel]) => ({
+      roomName,
+      owner: intel?.owner,
+      threatLevel: (intel?.threatLevel ?? 0) as 0 | 1 | 2 | 3,
+      lastSeen: intel?.lastSeen ?? 0
+    }));
 
-    // Initialize from existing global enemies
-    if (interShardMemory.globalTargets.enemies) {
-      for (const enemy of interShardMemory.globalTargets.enemies) {
-        enemyMap.set(enemy.username, enemy);
-      }
-    }
+    const intent = mergeCrossShardEnemyIntel({
+      existingEnemies: interShardMemory.globalTargets.enemies ?? [],
+      warTargets: empire.warTargets ?? [],
+      knownRooms,
+      now: Game.time,
+      isAlly: isAllyPlayer
+    });
 
-    // Update with current shard data from empire
-    if (empire.warTargets) {
-      for (const target of empire.warTargets) {
-        const existing = enemyMap.get(target);
-        if (existing) {
-          existing.lastSeen = Game.time;
-          existing.threatLevel = Math.max(existing.threatLevel, 1) as 0 | 1 | 2 | 3;
-        } else {
-          enemyMap.set(target, {
-            username: target,
-            rooms: [],
-            threatLevel: 1,
-            lastSeen: Game.time,
-            isAlly: false
-          });
-        }
-      }
-    }
-
-    // Update with room intel data
-    if (empire.knownRooms) {
-      for (const roomName in empire.knownRooms) {
-        const intel = empire.knownRooms[roomName];
-        if (intel && intel.owner && !intel.owner.includes("Source Keeper")) {
-          const existing = enemyMap.get(intel.owner);
-          if (existing) {
-            if (!existing.rooms.includes(roomName)) {
-              existing.rooms.push(roomName);
-            }
-            existing.lastSeen = Math.max(existing.lastSeen, intel.lastSeen);
-            existing.threatLevel = Math.max(existing.threatLevel, intel.threatLevel) as 0 | 1 | 2 | 3;
-          } else {
-            // New enemy player discovered
-            enemyMap.set(intel.owner, {
-              username: intel.owner,
-              rooms: [roomName],
-              threatLevel: intel.threatLevel,
-              lastSeen: intel.lastSeen,
-              isAlly: false
-            });
-          }
-        }
-      }
-    }
-
-    // Update intershard memory
-    interShardMemory.globalTargets.enemies = Array.from(enemyMap.values());
+    interShardMemory.globalTargets.enemies = intent.enemies;
 
     // Log summary periodically
     if (Game.time % 500 === 0) {

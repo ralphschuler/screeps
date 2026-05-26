@@ -53,13 +53,12 @@ jobs:
 
       - name: Run long private-server simulation
         working-directory: packages/screeps-server
-        env:
-          SCREEPS_TICK_DURATION_MS: ${{ github.event.inputs.tickDurationMs || '100' }}
         run: |
           node scripts/run-private-server-test.js \
             --mode=long \
             --durationMinutes=${{ github.event.inputs.durationMinutes || '120' }} \
             --maxTicks=72000 \
+            --tickRate=${{ github.event.inputs.tickDurationMs || '100' }} \
             --project=screeps-long-run-${{ github.run_id }}
         timeout-minutes: 170
 

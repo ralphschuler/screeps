@@ -152,13 +152,22 @@ function createSquadSpawnRequests(
         id: `${squad.id}_${role}_${i}_${Game.time}`,
         roomName: room.name,
         role: role as any,
-        body: bodyParts,  // Just the array of body parts
+        family: "military",
+        body: {
+          parts: bodyParts,
+          cost: bodyCost,
+          minCapacity: bodyCost
+        },
         priority,
         targetRoom: squad.targetRooms[0],
+        boostRequirements: boostReqs.map(req => ({
+          resourceType: req.compound as ResourceConstant,
+          bodyParts: req.parts
+        })),
         createdAt: Game.time,
         additionalMemory: {
           squadId: squad.id
-        } as any  // Cast to any since SpawnRequest additionalMemory is Partial<CreepMemory>
+        } as any
       };
       
       spawnQueue.addRequest(request);
@@ -248,7 +257,7 @@ export function onCreepSpawned(creep: Creep): void {
   if (!formation) return;
   
   // Update composition - only track roles that are in the target composition
-  const role = creep.memory.role;
+  const role = (creep.memory as { role?: string }).role;
   if (role && role in formation.targetComposition) {
     formation.currentComposition[role] = (formation.currentComposition[role] ?? 0) + 1;
   }

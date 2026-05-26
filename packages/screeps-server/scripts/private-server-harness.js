@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import zlib from "node:zlib";
 import { ScreepsAPI } from "screeps-api";
+import { createServerControlPlane, parseTickRate } from "./server-control-plane.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,6 +20,8 @@ function parseArgMap(argv) {
     }),
   );
 }
+
+export { parseTickRate };
 
 export function parseHarnessArgs(
   argv = process.argv.slice(2),
@@ -37,6 +40,7 @@ export function parseHarnessArgs(
     ),
     maxTicks: Number(args.get("maxTicks") ?? (mode === "long" ? 72000 : 1000)),
     tickPollMs: Number(args.get("tickPollMs") ?? 10000),
+    tickRate: parseTickRate(args.get("tickRate") ?? env.SCREEPS_TICK_RATE ?? 20),
     serverPort: Number(args.get("serverPort") ?? 21025),
     cliPort: Number(args.get("cliPort") ?? 21026),
     serverPassword:
@@ -62,10 +66,13 @@ export function createInitialSummary(options, now = new Date()) {
     durationMinutes: options.durationMinutes,
     maxTicks: options.maxTicks,
     serverPort: options.serverPort,
+    tickRate: options.tickRate,
     roomName: options.roomName,
     checks: {},
     metrics: {},
     errors: [],
+    startedGameTime: null,
+    finishedGameTime: null,
     finishedAt: null,
     status: "running",
   };
@@ -164,21 +171,13 @@ function compose(options, log, ...composeArgs) {
     log,
     {
       cwd: options.serverRoot,
-      env: { SHARD_NAME: options.shardName },
+      env: {
+        SHARD_NAME: options.shardName,
+        SCREEPS_SERVER_PORT: String(options.serverPort),
+        SCREEPS_CLI_PORT: String(options.cliPort)
+      },
     },
   );
-}
-
-async function waitForServer(options, timeoutMs = 180000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    try {
-      const res = await fetch(`http://127.0.0.1:${options.serverPort}/`);
-      if (res.ok || res.status < 500) return;
-    } catch {}
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-  }
-  throw new Error("Timed out waiting for Screeps HTTP server readiness");
 }
 
 function cliEval(options, command, timeoutMs = 30000) {
@@ -215,22 +214,13 @@ function cliEval(options, command, timeoutMs = 30000) {
   });
 }
 
-async function ensureTerrainData(options, summary) {
-  const command = `Promise.resolve().then(async () => { await storage.env.set('shardName', ${JSON.stringify(options.shardName)}); await map.updateTerrainData(); }).then(() => print('__PI_CLI_DONE_OK__')).catch(error => print('__PI_CLI_DONE_ERR__', error.stack || error.message || String(error)))`;
-  const output = await cliEval(options, command, 60000);
-  if (
-    !output.includes("__PI_CLI_DONE_OK__") ||
-    output.includes("__PI_CLI_DONE_ERR__")
-  ) {
-    throw new Error(
-      `Failed to ensure world terrain cache. CLI output:\n${output}`,
-    );
-  }
+async function ensureTerrainData(summary, controlPlane) {
+  await controlPlane.ensureTerrainData();
   summary.checks.terrainDataReady = true;
 }
 
 export function buildEnsureBotUserCommand(options) {
-  return `Promise.resolve().then(async()=>{ const username=${JSON.stringify(options.username)}; const requestedRoom=${JSON.stringify(options.roomName)}; let user=await storage.db.users.findOne({username}); if(!user){ let spawnRoom=requestedRoom; let controller=await storage.db['rooms.objects'].findOne({type:'controller',room:requestedRoom}); if(!controller){ await map.generateRoom(requestedRoom); await map.openRoom(requestedRoom); await map.updateTerrainData(); controller=await storage.db['rooms.objects'].findOne({type:'controller',room:requestedRoom}); } if(!controller){ const controllersResult=await storage.db['rooms.objects'].find({type:'controller'}); const controllers=Array.isArray(controllersResult)?controllersResult:(controllersResult&&controllersResult.toArray?await controllersResult.toArray():[]); const fallback=controllers.find(item=>item&&item.room&&!item.user); if(!fallback) throw new Error('No unowned controller room available for bot spawn'); spawnRoom=fallback.room; } else if(controller.user) throw new Error('Room '+requestedRoom+' is already owned by '+controller.user); await bots.spawn('swarm-bot',spawnRoom,{username,cpu:100,gcl:1,x:25,y:25}); user=await storage.db.users.findOne({username}); } await storage.db.users.update({_id:user._id},{$set:{active:10000,cpu:100,bot:username}}); await setPassword(username,${JSON.stringify(options.password)}); const activeCode=await storage.db['users.code'].findOne({user:''+user._id,activeWorld:true}); if(!activeCode){ await storage.db['users.code'].insert({user:''+user._id,modules:{main:''},branch:'default',activeWorld:true,activeSim:true}); } }).then(()=>print('__PI_CLI_DONE_OK__')).catch(error=>print('__PI_CLI_DONE_ERR__',error.stack||error.message||String(error)))`;
+  return `Promise.resolve().then(async()=>{ const username=${JSON.stringify(options.username)}; const requestedRoom=${JSON.stringify(options.roomName)}; let user=await storage.db.users.findOne({username}); if(!user){ let spawnRoom=requestedRoom; let controller=await storage.db['rooms.objects'].findOne({type:'controller',room:requestedRoom}); if(!controller){ await map.generateRoom(requestedRoom); await map.openRoom(requestedRoom); await map.updateTerrainData(); controller=await storage.db['rooms.objects'].findOne({type:'controller',room:requestedRoom}); } if(!controller||controller.user){ const controllersResult=await storage.db['rooms.objects'].find({type:'controller'}); const controllers=Array.isArray(controllersResult)?controllersResult:(controllersResult&&controllersResult.toArray?await controllersResult.toArray():[]); const fallback=controllers.find(item=>item&&item.room&&!item.user); if(!fallback) throw new Error('No unowned controller room available for bot spawn'); spawnRoom=fallback.room; } await bots.spawn('swarm-bot',spawnRoom,{username,cpu:100,gcl:1,x:25,y:25}); user=await storage.db.users.findOne({username}); } await storage.db.users.update({_id:user._id},{$set:{active:10000,cpu:100,bot:username}}); await setPassword(username,${JSON.stringify(options.password)}); const activeCode=await storage.db['users.code'].findOne({user:''+user._id,activeWorld:true}); if(!activeCode){ await storage.db['users.code'].insert({user:''+user._id,modules:{main:''},branch:'default',activeWorld:true,activeSim:true}); } }).then(()=>print('__PI_CLI_DONE_OK__')).catch(error=>print('__PI_CLI_DONE_ERR__',error.stack||error.message||String(error)))`;
 }
 async function ensureBotUser(options, summary) {
   const command = buildEnsureBotUserCommand(options);
@@ -292,22 +282,9 @@ async function uploadBot(options, summary, api) {
   summary.checks.botUploaded = true;
 }
 
-async function queueInlineAssertions(options, summary, api) {
-  const result = {
-    total: 1,
-    passed: 1,
-    failed: 0,
-    skipped: 0,
-    failures: [],
-    startTick: Date.now(),
-    endTick: Date.now(),
-    duration: 0,
-    source: "ci-harness-api-memory",
-  };
-  await api.memory.set("screepsmodTesting", result, options.shardName);
-  summary.checks.inlineAssertionsQueued = true;
-  summary.checks.modResultsPresent = true;
-  summary.metrics.screepsmodTesting = result;
+async function readGameTime(api, shardName) {
+  const result = await api.raw.game.time(shardName);
+  return Number(result?.time ?? result?.gameTime ?? 0);
 }
 
 async function readMemory(options, summary, api) {
@@ -323,6 +300,23 @@ async function readMemory(options, summary, api) {
 async function inspect(options, summary, api) {
   const memory = await readMemory(options, summary, api);
   inspectMemorySnapshot(memory, summary);
+}
+
+async function collectModSummaryFromCli(options, summary) {
+  if (summary.checks.modResultsPresent) return;
+  const command = "Promise.resolve().then(()=>{ const s=typeof getTestSummary==='function'?getTestSummary():null; print('__PI_MOD_SUMMARY__'+JSON.stringify(s)); }).then(()=>print('__PI_CLI_DONE_OK__')).catch(error=>print('__PI_CLI_DONE_ERR__',error.stack||error.message||String(error)))";
+  const output = await cliEval(options, command);
+  if (!output.includes("__PI_CLI_DONE_OK__") || output.includes("__PI_CLI_DONE_ERR__")) return;
+  const markerIndex = output.indexOf("__PI_MOD_SUMMARY__");
+  if (markerIndex < 0) return;
+  const afterMarker = output.slice(markerIndex + "__PI_MOD_SUMMARY__".length);
+  if (afterMarker.trimStart().startsWith("null")) return;
+  const jsonStart = afterMarker.indexOf("{");
+  const jsonEnd = afterMarker.lastIndexOf("}");
+  if (jsonStart < 0 || jsonEnd < jsonStart) return;
+  const modSummary = JSON.parse(afterMarker.slice(jsonStart, jsonEnd + 1));
+  summary.metrics.screepsmodTesting = { ...modSummary, source: "screepsmod-testing-console" };
+  summary.checks.modResultsPresent = true;
 }
 
 async function collectLogs(options, summary, log) {
@@ -384,6 +378,27 @@ async function collectLogs(options, summary, log) {
   }
 }
 
+export function shouldContinuePolling({ nowMs, endAtMs, polls, maxTicks, ticksAdvanced }) {
+  return nowMs < endAtMs && ticksAdvanced < maxTicks && polls < maxTicks;
+}
+
+export function validateSmokeSummary(summary, options = { mode: "smoke" }) {
+  if (!summary.checks.modResultsPresent)
+    throw new Error("screepsmod-testing result missing from Memory");
+  if (String(summary.metrics.screepsmodTesting?.source ?? "").startsWith("ci-harness-"))
+    throw new Error("screepsmod-testing result was written by harness, not the server mod");
+  if ((summary.metrics.screepsmodTesting?.total ?? 0) <= 0)
+    throw new Error("screepsmod-testing did not run any assertions");
+  if ((summary.metrics.screepsmodTesting?.failed ?? 0) > 0)
+    throw new Error(`screepsmod-testing reported ${summary.metrics.screepsmodTesting.failed} failed tests`);
+  if ((summary.metrics.ticksAdvanced ?? 0) <= 0)
+    throw new Error("server game time did not advance during smoke");
+  if ((summary.metrics.criticalConsoleErrors ?? 0) > 0)
+    throw new Error(`critical console errors detected: ${summary.metrics.criticalConsoleErrors}`);
+  if (summary.metrics.taskBoardRooms === 0 && (options.mode !== "smoke" || (summary.metrics.ticksAdvanced ?? 0) >= 50))
+    throw new Error("Memory.creepTaskBoard did not record room task boards");
+}
+
 async function writeSummary(options, summary, status) {
   summary.status = status;
   summary.finishedAt = new Date().toISOString();
@@ -397,14 +412,11 @@ async function writeSummary(options, summary, status) {
   );
 }
 
-export function createPollingDeadline(options, now = Date.now()) {
-  return now + options.durationMinutes * 60 * 1000;
-}
-
 export async function runPrivateServerTest(options = parseHarnessArgs()) {
   fs.mkdirSync(options.artifactsDir, { recursive: true });
   const summary = createInitialSummary(options);
   const log = createLogger(options);
+  const endAt = Date.now() + options.durationMinutes * 60 * 1000;
 
   try {
     await runShell("npm", ["run", "build:mod"], options, log, {
@@ -414,28 +426,42 @@ export async function runPrivateServerTest(options = parseHarnessArgs()) {
       cwd: options.repoRoot,
     });
     await compose(options, log, "up", "--build", "-d");
-    await waitForServer(options);
+    const controlPlane = createServerControlPlane({
+      apiHost: "127.0.0.1",
+      serverPort: options.serverPort,
+      cliPort: options.cliPort,
+      shardName: options.shardName,
+      tickRate: options.tickRate
+    });
+    await controlPlane.waitForHttpReady();
     summary.checks.serverReady = true;
-    await ensureTerrainData(options, summary);
+    await ensureTerrainData(summary, controlPlane);
 
     const api = await createApi(options, summary);
     await uploadBot(options, summary, api);
 
-    const endAt = createPollingDeadline(options);
+    summary.startedGameTime = await readGameTime(api, options.shardName);
     let polls = 0;
-    while (Date.now() < endAt && polls < options.maxTicks) {
-      await queueInlineAssertions(options, summary, api);
+    let ticksAdvanced = 0;
+    while (shouldContinuePolling({ nowMs: Date.now(), endAtMs: endAt, polls, maxTicks: options.maxTicks, ticksAdvanced })) {
       await inspect(options, summary, api);
       await new Promise((resolve) => setTimeout(resolve, options.tickPollMs));
       polls++;
+      summary.finishedGameTime = await readGameTime(api, options.shardName);
+      ticksAdvanced = Math.max(0, summary.finishedGameTime - summary.startedGameTime);
     }
+    summary.finishedGameTime = summary.finishedGameTime ?? await readGameTime(api, options.shardName);
     summary.metrics.polls = polls;
+    summary.metrics.ticksAdvanced = Math.max(0, summary.finishedGameTime - summary.startedGameTime);
 
     await collectLogs(options, summary, log);
-    if (!summary.checks.modResultsPresent)
-      throw new Error("screepsmod-testing result missing from Memory");
-    if (summary.metrics.taskBoardRooms === 0 && options.mode !== "smoke")
-      throw new Error("Memory.creepTaskBoard did not record room task boards");
+    await collectModSummaryFromCli(options, summary);
+    summary.metrics.liveHarnessChecks = {
+      serverReady: Boolean(summary.checks.serverReady),
+      ticksAdvanced: summary.metrics.ticksAdvanced ?? 0,
+      criticalConsoleErrors: summary.metrics.criticalConsoleErrors ?? 0
+    };
+    validateSmokeSummary(summary, options);
     await writeSummary(options, summary, "passed");
     return summary;
   } catch (error) {

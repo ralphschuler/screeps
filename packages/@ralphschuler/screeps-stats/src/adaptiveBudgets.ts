@@ -94,16 +94,19 @@ export function calculateRoomScalingMultiplier(
   config: AdaptiveBudgetConfig
 ): number {
   const { minRooms, scaleFactor, maxMultiplier } = config.roomScaling;
+  const safeMinRooms = Math.max(1, minRooms);
+  const safeScaleFactor = scaleFactor > 1 ? scaleFactor : DEFAULT_ADAPTIVE_CONFIG.roomScaling.scaleFactor;
+  const safeMaxMultiplier = maxMultiplier >= 1 ? maxMultiplier : 1;
   
   // Ensure we have at least minRooms
-  const effectiveRooms = Math.max(roomCount, minRooms);
+  const effectiveRooms = Math.max(roomCount, safeMinRooms);
   
   // Logarithmic scaling: grows slowly as empire expands
   // log(rooms / minRooms) / log(scaleFactor)
-  const multiplier = 1 + Math.log(effectiveRooms / minRooms) / Math.log(scaleFactor);
+  const multiplier = 1 + Math.log(effectiveRooms / safeMinRooms) / Math.log(safeScaleFactor);
   
   // Clamp to reasonable range
-  return Math.max(1.0, Math.min(maxMultiplier, multiplier));
+  return Math.max(1.0, Math.min(safeMaxMultiplier, multiplier));
 }
 
 /**

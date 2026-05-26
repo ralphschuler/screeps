@@ -8,7 +8,7 @@ import {
   getCreepCountByRole,
   getCreepCountByRoom,
   clearGameObjectCache
-} from "../../src/cache";
+} from "@ralphschuler/screeps-cache";
 
 describe("GameObjectCache", () => {
   let tickCounter = 0;

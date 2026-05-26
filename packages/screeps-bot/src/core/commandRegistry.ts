@@ -264,16 +264,14 @@ class CommandRegistry {
     // This is safe because we're only adding command handler functions.
     const g = global as unknown as Record<string, unknown>;
 
-    // Only expose commands if not already exposed or if new commands were registered
-    if (!this.commandsExposed || (this.lazyLoadEnabled && this.commandsRegistered)) {
-      for (const [name, command] of this.commands) {
-        g[name] = command.handler;
-      }
-      this.commandsExposed = true;
-      logger.debug(`Exposed ${this.commands.size} commands to global scope`, {
-        subsystem: "CommandRegistry"
-      });
+    for (const [name, command] of this.commands) {
+      g[name] = command.handler;
     }
+
+    this.commandsExposed = true;
+    logger.debug(`Exposed ${this.commands.size} commands to global scope`, {
+      subsystem: "CommandRegistry"
+    });
 
     // Always set up the help command wrapper (for lazy loading support)
     g.help = (commandName?: string): string => {

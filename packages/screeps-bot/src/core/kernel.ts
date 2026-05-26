@@ -33,6 +33,10 @@ export {
   type ProcessFrequency,
   type ProcessState,
   type ProcessStats,
+  type ProcessTopologyMetadata,
+  type ProcessTopologyNode,
+  type ProcessTopologySummary,
+  type ProcessTopologySnapshot,
   type KernelProcess as Process,
   type BucketMode,
   Kernel

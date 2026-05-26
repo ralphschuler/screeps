@@ -3,7 +3,9 @@
  */
 
 import { getOwnedRooms } from "@ralphschuler/screeps-cache";
+import { emergencyResponseManager } from "@ralphschuler/screeps-defense";
 import { heapCache, memoryManager } from "@ralphschuler/screeps-memory";
+import { configureSpawnIntegration, coordinateSpawning } from "@ralphschuler/screeps-spawn";
 import { initializePheromoneEventHandlers, pheromoneManager } from "@ralphschuler/screeps-pheromones";
 import { clearRoomCaches, runPowerRole, setRemoteMoveHandler, taskBoard } from "@ralphschuler/screeps-roles";
 import { SS2TerminalComms } from "@ralphschuler/screeps-standards";
@@ -19,8 +21,10 @@ import { kernel } from "./core/kernel";
 import { LogLevel, configureLogger, logger } from "./core/logger";
 import { initializeNativeCallsTracking } from "./core/nativeCallsTracker";
 import { roomProcessManager } from "./core/roomProcessManager";
+import { energyFlowPredictor } from "./economy/energyFlowPredictor";
+import { powerBankHarvestingManager } from "./empire/powerBankHarvesting";
+import { resourceTransferCoordinator } from "./intershard/resourceTransferCoordinator";
 import { shardManager } from "./intershard/shardManager";
-import { coordinateSpawning } from "./spawning/spawnCoordinator";
 import { initializePathCacheEvents } from "./utils/pathfinding";
 import { initializeRemotePathScheduler, moveToWithRemoteCache } from "./utils/remote-mining";
 
@@ -98,6 +102,14 @@ function initializeSystems(): void {
   });
 
   logger.info("Bot initialized", { subsystem: "SwarmBot", meta: { debug: config.debug, profiling: config.profiling } });
+
+  configureSpawnIntegration({
+    energyFlowPredictor,
+    powerBankHarvestingManager,
+    resourceTransferCoordinator,
+    emergencyResponseManager,
+    kernel
+  });
 
   // Initialize unified stats system
   unifiedStats.initialize();

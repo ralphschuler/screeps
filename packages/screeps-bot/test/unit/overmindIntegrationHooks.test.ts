@@ -17,7 +17,7 @@ describe("Overmind-inspired integration hooks", () => {
   it("routes the main spawn loop through the persistent spawn coordinator", () => {
     const swarmBotSource = readFileSync(resolve(srcRoot, "SwarmBot.ts"), "utf8");
 
-    assert.include(swarmBotSource, "./spawning/spawnCoordinator");
+    assert.include(swarmBotSource, "@ralphschuler/screeps-spawn");
     assert.include(swarmBotSource, "coordinateSpawning(room, swarm)");
     assert.notInclude(swarmBotSource, "runSpawnManager(room, swarm)");
   });

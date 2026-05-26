@@ -5,7 +5,7 @@
  */
 
 import { expect } from "chai";
-import { calculateSquadComposition, calculateOffensiveSquadComposition } from "../../src/clusters/squadCoordinator";
+import { calculateSquadComposition, calculateOffensiveSquadComposition } from "@ralphschuler/screeps-clusters";
 import type { DefenseAssistanceRequest } from "../../src/memory/schemas";
 
 describe("Squad Formation", () => {

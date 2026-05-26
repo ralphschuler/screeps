@@ -10,8 +10,9 @@
  * Addresses Issue: #36 - Squad formation and coordination
  */
 
-import type { ClusterMemory, DefenseAssistanceRequest, SquadDefinition } from "./types";
 import { logger } from "@ralphschuler/screeps-core";
+import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
+import type { ClusterMemory, DefenseAssistanceRequest, SquadDefinition } from "./types";
 
 /**
  * Squad composition recommendation
@@ -219,7 +220,7 @@ export function shouldDissolveSquad(squad: SquadDefinition): boolean {
     if (targetRoom) {
       const room = Game.rooms[targetRoom];
       if (room) {
-        const hostiles = room.find(FIND_HOSTILE_CREEPS);
+        const hostiles = getActualHostileCreeps(room);
         // If no hostiles and been attacking for a while, mission complete
         if (hostiles.length === 0 && age > 100) {
           logger.info(`Squad ${squad.id} mission complete, no more hostiles`, {
@@ -357,7 +358,7 @@ export function getSquadReadiness(squad: SquadDefinition): {
   };
 
   for (const creep of members) {
-    const role = creep.memory.role;
+    const role = (creep.memory as { role?: string }).role;
     if (role && role in roleCount) {
       roleCount[role as keyof typeof roleCount]++;
     }

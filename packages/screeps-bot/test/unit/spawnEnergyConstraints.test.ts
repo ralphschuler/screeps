@@ -1,7 +1,7 @@
 import { assert } from "chai";
-import { ROLE_DEFINITIONS } from "../../src/spawning/roleDefinitions";
-import { countCreepsByRole } from "../../src/spawning/spawnNeedsAnalyzer";
-import { runSpawnManager, getAllSpawnableRoles } from "../../src/spawning/spawnQueueManager";
+import { ROLE_DEFINITIONS } from "@ralphschuler/screeps-spawn";
+import { countCreepsByRole } from "@ralphschuler/screeps-spawn";
+import { runSpawnManager, getAllSpawnableRoles } from "@ralphschuler/screeps-spawn";
 import { clearRoomFindCache } from "@ralphschuler/screeps-cache";
 import type { SwarmState } from "../../src/memory/schemas";
 import { kernel } from "../../src/core/kernel";

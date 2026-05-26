@@ -6,6 +6,7 @@
 import { logger } from "@ralphschuler/screeps-core";
 import { getActualHostileCreeps, getActualHostileStructures } from "@ralphschuler/screeps-defense";
 import type { EmpireMemory, RoomIntel } from "@ralphschuler/screeps-memory";
+import { buildStubRoomIntel, buildVisibleRoomIntel, mergeRoomIntel, type VisibleRoomIntelSnapshot } from "./roomIntelSnapshot";
 
 /**
  * Room Intel Manager Configuration
@@ -122,115 +123,57 @@ export class RoomIntelManager {
    * Create stub intel entry for undiscovered room
    */
   private createStubIntel(roomName: string): RoomIntel {
-    // Parse room coordinates to determine type
-    const parsed = /^([WE])([0-9]+)([NS])([0-9]+)$/.exec(roomName);
-    if (!parsed) {
-      throw new Error(`Invalid room name: ${roomName}`);
-    }
-
-    const x = parseInt(parsed[2], 10);
-    const y = parseInt(parsed[4], 10);
-    const isHighway = x % 10 === 0 || y % 10 === 0;
-    const isSK = !isHighway && ((x % 10 >= 4 && x % 10 <= 6) || (y % 10 >= 4 && y % 10 <= 6));
-
-    return {
-      name: roomName,
-      lastSeen: 0,
-      sources: 0,
-      controllerLevel: 0,
-      threatLevel: 0,
-      scouted: false,
-      terrain: "mixed",
-      isHighway,
-      isSK
-    };
+    return buildStubRoomIntel(roomName);
   }
 
   /**
    * Create full intel entry from visible room
    */
   private createRoomIntel(room: Room): RoomIntel {
-    const sources = room.find(FIND_SOURCES);
-    const mineral = room.find(FIND_MINERALS)[0];
-    const controller = room.controller;
-    const hostiles = getActualHostileCreeps(room);
-    const hostileStructures = getActualHostileStructures(room);
-    const towers = hostileStructures.filter(s => s.structureType === STRUCTURE_TOWER);
-    const spawns = hostileStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
-    const portals = room.find(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_PORTAL
-    });
-
-    // Parse room coordinates
-    const parsed = /^([WE])([0-9]+)([NS])([0-9]+)$/.exec(room.name);
-    const x = parsed ? parseInt(parsed[2], 10) : 0;
-    const y = parsed ? parseInt(parsed[4], 10) : 0;
-    const isHighway = x % 10 === 0 || y % 10 === 0;
-    const isSK = !isHighway && ((x % 10 >= 4 && x % 10 <= 6) || (y % 10 >= 4 && y % 10 <= 6));
-
-    // Determine terrain type
-    const terrain = room.getTerrain();
-    let plainCount = 0;
-    let swampCount = 0;
-    for (let terrainX = 0; terrainX < 50; terrainX++) {
-      for (let terrainY = 0; terrainY < 50; terrainY++) {
-        const tile = terrain.get(terrainX, terrainY);
-        if (tile === TERRAIN_MASK_SWAMP) {
-          swampCount++;
-        } else if (tile === 0) {
-          plainCount++;
-        }
-      }
-    }
-    const terrainType = swampCount > plainCount ? "swamp" : plainCount > swampCount ? "plains" : "mixed";
-
-    return {
-      name: room.name,
-      lastSeen: Game.time,
-      sources: sources.length,
-      controllerLevel: controller?.level ?? 0,
-      owner: controller?.owner?.username,
-      reserver: controller?.reservation?.username,
-      mineralType: mineral?.mineralType,
-      threatLevel: hostiles.length > 0 ? 1 : 0,
-      scouted: true,
-      terrain: terrainType,
-      isHighway,
-      isSK,
-      towerCount: towers.length,
-      spawnCount: spawns.length,
-      hasPortal: portals.length > 0
-    };
+    return buildVisibleRoomIntel(createVisibleRoomSnapshot(room));
   }
 
   /**
    * Update existing intel entry with current room data
    */
   private updateRoomIntel(intel: RoomIntel, room: Room): void {
-    const sources = room.find(FIND_SOURCES);
-    const mineral = room.find(FIND_MINERALS)[0];
-    const controller = room.controller;
-    const hostiles = getActualHostileCreeps(room);
-    const hostileStructures = getActualHostileStructures(room);
-    const towers = hostileStructures.filter(s => s.structureType === STRUCTURE_TOWER);
-    const spawns = hostileStructures.filter(s => s.structureType === STRUCTURE_SPAWN);
-    const portals = room.find(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_PORTAL
-    });
-
-    // Update intel
-    intel.lastSeen = Game.time;
-    intel.sources = sources.length;
-    intel.controllerLevel = controller?.level ?? 0;
-    intel.owner = controller?.owner?.username;
-    intel.reserver = controller?.reservation?.username;
-    intel.mineralType = mineral?.mineralType;
-    intel.threatLevel = hostiles.length > 0 ? 1 : 0;
-    intel.scouted = true;
-    intel.towerCount = towers.length;
-    intel.spawnCount = spawns.length;
-    intel.hasPortal = portals.length > 0;
+    Object.assign(intel, mergeRoomIntel(intel, buildVisibleRoomIntel(createVisibleRoomSnapshot(room))));
   }
+}
+
+function createVisibleRoomSnapshot(room: Room): VisibleRoomIntelSnapshot {
+  const sources = room.find(FIND_SOURCES);
+  const mineral = room.find(FIND_MINERALS)[0];
+  const controller = room.controller;
+  const hostiles = getActualHostileCreeps(room);
+  const hostileStructures = getActualHostileStructures(room);
+  const portals = room.find(FIND_STRUCTURES, { filter: structure => structure.structureType === STRUCTURE_PORTAL });
+  const terrain = room.getTerrain();
+  let plains = 0;
+  let swamps = 0;
+
+  for (let x = 0; x < 50; x++) {
+    for (let y = 0; y < 50; y++) {
+      const tile = terrain.get(x, y);
+      if (tile === TERRAIN_MASK_SWAMP) swamps++;
+      else if (tile === 0) plains++;
+    }
+  }
+
+  return {
+    roomName: room.name,
+    tick: Game.time,
+    sources: sources.length,
+    controllerLevel: controller?.level ?? 0,
+    owner: controller?.owner?.username,
+    reserver: controller?.reservation?.username,
+    mineralType: mineral?.mineralType,
+    hostileCreeps: hostiles.length,
+    hostileTowers: hostileStructures.filter(structure => structure.structureType === STRUCTURE_TOWER).length,
+    hostileSpawns: hostileStructures.filter(structure => structure.structureType === STRUCTURE_SPAWN).length,
+    portals: portals.length,
+    terrain: { plains, swamps }
+  };
 }
 
 /**

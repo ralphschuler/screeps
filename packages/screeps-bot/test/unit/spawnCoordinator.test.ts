@@ -1,7 +1,7 @@
 import { assert } from "chai";
 import sinon from "sinon";
-import { spawnQueue, SpawnPriority } from "../../src/spawning/spawnQueue";
-import { populateSpawnQueue, processSpawnQueue } from "../../src/spawning/spawnCoordinator";
+import { spawnQueue, SpawnPriority } from "@ralphschuler/screeps-spawn";
+import { populateSpawnQueue, processSpawnQueue } from "@ralphschuler/screeps-spawn";
 import type { SwarmState } from "../../src/memory/schemas";
 
 describe("SpawnCoordinator", () => {

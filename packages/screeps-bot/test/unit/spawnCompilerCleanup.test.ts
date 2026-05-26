@@ -1,8 +1,8 @@
 import { assert } from "chai";
 import type { SwarmState } from "../../src/memory/schemas";
-import { coordinateSpawning } from "../../src/spawning/spawnCoordinator";
-import { runSpawnManager } from "../../src/spawning/spawnQueueManager";
-import { SpawnPriority, spawnQueue } from "../../src/spawning/spawnQueue";
+import { coordinateSpawning } from "@ralphschuler/screeps-spawn";
+import { runSpawnManager } from "@ralphschuler/screeps-spawn";
+import { SpawnPriority, spawnQueue } from "@ralphschuler/screeps-spawn";
 
 function createSwarm(): SwarmState {
   return {
@@ -112,8 +112,10 @@ describe("spawn compiler cleanup compatibility", () => {
     } as unknown as Room;
     Game.rooms.W1N1 = room;
 
-    runSpawnManager(room, createSwarm());
+    const result = runSpawnManager(room, createSwarm());
 
+    assert.equal(result.roomName, "W1N1");
+    assert.equal(result.spawned, 0);
     assert.isTrue(spawnQueue.getPendingRequests("W1N1").some(request => request.role === "larvaWorker"));
   });
 

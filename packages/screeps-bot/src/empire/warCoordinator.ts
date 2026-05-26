@@ -23,12 +23,28 @@ export class WarCoordinator {
 
     // === 1. Clean stale / invalid targets ===
     empire.warTargets = empire.warTargets.filter(target => {
+      if (isAllyPlayer(target)) return false;
+
       const intel = empire.knownRooms[target];
-      if (!intel) return false; // Remove unknown targets
-      if (isAllyPlayer(target) || (intel.owner && isAllyPlayer(intel.owner))) return false;
-      if (intel.owner === myUsername) return false;
-      return !!intel.owner;
+      if (intel) {
+        if (intel.owner && isAllyPlayer(intel.owner)) return false;
+        if (intel.owner === myUsername) return false;
+        return !!intel.owner;
+      }
+
+      const playerPosture = empire.playerPostures?.players[target];
+      return playerPosture?.state === "war";
     });
+
+    for (const [username, posture] of Object.entries(empire.playerPostures?.players ?? {})) {
+      if (posture.state !== "war" || username === myUsername || isAllyPlayer(username)) continue;
+      for (const roomName in empire.knownRooms) {
+        const intel = empire.knownRooms[roomName];
+        if (intel?.owner === username && !empire.warTargets.includes(roomName)) {
+          empire.warTargets.push(roomName);
+        }
+      }
+    }
 
     // === 2. Proactive: always add nearby enemy rooms (offensive expansion) ===
     const ownedRooms = Object.values(Game.rooms)

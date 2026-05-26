@@ -15,7 +15,7 @@ import {
   getCachedBuildTarget,
   getAssignedSource,
   clearTargetCaches
-} from "../../src/cache";
+} from "@ralphschuler/screeps-cache";
 
 describe("roleCache", () => {
   beforeEach(() => {

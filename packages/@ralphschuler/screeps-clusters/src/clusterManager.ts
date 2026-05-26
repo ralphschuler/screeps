@@ -36,11 +36,15 @@
  Issue URL: https://github.com/ralphschuler/screeps/issues/2799
  */
 
-import type { ClusterMemory, SquadDefinition } from "./types";
-import { ProcessPriority } from "@ralphschuler/screeps-kernel";
+import type { ClusterMemory } from "./types";
+import {
+  type ClusterOperationIntent,
+  type ClusterOperationName,
+  buildClusterOperationIntent
+} from "./clusterIntent";
 import { logger } from "@ralphschuler/screeps-core";
+import { MediumFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
-import { MediumFrequencyProcess, ProcessClass } from "@ralphschuler/screeps-kernel";
 import { memoryManager } from "./adapters/memoryAdapter";
 import {
   type DefenseRequest,
@@ -62,7 +66,7 @@ import {
   updateOffensiveOperations as updateGlobalOffensiveOps
 } from "./offensiveOperations";
 import { updateClusterRallyPoints } from "./rallyPointManager";
-import { coordinateClusterDefense } from "@ralphschuler/screeps-defense";
+import { coordinateClusterDefense, getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 import {
   calculateMilitaryReadinessRatio,
   decideClusterRole,
@@ -143,69 +147,66 @@ export class ClusterManager {
   }
 
   /**
+   * Build an observable cluster operation intent without mutating cluster memory.
+   */
+  public getClusterOperationIntent(cluster: ClusterMemory): ClusterOperationIntent {
+    return buildClusterOperationIntent(cluster);
+  }
+
+  /**
    * Run a single cluster
    */
   private runCluster(cluster: ClusterMemory): void {
     const cpuStart = Game.cpu.getUsed();
+    const intent = this.getClusterOperationIntent(cluster);
 
-    // Update cluster metrics
-    unifiedStats.measureSubsystem(`cluster:${cluster.id}:metrics`, () => {
-      this.updateClusterMetrics(cluster);
-    });
-
-    // Handle defense requests
-    unifiedStats.measureSubsystem(`cluster:${cluster.id}:defense`, () => {
-      this.processDefenseRequests(cluster);
-      
-      // Coordinate cluster-wide defense (threat assessment and defender sharing)
-      coordinateClusterDefense(cluster.id);
-    });
-
-    // Balance terminal resources (RCL 6+ rooms)
-    unifiedStats.measureSubsystem(`cluster:${cluster.id}:terminals`, () => {
-      this.balanceTerminalResources(cluster);
-    });
-
-    // Process resource sharing for pre-terminal rooms (RCL 1-5)
-    unifiedStats.measureSubsystem(`cluster:${cluster.id}:resourceSharing`, () => {
-      resourceSharingManager.processCluster(cluster);
-    });
-
-    // Update squads
-    unifiedStats.measureSubsystem(`cluster:${cluster.id}:squads`, () => {
-      this.updateSquads(cluster);
-    });
-
-    // Plan and update offensive operations
-    unifiedStats.measureSubsystem(`cluster:${cluster.id}:offensive`, () => {
-      this.updateOffensiveOperations(cluster);
-    });
-
-    // Update rally points
-    unifiedStats.measureSubsystem(`cluster:${cluster.id}:rallyPoints`, () => {
-      updateClusterRallyPoints(cluster);
-    });
-
-    // Update military resource reservations
-    unifiedStats.measureSubsystem(`cluster:${cluster.id}:militaryResources`, () => {
-      updateMilitaryReservations(cluster);
-    });
-
-    // Update cluster role
-    unifiedStats.measureSubsystem(`cluster:${cluster.id}:role`, () => {
-      this.updateClusterRole(cluster);
-    });
-
-    // Update focus room for sequential upgrading
-    unifiedStats.measureSubsystem(`cluster:${cluster.id}:focusRoom`, () => {
-      this.updateFocusRoom(cluster);
-    });
+    for (const step of intent.steps) {
+      unifiedStats.measureSubsystem(step.statsKey, () => {
+        this.executeClusterOperation(step.name, cluster);
+      });
+    }
 
     cluster.lastUpdate = Game.time;
 
     const cpuUsed = Game.cpu.getUsed() - cpuStart;
     if (cpuUsed > 1 && Game.time % 50 === 0) {
       logger.debug(`Cluster ${cluster.id} tick: ${cpuUsed.toFixed(2)} CPU`, { subsystem: "Cluster" });
+    }
+  }
+
+  private executeClusterOperation(operation: ClusterOperationName, cluster: ClusterMemory): void {
+    switch (operation) {
+      case "metrics":
+        this.updateClusterMetrics(cluster);
+        break;
+      case "defense":
+        this.processDefenseRequests(cluster);
+        coordinateClusterDefense(cluster.id);
+        break;
+      case "terminals":
+        this.balanceTerminalResources(cluster);
+        break;
+      case "resourceSharing":
+        resourceSharingManager.processCluster(cluster);
+        break;
+      case "squads":
+        this.updateSquads(cluster);
+        break;
+      case "offensive":
+        this.updateOffensiveOperations(cluster);
+        break;
+      case "rallyPoints":
+        updateClusterRallyPoints(cluster);
+        break;
+      case "militaryResources":
+        updateMilitaryReservations(cluster);
+        break;
+      case "role":
+        this.updateClusterRole(cluster);
+        break;
+      case "focusRoom":
+        this.updateFocusRoom(cluster);
+        break;
     }
   }
 
@@ -555,7 +556,7 @@ export class ClusterManager {
       const room = Game.rooms[req.roomName];
       if (!room) return false;
       
-      const hostiles = room.find(FIND_HOSTILE_CREEPS);
+      const hostiles = getActualHostileCreeps(room);
       if (hostiles.length === 0) {
         logger.info(`Defense request for ${req.roomName} resolved - no more hostiles`, { subsystem: "Cluster" });
         return false;
@@ -682,19 +683,19 @@ export class ClusterManager {
         const defender = availableDefenders[i];
         if (!defender) continue;
 
-        const creepMem = defender.creep.memory as { assistTarget?: string };
+        const creepMem = defender.creep.memory as { assistTarget?: string; role?: string };
         creepMem.assistTarget = request.roomName;
         request.assignedCreeps.push(defender.creep.name);
 
         logger.info(
-          `Assigned ${defender.creep.name} (${defender.creep.memory.role}) from ${defender.room.name} to assist ${request.roomName} (distance: ${defender.distance})`,
+          `Assigned ${defender.creep.name} (${creepMem.role}) from ${defender.room.name} to assist ${request.roomName} (distance: ${defender.distance})`,
           { subsystem: "Cluster" }
         );
 
         // Decrement needed count
-        if (defender.creep.memory.role === "guard") request.guardsNeeded--;
-        if (defender.creep.memory.role === "ranger") request.rangersNeeded--;
-        if (defender.creep.memory.role === "healer") request.healersNeeded--;
+        if (creepMem.role === "guard") request.guardsNeeded--;
+        if (creepMem.role === "ranger") request.rangersNeeded--;
+        if (creepMem.role === "healer") request.healersNeeded--;
       }
 
       // Clear assigned defenders from available pool

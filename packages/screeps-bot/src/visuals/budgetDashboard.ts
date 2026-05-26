@@ -58,7 +58,7 @@ export function renderBudgetDashboard(options: BudgetDashboardOptions = {}): num
   const processes = kernel.getProcesses();
 
   // Calculate utilization
-  const totalAllocated = processes.reduce((sum, p) => sum + p.cpuBudget, 0);
+  const totalAllocated = processes.reduce((sum, p) => sum + p.cpuBudget * Game.cpu.limit, 0);
   const totalUsed = kernel.getTickCpuUsed();
   const utilizationRatio = totalAllocated > 0 ? totalUsed / totalAllocated : 0;
 
@@ -278,7 +278,7 @@ export function renderCompactBudgetStatus(roomName?: string): number {
   const processes = kernel.getProcesses();
 
   // Calculate utilization
-  const totalAllocated = processes.reduce((sum, p) => sum + p.cpuBudget, 0);
+  const totalAllocated = processes.reduce((sum, p) => sum + p.cpuBudget * Game.cpu.limit, 0);
   const totalUsed = kernel.getTickCpuUsed();
   const utilizationRatio = totalAllocated > 0 ? totalUsed / totalAllocated : 0;
 

@@ -48,6 +48,7 @@ describe("UnifiedStatsManager", function () {
 
     // Reset memory stats
     delete mockMemory.stats;
+    delete mockMemory.creepTaskBoard;
 
     // Create fresh stats manager
     statsManager = new UnifiedStatsManager();
@@ -367,6 +368,44 @@ describe("UnifiedStatsManager", function () {
       assert.equal(mem.stats.rooms.W1N1.rcl, 3);
       assert.isDefined(mem.stats.rooms.W1N1.energy);
       assert.equal(mem.stats.rooms.W1N1.energy.storage, 50000);
+    });
+
+    it("should export task board stats with room stats", function () {
+      const mockRoom: any = {
+        name: "W1N1",
+        energyAvailable: 300,
+        energyCapacityAvailable: 550,
+        controller: { level: 3, progress: 5000, progressTotal: 10000, my: true },
+        find: () => []
+      };
+
+      mockGame.rooms = { W1N1: mockRoom };
+      mockGame.creeps = {};
+      mockMemory.creepTaskBoard = {
+        rooms: {
+          W1N1: {
+            tasks: {
+              openTask: { status: "open", reservations: {} },
+              assignedTask: { status: "assigned", reservations: { hauler1: {} } }
+            },
+            stats: { staleReservations: 2, blockedReservations: 1 }
+          }
+        }
+      };
+
+      statsManager.startTick();
+      statsManager.recordRoom(mockRoom, 0.5);
+      statsManager.finalizeTick();
+
+      const mem = Memory as unknown as Record<string, any>;
+      assert.deepEqual(mem.stats.rooms.W1N1.taskBoard, {
+        tasks: 2,
+        open_tasks: 1,
+        assigned_tasks: 1,
+        reservations: 1,
+        stale_reservations: 2,
+        blocked_reservations: 1
+      });
     });
   });
 

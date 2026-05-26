@@ -20,28 +20,11 @@
  * Addresses Issue: #24
  */
 
-import { NukeCoordinator } from "@ralphschuler/screeps-empire";
+import { DEFAULT_NUKE_CONFIG, NukeCoordinator } from "@ralphschuler/screeps-empire";
 import type { NukeConfig } from "@ralphschuler/screeps-empire";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-
-/**
- * Default configuration
- */
-const DEFAULT_CONFIG: Partial<NukeConfig> = {
-  updateInterval: 500,
-  minGhodium: 5000,
-  minEnergy: 300000,
-  minScore: 35,
-  siegeCoordinationWindow: 1000,
-  nukeFlightTime: 50000,
-  terminalPriority: 5,
-  donorRoomBuffer: 1000,
-  salvoSyncWindow: 10,
-  roiThreshold: 2.0,
-  counterNukeWarThreshold: 60
-};
 
 /**
  * Nuke Manager Class - Wraps framework NukeCoordinator
@@ -53,7 +36,7 @@ export class NukeManager {
   public constructor(config: Partial<NukeConfig> = {}) {
     // Initialize framework coordinator with dependency injection
     this.coordinator = new NukeCoordinator(
-      { ...DEFAULT_CONFIG, ...config },
+      { ...DEFAULT_NUKE_CONFIG, ...config },
       {
         getEmpire: () => memoryManager.getEmpire(),
         getSwarmState: (roomName: string) => memoryManager.getSwarmState(roomName),

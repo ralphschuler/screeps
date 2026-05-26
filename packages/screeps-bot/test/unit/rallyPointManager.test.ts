@@ -7,7 +7,7 @@ import {
   findOptimalRallyPoint,
   updateClusterRallyPoints,
   getSquadRallyPoint
-} from "../../src/clusters/rallyPointManager";
+} from "@ralphschuler/screeps-clusters";
 import type { ClusterMemory } from "../../src/memory/schemas";
 
 describe("Rally Point Manager", () => {

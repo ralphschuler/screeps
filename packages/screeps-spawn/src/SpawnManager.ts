@@ -184,7 +184,7 @@ export class SpawnManager {
     const energyCost = calculateBodyCost(sortedBody, this.config.bodyCosts);
 
     // Attempt spawn
-    const result = spawn.spawnCreep(sortedBody, creepName, { memory: request.memory });
+    const result = spawn.spawnCreep(sortedBody, creepName, { memory: request.memory as unknown as CreepMemory });
 
     if (result === OK) {
       return {

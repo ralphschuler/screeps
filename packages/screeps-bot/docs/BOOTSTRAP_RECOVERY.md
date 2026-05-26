@@ -185,7 +185,7 @@ Confirms successful spawn of bootstrap creep.
 - Creep counting: `countCreepsByRole(roomName, activeOnly?)`
 - Body templates and selection
 
-**`src/clusters/resourceSharing.ts`**
+**`@ralphschuler/screeps-clusters resourceSharing.ts`**
 - Inter-room energy assistance
 - Critical energy threshold detection
 - Carrier spawning and routing
@@ -416,5 +416,5 @@ If not working as expected, check game version and test suite.
 - [Screeps API - Spawn](https://docs.screeps.com/api/#StructureSpawn)
 - [Screeps API - Creep](https://docs.screeps.com/api/#Creep)
 - [ROADMAP.md](../../ROADMAP.md) - Section 19: Resilienz & Respawn-Fähigkeit
-- [Resource Sharing](../clusters/resourceSharing.ts)
+- [Resource Sharing](../../@ralphschuler/screeps-clusters/src/resourceSharing.ts)
 - [Spawn Manager](../logic/spawn.ts)
