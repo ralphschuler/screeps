@@ -187,6 +187,9 @@ jobs:
       - name: Run every workspace test script
         run: npm test --workspaces --if-present
 
+      - name: Run server package and script tests
+        run: npm run test:packages -w @ralphschuler/screeps-server
+
   # ============================================================================
   # Linting & Type Checking
   # ============================================================================

@@ -15,7 +15,8 @@ import {
   predictNukeImpact,
   processCounterNukeStrategies,
   scoreNukeCandidate,
-  updateNukeEconomics
+  updateNukeEconomics,
+  DEFAULT_NUKE_CONFIG
 } from "@ralphschuler/screeps-empire";
 import { Game, Memory } from "./mock";
 import * as sinon from "sinon";
@@ -53,6 +54,19 @@ describe("Nuke Manager", () => {
   afterEach(() => {
     // Restore all stubs
     sinon.restore();
+  });
+
+  describe("Configuration", () => {
+    it("uses framework nuke defaults unless overridden", () => {
+      expect(nukeManager.getConfig()).to.deep.equal(DEFAULT_NUKE_CONFIG);
+
+      const customManager = new NukeManager({ minScore: 99 });
+
+      expect(customManager.getConfig()).to.deep.equal({
+        ...DEFAULT_NUKE_CONFIG,
+        minScore: 99
+      });
+    });
   });
 
   describe("Incoming Nuke Detection", () => {

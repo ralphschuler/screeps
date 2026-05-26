@@ -14,6 +14,9 @@ export { boostManager } from "./boostManager";
 // Chemistry planner adapter (with SwarmState integration)
 export { chemistryPlanner } from "./chemistryPlanner";
 
+// Lab economy workflow (room-level orchestration)
+export { labEconomyWorkflow, LabEconomyWorkflow, type LabWorkflowResult } from "./labEconomyWorkflow";
+
 // Lab manager (bot-specific orchestration)
 export { labManager, type LabTaskType, type LabResourceNeed, type LabOverflow, type ReactionStep } from "./labManager";
 

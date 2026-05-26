@@ -16,7 +16,7 @@ import {
   resetCacheStats,
   warmCache,
   prefetchRoomObjects
-} from "../../src/cache";
+} from "@ralphschuler/screeps-cache";
 
 describe("objectCache", () => {
   beforeEach(() => {

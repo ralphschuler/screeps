@@ -10,19 +10,9 @@ import {
   type RemoteHaulerOptions,
   type RemoteHaulerRequirement as EmpireRemoteHaulerRequirement,
 } from "@ralphschuler/screeps-empire";
+import type { CrossShardTransferRequest } from "@ralphschuler/screeps-intershard";
 
-/**
- * Cross-shard transfer request
- */
-export interface CrossShardTransferRequest {
-  fromRoom: string;
-  toRoom: string;
-  resourceType: ResourceConstant;
-  amount: number;
-  sourceRoom?: string;
-  transferred?: number;
-  assignedCreeps?: string[];
-}
+export type { CrossShardTransferRequest } from "@ralphschuler/screeps-intershard";
 
 /**
  * Energy prediction result
@@ -167,23 +157,73 @@ export interface SpawnIntegrationOverrides {
 export function configureSpawnIntegration(
   overrides: SpawnIntegrationOverrides,
 ): void {
-  if (overrides.resourceTransferCoordinator)
-    Object.assign(
-      resourceTransferCoordinator,
-      overrides.resourceTransferCoordinator,
-    );
-  if (overrides.kernel) Object.assign(kernel, overrides.kernel);
-  if (overrides.memoryManager)
-    Object.assign(memoryManager, overrides.memoryManager);
-  if (overrides.energyFlowPredictor)
-    Object.assign(energyFlowPredictor, overrides.energyFlowPredictor);
-  if (overrides.powerBankHarvestingManager)
-    Object.assign(
-      powerBankHarvestingManager,
-      overrides.powerBankHarvestingManager,
-    );
-  if (overrides.emergencyResponseManager)
-    Object.assign(emergencyResponseManager, overrides.emergencyResponseManager);
+  if (overrides.resourceTransferCoordinator) {
+    const source = overrides.resourceTransferCoordinator;
+    if (source.getPendingTransfers) {
+      resourceTransferCoordinator.getPendingTransfers = (roomName: string) => source.getPendingTransfers!(roomName);
+    }
+    if (source.needsCarrier) {
+      resourceTransferCoordinator.needsCarrier = (roomName: string) => source.needsCarrier!(roomName);
+    }
+    if (source.getActiveRequests) {
+      resourceTransferCoordinator.getActiveRequests = () => source.getActiveRequests!();
+    }
+  }
+
+  if (overrides.kernel) {
+    const source = overrides.kernel;
+    if (source.data) kernel.data = source.data;
+    if (source.emit) kernel.emit = (event: string, data: unknown) => source.emit!(event, data);
+  }
+
+  if (overrides.memoryManager) {
+    const source = overrides.memoryManager;
+    if (source.getSwarmState) memoryManager.getSwarmState = (roomName: string) => source.getSwarmState!(roomName);
+    if (source.setSwarmState) {
+      memoryManager.setSwarmState = (roomName: string, state: unknown) => source.setSwarmState!(roomName, state);
+    }
+    if (source.getCluster) memoryManager.getCluster = (clusterId: string) => source.getCluster!(clusterId);
+    if (source.getEmpire) memoryManager.getEmpire = () => source.getEmpire!();
+  }
+
+  if (overrides.energyFlowPredictor) {
+    const source = overrides.energyFlowPredictor;
+    if (source.predictConsumption) {
+      energyFlowPredictor.predictConsumption = (roomName: string) => source.predictConsumption!(roomName);
+    }
+    if (source.getEnergyAvailableForSpawning) {
+      energyFlowPredictor.getEnergyAvailableForSpawning = (roomName: string) =>
+        source.getEnergyAvailableForSpawning!(roomName);
+    }
+    if (source.predictEnergyInTicks) {
+      energyFlowPredictor.predictEnergyInTicks = (room: Room, ticks: number) => source.predictEnergyInTicks!(room, ticks);
+    }
+    if (source.getMaxAffordableInTicks) {
+      energyFlowPredictor.getMaxAffordableInTicks = (room: Room, ticks: number) =>
+        source.getMaxAffordableInTicks!(room, ticks);
+    }
+  }
+
+  if (overrides.powerBankHarvestingManager) {
+    const source = overrides.powerBankHarvestingManager;
+    if (source.getActivePowerBanks) {
+      powerBankHarvestingManager.getActivePowerBanks = () => source.getActivePowerBanks!();
+    }
+    if (source.needsHarvesters) {
+      powerBankHarvestingManager.needsHarvesters = (powerBankId: Id<StructurePowerBank>) => source.needsHarvesters!(powerBankId);
+    }
+    if (source.needsCarriers) {
+      powerBankHarvestingManager.needsCarriers = (powerBankId: Id<StructurePowerBank>) => source.needsCarriers!(powerBankId);
+    }
+    if (source.requestSpawns) {
+      powerBankHarvestingManager.requestSpawns = (roomName: string) => source.requestSpawns!(roomName);
+    }
+  }
+
+  if (overrides.emergencyResponseManager?.getEmergencyState) {
+    const source = overrides.emergencyResponseManager;
+    emergencyResponseManager.getEmergencyState = (roomName: string) => source.getEmergencyState!(roomName);
+  }
 }
 
 export function calculateRemoteHaulerRequirement(

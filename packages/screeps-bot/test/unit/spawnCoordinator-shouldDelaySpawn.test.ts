@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import { SpawnPriority } from "../../src/spawning/spawnQueue";
+import { SpawnPriority } from "@ralphschuler/screeps-spawn";
 
 // Note: shouldDelaySpawn is a private function in spawnCoordinator.ts
 // These tests validate the logic indirectly through integration tests

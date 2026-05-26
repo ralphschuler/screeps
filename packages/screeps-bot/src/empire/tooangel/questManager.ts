@@ -189,6 +189,10 @@ export function processQuestMessages(): void {
   const memory = getTooAngelMemory();
 
   for (const transaction of Game.market.incomingTransactions) {
+    if (transaction.time <= memory.lastProcessedTick) {
+      continue;
+    }
+
     // Skip market orders
     if (transaction.order) {
       continue;
@@ -233,6 +237,8 @@ export function processQuestMessages(): void {
       }
     }
   }
+
+  memory.lastProcessedTick = Game.time;
 }
 
 /**

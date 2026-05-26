@@ -22,7 +22,8 @@ const apiHost = args.get('apiHost') ?? '127.0.0.1';
 const serverPort = Number(args.get('serverPort') ?? process.env.SCREEPS_SERVER_PORT ?? 21025);
 const cliPort = Number(args.get('cliPort') ?? process.env.SCREEPS_CLI_PORT ?? 21026);
 const serverPassword = args.get('serverPassword') ?? process.env.SCREEPS_SERVER_PASSWORD ?? 'ci-password';
-const password = args.get('password') ?? 'ci-password';
+const password = args.get('password') ?? process.env.SCREEPS_BOT_PASSWORD ?? 'ci-password';
+const allowExternalBuilds = args.get('allowExternalBuilds') === 'true' || process.env.SCREEPS_ARENA_ALLOW_EXTERNAL_BUILDS === 'true';
 
 const roster = [
   {
@@ -208,6 +209,9 @@ async function createApi(username) {
 }
 
 async function loadModules(bot) {
+  if (bot.source.startsWith('github:') && !allowExternalBuilds) {
+    throw new Error('external bot builds are disabled; set --allowExternalBuilds=true to opt in');
+  }
   if (bot.source === 'git:HEAD~1') return { main: await gitShowAsync('HEAD~1:packages/screeps-bot/dist/main.js') };
   if (bot.source === 'git:HEAD~2') return { main: await gitShowAsync('HEAD~2:packages/screeps-bot/dist/main.js') };
   if (bot.source.startsWith('github:jerroydmoore/screeps-ai')) {
@@ -238,8 +242,20 @@ async function uploadBot(bot) {
 }
 
 async function main() {
-  for (const bot of roster) await uploadBot(bot);
-  log('bot arena ready');
+  const results = [];
+  for (const bot of roster) {
+    try {
+      await uploadBot(bot);
+      results.push({ username: bot.username, status: 'uploaded' });
+    } catch (error) {
+      const optional = bot.source.startsWith('github:') || bot.source.startsWith('git:HEAD~');
+      if (!optional) throw error;
+      const message = error instanceof Error ? error.message : String(error);
+      log(`skipped ${bot.username} (${bot.source}): ${message}`);
+      results.push({ username: bot.username, status: 'skipped', reason: message });
+    }
+  }
+  log(`bot arena ready: ${results.filter(result => result.status === 'uploaded').length} uploaded, ${results.filter(result => result.status === 'skipped').length} skipped`);
 }
 
 main().catch(error => {

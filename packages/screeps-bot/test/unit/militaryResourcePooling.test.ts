@@ -9,7 +9,7 @@ import {
   getAvailableBoostMaterials,
   hasSufficientMilitaryEnergy,
   getMilitaryResourceSummary
-} from "../../src/clusters/militaryResourcePooling";
+} from "@ralphschuler/screeps-clusters";
 import type { ClusterMemory } from "../../src/memory/schemas";
 
 describe("Military Resource Pooling", () => {

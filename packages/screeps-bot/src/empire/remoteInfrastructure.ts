@@ -14,6 +14,13 @@ import { calculateRemoteRoads } from "@ralphschuler/screeps-layouts";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import { ProcessPriority } from "../core/kernel";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import {
+  type RemoteInfrastructureIntent,
+  type RemoteInfrastructurePositionSnapshot,
+  type RemoteInfrastructureRoomSnapshot,
+  type RemoteInfrastructureSnapshot,
+  planRemoteInfrastructureIntent
+} from "./remoteInfrastructureIntent";
 import { checkRemoteRoomStatus } from "./remoteRoomManager";
 
 /**
@@ -79,234 +86,152 @@ export class RemoteInfrastructureManager {
       const remoteAssignments = swarm.remoteAssignments ?? [];
       if (remoteAssignments.length === 0) continue;
 
-      // Plan infrastructure for each remote room
-      for (const remoteName of remoteAssignments) {
-        this.planRemoteInfrastructure(room, remoteName);
-      }
-
-      // Place roads to remote rooms (in home room and along the path)
-      this.placeRemoteRoads(room, remoteAssignments);
+      const intent = this.getRemoteInfrastructureIntent(room, remoteAssignments);
+      this.executeRemoteInfrastructureIntent(intent);
     }
   }
 
   /**
-   * Plan and build infrastructure in a remote room
+   * Build observable construction intent for remote infrastructure before mutating rooms.
    */
-  private planRemoteInfrastructure(homeRoom: Room, remoteName: string): void {
-    const remoteRoom = Game.rooms[remoteName];
-    if (!remoteRoom) {
-      // Can't see the remote room yet - scouts need to explore it
-      return;
-    }
-
-    // Check if we have controller reservation to avoid conflicts
-    const controller = remoteRoom.controller;
-    const myUsername = this.getMyUsername();
-
-    // Only build in neutral rooms or rooms reserved by us
-    if (controller) {
-      if (controller.owner && controller.owner.username !== myUsername) {
-        // Room is owned by someone else
-        return;
-      }
-      if (controller.reservation && controller.reservation.username !== myUsername) {
-        // Room is reserved by someone else
-        return;
-      }
-    }
-
-    // Find sources and place containers
-    const sources = remoteRoom.find(FIND_SOURCES);
-    let sitesPlaced = 0;
-
-    for (const source of sources) {
-      if (sitesPlaced >= this.config.maxSitesPerRemotePerTick) break;
-
-      const placed = this.placeSourceContainer(remoteRoom, source);
-      if (placed) sitesPlaced++;
-    }
+  public getRemoteInfrastructureIntent(homeRoom: Room, remoteAssignments: string[]): RemoteInfrastructureIntent {
+    const snapshot = this.getRemoteInfrastructureSnapshot(homeRoom, remoteAssignments);
+    return planRemoteInfrastructureIntent(snapshot);
   }
 
-  /**
-   * Place a container at a source if it doesn't exist
-   */
-  private placeSourceContainer(room: Room, source: Source): boolean {
-    // Check if container already exists
-    const existingStructures = source.pos.findInRange(FIND_STRUCTURES, 1, {
-      filter: s => s.structureType === STRUCTURE_CONTAINER
+  private getRemoteInfrastructureSnapshot(homeRoom: Room, remoteAssignments: string[]): RemoteInfrastructureSnapshot {
+    const remoteRoadsByRoom = calculateRemoteRoads(homeRoom, remoteAssignments);
+    const visibleRooms: Record<string, RemoteInfrastructureRoomSnapshot> = {};
+
+    for (const roomName of [homeRoom.name, ...remoteAssignments]) {
+      const room = Game.rooms[roomName];
+      if (!room) continue;
+      visibleRooms[roomName] = this.getRoomSnapshot(room, remoteRoadsByRoom.get(roomName) ?? new Set<string>());
+    }
+
+    return {
+      homeRoomName: homeRoom.name,
+      myUsername: this.getMyUsername(),
+      remoteAssignments,
+      visibleRooms,
+      maxSitesPerRemotePerTick: this.config.maxSitesPerRemotePerTick,
+      maxConstructionSitesPerRoom: MAX_CONSTRUCTION_SITES_PER_REMOTE_ROOM,
+      maxRoadSitesPerRoomPerTick: MAX_ROAD_SITES_PER_TICK
+    };
+  }
+
+  private getRoomSnapshot(room: Room, roadPositions: Set<string>): RemoteInfrastructureRoomSnapshot {
+    const constructionSites = room.find(FIND_CONSTRUCTION_SITES);
+    const roadSites = constructionSites.filter(site => site.structureType === STRUCTURE_ROAD);
+    const roads = room.find(FIND_STRUCTURES, { filter: s => s.structureType === STRUCTURE_ROAD });
+    const terrain = room.getTerrain();
+    const parsedRoadPositions = [...roadPositions].map(posKey => {
+      const [xStr, yStr] = posKey.split(",");
+      return { x: parseInt(xStr, 10), y: parseInt(yStr, 10) };
     });
 
-    if (existingStructures.length > 0) {
-      // Container already exists
-      return false;
-    }
-
-    // Check if construction site already exists
-    const existingSites = source.pos.findInRange(FIND_CONSTRUCTION_SITES, 1, {
-      filter: s => s.structureType === STRUCTURE_CONTAINER
-    });
-
-    if (existingSites.length > 0) {
-      // Construction site already exists
-      return false;
-    }
-
-    // Find best position for container (adjacent to source)
-    const containerPos = this.findBestContainerPosition(source);
-    if (!containerPos) {
-      logger.warn(`Could not find valid position for container at source ${source.id} in ${room.name}`, {
-        subsystem: "RemoteInfra"
-      });
-      return false;
-    }
-
-    // Check construction site limit
-    const sites = room.find(FIND_CONSTRUCTION_SITES);
-    if (sites.length >= MAX_CONSTRUCTION_SITES_PER_REMOTE_ROOM) {
-      // Too many construction sites in this room already
-      return false;
-    }
-
-    // Place construction site
-    const result = room.createConstructionSite(containerPos.x, containerPos.y, STRUCTURE_CONTAINER);
-    if (result === OK) {
-      logger.info(`Placed container construction site at source ${source.id} in ${room.name}`, {
-        subsystem: "RemoteInfra"
-      });
-      return true;
-    } else {
-      logger.debug(`Failed to place container at source ${source.id} in ${room.name}: ${result}`, {
-        subsystem: "RemoteInfra"
-      });
-      return false;
-    }
+    return {
+      name: room.name,
+      constructionSiteCount: constructionSites.length,
+      controller: {
+        ownerUsername: room.controller?.owner?.username,
+        reservationUsername: room.controller?.reservation?.username
+      },
+      sources: this.getSourceSnapshots(room),
+      roadPositions: parsedRoadPositions,
+      roadKeys: roads.map(road => `${road.pos.x},${road.pos.y}`),
+      roadSiteKeys: roadSites.map(site => `${site.pos.x},${site.pos.y}`),
+      wallKeys: parsedRoadPositions
+        .filter(pos => terrain.get(pos.x, pos.y) === TERRAIN_MASK_WALL)
+        .map(pos => `${pos.x},${pos.y}`)
+    };
   }
 
-  /**
-   * Find the best position for a container adjacent to a source
-   */
-  private findBestContainerPosition(source: Source): { x: number; y: number } | null {
+  private getSourceSnapshots(room: Room): RemoteInfrastructureRoomSnapshot["sources"] {
+    return room.find(FIND_SOURCES).map(source => ({
+      id: source.id,
+      positions: this.getSourcePositionSnapshots(source)
+    }));
+  }
+
+  private getSourcePositionSnapshots(source: Source): RemoteInfrastructurePositionSnapshot[] {
     const room = source.room;
     const terrain = room.getTerrain();
-
-    // Check all positions adjacent to source
-    const candidates: { x: number; y: number; score: number }[] = [];
+    const positions: RemoteInfrastructurePositionSnapshot[] = [];
 
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
-        if (dx === 0 && dy === 0) continue; // Skip source itself
+        if (dx === 0 && dy === 0) continue;
 
         const x = source.pos.x + dx;
         const y = source.pos.y + dy;
-
-        // Check bounds
         if (x < 1 || x > 48 || y < 1 || y > 48) continue;
-
-        // Check terrain
         if (terrain.get(x, y) === TERRAIN_MASK_WALL) continue;
 
-        // Check for existing structures
         const pos = new RoomPosition(x, y, room.name);
         const structures = pos.lookFor(LOOK_STRUCTURES);
-        if (structures.length > 0) continue;
+        const sites = pos.lookFor(LOOK_CONSTRUCTION_SITES);
 
-        // Count walkable neighbors (better positions have more access)
-        let walkableNeighbors = 0;
-        for (let dx2 = -1; dx2 <= 1; dx2++) {
-          for (let dy2 = -1; dy2 <= 1; dy2++) {
-            if (dx2 === 0 && dy2 === 0) continue;
-            const nx = x + dx2;
-            const ny = y + dy2;
-            if (nx >= 1 && nx <= 48 && ny >= 1 && ny <= 48) {
-              if (terrain.get(nx, ny) !== TERRAIN_MASK_WALL) {
-                walkableNeighbors++;
-              }
-            }
-          }
-        }
-
-        candidates.push({ x, y, score: walkableNeighbors });
+        positions.push({
+          x,
+          y,
+          walkableNeighbors: this.countWalkableNeighbors(room, x, y),
+          hasStructure: structures.length > 0,
+          hasContainer: structures.some(structure => structure.structureType === STRUCTURE_CONTAINER),
+          hasContainerSite: sites.some(site => site.structureType === STRUCTURE_CONTAINER)
+        });
       }
     }
 
-    if (candidates.length === 0) return null;
-
-    // Sort by score (most walkable neighbors first)
-    candidates.sort((a, b) => b.score - a.score);
-
-    return candidates[0];
+    return positions;
   }
 
-  /**
-   * Place roads to remote rooms using the road network planner
-   */
-  private placeRemoteRoads(homeRoom: Room, remoteRooms: string[]): void {
-    // Calculate remote roads (this returns roads grouped by room)
-    const remoteRoadsByRoom = calculateRemoteRoads(homeRoom, remoteRooms);
-
-    // Place roads in home room
-    const homeRoads = remoteRoadsByRoom.get(homeRoom.name);
-    if (homeRoads) {
-      this.placeRoadsInRoom(homeRoom, homeRoads);
-    }
-
-    // Place roads in remote rooms (if we have vision)
-    for (const remoteName of remoteRooms) {
-      const remoteRoom = Game.rooms[remoteName];
-      if (!remoteRoom) continue;
-
-      const remoteRoads = remoteRoadsByRoom.get(remoteName);
-      if (remoteRoads) {
-        this.placeRoadsInRoom(remoteRoom, remoteRoads);
-      }
-    }
-  }
-
-  /**
-   * Place road construction sites in a room from a set of positions
-   */
-  private placeRoadsInRoom(room: Room, roadPositions: Set<string>): void {
-    const existingSites = room.find(FIND_CONSTRUCTION_SITES);
-    const existingRoads = room.find(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_ROAD
-    });
-
-    // Check construction site limit
-    if (existingSites.length >= MAX_CONSTRUCTION_SITES_PER_REMOTE_ROOM) return;
-
-    const existingRoadSet = new Set(existingRoads.map(r => `${r.pos.x},${r.pos.y}`));
-    const existingSiteSet = new Set(
-      existingSites.filter(s => s.structureType === STRUCTURE_ROAD).map(s => `${s.pos.x},${s.pos.y}`)
-    );
-
+  private countWalkableNeighbors(room: Room, x: number, y: number): number {
     const terrain = room.getTerrain();
-    let placed = 0;
+    let walkableNeighbors = 0;
 
-    for (const posKey of roadPositions) {
-      if (placed >= MAX_ROAD_SITES_PER_TICK) break;
-      if (existingSites.length + placed >= MAX_CONSTRUCTION_SITES_PER_REMOTE_ROOM) break;
-
-      // Skip if road or site already exists
-      if (existingRoadSet.has(posKey)) continue;
-      if (existingSiteSet.has(posKey)) continue;
-
-      // Parse position
-      const [xStr, yStr] = posKey.split(",");
-      const x = parseInt(xStr, 10);
-      const y = parseInt(yStr, 10);
-
-      // Skip walls
-      if (terrain.get(x, y) === TERRAIN_MASK_WALL) continue;
-
-      // Place construction site
-      const result = room.createConstructionSite(x, y, STRUCTURE_ROAD);
-      if (result === OK) {
-        placed++;
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx >= 1 && nx <= 48 && ny >= 1 && ny <= 48 && terrain.get(nx, ny) !== TERRAIN_MASK_WALL) {
+          walkableNeighbors++;
+        }
       }
     }
 
-    if (placed > 0) {
-      logger.debug(`Placed ${placed} remote road construction sites in ${room.name}`, {
+    return walkableNeighbors;
+  }
+
+  private executeRemoteInfrastructureIntent(intent: RemoteInfrastructureIntent): void {
+    for (const site of intent.containerSites) {
+      const room = Game.rooms[site.roomName];
+      if (!room) continue;
+      const result = room.createConstructionSite(site.x, site.y, site.structureType);
+      if (result === OK) {
+        logger.info(`Placed container construction site at source ${site.sourceId} in ${site.roomName}`, {
+          subsystem: "RemoteInfra"
+        });
+      } else {
+        logger.debug(`Failed to place container at source ${site.sourceId} in ${site.roomName}: ${result}`, {
+          subsystem: "RemoteInfra"
+        });
+      }
+    }
+
+    const roadCounts = new Map<string, number>();
+    for (const site of intent.roadSites) {
+      const room = Game.rooms[site.roomName];
+      if (!room) continue;
+      const result = room.createConstructionSite(site.x, site.y, site.structureType);
+      if (result === OK) {
+        roadCounts.set(site.roomName, (roadCounts.get(site.roomName) ?? 0) + 1);
+      }
+    }
+
+    for (const [roomName, placed] of roadCounts) {
+      logger.debug(`Placed ${placed} remote road construction sites in ${roomName}`, {
         subsystem: "RemoteInfra"
       });
     }

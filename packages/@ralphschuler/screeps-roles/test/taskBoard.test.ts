@@ -145,6 +145,52 @@ describe("TaskBoard", () => {
     expect(stats?.staleReservations).to.be.greaterThan(0);
   });
 
+  it("records same-tick cleanup so repeated assignment paths can skip cleanup churn", () => {
+    const spawn = makeSpawn("spawn1" as Id<StructureSpawn>, 100);
+    const room = createMockRoom("W1N1");
+    (room as any).find = (type: number) => type === FIND_MY_STRUCTURES ? [spawn] : [];
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === spawn.id ? spawn : null;
+
+    const creep = createMockCreep("hauler1", { room, memory: { role: "hauler", family: "economy", homeRoom: room.name, version: 1 }, store: makeStore(100, 100) });
+    MockGame.creeps[creep.name] = creep;
+
+    taskBoard.refreshRoom(room);
+    taskBoard.getAssignedDeliveryAction(makeContext(creep, room));
+
+    const board = (Memory as any).creepTaskBoard.rooms[room.name];
+    expect(board.lastCleanedTick).to.equal(Game.time);
+  });
+
+  it("prunes stale invisible room boards during visible room refresh", () => {
+    const room = createMockRoom("W1N1");
+    MockGame.rooms[room.name] = room;
+    (Memory as any).creepTaskBoard = {
+      enabled: true,
+      rooms: {
+        W1N1: {
+          roomName: "W1N1",
+          tasks: {},
+          lastGeneratedTick: Game.time,
+          lastCleanedTick: Game.time,
+          stats: { generated: 0, assigned: 0, completed: 0, invalidated: 0, staleReservations: 0, preemptions: 0 }
+        },
+        W9N9: {
+          roomName: "W9N9",
+          tasks: {},
+          lastGeneratedTick: Game.time - 2000,
+          lastCleanedTick: Game.time - 2000,
+          stats: { generated: 0, assigned: 0, completed: 0, invalidated: 0, staleReservations: 0, preemptions: 0 }
+        }
+      }
+    };
+
+    taskBoard.refreshRoom(room);
+
+    expect((Memory as any).creepTaskBoard.rooms.W1N1).to.not.equal(undefined);
+    expect((Memory as any).creepTaskBoard.rooms.W9N9).to.equal(undefined);
+  });
+
   it("can be disabled as rollback", () => {
     taskBoard.setEnabled(false);
     const room = createMockRoom("W1N1");

@@ -54,7 +54,7 @@ Multiple separate caching systems:
 
 ## Decision
 
-Implement a **unified cache system** (`packages/screeps-bot/src/cache/`) with TTL-based expiration, namespace isolation, and integrated monitoring.
+Implement a **unified cache system** (`packages/@ralphschuler/screeps-cache/src/`) with TTL-based expiration, namespace isolation, and integrated monitoring.
 
 ### Architecture
 
@@ -333,15 +333,15 @@ Cache overhead remains minimal even at large scales.
   - [LRU Cache Algorithm](https://en.wikipedia.org/wiki/Cache_replacement_policies#LRU)
   - [TTL Caching](https://en.wikipedia.org/wiki/Time_to_live)
 - **Internal Documentation**:
-  - `packages/screeps-bot/src/cache/README.md` - Cache system documentation
-  - `packages/screeps-bot/src/cache/unifiedCache.ts` - Implementation
+  - `packages/@ralphschuler/screeps-cache/src/README.md` - Cache system documentation
+  - `packages/@ralphschuler/screeps-cache/src/index.ts` - Implementation
   - `docs/MEMORY_ARCHITECTURE.md` - Memory management guide
 
 ## Implementation Notes
 
 ### Cache Implementation
 
-**Location**: `packages/screeps-bot/src/cache/`
+**Location**: `packages/@ralphschuler/screeps-cache/src/`
 
 **Files**:
 - `CacheManager.ts`: Main cache interface and orchestration

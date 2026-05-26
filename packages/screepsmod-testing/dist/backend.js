@@ -2,9 +2,21 @@
 /**
  * Backend hook for screepsmod-testing
  *
- * This file integrates the testing framework with the Screeps server backend,
- * allowing tests to run within the game loop and access game state.
+ * This file integrates the testing framework with the Screeps private server.
+ * Screeps mods are activated by mutating the supplied config object; returning
+ * hook objects is not part of the private-server mod API.
  */
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -41,6 +53,22 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __read = (this && this.__read) || function (o, n) {
+    var m = typeof Symbol === "function" && o[Symbol.iterator];
+    if (!m) return o;
+    var i = m.call(o), r, ar = [], e;
+    try {
+        while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
+    }
+    catch (error) { e = { error: error }; }
+    finally {
+        try {
+            if (r && !r.done && (m = i["return"])) m.call(i);
+        }
+        finally { if (e) throw e.error; }
+    }
+    return ar;
+};
 var __values = (this && this.__values) || function(o) {
     var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
     if (m) return m.call(o);
@@ -57,7 +85,7 @@ var index_1 = require("./index");
 var persistence_1 = require("./persistence");
 var reporter_1 = require("./reporter");
 var initialized = false;
-var testInterval = 0; // Run tests every N ticks (0 = run once)
+var testInterval = 0; // Run tests every N ticks (0 = run once for legacy runner)
 var lastTestTick = 0;
 var autoRunTests = false;
 var persistenceManager = null;
@@ -66,12 +94,35 @@ var consoleReporter = null;
 var outputFormat = 'console';
 var testFilter;
 var testFiles = [];
-/**
- * Backend module export for screepsmod
- */
-module.exports = function (config) {
+var latestSummary = null;
+var PLAYER_SANDBOX_TEST_SOURCE = "\n(function screepsmodTestingPlayerSandbox() {\n  const started = Date.now();\n  const failures = [];\n  let passed = 0;\n  let skipped = 0;\n\n  function pass() { passed += 1; }\n  function skip() { skipped += 1; }\n  function assert(name, predicate, details) {\n    try {\n      if (predicate()) {\n        pass();\n      } else {\n        failures.push({ name, message: details || 'assertion failed' });\n      }\n    } catch (error) {\n      failures.push({ name, message: error && (error.stack || error.message) || String(error) });\n    }\n  }\n\n  const game = typeof Game === 'object' && Game ? Game : {};\n  const memory = typeof Memory === 'object' && Memory ? Memory : {};\n  const rooms = Object.values(game.rooms || {});\n  const ownedRooms = rooms.filter(room => room && room.controller && room.controller.my);\n  const tick = Number(game.time || 0);\n\n  assert('server exposes Game and advances ticks', () => tick > 0, 'Game.time did not advance');\n  assert('our bot has at least one owned visible room', () => ownedRooms.length > 0, 'no owned visible rooms');\n  assert('owned room has a spawn after initialization', () => Object.keys(game.spawns || {}).length > 0, 'no owned spawns');\n  assert('global reset loop is not detected', () => (memory.__globalResetCount || 0) < 5, 'too many global resets');\n\n  if (tick < 100) {\n    skip();\n  } else {\n    assert('creep population exists after warmup', () => Object.keys(game.creeps || {}).length > 0, 'no creeps after warmup');\n  }\n\n  if (tick < 100) {\n    skip();\n  } else {\n    assert('CPU bucket is not chronically empty', () => ((game.cpu && game.cpu.bucket) || 10000) > 1000, 'CPU bucket below 1000');\n  }\n\n  if (tick < 100) {\n    skip();\n  } else {\n    assert(\n      'task board memory exists and can track room tasks',\n      () => Object.keys(((memory.creepTaskBoard || {}).rooms) || {}).length > 0,\n      'Memory.creepTaskBoard.rooms is empty'\n    );\n  }\n\n  assert('critical console error counter stays below threshold', () => (memory.ciCriticalConsoleErrors || 0) < 10, 'critical console errors above threshold');\n\n  memory.screepsmodTesting = {\n    source: 'screepsmod-testing-player-sandbox',\n    total: passed + failures.length + skipped,\n    passed,\n    failed: failures.length,\n    skipped,\n    failures,\n    tick,\n    duration: Date.now() - started\n  };\n}).call(global);\n";
+function installPlayerSandboxRunner(config) {
     var _a;
-    console.log('[screepsmod-testing] Mod loaded');
+    if (!((_a = config.engine) === null || _a === void 0 ? void 0 : _a.on))
+        return;
+    config.engine.on('playerSandbox', function (sandbox) {
+        try {
+            sandbox.run(PLAYER_SANDBOX_TEST_SOURCE);
+        }
+        catch (error) {
+            console.log("[screepsmod-testing] playerSandbox test runner failed: ".concat((error === null || error === void 0 ? void 0 : error.stack) || (error === null || error === void 0 ? void 0 : error.message) || String(error)));
+        }
+    });
+}
+function installCliCommands(config) {
+    var _a;
+    if (!((_a = config.cli) === null || _a === void 0 ? void 0 : _a.on))
+        return;
+    config.cli.on('cliSandbox', function (sandbox) {
+        sandbox.getTestSummary = function () { return latestSummary !== null && latestSummary !== void 0 ? latestSummary : null; };
+        sandbox.printTestSummary = function () {
+            var summary = latestSummary !== null && latestSummary !== void 0 ? latestSummary : null;
+            sandbox.print(JSON.stringify(summary));
+            return summary;
+        };
+    });
+}
+function disableUnstableNpcCronjobs(config) {
     // The Docker CI world can start with incomplete terrain data for NPC stronghold
     // generation on Screeps 4.3.0 + Node 22. Disable these optional NPC cronjobs
     // so auth/upload smoke tests are not interrupted by backend reset loops.
@@ -80,13 +131,167 @@ module.exports = function (config) {
         delete config.cronjobs.expandStrongholds;
         console.log('[screepsmod-testing] Disabled NPC stronghold cronjobs for test server stability');
     }
-    // Read configuration
+}
+function readBotCodeState(storage, userId) {
+    return __awaiter(this, void 0, void 0, function () {
+        var codeCollection, activeCode, modules;
+        var _a;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    codeCollection = storage.db['users.code'];
+                    if (!(codeCollection === null || codeCollection === void 0 ? void 0 : codeCollection.findOne))
+                        return [2 /*return*/, { hasBotCode: true, bypassWarmup: true }];
+                    return [4 /*yield*/, codeCollection.findOne({
+                            user: String(userId),
+                            activeWorld: true
+                        })];
+                case 1:
+                    activeCode = _b.sent();
+                    modules = (_a = activeCode === null || activeCode === void 0 ? void 0 : activeCode.modules) !== null && _a !== void 0 ? _a : {};
+                    return [2 /*return*/, {
+                            hasBotCode: Object.values(modules).some(function (module) { return typeof module === 'string' && module.trim().length > 0; }),
+                            bypassWarmup: false
+                        }];
+            }
+        });
+    });
+}
+function isBotRuntimeWarmed(memory, tick, botCodeState, warmupTicks) {
+    if (!botCodeState.hasBotCode) {
+        delete memory.__screepsmodTestingBotCodeSeenAt;
+        return false;
+    }
+    if (botCodeState.bypassWarmup)
+        return true;
+    if (typeof memory.__screepsmodTestingBotCodeSeenAt !== 'number') {
+        memory.__screepsmodTestingBotCodeSeenAt = tick;
+    }
+    return tick - memory.__screepsmodTestingBotCodeSeenAt >= warmupTicks;
+}
+function runBackendBotAssertions(config) {
+    return __awaiter(this, void 0, void 0, function () {
+        var started, failures, passed, skipped, assert, skipRuntimeAssertion, common, storage, username, user, userId, tick, _a, memoryKey, rawMemory, memory, warmupTicks, botRuntimeWarmed, _b, _c, _d, ownedControllers, spawns, creeps;
+        var _e, _f, _g, _h, _j, _k, _l, _m;
+        return __generator(this, function (_o) {
+            switch (_o.label) {
+                case 0:
+                    started = Date.now();
+                    failures = [];
+                    passed = 0;
+                    skipped = 0;
+                    assert = function (name, predicate, message) {
+                        try {
+                            if (predicate())
+                                passed += 1;
+                            else
+                                failures.push({ name: name, message: message });
+                        }
+                        catch (error) {
+                            failures.push({ name: name, message: (error === null || error === void 0 ? void 0 : error.stack) || (error === null || error === void 0 ? void 0 : error.message) || String(error) });
+                        }
+                    };
+                    skipRuntimeAssertion = function () { skipped += 1; };
+                    common = (_e = config.common) !== null && _e !== void 0 ? _e : require('@screeps/common');
+                    storage = common.storage;
+                    username = (_h = (_g = (_f = config.screepsmod) === null || _f === void 0 ? void 0 : _f.testing) === null || _g === void 0 ? void 0 : _g.username) !== null && _h !== void 0 ? _h : 'swarm-bot';
+                    return [4 /*yield*/, storage.db.users.findOne({ username: username })];
+                case 1:
+                    user = _o.sent();
+                    if (!(user === null || user === void 0 ? void 0 : user._id))
+                        return [2 /*return*/];
+                    userId = user._id;
+                    _a = Number;
+                    return [4 /*yield*/, storage.env.get(storage.env.keys.GAMETIME)];
+                case 2:
+                    tick = _a.apply(void 0, [(_j = _o.sent()) !== null && _j !== void 0 ? _j : 0]);
+                    memoryKey = storage.env.keys.MEMORY + userId;
+                    return [4 /*yield*/, storage.env.get(memoryKey)];
+                case 3:
+                    rawMemory = _o.sent();
+                    memory = {};
+                    try {
+                        memory = rawMemory ? JSON.parse(rawMemory) : {};
+                    }
+                    catch (error) {
+                        memory = { __screepsmodTestingMemoryParseError: (error === null || error === void 0 ? void 0 : error.message) || String(error) };
+                    }
+                    warmupTicks = Number((_m = (_l = (_k = config.screepsmod) === null || _k === void 0 ? void 0 : _k.testing) === null || _l === void 0 ? void 0 : _l.runtimeWarmupTicks) !== null && _m !== void 0 ? _m : 100);
+                    _b = isBotRuntimeWarmed;
+                    _c = [memory,
+                        tick];
+                    return [4 /*yield*/, readBotCodeState(storage, userId)];
+                case 4:
+                    botRuntimeWarmed = _b.apply(void 0, _c.concat([_o.sent(), warmupTicks]));
+                    return [4 /*yield*/, Promise.all([
+                            storage.db['rooms.objects'].find({ type: 'controller', user: userId }),
+                            storage.db['rooms.objects'].find({ type: 'spawn', user: userId }),
+                            storage.db['rooms.objects'].find({ type: 'creep', user: userId })
+                        ])];
+                case 5:
+                    _d = __read.apply(void 0, [_o.sent(), 3]), ownedControllers = _d[0], spawns = _d[1], creeps = _d[2];
+                    assert('server exposes storage and advances ticks', function () { return tick > 0; }, 'gameTime did not advance');
+                    assert('our bot has at least one owned room controller', function () { return ownedControllers.length > 0; }, 'no owned controllers');
+                    assert('owned room has a spawn after initialization', function () { return spawns.length > 0; }, 'no owned spawns');
+                    assert('global reset loop is not detected', function () { return (memory.__globalResetCount || 0) < 5; }, 'too many global resets');
+                    if (!botRuntimeWarmed)
+                        skipRuntimeAssertion();
+                    else
+                        assert('creep population exists after warmup', function () { return creeps.length > 0; }, 'no creeps after warmup');
+                    if (!botRuntimeWarmed)
+                        skipRuntimeAssertion();
+                    else
+                        assert('CPU bucket is not chronically empty', function () { var _a; return ((_a = user.cpuAvailable) !== null && _a !== void 0 ? _a : 10000) > 1000; }, 'CPU bucket below 1000');
+                    if (!botRuntimeWarmed)
+                        skipRuntimeAssertion();
+                    else
+                        assert('task board memory exists and can track room tasks', function () { var _a, _b; return Object.keys((_b = (_a = memory.creepTaskBoard) === null || _a === void 0 ? void 0 : _a.rooms) !== null && _b !== void 0 ? _b : {}).length > 0; }, 'Memory.creepTaskBoard.rooms is empty');
+                    assert('critical console error counter stays below threshold', function () { return (memory.ciCriticalConsoleErrors || 0) < 10; }, 'critical console errors above threshold');
+                    latestSummary = {
+                        source: 'screepsmod-testing-backend-cronjob',
+                        total: passed + failures.length + skipped,
+                        passed: passed,
+                        failed: failures.length,
+                        skipped: skipped,
+                        failures: failures,
+                        tick: tick,
+                        duration: Date.now() - started
+                    };
+                    memory.screepsmodTesting = latestSummary;
+                    return [4 /*yield*/, storage.env.set(memoryKey, JSON.stringify(memory))];
+                case 6:
+                    _o.sent();
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+function installBackendCronjobRunner(config) {
+    if (!config.cronjobs)
+        return;
+    config.cronjobs.screepsmodTesting = [1, function () {
+            runBackendBotAssertions(config).catch(function (error) {
+                console.log("[screepsmod-testing] backend assertion cronjob failed: ".concat((error === null || error === void 0 ? void 0 : error.stack) || (error === null || error === void 0 ? void 0 : error.message) || String(error)));
+            });
+        }];
+}
+/**
+ * Backend module export for screepsmod.
+ */
+module.exports = function (config) {
+    var _a;
+    console.log('[screepsmod-testing] Mod loaded');
+    disableUnstableNpcCronjobs(config);
+    installBackendCronjobRunner(config);
+    installPlayerSandboxRunner(config);
+    installCliCommands(config);
+    // Read legacy framework configuration. The legacy runner is kept for package
+    // consumers, but CI bot validation is performed through playerSandbox above.
     var modConfig = ((_a = config.screepsmod) === null || _a === void 0 ? void 0 : _a.testing) || {};
     testInterval = modConfig.testInterval || 0;
-    autoRunTests = modConfig.autoRun !== false; // Default to true
+    autoRunTests = modConfig.autoRun === true;
     outputFormat = modConfig.outputFormat || 'console';
     testFiles = Array.isArray(modConfig.testFiles) ? modConfig.testFiles : [];
-    // Initialize managers based on configuration
     if (modConfig.persistence !== false) {
         persistenceManager = new persistence_1.PersistenceManager(modConfig.persistencePath, modConfig.historySize);
     }
@@ -96,38 +301,30 @@ module.exports = function (config) {
     if (outputFormat === 'console' || outputFormat === 'all') {
         consoleReporter = new reporter_1.ConsoleReporter();
     }
-    // Parse test filter from configuration
     if (modConfig.filter) {
         testFilter = modConfig.filter;
     }
     return {
-        /**
-         * Called when the backend starts
-         */
         onServerStart: function () {
             return __awaiter(this, void 0, void 0, function () {
                 return __generator(this, function (_a) {
                     if (testInterval > 0) {
-                        console.log("[screepsmod-testing] Tests will run every ".concat(testInterval, " ticks"));
+                        console.log("[screepsmod-testing] Legacy tests will run every ".concat(testInterval, " ticks"));
                     }
                     else if (autoRunTests) {
-                        console.log('[screepsmod-testing] Tests will run once on first tick');
-                    }
-                    else {
-                        console.log('[screepsmod-testing] Auto-run disabled, use console commands to run tests');
+                        console.log('[screepsmod-testing] Legacy tests will run once on first tick');
                     }
                     return [2 /*return*/];
                 });
             });
         },
-        /**
-         * Called every game tick
-         */
         onTickStart: function (tick, gameData) {
             return __awaiter(this, void 0, void 0, function () {
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
+                            if (!autoRunTests)
+                                return [2 /*return*/];
                             if (!!initialized) return [3 /*break*/, 2];
                             return [4 /*yield*/, this.loadTests(gameData)];
                         case 1:
@@ -135,19 +332,15 @@ module.exports = function (config) {
                             initialized = true;
                             _a.label = 2;
                         case 2:
-                            if (!(autoRunTests && (testInterval === 0 && lastTestTick === 0))) return [3 /*break*/, 4];
-                            // Run once on first tick
+                            if (!(testInterval === 0 && lastTestTick === 0)) return [3 /*break*/, 4];
                             return [4 /*yield*/, this.runTests(tick, gameData)];
                         case 3:
-                            // Run once on first tick
                             _a.sent();
                             return [3 /*break*/, 6];
                         case 4:
                             if (!(testInterval > 0 && (tick - lastTestTick >= testInterval))) return [3 /*break*/, 6];
-                            // Run periodically
                             return [4 /*yield*/, this.runTests(tick, gameData)];
                         case 5:
-                            // Run periodically
                             _a.sent();
                             _a.label = 6;
                         case 6: return [2 /*return*/];
@@ -155,15 +348,12 @@ module.exports = function (config) {
                 });
             });
         },
-        /**
-         * Load test files
-         */
-        loadTests: function (gameData) {
+        loadTests: function (_gameData) {
             return __awaiter(this, void 0, void 0, function () {
-                var testFiles_1, testFiles_1_1, file, suites, suites_1, suites_1_1, suite_1;
-                var e_1, _a, e_2, _b;
-                return __generator(this, function (_c) {
-                    console.log('[screepsmod-testing] Loading tests...');
+                var testFiles_1, testFiles_1_1, file, suites;
+                var e_1, _a;
+                return __generator(this, function (_b) {
+                    console.log('[screepsmod-testing] Loading legacy tests...');
                     try {
                         for (testFiles_1 = __values(testFiles), testFiles_1_1 = testFiles_1.next(); !testFiles_1_1.done; testFiles_1_1 = testFiles_1.next()) {
                             file = testFiles_1_1.value;
@@ -185,34 +375,18 @@ module.exports = function (config) {
                         finally { if (e_1) throw e_1.error; }
                     }
                     suites = index_1.testRunner.getSuites();
-                    console.log("[screepsmod-testing] Loaded ".concat(suites.length, " test suites"));
-                    try {
-                        for (suites_1 = __values(suites), suites_1_1 = suites_1.next(); !suites_1_1.done; suites_1_1 = suites_1.next()) {
-                            suite_1 = suites_1_1.value;
-                            console.log("[screepsmod-testing]   - ".concat(suite_1.name, " (").concat(suite_1.tests.length, " tests)"));
-                        }
-                    }
-                    catch (e_2_1) { e_2 = { error: e_2_1 }; }
-                    finally {
-                        try {
-                            if (suites_1_1 && !suites_1_1.done && (_b = suites_1.return)) _b.call(suites_1);
-                        }
-                        finally { if (e_2) throw e_2.error; }
-                    }
+                    console.log("[screepsmod-testing] Loaded ".concat(suites.length, " legacy test suites"));
                     return [2 /*return*/];
                 });
             });
         },
-        /**
-         * Run all registered tests
-         */
         runTests: function (tick, gameData) {
             return __awaiter(this, void 0, void 0, function () {
-                var context, summary, output;
+                var context, summary;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
-                            console.log("[screepsmod-testing] Running tests at tick ".concat(tick));
+                            console.log("[screepsmod-testing] Running legacy tests at tick ".concat(tick));
                             lastTestTick = tick;
                             context = {
                                 Game: gameData.Game || {},
@@ -220,158 +394,34 @@ module.exports = function (config) {
                                 RawMemory: gameData.RawMemory || {},
                                 InterShardMemory: gameData.InterShardMemory || {},
                                 tick: tick,
-                                getObjectById: function (id) {
-                                    var _a, _b;
-                                    return (_b = (_a = gameData.Game) === null || _a === void 0 ? void 0 : _a.getObjectById) === null || _b === void 0 ? void 0 : _b.call(_a, id);
-                                },
-                                getRoomObject: function (roomName) {
-                                    var _a, _b;
-                                    return (_b = (_a = gameData.Game) === null || _a === void 0 ? void 0 : _a.rooms) === null || _b === void 0 ? void 0 : _b[roomName];
-                                }
+                                getObjectById: function (id) { var _a, _b; return (_b = (_a = gameData.Game) === null || _a === void 0 ? void 0 : _a.getObjectById) === null || _b === void 0 ? void 0 : _b.call(_a, id); },
+                                getRoomObject: function (roomName) { var _a, _b; return (_b = (_a = gameData.Game) === null || _a === void 0 ? void 0 : _a.rooms) === null || _b === void 0 ? void 0 : _b[roomName]; }
                             };
-                            // Run tests with filter
                             return [4 /*yield*/, index_1.testRunner.start(context, testFilter)];
                         case 1:
-                            // Run tests with filter
                             _a.sent();
                             summary = index_1.testRunner.getSummary(tick);
-                            // Store results in backend data and bot-accessible Memory for CI polling.
+                            latestSummary = summary;
                             if (!gameData.__testResults) {
                                 gameData.__testResults = {};
                             }
                             gameData.__testResults = summary;
                             if (gameData.Memory && typeof gameData.Memory === 'object') {
-                                gameData.Memory.screepsmodTesting = summary;
+                                gameData.Memory.screepsmodTesting = __assign(__assign({}, summary), { source: 'screepsmod-testing-legacy-runner' });
                             }
-                            // Persist results if enabled
-                            if (persistenceManager) {
+                            if (persistenceManager)
                                 persistenceManager.save(summary);
-                            }
-                            // Generate reports based on output format
-                            if (jsonReporter) {
-                                output = jsonReporter.generate(summary);
-                                jsonReporter.write(output);
-                            }
-                            if (consoleReporter && (outputFormat === 'console' || outputFormat === 'all')) {
+                            if (jsonReporter)
+                                jsonReporter.write(jsonReporter.generate(summary));
+                            if (consoleReporter && (outputFormat === 'console' || outputFormat === 'all'))
                                 consoleReporter.printSummary(summary);
-                            }
-                            // Generate JUnit XML if configured
                             if (outputFormat === 'junit' || outputFormat === 'all') {
-                                if (!jsonReporter) {
+                                if (!jsonReporter)
                                     jsonReporter = new reporter_1.JSONReporter();
-                                }
                                 jsonReporter.writeJUnit(summary);
                             }
                             return [2 /*return*/];
                     }
-                });
-            });
-        },
-        /**
-         * Register console commands
-         */
-        consoleCommands: function () {
-            return __awaiter(this, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    return [2 /*return*/, {
-                            /**
-                             * Run all tests (note: tests will run automatically based on configuration)
-                             */
-                            runTests: function () {
-                                console.log('[screepsmod-testing] Tests run automatically based on testInterval configuration.');
-                                console.log('[screepsmod-testing] To manually trigger tests, set testInterval > 0 or restart the server.');
-                                return 'Tests are configured to run automatically. Use getTestSummary() to see results.';
-                            },
-                            /**
-                             * List all registered tests
-                             */
-                            listTests: function () {
-                                var e_3, _a, e_4, _b;
-                                var suites = index_1.testRunner.getSuites();
-                                console.log("[screepsmod-testing] Registered test suites: ".concat(suites.length));
-                                try {
-                                    for (var suites_2 = __values(suites), suites_2_1 = suites_2.next(); !suites_2_1.done; suites_2_1 = suites_2.next()) {
-                                        var suite_2 = suites_2_1.value;
-                                        console.log("  ".concat(suite_2.name, ":"));
-                                        try {
-                                            for (var _c = (e_4 = void 0, __values(suite_2.tests)), _d = _c.next(); !_d.done; _d = _c.next()) {
-                                                var test_1 = _d.value;
-                                                var status = test_1.skip ? '[SKIPPED]' : '';
-                                                console.log("    - ".concat(test_1.name, " ").concat(status));
-                                            }
-                                        }
-                                        catch (e_4_1) { e_4 = { error: e_4_1 }; }
-                                        finally {
-                                            try {
-                                                if (_d && !_d.done && (_b = _c.return)) _b.call(_c);
-                                            }
-                                            finally { if (e_4) throw e_4.error; }
-                                        }
-                                    }
-                                }
-                                catch (e_3_1) { e_3 = { error: e_3_1 }; }
-                                finally {
-                                    try {
-                                        if (suites_2_1 && !suites_2_1.done && (_a = suites_2.return)) _a.call(suites_2);
-                                    }
-                                    finally { if (e_3) throw e_3.error; }
-                                }
-                                return "Found ".concat(suites.length, " test suites");
-                            },
-                            /**
-                             * Clear all test results
-                             */
-                            clearTests: function () {
-                                index_1.testRunner.clear();
-                                return 'Test results cleared';
-                            },
-                            /**
-                             * Get test summary
-                             */
-                            getTestSummary: function () {
-                                var summary = index_1.testRunner.getSummary(0);
-                                return {
-                                    total: summary.total,
-                                    passed: summary.passed,
-                                    failed: summary.failed,
-                                    skipped: summary.skipped,
-                                    duration: summary.duration,
-                                    tickRange: "".concat(summary.startTick, "-").concat(summary.endTick)
-                                };
-                            },
-                            /**
-                             * Get test history from persistence
-                             */
-                            getTestHistory: function () {
-                                if (!persistenceManager) {
-                                    return 'Persistence is not enabled';
-                                }
-                                return persistenceManager.getHistory();
-                            },
-                            /**
-                             * Get test statistics from history
-                             */
-                            getTestStatistics: function () {
-                                if (!persistenceManager) {
-                                    return 'Persistence is not enabled';
-                                }
-                                return persistenceManager.getStatistics();
-                            },
-                            /**
-                             * Set test filter
-                             */
-                            setTestFilter: function (filter) {
-                                testFilter = filter;
-                                return "Filter set: ".concat(JSON.stringify(filter));
-                            },
-                            /**
-                             * Clear test filter
-                             */
-                            clearTestFilter: function () {
-                                testFilter = undefined;
-                                return 'Filter cleared';
-                            }
-                        }];
                 });
             });
         }

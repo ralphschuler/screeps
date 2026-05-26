@@ -14,6 +14,13 @@ import {
   migrationRunner
 } from "@ralphschuler/screeps-memory";
 import { Command } from "../core/commandRegistry";
+import {
+  formatMemoryConsumerReport,
+  formatMemoryMigrationReport,
+  formatMemoryPruneReport,
+  formatMemorySegmentsReport,
+  formatMemoryStatusReport
+} from "./memoryOperationsReport";
 
 /**
  * Memory management commands
@@ -27,20 +34,7 @@ export class MemoryCommands {
     category: "Memory"
   })
   public status(): string {
-    const stats = memoryMonitor.checkMemoryUsage();
-    const breakdown = stats.breakdown;
-
-    let output = `Memory Status: ${stats.status.toUpperCase()}\n`;
-    output += `Usage: ${memoryMonitor.formatBytes(stats.used)} / ${memoryMonitor.formatBytes(stats.limit)} (${(stats.percentage * 100).toFixed(1)}%)\n\n`;
-    output += `Breakdown:\n`;
-    output += `  Empire:        ${memoryMonitor.formatBytes(breakdown.empire)} (${((breakdown.empire / breakdown.total) * 100).toFixed(1)}%)\n`;
-    output += `  Rooms:         ${memoryMonitor.formatBytes(breakdown.rooms)} (${((breakdown.rooms / breakdown.total) * 100).toFixed(1)}%)\n`;
-    output += `  Creeps:        ${memoryMonitor.formatBytes(breakdown.creeps)} (${((breakdown.creeps / breakdown.total) * 100).toFixed(1)}%)\n`;
-    output += `  Clusters:      ${memoryMonitor.formatBytes(breakdown.clusters)} (${((breakdown.clusters / breakdown.total) * 100).toFixed(1)}%)\n`;
-    output += `  SS2 Queue:     ${memoryMonitor.formatBytes(breakdown.ss2PacketQueue)} (${((breakdown.ss2PacketQueue / breakdown.total) * 100).toFixed(1)}%)\n`;
-    output += `  Other:         ${memoryMonitor.formatBytes(breakdown.other)} (${((breakdown.other / breakdown.total) * 100).toFixed(1)}%)\n`;
-
-    return output;
+    return formatMemoryStatusReport(memoryMonitor.checkMemoryUsage(), memoryMonitor);
   }
 
   @Command({
@@ -51,24 +45,10 @@ export class MemoryCommands {
     category: "Memory"
   })
   public analyze(topN = 10): string {
-    const consumers = memoryMonitor.getLargestConsumers(topN);
-    const recommendations = memoryPruner.getRecommendations();
-
-    let output = `Top ${topN} Memory Consumers:\n`;
-    consumers.forEach((consumer, i) => {
-      output += `${i + 1}. ${consumer.type}:${consumer.name} - ${memoryMonitor.formatBytes(consumer.size)}\n`;
-    });
-
-    if (recommendations.length > 0) {
-      output += `\nRecommendations:\n`;
-      recommendations.forEach(rec => {
-        output += `- ${rec}\n`;
-      });
-    } else {
-      output += `\nNo recommendations at this time.\n`;
-    }
-
-    return output;
+    return formatMemoryConsumerReport(
+      { topN, consumers: memoryMonitor.getLargestConsumers(topN), recommendations: memoryPruner.getRecommendations() },
+      memoryMonitor
+    );
   }
 
   @Command({
@@ -79,16 +59,7 @@ export class MemoryCommands {
     category: "Memory"
   })
   public prune(): string {
-    const stats = memoryPruner.pruneAll();
-
-    let output = `Memory Pruning Complete:\n`;
-    output += `  Dead creeps removed:        ${stats.deadCreeps}\n`;
-    output += `  Event log entries removed:  ${stats.eventLogs}\n`;
-    output += `  Stale intel removed:        ${stats.staleIntel}\n`;
-    output += `  Market history removed:     ${stats.marketHistory}\n`;
-    output += `  Total bytes saved:          ${memoryMonitor.formatBytes(stats.bytesSaved)}\n`;
-
-    return output;
+    return formatMemoryPruneReport(memoryPruner.pruneAll(), memoryMonitor);
   }
 
   @Command({
@@ -99,31 +70,14 @@ export class MemoryCommands {
     category: "Memory"
   })
   public segments(): string {
-    const activeSegments = memorySegmentManager.getActiveSegments();
-
-    let output = `Memory Segments:\n\n`;
-    output += `Active segments: ${activeSegments.length}/10\n`;
-    if (activeSegments.length > 0) {
-      output += `  Loaded: [${activeSegments.join(", ")}]\n\n`;
-    }
-
-    output += `Allocation Strategy:\n`;
-    for (const [type, range] of Object.entries(SEGMENT_ALLOCATION)) {
-      output += `  ${type.padEnd(20)} ${range.start.toString().padStart(2)}-${range.end.toString().padEnd(2)}`;
-
-      // Check if any segments in this range are active
-      const activeInRange = activeSegments.filter(s => s >= range.start && s <= range.end);
-      if (activeInRange.length > 0) {
-        const sizes = activeInRange.map(s => {
-          const size = memorySegmentManager.getSegmentSize(s);
-          return `${s}:${memoryMonitor.formatBytes(size)}`;
-        });
-        output += ` [${sizes.join(", ")}]`;
-      }
-      output += `\n`;
-    }
-
-    return output;
+    return formatMemorySegmentsReport(
+      {
+        activeSegments: memorySegmentManager.getActiveSegments(),
+        allocation: SEGMENT_ALLOCATION,
+        segmentSize: segment => memorySegmentManager.getSegmentSize(segment)
+      },
+      memoryMonitor
+    );
   }
 
   @Command({
@@ -170,24 +124,11 @@ export class MemoryCommands {
     category: "Memory"
   })
   public migrations(): string {
-    const currentVersion = migrationRunner.getCurrentVersion();
-    const latestVersion = migrationRunner.getLatestVersion();
-    const pending = migrationRunner.getPendingMigrations();
-
-    let output = `Memory Migration Status:\n`;
-    output += `  Current version: ${currentVersion}\n`;
-    output += `  Latest version:  ${latestVersion}\n`;
-    output += `  Status: ${pending.length > 0 ? "PENDING" : "UP TO DATE"}\n\n`;
-
-    if (pending.length > 0) {
-      output += `Pending Migrations:\n`;
-      pending.forEach(migration => {
-        output += `  v${migration.version}: ${migration.description}\n`;
-      });
-      output += `\nMigrations will run automatically on next tick.\n`;
-    }
-
-    return output;
+    return formatMemoryMigrationReport({
+      currentVersion: migrationRunner.getCurrentVersion(),
+      latestVersion: migrationRunner.getLatestVersion(),
+      pending: migrationRunner.getPendingMigrations()
+    });
   }
 
   @Command({

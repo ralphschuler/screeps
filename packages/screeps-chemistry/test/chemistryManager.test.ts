@@ -180,6 +180,53 @@ describe('ChemistryManager', () => {
     });
   });
 
+  describe('executeReaction', () => {
+    it('should not run output labs that contain a different mineral', () => {
+      const reaction = REACTIONS[RESOURCE_HYDROXIDE];
+      const inputLab1 = {
+        id: 'input1',
+        mineralType: RESOURCE_HYDROGEN,
+        store: { [RESOURCE_HYDROGEN]: 1000 }
+      };
+      const inputLab2 = {
+        id: 'input2',
+        mineralType: RESOURCE_OXYGEN,
+        store: { [RESOURCE_OXYGEN]: 1000 }
+      };
+      const contaminatedOutput = {
+        id: 'output1',
+        mineralType: RESOURCE_UTRIUM,
+        cooldown: 0,
+        store: { getFreeCapacity: () => 1000 },
+        runReaction: () => OK
+      };
+      const cleanOutput = {
+        id: 'output2',
+        mineralType: undefined,
+        cooldown: 0,
+        store: { getFreeCapacity: () => 1000 },
+        runReactionCalls: 0,
+        runReaction: () => {
+          cleanOutput.runReactionCalls += 1;
+          return OK;
+        }
+      };
+      let contaminatedCalls = 0;
+      contaminatedOutput.runReaction = () => {
+        contaminatedCalls += 1;
+        return OK;
+      };
+      const room = {
+        find: () => [inputLab1, inputLab2, contaminatedOutput, cleanOutput]
+      } as any;
+
+      manager.executeReaction(room, reaction);
+
+      expect(contaminatedCalls).to.equal(0);
+      expect(cleanOutput.runReactionCalls).to.equal(1);
+    });
+  });
+
   describe('planReactions', () => {
     let mockRoom: any;
     let mockState: any;

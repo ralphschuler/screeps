@@ -1,7 +1,7 @@
 import { assert } from "chai";
-import { ROLE_DEFINITIONS } from "../../src/spawning/roleDefinitions";
-import { isEmergencySpawnState, isBootstrapMode, getBootstrapRole } from "../../src/spawning/bootstrapManager";
-import { runSpawnManager, getBestBody } from "../../src/spawning/spawnQueueManager";
+import { ROLE_DEFINITIONS } from "@ralphschuler/screeps-spawn";
+import { isEmergencySpawnState, isBootstrapMode, getBootstrapRole } from "@ralphschuler/screeps-spawn";
+import { configureSpawnIntegration, runSpawnManager, getBestBody } from "@ralphschuler/screeps-spawn";
 import type { SwarmState } from "../../src/memory/schemas";
 import { kernel } from "../../src/core/kernel";
 
@@ -157,6 +157,7 @@ describe("workforce collapse recovery", () => {
       const mockEmit: typeof kernel.emit = () => {};
       Object.assign(kernel, { emit: mockEmit });
     }
+    configureSpawnIntegration({ kernel });
   });
 
   describe("ultra-minimal emergency body (150 energy)", () => {
@@ -366,6 +367,7 @@ describe("workforce collapse recovery", () => {
       kernel.emit = ((type: string, data: Record<string, unknown>) => {
         events.push({ type, data });
       }) as typeof kernel.emit;
+      configureSpawnIntegration({ kernel });
 
       // Run spawn manager - should emit emergency event
       runSpawnManager(room, swarm);
@@ -388,6 +390,7 @@ describe("workforce collapse recovery", () => {
       kernel.emit = ((type: string, data: Record<string, unknown>) => {
         events.push({ type, data });
       }) as typeof kernel.emit;
+      configureSpawnIntegration({ kernel });
 
       // Run spawn manager
       runSpawnManager(room, swarm);

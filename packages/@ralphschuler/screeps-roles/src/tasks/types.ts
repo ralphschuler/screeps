@@ -53,6 +53,7 @@ export interface RoomTaskBoardMemory {
   roomName: string;
   tasks: Record<string, CreepTask>;
   lastGeneratedTick: number;
+  lastCleanedTick: number;
   stats: {
     generated: number;
     assigned: number;

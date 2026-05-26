@@ -13,9 +13,10 @@
  * Addresses Issue: Allow rooms to share resources between each other
  */
 
-import type { ClusterMemory, ResourceTransferRequest, SwarmState } from "./types";
 import { logger } from "@ralphschuler/screeps-core";
+import type { ClusterMemory, ResourceTransferRequest, SwarmState } from "./types";
 import { memoryManager } from "./adapters/memoryAdapter";
+import { planResourceSharingIntent } from "./resourceSharingIntent";
 
 /**
  * Resource sharing configuration
@@ -137,7 +138,7 @@ export class ResourceSharingManager {
       const toRoom = Game.rooms[req.toRoom];
       if (toRoom) {
         const swarm = memoryManager.getSwarmState(req.toRoom);
-        if (swarm && (swarm.metrics?.energyNeed || 0) === 0) {
+        if (swarm && swarm.metrics.energyNeed === 0) {
           logger.debug(`Resource request from ${req.fromRoom} to ${req.toRoom} no longer needed`, {
             subsystem: "ResourceSharing"
           });
@@ -188,7 +189,7 @@ export class ResourceSharingManager {
       } else if (energyNeed === 1) {
         needsAmount = this.config.lowEnergyThreshold - energyAvailable;
       }
-      
+
       // Focus room gets more aggressive about requesting resources
       if (isFocusRoom && energyNeed > 0) {
         needsAmount = Math.max(needsAmount, this.config.minTransferAmount * 2);
@@ -206,12 +207,10 @@ export class ResourceSharingManager {
         needsAmount
       });
 
-      // Update swarm metrics if they exist
-      if (swarm.metrics) {
-        swarm.metrics.energyAvailable = energyAvailable;
-        swarm.metrics.energyCapacity = energyCapacity;
-        swarm.metrics.energyNeed = energyNeed;
-      }
+      // Update swarm metrics
+      swarm.metrics.energyAvailable = energyAvailable;
+      swarm.metrics.energyCapacity = energyCapacity;
+      swarm.metrics.energyNeed = energyNeed;
     }
 
     return statuses;
@@ -247,7 +246,12 @@ export class ResourceSharingManager {
    * Calculate energy need level for a room
    * Focus rooms have higher thresholds to ensure they get priority for upgrading
    */
-  private calculateEnergyNeed(room: Room, energyAvailable: number, _swarm: SwarmState, isFocusRoom = false): 0 | 1 | 2 | 3 {
+  private calculateEnergyNeed(
+    room: Room,
+    energyAvailable: number,
+    _swarm: SwarmState,
+    isFocusRoom = false
+  ): 0 | 1 | 2 | 3 {
     // Critical: spawn in danger of not being able to spawn
     if (energyAvailable < this.config.criticalEnergyThreshold) {
       // Extra critical if spawn is low on energy and can't spawn
@@ -292,70 +296,25 @@ export class ResourceSharingManager {
    * Create resource transfer requests
    */
   private createTransferRequests(cluster: ClusterMemory, rooms: RoomResourceStatus[]): void {
-    // Sort by need (highest first)
-    const needyRooms = rooms.filter(r => r.energyNeed > 0).sort((a, b) => b.energyNeed - a.energyNeed);
-
-    // Sort providers by surplus (highest first)
-    const providerRooms = rooms.filter(r => r.canProvide > 0).sort((a, b) => b.canProvide - a.canProvide);
-
-    if (needyRooms.length === 0 || providerRooms.length === 0) {
-      return; // No matches possible
-    }
-
-    // Match needy rooms with providers
-    for (const needyRoom of needyRooms) {
-      // Check if room already has too many active requests
-      const existingRequests = cluster.resourceRequests.filter(r => r.toRoom === needyRoom.roomName);
-      if (existingRequests.length >= this.config.maxRequestsPerRoom) {
-        continue;
+    const intent = planResourceSharingIntent({
+      time: Game.time,
+      rooms: rooms.map(room => ({ ...room })),
+      existingRequests: cluster.resourceRequests,
+      distance: (fromRoom, toRoom) => Game.map.getRoomLinearDistance(fromRoom, toRoom),
+      policy: {
+        minTransferAmount: this.config.minTransferAmount,
+        maxRequestsPerRoom: this.config.maxRequestsPerRoom,
+        maxDistance: 3
       }
+    });
 
-      // Find best provider (closest with surplus)
-      let bestProvider: RoomResourceStatus | null = null;
-      let bestDistance = Infinity;
-
-      for (const provider of providerRooms) {
-        if (provider.roomName === needyRoom.roomName) continue;
-
-        // Check if already providing to this room
-        const alreadyProviding = cluster.resourceRequests.some(
-          r => r.fromRoom === provider.roomName && r.toRoom === needyRoom.roomName
-        );
-        if (alreadyProviding) continue;
-
-        const distance = Game.map.getRoomLinearDistance(provider.roomName, needyRoom.roomName);
-        if (distance < bestDistance && provider.canProvide >= this.config.minTransferAmount) {
-          bestDistance = distance;
-          bestProvider = provider;
-        }
-      }
-
-      if (bestProvider && bestDistance <= 3) {
-        // Only transfer between nearby rooms
-        // Create transfer request
-        const amount = Math.min(needyRoom.needsAmount, bestProvider.canProvide);
-
-        const request: ResourceTransferRequest = {
-          toRoom: needyRoom.roomName,
-          fromRoom: bestProvider.roomName,
-          resourceType: RESOURCE_ENERGY,
-          amount,
-          priority: needyRoom.energyNeed,
-          createdAt: Game.time,
-          assignedCreeps: [],
-          delivered: 0
-        };
-
-        cluster.resourceRequests.push(request);
-
-        logger.info(
-          `Created resource transfer: ${amount} energy from ${bestProvider.roomName} to ${needyRoom.roomName} (priority ${request.priority}, distance ${bestDistance})`,
-          { subsystem: "ResourceSharing" }
-        );
-
-        // Reduce provider's available amount
-        bestProvider.canProvide -= amount;
-      }
+    for (const request of intent.plannedRequests) {
+      cluster.resourceRequests.push(request);
+      const distance = Game.map.getRoomLinearDistance(request.fromRoom, request.toRoom);
+      logger.info(
+        `Created resource transfer: ${request.amount} energy from ${request.fromRoom} to ${request.toRoom} (priority ${request.priority}, distance ${distance})`,
+        { subsystem: "ResourceSharing" }
+      );
     }
   }
 
@@ -374,9 +333,12 @@ export class ResourceSharingManager {
       const request = cluster.resourceRequests[requestIndex];
       request.delivered += amount;
 
-      logger.debug(`Updated transfer progress: ${request.delivered}/${request.amount} from ${request.fromRoom} to ${request.toRoom}`, {
-        subsystem: "ResourceSharing"
-      });
+      logger.debug(
+        `Updated transfer progress: ${request.delivered}/${request.amount} from ${request.fromRoom} to ${request.toRoom}`,
+        {
+          subsystem: "ResourceSharing"
+        }
+      );
     }
   }
 }

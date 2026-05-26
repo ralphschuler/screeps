@@ -81,6 +81,17 @@ describe("expansion console commands", () => {
       expect(result).to.include("READY");
     });
 
+    it("should handle unavailable GCL progress totals without NaN output", () => {
+      // @ts-ignore test setup
+      global.Game.gcl.progressTotal = 0;
+
+      const result = expansionCommands.status();
+
+      expect(result).to.include("GCL: Level 2 (0.0% to next)");
+      expect(result).to.not.include("NaN");
+      expect(result).to.not.include("Infinity");
+    });
+
     it("should show at GCL limit when no slots available", () => {
       // Add 2 owned rooms to match GCL 2
       // @ts-ignore test setup

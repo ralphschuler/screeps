@@ -14,6 +14,7 @@
 import { globalCache } from "@ralphschuler/screeps-cache";
 import { createLogger } from "@ralphschuler/screeps-core";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
+import { type CollectionPointCandidate, planCollectionPointIntent } from "./collectionPointIntent";
 
 const logger = createLogger("CollectionPoint");
 
@@ -209,7 +210,7 @@ function calculateCollectionPoint(room: Room): RoomPosition | null {
   }
 
   // Generate candidate positions using ring search (more efficient than full grid)
-  const candidates: { pos: RoomPosition; score: number }[] = [];
+  const candidates: CollectionPointCandidate[] = [];
   const terrain = room.getTerrain();
 
   // Ring search: check positions at distances from MIN to MAX from spawn
@@ -238,32 +239,16 @@ function calculateCollectionPoint(room: Room): RoomPosition | null {
           continue;
         }
 
-        // Score the position
-        let score = 0;
-
-        // Prefer positions at PREFERRED_DISTANCE_FROM_SPAWN
-        const distanceDiff = Math.abs(distance - PREFERRED_DISTANCE_FROM_SPAWN);
-        score -= distanceDiff; // Lower difference = higher score
-
-        // Prefer positions closer to storage (if it exists)
-        if (storage) {
-          const storageDistance = pos.getRangeTo(storage.pos);
-          score -= storageDistance * STORAGE_DISTANCE_WEIGHT;
-        }
-
-        // Prefer positions closer to controller (if it exists)
-        if (controller) {
-          const controllerDistance = pos.getRangeTo(controller.pos);
-          score -= controllerDistance * CONTROLLER_DISTANCE_WEIGHT;
-        }
-
-        // Avoid positions on roads (use pre-built map)
-        const hasRoad = roadMap.get(`${x},${y}`) ?? false;
-        if (hasRoad) {
-          score -= ROAD_PENALTY;
-        }
-
-        candidates.push({ pos, score });
+        candidates.push({
+          x,
+          y,
+          distanceFromSpawn: distance,
+          distanceToStorage: storage ? pos.getRangeTo(storage.pos) : undefined,
+          distanceToController: controller ? pos.getRangeTo(controller.pos) : undefined,
+          onRoad: roadMap.get(`${x},${y}`) ?? false,
+          blocked: false,
+          exit: false
+        });
 
         // Check for early exit
         if (shouldEarlyExit(candidates.length, distance)) {
@@ -281,11 +266,17 @@ function calculateCollectionPoint(room: Room): RoomPosition | null {
     }
   }
 
-  // Sort by score (highest first)
-  candidates.sort((a, b) => b.score - a.score);
+  const intent = planCollectionPointIntent({
+    candidates,
+    minDistanceFromSpawn: MIN_DISTANCE_FROM_SPAWN,
+    maxDistanceFromSpawn: MAX_DISTANCE_FROM_SPAWN,
+    preferredDistanceFromSpawn: PREFERRED_DISTANCE_FROM_SPAWN,
+    storageDistanceWeight: STORAGE_DISTANCE_WEIGHT,
+    controllerDistanceWeight: CONTROLLER_DISTANCE_WEIGHT,
+    roadPenalty: ROAD_PENALTY
+  });
 
-  // Return the best candidate
-  return candidates.length > 0 ? candidates[0].pos : null;
+  return intent.position ? new RoomPosition(intent.position.x, intent.position.y, room.name) : null;
 }
 
 /**

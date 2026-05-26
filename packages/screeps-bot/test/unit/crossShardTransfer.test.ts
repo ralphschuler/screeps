@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { MAX_CARRIERS_PER_CROSS_SHARD_REQUEST } from "../../src/spawning/spawnNeedsAnalyzer";
+import { MAX_CARRIERS_PER_CROSS_SHARD_REQUEST } from "@ralphschuler/screeps-spawn";
 
 /**
  * Tests for Cross-Shard Resource Transfer functionality

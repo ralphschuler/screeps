@@ -200,6 +200,20 @@ describe("Logger JSON Output", () => {
     expect(parsed.customField).to.equal("ok");
   });
 
+  it("should not throw when meta contains circular references", () => {
+    (global as any).Game = { time: 12345 };
+    const circular: Record<string, unknown> = { name: "loop" };
+    circular.self = circular;
+
+    expect(() => {
+      logger.info("Circular meta", { meta: { circular } });
+    }).to.not.throw();
+
+    const output = consoleLogStub.firstCall.args[0];
+    const parsed = JSON.parse(output);
+    expect(parsed.circular).to.deep.equal({ name: "loop", self: "[Circular]" });
+  });
+
   it("should include shard from Game.shard.name", () => {
     (global as any).Game = { time: 12345, shard: { name: "shard2" } };
 

@@ -16,8 +16,8 @@ bots:
   simplebot: simplebot
 
 serverConfig:
-  tickRate: 100
-  socketUpdateRate: 100
+  tickRate: 20
+  socketUpdateRate: 20
   shardName: shard0
 
 launcherOptions:
@@ -27,7 +27,7 @@ launcherOptions:
 screepsmod:
   testing:
     autoRun: true
-    testInterval: 500
+    testInterval: 50
     outputFormat: all
     outputDir: /screeps/artifacts
     persistencePath: /screeps/artifacts/screepsmod-testing-history.json

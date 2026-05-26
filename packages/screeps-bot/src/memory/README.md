@@ -609,5 +609,5 @@ npm run test:unit -- packages/screeps-bot/test/unit/heapCache.test.ts
 
 - [ROADMAP.md](../../../../ROADMAP.md) - Section 4: Memory & Data Models
 - [Core Subsystem](../core/README.md) - Kernel and process scheduling
-- [Cache Subsystem](../cache/README.md) - Unified cache system
+- `@ralphschuler/screeps-cache` - Unified cache system
 - [Standards](../standards/README.md) - Screepers Standards segment usage (segment 0)

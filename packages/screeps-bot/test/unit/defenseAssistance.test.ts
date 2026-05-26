@@ -5,7 +5,7 @@
  */
 
 import { assert } from "chai";
-import { needsDefenseAssistance, createDefenseRequest, analyzeDefenderNeeds } from "../../src/spawning/defenderManager";
+import { needsDefenseAssistance, createDefenseRequest, analyzeDefenderNeeds } from "@ralphschuler/screeps-spawn";
 import type { SwarmState } from "../../src/memory/schemas";
 import { createDefaultSwarmState } from "../../src/memory/schemas";
 

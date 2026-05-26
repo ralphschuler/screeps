@@ -1,13 +1,12 @@
 /**
  * Spawn Priority Module
- * 
+ *
  * Calculates dynamic spawn priorities based on:
  * - Room posture (eco, expand, defensive, war, siege, evacuate, nukePrep)
  * - Pheromone levels (harvest, logistics, build, defense, etc.)
  * - Dynamic conditions (threats, focus rooms)
- * 
+ *
  * TODO: Investigate military overallocation in defensive posture
- Issue URL: https://github.com/ralphschuler/screeps/issues/2951
  * Analysis date: 2025-12-28
  * Observed pattern: Rooms in defensive posture spawn excessive military creeps (60%+ of total)
  * Investigation needed:
@@ -19,17 +18,17 @@
  * Related: See SHARD3_INVESTIGATION.md for detailed analysis
  */
 
-import type { SwarmState } from "./botTypes";
-import { memoryManager } from "./botIntegration";
+import { memoryManager } from "@ralphschuler/screeps-memory";
+import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { getDefenderPriorityBoost } from "./defenderManager";
 
 /** Priority boost for upgraders in focus rooms */
-const FOCUS_ROOM_UPGRADER_PRIORITY_BOOST = 40;
+const FOCUS_ROOM_UPGRADER_PRIORITY_BOOST = 60;
 
 /**
  * Get spawn weight multipliers based on room posture.
  * These weights adjust role priorities based on the room's current strategic stance.
- * 
+ *
  * @param posture - Current room posture (eco, expand, defensive, war, siege, evacuate, nukePrep)
  * @returns Record mapping role names to weight multipliers
  */
@@ -39,14 +38,18 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
       return {
         harvester: 1.5,
         hauler: 1.2,
-        upgrader: 1.3,
+        upgrader: 2.0,
         builder: 1.0,
         queenCarrier: 1.0,
         guard: 0.3,
         remoteGuard: 0.8,
-        healer: 0.1,
+        healer: 0.0,
+        soldier: 0.0,
+        ranger: 0.0,
+        siegeUnit: 0.0,
+        harasser: 0.0,
         scout: 1.0,
-        claimer: 0.8,
+        claimer: 1.8,
         engineer: 0.8,
         remoteHarvester: 1.2,
         remoteHauler: 1.2,
@@ -56,13 +59,13 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
       return {
         harvester: 1.2,
         hauler: 1.0,
-        upgrader: 0.8,
+        upgrader: 1.3,
         builder: 1.0,
         queenCarrier: 0.8,
         guard: 0.3,
         remoteGuard: 1.0,
         scout: 1.5,
-        claimer: 1.5,
+        claimer: 2.5,
         remoteWorker: 1.5,
         engineer: 0.5,
         remoteHarvester: 1.5,
@@ -154,7 +157,7 @@ export function getPostureSpawnWeights(posture: string): Record<string, number> 
 
 /**
  * Get dynamic priority boost for specific roles based on current conditions.
- * 
+ *
  * @param room - The room to check
  * @param swarm - Swarm state with threat and cluster info
  * @param role - Role name to calculate boost for
@@ -182,7 +185,7 @@ export function getDynamicPriorityBoost(room: Room, swarm: SwarmState, role: str
 /**
  * Get pheromone-based multiplier for a role.
  * Pheromones represent the swarm's emergent focus areas and adjust spawn priorities accordingly.
- * 
+ *
  * @param role - Role name to get multiplier for
  * @param pheromones - Current pheromone levels
  * @returns Multiplier value (0.5 to 2.0 range)

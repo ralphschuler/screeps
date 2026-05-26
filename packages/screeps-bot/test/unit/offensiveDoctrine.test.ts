@@ -9,7 +9,7 @@ import {
   getTargetPriority,
   getDoctrineComposition,
   DOCTRINE_CONFIGS
-} from "../../src/clusters/offensiveDoctrine";
+} from "@ralphschuler/screeps-clusters";
 import type { ClusterMemory } from "../../src/memory/schemas";
 
 describe("Offensive Doctrine", () => {

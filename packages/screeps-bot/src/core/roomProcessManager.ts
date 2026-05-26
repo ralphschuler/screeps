@@ -226,6 +226,7 @@ export class RoomProcessManager {
       tickOffset: distribution.tickOffset,
       minBucket: this.getMinBucketForPriority(priority),
       cpuBudget,
+      topology: { group: "room", layer: "room" },
       execute: () => {
         // Check if room is still visible
         const currentRoom = Game.rooms[room.name];
@@ -267,6 +268,7 @@ export class RoomProcessManager {
       tickOffset: distribution.tickOffset,
       minBucket: this.getMinBucketForPriority(priority),
       cpuBudget,
+      topology: { group: "room", layer: "room" },
       execute: () => {
         const currentRoom = Game.rooms[room.name];
         if (currentRoom) {

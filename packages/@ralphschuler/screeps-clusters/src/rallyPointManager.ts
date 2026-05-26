@@ -12,8 +12,9 @@
  * - Multi-room coordination
  */
 
-import type { ClusterMemory } from "./types";
 import { logger } from "@ralphschuler/screeps-core";
+import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
+import type { ClusterMemory } from "./types";
 
 /**
  * Rally point definition
@@ -306,7 +307,7 @@ function evaluateRallyPosition(room: Room, pos: RoomPosition, purpose: string): 
   }
 
   // Evaluate safety (distance from hostiles)
-  const hostiles = room.find(FIND_HOSTILE_CREEPS);
+  const hostiles = getActualHostileCreeps(room);
   if (hostiles.length > 0) {
     const minHostileRange = Math.min(...hostiles.map(h => pos.getRangeTo(h)));
     safety = Math.min(10, minHostileRange);

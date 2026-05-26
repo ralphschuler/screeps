@@ -326,6 +326,19 @@ describe("RoomVisualizer", () => {
       expect(roomVisualStub.called).to.be.true;
     });
 
+    it("should avoid NaN controller progress when progress total is unavailable", () => {
+      mockRoom.controller.progressTotal = 0;
+      const vizWithStats = new RoomVisualizer({ showRoomStats: true });
+
+      vizWithStats.draw(mockRoom);
+
+      const textCalls = mockVisual.calls.filter(call => call.method === "text");
+      const renderedText = textCalls.map(call => String(call.args[0])).join("\n");
+      expect(renderedText).to.include("RCL 5 (0%)");
+      expect(renderedText).to.not.include("NaN");
+      expect(renderedText).to.not.include("Infinity");
+    });
+
     it("should handle room without controller", () => {
       const roomWithoutController = {
         ...mockRoom,

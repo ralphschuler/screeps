@@ -20,21 +20,24 @@ function cleanEnv(value) {
   return value.trim();
 }
 
+const shouldDeploy = process.env.DEPLOY === "true";
+const explicitHostname = cleanEnv(process.env.SCREEPS_HOSTNAME);
+const explicitBranch = cleanEnv(process.env.SCREEPS_BRANCH);
+
 const cfg = {
   email: cleanEnv(process.env.SCREEPS_USER),
   password: cleanEnv(process.env.SCREEPS_PASS),
   token: cleanEnv(process.env.SCREEPS_TOKEN),
 
   protocol: cleanEnv(process.env.SCREEPS_PROTOCOL) || "https",
-  hostname: cleanEnv(process.env.SCREEPS_HOSTNAME) || "screeps.com",
+  hostname: explicitHostname || "screeps.com",
   port: cleanEnv(process.env.SCREEPS_PORT) || 443,
   path: cleanEnv(process.env.SCREEPS_PATH) || "/",
-  branch: cleanEnv(process.env.SCREEPS_BRANCH) || "main"
+  branch: explicitBranch || "main"
 };
 
 // Check if we have valid credentials (either token or email+password)
 const hasValidCredentials = cfg.token || (cfg.email && cfg.password);
-const shouldDeploy = process.env.DEPLOY === "true";
 
 // Debug logging for deployment troubleshooting
 console.log("=== Screeps Deploy Configuration ===");
@@ -44,6 +47,11 @@ console.log("Credentials type:", cfg.token ? "token" : cfg.email && cfg.password
 console.log("Target server:", cfg.hostname);
 console.log("Target branch:", cfg.branch);
 console.log("====================================");
+
+if (shouldDeploy && (!explicitHostname || !explicitBranch)) {
+  console.error("\nERROR: DEPLOY=true requires explicit SCREEPS_HOSTNAME and SCREEPS_BRANCH.");
+  process.exit(1);
+}
 
 if (shouldDeploy && !hasValidCredentials) {
   console.error("\nERROR: DEPLOY=true was set, but Screeps credentials are not configured.");

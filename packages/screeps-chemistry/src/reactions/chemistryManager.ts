@@ -371,6 +371,11 @@ export class ChemistryManager {
     for (const outputLab of outputLabs) {
       if (outputLab.cooldown > 0) continue;
 
+      if (outputLab.mineralType && outputLab.mineralType !== reaction.product) {
+        this.logger.debug(`Lab ${outputLab.id} contains ${outputLab.mineralType}, needs unloading before producing ${reaction.product}`, { subsystem: "Chemistry" });
+        continue;
+      }
+
       // Check if lab is full
       const freeCapacity = outputLab.store.getFreeCapacity();
       if (freeCapacity !== null && freeCapacity < 100) {

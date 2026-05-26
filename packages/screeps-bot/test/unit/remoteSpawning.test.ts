@@ -1,11 +1,11 @@
 import { assert } from "chai";
 import { heapCache } from "@ralphschuler/screeps-memory";
-import { ROLE_DEFINITIONS } from "../../src/spawning/roleDefinitions";
+import { ROLE_DEFINITIONS } from "@ralphschuler/screeps-spawn";
 import {
   countRemoteCreepsByTargetRoom,
   getRemoteRoomNeedingWorkers,
   needsRole
-} from "../../src/spawning/spawnNeedsAnalyzer";
+} from "@ralphschuler/screeps-spawn";
 import type { SwarmState } from "../../src/memory/schemas";
 
 // Mock the global Game object

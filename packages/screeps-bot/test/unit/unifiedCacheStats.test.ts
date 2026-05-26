@@ -3,14 +3,14 @@
  */
 
 import { assert } from "chai";
-import { globalCache } from "../../src/cache";
+import { globalCache } from "@ralphschuler/screeps-cache";
 import {
   getRoomFindCacheStats,
   getBodyPartCacheStats,
   getObjectCacheStats,
   getPathCacheStats,
   getRoleCacheStats
-} from "../../src/cache";
+} from "@ralphschuler/screeps-cache";
 
 describe("Unified Cache Stats Integration", () => {
   beforeEach(() => {

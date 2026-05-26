@@ -12,7 +12,7 @@
 
 import { expect } from "chai";
 import { performance } from "perf_hooks";
-import { clearObjectCache, getCachedObjectById, getCacheStatistics, resetCacheStats, warmCache } from "../../src/cache";
+import { clearObjectCache, getCachedObjectById, getCacheStatistics, resetCacheStats, warmCache } from "@ralphschuler/screeps-cache";
 
 // Mock performance tracking
 const mockPerformance = {

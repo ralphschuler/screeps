@@ -6,6 +6,7 @@ const DEFAULT_TASK_TTL = 50;
 const DEFAULT_RESERVATION_TTL = 15;
 const GENERATION_INTERVAL = 1;
 const DEFAULT_STICKINESS_DELTA = 75;
+const STALE_ROOM_BOARD_TTL = 1500;
 
 const ENERGY_DELIVERY_ROLES = [
   "larvaWorker",
@@ -43,6 +44,7 @@ function createRoomBoard(roomName: string): RoomTaskBoardMemory {
     roomName,
     tasks: {},
     lastGeneratedTick: 0,
+    lastCleanedTick: 0,
     stats: {
       generated: 0,
       assigned: 0,
@@ -309,7 +311,10 @@ function isTargetStillValid(task: CreepTask): boolean {
   }
 }
 
-function cleanupBoard(board: RoomTaskBoardMemory): void {
+function cleanupBoard(board: RoomTaskBoardMemory, force = false): void {
+  if (!force && board.lastCleanedTick === Game.time) return;
+  board.lastCleanedTick = Game.time;
+
   for (const task of Object.values(board.tasks)) {
     for (const [creepName, reservation] of Object.entries(task.reservations)) {
       if (!Game.creeps[creepName] || Game.time > reservation.expiresTick) {
@@ -329,6 +334,19 @@ function cleanupBoard(board: RoomTaskBoardMemory): void {
 
     if (remainingAmount(task) <= 0 || task.assignedCreeps.length >= task.maxAssignments) {
       task.status = "assigned";
+    }
+  }
+}
+
+function pruneStaleRoomBoards(activeRoomName?: string): void {
+  const memory = getTaskMemory();
+
+  for (const [roomName, board] of Object.entries(memory.rooms)) {
+    if (roomName === activeRoomName || Game.rooms[roomName]) continue;
+
+    const lastTouchedTick = Math.max(board.lastGeneratedTick ?? 0, board.lastCleanedTick ?? 0);
+    if (lastTouchedTick > 0 && Game.time - lastTouchedTick > STALE_ROOM_BOARD_TTL) {
+      delete memory.rooms[roomName];
     }
   }
 }
@@ -468,6 +486,7 @@ export class TaskBoard {
 
   public refreshRoom(room: Room): void {
     if (!this.isEnabled()) return;
+    pruneStaleRoomBoards(room.name);
     const board = getRoomBoard(room.name);
     cleanupBoard(board);
     generateTasks(room, board);
@@ -496,7 +515,7 @@ export class TaskBoard {
     const room = Game.rooms[roomName];
     if (!room) return null;
     const board = getRoomBoard(roomName);
-    cleanupBoard(board);
+    cleanupBoard(board, true);
     generateTasks(room, board);
     const tasks = Object.values(board.tasks);
     return {
@@ -516,7 +535,7 @@ export class TaskBoard {
     const room = Game.rooms[roomName];
     if (!room) return `Room ${roomName} is not visible`;
     const board = getRoomBoard(roomName);
-    cleanupBoard(board);
+    cleanupBoard(board, true);
     generateTasks(room, board);
     const lines = [`Tasks for ${roomName} (enabled=${this.isEnabled()})`];
     for (const task of Object.values(board.tasks).sort((a, b) => b.priority - a.priority)) {
@@ -527,7 +546,7 @@ export class TaskBoard {
 
   public describeAssignments(roomName: string): string {
     const board = getRoomBoard(roomName);
-    cleanupBoard(board);
+    cleanupBoard(board, true);
     const lines = [`Task assignments for ${roomName}`];
     for (const task of Object.values(board.tasks)) {
       for (const reservation of Object.values(task.reservations)) {

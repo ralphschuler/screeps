@@ -17,6 +17,7 @@ import type { RoomIntel } from "@ralphschuler/screeps-memory";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import { planEnemyTrackingIntent, planIntelScanIntent, type EnemySightingSnapshot } from "./intelIntent";
 
 /**
  * Enemy player tracking
@@ -133,35 +134,18 @@ export class IntelScanner {
    */
   private buildScanQueue(): void {
     const empire = memoryManager.getEmpire();
-    const roomsToScan: string[] = [];
-
-    // Add all known rooms that need rescanning
-    for (const roomName in empire.knownRooms) {
-      const intel = empire.knownRooms[roomName];
-      const timeSinceLastScan = Game.time - intel.lastSeen;
-
-      // Prioritize rooms with higher threat levels and older scans
-      if (timeSinceLastScan >= this.config.rescanInterval || intel.threatLevel > 0) {
-        roomsToScan.push(roomName);
-      }
-    }
-
-    // Sort by priority: threat level (desc), last seen (asc)
-    roomsToScan.sort((a, b) => {
-      const intelA = empire.knownRooms[a];
-      const intelB = empire.knownRooms[b];
-      if (!intelA || !intelB) return 0;
-
-      // Higher threat first
-      if (intelB.threatLevel !== intelA.threatLevel) {
-        return intelB.threatLevel - intelA.threatLevel;
-      }
-
-      // Older scans first
-      return intelA.lastSeen - intelB.lastSeen;
+    const intent = planIntelScanIntent({
+      time: Game.time,
+      rescanInterval: this.config.rescanInterval,
+      roomsPerTick: this.config.roomsPerTick,
+      knownRooms: Object.entries(empire.knownRooms).map(([roomName, intel]) => ({
+        roomName,
+        lastSeen: intel.lastSeen,
+        threatLevel: intel.threatLevel
+      }))
     });
 
-    this.scanQueue = roomsToScan;
+    this.scanQueue = intent.scanQueue;
     logger.debug(`Built scan queue with ${this.scanQueue.length} rooms`, { subsystem: "Intel" });
   }
 
@@ -316,6 +300,9 @@ export class IntelScanner {
    * Update enemy player tracking from visible rooms
    */
   private updateEnemyTracking(): void {
+    const sightings: EnemySightingSnapshot[] = [];
+    const aggressiveOwners: string[] = [];
+
     for (const roomName in Game.rooms) {
       const room = Game.rooms[roomName];
       if (!room) continue;
@@ -323,55 +310,48 @@ export class IntelScanner {
       const hostileCreeps = getActualHostileCreeps(room);
       for (const creep of hostileCreeps) {
         const owner: string = creep.owner.username;
-        if (this.config.allies.includes(owner) || isAllyPlayer(owner)) continue;
+        const isAlly = this.config.allies.includes(owner) || isAllyPlayer(owner);
+        sightings.push({ username: owner, roomName, isAlly, hostileBodyParts: creep.body.length });
 
-        let enemy = this.enemyPlayers.get(owner);
-        if (!enemy) {
-          enemy = {
-            username: owner,
-            lastSeen: Game.time,
-            rooms: [],
-            threatLevel: 0,
-            aggressionCount: 0,
-            isAlly: false
-          };
-          this.enemyPlayers.set(owner, enemy);
-        }
-
-        enemy.lastSeen = Game.time;
-        if (!enemy.rooms.includes(roomName)) {
-          enemy.rooms.push(roomName);
-        }
-
-        // Check for aggressive intent
-        if (this.isAggressiveCreep(creep)) {
-          enemy.aggressionCount++;
+        if (!isAlly && this.isAggressiveCreep(creep)) {
+          aggressiveOwners.push(owner);
         }
       }
 
       // Check for hostile structures (owned by other players)
       if (room.controller?.owner && !room.controller.my) {
         const owner = room.controller.owner.username;
-        if (this.config.allies.includes(owner) || isAllyPlayer(owner)) continue;
-
-        let enemy = this.enemyPlayers.get(owner);
-        if (!enemy) {
-          enemy = {
-            username: owner,
-            lastSeen: Game.time,
-            rooms: [],
-            threatLevel: 0,
-            aggressionCount: 0,
-            isAlly: false
-          };
-          this.enemyPlayers.set(owner, enemy);
-        }
-
-        enemy.lastSeen = Game.time;
-        if (!enemy.rooms.includes(roomName)) {
-          enemy.rooms.push(roomName);
-        }
+        sightings.push({
+          username: owner,
+          roomName,
+          isAlly: this.config.allies.includes(owner) || isAllyPlayer(owner),
+          hostileBodyParts: 0
+        });
       }
+    }
+
+    const trackingIntent = planEnemyTrackingIntent(Game.time, sightings);
+    for (const plannedEnemy of trackingIntent.enemies) {
+      const enemy = this.enemyPlayers.get(plannedEnemy.username) ?? {
+        username: plannedEnemy.username,
+        lastSeen: Game.time,
+        rooms: [],
+        threatLevel: 0,
+        aggressionCount: 0,
+        isAlly: false
+      };
+
+      enemy.lastSeen = plannedEnemy.lastSeen;
+      for (const roomName of plannedEnemy.rooms) {
+        if (!enemy.rooms.includes(roomName)) enemy.rooms.push(roomName);
+      }
+      enemy.isAlly = plannedEnemy.isAlly;
+      this.enemyPlayers.set(enemy.username, enemy);
+    }
+
+    for (const owner of aggressiveOwners) {
+      const enemy = this.enemyPlayers.get(owner);
+      if (enemy) enemy.aggressionCount++;
     }
 
     // Update threat levels based on aggression

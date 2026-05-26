@@ -16,7 +16,7 @@ import {
   cachedFindMyStructures,
   cachedFindConstructionSites,
   cachedFindDroppedResources
-} from "../../src/cache";
+} from "@ralphschuler/screeps-cache";
 
 describe("roomFindCache", () => {
   beforeEach(() => {

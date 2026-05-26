@@ -59,6 +59,16 @@ describe('Weighted Selection Utilities', () => {
       const selected = weightedSelection(entries);
       expect(selected).to.equal(undefined);
     });
+
+    it('should ignore non-finite weights', () => {
+      const entries: WeightedEntry<string>[] = [
+        { key: 'a', weight: Number.POSITIVE_INFINITY },
+        { key: 'b', weight: Number.NaN },
+        { key: 'c', weight: 1 }
+      ];
+      const selected = weightedSelection(entries);
+      expect(selected).to.equal('c');
+    });
   });
 
   describe('selectTopN()', () => {
@@ -107,6 +117,16 @@ describe('Weighted Selection Utilities', () => {
       expect(normalized).to.have.lengthOf(1);
       expect(normalized[0].key).to.equal('a');
       expect(normalized[0].weight).to.equal(1);
+    });
+
+    it('should filter out non-finite weights', () => {
+      const entries: WeightedEntry<string>[] = [
+        { key: 'a', weight: Number.POSITIVE_INFINITY },
+        { key: 'b', weight: Number.NaN },
+        { key: 'c', weight: 2 }
+      ];
+      const normalized = normalizeWeights(entries);
+      expect(normalized).to.deep.equal([{ key: 'c', weight: 1 }]);
     });
   });
 

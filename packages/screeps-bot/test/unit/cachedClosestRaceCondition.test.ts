@@ -7,7 +7,7 @@
  */
 
 import { assert } from "chai";
-import { findCachedClosest, clearClosestCache as clearCache, globalCache } from "../../src/cache";
+import { findCachedClosest, clearClosestCache as clearCache, globalCache } from "@ralphschuler/screeps-cache";
 
 // Mock creep memory interface
 interface MockCreepMemory {

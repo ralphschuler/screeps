@@ -168,7 +168,7 @@ export class RoomVisualizer {
     // Room name and RCL
     const rcl = room.controller?.level ?? 0;
     const progress = room.controller
-      ? `${Math.round((room.controller.progress / room.controller.progressTotal) * 100)}%`
+      ? `${room.controller.progressTotal > 0 ? Math.round((room.controller.progress / room.controller.progressTotal) * 100) : 0}%`
       : "N/A";
     visual.text(`${room.name} | RCL ${rcl} (${progress})`, x, y, {
       align: "left",

@@ -293,16 +293,16 @@ function getBootstrapRole(room: Room): string {
   - [Weighted Random Selection](https://en.wikipedia.org/wiki/Fitness_proportionate_selection)
 - **Internal Documentation**:
   - `docs/SPAWN_SYSTEM_REFACTOR.md` - Spawn system architecture
-  - `packages/screeps-bot/src/spawning/spawnPriority.ts` - Priority calculation
-  - `packages/screeps-bot/src/spawning/bootstrapManager.ts` - Bootstrap mode
-  - `packages/screeps-bot/src/spawning/roleDefinitions.ts` - Role definitions
+  - `packages/screeps-spawn/src/spawnPriority.ts` - Priority calculation
+  - `packages/screeps-spawn/src/bootstrapManager.ts` - Bootstrap mode
+  - `packages/screeps-spawn/src/roleDefinitions.ts` - Role definitions
   - Root `ROADMAP.md` Section 9 - Spawn management
 
 ## Implementation Notes
 
 ### Package Location
 
-`packages/screeps-bot/src/spawning/`
+`packages/screeps-spawn/src/`
 
 ### Key Files
 
@@ -317,14 +317,14 @@ function getBootstrapRole(room: Room): string {
 Posture weights and base priorities are configurable:
 
 ```typescript
-// src/spawning/spawnPriority.ts
+// packages/screeps-spawn/src/spawnPriority.ts
 export const POSTURE_SPAWN_WEIGHTS = {
   eco: { /* weights */ },
   defensive: { /* weights */ },
   // ...
 };
 
-// src/spawning/roleDefinitions.ts
+// packages/screeps-spawn/src/roleDefinitions.ts
 export const ROLE_DEFINITIONS = {
   harvester: { priority: 100, /* ... */ },
   defender: { priority: 90, /* ... */ },

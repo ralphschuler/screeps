@@ -3,7 +3,7 @@
  */
 
 import { assert } from "chai";
-import { isSquadForming, getFormationStatus } from "../../src/clusters/squadFormationManager";
+import { isSquadForming, getFormationStatus } from "@ralphschuler/screeps-clusters";
 
 describe("Squad Formation Manager", () => {
   describe("isSquadForming", () => {

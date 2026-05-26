@@ -228,6 +228,7 @@ export class RoomFindOptimizer {
       case "hostile_entered":
       case "hostile_left":
         invalidateFindType(roomName, FIND_HOSTILE_CREEPS);
+        invalidateFindType(roomName, FIND_HOSTILE_POWER_CREEPS);
         invalidateFindType(roomName, FIND_HOSTILE_STRUCTURES);
         break;
 

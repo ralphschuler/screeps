@@ -9,7 +9,7 @@ import { expect } from "chai";
  * 
  * Addresses TODO(P2): TEST - Add integration tests for cluster resource balancing
  Issue URL: https://github.com/ralphschuler/screeps/issues/782
- * in src/clusters/clusterManager.ts
+ * in @ralphschuler/screeps-clusters clusterManager.ts
  * 
  * Note: These are algorithm-level tests that verify the logic used by ClusterManager
  * and resourceSharingManager. They test resource distribution calculations, transfer

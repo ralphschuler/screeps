@@ -153,6 +153,26 @@ const RESERVED_LOG_FIELDS = new Set([
 ]);
 
 /**
+ * Build a JSON replacer that keeps logging from crashing on unsafe metadata.
+ */
+function createSafeJsonReplacer(): (_key: string, value: unknown) => unknown {
+  const seen = new WeakSet<object>();
+
+  return (_key: string, value: unknown): unknown => {
+    if (typeof value === "bigint") return value.toString();
+    if (typeof value !== "object" || value === null) return value;
+
+    if (seen.has(value)) return "[Circular]";
+    seen.add(value);
+    return value;
+  };
+}
+
+function stringifyLogObject(logObject: Record<string, any>): string {
+  return JSON.stringify(logObject, createSafeJsonReplacer());
+}
+
+/**
  * Format log message as single-line JSON with tick information
  */
 function formatMessage(level: string, message: string, context?: LogContext, type: LogType = "log"): string {
@@ -193,7 +213,7 @@ function formatMessage(level: string, message: string, context?: LogContext, typ
   }
 
   // Always output single-line JSON for Loki compatibility
-  return JSON.stringify(logObject);
+  return stringifyLogObject(logObject);
 }
 
 /**
@@ -304,7 +324,7 @@ export function stat(key: string, value: number, unit?: string, context?: LogCon
   }
 
   // Always output single-line JSON
-  addToBatch(JSON.stringify(statObject));
+  addToBatch(stringifyLogObject(statObject));
 }
 
 /**

@@ -119,11 +119,22 @@ export {
 
 // Spawn coordinator
 export {
+  coordinateSpawning,
+  needsEmergencySpawn,
+  getSpawnQueueStatus,
   populateSpawnQueue,
   processSpawnQueue,
-  planSpawnDemand,
-  type SpawnDemand
+  runSpawnPipeline,
+  type SpawnPipelineResult
 } from "./spawnCoordinator";
+
+export {
+  compileSpawnDemandToRequest,
+  createSpawnPlan,
+  planSpawnDemand,
+  type SpawnDemand,
+  type SpawnPlan
+} from "./spawnIntentCompiler";
 
 // Bot integration (interfaces for bot-specific dependencies)
 export type {

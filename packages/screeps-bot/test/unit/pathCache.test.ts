@@ -12,7 +12,7 @@ import {
   getPathCacheStats,
   cleanupExpiredPaths,
   cacheCommonRoutes
-} from "../../src/cache";
+} from "@ralphschuler/screeps-cache";
 
 describe("pathCache", () => {
   beforeEach(() => {

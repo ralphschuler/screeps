@@ -66,7 +66,7 @@ Based on the general testing guidance in ROADMAP.md Section 23 and the detailed 
 2. **Spawn Priority** (Section 10)
    - Current: ~50% coverage
    - Target: 75% coverage
-   - Files: `src/spawning/spawnPriority.ts`, `src/spawning/spawnQueue.ts`
+   - Files: `@ralphschuler/screeps-spawn spawnPriority.ts`, `@ralphschuler/screeps-spawn spawnQueue.ts`
 
 3. **Market Trading** (Section 17)
    - Current: ~60% coverage
@@ -80,7 +80,7 @@ Based on the general testing guidance in ROADMAP.md Section 23 and the detailed 
 
 5. **Pathfinding & Caching**
    - Current: 100% coverage ✅
-   - Files: `src/cache/*`
+   - Files: `@ralphschuler/screeps-cache`
 
 ## Coverage by System
 

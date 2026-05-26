@@ -5,8 +5,8 @@ import {
   createSpawnPlan,
   planSpawnDemand,
   populateSpawnQueue
-} from "../../src/spawning/spawnCoordinator";
-import { spawnQueue } from "../../src/spawning/spawnQueue";
+} from "@ralphschuler/screeps-spawn";
+import { spawnQueue } from "@ralphschuler/screeps-spawn";
 
 function createSwarm(remoteAssignments: string[] = []): SwarmState {
   return {
@@ -62,7 +62,7 @@ function createRoom(): Room {
     name: "W1N1",
     energyCapacityAvailable: 800,
     energyAvailable: 800,
-    controller: { my: true, level: 4 },
+    controller: { my: true, level: 8 },
     find: () => []
   } as unknown as Room;
 }
@@ -90,6 +90,24 @@ describe("spawn intent compiler", () => {
     const demands = planSpawnDemand(room, createSwarm());
 
     assert.isTrue(demands.some(demand => demand.roleName === "larvaWorker"));
+    assert.equal(spawnQueue.getQueueSize("W1N1"), 0, "planning should not enqueue requests");
+  });
+
+  it("exposes demand magnitude without mutating the queue", () => {
+    const room = createRoom();
+    Game.rooms.W1N1 = room;
+    Game.creeps = {
+      Harvester1: { memory: { role: "harvester", homeRoom: "W1N1" } },
+      Hauler1: { memory: { role: "hauler", homeRoom: "W1N1" } },
+      Upgrader1: { memory: { role: "upgrader", homeRoom: "W1N1" } }
+    } as unknown as typeof Game.creeps;
+
+    const demand = planSpawnDemand(room, createSwarm()).find(item => item.roleName === "upgrader");
+
+    assert.exists(demand);
+    assert.equal(demand!.current, 1);
+    assert.equal(demand!.target, 12);
+    assert.equal(demand!.missing, 11);
     assert.equal(spawnQueue.getQueueSize("W1N1"), 0, "planning should not enqueue requests");
   });
 

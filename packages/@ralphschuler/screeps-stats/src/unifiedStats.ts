@@ -474,9 +474,9 @@ export class UnifiedStatsManager {
       const roomCount = Object.keys(Game.rooms).length;
       const bucket = Game.cpu.bucket;
       
-      // Calculate total allocated and used budgets
+      // Calculate total allocated and used budgets in CPU units.
       const processes = kernel.getProcesses();
-      const totalAllocated = processes.reduce((sum, p) => sum + p.cpuBudget, 0);
+      const totalAllocated = processes.reduce((sum, p) => sum + p.cpuBudget * Game.cpu.limit, 0);
       const totalUsed = kernel.getTickCpuUsed();
       const utilizationRatio = totalAllocated > 0 ? totalUsed / totalAllocated : 0;
 
@@ -495,9 +495,9 @@ export class UnifiedStatsManager {
         utilizationRatio
       };
     } else {
-      // Static budgets
+      // Static budgets in CPU units.
       const processes = kernel.getProcesses();
-      const totalAllocated = processes.reduce((sum, p) => sum + p.cpuBudget, 0);
+      const totalAllocated = processes.reduce((sum, p) => sum + p.cpuBudget * Game.cpu.limit, 0);
       const totalUsed = kernel.getTickCpuUsed();
 
       this.currentSnapshot.kernelBudgets = {
@@ -602,7 +602,20 @@ export class UnifiedStatsManager {
       this.currentSnapshot.rooms[room.name] = roomStats;
     }
 
+    const previousRoomProfile = this.getProfilerMemory().rooms[room.name] as { controllerProgress?: number; storageEnergy?: number; avgCpu?: number; peakCpu?: number; samples?: number } | undefined;
+    const currentControllerProgress = room.controller?.progress ?? 0;
+    const currentStorageEnergy = room.storage?.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0;
+
     roomStats.taskBoard = taskBoardStats;
+    roomStats.rcl = room.controller?.level ?? 0;
+    roomStats.energy.available = room.energyAvailable;
+    roomStats.energy.capacity = room.energyCapacityAvailable;
+    roomStats.energy.storage = currentStorageEnergy;
+    roomStats.energy.terminal = room.terminal?.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0;
+    roomStats.controller.progress = currentControllerProgress;
+    roomStats.controller.progressTotal = room.controller?.progressTotal ?? 1;
+    roomStats.creeps = creepsInRoom;
+    roomStats.hostiles = hostiles.length;
 
     // Update controller progress percent
     roomStats.controller.progressPercent = roomStats.controller.progressTotal > 0
@@ -637,6 +650,15 @@ export class UnifiedStatsManager {
       }
     }
 
+    const controllerDelta = previousRoomProfile?.controllerProgress !== undefined
+      ? Math.max(0, currentControllerProgress - previousRoomProfile.controllerProgress)
+      : 0;
+    const storageDelta = previousRoomProfile?.storageEnergy !== undefined
+      ? Math.max(0, currentStorageEnergy - previousRoomProfile.storageEnergy)
+      : 0;
+    if (roomStats.metrics.controllerProgress === 0) roomStats.metrics.controllerProgress = controllerDelta;
+    if (roomStats.metrics.energyHarvested === 0) roomStats.metrics.energyHarvested = storageDelta;
+
     // Update profiler data with EMA
     const existingRoom = this.getProfilerMemory().rooms[room.name];
     if (existingRoom) {
@@ -651,7 +673,9 @@ export class UnifiedStatsManager {
       avgCpu: roomStats.profiler.avgCpu,
       peakCpu: roomStats.profiler.peakCpu,
       samples: roomStats.profiler.samples,
-      lastTick: Game.time
+      lastTick: Game.time,
+      controllerProgress: currentControllerProgress,
+      storageEnergy: currentStorageEnergy
     };
   }
 
@@ -1368,6 +1392,14 @@ export class UnifiedStatsManager {
           damage_received: room.metrics.damageReceived,
           construction_sites: room.metrics.constructionSites
         },
+        taskBoard: room.taskBoard ? {
+          tasks: room.taskBoard.tasks,
+          open_tasks: room.taskBoard.openTasks,
+          assigned_tasks: room.taskBoard.assignedTasks,
+          reservations: room.taskBoard.reservations,
+          stale_reservations: room.taskBoard.staleReservations,
+          blocked_reservations: room.taskBoard.blockedReservations
+        } : undefined,
         profiler: {
           avg_cpu: room.profiler.avgCpu,
           peak_cpu: room.profiler.peakCpu,

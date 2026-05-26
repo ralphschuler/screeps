@@ -1,69 +1,57 @@
 /**
  * Memory Adapter
- * 
- * Provides access to Memory structures for cluster management.
- * This is a lightweight adapter that accesses Screeps Memory directly.
+ *
+ * Provides canonical Memory access for cluster management.
+ * Empire keeps cluster IDs in `Memory.empire.clusters`; cluster records live in
+ * top-level `Memory.clusters` via @ralphschuler/screeps-memory.
  */
 
-import type { ClusterMemory, EmpireMemory, SwarmState } from "../types";
-import { createDefaultClusterMemory } from "../types";
+import {
+  createDefaultClusterMemory,
+  createDefaultEmpireMemory,
+  type ClusterMemory,
+  type EmpireMemory,
+  type SwarmState
+} from "@ralphschuler/screeps-memory";
 
-/**
- * Memory Manager Adapter
- * Provides access to Memory structures for cluster management
- */
+interface ClusterMemoryRoot {
+  empire?: EmpireMemory;
+  clusters?: Record<string, ClusterMemory>;
+}
+
 export class MemoryAdapter {
-  /**
-   * Get empire memory (all clusters)
-   */
   public getEmpire(): EmpireMemory {
-    if (!Memory.empire) {
-      Memory.empire = { clusters: {} };
+    const memory = Memory as unknown as ClusterMemoryRoot;
+    if (!memory.empire) {
+      memory.empire = createDefaultEmpireMemory();
     }
-    return Memory.empire as EmpireMemory;
+    return memory.empire;
   }
 
-  /**
-   * Get all clusters
-   */
   public getClusters(): Record<string, ClusterMemory> {
-    return this.getEmpire().clusters;
+    const memory = Memory as unknown as ClusterMemoryRoot;
+    if (!memory.clusters) {
+      memory.clusters = {};
+    }
+    return memory.clusters;
   }
 
-  /**
-   * Get a specific cluster by ID
-   */
-  public getCluster(clusterId: string, coreRoom?: string): ClusterMemory {
+  public getCluster(clusterId: string, coreRoom?: string): ClusterMemory | undefined {
     const clusters = this.getClusters();
-    if (!clusters[clusterId]) {
-      if (!coreRoom) {
-        throw new Error(`Cluster ${clusterId} not found and no coreRoom provided`);
-      }
+    if (!clusters[clusterId] && coreRoom) {
       clusters[clusterId] = createDefaultClusterMemory(clusterId, coreRoom);
+      const empire = this.getEmpire();
+      if (!empire.clusters.includes(clusterId)) {
+        empire.clusters.push(clusterId);
+      }
     }
     return clusters[clusterId];
   }
 
-  /**
-   * Get swarm state for a room
-   */
   public getSwarmState(roomName: string): SwarmState | undefined {
-    const room = Game.rooms[roomName];
-    if (!room) {
-      return undefined;
-    }
-    
-    // Access RoomMemory.swarm if it exists
-    if (!Memory.rooms[roomName]) {
-      Memory.rooms[roomName] = {};
-    }
-    
-    const roomMemory = Memory.rooms[roomName] as any;
-    return roomMemory.swarm as SwarmState | undefined;
+    const roomMemory = Memory.rooms?.[roomName] as ({ swarm?: SwarmState } | undefined);
+    return roomMemory?.swarm;
   }
 }
 
-/**
- * Singleton instance
- */
 export const memoryManager = new MemoryAdapter();

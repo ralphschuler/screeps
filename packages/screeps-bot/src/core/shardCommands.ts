@@ -219,6 +219,10 @@ export class ShardCommands {
     amount: number,
     priority = 50
   ): string {
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return `Invalid amount: ${amount}. Amount must be a positive finite number.`;
+    }
+
     shardManager.createResourceTransferTask(
       targetShard,
       targetRoom,

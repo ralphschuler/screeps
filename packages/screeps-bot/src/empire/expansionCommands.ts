@@ -24,7 +24,8 @@ export class ExpansionCommands {
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
 
     // GCL Status
-    const gclProgress = Game.gcl.progress / Game.gcl.progressTotal;
+    const gclProgressTotal = Game.gcl.progressTotal;
+    const gclProgress = gclProgressTotal > 0 ? Game.gcl.progress / gclProgressTotal : 0;
     const gclPercent = (gclProgress * 100).toFixed(1);
     const roomsAvailable = Game.gcl.level - ownedRooms.length;
 

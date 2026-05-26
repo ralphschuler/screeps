@@ -11,7 +11,7 @@ import {
   getRoomMineral,
   clearStructureCache,
   invalidateRoomStructureCache
-} from "../../src/cache";
+} from "@ralphschuler/screeps-cache";
 
 describe("StructureCache", () => {
   let tickCounter = 0;

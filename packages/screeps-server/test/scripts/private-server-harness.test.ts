@@ -3,10 +3,12 @@ import zlib from "node:zlib";
 import {
   buildEnsureBotUserCommand,
   createInitialSummary,
-  createPollingDeadline,
   decodeMemoryData,
   inspectMemorySnapshot,
   parseHarnessArgs,
+  parseTickRate,
+  shouldContinuePolling,
+  validateSmokeSummary,
 } from "../../scripts/private-server-harness.js";
 
 describe("private-server harness module", () => {
@@ -17,6 +19,7 @@ describe("private-server harness module", () => {
     expect(options.durationMinutes).to.equal(5);
     expect(options.maxTicks).to.equal(1000);
     expect(options.tickPollMs).to.equal(10000);
+    expect(options.tickRate).to.equal(20);
     expect(options.serverPort).to.equal(21025);
     expect(options.cliPort).to.equal(21026);
     expect(options.serverPassword).to.equal("ci-password");
@@ -37,6 +40,7 @@ describe("private-server harness module", () => {
     const options = parseHarnessArgs(["--mode=long"], {
       SCREEPS_SERVER_PASSWORD: "server-secret",
       SHARD_NAME: "shard9",
+      SCREEPS_TICK_RATE: "20",
     });
 
     expect(options.mode).to.equal("long");
@@ -44,7 +48,14 @@ describe("private-server harness module", () => {
     expect(options.maxTicks).to.equal(72000);
     expect(options.serverPassword).to.equal("server-secret");
     expect(options.shardName).to.equal("shard9");
+    expect(options.tickRate).to.equal(20);
     expect(options.projectName).to.equal("screeps-ci-long");
+  });
+
+  it("rejects invalid tick rates", () => {
+    expect(() => parseTickRate("bad")).to.throw(/positive integer/);
+    expect(() => parseTickRate(0)).to.throw(/positive integer/);
+    expect(parseTickRate("20")).to.equal(20);
   });
 
   it("creates summary with expected artifact-facing fields", () => {
@@ -59,6 +70,7 @@ describe("private-server harness module", () => {
       durationMinutes: 5,
       maxTicks: 1000,
       serverPort: 21025,
+      tickRate: 20,
       roomName: "E1N1",
       finishedAt: null,
       status: "running",
@@ -66,15 +78,6 @@ describe("private-server harness module", () => {
     expect(summary.checks).to.deep.equal({});
     expect(summary.metrics).to.deep.equal({});
     expect(summary.errors).to.deep.equal([]);
-  });
-
-  it("starts the polling deadline after server setup finishes", () => {
-    const options = parseHarnessArgs(["--durationMinutes=5"], {});
-    const setupFinishedAt = new Date("2026-05-09T00:10:00.000Z").getTime();
-
-    expect(createPollingDeadline(options, setupFinishedAt)).to.equal(
-      new Date("2026-05-09T00:15:00.000Z").getTime(),
-    );
   });
 
   it("decodes plain, object, empty, and gzipped Memory payloads", () => {
@@ -119,6 +122,54 @@ describe("private-server harness module", () => {
     expect(summary.metrics.criticalConsoleErrors).to.equal(1);
   });
 
+  it("rejects harness-authored fake smoke results", () => {
+    const summary = createInitialSummary(parseHarnessArgs([], {}));
+    summary.checks.modResultsPresent = true;
+    summary.metrics.screepsmodTesting = { total: 1, failed: 0, source: "ci-harness-live-api" };
+    summary.metrics.ticksAdvanced = 10;
+    summary.metrics.criticalConsoleErrors = 0;
+
+    expect(() => validateSmokeSummary(summary)).to.throw(/written by harness/);
+  });
+
+  it("rejects missing mod results", () => {
+    const summary = createInitialSummary(parseHarnessArgs([], {}));
+    summary.metrics.ticksAdvanced = 10;
+    summary.metrics.criticalConsoleErrors = 0;
+
+    expect(() => validateSmokeSummary(summary)).to.throw(/missing from Memory/);
+  });
+
+  it("rejects stalled game time and critical console errors", () => {
+    const summary = createInitialSummary(parseHarnessArgs([], {}));
+    summary.checks.modResultsPresent = true;
+    summary.metrics.screepsmodTesting = { total: 1, failed: 0 };
+    summary.metrics.taskBoardRooms = 1;
+    summary.metrics.ticksAdvanced = 0;
+    summary.metrics.criticalConsoleErrors = 0;
+    expect(() => validateSmokeSummary(summary)).to.throw(/did not advance/);
+
+    summary.metrics.ticksAdvanced = 10;
+    summary.metrics.criticalConsoleErrors = 1;
+    expect(() => validateSmokeSummary(summary)).to.throw(/critical console errors/);
+  });
+
+  it("requires task-board rooms after smoke warmup", () => {
+    const summary = createInitialSummary(parseHarnessArgs([], {}));
+    summary.checks.modResultsPresent = true;
+    summary.metrics.screepsmodTesting = { total: 1, failed: 0 };
+    summary.metrics.ticksAdvanced = 100;
+    summary.metrics.criticalConsoleErrors = 0;
+    summary.metrics.taskBoardRooms = 0;
+
+    expect(() => validateSmokeSummary(summary)).to.throw(/creepTaskBoard/);
+  });
+
+  it("stops polling when actual game ticks reach maxTicks", () => {
+    expect(shouldContinuePolling({ nowMs: 10, endAtMs: 100, polls: 1, maxTicks: 1000, ticksAdvanced: 999 })).to.equal(true);
+    expect(shouldContinuePolling({ nowMs: 10, endAtMs: 100, polls: 1, maxTicks: 1000, ticksAdvanced: 1000 })).to.equal(false);
+  });
+
   it("builds a bot-user bootstrap command that creates or falls back to an available controller room", () => {
     const options = parseHarnessArgs(
       ["--room=E1N1", "--username=test-bot"],
@@ -130,6 +181,7 @@ describe("private-server harness module", () => {
     expect(command).to.include("let spawnRoom=requestedRoom");
     expect(command).to.include("map.generateRoom(requestedRoom)");
     expect(command).to.include("map.openRoom(requestedRoom)");
+    expect(command).to.include("if(!controller||controller.user)");
     expect(command).to.include("Array.isArray(controllersResult)");
     expect(command).to.include(
       "controllers.find(item=>item&&item.room&&!item.user)",

@@ -135,58 +135,25 @@ export class EvolutionManager {
   /**
    * Determine evolution stage for a room
    */
-  public determineEvolutionStage(swarm: SwarmState, room: Room, totalOwnedRooms: number): EvolutionStage {
+  public determineEvolutionStage(_swarm: SwarmState, room: Room, totalOwnedRooms: number): EvolutionStage {
     const rcl = room.controller?.level ?? 0;
     const gcl = Game.gcl.level;
-    const structureCounts = this.getStructureCounts(room);
-    const remoteCount = swarm.remoteAssignments?.length ?? 0;
 
-    // Check from highest to lowest
-    if (this.meetsThreshold("empireDominance", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
+    // `colonyLevel` is the lifecycle/RCL band. Readiness for terminal, labs,
+    // remotes, and advanced structures is tracked separately via missingStructures.
+    if (rcl >= 8 && gcl >= (EVOLUTION_STAGES.empireDominance.minGcl ?? 0) && totalOwnedRooms >= (EVOLUTION_STAGES.empireDominance.minRooms ?? 0)) {
       return "empireDominance";
     }
-    if (this.meetsThreshold("fortifiedHive", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
+    if (rcl >= EVOLUTION_STAGES.fortifiedHive.rcl) {
       return "fortifiedHive";
     }
-    if (this.meetsThreshold("matureColony", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
+    if (rcl >= EVOLUTION_STAGES.matureColony.rcl) {
       return "matureColony";
     }
-    if (this.meetsThreshold("foragingExpansion", rcl, totalOwnedRooms, gcl, structureCounts, remoteCount)) {
+    if (rcl >= EVOLUTION_STAGES.foragingExpansion.rcl) {
       return "foragingExpansion";
     }
     return "seedNest";
-  }
-
-  /**
-   * Check if room meets threshold for evolution stage
-   */
-  private meetsThreshold(
-    stage: EvolutionStage,
-    rcl: number,
-    totalRooms: number,
-    gcl: number,
-    structureCounts: Partial<Record<BuildableStructureConstant, number>>,
-    remoteCount: number
-  ): boolean {
-    const threshold = EVOLUTION_STAGES[stage];
-    const towers = structureCounts[STRUCTURE_TOWER] ?? 0;
-    const labs = structureCounts[STRUCTURE_LAB] ?? 0;
-
-    if (rcl < threshold.rcl) return false;
-    if (threshold.minRooms && totalRooms < threshold.minRooms) return false;
-    if (threshold.minGcl && gcl < threshold.minGcl) return false;
-    if (threshold.minRemoteRooms && remoteCount < threshold.minRemoteRooms) return false;
-    if (threshold.minTowerCount && towers < threshold.minTowerCount) return false;
-    if (threshold.requiresStorage && !structureCounts[STRUCTURE_STORAGE]) return false;
-    if (threshold.requiresTerminal && rcl >= 6 && !structureCounts[STRUCTURE_TERMINAL]) return false;
-    if (threshold.requiresLabs && labs === 0) return false;
-    if (threshold.minLabCount && rcl >= 6 && labs < threshold.minLabCount) return false;
-    if (threshold.requiresFactory && rcl >= 7 && !structureCounts[STRUCTURE_FACTORY]) return false;
-    if (threshold.requiresPowerSpawn && rcl >= 7 && !structureCounts[STRUCTURE_POWER_SPAWN]) return false;
-    if (threshold.requiresObserver && rcl >= 8 && !structureCounts[STRUCTURE_OBSERVER]) return false;
-    if (threshold.requiresNuker && rcl >= 8 && !structureCounts[STRUCTURE_NUKER]) return false;
-
-    return true;
   }
 
   /**

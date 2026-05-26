@@ -487,7 +487,7 @@ export interface StatsSnapshot {
  * Profiler memory structure for EMA tracking across ticks
  */
 export interface ProfilerMemory {
-  rooms: Record<string, { avgCpu: number; peakCpu: number; samples: number; lastTick: number }>;
+  rooms: Record<string, { avgCpu: number; peakCpu: number; samples: number; lastTick: number; controllerProgress?: number; storageEnergy?: number }>;
   subsystems: Record<string, { avgCpu: number; peakCpu: number; samples: number; callsThisTick: number }>;
   roles?: Record<string, { avgCpu: number; peakCpu: number; samples: number; callsThisTick: number }>;
   tickCount: number;

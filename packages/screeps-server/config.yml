@@ -62,8 +62,8 @@ decorateConfig:
     # floorForegroundUrl: ''
 
 serverConfig:
-  tickRate: 100
-  socketUpdateRate: 100
+  tickRate: 20
+  socketUpdateRate: 20
   shardName: "shard0"
   welcomeText: |
     <div

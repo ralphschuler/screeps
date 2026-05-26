@@ -8,6 +8,13 @@
 import { Command } from "../commandRegistry";
 import { creepProcessManager } from "../creepProcessManager";
 import { kernel } from "../kernel";
+import {
+  formatKernelHealthReport,
+  formatKernelProcessList,
+  formatKernelStatsReport,
+  type KernelProcessReportNode
+} from "../kernelOperationsReport";
+import { formatProcessTopologySnapshot } from "../processArchitecture";
 import { roomProcessManager } from "../roomProcessManager";
 
 /**
@@ -26,31 +33,15 @@ export class KernelCommands {
     const config = kernel.getConfig();
     const bucketMode = kernel.getBucketMode();
 
-    let output = `=== Kernel Stats ===
-Bucket Mode: ${bucketMode.toUpperCase()}
-CPU Bucket: ${Game.cpu.bucket}
-CPU Limit: ${kernel.getCpuLimit().toFixed(2)} (${(config.targetCpuUsage * 100).toFixed(0)}% of ${Game.cpu.limit})
-Remaining CPU: ${kernel.getRemainingCpu().toFixed(2)}
-
-Processes: ${stats.totalProcesses} total (${stats.activeProcesses} active, ${stats.suspendedProcesses} suspended)
-Total CPU Used: ${stats.totalCpuUsed.toFixed(3)}
-Avg CPU/Process: ${stats.avgCpuPerProcess.toFixed(4)}
-Avg Health Score: ${stats.avgHealthScore.toFixed(1)}/100
-
-Top CPU Consumers:`;
-
-    for (const proc of stats.topCpuProcesses) {
-      output += `\n  ${proc.name}: ${proc.avgCpu.toFixed(4)} avg CPU`;
-    }
-
-    if (stats.unhealthyProcesses.length > 0) {
-      output += "\n\nUnhealthy Processes (Health < 50):";
-      for (const proc of stats.unhealthyProcesses) {
-        output += `\n  ${proc.name}: ${proc.healthScore.toFixed(1)}/100 (${proc.consecutiveErrors} consecutive errors)`;
-      }
-    }
-
-    return output;
+    return formatKernelStatsReport({
+      bucketMode,
+      cpuBucket: Game.cpu.bucket,
+      cpuLimit: kernel.getCpuLimit(),
+      targetCpuUsage: config.targetCpuUsage,
+      gameCpuLimit: Game.cpu.limit,
+      remainingCpu: kernel.getRemainingCpu(),
+      stats
+    });
   }
 
   @Command({
@@ -67,20 +58,18 @@ Top CPU Consumers:`;
       return "No processes registered with kernel.";
     }
 
-    let output = "=== Registered Processes ===\n";
-    output += "ID | Name | Priority | Frequency | State | Runs | Avg CPU | Health | Errors\n";
-    output += "-".repeat(100) + "\n";
+    return formatKernelProcessList(processes as KernelProcessReportNode[]);
+  }
 
-    const sorted = [...processes].sort((a, b) => b.priority - a.priority);
-
-    for (const p of sorted) {
-      const avgCpu = p.stats.avgCpu.toFixed(4);
-      const health = p.stats.healthScore.toFixed(0);
-      const healthIndicator = p.stats.healthScore >= 80 ? "✓" : p.stats.healthScore >= 50 ? "⚠" : "✗";
-      output += `${p.id} | ${p.name} | ${p.priority} | ${p.frequency} | ${p.state} | ${p.stats.runCount} | ${avgCpu} | ${healthIndicator}${health} | ${p.stats.errorCount}(${p.stats.consecutiveErrors})\n`;
-    }
-
-    return output;
+  @Command({
+    name: "showProcessTopology",
+    description: "Show observable process topology with scheduling and health metadata",
+    usage: "showProcessTopology()",
+    examples: ["showProcessTopology()"],
+    category: "Kernel"
+  })
+  public showProcessTopology(): string {
+    return formatProcessTopologySnapshot(kernel.getProcessTopology());
   }
 
   @Command({
@@ -139,27 +128,8 @@ Top CPU Consumers:`;
       return "No processes registered with kernel.";
     }
 
-    // Sort by health score (ascending - worst first)
-    const sorted = [...processes].sort((a, b) => a.stats.healthScore - b.stats.healthScore);
-
-    let output = "=== Process Health Status ===\n";
-    output += "Name | Health | Errors | Consecutive | Status | Last Success\n";
-    output += "-".repeat(80) + "\n";
-
-    for (const p of sorted) {
-      const health = p.stats.healthScore.toFixed(0);
-      const healthIcon = p.stats.healthScore >= 80 ? "✓" : p.stats.healthScore >= 50 ? "⚠" : "✗";
-      const ticksSinceSuccess = p.stats.lastSuccessfulRunTick > 0 ? Game.time - p.stats.lastSuccessfulRunTick : "never";
-      const status = p.state === "suspended" ? `SUSPENDED (${p.stats.suspensionReason})` : p.state.toUpperCase();
-
-      output += `${p.name} | ${healthIcon} ${health}/100 | ${p.stats.errorCount} | ${p.stats.consecutiveErrors} | ${status} | ${ticksSinceSuccess}\n`;
-    }
-
     const stats = kernel.getStatsSummary();
-    output += `\nAverage Health: ${stats.avgHealthScore.toFixed(1)}/100`;
-    output += `\nSuspended Processes: ${stats.suspendedProcesses}`;
-
-    return output;
+    return formatKernelHealthReport(processes as KernelProcessReportNode[], Game.time, stats);
   }
 
   @Command({

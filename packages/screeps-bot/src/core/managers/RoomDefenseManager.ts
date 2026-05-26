@@ -9,30 +9,24 @@
  * - Hostile detection and event emission
  */
 
-import {
-  assessThreat,
-  calculateWallRepairTarget,
-  getActualHostileCreeps,
-  selectTowerAction
-} from "@ralphschuler/screeps-defense";
+import { assessThreat, calculateWallRepairTarget, getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { pheromoneManager } from "@ralphschuler/screeps-pheromones";
+import { recordRoomAttackers } from "../../empire/postureManager";
 import { postureManager } from "../../logic/evolution";
 import { kernel } from "../kernel";
+import {
+  type DefenseKernelEvent,
+  type DefensePostureIntent,
+  type DefensePostureSnapshot,
+  type DefenseStructureTrackingSnapshot,
+  type TowerDefenseAction,
+  planDefensePostureIntent,
+  planTowerDefenseIntent
+} from "./roomDefensePostureModule";
 
-/**
- * Structure count tracking for detecting destroyed structures
- * Separate from SwarmState to avoid polluting memory
- */
-interface StructureCountTracking {
-  lastStructureCount: number;
-  lastSpawns: StructureSpawn[];
-  lastTowers: StructureTower[];
-  lastTick: number;
-}
-
-const structureCountTracker = new Map<string, StructureCountTracking>();
+const structureCountTracker = new Map<string, DefenseStructureTrackingSnapshot>();
 
 /**
  * Room Defense Manager
@@ -49,126 +43,110 @@ export class RoomDefenseManager {
     swarm: SwarmState,
     cache: { spawns: StructureSpawn[]; towers: StructureTower[] }
   ): void {
-    // Track structure count changes to detect destroyed structures
-    // Only check every 5 ticks to reduce CPU usage
-    // Uses a separate Map to avoid polluting SwarmState memory
-    if (Game.time % 5 === 0) {
-      const currentStructureCount = cache.spawns.length + cache.towers.length;
-
-      const tracking = structureCountTracker.get(room.name);
-
-      if (tracking && tracking.lastTick < Game.time) {
-        // Compare with previous counts
-        if (currentStructureCount < tracking.lastStructureCount) {
-          // Structure(s) destroyed - emit event for each critical structure type
-          if (cache.spawns.length < tracking.lastSpawns.length) {
-            kernel.emit("structure.destroyed", {
-              roomName: room.name,
-              structureType: STRUCTURE_SPAWN,
-              structureId: "unknown",
-              source: room.name
-            });
-          }
-          if (cache.towers.length < tracking.lastTowers.length) {
-            kernel.emit("structure.destroyed", {
-              roomName: room.name,
-              structureType: STRUCTURE_TOWER,
-              structureId: "unknown",
-              source: room.name
-            });
-          }
-        }
-      }
-
-      // Store counts for next check
-      // Use shallow copy to avoid holding references to old structure objects
-      structureCountTracker.set(room.name, {
-        lastStructureCount: currentStructureCount,
-        lastSpawns: [...cache.spawns],
-        lastTowers: [...cache.towers],
-        lastTick: Game.time
-      });
-    }
-
     const hostiles = getActualHostileCreeps(room);
+    const intent = this.getDefensePostureIntent(room, swarm, cache, hostiles);
+    this.executeDefensePostureIntent(room, swarm, hostiles, intent);
+  }
 
-    // Use threat assessment for accurate danger level calculation
-    if (hostiles.length > 0) {
-      const threat = assessThreat(room);
-      const newDanger = threat.dangerLevel;
+  /**
+   * Build observable defense posture intent before mutating memory, pheromones, or events.
+   */
+  public getDefensePostureIntent(
+    room: Room,
+    swarm: SwarmState,
+    cache: { spawns: StructureSpawn[]; towers: StructureTower[] },
+    hostiles: Creep[] = getActualHostileCreeps(room)
+  ): DefensePostureIntent {
+    const snapshot = this.getDefensePostureSnapshot(room, swarm, cache, hostiles);
+    return planDefensePostureIntent(snapshot);
+  }
 
-      // Update danger and emit events if increased
-      if (newDanger > swarm.danger) {
-        // Update pheromones with threat assessment data
-        pheromoneManager.updateDangerFromThreat(swarm, threat.threatScore, threat.dangerLevel);
+  private getDefensePostureSnapshot(
+    room: Room,
+    swarm: SwarmState,
+    cache: { spawns: StructureSpawn[]; towers: StructureTower[] },
+    hostiles: Creep[]
+  ): DefensePostureSnapshot {
+    const cluster = swarm.clusterId ? memoryManager.getCluster(swarm.clusterId) : null;
+    const threat = hostiles.length > 0 ? assessThreat(room) : undefined;
+    const nukes = Game.time % 10 === 0 ? room.find(FIND_NUKES) : [];
 
-        // Diffuse danger to cluster rooms if part of a cluster
-        if (swarm.clusterId) {
-          const cluster = memoryManager.getCluster(swarm.clusterId);
-          if (cluster) {
-            pheromoneManager.diffuseDangerToCluster(room.name, threat.threatScore, cluster.memberRooms);
-          }
-        }
+    return {
+      roomName: room.name,
+      time: Game.time,
+      currentDanger: swarm.danger,
+      nukeDetected: swarm.nukeDetected ?? false,
+      clusterId: swarm.clusterId,
+      clusterMemberRooms: cluster?.memberRooms,
+      previousStructures: structureCountTracker.get(room.name),
+      currentStructures: {
+        spawns: cache.spawns.map(spawn => spawn.id),
+        towers: cache.towers.map(tower => tower.id)
+      },
+      hostiles: hostiles.map(hostile => ({
+        id: hostile.id,
+        owner: hostile.owner.username,
+        bodyParts: hostile.body.length
+      })),
+      threat: threat ? { dangerLevel: threat.dangerLevel, threatScore: threat.threatScore } : undefined,
+      nukes: nukes.map(nuke => ({
+        id: nuke.id,
+        timeToLand: nuke.timeToLand,
+        launchRoomName: nuke.launchRoomName
+      }))
+    };
+  }
 
-        memoryManager.addRoomEvent(
-          room.name,
-          "hostileDetected",
-          `${hostiles.length} hostiles, danger=${newDanger}, score=${threat.threatScore}`
-        );
-
-        // Emit hostile detected events for each hostile through the kernel event system
-        for (const hostile of hostiles) {
-          kernel.emit("hostile.detected", {
-            roomName: room.name,
-            hostileId: hostile.id,
-            hostileOwner: hostile.owner.username,
-            bodyParts: hostile.body.length,
-            threatLevel: newDanger,
-            source: room.name
-          });
-        }
-      }
-
-      swarm.danger = newDanger;
-    } else if (swarm.danger > 0) {
-      // Emit hostile cleared event when danger level drops to 0
-      kernel.emit("hostile.cleared", {
-        roomName: room.name,
-        source: room.name
-      });
-      swarm.danger = 0;
+  private executeDefensePostureIntent(
+    room: Room,
+    swarm: SwarmState,
+    hostiles: Creep[],
+    intent: DefensePostureIntent
+  ): void {
+    if (intent.nextStructureTracking) {
+      structureCountTracker.set(room.name, intent.nextStructureTracking);
     }
 
-    // Check for nukes (only every 10 ticks to reduce CPU cost)
-    // Nukes have a long flight time (~50k ticks), so checking every 10 ticks is sufficient
-    if (Game.time % 10 === 0) {
-      const nukes = room.find(FIND_NUKES);
-      if (nukes.length > 0) {
-        if (!swarm.nukeDetected) {
-          pheromoneManager.onNukeDetected(swarm);
-          const launchSource = nukes[0]?.launchRoomName ?? "unidentified source";
-          memoryManager.addRoomEvent(
-            room.name,
-            "nukeDetected",
-            `${nukes.length} nuke(s) incoming from ${launchSource}`
-          );
-          swarm.nukeDetected = true;
+    if (intent.recordAttackers) {
+      recordRoomAttackers(room.name, hostiles);
+    }
 
-          // Emit nuke detected events through kernel event system
-          for (const nuke of nukes) {
-            kernel.emit("nuke.detected", {
-              roomName: room.name,
-              nukeId: nuke.id,
-              landingTick: Game.time + nuke.timeToLand,
-              launchRoomName: nuke.launchRoomName,
-              source: room.name
-            });
-          }
-        }
-      } else {
-        // Reset flag when nukes are gone
-        swarm.nukeDetected = false;
+    for (const effect of intent.pheromoneEffects) {
+      if (effect.type === "danger") {
+        pheromoneManager.updateDangerFromThreat(swarm, effect.threatScore, effect.dangerLevel);
+      } else if (effect.type === "diffuseDanger") {
+        pheromoneManager.diffuseDangerToCluster(effect.roomName, effect.threatScore, effect.memberRooms);
+      } else if (effect.type === "nukeDetected") {
+        pheromoneManager.onNukeDetected(swarm);
       }
+    }
+
+    for (const event of intent.roomEvents) {
+      memoryManager.addRoomEvent(event.roomName, event.type, event.message);
+    }
+
+    for (const event of intent.kernelEvents) {
+      this.emitDefenseKernelEvent(event);
+    }
+
+    swarm.danger = intent.nextDanger;
+    swarm.nukeDetected = intent.nextNukeDetected;
+  }
+
+  private emitDefenseKernelEvent(event: DefenseKernelEvent): void {
+    switch (event.type) {
+      case "hostile.detected":
+        kernel.emit(event.type, event.payload);
+        break;
+      case "hostile.cleared":
+        kernel.emit(event.type, event.payload);
+        break;
+      case "structure.destroyed":
+        kernel.emit(event.type, event.payload);
+        break;
+      case "nuke.detected":
+        kernel.emit(event.type, event.payload);
+        break;
     }
   }
 
@@ -181,31 +159,29 @@ export class RoomDefenseManager {
     if (towers.length === 0) return;
 
     const hostiles = getActualHostileCreeps(room);
-
-    const isCombatPosture = postureManager.isCombatPosture(swarm.posture);
     const rcl = room.controller?.level ?? 1;
-    const wallRepairTarget = calculateWallRepairTarget(rcl, swarm.danger);
+    const actions = planTowerDefenseIntent({
+      towers,
+      hostiles,
+      posture: swarm.posture,
+      rcl,
+      danger: swarm.danger,
+      isCombatPosture: postureManager.isCombatPosture(swarm.posture),
+      wallRepairTarget: calculateWallRepairTarget(rcl, swarm.danger)
+    });
 
-    for (const tower of towers) {
-      if (tower.store.getUsedCapacity(RESOURCE_ENERGY) < 10) continue;
+    for (const action of actions) {
+      this.executeTowerDefenseAction(action);
+    }
+  }
 
-      const action = selectTowerAction({
-        tower,
-        hostiles,
-        posture: swarm.posture,
-        rcl,
-        danger: swarm.danger,
-        isCombatPosture,
-        wallRepairTarget
-      });
-
-      if (action.type === "attack") {
-        tower.attack(action.target);
-      } else if (action.type === "heal") {
-        tower.heal(action.target);
-      } else if (action.type === "repair") {
-        tower.repair(action.target);
-      }
+  private executeTowerDefenseAction(action: TowerDefenseAction): void {
+    if (action.type === "attack") {
+      action.tower.attack(action.target);
+    } else if (action.type === "heal") {
+      action.tower.heal(action.target);
+    } else if (action.type === "repair") {
+      action.tower.repair(action.target);
     }
   }
 }

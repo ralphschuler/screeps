@@ -13,13 +13,13 @@ services:
     platform: linux/amd64
     init: true
     ports:
-      - "${SCREEPS_LAUNCHER_HOST:-127.0.0.1}:21025:21025/tcp"
-      - "${SCREEPS_LAUNCHER_HOST:-127.0.0.1}:21026:21026/tcp"
+      - "${SCREEPS_LAUNCHER_HOST:-127.0.0.1}:${SCREEPS_SERVER_PORT:-21025}:21025/tcp"
+      - "${SCREEPS_LAUNCHER_HOST:-127.0.0.1}:${SCREEPS_CLI_PORT:-21026}:21026/tcp"
     environment:
       NODE_ENV: production
       SCREEPS_PORT: "21025"
       SCREEPS_CLI_PORT: "21026"
-      SCREEPS_CLI_PASSWORD: ci-password
+      SCREEPS_CLI_PASSWORD: ${SCREEPS_CLI_PASSWORD:-ci-password}
       SHARD_NAME: ${SHARD_NAME:-shard0}
       STEAM_KEY: ${STEAM_KEY:-ci-offline-private-server-key}
       MONGO_HOST: mongo

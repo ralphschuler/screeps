@@ -1,6 +1,6 @@
 /**
  * Spawn Needs Analyzer Module
- * 
+ *
  * Determines whether a room needs to spawn a specific role based on:
  * - Current creep counts
  * - Room conditions and available structures
@@ -8,11 +8,13 @@
  * - Special role requirements
  */
 
-import type { SwarmState, SwarmCreepMemory } from "./botTypes";
-import { ROLE_DEFINITIONS } from "./roleDefinitions";
-import { calculateRemoteHaulerRequirement, memoryManager, resourceTransferCoordinator } from "./botIntegration";
 import { cachedFindSources } from "@ralphschuler/screeps-cache";
 import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
+import { type CrossShardTransferRequest, resourceTransferCoordinator } from "./botIntegration";
+import { memoryManager } from "@ralphschuler/screeps-memory";
+import type { SwarmCreepMemory, SwarmState } from "@ralphschuler/screeps-memory";
+import { calculateRemoteHaulerRequirement } from "./botIntegration";
+import { ROLE_DEFINITIONS } from "./roleDefinitions";
 
 /** Number of dangerous hostiles per remote guard needed */
 const THREATS_PER_GUARD = 2;
@@ -23,31 +25,46 @@ const RESERVATION_THRESHOLD_TICKS = 3000;
 /** Maximum number of carriers that can be assigned to a single cross-shard transfer request */
 export const MAX_CARRIERS_PER_CROSS_SHARD_REQUEST = 3;
 
+/** Focus room upgrader limits by RCL */
+const AGGRESSIVE_UPGRADER_LIMITS = {
+  EARLY: 4,
+  MID: 7,
+  LATE: 12
+} as const;
+
+/** Maximum idle military creeps to keep when there are no visible hostiles. */
+const IDLE_MILITARY_RESERVE = 1;
+
+/** Scout nearby stub intel so remotes do not stall forever without vision. */
+function hasUnscoutedNearbyRoom(homeRoom: string, maxDistance = 2): boolean {
+  const empire = memoryManager.getEmpire();
+  for (const roomName in empire.knownRooms) {
+    const intel = empire.knownRooms[roomName];
+    if (!intel || intel.scouted) continue;
+    const distance = Game.map.getRoomLinearDistance(homeRoom, roomName);
+    if (
+      distance >= 1 &&
+      distance <= maxDistance &&
+      !intel.owner &&
+      !intel.reserver &&
+      !intel.isHighway &&
+      !intel.isSK
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function hasHealthyRemoteReservation(room: Room): boolean {
   const reservationTicks = room.controller?.reservation?.ticksToEnd ?? 0;
   return reservationTicks >= RESERVATION_THRESHOLD_TICKS;
 }
 
-interface ResourceTransferRequest {
-  fromRoom: string;
-  toRoom: string;
-  resourceType: ResourceConstant;
-  amount: number;
-  delivered: number;
-  assignedCreeps: string[];
-}
-
-/** Focus room upgrader limits by RCL */
-const FOCUS_ROOM_UPGRADER_LIMITS = {
-  EARLY: 2,
-  MID: 4,
-  LATE: 6
-} as const;
-
 /**
  * Creep count cache (cleared each tick) to avoid repeated iteration.
  * OPTIMIZATION: With multiple spawns per room, this prevents redundant creep iteration.
- * 
+ *
  * Cache structure:
  * - Key format for normal count: `roomName` or `roomName_active`
  * - Key format for role count: `roomName:role` (counts specific role from a home room)
@@ -70,7 +87,7 @@ export function countCreepsByRole(roomName: string, activeOnly = false): Map<str
   }
 
   const cacheKey = activeOnly ? `${roomName}_active` : roomName;
-  
+
   const cached = creepCountCache.get(cacheKey);
   if (cached && cached instanceof Map) {
     return cached;
@@ -86,7 +103,7 @@ export function countCreepsByRole(roomName: string, activeOnly = false): Map<str
       if (activeOnly && creep.spawning) {
         continue;
       }
-      
+
       const role = memory.role ?? "unknown";
       counts.set(role, (counts.get(role) ?? 0) + 1);
     }
@@ -133,6 +150,37 @@ export function countCreepsOfRole(roomName: string, role: string): number {
 /**
  * Count remote creeps assigned to a specific target room
  */
+export function getRoleTargetCount(roomName: string, role: string, swarm: SwarmState): number {
+  const def = ROLE_DEFINITIONS[role];
+  if (!def) return 0;
+
+  let maxForRoom = def.maxPerRoom;
+  const room = Game.rooms[roomName];
+
+  if (role === "upgrader" && room?.controller && swarm.danger === 0 && swarm.posture !== "war" && swarm.posture !== "siege") {
+    if (room.controller.level <= 3) {
+      maxForRoom = AGGRESSIVE_UPGRADER_LIMITS.EARLY;
+    } else if (room.controller.level <= 6) {
+      maxForRoom = AGGRESSIVE_UPGRADER_LIMITS.MID;
+    } else {
+      maxForRoom = AGGRESSIVE_UPGRADER_LIMITS.LATE;
+    }
+
+    if (swarm.clusterId) {
+      const cluster = memoryManager.getCluster(swarm.clusterId);
+      if (cluster?.focusRoom === roomName) {
+        maxForRoom += 2;
+      }
+    }
+  }
+
+  if (role === "queenCarrier") {
+    maxForRoom = room?.storage && room.controller && room.controller.level >= 5 ? def.maxPerRoom : 1;
+  }
+
+  return maxForRoom;
+}
+
 export function countRemoteCreepsByTargetRoom(homeRoom: string, role: string, targetRoom: string): number {
   let count = 0;
   for (const creep of Object.values(Game.creeps)) {
@@ -154,9 +202,9 @@ export function getRemoteRoomNeedingWorkers(homeRoom: string, role: string, swar
   for (const remoteRoom of remoteAssignments) {
     const currentCount = countRemoteCreepsByTargetRoom(homeRoom, role, remoteRoom);
     const room = Game.rooms[remoteRoom];
-    
+
     let maxPerRemote: number;
-    
+
     if (role === "remoteHarvester") {
       if (room) {
         const sources = cachedFindSources(room);
@@ -183,7 +231,7 @@ export function getRemoteRoomNeedingWorkers(homeRoom: string, role: string, swar
     } else {
       maxPerRemote = 2;
     }
-    
+
     if (currentCount < maxPerRemote) {
       return remoteRoom;
     }
@@ -194,18 +242,23 @@ export function getRemoteRoomNeedingWorkers(homeRoom: string, role: string, swar
 
 /**
  * Assign target room to remote role creep memory.
- * 
+ *
  * Handles target room assignment for remote roles (remoteHarvester, remoteHauler, remoteWorker).
  * For remoteHarvester and remoteHauler, finds a remote room that needs more workers of that role.
  * For remoteWorker, uses load balancing to assign to the remote room with fewest workers.
- * 
+ *
  * @param role - The role to assign a target room for
  * @param memory - The creep memory to update with targetRoom
  * @param swarm - The swarm state containing remote assignments
  * @param homeRoom - The home room name for the creep
  * @returns true if assignment successful or not needed, false if no target available
  */
-export function assignRemoteTargetRoom(role: string, memory: SwarmCreepMemory, swarm: SwarmState, homeRoom: string): boolean {
+export function assignRemoteTargetRoom(
+  role: string,
+  memory: SwarmCreepMemory,
+  swarm: SwarmState,
+  homeRoom: string
+): boolean {
   if (role === "remoteHarvester" || role === "remoteHauler") {
     const targetRoom = getRemoteRoomNeedingWorkers(homeRoom, role, swarm);
     if (targetRoom) {
@@ -214,7 +267,7 @@ export function assignRemoteTargetRoom(role: string, memory: SwarmCreepMemory, s
     }
     return false;
   }
-  
+
   if (role === "remoteWorker") {
     const remoteAssignments = swarm.remoteAssignments ?? [];
     if (remoteAssignments.length > 0) {
@@ -222,7 +275,7 @@ export function assignRemoteTargetRoom(role: string, memory: SwarmCreepMemory, s
       // Count by assignment (targetRoom), not by physical location
       let minCount = Infinity;
       let candidatesWithMinCount: string[] = [];
-      
+
       for (const remoteName of remoteAssignments) {
         // Count workers assigned to this remote (from this home)
         const count = countRemoteCreepsByTargetRoom(homeRoom, role, remoteName);
@@ -233,18 +286,19 @@ export function assignRemoteTargetRoom(role: string, memory: SwarmCreepMemory, s
           candidatesWithMinCount.push(remoteName);
         }
       }
-      
+
       // Select from candidates: use round-robin if multiple, otherwise take the only one
-      const bestRemote = candidatesWithMinCount.length > 1
-        ? candidatesWithMinCount[Game.time % candidatesWithMinCount.length]
-        : candidatesWithMinCount[0];
-      
+      const bestRemote =
+        candidatesWithMinCount.length > 1
+          ? candidatesWithMinCount[Game.time % candidatesWithMinCount.length]
+          : candidatesWithMinCount[0];
+
       memory.targetRoom = bestRemote;
       return true;
     }
     return false;
   }
-  
+
   // Not a remote role - no assignment needed, return true to allow spawning
   return true;
 }
@@ -255,24 +309,24 @@ export function assignRemoteTargetRoom(role: string, memory: SwarmCreepMemory, s
 function needsReserver(_homeRoom: string, swarm: SwarmState): boolean {
   const remotes = swarm.remoteAssignments ?? [];
   if (remotes.length === 0) return false;
-  
+
   const myUsername = getMyUsername();
-  
+
   // Check each remote room
   for (const remoteName of remotes) {
     const remoteRoom = Game.rooms[remoteName];
-    
+
     // If we have vision, check reservation status
     if (remoteRoom?.controller) {
       const controller = remoteRoom.controller;
-      
+
       // Skip if owned by anyone (can't reserve owned rooms)
       if (controller.owner) continue;
-      
+
       // Check if reserved by us
       const reservedByUs = controller.reservation?.username === myUsername;
       const reservationTicks = controller.reservation?.ticksToEnd ?? 0;
-      
+
       // Need reserver if not reserved or reservation is running low
       if (!reservedByUs || reservationTicks < RESERVATION_THRESHOLD_TICKS) {
         // Check if we already have a reserver going there
@@ -280,7 +334,7 @@ function needsReserver(_homeRoom: string, swarm: SwarmState): boolean {
           const memory = creep.memory as unknown as SwarmCreepMemory;
           return memory.role === "claimer" && memory.targetRoom === remoteName && memory.task === "reserve";
         });
-        
+
         if (!hasReserver) {
           return true; // Found a remote that needs a reserver
         }
@@ -291,13 +345,13 @@ function needsReserver(_homeRoom: string, swarm: SwarmState): boolean {
         const memory = creep.memory as unknown as SwarmCreepMemory;
         return memory.role === "claimer" && memory.targetRoom === remoteName && memory.task === "reserve";
       });
-      
+
       if (!hasReserver) {
         return true; // No reserver for this remote
       }
     }
   }
-  
+
   return false;
 }
 
@@ -315,7 +369,7 @@ function getMyUsername(): string {
 /**
  * Check if room needs to spawn a specific role.
  * Evaluates current creep counts, room conditions, and special requirements.
- * 
+ *
  * @param roomName - Name of the room
  * @param role - Role to check
  * @param swarm - Swarm state with posture, danger level, and assignments
@@ -325,6 +379,26 @@ function getMyUsername(): string {
 export function needsRole(roomName: string, role: string, swarm: SwarmState, isBootstrapMode = false): boolean {
   const def = ROLE_DEFINITIONS[role];
   if (!def) return false;
+
+  // MILITARY SPAWN RESTRICTION: When no hostile creeps are visible, only keep
+  // a minimal defensive reserve. This prevents rooms whose posture/danger
+  // pheromones are stale from spending most of their energy on idle soldiers.
+  const isMilitary = def.family === "military";
+  if (isMilitary) {
+    const room = Game.rooms[roomName];
+    const visibleHostiles = room ? getActualHostileCreeps(room).length : 0;
+    const shouldLimitIdleMilitary = visibleHostiles === 0 && (swarm.danger === 0 || swarm.posture !== "eco");
+
+    if (shouldLimitIdleMilitary) {
+      const counts = countCreepsByRole(roomName);
+      const militaryCount = Array.from(counts.entries())
+        .filter(([r]) => ROLE_DEFINITIONS[r]?.family === "military")
+        .reduce((sum, [, c]) => sum + c, 0);
+      if (militaryCount >= IDLE_MILITARY_RESERVE) return false;
+      // Only allow guard or ranger as the single idle reserve creep.
+      if (role !== "guard" && role !== "ranger") return false;
+    }
+  }
 
   // SPECIAL: larvaWorker should ONLY be spawned during bootstrap/emergency
   // Once the economy is stable, use specialized roles instead
@@ -340,38 +414,38 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
     // Check if there's a remote room that needs workers
     return getRemoteRoomNeedingWorkers(roomName, role, swarm) !== null;
   }
-  
+
   // Remote worker: only spawn if we have remote rooms assigned
   // CRITICAL FIX: Must count workers by homeRoom ASSIGNMENT, not by physical location
   // because remote workers travel away from home and would be undercounted
   if (role === "remoteWorker") {
     const remoteAssignments = swarm.remoteAssignments ?? [];
     if (remoteAssignments.length === 0) return false;
-    
+
     // Use cached count of workers assigned from this home room (by memory.homeRoom)
     // This counts workers regardless of their current physical location
     const workersFromThisHome = countCreepsOfRole(roomName, "remoteWorker");
-    
+
     // Check against maxPerRoom from role definition (already retrieved above)
     return workersFromThisHome < def.maxPerRoom;
   }
-  
+
   // Remote guard: spawn if remote rooms have threats
   if (role === "remoteGuard") {
     const remoteAssignments = swarm.remoteAssignments ?? [];
     if (remoteAssignments.length === 0) return false;
-    
+
     // Check if any remote room has threats and needs guards
     for (const remoteName of remoteAssignments) {
       const remoteRoom = Game.rooms[remoteName];
       if (!remoteRoom) continue; // Can't check rooms without vision
-      
+
       // Check for hostile creeps with combat parts
       const hostiles = getActualHostileCreeps(remoteRoom);
       const dangerousHostiles = hostiles.filter(h =>
         h.body.some(p => p.type === ATTACK || p.type === RANGED_ATTACK || p.type === WORK)
       );
-      
+
       if (dangerousHostiles.length > 0) {
         // Check how many guards are already assigned to this remote
         const currentGuards = countRemoteCreepsByTargetRoom(roomName, role, remoteName);
@@ -382,37 +456,17 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
         }
       }
     }
-    
+
     return false;
   }
 
   const counts = countCreepsByRole(roomName);
   const current = counts.get(role) ?? 0;
 
-  // Check max per room (with special handling for upgraders in focus room)
-  let maxForRoom = def.maxPerRoom;
-  if (role === "upgrader" && swarm.clusterId) {
-    const cluster = memoryManager.getCluster(swarm.clusterId);
-    if (cluster?.focusRoom === roomName) {
-      // Allow more upgraders in focus room to accelerate upgrading
-      const room = Game.rooms[roomName];
-      if (room?.controller) {
-        // Scale upgraders based on RCL
-        if (room.controller.level <= 3) {
-          maxForRoom = FOCUS_ROOM_UPGRADER_LIMITS.EARLY;
-        } else if (room.controller.level <= 6) {
-          maxForRoom = FOCUS_ROOM_UPGRADER_LIMITS.MID;
-        } else {
-          maxForRoom = FOCUS_ROOM_UPGRADER_LIMITS.LATE;
-        }
-      }
-    }
-  }
-
-  if (current >= maxForRoom) return false;
+  const room = Game.rooms[roomName];
+  if (current >= getRoleTargetCount(roomName, role, swarm)) return false;
 
   // Special conditions
-  const room = Game.rooms[roomName];
   if (!room) return false;
 
   // Scout: Spawn if we have remote rooms without full intel
@@ -422,19 +476,19 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
     // Never spawn scouts during defensive operations (danger >= 1)
     // Military units must take absolute priority during invasions
     if (swarm.danger >= 1) return false;
-    
+
     // Never spawn scouts in war/siege/defensive postures
-    if (swarm.posture === "defense" || swarm.posture === "war" || swarm.posture === "siege") return false;
+    if (swarm.posture === "defensive" || swarm.posture === "war" || swarm.posture === "siege") return false;
 
     const hasRemoteAssignments = (swarm.remoteAssignments ?? []).length > 0;
 
-    // In expansion-style postures, allow scouts to discover and score candidate rooms.
-    if ((swarm.posture as string) === "expand" && current < def.maxPerRoom) return true;
+    // In expand posture, allow scouts to discover and score candidate rooms.
+    if (swarm.posture === "expand" && current < def.maxPerRoom) return true;
 
-    // In normal eco mode, scouts are optional; only keep one when there are
-    // active remote rooms whose intel may need refreshing.
-    if (hasRemoteAssignments && current === 0) return true;
-    
+    // Keep one scout when we have assigned remotes or adjacent stub intel.
+    // This feeds remote validation, reservation, and expansion scoring.
+    if (current === 0 && (hasRemoteAssignments || hasUnscoutedNearbyRoom(roomName))) return true;
+
     return false;
   }
 
@@ -442,19 +496,18 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
   if (role === "claimer") {
     const empire = memoryManager.getEmpire();
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
-    
+
     // Check if we have unclaimed expansion targets and can expand
-    const canExpand = ownedRooms.length < Game.gcl.level;
-    const claimQueue = (empire.claimQueue ?? []) as Array<{ claimed?: boolean }>;
-    const hasExpansionTarget = claimQueue.some(c => !c.claimed);
-    
+    const canExpand = ownedRooms.length < (Game.gcl?.level ?? 1);
+    const hasExpansionTarget = empire.claimQueue.some(c => !c.claimed);
+
     // Check if we have remote rooms that need reserving (no reserver assigned)
     const hasUnreservedRemote = needsReserver(roomName, swarm);
-    
+
     // Only spawn claimer if there's work to do
     if (canExpand && hasExpansionTarget) return true;
     if (hasUnreservedRemote) return true;
-    
+
     return false;
   }
 
@@ -494,37 +547,60 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
   if (role === "interRoomCarrier") {
     // Check if room's cluster has any active resource transfer requests
     if (!swarm.clusterId) return false;
-    
+
     const cluster = memoryManager.getCluster(swarm.clusterId);
     if (!cluster || !cluster.resourceRequests || cluster.resourceRequests.length === 0) {
       return false;
     }
-    
+
     // Check if there are requests that need more carriers
-    const resourceRequests = (cluster.resourceRequests ?? []) as ResourceTransferRequest[];
-    const needsCarriers = resourceRequests.some(req => {
+    const needsCarriers = cluster.resourceRequests.some(req => {
       // Only spawn for requests from this room
       if (req.fromRoom !== room.name) return false;
-      
+
       // Check if request needs more carriers
       const assignedCount = req.assignedCreeps.filter(name => Game.creeps[name]).length;
       const remaining = req.amount - req.delivered;
-      
+
       // Need carriers if we have significant remaining amount and not enough assigned
       return remaining > 500 && assignedCount < 2;
     });
-    
+
     if (!needsCarriers) return false;
   }
 
   // Cross-shard carrier needs active cross-shard transfer requests
   if (role === "crossShardCarrier") {
-    const pendingTransfers = resourceTransferCoordinator.getPendingTransfers(room.name);
-    if (pendingTransfers.length === 0) {
+    // Check if there are any active cross-shard transfer requests
+    const activeRequests = resourceTransferCoordinator.getActiveRequests?.() ?? [];
+    if (activeRequests.length === 0) {
       return false;
     }
 
-    if (!resourceTransferCoordinator.needsCarrier(room.name)) return false;
+    // Check if any request originates from this room and needs carriers
+    const needsCarriers = activeRequests.some((req: CrossShardTransferRequest) => {
+      // Only spawn for requests from this room
+      if (req.sourceRoom !== room.name) return false;
+
+      const assignedCreeps = req.assignedCreeps || [];
+      const neededCarryCapacity = req.amount - (req.transferred ?? 0);
+
+      // Get alive creeps and calculate their capacity
+      let currentCapacity = 0;
+      let aliveCreepCount = 0;
+      for (const creepName of assignedCreeps) {
+        const creep = Game.creeps[creepName];
+        if (creep) {
+          currentCapacity += creep.carryCapacity;
+          aliveCreepCount++;
+        }
+      }
+
+      // Need carriers if we need more capacity and haven't hit the max carriers per request
+      return currentCapacity < neededCarryCapacity && aliveCreepCount < MAX_CARRIERS_PER_CROSS_SHARD_REQUEST;
+    });
+
+    if (!needsCarriers) return false;
   }
 
   return true;

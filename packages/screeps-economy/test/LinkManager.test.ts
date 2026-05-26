@@ -6,11 +6,62 @@
 import { expect } from 'chai';
 import { LinkManager } from '../src/links/linkManager';
 
+function store(used: number, capacity = 800) {
+  return {
+    getUsedCapacity: (resource: ResourceConstant) => resource === RESOURCE_ENERGY ? used : 0,
+    getFreeCapacity: (resource: ResourceConstant) => resource === RESOURCE_ENERGY ? capacity - used : 0
+  };
+}
+
+function pos(label: string, ranges: Record<string, number>) {
+  return {
+    label,
+    getRangeTo: (target: any) => ranges[target.label] ?? 99,
+    toString: () => label
+  };
+}
+
+function link(id: string, used: number, ranges: Record<string, number>) {
+  const calls: any[] = [];
+  return {
+    id,
+    cooldown: 0,
+    store: store(used),
+    pos: pos(id, ranges),
+    transferEnergy: (target: any, amount?: number) => {
+      calls.push({ target: target.id, amount });
+      return OK;
+    },
+    calls
+  } as unknown as StructureLink & { calls: any[] };
+}
+
+function roomWithLinks(options: { energyAvailable?: number; energyCapacity?: number; spawnBusy?: boolean; links: StructureLink[] }) {
+  const storage = { label: 'storage', store: store(50000, 100000) };
+  const controller = { label: 'controller', my: true, level: 6 };
+  const spawn = { label: 'spawn', spawning: options.spawnBusy ? {} : null };
+  const source = { label: 'source' };
+  return {
+    name: 'W1N1',
+    controller,
+    storage,
+    energyAvailable: options.energyAvailable ?? 300,
+    energyCapacityAvailable: options.energyCapacity ?? 800,
+    find: (constant: number) => {
+      if (constant === FIND_MY_STRUCTURES) return options.links;
+      if (constant === FIND_SOURCES) return [source];
+      if (constant === FIND_MY_SPAWNS) return [spawn];
+      return [];
+    }
+  } as unknown as Room;
+}
+
 describe('LinkManager', () => {
   let linkManager: LinkManager;
 
   beforeEach(() => {
     linkManager = new LinkManager();
+    (global as any).Game.cpu.bucket = 10000;
   });
 
   describe('construction', () => {
@@ -31,41 +82,85 @@ describe('LinkManager', () => {
 
   describe('link role identification', () => {
     it('should identify source links near energy sources', () => {
-      // Test that links near sources are classified correctly
-      // This would require mocking Game.getObjectById and source positions
-      expect(true).to.be.true; // Placeholder
+      const sourceLink = link('sourceLink', 500, { source: 1 });
+      const room = roomWithLinks({ links: [sourceLink] });
+      (sourceLink as any).room = room;
+      expect(linkManager.getLinkRole(sourceLink)).to.equal('source');
     });
 
     it('should identify controller links near controller', () => {
-      // Test controller link identification
-      expect(true).to.be.true; // Placeholder
+      const controllerLink = link('controllerLink', 0, { controller: 1 });
+      const room = roomWithLinks({ links: [controllerLink] });
+      (controllerLink as any).room = room;
+      expect(linkManager.getLinkRole(controllerLink)).to.equal('controller');
     });
 
     it('should identify storage links near storage', () => {
-      // Test storage link identification
-      expect(true).to.be.true; // Placeholder
+      const storageLink = link('storageLink', 500, { storage: 1 });
+      const room = roomWithLinks({ links: [storageLink] });
+      (storageLink as any).room = room;
+      expect(linkManager.getLinkRole(storageLink)).to.equal('storage');
+    });
+
+    it('should identify spawn links near spawns', () => {
+      const spawnLink = link('spawnLink', 0, { spawn: 1 });
+      const room = roomWithLinks({ links: [spawnLink] });
+      (spawnLink as any).room = room;
+      expect(linkManager.getLinkRole(spawnLink)).to.equal('spawn');
     });
   });
 
   describe('energy transfer logic', () => {
-    it('should transfer from source link to controller link', () => {
-      // Test basic transfer logic
-      expect(true).to.be.true; // Placeholder - requires full Game object mocking
+    it('should transfer from source link to controller link by default', () => {
+      const sourceLink = link('sourceLink', 500, { source: 1 });
+      const controllerLink = link('controllerLink', 0, { controller: 1 });
+      const storageLink = link('storageLink', 500, { storage: 1 });
+      const room = roomWithLinks({ energyAvailable: 800, links: [sourceLink, controllerLink, storageLink] });
+
+      linkManager.processRoomLinks(room);
+
+      expect(sourceLink.calls).to.deep.equal([{ target: 'controllerLink', amount: 500 }]);
     });
 
-    it('should respect link cooldowns', () => {
-      // Test that cooldowns prevent transfers
-      expect(true).to.be.true; // Placeholder
+    it('should cap source link transfers to receiver free capacity', () => {
+      const sourceLink = link('sourceLink', 700, { source: 1 });
+      const controllerLink = link('controllerLink', 650, { controller: 1 });
+      const storageLink = link('storageLink', 500, { storage: 1 });
+      const room = roomWithLinks({ energyAvailable: 800, links: [sourceLink, controllerLink, storageLink] });
+
+      linkManager.processRoomLinks(room);
+
+      expect(sourceLink.calls).to.deep.equal([{ target: 'controllerLink', amount: 150 }]);
     });
 
-    it('should not transfer below minimum threshold', () => {
-      // Test minimum energy threshold
-      expect(true).to.be.true; // Placeholder
+    it('should send storage link energy to spawn link during spawn energy deficit', () => {
+      const storageLink = link('storageLink', 700, { storage: 1 });
+      const spawnLink = link('spawnLink', 0, { spawn: 1 });
+      const controllerLink = link('controllerLink', 0, { controller: 1 });
+      const room = roomWithLinks({ energyAvailable: 300, energyCapacity: 800, links: [storageLink, spawnLink, controllerLink] });
+
+      linkManager.processRoomLinks(room);
+
+      expect(storageLink.calls).to.deep.equal([{ target: 'spawnLink', amount: 700 }]);
     });
 
-    it('should prioritize controller link over storage link', () => {
-      // Test priority logic
-      expect(true).to.be.true; // Placeholder
+    it('should send storage link energy to controller link when spawn is full', () => {
+      const storageLink = link('storageLink', 700, { storage: 1 });
+      const spawnLink = link('spawnLink', 0, { spawn: 1 });
+      const controllerLink = link('controllerLink', 0, { controller: 1 });
+      const room = roomWithLinks({ energyAvailable: 800, energyCapacity: 800, links: [storageLink, spawnLink, controllerLink] });
+
+      linkManager.processRoomLinks(room);
+
+      expect(storageLink.calls).to.deep.equal([{ target: 'controllerLink', amount: 700 }]);
+    });
+
+    it('should not report source plus spawn-only links as a functional source receiver network', () => {
+      const sourceLink = link('sourceLink', 700, { source: 1 });
+      const spawnLink = link('spawnLink', 0, { spawn: 1 });
+      const room = roomWithLinks({ links: [sourceLink, spawnLink] });
+
+      expect(linkManager.hasLinkNetwork(room)).to.equal(false);
     });
   });
 

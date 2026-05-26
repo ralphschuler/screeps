@@ -7,6 +7,7 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
+import { planBuildcsQuestLifecycle } from "./questLifecycle";
 import { notifyQuestComplete } from "./questManager";
 import type { TooAngelQuestMemory } from "./types";
 
@@ -47,45 +48,64 @@ export function executeBuildcsQuest(quest: TooAngelQuestMemory): void {
     return;
   }
 
-  // Check if already complete
-  if (checkBuildcsComplete(quest.targetRoom)) {
-    logger.info(`Quest ${quest.id} (buildcs) completed! All construction sites built in ${quest.targetRoom}`, {
-      subsystem: "TooAngel"
-    });
-
-    // Notify TooAngel of completion
-    notifyQuestComplete(quest.id, true);
-    quest.status = "completed";
-    quest.completedAt = Game.time;
-    return;
-  }
-
   const constructionSites = targetRoom.find(FIND_CONSTRUCTION_SITES);
   logger.debug(
     `Quest ${quest.id} (buildcs): ${constructionSites.length} construction sites remaining in ${quest.targetRoom}`,
     { subsystem: "TooAngel" }
   );
 
-  // Find available builders
-  const assignedCreeps = quest.assignedCreeps || [];
-  const builders: Creep[] = [];
+  const existingAssignedCreeps = (quest.assignedCreeps || []).filter(creepName => Game.creeps[creepName]);
+  const availableBuilders = getAvailableQuestBuilders();
+  const intent = planBuildcsQuestLifecycle({
+    quest,
+    time: Game.time,
+    targetVisible: true,
+    constructionSiteCount: constructionSites.length,
+    existingAssignedCreeps,
+    availableBuilders: availableBuilders.map(builder => builder.name),
+    maxBuilders: EXECUTOR_CONFIG.MAX_BUILDERS_PER_QUEST
+  });
 
-  // Check existing assigned creeps
-  for (const creepName of assignedCreeps) {
-    const creep = Game.creeps[creepName];
-    if (creep) {
-      builders.push(creep);
-    }
+  quest.assignedCreeps = intent.assignedCreeps;
+
+  if (intent.status) {
+    quest.status = intent.status;
+    quest.completedAt = intent.completedAt;
   }
 
-  // Assign more builders if needed
-  if (builders.length < EXECUTOR_CONFIG.MAX_BUILDERS_PER_QUEST && constructionSites.length > 0) {
-    // Find idle builders in nearby rooms
-    for (const roomName in Game.rooms) {
-      const room = Game.rooms[roomName];
-      if (!room.controller?.my) continue;
+  if (intent.notifyComplete) {
+    logger.info(`Quest ${quest.id} (buildcs) completed! All construction sites built in ${quest.targetRoom}`, {
+      subsystem: "TooAngel"
+    });
+    notifyQuestComplete(intent.notifyComplete.questId, intent.notifyComplete.success);
+  }
 
-      const availableBuilders = room.find(FIND_MY_CREEPS, {
+  for (const assignment of intent.creepAssignments) {
+    const creep = Game.creeps[assignment.creepName];
+    if (!creep) continue;
+    const memory = creep.memory as unknown as {
+      questId?: string;
+      questTarget?: string;
+      questAction?: string;
+    };
+    const wasAssigned = memory.questId === assignment.questId;
+    memory.questId = assignment.questId;
+    memory.questTarget = assignment.questTarget;
+    memory.questAction = assignment.questAction;
+    if (!wasAssigned) {
+      logger.info(`Assigned ${creep.name} to quest ${quest.id} (buildcs)`, { subsystem: "TooAngel" });
+    }
+  }
+}
+
+function getAvailableQuestBuilders(): Creep[] {
+  const builders: Creep[] = [];
+  for (const roomName in Game.rooms) {
+    const room = Game.rooms[roomName];
+    if (!room.controller?.my) continue;
+
+    builders.push(
+      ...room.find(FIND_MY_CREEPS, {
         filter: c => {
           const memory = c.memory as unknown as {
             role?: string;
@@ -95,38 +115,10 @@ export function executeBuildcsQuest(quest: TooAngelQuestMemory): void {
           const role = memory.role;
           return (role === "larvaWorker" || role === "builder") && !memory.questId && !memory.assistTarget;
         }
-      });
-
-      for (const builder of availableBuilders) {
-        const memory = builder.memory as unknown as { questId?: string };
-        memory.questId = quest.id;
-        builders.push(builder);
-        assignedCreeps.push(builder.name);
-
-        logger.info(`Assigned ${builder.name} to quest ${quest.id} (buildcs)`, { subsystem: "TooAngel" });
-
-        if (builders.length >= EXECUTOR_CONFIG.MAX_BUILDERS_PER_QUEST) break;
-      }
-
-      if (builders.length >= EXECUTOR_CONFIG.MAX_BUILDERS_PER_QUEST) break;
-    }
+      })
+    );
   }
-
-  quest.assignedCreeps = assignedCreeps;
-
-  // Direct builders to construct sites
-  for (const builder of builders) {
-    const memory = builder.memory as unknown as {
-      questId?: string;
-      questTarget?: string;
-      questAction?: string;
-    };
-
-    // Update builder memory for quest
-    memory.questId = quest.id;
-    memory.questTarget = quest.targetRoom;
-    memory.questAction = "build";
-  }
+  return builders;
 }
 
 /**

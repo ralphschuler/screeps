@@ -599,7 +599,7 @@ class SpawnQueue {
 
 ## Caching Patterns
 
-This codebase uses a unified cache system located in `packages/screeps-bot/src/cache/`. All new caches should use this system instead of creating independent `Map<>` implementations.
+This codebase uses a unified cache system owned by `@ralphschuler/screeps-cache` (`packages/@ralphschuler/screeps-cache/src`). All new caches should use this package instead of creating independent `Map<>` implementations.
 
 ### When to Use Unified Cache
 
@@ -617,7 +617,7 @@ This codebase uses a unified cache system located in `packages/screeps-bot/src/c
 ### Basic Usage
 
 ```typescript
-import { globalCache } from "./cache";
+import { globalCache } from "@ralphschuler/screeps-cache";
 
 const CACHE_NAMESPACE = "myFeature";
 const TTL = 100; // ticks
@@ -647,7 +647,7 @@ globalCache.invalidate(key, CACHE_NAMESPACE);
 
 ### Cache Registration
 
-New caches should be registered in `packages/screeps-bot/src/cache/cacheRegistration.ts`:
+New caches should be registered in `packages/@ralphschuler/screeps-cache/src/cacheRegistration.ts`:
 
 ```typescript
 cacheCoherence.registerCache(
@@ -663,7 +663,7 @@ cacheCoherence.registerCache(
 
 ### Documentation
 
-See `packages/screeps-bot/src/cache/CACHE_MIGRATION.md` for detailed migration patterns and best practices.
+See `packages/@ralphschuler/screeps-cache/src/CACHE_MIGRATION.md` for detailed migration patterns and best practices.
 
 ## Code Quality Standards
 

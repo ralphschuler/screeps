@@ -596,7 +596,7 @@ npm run test:unit -- packages/screeps-bot/test/unit/energyFlowPredictor.test.ts
 ## Related Documentation
 
 - [ROADMAP.md](../../../../ROADMAP.md) - Section 8: Energie & Ressourcen
-- [Spawning Subsystem](../spawning/README.md) - Spawn planning with energy prediction
+- `@ralphschuler/screeps-spawn` - Spawn planning with energy prediction
 - [Roles Subsystem](../roles/README.md) - Opportunistic actions in role execution
-- [Clusters Subsystem](../clusters/README.md) - Inter-room resource distribution
+- `@ralphschuler/screeps-clusters` - Inter-room resource distribution
 - [Memory Subsystem](../memory/README.md) - Economy memory schema
