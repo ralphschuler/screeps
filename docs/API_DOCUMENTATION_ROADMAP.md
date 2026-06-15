@@ -181,7 +181,7 @@ This roadmap provides a systematic approach to completing API documentation for 
    - Current: 396 lines
    - Needs: Reorganization, quick start, threat assessment examples
 
-4. **packages/screeps-tasks** (1,431 LOC) - 1.5-2h
+4. **packages/@ralphschuler/screeps-roles** (1,431 LOC) - 1.5-2h
    - Current: 485 lines
    - Needs: More examples, custom task creation
 
@@ -404,7 +404,7 @@ export function functionName(
 | screeps-visuals | 55 | 400+ | ⚠️ Minimal | P2 | Unassigned |
 | screeps-core | 128 | 400+ | 🔄 Needs Enhancement | P2 | Unassigned |
 | screeps-defense | 396 | 500+ | 🔄 Needs Enhancement | P2 | Unassigned |
-| screeps-tasks | 485 | 500+ | 🔄 Needs Enhancement | P2 | Unassigned |
+| screeps-roles | 485 | 500+ | 🔄 Needs Enhancement | P2 | Unassigned |
 | screeps-posis | 229 | 400+ | ⚠️ Minimal | P2 | Unassigned |
 | screeps-utils | 248 | 500+ | ⚠️ Minimal | P2 | Unassigned |
 | screeps-empire | 47 | N/A | 🚧 Skeleton | P2 | Unassigned |

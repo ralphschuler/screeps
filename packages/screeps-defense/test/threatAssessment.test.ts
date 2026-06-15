@@ -8,7 +8,8 @@ import {
   assessThreat,
   calculateTowerDamage,
   calculateDangerLevel,
-  estimateDefenderCost
+  estimateDefenderCost,
+  type HostileBody
 } from '../src/threat/threatAssessment';
 
 describe('Threat Assessment', () => {
@@ -82,16 +83,14 @@ describe('Threat Assessment', () => {
 
   describe('estimateDefenderCost', () => {
     it('should estimate cost for basic attackers', () => {
-      const mockHostile = {
+      const mockHostile: HostileBody = {
         body: [
           { type: ATTACK, hits: 100 },
           { type: MOVE, hits: 50 }
-        ],
-        hits: 150,
-        hitsMax: 150
+        ]
       };
 
-      const cost = estimateDefenderCost([mockHostile as any]);
+      const cost = estimateDefenderCost([mockHostile]);
       expect(cost).to.be.a('number');
       expect(cost).to.be.greaterThan(0);
     });
@@ -102,16 +101,14 @@ describe('Threat Assessment', () => {
     });
 
     it('should scale with hostile strength', () => {
-      const weakHostile = {
+      const weakHostile: HostileBody = {
         body: [
           { type: ATTACK, hits: 100 },
           { type: MOVE, hits: 50 }
-        ],
-        hits: 150,
-        hitsMax: 150
+        ]
       };
 
-      const strongHostile = {
+      const strongHostile: HostileBody = {
         body: [
           { type: ATTACK, hits: 100 },
           { type: ATTACK, hits: 100 },
@@ -119,13 +116,11 @@ describe('Threat Assessment', () => {
           { type: MOVE, hits: 50 },
           { type: MOVE, hits: 50 },
           { type: MOVE, hits: 50 }
-        ],
-        hits: 450,
-        hitsMax: 450
+        ]
       };
 
-      const weakCost = estimateDefenderCost([weakHostile as any]);
-      const strongCost = estimateDefenderCost([strongHostile as any]);
+      const weakCost = estimateDefenderCost([weakHostile]);
+      const strongCost = estimateDefenderCost([strongHostile]);
 
       expect(strongCost).to.be.greaterThan(weakCost);
     });
@@ -251,6 +246,60 @@ describe('Threat Assessment', () => {
       const analysis = assessThreat(mockRoom);
       
       expect(analysis.dismantlerCount).to.equal(1);
+    });
+
+    it('treats a single active WORK part as a defensive dismantle threat', () => {
+      const mockDismantler = {
+        id: 'worker-dismantler',
+        body: [
+          { type: WORK, hits: 100 },
+          { type: MOVE, hits: 50 }
+        ],
+        hits: 150,
+        hitsMax: 150,
+        owner: { username: 'Enemy' }
+      };
+
+      mockRoom.find = (type: number) => type === FIND_HOSTILE_CREEPS ? [mockDismantler] : [];
+
+      const analysis = assessThreat(mockRoom);
+
+      expect(analysis.dismantlerCount).to.equal(1);
+      expect(analysis.totalHostileDPS).to.equal(50);
+      expect(analysis.threatScore).to.be.at.least(100);
+      expect(analysis.estimatedDefenderCost).to.be.greaterThan(0);
+      expect(analysis.recommendedResponse).not.to.equal('monitor');
+    });
+
+    it('allows WORK-part dismantle threat scoring rollback through Memory', () => {
+      const memory = Memory as unknown as { defenseSettings?: { workPartThreatScoring?: boolean } };
+      const previousSettings = memory.defenseSettings;
+      memory.defenseSettings = { ...previousSettings, workPartThreatScoring: false };
+
+      try {
+        const mockDismantler = {
+          id: 'worker-dismantler',
+          body: [
+            { type: WORK, hits: 100 },
+            { type: MOVE, hits: 50 }
+          ],
+          hits: 150,
+          hitsMax: 150,
+          owner: { username: 'Enemy' }
+        };
+
+        mockRoom.find = (type: number) => type === FIND_HOSTILE_CREEPS ? [mockDismantler] : [];
+
+        const analysis = assessThreat(mockRoom);
+
+        expect(analysis.dismantlerCount).to.equal(0);
+        expect(analysis.totalHostileDPS).to.equal(0);
+        expect(analysis.threatScore).to.equal(0);
+        expect(analysis.estimatedDefenderCost).to.equal(0);
+        expect(analysis.recommendedResponse).to.equal('monitor');
+      } finally {
+        memory.defenseSettings = previousSettings;
+      }
     });
 
     it('should recommend appropriate response', () => {

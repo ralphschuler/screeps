@@ -20,6 +20,7 @@ export { resourceSharingManager, ResourceSharingManager } from "./resourceSharin
 export * from "./resourceSharingIntent";
 export * from "./militaryResourcePooling";
 export * from "./militaryResourcePoolingIntent";
+export * from "./defenseReinforcements";
 
 // Offensive Operations - explicit exports to avoid conflicts
 export { 

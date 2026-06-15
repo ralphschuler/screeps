@@ -39,10 +39,9 @@ export class ExpansionCommands {
     const activeClaims = empire.claimQueue.filter(c => c.claimed).length;
 
     // Active claimers
-    const activeClaimers = Object.values(Game.creeps).filter(creep => {
-      const memory = creep.memory as any;
-      return memory.role === "claimer" && memory.task === "claim";
-    });
+    const activeClaimers = Object.values(Game.creeps).filter(creep =>
+      creep.memory.role === "claimer" && creep.memory.task === "claim"
+    );
 
     let output = `=== Expansion System Status ===
 
@@ -73,7 +72,7 @@ Active Claimers: ${activeClaimers.length}
       const active = empire.claimQueue.filter(c => c.claimed);
       for (const candidate of active) {
         const age = Game.time - candidate.lastEvaluated;
-        const claimer = activeClaimers.find(c => (c.memory as any).targetRoom === candidate.roomName);
+        const claimer = activeClaimers.find(c => c.memory.targetRoom === candidate.roomName);
         const claimerStatus = claimer ? `${claimer.name} en route` : "No claimer assigned";
         output += `  ${candidate.roomName}: ${claimerStatus}, Age ${age} ticks\n`;
       }

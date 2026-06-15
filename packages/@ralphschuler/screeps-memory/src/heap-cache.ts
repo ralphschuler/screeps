@@ -31,7 +31,7 @@ declare global {
     _heapCache?: {
       version: number;
       lastSync: number;
-      data: Record<string, { value: any; lastModified: number; ttl?: number }>;
+      data: Record<string, { value: unknown; lastModified: number; ttl?: number }>;
     };
   }
 }
@@ -43,7 +43,7 @@ declare global {
 /**
  * Entry in the heap cache with metadata
  */
-interface CacheEntry<T = any> {
+interface CacheEntry<T = unknown> {
   /** Cached value */
   value: T;
   /** Last modified tick */
@@ -75,15 +75,12 @@ interface CacheMemoryStore {
   /** Last sync tick */
   lastSync: number;
   /** Cached data as serializable records */
-  data: Record<string, { value: any; lastModified: number; ttl?: number }>;
+  data: Record<string, { value: unknown; lastModified: number; ttl?: number }>;
 }
 
 // =============================================================================
 // Constants
 // =============================================================================
-
-/** Memory key for cache storage */
-const CACHE_MEMORY_KEY = "_heapCache";
 
 /** How often to persist dirty cache entries to Memory (ticks) */
 const PERSISTENCE_INTERVAL = 10;
@@ -173,6 +170,12 @@ export class HeapCacheManager {
 
     // Restore all entries from Memory to heap
     for (const [key, memEntry] of Object.entries(memory.data)) {
+      if (memEntry.value === undefined) {
+        delete memory.data[key];
+        expiredCount++;
+        continue;
+      }
+
       // Check if entry has expired based on TTL (-1 means infinite)
       if (memEntry.ttl !== undefined && memEntry.ttl !== INFINITE_TTL) {
         const age = Game.time - memEntry.lastModified;
@@ -229,6 +232,11 @@ export class HeapCacheManager {
     const memory = getCacheMemory();
     const memEntry = memory.data[key];
     if (memEntry) {
+      if (memEntry.value === undefined) {
+        delete memory.data[key];
+        return undefined;
+      }
+
       // Check TTL (-1 means infinite, never expires)
       if (memEntry.ttl !== undefined && memEntry.ttl !== INFINITE_TTL) {
         const age = Game.time - memEntry.lastModified;
@@ -261,7 +269,12 @@ export class HeapCacheManager {
    * @param value - Value to cache
    * @param ttl - Optional time-to-live in ticks (-1 for infinite)
    */
-  public set(key: string, value: any, ttl?: number): void {
+  public set(key: string, value: unknown, ttl?: number): void {
+    if (value === undefined) {
+      this.delete(key);
+      return;
+    }
+
     const heap = getHeapStore();
     
     heap.entries.set(key, {
@@ -328,6 +341,12 @@ export class HeapCacheManager {
 
     // Persist only dirty entries
     for (const [key, entry] of heap.entries) {
+      if (entry.value === undefined) {
+        heap.entries.delete(key);
+        delete memory.data[key];
+        continue;
+      }
+
       if (entry.dirty) {
         memory.data[key] = {
           value: entry.value,
@@ -387,7 +406,7 @@ export class HeapCacheManager {
    *
    * @returns Array of cache values
    */
-  public values<T = any>(): T[] {
+  public values<T = unknown>(): T[] {
     const heap = getHeapStore();
     return Array.from(heap.entries.values()).map(entry => entry.value as T);
   }

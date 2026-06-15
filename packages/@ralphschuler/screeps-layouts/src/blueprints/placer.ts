@@ -4,33 +4,138 @@
 
 import type { Blueprint, MisplacedStructure, StructurePlacement } from "./types";
 import { getStructuresForRCL } from "./selector";
+import { getProtectedLinkPositionKeys } from "../linkNetworkPlanner";
 import { getValidRoadPositions } from "../roadNetworkPlanner";
 import { logger } from "@ralphschuler/screeps-core";
 import { getStructureLimits } from "./constants";
 
 /**
  * Structure types that can be destroyed for blueprint rearrangement.
- * Excludes critical structures that should never be automatically destroyed:
- * - Spawns: Critical for creep production
- * - Storage/Terminal: May contain valuable resources
- * - Containers: Player-placed for flexible logistics (not in blueprints)
- * - Walls/Ramparts: Defensive structures controlled by player
+ * Keep this intentionally narrow: automatic cleanup must not remove expensive
+ * or strategically important structures just because a layout anchor moved.
  */
 const DESTROYABLE_STRUCTURE_TYPES: BuildableStructureConstant[] = [
   STRUCTURE_EXTENSION,
-  STRUCTURE_ROAD,
-  STRUCTURE_TOWER,
-  STRUCTURE_LAB,
-  STRUCTURE_LINK,
-  STRUCTURE_FACTORY,
-  STRUCTURE_OBSERVER,
-  STRUCTURE_NUKER,
-  STRUCTURE_POWER_SPAWN,
-  STRUCTURE_EXTRACTOR
+  STRUCTURE_ROAD
 ];
 
 /** Set for O(1) lookup of destroyable structure types */
 const DESTROYABLE_STRUCTURE_SET = new Set<BuildableStructureConstant>(DESTROYABLE_STRUCTURE_TYPES);
+const MAX_ALTERNATE_PLACEMENT_RADIUS = 6;
+
+function positionKey(x: number, y: number): string {
+  return `${x},${y}`;
+}
+
+function isInBuildableRoomBounds(x: number, y: number): boolean {
+  return x >= 1 && x <= 48 && y >= 1 && y <= 48;
+}
+
+function isRampartOrRoad(structureType: StructureConstant): boolean {
+  return structureType === STRUCTURE_RAMPART || structureType === STRUCTURE_ROAD;
+}
+
+function blocksConstructionPlacement(
+  existingStructureType: StructureConstant,
+  plannedStructureType: BuildableStructureConstant
+): boolean {
+  if (plannedStructureType === STRUCTURE_RAMPART) {
+    return existingStructureType === STRUCTURE_RAMPART || existingStructureType === STRUCTURE_WALL;
+  }
+
+  if (plannedStructureType === STRUCTURE_ROAD) {
+    return existingStructureType === STRUCTURE_ROAD || !isRampartOrRoad(existingStructureType);
+  }
+
+  return !isRampartOrRoad(existingStructureType);
+}
+
+function isPositionUsableForConstruction(
+  x: number,
+  y: number,
+  structureType: BuildableStructureConstant,
+  terrain: RoomTerrain,
+  existingStructures: Structure[],
+  existingSites: ConstructionSite[],
+  reservedPositions: Set<string>
+): boolean {
+  if (!isInBuildableRoomBounds(x, y)) return false;
+  if (terrain.get(x, y) === TERRAIN_MASK_WALL) return false;
+
+  const posKey = positionKey(x, y);
+  if (reservedPositions.has(posKey)) return false;
+
+  const blockingStructure = existingStructures.some(
+    structure =>
+      structure.pos.x === x &&
+      structure.pos.y === y &&
+      blocksConstructionPlacement(structure.structureType, structureType)
+  );
+  if (blockingStructure) return false;
+
+  // Construction sites do not stack reliably; keep alternates clear.
+  return !existingSites.some(site => site.pos.x === x && site.pos.y === y);
+}
+
+function getAlternatePlacementCandidates(
+  preferredX: number,
+  preferredY: number,
+  allowAlternate: boolean
+): Array<{ x: number; y: number }> {
+  const candidates: Array<{ x: number; y: number }> = [{ x: preferredX, y: preferredY }];
+  if (!allowAlternate) return candidates;
+
+  for (let radius = 1; radius <= MAX_ALTERNATE_PLACEMENT_RADIUS; radius++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      for (let dy = -radius; dy <= radius; dy++) {
+        if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
+        candidates.push({ x: preferredX + dx, y: preferredY + dy });
+      }
+    }
+  }
+
+  return candidates;
+}
+
+function tryCreateConstructionSiteNear(
+  room: Room,
+  preferredX: number,
+  preferredY: number,
+  structureType: BuildableStructureConstant,
+  terrain: RoomTerrain,
+  existingStructures: Structure[],
+  existingSites: ConstructionSite[],
+  reservedPositions: Set<string>,
+  allowAlternate = true
+): boolean {
+  for (const candidate of getAlternatePlacementCandidates(preferredX, preferredY, allowAlternate)) {
+    if (
+      !isPositionUsableForConstruction(
+        candidate.x,
+        candidate.y,
+        structureType,
+        terrain,
+        existingStructures,
+        existingSites,
+        reservedPositions
+      )
+    ) {
+      continue;
+    }
+
+    const result = room.createConstructionSite(candidate.x, candidate.y, structureType);
+    if (result === OK) {
+      reservedPositions.add(positionKey(candidate.x, candidate.y));
+      return true;
+    }
+
+    if (result === ERR_RCL_NOT_ENOUGH || result === ERR_INVALID_ARGS) {
+      return false;
+    }
+  }
+
+  return false;
+}
 
 /**
  * Place construction sites from a blueprint
@@ -75,6 +180,7 @@ export function placeConstructionSites(room: Room, anchor: RoomPosition, bluepri
   }
 
   const limits = getStructureLimits(rcl);
+  const reservedPositions = new Set<string>();
 
   for (const s of allStructures) {
     const currentCount = structureCounts[s.structureType] ?? 0;
@@ -83,22 +189,21 @@ export function placeConstructionSites(room: Room, anchor: RoomPosition, bluepri
 
     const x = anchor.x + s.x;
     const y = anchor.y + s.y;
+    const allowAlternate = s.structureType !== STRUCTURE_EXTRACTOR;
 
-    if (x < 1 || x > 48 || y < 1 || y > 48) continue;
-    if (terrain.get(x, y) === TERRAIN_MASK_WALL) continue;
-
-    const existingAtPos = existingStructures.some(
-      str => str.pos.x === x && str.pos.y === y && str.structureType === s.structureType
+    const created = tryCreateConstructionSiteNear(
+      room,
+      x,
+      y,
+      s.structureType,
+      terrain,
+      existingStructures,
+      existingSites,
+      reservedPositions,
+      allowAlternate
     );
-    if (existingAtPos) continue;
 
-    const existingSiteAtPos = existingSites.some(
-      site => site.pos.x === x && site.pos.y === y && site.structureType === s.structureType
-    );
-    if (existingSiteAtPos) continue;
-
-    const result = room.createConstructionSite(x, y, s.structureType);
-    if (result === OK) {
+    if (created) {
       placed++;
       structureCounts[s.structureType] = currentCount + 1;
 
@@ -111,21 +216,18 @@ export function placeConstructionSites(room: Room, anchor: RoomPosition, bluepri
       const x = anchor.x + r.x;
       const y = anchor.y + r.y;
 
-      if (x < 1 || x > 48 || y < 1 || y > 48) continue;
-      if (terrain.get(x, y) === TERRAIN_MASK_WALL) continue;
-
-      const existingRoad = existingStructures.some(
-        str => str.pos.x === x && str.pos.y === y && str.structureType === STRUCTURE_ROAD
+      const created = tryCreateConstructionSiteNear(
+        room,
+        x,
+        y,
+        STRUCTURE_ROAD,
+        terrain,
+        existingStructures,
+        existingSites,
+        reservedPositions
       );
-      if (existingRoad) continue;
 
-      const existingRoadSite = existingSites.some(
-        site => site.pos.x === x && site.pos.y === y && site.structureType === STRUCTURE_ROAD
-      );
-      if (existingRoadSite) continue;
-
-      const result = room.createConstructionSite(x, y, STRUCTURE_ROAD);
-      if (result === OK) {
+      if (created) {
         placed++;
         if (placed >= 3 || existingSites.length + placed >= 10) break;
       }
@@ -198,6 +300,18 @@ export function findMisplacedStructures(
       extractorPositions.add(`${mineral.pos.x},${mineral.pos.y}`);
       validPositions.set(STRUCTURE_EXTRACTOR, extractorPositions);
     }
+  }
+
+  // Dynamic link networks are room-specific and intentionally planned outside
+  // static blueprints. Preserve planned/functional storage, controller, spawn,
+  // and source links so cleanup does not destroy productive infrastructure.
+  const protectedLinkPositions = getProtectedLinkPositionKeys(room);
+  if (protectedLinkPositions.size > 0) {
+    const linkPositions = validPositions.get(STRUCTURE_LINK) ?? new Set<string>();
+    for (const posKey of protectedLinkPositions) {
+      linkPositions.add(posKey);
+    }
+    validPositions.set(STRUCTURE_LINK, linkPositions);
   }
   
   // Find existing structures of destroyable types using Set for O(1) lookup

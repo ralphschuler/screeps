@@ -16,6 +16,8 @@
  * - Pre-sorted results: Eliminates redundant sorting
  */
 
+import { getActualHostileCreeps } from "@ralphschuler/screeps-core";
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -282,9 +284,9 @@ export function findHostilesByThreat(
   room: Room,
   pos?: RoomPosition
 ): { creep: Creep; threat: number; range: number }[] {
-  const hostiles = room.find(FIND_HOSTILE_CREEPS);
+  const hostiles = getActualHostileCreeps(room);
   
-  // Early exit: no hostiles
+  // Early exit: no actual hostiles
   if (hostiles.length === 0) return [];
   
   const threats = hostiles.map(creep => {

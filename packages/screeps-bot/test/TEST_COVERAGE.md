@@ -316,8 +316,8 @@ The test suite provides comprehensive coverage across all major bot systems:
 - ✅ Military Resources: militaryResourcePooling
 - ✅ Target Distribution: targetDistribution
 
-#### Layouts & Planning (7 files)
-- ✅ Blueprint Systems: blueprintSelection, blueprintExitRoads, blueprintRemoteRoads, blueprintRemoteRoadsIntegration
+#### Layouts & Planning
+- ✅ Blueprint Systems: blueprintSelection, blueprintExitRoads, layout package road-network/placement resilience tests
 - ✅ Room Management: roomTransitions, rampartAutomation
 - ✅ Behavior System: behaviorSystem
 

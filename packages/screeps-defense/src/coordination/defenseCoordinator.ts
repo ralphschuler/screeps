@@ -24,7 +24,7 @@ import { logger } from "@ralphschuler/screeps-core";
 import { MediumFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
 import type { DefenseRequest } from "../analysis/defenderNeeds";
 import { assessThreat } from "../threat/threatAssessment";
-import { filterAllyCreeps } from "../alliance/nonAggressionPact";
+import { getActualHostileCreeps } from "../alliance/nonAggressionPact";
 
 /**
  * Defense assistance assignment
@@ -248,9 +248,7 @@ export class DefenseCoordinator {
         score += defenders.length * 20;
 
         // Prefer safer rooms (they can spare defenders)
-        // Filter allied entities - non-aggression pact (ROADMAP Section 25)
-        const allHostiles = room.find(FIND_HOSTILE_CREEPS);
-        const hostiles = filterAllyCreeps(allHostiles);
+        const hostiles = getActualHostileCreeps(room);
         score -= hostiles.length * 30;
 
         // Don't use rooms under active attack unless urgency is critical
@@ -306,9 +304,7 @@ export class DefenseCoordinator {
 
       // Remove if creep reached target room and no longer needs to assist
       if (creep.room.name === assignment.targetRoom) {
-        // Filter allied entities - non-aggression pact (ROADMAP Section 25)
-        const allHostiles = creep.room.find(FIND_HOSTILE_CREEPS);
-        const hostiles = filterAllyCreeps(allHostiles);
+        const hostiles = getActualHostileCreeps(creep.room);
         if (hostiles.length === 0) {
           // No more hostiles, release creep
           const memory = creep.memory as unknown as { assistTarget?: string };

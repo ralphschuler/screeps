@@ -13,6 +13,7 @@ export type RoleFamily = "economy" | "military" | "utility" | "power";
  */
 export type EconomyRole =
   | "larvaWorker"
+  | "pioneer"
   | "harvester"
   | "hauler"
   | "builder"

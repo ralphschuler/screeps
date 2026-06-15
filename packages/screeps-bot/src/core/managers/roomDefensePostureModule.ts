@@ -1,6 +1,8 @@
 import { selectTowerAction } from "@ralphschuler/screeps-defense";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
 
+const TOWER_POLICY_MAINTENANCE_BUCKET_THRESHOLD = 1500;
+
 export interface DefenseStructureTrackingSnapshot {
   lastStructureCount: number;
   spawns: string[];
@@ -95,6 +97,37 @@ export interface TowerDefensePlanInput {
   danger?: number;
   isCombatPosture?: boolean;
   wallRepairTarget?: number;
+  /**
+   * Current CPU bucket passed to tower action policy.
+   * Low values defer non-critical maintenance actions.
+   */
+  bucket?: number;
+  /** Set false to roll back wounded hostile tower tie-breaking for this plan. */
+  preferWoundedTargets?: boolean;
+  /** Set false to roll back siege-posture tower healing for this plan. */
+  allowSiegeHealing?: boolean;
+}
+
+interface DefenseSettingsMemory {
+  defenseSettings?: {
+    /** Set false to roll back wounded hostile tower focus-fire tie-breaking globally. */
+    towerPreferWoundedTargets?: boolean;
+    /** Set false to roll back siege-posture tower healing globally. */
+    towerHealInSiege?: boolean;
+  };
+}
+
+function getDefenseSettings(): DefenseSettingsMemory["defenseSettings"] | undefined {
+  if (typeof Memory === "undefined") return undefined;
+  return (Memory as unknown as DefenseSettingsMemory).defenseSettings;
+}
+
+function isTowerPreferWoundedTargetsEnabled(): boolean {
+  return getDefenseSettings()?.towerPreferWoundedTargets !== false;
+}
+
+function isTowerHealInSiegeEnabled(): boolean {
+  return getDefenseSettings()?.towerHealInSiege !== false;
 }
 
 export type TowerDefenseAction =
@@ -254,12 +287,31 @@ export function planTowerDefenseIntent(input: TowerDefensePlanInput): TowerDefen
   const danger = input.danger ?? 0;
   const isCombatPosture = input.isCombatPosture ?? false;
   const wallRepairTarget = input.wallRepairTarget ?? 0;
+  const preferWoundedTargets = input.preferWoundedTargets ?? isTowerPreferWoundedTargetsEnabled();
+  const allowSiegeHealing = input.allowSiegeHealing ?? isTowerHealInSiegeEnabled();
+  const bucket = input.bucket ?? (typeof Game !== "undefined" && Number.isFinite(Game.cpu?.bucket) ? Game.cpu.bucket : 10000);
+  const canPerformMaintenance = (bucket >= TOWER_POLICY_MAINTENANCE_BUCKET_THRESHOLD);
   const actions: TowerDefenseAction[] = [];
 
   for (const tower of input.towers) {
     if (tower.store.getUsedCapacity(RESOURCE_ENERGY) < 10) continue;
 
-    const action = selectTowerAction({ tower, hostiles, posture, rcl, danger, isCombatPosture, wallRepairTarget });
+    const action = selectTowerAction({
+      tower,
+      hostiles,
+      posture,
+      rcl,
+      danger,
+      isCombatPosture,
+      wallRepairTarget,
+      bucket,
+      preferWoundedTargets,
+      allowSiegeHealing
+    });
+    if (!canPerformMaintenance && (action.type === "heal" || action.type === "repair")) {
+      continue;
+    }
+
     if (action.type !== "idle") {
       actions.push({ tower, type: action.type, target: action.target } as TowerDefenseAction);
     }

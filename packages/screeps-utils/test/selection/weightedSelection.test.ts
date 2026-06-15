@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import {
   weightedSelection,
+  weightedSelectionEntry,
   selectTopN,
   normalizeWeights,
   scaleWeights,
@@ -68,6 +69,19 @@ describe('Weighted Selection Utilities', () => {
       ];
       const selected = weightedSelection(entries);
       expect(selected).to.equal('c');
+    });
+  });
+
+  describe('weightedSelectionEntry()', () => {
+    it('should return the selected valid entry when duplicate keys exist', () => {
+      const entries: WeightedEntry<string>[] = [
+        { key: 'a', weight: 0 },
+        { key: 'a', weight: 1 }
+      ];
+
+      const selected = weightedSelectionEntry(entries);
+
+      expect(selected).to.equal(entries[1]);
     });
   });
 

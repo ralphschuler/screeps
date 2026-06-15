@@ -4,7 +4,24 @@ import { chemistryPlanner } from "../../src/labs/chemistryPlanner";
 import { boostManager } from "../../src/labs/boostManager";
 import { labConfigManager } from "../../src/labs/labConfig";
 import { createDefaultSwarmState } from "../../src/memory/schemas";
+import { heapCache } from "@ralphschuler/screeps-memory";
 import { Game, Memory } from "./mock";
+
+function createMockLab(id: Id<StructureLab>, x: number, y: number, roomName: string): StructureLab {
+  return {
+    id,
+    structureType: STRUCTURE_LAB,
+    pos: {
+      x,
+      y,
+      roomName,
+      getRangeTo: (target: { pos?: { x: number; y: number }; x?: number; y?: number }) => {
+        const other = target.pos ?? target;
+        return Math.max(Math.abs(x - Number(other.x)), Math.abs(y - Number(other.y)));
+      }
+    }
+  } as unknown as StructureLab;
+}
 
 describe("Lab System", () => {
   beforeEach(() => {
@@ -18,6 +35,7 @@ describe("Lab System", () => {
     };
     // @ts-ignore: allow adding Memory to global
     global.Memory = { ...Memory, rooms: {} };
+    heapCache.clear();
   });
 
   describe("ChemistryPlanner - Reaction Chain Calculation", () => {
@@ -230,6 +248,46 @@ describe("Lab System", () => {
 
     it("should clear active reaction", () => {
       expect(labConfigManager.clearActiveReaction).to.be.a("function");
+    });
+
+    it("refreshes stale memory config when newly built labs appear", () => {
+      const roomName = "W9N9";
+      const labs = [
+        createMockLab("lab-a", 10, 10, roomName),
+        createMockLab("lab-b", 11, 10, roomName),
+        createMockLab("lab-c", 10, 11, roomName)
+      ];
+      const objectById = new Map(labs.map(lab => [lab.id, lab]));
+      const room = {
+        name: roomName,
+        controller: { my: true },
+        find: (constant: number, opts?: { filter?: (structure: StructureLab) => boolean }) => {
+          if (constant !== FIND_MY_STRUCTURES) return [];
+          return opts?.filter ? labs.filter(opts.filter) : labs;
+        }
+      } as unknown as Room;
+
+      global.Game.rooms[roomName] = room;
+      global.Game.getObjectById = (id: string) => objectById.get(id) ?? null;
+      global.Memory.rooms = {
+        [roomName]: {
+          labConfig: {
+            roomName,
+            labs: [
+              { labId: "lab-a", role: "input1", pos: { x: 10, y: 10 }, lastConfigured: Game.time - 100 },
+              { labId: "lab-b", role: "input2", pos: { x: 11, y: 10 }, lastConfigured: Game.time - 100 }
+            ],
+            lastUpdate: Game.time - 100,
+            isValid: false
+          }
+        }
+      };
+
+      labManager.initialize(roomName);
+
+      const config = labConfigManager.getConfig(roomName);
+      expect(config?.isValid).to.equal(true);
+      expect(config?.labs.map(lab => lab.labId)).to.have.members(["lab-a", "lab-b", "lab-c"]);
     });
   });
 

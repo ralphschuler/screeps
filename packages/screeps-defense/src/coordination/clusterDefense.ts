@@ -229,12 +229,20 @@ export class ClusterDefenseCoordinator {
 export const clusterDefenseCoordinator = new ClusterDefenseCoordinator();
 
 /**
- * Coordinate defense for a specific room's cluster
- * 
- * @param roomName - Room to coordinate defense for
+ * Coordinate defense for a cluster, accepting either a cluster ID or a room name.
+ *
+ * ClusterManager already iterates concrete cluster records and passes `cluster.id`.
+ * Room-level callers can still pass a room name and resolve through swarm memory.
+ *
+ * @param roomOrClusterId - Cluster ID or room name to coordinate defense for
  */
-export function coordinateClusterDefense(roomName: string): void {
-  const clusterId = findClusterForRoom(roomName);
+export function coordinateClusterDefense(roomOrClusterId: string): void {
+  if (memoryManager.getCluster(roomOrClusterId)) {
+    clusterDefenseCoordinator.coordinateDefense(roomOrClusterId);
+    return;
+  }
+
+  const clusterId = findClusterForRoom(roomOrClusterId);
   if (!clusterId) {
     // Room not in a cluster, skip cluster coordination
     return;

@@ -33,9 +33,6 @@
     "url": "https://github.com/ralphschuler/screeps/issues"
   },
   "homepage": "https://github.com/ralphschuler/screeps/tree/main/packages/screeps-economy#readme",
-  "peerDependencies": {
-    "screeps-typescript-starter": "*"
-  },
   "dependencies": {
     "@ralphschuler/screeps-core": "*",
     "@ralphschuler/screeps-kernel": "*",

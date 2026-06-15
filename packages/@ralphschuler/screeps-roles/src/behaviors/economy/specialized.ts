@@ -5,6 +5,7 @@
  */
 
 import type { CreepAction, CreepContext } from "../types";
+import { labSupply } from "../labSupply";
 import { updateWorkingState } from "./common/stateManagement";
 import { deliverEnergy } from "./common/energyManagement";
 
@@ -15,6 +16,11 @@ export function queenCarrier(ctx: CreepContext): CreepAction {
   const isWorking = updateWorkingState(ctx);
 
   if (isWorking) {
+    const storageLink = findStorageLinkForSpawnHandoff(ctx.room, ctx.storage);
+    if (storageLink) {
+      return { type: "transfer", target: storageLink, resourceType: RESOURCE_ENERGY };
+    }
+
     // Fill spawns and extensions
     const deliverAction = deliverEnergy(ctx);
     if (deliverAction) return deliverAction;
@@ -23,6 +29,13 @@ export function queenCarrier(ctx: CreepContext): CreepAction {
     if (ctx.storage) return { type: "moveTo", target: ctx.storage };
 
     return { type: "idle" };
+  }
+
+  // Get energy from the spawn link first while the spawn/extension network needs refill.
+  // LinkManager pushes storage-link energy here; queenCarrier turns it into local spawn delivery.
+  const spawnLink = findSpawnLinkWithEnergy(ctx.room);
+  if (spawnLink) {
+    return { type: "withdraw", target: spawnLink, resourceType: RESOURCE_ENERGY };
   }
 
   // Get energy from storage or terminal
@@ -37,65 +50,48 @@ export function queenCarrier(ctx: CreepContext): CreepAction {
   return { type: "idle" };
 }
 
+function findSpawnLinkWithEnergy(room: Room): StructureLink | undefined {
+  if (room.energyAvailable >= room.energyCapacityAvailable) return undefined;
+
+  const spawns = room.find(FIND_MY_SPAWNS);
+  if (spawns.length === 0) return undefined;
+
+  return (room.find(FIND_MY_STRUCTURES, {
+    filter: structure =>
+      structure.structureType === STRUCTURE_LINK &&
+      (structure as StructureLink).store.getUsedCapacity(RESOURCE_ENERGY) > 0 &&
+      spawns.some(spawn => structure.pos.getRangeTo(spawn) <= 2)
+  }) as StructureLink[])[0];
+}
+
+function findStorageLinkForSpawnHandoff(room: Room, storage: StructureStorage | undefined): StructureLink | undefined {
+  if (!storage || room.energyAvailable >= room.energyCapacityAvailable) return undefined;
+
+  const spawns = room.find(FIND_MY_SPAWNS);
+  if (spawns.length === 0) return undefined;
+
+  const links = room.find(FIND_MY_STRUCTURES, {
+    filter: structure => structure.structureType === STRUCTURE_LINK
+  }) as StructureLink[];
+
+  const hasSpawnReceiver = links.some(link =>
+    link.store.getFreeCapacity(RESOURCE_ENERGY) > 0 &&
+    spawns.some(spawn => link.pos.getRangeTo(spawn) <= 2)
+  );
+  if (!hasSpawnReceiver) return undefined;
+
+  return links.find(link =>
+    link.store.getFreeCapacity(RESOURCE_ENERGY) > 0 &&
+    link.pos.getRangeTo(storage) <= 2
+  );
+}
+
 /**
- * LabTech - Manage lab reactions and compounds.
+ * LabTech - Manage lab reactions and compounds through configured lab needs.
  */
 export function labTech(ctx: CreepContext): CreepAction {
   if (ctx.labs.length === 0) return { type: "idle" };
-
-  const inputLabs = ctx.labs.slice(0, 2);
-  const outputLabs = ctx.labs.slice(2);
-
-  // If carrying resources, deliver them
-  if (ctx.creep.store.getUsedCapacity() > 0) {
-    const resourceType = Object.keys(ctx.creep.store)[0] as ResourceConstant;
-
-    // Base minerals go to input labs, compounds go to storage/terminal
-    const baseMinerals: ResourceConstant[] = [
-      RESOURCE_HYDROGEN, RESOURCE_OXYGEN, RESOURCE_UTRIUM,
-      RESOURCE_LEMERGIUM, RESOURCE_KEANIUM, RESOURCE_ZYNTHIUM, RESOURCE_CATALYST
-    ];
-
-    if (resourceType !== RESOURCE_ENERGY && !baseMinerals.includes(resourceType)) {
-      const target = ctx.terminal ?? ctx.storage;
-      if (target) return { type: "transfer", target, resourceType };
-    }
-
-    // Put base minerals in input labs
-    for (const lab of inputLabs) {
-      const capacity = lab.store.getFreeCapacity(resourceType);
-      if (capacity !== null && capacity > 0) {
-        return { type: "transfer", target: lab, resourceType };
-      }
-    }
-  }
-
-  // Collect products from output labs
-  for (const lab of outputLabs) {
-    const mineralType = lab.mineralType;
-    if (mineralType && lab.store.getUsedCapacity(mineralType) > 100) {
-      return { type: "withdraw", target: lab, resourceType: mineralType };
-    }
-  }
-
-  // Fill input labs from terminal/storage
-  const source = ctx.terminal ?? ctx.storage;
-  if (source) {
-    const minerals: MineralConstant[] = [
-      RESOURCE_HYDROGEN, RESOURCE_OXYGEN, RESOURCE_UTRIUM,
-      RESOURCE_LEMERGIUM, RESOURCE_KEANIUM, RESOURCE_ZYNTHIUM, RESOURCE_CATALYST
-    ];
-
-    for (const lab of inputLabs) {
-      for (const mineral of minerals) {
-        if (source.store.getUsedCapacity(mineral) > 0 && lab.store.getFreeCapacity(mineral) > 0) {
-          return { type: "withdraw", target: source, resourceType: mineral };
-        }
-      }
-    }
-  }
-
-  return { type: "idle" };
+  return labSupply(ctx);
 }
 
 /**

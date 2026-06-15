@@ -14,12 +14,14 @@
  */
 
 import type { RoleFamily, SwarmCreepMemory } from "@ralphschuler/screeps-memory";
+import { runPowerCreepRole } from "@ralphschuler/screeps-roles";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
+import { getConfig } from "../config";
 import { runEconomyRole } from "../roles/economy";
 import { runMilitaryRole } from "../roles/military";
-import { runPowerCreepRole } from "../roles/power";
 import { runUtilityRole } from "../roles/utility";
 import { canSkipBehaviorEvaluation, executeIdleAction } from "../utils/optimization";
+import { isBootstrapMode } from "./creepBootstrapCounts";
 import { ProcessPriority, kernel } from "./kernel";
 import { logger } from "./logger";
 
@@ -43,6 +45,7 @@ const ROLE_PRIORITY_MAP: Record<string, ProcessPriority> = {
   powerQueen: ProcessPriority.HIGH,
   powerWarrior: ProcessPriority.HIGH,
   larvaWorker: ProcessPriority.HIGH,
+  pioneer: ProcessPriority.HIGH,
 
   // Medium priority roles (MEDIUM = 50)
   builder: ProcessPriority.MEDIUM,
@@ -114,9 +117,11 @@ function executeCreepRole(creep: Creep): void {
   // BUGFIX: Log EVERY tick during bootstrap to track creep execution
   // This helps diagnose why creeps stop working after spawn attempts
   const room = Game.rooms[memory.homeRoom];
-  const isBootstrap = room && isBootstrapMode(room);
+  const isBootstrap = room
+    ? isBootstrapMode(room, { useCache: getConfig().cpu.disableCreepBootstrapCountCache !== true })
+    : false;
 
-  if (Game.time % 10 === 0 || isBootstrap) {
+  if (isBootstrap && Game.time % 50 === 0) {
     logger.info(`Executing role for creep ${creep.name} (${memory.role})`, {
       subsystem: "CreepProcessManager",
       creep: creep.name
@@ -183,16 +188,6 @@ function executeCreepRole(creep: Creep): void {
   }
 }
 
-// Helper to check if room is in bootstrap mode (imported from spawn logic)
-function isBootstrapMode(room: Room): boolean {
-  // Simple check - if we have very few creeps, we're probably in bootstrap
-  const creepCount = Object.values(Game.creeps).filter(c => {
-    const m = c.memory as unknown as SwarmCreepMemory;
-    return m.homeRoom === room.name;
-  }).length;
-  return creepCount < 5;
-}
-
 /**
  * Creep Process Manager
  *
@@ -251,11 +246,10 @@ export class CreepProcessManager {
       }
     }
 
-    // Enhanced logging for better visibility
-    // Log on changes OR periodically to show current state
-    // BUGFIX: Always log when total creeps < 5 (bootstrap mode) for debugging
+    // Enhanced logging for better visibility without paying recurring console CPU every 10 ticks.
+    // Keep change logs immediate; only emit steady-state/low-creep diagnostics occasionally.
     const isBootstrapLikelyActive = totalCreeps < 5;
-    const shouldLog = registeredCount > 0 || unregisteredCount > 0 || Game.time % 10 === 0 || isBootstrapLikelyActive;
+    const shouldLog = registeredCount > 0 || unregisteredCount > 0 || Game.time % 100 === 0 || (isBootstrapLikelyActive && Game.time % 25 === 0);
 
     if (shouldLog) {
       logger.info(
@@ -325,12 +319,29 @@ export class CreepProcessManager {
   /**
    * Get minimum bucket requirement based on priority
    *
-   * REMOVED: All bucket requirements - user regularly depletes bucket and doesn't
-   * want minBucket limitations blocking processes. Returns 0 for all priorities.
-   * Bucket mode in kernel still provides priority-based filtering during low bucket.
+   * Competitive strategy: keep core economy/defense running, defer non-essential
+   * work as bucket drops (economic/utility creep roles in low bucket).
    */
-  private getMinBucketForPriority(_priority: ProcessPriority): number {
-    return 0; // No bucket requirements - processes run regardless of bucket level
+  private getMinBucketForPriority(priority: ProcessPriority): number {
+    const { lowMode, highMode } = getConfig().cpu.bucketThresholds;
+
+    // Keep critical and high-priority continuity processes unscheduled only by
+    // explicit emergency conditions (bucket is handled by kernel/core runtime).
+    if (priority >= ProcessPriority.HIGH) {
+      return 0;
+    }
+
+    // Medium and low creeps are valuable but can be deferred in low bucket.
+    if (priority === ProcessPriority.MEDIUM || priority === ProcessPriority.LOW) {
+      return lowMode;
+    }
+
+    // Idle creeps are optional and should remain throttled until bucket recovers.
+    if (priority === ProcessPriority.IDLE) {
+      return highMode;
+    }
+
+    return 0;
   }
 
   /**

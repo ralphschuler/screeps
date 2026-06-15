@@ -16,7 +16,7 @@
  * Implements ROADMAP Section 12: Offensive Combat
  */
 
-import type { ClusterMemory, SquadDefinition } from "./types";
+import type { ClusterMemory } from "./types";
 import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "./adapters/memoryAdapter";
 import { findAttackTargets, markRoomAttacked, validateTarget } from "./attackTargetSelector";

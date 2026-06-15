@@ -15,6 +15,7 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
+import { getConfig } from "../../config";
 import { ProcessPriority } from "../../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../../core/processDecorators";
 import { scanForNPCRooms, updateNPCRoom } from "./npcDetector";
@@ -31,11 +32,13 @@ import { getReputation, processReputationUpdates, requestReputation } from "./re
 /**
  * Configuration for TooAngel manager
  */
+const TOOANGEL_RECOVERY_BUCKET = getConfig().cpu.bucketThresholds.highMode + 1000;
+
 const TOOANGEL_CONFIG = {
   /** Enable/disable TooAngel integration */
   enabled: true,
-  /** Minimum bucket to run TooAngel operations */
-  minBucket: 2000,
+  /** Minimum bucket to run optional TooAngel operations while recovering from CPU pressure. */
+  minBucket: TOOANGEL_RECOVERY_BUCKET,
   /** How often to scan for NPCs (in ticks) */
   scanInterval: 500,
   /** How often to request reputation (in ticks) */
@@ -92,7 +95,8 @@ export class TooAngelManager {
    */
   @LowFrequencyProcess("empire:tooangel", "TooAngel Manager", {
     priority: ProcessPriority.LOW,
-    interval: 10
+    interval: 100,
+    minBucket: TOOANGEL_RECOVERY_BUCKET
   })
   public run(): void {
     if (!this.isEnabled()) {

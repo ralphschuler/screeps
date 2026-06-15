@@ -137,8 +137,8 @@
 #### ✅ Blueprint System
 - `blueprintSelection.test.ts` - Blueprint selection
 - `blueprintExitRoads.test.ts` - Exit roads
-- `blueprintRemoteRoads.test.ts` - Remote roads
-- `blueprintRemoteRoadsIntegration.test.ts` - Integration
+- `../@ralphschuler/screeps-layouts/test/roadNetworkPlanner.test.ts` - Remote road validity
+- `../@ralphschuler/screeps-layouts/test/blueprintPlacementResilience.test.ts` - Blueprint cleanup resilience
 - **Status**: Comprehensive ✅
 
 #### ✅ Pathfinding
@@ -167,7 +167,7 @@
 - `combatIntegration.test.ts` - Combat integration
 - `marketIntegration.test.ts` - Market integration
 - `pheromoneIntegration.test.ts` - Pheromone integration
-- `blueprintRemoteRoadsIntegration.test.ts` - Blueprint integration
+- Layout package blueprint and road-network tests - Blueprint integration
 - **Status**: Good coverage ✅
 
 ## TODO Comment Status

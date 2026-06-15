@@ -53,8 +53,8 @@ jobs:
 
       - name: Validate private-server smoke before baseline updates
         working-directory: packages/screeps-server
-        run: node scripts/run-private-server-test.js --mode=smoke --durationMinutes=5 --maxTicks=1000 --project=screeps-baseline-smoke-${{ github.run_id }}
-        timeout-minutes: 25
+        run: node scripts/run-private-server-test.js --mode=smoke --durationMinutes=15 --maxTicks=3000 --project=screeps-baseline-smoke-${{ github.run_id }}
+        timeout-minutes: 45
 
       - name: Upload validation summary
         if: always()
@@ -64,6 +64,7 @@ jobs:
           path: |
             packages/screeps-server/artifacts/smoke/summary.json
             packages/screeps-server/artifacts/smoke/summary.md
+            packages/screeps-server/artifacts/smoke/scenario-*.json
           retention-days: 30
           if-no-files-found: warn
 

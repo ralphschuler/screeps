@@ -84,6 +84,50 @@ const EXIT_ROAD_PROTECTION_DISTANCE = 10;
  */
 const roadNetworkCache = new Map<string, RoomRoadNetwork>();
 
+interface CachedValidRoadPositions {
+  roomName: string;
+  positions: Set<string>;
+  lastCalculated: number;
+}
+
+/**
+ * Cache of planned valid road positions per room/anchor/blueprint/remotes.
+ * Existing exit roads are intentionally not cached so fallback protection stays fresh.
+ */
+const validRoadPositionsCache = new Map<string, CachedValidRoadPositions>();
+
+function getValidRoadPositionsCacheKey(
+  roomName: string,
+  anchor: RoomPosition,
+  blueprintRoads: { x: number; y: number }[],
+  remoteRooms: string[]
+): string {
+  const blueprintKey = blueprintRoads
+    .map(road => `${road.x},${road.y}`)
+    .sort()
+    .join(";");
+  const remoteKey = [...remoteRooms].sort().join(",");
+  return `${roomName}|${anchor.x},${anchor.y}|${blueprintKey}|${remoteKey}`;
+}
+
+function isValidRoadCacheFresh(cached: CachedValidRoadPositions): boolean {
+  return Game.time - cached.lastCalculated < DEFAULT_CONFIG.recalculateInterval;
+}
+
+function getRoadNetworkCacheKey(room: Room, anchor: RoomPosition, config: RoadNetworkConfig): string {
+  const storage = room.storage?.pos;
+  const storageKey = storage ? `${storage.x},${storage.y}` : "none";
+  const rcl = room.controller?.level ?? 0;
+  return [
+    room.name,
+    `anchor:${anchor.x},${anchor.y}`,
+    `storage:${storageKey}`,
+    `rcl:${rcl}`,
+    `ops:${config.maxPathOps}`,
+    `remote:${config.includeRemoteRoads ? 1 : 0}`
+  ].join("|");
+}
+
 /**
  * Calculate road network for a room
  *
@@ -99,8 +143,10 @@ export function calculateRoadNetwork(
 ): RoomRoadNetwork {
   const cfg = { ...DEFAULT_CONFIG, ...config };
 
-  // Check cache
-  const cached = roadNetworkCache.get(room.name);
+  // Check cache. Anchor/config/storage are part of the key because road plans
+  // are anchor-relative when storage does not exist yet and config can change pathing.
+  const cacheKey = getRoadNetworkCacheKey(room, anchor, cfg);
+  const cached = roadNetworkCache.get(cacheKey);
   if (cached && Game.time - cached.lastCalculated < cfg.recalculateInterval) {
     return cached;
   }
@@ -164,7 +210,7 @@ export function calculateRoadNetwork(
     lastCalculated: Game.time
   };
 
-  roadNetworkCache.set(room.name, network);
+  roadNetworkCache.set(cacheKey, network);
 
   logger.debug(
     `Calculated road network for ${room.name}: ${positions.size} positions`,
@@ -638,12 +684,18 @@ function calculateExitRoads(
  * @param blueprintRoads Road positions from the blueprint (relative to anchor)
  * @param remoteRooms Optional array of remote room names managed by this room
  */
-export function getValidRoadPositions(
+function getPlannedValidRoadPositions(
   room: Room,
   anchor: RoomPosition,
   blueprintRoads: { x: number; y: number }[],
   remoteRooms: string[] = []
 ): Set<string> {
+  const cacheKey = getValidRoadPositionsCacheKey(room.name, anchor, blueprintRoads, remoteRooms);
+  const cached = validRoadPositionsCache.get(cacheKey);
+  if (cached && isValidRoadCacheFresh(cached)) {
+    return cached.positions;
+  }
+
   const validPositions = new Set<string>();
   const terrain = room.getTerrain();
 
@@ -688,11 +740,26 @@ export function getValidRoadPositions(
     }
   }
 
+  validRoadPositionsCache.set(cacheKey, {
+    roomName: room.name,
+    positions: validPositions,
+    lastCalculated: Game.time
+  });
+
+  return validPositions;
+}
+
+export function getValidRoadPositions(
+  room: Room,
+  anchor: RoomPosition,
+  blueprintRoads: { x: number; y: number }[],
+  remoteRooms: string[] = []
+): Set<string> {
+  const validPositions = new Set(getPlannedValidRoadPositions(room, anchor, blueprintRoads, remoteRooms));
+
   // FALLBACK PROTECTION: Distance-based exit road protection
-  // This provides additional protection for existing roads near exits within
-  // EXIT_ROAD_PROTECTION_DISTANCE (10 tiles) from room edges.
-  // This serves as a defense-in-depth measure in case path-based protection
-  // fails due to pathfinding issues, missing hub position, or other edge cases.
+  // This remains fresh on every call so existing roads near exits are protected
+  // even when the planned road cache is reused.
   const existingExitRoads = findExistingExitRoads(room);
   for (const posKey of existingExitRoads) {
     validPositions.add(posKey);
@@ -705,7 +772,16 @@ export function getValidRoadPositions(
  * Clear the road network cache for a room
  */
 export function clearRoadNetworkCache(roomName: string): void {
-  roadNetworkCache.delete(roomName);
+  for (const [cacheKey, cached] of roadNetworkCache) {
+    if (cached.roomName === roomName) {
+      roadNetworkCache.delete(cacheKey);
+    }
+  }
+  for (const [cacheKey, cached] of validRoadPositionsCache) {
+    if (cached.roomName === roomName) {
+      validRoadPositionsCache.delete(cacheKey);
+    }
+  }
 }
 
 /**
@@ -713,6 +789,7 @@ export function clearRoadNetworkCache(roomName: string): void {
  */
 export function clearAllRoadNetworkCaches(): void {
   roadNetworkCache.clear();
+  validRoadPositionsCache.clear();
 }
 
 /**
@@ -806,5 +883,10 @@ export function placeRoadConstructionSites(
  * @returns The road network or undefined if not cached
  */
 export function getCachedRoadNetwork(roomName: string): RoomRoadNetwork | undefined {
-  return roadNetworkCache.get(roomName);
+  let newest: RoomRoadNetwork | undefined;
+  for (const network of roadNetworkCache.values()) {
+    if (network.roomName !== roomName) continue;
+    if (!newest || network.lastCalculated >= newest.lastCalculated) newest = network;
+  }
+  return newest;
 }

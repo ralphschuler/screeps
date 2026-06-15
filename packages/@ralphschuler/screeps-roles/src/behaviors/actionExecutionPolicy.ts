@@ -1,9 +1,11 @@
+export type ActionResultCode = ScreepsReturnCode | ERR_ACCESS_DENIED;
+
 export interface ActionExecutionDecision {
   clearState: boolean;
 }
 
 export interface RangeActionExecutionInput {
-  actionResult: ScreepsReturnCode;
+  actionResult: ActionResultCode;
   moveResult?: ScreepsReturnCode;
 }
 
@@ -16,13 +18,14 @@ export interface RangeActionExecutionDecision extends ActionExecutionDecision {
  * Result policy for primary Screeps actions.
  */
 export function shouldClearStateForActionResult(
-  result: ScreepsReturnCode,
+  result: ActionResultCode,
 ): boolean {
   return (
     result === ERR_FULL ||
     result === ERR_NOT_ENOUGH_RESOURCES ||
     result === ERR_INVALID_TARGET ||
-    result === ERR_NO_BODYPART
+    result === ERR_NO_BODYPART ||
+    result === ERR_ACCESS_DENIED
   );
 }
 
@@ -36,7 +39,7 @@ export function shouldClearStateForMoveResult(
 }
 
 export function decideActionExecution(
-  result: ScreepsReturnCode,
+  result: ActionResultCode,
 ): ActionExecutionDecision {
   return { clearState: shouldClearStateForActionResult(result) };
 }

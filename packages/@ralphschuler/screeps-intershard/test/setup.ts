@@ -2,6 +2,13 @@
  * Test setup and global mocks for Screeps tests
  */
 
+// Screeps constants used by shard health tests
+Object.assign(globalThis, {
+  FIND_HOSTILE_CREEPS: 103,
+  FIND_MY_STRUCTURES: 108,
+  STRUCTURE_FACTORY: "factory"
+});
+
 // Mock global Game object
 (global as Record<string, unknown>).Game = {
   time: 1000,

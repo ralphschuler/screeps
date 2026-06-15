@@ -18,6 +18,7 @@ import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { planEnemyTrackingIntent, planIntelScanIntent, type EnemySightingSnapshot } from "./intelIntent";
+import { isHighwayRoom, isSourceKeeperRoom } from "./roomGeometry";
 
 /**
  * Enemy player tracking
@@ -88,7 +89,7 @@ export class IntelScanner {
   @LowFrequencyProcess("empire:intelScanner", "Intel Scanner", {
     priority: ProcessPriority.MEDIUM,
     interval: 10,
-    minBucket: 2000,
+    minBucket: 6000,
     cpuBudget: 0.02
   })
   public run(): void {
@@ -225,8 +226,8 @@ export class IntelScanner {
 
     // Update terrain classification
     intel.terrain = this.classifyTerrain(room);
-    intel.isHighway = this.isHighwayRoom(room.name);
-    intel.isSK = this.isSourceKeeperRoom(room.name);
+    intel.isHighway = isHighwayRoom(room.name);
+    intel.isSK = isSourceKeeperRoom(room.name);
 
     empire.knownRooms[room.name] = intel;
   }
@@ -243,8 +244,8 @@ export class IntelScanner {
       threatLevel: 0,
       scouted: false,
       terrain: "mixed",
-      isHighway: this.isHighwayRoom(roomName),
-      isSK: this.isSourceKeeperRoom(roomName)
+      isHighway: isHighwayRoom(roomName),
+      isSK: isSourceKeeperRoom(roomName)
     };
   }
 
@@ -272,29 +273,6 @@ export class IntelScanner {
     return "mixed";
   }
 
-  /**
-   * Check if room is highway
-   */
-  private isHighwayRoom(roomName: string): boolean {
-    const match = roomName.match(/[EW](\d+)[NS](\d+)/);
-    if (!match) return false;
-    const x = parseInt(match[1], 10);
-    const y = parseInt(match[2], 10);
-    return x % 10 === 0 || y % 10 === 0;
-  }
-
-  /**
-   * Check if room is source keeper
-   */
-  private isSourceKeeperRoom(roomName: string): boolean {
-    const match = roomName.match(/[EW](\d+)[NS](\d+)/);
-    if (!match) return false;
-    const x = parseInt(match[1], 10);
-    const y = parseInt(match[2], 10);
-    const xMod = x % 10;
-    const yMod = y % 10;
-    return (xMod === 4 || xMod === 5 || xMod === 6) && (yMod === 4 || yMod === 5 || yMod === 6);
-  }
 
   /**
    * Update enemy player tracking from visible rooms

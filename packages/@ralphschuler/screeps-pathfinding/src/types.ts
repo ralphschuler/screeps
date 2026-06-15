@@ -25,10 +25,30 @@ export interface ILogger {
 }
 
 /**
+ * Path cache events emitted by host bot event buses.
+ *
+ * The pathfinding package only depends on the fields needed to invalidate
+ * route caches; host applications may provide richer event payloads.
+ */
+export interface PathCacheEventMap {
+  "construction.complete": {
+    roomName: string;
+    structureType: StructureConstant;
+  };
+  "structure.destroyed": {
+    roomName: string;
+    structureType: StructureConstant;
+  };
+}
+
+export type PathCacheEventName = keyof PathCacheEventMap;
+export type PathCacheEventHandler<T extends PathCacheEventName> = (event: PathCacheEventMap[T]) => void;
+
+/**
  * Event bus interface for event-driven cache invalidation
  */
 export interface IEventBus {
-  on(eventName: string, handler: (event: any) => void): void;
+  on<T extends PathCacheEventName>(eventName: T, handler: PathCacheEventHandler<T>): void;
 }
 
 /**

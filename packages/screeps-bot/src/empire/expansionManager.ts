@@ -19,6 +19,7 @@
 import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { EmpireMemory, RoomIntel } from "@ralphschuler/screeps-memory";
+import { getConfig } from "../config";
 import { ProcessPriority, kernel } from "../core/kernel";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import * as ExpansionScoring from "./expansionScoring";
@@ -77,9 +78,11 @@ function getRemoteRoomCapacityForSourceTarget(rcl: number, maxRemoteRooms: numbe
   return Math.min(Math.ceil(targetSources / expectedSourcesPerRemoteRoom), maxRemoteRooms);
 }
 
+const EXPANSION_MANAGER_MIN_BUCKET = getConfig().cpu.bucketThresholds.highMode + 1000;
+
 const DEFAULT_CONFIG: ExpansionManagerConfig = {
-  updateInterval: 20,
-  minBucket: 2000,
+  updateInterval: 500,
+  minBucket: EXPANSION_MANAGER_MIN_BUCKET,
   maxRemoteDistance: 2,
   maxRemotesPerRoom: 5, // Supports up to ~9 remote sources in mature rooms
   minRemoteSources: 1,
@@ -110,8 +113,8 @@ export class ExpansionManager {
    */
   @MediumFrequencyProcess("expansion:manager", "Expansion Manager", {
     priority: ProcessPriority.LOW,
-    interval: 20,
-    minBucket: 2000,
+    interval: 500,
+    minBucket: EXPANSION_MANAGER_MIN_BUCKET,
     cpuBudget: 0.02
   })
   public run(): void {

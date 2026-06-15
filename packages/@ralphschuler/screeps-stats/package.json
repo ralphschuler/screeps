@@ -28,6 +28,9 @@
     "url": "https://github.com/ralphschuler/screeps/issues"
   },
   "homepage": "https://github.com/ralphschuler/screeps/tree/main/packages/@ralphschuler/screeps-stats#readme",
+  "dependencies": {
+    "@ralphschuler/screeps-core": "*"
+  },
   "devDependencies": {
     "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",

@@ -46,7 +46,7 @@ Under "Require status checks to pass before merging", search for and add the fol
 - `Test screeps-defense`
 - `Test screeps-chemistry`
 - `Test screeps-utils`
-- `Test screeps-tasks`
+- `Test screeps-roles`
 - `Test screeps-posis`
 - `Test screeps-server`
 
@@ -60,7 +60,7 @@ Under "Require status checks to pass before merging", search for and add the fol
 - `TypeCheck screeps-defense`
 - `TypeCheck screeps-chemistry`
 - `TypeCheck screeps-utils`
-- `TypeCheck screeps-tasks`
+- `TypeCheck screeps-roles`
 - `TypeCheck screeps-posis`
 
 #### Optional Checks

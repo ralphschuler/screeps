@@ -37,4 +37,10 @@ describe("Remote Hauler Dimensioning", () => {
     expect(calculatePathDistance("W1N1", "W3N2")).to.equal(3);
     expect(estimateRoundTripTicks(2, 1.5)).to.equal(300);
   });
+
+  it("counts rooms across the W/E and N/S zero boundaries", () => {
+    expect(calculatePathDistance("W0N0", "E0N0")).to.equal(1);
+    expect(calculatePathDistance("E0N0", "E0S0")).to.equal(1);
+    expect(calculatePathDistance("W1N1", "E1S1")).to.equal(6);
+  });
 });

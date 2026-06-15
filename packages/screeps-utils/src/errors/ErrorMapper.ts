@@ -1,13 +1,18 @@
-/* eslint-disable */
 import { SourceMapConsumer } from "source-map";
 
-// TODO(P2): STYLE - Re-enable eslint for this file and fix style issues
-// The eslint-disable was added to ignore initial issues but should be addressed
-// TODO(P2): PERF - Cache source map parsing to avoid expensive re-parsing on global resets
-// First call after reset uses >30 CPU which can impact startup performance
-// TODO(P1): BUG - Add error handling for missing source map file
-// Issue URL: https://github.com/ralphschuler/screeps/issues/615
-// If main.js.map is not bundled, the require will throw
+const DEFAULT_SOURCE_MAP_MIN_BUCKET = 2000;
+const DEFAULT_STACK_MAP_CACHE_SIZE = 200;
+
+interface ErrorMapperSettingsMemory {
+  errorMapper?: {
+    /** Set false to roll back low-bucket source-map throttling. */
+    sourceMapLowBucketGuard?: boolean;
+    /** Minimum bucket required before parsing source maps for uncached traces. Set 0 to disable the guard. */
+    sourceMapMinBucket?: number;
+    /** Set false to disable source-mapped errors entirely. */
+    sourceMappedErrors?: boolean;
+  };
+}
 
 /**
  * Converts special HTML characters to their entity equivalents.
@@ -25,85 +30,143 @@ function escapeHtml(str: string | undefined): string {
     .replace(/'/g, "&#39;");
 }
 
-export class ErrorMapper {
-  // Cache consumer
-  private static _consumer?: SourceMapConsumer;
+function normalizeStack(errorOrString: string): string {
+  return errorOrString.trim();
+}
 
-  public static async getConsumer(): Promise<SourceMapConsumer> {
+function safeParseInt(value: string | undefined): number | null {
+  if (value === undefined) return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export class ErrorMapper {
+  private static _consumer?: SourceMapConsumer;
+  private static sourceMapUnavailable = false;
+  private static readonly MAX_STACK_MAP_CACHE_SIZE = DEFAULT_STACK_MAP_CACHE_SIZE;
+
+  public static async getConsumer(): Promise<SourceMapConsumer | null> {
+    if (this.sourceMapUnavailable) return null;
+
     if (this._consumer == null) {
-       
-      const rawSourceMap = require("main.js.map");
-      // Parse the source map if it's a string, otherwise use it directly
-      let sourceMapData;
-      if (typeof rawSourceMap === "string") {
-        try {
-          sourceMapData = JSON.parse(rawSourceMap);
-        } catch (e) {
-          throw new Error(`Failed to parse source map JSON: ${e instanceof Error ? e.message : String(e)}`);
-        }
-      } else {
-        sourceMapData = rawSourceMap;
+      let rawSourceMap: unknown;
+      try {
+        rawSourceMap = require("main.js.map");
+      } catch {
+        this.sourceMapUnavailable = true;
+        return null;
       }
-      this._consumer = await new SourceMapConsumer(sourceMapData);
+
+      let sourceMapData: unknown;
+      try {
+        sourceMapData = typeof rawSourceMap === "string" ? JSON.parse(rawSourceMap) : rawSourceMap;
+      } catch {
+        this.sourceMapUnavailable = true;
+        return null;
+      }
+
+      try {
+        this._consumer = await new SourceMapConsumer(sourceMapData as any);
+      } catch {
+        this.sourceMapUnavailable = true;
+        return null;
+      }
     }
 
-    return this._consumer;
+    return this._consumer ?? null;
   }
 
-  // Cache previously mapped traces to improve performance
-  public static cache: { [key: string]: string } = {};
+  // Cache previously mapped traces to improve performance.
+  public static cache: Record<string, string> = {};
+
+  public static clearCache(): void {
+    this.cache = {};
+    this.sourceMapUnavailable = false;
+    this._consumer = undefined;
+  }
+
+  private static touchCacheKey(stack: string): void {
+    const entry = this.cache[stack];
+    if (entry === undefined) return;
+
+    delete this.cache[stack];
+    this.cache[stack] = entry;
+  }
+
+  private static pruneCache(): void {
+    const keys = Object.keys(this.cache);
+    while (keys.length > this.MAX_STACK_MAP_CACHE_SIZE) {
+      const oldest = keys.shift();
+      if (!oldest) break;
+      delete this.cache[oldest];
+    }
+  }
+
+  private static shouldAttemptSourceMapping(): boolean {
+    const memory = (globalThis as { Memory?: ErrorMapperSettingsMemory }).Memory;
+    const settings = memory?.errorMapper;
+
+    if (settings?.sourceMappedErrors === false) return false;
+    if (settings?.sourceMapLowBucketGuard === false) return true;
+
+    const bucket = (globalThis as { Game?: { cpu?: { bucket?: number } } }).Game?.cpu?.bucket;
+    if (typeof bucket !== "number") return true;
+
+    const configuredMinBucket = settings?.sourceMapMinBucket;
+    const minBucket =
+      typeof configuredMinBucket === "number" && Number.isFinite(configuredMinBucket)
+        ? Math.max(0, configuredMinBucket)
+        : DEFAULT_SOURCE_MAP_MIN_BUCKET;
+
+    return bucket >= minBucket;
+  }
 
   /**
-   * Generates a stack trace using a source map generate original symbol names.
-   *
-   * WARNING - EXTREMELY high CPU cost for first call after reset - >30 CPU! Use sparingly!
-   * (Consecutive calls after a reset are more reasonable, ~0.1 CPU/ea)
-   *
-   * @param {Error | string} error The error or original stack trace
-   * @returns {Promise<string>} The source-mapped stack trace
+   * Generates a stack trace using a source map to recover original symbol names.
    */
   public static async sourceMappedStackTrace(error: Error | string): Promise<string> {
-    const stack: string = error instanceof Error ? (error.stack as string) : error;
+    const rawStack = error instanceof Error ? error.stack ?? error.toString() : error;
+    const stack = normalizeStack(rawStack);
     if (Object.prototype.hasOwnProperty.call(this.cache, stack)) {
+      this.touchCacheKey(stack);
       return this.cache[stack];
     }
 
-     
-    const re = /^\s+at\s+(.+?\s+)?\(?([0-z._\-\\\/]+):(\d+):(\d+)\)?$/gm;
-    let match: RegExpExecArray | null;
-    let outStack = error.toString();
+    if (!this.shouldAttemptSourceMapping()) {
+      return stack;
+    }
 
     const consumer = await this.getConsumer();
-    while ((match = re.exec(stack))) {
-      if (match[2] === "main") {
-        const pos = consumer.originalPositionFor({
-          column: parseInt(match[4], 10),
-          line: parseInt(match[3], 10)
-        });
+    if (!consumer) {
+      return stack;
+    }
 
-        if (pos.line != null) {
-          if (pos.name) {
-            outStack += `\n    at ${pos.name} (${pos.source}:${pos.line}:${pos.column})`;
-          } else {
-            if (match[1]) {
-              // no original source file name known - use file name from given trace
-              outStack += `\n    at ${match[1]} (${pos.source}:${pos.line}:${pos.column})`;
-            } else {
-              // no original source file name known or in given trace - omit name
-              outStack += `\n    at ${pos.source}:${pos.line}:${pos.column}`;
-            }
-          }
-        } else {
-          // no known position
-          break;
-        }
+    const re = /^\s+at\s+(.+?\s+)?\(?([\w.\-\\/]+):(\d+):(\d+)\)?$/gm;
+    let match: RegExpExecArray | null;
+    let outStack = stack;
+
+    while ((match = re.exec(stack))) {
+      const fileName = match[2];
+      if (fileName !== "main") break;
+
+      const line = safeParseInt(match[3]);
+      const column = safeParseInt(match[4]);
+      if (line === null || column === null) break;
+
+      const pos = consumer.originalPositionFor({ column, line });
+      if (pos.line == null) break;
+
+      if (pos.name) {
+        outStack += `\n    at ${pos.name} (${pos.source}:${pos.line}:${pos.column})`;
+      } else if (match[1]) {
+        outStack += `\n    at ${match[1]} (${pos.source}:${pos.line}:${pos.column})`;
       } else {
-        // no more parseable lines
-        break;
+        outStack += `\n    at ${pos.source}:${pos.line}:${pos.column}`;
       }
     }
 
     this.cache[stack] = outStack;
+    this.pruneCache();
     return outStack;
   }
 
@@ -114,19 +177,18 @@ export class ErrorMapper {
       } catch (e) {
         if (e instanceof Error) {
           if ("sim" in Game.rooms) {
-            const message = `Source maps don't work in the simulator - displaying original error`;
+            const message = "Source maps don't work in the simulator - displaying original error";
             console.log(`<span style='color:red'>${message}<br>${escapeHtml(e.stack)}</span>`);
           } else {
-            // Note: This will log a Promise, but we can't await in a sync wrapper
-            // Consider using async loop wrapper or handle Promise appropriately
-            this.sourceMappedStackTrace(e).then((trace) => {
-              console.log(`<span style='color:red'>${escapeHtml(trace)}</span>`);
-            }).catch((mapError) => {
-              console.log(`<span style='color:red'>Error mapping stack trace: ${mapError}<br>${escapeHtml(e.stack)}</span>`);
-            });
+            this.sourceMappedStackTrace(e)
+              .then(trace => {
+                console.log(`<span style='color:red'>${escapeHtml(trace)}</span>`);
+              })
+              .catch(mapError => {
+                console.log(`<span style='color:red'>Error mapping stack trace: ${mapError}<br>${escapeHtml(e.stack)}</span>`);
+              });
           }
         } else {
-          // can't handle it
           throw e;
         }
       }

@@ -192,13 +192,7 @@ export class LabConfigManager {
    * Get all configured rooms
    */
   public getConfiguredRooms(): string[] {
-    // TODO: Export this from chemistry package
-    // Issue URL: https://github.com/ralphschuler/screeps/issues/2946
-    // For now, we need to check Memory
-    return Object.keys(Memory.rooms).filter(roomName => {
-      const roomMem = Memory.rooms[roomName] as unknown as { labConfig?: RoomLabConfig };
-      return roomMem?.labConfig !== undefined;
-    });
+    return this.manager.getConfiguredRooms();
   }
 
   /**

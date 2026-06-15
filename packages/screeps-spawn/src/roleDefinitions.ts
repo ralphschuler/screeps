@@ -10,6 +10,7 @@
  */
 
 import type { CreepRole, RoleFamily } from "@ralphschuler/screeps-memory";
+import { calculateBodyCost } from "./bodyUtils";
 
 /** Body template definition */
 export interface BodyTemplate {
@@ -29,24 +30,6 @@ export interface RoleSpawnDef {
 }
 
 /**
- * Calculate the energy cost of a body part array
- */
-function calculateBodyCost(parts: BodyPartConstant[]): number {
-  const costs: Record<BodyPartConstant, number> = {
-    [MOVE]: 50,
-    [WORK]: 100,
-    [CARRY]: 50,
-    [ATTACK]: 80,
-    [RANGED_ATTACK]: 150,
-    [HEAL]: 250,
-    [CLAIM]: 600,
-    [TOUGH]: 10
-  };
-
-  return parts.reduce((sum, part) => sum + costs[part], 0);
-}
-
-/**
  * Create a body template with calculated cost
  */
 function createBody(parts: BodyPartConstant[], minCapacity = 0): BodyTemplate {
@@ -55,6 +38,10 @@ function createBody(parts: BodyPartConstant[], minCapacity = 0): BodyTemplate {
     cost: calculateBodyCost(parts),
     minCapacity: minCapacity || calculateBodyCost(parts)
   };
+}
+
+function createRepeatedBodyParts(...counts: Array<readonly [BodyPartConstant, number]>): BodyPartConstant[] {
+  return counts.flatMap(([part, count]) => Array<BodyPartConstant>(count).fill(part));
 }
 
 /** Role definitions for all creep types */
@@ -74,15 +61,28 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     maxPerRoom: 3,
     remoteRole: false
   },
+  pioneer: {
+    role: "pioneer",
+    family: "economy",
+    bodies: [
+      createBody([WORK, CARRY, MOVE], 200),
+      createBody([WORK, WORK, CARRY, CARRY, MOVE, MOVE], 400),
+      createBody([WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE], 550),
+      createBody([WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 800)
+    ],
+    priority: 92,
+    maxPerRoom: 3,
+    remoteRole: true
+  },
   harvester: {
     role: "harvester",
     family: "economy",
     bodies: [
-      createBody([WORK, WORK, MOVE], 250),
-      createBody([WORK, WORK, WORK, WORK, MOVE, MOVE], 500),
-      createBody([WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE], 700),
-      createBody([WORK, WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE], 800),
-      createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE], 1000)
+      createBody([WORK, CARRY, MOVE], 200),
+      createBody([WORK, WORK, CARRY, MOVE, MOVE], 350),
+      createBody([WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE], 550),
+      createBody([WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE, MOVE], 750),
+      createBody([WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE], 1000)
     ],
     priority: 95,
     maxPerRoom: 2,
@@ -226,7 +226,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
       createBody([WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE], 550),
       createBody([WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE], 850)
     ],
-    priority: 40,
+    priority: 65,
     maxPerRoom: 1,
     remoteRole: false
   },
@@ -237,7 +237,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
       createBody([CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 400),
       createBody([CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 600)
     ],
-    priority: 35,
+    priority: 60,
     maxPerRoom: 1,
     remoteRole: false
   },
@@ -724,116 +724,8 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     role: "powerHarvester",
     family: "power",
     bodies: [
-      createBody(
-        [
-          TOUGH,
-          TOUGH,
-          TOUGH,
-          TOUGH,
-          TOUGH,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE
-        ],
-        2300
-      ),
-      createBody(
-        [
-          TOUGH,
-          TOUGH,
-          TOUGH,
-          TOUGH,
-          TOUGH,
-          TOUGH,
-          TOUGH,
-          TOUGH,
-          TOUGH,
-          TOUGH,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          ATTACK,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE,
-          MOVE
-        ],
-        3000
-      )
+      createBody(createRepeatedBodyParts([TOUGH, 5], [ATTACK, 20], [MOVE, 25]), 2300),
+      createBody(createRepeatedBodyParts([TOUGH, 10], [ATTACK, 20], [MOVE, 20]), 3000)
     ],
     priority: 30,
     maxPerRoom: 2, // Per operation, coordinated by power bank manager
@@ -852,6 +744,11 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
   }
 };
 
+/** Normalize bodies so getBestBody can assume ascending cost order. */
+for (const def of Object.values(ROLE_DEFINITIONS)) {
+  def.bodies.sort((a, b) => a.cost - b.cost);
+}
+
 /** Get a role definition by role name. */
 export function getRoleDefinition(
   role: CreepRole | string,
@@ -865,10 +762,12 @@ export function getAllRoles(roleDefs: Record<string, RoleSpawnDef> = ROLE_DEFINI
   return Object.keys(roleDefs);
 }
 
-/** Get role definitions by family. */
+/** Get role names by family. */
 export function getRolesByFamily(
   family: RoleFamily,
   roleDefs: Record<string, RoleSpawnDef> = ROLE_DEFINITIONS
-): RoleSpawnDef[] {
-  return Object.values(roleDefs).filter(def => def.family === family);
+): CreepRole[] {
+  return Object.entries(roleDefs)
+    .filter(([, def]) => def.family === family)
+    .map(([role]) => role as CreepRole);
 }

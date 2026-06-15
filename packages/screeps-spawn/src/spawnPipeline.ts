@@ -1,13 +1,46 @@
 import { logger } from "@ralphschuler/screeps-core";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
-import { energyFlowPredictor } from "./botIntegration";
-import { powerBankHarvestingManager } from "./botIntegration";
+import { energyFlowPredictor, powerBankHarvestingManager } from "./botIntegration";
 import { optimizeBody } from "./bodyOptimizer";
 import { isBootstrapMode, isEmergencySpawnState } from "./bootstrapManager";
 import { analyzeDefenderNeeds, getCurrentDefenders } from "./defenderManager";
+import { getEffectiveRoomEnergyAvailable } from "./roomEnergy";
 import { createSpawnPlan, ensureRoomVisibleForSpawnAnalysis } from "./spawnIntentCompiler";
 import { SpawnPriority, type SpawnRequest, spawnQueue } from "./spawnQueue";
 import { executeSpawnRequest } from "./spawnRequestExecution";
+
+const PREEMPTABLE_QUEUED_ROLES = new Set<SpawnRequest["role"]>([
+  "pioneer",
+  "remoteHarvester",
+  "remoteHauler",
+  "scout"
+]);
+const PREEMPTIVE_REPLAN_INTERVAL = 5;
+
+interface SpawnPipelineCpuMemory {
+  spawnPipeline?: {
+    lastPreemptiveReplanTickByRoom?: Record<string, number>;
+  };
+}
+
+function getLastPreemptiveReplanTicks(): Record<string, number> {
+  const memory = Memory as unknown as SpawnPipelineCpuMemory;
+  memory.spawnPipeline ??= {};
+  memory.spawnPipeline.lastPreemptiveReplanTickByRoom ??= {};
+  return memory.spawnPipeline.lastPreemptiveReplanTickByRoom;
+}
+
+interface SpawnPipelineSettingsMemory {
+  spawnSettings?: {
+    /** Set false to roll back claimer preemption while existing low-priority queues drain. */
+    claimerPreemption?: boolean;
+  };
+}
+
+function isClaimerPreemptionEnabled(): boolean {
+  const mem = Memory as unknown as SpawnPipelineSettingsMemory;
+  return mem.spawnSettings?.claimerPreemption !== false;
+}
 
 export interface SpawnPipelineResult {
   roomName: string;
@@ -25,7 +58,15 @@ export function populateSpawnQueue(room: Room, swarm: SwarmState): void {
   const queueSize = spawnQueue.getQueueSize(room.name);
   const bootstrapMode = isBootstrapMode(room.name, room);
   const emergencyRecoveryNeeded = isEmergencySpawnState(room.name) && !spawnQueue.hasEmergencySpawns(room.name);
+  const defenderNeeds = analyzeDefenderNeeds(room);
+  const currentDefenders = getCurrentDefenders(room);
+
+  if (defenderNeeds.guards > 0 || defenderNeeds.rangers > 0 || defenderNeeds.healers > 0) {
+    addDefenderRequests(room, defenderNeeds, currentDefenders);
+  }
+
   if (queueSize > 0 && !emergencyRecoveryNeeded && !bootstrapMode) {
+    addPreemptiveRequestsWhenMissing(room, swarm);
     return;
   }
 
@@ -37,13 +78,6 @@ export function populateSpawnQueue(room: Room, swarm: SwarmState): void {
       spawnQueue.addRequest(request);
     }
     return;
-  }
-
-  const defenderNeeds = analyzeDefenderNeeds(room);
-  const currentDefenders = getCurrentDefenders(room);
-
-  if (defenderNeeds.guards > 0 || defenderNeeds.rangers > 0 || defenderNeeds.healers > 0) {
-    addDefenderRequests(room, defenderNeeds, currentDefenders);
   }
 
   addPowerBankRequests(room);
@@ -71,14 +105,15 @@ export function processSpawnQueue(room: Room): number {
   }
 
   let spawnsInitiated = 0;
+  let availableEnergy = getEffectiveRoomEnergyAvailable(room);
 
   for (const spawn of availableSpawns) {
-    const request = spawnQueue.getNextRequest(room.name, room.energyAvailable);
+    const request = spawnQueue.getNextRequest(room.name, availableEnergy);
     if (!request) {
       break;
     }
 
-    if (shouldDelaySpawn(room, request)) {
+    if (shouldDelaySpawn(room, request, availableEnergy)) {
       logger.debug(
         `Delaying spawn of ${request.role} (priority: ${request.priority}) - waiting for better energy availability`,
         { subsystem: "SpawnPipeline" }
@@ -90,6 +125,7 @@ export function processSpawnQueue(room: Room): number {
 
     if (result === OK) {
       spawnsInitiated++;
+      availableEnergy -= request.body.cost;
       spawnQueue.markInProgress(room.name, request.id, spawn.id);
       spawnQueue.removeRequest(room.name, request.id);
 
@@ -132,6 +168,45 @@ export function runSpawnPipeline(room: Room, swarm: SwarmState): SpawnPipelineRe
   };
 }
 
+function addPreemptiveRequestsWhenMissing(room: Room, swarm: SwarmState): void {
+  const lastReplanTicks = getLastPreemptiveReplanTicks();
+  const lastReplanTick = lastReplanTicks[room.name] ?? -Infinity;
+  if (Game.time - lastReplanTick < PREEMPTIVE_REPLAN_INTERVAL) return;
+  lastReplanTicks[room.name] = Game.time;
+
+  const queuedRequestKeys = new Set(spawnQueue.getPendingRequests(room.name).map(getSpawnRequestDedupeKey));
+
+  for (const request of createSpawnPlan(room, swarm).requests) {
+    const isPriorityUpgrader = request.role === "upgrader" && request.priority >= SpawnPriority.HIGH;
+    const isClaimerPreemption = request.role === "claimer" && isClaimerPreemptionEnabled();
+    const isDefenseAssistPreemption = isDefenseAssistRequest(request);
+    if (
+      !PREEMPTABLE_QUEUED_ROLES.has(request.role) &&
+      !isPriorityUpgrader &&
+      !isClaimerPreemption &&
+      !isDefenseAssistPreemption
+    ) continue;
+
+    const requestKey = getSpawnRequestDedupeKey(request);
+    if (queuedRequestKeys.has(requestKey)) continue;
+
+    spawnQueue.addRequest(request);
+    queuedRequestKeys.add(requestKey);
+  }
+}
+
+function getSpawnRequestDedupeKey(request: SpawnRequest): string {
+  const task = (request.additionalMemory as { task?: string } | undefined)?.task ?? "";
+  return `${request.role}:${request.targetRoom ?? ""}:${task}`;
+}
+
+function isDefenseAssistRequest(request: SpawnRequest): boolean {
+  return (
+    request.priority >= SpawnPriority.HIGH &&
+    (request.additionalMemory as { task?: string; assistTarget?: string } | undefined)?.task === "defenseAssist"
+  );
+}
+
 function addDefenderRequests(
   room: Room,
   needs: ReturnType<typeof analyzeDefenderNeeds>,
@@ -141,7 +216,8 @@ function addDefenderRequests(
   const emergencyEnergy = room.energyAvailable;
   const priority = needs.urgency >= 2.0 ? SpawnPriority.EMERGENCY : SpawnPriority.HIGH;
 
-  const guardsNeeded = Math.max(0, needs.guards - current.guards);
+  const pendingDefenders = getPendingDefenderCounts(room.name);
+  const guardsNeeded = Math.max(0, needs.guards - current.guards - pendingDefenders.guards);
   for (let i = 0; i < guardsNeeded; i++) {
     addOptimizedRequest(
       room,
@@ -153,7 +229,7 @@ function addDefenderRequests(
     );
   }
 
-  const rangersNeeded = Math.max(0, needs.rangers - current.rangers);
+  const rangersNeeded = Math.max(0, needs.rangers - current.rangers - pendingDefenders.rangers);
   for (let i = 0; i < rangersNeeded; i++) {
     addOptimizedRequest(
       room,
@@ -165,7 +241,7 @@ function addDefenderRequests(
     );
   }
 
-  const healersNeeded = Math.max(0, needs.healers - current.healers);
+  const healersNeeded = Math.max(0, needs.healers - current.healers - pendingDefenders.healers);
   if (healersNeeded > 0 && needs.urgency >= 1.5) {
     for (let i = 0; i < healersNeeded; i++) {
       addOptimizedRequest(
@@ -185,6 +261,16 @@ function addDefenderRequests(
       { subsystem: "SpawnPipeline" }
     );
   }
+}
+
+function getPendingDefenderCounts(roomName: string): { guards: number; rangers: number; healers: number } {
+  const counts = { guards: 0, rangers: 0, healers: 0 };
+  for (const request of spawnQueue.getPendingRequests(roomName)) {
+    if (request.role === "guard") counts.guards++;
+    if (request.role === "ranger") counts.rangers++;
+    if (request.role === "healer") counts.healers++;
+  }
+  return counts;
 }
 
 function addPowerBankRequests(room: Room): void {
@@ -241,15 +327,19 @@ function addOptimizedRequest(
   }
 }
 
-function shouldDelaySpawn(room: Room, request: SpawnRequest): boolean {
+function shouldDelaySpawn(room: Room, request: SpawnRequest, availableEnergy = room.energyAvailable): boolean {
   if (request.priority >= SpawnPriority.HIGH) {
     return false;
   }
 
-  const currentEnergy = room.energyAvailable;
+  const currentEnergy = availableEnergy;
   const bodyCost = request.body.cost;
 
   if (currentEnergy < bodyCost) {
+    return false;
+  }
+
+  if (request.role === "scout") {
     return false;
   }
 

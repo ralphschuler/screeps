@@ -7,8 +7,17 @@
 
 import { cacheCommonRoutes, invalidateRoom as invalidatePathCacheRoom } from "@ralphschuler/screeps-cache";
 import { eventBus as botEventBus, createLogger } from "@ralphschuler/screeps-core";
+import type { EventHandler } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
-import type { ICache, IEventBus, ILogger, IPathCache, IRemoteMining } from "@ralphschuler/screeps-pathfinding";
+import type {
+  ICache,
+  IEventBus,
+  ILogger,
+  IPathCache,
+  IRemoteMining,
+  PathCacheEventHandler,
+  PathCacheEventName
+} from "@ralphschuler/screeps-pathfinding";
 import { getRemoteRoomsForRoom as getRemoteRooms, precacheRemoteRoutes as precacheRemotes } from "../remote-mining";
 
 /**
@@ -51,9 +60,8 @@ export class BotLoggerAdapter implements ILogger {
  * Event bus adapter using the bot's event system
  */
 export class BotEventBusAdapter implements IEventBus {
-  on(eventName: string, handler: (event: any) => void): void {
-    // Type assertion needed because bot's eventBus has strongly typed event names
-    (botEventBus as any).on(eventName, handler);
+  on<T extends PathCacheEventName>(eventName: T, handler: PathCacheEventHandler<T>): void {
+    botEventBus.on(eventName, handler as EventHandler<T>);
   }
 }
 

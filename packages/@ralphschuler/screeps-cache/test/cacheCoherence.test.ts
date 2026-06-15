@@ -220,6 +220,25 @@ describe("CacheCoherence", () => {
       assert.equal(evicted, 0);
     });
 
+    it("should evict least-recently-used entries when memory budget is exceeded", () => {
+      coherence.registerCache("object", cache1, CacheLayer.L1);
+      coherence.setMemoryBudget(1024);
+
+      for (let i = 0; i < 10; i++) {
+        cache1.set(`key-${i}`, `value-${i}`, { namespace: "object" });
+      }
+
+      const sizeBefore = cache1.getCacheStats("object").size;
+      assert.isAtLeast(sizeBefore, 10);
+
+      const evicted = coherence.enforceMemoryLimits();
+      const sizeAfter = cache1.getCacheStats("object").size;
+
+      assert.isAtLeast(sizeBefore - sizeAfter, 1);
+      assert.isAtLeast(evicted, 1);
+      assert.isBelow(sizeAfter, sizeBefore);
+    });
+
     // Note: Testing actual eviction is complex as it depends on
     // memory estimation. This is better tested via integration tests.
   });

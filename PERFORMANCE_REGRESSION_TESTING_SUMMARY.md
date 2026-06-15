@@ -218,7 +218,7 @@ node scripts/compare-performance-baseline.js \
 **Rationale**: 
 - Enables modern JavaScript features
 - Consistent with test file format (.ts with ES imports)
-- Supported by Node.js 18+
+- Supported by the repository baseline: Node.js 24.x
 
 ### 2. Severity Level Thresholds
 **Decision**: Use ±10% for pass, 10-20% for warning, >20% for critical

@@ -113,6 +113,16 @@ process.env.TS_NODE_PROJECT = 'tsconfig.test.json';
 import Module from 'module';
 const originalResolveFilename = Module._resolveFilename;
 
+function isAlliedTestEntity(entity) {
+  const username = entity?.owner?.username;
+  return username === 'TooAngel' || username === 'TedRoastBeef';
+}
+
+function filterAlliedTestEntities(entities) {
+  const firstAllyIndex = entities.findIndex(isAlliedTestEntity);
+  return firstAllyIndex === -1 ? entities : entities.filter(entity => !isAlliedTestEntity(entity));
+}
+
 // Create comprehensive stub modules for all @bot and @ralphschuler dependencies
 const stubs = {
   '@bot/core/logger': {
@@ -219,18 +229,9 @@ const stubs = {
       const username = structure?.owner?.username;
       return username === 'TooAngel' || username === 'TedRoastBeef';
     },
-    filterAllyCreeps: (creeps) => creeps.filter(creep => {
-      const username = creep?.owner?.username;
-      return username !== 'TooAngel' && username !== 'TedRoastBeef';
-    }),
-    filterAllyPowerCreeps: (powerCreeps) => powerCreeps.filter(powerCreep => {
-      const username = powerCreep?.owner?.username;
-      return username !== 'TooAngel' && username !== 'TedRoastBeef';
-    }),
-    filterAllyStructures: (structures) => structures.filter(structure => {
-      const username = structure?.owner?.username;
-      return username !== 'TooAngel' && username !== 'TedRoastBeef';
-    }),
+    filterAllyCreeps: (creeps) => filterAlliedTestEntities(creeps),
+    filterAllyPowerCreeps: (powerCreeps) => filterAlliedTestEntities(powerCreeps),
+    filterAllyStructures: (structures) => filterAlliedTestEntities(structures),
     getActualHostileCreeps: (room) => room.find(global.FIND_HOSTILE_CREEPS).filter(creep => {
       const username = creep?.owner?.username;
       return username !== 'TooAngel' && username !== 'TedRoastBeef';
@@ -323,6 +324,46 @@ const stubs = {
       error: () => {},
       debug: () => {}
     }),
+    NON_AGGRESSION_PACT_PLAYERS: ['TooAngel', 'TedRoastBeef'],
+    isAllyPlayer: (username) => username === 'TooAngel' || username === 'TedRoastBeef',
+    isAllyOwned: (entity) => {
+      const username = entity?.owner?.username;
+      return username === 'TooAngel' || username === 'TedRoastBeef';
+    },
+    isAllyCreep: (creep) => {
+      const username = creep?.owner?.username;
+      return username === 'TooAngel' || username === 'TedRoastBeef';
+    },
+    isAllyPowerCreep: (powerCreep) => {
+      const username = powerCreep?.owner?.username;
+      return username === 'TooAngel' || username === 'TedRoastBeef';
+    },
+    isAllyStructure: (structure) => {
+      const username = structure?.owner?.username;
+      return username === 'TooAngel' || username === 'TedRoastBeef';
+    },
+    filterAllyCreeps: (creeps) => filterAlliedTestEntities(creeps),
+    filterAllyPowerCreeps: (powerCreeps) => filterAlliedTestEntities(powerCreeps),
+    filterAllyStructures: (structures) => filterAlliedTestEntities(structures),
+    getActualHostileCreeps: (room) => room.find(global.FIND_HOSTILE_CREEPS).filter(creep => {
+      const username = creep?.owner?.username;
+      return username !== 'TooAngel' && username !== 'TedRoastBeef';
+    }),
+    getActualHostilePowerCreeps: (room) => room.find(global.FIND_HOSTILE_POWER_CREEPS).filter(powerCreep => {
+      const username = powerCreep?.owner?.username;
+      return username !== 'TooAngel' && username !== 'TedRoastBeef';
+    }),
+    getActualHostileStructures: (room) => room.find(global.FIND_HOSTILE_STRUCTURES).filter(structure => {
+      const username = structure?.owner?.username;
+      return username !== 'TooAngel' && username !== 'TedRoastBeef';
+    }),
+    hasActualHostiles: (room) => {
+      const hostiles = room.find(global.FIND_HOSTILE_CREEPS).filter(creep => {
+        const username = creep?.owner?.username;
+        return username !== 'TooAngel' && username !== 'TedRoastBeef';
+      });
+      return hostiles.length > 0;
+    },
     EventBus: class {},
     CommandRegistry: class {},
     CPUBudgetManager: class {}

@@ -2,11 +2,14 @@
  * Pheromone Manager - Main orchestration for pheromone system
  */
 
-import { logger } from "@ralphschuler/screeps-core";
-import { safeFind } from "@ralphschuler/screeps-utils";
+import { getActualHostileCreeps, logger } from "@ralphschuler/screeps-core";
 import type { PheromoneState, SwarmState } from "@ralphschuler/screeps-memory";
 import { DEFAULT_PHEROMONE_CONFIG, type PheromoneConfig } from "./config";
 import { createMetricsTracker, type RoomMetricsTracker } from "./rollingAverage";
+
+// Re-export for tests and external consumers that intentionally import config from manager.
+export { DEFAULT_PHEROMONE_CONFIG } from "./config";
+export type { PheromoneConfig } from "./config";
 
 /** Pheromone Manager */
 export class PheromoneManager {
@@ -67,8 +70,8 @@ export class PheromoneManager {
       tracker.lastControllerProgress = room.controller.progress;
     }
 
-    // Calculate damage in a single loop
-    const hostiles = safeFind(room, FIND_HOSTILE_CREEPS);
+    // Calculate damage from actual hostiles only; permanent allies are never threat signals.
+    const hostiles = getActualHostileCreeps(room);
     tracker.hostileCount.add(hostiles.length);
 
     let potentialDamage = 0;

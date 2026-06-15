@@ -133,10 +133,7 @@ export class CacheManager {
     if (options?.maxSize && store.size() >= options.maxSize) {
       // Evict 10% of cache to reduce eviction frequency
       const toEvict = Math.max(1, Math.floor(options.maxSize * 0.1));
-      for (let i = 0; i < toEvict; i++) {
-        this.evictLRU(namespace, store);
-      }
-      this.getStats(namespace).evictions += toEvict;
+      this.evictLRU(namespace, toEvict);
     }
 
     const entry: CacheEntry<T> = {
@@ -329,9 +326,55 @@ export class CacheManager {
   }
 
   /**
+   * Get all stores for a namespace
+   */
+  private getNamespaceStores(namespace: string): CacheStore[] {
+    const prefix = `${namespace}:`;
+    return Array.from(this.stores.entries())
+      .filter(([key]) => key.startsWith(prefix))
+      .map(([, store]) => store);
+  }
+
+  /**
+   * Evict least recently used entries from a namespace
+   */
+  public evictLRU(namespace: string, count = 1): number {
+    const toEvict = Math.max(0, Math.floor(count));
+    if (toEvict <= 0) return 0;
+
+    const stores = this.getNamespaceStores(namespace);
+    if (stores.length === 0) return 0;
+
+    let evicted = 0;
+    for (let i = 0; i < toEvict; i++) {
+      let progress = false;
+      for (const store of stores) {
+        if (evicted >= toEvict) break;
+
+        const before = store.size();
+        this.evictLRUEntry(namespace, store);
+
+        if (store.size() < before) {
+          evicted += 1;
+          progress = true;
+          if (evicted >= toEvict) break;
+        }
+      }
+
+      if (!progress) break;
+    }
+
+    if (evicted > 0) {
+      this.getStats(namespace).evictions += evicted;
+    }
+
+    return evicted;
+  }
+
+  /**
    * Evict least recently used entry
    */
-  private evictLRU(namespace: string, store: CacheStore): void {
+  private evictLRUEntry(namespace: string, store: CacheStore): void {
     const keys = store.keys();
     if (keys.length === 0) return;
 

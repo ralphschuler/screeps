@@ -5,9 +5,12 @@
  */
 
 // Export command registry and decorators
-export { 
+export {
   Command,
+  clearCommandDecoratorMetadata,
   commandRegistry,
+  getCommandDecoratorMetadata,
+  registerAllDecoratedCommands,
   registerDecoratedCommands,
   type CommandMetadata
 } from './commandRegistry';

@@ -13,8 +13,8 @@
 import type { ClusterMemory, SquadDefinition } from "./types";
 import { logger } from "@ralphschuler/screeps-core";
 import { SpawnPriority, type SpawnRequest, spawnQueue } from "./adapters/spawnQueueAdapter";
-import { addCreepToSquad, getSquadReadiness } from "./squadCoordinator";
-import { DOCTRINE_CONFIGS, getDoctrineComposition } from "./offensiveDoctrine";
+import { addCreepToSquad } from "./squadCoordinator";
+import { DOCTRINE_CONFIGS } from "./offensiveDoctrine";
 
 /**
  * Screeps BODYPART_COST constants

@@ -22,7 +22,7 @@ Analysis Result for 'javascript'. Found 0 alerts:
 ### Modified Files
 1. `.mocharc.json` - Test configuration (no code execution)
 2. `package.json` - Dependencies and scripts (configuration only)
-3. `test/setup-mocha.cjs` - Test setup with mock Game objects
+3. `test/setup-mocha.mjs` - Test setup with mock Game objects
 4. `test/unit/allianceDiplomacy.test.ts` - Converted require() to import()
 5. `test/unit/harvester.test.ts` - Fixed import paths
 6. `test/unit/hauler.test.ts` - Fixed import paths

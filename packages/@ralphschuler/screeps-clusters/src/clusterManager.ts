@@ -18,8 +18,6 @@
  * Track cluster-wide performance for optimization
  * TODO(P2): ARCH - Implement dynamic rally point selection based on threats
  * Rally points should adapt to current military situation
- * TODO(P1): FEATURE - Add cluster resource pooling for rapid response
- * Emergency resources from all cluster members for defense
  * TODO(P3): ARCH - Consider implementing cluster-level spawn coordination
  * Distribute spawning across cluster to reduce individual room load
  * TODO(P3): FEATURE - Add cluster-wide construction planning
@@ -45,6 +43,7 @@ import {
 import { logger } from "@ralphschuler/screeps-core";
 import { MediumFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
+import { spawnQueue } from "@ralphschuler/screeps-spawn";
 import { memoryManager } from "./adapters/memoryAdapter";
 import {
   type DefenseRequest,
@@ -65,8 +64,9 @@ import {
   planOffensiveOperations,
   updateOffensiveOperations as updateGlobalOffensiveOps
 } from "./offensiveOperations";
+import { queueDefenseReinforcementSpawns } from "./defenseReinforcements";
 import { updateClusterRallyPoints } from "./rallyPointManager";
-import { coordinateClusterDefense, getActualHostileCreeps } from "@ralphschuler/screeps-defense";
+import { coordinateClusterDefense, getActualHostileCreeps, getActualHostileStructures } from "@ralphschuler/screeps-defense";
 import {
   calculateMilitaryReadinessRatio,
   decideClusterRole,
@@ -557,7 +557,8 @@ export class ClusterManager {
       if (!room) return false;
       
       const hostiles = getActualHostileCreeps(room);
-      if (hostiles.length === 0) {
+      const hostileStructures = getActualHostileStructures(room).filter(s => s.structureType !== STRUCTURE_CONTROLLER);
+      if (hostiles.length === 0 && hostileStructures.length === 0) {
         logger.info(`Defense request for ${req.roomName} resolved - no more hostiles`, { subsystem: "Cluster" });
         return false;
       }
@@ -614,8 +615,9 @@ export class ClusterManager {
       }
     }
 
-    // Assign available defenders to pending requests
+    // Assign available defenders to pending requests, then spawn missing reinforcements from safe helper rooms.
     this.assignDefendersToRequests(cluster);
+    queueDefenseReinforcementSpawns(cluster, spawnQueue);
   }
 
   /**

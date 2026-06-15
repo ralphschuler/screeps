@@ -70,14 +70,15 @@ npm run server:ci:down
 
 ## CI Behavior
 
-- Pull requests run short real-server smoke tests.
+- Pull requests run strict real-server smoke tests with seeded runtime scenarios (default 15 minutes / 3000 ticks).
 - Manual and nightly workflow runs execute a 2-hour accelerated simulation.
+- The CI mod list intentionally omits `screepsmod-bots`; the empty bot config plus default-bot cleanup caused orphan-controller room processing failures on Screeps 4.3.0. The harness still uses the bundled `simplebot` path for the temporary `swarm-bot` account before uploading our bundle.
 - Raw Docker logs are retained briefly.
 - Sanitized summaries and mod results are retained longer.
 
 ## Required In-Game Checks
 
-`screepsmod-testing` must assert server and bot state from inside the game runtime, including:
+`screepsmod-testing` must assert server and bot state from inside the game runtime. CI uses a 100-tick runtime warmup so smoke runs exercise post-warmup assertions instead of reporting them as skipped.
 
 - ticks advancing
 - our bot user/room/spawn exists
@@ -85,6 +86,10 @@ npm run server:ci:down
 - creep population after warmup
 - CPU bucket health
 - `Memory.creepTaskBoard` exists and records room task boards
+- room/empire memory schemas and numeric pheromone channels
+- unified stats and spawn queue telemetry
+- default, construction, remote-mining, defense-hostile, and alliance-safety scenario assertions
+- permanent allies (`TooAngel`, `TedRoastBeef`) are never treated as war targets
 - critical console error counter below threshold
 
 ## Artifacts
@@ -101,3 +106,10 @@ Expected files:
 - `summary.md`
 - `harness.log`
 - `docker.log`
+- `scenario-<name>.json` for each configured runtime scenario
+
+`summary.json`/`summary.md` preserve merged and source-specific in-game assertion results:
+
+- `metrics.screepsmodTesting` merged from player sandbox + backend cronjob
+- `metrics.screepsmodTestingPlayer` from the player sandbox
+- `metrics.screepsmodTestingBackend` from the backend cronjob, including DB/runtime diagnostics such as owned controllers, spawns, creeps, task-board rooms, scenario metrics, and recent bot error notifications

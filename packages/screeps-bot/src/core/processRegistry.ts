@@ -33,6 +33,7 @@
 import { clusterManager } from "@ralphschuler/screeps-clusters";
 import { defenseCoordinator, evacuationManager } from "@ralphschuler/screeps-defense";
 import { factoryManager, linkManager, marketManager, terminalManager } from "@ralphschuler/screeps-economy";
+import { getConfig } from "../config";
 import { crossShardIntelCoordinator } from "../empire/crossShardIntel";
 import { empireManager } from "../empire/empireManager";
 import { expansionManager } from "../empire/expansionManager";
@@ -46,9 +47,78 @@ import { remoteInfrastructureManager } from "../empire/remoteInfrastructure";
 import { tooAngelManager } from "../empire/tooangel/tooAngelManager";
 import { shardManager } from "../intershard/shardManager";
 import { coreProcessManager } from "./coreProcessManager";
-import { kernel } from "./kernel";
+import { kernel, ProcessPriority, type ProcessFrequency } from "./kernel";
 import { logger } from "./logger";
 import { registerAllDecoratedProcesses } from "./processDecorators";
+
+interface ManualProcessRegistration {
+  id: string;
+  name: string;
+  priority: ProcessPriority;
+  frequency: ProcessFrequency;
+  interval: number;
+  minBucket: number;
+  cpuBudget: number;
+  execute: () => void;
+}
+
+/**
+ * Register framework-package managers that use @ralphschuler/screeps-kernel decorators.
+ *
+ * The bot keeps its own configured Kernel instance in ./kernel, while framework package
+ * decorators record metadata against the framework singleton. Registering these managers
+ * explicitly keeps terminal/link/factory/market work on the bot kernel that actually runs.
+ */
+function registerFrameworkEconomyProcesses(): void {
+  const optionalWorkMinBucket = getConfig().cpu.bucketThresholds.lowMode;
+
+  const processes: ManualProcessRegistration[] = [
+    {
+      id: "terminal:manager",
+      name: "Terminal Manager",
+      priority: ProcessPriority.MEDIUM,
+      frequency: "medium",
+      interval: 20,
+      minBucket: 0,
+      cpuBudget: 0.1,
+      execute: () => terminalManager.run()
+    },
+    {
+      id: "factory:manager",
+      name: "Factory Manager",
+      priority: ProcessPriority.LOW,
+      frequency: "medium",
+      interval: 30,
+      minBucket: 0,
+      cpuBudget: 0.05,
+      execute: () => factoryManager.run()
+    },
+    {
+      id: "link:manager",
+      name: "Link Manager",
+      priority: ProcessPriority.MEDIUM,
+      frequency: "medium",
+      interval: 5,
+      minBucket: 0,
+      cpuBudget: 0.05,
+      execute: () => linkManager.run()
+    },
+    {
+      id: "empire:market",
+      name: "Market Manager",
+      priority: ProcessPriority.LOW,
+      frequency: "low",
+      interval: 300,
+      minBucket: optionalWorkMinBucket,
+      cpuBudget: 0.02,
+      execute: () => marketManager.run()
+    }
+  ];
+
+  for (const process of processes) {
+    kernel.registerProcess(process);
+  }
+}
 
 /**
  * Register all processes with the kernel using decorators
@@ -84,6 +154,8 @@ export function registerAllProcesses(): void {
     evacuationManager,
     defenseCoordinator
   );
+
+  registerFrameworkEconomyProcesses();
 
   logger.info(`Registered ${kernel.getProcesses().length} processes with kernel`, {
     subsystem: "ProcessRegistry"

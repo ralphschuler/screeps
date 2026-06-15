@@ -1,10 +1,10 @@
 # Base Layouts and Blueprints System
 
-This directory contains the comprehensive base layout and blueprint system for automated base construction.
+This directory contains compatibility exports for the base layout and blueprint system. Canonical layout implementation lives in `@ralphschuler/screeps-layouts`.
 
 ## Architecture
 
-The system follows the ROADMAP Section 9 (Base-Blueprints) requirements and implements:
+The canonical framework package follows the ROADMAP Section 9 (Base-Blueprints) requirements and implements:
 
 1. **Pre-defined Blueprints** - Optimized layouts for different RCL stages
 2. **Dynamic Terrain Adaptation** - Automatic fallback when terrain doesn't support compact layouts
@@ -13,8 +13,8 @@ The system follows the ROADMAP Section 9 (Base-Blueprints) requirements and impl
 
 ## Key Files
 
-### blueprints.ts
-Main blueprint definitions and placement logic.
+### blueprints/
+Compatibility exports for framework blueprint definitions and placement logic in `@ralphschuler/screeps-layouts`.
 
 **Blueprints Available:**
 - `EARLY_COLONY_BLUEPRINT` (RCL 1-2): Seed Nest with basic extensions
@@ -34,16 +34,16 @@ Main blueprint definitions and placement logic.
 - `importBlueprint(json)` - Imports blueprint from JSON with validation
 - `compareBlueprintEfficiency(room, bp1, bp2)` - A/B tests two blueprint configurations
 
-### extensionGenerator.ts
-Generates extension positions in checkerboard pattern to ensure no two extensions are adjacent.
+### Extension generator
+Extension placement generation is owned by `@ralphschuler/screeps-layouts` (`src/extensionGenerator.ts`) and consumed through framework layout exports.
 
 **Key Features:**
 - Ensures creeps can always move between extensions
 - Generates up to 80+ positions (provides flexibility when some positions blocked by terrain)
-- Validates positions using `isCheckerboardPosition(x, y)`
+- Validates positions using checkerboard placement helpers
 
 ### layoutPlanner.ts
-Analyzes room terrain and finds optimal anchor positions for base layouts.
+Compatibility exports for framework terrain analysis and anchor selection.
 
 **Key Functions:**
 - `findOptimalAnchor(room)` - Scores potential anchor positions
@@ -58,7 +58,7 @@ Analyzes room terrain and finds optimal anchor positions for base layouts.
 - Distance from room exits (prefer 10+ tiles)
 
 ### roadNetworkPlanner.ts
-Calculates optimal road positions for base infrastructure and remote mining.
+Compatibility exports for framework road-network planning.
 
 **Key Features:**
 - Roads to all sources from storage/spawn

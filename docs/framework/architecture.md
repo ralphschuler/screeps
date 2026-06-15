@@ -304,7 +304,7 @@ Implement specific bot functions:
 #### 5. Behavior & Agents (Tier 5)
 Creep-level implementations:
 - `@ralphschuler/screeps-roles` - Creep roles
-- `screeps-tasks` - Task system
+- `screeps-roles` - Task system
 
 #### 6. Utilities & Visualization (Supporting)
 Cross-cutting concerns:
@@ -535,35 +535,23 @@ export function loop() {
 }
 ```
 
-### Pattern 3: Event-Driven
+### Pattern 3: Task-board driven
 
-**When to use**: Complex workflows, task dependencies, async operations
+**When to use**: Persistent creep work assignment and room-local task visibility.
 
 ```typescript
-import { TaskQueue } from 'screeps-tasks';
-import { EventBus } from '@ralphschuler/screeps-kernel';
+import { taskBoard } from '@ralphschuler/screeps-roles';
 
-const eventBus = new EventBus();
-const taskQueue = new TaskQueue();
-
-// Subscribe to events
-eventBus.on('hostile_detected', (data) => {
-  console.log(`Hostile in ${data.roomName}!`);
-  // Add defense tasks
-  taskQueue.add(new DefendRoomTask(data.roomName));
-});
-
-// Emit events
 export function loop() {
-  // Process tasks
-  taskQueue.processTasks();
-  
-  // Check for hostiles
   for (const room of Object.values(Game.rooms)) {
-    const hostiles = room.find(FIND_HOSTILE_CREEPS);
-    if (hostiles.length > 0) {
-      eventBus.emit('hostile_detected', { roomName: room.name });
+    if (room.controller?.my) {
+      taskBoard.refreshRoom(room);
     }
+  }
+
+  for (const creep of Object.values(Game.creeps)) {
+    const action = taskBoard.getAssignedAction(createCreepContext(creep));
+    if (action) executeAction(creep, action);
   }
 }
 ```

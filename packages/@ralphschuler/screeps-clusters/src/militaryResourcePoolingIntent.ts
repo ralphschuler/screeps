@@ -15,6 +15,7 @@ export interface MilitaryEnergySourceSnapshot {
   availableEnergy: number;
   reservedEnergy: number;
   hasTerminal: boolean;
+  terminalEnergy: number;
 }
 
 export interface MilitaryEnergyRouteInput {
@@ -22,11 +23,15 @@ export interface MilitaryEnergyRouteInput {
   amount: number;
   targetHasTerminal: boolean;
   sources: MilitaryEnergySourceSnapshot[];
+  distance?: (fromRoom: string, toRoom: string) => number;
+  terminalTransferCostRate?: number;
 }
 
 export type MilitaryEnergyRouteIntent =
   | { success: false; reason: "no-source" }
   | { success: true; sourceRoom: string; delivery: "terminal" | "hauler"; excessEnergy: number };
+
+const DEFAULT_TERMINAL_TRANSFER_COST_RATE = 0.1;
 
 export function planMilitaryBoostAllocation(input: MilitaryBoostAllocationInput): MilitaryBoostAllocationIntent {
   const missing: MilitaryBoostAllocationIntent["missing"] = [];
@@ -50,13 +55,46 @@ export function planMilitaryBoostAllocation(input: MilitaryBoostAllocationInput)
 }
 
 export function planEmergencyEnergyRoute(input: MilitaryEnergyRouteInput): MilitaryEnergyRouteIntent {
+  const getDistance = input.distance ?? (() => 0);
+  const terminalRate = input.terminalTransferCostRate ?? DEFAULT_TERMINAL_TRANSFER_COST_RATE;
+
   const source = input.sources
     .filter(candidate => candidate.roomName !== input.targetRoom)
-    .map(candidate => ({ ...candidate, excessEnergy: candidate.availableEnergy - candidate.reservedEnergy }))
-    .filter(candidate => candidate.excessEnergy > input.amount)
+    .map(candidate => {
+      const distance = getDistance(candidate.roomName, input.targetRoom);
+      const excessEnergy = candidate.availableEnergy - candidate.reservedEnergy;
+
+      const canTerminalDelivery = candidate.hasTerminal && input.targetHasTerminal;
+      const terminalCost = canTerminalDelivery
+        ? Math.ceil(input.amount * distance * terminalRate)
+        : 0;
+      const canUseTerminalDelivery = canTerminalDelivery
+        ? candidate.terminalEnergy >= input.amount + terminalCost
+        : false;
+
+      const delivery: "terminal" | "hauler" = canUseTerminalDelivery
+        ? "terminal"
+        : "hauler";
+
+      return {
+        ...candidate,
+        distance,
+        excessEnergy,
+        terminalCost,
+        delivery
+      };
+    })
+    .filter(candidate => candidate.excessEnergy >= input.amount)
     .sort((a, b) => {
+      const distanceCompare = a.distance - b.distance;
+      if (distanceCompare !== 0) return distanceCompare;
+
+      const deliveryCompare = a.delivery === b.delivery ? 0 : a.delivery === "terminal" ? -1 : 1;
+      if (deliveryCompare !== 0) return deliveryCompare;
+
       const excessCompare = b.excessEnergy - a.excessEnergy;
       if (excessCompare !== 0) return excessCompare;
+
       return a.roomName.localeCompare(b.roomName);
     })[0];
 
@@ -65,7 +103,7 @@ export function planEmergencyEnergyRoute(input: MilitaryEnergyRouteInput): Milit
   return {
     success: true,
     sourceRoom: source.roomName,
-    delivery: source.hasTerminal && input.targetHasTerminal ? "terminal" : "hauler",
+    delivery: source.delivery,
     excessEnergy: source.excessEnergy
   };
 }

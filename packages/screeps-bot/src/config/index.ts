@@ -138,6 +138,8 @@ export interface CPUConfig {
     nukeEvaluation: number;
     memoryCleanup: number;
   };
+  /** Rollback flag: bypass cached home-room creep counts used by bootstrap logging. */
+  disableCreepBootstrapCountCache?: boolean;
 }
 
 /**
@@ -285,8 +287,8 @@ export const DEFAULT_CONFIG: BotConfig = {
   },
   cpu: {
     bucketThresholds: {
-      lowMode: 2000,
-      highMode: 9000
+      lowMode: 6000,
+      highMode: 8000
     },
     budgets: {
       rooms: 0.4,
@@ -302,7 +304,8 @@ export const DEFAULT_CONFIG: BotConfig = {
       marketScan: 100,
       nukeEvaluation: 200,
       memoryCleanup: 50
-    }
+    },
+    disableCreepBootstrapCountCache: false
   },
   market: {
     maxCreditsPerTick: 100000,

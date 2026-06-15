@@ -323,18 +323,14 @@ export class CacheCoherenceManager {
       );
       
       // Evict using the cache manager's LRU eviction when available
-      const managerAny = cache.manager as any;
       let actuallyEvicted = 0;
       
-      if (typeof managerAny.evictLRU === "function") {
-        // Use proper LRU eviction if available
-        managerAny.evictLRU(cache.namespace, toEvict);
-        actuallyEvicted = toEvict;
+      if (typeof cache.manager.evictLRU === "function") {
+        // Use LRU eviction from cache manager
+        actuallyEvicted = cache.manager.evictLRU(cache.namespace, toEvict);
       } else {
         // Fallback: use cleanup which only removes expired entries
         // This isn't true LRU but will reduce cache size
-        // TODO: Implement proper LRU eviction in CacheManager.evictLRU(namespace, count)
-        // Issue URL: https://github.com/ralphschuler/screeps/issues/883
         for (let i = 0; i < toEvict; i++) {
           const evicted = cache.manager.cleanup();
           if (evicted > 0) {

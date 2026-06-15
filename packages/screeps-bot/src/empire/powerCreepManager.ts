@@ -155,7 +155,7 @@ export class PowerCreepManager {
   @LowFrequencyProcess("empire:powerCreep", "Power Creep Management", {
     priority: ProcessPriority.LOW,
     interval: 20,
-    minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
+    minBucket: 6000,
     cpuBudget: 0.03
   })
   public run(): void {

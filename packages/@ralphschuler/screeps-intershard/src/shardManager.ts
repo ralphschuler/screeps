@@ -25,7 +25,23 @@ import {
   deserializeInterShardMemory,
   serializeInterShardMemory
 } from "./schema";
-import { logger } from "@ralphschuler/screeps-kernel";
+import { getActualHostileCreeps } from "@ralphschuler/screeps-core";
+import { logger as frameworkLogger } from "@ralphschuler/screeps-kernel";
+
+const logger = frameworkLogger ?? {
+  debug: () => {
+    /* no-op */
+  },
+  info: () => {
+    /* no-op */
+  },
+  warn: () => {
+    /* no-op */
+  },
+  error: () => {
+    /* no-op */
+  }
+};
 import { LowFrequencyProcess, ProcessClass, ProcessPriority } from "./stubs";
 
 /**
@@ -232,10 +248,10 @@ export class ShardManager {
     }
     economyIndex = ownedRooms.length > 0 ? economyIndex / ownedRooms.length : 0;
 
-    // Calculate war index based on danger levels
+    // Calculate war index from actual hostile creeps only; permanent allies are non-aggression partners.
     let warIndex = 0;
     for (const room of ownedRooms) {
-      const hostiles = room.find(FIND_HOSTILE_CREEPS).length;
+      const hostiles = getActualHostileCreeps(room).length;
       warIndex += Math.min(100, hostiles * 10);
     }
     warIndex = ownedRooms.length > 0 ? warIndex / ownedRooms.length : 0;

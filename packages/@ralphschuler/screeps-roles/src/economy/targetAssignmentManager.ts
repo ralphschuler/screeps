@@ -3,23 +3,44 @@
  * 
  * This is a simplified stub that provides the interface needed by behaviors.
  * The full implementation should come from @ralphschuler/screeps-economy package.
- * 
+ *
  * For now, provides simple fallback implementations.
  */
+
+import type { BaseCreepMemory } from "../framework/types";
+
+type MutableCreepMemory<T extends BaseCreepMemory> = CreepMemory &
+  BaseCreepMemory &
+  { room?: string } &
+  Partial<T>;
 
 /**
  * Get assigned source for a harvester.
  */
-function getMutableCreepMemory<T extends Record<string, unknown>>(creep: Creep): T {
-  const creepWithMemory = creep as Creep & { memory?: T };
+function getMutableCreepMemory<T extends BaseCreepMemory>(
+  creep: Creep
+): MutableCreepMemory<T> {
+  const roomName = creep.room?.name ?? "";
+  const creepWithMemory = creep as Creep & { memory?: MutableCreepMemory<T> };
+
+  const memory: MutableCreepMemory<T> = creepWithMemory.memory ?? ({} as MutableCreepMemory<T>);
+
   if (!creepWithMemory.memory) {
-    creepWithMemory.memory = {} as T;
+    creepWithMemory.memory = memory;
   }
-  return creepWithMemory.memory;
+
+  if (memory.role == null) memory.role = "unknown";
+  if (memory.homeRoom == null) memory.homeRoom = roomName;
+  if (memory.working == null) memory.working = false;
+  if (memory.room == null) {
+    memory.room = roomName;
+  }
+
+  return memory;
 }
 
 export function getAssignedSource(creep: Creep): Source | null {
-  const memory = getMutableCreepMemory<{ sourceId?: Id<Source> }>(creep);
+  const memory = getMutableCreepMemory<BaseCreepMemory & { sourceId?: Id<Source> }>(creep);
   if (!memory.sourceId) return null;
   return Game.getObjectById(memory.sourceId);
 }
@@ -31,7 +52,7 @@ export function getAssignedSource(creep: Creep): Source | null {
 export function getAssignedBuildTarget(creep: Creep): ConstructionSite | null {
   if (!creep.room) return null;
   
-  const memory = getMutableCreepMemory<{ targetId?: Id<ConstructionSite> }>(creep);
+  const memory = getMutableCreepMemory<BaseCreepMemory & { targetId?: Id<ConstructionSite> }>(creep);
   if (memory.targetId) {
     const site = Game.getObjectById(memory.targetId);
     if (site) return site;
@@ -54,7 +75,7 @@ export function getAssignedBuildTarget(creep: Creep): ConstructionSite | null {
 export function getAssignedRepairTarget(creep: Creep): Structure | null {
   if (!creep.room) return null;
   
-  const memory = getMutableCreepMemory<{ targetId?: Id<Structure> }>(creep);
+  const memory = getMutableCreepMemory<BaseCreepMemory & { targetId?: Id<Structure> }>(creep);
   if (memory.targetId) {
     const structure = Game.getObjectById(memory.targetId);
     if (structure && structure.hits < structure.hitsMax) {

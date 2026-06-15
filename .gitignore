@@ -122,3 +122,8 @@ performance-baselines/strategic/.example-*.json
 # Collected metrics files from workflow runs (temporary data)
 performance-baselines/strategic/collected-metrics*.json
 
+
+# Local agent scratch/debug files
+tmp/
+*-debug.ts
+*_debug.ts

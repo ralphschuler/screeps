@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { globalCache } from "@ralphschuler/screeps-cache";
 import { createDefaultSwarmState, type SwarmState } from "@ralphschuler/screeps-memory";
-import { evolutionManager } from "../../src/logic/evolution";
+import { evolutionManager, postureManager } from "../../src/logic/evolution";
 
 declare const global: { Game: typeof Game; Memory: typeof Memory };
 
@@ -55,5 +55,29 @@ describe("EvolutionManager", () => {
     expect(swarm.missingStructures.terminal).to.equal(true);
     expect(swarm.missingStructures.labs).to.equal(true);
     expect(swarm.missingStructures.extractor).to.equal(false);
+  });
+
+  it("keeps defensive posture when hostiles were seen recently", () => {
+    const swarm = createSwarm();
+    swarm.danger = 0;
+    swarm.lastHostileTick = 990;
+    swarm.pheromones.defense = 60;
+    global.Game.time = 1000;
+
+    const posture = postureManager.determinePosture(swarm);
+
+    expect(posture).to.equal("defensive");
+  });
+
+  it("relaxes defensive posture after hostile contact has cooled off", () => {
+    const swarm = createSwarm();
+    swarm.danger = 0;
+    swarm.lastHostileTick = 100;
+    swarm.pheromones.defense = 60;
+    global.Game.time = 1000;
+
+    const posture = postureManager.determinePosture(swarm);
+
+    expect(posture).to.equal("eco");
   });
 });

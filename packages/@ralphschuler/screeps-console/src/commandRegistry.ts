@@ -112,12 +112,9 @@ class CommandRegistry {
 
   /**
    * Get a registered command
-   * Triggers lazy loading if needed
+   * Does not trigger lazy loading; execute/help paths load commands on demand.
    */
   public getCommand(name: string): RegisteredCommand | undefined {
-    if (this.lazyLoadEnabled && !this.commandsRegistered) {
-      this.triggerLazyLoad();
-    }
     return this.commands.get(name);
   }
 
@@ -140,7 +137,7 @@ class CommandRegistry {
     if (this.lazyLoadEnabled && !this.commandsRegistered) {
       this.triggerLazyLoad();
     }
-    
+
     const categories = new Map<string, RegisteredCommand[]>();
 
     for (const cmd of this.commands.values()) {
@@ -152,7 +149,10 @@ class CommandRegistry {
 
     // Sort commands within each category
     for (const [category, cmds] of categories) {
-      categories.set(category, cmds.sort((a, b) => a.metadata.name.localeCompare(b.metadata.name)));
+      categories.set(
+        category,
+        cmds.sort((a, b) => a.metadata.name.localeCompare(b.metadata.name))
+      );
     }
 
     return categories;
@@ -229,7 +229,7 @@ class CommandRegistry {
     if (this.lazyLoadEnabled && !this.commandsRegistered) {
       this.triggerLazyLoad();
     }
-    
+
     const command = this.commands.get(name);
     if (!command) {
       return `Command "${name}" not found. Use help() to see available commands.`;
@@ -264,16 +264,14 @@ class CommandRegistry {
     // This is safe because we're only adding command handler functions.
     const g = global as unknown as Record<string, unknown>;
 
-    // Only expose commands if not already exposed or if new commands were registered
-    if (!this.commandsExposed || (this.lazyLoadEnabled && this.commandsRegistered)) {
-      for (const [name, command] of this.commands) {
-        g[name] = command.handler;
-      }
-      this.commandsExposed = true;
-      logger.debug(`Exposed ${this.commands.size} commands to global scope`, {
-        subsystem: "CommandRegistry"
-      });
+    for (const [name, command] of this.commands) {
+      g[name] = command.handler;
     }
+
+    this.commandsExposed = true;
+    logger.debug(`Exposed ${this.commands.size} commands to global scope`, {
+      subsystem: "CommandRegistry"
+    });
 
     // Always set up the help command wrapper (for lazy loading support)
     g.help = (commandName?: string): string => {
@@ -367,6 +365,14 @@ class CommandRegistry {
     this.commandsExposed = false;
     this.registrationCallback = undefined;
   }
+
+  /**
+   * Clear all registered commands.
+   * Kept as a compatibility alias for older console command setup/tests.
+   */
+  public clear(): void {
+    this.reset();
+  }
 }
 
 /**
@@ -401,16 +407,38 @@ export const commandRegistry = new CommandRegistry();
  */
 export function Command(metadata: CommandMetadata) {
   return function <T>(
-    target: object,
-    propertyKey: string | symbol,
+    targetOrMethod: object,
+    propertyKeyOrContext: string | symbol | ClassMethodDecoratorContext,
     _descriptor?: TypedPropertyDescriptor<T>
   ): void {
+    if (typeof propertyKeyOrContext === "object") {
+      const context = propertyKeyOrContext;
+      const methodName = String(context.name);
+
+      context.addInitializer(function (this: unknown) {
+        if (typeof this === "object" && this !== null) {
+          storeCommandDecoratorMetadata(metadata, methodName, Object.getPrototypeOf(this) as object);
+        }
+      });
+      return;
+    }
+
+    storeCommandDecoratorMetadata(metadata, String(propertyKeyOrContext), targetOrMethod);
+  };
+}
+
+function storeCommandDecoratorMetadata(metadata: CommandMetadata, methodName: string, target: object): void {
+  const alreadyStored = commandDecoratorStore.some(
+    entry => entry.target === target && entry.methodName === methodName && entry.metadata.name === metadata.name
+  );
+
+  if (!alreadyStored) {
     commandDecoratorStore.push({
       metadata,
-      methodName: String(propertyKey),
+      methodName,
       target
     });
-  };
+  }
 }
 
 /**

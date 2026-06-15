@@ -11,11 +11,8 @@
  * Complements RoomVisualizer which handles room-specific details.
  */
 
+import { getActualHostileCreeps, getActualHostileStructures } from "@ralphschuler/screeps-core";
 import type { MemoryManager } from "./types";
-import { createLogger } from "./logger";
-
-// Logger is available for future use if needed
-const _logger = createLogger("MapVisualizer");
 
 /**
  * Map visualization configuration
@@ -80,10 +77,47 @@ export class MapVisualizer {
   }
 
   /**
+   * Resolve map visualizer, returning null when unavailable in this environment.
+   * Screeps private servers can expose Game.map before its backing grid is ready;
+   * accessing map visuals may throw there, so visuals degrade to a no-op.
+   */
+  private getMapVisual(): MapVisual | null {
+    try {
+      const visual = Game?.map?.visual;
+      if (
+        !visual ||
+        typeof visual.circle !== "function" ||
+        typeof visual.line !== "function" ||
+        typeof visual.rect !== "function" ||
+        typeof visual.text !== "function"
+      ) {
+        return null;
+      }
+
+      return visual;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Best-effort room distance for map overlays.
+   */
+  private getSafeRoomLinearDistance(fromRoom: string, toRoom: string): number | null {
+    try {
+      const distance = Game.map?.getRoomLinearDistance?.(fromRoom, toRoom);
+      return Number.isFinite(distance) ? distance : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Draw all map visualizations
    */
   public draw(): void {
-    const visual = Game.map.visual;
+    const visual = this.getMapVisual();
+    if (!visual) return;
 
     if (this.config.showRoomStatus) {
       this.drawRoomStatus(visual);
@@ -192,10 +226,10 @@ export class MapVisualizer {
       if (swarm && (swarm.posture === "war" || swarm.posture === "siege")) {
         // Note: In a full implementation, we'd track war targets in memory
         // For now, we just show rooms with hostiles
-        const hostileRooms = Object.values(Game.rooms).filter(r => 
-          r.find(FIND_HOSTILE_CREEPS).length > 0 && 
-          Game.map.getRoomLinearDistance(room.name, r.name) <= 5
-        );
+        const hostileRooms = Object.values(Game.rooms).filter(r => {
+          const distance = this.getSafeRoomLinearDistance(room.name, r.name);
+          return getActualHostileCreeps(r).length > 0 && distance !== null && distance <= 5;
+        });
 
         for (const hostileRoom of hostileRooms) {
           const militaryLineStyle: LineStyle = {
@@ -218,8 +252,8 @@ export class MapVisualizer {
    */
   private drawThreats(visual: MapVisual): void {
     for (const room of Object.values(Game.rooms)) {
-      const hostiles = room.find(FIND_HOSTILE_CREEPS);
-      const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES);
+      const hostiles = getActualHostileCreeps(room);
+      const hostileStructures = getActualHostileStructures(room);
 
       if (hostiles.length > 0 || hostileStructures.length > 0) {
         const threatLevel = hostiles.length + hostileStructures.length * 2;
@@ -275,9 +309,10 @@ export class MapVisualizer {
       if (!room.controller || room.controller.my || room.controller.owner) continue;
 
       // Check if near any owned room
-      const nearOwnedRoom = ownedRooms.some(
-        owned => Game.map.getRoomLinearDistance(owned.name, room.name) <= 3
-      );
+      const nearOwnedRoom = ownedRooms.some(owned => {
+        const distance = this.getSafeRoomLinearDistance(owned.name, room.name);
+        return distance !== null && distance <= 3;
+      });
 
       if (nearOwnedRoom) {
         visual.circle(new RoomPosition(25, 25, room.name), {
@@ -360,10 +395,10 @@ export class MapVisualizer {
    * Draw a specific room with detailed overlay
    */
   public drawRoomOverlay(roomName: string): void {
-    const visual = Game.map.visual;
+    const visual = this.getMapVisual();
     const room = Game.rooms[roomName];
-    
-    if (!room) return;
+
+    if (!room || !visual) return;
 
     // Draw detailed border
     visual.rect(new RoomPosition(0, 0, roomName), 50, 50, {

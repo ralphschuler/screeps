@@ -32,6 +32,8 @@ import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 @ProcessClass()
 export class NukeManager {
   private coordinator: NukeCoordinator;
+  private nextNukerScan = 0;
+  private hasNukerCache = false;
 
   public constructor(config: Partial<NukeConfig> = {}) {
     // Initialize framework coordinator with dependency injection
@@ -51,12 +53,24 @@ export class NukeManager {
    */
   @LowFrequencyProcess("empire:nuke", "Nuke Manager", {
     priority: ProcessPriority.LOW,
-    interval: 500,
-    minBucket: 2000,
+    interval: 1500,
+    minBucket: 5000,
     cpuBudget: 0.01
   })
   public run(): void {
+    if (!this.hasOwnedNuker()) return;
     this.coordinator.run();
+  }
+
+  private hasOwnedNuker(): boolean {
+    if (Game.time < this.nextNukerScan) return this.hasNukerCache;
+
+    this.nextNukerScan = Game.time + 1500;
+    this.hasNukerCache = Object.values(Game.rooms).some(room =>
+      Boolean(room.controller?.my) &&
+      room.find(FIND_MY_STRUCTURES, { filter: structure => structure.structureType === STRUCTURE_NUKER }).length > 0
+    );
+    return this.hasNukerCache;
   }
 
   /**

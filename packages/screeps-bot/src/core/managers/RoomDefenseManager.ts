@@ -107,6 +107,11 @@ export class RoomDefenseManager {
       structureCountTracker.set(room.name, intent.nextStructureTracking);
     }
 
+    // Track last hostile sighting for posture recovery hysteresis.
+    if (hostiles.length > 0) {
+      swarm.lastHostileTick = Game.time;
+    }
+
     if (intent.recordAttackers) {
       recordRoomAttackers(room.name, hostiles);
     }
@@ -167,7 +172,8 @@ export class RoomDefenseManager {
       rcl,
       danger: swarm.danger,
       isCombatPosture: postureManager.isCombatPosture(swarm.posture),
-      wallRepairTarget: calculateWallRepairTarget(rcl, swarm.danger)
+      wallRepairTarget: calculateWallRepairTarget(rcl, swarm.danger),
+      bucket: Game.cpu.bucket
     });
 
     for (const action of actions) {

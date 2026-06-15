@@ -9,6 +9,14 @@ import { logger } from "@ralphschuler/screeps-core";
 import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
 
+const DEFENSE_ASSIST_THREAT_PARTS = new Set<BodyPartConstant>([ATTACK, RANGED_ATTACK, WORK, HEAL, CLAIM]);
+
+function hasVisibleDefenseThreat(room: Room): boolean {
+  return getActualHostileCreeps(room).some(hostile =>
+    hostile.body.some(part => part.hits > 0 && DEFENSE_ASSIST_THREAT_PARTS.has(part.type))
+  );
+}
+
 export interface DefenderRequirement {
   guards: number;
   rangers: number;
@@ -29,13 +37,6 @@ export interface DefenseRequest {
 
 export function analyzeDefenderNeeds(room: Room): DefenderRequirement {
   const result: DefenderRequirement = { guards: 0, rangers: 0, healers: 0, urgency: 1.0, reasons: [] };
-
-  const rcl = room.controller?.level ?? 1;
-  if (rcl >= 3) {
-    result.guards = 1;
-    result.rangers = 1;
-    result.reasons.push(`Baseline defense force for RCL ${rcl}`);
-  }
 
   const hostiles = getActualHostileCreeps(room);
   if (hostiles.length === 0) return result;
@@ -139,7 +140,8 @@ export function needsEmergencyDefenders(room: Room, swarm: SwarmState): boolean 
 }
 
 export function needsDefenseAssistance(room: Room, swarm: SwarmState): boolean {
-  if (swarm.danger < 2) return false;
+  const visibleDefenseThreat = hasVisibleDefenseThreat(room);
+  if (swarm.danger < 2 && !visibleDefenseThreat) return false;
 
   const needs = analyzeDefenderNeeds(room);
   const current = getCurrentDefenders(room);
@@ -149,6 +151,8 @@ export function needsDefenseAssistance(room: Room, swarm: SwarmState): boolean {
     Math.max(0, needs.healers - current.healers);
 
   if (defenderDeficit <= 0) return false;
+
+  if (visibleDefenseThreat) return true;
 
   const spawns = room.find(FIND_MY_SPAWNS);
   if (spawns.length === 0) return true;

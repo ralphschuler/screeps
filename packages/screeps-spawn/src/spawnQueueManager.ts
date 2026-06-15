@@ -36,6 +36,26 @@ export function getBestBody(def: RoleSpawnDef, energyCapacity: number): BodyTemp
   return best;
 }
 
+function calculateRoleSpawnScore(
+  room: Room,
+  swarm: SwarmState,
+  role: string,
+  def: RoleSpawnDef,
+  counts: Map<string, number>,
+  postureWeights: Record<string, number>
+): number {
+  const baseWeight = def.priority;
+  const postureWeight = postureWeights[role] ?? 0.5;
+  const pheromoneMult = getPheromoneMult(role, swarm.pheromones as unknown as Record<string, number>);
+  const priorityBoost = getDynamicPriorityBoost(room, swarm, role);
+
+  // Reduce score based on current count (guard against division by zero)
+  const current = counts.get(role) ?? 0;
+  const countFactor = def.maxPerRoom > 0 ? Math.max(0.1, 1 - current / def.maxPerRoom) : 0.1;
+
+  return (baseWeight + priorityBoost) * postureWeight * pheromoneMult * countFactor;
+}
+
 /**
  * Determine next role to spawn using weighted selection.
  * In bootstrap mode, uses deterministic priority. In normal mode, uses weighted random selection.
@@ -54,7 +74,7 @@ export function determineNextRole(room: Room, swarm: SwarmState): string | null 
   }
 
   // Normal mode: weighted selection based on posture, pheromones, and priorities
-  const postureWeights = getPostureSpawnWeights(swarm.posture);
+  const postureWeights = getPostureSpawnWeights(swarm.posture, { danger: swarm.danger });
 
   // Build weighted entries
   const entries: WeightedEntry<string>[] = [];
@@ -62,18 +82,7 @@ export function determineNextRole(room: Room, swarm: SwarmState): string | null 
   for (const [role, def] of Object.entries(ROLE_DEFINITIONS)) {
     if (!needsRole(room.name, role, swarm)) continue;
 
-    const baseWeight = def.priority;
-    const postureWeight = postureWeights[role] ?? 0.5;
-    const pheromoneMult = getPheromoneMult(role, swarm.pheromones as unknown as Record<string, number>);
-    const priorityBoost = getDynamicPriorityBoost(room, swarm, role);
-
-    // Reduce weight based on current count (guard against division by zero)
-    const current = counts.get(role) ?? 0;
-    const countFactor = def.maxPerRoom > 0 ? Math.max(0.1, 1 - current / def.maxPerRoom) : 0.1;
-
-    const weight = (baseWeight + priorityBoost) * postureWeight * pheromoneMult * countFactor;
-
-    entries.push({ key: role, weight });
+    entries.push({ key: role, weight: calculateRoleSpawnScore(room, swarm, role, def, counts, postureWeights) });
   }
 
   if (entries.length === 0) return null;
@@ -93,7 +102,7 @@ export function generateCreepName(role: string): string {
  */
 export function getAllSpawnableRoles(room: Room, swarm: SwarmState): string[] {
   const counts = countCreepsByRole(room.name);
-  const postureWeights = getPostureSpawnWeights(swarm.posture);
+  const postureWeights = getPostureSpawnWeights(swarm.posture, { danger: swarm.danger });
 
   // Collect all roles that need spawning with their calculated priorities
   const roleScores: { role: string; score: number }[] = [];
@@ -101,18 +110,7 @@ export function getAllSpawnableRoles(room: Room, swarm: SwarmState): string[] {
   for (const [role, def] of Object.entries(ROLE_DEFINITIONS)) {
     if (!needsRole(room.name, role, swarm)) continue;
 
-    const baseWeight = def.priority;
-    const postureWeight = postureWeights[role] ?? 0.5;
-    const pheromoneMult = getPheromoneMult(role, swarm.pheromones as unknown as Record<string, number>);
-    const priorityBoost = getDynamicPriorityBoost(room, swarm, role);
-
-    // Reduce weight based on current count (guard against division by zero)
-    const current = counts.get(role) ?? 0;
-    const countFactor = def.maxPerRoom > 0 ? Math.max(0.1, 1 - current / def.maxPerRoom) : 0.1;
-
-    const score = (baseWeight + priorityBoost) * postureWeight * pheromoneMult * countFactor;
-
-    roleScores.push({ role, score });
+    roleScores.push({ role, score: calculateRoleSpawnScore(room, swarm, role, def, counts, postureWeights) });
   }
 
   // Sort by score descending (highest priority first)

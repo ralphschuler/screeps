@@ -61,8 +61,8 @@ npm token create --read-write
 
 ### 2. Local Environment
 
-- Node.js 16.x or 18.x (as specified in package.json engines)
-- npm 8.0.0 or higher
+- Node.js 24.x (as specified in package.json engines)
+- npm 10.0.0 or higher
 - Git repository cloned locally
 
 ### 3. CI/CD Secrets (for automated publishing)
@@ -279,7 +279,7 @@ git push origin @ralphschuler/screeps-kernel@1.0.0
 The automated workflow performs:
 
 1. ✅ Checkout code
-2. ✅ Setup Node.js 18
+2. ✅ Setup Node.js 24
 3. ✅ Install dependencies
 4. ✅ Build all packages (ensures dependencies are available)
 5. ✅ Run tests
@@ -531,7 +531,7 @@ echo "✅ Package validation complete!"
 #### Issue: Tests fail in CI but pass locally
 
 **Solution:**
-- Check Node.js version matches CI (18.x)
+- Check Node.js version matches CI and repository baseline (Node.js 24.x / `>=24 <25`)
 - Ensure all devDependencies are installed
 - Look for environment-specific issues
 

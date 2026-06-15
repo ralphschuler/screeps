@@ -49,6 +49,11 @@ describe("UnifiedStatsManager", function () {
     // Reset memory stats
     delete mockMemory.stats;
     delete mockMemory.creepTaskBoard;
+    mockMemory.rooms = {};
+    mockMemory.empire = { knownRooms: {} };
+    mockGame.rooms = {};
+    mockGame.creeps = {};
+    mockGame.spawns = {};
 
     // Create fresh stats manager
     statsManager = new UnifiedStatsManager();
@@ -213,6 +218,52 @@ describe("UnifiedStatsManager", function () {
       assert.equal(snapshot.rooms.W1N1.name, "W1N1");
       assert.equal(snapshot.rooms.W1N1.rcl, 3);
       assert.equal(snapshot.rooms.W1N1.energy.storage, 50000);
+    });
+
+    it("should not count permanent allies as hostile telemetry by default", function () {
+      const allyCreep = { owner: { username: "TooAngel" }, body: [], hits: 100, hitsMax: 100 };
+      const enemyCreep = { owner: { username: "Invader" }, body: [], hits: 100, hitsMax: 100 };
+      const mockRoom: any = {
+        name: "W1N1",
+        energyAvailable: 300,
+        energyCapacityAvailable: 550,
+        controller: { level: 3, progress: 5000, progressTotal: 10000, my: true },
+        find: (type: number) => (type === FIND_HOSTILE_CREEPS ? [allyCreep, enemyCreep] : [])
+      };
+
+      mockGame.rooms = { W1N1: mockRoom };
+      mockGame.creeps = {};
+
+      statsManager.startTick();
+      statsManager.recordRoom(mockRoom, 0.5);
+      statsManager.finalizeTick();
+
+      const snapshot = statsManager.getSnapshot();
+      assert.equal(snapshot.rooms.W1N1.hostiles, 1);
+      assert.equal(snapshot.rooms.W1N1.metrics.hostileCount, 1);
+    });
+
+    it("should not count TedRoastBeef as hostile telemetry", function () {
+      const allyCreep = { owner: { username: "TedRoastBeef" }, body: [], hits: 100, hitsMax: 100 };
+      const enemyCreep = { owner: { username: "Invader" }, body: [], hits: 100, hitsMax: 100 };
+      const mockRoom: any = {
+        name: "W1N1",
+        energyAvailable: 300,
+        energyCapacityAvailable: 550,
+        controller: { level: 3, progress: 5000, progressTotal: 10000, my: true },
+        find: (type: number) => (type === FIND_HOSTILE_CREEPS ? [allyCreep, enemyCreep] : [])
+      };
+
+      mockGame.rooms = { W1N1: mockRoom };
+      mockGame.creeps = {};
+
+      statsManager.startTick();
+      statsManager.recordRoom(mockRoom, 0.5);
+      statsManager.finalizeTick();
+
+      const snapshot = statsManager.getSnapshot();
+      assert.equal(snapshot.rooms.W1N1.hostiles, 1);
+      assert.equal(snapshot.rooms.W1N1.metrics.hostileCount, 1);
     });
 
     it("should handle rooms with undefined pheromones and metrics", function () {
@@ -405,6 +456,148 @@ describe("UnifiedStatsManager", function () {
         reservations: 1,
         stale_reservations: 2,
         blocked_reservations: 1
+      });
+    });
+
+    it("should export spawn queue KPIs with spawn idle-time metrics", function () {
+      const spawns = [
+        { id: "spawn1", spawning: null },
+        { id: "spawn2", spawning: { name: "worker1" } }
+      ];
+      const mockRoom: any = {
+        name: "W1N1",
+        energyAvailable: 300,
+        energyCapacityAvailable: 550,
+        controller: { level: 3, progress: 5000, progressTotal: 10000, my: true },
+        find: (type: FindConstant) => (type === FIND_MY_SPAWNS ? spawns : [])
+      };
+
+      mockGame.rooms = { W1N1: mockRoom };
+
+      statsManager.startTick();
+      statsManager.recordRoom(mockRoom, 0.5);
+      statsManager.recordSpawnQueue("W1N1", {
+        total: 4,
+        emergency: 1,
+        high: 1,
+        normal: 1,
+        low: 1,
+        inProgress: 2
+      }, 1);
+      statsManager.finalizeTick();
+
+      const mem = Memory as unknown as Record<string, any>;
+      assert.deepEqual(mem.stats.rooms.W1N1.spawn_queue, {
+        total: 4,
+        emergency: 1,
+        high: 1,
+        normal: 1,
+        low: 1,
+        in_progress: 2,
+        spawned_last_tick: 1,
+        total_spawns: 2,
+        idle_spawns: 1,
+        busy_spawns: 1,
+        idle_spawn_ticks: 1
+      });
+    });
+
+    it("should export remote KPIs from canonical room swarm memory", function () {
+      const mockRoom: any = {
+        name: "W1N1",
+        energyAvailable: 300,
+        energyCapacityAvailable: 550,
+        controller: { level: 3, progress: 5000, progressTotal: 10000, my: true },
+        find: () => []
+      };
+      const myReservedRemote: any = {
+        name: "W2N1",
+        controller: { reservation: { username: "me", ticksToEnd: 4200 } }
+      };
+      const otherReservedRemote: any = {
+        name: "W3N1",
+        controller: { reservation: { username: "Enemy", ticksToEnd: 2000 } }
+      };
+
+      mockGame.rooms = { W1N1: mockRoom, W2N1: myReservedRemote, W3N1: otherReservedRemote };
+      mockGame.spawns = { Spawn1: { owner: { username: "me" } } };
+      mockMemory.rooms = {
+        W1N1: {
+          swarm: {
+            danger: 2,
+            posture: "defensive",
+            colonyLevel: "matureColony",
+            remoteAssignments: ["W2N1", "W3N1", "W4N1"]
+          }
+        }
+      };
+      mockMemory.empire = {
+        knownRooms: {
+          W4N1: { owner: "Enemy", reserver: "Enemy", threatLevel: 2 }
+        }
+      };
+
+      statsManager.startTick();
+      statsManager.recordRoom(mockRoom, 0.5);
+      statsManager.finalizeTick();
+
+      const mem = Memory as unknown as Record<string, any>;
+      assert.equal(mem.stats.rooms.W1N1.brain.danger, 2, "stats should read Memory.rooms[room].swarm");
+      assert.deepEqual(mem.stats.rooms.W1N1.remote, {
+        assigned: 3,
+        visible: 2,
+        reserved_by_me: 1,
+        reserved_by_other: 2,
+        min_reservation_ticks: 4200,
+        known_unsafe: 2
+      });
+    });
+
+    it("should export controller downgrade and tower reserve risk KPIs", function () {
+      const towers = [
+        { structureType: STRUCTURE_TOWER, store: { getUsedCapacity: () => 250, getCapacity: () => 1000 } },
+        { structureType: STRUCTURE_TOWER, store: { getUsedCapacity: () => 500, getCapacity: () => 1000 } }
+      ];
+      const mockRoom: any = {
+        name: "W1N1",
+        energyAvailable: 300,
+        energyCapacityAvailable: 550,
+        controller: {
+          level: 3,
+          progress: 5000,
+          progressTotal: 10000,
+          ticksToDowngrade: 3500,
+          my: true
+        },
+        find: (type: number, options?: { filter?: (structure: any) => boolean }) => {
+          if (type === FIND_MY_STRUCTURES) {
+            return options?.filter ? towers.filter(options.filter) : towers;
+          }
+          return [];
+        }
+      };
+
+      mockGame.rooms = { W1N1: mockRoom };
+      mockMemory.rooms = {
+        W1N1: { swarm: { danger: 1, posture: "defensive", colonyLevel: "matureColony" } }
+      };
+
+      statsManager.startTick();
+      statsManager.recordRoom(mockRoom, 0.5);
+      statsManager.finalizeTick();
+
+      const mem = Memory as unknown as Record<string, any>;
+      assert.deepInclude(mem.stats.rooms.W1N1.controller, {
+        ticks_to_downgrade: 3500,
+        downgrade_risk: true
+      });
+      assert.deepEqual(mem.stats.rooms.W1N1.defense, {
+        towers: 2,
+        tower_energy: 750,
+        tower_energy_capacity: 2000,
+        tower_energy_percent: 37.5,
+        tower_reserve_energy: 1500,
+        tower_reserve_deficit: 750
       });
     });
   });

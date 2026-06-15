@@ -1,0 +1,14 @@
+{
+  "require": ["tsx/cjs"],
+  "extensions": ["ts"],
+  "spec": ["test/**/*.test.ts"],
+  "node-option": ["import=tsx/esm"],
+  "ui": "bdd",
+  "reporter": "spec",
+  "bail": false,
+  "full-trace": true,
+  "color": true,
+  "recursive": true,
+  "timeout": 5000,
+  "exit": true
+}

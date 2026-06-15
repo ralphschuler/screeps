@@ -12,23 +12,10 @@
  * - structure.destroyed: Invalidates paths in the room where structure was destroyed
  */
 
-import type { ILogger, IEventBus, IPathCache, IRemoteMining } from "../types";
+import type { ILogger, IEventBus, IPathCache, IRemoteMining, PathCacheEventMap } from "../types";
 
-/**
- * Event data for construction complete
- */
-export interface ConstructionCompleteEvent {
-  roomName: string;
-  structureType: StructureConstant;
-}
-
-/**
- * Event data for structure destroyed
- */
-export interface StructureDestroyedEvent {
-  roomName: string;
-  structureType: StructureConstant;
-}
+export type ConstructionCompleteEvent = PathCacheEventMap["construction.complete"];
+export type StructureDestroyedEvent = PathCacheEventMap["structure.destroyed"];
 
 /**
  * Path cache event manager handles automatic path invalidation on room changes

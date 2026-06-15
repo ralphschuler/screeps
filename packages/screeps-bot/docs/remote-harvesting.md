@@ -153,7 +153,7 @@ Remote roles have moderate priority:
 - `src/empire/expansionManager.ts` - Remote room assignment
 - `src/empire/remoteInfrastructure.ts` - Infrastructure planning
 - `src/roles/behaviors/economy.ts` - remoteHarvester & remoteHauler logic
-- `src/layouts/roadNetworkPlanner.ts` - Road calculation
+- `@ralphschuler/screeps-layouts/src/roadNetworkPlanner.ts` - Road calculation
 - `src/logic/spawn.ts` - Remote role spawning logic
 - `test/unit/remoteSpawning.test.ts` - Remote spawning tests
 - `test/unit/remoteInfrastructure.test.ts` - Infrastructure tests

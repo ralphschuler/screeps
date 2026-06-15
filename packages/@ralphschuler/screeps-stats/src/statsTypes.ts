@@ -165,6 +165,8 @@ export interface RoomStatsEntry {
     progress: number;
     progressTotal: number;
     progressPercent: number;
+    ticksToDowngrade: number;
+    downgradeRisk: boolean;
   };
   
   // Population
@@ -207,6 +209,41 @@ export interface RoomStatsEntry {
     blockedReservations: number;
   };
 
+  // Spawn queue health for this room
+  spawnQueue?: {
+    total: number;
+    emergency: number;
+    high: number;
+    normal: number;
+    low: number;
+    inProgress: number;
+    spawnedLastTick: number;
+    totalSpawns: number;
+    idleSpawns: number;
+    busySpawns: number;
+    idleSpawnTicks: number;
+  };
+
+  // Remote mining/reservation health for this room
+  remote?: {
+    assigned: number;
+    visible: number;
+    reservedByMe: number;
+    reservedByOther: number;
+    minReservationTicks: number;
+    knownUnsafe: number;
+  };
+
+  // Defense reserve health for this room
+  defense?: {
+    towers: number;
+    towerEnergy: number;
+    towerEnergyCapacity: number;
+    towerEnergyPercent: number;
+    towerReserveEnergy: number;
+    towerReserveDeficit: number;
+  };
+
   // CPU profiling
   profiler: {
     avgCpu: number;
@@ -224,6 +261,18 @@ export interface SubsystemStatsEntry {
   peakCpu: number;
   calls: number;
   samples: number;
+}
+
+/**
+ * Temporary gated CPU detail profiling entry. Disabled by default and intended
+ * for short live drilldowns only.
+ */
+export interface CpuDetailStatsEntry {
+  name: string;
+  totalCpu: number;
+  avgCpu: number;
+  maxCpu: number;
+  calls: number;
 }
 
 /**
@@ -475,6 +524,7 @@ export interface StatsSnapshot {
   empire: EmpireStats;
   rooms: Record<string, RoomStatsEntry>;
   subsystems: Record<string, SubsystemStatsEntry>;
+  cpuDetails: Record<string, CpuDetailStatsEntry>;
   roles: Record<string, RoleStatsEntry>;
   native: NativeCallStats;
   processes: Record<string, ProcessStatsEntry>;

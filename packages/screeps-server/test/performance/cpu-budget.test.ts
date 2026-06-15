@@ -15,8 +15,7 @@ import {
   emptyRoomScenario,
   remoteMiningScenario,
   defenseResponseScenario,
-  multiRoomScalingScenario,
-  type TestScenario
+  multiRoomScalingScenario
 } from '../fixtures/scenarios.js';
 
 // CPU variance tolerance constants
@@ -29,7 +28,7 @@ describe('Performance Tests', () => {
       this.timeout(30000);
       
       const scenario = emptyRoomScenario;
-      const metrics = await helper.runTicks(scenario.ticks);
+      const metrics = await helper.runTicks(scenario.ticks, { scenario: scenario.name });
       
       const avgCpu = helper.getAverageCpu();
       const maxCpu = helper.getMaxCpu();
@@ -51,7 +50,7 @@ describe('Performance Tests', () => {
       this.timeout(60000);
       
       const scenario = singleRoomEcoScenario;
-      const metrics = await helper.runTicks(scenario.ticks);
+      const metrics = await helper.runTicks(scenario.ticks, { scenario: scenario.name });
       
       const avgCpu = helper.getAverageCpu();
       const maxCpu = helper.getMaxCpu();
@@ -89,7 +88,7 @@ describe('Performance Tests', () => {
       this.timeout(60000);
       
       const scenario = singleRoomEcoScenario;
-      const metrics = await helper.runTicks(scenario.ticks);
+      const metrics = await helper.runTicks(scenario.ticks, { scenario: scenario.name });
       
       const avgBucket = helper.getAverageBucket();
       
@@ -205,7 +204,7 @@ describe('Performance Tests', () => {
       this.timeout(90000);
       
       const scenario = remoteMiningScenario;
-      const metrics = await helper.runTicks(scenario.ticks);
+      const metrics = await helper.runTicks(scenario.ticks, { scenario: scenario.name });
       
       const avgCpu = helper.getAverageCpu();
       const maxCpu = helper.getMaxCpu();
@@ -227,7 +226,7 @@ describe('Performance Tests', () => {
       this.timeout(90000);
       
       const scenario = remoteMiningScenario;
-      const metrics = await helper.runTicks(scenario.ticks);
+      const metrics = await helper.runTicks(scenario.ticks, { scenario: scenario.name });
       
       const avgBucket = helper.getAverageBucket();
       
@@ -244,7 +243,7 @@ describe('Performance Tests', () => {
       this.timeout(60000);
       
       const scenario = defenseResponseScenario;
-      const metrics = await helper.runTicks(scenario.ticks);
+      const metrics = await helper.runTicks(scenario.ticks, { scenario: scenario.name });
       
       const avgCpu = helper.getAverageCpu();
       const maxCpu = helper.getMaxCpu();
@@ -266,7 +265,7 @@ describe('Performance Tests', () => {
       this.timeout(60000);
       
       const scenario = defenseResponseScenario;
-      const metrics = await helper.runTicks(scenario.ticks);
+      const metrics = await helper.runTicks(scenario.ticks, { scenario: scenario.name });
       
       const avgBucket = helper.getAverageBucket();
       
@@ -283,7 +282,7 @@ describe('Performance Tests', () => {
       this.timeout(180000); // 3 minutes for 25 rooms
       
       const scenario = multiRoomScalingScenario;
-      const metrics = await helper.runTicks(scenario.ticks);
+      const metrics = await helper.runTicks(scenario.ticks, { scenario: scenario.name });
       
       const avgCpu = helper.getAverageCpu();
       const maxCpu = helper.getMaxCpu();
@@ -313,7 +312,7 @@ describe('Performance Tests', () => {
       this.timeout(180000);
       
       const scenario = multiRoomScalingScenario;
-      const metrics = await helper.runTicks(scenario.ticks);
+      const metrics = await helper.runTicks(scenario.ticks, { scenario: scenario.name });
       
       const avgBucket = helper.getAverageBucket();
       
@@ -328,7 +327,7 @@ describe('Performance Tests', () => {
       this.timeout(180000);
       
       const scenario = multiRoomScalingScenario;
-      const metrics = await helper.runTicks(scenario.ticks);
+      const metrics = await helper.runTicks(scenario.ticks, { scenario: scenario.name });
       
       // Calculate standard deviation
       const avg = helper.getAverageCpu();

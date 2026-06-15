@@ -15,6 +15,12 @@ import { globalCache } from "../CacheManager";
 const NAMESPACE = "game";
 const TTL_SAME_TICK = 0; // Game objects change every tick
 
+type RoleCreepMemory = CreepMemory & { role?: string };
+
+function getCreepRole(creep: Creep): string | undefined {
+  return (creep.memory as RoleCreepMemory).role;
+}
+
 /**
  * Get all owned rooms (rooms with controller.my === true)
  * Replaces manual caching in SwarmBot.ts
@@ -35,7 +41,7 @@ export function getCreepsByRole(role: string): Creep[] {
   return globalCache.get<Creep[]>(`creeps_role_${role}`, {
     namespace: NAMESPACE,
     ttl: TTL_SAME_TICK,
-    compute: () => Object.values(Game.creeps).filter(c => (c.memory as any).role === role)
+    compute: () => Object.values(Game.creeps).filter(c => getCreepRole(c) === role)
   }) ?? [];
 }
 
@@ -71,7 +77,7 @@ export function getCreepCountByRole(role: string): number {
   return globalCache.get<number>(`creeps_count_role_${role}`, {
     namespace: NAMESPACE,
     ttl: TTL_SAME_TICK,
-    compute: () => Object.values(Game.creeps).filter(c => (c.memory as any).role === role).length
+    compute: () => Object.values(Game.creeps).filter(c => getCreepRole(c) === role).length
   }) ?? 0;
 }
 

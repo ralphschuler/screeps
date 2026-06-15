@@ -7,6 +7,7 @@
 
 import type { CreepAction, CreepContext } from "../types";
 import { findCachedClosest , cachedFindSources } from "../../cache";
+import { findCriticalEnergyDelivery } from "./common/energyManagement";
 import { updateWorkingState } from "./common/stateManagement";
 
 /**
@@ -23,38 +24,10 @@ export function upgrader(ctx: CreepContext): CreepAction {
     // Priority: Spawns → Extensions → Towers → Upgrade
     // This ensures the room economy stays healthy while upgrading
     
-    // 1. Check spawns first (highest priority)
-    const spawns = ctx.spawnStructures.filter(
-      (s): s is StructureSpawn => 
-        s.structureType === STRUCTURE_SPAWN &&
-        s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-    );
-    if (spawns.length > 0) {
-      const closest = findCachedClosest(ctx.creep, spawns, "upgrader_spawn", 5);
-      if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
-    }
+    const criticalDelivery = findCriticalEnergyDelivery(ctx, "upgrader");
+    if (criticalDelivery) return criticalDelivery;
 
-    // 2. Check extensions second
-    const extensions = ctx.spawnStructures.filter(
-      (s): s is StructureExtension => 
-        s.structureType === STRUCTURE_EXTENSION &&
-        s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-    );
-    if (extensions.length > 0) {
-      const closest = findCachedClosest(ctx.creep, extensions, "upgrader_ext", 5);
-      if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
-    }
-
-    // 3. Check towers third
-    const towersWithCapacity = ctx.towers.filter(
-      t => t.store.getFreeCapacity(RESOURCE_ENERGY) >= 100
-    );
-    if (towersWithCapacity.length > 0) {
-      const closest = findCachedClosest(ctx.creep, towersWithCapacity, "upgrader_tower", 10);
-      if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
-    }
-
-    // 4. All critical structures filled - now upgrade controller
+    // All critical structures filled - now upgrade controller
     if (ctx.room.controller) {
       return { type: "upgrade", target: ctx.room.controller };
     }

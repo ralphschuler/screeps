@@ -2,11 +2,13 @@ import { expect } from "chai";
 import {
   buildBehavior,
   executeAction,
+  evaluateEconomyBehavior,
   guard,
   harvestBehavior,
   haulBehavior,
   healer,
   remoteHarvester,
+  setLabManagerProvider,
   setRemoteMoveHandler,
   soldier,
   upgradeBehavior,
@@ -18,10 +20,13 @@ import { createMockCreep, createMockRoom, resetMockGame } from "./setup";
 describe("Behavior Contracts", () => {
   beforeEach(() => {
     resetMockGame();
+    (Game as unknown as { getObjectById: (id: string) => unknown }).getObjectById = () => null;
+    setLabManagerProvider(undefined);
     setRemoteMoveHandler(undefined);
   });
 
   afterEach(() => {
+    setLabManagerProvider(undefined);
     setRemoteMoveHandler(undefined);
   });
 
@@ -92,6 +97,356 @@ describe("Behavior Contracts", () => {
     }
   });
 
+  it("keeps builder and upgrader critical energy delivery priority aligned", () => {
+    const extension = {
+      id: "extension1",
+      structureType: STRUCTURE_EXTENSION,
+      store: { getFreeCapacity: () => 50 }
+    } as unknown as StructureExtension;
+    const fullSpawn = {
+      id: "spawn1",
+      structureType: STRUCTURE_SPAWN,
+      store: { getFreeCapacity: () => 0 }
+    } as unknown as StructureSpawn;
+
+    const behaviors: Array<[string, (ctx: CreepContext) => CreepAction]> = [
+      ["builder", buildBehavior],
+      ["upgrader", upgradeBehavior]
+    ];
+
+    for (const [role, behavior] of behaviors) {
+      const ctx = createContext(role);
+      ctx.memory.working = true;
+      (ctx.creep as unknown as { store: Creep["store"] }).store = {
+        getUsedCapacity: () => 50,
+        getFreeCapacity: () => 0,
+        getCapacity: () => 50
+      } as Creep["store"];
+      ctx.spawnStructures = [fullSpawn, extension];
+
+      const action = behavior(ctx);
+
+      expect(action.type).to.equal("transfer");
+      expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(extension);
+    }
+  });
+
+  it("routes labTech through configured lab resource needs", () => {
+    const lab = {
+      id: "lab1",
+      structureType: STRUCTURE_LAB,
+      store: { getFreeCapacity: () => 2000, getUsedCapacity: () => 0 }
+    } as unknown as StructureLab;
+    const terminal = {
+      id: "terminal1",
+      store: {
+        [RESOURCE_HYDROGEN]: 2000,
+        getUsedCapacity: (resource?: ResourceConstant) => resource === RESOURCE_HYDROGEN ? 2000 : 2000,
+        getFreeCapacity: () => 10000
+      }
+    } as unknown as StructureTerminal;
+    (Game as unknown as { getObjectById: (id: string) => unknown }).getObjectById = id => id === "lab1" ? lab : null;
+    setLabManagerProvider({
+      getLabResourceNeeds: () => [{
+        labId: "lab1" as Id<StructureLab>,
+        resourceType: RESOURCE_HYDROGEN,
+        amount: 1000,
+        priority: 10
+      }],
+      getLabOverflow: () => []
+    });
+
+    const ctx = createContext("labTech");
+    const action = evaluateEconomyBehavior({
+      ...ctx,
+      terminal,
+      labs: [lab]
+    });
+
+    expect(action.type).to.equal("withdraw");
+    expect((action as Extract<CreepAction, { type: "withdraw" }>).target).to.equal(terminal);
+    expect((action as Extract<CreepAction, { type: "withdraw" }>).resourceType).to.equal(RESOURCE_HYDROGEN);
+  });
+
+  it("does not fill arbitrary input labs when no configured lab need exists", () => {
+    const lab = {
+      id: "lab1",
+      structureType: STRUCTURE_LAB,
+      store: { getFreeCapacity: () => 2000, getUsedCapacity: () => 0 }
+    } as unknown as StructureLab;
+    const terminal = {
+      id: "terminal1",
+      store: {
+        [RESOURCE_HYDROGEN]: 2000,
+        getUsedCapacity: (resource?: ResourceConstant) => resource === RESOURCE_HYDROGEN ? 2000 : 2000,
+        getFreeCapacity: () => 10000
+      }
+    } as unknown as StructureTerminal;
+
+    const ctx = createContext("labTech");
+    const action = evaluateEconomyBehavior({
+      ...ctx,
+      terminal,
+      labs: [lab]
+    });
+
+    expect(action.type).to.equal("idle");
+  });
+
+  it("keeps spawn delivery ahead of terminal energy buffering", () => {
+    const room = createMockRoom("W1N1");
+    const spawn = {
+      id: "spawn1",
+      structureType: STRUCTURE_SPAWN,
+      store: { getFreeCapacity: () => 300 }
+    } as unknown as StructureSpawn;
+    const storage = {
+      id: "storage1",
+      store: {
+        [RESOURCE_ENERGY]: 100000,
+        getUsedCapacity: (resource?: ResourceConstant) => resource === RESOURCE_ENERGY ? 100000 : 100000,
+        getFreeCapacity: () => 100000
+      }
+    } as unknown as StructureStorage;
+    const terminal = {
+      id: "terminal1",
+      cooldown: 0,
+      store: {
+        [RESOURCE_ENERGY]: 1000,
+        getUsedCapacity: (resource?: ResourceConstant) => resource === RESOURCE_ENERGY ? 1000 : 1000,
+        getFreeCapacity: () => 10000
+      }
+    } as unknown as StructureTerminal;
+    const creep = createMockCreep("hauler1", {
+      room,
+      memory: { role: "hauler", homeRoom: room.name, working: true },
+      store: {
+        [RESOURCE_ENERGY]: 50,
+        getUsedCapacity: (resource?: ResourceConstant) => resource === RESOURCE_ENERGY || resource === undefined ? 50 : 0,
+        getFreeCapacity: () => 0,
+        getCapacity: () => 50
+      }
+    });
+
+    const action = evaluateEconomyBehavior({
+      ...createContext("hauler"),
+      creep,
+      room,
+      memory: creep.memory as CreepContext["memory"],
+      isEmpty: false,
+      isFull: true,
+      isWorking: true,
+      spawnStructures: [spawn],
+      storage,
+      terminal
+    });
+
+    expect(action.type).to.equal("transfer");
+    expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(spawn);
+  });
+
+  it("delivers carried energy to terminal when core delivery is satisfied", () => {
+    const room = createMockRoom("W1N1");
+    const storage = {
+      id: "storage1",
+      store: {
+        [RESOURCE_ENERGY]: 100000,
+        getUsedCapacity: (resource?: ResourceConstant) => resource === RESOURCE_ENERGY ? 100000 : 100000,
+        getFreeCapacity: () => 100000
+      }
+    } as unknown as StructureStorage;
+    const terminal = {
+      id: "terminal1",
+      cooldown: 0,
+      store: {
+        [RESOURCE_ENERGY]: 1000,
+        getUsedCapacity: (resource?: ResourceConstant) => resource === RESOURCE_ENERGY ? 1000 : 1000,
+        getFreeCapacity: () => 10000
+      }
+    } as unknown as StructureTerminal;
+    const creep = createMockCreep("hauler1", {
+      room,
+      memory: { role: "hauler", homeRoom: room.name, working: true },
+      store: {
+        [RESOURCE_ENERGY]: 50,
+        getUsedCapacity: (resource?: ResourceConstant) => resource === RESOURCE_ENERGY || resource === undefined ? 50 : 0,
+        getFreeCapacity: () => 0,
+        getCapacity: () => 50
+      }
+    });
+
+    const action = evaluateEconomyBehavior({
+      ...createContext("hauler"),
+      creep,
+      room,
+      memory: creep.memory as CreepContext["memory"],
+      isEmpty: false,
+      isFull: true,
+      isWorking: true,
+      storage,
+      terminal
+    });
+
+    expect(action.type).to.equal("transfer");
+    expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(terminal);
+  });
+
+  it("delivers carried energy to terminal for storage overflow export even after base terminal buffer is met", () => {
+    const storage = {
+      id: "storage1",
+      store: {
+        [RESOURCE_ENERGY]: 850000,
+        getUsedCapacity: (resource?: ResourceConstant) => resource === RESOURCE_ENERGY ? 850000 : 850000,
+        getFreeCapacity: () => 150000
+      }
+    } as unknown as StructureStorage;
+    const terminal = {
+      id: "terminal1",
+      cooldown: 0,
+      store: {
+        [RESOURCE_ENERGY]: 50000,
+        getUsedCapacity: (resource?: ResourceConstant) => resource === RESOURCE_ENERGY ? 50000 : 50000,
+        getFreeCapacity: () => 250000
+      }
+    } as unknown as StructureTerminal;
+    const room = createMockRoom("W1N1", { controller: { my: true, level: 8 }, storage, terminal });
+    (terminal as unknown as { room: Room }).room = room;
+    const creep = createMockCreep("hauler1", {
+      room,
+      memory: { role: "hauler", homeRoom: room.name, working: true },
+      store: {
+        [RESOURCE_ENERGY]: 50,
+        getUsedCapacity: (resource?: ResourceConstant) => resource === RESOURCE_ENERGY || resource === undefined ? 50 : 0,
+        getFreeCapacity: () => 0,
+        getCapacity: () => 50
+      }
+    });
+
+    Game.rooms[room.name] = room;
+    Game.creeps[creep.name] = creep;
+    (Game as unknown as { getObjectById: (id: string) => unknown }).getObjectById = id => id === "terminal1" ? terminal : storage;
+
+    const action = evaluateEconomyBehavior({
+      ...createContext("hauler"),
+      creep,
+      room,
+      memory: creep.memory as CreepContext["memory"],
+      isEmpty: false,
+      isFull: true,
+      isWorking: true,
+      storage,
+      terminal
+    });
+
+    expect(action.type).to.equal("transfer");
+    expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(terminal);
+  });
+
+  it("withdraws storage energy to buffer a low terminal", () => {
+    const storage = {
+      id: "storage1",
+      store: {
+        [RESOURCE_ENERGY]: 100000,
+        getUsedCapacity: (resource?: ResourceConstant) => resource === RESOURCE_ENERGY ? 100000 : 100000,
+        getFreeCapacity: () => 100000
+      }
+    } as unknown as StructureStorage;
+    const terminal = {
+      id: "terminal1",
+      cooldown: 0,
+      store: {
+        [RESOURCE_ENERGY]: 1000,
+        getUsedCapacity: (resource?: ResourceConstant) => resource === RESOURCE_ENERGY ? 1000 : 1000,
+        getFreeCapacity: () => 10000
+      }
+    } as unknown as StructureTerminal;
+
+    const ctx = createContext("hauler");
+    const action = evaluateEconomyBehavior({
+      ...ctx,
+      storage,
+      terminal
+    });
+
+    expect(action.type).to.equal("withdraw");
+    expect((action as Extract<CreepAction, { type: "withdraw" }>).target).to.equal(storage);
+    expect((action as Extract<CreepAction, { type: "withdraw" }>).resourceType).to.equal(RESOURCE_ENERGY);
+  });
+
+  it("withdraws storage energy for terminal export when storage exceeds overflow threshold", () => {
+    const storage = {
+      id: "storage1",
+      store: {
+        [RESOURCE_ENERGY]: 850000,
+        getUsedCapacity: (resource?: ResourceConstant) => resource === RESOURCE_ENERGY ? 850000 : 850000,
+        getFreeCapacity: () => 150000
+      }
+    } as unknown as StructureStorage;
+    const terminal = {
+      id: "terminal1",
+      cooldown: 0,
+      store: {
+        [RESOURCE_ENERGY]: 50000,
+        getUsedCapacity: (resource?: ResourceConstant) => resource === RESOURCE_ENERGY ? 50000 : 50000,
+        getFreeCapacity: () => 250000
+      }
+    } as unknown as StructureTerminal;
+    const room = createMockRoom("W1N1", { controller: { my: true, level: 8 }, storage, terminal });
+    const ctx = createContext("hauler");
+
+    const action = evaluateEconomyBehavior({
+      ...ctx,
+      room,
+      storage,
+      terminal
+    });
+
+    expect(action.type).to.equal("withdraw");
+    expect((action as Extract<CreepAction, { type: "withdraw" }>).target).to.equal(storage);
+    expect((action as Extract<CreepAction, { type: "withdraw" }>).resourceType).to.equal(RESOURCE_ENERGY);
+  });
+
+  it("withdraws surplus storage minerals for terminal market buffering", () => {
+    const storage = {
+      id: "storage1",
+      store: {
+        [RESOURCE_ENERGY]: 100000,
+        [RESOURCE_HYDROGEN]: 9000,
+        getUsedCapacity: (resource?: ResourceConstant) => {
+          if (resource === RESOURCE_ENERGY) return 100000;
+          if (resource === RESOURCE_HYDROGEN) return 9000;
+          return 109000;
+        },
+        getFreeCapacity: () => 100000
+      }
+    } as unknown as StructureStorage;
+    const terminal = {
+      id: "terminal1",
+      cooldown: 0,
+      store: {
+        [RESOURCE_ENERGY]: 25000,
+        [RESOURCE_HYDROGEN]: 1000,
+        getUsedCapacity: (resource?: ResourceConstant) => {
+          if (resource === RESOURCE_ENERGY) return 25000;
+          if (resource === RESOURCE_HYDROGEN) return 1000;
+          return 26000;
+        },
+        getFreeCapacity: () => 10000
+      }
+    } as unknown as StructureTerminal;
+
+    const ctx = createContext("hauler");
+    const action = evaluateEconomyBehavior({
+      ...ctx,
+      storage,
+      terminal
+    });
+
+    expect(action.type).to.equal("withdraw");
+    expect((action as Extract<CreepAction, { type: "withdraw" }>).target).to.equal(storage);
+    expect((action as Extract<CreepAction, { type: "withdraw" }>).resourceType).to.equal(RESOURCE_HYDROGEN);
+  });
+
   it("exports current military behavior functions", () => {
     expect(guard).to.be.a("function");
     expect(soldier).to.be.a("function");
@@ -114,6 +469,153 @@ describe("Behavior Contracts", () => {
     executeAction(ctx.creep, { type: "remoteMoveTo", target, routeType: "hauler" }, ctx);
 
     expect(called).to.equal(true);
+  });
+
+  it("prefers queen carrier transfer into storage link for spawn-link handoff", () => {
+    const room = createMockRoom("W1N1");
+    const storage = {
+      id: "storage1",
+      pos: { getRangeTo: (target: any) => target.id === "storageLink" ? 1 : 99 },
+      store: { getFreeCapacity: () => 100000, getUsedCapacity: () => 50000 }
+    } as unknown as StructureStorage;
+    const spawn = {
+      id: "spawn1",
+      structureType: STRUCTURE_SPAWN,
+      pos: { getRangeTo: (target: any) => target.id === "spawnLink" ? 1 : 99 },
+      store: { getFreeCapacity: () => 300 }
+    } as unknown as StructureSpawn;
+    const storageLink = {
+      id: "storageLink",
+      structureType: STRUCTURE_LINK,
+      pos: { getRangeTo: (target: any) => target.id === "storage1" ? 1 : 99 },
+      store: { getFreeCapacity: () => 700, getUsedCapacity: () => 0 }
+    } as unknown as StructureLink;
+    const spawnLink = {
+      id: "spawnLink",
+      structureType: STRUCTURE_LINK,
+      pos: { getRangeTo: (target: any) => target.id === "spawn1" ? 1 : 99 },
+      store: { getFreeCapacity: () => 800, getUsedCapacity: () => 0 }
+    } as unknown as StructureLink;
+    (room as any).storage = storage;
+    (room as any).energyAvailable = 300;
+    (room as any).energyCapacityAvailable = 800;
+    (room as any).find = (type: number, opts?: { filter?: (structure: any) => boolean }) => {
+      if (type === FIND_MY_SPAWNS) return [spawn];
+      if (type === FIND_STRUCTURES || type === FIND_MY_STRUCTURES) {
+        const structures = [spawn, storageLink, spawnLink];
+        return opts?.filter ? structures.filter(opts.filter) : structures;
+      }
+      return [];
+    };
+    const creep = createMockCreep("queen1", {
+      room,
+      memory: { role: "queenCarrier", homeRoom: room.name, working: true },
+      store: {
+        getUsedCapacity: () => 100,
+        getFreeCapacity: () => 0,
+        getCapacity: () => 100
+      }
+    });
+
+    const action = evaluateEconomyBehavior({
+      ...createContext("queenCarrier"),
+      creep,
+      room,
+      memory: creep.memory as CreepContext["memory"],
+      storage,
+      spawnStructures: [spawn]
+    });
+
+    expect(action.type).to.equal("transfer");
+    expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(storageLink);
+  });
+
+  it("prefers queen carrier withdraw from spawn link before storage during spawn refill", () => {
+    const room = createMockRoom("W1N1");
+    const spawn = { id: "spawn1", pos: { getRangeTo: (target: any) => target.id === "spawnLink" ? 1 : 99 } };
+    const spawnLink = {
+      id: "spawnLink",
+      structureType: STRUCTURE_LINK,
+      pos: { getRangeTo: (target: any) => target.id === "spawn1" ? 1 : 99 },
+      store: { getUsedCapacity: () => 400 }
+    } as unknown as StructureLink;
+    const storage = {
+      id: "storage1",
+      store: { getUsedCapacity: () => 50000 }
+    } as unknown as StructureStorage;
+    (room as any).storage = storage;
+    (room as any).energyAvailable = 300;
+    (room as any).energyCapacityAvailable = 800;
+    (room as any).find = (type: number, opts?: { filter?: (structure: any) => boolean }) => {
+      if (type === FIND_MY_SPAWNS) return [spawn];
+      if (type === FIND_MY_STRUCTURES) return opts?.filter ? [spawnLink].filter(opts.filter) : [spawnLink];
+      return [];
+    };
+    const creep = createMockCreep("queen1", {
+      room,
+      memory: { role: "queenCarrier", homeRoom: room.name, working: false },
+      store: {
+        getUsedCapacity: () => 0,
+        getFreeCapacity: () => 100,
+        getCapacity: () => 100
+      }
+    });
+
+    const action = evaluateEconomyBehavior({
+      ...createContext("queenCarrier"),
+      creep,
+      room,
+      memory: creep.memory as CreepContext["memory"],
+      storage
+    });
+
+    expect(action.type).to.equal("withdraw");
+    expect((action as Extract<CreepAction, { type: "withdraw" }>).target).to.equal(spawnLink);
+  });
+
+  it("prefers filling a nearby source link before a source container", () => {
+    const room = createMockRoom("W1N1");
+    const source = { id: "source1", pos: { roomName: room.name, x: 10, y: 10 } } as Source;
+    const link = {
+      id: "link1",
+      structureType: STRUCTURE_LINK,
+      store: { getFreeCapacity: () => 600 }
+    } as unknown as StructureLink;
+    const container = {
+      id: "container1",
+      structureType: STRUCTURE_CONTAINER,
+      store: { getFreeCapacity: () => 1000 }
+    } as unknown as StructureContainer;
+    const creep = createMockCreep("harvester1", {
+      room,
+      memory: { role: "harvester", homeRoom: room.name, sourceId: source.id },
+      store: {
+        getUsedCapacity: () => 50,
+        getFreeCapacity: () => 0,
+        getCapacity: () => 50
+      },
+      pos: {
+        roomName: room.name,
+        isNearTo: () => true,
+        findInRange: (type: number, range: number, opts?: { filter?: (structure: any) => boolean }) => {
+          const structures = type === FIND_MY_STRUCTURES ? [link] : [container];
+          return opts?.filter ? structures.filter(opts.filter) : structures;
+        }
+      }
+    });
+    Game.rooms[room.name] = room;
+    Game.creeps[creep.name] = creep;
+
+    const action = harvestBehavior({
+      ...createContext("harvester"),
+      creep,
+      room,
+      memory: creep.memory as CreepContext["memory"],
+      assignedSource: source
+    });
+
+    expect(action.type).to.equal("transfer");
+    expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(link);
   });
 
   it("assigns remote harvesters across visible sources instead of always picking the first", () => {

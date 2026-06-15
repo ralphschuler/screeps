@@ -68,8 +68,8 @@ class MemoryManager {
     const roomMemory = (Memory.rooms[roomName] ??= {}) as unknown as { swarm?: SwarmState };
     if (!roomMemory.swarm) {
       roomMemory.swarm = {
-        colonyLevel: 1 as any, // EvolutionStage 
-        posture: 'peaceful' as any, // RoomPosture
+        colonyLevel: "seedNest",
+        posture: "eco",
         danger: 0,
         pheromones: {
           expand: 0,

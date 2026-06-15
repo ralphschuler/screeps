@@ -14,10 +14,21 @@ import { type CrossShardTransferRequest, resourceTransferCoordinator } from "./b
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmCreepMemory, SwarmState } from "@ralphschuler/screeps-memory";
 import { calculateRemoteHaulerRequirement } from "./botIntegration";
+import {
+  buildDefenseAssistBody,
+  calculateDefenseAssistSquadSize,
+  getVisibleDefenseAssistThreatProfile,
+  isDefenseAssistMilitaryRole
+} from "./defenseAssistBody";
+import { canSpawnIdleLocalMilitary, shouldLimitIdleLocalMilitary } from "./militarySpawnPolicy";
 import { ROLE_DEFINITIONS } from "./roleDefinitions";
+import { spawnQueue, SpawnPriority } from "./spawnQueue";
 
 /** Number of dangerous hostiles per remote guard needed */
 const THREATS_PER_GUARD = 2;
+const DEFENSE_ASSIST_REQUEST_TTL = 500;
+const DEFENSE_ASSIST_TASK = "defenseAssist";
+const MAX_PIONEERS_PER_SPAWN_SITE = 3;
 
 /** Reservation threshold in ticks - trigger renewal below this */
 const RESERVATION_THRESHOLD_TICKS = 3000;
@@ -32,8 +43,48 @@ const AGGRESSIVE_UPGRADER_LIMITS = {
   LATE: 12
 } as const;
 
-/** Maximum idle military creeps to keep when there are no visible hostiles. */
-const IDLE_MILITARY_RESERVE = 1;
+type ClaimerTask = "claim" | "reserve";
+
+export interface ClaimerSpawnAssignment {
+  targetRoom: string;
+  task: ClaimerTask;
+}
+
+export interface PioneerSpawnAssignment {
+  targetRoom: string;
+  task: "bootstrapSpawn";
+}
+
+interface DefenseAssistSpawnAssignment {
+  targetRoom: string;
+  task: "defenseAssist";
+  priority: SpawnPriority;
+}
+
+interface DefenseAssistRequestMemory {
+  roomName: string;
+  guardsNeeded?: number;
+  rangersNeeded?: number;
+  healersNeeded?: number;
+  urgency?: number;
+  createdAt?: number;
+}
+
+/**
+ * Best-effort room distance lookup.
+ *
+ * Screeps private-server map grid data can be temporarily unavailable during CI
+ * bootstrap. If Game.map throws there, scouting should degrade gracefully instead
+ * of crashing the spawn pipeline.
+ */
+function getSafeRoomLinearDistance(fromRoom: string, toRoom: string): number | null {
+  try {
+    const distance = Game.map?.getRoomLinearDistance?.(fromRoom, toRoom);
+    return Number.isFinite(distance) ? distance : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Scout nearby stub intel so remotes do not stall forever without vision. */
 function hasUnscoutedNearbyRoom(homeRoom: string, maxDistance = 2): boolean {
@@ -41,7 +92,8 @@ function hasUnscoutedNearbyRoom(homeRoom: string, maxDistance = 2): boolean {
   for (const roomName in empire.knownRooms) {
     const intel = empire.knownRooms[roomName];
     if (!intel || intel.scouted) continue;
-    const distance = Game.map.getRoomLinearDistance(homeRoom, roomName);
+    const distance = getSafeRoomLinearDistance(homeRoom, roomName);
+    if (distance === null) continue;
     if (
       distance >= 1 &&
       distance <= maxDistance &&
@@ -59,6 +111,51 @@ function hasUnscoutedNearbyRoom(homeRoom: string, maxDistance = 2): boolean {
 function hasHealthyRemoteReservation(room: Room): boolean {
   const reservationTicks = room.controller?.reservation?.ticksToEnd ?? 0;
   return reservationTicks >= RESERVATION_THRESHOLD_TICKS;
+}
+
+function getControllerOwnerName(controller: StructureController): string | undefined {
+  return controller.owner?.username;
+}
+
+function getControllerReserverName(controller: StructureController): string | undefined {
+  return controller.reservation?.username;
+}
+
+function isControlledByOtherPlayer(controller: StructureController): boolean {
+  const myUsername = getMyUsername();
+  const owner = getControllerOwnerName(controller);
+  if (owner && owner !== myUsername) return true;
+
+  const reserver = getControllerReserverName(controller);
+  return Boolean(reserver && reserver !== myUsername);
+}
+
+function hasUnsafeRemoteIntel(roomName: string): boolean {
+  const intel = memoryManager.getEmpire().knownRooms[roomName];
+  if (!intel) return false;
+
+  const myUsername = getMyUsername();
+  if (intel.owner && intel.owner !== myUsername) return true;
+  if (intel.reserver && intel.reserver !== myUsername) return true;
+  if (intel.threatLevel > 0) return true;
+  if (intel.isSK) return true;
+
+  return false;
+}
+
+function isRemoteEligibleForEconomy(roomName: string): boolean {
+  const room = Game.rooms[roomName];
+  if (!room) return !hasUnsafeRemoteIntel(roomName);
+  if (!room.controller) return false;
+  if (isControlledByOtherPlayer(room.controller)) return false;
+  if (hasDangerousHostile(room)) return false;
+  return true;
+}
+
+function isRemoteEligibleForDefense(roomName: string): boolean {
+  const room = Game.rooms[roomName];
+  if (room?.controller) return !isControlledByOtherPlayer(room.controller);
+  return !hasUnsafeRemoteIntel(roomName);
 }
 
 /**
@@ -200,6 +297,8 @@ export function getRemoteRoomNeedingWorkers(homeRoom: string, role: string, swar
   if (remoteAssignments.length === 0) return null;
 
   for (const remoteRoom of remoteAssignments) {
+    if (!isRemoteEligibleForEconomy(remoteRoom)) continue;
+
     const currentCount = countRemoteCreepsByTargetRoom(homeRoom, role, remoteRoom);
     const room = Game.rooms[remoteRoom];
 
@@ -277,6 +376,8 @@ export function assignRemoteTargetRoom(
       let candidatesWithMinCount: string[] = [];
 
       for (const remoteName of remoteAssignments) {
+        if (!isRemoteEligibleForEconomy(remoteName)) continue;
+
         // Count workers assigned to this remote (from this home)
         const count = countRemoteCreepsByTargetRoom(homeRoom, role, remoteName);
         if (count < minCount) {
@@ -288,6 +389,8 @@ export function assignRemoteTargetRoom(
       }
 
       // Select from candidates: use round-robin if multiple, otherwise take the only one
+      if (candidatesWithMinCount.length === 0) return false;
+
       const bestRemote =
         candidatesWithMinCount.length > 1
           ? candidatesWithMinCount[Game.time % candidatesWithMinCount.length]
@@ -303,63 +406,340 @@ export function assignRemoteTargetRoom(
   return true;
 }
 
+function hasAssignedClaimer(targetRoom: string, task: ClaimerTask): boolean {
+  const activeClaimer = Object.values(Game.creeps).some(creep => {
+    const memory = creep.memory as unknown as SwarmCreepMemory;
+    return memory.role === "claimer" && memory.targetRoom === targetRoom && memory.task === task;
+  });
+  if (activeClaimer) return true;
+
+  const queueRoomNames = new Set<string>();
+  for (const roomName in Game.rooms) {
+    if (Game.rooms[roomName]?.controller?.my) {
+      queueRoomNames.add(roomName);
+    }
+  }
+  for (const spawnName in Game.spawns ?? {}) {
+    const spawnRoom = Game.spawns[spawnName]?.room?.name;
+    if (spawnRoom) queueRoomNames.add(spawnRoom);
+  }
+
+  for (const roomName of queueRoomNames) {
+    const queuedClaimer = spawnQueue.getPendingRequests(roomName).some(request =>
+      request.role === "claimer" &&
+      request.targetRoom === targetRoom &&
+      request.additionalMemory?.task === task
+    );
+    if (queuedClaimer) return true;
+  }
+
+  return false;
+}
+
+function roomHasOwnedSpawn(room: Room): boolean {
+  return room.find(FIND_MY_SPAWNS).length > 0;
+}
+
+function hasDangerousHostile(room: Room): boolean {
+  return getActualHostileCreeps(room).some(hostile =>
+    hostile.body.some(part =>
+      part.hits > 0 &&
+      (part.type === ATTACK || part.type === RANGED_ATTACK || part.type === WORK || part.type === HEAL)
+    )
+  );
+}
+
+function getDefenseRoleNeed(request: DefenseAssistRequestMemory, role: string): number {
+  if (role === "guard") return Math.max(0, request.guardsNeeded ?? 0);
+  if (role === "ranger") return Math.max(0, request.rangersNeeded ?? 0);
+  if (role === "healer") return Math.max(0, request.healersNeeded ?? 0);
+  return 0;
+}
+
+function getDefenseRoleNeedForHelper(request: DefenseAssistRequestMemory, role: string, helperEnergyCapacity: number): number {
+  const requestedNeed = getDefenseRoleNeed(request, role);
+  if (requestedNeed <= 0 || !isDefenseAssistMilitaryRole(role)) return requestedNeed;
+
+  const threatProfile = getVisibleDefenseAssistThreatProfile(request.roomName);
+  const squadNeed = calculateDefenseAssistSquadSize(role, helperEnergyCapacity, threatProfile);
+  const helperWaveNeed = countCapableDefenseAssistHelpers(request, role, threatProfile);
+  return Math.max(requestedNeed, squadNeed, helperWaveNeed);
+}
+
+function isDefenseAssistRole(role: string): boolean {
+  return isDefenseAssistMilitaryRole(role);
+}
+
+function hasCurrentDefenseThreat(request: DefenseAssistRequestMemory): boolean {
+  const targetRoom = Game.rooms[request.roomName];
+  if (targetRoom) return getActualHostileCreeps(targetRoom).length > 0;
+  return Game.time - (request.createdAt ?? 0) <= DEFENSE_ASSIST_REQUEST_TTL;
+}
+
+function getAssistTarget(memory: Partial<SwarmCreepMemory>): string | undefined {
+  return memory.assistTarget ?? (memory.task === DEFENSE_ASSIST_TASK ? memory.targetRoom : undefined);
+}
+
+function countCapableDefenseAssistHelpers(
+  request: DefenseAssistRequestMemory,
+  role: string,
+  threatProfile = getVisibleDefenseAssistThreatProfile(request.roomName)
+): number {
+  if (!isDefenseAssistMilitaryRole(role)) return 0;
+  let count = 0;
+  for (const room of Object.values(Game.rooms)) {
+    if (room.name === request.roomName) continue;
+    if (!canSpawnDefenseAssistFrom(room)) continue;
+    if (!buildDefenseAssistBody(role, room.energyCapacityAvailable, threatProfile)) continue;
+    count++;
+  }
+  return count;
+}
+
+function hasHelperRoomDefenseAssist(homeRoom: string, targetRoom: string, role: string): boolean {
+  for (const creep of Object.values(Game.creeps)) {
+    const memory = creep.memory as unknown as Partial<SwarmCreepMemory>;
+    if (memory.role === role && memory.homeRoom === homeRoom && getAssistTarget(memory) === targetRoom) return true;
+  }
+
+  return spawnQueue.getPendingRequests(homeRoom).some(request =>
+    request.role === role &&
+    (request.additionalMemory?.assistTarget === targetRoom ||
+      (request.additionalMemory?.task === DEFENSE_ASSIST_TASK && request.targetRoom === targetRoom))
+  );
+}
+
+function countAssignedDefenseAssist(targetRoom: string, role: string): number {
+  let count = 0;
+  for (const creep of Object.values(Game.creeps)) {
+    const memory = creep.memory as unknown as Partial<SwarmCreepMemory>;
+    if (memory.role === role && getAssistTarget(memory) === targetRoom) count++;
+  }
+
+  for (const roomName in Game.rooms) {
+    count += spawnQueue.getPendingRequests(roomName).filter(request =>
+      request.role === role &&
+      (request.additionalMemory?.assistTarget === targetRoom ||
+        (request.additionalMemory?.task === DEFENSE_ASSIST_TASK && request.targetRoom === targetRoom))
+    ).length;
+  }
+
+  return count;
+}
+
+function canSpawnDefenseAssistFrom(room: Room): boolean {
+  if (!room.controller?.my) return false;
+  if (room.find(FIND_MY_SPAWNS).length === 0) return false;
+  return getActualHostileCreeps(room).length === 0;
+}
+
+function getActiveDefenseAssistRequests(memory: { defenseRequests?: DefenseAssistRequestMemory[] }): DefenseAssistRequestMemory[] {
+  const requests = memory.defenseRequests ?? [];
+  const activeRequests = requests.filter(hasCurrentDefenseThreat);
+  if (activeRequests.length !== requests.length) {
+    memory.defenseRequests = activeRequests;
+  }
+  return activeRequests;
+}
+
+export function getDefenseAssistSpawnAssignment(homeRoom: string, role: string): DefenseAssistSpawnAssignment | null {
+  if (!isDefenseAssistRole(role)) return null;
+
+  const home = Game.rooms[homeRoom];
+  if (!home || !canSpawnDefenseAssistFrom(home)) return null;
+
+  const helperEnergyCapacity = home.energyCapacityAvailable;
+  const memory = Memory as unknown as { defenseRequests?: DefenseAssistRequestMemory[] };
+  const requests = getActiveDefenseAssistRequests(memory)
+    .filter(request => request.roomName !== homeRoom)
+    .filter(request => getDefenseRoleNeedForHelper(request, role, helperEnergyCapacity) > 0)
+    .filter(hasCurrentDefenseThreat)
+    .filter(request => !hasHelperRoomDefenseAssist(homeRoom, request.roomName, role))
+    .filter(request =>
+      countAssignedDefenseAssist(request.roomName, role) < getDefenseRoleNeedForHelper(request, role, helperEnergyCapacity)
+    )
+    .sort((a, b) => {
+      const urgencyDelta = (b.urgency ?? 1) - (a.urgency ?? 1);
+      if (urgencyDelta !== 0) return urgencyDelta;
+      const distanceA = Game.map?.getRoomLinearDistance?.(homeRoom, a.roomName) ?? 999;
+      const distanceB = Game.map?.getRoomLinearDistance?.(homeRoom, b.roomName) ?? 999;
+      if (distanceA !== distanceB) return distanceA - distanceB;
+      return (a.createdAt ?? 0) - (b.createdAt ?? 0);
+    });
+
+  const request = requests[0];
+  if (!request) return null;
+
+  return {
+    targetRoom: request.roomName,
+    task: DEFENSE_ASSIST_TASK,
+    priority: (request.urgency ?? 1) >= 2 ? SpawnPriority.EMERGENCY : SpawnPriority.HIGH
+  };
+}
+
+function countAssignedPioneers(targetRoom: string): number {
+  let count = 0;
+  for (const creep of Object.values(Game.creeps)) {
+    const memory = creep.memory as unknown as SwarmCreepMemory;
+    if (memory.role === "pioneer" && memory.targetRoom === targetRoom && memory.task === "bootstrapSpawn") {
+      count++;
+    }
+  }
+
+  const queueRoomNames = new Set<string>();
+  for (const roomName in Game.rooms) {
+    if (Game.rooms[roomName]?.controller?.my) {
+      queueRoomNames.add(roomName);
+    }
+  }
+  for (const spawnName in Game.spawns ?? {}) {
+    const spawnRoom = Game.spawns[spawnName]?.room?.name;
+    if (spawnRoom) queueRoomNames.add(spawnRoom);
+  }
+
+  for (const roomName of queueRoomNames) {
+    count += spawnQueue.getPendingRequests(roomName).filter(request =>
+      request.role === "pioneer" &&
+      request.targetRoom === targetRoom &&
+      request.additionalMemory?.task === "bootstrapSpawn"
+    ).length;
+  }
+
+  return count;
+}
+
+function getPioneerTargetCount(targetRoom: Room): number {
+  const hasSpawnSite = targetRoom
+    .find(FIND_MY_CONSTRUCTION_SITES)
+    .some(site => site.structureType === STRUCTURE_SPAWN);
+
+  return hasSpawnSite ? MAX_PIONEERS_PER_SPAWN_SITE : 1;
+}
+
+function isEligiblePioneerParent(room: Room, activeHomeRoom: string, activeSwarm: SwarmState): boolean {
+  if (!room.controller?.my) return false;
+  if (!roomHasOwnedSpawn(room)) return false;
+
+  const swarm = room.name === activeHomeRoom ? activeSwarm : memoryManager.getSwarmState(room.name);
+  if ((swarm?.danger ?? 0) >= 2) return false;
+  if (swarm?.posture === "war" || swarm?.posture === "siege" || swarm?.posture === "evacuate") return false;
+
+  return true;
+}
+
+function getPioneerParentForTarget(targetRoom: Room, activeHomeRoom: string, activeSwarm: SwarmState): string | null {
+  const candidates = Object.values(Game.rooms)
+    .filter(room => room.name !== targetRoom.name)
+    .filter(room => isEligiblePioneerParent(room, activeHomeRoom, activeSwarm))
+    .map(room => ({
+      room,
+      distance: getSafeRoomLinearDistance(room.name, targetRoom.name) ?? 999
+    }))
+    .sort((a, b) => a.distance - b.distance || a.room.name.localeCompare(b.room.name));
+
+  return candidates[0]?.room.name ?? null;
+}
+
+export function getPioneerSpawnAssignment(homeRoom: string, swarm: SwarmState): PioneerSpawnAssignment | null {
+  const home = Game.rooms[homeRoom];
+  if (!home || !isEligiblePioneerParent(home, homeRoom, swarm)) return null;
+
+  const spawnlessTargets = Object.values(Game.rooms)
+    .filter(room => room.name !== homeRoom)
+    .filter(room => room.controller?.my)
+    .filter(room => !roomHasOwnedSpawn(room))
+    .filter(room => !hasDangerousHostile(room))
+    .filter(room => countAssignedPioneers(room.name) < getPioneerTargetCount(room))
+    .map(room => ({
+      room,
+      distance: getSafeRoomLinearDistance(homeRoom, room.name) ?? 999
+    }))
+    .sort((a, b) => a.distance - b.distance || a.room.name.localeCompare(b.room.name));
+
+  for (const target of spawnlessTargets) {
+    if (getPioneerParentForTarget(target.room, homeRoom, swarm) === homeRoom) {
+      return { targetRoom: target.room.name, task: "bootstrapSpawn" };
+    }
+  }
+
+  return null;
+}
+
 /**
- * Check if room needs a reserver for any of its remote rooms
+ * Get the remote room that needs a reserver.
  */
-function needsReserver(_homeRoom: string, swarm: SwarmState): boolean {
+function getRemoteRoomNeedingReserver(swarm: SwarmState, reservedForClaim = new Set<string>()): string | null {
   const remotes = swarm.remoteAssignments ?? [];
-  if (remotes.length === 0) return false;
+  if (remotes.length === 0) return null;
 
   const myUsername = getMyUsername();
 
   // Check each remote room
   for (const remoteName of remotes) {
+    if (reservedForClaim.has(remoteName) || hasAssignedClaimer(remoteName, "claim")) continue;
+
     const remoteRoom = Game.rooms[remoteName];
 
-    // If we have vision, check reservation status
-    if (remoteRoom?.controller) {
+    // If we have vision, check reservation status.
+    if (remoteRoom) {
       const controller = remoteRoom.controller;
+      if (!controller) continue;
 
-      // Skip if owned by anyone (can't reserve owned rooms)
-      if (controller.owner) continue;
+      // Skip owned rooms and rooms reserved by another player.
+      if (controller.owner || isControlledByOtherPlayer(controller)) continue;
+      if (hasDangerousHostile(remoteRoom)) continue;
 
       // Check if reserved by us
       const reservedByUs = controller.reservation?.username === myUsername;
       const reservationTicks = controller.reservation?.ticksToEnd ?? 0;
 
       // Need reserver if not reserved or reservation is running low
-      if (!reservedByUs || reservationTicks < RESERVATION_THRESHOLD_TICKS) {
-        // Check if we already have a reserver going there
-        const hasReserver = Object.values(Game.creeps).some(creep => {
-          const memory = creep.memory as unknown as SwarmCreepMemory;
-          return memory.role === "claimer" && memory.targetRoom === remoteName && memory.task === "reserve";
-        });
-
-        if (!hasReserver) {
-          return true; // Found a remote that needs a reserver
-        }
+      const reservationNeedsRefresh = !reservedByUs || reservationTicks < RESERVATION_THRESHOLD_TICKS;
+      if (reservationNeedsRefresh && !hasAssignedClaimer(remoteName, "reserve")) {
+        return remoteName;
       }
-    } else {
-      // No vision - check if we have a reserver assigned
-      const hasReserver = Object.values(Game.creeps).some(creep => {
-        const memory = creep.memory as unknown as SwarmCreepMemory;
-        return memory.role === "claimer" && memory.targetRoom === remoteName && memory.task === "reserve";
-      });
-
-      if (!hasReserver) {
-        return true; // No reserver for this remote
-      }
+    } else if (!hasUnsafeRemoteIntel(remoteName) && !hasAssignedClaimer(remoteName, "reserve")) {
+      // No vision - send a reserver only if stored intel does not mark the room unsafe.
+      return remoteName;
     }
   }
 
-  return false;
+  return null;
+}
+
+export function getClaimerSpawnAssignment(_homeRoom: string, swarm: SwarmState): ClaimerSpawnAssignment | null {
+  const empire = memoryManager.getEmpire();
+  const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+
+  // Expansion claims use the scored empire queue first.
+  const canExpand = ownedRooms.length < (Game.gcl?.level ?? 1);
+  const claimTargetRooms = canExpand
+    ? new Set(empire.claimQueue.filter(candidate => !candidate.claimed).map(candidate => candidate.roomName))
+    : new Set<string>();
+  if (canExpand) {
+    const expansionTarget = empire.claimQueue.find(
+      candidate => !candidate.claimed && !hasAssignedClaimer(candidate.roomName, "claim")
+    );
+    if (expansionTarget) {
+      return { targetRoom: expansionTarget.roomName, task: "claim" };
+    }
+  }
+
+  // Remote reservations are local to the home room's remote assignment list.
+  // Do not reserve rooms that are already being claimed.
+  const remoteTarget = getRemoteRoomNeedingReserver(swarm, claimTargetRooms);
+  if (remoteTarget) {
+    return { targetRoom: remoteTarget, task: "reserve" };
+  }
+
+  return null;
 }
 
 /**
  * Get my username (cached)
  */
 function getMyUsername(): string {
-  const spawns = Object.values(Game.spawns);
+  const spawns = Object.values(Game.spawns ?? {});
   if (spawns.length > 0) {
     return spawns[0].owner.username;
   }
@@ -381,23 +761,13 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
   if (!def) return false;
 
   // MILITARY SPAWN RESTRICTION: When no hostile creeps are visible, only keep
-  // a minimal defensive reserve. This prevents rooms whose posture/danger
-  // pheromones are stale from spending most of their energy on idle soldiers.
-  const isMilitary = def.family === "military";
-  if (isMilitary) {
-    const room = Game.rooms[roomName];
-    const visibleHostiles = room ? getActualHostileCreeps(room).length : 0;
-    const shouldLimitIdleMilitary = visibleHostiles === 0 && (swarm.danger === 0 || swarm.posture !== "eco");
-
-    if (shouldLimitIdleMilitary) {
-      const counts = countCreepsByRole(roomName);
-      const militaryCount = Array.from(counts.entries())
-        .filter(([r]) => ROLE_DEFINITIONS[r]?.family === "military")
-        .reduce((sum, [, c]) => sum + c, 0);
-      if (militaryCount >= IDLE_MILITARY_RESERVE) return false;
-      // Only allow guard or ranger as the single idle reserve creep.
-      if (role !== "guard" && role !== "ranger") return false;
-    }
+  // a single local guard as an idle reserve. This prevents stale danger/posture
+  // pheromones from spending most room energy on idle soldiers. Remote guards
+  // are exempt because they are gated by visible remote-room threats below.
+  const room = Game.rooms[roomName];
+  const visibleHostiles = room ? getActualHostileCreeps(room).length : 0;
+  if (shouldLimitIdleLocalMilitary(def, visibleHostiles) && !canSpawnIdleLocalMilitary(role, countCreepsByRole(roomName))) {
+    return false;
   }
 
   // SPECIAL: larvaWorker should ONLY be spawned during bootstrap/emergency
@@ -437,6 +807,8 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
 
     // Check if any remote room has threats and needs guards
     for (const remoteName of remoteAssignments) {
+      if (!isRemoteEligibleForDefense(remoteName)) continue;
+
       const remoteRoom = Game.rooms[remoteName];
       if (!remoteRoom) continue; // Can't check rooms without vision
 
@@ -463,7 +835,6 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
   const counts = countCreepsByRole(roomName);
   const current = counts.get(role) ?? 0;
 
-  const room = Game.rooms[roomName];
   if (current >= getRoleTargetCount(roomName, role, swarm)) return false;
 
   // Special conditions
@@ -492,23 +863,14 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
     return false;
   }
 
-  // Claimer: Only spawn if we have expansion targets or remote rooms that need reserving
+  // Claimer: Only spawn if the creep can be born with a concrete claim/reserve target.
   if (role === "claimer") {
-    const empire = memoryManager.getEmpire();
-    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+    return getClaimerSpawnAssignment(roomName, swarm) !== null;
+  }
 
-    // Check if we have unclaimed expansion targets and can expand
-    const canExpand = ownedRooms.length < (Game.gcl?.level ?? 1);
-    const hasExpansionTarget = empire.claimQueue.some(c => !c.claimed);
-
-    // Check if we have remote rooms that need reserving (no reserver assigned)
-    const hasUnreservedRemote = needsReserver(roomName, swarm);
-
-    // Only spawn claimer if there's work to do
-    if (canExpand && hasExpansionTarget) return true;
-    if (hasUnreservedRemote) return true;
-
-    return false;
+  // Pioneer: parent-spawned bootstrap worker for newly claimed spawnless rooms.
+  if (role === "pioneer") {
+    return getPioneerSpawnAssignment(roomName, swarm) !== null;
   }
 
   // Mineral harvester needs extractor

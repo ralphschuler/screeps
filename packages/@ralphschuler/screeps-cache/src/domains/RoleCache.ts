@@ -31,6 +31,10 @@ function getCacheKey(creepName: string, roleType: string, dataKey: string): stri
   return `${roleType}:${creepName}:${dataKey}`;
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export function getRoleCache<T = any>(
   creep: Creep,
   roleType: string,
@@ -65,7 +69,7 @@ export function deleteRoleCache(
     const key = getCacheKey(creep.name, roleType, dataKey);
     globalCache.invalidate(key, NAMESPACE);
   } else {
-    const pattern = new RegExp(`^${roleType}:${creep.name}:`);
+    const pattern = new RegExp(`^${escapeRegExp(roleType)}:${escapeRegExp(creep.name)}:`);
     globalCache.invalidatePattern(pattern, NAMESPACE);
   }
 }
@@ -79,7 +83,7 @@ export function hasRoleCache(
 }
 
 export function clearRoleTypeCache(roleType: string): void {
-  const pattern = new RegExp(`^${roleType}:`);
+  const pattern = new RegExp(`^${escapeRegExp(roleType)}:`);
   globalCache.invalidatePattern(pattern, NAMESPACE);
 }
 

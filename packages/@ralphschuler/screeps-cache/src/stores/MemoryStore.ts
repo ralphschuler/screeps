@@ -8,14 +8,23 @@
 import { CacheStore } from "../CacheStore";
 import { CacheEntry } from "../CacheEntry";
 
+interface MemoryCacheEntry {
+  value: unknown;
+  cachedAt: number;
+  ttl?: number;
+  hits: number;
+}
+
+interface MemoryCacheNamespace {
+  version: number;
+  lastSync: number;
+  data: Record<string, MemoryCacheEntry>;
+}
+
 // Augment Memory interface
 declare global {
   interface Memory {
-    _cacheMemory?: Record<string, {
-      version: number;
-      lastSync: number;
-      data: Record<string, { value: any; cachedAt: number; ttl?: number; hits: number }>;
-    }>;
+    _cacheMemory?: Record<string, MemoryCacheNamespace>;
   }
 }
 
@@ -46,22 +55,20 @@ export class MemoryStore implements CacheStore {
    * Get or initialize heap layer
    */
   private getHeap(): HeapLayer {
-    const g = global as any;
+    const g = global as typeof global & Record<string, HeapLayer | undefined>;
     const key = `_cacheMemoryHeap_${this.namespace}`;
+    let heap = g[key];
     
-    if (!g[key] || g[key].tick !== Game.time) {
-      if (g[key]) {
-        g[key].tick = Game.time;
-      } else {
-        g[key] = {
-          tick: Game.time,
-          entries: new Map(),
-          rehydrated: false
-        };
-      }
+    if (!heap) {
+      heap = {
+        tick: Game.time,
+        entries: new Map(),
+        rehydrated: false
+      };
+      g[key] = heap;
+    } else if (heap.tick !== Game.time) {
+      heap.tick = Game.time;
     }
-    
-    const heap = g[key] as HeapLayer;
     
     // Rehydrate from Memory if needed
     if (!heap.rehydrated) {
@@ -75,7 +82,7 @@ export class MemoryStore implements CacheStore {
   /**
    * Get or initialize Memory storage
    */
-  private getMemory() {
+  private getMemory(): MemoryCacheNamespace {
     if (!Memory._cacheMemory) {
       Memory._cacheMemory = {};
     }
@@ -89,26 +96,29 @@ export class MemoryStore implements CacheStore {
     return Memory._cacheMemory[this.namespace];
   }
 
+  private isExpired(entry: Pick<MemoryCacheEntry, "cachedAt" | "ttl">): boolean {
+    if (entry.ttl === undefined || entry.ttl === -1) {
+      return false;
+    }
+
+    const age = Game.time - entry.cachedAt;
+    return entry.ttl === 0 ? age > 0 : age >= entry.ttl;
+  }
+
   /**
    * Rehydrate heap from Memory after reset
    */
   private rehydrate(heap: HeapLayer): void {
     const memory = this.getMemory();
-    let count = 0;
-    let expired = 0;
 
     // Clean up expired entries during rehydration
     const keysToDelete: string[] = [];
     
     for (const [key, memEntry] of Object.entries(memory.data)) {
       // Check TTL
-      if (memEntry.ttl !== undefined && memEntry.ttl !== -1) {
-        const age = Game.time - memEntry.cachedAt;
-        if (memEntry.ttl === 0 ? age > 0 : age >= memEntry.ttl) {
-          keysToDelete.push(key);
-          expired++;
-          continue; // Skip expired
-        }
+      if (this.isExpired(memEntry)) {
+        keysToDelete.push(key);
+        continue; // Skip expired
       }
 
       heap.entries.set(key, {
@@ -119,7 +129,6 @@ export class MemoryStore implements CacheStore {
         hits: memEntry.hits,
         dirty: false
       });
-      count++;
     }
     
     // Clean up expired entries from Memory
@@ -194,23 +203,17 @@ export class MemoryStore implements CacheStore {
 
     // Clean heap
     for (const [key, entry] of heap.entries) {
-      if (entry.ttl !== undefined && entry.ttl !== -1) {
-        const age = Game.time - entry.cachedAt;
-        if (entry.ttl === 0 ? age > 0 : age >= entry.ttl) {
-          heap.entries.delete(key);
-          cleaned++;
-        }
+      if (this.isExpired(entry)) {
+        heap.entries.delete(key);
+        cleaned++;
       }
     }
 
     // Clean Memory
     for (const [key, memEntry] of Object.entries(memory.data)) {
-      if (memEntry.ttl !== undefined && memEntry.ttl !== -1) {
-        const age = Game.time - memEntry.cachedAt;
-        if (memEntry.ttl === 0 ? age > 0 : age >= memEntry.ttl) {
-          delete memory.data[key];
-          cleaned++;
-        }
+      if (this.isExpired(memEntry)) {
+        delete memory.data[key];
+        cleaned++;
       }
     }
 

@@ -15,6 +15,7 @@ import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { PowerBankEntry } from "@ralphschuler/screeps-memory";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import { isHighwayRoom } from "./roomGeometry";
 
 /**
  * Power bank harvesting configuration
@@ -95,7 +96,7 @@ export class PowerBankHarvestingManager {
   @LowFrequencyProcess("empire:powerBank", "Power Bank Harvesting", {
     priority: ProcessPriority.LOW,
     interval: 50,
-    minBucket: 2000,
+    minBucket: 6000,
     cpuBudget: 0.02
   })
   public run(): void {
@@ -127,13 +128,7 @@ export class PowerBankHarvestingManager {
       const room = Game.rooms[roomName];
 
       // Only scan highway rooms
-      const coordMatch = roomName.match(/^[WE](\d+)[NS](\d+)$/);
-      if (!coordMatch) continue;
-
-      const x = parseInt(coordMatch[1]!, 10);
-      const y = parseInt(coordMatch[2]!, 10);
-      const isHighway = x % 10 === 0 || y % 10 === 0;
-      if (!isHighway) continue;
+      if (!isHighwayRoom(roomName)) continue;
 
       // Find power banks
       const foundPowerBanks = room.find(FIND_STRUCTURES, {

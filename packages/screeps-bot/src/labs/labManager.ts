@@ -165,6 +165,9 @@ export class LabManager {
     const { input1, input2 } = labConfigManager.getInputLabs(roomName);
     if (!input1 || !input2) return false;
 
+    if (input1.mineralType && input1.mineralType !== reaction.input1) return false;
+    if (input2.mineralType && input2.mineralType !== reaction.input2) return false;
+
     // Check input1 has enough
     const input1Amount = input1.store[reaction.input1] ?? 0;
     if (input1Amount < 500) return false;
@@ -173,12 +176,14 @@ export class LabManager {
     const input2Amount = input2.store[reaction.input2] ?? 0;
     if (input2Amount < 500) return false;
 
-    // Check output labs have space
+    // Check output labs have correct mineral and space
     const outputLabs = labConfigManager.getOutputLabs(roomName);
     if (outputLabs.length === 0) return false;
 
     for (const lab of outputLabs) {
-      const freeCapacity = lab.store.getFreeCapacity();
+      if (lab.mineralType && lab.mineralType !== reaction.product) return false;
+
+      const freeCapacity = lab.store.getFreeCapacity(reaction.product);
       if (freeCapacity === null || freeCapacity < 100) {
         return false; // Lab is full
       }
@@ -357,8 +362,8 @@ export class LabManager {
    * Initialize lab manager for a room
    */
   public initialize(roomName: string): void {
-    labConfigManager.initialize(roomName);
     labConfigManager.loadFromMemory(roomName);
+    labConfigManager.initialize(roomName);
   }
 
   /**

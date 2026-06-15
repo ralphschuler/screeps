@@ -5,6 +5,10 @@
  */
 
 import { expect } from "chai";
+import sinon from "sinon";
+import { EmpireManager } from "../../src/empire/empireManager";
+import { clusterMonitor } from "../../src/empire/clusterMonitor";
+import { roomIntelManager } from "../../src/empire/roomIntelManager";
 import type { EmpireMemory, RoomIntel } from "../../src/memory/schemas";
 import { createDefaultEmpireMemory } from "../../src/memory/schemas";
 
@@ -20,6 +24,8 @@ const mockGame: any = {
   rooms: {},
   spawns: {},
   cpu: {
+    limit: 100,
+    bucket: 10000,
     getUsed: () => 10
   }
 };
@@ -64,8 +70,13 @@ describe("Empire Manager Automation", () => {
 
   beforeEach(() => {
     // Reset empire before each test
+    (global as any).Game = mockGame;
+    (global as any).Memory = mockMemory;
     empire = createDefaultEmpireMemory();
+    mockMemory.empire = empire;
     mockGame.time = 1000;
+    mockGame.bucket = 10000;
+    mockGame.cpu.bucket = 10000;
     mockGame.rooms = {};
     mockGame.spawns = {};
     mockGame.gcl = {
@@ -73,6 +84,62 @@ describe("Empire Manager Automation", () => {
       progress: 500000,
       progressTotal: 1000000
     };
+  });
+
+  describe("Bucket-aware Empire Execution", () => {
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should skip heavy expansion and intel workloads in panic mode", () => {
+      const manager = new EmpireManager();
+      mockGame.cpu.bucket = 500;
+      const intelSpy = sinon.stub(roomIntelManager, "refreshRoomIntel").callsFake(() => undefined);
+      const discoverySpy = sinon.stub(roomIntelManager, "discoverNearbyRooms").callsFake(() => undefined);
+      const nukeSpy = sinon.stub((manager as any), "refreshNukeCandidates").callsFake(() => undefined);
+      const clusterSpy = sinon.stub(clusterMonitor, "monitorClusterHealth").callsFake(() => undefined);
+      const profitabilitySpy = sinon.stub((manager as any), "assessPowerBankProfitability").callsFake(() => undefined);
+
+      manager.run();
+
+      expect(intelSpy.called).to.be.false;
+      expect(discoverySpy.called).to.be.false;
+      expect(nukeSpy.called).to.be.false;
+      expect(clusterSpy.called).to.be.false;
+      expect(profitabilitySpy.called).to.be.false;
+    });
+
+    it("should run moderate workloads in degraded mode", () => {
+      const manager = new EmpireManager();
+      mockGame.cpu.bucket = 2500;
+      const intelSpy = sinon.stub(roomIntelManager, "refreshRoomIntel").callsFake(() => undefined);
+      const discoverySpy = sinon.stub(roomIntelManager, "discoverNearbyRooms").callsFake(() => undefined);
+      const nukeSpy = sinon.stub((manager as any), "refreshNukeCandidates").callsFake(() => undefined);
+
+      manager.run();
+
+      expect(intelSpy.calledOnce).to.be.true;
+      expect(discoverySpy.calledOnce).to.be.true;
+      expect(nukeSpy.called).to.be.false;
+    });
+
+    it("should run all optional workloads in full mode", () => {
+      const manager = new EmpireManager();
+      mockGame.cpu.bucket = 9000;
+      const intelSpy = sinon.stub(roomIntelManager, "refreshRoomIntel").callsFake(() => undefined);
+      const discoverySpy = sinon.stub(roomIntelManager, "discoverNearbyRooms").callsFake(() => undefined);
+      const nukeSpy = sinon.stub((manager as any), "refreshNukeCandidates").callsFake(() => undefined);
+      const clusterSpy = sinon.stub(clusterMonitor, "monitorClusterHealth").callsFake(() => undefined);
+      const profitabilitySpy = sinon.stub((manager as any), "assessPowerBankProfitability").callsFake(() => undefined);
+
+      manager.run();
+
+      expect(intelSpy.calledOnce).to.be.true;
+      expect(discoverySpy.calledOnce).to.be.true;
+      expect(nukeSpy.calledOnce).to.be.true;
+      expect(clusterSpy.calledOnce).to.be.true;
+      expect(profitabilitySpy.calledOnce).to.be.true;
+    });
   });
 
   describe("Expansion Readiness", () => {
@@ -191,6 +258,78 @@ describe("Empire Manager Automation", () => {
       empire.objectives.targetRoomCount = mockGame.gcl.level;
 
       expect(empire.objectives.targetRoomCount).to.equal(5);
+    });
+  });
+
+  describe("Owned room synchronization", () => {
+    it("should preserve configured room role and cluster while refreshing live room metrics", () => {
+      const manager = new EmpireManager();
+      empire.ownedRooms.W1N1 = {
+        name: "W1N1",
+        role: "capital",
+        clusterId: "alpha-cluster",
+        rcl: 4
+      };
+      empire.ownedRooms.W9N9 = {
+        name: "W9N9",
+        role: "buffer",
+        clusterId: "old-cluster",
+        rcl: 2
+      };
+      mockGame.gcl.level = 6;
+      mockGame.rooms = {
+        W1N1: {
+          name: "W1N1",
+          controller: { my: true, level: 5 },
+          energyAvailable: 650,
+          energyCapacityAvailable: 800
+        }
+      };
+
+      (manager as any).updateObjectives(empire);
+
+      expect(empire.ownedRooms.W1N1.role).to.equal("capital");
+      expect(empire.ownedRooms.W1N1.clusterId).to.equal("alpha-cluster");
+      expect(empire.ownedRooms.W1N1.rcl).to.equal(5);
+      expect((empire.ownedRooms.W1N1 as any).energyAvailable).to.equal(650);
+      expect((empire.ownedRooms.W1N1 as any).energyCapacityAvailable).to.equal(800);
+      expect(empire.ownedRooms.W9N9).to.equal(undefined);
+      expect(empire.objectives.targetRoomCount).to.equal(6);
+    });
+
+    it("should clear stale allied ownership when room is no longer ally-owned", () => {
+      const manager = new EmpireManager();
+      empire.ownedRooms.W1N1 = {
+        name: "W1N1",
+        role: "core",
+        clusterId: "core",
+        rcl: 2
+      };
+      empire.knownRooms.W2N1 = createMockRoomIntel("W2N1", {
+        owner: "TooAngel",
+        reserver: "TooAngel"
+      });
+      empire.knownRooms.W3N1 = createMockRoomIntel("W3N1", {
+        owner: "TedRoastBeef",
+        reserver: undefined
+      });
+      empire.knownRooms.W4N1 = createMockRoomIntel("W4N1", {
+        owner: "EnemyPlayer",
+        reserver: undefined
+      });
+      mockGame.rooms = {
+        W1N1: {
+          name: "W1N1",
+          controller: { my: true, level: 2 }
+        }
+      };
+
+      (manager as any).updateObjectives(empire);
+
+      expect(empire.knownRooms.W2N1.owner).to.be.undefined;
+      expect(empire.knownRooms.W2N1.reserver).to.be.undefined;
+      expect(empire.knownRooms.W3N1.owner).to.be.undefined;
+      expect(empire.knownRooms.W4N1.owner).to.equal("EnemyPlayer");
     });
   });
 

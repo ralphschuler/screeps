@@ -77,6 +77,10 @@ describe("LabEconomyWorkflow", () => {
           calls.push("setActiveReaction");
           return true;
         },
+        runReactions: roomName => {
+          calls.push(`run:${roomName}`);
+          return 0;
+        },
         save: roomName => calls.push(`save:${roomName}`)
       },
       boostManager: {
@@ -131,6 +135,10 @@ describe("LabEconomyWorkflow", () => {
           calls.push(`set:${roomName}:${input1}+${input2}->${output}`);
           return true;
         },
+        runReactions: roomName => {
+          calls.push(`run:${roomName}`);
+          return 1;
+        },
         save: roomName => calls.push(`save:${roomName}`)
       },
       boostManager: {
@@ -157,9 +165,9 @@ describe("LabEconomyWorkflow", () => {
       "initialize:W1N1",
       "prepare",
       "plan",
-      "ready:W1N1:H+O->OH",
       "set:W1N1:H+O->OH",
-      "execute:OH",
+      "ready:W1N1:H+O->OH",
+      "run:W1N1",
       "save:W1N1"
     ]);
     assert.deepInclude(result, {
@@ -190,6 +198,10 @@ describe("LabEconomyWorkflow", () => {
           calls.push("setActiveReaction");
           return true;
         },
+        runReactions: () => {
+          calls.push("runReactions");
+          return 1;
+        },
         save: () => calls.push("save")
       },
       boostManager: {
@@ -216,7 +228,8 @@ describe("LabEconomyWorkflow", () => {
     const result = workflow.run(createRoom(), createSwarm());
 
     assert.notInclude(calls, "setActiveReaction");
-    assert.include(calls, "executeReaction");
+    assert.include(calls, "runReactions");
+    assert.notInclude(calls, "executeReaction");
     assert.isFalse(result.activeReactionChanged);
     assert.isTrue(result.reactionExecuted);
   });
@@ -237,6 +250,10 @@ describe("LabEconomyWorkflow", () => {
           calls.push("setActiveReaction");
           return true;
         },
+        runReactions: () => {
+          calls.push("runReactions");
+          return 0;
+        },
         save: () => calls.push("save")
       },
       boostManager: {
@@ -256,10 +273,12 @@ describe("LabEconomyWorkflow", () => {
 
     const result = workflow.run(createRoom(), createSwarm());
 
-    assert.notInclude(calls, "setActiveReaction");
+    assert.include(calls, "setActiveReaction");
+    assert.notInclude(calls, "runReactions");
     assert.notInclude(calls, "executeReaction");
     assert.include(calls, "save");
     assert.isTrue(result.reactionPlanned);
+    assert.isTrue(result.activeReactionChanged);
     assert.isFalse(result.reactionReady);
     assert.isFalse(result.reactionExecuted);
   });

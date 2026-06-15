@@ -43,6 +43,17 @@ export interface AdaptiveBudgetConfig {
     /** Multiplier when bucket < criticalThreshold */
     criticalMultiplier: number;
   };
+  /** Performance feedback tuning kept in parity with kernel adaptive defaults */
+  performance: {
+    /** Target average frequency utilization (0..1, where 1 == budget slice fully used) */
+    targetUtilization: number;
+    /** Max multiplier when a frequency is underutilized */
+    maxPerformanceBoost: number;
+    /** Min multiplier when a frequency is overutilized */
+    minPerformanceBoost: number;
+    /** Smoothing strength per tick (0..1) */
+    responsiveness: number;
+  };
 }
 
 /**
@@ -70,6 +81,12 @@ export const DEFAULT_ADAPTIVE_CONFIG: AdaptiveBudgetConfig = {
     highMultiplier: 1.2,     // 20% boost when bucket is high (was 1.5)
     lowMultiplier: 0.6,      // 40% reduction when bucket is low (was 0.5)
     criticalMultiplier: 0.3  // 70% reduction in critical bucket (was 0.25)
+  },
+  performance: {
+    targetUtilization: 0.75,
+    maxPerformanceBoost: 1.15,
+    minPerformanceBoost: 0.85,
+    responsiveness: 0.30
   }
 };
 

@@ -12,18 +12,7 @@
  * - Log level filtering
  * - CPU measurement utilities
  * - Log batching for reduced console.log overhead
- *
- * Log Batching: IMPLEMENTED
- * Multiple logs are batched and output once per tick to reduce console.log overhead.
- * Configurable batch size with auto-flush when limit is reached.
- * Expected CPU savings: 1-2%.
- *
- * TODO(P3): FEATURE - Add log sampling to reduce output volume in production
- * Only log a percentage of debug messages to reduce console spam
- * TODO(P3): FEATURE - Add structured error serialization
- * Include stack traces and error context in structured format
- * TODO(P3): FEATURE - Consider adding log rate limiting per subsystem
- * Prevent any single subsystem from flooding the console
+ * - Debug sampling and per-tick rate limiting to reduce output volume
  */
 
 /**
@@ -47,13 +36,32 @@ export interface LoggerConfig {
   enableBatching: boolean;
   /** Maximum batch size before automatic flush (default: 50) */
   maxBatchSize: number;
+  /**
+   * Debug sampling ratio in production (0.0-1.0).
+   * 1.0 = log all debug messages, 0.5 = every other debug message,
+   * 0.1 = one in ten debug messages.
+   */
+  debugSampleRate: number;
+  /**
+   * Maximum number of log/stat entries per subsystem per tick.
+   * 0 disables the per-subsystem limit (default).
+   */
+  maxEntriesPerSubsystemPerTick: number;
+  /**
+   * Maximum number of log/stat entries across all subsystems per tick.
+   * 0 disables the global limit (default).
+   */
+  maxEntriesPerTick: number;
 }
 
 const DEFAULT_CONFIG: LoggerConfig = {
   level: LogLevel.INFO,
   cpuLogging: false,
   enableBatching: true, // Matches JSDoc comment above
-  maxBatchSize: 50 // Matches JSDoc comment above
+  maxBatchSize: 50, // Matches JSDoc comment above
+  debugSampleRate: 1,
+  maxEntriesPerSubsystemPerTick: 0,
+  maxEntriesPerTick: 0
 };
 
 /**
@@ -66,13 +74,166 @@ let globalConfig: LoggerConfig = { ...DEFAULT_CONFIG };
  */
 let messageBatch: string[] = [];
 
-/**
- * Set global logger configuration
- */
-export function configureLogger(config: Partial<LoggerConfig>): void {
-  globalConfig = { ...globalConfig, ...config };
+interface RateLimitState {
+  tick: number;
+  totalCount: number;
+  perSubsystemCounts: Map<string, number>;
+  debugSampleCounter: number;
 }
 
+const DEFAULT_LOG_TICK = -1;
+
+let rateLimitState: RateLimitState = {
+  tick: DEFAULT_LOG_TICK,
+  totalCount: 0,
+  perSubsystemCounts: new Map(),
+  debugSampleCounter: 0
+};
+
+function getCurrentTick(): number {
+  return typeof Game !== "undefined" && typeof Game.time === "number" ? Game.time : 0;
+}
+
+function resetRateLimitsIfNeeded(): void {
+  const currentTick = getCurrentTick();
+
+  if (rateLimitState.tick === currentTick) {
+    return;
+  }
+
+  rateLimitState = {
+    tick: currentTick,
+    totalCount: 0,
+    perSubsystemCounts: new Map(),
+    debugSampleCounter: 0
+  };
+}
+
+function clampNormalized(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 1;
+  }
+
+  return Math.min(1, Math.max(0, value));
+}
+
+function shouldSampleDebug(level: LogLevel): boolean {
+  if (level !== LogLevel.DEBUG) {
+    return true;
+  }
+
+  resetRateLimitsIfNeeded();
+
+  const sampleRate = clampNormalized(globalConfig.debugSampleRate);
+  if (sampleRate >= 1) {
+    return true;
+  }
+
+  if (sampleRate <= 0) {
+    return false;
+  }
+
+  rateLimitState.debugSampleCounter += 1;
+  const sampleInterval = Math.max(1, Math.ceil(1 / sampleRate));
+  return rateLimitState.debugSampleCounter % sampleInterval === 0;
+}
+
+function shouldRespectRateLimits(subsystem?: string): boolean {
+  const effectiveMaxPerTick = clampPositiveInteger(globalConfig.maxEntriesPerTick);
+  const effectiveMaxPerSubsystem = clampPositiveInteger(globalConfig.maxEntriesPerSubsystemPerTick);
+
+  if (effectiveMaxPerTick === 0 && effectiveMaxPerSubsystem === 0) {
+    return true;
+  }
+
+  resetRateLimitsIfNeeded();
+
+  if (effectiveMaxPerTick > 0 && rateLimitState.totalCount >= effectiveMaxPerTick) {
+    return false;
+  }
+
+  if (effectiveMaxPerSubsystem > 0) {
+    const key = subsystem ?? "global";
+    const currentSubsystemCount = rateLimitState.perSubsystemCounts.get(key) ?? 0;
+    if (currentSubsystemCount >= effectiveMaxPerSubsystem) {
+      return false;
+    }
+  }
+
+  rateLimitState.totalCount += 1;
+  const key = subsystem ?? "global";
+  rateLimitState.perSubsystemCounts.set(key, (rateLimitState.perSubsystemCounts.get(key) ?? 0) + 1);
+
+  return true;
+}
+
+function shouldLog(level: LogLevel, context?: LogContext): boolean {
+  if (!shouldSampleDebug(level)) {
+    return false;
+  }
+
+  return shouldRespectRateLimits(context?.subsystem);
+}
+
+function clampPositiveInteger(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  return value > 0 ? Math.floor(value) : 0;
+}
+
+/**
+ * Internal logger runtime reset
+ */
+function resetRuntimeState(): void {
+  messageBatch = [];
+  rateLimitState = {
+    tick: DEFAULT_LOG_TICK,
+    totalCount: 0,
+    perSubsystemCounts: new Map(),
+    debugSampleCounter: 0
+  };
+}
+
+/**
+ * Set global logger configuration.
+ *
+ * Runtime counters are reset on every reconfiguration so per-subsystem and per-tick
+ * rate limits and debug sampling counters do not leak state across tests or runtime mode
+ * changes.
+ */
+export function configureLogger(config: Partial<LoggerConfig>): void {
+  // Flush any queued batched output before reconfiguration to avoid dropping logs.
+  if (messageBatch.length > 0) {
+    flushLogs();
+  }
+
+  const previousConfig = globalConfig;
+  globalConfig = {
+    ...DEFAULT_CONFIG,
+    ...config,
+    // Preserve mutable runtime-mode values when caller omitted them.
+    // This keeps legacy behavior where setLogLevel/debug toggles do not
+    // unintentionally reset unrelated settings.
+    level: "level" in config ? config.level! : previousConfig.level,
+    cpuLogging: "cpuLogging" in config ? config.cpuLogging! : previousConfig.cpuLogging,
+    enableBatching: "enableBatching" in config ? config.enableBatching! : previousConfig.enableBatching,
+    maxBatchSize: "maxBatchSize" in config ? config.maxBatchSize! : previousConfig.maxBatchSize,
+    debugSampleRate: "debugSampleRate" in config
+      ? config.debugSampleRate!
+      : previousConfig.debugSampleRate,
+    // Avoid leaking stale throttling configuration between unrelated calls.
+    maxEntriesPerSubsystemPerTick: "maxEntriesPerSubsystemPerTick" in config
+      ? config.maxEntriesPerSubsystemPerTick!
+      : DEFAULT_CONFIG.maxEntriesPerSubsystemPerTick,
+    maxEntriesPerTick: "maxEntriesPerTick" in config
+      ? config.maxEntriesPerTick!
+      : DEFAULT_CONFIG.maxEntriesPerTick
+  };
+
+  resetRuntimeState();
+}
 /**
  * Get current logger configuration
  */
@@ -220,7 +381,7 @@ function formatMessage(level: string, message: string, context?: LogContext, typ
  * Log a debug message
  */
 export function debug(message: string, context?: LogContext): void {
-  if (globalConfig.level <= LogLevel.DEBUG) {
+  if (globalConfig.level <= LogLevel.DEBUG && shouldLog(LogLevel.DEBUG, context)) {
     addToBatch(formatMessage("DEBUG", message, context));
   }
 }
@@ -229,7 +390,7 @@ export function debug(message: string, context?: LogContext): void {
  * Log an info message
  */
 export function info(message: string, context?: LogContext): void {
-  if (globalConfig.level <= LogLevel.INFO) {
+  if (globalConfig.level <= LogLevel.INFO && shouldLog(LogLevel.INFO, context)) {
     addToBatch(formatMessage("INFO", message, context));
   }
 }
@@ -238,7 +399,7 @@ export function info(message: string, context?: LogContext): void {
  * Log a warning message
  */
 export function warn(message: string, context?: LogContext): void {
-  if (globalConfig.level <= LogLevel.WARN) {
+  if (globalConfig.level <= LogLevel.WARN && shouldLog(LogLevel.WARN, context)) {
     addToBatch(formatMessage("WARN", message, context));
   }
 }
@@ -247,7 +408,7 @@ export function warn(message: string, context?: LogContext): void {
  * Log an error message
  */
 export function error(message: string, context?: LogContext): void {
-  if (globalConfig.level <= LogLevel.ERROR) {
+  if (globalConfig.level <= LogLevel.ERROR && shouldLog(LogLevel.ERROR, context)) {
     addToBatch(formatMessage("ERROR", message, context));
   }
 }
@@ -321,6 +482,10 @@ export function stat(key: string, value: number, unit?: string, context?: LogCon
         }
       }
     }
+  }
+
+  if (!shouldLog(LogLevel.INFO, context)) {
+    return;
   }
 
   // Always output single-line JSON

@@ -1,0 +1,273 @@
+{
+  "generatedAt": "2026-06-14T02:02:54.943Z",
+  "hostname": "screeps.com",
+  "shards": {
+    "shard0": {
+      "shard": "shard0",
+      "time": 75731334,
+      "statsPresent": true,
+      "stats": {
+        "cpu": {
+          "usage": {
+            "W9N1": {
+              "init": 0.04045
+            }
+          },
+          "limit": 20,
+          "bucket": 906,
+          "getUsed": 2.9502
+        },
+        "rooms": {},
+        "topErrorProcesses": [],
+        "layoutMentions": []
+      },
+      "roomObjects": {},
+      "userRoomsEndpointOk": true
+    },
+    "shard1": {
+      "shard": "shard1",
+      "time": 71655218,
+      "statsPresent": true,
+      "stats": {
+        "tick": 71655217,
+        "cpu": {
+          "used": 24.008893699996406,
+          "limit": 50,
+          "bucket": 6897,
+          "percent": 48.019339599995874,
+          "heap_mb": 51.395790100097656
+        },
+        "empire": {
+          "rooms": 4,
+          "creeps": 57,
+          "power_creeps": {
+            "total": 0,
+            "spawned": 0,
+            "eco": 0,
+            "combat": 0
+          },
+          "energy": {
+            "storage": 1651758,
+            "terminal": 228801,
+            "available": 5877,
+            "capacity": 6250
+          },
+          "credits": 5237.551,
+          "skipped_processes": 26
+        },
+        "rooms": {
+          "W17S29": {
+            "rcl": 6,
+            "creeps": 14,
+            "cpuAvg": 0.9287816658590998,
+            "cpuPeak": 71.40210819999993
+          },
+          "W19S26": {
+            "rcl": 2,
+            "creeps": 8,
+            "cpuAvg": 0.07822017797867616,
+            "cpuPeak": 42.11184639998828
+          },
+          "W18S29": {
+            "rcl": 5,
+            "creeps": 12,
+            "cpuAvg": 0.8836565668930878,
+            "cpuPeak": 37.44734409998637
+          },
+          "W18S28": {
+            "rcl": 5,
+            "creeps": 17,
+            "cpuAvg": 0.9420847453716182,
+            "cpuPeak": 26.979372299974784
+          }
+        },
+        "topErrorProcesses": [],
+        "layoutMentions": [
+          {
+            "path": "rooms.W17S29.metrics.energy.construction",
+            "value": 0
+          },
+          {
+            "path": "rooms.W17S29.metrics.construction_sites",
+            "value": 10
+          },
+          {
+            "path": "rooms.W19S26.metrics.energy.construction",
+            "value": 0
+          },
+          {
+            "path": "rooms.W19S26.metrics.construction_sites",
+            "value": 12
+          },
+          {
+            "path": "rooms.W18S29.metrics.energy.construction",
+            "value": 0
+          },
+          {
+            "path": "rooms.W18S29.metrics.construction_sites",
+            "value": 7
+          },
+          {
+            "path": "rooms.W18S28.metrics.energy.construction",
+            "value": 0
+          },
+          {
+            "path": "rooms.W18S28.metrics.construction_sites",
+            "value": 12
+          }
+        ]
+      },
+      "roomObjects": {
+        "W17S29": {
+          "objectCount": 186,
+          "constructionSites": 10,
+          "constructionSitesByType": {
+            "lab": 2,
+            "road": 2,
+            "extension": 1,
+            "container": 5
+          },
+          "structures": 23
+        },
+        "W19S26": {
+          "objectCount": 39,
+          "constructionSites": 12,
+          "constructionSitesByType": {
+            "extension": 3,
+            "rampart": 1,
+            "road": 5,
+            "container": 3
+          },
+          "structures": 2
+        },
+        "W18S29": {
+          "objectCount": 219,
+          "constructionSites": 0,
+          "constructionSitesByType": {},
+          "structures": 65
+        },
+        "W18S28": {
+          "objectCount": 293,
+          "constructionSites": 11,
+          "constructionSitesByType": {
+            "rampart": 6,
+            "container": 5
+          },
+          "structures": 77
+        }
+      },
+      "userRoomsEndpointOk": true
+    },
+    "shard2": {
+      "shard": "shard2",
+      "time": 75171878,
+      "statsPresent": true,
+      "stats": {
+        "rooms": {},
+        "topErrorProcesses": [],
+        "layoutMentions": []
+      },
+      "roomObjects": {},
+      "userRoomsEndpointOk": true
+    },
+    "shard3": {
+      "shard": "shard3",
+      "time": 80844305,
+      "statsPresent": true,
+      "stats": {
+        "tick": 79383724,
+        "cpu": {
+          "used": 5.358311199997843,
+          "limit": 20,
+          "bucket": 7985,
+          "percent": 26.794585000006922,
+          "heap_mb": 83.01220703125
+        },
+        "empire": {
+          "rooms": 1,
+          "creeps": 15,
+          "power_creeps": {
+            "total": 0,
+            "spawned": 0,
+            "eco": 0,
+            "combat": 0
+          },
+          "energy": {
+            "storage": 0,
+            "terminal": 0,
+            "available": 950,
+            "capacity": 950
+          },
+          "credits": 11980.286,
+          "skipped_processes": 21
+        },
+        "rooms": {
+          "W12S8": {
+            "rcl": 4,
+            "creeps": 12,
+            "cpuAvg": 2.6879361000000017,
+            "cpuPeak": 2.6879361000000017
+          }
+        },
+        "topErrorProcesses": [],
+        "layoutMentions": [
+          {
+            "path": "rooms.W12S8.metrics.energy.construction",
+            "value": 0
+          },
+          {
+            "path": "rooms.W12S8.metrics.construction_sites",
+            "value": 0
+          }
+        ]
+      },
+      "roomObjects": {
+        "W12S8": {
+          "objectCount": 26,
+          "constructionSites": 0,
+          "constructionSitesByType": {},
+          "structures": 22
+        }
+      },
+      "userRoomsEndpointOk": true
+    }
+  },
+  "console": {
+    "ok": true,
+    "ms": 15000,
+    "events": [
+      {
+        "kind": "log",
+        "line": "{&#x22;type&#x22;:&#x22;stats&#x22;,&#x22;tick&#x22;:71655219,&#x22;data&#x22;:{&#x22;tick&#x22;:71655219,&#x22;timestamp&#x22;:1781402579387,&#x22;cpu&#x22;:{&#x22;used&#x22;:25.53945159999421,&#x22;limit&#x22;:50,&#x22;bucket&#x22;:6923,&#x22;percent&#x22;:51.08022659999551,&#x22;heap_mb&#x22;:82.98528289794922},&#x22;kernel&#x22;:{&#x22;adaptive_budgets_enabled&#x22;:true,&#x22;room_count&#x22;:6,&#x22;room_multiplier&#x22;:1.3890756251918217,&#x22;bucket_multiplier&#x22;:1,&#x22;budget_high&"
+      },
+      {
+        "kind": "log",
+        "line": "{&#x22;level&#x22;:&#x22;INFO&#x22;,&#x22;message&#x22;:&#x22;Kernel: Running 83 registered processes&#x22;,&#x22;tick&#x22;:71655220,&#x22;subsystem&#x22;:&#x22;Kernel&#x22;}"
+      },
+      {
+        "kind": "log",
+        "line": "{&#x22;type&#x22;:&#x22;log&#x22;,&#x22;level&#x22;:&#x22;INFO&#x22;,&#x22;message&#x22;:&#x22;State completed, evaluating new action&#x22;,&#x22;tick&#x22;:71655218,&#x22;shard&#x22;:&#x22;shard1&#x22;,&#x22;subsystem&#x22;:&#x22;StateMachine&#x22;,&#x22;room&#x22;:&#x22;W18S29&#x22;,&#x22;creep&#x22;:&#x22;harvester_71654351_9rldk477h&#x22;,&#x22;action&#x22;:&#x22;harvest&#x22;,&#x22;role&#x22;:&#x22;harvester&#x22;}\n{&#x22;type&#x22;:&#x22;log&#x22;,&#x22;level&#x22;:&#x22;INFO&#x22;,&#x22;m"
+      },
+      {
+        "kind": "log",
+        "line": "{&#x22;type&#x22;:&#x22;stats&#x22;,&#x22;tick&#x22;:71655220,&#x22;data&#x22;:{&#x22;tick&#x22;:71655220,&#x22;timestamp&#x22;:1781402582947,&#x22;cpu&#x22;:{&#x22;used&#x22;:22.02581670001382,&#x22;limit&#x22;:50,&#x22;bucket&#x22;:6940,&#x22;percent&#x22;:44.05298279999988,&#x22;heap_mb&#x22;:98.11748504638672},&#x22;kernel&#x22;:{&#x22;adaptive_budgets_enabled&#x22;:true,&#x22;room_count&#x22;:6,&#x22;room_multiplier&#x22;:1.3890756251918217,&#x22;bucket_multiplier&#x22;:1,&#x22;budget_high&"
+      },
+      {
+        "kind": "log",
+        "line": "{&#x22;type&#x22;:&#x22;log&#x22;,&#x22;level&#x22;:&#x22;INFO&#x22;,&#x22;message&#x22;:&#x22;SwarmBot loop executing at tick 71655220&#x22;,&#x22;tick&#x22;:71655220,&#x22;shard&#x22;:&#x22;shard1&#x22;,&#x22;subsystem&#x22;:&#x22;SwarmBot&#x22;,&#x22;systemsInitialized&#x22;:true}"
+      },
+      {
+        "kind": "log",
+        "line": "{&#x22;type&#x22;:&#x22;stats&#x22;,&#x22;tick&#x22;:71655221,&#x22;data&#x22;:{&#x22;tick&#x22;:71655221,&#x22;timestamp&#x22;:1781402586512,&#x22;cpu&#x22;:{&#x22;used&#x22;:25.249396800005343,&#x22;limit&#x22;:50,&#x22;bucket&#x22;:6961,&#x22;percent&#x22;:50.500280799984466,&#x22;heap_mb&#x22;:113.7412338256836},&#x22;kernel&#x22;:{&#x22;adaptive_budgets_enabled&#x22;:true,&#x22;room_count&#x22;:6,&#x22;room_multiplier&#x22;:1.3890756251918217,&#x22;bucket_multiplier&#x22;:1,&#x22;budget_hig"
+      },
+      {
+        "kind": "log",
+        "line": "{&#x22;type&#x22;:&#x22;log&#x22;,&#x22;level&#x22;:&#x22;WARN&#x22;,&#x22;message&#x22;:&#x22;scout_71654214_33ky0x9g6 (scout) executing IDLE action&#x22;,&#x22;tick&#x22;:71655220,&#x22;shard&#x22;:&#x22;shard1&#x22;,&#x22;subsystem&#x22;:&#x22;ActionExecutor&#x22;}\n{&#x22;type&#x22;:&#x22;log&#x22;,&#x22;level&#x22;:&#x22;INFO&#x22;,&#x22;message&#x22;:&#x22;Committed new state action&#x22;,&#x22;tick&#x22;:71655220,&#x22;shard&#x22;:&#x22;shard1&#x22;,&#x22;subsystem&#x22;:&#x22;StateMachine"
+      },
+      {
+        "kind": "log",
+        "line": "{&#x22;type&#x22;:&#x22;stats&#x22;,&#x22;tick&#x22;:71655222,&#x22;data&#x22;:{&#x22;tick&#x22;:71655222,&#x22;timestamp&#x22;:1781402590510,&#x22;cpu&#x22;:{&#x22;used&#x22;:21.37647299998207,&#x22;limit&#x22;:50,&#x22;bucket&#x22;:6978,&#x22;percent&#x22;:42.754869999946095,&#x22;heap_mb&#x22;:97.6868896484375},&#x22;kernel&#x22;:{&#x22;adaptive_budgets_enabled&#x22;:true,&#x22;room_count&#x22;:6,&#x22;room_multiplier&#x22;:1.3890756251918217,&#x22;bucket_multiplier&#x22;:1,&#x22;budget_high&"
+      }
+    ]
+  }
+}

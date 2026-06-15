@@ -32,6 +32,12 @@ export interface ResourceSharingIntent {
   skippedRooms: { roomName: string; reason: "terminal" | "max-requests" | "no-provider" }[];
 }
 
+interface RequestCountInput {
+  roomName: string;
+  direction: "from" | "to";
+  requests: ReadonlyArray<ExistingResourceRequestSnapshot>;
+}
+
 export function planResourceSharingIntent(input: ResourceSharingIntentInput): ResourceSharingIntent {
   const rooms = input.rooms.filter(room => !room.hasTerminal).map(room => ({ ...room }));
   const needyRooms = rooms.filter(room => room.energyNeed > 0).sort(compareNeed);
@@ -80,6 +86,11 @@ function selectProvider(
     .filter(provider => provider.roomName !== needyRoom.roomName)
     .filter(provider => provider.canProvide >= input.policy.minTransferAmount)
     .filter(provider => !hasRequest(provider.roomName, needyRoom.roomName, input.existingRequests, plannedRequests))
+    .filter(provider => {
+      const existingFromCount = countRequestsForRoom({ roomName: provider.roomName, direction: "from", requests: input.existingRequests });
+      const plannedFromCount = countRequestsForRoom({ roomName: provider.roomName, direction: "from", requests: plannedRequests });
+      return existingFromCount + plannedFromCount < input.policy.maxRequestsPerRoom;
+    })
     .map(provider => ({ provider, distance: input.distance(provider.roomName, needyRoom.roomName) }))
     .filter(candidate => candidate.distance <= input.policy.maxDistance)
     .sort((a, b) => {
@@ -98,6 +109,13 @@ function hasRequest(
   plannedRequests: ResourceTransferRequest[]
 ): boolean {
   return [...existingRequests, ...plannedRequests].some(request => request.fromRoom === fromRoom && request.toRoom === toRoom);
+}
+
+function countRequestsForRoom(input: RequestCountInput): number {
+  if (input.direction === "from") {
+    return input.requests.filter(request => request.fromRoom === input.roomName).length;
+  }
+  return input.requests.filter(request => request.toRoom === input.roomName).length;
 }
 
 function compareNeed(a: ResourceSharingRoomStatus, b: ResourceSharingRoomStatus): number {

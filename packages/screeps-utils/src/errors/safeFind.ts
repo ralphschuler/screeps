@@ -12,6 +12,8 @@
  * to continue operating even when encountering corrupted game data.
  */
 
+type SafeFilterOptions<K extends FindConstant, S extends FindTypes[K] = FindTypes[K]> = FilterOptions<FindTypes[K], S>;
+
 /**
  * Log a safe find error with consistent formatting.
  */
@@ -24,11 +26,11 @@ function logSafeFindError(method: string, findType: number, location: string, er
  * Safely execute Room.find() with error handling.
  * Returns empty array if the engine throws an error during find.
  */
-export function safeFind<T extends FindConstant>(
+export function safeFind<K extends FindConstant, S extends FindTypes[K] = FindTypes[K]>(
   room: Room,
-  type: T,
-  opts?: FilterOptions<T>
-): FindTypes[T][] {
+  type: K,
+  opts?: SafeFilterOptions<K, S>
+): S[] {
   try {
     return room.find(type, opts);
   } catch (error) {
@@ -41,11 +43,11 @@ export function safeFind<T extends FindConstant>(
  * Safely execute RoomPosition.findClosestByRange() with error handling.
  * Returns null if the engine throws an error during find.
  */
-export function safeFindClosestByRange<T extends FindConstant>(
+export function safeFindClosestByRange<K extends FindConstant, S extends FindTypes[K] = FindTypes[K]>(
   pos: RoomPosition,
-  type: T,
-  opts?: FilterOptions<T>
-): FindTypes[T] | null {
+  type: K,
+  opts?: SafeFilterOptions<K, S>
+): S | null {
   try {
     return pos.findClosestByRange(type, opts);
   } catch (error) {
@@ -58,12 +60,12 @@ export function safeFindClosestByRange<T extends FindConstant>(
  * Safely execute RoomPosition.findInRange() with error handling.
  * Returns empty array if the engine throws an error during find.
  */
-export function safeFindInRange<T extends FindConstant>(
+export function safeFindInRange<K extends FindConstant, S extends FindTypes[K] = FindTypes[K]>(
   pos: RoomPosition,
-  type: T,
+  type: K,
   range: number,
-  opts?: FilterOptions<T>
-): FindTypes[T][] {
+  opts?: SafeFilterOptions<K, S>
+): S[] {
   try {
     return pos.findInRange(type, range, opts);
   } catch (error) {
@@ -76,11 +78,11 @@ export function safeFindInRange<T extends FindConstant>(
  * Safely execute RoomPosition.findClosestByPath() with error handling.
  * Returns null if the engine throws an error during find.
  */
-export function safeFindClosestByPath<T extends FindConstant>(
+export function safeFindClosestByPath<K extends FindConstant, S extends FindTypes[K] = FindTypes[K]>(
   pos: RoomPosition,
-  type: T,
-  opts?: FindPathOpts & FilterOptions<T>
-): FindTypes[T] | null {
+  type: K,
+  opts?: FindPathOpts & SafeFilterOptions<K, S>
+): S | null {
   try {
     return pos.findClosestByPath(type, opts);
   } catch (error) {

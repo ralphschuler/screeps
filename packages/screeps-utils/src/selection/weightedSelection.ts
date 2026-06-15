@@ -14,12 +14,7 @@ function hasFinitePositiveWeight<T>(entry: WeightedEntry<T>): boolean {
   return Number.isFinite(entry.weight) && entry.weight > 0;
 }
 
-/**
- * Perform weighted random selection (deterministic)
- * @param entries Array of {key, weight} objects
- * @returns Selected key or undefined if no valid entries
- */
-export function weightedSelection<T>(entries: WeightedEntry<T>[]): T | undefined {
+function selectWeightedEntry<T>(entries: WeightedEntry<T>[]): WeightedEntry<T> | undefined {
   // Filter out zero, negative, NaN, and infinite weights
   const validEntries = entries.filter(hasFinitePositiveWeight);
 
@@ -40,21 +35,28 @@ export function weightedSelection<T>(entries: WeightedEntry<T>[]): T | undefined
   for (const entry of validEntries) {
     threshold -= entry.weight;
     if (threshold <= 0) {
-      return entry.key;
+      return entry;
     }
   }
 
   // Fallback to last entry (mathematical edge case with floating point)
-  return validEntries[validEntries.length - 1]?.key;
+  return validEntries[validEntries.length - 1];
+}
+
+/**
+ * Perform weighted random selection (deterministic)
+ * @param entries Array of {key, weight} objects
+ * @returns Selected key or undefined if no valid entries
+ */
+export function weightedSelection<T>(entries: WeightedEntry<T>[]): T | undefined {
+  return selectWeightedEntry(entries)?.key;
 }
 
 /**
  * Perform weighted selection and return the entry
  */
 export function weightedSelectionEntry<T>(entries: WeightedEntry<T>[]): WeightedEntry<T> | undefined {
-  const selected = weightedSelection(entries);
-  if (selected === undefined) return undefined;
-  return entries.find(e => e.key === selected);
+  return selectWeightedEntry(entries);
 }
 
 /**

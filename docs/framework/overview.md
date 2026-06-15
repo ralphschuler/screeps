@@ -205,7 +205,7 @@ This layer manages how and when different bot subsystems execute:
 **Key Packages:**
 - `@ralphschuler/screeps-kernel` - Process scheduler with CPU budgets
 - `@ralphschuler/screeps-posis` - POSIS process architecture
-- `@ralphschuler/screeps-tasks` - Task queue management
+- `@ralphschuler/screeps-roles` - Task queue management
 
 **Responsibilities:**
 - Priority-based process scheduling
@@ -897,132 +897,34 @@ export const loop = () => {
 };
 ```
 
-### Pattern 3: Event-Driven Integration
+### Pattern 3: Task-board integration
 
-**React to game events using task queues.**
+**Assign persistent creep work through the roles task board.**
 
-Use the task system to create event-driven behaviors.
+Use `taskBoard` for room-local task generation, assignment, statistics, and debugging.
 
 **When to use:**
-- Complex creep behaviors
-- Asynchronous operations
-- Task prioritization
-- State machine implementations
-
-**Advantages:**
-- Reactive programming model
-- Task persistence across ticks
-- Priority queues
-- Easy to pause/resume tasks
-- Decouples task creation from execution
+- Persistent creep assignments
+- Room-local refill/build/repair/upgrade demand
+- Delivery-task stickiness and preemption
+- Console/task-board diagnostics
 
 **Example:**
 
 ```typescript
-import { TaskQueue, Task } from '@ralphschuler/screeps-tasks';
-
-// Define custom tasks
-class HarvestTask implements Task {
-  id: string;
-  priority: number;
-  creepName: string;
-  sourceId: Id<Source>;
-  
-  constructor(creep: Creep, source: Source) {
-    this.id = `harvest-${creep.name}-${source.id}`;
-    this.priority = 80;
-    this.creepName = creep.name;
-    this.sourceId = source.id;
-  }
-  
-  execute(): boolean {
-    const creep = Game.creeps[this.creepName];
-    const source = Game.getObjectById(this.sourceId);
-    
-    if (!creep || !source) return true; // Task complete (creep/source gone)
-    
-    if (creep.store.getFreeCapacity() === 0) {
-      return true; // Task complete (creep full)
-    }
-    
-    if (creep.pos.isNearTo(source)) {
-      creep.harvest(source);
-    } else {
-      creep.moveTo(source);
-    }
-    
-    return false; // Task ongoing
-  }
-}
-
-class UpgradeTask implements Task {
-  id: string;
-  priority: number;
-  creepName: string;
-  
-  constructor(creep: Creep) {
-    this.id = `upgrade-${creep.name}`;
-    this.priority = 50;
-    this.creepName = creep.name;
-  }
-  
-  execute(): boolean {
-    const creep = Game.creeps[this.creepName];
-    const controller = creep.room.controller;
-    
-    if (!creep || !controller) return true;
-    
-    if (creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0) {
-      return true; // No energy, task complete
-    }
-    
-    if (creep.pos.inRangeTo(controller, 3)) {
-      creep.upgradeController(controller);
-    } else {
-      creep.moveTo(controller);
-    }
-    
-    return false;
-  }
-}
-
-// Task queue management
-const taskQueue = new TaskQueue();
-
-// Event-driven task creation
-function onCreepSpawned(creep: Creep): void {
-  if (creep.memory.role === 'harvester') {
-    // Add harvest task
-    const source = creep.pos.findClosestByPath(FIND_SOURCES);
-    if (source) {
-      taskQueue.add(new HarvestTask(creep, source));
-    }
-  }
-}
-
-function onCreepIdling(creep: Creep): void {
-  // Creep has no current task - assign based on pheromones
-  const pheromones = creep.room.memory.swarm.pheromones;
-  
-  if (pheromones.harvest > 50) {
-    const source = creep.pos.findClosestByPath(FIND_SOURCES);
-    if (source) {
-      taskQueue.add(new HarvestTask(creep, source));
-    }
-  } else if (pheromones.upgrade > 30) {
-    taskQueue.add(new UpgradeTask(creep));
-  }
-}
+import { taskBoard } from '@ralphschuler/screeps-roles';
 
 export const loop = () => {
-  // Process task queue
-  taskQueue.processTasks();
-  
-  // Handle events
-  for (const creep of Object.values(Game.creeps)) {
-    if (!taskQueue.hasTask(creep.name)) {
-      onCreepIdling(creep);
+  for (const room of Object.values(Game.rooms)) {
+    if (room.controller?.my) {
+      taskBoard.refreshRoom(room);
     }
+  }
+
+  for (const creep of Object.values(Game.creeps)) {
+    const ctx = createCreepContext(creep);
+    const action = taskBoard.getAssignedAction(ctx);
+    if (action) executeAction(creep, action);
   }
 };
 ```
@@ -1085,7 +987,7 @@ The framework consists of 15+ specialized packages organized by responsibility:
 - Process lifecycle management
 - State persistence
 
-**[@ralphschuler/screeps-tasks](../../packages/screeps-tasks)**
+**[@ralphschuler/screeps-roles](../../packages/@ralphschuler/screeps-roles)**
 - Task queue with priorities
 - Task assignment to creeps
 - Task lifecycle tracking

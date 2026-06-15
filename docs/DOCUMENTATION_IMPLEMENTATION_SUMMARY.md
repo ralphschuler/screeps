@@ -107,7 +107,7 @@ These packages can be completed quickly using existing content:
 1. **screeps-pathfinding** (1.5h) - Add integration examples
 2. **screeps-remote-mining** (1.5h) - Add performance section  
 3. **screeps-defense** (1.5h) - Reorganize existing content
-4. **screeps-tasks** (1.5h) - Add more examples
+4. **screeps-roles** (1.5h) - Add more examples
 
 #### High Priority Enhancements (11 hours, 6 packages)
 Well-documented packages needing additional sections:
@@ -131,7 +131,7 @@ Packages needing comprehensive upgrade:
 1. **screeps-console** (2h) - Command reference
 2. **screeps-economy** (2h) - Integration guide
 3. **screeps-defense** (1.5h) - Restructure (from quick wins)
-4. **screeps-tasks** (1.5h) - Task composition (from quick wins)
+4. **screeps-roles** (1.5h) - Task composition (from quick wins)
 5. **screeps-posis** (2h) - Process architecture
 6. **screeps-utils** (2.5h) - Complete API docs
 

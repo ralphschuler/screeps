@@ -3,7 +3,6 @@
     "/usr/local/lib/node_modules/screepsmod-auth",
     "/usr/local/lib/node_modules/screepsmod-admin-utils",
     "/usr/local/lib/node_modules/screepsmod-mongo",
-    "/usr/local/lib/node_modules/screepsmod-bots",
     "/workspace/packages/screepsmod-testing/dist/backend.js"
   ],
   "bots": {

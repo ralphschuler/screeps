@@ -7,7 +7,6 @@ services:
         SCREEPS_VERSION: "4.3.0"
         SCREEPSMOD_AUTH_VERSION: "2.8.2"
         SCREEPSMOD_ADMIN_UTILS_VERSION: "1.36.0"
-        SCREEPSMOD_BOTS_VERSION: "0.1.1"
         SCREEPSMOD_MONGO_VERSION: "2.13.0"
     image: screeps-private-server-ci:4.3.0-node22
     platform: linux/amd64
@@ -21,13 +20,13 @@ services:
       SCREEPS_CLI_PORT: "21026"
       SCREEPS_CLI_PASSWORD: ${SCREEPS_CLI_PASSWORD:-ci-password}
       SHARD_NAME: ${SHARD_NAME:-shard0}
+      SCREEPS_TEST_SCENARIOS: ${SCREEPS_TEST_SCENARIOS:-default-bootstrap,construction-economy,remote-mining,defense-hostile,alliance-safety}
       STEAM_KEY: ${STEAM_KEY:-ci-offline-private-server-key}
       MONGO_HOST: mongo
       REDIS_HOST: redis
     volumes:
       - ./config.ci.yml:/screeps/config.ci.yml:ro
       - ./mods.ci.json:/screeps/mods.ci.json:ro
-      - ./bots.ci.yml:/screeps/bots.yml:ro
       - ../screepsmod-testing:/workspace/packages/screepsmod-testing:ro
       - screeps-ci-data:/screeps
       - screeps-ci-artifacts:/screeps/artifacts

@@ -13,7 +13,7 @@ import {
   WAR_READY_BLUEPRINT,
   COMPACT_BUNKER_BLUEPRINT,
   getStructuresForRCL
-} from "../../src/layouts/blueprints/index";
+} from "@ralphschuler/screeps-layouts";
 
 describe("Blueprint Structure Validation (Post-Refactoring)", () => {
   describe("Early Colony Blueprint", () => {

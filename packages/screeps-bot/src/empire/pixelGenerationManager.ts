@@ -14,21 +14,28 @@ import {
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 
+interface PixelGenerationGlobal {
+  _pixelGenerationMemory?: PixelGenerationMemory;
+}
+
+function getPixelGenerationGlobal(): PixelGenerationGlobal {
+  return global as unknown as PixelGenerationGlobal;
+}
+
 /**
- * Memory accessor implementation using global memory
+ * Memory accessor implementation using heap-backed global state.
  */
 class BotPixelGenerationMemoryAccessor implements PixelGenerationMemoryAccessor {
   ensurePixelGenerationMemory(): void {
-    // Use global memory to persist across global resets
-    const g = global as any;
-    if (!g._pixelGenerationMemory) {
-      g._pixelGenerationMemory = createDefaultPixelGenerationMemory();
+    // Heap state survives within the current VM, but resets on Screeps global resets.
+    const pixelGlobal = getPixelGenerationGlobal();
+    if (!pixelGlobal._pixelGenerationMemory) {
+      pixelGlobal._pixelGenerationMemory = createDefaultPixelGenerationMemory();
     }
   }
 
   getPixelGenerationMemory(): PixelGenerationMemory | undefined {
-    const g = global as any;
-    return g._pixelGenerationMemory as PixelGenerationMemory | undefined;
+    return getPixelGenerationGlobal()._pixelGenerationMemory;
   }
 }
 

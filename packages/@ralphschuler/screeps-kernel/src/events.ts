@@ -22,11 +22,9 @@
  * // Emit events
  * eventBus.emit('hostile.detected', { roomName: 'W1N1', creepId: '...' });
  * ```
- * 
+ *
  * TODO(P2): ARCH - Consider implementing event replay/persistence for debugging
  * Store recent events in a ring buffer for post-mortem analysis of issues
- * TODO(P2): PERF - Add event coalescing for high-frequency events
- * Multiple identical events in the same tick could be merged to reduce handler calls
  */
 
 import { logger } from "./logger";
@@ -362,6 +360,8 @@ interface QueuedEvent<T extends EventName = EventName> {
   priority: number;
   /** Tick when event was queued */
   queuedAt: number;
+  /** Number of identical events coalesced into this queue entry */
+  coalescedCount: number;
 }
 
 // ============================================================================
@@ -443,6 +443,8 @@ export interface EventBusConfig {
   enableLogging: boolean;
   /** Log interval for stats (ticks) */
   statsLogInterval: number;
+  /** Coalesce identical queued events by payload signature */
+  enableEventCoalescing: boolean;
 }
 
 const DEFAULT_CONFIG: EventBusConfig = {
@@ -452,7 +454,8 @@ const DEFAULT_CONFIG: EventBusConfig = {
   criticalBucketThreshold: 1000,
   maxEventAge: 100,
   enableLogging: false,
-  statsLogInterval: 100
+  statsLogInterval: 100,
+  enableEventCoalescing: true
 };
 
 // ============================================================================
@@ -472,12 +475,18 @@ export class EventBus {
   private config: EventBusConfig;
   private handlers: Map<EventName, HandlerRegistration<any>[]> = new Map();
   private eventQueue: QueuedEvent[] = [];
+  /**
+   * Map of coalescing keys to queued events.
+   * Allows deduping identical queued events in O(1) time.
+   */
+  private coalescedQueueMap = new Map<string, QueuedEvent>();
   private handlerIdCounter = 0;
   private stats = {
     eventsEmitted: 0,
     eventsProcessed: 0,
     eventsDeferred: 0,
     eventsDropped: 0,
+    eventsCoalesced: 0,
     handlersInvoked: 0
   };
 
@@ -623,6 +632,65 @@ export class EventBus {
   }
 
   /**
+   * Build a stable key for coalescing queued events.
+   */
+  private getCoalescingKey<T extends EventName>(eventName: T, payload: EventPayload<T>, priority: number): string {
+    return [
+      eventName,
+      priority,
+      this.serializePayload(payload)
+    ].join("|");
+  }
+
+  /**
+   * Serialize payload to a stable string representation for signature comparisons.
+   */
+  private serializePayload(value: unknown): string {
+    if (value === null || typeof value !== "object") {
+      return JSON.stringify(value);
+    }
+
+    if (Array.isArray(value)) {
+      return `[${value.map(entry => this.serializePayload(entry)).join(",")}]`;
+    }
+
+    const keys = Object.keys(value as Record<string, any>).sort();
+    const normalized: Record<string, unknown> = {};
+
+    for (const key of keys) {
+      normalized[key] = (value as Record<string, any>)[key];
+    }
+
+    return JSON.stringify(normalized);
+  }
+
+  /**
+   * Create and register queue map key for an existing queued event.
+   */
+  private getQueuedEventKey(event: QueuedEvent): string {
+    return this.getCoalescingKey(event.name, event.payload, event.priority);
+  }
+
+  /**
+   * Remove a queued event from the coalescing index map.
+   */
+  private removeQueuedEventFromMap(event: QueuedEvent): void {
+    const key = this.getQueuedEventKey(event);
+    const mapped = this.coalescedQueueMap.get(key);
+    if (mapped === event) {
+      this.coalescedQueueMap.delete(key);
+    }
+  }
+
+  /**
+   * Handle cleanup bookkeeping when a queued event is dropped due to queue overflow or age.
+   */
+  private dropQueuedEvent(event: QueuedEvent): void {
+    this.removeQueuedEventFromMap(event);
+    this.stats.eventsDropped++;
+  }
+
+  /**
    * Process an event immediately
    */
   private processEvent<T extends EventName>(eventName: T, payload: EventPayload<T>): void {
@@ -672,6 +740,17 @@ export class EventBus {
     payload: EventPayload<T>,
     priority: number
   ): void {
+    const coalescingKey = this.getCoalescingKey(eventName, payload, priority);
+
+    if (this.config.enableEventCoalescing) {
+      const existing = this.coalescedQueueMap.get(coalescingKey);
+      if (existing) {
+        existing.coalescedCount += 1;
+        this.stats.eventsCoalesced++;
+        return;
+      }
+    }
+
     // Check queue size
     if (this.eventQueue.length >= this.config.maxQueueSize) {
       // Remove oldest low-priority event
@@ -681,8 +760,11 @@ export class EventBus {
         .sort((a, b) => a.event.queuedAt - b.event.queuedAt)[0];
 
       if (oldestLowPriority && oldestLowPriority.event.priority < priority) {
-        this.eventQueue.splice(oldestLowPriority.index, 1);
-        this.stats.eventsDropped++;
+        const removed = this.eventQueue.splice(oldestLowPriority.index, 1)[0];
+        if (removed) {
+          this.removeQueuedEventFromMap(removed);
+          this.stats.eventsDropped++;
+        }
       } else {
         // Can't make room, drop this event
         this.stats.eventsDropped++;
@@ -694,10 +776,13 @@ export class EventBus {
       name: eventName,
       payload,
       priority,
-      queuedAt: Game.time
+      queuedAt: Game.time,
+      coalescedCount: 1
     };
 
     this.eventQueue.push(queuedEvent);
+    this.coalescedQueueMap.set(coalescingKey, queuedEvent);
+
     // Sort by priority (highest first), then by age (oldest first)
     this.eventQueue.sort((a, b) => {
       if (b.priority !== a.priority) {
@@ -739,19 +824,22 @@ export class EventBus {
 
     // Clean up old events
     const now = Game.time;
-    this.eventQueue = this.eventQueue.filter(event => {
+    const retainedEvents: QueuedEvent[] = [];
+    for (const event of this.eventQueue) {
       if (now - event.queuedAt > this.config.maxEventAge) {
-        this.stats.eventsDropped++;
-        return false;
+        this.dropQueuedEvent(event);
+      } else {
+        retainedEvents.push(event);
       }
-      return true;
-    });
+    }
+    this.eventQueue = retainedEvents;
 
     // Process events
     let processed = 0;
     while (this.eventQueue.length > 0 && processed < maxEvents) {
       const event = this.eventQueue.shift();
       if (event) {
+        this.removeQueuedEventFromMap(event);
         this.processEvent(event.name, event.payload);
         processed++;
       }
@@ -766,6 +854,7 @@ export class EventBus {
     eventsProcessed: number;
     eventsDeferred: number;
     eventsDropped: number;
+    eventsCoalesced: number;
     handlersInvoked: number;
     queueSize: number;
     handlerCount: number;
@@ -791,6 +880,7 @@ export class EventBus {
       eventsProcessed: 0,
       eventsDeferred: 0,
       eventsDropped: 0,
+      eventsCoalesced: 0,
       handlersInvoked: 0
     };
   }
@@ -815,6 +905,7 @@ export class EventBus {
   public clear(): void {
     this.handlers.clear();
     this.eventQueue = [];
+    this.coalescedQueueMap.clear();
     this.resetStats();
   }
 
@@ -841,7 +932,8 @@ export class EventBus {
       logger.debug(
         `EventBus stats: ${stats.eventsEmitted} emitted, ${stats.eventsProcessed} processed, ` +
         `${stats.eventsDeferred} deferred, ${stats.eventsDropped} dropped, ` +
-        `${stats.queueSize} queued, ${stats.handlerCount} handlers`,
+        `${stats.eventsCoalesced} coalesced, ${stats.queueSize} queued, ` +
+        `${stats.handlerCount} handlers`,
         { subsystem: "EventBus" }
       );
     }

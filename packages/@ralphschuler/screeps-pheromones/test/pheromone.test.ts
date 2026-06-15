@@ -1,3 +1,4 @@
+import "./setup";
 import { expect } from "chai";
 import { PheromoneManager, DEFAULT_PHEROMONE_CONFIG } from "../src/manager";
 import { createDefaultSwarmState } from "@ralphschuler/screeps-memory";
@@ -71,6 +72,25 @@ describe("Pheromone System", () => {
       expect(swarm.pheromones.defense).to.be.greaterThan(initialDefense);
       expect(swarm.pheromones.war).to.be.greaterThan(initialWar);
       expect(swarm.danger).to.equal(2);
+    });
+
+    it("does not count permanent allies as hostile damage signals", () => {
+      const swarm = createDefaultSwarmState();
+      const ally = { owner: { username: "TooAngel" }, body: [{ type: ATTACK, hits: 100 }] } as Creep;
+      const hostile = { owner: { username: "Invader" }, body: [{ type: ATTACK, hits: 100 }] } as Creep;
+      const room = {
+        name: "W1N1",
+        find: (type: FindConstant) => {
+          if (type === FIND_SOURCES) return [];
+          if (type === FIND_HOSTILE_CREEPS) return [ally, hostile];
+          return [];
+        }
+      } as unknown as Room;
+
+      pheromoneManager.updateMetrics(room, swarm);
+
+      expect(swarm.metrics.hostileCount).to.equal(1);
+      expect(swarm.metrics.damageReceived).to.equal(30);
     });
 
     it("should increase siege pheromone for high danger levels", () => {

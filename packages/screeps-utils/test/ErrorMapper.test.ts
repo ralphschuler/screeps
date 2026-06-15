@@ -1,54 +1,103 @@
-/**
- * ErrorMapper Tests
- * Tests for error stack trace mapping and HTML escaping
- */
+import { expect } from "chai";
+import sinon from "sinon";
 
-import { expect } from 'chai';
+import { ErrorMapper } from "../src/errors/ErrorMapper";
 
-// Import the escapeHtml utility that's defined but not exported
-// For testing purposes, we'll test the public methods
-// Note: ErrorMapper requires source map which won't exist in test environment
-
-describe('ErrorMapper Utilities', () => {
-  
-  describe('HTML escaping', () => {
-    // Since escapeHtml is not exported, we'll test it indirectly
-    // through the stack trace output which uses it
-    
-    it('should handle basic strings', () => {
-      // This is a placeholder test since ErrorMapper requires source maps
-      expect(true).to.be.true;
-    });
-    
-    it('should escape special HTML characters', () => {
-      // Test that HTML characters are properly escaped in error messages
-      // This would require mocking the source map consumer
-      expect(true).to.be.true;
-    });
+describe("ErrorMapper", () => {
+  afterEach(() => {
+    sinon.restore();
+    ErrorMapper.cache = {};
   });
 
-  describe('Stack trace mapping', () => {
-    it('should cache stack traces for performance', () => {
-      // ErrorMapper.cache should be used to avoid expensive remapping
-      expect(true).to.be.true;
-    });
+  it("falls back to original stack when source map consumer is unavailable", async () => {
+    sinon.stub(ErrorMapper, "getConsumer").resolves(null as any);
 
-    it('should handle errors without source maps gracefully', () => {
-      // Should fall back to original stack trace if mapping fails
-      expect(true).to.be.true;
-    });
+    const stack = "Error: boom\n    at main:10:20";
+    const result = await ErrorMapper.sourceMappedStackTrace(stack);
+
+    expect(result).to.equal(stack);
   });
 
-  describe('Performance considerations', () => {
-    it('should warn about high CPU cost on first call', () => {
-      // First call after reset can use >30 CPU
-      // This is documented in the code comments
-      expect(true).to.be.true;
-    });
+  it("maps main frames when source map consumer is available", async () => {
+    const consumer = {
+      originalPositionFor: sinon.stub().returns({
+        source: "src/main.ts",
+        line: 11,
+        column: 21,
+        name: "bootstrap",
+      }),
+    };
 
-    it('should have reasonable CPU cost for cached traces', () => {
-      // Consecutive calls should be ~0.1 CPU each
-      expect(true).to.be.true;
-    });
+    sinon.stub(ErrorMapper, "getConsumer").resolves(consumer as any);
+
+    const stack = "Error: boom\n    at main:10:20";
+    const result = await ErrorMapper.sourceMappedStackTrace(stack);
+
+    sinon.assert.calledWith(
+      consumer.originalPositionFor as sinon.SinonStub,
+      {
+        column: 20,
+        line: 10,
+      },
+    );
+    expect(result).to.equal(
+      "Error: boom\n    at main:10:20\n    at bootstrap (src/main.ts:11:21)",
+    );
+  });
+
+  it("caches mapped traces for repeated calls", async () => {
+    const consumer = {
+      originalPositionFor: sinon
+        .stub()
+        .returns({
+          source: "src/main.ts",
+          line: 11,
+          column: 21,
+          name: "bootstrap",
+        }),
+    };
+
+    const getConsumerStub = sinon
+      .stub(ErrorMapper, "getConsumer")
+      .resolves(consumer as any);
+
+    const stack = "Error: cached\n    at main:10:20";
+
+    const first = await ErrorMapper.sourceMappedStackTrace(stack);
+    const second = await ErrorMapper.sourceMappedStackTrace(stack);
+
+    expect(first).to.equal(second);
+    sinon.assert.calledOnce(getConsumerStub);
+  });
+
+  it("skips uncached source-map parsing when the CPU bucket is below the configured guard", async () => {
+    (global as any).Game = { cpu: { bucket: 100 }, rooms: {} };
+    (global as any).Memory = { errorMapper: { sourceMapMinBucket: 2000 } };
+    const getConsumerStub = sinon.stub(ErrorMapper, "getConsumer").resolves({} as any);
+
+    const stack = "Error: low bucket\n    at main:10:20";
+    const result = await ErrorMapper.sourceMappedStackTrace(stack);
+
+    expect(result).to.equal(stack);
+    sinon.assert.notCalled(getConsumerStub);
+  });
+
+  it("allows the low-bucket source-map guard to be disabled for rollback", async () => {
+    (global as any).Game = { cpu: { bucket: 100 }, rooms: {} };
+    (global as any).Memory = { errorMapper: { sourceMapLowBucketGuard: false, sourceMapMinBucket: 2000 } };
+    const consumer = {
+      originalPositionFor: sinon.stub().returns({
+        source: "src/main.ts",
+        line: 11,
+        column: 21,
+        name: "bootstrap",
+      }),
+    };
+    const getConsumerStub = sinon.stub(ErrorMapper, "getConsumer").resolves(consumer as any);
+
+    const result = await ErrorMapper.sourceMappedStackTrace("Error: rollback\n    at main:10:20");
+
+    expect(result).to.include("bootstrap (src/main.ts:11:21)");
+    sinon.assert.calledOnce(getConsumerStub);
   });
 });

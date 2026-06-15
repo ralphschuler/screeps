@@ -1,0 +1,803 @@
+{
+  "generated_at": "2026-06-14T02:00:57.014Z",
+  "hostname": "screeps.com",
+  "samples_requested": 3,
+  "interval_ms": 3000,
+  "shards": {
+    "shard0": {
+      "samples": 3,
+      "cpu_avg": 0,
+      "cpu_max": 0,
+      "bucket_avg": 906,
+      "bucket_min": 906,
+      "skipped_avg": 0,
+      "top_subsystems": [],
+      "top_processes": [],
+      "top_rooms": [],
+      "top_roles": [],
+      "top_cpu_details": []
+    },
+    "shard1": {
+      "samples": 3,
+      "tick_first": 71655184,
+      "tick_last": 71655185,
+      "cpu_avg": 33.79909443334327,
+      "cpu_max": 38.73423860000912,
+      "bucket_avg": 6414.333333333333,
+      "bucket_min": 6413,
+      "skipped_avg": 27.333333333333332,
+      "top_subsystems": [
+        {
+          "key": "kernel",
+          "avg": 10.063490802583662,
+          "max": 10.147862774817543,
+          "samples": 3,
+          "peak": 81.04188109999996,
+          "calls": 1
+        },
+        {
+          "key": "spawns",
+          "avg": 1.5327646505418517,
+          "max": 1.5662226488369264,
+          "samples": 3,
+          "peak": 49.91427609999994,
+          "calls": 1
+        },
+        {
+          "key": "taskBoard",
+          "avg": 0.6636644865305178,
+          "max": 0.6683482136523672,
+          "samples": 3,
+          "peak": 35.486747399991145,
+          "calls": 1
+        },
+        {
+          "key": "visualizations",
+          "avg": 0.12979119329685432,
+          "max": 0.13131242824106334,
+          "samples": 3,
+          "peak": 37.151990200007276,
+          "calls": 1
+        },
+        {
+          "key": "processSync",
+          "avg": 0.0703189065970712,
+          "max": 0.07068073096309359,
+          "samples": 3,
+          "peak": 20.94651260000046,
+          "calls": 1
+        },
+        {
+          "key": "scheduledTasks",
+          "avg": 0.020377776705764038,
+          "max": 0.02085842762602794,
+          "samples": 3,
+          "peak": 25.051816399995005,
+          "calls": 1
+        },
+        {
+          "key": "ss2PacketQueue",
+          "avg": 0.0035050607797064656,
+          "max": 0.003508790462028508,
+          "samples": 3,
+          "peak": 1.8939244999992297,
+          "calls": 1
+        },
+        {
+          "key": "powerCreeps",
+          "avg": 0.0018924509474189503,
+          "max": 0.001978185365587605,
+          "samples": 3,
+          "peak": 0.23014160000002448,
+          "calls": 1
+        },
+        {
+          "key": "eventQueue",
+          "avg": 0.0018875983127056354,
+          "max": 0.0019494604991210857,
+          "samples": 3,
+          "peak": 21.14002019999316,
+          "calls": 1
+        }
+      ],
+      "top_processes": [
+        {
+          "key": "remote:infrastructure",
+          "avg": 9.430916299996776,
+          "max": 9.430916299996776,
+          "samples": 3,
+          "name": "Remote Infrastructure Manager",
+          "max_cpu": 18.225426699995296,
+          "frequency": "medium",
+          "run_count": 3,
+          "skipped_count": 3105,
+          "cpu_budget": 0.05
+        },
+        {
+          "key": "empire:market",
+          "avg": 3.4540097444483364,
+          "max": 3.454009744448336,
+          "samples": 3,
+          "name": "Market Manager",
+          "max_cpu": 18.502537300002587,
+          "frequency": "low",
+          "run_count": 9,
+          "skipped_count": 3098,
+          "cpu_budget": 0.02
+        },
+        {
+          "key": "empire:crossShardIntel",
+          "avg": 2.1234744555528318,
+          "max": 2.1234744555528318,
+          "samples": 3,
+          "name": "Cross-Shard Intel",
+          "max_cpu": 12.29457579999871,
+          "frequency": "low",
+          "run_count": 9,
+          "skipped_count": 3098,
+          "cpu_budget": 0.01
+        },
+        {
+          "key": "expansion:manager",
+          "avg": 1.6407609833377705,
+          "max": 1.6407609833377705,
+          "samples": 3,
+          "name": "Expansion Manager",
+          "max_cpu": 2.152578999999946,
+          "frequency": "medium",
+          "run_count": 6,
+          "skipped_count": 3102,
+          "cpu_budget": 0.02
+        },
+        {
+          "key": "empire:shard",
+          "avg": 1.2670699600016548,
+          "max": 1.2670699600016548,
+          "samples": 3,
+          "name": "Shard Manager",
+          "max_cpu": 1.4969292000023415,
+          "frequency": "low",
+          "run_count": 10,
+          "skipped_count": 3097,
+          "cpu_budget": 0.02
+        },
+        {
+          "key": "core:memorySegmentStats",
+          "avg": 1.2237179499977628,
+          "max": 1.2237179499977628,
+          "samples": 3,
+          "name": "Memory Segment Stats",
+          "max_cpu": 1.3006955000018934,
+          "frequency": "low",
+          "run_count": 6,
+          "skipped_count": 3100,
+          "cpu_budget": 0.01
+        },
+        {
+          "key": "room:W17S29",
+          "avg": 1.0365103507069717,
+          "max": 1.0365899853463727,
+          "samples": 3,
+          "name": "Room W17S29 (owned)",
+          "max_cpu": 21.405780200000663,
+          "frequency": "high",
+          "run_count": 621,
+          "skipped_count": 2486,
+          "cpu_budget": 0.06
+        },
+        {
+          "key": "room:W18S28",
+          "avg": 0.9807437345398781,
+          "max": 0.9807437345398781,
+          "samples": 3,
+          "name": "Room W18S28 (owned)",
+          "max_cpu": 1.4804963000060525,
+          "frequency": "high",
+          "run_count": 55,
+          "skipped_count": 220,
+          "cpu_budget": 0.06
+        },
+        {
+          "key": "room:W18S29",
+          "avg": 0.9124531940423083,
+          "max": 0.9124531940423083,
+          "samples": 3,
+          "name": "Room W18S29 (owned)",
+          "max_cpu": 4.43643630000588,
+          "frequency": "high",
+          "run_count": 621,
+          "skipped_count": 2485,
+          "cpu_budget": 0.06
+        },
+        {
+          "key": "creep:remoteHauler_71655056_rwblei04g",
+          "avg": 0.8741300377309686,
+          "max": 0.8820601242433909,
+          "samples": 3,
+          "name": "Creep remoteHauler_71655056_rwblei04g (remoteHauler)",
+          "max_cpu": 26.773537700006273,
+          "frequency": "high",
+          "run_count": 34,
+          "skipped_count": 0,
+          "cpu_budget": 0.006
+        },
+        {
+          "key": "empire:tooangel",
+          "avg": 0.7753432142867008,
+          "max": 0.7753432142867008,
+          "samples": 3,
+          "name": "TooAngel Manager",
+          "max_cpu": 1.2103377000021283,
+          "frequency": "low",
+          "run_count": 7,
+          "skipped_count": 3100,
+          "cpu_budget": 0.1
+        },
+        {
+          "key": "empire:powerBank",
+          "avg": 0.7654357837819195,
+          "max": 0.7654357837819195,
+          "samples": 3,
+          "name": "Power Bank Harvesting",
+          "max_cpu": 10.510362200002419,
+          "frequency": "low",
+          "run_count": 37,
+          "skipped_count": 3071,
+          "cpu_budget": 0.02
+        },
+        {
+          "key": "creep:remoteHauler_71654062_rstlgi3zy",
+          "avg": 0.7440479232243518,
+          "max": 0.7444676216789787,
+          "samples": 3,
+          "name": "Creep remoteHauler_71654062_rstlgi3zy (remoteHauler)",
+          "max_cpu": 23.71322720000171,
+          "frequency": "high",
+          "run_count": 513,
+          "skipped_count": 514,
+          "cpu_budget": 0.006
+        },
+        {
+          "key": "empire:pixelBuying",
+          "avg": 0.39816876666759526,
+          "max": 0.39816876666759526,
+          "samples": 3,
+          "name": "Pixel Buying Manager",
+          "max_cpu": 0.47452079999993657,
+          "frequency": "low",
+          "run_count": 6,
+          "skipped_count": 3100,
+          "cpu_budget": 0.01
+        },
+        {
+          "key": "cluster:pheromoneDiffusion",
+          "avg": 0.3747917918929648,
+          "max": 0.3747917918929648,
+          "samples": 3,
+          "name": "Pheromone Diffusion",
+          "max_cpu": 0.5598098999980721,
+          "frequency": "medium",
+          "run_count": 37,
+          "skipped_count": 3071,
+          "cpu_budget": 0.02
+        }
+      ],
+      "top_rooms": [
+        {
+          "key": "W18S28",
+          "avg": 0.9664412525970021,
+          "max": 0.9664412525970021,
+          "samples": 3,
+          "peak": 26.979372299974784,
+          "rcl": 5,
+          "creeps": 17
+        },
+        {
+          "key": "W18S29",
+          "avg": 0.8869892017963186,
+          "max": 0.8869892017963186,
+          "samples": 3,
+          "peak": 37.44734409998637,
+          "rcl": 5,
+          "creeps": 13
+        },
+        {
+          "key": "W17S29",
+          "avg": 0.8859166289581818,
+          "max": 0.8941708200620394,
+          "samples": 3,
+          "peak": 71.40210819999993,
+          "rcl": 6,
+          "creeps": 14
+        },
+        {
+          "key": "W19S26",
+          "avg": 0.06424987948313338,
+          "max": 0.06532699813957085,
+          "samples": 3,
+          "peak": 42.11184639998828,
+          "rcl": 2,
+          "creeps": 8
+        }
+      ],
+      "top_roles": [
+        {
+          "key": "ranger",
+          "avg": 0.26910132402008596,
+          "max": 0.2762127820895909,
+          "samples": 3,
+          "peak": 16.301012649928452,
+          "count": 5,
+          "active": 0,
+          "idle": 5
+        },
+        {
+          "key": "remoteHarvester",
+          "avg": 0.2419918091350779,
+          "max": 0.24258974413758863,
+          "samples": 3,
+          "peak": 28.06177270002081,
+          "count": 3,
+          "active": 0,
+          "idle": 3
+        },
+        {
+          "key": "scout",
+          "avg": 0.19727299700204357,
+          "max": 0.19938206586445242,
+          "samples": 3,
+          "peak": 21.180625699998927,
+          "count": 3,
+          "active": 0,
+          "idle": 3
+        },
+        {
+          "key": "harvester",
+          "avg": 0.18339489347961516,
+          "max": 0.1842675697909915,
+          "samples": 3,
+          "peak": 31.535016699999687,
+          "count": 8,
+          "active": 1,
+          "idle": 7
+        },
+        {
+          "key": "remoteHauler",
+          "avg": 0.15365388452903922,
+          "max": 0.1561695621566428,
+          "samples": 3,
+          "peak": 33.05441230002907,
+          "count": 4,
+          "active": 0,
+          "idle": 3
+        },
+        {
+          "key": "builder",
+          "avg": 0.1381706679283707,
+          "max": 0.1462735915191918,
+          "samples": 3,
+          "peak": 16.043228499999714,
+          "count": 5,
+          "active": 4,
+          "idle": 1
+        },
+        {
+          "key": "hauler",
+          "avg": 0.13795892953069186,
+          "max": 0.13848536197657843,
+          "samples": 3,
+          "peak": 12.055502766675394,
+          "count": 7,
+          "active": 3,
+          "idle": 4
+        },
+        {
+          "key": "upgrader",
+          "avg": 0.13554248266009228,
+          "max": 0.13812386218106015,
+          "samples": 3,
+          "peak": 10.637389966635965,
+          "count": 8,
+          "active": 6,
+          "idle": 1
+        },
+        {
+          "key": "queenCarrier",
+          "avg": 0.1277386669267912,
+          "max": 0.1302591354136623,
+          "samples": 3,
+          "peak": 19.890467999990506,
+          "count": 6,
+          "active": 5,
+          "idle": 1
+        },
+        {
+          "key": "claimer",
+          "avg": 0.09734585261880475,
+          "max": 0.11976032485152198,
+          "samples": 3,
+          "peak": 33.05500639999809,
+          "count": 2,
+          "active": 0,
+          "idle": 2
+        }
+      ],
+      "top_cpu_details": []
+    },
+    "shard2": {
+      "samples": 0,
+      "cpu_avg": 0,
+      "cpu_max": 0,
+      "bucket_avg": 0,
+      "bucket_min": 0,
+      "skipped_avg": 0,
+      "top_subsystems": [],
+      "top_processes": [],
+      "top_rooms": [],
+      "top_roles": [],
+      "top_cpu_details": []
+    },
+    "shard3": {
+      "samples": 3,
+      "tick_first": 79383724,
+      "tick_last": 79383724,
+      "cpu_avg": 5.358311199997843,
+      "cpu_max": 5.358311199997843,
+      "bucket_avg": 7985,
+      "bucket_min": 7985,
+      "skipped_avg": 21,
+      "top_subsystems": [
+        {
+          "key": "kernel",
+          "avg": 2.4131134999988717,
+          "max": 2.4131134999988717,
+          "samples": 3,
+          "peak": 2.4131134999988717,
+          "calls": 1
+        },
+        {
+          "key": "visualizations",
+          "avg": 0.10877749999781372,
+          "max": 0.10877749999781372,
+          "samples": 3,
+          "peak": 0.10877749999781372,
+          "calls": 1
+        },
+        {
+          "key": "spawns",
+          "avg": 0.08951669999805745,
+          "max": 0.08951669999805745,
+          "samples": 3,
+          "peak": 0.08951669999805745,
+          "calls": 1
+        },
+        {
+          "key": "processSync",
+          "avg": 0.02350790000127745,
+          "max": 0.02350790000127745,
+          "samples": 3,
+          "peak": 0.02350790000127745,
+          "calls": 1
+        },
+        {
+          "key": "scheduledTasks",
+          "avg": 0.004102800001419382,
+          "max": 0.004102800001419382,
+          "samples": 3,
+          "peak": 0.004102800001419382,
+          "calls": 1
+        },
+        {
+          "key": "ss2PacketQueue",
+          "avg": 0.001730299998598639,
+          "max": 0.001730299998598639,
+          "samples": 3,
+          "peak": 0.001730299998598639,
+          "calls": 1
+        },
+        {
+          "key": "powerCreeps",
+          "avg": 0.0015144999997573905,
+          "max": 0.0015144999997573905,
+          "samples": 3,
+          "peak": 0.0015144999997573905,
+          "calls": 1
+        },
+        {
+          "key": "eventQueue",
+          "avg": 0.001474200005759485,
+          "max": 0.001474200005759485,
+          "samples": 3,
+          "peak": 0.001474200005759485,
+          "calls": 1
+        }
+      ],
+      "top_processes": [
+        {
+          "key": "empire:nuke",
+          "avg": 1.3004985499986006,
+          "max": 1.3004985499986006,
+          "samples": 3,
+          "name": "Nuke Manager",
+          "max_cpu": 1.43047579999984,
+          "frequency": "low",
+          "run_count": 4,
+          "skipped_count": 1652,
+          "cpu_budget": 0.01
+        },
+        {
+          "key": "room:W12S8",
+          "avg": 1.2321631977266738,
+          "max": 1.2321631977266738,
+          "samples": 3,
+          "name": "Room W12S8 (owned)",
+          "max_cpu": 5.9168996999978845,
+          "frequency": "high",
+          "run_count": 176,
+          "skipped_count": 708,
+          "cpu_budget": 0.04
+        },
+        {
+          "key": "empire:shard",
+          "avg": 1.001124876471348,
+          "max": 1.001124876471348,
+          "samples": 3,
+          "name": "Shard Manager",
+          "max_cpu": 1.3529633000002832,
+          "frequency": "low",
+          "run_count": 17,
+          "skipped_count": 1639,
+          "cpu_budget": 0.02
+        },
+        {
+          "key": "empire:market",
+          "avg": 0.7289282000000412,
+          "max": 0.7289282000000412,
+          "samples": 3,
+          "name": "Market Manager",
+          "max_cpu": 0.8467030000010709,
+          "frequency": "low",
+          "run_count": 18,
+          "skipped_count": 1638,
+          "cpu_budget": 0.02
+        },
+        {
+          "key": "creep:upgrader_79382832_2",
+          "avg": 0.6167186813714777,
+          "max": 0.6167186813714777,
+          "samples": 3,
+          "name": "Creep upgrader_79382832_2 (upgrader)",
+          "max_cpu": 1.5465800999991188,
+          "frequency": "high",
+          "run_count": 875,
+          "skipped_count": 0,
+          "cpu_budget": 0.008
+        },
+        {
+          "key": "creep:upgrader_79382628_133",
+          "avg": 0.5476262804448355,
+          "max": 0.5476262804448355,
+          "samples": 3,
+          "name": "Creep upgrader_79382628_133 (upgrader)",
+          "max_cpu": 3.2418035000009695,
+          "frequency": "high",
+          "run_count": 1079,
+          "skipped_count": 0,
+          "cpu_budget": 0.008
+        },
+        {
+          "key": "core:memorySegmentStats",
+          "avg": 0.49394264705874574,
+          "max": 0.49394264705874574,
+          "samples": 3,
+          "name": "Memory Segment Stats",
+          "max_cpu": 1.1901292000002286,
+          "frequency": "medium",
+          "run_count": 34,
+          "skipped_count": 1622,
+          "cpu_budget": 0.005
+        },
+        {
+          "key": "empire:pixelBuying",
+          "avg": 0.3814658249989513,
+          "max": 0.3814658249989513,
+          "samples": 3,
+          "name": "Pixel Buying Manager",
+          "max_cpu": 0.4126719999994748,
+          "frequency": "low",
+          "run_count": 8,
+          "skipped_count": 1648,
+          "cpu_budget": 0.01
+        },
+        {
+          "key": "creep:harvester_79382220_492",
+          "avg": 0.3014064493910036,
+          "max": 0.3014064493910036,
+          "samples": 3,
+          "name": "Creep harvester_79382220_492 (harvester)",
+          "max_cpu": 1.7692948000003526,
+          "frequency": "high",
+          "run_count": 1478,
+          "skipped_count": 0,
+          "cpu_budget": 0.012
+        },
+        {
+          "key": "creep:engineer_79382475_387",
+          "avg": 0.25545783393154775,
+          "max": 0.25545783393154775,
+          "samples": 3,
+          "name": "Creep engineer_79382475_387 (engineer)",
+          "max_cpu": 0.6557082999988779,
+          "frequency": "high",
+          "run_count": 1226,
+          "skipped_count": 0,
+          "cpu_budget": 0.008
+        },
+        {
+          "key": "room:labConfig",
+          "avg": 0.2187839333333683,
+          "max": 0.2187839333333683,
+          "samples": 3,
+          "name": "Lab Config Manager",
+          "max_cpu": 0.25579190000007657,
+          "frequency": "low",
+          "run_count": 9,
+          "skipped_count": 1648,
+          "cpu_budget": 0.01
+        },
+        {
+          "key": "creep:harvester_79383507_694",
+          "avg": 0.21619241340256137,
+          "max": 0.21619241340256137,
+          "samples": 3,
+          "name": "Creep harvester_79383507_694 (harvester)",
+          "max_cpu": 0.5621316999968258,
+          "frequency": "high",
+          "run_count": 194,
+          "skipped_count": 0,
+          "cpu_budget": 0.012
+        },
+        {
+          "key": "creep:builder_79382424_316",
+          "avg": 0.21608853957527882,
+          "max": 0.21608853957527882,
+          "samples": 3,
+          "name": "Creep builder_79382424_316 (builder)",
+          "max_cpu": 0.8750612000021647,
+          "frequency": "high",
+          "run_count": 1271,
+          "skipped_count": 0,
+          "cpu_budget": 0.008
+        },
+        {
+          "key": "creep:healer_79382373_715",
+          "avg": 0.19784948598202312,
+          "max": 0.19784948598202312,
+          "samples": 3,
+          "name": "Creep healer_79382373_715 (healer)",
+          "max_cpu": 0.5647395000005417,
+          "frequency": "high",
+          "run_count": 1334,
+          "skipped_count": 0,
+          "cpu_budget": 0.01
+        },
+        {
+          "key": "creep:builder_79382526_825",
+          "avg": 0.17087709127464323,
+          "max": 0.17087709127464323,
+          "samples": 3,
+          "name": "Creep builder_79382526_825 (builder)",
+          "max_cpu": 0.6254234999996697,
+          "frequency": "high",
+          "run_count": 1169,
+          "skipped_count": 0,
+          "cpu_budget": 0.008
+        }
+      ],
+      "top_rooms": [
+        {
+          "key": "W12S8",
+          "avg": 2.6879361000000017,
+          "max": 2.6879361000000017,
+          "samples": 3,
+          "peak": 2.6879361000000017,
+          "rcl": 4,
+          "creeps": 12
+        }
+      ],
+      "top_roles": [
+        {
+          "key": "healer",
+          "avg": 0.23289239999940037,
+          "max": 0.23289239999940037,
+          "samples": 3,
+          "peak": 0.23289239999940037,
+          "count": 1,
+          "active": 0,
+          "idle": 1
+        },
+        {
+          "key": "upgrader",
+          "avg": 0.1718294500024058,
+          "max": 0.1718294500024058,
+          "samples": 3,
+          "peak": 0.1718294500024058,
+          "count": 2,
+          "active": 0,
+          "idle": 2
+        },
+        {
+          "key": "hauler",
+          "avg": 0.15974854999876698,
+          "max": 0.15974854999876698,
+          "samples": 3,
+          "peak": 0.15974854999876698,
+          "count": 2,
+          "active": 1,
+          "idle": 1
+        },
+        {
+          "key": "ranger",
+          "avg": 0.15225599999757833,
+          "max": 0.15225599999757833,
+          "samples": 3,
+          "peak": 0.15225599999757833,
+          "count": 1,
+          "active": 0,
+          "idle": 1
+        },
+        {
+          "key": "engineer",
+          "avg": 0.1382277000011527,
+          "max": 0.1382277000011527,
+          "samples": 3,
+          "peak": 0.1382277000011527,
+          "count": 2,
+          "active": 0,
+          "idle": 2
+        },
+        {
+          "key": "builder",
+          "avg": 0.13720980000289273,
+          "max": 0.13720980000289273,
+          "samples": 3,
+          "peak": 0.13720980000289273,
+          "count": 2,
+          "active": 0,
+          "idle": 2
+        },
+        {
+          "key": "soldier",
+          "avg": 0.11919830000260845,
+          "max": 0.11919830000260845,
+          "samples": 3,
+          "peak": 0.11919830000260845,
+          "count": 1,
+          "active": 0,
+          "idle": 1
+        },
+        {
+          "key": "larvaWorker",
+          "avg": 0.0678912000003038,
+          "max": 0.0678912000003038,
+          "samples": 3,
+          "peak": 0.0678912000003038,
+          "count": 1,
+          "active": 0,
+          "idle": 1
+        },
+        {
+          "key": "scout",
+          "avg": 0.0639080000037211,
+          "max": 0.0639080000037211,
+          "samples": 3,
+          "peak": 0.0639080000037211,
+          "count": 1,
+          "active": 0,
+          "idle": 1
+        }
+      ],
+      "top_cpu_details": []
+    }
+  }
+}

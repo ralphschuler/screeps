@@ -9,6 +9,14 @@ import { logger } from "@ralphschuler/screeps-core";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { getActualHostileCreeps } from "../alliance/nonAggressionPact";
 
+const DEFENSE_ASSIST_THREAT_PARTS = new Set<BodyPartConstant>([ATTACK, RANGED_ATTACK, WORK, HEAL, CLAIM]);
+
+function hasVisibleDefenseThreat(room: Room): boolean {
+  return getActualHostileCreeps(room).some(hostile =>
+    hostile.body.some(part => part.hits > 0 && DEFENSE_ASSIST_THREAT_PARTS.has(part.type))
+  );
+}
+
 /**
  * Defender requirement analysis
  */
@@ -208,7 +216,8 @@ export function needsEmergencyDefenders(room: Room, _swarm: SwarmState): boolean
  * Check if room needs external defense assistance
  */
 export function needsDefenseAssistance(room: Room, swarm: SwarmState): boolean {
-  if (swarm.danger < 2) {
+  const visibleDefenseThreat = hasVisibleDefenseThreat(room);
+  if (swarm.danger < 2 && !visibleDefenseThreat) {
     return false;
   }
 
@@ -221,6 +230,10 @@ export function needsDefenseAssistance(room: Room, swarm: SwarmState): boolean {
 
   if (defenderDeficit <= 0) {
     return false;
+  }
+
+  if (visibleDefenseThreat) {
+    return true;
   }
 
   const spawns = room.find(FIND_MY_SPAWNS);

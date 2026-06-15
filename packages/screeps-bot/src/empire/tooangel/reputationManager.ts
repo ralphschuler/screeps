@@ -13,6 +13,7 @@
 
 import { logger } from "@ralphschuler/screeps-core";
 import { getTooAngelMemory } from "./memoryInit";
+import { normalizeJsonObjectMessage } from "./messageParsing";
 import { findClosestNPCRoom } from "./npcDetector";
 import type { TooAngelReputationMessage } from "./types";
 
@@ -40,8 +41,11 @@ export function getReputation(): number {
  * Parse incoming terminal transaction for reputation response
  */
 export function parseReputationResponse(description: string): number | null {
+  const json = normalizeJsonObjectMessage(description);
+  if (!json) return null;
+
   try {
-    const parsed: TooAngelReputationMessage = JSON.parse(description);
+    const parsed: TooAngelReputationMessage = JSON.parse(json);
 
     if (parsed.type === "reputation" && typeof parsed.reputation === "number") {
       return parsed.reputation;
@@ -64,27 +68,31 @@ export function processReputationUpdates(): void {
   const memory = getTooAngelMemory();
 
   for (const transaction of Game.market.incomingTransactions) {
-    // Skip market orders
-    if (transaction.order) {
-      continue;
-    }
+    try {
+      // Skip market orders
+      if (transaction.order) {
+        continue;
+      }
 
-    // Skip if no description
-    if (!transaction.description) {
-      continue;
-    }
+      // Skip if no description
+      if (!transaction.description) {
+        continue;
+      }
 
-    const reputation = parseReputationResponse(transaction.description);
+      const reputation = parseReputationResponse(transaction.description);
 
-    if (reputation !== null) {
-      logger.info(`Received reputation update from TooAngel: ${reputation}`, {
-        subsystem: "TooAngel"
-      });
+      if (reputation !== null) {
+        logger.info(`Received reputation update from TooAngel: ${reputation}`, {
+          subsystem: "TooAngel"
+        });
 
-      memory.reputation = {
-        value: reputation,
-        lastUpdated: Game.time
-      };
+        memory.reputation = {
+          value: reputation,
+          lastUpdated: Game.time
+        };
+      }
+    } catch (error) {
+      logger.warn(`Skipping malformed TooAngel reputation transaction: ${error}`, { subsystem: "TooAngel" });
     }
   }
 }

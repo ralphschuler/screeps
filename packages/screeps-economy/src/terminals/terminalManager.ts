@@ -175,8 +175,7 @@ export class TerminalManager {
       r => r.controller?.my && r.terminal && r.terminal.my && r.terminal.isActive()
     );
 
-    if (roomsWithTerminals.length < 2) {
-      // Need at least 2 terminals to balance
+    if (roomsWithTerminals.length === 0) {
       return;
     }
 
@@ -186,11 +185,15 @@ export class TerminalManager {
     // Clean old transfer requests
     this.cleanTransferQueue();
 
+    // Single-terminal rooms can still clear capacity and sell local surplus.
+    this.monitorTerminalCapacity(roomsWithTerminals);
+
+    if (roomsWithTerminals.length < 2) {
+      return;
+    }
+
     // Check for emergency situations
     this.checkEmergencyTransfers(roomsWithTerminals);
-
-    // Monitor terminal capacity
-    this.monitorTerminalCapacity(roomsWithTerminals);
 
     // Balance energy between rooms
     this.balanceEnergy(roomsWithTerminals);
@@ -589,18 +592,6 @@ export class TerminalManager {
       const terminal = fromRoom.terminal;
       if (terminal.cooldown > 0) continue;
 
-      // Check if we have enough resources
-      const available = terminal.store.getUsedCapacity(request.resourceType);
-      if (available < request.amount) {
-        logger.debug(
-          `Terminal transfer cancelled: insufficient ${request.resourceType} in ${request.fromRoom} (need ${request.amount}, have ${available})`,
-          { subsystem: "Terminal" }
-        );
-        // Remove this request
-        this.transferQueue = this.transferQueue.filter(r => r !== request);
-        continue;
-      }
-
       // Determine destination for this hop
       let destination = request.toRoom;
       
@@ -610,6 +601,43 @@ export class TerminalManager {
         if (nextHop) {
           destination = nextHop;
         }
+      }
+
+      const destinationTerminal = Game.rooms[destination]?.terminal;
+      if (!destinationTerminal) {
+        logger.debug(`Terminal transfer cancelled: destination terminal unavailable in ${destination}`, {
+          subsystem: "Terminal"
+        });
+        this.transferQueue = this.transferQueue.filter(r => r !== request);
+        continue;
+      }
+
+      const destinationFreeCapacity = destinationTerminal.store.getFreeCapacity(request.resourceType);
+      if (destinationFreeCapacity < request.amount) {
+        logger.debug(
+          `Terminal transfer cancelled: insufficient ${request.resourceType} capacity in ${destination} (need ${request.amount}, free ${destinationFreeCapacity})`,
+          { subsystem: "Terminal" }
+        );
+        this.transferQueue = this.transferQueue.filter(r => r !== request);
+        continue;
+      }
+
+      // Check if we have enough resources and transfer energy.
+      const available = terminal.store.getUsedCapacity(request.resourceType);
+      const energyCost = Game.market.calcTransactionCost(request.amount, request.fromRoom, destination);
+      const availableEnergy = terminal.store.getUsedCapacity(RESOURCE_ENERGY);
+      const requiredResourceAmount = request.resourceType === RESOURCE_ENERGY
+        ? request.amount + energyCost
+        : request.amount;
+
+      if (available < requiredResourceAmount || availableEnergy < energyCost) {
+        logger.debug(
+          `Terminal transfer cancelled: insufficient ${request.resourceType}/energy in ${request.fromRoom} (need ${request.amount} + ${energyCost} energy, have ${available} ${request.resourceType}, ${availableEnergy} energy)`,
+          { subsystem: "Terminal" }
+        );
+        // Remove this request
+        this.transferQueue = this.transferQueue.filter(r => r !== request);
+        continue;
       }
 
       // Execute transfer

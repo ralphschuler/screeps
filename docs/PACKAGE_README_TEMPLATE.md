@@ -647,7 +647,7 @@ describe('Integration Tests', () => {
 
 ### Architecture
 - [@ralphschuler/screeps-posis](../../screeps-posis) - POSIS process architecture
-- [@ralphschuler/screeps-tasks](../../screeps-tasks) - Task management system
+- [@ralphschuler/screeps-roles](../../screeps-roles) - Task management system
 
 ### See Also
 - [Framework Documentation](../../FRAMEWORK.md)

@@ -2,7 +2,7 @@
 
 > Multi-shard coordination, resource transfers, and CPU distribution across shards
 
-**Part of the [Screeps Framework](../../FRAMEWORK.md)** - Build powerful Screeps bots using modular, tested packages.
+**Part of the [Screeps Framework](../../../FRAMEWORK.md)** - Build powerful Screeps bots using modular, tested packages.
 
 ## Table of Contents
 

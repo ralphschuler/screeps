@@ -14,7 +14,21 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import { filterAllyCreeps } from "../alliance/nonAggressionPact";
+import { getActualHostileCreeps } from "../alliance/nonAggressionPact";
+
+interface DefenseSettingsMemory {
+  defenseSettings?: {
+    /** Set false to roll back WORK-part dismantle threat scoring in threat assessment. */
+    workPartThreatScoring?: boolean;
+  };
+}
+
+const MIN_WORK_PART_THREAT_SCORE = 100;
+
+function isWorkPartThreatScoringEnabled(): boolean {
+  if (typeof Memory === "undefined") return true;
+  return (Memory as unknown as DefenseSettingsMemory).defenseSettings?.workPartThreatScoring !== false;
+}
 
 /**
  * Comprehensive threat analysis for a room
@@ -61,9 +75,7 @@ export interface ThreatAnalysis {
  * @returns Comprehensive threat analysis
  */
 export function assessThreat(room: Room): ThreatAnalysis {
-  const allHostiles = room.find(FIND_HOSTILE_CREEPS);
-  // Filter allied entities - non-aggression pact (ROADMAP Section 25)
-  const hostiles = filterAllyCreeps(allHostiles);
+  const hostiles = getActualHostileCreeps(room);
   
   // Early exit for no threats
   if (hostiles.length === 0) {
@@ -96,6 +108,8 @@ export function assessThreat(room: Room): ThreatAnalysis {
   let meleeCount = 0;
   let dismantlerCount = 0;
 
+  const scoreWorkPartThreats = isWorkPartThreatScoringEnabled();
+
   for (const hostile of hostiles) {
     let attackParts = 0;
     let rangedParts = 0;
@@ -122,8 +136,10 @@ export function assessThreat(room: Room): ThreatAnalysis {
       }
     }
 
-    // Calculate DPS contribution
-    totalDPS += attackParts * 30 + rangedParts * 10;
+    // Calculate defensive pressure. WORK parts do not damage creeps, but each active part
+    // can dismantle structures for DISMANTLE_POWER hits/tick and must trigger defense.
+    const dismantlePower = scoreWorkPartThreats ? workParts * DISMANTLE_POWER : 0;
+    totalDPS += attackParts * 30 + rangedParts * 10 + dismantlePower;
     totalHP += hostile.hits;
 
     // Check for boosts
@@ -144,9 +160,14 @@ export function assessThreat(room: Room): ThreatAnalysis {
     if (attackParts > 0) {
       meleeCount++;
     }
-    if (workParts >= 5) {
+    if (scoreWorkPartThreats) {
+      if (workParts > 0) {
+        dismantlerCount++;
+        threatScore += Math.max(MIN_WORK_PART_THREAT_SCORE, dismantlePower * 2);
+      }
+    } else if (workParts >= 5) {
       dismantlerCount++;
-      threatScore += 150; // Dismantlers threaten structures
+      threatScore += 150; // Legacy dismantler threshold.
     }
 
     // Base score by offensive capability
@@ -439,8 +460,10 @@ function calculateAverageDefenderStats(templates: DefenderTemplate[]): { dpsPerE
  * @param energyPerDefender - Optional override for energy per defender (uses actual templates if not provided)
  * @returns Estimated total energy required to spawn enough defenders
  */
+export type HostileBody = Pick<Creep, "body">;
+
 export function estimateDefenderCost(
-  totalDPS: number | Creep[],
+  totalDPS: number | HostileBody[],
   defenderDpsPerCreep?: number,
   energyPerDefender?: number
 ): number {

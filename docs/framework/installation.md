@@ -65,7 +65,7 @@ npm install
 | screeps-spawn | `npm i @ralphschuler/screeps-spawn` | None |
 | screeps-economy | `npm i @ralphschuler/screeps-economy` | screeps-utils |
 | screeps-chemistry | `npm i @ralphschuler/screeps-chemistry` | None |
-| screeps-tasks | `npm i @ralphschuler/screeps-tasks` | None |
+| screeps-roles | `npm i @ralphschuler/screeps-roles` | None |
 | **Combat & Defense** |
 | screeps-defense | `npm i @ralphschuler/screeps-defense` | screeps-kernel |
 | **Architecture & Utilities** |

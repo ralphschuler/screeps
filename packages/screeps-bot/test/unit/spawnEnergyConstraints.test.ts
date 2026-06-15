@@ -1,7 +1,5 @@
 import { assert } from "chai";
-import { ROLE_DEFINITIONS } from "@ralphschuler/screeps-spawn";
-import { countCreepsByRole } from "@ralphschuler/screeps-spawn";
-import { runSpawnManager, getAllSpawnableRoles } from "@ralphschuler/screeps-spawn";
+import { getAllSpawnableRoles, runSpawnManager } from "@ralphschuler/screeps-spawn";
 import { clearRoomFindCache } from "@ralphschuler/screeps-cache";
 import type { SwarmState } from "../../src/memory/schemas";
 import { kernel } from "../../src/core/kernel";
@@ -69,6 +67,7 @@ function createMockRoom(name: string, energyAvailable: number, energyCapacity: n
     name: `Spawn1`,
     structureType: STRUCTURE_SPAWN,
     spawning: false,
+    id: `spawn_${name}` as Id<StructureSpawn>,
     spawnCreep: (body: BodyPartConstant[], creepName: string, opts?: SpawnOptions) => {
       // Calculate cost of body
       const costs: Record<BodyPartConstant, number> = {
@@ -83,9 +82,13 @@ function createMockRoom(name: string, energyAvailable: number, energyCapacity: n
       };
       const cost = body.reduce((sum, part) => sum + costs[part], 0);
 
-      if (cost > energyAvailable) {
+      if (cost > room.energyAvailable) {
         return ERR_NOT_ENOUGH_ENERGY;
       }
+
+      // Simulate in-game spawn behavior: consuming energy and occupying spawn
+      room.energyAvailable -= cost;
+      mockSpawn.spawning = { name: creepName } as any;
 
       // Successfully spawned - add to Game.creeps
       const memory = (opts?.memory as unknown as Record<string, unknown>) ?? {};

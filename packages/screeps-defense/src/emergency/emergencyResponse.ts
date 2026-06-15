@@ -28,7 +28,7 @@ import {
   getCurrentDefenders,
   needsDefenseAssistance
 } from "../analysis/defenderNeeds";
-import { filterAllyCreeps } from "../alliance/nonAggressionPact";
+import { getActualHostileCreeps } from "../alliance/nonAggressionPact";
 
 /**
  * Emergency response levels
@@ -127,14 +127,13 @@ export class EmergencyResponseManager {
    * Calculate emergency level based on room state
    */
   private calculateEmergencyLevel(room: Room, swarm: SwarmState): EmergencyLevel {
-    // No emergency if no danger
-    if (swarm.danger === 0) {
+    const hostiles = getActualHostileCreeps(room);
+
+    // No emergency if no danger signal and no currently visible hostile.
+    if (swarm.danger === 0 && hostiles.length === 0) {
       return EmergencyLevel.NONE;
     }
 
-    // Filter allied entities - non-aggression pact (ROADMAP Section 25)
-    const allHostiles = room.find(FIND_HOSTILE_CREEPS);
-    const hostiles = filterAllyCreeps(allHostiles);
     const needs = analyzeDefenderNeeds(room);
     const current = getCurrentDefenders(room);
 
@@ -169,8 +168,9 @@ export class EmergencyResponseManager {
       return EmergencyLevel.MEDIUM;
     }
 
-    // Low: Minor threat detected
-    if (swarm.danger >= 1) {
+    // Low: Minor threat detected. Visible dangerous hostiles must still trigger
+    // assistance request creation even if swarm danger has not propagated yet.
+    if (swarm.danger >= 1 || hostiles.length > 0) {
       return EmergencyLevel.LOW;
     }
 
@@ -181,11 +181,9 @@ export class EmergencyResponseManager {
    * Execute emergency response actions
    */
   private executeEmergencyResponse(room: Room, swarm: SwarmState, state: EmergencyState): void {
-    // Response: Request multi-room assistance for HIGH/CRITICAL emergencies
-    if (
-      (state.level === EmergencyLevel.HIGH || state.level === EmergencyLevel.CRITICAL) &&
-      !state.assistanceRequested
-    ) {
+    // Response: request multi-room assistance for any visible dangerous attack.
+    // needsDefenseAssistance gates out harmless/allied sightings and rooms without a defender deficit.
+    if (state.level >= EmergencyLevel.LOW && !state.assistanceRequested) {
       const requested = this.requestDefenseAssistance(room, swarm);
       if (requested) {
         state.assistanceRequested = true;

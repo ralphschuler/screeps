@@ -110,8 +110,13 @@ export function calculatePathDistance(fromRoom: string, toRoom: string): number 
     const match = roomName.match(/^([WE])(\d+)([NS])(\d+)$/);
     if (!match) return { x: 0, y: 0 };
 
-    const x = match[1] === "W" ? -parseInt(match[2], 10) : parseInt(match[2], 10);
-    const y = match[3] === "N" ? parseInt(match[4], 10) : -parseInt(match[4], 10);
+    const xIndex = parseInt(match[2], 10);
+    const yIndex = parseInt(match[4], 10);
+
+    // Screeps room coordinates do not have a shared zero room across axes:
+    // W0 is immediately west of E0, and N0 is immediately north of S0.
+    const x = match[1] === "W" ? -xIndex - 1 : xIndex;
+    const y = match[3] === "N" ? -yIndex - 1 : yIndex;
 
     return { x, y };
   };

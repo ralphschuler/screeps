@@ -21,13 +21,10 @@
  * Addresses Issue: #34
  */
 
+import { getActualHostileCreeps } from "@ralphschuler/screeps-core";
 import type { PheromoneState, SwarmState, MemoryManager } from "./types";
 import { VisualizationLayer } from "./types";
-import { createLogger } from "./logger";
 import { visualizationManager } from "./visualizationManager";
-
-// Logger is available for future use if needed
-const _logger = createLogger("RoomVisualizer");
 
 /**
  * Visualization configuration
@@ -181,7 +178,7 @@ export class RoomVisualizer {
     // Room name and RCL
     const rcl = room.controller?.level ?? 0;
     const progress = room.controller
-      ? `${Math.round((room.controller.progress / room.controller.progressTotal) * 100)}%`
+      ? `${room.controller.progressTotal > 0 ? Math.round((room.controller.progress / room.controller.progressTotal) * 100) : 0}%`
       : "N/A";
     visual.text(`${room.name} | RCL ${rcl} (${progress})`, x, y, {
       align: "left",
@@ -232,7 +229,7 @@ export class RoomVisualizer {
 
     // Creep count
     const creeps = room.find(FIND_MY_CREEPS).length;
-    const hostiles = room.find(FIND_HOSTILE_CREEPS).length;
+    const hostiles = getActualHostileCreeps(room).length;
     visual.text(`Creeps: ${creeps} | Hostiles: ${hostiles}`, x, y, {
       align: "left",
       font: "0.4 monospace",
@@ -359,7 +356,7 @@ export class RoomVisualizer {
    * Draw combat information with animated markers and 3D depth effects
    */
   private drawCombatInfo(visual: RoomVisual, room: Room): void {
-    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    const hostiles = getActualHostileCreeps(room);
 
     // Draw circles around hostiles with threat level
     for (const hostile of hostiles) {
@@ -428,7 +425,7 @@ export class RoomVisualizer {
    */
   private calculateCreepThreat(creep: Creep): number {
     let threat = 0;
-    for (const part of creep.body) {
+    for (const part of creep.body ?? []) {
       if (!part.hits) continue;
       switch (part.type) {
         case ATTACK:

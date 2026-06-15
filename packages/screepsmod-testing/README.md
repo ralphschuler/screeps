@@ -27,6 +27,8 @@ screepsmod-testing solves these problems by running tests **inside** the Screeps
 - **Lifecycle Hooks**: beforeEach, afterEach, beforeAll, afterAll
 - **Test Discovery**: Automatic test registration and execution
 - **Detailed Reporting**: Console output with test results and timing
+- **Runtime CI Assertions**: strict player-sandbox + backend checks merged into `Memory.screepsmodTesting`
+- **Scenario Support**: default bootstrap, construction/economy, remote mining, hostile defense, and ally-safety scenario validation
 - **Modular Design**: Easy to add new tests without modifying core code
 
 ## Installation
@@ -44,9 +46,18 @@ mods:
 # Optional: Configure test behavior
 screepsmod:
   testing:
-    autoRun: true        # Automatically run tests (default: true)
+    autoRun: true        # Automatically run legacy framework tests (default: true)
     testInterval: 0      # Run every N ticks (0 = run once, default: 0)
+    runtimeWarmupTicks: 100
+    scenarios:
+      - default-bootstrap
+      - construction-economy
+      - remote-mining
+      - defense-hostile
+      - alliance-safety
 ```
+
+CI reads merged runtime results from `Memory.screepsmodTesting`. Source summaries remain available at `Memory.screepsmodTestingPlayer`, `Memory.screepsmodTestingBackend`, and `Memory.screepsmodTestingLegacy` when present.
 
 ### 2. Install the package
 

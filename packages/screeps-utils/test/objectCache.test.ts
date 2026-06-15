@@ -11,7 +11,8 @@ import {
   getCachedSource,
   getCacheStatistics,
   prefetchRoomObjects,
-  clearObjectCache
+  clearObjectCache,
+  warmCache
 } from '../src/cache/objectCache';
 
 describe('Object Cache', () => {
@@ -268,6 +269,37 @@ describe('Object Cache', () => {
       
       const stats = getCacheStatistics();
       expect(stats.size).to.be.greaterThan(0);
+    });
+  });
+
+  describe('warmCache', () => {
+    it('should pre-populate owned room spawns and towers without lookups', () => {
+      const spawn = { id: 'spawn1', structureType: STRUCTURE_SPAWN };
+      const tower = { id: 'tower1', structureType: STRUCTURE_TOWER };
+      const controller = { id: 'ctrl1', my: true };
+      let lookupCount = 0;
+      const mockRoom = {
+        name: 'W1N1',
+        controller,
+        find: (type: number, opts?: { filter?: (structure: any) => boolean }) => {
+          if (type === FIND_SOURCES) return [];
+          if (type === FIND_MY_SPAWNS) return [spawn];
+          if (type === FIND_MY_STRUCTURES) return [tower].filter(structure => opts?.filter?.(structure) ?? true);
+          return [];
+        }
+      };
+
+      (global as any).Game.rooms = { W1N1: mockRoom };
+      (global as any).Game.getObjectById = () => {
+        lookupCount++;
+        return null;
+      };
+
+      warmCache();
+
+      expect(getCachedObjectById('spawn1' as Id<any>)).to.equal(spawn);
+      expect(getCachedObjectById('tower1' as Id<any>)).to.equal(tower);
+      expect(lookupCount).to.equal(0);
     });
   });
 

@@ -1,6 +1,6 @@
 # 🧪 Server Test Results ✅
 
-**Generated**: 1/8/2026, 4:42:20 AM
+**Generated**: 6/13/2026, 1:21:53 PM
 
 ## Summary
 
@@ -24,9 +24,9 @@
 
 ### CPU Metrics
 
-- **Average CPU**: 0.000 (target: ≤0.1)
-- **Max CPU**: 0.000 (target: ≤0.15)
-- **Average Bucket**: 10000 (target: ≥9500)
+- **Average CPU**: N/A (target: ≤0.1)
+- **Max CPU**: N/A (target: ≤0.15)
+- **Average Bucket**: N/A (target: ≥9500)
 
 ## Framework Package Tests
 

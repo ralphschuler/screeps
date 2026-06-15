@@ -7,18 +7,18 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
+import { normalizeJsonObjectMessage } from "./messageParsing";
 import type { TooAngelNPCRoom, TooAngelQuestSign } from "./types";
 
 /**
  * Check if a controller sign is a TooAngel quest advertisement
  */
 export function parseQuestSign(sign: string | undefined): TooAngelQuestSign | null {
-  if (!sign) {
-    return null;
-  }
+  const json = normalizeJsonObjectMessage(sign);
+  if (!json) return null;
 
   try {
-    const parsed = JSON.parse(sign);
+    const parsed = JSON.parse(json);
 
     if (parsed.type === "quest" && parsed.id && parsed.origin && typeof parsed.info === "string") {
       return parsed as TooAngelQuestSign;

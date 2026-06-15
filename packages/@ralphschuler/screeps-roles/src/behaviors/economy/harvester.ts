@@ -65,19 +65,19 @@ export function harvester(ctx: CreepContext): CreepAction {
     return { type: "harvest", target: source };
   }
 
-  // OPTIMIZATION: Full - find nearby container or link using cached lookup
-  // Since harvesters are stationary, we cache the nearby structures for 50 ticks
-  // to avoid expensive findInRange calls every tick
-  const container = findNearbyContainerCached(ctx.creep);
-  if (container) {
-    logger.debug(`${ctx.creep.name} harvester transferring to container ${container.id}`);
-    return { type: "transfer", target: container, resourceType: RESOURCE_ENERGY };
-  }
-
+  // OPTIMIZATION: Full - find nearby link or container using cached lookup.
+  // Source links are higher-throughput than containers once constructed, so fill
+  // them first and fall back to containers when the link is full/missing.
   const link = findNearbyLinkCached(ctx.creep);
   if (link) {
     logger.debug(`${ctx.creep.name} harvester transferring to link ${link.id}`);
     return { type: "transfer", target: link, resourceType: RESOURCE_ENERGY };
+  }
+
+  const container = findNearbyContainerCached(ctx.creep);
+  if (container) {
+    logger.debug(`${ctx.creep.name} harvester transferring to container ${container.id}`);
+    return { type: "transfer", target: container, resourceType: RESOURCE_ENERGY };
   }
 
   // Drop on ground for haulers

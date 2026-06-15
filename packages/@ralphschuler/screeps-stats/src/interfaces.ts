@@ -32,7 +32,7 @@ export function createLogger(category: string): Logger {
       // Stringify objects/arrays, with error handling
       try {
         return JSON.stringify(arg);
-      } catch (error) {
+      } catch (_error) {
         return '[Unserializable Object]';
       }
     });
@@ -47,6 +47,15 @@ export function createLogger(category: string): Logger {
 }
 
 export const logger: Logger = createLogger('stats');
+
+// Alliance safety helpers come from @ralphschuler/screeps-core to keep one
+// permanent non-aggression source of truth across runtime packages.
+export {
+  NON_AGGRESSION_PACT_PLAYERS,
+  isAllyPlayer,
+  filterAllyCreeps,
+  getActualHostileCreeps
+} from "@ralphschuler/screeps-core";
 
 // ============================================================================
 // Memory Manager Interface
@@ -72,7 +81,11 @@ export const memoryManager: MemoryManager = {
     }
     return map;
   },
-  getSwarmState: (roomName: string) => (Memory as { swarm?: Record<string, unknown> }).swarm?.[roomName] || {}
+  getSwarmState: (roomName: string) => {
+    const roomSwarm = (Memory.rooms?.[roomName] as { swarm?: unknown } | undefined)?.swarm;
+    if (roomSwarm) return roomSwarm;
+    return (Memory as { swarm?: Record<string, unknown> }).swarm?.[roomName] || {};
+  }
 };
 
 // ============================================================================

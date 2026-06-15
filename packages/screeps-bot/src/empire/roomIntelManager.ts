@@ -90,6 +90,10 @@ export class RoomIntelManager {
     // Find nearby rooms around owned rooms
     for (const owned of ownedRooms) {
       const exits = Game.map.describeExits(owned.name);
+      if (!exits) {
+        continue;
+      }
+
       for (const exitRoomName of Object.values(exits)) {
         if (!exitRoomName) continue;
 

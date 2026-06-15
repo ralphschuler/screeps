@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import { RoomConstructionManager } from "../../src/core/managers/RoomConstructionManager";
+import { RoomConstructionManager, shouldRunRoadAwarePerimeterConstruction } from "../../src/core/managers/RoomConstructionManager";
 
 /**
  * Test suite for RoomConstructionManager
@@ -42,6 +42,90 @@ describe("RoomConstructionManager", () => {
   });
 
   describe("Blueprint construction", () => {
+    function createSpawnlessRoom(
+      record: { calls: { x: number; y: number; structureType: BuildableStructureConstant }[] },
+      level = 1
+    ): Room {
+      const controller = {
+        my: true,
+        level,
+        pos: new RoomPosition(25, 25, "W2N1")
+      } as unknown as StructureController;
+      const source = {
+        id: "source1" as Id<Source>,
+        pos: new RoomPosition(20, 20, "W2N1")
+      } as unknown as Source;
+
+      return {
+        name: "W2N1",
+        controller,
+        getTerrain: () => ({ get: () => 0 }),
+        find: (type: FindConstant) => {
+          if (type === FIND_SOURCES) return [source];
+          return [];
+        },
+        createConstructionSite: (x: number, y: number, structureType: BuildableStructureConstant) => {
+          record.calls.push({ x, y, structureType });
+          return OK;
+        }
+      } as unknown as Room;
+    }
+
+    it("should place the first spawn site in a spawnless RCL1 room even when other sites exist", () => {
+      const record: { calls: { x: number; y: number; structureType: BuildableStructureConstant }[] } = { calls: [] };
+      const room = createSpawnlessRoom(record);
+      const roadSite = { structureType: STRUCTURE_ROAD } as ConstructionSite;
+      const swarm = { danger: 0, remoteAssignments: [], metrics: {} } as any;
+
+      manager.runConstruction(room, swarm, [roadSite], []);
+
+      assert.isTrue(
+        record.calls.some(call => call.structureType === STRUCTURE_SPAWN),
+        "spawnless RCL1 room should get a spawn construction site before other bootstrap work"
+      );
+    });
+
+    it("should not place duplicate first spawn sites", () => {
+      const record: { calls: { x: number; y: number; structureType: BuildableStructureConstant }[] } = { calls: [] };
+      const room = createSpawnlessRoom(record);
+      const spawnSite = { structureType: STRUCTURE_SPAWN } as ConstructionSite;
+      const swarm = { danger: 0, remoteAssignments: [], metrics: {} } as any;
+
+      manager.runConstruction(room, swarm, [spawnSite], []);
+
+      assert.isFalse(
+        record.calls.some(call => call.structureType === STRUCTURE_SPAWN),
+        "existing spawn construction site should satisfy first-spawn placement"
+      );
+    });
+
+    it("should place the first spawn site before the per-room construction cap", () => {
+      const record: { calls: { x: number; y: number; structureType: BuildableStructureConstant }[] } = { calls: [] };
+      const room = createSpawnlessRoom(record);
+      const roadSites = Array.from({ length: 10 }, () => ({ structureType: STRUCTURE_ROAD }) as ConstructionSite);
+      const swarm = { danger: 0, remoteAssignments: [], metrics: {} } as any;
+
+      manager.runConstruction(room, swarm, roadSites, []);
+
+      assert.isTrue(
+        record.calls.some(call => call.structureType === STRUCTURE_SPAWN),
+        "first spawn placement should bypass the local construction throttling cap"
+      );
+    });
+
+    it("should rebuild the first spawn in spawnless claimed rooms above RCL1", () => {
+      const record: { calls: { x: number; y: number; structureType: BuildableStructureConstant }[] } = { calls: [] };
+      const room = createSpawnlessRoom(record, 3);
+      const swarm = { danger: 0, remoteAssignments: [], metrics: {} } as any;
+
+      manager.runConstruction(room, swarm, [], []);
+
+      assert.isTrue(
+        record.calls.some(call => call.structureType === STRUCTURE_SPAWN),
+        "spawnless owned rooms above RCL1 should rebuild a spawn instead of stalling forever"
+      );
+    });
+
     it("should place construction sites based on blueprint", () => {
       // Placeholder for future tests when we have mock room objects
       assert.exists(manager);
@@ -61,6 +145,41 @@ describe("RoomConstructionManager", () => {
 
     it("should update construction site metrics", () => {
       assert.exists(manager);
+    });
+  });
+
+  describe("Perimeter throttling", () => {
+    it("should skip peaceful road-aware perimeter planning while a defense site is pending", () => {
+      const shouldRun = shouldRunRoadAwarePerimeterConstruction({
+        allowPerimeter: true,
+        rcl: 6,
+        danger: 0,
+        existingSites: [{ structureType: STRUCTURE_RAMPART } as ConstructionSite]
+      });
+
+      assert.isFalse(shouldRun);
+    });
+
+    it("should bypass peaceful perimeter throttle when danger is present", () => {
+      const shouldRun = shouldRunRoadAwarePerimeterConstruction({
+        allowPerimeter: true,
+        rcl: 6,
+        danger: 1,
+        existingSites: [{ structureType: STRUCTURE_RAMPART } as ConstructionSite]
+      });
+
+      assert.isTrue(shouldRun);
+    });
+
+    it("should run peaceful road-aware perimeter planning when no defense site is pending", () => {
+      const shouldRun = shouldRunRoadAwarePerimeterConstruction({
+        allowPerimeter: true,
+        rcl: 6,
+        danger: 0,
+        existingSites: [{ structureType: STRUCTURE_ROAD } as ConstructionSite]
+      });
+
+      assert.isTrue(shouldRun);
     });
   });
 

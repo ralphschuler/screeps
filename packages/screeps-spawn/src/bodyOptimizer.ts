@@ -14,52 +14,28 @@
  * - Combat: Balance ATTACK/RANGED_ATTACK/HEAL with TOUGH and MOVE
  */
 
+import { MAX_BODY_PARTS, calculateBodyCost } from "./bodyUtils";
 import type { BodyTemplate } from "./roleDefinitions";
+import type { BodyOptimizationOptions } from "./types";
 
-/**
- * Body optimization options
- */
-export interface BodyOptimizationOptions {
-  /** Maximum energy to spend on body */
-  maxEnergy: number;
-  /** Role-specific requirements */
-  role: string;
-  /** Distance to work location (for haulers, remote workers) */
-  distance?: number;
-  /** Whether roads are present on route */
-  hasRoads?: boolean;
-  /** Energy production rate (for dimensioning haulers) */
-  energyPerTick?: number;
-  /** Whether creep will be boosted */
-  willBoost?: boolean;
-  /** Terrain type (plain, swamp, road) */
-  terrainType?: "plain" | "swamp" | "road";
-}
+export { BODY_PART_COSTS, MAX_BODY_PARTS, calculateBodyCost } from "./bodyUtils";
 
-/**
- * Body part costs
- */
-export const BODY_PART_COSTS: Record<BodyPartConstant, number> = {
-  [MOVE]: 50,
-  [WORK]: 100,
-  [CARRY]: 50,
-  [ATTACK]: 80,
-  [RANGED_ATTACK]: 150,
-  [HEAL]: 250,
-  [CLAIM]: 600,
-  [TOUGH]: 10
-};
+function buildBodyTemplate(partGroups: Array<[BodyPartConstant, number]>): BodyTemplate {
+  const parts: BodyPartConstant[] = [];
 
-/**
- * Maximum body parts per creep
- */
-export const MAX_BODY_PARTS = 50;
+  for (const [part, count] of partGroups) {
+    for (let i = 0; i < count; i++) {
+      parts.push(part);
+    }
+  }
 
-/**
- * Calculate body cost
- */
-export function calculateBodyCost(parts: BodyPartConstant[]): number {
-  return parts.reduce((sum, part) => sum + BODY_PART_COSTS[part], 0);
+  const cost = calculateBodyCost(parts);
+
+  return {
+    parts,
+    cost,
+    minCapacity: cost
+  };
 }
 
 /**
@@ -205,23 +181,11 @@ export function optimizeUpgraderBody(options: BodyOptimizationOptions): BodyTemp
   const carry = Math.max(1, Math.ceil(work / 3));
   const move = Math.max(1, Math.ceil((work + carry) / 2));
 
-  const parts: BodyPartConstant[] = [];
-
-  for (let i = 0; i < work; i++) {
-    parts.push(WORK);
-  }
-  for (let i = 0; i < carry; i++) {
-    parts.push(CARRY);
-  }
-  for (let i = 0; i < move; i++) {
-    parts.push(MOVE);
-  }
-
-  return {
-    parts,
-    cost: calculateBodyCost(parts),
-    minCapacity: calculateBodyCost(parts)
-  };
+  return buildBodyTemplate([
+    [WORK, work],
+    [CARRY, carry],
+    [MOVE, move]
+  ]);
 }
 
 /**
@@ -241,23 +205,11 @@ export function optimizeBuilderBody(options: BodyOptimizationOptions): BodyTempl
   const carry = work;
   const move = work;
 
-  const parts: BodyPartConstant[] = [];
-
-  for (let i = 0; i < work; i++) {
-    parts.push(WORK);
-  }
-  for (let i = 0; i < carry; i++) {
-    parts.push(CARRY);
-  }
-  for (let i = 0; i < move; i++) {
-    parts.push(MOVE);
-  }
-
-  return {
-    parts,
-    cost: calculateBodyCost(parts),
-    minCapacity: calculateBodyCost(parts)
-  };
+  return buildBodyTemplate([
+    [WORK, work],
+    [CARRY, carry],
+    [MOVE, move]
+  ]);
 }
 
 /**

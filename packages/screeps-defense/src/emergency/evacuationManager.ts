@@ -15,7 +15,7 @@
 import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import { MediumFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
-import { filterAllyCreeps } from "../alliance/nonAggressionPact";
+import { getActualHostileCreeps } from "../alliance/nonAggressionPact";
 
 /**
  * Evacuation configuration
@@ -166,9 +166,7 @@ export class EvacuationManager {
       // Check for siege (danger level 3)
       if (swarm.danger >= this.config.triggerDangerLevel && swarm.posture === "siege") {
         // Only evacuate if we're clearly losing
-        // Filter allied entities - non-aggression pact (ROADMAP Section 25)
-        const allHostiles = room.find(FIND_HOSTILE_CREEPS);
-        const hostiles = filterAllyCreeps(allHostiles);
+        const hostiles = getActualHostileCreeps(room);
         const defenders = room.find(FIND_MY_CREEPS, {
           filter: c => {
             const body = c.body.map(p => p.type);
@@ -275,9 +273,7 @@ export class EvacuationManager {
         }
 
         // Avoid rooms under attack
-        // Filter allied entities - non-aggression pact (ROADMAP Section 25)
-        const allHostiles = room.find(FIND_HOSTILE_CREEPS);
-        const hostiles = filterAllyCreeps(allHostiles);
+        const hostiles = getActualHostileCreeps(room);
         if (hostiles.length > 0) {
           score -= hostiles.length * 20;
         }

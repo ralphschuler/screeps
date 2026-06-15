@@ -91,7 +91,7 @@ Complete reference for all 21 framework packages organized by category.
 
 ---
 
-### screeps-tasks
+### screeps-roles
 
 **Purpose**: Task management system
 
@@ -102,9 +102,9 @@ Complete reference for all 21 framework packages organized by category.
 - Predefined task types
 - Custom task creation
 
-**Installation**: `npm install @ralphschuler/screeps-tasks`
+**Installation**: `npm install @ralphschuler/screeps-roles`
 
-**Documentation**: [README](../../packages/screeps-tasks/README.md)
+**Documentation**: [README](../../packages/@ralphschuler/screeps-roles/README.md)
 
 ---
 
@@ -385,11 +385,11 @@ Complete reference for all 21 framework packages organized by category.
 
 | Package | Min Screeps | TypeScript | Node.js | Dependencies |
 |---------|-------------|------------|---------|--------------|
-| All packages | Any | >=4.0 | >=16.x | Screeps API |
-| screeps-economy | Any | >=4.0 | >=16.x | + screeps-utils |
-| screeps-roles | Any | >=4.0 | >=16.x | + screeps-core, screeps-stats |
-| screeps-defense | Any | >=4.0 | >=16.x | + screeps-kernel |
-| screeps-remote-mining | Any | >=4.0 | >=16.x | + screeps-pathfinding |
+| All packages | Any | >=4.0 | >=24 <25 | Screeps API |
+| screeps-economy | Any | >=4.0 | >=24 <25 | + screeps-utils |
+| screeps-roles | Any | >=4.0 | >=24 <25 | + screeps-core, screeps-stats |
+| screeps-defense | Any | >=4.0 | >=24 <25 | + screeps-kernel |
+| screeps-remote-mining | Any | >=4.0 | >=24 <25 | + screeps-pathfinding |
 
 ## Quick Reference
 

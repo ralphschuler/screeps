@@ -31,7 +31,7 @@ function recordRoomIntel(room: Room, empire: EmpireMemory): void {
   // If room was recently scanned (within 2000 ticks), only update dynamic data
   // OPTIMIZATION: Increased from 1000 to 2000 ticks to reduce CPU on frequent rescans
   // Scouts were causing high CPU usage due to too-frequent terrain analysis
-  if (existingIntel && ticksSinceLastScan < 2000) {
+  if (existingIntel?.scouted && ticksSinceLastScan < 2000) {
     existingIntel.lastSeen = Game.time;
     
     // Only update threat level (dynamic data)
@@ -113,8 +113,9 @@ function findNextExploreTarget(
     // Skip the previous room to prevent cycling
     if (previousRoom && roomName === previousRoom) continue;
 
-    const lastSeen = knownRooms[roomName]?.lastSeen ?? 0;
-    if (Game.time - lastSeen > 1000) {
+    const intel = knownRooms[roomName];
+    const lastSeen = intel?.lastSeen ?? 0;
+    if (!intel?.scouted || Game.time - lastSeen > 1000) {
       candidates.push({ room: roomName, lastSeen });
     }
   }

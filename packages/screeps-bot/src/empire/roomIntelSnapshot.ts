@@ -1,4 +1,5 @@
 import type { RoomIntel } from "@ralphschuler/screeps-memory";
+import { classifyRoomName as classifySignedRoomName } from "./roomGeometry";
 
 export interface VisibleRoomIntelSnapshot {
   roomName: string;
@@ -16,14 +17,7 @@ export interface VisibleRoomIntelSnapshot {
 }
 
 export function classifyRoomName(roomName: string): { isHighway: boolean; isSK: boolean } {
-  const parsed = /^([WE])([0-9]+)([NS])([0-9]+)$/.exec(roomName);
-  if (!parsed) throw new Error(`Invalid room name: ${roomName}`);
-
-  const x = parseInt(parsed[2], 10);
-  const y = parseInt(parsed[4], 10);
-  const isHighway = x % 10 === 0 || y % 10 === 0;
-  const isSK = !isHighway && x % 10 >= 4 && x % 10 <= 6 && y % 10 >= 4 && y % 10 <= 6;
-  return { isHighway, isSK };
+  return classifySignedRoomName(roomName);
 }
 
 export function buildStubRoomIntel(roomName: string): RoomIntel {

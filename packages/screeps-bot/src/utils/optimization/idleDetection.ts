@@ -35,7 +35,8 @@ const IDLE_ELIGIBLE_ROLES = new Set([
   "depositHarvester", // Stationary at deposit
   "factoryWorker", // Stationary at factory
   "labTech", // Stationary at labs
-  "builder" // Can be stationary at construction site
+  "builder", // Can be stationary at construction site
+  "queenCarrier" // Often repeats adjacent withdraw/transfer between storage, links, and spawn network
 ]);
 
 /**
@@ -106,6 +107,9 @@ export function canSkipBehaviorEvaluation(creep: Creep): boolean {
 
     case "builder":
       return isBuilderIdle(creep, state);
+
+    case "queenCarrier":
+      return isCarrierIdle(creep, state);
 
     case "depositHarvester":
     case "factoryWorker":
@@ -289,6 +293,31 @@ function isBuilderIdle(creep: Creep, state: NonNullable<SwarmCreepMemory["state"
   }
 
   return true;
+}
+
+function isCarrierIdle(creep: Creep, state: NonNullable<SwarmCreepMemory["state"]>): boolean {
+  if (state.action !== "transfer" && state.action !== "withdraw") {
+    return false;
+  }
+
+  if (!state.targetId) {
+    return false;
+  }
+
+  const target = Game.getObjectById(state.targetId);
+  if (!target || !isRoomObject(target) || !("store" in target)) {
+    return false;
+  }
+
+  if (!creep.pos.isNearTo(target.pos)) {
+    return false;
+  }
+
+  if (state.action === "transfer") {
+    return creep.store.getUsedCapacity(RESOURCE_ENERGY) > 0;
+  }
+
+  return creep.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
 }
 
 /**

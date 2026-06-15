@@ -101,6 +101,7 @@
 (global as any).ERR_NOT_ENOUGH_EXTENSIONS = -6;
 (global as any).ERR_RCL_NOT_ENOUGH = -14;
 (global as any).ERR_GCL_NOT_ENOUGH = -15;
+(global as any).ERR_ACCESS_DENIED = -16;
 
 // Body part constants
 (global as any).MOVE = 'move';

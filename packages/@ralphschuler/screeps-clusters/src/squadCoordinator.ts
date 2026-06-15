@@ -39,11 +39,6 @@ const THREAT_SQUAD_SIZE: Record<number, SquadComposition> = {
 const SQUAD_FORMATION_TIMEOUT = 300;
 
 /**
- * Squad idle timeout in ticks (10 minutes)
- */
-const SQUAD_IDLE_TIMEOUT = 600;
-
-/**
  * Calculate optimal squad composition for a defense request
  */
 export function calculateSquadComposition(request: DefenseAssistanceRequest): SquadComposition {

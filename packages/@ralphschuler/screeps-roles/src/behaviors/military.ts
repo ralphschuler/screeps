@@ -228,6 +228,12 @@ function findPriorityTarget(ctx: CreepContext): Creep | null {
   return scored[0]?.hostile ?? null;
 }
 
+function findAssistHostileStructure(ctx: CreepContext): Structure | null {
+  const structures = getActualHostileStructures(ctx.room).filter(s => s.structureType !== STRUCTURE_CONTROLLER);
+  if (structures.length === 0) return null;
+  return ctx.creep.pos.findClosestByRange(structures) ?? structures[0] ?? null;
+}
+
 /**
  * Check if creep has a specific body part.
  */
@@ -291,8 +297,10 @@ export function guard(ctx: CreepContext): CreepAction {
       return { type: "moveToRoom", roomName: mem.assistTarget };
     }
 
+    const hostileStructure = findAssistHostileStructure(ctx);
+
     // In assist room - check if threat is resolved using pre-computed hostiles from context
-    if (ctx.hostiles.length === 0) {
+    if (ctx.hostiles.length === 0 && !hostileStructure) {
       // Threat resolved, clear assignment and return home
       delete mem.assistTarget;
       if (ctx.creep.room.name !== ctx.homeRoom) {
@@ -309,6 +317,16 @@ export function guard(ctx: CreepContext): CreepAction {
         if (hasRanged && range <= 3) return { type: "rangedAttack", target: assistTarget };
         if (hasMelee && range <= 1) return { type: "attack", target: assistTarget };
         return { type: "moveTo", target: assistTarget };
+      }
+
+      if (hostileStructure) {
+        const range = ctx.creep.pos.getRangeTo(hostileStructure);
+        const hasRanged = hasBodyPart(ctx.creep, RANGED_ATTACK);
+        const hasMelee = hasBodyPart(ctx.creep, ATTACK);
+
+        if (hasRanged && range <= 3) return { type: "rangedAttack", target: hostileStructure };
+        if (hasMelee && range <= 1) return { type: "attack", target: hostileStructure };
+        return { type: "moveTo", target: hostileStructure };
       }
     }
   }
@@ -867,7 +885,8 @@ export function ranger(ctx: CreepContext): CreepAction {
     const assistRoom = Game.rooms[mem.assistTarget];
     if (assistRoom) {
       const hostiles = getActualHostileCreeps(assistRoom);
-      if (hostiles.length === 0) {
+      const hostileStructures = getActualHostileStructures(assistRoom).filter(s => s.structureType !== STRUCTURE_CONTROLLER);
+      if (hostiles.length === 0 && hostileStructures.length === 0) {
         // Threat resolved, clear assignment
         delete mem.assistTarget;
         return { type: "idle" };
@@ -885,6 +904,13 @@ export function ranger(ctx: CreepContext): CreepAction {
         if (range < 3) return { type: "flee", from: [assistTarget.pos] };
         if (range <= 3) return { type: "rangedAttack", target: assistTarget };
         return { type: "moveTo", target: assistTarget };
+      }
+
+      const hostileStructure = ctx.creep.pos.findClosestByRange(hostileStructures) ?? hostileStructures[0];
+      if (hostileStructure) {
+        const range = ctx.creep.pos.getRangeTo(hostileStructure);
+        if (range <= 3) return { type: "rangedAttack", target: hostileStructure };
+        return { type: "moveTo", target: hostileStructure };
       }
     } else {
       // Can't see assist room - move towards it

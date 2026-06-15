@@ -55,12 +55,23 @@ export class LabConfigManager {
       this.configs.set(roomName, config);
     }
 
-    // Update lab entries
+    // Update lab entries from live room state first. Memory may contain stale
+    // "valid" configs from earlier layouts or partially-built lab clusters.
     this.updateLabEntries(config, labs);
 
-    // Auto-assign roles if not configured
-    if (!config.isValid) {
+    if (labs.length < 3) {
+      this.invalidateConfig(config);
+      return;
+    }
+
+    // Auto-assign roles when live labs no longer match the serialized config
+    // or when new labs were added as unassigned entries.
+    if (!this.isCurrentConfigValid(config, labs)) {
       this.autoAssignRoles(config, labs);
+    }
+
+    if (config.isValid && config.activeReaction) {
+      this.applyActiveReactionResources(config);
     }
   }
 
@@ -90,11 +101,69 @@ export class LabConfigManager {
   }
 
   /**
+   * Mark config invalid and clear stale reaction-specific assignments.
+   */
+  private invalidateConfig(config: RoomLabConfig): void {
+    config.isValid = false;
+    delete config.activeReaction;
+    for (const entry of config.labs) {
+      entry.role = "unassigned";
+      delete entry.resourceType;
+      entry.lastConfigured = Game.time;
+    }
+    config.lastUpdate = Game.time;
+  }
+
+  /**
+   * Check whether persisted roles still describe the live lab cluster.
+   */
+  private isCurrentConfigValid(config: RoomLabConfig, labs: StructureLab[]): boolean {
+    if (!config.isValid || labs.length < 3) return false;
+    if (config.labs.length !== labs.length) return false;
+    if (config.labs.some(entry => entry.role === "unassigned")) return false;
+
+    const labById = new Map(labs.map(lab => [lab.id, lab]));
+    const input1Entry = config.labs.find(entry => entry.role === "input1");
+    const input2Entry = config.labs.find(entry => entry.role === "input2");
+    const outputEntries = config.labs.filter(entry => entry.role === "output");
+
+    if (!input1Entry || !input2Entry || outputEntries.length === 0) return false;
+
+    const input1 = labById.get(input1Entry.labId);
+    const input2 = labById.get(input2Entry.labId);
+    if (!input1 || !input2) return false;
+
+    for (const entry of outputEntries) {
+      const output = labById.get(entry.labId);
+      if (!output) return false;
+      if (output.pos.getRangeTo(input1) > 2 || output.pos.getRangeTo(input2) > 2) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Reapply active reaction resource assignments after roles are refreshed.
+   */
+  private applyActiveReactionResources(config: RoomLabConfig): void {
+    const reaction = config.activeReaction;
+    if (!reaction) return;
+
+    for (const entry of config.labs) {
+      if (entry.role === "input1") entry.resourceType = reaction.input1;
+      else if (entry.role === "input2") entry.resourceType = reaction.input2;
+      else if (entry.role === "output") entry.resourceType = reaction.output;
+    }
+  }
+
+  /**
    * Auto-assign lab roles based on position and range optimization
    */
   private autoAssignRoles(config: RoomLabConfig, labs: StructureLab[]): void {
     if (labs.length < 3) {
-      config.isValid = false;
+      this.invalidateConfig(config);
       return;
     }
 
@@ -120,7 +189,7 @@ export class LabConfigManager {
       .sort((a, b) => b.reach - a.reach);
 
     if (labsByReach.length < 3 || (labsByReach[0]?.reach ?? 0) < 2) {
-      config.isValid = false;
+      this.invalidateConfig(config);
       this.logger.warn(`Lab layout in ${config.roomName} is not optimal for reactions`, {
         subsystem: "Labs"
       });
@@ -132,7 +201,7 @@ export class LabConfigManager {
     const input2Lab = labsByReach[1]?.lab;
 
     if (!input1Lab || !input2Lab) {
-      config.isValid = false;
+      this.invalidateConfig(config);
       return;
     }
 
@@ -294,6 +363,16 @@ export class LabConfigManager {
     }
 
     return reactionsRun;
+  }
+
+  /**
+   * Get rooms with lab configs persisted in Memory.
+   */
+  public getConfiguredRooms(): string[] {
+    return Object.keys(Memory.rooms).filter(roomName => {
+      const roomMem = Memory.rooms[roomName] as { labConfig?: RoomLabConfig } | undefined;
+      return roomMem?.labConfig !== undefined;
+    });
   }
 
   /**

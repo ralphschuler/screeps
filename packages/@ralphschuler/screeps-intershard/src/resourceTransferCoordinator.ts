@@ -13,7 +13,12 @@
 
 import type { InterShardTask } from "./schema";
 import { logger } from "@ralphschuler/screeps-kernel";
-import { optimizeBody, SpawnPriority, type SpawnRequest, spawnQueue } from "./stubs";
+import {
+  optimizeBody as defaultOptimizeBody,
+  SpawnPriority as DefaultSpawnPriority,
+  type SpawnRequest,
+  spawnQueue as defaultSpawnQueue
+} from "./stubs";
 import { shardManager } from "./shardManager";
 
 /**
@@ -67,6 +72,45 @@ export interface CrossShardTransferRequest {
 interface TransferCoordinatorMemory {
   requests: Record<string, CrossShardTransferRequest>;
   lastUpdate: number;
+}
+
+interface BodyPlanWithParts {
+  parts: BodyPartConstant[];
+}
+
+export interface ResourceTransferSpawnPriorities {
+  LOW: number;
+  NORMAL: number;
+  HIGH: number;
+}
+
+export interface ResourceTransferCoordinatorDependencies {
+  optimizeBody: (options: { maxEnergy: number; role: string }) => BodyPlanWithParts;
+  spawnQueue: Pick<typeof defaultSpawnQueue, "addRequest">;
+  spawnPriorities: ResourceTransferSpawnPriorities;
+}
+
+const resourceTransferDependencies: ResourceTransferCoordinatorDependencies = {
+  optimizeBody: defaultOptimizeBody,
+  spawnQueue: defaultSpawnQueue,
+  spawnPriorities: {
+    LOW: DefaultSpawnPriority.LOW,
+    NORMAL: DefaultSpawnPriority.NORMAL,
+    HIGH: DefaultSpawnPriority.HIGH
+  }
+};
+
+export function configureResourceTransferCoordinator(
+  dependencies: Partial<ResourceTransferCoordinatorDependencies>
+): void {
+  if (dependencies.optimizeBody) resourceTransferDependencies.optimizeBody = dependencies.optimizeBody;
+  if (dependencies.spawnQueue) resourceTransferDependencies.spawnQueue = dependencies.spawnQueue;
+  if (dependencies.spawnPriorities) {
+    resourceTransferDependencies.spawnPriorities = {
+      ...resourceTransferDependencies.spawnPriorities,
+      ...dependencies.spawnPriorities
+    };
+  }
 }
 
 /**
@@ -251,7 +295,7 @@ export class ResourceTransferCoordinator {
     // Optimize body for the carrier
     let body;
     try {
-      body = optimizeBody({
+      body = resourceTransferDependencies.optimizeBody({
         maxEnergy,
         role: "crossShardCarrier"
       });
@@ -271,13 +315,11 @@ export class ResourceTransferCoordinator {
     const carriersToSpawn = Math.min(carriersNeeded, maxCarriersPerRequest);
 
     // Map priority to spawn priority
-    let spawnPriority: SpawnPriority;
+    let spawnPriority = resourceTransferDependencies.spawnPriorities.LOW;
     if (request.priority >= 80) {
-      spawnPriority = SpawnPriority.HIGH;
+      spawnPriority = resourceTransferDependencies.spawnPriorities.HIGH;
     } else if (request.priority >= 50) {
-      spawnPriority = SpawnPriority.NORMAL;
-    } else {
-      spawnPriority = SpawnPriority.LOW;
+      spawnPriority = resourceTransferDependencies.spawnPriorities.NORMAL;
     }
 
     // Add spawn requests to queue
@@ -303,7 +345,7 @@ export class ResourceTransferCoordinator {
         additionalMemory: additionalMemory
       };
 
-      spawnQueue.addRequest(spawnRequest);
+      resourceTransferDependencies.spawnQueue.addRequest(spawnRequest);
       logger.info(
         `Requested spawn of crossShardCarrier for transfer ${request.taskId} (${i + 1}/${carriersToSpawn})`,
         { subsystem: "CrossShardTransfer" }

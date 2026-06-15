@@ -122,9 +122,12 @@ export class Scheduler {
     const baseLimit = Game.cpu.limit;
 
     switch (this.currentMode) {
+      case "critical":
+        return baseLimit * 0.25;
       case "low":
         return baseLimit * 0.5;
       case "high":
+      case "normal":
         return baseLimit * this.config.targetCpuUsage;
       default:
         return baseLimit * this.config.targetCpuUsage;
@@ -147,9 +150,6 @@ export class Scheduler {
 
   /**
    * Check if task should run this tick
-   *
-   * REMOVED: Bucket requirement check - tasks run regardless of bucket level.
-   * Bucket mode still affects frequency filtering (low mode skips non-high frequency tasks).
    */
   private shouldRunTask(task: ScheduledTask): boolean {
     // Check frequency
@@ -160,8 +160,13 @@ export class Scheduler {
       return false;
     }
 
-    // In low bucket mode, skip non-essential tasks
-    if (this.currentMode === "low" && task.frequency !== "high") {
+    // In low/critical modes, skip non-high-frequency tasks to preserve critical work.
+    if ((this.currentMode === "low" || this.currentMode === "critical") && task.frequency !== "high") {
+      return false;
+    }
+
+    // Respect task-level bucket threshold (critical tasks may still be deferred by bucket).
+    if (Game.cpu.bucket < task.minBucket) {
       return false;
     }
 
@@ -258,7 +263,7 @@ export const scheduler = new Scheduler();
 /**
  * Create a high-frequency task (every tick)
  *
- * REMOVED: minBucket requirement set to 0 - tasks run regardless of bucket level
+ * minBucket defaults to 0 (always eligible unless caller overrides).
  */
 export function createHighFrequencyTask(
   name: string,
@@ -279,7 +284,7 @@ export function createHighFrequencyTask(
 /**
  * Create a medium-frequency task (every 5-10 ticks)
  *
- * REMOVED: minBucket requirement set to 0 - tasks run regardless of bucket level
+ * minBucket defaults to 0 (always eligible unless caller overrides).
  */
 export function createMediumFrequencyTask(
   name: string,
@@ -300,7 +305,7 @@ export function createMediumFrequencyTask(
 /**
  * Create a low-frequency task (every 20-50 ticks)
  *
- * REMOVED: minBucket requirement set to 0 - tasks run regardless of bucket level
+ * minBucket defaults to 0 (always eligible unless caller overrides).
  */
 export function createLowFrequencyTask(
   name: string,

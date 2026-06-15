@@ -239,7 +239,7 @@ Contributions welcome! This package is extracted from a production Screeps bot a
 
 ## Related Packages
 
-- `@ralphschuler/screeps-tasks` - Minimal task system for creeps
+- `@ralphschuler/screeps-roles` - Minimal task system for creeps
 - `@ralphschuler/screeps-chemistry` - Chemistry and lab management
 - `@ralphschuler/screeps-posis` - Process-oriented system integration
 

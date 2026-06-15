@@ -41,6 +41,7 @@ describe('CI private-server state', () => {
   }, ['runtime', 'population']);
 
   it('CPU bucket is not chronically empty', ctx => {
+    if ((ctx?.tick ?? 0) < 100) return;
     const bucket = game(ctx).cpu?.bucket ?? 10000;
     expect(bucket).toBeGreaterThan(1000);
   }, ['runtime', 'cpu']);

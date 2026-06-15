@@ -3,12 +3,45 @@ import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { emergencyResponseManager, energyFlowPredictor } from "./botIntegration";
 import { optimizeBody } from "./bodyOptimizer";
 import { getBootstrapRole, isBootstrapMode, isEmergencySpawnState } from "./bootstrapManager";
+import {
+  buildDefenseAssistBody,
+  getVisibleDefenseAssistThreatProfile,
+  isDefenseAssistMilitaryRole
+} from "./defenseAssistBody";
 import { getDefenderPriorityBoost } from "./defenderManager";
-import { ROLE_DEFINITIONS, type RoleSpawnDef } from "./roleDefinitions";
-import { countCreepsByRole, getRemoteRoomNeedingWorkers, getRoleTargetCount, needsRole } from "./spawnNeedsAnalyzer";
+import { ROLE_DEFINITIONS, type BodyTemplate, type RoleSpawnDef } from "./roleDefinitions";
+import { getEffectiveRoomEnergyAvailable } from "./roomEnergy";
+import {
+  countCreepsByRole,
+  getClaimerSpawnAssignment,
+  getDefenseAssistSpawnAssignment,
+  getPioneerSpawnAssignment,
+  getRemoteRoomNeedingWorkers,
+  getRoleTargetCount,
+  needsRole
+} from "./spawnNeedsAnalyzer";
 import { SpawnPriority, type SpawnRequest } from "./spawnQueue";
 
 const TICKS_PER_BODY_PART = 3;
+const CONTROLLER_DOWNGRADE_UPGRADER_PRIORITY_TICKS = 5000;
+
+interface SpawnSettingsMemory {
+  spawnSettings?: {
+    /** Set false to roll back downgrade-risk upgrader priority promotion. */
+    controllerDowngradePriority?: boolean;
+  };
+}
+
+function isControllerDowngradePriorityEnabled(): boolean {
+  const mem = Memory as unknown as SpawnSettingsMemory;
+  return mem.spawnSettings?.controllerDowngradePriority !== false;
+}
+
+function hasControllerDowngradeRisk(room: Room): boolean {
+  const controller = room.controller;
+  if (!controller?.my) return false;
+  return controller.ticksToDowngrade <= CONTROLLER_DOWNGRADE_UPGRADER_PRIORITY_TICKS;
+}
 
 function getBestDefinedBody(def: RoleSpawnDef, energyCapacity: number) {
   let best = null as RoleSpawnDef["bodies"][number] | null;
@@ -28,7 +61,10 @@ export interface SpawnDemand {
   missing: number;
   priority: number;
   targetRoom?: string;
+  task?: string;
+  assistTarget?: string;
   bootstrap?: boolean;
+  bodyOverride?: BodyTemplate;
 }
 
 export interface SpawnPlan {
@@ -67,6 +103,10 @@ function priorityForDemand(
 ): number {
   if (isEmergency && (roleName === "larvaWorker" || roleName === "harvester")) {
     return SpawnPriority.EMERGENCY;
+  }
+
+  if (roleName === "upgrader" && isControllerDowngradePriorityEnabled() && hasControllerDowngradeRisk(room)) {
+    return SpawnPriority.HIGH;
   }
 
   const emergencyState = emergencyResponseManager.getEmergencyState(room.name);
@@ -108,16 +148,40 @@ export function planSpawnDemand(room: Room, swarm: SwarmState): SpawnDemand[] {
 
   for (const [roleName, def] of Object.entries(ROLE_DEFINITIONS)) {
     const current = counts.get(roleName) ?? 0;
+    const defenseAssistAssignment = getDefenseAssistSpawnAssignment(room.name, roleName);
+    if (defenseAssistAssignment) {
+      demands.push({
+        roleName,
+        def,
+        current,
+        target: current + 1,
+        missing: 1,
+        priority: defenseAssistAssignment.priority,
+        targetRoom: defenseAssistAssignment.targetRoom,
+        task: defenseAssistAssignment.task,
+        assistTarget: defenseAssistAssignment.targetRoom
+      });
+      continue;
+    }
+
     if (!needsRole(room.name, roleName, swarm, isEmergency)) {
       continue;
     }
 
-    const targetRoom =
+    const remoteTargetRoom =
       roleName === "remoteHarvester" || roleName === "remoteHauler"
         ? getRemoteRoomNeedingWorkers(room.name, roleName, swarm)
         : null;
+    const claimerAssignment = roleName === "claimer" ? getClaimerSpawnAssignment(room.name, swarm) : null;
+    const pioneerAssignment = roleName === "pioneer" ? getPioneerSpawnAssignment(room.name, swarm) : null;
 
-    if ((roleName === "remoteHarvester" || roleName === "remoteHauler") && !targetRoom) {
+    if ((roleName === "remoteHarvester" || roleName === "remoteHauler") && !remoteTargetRoom) {
+      continue;
+    }
+    if (roleName === "claimer" && !claimerAssignment) {
+      continue;
+    }
+    if (roleName === "pioneer" && !pioneerAssignment) {
       continue;
     }
 
@@ -126,7 +190,8 @@ export function planSpawnDemand(room: Room, swarm: SwarmState): SpawnDemand[] {
       def,
       current,
       priority: priorityForDemand(room, swarm, roleName, def.priority, isEmergency),
-      targetRoom: targetRoom ?? undefined
+      targetRoom: claimerAssignment?.targetRoom ?? pioneerAssignment?.targetRoom ?? remoteTargetRoom ?? undefined,
+      task: claimerAssignment?.task ?? pioneerAssignment?.task
     }));
   }
 
@@ -165,18 +230,35 @@ export function compileSpawnDemandToRequest(room: Room, demand: SpawnDemand): Sp
     const estimatedBodyParts = Math.max(3, Math.min(50, Math.floor(maxEnergy / 100)));
     const ticksToSpawn = estimatedBodyParts * TICKS_PER_BODY_PART;
     const predictedEnergy = energyFlowPredictor.getMaxAffordableInTicks(room, ticksToSpawn);
+    const availableEnergy = getEffectiveRoomEnergyAvailable(room);
     const effectiveMaxEnergy =
       demand.priority >= SpawnPriority.EMERGENCY || demand.bootstrap
-        ? room.energyAvailable
+        ? availableEnergy
         : Math.max(maxEnergy, predictedEnergy);
+    const defenseAssistBody =
+      demand.assistTarget && isDefenseAssistMilitaryRole(demand.roleName)
+        ? buildDefenseAssistBody(
+            demand.roleName,
+            maxEnergy,
+            getVisibleDefenseAssistThreatProfile(demand.assistTarget)
+          )
+        : null;
     const body =
+      demand.bodyOverride ??
+      defenseAssistBody ??
       getBestDefinedBody(demand.def, effectiveMaxEnergy) ??
       optimizeBody({
         maxEnergy: effectiveMaxEnergy,
         role: demand.roleName
       });
+    const maxBodyEnergy = demand.bodyOverride || defenseAssistBody ? maxEnergy : effectiveMaxEnergy;
 
-    if (!body) return null;
+    if (!body || body.cost > maxBodyEnergy) return null;
+
+    const additionalMemory = {
+      ...(demand.task ? { task: demand.task } : {}),
+      ...(demand.assistTarget ? { assistTarget: demand.assistTarget } : {})
+    };
 
     return {
       id: `${demand.roleName}_${Game.time}_${Math.random().toString(36).substring(2, 11)}`,
@@ -186,6 +268,7 @@ export function compileSpawnDemandToRequest(room: Room, demand: SpawnDemand): Sp
       body,
       priority: demand.priority,
       targetRoom: demand.targetRoom,
+      additionalMemory: Object.keys(additionalMemory).length > 0 ? additionalMemory : undefined,
       createdAt: Game.time
     };
   } catch (error) {

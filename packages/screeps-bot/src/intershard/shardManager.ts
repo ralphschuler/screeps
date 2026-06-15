@@ -34,8 +34,8 @@ export class ShardManager extends FrameworkShardManager {
    */
   @LowFrequencyProcess("empire:shard", "Shard Manager", {
     priority: ProcessPriority.LOW,
-    interval: 100,
-    minBucket: 2000,
+    interval: 300,
+    minBucket: 6000,
     cpuBudget: 0.02
   })
   public run(): void {

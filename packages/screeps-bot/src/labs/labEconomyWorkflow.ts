@@ -26,6 +26,7 @@ interface LabWorkflowLabManager {
     input2: MineralConstant | MineralCompoundConstant,
     output: MineralCompoundConstant
   ): boolean;
+  runReactions(roomName: string): number;
   save(roomName: string): void;
 }
 
@@ -119,6 +120,23 @@ export class LabEconomyWorkflow {
       priority: reaction.priority
     };
 
+    if (!this.isActiveReactionCurrent(room.name, reaction)) {
+      result.activeReactionChanged = this.deps.labManager.setActiveReaction(
+        room.name,
+        reaction.input1 as MineralConstant | MineralCompoundConstant,
+        reaction.input2 as MineralConstant | MineralCompoundConstant,
+        reaction.product as MineralCompoundConstant
+      );
+
+      if (!result.activeReactionChanged) {
+        this.deps.logger.debug(`Unable to activate lab reaction: ${reaction.input1} + ${reaction.input2} -> ${reaction.product}`, {
+          subsystem: "Labs",
+          room: room.name
+        });
+        return;
+      }
+    }
+
     if (!this.deps.labManager.areLabsReady(room.name, reactionStep)) {
       this.deps.logger.debug(`Labs not ready for reaction: ${reaction.input1} + ${reaction.input2} -> ${reaction.product}`, {
         subsystem: "Labs",
@@ -128,18 +146,7 @@ export class LabEconomyWorkflow {
     }
 
     result.reactionReady = true;
-
-    if (!this.isActiveReactionCurrent(room.name, reaction)) {
-      result.activeReactionChanged = this.deps.labManager.setActiveReaction(
-        room.name,
-        reaction.input1 as MineralConstant | MineralCompoundConstant,
-        reaction.input2 as MineralConstant | MineralCompoundConstant,
-        reaction.product as MineralCompoundConstant
-      );
-    }
-
-    this.deps.chemistryPlanner.executeReaction(room, reaction);
-    result.reactionExecuted = true;
+    result.reactionExecuted = this.deps.labManager.runReactions(room.name) > 0;
   }
 
   private isActiveReactionCurrent(roomName: string, reaction: Reaction): boolean {

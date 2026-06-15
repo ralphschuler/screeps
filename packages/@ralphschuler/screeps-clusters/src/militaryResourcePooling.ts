@@ -173,16 +173,25 @@ export function routeEmergencyEnergy(
   targetRoom: string,
   amount: number
 ): { success: boolean; sourceRoom?: string } {
+  if (amount <= 0) {
+    return { success: false };
+  }
+
   const sources = cluster.memberRooms.flatMap(roomName => {
     const room = Game.rooms[roomName];
     const swarm = memoryManager.getSwarmState(roomName);
-    if (!room?.storage || !swarm) return [];
+    if (!room || !swarm) return [];
+
+    const storageEnergy = room.storage?.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0;
+    const terminalEnergy = room.terminal?.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0;
+
     return [
       {
         roomName,
-        availableEnergy: room.storage.store.getUsedCapacity(RESOURCE_ENERGY),
+        availableEnergy: storageEnergy + terminalEnergy,
         reservedEnergy: calculateEnergyReservation(roomName, swarm.danger),
-        hasTerminal: Boolean(room.terminal)
+        hasTerminal: Boolean(room.terminal),
+        terminalEnergy
       }
     ];
   });
@@ -191,7 +200,15 @@ export function routeEmergencyEnergy(
     targetRoom,
     amount,
     targetHasTerminal: Boolean(Game.rooms[targetRoom]?.terminal),
-    sources
+    sources,
+    distance: (fromRoom, toRoom) => {
+      const roomMap = (Game as any).map;
+      if (typeof roomMap?.getRoomLinearDistance === "function") {
+        return roomMap.getRoomLinearDistance(fromRoom, toRoom);
+      }
+
+      return 0;
+    }
   });
 
   if (!routeIntent.success) {
@@ -205,18 +222,41 @@ export function routeEmergencyEnergy(
   const sourceRoom = Game.rooms[bestSource];
   const targetRoomObj = Game.rooms[targetRoom];
 
+  const existingOutstanding = cluster.resourceRequests
+    .filter(
+      req =>
+        req.toRoom === targetRoom &&
+        req.fromRoom === bestSource &&
+        req.resourceType === RESOURCE_ENERGY &&
+        req.delivered < req.amount
+    )
+    .reduce((sum, req) => sum + (req.amount - req.delivered), 0);
+
+  const requestAmount = amount - existingOutstanding;
+
+  if (requestAmount <= 0) {
+    logger.debug(`Emergency transfer already queued for ${amount} energy from ${bestSource} to ${targetRoom}`, {
+      subsystem: "MilitaryPool"
+    });
+    return { success: true, sourceRoom: bestSource };
+  }
+
   if (routeIntent.delivery === "terminal" && sourceRoom?.terminal && targetRoomObj?.terminal) {
     // Terminal transfer
-    const result = sourceRoom.terminal.send(RESOURCE_ENERGY, amount, targetRoom);
+    const result = sourceRoom.terminal.send(RESOURCE_ENERGY, requestAmount, targetRoom);
     if (result === OK) {
-      logger.info(`Emergency energy routed: ${amount} from ${bestSource} to ${targetRoom}`, {
+      logger.info(`Emergency energy routed: ${requestAmount} from ${bestSource} to ${targetRoom}`, {
         subsystem: "MilitaryPool"
       });
       return { success: true, sourceRoom: bestSource };
     }
+
+    logger.warn(`Failed emergency terminal transfer ${requestAmount} energy from ${bestSource} to ${targetRoom}: ${result}`, {
+      subsystem: "MilitaryPool"
+    });
   } else {
     // Create hauler transfer request
-    logger.info(`Creating hauler transfer request: ${amount} energy from ${bestSource} to ${targetRoom}`, {
+    logger.info(`Creating hauler transfer request: ${requestAmount} energy from ${bestSource} to ${targetRoom}`, {
       subsystem: "MilitaryPool"
     });
 
@@ -225,7 +265,7 @@ export function routeEmergencyEnergy(
       toRoom: targetRoom,
       fromRoom: bestSource,
       resourceType: RESOURCE_ENERGY,
-      amount,
+      amount: requestAmount,
       priority: 5, // Highest priority
       createdAt: Game.time,
       assignedCreeps: [],
@@ -262,12 +302,14 @@ export function updateMilitaryReservations(cluster: ClusterMemory): void {
  */
 export function hasSufficientMilitaryEnergy(roomName: string, requiredAmount: number): boolean {
   const room = Game.rooms[roomName];
-  if (!room || !room.storage) return false;
+  if (!room) return false;
 
   const swarm = memoryManager.getSwarmState(roomName);
   if (!swarm) return false;
 
-  const available = room.storage.store.getUsedCapacity(RESOURCE_ENERGY);
+  const storageEnergy = room.storage?.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0;
+  const terminalEnergy = room.terminal?.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0;
+  const available = storageEnergy + terminalEnergy;
   const reserved = calculateEnergyReservation(roomName, swarm.danger);
   const excess = available - reserved;
 
@@ -290,9 +332,11 @@ export function getMilitaryResourceSummary(cluster: ClusterMemory): {
     const room = Game.rooms[roomName];
     if (!room) continue;
 
-    if (room.storage) {
-      totalEnergy += room.storage.store.getUsedCapacity(RESOURCE_ENERGY);
-    }
+    const storageEnergy = room.storage?.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0;
+    const terminalEnergy = room.terminal?.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0;
+
+    totalEnergy += storageEnergy + terminalEnergy;
+
 
     const swarm = memoryManager.getSwarmState(roomName);
     if (swarm) {
