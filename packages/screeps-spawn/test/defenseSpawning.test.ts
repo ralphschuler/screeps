@@ -138,7 +138,46 @@ describe("defense spawn throttling", () => {
 
     assert.equal(guardRequest?.targetRoom, "W19S28");
     assert.equal(guardRequest?.priority, SpawnPriority.EMERGENCY);
-    assert.deepEqual(guardRequest?.additionalMemory, { task: "defenseAssist", assistTarget: "W19S28" });
+    assert.include(guardRequest?.additionalMemory, { task: "defenseAssist", assistTarget: "W19S28" });
+    assert.equal(guardRequest?.additionalMemory?.defenseSquadId, "defenseAssist:W17S29:W19S28:-1000");
+    assert.equal(guardRequest?.additionalMemory?.defenseSquadSize, 1);
+  });
+
+  it("assigns the same defense squad id to a helper room reinforcement wave", () => {
+    const helper = createRoom([], "W17S29", 1800, 1800);
+    const attacked = createRoom([createHostile([ATTACK, RANGED_ATTACK, HEAL, MOVE])], "W19S28");
+    Game.rooms.W17S29 = helper;
+    Game.rooms.W19S28 = attacked;
+    Game.creeps = {
+      harvester1: { spawning: false, memory: { role: "harvester", homeRoom: "W17S29" } },
+      hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "W17S29" } },
+      upgrader1: { spawning: false, memory: { role: "upgrader", homeRoom: "W17S29" } }
+    } as unknown as typeof Game.creeps;
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      {
+        roomName: "W19S28",
+        guardsNeeded: 1,
+        rangersNeeded: 1,
+        healersNeeded: 1,
+        urgency: 3,
+        createdAt: Game.time - 10,
+        threat: "visible mixed assault"
+      }
+    ];
+
+    const { createSpawnPlan } = require("../src/spawnIntentCompiler") as typeof import("../src/spawnIntentCompiler");
+    const assistRequests = createSpawnPlan(helper, { danger: 0, posture: "eco" } as any).requests
+      .filter(request => request.additionalMemory?.task === "defenseAssist");
+
+    assert.sameMembers(assistRequests.map(request => request.role), ["guard", "ranger", "healer"]);
+    assert.deepEqual(
+      [...new Set(assistRequests.map(request => request.additionalMemory?.defenseSquadId))],
+      ["defenseAssist:W17S29:W19S28:990"]
+    );
+    for (const request of assistRequests) {
+      assert.equal(request.additionalMemory?.defenseSquadSize, 3);
+      assert.equal(request.additionalMemory?.defenseSquadCreatedAt, 990);
+    }
   });
 
   it("prunes stale defense-assist requests instead of spawning for old invisible attacks", () => {
@@ -254,7 +293,8 @@ describe("defense spawn throttling", () => {
     const guardRequest = plan.requests.find(request => request.role === "guard");
 
     assert.equal(guardRequest?.targetRoom, "W19S28");
-    assert.deepEqual(guardRequest?.additionalMemory, { task: "defenseAssist", assistTarget: "W19S28" });
+    assert.include(guardRequest?.additionalMemory, { task: "defenseAssist", assistTarget: "W19S28" });
+    assert.isString(guardRequest?.additionalMemory?.defenseSquadId);
   });
 
   it("keeps optimized military bodies within the requested energy budget", () => {

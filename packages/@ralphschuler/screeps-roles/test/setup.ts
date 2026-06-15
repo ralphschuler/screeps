@@ -114,6 +114,22 @@
 (global as any).CLAIM = 'claim';
 
 // ============================================================================
+// Mock Screeps Classes
+// ============================================================================
+
+(global as any).RoomPosition = class RoomPosition {
+  constructor(public x: number, public y: number, public roomName: string) {}
+  getRangeTo(): number { return 0; }
+  isEqualTo(): boolean { return false; }
+  isNearTo(): boolean { return false; }
+  inRangeTo(): boolean { return false; }
+  findClosestByRange(): null { return null; }
+  findClosestByPath(): null { return null; }
+  findInRange(): unknown[] { return []; }
+  lookFor(): unknown[] { return []; }
+};
+
+// ============================================================================
 // Mock Game Object
 // ============================================================================
 

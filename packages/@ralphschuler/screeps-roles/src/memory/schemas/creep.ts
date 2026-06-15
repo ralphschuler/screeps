@@ -110,6 +110,12 @@ export interface SwarmCreepMemory {
   working?: boolean;
   /** Squad ID (if in a squad) */
   squadId?: string;
+  /** Defense assist wave ID used to stage reinforcements before they depart. */
+  defenseSquadId?: string;
+  /** Expected number of local same-wave reinforcement creeps before departure. */
+  defenseSquadSize?: number;
+  /** Tick when the defense assist wave was requested/spawned. */
+  defenseSquadCreatedAt?: number;
   /** Boosted flag */
   boosted?: boolean;
   /** Boost requirements (for spawning with boost intentions) */

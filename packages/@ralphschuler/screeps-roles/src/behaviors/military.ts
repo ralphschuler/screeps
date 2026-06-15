@@ -21,6 +21,49 @@ import { taskBoard } from "../tasks";
 
 const logger = createLogger("MilitaryBehaviors");
 
+const DEFENSE_ASSIST_SQUAD_STAGE_TIMEOUT = 75;
+
+function isDefenseAssistSquadConfigured(mem: SwarmCreepMemory): boolean {
+  return Boolean(mem.assistTarget && mem.defenseSquadId && mem.defenseSquadSize && mem.defenseSquadSize > 1);
+}
+
+function isDefenseAssistSquadStagingExpired(mem: SwarmCreepMemory): boolean {
+  return Game.time - (mem.defenseSquadCreatedAt ?? Game.time) >= DEFENSE_ASSIST_SQUAD_STAGE_TIMEOUT;
+}
+
+function isReadyDefenseAssistSquadMember(
+  creep: Creep,
+  squadId: string,
+  assistTarget: string,
+  homeRoom: string
+): boolean {
+  const memory = creep.memory as unknown as SwarmCreepMemory;
+  return (
+    memory.defenseSquadId === squadId &&
+    memory.assistTarget === assistTarget &&
+    memory.homeRoom === homeRoom &&
+    creep.room.name === homeRoom &&
+    !creep.spawning
+  );
+}
+
+function countReadyDefenseAssistSquadMembers(mem: SwarmCreepMemory, homeRoom: string): number {
+  if (!mem.defenseSquadId || !mem.assistTarget) return 0;
+  return Object.values(Game.creeps).filter(creep =>
+    isReadyDefenseAssistSquadMember(creep, mem.defenseSquadId!, mem.assistTarget!, homeRoom)
+  ).length;
+}
+
+function getDefenseAssistSquadStagingAction(ctx: CreepContext, mem: SwarmCreepMemory): CreepAction | null {
+  if (!isDefenseAssistSquadConfigured(mem)) return null;
+  if (ctx.creep.room.name !== ctx.homeRoom) return null;
+  if (isDefenseAssistSquadStagingExpired(mem)) return null;
+  if (countReadyDefenseAssistSquadMembers(mem, ctx.homeRoom) >= mem.defenseSquadSize!) return null;
+
+  const collectionPoint = getCollectionPoint(ctx.room.name);
+  return { type: "wait", position: collectionPoint ?? ctx.creep.pos };
+}
+
 function isAllyControlledRoom(room: Room): boolean {
   const controllerOwner = room.controller?.owner?.username;
   const controllerReserver = room.controller?.reservation?.username;
@@ -292,6 +335,9 @@ export function guard(ctx: CreepContext): CreepAction {
 
   // Check if assigned to assist another room
   if (mem.assistTarget) {
+    const stagingAction = getDefenseAssistSquadStagingAction(ctx, mem);
+    if (stagingAction) return stagingAction;
+
     // Move to assist room if not there yet
     if (ctx.creep.room.name !== mem.assistTarget) {
       return { type: "moveToRoom", roomName: mem.assistTarget };
@@ -536,6 +582,9 @@ export function healer(ctx: CreepContext): CreepAction {
 
   // Check if assigned to assist another room
   if (mem.assistTarget) {
+    const stagingAction = getDefenseAssistSquadStagingAction(ctx, mem);
+    if (stagingAction) return stagingAction;
+
     const assistRoom = Game.rooms[mem.assistTarget];
     if (assistRoom) {
       const hostiles = getActualHostileCreeps(assistRoom);
@@ -882,6 +931,9 @@ export function ranger(ctx: CreepContext): CreepAction {
 
   // Check if assigned to assist another room
   if (mem.assistTarget) {
+    const stagingAction = getDefenseAssistSquadStagingAction(ctx, mem);
+    if (stagingAction) return stagingAction;
+
     const assistRoom = Game.rooms[mem.assistTarget];
     if (assistRoom) {
       const hostiles = getActualHostileCreeps(assistRoom);

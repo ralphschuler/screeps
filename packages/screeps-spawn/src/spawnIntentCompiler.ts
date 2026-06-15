@@ -63,6 +63,9 @@ export interface SpawnDemand {
   targetRoom?: string;
   task?: string;
   assistTarget?: string;
+  defenseSquadId?: string;
+  defenseSquadSize?: number;
+  defenseSquadCreatedAt?: number;
   bootstrap?: boolean;
   bodyOverride?: BodyTemplate;
 }
@@ -159,7 +162,10 @@ export function planSpawnDemand(room: Room, swarm: SwarmState): SpawnDemand[] {
         priority: defenseAssistAssignment.priority,
         targetRoom: defenseAssistAssignment.targetRoom,
         task: defenseAssistAssignment.task,
-        assistTarget: defenseAssistAssignment.targetRoom
+        assistTarget: defenseAssistAssignment.targetRoom,
+        defenseSquadId: defenseAssistAssignment.defenseSquadId,
+        defenseSquadSize: defenseAssistAssignment.defenseSquadSize,
+        defenseSquadCreatedAt: defenseAssistAssignment.defenseSquadCreatedAt
       });
       continue;
     }
@@ -257,7 +263,10 @@ export function compileSpawnDemandToRequest(room: Room, demand: SpawnDemand): Sp
 
     const additionalMemory = {
       ...(demand.task ? { task: demand.task } : {}),
-      ...(demand.assistTarget ? { assistTarget: demand.assistTarget } : {})
+      ...(demand.assistTarget ? { assistTarget: demand.assistTarget } : {}),
+      ...(demand.defenseSquadId ? { defenseSquadId: demand.defenseSquadId } : {}),
+      ...(demand.defenseSquadSize ? { defenseSquadSize: demand.defenseSquadSize } : {}),
+      ...(demand.defenseSquadCreatedAt ? { defenseSquadCreatedAt: demand.defenseSquadCreatedAt } : {})
     };
 
     return {

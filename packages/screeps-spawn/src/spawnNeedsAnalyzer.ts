@@ -28,6 +28,7 @@ import { spawnQueue, SpawnPriority } from "./spawnQueue";
 const THREATS_PER_GUARD = 2;
 const DEFENSE_ASSIST_REQUEST_TTL = 500;
 const DEFENSE_ASSIST_TASK = "defenseAssist";
+const DEFENSE_ASSIST_ROLES = ["guard", "ranger", "healer"] as const;
 const MAX_PIONEERS_PER_SPAWN_SITE = 3;
 
 /** Reservation threshold in ticks - trigger renewal below this */
@@ -59,6 +60,9 @@ interface DefenseAssistSpawnAssignment {
   targetRoom: string;
   task: "defenseAssist";
   priority: SpawnPriority;
+  defenseSquadId: string;
+  defenseSquadSize: number;
+  defenseSquadCreatedAt: number;
 }
 
 interface DefenseAssistRequestMemory {
@@ -456,11 +460,15 @@ function getDefenseRoleNeed(request: DefenseAssistRequestMemory, role: string): 
   return 0;
 }
 
-function getDefenseRoleNeedForHelper(request: DefenseAssistRequestMemory, role: string, helperEnergyCapacity: number): number {
+function getDefenseRoleNeedForHelper(
+  request: DefenseAssistRequestMemory,
+  role: string,
+  helperEnergyCapacity: number,
+  threatProfile = getVisibleDefenseAssistThreatProfile(request.roomName)
+): number {
   const requestedNeed = getDefenseRoleNeed(request, role);
   if (requestedNeed <= 0 || !isDefenseAssistMilitaryRole(role)) return requestedNeed;
 
-  const threatProfile = getVisibleDefenseAssistThreatProfile(request.roomName);
   const squadNeed = calculateDefenseAssistSquadSize(role, helperEnergyCapacity, threatProfile);
   const helperWaveNeed = countCapableDefenseAssistHelpers(request, role, threatProfile);
   return Math.max(requestedNeed, squadNeed, helperWaveNeed);
@@ -478,6 +486,17 @@ function hasCurrentDefenseThreat(request: DefenseAssistRequestMemory): boolean {
 
 function getAssistTarget(memory: Partial<SwarmCreepMemory>): string | undefined {
   return memory.assistTarget ?? (memory.task === DEFENSE_ASSIST_TASK ? memory.targetRoom : undefined);
+}
+
+function getDefenseAssistSquadSizeForHelper(request: DefenseAssistRequestMemory, helperRoom: Room): number {
+  const threatProfile = getVisibleDefenseAssistThreatProfile(request.roomName);
+  let squadSize = 0;
+  for (const role of DEFENSE_ASSIST_ROLES) {
+    if (getDefenseRoleNeedForHelper(request, role, helperRoom.energyCapacityAvailable, threatProfile) <= 0) continue;
+    if (!buildDefenseAssistBody(role, helperRoom.energyCapacityAvailable, threatProfile)) continue;
+    squadSize++;
+  }
+  return Math.max(1, squadSize);
 }
 
 function countCapableDefenseAssistHelpers(
@@ -533,6 +552,29 @@ function canSpawnDefenseAssistFrom(room: Room): boolean {
   return getActualHostileCreeps(room).length === 0;
 }
 
+function getDefenseAssistCreatedAt(request: DefenseAssistRequestMemory): number {
+  return request.createdAt ?? Game.time;
+}
+
+function createDefenseAssistSquadId(homeRoom: string, request: DefenseAssistRequestMemory): string {
+  return `defenseAssist:${homeRoom}:${request.roomName}:${getDefenseAssistCreatedAt(request)}`;
+}
+
+function createDefenseAssistSpawnAssignment(
+  homeRoom: string,
+  home: Room,
+  request: DefenseAssistRequestMemory
+): DefenseAssistSpawnAssignment {
+  return {
+    targetRoom: request.roomName,
+    task: DEFENSE_ASSIST_TASK,
+    priority: (request.urgency ?? 1) >= 2 ? SpawnPriority.EMERGENCY : SpawnPriority.HIGH,
+    defenseSquadId: createDefenseAssistSquadId(homeRoom, request),
+    defenseSquadSize: getDefenseAssistSquadSizeForHelper(request, home),
+    defenseSquadCreatedAt: getDefenseAssistCreatedAt(request)
+  };
+}
+
 function getActiveDefenseAssistRequests(memory: { defenseRequests?: DefenseAssistRequestMemory[] }): DefenseAssistRequestMemory[] {
   const requests = memory.defenseRequests ?? [];
   const activeRequests = requests.filter(hasCurrentDefenseThreat);
@@ -550,31 +592,26 @@ export function getDefenseAssistSpawnAssignment(homeRoom: string, role: string):
 
   const helperEnergyCapacity = home.energyCapacityAvailable;
   const memory = Memory as unknown as { defenseRequests?: DefenseAssistRequestMemory[] };
-  const requests = getActiveDefenseAssistRequests(memory)
+  const candidates = getActiveDefenseAssistRequests(memory)
     .filter(request => request.roomName !== homeRoom)
-    .filter(request => getDefenseRoleNeedForHelper(request, role, helperEnergyCapacity) > 0)
-    .filter(hasCurrentDefenseThreat)
-    .filter(request => !hasHelperRoomDefenseAssist(homeRoom, request.roomName, role))
-    .filter(request =>
-      countAssignedDefenseAssist(request.roomName, role) < getDefenseRoleNeedForHelper(request, role, helperEnergyCapacity)
-    )
+    .map(request => ({ request, helperNeed: getDefenseRoleNeedForHelper(request, role, helperEnergyCapacity) }))
+    .filter(candidate => candidate.helperNeed > 0)
+    .filter(candidate => hasCurrentDefenseThreat(candidate.request))
+    .filter(candidate => !hasHelperRoomDefenseAssist(homeRoom, candidate.request.roomName, role))
+    .filter(candidate => countAssignedDefenseAssist(candidate.request.roomName, role) < candidate.helperNeed)
     .sort((a, b) => {
-      const urgencyDelta = (b.urgency ?? 1) - (a.urgency ?? 1);
+      const urgencyDelta = (b.request.urgency ?? 1) - (a.request.urgency ?? 1);
       if (urgencyDelta !== 0) return urgencyDelta;
-      const distanceA = Game.map?.getRoomLinearDistance?.(homeRoom, a.roomName) ?? 999;
-      const distanceB = Game.map?.getRoomLinearDistance?.(homeRoom, b.roomName) ?? 999;
+      const distanceA = Game.map?.getRoomLinearDistance?.(homeRoom, a.request.roomName) ?? 999;
+      const distanceB = Game.map?.getRoomLinearDistance?.(homeRoom, b.request.roomName) ?? 999;
       if (distanceA !== distanceB) return distanceA - distanceB;
-      return (a.createdAt ?? 0) - (b.createdAt ?? 0);
+      return (a.request.createdAt ?? 0) - (b.request.createdAt ?? 0);
     });
 
-  const request = requests[0];
+  const request = candidates[0]?.request;
   if (!request) return null;
 
-  return {
-    targetRoom: request.roomName,
-    task: DEFENSE_ASSIST_TASK,
-    priority: (request.urgency ?? 1) >= 2 ? SpawnPriority.EMERGENCY : SpawnPriority.HIGH
-  };
+  return createDefenseAssistSpawnAssignment(homeRoom, home, request);
 }
 
 function countAssignedPioneers(targetRoom: string): number {
