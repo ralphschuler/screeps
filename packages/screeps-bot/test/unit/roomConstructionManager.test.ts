@@ -126,6 +126,58 @@ describe("RoomConstructionManager", () => {
       );
     });
 
+    it("should place missing RCL5 tower sites before local construction cap during danger", () => {
+      const record: { calls: { x: number; y: number; structureType: BuildableStructureConstant }[] } = { calls: [] };
+      const spawn = {
+        id: "spawn1" as Id<StructureSpawn>,
+        structureType: STRUCTURE_SPAWN,
+        pos: new RoomPosition(25, 25, "W2N1")
+      } as StructureSpawn;
+      const controller = {
+        my: true,
+        level: 5,
+        pos: new RoomPosition(25, 8, "W2N1")
+      } as unknown as StructureController;
+      const source = { pos: new RoomPosition(10, 25, "W2N1") } as Source;
+      const sites = Array.from({ length: 10 }, (_, index) => ({
+        structureType: STRUCTURE_ROAD,
+        pos: new RoomPosition(10 + index, 10, "W2N1")
+      }) as ConstructionSite);
+      const structures = [spawn] as Structure[];
+      const room = {
+        name: "W2N1",
+        controller,
+        getTerrain: () => ({ get: () => 0 }),
+        find: (type: FindConstant, options?: { filter?: (structure: Structure) => boolean }) => {
+          if (type === FIND_STRUCTURES) return structures;
+          if (type === FIND_MY_STRUCTURES) return options?.filter ? structures.filter(options.filter) : structures;
+          if (type === FIND_MY_CONSTRUCTION_SITES) return sites;
+          if (type === FIND_MY_SPAWNS) return [spawn];
+          if (type === FIND_SOURCES) return [source];
+          if (type === FIND_MINERALS) return [];
+          return [];
+        },
+        createConstructionSite: (x: number, y: number, structureType: BuildableStructureConstant) => {
+          record.calls.push({ x, y, structureType });
+          return OK;
+        }
+      } as unknown as Room;
+      const swarm = { danger: 3, remoteAssignments: [], metrics: {}, posture: "siege" } as any;
+      const oldGame = (globalThis as { Game?: unknown }).Game;
+      (globalThis as { Game?: unknown }).Game = { time: 100, constructionSites: {} };
+
+      try {
+        manager.runConstruction(room, swarm, sites, [spawn], { criticalOnly: true });
+      } finally {
+        (globalThis as { Game?: unknown }).Game = oldGame;
+      }
+
+      assert.isTrue(
+        record.calls.some(call => call.structureType === STRUCTURE_TOWER),
+        "critical defense construction should bypass the local site cap to place a missing tower"
+      );
+    });
+
     it("should place construction sites based on blueprint", () => {
       // Placeholder for future tests when we have mock room objects
       assert.exists(manager);

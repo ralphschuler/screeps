@@ -29,13 +29,23 @@ function buildBodyTemplate(partGroups: Array<[BodyPartConstant, number]>): BodyT
     }
   }
 
-  const cost = calculateBodyCost(parts);
+  return makeBodyTemplate(parts);
+}
 
+function makeBodyTemplate(parts: BodyPartConstant[]): BodyTemplate {
+  const cost = calculateBodyCost(parts);
   return {
     parts,
     cost,
     minCapacity: cost
   };
+}
+
+function strongestAffordableBody(candidates: BodyPartConstant[][], maxEnergy: number): BodyTemplate | null {
+  return candidates
+    .map(makeBodyTemplate)
+    .filter(body => body.cost <= maxEnergy && body.parts.length <= MAX_BODY_PARTS)
+    .sort((a, b) => b.cost - a.cost || b.parts.length - a.parts.length)[0] ?? null;
 }
 
 /**
@@ -219,57 +229,19 @@ export function optimizeBuilderBody(options: BodyOptimizationOptions): BodyTempl
 export function optimizeCombatBody(options: BodyOptimizationOptions): BodyTemplate {
   const { maxEnergy, willBoost = false } = options;
 
-  // Pattern: TOUGH (cheap armor), ATTACK (damage), MOVE (speed)
-  // Ratio varies by boost status
-  // Without boost: fewer TOUGH, more ATTACK
-  // With boost: more TOUGH (boosted = 4x effective), balanced ATTACK
-
-  let tough: number;
-  let attack: number;
-  let move: number;
-
-  if (willBoost) {
-    // Boosted: maximize TOUGH (cheap + effective)
-    // Pattern ratio: 1 TOUGH : 4 ATTACK : 5 MOVE (similar to non-boosted but boosted TOUGH is very effective)
-    // Cost per unit: 10 + 320 + 250 = 580
-    const costPerUnit = 580;
-    const units = Math.max(1, Math.floor(maxEnergy / costPerUnit));
-    tough = Math.min(10, units);
-    attack = Math.min(20, units * 4);
-    move = Math.min(30, units * 5);
-  } else {
-    // Non-boosted: standard composition
-    // Pattern ratio: 1 TOUGH : 4 ATTACK : 5 MOVE
-    // Cost per unit: 10 + 320 + 250 = 580
-    const costPerUnit = 580;
-    const units = Math.max(1, Math.floor(maxEnergy / costPerUnit));
-    tough = Math.max(1, units);
-    attack = Math.max(1, units * 4);
-    move = Math.max(1, units * 5);
+  const candidates: BodyPartConstant[][] = [];
+  const maxAttack = Math.min(25, Math.floor(maxEnergy / (80 + 50)) || 1);
+  for (let attack = 1; attack <= maxAttack; attack++) {
+    candidates.push([...Array(attack).fill(ATTACK), ...Array(attack).fill(MOVE)]);
+    candidates.push([TOUGH, ...Array(attack).fill(ATTACK), ...Array(attack + 1).fill(MOVE)]);
+    if (willBoost) {
+      candidates.push([...Array(Math.min(10, attack)).fill(TOUGH), ...Array(attack).fill(ATTACK), ...Array(attack + Math.min(10, attack)).fill(MOVE)]);
+    }
   }
 
-  const parts: BodyPartConstant[] = [];
-
-  // Add TOUGH first (takes damage first)
-  for (let i = 0; i < tough; i++) {
-    parts.push(TOUGH);
-  }
-
-  // Add ATTACK
-  for (let i = 0; i < attack; i++) {
-    parts.push(ATTACK);
-  }
-
-  // Add MOVE last
-  for (let i = 0; i < move; i++) {
-    parts.push(MOVE);
-  }
-
-  return {
-    parts,
-    cost: calculateBodyCost(parts),
-    minCapacity: calculateBodyCost(parts)
-  };
+  const body = strongestAffordableBody(candidates, maxEnergy);
+  if (body) return body;
+  throw new Error(`No affordable combat body for ${maxEnergy} energy`);
 }
 
 /**
@@ -279,43 +251,19 @@ export function optimizeCombatBody(options: BodyOptimizationOptions): BodyTempla
 export function optimizeRangedBody(options: BodyOptimizationOptions): BodyTemplate {
   const { maxEnergy, willBoost = false } = options;
 
-  let tough: number;
-  let ranged: number;
-  let move: number;
-
-  if (willBoost) {
-    // Boosted ranged: maximize damage output
-    const costPerUnit = 10 + 150 + 50; // TOUGH + RANGED_ATTACK + MOVE
-    const units = Math.floor(maxEnergy / costPerUnit);
-    tough = Math.min(5, Math.floor(units * 0.1));
-    ranged = Math.min(25, Math.floor(units * 0.6));
-    move = Math.min(20, Math.ceil(units * 0.3));
-  } else {
-    // Non-boosted: standard composition
-    const costPerUnit = 10 + 150 + 50; // 210
-    const units = Math.floor(maxEnergy / costPerUnit);
-    tough = Math.max(1, Math.min(5, Math.floor(units * 0.1)));
-    ranged = Math.max(1, Math.min(20, Math.floor(units * 0.5)));
-    move = Math.max(1, Math.min(20, Math.ceil(units * 0.4)));
+  const candidates: BodyPartConstant[][] = [];
+  const maxRanged = Math.min(25, Math.floor(maxEnergy / (150 + 50)) || 1);
+  for (let ranged = 1; ranged <= maxRanged; ranged++) {
+    candidates.push([...Array(ranged).fill(RANGED_ATTACK), ...Array(ranged).fill(MOVE)]);
+    candidates.push([TOUGH, ...Array(ranged).fill(RANGED_ATTACK), ...Array(ranged + 1).fill(MOVE)]);
+    if (willBoost) {
+      candidates.push([...Array(Math.min(5, ranged)).fill(TOUGH), ...Array(ranged).fill(RANGED_ATTACK), ...Array(ranged + Math.min(5, ranged)).fill(MOVE)]);
+    }
   }
 
-  const parts: BodyPartConstant[] = [];
-
-  for (let i = 0; i < tough; i++) {
-    parts.push(TOUGH);
-  }
-  for (let i = 0; i < ranged; i++) {
-    parts.push(RANGED_ATTACK);
-  }
-  for (let i = 0; i < move; i++) {
-    parts.push(MOVE);
-  }
-
-  return {
-    parts,
-    cost: calculateBodyCost(parts),
-    minCapacity: calculateBodyCost(parts)
-  };
+  const body = strongestAffordableBody(candidates, maxEnergy);
+  if (body) return body;
+  throw new Error(`No affordable ranged body for ${maxEnergy} energy`);
 }
 
 /**
@@ -324,29 +272,16 @@ export function optimizeRangedBody(options: BodyOptimizationOptions): BodyTempla
 export function optimizeHealerBody(options: BodyOptimizationOptions): BodyTemplate {
   const { maxEnergy } = options;
 
-  // Pattern: HEAL, MOVE (1:1 for speed)
-  // With boost: more HEAL (boosted healing is very effective)
-  const costPerUnit = 250 + 50; // 300
-
-  const units = Math.floor(maxEnergy / costPerUnit);
-
-  const heal = Math.max(1, Math.min(25, units));
-  const move = heal; // 1:1 for fast movement
-
-  const parts: BodyPartConstant[] = [];
-
-  for (let i = 0; i < heal; i++) {
-    parts.push(HEAL);
-  }
-  for (let i = 0; i < move; i++) {
-    parts.push(MOVE);
+  const candidates: BodyPartConstant[][] = [];
+  const maxHeal = Math.min(25, Math.floor(maxEnergy / (250 + 50)) || 1);
+  for (let heal = 1; heal <= maxHeal; heal++) {
+    candidates.push([...Array(heal).fill(HEAL), ...Array(heal).fill(MOVE)]);
+    candidates.push([TOUGH, ...Array(heal).fill(HEAL), ...Array(heal + 1).fill(MOVE)]);
   }
 
-  return {
-    parts,
-    cost: calculateBodyCost(parts),
-    minCapacity: calculateBodyCost(parts)
-  };
+  const body = strongestAffordableBody(candidates, maxEnergy);
+  if (body) return body;
+  throw new Error(`No affordable healer body for ${maxEnergy} energy`);
 }
 
 /**

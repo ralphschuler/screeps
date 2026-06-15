@@ -61,22 +61,25 @@ export function populateSpawnQueue(room: Room, swarm: SwarmState): void {
   const defenderNeeds = analyzeDefenderNeeds(room);
   const currentDefenders = getCurrentDefenders(room);
 
-  if (defenderNeeds.guards > 0 || defenderNeeds.rangers > 0 || defenderNeeds.healers > 0) {
-    addDefenderRequests(room, defenderNeeds, currentDefenders);
-  }
-
-  if (queueSize > 0 && !emergencyRecoveryNeeded && !bootstrapMode) {
-    addPreemptiveRequestsWhenMissing(room, swarm);
-    return;
-  }
-
   if (bootstrapMode) {
     if (queueSize > 0) {
       spawnQueue.clearQueue(room.name);
     }
+    if (defenderNeeds.guards > 0 || defenderNeeds.rangers > 0 || defenderNeeds.healers > 0) {
+      addDefenderRequests(room, swarm, defenderNeeds, currentDefenders);
+    }
     for (const request of createSpawnPlan(room, swarm).requests) {
       spawnQueue.addRequest(request);
     }
+    return;
+  }
+
+  if (defenderNeeds.guards > 0 || defenderNeeds.rangers > 0 || defenderNeeds.healers > 0) {
+    addDefenderRequests(room, swarm, defenderNeeds, currentDefenders);
+  }
+
+  if (queueSize > 0 && !emergencyRecoveryNeeded) {
+    addPreemptiveRequestsWhenMissing(room, swarm);
     return;
   }
 
@@ -209,14 +212,15 @@ function isDefenseAssistRequest(request: SpawnRequest): boolean {
 
 function addDefenderRequests(
   room: Room,
+  swarm: SwarmState,
   needs: ReturnType<typeof analyzeDefenderNeeds>,
   current: ReturnType<typeof getCurrentDefenders>
 ): void {
   const maxEnergy = room.energyCapacityAvailable;
-  const emergencyEnergy = room.energyAvailable;
-  const priority = needs.urgency >= 2.0 ? SpawnPriority.EMERGENCY : SpawnPriority.HIGH;
+  const emergencyEnergy = getEffectiveRoomEnergyAvailable(room);
+  const priority = needs.urgency >= 2.0 || swarm.danger >= 3 ? SpawnPriority.EMERGENCY : SpawnPriority.HIGH;
 
-  const pendingDefenders = getPendingDefenderCounts(room.name);
+  const pendingDefenders = getPendingDefenderCounts(room.name, maxEnergy);
   const guardsNeeded = Math.max(0, needs.guards - current.guards - pendingDefenders.guards);
   for (let i = 0; i < guardsNeeded; i++) {
     addOptimizedRequest(
@@ -263,9 +267,11 @@ function addDefenderRequests(
   }
 }
 
-function getPendingDefenderCounts(roomName: string): { guards: number; rangers: number; healers: number } {
+function getPendingDefenderCounts(roomName: string, energyCapacity: number): { guards: number; rangers: number; healers: number } {
   const counts = { guards: 0, rangers: 0, healers: 0 };
   for (const request of spawnQueue.getPendingRequests(roomName)) {
+    if (Game.time - request.createdAt > 1500) continue;
+    if (request.body.cost > energyCapacity) continue;
     if (request.role === "guard") counts.guards++;
     if (request.role === "ranger") counts.rangers++;
     if (request.role === "healer") counts.healers++;
@@ -311,6 +317,12 @@ function addOptimizedRequest(
 ): void {
   try {
     const body = optimizeBody({ maxEnergy, role });
+    if (body.cost > maxEnergy) {
+      logger.warn(`Skipping unspawnable ${role} request in ${room.name}: body cost ${body.cost} exceeds ${maxEnergy}`, {
+        subsystem: "SpawnPipeline"
+      });
+      return;
+    }
     spawnQueue.addRequest({
       id,
       roomName: room.name,

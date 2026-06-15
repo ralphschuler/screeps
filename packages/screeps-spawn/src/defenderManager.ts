@@ -112,12 +112,28 @@ export function analyzeDefenderNeeds(room: Room): DefenderRequirement {
   return result;
 }
 
+function hasActivePart(creep: Creep, parts: BodyPartConstant[]): boolean {
+  return creep.body.some(part => part.hits > 0 && parts.includes(part.type));
+}
+
 export function getCurrentDefenders(room: Room): { guards: number; rangers: number; healers: number } {
   const creeps = room.find(FIND_MY_CREEPS);
   return {
-    guards: creeps.filter(c => (c.memory as { role?: string }).role === "guard").length,
-    rangers: creeps.filter(c => (c.memory as { role?: string }).role === "ranger").length,
-    healers: creeps.filter(c => (c.memory as { role?: string }).role === "healer").length
+    guards: creeps.filter(c =>
+      !(c as { spawning?: boolean }).spawning &&
+      (c.memory as { role?: string }).role === "guard" &&
+      hasActivePart(c, [ATTACK, RANGED_ATTACK])
+    ).length,
+    rangers: creeps.filter(c =>
+      !(c as { spawning?: boolean }).spawning &&
+      (c.memory as { role?: string }).role === "ranger" &&
+      hasActivePart(c, [RANGED_ATTACK])
+    ).length,
+    healers: creeps.filter(c =>
+      !(c as { spawning?: boolean }).spawning &&
+      (c.memory as { role?: string }).role === "healer" &&
+      hasActivePart(c, [HEAL])
+    ).length
   };
 }
 

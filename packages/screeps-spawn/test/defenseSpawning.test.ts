@@ -6,6 +6,7 @@ import {
   countLocalMilitaryCreeps,
   shouldLimitIdleLocalMilitary
 } from "../src/militarySpawnPolicy.ts";
+import { optimizeBody } from "../src/bodyOptimizer.ts";
 import { ROLE_DEFINITIONS } from "../src/roleDefinitions.ts";
 import { populateSpawnQueue } from "../src/spawnPipeline.ts";
 import { SpawnPriority, spawnQueue } from "../src/spawnQueue.ts";
@@ -254,6 +255,56 @@ describe("defense spawn throttling", () => {
 
     assert.equal(guardRequest?.targetRoom, "W19S28");
     assert.deepEqual(guardRequest?.additionalMemory, { task: "defenseAssist", assistTarget: "W19S28" });
+  });
+
+  it("keeps optimized military bodies within the requested energy budget", () => {
+    for (const [role, energy] of [["guard", 199], ["guard", 400], ["ranger", 200], ["healer", 300]] as const) {
+      const body = optimizeBody({ role, maxEnergy: energy });
+      assert.isAtMost(body.cost, energy, `${role} body must be affordable at ${energy} energy`);
+    }
+  });
+
+  it("adds an affordable emergency guard under siege instead of idling behind unspawnable pending defenders", () => {
+    const room = createRoom([createHostile([WORK, WORK, WORK, WORK, RANGED_ATTACK, MOVE])], "W19S26", 400, 199);
+    Game.rooms.W19S26 = room;
+    Game.creeps = {
+      worker1: { spawning: false, memory: { role: "harvester", homeRoom: "W19S26" } }
+    } as unknown as typeof Game.creeps;
+
+    spawnQueue.addRequest({
+      id: "stale_expensive_guard",
+      roomName: "W19S26",
+      role: "guard",
+      family: "military",
+      body: { parts: [TOUGH, ATTACK, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE], cost: 580, minCapacity: 580 },
+      priority: SpawnPriority.EMERGENCY,
+      createdAt: Game.time - 10
+    });
+
+    populateSpawnQueue(room, { danger: 3, posture: "siege" } as any);
+
+    const affordable = spawnQueue.getNextRequest("W19S26", 199);
+    assert.equal(affordable?.role, "guard");
+    assert.isAtMost(affordable!.body.cost, 199);
+  });
+
+  it("does not count a spawning or disarmed defender as current defense", () => {
+    const hostile = createHostile([ATTACK, MOVE]);
+    const room = createRoom([hostile]);
+    const creeps = [
+      { spawning: true, memory: { role: "guard" }, body: [{ type: ATTACK, hits: 100 }, { type: MOVE, hits: 100 }] },
+      { spawning: false, memory: { role: "guard" }, body: [{ type: ATTACK, hits: 0 }, { type: MOVE, hits: 100 }] }
+    ] as unknown as Creep[];
+    (room as unknown as { find: (type: number) => unknown[] }).find = (type: number) => {
+      if (type === FIND_HOSTILE_CREEPS) return [hostile];
+      if (type === FIND_MY_SPAWNS) return [{ id: "spawn", spawning: false }];
+      if (type === FIND_MY_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return creeps;
+      return [];
+    };
+
+    const { getCurrentDefenders } = require("../src/defenderManager") as typeof import("../src/defenderManager");
+    assert.deepEqual(getCurrentDefenders(room), { guards: 0, rangers: 0, healers: 0 });
   });
 
   it("sizes defense-assist bodies above visible attackers when helper capacity can afford it", () => {

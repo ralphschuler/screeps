@@ -12,6 +12,7 @@
 import { placeRampartsOnCriticalStructures, placeRoadAwarePerimeterDefense } from "@ralphschuler/screeps-defense";
 import {
   blueprintFromPlan,
+  buildConstructionQueue,
   destroyMisplacedStructures,
   issueConstructionSites,
   placeLabClusterConstructionSites,
@@ -85,6 +86,10 @@ export interface EconomyFirstConstructionPolicy {
   allowRamparts: boolean;
 }
 
+export interface CriticalDefenseConstructionOptions {
+  criticalOnly?: boolean;
+}
+
 export interface RoadAwarePerimeterConstructionInput {
   allowPerimeter: boolean;
   rcl: number;
@@ -131,6 +136,71 @@ function isEarlyGameDefense(rcl: number): boolean {
   return rcl >= EARLY_GAME_RCL_MIN && rcl <= EARLY_GAME_RCL_MAX;
 }
 
+function countOwnedStructures(room: Room, structureType: StructureConstant): number {
+  return room.find(FIND_MY_STRUCTURES, { filter: structure => structure.structureType === structureType }).length;
+}
+
+function placeCriticalDefenseConstructionSites(room: Room, stampPlan: ReturnType<typeof planRoomBlueprintFromRoom>, maxSites: number): number {
+  if (maxSites <= 0) return 0;
+  const globalSiteCap = typeof MAX_CONSTRUCTION_SITES === "undefined" ? 100 : MAX_CONSTRUCTION_SITES;
+  const globalExistingSites = typeof Game === "undefined" ? 0 : Object.keys(Game.constructionSites ?? {}).length;
+  if (globalExistingSites >= globalSiteCap) return 0;
+
+  const rcl = room.controller?.level ?? stampPlan.rcl;
+  const controllerStructures = (typeof CONTROLLER_STRUCTURES === "undefined"
+    ? { [STRUCTURE_TOWER]: { 1: 0, 2: 0, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3, 8: 6 } }
+    : CONTROLLER_STRUCTURES) as Record<string, Record<number, number>>;
+  const towerLimit = controllerStructures[STRUCTURE_TOWER]?.[rcl] ?? 0;
+  const towerCount = countOwnedStructures(room, STRUCTURE_TOWER);
+  const existingStructureKeys = new Set<string>();
+  const existingSiteKeys = new Set<string>();
+  for (const structure of room.find(FIND_STRUCTURES)) {
+    existingStructureKeys.add(`${structure.structureType}:${structure.pos.x},${structure.pos.y}`);
+  }
+  for (const site of room.find(FIND_MY_CONSTRUCTION_SITES)) {
+    existingSiteKeys.add(`${site.structureType}:${site.pos.x},${site.pos.y}`);
+  }
+  const queue = buildConstructionQueue(stampPlan, { existingStructureKeys, existingSiteKeys, currentRcl: rcl })
+    .filter(item =>
+      item.structureType === STRUCTURE_TOWER ||
+      (item.structureType === STRUCTURE_RAMPART && (towerCount < towerLimit || rcl >= 3))
+    )
+    .sort((a, b) => {
+      if (a.structureType === STRUCTURE_TOWER && b.structureType !== STRUCTURE_TOWER) return -1;
+      if (b.structureType === STRUCTURE_TOWER && a.structureType !== STRUCTURE_TOWER) return 1;
+      return b.score - a.score;
+    });
+
+  if (towerCount < towerLimit && !queue.some(item => item.structureType === STRUCTURE_TOWER)) {
+    const spawn = room.find(FIND_MY_SPAWNS)[0];
+    const anchor = spawn?.pos ?? room.controller?.pos;
+    if (anchor) {
+      const terrain = room.getTerrain();
+      for (let radius = 1; radius <= 4 && !queue.some(item => item.structureType === STRUCTURE_TOWER); radius++) {
+        for (let dx = -radius; dx <= radius && !queue.some(item => item.structureType === STRUCTURE_TOWER); dx++) {
+          for (let dy = -radius; dy <= radius && !queue.some(item => item.structureType === STRUCTURE_TOWER); dy++) {
+            const x = anchor.x + dx;
+            const y = anchor.y + dy;
+            if (x <= 1 || x >= 48 || y <= 1 || y >= 48) continue;
+            if (terrain.get(x, y) === TERRAIN_MASK_WALL) continue;
+            const key = `${STRUCTURE_TOWER}:${x},${y}`;
+            if (existingStructureKeys.has(key) || existingSiteKeys.has(key)) continue;
+            queue.unshift({ x, y, structureType: STRUCTURE_TOWER, minRcl: 3, priority: "P0", score: 1000, source: "critical-defense-fallback" });
+          }
+        }
+      }
+    }
+  }
+
+  let created = 0;
+  for (const item of queue) {
+    if (created >= maxSites || globalExistingSites + created >= globalSiteCap) break;
+    const result = room.createConstructionSite(item.x, item.y, item.structureType);
+    if (result === OK) created++;
+  }
+  return created;
+}
+
 /**
  * Room Construction Manager
  */
@@ -149,7 +219,8 @@ export class RoomConstructionManager {
     room: Room,
     swarm: SwarmState,
     constructionSites: ConstructionSite[],
-    spawns: StructureSpawn[]
+    spawns: StructureSpawn[],
+    options: CriticalDefenseConstructionOptions = {}
   ): void {
     const existingSites = constructionSites;
     const rcl = room.controller?.level ?? 1;
@@ -188,12 +259,6 @@ export class RoomConstructionManager {
       labSitesPlaced = placeLabClusterConstructionSites(room, 3);
     }
 
-    // Check per-room construction site throttle after first-spawn/bootstrap and priority economy sites.
-    if (existingSites.length + linkSitesPlaced + labSitesPlaced >= 10) {
-      swarm.metrics.constructionSites = existingSites.length + linkSitesPlaced + labSitesPlaced;
-      return;
-    }
-
     // Use the canonical framework stamp planner as the single layout authority.
     // A remembered anchor keeps cleanup/perimeter stable; without one the planner
     // derives an anchor from fixed structures and room facts.
@@ -206,6 +271,22 @@ export class RoomConstructionManager {
     anchor = new RoomPosition(stampPlan.anchor.x, stampPlan.anchor.y, room.name);
     const finalBlueprint = blueprintFromPlan(stampPlan);
     rememberLayoutAnchor(swarm, anchor, finalBlueprint.name, rcl);
+
+    const criticalDefenseSitesPlaced = swarm.danger >= 1 && rcl >= 3
+      ? placeCriticalDefenseConstructionSites(room, stampPlan, swarm.danger >= 2 ? 3 : 1)
+      : 0;
+
+    if (options.criticalOnly) {
+      swarm.metrics.constructionSites = existingSites.length + criticalDefenseSitesPlaced;
+      return;
+    }
+
+    // Check per-room construction site throttle after first-spawn/bootstrap, priority economy sites,
+    // and survival-critical defense sites.
+    if (existingSites.length + linkSitesPlaced + labSitesPlaced + criticalDefenseSitesPlaced >= 10) {
+      swarm.metrics.constructionSites = existingSites.length + linkSitesPlaced + labSitesPlaced + criticalDefenseSitesPlaced;
+      return;
+    }
 
     // Destroy misplaced structures that don't match the blueprint
     // Runs every construction tick (10 ticks) in non-combat postures for faster cleanup
@@ -287,6 +368,7 @@ export class RoomConstructionManager {
     // Update metrics
     swarm.metrics.constructionSites =
       existingSites.length +
+      criticalDefenseSitesPlaced +
       placed +
       linkSitesPlaced +
       labSitesPlaced +

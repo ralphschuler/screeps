@@ -38,6 +38,15 @@ function hasActiveDangerousBodyPart(creep: Creep): boolean {
   );
 }
 
+function countActiveParts(creep: Creep, bodyPart: BodyPartConstant): number {
+  return creep.body.filter(part => part.hits > 0 && part.type === bodyPart).length;
+}
+
+function isHighImpactSiegeHostile(creep: Creep): boolean {
+  if (creep.body.some(part => part.hits > 0 && part.boost)) return true;
+  return countActiveParts(creep, WORK) >= 5 || countActiveParts(creep, HEAL) >= 3;
+}
+
 /**
  * Safe Mode Manager Class
  */
@@ -129,10 +138,10 @@ export class SafeModeManager {
       return true;
     }
 
-    // Check if hostiles are boosted
-    const boostedHostiles = safeModeHostiles.filter(h => h.body.some(p => p.boost));
-    if (boostedHostiles.length > 0 && defenders.length < boostedHostiles.length * 2) {
-      logger.warn(`Boosted hostiles detected: ${boostedHostiles.length}`, { subsystem: "Defense" });
+    // Check if hostiles are boosted or carry enough active WORK/HEAL to quickly dismantle or sustain a siege.
+    const highImpactHostiles = safeModeHostiles.filter(isHighImpactSiegeHostile);
+    if (highImpactHostiles.length > 0 && defenders.length < highImpactHostiles.length * 2) {
+      logger.warn(`High-impact siege hostiles detected: ${highImpactHostiles.length}`, { subsystem: "Defense" });
       return true;
     }
 

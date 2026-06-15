@@ -22,7 +22,7 @@ function createHostile(parts: BodyPartConstant[]): Creep {
   } as unknown as Creep;
 }
 
-function createRoom(hostiles: Creep[]): { room: Room; getSafeModeCalls: () => number } {
+function createRoom(hostiles: Creep[], defenders: Creep[] = []): { room: Room; getSafeModeCalls: () => number } {
   let safeModeCalls = 0;
   const spawn = { name: "Spawn1", hits: 5000, hitsMax: 5000 } as StructureSpawn;
   const controller = {
@@ -40,7 +40,7 @@ function createRoom(hostiles: Creep[]): { room: Room; getSafeModeCalls: () => nu
     find: (type: FindConstant) => {
       if (type === FIND_HOSTILE_CREEPS) return hostiles;
       if (type === FIND_MY_SPAWNS) return [spawn];
-      if (type === FIND_MY_CREEPS) return [];
+      if (type === FIND_MY_CREEPS) return defenders;
       return [];
     }
   } as unknown as Room;
@@ -65,6 +65,15 @@ describe("safe mode manager", () => {
     const { room, getSafeModeCalls } = createRoom([createHostile([ATTACK, MOVE])]);
 
     new SafeModeManager().checkSafeMode(room, createSwarm(2));
+
+    assert.equal(getSafeModeCalls(), 1);
+  });
+
+  it("activates safe mode for high-WORK siege hostiles even with one defender", () => {
+    const defender = { memory: { role: "guard" }, body: [{ type: ATTACK, hits: 100 }] } as unknown as Creep;
+    const { room, getSafeModeCalls } = createRoom([createHostile([WORK, WORK, WORK, WORK, WORK, MOVE])], [defender]);
+
+    new SafeModeManager().checkSafeMode(room, createSwarm(3));
 
     assert.equal(getSafeModeCalls(), 1);
   });
