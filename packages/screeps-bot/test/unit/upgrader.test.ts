@@ -211,6 +211,64 @@ describe("upgrader behavior - delivery priority before upgrading", () => {
       }
     });
 
+    it("should keep upgrading instead of refilling spawn when local haulers can handle non-critical refill", () => {
+      const creep = createMockCreep({ freeCapacity: 0, usedCapacity: 50 });
+      const spawn = createMockSpawn(197); // 103/300 energy: low, but not critical
+      const controller = createMockController();
+      (global as any).Game = {
+        creeps: {
+          hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "E1N1" } }
+        }
+      };
+
+      try {
+        const ctx = createMockContext(creep, {
+          isWorking: true,
+          spawnStructures: [spawn],
+          towers: [],
+          controller: controller
+        });
+
+        const action = upgrader(ctx);
+
+        assert.equal(action.type, "upgrade", "Should leave spawn refill to haulers when spawn is not critical");
+        if (action.type === "upgrade") {
+          assert.equal(action.target, controller, "Should keep upgrading controller");
+        }
+      } finally {
+        delete (global as any).Game;
+      }
+    });
+
+    it("should still refill critically empty spawn even when haulers exist", () => {
+      const creep = createMockCreep({ freeCapacity: 0, usedCapacity: 50 });
+      const spawn = createMockSpawn(260); // <=40/300 energy: critical
+      const controller = createMockController();
+      (global as any).Game = {
+        creeps: {
+          hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "E1N1" } }
+        }
+      };
+
+      try {
+        const ctx = createMockContext(creep, {
+          isWorking: true,
+          spawnStructures: [spawn],
+          towers: [],
+          controller: controller
+        });
+
+        const action = upgrader(ctx);
+
+        assert.equal(action.type, "transfer", "Should refill spawn when it is critically empty");
+        if (action.type === "transfer") {
+          assert.equal(action.target, spawn, "Should deliver to critical spawn");
+        }
+      } finally {
+        delete (global as any).Game;
+      }
+    });
+
     it("should deliver to extension when spawn is full (before upgrading)", () => {
       const creep = createMockCreep({ freeCapacity: 0, usedCapacity: 50 });
       const extension = createMockExtension(50);

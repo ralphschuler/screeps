@@ -10,6 +10,30 @@ import { findCachedClosest , cachedFindSources } from "../../cache";
 import { findCriticalEnergyDelivery } from "./common/energyManagement";
 import { updateWorkingState } from "./common/stateManagement";
 
+const CRITICAL_SPAWN_FREE_CAPACITY = 250;
+
+function hasActiveLocalHauler(ctx: CreepContext): boolean {
+  const game = (globalThis as { Game?: Game }).Game;
+  if (!game?.creeps) return false;
+  return Object.values(game.creeps).some(creep => {
+    const memory = creep.memory as { role?: string; homeRoom?: string };
+    return memory.role === "hauler" && memory.homeRoom === ctx.homeRoom && !(creep as { spawning?: boolean }).spawning;
+  });
+}
+
+function hasCriticallyEmptySpawn(ctx: CreepContext): boolean {
+  return ctx.spawnStructures.some(
+    structure =>
+      structure.structureType === STRUCTURE_SPAWN &&
+      structure.store.getFreeCapacity(RESOURCE_ENERGY) >= CRITICAL_SPAWN_FREE_CAPACITY
+  );
+}
+
+function shouldUpgraderRefillCriticalStructures(ctx: CreepContext): boolean {
+  if (!hasActiveLocalHauler(ctx)) return true;
+  return hasCriticallyEmptySpawn(ctx);
+}
+
 /**
  * Upgrader - Upgrade the room controller.
  * Priority: deliver energy to spawns/extensions/towers first, then upgrade controller
@@ -24,7 +48,9 @@ export function upgrader(ctx: CreepContext): CreepAction {
     // Priority: Spawns → Extensions → Towers → Upgrade
     // This ensures the room economy stays healthy while upgrading
     
-    const criticalDelivery = findCriticalEnergyDelivery(ctx, "upgrader");
+    const criticalDelivery = shouldUpgraderRefillCriticalStructures(ctx)
+      ? findCriticalEnergyDelivery(ctx, "upgrader")
+      : null;
     if (criticalDelivery) return criticalDelivery;
 
     // All critical structures filled - now upgrade controller
