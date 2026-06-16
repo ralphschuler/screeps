@@ -137,6 +137,26 @@ describe("scout behavior", () => {
     assert.deepInclude(action, { type: "moveToRoom", roomName: "W1N2" });
   });
 
+  it("targets adjacent rooms that do not have intel yet", () => {
+    const room = createVisibleRoom("W1N1");
+    delete (Memory as unknown as { empire: { knownRooms: Record<string, TestRoomIntel> } }).empire.knownRooms.W1N2;
+
+    const action = scout(createScoutContext(room));
+
+    assert.deepInclude(action, { type: "moveToRoom", roomName: "W1N2" });
+  });
+
+  it("falls back to deterministic adjacent rooms when describeExits has no data", () => {
+    (Game as unknown as { map: Partial<Game["map"]> }).map = {
+      describeExits: () => null
+    };
+    const room = createVisibleRoom("W1N1");
+
+    const action = scout(createScoutContext(room));
+
+    assert.deepInclude(action, { type: "moveToRoom", roomName: "W1N2" });
+  });
+
   it("records full intel when the scout reaches an unscouted room with fresh stub intel", () => {
     const room = createVisibleRoom("W1N2", 2);
 

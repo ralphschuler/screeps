@@ -95,6 +95,50 @@ function recordRoomIntel(room: Room, empire: EmpireMemory): void {
 }
 
 /**
+ * Convert a Screeps room name into signed coordinates.
+ * E0/S0 are 0; W0/N0 are -1.
+ */
+function roomNameToCoords(roomName: string): { x: number; y: number } | null {
+  const match = roomName.match(/^([WE])(\d+)([NS])(\d+)$/);
+  if (!match) return null;
+
+  const horizontal = match[1];
+  const xNumber = parseInt(match[2]!, 10);
+  const vertical = match[3];
+  const yNumber = parseInt(match[4]!, 10);
+
+  return {
+    x: horizontal === "E" ? xNumber : -xNumber - 1,
+    y: vertical === "S" ? yNumber : -yNumber - 1
+  };
+}
+
+function coordsToRoomName(x: number, y: number): string {
+  const horizontal = x >= 0 ? `E${x}` : `W${-x - 1}`;
+  const vertical = y >= 0 ? `S${y}` : `N${-y - 1}`;
+  return `${horizontal}${vertical}`;
+}
+
+function getFallbackAdjacentRooms(roomName: string): string[] {
+  const coords = roomNameToCoords(roomName);
+  if (!coords) return [];
+
+  return [
+    coordsToRoomName(coords.x, coords.y - 1),
+    coordsToRoomName(coords.x + 1, coords.y),
+    coordsToRoomName(coords.x, coords.y + 1),
+    coordsToRoomName(coords.x - 1, coords.y)
+  ];
+}
+
+function getAdjacentRooms(roomName: string): string[] {
+  const exits = Game.map.describeExits(roomName);
+  const describedRooms = exits ? Object.values(exits) : [];
+  if (describedRooms.length > 0) return describedRooms;
+  return getFallbackAdjacentRooms(roomName);
+}
+
+/**
  * Find the next unexplored adjacent room.
  * Avoids the previous room to prevent cycling between two rooms.
  */
@@ -104,12 +148,12 @@ function findNextExploreTarget(
   previousRoom?: string
 ): string | undefined {
   const knownRooms = empire.knownRooms;
-  const exits = Game.map.describeExits(currentRoom);
-  if (!exits) return undefined;
+  const adjacentRooms = getAdjacentRooms(currentRoom);
+  if (adjacentRooms.length === 0) return undefined;
 
   const candidates: { room: string; lastSeen: number }[] = [];
 
-  for (const [, roomName] of Object.entries(exits)) {
+  for (const roomName of adjacentRooms) {
     // Skip the previous room to prevent cycling
     if (previousRoom && roomName === previousRoom) continue;
 
