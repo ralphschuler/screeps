@@ -184,7 +184,7 @@ export function isDefenseAssistBodyStrongerThanThreat(
 ): boolean {
   if (!threat || threat.score <= 0) return true;
   const power = calculateCombatPower(parts);
-  return power.partCount > threat.partCount && power.score > threat.score;
+  return power.partCount >= threat.partCount && power.score >= threat.score;
 }
 
 function compareByPowerThenCost(a: BodyTemplate, b: BodyTemplate): number {
@@ -217,7 +217,7 @@ export function buildDefenseAssistBody(
   return [...candidates].sort(compareByPowerThenCost)[0] ?? null;
 }
 
-export function calculateDefenseAssistSquadSize(
+export function calculateThreatParitySquadSize(
   role: DefenseAssistRole,
   energyCapacity: number,
   threatProfile?: DefenseAssistThreatProfile | null
@@ -225,10 +225,24 @@ export function calculateDefenseAssistSquadSize(
   const body = buildDefenseAssistBody(role, energyCapacity, null);
   const strongestThreat = threatProfile?.strongest;
   if (!body) return 0;
-  if (!strongestThreat || isDefenseAssistBodyStrongerThanThreat(body.parts, strongestThreat)) return 1;
+  if (!strongestThreat) return 1;
 
   const bodyPower = calculateCombatPower(body.parts);
-  const powerSquadSize = Math.ceil((strongestThreat.score + 1) / Math.max(1, bodyPower.score));
-  const sizeSquadSize = Math.ceil((strongestThreat.partCount + 1) / Math.max(1, bodyPower.partCount));
-  return Math.min(MAX_DEFENSE_ASSIST_SQUAD_SIZE, Math.max(2, powerSquadSize, sizeSquadSize));
+  const strongestPowerSquadSize = Math.ceil(strongestThreat.score / Math.max(1, bodyPower.score));
+  const strongestSizeSquadSize = Math.ceil(strongestThreat.partCount / Math.max(1, bodyPower.partCount));
+  const totalThreat = threatProfile?.total;
+  const totalPowerSquadSize = totalThreat ? Math.ceil(totalThreat.score / Math.max(1, bodyPower.score)) : 1;
+  const totalSizeSquadSize = totalThreat ? Math.ceil(totalThreat.partCount / Math.max(1, bodyPower.partCount)) : 1;
+  return Math.min(
+    MAX_DEFENSE_ASSIST_SQUAD_SIZE,
+    Math.max(1, strongestPowerSquadSize, strongestSizeSquadSize, totalPowerSquadSize, totalSizeSquadSize)
+  );
+}
+
+export function calculateDefenseAssistSquadSize(
+  role: DefenseAssistRole,
+  energyCapacity: number,
+  threatProfile?: DefenseAssistThreatProfile | null
+): number {
+  return calculateThreatParitySquadSize(role, energyCapacity, threatProfile);
 }

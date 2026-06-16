@@ -1,8 +1,15 @@
 import { logger } from "@ralphschuler/screeps-core";
+import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { energyFlowPredictor, powerBankHarvestingManager } from "./botIntegration";
 import { optimizeBody } from "./bodyOptimizer";
 import { isBootstrapMode, isEmergencySpawnState } from "./bootstrapManager";
+import {
+  analyzeDefenseAssistThreat,
+  buildDefenseAssistBody,
+  calculateThreatParitySquadSize,
+  type DefenseAssistRole
+} from "./defenseAssistBody";
 import { analyzeDefenderNeeds, getCurrentDefenders } from "./defenderManager";
 import { getEffectiveRoomEnergyAvailable } from "./roomEnergy";
 import { createSpawnPlan, ensureRoomVisibleForSpawnAnalysis } from "./spawnIntentCompiler";
@@ -220,32 +227,42 @@ function addDefenderRequests(
   const emergencyEnergy = getEffectiveRoomEnergyAvailable(room);
   const priority = needs.urgency >= 2.0 || swarm.danger >= 3 ? SpawnPriority.EMERGENCY : SpawnPriority.HIGH;
 
+  const threatProfile = analyzeDefenseAssistThreat(getActualHostileCreeps(room));
+  const defenderEnergy = priority === SpawnPriority.EMERGENCY ? emergencyEnergy : maxEnergy;
   const pendingDefenders = getPendingDefenderCounts(room.name, maxEnergy);
-  const guardsNeeded = Math.max(0, needs.guards - current.guards - pendingDefenders.guards);
+  const guardsTarget = getThreatParityDefenderTarget("guard", needs.guards, defenderEnergy, threatProfile);
+  const guardsNeeded = Math.max(0, guardsTarget - current.guards - pendingDefenders.guards);
+  const guardBody = getThreatParityDefenderBody("guard", defenderEnergy, threatProfile);
   for (let i = 0; i < guardsNeeded; i++) {
     addOptimizedRequest(
       room,
       "guard",
       "military",
       priority,
-      priority === SpawnPriority.EMERGENCY ? emergencyEnergy : maxEnergy,
-      `guard_defense_${Game.time}_${i}`
+      defenderEnergy,
+      `guard_defense_${Game.time}_${i}`,
+      guardBody
     );
   }
 
-  const rangersNeeded = Math.max(0, needs.rangers - current.rangers - pendingDefenders.rangers);
+  const rangersTarget = getThreatParityDefenderTarget("ranger", needs.rangers, defenderEnergy, threatProfile);
+  const rangersNeeded = Math.max(0, rangersTarget - current.rangers - pendingDefenders.rangers);
+  const rangerBody = getThreatParityDefenderBody("ranger", defenderEnergy, threatProfile);
   for (let i = 0; i < rangersNeeded; i++) {
     addOptimizedRequest(
       room,
       "ranger",
       "military",
       priority,
-      priority === SpawnPriority.EMERGENCY ? emergencyEnergy : maxEnergy,
-      `ranger_defense_${Game.time}_${i}`
+      defenderEnergy,
+      `ranger_defense_${Game.time}_${i}`,
+      rangerBody
     );
   }
 
-  const healersNeeded = Math.max(0, needs.healers - current.healers - pendingDefenders.healers);
+  const healersTarget = getThreatParityDefenderTarget("healer", needs.healers, maxEnergy, threatProfile);
+  const healersNeeded = Math.max(0, healersTarget - current.healers - pendingDefenders.healers);
+  const healerBody = getThreatParityDefenderBody("healer", maxEnergy, threatProfile);
   if (healersNeeded > 0 && needs.urgency >= 1.5) {
     for (let i = 0; i < healersNeeded; i++) {
       addOptimizedRequest(
@@ -254,7 +271,8 @@ function addDefenderRequests(
         "military",
         SpawnPriority.HIGH,
         maxEnergy,
-        `healer_defense_${Game.time}_${i}`
+        `healer_defense_${Game.time}_${i}`,
+        healerBody
       );
     }
   }
@@ -265,6 +283,25 @@ function addDefenderRequests(
       { subsystem: "SpawnPipeline" }
     );
   }
+}
+
+function getThreatParityDefenderTarget(
+  role: DefenseAssistRole,
+  baseNeed: number,
+  energyCapacity: number,
+  threatProfile: ReturnType<typeof analyzeDefenseAssistThreat>
+): number {
+  if (baseNeed <= 0 || !threatProfile) return baseNeed;
+  return Math.max(baseNeed, calculateThreatParitySquadSize(role, energyCapacity, threatProfile));
+}
+
+function getThreatParityDefenderBody(
+  role: DefenseAssistRole,
+  energyCapacity: number,
+  threatProfile: ReturnType<typeof analyzeDefenseAssistThreat>
+): ReturnType<typeof buildDefenseAssistBody> {
+  if (!threatProfile) return null;
+  return buildDefenseAssistBody(role, energyCapacity, threatProfile);
 }
 
 function getPendingDefenderCounts(roomName: string, energyCapacity: number): { guards: number; rangers: number; healers: number } {
@@ -313,10 +350,11 @@ function addOptimizedRequest(
   family: SpawnRequest["family"],
   priority: SpawnPriority,
   maxEnergy: number,
-  id: string
+  id: string,
+  bodyOverride: SpawnRequest["body"] | null = null
 ): void {
   try {
-    const body = optimizeBody({ maxEnergy, role });
+    const body = bodyOverride ?? optimizeBody({ maxEnergy, role });
     if (body.cost > maxEnergy) {
       logger.warn(`Skipping unspawnable ${role} request in ${room.name}: body cost ${body.cost} exceeds ${maxEnergy}`, {
         subsystem: "SpawnPipeline"

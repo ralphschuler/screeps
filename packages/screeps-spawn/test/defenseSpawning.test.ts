@@ -1,5 +1,9 @@
 import { assert } from "chai";
-import { calculateCombatPower } from "../src/defenseAssistBody.ts";
+import {
+  buildDefenseAssistBody,
+  calculateCombatPower,
+  calculateThreatParitySquadSize
+} from "../src/defenseAssistBody.ts";
 import { analyzeDefenderNeeds } from "../src/defenderManager.ts";
 import {
   canSpawnIdleLocalMilitary,
@@ -35,6 +39,10 @@ function createHostile(parts: BodyPartConstant[]): Creep {
     owner: { username: "Invader" },
     body: parts.map(type => ({ type, hits: 100 }))
   } as unknown as Creep;
+}
+
+function createRepeatedParts(...counts: Array<readonly [BodyPartConstant, number]>): BodyPartConstant[] {
+  return counts.flatMap(([part, count]) => Array<BodyPartConstant>(count).fill(part));
 }
 
 describe("defense spawn throttling", () => {
@@ -419,5 +427,34 @@ describe("defense spawn throttling", () => {
     assert.isOk(guardRequest);
     assert.isAbove(guardRequest!.body.parts.length, hostile.body.length);
     assert.isAbove(calculateCombatPower(guardRequest!.body.parts).score, calculateCombatPower(hostile.body).score);
+  });
+
+  it("calculates aggregate parity squad size when no single affordable defender matches the threat", () => {
+    const threatProfile = {
+      hostileCount: 1,
+      strongest: calculateCombatPower(createRepeatedParts([ATTACK, 20], [MOVE, 20])),
+      total: calculateCombatPower(createRepeatedParts([ATTACK, 20], [MOVE, 20]))
+    };
+
+    const body = buildDefenseAssistBody("guard", 800, threatProfile);
+    const squadSize = calculateThreatParitySquadSize("guard", 800, threatProfile);
+
+    assert.isOk(body);
+    assert.isBelow(calculateCombatPower(body!.parts).score, threatProfile.strongest.score);
+    assert.isAbove(squadSize, 1);
+    assert.isAtLeast(calculateCombatPower(body!.parts).score * squadSize, threatProfile.total.score);
+  });
+
+  it("queues local defenders with threat-parity bodies when the room is directly attacked", () => {
+    const hostile = createHostile(createRepeatedParts([ATTACK, 8], [MOVE, 8]));
+    const room = createRoom([hostile], "W1N1", 2400, 2400);
+    Game.rooms.W1N1 = room;
+
+    populateSpawnQueue(room, { danger: 3, posture: "defense" } as any);
+
+    const guardRequest = spawnQueue.getPendingRequests("W1N1").find(request => request.role === "guard");
+    assert.isOk(guardRequest);
+    assert.isAtLeast(guardRequest!.body.parts.length, hostile.body.length);
+    assert.isAtLeast(calculateCombatPower(guardRequest!.body.parts).score, calculateCombatPower(hostile.body).score);
   });
 });
