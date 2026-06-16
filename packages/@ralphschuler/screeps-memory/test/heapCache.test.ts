@@ -45,4 +45,16 @@ describe("HeapCacheManager", () => {
     assert.isUndefined(cache.get("stale"));
     assert.notProperty((global as any).Memory._heapCache.data, "stale");
   });
+
+  it("does not persist live Memory reference cache entries", () => {
+    cache.initialize();
+    cache.set("memory:empire", { playerPostures: { players: { Enemy: { incidents: new Array(100).fill({ tick, roomName: "W1N1", severity: "hostileCombat" }) } } } }, -1);
+    cache.set("path:remote", "serialized-path", 100);
+
+    const persisted = cache.persist(true);
+
+    assert.equal(persisted, 1);
+    assert.notProperty((global as any).Memory._heapCache.data, "memory:empire");
+    assert.property((global as any).Memory._heapCache.data, "path:remote");
+  });
 });

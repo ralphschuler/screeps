@@ -94,6 +94,13 @@ export const INFINITE_TTL = -1;
 /** Current cache memory version */
 const CACHE_VERSION = 1;
 
+function shouldPersistKey(key: string): boolean {
+  // `memory:*` entries cache live Memory object references for same-global CPU
+  // savings. Persisting them back into Memory duplicates the source tree and can
+  // double serialized Memory usage, especially for `memory:empire`.
+  return !key.startsWith("memory:");
+}
+
 // =============================================================================
 // Heap Cache Storage
 // =============================================================================
@@ -344,6 +351,12 @@ export class HeapCacheManager {
       if (entry.value === undefined) {
         heap.entries.delete(key);
         delete memory.data[key];
+        continue;
+      }
+
+      if (!shouldPersistKey(key)) {
+        delete memory.data[key];
+        entry.dirty = false;
         continue;
       }
 

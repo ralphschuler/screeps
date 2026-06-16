@@ -1,6 +1,10 @@
 import { expect } from "chai";
 import { heapCache } from "@ralphschuler/screeps-memory";
-import { getQualifyingAttackers, recordPlayerAttack } from "../../src/empire/postureManager";
+import {
+  PLAYER_ATTACK_MAX_STORED_INCIDENTS,
+  getQualifyingAttackers,
+  recordPlayerAttack
+} from "../../src/empire/postureManager";
 
 function hostile(username: string, parts: BodyPartConstant[]): Creep {
   return {
@@ -51,6 +55,19 @@ describe("player posture attack memory", () => {
     expect(entry?.state).to.equal("war");
     expect((Memory as any).empire.warTargets).to.deep.equal(["Enemy"]);
     expect((Memory as any).empire.objectives.warMode).to.equal(true);
+  });
+
+  it("caps stored incident details while preserving posture escalation", () => {
+    for (let i = 0; i < PLAYER_ATTACK_MAX_STORED_INCIDENTS + 5; i += 1) {
+      (global as any).Game.time = 1000 + i;
+      recordPlayerAttack("Enemy", `W${i}N1`);
+    }
+
+    const entry = (Memory as any).empire.playerPostures.players.Enemy;
+
+    expect(entry.incidents).to.have.length(PLAYER_ATTACK_MAX_STORED_INCIDENTS);
+    expect(entry.attackCount).to.equal(PLAYER_ATTACK_MAX_STORED_INCIDENTS);
+    expect(entry.state).to.equal("war");
   });
 
   it("does not count non-combat scouts as qualifying attackers", () => {
