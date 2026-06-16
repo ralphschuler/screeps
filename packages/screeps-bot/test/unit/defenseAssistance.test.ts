@@ -109,7 +109,10 @@ describe("Defense Assistance System", () => {
           return [{ spawning: null }] as StructureSpawn[];
         } else if (type === FIND_MY_CREEPS) {
           // Has sufficient defenders
-          return [{ memory: { role: "guard" } }, { memory: { role: "ranger" } }] as unknown as Creep[];
+          return [
+            { memory: { role: "guard" }, body: [{ type: ATTACK, hits: 100 }] },
+            { memory: { role: "ranger" }, body: [{ type: RANGED_ATTACK, hits: 100 }] }
+          ] as unknown as Creep[];
         }
         return [];
       };

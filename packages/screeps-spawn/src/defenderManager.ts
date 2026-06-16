@@ -113,7 +113,7 @@ export function analyzeDefenderNeeds(room: Room): DefenderRequirement {
 }
 
 function hasActivePart(creep: Creep, parts: BodyPartConstant[]): boolean {
-  return creep.body.some(part => part.hits > 0 && parts.includes(part.type));
+  return (creep.body ?? []).some(part => part.hits > 0 && parts.includes(part.type));
 }
 
 export function getCurrentDefenders(room: Room): { guards: number; rangers: number; healers: number } {

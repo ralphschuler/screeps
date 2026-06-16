@@ -403,6 +403,35 @@ export class EmpireManager {
 
     // Remove stale allied ownership/reservation entries from memory (room not currently ours)
     const ownedRoomNames = new Set(ownedRooms.map(room => room.name));
+
+    const recoveryRooms = empire.recoveryRooms ?? {};
+    empire.recoveryRooms = recoveryRooms;
+    for (const [roomName, previous] of Object.entries(previousOwnedRooms)) {
+      if (ownedRoomNames.has(roomName)) {
+        delete recoveryRooms[roomName];
+        continue;
+      }
+      if (!recoveryRooms[roomName]) {
+        recoveryRooms[roomName] = {
+          roomName,
+          lostAt: Game.time,
+          rcl: previous.rcl,
+          role: previous.role,
+          clusterId: previous.clusterId
+        };
+      }
+    }
+
+    for (const roomName of ownedRoomNames) {
+      delete recoveryRooms[roomName];
+    }
+
+    for (const roomName in recoveryRooms) {
+      if (Game.time - recoveryRooms[roomName].lostAt > 200000) {
+        delete recoveryRooms[roomName];
+      }
+    }
+
     for (const roomName in empire.knownRooms) {
       const intel = empire.knownRooms[roomName];
       if (!intel) continue;

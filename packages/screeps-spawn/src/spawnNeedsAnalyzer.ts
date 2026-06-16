@@ -56,6 +56,18 @@ export interface PioneerSpawnAssignment {
   task: "bootstrapSpawn";
 }
 
+interface SpawnSettingsMemory {
+  spawnSettings?: {
+    /** Set false to roll back lost-room recovery claiming. */
+    roomRecoveryReclaim?: boolean;
+  };
+}
+
+function isRoomRecoveryReclaimEnabled(): boolean {
+  const mem = Memory as unknown as SpawnSettingsMemory;
+  return mem.spawnSettings?.roomRecoveryReclaim !== false;
+}
+
 interface DefenseAssistSpawnAssignment {
   targetRoom: string;
   task: "defenseAssist";
@@ -515,19 +527,6 @@ function countCapableDefenseAssistHelpers(
   return count;
 }
 
-function hasHelperRoomDefenseAssist(homeRoom: string, targetRoom: string, role: string): boolean {
-  for (const creep of Object.values(Game.creeps)) {
-    const memory = creep.memory as unknown as Partial<SwarmCreepMemory>;
-    if (memory.role === role && memory.homeRoom === homeRoom && getAssistTarget(memory) === targetRoom) return true;
-  }
-
-  return spawnQueue.getPendingRequests(homeRoom).some(request =>
-    request.role === role &&
-    (request.additionalMemory?.assistTarget === targetRoom ||
-      (request.additionalMemory?.task === DEFENSE_ASSIST_TASK && request.targetRoom === targetRoom))
-  );
-}
-
 function countAssignedDefenseAssist(targetRoom: string, role: string): number {
   let count = 0;
   for (const creep of Object.values(Game.creeps)) {
@@ -597,7 +596,6 @@ export function getDefenseAssistSpawnAssignment(homeRoom: string, role: string):
     .map(request => ({ request, helperNeed: getDefenseRoleNeedForHelper(request, role, helperEnergyCapacity) }))
     .filter(candidate => candidate.helperNeed > 0)
     .filter(candidate => hasCurrentDefenseThreat(candidate.request))
-    .filter(candidate => !hasHelperRoomDefenseAssist(homeRoom, candidate.request.roomName, role))
     .filter(candidate => countAssignedDefenseAssist(candidate.request.roomName, role) < candidate.helperNeed)
     .sort((a, b) => {
       const urgencyDelta = (b.request.urgency ?? 1) - (a.request.urgency ?? 1);
@@ -744,16 +742,48 @@ function getRemoteRoomNeedingReserver(swarm: SwarmState, reservedForClaim = new 
   return null;
 }
 
+function isRecoverableClaimTarget(roomName: string): boolean {
+  const room = Game.rooms[roomName];
+  if (room) {
+    const controller = room.controller;
+    if (!controller) return false;
+    if (controller.my) return false;
+    if (controller.owner || controller.reservation) return false;
+    if (hasDangerousHostile(room)) return false;
+    return true;
+  }
+
+  return !hasUnsafeRemoteIntel(roomName);
+}
+
+function getRecoveryClaimTarget(empire: ReturnType<typeof memoryManager.getEmpire>): string | null {
+  const recoveryRooms = empire.recoveryRooms ?? {};
+  const candidates = Object.values(recoveryRooms)
+    .filter(entry => !hasAssignedClaimer(entry.roomName, "claim"))
+    .filter(entry => isRecoverableClaimTarget(entry.roomName))
+    .sort((a, b) => a.lostAt - b.lostAt || a.roomName.localeCompare(b.roomName));
+
+  return candidates[0]?.roomName ?? null;
+}
+
 export function getClaimerSpawnAssignment(_homeRoom: string, swarm: SwarmState): ClaimerSpawnAssignment | null {
   const empire = memoryManager.getEmpire();
   const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
 
+  const canClaimRoom = ownedRooms.length < (Game.gcl?.level ?? 1);
+  const recoveryTarget = canClaimRoom && isRoomRecoveryReclaimEnabled() ? getRecoveryClaimTarget(empire) : null;
+  if (recoveryTarget) {
+    return { targetRoom: recoveryTarget, task: "claim" };
+  }
+
   // Expansion claims use the scored empire queue first.
-  const canExpand = ownedRooms.length < (Game.gcl?.level ?? 1);
-  const claimTargetRooms = canExpand
-    ? new Set(empire.claimQueue.filter(candidate => !candidate.claimed).map(candidate => candidate.roomName))
+  const claimTargetRooms = canClaimRoom
+    ? new Set([
+        ...Object.values(empire.recoveryRooms ?? {}).map(entry => entry.roomName),
+        ...empire.claimQueue.filter(candidate => !candidate.claimed).map(candidate => candidate.roomName)
+      ])
     : new Set<string>();
-  if (canExpand) {
+  if (canClaimRoom) {
     const expansionTarget = empire.claimQueue.find(
       candidate => !candidate.claimed && !hasAssignedClaimer(candidate.roomName, "claim")
     );

@@ -103,6 +103,8 @@ export interface SquadMemory {
   type: "harass" | "raid" | "siege" | "defense";
   /** Member creep names */
   members: string[];
+  /** Desired live composition by role before departure. */
+  targetComposition?: Partial<Record<string, number>>;
   /** Rally room */
   rallyRoom: string;
   /** Rally flag name (optional) */
@@ -115,6 +117,8 @@ export interface SquadMemory {
   timeBudget: number;
   /** Created tick */
   createdAt: number;
+  /** Tick when squad may depart with a safe partial quorum. */
+  stagingTimeoutAt?: number;
   /** Retreat condition: min HP percentage */
   retreatThreshold: number;
 }

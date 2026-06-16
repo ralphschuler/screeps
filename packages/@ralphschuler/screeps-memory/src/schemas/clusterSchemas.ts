@@ -13,6 +13,8 @@ export interface SquadDefinition {
   type: "harass" | "raid" | "siege" | "defense";
   /** Member creep names */
   members: string[];
+  /** Desired live composition by role before departure. */
+  targetComposition?: Partial<Record<string, number>>;
   /** Rally room/flag */
   rallyRoom: string;
   /** Target rooms */
@@ -21,6 +23,8 @@ export interface SquadDefinition {
   state: "gathering" | "moving" | "attacking" | "retreating" | "dissolving";
   /** Creation tick */
   createdAt: number;
+  /** Tick when squad may depart with a safe partial quorum. */
+  stagingTimeoutAt?: number;
   /** Retreat threshold (HP percentage, 0-1) */
   retreatThreshold?: number;
 }

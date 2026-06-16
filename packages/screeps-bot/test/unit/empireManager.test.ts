@@ -109,7 +109,7 @@ describe("Empire Manager Automation", () => {
       expect(profitabilitySpy.called).to.be.false;
     });
 
-    it("should run moderate workloads in degraded mode", () => {
+    it("should skip optional intel workloads in degraded mode", () => {
       const manager = new EmpireManager();
       mockGame.cpu.bucket = 2500;
       const intelSpy = sinon.stub(roomIntelManager, "refreshRoomIntel").callsFake(() => undefined);
@@ -118,8 +118,8 @@ describe("Empire Manager Automation", () => {
 
       manager.run();
 
-      expect(intelSpy.calledOnce).to.be.true;
-      expect(discoverySpy.calledOnce).to.be.true;
+      expect(intelSpy.called).to.be.false;
+      expect(discoverySpy.called).to.be.false;
       expect(nukeSpy.called).to.be.false;
     });
 
@@ -295,6 +295,36 @@ describe("Empire Manager Automation", () => {
       expect((empire.ownedRooms.W1N1 as any).energyCapacityAvailable).to.equal(800);
       expect(empire.ownedRooms.W9N9).to.equal(undefined);
       expect(empire.objectives.targetRoomCount).to.equal(6);
+    });
+
+    it("records recently lost owned rooms for recovery claiming", () => {
+      const manager = new EmpireManager();
+      empire.ownedRooms.W18S28 = {
+        name: "W18S28",
+        role: "core",
+        clusterId: "W18S28-cluster",
+        rcl: 5
+      };
+      mockGame.time = 2000;
+      mockGame.rooms = {
+        W18S29: {
+          name: "W18S29",
+          controller: { my: true, level: 5 },
+          energyAvailable: 800,
+          energyCapacityAvailable: 1800
+        }
+      };
+
+      (manager as any).updateObjectives(empire);
+
+      expect(empire.ownedRooms.W18S28).to.equal(undefined);
+      expect((empire as any).recoveryRooms.W18S28).to.deep.include({
+        roomName: "W18S28",
+        lostAt: 2000,
+        rcl: 5,
+        role: "core",
+        clusterId: "W18S28-cluster"
+      });
     });
 
     it("should clear stale allied ownership when room is no longer ally-owned", () => {

@@ -276,6 +276,14 @@ export interface PlayerPostureMemory {
   windowTicks: number;
 }
 
+export interface RoomRecoveryEntry {
+  roomName: string;
+  lostAt: number;
+  rcl: number;
+  role: OwnedRoomEntry["role"];
+  clusterId: string;
+}
+
 /**
  * Empire memory - Global meta-layer state (ROADMAP Section 4)
  * Tracks all colonies, clusters, and empire-wide strategic decisions
@@ -289,6 +297,8 @@ export interface EmpireMemory {
   warTargets: string[];
   /** Owned rooms with roles and cluster assignments */
   ownedRooms: Record<string, OwnedRoomEntry>;
+  /** Recently lost owned rooms that should be reclaimed before normal expansion. */
+  recoveryRooms?: Record<string, RoomRecoveryEntry>;
   /** Claim queue sorted by expansion score */
   claimQueue: ExpansionCandidate[];
   /** Nuke candidates with scores */
@@ -343,6 +353,7 @@ export function createDefaultEmpireMemory(): EmpireMemory {
     clusters: [],
     warTargets: [],
     ownedRooms: {},
+    recoveryRooms: {},
     claimQueue: [],
     nukeCandidates: [],
     powerBanks: [],

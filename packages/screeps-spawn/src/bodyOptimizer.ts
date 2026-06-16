@@ -239,6 +239,12 @@ export function optimizeCombatBody(options: BodyOptimizationOptions): BodyTempla
     }
   }
 
+  const toughBody = candidates
+    .map(makeBodyTemplate)
+    .filter(body => body.cost <= maxEnergy && body.parts.length <= MAX_BODY_PARTS && body.parts.includes(TOUGH))
+    .sort((a, b) => b.cost - a.cost || b.parts.length - a.parts.length)[0];
+  if (toughBody) return toughBody;
+
   const body = strongestAffordableBody(candidates, maxEnergy);
   if (body) return body;
   throw new Error(`No affordable combat body for ${maxEnergy} energy`);

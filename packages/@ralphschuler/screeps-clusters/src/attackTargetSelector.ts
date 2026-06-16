@@ -88,6 +88,11 @@ export function findAttackTargets(
   const empire = memoryManager.getEmpire();
   const roomIntel = empire.knownRooms || {};
   const warTargets = new Set((empire.warTargets || []).filter(target => !isAllyPlayer(target)));
+  const hostilePosturePlayers = new Set(
+    Object.values(empire.playerPostures?.players ?? {})
+      .filter(entry => entry.state === "war" && !isAllyPlayer(entry.username))
+      .map(entry => entry.username)
+  );
 
   // Get all known rooms
   for (const roomName in roomIntel) {
@@ -104,6 +109,13 @@ export function findAttackTargets(
     if ((intel.owner && isAllyPlayer(intel.owner)) || (intel.reserver && isAllyPlayer(intel.reserver))) {
       continue;
     }
+
+    const isExplicitWarTarget = warTargets.has(roomName) || Boolean(intel.owner && warTargets.has(intel.owner));
+    const isConfirmedHostile = isExplicitWarTarget || Boolean(intel.owner && hostilePosturePlayers.has(intel.owner));
+    if (!isConfirmedHostile) {
+      logger.debug(`Skipping ${roomName}: not a confirmed enemy target`, { subsystem: "AttackTarget" });
+      continue;
+    }
     
     // Skip highway and SK rooms
     if (intel.isHighway || intel.isSK) continue;
@@ -117,12 +129,12 @@ export function findAttackTargets(
     if (Game.time - lastAttacked < ATTACK_COOLDOWN_TICKS) continue;
     
     // Calculate score
-    const score = scoreTarget(intel, distance, warTargets.has(roomName), finalWeights);
+    const score = scoreTarget(intel, distance, isExplicitWarTarget, finalWeights);
     
     // Determine target type
     let type: AttackTarget["type"] = "neutral";
     if (intel.owner) {
-      type = warTargets.has(intel.owner) || warTargets.has(roomName) ? "enemy" : "hostile";
+      type = isExplicitWarTarget ? "enemy" : "hostile";
     }
     
     // Select doctrine

@@ -285,6 +285,37 @@ describe("spawn intent compiler", () => {
     assert.isUndefined(request, "queued reserve claimer should satisfy remote reservation demand");
   });
 
+  it("prioritizes room recovery claimers before normal expansion claims", () => {
+    const room = createRoom();
+    Game.rooms.W1N1 = room;
+    Game.rooms.W2N1 = {
+      name: "W2N1",
+      controller: { my: false, owner: undefined, reservation: undefined },
+      find: () => []
+    } as unknown as Room;
+    Game.gcl = { level: 2 } as Game["gcl"];
+    populateStableParentCreeps();
+    (global as any).Memory.empire = {
+      knownRooms: {},
+      clusters: [],
+      warTargets: [],
+      ownedRooms: { W1N1: { name: "W1N1", role: "core", clusterId: "W1N1-cluster", rcl: 8 } },
+      recoveryRooms: { W2N1: { roomName: "W2N1", lostAt: Game.time - 50, rcl: 5, role: "core", clusterId: "W2N1-cluster" } },
+      claimQueue: [{ roomName: "W3N1", score: 90, distance: 2, claimed: false, lastEvaluated: Game.time }],
+      nukeCandidates: [],
+      powerBanks: [],
+      objectives: { targetPowerLevel: 0, targetRoomCount: 2, warMode: false, expansionPaused: false },
+      lastUpdate: Game.time
+    };
+
+    const request = createSpawnPlan(room, createSwarm())
+      .requests.find(item => item.role === "claimer");
+
+    assert.exists(request, "lost owned room recovery should create claimer request");
+    assert.equal(request!.targetRoom, "W2N1");
+    assert.equal(request!.additionalMemory?.task, "claim");
+  });
+
   it("compiles expansion claimers with the queued claim target", () => {
     const room = createRoom();
     Game.rooms.W1N1 = room;
@@ -349,6 +380,30 @@ describe("spawn intent compiler", () => {
     assert.equal(request!.roomName, "W1N1");
     assert.equal(request!.targetRoom, "W2N1");
     assert.equal(request!.additionalMemory?.task, "bootstrapSpawn");
+  });
+
+  it("does not send pioneers into spawnless rooms with dangerous hostiles", () => {
+    const parentSpawn = createSpawn("Spawn1");
+    const room = createRoom("W1N1", [parentSpawn]);
+    Game.rooms.W1N1 = room;
+    Game.rooms.W2N1 = {
+      ...createSpawnlessOwnedRoom("W2N1", [], [createConstructionSite(STRUCTURE_SPAWN)]),
+      find: (type: FindConstant) => {
+        if (type === FIND_MY_SPAWNS) return [];
+        if (type === FIND_MY_STRUCTURES) return [];
+        if (type === FIND_HOSTILE_CREEPS) {
+          return [{ owner: { username: "Enemy" }, body: [{ type: ATTACK, hits: 100 }, { type: MOVE, hits: 100 }] }];
+        }
+        if (type === FIND_MY_CONSTRUCTION_SITES) return [createConstructionSite(STRUCTURE_SPAWN)];
+        return [];
+      }
+    } as unknown as Room;
+    populateStableParentCreeps();
+
+    const request = createSpawnPlan(room, createSwarm())
+      .requests.find(item => item.role === "pioneer");
+
+    assert.isUndefined(request, "dangerous hostiles should keep pioneer recovery gated off");
   });
 
   it("does not compile duplicate pioneers when one is already queued and no spawn site exists yet", () => {

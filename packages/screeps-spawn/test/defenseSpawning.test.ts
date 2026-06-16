@@ -297,6 +297,48 @@ describe("defense spawn throttling", () => {
     assert.isString(guardRequest?.additionalMemory?.defenseSquadId);
   });
 
+  it("continues spawning same-role defense assist waves until the global request is satisfied", () => {
+    const helper = createRoom([], "W17S29", 1800, 1800);
+    const attacked = createRoom([createHostile([RANGED_ATTACK, RANGED_ATTACK, HEAL, MOVE, MOVE])], "W19S28");
+    Game.rooms.W17S29 = helper;
+    Game.rooms.W19S28 = attacked;
+    Game.creeps = {
+      harvester1: { spawning: false, memory: { role: "harvester", homeRoom: "W17S29" } },
+      hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "W17S29" } },
+      upgrader1: { spawning: false, memory: { role: "upgrader", homeRoom: "W17S29" } },
+      ranger1: {
+        spawning: false,
+        memory: {
+          role: "ranger",
+          family: "military",
+          homeRoom: "W17S29",
+          targetRoom: "W19S28",
+          task: "defenseAssist",
+          assistTarget: "W19S28"
+        }
+      }
+    } as unknown as typeof Game.creeps;
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      {
+        roomName: "W19S28",
+        guardsNeeded: 0,
+        rangersNeeded: 3,
+        healersNeeded: 0,
+        urgency: 3,
+        createdAt: Game.time,
+        threat: "visible ranged assault"
+      }
+    ];
+
+    const { createSpawnPlan } = require("../src/spawnIntentCompiler") as typeof import("../src/spawnIntentCompiler");
+    const plan = createSpawnPlan(helper, { danger: 0, posture: "eco" } as any);
+    const rangerRequest = plan.requests.find(request => request.role === "ranger");
+
+    assert.exists(rangerRequest, "one active helper ranger should not block additional same-role waves when need remains");
+    assert.equal(rangerRequest!.targetRoom, "W19S28");
+    assert.include(rangerRequest!.additionalMemory, { task: "defenseAssist", assistTarget: "W19S28" });
+  });
+
   it("keeps optimized military bodies within the requested energy budget", () => {
     for (const [role, energy] of [["guard", 199], ["guard", 400], ["ranger", 200], ["healer", 300]] as const) {
       const body = optimizeBody({ role, maxEnergy: energy });

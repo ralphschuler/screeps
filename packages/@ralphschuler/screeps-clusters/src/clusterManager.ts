@@ -56,6 +56,7 @@ import {
   shouldDissolveSquad,
   validateSquadState
 } from "./squadCoordinator";
+import { isSquadForming, isSquadReadyToExecute, startSquadFormation } from "./squadFormationManager";
 import {
   routeEmergencyEnergy,
   updateMilitaryReservations
@@ -380,6 +381,10 @@ export class ClusterManager {
     for (const squad of cluster.squads) {
       // Validate squad state transitions
       validateSquadState(squad);
+
+      if (squad.state === "gathering" && !isSquadReadyToExecute(squad) && !isSquadForming(squad.id)) {
+        startSquadFormation(cluster, squad);
+      }
 
       // Check if squad should be dissolved
       if (shouldDissolveSquad(squad)) {

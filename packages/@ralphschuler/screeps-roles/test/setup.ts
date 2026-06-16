@@ -103,6 +103,10 @@
 (global as any).ERR_GCL_NOT_ENOUGH = -15;
 (global as any).ERR_ACCESS_DENIED = -16;
 
+// Terrain constants
+(global as any).TERRAIN_MASK_WALL = 1;
+(global as any).TERRAIN_MASK_SWAMP = 2;
+
 // Body part constants
 (global as any).MOVE = 'move';
 (global as any).WORK = 'work';

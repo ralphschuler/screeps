@@ -312,8 +312,90 @@ function moveToCollectionPoint(ctx: CreepContext, debugLabel: string): CreepActi
  * Get squad memory by ID.
  */
 function getSquadMemory(squadId: string): SquadMemory | undefined {
-  const mem = Memory as unknown as Record<string, Record<string, SquadMemory>>;
-  return mem.squads?.[squadId];
+  const memory = Memory as unknown as { clusters?: Record<string, { squads?: SquadMemory[] }> };
+  for (const cluster of Object.values(memory.clusters ?? {})) {
+    const squad = cluster.squads?.find(candidate => candidate.id === squadId);
+    if (!squad) continue;
+    squad.members = squad.members.filter(name => Boolean(Game.creeps[name]));
+    return squad;
+  }
+  return undefined;
+}
+
+function getSquadMembers(squad: SquadMemory): Creep[] {
+  return squad.members.map(name => Game.creeps[name]).filter((creep): creep is Creep => Boolean(creep));
+}
+
+function getSquadTargetSize(squad: SquadMemory): number {
+  const composition = squad.targetComposition ?? {};
+  const total = (Object.values(composition) as number[]).reduce((sum, value) => sum + (value ?? 0), 0);
+  return total > 0 ? total : squad.members.length;
+}
+
+function isSquadFullAtRally(squad: SquadMemory): boolean {
+  const composition = squad.targetComposition ?? {};
+  const roleCounts: Record<string, number> = {};
+  for (const creep of getSquadMembers(squad)) {
+    if (creep.room.name !== squad.rallyRoom || creep.spawning) continue;
+    const role = (creep.memory as unknown as SwarmCreepMemory).role;
+    roleCounts[role] = (roleCounts[role] ?? 0) + 1;
+  }
+  return Object.entries(composition).every(([role, needed]) => (roleCounts[role] ?? 0) >= (needed ?? 0));
+}
+
+function hasSafePartialRallyQuorum(squad: SquadMemory): boolean {
+  const rallyMembers = getSquadMembers(squad).filter(creep => creep.room.name === squad.rallyRoom && !creep.spawning);
+  const targetSize = getSquadTargetSize(squad);
+  if (rallyMembers.length < Math.max(2, Math.ceil(targetSize * 0.6))) return false;
+
+  const roles = new Set<string>(rallyMembers.map(creep => (creep.memory as unknown as SwarmCreepMemory).role));
+  const hasCombat = ["guard", "soldier", "ranger", "harasser", "siegeUnit"].some(role => roles.has(role));
+  if (!hasCombat) return false;
+  if ((squad.targetComposition?.healer ?? 0) > 0 && !roles.has("healer")) return false;
+  if (squad.type === "siege" && !roles.has("siegeUnit")) return false;
+  return true;
+}
+
+function canLocalSquadDepart(squad: SquadMemory): boolean {
+  if (isSquadFullAtRally(squad)) return true;
+  return Boolean(squad.stagingTimeoutAt && Game.time >= squad.stagingTimeoutAt && hasSafePartialRallyQuorum(squad));
+}
+
+function getSquadRallyPosition(squad: SquadMemory): RoomPosition {
+  const flag = squad.rallyFlag ? Game.flags?.[squad.rallyFlag] : undefined;
+  return flag?.pos ?? new RoomPosition(25, 25, squad.rallyRoom);
+}
+
+function getPrimarySquadAttacker(squad: SquadMemory): Creep | null {
+  return getSquadMembers(squad).find(creep => (creep.memory as unknown as SwarmCreepMemory).role !== "healer") ?? null;
+}
+
+function shouldWaitForCohesion(ctx: CreepContext, squad: SquadMemory): boolean {
+  const members = getSquadMembers(squad).filter(creep => creep.room.name === ctx.room.name && !creep.spawning);
+  if (members.length <= 1) return false;
+  const closest = members.reduce((best, creep) => Math.min(best, ctx.creep.pos.getRangeTo(creep)), Infinity);
+  return closest > 6;
+}
+
+function getSiegeFormationPosition(ctx: CreepContext, squad: SquadMemory): RoomPosition | null {
+  if (squad.type !== "siege") return null;
+  const members = getSquadMembers(squad).sort((a, b) => a.name.localeCompare(b.name));
+  const index = members.findIndex(creep => creep.name === ctx.creep.name);
+  if (index < 0 || index > 3) return null;
+  const anchor = members[0]?.pos;
+  if (!anchor || anchor.roomName !== ctx.room.name) return null;
+  const offsets = [
+    { x: 0, y: 0 },
+    { x: 1, y: 0 },
+    { x: 0, y: 1 },
+    { x: 1, y: 1 }
+  ];
+  const offset = offsets[index]!;
+  const x = Math.max(1, Math.min(48, anchor.x + offset.x));
+  const y = Math.max(1, Math.min(48, anchor.y + offset.y));
+  const terrain = ctx.room.getTerrain?.().get(x, y);
+  if (terrain === TERRAIN_MASK_WALL) return null;
+  return new RoomPosition(x, y, ctx.room.name);
 }
 
 // =============================================================================
@@ -331,6 +413,11 @@ export function guard(ctx: CreepContext): CreepAction {
   // Check if should retreat based on threat assessment
   if (checkAndExecuteRetreat(ctx.creep)) {
     return { type: "idle" }; // Retreat logic handles movement
+  }
+
+  if (ctx.memory.squadId) {
+    const squad = getSquadMemory(ctx.memory.squadId);
+    if (squad) return squadBehavior(ctx, squad);
   }
 
   // Check if assigned to assist another room
@@ -524,6 +611,11 @@ export function healer(ctx: CreepContext): CreepAction {
   // Always heal self if critically damaged
   if (ctx.creep.hits < ctx.creep.hitsMax * 0.5) {
     return { type: "heal", target: ctx.creep };
+  }
+
+  if (ctx.memory.squadId) {
+    const squad = getSquadMemory(ctx.memory.squadId);
+    if (squad) return squadBehavior(ctx, squad);
   }
 
   // Check if assigned to power bank operation
@@ -820,6 +912,11 @@ export function siege(ctx: CreepContext): CreepAction {
 export function harasser(ctx: CreepContext): CreepAction {
   const targetRoom = ctx.memory.targetRoom;
 
+  if (ctx.memory.squadId) {
+    const squad = getSquadMemory(ctx.memory.squadId);
+    if (squad) return squadBehavior(ctx, squad);
+  }
+
   // TACTICAL RETREAT: If critically damaged (below 40% HP), return home
   // Harassers should retreat earlier than heavy units since they're meant for hit-and-run
   const hpPercent = ctx.creep.hits / ctx.creep.hitsMax;
@@ -908,6 +1005,11 @@ export function ranger(ctx: CreepContext): CreepAction {
   // Check if should retreat based on threat assessment
   if (checkAndExecuteRetreat(ctx.creep)) {
     return { type: "idle" }; // Retreat logic handles movement
+  }
+
+  if (ctx.memory.squadId) {
+    const squad = getSquadMemory(ctx.memory.squadId);
+    if (squad) return squadBehavior(ctx, squad);
   }
 
   // TACTICAL RETREAT: If critically damaged (below 30% HP), retreat to home room
@@ -1018,89 +1120,86 @@ export function ranger(ctx: CreepContext): CreepAction {
  * Squad members stay together and coordinate movements.
  */
 function squadBehavior(ctx: CreepContext, squad: SquadMemory): CreepAction {
-  // SQUAD COORDINATION: Check if we should wait for other squad members
-  const shouldWaitForSquad = (state: string): boolean => {
-    if (state !== "gathering" && state !== "moving") return false;
-    
-    // Count squad members in current room
-    const membersInRoom = squad.members.filter(name => {
-      const creep = Game.creeps[name];
-      return creep && creep.room.name === ctx.room.name;
-    }).length;
-    
-    // Wait if less than 50% of squad is present (minimum 2 members)
-    const totalMembers = squad.members.length;
-    return membersInRoom < Math.max(2, totalMembers * 0.5);
-  };
+  if (!squad.members.includes(ctx.creep.name)) {
+    squad.members.push(ctx.creep.name);
+  }
 
   switch (squad.state) {
     case "gathering": {
-      // Move to rally point
-      if (ctx.room.name !== squad.rallyRoom) {
-        return { type: "moveToRoom", roomName: squad.rallyRoom };
-      }
-      
-      // Wait at rally point for other squad members
-      const rallyPos = new RoomPosition(25, 25, squad.rallyRoom);
-      if (ctx.creep.pos.getRangeTo(rallyPos) > 3) {
-        return { type: "moveTo", target: rallyPos };
-      }
-      
+      if (ctx.room.name !== squad.rallyRoom) return { type: "moveToRoom", roomName: squad.rallyRoom };
+      const rallyPos = getSquadRallyPosition(squad);
+      if (ctx.creep.pos.getRangeTo(rallyPos) > 3) return { type: "moveTo", target: rallyPos };
+      if (!canLocalSquadDepart(squad)) return { type: "wait", position: rallyPos };
       return { type: "idle" };
     }
 
     case "moving": {
       const targetRoom = squad.targetRooms[0];
       if (!targetRoom) return { type: "idle" };
-      
       if (ctx.room.name !== targetRoom) {
-        // COORDINATION: Wait for squad if we're ahead
-        if (shouldWaitForSquad("moving")) {
-          return { type: "idle" };
-        }
+        if (shouldWaitForCohesion(ctx, squad)) return { type: "wait", position: ctx.creep.pos };
         return { type: "moveToRoom", roomName: targetRoom };
       }
+      const formationPos = getSiegeFormationPosition(ctx, squad);
+      if (formationPos && ctx.creep.pos.getRangeTo(formationPos) > 0) return { type: "moveTo", target: formationPos };
       return { type: "idle" };
     }
 
     case "attacking": {
-      // RETREAT CHECK: Squad members should retreat if HP is too low
-      // Default to 30% if retreatThreshold is not set
       const hpPercent = ctx.creep.hits / ctx.creep.hitsMax;
       const retreatThreshold = squad.retreatThreshold ?? 0.3;
-      if (hpPercent < retreatThreshold) {
-        // Individual retreat to rally room
-        if (ctx.room.name !== squad.rallyRoom) {
-          return { type: "moveToRoom", roomName: squad.rallyRoom };
+      if (hpPercent < retreatThreshold && ctx.room.name !== squad.rallyRoom) return { type: "moveToRoom", roomName: squad.rallyRoom };
+
+      const role = ctx.memory.role;
+      if (role === "healer") {
+        const wounded = getSquadMembers(squad)
+          .filter(creep => creep.hits < creep.hitsMax)
+          .sort((a, b) => a.hits / a.hitsMax - b.hits / b.hitsMax)[0];
+        if (wounded) {
+          const range = ctx.creep.pos.getRangeTo(wounded);
+          if (range <= 1) return { type: "heal", target: wounded };
+          if (range <= 3) return { type: "rangedHeal", target: wounded };
+          return { type: "moveTo", target: wounded };
         }
+        const attacker = getPrimarySquadAttacker(squad);
+        if (attacker && ctx.creep.pos.getRangeTo(attacker) > 2) return { type: "moveTo", target: attacker };
+        return { type: "idle" };
       }
-      
-      // Execute role-specific attack behavior
-      switch (ctx.memory.role) {
-        case "soldier":
-        case "guard":
-          return soldier(ctx);
-        case "healer":
-          return healer(ctx);
-        case "siegeUnit":
-          return siege(ctx);
-        case "ranger":
-          return ranger(ctx);
-        default:
-          return soldier(ctx);
+
+      const target = findPriorityTarget(ctx);
+      if (target) {
+        const range = ctx.creep.pos.getRangeTo(target);
+        if (role === "ranger") {
+          if (range < 3) return { type: "flee", from: [target.pos] };
+          if (range <= 3) return { type: "rangedAttack", target };
+          return { type: "moveTo", target };
+        }
+        if (hasBodyPart(ctx.creep, RANGED_ATTACK) && range <= 3) return { type: "rangedAttack", target };
+        if (hasBodyPart(ctx.creep, ATTACK) && range <= 1) return { type: "attack", target };
+        return { type: "moveTo", target };
       }
+
+      const hostileStructures = getActualHostileStructures(ctx.room).filter(s => s.structureType !== STRUCTURE_CONTROLLER);
+      const priorityStructure = ctx.creep.pos.findClosestByRange(
+        hostileStructures.filter(s => s.structureType === STRUCTURE_TOWER || s.structureType === STRUCTURE_SPAWN)
+      ) ?? ctx.creep.pos.findClosestByRange(hostileStructures);
+      if (priorityStructure) {
+        const range = ctx.creep.pos.getRangeTo(priorityStructure);
+        if (role === "siegeUnit" && range <= 1) return { type: "dismantle", target: priorityStructure };
+        if (hasBodyPart(ctx.creep, RANGED_ATTACK) && range <= 3) return { type: "rangedAttack", target: priorityStructure };
+        if (hasBodyPart(ctx.creep, ATTACK) && range <= 1) return { type: "attack", target: priorityStructure };
+        return { type: "moveTo", target: priorityStructure };
+      }
+
+      return { type: "idle" };
     }
 
     case "retreating":
-      if (ctx.room.name !== squad.rallyRoom) {
-        return { type: "moveToRoom", roomName: squad.rallyRoom };
-      }
-      return { type: "moveTo", target: new RoomPosition(25, 25, squad.rallyRoom) };
+      if (ctx.room.name !== squad.rallyRoom) return { type: "moveToRoom", roomName: squad.rallyRoom };
+      return { type: "moveTo", target: getSquadRallyPosition(squad) };
 
     case "dissolving":
-      if (ctx.room.name !== ctx.homeRoom) {
-        return { type: "moveToRoom", roomName: ctx.homeRoom };
-      }
+      if (ctx.room.name !== ctx.homeRoom) return { type: "moveToRoom", roomName: ctx.homeRoom };
       delete ctx.memory.squadId;
       return { type: "idle" };
 
